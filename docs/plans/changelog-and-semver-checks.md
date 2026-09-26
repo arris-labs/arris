@@ -79,7 +79,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — `tools/semver-gate.sh` and the `semver` CI job.
+- [x] Step 1 **[2]** — `tools/semver-gate.sh` and the `semver` CI job.
   This comes first because it is the unknown: whether `cargo-semver-checks`
   runs cleanly on this workspace (rustdoc JSON of eight crates, the
   `publish = false` crate skipped, `-dev` versions against a published

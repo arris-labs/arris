@@ -161,6 +161,21 @@ jobs:
       - run: tools/check-layers.sh
       - run: tools/check-layers.sh --self-test
 
+  # A break since the last release is announced (ADR-0027): the published
+  # crates against the last `v*` tag, and a breaking change fails unless
+  # CHANGELOG.md's `## Unreleased` names it under `### Breaking`. The whole
+  # history is fetched so the tag and its tree are there to build.
+  semver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-semver-checks
+      - run: tools/semver-gate.sh
+
   # The Open CASCADE oracle agrees with itself: every op against closed
   # forms, committed expected.json values reproduced, OCCT's own STEP read
   # back clean (tools/oracle/README.md).
