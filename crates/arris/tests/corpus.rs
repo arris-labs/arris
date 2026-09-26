@@ -1381,6 +1381,13 @@ fn blend_boss_base_fillet() {
     run("blend/boss-base-fillet");
 }
 
+/// A consumer's polyhedron bitten and filleted, in three variants
+/// (ADR-0028): `provenance.rs` holds its chain to consumer keys.
+#[test]
+fn provenance_consumer_rebuild() {
+    run("provenance/consumer-rebuild");
+}
+
 /// The same recipe under three parameter sets, one test each so a
 /// variant that drifts says which: the eight bolt holes' chain is
 /// `crates/arris/tests/provenance.rs`'s subject, and these hold each

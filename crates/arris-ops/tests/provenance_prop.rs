@@ -334,3 +334,106 @@ prop_shards! {
             Ok(())
         }
 }
+
+/// The `build/` fixtures a consumer's body is drawn from: the recipe's
+/// directory and variant, each built through `ops::build`.
+const CONSUMER_BODIES: [(&str, &str); 4] = [
+    ("build/tetrahedron", "default"),
+    ("build/tetrahedron", "skewed"),
+    ("build/l-prism", "default"),
+    ("build/frame", "default"),
+];
+
+/// A consumer's body in a random rigid pose, and a random axis-aligned
+/// box about a point of it: which body, the pose, where the box's centre
+/// is in the body's own bounding box (fractions of it), and the box's
+/// half-extents (fractions of the body's largest extent).
+fn consumer_cut() -> impl Strategy<
+    Value = (
+        usize,
+        arris_ops::arris_check::arris_topo::arris_math::Isometry,
+        [f64; 3],
+        [f64; 3],
+    ),
+> {
+    (
+        0..CONSUMER_BODIES.len(),
+        prop::pose_in(50.0),
+        [
+            prop::finite_f64(0.0..=1.0),
+            prop::finite_f64(0.0..=1.0),
+            prop::finite_f64(0.0..=1.0),
+        ],
+        [
+            prop::finite_f64(0.1..=0.6),
+            prop::finite_f64(0.1..=0.6),
+            prop::finite_f64(0.1..=0.6),
+        ],
+    )
+}
+
+prop_shards! {
+    /// **The chain of a consumer's body ends in its own words**
+    /// (plans/consumer-roles step 5, ADR-0028): a `build/` fixture's body,
+    /// built through `ops::build`, moved to a random pose and cut by a
+    /// random box, has a composed record — build, then transform, then
+    /// the box, then the cut — that `audit` holds with no inputs, and
+    /// every origin of every output is a role: the consumer's key or the
+    /// box's part, never an entity and never nowhere.
+    a_consumer_bodys_chain_ends_at_its_keys_or_the_tools_roles
+        [shard_0 shard_1 shard_2 shard_3]
+        ((which, pose, at, half)) = consumer_cut() => {
+            let (fixture, variant) = CONSUMER_BODIES[which];
+            let dir = arris_debug::fixtures::corpus_root().join(fixture);
+            let mut chain = arris_debug::corpus::chain(&dir, variant).map_err(fail)?;
+            let built = &chain.steps[&chain.result];
+            let (body, record) = (built.body, built.provenance.clone());
+            let m = &mut chain.model;
+            let closure = m.closure(body).map_err(fail)?;
+            let points: Vec<_> = closure
+                .vertices
+                .iter()
+                .map(|&v| m.vertex(v).map(|x| x.point()))
+                .collect::<Result<_, _>>()
+                .map_err(fail)?;
+            let lo = points.iter().fold([f64::INFINITY; 3], |a, p| [a[0].min(p.x), a[1].min(p.y), a[2].min(p.z)]);
+            let hi = points.iter().fold([f64::NEG_INFINITY; 3], |a, p| [a[0].max(p.x), a[1].max(p.y), a[2].max(p.z)]);
+            let size = (0..3).map(|i| hi[i] - lo[i]).fold(0.0, f64::max);
+            let (moved, motion) = transform(m, body, &pose).map_err(fail)?;
+            let local = arris_ops::arris_check::arris_topo::arris_math::Point3::new(
+                lo[0] + at[0] * (hi[0] - lo[0]),
+                lo[1] + at[1] * (hi[1] - lo[1]),
+                lo[2] + at[2] * (hi[2] - lo[2]),
+            );
+            let centre = pose.apply(local);
+            let h = half.map(|f| f * size);
+            let (tool, boxed) = primitive_box(
+                m,
+                [centre.x - h[0], centre.y - h[1], centre.z - h[2]],
+                [centre.x + h[0], centre.y + h[1], centre.z + h[2]],
+            )
+            .map_err(fail)?;
+            let (out, cutting) = match cut(m, moved, tool) {
+                Ok(done) => done,
+                // A box that misses the body or swallows it has nothing
+                // to name, and neither does a contact the boolean refuses.
+                Err(OpError::Degenerate { .. }) => return Ok(()),
+                Err(e) => return Err(fail(e)),
+            };
+            let whole = record.then(&motion).then(&boxed).then(&cutting);
+            audit(m, &[], out, &whole).map_err(fail)?;
+            for origin in whole.origins_recorded() {
+                prop_assert!(
+                    matches!(origin, Origin::Role(Role::Consumer(_) | Role::Box(_))),
+                    "{origin} is an origin of the chain"
+                );
+            }
+            prop_assert!(
+                whole
+                    .origins_recorded()
+                    .any(|o| matches!(o, Origin::Role(Role::Consumer(_)))),
+                "nothing of the consumer's body survives"
+            );
+            Ok(())
+        }
+}

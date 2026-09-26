@@ -20,16 +20,21 @@
 //! the cuts composed list three pieces of it — and the edge order is read
 //! geometrically too: edges of one origin on one curve ascend by their
 //! range on it, which is the rule itself rather than a consequence of it.
+//!
+//! `provenance/consumer-rebuild` makes the same claim on a body a
+//! consumer built through `ops::build` (ADR-0028): its chains end at the
+//! consumer's own keys, the same in every variant.
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris::topo::entity::EdgeGeometry;
 use arris::topo::provenance::{
-    BoxPart, Coord, CylinderPart, Origin, Provenance, Relation, Role, Side,
+    BoxPart, ConsumerKey, Coord, CylinderPart, Origin, Provenance, Relation, Role, Side,
 };
 use arris::topo::{EdgeId, EntityId, FaceId, Orientation, Shape};
 use arris_debug::corpus::Chain;
+use arris_debug::polyhedron::edge_key;
 use arris_debug::{corpus, fixtures};
 
 /// The fixture every test here reads.
@@ -755,4 +760,75 @@ fn edge_k_of_every_origin_is_the_same_in_every_variant() {
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The consumer's body of `provenance/consumer-rebuild` (ADR-0028): the
+/// L-prism the consumer built and keyed in namespace 2, bitten at its
+/// concave corner and filleted along its far edge.
+const CONSUMER_FIXTURE: &str = "provenance/consumer-rebuild";
+
+/// Its variants, `default` first.
+const CONSUMER_VARIANTS: [&str; 3] = ["default", "longer", "thicker"];
+
+/// The consumer's key `key`, in the fixture's namespace.
+fn consumer(key: u64) -> Role {
+    Role::Consumer(ConsumerKey { namespace: 2, key })
+}
+
+/// The whole recipe of the consumer's body composed: the polyhedron, the
+/// cylinder, the cut, the fillet.
+fn consumer_chain(variant: &str) -> (Chain, Provenance) {
+    let chain = chain_of_fixture(CONSUMER_FIXTURE, variant);
+    let names = step_names(CONSUMER_FIXTURE);
+    let names: Vec<&str> = names.iter().map(String::as_str).collect();
+    let whole = composed(&chain, &names);
+    (chain, whole)
+}
+
+/// The stability claim on a consumer's body: every chain ends at a role
+/// — the consumer's key or the bite's part, never an entity — and the
+/// composed record, every key's outputs in their split order and every
+/// id, is the same in all three variants, so a name the consumer builds
+/// from its own keys does not move when a dimension does.
+#[test]
+fn a_consumer_bodys_chain_ends_at_its_keys_in_every_variant() {
+    let (_, first) = consumer_chain(CONSUMER_VARIANTS[0]);
+    for origin in first.origins_recorded() {
+        assert!(
+            matches!(
+                origin,
+                Origin::Role(Role::Consumer(ConsumerKey { namespace: 2, .. }) | Role::Cylinder(_))
+            ),
+            "{origin} is an origin of the chain"
+        );
+    }
+    for variant in &CONSUMER_VARIANTS[1..] {
+        let (_, whole) = consumer_chain(variant);
+        assert_eq!(whole, first, "{variant} chains differently");
+    }
+}
+
+/// What the chain says, by the consumer's own keys: the concave edge up
+/// the inner corner (points 3 and 9) is gone into the bite, both inner
+/// faces (4 and 5) are still one face each, and the fillet's face is
+/// generated from the far edge (points 1 and 7) it replaced.
+#[test]
+fn the_consumer_keys_name_what_the_bite_and_the_fillet_did() {
+    for variant in CONSUMER_VARIANTS {
+        let (chain, whole) = consumer_chain(variant);
+        let body = chain.result().unwrap();
+        let live = chain.model.faces(body).unwrap();
+        assert!(
+            whole.generated_from(consumer(edge_key(3, 9))).is_empty(),
+            "{variant}: the concave edge survives"
+        );
+        for inner in [4, 5] {
+            let found = faces(whole.generated_from(consumer(inner)));
+            assert_eq!(found.len(), 1, "{variant}: inner face {inner}");
+            assert!(live.iter().any(|f| f.id == found[0]), "{variant}");
+        }
+        let blend = faces(whole.generated_from(consumer(edge_key(1, 7))));
+        assert_eq!(blend.len(), 1, "{variant}: the fillet's face");
+        assert!(live.iter().any(|f| f.id == blend[0]), "{variant}");
+    }
 }

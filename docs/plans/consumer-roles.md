@@ -143,7 +143,7 @@ bound has to be established here.
   record; `rerooted` commutes with `then` over a primitive's record
   followed by a cut (re-root then compose equals compose then re-root).
   Rustdoc example: a box's top re-rooted at a consumer key.
-- [ ] Step 5 **[2]** — the stability claim, on a consumer's body. A
+- [x] Step 5 **[2]** — the stability claim, on a consumer's body. A
   fixture `provenance/consumer-rebuild`: `build/l-prism`'s polyhedron
   cut by a cylinder through its concave corner and filleted along one
   kept edge, in three variants that move vertices without changing
@@ -221,3 +221,9 @@ the release profile; `tools/semver-gate.sh` passing with the two
   corrected. The tetrahedron's skewed variant is a shear and a move
   rather than a rotation, which keeps its volume and centroid closed
   forms short; its base stays axis-aligned.
+- Found (step 5): `crates/arris` has no `proptest` dev-dependency, and
+  the property tests over provenance live beside their neighbours in
+  `crates/arris-ops/tests/provenance_prop.rs`; the step's property test
+  went there rather than into `crates/arris/tests/provenance.rs`, which
+  holds the fixture's chain tests. All 256 cases of the hook's count
+  reach the cut (none is skipped as degenerate); 5000 pass too.

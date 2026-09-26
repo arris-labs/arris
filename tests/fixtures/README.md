@@ -121,8 +121,9 @@ of the step that made the fixture pass, and a later change to it is a
   answer changes between variants. The `provenance/` fixtures are recipes
   whose variants are the point: the same recipe under several parameter
   sets, and `crates/arris/tests/provenance.rs` holds the records equal
-  across them — the bolt pattern's chains, and for the `split-*` fixtures
-  the split order of every origin's pieces (ADR-0009).
+  across them — the bolt pattern's chains, `consumer-rebuild`'s ending at
+  the consumer's own keys (ADR-0028), and for the `split-*` fixtures the
+  split order of every origin's pieces (ADR-0009).
 - **Steps** are chained by `name`; `result` names the fixture's result.
   Angles are degrees; directions and plane axes are normalised by the
   interpreter.
