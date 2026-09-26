@@ -20,22 +20,21 @@ and each break is listed, with its fix, in `CHANGELOG.md`. What is in today:
 
 - primitives, rigid transforms, and extrude and revolve of a profile of
   lines, arcs and elliptic arcs;
-- booleans — cut, fuse, common — over planar and cylindrical faces, with
-  multi-shell results (cavities, split cuts, disjoint fuses) and a typed
-  refusal for the surface pairs that are not in yet;
+- booleans — cut, fuse, common — over every analytic face (plane,
+  cylinder, elliptic cylinder, cone, sphere, torus) in any pose, with
+  multi-shell results (cavities, split cuts, disjoint fuses); sections are
+  exact where they are conics and traced and fitted to NURBS elsewhere;
 - constant-radius fillet and chamfer on plane–plane and plane–cylinder
   edges, with miters, corners and hole rims;
-- cone, sphere and torus faces, checked and measured, meeting through their
-  meridians on a shared axis;
 - tessellation to a chord tolerance, mass properties (volume, centroid,
   inertia), plane projection and face frames;
-- STEP AP214 export, STL and OBJ export, and a deterministic native format
-  in JSON and bytes.
+- a STEP reader that returns a checked body, or a typed refusal naming
+  why, for every solid in a file; STEP AP214, STL and OBJ export; and a
+  deterministic native format in JSON and bytes.
 
-Not in yet: free-form NURBS surfaces and curves, variable-radius blends,
-sheet and non-manifold bodies, a STEP reader, booleans on cone, sphere,
-torus or elliptic-cylinder faces, and booleans whose operands would meet in
-a quartic intersection curve. Each of
+Not in yet: booleans with a NURBS face as an operand, blends between faces
+outside the plane and cylinder pairs, variable-radius blends, sheet and
+non-manifold bodies, and healing of what a STEP file leaves open. Each of
 those is a typed refusal today, never a wrong answer.
 
 ## Correctness

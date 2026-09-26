@@ -74,7 +74,9 @@ binding beside it (ADR-0020 and its amendment).
 - Trunk-based git, `main` always green, commit per plan step, never push
   or publish unasked: `.agents/rules/git.md`. `main` carries the next
   version with `-dev`; a `v*` tag the human pushes is what publishes the
-  workspace to crates.io.
+  workspace to crates.io. A change a consumer would notice writes its
+  `CHANGELOG.md` bullet under `Unreleased` in the same commit, a break
+  under `Breaking` — CI's semver gate holds it to that (ADR-0027).
 - Reference trees (truck, monstertruck, Fornjot, Open CASCADE, FreeCAD,
   Rerun, and the application-side projects the requirements come from) are
   read-only and never copied, never `path =` deps. Where they live on this
