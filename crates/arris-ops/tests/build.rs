@@ -1,4 +1,4 @@
-//! `ops::build` (plans/consumer-roles step 2, ADR-0028): a consumer's
+//! `ops::build` (ADR-0028): a consumer's
 //! own topology — a tetrahedron by the Euler operators, a square frame
 //! (genus 1) by `Builder::assemble` — finished into a checker-green solid
 //! whose every entity is `Generated` from exactly the consumer's key for

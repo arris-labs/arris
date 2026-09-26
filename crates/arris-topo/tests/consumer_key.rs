@@ -1,4 +1,4 @@
-//! `Role::Consumer` (plans/consumer-roles step 1, ADR-0028): the key
+//! `Role::Consumer` (ADR-0028): the key
 //! round-trips through serde JSON and postcard, the variants before it
 //! encode as they did before it was appended, it prints as
 //! `consumer:{namespace}/{key}`, and it orders by `(namespace, key)`.

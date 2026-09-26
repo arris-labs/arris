@@ -1,4 +1,4 @@
-//! `Provenance::rerooted` (plans/consumer-roles step 4, ADR-0028): a
+//! `Provenance::rerooted` (ADR-0028): a
 //! record re-rooted at a consumer's keys is the same record under other
 //! names — the identity changes nothing, an injective map is undone by
 //! its inverse, a map that merges roles concatenates their outputs in

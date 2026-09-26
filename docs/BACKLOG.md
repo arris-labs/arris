@@ -12,6 +12,7 @@ re-brainstormed.
 - Multi-tool `cut` and `fuse`: N tools in one general fuse, so a pattern of 100 holes is one decomposition rather than 100 chained booleans (plugin-cad-consumer-asks A8)
 - Per-face incremental tessellation: an edge's discretisation a pure function of the edge and the chord, and `tessellate_faces` over a subset, so a consumer caching meshes per kept face stays watertight (ADR-0010; plugin-cad-consumer-asks A9)
 - Branch per plan with a PR at retire, a ruleset on `main` requiring CI (the maintainer bypassing it for release commits), `CONTRIBUTING.md`, and a job that lets prose-only PRs skip the heavy CI jobs: once a second writer commits, an outside contributor or two agents at once (branch-per-plan-and-changelog, option A; ADR-0027)
+- `polyhedron` in the measuring harness's random recipes (`prop::recipe` and the differential), so a consumer's own topology is an operand of the random booleans and blends too, not only of the committed `build/` fixtures (consumer-roles non-goal)
 - A `no_std`-friendly `arris-math`, if an embedded or wasm consumer ever wants it
 - NURBS degree elevation as a primitive edit (data-model §NURBS names it; no C1 step needs it — knot insertion is enough for M1's fitting)
 - Knot insertion on a periodic NURBS that keeps the wrap: today the result's knots no longer imply a period and it extrapolates outside its domain (data-model §NURBS); needed once a periodic curve from STEP is edited

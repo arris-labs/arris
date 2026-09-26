@@ -501,13 +501,18 @@ are `docs/ideas/plugin-cad-consumer-asks.md`'s A1–A4 and A11. The
 histogram's first line, the blend network (17 of 38 parts), is next in
 line (§Named cycles).*
 
-**Status: opened 2026-09-26.**
+**Status: opened 2026-09-26; consumer roles (A1) done.**
 
-- **Consumer roles (A1)**: `Role::Consumer { namespace, key }`, taken by
-  `Builder` and by every operation that creates from nothing, so a
-  plugin's feature roots its provenance chains at a key of its own. The
-  kernel carries the key opaquely; the words stay the consumer's
-  (ADR-0009).
+- **Consumer roles (A1)** — done 2026-09-27 (ADR-0028):
+  `Role::Consumer(ConsumerKey { namespace, key })`, carried opaquely so
+  the words stay the consumer's (ADR-0009). `ops::build` finishes a
+  `Builder` the consumer filled into a solid checked at `Full` in every
+  profile, every entity `Generated` from the key of its slot; every other
+  operation that creates from nothing keeps its signature, and its record
+  is re-rooted at the consumer's keys by `Provenance::rerooted`. The
+  `polyhedron` recipe op puts such a body in the corpus (`build/`), and
+  `provenance/consumer-rebuild` holds its chains to the consumer's keys
+  across a rebuild.
 - **Body bytes (A2)**: one body's closure and its `Provenance`, written
   and imported into another model, with a compatibility policy — read
   the previous version and migrate it — where the whole-model native

@@ -374,7 +374,7 @@ fn consumer_cut() -> impl Strategy<
 
 prop_shards! {
     /// **The chain of a consumer's body ends in its own words**
-    /// (plans/consumer-roles step 5, ADR-0028): a `build/` fixture's body,
+    /// (ADR-0028): a `build/` fixture's body,
     /// built through `ops::build`, moved to a random pose and cut by a
     /// random box, has a composed record — build, then transform, then
     /// the box, then the cut — that `audit` holds with no inputs, and

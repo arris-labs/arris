@@ -176,6 +176,18 @@ pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance)
 - Same input, same output, same ids, on every platform. The tests assert
   this by dumping twice and diffing.
 
+`ops::build(m, builder, &BuildKeys)` finishes a `Builder` the consumer
+filled itself — through the Euler operators or `Builder::assemble` —
+into a `Solid`, and records every entity `Generated` from
+`Role::Consumer` of the key `BuildKeys` gives its slot (data-model
+§Provenance, ADR-0028). It is the one operation whose output is the
+consumer's input rather than the kernel's work, so it checks the body at
+`Level::Full` in every build profile — not only in debug builds, as the
+other operations check theirs — and refuses a body that fails. The
+other operations that create from nothing take no key: their roles
+already name each part, and `Provenance::rerooted` puts the consumer's
+key in their place.
+
 `ops::transform(m, body, motion: &Isometry)` moves a body rigidly. Every
 curve and surface is appended transformed and every pcurve id is reused as
 it stands — a rigid motion carries the parametrisation with it, so
@@ -819,6 +831,8 @@ involved, so the message a consumer shows — or the agent reads — says
 | `Profile` | a sweep's sketch is not a valid profile: `Profile::edges` refused it (data-model §Profiles). An invalid profile has no entities to name, so it is neither `InvalidInput` nor `Degenerate` | the `ProfileError`, naming the loop and segment |
 | `Tolerance` | the result would need an entity tolerance above `Precision::max_tolerance` | the entity, the tolerance it wanted |
 | `NotFound` | an id does not resolve in this model (wrong model, or compacted away) | the `AnyId` that failed to resolve itself, never an entity that merely holds it |
+| `Unkeyed` | `build` was handed a live slot of its builder that its `BuildKeys` gives no key: the record would have an output with no origin | the `BuildSlot` (a vertex, edge or face slot, or a shell index) |
+| `Rejected` | `build` refuses the consumer's topology as a solid: `Builder::finish` refused it (`Rejection::Builder`), a slot is an entity `assemble` kept from another body (`Rejection::Kept`), or the finished body fails the checker at `Full`, in every build profile (`Rejection::Checker`). The input's fault, never `Internal` | a `Rejection` — the `BuildError`, the `BuildSlot` or the `Report` |
 | `Internal` | a kernel bug the operation caught: the checker rejected its own output, the builder refused a step of its fixed sequence, a frame could not be placed from inputs it had validated, a point it had to classify could not be, a geometry query failed on validated input for a reason other than a missing closed form, a section edge crossed a seam the seam's own hit should have paved, a piece of a coincident face pair's edge matched no piece of the edge it lies along, the (u, v) arrangement of a face was not the subdivision the pave model promised (`SplitFault`: a dangling section edge, a cycle not turning once, a hole inside no piece, a piece with no interior point, a pave at an edge's end), the shells a boolean kept did not nest into lumps, an operation's own fixed sequence broke an invariant it should have kept — an internal lookup by index or key, never a model id, found nothing (`Fault::Invariant { what }`), a sweep's own later step needed an entity its earlier step did not make for a segment (`Fault::Unmade { segment }`), a surface had no normal at a point on a face an operation needed one at, every partial derivative degenerate where the checker's own tolerances should have ruled that out (`Fault::NoNormal { face }`), or a profile edge's curve was not one of the kinds `Profile::edges` makes (`Fault::ProfileCurve(GeomError)`) | a `Fault` — the `Report`, the `BuildError`, the `FrameError`, the `ClassifyError`, the `GeomError`, the two faces of the seam crossing, the edge and face of the unmatched common block, the `SplitFault` naming the face, the `LumpError`, or one of the four bookkeeping variants above |
 
 The STEP reader's failures are its own and never an `OpError`: a file
@@ -835,7 +849,8 @@ or a body the checker rejects (`Invalid`, carrying the `Report`).
 `index`.
 
 `Internal(Fault::Checker)` is returned only in release builds with
-`paranoid` on, since a debug build panics on the same report (below);
+`paranoid` on, since a debug build panics on the same report (below) —
+except for `build`, whose failing body is `Rejected` in every build;
 every other fault is returned as `Internal` in any build. A degenerate *result* that the
 consumer might reasonably want anyway (the flush intersection that is a
 face, not a solid) is `Degenerate` with a reason, never a silently empty
@@ -953,7 +968,10 @@ after an operation is a kernel bug, and the kernel's own invariants are the
 one place a panic is allowed (`.agents/rules/kernel.md`). A test that needs
 to build an invalid body — every checker test does — constructs it through
 `arris-topo`'s raw insert, which the checker does not guard, and says so by
-name.
+name. `ops::build` is the exception: the body it finishes is the
+consumer's topology, not the kernel's work, so it runs `Level::Full` in
+every build and refuses a failure as `OpError::Rejected` instead of
+panicking.
 
 **In release builds nothing runs unless asked.** `arris_check::check` is
 public and cheap enough for a consumer to run after every feature; the
@@ -1569,7 +1587,7 @@ refusal histogram, what picks the cycle after the reader's.
 | STEP import | `io::step::read(&mut model, &text, &ReadOptions { length_unit })` → one `ReadSolid` per solid and placement: a checker-clean body with provenance naming its file entity (`Role::File`), or a typed `Refusal` whose `RefusalKind` a histogram counts (`RefusalKind::ALL`); only a parse error fails the file (ADR-0025) |
 | A render mesh as STL or OBJ of several bodies, beside STEP | `io::stl::write_ascii`/`write_binary(&meshes, name)`, `io::obj::write(&meshes)` — one `TriMesh` per body, `vt`/`vn` written when a mesh carries the corner block (ADR-0012, ADR-0013) |
 | Projecting an edge or vertex onto a sketch plane | `ops::query::project_to_plane(&model, &[shapes], &plane)` → a `Projection` per shape: a vertex's `Point2`, an edge's `Curve2` (a line stays a line, a circle becomes a circle or an ellipse, an ellipse stays an ellipse, a NURBS a `Curve2::Nurbs`) with the edge's range carried into that curve's own parameter, so the piece is the edge's and no more (data-model §Pcurves) |
-| Persistent topological names (origin-based) | Emitted by the consumer from `Provenance`: an output face is named after the input face it was `Modified` from, `Split(k)` when one input yields several outputs, and after the tool face when `Generated`; edges and vertices derive from their faces exactly as today. No centroid matching. Arris ships no name grammar (ADR-0009): the words are the application's. What the kernel guarantees is the **split order** — an origin's outputs in `generated_from` and `modified_from` are the pieces in an order that holds under every parameter edit keeping which entities bound which piece (a face's by the origins bounding each piece, an edge's along its curve; data-model §Provenance), so `Split(k)` means the same piece after the edit |
+| Persistent topological names (origin-based) | Emitted by the consumer from `Provenance`: an output face is named after the input face it was `Modified` from, `Split(k)` when one input yields several outputs, and after the tool face when `Generated`; edges and vertices derive from their faces exactly as today. No centroid matching. Arris ships no name grammar (ADR-0009): the words are the application's. What the kernel guarantees is the **split order** — an origin's outputs in `generated_from` and `modified_from` are the pieces in an order that holds under every parameter edit keeping which entities bound which piece (a face's by the origins bounding each piece, an edge's along its curve; data-model §Provenance), so `Split(k)` means the same piece after the edit. A feature that builds topology itself roots its chains at its own keys through `ops::build`, and re-roots a primitive's, sweep's or file's record at them with `Provenance::rerooted` (`Role::Consumer`, ADR-0028) |
 | Memoising shapes by content, dropping unreferenced ones | Memoisation stays in the consumer (it is about features, not geometry); dropping is `Model::retain`, which frees slots without moving a surviving id (§The model, ADR-0010) |
 | Units | Arris is unit-agnostic. The consumer sets `Precision` for its unit (metres: `default_tolerance` at the micrometre scale) when it creates the `Model`. A fixture says which unit it is in the same way, through its recipe's `precision`: the corpus's `probe-*-m` fixtures are the consumer's probe shapes in metres at that tolerance |
 

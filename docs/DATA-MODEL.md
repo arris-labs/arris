@@ -1716,7 +1716,14 @@ pub struct Provenance {
   rebuilds, which the file has no entity for — a degenerate edge the
   writer left out, or the seam joining a `VERTEX_LOOP` to its face's
   other bound — is `Generated` from its face's entity, and an edge split
-  at a pole, an apex or a seam from its `EDGE_CURVE`.
+  at a pole, an apex or a seam from its `EDGE_CURVE`. A solid a consumer
+  builds itself — its own Euler operators or `Builder::assemble` —
+  and finishes through `ops::build` has every entity `Generated` from
+  `Role::Consumer(ConsumerKey { namespace, key })`, the key the
+  consumer's `BuildKeys` gave that entity's slot (ADR-0028). The kernel
+  never reads a key: keys need not be unique, so two slots under one key
+  are two outputs of one role in slot order, and one key may name
+  entities of different kinds.
 - **Modified**: the output is a trimmed, split or re-tolerated piece of the
   input, same kind — the box's top face with a circle cut out of it, each
   half of a face split by an intersection curve (one input, several
@@ -1818,14 +1825,25 @@ different order under each bracketing (`docs/BACKLOG.md`). The property
 tests check associativity on random chains with that one difference
 excluded by name. `Provenance::mapped(&IdMap)` translates a record through the id
 map `import` returns, leaving ids the map does not hold (origins in
-bodies that were not imported) as they are.
+bodies that were not imported) as they are. `Provenance::rerooted(f)` replaces every role
+origin `r` by `f(r)` and touches nothing else: how a consumer roots a
+primitive's, sweep's or file's record at its own keys, typically a
+`Role::Consumer` that prefixes its key to the operation's part
+(ADR-0028). Two roles `f` sends to one concatenate their outputs in the
+old roles' ascending order, deduplicated, so the result is deterministic
+for any `f`; only an injective `f` keeps `Split(k)` meaning one piece.
+Re-rooting commutes with `then` over records whose later steps carry no
+role of their own.
 
 **Stability** is what the record is for. Rebuilding the same feature tree
 with a changed parameter produces, for each output entity, the same
 `origins` chain in terms of the *inputs' roles* (the third hole's tool
 face, the top face of the base plate) — because the record is built inside
 the algorithm from the entity ids it actually split, not recovered afterwards
-by geometric matching, and because the chain ends at a `Role`. A consumer's
+by geometric matching, and because the chain ends at a `Role` — the
+kernel's name for a part of a primitive, sweep or file, or the
+consumer's own key where it built the body or re-rooted the record
+(`provenance/consumer-rebuild` holds a consumer's body to that). A consumer's
 persistent name is therefore a function of the origins chain, and the
 roadmap's acceptance corpus asserts that function is constant across
 parameter changes.
