@@ -48,6 +48,12 @@ Operations, by `op`:
     chamfer    of <name>, edges [[x,y,z], ...], distance
                (edges named as a fillet's; one distance, measured on both
                faces from the edge)
+    polyhedron points [[x,y,z], ...], faces [[[i, j, k, ...], <hole>...], ...],
+               namespace <u32>
+               (each face its loops of point indices, the outer one
+               counter-clockwise seen from outside, a hole's clockwise;
+               built as polygon wires on planar faces, sewn, made a solid.
+               `namespace` is Arris's key space and unread here)
     step       file <path beside fixture.json>, sha256 <of the file>,
                id <#id of its MANIFOLD_SOLID_BREP or BREP_WITH_VOIDS>,
                near [x,y,z] (where the file places it more than once:
@@ -71,6 +77,9 @@ from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Cut, BRepAlgoAPI_Fus
 from OCP.BRepBuilderAPI import (
     BRepBuilderAPI_MakeEdge,
     BRepBuilderAPI_MakeFace,
+    BRepBuilderAPI_MakePolygon,
+    BRepBuilderAPI_MakeSolid,
+    BRepBuilderAPI_Sewing,
     BRepBuilderAPI_MakeVertex,
     BRepBuilderAPI_MakeWire,
     BRepBuilderAPI_Transform,
@@ -78,6 +87,7 @@ from OCP.BRepBuilderAPI import (
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer, BRepFilletAPI_MakeFillet
 from OCP.BRepGProp import BRepGProp
+from OCP.BRepLib import BRepLib
 from OCP.BRepPrimAPI import (
     BRepPrimAPI_MakeBox,
     BRepPrimAPI_MakeCylinder,
@@ -88,7 +98,7 @@ from OCP.GC import GC_MakeArcOfCircle, GC_MakeArcOfEllipse
 from OCP.GProp import GProp_GProps
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Ax3, gp_Circ, gp_Dir, gp_Elips, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCP.ShapeFix import ShapeFix_Face
-from OCP.TopAbs import TopAbs_EDGE
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_SHELL
 from OCP.TopExp import TopExp
 from OCP.TopoDS import TopoDS, TopoDS_Shape
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
@@ -384,6 +394,41 @@ def _profile(step: dict, params: dict[str, float]) -> TopoDS_Shape:
     return fix.Face()
 
 
+def _polyhedron(step: dict, params: dict[str, float]) -> TopoDS_Shape:
+    points = [vector(p, params) for p in step["points"]]
+    faces = step["faces"]
+    if not isinstance(faces, list) or not faces:
+        raise OracleError("polyhedron needs a list of faces")
+    sewing = BRepBuilderAPI_Sewing()
+    for j, loops in enumerate(faces):
+        if not loops or any(len(loop) < 3 for loop in loops):
+            raise OracleError(f"polyhedron face {j}: a loop of fewer than three points, or none")
+        wires = []
+        for loop in loops:
+            polygon = BRepBuilderAPI_MakePolygon()
+            for i in loop:
+                if not 0 <= i < len(points):
+                    raise OracleError(f"polyhedron face {j} names point {i}, past the {len(points)} points")
+                polygon.Add(_pnt(points[i]))
+            polygon.Close()
+            wires.append(TopoDS.Wire(_checked(polygon, f"polyhedron face {j} polygon")))
+        # The plane from the outer loop, its normal the loop's turn; a
+        # hole, clockwise, is already the way round the face wants it.
+        face = BRepBuilderAPI_MakeFace(wires[0], True)
+        for hole in wires[1:]:
+            face.Add(hole)
+        sewing.Add(_checked(face, f"polyhedron face {j}"))
+    sewing.Perform()
+    sewn = sewing.SewedShape()
+    if sewn.ShapeType() != TopAbs_SHELL:
+        raise OracleError("polyhedron faces do not sew into one shell")
+    solid = _checked(BRepBuilderAPI_MakeSolid(TopoDS.Shell(sewn)), "polyhedron solid")
+    solid = TopoDS.Solid(solid)
+    if not BRepLib.OrientClosedSolid_s(solid):
+        raise OracleError("polyhedron shell does not close")
+    return solid
+
+
 def build(fixture: dict, variant: str = "default") -> tuple[TopoDS_Shape, dict[str, TopoDS_Shape]]:
     """The result shape of `fixture` for `variant`, and every named step."""
     params = resolve_params(fixture, variant)
@@ -545,6 +590,8 @@ def _build_step(
         for p in points:
             mc.Add(distance, _edge_at(shape, vector(p, params), probe))
         return _checked(mc, "chamfer")
+    if op == "polyhedron":
+        return _polyhedron(step, params)
     if op == "step":
         return _read_solid(step, params, probe, base)
     raise OracleError(f"unknown op {op!r}")

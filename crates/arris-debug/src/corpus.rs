@@ -58,6 +58,7 @@ use crate::fixtures::{
     Recipe, Rotate, Step, Tolerances,
 };
 use crate::oracle::{self, OracleError};
+use crate::polyhedron::{PolyhedronError, polyhedron};
 use sha2::{Digest, Sha256};
 
 /// The environment variable that makes [`run`] write `dump.txt` instead
@@ -140,6 +141,16 @@ pub enum CorpusError {
         step: String,
         /// The cause.
         source: FrameError,
+    },
+    /// A `polyhedron` step's points and faces describe no builder.
+    #[error("{fixture}: step {step:?}: {source}")]
+    Polyhedron {
+        /// The fixture.
+        fixture: String,
+        /// The step's name.
+        step: String,
+        /// The cause.
+        source: PolyhedronError,
     },
     /// The result step was expected to fail with a typed error —
     /// `expected.degenerate`, or the recipe's `analytic.expect_error` —
@@ -689,6 +700,7 @@ impl CorpusError {
             | CorpusError::EdgePoint { .. }
             | CorpusError::Precision { .. }
             | CorpusError::Axis { .. }
+            | CorpusError::Polyhedron { .. }
             | CorpusError::Expectation { .. }
             | CorpusError::Op { .. }
             | CorpusError::StepFile { .. }
@@ -1472,6 +1484,7 @@ impl Inputs {
             | Step::Transform { .. }
             | Step::Fillet { .. }
             | Step::Chamfer { .. }
+            | Step::Polyhedron { .. }
             | Step::Read { .. } => return None,
         };
         Some((*self.bodies.get(x)?, *self.bodies.get(y)?))
@@ -1770,6 +1783,25 @@ fn build_step(
                 fillet(m, of_body, &selected, size)
             };
             body(blended.map_err(op)?, vec![of_body])
+        }
+        Step::Polyhedron {
+            points,
+            faces,
+            namespace,
+            ..
+        } => {
+            let points = points
+                .iter()
+                .map(|p| point(fixture, step, p, params))
+                .collect::<Result<Vec<_>, _>>()?;
+            let (builder, keys) = polyhedron(m, &points, faces, *namespace).map_err(|source| {
+                CorpusError::Polyhedron {
+                    fixture: name.clone(),
+                    step: step.name().to_string(),
+                    source,
+                }
+            })?;
+            body(arris_ops::build(m, builder, &keys).map_err(op)?, Vec::new())
         }
         Step::Read {
             file,

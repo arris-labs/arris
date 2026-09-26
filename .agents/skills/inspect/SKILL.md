@@ -84,7 +84,7 @@ Every geometry failure becomes a fixture (`.agents/rules/kernel.md`):
    failure survives it. Stop when one more simplification makes it pass —
    that boundary is the bug's description.
 3. **Save** under `tests/fixtures/regression/<slug>/`, not in its area —
-   the corpus lint holds `primitive/`, `transform/`, `boolean/`, `sweep/`,
+   the corpus lint holds `primitive/`, `build/`, `transform/`, `boolean/`, `sweep/`,
    `provenance/` and `blend/` to passing, blessed fixtures: the recipe
    (`fixture.json`, format in `tests/fixtures/README.md`), the expected
    values (`expected.json`, from `expected.py`), and the test

@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "005bace223ebced7b2fd8e7263ddb636c57928035f4b500217201d5dbbbff8d6",
+  "results": {
+    "default": {
+      "area": 3200.0,
+      "centroid": [
+        15.0,
+        15.0,
+        4.999999999999998
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          733333.3333333333,
+          0.0,
+          -2.3283064365386963e-10
+        ],
+        [
+          0.0,
+          733333.3333333333,
+          -2.3283064365386963e-10
+        ],
+        [
+          -2.3283064365386963e-10,
+          -2.3283064365386963e-10,
+          1333333.333333334
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_material",
+          "point": [
+            5.0,
+            15.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            15.0,
+            15.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            31.0,
+            15.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_hole_wall",
+          "point": [
+            10.0,
+            15.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_hole_rim",
+          "point": [
+            10.0,
+            15.0,
+            10.0
+          ]
+        }
+      ],
+      "volume": 8000.0
+    }
+  }
+}

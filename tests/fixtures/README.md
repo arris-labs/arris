@@ -20,8 +20,8 @@ is `tools/oracle/oracle/recipe.py` and `fixture.py`. The corpus lint
 directory: both files present and parseable, `expected.json` not stale, the
 Euler line zero, every `analytic` value matching the oracle to 1e-6
 relative, counts and probe expectations exactly — and every solid under
-`primitive/`, `transform/`, `boolean/`, `sweep/`, `provenance/` or
-`blend/` that the
+`primitive/`, `build/`, `transform/`, `boolean/`, `sweep/`,
+`provenance/` or `blend/` that the
 runner compares (the oracle built a solid, the recipe expects no refusal)
 carrying its committed dump per variant, which a fixture only has once it
 passed and was blessed. An `#[ignore]`d fixture in those areas therefore
@@ -139,6 +139,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `cut` | `target`, `tool` |
 | `fillet` | `of`, `edges` (a list of points, one on each edge to blend), `radius` |
 | `chamfer` | `of`, `edges` (as a `fillet`'s), `distance` (one, measured on both faces from the edge) |
+| `polyhedron` | `points` (a list of `[x, y, z]`), `faces` (each a list of loops, each a list of indices into `points`: the outer loop counter-clockwise seen from outside the solid, a hole's clockwise), `namespace` (Arris's key space) |
 | `step` | `file` (beside `fixture.json`), `sha256` (of the file), `id` (the `#id` of its `MANIFOLD_SOLID_BREP` or `BREP_WITH_VOIDS`), `near` (a point; only where the file places that solid more than once) |
 
 - **A `fillet`'s or a `chamfer`'s edges are named by a point each**, so a selection
@@ -147,6 +148,17 @@ of the step that made the fixture pass, and a later change to it is a
   nearest edge by `BRepExtrema`, and both refuse a point that is within
   `probe` of two edges or on none — a vertex, a face, the inside or the
   outside (`CorpusError::EdgePoint`).
+- **A `polyhedron` is a consumer's own topology** (ADR-0028): a solid
+  of planar faces, each on the plane of its outer loop. Arris describes
+  it to `Builder::assemble` — a vertex per point, a line edge per pair of
+  points a loop joins, from the lower index to the higher, a planar face
+  per face with the lines as pcurves — and finishes it through
+  `ops::build`, keyed by `arris_debug::polyhedron`'s convention: point
+  `i` is key `i`, face `j` key `j`, the edge between points `a < b` key
+  `a << 32 | b`, the shell and the body `0`, all in `namespace`. The
+  oracle makes each loop a polygon wire, each face a planar face over its
+  wires, sews them and makes the shell a solid. The `build/` fixtures
+  are its corpus.
 - **A `step` operand is a solid read from a file** (ADR-0026): Arris
   through `arris_io::step::read`, the oracle through Open CASCADE's
   reader, which heals on transfer by default (ADR-0026 §3). Both refuse a

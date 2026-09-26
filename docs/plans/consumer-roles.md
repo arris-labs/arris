@@ -128,10 +128,10 @@ bound has to be established here.
   checks); on every refusal the model equals its clone from before.
   Rustdoc example: the tetrahedron. `CHANGELOG.md` `### Breaking`: the
   two `OpError` variants.
-- [ ] Step 3 **[2]** — the `polyhedron` recipe op in both interpreters
+- [x] Step 3 **[2]** — the `polyhedron` recipe op in both interpreters
   and the `build/` area in the lint. Fixtures with oracle values:
   `build/tetrahedron` (and a variant in a skewed pose),
-  `build/l-prism` (a concave edge, eight vertices), `build/frame` (a
+  `build/l-prism` (a concave edge, twelve vertices), `build/frame` (a
   square prism with a square through-hole: faces with an inner loop,
   genus 1). Each passes the whole runner — checker at `Full`, measures,
   probes, STEP both ways, NURBS read-back — and has its dump blessed.
@@ -216,3 +216,8 @@ the release profile; `tools/semver-gate.sh` passing with the two
   `Origin`, which JSON can't use as an object key), so the step's
   round-trip of a record runs through postcard only; the `Role` itself
   round-trips through both.
+- Found (step 3): an L has six corners, so `build/l-prism` has twelve
+  vertices, not the eight the step first said; the step's text is
+  corrected. The tetrahedron's skewed variant is a shear and a move
+  rather than a rotation, which keeps its volume and centroid closed
+  forms short; its base stays axis-aligned.

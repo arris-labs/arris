@@ -1,0 +1,34 @@
+{
+  "description": "a square frame built from the consumer's own topology (ops::build, ADR-0028): the prism [0, a]² × [0, h] with the square through-hole [b, a - b]², so its top and bottom are faces with an inner loop and the body has genus 1",
+  "params": {"a": 30, "b": 10, "h": 10},
+  "steps": [
+    {"name": "result", "op": "polyhedron", "namespace": 3,
+     "points": [
+       [0, 0, 0], ["a", 0, 0], ["a", "a", 0], [0, "a", 0],
+       [0, 0, "h"], ["a", 0, "h"], ["a", "a", "h"], [0, "a", "h"],
+       ["b", "b", 0], ["a - b", "b", 0], ["a - b", "a - b", 0], ["b", "a - b", 0],
+       ["b", "b", "h"], ["a - b", "b", "h"], ["a - b", "a - b", "h"], ["b", "a - b", "h"]
+     ],
+     "faces": [
+       [[0, 3, 2, 1], [8, 9, 10, 11]],
+       [[4, 5, 6, 7], [12, 15, 14, 13]],
+       [[0, 1, 5, 4]], [[1, 2, 6, 5]], [[2, 3, 7, 6]], [[3, 0, 4, 7]],
+       [[9, 8, 12, 13]], [[10, 9, 13, 14]], [[11, 10, 14, 15]], [[8, 11, 15, 12]]
+     ]}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_material", "point": ["b / 2", "a / 2", "h / 2"], "expect": "in"},
+    {"label": "in_the_hole", "point": ["a / 2", "a / 2", "h / 2"], "expect": "out"},
+    {"label": "outside", "point": ["a + 1", "a / 2", "h / 2"], "expect": "out"},
+    {"label": "on_hole_wall", "point": ["b", "a / 2", "h / 2"], "expect": "on"},
+    {"label": "on_hole_rim", "point": ["b", "a / 2", "h"], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "(a^2 - (a - 2 * b)^2) * h",
+    "area": "2 * (a^2 - (a - 2 * b)^2) + 4 * a * h + 4 * (a - 2 * b) * h",
+    "centroid": ["a / 2", "a / 2", "h / 2"],
+    "counts": {"vertices": 16, "edges": 24, "faces": 10, "loops": 12, "shells": 1},
+    "genus": 1
+  }
+}

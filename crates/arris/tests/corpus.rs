@@ -45,6 +45,25 @@ fn primitive_cylinder() {
     run("primitive/cylinder");
 }
 
+/// A consumer's own topology through `ops::build` (ADR-0028): a
+/// tetrahedron, straight and skewed.
+#[test]
+fn build_tetrahedron() {
+    run("build/tetrahedron");
+}
+
+/// A concave edge.
+#[test]
+fn build_l_prism() {
+    run("build/l-prism");
+}
+
+/// Faces with an inner loop, genus 1.
+#[test]
+fn build_frame() {
+    run("build/frame");
+}
+
 #[test]
 fn transform_posed_cylinder() {
     run("transform/posed-cylinder");

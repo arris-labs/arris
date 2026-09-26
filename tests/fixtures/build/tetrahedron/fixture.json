@@ -1,0 +1,31 @@
+{
+  "description": "a tetrahedron built from the consumer's own topology (ops::build, ADR-0028): corner o, a along x, then a point sheared by s along x over a along y, and one sheared by s along x and y over a along z. Shearing keeps the volume a^3 / 6; the skewed variant shears and moves it, so no face is axis-aligned but the base",
+  "params": {"a": 10, "s": 0, "ox": 0, "oy": 0, "oz": 0},
+  "variants": {
+    "skewed": {"s": 4, "ox": 5, "oy": -2, "oz": 7}
+  },
+  "steps": [
+    {"name": "result", "op": "polyhedron", "namespace": 1,
+     "points": [
+       ["ox", "oy", "oz"],
+       ["ox + a", "oy", "oz"],
+       ["ox + s", "oy + a", "oz"],
+       ["ox + s", "oy + s", "oz + a"]
+     ],
+     "faces": [[[0, 2, 1]], [[0, 1, 3]], [[0, 3, 2]], [[1, 2, 3]]]}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": ["ox + (a + 2 * s) / 4", "oy + (a + s) / 4", "oz + a / 4"], "expect": "in"},
+    {"label": "outside", "point": ["ox + a", "oy + a", "oz + a"], "expect": "out"},
+    {"label": "below", "point": ["ox + a / 4", "oy + a / 4", "oz - 1"], "expect": "out"},
+    {"label": "on_base", "point": ["ox + (a + s) / 3", "oy + a / 3", "oz"], "expect": "on"},
+    {"label": "on_apex", "point": ["ox + s", "oy + s", "oz + a"], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "a^3 / 6",
+    "centroid": ["ox + (a + 2 * s) / 4", "oy + (a + s) / 4", "oz + a / 4"],
+    "counts": {"vertices": 4, "edges": 6, "faces": 4, "loops": 4, "shells": 1},
+    "genus": 0
+  }
+}

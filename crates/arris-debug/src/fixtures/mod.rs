@@ -355,6 +355,22 @@ pub enum Step {
         /// The distance from the edge, measured on each of its faces.
         distance: Num,
     },
+    /// A solid bounded by planar faces over `points`, each face a list of
+    /// loops of point indices — the outer loop counter-clockwise seen
+    /// from outside, a hole's clockwise: a consumer's own topology. Arris
+    /// builds it through `Builder::assemble` and `ops::build`, keyed by
+    /// [`crate::polyhedron`]'s convention in `namespace`; the oracle sews
+    /// polygon faces into a solid.
+    Polyhedron {
+        /// Step name.
+        name: String,
+        /// The points.
+        points: Vec<[Num; 3]>,
+        /// The faces, each its loops of indices into `points`.
+        faces: Vec<Vec<Vec<usize>>>,
+        /// The namespace the keys are in.
+        namespace: u32,
+    },
     /// A solid read from a STEP file beside the fixture (`"op": "step"`):
     /// Arris through `arris_io::step::read`, the oracle through Open
     /// CASCADE's reader, healed (ADR-0026 §3). The solid is named by its
@@ -395,6 +411,7 @@ impl Step {
             | Step::Cut { name, .. }
             | Step::Fillet { name, .. }
             | Step::Chamfer { name, .. }
+            | Step::Polyhedron { name, .. }
             | Step::Read { name, .. } => name,
         }
     }
@@ -996,8 +1013,9 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
 /// fixture there has passed and been blessed, and none is `#[ignore]`d.
 /// `real/` holds parts, whose lint holds their dumps the same way
 /// (`crate::part::lint`).
-pub const DUMPED_AREAS: [&str; 6] = [
+pub const DUMPED_AREAS: [&str; 7] = [
     "primitive",
+    "build",
     "transform",
     "boolean",
     "sweep",

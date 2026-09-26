@@ -1,0 +1,40 @@
+{
+  "description": "an L-shaped prism built from the consumer's own topology (ops::build, ADR-0028): the L of legs w along x and l along y, each t thick, extruded h along z; the edge up the inner corner is concave. step 5's consumer-rebuild cuts and fillets this body",
+  "params": {"w": 40, "l": 30, "t": 10, "h": 20},
+  "steps": [
+    {"name": "result", "op": "polyhedron", "namespace": 2,
+     "points": [
+       [0, 0, 0], ["w", 0, 0], ["w", "t", 0], ["t", "t", 0], ["t", "l", 0], [0, "l", 0],
+       [0, 0, "h"], ["w", 0, "h"], ["w", "t", "h"], ["t", "t", "h"], ["t", "l", "h"], [0, "l", "h"]
+     ],
+     "faces": [
+       [[5, 4, 3, 2, 1, 0]],
+       [[6, 7, 8, 9, 10, 11]],
+       [[0, 1, 7, 6]],
+       [[1, 2, 8, 7]],
+       [[2, 3, 9, 8]],
+       [[3, 4, 10, 9]],
+       [[4, 5, 11, 10]],
+       [[5, 0, 6, 11]]
+     ]}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_x_leg", "point": ["w / 2", "t / 2", "h / 2"], "expect": "in"},
+    {"label": "in_y_leg", "point": ["t / 2", "l / 2 + t / 2", "h / 2"], "expect": "in"},
+    {"label": "in_the_notch", "point": ["(w + t) / 2", "(l + t) / 2", "h / 2"], "expect": "out"},
+    {"label": "on_concave_edge", "point": ["t", "t", "h / 2"], "expect": "on"},
+    {"label": "on_top", "point": ["t / 2", "t / 2", "h"], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "(w * t + (l - t) * t) * h",
+    "area": "2 * (w * t + (l - t) * t) + 2 * (w + l) * h",
+    "centroid": [
+      "(w * t * w / 2 + (l - t) * t * t / 2) / (w * t + (l - t) * t)",
+      "(w * t * t / 2 + (l - t) * t * (l + t) / 2) / (w * t + (l - t) * t)",
+      "h / 2"
+    ],
+    "counts": {"vertices": 12, "edges": 18, "faces": 8, "loops": 8, "shells": 1},
+    "genus": 0
+  }
+}

@@ -184,6 +184,29 @@ SMOKES = [
         "analytic": {"default": {"volume": 8 - 0.04, "area": 24 - 0.8 - 0.04 + 2 * math.sqrt(2) * 0.2, "counts": (10, 15, 7, 7), "genus": 0}},
         "probes": {"inside": "in", "corner_gone": "out", "on_chamfer": "on"},
     },
+    {
+        "name": "a triangular prism from points and faces of indices",
+        "recipe": {
+            "params": {"h": 3},
+            "steps": [
+                {
+                    "name": "result",
+                    "op": "polyhedron",
+                    "namespace": 0,
+                    "points": [[0, 0, 0], [2, 0, 0], [0, 2, 0], [0, 0, "h"], [2, 0, "h"], [0, 2, "h"]],
+                    "faces": [[[0, 2, 1]], [[3, 4, 5]], [[0, 1, 4, 3]], [[1, 2, 5, 4]], [[2, 0, 3, 5]]],
+                },
+            ],
+            "result": "result",
+            "probes": [
+                {"label": "inside", "point": [0.5, 0.5, 1]},
+                {"label": "beyond_slant", "point": [1.5, 1.5, 1]},
+                {"label": "on_slant", "point": [1, 1, 1]},
+            ],
+        },
+        "analytic": {"default": {"volume": 6, "area": 4 + (4 + math.sqrt(8)) * 3, "counts": (6, 9, 5, 5), "genus": 0}},
+        "probes": {"inside": "in", "beyond_slant": "out", "on_slant": "on"},
+    },
 ]
 
 

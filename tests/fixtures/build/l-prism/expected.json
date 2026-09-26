@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "b8820d55d7ccfc3db15a4f2bd1995285ac17df30a968ed23effe12d2dcd0b462",
+  "results": {
+    "default": {
+      "area": 3999.9999999999995,
+      "centroid": [
+        15.0,
+        9.999999999999998,
+        9.999999999999998
+      ],
+      "counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          1200000.0000000005,
+          600000.0,
+          2.3283064365386963e-10
+        ],
+        [
+          600000.0,
+          2100000.0,
+          0.0
+        ],
+        [
+          2.3283064365386963e-10,
+          0.0,
+          2500000.0
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_x_leg",
+          "point": [
+            20.0,
+            5.0,
+            10.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_y_leg",
+          "point": [
+            5.0,
+            20.0,
+            10.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_notch",
+          "point": [
+            25.0,
+            20.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_concave_edge",
+          "point": [
+            10.0,
+            10.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            5.0,
+            5.0,
+            20.0
+          ]
+        }
+      ],
+      "volume": 12000.0
+    }
+  }
+}

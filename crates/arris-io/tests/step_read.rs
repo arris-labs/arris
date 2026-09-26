@@ -207,6 +207,7 @@ fn every_area_is_known() {
         assert!(
             [
                 "primitive",
+                "build",
                 "transform",
                 "boolean",
                 "sweep",
@@ -222,6 +223,11 @@ fn every_area_is_known() {
 #[test]
 fn primitive_fixtures_read_back() {
     area("primitive");
+}
+
+#[test]
+fn build_fixtures_read_back() {
+    area("build");
 }
 
 #[test]
