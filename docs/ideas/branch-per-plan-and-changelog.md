@@ -1,122 +1,154 @@
 # Idea: branch-per-plan-and-changelog
 
-- Status: Open
+- Status: Accepted 2026-09-26 — E: a `CHANGELOG.md` with an `Unreleased`
+  section and `cargo-semver-checks` in CI go to a plan; branch per plan is
+  parked until a second writer commits, and becomes a backlog line with
+  that trigger when the plan absorbs and deletes this file
 - Raised: 2026-09-26
 - Prompt (verbatim from the human, said in the plugin CAD's repository for both): "Until now we worked without branching at all, just committing and pushing to main in both [the plugin CAD] and arris, which is bad practice. I suggest change this workflow to trunk-based where each plan is separate feature branch, where retire plan skil finishes by creating mr to main. The only thing we need to think through is versioning: how to connect plans with versions properly. One option that I applied in other projects: we have CHANGELOG.md with changes in all versions and all new features from implemented plans go to Unreleased section in that file and human in arbitrary moment can command AI agent to release - then agent looks at all unreleased changes and derives bump version values and does release commit directly to main without branching."
+- Follow-up (the human, same day): branching was meant for future
+  contributors who also write code with agents; for the near future there
+  is one contributor, so the process stays lean and fast.
 
 ## Problem
 
-Every plan step lands on `main` as it is written (`.agents/rules/git.md`).
-Nobody reviews a plan as a whole, and nothing on GitHub stops a red commit
-from reaching `main`. CI's `oracle`, `wasm` and `parallel` jobs don't run
-in the pre-commit hook, so today they find a break only after it has
-landed. `ci.yml` already runs on `pull_request`, but nothing uses it.
+Two separate things.
 
-Versioning works, but late. `/release` reads commit bodies since the last
-tag and writes the notes then, into the reply and the GitHub Release. The
-author of those notes is the agent at release time, not the one who knew
-the plan. The notes survive only on GitHub. The crates published so far
-(`v0.1.0` to `v0.2.0`) ship no changelog in the repository, and the plugin CAD has
-to read GitHub Releases to learn what broke.
+**Review and gating.** Every plan step lands on `main` as it is written
+(`.agents/rules/git.md`). CI's `oracle`, `wasm` and `parallel` jobs don't
+run in the pre-commit hook, so they find a break only after it has landed.
+With one writer, that is the whole cost. The problem the human cares
+about, contributors whose agents write code, doesn't exist yet. When it
+does, it doesn't depend on how the maintainer commits: an outside
+contributor can't push to `main` and comes through a fork and a PR, which
+`ci.yml` already runs on (`pull_request`).
+
+**Release notes.** `/release` writes the notes at release time, from
+commit bodies, into the reply and the GitHub Release. The agent that
+writes them isn't the one that did the work, and the notes live only on
+GitHub. Four releases (`v0.1.0` to `v0.3.0`) have gone out with no
+changelog in the repository, and the plugin CAD has to read GitHub
+Releases to learn what broke.
 
 ## Constraints it runs into
 
-- `.agents/rules/git.md`: "Commit directly to `main`", "Never push unless
-  asked", and branches only for experimental plans. This idea reverses the
-  first and narrows the second.
-- git.md §Tags, §The version: this stays unchanged. The workspace is
-  released in lockstep, `main` carries `X.Y.Z-dev`, a release is two
-  commits (`release X.Y.Z` and `open …-dev`), the tag goes on the first,
-  and the human tags and approves the `crates-io` environment.
-- `/release` step 3 and its Don't list say "no `CHANGELOG.md`: a
-  hand-maintained fifth place is the one with no owner". This idea
-  answers that argument; it doesn't ignore it.
-- Commit per plan step with the `(plans/<slug> step N)` suffix: a squash
-  merge would destroy it, and the version derivation depends on commit
-  bodies that name public API changes.
-- At most two active plans: two branches can be open at once, and both
-  retire commits edit `docs/ROADMAP.md` and `AGENTS.md`.
+- `.agents/rules/git.md`: "Commit directly to `main`", branches only for
+  experimental plans or on request. Option E leaves this as it is.
+- git.md §Tags, §The version: unchanged. Lockstep workspace, `main` on
+  `X.Y.Z-dev`, a release is two commits (`release X.Y.Z` and
+  `open …-dev`) pushed straight to `main`, the tag on the first, and the
+  human tags and approves the `crates-io` environment.
+- `/release` step 3 and its Don't list: "no `CHANGELOG.md`: a
+  hand-maintained fifth place is the one with no owner". E overturns this,
+  so it needs an ADR. The answer to the argument is that every entry has
+  an owner (the plan that retires, or the fix that lands), and `/release`
+  is the only thing that turns `Unreleased` into a version.
+- Cargo packages only files under each crate's directory. `README.md`
+  reaches the tarballs through `readme.workspace = true`, and the licence
+  files are copied into each crate. A root `CHANGELOG.md` reaches no
+  tarball unless it is copied the same way or added through `include`.
+- CI takes about three hours (`/release` step 9). Anything that gates a
+  merge on it adds three hours of latency per merge.
 - Backlog: "`cargo-semver-checks` in CI once the first non-placeholder
-  version is published". That condition is now met, and this idea would
-  absorb the line.
+  version is published". That condition is met, and the tool gives a
+  mechanical check of the semver effect `CHANGELOG.md` declares.
 
 ## Options
 
-### A — Branch per plan, PR at retire; `/release` otherwise unchanged
+### A — Branch per plan, PR at retire
 
-Each plan runs on `plan/<slug>`. `/work` branches at step 1. The last
-commit is `docs: retire plan <slug>`, followed by a push of the branch and
-`gh pr create`, and the human merges. Merges are rebase-only so the step
-commits and their bodies survive. A ruleset on `main` requires the CI
-checks, including `oracle`, `wasm` and `parallel`, and forbids direct
-pushes. `/release`'s two commits then go through a `release/vX.Y.Z` PR,
-and the human tags the merged release commit. Tag after the merge, because
-GitHub's rebase-merge rewrites commit SHAs. `/close-cycle`'s
-`docs: close <cycle>` goes in the same PR. Cost: about 3 plan steps (ADR,
-git.md, `/work` + `/retire-plan` + `/release` + `/close-cycle`), plus the
-human's GitHub settings.
+Each plan runs on `plan/<slug>` with a draft PR from step 1, pushed after
+every step so CI's extra jobs see each step. A ruleset on `main` requires
+the CI jobs and linear history, but not up-to-date branches, which would
+restart the other open branch's three-hour run on every merge. A
+`changes` job lets prose-only PRs skip the heavy jobs, because a required
+check that a path filter never starts leaves the PR pending forever. The
+agent merges with `gh pr merge --auto --rebase`, and the human can stop
+it. Release commits go straight to `main` through an admin bypass, as the
+prompt asks: they touch only `Cargo.toml`, `Cargo.lock` and
+`CHANGELOG.md`, and the tag's CI run is already the release gate.
 
-### B — A, plus per-plan changelog fragments and `CHANGELOG.md`
+Work outside plans (fixes, CI, ideas, backlog) needs short-lived branches
+too. A plan file that lives only on its branch breaks the two-active-plans
+count, `/work`'s lookup of the active plan and the `docs_refs` test on
+`main`, so those need a new rule as well. Cost: about 3 plan steps, and
+three hours of CI per merge. With one writer, the only thing it buys is
+earlier `oracle`, `wasm` and `parallel` runs.
 
-`/retire-plan` writes `changes/<plan-slug>.md` in `/release` step 3's
-reader-facing style: what a consumer can now do, the refusals they will
-hit, and a **Breaking** list with the one-line fix, plus the plan's semver
-effect (patch or minor, pre-1.0). The author is the agent that just did
-the work, and the notes get reviewed in the plan's PR. `/release` merges
-the fragments into `CHANGELOG.md` and the GitHub Release, deletes them,
-and derives the number as the largest declared effect. It cross-checks
-that number against the commit-body lookup it runs today and against
-`cargo-semver-checks`. If they disagree, it stops and asks.
+### B — A, plus per-change changelog fragments
 
-This is still not a fifth place with no owner. Every fragment has an
-owner, the retiring plan, and `/release` is the only thing that writes
-`CHANGELOG.md`. The file ships inside each crate's tarball, so it is where
-a crates.io reader looks. Cost: A + about 2 steps.
+Each PR that a consumer would notice adds `changes/<slug>.md`, with its
+semver effect. `/release` merges the fragments into `CHANGELOG.md` and
+deletes them. Fragments exist to spare parallel branches a conflict in a
+shared `Unreleased` list. Without parallel branches they are a directory
+and an assembly step that buy nothing.
 
-### C — A, plus fragments that go only to the GitHub Release
+### C — Notes written at retire, published only in the GitHub Release
 
-Same as B, but `/release` pastes the fragments into the GitHub Release and
-deletes them, and no `CHANGELOG.md` exists. This keeps `/release`'s
-current rule, and the notes are still written at plan time. The history
-lives only on GitHub, not in the published crate.
+Fragments as in B, pasted into the GitHub Release and deleted. This keeps
+`/release`'s no-changelog rule. The history stays only on GitHub, and the
+plugin CAD's complaint stands.
 
 ### D — release-plz
 
-It reads the conventional commits, opens a release PR with bumps, a
-changelog and semver checks, and publishes. It would replace most of
-`/release` and `release.yml`. Its changelog is one line per commit, which
-is noisy with one commit per step and can't produce the notes `/release`
-step 3 asks for. It also doesn't know about the `-dev` guard or the
+It writes one changelog line per conventional commit, which is noisy with
+one commit per step and can't produce the reader-facing notes `/release`
+step 3 asks for. It doesn't know about the `-dev` guard or the
 environment reviewer.
+
+### E — Trunk as today, `CHANGELOG.md` with an `Unreleased` section, `cargo-semver-checks`
+
+The human's own versioning scheme, without the branching.
+`/retire-plan`, and any `fix` commit a consumer would notice, adds
+bullets under `## Unreleased` in `/release` step 3's reader-facing style:
+what a consumer can now do, the refusals they will hit, and a
+`### Breaking` subsection with the type or signature and the one-line fix.
+`/release` renames the section to the version and the date, and derives
+the number from it: a non-empty `Breaking` means a minor, anything else a
+patch, and a cycle close is always a minor. It cross-checks that against
+the commit-body lookup it already runs and against `cargo-semver-checks`,
+and stops and asks if they disagree. It also pastes the section into the
+GitHub Release. Each crate ships the file the same way it ships the
+licences. `cargo-semver-checks` joins CI against the last published
+version and retires its backlog line.
+
+Moving to A or B later loses nothing. `CHANGELOG.md`'s format stays, and
+only the staging of new entries changes. Cost: about 2 plan steps (ADR and
+skills, then CI).
 
 ### Do nothing
 
-`main`'s greenness depends on local hooks, which skip three CI jobs, and
-nobody reviews a plan as a whole.
+The notes keep being written late, from commit bodies, and only on
+GitHub.
 
 ## Recommendation
 
-**B.** A alone fixes the branching problem but leaves the notes to be
-written late. C is the cautious alternative if the no-changelog rule
-should hold, and it costs the same. D fights the existing `-dev` and
-reviewer design. The plugin CAD's idea with the same slug proposes A now and B at
-its first release, so both repositories end up on one process. What would
-change my mind: if the GitHub Releases already feed what the plugin CAD reads when
-it bumps the pinned minor, C is enough.
+**E.** It follows the human's versioning scheme, keeps the one-writer
+workflow fast, and costs nothing that A or B would later have to undo.
+A and B pay three hours of CI per merge, and rules for plan files,
+non-plan work and fragments, to prepare for contributors who don't exist
+yet. When they arrive they use forks and PRs, which work today. C leaves
+the history off the repository. D fights the `-dev` and reviewer design.
+
+What would change my mind: a second writer, whether an outside
+contributor or two agents committing at once. Then A's ruleset (with a
+bypass for the maintainer), a `CONTRIBUTING.md`, one line in git.md
+telling contributors' agents to fork, branch per plan and end
+`/retire-plan` in a PR, and the `changes` job make about one plan step,
+written against that contributor's actual needs. Fragments (B) come only
+if conflicts in `Unreleased` start to hurt.
 
 ## Decision for the human
 
-1. Adopt branch per plan with a PR at retire, rebase-merge only, and a
-   protected `main` requiring every CI job? *Yes.* It needs an ADR that
-   supersedes git.md's "commit directly to `main`".
-2. Should fragments be written at plan retirement? *Yes.*
-3. Where do the fragments end up: `CHANGELOG.md` and the GitHub Release
-   (B), or only the GitHub Release (C)? *B*. It needs the same ADR, since
-   it overturns `/release`'s "no `CHANGELOG.md`".
-4. Should the release land as a `release/*` PR, with the human tagging the
-   merged release commit? *Yes.*
-5. Should `cargo-semver-checks` join CI now, as a cross-check on the
-   declared effect? *Yes*, which retires its backlog line.
-6. May the agent push `plan/*` and `release/*` branches without asking
-   each time? *Yes, since invoking the skill is the ask.* `main`, tags and
-   the crates.io approval stay the human's.
+Decided 2026-09-26:
+
+1. Branch per plan with a PR at retire? *Parked* until a second writer
+   commits. It becomes a backlog line with that trigger.
+2. `CHANGELOG.md` with an `Unreleased` section, written by `/retire-plan`
+   and by consumer-visible fixes, released by `/release`? *Yes*, with an
+   ADR that overturns `/release`'s "no `CHANGELOG.md`".
+3. Fragments? *No*, not while there is one writer.
+4. `cargo-semver-checks` in CI now, as a cross-check on the declared
+   effect? *Yes*. This retires its backlog line.
+5. Does `CHANGELOG.md` ship in each crate's tarball? *Yes*, copied the way
+   the licence files are.
