@@ -82,6 +82,17 @@ The version scheme, the `-dev` convention and who does what are
    Then: they approve the `crates-io` environment when GitHub asks, with
    the tag's CI run in front of them. Remind them of that — the approval
    is the last checkpoint before a version exists forever.
+9. **Once they have pushed, cancel `main`'s duplicate CI run.** The two
+   pushes start two full runs, about three hours each: the tag's, which
+   is the release gate, and `main`'s tip, which is the same code plus
+   the `-dev` bump. Find them with `gh run list --workflow CI --limit 4`
+   (the branch column says `vX.Y.Z` or `main`). Cancel `main`'s with
+   `gh run cancel <id>` **only if** `git diff --name-only vX.Y.Z main`
+   lists nothing but `Cargo.toml`, `Cargo.lock` (the `-dev` bump),
+   `*.md`, `.agents/` and `.githooks/`, none of which CI runs.
+   If anything else changed, leave the run alone: that is code the tag's
+   run never tested. Never cancel the tag's run. Say in the reply which run
+   was cancelled and why.
 
 ## When a publish fails partway
 
