@@ -581,6 +581,52 @@ impl Provenance {
         }
     }
 
+    /// The same record with every role origin `r` replaced by `f(r)`:
+    /// how a consumer roots another operation's record — a primitive's,
+    /// a sweep's, a file's — at names of its own, typically
+    /// `Role::Consumer` keys that prefix its own key to the operation's
+    /// part (ADR-0028). Entity origins, every output and `deleted` are
+    /// untouched, and each role's outputs keep their order. Two roles `f`
+    /// maps to one concatenate their outputs in the old roles' ascending
+    /// order, without duplicates, so the result is deterministic for any
+    /// `f`; but only an injective `f` keeps `Split(k)` meaning the same
+    /// piece (ADR-0009), since a merged list no longer says which role a
+    /// piece came from.
+    ///
+    /// ```
+    /// use arris_topo::provenance::{BoxPart, ConsumerKey, Coord, Provenance, Role, Side};
+    /// use arris_topo::{FaceId, Orientation, Shape};
+    ///
+    /// let top = Shape::new(FaceId::new(5, 0), Orientation::Forward);
+    /// let role = Role::Box(BoxPart::Face(Coord::Z, Side::Max));
+    /// let mut p = Provenance::default();
+    /// p.add_generated(role, top);
+    /// // The consumer's feature 12 made the box: its top is key 12·64 + 1.
+    /// let lid = Role::Consumer(ConsumerKey { namespace: 3, key: 12 * 64 + 1 });
+    /// let mine = p.rerooted(|r| if r == role { lid } else { r });
+    /// assert_eq!(mine.generated_from(lid), [top]);
+    /// assert!(mine.generated_from(role).is_empty());
+    /// ```
+    pub fn rerooted(&self, f: impl Fn(Role) -> Role) -> Provenance {
+        let origin = |o: &Origin| match o {
+            Origin::Entity(s) => Origin::Entity(*s),
+            Origin::Role(r) => Origin::Role(f(*r)),
+        };
+        let mut out = Provenance::default();
+        for (o, outputs) in &self.generated {
+            for &y in outputs {
+                out.add_generated(origin(o), y);
+            }
+        }
+        for (o, outputs) in &self.modified {
+            for &y in outputs {
+                out.add_modified(origin(o), y);
+            }
+        }
+        out.deleted = self.deleted.clone();
+        out
+    }
+
     /// The same record with every entity id translated through `map`
     /// (an [`IdMap`] from `import`); an id the map does not hold stays as
     /// it is, since an origin in another body is not imported with this

@@ -136,7 +136,7 @@ bound has to be established here.
   genus 1). Each passes the whole runner — checker at `Full`, measures,
   probes, STEP both ways, NURBS read-back — and has its dump blessed.
   The oracle's self-test reproduces the three `expected.json`.
-- [ ] Step 4 **[1]** — `Provenance::rerooted`. Tests: the identity map
+- [x] Step 4 **[1]** — `Provenance::rerooted`. Tests: the identity map
   returns an equal record; an injective map then its inverse returns the
   original; a non-injective map concatenates in the old roles' order;
   `audit` holds on a re-rooted primitive's, sweep's and read solid's
