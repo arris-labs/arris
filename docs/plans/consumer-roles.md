@@ -115,7 +115,7 @@ bound has to be established here.
   unchanged (a byte-exact check against a record of each old variant);
   `Display`; ordering by `(namespace, key)`. `CHANGELOG.md`
   `### Breaking`: the new variant, fix "add an arm".
-- [ ] Step 2 **[2]** — `ops::build` and `BuildKeys`, with
+- [x] Step 2 **[2]** — `ops::build` and `BuildKeys`, with
   `OpError::Unkeyed` and `OpError::Rejected`. The record is built the
   way the primitives build theirs (the private `roles` helper in
   `primitive.rs` generalised and shared). Tests in
@@ -193,12 +193,21 @@ the release profile; `tools/semver-gate.sh` passing with the two
 
 ## Open questions
 
-- ⚠ OPEN: does `ops::build` check at `Level::Fast` or `Level::Full`?
-  ADR-0028 stays `proposed` until this is answered.
-  `Full` catches self-intersecting input the consumer is likely to hand
-  it, at a cost on large bodies. Agent decides by step 2, on the
-  frame's and the tetrahedron's timings and on what `Fast` misses of a
-  hand-built bad body; the ADR records it.
+- Decided (step 2, ADR-0028 §3): `ops::build` checks at `Level::Full`.
+  `Fast` passes a frame whose hole crosses its outer walls and a frame
+  turned inside out; `Full` refuses both, at 0.34 ms on the frame
+  against `Fast`'s 0.06 ms (release). ADR-0028 accepted.
+- Found (step 2), design delta amended: the plan named two refusals,
+  but `ops::build` has three causes that are the input's fault, not the
+  kernel's — the checker's report, `Builder::finish`'s `BuildError`
+  (which every other operation sends to `OpError::Internal`), and a slot
+  `Builder::assemble` kept from the model (a kept entity is another
+  body's, and `build` makes a body from nothing). So `OpError::Rejected`
+  carries a `Rejection { Builder, Kept, Checker }` instead of a report,
+  and `Unkeyed` names a `BuildSlot { Vertex, Edge, Face, Shell }`. The
+  `polyhedron` → `Builder` + `BuildKeys` conversion that step 3's recipe
+  op needs landed in step 2, as `arris_debug::polyhedron`, since the
+  frame test builds by it.
 - Decided (step 1, ADR-0028 §4): `BuildKeys` does not refuse a key
   reused across kinds. Refusing it would make the kernel decide a key
   names one kind of entity; each output keeps its kind in its `Shape`,

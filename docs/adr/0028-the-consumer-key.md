@@ -1,7 +1,6 @@
 # ADR-0028 — The consumer's key: an opaque `Role::Consumer`, taken by `ops::build`, reached by re-rooting from every other operation
 
-- Status: proposed (2026-09-27) — accepted when `plans/consumer-roles`
-  step 2 fixes the checker level of decision 3
+- Status: accepted (2026-09-27)
 - Plan: `consumer-roles` steps 1, 2 and 4
 - Follows: ADR-0002 (provenance rooted in roles), ADR-0009 (no name
   grammar; the words are the consumer's), ADR-0025 (`Role::File`, the
@@ -49,12 +48,25 @@ result.
    every `Origin::Role(r)` by `Origin::Role(f(r))`, and one map does that
    for all five operations and every later one, with no signature
    change on any.
-3. **`ops::build` checks its result in every build profile**, and
-   returns `OpError::Rejected { report }` rather than `verify`'s
-   debug-build panic. The body is the consumer's input, not the kernel's
-   output, so a failure is a refusal of that input and not a kernel bug;
-   a release build that skipped the check would hand an invalid body to
-   the next operation. The level is recorded by step 2.
+3. **`ops::build` checks its result at `Level::Full`, in every build
+   profile**, and returns `OpError::Rejected(Rejection::Checker(report))`
+   rather than `verify`'s debug-build panic. The body is the consumer's
+   input, not the kernel's output, so a failure is a refusal of that
+   input and not a kernel bug; a release build that skipped the check
+   would hand an invalid body to the next operation. `Full`, because
+   `Fast` passes the two mistakes a hand-built body is likeliest to
+   make, both well-formed topology: a square frame whose hole's walls
+   cross the outer ones, and the frame turned inside out (every loop
+   reversed). `Full` refuses both. It costs about six times `Fast` —
+   0.09 ms against 0.016 ms on a tetrahedron, 0.34 ms against 0.06 ms on
+   the ten-face frame, release build — which is small next to the
+   consumer building the topology at all.
+   The builder's own refusal (`Builder::finish`) is the input's fault
+   the same way and is `Rejected(Rejection::Builder(e))`, not
+   `OpError::Internal`, which is where every other operation sends a
+   `BuildError`. A slot `Builder::assemble` kept from the model is
+   `Rejected(Rejection::Kept(slot))`: `build` makes a body from nothing,
+   and a kept entity already belongs to another body.
 4. **Keys are not required to be unique, within a kind or across
    kinds.** Two slots under one key are two outputs of one role, in slot
    order, as a box's shell and body are two outputs of one kind of
@@ -73,7 +85,8 @@ result.
   at a key from `ops::build`, or at a key `rerooted` put in place of a
   primitive's, sweep's or file's role.
 - `Role` gains a variant: a `match` over it needs an arm. `OpError`
-  gains two (`Unkeyed`, `Rejected`), with the same fix. Both are listed
+  gains two (`Unkeyed`, `Rejected`, the latter over a new `Rejection`),
+  with the same fix. Both are listed
   under the changelog's `Breaking`.
 - `ops::build` costs a checker run in release builds, which no other
   operation pays.
@@ -104,3 +117,7 @@ result.
   table.
 - **`ops::build` checked only in debug builds, like every other
   operation.** See decision 3.
+- **`Level::Fast`, linear in the body.** It misses crossing faces and an
+  inside-out body (decision 3), and a consumer that wants the cheaper
+  check for a body it trusts can call `Builder::finish` itself and give
+  up the record.

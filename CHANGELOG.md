@@ -12,6 +12,9 @@ into its version (ADR-0027).
 
 - `arris_topo::provenance::Role` gains `Consumer(ConsumerKey)`, a
   consumer's own key: a `match` over `Role` needs a `Consumer(_)` arm.
+- `arris_ops::OpError` gains `Unkeyed { slot }` and `Rejected(Rejection)`,
+  the refusals of the new `arris_ops::build`: a `match` over `OpError`
+  needs both arms.
 
 ## 0.3.0 — 2026-09-26
 

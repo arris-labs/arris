@@ -9,12 +9,13 @@ use arris_check::arris_topo::arris_math::{
     Axis, Frame, Frame2, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
 };
 use arris_check::arris_topo::builder::{
-    BuildError, Builder, Built, EdgeRef, FaceRef, Position, Seed, Split, Strut, VertexRef,
+    BuildError, Builder, EdgeRef, FaceRef, Position, Seed, Split, Strut, VertexRef,
 };
 use arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_check::arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
-use arris_check::arris_topo::{Body, Model, Orientation, Provenance, Role, Shape};
+use arris_check::arris_topo::{Body, Model, Orientation, Provenance, Role};
 
+use crate::build::roles;
 use crate::error::{Fault, OpError, Reason};
 use crate::verify;
 
@@ -99,32 +100,6 @@ fn plane_pcurves(
         b.set_pcurve(at, pcurve)?;
     }
     Ok(())
-}
-
-/// The provenance of a body every entity of which has a role.
-fn roles(
-    built: &Built,
-    vertex: impl Fn(VertexRef) -> Result<Role, OpError>,
-    edge: impl Fn(EdgeRef) -> Result<Role, OpError>,
-    face: impl Fn(FaceRef) -> Result<Role, OpError>,
-    shell: Role,
-    body: Role,
-) -> Result<Provenance, OpError> {
-    let mut p = Provenance::new();
-    for (&r, &id) in &built.vertices {
-        p.add_generated(vertex(r)?, Shape::new(id, Orientation::Forward));
-    }
-    for (&r, &id) in &built.edges {
-        p.add_generated(edge(r)?, Shape::new(id, Orientation::Forward));
-    }
-    for (&r, &id) in &built.faces {
-        p.add_generated(face(r)?, Shape::new(id, Orientation::Forward));
-    }
-    for &id in &built.shells {
-        p.add_generated(shell, Shape::new(id, Orientation::Forward));
-    }
-    p.add_generated(body, built.body);
-    Ok(p)
 }
 
 /// The axis-aligned box from `min` to `max` as a solid: eight vertices,
@@ -296,7 +271,7 @@ pub fn primitive_box(
                     .ok_or_else(|| invariant("a box edge's endpoints"))
             },
             |f| Ok(face_roles[which(f)?]),
-            Role::Box(BoxPart::Shell),
+            |_| Ok(Role::Box(BoxPart::Shell)),
             Role::Box(BoxPart::Body),
         )?;
         Ok((built.body, provenance))
@@ -462,7 +437,7 @@ pub fn primitive_cylinder(
                     CylinderPart::Body
                 }))
             },
-            part(CylinderPart::Shell),
+            |_| Ok(part(CylinderPart::Shell)),
             part(CylinderPart::Body),
         )?;
         Ok((built.body, provenance))

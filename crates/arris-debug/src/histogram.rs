@@ -253,6 +253,10 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
         OpError::Profile(_) => Cycle::Itself("Profile"),
         OpError::Tolerance { .. } => Cycle::Itself("Tolerance"),
         OpError::NotFound(_) => Cycle::Itself("NotFound"),
+        // `build`'s refusals: the battery never builds a consumer's
+        // topology, so a count here is a battery bug to read.
+        OpError::Unkeyed { .. } => Cycle::Itself("Unkeyed"),
+        OpError::Rejected(_) => Cycle::Itself("Rejected"),
         OpError::Internal(_) => return None,
     })
 }

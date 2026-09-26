@@ -378,6 +378,8 @@ pub fn refusal(e: &OpError) -> String {
         OpError::Profile(_) => "Profile".into(),
         OpError::Tolerance { .. } => "Tolerance".into(),
         OpError::NotFound(_) => "NotFound".into(),
+        OpError::Unkeyed { .. } => "Unkeyed".into(),
+        OpError::Rejected(r) => format!("Rejected({})", head(format!("{r:?}"))),
     }
 }
 

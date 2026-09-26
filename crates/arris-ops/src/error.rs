@@ -7,6 +7,8 @@ use arris_check::arris_topo::builder::BuildError;
 use arris_check::arris_topo::{AnyId, Body, EdgeId, FaceId, NotFound, Shape};
 use arris_check::{ClassifyError, LumpError, Report};
 
+use crate::build::{BuildSlot, Rejection};
+
 /// Why a requested result has no valid representation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Reason {
@@ -439,6 +441,17 @@ pub enum OpError {
     /// A kernel bug, caught: see [`Fault`].
     #[error("kernel bug: {0}")]
     Internal(Fault),
+    /// [`build`](crate::build) was handed a live slot its keys name no
+    /// key for: the record would have an output with no origin.
+    #[error("{slot} has no key")]
+    Unkeyed {
+        /// The slot.
+        slot: BuildSlot,
+    },
+    /// [`build`](crate::build) refused the consumer's topology as a
+    /// solid: see [`Rejection`].
+    #[error("the consumer's body is refused: {0}")]
+    Rejected(Rejection),
 }
 
 fn entities_suffix(entities: &[Shape]) -> String {

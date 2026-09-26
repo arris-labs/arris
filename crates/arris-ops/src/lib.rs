@@ -1,4 +1,5 @@
-//! Operations of the Arris kernel: primitives, planar profiles, extrude,
+//! Operations of the Arris kernel: primitives, `build` for a consumer's
+//! own topology, planar profiles, extrude,
 //! revolve, transform, the booleans (and `boolean::interferences`, their
 //! decomposition as a value), the blends (`fillet`, `chamfer`), `measure` for
 //! mass properties, and `query` for the projection of edges and vertices
@@ -10,7 +11,9 @@
 //! returns provenance for every entity it touched, and leaves the model as
 //! it was on `Err`. In debug builds its output passes `arris-check` at
 //! `Level::Fast` before it is returned, and a failure there panics with
-//! the report: a kernel bug, the one place a panic is allowed. The
+//! the report: a kernel bug, the one place a panic is allowed. `build`
+//! is the exception: its body is the consumer's input, checked in every
+//! profile and refused with [`OpError::Rejected`]. The
 //! `paranoid` feature runs the same check in release builds and returns
 //! [`OpError::Internal`] instead. The `parallel` feature reserves `rayon`
 //! inside an operation. Depends on `arris-check` and below, re-exported
@@ -20,6 +23,7 @@
 
 mod blend;
 pub mod boolean;
+mod build;
 mod error;
 pub mod measure;
 mod primitive;
@@ -32,6 +36,7 @@ pub use arris_check;
 
 pub use blend::{chamfer, fillet};
 pub use boolean::{common, cut, fuse};
+pub use build::{BuildKeys, BuildSlot, Rejection, build};
 pub use error::{Fault, OpError, Reason, SplitFault};
 pub use primitive::{primitive_box, primitive_cylinder};
 pub use sweep::{extrude, revolve};
