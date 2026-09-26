@@ -107,7 +107,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[1]** — `Role::Consumer(ConsumerKey)` in `arris-topo`,
+- [x] Step 1 **[1]** — `Role::Consumer(ConsumerKey)` in `arris-topo`,
   with `Display`, serde and the doc example; every exhaustive `match`
   on `Role` in the workspace given its arm (the reader's, `arris-debug`'s
   test helpers, the dump). ADR-0028 written. Tests: the key round-trips
@@ -194,12 +194,16 @@ the release profile; `tools/semver-gate.sh` passing with the two
 ## Open questions
 
 - ⚠ OPEN: does `ops::build` check at `Level::Fast` or `Level::Full`?
+  ADR-0028 stays `proposed` until this is answered.
   `Full` catches self-intersecting input the consumer is likely to hand
   it, at a cost on large bodies. Agent decides by step 2, on the
   frame's and the tetrahedron's timings and on what `Fast` misses of a
   hand-built bad body; the ADR records it.
-- ⚠ OPEN: should `BuildKeys` refuse a key reused across kinds (a vertex
-  and a face under one key)? The plan says no — the key is opaque and
-  the words are the consumer's — but a consumer that reuses one by
-  mistake gets a record where `generated_from` mixes kinds. Agent
-  decides by step 1, in ADR-0028.
+- Decided (step 1, ADR-0028 §4): `BuildKeys` does not refuse a key
+  reused across kinds. Refusing it would make the kernel decide a key
+  names one kind of entity; each output keeps its kind in its `Shape`,
+  so a mixed `generated_from` can still be read.
+- Found (step 1): a `Provenance` has no JSON form (its maps are keyed by
+  `Origin`, which JSON can't use as an object key), so the step's
+  round-trip of a record runs through postcard only; the `Role` itself
+  round-trips through both.

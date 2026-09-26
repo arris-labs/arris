@@ -38,5 +38,5 @@ pub use id::{
 pub use idmap::IdMap;
 pub use model::{CoedgeRef, Model, RawInsert};
 pub use orientation::Orientation;
-pub use provenance::{FileEntity, Origin, Provenance, Relation, Role};
+pub use provenance::{ConsumerKey, FileEntity, Origin, Provenance, Relation, Role};
 pub use walk::Closure;

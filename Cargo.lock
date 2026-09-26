@@ -187,6 +187,7 @@ dependencies = [
  "arris-geom",
  "arris-math",
  "arris-ops",
+ "postcard",
  "proptest",
  "serde",
  "serde_json",

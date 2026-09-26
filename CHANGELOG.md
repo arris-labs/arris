@@ -8,6 +8,11 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+### Breaking
+
+- `arris_topo::provenance::Role` gains `Consumer(ConsumerKey)`, a
+  consumer's own key: a `match` over `Role` needs a `Consumer(_)` arm.
+
 ## 0.3.0 — 2026-09-26
 
 - STEP files from other systems are read: `arris_io::step::read` returns,

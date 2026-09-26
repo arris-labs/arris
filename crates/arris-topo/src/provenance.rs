@@ -224,9 +224,34 @@ pub struct FileEntity {
     pub instance: u32,
 }
 
+/// A consumer's own name for what an entity is: a `key` in the
+/// consumer's `namespace`. The kernel never reads either field — it
+/// carries the pair, orders it by `(namespace, key)` and prints it — so
+/// the words stay the consumer's (ADR-0009, ADR-0028). Two slots under
+/// one key are two outputs of one role, in the order they were recorded,
+/// and a key may be reused across entity kinds: the kernel does not
+/// decide what a key means.
+///
+/// ```
+/// use arris_topo::provenance::{ConsumerKey, Role};
+///
+/// let wall = Role::Consumer(ConsumerKey { namespace: 7, key: 42 });
+/// assert_eq!(wall.to_string(), "consumer:7/42");
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ConsumerKey {
+    /// Which of the consumer's vocabularies the key belongs to: a plugin,
+    /// a feature kind — the consumer's choice.
+    pub namespace: u32,
+    /// The name within the namespace.
+    pub key: u64,
+}
+
 /// What an entity is to the operation that made it from nothing:
 /// exhaustive over the operations that generate from no input body, one
-/// variant per operation kind.
+/// variant per operation kind, and the consumer's own key for a body it
+/// built or a record it re-rooted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Role {
@@ -241,6 +266,11 @@ pub enum Role {
     /// An entity of a file a reader read: the file entity it stands for
     /// (`docs/DATA-MODEL.md` §Provenance).
     File(FileEntity),
+    /// An entity a consumer named: built by `ops::build` from topology
+    /// the consumer filled, or re-rooted there from another operation's
+    /// role. Appended last so the serialised index of every earlier
+    /// variant stays where it was.
+    Consumer(ConsumerKey),
 }
 
 impl fmt::Display for Role {
@@ -251,6 +281,7 @@ impl fmt::Display for Role {
             Role::Extrude(part) => write!(f, "extrude:{part:?}"),
             Role::Revolve(part) => write!(f, "revolve:{part:?}"),
             Role::File(e) => write!(f, "file:#{}/{}", e.id, e.instance),
+            Role::Consumer(k) => write!(f, "consumer:{}/{}", k.namespace, k.key),
         }
     }
 }

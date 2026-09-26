@@ -36,6 +36,9 @@ arris-check = { path = "../arris-check" }
 arris-ops = { path = "../arris-ops" }
 proptest.workspace = true
 serde_json.workspace = true
+# The consumer key's byte-exact encoding check: the native format's bytes
+# are postcard (docs/DATA-MODEL.md §Native format).
+postcard = { workspace = true, features = ["alloc"] }
 
 [lints]
 workspace = true
