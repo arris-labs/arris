@@ -58,6 +58,20 @@ jobs:
             echo "::error::tag $GITHUB_REF_NAME does not name version $version"; exit 1
           fi
 
+      # The release notes are the version's section of CHANGELOG.md
+      # (ADR-0027), taken before anything uploads: a tag whose version has
+      # no section, or an empty one, publishes nothing.
+      - shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            /^## / { inside = (index($0, "## " v " — ") == 1); next }
+            inside
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no section for $version, or an empty one"; exit 1
+          fi
+
       - if: env.REGISTRY_TOKEN_SECRET == ''
         id: auth
         uses: rust-lang/crates-io-auth-action@v1
@@ -72,4 +86,4 @@ jobs:
 
       - uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/notes.md

@@ -42,6 +42,9 @@ updated by it. A change to a public type or signature names it here.
   a plan step. Plan retirement commits are `docs: retire plan <slug>`.
 - Docs change in the **same commit** as the code that changes behaviour.
   A commit that only updates docs to match existing code is `docs(sync): …`.
+- A commit that changes a public type or signature adds its bullet under
+  `CHANGELOG.md`'s `### Breaking` in the same commit, as well as naming
+  the change in its body (§The changelog).
 ## Tags
 
 - Milestones: `m0`, `m1`, … on the commit that retires the milestone's last
@@ -74,15 +77,35 @@ updated by it. A change to a public type or signature names it here.
     convention, not a law, and the cycle's status line names the tag it
     actually got.
   - **a release between cycles bumps the patch** — the case that exists
-    because a consumer is waiting on a fix. Unless a commit body since the
-    last tag names a changed public type or signature: then it is a minor.
-    That is a lookup, not a judgement, because every such change is named
-    in its commit body by the rule above.
-- The version lives in `Cargo.toml` and nowhere else. No doc, no README and
-  no rustdoc line states it, so nothing can go stale.
-- `/release` cuts one: it picks the number from the log, writes the release
-  notes, bumps, proves the workspace still packages, and hands the human
-  the exact tag command. `/close-cycle` ends by calling it.
+    because a consumer is waiting on a fix. Unless `CHANGELOG.md`'s
+    `Unreleased` has a `### Breaking` bullet: then it is a minor. That is
+    a lookup, not a judgement. Every such change also names itself in its
+    commit body, and `tools/semver-gate.sh` fails CI on a break that
+    `Breaking` doesn't list, so the three sources check one another.
+- The version lives in `Cargo.toml`, and the released ones in
+  `CHANGELOG.md`'s headings. No other doc, README or rustdoc line states
+  one, so nothing can go stale.
+- `/release` cuts one. It picks the number from `CHANGELOG.md`, turns
+  `Unreleased` into the version's section, bumps, proves the workspace
+  still packages, and hands the human the exact tag command.
+  `/close-cycle` ends by calling it.
+
+### The changelog
+
+`CHANGELOG.md` is what a consumer reads to learn what changed and what
+broke (ADR-0027). Each published crate ships it through a symlink.
+
+- **An entry is written in the commit that makes the change.** A plan's
+  bullets are written by its `/retire-plan` commit. A standalone commit a
+  consumer would notice (a fix, a public API change) writes its own. A
+  commit no consumer can see (process, tooling, tests, docs) writes
+  nothing.
+- **Bullets go under `## Unreleased`.** They say what a consumer can now
+  do and which refusals they will hit, for a reader who has read only
+  `README.md`: no ADR numbers, plan slugs or fixture names. `### Breaking`
+  names each broken type or signature with its one-line fix.
+- **Only `/release` turns `Unreleased` into a version.** The GitHub Release
+  body is that section, taken by `release.yml`.
 
 ## What the agent does without asking
 

@@ -104,7 +104,7 @@ bound has to be established here.
 
   `cargo package --workspace --list` shows `CHANGELOG.md` in each of the
   eight crates.
-- [ ] Step 3 **[1]** — The process. Update `.agents/rules/git.md`
+- [x] Step 3 **[1]** — The process. Update `.agents/rules/git.md`
   (§The changelog, §The version, §Message format) and the `/release`,
   `/retire-plan` and `/close-cycle` skills as the design deltas say. In
   `release.yml`, extract the tag's section into a file and pass it as

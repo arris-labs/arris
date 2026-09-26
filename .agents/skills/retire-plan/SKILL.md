@@ -23,10 +23,20 @@ Deletion is the "done" signal. Anything worth keeping was moved first.
    completes a milestone, say so and remind the human to tag `mN`.
 5. `AGENTS.md` "Current state": one milestone-level sentence, keep the block
    under ~15 lines.
-6. Anything deferred from the plan goes to `docs/BACKLOG.md` as one line.
-7. `git rm docs/plans/<slug>.md` and commit everything as
+6. **`CHANGELOG.md`**: the plan's bullets under `## Unreleased`, if a
+   consumer would notice it (ADR-0027). Write them for someone who has
+   read only `README.md`. Say what they can now do, not what was built:
+   "a sketch with an elliptic arc extrudes into a solid" is a change,
+   `Surface::EllipticCylinder` is not. Add the refusals they will hit. Put
+   every public type or signature the plan's commit bodies name as changed
+   under `### Breaking`, with the one-line fix. Leave out ADR numbers, plan
+   slugs and fixture names. Some commits may already have added their own
+   `Breaking` bullets: merge them, don't duplicate them. A plan no
+   consumer can see (process, tooling, tests) adds nothing.
+7. Anything deferred from the plan goes to `docs/BACKLOG.md` as one line.
+8. `git rm docs/plans/<slug>.md` and commit everything as
    `docs: retire plan <slug>` with a body listing the docs updated.
-8. End the reply with **one recommended next step**, read from the
+9. End the reply with **one recommended next step**, read from the
    roadmap's open lines, the other active plan and the backlog: the
    skill to run and its argument (`/plan <slug>`, `/idea <topic>`,
    `/work <plan>`, `/close-cycle`) and one sentence on why it comes
@@ -37,6 +47,8 @@ Deletion is the "done" signal. Anything worth keeping was moved first.
 - Don't summarise the plan into a design doc — design docs hold the design,
   not the history of how it got there.
 - Don't keep the plan file "for reference"; git has it.
+- Don't write the plan's history into `CHANGELOG.md`. It holds what
+  changed for a consumer, not the steps that got there.
 - Don't retire with unticked boxes by editing them to ticked.
 
 `$ARGUMENTS`

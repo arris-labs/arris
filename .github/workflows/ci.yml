@@ -18,6 +18,8 @@ on:
       - "!.agents/**"
       - "!AGENTS.md"
       - "!SEED.md"
+      - "!CHANGELOG.md"
+      - "!crates/*/CHANGELOG.md"
       - "docs/ROADMAP.md"
       - "docs/DATA-MODEL.md"
       - "docs/plans/**"

@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a release of the workspace to crates.io — pick the version from the log rather than by feel, write the user-facing release notes, bump the version and its pins, prove the workspace still packages, and hand the human the exact tag command. Use when the human says "release", "cut a version", "publish", "ship 0.2", or at the end of /close-cycle. Never tags, never pushes, never runs cargo publish.
+description: Cut a release of the workspace to crates.io — pick the version from CHANGELOG.md's Unreleased section, cross-checked against the log and the semver gate, turn that section into the version's notes, bump the version and its pins, prove the workspace still packages, and hand the human the exact tag command. Use when the human says "release", "cut a version", "publish", "ship 0.2", or at the end of /close-cycle. Never tags, never pushes, never runs cargo publish.
 argument-hint: <nothing, or a version to force, e.g. 0.2.0>
 ---
 
@@ -25,33 +25,42 @@ The version scheme, the `-dev` convention and who does what are
    A release is not the place to discover a red suite. An active plan in `docs/plans/` does not block a patch release —
    say in the reply which plans are open, so the human knows what is
    half-landed.
-2. **Pick the version from the log, and show your evidence.** `git log
-   $(git describe --tags --match 'v*' --abbrev=0)..HEAD` — or the whole
-   log before the first release. Read the *bodies*: every change to a
-   public type or signature is named in one (`.agents/rules/git.md`).
+2. **Pick the version from `CHANGELOG.md`, and check it three ways.** The
+   number comes from `## Unreleased` (ADR-0027):
    - closing a cycle → minor;
-   - otherwise patch, unless a body names a public API change → minor.
+   - otherwise patch, unless `### Breaking` has a bullet → minor;
+   - an empty `Unreleased` → nothing to release; say so and stop.
 
-   State the decision as a derivation in the reply — the commits that
-   forced it, by hash — never as an opinion. An argument to this skill
-   overrides the number, and then say in the reply what the log would have
-   picked instead. If the log is ambiguous, stop and ask.
-3. **Write the release notes into the reply.** Three to five bullets, and
-   a **Breaking** list under them when the minor moved:
-   - what a consumer can now *do* that they could not before. Not what was
-     built — `Surface::EllipticCylinder` is not a change, "a sketch with
-     an elliptic arc extrudes into a solid" is;
-   - the refusals a consumer will hit, because that is what an issue gets
+   Then cross-check it:
+   - **The log.** Read the *bodies* in `git log $(git describe --tags
+     --match 'v*' --abbrev=0)..HEAD`: every change to a public type or
+     signature is named in one (`.agents/rules/git.md`), and each must
+     have its `Breaking` bullet.
+   - **The tool.** Run `tools/semver-gate.sh`. It fails on a break that
+     `Breaking` doesn't list.
+
+   A body names a break the section lacks → add the bullet (step 3) and
+   say so. The gate fails, or the sources disagree in any other way →
+   stop and ask. State the decision as a derivation in the reply (the
+   bullets and the commits, by hash), never as an opinion. An argument to
+   this skill overrides the number; then say in the reply what the
+   derivation would have picked.
+3. **Turn `Unreleased` into the version.** Rename the heading to `## X.Y.Z
+   — YYYY-MM-DD` and put a fresh, empty `## Unreleased` above it. Read
+   the section as its reader will, someone who has read nothing but
+   `README.md`, and tighten it:
+   - what a consumer can now *do* that they couldn't before. Not what was
+     built: `Surface::EllipticCylinder` is not a change, "a sketch with an
+     elliptic arc extrudes into a solid" is;
+   - the refusals a consumer will hit, because those are what issues get
      filed about;
-   - the breaking list names the type or signature and the one-line fix,
+   - under `### Breaking`, the type or signature and its one-line fix,
      because pre-1.0 the minor is the only warning a consumer gets;
-   - no ADR numbers, no plan slugs, no fixture names. Someone who has read
-     nothing but `README.md` is the reader.
+   - no ADR numbers, plan slugs or fixture names.
 
-   In the reply and in no file. There is no `CHANGELOG.md`: what landed
-   already lives in the git log, the roadmap status lines, the ADRs and
-   the GitHub Release, and a hand-maintained fifth place is the one with
-   no owner.
+   `release.yml` publishes this section as the GitHub Release body, so it
+   is also the release notes. The `docs_refs` test holds the headings to
+   their format.
 4. **Bump.** `[workspace.package].version` to the number, `-dev` dropped,
    and the seven internal `version = "=X.Y.Z-dev"` requirements in
    `[workspace.dependencies]` with it — eight places, one edit, and a
@@ -61,8 +70,9 @@ The version scheme, the `-dev` convention and who does what are
    every crate packages and its verifying build passes. A crate that fails
    here fails in the workflow after some of the others are already on
    crates.io, where a version can be yanked but never replaced.
-6. **Commit** as `chore(arris): release X.Y.Z`, body giving the derivation
-   from step 2 — the commits that set the number — and the breaking list.
+6. **Commit** the bump and `CHANGELOG.md` together as `chore(arris):
+   release X.Y.Z`. The body gives the derivation from step 2 (the bullets
+   and commits that set the number) and the breaking list.
    When `/close-cycle` called this skill, that skill's `docs: close
    <cycle>` commit comes first and this one after it.
 7. **Open the next `-dev` in its own commit**, right away: `chore(arris):
@@ -70,8 +80,9 @@ The version scheme, the `-dev` convention and who does what are
    version, and the human's tag goes on the commit from step 6, not this
    one. Tagging this one by mistake is safe — `release.yml` refuses a
    pre-release version before it uploads anything.
-8. **Hand the human the tag**, with the exact commands and the release
-   notes to paste:
+8. **Hand the human the tag** with the exact commands. The release notes
+   need no pasting, since `release.yml` takes the version's section from
+   `CHANGELOG.md`:
 
    ```sh
    git tag vX.Y.Z <the sha from step 6>
@@ -117,8 +128,11 @@ A release blocked by something the workflow itself gets wrong is a fix on
 
 - Don't tag, don't push, don't run `cargo publish`. All three are the
   human's, and the last one would skip the gate and the reviewer both.
-- Don't write a `CHANGELOG.md`, and don't put the version in a doc, a
-  README or a rustdoc line. `Cargo.toml` is its only home.
+- Don't put the version in a doc, a README or a rustdoc line.
+  `Cargo.toml` holds the current version, and `CHANGELOG.md`'s headings
+  record the released ones. Nothing else states either.
+- Don't write `Unreleased` from the log at release time. Its bullets were
+  written when the changes landed, and the log only cross-checks them.
 - Don't bump the minor "to be safe". Pre-1.0 the minor is a consumer's
   signal that its code will not compile; spending it on a release that
   breaks nothing makes the signal worthless.

@@ -60,15 +60,18 @@ second roadmap file would only ever raise "which one is current?".
 7. Commit as `docs: close <cycle>` with a body listing the docs updated and
    the drift fixed.
 8. **Run `/release`.** A closed cycle is a release: it bumps the minor
-   (`.agents/rules/git.md` §Tags), and that skill picks the number, writes
-   the release notes, bumps the version and its pins, proves the workspace
-   still packages, and hands the human the tag. Tags and pushes are theirs
+   (`.agents/rules/git.md` §Tags), and that skill picks the number, turns
+   `CHANGELOG.md`'s `Unreleased` into the version's section, bumps the
+   version and its pins, proves the workspace still packages, and hands
+   the human the tag. Tags and pushes are theirs
    (`.agents/rules/git.md`), never yours.
 
 ## Don't
 
-- Don't create a second roadmap file, an `ARCHIVE.md`, or a CHANGELOG. Git
-  holds the history; that is the whole reason the section compresses.
+- Don't create a second roadmap file or an `ARCHIVE.md`. Git holds the
+  history; that is the whole reason the section compresses. `CHANGELOG.md`
+  is not one: it is what a consumer reads, written change by change
+  (ADR-0027), not the cycle's record.
 - Don't leave the finished section at full length "because it is useful" —
   a cycle that keeps 40 lines is what makes the file look unmaintainable
   after three of them.
@@ -78,6 +81,6 @@ second roadmap file would only ever raise "which one is current?".
   `/plan` come after, one line at a time.
 - Don't bump the version by hand or skip `/release` "because it is only a
   version number": it is eight places in `Cargo.toml`, a derivation from
-  the log, and the release notes.
+  the changelog and the log, and the version's changelog section.
 
 `$ARGUMENTS`
