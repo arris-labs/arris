@@ -6,7 +6,9 @@
 //! a scratch tree with a citation deliberately left dangling, not just by
 //! running clean against the real one. Beside it, the refusal histogram
 //! `docs/ROADMAP.md` records for the committed tier is held to the one
-//! its fixtures print.
+//! its fixtures print. And `CHANGELOG.md` is held to the shape `/release`
+//! and `tools/semver-gate.sh` read (ADR-0027): `## Unreleased` first, then
+//! released versions newest first, and a copy in every published crate.
 
 use std::path::{Path, PathBuf};
 
@@ -156,4 +158,103 @@ fn the_roadmap_holds_the_committed_tier_histogram() {
         histogram.markdown(),
         "print it again: cargo run -p arris-debug --example real_parts -- --committed"
     );
+}
+
+/// A released heading's `(major, minor, patch)` and date, from
+/// `## X.Y.Z — YYYY-MM-DD`.
+fn release_heading(heading: &str) -> Option<((u64, u64, u64), &str)> {
+    let (version, date) = heading.split_once(" — ")?;
+    let mut parts = version.split('.').map(|p| p.parse::<u64>().ok());
+    let v = (parts.next()??, parts.next()??, parts.next()??);
+    let is_date = date.len() == 10
+        && date.char_indices().all(|(i, c)| {
+            if i == 4 || i == 7 {
+                c == '-'
+            } else {
+                c.is_ascii_digit()
+            }
+        });
+    (parts.next().is_none() && is_date).then_some((v, date))
+}
+
+/// What is wrong with a changelog's `##` headings: the first must be
+/// `Unreleased`, every other a release heading, versions strictly and dates
+/// weakly descending.
+fn changelog_problems(text: &str) -> Vec<String> {
+    let headings: Vec<&str> = text.lines().filter_map(|l| l.strip_prefix("## ")).collect();
+    let mut problems = Vec::new();
+    if headings.first() != Some(&"Unreleased") {
+        problems.push("the first `##` heading is not `Unreleased`".to_string());
+    }
+    let mut previous: Option<((u64, u64, u64), &str)> = None;
+    for heading in headings.iter().skip(1) {
+        let Some((v, date)) = release_heading(heading) else {
+            problems.push(format!("`## {heading}` is not `## X.Y.Z — YYYY-MM-DD`"));
+            continue;
+        };
+        if let Some((pv, pdate)) = previous
+            && (v >= pv || date > pdate)
+        {
+            problems.push(format!(
+                "`## {heading}` is not older than the section above it"
+            ));
+        }
+        previous = Some((v, date));
+    }
+    problems
+}
+
+#[test]
+fn the_changelog_opens_on_unreleased_and_runs_newest_first() {
+    let text = std::fs::read_to_string(repo_root().join("CHANGELOG.md")).unwrap();
+    let problems = changelog_problems(&text);
+    assert!(
+        problems.is_empty(),
+        "CHANGELOG.md:\n{}",
+        problems.join("\n")
+    );
+}
+
+/// Each malformation is named, and a well-formed changelog passes.
+#[test]
+fn a_malformed_changelog_is_caught() {
+    let good = "# Changelog\n\n## Unreleased\n\n### Breaking\n\n## 0.2.0 — 2026-09-24\n\n## 0.1.1 — 2026-09-18\n";
+    assert!(changelog_problems(good).is_empty());
+    let no_unreleased = "## 0.2.0 — 2026-09-24\n";
+    assert_eq!(changelog_problems(no_unreleased).len(), 1);
+    let bad_heading = "## Unreleased\n## 0.2.0 (2026-09-24)\n";
+    assert_eq!(changelog_problems(bad_heading).len(), 1);
+    let out_of_order = "## Unreleased\n## 0.1.1 — 2026-09-18\n## 0.2.0 — 2026-09-24\n";
+    assert_eq!(changelog_problems(out_of_order).len(), 1);
+}
+
+/// Every crate that is published ships the changelog: a `CHANGELOG.md` in
+/// its directory that reads as the root one (a symlink to it, as the
+/// licences are), so `cargo package` puts it in the tarball.
+#[test]
+fn every_published_crate_ships_the_changelog() {
+    let root = repo_root();
+    let changelog = std::fs::read_to_string(root.join("CHANGELOG.md")).unwrap();
+    let mut problems = Vec::new();
+    let mut published = 0;
+    for entry in std::fs::read_dir(root.join("crates")).unwrap().flatten() {
+        let dir = entry.path();
+        let Ok(manifest) = std::fs::read_to_string(dir.join("Cargo.toml")) else {
+            continue;
+        };
+        if manifest.lines().any(|l| l.trim() == "publish = false") {
+            continue;
+        }
+        published += 1;
+        match std::fs::read_to_string(dir.join("CHANGELOG.md")) {
+            Ok(copy) if copy == changelog => {}
+            Ok(_) => problems.push(format!(
+                "{}: CHANGELOG.md differs from the root one",
+                dir.display()
+            )),
+            Err(_) => problems.push(format!("{}: no CHANGELOG.md", dir.display())),
+        }
+    }
+    assert_eq!(published, 8, "the eight published crates");
+    assert!(problems.is_empty(), "{}", problems.join("\n"));
 }

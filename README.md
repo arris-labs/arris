@@ -16,7 +16,7 @@ builds for `wasm32`.
 ## State
 
 Pre-1.0 and under development. The public API breaks between minor versions,
-and each break is listed in the release's commit. What is in today:
+and each break is listed, with its fix, in `CHANGELOG.md`. What is in today:
 
 - primitives, rigid transforms, and extrude and revolve of a profile of
   lines, arcs and elliptic arcs;

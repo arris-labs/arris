@@ -91,7 +91,7 @@ bound has to be established here.
 
   Record the job's runtime in the commit body. (The backlog line for
   `cargo-semver-checks` was removed when this plan was written.)
-- [ ] Step 2 **[1]** — ADR-0027 and its line in `docs/adr/README.md`.
+- [x] Step 2 **[1]** — ADR-0027 and its line in `docs/adr/README.md`.
   Write `CHANGELOG.md` with an empty `Unreleased` (nothing
   consumer-visible has landed since `v0.3.0`) and the backfilled sections
   for 0.1.0–0.3.0, in `/release` step 3's reader-facing style. Add the

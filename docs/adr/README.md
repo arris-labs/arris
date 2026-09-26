@@ -37,3 +37,4 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0024](0024-the-measuring-harness.md) | The measuring harness: a cached oracle, a differential over recipes, three property tiers, an in-house timer and fuzzing outside the workspace | accepted |
 | [0025](0025-the-step-reader-converts-refuses-and-flattens.md) | The STEP reader: what it converts, what it refuses by name, and what it flattens | accepted |
 | [0026](0026-the-real-part-corpus-and-the-refusal-table.md) | The real-part corpus: NIST's parts committed and fetched, the oracle reading healed, and every refusal mapped to the cycle it blocks | accepted |
+| [0027](0027-the-changelog-is-written-when-the-change-lands.md) | The changelog is written when the change lands, under `Unreleased`; a release versions it, and a break is announced before it can ship | accepted |
