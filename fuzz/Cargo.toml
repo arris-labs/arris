@@ -1,5 +1,5 @@
-# The fuzz targets over the intersectors (ADR-0024 §5) and the STEP
-# reader (ADR-0025). Outside the
+# The fuzz targets over the intersectors (ADR-0024 §5), the STEP
+# reader (ADR-0025) and body bytes (ADR-0029). Outside the
 # workspace: it builds on the nightly toolchain under `cargo fuzz`, its
 # dependencies are none of the workspace's, and it is never published.
 # `docs/ARCHITECTURE.md` §Formats and tools; `fuzz/README.md` for use.
@@ -17,8 +17,8 @@ arbitrary = "1.4"
 libfuzzer-sys = "0.4"
 arris-math = { path = "../crates/arris-math" }
 arris-geom = { path = "../crates/arris-geom" }
-# The Part 21 parser, without the native format's serde.
-arris-io = { path = "../crates/arris-io", default-features = false }
+# The Part 21 parser, and the native format's serde for body bytes.
+arris-io = { path = "../crates/arris-io", default-features = false, features = ["serde"] }
 
 # The seed writer reads the geometry fixtures through the loader the
 # oracle test uses, and builds the solid fixtures to write their STEP;
@@ -58,6 +58,13 @@ bench = false
 [[bin]]
 name = "step_read"
 path = "fuzz_targets/step_read.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "body_read"
+path = "fuzz_targets/body_read.rs"
 test = false
 doc = false
 bench = false

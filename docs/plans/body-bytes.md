@@ -164,7 +164,7 @@ bound has to be established here.
   and topology as the first and the same bytes from the second on (the
   first carries the writer's ids in its record and map, found in the
   step) — sharded with `prop_shards!` at the configured case count.
-- [ ] Step 8 **[1]** — a `body_read` fuzz target in `fuzz/`, seeded
+- [x] Step 8 **[1]** — a `body_read` fuzz target in `fuzz/`, seeded
   from the guard's bytes: any input is `Ok` with a checker-green body or
   a typed error, the target model unchanged on `Err`; `nightly.yml` runs
   it 30 minutes beside the other four.
@@ -214,3 +214,12 @@ count on the fixed seed (step 7). The body half of C5's accept line.
   and `sample::cuboid_nurbs` for the NURBS surface, which no recipe op
   builds. The dump is the body's text dump, the record as written and the
   foreign list.
+- Found in step 8: ten minutes of `body_read` (7.8 million inputs) found
+  no crash, and six inputs, all one cause, that exhaust memory in the
+  checker rather than the decoder: L5 collects every crossing pair of a
+  ring to test for one. Kept as an ignored test in
+  `crates/arris-io/tests/body.rs`, the fix a backlog line. libFuzzer's
+  fork mode ignores out-of-memory inputs, so the nightly does not fail
+  on it. Also fixed there: `fuzz/seed.rs` read `real/` part fixtures as
+  geometry fixtures and stopped, so the nightly's seed step had failed
+  for every target since the part fixtures landed.

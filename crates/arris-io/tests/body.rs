@@ -598,3 +598,15 @@ arris_debug::prop_shards! {
         Ok(())
     }
 }
+
+/// Found by the `body_read` fuzz target: the elliptic guard body with a
+/// pcurve mutated so far off its face that the checker's loop sweep
+/// discretises a ring of segments that all meet, and collects every pair
+/// of them (4 GiB) only to ask whether there is one.
+#[test]
+#[ignore = "arris-check's L5 collects every crossing pair of a ring to test for one: an allocation of 4 GiB (backlog)"]
+fn a_ring_whose_segments_all_meet_is_refused_without_exhausting_memory() {
+    let bytes = include_bytes!("body/regression/loop-sweep-every-pair.bin");
+    let e = refusal_of_bytes(bytes);
+    assert!(matches!(e, BodyError::Rejected(_)), "{e}");
+}

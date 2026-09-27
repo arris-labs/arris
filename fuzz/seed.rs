@@ -6,7 +6,8 @@
 //! `corpus/intersect_curve_surface/` — the fitted curves the fixtures
 //! only reach through a boolean — and every solid fixture's STEP to
 //! `corpus/step_read/`: Arris's own, and Open CASCADE's where the
-//! oracle's environment is there.
+//! oracle's environment is there — and every file of body bytes'
+//! guard, each version's `.bin` and `.json`, to `corpus/body_read/`.
 //!
 //! ```sh
 //! cargo run --manifest-path fuzz/Cargo.toml --example seed
@@ -47,7 +48,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut counts = BTreeMap::<&str, usize>::new();
     for dir in corpus() {
-        if kind_of(&dir)? == Kind::Solid {
+        let kind = kind_of(&dir)?;
+        // A part's STEP file is a whole real part, not a seed a mutation
+        // gets far with; the corpus runner reads every one already.
+        if kind == Kind::Part {
+            continue;
+        }
+        if kind == Kind::Solid {
             // A result Arris refuses by design, or one still failing
             // under `regression/`, has no file to seed from.
             let slug = name_of(&dir).replace('/', "-");
@@ -136,6 +143,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 _ => return Err(format!("{name}: a pair of unknown operands").into()),
             }
+        }
+    }
+    // Body bytes' guard, every version: bytes and JSON a release wrote.
+    let body_dir = root.join("body_read");
+    let guard = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../crates/arris-io/tests/body");
+    let mut versions: Vec<PathBuf> = std::fs::read_dir(&guard)?
+        .map(|e| e.map(|e| e.path()))
+        .collect::<Result<_, _>>()?;
+    versions.retain(|p| p.is_dir());
+    versions.sort();
+    for version in versions {
+        let tag = version.file_name().and_then(|n| n.to_str()).unwrap_or("v");
+        let mut files: Vec<PathBuf> = std::fs::read_dir(&version)?
+            .map(|e| e.map(|e| e.path()))
+            .collect::<Result<_, _>>()?;
+        files.retain(|p| matches!(p.extension().and_then(|x| x.to_str()), Some("bin" | "json")));
+        files.sort();
+        for file in files {
+            let name = file.file_name().and_then(|n| n.to_str()).unwrap_or("body");
+            write(&body_dir, &format!("{tag}-{name}"), std::fs::read(&file)?)?;
+            *counts.entry("body_read").or_default() += 1;
         }
     }
     for (target, n) in counts {
