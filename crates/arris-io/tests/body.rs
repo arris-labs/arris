@@ -492,3 +492,30 @@ fn a_plugins_cut_comes_back_with_its_record_in_the_senders_ids() {
     };
     assert_eq!(dense_dump(&a, read.body), dense_dump(&here, a_cut));
 }
+
+#[test]
+fn a_newer_version_is_refused_and_an_older_one_no_release_wrote_is_a_decode_error() {
+    let mut m = Model::default();
+    let b = sample::unit_box(&mut m).unwrap();
+    let bytes = body::write(&m, b, &Provenance::default()).unwrap();
+    // The version is the varint right after the magic, one byte below 128.
+    assert_eq!(u32::from(bytes[8]), BODY_VERSION);
+    let mut newer = bytes.clone();
+    newer[8] = BODY_VERSION as u8 + 1;
+    let found = BODY_VERSION + 1;
+    let version = BodyError::Version {
+        found,
+        newest: BODY_VERSION,
+    };
+    assert_eq!(refusal_of_bytes(&newer), version);
+    let mut older = bytes;
+    older[8] = 0;
+    assert!(matches!(refusal_of_bytes(&older), BodyError::Decode(_)));
+
+    let mut t = box_tree();
+    t["version"] = found.into();
+    assert_eq!(refusal_of_json(&t.to_string()), version);
+    t["version"] = 0.into();
+    let e = refusal_of_json(&t.to_string());
+    assert!(e.to_string().contains("no release wrote"), "{e}");
+}

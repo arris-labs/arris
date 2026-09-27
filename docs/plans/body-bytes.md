@@ -149,7 +149,7 @@ bound has to be established here.
   new kind fails to compile until the guard has a body with it. Blessing
   (`ARRIS_BLESS=1`) writes a version's files once and refuses to
   overwrite an existing one.
-- [ ] Step 6 **[2]** — the chain: `read` dispatches on the version
+- [x] Step 6 **[2]** — the chain: `read` dispatches on the version
   through `body::compat`, migrating one version at a time to the
   newest; `found > BODY_VERSION` is `Version`. The `#[cfg(test)]`
   version 0 — a v1 body with one field shaped differently — is written

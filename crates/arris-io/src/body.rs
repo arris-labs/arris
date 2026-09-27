@@ -23,7 +23,8 @@
 //!
 //! The wire is the model's own types: [`BODY_VERSION`] is bumped by the
 //! commit that changes one of them, which also freezes the old shape and
-//! writes the migration from it.
+//! writes the migration from it ([`compat`]). Every earlier version reads,
+//! migrated; a newer one is [`BodyError::Version`].
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -32,6 +33,8 @@ use arris_check::arris_topo::{
 };
 use arris_check::{Level, Report, check};
 use serde::{Deserialize, Serialize};
+
+pub mod compat;
 
 /// The version this crate writes: the newest it reads.
 pub const BODY_VERSION: u32 = 1;
@@ -262,24 +265,14 @@ pub fn to_json(model: &Model, body: Body, record: &Provenance) -> Result<String,
     .map_err(|e| BodyError::Encode(e.to_string()))
 }
 
-fn check_version(found: u32) -> Result<(), BodyError> {
-    if found == BODY_VERSION {
-        Ok(())
-    } else {
-        Err(BodyError::Version {
-            found,
-            newest: BODY_VERSION,
-        })
-    }
-}
-
 /// The body in `bytes` ([`write()`]'s) imported into `model`, with its
 /// record and the map from the writer's ids to `model`'s, checked at
-/// `Level::Full` in every build profile. On any error `model` is left as it was. Errors:
-/// [`BodyError::Magic`] for data that is not body bytes;
-/// [`BodyError::Version`] for a newer version; [`BodyError::Decode`] for
-/// a truncated or malformed stream, or a map that is not a one-to-one map
-/// onto the body; [`BodyError::Topo`] for a body whose
+/// `Level::Full` in every build profile; bytes of an earlier version are
+/// migrated to [`BODY_VERSION`] first ([`compat`]). On any error `model`
+/// is left as it was. Errors: [`BodyError::Magic`] for data that is not
+/// body bytes; [`BodyError::Version`] for a newer version;
+/// [`BodyError::Decode`] for a truncated or malformed stream, a version no
+/// release wrote, or a map that is not a one-to-one map onto the body; [`BodyError::Topo`] for a body whose
 /// references do not resolve; [`BodyError::Precision`] for a tolerance
 /// `model` cannot hold; [`BodyError::Rejected`] for a body the checker
 /// rejects.
@@ -299,9 +292,7 @@ pub fn read(model: &mut Model, bytes: &[u8]) -> Result<Imported, BodyError> {
     let rest = bytes.strip_prefix(&BODY_MAGIC).ok_or(BodyError::Magic)?;
     let (version, _): (u32, &[u8]) =
         postcard::take_from_bytes(rest).map_err(|e| BodyError::Decode(e.to_string()))?;
-    check_version(version)?;
-    let (_, decoded): (u32, BodyIn) =
-        postcard::from_bytes(rest).map_err(|e| BodyError::Decode(e.to_string()))?;
+    let decoded = compat::decode(version, compat::Postcard(rest))?;
     import(model, decoded, version)
 }
 
@@ -334,8 +325,7 @@ pub fn from_json(model: &mut Model, text: &str) -> Result<Imported, BodyError> {
         .and_then(serde_json::Value::as_u64)
         .and_then(|v| u32::try_from(v).ok())
         .ok_or_else(|| BodyError::Decode("no version a u32 holds".into()))?;
-    check_version(version)?;
-    let decoded = BodyIn::deserialize(tree).map_err(|e| BodyError::Decode(e.to_string()))?;
+    let decoded = compat::decode(version, tree)?;
     import(model, decoded, version)
 }
 
