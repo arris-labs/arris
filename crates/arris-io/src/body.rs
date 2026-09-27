@@ -19,7 +19,8 @@
 //! commit that changes one of them, which also freezes the old shape and
 //! writes the migration from it.
 
-use arris_check::arris_topo::{Body, IdMap, Model, Provenance, TopoError};
+use arris_check::arris_topo::{Body, EntityId, IdMap, Model, Provenance, TopoError};
+use arris_check::{Level, Report, check};
 use serde::{Deserialize, Serialize};
 
 /// The version this crate writes: the newest it reads.
@@ -56,9 +57,29 @@ pub enum BodyError {
     #[error("could not decode the body: {0}")]
     Decode(String),
     /// The body could not be copied: a handle did not resolve, in the
-    /// writer's model on [`write()`] or in the decoded one on [`read`].
+    /// writer's model on [`write()`] or in the decoded one on [`read`]
+    /// (a reference the bytes hold to nothing).
     #[error(transparent)]
     Topo(#[from] TopoError),
+    /// An entity's tolerance lies outside the reading model's
+    /// `[min_tolerance, max_tolerance]`: the body was written under a
+    /// precision this model says cannot exist. Never rescaled (ADR-0029).
+    #[error("{entity} has tolerance {tolerance:e}, outside this model's [{min:e}, {max:e}]")]
+    Precision {
+        /// The entity, in the ids the bytes hold (dense, from zero).
+        entity: EntityId,
+        /// Its tolerance.
+        tolerance: f64,
+        /// The reading model's `min_tolerance`.
+        min: f64,
+        /// The reading model's `max_tolerance`.
+        max: f64,
+    },
+    /// The body decoded and copied, but the checker at `Level::Full`
+    /// rejects it in the reading model: faces that cross, a body inside
+    /// out, a vertex off its edges. The report names every violation.
+    #[error("the body read is not valid:\n{0}")]
+    Rejected(Box<Report>),
 }
 
 /// What [`read`] returns: the body in the caller's model and its record
@@ -101,27 +122,6 @@ struct JsonOut<'m> {
     model: &'m Model,
     body: Body,
     provenance: &'m Provenance,
-}
-
-/// The JSON header alone, read before the body so a mismatch never fails
-/// as a decode error deep inside the arenas.
-#[derive(Deserialize)]
-struct JsonHeader {
-    magic: String,
-    version: u32,
-}
-
-/// What is read from JSON at [`BODY_VERSION`], once the header has
-/// passed.
-#[derive(Deserialize)]
-struct JsonIn {
-    #[allow(dead_code)]
-    magic: String,
-    #[allow(dead_code)]
-    version: u32,
-    model: Model,
-    body: Body,
-    provenance: Provenance,
 }
 
 /// The body alone in a fresh model under `model`'s precision, and its
@@ -208,11 +208,14 @@ fn check_version(found: u32) -> Result<(), BodyError> {
 }
 
 /// The body in `bytes` ([`write()`]'s) imported into `model`, with its
-/// record at `model`'s ids. On any error `model` is left as it was.
-/// Errors: [`BodyError::Magic`] for data that is not body bytes;
+/// record at `model`'s ids, checked at `Level::Full` in every build
+/// profile. On any error `model` is left as it was. Errors:
+/// [`BodyError::Magic`] for data that is not body bytes;
 /// [`BodyError::Version`] for a newer version; [`BodyError::Decode`] for
 /// a truncated or malformed stream; [`BodyError::Topo`] for a body whose
-/// references do not resolve.
+/// references do not resolve; [`BodyError::Precision`] for a tolerance
+/// `model` cannot hold; [`BodyError::Rejected`] for a body the checker
+/// rejects.
 ///
 /// ```
 /// use arris_debug::sample;
@@ -236,7 +239,8 @@ pub fn read(model: &mut Model, bytes: &[u8]) -> Result<Imported, BodyError> {
 }
 
 /// The body in `text` ([`to_json()`]'s) imported into `model`, as [`read`]
-/// does, with the same errors.
+/// does, with the same errors; text that is not JSON at all is
+/// [`BodyError::Decode`], JSON without the magic [`BodyError::Magic`].
 ///
 /// ```
 /// use arris_debug::sample;
@@ -250,30 +254,78 @@ pub fn read(model: &mut Model, bytes: &[u8]) -> Result<Imported, BodyError> {
 /// assert_eq!(body::from_json(&mut b, &text).unwrap().version, body::BODY_VERSION);
 /// ```
 pub fn from_json(model: &mut Model, text: &str) -> Result<Imported, BodyError> {
-    let header: JsonHeader = serde_json::from_str(text).map_err(|_| BodyError::Magic)?;
-    if header.magic != JSON_MAGIC {
+    // A tree first, so the magic and the version are read before the
+    // body and a mismatch never fails as a decode error deep inside the
+    // arenas; every real was parsed to its exact `f64` already.
+    let tree: serde_json::Value =
+        serde_json::from_str(text).map_err(|e| BodyError::Decode(e.to_string()))?;
+    if tree.get("magic").and_then(serde_json::Value::as_str) != Some(JSON_MAGIC) {
         return Err(BodyError::Magic);
     }
-    check_version(header.version)?;
-    let decoded: JsonIn =
-        serde_json::from_str(text).map_err(|e| BodyError::Decode(e.to_string()))?;
-    let body = BodyIn {
-        model: decoded.model,
-        body: decoded.body,
-        provenance: decoded.provenance,
-    };
-    import(model, body, header.version)
+    let version = tree
+        .get("version")
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|v| u32::try_from(v).ok())
+        .ok_or_else(|| BodyError::Decode("no version a u32 holds".into()))?;
+    check_version(version)?;
+    let decoded = BodyIn::deserialize(tree).map_err(|e| BodyError::Decode(e.to_string()))?;
+    import(model, decoded, version)
 }
 
-/// The decoded body copied into `model` inside a transaction.
+/// Refuses the first vertex, edge or face of `body` (in that order, each
+/// kind ascending) whose tolerance lies outside `model`'s range.
+fn check_tolerances(model: &Model, scratch: &Model, body: Body) -> Result<(), BodyError> {
+    let p = model.precision();
+    let closure = scratch.closure(body).map_err(TopoError::from)?;
+    let within = |entity: EntityId, tolerance: f64| {
+        if p.min_tolerance <= tolerance && tolerance <= p.max_tolerance {
+            Ok(())
+        } else {
+            Err(BodyError::Precision {
+                entity,
+                tolerance,
+                min: p.min_tolerance,
+                max: p.max_tolerance,
+            })
+        }
+    };
+    for &v in &closure.vertices {
+        within(
+            v.into(),
+            scratch.vertex(v).map_err(TopoError::from)?.tolerance(),
+        )?;
+    }
+    for &e in &closure.edges {
+        within(
+            e.into(),
+            scratch.edge(e).map_err(TopoError::from)?.tolerance(),
+        )?;
+    }
+    for &f in &closure.faces {
+        within(
+            f.into(),
+            scratch.face(f).map_err(TopoError::from)?.tolerance(),
+        )?;
+    }
+    Ok(())
+}
+
+/// The decoded body copied into `model` inside a transaction and checked
+/// there at `Level::Full`, in every build profile: the bytes are input
+/// from outside the kernel (ADR-0029 §6).
 fn import(model: &mut Model, decoded: BodyIn, version: u32) -> Result<Imported, BodyError> {
     let BodyIn {
         model: scratch,
         body,
         provenance,
     } = decoded;
+    check_tolerances(model, &scratch, body)?;
     model.transaction(|m| {
         let (copy, map) = m.import(&scratch, body)?;
+        let report = check(m, copy, Level::Full);
+        if !report.is_ok() {
+            return Err(BodyError::Rejected(Box::new(report)));
+        }
         Ok(Imported {
             body: copy,
             provenance: provenance.mapped(&map),

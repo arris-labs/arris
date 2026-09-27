@@ -2,12 +2,15 @@
 //! record written and read back through both encodings, into a fresh
 //! model and into one that already holds bodies; the same body gives the
 //! same bytes from any model that holds it; what is not body bytes is
-//! refused at the magic.
+//! refused at the magic; every other refusal is typed and leaves the
+//! reading model as it was.
 
 use arris_debug::{dump_text, sample};
-use arris_io::arris_check::arris_topo::arris_math::{Axis, Point2, Point3};
+use arris_io::arris_check::arris_topo::arris_math::{Axis, Point2, Point3, Precision};
 use arris_io::arris_check::arris_topo::provenance::ConsumerKey;
-use arris_io::arris_check::arris_topo::{Body, Model, Origin, Provenance, Role};
+use arris_io::arris_check::arris_topo::{
+    Body, EntityId, Model, Origin, Provenance, Role, TopoError, VertexId,
+};
 use arris_io::arris_check::{Level, check};
 use arris_io::body::{self, BODY_VERSION, BodyError, Imported};
 use arris_io::native;
@@ -204,6 +207,142 @@ fn a_native_model_is_not_body_bytes() {
         Err(BodyError::Magic)
     );
     assert_eq!(body::read(&mut b, b""), Err(BodyError::Magic));
-    assert_eq!(body::from_json(&mut b, "not json"), Err(BodyError::Magic));
+    assert!(matches!(
+        body::from_json(&mut b, "not json"),
+        Err(BodyError::Decode(_))
+    ));
     assert_eq!(native::to_bytes(&b).unwrap(), before, "nothing appended");
+}
+
+/// A model that already holds a body, for the refusals to leave alone.
+fn target() -> Model {
+    let mut m = Model::default();
+    sample::cylinder(&mut m, 2.0, 3.0).unwrap();
+    m
+}
+
+/// The unit box's body JSON as a tree, to be broken on purpose.
+fn box_tree() -> serde_json::Value {
+    let mut m = Model::default();
+    let b = sample::unit_box(&mut m).unwrap();
+    serde_json::from_str(&body::to_json(&m, b, &Provenance::default()).unwrap()).unwrap()
+}
+
+/// The refusal of `text`, having asserted that it left the model as it
+/// was, byte for byte.
+fn refusal_of_json(text: &str) -> BodyError {
+    let mut m = target();
+    let before = native::to_bytes(&m).unwrap();
+    let e = body::from_json(&mut m, text).unwrap_err();
+    assert_eq!(
+        native::to_bytes(&m).unwrap(),
+        before,
+        "{e}: the model changed"
+    );
+    e
+}
+
+/// The same for bytes.
+fn refusal_of_bytes(bytes: &[u8]) -> BodyError {
+    let mut m = target();
+    let before = native::to_bytes(&m).unwrap();
+    let e = body::read(&mut m, bytes).unwrap_err();
+    assert_eq!(
+        native::to_bytes(&m).unwrap(),
+        before,
+        "{e}: the model changed"
+    );
+    e
+}
+
+#[test]
+fn a_body_turned_inside_out_is_rejected_by_the_checker() {
+    let mut t = box_tree();
+    t["model"]["bodies"][0]["value"]["shells"][0]["orientation"] = "Reversed".into();
+    let e = refusal_of_json(&t.to_string());
+    assert!(matches!(e, BodyError::Rejected(_)), "{e}");
+}
+
+#[test]
+fn a_vertex_moved_off_its_edges_is_rejected_by_the_checker() {
+    let mut t = box_tree();
+    t["model"]["vertices"][0]["value"]["point"] = serde_json::json!([0.25, 0.25, 0.25]);
+    let e = refusal_of_json(&t.to_string());
+    let BodyError::Rejected(report) = &e else {
+        panic!("{e}")
+    };
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn a_reference_to_nothing_is_a_topo_error_naming_it() {
+    let mut t = box_tree();
+    t["model"]["faces"][0]["value"]["surface"]["index"] = 99.into();
+    let e = refusal_of_json(&t.to_string());
+    assert!(matches!(e, BodyError::Topo(TopoError::NotFound(_))), "{e}");
+    assert!(e.to_string().contains("99"), "{e}");
+}
+
+#[test]
+fn a_truncated_stream_is_a_decode_error() {
+    let mut m = Model::default();
+    let b = sample::unit_box(&mut m).unwrap();
+    let bytes = body::write(&m, b, &Provenance::default()).unwrap();
+    for cut in [9, bytes.len() / 2, bytes.len() - 1] {
+        let e = refusal_of_bytes(&bytes[..cut]);
+        assert!(matches!(e, BodyError::Decode(_)), "cut at {cut}: {e}");
+    }
+    let text = body::to_json(&m, b, &Provenance::default()).unwrap();
+    let e = refusal_of_json(&text[..text.len() / 2]);
+    assert!(matches!(e, BodyError::Decode(_)), "{e}");
+}
+
+/// The unit box written under `p` and read into a default model.
+fn read_under(p: Precision) -> Result<Imported, BodyError> {
+    let mut w = Model::new(p).unwrap();
+    let b = sample::unit_box(&mut w).unwrap();
+    let bytes = body::write(&w, b, &Provenance::default()).unwrap();
+    let mut m = target();
+    let before = native::to_bytes(&m).unwrap();
+    let r = body::read(&mut m, &bytes);
+    if r.is_err() {
+        assert_eq!(native::to_bytes(&m).unwrap(), before);
+    }
+    r
+}
+
+#[test]
+fn a_tolerance_outside_the_readers_range_is_refused_never_rescaled() {
+    let default = Precision::DEFAULT;
+    let finer = Precision {
+        default_tolerance: default.min_tolerance / 10.0,
+        min_tolerance: default.min_tolerance / 100.0,
+        ..default
+    };
+    let e = read_under(finer).unwrap_err();
+    assert_eq!(
+        e,
+        BodyError::Precision {
+            entity: EntityId::Vertex(VertexId::new(0, 0)),
+            tolerance: finer.default_tolerance,
+            min: default.min_tolerance,
+            max: default.max_tolerance,
+        }
+    );
+    let coarser = Precision {
+        default_tolerance: default.max_tolerance * 10.0,
+        max_tolerance: default.max_tolerance * 100.0,
+        ..default
+    };
+    assert!(matches!(
+        read_under(coarser),
+        Err(BodyError::Precision { tolerance, .. }) if tolerance == coarser.default_tolerance
+    ));
+    // Another precision whose tolerances the reader can hold reads.
+    let other = Precision {
+        default_tolerance: 1e-5,
+        angular_tolerance: 1e-10,
+        ..default
+    };
+    assert!(read_under(other).is_ok());
 }

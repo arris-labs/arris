@@ -111,13 +111,16 @@ bound has to be established here.
   bodies, the same up to the returned map; the same body written from a
   model full of holes and from a dense copy gives the same bytes; two
   writes are identical; native model bytes are `BodyError::Magic`.
-- [ ] Step 3 **[2]** — trust and precision: every refusal typed, the
+- [x] Step 3 **[2]** — trust and precision: every refusal typed, the
   target model unchanged on every `Err` (its native bytes equal before
   and after). The checker at `Full` in every profile, `Rejected` with its
   report; a tolerance outside the target's range is `Precision` naming
   the entity in the writer's ids; hand-crafted JSON with a dangling
-  reference, a face that crosses itself, and a truncated stream each
-  fail typed, never panic.
+  reference (`Topo`), a body turned inside out and a vertex moved off its
+  edges (`Rejected`; a face crossing itself is not reachable by editing
+  JSON, and ADR-0028's crossing frame is `ops::build`'s test), and a
+  truncated stream (`Decode`) each fail typed, never panic. `from_json`
+  reads a tree first, so truncated JSON is `Decode`, not `Magic`.
 - [ ] Step 4 **[2]** — foreign origins: `IdMap::inverse` with its
   doctest; `Imported::foreign_origins`. The plugin round trip as a test:
   model A holds the frame and a cutter, both imported into model B, B
