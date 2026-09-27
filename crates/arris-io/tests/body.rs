@@ -6,6 +6,9 @@
 //! reading model as it was; a plugin's cut comes back with its record
 //! translatable into the ids of the model that sent the operands.
 
+#[path = "body/guard.rs"]
+mod guard;
+
 use std::collections::BTreeSet;
 
 use arris_debug::{dump_text, sample};

@@ -91,9 +91,9 @@ alters the decoding of an old file fails a test instead of shipping.
   it). Reading refuses origins out of order and an output listed twice.
 - **Crate boundary:** unchanged. `body` lives in `arris-io`, above
   `check` (ADR-0013), so it runs the checker on read.
-- **Fixture tree:** a guard directory of blessed bytes per version
-  (step 5; location settled there so the corpus lint, which reads
-  `tests/fixtures/` as recipe fixtures, is not confused by it).
+- **Fixture tree:** unchanged. The guard is `arris-io`'s own test data,
+  `crates/arris-io/tests/body/v<N>/`, beside the test that reads it and
+  packaged with the crate (step 5); the corpus lint never sees it.
 
 ## Steps
 
@@ -139,7 +139,7 @@ bound has to be established here.
   entity of A's operands, and the record's chains from A's operand
   faces reach the read body's faces as `provenance/split-frame-cut`
   reaches them in-process.
-- [ ] Step 5 **[2]** — the v1 guard: one blessed `.bin` and `.json`
+- [x] Step 5 **[2]** — the v1 guard: one blessed `.bin` and `.json`
   per body under the guard directory, for a set that covers every
   `Curve`, `Surface` and `Curve2` kind (the traced and fitted sections,
   NURBS, the elliptic cylinder, the torus), a consumer-keyed record from
@@ -202,8 +202,13 @@ count on the fixed seed (step 7). The body half of C5's accept line.
 
 ## Open questions
 
-- ⚠ OPEN: the guard directory's location — under `tests/fixtures/` with
-  the corpus lint taught to skip it, or `crates/arris-io/tests/` beside
-  the test that reads it (and packaged with the crate). Agent decides
-  by step 5; the lean is the latter, since the guard is `arris-io`'s
-  own test data and not a recipe fixture.
+- Decided in step 5: the guard lives in `crates/arris-io/tests/body/v<N>/`
+  (`<name>.bin`, `.json`, `.dump.txt`), read by `tests/body/guard.rs`.
+  v1's set is six bodies, five of them corpus results
+  (`boolean/revolve-extrude-fuse-cut-rounding-knots` for every curve and
+  pcurve kind and the cone, sphere and torus; `boolean/ring-pin-cut` for
+  the torus walker's traced section; `boolean/elliptic-operand-cut`;
+  `build/tetrahedron`; `provenance/split-frame-cut` for foreign origins)
+  and `sample::cuboid_nurbs` for the NURBS surface, which no recipe op
+  builds. The dump is the body's text dump, the record as written and the
+  foreign list.
