@@ -135,3 +135,38 @@ body, distrust of its input, and a rule for a `Precision` that differs.
 - **Storing whole native models per frozen feature.** They are full of
   holes unless imported first, much larger, and lost at the first
   version bump.
+
+## Amendment (2026-09-27, plan `body-bytes` step 4)
+
+**Decision 5 was wrong as worded, and decision 1 changes with it: the
+record travels unmapped, in the writer's ids, beside the map from the
+writer's ids to the dense ones.**
+
+Once a record has been mapped to dense ids, the body's entities carry
+dense ids and the foreign ones keep the writer's, and the two ranges
+overlap. The writer's operand face `f2` and the body's own dense face `f2`
+are then the same value in the record, and neither a stored flag nor a
+computed one can tell them apart. In-process `Provenance::mapped` into a
+model that is not fresh has the same overlap. It was harmless there only
+because nobody had needed to separate the two.
+
+- `write` encodes the dense model and the body as before. It also
+  encodes the record as the writer holds it and the `IdMap` its own
+  import into the fresh model returned (writer → dense). The geometry and
+  topology written are still identical whatever holes the writer's model
+  had. The record and the map are in the writer's ids, so they are not.
+- `read` refuses a map that is not one to one onto the body's closure as
+  `Decode`. It composes the map with its own import into the caller's
+  model and returns the writer → caller map as `Imported::map`, with the
+  record as written. A record entity that the map does not hold is
+  foreign (`Imported::foreign`). This is exact, because membership is
+  decided in the writer's ids, where no two entities share an id.
+- `Imported::translated(foreign)` puts the record into the caller's ids
+  in one pass over a single map: the body's entities through
+  `Imported::map`, the foreign ones through the map the caller supplies
+  (the inverse of the import that sent them). Because it is one pass, no
+  id is translated twice.
+- `IdMap` gains a JSON form in the same way `Provenance` did: a sequence
+  of pairs in key order, with `postcard` bytes unchanged.
+- `BodyError::Precision` names the entity in the writer's ids, through
+  the inverse of the written map.

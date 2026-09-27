@@ -359,16 +359,15 @@ pub struct Provenance {
     deleted: BTreeSet<Shape>,
 }
 
-/// A relation's map on the wire: a sequence of `(origin, outputs)` pairs
-/// in origin order, since JSON has no map keyed by anything but text.
-/// Read back, it is refused unless it is what a record could have held:
-/// origins strictly ascending, no output twice in one list (`push_once`).
+/// A relation's map on the wire: `(origin, outputs)` pairs in origin
+/// order (`crate::pairs`), refused on the way in unless a record could
+/// have held it — also no output twice in one list (`push_once`).
 #[cfg(feature = "serde")]
 mod records {
     use std::collections::BTreeMap;
 
     use serde::de::Error as _;
-    use serde::{Deserialize, Deserializer, Serializer};
+    use serde::{Deserializer, Serializer};
 
     use super::Origin;
     use crate::handle::Shape;
@@ -377,29 +376,19 @@ mod records {
         map: &BTreeMap<Origin, Vec<Shape>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        serializer.collect_seq(map)
+        crate::pairs::serialize(map, serializer)
     }
 
     pub(super) fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<BTreeMap<Origin, Vec<Shape>>, D::Error> {
-        let pairs = Vec::<(Origin, Vec<Shape>)>::deserialize(deserializer)?;
-        let mut map = BTreeMap::new();
-        for (origin, outputs) in pairs {
-            if map
-                .last_key_value()
-                .is_some_and(|(last, _)| *last >= origin)
-            {
-                return Err(D::Error::custom(format!(
-                    "record origins out of order at {origin}"
-                )));
-            }
+        let map: BTreeMap<Origin, Vec<Shape>> = crate::pairs::deserialize(deserializer)?;
+        for (origin, outputs) in &map {
             for (i, s) in outputs.iter().enumerate() {
                 if outputs[..i].contains(s) {
                     return Err(D::Error::custom(format!("{origin} lists {s} twice")));
                 }
             }
-            map.insert(origin, outputs);
         }
         Ok(map)
     }

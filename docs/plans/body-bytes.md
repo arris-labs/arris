@@ -12,17 +12,18 @@ One body and its `Provenance` leave a model as bytes and enter another,
 in the same process or another, today or releases later.
 `arris_io::body::write` imports the body into a fresh model under the
 writer's `Precision` (dense ids from zero, ADR-0010) and encodes that
-model and the record mapped through the import, under a magic and
+model, the record in the writer's ids and the writer → dense map, under a magic and
 `BODY_VERSION` — `postcard` for storage, JSON beside it for diffs, both
 deterministic byte for byte. `arris_io::body::read` decodes, migrates an
 earlier version through the chain in `body::compat`, refuses a newer one,
 refuses a tolerance outside the target's `[min_tolerance,
 max_tolerance]`, imports into the caller's model inside a transaction,
 runs the checker at `Full` in every build profile, and returns the new
-body, its record at the new ids, and the map — or a typed error with
-the model left as it was. Origins outside the body (a boolean's inputs)
-stay in the writer's ids and are reported as foreign; `IdMap::inverse`
-lets the consumer that sent the inputs translate them back. One blessed
+body, its record, and the writer → caller map — or a typed error with
+the model left as it was. Entities of the record outside the body (a
+boolean's inputs) are reported as foreign; `IdMap::inverse` lets the
+consumer that sent the inputs translate them back, and
+`Imported::translated` puts the whole record in its ids in one pass. One blessed
 bytes file per released version, covering every curve, surface and
 pcurve kind, is read in the suite forever, so a model change that
 alters the decoding of an old file fails a test instead of shipping.
@@ -56,9 +57,13 @@ alters the decoding of an old file fails a test instead of shipping.
   end to end. No format is shipped that no release ever wrote, and the
   roadmap's "the previous version's bytes read and migrate" is held by
   that test until v2 exists and by the v1 guard file from then on.
-- **Decided here:** a foreign origin is *computed* on read (an origin
-  the import's map does not hold), not written as a flag: the bytes
-  carry nothing derivable.
+- **Decided here, corrected in step 4 (ADR-0029's amendment):** the
+  record travels in the writer's ids beside the writer → dense `IdMap`.
+  A record mapped to dense ids cannot tell a foreign origin from a body
+  entity that has the same id, and neither a stored flag nor a computed
+  one fixes that. `read` returns the writer → caller map, `foreign()`,
+  and `translated(&IdMap)` to put everything in the caller's ids in one
+  pass.
 - **Decided here:** a magic precedes the version, so body bytes and
   native model bytes (both starting with the varint `1`) can never be
   mistaken for each other.
@@ -70,7 +75,9 @@ alters the decoding of an old file fails a test instead of shipping.
   - `pub fn read(model: &mut Model, bytes: &[u8]) -> Result<Imported, BodyError>`,
     `pub fn from_json(model: &mut Model, text: &str) -> Result<Imported, BodyError>`.
   - `pub struct Imported { pub body: Body, pub provenance: Provenance, pub map: IdMap, pub version: u32 }`
-    with `fn foreign_origins(&self) -> Vec<Shape>` (sorted, deduplicated).
+    — the record as written and the writer → caller map — with
+    `fn foreign(&self) -> Vec<Shape>` (writer's ids, ascending) and
+    `fn translated(&self, foreign: &IdMap) -> Provenance`.
   - `pub enum BodyError { Magic, Version { found, newest }, Encode(String), Decode(String), Precision { entity: EntityId, tolerance: f64, min: f64, max: f64 }, Rejected(Report), Topo(TopoError) }`
     — the exact variant set is fixed by step 2 and 3's tests.
   - `pub mod compat` (doc: the procedure for a bump), holding no
@@ -109,7 +116,8 @@ bound has to be established here.
   a fresh model to the same dump, measures bit for bit and the record
   equal to the written one mapped; into a model that already holds
   bodies, the same up to the returned map; the same body written from a
-  model full of holes and from a dense copy gives the same bytes; two
+  model full of holes and from a dense copy gives the same dense model
+  (the same bytes until step 4 put the record in the writer's ids); two
   writes are identical; native model bytes are `BodyError::Magic`.
 - [x] Step 3 **[2]** — trust and precision: every refusal typed, the
   target model unchanged on every `Err` (its native bytes equal before
@@ -121,8 +129,10 @@ bound has to be established here.
   JSON, and ADR-0028's crossing frame is `ops::build`'s test), and a
   truncated stream (`Decode`) each fail typed, never panic. `from_json`
   reads a tree first, so truncated JSON is `Decode`, not `Magic`.
-- [ ] Step 4 **[2]** — foreign origins: `IdMap::inverse` with its
-  doctest; `Imported::foreign_origins`. The plugin round trip as a test:
+- [x] Step 4 **[2]** — foreign origins: `IdMap::inverse` with its
+  doctest; `Imported::foreign` and `Imported::translated`, the record
+  carried in the writer's ids with the writer → dense map (ADR-0029's
+  amendment), a map not one to one onto the body refused. The plugin round trip as a test:
   model A holds the frame and a cutter, both imported into model B, B
   cuts, the result and its record are written, read back into A; every
   foreign origin, sent through the inverse of B's import maps, is an
@@ -174,7 +184,9 @@ count on the fixed seed (step 7). The body half of C5's accept line.
   the guard, the foreign-origin rule; the "a file of another version is
   `NativeError::Version`" sentence scoped to the whole-model format.
 - `docs/DATA-MODEL.md` §Provenance — a record crossing models:
-  `mapped`, foreign origins, `IdMap::inverse`.
+  `mapped`, foreign origins, `IdMap::inverse`, `Imported::translated`;
+  and the overlap `mapped` has when a record names entities outside the
+  imported body and the target is not fresh (ADR-0029's amendment).
 - `docs/ARCHITECTURE.md` — the `arris-io` row of the crate table (`body`
   beside `native`); §Formats and tools, the body bytes entry beside the
   native one; the measuring harness's fuzz-target count (five).

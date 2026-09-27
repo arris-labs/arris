@@ -3,19 +3,22 @@
 //! model and into one that already holds bodies; the same body gives the
 //! same bytes from any model that holds it; what is not body bytes is
 //! refused at the magic; every other refusal is typed and leaves the
-//! reading model as it was.
+//! reading model as it was; a plugin's cut comes back with its record
+//! translatable into the ids of the model that sent the operands.
+
+use std::collections::BTreeSet;
 
 use arris_debug::{dump_text, sample};
 use arris_io::arris_check::arris_topo::arris_math::{Axis, Point2, Point3, Precision};
 use arris_io::arris_check::arris_topo::provenance::ConsumerKey;
 use arris_io::arris_check::arris_topo::{
-    Body, EntityId, Model, Origin, Provenance, Role, TopoError, VertexId,
+    Body, EntityId, IdMap, Model, Origin, Provenance, Role, TopoError, VertexId,
 };
 use arris_io::arris_check::{Level, check};
 use arris_io::body::{self, BODY_VERSION, BodyError, Imported};
 use arris_io::native;
 use arris_ops::measure::mass_properties;
-use arris_ops::{primitive_box, primitive_cylinder};
+use arris_ops::{cut, primitive_box, primitive_cylinder};
 
 /// A body and the record it was written with.
 struct Case {
@@ -113,7 +116,18 @@ fn every_case_reads_into_a_fresh_model_as_its_dense_copy() {
             assert_eq!(read.version, BODY_VERSION);
             assert_eq!(read.body, copy, "{}: the same ids as a dense copy", c.name);
             assert_eq!(dump_text(&m, read.body).unwrap(), dump, "{}", c.name);
-            assert_eq!(read.provenance, record, "{}", c.name);
+            assert_eq!(
+                read.provenance, c.record,
+                "{}: as the writer held it",
+                c.name
+            );
+            assert_eq!(
+                read.translated(&IdMap::default()),
+                record,
+                "{}: at the dense ids",
+                c.name
+            );
+            assert!(read.foreign().is_empty(), "{}", c.name);
             assert_eq!(
                 mass_properties(&m, read.body).unwrap(),
                 measures,
@@ -138,8 +152,14 @@ fn every_case_reads_into_a_populated_model_up_to_the_returned_map() {
         let dump = dump_text(&fresh, copy).unwrap();
         for (m, read) in both_read(&c, &populated) {
             assert_ne!(read.body, copy, "{}: not at the dense ids", c.name);
-            assert_eq!(read.map.bodies[&copy.id], read.body.id);
-            assert_eq!(read.provenance, record.mapped(&read.map), "{}", c.name);
+            assert_eq!(read.map.bodies[&c.body.id], read.body.id);
+            assert_eq!(
+                read.translated(&IdMap::default()),
+                c.record.mapped(&read.map),
+                "{}",
+                c.name
+            );
+            let _ = record;
             // The same body, once copied out densely again.
             let mut again = Model::default();
             let (back, _) = again.import(&m, read.body).unwrap();
@@ -153,7 +173,7 @@ fn every_case_reads_into_a_populated_model_up_to_the_returned_map() {
 }
 
 #[test]
-fn the_same_body_gives_the_same_bytes_from_a_model_full_of_holes() {
+fn the_same_body_is_the_same_dense_model_from_a_model_full_of_holes() {
     let mut holey = Model::default();
     let cube = sample::unit_box(&mut holey).unwrap();
     let (cyl, record) =
@@ -164,13 +184,28 @@ fn the_same_body_gives_the_same_bytes_from_a_model_full_of_holes() {
     let mut dense = Model::default();
     let (copy, map) = dense.import(&holey, cyl).unwrap();
     let dense_record = record.mapped(&map);
+    // The geometry and topology written are the same; the record and the
+    // map are each writer's own ids, so they differ.
+    let tree = |text: String| serde_json::from_str::<serde_json::Value>(&text).unwrap();
+    let a = tree(body::to_json(&holey, cyl, &record).unwrap());
+    let b = tree(body::to_json(&dense, copy, &dense_record).unwrap());
+    assert_eq!(a["model"], b["model"]);
+    assert_eq!(a["body"], b["body"]);
+    assert_ne!(a["map"], b["map"]);
+    // And both read to the same body with the same record in the reader's
+    // ids.
+    let mut ra = Model::default();
+    let from_holey = body::read(&mut ra, &body::write(&holey, cyl, &record).unwrap()).unwrap();
+    let mut rb = Model::default();
+    let from_dense =
+        body::read(&mut rb, &body::write(&dense, copy, &dense_record).unwrap()).unwrap();
     assert_eq!(
-        body::write(&holey, cyl, &record).unwrap(),
-        body::write(&dense, copy, &dense_record).unwrap()
+        dump_text(&ra, from_holey.body).unwrap(),
+        dump_text(&rb, from_dense.body).unwrap()
     );
     assert_eq!(
-        body::to_json(&holey, cyl, &record).unwrap(),
-        body::to_json(&dense, copy, &dense_record).unwrap()
+        from_holey.translated(&IdMap::default()),
+        from_dense.translated(&IdMap::default())
     );
 }
 
@@ -345,4 +380,112 @@ fn a_tolerance_outside_the_readers_range_is_refused_never_rescaled() {
         ..default
     };
     assert!(read_under(other).is_ok());
+}
+
+#[test]
+fn a_map_that_is_not_one_to_one_onto_the_body_is_refused() {
+    let mut t = box_tree();
+    t["map"]["faces"].as_array_mut().unwrap().pop();
+    let e = refusal_of_json(&t.to_string());
+    assert!(matches!(e, BodyError::Decode(_)), "{e}");
+    let mut t = box_tree();
+    t["map"]["faces"][0][1] = t["map"]["faces"][1][1].clone();
+    let e = refusal_of_json(&t.to_string());
+    assert!(matches!(e, BodyError::Decode(_)), "{e}");
+}
+
+/// Every entity of `body`, by id.
+fn entities(m: &Model, body: Body) -> BTreeSet<EntityId> {
+    let c = m.closure(body).unwrap();
+    let mut out: BTreeSet<EntityId> = BTreeSet::from([body.id.into()]);
+    out.extend(c.vertices.iter().map(|&v| EntityId::from(v)));
+    out.extend(c.edges.iter().map(|&e| EntityId::from(e)));
+    out.extend(c.faces.iter().map(|&f| EntityId::from(f)));
+    out.extend(c.shells.iter().map(|&s| EntityId::from(s)));
+    out
+}
+
+/// `extra`'s entity pairs added to `map`.
+fn union(mut map: IdMap, extra: &IdMap) -> IdMap {
+    map.vertices.extend(&extra.vertices);
+    map.edges.extend(&extra.edges);
+    map.faces.extend(&extra.faces);
+    map.shells.extend(&extra.shells);
+    map.bodies.extend(&extra.bodies);
+    map
+}
+
+#[test]
+fn a_plugins_cut_comes_back_with_its_record_in_the_senders_ids() {
+    // The application's model A sends a frame and a bar to the plugin's
+    // model B, which cuts one with the other and writes the result back.
+    // A holds a box first, so its ids and B's differ.
+    let mut a = Model::default();
+    sample::unit_box(&mut a).unwrap();
+    let frame = sample::frame(
+        &mut a,
+        Point3::origin(),
+        Point3::new(40.0, 30.0, 10.0),
+        Point2::new(10.0, 10.0),
+        Point2::new(30.0, 20.0),
+    )
+    .unwrap();
+    let (bar, _) = primitive_box(&mut a, [18.0, -1.0, -1.0], [22.0, 31.0, 11.0]).unwrap();
+    let mut b = Model::default();
+    let (b_frame, frame_map) = b.import(&a, frame).unwrap();
+    let (b_bar, bar_map) = b.import(&a, bar).unwrap();
+    let (b_cut, b_record) = cut(&mut b, b_frame, b_bar).unwrap();
+    let bytes = body::write(&b, b_cut, &b_record).unwrap();
+
+    // The same cut in A itself: what the record has to amount to.
+    let mut here = a.clone();
+    let (a_cut, a_record) = cut(&mut here, frame, bar).unwrap();
+
+    let read = body::read(&mut a, &bytes).unwrap();
+    let back = union(frame_map.inverse(), &bar_map.inverse());
+    let operands: BTreeSet<EntityId> = entities(&a, frame)
+        .union(&entities(&a, bar))
+        .copied()
+        .collect();
+    assert!(!read.foreign().is_empty(), "a cut names its inputs");
+    for s in read.foreign() {
+        let t = back.map(s).unwrap_or_else(|| panic!("{s} was not sent"));
+        assert!(operands.contains(&t.id), "{s} → {t} is not an operand's");
+    }
+
+    let mine = read.translated(&back);
+    let body_ids = entities(&a, read.body);
+    for s in mine.outputs() {
+        assert!(body_ids.contains(&s.id), "{s} is not the read body's");
+    }
+    assert_eq!(
+        mine.deleted().collect::<Vec<_>>(),
+        a_record.deleted().collect::<Vec<_>>(),
+        "the same operand entities deleted, in A's ids"
+    );
+    let origins = |p: &Provenance| p.origins_recorded().collect::<Vec<_>>();
+    assert_eq!(
+        origins(&mine),
+        origins(&a_record),
+        "the same origins, in A's ids"
+    );
+    for o in origins(&a_record) {
+        assert_eq!(
+            mine.generated_from(o).len(),
+            a_record.generated_from(o).len(),
+            "{o}"
+        );
+        assert_eq!(
+            mine.modified_from(o).len(),
+            a_record.modified_from(o).len(),
+            "{o}"
+        );
+    }
+    // And the body is the one the cut makes in A, once both are dense.
+    let dense_dump = |m: &Model, body: Body| {
+        let mut d = Model::default();
+        let (copy, _) = d.import(m, body).unwrap();
+        dump_text(&d, copy).unwrap()
+    };
+    assert_eq!(dense_dump(&a, read.body), dense_dump(&here, a_cut));
 }

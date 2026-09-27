@@ -21,6 +21,8 @@ mod id;
 mod idmap;
 mod model;
 mod orientation;
+#[cfg(feature = "serde")]
+mod pairs;
 pub mod provenance;
 mod walk;
 
