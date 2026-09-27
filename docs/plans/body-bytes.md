@@ -157,11 +157,13 @@ bound has to be established here.
   module doc states the procedure for a bump (freeze the touched types'
   old shape into `compat::vN`, bump, write `vN → vN+1`, bless the new
   guard beside the old).
-- [ ] Step 7 **[2]** — the round-trip property: bodies drawn by
+- [x] Step 7 **[2]** — the round-trip property: bodies drawn by
   `prop::recipe`, written and read into a fresh model and into a
   populated one — checker green, counts, mass properties bit for bit,
-  record equal to the written one mapped, bytes of a re-write equal to
-  the first — sharded with `prop_shards!` at the configured case count.
+  record equal to the written one mapped, a re-write the same geometry
+  and topology as the first and the same bytes from the second on (the
+  first carries the writer's ids in its record and map, found in the
+  step) — sharded with `prop_shards!` at the configured case count.
 - [ ] Step 8 **[1]** — a `body_read` fuzz target in `fuzz/`, seeded
   from the guard's bytes: any input is `Ok` with a checker-green body or
   a typed error, the target model unchanged on `Err`; `nightly.yml` runs

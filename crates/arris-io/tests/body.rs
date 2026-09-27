@@ -23,6 +23,11 @@ use arris_io::native;
 use arris_ops::measure::mass_properties;
 use arris_ops::{cut, primitive_box, primitive_cylinder};
 
+use arris_debug::corpus;
+use arris_debug::prop::recipe::recipe;
+use arris_debug::testing::fail;
+use proptest::prelude::*;
+
 /// A body and the record it was written with.
 struct Case {
     name: &'static str,
@@ -518,4 +523,78 @@ fn a_newer_version_is_refused_and_an_older_one_no_release_wrote_is_a_decode_erro
     t["version"] = 0.into();
     let e = refusal_of_json(&t.to_string());
     assert!(e.to_string().contains("no release wrote"), "{e}");
+}
+
+/// The part of a body's JSON that is its geometry and topology, not the
+/// writer's ids: equal for the same body whatever model it was written
+/// from.
+fn dense_part(text: &str) -> Result<(serde_json::Value, serde_json::Value), TestCaseError> {
+    let tree: serde_json::Value = serde_json::from_str(text).map_err(fail)?;
+    Ok((tree["model"].clone(), tree["body"].clone()))
+}
+
+arris_debug::prop_shards! {
+    /// Bodies drawn by the recipe strategy (booleans of posed boxes,
+    /// cylinders, extrusions and blends) and their records, written and
+    /// read into a fresh model and a populated one: checker green, the
+    /// same counts, the same mass properties bit for bit, the record as
+    /// written and equal to it mapped, and re-writing a read body gives
+    /// the same geometry and topology, the same bytes from then on.
+    every_drawn_body_round_trips_through_its_bytes
+        [s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15] (r) = recipe() => {
+        // A panic or a typed refusal building the draw is the
+        // differential's to hold (tests/recipe.rs in arris-debug), not a
+        // question about body bytes.
+        let Ok(Ok(chain)) = std::panic::catch_unwind(|| corpus::build("generated/body", &r)) else {
+            return Ok(());
+        };
+        let body = chain.result().ok_or_else(|| fail("no result"))?;
+        let record = &chain.steps[&chain.result].provenance;
+        let m = &chain.model;
+        let closure = m.closure(body).map_err(fail)?;
+        let measures = mass_properties(m, body).map_err(fail)?;
+        let bytes = body::write(m, body, record).map_err(fail)?;
+        let text = body::to_json(m, body, record).map_err(fail)?;
+        prop_assert_eq!(&bytes, &body::write(m, body, record).map_err(fail)?);
+
+        let mut populated = Model::default();
+        sample::unit_box(&mut populated).map_err(fail)?;
+        sample::cylinder(&mut populated, 2.0, 3.0).map_err(fail)?;
+        for target in [Model::default(), populated] {
+            let mut t = target.clone();
+            let read = body::read(&mut t, &bytes).map_err(fail)?;
+            let report = check(&t, read.body, Level::Full);
+            prop_assert!(report.is_ok(), "{}", report);
+            let c = t.closure(read.body).map_err(fail)?;
+            prop_assert_eq!(
+                (c.faces.len(), c.edges.len(), c.vertices.len(), c.shells.len()),
+                (closure.faces.len(), closure.edges.len(), closure.vertices.len(), closure.shells.len())
+            );
+            prop_assert_eq!(mass_properties(&t, read.body).map_err(fail)?, measures);
+            prop_assert_eq!(&read.provenance, record);
+            prop_assert_eq!(read.translated(&IdMap::default()), record.mapped(&read.map));
+
+            let mut u = target.clone();
+            let from_text = body::from_json(&mut u, &text).map_err(fail)?;
+            prop_assert_eq!(&from_text, &read);
+
+            // Re-written from where it was read, the same body; its ids
+            // are the reader's now, so the record and the map are not
+            // the first bytes', and from there on nothing changes.
+            let mine = read.translated(&IdMap::default());
+            let again = body::to_json(&t, read.body, &mine).map_err(fail)?;
+            prop_assert_eq!(dense_part(&again)?, dense_part(&text)?);
+            let rewritten = body::write(&t, read.body, &mine).map_err(fail)?;
+            let mut fresh = Model::default();
+            let back = body::read(&mut fresh, &rewritten).map_err(fail)?;
+            let twice = body::write(&fresh, back.body, &back.translated(&IdMap::default()))
+                .map_err(fail)?;
+            let mut fresh2 = Model::default();
+            let back2 = body::read(&mut fresh2, &twice).map_err(fail)?;
+            let thrice = body::write(&fresh2, back2.body, &back2.translated(&IdMap::default()))
+                .map_err(fail)?;
+            prop_assert_eq!(twice, thrice);
+        }
+        Ok(())
+    }
 }
