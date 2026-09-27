@@ -36,7 +36,23 @@ Deletion is the "done" signal. Anything worth keeping was moved first.
 7. Anything deferred from the plan goes to `docs/BACKLOG.md` as one line.
 8. `git rm docs/plans/<slug>.md` and commit everything as
    `docs: retire plan <slug>` with a body listing the docs updated.
-9. End the reply with **one recommended next step**, read from the
+9. **Sweep the build cache.** A plan's commits leave a copy of every
+   crate and test binary per build in `target/`, and nothing removes
+   them: past a hundred gigabytes the disk fills and builds fail. After
+   the commit, keep what the workspace builds now and drop the rest
+   (`cargo-sweep`, installed per the setup in `AGENTS.md`):
+
+   ```sh
+   cargo sweep --stamp
+   cargo test --workspace --no-run && cargo clippy --workspace --all-targets
+   cargo sweep --file
+   rm -rf target/debug/incremental
+   ```
+
+   Say in the reply how much it freed (`cargo sweep` prints it). It
+   touches build output only, never tracked files, fixtures or
+   `target/oracle-cache`.
+10. End the reply with **one recommended next step**, read from the
    roadmap's open lines, the other active plan and the backlog: the
    skill to run and its argument (`/plan <slug>`, `/idea <topic>`,
    `/work <plan>`, `/close-cycle`) and one sentence on why it comes

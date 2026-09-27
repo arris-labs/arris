@@ -19,6 +19,7 @@ seeing geometry, live in `.agents/skills/` (same symlink arrangement).
 ```sh
 git config core.hooksPath .githooks   # fmt, clippy -D warnings, test, doc before every commit
 cargo install cargo-nextest --locked  # the hook runs the suite under nextest
+cargo install cargo-sweep --locked    # /retire-plan sweeps stale build output
 # Optional, only for the fuzz targets in fuzz/ (outside the workspace):
 rustup toolchain install nightly --profile minimal
 cargo install cargo-fuzz --locked
