@@ -77,6 +77,11 @@ alters the decoding of an old file fails a test instead of shipping.
     version module until v2.
 - **New public API, `arris-topo`:** `IdMap::inverse(&self) -> IdMap`
   (the map is injective by construction of `import`).
+- **Found in step 2, `arris-topo`:** `Provenance`'s `serde` form writes
+  each relation's map as a sequence of `(origin, outputs)` pairs, since
+  JSON has no map keyed by an `Origin`. `postcard` encodes a map entry and
+  a pair alike, so the native format's bytes are unchanged (a test holds
+  it). Reading refuses origins out of order and an output listed twice.
 - **Crate boundary:** unchanged. `body` lives in `arris-io`, above
   `check` (ADR-0013), so it runs the checker on read.
 - **Fixture tree:** a guard directory of blessed bytes per version
@@ -95,7 +100,7 @@ bound has to be established here.
   idea and the three decided here, the idea's options as the
   alternatives, and its amendment of DATA-MODEL §Native format; the ADR
   index updated. Docs only.
-- [ ] Step 2 **[2]** — `body::write`, `read`, `to_json`, `from_json`
+- [x] Step 2 **[2]** — `body::write`, `read`, `to_json`, `from_json`
   at v1 for the happy path: write through `import` into a fresh model
   with the writer's `Precision` and `Provenance::mapped`; read decodes
   into a scratch model and imports into the caller's inside a

@@ -1,6 +1,7 @@
 //! Formats of the Arris kernel: the STEP AP214 Part 21 writer and reader
-//! (ADR-0025), the native format (`serde` of the model), and the mesh
-//! formats STL and OBJ (ADR-0013).
+//! (ADR-0025), the native format (`serde` of the model), body bytes (one
+//! body and its record, read by every later release, ADR-0029), and the
+//! mesh formats STL and OBJ (ADR-0013).
 //!
 //! Guarantees: the native format round-trips a model to an identical text
 //! dump; STEP carries the B-Rep entity subset with pcurves written out, and
@@ -13,6 +14,8 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+#[cfg(feature = "serde")]
+pub mod body;
 #[cfg(feature = "serde")]
 pub mod native;
 pub mod obj;

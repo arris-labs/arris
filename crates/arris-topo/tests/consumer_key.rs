@@ -74,8 +74,7 @@ fn a_consumer_key_round_trips() {
     );
     assert_eq!(serde_json::from_str::<Role>(&json).unwrap(), role);
 
-    // And inside a record, as an origin, in the native format's bytes
-    // (a record's origin-keyed maps have no JSON form).
+    // And inside a record, as an origin, in the native format's bytes.
     let mut p = Provenance::new();
     p.add_generated(role, Shape::new(FaceId::new(3, 0), Orientation::Forward));
     let back: Provenance = postcard::from_bytes(&postcard::to_allocvec(&p).unwrap()).unwrap();

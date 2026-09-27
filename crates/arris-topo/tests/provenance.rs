@@ -321,3 +321,82 @@ fn is_kept_is_untouched_and_present() {
         )
     );
 }
+
+/// A record with every relation filled, a split list whose order is not
+/// sorted, and an origin of each kind.
+fn wire_record() -> Provenance {
+    let mut p = Provenance::new();
+    p.add_generated(Role::Box(BoxPart::Face(Coord::Z, Side::Max)), face(5));
+    p.add_generated(face(2), edge(9));
+    p.add_modified(face(1), face(7));
+    p.add_modified(face(1), face(3));
+    p.add_deleted(face(4));
+    p
+}
+
+#[test]
+fn a_record_round_trips_through_json_and_postcard() {
+    let p = wire_record();
+    let json = serde_json::to_string(&p).unwrap();
+    assert_eq!(serde_json::from_str::<Provenance>(&json).unwrap(), p);
+    let bytes = postcard::to_allocvec(&p).unwrap();
+    assert_eq!(postcard::from_bytes::<Provenance>(&bytes).unwrap(), p);
+    assert_eq!(
+        p.modified_from(face(1)),
+        [face(7), face(3)],
+        "the split order is kept"
+    );
+}
+
+#[test]
+fn a_record_encodes_to_the_same_postcard_bytes_as_its_maps_did() {
+    // The derive over plain maps that the pair form replaced: postcard
+    // writes a map entry and a pair alike, so the native format's bytes
+    // did not change.
+    #[derive(serde::Serialize)]
+    struct Maps {
+        generated: std::collections::BTreeMap<Origin, Vec<Shape>>,
+        modified: std::collections::BTreeMap<Origin, Vec<Shape>>,
+        deleted: BTreeSet<Shape>,
+    }
+    let p = wire_record();
+    let mut maps = Maps {
+        generated: Default::default(),
+        modified: Default::default(),
+        deleted: p.deleted().collect(),
+    };
+    for o in p.origins_recorded() {
+        if !p.generated_from(o).is_empty() {
+            maps.generated.insert(o, p.generated_from(o).to_vec());
+        }
+        if !p.modified_from(o).is_empty() {
+            maps.modified.insert(o, p.modified_from(o).to_vec());
+        }
+    }
+    assert_eq!(
+        postcard::to_allocvec(&p).unwrap(),
+        postcard::to_allocvec(&maps).unwrap()
+    );
+}
+
+#[test]
+fn a_record_no_operation_could_hold_is_refused_on_the_way_in() {
+    let json = serde_json::to_string(&wire_record()).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+    // Origins out of order.
+    let mut swapped = v.clone();
+    swapped["generated"].as_array_mut().unwrap().reverse();
+    let e = serde_json::from_value::<Provenance>(swapped).unwrap_err();
+    assert!(e.to_string().contains("out of order"), "{e}");
+    // The same origin twice.
+    let mut twice = v.clone();
+    let first = twice["modified"][0].clone();
+    twice["modified"].as_array_mut().unwrap().push(first);
+    assert!(serde_json::from_value::<Provenance>(twice).is_err());
+    // One output twice in a list.
+    let mut repeated = v;
+    let out = repeated["modified"][0][1][0].clone();
+    repeated["modified"][0][1].as_array_mut().unwrap().push(out);
+    let e = serde_json::from_value::<Provenance>(repeated).unwrap_err();
+    assert!(e.to_string().contains("twice"), "{e}");
+}

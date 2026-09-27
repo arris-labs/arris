@@ -352,9 +352,57 @@ impl fmt::Display for Origin {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Provenance {
+    #[cfg_attr(feature = "serde", serde(with = "records"))]
     generated: BTreeMap<Origin, Vec<Shape>>,
+    #[cfg_attr(feature = "serde", serde(with = "records"))]
     modified: BTreeMap<Origin, Vec<Shape>>,
     deleted: BTreeSet<Shape>,
+}
+
+/// A relation's map on the wire: a sequence of `(origin, outputs)` pairs
+/// in origin order, since JSON has no map keyed by anything but text.
+/// Read back, it is refused unless it is what a record could have held:
+/// origins strictly ascending, no output twice in one list (`push_once`).
+#[cfg(feature = "serde")]
+mod records {
+    use std::collections::BTreeMap;
+
+    use serde::de::Error as _;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    use super::Origin;
+    use crate::handle::Shape;
+
+    pub(super) fn serialize<S: Serializer>(
+        map: &BTreeMap<Origin, Vec<Shape>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(map)
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<BTreeMap<Origin, Vec<Shape>>, D::Error> {
+        let pairs = Vec::<(Origin, Vec<Shape>)>::deserialize(deserializer)?;
+        let mut map = BTreeMap::new();
+        for (origin, outputs) in pairs {
+            if map
+                .last_key_value()
+                .is_some_and(|(last, _)| *last >= origin)
+            {
+                return Err(D::Error::custom(format!(
+                    "record origins out of order at {origin}"
+                )));
+            }
+            for (i, s) in outputs.iter().enumerate() {
+                if outputs[..i].contains(s) {
+                    return Err(D::Error::custom(format!("{origin} lists {s} twice")));
+                }
+            }
+            map.insert(origin, outputs);
+        }
+        Ok(map)
+    }
 }
 
 /// Appends `s` unless the list already holds it: the order is the
