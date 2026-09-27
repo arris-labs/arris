@@ -91,7 +91,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[1]** — ADR-0029, body bytes: the six decisions of the
+- [x] Step 1 **[1]** — ADR-0029, body bytes: the six decisions of the
   idea and the three decided here, the idea's options as the
   alternatives, and its amendment of DATA-MODEL §Native format; the ADR
   index updated. Docs only.
