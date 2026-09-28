@@ -8,12 +8,38 @@
 # `arris-debug` is `publish = false` and cargo-semver-checks skips it.
 #
 #   tools/semver-gate.sh [BASELINE_REV]   default: the last v* tag
+#   tools/semver-gate.sh --self-test      the verdict read, on coloured output
 #
 # CI runs it (`semver` job); `/release` step 2 runs it as the cross-check
 # on the number it derives.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+
+# cargo-semver-checks styles its own output, and the workflow sets
+# CARGO_TERM_COLOR=always. The styles land *inside* the line the verdict is
+# read from — "<bold>Summary<reset> semver requires new major version" — so
+# a `grep` for the sentence as written never matches and a real verdict
+# reads as no verdict at all. Every read of the log goes through `plain`,
+# which drops the escapes: the gate must decide on the API, never on how
+# the tool painted its console (--self-test guards exactly this).
+esc=$'\033'
+plain() { sed "s/${esc}\[[0-9;]*[A-Za-z]//g"; }
+
+self_test() {
+    local out
+    out="$(printf '\033[1m\033[31m     Summary\033[0m semver requires new major version: 1 major and 0 minor checks failed\n' | plain)"
+    if ! printf '%s\n' "$out" | grep -q 'Summary semver requires new major'; then
+        echo "semver-gate --self-test: a coloured verdict read as no verdict" >&2
+        return 1
+    fi
+    echo "semver-gate --self-test: a coloured verdict reads"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+    self_test
+    exit $?
+fi
 
 # The last release before HEAD: on the tagged release commit itself (the
 # tag's CI run) that is the tag before it, never HEAD against itself.
@@ -39,18 +65,23 @@ announced() {
     ' CHANGELOG.md
 }
 
-log="$(mktemp)"
-trap 'rm -f "$log"' EXIT
+raw="$(mktemp)"
+verdict="$(mktemp)"
+trap 'rm -f "$raw" "$verdict"' EXIT
 
 echo "semver-gate: the workspace against $base, as a patch release"
-if cargo semver-checks --workspace --baseline-rev "$base" --release-type patch 2>&1 | tee "$log"; then
+if cargo semver-checks --workspace --baseline-rev "$base" --release-type patch 2>&1 | tee "$raw"; then
     echo "semver-gate: no breaking change since $base"
     exit 0
 fi
 
+# The console keeps the tool's own colouring; the verdict is read from the
+# same text with the escapes dropped (see `plain`).
+plain < "$raw" > "$verdict"
+
 # A failure that is not a semver verdict (a build, a missing rev) is a
 # failure of the gate itself, never excused by the changelog.
-if ! grep -q 'Summary semver requires new' "$log"; then
+if ! grep -q 'Summary semver requires new' "$verdict"; then
     echo "::error::semver-gate: cargo semver-checks failed without a verdict" >&2
     exit 1
 fi
@@ -58,7 +89,7 @@ fi
 # A "minor" verdict (a deprecation, say) is no break: pre-1.0 it rides in
 # a patch release (.agents/rules/git.md §The version). Only a break —
 # which cargo-semver-checks calls "major" at any version — must be named.
-if ! grep -q 'Summary semver requires new major' "$log"; then
+if ! grep -q 'Summary semver requires new major' "$verdict"; then
     echo "semver-gate: additions since $base that break nothing; a patch may carry them"
     exit 0
 fi

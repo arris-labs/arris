@@ -173,6 +173,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # The gate reads its verdict out of coloured output — this job runs
+      # with CARGO_TERM_COLOR=always — so its self-test pins that read
+      # before the tool it reads is even installed.
+      - run: tools/semver-gate.sh --self-test
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-semver-checks
