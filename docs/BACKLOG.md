@@ -4,7 +4,9 @@ One line per raw idea. Picking one up means `/idea` (needs thinking) or
 `/plan` (obvious); the line is removed then — as is a line a roadmap cycle
 has committed to, which now lives in `docs/ROADMAP.md` instead. Rejected
 ideas keep one line below with the reason, so the same idea is not
-re-brainstormed.
+re-brainstormed. A *measured* defect is not a raw idea: it goes under
+[Findings](#findings) below, in the fixed shape, with the number that
+reproduces it.
 
 - A typed lineage value (`Provenance::lineage(output)`, a tree down to `Role`s), if a second consumer asks for one rather than walking the record itself (ADR-0009 alternative)
 - Two tolerance fractions are named constants in `arris-geom` (`SECTION_FIT_FRACTION`, `PCURVE_SINGULAR_BAND`), where `.agents/rules/kernel.md` and DATA-MODEL §Tolerances ask for `arris-math`: move them, or let the rule name the crate whose algorithm owns the constant (C4 close drift review)
@@ -92,5 +94,70 @@ re-brainstormed.
 - A drill's geometry fault on the fetched tier: CTC-04 AP203's battery drill along its second principal axis returns `OpError::Internal(Fault::Geometry)` where Open CASCADE builds the drilled part (`regression/nist-ctc-04-ap203-drill-geometry-fault`). Excluded in `tools/real-parts.waits`.
 - The whole-model native format adopts body bytes' migration machinery: today a file of another `NATIVE_VERSION` is refused, which is right until a consumer comes to store whole models (ADR-0029 decision 9; body-bytes non-goal)
 - A dedicated wire schema for body bytes (flat tables rather than `serde` of the model's types), so a consumer in another language can write them: taken when a second consumer asks for one (ADR-0029 option B; body-bytes non-goal)
+
+## Findings
+
+A defect a nightly, a fuzz target or the differential *measured*, written
+down the moment it is seen so the night's draw is not the only record of
+it. One block per finding, in this shape:
+
+```
+### <slug>
+- What: <one line: the wrong output>
+- Where: <the test or target that reported it>
+- Seen: <workflow run>, commit <sha>, seed <64 hex>, <cases> cases
+- Reproduce: <the command, or the artifact and where to get it>
+- Evidence: <the measured numbers, and the fixture once shrunk>
+- State: raw | measured | fixture <regression/slug> | excluded <name>
+- The fix is: <one line>
+```
+
+`Seen` and `Reproduce` are the load-bearing fields: without the seed and
+the commit a finding cannot be replayed after the run's artifacts age out,
+and it is a note rather than technical debt. `State` says what the next
+step is — `raw` needs shrinking to a fixture, `measured` has the numbers
+but no fixture yet, `fixture` and `excluded` are pinned somewhere that
+fails when the bug moves. Any of these three becomes a fixture and a line
+above when it wants a fix; the block moves or is deleted then.
+
+### curve-surface-on-a-subnormal-knot-span
+
+- What: `intersect_curve_surface` reports a hit 0.30 off the surface it is supposed to lie on, where the hit is the curve's own first control point.
+- Where: the `intersect_curve_surface` fuzz target, `hold` at `fuzz/src/lib.rs:514`.
+- Seen: Nightly [36398829993](https://github.com/arris-labs/arris/actions/runs/36398829993), commit `ab424ae`, 1800 s on 4 cores; the input itself carries no seed.
+- Reproduce: `gh run download 36398829993 -n fuzz-intersect_curve_surface`, then from `fuzz/` `cargo fuzz run -s none intersect_curve_surface artifacts/intersect_curve_surface/crash-46e779573a4af9ae2a07caeef5e86328ee2ee630`; the artifact is 428 bytes, `sha256 f9c1d0ac1e95d1827857e3adc139f6688fbb9c3ba38dc6737061408f4d1f26ba`. Reproduced on `ab424ae` and again on the later `main`, from `fuzz/`, as `hit 0 at t = 8.88e-16 on the surface: 3.0e-1 off, allowed 1.0e-7`. `cargo fuzz tmin` does not shrink it further.
+- Evidence: a cubic NURBS curve whose third knot span is `3.645561009778199e-304` — the control point at the seam sits on its own neighbour — against a plane. The reported hit is `[-1.6428571428571428, 0.035714285714285365, 1.0714285714285716]` (the curve's first control point) at `t = 8.8e-16`, which is `0.3000000000000006` from the plane, 3e6 tolerances; the curve's real crossing is the other reported hit, at `t = 1.5402`. A span that small is numerically a coincident knot pair, and the local solve that classifies the endpoint divides by it. Not in any fixture yet; the fixture belongs in `crates/arris-geom/tests/intersect_curve_surface.rs` as an `#[ignore]`d case, as the earlier fuzz findings did.
+- State: measured.
+- The fix is: decide what the intersector does with a span below the rounding of its own knots — refuse it by name, or coalesce the knots first — rather than solving across it.
+
+### cone-section-pcurve-fit-is-singular
+
+- What: a cone's section pcurve cannot be fitted at all: `fit: cannot fit: the normal equations are singular`.
+- Where: `every_section_of_a_cone_has_a_pcurve_on_it::shard_2`, `crates/arris-geom/tests/pcurve.rs:837`.
+- Seen: Nightly [36398829993](https://github.com/arris-labs/arris/actions/runs/36398829993), commit `ab424ae`, seed `9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1`, 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom every_section_of_a_cone_has_a_pcurve_on_it`.
+- Evidence: shrunk to `Cone { origin [0, 0, 0], x [0.6235907270930956, 0.7064310712632316, -0.33479806844930804], y [-0.21585684883377937, -0.2560212836903177, -0.9422626614214917], z [-0.7513590525807586, 0.659854714199607, -0.007164513486600741], radius 5.746628876001658, half_angle 0.49458559660268836 }` against a cutter, whose traced section is a degree-5 NURBS reaching the cone's apex. The fit refuses at `crates/arris-geom/src/nurbs/fit.rs:440` — the same `FitError::Degenerate` class as the band survey's 488, but reached through a cone's own pcurve, which no existing fixture or exclusion names. Not in any fixture yet.
+- State: measured.
+- The fix is: hold or split the section where the cone's apex makes the normal equations singular, as the sphere's pole already is.
+
+### pole-projection-is-off-the-domain-end-by-a-rounding
+
+- What: `Surface::project` onto a sphere's NURBS twin returns a pole whose `v` is not the domain's `lo`, so the exact-endpoint assertion fails.
+- Where: `a_pole_is_a_row_with_u_at_the_start_of_the_knots`, `crates/arris-geom/tests/nurbs_project.rs:137`.
+- Seen: Nightly [36398829993](https://github.com/arris-labs/arris/actions/runs/36398829993), commit `ab424ae`, seed `9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1`, 5000 cases. Unsharded.
+- Reproduce: `ARRIS_PROPTEST_SEED=9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom a_pole_is_a_row_with_u_at_the_start_of_the_knots`.
+- Evidence: `found.uv.y = -1.5707963267948646` against the domain's `-1.5707963267948966`, `3.2e-14` — far inside every tolerance, and the point and distance assertions above it pass. Whether that is a bug or an over-strict assertion is the finding: the test asks for the endpoint *exactly*, and the projection's Newton solve returns it a rounding away.
+- State: measured.
+- The fix is: a decision first, then either snap the parameter to the domain's own end where the projection lands on a singular row, or hold `uv` to a tolerance where the parameter is one.
+
+### checkers-own-fault-counts-as-internal-not-as-excluded
+
+- What: the differential classes a checker fault by the error it became, not by the defect underneath: a body whose hole loop lies outside every outer loop arrives as `Internal(Builder)` and fails the run, where the same defect reached another step as `Excluded`.
+- Where: `differential::run`, an operation's debug guard at `crates/arris-ops/src/lib.rs:78`; the run reports one `Internal(Builder)` out of 1000 recipes.
+- Seen: Nightly [36398829993](https://github.com/arris-labs/arris/actions/runs/36398829993), commit `ab424ae`, seed `9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1`, 1000 recipes (case 338, shrunk in 64 candidates). Also Nightly [36305293579](https://github.com/arris-labs/arris/actions/runs/36305293579).
+- Reproduce: `ARRIS_PROPTEST_SEED=9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1 ARRIS_DIFF_CASES=1000 cargo nextest run -p arris --test differential --no-capture`.
+- Evidence: the same run's histogram already counts the defect three times as `Excluded hole-loop-outside-every-outer-loop`, and the panic's own report names the symptom those exclusions match on — `L4 f57: hole loop 0 lies outside every outer loop`. The `covers` predicate of that exclusion tests the message, and the checker's panic survives as `Internal(Builder)`, so nothing matches it. `exclusion_of_error` already exists for exactly this, for the typed faults; this is the guard's panic path through `verify`.
+- State: measured.
+- The fix is: classify a checker fault by the report it carries, not only by the `OpError` variant, so a defect already excluded stays excluded and a red night means something new.
 
 ## Rejected

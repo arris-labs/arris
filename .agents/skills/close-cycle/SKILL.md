@@ -23,13 +23,24 @@ second roadmap file would only ever raise "which one is current?".
    not run CI's `oracle`, `wasm` or `parallel` jobs, so a job red on
    `main` is only visible there. If not, stop and report exactly what is open — do not close
    around it.
-2. **Drift review** (`docs/README.md` mandates it at every boundary, and
+2. **Reconcile the findings** (`docs/BACKLOG.md` §Findings). List the
+   scheduled `Nightly` runs since the cycle opened (`gh run list
+   --workflow=nightly.yml`); every failing job is a defect that tier
+   measured, and each must be accounted for by a block there, by a
+   regression fixture or by a named exclusion — an unaccounted one is open
+   work, and the cycle does not close around it. Then walk every block:
+   its `State` is current (a `raw` that now has its numbers is
+   `measured`; a `measured` that has been shrunk names its
+   `regression/<slug>`), its `Reproduce` still replays, and any block the
+   cycle fixed is deleted with its fixture lifted. A block whose seed or
+   commit has gone stale is rewritten or deleted, never left to age.
+3. **Drift review** (`docs/README.md` mandates it at every boundary, and
    this is the only place it happens): read **every** design doc —
    `ARCHITECTURE.md`, `DATA-MODEL.md`, `ROADMAP.md` — against the code and
    fix each sentence that is no longer true. The cycle is not closed until the list is empty. List
    what you fixed in the reply; if you fixed nothing, say why you believe
    nothing had drifted.
-3. **Compress the finished section** to the standard shape:
+4. **Compress the finished section** to the standard shape:
    goal, one `**Status: done <date>, tag `vN`.**` line naming the risk that
    was retired and the ADRs that were taken, then the in / out / accept
    lists. Narrative goes; `/plan` reads in/out/accept and `/retire-plan`
@@ -37,7 +48,7 @@ second roadmap file would only ever raise "which one is current?".
    sentence, grep for the fact in `docs/`, `crates/` and `README.md` — a
    measurement or a rationale that lives *only* here is relocated to the
    doc or the code comment that wants it, never dropped.
-4. **Open the next section, and give it its number.** An unopened cycle
+5. **Open the next section, and give it its number.** An unopened cycle
    carries a **name** in `docs/ROADMAP.md` and gets its number here
    (ADR-0020) — which is what keeps "cycle Cn releases `0.n.0`"
    (`.agents/rules/git.md` §Tags) lining up with the order cycles are
@@ -51,15 +62,15 @@ second roadmap file would only ever raise "which one is current?".
    chosen on, so the choice can be re-checked. The theme and the in/out
    split are the **human's call**: propose, do not decide. If the answer
    is not obvious from the rule and the backlog, stop and ask.
-5. **`Spine:`** at the top of the roadmap gains the new cycle, by number;
+6. **`Spine:`** at the top of the roadmap gains the new cycle, by number;
    the name leaves the "Named cycles, unordered" list at the same time,
    and the standing sections beside the cycles (the measuring harness,
    the binding) keep their current numbers.
-6. **`AGENTS.md` "Current state"**: one sentence for the closed cycle, a
+7. **`AGENTS.md` "Current state"**: one sentence for the closed cycle, a
    new `**Next:**`, block still under ~15 lines.
-7. Commit as `docs: close <cycle>` with a body listing the docs updated and
+8. Commit as `docs: close <cycle>` with a body listing the docs updated and
    the drift fixed.
-8. **Run `/release`.** A closed cycle is a release: it bumps the minor
+9. **Run `/release`.** A closed cycle is a release: it bumps the minor
    (`.agents/rules/git.md` §Tags), and that skill picks the number, turns
    `CHANGELOG.md`'s `Unreleased` into the version's section, bumps the
    version and its pins, proves the workspace still packages, and hands
