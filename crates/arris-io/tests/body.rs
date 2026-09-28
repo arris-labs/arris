@@ -1,4 +1,4 @@
-//! Body bytes (ADR-0029, `docs/plans/body-bytes.md`): a body and its
+//! Body bytes (ADR-0029): a body and its
 //! record written and read back through both encodings, into a fresh
 //! model and into one that already holds bodies; the same body gives the
 //! same bytes from any model that holds it; what is not body bytes is

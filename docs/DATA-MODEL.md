@@ -1835,6 +1835,26 @@ for any `f`; only an injective `f` keeps `Split(k)` meaning one piece.
 Re-rooting commutes with `then` over records whose later steps carry no
 role of their own.
 
+**A record crossing models** is `mapped`, and what it cannot say is the
+point: an id the map does not hold (an origin in a body that was not
+imported) is left as it is, so once the body's entities carry the mapped
+ids the writer's foreign ids and the body's own overlap — a writer's
+operand face `f2` and the body's own dense `f2` become one value in the
+record, and neither a stored flag nor a computed one tells them apart
+(ADR-0029's amendment). Body bytes therefore carry the record in the
+writer's ids beside the writer → dense map, and `body::read` decides
+membership in the writer's ids, where no two entities share one. An
+entity the returned `Imported::map` does not hold is foreign
+(`Imported::foreign`, ascending, in the writer's ids); the consumer that
+sent those entities holds their way back, the `IdMap::inverse` of the map
+its own import returned. `Imported::translated(foreign)` puts the whole
+record into the caller's ids in one pass over one map — the body's
+entities through `Imported::map`, the foreign ones through the map given
+— so an id both models use is translated once and once only. The same
+overlap is inside one model: importing a body into a model that already
+holds entities can send an origin onto an id the body also uses, and
+`mapped` alone does not separate them.
+
 **Stability** is what the record is for. Rebuilding the same feature tree
 with a changed parameter produces, for each output entity, the same
 `origins` chain in terms of the *inputs' roles* (the third hole's tool
@@ -1901,9 +1921,35 @@ checker's M1 to report. Deterministic byte-for-byte for the same model
 round-trips through it dumps identically before and after, with the
 same ids (`arris-io`'s native tests). Two encodings, a `serde` choice per call:
 `to_bytes`/`from_bytes` over `postcard` for storage, `to_json`/`from_json`
-for diffs. The schema is the model; a file of another version is
-`NativeError::Version`, a refusal, since a version bump is a design delta
-that comes with a migration or with exactly this refusal.
+for diffs. The schema is the model; for the whole model a file of another
+version is `NativeError::Version`, a refusal, since a version bump there
+is a design delta that comes with a migration or with exactly this
+refusal. Body bytes take the other road: every earlier version reads.
+
+**Body bytes** (`arris_io::body`, ADR-0029) are the format a body
+outlives the release that wrote it in. `body::write` imports one body
+into a fresh model under the writer's `Precision` — so its geometry and
+topology are dense from zero whatever holes the writer's model had — and
+encodes that model with the record as the writer holds it and the map
+from the writer's ids to the dense ones, under a `BODY_MAGIC` of eight
+bytes and `BODY_VERSION`; `body::to_json` is the same body as one line of
+JSON, for diffs. Both are deterministic byte for byte. `body::read`
+decodes, migrates an earlier version to `BODY_VERSION` one version at a
+time through `body::compat`, refuses a newer one (`BodyError::Version`),
+refuses a tolerance outside the target's `[min_tolerance, max_tolerance]`
+rather than rescaling it (`BodyError::Precision`, naming the entity in
+the writer's ids), imports into the caller's model inside a transaction
+and runs the checker at `Level::Full` in every build profile. It returns
+the body, the record and the map from the writer's ids to the caller's,
+or a typed `BodyError` with the caller's model left as it was. A
+version's bytes are frozen: one blessed `.bin`, `.json` and dump per
+guard body under `crates/arris-io/tests/body/v<N>/` — together covering
+every curve, surface and pcurve kind, a consumer-keyed record and a
+boolean's record with foreign origins — is read in the suite forever, so
+a change to a type that alters how an old file decodes fails a test
+instead of shipping. An entity of the record outside the body (a
+boolean's operands) is foreign and stays in the writer's ids
+(§Provenance).
 
 The text dump (`arris_debug::dump_text(&model, body)`) is a different
 thing: a human-readable, deterministic listing that fixtures store as

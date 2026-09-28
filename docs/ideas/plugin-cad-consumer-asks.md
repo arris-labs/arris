@@ -1,6 +1,6 @@
 # Idea: plugin-cad-consumer-asks
 
-- Status: Accepted 2026-09-26 — A1–A4 and A11 are C5 (docs/ROADMAP.md, ADR-0020's amendment); A5, A8 and A9 are backlog lines; A6 and A7 are recorded as ranking input; A10 stays with `python-binding`. A1 landed (plans/consumer-roles, ADR-0028). Absorbed and deleted by C5's plans
+- Status: Accepted 2026-09-26 — A1–A4 and A11 are C5 (docs/ROADMAP.md, ADR-0020's amendment); A5, A8 and A9 are backlog lines; A6 and A7 are recorded as ranking input; A10 stays with `python-binding`. A1 landed (ADR-0028); A2 landed (ADR-0029). Absorbed and deleted by C5's plans
 - Raised: 2026-09-26
 - Prompt (verbatim from the human): "during formulating SEED.md, you can suggest feature/architecture change requests for arris to implement in future to better fit our goal of plugin-based FOSS CAD system" — and: "Write requests to arris as new idea file using its idea skill."
 
@@ -33,7 +33,7 @@ That design asks things of the kernel that no consumer asked while the first con
 - **SEED.md §4 non-goals**: none crossed. A4 stays within STEP, and A10 is the binding ADR-0020 §2 already placed in scope. Rendering, drawings and a solver stay out: A6's section returns wires and faces, not a drawing.
 - **ADR-0002**: `Role` is exhaustive, so A1 is a breaking change to `arris-topo`, the way `Role::File` was (ADR-0025).
 - **ADR-0009**: Arris ships no name grammar. A1 keeps to that: the kernel carries an opaque key and the words stay the consumer's.
-- **DATA-MODEL §Native format**: "a file of another version is `NativeError::Version`". A2's read-N−1 policy amends that for body bytes; the model format can keep its refusal.
+- **DATA-MODEL §Native format**: "for the whole model a file of another version is `NativeError::Version`". A2's read-N−1 policy amends that for body bytes; the model format can keep its refusal.
 - **ARCHITECTURE §Threading and wasm**: no clock, threads or randomness in a kernel crate. A3's token is a flag and a counter, with no clock; a budget in steps keeps results deterministic.
 - **ADR-0025 §Instances**: flattening was chosen because "Arris has no product structure". A4 amends that. The product tree is an `arris-io` value beside the bodies, not topology, and flattened bodies stay available for the histogram.
 - **Backlog "Narrow `pub` internals"** pulls the other way from A5. A5 wants one deliberate public 2D API, not the internals exposed.

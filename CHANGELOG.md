@@ -25,6 +25,26 @@ into its version (ADR-0027).
   a sweep's, a file's — through a function the consumer gives, so those
   chains can end at the consumer's own keys too, with no change to the
   operations that made them.
+- One body and its provenance can leave a model as bytes and enter
+  another, in another process or under a later release:
+  `arris_io::body::{write, read}`, with `to_json`/`from_json` beside them
+  for diffs. A body is written through a fresh model under the writer's
+  precision, so the bytes do not depend on the holes in the model it came
+  from, and both encodings are deterministic byte for byte.
+- A body read from bytes keeps its record. Origins that name entities
+  outside the body — a boolean's operands — come back as
+  `Imported::foreign`, `Imported::translated` puts the whole record in the
+  reader's ids in one pass, and `arris_topo::IdMap::inverse` translates
+  the reader's own operands back.
+- Every earlier version of body bytes reads and is migrated. A newer
+  version (`BodyError::Version`), a tolerance the reading model's
+  precision cannot hold (`Precision`, never rescaled), bytes that are not
+  body bytes (`Magic`), a truncated or malformed stream (`Decode`) and a
+  body the checker rejects (`Rejected`) are typed refusals that leave the
+  reader's model as it was. The whole-model native format still refuses
+  another version.
+- `Provenance` and `IdMap` now have a JSON form, their relations and maps
+  written as ordered pairs; the `postcard` encoding is unchanged.
 
 ### Breaking
 

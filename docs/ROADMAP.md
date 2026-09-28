@@ -501,7 +501,7 @@ are `docs/ideas/plugin-cad-consumer-asks.md`'s A1–A4 and A11. The
 histogram's first line, the blend network (17 of 38 parts), is next in
 line (§Named cycles).*
 
-**Status: opened 2026-09-26; consumer roles (A1) done.**
+**Status: opened 2026-09-26; consumer roles (A1) and body bytes (A2) done.**
 
 - **Consumer roles (A1)** — done 2026-09-27 (ADR-0028):
   `Role::Consumer(ConsumerKey { namespace, key })`, carried opaquely so
@@ -513,10 +513,19 @@ line (§Named cycles).*
   `polyhedron` recipe op puts such a body in the corpus (`build/`), and
   `provenance/consumer-rebuild` holds its chains to the consumer's keys
   across a rebuild.
-- **Body bytes (A2)**: one body's closure and its `Provenance`, written
-  and imported into another model, with a compatibility policy — read
-  the previous version and migrate it — where the whole-model native
-  format refuses another version. Its own ADR.
+- **Body bytes (A2)** — done 2026-09-27 (ADR-0029): `arris_io::body`
+  writes one body and its `Provenance` as bytes (`postcard`, with JSON
+  beside it for diffs), both deterministic, by importing the body into a
+  fresh model under the writer's `Precision`; `read` migrates every
+  earlier version, refuses a newer one and a tolerance the target's
+  precision cannot hold, imports into the caller's model inside a
+  transaction and checks at `Full` in every profile. The record travels
+  in the writer's ids beside the writer → caller map, so an origin
+  outside the body is foreign and the consumer that sent it translates it
+  back with `IdMap::inverse`; `Imported::translated` puts the whole record
+  in the reader's ids in one pass. A version's bytes are frozen under
+  `crates/arris-io/tests/body/v<N>/` and read in the suite forever, and
+  `body_read` fuzzes the reader.
 - **Cancellation (A3)**: an interrupt token the consumer sets, checked at
   loop boundaries, returning `OpError::Interrupted` and rolled back by the
   transaction; no clock and no thread, so wasm has it. A deterministic
@@ -532,7 +541,7 @@ line (§Named cycles).*
 booleans and per-face tessellation are backlog lines for when the
 consumer reaches them; the query and sweep cycles are its ranking input,
 recorded and not applied. The first-party binding stands beside this
-cycle, its body-bytes interop waiting on A2.
+cycle; its body-bytes interop no longer waits on A2.
 
 **Accept:** a body built under a consumer role, written as body bytes
 and imported into a fresh model, is checker-green with the same counts,
@@ -584,7 +593,9 @@ CASCADE's STEP of every solid fixture: over the parser alone its first
 minutes found a page directive that swallowed a line break, and its
 first hour after the fix, on 24 cores, ran 298 million inputs with no
 crash; over the whole reader, fifteen minutes on sixteen cores ran 11.4
-million with none.
+million with none. A fifth, `body_read`, runs `body::read` on any bytes,
+seeded from the guard's files: every input is a checker-green body or a
+typed error, and the model it reads into is unchanged on an error.
 
 **The first-party binding.** Code-first and agent-driven modelling is one
 of the consumers `SEED.md` §1 names, and a binding in this repository is

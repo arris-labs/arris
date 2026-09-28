@@ -23,7 +23,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 | `arris-check` | The invariant checker: `check(&Model, Body, Level) -> Report` and the `Violation` list of data-model §Invariants; the shared face domain (`domain::FaceDomain`), point classifier (`classify::Classifier`, `classify_point`) and region flux (`flux::face_flux`) every `Full` row, the boolean and tessellation read a face through; re-exports `arris-topo` | `arris-topo`, `serde` (feature, forwarded to `arris-topo`) | 1 |
 | `arris-ops` | Primitives, extrude and revolve of a `Profile`, transform, booleans, the blends, each returning `Provenance`; the queries `measure` (mass properties) and `query` (projection onto a plane, a face's outward frame) | `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
 | `arris-mesh` | `TriMesh`, `Polyline`, the constrained Delaunay triangulation in (u, v) (`cdt`, ADR-0003), tessellation of faces and edges with shared edge discretisation; re-exports `arris-math`'s `Aabb` and `Interval` | `arris-check`, `arris-topo`, `thiserror`, `rayon` (feature) | 2 — algorithms |
-| `arris-io` | STEP AP214 Part 21 writer and reader (`step::write`, `step::read`, ADR-0025) over the Part 21 parser (`step::part21`), the native format (`native`), STL and OBJ mesh writers (`stl`, `obj`, ADR-0013); re-exports `arris-check` and `arris-mesh` | `arris-check`, `arris-mesh`, `thiserror`, `serde`, `serde_json`, `postcard` (the last three behind the `serde` feature) | 2 — algorithms |
+| `arris-io` | STEP AP214 Part 21 writer and reader (`step::write`, `step::read`, ADR-0025) over the Part 21 parser (`step::part21`), the native format (`native`), body bytes (`body`, ADR-0029), STL and OBJ mesh writers (`stl`, `obj`, ADR-0013); re-exports `arris-check` and `arris-mesh` | `arris-check`, `arris-mesh`, `thiserror`, `serde`, `serde_json`, `postcard` (the last three behind the `serde` feature) | 2 — algorithms |
 | `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
 | `arris` | Facade: re-exports | `math` through `io`; `debug` as a dev-dependency only | 4 |
 
@@ -1290,6 +1290,18 @@ B-Rep).
 - **Native format** (`arris_io::native::{to_json, from_json, to_bytes,
   from_bytes}`): `serde` of the model under a version header, JSON for
   diffs and `postcard` bytes for storage; data-model §Native format.
+- **Body bytes** (`arris_io::body::{write, to_json, read, from_json}`,
+  ADR-0029): one body and its `Provenance` under an eight-byte magic and
+  `BODY_VERSION`, `postcard` for storage and JSON for diffs, both
+  deterministic; data-model §Native format. A write imports the body into
+  a fresh model under the writer's `Precision`, so the bytes are the same
+  whatever holes the writer's model had. A read migrates every earlier
+  version, refuses a newer one and a tolerance the reading model's
+  precision cannot hold, imports inside a transaction and checks at
+  `Level::Full` in every build profile; the record comes back with the
+  map from the writer's ids to the caller's, and what it names outside
+  the body is foreign. A version's files are frozen under
+  `crates/arris-io/tests/body/v<N>/` and read in the suite forever.
 - **STL** (`arris_io::stl::{write_ascii, write_binary}`, ADR-0013): one
   or several `TriMesh`es in — one per body, as `step::write` takes
   several bodies of one `Model` — `MeshWriteError` the only failure —
@@ -1386,7 +1398,7 @@ B-Rep).
 - **The fuzz targets** (`fuzz/`, ADR-0024 §5): a crate outside the
   workspace (`exclude = ["fuzz"]`), unpublished, on nightly under
   `cargo fuzz` with `libfuzzer-sys` and `arbitrary`, none of them
-  workspace dependencies. There are four targets. `intersect_surfaces`,
+  workspace dependencies. There are five targets. `intersect_surfaces`,
   `intersect_curve_surface` and `intersect_curves` each decode analytic
   operands in a pose from bytes, including NURBS curves given by their
   control points and the fitted curves of a section of two decoded
@@ -1398,7 +1410,11 @@ B-Rep).
   `step_read` runs `step::read` on any text into two fresh models,
   seeded from Arris's and Open CASCADE's STEP of every solid fixture's
   result, and asserts no panic, the same answer twice and a parse error
-  placed inside the text. They run without ASan
+  placed inside the text. `body_read` runs `body::read` on any bytes and
+  `body::from_json` on any that are UTF-8, seeded from the guard's files
+  and read into a model that already holds a body, and asserts no panic,
+  the same answer twice, a checker-green body on every read, and the
+  model unchanged on every refusal. They run without ASan
   (`-s none`), which finds nothing in `forbid(unsafe_code)` crates and
   costs twentyfold. `fuzz/show.rs`
   decodes a crash.

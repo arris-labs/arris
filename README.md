@@ -29,8 +29,9 @@ and each break is listed, with its fix, in `CHANGELOG.md`. What is in today:
 - tessellation to a chord tolerance, mass properties (volume, centroid,
   inertia), plane projection and face frames;
 - a STEP reader that returns a checked body, or a typed refusal naming
-  why, for every solid in a file; STEP AP214, STL and OBJ export; and a
-  deterministic native format in JSON and bytes.
+  why, for every solid in a file; STEP AP214, STL and OBJ export; a
+  deterministic native format in JSON and bytes; and one body, with its
+  provenance, as bytes that any later release reads.
 
 Not in yet: booleans with a NURBS face as an operand, blends between faces
 outside the plane and cylinder pairs, variable-radius blends, sheet and
