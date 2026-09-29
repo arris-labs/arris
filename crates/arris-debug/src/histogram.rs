@@ -257,6 +257,9 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
         // topology, so a count here is a battery bug to read.
         OpError::Unkeyed { .. } => Cycle::Itself("Unkeyed"),
         OpError::Rejected(_) => Cycle::Itself("Rejected"),
+        // The battery passes `Control::NONE`: a count here is a battery
+        // bug to read.
+        OpError::Interrupted(_) => Cycle::Itself("Interrupted"),
         OpError::Internal(_) => return None,
     })
 }

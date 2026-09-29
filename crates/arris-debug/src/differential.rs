@@ -380,6 +380,7 @@ pub fn refusal(e: &OpError) -> String {
         OpError::NotFound(_) => "NotFound".into(),
         OpError::Unkeyed { .. } => "Unkeyed".into(),
         OpError::Rejected(r) => format!("Rejected({})", head(format!("{r:?}"))),
+        OpError::Interrupted(_) => "Interrupted".into(),
     }
 }
 

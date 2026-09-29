@@ -9,6 +9,7 @@
 //! to a piece of its boundary as a common block.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::{Mutex, PoisonError};
 
 use arris_check::arris_topo::arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Side};
 use arris_check::arris_topo::arris_geom::{
@@ -17,7 +18,8 @@ use arris_check::arris_topo::arris_geom::{
     intersect_curve_surface, intersect_curves, intersect_surfaces, pcurve_ending_on, pcurve_on,
 };
 use arris_check::arris_topo::arris_math::{
-    Aabb, Interval, Point2, Point3, Precision, RELATIVE_ROUNDING, Tolerance, Vec2, period_end,
+    Aabb, Interval, Meter, Point2, Point3, Precision, RELATIVE_ROUNDING, Tolerance, Vec2,
+    period_end,
 };
 use arris_check::arris_topo::{
     Body, EdgeId, FaceId, Model, Shape, Vertex as VertexHandle, VertexId,
@@ -31,6 +33,7 @@ use super::{
     Pave, SectionCrossing, SectionCurve, SectionEdge, SectionVertex, VertexSource, meet_curves,
 };
 use crate::error::{Fault, OpError, Reason};
+use crate::pass::pass;
 
 /// A section vertex while hits are still being merged into it.
 struct VertexBuild {
@@ -181,8 +184,13 @@ struct Along {
 }
 
 /// The whole build, over the two operands read once.
-struct Build<'m> {
+struct Build<'m, 'c> {
     m: &'m Model,
+    /// The caller's meter for the whole build (ADR-0030): behind a lock
+    /// because the methods that geometry calls hang off take `&self` and
+    /// the parallel pass shares the build. The pass gives each item a
+    /// split of it and never locks it from a thread.
+    meter: Mutex<Meter<'c>>,
     precision: Precision,
     a: Body,
     b: Body,
@@ -218,12 +226,18 @@ struct Build<'m> {
     blocks: Vec<CommonBlock>,
 }
 
-pub(super) fn build(m: &Model, a: Body, b: Body) -> Result<Interferences, OpError> {
+pub(super) fn build<'c>(
+    m: &Model,
+    a: Body,
+    b: Body,
+    meter: &mut Meter<'c>,
+) -> Result<Interferences, OpError> {
     let faces = [FaceInfo::of_body(m, a)?, FaceInfo::of_body(m, b)?];
     let edges = [EdgeInfo::of_body(m, a)?, EdgeInfo::of_body(m, b)?];
     let within = region(&faces);
     let mut build = Build {
         m,
+        meter: Mutex::new(*meter),
         precision: m.precision(),
         a,
         b,
@@ -260,6 +274,7 @@ pub(super) fn build(m: &Model, a: Body, b: Body) -> Result<Interferences, OpErro
     build.pave_singular_edges()?;
     build.contacts()?;
     build.coincident()?;
+    *meter = build.meter.lock().map_or_else(|e| *e.into_inner(), |g| *g);
     Ok(build.finish())
 }
 
@@ -401,7 +416,7 @@ fn geometry(e: GeomError, a: Shape, b: Shape) -> OpError {
             a: (ka, a),
             b: (kb, b),
         },
-        other => OpError::Internal(Fault::Geometry(other)),
+        other => crate::error::fault_of(other),
     }
 }
 
@@ -429,7 +444,18 @@ fn samples(range: Interval, n: usize) -> Vec<f64> {
         .collect()
 }
 
-impl<'m> Build<'m> {
+impl<'m, 'c> Build<'m, 'c> {
+    /// `f` with the meter, for one geometry call; the lock is held for
+    /// the call and no longer.
+    fn metered<T>(&self, f: impl FnOnce(&mut Meter<'c>) -> T) -> T {
+        f(&mut self.meter.lock().unwrap_or_else(PoisonError::into_inner))
+    }
+
+    /// One step of the build's own loops (ADR-0030 §5).
+    fn tick(&self) -> Result<(), OpError> {
+        self.metered(Meter::tick).map_err(OpError::Interrupted)
+    }
+
     /// The edge of operand `side` with this id, when it has a curve.
     fn edge_info(&self, side: usize, id: EdgeId) -> Option<&EdgeInfo<'m>> {
         self.edges[side].iter().find(|e| e.id == id)
@@ -467,35 +493,19 @@ impl<'m> Build<'m> {
     /// nothing else, which is what makes it the pave model's parallel
     /// step (ADR-0004, `docs/ARCHITECTURE.md` §Threading).
     fn intersect_pairs(
-        &self,
+        &mut self,
         candidates: &[(usize, usize)],
     ) -> Result<Vec<SurfaceIntersection>, OpError> {
-        let one = |&(ia, ib): &(usize, usize)| {
+        let mut meter = *self.meter.get_mut().unwrap_or_else(PoisonError::into_inner);
+        let found = pass(candidates, &mut meter, |&(ia, ib), mt| {
             let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
             let tol = tolerance_of(&self.precision, fa.tolerance, fb.tolerance);
-            intersect_surfaces(
-                fa.surface,
-                fb.surface,
-                &self.within,
-                tol,
-                &mut arris_check::arris_topo::arris_math::Meter::default(),
-            )
-            .map_err(|e| geometry(e, fa.shape(), fb.shape()))
-        };
-        #[cfg(feature = "parallel")]
-        {
-            use rayon::prelude::*;
-            // Every result first, then the first error in order: a
-            // `Result` collected straight from `rayon` is whichever error
-            // a thread met first, so two failing items would make the
-            // error — a refusal or a fault — depend on the schedule.
-            let all: Vec<_> = candidates.par_iter().map(one).collect();
-            all.into_iter().collect()
-        }
-        #[cfg(not(feature = "parallel"))]
-        {
-            candidates.iter().map(one).collect()
-        }
+            mt.tick()?;
+            intersect_surfaces(fa.surface, fb.surface, &self.within, tol, mt)
+                .map_err(|e| geometry(e, fa.shape(), fb.shape()))
+        });
+        *self.meter.get_mut().unwrap_or_else(PoisonError::into_inner) = meter;
+        found
     }
 
     /// Every edge of each operand against every face of the other whose
@@ -537,14 +547,11 @@ impl<'m> Build<'m> {
         found: &mut Vec<(EdgeFaceHit, f64)>,
         coincident: &mut Vec<(EdgeId, FaceId)>,
     ) -> Result<(), OpError> {
+        self.tick()?;
         let tol = tolerance_of(&self.precision, e.tolerance, f.tolerance);
-        let hits = match intersect_curve_surface(
-            e.curve,
-            f.surface,
-            tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(|err| geometry(err, e.shape(), f.shape()))?
+        let hits = match self
+            .metered(|mt| intersect_curve_surface(e.curve, f.surface, tol, mt))
+            .map_err(|err| geometry(err, e.shape(), f.shape()))?
         {
             CurveSurfaceIntersection::Coincident => {
                 coincident.push((e.id, f.id));
@@ -638,13 +645,10 @@ impl<'m> Build<'m> {
                 if self.known_by_surfaces(side, e, g, f, curve, tol) == Some(true) {
                     continue;
                 }
-                let hits = match intersect_curves(
-                    e.curve,
-                    curve,
-                    tol,
-                    &mut arris_check::arris_topo::arris_math::Meter::default(),
-                )
-                .map_err(|err| geometry(err, e.shape(), f.shape()))?
+                self.tick()?;
+                let hits = match self
+                    .metered(|mt| intersect_curves(e.curve, curve, tol, mt))
+                    .map_err(|err| geometry(err, e.shape(), f.shape()))?
                 {
                     // The edge runs along the section curve: a block of
                     // it is that edge, and nothing crosses.
@@ -722,13 +726,10 @@ impl<'m> Build<'m> {
                         same_curve.insert((ea.id, eb.id));
                         continue;
                     }
-                    let hits = match intersect_curves(
-                        ea.curve,
-                        eb.curve,
-                        tol,
-                        &mut arris_check::arris_topo::arris_math::Meter::default(),
-                    )
-                    .map_err(|e| geometry(e, ea.shape(), eb.shape()))?
+                    self.tick()?;
+                    let hits = match self
+                        .metered(|mt| intersect_curves(ea.curve, eb.curve, tol, mt))
+                        .map_err(|e| geometry(e, ea.shape(), eb.shape()))?
                     {
                         CurveIntersection::Coincident => {
                             same_curve.insert((ea.id, eb.id));
@@ -828,13 +829,10 @@ impl<'m> Build<'m> {
             }
             for (k, &(ci, ca)) in curves.iter().enumerate() {
                 for &(cj, cb) in &curves[k + 1..] {
-                    let hits = match intersect_curves(
-                        ca,
-                        cb,
-                        tol,
-                        &mut arris_check::arris_topo::arris_math::Meter::default(),
-                    )
-                    .map_err(|e| geometry(e, fa.shape(), fb.shape()))?
+                    self.tick()?;
+                    let hits = match self
+                        .metered(|mt| intersect_curves(ca, cb, tol, mt))
+                        .map_err(|e| geometry(e, fa.shape(), fb.shape()))?
                     {
                         // Two distinct curves of one intersection are
                         // never the same curve.
@@ -1742,13 +1740,9 @@ impl<'m> Build<'m> {
                 // section conic — a rim circle beside the ellipse its cap
                 // plane cuts from the other wall — has no closed form for
                 // where the two meet, and needs none here.
-                if curves_coincide(
-                    curve,
-                    e.curve,
-                    tol,
-                    &mut arris_check::arris_topo::arris_math::Meter::default(),
-                )
-                .map_err(|err| geometry(err, fa.shape(), e.shape()))?
+                if self
+                    .metered(|mt| curves_coincide(curve, e.curve, tol, mt))
+                    .map_err(|err| geometry(err, fa.shape(), e.shape()))?
                 {
                     along.push(e);
                 }
@@ -2058,14 +2052,9 @@ impl<'m> Build<'m> {
         ends: &[(Point3, f64)],
     ) -> Result<(Curve2, f64), OpError> {
         let tol = Tolerance::new(base, self.precision.angular_tolerance);
-        let pc = pcurve_on(
-            curve,
-            range,
-            f.surface,
-            tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(|e| geometry(e, other.shape(), f.shape()))?;
+        let pc = self
+            .metered(|mt| pcurve_on(curve, range, f.surface, tol, mt))
+            .map_err(|e| geometry(e, other.shape(), f.shape()))?;
         let pc = self.place(f, other, pc, range, uv_mid, base, ends)?;
         let residual = self.residual(f, curve, range, &pc);
         Ok((pc, residual))
@@ -2117,15 +2106,9 @@ impl<'m> Build<'m> {
         if start.is_none() && end.is_none() {
             return Ok((pc, residual));
         }
-        let pc = pcurve_ending_on(
-            &pc,
-            range,
-            [start, end],
-            f.surface,
-            base,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(|e| geometry(e, other.shape(), f.shape()))?;
+        let pc = self
+            .metered(|mt| pcurve_ending_on(&pc, range, [start, end], f.surface, base, mt))
+            .map_err(|e| geometry(e, other.shape(), f.shape()))?;
         // The move is the residual's largest term, at an end, and the
         // tolerance it sets is exactly that: rounding at the positions'
         // own scale above it keeps the edge within its tube when the body
@@ -2711,7 +2694,7 @@ impl<'m> Build<'m> {
 
 /// A face of `a` that uses edge `gid`, for naming in an error; the first
 /// face of `a` when none does.
-fn g_face_of<'b, 'm>(build: &'b Build<'m>, gid: EdgeId) -> &'b FaceInfo<'m> {
+fn g_face_of<'b, 'm>(build: &'b Build<'m, '_>, gid: EdgeId) -> &'b FaceInfo<'m> {
     build.faces[0]
         .iter()
         .find(|f| f.edges().contains(&gid))

@@ -19,7 +19,7 @@ use core::fmt;
 use std::collections::BTreeMap;
 
 use arris_check::arris_topo::arris_geom::{Curve, Curve2, MeetKind, SurfaceIntersection};
-use arris_check::arris_topo::arris_math::{Interval, Point2, Point3};
+use arris_check::arris_topo::arris_math::{Control, Interval, Meter, Point2, Point3};
 use arris_check::arris_topo::{Body, Curve2Id, EdgeId, FaceId, Model, Provenance, Shape, VertexId};
 
 use crate::error::OpError;
@@ -471,19 +471,21 @@ pub struct Interferences {
 /// [`OpError::Tolerance`] when a section vertex would
 /// need a tolerance above the model's maximum; [`OpError::Internal`]
 /// for a geometry query that failed on validated input or a section
-/// edge crossing a seam without a pave.
+/// edge crossing a seam without a pave; [`OpError::Interrupted`] when
+/// `control` stops the build, with nothing to undo — the model is only
+/// read.
 ///
 /// ```
 /// use arris_ops::boolean::interferences;
 /// use arris_ops::{primitive_box, primitive_cylinder};
 /// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3};
+/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Point3};
 ///
 /// let mut m = Model::default();
 /// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0))?;
 /// let axis = Axis::z_at(Point3::new(20.0, 15.0, -1.0));
 /// let (hole, _) = primitive_cylinder(&mut m, axis, 4.0, 12.0)?;
-/// let i = interferences(&m, plate, hole)?;
+/// let i = interferences(&m, plate, hole, &Control::NONE)?;
 /// // The hole's seam pierces the top and the bottom: two section
 /// // circles, each paved once, at the seam's hits.
 /// assert_eq!(i.hits.len(), 2);
@@ -491,10 +493,15 @@ pub struct Interferences {
 /// assert!(i.curves.iter().all(|c| c.paves.len() == 1));
 /// # Ok::<(), arris_ops::OpError>(())
 /// ```
-pub fn interferences(m: &Model, a: Body, b: Body) -> Result<Interferences, OpError> {
+pub fn interferences(
+    m: &Model,
+    a: Body,
+    b: Body,
+    control: &Control<'_>,
+) -> Result<Interferences, OpError> {
     crate::verify_input(m, a)?;
     crate::verify_input(m, b)?;
-    pave::build(m, a, b)
+    pave::build(m, a, b, &mut Meter::new(control))
 }
 
 /// `target` minus `tool`: the boolean difference of two solids whose
@@ -566,20 +573,24 @@ pub fn interferences(m: &Model, a: Body, b: Body) -> Result<Interferences, OpErr
 /// [`OpError::Tolerance`] when a section vertex or edge would exceed the
 /// model's maximum; [`OpError::Internal`] for a kernel bug the operation
 /// caught — an arrangement that is not a subdivision, a point that
-/// could not be classified, the builder refusing the assembly.
+/// could not be classified, the builder refusing the assembly;
+/// [`OpError::Interrupted`] when `control`'s poll answers `true` or its
+/// budget of steps is spent: the model is as it was, ids included. The
+/// same operands and budget stop at the same step on every platform and
+/// with `parallel` on or off (ADR-0030).
 ///
 /// ```
 /// use arris_ops::{cut, primitive_box, primitive_cylinder};
 /// use arris_ops::measure::mass_properties;
 /// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3};
+/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Point3};
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
 /// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0))?;
 /// let axis = Axis::z_at(Point3::new(20.0, 15.0, -1.0));
 /// let (hole, _) = primitive_cylinder(&mut m, axis, 4.0, 12.0)?;
-/// let (plate_with_hole, provenance) = cut(&mut m, plate, hole)?;
+/// let (plate_with_hole, provenance) = cut(&mut m, plate, hole, &Control::NONE)?;
 /// assert_eq!(m.faces(plate_with_hole)?.len(), 7);
 /// let volume = mass_properties(&m, plate_with_hole)?.volume;
 /// assert!((volume - (12000.0 - PI * 16.0 * 10.0)).abs() < 1e-9 * 12000.0);
@@ -587,11 +598,17 @@ pub fn interferences(m: &Model, a: Body, b: Body) -> Result<Interferences, OpErr
 /// assert_eq!(provenance.outputs().len(), 10);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance), OpError> {
+pub fn cut(
+    m: &mut Model,
+    target: Body,
+    tool: Body,
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
     crate::verify_input(m, target)?;
     crate::verify_input(m, tool)?;
-    let i = pave::build(m, target, tool)?;
-    result::boolean(m, &i, result::Op::Cut)
+    let mut meter = Meter::new(control);
+    let i = pave::build(m, target, tool, &mut meter)?;
+    result::boolean(m, &i, result::Op::Cut, &mut meter)
 }
 
 /// `a` ∪ `b`: the boolean union of two solids whose faces lie on planes
@@ -629,14 +646,14 @@ pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance)
 /// use arris_ops::{fuse, primitive_box, primitive_cylinder};
 /// use arris_ops::measure::mass_properties;
 /// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3};
+/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Point3};
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
 /// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0))?;
 /// let axis = Axis::z_at(Point3::new(20.0, 15.0, 5.0));
 /// let (boss, _) = primitive_cylinder(&mut m, axis, 4.0, 15.0)?;
-/// let (plate_with_boss, provenance) = fuse(&mut m, plate, boss)?;
+/// let (plate_with_boss, provenance) = fuse(&mut m, plate, boss, &Control::NONE)?;
 /// // The boss's wall crosses the top face; its bottom cap is swallowed.
 /// assert_eq!(m.faces(plate_with_boss)?.len(), 8);
 /// let volume = mass_properties(&m, plate_with_boss)?.volume;
@@ -646,11 +663,17 @@ pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance)
 /// assert_eq!(provenance.outputs().len(), 7);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-pub fn fuse(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpError> {
+pub fn fuse(
+    m: &mut Model,
+    a: Body,
+    b: Body,
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
     crate::verify_input(m, a)?;
     crate::verify_input(m, b)?;
-    let i = pave::build(m, a, b)?;
-    result::boolean(m, &i, result::Op::Fuse)
+    let mut meter = Meter::new(control);
+    let i = pave::build(m, a, b, &mut meter)?;
+    result::boolean(m, &i, result::Op::Fuse, &mut meter)
 }
 
 /// `a` ∩ `b`: the boolean intersection of two solids whose faces lie on
@@ -674,21 +697,27 @@ pub fn fuse(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpErr
 /// use arris_ops::{common, primitive_box};
 /// use arris_ops::measure::mass_properties;
 /// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::Point3;
+/// use arris_ops::arris_check::arris_topo::arris_math::{Control, Point3};
 ///
 /// let mut m = Model::default();
 /// let (a, _) = primitive_box(&mut m, Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, 1.0, 1.0))?;
 /// let (b, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0))?;
-/// let (unit_cube, _) = common(&mut m, a, b)?;
+/// let (unit_cube, _) = common(&mut m, a, b, &Control::NONE)?;
 /// assert_eq!(m.faces(unit_cube)?.len(), 6);
 /// assert!((mass_properties(&m, unit_cube)?.volume - 1.0).abs() < 1e-12);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-pub fn common(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpError> {
+pub fn common(
+    m: &mut Model,
+    a: Body,
+    b: Body,
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
     crate::verify_input(m, a)?;
     crate::verify_input(m, b)?;
-    let i = pave::build(m, a, b)?;
-    result::boolean(m, &i, result::Op::Common)
+    let mut meter = Meter::new(control);
+    let i = pave::build(m, a, b, &mut meter)?;
+    result::boolean(m, &i, result::Op::Common, &mut meter)
 }
 
 /// A number as the dump writes it: the shortest decimal that round-trips.

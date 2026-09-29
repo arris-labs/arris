@@ -10,6 +10,7 @@ use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, TAU};
 
 use arris_debug::prop::geom::{circle, ellipse, line, nurbs_curve};
 use arris_debug::sample;
+use arris_debug::unmetered::cut;
 use arris_debug::{prop, prop_shards};
 use arris_ops::arris_check::arris_topo::arris_geom::region2::Side;
 use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Curve2, Surface};
@@ -21,7 +22,7 @@ use arris_ops::arris_check::arris_topo::{
 use arris_ops::arris_check::classify::{Classification, classify_point};
 use arris_ops::arris_check::domain::FaceDomain;
 use arris_ops::query::{Projection, face_frame, frame_at, project_to_plane};
-use arris_ops::{OpError, Reason, cut, primitive_box};
+use arris_ops::{OpError, Reason, primitive_box};
 use proptest::prelude::*;
 
 /// How far a projected point may be from the projection of the 3D point,

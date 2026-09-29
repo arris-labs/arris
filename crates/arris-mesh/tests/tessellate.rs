@@ -761,7 +761,7 @@ fn oblique_hole(m: &mut Model, r: f64, tilt: f64, half: f64) -> Body {
     )
     .unwrap();
     let (tool, _) = primitive_cylinder(m, axis, r, 2.0 * half).unwrap();
-    arris_ops::cut(m, plate, tool).unwrap().0
+    arris_debug::unmetered::cut(m, plate, tool).unwrap().0
 }
 
 /// The largest turn any triangle of `body`'s one cylindrical face

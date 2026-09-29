@@ -2,7 +2,7 @@
 //! every variant names the entities involved.
 
 use arris_check::arris_topo::arris_geom::{GeomError, GeomKind, ProfileError};
-use arris_check::arris_topo::arris_math::FrameError;
+use arris_check::arris_topo::arris_math::{FrameError, Interrupted};
 use arris_check::arris_topo::builder::BuildError;
 use arris_check::arris_topo::{AnyId, Body, EdgeId, FaceId, NotFound, Shape};
 use arris_check::{ClassifyError, LumpError, Report};
@@ -452,6 +452,27 @@ pub enum OpError {
     /// solid: see [`Rejection`].
     #[error("the consumer's body is refused: {0}")]
     Rejected(Rejection),
+    /// The caller stopped the operation, by its poll or its budget of
+    /// steps (ADR-0030). Not a refusal of the input: the model is as it
+    /// was before the call, ids included, and the same call with a
+    /// larger budget or a poll that stays `false` can succeed.
+    #[error("{0}")]
+    Interrupted(Interrupted),
+}
+
+impl From<Interrupted> for OpError {
+    fn from(stop: Interrupted) -> Self {
+        OpError::Interrupted(stop)
+    }
+}
+
+/// A geometry error the operation has no name for as its own: a stop is
+/// the caller's [`OpError::Interrupted`], anything else a kernel fault.
+pub(crate) fn fault_of(e: GeomError) -> OpError {
+    match e {
+        GeomError::Interrupted(stop) => OpError::Interrupted(stop),
+        other => OpError::Internal(Fault::Geometry(other)),
+    }
 }
 
 fn entities_suffix(entities: &[Shape]) -> String {

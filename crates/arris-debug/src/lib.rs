@@ -37,6 +37,7 @@ pub mod step_file;
 pub mod survey;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing;
+pub mod unmetered;
 
 pub use body::{
     DebugMeshError, DomainError, RENDER_CHORD_FRACTION, RenderBodyError, mesh_of, render_body,

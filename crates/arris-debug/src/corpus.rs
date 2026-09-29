@@ -34,7 +34,7 @@ use arris_io::arris_check::arris_topo::FaceId;
 use arris_io::arris_check::arris_topo::arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
 use arris_io::arris_check::arris_topo::arris_math::{
-    Axis, FrameError, Isometry, Point3, UnitVec3, Vec3,
+    Axis, Control, FrameError, Isometry, Point3, UnitVec3, Vec3,
 };
 use arris_io::arris_check::arris_topo::builder::{Assembly, Builder, FaceSpec};
 use arris_io::arris_check::arris_topo::entity::BodyKind;
@@ -1738,17 +1738,20 @@ fn build_step(
         Step::Fuse { a, b, .. } => {
             let a = reference(fixture, step, a, made)?.body;
             let b = reference(fixture, step, b, made)?.body;
-            body(fuse(m, a, b).map_err(op)?, vec![a, b])
+            body(fuse(m, a, b, &Control::NONE).map_err(op)?, vec![a, b])
         }
         Step::Common { a, b, .. } => {
             let a = reference(fixture, step, a, made)?.body;
             let b = reference(fixture, step, b, made)?.body;
-            body(common(m, a, b).map_err(op)?, vec![a, b])
+            body(common(m, a, b, &Control::NONE).map_err(op)?, vec![a, b])
         }
         Step::Cut { target, tool, .. } => {
             let target = reference(fixture, step, target, made)?.body;
             let tool = reference(fixture, step, tool, made)?.body;
-            body(cut(m, target, tool).map_err(op)?, vec![target, tool])
+            body(
+                cut(m, target, tool, &Control::NONE).map_err(op)?,
+                vec![target, tool],
+            )
         }
         Step::Fillet {
             of,

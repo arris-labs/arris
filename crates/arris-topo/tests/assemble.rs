@@ -397,7 +397,7 @@ fn of_body_with_the_identity_remap_reproduces_a_multi_shell_boolean_result() {
     )
     .unwrap()
     .0;
-    let (body, _) = arris_ops::fuse(&mut m, a, b).unwrap();
+    let (body, _) = arris_debug::unmetered::fuse(&mut m, a, b).unwrap();
     assert_eq!(
         m.shells(body).unwrap().len(),
         2,

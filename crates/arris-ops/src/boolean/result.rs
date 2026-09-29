@@ -12,7 +12,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use arris_check::arris_topo::arris_geom::{
     GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection,
 };
-use arris_check::arris_topo::arris_math::{Interval, Point2, Point3, Precision, Tolerance, Vec3};
+use arris_check::arris_topo::arris_math::{
+    Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3,
+};
 use arris_check::arris_topo::builder::Builder;
 use arris_check::arris_topo::entity::BodyKind;
 use arris_check::arris_topo::{
@@ -24,6 +26,7 @@ use arris_check::{Classification, Classifier, ClassifyError, lumps};
 use super::pieces::{Alias, ERef, EdgeOnFace, PieceUse, SplitFace, SubEdge, VRef, split_face};
 use super::{Interferences, VertexSource, meet_curves};
 use crate::error::{Fault, OpError, Reason, SplitFault};
+use crate::pass::pass;
 use crate::rebuild::{self, Kept, Plan, Policy, forward};
 
 /// Which selection over the decomposition: one table, three
@@ -696,12 +699,12 @@ impl<'m> Build<'m> {
 
     /// Every face of both operands split, each piece classified against
     /// the other operand and kept by the selection table.
-    fn select(&mut self) -> Result<(), OpError> {
+    fn select(&mut self, meter: &mut Meter<'_>) -> Result<(), OpError> {
         let on = self.edges_by_face();
         // Every face split first — the step that runs in parallel —
         // then the pieces classified and selected in one order.
         let work: Vec<FaceHandle> = (0..2).flat_map(|side| self.faces[side].clone()).collect();
-        let splits = self.split_faces(&work, &on)?;
+        let splits = self.split_faces(&work, &on, meter)?;
         // One classifier per operand, its faces read once for every piece
         // of the other operand's faces.
         let m = self.m;
@@ -718,6 +721,7 @@ impl<'m> Build<'m> {
             let policy = self.op.policy(side);
             let mut pieces = Vec::new();
             for piece in split.pieces {
+                meter.tick()?;
                 let class = other
                     .classify(piece.interior)
                     .map_err(|e| classify_fault(m, f.id, bodies[1 - side], e))?;
@@ -853,8 +857,10 @@ impl<'m> Build<'m> {
         &self,
         work: &[FaceHandle],
         on: &BTreeMap<FaceId, Vec<EdgeOnFace>>,
+        meter: &mut Meter<'_>,
     ) -> Result<Vec<SplitFace>, OpError> {
-        let one = |f: &FaceHandle| {
+        pass(work, meter, |f, mt| {
+            mt.tick()?;
             split_face(
                 self.m,
                 &self.precision,
@@ -864,21 +870,7 @@ impl<'m> Build<'m> {
                 on.get(&f.id).map_or(&[][..], Vec::as_slice),
                 &self.alias_uses,
             )
-        };
-        #[cfg(feature = "parallel")]
-        {
-            use rayon::prelude::*;
-            // Every result first, then the first error in order: a
-            // `Result` collected straight from `rayon` is whichever error
-            // a thread met first, so two failing items would make the
-            // error — a refusal or a fault — depend on the schedule.
-            let all: Vec<_> = work.par_iter().map(one).collect();
-            all.into_iter().collect()
-        }
-        #[cfg(not(feature = "parallel"))]
-        {
-            work.iter().map(one).collect()
-        }
+        })
     }
 
     /// The surviving pieces grouped into shells by the edges they share:
@@ -1119,6 +1111,7 @@ pub(super) fn boolean(
     m: &mut Model,
     i: &Interferences,
     op: Op,
+    meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     let bodies = [i.a, i.b];
     let closures = [m.closure(i.a)?, m.closure(i.b)?];
@@ -1205,7 +1198,7 @@ pub(super) fn boolean(
         b.aliases();
         b.raise_tolerances()?;
         b.contacts()?;
-        b.select()?;
+        b.select(meter)?;
         let mut shells = b.shells()?;
         if shells.len() > 1 {
             shells = b.lump_order(shells)?;

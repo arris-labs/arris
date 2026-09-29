@@ -6,6 +6,7 @@
 //! `audit` holds on a re-rooted primitive's, sweep's and read solid's
 //! record, and re-rooting commutes with `then`.
 
+use arris_debug::unmetered::cut;
 use arris_io::step::{self, ReadOptions};
 use arris_ops::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Point3, Vec3};
@@ -13,7 +14,7 @@ use arris_ops::arris_check::arris_topo::provenance::{
     BoxPart, ConsumerKey, Coord, Origin, Side, audit,
 };
 use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Provenance, Role};
-use arris_ops::{cut, extrude, primitive_box, primitive_cylinder};
+use arris_ops::{extrude, primitive_box, primitive_cylinder};
 
 /// Every role the record has an origin at, ascending.
 fn roles_of(p: &Provenance) -> Vec<Role> {

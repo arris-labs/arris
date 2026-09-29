@@ -15,6 +15,7 @@ use std::collections::BTreeSet;
 use arris_debug::prop::profile::{PROFILE_RADIUS, Sweep};
 use arris_debug::prop::{finite_f64, frame, sweep};
 use arris_debug::testing::{close, fail};
+use arris_debug::unmetered::cut;
 use arris_debug::{dump_text, prop, prop_shards};
 use arris_mesh::tessellate;
 use arris_ops::arris_check::arris_topo::arris_geom::{
@@ -25,7 +26,7 @@ use arris_ops::arris_check::arris_topo::provenance::SweepPart;
 use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role};
 use arris_ops::arris_check::{Level, check};
 use arris_ops::measure::mass_properties;
-use arris_ops::{OpError, Reason, cut, extrude, primitive_cylinder};
+use arris_ops::{OpError, Reason, extrude, primitive_cylinder};
 use core::f64::consts::TAU;
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngAlgorithm, TestRng, TestRunner};

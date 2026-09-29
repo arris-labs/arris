@@ -26,6 +26,7 @@ pub mod boolean;
 mod build;
 mod error;
 pub mod measure;
+mod pass;
 mod primitive;
 pub mod query;
 mod rebuild;

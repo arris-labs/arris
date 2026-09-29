@@ -1212,7 +1212,13 @@ impl BandSolid {
                     direction: axis.direction,
                 };
                 let (hole, _) = primitive_cylinder(m, past, bore, height + 2.0)?;
-                arris_ops::cut(m, wall, hole)?.0
+                arris_ops::cut(
+                    m,
+                    wall,
+                    hole,
+                    &arris_ops::arris_check::arris_topo::arris_math::Control::NONE,
+                )?
+                .0
             }
             BandSolid::Bend { major, minor } => {
                 let plane = Frame::from_rotation(

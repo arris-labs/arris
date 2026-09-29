@@ -224,12 +224,18 @@ impl<'a> Meter<'a> {
     }
 
     /// The [`Interrupted`] of an item that stopped itself, as this meter
-    /// reports it: the item's steps added to the ones already charged, so
-    /// the count is the sequential build's. An item that finished is
+    /// reports it: the item's steps added to the ones already charged (and
+    /// no more than the budget), so the count is the sequential build's. An item that finished is
     /// [`charge`](Meter::charge)d; one that stopped is charged here
     /// instead, never both.
     pub fn charge_stop(&mut self, item: Interrupted) -> Interrupted {
         self.steps = self.steps.saturating_add(item.steps);
+        if let (Stop::Budget, Some(cap)) = (item.by, self.cap) {
+            // An item split off before its predecessors were charged ran
+            // to the budget the pass started with; the sequential build
+            // stopped it at what was left.
+            self.steps = self.steps.min(cap);
+        }
         self.stop(item.by)
     }
 
@@ -329,6 +335,33 @@ mod tests {
             let mut joined = Meter::new(&Control::budget(budget));
             let par = items.iter().enumerate().find_map(|(i, &n)| {
                 let mut item = joined.split();
+                let done = (0..n).try_for_each(|_| item.tick());
+                match done {
+                    Ok(()) => joined.charge(item.steps()).err().map(|e| (i, e)),
+                    Err(e) => Some((i, joined.charge_stop(e))),
+                }
+            });
+            assert_eq!(par, seq, "budget {budget}");
+            assert_eq!(joined.steps(), sequential.steps(), "budget {budget}");
+        }
+    }
+
+    /// Every item of a pass split off before any is charged, as the
+    /// parallel build does: the stop and its count are the sequential
+    /// ones all the same.
+    #[test]
+    fn items_split_together_stop_where_sequential_ticks_stop() {
+        let items = [2u64, 3, 1, 4];
+        for budget in 0..=12u64 {
+            let mut sequential = Meter::new(&Control::budget(budget));
+            let seq = items
+                .iter()
+                .enumerate()
+                .find_map(|(i, &n)| (0..n).find_map(|_| sequential.tick().err()).map(|e| (i, e)));
+            let mut joined = Meter::new(&Control::budget(budget));
+            let base = joined.split();
+            let par = items.iter().enumerate().find_map(|(i, &n)| {
+                let mut item = base;
                 let done = (0..n).try_for_each(|_| item.tick());
                 match done {
                     Ok(()) => joined.charge(item.steps()).err().map(|e| (i, e)),

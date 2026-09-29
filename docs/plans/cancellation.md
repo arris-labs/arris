@@ -148,7 +148,7 @@ bound has to be established here.
   `slow-unit` input the backlog names is under a stated bound. A
   stretch found unbounded — one fit solve, one resultant — gets a tick
   inside it or is named in the ADR as the latency floor.
-- [ ] Step 3 **[2]** — the booleans: `cut`, `fuse`, `common`,
+- [x] Step 3 **[2]** — the booleans: `cut`, `fuse`, `common`,
   `interferences` take `&Control`; `OpError::Interrupted`; the pair pass
   and the split pass follow decision 4. Tests: on
   `boolean/`'s fixtures, the unbudgeted step count `N` is equal with
@@ -227,6 +227,13 @@ bound has to be established here.
   steps thread the `Control`.
 - Decided in step 1 (ADR-0030 §7): `Interrupted` carries the step count
   and the cause only, not the entities at the stopping step.
-- ⚠ OPEN: whether the `parallel` build also stops on a poll mid-pass
-  (every thread polls) or only at the pass's join — agent, step 3.
-  Leaning: every thread polls, since a poll promises only rollback.
+- Decided in step 3: every thread of a `parallel` pass polls (each item
+  carries the poll in its split meter), since a poll promises only the
+  rollback; where a poll lands under `parallel` is the schedule's, and
+  only a budget is exact. `Meter::charge_stop` clamps a budget stop to
+  the budget, because the parallel build splits every item off the
+  budget left when the pass starts. Counts live in
+  `crates/arris-ops/tests/cancel_counts.txt`, one record both builds are
+  held to (`ARRIS_BLESS=1` rewrites it). Tests import the operations
+  from `arris_debug::unmetered` (each op with `Control::NONE`), which
+  steps 4–6 extend.

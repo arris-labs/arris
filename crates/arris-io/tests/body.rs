@@ -11,6 +11,7 @@ mod guard;
 
 use std::collections::BTreeSet;
 
+use arris_debug::unmetered::cut;
 use arris_debug::{dump_text, sample};
 use arris_io::arris_check::arris_topo::arris_math::{Axis, Point2, Point3, Precision};
 use arris_io::arris_check::arris_topo::provenance::ConsumerKey;
@@ -21,7 +22,7 @@ use arris_io::arris_check::{Level, check};
 use arris_io::body::{self, BODY_VERSION, BodyError, Imported};
 use arris_io::native;
 use arris_ops::measure::mass_properties;
-use arris_ops::{cut, primitive_box, primitive_cylinder};
+use arris_ops::{primitive_box, primitive_cylinder};
 
 use arris_debug::corpus;
 use arris_debug::prop::recipe::recipe;

@@ -327,7 +327,13 @@ mod tests {
             Point3::new(base.x + 10.0, base.y + 10.0, top),
         )
         .unwrap();
-        let (below, _) = common(&mut m, cylinder, slab).unwrap();
+        let (below, _) = common(
+            &mut m,
+            cylinder,
+            slab,
+            &arris_check::arris_topo::arris_math::Control::NONE,
+        )
+        .unwrap();
         let p = mass_properties(&m, below).unwrap();
         let volume = PI * radius * radius * t;
         assert!(

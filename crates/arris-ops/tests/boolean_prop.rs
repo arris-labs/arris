@@ -18,6 +18,7 @@ use arris_debug::prop::body::{
     QuarticPair, SingularSlice, SingularSolid, TangentPair,
 };
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
+use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::{dump_text, prop, prop_shards};
 use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Quaternion, UnitQuaternion};
 use arris_ops::arris_check::arris_topo::arris_math::{
@@ -27,7 +28,7 @@ use arris_ops::arris_check::arris_topo::provenance::audit;
 use arris_ops::arris_check::arris_topo::{Body, Model, Provenance};
 use arris_ops::arris_check::{Level, check};
 use arris_ops::measure::{MassProperties, mass_properties};
-use arris_ops::{OpError, Reason, common, cut, fuse, transform};
+use arris_ops::{OpError, Reason, transform};
 use proptest::prelude::*;
 
 /// A boolean of two bodies: `fuse`, `common` or `cut`.
