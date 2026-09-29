@@ -13,7 +13,8 @@
 //! came from.
 
 use arris_math::{
-    Frame, Interval, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, is_negligible, wrap_angle,
+    Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, is_negligible,
+    wrap_angle,
 };
 
 use crate::integrate::{Grid, region_integral};
@@ -494,7 +495,7 @@ impl Profile {
                     .map_err(|_| ProfileError::ZeroArea { loop_index })?;
                 let curve = Curve::Circle { frame, radius };
                 let range = Interval::TURN;
-                let pcurve = pcurve_on(&curve, range, surface, tol)?;
+                let pcurve = pcurve_on(&curve, range, surface, tol, &mut Meter::default())?;
                 // Where the oracle's `gp_Circ` on the plane's `Ax2` puts
                 // the seam: the circle's own `t = 0`, along the plane's X.
                 let vertex = center + Vec2::new(radius, 0.0);
@@ -543,7 +544,7 @@ impl Profile {
                     )
                 };
                 let range = Interval::TURN;
-                let pcurve = pcurve_on(&curve, range, surface, tol)?;
+                let pcurve = pcurve_on(&curve, range, surface, tol, &mut Meter::default())?;
                 let vertex = center + reach * ex;
                 Ok(vec![ProfileEdge {
                     curve,
@@ -758,7 +759,7 @@ impl Profile {
                 }
             }
         };
-        let pcurve = pcurve_on(&curve, range, surface, tol)?;
+        let pcurve = pcurve_on(&curve, range, surface, tol, &mut Meter::default())?;
         Ok(ProfileEdge {
             curve,
             range,

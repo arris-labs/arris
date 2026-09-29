@@ -7,7 +7,7 @@
 //! has a closed form of its own, and the coplanar cases, where the plane
 //! says nothing, have theirs.
 
-use arris_math::{Frame, Point2, Point3, Tolerance, Vec2, Vec3, roots, wrap_angle};
+use arris_math::{Frame, Meter, Point2, Point3, Tolerance, Vec2, Vec3, roots, wrap_angle};
 
 use crate::conic2::{Conic2, ConicMeet, conic_pair};
 use crate::{
@@ -88,17 +88,17 @@ pub enum CurveIntersection {
 ///
 /// ```
 /// use arris_geom::{Curve, CurveIntersection, intersect_curves};
-/// use arris_math::{Frame, Point3, Precision, Vec3};
+/// use arris_math::{Frame, Meter, Point3, Precision, Vec3};
 ///
 /// let circle = Curve::Circle { frame: Frame::world(), radius: 2.0 };
 /// let axis = Curve::Line { origin: Point3::new(0.0, 0.0, -1.0), direction: Vec3::z_axis() };
 /// // The axis pierces the circle's plane at its centre, which is not on it.
 /// let CurveIntersection::Points(hits) =
-///     intersect_curves(&axis, &circle, Precision::DEFAULT.tolerance())?
+///     intersect_curves(&axis, &circle, Precision::DEFAULT.tolerance(), &mut Meter::default())?
 /// else { panic!() };
 /// assert!(hits.is_empty());
 /// assert_eq!(
-///     intersect_curves(&circle, &circle, Precision::DEFAULT.tolerance())?,
+///     intersect_curves(&circle, &circle, Precision::DEFAULT.tolerance(), &mut Meter::default())?,
 ///     CurveIntersection::Coincident
 /// );
 /// # Ok::<(), arris_geom::GeomError>(())
@@ -107,6 +107,7 @@ pub fn intersect_curves(
     a: &Curve,
     b: &Curve,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<CurveIntersection, GeomError> {
     if !tol.is_consistent() {
         return Err(GeomError::InvalidTolerance(tol));
@@ -125,19 +126,25 @@ pub fn intersect_curves(
         (
             Curve::Line { .. } | Curve::Circle { .. } | Curve::Ellipse { .. },
             Curve::Circle { .. } | Curve::Ellipse { .. },
-        ) => through_plane(a, b, tol),
+        ) => through_plane(a, b, tol, meter),
         (Curve::Circle { .. } | Curve::Ellipse { .. }, Curve::Line { .. }) => {
-            Ok(swapped(through_plane(b, a, tol)?))
+            Ok(swapped(through_plane(b, a, tol, meter)?))
         }
         (Curve::Nurbs(_), &Curve::Line { origin, direction }) => {
-            nurbs_line(a, origin, direction.into_inner(), tol)
+            nurbs_line(a, origin, direction.into_inner(), tol, meter)
         }
-        (&Curve::Line { origin, direction }, Curve::Nurbs(_)) => {
-            Ok(swapped(nurbs_line(b, origin, direction.into_inner(), tol)?))
+        (&Curve::Line { origin, direction }, Curve::Nurbs(_)) => Ok(swapped(nurbs_line(
+            b,
+            origin,
+            direction.into_inner(),
+            tol,
+            meter,
+        )?)),
+        (Curve::Nurbs(_), Curve::Circle { .. } | Curve::Ellipse { .. }) => {
+            through_plane(a, b, tol, meter)
         }
-        (Curve::Nurbs(_), Curve::Circle { .. } | Curve::Ellipse { .. }) => through_plane(a, b, tol),
         (Curve::Circle { .. } | Curve::Ellipse { .. }, Curve::Nurbs(_)) => {
-            Ok(swapped(through_plane(b, a, tol)?))
+            Ok(swapped(through_plane(b, a, tol, meter)?))
         }
         // Two fitted curves meet where a marcher finds them, the NURBS
         // cycle's; the
@@ -178,20 +185,26 @@ pub fn intersect_curves(
 ///
 /// ```
 /// use arris_geom::{Curve, CurveIntersection, curves_coincide, intersect_curves};
-/// use arris_math::{Frame, Precision};
+/// use arris_math::{Frame, Meter, Precision};
 ///
 /// let tol = Precision::DEFAULT.tolerance();
+/// let meter = &mut Meter::default();
 /// let circle = Curve::Circle { frame: Frame::world(), radius: 1.0 };
 /// let ellipse = Curve::Ellipse { frame: Frame::world(), major_radius: 3.0, minor_radius: 2.0 };
 /// // Coplanar: the quartic says where they meet — nowhere, the circle
 /// // lying inside the ellipse — and they are not the same curve.
-/// let apart = intersect_curves(&circle, &ellipse, tol)?;
+/// let apart = intersect_curves(&circle, &ellipse, tol, meter)?;
 /// assert_eq!(apart, CurveIntersection::Points(Vec::new()));
-/// assert!(!curves_coincide(&circle, &ellipse, tol)?);
-/// assert!(curves_coincide(&ellipse, &ellipse, tol)?);
+/// assert!(!curves_coincide(&circle, &ellipse, tol, meter)?);
+/// assert!(curves_coincide(&ellipse, &ellipse, tol, meter)?);
 /// # Ok::<(), arris_geom::GeomError>(())
 /// ```
-pub fn curves_coincide(a: &Curve, b: &Curve, tol: Tolerance) -> Result<bool, GeomError> {
+pub fn curves_coincide(
+    a: &Curve,
+    b: &Curve,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<bool, GeomError> {
     if !tol.is_consistent() {
         return Err(GeomError::InvalidTolerance(tol));
     }
@@ -224,20 +237,22 @@ pub fn curves_coincide(a: &Curve, b: &Curve, tol: Tolerance) -> Result<bool, Geo
             // it at points is not in it, and is not `b`.
             let plane = Surface::Plane { frame: *fb };
             if !matches!(
-                intersect_curve_surface(a, &plane, tol)?,
+                intersect_curve_surface(a, &plane, tol, meter)?,
                 CurveSurfaceIntersection::Coincident
             ) {
                 return Ok(false);
             }
             // In it, as `coplanar`: two circles by the radical line, a
             // pair with an ellipse by the conics' quartic.
-            Ok(coplanar(a, b, tol)? == CurveIntersection::Coincident)
+            Ok(coplanar(a, b, tol, meter)? == CurveIntersection::Coincident)
         }
         (Curve::Nurbs(_), &Curve::Line { origin, direction })
         | (&Curve::Line { origin, direction }, Curve::Nurbs(_)) => {
             let spline = if let Curve::Nurbs(_) = a { a } else { b };
-            Ok(nurbs_line(spline, origin, direction.into_inner(), tol)?
-                == CurveIntersection::Coincident)
+            Ok(
+                nurbs_line(spline, origin, direction.into_inner(), tol, meter)?
+                    == CurveIntersection::Coincident,
+            )
         }
         (Curve::Nurbs(_), Curve::Circle { .. } | Curve::Ellipse { .. })
         | (Curve::Circle { .. } | Curve::Ellipse { .. }, Curve::Nurbs(_)) => {
@@ -253,15 +268,20 @@ pub fn curves_coincide(a: &Curve, b: &Curve, tol: Tolerance) -> Result<bool, Geo
             };
             let plane = Surface::Plane { frame: *frame };
             Ok(matches!(
-                intersect_curve_surface(spline, &plane, tol)?,
+                intersect_curve_surface(spline, &plane, tol, meter)?,
                 CurveSurfaceIntersection::Coincident
             ) && matches!(
-                intersect_curve_surface(spline, &wall_of(conic).ok_or_else(unsupported)?, tol)?,
+                intersect_curve_surface(
+                    spline,
+                    &wall_of(conic).ok_or_else(unsupported)?,
+                    tol,
+                    meter
+                )?,
                 CurveSurfaceIntersection::Coincident
             ))
         }
         (Curve::Nurbs(na), Curve::Nurbs(nb)) => {
-            nurbs_nurbs_coincide(na, nb, tol)?.ok_or_else(unsupported)
+            nurbs_nurbs_coincide(na, nb, tol, meter)?.ok_or_else(unsupported)
         }
     }
 }
@@ -429,7 +449,12 @@ fn line_line(oa: Point3, da: Vec3, ob: Point3, db: Vec3, tol: Tolerance) -> Curv
 /// `a` against the conic `b`, through `b`'s plane: every common point is
 /// in that plane, so the plane's hits are the candidates and `b`'s own
 /// projection keeps the ones that are on it.
-fn through_plane(a: &Curve, b: &Curve, tol: Tolerance) -> Result<CurveIntersection, GeomError> {
+fn through_plane(
+    a: &Curve,
+    b: &Curve,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<CurveIntersection, GeomError> {
     let Some((frame, _)) = conic_frame(b) else {
         return Err(GeomError::Unsupported {
             a: GeomKind::Curve(a.kind()),
@@ -437,9 +462,9 @@ fn through_plane(a: &Curve, b: &Curve, tol: Tolerance) -> Result<CurveIntersecti
         });
     };
     let plane = Surface::Plane { frame: *frame };
-    let hits = match intersect_curve_surface(a, &plane, tol)? {
+    let hits = match intersect_curve_surface(a, &plane, tol, meter)? {
         CurveSurfaceIntersection::Points(hits) => hits,
-        CurveSurfaceIntersection::Coincident => return coplanar(a, b, tol),
+        CurveSurfaceIntersection::Coincident => return coplanar(a, b, tol, meter),
     };
     let mut out = Vec::with_capacity(hits.len());
     for h in hits {
@@ -464,14 +489,19 @@ fn through_plane(a: &Curve, b: &Curve, tol: Tolerance) -> Result<CurveIntersecti
 }
 
 /// `a` and the conic `b` in one plane, where the plane decides nothing.
-fn coplanar(a: &Curve, b: &Curve, tol: Tolerance) -> Result<CurveIntersection, GeomError> {
+fn coplanar(
+    a: &Curve,
+    b: &Curve,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<CurveIntersection, GeomError> {
     match (a, b) {
         (&Curve::Line { origin, direction }, _) => {
             let (frame, _) = conic_frame(b).ok_or(GeomError::Unsupported {
                 a: GeomKind::Curve(a.kind()),
                 b: GeomKind::Curve(b.kind()),
             })?;
-            line_conic_coplanar(origin, direction.into_inner(), frame, b, tol)
+            line_conic_coplanar(origin, direction.into_inner(), frame, b, tol, meter)
         }
         (
             &Curve::Circle {
@@ -490,7 +520,7 @@ fn coplanar(a: &Curve, b: &Curve, tol: Tolerance) -> Result<CurveIntersection, G
             Curve::Circle { .. } | Curve::Ellipse { .. },
         ) => conic_conic_coplanar(a, b, tol),
         (Curve::Nurbs(_), Curve::Circle { .. } | Curve::Ellipse { .. }) => {
-            nurbs_conic_coplanar(a, b, tol)
+            nurbs_conic_coplanar(a, b, tol, meter)
         }
         (Curve::Nurbs(_), Curve::Line { .. } | Curve::Nurbs(_))
         | (Curve::Circle { .. } | Curve::Ellipse { .. }, Curve::Line { .. } | Curve::Nurbs(_)) => {
@@ -602,12 +632,13 @@ fn nurbs_conic_coplanar(
     a: &Curve,
     b: &Curve,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<CurveIntersection, GeomError> {
     let wall = wall_of(b).ok_or(GeomError::Unsupported {
         a: GeomKind::Curve(a.kind()),
         b: GeomKind::Curve(b.kind()),
     })?;
-    let hits = match intersect_curve_surface(a, &wall, tol)? {
+    let hits = match intersect_curve_surface(a, &wall, tol, meter)? {
         CurveSurfaceIntersection::Coincident => return Ok(CurveIntersection::Coincident),
         CurveSurfaceIntersection::Points(hits) => hits,
     };
@@ -656,6 +687,7 @@ fn nurbs_line(
     origin: Point3,
     direction: Vec3,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<CurveIntersection, GeomError> {
     let degenerate = |_| GeomError::Degenerate {
         kind: GeomKind::Curve(CurveKind::Line),
@@ -665,7 +697,12 @@ fn nurbs_line(
     let mut found = Vec::with_capacity(2);
     for normal in [across.x(), across.y()] {
         let frame = Frame::from_z(origin, normal.into_inner()).map_err(degenerate)?;
-        found.push(intersect_curve_surface(a, &Surface::Plane { frame }, tol)?);
+        found.push(intersect_curve_surface(
+            a,
+            &Surface::Plane { frame },
+            tol,
+            meter,
+        )?);
     }
     let on_line = |h: &CurveSurfaceHit| CurveCurveHit {
         ta: h.t,
@@ -742,6 +779,7 @@ fn nurbs_nurbs_coincide(
     a: &NurbsCurve,
     b: &NurbsCurve,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Option<bool>, GeomError> {
     let same_spline = a.degree() == b.degree()
         && a.knots() == b.knots()
@@ -762,7 +800,8 @@ fn nurbs_nurbs_coincide(
             let Ok(frame) = Frame::from_z(at.point, at.d1) else {
                 continue;
             };
-            let near = match intersect_curve_surface(&other, &Surface::Plane { frame }, tol)? {
+            let near = match intersect_curve_surface(&other, &Surface::Plane { frame }, tol, meter)?
+            {
                 CurveSurfaceIntersection::Coincident => false,
                 CurveSurfaceIntersection::Points(hits) => hits
                     .iter()
@@ -806,6 +845,7 @@ fn line_conic_coplanar(
     conic: &Frame,
     b: &Curve,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<CurveIntersection, GeomError> {
     let normal = conic.z().cross(&direction);
     let cut = Frame::from_z(origin, normal).map_err(|_| GeomError::Degenerate {
@@ -813,7 +853,7 @@ fn line_conic_coplanar(
         reason: "a line in the conic's plane whose direction is not a direction".to_string(),
     })?;
     let plane = Surface::Plane { frame: cut };
-    let found = match intersect_curve_surface(b, &plane, tol)? {
+    let found = match intersect_curve_surface(b, &plane, tol, meter)? {
         CurveSurfaceIntersection::Points(hits) => hits,
         // The conic lies in the cutting plane too, which would make it a
         // line: no valid conic does.

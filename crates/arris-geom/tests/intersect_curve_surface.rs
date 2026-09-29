@@ -109,7 +109,8 @@ fn hits_of(r: &CurveSurfaceIntersection) -> &[CurveSurfaceHit] {
 /// operands, sorted with `t` in the domain, `uv` consistent with the
 /// point, and determinism.
 fn common_properties(c: &Curve, s: &Surface) -> Result<CurveSurfaceIntersection, TestCaseError> {
-    let r = intersect_curve_surface(c, s, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let r = intersect_curve_surface(c, s, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     let hits = hits_of(&r);
     for h in hits {
         prop_assert!(
@@ -142,8 +143,8 @@ fn common_properties(c: &Curve, s: &Surface) -> Result<CurveSurfaceIntersection,
         hits.windows(2).all(|w| w[0].t < w[1].t),
         "unsorted: {hits:?}"
     );
-    let again =
-        intersect_curve_surface(c, s, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let again = intersect_curve_surface(c, s, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(&again, &r, "two runs differ");
     Ok(r)
 }
@@ -583,11 +584,12 @@ fn only_a_nurbs_surface_is_unsupported() {
             let nc = Curve::Nurbs(nc);
             let ns = Surface::Nurbs(ns);
             for curve in [&c, &nc] {
-                match intersect_curve_surface(curve, &s, tol()) {
+                match intersect_curve_surface(curve, &s, tol(), &mut arris_math::Meter::default()) {
                     Ok(_) => {}
                     other => return fail(format!("{curve:?} vs {s:?}: {other:?}")),
                 }
-                match intersect_curve_surface(curve, &ns, tol()) {
+                match intersect_curve_surface(curve, &ns, tol(), &mut arris_math::Meter::default())
+                {
                     Err(GeomError::Unsupported { a, b }) => {
                         prop_assert_eq!(a, GeomKind::Curve(curve.kind()));
                         prop_assert_eq!(b, GeomKind::Surface(SurfaceKind::Nurbs));
@@ -872,7 +874,13 @@ fn oblique_section() -> impl Strategy<Value = (Surface, Curve)> {
                 let plane = Surface::Plane {
                     frame: Frame::from_z(origin, normal).ok()?,
                 };
-                match arris_geom::intersect_surfaces(&plane, &cyl, &within(), tol()) {
+                match arris_geom::intersect_surfaces(
+                    &plane,
+                    &cyl,
+                    &within(),
+                    tol(),
+                    &mut arris_math::Meter::default(),
+                ) {
                     Ok(r) => match r.curves().first() {
                         Some(arris_geom::MeetCurve {
                             curve: e @ Curve::Ellipse { .. },

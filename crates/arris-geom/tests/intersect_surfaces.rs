@@ -281,9 +281,9 @@ fn fits_of(
         return Vec::new();
     }
     let trace = if [a, b].iter().any(|s| s.kind() == SurfaceKind::Torus) {
-        trace_torus(a, b, tol())
+        trace_torus(a, b, tol(), &mut arris_math::Meter::default())
     } else {
-        trace_quadrics(a, b, within, tol())
+        trace_quadrics(a, b, within, tol(), &mut arris_math::Meter::default())
     };
     let Ok(trace) = trace else {
         return Vec::new();
@@ -353,7 +353,7 @@ fn two_regions_agree(
         min: core::array::from_fn(|k| within.min[k] + shift[k]),
         max: core::array::from_fn(|k| within.max[k] + shift[k]),
     };
-    let r2 = intersect_surfaces(a, b, &other, tol())
+    let r2 = intersect_surfaces(a, b, &other, tol(), &mut arris_math::Meter::default())
         .map_err(|e| TestCaseError::fail(format!("{a:?} vs {b:?} in {other:?}: {e}")))?;
     let theirs: Vec<Curve> = (r2.curves().iter())
         .filter(|m| matches!(m.curve, Curve::Nurbs(_)))
@@ -411,7 +411,7 @@ fn common_properties_in(
     b: &Surface,
     within: &Aabb,
 ) -> Result<SurfaceIntersection, TestCaseError> {
-    let r = intersect_surfaces(a, b, within, tol())
+    let r = intersect_surfaces(a, b, within, tol(), &mut arris_math::Meter::default())
         .map_err(|e| TestCaseError::fail(format!("{a:?} vs {b:?}: {e}")))?;
     let slack = if r.points().is_empty()
         || r.curves()
@@ -434,8 +434,8 @@ fn common_properties_in(
             "{p} is off by {da} from {a:?} and {db} from {b:?}"
         );
     }
-    let swapped =
-        intersect_surfaces(b, a, within, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let swapped = intersect_surfaces(b, a, within, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(
         core::mem::discriminant(&swapped),
         core::mem::discriminant(&r),
@@ -471,8 +471,8 @@ fn common_properties_in(
             taken[i] = true;
         }
     }
-    let again =
-        intersect_surfaces(a, b, within, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let again = intersect_surfaces(a, b, within, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(&again, &r, "two runs differ");
     Ok(r)
 }
@@ -784,7 +784,7 @@ fn every_other_pair_is_unsupported() {
         // `Surface::Nurbs` in them, which are the NURBS cycle's.
         let nurbs = |k| k == SurfaceKind::Nurbs;
         let supported = !nurbs(a.kind()) && !nurbs(b.kind());
-        match intersect_surfaces(&a, &b, &within(), tol()) {
+        match intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default()) {
             Ok(_) => prop_assert!(supported, "{a:?} vs {b:?} should be unsupported"),
             Err(GeomError::Unsupported { a: ka, b: kb }) => {
                 prop_assert!(!supported, "{a:?} vs {b:?} has a closed form");
@@ -835,14 +835,29 @@ fn through_hole_faces_against_the_hole() {
         (Point3::new(0.0, 30.0, 0.0), Vec3::y()),
     ] {
         assert_eq!(
-            intersect_surfaces(&wall(origin, normal), &hole, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &wall(origin, normal),
+                &hole,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::Empty
         );
     }
     for (z, normal) in [(0.0, -Vec3::z()), (10.0, Vec3::z())] {
         let cap = wall(Point3::new(0.0, 0.0, z), normal);
-        let Seen::Crossing(c) = seen(&intersect_surfaces(&cap, &hole, &within(), tol()).unwrap())
-        else {
+        let Seen::Crossing(c) = seen(
+            &intersect_surfaces(
+                &cap,
+                &hole,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
+        ) else {
             panic!()
         };
         let [Curve::Circle { frame, radius }] = c.as_slice() else {
@@ -899,7 +914,7 @@ fn coaxial_cylinders_are_coincident_or_empty_by_their_radii() {
             SurfaceIntersection::Empty
         };
         prop_assert_eq!(
-            intersect_surfaces(&a, &b, &within(), tol())
+            intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default())
                 .map_err(|e| TestCaseError::fail(e.to_string()))?,
             expected.clone(),
             "{:?} vs {:?}",
@@ -908,7 +923,7 @@ fn coaxial_cylinders_are_coincident_or_empty_by_their_radii() {
         );
         // Symmetric, and the same on a second run.
         prop_assert_eq!(
-            intersect_surfaces(&b, &a, &within(), tol())
+            intersect_surfaces(&b, &a, &within(), tol(), &mut arris_math::Meter::default())
                 .map_err(|e| TestCaseError::fail(e.to_string()))?,
             expected
         );
@@ -1146,8 +1161,14 @@ fn equal_cylinders_crossing_meet_in_the_two_bisecting_ellipses() {
         }
         // Either operand order: the same two ellipses bit for bit, in the
         // same order, so a boolean fits each pcurve once whichever it is.
-        let swapped = intersect_surfaces(&b, &a, &within(), Precision::DEFAULT.tolerance())
-            .map_err(|e| TestCaseError::fail(e.to_string()))?;
+        let swapped = intersect_surfaces(
+            &b,
+            &a,
+            &within(),
+            Precision::DEFAULT.tolerance(),
+            &mut arris_math::Meter::default(),
+        )
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
         prop_assert_eq!(&swapped, &r, "swapping the operands");
         Ok(())
     });
@@ -1241,7 +1262,7 @@ const DENSE: usize = 2001;
 fn cylinders_in_a_quartic_pose_meet_in_fitted_curves_on_both_surfaces() {
     check(quartic_pair(), |(a, b)| {
         prop_assert!(pose(&a, &b).is_quartic(), "{a:?} vs {b:?}");
-        let r = intersect_surfaces(&a, &b, &within(), tol())
+        let r = intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default())
             .map_err(|e| TestCaseError::fail(format!("{a:?} vs {b:?}: {e}")))?;
         prop_assert!(!r.curves().is_empty() || !r.points().is_empty(), "{r:?}");
         prop_assert!(
@@ -1289,10 +1310,11 @@ fn cylinders_in_a_quartic_pose_meet_in_fitted_curves_on_both_surfaces() {
             let off = implicit_distance(&a, p.point).max(implicit_distance(&b, p.point));
             prop_assert!(off <= tol().linear, "{:?} is {off} off a surface", p);
         }
-        let swapped = intersect_surfaces(&b, &a, &within(), tol())
-            .map_err(|e| TestCaseError::fail(e.to_string()))?;
+        let swapped =
+            intersect_surfaces(&b, &a, &within(), tol(), &mut arris_math::Meter::default())
+                .map_err(|e| TestCaseError::fail(e.to_string()))?;
         prop_assert!(swapped == r, "the swap changed the result");
-        let again = intersect_surfaces(&a, &b, &within(), tol())
+        let again = intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default())
             .map_err(|e| TestCaseError::fail(e.to_string()))?;
         prop_assert!(again == r, "a second run changed the result");
         Ok(())
@@ -1861,7 +1883,14 @@ fn a_plane_through_the_axis_cuts_the_meridian() {
                 };
                 prop_assert_eq!(c.len(), 2, "{:?}: {:?}", kind, r);
                 prop_assert_eq!(
-                    &intersect_surfaces(&carrier, &plane, &within(), tol()).unwrap(),
+                    &intersect_surfaces(
+                        &carrier,
+                        &plane,
+                        &within(),
+                        tol(),
+                        &mut arris_math::Meter::default()
+                    )
+                    .unwrap(),
                     &r,
                     "either order"
                 );
@@ -2058,8 +2087,14 @@ fn a_torus_meets_every_analytic_surface_off_its_axis() {
         ),
     ];
     for (name, other, loops, arms, points) in cases {
-        let r = intersect_surfaces(&ring, &other, &within(), tol())
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        let r = intersect_surfaces(
+            &ring,
+            &other,
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{name}: {e}"));
         let fitted: Vec<&arris_geom::NurbsCurve> = r
             .curves()
             .iter()
@@ -2089,7 +2124,14 @@ fn a_torus_meets_every_analytic_surface_off_its_axis() {
             assert!(off <= tol().linear, "{name}: a point is {off} off");
         }
         assert_eq!(
-            intersect_surfaces(&other, &ring, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &other,
+                &ring,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             r,
             "{name}: the swap changed the result"
         );
@@ -2110,7 +2152,14 @@ fn a_pipe_elbow_shares_an_exact_tube_circle_with_its_pipe() {
         frame: Frame::from_z(centre + ring_dir(2.0, 0.0, 0.0), ring_dir(0.0, 1.0, 0.0)).unwrap(),
         radius: 0.5,
     };
-    let r = intersect_surfaces(&ring, &pipe, &within(), tol()).unwrap();
+    let r = intersect_surfaces(
+        &ring,
+        &pipe,
+        &within(),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     let [circle, first, second] = r.curves() else {
         panic!("{r:?}")
     };
@@ -2138,7 +2187,14 @@ fn a_pipe_elbow_shares_an_exact_tube_circle_with_its_pipe() {
         on_both(&m.curve, &ring, &pipe, tol().linear).unwrap();
     }
     assert_eq!(
-        intersect_surfaces(&pipe, &ring, &within(), tol()).unwrap(),
+        intersect_surfaces(
+            &pipe,
+            &ring,
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default()
+        )
+        .unwrap(),
         r,
         "the swap changed the result"
     );
@@ -2158,7 +2214,14 @@ fn a_bitangent_plane_meets_the_ring_in_fitted_villarceau_circles() {
     let plane = Surface::Plane {
         frame: Frame::from_z(centre, ring_dir(-tilt.sin(), 0.0, tilt.cos())).unwrap(),
     };
-    let r = intersect_surfaces(&ring, &plane, &within(), tol()).unwrap();
+    let r = intersect_surfaces(
+        &ring,
+        &plane,
+        &within(),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!((r.curves().len(), r.points().len()), (4, 2), "{r:?}");
     assert!(
         r.curves()
@@ -2359,7 +2422,7 @@ prop_shards! {
             // seed (`a_flat_cone_and_a_cylinder_fit_within_the_span_cap`,
             // ignored). Any other failure fails as before.
             if let Err(GeomError::Fit(FitError::Diverged { .. })) =
-                intersect_surfaces(&a, &b, &within, tol())
+                intersect_surfaces(&a, &b, &within, tol(), &mut arris_math::Meter::default())
             {
                 return Err(TestCaseError::reject("fit-diverged"));
             }
@@ -2466,8 +2529,13 @@ fn a_plane_cuts_a_cone_off_its_axis_in_every_conic() {
         frame: Frame::from_z(at, Vec3::new(tilt.sin(), 0.0, tilt.cos())).unwrap(),
     };
     let meet = |p: &Surface| {
-        let r = intersect_surfaces(p, &cone, &within, tol()).unwrap();
-        assert_eq!(intersect_surfaces(&cone, p, &within, tol()).unwrap(), r);
+        let r = intersect_surfaces(p, &cone, &within, tol(), &mut arris_math::Meter::default())
+            .unwrap();
+        assert_eq!(
+            intersect_surfaces(&cone, p, &within, tol(), &mut arris_math::Meter::default())
+                .unwrap(),
+            r
+        );
         exactly_on_both(&r, p, &cone);
         r
     };
@@ -2566,6 +2634,7 @@ fn a_plane_a_hair_from_square_cuts_an_elliptic_cylinder_to_its_radii() {
                     max: [2e3; 3],
                 },
                 tol(),
+                &mut arris_math::Meter::default(),
             )
             .unwrap();
             let [meet] = hit.curves() else {
@@ -2606,7 +2675,8 @@ fn two_planes_a_hair_from_parallel_meet_in_a_finite_line_on_both() {
         let b = Surface::Plane {
             frame: Frame::from_z(Point3::new(5.5, 1.75, 1.5), -Vec3::x()).unwrap(),
         };
-        let hit = intersect_surfaces(&a, &b, &within(), tol()).unwrap();
+        let hit = intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default())
+            .unwrap();
         let [meet] = hit.curves() else {
             panic!("{tilt:e}: {hit:?}")
         };
@@ -2659,7 +2729,14 @@ fn a_plane_tangent_to_a_torus_rim_on_its_seam_touches_it_once() {
         max: [-104.0, 11.5, -82.0],
     };
     let tol = Tolerance::new(1e-7, 1e-12);
-    let r = intersect_surfaces(&torus, &plane, &within, tol).unwrap();
+    let r = intersect_surfaces(
+        &torus,
+        &plane,
+        &within,
+        tol,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     let SurfaceIntersection::Meets { curves, points } = &r else {
         panic!("{r:?}");
     };

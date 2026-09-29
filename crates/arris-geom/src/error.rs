@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use arris_math::{Point2, Point3, Tolerance};
+use arris_math::{Interrupted, Point2, Point3, Tolerance};
 
 use crate::{Curve2Kind, CurveKind, FitError, SectionFault, SurfaceKind};
 
@@ -186,5 +186,26 @@ pub enum GeomError {
     /// A NURBS fit ([`crate::fit_curve2`], [`crate::fit_curve`],
     /// [`crate::fit_curve_periodic`]) did not produce a curve.
     #[error("fit: {0}")]
-    Fit(#[from] FitError),
+    Fit(FitError),
+    /// The caller stopped the query ([`arris_math::Control`]): nothing
+    /// was computed that outlives the call.
+    #[error(transparent)]
+    Interrupted(Interrupted),
+}
+
+impl From<FitError> for GeomError {
+    /// A fit the caller stopped is the query stopped, not a fit that
+    /// failed.
+    fn from(e: FitError) -> Self {
+        match e {
+            FitError::Interrupted(stop) => GeomError::Interrupted(stop),
+            other => GeomError::Fit(other),
+        }
+    }
+}
+
+impl From<Interrupted> for GeomError {
+    fn from(stop: Interrupted) -> Self {
+        GeomError::Interrupted(stop)
+    }
 }

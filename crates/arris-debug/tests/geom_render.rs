@@ -86,7 +86,14 @@ fn plane_cylinder_sections_render() {
     let mut kinds = Vec::new();
     for frame in planes {
         let plane = Surface::Plane { frame };
-        let r = intersect_surfaces(&plane, &cyl, &within(), tol).unwrap();
+        let r = intersect_surfaces(
+            &plane,
+            &cyl,
+            &within(),
+            tol,
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(
             !r.curves().is_empty() && r.curves().iter().all(|m| m.kind == MeetKind::Crossing),
             "every section here is transversal: {r:?}"
@@ -155,7 +162,8 @@ fn traced_quadric_sections_render() {
         ("trace-viviani", ball, through, 2),
     ];
     for (name, a, b, branches) in cases {
-        let trace = trace_quadrics(&a, &b, &within, tol).unwrap();
+        let trace =
+            trace_quadrics(&a, &b, &within, tol, &mut arris_math::Meter::default()).unwrap();
         assert_eq!(trace.branches().len(), branches, "{name}");
         let mut lines = wireframe_of(&b, [Interval::TURN, span], 12);
         for branch in trace.branches() {

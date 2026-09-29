@@ -129,7 +129,7 @@ fn every_analytic_curve_in_a_plane_has_an_exact_pcurve() {
                 Flat::Line => Interval::new(-DEFAULT_SCALE, DEFAULT_SCALE).unwrap(),
                 _ => Interval::TURN,
             };
-            let pc = pcurve_on(&c, range, &s, tol()).unwrap();
+            let pc = pcurve_on(&c, range, &s, tol(), &mut arris_math::Meter::default()).unwrap();
             image_matches(&pc, &c, &s, range, EXACT)?;
             match (which, &pc) {
                 (Flat::Line, Curve2::Line { .. }) => {}
@@ -154,7 +154,8 @@ fn every_analytic_curve_in_a_plane_has_an_exact_pcurve() {
             let lifted = c.transformed(&arris_math::Isometry::from_translation(
                 3.0 * tol().linear * frame.z().into_inner(),
             ));
-            let err = pcurve_on(&lifted, range, &s, tol()).unwrap_err();
+            let err = pcurve_on(&lifted, range, &s, tol(), &mut arris_math::Meter::default())
+                .unwrap_err();
             let off = matches!(err, arris_geom::GeomError::NotOnSurface { .. });
             prop_assert!(off, "{err}");
             Ok(())
@@ -182,7 +183,8 @@ fn a_nurbs_in_a_plane_has_its_control_points_projected() {
                     .unwrap();
             let curve = Curve::Nurbs(flat);
             let range = curve.domain();
-            let pc = pcurve_on(&curve, range, &s, tol()).unwrap();
+            let pc =
+                pcurve_on(&curve, range, &s, tol(), &mut arris_math::Meter::default()).unwrap();
             prop_assert_eq!(pc.kind(), Curve2Kind::Nurbs);
             image_matches(&pc, &curve, &s, range, EXACT)?;
             let t = range.lerp(at);
@@ -248,7 +250,14 @@ fn every_section_of_a_cylinder_has_a_pcurve_on_it() {
             let plane = Surface::Plane {
                 frame: Frame::from_z(origin, normal).unwrap(),
             };
-            let r = intersect_surfaces(&plane, &s, &within(), tol()).unwrap();
+            let r = intersect_surfaces(
+                &plane,
+                &s,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             let crossing = r.points().is_empty()
                 && !r.curves().is_empty()
                 && r.curves().iter().all(|m| m.kind == MeetKind::Crossing);
@@ -258,7 +267,7 @@ fn every_section_of_a_cylinder_has_a_pcurve_on_it() {
                     Curve::Line { .. } => Interval::new(-DEFAULT_SCALE, DEFAULT_SCALE).unwrap(),
                     _ => Interval::TURN,
                 };
-                let pc = pcurve_on(c, range, &s, tol()).unwrap();
+                let pc = pcurve_on(c, range, &s, tol(), &mut arris_math::Meter::default()).unwrap();
                 match (c, &pc) {
                     (Curve::Line { .. }, Curve2::Line { direction, .. }) => {
                         // A ruling: constant u.
@@ -436,7 +445,8 @@ fn a_ruling_and_a_parallel_of_a_cone_are_lines_in_uv() {
                 ),
             };
             let range = Interval::new(-4.0, 4.0).unwrap();
-            let pc = pcurve_on(&ruling, range, &s, tol()).unwrap();
+            let pc =
+                pcurve_on(&ruling, range, &s, tol(), &mut arris_math::Meter::default()).unwrap();
             line_pcurve(
                 &pc,
                 &ruling,
@@ -463,7 +473,14 @@ fn a_ruling_and_a_parallel_of_a_cone_are_lines_in_uv() {
                 .unwrap(),
                 radius: signed.abs(),
             };
-            let pc = pcurve_on(&circle, Interval::TURN, &s, tol()).unwrap();
+            let pc = pcurve_on(
+                &circle,
+                Interval::TURN,
+                &s,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             let expected_u = if signed > 0.0 { beta } else { beta + PI };
             line_pcurve(
                 &pc,
@@ -509,7 +526,14 @@ fn a_parallel_and_a_meridian_of_a_sphere_are_lines_in_uv() {
                 .unwrap(),
                 radius: radius * v0.cos(),
             };
-            let pc = pcurve_on(&parallel, Interval::TURN, &s, tol()).unwrap();
+            let pc = pcurve_on(
+                &parallel,
+                Interval::TURN,
+                &s,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             line_pcurve(
                 &pc,
                 &parallel,
@@ -529,7 +553,14 @@ fn a_parallel_and_a_meridian_of_a_sphere_are_lines_in_uv() {
             };
             // A range that stays clear of the poles: v runs phi ± t.
             let range = Interval::new(-0.7, 0.7).unwrap();
-            let pc = pcurve_on(&meridian, range, &s, tol()).unwrap();
+            let pc = pcurve_on(
+                &meridian,
+                range,
+                &s,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             let Curve2::Line { origin, direction } = &pc else {
                 prop_assert!(false, "{pc:?} is not a line in (u, v)");
                 return Ok(());
@@ -547,7 +578,14 @@ fn a_parallel_and_a_meridian_of_a_sphere_are_lines_in_uv() {
             // Over a full turn the same line still names the curve: the
             // great circle runs up one meridian and down the other, which
             // is where v outside [−π/2, π/2] puts it.
-            let pc = pcurve_on(&meridian, Interval::TURN, &s, tol()).unwrap();
+            let pc = pcurve_on(
+                &meridian,
+                Interval::TURN,
+                &s,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             image_matches(&pc, &meridian, &s, Interval::TURN, EXACT)?;
             Ok(())
         },
@@ -586,7 +624,14 @@ fn a_parallel_and_a_tube_circle_of_a_torus_are_lines_in_uv() {
                 .unwrap(),
                 radius: major_radius + minor_radius * v0.cos(),
             };
-            let pc = pcurve_on(&parallel, Interval::TURN, &s, tol()).unwrap();
+            let pc = pcurve_on(
+                &parallel,
+                Interval::TURN,
+                &s,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             line_pcurve(
                 &pc,
                 &parallel,
@@ -608,7 +653,14 @@ fn a_parallel_and_a_tube_circle_of_a_torus_are_lines_in_uv() {
                 .unwrap(),
                 radius: *minor_radius,
             };
-            let pc = pcurve_on(&tube, Interval::TURN, &s, tol()).unwrap();
+            let pc = pcurve_on(
+                &tube,
+                Interval::TURN,
+                &s,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             let Curve2::Line { origin, direction } = &pc else {
                 prop_assert!(false, "{pc:?} is not a line in (u, v)");
                 return Ok(());
@@ -679,7 +731,14 @@ fn a_curve_tilted_from_a_plane_has_its_projection_for_a_pcurve() {
         let Surface::Plane { frame } = &surface else {
             unreachable!()
         };
-        let pc = pcurve_on(&curve, range, &surface, tol()).unwrap();
+        let pc = pcurve_on(
+            &curve,
+            range,
+            &surface,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(matches!(pc, Curve2::Nurbs(_)), "{pc:?}");
         let off_plane = (0..=DENSE)
             .map(|i| {
@@ -763,7 +822,13 @@ fn cut(base: impl Strategy<Value = Surface>) -> impl Strategy<Value = (Surface, 
 /// the tolerance at [`DENSE`] parameters, and comes back a whole number
 /// of turns from where it started when the range is the curve's period.
 fn fits(curve: &Curve, range: Interval, surface: &Surface) -> Result<(), TestCaseError> {
-    let pc = match pcurve_on(curve, range, surface, tol()) {
+    let pc = match pcurve_on(
+        curve,
+        range,
+        surface,
+        tol(),
+        &mut arris_math::Meter::default(),
+    ) {
         Ok(pc) => pc,
         // Through an apex or a pole: both sides of the split fit.
         Err(GeomError::ThroughSingularity { t, .. }) => {
@@ -773,8 +838,14 @@ fn fits(curve: &Curve, range: Interval, surface: &Surface) -> Result<(), TestCas
             );
             for half in [(range.lo(), t), (t, range.hi())] {
                 let half = Interval::new(half.0, half.1).unwrap();
-                let pc = pcurve_on(curve, half, surface, tol())
-                    .map_err(|e| TestCaseError::fail(format!("{half:?} of a split: {e}")))?;
+                let pc = pcurve_on(
+                    curve,
+                    half,
+                    surface,
+                    tol(),
+                    &mut arris_math::Meter::default(),
+                )
+                .map_err(|e| TestCaseError::fail(format!("{half:?} of a split: {e}")))?;
                 let off = worst_image(&pc, curve, surface, half);
                 prop_assert!(off <= tol().linear, "a split half is {off} off");
             }
@@ -808,7 +879,13 @@ fn fits(curve: &Curve, range: Interval, surface: &Surface) -> Result<(), TestCas
 
 /// Every curve of the section of the pair has a pcurve on the first.
 fn section_has_pcurves((base, cutter): (Surface, Surface)) -> Result<(), TestCaseError> {
-    let meets = match intersect_surfaces(&base, &cutter, &within(), tol()) {
+    let meets = match intersect_surfaces(
+        &base,
+        &cutter,
+        &within(),
+        tol(),
+        &mut arris_math::Meter::default(),
+    ) {
         Ok(meets) => meets,
         // A pose the tracers refuse by name is not this property's.
         Err(GeomError::DegenerateSection { .. }) => return Ok(()),
@@ -869,11 +946,17 @@ fn against_the_branch(torus: &Surface, cutter: &Surface) -> Result<f64, TestCase
     else {
         unreachable!("the torus strategy yields tori")
     };
-    let Ok(trace) = trace_torus(torus, cutter, tol()) else {
+    let Ok(trace) = trace_torus(torus, cutter, tol(), &mut arris_math::Meter::default()) else {
         return Ok(0.0);
     };
-    let meets = intersect_surfaces(torus, cutter, &within(), tol())
-        .map_err(|e| TestCaseError::fail(format!("traced, and no section: {e}")))?;
+    let meets = intersect_surfaces(
+        torus,
+        cutter,
+        &within(),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .map_err(|e| TestCaseError::fail(format!("traced, and no section: {e}")))?;
     let mut excess = 0.0f64;
     for branch in trace.branches() {
         let domain = branch.domain();
@@ -901,8 +984,14 @@ fn against_the_branch(torus: &Surface, cutter: &Surface) -> Result<f64, TestCase
             );
             continue;
         };
-        let pc = pcurve_on(fitted, domain, torus, tol())
-            .map_err(|e| TestCaseError::fail(format!("no pcurve: {e}")))?;
+        let pc = pcurve_on(
+            fitted,
+            domain,
+            torus,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .map_err(|e| TestCaseError::fail(format!("no pcurve: {e}")))?;
         let turns = |t: f64| -> Option<[f64; 2]> {
             let (p, q) = (pc.point(t), branch.uv(t)?);
             Some([((p.x - q.x) / TAU).round(), ((p.y - q.y) / TAU).round()])
@@ -995,7 +1084,14 @@ fn a_small_circle_through_a_pole_is_split_there_and_both_halves_fit() {
     // Through it exactly, and within the band of it.
     for miss in [0.0, 0.9 * PCURVE_SINGULAR_BAND * tol().linear] {
         let (sphere, circle) = beside_the_pole(miss);
-        let err = pcurve_on(&circle, Interval::TURN, &sphere, tol()).unwrap_err();
+        let err = pcurve_on(
+            &circle,
+            Interval::TURN,
+            &sphere,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_err();
         let GeomError::ThroughSingularity { t, .. } = err else {
             panic!("{err}")
         };
@@ -1008,7 +1104,14 @@ fn a_small_circle_through_a_pole_is_split_there_and_both_halves_fit() {
             (Interval::new(t, TAU).unwrap(), false, 3.0 * PI / 2.0),
         ];
         for (range, ends_there, u) in halves {
-            let pc = pcurve_on(&circle, range, &sphere, tol()).unwrap();
+            let pc = pcurve_on(
+                &circle,
+                range,
+                &sphere,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             let off = worst_image(&pc, &circle, &sphere, range);
             assert!(off <= tol().linear, "{off} off over {range:?}");
             let at = pc.point(if ends_there { range.hi() } else { range.lo() });
@@ -1025,7 +1128,14 @@ fn a_circle_cut_at_the_pole_it_runs_through_fits_as_one_range() {
     // twice, half a turn of `u` apart — each end read on its own side.
     let (sphere, circle) = beside_the_pole(0.0);
     let range = Interval::new(PI / 2.0, PI / 2.0 + TAU).unwrap();
-    let pc = pcurve_on(&circle, range, &sphere, tol()).unwrap();
+    let pc = pcurve_on(
+        &circle,
+        range,
+        &sphere,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     let off = worst_image(&pc, &circle, &sphere, range);
     assert!(off <= tol().linear, "{off} off");
     for (t, u) in [(range.lo(), 3.0 * PI / 2.0), (range.hi(), PI / 2.0)] {
@@ -1054,7 +1164,14 @@ fn a_half_meridian_is_a_line_in_the_sphere_s_own_latitudes() {
         Interval::new(-PI / 2.0, PI / 2.0).unwrap(),
         Interval::new(3.0 * PI / 2.0, 5.0 * PI / 2.0).unwrap(),
     ] {
-        let pc = pcurve_on(&circle, range, &sphere, tol()).unwrap();
+        let pc = pcurve_on(
+            &circle,
+            range,
+            &sphere,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(matches!(pc, Curve2::Line { .. }), "{pc:?}");
         let off = worst_image(&pc, &circle, &sphere, range);
         assert!(off <= tol().linear, "{off} off over {range:?}");
@@ -1075,8 +1192,14 @@ fn a_circle_beside_a_pole_fits_from_the_band_to_a_hundredth_of_the_radius() {
     let band = PCURVE_SINGULAR_BAND * tol().linear;
     for miss in [1.04 * band, tol().linear, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2] {
         let (sphere, circle) = beside_the_pole(miss);
-        let pc = pcurve_on(&circle, Interval::TURN, &sphere, tol())
-            .unwrap_or_else(|e| panic!("a miss of {miss}: {e}"));
+        let pc = pcurve_on(
+            &circle,
+            Interval::TURN,
+            &sphere,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("a miss of {miss}: {e}"));
         let off = worst_image(&pc, &circle, &sphere, Interval::TURN);
         assert!(off <= tol().linear, "a miss of {miss}: {off} off");
         let Curve2::Nurbs(fit) = &pc else {
@@ -1121,10 +1244,24 @@ fn a_cone_carries_what_runs_through_its_apex_and_what_passes_beside_it() {
     let through = Surface::Plane {
         frame: Frame::from_z(Point3::origin(), Vec3::new(1.0, 0.0, 0.2)).unwrap(),
     };
-    let meets = intersect_surfaces(&cone, &through, &within(), tol()).unwrap();
+    let meets = intersect_surfaces(
+        &cone,
+        &through,
+        &within(),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(meets.curves().len(), 2, "{meets:?}");
     for ruling in meets.curves().iter().map(|m| &m.curve) {
-        let pc = pcurve_on(ruling, long, &cone, tol()).unwrap();
+        let pc = pcurve_on(
+            ruling,
+            long,
+            &cone,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert_eq!(pc.kind(), Curve2Kind::Line);
         assert!(worst_image(&pc, ruling, &cone, long) <= EXACT);
     }
@@ -1141,7 +1278,14 @@ fn a_cone_carries_what_runs_through_its_apex_and_what_passes_beside_it() {
         )
         .unwrap(),
     );
-    let err = pcurve_on(&spline, Interval::UNIT, &cone, tol()).unwrap_err();
+    let err = pcurve_on(
+        &spline,
+        Interval::UNIT,
+        &cone,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap_err();
     let GeomError::ThroughSingularity { t, .. } = err else {
         panic!("{err}")
     };
@@ -1150,7 +1294,14 @@ fn a_cone_carries_what_runs_through_its_apex_and_what_passes_beside_it() {
         (Interval::new(0.0, t).unwrap(), PI),
         (Interval::new(t, 1.0).unwrap(), 0.0),
     ] {
-        let pc = pcurve_on(&spline, range, &cone, tol()).unwrap();
+        let pc = pcurve_on(
+            &spline,
+            range,
+            &cone,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(worst_image(&pc, &spline, &cone, range) <= tol().linear);
         // The lower nappe is reached with a negative radial factor, so
         // the ruling keeps one u across the apex on the surface and the
@@ -1170,10 +1321,24 @@ fn a_cone_carries_what_runs_through_its_apex_and_what_passes_beside_it() {
         frame: Frame::from_z(Point3::new(1e-4, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.2)).unwrap(),
     };
     for (plane, curves) in [(above, 1), (beside, 2)] {
-        let meets = intersect_surfaces(&cone, &plane, &within(), tol()).unwrap();
+        let meets = intersect_surfaces(
+            &cone,
+            &plane,
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert_eq!(meets.curves().len(), curves, "{meets:?}");
         for c in meets.curves().iter().map(|m| &m.curve) {
-            let pc = pcurve_on(c, c.domain(), &cone, tol()).unwrap();
+            let pc = pcurve_on(
+                c,
+                c.domain(),
+                &cone,
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap();
             assert_eq!(pc.kind(), Curve2Kind::Nurbs);
             let off = worst_image(&pc, c, &cone, c.domain());
             assert!(off <= tol().linear, "{off} off {c:?}");
@@ -1198,7 +1363,14 @@ fn a_villarceau_circle_and_a_spiric_oval_are_unwrapped_across_both_seams() {
         frame: Frame::new(Point3::new(0.0, minor_radius, 0.0), normal, Vec3::y()).unwrap(),
         radius: major_radius,
     };
-    let pc = pcurve_on(&villarceau, Interval::TURN, &ring, tol()).unwrap();
+    let pc = pcurve_on(
+        &villarceau,
+        Interval::TURN,
+        &ring,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert!(worst_image(&pc, &villarceau, &ring, Interval::TURN) <= tol().linear);
     let by = pc.point(TAU) - pc.point(0.0);
     assert!(
@@ -1210,11 +1382,18 @@ fn a_villarceau_circle_and_a_spiric_oval_are_unwrapped_across_both_seams() {
     let wall = Surface::Plane {
         frame: Frame::from_z(Point3::new(2.3, 0.0, 0.0), Vec3::x()).unwrap(),
     };
-    let meets = intersect_surfaces(&ring, &wall, &within(), tol()).unwrap();
+    let meets = intersect_surfaces(
+        &ring,
+        &wall,
+        &within(),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(meets.curves().len(), 1, "{meets:?}");
     let oval = &meets.curves()[0].curve;
     let range = oval.domain();
-    let pc = pcurve_on(oval, range, &ring, tol()).unwrap();
+    let pc = pcurve_on(oval, range, &ring, tol(), &mut arris_math::Meter::default()).unwrap();
     assert!(worst_image(&pc, oval, &ring, range) <= tol().linear);
     let by = pc.point(range.hi()) - pc.point(range.lo());
     assert!(by.norm() <= 1e-6, "{by}");
@@ -1263,7 +1442,14 @@ fn every_surface_fits_what_it_has_no_arm_for_and_a_curve_off_it_is_not_on_it() {
         )
         .unwrap(),
     );
-    let pc = pcurve_on(&arc, Interval::UNIT, &sphere, tol).unwrap();
+    let pc = pcurve_on(
+        &arc,
+        Interval::UNIT,
+        &sphere,
+        tol,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(pc.kind(), Curve2Kind::Nurbs);
     assert!(worst_image(&pc, &arc, &sphere, Interval::UNIT) <= tol.linear);
     assert!((pc.point(1.0) - Point2::new(PI / 2.0, 0.0)).norm() <= 1e-9);
@@ -1284,7 +1470,14 @@ fn every_surface_fits_what_it_has_no_arm_for_and_a_curve_off_it_is_not_on_it() {
         radius: 2.5,
     };
     for surface in [&sphere, &cone, &torus, &wall] {
-        let err = pcurve_on(&lifted, Interval::TURN, surface, tol).unwrap_err();
+        let err = pcurve_on(
+            &lifted,
+            Interval::TURN,
+            surface,
+            tol,
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_err();
         assert!(
             matches!(err, GeomError::NotOnSurface { .. }),
             "{surface:?}: {err}"
@@ -1305,7 +1498,13 @@ fn a_nurbs_surface_answers_every_curve() {
         ),
         |(s, c)| {
             let range = Interval::new(0.0, 1.0).unwrap();
-            match pcurve_on(&c, range, &Surface::Nurbs(s), tol()) {
+            match pcurve_on(
+                &c,
+                range,
+                &Surface::Nurbs(s),
+                tol(),
+                &mut arris_math::Meter::default(),
+            ) {
                 Ok(_) | Err(GeomError::NotOnSurface { .. }) => Ok(()),
                 Err(err) => Err(TestCaseError::fail(format!("{err}"))),
             }

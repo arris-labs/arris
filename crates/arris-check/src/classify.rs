@@ -268,7 +268,12 @@ impl<'m> Classifier<'m> {
                 // The ray meets, grazes or lies in the surface by the
                 // face's own tolerance (`docs/DATA-MODEL.md` §Tolerances).
                 let tolerance = Tolerance::new(face.tolerance(), angular);
-                let hits = match intersect_curve_surface(&ray, surface, tolerance)? {
+                let hits = match intersect_curve_surface(
+                    &ray,
+                    surface,
+                    tolerance,
+                    &mut arris_topo::arris_math::Meter::default(),
+                )? {
                     CurveSurfaceIntersection::Points(hits) => hits,
                     CurveSurfaceIntersection::Coincident => continue 'direction,
                 };

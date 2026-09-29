@@ -29,7 +29,7 @@ const SAMPLES: usize = 2000;
 /// The pcurve of `curve` over `range` on `twin`, and the largest distance
 /// between its image and the curve at [`SAMPLES`] parameters.
 fn deviation(curve: &Curve, range: Interval, twin: &Surface) -> Result<(Curve2, f64), GeomError> {
-    let pc = pcurve_on(curve, range, twin, tol())?;
+    let pc = pcurve_on(curve, range, twin, tol(), &mut arris_math::Meter::default())?;
     let worst = (0..=SAMPLES)
         .map(|i| {
             let t = range.lerp(i as f64 / SAMPLES as f64);
@@ -154,7 +154,7 @@ arris_debug::prop_shards! {
             let over = Interval::new(0.5 * PI - 0.4, 0.5 * PI + 0.3).unwrap();
             prop_assert!(
                 matches!(
-                    pcurve_on(&meridian, over, &twin, tol()),
+                    pcurve_on(&meridian, over, &twin, tol(), &mut arris_math::Meter::default()),
                     Err(GeomError::ThroughSingularity { .. })
                 ),
                 "a meridian over the pole is not refused"
@@ -286,7 +286,13 @@ fn a_curve_off_a_nurbs_surface_is_named() {
         radius: 1.0,
     };
     assert!(matches!(
-        pcurve_on(&lifted, Interval::TURN, &twin, tol()),
+        pcurve_on(
+            &lifted,
+            Interval::TURN,
+            &twin,
+            tol(),
+            &mut arris_math::Meter::default()
+        ),
         Err(GeomError::NotOnSurface { .. })
     ));
 }

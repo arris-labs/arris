@@ -25,7 +25,7 @@
 
 use core::f64::consts::FRAC_PI_2;
 
-use arris_math::{Aabb, Frame, Point3, Tolerance, UnitVec3, Vec3};
+use arris_math::{Aabb, Frame, Meter, Point3, Tolerance, UnitVec3, Vec3};
 
 use crate::intersect::line_angle;
 use crate::{
@@ -48,6 +48,7 @@ pub(crate) fn intersect_coaxial(
     b: &Surface,
     within: &Aabb,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
     let unsupported = || GeomError::Unsupported {
         a: GeomKind::Surface(a.kind()),
@@ -66,7 +67,7 @@ pub(crate) fn intersect_coaxial(
             let carrier = if a.kind() == SurfaceKind::Plane { b } else { a };
             return through_the_axis(carrier, normal).ok_or_else(unsupported);
         }
-        Shared::None => return crate::intersect::off_axis(a, b, within, tol),
+        Shared::None => return crate::intersect::off_axis(a, b, within, tol, meter),
     };
     let (sa, sb) = (sections(a, &axis), sections(b, &axis));
     let mut coincident: Vec<Section> = Vec::new();
@@ -622,14 +623,28 @@ mod tests {
             frame: Frame::from_z(Point3::new(5.0, 1.0, -2.0), Vec3::z()).unwrap(),
         };
         assert_eq!(
-            intersect_coaxial(&through, &cone, &within(), tol()).unwrap(),
+            intersect_coaxial(
+                &through,
+                &cone,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             points(MeetKind::Crossing, &[Point3::new(0.0, 0.0, -2.0)])
         );
         let beside = Surface::Plane {
             frame: Frame::from_z(Point3::new(5.0, 1.0, 1.0), -Vec3::z()).unwrap(),
         };
         let c = only(
-            &intersect_coaxial(&cone, &beside, &within(), tol()).unwrap(),
+            &intersect_coaxial(
+                &cone,
+                &beside,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         let [Curve::Circle { frame, radius }] = c.as_slice() else {
@@ -651,7 +666,14 @@ mod tests {
             radius: 2.0,
         };
         let c = only(
-            &intersect_coaxial(&ball, &wall, &within(), tol()).unwrap(),
+            &intersect_coaxial(
+                &ball,
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Touch,
         );
         let [Curve::Circle { frame, radius }] = c.as_slice() else {
@@ -673,7 +695,14 @@ mod tests {
             radius: 1.0,
         };
         assert_eq!(
-            intersect_coaxial(&a, &touch, &within(), tol()).unwrap(),
+            intersect_coaxial(
+                &a,
+                &touch,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             points(MeetKind::Touch, &[Point3::new(2.0, 0.0, 0.0)])
         );
         let cross = Surface::Sphere {
@@ -681,7 +710,14 @@ mod tests {
             radius: 2.0,
         };
         let c = only(
-            &intersect_coaxial(&a, &cross, &within(), tol()).unwrap(),
+            &intersect_coaxial(
+                &a,
+                &cross,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         let [Curve::Circle { frame, radius }] = c.as_slice() else {
@@ -696,12 +732,33 @@ mod tests {
             radius: 2.0,
         };
         assert_eq!(
-            intersect_coaxial(&a, &same, &within(), tol()).unwrap(),
+            intersect_coaxial(
+                &a,
+                &same,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::Coincident
         );
         assert_eq!(
-            intersect_coaxial(&a, &touch, &within(), tol()).unwrap(),
-            intersect_coaxial(&touch, &a, &within(), tol()).unwrap()
+            intersect_coaxial(
+                &a,
+                &touch,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
+            intersect_coaxial(
+                &touch,
+                &a,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap()
         );
     }
 
@@ -720,7 +777,14 @@ mod tests {
             frame: Frame::world().with_origin(Point3::new(0.0, 0.0, 1.0)),
             radius: 3.0,
         };
-        let r = intersect_coaxial(&cone, &ball, &within(), tol()).unwrap();
+        let r = intersect_coaxial(
+            &cone,
+            &ball,
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let [point] = r.points() else { panic!("{r:?}") };
         assert_eq!(point.kind, MeetKind::Crossing);
         assert!((point.point - Point3::new(0.0, 0.0, -2.0)).norm() <= 1e-12);
@@ -734,7 +798,14 @@ mod tests {
         assert!((frame.origin() - Point3::new(0.0, 0.0, 1.0)).norm() <= 1e-12);
         assert!((radius - 3.0).abs() <= 1e-12);
         assert_eq!(
-            intersect_coaxial(&ball, &cone, &within(), tol()).unwrap(),
+            intersect_coaxial(
+                &ball,
+                &cone,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             r
         );
     }

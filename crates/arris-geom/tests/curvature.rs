@@ -206,7 +206,8 @@ fn a_tangent_cylinder_pair_never_ties_its_curvatures() {
         (cylinder(0.0, 1.0), cylinder(3.0, 2.0)),
         (cylinder(0.0, 2.0), cylinder(1.0, 1.0)),
     ] {
-        let r = intersect_surfaces(&a, &b, &within(), tol()).unwrap();
+        let r = intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default())
+            .unwrap();
         let [meet] = r.curves() else {
             panic!("one ruling: {r:?}");
         };
@@ -224,7 +225,14 @@ fn a_tangent_cylinder_pair_never_ties_its_curvatures() {
         assert_ne!(ka, kb, "{a:?} and {b:?}");
     }
     assert_eq!(
-        intersect_surfaces(&cylinder(0.0, 1.0), &cylinder(0.0, 1.0), &within(), tol()).unwrap(),
+        intersect_surfaces(
+            &cylinder(0.0, 1.0),
+            &cylinder(0.0, 1.0),
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default()
+        )
+        .unwrap(),
         SurfaceIntersection::Coincident
     );
 }

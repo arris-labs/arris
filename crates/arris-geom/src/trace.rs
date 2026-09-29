@@ -39,7 +39,7 @@ use std::sync::Arc;
 
 use arris_math::roots::{POLYNOMIAL_ROUNDING, newton_in_interval, quartic};
 use arris_math::{
-    Aabb, Frame, Interval, Point2, Point3, RELATIVE_ROUNDING, Tolerance, Vec3, wrap_angle,
+    Aabb, Frame, Interval, Meter, Point2, Point3, RELATIVE_ROUNDING, Tolerance, Vec3, wrap_angle,
 };
 
 use crate::torus_walk::TorusWalk;
@@ -794,7 +794,7 @@ impl SectionBranch {
     /// let pipe = Surface::Cylinder { frame: across, radius: 1.0 };
     /// let within = Aabb { min: [-5.0; 3], max: [5.0; 3] };
     /// let tol = Precision::DEFAULT.tolerance();
-    /// let trace = trace_quadrics(&main, &pipe, &within, tol).unwrap();
+    /// let trace = trace_quadrics(&main, &pipe, &within, tol, &mut arris_math::Meter::default()).unwrap();
     /// let branch = &trace.branches()[0];
     /// let (t, q) = (1.0, Point3::new(0.0, 0.0, 3.0));
     /// assert_eq!(branch.distance(t, branch.point(t)), 0.0);
@@ -963,7 +963,7 @@ impl SectionTrace {
 /// let across = Frame::from_z(Point3::origin(), Vec3::x()).unwrap();
 /// let branch = Surface::Cylinder { frame: across, radius: 1.0 };
 /// let within = Aabb { min: [-5.0; 3], max: [5.0; 3] };
-/// let trace = trace_quadrics(&main, &branch, &within, Precision::DEFAULT.tolerance()).unwrap();
+/// let trace = trace_quadrics(&main, &branch, &within, Precision::DEFAULT.tolerance(), &mut arris_math::Meter::default()).unwrap();
 /// assert_eq!(trace.branches().len(), 2);
 /// assert!(trace.branches().iter().all(|b| b.is_closed()));
 /// let p = trace.branches()[0].point(1.0);
@@ -974,6 +974,7 @@ pub fn trace_quadrics(
     b: &Surface,
     within: &Aabb,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<SectionTrace, GeomError> {
     if !tol.is_consistent() {
         return Err(GeomError::InvalidTolerance(tol));
@@ -1050,6 +1051,7 @@ pub fn trace_quadrics(
     let mut singular: Vec<Singular> = Vec::new();
     let mut is_singular = vec![false; critical.len()];
     for (i, &s) in critical.iter().enumerate() {
+        meter.tick()?;
         let value = disc.eval(s);
         let (a, b, c, p, d) = pencil.at(s);
         let mid = -b / (2.0 * a);
@@ -1170,6 +1172,7 @@ pub fn trace_quadrics(
         }
     }
 
+    meter.tick()?;
     let chains = chains(&pencil, &breaks, in_range);
     Ok(assemble(&pencil, chains, &singular, tol))
 }

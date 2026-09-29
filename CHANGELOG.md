@@ -53,6 +53,13 @@ into its version (ADR-0027).
 - `arris_ops::OpError` gains `Unkeyed { slot }` and `Rejected(Rejection)`,
   the refusals of the new `arris_ops::build`: a `match` over `OpError`
   needs both arms.
+- `arris_geom`'s `intersect_surfaces`, `intersect_curve_surface`,
+  `intersect_curves`, `curves_coincide`, `trace_quadrics`, `trace_torus`,
+  `pcurve_on`, `pcurve_ending_on`, `fit_curve`, `fit_curve2` and
+  `fit_curve_periodic` take a trailing `&mut arris_math::Meter`, the
+  counter a caller can stop them through: pass `&mut Meter::default()` to
+  run to the end. `GeomError` and `FitError` gain `Interrupted(Interrupted)`:
+  a `match` over either needs an arm.
 
 ## 0.3.0 — 2026-09-26
 

@@ -38,7 +38,10 @@
 //! alive at one depth double with every level instead of settling, and
 //! [`MAX_FRONT`] ends it.
 
+use arris_math::Meter;
+
 use crate::bernstein::{BernsteinAlgebra, Binomials, MAX_DEPTH};
+use crate::halt::Halt;
 
 /// How far beyond each side a box is grown before it is certified, as a
 /// fraction of its width. A ratio, not a tolerance: large enough that a
@@ -631,7 +634,8 @@ pub(crate) fn common_zeros(
     system: [&Poly2; 2],
     floors: [f64; 2],
     gate: Option<Gate<'_>>,
-) -> Result<Isolation, Continuum> {
+    meter: &mut Meter,
+) -> Result<Isolation, Halt<Continuum>> {
     let partials = [
         [system[0].du(), system[0].dv()],
         [system[1].du(), system[1].dv()],
@@ -649,6 +653,7 @@ pub(crate) fn common_zeros(
     loop {
         let mut next = Vec::new();
         for cell in &front {
+            meter.tick()?;
             boxes += 1;
             let excluded = cell.system.iter().zip(floors).any(|(p, f)| p.keeps_sign(f))
                 || cell
@@ -711,7 +716,7 @@ pub(crate) fn common_zeros(
         }
         depth += 1;
         if next.len() > MAX_FRONT {
-            return Err(Continuum { depth });
+            return Err(Halt::Fault(Continuum { depth }));
         }
         front = next;
     }
@@ -1091,13 +1096,13 @@ mod tests {
     fn the_turning_points_of_a_circle_and_its_crossings_with_a_line() {
         let b = Binomials::new(8);
         let f = circle(0.4, 0.55, 0.3, &b);
-        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], None).unwrap();
+        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert_near(&certified(&turning), &[[0.1, 0.55], [0.7, 0.55]]);
         assert_eq!(turning.zeros.len(), 2);
         // s + t = 0.95 through the centre: (0.4 ∓ 0.3/√2, 0.55 ± 0.3/√2).
         let line = linear(-0.95, 1.0, 1.0);
         let d = 0.3 * core::f64::consts::FRAC_1_SQRT_2;
-        let crossings = common_zeros([&f, &line], [1e-15; 2], None).unwrap();
+        let crossings = common_zeros([&f, &line], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert_near(
             &certified(&crossings),
             &[[0.4 - d, 0.55 + d], [0.4 + d, 0.55 - d]],
@@ -1105,7 +1110,7 @@ mod tests {
         // A product of known factors: the zeros of each against the line.
         let g = f.mul(&circle(0.4, 0.55, 0.1, &b), &b);
         let e = 0.1 * core::f64::consts::FRAC_1_SQRT_2;
-        let crossings = common_zeros([&g, &line], [1e-15; 2], None).unwrap();
+        let crossings = common_zeros([&g, &line], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert_near(
             &certified(&crossings),
             &[
@@ -1124,20 +1129,22 @@ mod tests {
         // Turning points on s = ¼ and s = ¾, both on t = ½: corners of
         // boxes at every depth from the second.
         let f = circle(0.5, 0.5, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None).unwrap();
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert_near(&certified(&found), &[[0.25, 0.5], [0.75, 0.5]]);
         assert_eq!(found.zeros.len(), 2);
         assert!(found.depth < 16, "{}", found.depth);
         // On the square's own edge and corner, and one just outside it,
         // which the margin holds.
         let f = circle(0.25, 0.0, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None).unwrap();
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert_near(&certified(&found), &[[0.0, 0.0], [0.5, 0.0]]);
         // A zero outside the square is the neighbouring square's: found
         // from here where a margin happens to certify it, and no fault
         // where none does.
         let f = circle(0.249, 0.3, 0.25, &b);
-        let found = certified(&common_zeros([&f, &f.dv()], [1e-15; 2], None).unwrap());
+        let found = certified(
+            &common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap(),
+        );
         let inside = found.iter().filter(|z| z[0] > 0.0).copied();
         assert_near(&inside.collect::<Vec<_>>(), &[[0.499, 0.3]]);
         let outside = found.iter().filter(|z| z[0] <= 0.0).copied();
@@ -1145,7 +1152,7 @@ mod tests {
         assert!(outside.is_empty() || outside.len() == 1);
         assert_near(&outside, &vec![[-0.001, 0.3]; outside.len()]);
         let f = circle(-0.26, 0.3, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None).unwrap();
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert!(found.zeros.is_empty());
     }
 
@@ -1162,12 +1169,13 @@ mod tests {
                 poly: &f,
                 floor: 1e-15,
             }),
+            &mut Meter::default(),
         )
         .unwrap();
         assert_near(&certified(&critical), &[[0.3, 0.6]]);
         // As a zero of (f, f_t) it is not simple: a box, not a zero, and
         // the point is in it.
-        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], None).unwrap();
+        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert!(certified(&turning).is_empty());
         assert_eq!(turning.zeros.len(), 1, "{:?}", turning.zeros);
         assert!(turning.zeros[0].holds([0.3, 0.6], [0.0, 0.0]));
@@ -1183,6 +1191,7 @@ mod tests {
                     poly: &lifted,
                     floor,
                 }),
+                &mut Meter::default(),
             )
             .unwrap()
         };
@@ -1198,11 +1207,14 @@ mod tests {
         let one = Poly2::outer(&[1.0; 3], &[1.0; 3]);
         let bowl = Poly2::combine(&[(1.0, &one), (1.0, &t.mul(&t, &b))]);
         let f = linear(-0.3, 1.0, 0.0).mul(&bowl, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None);
-        assert!(matches!(found, Err(Continuum { .. })), "{found:?}");
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default());
+        assert!(
+            matches!(found, Err(Halt::Fault(Continuum { .. }))),
+            "{found:?}"
+        );
         // The zero polynomial is flat at once: one box, the square.
         let zero = Poly2::outer(&[0.0; 3], &[0.0; 3]);
-        let found = common_zeros([&zero, &f], [1e-15; 2], None).unwrap();
+        let found = common_zeros([&zero, &f], [1e-15; 2], None, &mut Meter::default()).unwrap();
         assert_eq!(found.zeros.len(), 1);
         assert!(!found.zeros[0].certified);
         assert_eq!(found.boxes, 1);

@@ -4,7 +4,9 @@
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_math::roots::{self, RootError};
-use arris_math::{Frame, Interval, Point2, Point3, Tolerance, Vec2, Vec3, wrap_angle as wrap_turn};
+use arris_math::{
+    Frame, Interval, Meter, Point2, Point3, Tolerance, Vec2, Vec3, wrap_angle as wrap_turn,
+};
 
 use crate::arc::{quarter_angle, quarter_arc};
 use crate::bernstein::{Binomials, derivative, sign_change_candidates};
@@ -163,11 +165,11 @@ pub enum CurveSurfaceIntersection {
 ///
 /// ```
 /// use arris_geom::{Curve, CurveSurfaceIntersection, Surface, intersect_curve_surface};
-/// use arris_math::{Frame, Point3, Precision, Vec3};
+/// use arris_math::{Frame, Meter, Point3, Precision, Vec3};
 ///
 /// let wall = Surface::Cylinder { frame: Frame::world(), radius: 2.0 };
 /// let ray = Curve::Line { origin: Point3::new(0.0, 0.0, 1.0), direction: Vec3::x_axis() };
-/// let hit = intersect_curve_surface(&ray, &wall, Precision::DEFAULT.tolerance()).unwrap();
+/// let hit = intersect_curve_surface(&ray, &wall, Precision::DEFAULT.tolerance(), &mut Meter::default()).unwrap();
 /// let CurveSurfaceIntersection::Points(hits) = hit else { panic!() };
 /// assert_eq!(hits.len(), 2);
 /// assert!((hits[0].t + 2.0).abs() < 1e-15 && (hits[1].t - 2.0).abs() < 1e-15);
@@ -178,6 +180,7 @@ pub fn intersect_curve_surface(
     curve: &Curve,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<CurveSurfaceIntersection, GeomError> {
     if !tol.is_consistent() {
         return Err(GeomError::InvalidTolerance(tol));
@@ -355,7 +358,7 @@ pub fn intersect_curve_surface(
             | Surface::Cone { .. }
             | Surface::Sphere { .. }
             | Surface::Torus { .. },
-        ) => spline_surface(curve, spline, surface, tol),
+        ) => spline_surface(curve, spline, surface, tol, meter),
         (Curve::Line { .. } | Curve::Circle { .. } | Curve::Ellipse { .. }, Surface::Nurbs(_))
         | (Curve::Nurbs(_), Surface::Nurbs(_)) => Err(GeomError::Unsupported {
             a: GeomKind::Curve(curve.kind()),
@@ -1289,11 +1292,11 @@ mod tests {
             direction: Vec3::x_axis(),
         };
         assert_eq!(
-            intersect_curve_surface(&flat, &plane, tol()).unwrap(),
+            intersect_curve_surface(&flat, &plane, tol(), &mut Meter::default()).unwrap(),
             CurveSurfaceIntersection::Coincident
         );
         assert_eq!(
-            intersect_curve_surface(&lifted, &plane, tol()).unwrap(),
+            intersect_curve_surface(&lifted, &plane, tol(), &mut Meter::default()).unwrap(),
             CurveSurfaceIntersection::Points(Vec::new())
         );
     }
@@ -1309,7 +1312,7 @@ mod tests {
             radius: 2.0,
         };
         assert_eq!(
-            intersect_curve_surface(&ring, &wall, tol()).unwrap(),
+            intersect_curve_surface(&ring, &wall, tol(), &mut Meter::default()).unwrap(),
             CurveSurfaceIntersection::Coincident
         );
         let inner = Curve::Circle {
@@ -1317,7 +1320,7 @@ mod tests {
             radius: 1.0,
         };
         assert_eq!(
-            intersect_curve_surface(&inner, &wall, tol()).unwrap(),
+            intersect_curve_surface(&inner, &wall, tol(), &mut Meter::default()).unwrap(),
             CurveSurfaceIntersection::Points(Vec::new())
         );
     }
@@ -1333,7 +1336,7 @@ mod tests {
             radius: 2.0,
         };
         let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&circle, &wall, tol()).unwrap()
+            intersect_curve_surface(&circle, &wall, tol(), &mut Meter::default()).unwrap()
         else {
             panic!()
         };
@@ -1387,7 +1390,7 @@ mod tests {
             radius: small,
         };
         let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&circle, &wall, tol()).unwrap()
+            intersect_curve_surface(&circle, &wall, tol(), &mut Meter::default()).unwrap()
         else {
             panic!()
         };
@@ -1411,7 +1414,7 @@ mod tests {
             direction: Vec3::x_axis(),
         };
         let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&ray, &wall, tol()).unwrap()
+            intersect_curve_surface(&ray, &wall, tol(), &mut Meter::default()).unwrap()
         else {
             panic!()
         };
@@ -1425,7 +1428,7 @@ mod tests {
             direction: Vec3::x_axis(),
         };
         let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&graze, &wall, tol()).unwrap()
+            intersect_curve_surface(&graze, &wall, tol(), &mut Meter::default()).unwrap()
         else {
             panic!()
         };
@@ -1440,7 +1443,7 @@ mod tests {
             direction: Vec3::x_axis(),
         };
         assert_eq!(
-            intersect_curve_surface(&miss, &wall, tol()).unwrap(),
+            intersect_curve_surface(&miss, &wall, tol(), &mut Meter::default()).unwrap(),
             CurveSurfaceIntersection::Points(Vec::new())
         );
         let ruling = Curve::Line {
@@ -1448,7 +1451,7 @@ mod tests {
             direction: Vec3::z_axis(),
         };
         assert_eq!(
-            intersect_curve_surface(&ruling, &wall, tol()).unwrap(),
+            intersect_curve_surface(&ruling, &wall, tol(), &mut Meter::default()).unwrap(),
             CurveSurfaceIntersection::Coincident
         );
         // A diagonal chord, both hits on the surface.
@@ -1457,7 +1460,7 @@ mod tests {
             direction: arris_math::UnitVec3::new_normalize(Vec3::new(1.0, 1.0, 1.0)),
         };
         let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&chord, &wall, tol()).unwrap()
+            intersect_curve_surface(&chord, &wall, tol(), &mut Meter::default()).unwrap()
         else {
             panic!()
         };
@@ -1485,7 +1488,7 @@ mod tests {
             minor_radius: 2.0,
         };
         assert_eq!(
-            intersect_curve_surface(&section, &wall, tol()).unwrap(),
+            intersect_curve_surface(&section, &wall, tol(), &mut Meter::default()).unwrap(),
             CurveSurfaceIntersection::Coincident
         );
         // A circle of radius 2.5 about the axis: four crossings.
@@ -1494,7 +1497,7 @@ mod tests {
             radius: 2.5,
         };
         let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&ring, &wall, tol()).unwrap()
+            intersect_curve_surface(&ring, &wall, tol(), &mut Meter::default()).unwrap()
         else {
             panic!()
         };
@@ -1512,7 +1515,7 @@ mod tests {
             radius: 2.5,
         };
         let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&tilted, &wall, tol()).unwrap()
+            intersect_curve_surface(&tilted, &wall, tol(), &mut Meter::default()).unwrap()
         else {
             panic!()
         };
@@ -1538,7 +1541,12 @@ mod tests {
             direction: Vec3::z_axis(),
         };
         assert!(matches!(
-            intersect_curve_surface(&line, &plane, Tolerance::new(1e-7, 0.0)),
+            intersect_curve_surface(
+                &line,
+                &plane,
+                Tolerance::new(1e-7, 0.0),
+                &mut Meter::default()
+            ),
             Err(GeomError::InvalidTolerance(_))
         ));
     }

@@ -133,7 +133,7 @@ bound has to be established here.
 - [x] Step 1 **[1]** — ADR-0030, cancellation: the six decisions above,
   the alternatives (a model field, a `…_with` twin, an `AtomicBool`,
   a clock), the step-site list; the ADR index updated. Docs only.
-- [ ] Step 2 **[3]** — the riskiest unknown first: `Control`, `Meter`,
+- [x] Step 2 **[3]** — the riskiest unknown first: `Control`, `Meter`,
   `Stop`, `Interrupted` in `arris-math` with unit tests of the budget,
   the poll and the split/join rule; `arris-geom`'s intersections, tracer
   (`trace`, `torus_walk`), fit, projection and Bernstein subdivision
@@ -219,9 +219,12 @@ bound has to be established here.
 
 ## Open questions
 
-- ⚠ OPEN: the latency bound step 2 states (steps and wall time between
-  ticks on the slow cases), and whether any single solve is left
-  unticked as the floor — agent, step 2, recorded in ADR-0030.
+- Decided in step 2 (ADR-0030 amendment): the latency bound is 3.9 ms
+  release on the slow section and every kept slow-unit input, 500 ms in
+  the test profile; no solve is left unticked. Projection and
+  `Profile`'s pcurves take no meter; `arris-ops`, `arris-io` and the
+  fuzz targets pass `Meter::default()` at each call until their own
+  steps thread the `Control`.
 - Decided in step 1 (ADR-0030 §7): `Interrupted` carries the step count
   and the cause only, not the entities at the stopping step.
 - ⚠ OPEN: whether the `parallel` build also stops on a poll mid-pass

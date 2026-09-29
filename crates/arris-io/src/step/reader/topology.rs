@@ -1395,7 +1395,14 @@ impl Junctions<'_> {
             // fits one: from the default, grown up to the cap.
             let mut linear = self.fit;
             u.pcurve = loop {
-                match pcurve_ending_on(&u.pcurve, u.range, ends, self.surface, linear) {
+                match pcurve_ending_on(
+                    &u.pcurve,
+                    u.range,
+                    ends,
+                    self.surface,
+                    linear,
+                    &mut arris_check::arris_topo::arris_math::Meter::default(),
+                ) {
                     Ok(p) => break p,
                     Err(GeomError::Fit(_)) if linear < self.cap => {
                         linear = (GAP_GROWTH * linear).min(self.cap);
@@ -1479,7 +1486,13 @@ fn fitted(
     let mut measured = false;
     loop {
         let tol = Tolerance::new(linear, precision.angular_tolerance);
-        let needed = match pcurve_on(curve, range, surface, tol) {
+        let needed = match pcurve_on(
+            curve,
+            range,
+            surface,
+            tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        ) {
             Ok(p) => return Ok(p),
             Err(GeomError::NotOnSurface { distance, .. }) => {
                 if distance > cap {
@@ -1866,8 +1879,14 @@ fn seam_to(
         | Surface::Torus { .. } => return Err("a VERTEX_LOOP on a surface with no singular point"),
     };
     let range = Interval::new(0.0, span).map_err(|_| "a seam of no length")?;
-    let pcurve = pcurve_on(&curve, range, surface, tol)
-        .map_err(|_| "a VERTEX_LOOP whose seam has no pcurve on its face")?;
+    let pcurve = pcurve_on(
+        &curve,
+        range,
+        surface,
+        tol,
+        &mut arris_check::arris_topo::arris_math::Meter::default(),
+    )
+    .map_err(|_| "a VERTEX_LOOP whose seam has no pcurve on its face")?;
     Ok(Seam {
         from,
         to: apex,
@@ -2008,7 +2027,13 @@ fn band(
                 continue;
             };
             for (curve, range) in isocurves(at.surface, k, pa, pb, tol)? {
-                let Ok(pcurve) = pcurve_on(&curve, range, at.surface, tol) else {
+                let Ok(pcurve) = pcurve_on(
+                    &curve,
+                    range,
+                    at.surface,
+                    tol,
+                    &mut arris_check::arris_topo::arris_math::Meter::default(),
+                ) else {
                     continue;
                 };
                 let (mut first, mut second) = (loops[i].clone(), loops[j].clone());

@@ -96,7 +96,14 @@ fn pipes(y: f64) -> (Surface, Surface) {
 #[test]
 fn crossing_axes_of_unequal_radii_meet_in_two_loops() {
     let (main, branch) = pipes(0.0);
-    let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &main,
+        &branch,
+        &cube(5.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(trace.branches().len(), 2);
     assert!(trace.points().is_empty());
     assert!(trace.branches().iter().all(SectionBranch::is_closed));
@@ -120,7 +127,14 @@ fn crossing_axes_of_unequal_radii_meet_in_two_loops() {
 #[test]
 fn skew_axes_meet_in_one_loop_when_the_smaller_pipe_breaks_out() {
     let (main, branch) = pipes(1.5);
-    let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &main,
+        &branch,
+        &cube(5.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(trace.branches().len(), 1);
     assert!(trace.points().is_empty());
     assert!(trace.branches()[0].is_closed());
@@ -136,7 +150,14 @@ fn skew_axes_meet_in_one_loop_when_the_smaller_pipe_breaks_out() {
 #[test]
 fn skew_axes_meet_in_two_loops_when_the_smaller_pipe_stays_inside() {
     let (main, branch) = pipes(0.5);
-    let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &main,
+        &branch,
+        &cube(5.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(trace.branches().len(), 2);
     assert!(trace.branches().iter().all(SectionBranch::is_closed));
     assert!(worst_off(&trace, &main, &branch) < 1e-12);
@@ -171,7 +192,14 @@ fn a_turning_point_on_the_walked_base_circle_is_on_both_surfaces() {
         .unwrap(),
         radius: 1.2,
     };
-    let trace = trace_quadrics(&main, &drill, &cube(20.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &main,
+        &drill,
+        &cube(20.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(trace.branches().len(), 1);
     let b = &trace.branches()[0];
     assert!(b.is_closed());
@@ -185,7 +213,14 @@ fn a_turning_point_on_the_walked_base_circle_is_on_both_surfaces() {
 #[test]
 fn pipes_apart_do_not_meet() {
     let (main, branch) = pipes(4.0);
-    let trace = trace_quadrics(&main, &branch, &cube(8.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &main,
+        &branch,
+        &cube(8.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert!(trace.branches().is_empty() && trace.points().is_empty());
 }
 
@@ -196,7 +231,14 @@ fn pipes_apart_do_not_meet() {
 fn an_inner_tangency_within_the_tolerance_is_a_figure_eight() {
     for nudge in [0.0, 4e-8, -4e-8] {
         let (main, branch) = pipes(1.0 + nudge);
-        let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+        let trace = trace_quadrics(
+            &main,
+            &branch,
+            &cube(5.0),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert_eq!(trace.points().len(), 1, "nudge {nudge}");
         let node = trace.points()[0];
         assert!(!node.isolated);
@@ -224,7 +266,14 @@ fn an_inner_tangency_within_the_tolerance_is_a_figure_eight() {
 fn an_inner_tangency_outside_the_tolerance_is_not_singular() {
     for (nudge, loops) in [(-1e-5, 2), (1e-5, 1)] {
         let (main, branch) = pipes(1.0 + nudge);
-        let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+        let trace = trace_quadrics(
+            &main,
+            &branch,
+            &cube(5.0),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(trace.points().is_empty(), "nudge {nudge}");
         assert_eq!(trace.branches().len(), loops, "nudge {nudge}");
         assert!(trace.branches().iter().all(SectionBranch::is_closed));
@@ -239,7 +288,14 @@ fn an_inner_tangency_outside_the_tolerance_is_not_singular() {
 fn an_outer_tangency_within_the_tolerance_is_one_isolated_point() {
     for nudge in [0.0, 4e-8, -4e-8] {
         let (main, branch) = pipes(3.0 + nudge);
-        let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+        let trace = trace_quadrics(
+            &main,
+            &branch,
+            &cube(5.0),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(trace.branches().is_empty(), "nudge {nudge}");
         assert_eq!(trace.points().len(), 1, "nudge {nudge}");
         let touch = trace.points()[0];
@@ -248,7 +304,14 @@ fn an_outer_tangency_within_the_tolerance_is_one_isolated_point() {
         assert!(worst_off(&trace, &main, &branch) <= tol().linear);
     }
     let (main, branch) = pipes(3.0 - 1e-5);
-    let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &main,
+        &branch,
+        &cube(5.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!((trace.branches().len(), trace.points().len()), (1, 0));
 }
 
@@ -261,7 +324,14 @@ fn vivianis_curve_matches_its_closed_form() {
         radius: 2.0,
     };
     let pipe = cylinder([1.0, 0.0, 0.0], [0.0, 0.0, 1.0], 1.0);
-    let trace = trace_quadrics(&sphere, &pipe, &cube(5.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &sphere,
+        &pipe,
+        &cube(5.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(trace.points().len(), 1);
     assert!((trace.points()[0].point - Point3::new(2.0, 0.0, 0.0)).norm() < 1e-7);
     assert_eq!(trace.branches().len(), 2);
@@ -300,7 +370,7 @@ fn unbounded_branches_of_two_cones_are_clipped_to_the_region() {
         half_angle: 0.6,
     };
     let within = cube(20.0);
-    let trace = trace_quadrics(&a, &b, &within, tol()).unwrap();
+    let trace = trace_quadrics(&a, &b, &within, tol(), &mut arris_math::Meter::default()).unwrap();
     assert!(!trace.branches().is_empty());
     assert!(
         trace
@@ -323,13 +393,19 @@ fn a_pair_with_no_ruled_quadric_in_it_is_unsupported() {
     };
     for (a, b) in [(&sphere, &sphere), (&plane, &sphere)] {
         assert!(matches!(
-            trace_quadrics(a, b, &cube(5.0), tol()),
+            trace_quadrics(a, b, &cube(5.0), tol(), &mut arris_math::Meter::default()),
             Err(GeomError::Unsupported { .. })
         ));
     }
     let pipe = cylinder([0.0; 3], [0.0, 0.0, 1.0], 1.0);
     assert!(matches!(
-        trace_quadrics(&pipe, &plane, &cube(5.0), tol()),
+        trace_quadrics(
+            &pipe,
+            &plane,
+            &cube(5.0),
+            tol(),
+            &mut arris_math::Meter::default()
+        ),
         Err(GeomError::Unsupported { .. })
     ));
 }
@@ -345,7 +421,13 @@ fn the_closed_forms_poses_are_refused_by_name() {
         radius: 2.0,
     };
     assert!(matches!(
-        trace_quadrics(&pipe, &ball, &cube(5.0), tol()),
+        trace_quadrics(
+            &pipe,
+            &ball,
+            &cube(5.0),
+            tol(),
+            &mut arris_math::Meter::default()
+        ),
         Err(GeomError::DegenerateSection {
             fault: SectionFault::TangentAlongCurve,
             ..
@@ -353,7 +435,13 @@ fn the_closed_forms_poses_are_refused_by_name() {
     ));
     let beside = cylinder([1.0, 0.0, 0.0], [0.0, 0.0, 1.0], 2.0);
     assert!(matches!(
-        trace_quadrics(&pipe, &beside, &cube(5.0), tol()),
+        trace_quadrics(
+            &pipe,
+            &beside,
+            &cube(5.0),
+            tol(),
+            &mut arris_math::Meter::default()
+        ),
         Err(GeomError::DegenerateSection { .. })
     ));
 }
@@ -377,7 +465,7 @@ fn assert_complete(trace: &SectionTrace, a: &Surface, b: &Surface, within: &Aabb
                 continue;
             };
             let Ok(CurveSurfaceIntersection::Points(hits)) =
-                intersect_curve_surface(&line, other, tol())
+                intersect_curve_surface(&line, other, tol(), &mut arris_math::Meter::default())
             else {
                 continue;
             };
@@ -470,7 +558,7 @@ fn meeting(
 /// argument order not reaching the result, and nothing of the section
 /// inside the region missed.
 fn holds((a, b, within): (Surface, Surface, Aabb)) -> Result<(), TestCaseError> {
-    let trace = match trace_quadrics(&a, &b, &within, tol()) {
+    let trace = match trace_quadrics(&a, &b, &within, tol(), &mut arris_math::Meter::default()) {
         Ok(trace) => trace,
         Err(e) => return Err(TestCaseError::fail(format!("refused: {e}"))),
     };
@@ -489,8 +577,8 @@ fn holds((a, b, within): (Surface, Surface, Aabb)) -> Result<(), TestCaseError> 
         let off = distance(&a, p).max(distance(&b, p));
         prop_assert!(off <= bound(p), "{p} is {off} off a surface");
     }
-    let swapped =
-        trace_quadrics(&b, &a, &within, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let swapped = trace_quadrics(&b, &a, &within, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(trace.points(), swapped.points());
     prop_assert_eq!(trace.branches().len(), swapped.branches().len());
     for (x, y) in trace.branches().iter().zip(swapped.branches()) {
@@ -549,7 +637,14 @@ fn random_elliptic_cylinder_pairs_trace() {
 #[test]
 fn a_branch_runs_at_a_steady_speed_through_its_turning_points() {
     let (main, branch) = pipes(1.5);
-    let trace = trace_quadrics(&main, &branch, &cube(5.0), tol()).unwrap();
+    let trace = trace_quadrics(
+        &main,
+        &branch,
+        &cube(5.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     let b = &trace.branches()[0];
     let n = 2000;
     let step = b.domain().length() / n as f64;
@@ -603,7 +698,7 @@ fn touching(
 /// A crowded singularity is a refusal the tracer is entitled to, and a
 /// pose of measure zero; every other error fails the case.
 fn traced(a: &Surface, b: &Surface, within: &Aabb) -> Result<Option<SectionTrace>, TestCaseError> {
-    match trace_quadrics(a, b, within, tol()) {
+    match trace_quadrics(a, b, within, tol(), &mut arris_math::Meter::default()) {
         Ok(trace) => Ok(Some(trace)),
         Err(GeomError::DegenerateSection {
             fault: SectionFault::CrowdedSingularity,
@@ -733,14 +828,14 @@ fn rods_a_hair_off_parallel_are_known_along_their_rulings_to_rounding() {
         min: [-3.0, -3.0, -1.0],
         max: [5.0, 5.0, 17.0],
     };
-    let trace = trace_quadrics(&a, &b, &within, tol()).unwrap();
+    let trace = trace_quadrics(&a, &b, &within, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!(trace.branches().len(), 1);
     let branch = &trace.branches()[0];
     let (raw, beyond) = noise_and_stretch(branch, 200_000, 2e-15);
     assert!(raw > 1e-8, "the root moves along the ruling by {raw}");
     assert!(beyond < 1e-12, "a point {beyond} outside its stretch");
     let Ok(arris_geom::SurfaceIntersection::Meets { curves, .. }) =
-        arris_geom::intersect_surfaces(&a, &b, &within, tol())
+        arris_geom::intersect_surfaces(&a, &b, &within, tol(), &mut arris_math::Meter::default())
     else {
         panic!("the section is fitted");
     };

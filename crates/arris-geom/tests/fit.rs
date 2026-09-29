@@ -54,7 +54,15 @@ fn a_helix_in_any_pose_is_fitted_within_tolerance() {
             let f = move |t: f64| motion.apply(Point3::new(r * t.cos(), r * t.sin(), pitch * t));
             let range = Interval::new(start, start + length).unwrap();
             let deviation = |t: f64, q: Point3| (q - f(t)).norm();
-            let fit = fit_curve(f, range, degree, deviation, FIT_TOL).map_err(|e| {
+            let fit = fit_curve(
+                f,
+                range,
+                degree,
+                deviation,
+                FIT_TOL,
+                &mut arris_math::Meter::default(),
+            )
+            .map_err(|e| {
                 TestCaseError::fail(format!("{e} for r={r} pitch={pitch} on {range:?}"))
             })?;
             prop_assert_eq!(fit.domain(), range);
@@ -98,8 +106,15 @@ fn a_closed_curve_in_any_pose_is_fitted_periodically() {
             };
             let range = Interval::new(start, start + TAU).unwrap();
             let deviation = |t: f64, q: Point3| (q - f(t)).norm();
-            let fit = fit_curve_periodic(f, range, degree, deviation, FIT_TOL)
-                .map_err(|e| TestCaseError::fail(format!("{e} for a={a} b={b} c={c}")))?;
+            let fit = fit_curve_periodic(
+                f,
+                range,
+                degree,
+                deviation,
+                FIT_TOL,
+                &mut arris_math::Meter::default(),
+            )
+            .map_err(|e| TestCaseError::fail(format!("{e} for a={a} b={b} c={c}")))?;
             prop_assert_eq!(fit.domain(), range);
             prop_assert_eq!(fit.degree(), degree);
             prop_assert!(fit.period().is_some_and(|p| (p - TAU).abs() <= 1e-12 * TAU));
@@ -134,7 +149,15 @@ fn vivianis_curve_is_one_periodic_fit_within_tolerance() {
     let range = Interval::new(0.0, 2.0 * TAU).unwrap();
     let deviation = |t: f64, q: Point3| (q - viviani(t)).norm();
     for degree in 3..=5 {
-        let fit = fit_curve_periodic(viviani, range, degree, deviation, FIT_TOL).unwrap();
+        let fit = fit_curve_periodic(
+            viviani,
+            range,
+            degree,
+            deviation,
+            FIT_TOL,
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert_eq!(fit.period(), Some(2.0 * TAU));
         let worst = worst_deviation(&fit, viviani, range);
         assert!(
@@ -151,7 +174,15 @@ fn vivianis_curve_is_one_periodic_fit_within_tolerance() {
     }
     // The same loop fitted open is clamped and closed only because both
     // ends are interpolated.
-    let open = fit_curve(viviani, range, 3, deviation, FIT_TOL).unwrap();
+    let open = fit_curve(
+        viviani,
+        range,
+        3,
+        deviation,
+        FIT_TOL,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(open.period(), None);
     assert!((open.eval(0.0).point - open.eval(2.0 * TAU).point).norm() <= EXACT);
 }
@@ -163,7 +194,15 @@ fn a_periodic_fit_with_fewer_spans_than_its_degree_wraps() {
     let circle = |t: f64| Point3::new(t.cos(), t.sin(), 0.0);
     let range = Interval::new(0.0, TAU).unwrap();
     let deviation = |t: f64, q: Point3| (q - circle(t)).norm();
-    let fit = fit_curve_periodic(circle, range, 5, deviation, 1e-2).unwrap();
+    let fit = fit_curve_periodic(
+        circle,
+        range,
+        5,
+        deviation,
+        1e-2,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert!(spans(&fit) < 5, "{} spans", spans(&fit));
     assert_eq!(fit.period(), Some(TAU));
     assert!(worst_deviation(&fit, circle, range) <= 1e-2);
@@ -174,12 +213,44 @@ fn a_periodic_fit_with_fewer_spans_than_its_degree_wraps() {
 fn fits_are_deterministic() {
     let range = Interval::new(0.0, 2.0 * TAU).unwrap();
     let deviation = |t: f64, q: Point3| (q - viviani(t)).norm();
-    let a = fit_curve_periodic(viviani, range, 4, deviation, FIT_TOL).unwrap();
-    let b = fit_curve_periodic(viviani, range, 4, deviation, FIT_TOL).unwrap();
+    let a = fit_curve_periodic(
+        viviani,
+        range,
+        4,
+        deviation,
+        FIT_TOL,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
+    let b = fit_curve_periodic(
+        viviani,
+        range,
+        4,
+        deviation,
+        FIT_TOL,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(a, b);
     let range = Interval::new(0.3, 5.0).unwrap();
-    let a = fit_curve(viviani, range, 3, deviation, FIT_TOL).unwrap();
-    let b = fit_curve(viviani, range, 3, deviation, FIT_TOL).unwrap();
+    let a = fit_curve(
+        viviani,
+        range,
+        3,
+        deviation,
+        FIT_TOL,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
+    let b = fit_curve(
+        viviani,
+        range,
+        3,
+        deviation,
+        FIT_TOL,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     assert_eq!(a, b);
 }
 
@@ -197,8 +268,26 @@ fn bad_requests_are_named() {
         f64,
     ) -> Result<NurbsCurve, FitError>;
     let fits: [Fit; 2] = [
-        |f, range, degree, dev, tol| fit_curve(f, range, degree, dev, tol),
-        |f, range, degree, dev, tol| fit_curve_periodic(f, range, degree, dev, tol),
+        |f, range, degree, dev, tol| {
+            fit_curve(
+                f,
+                range,
+                degree,
+                dev,
+                tol,
+                &mut arris_math::Meter::default(),
+            )
+        },
+        |f, range, degree, dev, tol| {
+            fit_curve_periodic(
+                f,
+                range,
+                degree,
+                dev,
+                tol,
+                &mut arris_math::Meter::default(),
+            )
+        },
     ];
     for fit in fits {
         assert!(matches!(
@@ -239,8 +328,15 @@ fn bad_requests_are_named() {
         );
     }
     // A periodic fit of a curve that does not close says so, up front.
-    let e =
-        fit_curve_periodic(f, range, 3, |t: f64, q: Point3| (q - f(t)).norm(), 1e-6).unwrap_err();
+    let e = fit_curve_periodic(
+        f,
+        range,
+        3,
+        |t: f64, q: Point3| (q - f(t)).norm(),
+        1e-6,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap_err();
     assert!(
         matches!(&e, FitError::Degenerate(reason) if reason.contains("does not close")),
         "{e}"
@@ -248,5 +344,15 @@ fn bad_requests_are_named() {
     let wrapped: GeomError = e.into();
     assert!(matches!(wrapped, GeomError::Fit(FitError::Degenerate(_))));
     // The open fit of the same curve is fine.
-    assert!(fit_curve(f, range, 3, |t: f64, q: Point3| (q - f(t)).norm(), 1e-6).is_ok());
+    assert!(
+        fit_curve(
+            f,
+            range,
+            3,
+            |t: f64, q: Point3| (q - f(t)).norm(),
+            1e-6,
+            &mut arris_math::Meter::default()
+        )
+        .is_ok()
+    );
 }

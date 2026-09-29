@@ -109,3 +109,35 @@ and a way to test that the return is clean at every point.
   consumer's poll can read its own clock.
 - **Progress reporting** (a fraction, a stage name). Nobody asked; it
   is a backlog line if a consumer does.
+
+## Amendment (step 2, 2026-09-29): what the geometry crate measured
+
+- **The latency bound.** A poll is asked at every step, so the spacing of
+  its questions is the stretch between two ticks. On the thin torus
+  section (major radius 1000, tube 900, against an elliptic cylinder of
+  semi-axes 990 and 0.5 tilted 0.1 rad; 60 s unstopped in a release
+  build, of which the trace is 3 ms and the fit the rest) the longest
+  stretch is 3.6 ms in a release build. On the 161 `slow-unit` inputs
+  the fuzz targets kept (`fuzz/latency.rs`, each stopped at two seconds)
+  it is 3.9 ms at the most. `tests/cancel.rs` holds the slow section to
+  500 ms in the test profile, on a busy machine. No solve is left
+  unticked: the fit ticks per sample of the curve and per check of its
+  deviation, the Bernstein isolation per box, the torus march per cell,
+  a curve against a fitted spline per span. The latency floor is one call
+  of the caller's own closure.
+- **The `curve` targets' slow inputs were the decoder's.** The
+  `intersect_curve_surface` and `intersect_curves` inputs take about a
+  millisecond in the query; the seconds were the fuzz decoder fitting the
+  section it builds its curve from.
+- **Projection takes no meter.** `Surface::project` and its NURBS and
+  curve forms are constant work per call, are called by the checker, which
+  is not instrumented, and are called from a hundred sites; the loops that
+  call them tick. A step that finds a single projection slow reopens it.
+  `Profile`'s pcurves (the consumer's own sketch, a fit per edge) run on
+  an unlimited meter for the same reason.
+- **`Interrupted::steps` is the steps completed.** A poll that answers
+  `true` at its `k`-th question stops with `steps = k − 1`; budget `k`
+  stops with `steps = k`, so a poll and a budget agree at poll question
+  `k + 1`.
+- **Errors.** `GeomError::Interrupted`, and `FitError::Interrupted`
+  which converts to it: a stopped fit is a stopped query.

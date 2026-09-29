@@ -1047,8 +1047,14 @@ pub fn revolve(
                 };
                 let next = (j + 1) % n;
                 let on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
-                    pcurve_on(curve, range, surface, tol)
-                        .map_err(|e| OpError::Internal(Fault::Geometry(e)))
+                    pcurve_on(
+                        curve,
+                        range,
+                        surface,
+                        tol,
+                        &mut arris_check::arris_topo::arris_math::Meter::default(),
+                    )
+                    .map_err(|e| OpError::Internal(Fault::Geometry(e)))
                 };
                 let start_pcurve = on(&edge.curve, edge.range)?;
                 let orientation = side_orientation(edge, normal, surface, &start_pcurve)?;
@@ -1509,8 +1515,14 @@ pub fn extrude(
                 let surface = &surfaces[li][j];
                 let next = (j + 1) % n;
                 let on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
-                    pcurve_on(curve, range, surface, tol)
-                        .map_err(|e| OpError::Internal(Fault::Geometry(e)))
+                    pcurve_on(
+                        curve,
+                        range,
+                        surface,
+                        tol,
+                        &mut arris_check::arris_topo::arris_math::Meter::default(),
+                    )
+                    .map_err(|e| OpError::Internal(Fault::Geometry(e)))
                 };
                 let start_pcurve = on(&edge.curve, edge.range)?;
                 let orientation = side_orientation(edge, normal, surface, &start_pcurve)?;

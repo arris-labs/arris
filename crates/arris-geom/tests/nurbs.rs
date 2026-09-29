@@ -390,6 +390,7 @@ fn a_segment_is_the_curve_over_its_range() {
                 5,
                 |t, q| (q - circle.point(t)).norm(),
                 1e-9,
+                &mut arris_math::Meter::default(),
             )
             .unwrap();
             let period = loop_.period().unwrap();
@@ -470,14 +471,27 @@ fn every_cycle_one_query_on_a_nurbs_is_unsupported_by_name() {
         prop_assert_eq!(surface.kind(), SurfaceKind::Nurbs);
         prop_assert!(surface.frame().is_none());
         prop_assert_eq!(
-            intersect_surfaces(&surface, &p, &within(), tol),
+            intersect_surfaces(
+                &surface,
+                &p,
+                &within(),
+                tol,
+                &mut arris_math::Meter::default()
+            ),
             Err(GeomError::Unsupported {
                 a: GeomKind::Surface(SurfaceKind::Nurbs),
                 b: GeomKind::Surface(SurfaceKind::Plane),
             })
         );
         prop_assert_eq!(
-            intersect_surfaces(&p, &surface, &within(), tol).unwrap_err(),
+            intersect_surfaces(
+                &p,
+                &surface,
+                &within(),
+                tol,
+                &mut arris_math::Meter::default()
+            )
+            .unwrap_err(),
             GeomError::Unsupported {
                 a: GeomKind::Surface(SurfaceKind::Plane),
                 b: GeomKind::Surface(SurfaceKind::Nurbs),
@@ -486,22 +500,25 @@ fn every_cycle_one_query_on_a_nurbs_is_unsupported_by_name() {
         // A NURBS curve meets every analytic surface (ADR-0018); it is
         // the NURBS surface that no curve meets yet.
         prop_assert_eq!(
-            intersect_curve_surface(&curve, &surface, tol),
+            intersect_curve_surface(&curve, &surface, tol, &mut arris_math::Meter::default()),
             Err(GeomError::Unsupported {
                 a: GeomKind::Curve(CurveKind::Nurbs),
                 b: GeomKind::Surface(SurfaceKind::Nurbs),
             })
         );
-        let curve_on_plane = intersect_curve_surface(&curve, &p, tol);
+        let curve_on_plane =
+            intersect_curve_surface(&curve, &p, tol, &mut arris_math::Meter::default());
         prop_assert!(curve_on_plane.is_ok(), "{curve_on_plane:?}");
         let line = Curve::Line {
             origin: Point3::origin(),
             direction: Vec3::z_axis(),
         };
-        let line_on_nurbs = intersect_curve_surface(&line, &surface, tol);
+        let line_on_nurbs =
+            intersect_curve_surface(&line, &surface, tol, &mut arris_math::Meter::default());
         let unsupported = matches!(line_on_nurbs, Err(GeomError::Unsupported { .. }));
         prop_assert!(unsupported, "{line_on_nurbs:?}");
-        let line_on_plane = intersect_curve_surface(&line, &p, tol).unwrap();
+        let line_on_plane =
+            intersect_curve_surface(&line, &p, tol, &mut arris_math::Meter::default()).unwrap();
         let has_points = matches!(line_on_plane, CurveSurfaceIntersection::Points(_));
         prop_assert!(has_points, "{line_on_plane:?}");
         // A projection is a search since ADR-0025: answered, or a tie

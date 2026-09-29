@@ -7,7 +7,7 @@
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_math::{
-    Frame, Frame2, Handedness, Interval, Point2, Point3, Tolerance, UnitVec2, Vec2, Vec3,
+    Frame, Frame2, Handedness, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, Vec2, Vec3,
     is_negligible, wrap_angle as wrap_turn,
 };
 
@@ -171,7 +171,7 @@ fn degenerate(kind: GeomKind, reason: impl Into<String>) -> GeomError {
 ///
 /// let wall = Surface::Cylinder { frame: Frame::world(), radius: 2.0 };
 /// let ring = Curve::Circle { frame: Frame::from_z(Point3::new(0.0, 0.0, 3.0), Vec3::z()).unwrap(), radius: 2.0 };
-/// let pc = pcurve_on(&ring, Interval::TURN, &wall, Precision::DEFAULT.tolerance()).unwrap();
+/// let pc = pcurve_on(&ring, Interval::TURN, &wall, Precision::DEFAULT.tolerance(), &mut arris_math::Meter::default()).unwrap();
 /// let Curve2::Line { origin, direction } = pc else { panic!() };
 /// assert_eq!(origin.y, 3.0);
 /// assert_eq!(direction.x, 1.0); // u runs with t, v stays at 3
@@ -181,6 +181,7 @@ pub fn pcurve_on(
     range: Interval,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     if !tol.is_consistent() {
         return Err(GeomError::InvalidTolerance(tol));
@@ -215,7 +216,7 @@ pub fn pcurve_on(
                 Curve::Nurbs(_) => 0.0,
             };
             if tilt > tol.angular {
-                return projected_in_plane(curve, range, frame, tol);
+                return projected_in_plane(curve, range, frame, tol, meter);
             }
             in_plane_curve(curve, frame)
         }
@@ -224,7 +225,7 @@ pub fn pcurve_on(
                 let q = frame.to_local(p);
                 (q.x.hypot(q.y) - radius).abs()
             })?;
-            on_cylinder(curve, range, frame, radius, surface, tol)
+            on_cylinder(curve, range, frame, radius, surface, tol, meter)
         }
         &Surface::EllipticCylinder {
             ref frame,
@@ -243,6 +244,7 @@ pub fn pcurve_on(
                 [major_radius, minor_radius],
                 surface,
                 tol,
+                meter,
             )
         }
         &Surface::Cone {
@@ -253,13 +255,13 @@ pub fn pcurve_on(
             check_on(curve, range, surface, tol, |p| {
                 cone_distance(frame, radius, half_angle, p)
             })?;
-            on_cone(curve, range, frame, radius, half_angle, surface, tol)
+            on_cone(curve, range, frame, radius, half_angle, surface, tol, meter)
         }
         &Surface::Sphere { ref frame, radius } => {
             check_on(curve, range, surface, tol, |p| {
                 ((p - frame.origin()).norm() - radius).abs()
             })?;
-            on_sphere(curve, range, frame, radius, surface, tol)
+            on_sphere(curve, range, frame, radius, surface, tol, meter)
         }
         &Surface::Torus {
             ref frame,
@@ -278,6 +280,7 @@ pub fn pcurve_on(
                 minor_radius,
                 surface,
                 tol,
+                meter,
             )
         }
         Surface::Nurbs(nurbs) => {
@@ -293,7 +296,7 @@ pub fn pcurve_on(
                 }
             })
             .map_err(|e| fault.take().unwrap_or(e))?;
-            fitted_on(curve, range, surface, tol)
+            fitted_on(curve, range, surface, tol, meter)
         }
     }
 }
@@ -362,6 +365,7 @@ fn projected_in_plane(
     range: Interval,
     plane: &Frame,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     let f = |t: f64| in_plane(plane, curve.point(t));
     let fit = fit_curve2(
@@ -370,6 +374,7 @@ fn projected_in_plane(
         PCURVE_FIT_DEGREE,
         |t, q| (q - f(t)).norm(),
         tol.linear,
+        meter,
     )?;
     Ok(Curve2::Nurbs(fit))
 }
@@ -418,6 +423,7 @@ fn on_cylinder(
     radius: f64,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     match curve {
         &Curve::Line { origin, direction } => {
@@ -430,7 +436,7 @@ fn on_cylinder(
                     direction: UnitVec2::new_unchecked(Vec2::new(0.0, d.z.signum())),
                 });
             }
-            fitted_on(curve, range, surface, tol)
+            fitted_on(curve, range, surface, tol, meter)
         }
         &Curve::Circle {
             ref frame,
@@ -452,9 +458,9 @@ fn on_cylinder(
                     direction: UnitVec2::new_unchecked(Vec2::new(sense, 0.0)),
                 });
             }
-            fitted_on(curve, range, surface, tol)
+            fitted_on(curve, range, surface, tol, meter)
         }
-        Curve::Ellipse { .. } | Curve::Nurbs(_) => fitted_on(curve, range, surface, tol),
+        Curve::Ellipse { .. } | Curve::Nurbs(_) => fitted_on(curve, range, surface, tol, meter),
     }
 }
 
@@ -468,13 +474,14 @@ fn on_elliptic_cylinder(
     [a, b]: [f64; 2],
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     let kind = GeomKind::Curve(curve.kind());
     match curve {
         &Curve::Line { origin, direction } => {
             let d = cyl.vec_to_local(direction.into_inner());
             if d.x.hypot(d.y).atan2(d.z.abs()) > tol.angular {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             }
             // A ruling: constant `u` at its section point, which is on
             // the ellipse (checked above) and so has a unique parameter
@@ -504,11 +511,11 @@ fn on_elliptic_cylinder(
                 && (major_radius - a).abs() <= tol.linear
                 && (minor_radius - b).abs() <= tol.linear;
             if !section {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             }
             Ok(parallel_pcurve(cyl, frame, centre.z, false))
         }
-        Curve::Circle { .. } | Curve::Nurbs(_) => fitted_on(curve, range, surface, tol),
+        Curve::Circle { .. } | Curve::Nurbs(_) => fitted_on(curve, range, surface, tol, meter),
     }
 }
 
@@ -620,6 +627,7 @@ fn meridian_radial(
 
 /// The exact pcurves on a cone: a ruling at constant `u`, a circle about
 /// the axis at constant `v`; the rest fitted.
+#[allow(clippy::too_many_arguments)]
 fn on_cone(
     curve: &Curve,
     range: Interval,
@@ -628,6 +636,7 @@ fn on_cone(
     half_angle: f64,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     let kind = GeomKind::Curve(curve.kind());
     let (sin, cos) = (half_angle.sin(), half_angle.cos());
@@ -646,7 +655,7 @@ fn on_cone(
             let sense = if d.z >= 0.0 { 1.0 } else { -1.0 };
             let equatorial = Vec2::new(sense * d.x, sense * d.y);
             if (equatorial.norm().atan2(d.z.abs()) - half_angle).abs() > tol.angular {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             }
             if is_negligible(equatorial.norm(), 1.0) {
                 return Err(degenerate(kind, "the ruling has no radial direction"));
@@ -663,12 +672,12 @@ fn on_cone(
             let about_axis =
                 centre.x.hypot(centre.y) <= tol.linear && parallel_axes(&frame.z(), &cone.z(), tol);
             if !about_axis {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             }
             let v = centre.z / cos;
             Ok(parallel_pcurve(cone, frame, v, radius + v * sin < 0.0))
         }
-        Curve::Ellipse { .. } | Curve::Nurbs(_) => fitted_on(curve, range, surface, tol),
+        Curve::Ellipse { .. } | Curve::Nurbs(_) => fitted_on(curve, range, surface, tol, meter),
     }
 }
 
@@ -681,6 +690,7 @@ fn on_sphere(
     radius: f64,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     match curve {
         &Curve::Circle {
@@ -698,24 +708,25 @@ fn on_sphere(
                 && (rho - radius).abs() <= tol.linear
                 && perpendicular_axes(&frame.z(), &sphere.z(), tol);
             if !through_axis {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             }
             let z = sphere.vec_to_local(frame.z().into_inner());
             let candidate = Vec3::new(-z.y, z.x, 0.0);
             let Some(candidate) = candidate.try_normalize(0.0) else {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             };
             let radial = meridian_radial(sphere, curve, range, candidate, radius);
             Ok(meridian_pcurve(sphere, frame, radial, Some(range)))
         }
         Curve::Line { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_) => {
-            fitted_on(curve, range, surface, tol)
+            fitted_on(curve, range, surface, tol, meter)
         }
     }
 }
 
 /// The exact pcurves on a torus: a circle about the axis at constant `v`,
 /// a circle of the tube at constant `u`; the rest fitted.
+#[allow(clippy::too_many_arguments)]
 fn on_torus(
     curve: &Curve,
     range: Interval,
@@ -724,6 +735,7 @@ fn on_torus(
     minor_radius: f64,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     match curve {
         &Curve::Circle {
@@ -739,7 +751,7 @@ fn on_torus(
                 return Ok(parallel_pcurve(torus, frame, v, false));
             }
             let Some(radial) = Vec3::new(centre.x, centre.y, 0.0).try_normalize(0.0) else {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             };
             let z = torus.vec_to_local(frame.z().into_inner());
             let of_the_tube = (equatorial.norm() - major_radius).abs() <= tol.linear
@@ -748,12 +760,12 @@ fn on_torus(
                 && perpendicular_axes(&z, &Vec3::z(), tol)
                 && perpendicular_axes(&z, &radial, tol);
             if !of_the_tube {
-                return fitted_on(curve, range, surface, tol);
+                return fitted_on(curve, range, surface, tol, meter);
             }
             Ok(meridian_pcurve(torus, frame, radial, None))
         }
         Curve::Line { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_) => {
-            fitted_on(curve, range, surface, tol)
+            fitted_on(curve, range, surface, tol, meter)
         }
     }
 }
@@ -927,6 +939,7 @@ fn fitted_on(
     range: Interval,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     let kind = GeomKind::Curve(curve.kind());
     let ends = singular_ends(curve, range, surface, tol)?;
@@ -1074,7 +1087,7 @@ fn fitted_on(
         Point2::new(u, v)
     };
     let deviation = |t: f64, q: Point2| (surface.point(q.x, q.y) - curve.point(t)).norm();
-    let fit = fit_curve2(f, range, PCURVE_FIT_DEGREE, deviation, tol.linear)?;
+    let fit = fit_curve2(f, range, PCURVE_FIT_DEGREE, deviation, tol.linear, meter)?;
     Ok(Curve2::Nurbs(fit))
 }
 
@@ -1218,7 +1231,7 @@ pub(crate) fn principal_axes(col1: Vec2, col2: Vec2) -> (f64, f64, f64) {
 /// let line = Curve2::Line { origin: Point2::new(0.0, 0.0), direction: UnitVec2::new_normalize(Vec2::x()) };
 /// let range = Interval::new(0.0, 1.0).unwrap();
 /// let to = Point2::new(1.0, 1e-7);
-/// let moved = pcurve_ending_on(&line, range, [None, Some(to)], &plane, 1e-7).unwrap();
+/// let moved = pcurve_ending_on(&line, range, [None, Some(to)], &plane, 1e-7, &mut arris_math::Meter::default()).unwrap();
 /// assert_eq!(moved.point(1.0), to);
 /// assert_eq!(moved.point(0.0), Point2::new(0.0, 0.0));
 /// ```
@@ -1228,6 +1241,7 @@ pub fn pcurve_ending_on(
     ends: [Option<Point2>; 2],
     surface: &Surface,
     tolerance: f64,
+    meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     let clamped = |n: &NurbsCurve2| {
         let (k, p) = (n.knots(), n.degree());
@@ -1252,6 +1266,7 @@ pub fn pcurve_ending_on(
                 PCURVE_FIT_DEGREE,
                 |t, q| (on(q) - on(pc.point(t))).norm(),
                 tolerance,
+                meter,
             )?
         }
     };
@@ -1294,7 +1309,14 @@ mod tests {
             major_radius: 3.0,
             minor_radius: 2.0,
         };
-        let pc = pcurve_on(&section, Interval::TURN, &wall, tol()).unwrap();
+        let pc = pcurve_on(
+            &section,
+            Interval::TURN,
+            &wall,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let Curve2::Line { origin, direction } = pc else {
             panic!("{pc:?}")
         };
@@ -1305,7 +1327,14 @@ mod tests {
             origin: Point3::new(0.0, 2.0, 9.0),
             direction: -Vec3::z_axis(),
         };
-        let pc = pcurve_on(&ruling, Interval::new(0.0, 5.0).unwrap(), &wall, tol()).unwrap();
+        let pc = pcurve_on(
+            &ruling,
+            Interval::new(0.0, 5.0).unwrap(),
+            &wall,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let Curve2::Line { origin, direction } = pc else {
             panic!("{pc:?}")
         };
@@ -1318,7 +1347,13 @@ mod tests {
             radius: 2.0,
         };
         assert!(matches!(
-            pcurve_on(&circle, Interval::TURN, &wall, tol()),
+            pcurve_on(
+                &circle,
+                Interval::TURN,
+                &wall,
+                tol(),
+                &mut arris_math::Meter::default()
+            ),
             Err(GeomError::NotOnSurface { .. })
         ));
         // No ellipse lies on the surface but the sections, so a chord
@@ -1328,7 +1363,14 @@ mod tests {
             origin: Point3::new(3.0, 0.0, 0.0),
             direction: Vec3::y_axis(),
         };
-        let pc = pcurve_on(&chord, Interval::new(0.0, 1e-9).unwrap(), &wall, tol()).unwrap();
+        let pc = pcurve_on(
+            &chord,
+            Interval::new(0.0, 1e-9).unwrap(),
+            &wall,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(matches!(pc, Curve2::Nurbs(_)), "{pc:?}");
     }
 
@@ -1342,13 +1384,26 @@ mod tests {
             direction: Vec3::x_axis(),
         };
         let range = Interval::new(0.0, 1.0).unwrap();
-        let err = pcurve_on(&lifted, range, &plane, tol()).unwrap_err();
+        let err = pcurve_on(
+            &lifted,
+            range,
+            &plane,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_err();
         assert!(
             matches!(err, GeomError::NotOnSurface { distance, .. } if (distance - 1e-3).abs() < 1e-15),
             "{err}"
         );
         assert!(matches!(
-            pcurve_on(&lifted, Interval::REAL, &plane, tol()),
+            pcurve_on(
+                &lifted,
+                Interval::REAL,
+                &plane,
+                tol(),
+                &mut arris_math::Meter::default()
+            ),
             Err(GeomError::Degenerate { .. })
         ));
         let sphere = Surface::Sphere {
@@ -1358,7 +1413,13 @@ mod tests {
         // A line is nowhere near a sphere: that is not an unsupported
         // pair, it is a curve off the surface.
         assert!(matches!(
-            pcurve_on(&lifted, range, &sphere, tol()),
+            pcurve_on(
+                &lifted,
+                range,
+                &sphere,
+                tol(),
+                &mut arris_math::Meter::default()
+            ),
             Err(GeomError::NotOnSurface { .. })
         ));
         // A small circle *on* the sphere about no axis of it has no
@@ -1367,10 +1428,23 @@ mod tests {
             frame: Frame::from_z(Point3::new(0.5, 0.0, 0.0), Vec3::x()).unwrap(),
             radius: 0.75f64.sqrt(),
         };
-        let pc = pcurve_on(&small, Interval::TURN, &sphere, tol()).unwrap();
+        let pc = pcurve_on(
+            &small,
+            Interval::TURN,
+            &sphere,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(matches!(pc, Curve2::Nurbs(_)), "{pc:?}");
         assert!(matches!(
-            pcurve_on(&lifted, range, &plane, Tolerance::new(0.0, 1.0)),
+            pcurve_on(
+                &lifted,
+                range,
+                &plane,
+                Tolerance::new(0.0, 1.0),
+                &mut arris_math::Meter::default()
+            ),
             Err(GeomError::InvalidTolerance(_))
         ));
     }
@@ -1385,7 +1459,14 @@ mod tests {
             origin: Point3::new(0.0, 2.0, 5.0),
             direction: -Vec3::z_axis(),
         };
-        let pc = pcurve_on(&ruling, Interval::new(-1.0, 1.0).unwrap(), &wall, tol()).unwrap();
+        let pc = pcurve_on(
+            &ruling,
+            Interval::new(-1.0, 1.0).unwrap(),
+            &wall,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let Curve2::Line { origin, direction } = pc else {
             panic!("{pc:?}")
         };
@@ -1396,7 +1477,14 @@ mod tests {
             frame: Frame::new(Point3::new(0.0, 0.0, 1.0), -Vec3::z(), Vec3::y()).unwrap(),
             radius: 2.0,
         };
-        let pc = pcurve_on(&ring, Interval::TURN, &wall, tol()).unwrap();
+        let pc = pcurve_on(
+            &ring,
+            Interval::TURN,
+            &wall,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let Curve2::Line { origin, direction } = pc else {
             panic!("{pc:?}")
         };
@@ -1451,7 +1539,15 @@ mod tests {
             direction: UnitVec2::new_normalize(Vec2::new(1.0, 0.0)),
         };
         let to = Point2::new(3.0, 1.0 + 1.2e-7);
-        let moved = pcurve_ending_on(&line, range, [None, Some(to)], &plane, 1e-7).unwrap();
+        let moved = pcurve_ending_on(
+            &line,
+            range,
+            [None, Some(to)],
+            &plane,
+            1e-7,
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert_eq!(moved.point(0.0), line.point(0.0));
         assert_eq!(moved.point(2.0), to);
         assert!((moved.point(1.0) - Point2::new(2.0, 1.0 + 0.6e-7)).norm() < 1e-15);
@@ -1461,7 +1557,15 @@ mod tests {
             radius: 1.0,
         };
         let from = circle.point(0.0) + Vec2::new(0.0, -1.2e-7);
-        let moved = pcurve_ending_on(&circle, range, [Some(from), None], &plane, 1e-7).unwrap();
+        let moved = pcurve_ending_on(
+            &circle,
+            range,
+            [Some(from), None],
+            &plane,
+            1e-7,
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert_eq!(moved.point(0.0), from);
         assert!((moved.point(2.0) - circle.point(2.0)).norm() < 1e-15);
         for i in 0..=100 {

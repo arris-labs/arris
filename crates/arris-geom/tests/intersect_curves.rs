@@ -39,7 +39,8 @@ fn hits_of(r: &CurveIntersection) -> &[CurveCurveHit] {
 /// its curve's domain, each hit on both curves, sorted by `ta`, and the
 /// same answer on a second run.
 fn common_properties(a: &Curve, b: &Curve) -> Result<CurveIntersection, TestCaseError> {
-    let r = intersect_curves(a, b, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let r = intersect_curves(a, b, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     for h in hits_of(&r) {
         for (c, t) in [(a, h.ta), (b, h.tb)] {
             prop_assert!(c.domain().contains(t), "{c:?}: t = {t} outside the domain");
@@ -62,7 +63,8 @@ fn common_properties(a: &Curve, b: &Curve) -> Result<CurveIntersection, TestCase
         "unsorted: {:?}",
         hits_of(&r)
     );
-    let again = intersect_curves(a, b, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let again = intersect_curves(a, b, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(&again, &r, "two runs differ");
     Ok(r)
 }
@@ -147,7 +149,8 @@ fn a_line_against_itself_is_coincident_and_a_parallel_one_is_empty() {
                 return fail("not a line".to_string());
             };
             prop_assert_eq!(
-                intersect_curves(&a, &a, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?,
+                intersect_curves(&a, &a, tol(), &mut arris_math::Meter::default())
+                    .map_err(|e| TestCaseError::fail(e.to_string()))?,
                 CurveIntersection::Coincident
             );
             // The same line walked from another point, and the other way.
@@ -156,7 +159,7 @@ fn a_line_against_itself_is_coincident_and_a_parallel_one_is_empty() {
                 direction: -direction,
             };
             prop_assert_eq!(
-                intersect_curves(&a, &slid, tol())
+                intersect_curves(&a, &slid, tol(), &mut arris_math::Meter::default())
                     .map_err(|e| TestCaseError::fail(e.to_string()))?,
                 CurveIntersection::Coincident
             );
@@ -167,7 +170,7 @@ fn a_line_against_itself_is_coincident_and_a_parallel_one_is_empty() {
                 direction,
             };
             prop_assert_eq!(
-                intersect_curves(&a, &apart, tol())
+                intersect_curves(&a, &apart, tol(), &mut arris_math::Meter::default())
                     .map_err(|e| TestCaseError::fail(e.to_string()))?,
                 CurveIntersection::Points(Vec::new())
             );
@@ -313,7 +316,8 @@ fn two_coplanar_circles_meet_on_the_radical_line() {
 fn a_circle_against_itself_is_coincident() {
     check(circle(), |c| {
         prop_assert_eq!(
-            intersect_curves(&c, &c, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?,
+            intersect_curves(&c, &c, tol(), &mut arris_math::Meter::default())
+                .map_err(|e| TestCaseError::fail(e.to_string()))?,
             CurveIntersection::Coincident
         );
         Ok(())
@@ -540,7 +544,7 @@ fn the_same_coplanar_ellipse_is_coincident_and_its_major_circle_touches() {
         ];
         for twin in &twins {
             prop_assert_eq!(
-                intersect_curves(&e, twin, tol())
+                intersect_curves(&e, twin, tol(), &mut arris_math::Meter::default())
                     .map_err(|e| TestCaseError::fail(e.to_string()))?,
                 CurveIntersection::Coincident,
                 "{:?} vs {:?}",
@@ -599,13 +603,13 @@ fn only_two_nurbs_curves_are_unsupported() {
     check((curve(), nurbs_curve(), nurbs_curve()), |(c, m, n)| {
         let (m, n) = (Curve::Nurbs(m), Curve::Nurbs(n));
         for (a, b) in [(&c, &m), (&m, &c), (&c, &c)] {
-            match intersect_curves(a, b, tol()) {
+            match intersect_curves(a, b, tol(), &mut arris_math::Meter::default()) {
                 Ok(_) => {}
                 other => return fail(format!("{a:?} vs {b:?}: {other:?}")),
             }
         }
         for (a, b) in [(&m, &n), (&n, &m), (&n, &n)] {
-            match intersect_curves(a, b, tol()) {
+            match intersect_curves(a, b, tol(), &mut arris_math::Meter::default()) {
                 Err(GeomError::Unsupported { a: ka, b: kb }) => {
                     prop_assert_eq!(ka, GeomKind::Curve(a.kind()));
                     prop_assert_eq!(kb, GeomKind::Curve(b.kind()));
@@ -624,7 +628,12 @@ fn an_inconsistent_tolerance_is_an_error() {
         direction: Vec3::x_axis(),
     };
     assert!(matches!(
-        intersect_curves(&a, &a, Tolerance::new(1e-7, 0.0)),
+        intersect_curves(
+            &a,
+            &a,
+            Tolerance::new(1e-7, 0.0),
+            &mut arris_math::Meter::default()
+        ),
         Err(GeomError::InvalidTolerance(_))
     ));
 }
@@ -646,10 +655,11 @@ fn every_analytic_pair_passes_the_common_properties() {
 #[test]
 fn curves_coincide_is_the_coincident_verdict() {
     check((curve(), curve()), |(a, b)| {
-        let found =
-            intersect_curves(&a, &b, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+        let found = intersect_curves(&a, &b, tol(), &mut arris_math::Meter::default())
+            .map_err(|e| TestCaseError::fail(e.to_string()))?;
         prop_assert_eq!(
-            curves_coincide(&a, &b, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?,
+            curves_coincide(&a, &b, tol(), &mut arris_math::Meter::default())
+                .map_err(|e| TestCaseError::fail(e.to_string()))?,
             found == CurveIntersection::Coincident,
             "{:?} vs {:?}",
             a,
@@ -687,12 +697,13 @@ fn curves_coincide_is_the_coincident_verdict() {
             minor_radius,
         };
         let same = |x: &Curve, y: &Curve| {
-            curves_coincide(x, y, tol()).map_err(|e| TestCaseError::fail(e.to_string()))
+            curves_coincide(x, y, tol(), &mut arris_math::Meter::default())
+                .map_err(|e| TestCaseError::fail(e.to_string()))
         };
         prop_assert!(same(&e, &twin)?);
         for (x, y) in [(&e, &circle), (&circle, &e), (&e, &other)] {
-            let found =
-                intersect_curves(x, y, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+            let found = intersect_curves(x, y, tol(), &mut arris_math::Meter::default())
+                .map_err(|e| TestCaseError::fail(e.to_string()))?;
             prop_assert_eq!(
                 same(x, y)?,
                 found == CurveIntersection::Coincident,

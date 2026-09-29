@@ -82,9 +82,10 @@ use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 use std::sync::Arc;
 
 use arris_math::roots::{POLYNOMIAL_ROUNDING, newton_in_interval};
-use arris_math::{Frame, Interval, Point2, Point3, Tolerance, wrap_angle};
+use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, wrap_angle};
 
 use crate::bernstein2::Zero2;
+use crate::halt::Halt;
 use crate::implicit::Implicit;
 use crate::trace::{
     Arc1, BranchEnd, REACH, SectionBranch, SectionCircle, SectionFault, SectionPoint, SectionTrace,
@@ -817,7 +818,7 @@ struct Tracer<'a> {
 /// let ring = Surface::Torus { frame: Frame::world(), major_radius: 2.0, minor_radius: 0.5 };
 /// let across = Frame::from_z(Point3::new(1.0, 0.0, 0.0), Vec3::x()).unwrap();
 /// let plane = Surface::Plane { frame: across };
-/// let trace = trace_torus(&ring, &plane, Precision::DEFAULT.tolerance()).unwrap();
+/// let trace = trace_torus(&ring, &plane, Precision::DEFAULT.tolerance(), &mut arris_math::Meter::default()).unwrap();
 /// assert_eq!(trace.branches().len(), 2);
 /// assert!(trace.branches().iter().all(|b| b.is_closed()));
 /// let p = trace.branches()[0].point(0.3);
@@ -825,7 +826,12 @@ struct Tracer<'a> {
 /// let uv = trace.branches()[0].uv(0.3).unwrap();
 /// assert!((ring.point(uv.x, uv.y) - p).norm() < 1e-12);
 /// ```
-pub fn trace_torus(a: &Surface, b: &Surface, tol: Tolerance) -> Result<SectionTrace, GeomError> {
+pub fn trace_torus(
+    a: &Surface,
+    b: &Surface,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<SectionTrace, GeomError> {
     if !tol.is_consistent() {
         return Err(GeomError::InvalidTolerance(tol));
     }
@@ -848,10 +854,13 @@ pub fn trace_torus(a: &Surface, b: &Surface, tol: Tolerance) -> Result<SectionTr
         circles: Vec::new(),
         tol,
     };
-    tracer.run().map_err(|fault| GeomError::DegenerateSection {
-        a: GeomKind::Surface(torus.kind()),
-        b: GeomKind::Surface(other.kind()),
-        fault,
+    tracer.run(meter).map_err(|halt| match halt {
+        Halt::Fault(fault) => GeomError::DegenerateSection {
+            a: GeomKind::Surface(torus.kind()),
+            b: GeomKind::Surface(other.kind()),
+            fault,
+        },
+        Halt::Stopped(stop) => GeomError::Interrupted(stop),
     })
 }
 
@@ -905,12 +914,12 @@ fn in_box(p: [f64; 2], at: [f64; 2], half: [f64; 2]) -> bool {
 }
 
 impl Tracer<'_> {
-    fn run(mut self) -> Result<SectionTrace, SectionFault> {
+    fn run(mut self, meter: &mut Meter) -> Result<SectionTrace, Halt<SectionFault>> {
         self.circles = self.tube_circles();
         // Two surfaces that are not the same share two tube circles at
         // the most: their centre lines touch the centre circle there.
         if self.circles.len() > 2 {
-            return Err(SectionFault::TangentAlongCurve);
+            return Err(SectionFault::TangentAlongCurve.into());
         }
         for (i, circle) in self.circles.clone().iter().enumerate() {
             self.section.deflate(circle.u0, circle.order, i == 0);
@@ -926,13 +935,13 @@ impl Tracer<'_> {
                 let circles = self.section_circles()?;
                 return Ok(SectionTrace::new(Vec::new(), Vec::new()).with_circles(circles));
             }
-            _ => return Err(SectionFault::TubeCircle),
+            _ => return Err(SectionFault::TubeCircle.into()),
         }
-        let turning = (self.section.turning_points())
-            .map_err(|_| SectionFault::TangentAlongCurve)?
+        let turning = (self.section.turning_points(meter))
+            .map_err(|halt| halt.map_fault(|_| SectionFault::TangentAlongCurve))?
             .zeros;
-        let critical = (self.section.critical_points())
-            .map_err(|_| SectionFault::TangentAlongCurve)?
+        let critical = (self.section.critical_points(meter))
+            .map_err(|halt| halt.map_fault(|_| SectionFault::TangentAlongCurve))?
             .zeros;
         // A box of turning points a whole turn long in `v` is a tube
         // circle the other surface runs along, and not one held to the
@@ -941,11 +950,11 @@ impl Tracer<'_> {
         let turn = TAU - ANGLE_SLACK;
         for z in turning.iter().filter(|z| !z.certified) {
             if z.hi[1] - z.lo[1] >= turn {
-                return Err(if z.hi[0] - z.lo[0] >= turn {
+                return Err(Halt::Fault(if z.hi[0] - z.lo[0] >= turn {
                     SectionFault::TangentAlongCurve
                 } else {
                     SectionFault::TubeCircle
-                });
+                }));
             }
         }
 
@@ -969,7 +978,7 @@ impl Tracer<'_> {
         };
         let turning: Vec<Zero2> = turning.into_iter().filter(|z| !absorbed(z)).collect();
         if turning.iter().any(|z| !z.certified) {
-            return Err(SectionFault::UnresolvedTurning);
+            return Err(SectionFault::UnresolvedTurning.into());
         }
         let turning: Vec<[f64; 2]> = turning.iter().map(|z| z.at).collect();
 
@@ -999,10 +1008,10 @@ impl Tracer<'_> {
             let crowded = (self.turning.iter().any(|t| off(t.at[0]) <= near))
                 || (self.walker.singular.iter()).any(|s| off(s.at[0]) <= s.half[0] + near);
             if crowded {
-                return Err(SectionFault::CrowdedSingularity);
+                return Err(SectionFault::CrowdedSingularity.into());
             }
         }
-        self.assemble()
+        self.assemble(meter)
     }
 
     /// The tube circles of the torus that lie on the other surface within
@@ -1543,13 +1552,15 @@ impl Tracer<'_> {
         start: [f64; 2],
         dir: f64,
         seeded: bool,
-    ) -> Result<(Vec<Cell>, ArcEnd, [f64; 2]), SectionFault> {
+        meter: &mut Meter,
+    ) -> Result<(Vec<Cell>, ArcEnd, [f64; 2]), Halt<SectionFault>> {
         let walker = &self.walker;
         let mut cells: Vec<Cell> = Vec::new();
         let [mut u, mut v] = start;
         let mut step = STEP_MAX;
         let mut home = 0.0;
         let (end, last) = loop {
+            meter.tick()?;
             if let Some((end, cell, centre)) = self.captured([u, v], dir) {
                 cells.push(cell);
                 break (end, centre);
@@ -1559,7 +1570,7 @@ impl Tracer<'_> {
                 break (ArcEnd::Home, [u, v]);
             }
             if cells.len() >= MAX_CELLS {
-                return Err(SectionFault::UnresolvedTurning);
+                return Err(SectionFault::UnresolvedTurning.into());
             }
             let edge = self.next_edge(u, dir, seeded);
             let slope = walker.value(u, v).1;
@@ -1580,7 +1591,7 @@ impl Tracer<'_> {
                 }
                 tries += 1;
                 if tries > STEP_HALVINGS {
-                    return Err(SectionFault::UnresolvedTurning);
+                    return Err(SectionFault::UnresolvedTurning.into());
                 }
                 du *= 0.5;
             };
@@ -1613,7 +1624,7 @@ impl Tracer<'_> {
     /// graphs chained into branches: open ones first, from the singular
     /// points in their order, then the loops, in the order of the turning
     /// points — an order and orientations the two surfaces alone decide.
-    fn assemble(self) -> Result<SectionTrace, SectionFault> {
+    fn assemble(self, meter: &mut Meter) -> Result<SectionTrace, Halt<SectionFault>> {
         let mut marched: Vec<Marched> = Vec::new();
         let taken =
             |marched: &[Marched], end: ArcEnd| marched.iter().any(|m| m.ends.contains(&end));
@@ -1633,7 +1644,14 @@ impl Tracer<'_> {
                     bracket: Bracket::Fixed(bracket),
                 };
                 let start = [edge, self.walker.root_v(edge, bracket[0], bracket[1])];
-                marched.push(self.arc_from(first, t.at, start, t.side, ArcEnd::Turning(i, arm))?);
+                marched.push(self.arc_from(
+                    first,
+                    t.at,
+                    start,
+                    t.side,
+                    ArcEnd::Turning(i, arm),
+                    meter,
+                )?);
             }
         }
         for (i, s) in self.walker.singular.iter().enumerate() {
@@ -1657,17 +1675,24 @@ impl Tracer<'_> {
                     folds: [None; 2],
                 };
                 let start = [edge, self.walker.v_on(&probe, edge)];
-                marched.push(self.arc_from(first, s.at, start, dir, ArcEnd::Singular(i, arm))?);
+                marched.push(self.arc_from(
+                    first,
+                    s.at,
+                    start,
+                    dir,
+                    ArcEnd::Singular(i, arm),
+                    meter,
+                )?);
             }
         }
         for seed in self.section.seam_candidates() {
             if let Some(start) = self.seed(seed, &marched)? {
-                let (cells, end, last) = self.march(start, 1.0, true)?;
+                let (cells, end, last) = self.march(start, 1.0, true, meter)?;
                 // A component with a turning point or a singular one was
                 // marched from there, and its roots on `u = 0` are no
                 // seeds.
                 if end != ArcEnd::Home {
-                    return Err(SectionFault::UnresolvedTurning);
+                    return Err(SectionFault::UnresolvedTurning.into());
                 }
                 marched.push(Marched {
                     arc: TorusArc {
@@ -1679,7 +1704,7 @@ impl Tracer<'_> {
                 });
             }
         }
-        self.chained(marched)
+        Ok(self.chained(marched)?)
     }
 
     /// The graph that starts with `first`, an arm's own cell, and is
@@ -1691,8 +1716,9 @@ impl Tracer<'_> {
         start: [f64; 2],
         dir: f64,
         end: ArcEnd,
-    ) -> Result<Marched, SectionFault> {
-        let (mut cells, last_end, last) = self.march(start, dir, false)?;
+        meter: &mut Meter,
+    ) -> Result<Marched, Halt<SectionFault>> {
+        let (mut cells, last_end, last) = self.march(start, dir, false, meter)?;
         if dir < 0.0 {
             cells.push(first);
         } else {

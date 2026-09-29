@@ -268,7 +268,7 @@ fn check_surface_pair(a: &Surface, b: &Surface, res: &PairResult, errors: &mut V
         // section Arris traces and fits. Its curves are held to both
         // surfaces, and to the lines the oracle walks where it walked
         // any. Which one each pair is, is pinned by name below.
-        match intersect_surfaces(a, b, &within(), tol()) {
+        match intersect_surfaces(a, b, &within(), tol(), &mut arris_math::Meter::default()) {
             Err(GeomError::Unsupported { .. }) => {}
             Ok(SurfaceIntersection::Empty) if res.curves.is_empty() => {}
             Ok(r) => {
@@ -305,7 +305,7 @@ fn check_surface_pair(a: &Surface, b: &Surface, res: &PairResult, errors: &mut V
         }
         return;
     }
-    let r = match intersect_surfaces(a, b, &within(), tol()) {
+    let r = match intersect_surfaces(a, b, &within(), tol(), &mut arris_math::Meter::default()) {
         Ok(r) => r,
         Err(e) => {
             errors.push(format!("{label}: {e}"));
@@ -489,7 +489,7 @@ fn check_walked(
 
 fn check_curve_pair(c: &Curve, s: &Surface, res: &PairResult, errors: &mut Vec<String>) {
     let label = format!("{} vs {}", res.a, res.b);
-    let r = match intersect_curve_surface(c, s, tol()) {
+    let r = match intersect_curve_surface(c, s, tol(), &mut arris_math::Meter::default()) {
         Ok(r) => r,
         Err(e) => {
             errors.push(format!("{label}: {e}"));
@@ -561,7 +561,7 @@ fn check_curve_pair(c: &Curve, s: &Surface, res: &PairResult, errors: &mut Vec<S
 /// crossing's two points agree to rounding.
 fn check_curve_curve_pair(a: &Curve, b: &Curve, res: &PairResult, errors: &mut Vec<String>) {
     let label = format!("{} vs {}", res.a, res.b);
-    let r = match intersect_curves(a, b, tol()) {
+    let r = match intersect_curves(a, b, tol(), &mut arris_math::Meter::default()) {
         Ok(r) => r,
         Err(e) => {
             errors.push(format!("{label}: {e}"));
@@ -740,8 +740,14 @@ fn the_c1_intersection_cases_classify_as_built() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, kind, count) in surface_cases {
-        let r =
-            intersect_surfaces(&built.surfaces[*a], &built.surfaces[*b], &within(), tol()).unwrap();
+        let r = intersect_surfaces(
+            &built.surfaces[*a],
+            &built.surfaces[*b],
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let (got, curves) = surface_type(&r);
         let got = if touching(&r) {
             format!("tangent {got}")
@@ -755,7 +761,13 @@ fn the_c1_intersection_cases_classify_as_built() {
         );
     }
     for (a, b, expected) in curve_cases {
-        let r = intersect_curve_surface(&built.curves[*a], &built.surfaces[*b], tol()).unwrap();
+        let r = intersect_curve_surface(
+            &built.curves[*a],
+            &built.surfaces[*b],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let got = match &r {
             CurveSurfaceIntersection::Coincident => None,
             CurveSurfaceIntersection::Points(h) => Some((
@@ -799,20 +811,25 @@ fn the_c2_cylinder_pairs_classify_as_built() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, kind, count) in cases {
-        let got =
-            match intersect_surfaces(&built.surfaces[*a], &built.surfaces[*b], &within(), tol()) {
-                Err(GeomError::Unsupported { .. }) => ("unsupported".to_owned(), 0),
-                Err(e) => panic!("{a} vs {b}: {e}"),
-                Ok(r) => {
-                    let (got, curves) = surface_type(&r);
-                    let got = if touching(&r) {
-                        format!("tangent {got}")
-                    } else {
-                        got
-                    };
-                    (got, curves.len())
-                }
-            };
+        let got = match intersect_surfaces(
+            &built.surfaces[*a],
+            &built.surfaces[*b],
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        ) {
+            Err(GeomError::Unsupported { .. }) => ("unsupported".to_owned(), 0),
+            Err(e) => panic!("{a} vs {b}: {e}"),
+            Ok(r) => {
+                let (got, curves) = surface_type(&r);
+                let got = if touching(&r) {
+                    format!("tangent {got}")
+                } else {
+                    got
+                };
+                (got, curves.len())
+            }
+        };
         assert_eq!((got.0.as_str(), got.1), (*kind, *count), "{a} vs {b}");
     }
 }
@@ -879,8 +896,13 @@ fn the_c2_quadric_pairs_classify_as_built() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, expected) in lines {
-        let r = intersect_curve_surface(&built.curves[*a], &built.surfaces[*b], tol())
-            .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let r = intersect_curve_surface(
+            &built.curves[*a],
+            &built.surfaces[*b],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
         let got = match &r {
             CurveSurfaceIntersection::Coincident => None,
             CurveSurfaceIntersection::Points(h) => Some((
@@ -891,8 +913,14 @@ fn the_c2_quadric_pairs_classify_as_built() {
         assert_eq!(got, *expected, "{a} vs {b}: {r:?}");
     }
     for (a, b, kind, count) in cases {
-        let r = intersect_surfaces(&built.surfaces[*a], &built.surfaces[*b], &within(), tol())
-            .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let r = intersect_surfaces(
+            &built.surfaces[*a],
+            &built.surfaces[*b],
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
         let (got, curves) = surface_type(&r);
         let got = if touching(&r) {
             (format!("tangent {got}"), curves.len())
@@ -935,8 +963,14 @@ fn the_c3_cylinder_pairs_meet_in_the_loops_they_were_built_with() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, loops) in cases {
-        let r = intersect_surfaces(&built.surfaces[*a], &built.surfaces[*b], &within(), tol())
-            .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let r = intersect_surfaces(
+            &built.surfaces[*a],
+            &built.surfaces[*b],
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
         assert!(r.points().is_empty(), "{a} vs {b}: {r:?}");
         assert_eq!(r.curves().len(), *loops, "{a} vs {b}");
         for m in r.curves() {
@@ -981,8 +1015,14 @@ fn the_c3_quadric_pairs_classify_as_built() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, kind, count) in cases {
-        let r = intersect_surfaces(&built.surfaces[*a], &built.surfaces[*b], &within(), tol())
-            .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let r = intersect_surfaces(
+            &built.surfaces[*a],
+            &built.surfaces[*b],
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
         let (got, curves) = surface_type(&r);
         let loops = curves
             .iter()
@@ -1039,8 +1079,14 @@ fn the_c3_torus_pairs_classify_as_built() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, loops, arms, circles, points) in cases {
-        let r = intersect_surfaces(&built.surfaces[*a], &built.surfaces[*b], &within(), tol())
-            .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let r = intersect_surfaces(
+            &built.surfaces[*a],
+            &built.surfaces[*b],
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
         let mut got = (0, 0, 0, r.points().len());
         for m in r.curves() {
             match (&m.curve, m.kind) {
@@ -1087,8 +1133,13 @@ fn the_c3_nurbs_hits_cross_as_built() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, count) in cases {
-        let r = intersect_curve_surface(&built.curves[*a], &built.surfaces[*b], tol())
-            .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let r = intersect_curve_surface(
+            &built.curves[*a],
+            &built.surfaces[*b],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
         let CurveSurfaceIntersection::Points(hits) = &r else {
             panic!("{a} vs {b}: {r:?}")
         };
@@ -1118,8 +1169,13 @@ fn a_closed_curve_meets_a_surface_at_its_join_once() {
     );
     for ((b, count, at_join), oracle) in cases.iter().zip(&f.expected.pairs) {
         assert_eq!(oracle.hits.len(), *count, "{b}: the oracle's count");
-        let r = intersect_curve_surface(&built.curves["loop"], &built.surfaces[*b], tol())
-            .unwrap_or_else(|e| panic!("loop vs {b}: {e}"));
+        let r = intersect_curve_surface(
+            &built.curves["loop"],
+            &built.surfaces[*b],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("loop vs {b}: {e}"));
         let CurveSurfaceIntersection::Points(hits) = &r else {
             panic!("loop vs {b}: {r:?}")
         };
@@ -1167,8 +1223,13 @@ fn the_c3_nurbs_crossings_classify_as_built() {
         "every pair of the fixture is pinned here"
     );
     for (a, b, crossings, touches) in cases {
-        let r = intersect_curves(&built.curves[*a], &built.curves[*b], tol())
-            .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let r = intersect_curves(
+            &built.curves[*a],
+            &built.curves[*b],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
         let CurveIntersection::Points(hits) = r else {
             panic!("{a} vs {b}: {r:?}");
         };
@@ -1218,8 +1279,13 @@ fn the_c3_conic_hits_classify_as_built() {
     for (a, b, crossings, touches) in cases {
         let (found, tangent) = match built.surfaces.get(*b) {
             Some(s) => {
-                let r = intersect_curve_surface(&built.curves[*a], s, tol())
-                    .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+                let r = intersect_curve_surface(
+                    &built.curves[*a],
+                    s,
+                    tol(),
+                    &mut arris_math::Meter::default(),
+                )
+                .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
                 let CurveSurfaceIntersection::Points(hits) = r else {
                     panic!("{a} vs {b}: {r:?}")
                 };
@@ -1227,8 +1293,13 @@ fn the_c3_conic_hits_classify_as_built() {
                 (hits.len(), tangent)
             }
             None => {
-                let r = intersect_curves(&built.curves[*a], &built.curves[*b], tol())
-                    .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+                let r = intersect_curves(
+                    &built.curves[*a],
+                    &built.curves[*b],
+                    tol(),
+                    &mut arris_math::Meter::default(),
+                )
+                .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
                 let CurveIntersection::Points(hits) = r else {
                     panic!("{a} vs {b}: {r:?}")
                 };

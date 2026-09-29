@@ -242,7 +242,14 @@ impl<'a> Decoder<'a> {
                 let b = self.surface()?;
                 let within = self.region()?;
                 let pick = usize::from(self.byte()?);
-                let hit = intersect_surfaces(&a, &b, &within, tolerance()).ok()?;
+                let hit = intersect_surfaces(
+                    &a,
+                    &b,
+                    &within,
+                    tolerance(),
+                    &mut arris_math::Meter::default(),
+                )
+                .ok()?;
                 let curves = hit.curves();
                 if curves.is_empty() {
                     return None;
@@ -741,7 +748,14 @@ mod tests {
             min: [-10.0; 3],
             max: [10.0; 3],
         };
-        let hit = intersect_surfaces(&wall, &branch, &within, tolerance()).unwrap();
+        let hit = intersect_surfaces(
+            &wall,
+            &branch,
+            &within,
+            tolerance(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert_eq!(curve, hit.curves()[1].curve);
         check_surfaces(&wall, &branch, &within, &hit);
     }

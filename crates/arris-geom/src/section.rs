@@ -4,7 +4,7 @@
 //! singular point a point of the result (ADR-0018, ADR-0019,
 //! `docs/DATA-MODEL.md` §Curves).
 
-use arris_math::{Aabb, Point3, Tolerance};
+use arris_math::{Aabb, Meter, Point3, Tolerance};
 
 use crate::{
     Curve, GeomError, MeetCurve, MeetKind, MeetPoint, SectionBranch, Surface, SurfaceIntersection,
@@ -71,12 +71,13 @@ pub(crate) fn traced(
     b: &Surface,
     within: &Aabb,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
     let torus = |s: &Surface| matches!(s, Surface::Torus { .. });
     let trace = if torus(a) || torus(b) {
-        trace_torus(a, b, tol)?
+        trace_torus(a, b, tol, meter)?
     } else {
-        trace_quadrics(a, b, within, tol)?
+        trace_quadrics(a, b, within, tol, meter)?
     };
     let circles = trace.circles().iter().map(|c| {
         Ok(MeetCurve {
@@ -90,7 +91,7 @@ pub(crate) fn traced(
     });
     let curves = circles
         .chain(trace.branches().iter().map(|branch| {
-            fitted(branch, tol).map(|curve| MeetCurve {
+            fitted(branch, tol, meter).map(|curve| MeetCurve {
                 curve,
                 kind: MeetKind::Crossing,
             })
@@ -132,14 +133,28 @@ pub(crate) fn traced(
 /// `3·10⁻⁶` from one float of the walked angle to the next, on both
 /// surfaces all the while, and a fit held to the point ran out of spans
 /// on two rods a quarter of a tolerance off parallel.
-fn fitted(branch: &SectionBranch, tol: Tolerance) -> Result<Curve, GeomError> {
+fn fitted(branch: &SectionBranch, tol: Tolerance, meter: &mut Meter) -> Result<Curve, GeomError> {
     let deviation = |t: f64, q: Point3| branch.distance(t, q);
     let f = |t: f64| branch.point(t);
     let target = SECTION_FIT_FRACTION * tol.linear;
     let fit = if branch.is_closed() {
-        fit_curve_periodic(f, branch.domain(), SECTION_FIT_DEGREE, deviation, target)
+        fit_curve_periodic(
+            f,
+            branch.domain(),
+            SECTION_FIT_DEGREE,
+            deviation,
+            target,
+            meter,
+        )
     } else {
-        fit_curve(f, branch.domain(), SECTION_FIT_DEGREE, deviation, target)
+        fit_curve(
+            f,
+            branch.domain(),
+            SECTION_FIT_DEGREE,
+            deviation,
+            target,
+            meter,
+        )
     }?;
     Ok(Curve::Nurbs(fit))
 }

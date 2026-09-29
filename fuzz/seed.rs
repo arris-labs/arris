@@ -20,10 +20,10 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use arris_debug::fixtures::geom::{build_curve, build_surface, load};
 use arris_debug::corpus::chain;
-use arris_debug::oracle;
+use arris_debug::fixtures::geom::{build_curve, build_surface, load};
 use arris_debug::fixtures::{self, Kind, corpus, kind_of, name_of};
+use arris_debug::oracle;
 use arris_fuzz::{Encoder, tolerance};
 use arris_geom::intersect_surfaces;
 use arris_io::step;
@@ -68,7 +68,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let Ok(text) = step::write(&built.model, &[body]) else {
                     continue;
                 };
-                write(&step_dir, &format!("{slug}-{variant}.step"), text.into_bytes())?;
+                write(
+                    &step_dir,
+                    &format!("{slug}-{variant}.step"),
+                    text.into_bytes(),
+                )?;
                 *counts.entry("step_read").or_default() += 1;
                 // Open CASCADE's own file of the recipe, where the
                 // oracle's environment is there: a seed with another
@@ -112,7 +116,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         write(&surfaces_dir, &name, e.finish())?;
                         *counts.entry("intersect_surfaces").or_default() += 1;
                     }
-                    let Ok(hit) = intersect_surfaces(a, b, &within, tolerance()) else {
+                    let Ok(hit) = intersect_surfaces(
+                        a,
+                        b,
+                        &within,
+                        tolerance(),
+                        &mut arris_math::Meter::default(),
+                    ) else {
                         continue;
                     };
                     for pick in 0..hit.curves().len().min(usize::from(u8::MAX)) {

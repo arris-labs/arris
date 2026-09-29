@@ -116,9 +116,15 @@ fn the_sinusoid_is_fitted_within_tolerance_with_a_bounded_knot_count() {
             let f = sinusoid(a, b, c);
             let range = Interval::new(start, start + length).unwrap();
             let deviation = |t: f64, q: Point2| (q - f(t)).norm();
-            let fit = fit_curve2(f, range, degree, deviation, FIT_TOL).map_err(|e| {
-                TestCaseError::fail(format!("{e} for A={a} B={b} C={c} on {range:?}"))
-            })?;
+            let fit = fit_curve2(
+                f,
+                range,
+                degree,
+                deviation,
+                FIT_TOL,
+                &mut arris_math::Meter::default(),
+            )
+            .map_err(|e| TestCaseError::fail(format!("{e} for A={a} B={b} C={c} on {range:?}")))?;
             prop_assert_eq!(fit.domain(), range);
             prop_assert_eq!(fit.degree(), degree);
             let spans = fit.knots().len() - 2 * (degree + 1) + 1;
@@ -151,7 +157,15 @@ fn a_tolerance_below_the_sampling_noise_diverges() {
     let range = Interval::new(0.0, TAU).unwrap();
     let noise = 1e-6;
     let deviation = |t: f64, q: Point2| (q - f(t)).norm() + noise * (1000.0 * t).sin().abs();
-    let err = fit_curve2(f, range, 3, deviation, 1e-9).unwrap_err();
+    let err = fit_curve2(
+        f,
+        range,
+        3,
+        deviation,
+        1e-9,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap_err();
     let FitError::Diverged {
         spans,
         deviation: worst,
@@ -164,14 +178,32 @@ fn a_tolerance_below_the_sampling_noise_diverges() {
     let wrapped: GeomError = err.into();
     assert!(matches!(wrapped, GeomError::Fit(FitError::Diverged { .. })));
     // The same request with a tolerance above the noise succeeds.
-    assert!(fit_curve2(f, range, 3, deviation, 1e-5).is_ok());
+    assert!(
+        fit_curve2(
+            f,
+            range,
+            3,
+            deviation,
+            1e-5,
+            &mut arris_math::Meter::default()
+        )
+        .is_ok()
+    );
 }
 
 #[test]
 fn a_fitted_curve_is_a_curve2_that_projects() {
     let f = sinusoid(0.0, 1.0, 0.0);
     let range = Interval::new(0.0, TAU).unwrap();
-    let fit = fit_curve2(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9).unwrap();
+    let fit = fit_curve2(
+        f,
+        range,
+        3,
+        |t, q| (q - f(t)).norm(),
+        1e-9,
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     let c = Curve2::Nurbs(fit);
     let p = Point2::new(1.0, 5.0);
     let proj = c.project(p).unwrap();

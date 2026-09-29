@@ -109,6 +109,7 @@ fn fitted(conic: &Curve) -> NurbsCurve {
         5,
         |t, q| (q - conic.point(t)).norm(),
         FIT,
+        &mut arris_math::Meter::default(),
     )
     .unwrap()
 }
@@ -121,7 +122,8 @@ fn fitted(conic: &Curve) -> NurbsCurve {
 /// curve's (`intersect_curves`), so the first curve is held to the
 /// tolerance there instead.
 fn common_properties(a: &Curve, b: &Curve) -> Result<CurveIntersection, TestCaseError> {
-    let r = intersect_curves(a, b, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let r = intersect_curves(a, b, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     for h in hits_of(&r) {
         for (c, t) in [(a, h.ta), (b, h.tb)] {
             prop_assert!(c.domain().contains(t), "{c:?}: t = {t} outside the domain");
@@ -140,7 +142,8 @@ fn common_properties(a: &Curve, b: &Curve) -> Result<CurveIntersection, TestCase
         "unsorted: {:?}",
         hits_of(&r)
     );
-    let again = intersect_curves(a, b, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let again = intersect_curves(a, b, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(&again, &r, "two runs differ");
     Ok(r)
 }
@@ -300,7 +303,7 @@ fn an_ellipse_as_a_nurbs_meets_a_circle_in_its_plane_where_the_quartic_does() {
         for (r, touches) in [(b + between * (a - b), false), (a, true), (b, true)] {
             let ring = Curve::Circle { frame, radius: r };
             let CurveSurfaceIntersection::Points(quartic) =
-                intersect_curve_surface(&ring, &wall, tol())
+                intersect_curve_surface(&ring, &wall, tol(), &mut arris_math::Meter::default())
                     .map_err(|e| TestCaseError::fail(e.to_string()))?
             else {
                 return fail(format!("{ring:?} on {wall:?}"));
@@ -413,9 +416,15 @@ fn a_nurbs_on_a_line_or_a_conic_is_coincident_and_one_beside_it_is_not() {
                         q,
                         r
                     );
-                    let verdict = curves_coincide(p, q, tol())
+                    let verdict = curves_coincide(p, q, tol(), &mut arris_math::Meter::default())
                         .map_err(|e| TestCaseError::fail(e.to_string()))?;
-                    prop_assert_eq!(verdict, same, "curves_coincide({:?}, {:?})", p, q);
+                    prop_assert_eq!(
+                        verdict,
+                        same,
+                        "curves_coincide({:?}, {:?}, &mut arris_math::Meter::default())",
+                        p,
+                        q
+                    );
                 }
             }
             Ok(())
@@ -434,8 +443,11 @@ fn two_nurbs_curves_are_the_same_spline_apart_or_unsupported() {
                     if a == GeomKind::Curve(c.kind()) && b == GeomKind::Curve(c.kind())
             )
         };
-        prop_assert!(unsupported(intersect_curves(&c, &c, tol()).map(|_| ())));
-        let same = |x: &Curve, y: &Curve| curves_coincide(x, y, tol());
+        prop_assert!(unsupported(
+            intersect_curves(&c, &c, tol(), &mut arris_math::Meter::default()).map(|_| ())
+        ));
+        let same =
+            |x: &Curve, y: &Curve| curves_coincide(x, y, tol(), &mut arris_math::Meter::default());
         prop_assert_eq!(same(&c, &c), Ok(true));
         // Within the tolerance of itself: every control point moved less.
         let nudged = c.transformed(&Isometry::from_translation(Vec3::new(

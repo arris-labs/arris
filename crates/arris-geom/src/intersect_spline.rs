@@ -24,7 +24,7 @@
 //! reference tree were read for how a conic is put into a quadric;
 //! nothing of either is here — they solve in power coefficients.
 
-use arris_math::Tolerance;
+use arris_math::{Meter, Tolerance};
 
 use crate::bernstein::{Binomials, derivative, sign_change_candidates};
 use crate::by_distance::hits_by_distance;
@@ -45,6 +45,7 @@ pub(crate) fn spline_surface(
     spline: &NurbsCurve,
     surface: &Surface,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<CurveSurfaceIntersection, GeomError> {
     let unsupported = || GeomError::Unsupported {
         a: GeomKind::Curve(curve.kind()),
@@ -57,6 +58,7 @@ pub(crate) fn spline_surface(
 
     let mut splits: Vec<f64> = Vec::new();
     for span in spline.bezier_spans() {
+        meter.tick()?;
         splits.push(span.lo);
         splits.push(span.hi);
         let width = span.hi - span.lo;

@@ -18,6 +18,7 @@
 
 mod aabb;
 mod axis;
+mod control;
 mod frame;
 mod interval;
 mod isometry;
@@ -30,6 +31,7 @@ pub use nalgebra;
 
 pub use aabb::Aabb;
 pub use axis::Axis;
+pub use control::{Control, Interrupted, Meter, Poll, Stop};
 pub use frame::{Frame, Frame2, FrameError, Handedness};
 pub use interval::{Interval, IntervalError};
 pub use isometry::Isometry;

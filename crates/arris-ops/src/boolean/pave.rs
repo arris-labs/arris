@@ -473,8 +473,14 @@ impl<'m> Build<'m> {
         let one = |&(ia, ib): &(usize, usize)| {
             let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
             let tol = tolerance_of(&self.precision, fa.tolerance, fb.tolerance);
-            intersect_surfaces(fa.surface, fb.surface, &self.within, tol)
-                .map_err(|e| geometry(e, fa.shape(), fb.shape()))
+            intersect_surfaces(
+                fa.surface,
+                fb.surface,
+                &self.within,
+                tol,
+                &mut arris_check::arris_topo::arris_math::Meter::default(),
+            )
+            .map_err(|e| geometry(e, fa.shape(), fb.shape()))
         };
         #[cfg(feature = "parallel")]
         {
@@ -532,8 +538,13 @@ impl<'m> Build<'m> {
         coincident: &mut Vec<(EdgeId, FaceId)>,
     ) -> Result<(), OpError> {
         let tol = tolerance_of(&self.precision, e.tolerance, f.tolerance);
-        let hits = match intersect_curve_surface(e.curve, f.surface, tol)
-            .map_err(|err| geometry(err, e.shape(), f.shape()))?
+        let hits = match intersect_curve_surface(
+            e.curve,
+            f.surface,
+            tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(|err| geometry(err, e.shape(), f.shape()))?
         {
             CurveSurfaceIntersection::Coincident => {
                 coincident.push((e.id, f.id));
@@ -627,8 +638,13 @@ impl<'m> Build<'m> {
                 if self.known_by_surfaces(side, e, g, f, curve, tol) == Some(true) {
                     continue;
                 }
-                let hits = match intersect_curves(e.curve, curve, tol)
-                    .map_err(|err| geometry(err, e.shape(), f.shape()))?
+                let hits = match intersect_curves(
+                    e.curve,
+                    curve,
+                    tol,
+                    &mut arris_check::arris_topo::arris_math::Meter::default(),
+                )
+                .map_err(|err| geometry(err, e.shape(), f.shape()))?
                 {
                     // The edge runs along the section curve: a block of
                     // it is that edge, and nothing crosses.
@@ -706,8 +722,13 @@ impl<'m> Build<'m> {
                         same_curve.insert((ea.id, eb.id));
                         continue;
                     }
-                    let hits = match intersect_curves(ea.curve, eb.curve, tol)
-                        .map_err(|e| geometry(e, ea.shape(), eb.shape()))?
+                    let hits = match intersect_curves(
+                        ea.curve,
+                        eb.curve,
+                        tol,
+                        &mut arris_check::arris_topo::arris_math::Meter::default(),
+                    )
+                    .map_err(|e| geometry(e, ea.shape(), eb.shape()))?
                     {
                         CurveIntersection::Coincident => {
                             same_curve.insert((ea.id, eb.id));
@@ -807,8 +828,13 @@ impl<'m> Build<'m> {
             }
             for (k, &(ci, ca)) in curves.iter().enumerate() {
                 for &(cj, cb) in &curves[k + 1..] {
-                    let hits = match intersect_curves(ca, cb, tol)
-                        .map_err(|e| geometry(e, fa.shape(), fb.shape()))?
+                    let hits = match intersect_curves(
+                        ca,
+                        cb,
+                        tol,
+                        &mut arris_check::arris_topo::arris_math::Meter::default(),
+                    )
+                    .map_err(|e| geometry(e, fa.shape(), fb.shape()))?
                     {
                         // Two distinct curves of one intersection are
                         // never the same curve.
@@ -1716,8 +1742,13 @@ impl<'m> Build<'m> {
                 // section conic — a rim circle beside the ellipse its cap
                 // plane cuts from the other wall — has no closed form for
                 // where the two meet, and needs none here.
-                if curves_coincide(curve, e.curve, tol)
-                    .map_err(|err| geometry(err, fa.shape(), e.shape()))?
+                if curves_coincide(
+                    curve,
+                    e.curve,
+                    tol,
+                    &mut arris_check::arris_topo::arris_math::Meter::default(),
+                )
+                .map_err(|err| geometry(err, fa.shape(), e.shape()))?
                 {
                     along.push(e);
                 }
@@ -2027,8 +2058,14 @@ impl<'m> Build<'m> {
         ends: &[(Point3, f64)],
     ) -> Result<(Curve2, f64), OpError> {
         let tol = Tolerance::new(base, self.precision.angular_tolerance);
-        let pc = pcurve_on(curve, range, f.surface, tol)
-            .map_err(|e| geometry(e, other.shape(), f.shape()))?;
+        let pc = pcurve_on(
+            curve,
+            range,
+            f.surface,
+            tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(|e| geometry(e, other.shape(), f.shape()))?;
         let pc = self.place(f, other, pc, range, uv_mid, base, ends)?;
         let residual = self.residual(f, curve, range, &pc);
         Ok((pc, residual))
@@ -2080,8 +2117,15 @@ impl<'m> Build<'m> {
         if start.is_none() && end.is_none() {
             return Ok((pc, residual));
         }
-        let pc = pcurve_ending_on(&pc, range, [start, end], f.surface, base)
-            .map_err(|e| geometry(e, other.shape(), f.shape()))?;
+        let pc = pcurve_ending_on(
+            &pc,
+            range,
+            [start, end],
+            f.surface,
+            base,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(|e| geometry(e, other.shape(), f.shape()))?;
         // The move is the residual's largest term, at an end, and the
         // tolerance it sets is exactly that: rounding at the positions'
         // own scale above it keeps the edge within its tube when the body

@@ -26,6 +26,7 @@ mod conic2;
 mod curve;
 mod curve2;
 mod error;
+mod halt;
 mod implicit;
 pub mod integrate;
 mod intersect;

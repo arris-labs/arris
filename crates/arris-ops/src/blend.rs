@@ -886,8 +886,14 @@ fn face_end(
             let within = Aabb::of_point(points[0])
                 .union(Aabb::of_point(points[1]))
                 .inflated(2.0 * radius);
-            let cut = intersect_surfaces(&s.surface, surface3, &within, tol)
-                .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+            let cut = intersect_surfaces(
+                &s.surface,
+                surface3,
+                &within,
+                tol,
+                &mut arris_check::arris_topo::arris_math::Meter::default(),
+            )
+            .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
             let arc_curve = match cut {
                 SurfaceIntersection::Meets { mut curves, points }
                     if points.is_empty()
@@ -933,8 +939,14 @@ fn face_end(
     };
     let arc_tolerance = s.tolerance.max(face3_tolerance);
     let arc_tol = Tolerance::new(arc_tolerance, tol.angular);
-    let on_face = pcurve_on(&arc_curve, arc_range, surface3, arc_tol)
-        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+    let on_face = pcurve_on(
+        &arc_curve,
+        arc_range,
+        surface3,
+        arc_tol,
+        &mut arris_check::arris_topo::arris_math::Meter::default(),
+    )
+    .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
     let arc_side = if s.convex {
         Side::Inside
     } else {
@@ -943,8 +955,14 @@ fn face_end(
     if !on_side_of_face(m, face3, &on_face, arc_range, arc_side, samples)? {
         return Err(degenerate(vec![e, forward(face3)], Reason::BlendTooLarge));
     }
-    let on_blend = pcurve_on(&arc_curve, arc_range, &s.surface, arc_tol)
-        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+    let on_blend = pcurve_on(
+        &arc_curve,
+        arc_range,
+        &s.surface,
+        arc_tol,
+        &mut arris_check::arris_topo::arris_math::Meter::default(),
+    )
+    .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
     let on_blend = s.place(on_blend, arc_range.lo(), if lo_first { 0.0 } else { s.u1 });
     Ok(End {
         vertex,
@@ -984,8 +1002,14 @@ fn contacts(
         let range = Interval::new(lo, hi).map_err(|_| too_large())?;
         let surface = m.surface(m.face(face)?.surface())?;
         let line_tol = Tolerance::new(s.tolerance, tol.angular);
-        let on_face = pcurve_on(line, range, surface, line_tol)
-            .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+        let on_face = pcurve_on(
+            line,
+            range,
+            surface,
+            line_tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
         // On a cylinder, in the translate of the face's own loop: by whole
         // turns to the `u` of the blended edge's pcurve there.
         let on_face = match surface {
@@ -1004,8 +1028,14 @@ fn contacts(
             return Err(too_large());
         }
         let u = if k == 0 { 0.0 } else { s.u1 };
-        let on_blend = pcurve_on(line, range, &s.surface, line_tol)
-            .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+        let on_blend = pcurve_on(
+            line,
+            range,
+            &s.surface,
+            line_tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
         let on_blend = s.place(on_blend, range.lo(), u);
         contacts.push(Contact {
             face,
@@ -1283,8 +1313,14 @@ fn miter(
     let lo_first = shared.map(|k| q_first == (k == 0));
     let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
     for (i, s) in [a, b].into_iter().enumerate() {
-        let pcurve = pcurve_on(&curve, range, &s.surface, arc_tol)
-            .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+        let pcurve = pcurve_on(
+            &curve,
+            range,
+            &s.surface,
+            arc_tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
         on_blend.push(s.place(pcurve, range.lo(), if lo_first[i] { 0.0 } else { s.u1 }));
     }
     let on_blend: [Curve2; 2] = on_blend
@@ -1423,7 +1459,14 @@ fn corner(
      -> Result<CornerArc, OpError> {
         let s = stripes[side];
         let lo_first = ends[0] == contact_point[side][0];
-        let on_blend = pcurve_on(&curve, range, &s.surface, arc_tol).map_err(geometry)?;
+        let on_blend = pcurve_on(
+            &curve,
+            range,
+            &s.surface,
+            arc_tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(geometry)?;
         let on_blend = s.place(on_blend, range.lo(), if lo_first { 0.0 } else { s.u1 });
         Ok(CornerArc {
             curve,
@@ -1513,7 +1556,14 @@ fn corner(
                 Interval::new(0.0, FRAC_PI_2).map_err(|_| invariant("a quarter of a turn"))?;
             let sphere = Surface::Sphere { frame, radius };
             let on_sphere = |curve: &Curve, range: Interval, u: f64| -> Result<Curve2, OpError> {
-                let pcurve = pcurve_on(curve, range, &sphere, arc_tol).map_err(geometry)?;
+                let pcurve = pcurve_on(
+                    curve,
+                    range,
+                    &sphere,
+                    arc_tol,
+                    &mut arris_check::arris_topo::arris_math::Meter::default(),
+                )
+                .map_err(geometry)?;
                 Ok(placed(pcurve, range.lo(), u))
             };
             // Each meridian from its equator point up to the pole.
@@ -1607,7 +1657,14 @@ fn corner(
                 let (from, to) = (order[w], order[(w + 1) % 3]);
                 let side = side_of(from, to)?;
                 let (curve, range) = chord(points[from], points[to], tol)?;
-                let on_corner = pcurve_on(&curve, range, &plane, arc_tol).map_err(geometry)?;
+                let on_corner = pcurve_on(
+                    &curve,
+                    range,
+                    &plane,
+                    arc_tol,
+                    &mut arris_check::arris_topo::arris_math::Meter::default(),
+                )
+                .map_err(geometry)?;
                 sides.push((side, arc(side, curve, range, [from, to], on_corner, true)?));
             }
             (plane, Orientation::Forward, sides, None)
@@ -1914,7 +1971,14 @@ fn ring(
     }
     for (face, contact, v) in by_v {
         let face_surface = m.surface(m.face(face)?.surface())?;
-        let on_face = pcurve_on(&contact, range, face_surface, line_tol).map_err(geometry)?;
+        let on_face = pcurve_on(
+            &contact,
+            range,
+            face_surface,
+            line_tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(geometry)?;
         let on_face = if face == faces[k] {
             placed(on_face, range.lo(), cylinder_use_u)
         } else {
@@ -1923,7 +1987,14 @@ fn ring(
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
             return Err(too_large(face));
         }
-        let on_blend = pcurve_on(&contact, range, &surface, line_tol).map_err(geometry)?;
+        let on_blend = pcurve_on(
+            &contact,
+            range,
+            &surface,
+            line_tol,
+            &mut arris_check::arris_topo::arris_math::Meter::default(),
+        )
+        .map_err(geometry)?;
         let along_u = on_blend.point(mid).x > on_blend.point(range.lo()).x;
         let target = Point2::new(if along_u { 0.0 } else { TAU }, v);
         contacts.push(RingContact {
@@ -1961,7 +2032,14 @@ fn ring(
         | Surface::Sphere { .. }
         | Surface::Nurbs(_) => chord(contacts[0].point, contacts[1].point, tol)?,
     };
-    let seam_on = pcurve_on(&seam_curve_new, seam_range, &surface, line_tol).map_err(geometry)?;
+    let seam_on = pcurve_on(
+        &seam_curve_new,
+        seam_range,
+        &surface,
+        line_tol,
+        &mut arris_check::arris_topo::arris_math::Meter::default(),
+    )
+    .map_err(geometry)?;
     let seam_on_blend =
         [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
     // The cylinder's seam shortened to the contact on the cylinder.

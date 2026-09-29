@@ -3,7 +3,7 @@
 
 use core::f64::consts::FRAC_PI_2;
 
-use arris_math::{Aabb, Frame, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3};
+use arris_math::{Aabb, Frame, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3};
 
 use crate::conic2::{Conic2, ConicMeet, conic_pair};
 use crate::pcurve::principal_axes;
@@ -129,7 +129,7 @@ impl SurfaceIntersection {
     /// let side = Surface::Plane { frame: Frame::from_z(Point3::new(2.0, 0.0, 0.0), Vec3::x()).unwrap() };
     /// let wall = Surface::Cylinder { frame: Frame::world(), radius: 2.0 };
     /// let within = Aabb { min: [-5.0; 3], max: [5.0; 3] };
-    /// let hit = intersect_surfaces(&side, &wall, &within, Precision::DEFAULT.tolerance()).unwrap();
+    /// let hit = intersect_surfaces(&side, &wall, &within, Precision::DEFAULT.tolerance(), &mut arris_math::Meter::default()).unwrap();
     /// assert_eq!(hit.curves().len(), 1);
     /// assert_eq!(hit.curves()[0].kind, MeetKind::Touch);
     /// assert!(hit.points().is_empty());
@@ -229,12 +229,12 @@ impl SurfaceIntersection {
 ///
 /// ```
 /// use arris_geom::{Curve, MeetKind, Surface, intersect_surfaces};
-/// use arris_math::{Aabb, Frame, Point3, Precision, Vec3};
+/// use arris_math::{Aabb, Frame, Meter, Point3, Precision, Vec3};
 ///
 /// let within = Aabb { min: [-10.0; 3], max: [10.0; 3] };
 /// let cap = Surface::Plane { frame: Frame::from_z(Point3::new(0.0, 0.0, 5.0), Vec3::z()).unwrap() };
 /// let wall = Surface::Cylinder { frame: Frame::world(), radius: 2.0 };
-/// let hit = intersect_surfaces(&cap, &wall, &within, Precision::DEFAULT.tolerance()).unwrap();
+/// let hit = intersect_surfaces(&cap, &wall, &within, Precision::DEFAULT.tolerance(), &mut Meter::default()).unwrap();
 /// let [meet] = hit.curves() else { panic!() };
 /// assert_eq!(meet.kind, MeetKind::Crossing);
 /// let Curve::Circle { frame, radius } = &meet.curve else { panic!() };
@@ -243,7 +243,7 @@ impl SurfaceIntersection {
 ///
 /// // A pipe of radius 1 through a pipe of radius 2: two fitted loops.
 /// let branch = Surface::Cylinder { frame: Frame::from_z(Point3::origin(), Vec3::x()).unwrap(), radius: 1.0 };
-/// let hit = intersect_surfaces(&wall, &branch, &within, Precision::DEFAULT.tolerance()).unwrap();
+/// let hit = intersect_surfaces(&wall, &branch, &within, Precision::DEFAULT.tolerance(), &mut Meter::default()).unwrap();
 /// assert_eq!(hit.curves().len(), 2);
 /// assert!(hit.curves().iter().all(|m| matches!(&m.curve, Curve::Nurbs(c) if c.period().is_some())));
 /// ```
@@ -252,6 +252,7 @@ pub fn intersect_surfaces(
     b: &Surface,
     within: &Aabb,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
     if !tol.is_consistent() {
         return Err(GeomError::InvalidTolerance(tol));
@@ -273,7 +274,7 @@ pub fn intersect_surfaces(
                 frame: cb,
                 radius: rb,
             },
-        ) => cylinder_cylinder(a, b, ca, *ra, cb, *rb, within, tol),
+        ) => cylinder_cylinder(a, b, ca, *ra, cb, *rb, within, tol, meter),
         (
             Surface::Plane { frame: plane },
             Surface::EllipticCylinder {
@@ -307,6 +308,7 @@ pub fn intersect_surfaces(
             (cb, [*major_radius, *minor_radius]),
             within,
             tol,
+            meter,
         ),
         (
             Surface::EllipticCylinder {
@@ -325,6 +327,7 @@ pub fn intersect_surfaces(
             (cb, [*rb, *rb]),
             within,
             tol,
+            meter,
         ),
         (
             Surface::EllipticCylinder {
@@ -337,7 +340,7 @@ pub fn intersect_surfaces(
                 major_radius: ba,
                 minor_radius: bb,
             },
-        ) => elliptic_pair(a, b, (ca, [*aa, *ab]), (cb, [*ba, *bb]), within, tol),
+        ) => elliptic_pair(a, b, (ca, [*aa, *ab]), (cb, [*ba, *bb]), within, tol, meter),
         (
             Surface::EllipticCylinder { .. },
             Surface::Cone { .. } | Surface::Sphere { .. } | Surface::Torus { .. },
@@ -345,7 +348,7 @@ pub fn intersect_surfaces(
         | (
             Surface::Cone { .. } | Surface::Sphere { .. } | Surface::Torus { .. },
             Surface::EllipticCylinder { .. },
-        ) => crate::section::traced(a, b, within, tol),
+        ) => crate::section::traced(a, b, within, tol, meter),
         (Surface::EllipticCylinder { .. }, Surface::Nurbs(_))
         | (Surface::Nurbs(_), Surface::EllipticCylinder { .. }) => Err(GeomError::Unsupported {
             a: GeomKind::Surface(a.kind()),
@@ -362,7 +365,7 @@ pub fn intersect_surfaces(
         | (
             Surface::Cone { .. } | Surface::Sphere { .. } | Surface::Torus { .. },
             Surface::Plane { .. } | Surface::Cylinder { .. },
-        ) => crate::meridian::intersect_coaxial(a, b, within, tol),
+        ) => crate::meridian::intersect_coaxial(a, b, within, tol, meter),
         (
             Surface::Nurbs(_),
             Surface::Plane { .. }
@@ -403,6 +406,7 @@ pub(crate) fn off_axis(
     b: &Surface,
     within: &Aabb,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
     match (a, b) {
         (
@@ -426,7 +430,7 @@ pub(crate) fn off_axis(
             Surface::Cone { .. } | Surface::Sphere { .. },
         )
         | (Surface::Cone { .. } | Surface::Sphere { .. }, Surface::Cylinder { .. }) => {
-            crate::section::traced(a, b, within, tol)
+            crate::section::traced(a, b, within, tol, meter)
         }
         (
             Surface::Plane { .. }
@@ -442,7 +446,7 @@ pub(crate) fn off_axis(
             | Surface::Cylinder { .. }
             | Surface::Cone { .. }
             | Surface::Sphere { .. },
-        ) => crate::section::traced(a, b, within, tol),
+        ) => crate::section::traced(a, b, within, tol, meter),
         (
             Surface::Plane { .. },
             Surface::Plane { .. }
@@ -496,6 +500,7 @@ fn cylinder_cylinder(
     rb: f64,
     within: &Aabb,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
     let offset = cb.origin() - ca.origin();
     if line_angle(&ca.z(), &cb.z()) <= tol.angular {
@@ -514,11 +519,11 @@ fn cylinder_cylinder(
         return if gap > ra + rb + tol.linear {
             Ok(SurfaceIntersection::Empty)
         } else {
-            crate::section::traced(a, b, within, tol)
+            crate::section::traced(a, b, within, tol, meter)
         };
     }
     if (ra - rb).abs() > tol.linear {
-        return crate::section::traced(a, b, within, tol);
+        return crate::section::traced(a, b, within, tol, meter);
     }
     crossing_cylinders(ca, cb, offset, 0.5 * (ra + rb))
 }
@@ -916,9 +921,10 @@ fn elliptic_pair(
     (cb, [ba, bb]): (&Frame, [f64; 2]),
     within: &Aabb,
     tol: Tolerance,
+    meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
     if line_angle(&ca.z(), &cb.z()) > tol.angular {
-        return crate::section::traced(a, b, within, tol);
+        return crate::section::traced(a, b, within, tol, meter);
     }
     let first = Conic2 {
         centre: Point2::origin(),
@@ -1026,7 +1032,14 @@ mod tests {
             frame: Frame::from_z(Point3::new(3.0, 0.0, 0.0), Vec3::x()).unwrap(),
         };
         let curves = only(
-            &intersect_surfaces(&xy, &yz, &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &xy,
+                &yz,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         let Curve::Line { origin, direction } = &curves[0] else {
@@ -1048,11 +1061,25 @@ mod tests {
             frame: Frame::from_z(Point3::new(1.0, 2.0, 0.0), -Vec3::z()).unwrap(),
         };
         assert_eq!(
-            intersect_surfaces(&a, &lifted, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &a,
+                &lifted,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::Empty
         );
         assert_eq!(
-            intersect_surfaces(&a, &flipped, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &a,
+                &flipped,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::Coincident
         );
     }
@@ -1063,7 +1090,13 @@ mod tests {
             frame: Frame::world(),
         };
         assert!(matches!(
-            intersect_surfaces(&a, &a, &within(), Tolerance::new(0.0, 1e-12)),
+            intersect_surfaces(
+                &a,
+                &a,
+                &within(),
+                Tolerance::new(0.0, 1e-12),
+                &mut arris_math::Meter::default()
+            ),
             Err(GeomError::InvalidTolerance(_))
         ));
     }
@@ -1100,7 +1133,14 @@ mod tests {
             frame: Frame::from_z(Point3::new(1.0, 1.0, 5.0), Vec3::z()).unwrap(),
         };
         let c = only(
-            &intersect_surfaces(&cap, &wall, &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &cap,
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         let Curve::Ellipse {
@@ -1120,7 +1160,14 @@ mod tests {
             frame: Frame::from_z(Point3::new(x, 0.0, 0.0), Vec3::x()).unwrap(),
         };
         let c = only(
-            &intersect_surfaces(&wall, &side(1.0), &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &wall,
+                &side(1.0),
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         assert_eq!(c.len(), 2);
@@ -1136,7 +1183,14 @@ mod tests {
             on_both(r, &wall, &side(1.0));
         }
         let c = only(
-            &intersect_surfaces(&side(3.0), &wall, &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &side(3.0),
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Touch,
         );
         let Curve::Line { origin, .. } = &c[0] else {
@@ -1144,7 +1198,14 @@ mod tests {
         };
         assert!((origin - Point3::new(3.0, 0.0, 0.0)).norm() < 1e-12);
         assert_eq!(
-            intersect_surfaces(&side(4.0), &wall, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &side(4.0),
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::Empty
         );
         // Oblique: an ellipse on both surfaces.
@@ -1152,13 +1213,27 @@ mod tests {
             frame: Frame::from_z(Point3::new(0.0, 0.0, 1.0), Vec3::new(1.0, 2.0, 3.0)).unwrap(),
         };
         let c = only(
-            &intersect_surfaces(&tilted, &wall, &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &tilted,
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         assert!(matches!(c[0], Curve::Ellipse { .. }), "{c:?}");
         on_both(&c[0], &tilted, &wall);
         assert_eq!(
-            intersect_surfaces(&wall, &tilted, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &wall,
+                &tilted,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::curves_of(MeetKind::Crossing, c)
         );
     }
@@ -1173,7 +1248,14 @@ mod tests {
             radius: r,
         };
         let c = only(
-            &intersect_surfaces(&wall, &bore(2.5), &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &wall,
+                &bore(2.5),
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         assert_eq!(c.len(), 4);
@@ -1181,23 +1263,51 @@ mod tests {
             on_both(r, &wall, &bore(2.5));
         }
         let c = only(
-            &intersect_surfaces(&bore(3.0), &wall, &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &bore(3.0),
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Touch,
         );
         assert_eq!(c.len(), 2);
         assert_eq!(
-            intersect_surfaces(&bore(1.0), &wall, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &bore(1.0),
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::Empty
         );
         assert_eq!(
-            intersect_surfaces(&wall, &wall, &within(), tol()).unwrap(),
+            intersect_surfaces(
+                &wall,
+                &wall,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default()
+            )
+            .unwrap(),
             SurfaceIntersection::Coincident
         );
         // Two equal elliptic cylinders offset along the major axis: two
         // rulings at x = 1, y = ±2√(8/9), like the slot's two ends.
         let other = elliptic(Point3::new(2.0, 0.0, 7.0), 3.0, 2.0);
         let c = only(
-            &intersect_surfaces(&wall, &other, &within(), tol()).unwrap(),
+            &intersect_surfaces(
+                &wall,
+                &other,
+                &within(),
+                tol(),
+                &mut arris_math::Meter::default(),
+            )
+            .unwrap(),
             MeetKind::Crossing,
         );
         assert_eq!(c.len(), 2);
@@ -1210,7 +1320,14 @@ mod tests {
             frame: Frame::from_z(Point3::origin(), Vec3::x()).unwrap(),
             radius: 1.0,
         };
-        let r = intersect_surfaces(&wall, &crossing, &within(), tol()).unwrap();
+        let r = intersect_surfaces(
+            &wall,
+            &crossing,
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         let c = only(&r, MeetKind::Crossing);
         assert_eq!(c.len(), 2, "{r:?}");
         assert!(
@@ -1231,7 +1348,14 @@ mod tests {
             frame: Frame::from_z(Point3::new(1.0, 0.0, 0.0), Vec3::z()).unwrap(),
             radius: 2.0,
         };
-        let r = intersect_surfaces(&wall, &mixed, &within(), tol()).unwrap();
+        let r = intersect_surfaces(
+            &wall,
+            &mixed,
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
         assert!(r.points().is_empty(), "{r:?}");
         let kinds: Vec<MeetKind> = r.curves().iter().map(|m| m.kind).collect();
         assert_eq!(

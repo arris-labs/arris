@@ -34,6 +34,10 @@ path = "seed.rs"
 name = "show"
 path = "show.rs"
 
+[[example]]
+name = "latency"
+path = "latency.rs"
+
 [[bin]]
 name = "intersect_surfaces"
 path = "fuzz_targets/intersect_surfaces.rs"

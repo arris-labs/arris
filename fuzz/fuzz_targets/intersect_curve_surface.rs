@@ -12,8 +12,8 @@ fuzz_target!(|data: &[u8]| {
     let (Some(c), Some(s)) = (d.curve(), d.surface()) else {
         return;
     };
-    let first = intersect_curve_surface(&c, &s, tolerance());
-    let second = intersect_curve_surface(&c, &s, tolerance());
+    let first = intersect_curve_surface(&c, &s, tolerance(), &mut arris_math::Meter::default());
+    let second = intersect_curve_surface(&c, &s, tolerance(), &mut arris_math::Meter::default());
     check_deterministic(&first, &second);
     if let Ok(hit) = &first {
         check_curve_surface(&c, &s, hit);

@@ -42,12 +42,13 @@
 
 use core::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_4, TAU};
 
-use arris_math::Tolerance;
+use arris_math::{Meter, Tolerance};
 
 use crate::Surface;
 use crate::arc::{QUARTER_TAN, quarter_angle, quarter_arc, quarter_param, quarter_weight};
 use crate::bernstein::{self, Binomials, sign_change_candidates};
 use crate::bernstein2::{Continuum, Gate, Isolation, Poly2, Zero2, common_zeros, merge};
+use crate::halt::Halt;
 use crate::implicit::{BERNSTEIN_ROUNDING, Implicit};
 
 /// What the angles of two patches' shared edge may differ by, each
@@ -363,14 +364,14 @@ impl<'a> PatchedSection<'a> {
     /// is an inflection as well, or turning points `f64` does not tell
     /// apart. [`Continuum`] is a whole arc of them: a tube circle of the
     /// torus on the other surface, or the two surfaces the same.
-    pub(crate) fn turning_points(&self) -> Result<Census, Continuum> {
-        self.census(|patch| {
+    pub(crate) fn turning_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
+        self.census(meter, |patch, meter| {
             let [_, n] = patch.f.degree();
             let f_t = patch.f.dv();
             // A derivative's coefficient is the degree times a difference
             // of two of `f`'s.
             let floors = [self.floor, 2.0 * n as f64 * self.floor];
-            common_zeros([&patch.f, &f_t], floors, None)
+            common_zeros([&patch.f, &f_t], floors, None, meter)
         })
     }
 
@@ -380,11 +381,11 @@ impl<'a> PatchedSection<'a> {
     /// [`Implicit::distance`] at each says which. A certified zero is a
     /// critical point with a regular Hessian — a crossing of two
     /// branches or an isolated point, at the tolerance.
-    pub(crate) fn critical_points(&self) -> Result<Census, Continuum> {
+    pub(crate) fn critical_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
         let degree = self.implicit.degree();
         let binomials = Binomials::new(4 * degree + 2);
         let d = degree as f64;
-        self.census(|patch| {
+        self.census(meter, |patch, meter| {
             let [m, n] = patch.f.degree();
             let (f, w) = (&patch.f, &patch.weight);
             let g_s = Poly2::combine(&[
@@ -405,7 +406,7 @@ impl<'a> PatchedSection<'a> {
                 poly: f,
                 floor: self.near,
             };
-            common_zeros([&g_s, &g_t], floors, Some(gate))
+            common_zeros([&g_s, &g_t], floors, Some(gate), meter)
         })
     }
 
@@ -480,12 +481,13 @@ impl<'a> PatchedSection<'a> {
     /// those found from two patches made one.
     fn census(
         &self,
-        isolate: impl Fn(&Patch) -> Result<Isolation, Continuum>,
-    ) -> Result<Census, Continuum> {
+        meter: &mut Meter,
+        isolate: impl Fn(&Patch, &mut Meter) -> Result<Isolation, Halt<Continuum>>,
+    ) -> Result<Census, Halt<Continuum>> {
         let mut zeros = Vec::new();
         let (mut depth, mut boxes) = (0, 0);
         for patch in &self.patches {
-            let found = isolate(patch)?;
+            let found = isolate(patch, meter)?;
             depth = depth.max(found.depth);
             boxes += found.boxes;
             let angles = |p: [f64; 2]| [0, 1].map(|k| quarter_angle(patch.quarter[k], p[k]));
@@ -802,7 +804,7 @@ mod tests {
                     let (torus, other, _) = operands(&torus, &other);
                     let section = PatchedSection::new(torus, other, TOL).unwrap();
                     let found = section
-                        .turning_points()
+                        .turning_points(&mut Meter::default())
                         .unwrap_or_else(|e| panic!("{label}: {e:?}"));
                     let certified = found.zeros.iter().filter(|z| z.certified).count();
                     assert_eq!(certified, found.zeros.len(), "{label}: {:?}", found.zeros);
@@ -988,11 +990,11 @@ mod tests {
                         let at = if exchanged { on_other } else { at };
                         let section = PatchedSection::new(walked, other, TOL).unwrap();
                         let critical = section
-                            .critical_points()
+                            .critical_points(&mut Meter::default())
                             .unwrap_or_else(|e| panic!("{label}: {e:?}"));
                         let within = within_tolerance(walked, &section, &critical);
                         let turning = section
-                            .turning_points()
+                            .turning_points(&mut Meter::default())
                             .unwrap_or_else(|e| panic!("{label}: {e:?}"));
                         if gap.abs() < 1.0 {
                             assert_eq!(within.len(), 1, "{label}: {:?}", critical.zeros);
@@ -1053,7 +1055,7 @@ mod tests {
             ("ball", ball, vec![0.7, mirrored]),
         ] {
             let section = PatchedSection::new(&torus, &other, TOL).unwrap();
-            let Ok(found) = section.turning_points() else {
+            let Ok(found) = section.turning_points(&mut Meter::default()) else {
                 continue;
             };
             let open: Vec<&Zero2> = found.zeros.iter().filter(|z| !z.certified).collect();
@@ -1075,7 +1077,7 @@ mod tests {
             );
         }
         let itself = PatchedSection::new(&torus, &torus, TOL).unwrap();
-        let found = itself.turning_points().unwrap();
+        let found = itself.turning_points(&mut Meter::default()).unwrap();
         assert_eq!(found.zeros.len(), 1, "{:?}", found.zeros);
         let all = &found.zeros[0];
         assert!(!all.certified);
@@ -1125,7 +1127,7 @@ mod tests {
                     }
                 }
                 if order == 2 {
-                    let found = rest.turning_points().unwrap();
+                    let found = rest.turning_points(&mut Meter::default()).unwrap();
                     assert_eq!(found.zeros.len(), 2, "{u0}: {:?}", found.zeros);
                     assert!(found.zeros.iter().all(|z| z.certified), "{u0}");
                     assert!(found.boxes <= MEASURED_BOXES, "{u0}: {} boxes", found.boxes);
@@ -1156,12 +1158,15 @@ mod tests {
                 frame: frame(Point3::new(d, 0.0, 0.0), Vec3::x()),
             };
             let section = PatchedSection::new(&torus, &plane, TOL).unwrap();
-            let critical = section.critical_points().unwrap();
+            let critical = section.critical_points(&mut Meter::default()).unwrap();
             let singular: Vec<[f64; 2]> = within_tolerance(&torus, &section, &critical)
                 .iter()
                 .map(|z| z.at)
                 .collect();
-            (section.turning_points().unwrap().zeros, singular)
+            (
+                section.turning_points(&mut Meter::default()).unwrap().zeros,
+                singular,
+            )
         };
         let expect = |found: &[Zero2], expected: &[[f64; 2]]| {
             let certified: Vec<[f64; 2]> =

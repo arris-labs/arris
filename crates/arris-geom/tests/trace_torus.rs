@@ -71,7 +71,7 @@ fn closed(trace: &SectionTrace) -> usize {
 #[test]
 fn a_plane_through_the_hole_meets_the_ring_in_two_ovals() {
     let (ring, wall) = (ring(), wall(1.0));
-    let trace = trace_torus(&ring, &wall, tol()).unwrap();
+    let trace = trace_torus(&ring, &wall, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!((trace.branches().len(), closed(&trace)), (2, 2));
     assert!(trace.points().is_empty());
     assert!(worst_off(&trace, &ring, &wall) < 1e-12);
@@ -91,7 +91,7 @@ fn a_plane_through_the_hole_meets_the_ring_in_two_ovals() {
 #[test]
 fn a_plane_through_the_tube_alone_meets_the_ring_in_one_oval() {
     let (ring, wall) = (ring(), wall(2.0));
-    let trace = trace_torus(&ring, &wall, tol()).unwrap();
+    let trace = trace_torus(&ring, &wall, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!((trace.branches().len(), closed(&trace)), (1, 1));
     assert!(trace.points().is_empty());
     assert!(worst_off(&trace, &ring, &wall) < 1e-12);
@@ -107,7 +107,7 @@ fn a_plane_tangent_to_the_hole_meets_the_ring_in_a_figure_eight() {
     // Exactly tangent, a third of a tolerance short and a third past.
     for d in [1.5, 1.5 - 0.3e-7, 1.5 + 0.3e-7] {
         let wall = wall(d);
-        let trace = trace_torus(&ring, &wall, tol()).unwrap();
+        let trace = trace_torus(&ring, &wall, tol(), &mut arris_math::Meter::default()).unwrap();
         assert_eq!(trace.points().len(), 1, "d = {d}");
         let crossing = trace.points()[0];
         assert!(!crossing.isolated);
@@ -132,13 +132,13 @@ fn a_plane_tangent_to_the_hole_meets_the_ring_in_a_figure_eight() {
 fn a_plane_tangent_to_the_ring_outside_touches_it_at_one_point() {
     let ring = ring();
     for d in [2.5, 2.5 - 0.3e-7, 2.5 + 0.3e-7] {
-        let trace = trace_torus(&ring, &wall(d), tol()).unwrap();
+        let trace = trace_torus(&ring, &wall(d), tol(), &mut arris_math::Meter::default()).unwrap();
         assert!(trace.branches().is_empty(), "d = {d}");
         assert_eq!(trace.points().len(), 1, "d = {d}");
         assert!(trace.points()[0].isolated);
         assert!((trace.points()[0].point - Point3::new(2.5, 0.0, 0.0)).norm() < 1e-9);
     }
-    let clear = trace_torus(&ring, &wall(2.6), tol()).unwrap();
+    let clear = trace_torus(&ring, &wall(2.6), tol(), &mut arris_math::Meter::default()).unwrap();
     assert!(clear.branches().is_empty() && clear.points().is_empty());
 }
 
@@ -154,7 +154,7 @@ fn a_bitangent_plane_meets_the_ring_in_the_villarceau_circles() {
     let plane = Surface::Plane {
         frame: frame([0.0; 3], normal),
     };
-    let trace = trace_torus(&ring, &plane, tol()).unwrap();
+    let trace = trace_torus(&ring, &plane, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!(trace.points().len(), 2);
     assert!(trace.points().iter().all(|p| !p.isolated));
     // Each circle is cut in two by the two points.
@@ -188,7 +188,7 @@ fn a_drill_through_the_tube_meets_it_in_two_loops() {
         frame: frame([2.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
         radius: 0.2,
     };
-    let trace = trace_torus(&ring, &drill, tol()).unwrap();
+    let trace = trace_torus(&ring, &drill, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!((trace.branches().len(), closed(&trace)), (2, 2));
     assert!(worst_off(&trace, &ring, &drill) < 1e-12);
     let sides: Vec<f64> = (trace.branches().iter())
@@ -203,7 +203,7 @@ fn a_thin_tilted_pin_through_the_hole_misses_the_ring() {
         frame: frame([0.2, -0.1, 0.0], [0.2, 0.1, 1.0]),
         radius: 0.05,
     };
-    let trace = trace_torus(&ring(), &pin, tol()).unwrap();
+    let trace = trace_torus(&ring(), &pin, tol(), &mut arris_math::Meter::default()).unwrap();
     assert!(trace.branches().is_empty() && trace.points().is_empty());
 }
 
@@ -214,7 +214,7 @@ fn a_sphere_off_the_axis_meets_the_ring_in_a_loop_round_the_tube() {
         frame: frame([2.3, 0.4, 0.2], [0.0, 0.0, 1.0]),
         radius: 0.9,
     };
-    let trace = trace_torus(&ball, &ring, tol()).unwrap();
+    let trace = trace_torus(&ball, &ring, tol(), &mut arris_math::Meter::default()).unwrap();
     assert!(trace.points().is_empty());
     assert_eq!(closed(&trace), trace.branches().len());
     assert!(!trace.branches().is_empty());
@@ -231,7 +231,7 @@ fn a_ring_round_the_tube_meets_it_in_two_loops_and_a_chain_link_does_not() {
         minor_radius: 0.3,
     };
     for (a, b) in [(&ring, &band), (&band, &ring)] {
-        let trace = trace_torus(a, b, tol()).unwrap();
+        let trace = trace_torus(a, b, tol(), &mut arris_math::Meter::default()).unwrap();
         assert!(trace.points().is_empty());
         assert_eq!((trace.branches().len(), closed(&trace)), (2, 2));
         assert!(worst_off(&trace, &ring, &band) < 1e-11);
@@ -242,7 +242,7 @@ fn a_ring_round_the_tube_meets_it_in_two_loops_and_a_chain_link_does_not() {
         major_radius: 2.0,
         minor_radius: 0.6,
     };
-    let trace = trace_torus(&ring, &link, tol()).unwrap();
+    let trace = trace_torus(&ring, &link, tol(), &mut arris_math::Meter::default()).unwrap();
     assert!(trace.branches().is_empty() && trace.points().is_empty());
 }
 
@@ -256,7 +256,7 @@ fn rings_touching_at_a_point_meet_in_that_point() {
         major_radius: 1.6,
         minor_radius: 0.4,
     };
-    let trace = trace_torus(&ring, &beside, tol()).unwrap();
+    let trace = trace_torus(&ring, &beside, tol(), &mut arris_math::Meter::default()).unwrap();
     assert!(trace.branches().is_empty());
     assert_eq!(trace.points().len(), 1);
     assert!(trace.points()[0].isolated);
@@ -274,7 +274,7 @@ fn the_parameters_of_a_branch_are_exact_and_continuous_across_the_seams() {
     let plane = Surface::Plane {
         frame: frame([0.0, 0.0, 0.1], [0.15, 0.1, 1.0]),
     };
-    let trace = trace_torus(&ring, &plane, tol()).unwrap();
+    let trace = trace_torus(&ring, &plane, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!((trace.branches().len(), closed(&trace)), (2, 2));
     for b in trace.branches() {
         let n = 4000;
@@ -298,7 +298,13 @@ fn the_parameters_of_a_branch_are_exact_and_continuous_across_the_seams() {
 
 #[test]
 fn a_branch_runs_at_a_steady_speed_through_its_turning_points() {
-    let trace = trace_torus(&ring(), &wall(1.0), tol()).unwrap();
+    let trace = trace_torus(
+        &ring(),
+        &wall(1.0),
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     let b = &trace.branches()[0];
     let n = 2000;
     let length = b.domain().length();
@@ -350,7 +356,8 @@ fn a_loop_closes_through_its_turning_point_to_rounding() {
             },
         ];
         for other in others {
-            let trace = trace_torus(&torus, &other, tol()).unwrap();
+            let trace =
+                trace_torus(&torus, &other, tol(), &mut arris_math::Meter::default()).unwrap();
             for b in trace.branches().iter().filter(|b| b.is_closed()) {
                 let length = b.domain().length();
                 let short = length * (1.0 - 1e-12);
@@ -368,10 +375,12 @@ fn a_loop_closes_through_its_turning_point_to_rounding() {
 #[test]
 fn the_poses_the_tracer_does_not_resolve_are_refused_by_name() {
     let ring = ring();
-    let refused = |other: &Surface| match trace_torus(&ring, other, tol()) {
-        Err(GeomError::DegenerateSection { fault, .. }) => fault,
-        other => panic!("not refused: {other:?}"),
-    };
+    let refused =
+        |other: &Surface| match trace_torus(&ring, other, tol(), &mut arris_math::Meter::default())
+        {
+            Err(GeomError::DegenerateSection { fault, .. }) => fault,
+            other => panic!("not refused: {other:?}"),
+        };
     // Two tube circles on the other surface and more of the section
     // besides: an elliptic cylinder along a chord of the centre circle,
     // a circular section of either family on a tube circle.
@@ -399,7 +408,7 @@ fn the_poses_the_tracer_does_not_resolve_are_refused_by_name() {
         radius: 1.0,
     };
     assert!(matches!(
-        trace_torus(&pipe, &wall(0.0), tol()),
+        trace_torus(&pipe, &wall(0.0), tol(), &mut arris_math::Meter::default()),
         Err(GeomError::Unsupported { .. })
     ));
 }
@@ -411,7 +420,7 @@ fn a_plane_across_the_axis_meets_the_ring_in_two_circles() {
     let plane = Surface::Plane {
         frame: frame([0.0, 0.0, 0.3], [0.0, 0.0, 1.0]),
     };
-    let trace = trace_torus(&ring, &plane, tol()).unwrap();
+    let trace = trace_torus(&ring, &plane, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!((trace.branches().len(), closed(&trace)), (2, 2));
     // In the order of their `v` on `u = 0`: the outer one first.
     let radii = [2.0 + 0.4, 2.0 - 0.4];
@@ -601,7 +610,7 @@ fn meeting(other: impl Strategy<Value = Surface>) -> impl Strategy<Value = (Surf
 /// the torus's parameters of the point, the argument order not reaching
 /// the result, and nothing of the section missed.
 fn holds((a, b): (Surface, Surface)) -> Result<(), TestCaseError> {
-    let trace = match trace_torus(&a, &b, tol()) {
+    let trace = match trace_torus(&a, &b, tol(), &mut arris_math::Meter::default()) {
         Ok(trace) => trace,
         Err(e) => return Err(TestCaseError::fail(format!("refused: {e}"))),
     };
@@ -624,7 +633,8 @@ fn holds((a, b): (Surface, Surface)) -> Result<(), TestCaseError> {
         let off = distance(&a, p.point).max(distance(&b, p.point));
         prop_assert!(off <= bound(p.point), "{} is {off} off a surface", p.point);
     }
-    let swapped = trace_torus(&b, &a, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let swapped = trace_torus(&b, &a, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(trace.points(), swapped.points());
     prop_assert_eq!(trace.circles(), swapped.circles());
     prop_assert_eq!(trace.branches().len(), swapped.branches().len());
@@ -822,10 +832,12 @@ fn a_tangency_within_the_tolerance_is_one_singular_point() {
                 for gap in [0.0, 0.5, -0.5, 100.0, -100.0] {
                     let label = format!("{name} at {at:?}, gap {gap} tol, R={major} r={minor}");
                     let other = touching(&torus, at, &other, on_other, inside, gap * tol().linear);
-                    let trace = match trace_torus(&torus, &other, tol()) {
-                        Ok(trace) => trace,
-                        Err(e) => panic!("{label}: {e}"),
-                    };
+                    let trace =
+                        match trace_torus(&torus, &other, tol(), &mut arris_math::Meter::default())
+                        {
+                            Ok(trace) => trace,
+                            Err(e) => panic!("{label}: {e}"),
+                        };
                     let touched = torus.point(at[0], at[1]);
                     if gap.abs() < 1.0 {
                         assert_eq!(trace.points().len(), 1, "{label}");
@@ -998,7 +1010,7 @@ fn assert_circles(trace: &SectionTrace, torus: &Surface, u0: f64, count: usize, 
 fn a_pipe_elbow_meets_its_pipe_in_the_tube_circle_and_a_loop_across_it() {
     let ring = ring();
     let elbow = holders(&ring, 0.0, 0.0, 0.0).remove(0).1;
-    let trace = trace_torus(&ring, &elbow, tol()).unwrap();
+    let trace = trace_torus(&ring, &elbow, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_circles(&trace, &ring, 0.0, 1, true);
     // What is left is `(R + r cos v)·cos²(u / 2) = R`: one loop round the
     // outer equator, across the circle on top of the tube and below it.
@@ -1039,8 +1051,9 @@ fn a_tube_circle_on_the_other_surface_is_returned_exact() {
                 .transformed(pose);
                 for (name, other, count, tangent) in holders(&torus, u0, 0.0, 0.0) {
                     let label = format!("{name} at {u0}, R={big} r={r}, pose {k}");
-                    let trace = trace_torus(&torus, &other, tol())
-                        .unwrap_or_else(|e| panic!("{label}: {e}"));
+                    let trace =
+                        trace_torus(&torus, &other, tol(), &mut arris_math::Meter::default())
+                            .unwrap_or_else(|e| panic!("{label}: {e}"));
                     let walked = trace.branches().first().map_or(&torus, |b| {
                         let uv = b.uv(0.0).unwrap();
                         let first = (torus.point(uv.x, uv.y) - b.point(0.0)).norm();
@@ -1062,7 +1075,9 @@ fn a_tube_circle_on_the_other_surface_is_returned_exact() {
                         &torus
                     };
                     assert_complete(&trace, walked, unwalked);
-                    let swapped = trace_torus(&other, &torus, tol()).unwrap();
+                    let swapped =
+                        trace_torus(&other, &torus, tol(), &mut arris_math::Meter::default())
+                            .unwrap();
                     assert_eq!(trace.points(), swapped.points(), "{label}");
                     assert_eq!(trace.circles(), swapped.circles(), "{label}");
                     for (a, b) in trace.branches().iter().zip(swapped.branches()) {
@@ -1093,7 +1108,12 @@ fn a_tube_circle_is_decided_in_the_tolerance() {
                     for (name, other, count, _) in holders(&torus, u0, grown, shifted) {
                         let label =
                             format!("{name} at {u0}, R={big}: {grown} larger, {shifted} up");
-                        let trace = match trace_torus(&torus, &other, tol()) {
+                        let trace = match trace_torus(
+                            &torus,
+                            &other,
+                            tol(),
+                            &mut arris_math::Meter::default(),
+                        ) {
                             Ok(trace) => trace,
                             Err(GeomError::DegenerateSection { .. }) if times.abs() > 1.0 => {
                                 continue;
@@ -1148,8 +1168,8 @@ fn held() -> impl Strategy<Value = (Surface, Surface, f64, usize, bool)> {
 fn random_tube_circles_on_the_other_surface_trace() {
     check(held(), |(torus, other, u0, count, tangent)| {
         holds((torus.clone(), other.clone()))?;
-        let trace =
-            trace_torus(&torus, &other, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+        let trace = trace_torus(&torus, &other, tol(), &mut arris_math::Meter::default())
+            .map_err(|e| TestCaseError::fail(e.to_string()))?;
         // The other half of an S-bend is the larger torus, never walked.
         let uv_is_the_first = trace.branches().first().is_none_or(|b| {
             let (uv, p) = (b.uv(0.0).unwrap_or_default(), b.point(0.0));
@@ -1199,15 +1219,19 @@ fn a_ring_sliced_a_hair_off_a_meridian_is_fitted_on_both_surfaces() {
         frame: frame([big, -1.6e-6, 0.0], [0.0, 1.0, 0.0]),
     }
     .transformed(&pose);
-    let trace = trace_torus(&torus, &slice, tol()).unwrap();
+    let trace = trace_torus(&torus, &slice, tol(), &mut arris_math::Meter::default()).unwrap();
     assert_eq!(closed(&trace), 2);
     let within = arris_math::Aabb {
         min: [-200.0; 3],
         max: [200.0; 3],
     };
-    let Ok(arris_geom::SurfaceIntersection::Meets { curves, .. }) =
-        arris_geom::intersect_surfaces(&torus, &slice, &within, tol())
-    else {
+    let Ok(arris_geom::SurfaceIntersection::Meets { curves, .. }) = arris_geom::intersect_surfaces(
+        &torus,
+        &slice,
+        &within,
+        tol(),
+        &mut arris_math::Meter::default(),
+    ) else {
         panic!("the section is fitted");
     };
     assert_eq!(curves.len(), 2);

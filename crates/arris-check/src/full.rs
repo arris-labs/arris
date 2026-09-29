@@ -230,21 +230,31 @@ impl<'m> Checker<'m> {
         let Some(within) = overlap.map(|b| b.inflated(tolerance)) else {
             return Ok(false);
         };
-        Ok(match intersect_surfaces(sa, sb, &within, query) {
-            Err(_) => return Err((sa.kind(), sb.kind())),
-            Ok(SurfaceIntersection::Empty) => false,
-            Ok(SurfaceIntersection::Coincident) => self.regions_overlap(a, sa, b, sb, tolerance),
-            // Crossing or touching, every curve and every point is held to
-            // the one rule.
-            Ok(SurfaceIntersection::Meets { curves, points }) => {
-                curves
-                    .iter()
-                    .any(|c| self.curve_is_interior_to_both(a, sa, b, sb, &c.curve, tolerance))
-                    || points
+        Ok(
+            match intersect_surfaces(
+                sa,
+                sb,
+                &within,
+                query,
+                &mut arris_topo::arris_math::Meter::default(),
+            ) {
+                Err(_) => return Err((sa.kind(), sb.kind())),
+                Ok(SurfaceIntersection::Empty) => false,
+                Ok(SurfaceIntersection::Coincident) => {
+                    self.regions_overlap(a, sa, b, sb, tolerance)
+                }
+                // Crossing or touching, every curve and every point is held to
+                // the one rule.
+                Ok(SurfaceIntersection::Meets { curves, points }) => {
+                    curves
                         .iter()
-                        .any(|p| self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance))
-            }
-        })
+                        .any(|c| self.curve_is_interior_to_both(a, sa, b, sb, &c.curve, tolerance))
+                        || points.iter().any(|p| {
+                            self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
+                        })
+                }
+            },
+        )
     }
 
     /// `true` when an isolated meeting point of the two surfaces — a

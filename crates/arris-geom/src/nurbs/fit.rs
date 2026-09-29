@@ -9,7 +9,7 @@
 use core::fmt;
 
 use arris_math::nalgebra::{Const, OPoint, SVector};
-use arris_math::{Interval, Point2, Point3};
+use arris_math::{Interrupted, Interval, Meter, Point2, Point3};
 
 use super::basis::{self, MAX_DEGREE};
 use super::spline::Spline;
@@ -65,6 +65,14 @@ pub enum FitError {
         /// The worst deviation it left.
         deviation: f64,
     },
+    /// The caller stopped the fit ([`arris_math::Control`]).
+    Interrupted(Interrupted),
+}
+
+impl From<Interrupted> for FitError {
+    fn from(stop: Interrupted) -> Self {
+        FitError::Interrupted(stop)
+    }
 }
 
 impl fmt::Display for FitError {
@@ -79,6 +87,7 @@ impl fmt::Display for FitError {
                 f,
                 "the fit still deviates by {deviation} with {spans} spans, the most it may use"
             ),
+            FitError::Interrupted(stop) => stop.fmt(f),
         }
     }
 }
@@ -97,15 +106,18 @@ impl std::error::Error for FitError {}
 ///
 /// Guarantees: deterministic; terminates, with [`FitError::Diverged`]
 /// once [`MAX_FIT_SPANS`] would be exceeded — never a loop; the result's
-/// domain is `range` exactly and its control points are finite.
+/// domain is `range` exactly and its control points are finite. `meter`
+/// is ticked once per sample of `f` and once per check of `deviation`, so
+/// a stop ([`FitError::Interrupted`]) lands within one call of either of
+/// the caller's closures.
 ///
 /// ```
 /// use arris_geom::fit_curve2;
-/// use arris_math::{Interval, Point2};
+/// use arris_math::{Interval, Meter, Point2};
 ///
 /// let f = |t: f64| Point2::new(t, t.cos());
 /// let range = Interval::new(0.0, 3.0).unwrap();
-/// let fit = fit_curve2(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9).unwrap();
+/// let fit = fit_curve2(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9, &mut Meter::default()).unwrap();
 /// assert_eq!(fit.domain(), range);
 /// assert!((fit.eval(1.7).point - f(1.7)).norm() <= 1e-9);
 /// ```
@@ -115,8 +127,9 @@ pub fn fit_curve2(
     degree: usize,
     deviation: impl Fn(f64, Point2) -> f64,
     tol: f64,
+    meter: &mut Meter,
 ) -> Result<NurbsCurve2, FitError> {
-    fit(&f, range, degree, &deviation, tol, Ends::Clamped).map(NurbsCurve2::from_spline)
+    fit(&f, range, degree, &deviation, tol, Ends::Clamped, meter).map(NurbsCurve2::from_spline)
 }
 
 /// A non-rational B-spline of `degree` over `range` approximating the 3D
@@ -129,12 +142,12 @@ pub fn fit_curve2(
 ///
 /// ```
 /// use arris_geom::fit_curve;
-/// use arris_math::{Interval, Point3};
+/// use arris_math::{Interval, Meter, Point3};
 ///
 /// // A helix.
 /// let f = |t: f64| Point3::new(t.cos(), t.sin(), 0.2 * t);
 /// let range = Interval::new(0.0, 4.0).unwrap();
-/// let fit = fit_curve(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9).unwrap();
+/// let fit = fit_curve(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9, &mut Meter::default()).unwrap();
 /// assert_eq!(fit.domain(), range);
 /// assert_eq!(fit.eval(4.0).point, f(4.0));
 /// assert!((fit.eval(2.3).point - f(2.3)).norm() <= 1e-9);
@@ -145,8 +158,9 @@ pub fn fit_curve(
     degree: usize,
     deviation: impl Fn(f64, Point3) -> f64,
     tol: f64,
+    meter: &mut Meter,
 ) -> Result<NurbsCurve, FitError> {
-    fit(&f, range, degree, &deviation, tol, Ends::Clamped).map(NurbsCurve::from_spline)
+    fit(&f, range, degree, &deviation, tol, Ends::Clamped, meter).map(NurbsCurve::from_spline)
 }
 
 /// A periodic non-rational B-spline of `degree` approximating the closed
@@ -165,13 +179,13 @@ pub fn fit_curve(
 ///
 /// ```
 /// use arris_geom::fit_curve_periodic;
-/// use arris_math::{Interval, Point3};
+/// use arris_math::{Interval, Meter, Point3};
 /// use core::f64::consts::TAU;
 ///
 /// // An ellipse, as a closed loop.
 /// let f = |t: f64| Point3::new(2.0 * t.cos(), t.sin(), 0.5 * t.sin());
 /// let range = Interval::new(0.0, TAU).unwrap();
-/// let fit = fit_curve_periodic(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9).unwrap();
+/// let fit = fit_curve_periodic(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9, &mut Meter::default()).unwrap();
 /// assert_eq!(fit.period(), Some(TAU));
 /// assert!((fit.eval(0.0).point - fit.eval(TAU).point).norm() <= 1e-15);
 /// assert!((fit.eval(1.1).point - f(1.1)).norm() <= 1e-9);
@@ -182,8 +196,9 @@ pub fn fit_curve_periodic(
     degree: usize,
     deviation: impl Fn(f64, Point3) -> f64,
     tol: f64,
+    meter: &mut Meter,
 ) -> Result<NurbsCurve, FitError> {
-    fit(&f, range, degree, &deviation, tol, Ends::Periodic).map(NurbsCurve::from_spline)
+    fit(&f, range, degree, &deviation, tol, Ends::Periodic, meter).map(NurbsCurve::from_spline)
 }
 
 /// How a fit's ends are held.
@@ -204,6 +219,7 @@ fn fit<const D: usize>(
     deviation: &dyn Fn(f64, OPoint<f64, Const<D>>) -> f64,
     tol: f64,
     ends: Ends,
+    meter: &mut Meter,
 ) -> Result<Spline<D>, FitError> {
     if degree == 0 || degree > MAX_DEGREE {
         return Err(FitError::Degenerate(format!(
@@ -244,10 +260,10 @@ fn fit<const D: usize>(
     loop {
         let samples = sample_parameters(&breaks, degree);
         let curve = match ends {
-            Ends::Clamped => least_squares(f, degree, &breaks, &samples)?,
+            Ends::Clamped => least_squares(f, degree, &breaks, &samples, meter)?,
             // The last sample is the first one a period on.
             Ends::Periodic => {
-                least_squares_periodic(f, degree, &breaks, &samples[..samples.len() - 1])?
+                least_squares_periodic(f, degree, &breaks, &samples[..samples.len() - 1], meter)?
             }
         };
         // Check at the samples and between them; split every span whose
@@ -262,6 +278,7 @@ fn fit<const D: usize>(
         let mut span = 0;
         for pair in samples.windows(2) {
             for t in [pair[0], 0.5 * (pair[0] + pair[1])] {
+                meter.tick()?;
                 let d = deviation(t, curve.eval(t).point);
                 if !d.is_finite() {
                     return Err(FitError::NonFinite { t });
@@ -285,6 +302,7 @@ fn fit<const D: usize>(
             }
         }
         let t_end = range.hi();
+        meter.tick()?;
         let d_end = deviation(t_end, curve.eval(t_end).point);
         if !d_end.is_finite() {
             return Err(FitError::NonFinite { t: t_end });
@@ -366,8 +384,15 @@ fn periodic_knots(breaks: &[f64], degree: usize) -> Vec<f64> {
 fn sample_data<const D: usize>(
     f: &dyn Fn(f64) -> OPoint<f64, Const<D>>,
     samples: &[f64],
+    meter: &mut Meter,
 ) -> Result<Vec<OPoint<f64, Const<D>>>, FitError> {
-    let data: Vec<OPoint<f64, Const<D>>> = samples.iter().map(|&t| f(t)).collect();
+    let data = samples
+        .iter()
+        .map(|&t| {
+            meter.tick()?;
+            Ok(f(t))
+        })
+        .collect::<Result<Vec<OPoint<f64, Const<D>>>, Interrupted>>()?;
     match data
         .iter()
         .position(|q| !q.coords.iter().all(|c| c.is_finite()))
@@ -386,12 +411,13 @@ fn least_squares<const D: usize>(
     degree: usize,
     breaks: &[f64],
     samples: &[f64],
+    meter: &mut Meter,
 ) -> Result<Spline<D>, FitError> {
     let p = degree;
     let knots = clamped_knots(breaks, p);
     let n = knots.len() - p - 1;
     let m = samples.len() - 1;
-    let data = sample_data(f, samples)?;
+    let data = sample_data(f, samples, meter)?;
     let (q0, qm) = (data[0], data[m]);
     // Interior unknowns P_1 .. P_{n-2}.
     let unknowns = n - 2;
@@ -456,12 +482,13 @@ fn least_squares_periodic<const D: usize>(
     degree: usize,
     breaks: &[f64],
     samples: &[f64],
+    meter: &mut Meter,
 ) -> Result<Spline<D>, FitError> {
     let p = degree;
     let m = breaks.len() - 1;
     let knots = periodic_knots(breaks, p);
     let n = m + p;
-    let data = sample_data(f, samples)?;
+    let data = sample_data(f, samples, meter)?;
     // The free points active together on span `s` are `s..=s + p` mod `m`;
     // a row's envelope starts at the lowest of its partners.
     let mut first: Vec<usize> = (0..m).collect();
@@ -645,6 +672,7 @@ mod tests {
             1,
             |t, q| (q - f(t)).norm(),
             1e-12,
+            &mut arris_math::Meter::default(),
         )
         .unwrap();
         assert_eq!(fit.degree(), 1);
@@ -657,22 +685,58 @@ mod tests {
         let f = |t: f64| Point2::new(t, 0.0);
         let range = Interval::new(0.0, 1.0).unwrap();
         assert!(matches!(
-            fit_curve2(f, range, 0, |_, _| 0.0, 1e-6),
+            fit_curve2(
+                f,
+                range,
+                0,
+                |_, _| 0.0,
+                1e-6,
+                &mut arris_math::Meter::default()
+            ),
             Err(FitError::Degenerate(_))
         ));
         assert!(matches!(
-            fit_curve2(f, Interval::REAL, 2, |_, _| 0.0, 1e-6),
+            fit_curve2(
+                f,
+                Interval::REAL,
+                2,
+                |_, _| 0.0,
+                1e-6,
+                &mut arris_math::Meter::default()
+            ),
             Err(FitError::Degenerate(_))
         ));
         assert_eq!(
-            fit_curve2(f, range, 2, |_, _| 0.0, 0.0),
+            fit_curve2(
+                f,
+                range,
+                2,
+                |_, _| 0.0,
+                0.0,
+                &mut arris_math::Meter::default()
+            ),
             Err(FitError::InvalidTolerance(0.0))
         );
         assert!(matches!(
-            fit_curve2(f, range, 2, |_, _| f64::NAN, 1e-6),
+            fit_curve2(
+                f,
+                range,
+                2,
+                |_, _| f64::NAN,
+                1e-6,
+                &mut arris_math::Meter::default()
+            ),
             Err(FitError::NonFinite { .. })
         ));
-        let e = fit_curve2(f, range, 2, |_, _| 1.0, 1e-6).unwrap_err();
+        let e = fit_curve2(
+            f,
+            range,
+            2,
+            |_, _| 1.0,
+            1e-6,
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_err();
         assert!(
             matches!(e, FitError::Diverged { spans, .. } if spans <= MAX_FIT_SPANS),
             "{e}"

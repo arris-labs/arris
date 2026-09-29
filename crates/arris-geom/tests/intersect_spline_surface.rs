@@ -109,6 +109,7 @@ fn fitted(conic: &Curve) -> NurbsCurve {
         5,
         |t, q| (q - conic.point(t)).norm(),
         FIT,
+        &mut arris_math::Meter::default(),
     )
     .unwrap()
 }
@@ -126,7 +127,8 @@ fn hits_of(r: &CurveSurfaceIntersection) -> &[CurveSurfaceHit] {
 /// tolerance where it touches; `uv` the surface's parameters of it; two
 /// runs the same bit for bit.
 fn common_properties(c: &Curve, s: &Surface) -> Result<CurveSurfaceIntersection, TestCaseError> {
-    let r = intersect_curve_surface(c, s, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let r = intersect_curve_surface(c, s, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     let hits = hits_of(&r);
     let domain = c.domain();
     for h in hits {
@@ -154,8 +156,8 @@ fn common_properties(c: &Curve, s: &Surface) -> Result<CurveSurfaceIntersection,
         hits.windows(2).all(|w| w[0].t < w[1].t),
         "unsorted: {hits:?}"
     );
-    let again =
-        intersect_curve_surface(c, s, tol()).map_err(|e| TestCaseError::fail(e.to_string()))?;
+    let again = intersect_curve_surface(c, s, tol(), &mut arris_math::Meter::default())
+        .map_err(|e| TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(&again, &r, "two runs differ");
     Ok(r)
 }
@@ -299,7 +301,7 @@ fn an_ellipse_as_a_nurbs_meets_each_surface_where_the_ellipse_does() {
         };
         let expected: Vec<Point3> = crossings.iter().map(|&t| conic.point(t)).collect();
         // The closed form, where the table has one.
-        match intersect_curve_surface(&conic, &s, tol()) {
+        match intersect_curve_surface(&conic, &s, tol(), &mut arris_math::Meter::default()) {
             Ok(r) => expect_points("the ellipse arm", hits_of(&r), &expected, EXACT)?,
             Err(GeomError::Unsupported { .. }) => {}
             Err(e) => return fail(e.to_string()),
@@ -358,8 +360,9 @@ fn a_straight_nurbs_meets_each_surface_where_the_line_does() {
             let shift = l.point(0.0) - s.point(u, v);
             let s = s.transformed(&Isometry::from_translation(shift));
             let reach = 4.0 * DEFAULT_SCALE;
-            let CurveSurfaceIntersection::Points(of_line) = intersect_curve_surface(&l, &s, tol())
-                .map_err(|e| TestCaseError::fail(e.to_string()))?
+            let CurveSurfaceIntersection::Points(of_line) =
+                intersect_curve_surface(&l, &s, tol(), &mut arris_math::Meter::default())
+                    .map_err(|e| TestCaseError::fail(e.to_string()))?
             else {
                 return Ok(());
             };
@@ -562,7 +565,13 @@ fn a_curve_on_the_surface_is_coincident() {
             };
             for by in [0.0, fraction * tol().linear] {
                 prop_assert_eq!(
-                    intersect_curve_surface(&grown(by), &moved, tol()).unwrap(),
+                    intersect_curve_surface(
+                        &grown(by),
+                        &moved,
+                        tol(),
+                        &mut arris_math::Meter::default()
+                    )
+                    .unwrap(),
                     CurveSurfaceIntersection::Coincident,
                     "{:?} grown by {}",
                     s.kind(),
@@ -597,9 +606,14 @@ fn a_fitted_section_curve_is_coincident_with_both_of_its_surfaces() {
         min: [-100.0; 3],
         max: [100.0; 3],
     };
-    let SurfaceIntersection::Meets { curves, .. } =
-        intersect_surfaces(&big, &small, &within, tol()).unwrap()
-    else {
+    let SurfaceIntersection::Meets { curves, .. } = intersect_surfaces(
+        &big,
+        &small,
+        &within,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap() else {
         panic!("two crossing cylinders meet")
     };
     assert_eq!(curves.len(), 2);
@@ -608,7 +622,8 @@ fn a_fitted_section_curve_is_coincident_with_both_of_its_surfaces() {
         assert!(c.curve.period().is_some());
         for s in [&big, &small] {
             assert_eq!(
-                intersect_curve_surface(&c.curve, s, tol()).unwrap(),
+                intersect_curve_surface(&c.curve, s, tol(), &mut arris_math::Meter::default())
+                    .unwrap(),
                 CurveSurfaceIntersection::Coincident
             );
         }
@@ -686,9 +701,13 @@ fn an_open_curves_end_on_the_surface_is_a_hit_and_no_touch() {
         )
     };
     for height in [0.0, 0.4 * tol().linear, -0.4 * tol().linear] {
-        let CurveSurfaceIntersection::Points(hits) =
-            intersect_curve_surface(&lands(height), &plane, tol()).unwrap()
-        else {
+        let CurveSurfaceIntersection::Points(hits) = intersect_curve_surface(
+            &lands(height),
+            &plane,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap() else {
             panic!()
         };
         assert_eq!(hits.len(), 1, "{hits:?}");
@@ -698,12 +717,22 @@ fn an_open_curves_end_on_the_surface_is_a_hit_and_no_touch() {
     // Short of it by more than the tolerance: nothing. Through it: the
     // crossing, before the end.
     assert_eq!(
-        intersect_curve_surface(&lands(3.0 * tol().linear), &plane, tol()).unwrap(),
+        intersect_curve_surface(
+            &lands(3.0 * tol().linear),
+            &plane,
+            tol(),
+            &mut arris_math::Meter::default()
+        )
+        .unwrap(),
         CurveSurfaceIntersection::Points(Vec::new())
     );
-    let CurveSurfaceIntersection::Points(hits) =
-        intersect_curve_surface(&lands(-0.5), &plane, tol()).unwrap()
-    else {
+    let CurveSurfaceIntersection::Points(hits) = intersect_curve_surface(
+        &lands(-0.5),
+        &plane,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap() else {
         panic!()
     };
     assert_eq!(hits.len(), 1);
@@ -724,7 +753,7 @@ fn an_open_curves_end_on_the_surface_is_a_hit_and_no_touch() {
         .unwrap(),
     );
     let CurveSurfaceIntersection::Points(hits) =
-        intersect_curve_surface(&grazes, &plane, tol()).unwrap()
+        intersect_curve_surface(&grazes, &plane, tol(), &mut arris_math::Meter::default()).unwrap()
     else {
         panic!()
     };
@@ -745,7 +774,13 @@ fn a_periodic_curves_hits_come_back_inside_its_domain() {
     let through_the_seam = Surface::Plane {
         frame: Frame::from_z(circle.point(0.0), circle.eval(0.0).d1).unwrap(),
     };
-    let r = intersect_curve_surface(&fit, &through_the_seam, tol()).unwrap();
+    let r = intersect_curve_surface(
+        &fit,
+        &through_the_seam,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
     let hits = hits_of(&r);
     assert_eq!(hits.len(), 2, "{hits:?}");
     let domain = fit.domain();
@@ -762,7 +797,12 @@ fn a_nurbs_curve_against_a_nurbs_surface_stays_unsupported() {
     check(
         (nurbs_curve(), arris_debug::prop::geom::nurbs_surface()),
         |(c, s)| {
-            let r = intersect_curve_surface(&Curve::Nurbs(c), &Surface::Nurbs(s), tol());
+            let r = intersect_curve_surface(
+                &Curve::Nurbs(c),
+                &Surface::Nurbs(s),
+                tol(),
+                &mut arris_math::Meter::default(),
+            );
             let unsupported = matches!(r, Err(GeomError::Unsupported { .. }));
             prop_assert!(unsupported);
             Ok(())

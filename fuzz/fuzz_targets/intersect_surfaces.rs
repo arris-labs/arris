@@ -12,8 +12,20 @@ fuzz_target!(|data: &[u8]| {
     let (Some(a), Some(b), Some(within)) = (d.surface(), d.surface(), d.region()) else {
         return;
     };
-    let first = intersect_surfaces(&a, &b, &within, tolerance());
-    let second = intersect_surfaces(&a, &b, &within, tolerance());
+    let first = intersect_surfaces(
+        &a,
+        &b,
+        &within,
+        tolerance(),
+        &mut arris_math::Meter::default(),
+    );
+    let second = intersect_surfaces(
+        &a,
+        &b,
+        &within,
+        tolerance(),
+        &mut arris_math::Meter::default(),
+    );
     check_deterministic(&first, &second);
     if let Ok(hit) = &first {
         check_surfaces(&a, &b, &within, hit);
