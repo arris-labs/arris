@@ -130,7 +130,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[1]** — ADR-0030, cancellation: the six decisions above,
+- [x] Step 1 **[1]** — ADR-0030, cancellation: the six decisions above,
   the alternatives (a model field, a `…_with` twin, an `AtomicBool`,
   a clock), the step-site list; the ADR index updated. Docs only.
 - [ ] Step 2 **[3]** — the riskiest unknown first: `Control`, `Meter`,
@@ -222,11 +222,8 @@ bound has to be established here.
 - ⚠ OPEN: the latency bound step 2 states (steps and wall time between
   ticks on the slow cases), and whether any single solve is left
   unticked as the floor — agent, step 2, recorded in ADR-0030.
-- ⚠ OPEN: whether `Interrupted` carries the entities being worked on
-  when it stopped (the face pair, the edge), per kernel.md's "errors
-  name entities", or only the step count — agent, step 1. Leaning: the
-  count only; an interrupt is the caller's, not the geometry's, and the
-  entity at the stopping step is noise to a consumer.
+- Decided in step 1 (ADR-0030 §7): `Interrupted` carries the step count
+  and the cause only, not the entities at the stopping step.
 - ⚠ OPEN: whether the `parallel` build also stops on a poll mid-pass
   (every thread polls) or only at the pass's join — agent, step 3.
   Leaning: every thread polls, since a poll promises only rollback.

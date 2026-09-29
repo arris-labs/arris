@@ -40,3 +40,4 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0027](0027-the-changelog-is-written-when-the-change-lands.md) | The changelog is written when the change lands, under `Unreleased`; a release versions it, and a break is announced before it can ship | accepted |
 | [0028](0028-the-consumer-key.md) | The consumer's key: an opaque `Role::Consumer`, taken by `ops::build`, reached by re-rooting from every other operation | accepted |
 | [0029](0029-body-bytes.md) | Body bytes: the model's types as the wire, a frozen file per version as the guard, every earlier version migrated | accepted |
+| [0030](0030-cancellation.md) | Cancellation: a `&Control` passed last, a poll and a budget of steps, rollback by the transaction every operation runs in | accepted |
