@@ -4,6 +4,7 @@
 //! parameters with the model untouched, an axis normalised by
 //! `Axis::new`, and both `primitive/*` fixtures matched by the oracle.
 
+use arris_debug::unmetered::{primitive_box, primitive_cylinder};
 use std::collections::BTreeSet;
 
 use arris_debug::{dump_text, oracle, sample};
@@ -13,9 +14,9 @@ use arris_ops::arris_check::arris_topo::provenance::{BoxPart, Coord, CylinderPar
 use arris_ops::arris_check::arris_topo::{
     Body, Model, Orientation, Provenance, Relation, Role, Shape, SurfaceId,
 };
-use arris_ops::arris_check::{Level, check};
-use arris_ops::{OpError, Reason, primitive_box, primitive_cylinder};
 
+use arris_ops::arris_check::{Level, check};
+use arris_ops::{OpError, Reason};
 fn the_box(m: &mut Model) -> (Body, Provenance) {
     primitive_box(m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap()
 }

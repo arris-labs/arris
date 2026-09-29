@@ -23,6 +23,7 @@
 //! runs the round trip; `part::run` holds each to the class the fixture
 //! records.
 
+use crate::unmetered::mass_properties;
 use std::collections::BTreeMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -31,7 +32,6 @@ use arris_io::arris_check::arris_topo::arris_math::nalgebra::SymmetricEigen;
 use arris_io::arris_check::arris_topo::arris_math::{Matrix3, Point3, Vec3};
 use arris_io::arris_check::arris_topo::{Body, EdgeId, Model};
 use arris_io::step::{self, ReadOptions};
-use arris_ops::measure::mass_properties;
 use serde::{Deserialize, Serialize};
 
 use crate::fixtures::{Analytic, Loop, Measured, Num, Plane, Recipe, Segment, Step};

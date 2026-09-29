@@ -22,7 +22,8 @@ use arris_check::arris_topo::arris_geom::{
     intersect_surfaces, pcurve_on,
 };
 use arris_check::arris_topo::arris_math::{
-    Aabb, Frame, Interval, Point2, Point3, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3, wrap_angle,
+    Aabb, Control, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3, Vec2,
+    Vec3, wrap_angle,
 };
 use arris_check::arris_topo::builder::{EdgeKey, EdgeSpec, VertexKey, VertexSpec};
 use arris_check::arris_topo::entity::EdgeGeometry;
@@ -31,7 +32,7 @@ use arris_check::arris_topo::{
 };
 use arris_check::domain::FaceDomain;
 
-use crate::error::{Fault, OpError, Reason};
+use crate::error::{Fault, OpError, Reason, fault_of};
 use crate::rebuild::{self, AddedFace, Rewrite, StoredUse, forward};
 
 fn degenerate(entities: Vec<Shape>, reason: Reason) -> OpError {
@@ -730,7 +731,9 @@ fn face_end(
     at_lo: bool,
     tol: Tolerance,
     samples: usize,
+    meter: &mut Meter<'_>,
 ) -> Result<End, OpError> {
+    meter.tick()?;
     let (edge, d) = (s.edge, s.d);
     let e = forward(edge);
     let vertex = if at_lo { s.start } else { s.end };
@@ -840,9 +843,7 @@ fn face_end(
             return Err(vertex_blend());
         };
         let ccurve = m.curve(cid)?;
-        let projection = ccurve
-            .project(points[k])
-            .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+        let projection = ccurve.project(points[k]).map_err(fault_of)?;
         if projection.distance > ce.tolerance() {
             return Err(invariant("the corner edge through the trim point"));
         }
@@ -886,14 +887,8 @@ fn face_end(
             let within = Aabb::of_point(points[0])
                 .union(Aabb::of_point(points[1]))
                 .inflated(2.0 * radius);
-            let cut = intersect_surfaces(
-                &s.surface,
-                surface3,
-                &within,
-                tol,
-                &mut arris_check::arris_topo::arris_math::Meter::default(),
-            )
-            .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+            let cut =
+                intersect_surfaces(&s.surface, surface3, &within, tol, meter).map_err(fault_of)?;
             let arc_curve = match cut {
                 SurfaceIntersection::Meets { mut curves, points }
                     if points.is_empty()
@@ -923,10 +918,7 @@ fn face_end(
                                 + half.sin() * s.frame.y().into_inner());
                     let mid = ruling + ((plane3.origin() - ruling).dot(&n3) / dn) * d;
                     let param = |p: Point3| -> Result<f64, OpError> {
-                        arc_curve
-                            .project(p)
-                            .map(|q| q.t)
-                            .map_err(|g| OpError::Internal(Fault::Geometry(g)))
+                        arc_curve.project(p).map(|q| q.t).map_err(fault_of)
                     };
                     arc_between(param(points[0])?, param(points[1])?, param(mid)?)?
                 }
@@ -939,14 +931,7 @@ fn face_end(
     };
     let arc_tolerance = s.tolerance.max(face3_tolerance);
     let arc_tol = Tolerance::new(arc_tolerance, tol.angular);
-    let on_face = pcurve_on(
-        &arc_curve,
-        arc_range,
-        surface3,
-        arc_tol,
-        &mut arris_check::arris_topo::arris_math::Meter::default(),
-    )
-    .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+    let on_face = pcurve_on(&arc_curve, arc_range, surface3, arc_tol, meter).map_err(fault_of)?;
     let arc_side = if s.convex {
         Side::Inside
     } else {
@@ -955,14 +940,8 @@ fn face_end(
     if !on_side_of_face(m, face3, &on_face, arc_range, arc_side, samples)? {
         return Err(degenerate(vec![e, forward(face3)], Reason::BlendTooLarge));
     }
-    let on_blend = pcurve_on(
-        &arc_curve,
-        arc_range,
-        &s.surface,
-        arc_tol,
-        &mut arris_check::arris_topo::arris_math::Meter::default(),
-    )
-    .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+    let on_blend =
+        pcurve_on(&arc_curve, arc_range, &s.surface, arc_tol, meter).map_err(fault_of)?;
     let on_blend = s.place(on_blend, arc_range.lo(), if lo_first { 0.0 } else { s.u1 });
     Ok(End {
         vertex,
@@ -990,7 +969,9 @@ fn contacts(
     t: [[f64; 2]; 2],
     tol: Tolerance,
     samples: usize,
+    meter: &mut Meter<'_>,
 ) -> Result<[Contact; 2], OpError> {
+    meter.tick()?;
     let e = forward(s.edge);
     let mut contacts: Vec<Contact> = Vec::with_capacity(2);
     let spans = [0, 1].map(|k| (t[0][k], t[1][k]));
@@ -1002,14 +983,7 @@ fn contacts(
         let range = Interval::new(lo, hi).map_err(|_| too_large())?;
         let surface = m.surface(m.face(face)?.surface())?;
         let line_tol = Tolerance::new(s.tolerance, tol.angular);
-        let on_face = pcurve_on(
-            line,
-            range,
-            surface,
-            line_tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+        let on_face = pcurve_on(line, range, surface, line_tol, meter).map_err(fault_of)?;
         // On a cylinder, in the translate of the face's own loop: by whole
         // turns to the `u` of the blended edge's pcurve there.
         let on_face = match surface {
@@ -1028,14 +1002,7 @@ fn contacts(
             return Err(too_large());
         }
         let u = if k == 0 { 0.0 } else { s.u1 };
-        let on_blend = pcurve_on(
-            line,
-            range,
-            &s.surface,
-            line_tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+        let on_blend = pcurve_on(line, range, &s.surface, line_tol, meter).map_err(fault_of)?;
         let on_blend = s.place(on_blend, range.lo(), u);
         contacts.push(Contact {
             face,
@@ -1071,7 +1038,9 @@ fn miter(
     b: &Stripe,
     vertex: VertexId,
     tol: Tolerance,
+    meter: &mut Meter<'_>,
 ) -> Result<Miter, OpError> {
+    meter.tick()?;
     let v = forward(vertex);
     let (ea, eb) = (forward(a.edge), forward(b.edge));
     let vertex_blend = || degenerate(vec![ea, eb, v], Reason::VertexBlend);
@@ -1277,9 +1246,7 @@ fn miter(
                 minor_radius: radius,
             };
             let param = |p: Point3| -> Result<f64, OpError> {
-                let projection = curve
-                    .project(p)
-                    .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+                let projection = curve.project(p).map_err(fault_of)?;
                 if projection.distance > tolerance {
                     return Err(invariant("the miter's ends on its ellipse"));
                 }
@@ -1313,14 +1280,7 @@ fn miter(
     let lo_first = shared.map(|k| q_first == (k == 0));
     let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
     for (i, s) in [a, b].into_iter().enumerate() {
-        let pcurve = pcurve_on(
-            &curve,
-            range,
-            &s.surface,
-            arc_tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(|g| OpError::Internal(Fault::Geometry(g)))?;
+        let pcurve = pcurve_on(&curve, range, &s.surface, arc_tol, meter).map_err(fault_of)?;
         on_blend.push(s.place(pcurve, range.lo(), if lo_first[i] { 0.0 } else { s.u1 }));
     }
     let on_blend: [Curve2; 2] = on_blend
@@ -1363,7 +1323,9 @@ fn corner(
     stripes: [&Stripe; 3],
     vertex: VertexId,
     tol: Tolerance,
+    meter: &mut Meter<'_>,
 ) -> Result<Corner, OpError> {
+    meter.tick()?;
     let edges = stripes.map(|s| s.edge);
     let vertex_blend = || {
         let entities = edges
@@ -1447,7 +1409,7 @@ fn corner(
             .ok_or_else(vertex_blend)
     };
     let arc_tol = Tolerance::new(tolerance, tol.angular);
-    let geometry = |g| OpError::Internal(Fault::Geometry(g));
+    let geometry = fault_of;
     // The side `side` over `curve`, from point `ends[0]` to `ends[1]`: its
     // pcurve on that blend placed as its contacts are.
     let arc = |side: usize,
@@ -1455,18 +1417,12 @@ fn corner(
                range: Interval,
                ends: [usize; 2],
                on_corner: Curve2,
-               along: bool|
+               along: bool,
+               meter: &mut Meter<'_>|
      -> Result<CornerArc, OpError> {
         let s = stripes[side];
         let lo_first = ends[0] == contact_point[side][0];
-        let on_blend = pcurve_on(
-            &curve,
-            range,
-            &s.surface,
-            arc_tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(geometry)?;
+        let on_blend = pcurve_on(&curve, range, &s.surface, arc_tol, meter).map_err(geometry)?;
         let on_blend = s.place(on_blend, range.lo(), if lo_first { 0.0 } else { s.u1 });
         Ok(CornerArc {
             curve,
@@ -1555,15 +1511,12 @@ fn corner(
             let quarter =
                 Interval::new(0.0, FRAC_PI_2).map_err(|_| invariant("a quarter of a turn"))?;
             let sphere = Surface::Sphere { frame, radius };
-            let on_sphere = |curve: &Curve, range: Interval, u: f64| -> Result<Curve2, OpError> {
-                let pcurve = pcurve_on(
-                    curve,
-                    range,
-                    &sphere,
-                    arc_tol,
-                    &mut arris_check::arris_topo::arris_math::Meter::default(),
-                )
-                .map_err(geometry)?;
+            let on_sphere = |curve: &Curve,
+                             range: Interval,
+                             u: f64,
+                             meter: &mut Meter<'_>|
+             -> Result<Curve2, OpError> {
+                let pcurve = pcurve_on(curve, range, &sphere, arc_tol, meter).map_err(geometry)?;
                 Ok(placed(pcurve, range.lo(), u))
             };
             // Each meridian from its equator point up to the pole.
@@ -1586,8 +1539,9 @@ fn corner(
                         equator.clone(),
                         equator_range,
                         [i, j],
-                        on_sphere(&equator, equator_range, 0.0)?,
+                        on_sphere(&equator, equator_range, 0.0, meter)?,
                         true,
+                        meter,
                     )?,
                 ),
                 (
@@ -1597,8 +1551,9 @@ fn corner(
                         to_j.clone(),
                         quarter,
                         [j, p],
-                        on_sphere(&to_j, quarter, gamma)?,
+                        on_sphere(&to_j, quarter, gamma, meter)?,
                         true,
+                        meter,
                     )?,
                 ),
                 (
@@ -1608,8 +1563,9 @@ fn corner(
                         to_i.clone(),
                         quarter,
                         [i, p],
-                        on_sphere(&to_i, quarter, 0.0)?,
+                        on_sphere(&to_i, quarter, 0.0, meter)?,
                         false,
+                        meter,
                     )?,
                 ),
             ];
@@ -1657,15 +1613,12 @@ fn corner(
                 let (from, to) = (order[w], order[(w + 1) % 3]);
                 let side = side_of(from, to)?;
                 let (curve, range) = chord(points[from], points[to], tol)?;
-                let on_corner = pcurve_on(
-                    &curve,
-                    range,
-                    &plane,
-                    arc_tol,
-                    &mut arris_check::arris_topo::arris_math::Meter::default(),
-                )
-                .map_err(geometry)?;
-                sides.push((side, arc(side, curve, range, [from, to], on_corner, true)?));
+                let on_corner =
+                    pcurve_on(&curve, range, &plane, arc_tol, meter).map_err(geometry)?;
+                sides.push((
+                    side,
+                    arc(side, curve, range, [from, to], on_corner, true, meter)?,
+                ));
             }
             (plane, Orientation::Forward, sides, None)
         }
@@ -1776,7 +1729,9 @@ fn ring(
     kind: Kind,
     tol: Tolerance,
     samples: usize,
+    meter: &mut Meter<'_>,
 ) -> Result<Ring, OpError> {
+    meter.tick()?;
     let e = forward(edge);
     let entity = *m.edge(edge)?;
     let vertex = entity.start();
@@ -1958,7 +1913,7 @@ fn ring(
         }
     };
     let line_tol = Tolerance::new(tolerance, tol.angular);
-    let geometry = |g| OpError::Internal(Fault::Geometry(g));
+    let geometry = fault_of;
     let cylinder_use_u = m.curve2(uses[k].pcurve)?.point(range.lo()).x;
     let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
     let mut by_v = [
@@ -1971,14 +1926,8 @@ fn ring(
     }
     for (face, contact, v) in by_v {
         let face_surface = m.surface(m.face(face)?.surface())?;
-        let on_face = pcurve_on(
-            &contact,
-            range,
-            face_surface,
-            line_tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(geometry)?;
+        let on_face =
+            pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
         let on_face = if face == faces[k] {
             placed(on_face, range.lo(), cylinder_use_u)
         } else {
@@ -1987,14 +1936,7 @@ fn ring(
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
             return Err(too_large(face));
         }
-        let on_blend = pcurve_on(
-            &contact,
-            range,
-            &surface,
-            line_tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        )
-        .map_err(geometry)?;
+        let on_blend = pcurve_on(&contact, range, &surface, line_tol, meter).map_err(geometry)?;
         let along_u = on_blend.point(mid).x > on_blend.point(range.lo()).x;
         let target = Point2::new(if along_u { 0.0 } else { TAU }, v);
         contacts.push(RingContact {
@@ -2032,14 +1974,8 @@ fn ring(
         | Surface::Sphere { .. }
         | Surface::Nurbs(_) => chord(contacts[0].point, contacts[1].point, tol)?,
     };
-    let seam_on = pcurve_on(
-        &seam_curve_new,
-        seam_range,
-        &surface,
-        line_tol,
-        &mut arris_check::arris_topo::arris_math::Meter::default(),
-    )
-    .map_err(geometry)?;
+    let seam_on =
+        pcurve_on(&seam_curve_new, seam_range, &surface, line_tol, meter).map_err(geometry)?;
     let seam_on_blend =
         [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
     // The cylinder's seam shortened to the contact on the cylinder.
@@ -2185,6 +2121,7 @@ fn build(
     body: Body,
     edges: &[EdgeId],
     kind: Kind,
+    meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     let precision = m.precision();
     let tol = precision.tolerance();
@@ -2196,7 +2133,7 @@ fn build(
     for &e in edges {
         let entity = *m.edge(e)?;
         if entity.curve().is_some() && entity.start() == entity.end() {
-            rings.push(ring(m, &view, e, kind, tol, samples)?);
+            rings.push(ring(m, &view, e, kind, tol, samples, meter)?);
         } else {
             open.push(e);
         }
@@ -2219,6 +2156,7 @@ fn build(
     }
     let mut stripes: Vec<Stripe> = Vec::with_capacity(edges.len());
     for &e in edges {
+        meter.tick()?;
         stripes.push(stripe(m, &view, e, kind, tol)?);
     }
     let index_of: BTreeMap<EdgeId, usize> =
@@ -2239,6 +2177,7 @@ fn build(
                     &stripes[index_of[&eb]],
                     v,
                     tol,
+                    meter,
                 )?);
             }
             [ea, eb, ec] => {
@@ -2253,6 +2192,7 @@ fn build(
                     ],
                     v,
                     tol,
+                    meter,
                 )?);
             }
             _ => {}
@@ -2276,16 +2216,16 @@ fn build(
                         .position(|&e| e == s.edge)
                         .ok_or(invariant("a corner's own blend"))?,
                 },
-                (None, None) => {
-                    EndKind::Face(Box::new(face_end(m, &view, &s, at_lo, tol, samples)?))
-                }
+                (None, None) => EndKind::Face(Box::new(face_end(
+                    m, &view, &s, at_lo, tol, samples, meter,
+                )?)),
             });
         }
         let ends: [EndKind; 2] = ends
             .try_into()
             .map_err(|_| invariant("two ends of the blend"))?;
         let t = [0, 1].map(|end| [0, 1].map(|k| ends[end].t(&miters, &corners, k)));
-        let contacts = contacts(m, &s, t, tol, samples)?;
+        let contacts = contacts(m, &s, t, tol, samples, meter)?;
         blends.push(Blend {
             stripe: s,
             contacts,
@@ -2890,7 +2830,7 @@ fn build(
 /// use arris_ops::arris_check::arris_topo::arris_math::Point3;
 ///
 /// let mut m = Model::default();
-/// let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
+/// let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0), &arris_ops::Control::NONE).unwrap();
 /// // The vertical edge at x = 2, y = 2.
 /// let edge = m.edges(cube).unwrap().into_iter().find(|e| {
 ///     let entity = m.edge(e.id).unwrap();
@@ -2898,7 +2838,7 @@ fn build(
 ///     let mid = m.curve(curve).unwrap().point(range.midpoint());
 ///     (mid - Point3::new(2.0, 2.0, 1.0)).norm() < 1e-9
 /// }).unwrap();
-/// let (blended, provenance) = fillet(&mut m, cube, &[edge], 0.2).unwrap();
+/// let (blended, provenance) = fillet(&mut m, cube, &[edge], 0.2, &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.faces(blended).unwrap().len(), 7, "six faces and the blend");
 /// let generated = provenance.generated_from(edge.shape());
 /// assert_eq!(generated.len(), 9, "the blend face, four edges and four vertices");
@@ -2908,8 +2848,9 @@ pub fn fillet(
     body: Body,
     edges: &[Edge],
     radius: f64,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    blend(m, body, edges, Kind::Fillet { radius })
+    blend(m, body, edges, Kind::Fillet { radius }, control)
 }
 
 /// Cuts `edges` of `body` flat at `distance`: each edge's two faces are
@@ -2960,7 +2901,7 @@ pub fn fillet(
 /// use arris_ops::arris_check::arris_topo::arris_math::Point3;
 ///
 /// let mut m = Model::default();
-/// let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
+/// let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0), &arris_ops::Control::NONE).unwrap();
 /// // The vertical edge at x = 2, y = 2.
 /// let edge = m.edges(cube).unwrap().into_iter().find(|e| {
 ///     let entity = m.edge(e.id).unwrap();
@@ -2968,10 +2909,10 @@ pub fn fillet(
 ///     let mid = m.curve(curve).unwrap().point(range.midpoint());
 ///     (mid - Point3::new(2.0, 2.0, 1.0)).norm() < 1e-9
 /// }).unwrap();
-/// let (chamfered, provenance) = chamfer(&mut m, cube, &[edge], 0.2).unwrap();
+/// let (chamfered, provenance) = chamfer(&mut m, cube, &[edge], 0.2, &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.faces(chamfered).unwrap().len(), 7, "six faces and the chamfer");
 /// // A right prism cut away, its triangle's legs 0.2, two long.
-/// let volume = mass_properties(&m, chamfered).unwrap().volume;
+/// let volume = mass_properties(&m, chamfered, &arris_ops::Control::NONE).unwrap().volume;
 /// assert!((volume - 7.96).abs() < 1e-9);
 /// assert_eq!(provenance.generated_from(edge.shape()).len(), 9);
 /// ```
@@ -2980,8 +2921,9 @@ pub fn chamfer(
     body: Body,
     edges: &[Edge],
     distance: f64,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    blend(m, body, edges, Kind::Chamfer { distance })
+    blend(m, body, edges, Kind::Chamfer { distance }, control)
 }
 
 /// What [`fillet`] and [`chamfer`] share: the input, the size and the
@@ -2992,6 +2934,7 @@ fn blend(
     body: Body,
     edges: &[Edge],
     kind: Kind,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     crate::verify_input(m, body)?;
     let b = body.shape();
@@ -3028,5 +2971,6 @@ fn blend(
         .map(|e| e.id)
         .filter(|id| selected.contains(id))
         .collect();
-    m.transaction(|m| build(m, body, &ordered, kind))
+    let mut meter = Meter::new(control);
+    m.transaction(|m| build(m, body, &ordered, kind, &mut meter))
 }

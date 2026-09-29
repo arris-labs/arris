@@ -26,9 +26,18 @@
 //! must fail with that typed refusal; either ends the run there, the
 //! oracle's numbers recorded but not compared.
 
+use crate::unmetered::mass_properties;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::dump::dump_text;
+use crate::fixtures::geom::{self as geom_spec, build_profile};
+use crate::fixtures::{
+    self, Class, Counts, ExpectError, Expected, ExprError, Fixture, FixtureError, Measured, Num,
+    Recipe, Rotate, Step, Tolerances,
+};
+use crate::oracle::{self, OracleError};
+use crate::polyhedron::{PolyhedronError, polyhedron};
 use arris_geom::Profile;
 use arris_io::arris_check::arris_topo::FaceId;
 use arris_io::arris_check::arris_topo::arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
@@ -45,20 +54,7 @@ use arris_io::arris_check::classify::{Classification, classify_point};
 use arris_io::arris_check::{Level, LumpError, Report, Unchecked, check, lumps};
 use arris_io::step::{self, StepError};
 use arris_mesh::{MeshRequest, TriMesh, tessellate_with};
-use arris_ops::measure::mass_properties;
-use arris_ops::{
-    OpError, Reason, chamfer, common, cut, extrude, fillet, fuse, primitive_box,
-    primitive_cylinder, revolve, transform,
-};
-
-use crate::dump::dump_text;
-use crate::fixtures::geom::{self as geom_spec, build_profile};
-use crate::fixtures::{
-    self, Class, Counts, ExpectError, Expected, ExprError, Fixture, FixtureError, Measured, Num,
-    Recipe, Rotate, Step, Tolerances,
-};
-use crate::oracle::{self, OracleError};
-use crate::polyhedron::{PolyhedronError, polyhedron};
+use arris_ops::{OpError, Reason, common, cut, fuse};
 use sha2::{Digest, Sha256};
 
 /// The environment variable that makes [`run`] write `dump.txt` instead
@@ -604,7 +600,7 @@ fn build_all(
         if made.contains_key(step.name()) {
             continue;
         }
-        let built = build_step(m, fixture, step, params, made, profiles);
+        let built = build_step(m, fixture, step, params, made, profiles, &Control::NONE);
         if let Some(refusal) = refusal {
             if step.name() == fixture.recipe.result {
                 refusal.assert(&fixture.name, step.name(), built.map(|_| ()))?;
@@ -1466,9 +1462,49 @@ pub struct Inputs {
     pub profiles: BTreeMap<String, Profile>,
     /// The result step, unbuilt.
     pub result: Step,
+    fixture: Fixture,
+    params: BTreeMap<String, f64>,
+    made: BTreeMap<String, Made>,
 }
 
 impl Inputs {
+    /// The result step run in `model` under `control`: what a test that
+    /// interrupts an operation calls on a clone of [`Inputs::model`].
+    /// Errors: [`CorpusError::Op`] with [`OpError::Interrupted`] when
+    /// `control` stops it, and as [`run`]'s build stage otherwise.
+    ///
+    /// ```no_run
+    /// use arris_debug::{corpus, fixtures};
+    /// use arris_ops::Control;
+    ///
+    /// let dir = fixtures::corpus_root().join("boolean/through-hole");
+    /// let inputs = corpus::inputs(&dir, "default").unwrap();
+    /// let mut model = inputs.model.clone();
+    /// let made = inputs.run_result(&mut model, &Control::NONE).unwrap();
+    /// assert!(!made.provenance.is_empty());
+    /// ```
+    pub fn run_result(
+        &self,
+        model: &mut Model,
+        control: &Control<'_>,
+    ) -> Result<Made, CorpusError> {
+        let mut profiles = self.profiles.clone();
+        build_step(
+            model,
+            &self.fixture,
+            &self.result,
+            &self.params,
+            &self.made,
+            &mut profiles,
+            control,
+        )?
+        .ok_or_else(|| CorpusError::Reference {
+            fixture: self.fixture.name.clone(),
+            step: "result".into(),
+            name: self.fixture.recipe.result.clone(),
+        })
+    }
+
     /// The two bodies the result step combines — `a` and `b` of a `fuse`
     /// or `common`, the target and the tool of a `cut` — or `None` when
     /// the result is not a boolean.
@@ -1524,9 +1560,20 @@ pub fn inputs(dir: &Path, variant: &str) -> Result<Inputs, CorpusError> {
                 bodies,
                 profiles,
                 result: step.clone(),
+                fixture: fixture.clone(),
+                params,
+                made,
             });
         }
-        if let Some(out) = build_step(&mut model, &fixture, step, &params, &made, &mut profiles)? {
+        if let Some(out) = build_step(
+            &mut model,
+            &fixture,
+            step,
+            &params,
+            &made,
+            &mut profiles,
+            &Control::NONE,
+        )? {
             made.insert(step.name().to_string(), out);
         }
     }
@@ -1633,6 +1680,7 @@ fn build_step(
     params: &BTreeMap<String, f64>,
     made: &BTreeMap<String, Made>,
     profiles: &mut BTreeMap<String, Profile>,
+    control: &Control<'_>,
 ) -> Result<Option<Made>, CorpusError> {
     let name = fixture.name.clone();
     let op = |source: OpError| CorpusError::Op {
@@ -1653,7 +1701,10 @@ fn build_step(
                 point(fixture, step, min, params)?,
                 point(fixture, step, max, params)?,
             );
-            body(primitive_box(m, min, max).map_err(op)?, Vec::new())
+            body(
+                arris_ops::primitive_box(m, min, max, control).map_err(op)?,
+                Vec::new(),
+            )
         }
         Step::Cylinder {
             base,
@@ -1674,7 +1725,7 @@ fn build_step(
             let radius = number(fixture, step, radius, params)?;
             let height = number(fixture, step, height, params)?;
             body(
-                primitive_cylinder(m, axis, radius, height).map_err(op)?,
+                arris_ops::primitive_cylinder(m, axis, radius, height, control).map_err(op)?,
                 Vec::new(),
             )
         }
@@ -1704,7 +1755,7 @@ fn build_step(
             let direction = vector(fixture, step, direction, params)?;
             let length = number(fixture, step, length, params)?;
             body(
-                extrude(m, profile, direction, length).map_err(op)?,
+                arris_ops::extrude(m, profile, direction, length, control).map_err(op)?,
                 Vec::new(),
             )
         }
@@ -1723,7 +1774,10 @@ fn build_step(
                 source,
             })?;
             let angle = number(fixture, step, angle_deg, params)?.to_radians();
-            body(revolve(m, profile, axis, angle).map_err(op)?, Vec::new())
+            body(
+                arris_ops::revolve(m, profile, axis, angle, control).map_err(op)?,
+                Vec::new(),
+            )
         }
         Step::Transform {
             of,
@@ -1733,23 +1787,26 @@ fn build_step(
         } => {
             let of_body = reference(fixture, step, of, made)?.body;
             let motion = motion(fixture, step, rotate, translate, params)?;
-            body(transform(m, of_body, &motion).map_err(op)?, vec![of_body])
+            body(
+                arris_ops::transform(m, of_body, &motion, control).map_err(op)?,
+                vec![of_body],
+            )
         }
         Step::Fuse { a, b, .. } => {
             let a = reference(fixture, step, a, made)?.body;
             let b = reference(fixture, step, b, made)?.body;
-            body(fuse(m, a, b, &Control::NONE).map_err(op)?, vec![a, b])
+            body(fuse(m, a, b, control).map_err(op)?, vec![a, b])
         }
         Step::Common { a, b, .. } => {
             let a = reference(fixture, step, a, made)?.body;
             let b = reference(fixture, step, b, made)?.body;
-            body(common(m, a, b, &Control::NONE).map_err(op)?, vec![a, b])
+            body(common(m, a, b, control).map_err(op)?, vec![a, b])
         }
         Step::Cut { target, tool, .. } => {
             let target = reference(fixture, step, target, made)?.body;
             let tool = reference(fixture, step, tool, made)?.body;
             body(
-                cut(m, target, tool, &Control::NONE).map_err(op)?,
+                cut(m, target, tool, control).map_err(op)?,
                 vec![target, tool],
             )
         }
@@ -1781,9 +1838,9 @@ fn build_step(
             }
             let size = number(fixture, step, size, params)?;
             let blended = if matches!(step, Step::Chamfer { .. }) {
-                chamfer(m, of_body, &selected, size)
+                arris_ops::chamfer(m, of_body, &selected, size, control)
             } else {
-                fillet(m, of_body, &selected, size)
+                arris_ops::fillet(m, of_body, &selected, size, control)
             };
             body(blended.map_err(op)?, vec![of_body])
         }
@@ -1797,14 +1854,20 @@ fn build_step(
                 .iter()
                 .map(|p| point(fixture, step, p, params))
                 .collect::<Result<Vec<_>, _>>()?;
-            let (builder, keys) = polyhedron(m, &points, faces, *namespace).map_err(|source| {
-                CorpusError::Polyhedron {
-                    fixture: name.clone(),
-                    step: step.name().to_string(),
-                    source,
-                }
+            // The staging and the build in one transaction: a refusal or
+            // an interrupt leaves no geometry of the staged solid behind.
+            let made = m.transaction(|m| {
+                let (builder, keys) =
+                    polyhedron(m, &points, faces, *namespace).map_err(|source| {
+                        CorpusError::Polyhedron {
+                            fixture: name.clone(),
+                            step: step.name().to_string(),
+                            source,
+                        }
+                    })?;
+                arris_ops::build(m, builder, &keys, control).map_err(op)
             })?;
-            body(arris_ops::build(m, builder, &keys).map_err(op)?, Vec::new())
+            body(made, Vec::new())
         }
         Step::Read {
             file,
@@ -2214,6 +2277,7 @@ fn diff(committed: &str, actual: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::unmetered::primitive_box;
 
     /// The recipe's `precision` is the model's, and an inconsistent one
     /// is the fixture's own error rather than a panic.

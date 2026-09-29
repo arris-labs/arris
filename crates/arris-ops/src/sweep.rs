@@ -14,8 +14,8 @@ use arris_check::arris_topo::arris_geom::{
 };
 use arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
 use arris_check::arris_topo::arris_math::{
-    Axis, Frame, Interval, Isometry, Point2, Point3, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3,
-    wrap_angle,
+    Axis, Control, Frame, Interval, Isometry, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3,
+    Vec2, Vec3, wrap_angle,
 };
 use arris_check::arris_topo::builder::{
     Assembly, AssemblySlots, Builder, Built, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey,
@@ -25,7 +25,7 @@ use arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_check::arris_topo::provenance::SweepPart;
 use arris_check::arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role, Shape};
 
-use crate::error::{Fault, OpError, Reason};
+use crate::error::{Fault, OpError, Reason, fault_of};
 use crate::verify;
 
 fn degenerate(reason: Reason) -> OpError {
@@ -616,7 +616,7 @@ fn record(
 ///     holes: Vec::new(),
 /// };
 /// let mut m = Model::default();
-/// let (body, provenance) = revolve(&mut m, &profile, Axis::z_at(Point3::origin()), TAU).unwrap();
+/// let (body, provenance) = revolve(&mut m, &profile, Axis::z_at(Point3::origin()), TAU, &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.faces(body).unwrap().len(), 4, "two annuli and two walls");
 /// assert_eq!(m.edges(body).unwrap().len(), 6, "four rises and two seams");
 /// let wall = Role::Revolve(SweepPart::Side { loop_index: 0, segment: 1 });
@@ -627,7 +627,10 @@ pub fn revolve(
     profile: &Profile,
     axis: Axis,
     angle: f64,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
+    let mut meter = Meter::new(control);
+    let meter = &mut meter;
     let precision = m.precision();
     let tol = precision.tolerance();
     if !angle.is_finite() {
@@ -813,6 +816,7 @@ pub fn revolve(
             let n = edges_of.len();
             let mut ring = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 if full && on_axis[li][j] && closes_at(li, j) == [false, false] {
                     ring.push(None);
                     continue;
@@ -836,6 +840,7 @@ pub fn revolve(
                 let n = edges_of.len();
                 let mut ring = Vec::with_capacity(n);
                 for (j, edge) in edges_of.iter().enumerate() {
+                    meter.tick()?;
                     if on_axis[li][j] {
                         ring.push(start_vertex[li][j]);
                         continue;
@@ -865,6 +870,7 @@ pub fn revolve(
             let n = edges_of.len();
             let mut row = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 // A full turn's annulus keeps only its rises, and a segment
                 // along the axis is nothing there; in a partial turn that
                 // segment is the one edge both flat ends share.
@@ -898,6 +904,7 @@ pub fn revolve(
             let mut row = Vec::with_capacity(n);
             let mut curves = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 if full || along[li][j] {
                     row.push(None);
                     curves.push(None);
@@ -933,6 +940,7 @@ pub fn revolve(
             let mut row = Vec::with_capacity(n);
             let mut curves = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 // A vertex on the axis sweeps no rise; each face closing
                 // there holds a degenerate edge at it instead.
                 if on_axis[li][j] {
@@ -1042,19 +1050,13 @@ pub fn revolve(
         for (li, edges_of) in loops.iter().enumerate() {
             let n = edges_of.len();
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 let Some((surface, annulus)) = &surfaces[li][j] else {
                     continue;
                 };
                 let next = (j + 1) % n;
-                let on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
-                    pcurve_on(
-                        curve,
-                        range,
-                        surface,
-                        tol,
-                        &mut arris_check::arris_topo::arris_math::Meter::default(),
-                    )
-                    .map_err(|e| OpError::Internal(Fault::Geometry(e)))
+                let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
+                    pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
                 };
                 let start_pcurve = on(&edge.curve, edge.range)?;
                 let orientation = side_orientation(edge, normal, surface, &start_pcurve)?;
@@ -1253,7 +1255,7 @@ pub fn revolve(
 ///     holes: vec![ProfileLoop::Circle { center: p(20.0, 15.0), radius: 4.0 }],
 /// };
 /// let mut m = Model::default();
-/// let (body, provenance) = extrude(&mut m, &profile, Vec3::z(), 10.0).unwrap();
+/// let (body, provenance) = extrude(&mut m, &profile, Vec3::z(), 10.0, &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.faces(body).unwrap().len(), 7, "two caps, four walls and the bore");
 /// assert_eq!(m.edges(body).unwrap().len(), 15, "the bore's seam once");
 /// let bore = Role::Extrude(SweepPart::Side { loop_index: 1, segment: 0 });
@@ -1264,7 +1266,10 @@ pub fn extrude(
     profile: &Profile,
     direction: Vec3,
     length: f64,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
+    let mut meter = Meter::new(control);
+    let meter = &mut meter;
     let precision = m.precision();
     let tol = precision.tolerance();
     if !length.is_finite() {
@@ -1399,6 +1404,7 @@ pub fn extrude(
             let n = edges_of.len();
             let mut row = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 row.push(edges.len());
                 edges.push(EdgeSpec::New {
                     geometry: EdgeGeometry::Curve {
@@ -1421,6 +1427,7 @@ pub fn extrude(
             let mut row = Vec::with_capacity(n);
             let mut curves = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 let curve = edge.curve.transformed(&shift);
                 row.push(edges.len());
                 edges.push(EdgeSpec::New {
@@ -1448,6 +1455,7 @@ pub fn extrude(
             let mut row = Vec::with_capacity(n);
             let mut curves = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 let rise = Curve::Line {
                     origin: edge.curve.point(edge.range.lo()),
                     direction: sweep,
@@ -1512,17 +1520,11 @@ pub fn extrude(
         for (li, edges_of) in loops.iter().enumerate() {
             let n = edges_of.len();
             for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
                 let surface = &surfaces[li][j];
                 let next = (j + 1) % n;
-                let on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
-                    pcurve_on(
-                        curve,
-                        range,
-                        surface,
-                        tol,
-                        &mut arris_check::arris_topo::arris_math::Meter::default(),
-                    )
-                    .map_err(|e| OpError::Internal(Fault::Geometry(e)))
+                let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
+                    pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
                 };
                 let start_pcurve = on(&edge.curve, edge.range)?;
                 let orientation = side_orientation(edge, normal, surface, &start_pcurve)?;

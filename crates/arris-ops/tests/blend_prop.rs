@@ -10,14 +10,14 @@
 //! §Property-test failures).
 
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
+use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, transform};
 use arris_debug::{dump_text, prop, prop_shards};
+use arris_ops::OpError;
 use arris_ops::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_ops::arris_check::arris_topo::arris_math::{Frame, Isometry, Point2, Point3, Vec3};
 use arris_ops::arris_check::arris_topo::provenance::audit;
 use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Provenance};
 use arris_ops::arris_check::{Level, Report, check};
-use arris_ops::measure::mass_properties;
-use arris_ops::{OpError, chamfer, extrude, fillet, primitive_box, transform};
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 use proptest::prelude::*;
 

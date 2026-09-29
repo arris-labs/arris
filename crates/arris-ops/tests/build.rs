@@ -4,6 +4,7 @@
 //! whose every entity is `Generated` from exactly the consumer's key for
 //! its slot; and every refusal typed, with the model as it was.
 
+use arris_debug::unmetered::{build, primitive_box};
 use std::collections::BTreeMap;
 
 use arris_debug::polyhedron::{edge_key, polyhedron};
@@ -11,17 +12,19 @@ use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Curve2, Surface};
 use arris_ops::arris_check::arris_topo::arris_math::{
     Frame, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
 };
+
 use arris_ops::arris_check::arris_topo::builder::{
     Assembly, Builder, FaceRef, FaceSpec, Position, Seed, Split, Strut,
 };
+
 use arris_ops::arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_ops::arris_check::arris_topo::provenance::{ConsumerKey, Origin, Relation, audit};
 use arris_ops::arris_check::arris_topo::{
     Body, EntityId, Model, Orientation, Provenance, Role, Shape,
 };
-use arris_ops::arris_check::{Level, check};
-use arris_ops::{BuildKeys, BuildSlot, OpError, Rejection, build, primitive_box};
 
+use arris_ops::arris_check::{Level, check};
+use arris_ops::{BuildKeys, BuildSlot, OpError, Rejection};
 const NS: u32 = 7;
 
 /// The tetrahedron over the origin and the three unit points, by the

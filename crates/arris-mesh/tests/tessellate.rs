@@ -9,6 +9,7 @@
 //! a hole drilled at an angle (ADR-0005) — a strip oblique to the ruling
 //! — meshes column by column, at the fixture's tilt and at random ones.
 
+use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder};
 use core::f64::consts::{PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -16,8 +17,6 @@ use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box, radius, 
 use arris_debug::sample;
 use arris_debug::testing::fail;
 use arris_mesh::{MeshError, TriMesh, tessellate};
-use arris_ops::measure::mass_properties;
-use arris_ops::{primitive_box, primitive_cylinder};
 use arris_topo::arris_geom::region2::MIN_SEGMENTS_PER_TURN;
 use arris_topo::arris_geom::{CurveKind, NurbsSurface, Surface, SurfaceKind};
 use arris_topo::arris_math::{Axis, Interval, Point2, Point3, Vec3};

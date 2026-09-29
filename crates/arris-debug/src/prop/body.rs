@@ -5,10 +5,11 @@
 //! primitives and `ops::transform`, so a failing case prints as numbers a
 //! fixture can be written from.
 
+use crate::unmetered::{extrude, primitive_box, primitive_cylinder, revolve, transform};
 use arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_math::nalgebra::UnitQuaternion;
 use arris_math::{Axis, Frame, Isometry, Point2, Point3, UnitVec3, Vec3};
-use arris_ops::{OpError, extrude, primitive_box, primitive_cylinder, revolve, transform};
+use arris_ops::OpError;
 use arris_topo::{Body, Model};
 use proptest::prelude::*;
 

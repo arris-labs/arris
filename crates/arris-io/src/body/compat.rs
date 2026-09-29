@@ -102,7 +102,7 @@ mod tests {
     use super::v0;
     use crate::native;
     use arris_check::arris_topo::{Model, Provenance};
-    use arris_ops::primitive_box;
+    use arris_debug::unmetered::primitive_box;
 
     /// A box and its primitive's record, in a model that holds another
     /// box first so its ids are not dense.

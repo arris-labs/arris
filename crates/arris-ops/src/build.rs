@@ -4,6 +4,7 @@
 use core::fmt;
 use std::collections::{BTreeMap, BTreeSet};
 
+use arris_check::arris_topo::arris_math::{Control, Meter};
 use arris_check::arris_topo::builder::{BuildError, Builder, Built, EdgeRef, FaceRef, VertexRef};
 use arris_check::arris_topo::entity::BodyKind;
 use arris_check::arris_topo::provenance::ConsumerKey;
@@ -152,7 +153,7 @@ pub(crate) fn roles(
 /// ];
 /// let faces = [vec![vec![0, 2, 1]], vec![vec![0, 1, 3]], vec![vec![0, 3, 2]], vec![vec![1, 2, 3]]];
 /// let (builder, keys) = polyhedron(&mut m, &points, &faces, 7)?;
-/// let (body, provenance) = build(&mut m, builder, &keys)?;
+/// let (body, provenance) = build(&mut m, builder, &keys, &arris_ops::Control::NONE)?;
 /// // The slanted face, by the consumer's own name for it.
 /// let slanted = Role::Consumer(ConsumerKey { namespace: 7, key: 3 });
 /// let generated = provenance.generated_from(slanted);
@@ -165,7 +166,9 @@ pub fn build(
     model: &mut Model,
     builder: Builder,
     keys: &BuildKeys,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
+    let mut meter = Meter::new(control);
     let mut shells = BTreeSet::new();
     for (v, staged) in builder.vertices() {
         admit(
@@ -182,6 +185,7 @@ pub fn build(
         )?;
     }
     for (f, staged) in builder.faces() {
+        meter.tick()?;
         admit(
             BuildSlot::Face(f),
             staged.kept().is_some(),

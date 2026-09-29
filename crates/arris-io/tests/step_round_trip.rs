@@ -15,14 +15,14 @@ use arris_debug::fixtures::Tolerances;
 use arris_debug::prop::body::{QuadricPair, QuadricSolid};
 use arris_debug::testing::{REL, fail};
 use arris_debug::unmetered::{common, cut, fuse};
+use arris_debug::unmetered::{mass_properties, transform};
 use arris_debug::{prop, prop_shards};
 use arris_io::arris_check::arris_topo::arris_math::{Isometry, Point3, Vec3};
 use arris_io::arris_check::arris_topo::{Body, Model};
 use arris_io::arris_check::classify::{Classification, classify_point};
 use arris_io::arris_check::{Level, check};
 use arris_io::step::{self, ReadOptions};
-use arris_ops::measure::{MassProperties, mass_properties};
-use arris_ops::transform;
+use arris_ops::measure::MassProperties;
 use proptest::prelude::*;
 
 /// What is written: a solid alone, or a boolean of a pair.

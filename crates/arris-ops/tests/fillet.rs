@@ -8,18 +8,18 @@
 
 use arris_debug::fixtures::Class;
 use arris_debug::unmetered::cut;
+use arris_debug::unmetered::{extrude, fillet, mass_properties, primitive_box, revolve};
 use arris_debug::{corpus, dump_text, fixtures};
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Curve, Profile, ProfileLoop, ProfileSegment, Surface,
 };
+
 use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Point3, Vec3};
 use arris_ops::arris_check::arris_topo::provenance::{Origin, Relation, Role, SweepPart, audit};
 use arris_ops::arris_check::arris_topo::{Body, Edge, EntityId, Model, Orientation, Shape};
 use arris_ops::arris_check::classify::{Classification, classify_point};
 use arris_ops::arris_check::{Level, check};
-use arris_ops::measure::mass_properties;
-use arris_ops::{OpError, Reason, extrude, fillet, primitive_box, revolve};
-
+use arris_ops::{OpError, Reason};
 /// The edge of `body` whose curve's midpoint is `at`.
 fn edge_at(m: &Model, body: Body, at: Point3) -> Edge {
     m.edges(body)

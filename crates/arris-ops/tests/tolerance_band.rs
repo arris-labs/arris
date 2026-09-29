@@ -61,11 +61,11 @@
 
 use arris_debug::prop::body::{BAND_STEPS, BandContact, BandMotion, BandPair};
 use arris_debug::testing::REL;
+use arris_debug::unmetered::mass_properties;
 use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::{dump, prop};
 use arris_ops::arris_check::arris_topo::{Body, Model, Provenance};
 use arris_ops::arris_check::{Level, check};
-use arris_ops::measure::mass_properties;
 use arris_ops::{Fault, OpError};
 
 use proptest::prop_assert;

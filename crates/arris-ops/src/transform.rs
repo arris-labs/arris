@@ -1,7 +1,7 @@
 //! `transform`: a rigid motion of a body (`docs/ARCHITECTURE.md`
 //! §Operations).
 
-use arris_check::arris_topo::arris_math::{Isometry, Point3};
+use arris_check::arris_topo::arris_math::{Control, Isometry, Meter, Point3};
 use arris_check::arris_topo::builder::{Assembly, Builder, GeometryRemap};
 use arris_check::arris_topo::{
     Body, CurveId, EntityId, Model, Orientation, Provenance, Shape, SurfaceId,
@@ -64,9 +64,9 @@ impl GeometryRemap for Move<'_> {
 /// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Isometry, Point3, Vec3};
 ///
 /// let mut m = Model::default();
-/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0).unwrap();
+/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &arris_ops::Control::NONE).unwrap();
 /// let motion = Isometry::from_translation(Vec3::new(1.0, 2.0, 3.0));
-/// let (moved, provenance) = transform(&mut m, body, &motion).unwrap();
+/// let (moved, provenance) = transform(&mut m, body, &motion, &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.faces(moved).unwrap().len(), 3);
 /// assert_eq!(provenance.modified_from(Shape::from(body)).len(), 1);
 /// ```
@@ -74,8 +74,13 @@ pub fn transform(
     m: &mut Model,
     body: Body,
     motion: &Isometry,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     crate::verify_input(m, body)?;
+    let mut meter = Meter::new(control);
+    for _ in m.faces(body)? {
+        meter.tick()?;
+    }
     let entity = m.body(body.id)?.clone();
     let tolerance = m.precision().default_tolerance;
 

@@ -482,9 +482,9 @@ pub struct Interferences {
 /// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Point3};
 ///
 /// let mut m = Model::default();
-/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0))?;
+/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), &arris_ops::Control::NONE)?;
 /// let axis = Axis::z_at(Point3::new(20.0, 15.0, -1.0));
-/// let (hole, _) = primitive_cylinder(&mut m, axis, 4.0, 12.0)?;
+/// let (hole, _) = primitive_cylinder(&mut m, axis, 4.0, 12.0, &arris_ops::Control::NONE)?;
 /// let i = interferences(&m, plate, hole, &Control::NONE)?;
 /// // The hole's seam pierces the top and the bottom: two section
 /// // circles, each paved once, at the seam's hits.
@@ -587,12 +587,12 @@ pub fn interferences(
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
-/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0))?;
+/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), &arris_ops::Control::NONE)?;
 /// let axis = Axis::z_at(Point3::new(20.0, 15.0, -1.0));
-/// let (hole, _) = primitive_cylinder(&mut m, axis, 4.0, 12.0)?;
+/// let (hole, _) = primitive_cylinder(&mut m, axis, 4.0, 12.0, &arris_ops::Control::NONE)?;
 /// let (plate_with_hole, provenance) = cut(&mut m, plate, hole, &Control::NONE)?;
 /// assert_eq!(m.faces(plate_with_hole)?.len(), 7);
-/// let volume = mass_properties(&m, plate_with_hole)?.volume;
+/// let volume = mass_properties(&m, plate_with_hole, &arris_ops::Control::NONE)?.volume;
 /// assert!((volume - (12000.0 - PI * 16.0 * 10.0)).abs() < 1e-9 * 12000.0);
 /// // The four side faces are kept: not a word about them in the record.
 /// assert_eq!(provenance.outputs().len(), 10);
@@ -650,13 +650,13 @@ pub fn cut(
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
-/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0))?;
+/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), &arris_ops::Control::NONE)?;
 /// let axis = Axis::z_at(Point3::new(20.0, 15.0, 5.0));
-/// let (boss, _) = primitive_cylinder(&mut m, axis, 4.0, 15.0)?;
+/// let (boss, _) = primitive_cylinder(&mut m, axis, 4.0, 15.0, &arris_ops::Control::NONE)?;
 /// let (plate_with_boss, provenance) = fuse(&mut m, plate, boss, &Control::NONE)?;
 /// // The boss's wall crosses the top face; its bottom cap is swallowed.
 /// assert_eq!(m.faces(plate_with_boss)?.len(), 8);
-/// let volume = mass_properties(&m, plate_with_boss)?.volume;
+/// let volume = mass_properties(&m, plate_with_boss, &arris_ops::Control::NONE)?.volume;
 /// assert!((volume - (12000.0 + PI * 16.0 * 10.0)).abs() < 1e-9 * 12000.0);
 /// // The plate's four sides and bottom and the boss's top cap are kept:
 /// // not a word about them in the record.
@@ -700,11 +700,11 @@ pub fn fuse(
 /// use arris_ops::arris_check::arris_topo::arris_math::{Control, Point3};
 ///
 /// let mut m = Model::default();
-/// let (a, _) = primitive_box(&mut m, Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, 1.0, 1.0))?;
-/// let (b, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0))?;
+/// let (a, _) = primitive_box(&mut m, Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, 1.0, 1.0), &arris_ops::Control::NONE)?;
+/// let (b, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0), &arris_ops::Control::NONE)?;
 /// let (unit_cube, _) = common(&mut m, a, b, &Control::NONE)?;
 /// assert_eq!(m.faces(unit_cube)?.len(), 6);
-/// assert!((mass_properties(&m, unit_cube)?.volume - 1.0).abs() < 1e-12);
+/// assert!((mass_properties(&m, unit_cube, &arris_ops::Control::NONE)?.volume - 1.0).abs() < 1e-12);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn common(

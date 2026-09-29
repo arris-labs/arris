@@ -21,13 +21,13 @@
 //! must be one Arris refuses; an Arris read that no oracle solid matches
 //! is a solid the file does not have.
 
+use crate::unmetered::mass_properties;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use arris_io::arris_check::arris_topo::arris_math::Point3;
 use arris_io::arris_check::arris_topo::{Body, Model};
 use arris_io::step::{self, ReadOptions};
-use arris_ops::measure::mass_properties;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

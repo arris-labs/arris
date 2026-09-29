@@ -93,7 +93,7 @@ pub const fn edge_key(a: usize, b: usize) -> u64 {
 /// ];
 /// let faces = [vec![vec![0, 2, 1]], vec![vec![0, 1, 3]], vec![vec![0, 3, 2]], vec![vec![1, 2, 3]]];
 /// let (builder, keys) = polyhedron(&mut m, &points, &faces, 7).unwrap();
-/// let (body, provenance) = arris_ops::build(&mut m, builder, &keys).unwrap();
+/// let (body, provenance) = arris_ops::build(&mut m, builder, &keys, &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.faces(body).unwrap().len(), 4);
 /// assert_eq!(keys.edges.len(), 6);
 /// # let _ = provenance;

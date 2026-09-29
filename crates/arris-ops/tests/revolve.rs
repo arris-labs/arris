@@ -12,6 +12,7 @@
 //! the same body as counter-clockwise; the angle's bounds; and every
 //! typed refusal with the model untouched.
 
+use arris_debug::unmetered::{mass_properties, revolve};
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 
@@ -26,16 +27,17 @@ use arris_ops::arris_check::arris_topo::arris_geom::region2::Side;
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Curve2, Profile, ProfileEdge, ProfileError, ProfileLoop, ProfileSegment, Surface, SurfaceKind,
 };
+
 use arris_ops::arris_check::arris_topo::arris_math::{
     Axis, Frame, Point2, Point3, Tolerance, Vec2, Vec3,
 };
+
 use arris_ops::arris_check::arris_topo::provenance::SweepPart;
 use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Provenance, Role, Shape};
 use arris_ops::arris_check::classify::{Classification, classify_point};
 use arris_ops::arris_check::domain::FaceDomain;
 use arris_ops::arris_check::{Level, check, lumps};
-use arris_ops::measure::mass_properties;
-use arris_ops::{OpError, Reason, revolve};
+use arris_ops::{OpError, Reason};
 use core::f64::consts::{PI, TAU};
 use proptest::prelude::*;
 

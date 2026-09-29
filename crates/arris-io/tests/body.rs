@@ -9,6 +9,7 @@
 #[path = "body/guard.rs"]
 mod guard;
 
+use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder};
 use std::collections::BTreeSet;
 
 use arris_debug::unmetered::cut;
@@ -21,8 +22,6 @@ use arris_io::arris_check::arris_topo::{
 use arris_io::arris_check::{Level, check};
 use arris_io::body::{self, BODY_VERSION, BodyError, Imported};
 use arris_io::native;
-use arris_ops::measure::mass_properties;
-use arris_ops::{primitive_box, primitive_cylinder};
 
 use arris_debug::corpus;
 use arris_debug::prop::recipe::recipe;

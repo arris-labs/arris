@@ -6,7 +6,7 @@ use core::f64::consts::TAU;
 
 use arris_check::arris_topo::arris_geom::{Curve, Curve2, Surface};
 use arris_check::arris_topo::arris_math::{
-    Axis, Frame, Frame2, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
+    Axis, Control, Frame, Frame2, Interval, Meter, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
 };
 use arris_check::arris_topo::builder::{
     BuildError, Builder, EdgeRef, FaceRef, Position, Seed, Split, Strut, VertexRef,
@@ -124,7 +124,7 @@ fn plane_pcurves(
 /// use arris_ops::arris_check::arris_topo::provenance::{BoxPart, Coord, Role, Side};
 ///
 /// let mut m = Model::default();
-/// let (body, provenance) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap();
+/// let (body, provenance) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.faces(body).unwrap().len(), 6);
 /// let top = Role::Box(BoxPart::Face(Coord::Z, Side::Max));
 /// assert_eq!(provenance.generated_from(top).len(), 1);
@@ -133,6 +133,7 @@ pub fn primitive_box(
     m: &mut Model,
     min: impl Into<Point3>,
     max: impl Into<Point3>,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     let (min, max) = (min.into(), max.into());
     finite("min", min)?;
@@ -140,6 +141,7 @@ pub fn primitive_box(
     positive("x extent", max.x - min.x)?;
     positive("y extent", max.y - min.y)?;
     positive("z extent", max.z - min.z)?;
+    Meter::new(control).tick()?;
     let side = |value: f64, lo: f64| if value == lo { Side::Min } else { Side::Max };
     let vertex_role = |p: Point3| {
         Role::Box(BoxPart::Vertex([
@@ -301,7 +303,7 @@ pub fn primitive_box(
 /// use arris_ops::arris_check::arris_topo::provenance::{CylinderPart, Role};
 ///
 /// let mut m = Model::default();
-/// let (body, provenance) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0).unwrap();
+/// let (body, provenance) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &arris_ops::Control::NONE).unwrap();
 /// assert_eq!(m.edges(body).unwrap().len(), 3, "the seam once");
 /// assert_eq!(provenance.generated_from(Role::Cylinder(CylinderPart::Seam)).len(), 1);
 /// ```
@@ -310,10 +312,12 @@ pub fn primitive_cylinder(
     axis: Axis,
     radius: f64,
     height: f64,
+    control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     finite("axis origin", axis.origin)?;
     let radius = positive("radius", radius)?;
     let height = positive("height", height)?;
+    Meter::new(control).tick()?;
     let tol = m.precision().default_tolerance;
     let base = Frame::from_z(axis.origin, axis.direction.into_inner())?;
     let top = base.with_origin(axis.at(height));

@@ -1,39 +1,18 @@
-//! Cancellation of the booleans (ADR-0030): on every `boolean/` fixture
-//! the steps an unbudgeted run takes are the same with `parallel` on and
-//! off (one record, `tests/cancel_counts.txt`, both builds are held to),
-//! a budget below that count stops with `Interrupted` at exactly the
-//! budget and leaves the model's bytes as they were, and a budget at the
-//! count gives the unbudgeted body.
+//! Cancellation of the operations (ADR-0030): on every fixture of the
+//! areas that end in an operation the steps an unbudgeted run takes are
+//! the same with `parallel` on and off (one record,
+//! `tests/cancel_counts.txt`, both builds are held to), a budget below
+//! that count stops with `Interrupted` at exactly the budget and leaves
+//! the model's bytes as they were, and a budget at the count gives the
+//! unbudgeted body.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use arris_debug::fixtures::{self, Step};
+use arris_debug::fixtures;
 use arris_debug::{corpus, dump};
 use arris_io::native;
-use arris_ops::arris_check::arris_topo::arris_math::{Control, Interrupted, Stop};
-use arris_ops::arris_check::arris_topo::{Body, Model};
-use arris_ops::{OpError, boolean, common, cut, fuse};
-
-#[derive(Clone, Copy)]
-enum Kind {
-    Fuse,
-    Common,
-    Cut,
-}
-
-fn run(
-    m: &mut Model,
-    kind: Kind,
-    (a, b): (Body, Body),
-    control: &Control<'_>,
-) -> Result<Body, OpError> {
-    match kind {
-        Kind::Fuse => fuse(m, a, b, control),
-        Kind::Common => common(m, a, b, control),
-        Kind::Cut => cut(m, a, b, control),
-    }
-    .map(|(body, _)| body)
-}
+use arris_ops::measure::mass_properties;
+use arris_ops::{Control, Interrupted, OpError, Stop, boolean, primitive_box};
 
 fn stopped(e: OpError) -> Interrupted {
     match e {
@@ -69,66 +48,78 @@ fn record_path() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/cancel_counts.txt")
 }
 
+/// The areas whose fixtures end in an operation on a model, each
+/// fixture's result step run under a budget.
+const AREAS: [&str; 7] = [
+    "boolean",
+    "sweep",
+    "blend",
+    "build",
+    "provenance",
+    "transform",
+    "primitive",
+];
+
 #[test]
-fn a_budget_stops_the_boolean_at_the_same_step_and_leaves_the_model_as_it_was() {
-    let root = fixtures::corpus_root().join("boolean");
+fn a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was() {
     let mut counts = String::new();
     let mut ran = 0;
-    let mut dirs: Vec<_> = std::fs::read_dir(&root)
-        .expect("the boolean fixtures")
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.join("fixture.json").is_file())
-        .collect();
-    dirs.sort();
-    for dir in dirs {
-        let name = dir.file_name().unwrap().to_string_lossy().into_owned();
-        let Ok(inputs) = corpus::inputs(&dir, "default") else {
-            continue;
-        };
-        let Some(operands) = inputs.operands() else {
-            continue;
-        };
-        let kind = match inputs.result {
-            Step::Fuse { .. } => Kind::Fuse,
-            Step::Common { .. } => Kind::Common,
-            Step::Cut { .. } => Kind::Cut,
-            _ => continue,
-        };
-        let mut m = inputs.model.clone();
-        let (whole, n) = steps_of(|c| run(&mut m, kind, operands, c));
-        // A refusal by design is a fixture of its own; an interrupt of it
-        // is the same claim, but its count is not a body's.
-        let Ok(whole) = whole else { continue };
-        let expected = dump::dump_text(&m, whole).unwrap();
-        counts.push_str(&format!("{name}: {n}\n"));
-        ran += 1;
-
-        let before = native::to_bytes(&inputs.model).unwrap();
-        for k in below(n) {
+    for area in AREAS {
+        let root = fixtures::corpus_root().join(area);
+        let mut dirs: Vec<_> = std::fs::read_dir(&root)
+            .expect("the fixture area")
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.join("fixture.json").is_file())
+            .collect();
+        dirs.sort();
+        let mut in_area = 0;
+        for dir in dirs {
+            let name = format!("{area}/{}", dir.file_name().unwrap().to_string_lossy());
+            let Ok(inputs) = corpus::inputs(&dir, "default") else {
+                continue;
+            };
             let mut m = inputs.model.clone();
-            let stop = stopped(run(&mut m, kind, operands, &Control::budget(k)).unwrap_err());
+            let (whole, n) = steps_of(|c| inputs.run_result(&mut m, c));
+            // A refusal by design is a fixture of its own.
+            let Ok(whole) = whole else { continue };
+            let expected = dump::dump_text(&m, whole.body).unwrap();
+            counts.push_str(&format!("{name}: {n}\n"));
+            in_area += 1;
+
+            let before = native::to_bytes(&inputs.model).unwrap();
+            for k in below(n) {
+                let mut m = inputs.model.clone();
+                let stop = match inputs.run_result(&mut m, &Control::budget(k)) {
+                    Err(corpus::CorpusError::Op { source, .. }) => stopped(source),
+                    Err(other) => panic!("{name}: budget {k} of {n}: {other}"),
+                    Ok(_) => panic!("{name}: budget {k} of {n} ran to the end"),
+                };
+                assert_eq!(
+                    (stop.by, stop.steps),
+                    (Stop::Budget, k),
+                    "{name}: budget {k} of {n}"
+                );
+                assert_eq!(
+                    native::to_bytes(&m).unwrap(),
+                    before,
+                    "{name}: budget {k} of {n} left the model changed"
+                );
+            }
+            let mut m = inputs.model.clone();
+            let made = inputs
+                .run_result(&mut m, &Control::budget(n))
+                .unwrap_or_else(|e| panic!("{name}: a budget of {n} steps, all it takes: {e}"));
             assert_eq!(
-                (stop.by, stop.steps),
-                (Stop::Budget, k),
-                "{name}: budget {k} of {n}"
-            );
-            assert_eq!(
-                native::to_bytes(&m).unwrap(),
-                before,
-                "{name}: budget {k} of {n} left the model changed"
+                dump::dump_text(&m, made.body).unwrap(),
+                expected,
+                "{name}: a budget of {n} changed the result"
             );
         }
-        let mut m = inputs.model.clone();
-        let body = run(&mut m, kind, operands, &Control::budget(n))
-            .unwrap_or_else(|e| panic!("{name}: a budget of {n} steps, all it takes: {e}"));
-        assert_eq!(
-            dump::dump_text(&m, body).unwrap(),
-            expected,
-            "{name}: a budget of {n} changed the result"
-        );
+        assert!(in_area >= 2, "{area}: only {in_area} fixtures ran");
+        ran += in_area;
     }
-    assert!(ran > 50, "only {ran} boolean fixtures ran");
+    assert!(ran > 100, "only {ran} fixtures ran");
     if corpus::blessing() {
         std::fs::write(record_path(), &counts).expect("the record is written");
         return;
@@ -137,7 +128,7 @@ fn a_budget_stops_the_boolean_at_the_same_step_and_leaves_the_model_as_it_was() 
     assert_eq!(
         counts,
         record,
-        "the boolean step counts moved (the same with `parallel` on and off); bless with {}=1",
+        "the step counts moved (they are the same with `parallel` on and off); bless with {}=1",
         corpus::BLESS_VAR
     );
 }
@@ -163,23 +154,23 @@ fn interferences_stops_at_its_budget() {
 }
 
 #[test]
-fn a_poll_stops_the_boolean_and_rolls_the_model_back() {
+fn a_poll_stops_an_operation_and_rolls_the_model_back() {
     let root = fixtures::corpus_root().join("boolean");
     let inputs = corpus::inputs(&root.join("boss"), "default").unwrap();
-    let operands = inputs.operands().unwrap();
-    let Step::Fuse { .. } = inputs.result else {
-        // `boss` is a fuse; anything else here is a fixture edit to read.
-        panic!("boss is not a fuse any more");
-    };
     let before = native::to_bytes(&inputs.model).unwrap();
     let mut m = inputs.model.clone();
-    let (whole, n) = steps_of(|c| run(&mut m, Kind::Fuse, operands, c));
+    let (whole, n) = steps_of(|c| inputs.run_result(&mut m, c));
     whole.unwrap();
     for k in below(n) {
         let mut m = inputs.model.clone();
         let asked = AtomicU64::new(0);
         let poll = || asked.fetch_add(1, Ordering::Relaxed) >= k;
-        let stop = stopped(run(&mut m, Kind::Fuse, operands, &Control::poll(&poll)).unwrap_err());
+        let Err(corpus::CorpusError::Op { source, .. }) =
+            inputs.run_result(&mut m, &Control::poll(&poll))
+        else {
+            panic!("poll at {k} of {n}: not an interrupt");
+        };
+        let stop = stopped(source);
         assert_eq!(stop.by, Stop::Poll);
         // Where a poll lands is the schedule's under `parallel`; the
         // sequential build asks one question per step.
@@ -188,4 +179,19 @@ fn a_poll_stops_the_boolean_and_rolls_the_model_back() {
         }
         assert_eq!(native::to_bytes(&m).unwrap(), before, "poll at {k} of {n}");
     }
+}
+
+#[test]
+fn mass_properties_stops_at_its_budget() {
+    let mut m = arris_ops::arris_check::arris_topo::Model::default();
+    let (body, _) = primitive_box(&mut m, [0.0; 3], [3.0, 2.0, 1.0], &Control::NONE).unwrap();
+    let (whole, n) = steps_of(|c| mass_properties(&m, body, c));
+    let whole = whole.unwrap();
+    assert!(n >= 6, "{n} steps for the faces of a box");
+    for k in below(n) {
+        let stop = stopped(mass_properties(&m, body, &Control::budget(k)).unwrap_err());
+        assert_eq!((stop.by, stop.steps), (Stop::Budget, k));
+    }
+    let again = mass_properties(&m, body, &Control::budget(n)).unwrap();
+    assert_eq!(again.volume, whole.volume);
 }

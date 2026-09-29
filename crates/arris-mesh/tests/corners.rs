@@ -7,6 +7,7 @@
 //! the one `tessellate` gives, corners or not; and a block that does not
 //! fit its mesh is a typed refusal.
 
+use arris_debug::unmetered::{fillet, primitive_box, revolve};
 use core::f64::consts::{PI, TAU};
 
 use arris_debug::sample;
@@ -16,10 +17,9 @@ use arris_mesh::{
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Profile, ProfileLoop, ProfileSegment, Surface,
 };
+
 use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Interval, Point2, Point3, Vec3};
 use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Orientation};
-use arris_ops::{fillet, primitive_box, revolve};
-
 /// Rounding at the scale of a coordinate.
 const EXACT: f64 = 1e-12;
 

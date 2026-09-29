@@ -19,16 +19,18 @@ use arris_debug::prop::body::{
 };
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{common, cut, fuse};
+use arris_debug::unmetered::{mass_properties, transform};
 use arris_debug::{dump_text, prop, prop_shards};
 use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Quaternion, UnitQuaternion};
 use arris_ops::arris_check::arris_topo::arris_math::{
     Axis, Frame, Isometry, Point3, UnitVec3, Vec3,
 };
+
 use arris_ops::arris_check::arris_topo::provenance::audit;
 use arris_ops::arris_check::arris_topo::{Body, Model, Provenance};
 use arris_ops::arris_check::{Level, check};
-use arris_ops::measure::{MassProperties, mass_properties};
-use arris_ops::{OpError, Reason, transform};
+use arris_ops::measure::MassProperties;
+use arris_ops::{OpError, Reason};
 use proptest::prelude::*;
 
 /// A boolean of two bodies: `fuse`, `common` or `cut`.

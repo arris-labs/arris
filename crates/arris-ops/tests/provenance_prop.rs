@@ -19,15 +19,16 @@
 //! under `tests/fixtures/provenance/` (`tests/fixtures/README.md`
 //! §Property-test failures).
 
+use arris_debug::unmetered::{primitive_box, transform};
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_debug::prop::body::BarCut;
 use arris_debug::testing::fail;
 use arris_debug::unmetered::cut;
 use arris_debug::{prop, prop_shards};
+use arris_ops::OpError;
 use arris_ops::arris_check::arris_topo::provenance::{Origin, Relation, Role, audit};
 use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Orientation, Provenance, Shape};
-use arris_ops::{OpError, primitive_box, transform};
 use proptest::prelude::*;
 
 /// What an entity of an input body is called, whichever build it belongs

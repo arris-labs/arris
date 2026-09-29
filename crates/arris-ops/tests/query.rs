@@ -6,6 +6,7 @@
 //! copied range would miss — and the typed refusals, each naming the
 //! shape.
 
+use arris_debug::unmetered::primitive_box;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, TAU};
 
 use arris_debug::prop::geom::{circle, ellipse, line, nurbs_curve};
@@ -19,10 +20,11 @@ use arris_ops::arris_check::arris_topo::entity::{Edge, EdgeGeometry, Vertex};
 use arris_ops::arris_check::arris_topo::{
     AnyId, EdgeId, Face, Model, Orientation, Shape, VertexId,
 };
+
 use arris_ops::arris_check::classify::{Classification, classify_point};
 use arris_ops::arris_check::domain::FaceDomain;
 use arris_ops::query::{Projection, face_frame, frame_at, project_to_plane};
-use arris_ops::{OpError, Reason, primitive_box};
+use arris_ops::{OpError, Reason};
 use proptest::prelude::*;
 
 /// How far a projected point may be from the projection of the 3D point,

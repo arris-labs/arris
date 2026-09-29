@@ -8,13 +8,11 @@
 use arris_debug::fixtures::Tolerances;
 use arris_debug::oracle::compare_stl;
 use arris_debug::sample;
+use arris_debug::unmetered::{fillet, primitive_box};
 use arris_io::arris_mesh::tessellate;
 use arris_io::stl;
 use arris_ops::arris_check::arris_topo::arris_math::Point3;
 use arris_ops::arris_check::arris_topo::{Body, Edge, Model};
-use arris_ops::measure;
-use arris_ops::{fillet, primitive_box};
-
 fn filleted_box(m: &mut Model) -> Body {
     let (body, _) = primitive_box(m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
     let edge: Edge = m
@@ -40,7 +38,7 @@ fn filleted_box(m: &mut Model) -> Body {
 fn assert_stl_matches_the_oracle(m: &Model, body: Body, name: &str) {
     let tolerances = Tolerances::default();
     let mesh = tessellate(m, body, tolerances.mesh_chord).unwrap();
-    let mass = measure::mass_properties(m, body).unwrap();
+    let mass = arris_debug::unmetered::mass_properties(m, body).unwrap();
 
     let one = std::slice::from_ref(&mesh);
     for (variant, bytes) in [

@@ -60,11 +60,13 @@ into its version (ADR-0027).
   counter a caller can stop them through: pass `&mut Meter::default()` to
   run to the end. `GeomError` and `FitError` gain `Interrupted(Interrupted)`:
   a `match` over either needs an arm.
-- `arris_ops`'s `cut`, `fuse`, `common` and `interferences` take a
-  trailing `&arris_math::Control`, the poll and budget of steps a caller
-  stops them through: pass `&Control::NONE` to run to the end.
-  `OpError` gains `Interrupted(Interrupted)`: a `match` over it needs an
-  arm.
+- `arris_ops`'s `cut`, `fuse`, `common`, `interferences`, `extrude`,
+  `revolve`, `fillet`, `chamfer`, `transform`, `build`, `primitive_box`,
+  `primitive_cylinder` and `measure::mass_properties` take a trailing
+  `&arris_ops::Control` (also `arris_math::Control`), the poll and budget
+  of steps a caller stops them through: pass `&Control::NONE` to run to
+  the end. `OpError` gains `Interrupted(Interrupted)`: a `match` over it
+  needs an arm.
 
 ## 0.3.0 — 2026-09-26
 

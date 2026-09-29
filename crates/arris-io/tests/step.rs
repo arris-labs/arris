@@ -146,7 +146,7 @@ fn an_elliptic_cylinder_is_a_surface_of_linear_extrusion() {
         },
         holes: Vec::new(),
     };
-    let (body, _) = arris_ops::extrude(&mut m, &profile, Vec3::z(), 10.0).unwrap();
+    let (body, _) = arris_debug::unmetered::extrude(&mut m, &profile, Vec3::z(), 10.0).unwrap();
     let text = step::write(&m, &[body]).unwrap();
     assert_eq!(text.matches("SURFACE_OF_LINEAR_EXTRUSION(").count(), 1);
     assert!(

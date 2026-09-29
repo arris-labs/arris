@@ -15,7 +15,7 @@
 //! fixture corpus.
 
 use arris_check::arris_topo::arris_geom::integrate::{region_integral, surface_grid};
-use arris_check::arris_topo::arris_math::{Aabb, Matrix3, Point3, Vec3};
+use arris_check::arris_topo::arris_math::{Aabb, Control, Matrix3, Meter, Point3, Vec3};
 use arris_check::arris_topo::entity::{Body as BodyEntity, BodyKind};
 use arris_check::arris_topo::{Body, FaceId, Model, Shape};
 use arris_check::flux::{FluxError, face_flux};
@@ -59,10 +59,10 @@ impl MassProperties {
     /// let (body, _) = primitive_box(
     ///     &mut m,
     ///     Point3::new(-1.0, -1.0, -1.0),
-    ///     Point3::new(1.0, 1.0, 1.0),
+    ///     Point3::new(1.0, 1.0, 1.0), &arris_ops::Control::NONE,
     /// )
     /// .unwrap();
-    /// let p = measure::mass_properties(&m, body).unwrap();
+    /// let p = measure::mass_properties(&m, body, &arris_ops::Control::NONE).unwrap();
     /// // A cube of side 2: m d² / 6 about the centroid, and 8 · (1 + 1)
     /// // more about a corner.
     /// assert!((p.inertia[(0, 0)] - 8.0 * 4.0 / 6.0).abs() < 1e-12);
@@ -138,16 +138,21 @@ const SECOND: [Integrand; 6] = [
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
-/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 2.0, 5.0).unwrap();
-/// let p = mass_properties(&m, body).unwrap();
+/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 2.0, 5.0, &arris_ops::Control::NONE).unwrap();
+/// let p = mass_properties(&m, body, &arris_ops::Control::NONE).unwrap();
 /// let volume = PI * 4.0 * 5.0;
 /// assert!((p.volume - volume).abs() < 1e-12 * volume);
 /// assert!((p.centroid - Point3::new(0.0, 0.0, 2.5)).norm() < 1e-12);
 /// // About its own axis: m r² / 2.
 /// assert!((p.inertia[(2, 2)] - volume * 2.0).abs() < 1e-12 * volume);
 /// ```
-pub fn mass_properties(m: &Model, body: Body) -> Result<MassProperties, OpError> {
+pub fn mass_properties(
+    m: &Model,
+    body: Body,
+    control: &Control<'_>,
+) -> Result<MassProperties, OpError> {
     crate::verify_input(m, body)?;
+    let mut meter = Meter::new(control);
     let entity = m.body(body.id)?;
     if entity.kind() != BodyKind::Solid {
         return Err(OpError::Degenerate {
@@ -158,7 +163,7 @@ pub fn mass_properties(m: &Model, body: Body) -> Result<MassProperties, OpError>
     let faces = face_uses(m, body, entity)?;
 
     let reference = reference_point(m, body)?;
-    let first = integrate_faces(m, body, &faces, reference, &FIRST)?;
+    let first = integrate_faces(m, body, &faces, reference, &FIRST, &mut meter)?;
     let volume = first[0];
     if !(volume.is_finite() && volume > 0.0) {
         return Err(OpError::Degenerate {
@@ -170,7 +175,7 @@ pub fn mass_properties(m: &Model, body: Body) -> Result<MassProperties, OpError>
         });
     }
     let centroid = Point3::from(reference + Vec3::new(first[1], first[2], first[3]) / volume);
-    let second = integrate_faces(m, body, &faces, centroid.coords, &SECOND)?;
+    let second = integrate_faces(m, body, &faces, centroid.coords, &SECOND, &mut meter)?;
     // The physical tensor: the diagonal is `∫ (|r|² − x_i²) dV`, the
     // off-diagonal the negated products, symmetric by construction.
     let inertia = Matrix3::new(
@@ -186,7 +191,7 @@ pub fn mass_properties(m: &Model, body: Body) -> Result<MassProperties, OpError>
     );
     Ok(MassProperties {
         volume,
-        area: face_area(m, &faces)?,
+        area: face_area(m, &faces, &mut meter)?,
         centroid,
         inertia,
     })
@@ -243,9 +248,11 @@ fn integrate_faces<const N: usize>(
     faces: &[(FaceId, f64)],
     offset: Vec3,
     integrands: &[Integrand; N],
+    meter: &mut Meter<'_>,
 ) -> Result<[f64; N], OpError> {
     let mut totals = [0.0; N];
     for &(id, sign) in faces {
+        meter.tick()?;
         for (total, f) in totals.iter_mut().zip(integrands) {
             let flux = face_flux(m, id, |p, n| f(p.coords - offset, n)).map_err(|e| match e {
                 FluxError::NotFound(e) => OpError::from(e),
@@ -263,9 +270,10 @@ fn integrate_faces<const N: usize>(
 /// The total area of the faces: `∬ |∂P/∂u × ∂P/∂v| du dv` over each
 /// one's region. A surface integral, not a flux, so no orientation
 /// enters it.
-fn face_area(m: &Model, faces: &[(FaceId, f64)]) -> Result<f64, OpError> {
+fn face_area(m: &Model, faces: &[(FaceId, f64)], meter: &mut Meter<'_>) -> Result<f64, OpError> {
     let mut area = 0.0;
     for &(id, _) in faces {
+        meter.tick()?;
         let face = m.face(id)?;
         let surface = m.surface(face.surface())?;
         let grid = surface_grid(surface);
@@ -295,7 +303,7 @@ mod tests {
         let mut m = Model::default();
         let gone = SurfaceId::new(0, 0);
         let f = m.raw().add_face(Face::new(gone, Vec::new(), 1e-7));
-        match face_area(&m, &[(f, 1.0)]).unwrap_err() {
+        match face_area(&m, &[(f, 1.0)], &mut Meter::default()).unwrap_err() {
             OpError::NotFound(id) => assert_eq!(id, AnyId::from(gone)),
             other => panic!("{other:?}"),
         }
@@ -313,28 +321,23 @@ mod tests {
 
         use arris_check::arris_topo::arris_math::Axis;
 
-        use crate::{common, primitive_box, primitive_cylinder};
+        use crate::{Control, common, primitive_box, primitive_cylinder};
 
         let mut m = Model::default();
         let base = Point3::new(100.0, -80.0, 60.0);
         let axis = Axis::new(base, Vec3::new(0.3, 0.2, 1.0)).unwrap();
         let (radius, t) = (1.0, 3.0);
-        let (cylinder, _) = primitive_cylinder(&mut m, axis, radius, 6.0).unwrap();
+        let (cylinder, _) = primitive_cylinder(&mut m, axis, radius, 6.0, &Control::NONE).unwrap();
         let top = base.z + t * axis.direction.z;
         let (slab, _) = primitive_box(
             &mut m,
             base - Vec3::new(10.0, 10.0, 10.0),
             Point3::new(base.x + 10.0, base.y + 10.0, top),
+            &Control::NONE,
         )
         .unwrap();
-        let (below, _) = common(
-            &mut m,
-            cylinder,
-            slab,
-            &arris_check::arris_topo::arris_math::Control::NONE,
-        )
-        .unwrap();
-        let p = mass_properties(&m, below).unwrap();
+        let (below, _) = common(&mut m, cylinder, slab, &Control::NONE).unwrap();
+        let p = mass_properties(&m, below, &Control::NONE).unwrap();
         let volume = PI * radius * radius * t;
         assert!(
             (p.volume - volume).abs() < 1e-11 * volume,

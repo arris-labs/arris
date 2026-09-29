@@ -57,12 +57,16 @@ fn solids() -> Vec<Solid> {
             sample::sphere(m, Point3::new(1.0, -2.0, 0.5), 3.0).unwrap()
         }),
         ("primitive_box", |m| {
-            arris_ops::primitive_box(m, Point3::origin(), Point3::new(40.0, 30.0, 10.0))
-                .unwrap()
-                .0
+            arris_debug::unmetered::primitive_box(
+                m,
+                Point3::origin(),
+                Point3::new(40.0, 30.0, 10.0),
+            )
+            .unwrap()
+            .0
         }),
         ("primitive_cylinder", |m| {
-            arris_ops::primitive_cylinder(m, Axis::z_at(Point3::origin()), 4.0, 12.0)
+            arris_debug::unmetered::primitive_cylinder(m, Axis::z_at(Point3::origin()), 4.0, 12.0)
                 .unwrap()
                 .0
         }),
@@ -127,7 +131,7 @@ fn a_body_with_degenerate_edges_has_one_euler_line() {
             holes: Vec::new(),
         };
         let axis = Axis::z_at(Point3::origin());
-        let (body, _) = arris_ops::revolve(&mut m, &profile, axis, TAU).unwrap();
+        let (body, _) = arris_debug::unmetered::revolve(&mut m, &profile, axis, TAU).unwrap();
         (m, body)
     };
     let mut bodies: Vec<(String, Model, Body)> = Vec::new();
@@ -387,10 +391,11 @@ fn every_face_new_is_the_same_body_under_new_ids() {
 #[test]
 fn of_body_with_the_identity_remap_reproduces_a_multi_shell_boolean_result() {
     let mut m = Model::default();
-    let a = arris_ops::primitive_box(&mut m, Point3::origin(), Point3::new(1.0, 1.0, 1.0))
-        .unwrap()
-        .0;
-    let b = arris_ops::primitive_box(
+    let a =
+        arris_debug::unmetered::primitive_box(&mut m, Point3::origin(), Point3::new(1.0, 1.0, 1.0))
+            .unwrap()
+            .0;
+    let b = arris_debug::unmetered::primitive_box(
         &mut m,
         Point3::new(5.0, 0.0, 0.0),
         Point3::new(6.0, 1.0, 1.0),

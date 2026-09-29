@@ -1039,9 +1039,11 @@ mod tests {
 
         let mut m = Model::default();
         let (cuboid, _) =
-            arris_ops::primitive_box(&mut m, Point3::origin(), Point3::new(4.0, 3.0, 2.0)).unwrap();
+            crate::unmetered::primitive_box(&mut m, Point3::origin(), Point3::new(4.0, 3.0, 2.0))
+                .unwrap();
         let (cylinder, _) =
-            arris_ops::primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 2.0, 5.0).unwrap();
+            crate::unmetered::primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 2.0, 5.0)
+                .unwrap();
         assert_eq!(removable_vertices(&m, cuboid), 0);
         assert_eq!(removable_vertices(&m, cylinder), 0);
     }

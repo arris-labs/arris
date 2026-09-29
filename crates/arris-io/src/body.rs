@@ -140,11 +140,11 @@ impl Imported {
     /// ```
     /// use arris_io::arris_check::arris_topo::{IdMap, Model};
     /// use arris_io::body;
-    /// use arris_ops::primitive_box;
+    /// use arris_ops::{Control, primitive_box};
     ///
     /// let mut a = Model::default();
     /// arris_debug::sample::unit_box(&mut a).unwrap(); // so the next ids are not dense
-    /// let (cube, record) = primitive_box(&mut a, [0.0; 3], [1.0; 3]).unwrap();
+    /// let (cube, record) = primitive_box(&mut a, [0.0; 3], [1.0; 3], &Control::NONE).unwrap();
     /// let bytes = body::write(&a, cube, &record).unwrap();
     ///
     /// let mut b = Model::default();

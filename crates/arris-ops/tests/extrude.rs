@@ -10,6 +10,7 @@
 //! round hole against the cut of a cylinder from the polygon's extrusion
 //! at two hundred poses; and every refusal with the model untouched.
 
+use arris_debug::unmetered::{extrude, mass_properties, primitive_cylinder};
 use std::collections::BTreeSet;
 
 use arris_debug::prop::profile::{PROFILE_RADIUS, Sweep};
@@ -21,12 +22,12 @@ use arris_mesh::tessellate;
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Profile, ProfileError, ProfileLoop, ProfileSegment, Surface,
 };
+
 use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Tolerance, Vec2, Vec3};
 use arris_ops::arris_check::arris_topo::provenance::SweepPart;
 use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role};
 use arris_ops::arris_check::{Level, check};
-use arris_ops::measure::mass_properties;
-use arris_ops::{OpError, Reason, extrude, primitive_cylinder};
+use arris_ops::{OpError, Reason};
 use core::f64::consts::TAU;
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngAlgorithm, TestRng, TestRunner};

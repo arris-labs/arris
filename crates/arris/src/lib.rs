@@ -7,13 +7,14 @@
 //! (`docs/ARCHITECTURE.md`).
 //!
 //! ```
-//! use arris::math::{Axis, Point3};
+//! use arris::math::{Axis, Control, Point3};
 //! use arris::topo::Model;
 //! use arris::check::{Level, check};
 //!
 //! let mut m = Model::default();
 //! let (cylinder, provenance) =
-//!     arris::ops::primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0).unwrap();
+//!     arris::ops::primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &Control::NONE)
+//!         .unwrap();
 //! assert!(check(&m, cylinder, Level::Full).is_ok());
 //! assert_eq!(provenance.outputs().len(), 10);
 //! let text = arris::io::step::write(&m, &[cylinder]).unwrap();

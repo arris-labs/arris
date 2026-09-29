@@ -16,8 +16,15 @@
 //! profile and refused with [`OpError::Rejected`]. The
 //! `paranoid` feature runs the same check in release builds and returns
 //! [`OpError::Internal`] instead. The `parallel` feature reserves `rayon`
-//! inside an operation. Depends on `arris-check` and below, re-exported
-//! here.
+//! inside an operation.
+//!
+//! Every operation on a model, and `measure::mass_properties` beside
+//! them, takes a trailing [`Control`]: a poll the caller answers from
+//! whatever its platform has and a budget of steps, [`Control::NONE`]
+//! for neither. A stop is [`OpError::Interrupted`] — the model as it was,
+//! ids included — and the same input and budget stop at the same step on
+//! every platform and with `parallel` on or off (ADR-0030). Depends on
+//! `arris-check` and below, re-exported here.
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -34,6 +41,7 @@ mod sweep;
 mod transform;
 
 pub use arris_check;
+pub use arris_check::arris_topo::arris_math::{Control, Interrupted, Stop};
 
 pub use blend::{chamfer, fillet};
 pub use boolean::{common, cut, fuse};

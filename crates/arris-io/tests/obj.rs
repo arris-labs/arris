@@ -10,6 +10,7 @@
 //! triangles by face id in iteration order; a mesh with no corner block
 //! writes `v`/`f`/`g` and no `vt`/`vn`; two writes are byte-identical.
 
+use arris_debug::unmetered::{fillet, primitive_box};
 use std::ops::Range;
 
 use arris_debug::sample;
@@ -18,8 +19,6 @@ use arris_io::arris_mesh::{MeshRequest, TriMesh, tessellate, tessellate_with};
 use arris_io::obj;
 use arris_ops::arris_check::arris_topo::Edge;
 use arris_ops::arris_check::arris_topo::arris_math::{Point3, Vec3};
-use arris_ops::{fillet, primitive_box};
-
 /// Rounding at the scale of a coordinate.
 const EXACT: f64 = 1e-9;
 

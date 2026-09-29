@@ -77,7 +77,7 @@ pub enum Projection {
 /// use core::f64::consts::FRAC_1_SQRT_2;
 ///
 /// let mut m = Model::default();
-/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 1.0, 2.0).unwrap();
+/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 1.0, 2.0, &arris_ops::Control::NONE).unwrap();
 /// let is_circle = |id| {
 ///     let (curve, _) = m.edge(id).unwrap().curve().unwrap();
 ///     matches!(m.curve(curve).unwrap(), Curve::Circle { .. })
@@ -218,7 +218,7 @@ fn carried_range(
 ///
 /// let mut m = Model::default();
 /// let (body, _) =
-///     primitive_box(&mut m, Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, 1.0, 1.0)).unwrap();
+///     primitive_box(&mut m, Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, 1.0, 1.0), &arris_ops::Control::NONE).unwrap();
 /// let top = m
 ///     .faces(body)
 ///     .unwrap()
@@ -275,7 +275,7 @@ pub fn face_frame(m: &Model, face: Face) -> Result<Frame, OpError> {
 /// use core::f64::consts::FRAC_PI_2;
 ///
 /// let mut m = Model::default();
-/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 1.0, 2.0).unwrap();
+/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 1.0, 2.0, &arris_ops::Control::NONE).unwrap();
 /// let wall = m
 ///     .faces(body)
 ///     .unwrap()

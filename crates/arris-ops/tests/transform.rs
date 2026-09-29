@@ -4,12 +4,11 @@
 //! vertex, mass properties are covariant, and two runs are identical.
 
 use arris_debug::testing::entities_of;
+use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder, transform};
 use arris_debug::{dump_text, prop};
 use arris_ops::arris_check::arris_topo::arris_math::{Axis, Isometry, Point3};
 use arris_ops::arris_check::arris_topo::{Body, Model};
 use arris_ops::arris_check::{Level, check};
-use arris_ops::measure::mass_properties;
-use arris_ops::{primitive_cylinder, transform};
 use proptest::prelude::*;
 
 fn the_cylinder(m: &mut Model) -> Body {
@@ -38,8 +37,6 @@ fn a_pose() -> Isometry {
 fn a_body_of_two_shells_moves_shell_by_shell() {
     use arris_ops::arris_check::arris_topo::builder::{Assembly, Builder, FaceSpec};
     use arris_ops::arris_check::arris_topo::entity::BodyKind;
-    use arris_ops::primitive_box;
-
     let mut m = Model::default();
     let (a, _) = primitive_box(&mut m, Point3::origin(), Point3::new(1.0, 1.0, 1.0)).unwrap();
     let (b, _) = primitive_box(

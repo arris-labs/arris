@@ -8,13 +8,12 @@
 
 use arris_debug::fixtures::Tolerances;
 use arris_debug::prop_shards;
+use arris_debug::unmetered::{fillet, mass_properties, primitive_box, transform};
 use arris_debug::{prop, sample};
 use arris_mesh::tessellate;
 use arris_ops::arris_check::arris_topo::arris_math::{Isometry, Matrix3, Point3, Vec3};
 use arris_ops::arris_check::arris_topo::{Body, Edge, Model};
-use arris_ops::measure::{MassProperties, mass_properties};
-use arris_ops::{fillet, primitive_box, transform};
-
+use arris_ops::measure::MassProperties;
 /// A named sample body, built fresh in the model it is asked for.
 type Sample = (&'static str, fn(&mut Model) -> Body);
 

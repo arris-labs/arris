@@ -4,6 +4,7 @@
 //! parallel-axis theorem against a direct integral, and the typed errors
 //! for a body that is not a solid and one that fails the checker.
 
+use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder};
 use core::f64::consts::PI;
 
 use arris_debug::testing::close_to;
@@ -12,10 +13,11 @@ use arris_ops::arris_check::arris_topo::arris_geom::Surface;
 use arris_ops::arris_check::arris_topo::arris_math::{
     Axis, Frame, Interval, Matrix3, Point2, Point3, Vec3,
 };
+
 use arris_ops::arris_check::arris_topo::entity::Body as BodyEntity;
 use arris_ops::arris_check::arris_topo::{Body, Model, Shell as ShellHandle, ShellId};
-use arris_ops::measure::{MassProperties, mass_properties};
-use arris_ops::{OpError, Reason, primitive_box, primitive_cylinder};
+use arris_ops::measure::MassProperties;
+use arris_ops::{OpError, Reason};
 use proptest::prelude::*;
 
 /// [`arris_debug::testing::close_to`] at a floor of `1.0`.

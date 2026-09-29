@@ -155,7 +155,7 @@ bound has to be established here.
   `parallel` on and off; a budget of `k < N` returns `Interrupted {
   steps }` at the same `k` both ways with the model's native bytes equal
   before and after; a budget of `N` gives the unbudgeted dump.
-- [ ] Step 4 **[2]** — every other operation: sweeps, blends,
+- [x] Step 4 **[2]** — every other operation: sweeps, blends,
   primitives, `transform`, `build`, the rebuild entry points and
   `mass_properties` take `&Control` and tick at their sites; each
   refusing one returns `Interrupted` with the model unchanged, tested on
@@ -236,4 +236,9 @@ bound has to be established here.
   `crates/arris-ops/tests/cancel_counts.txt`, one record both builds are
   held to (`ARRIS_BLESS=1` rewrites it). Tests import the operations
   from `arris_debug::unmetered` (each op with `Control::NONE`), which
-  steps 4–6 extend.
+  steps 4–6 extend. Step 4 added `corpus::Inputs::run_result` (the
+  result step under a `Control`), put a polyhedron fixture's staging and
+  `build` in one transaction so an interrupt leaves no staged geometry,
+  and re-exports `Control`, `Interrupted` and `Stop` from `arris_ops`.
+  `rebuild::rewrite` takes no meter: its callers tick per stripe, corner
+  and face; `transform` ticks per face, a primitive once.

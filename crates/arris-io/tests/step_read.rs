@@ -444,7 +444,7 @@ END-ISO-10303-21;
     // The base circle, the seam the face needs from its vertex to the
     // apex, and the apex's degenerate edge.
     assert_eq!((closure.faces.len(), closure.edges.len()), (2, 3));
-    let props = arris_ops::measure::mass_properties(&m, back.body).unwrap();
+    let props = arris_debug::unmetered::mass_properties(&m, back.body).unwrap();
     let volume = std::f64::consts::PI * 16.0 * 12.0 / 3.0;
     assert!((props.volume - volume).abs() < 1e-9 * volume, "{props:?}");
     assert!((props.centroid.z + 3.0).abs() < 1e-9, "{props:?}");
@@ -497,7 +497,7 @@ END-ISO-10303-21;
     let report = check(&m, back.body, Level::Full);
     assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
     assert_eq!(degenerate_edges(&m, back.body), Ok(1));
-    let props = arris_ops::measure::mass_properties(&m, back.body).unwrap();
+    let props = arris_debug::unmetered::mass_properties(&m, back.body).unwrap();
     let volume = 2.0 / 3.0 * std::f64::consts::PI * 64.0;
     assert!((props.volume - volume).abs() < 1e-9 * volume, "{props:?}");
     assert!((props.centroid.z - 1.5).abs() < 1e-9, "{props:?}");
@@ -636,7 +636,7 @@ fn an_assembly_reads_to_a_body_per_placed_solid() {
         let back = solid.result.as_ref().unwrap_or_else(|r| panic!("{r}"));
         let report = check(&m, back.body, Level::Full);
         assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
-        let mass = arris_ops::measure::mass_properties(&m, back.body).unwrap();
+        let mass = arris_debug::unmetered::mass_properties(&m, back.body).unwrap();
         assert!(
             (mass.volume - oracle.volume).abs() <= 1e-9 * oracle.volume,
             "{:?}: volume {} vs {}",
