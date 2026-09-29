@@ -3,6 +3,7 @@
 //! writer leaves out — rebuilt, and a volume, area and centroid within
 //! its tolerances, its provenance naming the file entity of every entity.
 
+use arris_debug::unmetered::step_read;
 use std::collections::BTreeMap;
 
 use arris_debug::corpus::{self, Chain, Made};
@@ -47,7 +48,7 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
     let degenerate = degenerate_edges(&chain.model, body)?;
     let text = step::write(&chain.model, &[body]).map_err(|e| e.to_string())?;
     let mut model = Model::new(chain.model.precision()).map_err(|e| e.to_string())?;
-    let read = step::read(&mut model, &text, &ReadOptions::default()).map_err(|e| e.to_string())?;
+    let read = step_read(&mut model, &text, &ReadOptions::default()).map_err(|e| e.to_string())?;
     // The writer writes a solid per lump (ADR-0006), and the oracle
     // counts them so.
     let lumps = arris_io::arris_check::lumps(&chain.model, body)
@@ -269,7 +270,7 @@ fn a_read_is_deterministic() {
     let dumps: Vec<String> = (0..2)
         .map(|_| {
             let mut m = Model::default();
-            let read = step::read(&mut m, &text, &ReadOptions::default()).unwrap();
+            let read = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
             let body = read.solids[0].result.as_ref().unwrap().body;
             arris_debug::dump_text(&m, body).unwrap()
         })
@@ -287,15 +288,15 @@ fn a_loop_that_does_not_close_is_refused() {
     let flag = at + text[at..].find(".T.").unwrap();
     let broken = format!("{}.F.{}", &text[..flag], &text[flag + 3..]);
     let mut m = Model::default();
-    let read = step::read(&mut m, &broken, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &broken, &ReadOptions::default()).unwrap();
     let refusal = read.solids[0].result.as_ref().unwrap_err();
     assert_eq!(refusal.kind(), step::RefusalKind::Topology, "{refusal}");
     assert_eq!(refusal.entity(), read.solids[0].entity.id);
     // Nothing was left behind: the next read gets the ids a fresh model
     // gives.
-    let again = step::read(&mut m, &text, &ReadOptions::default()).unwrap();
+    let again = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
     let mut fresh = Model::default();
-    let first = step::read(&mut fresh, &text, &ReadOptions::default()).unwrap();
+    let first = step_read(&mut fresh, &text, &ReadOptions::default()).unwrap();
     assert_eq!(
         again.solids[0].result.as_ref().unwrap().body,
         first.solids[0].result.as_ref().unwrap().body
@@ -311,7 +312,7 @@ fn a_faceted_brep_is_refused_beside_the_solid() {
         "#90000 = FACETED_BREP('',#90001);\n#90001 = CLOSED_SHELL('',());\nENDSEC;\nEND-ISO-10303-21;",
     );
     let mut m = Model::default();
-    let read = step::read(&mut m, &text, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
     assert_eq!(read.solids.len(), 2);
     assert!(
         read.solids[0].result.is_ok(),
@@ -337,7 +338,7 @@ fn a_tessellated_solid_is_refused_beside_the_solid() {
         "#90000 = TESSELLATED_SOLID('',(#90001),$);\n#90001 = COMPLEX_TRIANGULATED_FACE('',#90002,3,(),$,(1,2,3),(),((1,2,3)));\n#90002 = COORDINATES_LIST('',3,((0.,0.,0.),(1.,0.,0.),(0.,1.,0.)));\nENDSEC;\nEND-ISO-10303-21;",
     );
     let mut m = Model::default();
-    let read = step::read(&mut m, &text, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
     assert_eq!(read.solids.len(), 2);
     let refusal = read.solids[1].result.as_ref().unwrap_err();
     assert_eq!(refusal.kind(), step::RefusalKind::Unsupported);
@@ -352,7 +353,7 @@ fn a_tessellated_solid_is_refused_beside_the_solid() {
 #[test]
 fn a_parse_error_fails_the_file() {
     let mut m = Model::default();
-    let err = step::read(&mut m, "ISO-10303-21;\nHEADER;", &ReadOptions::default()).unwrap_err();
+    let err = step_read(&mut m, "ISO-10303-21;\nHEADER;", &ReadOptions::default()).unwrap_err();
     assert!(matches!(err, step::ReadError::Parse(_)), "{err}");
 }
 
@@ -367,7 +368,7 @@ fn a_seam_moved_off_its_vertices_is_a_gap() {
     assert!(text.contains(seam_point));
     let broken = text.replace(seam_point, "#62 = CARTESIAN_POINT('',(-4.,0.,0.));");
     let mut m = Model::default();
-    let read = step::read(&mut m, &broken, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &broken, &ReadOptions::default()).unwrap();
     let refusal = read.solids[0].result.as_ref().unwrap_err();
     assert_eq!(
         refusal,
@@ -435,7 +436,7 @@ END-ISO-10303-21;
         (1.0f64 / 3.0).atan()
     );
     let mut m = Model::default();
-    let read = step::read(&mut m, &cone, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &cone, &ReadOptions::default()).unwrap();
     let back = read.solids[0].result.as_ref().unwrap();
     let report = check(&m, back.body, Level::Full);
     assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
@@ -492,7 +493,7 @@ END-ISO-10303-21;
 "
     );
     let mut m = Model::default();
-    let read = step::read(&mut m, &dome, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &dome, &ReadOptions::default()).unwrap();
     let back = read.solids[0].result.as_ref().unwrap();
     let report = check(&m, back.body, Level::Full);
     assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
@@ -509,7 +510,7 @@ fn perturbed(from: &str, to: &str) -> (Model, Result<ReadBody, step::Refusal>) {
     let text = cylinder_step();
     assert!(text.contains(from), "{from}");
     let mut m = Model::default();
-    let read = step::read(&mut m, &text.replace(from, to), &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &text.replace(from, to), &ReadOptions::default()).unwrap();
     let result = read.solids[0].result.clone();
     (m, result)
 }
@@ -620,7 +621,7 @@ fn an_assembly_reads_to_a_body_per_placed_solid() {
     )
     .unwrap();
     let mut m = Model::default();
-    let read = step::read(&mut m, &text, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
     assert_eq!(read.solids.len(), 3);
     let instances: Vec<(u64, u32)> = read
         .solids
@@ -660,7 +661,7 @@ fn an_assembly_reads_to_a_body_per_placed_solid() {
     let dumps: Vec<String> = (0..2)
         .map(|_| {
             let mut m = Model::default();
-            let read = step::read(&mut m, &text, &ReadOptions::default()).unwrap();
+            let read = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
             read.solids
                 .iter()
                 .map(|s| arris_debug::dump_text(&m, s.result.as_ref().unwrap().body).unwrap())
@@ -723,7 +724,7 @@ fn a_refused_solid_does_not_hide_the_others() {
             &format!("#999999 = OFFSET_SURFACE('',{wall},0.5,.F.);\nENDSEC;\nEND-ISO-10303-21;"),
         );
     let mut back = Model::default();
-    let read = step::read(&mut back, &spoiled, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut back, &spoiled, &ReadOptions::default()).unwrap();
     assert_eq!(read.solids.len(), 2);
     let results: Vec<_> = read.solids.iter().map(|s| s.result.as_ref()).collect();
     let refused: Vec<_> = results.iter().filter_map(|r| r.err()).collect();

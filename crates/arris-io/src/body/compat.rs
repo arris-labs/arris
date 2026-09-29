@@ -101,6 +101,7 @@ mod tests {
     use super::super::{self as body, BODY_MAGIC, Imported, dense};
     use super::v0;
     use crate::native;
+    use arris_check::arris_topo::arris_math::Control;
     use arris_check::arris_topo::{Model, Provenance};
     use arris_debug::unmetered::primitive_box;
 
@@ -150,18 +151,18 @@ mod tests {
             let (old_bytes, old_text) = version_0(old);
             let new_bytes = body::write(&m, b, &new).unwrap();
             let new_text = body::to_json(&m, b, &new).unwrap();
-            let (m1, v1) = into_fresh(|t| body::read(t, &new_bytes));
+            let (m1, v1) = into_fresh(|t| body::read(t, &new_bytes, &Control::NONE));
             assert_eq!(v1.version, 1);
             let expected = native::to_bytes(&m1).unwrap();
             for (m0, v0) in [
-                into_fresh(|t| body::read(t, &old_bytes)),
-                into_fresh(|t| body::from_json(t, &old_text)),
-                into_fresh(|t| body::from_json(t, &new_text)),
+                into_fresh(|t| body::read(t, &old_bytes, &Control::NONE)),
+                into_fresh(|t| body::from_json(t, &old_text, &Control::NONE)),
+                into_fresh(|t| body::from_json(t, &new_text, &Control::NONE)),
             ] {
                 assert_eq!(native::to_bytes(&m0).unwrap(), expected);
                 assert_eq!(Imported { version: 1, ..v0 }, v1);
             }
-            let (_, from_old) = into_fresh(|t| body::read(t, &old_bytes));
+            let (_, from_old) = into_fresh(|t| body::read(t, &old_bytes, &Control::NONE));
             assert_eq!(from_old.version, 0, "the version the data carried");
         }
     }

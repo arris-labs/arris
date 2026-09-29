@@ -14,6 +14,7 @@ use arris_debug::corpus::within_own_tolerance;
 use arris_debug::fixtures::Tolerances;
 use arris_debug::prop::body::{QuadricPair, QuadricSolid};
 use arris_debug::testing::{REL, fail};
+use arris_debug::unmetered::step_read;
 use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::unmetered::{mass_properties, transform};
 use arris_debug::{prop, prop_shards};
@@ -164,7 +165,7 @@ fn round_trip(shape: &Shape, probes: &[[f64; 3]]) -> Result<(), TestCaseError> {
     let text = step::write(&m, &[body]).map_err(fail)?;
 
     let mut back = Model::new(m.precision()).map_err(fail)?;
-    let read = step::read(&mut back, &text, &ReadOptions::default()).map_err(fail)?;
+    let read = step_read(&mut back, &text, &ReadOptions::default()).map_err(fail)?;
     let mut bodies = Vec::new();
     for solid in &read.solids {
         let read = solid

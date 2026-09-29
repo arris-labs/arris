@@ -20,12 +20,14 @@ use core::fmt;
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::Report;
+use arris_check::arris_topo::arris_math::{Control, Interrupted, Meter};
 use arris_check::arris_topo::provenance::FileEntity;
 use arris_check::arris_topo::{Body, Model, Provenance};
 
 use super::part21::{self, Part21Error};
 use entities::Entities;
 use geometry::Geometry;
+use topology::Halt;
 use units::Units;
 
 /// How the reader reads a file: the unit the caller's model is in.
@@ -410,6 +412,18 @@ pub enum ReadError {
     /// The text does not parse, at the line and column named.
     #[error(transparent)]
     Parse(#[from] Part21Error),
+    /// The caller's poll or budget stopped the read (ADR-0030). Unlike a
+    /// refusal, which is one solid's, an interrupt is the whole call's:
+    /// the model is as it was before it, the solids already read
+    /// included.
+    #[error("{0}")]
+    Interrupted(Interrupted),
+}
+
+impl From<Interrupted> for ReadError {
+    fn from(stop: Interrupted) -> Self {
+        ReadError::Interrupted(stop)
+    }
 }
 
 /// What [`read`] returns: one result per solid of the file.
@@ -478,12 +492,17 @@ const SUPPLEMENTAL: &str = "CONSTRUCTIVE_GEOMETRY_REPRESENTATION";
 /// the same text reads to the same entities with the same ids.
 ///
 /// Errors: [`ReadError::Parse`] when the text is not a Part 21 exchange
-/// structure — the only failure of the whole file.
+/// structure — the only failure of the file's own — and
+/// [`ReadError::Interrupted`] when `control`'s poll or budget stops the
+/// call (a step is a solid placement, a file edge or face, a pcurve
+/// fitted; ADR-0030), which leaves `model` as it was, the solids already
+/// read dropped with it.
 ///
 /// ```
 /// use arris_io::step::{self, ReadOptions};
 /// use arris_io::arris_check::{check, Level};
 /// use arris_io::arris_check::arris_topo::Model;
+/// use arris_io::arris_check::arris_topo::arris_math::Control;
 /// use arris_debug::sample;
 ///
 /// let mut m = Model::default();
@@ -491,15 +510,32 @@ const SUPPLEMENTAL: &str = "CONSTRUCTIVE_GEOMETRY_REPRESENTATION";
 /// let text = step::write(&m, &[body])?;
 ///
 /// let mut back = Model::default();
-/// let read = step::read(&mut back, &text, &ReadOptions::default())?;
+/// let read = step::read(&mut back, &text, &ReadOptions::default(), &Control::NONE)?;
 /// assert_eq!(read.solids.len(), 1);
 /// let solid = read.solids[0].result.as_ref().unwrap();
 /// assert!(check(&back, solid.body, Level::Full).is_ok());
 /// assert_eq!(back.faces(solid.body)?.len(), 3);
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-pub fn read(model: &mut Model, text: &str, options: &ReadOptions) -> Result<Read, ReadError> {
+pub fn read(
+    model: &mut Model,
+    text: &str,
+    options: &ReadOptions,
+    control: &Control<'_>,
+) -> Result<Read, ReadError> {
     let exchange = part21::parse(text)?;
+    let mut meter = Meter::new(control);
+    model.transaction(|model| read_solids(model, &exchange, options, &mut meter))
+}
+
+/// [`read`] past the parse, inside the one transaction an interrupt rolls
+/// back.
+fn read_solids(
+    model: &mut Model,
+    exchange: &part21::Exchange,
+    options: &ReadOptions,
+    meter: &mut Meter<'_>,
+) -> Result<Read, ReadError> {
     let entities = Entities::new(&exchange.instances);
     // The solids, and what stands where a solid would and is refused.
     let mut solids: BTreeSet<u64> = BTreeSet::new();
@@ -551,6 +587,7 @@ pub fn read(model: &mut Model, text: &str, options: &ReadOptions) -> Result<Read
     let placed = assembly::placements(&exchange.instances, &entities, &solids, &mut units_of);
     let mut out = Vec::with_capacity(placed.len());
     for p in placed {
+        meter.tick()?;
         let entity = FileEntity {
             id: p.solid,
             instance: p.instance,
@@ -581,15 +618,19 @@ pub fn read(model: &mut Model, text: &str, options: &ReadOptions) -> Result<Read
                     "no representation holds the solid, so it has no units",
                 )),
                 (Some(Err(r)), _) | (Some(Ok(_)), Err(r)) => Err(r),
-                (Some(Ok(units)), Ok(motion)) => Geometry {
+                (Some(Ok(units)), Ok(motion)) => match (Geometry {
                     entities,
                     units: units.placed(motion),
                 }
-                .solid(model, p.solid, p.instance)
-                .map(|s| ReadBody {
-                    body: s.body,
-                    provenance: s.provenance,
-                }),
+                .solid(model, p.solid, p.instance, meter))
+                {
+                    Ok(s) => Ok(ReadBody {
+                        body: s.body,
+                        provenance: s.provenance,
+                    }),
+                    Err(Halt::Refused(refusal)) => Err(refusal),
+                    Err(Halt::Interrupted(stop)) => return Err(stop.into()),
+                },
             }
         };
         out.push(ReadSolid {

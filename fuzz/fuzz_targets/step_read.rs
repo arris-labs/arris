@@ -6,6 +6,7 @@
 #![no_main]
 
 use arris_io::arris_check::arris_topo::Model;
+use arris_io::arris_check::arris_topo::arris_math::Control;
 use arris_io::step::{self, ReadError, ReadOptions};
 use libfuzzer_sys::fuzz_target;
 
@@ -15,7 +16,7 @@ fuzz_target!(|data: &[u8]| {
     let text = String::from_utf8_lossy(data);
     let read = |text: &str| {
         let mut model = Model::default();
-        step::read(&mut model, text, &ReadOptions::default())
+        step::read(&mut model, text, &ReadOptions::default(), &Control::NONE)
     };
     let first = read(&text);
     let second = read(&text);

@@ -143,6 +143,8 @@ impl Stage {
 pub fn blocks_parse(error: &ReadError) -> Cycle {
     match error {
         ReadError::Parse(_) => Cycle::Itself("unparsed"),
+        // The caller's stop, not the file's: the corpus runs to its end.
+        ReadError::Interrupted(_) => Cycle::Itself("interrupted"),
     }
 }
 

@@ -73,6 +73,12 @@ into its version (ADR-0027).
   `cdt::triangulate_metered` is `cdt::triangulate` under a `Meter`, and
   `CdtError` gains `Interrupted(Interrupted)`: a `match` over any of the
   three needs an arm.
+- `arris_io`'s `step::read`, `body::read` and `body::from_json` take a
+  trailing `&Control` (`&Control::NONE` runs to the end). A stop is
+  `ReadError::Interrupted` or `BodyError::Interrupted`, and the model is
+  as it was: `step::read` is one transaction, so an interrupt drops the
+  solids already read rather than returning a partial `Read`. Both error
+  enums gain the variant: a `match` over either needs an arm.
 
 ## 0.3.0 — 2026-09-26
 

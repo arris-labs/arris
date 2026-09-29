@@ -9,6 +9,7 @@
 #[path = "body/guard.rs"]
 mod guard;
 
+use arris_debug::unmetered::{body_from_json, body_read};
 use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder};
 use std::collections::BTreeSet;
 
@@ -108,9 +109,9 @@ fn both_read(c: &Case, target: &Model) -> [(Model, Imported); 2] {
     let bytes = body::write(&c.model, c.body, &c.record).unwrap();
     let text = body::to_json(&c.model, c.body, &c.record).unwrap();
     let mut a = target.clone();
-    let from_bytes = body::read(&mut a, &bytes).unwrap();
+    let from_bytes = body_read(&mut a, &bytes).unwrap();
     let mut b = target.clone();
-    let from_text = body::from_json(&mut b, &text).unwrap();
+    let from_text = body_from_json(&mut b, &text).unwrap();
     [(a, from_bytes), (b, from_text)]
 }
 
@@ -203,10 +204,10 @@ fn the_same_body_is_the_same_dense_model_from_a_model_full_of_holes() {
     // And both read to the same body with the same record in the reader's
     // ids.
     let mut ra = Model::default();
-    let from_holey = body::read(&mut ra, &body::write(&holey, cyl, &record).unwrap()).unwrap();
+    let from_holey = body_read(&mut ra, &body::write(&holey, cyl, &record).unwrap()).unwrap();
     let mut rb = Model::default();
     let from_dense =
-        body::read(&mut rb, &body::write(&dense, copy, &dense_record).unwrap()).unwrap();
+        body_read(&mut rb, &body::write(&dense, copy, &dense_record).unwrap()).unwrap();
     assert_eq!(
         dump_text(&ra, from_holey.body).unwrap(),
         dump_text(&rb, from_dense.body).unwrap()
@@ -242,16 +243,16 @@ fn a_native_model_is_not_body_bytes() {
     let mut b = Model::default();
     let before = native::to_bytes(&b).unwrap();
     assert_eq!(
-        body::read(&mut b, &native::to_bytes(&a).unwrap()),
+        body_read(&mut b, &native::to_bytes(&a).unwrap()),
         Err(BodyError::Magic)
     );
     assert_eq!(
-        body::from_json(&mut b, &native::to_json(&a).unwrap()),
+        body_from_json(&mut b, &native::to_json(&a).unwrap()),
         Err(BodyError::Magic)
     );
-    assert_eq!(body::read(&mut b, b""), Err(BodyError::Magic));
+    assert_eq!(body_read(&mut b, b""), Err(BodyError::Magic));
     assert!(matches!(
-        body::from_json(&mut b, "not json"),
+        body_from_json(&mut b, "not json"),
         Err(BodyError::Decode(_))
     ));
     assert_eq!(native::to_bytes(&b).unwrap(), before, "nothing appended");
@@ -276,7 +277,7 @@ fn box_tree() -> serde_json::Value {
 fn refusal_of_json(text: &str) -> BodyError {
     let mut m = target();
     let before = native::to_bytes(&m).unwrap();
-    let e = body::from_json(&mut m, text).unwrap_err();
+    let e = body_from_json(&mut m, text).unwrap_err();
     assert_eq!(
         native::to_bytes(&m).unwrap(),
         before,
@@ -289,7 +290,7 @@ fn refusal_of_json(text: &str) -> BodyError {
 fn refusal_of_bytes(bytes: &[u8]) -> BodyError {
     let mut m = target();
     let before = native::to_bytes(&m).unwrap();
-    let e = body::read(&mut m, bytes).unwrap_err();
+    let e = body_read(&mut m, bytes).unwrap_err();
     assert_eq!(
         native::to_bytes(&m).unwrap(),
         before,
@@ -347,7 +348,7 @@ fn read_under(p: Precision) -> Result<Imported, BodyError> {
     let bytes = body::write(&w, b, &Provenance::default()).unwrap();
     let mut m = target();
     let before = native::to_bytes(&m).unwrap();
-    let r = body::read(&mut m, &bytes);
+    let r = body_read(&mut m, &bytes);
     if r.is_err() {
         assert_eq!(native::to_bytes(&m).unwrap(), before);
     }
@@ -449,7 +450,7 @@ fn a_plugins_cut_comes_back_with_its_record_in_the_senders_ids() {
     let mut here = a.clone();
     let (a_cut, a_record) = cut(&mut here, frame, bar).unwrap();
 
-    let read = body::read(&mut a, &bytes).unwrap();
+    let read = body_read(&mut a, &bytes).unwrap();
     let back = union(frame_map.inverse(), &bar_map.inverse());
     let operands: BTreeSet<EntityId> = entities(&a, frame)
         .union(&entities(&a, bar))
@@ -562,7 +563,7 @@ arris_debug::prop_shards! {
         sample::cylinder(&mut populated, 2.0, 3.0).map_err(fail)?;
         for target in [Model::default(), populated] {
             let mut t = target.clone();
-            let read = body::read(&mut t, &bytes).map_err(fail)?;
+            let read = body_read(&mut t, &bytes).map_err(fail)?;
             let report = check(&t, read.body, Level::Full);
             prop_assert!(report.is_ok(), "{}", report);
             let c = t.closure(read.body).map_err(fail)?;
@@ -575,7 +576,7 @@ arris_debug::prop_shards! {
             prop_assert_eq!(read.translated(&IdMap::default()), record.mapped(&read.map));
 
             let mut u = target.clone();
-            let from_text = body::from_json(&mut u, &text).map_err(fail)?;
+            let from_text = body_from_json(&mut u, &text).map_err(fail)?;
             prop_assert_eq!(&from_text, &read);
 
             // Re-written from where it was read, the same body; its ids
@@ -586,11 +587,11 @@ arris_debug::prop_shards! {
             prop_assert_eq!(dense_part(&again)?, dense_part(&text)?);
             let rewritten = body::write(&t, read.body, &mine).map_err(fail)?;
             let mut fresh = Model::default();
-            let back = body::read(&mut fresh, &rewritten).map_err(fail)?;
+            let back = body_read(&mut fresh, &rewritten).map_err(fail)?;
             let twice = body::write(&fresh, back.body, &back.translated(&IdMap::default()))
                 .map_err(fail)?;
             let mut fresh2 = Model::default();
-            let back2 = body::read(&mut fresh2, &twice).map_err(fail)?;
+            let back2 = body_read(&mut fresh2, &twice).map_err(fail)?;
             let thrice = body::write(&fresh2, back2.body, &back2.translated(&IdMap::default()))
                 .map_err(fail)?;
             prop_assert_eq!(twice, thrice);

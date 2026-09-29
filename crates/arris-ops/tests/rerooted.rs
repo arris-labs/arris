@@ -7,6 +7,7 @@
 //! record, and re-rooting commutes with `then`.
 
 use arris_debug::unmetered::cut;
+use arris_debug::unmetered::step_read;
 use arris_debug::unmetered::{extrude, primitive_box, primitive_cylinder};
 use arris_io::step::{self, ReadOptions};
 use arris_ops::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
@@ -144,7 +145,7 @@ fn audit_holds_on_re_rooted_records() {
 
     let text = step::write(&m, &[b]).unwrap();
     let mut read_into = Model::default();
-    let read = step::read(&mut read_into, &text, &ReadOptions::default()).unwrap();
+    let read = step_read(&mut read_into, &text, &ReadOptions::default()).unwrap();
     let [solid] = read.solids.as_slice() else {
         panic!("one solid written, {} read", read.solids.len())
     };

@@ -27,6 +27,7 @@
 //! oracle's numbers recorded but not compared.
 
 use crate::unmetered::mass_properties;
+use crate::unmetered::step_read;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -947,7 +948,7 @@ fn read_back(
         });
     };
     let mut model = model_for(fixture)?;
-    let read = step::read(&mut model, text, &step::ReadOptions::default())
+    let read = step_read(&mut model, text, &step::ReadOptions::default())
         .map_err(|e| fail(e.to_string()))?;
     let nurbs = which == "NURBS";
     if let (Some(refused), false) = (&fixture.recipe.analytic.occt_step_refused, nurbs) {
@@ -1943,7 +1944,7 @@ fn read_solid(
     // Part 21 is ISO 8859-1 outside its escapes; a byte that is not UTF-8
     // can only sit in a string, whose text the reader does not use.
     let text = String::from_utf8_lossy(&bytes);
-    let read = step::read(m, &text, &step::ReadOptions::default())
+    let read = step_read(m, &text, &step::ReadOptions::default())
         .map_err(|e| ReadFault::File(format!("{}: {e}", path.display())))?;
     let mut candidates = Vec::new();
     for solid in read.solids.into_iter().filter(|s| s.entity.id == id) {

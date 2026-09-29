@@ -129,3 +129,28 @@ pub fn tessellate_with(
 ) -> Result<arris_mesh::TriMesh, arris_mesh::MeshError> {
     arris_mesh::tessellate_with(m, body, request, &Control::NONE)
 }
+
+/// [`arris_io::step::read`] to its end.
+pub fn step_read(
+    m: &mut Model,
+    text: &str,
+    options: &arris_io::step::ReadOptions,
+) -> Result<arris_io::step::Read, arris_io::step::ReadError> {
+    arris_io::step::read(m, text, options, &Control::NONE)
+}
+
+/// [`arris_io::body::read`] to its end.
+pub fn body_read(
+    m: &mut Model,
+    bytes: &[u8],
+) -> Result<arris_io::body::Imported, arris_io::body::BodyError> {
+    arris_io::body::read(m, bytes, &Control::NONE)
+}
+
+/// [`arris_io::body::from_json`] to its end.
+pub fn body_from_json(
+    m: &mut Model,
+    text: &str,
+) -> Result<arris_io::body::Imported, arris_io::body::BodyError> {
+    arris_io::body::from_json(m, text, &Control::NONE)
+}

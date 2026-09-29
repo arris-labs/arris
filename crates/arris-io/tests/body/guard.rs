@@ -6,6 +6,7 @@
 //! that are missing and never overwrites one that exists: a version's
 //! bytes are what that release wrote, frozen.
 
+use arris_debug::unmetered::{body_from_json, body_read};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -139,11 +140,10 @@ fn read_both(dir: &Path, name: &str, version: u32) -> (Model, Imported) {
     let bytes = fs::read(dir.join(format!("{name}.bin"))).unwrap();
     let text = fs::read_to_string(dir.join(format!("{name}.json"))).unwrap();
     let mut a = Model::default();
-    let from_bytes =
-        body::read(&mut a, &bytes).unwrap_or_else(|e| panic!("v{version}/{name}: {e}"));
+    let from_bytes = body_read(&mut a, &bytes).unwrap_or_else(|e| panic!("v{version}/{name}: {e}"));
     let mut b = Model::default();
     let from_text =
-        body::from_json(&mut b, &text).unwrap_or_else(|e| panic!("v{version}/{name}.json: {e}"));
+        body_from_json(&mut b, &text).unwrap_or_else(|e| panic!("v{version}/{name}.json: {e}"));
     for (m, read) in [(&a, &from_bytes), (&b, &from_text)] {
         assert_eq!(read.version, version, "{name}");
         let report = check(m, read.body, Level::Full);

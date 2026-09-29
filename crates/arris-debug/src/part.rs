@@ -22,12 +22,13 @@
 //! is a solid the file does not have.
 
 use crate::unmetered::mass_properties;
+use crate::unmetered::step_read;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use arris_io::arris_check::arris_topo::arris_math::Point3;
 use arris_io::arris_check::arris_topo::{Body, Model};
-use arris_io::step::{self, ReadOptions};
+use arris_io::step::ReadOptions;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -289,7 +290,7 @@ pub fn run(dir: &Path) -> Result<(), CorpusError> {
     let text = String::from_utf8_lossy(&bytes);
     let started = std::time::Instant::now();
     let read =
-        step::read(&mut model, &text, &ReadOptions::default()).map_err(|e| file(e.to_string()))?;
+        step_read(&mut model, &text, &ReadOptions::default()).map_err(|e| file(e.to_string()))?;
     let seconds = started.elapsed().as_secs_f64();
     if let Some(budget) = fixture.part.read_seconds.filter(|&b| seconds > b) {
         return Err(fail(format!(

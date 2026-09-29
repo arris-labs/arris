@@ -18,12 +18,13 @@
 //! it, and its measures of a large spline-bounded part can outlast the
 //! survey. A file the reader returns nothing of is a failure.
 
+use crate::unmetered::step_read;
 use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 
 use arris_io::arris_check::arris_topo::Model;
-use arris_io::step::{self, ReadOptions};
+use arris_io::step::ReadOptions;
 use serde::{Deserialize, Serialize};
 
 use crate::battery::{self, Class};
@@ -106,7 +107,7 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
     let text = String::from_utf8_lossy(&bytes);
     let started = std::time::Instant::now();
     let read = match catch_unwind(AssertUnwindSafe(|| {
-        step::read(&mut m, &text, &ReadOptions::default())
+        step_read(&mut m, &text, &ReadOptions::default())
     })) {
         Ok(Ok(read)) => read,
         Ok(Err(e)) => {

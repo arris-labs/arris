@@ -28,6 +28,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use arris_check::arris_topo::arris_math::{Control, Interrupted, Meter};
 use arris_check::arris_topo::{
     Body, Closure, EntityId, IdMap, Model, Origin, Provenance, Shape, TopoError,
 };
@@ -93,6 +94,17 @@ pub enum BodyError {
     /// out, a vertex off its edges. The report names every violation.
     #[error("the body read is not valid:\n{0}")]
     Rejected(Box<Report>),
+    /// The caller's poll or budget stopped the read (ADR-0030): `model`
+    /// is as it was, and the same call with a larger budget or a poll
+    /// that stays `false` can succeed.
+    #[error("{0}")]
+    Interrupted(Interrupted),
+}
+
+impl From<Interrupted> for BodyError {
+    fn from(stop: Interrupted) -> Self {
+        BodyError::Interrupted(stop)
+    }
 }
 
 /// What [`read`] returns: the body in the caller's model, the record
@@ -148,7 +160,7 @@ impl Imported {
     /// let bytes = body::write(&a, cube, &record).unwrap();
     ///
     /// let mut b = Model::default();
-    /// let read = body::read(&mut b, &bytes).unwrap();
+    /// let read = body::read(&mut b, &bytes, &arris_io::arris_check::arris_topo::arris_math::Control::NONE).unwrap();
     /// assert!(read.foreign().is_empty(), "a primitive names only its own");
     /// let mine = read.translated(&IdMap::default());
     /// assert_eq!(mine, record.mapped(&read.map));
@@ -218,7 +230,7 @@ fn dense(model: &Model, body: Body) -> Result<(Model, Body, IdMap), BodyError> {
 /// assert_eq!(bytes[..8], body::BODY_MAGIC);
 ///
 /// let mut b = Model::default();
-/// let read = body::read(&mut b, &bytes).unwrap();
+/// let read = body::read(&mut b, &bytes, &arris_io::arris_check::arris_topo::arris_math::Control::NONE).unwrap();
 /// assert_eq!(b.closure(read.body).unwrap().faces.len(), 6);
 /// ```
 pub fn write(model: &Model, body: Body, record: &Provenance) -> Result<Vec<u8>, BodyError> {
@@ -286,14 +298,16 @@ pub fn to_json(model: &Model, body: Body, record: &Provenance) -> Result<String,
 /// sample::unit_box(&mut a).unwrap();
 /// let model_bytes = native::to_bytes(&a).unwrap();
 /// let mut b = Model::default();
-/// assert_eq!(body::read(&mut b, &model_bytes), Err(body::BodyError::Magic));
+/// assert_eq!(body::read(&mut b, &model_bytes, &arris_io::arris_check::arris_topo::arris_math::Control::NONE), Err(body::BodyError::Magic));
 /// ```
-pub fn read(model: &mut Model, bytes: &[u8]) -> Result<Imported, BodyError> {
+pub fn read(model: &mut Model, bytes: &[u8], control: &Control<'_>) -> Result<Imported, BodyError> {
+    let mut meter = Meter::new(control);
     let rest = bytes.strip_prefix(&BODY_MAGIC).ok_or(BodyError::Magic)?;
     let (version, _): (u32, &[u8]) =
         postcard::take_from_bytes(rest).map_err(|e| BodyError::Decode(e.to_string()))?;
+    meter.tick()?;
     let decoded = compat::decode(version, compat::Postcard(rest))?;
-    import(model, decoded, version)
+    import(model, decoded, version, &mut meter)
 }
 
 /// The body in `text` ([`to_json()`]'s) imported into `model`, as [`read`]
@@ -309,9 +323,14 @@ pub fn read(model: &mut Model, bytes: &[u8]) -> Result<Imported, BodyError> {
 /// let cube = sample::unit_box(&mut a).unwrap();
 /// let text = body::to_json(&a, cube, &Provenance::default()).unwrap();
 /// let mut b = Model::default();
-/// assert_eq!(body::from_json(&mut b, &text).unwrap().version, body::BODY_VERSION);
+/// assert_eq!(body::from_json(&mut b, &text, &arris_io::arris_check::arris_topo::arris_math::Control::NONE).unwrap().version, body::BODY_VERSION);
 /// ```
-pub fn from_json(model: &mut Model, text: &str) -> Result<Imported, BodyError> {
+pub fn from_json(
+    model: &mut Model,
+    text: &str,
+    control: &Control<'_>,
+) -> Result<Imported, BodyError> {
+    let mut meter = Meter::new(control);
     // A tree first, so the magic and the version are read before the
     // body and a mismatch never fails as a decode error deep inside the
     // arenas; every real was parsed to its exact `f64` already.
@@ -325,8 +344,9 @@ pub fn from_json(model: &mut Model, text: &str) -> Result<Imported, BodyError> {
         .and_then(serde_json::Value::as_u64)
         .and_then(|v| u32::try_from(v).ok())
         .ok_or_else(|| BodyError::Decode("no version a u32 holds".into()))?;
+    meter.tick()?;
     let decoded = compat::decode(version, tree)?;
-    import(model, decoded, version)
+    import(model, decoded, version, &mut meter)
 }
 
 /// `true` when `written` sends distinct writer ids onto exactly `closure`
@@ -365,6 +385,7 @@ fn check_tolerances(
     scratch: &Model,
     closure: &Closure,
     back: &IdMap,
+    meter: &mut Meter<'_>,
 ) -> Result<(), BodyError> {
     let p = model.precision();
     let within = |entity: EntityId, tolerance: f64| {
@@ -380,18 +401,21 @@ fn check_tolerances(
         }
     };
     for &v in &closure.vertices {
+        meter.tick()?;
         within(
             v.into(),
             scratch.vertex(v).map_err(TopoError::from)?.tolerance(),
         )?;
     }
     for &e in &closure.edges {
+        meter.tick()?;
         within(
             e.into(),
             scratch.edge(e).map_err(TopoError::from)?.tolerance(),
         )?;
     }
     for &f in &closure.faces {
+        meter.tick()?;
         within(
             f.into(),
             scratch.face(f).map_err(TopoError::from)?.tolerance(),
@@ -423,7 +447,12 @@ fn compose(first: &IdMap, second: &IdMap) -> IdMap {
 /// The decoded body copied into `model` inside a transaction and checked
 /// there at `Level::Full`, in every build profile: the bytes are input
 /// from outside the kernel (ADR-0029 §6).
-fn import(model: &mut Model, decoded: BodyIn, version: u32) -> Result<Imported, BodyError> {
+fn import(
+    model: &mut Model,
+    decoded: BodyIn,
+    version: u32,
+    meter: &mut Meter<'_>,
+) -> Result<Imported, BodyError> {
     let BodyIn {
         model: scratch,
         body,
@@ -434,10 +463,12 @@ fn import(model: &mut Model, decoded: BodyIn, version: u32) -> Result<Imported, 
         // The import first: it resolves every reference the bytes hold,
         // geometry included, and the transaction undoes it on any refusal
         // after.
+        meter.tick()?;
         let (copy, into) = m.import(&scratch, body)?;
         let closure = scratch.closure(body).map_err(TopoError::from)?;
         check_map(&written, &closure, body)?;
-        check_tolerances(m, &scratch, &closure, &written.inverse())?;
+        check_tolerances(m, &scratch, &closure, &written.inverse(), meter)?;
+        meter.tick()?;
         let report = check(m, copy, Level::Full);
         if !report.is_ok() {
             return Err(BodyError::Rejected(Box::new(report)));

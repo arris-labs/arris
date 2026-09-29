@@ -165,7 +165,7 @@ bound has to be established here.
   take `&Control`; the edge pass and the CDT insertions tick, the
   parallel face pass follows decision 4; `MeshError::Interrupted`. The
   same count/interrupt/identity tests on a curved fixture both ways.
-- [ ] Step 6 **[2]** — `arris-io`: `step::read` inside one transaction,
+- [x] Step 6 **[2]** — `arris-io`: `step::read` inside one transaction,
   ticking per entity converted and per solid; `body::read` and
   `from_json`; `ReadError::Interrupted`, `BodyError::Interrupted`. On a
   real-part fixture from the corpus: an interrupt at `k` leaves the
@@ -242,3 +242,12 @@ bound has to be established here.
   and re-exports `Control`, `Interrupted` and `Stop` from `arris_ops`.
   `rebuild::rewrite` takes no meter: its callers tick per stripe, corner
   and face; `transform` ticks per face, a primitive once.
+- Decided in step 6: the reader's steps are per solid placement, per file
+  edge, per face (twice: the singular-point pass and the walk), per
+  pcurve use and every fit inside (`Meter` is threaded to `fitted`,
+  `meet`, `seam_to`, `band`). An interrupt travels up inside a solid as a
+  placeholder refusal and is replaced at `Geometry::solid` by the meter's
+  first stop (`Meter::stopped`, new in `arris-math`), which also covers
+  the sites that try a fit and fall back on failure. `file_solid` and the
+  Part 21 parse are unticked (linear in the text).
+  `arris_debug::unmetered::{step_read, body_read, body_from_json}` serve the tests.

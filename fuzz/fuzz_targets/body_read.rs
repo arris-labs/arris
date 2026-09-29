@@ -9,6 +9,7 @@
 use std::sync::OnceLock;
 
 use arris_io::arris_check::arris_topo::Model;
+use arris_io::arris_check::arris_topo::arris_math::Control;
 use arris_io::arris_check::{Level, check};
 use arris_io::body::{self, BodyError, Imported};
 use arris_io::native;
@@ -24,6 +25,7 @@ fn target() -> &'static (Model, Vec<u8>) {
         body::read(
             &mut m,
             include_bytes!("../../crates/arris-io/tests/body/v1/tetrahedron.bin"),
+            &Control::NONE,
         )
         .expect("the guard's tetrahedron reads");
         let bytes = native::to_bytes(&m).expect("a model the kernel read encodes");
@@ -57,12 +59,12 @@ fn same(a: &Result<Imported, BodyError>, b: &Result<Imported, BodyError>) -> boo
 }
 
 fuzz_target!(|data: &[u8]| {
-    let first = once(|m| body::read(m, data));
-    let second = once(|m| body::read(m, data));
+    let first = once(|m| body::read(m, data, &Control::NONE));
+    let second = once(|m| body::read(m, data, &Control::NONE));
     assert!(same(&first, &second), "two reads of one input differ");
     if let Ok(text) = std::str::from_utf8(data) {
-        let first = once(|m| body::from_json(m, text));
-        let second = once(|m| body::from_json(m, text));
+        let first = once(|m| body::from_json(m, text, &Control::NONE));
+        let second = once(|m| body::from_json(m, text, &Control::NONE));
         assert!(same(&first, &second), "two reads of one text differ");
     }
 });

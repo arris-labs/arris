@@ -177,7 +177,7 @@ fn main() -> ExitCode {
         let precision = fixture.part.precision.precision();
         let read = || {
             let mut m = Model::new(precision).ok()?;
-            let read = step::read(&mut m, &text, &ReadOptions::default()).ok()?;
+            let read = step::read(&mut m, &text, &ReadOptions::default(), &Control::NONE).ok()?;
             Some((m, read))
         };
         let Some((m, once)) = read() else {

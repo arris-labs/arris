@@ -22,7 +22,7 @@
 //!
 //! // And back: every solid of a file, each its own result.
 //! let mut back = Model::default();
-//! let read = arris::io::step::read(&mut back, &text, &Default::default()).unwrap();
+//! let read = arris::io::step::read(&mut back, &text, &Default::default(), &Control::NONE).unwrap();
 //! let body = read.solids[0].result.as_ref().unwrap().body;
 //! assert!(check(&back, body, Level::Full).is_ok());
 //! ```

@@ -148,6 +148,7 @@ pub struct Meter<'a> {
     poll: Option<Poll<'a>>,
     cap: Option<u64>,
     steps: u64,
+    stopped: Option<Interrupted>,
 }
 
 impl fmt::Debug for Meter<'_> {
@@ -173,6 +174,7 @@ impl<'a> Meter<'a> {
             poll: control.poll,
             cap: control.budget,
             steps: 0,
+            stopped: None,
         }
     }
 
@@ -181,13 +183,27 @@ impl<'a> Meter<'a> {
     /// counted, so [`Interrupted::steps`] is the steps completed.
     pub fn tick(&mut self) -> Result<(), Interrupted> {
         if self.cap.is_some_and(|cap| self.steps >= cap) {
-            return Err(self.stop(Stop::Budget));
+            return Err(self.stopped_by(Stop::Budget));
         }
         if self.poll.is_some_and(|poll| poll()) {
-            return Err(self.stop(Stop::Poll));
+            return Err(self.stopped_by(Stop::Poll));
         }
         self.steps += 1;
         Ok(())
+    }
+
+    /// The first stop [`tick`](Meter::tick) reported, if any. A caller
+    /// that runs code which may turn a failed step into a failure of its
+    /// own (an attempt that falls back to another) asks this at its end:
+    /// an operation that saw a stop is stopped, whatever else it
+    /// returned.
+    pub fn stopped(&self) -> Option<Interrupted> {
+        self.stopped
+    }
+
+    fn stopped_by(&mut self, by: Stop) -> Interrupted {
+        let stop = self.stop(by);
+        *self.stopped.get_or_insert(stop)
     }
 
     /// The steps taken so far.
@@ -203,6 +219,7 @@ impl<'a> Meter<'a> {
             poll: self.poll,
             cap: self.cap.map(|cap| cap.saturating_sub(self.steps)),
             steps: 0,
+            stopped: None,
         }
     }
 
@@ -259,6 +276,18 @@ mod tests {
             assert!(m.tick().is_ok());
         }
         assert_eq!(m.steps(), 1000);
+    }
+
+    #[test]
+    fn a_meter_remembers_its_first_stop() {
+        let mut m = Meter::new(&Control::budget(1));
+        assert_eq!(m.stopped(), None);
+        m.tick().unwrap();
+        assert_eq!(m.stopped(), None);
+        let e = m.tick().unwrap_err();
+        assert_eq!(m.stopped(), Some(e));
+        m.tick().unwrap_err();
+        assert_eq!(m.stopped(), Some(e));
     }
 
     #[test]

@@ -3,12 +3,13 @@
 //! with its text dump, its checker report at `Full` and a rendered PNG,
 //! or the refusal naming the file entity where the reader stopped.
 
+use crate::unmetered::step_read;
 use std::path::{Path, PathBuf};
 
 use arris_io::arris_check::arris_topo::Model;
 use arris_io::arris_check::arris_topo::provenance::FileEntity;
 use arris_io::arris_check::{Level, Report, check};
-use arris_io::step::{self, ReadError, ReadOptions, Refusal};
+use arris_io::step::{ReadError, ReadOptions, Refusal};
 
 use crate::{View, dump_text, render_body};
 
@@ -74,7 +75,7 @@ pub fn inspect(model: &mut Model, path: &Path, name: &str) -> Result<Vec<Seen>, 
         path: path.to_path_buf(),
         source,
     })?;
-    let read = step::read(model, &text, &ReadOptions::default())?;
+    let read = step_read(model, &text, &ReadOptions::default())?;
     Ok(read
         .solids
         .into_iter()

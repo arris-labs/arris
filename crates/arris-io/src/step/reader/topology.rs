@@ -81,8 +81,8 @@ use arris_check::arris_topo::arris_geom::{
     Surface, pcurve_ending_on, pcurve_on,
 };
 use arris_check::arris_topo::arris_math::{
-    Aabb, Frame, Interval, Point2, Point3, Precision, READ_GAP_FRACTION, RELATIVE_ROUNDING,
-    Tolerance, UnitVec2, UnitVec3, Vec2, Vec3,
+    Aabb, Frame, Interrupted, Interval, Meter, Point2, Point3, Precision, READ_GAP_FRACTION,
+    RELATIVE_ROUNDING, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3,
 };
 use arris_check::arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec,
@@ -170,18 +170,50 @@ struct FileSolid {
 /// nests none or one, and a cycle of references must end.
 const ORIENTED_DEPTH: u8 = 4;
 
+/// Why a solid was not read: the file's own doing, or its caller's.
+pub(crate) enum Halt {
+    /// A refusal naming the file entity.
+    Refused(Refusal),
+    /// The caller's poll or budget stopped the read (ADR-0030).
+    Interrupted(Interrupted),
+}
+
+impl From<Refusal> for Halt {
+    fn from(refusal: Refusal) -> Self {
+        Halt::Refused(refusal)
+    }
+}
+
+/// The refusal a step that the caller stopped travels up as, through code
+/// that returns refusals: [`Geometry::solid`] never returns it, because
+/// it reads the stop from the meter (`Meter::stopped`) and returns
+/// [`Halt::Interrupted`] in its place.
+fn stopped_in(solid: u64) -> Refusal {
+    malformed(solid, "stopped by its caller")
+}
+
 impl Geometry<'_> {
-    /// Reads the solid `solid`, placement `instance`, into `model`.
-    /// Errors: a refusal naming the file entity; the model is then as it
-    /// was.
+    /// Reads the solid `solid`, placement `instance`, into `model`, a
+    /// step of `meter` at each file edge, face and pcurve it converts.
+    /// Errors: a refusal naming the file entity, or the caller's stop —
+    /// which wins over whatever the code that saw it went on to do, since
+    /// an attempt that falls back on another may have swallowed it. The
+    /// model is then as it was.
     pub(crate) fn solid(
         &self,
         model: &mut Model,
         solid: u64,
         instance: u32,
-    ) -> Result<Solid, Refusal> {
+        meter: &mut Meter<'_>,
+    ) -> Result<Solid, Halt> {
         let file = self.file_solid(solid)?;
-        model.transaction(|m| self.build(m, solid, instance, &file))
+        model.transaction(|m| {
+            let built = self.build(m, solid, instance, &file, meter);
+            match meter.stopped() {
+                Some(stop) => Err(Halt::Interrupted(stop)),
+                None => built.map_err(Halt::Refused),
+            }
+        })
     }
 
     /// The shells, faces, bounds, edges and vertices of `solid`, with every
@@ -428,6 +460,7 @@ impl Geometry<'_> {
         solid: u64,
         instance: u32,
         file: &FileSolid,
+        meter: &mut Meter<'_>,
     ) -> Result<Solid, Refusal> {
         let precision = model.precision();
         let tol = precision.tolerance();
@@ -449,6 +482,7 @@ impl Geometry<'_> {
         let mut curves: BTreeMap<u64, (Curve, CurveId)> = BTreeMap::new();
         let mut edges = Vec::with_capacity(file.edges.len());
         for e in &file.edges {
+            meter.tick().map_err(|_| stopped_in(solid))?;
             let (curve, curve_id) = match curves.get(&e.curve.id) {
                 Some(c) => c.clone(),
                 None => {
@@ -502,6 +536,7 @@ impl Geometry<'_> {
         let mut pieces: Vec<Vec<usize>> = (0..edges.len()).map(|i| vec![i]).collect();
         let on_point = PCURVE_SINGULAR_BAND * tol.linear;
         for face in file.shells.iter().flat_map(|shell| &shell.faces) {
+            meter.tick().map_err(|_| stopped_in(solid))?;
             let surface = match surfaces.get(&face.surface.id) {
                 Some(s) => s.0.clone(),
                 None => {
@@ -555,6 +590,7 @@ impl Geometry<'_> {
         for shell in &file.shells {
             let mut faces = Vec::with_capacity(shell.faces.len());
             for face in &shell.faces {
+                meter.tick().map_err(|_| stopped_in(solid))?;
                 let (surface, surface_id) = match surfaces.get(&face.surface.id) {
                     Some(s) => s.clone(),
                     None => {
@@ -615,14 +651,21 @@ impl Geometry<'_> {
                         .collect();
                     let mut uses = Vec::with_capacity(walk.len());
                     for s in walk {
+                        meter.tick().map_err(|_| stopped_in(solid))?;
                         let edge = &edges[s.edge];
                         let pcurve = match pcurves.get(&s.edge) {
                             Some(p) => p.clone(),
                             None => {
                                 let id = edge_ids[s.edge];
-                                let p =
-                                    fitted(&edge.geometry, edge.range, &surface, precision, cap)
-                                        .map_err(|fault| fault.refusal(id, face.id, cap))?;
+                                let p = fitted(
+                                    &edge.geometry,
+                                    edge.range,
+                                    &surface,
+                                    precision,
+                                    cap,
+                                    meter,
+                                )
+                                .map_err(|fault| fault.refusal(id, face.id, cap))?;
                                 pcurves.insert(s.edge, p.clone());
                                 p
                             }
@@ -649,8 +692,9 @@ impl Geometry<'_> {
                             let row = at.singular_at(apex).ok_or_else(|| {
                                 unsupported("a VERTEX_LOOP off its surface's singular points")
                             })?;
-                            let seam = seam_to(model, &surface, row, apex, &uses, &points, tol)
-                                .map_err(unsupported)?;
+                            let seam =
+                                seam_to(model, &surface, row, apex, &uses, &points, tol, meter)
+                                    .map_err(unsupported)?;
                             Some(seam.join(&mut uses, &mut rebuilt))
                         }
                         None => None,
@@ -667,14 +711,15 @@ impl Geometry<'_> {
                             cap,
                         },
                     })?;
-                    at.meet(&mut uses).map_err(|(edge, e)| Refusal::Pcurve {
-                        edge: match edge {
-                            EdgeRef::File(i) => edge_ids[i],
-                            EdgeRef::Rebuilt(_) => face.id,
-                        },
-                        face: face.id,
-                        what: e.to_string(),
-                    })?;
+                    at.meet(&mut uses, meter)
+                        .map_err(|(edge, e)| Refusal::Pcurve {
+                            edge: match edge {
+                                EdgeRef::File(i) => edge_ids[i],
+                                EdgeRef::Rebuilt(_) => face.id,
+                            },
+                            face: face.id,
+                            what: e.to_string(),
+                        })?;
                     if let (Some(i), Some((vertex_bound, _))) = (seam, joined) {
                         if seam_crosses(
                             &uses,
@@ -698,21 +743,30 @@ impl Geometry<'_> {
                         name: name.into(),
                     };
                     let samples = precision.check_samples;
-                    let cut = band(&at, &edges, model, &mut loops, &mut rebuilt, tol, samples)
-                        .map_err(unsupported)?;
+                    let cut = band(
+                        &at,
+                        &edges,
+                        model,
+                        &mut loops,
+                        &mut rebuilt,
+                        tol,
+                        samples,
+                        meter,
+                    )
+                    .map_err(unsupported)?;
                     if let Some(Fix::Apex { face_loop, row }) = cut {
                         let apex = points.len();
                         points.push(row.point);
                         vertex_ids.push(face.id);
                         let at = junctions(&surface, &singular, &points, cap, precision, flipped);
                         let mut uses = std::mem::take(&mut loops[face_loop]);
-                        let seam = seam_to(model, &surface, row, apex, &uses, &points, tol)
+                        let seam = seam_to(model, &surface, row, apex, &uses, &points, tol, meter)
                             .map_err(unsupported)?;
                         let i = seam.join(&mut uses, &mut rebuilt);
                         let mut uses = at.walk(uses, &mut rebuilt).map_err(|_| {
                             unsupported("a face of one wrapping loop whose seam to its apex jumps")
                         })?;
-                        at.meet(&mut uses).map_err(|_| {
+                        at.meet(&mut uses, meter).map_err(|_| {
                             unsupported("a face of one wrapping loop whose seam to its apex does not meet it")
                         })?;
                         if seam_crosses(&uses, i, &surface, at.parametric, samples) {
@@ -755,9 +809,18 @@ impl Geometry<'_> {
                         }
                         splits.push(split);
                         let at = junctions(&surface, &singular, &points, cap, precision, flipped);
-                        if band(&at, &edges, model, &mut loops, &mut rebuilt, tol, samples)
-                            .map_err(unsupported)?
-                            .is_some()
+                        if band(
+                            &at,
+                            &edges,
+                            model,
+                            &mut loops,
+                            &mut rebuilt,
+                            tol,
+                            samples,
+                            meter,
+                        )
+                        .map_err(unsupported)?
+                        .is_some()
                         {
                             return Err(unsupported(
                                 "a band whose split edge still leaves no seam",
@@ -1339,7 +1402,7 @@ impl Junctions<'_> {
     /// where it was ([`pcurve_ending_on`]); the gap it opens is measured
     /// afterwards with the rest. Errors: the edge whose pcurve could not
     /// be ended, and why.
-    fn meet(&self, uses: &mut [Use]) -> Result<(), (EdgeRef, GeomError)> {
+    fn meet(&self, uses: &mut [Use], meter: &mut Meter<'_>) -> Result<(), (EdgeRef, GeomError)> {
         let n = uses.len();
         let seam = |u: &Use| match u.edge {
             EdgeRef::File(i) => {
@@ -1395,14 +1458,7 @@ impl Junctions<'_> {
             // fits one: from the default, grown up to the cap.
             let mut linear = self.fit;
             u.pcurve = loop {
-                match pcurve_ending_on(
-                    &u.pcurve,
-                    u.range,
-                    ends,
-                    self.surface,
-                    linear,
-                    &mut arris_check::arris_topo::arris_math::Meter::default(),
-                ) {
+                match pcurve_ending_on(&u.pcurve, u.range, ends, self.surface, linear, meter) {
                     Ok(p) => break p,
                     Err(GeomError::Fit(_)) if linear < self.cap => {
                         linear = (GAP_GROWTH * linear).min(self.cap);
@@ -1480,19 +1536,14 @@ fn fitted(
     surface: &Surface,
     precision: Precision,
     cap: f64,
+    meter: &mut Meter<'_>,
 ) -> Result<Curve2, PcurveFault> {
     let ceiling = GAP_GROWTH * cap;
     let mut linear = precision.default_tolerance;
     let mut measured = false;
     loop {
         let tol = Tolerance::new(linear, precision.angular_tolerance);
-        let needed = match pcurve_on(
-            curve,
-            range,
-            surface,
-            tol,
-            &mut arris_check::arris_topo::arris_math::Meter::default(),
-        ) {
+        let needed = match pcurve_on(curve, range, surface, tol, meter) {
             Ok(p) => return Ok(p),
             Err(GeomError::NotOnSurface { distance, .. }) => {
                 if distance > cap {
@@ -1825,6 +1876,7 @@ impl Seam {
 /// other parameter: a cone's ruling or a sphere's meridian, exact.
 /// Errors: why there is none: a NURBS surface's row, whose seam would
 /// be an isocurve Arris has no exact form of, or a vertex on the point.
+#[allow(clippy::too_many_arguments)]
 fn seam_to(
     model: &mut Model,
     surface: &Surface,
@@ -1833,6 +1885,7 @@ fn seam_to(
     uses: &[Use],
     points: &[Point3],
     tol: Tolerance,
+    meter: &mut Meter<'_>,
 ) -> Result<Seam, &'static str> {
     let from = (uses.iter())
         .map(|u| u.vertices[0])
@@ -1879,14 +1932,8 @@ fn seam_to(
         | Surface::Torus { .. } => return Err("a VERTEX_LOOP on a surface with no singular point"),
     };
     let range = Interval::new(0.0, span).map_err(|_| "a seam of no length")?;
-    let pcurve = pcurve_on(
-        &curve,
-        range,
-        surface,
-        tol,
-        &mut arris_check::arris_topo::arris_math::Meter::default(),
-    )
-    .map_err(|_| "a VERTEX_LOOP whose seam has no pcurve on its face")?;
+    let pcurve = pcurve_on(&curve, range, surface, tol, meter)
+        .map_err(|_| "a VERTEX_LOOP whose seam has no pcurve on its face")?;
     Ok(Seam {
         from,
         to: apex,
@@ -1981,6 +2028,7 @@ const TRIED_SEAM: usize = usize::MAX;
 /// surface's isocurve, which Arris has no exact form of, or loops whose
 /// vertices lie on no one isocurve, where a seam would need an edge
 /// split.
+#[allow(clippy::too_many_arguments)]
 fn band(
     at: &Junctions<'_>,
     edges: &[Edge],
@@ -1989,6 +2037,7 @@ fn band(
     rebuilt: &mut Vec<Rebuilt>,
     tol: Tolerance,
     check_samples: usize,
+    meter: &mut Meter<'_>,
 ) -> Result<Option<Fix>, &'static str> {
     let period = at.surface.period();
     // A loop that does not chain vertex to vertex is no loop, and is left
@@ -2027,13 +2076,7 @@ fn band(
                 continue;
             };
             for (curve, range) in isocurves(at.surface, k, pa, pb, tol)? {
-                let Ok(pcurve) = pcurve_on(
-                    &curve,
-                    range,
-                    at.surface,
-                    tol,
-                    &mut arris_check::arris_topo::arris_math::Meter::default(),
-                ) else {
+                let Ok(pcurve) = pcurve_on(&curve, range, at.surface, tol, meter) else {
                     continue;
                 };
                 let (mut first, mut second) = (loops[i].clone(), loops[j].clone());
@@ -2053,7 +2096,7 @@ fn band(
                 let Ok(mut uses) = at.walk(first, &mut tried) else {
                     continue;
                 };
-                if at.meet(&mut uses).is_err()
+                if at.meet(&mut uses, meter).is_err()
                     || seam_crosses(&uses, TRIED_SEAM, at.surface, at.parametric, check_samples)
                 {
                     continue;

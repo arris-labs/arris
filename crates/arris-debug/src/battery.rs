@@ -24,6 +24,7 @@
 //! records.
 
 use crate::unmetered::mass_properties;
+use crate::unmetered::step_read;
 use std::collections::BTreeMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -575,7 +576,7 @@ pub fn write_read(name: &str, m: &Model, body: Body, tolerances: &Tolerances) ->
         let fail = |stage: Stage| move |e: String| (stage, e);
         let text = step::write(m, &[body]).map_err(|e| (Stage::Step, e.to_string()))?;
         let mut back = Model::new(m.precision()).map_err(|e| (Stage::Step, e.to_string()))?;
-        let read = step::read(&mut back, &text, &ReadOptions::default())
+        let read = step_read(&mut back, &text, &ReadOptions::default())
             .map_err(|e| (Stage::ReadBack, e.to_string()))?;
         let [solid] = &read.solids[..] else {
             return Err((
@@ -727,7 +728,7 @@ pub fn holds_counts(fixture: &PartFixture, id: u64) -> bool {
 fn read_file(fixture: &PartFixture, m: &mut Model) -> Result<step::Read, String> {
     let path = fixture.dir.join(&fixture.part.file);
     let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-    step::read(m, &String::from_utf8_lossy(&bytes), &ReadOptions::default())
+    step_read(m, &String::from_utf8_lossy(&bytes), &ReadOptions::default())
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 

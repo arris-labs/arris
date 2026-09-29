@@ -1251,7 +1251,7 @@ B-Rep).
   corpus runner parses every file the writer makes before the oracle
   reads it, each instance kept once.
 - **The STEP reader** (`arris_io::step::read(&mut Model, &str,
-  &ReadOptions) -> Result<Read, ReadError>`, ADR-0025): the AP203/214/242
+  &ReadOptions, &Control) -> Result<Read, ReadError>`, ADR-0025): the AP203/214/242
   B-Rep subset onto the variants Arris has, never a new one. Layered under
   `step/reader/`: `assembly` flattens the product structure
   (`SHAPE_DEFINITION_REPRESENTATION`, `NEXT_ASSEMBLY_USAGE_OCCURRENCE`,
@@ -1293,6 +1293,17 @@ B-Rep).
   it does not read: product names, colours, layers, PMI, and the
   edition-3 sections; a faceted B-rep or a shell-based surface model
   stands where a solid would and is counted as refused.
+- **Cancellation of the readers** (ADR-0030): `step::read` runs in one
+  `Model::transaction`, ticking per solid placement and, inside a solid,
+  per file edge, face and pcurve fitted; a stop is
+  `ReadError::Interrupted` for the whole call — the solids already read
+  are dropped, since a refusal is a solid's and an interrupt is the
+  caller's. A stop that an attempt-and-fall-back site inside a solid
+  swallowed still wins: the solid reads the first stop from its meter
+  (`Meter::stopped`) and returns it in place of whatever came after.
+  `body::read` and `body::from_json` tick per stage and per vertex, edge
+  and face of the tolerance check, and return `BodyError::Interrupted`
+  with the model as it was.
 - **Native format** (`arris_io::native::{to_json, from_json, to_bytes,
   from_bytes}`): `serde` of the model under a version header, JSON for
   diffs and `postcard` bytes for storage; data-model §Native format.
