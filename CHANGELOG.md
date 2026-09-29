@@ -79,6 +79,9 @@ into its version (ADR-0027).
   as it was: `step::read` is one transaction, so an interrupt drops the
   solids already read rather than returning a partial `Read`. Both error
   enums gain the variant: a `match` over either needs an arm.
+- `arris` re-exports `Control`, `Stop` and `Interrupted` at its root; its
+  documentation shows an operation stopped by a poll over an `AtomicBool`
+  and by a budget of steps.
 
 ## 0.3.0 — 2026-09-26
 

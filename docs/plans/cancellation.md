@@ -172,7 +172,7 @@ bound has to be established here.
   model's native bytes as before, and the budget of `N` reads the same
   refusal table and dumps as unbudgeted; the `body_read` and STEP fuzz
   targets pass `Control::NONE` and still build.
-- [ ] Step 7 **[2]** — the roadmap's property: recipes drawn by
+- [x] Step 7 **[2]** — the roadmap's property: recipes drawn by
   `prop::recipe`, each step's unbudgeted count `N` measured, then every
   drawn `k < N` interrupts with the model's native bytes unchanged and
   `k ≥ N` gives the unbudgeted dump; a poll that answers true on its
@@ -251,3 +251,11 @@ bound has to be established here.
   the sites that try a fit and fall back on failure. `file_solid` and the
   Part 21 parse are unticked (linear in the text).
   `arris_debug::unmetered::{step_read, body_read, body_from_json}` serve the tests.
+- Decided in step 7: the property (`crates/arris-ops/tests/cancel_prop.rs`)
+  runs over every body step of a drawn recipe, each rebuilt as the result
+  step of its own `corpus::inputs_for_step` (the steps before it
+  unmetered), eight shards; a step the kernel refuses ends its recipe's
+  measurement. The recipe's steps are the operations of the corpus grammar
+  (primitives, sweeps, blends, transform, booleans), so the readers and
+  the tessellation are held to the property by their own tests
+  (`arris-io`'s and `arris-mesh`'s `cancel.rs`), not by a drawn recipe.

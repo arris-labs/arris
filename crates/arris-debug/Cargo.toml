@@ -20,7 +20,7 @@ arris-geom.workspace = true
 arris-topo.workspace = true
 arris-ops.workspace = true
 arris-mesh.workspace = true
-arris-io.workspace = true
+arris-io = { workspace = true, features = ["serde"] }
 image.workspace = true
 thiserror.workspace = true
 serde.workspace = true

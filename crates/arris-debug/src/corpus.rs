@@ -1543,7 +1543,48 @@ impl Inputs {
 /// assert_ne!(plate, hole);
 /// ```
 pub fn inputs(dir: &Path, variant: &str) -> Result<Inputs, CorpusError> {
-    let fixture = fixtures::load(dir)?;
+    inputs_of(fixtures::load(dir)?, variant)
+}
+
+/// [`inputs`] for the step `step` of a recipe with no directory — a
+/// generated one (`prop::recipe`) — under its `default` variant: every
+/// step before it is built (unmetered) and `step` is left as the result
+/// step [`Inputs::run_result`] runs. Errors: as [`inputs`]'s, and
+/// [`CorpusError::Reference`] when `step` names no step of the recipe.
+///
+/// ```
+/// use arris_debug::corpus;
+/// use arris_debug::fixtures::Recipe;
+/// use arris_ops::Control;
+///
+/// let recipe: Recipe = serde_json::from_str(
+///     r#"{"steps": [{"op": "box", "name": "b", "min": [0, 0, 0], "max": [1, 2, 3]}], "result": "b"}"#,
+/// )
+/// .unwrap();
+/// let inputs = corpus::inputs_for_step("generated/box", &recipe, "b").unwrap();
+/// let mut model = inputs.model.clone();
+/// assert!(inputs.run_result(&mut model, &Control::budget(0)).is_err());
+/// ```
+pub fn inputs_for_step(name: &str, recipe: &Recipe, step: &str) -> Result<Inputs, CorpusError> {
+    let mut recipe = recipe.clone();
+    recipe.result = step.to_string();
+    inputs_of(
+        Fixture {
+            dir: PathBuf::new(),
+            name: name.to_string(),
+            recipe,
+            recipe_sha256: String::new(),
+            expected: Expected {
+                occt: String::new(),
+                recipe_sha256: String::new(),
+                results: BTreeMap::new(),
+            },
+        },
+        "default",
+    )
+}
+
+fn inputs_of(fixture: Fixture, variant: &str) -> Result<Inputs, CorpusError> {
     let name = fixture.name.clone();
     let Some(params) = fixture.recipe.params_of(variant) else {
         return Err(CorpusError::Variant {
