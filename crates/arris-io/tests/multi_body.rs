@@ -6,7 +6,7 @@
 
 use arris_debug::oracle::compare_stl;
 use arris_debug::sample;
-use arris_io::arris_mesh::tessellate;
+use arris_debug::unmetered::tessellate;
 use arris_io::{obj, stl};
 use arris_ops::arris_check::arris_topo::Model;
 use arris_ops::arris_check::arris_topo::arris_math::Point3;

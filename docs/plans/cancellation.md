@@ -161,7 +161,7 @@ bound has to be established here.
   refusing one returns `Interrupted` with the model unchanged, tested on
   one fixture per area (`sweep/`, `blend/`, `build/`, `provenance/`,
   `transform/`) by the same three assertions as step 3.
-- [ ] Step 5 **[2]** — `arris-mesh`: `tessellate`, `tessellate_with`
+- [x] Step 5 **[2]** — `arris-mesh`: `tessellate`, `tessellate_with`
   take `&Control`; the edge pass and the CDT insertions tick, the
   parallel face pass follows decision 4; `MeshError::Interrupted`. The
   same count/interrupt/identity tests on a curved fixture both ways.

@@ -6,10 +6,11 @@ use std::path::{Path, PathBuf};
 
 use arris_geom::region2::{Polygon2, discretise};
 use arris_mesh::cdt::{self, CdtError, VertexRef};
-use arris_mesh::{MeshError, Polyline, TriMesh, tessellate};
+use arris_mesh::{MeshError, Polyline, TriMesh};
 use arris_topo::{Body, Face, Model, NotFound};
 
 use crate::render::{Highlight, RenderError, View, render_png};
+use crate::unmetered;
 
 /// [`mesh_of`]'s first pass: coarse enough that every curve and surface in
 /// a body of ordinary engineering scale hits its minimum segment count
@@ -24,7 +25,7 @@ const COARSE_CHORD: f64 = 1e6;
 pub const RENDER_CHORD_FRACTION: f64 = 1.0 / 400.0;
 
 /// [`mesh_of`]'s error: exactly [`arris_mesh::MeshError`], since `mesh_of`
-/// is [`tessellate`] called twice.
+/// is [`unmetered::tessellate`] called twice.
 pub type DebugMeshError = MeshError;
 
 /// `body` tessellated at [`RENDER_CHORD_FRACTION`] of its own bounding-box
@@ -42,14 +43,14 @@ pub type DebugMeshError = MeshError;
 /// assert!(mesh.is_closed());
 /// ```
 pub fn mesh_of(m: &Model, body: Body) -> Result<TriMesh, DebugMeshError> {
-    let coarse = tessellate(m, body, COARSE_CHORD)?;
+    let coarse = unmetered::tessellate(m, body, COARSE_CHORD)?;
     let diagonal = coarse.aabb().map_or(0.0, |b| b.diagonal());
     let chord = if diagonal.is_finite() && diagonal > 0.0 {
         diagonal * RENDER_CHORD_FRACTION
     } else {
         COARSE_CHORD
     };
-    tessellate(m, body, chord)
+    unmetered::tessellate(m, body, chord)
 }
 
 /// Why [`render_body`] could not draw a body.

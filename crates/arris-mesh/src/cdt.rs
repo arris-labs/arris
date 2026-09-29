@@ -17,8 +17,8 @@ use core::fmt;
 use std::collections::{BTreeMap, VecDeque};
 
 use arris_topo::arris_geom::region2::Polygon2;
-use arris_topo::arris_math::Point2;
 use arris_topo::arris_math::predicates::{Sign, incircle, orient2d};
+use arris_topo::arris_math::{Interrupted, Meter, Point2};
 
 /// One segment of one input polygon: from the polygon's point `segment`
 /// to the next one, the last segment closing onto the first point.
@@ -115,6 +115,10 @@ pub enum CdtError {
     /// bug caught, never a fault of the input.
     #[error("kernel bug: {0}")]
     Internal(&'static str),
+    /// [`triangulate_metered`] was stopped by its caller's poll or budget
+    /// (ADR-0030), not by the input.
+    #[error("{0}")]
+    Interrupted(Interrupted),
 }
 
 /// The triangles of a region in (u, v): what [`triangulate`] returns.
@@ -233,6 +237,30 @@ impl Triangulation2 {
 /// assert_eq!(area, 12.0);
 /// ```
 pub fn triangulate(polygons: &[Polygon2], interior: &[Point2]) -> Result<Triangulation2, CdtError> {
+    triangulate_metered(polygons, interior, &mut Meter::default())
+}
+
+/// [`triangulate`] that counts a step at each point inserted and each
+/// polygon segment recovered, and stops with [`CdtError::Interrupted`]
+/// when `meter`'s budget or poll says so (ADR-0030). Everything else
+/// [`triangulate`] guarantees holds for a run that is not stopped.
+///
+/// ```
+/// use arris_mesh::cdt::{CdtError, triangulate_metered};
+/// use arris_topo::arris_geom::region2::Polygon2;
+/// use arris_topo::arris_math::{Control, Meter, Point2};
+///
+/// let p = |x, y| Point2::new(x, y);
+/// let square = Polygon2::from_points([p(0.0, 0.0), p(1.0, 0.0), p(1.0, 1.0), p(0.0, 1.0)]);
+/// let mut meter = Meter::new(&Control::budget(2));
+/// let stopped = triangulate_metered(&[square], &[], &mut meter);
+/// assert!(matches!(stopped, Err(CdtError::Interrupted(_))));
+/// ```
+pub fn triangulate_metered(
+    polygons: &[Polygon2],
+    interior: &[Point2],
+    meter: &mut Meter<'_>,
+) -> Result<Triangulation2, CdtError> {
     // The points in input order, with the numbering the result keeps.
     let mut points: Vec<Point2> = Vec::new();
     let mut starts: Vec<usize> = Vec::with_capacity(polygons.len() + 1);
@@ -286,6 +314,7 @@ pub fn triangulate(polygons: &[Polygon2], interior: &[Point2]) -> Result<Triangu
     // the interior points the same way.
     let interior_start = starts[starts.len() - 1];
     for index in bit_reversal(interior_start) {
+        meter.tick().map_err(CdtError::Interrupted)?;
         mesh.insert(index, parent(index))
             .map_err(|e| e.named(&name, None))?;
     }
@@ -298,12 +327,14 @@ pub fn triangulate(polygons: &[Polygon2], interior: &[Point2]) -> Result<Triangu
                 segment: i,
             };
             let (a, b) = (start + i, start + (i + 1) % n);
+            meter.tick().map_err(CdtError::Interrupted)?;
             mesh.insert_constraint(a, b, segment)
                 .map_err(|e| e.named(&name, Some(segment)))?;
         }
     }
     for offset in bit_reversal(real - interior_start) {
         let index = interior_start + offset;
+        meter.tick().map_err(CdtError::Interrupted)?;
         mesh.insert(index, parent(offset).map(|p| interior_start + p))
             .map_err(|e| e.named(&name, None))?;
     }

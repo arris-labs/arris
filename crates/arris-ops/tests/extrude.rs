@@ -17,8 +17,8 @@ use arris_debug::prop::profile::{PROFILE_RADIUS, Sweep};
 use arris_debug::prop::{finite_f64, frame, sweep};
 use arris_debug::testing::{close, fail};
 use arris_debug::unmetered::cut;
+use arris_debug::unmetered::tessellate;
 use arris_debug::{dump_text, prop, prop_shards};
-use arris_mesh::tessellate;
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Profile, ProfileError, ProfileLoop, ProfileSegment, Surface,
 };

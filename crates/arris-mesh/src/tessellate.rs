@@ -7,11 +7,11 @@ use std::collections::BTreeMap;
 use arris_check::domain::FaceDomain;
 use arris_topo::arris_geom::Surface;
 use arris_topo::arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Polygon2};
-use arris_topo::arris_math::{Interval, Point2, UnitVec3, Vec3};
+use arris_topo::arris_math::{Control, Interval, Meter, Point2, UnitVec3, Vec3};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::{Body, EdgeId, FaceId, Model, NotFound, Orientation, VertexId};
 
-use crate::cdt::{self, VertexRef};
+use crate::cdt::{self, CdtError, VertexRef};
 use crate::corners::{CornerFace, Corners};
 use crate::{MeshError, TriMesh};
 
@@ -110,17 +110,21 @@ struct EdgeSamples {
 /// polygons a valid face has; [`MeshError::GridTooLarge`] when a face's
 /// interior lattice at `chord` would need more than
 /// [`MAX_INTERIOR_POINTS`] points; [`MeshError::NonFinitePosition`] when
-/// the geometry evaluates to a non-finite point.
+/// the geometry evaluates to a non-finite point; [`MeshError::Interrupted`]
+/// when `control`'s poll or budget stops it (a step is an edge, a face, an
+/// interior point or a CDT insertion; ADR-0030). The model is only read,
+/// so an interrupt leaves nothing to undo.
 ///
 /// ```
 /// use arris_debug::sample;
 /// use arris_mesh::tessellate;
 /// use arris_topo::Model;
+/// use arris_topo::arris_math::Control;
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
 /// let cylinder = sample::cylinder(&mut m, 4.0, 12.0).unwrap();
-/// let mesh = tessellate(&m, cylinder, 1e-3).unwrap();
+/// let mesh = tessellate(&m, cylinder, 1e-3, &Control::NONE).unwrap();
 /// assert!(mesh.is_closed());
 /// assert_eq!(mesh.faces().len(), 3);
 /// assert_eq!(mesh.edges().len(), 3);
@@ -129,8 +133,13 @@ struct EdgeSamples {
 /// // An inscribed prism at sagitta δ on radius r: within 4δ / (3r).
 /// assert!(volume > 0.0 && exact - volume <= exact * 4.0 * 1e-3 / (3.0 * 4.0));
 /// ```
-pub fn tessellate(m: &Model, body: Body, chord: f64) -> Result<TriMesh, MeshError> {
-    tessellate_with(m, body, &MeshRequest::new(chord))
+pub fn tessellate(
+    m: &Model,
+    body: Body,
+    chord: f64,
+    control: &Control<'_>,
+) -> Result<TriMesh, MeshError> {
+    tessellate_with(m, body, &MeshRequest::new(chord), control)
 }
 
 /// [`tessellate`] of `request.chord`, with the render buffer beside the
@@ -157,22 +166,22 @@ pub fn tessellate(m: &Model, body: Body, chord: f64) -> Result<TriMesh, MeshErro
 /// at a sphere's pole for every corner of the fan, and at a cone's apex
 /// one normal per corner's own `u` (ADR-0012).
 ///
-/// Errors: [`tessellate`]'s, and [`MeshError::Corners`] if the block
+/// Errors: [`tessellate`]'s (`control` stops it the same way), and [`MeshError::Corners`] if the block
 /// could not be built — a face no point of which has a normal.
 ///
 /// ```
 /// use arris_debug::sample;
 /// use arris_mesh::{MeshRequest, tessellate};
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_topo::arris_math::{Control, Point3};
 ///
 /// let mut m = Model::default();
 /// let ball = sample::sphere(&mut m, Point3::origin(), 3.0).unwrap();
 /// let request = MeshRequest::new(1e-2).with_corners();
-/// let mesh = arris_mesh::tessellate_with(&m, ball, &request).unwrap();
+/// let mesh = arris_mesh::tessellate_with(&m, ball, &request, &Control::NONE).unwrap();
 ///
 /// // The watertight buffer is the one `tessellate` gives.
-/// let plain = tessellate(&m, ball, 1e-2).unwrap();
+/// let plain = tessellate(&m, ball, 1e-2, &Control::NONE).unwrap();
 /// assert_eq!(mesh.positions(), plain.positions());
 /// assert_eq!(mesh.triangles(), plain.triangles());
 /// assert!(plain.corners().is_none());
@@ -186,7 +195,13 @@ pub fn tessellate(m: &Model, body: Body, chord: f64) -> Result<TriMesh, MeshErro
 ///     assert!((0..3).all(|i| (radial[i] - normal[i]).abs() < 1e-9));
 /// }
 /// ```
-pub fn tessellate_with(m: &Model, body: Body, request: &MeshRequest) -> Result<TriMesh, MeshError> {
+pub fn tessellate_with(
+    m: &Model,
+    body: Body,
+    request: &MeshRequest,
+    control: &Control<'_>,
+) -> Result<TriMesh, MeshError> {
+    let mut meter = Meter::new(control);
     let chord = request.chord;
     if !(chord.is_finite() && chord > 0.0) {
         return Err(MeshError::Chord(chord));
@@ -214,6 +229,7 @@ pub fn tessellate_with(m: &Model, body: Body, request: &MeshRequest) -> Result<T
     let mut required: BTreeMap<EdgeId, usize> = BTreeMap::new();
     let mut domains: Vec<([Interval; 2], [f64; 2])> = Vec::with_capacity(faces.len());
     for f in &faces {
+        meter.tick()?;
         let face = m.face(f.id)?;
         let surface = m.surface(face.surface())?;
         // The (u, v) box holding the loops' true boundary, read at the
@@ -254,6 +270,7 @@ pub fn tessellate_with(m: &Model, body: Body, request: &MeshRequest) -> Result<T
     }
     let mut samples: BTreeMap<EdgeId, EdgeSamples> = BTreeMap::new();
     for e in &edges {
+        meter.tick()?;
         let edge = m.edge(e.id)?;
         let range = edge.range();
         let start = *vertex_index
@@ -300,6 +317,7 @@ pub fn tessellate_with(m: &Model, body: Body, request: &MeshRequest) -> Result<T
     let mut works: Vec<FaceWork> = Vec::with_capacity(faces.len());
     let mut block = request.corners.then(CornerBlock::default);
     for (k, f) in faces.iter().enumerate() {
+        meter.tick()?;
         let face = m.face(f.id)?;
         let mut polygons: Vec<Polygon2> = Vec::with_capacity(face.loops().len());
         let mut rings: Vec<Vec<u32>> = Vec::with_capacity(face.loops().len());
@@ -347,6 +365,7 @@ pub fn tessellate_with(m: &Model, body: Body, request: &MeshRequest) -> Result<T
         let interior = interior_grid(f.id, &polygons, bounds, steps)?;
         let mut interior_indices: Vec<u32> = Vec::with_capacity(interior.len());
         for uv in &interior {
+            meter.tick()?;
             let p = surface.point(uv.x, uv.y);
             interior_indices.push(mesh.push_position([p.x, p.y, p.z])?);
         }
@@ -395,7 +414,7 @@ pub fn tessellate_with(m: &Model, body: Body, request: &MeshRequest) -> Result<T
     // over `rayon` behind `parallel`, sequential otherwise; either way
     // the results are collected in face order before they reach `mesh`,
     // so the mesh is identical with the feature on or off.
-    for (w, triangles) in works.iter().zip(triangulate_faces(&works)?) {
+    for (w, triangles) in works.iter().zip(triangulate_faces(&works, &mut meter)?) {
         mesh.push_face(w.face, triangles.shared)?;
         if let Some(block) = block.as_mut() {
             block.triangles.extend(triangles.local);
@@ -641,12 +660,16 @@ struct FaceTriangles {
 /// mesh indices — and, where the face carries a [`CornerWork`], to its
 /// face-local ones as well — oriented by `reversed`, collapsed triangles
 /// dropped. The two lists are the same triangles in the same order.
-fn triangulate_face(w: &FaceWork) -> Result<FaceTriangles, MeshError> {
-    let triangulation =
-        cdt::triangulate(&w.polygons, &w.interior).map_err(|source| MeshError::Face {
-            face: w.face,
-            source,
-        })?;
+fn triangulate_face(w: &FaceWork, meter: &mut Meter<'_>) -> Result<FaceTriangles, MeshError> {
+    let triangulation = cdt::triangulate_metered(&w.polygons, &w.interior, meter).map_err(
+        |source| match source {
+            CdtError::Interrupted(stop) => MeshError::Interrupted(stop),
+            source => MeshError::Face {
+                face: w.face,
+                source,
+            },
+        },
+    )?;
     let index_of =
         |v: usize| -> Result<(u32, u32), MeshError> {
             match triangulation.vertex_ref(v) {
@@ -710,21 +733,55 @@ fn triangulate_face(w: &FaceWork) -> Result<FaceTriangles, MeshError> {
 
 /// [`triangulate_face`] over every face, in face order in the result
 /// regardless of how it was computed: over `rayon` behind `parallel`,
-/// a plain iterator otherwise.
-fn triangulate_faces(works: &[FaceWork]) -> Result<Vec<FaceTriangles>, MeshError> {
+/// a plain loop otherwise. Each face gets a [`Meter::split`] of `meter`
+/// and the faces' steps are charged to it in face order, so the first
+/// face whose running total crosses the budget stops the call with the
+/// same count in both builds (ADR-0030 §4); every thread polls.
+fn triangulate_faces(
+    works: &[FaceWork],
+    meter: &mut Meter<'_>,
+) -> Result<Vec<FaceTriangles>, MeshError> {
+    /// One face's outcome and steps into `meter`, in face order.
+    fn settle(
+        meter: &mut Meter<'_>,
+        result: Result<FaceTriangles, MeshError>,
+        steps: u64,
+    ) -> Result<FaceTriangles, MeshError> {
+        match result {
+            Err(MeshError::Interrupted(stop)) => Err(meter.charge_stop(stop).into()),
+            other => {
+                meter.charge(steps)?;
+                other
+            }
+        }
+    }
+    let mut out = Vec::with_capacity(works.len());
     #[cfg(feature = "parallel")]
     {
         use rayon::prelude::*;
         // Every result first, then the first error in face order: a
         // `Result` collected straight from `rayon` is whichever error a
         // thread met first.
-        let all: Vec<_> = works.par_iter().map(triangulate_face).collect();
-        all.into_iter().collect()
+        let base = meter.split();
+        let all: Vec<(Result<FaceTriangles, MeshError>, u64)> = works
+            .par_iter()
+            .map(|w| {
+                let mut own = base;
+                let result = triangulate_face(w, &mut own);
+                (result, own.steps())
+            })
+            .collect();
+        for (result, steps) in all {
+            out.push(settle(meter, result, steps)?);
+        }
     }
     #[cfg(not(feature = "parallel"))]
-    {
-        works.iter().map(triangulate_face).collect()
+    for w in works {
+        let mut own = meter.split();
+        let result = triangulate_face(w, &mut own);
+        out.push(settle(meter, result, own.steps())?);
     }
+    Ok(out)
 }
 
 /// How much longer the surface is along `u` than along `v` over the

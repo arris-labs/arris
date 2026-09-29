@@ -67,6 +67,12 @@ into its version (ADR-0027).
   of steps a caller stops them through: pass `&Control::NONE` to run to
   the end. `OpError` gains `Interrupted(Interrupted)`: a `match` over it
   needs an arm.
+- `arris_mesh`'s `tessellate` and `tessellate_with` take a trailing
+  `&Control` (`&Control::NONE` runs to the end): a poll or a budget of
+  steps stops the mesh, and `MeshError` gains `Interrupted(Interrupted)`.
+  `cdt::triangulate_metered` is `cdt::triangulate` under a `Meter`, and
+  `CdtError` gains `Interrupted(Interrupted)`: a `match` over any of the
+  three needs an arm.
 
 ## 0.3.0 — 2026-09-26
 

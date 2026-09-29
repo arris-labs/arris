@@ -30,6 +30,7 @@ use std::process::ExitCode;
 
 use arris::check::{Level, check};
 use arris::io::step::{self, ReadOptions};
+use arris::math::Control;
 use arris::mesh::{MeshRequest, tessellate_with};
 use arris::topo::Model;
 use arris_debug::bench::{self, Config, Report, Wall};
@@ -127,7 +128,9 @@ fn main() -> ExitCode {
         });
         let request = MeshRequest::new(fixture.recipe.tolerances.mesh_chord);
         let mesh = bench::time(&format!("{name} mesh"), config, &mut clock, || {
-            std::hint::black_box(tessellate_with(&chain.model, body, &request).ok());
+            std::hint::black_box(
+                tessellate_with(&chain.model, body, &request, &Control::NONE).ok(),
+            );
         });
         for case in [build, mesh] {
             println!(

@@ -53,7 +53,7 @@ use arris_io::arris_check::arris_topo::{
 use arris_io::arris_check::classify::{Classification, classify_point};
 use arris_io::arris_check::{Level, LumpError, Report, Unchecked, check, lumps};
 use arris_io::step::{self, StepError};
-use arris_mesh::{MeshRequest, TriMesh, tessellate_with};
+use arris_mesh::{MeshRequest, TriMesh};
 use arris_ops::{OpError, Reason, common, cut, fuse};
 use sha2::{Digest, Sha256};
 
@@ -1369,7 +1369,8 @@ pub(crate) fn mesh_check(
         what,
     };
     let request = MeshRequest::new(tolerances.mesh_chord).with_corners();
-    let mesh = tessellate_with(m, body, &request).map_err(|e| mesh_failure(e.to_string()))?;
+    let mesh = arris_mesh::tessellate_with(m, body, &request, &Control::NONE)
+        .map_err(|e| mesh_failure(e.to_string()))?;
     corners_stage(m, body, &mesh).map_err(&mesh_failure)?;
     let Some(mesh_volume) = mesh.signed_volume() else {
         return Err(mesh_failure("the mesh is not closed".into()));

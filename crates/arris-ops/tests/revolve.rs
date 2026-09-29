@@ -20,9 +20,9 @@ use arris_debug::fixtures::{Analytic, Loop, Num, Plane, Recipe, Segment, Step};
 use arris_debug::prop::profile::Sweep;
 use arris_debug::prop::sweep;
 use arris_debug::testing::{close, fail};
+use arris_debug::unmetered::tessellate;
 use arris_debug::{corpus, dump_text, euler_line, fixtures, oracle, prop, prop_shards, sample};
 use arris_io::step;
-use arris_mesh::tessellate;
 use arris_ops::arris_check::arris_topo::arris_geom::region2::Side;
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Curve2, Profile, ProfileEdge, ProfileError, ProfileLoop, ProfileSegment, Surface, SurfaceKind,

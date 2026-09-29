@@ -1,0 +1,5 @@
+cube: 72
+cylinder: 1141
+ball: 3253
+torus: 6564
+torus-corners: 760

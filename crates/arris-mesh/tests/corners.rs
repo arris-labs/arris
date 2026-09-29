@@ -11,9 +11,8 @@ use arris_debug::unmetered::{fillet, primitive_box, revolve};
 use core::f64::consts::{PI, TAU};
 
 use arris_debug::sample;
-use arris_mesh::{
-    CornerFace, Corners, MeshError, MeshRequest, TriMesh, tessellate, tessellate_with,
-};
+use arris_debug::unmetered::{tessellate, tessellate_with};
+use arris_mesh::{CornerFace, Corners, MeshError, MeshRequest, TriMesh};
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Profile, ProfileLoop, ProfileSegment, Surface,
 };

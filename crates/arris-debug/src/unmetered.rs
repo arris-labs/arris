@@ -111,3 +111,21 @@ pub fn build(
 pub fn mass_properties(m: &Model, body: Body) -> Result<MassProperties, OpError> {
     arris_ops::measure::mass_properties(m, body, &Control::NONE)
 }
+
+/// [`arris_mesh::tessellate`] to its end.
+pub fn tessellate(
+    m: &Model,
+    body: Body,
+    chord: f64,
+) -> Result<arris_mesh::TriMesh, arris_mesh::MeshError> {
+    arris_mesh::tessellate(m, body, chord, &Control::NONE)
+}
+
+/// [`arris_mesh::tessellate_with`] to its end.
+pub fn tessellate_with(
+    m: &Model,
+    body: Body,
+    request: &arris_mesh::MeshRequest,
+) -> Result<arris_mesh::TriMesh, arris_mesh::MeshError> {
+    arris_mesh::tessellate_with(m, body, request, &Control::NONE)
+}

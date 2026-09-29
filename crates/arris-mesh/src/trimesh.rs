@@ -4,6 +4,7 @@ use core::ops::Range;
 use std::collections::BTreeMap;
 
 use arris_check::Report;
+use arris_topo::arris_math::Interrupted;
 use arris_topo::{Body, EdgeId, FaceId, NotFound};
 
 use crate::Aabb;
@@ -109,6 +110,18 @@ pub enum MeshError {
     /// own fault, so never a [`MeshError::Face`].
     #[error("kernel bug: {0}")]
     Internal(&'static str),
+    /// The caller's poll or budget stopped the tessellation (ADR-0030):
+    /// nothing was built, and the same call with a larger budget or a poll
+    /// that stays `false` can succeed. The model is only read, so it is
+    /// untouched.
+    #[error("{0}")]
+    Interrupted(Interrupted),
+}
+
+impl From<Interrupted> for MeshError {
+    fn from(stop: Interrupted) -> Self {
+        MeshError::Interrupted(stop)
+    }
 }
 
 /// An indexed triangle mesh with `f64` positions, the output type of

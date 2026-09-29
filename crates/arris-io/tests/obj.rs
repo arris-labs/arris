@@ -14,8 +14,9 @@ use arris_debug::unmetered::{fillet, primitive_box};
 use std::ops::Range;
 
 use arris_debug::sample;
+use arris_debug::unmetered::{tessellate, tessellate_with};
 use arris_io::arris_check::arris_topo::{Body, Model, Orientation};
-use arris_io::arris_mesh::{MeshRequest, TriMesh, tessellate, tessellate_with};
+use arris_io::arris_mesh::{MeshRequest, TriMesh};
 use arris_io::obj;
 use arris_ops::arris_check::arris_topo::Edge;
 use arris_ops::arris_check::arris_topo::arris_math::{Point3, Vec3};

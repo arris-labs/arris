@@ -1061,7 +1061,7 @@ it.
 
 ## Tessellation
 
-`arris_mesh::tessellate(&Model, Body, chord) -> Result<TriMesh,
+`arris_mesh::tessellate(&Model, Body, chord, &Control) -> Result<TriMesh,
 MeshError>` turns a body into a triangle mesh with a `FaceRange` per
 face and an `EdgeRange` per edge, both in the body's iteration order
 (data-model §Adjacency and iteration). The chord tolerance is the
@@ -1120,10 +1120,16 @@ depends on `check`. The mesh guarantees (ADR-0003):
   is tessellation's own bookkeeping breaking on already-validated input —
   never a property of the body or the chord, and never the CDT's own
   fault, so never a `MeshError::Face`.
+- `MeshError::Interrupted` is the caller's poll or budget (ADR-0030). A
+  step is an edge, a face (in the domain pass and in the loop pass), an
+  interior lattice point, and a CDT insertion or recovered segment
+  (`cdt::triangulate_metered`). The parallel face pass splits a meter per
+  face and charges them in face order, so a budget stops at the same step
+  with `parallel` on or off. The model is only read, so nothing is undone.
 
-`arris_mesh::tessellate_with(&Model, Body, &MeshRequest)` is the same
+`arris_mesh::tessellate_with(&Model, Body, &MeshRequest, &Control)` is the same
 mesh with the **corner block** beside it when `MeshRequest::corners`
-asks for one: the render buffer, and `tessellate(m, body, chord)` is
+asks for one: the render buffer, and `tessellate(m, body, chord, control)` is
 `tessellate_with` of `MeshRequest::new(chord)` (ADR-0012). Asked for,
 `TriMesh::corners()` is `Some(&Corners)` and every position, triangle
 and range above is unchanged. A *face-local vertex* is one input point
