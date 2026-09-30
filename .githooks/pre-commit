@@ -11,7 +11,14 @@
 # - a version bump only (`Cargo.toml`, `Cargo.lock`, every changed line a
 #   `version` set to the workspace's new version): `cargo check`, which
 #   fails on a pin the bump missed;
-# - anything else, a dependency update among it: the whole gate.
+# - anything else: `tools/gate.sh` sizes it to the staged paths (ADR-0032).
+#   Layers, fmt, clippy and the doctests always; the `fast` nextest profile
+#   (`.config/nextest.toml`: no `real_*`, no slow singles) at 32 cases over
+#   the crates the paths reach and the corpus areas they can change; `cargo
+#   doc` only when a doc comment changed. A path the classifier cannot place
+#   runs the whole `fast` profile. Depth is the plan's retirement, CI and
+#   nightly: 256 cases, every test, `real_*`, the docs build.
+# - `ARRIS_GATE=full`: the old gate, every test at 256 cases and `cargo doc`.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 [ -f Cargo.toml ] || exit 0
@@ -61,6 +68,26 @@ fi
 echo "pre-commit: layer rule" && tools/check-layers.sh
 echo "pre-commit: cargo fmt --check" && cargo fmt --all -- --check
 echo "pre-commit: cargo clippy" && cargo clippy --workspace --all-targets -- -D warnings
-echo "pre-commit: cargo nextest" && cargo nextest run --workspace --cargo-quiet --status-level fail
+
+if [ "${ARRIS_GATE:-}" = full ]; then
+  echo "pre-commit: ARRIS_GATE=full — every test"
+  echo "pre-commit: cargo nextest" && cargo nextest run --workspace --cargo-quiet --status-level fail
+  echo "pre-commit: cargo test --doc" && cargo test --workspace --doc --quiet
+  echo "pre-commit: cargo doc" && RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+  exit 0
+fi
+
+gate=$(tools/gate.sh)
+gate_value() { sed -n "s/^$1=//p" <<<"$gate"; }
+# The classifier's own test, whenever the classifier or the profiles change.
+if grep -qE '^(tools/gate|\.config/)' <<<"$staged"; then
+  echo "pre-commit: the gate's classifier" && tools/gate-test.sh && tools/profile-test.sh
+fi
+echo "pre-commit: cargo nextest --profile fast ($(gate_value cases) cases)"
+ARRIS_PROPTEST_CASES=$(gate_value cases) ARRIS_DIFF_CASES=$(gate_value diff_cases) \
+  cargo nextest run --workspace --profile fast -E "$(gate_value filter)" \
+  --cargo-quiet --status-level fail --no-tests pass
 echo "pre-commit: cargo test --doc" && cargo test --workspace --doc --quiet
-echo "pre-commit: cargo doc" && RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+if [ "$(gate_value doc)" = yes ]; then
+  echo "pre-commit: cargo doc" && RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+fi

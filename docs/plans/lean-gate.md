@@ -144,7 +144,7 @@ bound has to be established here.
   `fast` filter, and no input ever yields a gate smaller than its own
   crate's tests. The script is the classifier and nothing else; it runs
   no test itself.
-- [ ] Step 3 **[2]** — the hook calls it. `.githooks/pre-commit`'s full
+- [x] Step 3 **[2]** — the hook calls it. `.githooks/pre-commit`'s full
   branch: layers, fmt, clippy, doctests, `cargo nextest run --profile
   fast -E <filter>` with `ARRIS_PROPTEST_CASES` and `ARRIS_DIFF_CASES`
   from the gate, `cargo doc` only when the gate says so; `ARRIS_GATE=full`
@@ -248,3 +248,26 @@ slow, it is what no commit's own change should pay for. 24 tests out.
 Finding: nextest 0.9.144 supports `default-filter` per profile (the
 first ⚠ OPEN); a test in a unit-test module is named by its whole path
 (`part::tests::…`), an integration test by its function name.
+
+### Step 3 — the hook on replayed sets (32 cores, 2026-09-30)
+
+Replayed not with scratch commits but by feeding each commit's own paths
+to `tools/gate.sh plan` and running the command the hook then runs
+(nextest `fast` at 32 cases, then the doctests) on the current tree —
+the tree contains both commits, so the work is what they staged; fmt and
+clippy are warm and sub-second-to-seconds and not in these figures.
+
+| Set | Gate | nextest wall | doctests |
+|---|---|---|---|
+| `466c619` (ops, topo, **and** `arris-debug/src`, a CHANGELOG line) | `rdeps` of three crates, corpus *all* (debug reaches it) — the whole `fast` profile, 1487 tests | 108 s | 4 s |
+| `2c52b27` (debug, ops tests, `arris` tests, fixtures) | the same | 107 s | 4 s |
+| prose only | the docs tests branch, untouched by this step | — | — |
+
+Finding: both real commits touched `crates/arris-debug/src`, which the
+design delta sends to the whole corpus, so neither got the smaller gate
+the plan pictured; the figure that matters is that the whole `fast`
+profile is **~110 s against ~312 s** for the old gate, and a change that
+stays in ops (a `mirror.rs` edit alone) selects 144 corpus tests, 1438
+in all. The acceptance bound (under 120 s for the `466c619` set) holds,
+with `fmt`, `clippy` and doctests about 10 s on top.
+
