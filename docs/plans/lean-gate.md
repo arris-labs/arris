@@ -134,7 +134,7 @@ bound has to be established here.
   list --profile fast` lists none of the excluded names and every other
   test the default lists (a script asserting the difference is exactly
   the named set, so a renamed test cannot silently leave or enter it).
-- [ ] Step 2 **[2]** — `tools/gate.sh` and its test. `tools/gate-test.sh`
+- [x] Step 2 **[2]** — `tools/gate.sh` and its test. `tools/gate-test.sh`
   feeds path sets (a geom-only change, an ops `boolean` change, an ops
   `mirror` change, a `crates/arris-debug` change, a fixture under
   `tests/fixtures/transform/`, a `.config/` change, a path in no known
