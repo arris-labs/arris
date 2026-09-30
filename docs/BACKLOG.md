@@ -95,6 +95,7 @@ reproduces it.
 - The whole-model native format adopts body bytes' migration machinery: today a file of another `NATIVE_VERSION` is refused, which is right until a consumer comes to store whole models (ADR-0029 decision 9; body-bytes non-goal)
 - A dedicated wire schema for body bytes (flat tables rather than `serde` of the model's types), so a consumer in another language can write them: taken when a second consumer asks for one (ADR-0029 option B; body-bytes non-goal)
 - The STEP reader builds no outer loop (`L4 f0: no outer loop`) for the torus face of Open CASCADE's STEP of a mirrored ring, whose torus frame is left-handed: it reads left-handed surface frames (a `Mirror`'s image, `BRepBuilderAPI_Transform` with a reflection) as if right-handed; a fixture at `tests/fixtures/regression/mirror-torus-ring` holds the desired read-back (mirror step 4)
+- Coincident quadrics under different frames are not one surface to the boolean's split: a ball united with a copy of itself turned half a turn about its axis (and so a body mirrored in a plane through its centre) fails with `kernel bug: the face arrangement is not a subdivision: a section edge of f0 ends at a node nothing else reaches`, where Open CASCADE returns the ball; `tests/fixtures/regression/coincident-spheres-rotated-frame` holds the desired result (mirror step 5)
 
 ## Findings
 

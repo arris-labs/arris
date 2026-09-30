@@ -1,0 +1,63 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b2 solid
+  shell +s2
+    face -f6 S1 tol 0.0000001
+      surface plane origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e9 p17 circle origin (6, 0) x (-1, 0) y (0, 1) radius 4
+        coedge -e8 p16 circle origin (6, 0) x (-1, 0) y (0, 1) radius 4
+        coedge -e6 p1 circle origin (0, 0) x (1, 0) y (0, 1) radius 4
+    face +f7 S0 tol 0.0000001
+      surface cylinder origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 4
+      loop 0
+        coedge +e6 p0 line origin (0, 0) direction (1, 0)
+        coedge +e13 p10 line origin (5.560451059366, 0) direction (0, 1)
+        coedge -e7 p4 line origin (0, 12) direction (1, 0)
+        coedge -e14 p12 line origin (0.722734247813, 0) direction (0, 1)
+    face +f8 S2 tol 0.0000001
+      surface plane origin (0, 0, 12) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge +e7 p5 circle origin (0, 0) x (1, 0) y (0, 1) radius 4
+        coedge +e12 p21 circle origin (6, 0) x (-1, 0) y (0, 1) radius 4
+        coedge +e11 p20 circle origin (6, 0) x (-1, 0) y (0, 1) radius 4
+    face -f9 S3 tol 0.0000001
+      surface cylinder origin (6, 0, 0) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 4
+      loop 0
+        coedge -e13 p11 line origin (0.722734247813, 0) direction (0, 1)
+        coedge -e12 p7 line origin (6.28318530718, 12) direction (-1, 0)
+        coedge +e10 p8 line origin (0, 0) direction (0, 1)
+        coedge +e9 p9 line origin (6.28318530718, 0) direction (-1, 0)
+    face -f10 S3 tol 0.0000001
+      surface cylinder origin (6, 0, 0) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 4
+      loop 0
+        coedge -e10 p6 line origin (6.28318530718, 0) direction (0, 1)
+        coedge -e11 p7 line origin (6.28318530718, 12) direction (-1, 0)
+        coedge +e14 p13 line origin (5.560451059366, 0) direction (0, 1)
+        coedge +e8 p9 line origin (6.28318530718, 0) direction (-1, 0)
+edges
+  -e9 v5 -> v8 c3 [5.560451059366, 6.28318530718] tol 0.0000001
+    curve circle origin (6, 0, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 4
+  -e8 v8 -> v4 c3 [0, 0.722734247813] tol 0.0000001
+    curve circle origin (6, 0, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 4
+  -e6 v4 -> v5 c0 [0.722734247813, 5.560451059366] tol 0.0000001
+    curve circle origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 4
+  +e13 v5 -> v7 c8 [0, 12] tol 0.0000001
+    curve line origin (3, -2.645751311065, 0) direction (0, 0, 1)
+  -e7 v6 -> v7 c2 [0.722734247813, 5.560451059366] tol 0.0000001
+    curve circle origin (0, 0, 12) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 4
+  -e14 v4 -> v6 c9 [0, 12] tol 0.0000001
+    curve line origin (3, 2.645751311065, 0) direction (0, 0, 1)
+  +e12 v7 -> v9 c5 [5.560451059366, 6.28318530718] tol 0.0000001
+    curve circle origin (6, 0, 12) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 4
+  +e11 v9 -> v6 c5 [0, 0.722734247813] tol 0.0000001
+    curve circle origin (6, 0, 12) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 4
+  +e10 v8 -> v9 c4 [0, 12] tol 0.0000001
+    curve line origin (2, 0, 0) direction (0, 0, 1)
+vertices
+  v8 (2, 0, 0) tol 0.0000001
+  v5 (3, -2.645751311065, 0) tol 0.0000001
+  v4 (3, 2.645751311065, 0) tol 0.0000001
+  v7 (3, -2.645751311065, 12) tol 0.0000001
+  v6 (3, 2.645751311065, 12) tol 0.0000001
+  v9 (2, 0, 12) tol 0.0000001
+euler 6/9/5/5/1 g0 = 0

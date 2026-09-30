@@ -113,6 +113,13 @@ fn transform_mirror_filleted_box() {
     run("transform/mirror-filleted-box");
 }
 
+/// A box with a cylinder boss, fused, mirrored: the mirror of a boolean's
+/// result (ADR-0031).
+#[test]
+fn transform_mirror_fused_boss() {
+    run("transform/mirror-fused-boss");
+}
+
 #[test]
 fn boolean_through_hole() {
     run("boolean/through-hole");
@@ -173,6 +180,69 @@ fn boolean_corner_union() {
 #[test]
 fn boolean_corner_common() {
     run("boolean/corner-common");
+}
+
+/// A body united with, minus and intersected with its own mirror image
+/// (ADR-0031): a mirrored operand is an operand like any other.
+#[test]
+fn boolean_mirror_ball_corner_cut_fuse() {
+    run("boolean/mirror-ball-corner-cut-fuse");
+}
+
+#[test]
+fn boolean_mirror_box_fuse() {
+    run("boolean/mirror-box-fuse");
+}
+
+#[test]
+fn boolean_mirror_box_cut() {
+    run("boolean/mirror-box-cut");
+}
+
+#[test]
+fn boolean_mirror_box_common() {
+    run("boolean/mirror-box-common");
+}
+
+#[test]
+fn boolean_mirror_cylinders_fuse() {
+    run("boolean/mirror-cylinders-fuse");
+}
+
+/// The oblique mirror of a cylinder, united: Open CASCADE cuts one more section arc
+/// at an ellipse's parameter origin (`analytic.counts_differ`).
+#[test]
+fn boolean_mirror_cylinders_oblique_fuse() {
+    run("boolean/mirror-cylinders-oblique-fuse");
+}
+
+/// The oblique mirror of a cylinder, intersected: Open CASCADE cuts one more section arc
+/// at an ellipse's parameter origin (`analytic.counts_differ`).
+#[test]
+fn boolean_mirror_cylinders_oblique_common() {
+    run("boolean/mirror-cylinders-oblique-common");
+}
+
+/// Touching images have no material in common: a typed refusal, as the
+/// oracle's empty result.
+#[test]
+fn boolean_mirror_box_touching_common() {
+    run("boolean/mirror-box-touching-common");
+}
+
+#[test]
+fn boolean_mirror_cylinders_touching_common() {
+    run("boolean/mirror-cylinders-touching-common");
+}
+
+#[test]
+fn boolean_mirror_cylinders_cut() {
+    run("boolean/mirror-cylinders-cut");
+}
+
+#[test]
+fn boolean_mirror_cylinders_common() {
+    run("boolean/mirror-cylinders-common");
 }
 
 #[test]
@@ -517,6 +587,15 @@ fn boolean_edge_touching_tilted_cut() {
 /// The ring torus mirrored in a plane beside it, through it and across it:
 /// Arris's mirror is clean and matches the oracle in every stage but the
 /// last, where its own reader refuses Open CASCADE's STEP of the mirrored
+/// A ball united with itself turned half a turn: one sphere under two
+/// frames, which the split leaves with a dangling face. A body mirrored
+/// through its centre is this case.
+#[test]
+#[ignore = "kernel bug: the face arrangement is not a subdivision, a section edge of f0 ends at a node nothing else reaches: coincident spheres under frames a half turn apart are not one surface to the split (docs/BACKLOG.md, coincident quadrics under different frames)"]
+fn regression_coincident_spheres_rotated_frame() {
+    run("regression/coincident-spheres-rotated-frame");
+}
+
 /// ring.
 #[test]
 #[ignore = "L4 f0 no outer loop: the reader builds no outer loop for the torus face of Open CASCADE's STEP of a mirrored ring, whose torus frame is left-handed (docs/BACKLOG.md, a reader of left-handed surface frames)"]

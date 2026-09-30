@@ -45,6 +45,15 @@ boolean/frustum-slot-cut: 1113
 boolean/frustum-stub-cut-then-fuse: 3572
 boolean/grazing-ball-bar-cut: 17441
 boolean/lump-in-cavity: 36
+boolean/mirror-ball-corner-cut-fuse: 6085
+boolean/mirror-box-common: 116
+boolean/mirror-box-cut: 116
+boolean/mirror-box-fuse: 116
+boolean/mirror-cylinders-common: 44
+boolean/mirror-cylinders-cut: 27
+boolean/mirror-cylinders-fuse: 27
+boolean/mirror-cylinders-oblique-common: 5866
+boolean/mirror-cylinders-oblique-fuse: 5866
 boolean/nist-ctc-04-face-arrangement-turn: 1046
 boolean/nist-ftc-06-face-arrangement-turn: 300
 boolean/oblique-cross-common: 6272
@@ -143,6 +152,7 @@ transform/mirror-box: 6
 transform/mirror-elliptic-cylinder: 3
 transform/mirror-filleted-box: 7
 transform/mirror-frustum: 4
+transform/mirror-fused-boss: 8
 transform/mirror-hollow-ring: 8
 transform/mirror-posed-cylinder: 3
 transform/moved-hollow-ring: 8

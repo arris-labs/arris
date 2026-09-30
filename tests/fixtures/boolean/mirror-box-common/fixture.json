@@ -1,0 +1,63 @@
+{
+  "description": "a box intersected with its own mirror image in the plane x = 3 through it (ADR-0031): the images share a half, their sides coplanar",
+  "params": {
+    "ox": 3,
+    "oy": 0,
+    "oz": 0,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {},
+  "steps": [
+    {
+      "name": "a",
+      "op": "box",
+      "min": [
+        1,
+        2,
+        3
+      ],
+      "max": [
+        4,
+        7,
+        5
+      ]
+    },
+    {
+      "name": "b",
+      "op": "mirror",
+      "of": "a",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    },
+    {
+      "name": "result",
+      "op": "common",
+      "a": "a",
+      "b": "b"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far",
+      "point": [
+        40,
+        40,
+        40
+      ],
+      "expect": "out"
+    }
+  ]
+}

@@ -139,7 +139,7 @@ bound has to be established here.
   across it. Area, volume, centroid, counts, point classifications match
   within each fixture's tolerance; the corpus lint holds the area to
   passing fixtures.
-- [ ] Step 5 **[2]** — a mirrored body is a first-class body: booleans on
+- [x] Step 5 **[2]** — a mirrored body is a first-class body: booleans on
   a mirrored operand (`cut`, `fuse`, `common` of a body and its own mirror,
   through a symmetric plane and across it) against the oracle;
   `tessellate` watertight and outward, mass properties; the STEP round
@@ -211,6 +211,32 @@ bound has to be established here.
   `pcurve(model, p, surface)` and `face(model, surface) -> FaceRemap`.
   Working it out found that the loops of a quadric face must be reversed,
   which the plan's first draft did not have: step 3 carries it.
+- Found in step 5: the boolean fixtures of a body and its mirror are
+  `boolean/mirror-{box,cylinders}-{fuse,cut,common}` and
+  `mirror-ball-corner-cut-fuse`, and `transform/mirror-fused-boss` is the
+  mirror of a fuse. Three deviations, none of them `mirror`'s. (a) A cut of
+  a body by its own oblique mirror image is refused by Arris as
+  `Degenerate` (the pieces meet along the plane's edges) where Open
+  CASCADE returns a solid of shells touching along edges; so the cut
+  fixtures have no oblique variant, and the oblique cylinders' fuse and
+  common are fixtures of their own, since Open CASCADE cuts one more
+  section arc at an ellipse's parameter origin (`counts_differ`, the
+  convention an earlier fixture records). (b) A ball united with its own
+  mirror through its centre is coincident spheres under frames a half turn
+  apart: the split fails with a dangling face, and the same without any
+  mirror (a ball and its half-turned copy), so that is
+  `regression/coincident-spheres-rotated-frame` and a backlog line, not a
+  `mirror` workaround. (c) Measures of the fuses through fitted or
+  quadric-pair sections agree with the oracle to 3e-9 to 1e-8, not 1e-9:
+  their fixtures state `tolerances` of 5e-9 and 2e-8. The plan's
+  tessellation, STEP and body-bytes round trips are
+  `ops/tests/mirror.rs` over the same bodies as step 3 (and the runner
+  does them for every fixture).
+- Resolved in step 5: Arris's own STEP of a mirrored body (every quadric
+  kind the tests hold, torus included) reads back clean at `Full` with the
+  same measures, so the writer needs no fix for a left-handed conic pcurve;
+  only Open CASCADE's left-handed torus frame is refused by the reader
+  (the `regression/mirror-torus-ring` backlog line).
 - `⚠ OPEN:` whether the checker, the tessellator and the STEP writer
   read a seam pair as `(0, 2π)` in that order. ADR-0031 says they take it
   by use orientation and the period. Agent, by step 3: a mirrored full

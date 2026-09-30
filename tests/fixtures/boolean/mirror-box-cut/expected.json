@@ -1,0 +1,118 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "757daa4b0d131e6f26cda8c8e149981aa88aee6481e819befb4f7331d32356ca",
+  "results": {
+    "beside": {
+      "area": 62.0,
+      "centroid": [
+        2.5,
+        4.5,
+        4.0
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          72.5,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          32.5,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          85.0
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            40.0,
+            40.0,
+            40.0
+          ]
+        }
+      ],
+      "volume": 30.0
+    },
+    "default": {
+      "area": 34.0,
+      "centroid": [
+        1.5000000000000002,
+        4.5,
+        4.0
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          24.166666666666686,
+          1.4210854715202004e-14,
+          0.0
+        ],
+        [
+          1.4210854715202004e-14,
+          4.166666666666686,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          21.666666666666657
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            40.0,
+            40.0,
+            40.0
+          ]
+        }
+      ],
+      "volume": 9.999999999999998
+    }
+  }
+}

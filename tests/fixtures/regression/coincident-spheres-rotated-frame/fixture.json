@@ -1,0 +1,117 @@
+{
+  "description": "a ball united with a copy of itself turned half a turn about its axis: the two spheres are one surface under frames a half turn apart, and the fuse is the ball. Arris's split refuses it with a dangling face where Open CASCADE returns the ball (found by mirror: a body mirrored in a plane through its centre is this case, `boolean/mirror-ball-corner-cut-fuse`'s `through` variant)",
+  "params": {},
+  "steps": [
+    {
+      "name": "half_disc",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -2
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              2
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half_disc",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "image",
+      "op": "transform",
+      "of": "ball",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 180
+      }
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "ball",
+      "b": "image"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far",
+      "point": [
+        40,
+        40,
+        40
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "4 / 3 * pi * 8",
+    "area": "4 * pi * 4",
+    "counts": {
+      "vertices": 2,
+      "edges": 2,
+      "faces": 2,
+      "loops": 2,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

@@ -310,3 +310,78 @@ fn a_body_of_nurbs_faces_mirrors_to_the_same_measures() {
         );
     }
 }
+
+/// A mirrored body is a body like any other: it tessellates closed with
+/// its volume outward, and leaves through STEP and body bytes as itself
+/// (checker green at `Full`, the same measures).
+#[test]
+fn a_mirrored_body_tessellates_and_round_trips_through_step_and_bytes() {
+    for (name, mut m, body) in bodies() {
+        for (i, plane) in planes().iter().enumerate() {
+            let label = format!("{name} in plane {i}");
+            let (image, p) = mirror(&mut m, body, plane).unwrap();
+            let want = mass_properties(&m, image).unwrap();
+            let scale = want.volume.abs().max(1.0);
+
+            let mesh = arris_debug::mesh_of(&m, image).unwrap();
+            assert!(mesh.is_closed(), "{label}: the mesh is open");
+            let mesh_volume = mesh.signed_volume().unwrap();
+            assert!(mesh_volume > 0.0, "{label}: inside out, {mesh_volume}");
+            // The original's mesh is the yardstick: a chord's polygon
+            // error is the same for both, and a wrongly turned face is not.
+            let original = arris_debug::mesh_of(&m, body)
+                .unwrap()
+                .signed_volume()
+                .unwrap();
+            assert!(
+                (mesh_volume - original).abs() <= 1e-2 * scale,
+                "{label}: mesh {mesh_volume} for the original's {original}"
+            );
+
+            let text = arris_io::step::write(&m, &[image]).unwrap();
+            let mut read_model = Model::default();
+            let read = arris_io::step::read(
+                &mut read_model,
+                &text,
+                &arris_io::step::ReadOptions::default(),
+                &Control::NONE,
+            )
+            .unwrap();
+            assert_eq!(read.solids.len(), 1, "{label}");
+            let back = read
+                .solids
+                .into_iter()
+                .next()
+                .unwrap()
+                .result
+                .unwrap_or_else(|e| panic!("{label}: STEP read back refused: {e:?}"))
+                .body;
+            let report = check(&read_model, back, Level::Full);
+            assert!(report.is_ok(), "{label}: STEP: {report}");
+            let got = mass_properties(&read_model, back).unwrap();
+            assert!(
+                (got.volume - want.volume).abs() <= 1e-6 * scale
+                    && (got.area - want.area).abs() <= 1e-6 * scale
+                    && (got.centroid - want.centroid).norm() <= 1e-6 * scale.max(10.0),
+                "{label}: STEP {got:?} for {want:?}"
+            );
+
+            let bytes = arris_io::body::write(&m, image, &p).unwrap();
+            let mut bytes_model = Model::default();
+            let imported = arris_io::body::read(&mut bytes_model, &bytes, &Control::NONE).unwrap();
+            let report = check(&bytes_model, imported.body, Level::Full);
+            assert!(report.is_ok(), "{label}: bytes: {report}");
+            let got = mass_properties(&bytes_model, imported.body).unwrap();
+            assert_eq!(
+                (got.volume, got.area, got.centroid),
+                (want.volume, want.area, want.centroid),
+                "{label}: bytes"
+            );
+            assert_eq!(
+                entities_of(&bytes_model, imported.body).len(),
+                entities_of(&m, image).len(),
+                "{label}: bytes"
+            );
+        }
+    }
+}

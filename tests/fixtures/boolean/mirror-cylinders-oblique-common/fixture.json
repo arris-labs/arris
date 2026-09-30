@@ -1,0 +1,80 @@
+{
+  "description": "a cylinder intersected with its own mirror image in a plane cutting the axis obliquely (ADR-0031): the images' axes skew, and the section's ellipses cross each other's seams",
+  "params": {
+    "ox": 1.5,
+    "oy": 0.4,
+    "oz": 5,
+    "nx": 0.6,
+    "ny": 0.5,
+    "nz": 2
+  },
+  "tolerances": {
+    "volume_rel": 5e-09,
+    "area_rel": 5e-09,
+    "inertia_rel": 5e-09
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 12
+    },
+    {
+      "name": "b",
+      "op": "mirror",
+      "of": "a",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    },
+    {
+      "name": "result",
+      "op": "common",
+      "a": "a",
+      "b": "b"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far",
+      "point": [
+        40,
+        40,
+        40
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "counts": {
+      "vertices": 13,
+      "edges": 21,
+      "faces": 10,
+      "loops": 10,
+      "shells": 1
+    },
+    "genus": 0,
+    "counts_differ": "Open CASCADE also cuts the section arc that runs through an ellipse's parameter origin where it meets the other cylinder's seam there, one more vertex and edge; Arris's edge range crosses the period once and the arc is one edge between the paves the seams and the crossing vertices make"
+  }
+}

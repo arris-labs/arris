@@ -1,0 +1,96 @@
+{
+  "description": "a box with a cylinder boss on one face (a fuse) mirrored in a plane: `default` beside it, `through` its middle, `across` obliquely; the image has the fuse's volume, area and counts, and is what fusing the mirrors of the parts would give (ADR-0031)",
+  "params": {
+    "ox": 14,
+    "oy": 0,
+    "oz": 0,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {
+    "through": {
+      "ox": 5,
+      "oy": 0,
+      "oz": 0,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    },
+    "across": {
+      "ox": 5,
+      "oy": 3,
+      "oz": 0,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "base",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        8,
+        3
+      ]
+    },
+    {
+      "name": "boss",
+      "op": "cylinder",
+      "base": [
+        5,
+        4,
+        3
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 2,
+      "height": 4
+    },
+    {
+      "name": "body",
+      "op": "fuse",
+      "a": "base",
+      "b": "boss"
+    },
+    {
+      "name": "result",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far",
+      "point": [
+        40,
+        40,
+        40
+      ],
+      "expect": "out"
+    }
+  ]
+}

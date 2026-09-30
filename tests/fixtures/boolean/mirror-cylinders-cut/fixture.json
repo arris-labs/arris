@@ -1,0 +1,74 @@
+{
+  "description": "a cylinder minus its own mirror image (ADR-0031): `default` in the plane of its cap (z = 12), the images touching along a coplanar disc; `parallel` in a plane beside the axis (x = 3), overlapping in a lens",
+  "params": {
+    "ox": 0,
+    "oy": 0,
+    "oz": 12,
+    "nx": 0,
+    "ny": 0,
+    "nz": 1
+  },
+  "variants": {
+    "parallel": {
+      "ox": 3,
+      "oy": 0,
+      "oz": 0,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    }
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 12
+    },
+    {
+      "name": "b",
+      "op": "mirror",
+      "of": "a",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "a",
+      "tool": "b"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far",
+      "point": [
+        40,
+        40,
+        40
+      ],
+      "expect": "out"
+    }
+  ]
+}

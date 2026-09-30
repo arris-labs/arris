@@ -1,0 +1,118 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d2d0fd860bcd2e51378563b3efab22eae63fb4f23330dc98e042327bb0c1e640",
+  "results": {
+    "beside": {
+      "area": 124.0,
+      "centroid": [
+        4.499999999999999,
+        4.499999999999999,
+        4.0
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 12,
+        "loops": 12,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 4,
+      "genus": 0,
+      "inertia": [
+        [
+          145.0,
+          -2.2737367544323206e-13,
+          0.0
+        ],
+        [
+          -2.2737367544323206e-13,
+          305.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          410.00000000000045
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 12,
+        "loops": 12,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            40.0,
+            40.0,
+            40.0
+          ]
+        }
+      ],
+      "volume": 60.00000000000001
+    },
+    "default": {
+      "area": 76.0,
+      "centroid": [
+        3.0000000000000004,
+        4.5,
+        4.0
+      ],
+      "counts": {
+        "edges": 28,
+        "faces": 14,
+        "loops": 14,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          96.66666666666674,
+          1.1368683772161603e-13,
+          1.1368683772161603e-13
+        ],
+        [
+          1.1368683772161603e-13,
+          66.66666666666652,
+          -1.1368683772161603e-13
+        ],
+        [
+          1.1368683772161603e-13,
+          -1.1368683772161603e-13,
+          136.66666666666652
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 28,
+        "faces": 14,
+        "loops": 14,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            40.0,
+            40.0,
+            40.0
+          ]
+        }
+      ],
+      "volume": 39.99999999999999
+    }
+  }
+}

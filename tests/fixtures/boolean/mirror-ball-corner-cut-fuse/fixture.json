@@ -1,0 +1,164 @@
+{
+  "description": "the ball with its corner cut (ball-corner-cut) united with its own mirror image (ADR-0031): `default` in a plane x = 1.5 through the ball, two spheres crossing; `across` in an oblique plane, where the sections between the two spheres' bites are fitted NURBS arcs and the measures agree to 1e-8 rather than 1e-9",
+  "params": {
+    "ox": 1.5,
+    "oy": 0,
+    "oz": 0,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "tolerances": {
+    "volume_rel": 2e-08,
+    "area_rel": 2e-08,
+    "inertia_rel": 2e-08
+  },
+  "variants": {
+    "across": {
+      "ox": 0.9,
+      "oy": 0,
+      "oz": 0,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "half_disc",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -2
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              2
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half_disc",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "block0",
+      "op": "box",
+      "min": [
+        0.6,
+        -0.7,
+        0.3
+      ],
+      "max": [
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "name": "block",
+      "op": "transform",
+      "of": "block0",
+      "rotate": {
+        "axis": [
+          1,
+          1,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 12
+      }
+    },
+    {
+      "name": "body",
+      "op": "cut",
+      "target": "ball",
+      "tool": "block"
+    },
+    {
+      "name": "image",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "body",
+      "b": "image"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far",
+      "point": [
+        40,
+        40,
+        40
+      ],
+      "expect": "out"
+    }
+  ]
+}

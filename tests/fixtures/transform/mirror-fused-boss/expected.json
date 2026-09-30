@@ -1,0 +1,174 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "1afbd7b84513e3fdbef276d060754691f89f311848a0a517bf317e290bfbd533",
+  "results": {
+    "across": {
+      "area": 318.26548245743675,
+      "centroid": [
+        4.6392566701756275,
+        3.2785133403512527,
+        2.2864691833342268
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 8,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2551.3195305040017,
+          381.25155001950907,
+          14.043859867760602
+        ],
+        [
+          381.25155001950907,
+          2471.768284104689,
+          302.3734340212336
+        ],
+        [
+          14.043859867760602,
+          302.3734340212336,
+          3250.259232723247
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 15,
+        "faces": 8,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            40.0,
+            40.0,
+            40.0
+          ]
+        }
+      ],
+      "volume": 290.2654824574368
+    },
+    "default": {
+      "area": 318.2654824574367,
+      "centroid": [
+        23.000000000000004,
+        4.0,
+        2.10609751842204
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 8,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2086.408041208533,
+          0.0,
+          1.8189894035458565e-12
+        ],
+        [
+          0.0,
+          2806.408041208546,
+          0.0
+        ],
+        [
+          1.8189894035458565e-12,
+          0.0,
+          3380.530964914884
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 15,
+        "faces": 8,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            40.0,
+            40.0,
+            40.0
+          ]
+        }
+      ],
+      "volume": 290.26548245743663
+    },
+    "through": {
+      "area": 318.2654824574367,
+      "centroid": [
+        4.999999999999999,
+        4.0,
+        2.1060975184220387
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 8,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2086.408041208533,
+          0.0,
+          -1.3642420526593924e-12
+        ],
+        [
+          0.0,
+          2806.408041208537,
+          0.0
+        ],
+        [
+          -1.3642420526593924e-12,
+          0.0,
+          3380.530964914875
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 15,
+        "faces": 8,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            40.0,
+            40.0,
+            40.0
+          ]
+        }
+      ],
+      "volume": 290.26548245743675
+    }
+  }
+}

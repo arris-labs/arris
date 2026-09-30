@@ -1,0 +1,55 @@
+{
+  "description": "a box intersected with its own mirror image in x = 4.5, the images touching along a face: no material, Arris returns OpError::Degenerate, the oracle records no solid (ADR-0031)",
+  "params": {
+    "ox": 4.5,
+    "oy": 0,
+    "oz": 0,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "box",
+      "min": [
+        1,
+        2,
+        3
+      ],
+      "max": [
+        4,
+        7,
+        5
+      ]
+    },
+    {
+      "name": "b",
+      "op": "mirror",
+      "of": "a",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    },
+    {
+      "name": "result",
+      "op": "common",
+      "a": "a",
+      "b": "b"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "degenerate": true
+  }
+}
