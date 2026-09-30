@@ -80,7 +80,7 @@ A name is the `PRODUCT` name (Open CASCADE writes the same in `id` and
 `name`; the `NEXT_ASSEMBLY_USAGE_OCCURRENCE`'s own names are generated
 noise, `=>[0:1:1:2]`, and not read). A colour is plain RGB through the
 `STYLED_ITEM` chain; anything else is skipped, never a reason to lose a
-body. A face colour is part of the ask — Open CASCADE writes it as an
+body. An occurrence's colour is that of its own solids: one with no solid has none on read, and the writer refuses one given (`TreeError::ColourWithoutSolids`) rather than drop it. A face colour is part of the ask — Open CASCADE writes it as an
 `OVER_RIDING_STYLED_ITEM` on the `ADVANCED_FACE` over the solid's own
 `STYLED_ITEM` — and is read into `ProductTree::faces`.
 

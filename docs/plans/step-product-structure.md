@@ -132,7 +132,7 @@ bound has to be established here.
   placements and volumes (the oracle script gains a read side), and
   `write` of one body is byte-identical to before (existing
   `step_round_trip` goldens).
-- [ ] Step 6 **[1]** — Round trip as a property. A random tree over random
+- [x] Step 6 **[1]** — Round trip as a property. A random tree over random
   corpus bodies (depth ≤ 3, fan-out ≤ 3, random rigid placements, random
   names from a fixed alphabet with the quote and backslash cases, random
   colours) written by Arris reads back to an equal `ProductTree` and, per

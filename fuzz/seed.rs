@@ -155,6 +155,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    // Assemblies, which no solid fixture's STEP is: Arris's own product
+    // tree of two parts, one placed twice, and Open CASCADE's XCAF
+    // assembly of two fixtures where the oracle's environment is there.
+    {
+        let fixtures_root = fixtures::corpus_root();
+        let built = chain(&fixtures_root.join("primitive/box"), "default")?;
+        let (model, body) = (&built.model, built.result().ok_or("no box")?);
+        let part = |name: &str, x: f64| step::Occurrence {
+            product: Some(1),
+            name: name.to_string(),
+            placement: Ok(arris_math::Isometry::from_translation(arris_math::Vec3::new(
+                x, 0.0, 0.0,
+            ))),
+            colour: Some(step::Rgb([0.25, 0.5, 0.75])),
+            solids: vec![0],
+            children: vec![],
+        };
+        let tree = step::ProductTree {
+            roots: vec![step::Occurrence {
+                product: Some(2),
+                name: "assembly".into(),
+                placement: Ok(arris_math::Isometry::identity()),
+                colour: None,
+                solids: vec![],
+                children: vec![part("box", 10.0), part("box", -10.0)],
+            }],
+            faces: vec![],
+        };
+        if let Ok(text) =
+            step::write_products(model, &[body], &tree, &arris_math::Control::NONE)
+        {
+            write(&step_dir, "seed-arris-assembly.step", text.into_bytes())?;
+            *counts.entry("step_read").or_default() += 1;
+        }
+        if let Ok((text, _)) = oracle::occt_assembly_oracle(
+            &fixtures_root.join("primitive/box"),
+            &fixtures_root.join("boolean/through-hole"),
+            "seed-occt-assembly",
+        ) {
+            write(&step_dir, "seed-occt-assembly.step", text.into_bytes())?;
+            *counts.entry("step_read").or_default() += 1;
+        }
+    }
     // Body bytes' guard, every version: bytes and JSON a release wrote.
     let body_dir = root.join("body_read");
     let guard = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../crates/arris-io/tests/body");

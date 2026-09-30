@@ -46,6 +46,14 @@ pub enum TreeError {
         /// The occurrence's name.
         name: String,
     },
+    /// An occurrence with a colour and no solid: a colour is the colour of
+    /// an occurrence's own solids (a read gives one only there), and this
+    /// one has none to carry it.
+    #[error("{name:?} has a colour and no solid to carry it")]
+    ColourWithoutSolids {
+        /// The occurrence's name.
+        name: String,
+    },
     /// Two occurrences carry one `Occurrence::product` but differ in name,
     /// solids, colour or children: they would be one product written once.
     #[error("product {product} is named by two occurrences that differ")]
@@ -248,6 +256,11 @@ fn validate(tree: &ProductTree, bodies: usize) -> Result<BTreeSet<usize>, TreeEr
         if let Some(c) = o.colour {
             if !c.0.iter().all(|x| (0.0..=1.0).contains(x)) {
                 return Err(TreeError::Colour {
+                    name: o.name.clone(),
+                });
+            }
+            if o.solids.is_empty() {
+                return Err(TreeError::ColourWithoutSolids {
                     name: o.name.clone(),
                 });
             }

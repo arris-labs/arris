@@ -187,3 +187,63 @@ fn a_budget_stops_the_body_readers() {
     let again = body::read(&mut m, &bytes, &Control::budget(n)).unwrap();
     assert_eq!(again.map, unbudgeted, "a budget of {n} changed the import");
 }
+
+/// `write_products` ticks per occurrence and per body: a budget below the
+/// steps it takes stops the call with `Interrupted` at exactly the budget,
+/// a budget at the count writes the same text, and a poll that says stop
+/// stops it too. The model is read only, so there is nothing to roll back.
+#[test]
+fn a_budget_stops_write_products_and_a_read_of_its_tree_ticks_per_occurrence() {
+    use arris_io::arris_check::arris_topo::arris_math::Isometry;
+    use arris_io::step::{Occurrence, ProductTree, StepError};
+
+    let mut m = Model::default();
+    let cylinder = sample::cylinder(&mut m, 4.0, 12.0).unwrap();
+    let part = |x: f64| Occurrence {
+        product: Some(1),
+        name: "pin".into(),
+        placement: Ok(Isometry::from_translation(
+            arris_io::arris_check::arris_topo::arris_math::Vec3::new(x, 0.0, 0.0),
+        )),
+        colour: None,
+        solids: vec![0],
+        children: vec![],
+    };
+    let tree = ProductTree {
+        roots: vec![Occurrence {
+            product: Some(2),
+            name: "assembly".into(),
+            placement: Ok(Isometry::identity()),
+            colour: None,
+            solids: vec![],
+            children: vec![part(10.0), part(-10.0)],
+        }],
+        faces: vec![],
+    };
+    let (whole, n) = steps_of(|c| step::write_products(&m, &[cylinder], &tree, c));
+    let text = whole.unwrap();
+    // The root, its two placements of one product, and the body once.
+    assert_eq!(n, 4, "{n} steps");
+    for k in below(n) {
+        match step::write_products(&m, &[cylinder], &tree, &Control::budget(k)) {
+            Err(StepError::Interrupted(stop)) => {
+                assert_eq!((stop.by, stop.steps), (Stop::Budget, k), "{k} of {n}");
+            }
+            other => panic!("budget {k} of {n}: {other:?}"),
+        }
+    }
+    assert_eq!(
+        step::write_products(&m, &[cylinder], &tree, &Control::budget(n)).unwrap(),
+        text
+    );
+    let stop = step::write_products(&m, &[cylinder], &tree, &Control::poll(&|| true));
+    assert!(matches!(stop, Err(StepError::Interrupted(s)) if s.by == Stop::Poll));
+
+    // The tree walk of a read is one step per occurrence, beside the
+    // solids' and the file's own.
+    let (read, steps) =
+        steps_of(|c| step::read(&mut Model::default(), &text, &ReadOptions::default(), c));
+    let read = read.unwrap();
+    assert_eq!(read.products.occurrences().count(), 3);
+    assert!(steps >= 3 + read.solids.len() as u64, "{steps} steps");
+}
