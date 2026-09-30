@@ -17,11 +17,13 @@ second roadmap file would only ever raise "which one is current?".
 1. **Check it is actually finished.** Every line of the cycle's section
    either done or explicitly moved to `docs/BACKLOG.md`; `docs/plans/`
    holding nothing but `TEMPLATE.md`; `cargo fmt --check`, `cargo clippy
-   --workspace --all-targets -- -D warnings` and `cargo test --workspace`
-   green; and the last CI run on `main` green in every job (`gh run list
-   --branch main`, then `gh run view <id>` for its jobs) — the hook does
-   not run CI's `oracle`, `wasm` or `parallel` jobs, so a job red on
-   `main` is only visible there. If not, stop and report exactly what is open — do not close
+   --workspace --all-targets -- -D warnings` and the full profile
+   (`cargo nextest run --workspace`, 256 cases, `real_*` included) green —
+   the hook runs only a `fast` slice per commit (ADR-0032), so this is the
+   cycle's full run; and the last CI run on
+   `main` green in every job (`gh run list --branch main`, then `gh run view
+   <id>` for its jobs) — neither the hook nor `/work` runs CI's `oracle`,
+   `wasm` or `parallel` jobs, so a job red on `main` is only visible there. If not, stop and report exactly what is open — do not close
    around it.
 2. **Reconcile the findings** (`docs/BACKLOG.md` §Findings). List the
    scheduled `Nightly` runs since the cycle opened (`gh run list

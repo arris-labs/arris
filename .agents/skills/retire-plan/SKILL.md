@@ -11,7 +11,14 @@ Deletion is the "done" signal. Anything worth keeping was moved first.
 ## Do
 
 1. Open `docs/plans/<slug>.md`. Every step ticked? Acceptance run and green
-   (run it now)? If not, stop and report which.
+   (run it now)? If not, stop and report which. **This is where the full
+   profile runs, once per plan** (ADR-0032): `cargo nextest run
+   --workspace` (the default profile: every test, `real_*` included, 256
+   cases), `cargo test --workspace --doc`, `RUSTDOCFLAGS="-D warnings"
+   cargo doc --workspace --no-deps`, and `ARRIS_ORACLE_CACHE=off` for the
+   oracle comparisons the plan touched. If the plan changed `arris-mesh`,
+   `arris-ops` or `arris` source, also `cargo nextest run -p <crate>
+   --features parallel` for each. The per-step hook never ran any of it.
 2. Execute *Docs to update* line by line. Design docs stay present tense —
    describe the system as it now is; no "as of this plan" narrative.
    If an `⚠ OPEN:` was closed by a decision, write the ADR now and add it to
@@ -39,12 +46,13 @@ Deletion is the "done" signal. Anything worth keeping was moved first.
 9. **Sweep the build cache.** A plan's commits leave a copy of every
    crate and test binary per build in `target/`, and nothing removes
    them: past a hundred gigabytes the disk fills and builds fail. After
-   the commit, keep what the workspace builds now and drop the rest
+   the commit (step 1's full run already built the tests; the commands
+   below rebuild only what it did not), keep what the workspace builds now and drop the rest
    (`cargo-sweep`, installed per the setup in `AGENTS.md`):
 
    ```sh
    cargo sweep --stamp
-   cargo test --workspace --no-run && cargo clippy --workspace --all-targets
+   cargo nextest run --workspace --no-run && cargo clippy --workspace --all-targets
    cargo sweep --file
    rm -rf target/debug/incremental
    ```

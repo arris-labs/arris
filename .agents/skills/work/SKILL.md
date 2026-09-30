@@ -15,13 +15,16 @@ argument-hint: <plan slug> [step number or range]
 2. Implement the step and its test, fixture or oracle comparison. Docs that
    the step changes are edited in the same step (`.agents/rules/git.md`);
    rustdoc on every new public item is written now.
-3. Run the checks the hook will run: `cargo fmt --all`, `cargo clippy
-   --workspace --all-targets -- -D warnings`, `cargo test --workspace`,
-   `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`. For a
-   geometric change, also run the fixture corpus and the oracle comparison
-   it touches, and look at the result (`inspect` skill) before trusting a
+3. Run the step's own tests — the test files and the corpus area the step
+   adds or touches (`cargo nextest run -p <crate> --test <file>`, or
+   `-E 'test(/^<area>_/)'`) — and `cargo fmt --all`. Not the workspace
+   suite, `cargo clippy` or `cargo doc`: the pre-commit hook runs fmt,
+   clippy, the doctests and the `fast` profile over what the commit reaches
+   (`tools/gate.sh`, ADR-0032), so running them here pays twice. For a
+   geometric change, look at the result (`inspect` skill) before trusting a
    green test — a boolean that returns the wrong solid with the right face
-   count is a real failure mode.
+   count is a real failure mode. The full profile at 256 cases runs once,
+   in `/retire-plan`; a step that needs it sooner says why in its commit.
 4. Commit: `type(scope): summary (plans/<slug> step N)`; body says why and
    cites docs/ADRs, and names any public type or signature that changed.
    Tick the box in the plan and include the plan file in the same commit.
@@ -39,6 +42,8 @@ argument-hint: <plan slug> [step number or range]
 
 - Don't skip ahead or fold two steps into one commit "because they're small".
 - Don't tick a box whose test didn't run.
+- Don't run `cargo test --workspace`, the whole corpus or `cargo doc` per
+  step; the hook and `/retire-plan` do, sized to what they must.
 - Don't bypass the hook. If checks fail, fix them or stop and report.
 - Don't widen a tolerance, add a wildcard `match` arm or a fallback path to
   make a case pass. Each of those is a design change and goes through the

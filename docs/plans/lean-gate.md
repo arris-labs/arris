@@ -158,7 +158,7 @@ bound has to be established here.
   index, `.agents/rules/git.md`, ROADMAP §Beside the cycles, ARCHITECTURE
   §Formats and tools, `AGENTS.md` wording. Docs only. The `docs_refs` and
   `doc_drift` tests run under the prose-only hook path.
-- [ ] Step 5 **[1]** — the skills: `work` (step 3, the Don't list: no
+- [x] Step 5 **[1]** — the skills: `work` (step 3, the Don't list: no
   workspace suite, no `cargo doc` per step), `retire-plan` (the acceptance
   run, the lighter sweep stamp), `close-cycle` and `release` (their gate
   wording). Docs only; each skill edited once, the four descriptions'
