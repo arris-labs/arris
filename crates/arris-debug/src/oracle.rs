@@ -422,6 +422,50 @@ pub struct AssemblyInstance {
     pub centroid: [f64; 3],
 }
 
+/// One occurrence of [`AssemblyOracle::tree`]: what Open CASCADE's XCAF
+/// document holds for it, which Arris's product tree of the file is held to
+/// (ADR-0033).
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct OracleOccurrence {
+    /// The product's name.
+    pub name: String,
+    /// The placement in the parent as a 3×4 row-major matrix, in
+    /// millimetres; `None` at the root.
+    pub placement: Option<[f64; 12]>,
+    /// The colour of the part, as it was set.
+    pub colour: Option<[f64; 3]>,
+    /// The indices, into [`AssemblyOracle::instances`], of the solids the
+    /// occurrence holds itself.
+    pub solids: Vec<usize>,
+    /// The occurrences placed in it.
+    pub children: Vec<OracleOccurrence>,
+}
+
+/// The one face [`occt_assembly`]'s script colours apart from its part.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Deserialize)]
+pub struct OracleFaceColour {
+    /// The instance, an index into [`AssemblyOracle::instances`].
+    pub instance: usize,
+    /// The placed face's centroid.
+    pub centroid: [f64; 3],
+    /// The face's area.
+    pub area: f64,
+    /// Its colour, as it was set.
+    pub colour: [f64; 3],
+}
+
+/// Everything [`occt_assembly_oracle`] measures.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct AssemblyOracle {
+    /// Each placed instance's volume and centroid, in placement order.
+    pub instances: Vec<AssemblyInstance>,
+    /// The expected product tree: `assembly`, holding `part-a` and
+    /// `sub-assembly`, which holds `part-b` twice.
+    pub tree: OracleOccurrence,
+    /// The coloured face.
+    pub faces: Vec<OracleFaceColour>,
+}
+
 /// An Open CASCADE XCAF assembly of the results of the fixtures in `a`
 /// and `b` — `a` placed once, `b` twice, each by a turn and a shift —
 /// written by `STEPCAFControl_Writer` with its product structure
@@ -429,7 +473,8 @@ pub struct AssemblyInstance {
 /// instance's volume and centroid in placement order, which Arris's
 /// reader of the file is held to (ADR-0025 §5). Kept in [`cache`] under
 /// both `fixture.json`s; the file is also left at
-/// `target/inspect/<tag>.step`.
+/// `target/inspect/<tag>.step`. [`occt_assembly_oracle`] returns the
+/// product tree as well.
 ///
 /// Errors: [`OracleError::Write`]; [`OracleError::Environment`] when `uv`
 /// could not run, the environment is missing, or a recipe did not build.
@@ -449,11 +494,44 @@ pub fn occt_assembly(
     b: &Path,
     tag: &str,
 ) -> Result<(String, Vec<AssemblyInstance>), OracleError> {
+    let (text, oracle) = occt_assembly_oracle(a, b, tag)?;
+    Ok((text, oracle.instances))
+}
+
+/// [`occt_assembly`] with the whole of what the script measures: the
+/// instances, the product tree of names, placements and colours, and the
+/// coloured face (ADR-0033).
+///
+/// Errors: as [`occt_assembly`].
+///
+/// ```no_run
+/// use arris_debug::{fixtures, oracle};
+///
+/// let root = fixtures::corpus_root();
+/// let (_, o) = oracle::occt_assembly_oracle(
+///     &root.join("primitive/box"),
+///     &root.join("primitive/cylinder"),
+///     "asm",
+/// )
+/// .unwrap();
+/// assert_eq!(o.tree.name, "assembly");
+/// assert_eq!(o.tree.children.len(), 2);
+/// ```
+pub fn occt_assembly_oracle(
+    a: &Path,
+    b: &Path,
+    tag: &str,
+) -> Result<(String, AssemblyOracle), OracleError> {
     #[derive(serde::Serialize, serde::Deserialize)]
     struct Kept {
         step: String,
-        instances: Vec<[f64; 4]>,
+        measured: String,
     }
+    let parse = |measured: &str| {
+        serde_json::from_str::<AssemblyOracle>(measured).map_err(|e| OracleError::Environment {
+            message: format!("occt_assembly.py's output did not parse as JSON: {e}"),
+        })
+    };
     let scratch = scratch_dir();
     let file = scratch.join(format!("{tag}.step"));
     let specs = [a, b].map(|d| std::fs::read(d.join("fixture.json")).ok());
@@ -462,52 +540,38 @@ pub fn occt_assembly(
         &[specs[0].as_deref(), specs[1].as_deref()],
         None,
     );
-    let unpack = |kept: Kept| {
-        let placed = kept
-            .instances
-            .iter()
-            .map(|&[volume, x, y, z]| AssemblyInstance {
-                volume,
-                centroid: [x, y, z],
-            })
-            .collect();
-        (kept.step, placed)
-    };
     std::fs::create_dir_all(&scratch).map_err(|e| OracleError::Write {
         path: scratch.clone(),
         message: e.to_string(),
     })?;
     if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
         if let Ok(kept) = serde_json::from_slice::<Kept>(&bytes) {
-            std::fs::write(&file, &kept.step).map_err(|e| OracleError::Write {
-                path: file.clone(),
-                message: e.to_string(),
-            })?;
-            return Ok(unpack(kept));
+            if let Ok(oracle) = parse(&kept.measured) {
+                std::fs::write(&file, &kept.step).map_err(|e| OracleError::Write {
+                    path: file.clone(),
+                    message: e.to_string(),
+                })?;
+                return Ok((kept.step, oracle));
+            }
         }
     }
     let output = spawn(uv("occt_assembly.py").arg(a).arg(b).arg(&file))?;
     if !output.status.success() {
         return Err(environment(&output));
     }
-    let placed: Vec<AssemblyInstance> =
-        serde_json::from_slice(&output.stdout).map_err(|e| OracleError::Environment {
-            message: format!("occt_assembly.py's output did not parse as JSON: {e}"),
-        })?;
+    let measured = String::from_utf8_lossy(&output.stdout).into_owned();
+    let oracle = parse(&measured)?;
     let step = std::fs::read_to_string(&file).map_err(|e| OracleError::Environment {
         message: format!("occt_assembly.py wrote no file {}: {e}", file.display()),
     })?;
     let kept = Kept {
-        step,
-        instances: placed
-            .iter()
-            .map(|p| [p.volume, p.centroid[0], p.centroid[1], p.centroid[2]])
-            .collect(),
+        step: step.clone(),
+        measured,
     };
     if let Ok(bytes) = serde_json::to_vec(&kept) {
         keep(slot, &bytes);
     }
-    Ok(unpack(kept))
+    Ok((step, oracle))
 }
 
 /// Open CASCADE's `RWStl` reading of an STL file: how many facets it saw,
