@@ -78,7 +78,21 @@ touches one crate.
   judgement kept in one script; widening one is a line in `gate.sh` and a
   case in `gate-test.sh`.
 - Not a timer: the `fast` set was chosen once from measured cost
-  (`docs/plans` lean-gate, *Measured*) and nothing enforces a duration.
+  (below) and nothing enforces a duration.
+
+## Measured
+
+32-core machine, 2026-09-30. Default profile, 256 cases: 315 s wall,
+9,235 CPU-s, 1511 tests; the slowest singles `real_nist_ctc_04` 170 s,
+`real_nist_ftc_07` 163 s, `guard::coverage` 90 s. `fast` at 32 cases:
+1489 tests, 110 s wall, 2,538 CPU-s, its slowest single tests
+(corpus `boolean_*`, the part battery, `tolerance_band`) 37–53 s under
+contention. The hook on the whole `fast` profile: 106 s nextest plus about
+10 s of fmt, clippy and doctests, against 312 s for the old gate. A
+planted fault that needs a property's depth passed at 32 cases and failed
+49 tests at 256; one in a `real_*` excerpt passed the hook's gate and
+failed the default profile. No fault was found that the per-area scoping
+alone loses, which is not a proof that none exists.
 
 ## Alternatives considered
 

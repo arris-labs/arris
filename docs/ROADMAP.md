@@ -566,6 +566,10 @@ Two lines of work that are not cycles. Neither changes a public type or a
 signature, so neither earns a minor version (`.agents/rules/git.md`
 §Tags); each stands beside whatever cycle is open (ADR-0020).
 
+**The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`
+slice, about 110 s at worst against 312 s; the full suite runs once per plan
+at retirement, in CI, nightly, at cycle close and at release.
+
 **The measuring harness.** It measures what decides the cycle after C4
 (ADR-0024). The oracle answers from a cache keyed on every input it
 reads (`target/oracle-cache/`, bypassed by `ARRIS_ORACLE_CACHE=off` in CI

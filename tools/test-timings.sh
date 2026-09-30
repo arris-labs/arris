@@ -13,7 +13,7 @@
 #
 # `--profile P` (a profile of `.config/nextest.toml`) times just the nextest
 # run under that profile and the slowest single tests in it, so the profiles
-# compare like with like (`docs/plans` lean-gate; ADR-0032). Without it the
+# compare like with like (ADR-0032). Without it the
 # three measurements below are taken as before, plus the slowest tests.
 #
 # Prints a markdown table, slowest target first, of three measurements taken

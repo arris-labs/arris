@@ -7,7 +7,7 @@
 
 [profile.fast]
 #
-# The slow set, from the 32-case measurement in docs/plans/lean-gate.md: a
+# The slow set, from the 32-case measurement in ADR-0032: a
 # single test that is not a shard of a property and costs ~30 s or more.
 # `tools/profile-test.sh` holds the set to exactly these names.
 default-filter = """
