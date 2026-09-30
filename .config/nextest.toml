@@ -1,0 +1,23 @@
+# nextest profiles (ADR-0032). The default profile is what CI runs and is
+# unchanged. `fast` is the pre-commit hook's: every test but the named slow
+# set and the committed real-part excerpts, which `/retire-plan`, CI and
+# nightly run. `full` is the default's behaviour, named so a skill can say
+# "the full profile". Case counts are not a profile feature; `tools/gate.sh`
+# prints them and the hook exports them.
+
+[profile.fast]
+#
+# The slow set, from the 32-case measurement in docs/plans/lean-gate.md: a
+# single test that is not a shard of a property and costs ~30 s or more.
+# `tools/profile-test.sh` holds the set to exactly these names.
+default-filter = """
+not (
+  test(/^real_/)
+  or test(=guard::coverage)
+  or test(=boolean_fixtures_read_back)
+  or test(=part::tests::a_battery_stage_is_held_to_its_class)
+  or test(=a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was)
+)
+"""
+
+[profile.full]
