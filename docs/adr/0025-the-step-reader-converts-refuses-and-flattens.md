@@ -145,6 +145,8 @@ beside the result. It is never an entity's tolerance.
   baked into the geometry, numbered in the deterministic order of the
   paths. Refusing assemblies would fill the histogram with a trivial
   refusal and hide everything behind it.
+  *(Amended by ADR-0033: the bodies stay flattened and baked, and a
+  product tree is returned beside them.)*
 - **Provenance.** Every entity of a read body is `Generated` from a
   `Role::File(FileEntity { id, instance })`, naming the `#id` and which
   placement of it. `Role` is exhaustive, so this is a breaking change to a

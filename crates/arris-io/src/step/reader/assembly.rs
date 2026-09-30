@@ -61,9 +61,40 @@ pub(crate) struct Placed {
 /// The motion a path composes, or why it has none.
 type Motion = Result<Option<Isometry>, Refusal>;
 
-/// A node to visit: the node, the path to it, its motion, and the nodes
-/// the path passed through.
-type Visit = (u64, Vec<u64>, Motion, Vec<u64>);
+/// A node to visit: the node, the path to it, its motion, the nodes
+/// the path passed through, and the edge that placed it.
+type Visit<'a> = (u64, Vec<u64>, Motion, Vec<u64>, Option<&'a Edge>);
+
+/// One place the walk stood: a node at the end of a path from a root,
+/// which the product tree (`super::products`) reports as an occurrence
+/// — the tree and the flattening are one walk, so they agree on what
+/// "instance k" is.
+pub(crate) struct Site {
+    /// The root the path starts from.
+    pub(crate) root: u64,
+    /// The ids of the placements from the root, ascending in the order
+    /// the flattening numbers a solid's instances by.
+    pub(crate) path: Vec<u64>,
+    /// The node: its least representation.
+    pub(crate) node: u64,
+    /// The placement in the parent, in the caller's unit, or why there
+    /// is none; `Ok(identity)` at a root.
+    pub(crate) placement: Result<Isometry, Refusal>,
+    /// The solids the node holds, each with which instance of it this
+    /// site is.
+    pub(crate) solids: Vec<(u64, u32)>,
+}
+
+/// What [`placements`] finds: every solid's instances and every place
+/// the walk stood.
+pub(crate) struct Flat {
+    /// Every instance of every solid.
+    pub(crate) placed: Vec<Placed>,
+    /// The sites, ascending by root and then by path.
+    pub(crate) sites: Vec<Site>,
+    /// The representations each node joins, by the node.
+    pub(crate) members: BTreeMap<u64, Vec<u64>>,
+}
 
 /// A representation: its items and its context.
 struct Representation {
@@ -83,13 +114,14 @@ struct Edge {
 }
 
 /// Every instance of each of `solids` the file places, ascending by
-/// solid and then by instance.
+/// solid and then by instance, and the sites of the walk that found
+/// them.
 pub(crate) fn placements(
     instances: &BTreeMap<u64, Instance>,
     entities: &Entities<'_>,
     solids: &BTreeSet<u64>,
     units: &mut dyn FnMut(u64) -> Result<Units, Refusal>,
-) -> Vec<Placed> {
+) -> Flat {
     let mut reps: BTreeMap<u64, Representation> = BTreeMap::new();
     for (&id, instance) in instances {
         if is_presentation(instance) {
@@ -252,9 +284,11 @@ pub(crate) fn placements(
     let mut stack: Vec<Visit> = roots
         .iter()
         .rev()
-        .map(|&r| (r, Vec::new(), Ok(None), vec![r]))
+        .map(|&r| (r, Vec::new(), Ok(None), vec![r], None))
         .collect();
-    while let Some((at, path, motion, trail)) = stack.pop() {
+    let mut visited: Vec<(u64, Vec<u64>, u64, Option<&Edge>)> = Vec::new();
+    while let Some((at, path, motion, trail, via)) = stack.pop() {
+        visited.push((trail[0], path.clone(), at, via));
         if let Some(solids) = held.get(&at) {
             for (&solid, &context) in solids {
                 found
@@ -282,8 +316,38 @@ pub(crate) fn placements(
             path.push(e.id);
             let mut trail = trail.clone();
             trail.push(child);
-            stack.push((child, path, composed, trail));
+            stack.push((child, path, composed, trail, Some(e)));
         }
+    }
+
+    let mut sites: Vec<Site> = visited
+        .into_iter()
+        .map(|(root, path, node, via)| {
+            let rank = |solid: u64| {
+                found
+                    .get(&solid)
+                    .and_then(|paths| paths.keys().position(|p| *p == path))
+                    .and_then(|i| u32::try_from(i).ok())
+                    .unwrap_or(0)
+            };
+            Site {
+                root,
+                node,
+                solids: (held.get(&node).into_iter().flatten())
+                    .map(|(&solid, _)| (solid, rank(solid)))
+                    .collect(),
+                placement: match via {
+                    Some(e) => e.motion.clone(),
+                    None => Ok(Isometry::identity()),
+                },
+                path,
+            }
+        })
+        .collect();
+    sites.sort_by(|a, b| (a.root, &a.path).cmp(&(b.root, &b.path)));
+    let mut members: BTreeMap<u64, Vec<u64>> = BTreeMap::new();
+    for &rep in reps.keys() {
+        members.entry(find(&node, rep)).or_default().push(rep);
     }
 
     let mut out = Vec::new();
@@ -315,7 +379,11 @@ pub(crate) fn placements(
             }
         }
     }
-    out
+    Flat {
+        placed: out,
+        sites,
+        members,
+    }
 }
 
 /// Whether `instance` is a presentation of the product rather than a

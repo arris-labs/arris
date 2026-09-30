@@ -63,7 +63,8 @@ pub mod part21;
 mod reader;
 
 pub use reader::{
-    LengthUnit, Read, ReadBody, ReadError, ReadOptions, ReadSolid, Refusal, RefusalKind, read,
+    FaceColour, LengthUnit, Occurrence, ProductTree, Read, ReadBody, ReadError, ReadOptions,
+    ReadSolid, Refusal, RefusalKind, Rgb, read,
 };
 
 use core::fmt::Write as _;

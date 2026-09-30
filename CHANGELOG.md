@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `step::read` returns the file's product structure beside the flattened
+  bodies: `Read::products`, a `ProductTree` of occurrences — each a
+  product's name, its placement in its parent (or the refusal of it), the
+  indices of the solids it holds in `Read::solids`, and its children.
+  Open CASCADE's XCAF assemblies read to their names, nesting and
+  placements.
 - `arris_ops::mirror` reflects a body in a plane (`arris_math::Reflection`):
   the image is a new solid with its material inside, checker-clean, and
   every vertex, edge, face, shell and the body is recorded as modified
@@ -66,6 +72,8 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- `arris_io::step::Read` gains the field `products`: a struct pattern
+  needs `products: _` or `..`.
 - `arris_topo::builder::GeometryRemap` gains two provided methods,
   `pcurve` and `face` (with the new `FaceRemap`), which `Assembly::of_body`
   calls: an implementation of your own compiles as it is, its defaults

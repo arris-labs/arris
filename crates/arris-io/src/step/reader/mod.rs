@@ -13,8 +13,11 @@
 pub(crate) mod assembly;
 pub(crate) mod entities;
 pub(crate) mod geometry;
+mod products;
 pub(crate) mod topology;
 pub(crate) mod units;
+
+pub use products::{FaceColour, Occurrence, ProductTree, Rgb};
 
 use core::fmt;
 use std::collections::{BTreeMap, BTreeSet};
@@ -436,6 +439,10 @@ pub struct Read {
     /// by the file entity, then by the placement (its paths from the
     /// root assembly in order, [`FileEntity::instance`]).
     pub solids: Vec<ReadSolid>,
+    /// The file's assemblies: each root's occurrences of products, their
+    /// names and placements, holding indices into [`solids`](Read::solids)
+    /// (ADR-0033). One root with one occurrence for a file of one part.
+    pub products: ProductTree,
 }
 
 /// One solid of a file, read or refused.
@@ -584,9 +591,13 @@ fn read_solids(
             .or_insert_with(|| Units::of_context(&entities, context, options.length_unit))
             .clone()
     };
-    let placed = assembly::placements(&exchange.instances, &entities, &solids, &mut units_of);
-    let mut out = Vec::with_capacity(placed.len());
-    for p in placed {
+    let flat = assembly::placements(&exchange.instances, &entities, &solids, &mut units_of);
+    let mut out = Vec::with_capacity(flat.placed.len());
+    let mut index: BTreeMap<(u64, u32), usize> = BTreeMap::new();
+    for p in &flat.placed {
+        index.insert((p.solid, p.instance), index.len());
+    }
+    for p in &flat.placed {
         meter.tick()?;
         let entity = FileEntity {
             id: p.solid,
@@ -612,7 +623,7 @@ fn read_solids(
                 },
             })
         } else {
-            match (context_units, p.motion) {
+            match (context_units, p.motion.clone()) {
                 (None, _) => Err(entities::malformed(
                     p.solid,
                     "no representation holds the solid, so it has no units",
@@ -639,8 +650,11 @@ fn read_solids(
             result,
         });
     }
-    let solids = out;
-    Ok(Read { solids })
+    let products = products::build(&exchange.instances, &flat, &index, meter)?;
+    Ok(Read {
+        solids: out,
+        products,
+    })
 }
 
 #[cfg(test)]

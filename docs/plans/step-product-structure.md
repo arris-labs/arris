@@ -48,8 +48,9 @@ see one body per placed solid.
   "instance k" is. Names the reference modules read in Open CASCADE
   (`STEPCAFControl`, `StepToTopoDS` product handling).
 - **Public types in `arris_io::step` (new)**: `ProductTree { roots:
-  Vec<Occurrence> }`, `Occurrence { product: u64 (the
-  `PRODUCT_DEFINITION` file id), name: String, placement: Result<Isometry,
+  Vec<Occurrence> }`, `Occurrence { product: Option<u64> (the
+  `PRODUCT_DEFINITION` file id; `None` for a representation no product
+  defines), name: String, placement: Result<Isometry,
   Refusal> (in the parent, in `ReadOptions::length_unit`; identity at a
   root), colour: Option<Rgb>, solids: Vec<usize>, children:
   Vec<Occurrence> }`, `Rgb([f64; 3])`, and `FaceColour { solid: usize,
@@ -95,7 +96,7 @@ bound has to be established here.
   the tree. Test: the oracle's selftest and the existing
   `an_assembly_reads_to_a_body_per_placed_solid` still pass unchanged
   (the flattened expectation does not move).
-- [ ] Step 2 **[2]** — ADR-0033, and `ProductTree`/`Occurrence`/`Rgb` with
+- [x] Step 2 **[2]** — ADR-0033, and `ProductTree`/`Occurrence`/`Rgb` with
   the tree read from structure and names alone (`reader/products.rs`):
   roots, children, names, placements (composed the way `assembly.rs`
   composes them, one edge at a time, in the parent's unit), `solids`
@@ -187,6 +188,8 @@ semver gate passes on the `Breaking` bullets.
   `bodies` slice) or a separate input type with `Body` handles? Plan
   assumes the former so a read tree can be written back unchanged.
   Decides: agent, by step 2 (the ADR records it).
+  **Decided (step 2, ADR-0033 §4): `ProductTree` directly.**
 - ⚠ OPEN: `Occurrence::placement` as `Result<Isometry, Refusal>` versus
   dropping an occurrence under a refused placement. Plan keeps it with its
   refusal so the consumer sees the part exists. Decides: agent, by step 3.
+  **Decided (step 2, ADR-0033 §3): kept with its refusal.**
