@@ -105,7 +105,7 @@ bound has to be established here.
   per-surface parameter-map table stated (plane, cylinder, cone, sphere,
   torus, elliptic cylinder, NURBS) and the per-kind orientation rule; the
   ADR index updated. Docs only.
-- [ ] Step 2 **[3]** — the riskiest unknown first, the geometry alone:
+- [x] Step 2 **[3]** — the riskiest unknown first, the geometry alone:
   `Reflection`; `Curve::mirrored`, `Surface::mirrored`, NURBS `mirrored`,
   `ParamMap`, `Curve2::reflected`. No topology yet. Tests, as
   properties over random frames, radii, planes and parameters: for every

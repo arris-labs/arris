@@ -1,6 +1,6 @@
 //! Rational B-spline curves in 3D and in the (u, v) plane.
 
-use arris_math::{Interval, Isometry, Point2, Point3, Vec2};
+use arris_math::{Interval, Isometry, Point2, Point3, Reflection, Vec2};
 
 use super::spline::{BezierSpan, Spline};
 use crate::{Curve2Eval, Curve2Kind, CurveEval, CurveKind, GeomError, GeomKind};
@@ -313,6 +313,15 @@ impl NurbsCurve {
             spline: self.spline.map_points(|p| motion.apply(*p)),
         }
     }
+
+    /// The mirror image, same parameter: every control point reflected;
+    /// weights and knots unchanged, so `image.eval(t).point ==
+    /// plane.apply(self.eval(t).point)` to rounding.
+    pub fn mirrored(&self, plane: &Reflection) -> NurbsCurve {
+        NurbsCurve {
+            spline: self.spline.map_points(|p| plane.apply(*p)),
+        }
+    }
 }
 
 impl NurbsCurve2 {
@@ -419,6 +428,17 @@ impl NurbsCurve2 {
     pub fn translated(&self, by: Vec2) -> NurbsCurve2 {
         NurbsCurve2 {
             spline: self.spline.map_points(|p| p + by),
+        }
+    }
+
+    /// The image under `(u, v) ↦ (2π − u, v)`: every control point
+    /// reflected; weights and knots unchanged, so `image.eval(t).point`
+    /// is `self.eval(t).point` with its `u` reflected.
+    pub fn reflected(&self) -> NurbsCurve2 {
+        NurbsCurve2 {
+            spline: self
+                .spline
+                .map_points(|p| Point2::new(core::f64::consts::TAU - p.x, p.y)),
         }
     }
 }

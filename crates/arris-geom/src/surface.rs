@@ -4,7 +4,7 @@ use core::f64::consts::{FRAC_PI_2, TAU};
 use core::fmt;
 
 use arris_math::{
-    Aabb, Frame, Interval, Isometry, Point3, Tolerance, UnitVec3, Vec3, is_negligible,
+    Aabb, Frame, Interval, Isometry, Point3, Reflection, Tolerance, UnitVec3, Vec3, is_negligible,
 };
 
 use crate::curve::{active_points, coords, linear_range, product_range, sinusoid_range};
@@ -886,6 +886,114 @@ impl Surface {
                 major_radius,
                 minor_radius,
             },
+        }
+    }
+
+    /// The mirror image of the surface and the parameter map that
+    /// relates them: `image.eval(m(u, v)).point == plane.apply(self.eval(u,
+    /// v).point)` to rounding, with `m` the returned [`ParamMap`]. Frames
+    /// stay right-handed; a quadric's `u` is reflected, and a plane or a
+    /// NURBS surface keeps its parameters while its normal turns against
+    /// the image of the original's (ADR-0031 §2).
+    ///
+    /// ```
+    /// use arris_geom::{ParamMap, Surface};
+    /// use arris_math::{Frame, Point3, Reflection, Vec3};
+    ///
+    /// let s = Surface::Cylinder { frame: Frame::world(), radius: 1.0 };
+    /// let r = Reflection::new(Point3::new(2.0, 0.0, 0.0), Vec3::x()).unwrap();
+    /// let (image, map) = s.mirrored(&r);
+    /// assert_eq!(map, ParamMap::ReflectU);
+    /// let (u, v) = map.apply(0.5, 1.0);
+    /// assert!((image.eval(u, v).point - r.apply(s.eval(0.5, 1.0).point)).norm() < 1e-14);
+    /// ```
+    pub fn mirrored(&self, plane: &Reflection) -> (Surface, ParamMap) {
+        match self {
+            Surface::Nurbs(s) => (Surface::Nurbs(s.mirrored(plane)), ParamMap::Identity),
+            &Surface::Plane { frame } => (
+                Surface::Plane {
+                    frame: plane.apply_frame_reversed(&frame),
+                },
+                ParamMap::Identity,
+            ),
+            &Surface::Cylinder { frame, radius } => (
+                Surface::Cylinder {
+                    frame: plane.apply_frame(&frame),
+                    radius,
+                },
+                ParamMap::ReflectU,
+            ),
+            &Surface::EllipticCylinder {
+                frame,
+                major_radius,
+                minor_radius,
+            } => (
+                Surface::EllipticCylinder {
+                    frame: plane.apply_frame(&frame),
+                    major_radius,
+                    minor_radius,
+                },
+                ParamMap::ReflectU,
+            ),
+            &Surface::Cone {
+                frame,
+                radius,
+                half_angle,
+            } => (
+                Surface::Cone {
+                    frame: plane.apply_frame(&frame),
+                    radius,
+                    half_angle,
+                },
+                ParamMap::ReflectU,
+            ),
+            &Surface::Sphere { frame, radius } => (
+                Surface::Sphere {
+                    frame: plane.apply_frame(&frame),
+                    radius,
+                },
+                ParamMap::ReflectU,
+            ),
+            &Surface::Torus {
+                frame,
+                major_radius,
+                minor_radius,
+            } => (
+                Surface::Torus {
+                    frame: plane.apply_frame(&frame),
+                    major_radius,
+                    minor_radius,
+                },
+                ParamMap::ReflectU,
+            ),
+        }
+    }
+}
+
+/// How a surface's parameters change under a mirror: the image of
+/// `S(u, v)` is `R·S(m(u, v))` for this `m` (ADR-0031 §2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParamMap {
+    /// `(u, v) ↦ (u, v)`: a plane's or a NURBS surface's. Its normal
+    /// turns against the image of the original's.
+    Identity,
+    /// `(u, v) ↦ (2π − u, v)`: a quadric's. Its normal is the image of
+    /// the original's.
+    ReflectU,
+}
+
+impl ParamMap {
+    /// The image of `(u, v)`.
+    ///
+    /// ```
+    /// use arris_geom::ParamMap;
+    /// assert_eq!(ParamMap::Identity.apply(1.0, 2.0), (1.0, 2.0));
+    /// assert_eq!(ParamMap::ReflectU.apply(1.0, 2.0), (core::f64::consts::TAU - 1.0, 2.0));
+    /// ```
+    pub fn apply(self, u: f64, v: f64) -> (f64, f64) {
+        match self {
+            ParamMap::Identity => (u, v),
+            ParamMap::ReflectU => (TAU - u, v),
         }
     }
 }

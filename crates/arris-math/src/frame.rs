@@ -221,7 +221,7 @@ impl Frame {
     /// Rebuilds `y` and `x` from `z` and an `x` that is unit and nearly
     /// perpendicular to it, so the result is orthonormal to rounding
     /// regardless of how good the input was.
-    fn orthonormalised(origin: Point3, x: UnitVec3, z: UnitVec3) -> Self {
+    pub(crate) fn orthonormalised(origin: Point3, x: UnitVec3, z: UnitVec3) -> Self {
         let y = UnitVec3::new_normalize(z.cross(&x));
         let x = UnitVec3::new_normalize(y.cross(&z));
         Frame { origin, x, y, z }
@@ -305,7 +305,7 @@ impl Frame {
     }
 }
 
-fn is_finite3(v: &Vec3) -> bool {
+pub(crate) fn is_finite3(v: &Vec3) -> bool {
     v.iter().all(|c| c.is_finite())
 }
 
@@ -316,7 +316,7 @@ fn is_finite3(v: &Vec3) -> bool {
 /// it comes out a few parts in ten thousand off unit length. A power of
 /// two scales exactly, so a vector already in range normalises to the
 /// same bits as without it. `None` for the zero vector.
-fn rescaled(v: Vec3) -> Option<Vec3> {
+pub(crate) fn rescaled(v: Vec3) -> Option<Vec3> {
     let largest = v.amax();
     if largest <= 0.0 {
         return None;
@@ -457,6 +457,26 @@ impl Frame2 {
             origin: self.origin + by,
             x: self.x,
             y: self.y,
+        }
+    }
+
+    /// The image under `(u, v) ↦ (turn − u, v)`: the origin reflected
+    /// about `turn / 2` in `u` and each axis's `u` component negated. The
+    /// reflection reverses handedness, and an orthonormal pair stays one
+    /// exactly (negating a coordinate is exact).
+    ///
+    /// ```
+    /// use arris_math::{Frame2, Point2};
+    ///
+    /// let f = Frame2::identity().reflected_u(6.0);
+    /// assert_eq!(f.origin(), Point2::new(6.0, 0.0));
+    /// assert!(!f.is_right_handed());
+    /// ```
+    pub fn reflected_u(&self, turn: f64) -> Frame2 {
+        Frame2 {
+            origin: Point2::new(turn - self.origin.x, self.origin.y),
+            x: UnitVec2::new_unchecked(Vec2::new(-self.x.x, self.x.y)),
+            y: UnitVec2::new_unchecked(Vec2::new(-self.y.x, self.y.y)),
         }
     }
 

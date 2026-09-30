@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use arris_math::{Aabb, Frame, Interval, Isometry, Point3, UnitVec3, Vec3};
+use arris_math::{Aabb, Frame, Interval, Isometry, Point3, Reflection, UnitVec3, Vec3};
 
 use crate::NurbsCurve;
 
@@ -294,6 +294,44 @@ impl Curve {
                 minor_radius,
             },
             Curve::Nurbs(c) => Curve::Nurbs(c.transformed(motion)),
+        }
+    }
+
+    /// The mirror image in the same parameter: `image.eval(t).point ==
+    /// plane.apply(self.eval(t).point)` to rounding. A conic's frame is
+    /// `X′ = R X`, `Y′ = R Y`, `Z′ = −R Z`, right-handed, so no curve needs
+    /// a parameter map and every edge keeps its range (ADR-0031 §2).
+    ///
+    /// ```
+    /// use arris_geom::Curve;
+    /// use arris_math::{Frame, Point3, Reflection, Vec3};
+    ///
+    /// let c = Curve::Circle { frame: Frame::world(), radius: 2.0 };
+    /// let r = Reflection::new(Point3::new(1.0, 0.0, 0.0), Vec3::x()).unwrap();
+    /// let image = c.mirrored(&r);
+    /// let t = 0.7;
+    /// assert!((image.point(t) - r.apply(c.point(t))).norm() < 1e-14);
+    /// ```
+    pub fn mirrored(&self, plane: &Reflection) -> Curve {
+        match self {
+            &Curve::Line { origin, direction } => Curve::Line {
+                origin: plane.apply(origin),
+                direction: plane.apply_unit(direction),
+            },
+            &Curve::Circle { frame, radius } => Curve::Circle {
+                frame: plane.apply_frame_reversed(&frame),
+                radius,
+            },
+            &Curve::Ellipse {
+                frame,
+                major_radius,
+                minor_radius,
+            } => Curve::Ellipse {
+                frame: plane.apply_frame_reversed(&frame),
+                major_radius,
+                minor_radius,
+            },
+            Curve::Nurbs(c) => Curve::Nurbs(c.mirrored(plane)),
         }
     }
 }

@@ -265,6 +265,46 @@ impl Curve2 {
         }
     }
 
+    /// The image under `(u, v) ↦ (2π − u, v)`, the map a mirror applies to a
+    /// quadric's parameters (ADR-0031 §3): the parameter `t` is untouched,
+    /// so the result runs along the same edge, and a frame's handedness
+    /// flips with the reflection.
+    ///
+    /// ```
+    /// use arris_geom::Curve2;
+    /// use arris_math::{Frame2, Point2};
+    /// use core::f64::consts::TAU;
+    ///
+    /// let c = Curve2::Circle { frame: Frame2::identity(), radius: 1.0 };
+    /// let r = c.reflected();
+    /// let (p, q) = (c.point(0.4), r.point(0.4));
+    /// assert!((q - Point2::new(TAU - p.x, p.y)).norm() < 1e-15);
+    /// ```
+    pub fn reflected(&self) -> Curve2 {
+        let point = |p: Point2| Point2::new(TAU - p.x, p.y);
+        let vector = |v: Vec2| Vec2::new(-v.x, v.y);
+        match self {
+            &Curve2::Line { origin, direction } => Curve2::Line {
+                origin: point(origin),
+                direction: UnitVec2::new_unchecked(vector(direction.into_inner())),
+            },
+            Curve2::Circle { frame, radius } => Curve2::Circle {
+                frame: frame.reflected_u(TAU),
+                radius: *radius,
+            },
+            Curve2::Ellipse {
+                frame,
+                major_radius,
+                minor_radius,
+            } => Curve2::Ellipse {
+                frame: frame.reflected_u(TAU),
+                major_radius: *major_radius,
+                minor_radius: *minor_radius,
+            },
+            Curve2::Nurbs(c) => Curve2::Nurbs(c.reflected()),
+        }
+    }
+
     /// The nearest point of the curve to `p` with its parameter, by the
     /// closed form of each analytic variant and by sampling and bracketed
     /// Newton for a NURBS ([`NurbsCurve2::project_parameter`]).

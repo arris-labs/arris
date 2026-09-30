@@ -1,7 +1,7 @@
 //! Rational B-spline surfaces.
 
 use arris_math::nalgebra::Vector4;
-use arris_math::{Interval, Isometry, Point3, UnitVec3, Vec3, is_negligible};
+use arris_math::{Interval, Isometry, Point3, Reflection, UnitVec3, Vec3, is_negligible};
 
 use super::basis::{self, MAX_DEGREE, ORDERS};
 use crate::{GeomError, GeomKind, SurfaceEval, SurfaceKind};
@@ -413,6 +413,21 @@ impl NurbsSurface {
             knots: self.knots.clone(),
             counts: self.counts,
             points: self.points.iter().map(|p| motion.apply(*p)).collect(),
+            weights: self.weights.clone(),
+            period: self.period,
+            closed: self.closed,
+        }
+    }
+
+    /// The mirror image, same parameters: every control point reflected,
+    /// so `image.eval(u, v).point == plane.apply(self.eval(u, v).point)`
+    /// to rounding and the normal `∂u × ∂v` is `−R n` (ADR-0031 §2).
+    pub fn mirrored(&self, plane: &Reflection) -> NurbsSurface {
+        NurbsSurface {
+            degree: self.degree,
+            knots: self.knots.clone(),
+            counts: self.counts,
+            points: self.points.iter().map(|p| plane.apply(*p)).collect(),
             weights: self.weights.clone(),
             period: self.period,
             closed: self.closed,

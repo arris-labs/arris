@@ -24,6 +24,7 @@ mod interval;
 mod isometry;
 mod precision;
 pub mod predicates;
+mod reflection;
 pub mod roots;
 mod tolerance;
 
@@ -36,6 +37,7 @@ pub use frame::{Frame, Frame2, FrameError, Handedness};
 pub use interval::{Interval, IntervalError};
 pub use isometry::Isometry;
 pub use precision::Precision;
+pub use reflection::{Reflection, ReflectionError};
 pub use tolerance::Tolerance;
 
 /// Relative rounding slack: a magnitude at or below this fraction of its
