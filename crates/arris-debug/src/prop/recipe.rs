@@ -1,4 +1,4 @@
-//! Random *recipes*: the corpus grammar's eleven operations drawn by a
+//! Random *recipes*: the corpus grammar's twelve operations drawn by a
 //! seeded strategy, so the same recipe runs through Arris and through the
 //! oracle and the two can be compared (ADR-0024 §2). A drawn recipe is a
 //! `fixture.json` like any other — it prints as one, and a failure is
@@ -12,7 +12,9 @@
 //! one `transform`: its own motion within [`OFFSET`] of the others (so
 //! the operands overlap), under a motion the recipe shares, which is the
 //! identity half the time and a pose at [`super::DEFAULT_SCALE`]
-//! otherwise.
+//! otherwise. A quarter of the operands are then mirrored in a plane
+//! through a point near the others (`mirror`, ADR-0031), and their probes
+//! with them.
 //!
 //! The probes are every operand's centre and, for a box or a cylinder,
 //! points [`PROBE_STEP`] inside and outside each of its faces along its
@@ -24,14 +26,14 @@ use core::ops::RangeInclusive;
 
 use arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_math::nalgebra::UnitQuaternion;
-use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec3};
+use arris_math::{Axis, Frame, Isometry, Point2, Point3, Reflection, Vec3};
 use proptest::prelude::*;
 
 use super::body::{MAX_EXTENT, MIN_EXTENT};
-use super::{finite_f64, point_in_box, pose, radius, rotation};
+use super::{finite_f64, point_in_box, pose, radius, rotation, unit_vec3};
 use crate::fixtures::{
-    self, Analytic, Circle, Ellipse, Loop, Num, Plane, PrecisionSpec, Probe, Recipe, Rotate,
-    Segment, Step, Tolerances,
+    self, Analytic, Circle, Ellipse, Loop, MirrorPlane, Num, Plane, PrecisionSpec, Probe, Recipe,
+    Rotate, Segment, Step, Tolerances,
 };
 
 /// How many booleans a recipe chains; it has one operand more.
@@ -100,6 +102,9 @@ struct Operand {
     blend: Option<Blend>,
     /// Its own motion about the others', its centre at the origin.
     local: Isometry,
+    /// The plane it is reflected in after its motions: a point and a
+    /// normal, in the world the operands share.
+    mirror: Option<(Point3, Vec3)>,
 }
 
 /// A boolean of the chain so far with the next operand.
@@ -196,8 +201,10 @@ fn operand() -> impl Strategy<Value = Operand> {
         proptest::option::weighted(1.0 / 3.0, blend()),
         turn,
         point_in_box(OFFSET),
+        proptest::option::weighted(0.25, (point_in_box(OFFSET), unit_vec3())),
     )
-        .prop_map(|(shape, blend, q, at)| Operand {
+        .prop_map(|(shape, blend, q, at, mirror)| Operand {
+            mirror: mirror.map(|(o, n)| (o, n.into_inner())),
             blend: match shape {
                 Shape::Box { .. } | Shape::Cylinder { .. } => blend,
                 _ => None,
@@ -440,9 +447,33 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
             .then(shared);
         let name = format!("o{i}");
         steps.push(transform_step(name.clone(), body, &motion));
-        probes.push(probe(format!("o{i}-centre"), motion.apply(centre)));
+        // The mirror, if drawn, after the motions: the probes follow it.
+        let reflect = o.mirror.and_then(|(origin, normal)| {
+            let plane = Reflection::new(origin, normal).ok()?;
+            Some((origin, normal, plane))
+        });
+        let (name, place) = match reflect {
+            Some((origin, normal, plane)) => {
+                let image = format!("m{i}");
+                steps.push(Step::Mirror {
+                    name: image.clone(),
+                    of: name,
+                    plane: MirrorPlane {
+                        origin: point3(origin),
+                        normal: vec3(normal),
+                    },
+                });
+                (image, Some(plane))
+            }
+            None => (name, None),
+        };
+        let at = |p: Point3| {
+            let moved = motion.apply(p);
+            place.as_ref().map_or(moved, |plane| plane.apply(moved))
+        };
+        probes.push(probe(format!("{name}-centre"), at(centre)));
         for (label, p) in local {
-            probes.push(probe(format!("o{i}-{label}"), motion.apply(p)));
+            probes.push(probe(format!("{name}-{label}"), at(p)));
         }
         placed.push(name);
     }

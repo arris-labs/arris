@@ -574,7 +574,7 @@ at retirement, in CI, nightly, at cycle close and at release.
 (ADR-0024). The oracle answers from a cache keyed on every input it
 reads (`target/oracle-cache/`, bypassed by `ARRIS_ORACLE_CACHE=off` in CI
 and nightly): the corpus binary takes 10.3 s cold and 1.3 s warm, and a
-warm run starts no Python. Random recipes over the eleven operations
+warm run starts no Python. Random recipes over the twelve operations
 `prop::recipe` draws from (every op both interpreters carry but `step`,
 a solid read from a file) run through both kernels in the
 differential. At 1000 draws of the fixed seed, 762 reach a comparison and

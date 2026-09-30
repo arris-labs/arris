@@ -148,7 +148,7 @@ bound has to be established here.
   Anything the mirror exposes that does not pass becomes a
   `tests/fixtures/regression/` fixture, `#[ignore]`d with the desired
   assertion, and a backlog line — not a workaround inside `mirror`.
-- [ ] Step 6 **[2]** — the properties: `mirror` in the property recipe's
+- [x] Step 6 **[2]** — the properties: `mirror` in the property recipe's
   draw (`prop::recipe`) so the differential, the algebraic identities
   (volume preserved, `mirror ∘ mirror` = identity, mirror of a fuse = fuse
   of the mirrors) and step 7 of `cancellation`'s interrupt property cover
@@ -232,6 +232,16 @@ bound has to be established here.
   tessellation, STEP and body-bytes round trips are
   `ops/tests/mirror.rs` over the same bodies as step 3 (and the runner
   does them for every fixture).
+- Found in step 6: `mirror` is the twelfth operation of the recipe draw
+  (a quarter of the operands are mirrored in a random plane after their
+  motions, the probes following; their steps are `m<i>`, so the recipe
+  test's operand probes cover them). The identities are
+  `ops/tests/mirror_prop.rs` (measures kept and reflected, mirror twice,
+  mirror of a fuse, common and cut is the boolean of the mirrors), over
+  `overlapping_pair` in a random plane; the interrupt property and the
+  differential take the new operation from the draw with no change of
+  their own. `arris` already exposes `Reflection` and `mirror` as
+  `arris::math` and `arris::ops`, so there is no re-export to add.
 - Resolved in step 5: Arris's own STEP of a mirrored body (every quadric
   kind the tests hold, torus included) reads back clean at `Full` with the
   same measures, so the writer needs no fix for a left-handed conic pcurve;

@@ -48,7 +48,7 @@ arris_debug::prop_shards! {
         };
         prop_assert!(chain.result().is_some());
         // Every operand's own probes against the operand alone.
-        for made in chain.steps.keys().filter(|k| k.starts_with('o')) {
+        for made in chain.steps.keys().filter(|k| k.starts_with('o') || k.starts_with('m')) {
             let body = chain.steps[made].body;
             for p in r.probes.iter().filter(|p| p.label.starts_with(&format!("{made}-"))) {
                 let want = if p.label.ends_with("-out") {
