@@ -39,6 +39,7 @@ Operations, by `op`:
     revolve    profile <name>, axis {origin, direction}, angle_deg
     transform  of <name>, translate [x,y,z] (optional),
                rotate {axis [x,y,z], origin [x,y,z], angle_deg} (optional)
+    mirror     of <name>, plane {origin [x,y,z], normal [x,y,z]}
     fuse       a <name>, b <name>
     common     a <name>, b <name>
     cut        target <name>, tool <name>
@@ -560,6 +561,16 @@ def _build_step(
             t.SetTranslation(gp_Vec(*vector(step["translate"], params)))
             trsf = t.Multiplied(trsf)
         return _checked(BRepBuilderAPI_Transform(ref(step["of"]), trsf, True), "transform")
+    if op == "mirror":
+        plane = step["plane"]
+        trsf = gp_Trsf()
+        trsf.SetMirror(
+            gp_Ax2(
+                _pnt(vector(plane["origin"], params)),
+                _dir(vector(plane["normal"], params)),
+            )
+        )
+        return _checked(BRepBuilderAPI_Transform(ref(step["of"]), trsf, True), "mirror")
     if op == "fuse":
         return _checked(BRepAlgoAPI_Fuse(ref(step["a"]), ref(step["b"])), "fuse")
     if op == "common":

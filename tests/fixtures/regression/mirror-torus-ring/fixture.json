@@ -1,0 +1,132 @@
+{
+  "description": "the ring torus of sweep/revolve-ring: a torus face between two disc ends, its seam on the profile plane, mirrored in a plane: `default` beside it (x = c + size + 5), `through` its centre across x, `across` a plane cut obliquely through it, off centre. The image has the original's volume, area, counts and genus, its centroid reflected (ADR-0031)",
+  "params": {
+    "angle": 360,
+    "ends": 0,
+    "ox": 12,
+    "oy": 0,
+    "oz": 0,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {
+    "through": {
+      "ox": 0,
+      "oy": 0,
+      "oz": 0,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    },
+    "across": {
+      "ox": 2.1,
+      "oy": 0,
+      "oz": 0,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "circle",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            5,
+            0
+          ],
+          "radius": 2
+        }
+      }
+    },
+    {
+      "name": "body",
+      "op": "revolve",
+      "profile": "circle",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": "angle"
+    },
+    {
+      "name": "result",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "image_of_the_centre",
+      "point": [
+        "0 - 2 * ((0-ox)*nx+(0-oy)*ny+(0-oz)*nz)/(nx^2+ny^2+nz^2) * nx",
+        "0 - 2 * ((0-ox)*nx+(0-oy)*ny+(0-oz)*nz)/(nx^2+ny^2+nz^2) * ny",
+        "0 - 2 * ((0-ox)*nx+(0-oy)*ny+(0-oz)*nz)/(nx^2+ny^2+nz^2) * nz"
+      ],
+      "expect": null
+    },
+    {
+      "label": "at_the_centre",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": null
+    },
+    {
+      "label": "far",
+      "point": [
+        70,
+        70,
+        70
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "2 * pi * pi * 5 * 4 * angle / 360",
+    "area": "4 * pi * pi * 5 * 2 * angle / 360 + ends * 4 * pi"
+  }
+}

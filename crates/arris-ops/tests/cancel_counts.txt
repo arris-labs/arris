@@ -138,6 +138,13 @@ provenance/split-cross-common: 6056
 provenance/split-cylinder-seam: 40
 provenance/split-edge-notch: 50
 provenance/split-frame-cut: 78
+transform/mirror-ball-corner-cut: 4
+transform/mirror-box: 6
+transform/mirror-elliptic-cylinder: 3
+transform/mirror-filleted-box: 7
+transform/mirror-frustum: 4
+transform/mirror-hollow-ring: 8
+transform/mirror-posed-cylinder: 3
 transform/moved-hollow-ring: 8
 transform/posed-cylinder: 3
 primitive/box: 1

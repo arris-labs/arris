@@ -118,6 +118,17 @@ SMOKES = [
         "analytic": {"default": {"volume": PI * 4 / 2 * 3, "area": PI * 4 + (PI * 2 + 4) * 3, "counts": (4, 6, 4, 4), "genus": 0}},
     },
     {
+        "name": "mirror of an off-origin box in x = 0",
+        "recipe": {
+            "steps": [
+                {"name": "a", "op": "box", "min": [1, 2, 3], "max": [3, 5, 9]},
+                {"name": "result", "op": "mirror", "of": "a", "plane": {"origin": [0, 0, 0], "normal": [1, 0, 0]}},
+            ],
+            "result": "result",
+        },
+        "analytic": {"default": {"volume": 36.0, "area": 2 * (2 * 3 + 2 * 6 + 3 * 6), "centroid": [-2.0, 3.5, 6.0], "counts": (8, 12, 6, 6), "genus": 0}},
+    },
+    {
         "name": "transform then fuse, common and cut of two corner cubes",
         "recipe": {
             "params": {"which": 0},

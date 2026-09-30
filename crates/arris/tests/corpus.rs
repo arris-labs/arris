@@ -76,6 +76,43 @@ fn transform_moved_hollow_ring() {
     run("transform/moved-hollow-ring");
 }
 
+/// The mirror of a body in a plane beside it, through it and across it
+/// (ADR-0031), each against Open CASCADE's mirror.
+#[test]
+fn transform_mirror_box() {
+    run("transform/mirror-box");
+}
+
+#[test]
+fn transform_mirror_posed_cylinder() {
+    run("transform/mirror-posed-cylinder");
+}
+
+#[test]
+fn transform_mirror_hollow_ring() {
+    run("transform/mirror-hollow-ring");
+}
+
+#[test]
+fn transform_mirror_ball_corner_cut() {
+    run("transform/mirror-ball-corner-cut");
+}
+
+#[test]
+fn transform_mirror_frustum() {
+    run("transform/mirror-frustum");
+}
+
+#[test]
+fn transform_mirror_elliptic_cylinder() {
+    run("transform/mirror-elliptic-cylinder");
+}
+
+#[test]
+fn transform_mirror_filleted_box() {
+    run("transform/mirror-filleted-box");
+}
+
 #[test]
 fn boolean_through_hole() {
     run("boolean/through-hole");
@@ -477,6 +514,16 @@ fn boolean_edge_touching_tilted_cut() {
 /// wall between them and the two ellipses is a sliver face a few
 /// tolerances across. The desired body is the Steinmetz solid at a
 /// generic turn.
+/// The ring torus mirrored in a plane beside it, through it and across it:
+/// Arris's mirror is clean and matches the oracle in every stage but the
+/// last, where its own reader refuses Open CASCADE's STEP of the mirrored
+/// ring.
+#[test]
+#[ignore = "L4 f0 no outer loop: the reader builds no outer loop for the torus face of Open CASCADE's STEP of a mirrored ring, whose torus frame is left-handed (docs/BACKLOG.md, a reader of left-handed surface frames)"]
+fn regression_mirror_torus_ring() {
+    run("regression/mirror-torus-ring");
+}
+
 #[test]
 #[ignore = "L4, a loop of zero signed area: the sliver face between the seam's two crossings and the crossing vertex, three vertices a few tolerances apart, is kept and its (u, v) polygon does not resolve it (docs/BACKLOG.md, material a tolerance or two thick)"]
 fn regression_seam_two_tolerances_from_crossing_common() {

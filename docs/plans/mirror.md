@@ -129,7 +129,7 @@ bound has to be established here.
   a mirror of a mirror in the same plane matches the original's dump
   within the fixture's tolerance; the same three interrupt assertions as
   `cancellation` (budget `k < N` rolls back, `N` gives the dump).
-- [ ] Step 4 **[2]** — the corpus: `Step::Mirror` in the fixture
+- [x] Step 4 **[2]** — the corpus: `Step::Mirror` in the fixture
   recipe, `mirror` in `recipe.py` (and `selftest.py`), the oracle's
   measures cached like any other. Fixtures under `tests/fixtures/transform/`
   with oracle values from Open CASCADE: a box, a cylinder posed off-axis
@@ -192,6 +192,19 @@ bound has to be established here.
   structure stays.
 
 ## Open questions
+
+- Found in step 4: a NURBS-faced result cannot be a `transform/` fixture —
+  `check_stage` holds the checker's NURBS face pairs to "nothing
+  unchecked" and the corpus has no fixture with a NURBS result that is not
+  a refusal — so the body with an NURBS face is
+  `crates/arris-ops/tests/mirror.rs`'s test over `nurbs-box.step` against
+  the oracle's volume and area. The ring torus's fixture is
+  `regression/mirror-torus-ring`: Arris's mirror matches the oracle in
+  every stage, and only its reader's refusal of Open CASCADE's STEP of the
+  mirrored ring (a left-handed torus frame) fails (backlog line). The
+  torus, cone, sphere, elliptic cylinder and blend mirrors are held
+  clean and as their own mirror images by `ops/tests/mirror.rs`, and the
+  cone, sphere, elliptic cylinder and blend by fixtures as well.
 
 - Decided in step 1 (ADR-0031 §2, §6): a quadric's `u ↦ 2π − u` with
   `Z′ = R Z`, a plane and NURBS on the identity; the hooks are

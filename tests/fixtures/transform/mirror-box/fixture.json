@@ -1,0 +1,104 @@
+{
+  "description": "the box [1, 2, 3]\u2013[4, 7, 5], mirrored in a plane: `default` beside it (x = c + size + 5), `through` its centre across x, `across` a plane cut obliquely through it, off centre. The image has the original's volume, area, counts and genus, its centroid reflected (ADR-0031)",
+  "params": {
+    "ox": 10.5,
+    "oy": 4.5,
+    "oz": 4,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {
+    "through": {
+      "ox": 2.5,
+      "oy": 4.5,
+      "oz": 4,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    },
+    "across": {
+      "ox": 3.4,
+      "oy": 4.5,
+      "oz": 4,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "body",
+      "op": "box",
+      "min": [
+        1,
+        2,
+        3
+      ],
+      "max": [
+        4,
+        7,
+        5
+      ]
+    },
+    {
+      "name": "result",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "image_of_the_centre",
+      "point": [
+        "2.5 - 2 * ((2.5-ox)*nx+(4.5-oy)*ny+(4-oz)*nz)/(nx^2+ny^2+nz^2) * nx",
+        "4.5 - 2 * ((2.5-ox)*nx+(4.5-oy)*ny+(4-oz)*nz)/(nx^2+ny^2+nz^2) * ny",
+        "4 - 2 * ((2.5-ox)*nx+(4.5-oy)*ny+(4-oz)*nz)/(nx^2+ny^2+nz^2) * nz"
+      ],
+      "expect": null
+    },
+    {
+      "label": "at_the_centre",
+      "point": [
+        2.5,
+        4.5,
+        4
+      ],
+      "expect": null
+    },
+    {
+      "label": "far",
+      "point": [
+        32.5,
+        34.5,
+        34
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": 30,
+    "area": 62,
+    "counts": {
+      "vertices": 8,
+      "edges": 12,
+      "faces": 6,
+      "loops": 6,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

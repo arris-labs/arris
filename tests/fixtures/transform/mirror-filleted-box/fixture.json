@@ -1,0 +1,118 @@
+{
+  "description": "the 2-cube with one vertical edge filleted: a plane-plane cylinder blend, mirrored in a plane: `default` beside it (x = c + size + 5), `through` its centre across x, `across` a plane cut obliquely through it, off centre. The image has the original's volume, area, counts and genus, its centroid reflected (ADR-0031)",
+  "params": {
+    "r": 0.2,
+    "ox": 8,
+    "oy": 1,
+    "oz": 1,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {
+    "through": {
+      "ox": 1,
+      "oy": 1,
+      "oz": 1,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    },
+    "across": {
+      "ox": 1.6,
+      "oy": 1,
+      "oz": 1,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "cube",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "body",
+      "op": "fillet",
+      "of": "cube",
+      "edges": [
+        [
+          2,
+          2,
+          1
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "image_of_the_centre",
+      "point": [
+        "1 - 2 * ((1-ox)*nx+(1-oy)*ny+(1-oz)*nz)/(nx^2+ny^2+nz^2) * nx",
+        "1 - 2 * ((1-ox)*nx+(1-oy)*ny+(1-oz)*nz)/(nx^2+ny^2+nz^2) * ny",
+        "1 - 2 * ((1-ox)*nx+(1-oy)*ny+(1-oz)*nz)/(nx^2+ny^2+nz^2) * nz"
+      ],
+      "expect": null
+    },
+    {
+      "label": "at_the_centre",
+      "point": [
+        1,
+        1,
+        1
+      ],
+      "expect": null
+    },
+    {
+      "label": "far",
+      "point": [
+        21,
+        21,
+        21
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "8 - (1 - pi / 4) * r^2 * 2",
+    "area": "24 - 4 * r - 2 * (1 - pi / 4) * r^2 + pi * r",
+    "counts": {
+      "vertices": 10,
+      "edges": 15,
+      "faces": 7,
+      "loops": 7,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

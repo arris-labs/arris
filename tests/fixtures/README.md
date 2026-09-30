@@ -136,6 +136,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `extrude` | `profile`, `direction`, `length` |
 | `revolve` | `profile`, `axis` `{origin, direction}`, `angle_deg` |
 | `transform` | `of`, optional `translate`, optional `rotate` `{axis, origin, angle_deg}`; rotation first |
+| `mirror` | `of`, `plane` `{origin, normal}`: the reflection in it (`ops::mirror`; `gp_Trsf::SetMirror` in the oracle) |
 | `fuse`, `common` | `a`, `b` |
 | `cut` | `target`, `tool` |
 | `fillet` | `of`, `edges` (a list of points, one on each edge to blend), `radius` |

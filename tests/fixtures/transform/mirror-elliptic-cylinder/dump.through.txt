@@ -1,0 +1,29 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b1 solid
+  shell +s1
+    face +f3 S3 tol 0.0000001
+      surface plane origin (2, 0, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1)
+      loop 0
+        coedge +e3 p0 ellipse origin (1, 2) x (0.8, 0.6) y (-0.6, 0.8) major 6 minor 3
+    face -f4 S4 tol 0.0000001
+      surface plane origin (2, 0, 10) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1)
+      loop 0
+        coedge -e4 p1 ellipse origin (1, 2) x (0.8, 0.6) y (-0.6, 0.8) major 6 minor 3
+    face +f5 S5 tol 0.0000001
+      surface elliptic_cylinder origin (1, 2, 0) x (-0.8, 0.6, 0) y (-0.6, -0.8, 0) z (0, 0, 1) major 6 minor 3
+      loop 0
+        coedge -e3 p9 line origin (6.28318530718, 0) direction (-1, 0)
+        coedge +e5 p6 line origin (6.28318530718, 0) direction (0, 1)
+        coedge +e4 p7 line origin (6.28318530718, 10) direction (-1, 0)
+        coedge -e5 p8 line origin (0, 0) direction (0, 1)
+edges
+  +e3 v2 -> v2 c3 [0, 6.28318530718] tol 0.0000001
+    curve ellipse origin (1, 2, 0) x (-0.8, 0.6, 0) y (0.6, 0.8, 0) z (0, 0, -1) major 6 minor 3
+  -e4 v3 -> v3 c4 [0, 6.28318530718] tol 0.0000001
+    curve ellipse origin (1, 2, 10) x (-0.8, 0.6, 0) y (0.6, 0.8, 0) z (0, 0, -1) major 6 minor 3
+  +e5 v2 -> v3 c5 [0, 10] tol 0.0000001
+    curve line origin (-3.8, 5.6, 0) direction (0, 0, 1)
+vertices
+  v2 (-3.8, 5.6, 0) tol 0.0000001
+  v3 (-3.8, 5.6, 10) tol 0.0000001
+euler 2/3/3/3/1 g0 = 0

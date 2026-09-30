@@ -1,0 +1,228 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "dba225e6ff21be6aae7f82d0af03f94d8ba034a99b9d3d73c0691a9f650b8061",
+  "results": {
+    "across": {
+      "area": 52.57252075398267,
+      "centroid": [
+        0.2869260584587671,
+        0.7548784518545818,
+        -0.2672344547186362
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          47.59967578900301,
+          -1.189662412526567,
+          1.7303968157889051
+        ],
+        [
+          -1.189662412526567,
+          47.79679617796863,
+          -2.3997720838571035
+        ],
+        [
+          1.7303968157889051,
+          -2.3997720838571035,
+          49.389414765144934
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "image_of_the_centre",
+          "point": [
+            0.3428571428571428,
+            0.6857142857142856,
+            -0.1714285714285714
+          ]
+        },
+        {
+          "class": "in",
+          "label": "at_the_centre",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            30.0,
+            30.0,
+            30.0
+          ]
+        }
+      ],
+      "volume": 30.71598614226611
+    },
+    "default": {
+      "area": 52.572520753982666,
+      "centroid": [
+        16.105569251837327,
+        -0.030112168737607692,
+        -0.07098679957058861
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          50.00586695086309,
+          -0.9966205309160348,
+          -2.6554073135141465
+        ],
+        [
+          -0.9966205309160348,
+          46.91716330430245,
+          0.7632986017321114
+        ],
+        [
+          -2.6554073135141465,
+          0.7632986017321114,
+          47.86285647695786
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "image_of_the_centre",
+          "point": [
+            16.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "at_the_centre",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            30.0,
+            30.0,
+            30.0
+          ]
+        }
+      ],
+      "volume": 30.7159861422661
+    },
+    "through": {
+      "area": 52.572520753982666,
+      "centroid": [
+        0.10556925183732715,
+        -0.0301121687376077,
+        -0.07098679957058852
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          50.00586695086309,
+          -0.9966205309160363,
+          -2.655407313514122
+        ],
+        [
+          -0.9966205309160363,
+          46.91716330429889,
+          0.7632986017321117
+        ],
+        [
+          -2.655407313514122,
+          0.7632986017321117,
+          47.86285647695472
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "image_of_the_centre",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "at_the_centre",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "far",
+          "point": [
+            30.0,
+            30.0,
+            30.0
+          ]
+        }
+      ],
+      "volume": 30.715986142266104
+    }
+  }
+}

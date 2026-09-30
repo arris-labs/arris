@@ -228,6 +228,16 @@ pub struct Rotate {
     pub angle_deg: Num,
 }
 
+/// The plane of a mirror step: through `origin`, its normal along `normal`
+/// (any length).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MirrorPlane {
+    /// A point of the plane.
+    pub origin: [Num; 3],
+    /// The plane's normal.
+    pub normal: [Num; 3],
+}
+
 /// One step of a recipe. The `name` is what later steps refer to.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "lowercase")]
@@ -300,6 +310,15 @@ pub enum Step {
         /// Rotation.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         rotate: Option<Rotate>,
+    },
+    /// The reflection of a step's shape in a plane (`ops::mirror`).
+    Mirror {
+        /// Step name.
+        name: String,
+        /// The step mirrored.
+        of: String,
+        /// The plane it is reflected in.
+        plane: MirrorPlane,
     },
     /// Boolean union.
     Fuse {
@@ -406,6 +425,7 @@ impl Step {
             | Step::Extrude { name, .. }
             | Step::Revolve { name, .. }
             | Step::Transform { name, .. }
+            | Step::Mirror { name, .. }
             | Step::Fuse { name, .. }
             | Step::Common { name, .. }
             | Step::Cut { name, .. }

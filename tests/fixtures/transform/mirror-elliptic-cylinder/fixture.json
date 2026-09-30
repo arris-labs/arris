@@ -1,0 +1,135 @@
+{
+  "description": "the elliptic cylinder of sweep/extrude-ellipse, seamed, between two planes, mirrored in a plane: `default` beside it (x = c + size + 5), `through` its centre across x, `across` a plane cut obliquely through it, off centre. The image has the original's volume, area, counts and genus, its centroid reflected (ADR-0031)",
+  "params": {
+    "ox": 12,
+    "oy": 2,
+    "oz": 5,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {
+    "through": {
+      "ox": 1,
+      "oy": 2,
+      "oz": 5,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    },
+    "across": {
+      "ox": 2.8,
+      "oy": 2,
+      "oz": 5,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "ellipse": {
+          "center": [
+            1,
+            2
+          ],
+          "major": [
+            4.8,
+            3.6
+          ],
+          "minor_radius": 3
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "body",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 10
+    },
+    {
+      "name": "result",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "image_of_the_centre",
+      "point": [
+        "1 - 2 * ((1-ox)*nx+(2-oy)*ny+(5-oz)*nz)/(nx^2+ny^2+nz^2) * nx",
+        "2 - 2 * ((1-ox)*nx+(2-oy)*ny+(5-oz)*nz)/(nx^2+ny^2+nz^2) * ny",
+        "5 - 2 * ((1-ox)*nx+(2-oy)*ny+(5-oz)*nz)/(nx^2+ny^2+nz^2) * nz"
+      ],
+      "expect": null
+    },
+    {
+      "label": "at_the_centre",
+      "point": [
+        1,
+        2,
+        5
+      ],
+      "expect": null
+    },
+    {
+      "label": "far",
+      "point": [
+        61,
+        62,
+        65
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * 6 * 3 * 10",
+    "counts": {
+      "vertices": 2,
+      "edges": 3,
+      "faces": 3,
+      "loops": 3,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

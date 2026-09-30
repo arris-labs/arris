@@ -44,7 +44,7 @@ use arris_io::arris_check::arris_topo::FaceId;
 use arris_io::arris_check::arris_topo::arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
 use arris_io::arris_check::arris_topo::arris_math::{
-    Axis, Control, FrameError, Isometry, Point3, UnitVec3, Vec3,
+    Axis, Control, FrameError, Isometry, Point3, Reflection, ReflectionError, UnitVec3, Vec3,
 };
 use arris_io::arris_check::arris_topo::builder::{Assembly, Builder, FaceSpec};
 use arris_io::arris_check::arris_topo::entity::BodyKind;
@@ -138,6 +138,16 @@ pub enum CorpusError {
         step: String,
         /// The cause.
         source: FrameError,
+    },
+    /// A `mirror` step's plane has no normal.
+    #[error("{fixture}: step {step:?}: plane: {source}")]
+    Plane {
+        /// The fixture.
+        fixture: String,
+        /// The step's name.
+        step: String,
+        /// The cause.
+        source: ReflectionError,
     },
     /// A `polyhedron` step's points and faces describe no builder.
     #[error("{fixture}: step {step:?}: {source}")]
@@ -697,6 +707,7 @@ impl CorpusError {
             | CorpusError::EdgePoint { .. }
             | CorpusError::Precision { .. }
             | CorpusError::Axis { .. }
+            | CorpusError::Plane { .. }
             | CorpusError::Polyhedron { .. }
             | CorpusError::Expectation { .. }
             | CorpusError::Op { .. }
@@ -1520,6 +1531,7 @@ impl Inputs {
             | Step::Extrude { .. }
             | Step::Revolve { .. }
             | Step::Transform { .. }
+            | Step::Mirror { .. }
             | Step::Fillet { .. }
             | Step::Chamfer { .. }
             | Step::Polyhedron { .. }
@@ -1832,6 +1844,22 @@ fn build_step(
             let motion = motion(fixture, step, rotate, translate, params)?;
             body(
                 arris_ops::transform(m, of_body, &motion, control).map_err(op)?,
+                vec![of_body],
+            )
+        }
+        Step::Mirror { of, plane, .. } => {
+            let of_body = reference(fixture, step, of, made)?.body;
+            let reflection = Reflection::new(
+                point(fixture, step, &plane.origin, params)?,
+                vector(fixture, step, &plane.normal, params)?,
+            )
+            .map_err(|source| CorpusError::Plane {
+                fixture: fixture.name.clone(),
+                step: step.name().to_string(),
+                source,
+            })?;
+            body(
+                arris_ops::mirror(m, of_body, &reflection, control).map_err(op)?,
                 vec![of_body],
             )
         }

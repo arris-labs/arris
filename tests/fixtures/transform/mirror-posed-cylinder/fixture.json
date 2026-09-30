@@ -1,0 +1,124 @@
+{
+  "description": "the posed cylinder of transform/posed-cylinder, mirrored in a plane: `default` beside it (x = c + size + 5), `through` its centre across x, `across` a plane cut obliquely through it, off centre. The image has the original's volume, area, counts and genus, its centroid reflected (ADR-0031)",
+  "params": {
+    "ox": 23.119999999999997,
+    "oy": -7.12,
+    "oz": 8.2,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {
+    "through": {
+      "ox": 12.12,
+      "oy": -7.12,
+      "oz": 8.2,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    },
+    "across": {
+      "ox": 13.919999999999998,
+      "oy": -7.12,
+      "oz": 8.2,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 12
+    },
+    {
+      "name": "body",
+      "op": "transform",
+      "of": "cyl",
+      "rotate": {
+        "axis": [
+          1,
+          1,
+          0
+        ],
+        "angle_deg": 30
+      },
+      "translate": [
+        10,
+        -5,
+        3
+      ]
+    },
+    {
+      "name": "result",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "image_of_the_centre",
+      "point": [
+        "12.12 - 2 * ((12.12-ox)*nx+(-7.12-oy)*ny+(8.2-oz)*nz)/(nx^2+ny^2+nz^2) * nx",
+        "-7.12 - 2 * ((12.12-ox)*nx+(-7.12-oy)*ny+(8.2-oz)*nz)/(nx^2+ny^2+nz^2) * ny",
+        "8.2 - 2 * ((12.12-ox)*nx+(-7.12-oy)*ny+(8.2-oz)*nz)/(nx^2+ny^2+nz^2) * nz"
+      ],
+      "expect": null
+    },
+    {
+      "label": "at_the_centre",
+      "point": [
+        12.12,
+        -7.12,
+        8.2
+      ],
+      "expect": null
+    },
+    {
+      "label": "far",
+      "point": [
+        72.12,
+        52.88,
+        68.2
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * 16 * 12",
+    "area": "2 * pi * 16 + 2 * pi * 4 * 12",
+    "counts": {
+      "vertices": 2,
+      "edges": 3,
+      "faces": 3,
+      "loops": 3,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

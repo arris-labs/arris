@@ -94,6 +94,7 @@ reproduces it.
 - A drill's geometry fault on the fetched tier: CTC-04 AP203's battery drill along its second principal axis returns `OpError::Internal(Fault::Geometry)` where Open CASCADE builds the drilled part (`regression/nist-ctc-04-ap203-drill-geometry-fault`). Excluded in `tools/real-parts.waits`.
 - The whole-model native format adopts body bytes' migration machinery: today a file of another `NATIVE_VERSION` is refused, which is right until a consumer comes to store whole models (ADR-0029 decision 9; body-bytes non-goal)
 - A dedicated wire schema for body bytes (flat tables rather than `serde` of the model's types), so a consumer in another language can write them: taken when a second consumer asks for one (ADR-0029 option B; body-bytes non-goal)
+- The STEP reader builds no outer loop (`L4 f0: no outer loop`) for the torus face of Open CASCADE's STEP of a mirrored ring, whose torus frame is left-handed: it reads left-handed surface frames (a `Mirror`'s image, `BRepBuilderAPI_Transform` with a reflection) as if right-handed; a fixture at `tests/fixtures/regression/mirror-torus-ring` holds the desired read-back (mirror step 4)
 
 ## Findings
 

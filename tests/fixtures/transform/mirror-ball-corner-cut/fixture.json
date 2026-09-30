@@ -1,0 +1,183 @@
+{
+  "description": "the notched ball of boolean/ball-corner-cut: a sphere face with a loop of three fitted arcs and both poles, mirrored in a plane: `default` beside it (x = c + size + 5), `through` its centre across x, `across` a plane cut obliquely through it, off centre. The image has the original's volume, area, counts and genus, its centroid reflected (ADR-0031)",
+  "params": {
+    "ox": 8,
+    "oy": 0,
+    "oz": 0,
+    "nx": 1,
+    "ny": 0,
+    "nz": 0
+  },
+  "variants": {
+    "through": {
+      "ox": 0,
+      "oy": 0,
+      "oz": 0,
+      "nx": 1,
+      "ny": 0,
+      "nz": 0
+    },
+    "across": {
+      "ox": 0.8999999999999999,
+      "oy": 0,
+      "oz": 0,
+      "nx": 1,
+      "ny": 2,
+      "nz": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "half_disc",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -2
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              2
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half_disc",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "block0",
+      "op": "box",
+      "min": [
+        0.6,
+        -0.7,
+        0.3
+      ],
+      "max": [
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "name": "block",
+      "op": "transform",
+      "of": "block0",
+      "rotate": {
+        "axis": [
+          1,
+          1,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 12
+      }
+    },
+    {
+      "name": "body",
+      "op": "cut",
+      "target": "ball",
+      "tool": "block"
+    },
+    {
+      "name": "result",
+      "op": "mirror",
+      "of": "body",
+      "plane": {
+        "origin": [
+          "ox",
+          "oy",
+          "oz"
+        ],
+        "normal": [
+          "nx",
+          "ny",
+          "nz"
+        ]
+      }
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "image_of_the_centre",
+      "point": [
+        "0 - 2 * ((0-ox)*nx+(0-oy)*ny+(0-oz)*nz)/(nx^2+ny^2+nz^2) * nx",
+        "0 - 2 * ((0-ox)*nx+(0-oy)*ny+(0-oz)*nz)/(nx^2+ny^2+nz^2) * ny",
+        "0 - 2 * ((0-ox)*nx+(0-oy)*ny+(0-oz)*nz)/(nx^2+ny^2+nz^2) * nz"
+      ],
+      "expect": null
+    },
+    {
+      "label": "at_the_centre",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": null
+    },
+    {
+      "label": "far",
+      "point": [
+        30,
+        30,
+        30
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0,
+    "step_differs": "Open CASCADE's own STEP of its result reads back with 9 edges and 5 loops where it built 10 and 4, its measurements within the shape's own tolerance; Arris's STEP of the same result reads back with the oracle's counts (the corpus's compare stage)"
+  }
+}
