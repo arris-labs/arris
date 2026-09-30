@@ -30,7 +30,12 @@ operation contract are in [architecture](ARCHITECTURE.md).
   frame change and nothing else: an **`Isometry`** (a rotation then a
   translation) moves geometry through `Frame::transformed`. A **`Frame2`**
   is the (u, v)-plane analogue and may be of either handedness, which is
-  how a pcurve records its direction of traversal.
+  how a pcurve records its direction of traversal. A **reflection**
+  (`arris_math::Reflection`) is not an `Isometry` and gives no
+  left-handed frame: a mirrored surface is the same kind over a
+  right-handed frame with its `u` reflected (`u ↦ 2π − u` for a quadric, the
+  identity for a plane and a NURBS surface), so the reflection lives in the
+  parametrisation and never in a frame's handedness (ADR-0031).
 - **Tolerances** reach an algorithm as `Tolerance { linear, angular }`,
   derived from the model by `Precision::tolerance()` or from an entity's
   own tolerance by the operation that owns it (§Tolerances). Exact
@@ -1303,7 +1308,12 @@ terms of the *effective* orientation at the end of that path:
 - effective edge direction = curve direction, flipped by the composed
   orientation down to the coedge;
 - a loop of a `Reversed` face is walked backwards, which keeps the material
-  on the left of the flipped normal — the convention survives composition.
+  on the left of the flipped normal — the convention survives composition;
+- a mirror reverses every loop's winding about the outward normal, so the
+  effective loop of an image is the reverse of the mirror image of the
+  original's: a plane's or NURBS face toggles its use orientation and keeps
+  its stored loop, a quadric face keeps its use orientation and has its
+  stored loop reversed, each coedge use toggled (ADR-0031).
 
 Entities themselves are never oriented: a surface is never flipped to make
 a face's normal point outward, a curve is never reversed to make a coedge

@@ -501,7 +501,7 @@ are `docs/ideas/plugin-cad-consumer-asks.md`'s A1–A4 and A11. The
 histogram's first line, the blend network (17 of 38 parts), is next in
 line (§Named cycles).*
 
-**Status: opened 2026-09-26; consumer roles (A1), body bytes (A2) and cancellation (A3) done.**
+**Status: opened 2026-09-26; consumer roles (A1), body bytes (A2), cancellation (A3) and mirror (A11) done.**
 
 - **Consumer roles (A1)** — done 2026-09-27 (ADR-0028):
   `Role::Consumer(ConsumerKey { namespace, key })`, carried opaquely so
@@ -536,8 +536,17 @@ line (§Named cycles).*
   stops at the same step with `parallel` on or off, so the property
   interrupts recipes at every step. The thin-elliptic section stops
   within 3.9 ms of a poll turning true.
-- **Mirror (A11)**: `ops::mirror` in a plane, orientation flipped,
-  provenance one to one.
+- **Mirror (A11)** — done 2026-10-01 (ADR-0031): `ops::mirror` reflects
+  a body in a plane through a `Reflection` of its own; frames stay
+  right-handed and a quadric's `u` is reflected, the loops of such a face
+  reversed, provenance `Modified` one to one. Nineteen fixtures under
+  `transform/` and `boolean/` match Open CASCADE's mirror (a body and its
+  own mirror under `fuse`, `cut` and `common` included), every mirrored
+  body tessellates, round-trips through STEP and body bytes, and
+  `mirror` is the twelfth operation of the random recipes. It found one
+  boolean failure of its own kind (coincident spheres under frames a half
+  turn apart, a backlog line) and a reader refusal of Open CASCADE's
+  left-handed torus frame.
 - **STEP product structure (A4)**: the reader returns products,
   instances, placements, names and colours beside the flattened bodies;
   the writer writes instances, names and colours. An amendment of
