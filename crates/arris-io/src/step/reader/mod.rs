@@ -11,6 +11,7 @@
 //! into a body.
 
 pub(crate) mod assembly;
+mod colours;
 pub(crate) mod entities;
 pub(crate) mod geometry;
 mod products;
@@ -650,7 +651,8 @@ fn read_solids(
             result,
         });
     }
-    let products = products::build(&exchange.instances, &flat, &index, meter)?;
+    let mut products = products::build(&exchange.instances, &flat, &index, meter)?;
+    colours::Colours::of(&exchange.instances).apply(&mut products, &out);
     Ok(Read {
         solids: out,
         products,

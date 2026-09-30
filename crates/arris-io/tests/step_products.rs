@@ -7,7 +7,8 @@ use arris_debug::oracle::{self, OracleOccurrence};
 use arris_debug::unmetered::step_read;
 use arris_debug::{fixtures, sample};
 use arris_io::arris_check::arris_topo::Model;
-use arris_io::step::{self, Occurrence, ReadOptions};
+use arris_io::arris_check::arris_topo::arris_math::Point3;
+use arris_io::step::{self, Occurrence, ReadOptions, Rgb};
 
 /// A placement as the oracle prints it, a 3×4 row-major matrix.
 fn matrix(placement: &arris_io::arris_check::arris_topo::arris_math::Isometry) -> [f64; 12] {
@@ -48,6 +49,12 @@ fn same(found: &Occurrence, expected: &OracleOccurrence, path: &str) -> Result<(
                 .all(|(a, b)| (a - b).abs() < 1e-12) => {}
         (other, want) => return Err(format!("{path}: placement {other:?} vs {want:?}")),
     }
+    match (found.colour, expected.colour) {
+        (None, None) => {}
+        (Some(Rgb(got)), Some(want))
+            if got.iter().zip(want).all(|(g, w)| (g - w).abs() < COLOUR) => {}
+        (got, want) => return Err(format!("{path}: colour {got:?} vs {want:?}")),
+    }
     if found.solids != expected.solids {
         return Err(format!(
             "{path}: solids {:?} vs {:?}",
@@ -66,6 +73,10 @@ fn same(found: &Occurrence, expected: &OracleOccurrence, path: &str) -> Result<(
     }
     Ok(())
 }
+
+/// What the file spells of a colour: Open CASCADE converts between colour
+/// spaces and writes twelve digits, of which the last few are its conversion's noise (1e-8).
+const COLOUR: f64 = 1e-7;
 
 const IDENTITY: [f64; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
@@ -95,6 +106,55 @@ fn an_xcaf_assembly_reads_to_the_oracles_tree() {
             let want = &oracle.instances[i];
             assert!((mass.volume - want.volume).abs() <= 1e-9 * want.volume);
         }
+    }
+}
+
+/// The colours the oracle set: the two parts', and the one face of the
+/// first, which is the face the oracle measured (its centroid and area)
+/// among those of the body read.
+#[test]
+fn an_xcaf_assembly_reads_its_colours() {
+    let root = fixtures::corpus_root();
+    let (text, oracle) = oracle::occt_assembly_oracle(
+        &root.join("primitive/box"),
+        &root.join("boolean/through-hole"),
+        "occt-assembly-box-through-hole",
+    )
+    .unwrap();
+    let mut m = Model::default();
+    let read = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
+    // The occurrences' colours are part of `same`.
+    same(&read.products.roots[0], &oracle.tree, "").unwrap();
+    let faces = &read.products.faces;
+    assert_eq!(faces.len(), oracle.faces.len(), "{faces:?}");
+    for (found, want) in faces.iter().zip(&oracle.faces) {
+        assert_eq!(found.solid, want.instance);
+        for (g, w) in found.colour.0.iter().zip(want.colour) {
+            assert!(
+                (g - w).abs() < COLOUR,
+                "{:?} vs {:?}",
+                found.colour,
+                want.colour
+            );
+        }
+        // The face is the one whose corners' mean is the oracle's
+        // centroid: a rectangle's centroid.
+        let face = m.face(found.face).unwrap();
+        let mut ids = std::collections::BTreeSet::new();
+        for c in face.loops().iter().flat_map(|l| l.coedges()) {
+            let e = m.edge(c.edge()).unwrap();
+            ids.extend([e.start(), e.end()]);
+        }
+        let corners: Vec<_> = ids.iter().map(|&v| m.vertex(v).unwrap().point()).collect();
+        let mean = corners
+            .iter()
+            .fold(Point3::origin().coords, |a, p| a + p.coords)
+            / corners.len() as f64;
+        let c = want.centroid;
+        assert!(
+            (mean - Point3::new(c[0], c[1], c[2]).coords).norm() < 1e-7,
+            "{mean:?} vs {c:?}"
+        );
     }
 }
 

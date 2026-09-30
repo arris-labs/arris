@@ -105,6 +105,30 @@ impl File {
         )
     }
 
+    /// A `STYLED_ITEM` painting `item` with the colour entity `colour`
+    /// (its text, e.g. `COLOUR_RGB('',1.,0.,0.)`).
+    fn paint(&mut self, item: u64, colour: &str) {
+        let colour = self.push(colour.to_string());
+        let fill = self.push(format!("FILL_AREA_STYLE_COLOUR('',#{colour})"));
+        let area = self.push(format!("FILL_AREA_STYLE('',(#{fill}))"));
+        let surface = self.push(format!("SURFACE_STYLE_FILL_AREA(#{area})"));
+        let side = self.push(format!("SURFACE_SIDE_STYLE('',(#{surface}))"));
+        let usage = self.push(format!("SURFACE_STYLE_USAGE(.BOTH.,#{side})"));
+        let assignment = self.push(format!("PRESENTATION_STYLE_ASSIGNMENT((#{usage}))"));
+        self.push(format!("STYLED_ITEM('color',(#{assignment}),#{item})"));
+    }
+
+    /// The id of the `MANIFOLD_SOLID_BREP` of the part made last.
+    fn last_solid(&self) -> u64 {
+        let line = self
+            .lines
+            .iter()
+            .rev()
+            .find(|l| l.contains("MANIFOLD_SOLID_BREP"))
+            .unwrap();
+        line[1..line.find('=').unwrap()].parse().unwrap()
+    }
+
     fn text(&self) -> String {
         format!(
             "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\nFILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('AUTOMOTIVE_DESIGN'));\nENDSEC;\nDATA;\n{}\nENDSEC;\nEND-ISO-10303-21;\n",
@@ -233,4 +257,39 @@ fn a_cycle_of_usages_is_not_followed_round() {
     let read = f.read();
     let roots: Vec<String> = read.products.roots.iter().map(names).collect();
     assert_eq!(roots, ["r(a(b))"]);
+}
+
+/// A solid painted twice takes the lowest `STYLED_ITEM`'s colour, a colour
+/// that is not plain RGB is skipped rather than refused, and a named
+/// colour is RGB in disguise.
+#[test]
+fn colours_take_the_lowest_item_and_skip_what_is_not_rgb() {
+    let mut f = File::new();
+    f.part("a", "twice");
+    let solid = f.last_solid();
+    f.paint(solid, "COLOUR_RGB('',0.25,0.5,0.75)");
+    f.paint(solid, "COLOUR_RGB('',1.,0.,0.)");
+    f.part("b", "out-of-range");
+    let solid = f.last_solid();
+    f.paint(solid, "COLOUR_RGB('',2.,0.,0.)");
+    f.part("c", "named");
+    let solid = f.last_solid();
+    f.paint(solid, "DRAUGHTING_PRE_DEFINED_COLOUR('green')");
+    f.part("d", "unpainted");
+    let read = f.read();
+    let colours: Vec<_> = read
+        .products
+        .roots
+        .iter()
+        .map(|r| r.colour.map(|c| c.0))
+        .collect();
+    assert_eq!(
+        colours,
+        [Some([0.25, 0.5, 0.75]), None, Some([0.0, 1.0, 0.0]), None]
+    );
+    assert_eq!(
+        read.solids.len(),
+        4,
+        "a colour is never a reason to lose a body"
+    );
 }

@@ -115,7 +115,7 @@ bound has to be established here.
   `crates/arris-io/tests/`; then the 38 real parts read with the tree
   built and the C4 histogram unchanged (the refusal table and the
   battery's counts print identically).
-- [ ] Step 4 **[2]** — Colours read (`reader/colours.rs`): a solid's
+- [x] Step 4 **[2]** — Colours read (`reader/colours.rs`): a solid's
   colour on its occurrence, a face's in `ProductTree::faces`, both resolved
   from `STYLED_ITEM` through the style chain; an item coloured twice takes
   the lowest `STYLED_ITEM` id (deterministic); anything but plain RGB is
@@ -184,6 +184,9 @@ semver gate passes on the `Breaking` bullets.
   (`ProductTree::faces`) because XCAF colours faces as readily as solids.
   Decides: agent, by step 4; drop to solid-only if the chain proves
   exporter-specific and say so in the ADR.
+  **Decided (step 4): kept.** The chain is the standard's, read through
+  `STYLED_ITEM` and its `OVER_RIDING_STYLED_ITEM` subtype; Open CASCADE's
+  face colour reads to the face the oracle coloured (ADR-0033 §5).
 - ⚠ OPEN: does the writer take `ProductTree` directly (indices into the
   `bodies` slice) or a separate input type with `Body` handles? Plan
   assumes the former so a read tree can be written back unchanged.

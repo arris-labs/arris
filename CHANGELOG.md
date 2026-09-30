@@ -13,7 +13,10 @@ into its version (ADR-0027).
   product's name, its placement in its parent (or the refusal of it), the
   indices of the solids it holds in `Read::solids`, and its children.
   Open CASCADE's XCAF assemblies read to their names, nesting and
-  placements.
+  placements. A colour a file paints a solid or a face with — plain RGB,
+  or one of the eight named colours — comes with the occurrence
+  (`Occurrence::colour`) or in `ProductTree::faces`; anything else is
+  skipped, never a reason to lose a body.
 - `arris_ops::mirror` reflects a body in a plane (`arris_math::Reflection`):
   the image is a new solid with its material inside, checker-clean, and
   every vertex, edge, face, shell and the body is recorded as modified
