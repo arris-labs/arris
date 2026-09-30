@@ -46,9 +46,10 @@ fn main() -> Result<(), Error> {
             let report = survey::survey(file, name, Path::new(&args[2]), source)?;
             std::fs::write(&args[3], serde_json::to_string_pretty(&report)? + "\n")?;
             println!(
-                "{name}: {:.1} s, {} read, {} refusals, {} failures",
+                "{name}: {:.1} s, {} read in {} occurrences, {} refusals, {} failures",
                 report.read_seconds,
                 report.read,
+                report.occurrences,
                 report.refusals.len(),
                 report.failures.len()
             );

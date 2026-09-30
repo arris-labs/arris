@@ -61,6 +61,10 @@ pub struct Report {
     pub read_seconds: f64,
     /// Solid instances read.
     pub read: usize,
+    /// Occurrences in the file's product tree (ADR-0033): printed, never
+    /// asserted beyond "the tree was built".
+    #[serde(default)]
+    pub occurrences: usize,
     /// Every refusal, the reader's and the battery's Arris refusals.
     pub refusals: Vec<Counted>,
     /// Each battery stage's class, `(solid, stage, class)`: `agree`,
@@ -128,6 +132,7 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
         }
     };
     report.read_seconds = started.elapsed().as_secs_f64();
+    report.occurrences = read.products.occurrences().count();
     if report.read_seconds > READ_BUDGET_SECONDS {
         report.failures.push(format!(
             "the read takes {:.1} s, past ADR-0026 §6's {READ_BUDGET_SECONDS} s",

@@ -140,8 +140,9 @@ bound has to be established here.
   path. Seeded, sharded (`prop_shards!`), in the `fast` profile at 32
   cases. Also the cancellation property covers the new entry points, and
   the reader fuzz target's seed corpus gains an assembly.
-- [ ] Step 7 **[1]** — `arris` facade and `arris-debug`: re-export the
-  tree types, the recipe/corpus runner records the tree size per real part
+- [x] Step 7 **[1]** — `arris` facade and `arris-debug`: the tree types
+  are reached as `arris::io::step::*` (the facade re-exports `arris_io`
+  whole, so nothing to add), the recipe/corpus runner records the tree size per real part
   in the battery line (printed, not asserted beyond "reads"), rustdoc with
   an example on `ProductTree`, `write_products`; `CHANGELOG.md` bullets
   under `Unreleased` (a consumer can now read and write assemblies) and

@@ -71,10 +71,24 @@ pub struct Occurrence {
 /// their solids (ADR-0033).
 ///
 /// ```
-/// use arris_io::step::ProductTree;
+/// use arris_debug::sample;
+/// use arris_io::arris_check::arris_topo::Model;
+/// use arris_io::arris_check::arris_topo::arris_math::Control;
+/// use arris_io::step::{self, ReadOptions};
 ///
-/// let empty = ProductTree::default();
-/// assert!(empty.roots.is_empty());
+/// let mut m = Model::default();
+/// let body = sample::cylinder(&mut m, 4.0, 12.0)?;
+/// let text = step::write(&m, &[body])?;
+///
+/// let mut back = Model::default();
+/// let read = step::read(&mut back, &text, &ReadOptions::default(), &Control::NONE)?;
+/// // A file of one part: one root, named for its product, holding the one solid.
+/// let [root] = &read.products.roots[..] else { panic!("one root") };
+/// assert_eq!(root.name, "arris");
+/// assert_eq!(root.solids, [0]);
+/// assert!(read.solids[root.solids[0]].result.is_ok());
+/// assert_eq!(read.products.occurrences().count(), 1);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ProductTree {
