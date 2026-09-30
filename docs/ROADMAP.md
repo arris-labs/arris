@@ -501,7 +501,7 @@ are `docs/ideas/plugin-cad-consumer-asks.md`'s A1–A4 and A11. The
 histogram's first line, the blend network (17 of 38 parts), is next in
 line (§Named cycles).*
 
-**Status: opened 2026-09-26; consumer roles (A1) and body bytes (A2) done.**
+**Status: opened 2026-09-26; consumer roles (A1), body bytes (A2) and cancellation (A3) done.**
 
 - **Consumer roles (A1)** — done 2026-09-27 (ADR-0028):
   `Role::Consumer(ConsumerKey { namespace, key })`, carried opaquely so
@@ -526,10 +526,16 @@ line (§Named cycles).*
   in the reader's ids in one pass. A version's bytes are frozen under
   `crates/arris-io/tests/body/v<N>/` and read in the suite forever, and
   `body_read` fuzzes the reader.
-- **Cancellation (A3)**: an interrupt token the consumer sets, checked at
-  loop boundaries, returning `OpError::Interrupted` and rolled back by the
-  transaction; no clock and no thread, so wasm has it. A deterministic
-  step budget if the ADR finds one cheap. Its own ADR.
+- **Cancellation (A3)** — done 2026-09-30 (ADR-0030): every operation on
+  a model and every long query beside one takes a trailing `&Control`, a
+  poll the consumer supplies and an optional budget of steps, counted at
+  each loop boundary that can outgrow the input (tracing, fitting,
+  subdivision, the boolean's passes, blend corners, triangulation, the
+  reader's solids). A stop is `Interrupted` in the operation's own error
+  type and the transaction rolls the model back, ids included; a budget
+  stops at the same step with `parallel` on or off, so the property
+  interrupts recipes at every step. The thin-elliptic section stops
+  within 3.9 ms of a poll turning true.
 - **Mirror (A11)**: `ops::mirror` in a plane, orientation flipped,
   provenance one to one.
 - **STEP product structure (A4)**: the reader returns products,

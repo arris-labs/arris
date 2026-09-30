@@ -17,7 +17,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 
 | Crate | Owns | External deps | Layer |
 |---|---|---|---|
-| `arris-math` | `Point3`/`Vec3`/`UnitVec3` (over `nalgebra`, ADR-0001), `Frame`, `Frame2`, `Axis`, `Isometry`, `Interval`, `Aabb`, `wrap_angle`, exact orientation predicates (over `robust`), polynomial and interval-guarded Newton root finding, `Precision` and `Tolerance` | `nalgebra`, `robust`, `serde` (feature) | 0 — representation |
+| `arris-math` | `Point3`/`Vec3`/`UnitVec3` (over `nalgebra`, ADR-0001), `Frame`, `Frame2`, `Axis`, `Isometry`, `Interval`, `Aabb`, `wrap_angle`, exact orientation predicates (over `robust`), polynomial and interval-guarded Newton root finding, `Precision` and `Tolerance`, `Control` (a poll and a budget of steps), the `Meter` that counts against it, `Stop` and `Interrupted` (ADR-0030) | `nalgebra`, `robust`, `serde` (feature) | 0 — representation |
 | `arris-geom` | `Surface`, `Curve`, `Curve2` (analytic + NURBS): evaluation, derivatives, point projection, curve/curve, curve/surface and surface/surface intersection (`trace_quadrics`, the exact section of two quadrics by the rulings of one, and `trace_torus`, the exact section of a torus in its own parameter plane — both fitted by the intersector), bounding boxes over a parameter range, pcurves and the NURBS fit behind them; the (u, v) toolkit `region2` and `integrate` shared by the checker, tessellation, mass properties and classification; `Profile`, the planar sketch of lines, arcs and elliptic arcs a sweep takes, validated and oriented by `Profile::edges`; `GeomError` | `arris-math`, `thiserror`, `serde` (feature) | 0 — representation |
 | `arris-topo` | `Model` (the arena), typed ids, `Shape`/`Body`/`Face`/… handles, orientation, entities, pcurves, per-entity tolerances, Euler operators including the assembly seam (`Assembly::of_body`, `effective_uses`, `AssemblySlots`), the Euler line (`euler::EulerLine`), adjacency and iteration, `Provenance` and its audit; re-exports `arris-geom` and `arris-math` | `arris-geom`, `arris-math`, `thiserror`, `serde` (feature) | 0 — representation |
 | `arris-check` | The invariant checker: `check(&Model, Body, Level) -> Report` and the `Violation` list of data-model §Invariants; the shared face domain (`domain::FaceDomain`), point classifier (`classify::Classifier`, `classify_point`) and region flux (`flux::face_flux`) every `Full` row, the boolean and tessellation read a face through; re-exports `arris-topo` | `arris-topo`, `serde` (feature, forwarded to `arris-topo`) | 1 |
@@ -153,7 +153,7 @@ or the native format, which writes freed slots as freed.
 Every operation in `arris-ops` has the same shape:
 
 ```rust
-pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance), OpError>;
+pub fn cut(m: &mut Model, target: Body, tool: Body, control: &Control) -> Result<(Body, Provenance), OpError>;
 ```
 
 - Inputs are handles into `m`. The operation reads them, appends, and
@@ -175,6 +175,17 @@ pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance)
   from a `Role`.
 - Same input, same output, same ids, on every platform. The tests assert
   this by dumping twice and diffing.
+- Every operation on a model, and every long query beside one, takes a
+  trailing `&Control` (ADR-0030): a poll the consumer answers from
+  whatever its platform has, and an optional budget of steps.
+  `Control::NONE` runs to the end. A stop is `Interrupted` in the
+  operation's own error type, carrying the cause (`Stop::Poll` or
+  `Stop::Budget`) and the steps taken, and the model is as it was, ids
+  included. A step is one iteration of a loop whose trip count the input's
+  entity count does not bound (a tracer's march, a fit's refinement, a
+  boolean pair, a face split, a blend corner, a CDT insertion, a reader's
+  entity). The writers and the constant-work queries take no `Control`,
+  and the checker is not ticked.
 
 `ops::build(m, builder, &BuildKeys)` finishes a `Builder` the consumer
 filled itself — through the Euler operators or `Builder::assemble` —
@@ -833,6 +844,7 @@ involved, so the message a consumer shows — or the agent reads — says
 | `NotFound` | an id does not resolve in this model (wrong model, or compacted away) | the `AnyId` that failed to resolve itself, never an entity that merely holds it |
 | `Unkeyed` | `build` was handed a live slot of its builder that its `BuildKeys` gives no key: the record would have an output with no origin | the `BuildSlot` (a vertex, edge or face slot, or a shell index) |
 | `Rejected` | `build` refuses the consumer's topology as a solid: `Builder::finish` refused it (`Rejection::Builder`), a slot is an entity `assemble` kept from another body (`Rejection::Kept`), or the finished body fails the checker at `Full`, in every build profile (`Rejection::Checker`). The input's fault, never `Internal` | a `Rejection` — the `BuildError`, the `BuildSlot` or the `Report` |
+| `Interrupted` | the consumer's `Control` stopped the operation: its poll answered true (`Stop::Poll`) or its budget of steps ran out (`Stop::Budget`), ADR-0030 | the `Interrupted` value: the cause and the steps taken |
 | `Internal` | a kernel bug the operation caught: the checker rejected its own output, the builder refused a step of its fixed sequence, a frame could not be placed from inputs it had validated, a point it had to classify could not be, a geometry query failed on validated input for a reason other than a missing closed form, a section edge crossed a seam the seam's own hit should have paved, a piece of a coincident face pair's edge matched no piece of the edge it lies along, the (u, v) arrangement of a face was not the subdivision the pave model promised (`SplitFault`: a dangling section edge, a cycle not turning once, a hole inside no piece, a piece with no interior point, a pave at an edge's end), the shells a boolean kept did not nest into lumps, an operation's own fixed sequence broke an invariant it should have kept — an internal lookup by index or key, never a model id, found nothing (`Fault::Invariant { what }`), a sweep's own later step needed an entity its earlier step did not make for a segment (`Fault::Unmade { segment }`), a surface had no normal at a point on a face an operation needed one at, every partial derivative degenerate where the checker's own tolerances should have ruled that out (`Fault::NoNormal { face }`), or a profile edge's curve was not one of the kinds `Profile::edges` makes (`Fault::ProfileCurve(GeomError)`) | a `Fault` — the `Report`, the `BuildError`, the `FrameError`, the `ClassifyError`, the `GeomError`, the two faces of the seam crossing, the edge and face of the unmatched common block, the `SplitFault` naming the face, the `LumpError`, or one of the four bookkeeping variants above |
 
 The STEP reader's failures are its own and never an `OpError`: a file
@@ -856,7 +868,10 @@ consumer might reasonably want anyway (the flush intersection that is a
 face, not a solid) is `Degenerate` with a reason, never a silently empty
 body: the kernel does not decide what fail-soft means. Every operation
 runs inside `Model::transaction`, so on any `Err` the model — its ids
-included — is as it was.
+included — is as it was, `Interrupted` (the consumer's poll or budget,
+in `OpError`, `GeomError`, `MeshError`, `ReadError` and `BodyError`
+alike) included. It is a stop the consumer asked for, so it is never
+`Internal` and the operation names no entity in it.
 
 ## The checker
 
@@ -1186,6 +1201,18 @@ B-Rep).
   error *in order* is returned, since a `Result` collected straight from
   `rayon` is whichever error a thread met first. Parallelism *across* operations is clone-evaluate-import,
   above.
+- A running operation is stopped through the `&Control` it was handed and
+  nothing else: no clock, no thread, no callback beyond the poll, so wasm
+  has it. The poll is `&(dyn Fn() -> bool + Sync)` — `Sync` because the
+  parallel passes poll from several threads — and reads whatever the
+  consumer has (an atomic, a `SharedArrayBuffer`, its own clock for a
+  timeout). The budget is deterministic: a parallel pass hands each item a
+  meter split off the budget left when the pass starts, and afterwards
+  sums the items' steps in sequential order and stops at the first item
+  whose running sum crosses the cap. The sequential build runs the same
+  rule, so both stop on the same item at the same count and only a
+  budget's result is exact; where a poll lands under `parallel` is the
+  schedule's, and only its rollback is promised.
 - `wasm32-unknown-unknown` builds every crate with default features; CI
   checks it. No kernel crate touches the filesystem, the clock, threads or
   randomness; `arris-debug` is the only crate that writes files, and the

@@ -45,6 +45,20 @@ into its version (ADR-0027).
   another version.
 - `Provenance` and `IdMap` now have a JSON form, their relations and maps
   written as ordered pairs; the `postcard` encoding is unchanged.
+- A running operation can be stopped, on native and on wasm. Every
+  operation on a model, and every long query beside one, takes a
+  `Control`: a poll the consumer answers from its own flag, buffer or
+  clock, and optionally a budget of steps. When either says stop, the call
+  returns `Interrupted` in its own error type — with the cause and the
+  steps taken — and the model is as it was, ids included. A budget is
+  deterministic: the same input and budget stop at the same step on every
+  platform and with `parallel` on or off, so an evaluation can be capped
+  reproducibly. `Control::NONE` runs to the end. A section of a torus
+  against a very thin elliptic cylinder, which takes minutes, now stops
+  within milliseconds of the poll turning true. Reading a STEP file stops
+  as a whole: the solids already read are dropped. Writers and
+  constant-work queries take no `Control`, and the checker runs to the
+  end once the work is done.
 
 ### Breaking
 
