@@ -21,7 +21,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 | `arris-geom` | `Surface`, `Curve`, `Curve2` (analytic + NURBS): evaluation, derivatives, point projection, curve/curve, curve/surface and surface/surface intersection (`trace_quadrics`, the exact section of two quadrics by the rulings of one, and `trace_torus`, the exact section of a torus in its own parameter plane — both fitted by the intersector), bounding boxes over a parameter range, pcurves and the NURBS fit behind them; the (u, v) toolkit `region2` and `integrate` shared by the checker, tessellation, mass properties and classification; `Profile`, the planar sketch of lines, arcs and elliptic arcs a sweep takes, validated and oriented by `Profile::edges`; `GeomError` | `arris-math`, `thiserror`, `serde` (feature) | 0 — representation |
 | `arris-topo` | `Model` (the arena), typed ids, `Shape`/`Body`/`Face`/… handles, orientation, entities, pcurves, per-entity tolerances, Euler operators including the assembly seam (`Assembly::of_body`, `effective_uses`, `AssemblySlots`), the Euler line (`euler::EulerLine`), adjacency and iteration, `Provenance` and its audit; re-exports `arris-geom` and `arris-math` | `arris-geom`, `arris-math`, `thiserror`, `serde` (feature) | 0 — representation |
 | `arris-check` | The invariant checker: `check(&Model, Body, Level) -> Report` and the `Violation` list of data-model §Invariants; the shared face domain (`domain::FaceDomain`), point classifier (`classify::Classifier`, `classify_point`) and region flux (`flux::face_flux`) every `Full` row, the boolean and tessellation read a face through; re-exports `arris-topo` | `arris-topo`, `serde` (feature, forwarded to `arris-topo`) | 1 |
-| `arris-ops` | Primitives, extrude and revolve of a `Profile`, transform, booleans, the blends, each returning `Provenance`; the queries `measure` (mass properties) and `query` (projection onto a plane, a face's outward frame) | `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
+| `arris-ops` | Primitives, extrude and revolve of a `Profile`, transform, mirror, booleans, the blends, each returning `Provenance`; the queries `measure` (mass properties) and `query` (projection onto a plane, a face's outward frame) | `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
 | `arris-mesh` | `TriMesh`, `Polyline`, the constrained Delaunay triangulation in (u, v) (`cdt`, ADR-0003), tessellation of faces and edges with shared edge discretisation; re-exports `arris-math`'s `Aabb` and `Interval` | `arris-check`, `arris-topo`, `thiserror`, `rayon` (feature) | 2 — algorithms |
 | `arris-io` | STEP AP214 Part 21 writer and reader (`step::write`, `step::read`, ADR-0025) over the Part 21 parser (`step::part21`), the native format (`native`), body bytes (`body`, ADR-0029), STL and OBJ mesh writers (`stl`, `obj`, ADR-0013); re-exports `arris-check` and `arris-mesh` | `arris-check`, `arris-mesh`, `thiserror`, `serde`, `serde_json`, `postcard` (the last three behind the `serde` feature) | 2 — algorithms |
 | `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
@@ -216,7 +216,25 @@ of_body(m, body, &mut remap) -> Result<(Assembly, BodyIndex), NotFound>`
 a curve and a surface by the motion: the walk over the body's closure, the
 `Assembly` it describes and the `BodyIndex` provenance is built from are
 shared with a boolean's own assembly, so `transform`'s own work is the
-remap alone.
+remap alone. `GeometryRemap` has two provided hooks beside the three
+it must answer: `pcurve(model, p, surface)` (the pcurve to give a copied
+use; the original surface it lay on) and `face(model, surface) ->
+FaceRemap { toggle_use, reverse_loops }`; `of_body` applies them, toggling
+the face's use and copying its stored loops backwards with each coedge use
+toggled where told to. Their defaults are the identity, which is all a
+rigid motion needs.
+
+`ops::mirror(m, body, plane: &Reflection, control)` is `transform`'s
+sibling over the same seam (ADR-0031): the image of a body in a plane,
+frames kept right-handed. Every curve and surface is appended as its
+`mirrored` image — a quadric's `u` is reflected (`u ↦ 2π − u`), a plane's
+and a NURBS surface's parameters are kept and their normal turns, a curve
+keeps its parameter — a pcurve is reused where the surface's parameters
+are kept and `Curve2::reflected` where they are not, and the `face` hook
+answers `toggle_use` for a plane or NURBS face and `reverse_loops` for a
+quadric one, so every image's effective loop is the reverse of the mirror
+image of the original's. Provenance is `Modified` one-to-one; nothing of
+the input is shared, even with the plane through the body.
 
 A **query** has a different shape: it takes `&Model`, makes no body and
 records no provenance, because there is nothing for a later operation to
@@ -1639,6 +1657,7 @@ refusal histogram, what picks the cycle after the reader's.
 | Extrude / revolve of a sketched profile with holes | `ops::extrude`, `ops::revolve` over `Profile` (lines, arcs and elliptic arcs; a revolve refuses an elliptic segment, ADR-0014) |
 | Boolean union / intersect / cut | `ops::fuse`, `ops::common`, `ops::cut` |
 | Transform (geometry only, topology and index order preserved) | `ops::transform` — new ids, provenance `Modified` one-to-one in iteration order |
+| Mirror a body in a plane | `ops::mirror` — new ids, provenance `Modified` one-to-one, the image a solid with its material inside (ADR-0031) |
 | Fillet / chamfer of named edges, one call for all edges | `ops::fillet`, `ops::chamfer` (ADR-0007) |
 | Tessellation into a render mesh with per-face and per-edge ranges | `arris_mesh::tessellate` → `TriMesh` with `FaceRange`/`EdgeRange` keyed by `FaceId`/`EdgeId`; `arris_mesh::tessellate_with` of a `MeshRequest::with_corners` adds the render buffer beside it — face-local vertices with outward normals and the surface's own (u, v), which a renderer uploads as they stand (ADR-0012) |
 | A face's outward-oriented frame | `ops::query::face_frame(&model, face)` for a plane (stable across re-evaluation, since a primitive's frame or a sweep's profile plane is), `ops::query::frame_at(&model, face, uv)` for any face at a `(u, v)` its domain contains |

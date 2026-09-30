@@ -1052,6 +1052,41 @@ pub trait GeometryRemap {
     fn curve(&mut self, model: &mut Model, c: CurveId) -> CurveId;
     /// The surface to describe a face over `s` with.
     fn surface(&mut self, model: &mut Model, s: SurfaceId) -> SurfaceId;
+    /// The pcurve to give a copied use in place of `p`, which lay on
+    /// `surface`, the *original* surface (not the one
+    /// [`GeometryRemap::surface`] returned). The default keeps `p`: right
+    /// wherever the surface's parametrisation is carried along, as a rigid
+    /// motion does.
+    fn pcurve(&mut self, _model: &mut Model, p: Curve2Id, _surface: SurfaceId) -> Curve2Id {
+        p
+    }
+    /// What to change about a copied face over `surface`, the original
+    /// surface. The default is [`FaceRemap::KEEP`]: the face is copied as
+    /// it stands.
+    fn face(&mut self, _model: &mut Model, _surface: SurfaceId) -> FaceRemap {
+        FaceRemap::KEEP
+    }
+}
+
+/// What [`Assembly::of_body`] changes about a face it copies, answered by
+/// [`GeometryRemap::face`]: the two facts a map that reverses the winding
+/// of a surface's parameters (a mirror, ADR-0031) needs said.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct FaceRemap {
+    /// The copy's use of its surface has the opposite orientation.
+    pub toggle_use: bool,
+    /// The copy's *stored* loops are the original's walked backwards, each
+    /// coedge use's orientation toggled: the winding a stored loop must
+    /// have in the `(u, v)` of a surface whose parameters were reflected.
+    pub reverse_loops: bool,
+}
+
+impl FaceRemap {
+    /// Change nothing: what a rigid motion asks.
+    pub const KEEP: FaceRemap = FaceRemap {
+        toggle_use: false,
+        reverse_loops: false,
+    };
 }
 
 /// A [`GeometryRemap`] that keeps every point, curve and surface as it is:
@@ -1178,8 +1213,41 @@ impl Assembly {
             for (fi, f) in uses.iter().enumerate() {
                 let old_surface = model.face(f.id)?.surface();
                 let mut spec = FaceSpec::from_face(model, *f, |id| EdgeKey::New(edge_index[&id]))?;
-                if let FaceSpec::New { surface, .. } = &mut spec {
+                let change = remap.face(model, old_surface);
+                if let FaceSpec::New {
+                    surface,
+                    orientation,
+                    loops,
+                    ..
+                } = &mut spec
+                {
                     *surface = surface_of[&old_surface];
+                    let old_orientation = *orientation;
+                    if change.toggle_use {
+                        *orientation = orientation.compose(Orientation::Reversed);
+                    }
+                    for l in loops.iter_mut() {
+                        // Effective order back to stored, the change, and
+                        // forward again under the new use orientation.
+                        let mut stored = effective_uses(
+                            old_orientation,
+                            l.iter().map(|u| (u.edge, u.orientation, u.pcurve)),
+                        );
+                        if change.reverse_loops {
+                            stored.reverse();
+                            for u in &mut stored {
+                                u.1 = u.1.compose(Orientation::Reversed);
+                            }
+                        }
+                        *l = effective_uses(*orientation, stored)
+                            .into_iter()
+                            .map(|(edge, orientation, pcurve)| UseSpec {
+                                edge,
+                                orientation,
+                                pcurve: remap.pcurve(model, pcurve, old_surface),
+                            })
+                            .collect();
+                    }
                 }
                 face_specs.push(spec);
                 face_index.insert(f.id, (si, fi));

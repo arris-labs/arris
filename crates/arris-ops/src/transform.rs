@@ -76,6 +76,18 @@ pub fn transform(
     motion: &Isometry,
     control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
+    copy_body(m, body, &mut Move(motion), control)
+}
+
+/// Copies `body` through [`Assembly::of_body`] with `remap` and
+/// [`Builder::assemble`], every entity `Modified` one-to-one from the one
+/// it copies: what `transform` and `mirror` are each a remap of.
+pub(crate) fn copy_body(
+    m: &mut Model,
+    body: Body,
+    remap: &mut impl GeometryRemap,
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
     crate::verify_input(m, body)?;
     let mut meter = Meter::new(control);
     for _ in m.faces(body)? {
@@ -85,7 +97,7 @@ pub fn transform(
     let tolerance = m.precision().default_tolerance;
 
     m.transaction(|m| {
-        let (assembly, index) = Assembly::of_body(m, body, &mut Move(motion))?;
+        let (assembly, index) = Assembly::of_body(m, body, remap)?;
         let (b, slots) = Builder::assemble(m, tolerance, assembly)?;
         let built = b.finish(m, entity.kind())?;
 

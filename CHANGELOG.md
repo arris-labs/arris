@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_ops::mirror` reflects a body in a plane (`arris_math::Reflection`):
+  the image is a new solid with its material inside, checker-clean, and
+  every vertex, edge, face, shell and the body is recorded as modified
+  from the one it mirrors. It stops under a `Control` like every operation.
 - A consumer that builds topology itself — through the builder's Euler
   operators or `Builder::assemble` — finishes it into a solid with
   `arris_ops::build`, giving each vertex, edge, face, shell and the body
@@ -62,6 +66,10 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- `arris_topo::builder::GeometryRemap` gains two provided methods,
+  `pcurve` and `face` (with the new `FaceRemap`), which `Assembly::of_body`
+  calls: an implementation of your own compiles as it is, its defaults
+  being the identity.
 - `arris_topo::provenance::Role` gains `Consumer(ConsumerKey)`, a
   consumer's own key: a `match` over `Role` needs a `Consumer(_)` arm.
 - `arris_ops::OpError` gains `Unkeyed { slot }` and `Rejected(Rejection)`,

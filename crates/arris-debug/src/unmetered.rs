@@ -4,7 +4,9 @@
 //! operands. A test that does care calls the operation itself.
 
 use arris_ops::arris_check::arris_topo::arris_geom::Profile;
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Isometry, Point3, Vec3};
+use arris_ops::arris_check::arris_topo::arris_math::{
+    Axis, Control, Isometry, Point3, Reflection, Vec3,
+};
 use arris_ops::arris_check::arris_topo::builder::Builder;
 use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Provenance};
 use arris_ops::boolean::Interferences;
@@ -96,6 +98,15 @@ pub fn transform(
     motion: &Isometry,
 ) -> Result<(Body, Provenance), OpError> {
     arris_ops::transform(m, body, motion, &Control::NONE)
+}
+
+/// [`arris_ops::mirror`] to its end.
+pub fn mirror(
+    m: &mut Model,
+    body: Body,
+    plane: &Reflection,
+) -> Result<(Body, Provenance), OpError> {
+    arris_ops::mirror(m, body, plane, &Control::NONE)
 }
 
 /// [`arris_ops::build`] to its end.

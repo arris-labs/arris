@@ -117,7 +117,7 @@ bound has to be established here.
   the original's point in 3D. Degenerate cases named as fixtures of the
   step: a plane through the surface's axis, one parallel to it, and one
   normal to it; a sphere's poles and a torus's seam.
-- [ ] Step 3 **[2]** — `ops::mirror` over `Assembly::of_body`: the
+- [x] Step 3 **[2]** — `ops::mirror` over `Assembly::of_body`: the
   `pcurve` and `face` hooks on `GeometryRemap` with
   `of_body` applying them (the loop reversal is the step's careful part),
   the op, its provenance one to one,
