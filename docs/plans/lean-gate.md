@@ -163,7 +163,7 @@ bound has to be established here.
   run, the lighter sweep stamp), `close-cycle` and `release` (their gate
   wording). Docs only; each skill edited once, the four descriptions'
   front matter unchanged.
-- [ ] Step 6 **[2]** — the acceptance run below, once, recorded. It is
+- [x] Step 6 **[2]** — the acceptance run below, once, recorded. It is
   the plan's own proof that the two-tier gate loses nothing the old one
   caught: the full profile green, and a *planted* fault in each of a
   property and a corpus area the `fast` hook skips is caught at
@@ -272,4 +272,45 @@ profile is **~110 s against ~312 s** for the old gate, and a change that
 stays in ops (a `mirror.rs` edit alone) selects 144 corpus tests, 1438
 in all. The acceptance bound (under 120 s for the `466c619` set) holds,
 with `fmt`, `clippy` and doctests about 10 s on top.
+
+### Step 6 — the acceptance run (32 cores, 2026-10-01)
+
+- `tools/gate-test.sh` and `tools/profile-test.sh` green (24 tests out of
+  `fast`: the slow set and `real_*`).
+- The default profile, `cargo nextest run --workspace`, 256 cases: **1511
+  tests, all passed, 312 s.** `parallel` on: `arris-mesh` 43, `arris-ops`
+  347 and `arris` 234 tests, all passed. `cargo doc` with `-D warnings`
+  and the oracle selftest green.
+- `ci.yml` and `nightly.yml` untouched by any commit of this plan (`git
+  diff` over `.github/` is empty). The next CI run on `main` needs a push,
+  which is the human's; it is the one acceptance line not run here.
+- `ARRIS_GATE=full` is the old command list by construction: its branch in
+  the hook is the old three lines (nextest, doctests, `cargo doc`) verbatim.
+
+**Planted faults — what the fast tier defers, by design, to retirement and
+CI** (each reverted; nothing committed):
+
+1. *A property, depth past what 32 cases reach.* A call counter in
+   `arris-ops`'s `mass_properties` that scaled the volume by 1.001 after
+   its 100th call in a process. `boolean_prop` at 32 cases (the hook's
+   count): **134 passed, nothing caught.** At 256 (the default profile):
+   **49 failed.** The volume identities name it. The hook cannot see a
+   fault that needs more draws of the same seed; `/retire-plan` and CI
+   can.
+2. *A corpus area the hook skips.* In the STEP reader, `read_solids` drops
+   every solid of a file with exactly 7792 instances. The gate for that
+   path (`rdeps(arris-io)`, corpus `boolean|provenance`, base) ran **1438
+   tests, all passed**; the `real_*` tests under the default profile
+   failed: `real_nist_ftc_07` and `real_torus_plane_section_undecided`.
+   Two earlier, broader plants of the same fault (`> 5000`, `> 20000`
+   instances) were caught by the hook itself through `boolean_nist_*` and
+   the part battery, which is the tier working, not a finding.
+3. *Looked for and not found:* a fault in a kernel file that only a
+   `sweep_`, `blend_` or `transform_` fixture sees and no test of the
+   crate's own or of `boolean|provenance` does. Probes in `arris-geom`'s
+   NURBS surface (`eval`, `mirrored`) failed the crate's own tests or
+   every area; the classifier's per-area scoping (a geom change reaches
+   `boolean|provenance`, not `sweep`) is therefore an accepted risk that
+   this run could not exhibit, named in ADR-0032, not a demonstrated
+   loss.
 
