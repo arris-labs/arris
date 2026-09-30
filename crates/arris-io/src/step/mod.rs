@@ -59,9 +59,11 @@
 //!   left-handed conic lives (`docs/DATA-MODEL.md`
 //!   §Pcurves). The native format is the lossless one.
 
+mod assembly;
 pub mod part21;
 mod reader;
 
+pub use assembly::{TreeError, write_products};
 pub use reader::{
     FaceColour, LengthUnit, Occurrence, ProductTree, Read, ReadBody, ReadError, ReadOptions,
     ReadSolid, Refusal, RefusalKind, Rgb, read,
@@ -74,7 +76,9 @@ use arris_check::arris_topo::arris_geom::region2::{Piece, discretise};
 use arris_check::arris_topo::arris_geom::{
     Curve, Curve2, NurbsCurve, NurbsCurve2, NurbsSurface, Surface,
 };
-use arris_check::arris_topo::arris_math::{Frame, Frame2, Interval, Point2, Point3, Vec2, Vec3};
+use arris_check::arris_topo::arris_math::{
+    Frame, Frame2, Interrupted, Interval, Point2, Point3, Vec2, Vec3,
+};
 use arris_check::arris_topo::entity::{BodyKind, Coedge, Loop};
 use arris_check::arris_topo::{
     AnyId, Body, CoedgeRef, Curve2Id, CurveId, EdgeId, FaceId, Model, NotFound, Orientation, Shell,
@@ -114,9 +118,23 @@ pub enum StepError {
         /// The entity or geometry value holding the number.
         id: AnyId,
     },
-    /// Nothing to write: `write` was given no bodies.
+    /// Nothing to write: `write` was given no bodies, or
+    /// [`write_products`] a tree with no root.
     #[error("no bodies to write")]
     NoBodies,
+    /// The product tree given to [`write_products`] cannot be written.
+    #[error(transparent)]
+    Tree(#[from] TreeError),
+    /// The caller's poll or budget stopped [`write_products`] (ADR-0030).
+    /// The model is read only, so there is nothing to roll back.
+    #[error("{0}")]
+    Interrupted(Interrupted),
+}
+
+impl From<Interrupted> for StepError {
+    fn from(stop: Interrupted) -> Self {
+        StepError::Interrupted(stop)
+    }
 }
 
 /// What [`StepError::Unsupported`] could not write.
@@ -192,7 +210,7 @@ pub fn write(model: &Model, bodies: &[Body]) -> Result<String, StepError> {
     for &body in bodies {
         faces_written.extend(model.closure(body)?.faces);
     }
-    let mut w = Writer::new(model, faces_written, bodies[0].id.into())?;
+    let mut w = Writer::new(model, faces_written, bodies[0].id.into(), "arris")?;
     let mut solids = Vec::with_capacity(bodies.len());
     for &body in bodies {
         solids.extend(w.solids(body)?);
@@ -220,11 +238,37 @@ struct Writer<'m> {
     context_2d: usize,
     world_placement: usize,
     shape_representation: usize,
+    /// The `PRODUCT_CONTEXT` and `PRODUCT_DEFINITION_CONTEXT` every product
+    /// shares, and the first product's `PRODUCT_DEFINITION`.
+    product_context: usize,
+    definition_context: usize,
+    first_definition: usize,
+    /// The `ADVANCED_FACE` each face was written as, for the styled items
+    /// that colour it.
+    face_entities: BTreeMap<FaceId, usize>,
     surfaces: BTreeMap<SurfaceId, usize>,
     curves: BTreeMap<CurveId, usize>,
     pcurves: BTreeMap<(Curve2Id, SurfaceId), usize>,
     vertices: BTreeMap<VertexId, usize>,
     edges: BTreeMap<EdgeId, usize>,
+}
+
+/// A Part 21 string's content: an apostrophe doubled, a backslash
+/// doubled, and anything outside printable ASCII as an `\X4\` run, which
+/// the reader decodes back to the same text.
+fn string(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '\'' => out.push_str("''"),
+            '\\' => out.push_str("\\\\"),
+            ' '..='~' => out.push(c),
+            c => {
+                let _ = write!(out, "\\X4\\{:08X}\\X0\\", u32::from(c));
+            }
+        }
+    }
+    out
 }
 
 /// `#a,#b,#c`.
@@ -300,6 +344,7 @@ impl<'m> Writer<'m> {
         model: &'m Model,
         faces_written: BTreeSet<FaceId>,
         owner: AnyId,
+        name: &str,
     ) -> Result<Self, StepError> {
         let mut w = Writer {
             model,
@@ -309,6 +354,10 @@ impl<'m> Writer<'m> {
             context_2d: 0,
             world_placement: 0,
             shape_representation: 0,
+            product_context: 0,
+            definition_context: 0,
+            first_definition: 0,
+            face_entities: BTreeMap::new(),
             surfaces: BTreeMap::new(),
             curves: BTreeMap::new(),
             pcurves: BTreeMap::new(),
@@ -323,7 +372,10 @@ impl<'m> Writer<'m> {
             "APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2000,#{application})"
         ));
         let product_context = w.push(format!("PRODUCT_CONTEXT('',#{application},'mechanical')"));
-        let product = w.push(format!("PRODUCT('arris','arris','',(#{product_context}))"));
+        let name = string(name);
+        let product = w.push(format!(
+            "PRODUCT('{name}','{name}','',(#{product_context}))"
+        ));
         let formation = w.push(format!("PRODUCT_DEFINITION_FORMATION('','',#{product})"));
         let definition_context = w.push(format!(
             "PRODUCT_DEFINITION_CONTEXT('part definition',#{application},'design')"
@@ -356,6 +408,9 @@ impl<'m> Writer<'m> {
             "SHAPE_DEFINITION_REPRESENTATION(#{definition_shape},#{})",
             w.shape_representation
         ));
+        w.product_context = product_context;
+        w.definition_context = definition_context;
+        w.first_definition = definition;
         Ok(w)
     }
 
@@ -461,6 +516,7 @@ impl<'m> Writer<'m> {
     ) -> Result<usize, StepError> {
         let face = self.model.face(id)?.clone();
         let number = self.reserve();
+        self.face_entities.entry(id).or_insert(number);
         let surface = self.surface(face.surface())?;
         let same_sense = orientation == Orientation::Forward;
         let mut bounds = Vec::with_capacity(face.loops().len());

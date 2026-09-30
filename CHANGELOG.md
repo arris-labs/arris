@@ -17,6 +17,14 @@ into its version (ADR-0027).
   or one of the eight named colours — comes with the occurrence
   (`Occurrence::colour`) or in `ProductTree::faces`; anything else is
   skipped, never a reason to lose a body.
+- `step::write_products` writes an assembly: a `ProductTree` of occurrences over
+  a slice of bodies, each product once however many times it is placed
+  (occurrences sharing a `Some(product)`), each placement with its
+  transformation, names as product names and colours as styled items,
+  from the bodies in their products' own frames. Open CASCADE's XCAF
+  reader reads it to the same names, placements and colours. It stops
+  under a `Control`, and refuses a tree it cannot write with
+  `StepError::Tree`.
 - `arris_ops::mirror` reflects a body in a plane (`arris_math::Reflection`):
   the image is a new solid with its material inside, checker-clean, and
   every vertex, edge, face, shell and the body is recorded as modified
@@ -75,6 +83,8 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- `arris_io::step::StepError` gains `Tree(TreeError)` and
+  `Interrupted(Interrupted)`: a `match` over it needs the two arms.
 - `arris_io::step::Read` gains the field `products`: a struct pattern
   needs `products: _` or `..`.
 - `arris_topo::builder::GeometryRemap` gains two provided methods,

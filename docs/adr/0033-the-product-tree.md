@@ -53,13 +53,26 @@ refusal, its solids refused as before, so the consumer sees the part exists
 and why it has no pose. Dropping it would hide the part. The refusal
 histogram is unchanged: nothing is counted twice.
 
-### 4. The writer takes the same value
+### 4. The writer takes the same value, with the bodies in their products' frames
 
-`step::write_products(&Model, &[Body], &ProductTree, &Control)`: a tree read
-from a file can be written back unchanged, and a consumer builds the same
-type to write one of its own. `Occurrence::solids` index the `bodies` slice
-on write as they index `Read::solids` on read. A placement that is `Err`
-cannot be written and is a typed error.
+`step::write_products(&Model, &[Body], &ProductTree, &Control)`: a consumer
+builds the same type it reads. `Occurrence::solids` index the `bodies` slice
+on write as they index `Read::solids` on read, but what a body *is*
+differs: a read body is baked at its placement (§Context), a written body
+is its product's own geometry, and the placements move it. A consumer that
+writes back what it read moves each body by the inverse of its occurrence's
+composed placement first (`ops::transform`); the writer never moves
+geometry, and never writes a placement twice.
+
+Occurrences with the same `Some(product)` are one product, written once
+and placed many times (they must agree in name, colour, solids and
+children: `TreeError::ProductMismatch`); `None` is a product of its own. A
+body held by two products is `TreeError::SolidShared`, since its faces and
+edges would be written twice. A placement that is `Err` or not finite
+cannot be written (`TreeError::Placement`); a root has no parent and its
+placement is not written. `StepError` gains `Tree(TreeError)` and
+`Interrupted` (the writer ticks per occurrence and per body); `write`
+stays the one-product case, byte for byte.
 
 ### 5. Names and colours
 

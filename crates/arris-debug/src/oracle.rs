@@ -435,7 +435,9 @@ pub struct OracleOccurrence {
     /// The colour of the part, as it was set.
     pub colour: Option<[f64; 3]>,
     /// The indices, into [`AssemblyOracle::instances`], of the solids the
-    /// occurrence holds itself.
+    /// occurrence holds itself; empty where the oracle read a file rather
+    /// than wrote it ([`occt_read_assembly`]).
+    #[serde(default)]
     pub solids: Vec<usize>,
     /// The occurrences placed in it.
     pub children: Vec<OracleOccurrence>,
@@ -572,6 +574,63 @@ pub fn occt_assembly_oracle(
         keep(slot, &bytes);
     }
     Ok((step, oracle))
+}
+
+/// What Open CASCADE's XCAF reader makes of a STEP file
+/// ([`occt_read_assembly`]).
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct ReadAssembly {
+    /// The free shapes of the document, as occurrences: names, placements in
+    /// their parents, part colours, children; `solids` is empty.
+    pub roots: Vec<OracleOccurrence>,
+    /// The volume and centroid of every leaf part at the placement its path
+    /// composes, depth first.
+    pub instances: Vec<AssemblyInstance>,
+}
+
+/// Open CASCADE's `STEPCAFControl_Reader` reading of `step_text`, names and
+/// colours on (`tools/oracle/occt_read_assembly.py`): the assembly structure
+/// an independent reader finds in what Arris's writer wrote (ADR-0033).
+/// Kept in [`cache`] under the text.
+///
+/// Errors: [`OracleError::Write`]; [`OracleError::Environment`] when `uv`
+/// could not run, the environment is missing, or the file does not read.
+///
+/// ```no_run
+/// use arris_debug::oracle;
+///
+/// let read = oracle::occt_read_assembly("ISO-10303-21;\n…", "asm-read").unwrap();
+/// assert!(!read.roots.is_empty());
+/// ```
+pub fn occt_read_assembly(step_text: &str, tag: &str) -> Result<ReadAssembly, OracleError> {
+    let scratch = scratch_dir();
+    let file = scratch.join(format!("{tag}.step"));
+    std::fs::create_dir_all(&scratch).map_err(|e| OracleError::Write {
+        path: scratch.clone(),
+        message: e.to_string(),
+    })?;
+    std::fs::write(&file, step_text).map_err(|e| OracleError::Write {
+        path: file.clone(),
+        message: e.to_string(),
+    })?;
+    let slot = cache::slot("occt_read_assembly.py", &[Some(step_text.as_bytes())], None);
+    let parse = |bytes: &[u8]| {
+        serde_json::from_slice::<ReadAssembly>(bytes).map_err(|e| OracleError::Environment {
+            message: format!("occt_read_assembly.py's output did not parse as JSON: {e}"),
+        })
+    };
+    if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
+        if let Ok(read) = parse(&bytes) {
+            return Ok(read);
+        }
+    }
+    let output = spawn(uv("occt_read_assembly.py").arg(&file))?;
+    if !output.status.success() {
+        return Err(environment(&output));
+    }
+    let read = parse(&output.stdout)?;
+    keep(slot, &output.stdout);
+    Ok(read)
 }
 
 /// Open CASCADE's `RWStl` reading of an STL file: how many facets it saw,

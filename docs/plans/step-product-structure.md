@@ -122,7 +122,7 @@ bound has to be established here.
   skipped, not refused — a colour is never a reason to lose a body.
   Test: the XCAF file's colours, including the one face, match the
   oracle's to the last digit the file spells.
-- [ ] Step 5 **[2]** — The writer: `write_products` and its `StepError`
+- [x] Step 5 **[2]** — The writer: `write_products` and its `StepError`
   variants. One `PRODUCT` per distinct product, one
   `NEXT_ASSEMBLY_USAGE_OCCURRENCE` + `CONTEXT_DEPENDENT_SHAPE_REPRESENTATION`
   + `ITEM_DEFINED_TRANSFORMATION` per placed child, names written, colours
@@ -179,6 +179,13 @@ semver gate passes on the `Breaking` bullets.
 - `CHANGELOG.md` — written by step 7 and checked here.
 
 ## Open questions
+
+- **Finding (step 5): a read tree is not writable unchanged.** The plan
+  assumed it, but a read body is baked at its placement and the writer
+  places it again. ADR-0033 §4 settles it: written bodies are the
+  product's own frame, `Some(product)` shares a product, and a consumer
+  un-bakes a read body by the inverse of its composed placement. Step 6's
+  property therefore writes prototypes and reads back baked instances.
 
 - ⚠ OPEN: is a face colour part of A4 or a stretch? Plan includes it
   (`ProductTree::faces`) because XCAF colours faces as readily as solids.
