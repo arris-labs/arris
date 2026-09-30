@@ -106,7 +106,7 @@ bound has to be established here.
   tolerance, each leaf's `solids` pointing at the body whose volume and
   centroid the oracle measured. A plain single-product file (Arris's and
   the C4 corpus's) reads to one root with one occurrence.
-- [ ] Step 3 **[2]** — Shapes the corpus really has: a part with no
+- [x] Step 3 **[2]** — Shapes the corpus really has: a part with no
   `NEXT_ASSEMBLY_USAGE_OCCURRENCE` (lone part, one root), a file with two
   roots, a `MAPPED_ITEM` assembly, an occurrence under a refused
   placement (`placement: Err`, its solids refused as today), an empty
