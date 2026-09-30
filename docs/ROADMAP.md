@@ -577,7 +577,7 @@ differential. At 1000 draws of the fixed seed, 762 reach a comparison and
 agree, 67 both refuse, 137 are refused by Open CASCADE, and 14 by Arris
 (all `Degenerate(Empty)`). 20 are under named exclusions, each waiting on
 a `regression/` fixture, and none fails. That is 0.26 s of wall clock per
-recipe. The hook keeps 256 cases and CI 1000, both on the fixed seed;
+recipe. The hook runs 32 cases over what a commit reaches (ADR-0032), a plan's retirement 256 and CI 1000, all on the fixed seed;
 depth comes from `nightly.yml`, which runs every property at 5000 cases
 on a seed drawn from the date, 99,600 CPU-seconds split over six jobs,
 plus the differential at 1000 recipes on the same seed. The corpus

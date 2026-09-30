@@ -1408,8 +1408,16 @@ B-Rep).
   rules: against a scratch tree with a citation deliberately left
   dangling next to one that still resolves, not just by running clean
   against the real tree.
+- **The gate's tiers** (ADR-0032): `.config/nextest.toml` names the `fast`
+  profile (the default minus `real_*` and four single tests over ~30 s;
+  `tools/profile-test.sh` holds the difference to that set) and `full`
+  (the default, named). `tools/gate.sh` turns a path set into the filterset,
+  case counts and whether `cargo doc` is due, and `tools/gate-test.sh`
+  asserts it; the pre-commit hook runs what it says, `/retire-plan` the
+  full profile at 256 cases, CI at 1000.
 - **`tools/test-timings.sh`**: the suite's wall clock, per test binary and
-  whole, at whatever `ARRIS_PROPTEST_CASES` is set to. Sharding the boolean
+  whole, at whatever `ARRIS_PROPTEST_CASES` is set to; `--profile` times one
+  nextest profile and lists its slowest tests. Sharding the boolean
   properties and moving the suite onto `cargo nextest` took
   `cargo nextest run --workspace` from 445.68 s to 70.92 s at 256 cases and
   from 1656.26 s to 254.13 s at 1000, measured with this script on a

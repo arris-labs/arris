@@ -239,3 +239,10 @@ harness works.
   agreeing recipes of CI's 1000 into faults, and one of them came back
   from a later night's seed as a new finding. The fixed seed told the
   two apart; a new seed could not have.
+
+## Amendment (2026-09-30, plan `lean-gate` step 4)
+
+The hook row of §3's table (256) and the paragraph "The hook keeps 256" are
+superseded by ADR-0032: the hook runs a path-scoped `fast` profile at 32
+cases, and 256 is run once per plan, at `/retire-plan`. The reasoning about
+fixed seeds and nightly depth stands.

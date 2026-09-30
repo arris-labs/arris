@@ -1,13 +1,17 @@
 # Git: trunk-based, always green
 
-- `main` is the trunk and is always green: `cargo fmt --check`, `cargo clippy
-  --workspace --all-targets -- -D warnings`, `cargo test --workspace` and
-  `cargo doc --workspace --no-deps` with `-D warnings` pass on every commit.
-  The `.githooks/pre-commit` hook enforces it; never bypass it with
-  `--no-verify`. It sizes the gate to what is staged: prose alone runs the
-  tests that read docs, a version bump alone runs `cargo check`, and
-  anything else runs all of it. A commit that could change what the suite
-  tests always gets the whole suite.
+- `main` is always green at a pushed tip, in tiers (ADR-0032). **Every
+  commit** passes the `.githooks/pre-commit` hook; never bypass it with
+  `--no-verify`. It sizes the gate to what is staged (`tools/gate.sh`):
+  prose alone runs the tests that read docs, a version bump alone runs
+  `cargo check`, and anything else runs the layer rule, `cargo fmt --check`,
+  `cargo clippy -D warnings`, the doctests and the `fast` nextest profile
+  at 32 cases over the crates and corpus areas the paths reach — the whole
+  profile for a path it cannot place — and `cargo doc` only when a doc
+  comment changed. `ARRIS_GATE=full` runs every test at 256 cases. **Every
+  plan** runs the full profile once, at `/retire-plan`; **CI** runs it at
+  1000 cases with `real_*`, nightly deeper, and a release waits on CI's run
+  of its tag. The human reads CI before a push that matters.
 - Commit **directly to `main`**. A plan step is the unit of work and the unit
   of commit: finish the step, run the checks, tick the box, commit.
 - Branch only when a plan is experimental enough that throwing it away is a

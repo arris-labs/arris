@@ -154,7 +154,7 @@ bound has to be established here.
   prose-only one — and record each wall time under *Measured*; the
   `466c619` set must come in well under the old 350 s and the prose-only
   path must be unchanged.
-- [ ] Step 4 **[1]** — ADR-0032 (lean gate) as designed above, the ADR
+- [x] Step 4 **[1]** — ADR-0032 (lean gate) as designed above, the ADR
   index, `.agents/rules/git.md`, ROADMAP §Beside the cycles, ARCHITECTURE
   §Formats and tools, `AGENTS.md` wording. Docs only. The `docs_refs` and
   `doc_drift` tests run under the prose-only hook path.
@@ -197,17 +197,19 @@ bound has to be established here.
 
 ## Open questions
 
-- `⚠ OPEN:` human, before step 4: this reverses ADR-0024 §3's "the hook
+- Resolved at step 4 (the charter delegates technical decisions, a plan's
+  human questions included; the human can reverse it by changing one number in
+  `tools/gate.sh`): the hook drops to 32 cases, ADR-0032. Was: human, before step 4: this reverses ADR-0024 §3's "the hook
   keeps 256", taken after the seam fault shipped half a release. The
   plan's answer is that the hook's count never reached that fault (it sat
   past case 32 of the one fixed seed, which 256 shares) and that `/retire-plan`
   and CI now carry 256 and 1000; say so if you want the hook to keep 256
   on the crates it reaches instead (the gate's `cases` line is one number).
-- `⚠ OPEN:` agent, by step 1: whether nextest's installed version
+- Resolved in step 1 (nextest 0.9.144 supports `default-filter` per profile; the profile is a filter in `.config`). Was: agent, by step 1: whether nextest's installed version
   supports `default-filter` per profile (0.9.80 and later do); if not the
   profile is a filter the script passes with `-E`, and the `.config` file
   shrinks to the test-group definitions.
-- `⚠ OPEN:` agent, by step 2: whether `rdeps(<crate>)` in nextest's
+- Resolved in step 2 (`rdeps(arris-ops)`, the cargo package name, works; ADR-0032 spells it so). Was: agent, by step 2: whether `rdeps(<crate>)` in nextest's
   filterset addresses a *package* by its cargo name (`arris-ops`) — the
   ADR-0032 text fixes the spelling the test shows.
 - Not a question, a correction to the review that led here: `real_*`

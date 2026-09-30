@@ -42,3 +42,4 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0029](0029-body-bytes.md) | Body bytes: the model's types as the wire, a frozen file per version as the guard, every earlier version migrated | accepted |
 | [0030](0030-cancellation.md) | Cancellation: a `&Control` passed last, a poll and a budget of steps, rollback by the transaction every operation runs in | accepted |
 | [0031](0031-mirror.md) | Mirror: a `Reflection` of its own, frames kept right-handed, a quadric's `u` reflected, the loops of such a face reversed | accepted |
+| [0032](0032-lean-gate.md) | The lean gate: a path-scoped fast hook at 32 cases, the full suite at retirement and in CI | accepted |
