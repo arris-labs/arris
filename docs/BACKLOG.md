@@ -163,4 +163,44 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: classify a checker fault by the report it carries, not only by the `OpError` variant, so a defect already excluded stays excluded and a red night means something new.
 
+### near-parallel-cones-swap-changes-the-circle
+
+- What: two coaxial cones whose half-angles differ by 9e-5 rad meet in a circle 555 263 below the origin with radius 628 634; `intersect_surfaces(b, a)` returns that circle on the opposite frame (`z` and `y` negated) and one ulp off in radius, and the swap property finds no match for it.
+- Where: `coaxial_pairs_meet_where_their_meridians_meet`, `crates/arris-geom/tests/intersect_surfaces.rs:464` (`same_curve` against `line_spread(a, b)`).
+- Seen: Nightly [36690407229](https://github.com/arris-labs/arris/actions/runs/36690407229), commit `69273fc`, seed `9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad`, 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom coaxial_pairs_meet_where_their_meridians_meet` (1 s; replayed 2026-10-01 on `613f564`).
+- Evidence: shrunk to `Cone` (`angle` 0.847292, `r1` = `r2` = 0.1, `flip`) against `Cone` (`slide` 99.555471, `angle` 0.847381). The unswapped result is a circle on `z = +1` at `origin.z = -555263.091078779`, radius `628633.6290850897`; the swapped one is the circle on `z = -1` at `-555263.0910787792`, radius `628633.6290850898`. The same circle, then: a reversed frame and a difference of about 2e-16 relative, at a distance thousands of times the operands' own size (`r1` = 0.1, `slide` 99.6). The swapped result's other circle, at `z = -49.78` with radius 56.26, is the near intersection.
+- State: measured.
+- The fix is: a decision first: either `same_curve` takes a circle's reversal and a tolerance relative to the curve's own size, or the intersector refuses a section whose scale is past what the operands' tolerance can place.
+
+### step-round-trip-meets-a-section-beside-a-pole
+
+- What: a ball cut by a box whose face passes the ball's pole without running through it is refused `OpError::Degenerate` (`Reason::BesideSingularity`), and the STEP round-trip property, which treats every typed refusal that is not an excluded `Internal` as a failure, fails on it.
+- Where: `a_written_body_reads_back_as_itself::shard_3`, `crates/arris-io/tests/step_round_trip.rs`, `Shape::build`'s `fail(e)` arm; the failure is `crates/arris-debug/src/prop.rs:236`.
+- Seen: Nightly [36690407229](https://github.com/arris-labs/arris/actions/runs/36690407229), commit `69273fc`, seed `9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad`, 5000 cases, shard 3 of 8.
+- Reproduce: `ARRIS_PROPTEST_SEED=9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-io --test step_round_trip a_written_body_reads_back_as_itself` (shard 3 fails in 17 s; replayed 2026-10-01 on `613f564`).
+- Evidence: shrunk to `Boolean(0, QuadricPair { solid: Ball { radius: 0.5 }, tool: Box { min [-0.183051, -0.625, -0.65], max [0.183051, 0.625, 0.65], rotation [-0.335223, 0.769555, 0.517768, 0.165301], translation [0.017776, -0.048635, -0.189086] }, pose: rotation [0, 1, 0, 0] })`. The message is "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves (+f1, +f11, +v3)": the refusal `regression/ball-beside-pole-slice-cut` already holds, ignored, as its desired result is the built body (the backlog's line on polygons by span and chords in length).
+- State: measured.
+- The fix is: one of two, and the first is the right one: resolve a section beside a pole in the (u, v) polygons, which moves `ball-beside-pole-slice-cut` out of `regression/`; until then, name the refusal as the round trip's reject beside `exclusion_of_error`, so a typed refusal of a known class does not fail a night.
+
+### ring-cut-by-a-posed-box-leaves-a-void-inside-no-shell
+
+- What: `cut(b, a)` of a ring (major 9.855, minor 3.735) by a long thin box posed through it returns a body whose shells do not nest into lumps: `void s10 is inside no shell`, a debug-build panic of the operation's output guard and `Fault::Lumps` in a build that returns it.
+- Where: `quadric_operands_obey_every_identity::shard_4`, `crates/arris-ops/tests/boolean_prop.rs`, the property's own panic at `crates/arris-debug/src/prop.rs:236`.
+- Seen: Nightly [36690407229](https://github.com/arris-labs/arris/actions/runs/36690407229), commit `69273fc`, seed `9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad`, 5000 cases, shard 4 of 16.
+- Reproduce: `ARRIS_PROPTEST_SEED=9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test boolean_prop quadric_operands_obey_every_identity::shard_4` (339 s alone, 791 s in the night; replayed 2026-10-01 on `613f564`).
+- Evidence: shrunk to `QuadricPair { solid: Ring { major: 9.85510, minor: 3.73527 }, tool: Box { min [-2.58616, -17.48825, -7.25235], max [2.58616, 17.48825, 7.25235], rotation [0.38948, 0.31833, -0.37370, -0.77930], translation [17.01479, 48.47334, -7.75855] }, pose: { rotation [0.0, 0.81074, -0.55197, 0.19495], translation [21.24868, 48.68403, 0.0] } }`; the pose is the shrinker's, not hand-picked. The same fault name as `box-revolve-cylinder-fuse-lumps-fault` (an undecided nesting), a different operand pair: whether it is the same cause is not known.
+- State: measured.
+- The fix is: shrink it by hand to the smallest pose that still gives `Lumps` and file it as `regression/<slug>` with its oracle; decide whether the nesting test or the cut that left the void is the fault; the differential holds no `Internal(Lumps)` exclusion either, so a draw that reaches it fails that run as well.
+
+### intersect-surfaces-fuzz-hit-1-46-off-the-surface
+
+- What: `intersect_surfaces` reports a point on `b` 1.457 away from `b`, where 1.0e-7 is allowed.
+- Where: the `intersect_surfaces` fuzz target, `hold` at `fuzz/src/lib.rs:521` (`point 0 on b`).
+- Seen: Nightly [36690407229](https://github.com/arris-labs/arris/actions/runs/36690407229), commit `69273fc`, 1800 s on 4 cores; the input itself carries no seed.
+- Reproduce: `gh run download 36690407229 -n fuzz-intersect_surfaces`, then from `fuzz/` `cargo +nightly fuzz run -s none intersect_surfaces artifacts/intersect_surfaces/crash-35dd778a9466a37fbae1af8b92a4eaaf3de5d95e`; the artifact is 186 bytes, `sha256 1478b89be97391d4b747220e0721af7c60407c0291980f3dafe2dcc64e86a081`. Replayed 2026-10-01 on `613f564` in 27 s as `point 0 on b: 1.4574163312120683e0 off, allowed 1.0000508225703893e-7`. Not shrunk (`cargo fuzz tmin` not run).
+- Evidence: the same artifact carries 23 `slow-unit-*` inputs of 3.8 to 4.7 s each, which libFuzzer reports and which do not fail the job; the surface pair of the crash is not decoded here.
+- State: raw.
+- The fix is: `cargo fuzz tmin` the crash, decode the pair and its kind, then commit it as a regression fixture or a named exclusion in `fuzz/`; the point is a wrong answer, not a refusal, so it is not the no-verdict class the band's refusals are.
+
 ## Rejected
