@@ -109,6 +109,7 @@
     }
   ],
   "result": "r2",
+  "tolerances": {"volume_rel": 3e-9, "area_rel": 3e-9, "inertia_rel": 3e-9},
   "probes": [
     {
       "label": "disc-centre",

@@ -17,7 +17,7 @@ use arris_topo::entity::{BodyKind, Face, Loop};
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
 use crate::check::{Checker, coedges, samples};
-use crate::domain::{bands, bounded_pieces};
+use crate::domain::{bands, bounded_pieces, chord};
 use crate::violation::{
     EdgeUseFault, FaceFault, LoopBreak, NestingFault, ToleranceBound, Violation, WireFault,
 };
@@ -198,9 +198,9 @@ impl<'m> Checker<'m> {
     /// all a sign, a winding number and a containment question need.
     /// `None` when the loop is empty, a range is not bounded (E1's) or a
     /// reference does not resolve (M1's).
-    fn loop_polygon(&self, l: &'m Loop) -> Option<Polygon2> {
+    fn loop_polygon(&self, l: &'m Loop, chord: f64) -> Option<Polygon2> {
         let pieces = bounded_pieces(self.model, l).ok()??;
-        Some(discretise(&pieces, f64::INFINITY))
+        Some(discretise(&pieces, chord))
     }
 
     /// L4: every loop turns, and the loops nest — one positively wound
@@ -211,10 +211,16 @@ impl<'m> Checker<'m> {
         let Ok(surface) = model.surface(face.surface()) else {
             return;
         };
+        // Fine enough that a hole lying inside an outer loop in the model
+        // lies inside its polygon: the loops are discretised as a face's
+        // domain is, within the parametric tolerance. A coarser outer
+        // polygon, a circle's inscribed octagon, leaves out a hole that
+        // runs close to the rim.
+        let chord = chord(model, face, surface, self.precision.parametric_tolerance);
         let mut faults: Vec<NestingFault> = Vec::new();
         let mut areas: Vec<(usize, Polygon2, f64)> = Vec::new();
         for (loop_index, l) in face.loops().iter().enumerate() {
-            let Some(polygon) = self.loop_polygon(l) else {
+            let Some(polygon) = self.loop_polygon(l, chord) else {
                 continue;
             };
             let area = polygon.signed_area();

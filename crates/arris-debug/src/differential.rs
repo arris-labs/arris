@@ -257,12 +257,6 @@ fn counts_of(outcome: &Outcome, field: &str) -> Option<(usize, usize)> {
 /// its failure (ADR-0024).
 pub const EXCLUSIONS: &[Exclusion] = &[
     Exclusion {
-        name: "hole-loop-outside-every-outer-loop",
-        fixtures: &["tilted-cylinder-slot-cut", "pin-at-disc-rim-common-fuse"],
-        symptom: "the checker's L4: a hole loop lies outside every outer loop",
-        covers: |o| checker_says(o, "lies outside every outer loop"),
-    },
-    Exclusion {
         name: "loop-crosses-itself",
         fixtures: &["revolve-fuse-extrude-cut-loop-crosses-itself"],
         symptom: "the checker's L5: a loop intersects itself",
@@ -398,9 +392,9 @@ pub fn refusal(e: &OpError) -> String {
 /// ```
 /// use arris_debug::differential::exclusion_of_panic;
 ///
-/// let guard = "kernel bug: an operation's output fails the checker\n  L4 f18: hole loop 0 lies outside every outer loop";
+/// let guard = "kernel bug: an operation's output fails the checker\n  L5 f18: loop 0 intersects itself";
 /// let caught = std::panic::catch_unwind(|| panic!("{guard}")).unwrap_err();
-/// assert_eq!(exclusion_of_panic(&*caught).unwrap().name, "hole-loop-outside-every-outer-loop");
+/// assert_eq!(exclusion_of_panic(&*caught).unwrap().name, "loop-crosses-itself");
 /// let other = std::panic::catch_unwind(|| panic!("index out of bounds")).unwrap_err();
 /// assert!(exclusion_of_panic(&*other).is_none());
 /// ```
@@ -1056,13 +1050,12 @@ mod tests {
 
     #[test]
     fn an_exclusion_covers_its_symptom_and_nothing_else() {
-        let l4 =
-            Outcome::CheckerViolation("L4 f21: hole loop 0 lies outside every outer loop".into());
+        let l4 = Outcome::CheckerViolation("L5 f21: loop 0 intersects itself".into());
         let e1 = Outcome::CheckerViolation("E1 e7: the range is not increasing".into());
         let Outcome::Excluded { name, outcome } = excluded(l4.clone(), EXCLUSIONS) else {
             panic!("the L4 symptom is excluded");
         };
-        assert_eq!(name, "hole-loop-outside-every-outer-loop");
+        assert_eq!(name, "loop-crosses-itself");
         assert_eq!(*outcome, l4);
         assert!(!excluded(l4, EXCLUSIONS).fails());
         assert_eq!(excluded(e1.clone(), EXCLUSIONS), e1);

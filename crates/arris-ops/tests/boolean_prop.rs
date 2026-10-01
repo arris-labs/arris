@@ -1523,11 +1523,10 @@ prop_shards! {
 
 /// `f`, with a panic that one of the differential's named exclusions
 /// covers turned into a rejected case: the debug build's checker guard
-/// reporting a hole loop outside every outer loop (L4), which a thin
-/// tool through a frustum or an elliptic prism reaches in eleven shards of
+/// reporting a defect of the list's, which a thin tool through a frustum
+/// or an elliptic prism once reached in eleven shards of
 /// `quadric_operands_obey_every_identity` at 5000 cases on the fixed seed
-/// (`a_thin_slab_through_a_frustum_passes_the_checker`,
-/// ADR-0024). One list, `differential::EXCLUSIONS`,
+/// (`a_thin_slab_through_a_frustum_passes_the_checker`, ADR-0024). One list, `differential::EXCLUSIONS`,
 /// so the fix that lifts it there lifts it here; any other panic fails as
 /// before.
 fn under_exclusions(f: impl FnOnce() -> Result<(), TestCaseError>) -> Result<(), TestCaseError> {
@@ -1543,10 +1542,10 @@ fn under_exclusions(f: impl FnOnce() -> Result<(), TestCaseError>) -> Result<(),
 /// `quadric_operands_obey_every_identity` at 5000 cases on the fixed seed,
 /// shard 12 of 16, shrunk: a frustum of radii 0.1 and 0.5, 0.2 tall and
 /// turned half a turn about y, and a slab 0.04 thick through it. One of
-/// the six booleans' output fails the checker's L4 — a hole loop outside
-/// every outer loop — which the debug build's guard turns into a panic.
+/// the six booleans' output failed the checker's L4 — a hole loop outside
+/// every outer loop, a circle's coarse polygon leaving out a hole near its
+/// rim — which the debug build's guard turned into a panic.
 #[test]
-#[ignore = "the checker's L4, a hole loop outside every outer loop (docs/BACKLOG.md, the L4 findings; differential::EXCLUSIONS hole-loop-outside-every-outer-loop)"]
 fn a_thin_slab_through_a_frustum_passes_the_checker() {
     let half_turn = Isometry::new(
         UnitQuaternion::new_unchecked(Quaternion::new(0.0, 0.0, 1.0, 0.0)),

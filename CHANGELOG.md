@@ -80,6 +80,12 @@ into its version (ADR-0027).
   as a whole: the solids already read are dropped. Writers and
   constant-work queries take no `Control`, and the checker runs to the
   end once the work is done.
+- The checker no longer rejects a valid face whose hole runs close to the
+  rim of a circular boundary: it reported "hole loop lies outside every
+  outer loop" for a boolean's correct output, a debug build's guard
+  panicked on it, and `build` refused it. Loops are now compared as finely
+  as a face's domain is, so a cut, common or fuse of a tilted cylinder or
+  disc by a slab or pin, which tripped it, returns its body.
 
 ### Breaking
 

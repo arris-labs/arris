@@ -43,12 +43,10 @@ fn interrupt<T>(run: Result<T, corpus::CorpusError>) -> Result<arris_ops::Interr
 
 /// `f`, with a panic that one of the differential's named exclusions
 /// covers turned into a rejected case: the debug build's checker guard
-/// reporting a hole loop outside every outer loop (L4) on the output of a
-/// boolean in a drawn recipe (a tilted cylinder cut by a mirrored,
-/// holed extrusion, shard 5 of 8 at 1000 cases on the fixed seed). The
-/// steps' cancellation is not what fails there; the same list,
-/// `differential::EXCLUSIONS`, lifts here when the fix lifts it there. Any
-/// other panic fails as before.
+/// reporting a defect a drawn recipe's boolean reaches and the list
+/// already names. The steps' cancellation is not what fails there; the
+/// same list, `differential::EXCLUSIONS`, lifts here when the fix lifts it
+/// there. Any other panic fails as before.
 fn under_exclusions(f: impl FnOnce() -> Result<(), TestCaseError>) -> Result<(), TestCaseError> {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
         Ok(result) => result,

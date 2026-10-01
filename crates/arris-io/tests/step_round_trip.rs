@@ -258,11 +258,10 @@ prop_shards! {
 /// The round trip at 1000 cases on the fixed seed, shard 3 of 8, shrunk:
 /// a frustum of radii 0.26 and 0.5, 1.5 tall and turned half a turn about
 /// y, cut by an oblique cylinder of radius 0.15 out through its wide cap.
-/// The cut's output fails the checker's L4 before anything is written —
-/// the boolean's, not the reader's — which the debug build's guard turns
-/// into a panic.
+/// The cut's output failed the checker's L4 before anything was written —
+/// the checker's polygon of a circle, not the boolean's or the reader's —
+/// which the debug build's guard turned into a panic.
 #[test]
-#[ignore = "the checker's L4, a hole loop outside every outer loop (docs/BACKLOG.md, the L4 findings; differential::EXCLUSIONS hole-loop-outside-every-outer-loop)"]
 fn a_frustum_cut_through_its_wide_cap_reads_back_as_itself() {
     use arris_debug::prop::body::{Cylindrical, QuadricTool};
     use arris_io::arris_check::arris_topo::arris_math::Axis;

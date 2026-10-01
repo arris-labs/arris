@@ -278,7 +278,7 @@ PinInBore Radius fuse +1: INTERNAL Split(Dangling)
 PinInBore Radius fuse -1.5: flush
 PinInBore Radius fuse +1.5: INTERNAL Split(Dangling)
 PinInBore Radius fuse -2: flush
-PinInBore Radius fuse +2: PANIC L4
+PinInBore Radius fuse +2: generic
 PinInBore Radius fuse -4: flush
 PinInBore Radius fuse +4: generic
 PinInBore Radius fuse -16: flush
@@ -409,11 +409,11 @@ CoaxialRod Radius fuse +0.25: flush
 CoaxialRod Radius fuse -0.5: flush
 CoaxialRod Radius fuse +0.5: flush
 CoaxialRod Radius fuse -1: flush
-CoaxialRod Radius fuse +1: INTERNAL Split(Hole)
+CoaxialRod Radius fuse +1: INTERNAL Split(NoInterior)
 CoaxialRod Radius fuse -1.5: generic
-CoaxialRod Radius fuse +1.5: INTERNAL Split(Hole)
+CoaxialRod Radius fuse +1.5: INTERNAL Split(NoInterior)
 CoaxialRod Radius fuse -2: generic
-CoaxialRod Radius fuse +2: INTERNAL Split(Hole)
+CoaxialRod Radius fuse +2: UNSUPPORTED(PLANE SURFACE AGAINST CIRCLE CURVE)
 CoaxialRod Radius fuse -4: generic
 CoaxialRod Radius fuse +4: generic
 CoaxialRod Radius fuse -16: generic
@@ -424,11 +424,11 @@ CoaxialRod Radius common +0.25: flush
 CoaxialRod Radius common -0.5: flush
 CoaxialRod Radius common +0.5: flush
 CoaxialRod Radius common -1: flush
-CoaxialRod Radius common +1: INTERNAL Split(Hole)
+CoaxialRod Radius common +1: INTERNAL Split(NoInterior)
 CoaxialRod Radius common -1.5: refused Empty
-CoaxialRod Radius common +1.5: INTERNAL Split(Hole)
+CoaxialRod Radius common +1.5: INTERNAL Split(NoInterior)
 CoaxialRod Radius common -2: refused Empty
-CoaxialRod Radius common +2: INTERNAL Split(Hole)
+CoaxialRod Radius common +2: UNSUPPORTED(PLANE SURFACE AGAINST CIRCLE CURVE)
 CoaxialRod Radius common -4: refused Empty
 CoaxialRod Radius common +4: generic
 CoaxialRod Radius common -16: refused Empty
@@ -439,11 +439,11 @@ CoaxialRod Radius cut +0.25: flush
 CoaxialRod Radius cut -0.5: flush
 CoaxialRod Radius cut +0.5: flush
 CoaxialRod Radius cut -1: flush
-CoaxialRod Radius cut +1: INTERNAL Split(Hole)
+CoaxialRod Radius cut +1: INTERNAL Split(NoInterior)
 CoaxialRod Radius cut -1.5: flush
-CoaxialRod Radius cut +1.5: INTERNAL Split(Hole)
+CoaxialRod Radius cut +1.5: INTERNAL Split(NoInterior)
 CoaxialRod Radius cut -2: flush
-CoaxialRod Radius cut +2: INTERNAL Split(Hole)
+CoaxialRod Radius cut +2: UNSUPPORTED(PLANE SURFACE AGAINST CIRCLE CURVE)
 CoaxialRod Radius cut -4: flush
 CoaxialRod Radius cut +4: flush
 CoaxialRod Radius cut -16: flush
