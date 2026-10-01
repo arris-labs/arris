@@ -62,6 +62,7 @@ boolean/parallel-cylinders-common: 24
 boolean/parallel-cylinders-cut: 24
 boolean/parallel-cylinders-fuse: 24
 boolean/parallel-cylinders-seam: 23
+boolean/pin-at-disc-rim-common-fuse: 8072
 boolean/pin-in-bore-four-out: 24
 boolean/pin-in-bore-fuse: 20
 boolean/pin-in-bore-fuse-band-ends: 20
@@ -100,6 +101,7 @@ boolean/tee-unequal-drill-cut: 13700
 boolean/tee-unequal-fuse: 18822
 boolean/tee-unequal-slot-cut: 4267
 boolean/through-hole: 26
+boolean/tilted-cylinder-slot-cut: 1547
 sweep/extrude-downward: 20
 sweep/extrude-ellipse: 4
 sweep/extrude-elliptic-slot: 16
