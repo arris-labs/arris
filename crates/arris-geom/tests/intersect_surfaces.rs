@@ -163,9 +163,10 @@ fn line_spread(a: &Surface, b: &Surface) -> f64 {
     }
 }
 
-/// The same point set, up to a line's orientation — two lines placed as
-/// far apart as their origins' rounding times `spread` allows
-/// ([`line_spread`]); a NURBS — fitted or a conic's branch — the same
+/// The same point set, up to a line's or a circle's orientation — two lines
+/// placed as far apart as their origins' rounding times `spread` allows
+/// ([`line_spread`]), two conics as far apart as the rounding of their
+/// own size allows (a circle 6e5 out is placed to about 1e-9); a NURBS — fitted or a conic's branch — the same
 /// curve bit for bit.
 fn same_curve(a: &Curve, b: &Curve, spread: f64) -> bool {
     let parallel = |x: &UnitVec3, y: &UnitVec3| x.cross(y).norm() <= EXACT;
@@ -189,8 +190,11 @@ fn same_curve(a: &Curve, b: &Curve, spread: f64) -> bool {
                 radius: r2,
             },
         ) => {
-            (frame.origin() - f2.origin()).norm() <= EXACT
-                && (radius - r2).abs() <= EXACT
+            let size =
+                frame.origin().coords.norm() + f2.origin().coords.norm() + radius.abs() + r2.abs();
+            let bound = EXACT + ROUNDING * size;
+            (frame.origin() - f2.origin()).norm() <= bound
+                && (radius - r2).abs() <= bound
                 && parallel(&frame.z(), &f2.z())
         }
         (
@@ -205,9 +209,14 @@ fn same_curve(a: &Curve, b: &Curve, spread: f64) -> bool {
                 minor_radius: b2,
             },
         ) => {
-            (frame.origin() - f2.origin()).norm() <= EXACT
-                && (major_radius - a2).abs() <= EXACT
-                && (minor_radius - b2).abs() <= EXACT
+            let size = frame.origin().coords.norm()
+                + f2.origin().coords.norm()
+                + major_radius.abs()
+                + a2.abs();
+            let bound = EXACT + ROUNDING * size;
+            (frame.origin() - f2.origin()).norm() <= bound
+                && (major_radius - a2).abs() <= bound
+                && (minor_radius - b2).abs() <= bound
                 && parallel(&frame.z(), &f2.z())
                 && parallel(&frame.x(), &f2.x())
         }

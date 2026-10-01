@@ -152,16 +152,6 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: a decision first, then either snap the parameter to the domain's own end where the projection lands on a singular row, or hold `uv` to a tolerance where the parameter is one.
 
-### near-parallel-cones-swap-changes-the-circle
-
-- What: two coaxial cones whose half-angles differ by 9e-5 rad meet in a circle 555 263 below the origin with radius 628 634; `intersect_surfaces(b, a)` returns that circle on the opposite frame (`z` and `y` negated) and one ulp off in radius, and the swap property finds no match for it.
-- Where: `coaxial_pairs_meet_where_their_meridians_meet`, `crates/arris-geom/tests/intersect_surfaces.rs:464` (`same_curve` against `line_spread(a, b)`).
-- Seen: Nightly [36690407229](https://github.com/arris-labs/arris/actions/runs/36690407229), commit `69273fc`, seed `9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad`, 5000 cases.
-- Reproduce: `ARRIS_PROPTEST_SEED=9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom coaxial_pairs_meet_where_their_meridians_meet` (1 s; replayed 2026-10-01 on `613f564`).
-- Evidence: shrunk to `Cone` (`angle` 0.847292, `r1` = `r2` = 0.1, `flip`) against `Cone` (`slide` 99.555471, `angle` 0.847381). The unswapped result is a circle on `z = +1` at `origin.z = -555263.091078779`, radius `628633.6290850897`; the swapped one is the circle on `z = -1` at `-555263.0910787792`, radius `628633.6290850898`. The same circle, then: a reversed frame and a difference of about 2e-16 relative, at a distance thousands of times the operands' own size (`r1` = 0.1, `slide` 99.6). The swapped result's other circle, at `z = -49.78` with radius 56.26, is the near intersection.
-- State: measured.
-- The fix is: a decision first: either `same_curve` takes a circle's reversal and a tolerance relative to the curve's own size, or the intersector refuses a section whose scale is past what the operands' tolerance can place.
-
 ### step-round-trip-meets-a-section-beside-a-pole
 
 - What: a ball cut by a box whose face passes the ball's pole without running through it is refused `OpError::Degenerate` (`Reason::BesideSingularity`), and the STEP round-trip property, which treats every typed refusal that is not an excluded `Internal` as a failure, fails on it.
@@ -170,7 +160,7 @@ above when it wants a fix; the block moves or is deleted then.
 - Reproduce: `ARRIS_PROPTEST_SEED=9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-io --test step_round_trip a_written_body_reads_back_as_itself` (shard 3 fails in 17 s; replayed 2026-10-01 on `613f564`).
 - Evidence: shrunk to `Boolean(0, QuadricPair { solid: Ball { radius: 0.5 }, tool: Box { min [-0.183051, -0.625, -0.65], max [0.183051, 0.625, 0.65], rotation [-0.335223, 0.769555, 0.517768, 0.165301], translation [0.017776, -0.048635, -0.189086] }, pose: rotation [0, 1, 0, 0] })`. The message is "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves (+f1, +f11, +v3)": the refusal `regression/ball-beside-pole-slice-cut` already holds, ignored, as its desired result is the built body (the backlog's line on polygons by span and chords in length).
 - State: measured.
-- The fix is: one of two, and the first is the right one: resolve a section beside a pole in the (u, v) polygons, which moves `ball-beside-pole-slice-cut` out of `regression/`; until then, name the refusal as the round trip's reject beside `exclusion_of_error`, so a typed refusal of a known class does not fail a night.
+- The fix is: resolve a section beside a pole in the (u, v) polygons, which moves `ball-beside-pole-slice-cut` out of `regression/`. The round trip rejects the refusal by name meanwhile (done), so a night no longer fails on it; the case is still a refusal a consumer meets.
 
 ### ring-cut-by-a-posed-box-leaves-a-void-inside-no-shell
 

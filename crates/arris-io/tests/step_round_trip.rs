@@ -24,6 +24,7 @@ use arris_io::arris_check::classify::{Classification, classify_point};
 use arris_io::arris_check::{Level, check};
 use arris_io::step::{self, ReadOptions};
 use arris_ops::measure::MassProperties;
+use arris_ops::{OpError, Reason};
 use proptest::prelude::*;
 
 /// What is written: a solid alone, or a boolean of a pair.
@@ -51,6 +52,13 @@ impl Shape {
                 };
                 match result {
                     Ok((body, _)) => Ok(body),
+                    // A section passing a pole closer than the face's (u, v)
+                    // resolution is a designed refusal, not a body to write
+                    // (`ball-beside-pole-slice-cut`).
+                    Err(OpError::Degenerate {
+                        reason: Reason::BesideSingularity,
+                        ..
+                    }) => Err(TestCaseError::reject("beside a singularity")),
                     Err(e) => match arris_debug::differential::exclusion_of_error(&e) {
                         Some(exclusion) => Err(TestCaseError::reject(exclusion.name)),
                         None => Err(fail(e)),
