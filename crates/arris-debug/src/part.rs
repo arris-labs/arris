@@ -450,7 +450,7 @@ pub(crate) fn read_stages(
     }
 
     // Mass properties, to the fixture's tolerances or the body's own.
-    let tolerances = within_own_tolerance(&fixture.part.tolerances, m, body).map_err(&fail)?;
+    let tolerances = within_own_tolerance(&fixture.part.tolerances, m, body).map_err(fail)?;
     compare_mass(m, body, &expected.measured, "the oracle's", &tolerances).map_err(|what| {
         CorpusError::Measure {
             fixture: name.clone(),
@@ -541,7 +541,7 @@ fn battery_stages(
         let judged = match cases.and_then(|c| c.get(stage)) {
             None => battery::write_read(&name, m, back.body, &fixture.part.tolerances),
             Some(case) => {
-                let oracle = battery::oracle_case(fixture, &key, stage).map_err(&fail)?;
+                let oracle = battery::oracle_case(fixture, &key, stage).map_err(fail)?;
                 battery::judge(fixture, &name, case, oracle, hold, Some((m, back)))
             }
         };

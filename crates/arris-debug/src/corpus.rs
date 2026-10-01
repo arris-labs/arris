@@ -1383,7 +1383,7 @@ pub(crate) fn mesh_check(
     let request = MeshRequest::new(tolerances.mesh_chord).with_corners();
     let mesh = arris_mesh::tessellate_with(m, body, &request, &Control::NONE)
         .map_err(|e| mesh_failure(e.to_string()))?;
-    corners_stage(m, body, &mesh).map_err(&mesh_failure)?;
+    corners_stage(m, body, &mesh).map_err(mesh_failure)?;
     let Some(mesh_volume) = mesh.signed_volume() else {
         return Err(mesh_failure("the mesh is not closed".into()));
     };
