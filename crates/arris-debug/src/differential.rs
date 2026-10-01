@@ -281,6 +281,12 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         covers: |o| internal_is(o, "Internal(Geometry)"),
     },
     Exclusion {
+        name: "seam-fault",
+        fixtures: &["mirrored-revolve-common-seam-fault"],
+        symptom: "OpError::Internal(Seam)",
+        covers: |o| internal_is(o, "Internal(Seam)"),
+    },
+    Exclusion {
         name: "missing-shell",
         fixtures: &["revolve-cylinder-extrude-fuse-misses-a-shell"],
         symptom: "fewer shells than Open CASCADE: a cavity missing",
@@ -1085,6 +1091,17 @@ mod tests {
             &Outcome::Internal("Internal(Split)".into()),
             "Internal(Split)"
         ));
+        assert!(matches!(
+            excluded(Outcome::Internal("Internal(Seam)".into()), EXCLUSIONS),
+            Outcome::Excluded {
+                name: "seam-fault",
+                ..
+            }
+        ));
+        assert!(
+            excluded(Outcome::Internal("Internal(Lumps)".into()), EXCLUSIONS).fails(),
+            "a lumps fault is no seam fault"
+        );
         assert_eq!(
             checker_row("the result fails the checker:\nL5 f47: loop 0 intersects itself"),
             Some("L5")

@@ -202,7 +202,10 @@ of the step that made the fixture pass, and a later change to it is a
   rectangle and the integral is its arc length times its height, as it
   always was; a boolean that trims one with planes parallel to the axis
   (rulings) or perpendicular to it (arcs) is exact too, and a curved
-  pcurve there is refused by name. A shape with an extrusion face also
+  pcurve there — a section of an elliptic prism and a revolved body — is
+  integrated by composite Gauss–Legendre over the pcurve, its halvings
+  held to agree to a tenth of `area_rel`, and refused by name where they
+  do not (`regression/mirrored-revolve-common-seam-fault`). A shape with an extrusion face also
   takes `VolumePropertiesGK` for its volume, centroid and inertia, which
   the plain adaptive integration is 9e-7 off in
   (`boolean/elliptic-operand-cut`, against its closed forms); a shape of

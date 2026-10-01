@@ -20,6 +20,8 @@
 
 import math
 
+import numpy
+
 from OCP.BRep import BRep_Tool
 from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
@@ -30,7 +32,7 @@ from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.BRepGProp import BRepGProp
 from OCP.GeomAbs import GeomAbs_CurveType, GeomAbs_SurfaceType
 from OCP.GProp import GProp_GProps
-from OCP.gp import gp_Pnt
+from OCP.gp import gp_Pnt, gp_Pnt2d, gp_Vec, gp_Vec2d
 from OCP.TopAbs import (
     TopAbs_EDGE,
     TopAbs_FACE,
@@ -195,6 +197,76 @@ def _arc_length(basis, u0: float, u: float) -> float:
     return -GCPnts_AbscissaPoint.Length_s(basis, u, u0, LENGTH_TOL)
 
 
+# Gauss-Legendre nodes and weights on [-1, 1] of the order the contour
+# of a curved pcurve is integrated with, per panel.
+_GAUSS_NODES, _GAUSS_WEIGHTS = (
+    [float(x) for x in numpy.polynomial.legendre.leggauss(8)[0]],
+    [float(w) for w in numpy.polynomial.legendre.leggauss(8)[1]],
+)
+
+# The agreement two successive halvings of the panels of a curved
+# contour must reach, relative to a contour of at least one: one order
+# below `area_rel` (1e-9). Open CASCADE's pcurve of a section is a
+# B-spline whose own pieces meet with a jump in the second derivative,
+# which the rule sees as a floor near 1e-11, so a tighter ask would
+# refuse every such edge.
+CONTOUR_TOL = 1e-10
+
+# The most times the panels are halved before the contour is refused.
+CONTOUR_MAX_HALVINGS = 12
+
+
+def _smooth_length(basis, u0: float, u: float, panels: int = 8) -> float:
+    """`_arc_length` by the same Gauss-Legendre rule as the contour it
+    feeds, so that it is a smooth function of `u` where
+    `GCPnts_AbscissaPoint`'s adaptive result carries its own tolerance as
+    noise, which the contour integral's halvings would see as a
+    disagreement. Exact to rounding for a conic over `panels` panels."""
+    h = (u - u0) / panels
+    total = 0.0
+    for k in range(panels):
+        mid = u0 + (k + 0.5) * h
+        for x, w in zip(_GAUSS_NODES, _GAUSS_WEIGHTS):
+            point, tangent = gp_Pnt(), gp_Vec()
+            basis.D1(mid + 0.5 * h * x, point, tangent)
+            total += 0.5 * h * w * tangent.Magnitude()
+    return total
+
+
+def _curved_contour(basis, u0: float, pcurve, reversed_edge: bool) -> float:
+    """One edge's part of the contour integral of L(u) dv, where the
+    pcurve is neither a ruling nor an arc: the composite Gauss-Legendre
+    rule over the edge's own parameter, L the basis arc length from `u0`
+    (`_arc_length`), dv the pcurve's `v'(t) dt`, the panels halved until
+    two successive halvings agree to CONTOUR_TOL. An edge whose
+    integral does not settle is refused, as it was before there was a
+    quadrature: a wrong number is worse than none."""
+    t0, t1 = pcurve.FirstParameter(), pcurve.LastParameter()
+
+    def rule(panels: int) -> float:
+        total = 0.0
+        h = (t1 - t0) / panels
+        for k in range(panels):
+            mid = t0 + (k + 0.5) * h
+            for x, w in zip(_GAUSS_NODES, _GAUSS_WEIGHTS):
+                point, tangent = gp_Pnt2d(), gp_Vec2d()
+                pcurve.D1(mid + 0.5 * h * x, point, tangent)
+                total += 0.5 * h * w * _smooth_length(basis, u0, point.X()) * tangent.Y()
+        return total
+
+    panels, previous = 4, rule(4)
+    for _ in range(CONTOUR_MAX_HALVINGS):
+        panels *= 2
+        current = rule(panels)
+        if abs(current - previous) <= CONTOUR_TOL * max(1.0, abs(current)):
+            return -current if reversed_edge else current
+        previous = current
+    raise OracleError(
+        "a pcurve on a surface of linear extrusion whose contour integral "
+        f"does not settle in {panels} panels"
+    )
+
+
 def _extrusion_area(face: TopoDS_Shape, adaptor: BRepAdaptor_Surface) -> float:
     """The area of one face on a `Geom_SurfaceOfLinearExtrusion`, whose
     (u, v) region a boolean need no longer leave a rectangle. The area
@@ -208,8 +280,7 @@ def _extrusion_area(face: TopoDS_Shape, adaptor: BRepAdaptor_Surface) -> float:
     L(u)·Δv) or perpendicular to it (an arc, v constant, contributing
     nothing), so the integral is exact and a rectangle gives back
     (L(u2) − L(u1))·Δv, the arc-length rule itself. A curved pcurve
-    there is refused: the quadrature it wants is a fixture the corpus
-    does not hold yet."""
+    there is `_curved_contour`'s quadrature."""
     basis = adaptor.BasisCurve()
     u0 = basis.FirstParameter()
     signed = 0.0
@@ -232,10 +303,8 @@ def _extrusion_area(face: TopoDS_Shape, adaptor: BRepAdaptor_Surface) -> float:
             if max(vs) - min(vs) <= RULING_TOL:
                 continue
             if max(us) - min(us) > RULING_TOL:
-                raise OracleError(
-                    "a pcurve on a surface of linear extrusion that is neither "
-                    f"a ruling nor an arc: du={max(us) - min(us)}"
-                )
+                signed += _curved_contour(basis, u0, pcurve, edge.Orientation() == TopAbs_REVERSED)
+                continue
             first, last = samples[0], samples[-1]
             if edge.Orientation() == TopAbs_REVERSED:
                 first, last = last, first

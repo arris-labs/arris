@@ -834,6 +834,13 @@ fn regression_three_cylinders_fuse_split_fault() {
     run("regression/three-cylinders-fuse-split-fault");
 }
 
+/// A mirrored revolve and a mirrored extrusion intersected with a posed cylinder in turn (the differential's draw, shrunk; CI run 36786571173).
+#[test]
+#[ignore = "the second common returns OpError::Internal(Seam) (docs/BACKLOG.md, the differential's findings)"]
+fn regression_mirrored_revolve_common_seam_fault() {
+    run("regression/mirrored-revolve-common-seam-fault");
+}
+
 /// A box, a revolved profile and a chamfered cylinder fused in turn (the differential's draw, shrunk; ADR-0024 step
 /// 5b).
 #[test]
