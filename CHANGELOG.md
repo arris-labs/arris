@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.4.0 — 2026-10-02
+
 - `step::read` returns the file's product structure beside the flattened
   bodies: `Read::products`, a `ProductTree` of occurrences — each a
   product's name, its placement in its parent (or the refusal of it), the
@@ -29,6 +31,11 @@ into its version (ADR-0027).
   the image is a new solid with its material inside, checker-clean, and
   every vertex, edge, face, shell and the body is recorded as modified
   from the one it mirrors. It stops under a `Control` like every operation.
+  Two refusals to expect: a ball united with a copy of itself turned half
+  a turn about its axis (so a body fused with its own mirror in a plane
+  through its centre) is refused as a kernel bug where Open CASCADE
+  returns the ball, and the STEP reader refuses the torus face of Open
+  CASCADE's mirrored ring, whose surface frame is left-handed.
 - A consumer that builds topology itself — through the builder's Euler
   operators or `Builder::assemble` — finishes it into a solid with
   `arris_ops::build`, giving each vertex, edge, face, shell and the body
