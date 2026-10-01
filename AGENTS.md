@@ -43,8 +43,8 @@ reader returns a checker-green body or a counted refusal per solid; 38
 NIST parts are read or refused, with a battery run on every solid read.
 The measuring harness stands beside it. The histogram's top line is the
 blend network (17 parts), then healing (14). ADR-0023 to 0026.
-**Next:** C5, the consumer's API (roles, body bytes, cancellation and
-mirror done; STEP product structure to go), then the blend network; the
+**Next:** C5, the consumer's API (roles, body bytes, cancellation, mirror and
+the STEP product structure done; `/close-cycle` next), then the blend network; the
 first-party binding beside it (ADR-0020 and its amendment).
 
 ## Rules that are not derivable from the code

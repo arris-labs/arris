@@ -1278,6 +1278,17 @@ B-Rep).
   reprojects, and ignores plane pcurves anyway). Sheet, wire and general
   bodies are `Unsupported` until an operation produces them, and a solid
   whose shells do not nest into lumps is `StepError::Lumps`.
+  `arris_io::step::write_products(&model, &[bodies], &ProductTree,
+  &Control)` writes an assembly (ADR-0033): one `PRODUCT` per distinct
+  product, however many occurrences share it (`Some(product)`), each
+  placement a `NEXT_ASSEMBLY_USAGE_OCCURRENCE` with its
+  `CONTEXT_DEPENDENT_SHAPE_REPRESENTATION` and
+  `ITEM_DEFINED_TRANSFORMATION`, names as product names and colours as
+  `STYLED_ITEM`s (a face's an `OVER_RIDING_STYLED_ITEM`). The bodies are
+  their products' own geometry and the writer never moves them; a tree it
+  cannot write is `StepError::Tree`, and it ticks per occurrence and per
+  body (`StepError::Interrupted`). `write` is the one-product case, byte
+  for byte.
 - **Part 21** (`arris_io::step::part21::parse(&str) -> Result<Exchange,
   Part21Error>`): the exchange structure below any
   schema, the first layer of the reader (ADR-0025 §3). It keeps the
@@ -1303,7 +1314,15 @@ B-Rep).
   `CONTEXT_DEPENDENT_SHAPE_REPRESENTATION`, a relationship with an
   `ITEM_DEFINED_TRANSFORMATION`, `MAPPED_ITEM`) to every path from a root
   to a solid, each path one *instance* with its placements composed and
-  numbered in the order of their ids; `units` reads each representation
+  numbered in the order of their ids; `products` builds the `ProductTree`
+  from the same walk — an `Occurrence` per site, with its product's name,
+  its placement in its parent in `ReadOptions::length_unit` (or the
+  `Refusal` of it), its `solids` as indices into `Read::solids` and its
+  children, so the tree and the bodies agree on what instance *k* is —
+  and `colours` resolves a `STYLED_ITEM` through its style chain to the
+  plain RGB of an occurrence's solids or of a face
+  (`ProductTree::faces`), skipping any other colour model rather than
+  refusing for it (ADR-0033); `units` reads each representation
   context's length unit (`SI_UNIT` with its prefix, or a
   `CONVERSION_BASED_UNIT`) and plane-angle unit and converts to
   `ReadOptions::length_unit` — millimetres by default, the unit the writer
@@ -1335,7 +1354,7 @@ B-Rep).
   §Provenance) — or a `Refusal`; a refused solid leaves nothing in the
   model and hides no other, and only a `Part21Error` fails the file
   (§Errors). Deterministic: the same text reads to the same ids. What
-  it does not read: product names, colours, layers, PMI, and the
+  it does not read: layers, PMI, materials, properties, and the
   edition-3 sections; a faceted B-rep or a shell-based surface model
   stands where a solid would and is counted as refused.
 - **Cancellation of the readers** (ADR-0030): `step::read` runs in one
@@ -1670,8 +1689,8 @@ refusal histogram, what picks the cycle after the reader's.
 | Tessellation into a render mesh with per-face and per-edge ranges | `arris_mesh::tessellate` → `TriMesh` with `FaceRange`/`EdgeRange` keyed by `FaceId`/`EdgeId`; `arris_mesh::tessellate_with` of a `MeshRequest::with_corners` adds the render buffer beside it — face-local vertices with outward normals and the surface's own (u, v), which a renderer uploads as they stand (ADR-0012) |
 | A face's outward-oriented frame | `ops::query::face_frame(&model, face)` for a plane (stable across re-evaluation, since a primitive's frame or a sweep's profile plane is), `ops::query::frame_at(&model, face, uv)` for any face at a `(u, v)` its domain contains |
 | Mass properties (volume, area, centroid, inertia) | `ops::measure::mass_properties` → `MassProperties` (exact over the B-Rep, the tensor about the centroid); or the consumer's own integrator over `TriMesh` |
-| STEP export of several bodies | `io::step::write(&model, &[bodies])` |
-| STEP import | `io::step::read(&mut model, &text, &ReadOptions { length_unit })` → one `ReadSolid` per solid and placement: a checker-clean body with provenance naming its file entity (`Role::File`), or a typed `Refusal` whose `RefusalKind` a histogram counts (`RefusalKind::ALL`); only a parse error fails the file (ADR-0025) |
+| STEP export of several bodies, or of an assembly | `io::step::write(&model, &[bodies])`; `io::step::write_products(&model, &[bodies], &tree, &control)` for products, placements, names and colours (ADR-0033) |
+| STEP import | `io::step::read(&mut model, &text, &ReadOptions { length_unit })` → one `ReadSolid` per solid and placement, and `Read::products` the product tree over them (names, placements, colours): a checker-clean body with provenance naming its file entity (`Role::File`), or a typed `Refusal` whose `RefusalKind` a histogram counts (`RefusalKind::ALL`); only a parse error fails the file (ADR-0025) |
 | A render mesh as STL or OBJ of several bodies, beside STEP | `io::stl::write_ascii`/`write_binary(&meshes, name)`, `io::obj::write(&meshes)` — one `TriMesh` per body, `vt`/`vn` written when a mesh carries the corner block (ADR-0012, ADR-0013) |
 | Projecting an edge or vertex onto a sketch plane | `ops::query::project_to_plane(&model, &[shapes], &plane)` → a `Projection` per shape: a vertex's `Point2`, an edge's `Curve2` (a line stays a line, a circle becomes a circle or an ellipse, an ellipse stays an ellipse, a NURBS a `Curve2::Nurbs`) with the edge's range carried into that curve's own parameter, so the piece is the edge's and no more (data-model §Pcurves) |
 | Persistent topological names (origin-based) | Emitted by the consumer from `Provenance`: an output face is named after the input face it was `Modified` from, `Split(k)` when one input yields several outputs, and after the tool face when `Generated`; edges and vertices derive from their faces exactly as today. No centroid matching. Arris ships no name grammar (ADR-0009): the words are the application's. What the kernel guarantees is the **split order** — an origin's outputs in `generated_from` and `modified_from` are the pieces in an order that holds under every parameter edit keeping which entities bound which piece (a face's by the origins bounding each piece, an edge's along its curve; data-model §Provenance), so `Split(k)` means the same piece after the edit. A feature that builds topology itself roots its chains at its own keys through `ops::build`, and re-roots a primitive's, sweep's or file's record at them with `Provenance::rerooted` (`Role::Consumer`, ADR-0028) |

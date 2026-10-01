@@ -501,7 +501,7 @@ are `docs/ideas/plugin-cad-consumer-asks.md`'s A1–A4 and A11. The
 histogram's first line, the blend network (17 of 38 parts), is next in
 line (§Named cycles).*
 
-**Status: opened 2026-09-26; consumer roles (A1), body bytes (A2), cancellation (A3) and mirror (A11) done.**
+**Status: opened 2026-09-26; consumer roles (A1), body bytes (A2), cancellation (A3), mirror (A11) and the STEP product structure (A4) done — every ask of the cycle; the cycle closes with `/close-cycle`.**
 
 - **Consumer roles (A1)** — done 2026-09-27 (ADR-0028):
   `Role::Consumer(ConsumerKey { namespace, key })`, carried opaquely so
@@ -547,10 +547,19 @@ line (§Named cycles).*
   boolean failure of its own kind (coincident spheres under frames a half
   turn apart, a backlog line) and a reader refusal of Open CASCADE's
   left-handed torus frame.
-- **STEP product structure (A4)**: the reader returns products,
-  instances, placements, names and colours beside the flattened bodies;
-  the writer writes instances, names and colours. An amendment of
-  ADR-0025 §Instances.
+- **STEP product structure (A4)** — done 2026-10-01 (ADR-0033, an
+  amendment of ADR-0025 §Instances): `step::read` returns a `ProductTree`
+  beside the flattened bodies — an occurrence per site of the walk the
+  flattening makes, with its product's name, its placement in its parent
+  (or the refusal of it), the indices of its solids and its children —
+  and the plain-RGB colour of a solid or a face. `step::write_products`
+  writes such a tree over a slice of bodies: each product once, each
+  placement as an assembly usage, names and colours as product names and
+  styled items. Open CASCADE's XCAF assembly (nested, named, placed,
+  coloured) reads to the oracle's tree, Arris's own written assembly
+  reads back to an equal tree and to Open CASCADE with the same names and
+  placements, and the 38 real parts read with the tree built and the
+  refusal histogram unchanged.
 
 **Out:** the rest of that idea — `region2` as public API, multi-tool
 booleans and per-face tessellation are backlog lines for when the
