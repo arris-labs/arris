@@ -28,24 +28,20 @@ cargo install cargo-fuzz --locked
 ## Current state
 
 **C1 done (2026-09-12): the vertical slice.** Primitives, transform,
-booleans on plane and cylinder, extrude and revolve, tessellation, mass
-properties and STEP against Open CASCADE; a failure waiting for its fix
-lives under `tests/fixtures/regression/`. ADR-0001 to 0005.
+booleans on plane and cylinder, extrude, revolve, tessellation, mass
+properties and STEP against Open CASCADE; failures wait under
+`tests/fixtures/regression/`. ADR-0001 to 0005.
 **C2 done (2026-09-19): the application gate.** The first consumer's probe
-shapes pass the corpus in its own units: blends, lumps, cylinder–cylinder
-booleans, quadrics on a shared axis, the facade decisions, mesh formats,
-elliptic profiles. ADR-0006 to 0017.
+shapes pass the corpus in its own units. ADR-0006 to 0017.
 **C3 done (2026-09-24): every quadric pair.** Every analytic face is a
-boolean operand in any pose — sections exact or traced and fitted to
-NURBS, "the same within a tolerance" an equivalence. ADR-0018 to 0022.
-**C4 done (2026-09-26): the reader and the real-part corpus.** The STEP
-reader returns a checker-green body or a counted refusal per solid; 38
-NIST parts are read or refused, with a battery run on every solid read.
-The measuring harness stands beside it. The histogram's top line is the
-blend network (17 parts), then healing (14). ADR-0023 to 0026.
-**Next:** C5, the consumer's API (roles, body bytes, cancellation, mirror and
-the STEP product structure done; `/close-cycle` next), then the blend network; the
-first-party binding beside it (ADR-0020 and its amendment).
+boolean operand in any pose. ADR-0018 to 0022.
+**C4 done (2026-09-26): the reader and the real-part corpus.** 38 NIST
+parts read or refused by kind; the histogram's top line is the blend network
+(17 parts), then healing (14). ADR-0023 to 0026.
+**C5 done (2026-10-02): the consumer's API.** Roles, body bytes,
+cancellation, mirror, the STEP product structure. ADR-0028 to 0033.
+**Next:** C6, the blend network (opened 2026-10-02, scope for the human to
+confirm); the first-party binding beside it (ADR-0020 and its amendment).
 
 ## Rules that are not derivable from the code
 

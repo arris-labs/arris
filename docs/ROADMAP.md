@@ -10,7 +10,9 @@ Spine: **C1** M0 → M1 → M2 → M3 → M4 → M5 (the vertical slice, done), 
 pair — closure: what Arris builds, Arris takes as an operand; done
 2026-09-24), then **C4** (the reader: the STEP reader and a real-part
 corpus; done 2026-09-26), then **C5** (the consumer's API: what a
-plugin-based CAD cannot start without, ADR-0020's amendment). An unopened cycle carries
+plugin-based CAD cannot start without, ADR-0020's amendment; done
+2026-10-02), then **C6** (the blend network: fillets and chamfers on the
+face pairs real parts ask for, opened 2026-10-02). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -498,68 +500,21 @@ consumer's first cycle rather than be found as its regressions later.*
 *Chosen by ADR-0020's amendment of 2026-09-26: a consumer blocked on
 missing API ranks first, as a consumer waiting on a swap does. The asks
 are `docs/ideas/plugin-cad-consumer-asks.md`'s A1–A4 and A11. The
-histogram's first line, the blend network (17 of 38 parts), is next in
-line (§Named cycles).*
+histogram's first line, the blend network (17 of 38 parts), became C6.*
 
-**Status: opened 2026-09-26; consumer roles (A1), body bytes (A2), cancellation (A3), mirror (A11) and the STEP product structure (A4) done — every ask of the cycle; the cycle closes with `/close-cycle`.**
+**Status: done 2026-10-02, tag `c5`, released as `v0.4.0`.** Retired the
+consumer's missing API: a plugin's feature names what it builds
+(`Role::Consumer`, finished by `ops::build`), a body and its provenance
+survive in a user's file (`arris_io::body`, versions frozen and migrated),
+every operation stops on a poll or a step budget and rolls the model back,
+ids included (the thin-elliptic section stops within 3.9 ms of a poll),
+`ops::mirror` reflects a body in a plane, and `step::read` returns a
+`ProductTree` that `step::write_products` writes back. ADR-0028 to
+ADR-0033, ADR-0033 an amendment of ADR-0025 §Instances.
 
-- **Consumer roles (A1)** — done 2026-09-27 (ADR-0028):
-  `Role::Consumer(ConsumerKey { namespace, key })`, carried opaquely so
-  the words stay the consumer's (ADR-0009). `ops::build` finishes a
-  `Builder` the consumer filled into a solid checked at `Full` in every
-  profile, every entity `Generated` from the key of its slot; every other
-  operation that creates from nothing keeps its signature, and its record
-  is re-rooted at the consumer's keys by `Provenance::rerooted`. The
-  `polyhedron` recipe op puts such a body in the corpus (`build/`), and
-  `provenance/consumer-rebuild` holds its chains to the consumer's keys
-  across a rebuild.
-- **Body bytes (A2)** — done 2026-09-27 (ADR-0029): `arris_io::body`
-  writes one body and its `Provenance` as bytes (`postcard`, with JSON
-  beside it for diffs), both deterministic, by importing the body into a
-  fresh model under the writer's `Precision`; `read` migrates every
-  earlier version, refuses a newer one and a tolerance the target's
-  precision cannot hold, imports into the caller's model inside a
-  transaction and checks at `Full` in every profile. The record travels
-  in the writer's ids beside the writer → caller map, so an origin
-  outside the body is foreign and the consumer that sent it translates it
-  back with `IdMap::inverse`; `Imported::translated` puts the whole record
-  in the reader's ids in one pass. A version's bytes are frozen under
-  `crates/arris-io/tests/body/v<N>/` and read in the suite forever, and
-  `body_read` fuzzes the reader.
-- **Cancellation (A3)** — done 2026-09-30 (ADR-0030): every operation on
-  a model and every long query beside one takes a trailing `&Control`, a
-  poll the consumer supplies and an optional budget of steps, counted at
-  each loop boundary that can outgrow the input (tracing, fitting,
-  subdivision, the boolean's passes, blend corners, triangulation, the
-  reader's solids). A stop is `Interrupted` in the operation's own error
-  type and the transaction rolls the model back, ids included; a budget
-  stops at the same step with `parallel` on or off, so the property
-  interrupts recipes at every step. The thin-elliptic section stops
-  within 3.9 ms of a poll turning true.
-- **Mirror (A11)** — done 2026-10-01 (ADR-0031): `ops::mirror` reflects
-  a body in a plane through a `Reflection` of its own; frames stay
-  right-handed and a quadric's `u` is reflected, the loops of such a face
-  reversed, provenance `Modified` one to one. Nineteen fixtures under
-  `transform/` and `boolean/` match Open CASCADE's mirror (a body and its
-  own mirror under `fuse`, `cut` and `common` included), every mirrored
-  body tessellates, round-trips through STEP and body bytes, and
-  `mirror` is the twelfth operation of the random recipes. It found one
-  boolean failure of its own kind (coincident spheres under frames a half
-  turn apart, a backlog line) and a reader refusal of Open CASCADE's
-  left-handed torus frame.
-- **STEP product structure (A4)** — done 2026-10-01 (ADR-0033, an
-  amendment of ADR-0025 §Instances): `step::read` returns a `ProductTree`
-  beside the flattened bodies — an occurrence per site of the walk the
-  flattening makes, with its product's name, its placement in its parent
-  (or the refusal of it), the indices of its solids and its children —
-  and the plain-RGB colour of a solid or a face. `step::write_products`
-  writes such a tree over a slice of bodies: each product once, each
-  placement as an assembly usage, names and colours as product names and
-  styled items. Open CASCADE's XCAF assembly (nested, named, placed,
-  coloured) reads to the oracle's tree, Arris's own written assembly
-  reads back to an equal tree and to Open CASCADE with the same names and
-  placements, and the 38 real parts read with the tree built and the
-  refusal histogram unchanged.
+- Consumer roles (A1), body bytes (A2), cancellation (A3), mirror (A11) and
+  the STEP product structure (A4): the asks of
+  `docs/ideas/plugin-cad-consumer-asks.md` this cycle took.
 
 **Out:** the rest of that idea — `region2` as public API, multi-tool
 booleans and per-face tessellation are backlog lines for when the
@@ -575,6 +530,52 @@ migrate; every operation interrupted at random points returns
 corpus fixture matches the oracle's mirror; an assembly's product tree
 reads from Open CASCADE's XCAF STEP with the names and placements it
 wrote, and Arris's own written assembly reads back to the same tree.
+
+---
+
+## C6 — the blend network
+
+*Goal: a fillet or chamfer lands where a real part asks for one, not only
+on ADR-0007's table of face pairs. Chosen by ADR-0020's rule, the
+histogram over the real-part corpus first (no consumer waits on a swap
+past the asks C5 closed): at C4's measurement (2026-09-26,
+`tools/real-parts.sh`'s `both.md`: 38 parts, 70 solids, 29 read and 41
+refused; 143 battery stages, 107 agree, 7 both refuse, 29 Arris refuses)
+the blend network blocks 17 of the 38 parts, every one at the `fillet`
+stage, and healing 14 at `read`, so the blend network is the larger by
+three. The committed tier today (§Fixtures) blocks 6 of its 11.*
+
+| Cycle | Parts blocked | read | measure | write_read | box_cut | drill_x | drill_y | drill_z | fillet |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| blend network | 17 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 17 |
+| healing | 14 | 14 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NURBS | 3 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
+| itself: faceted | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| itself: supplemental geometry | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| itself: unparsed | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+**Status: opened 2026-10-02; scope proposed, not yet confirmed by the
+human.**
+
+- Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
+  refusals).
+- Blends on face pairs outside ADR-0007's table: a circular edge where the
+  table asks a line (circle × plane, 9), plane × cone, cylinder × cone,
+  cylinder × cylinder; then sphere, torus and elliptic cylinder.
+- The corners refused as `VertexBlend`.
+- The remaining chamfer modes (two distances, a distance and an angle).
+- Variable radius, and blends over blends.
+
+**Out:** NURBS faces as blend operands (the NURBS cycle's), healing (the
+reader's 14 parts), shell and offset (the sweep cycle's).
+
+**Accept:** the committed tier's `fillet` column and the fetched tier's
+printed beside C4's 17 of 38, every part leaving it either agreeing with
+Open CASCADE's fillet within its fixture's tolerance or refused as another
+cycle's; each new face pair a corpus fixture with its oracle, checker
+green, and a property over random poses for every pair the intersector
+now takes to a blend.
 
 ---
 
@@ -595,17 +596,17 @@ and nightly): the corpus binary takes 10.3 s cold and 1.3 s warm, and a
 warm run starts no Python. Random recipes over the twelve operations
 `prop::recipe` draws from (every op both interpreters carry but `step`,
 a solid read from a file) run through both kernels in the
-differential. At 1000 draws of the fixed seed, 762 reach a comparison and
-agree, 67 both refuse, 137 are refused by Open CASCADE, and 14 by Arris
-(all `Degenerate(Empty)`). 20 are under named exclusions, each waiting on
-a `regression/` fixture, and none fails. That is 0.26 s of wall clock per
-recipe. The hook runs 32 cases over what a commit reaches (ADR-0032), a plan's retirement 256 and CI 1000, all on the fixed seed;
+differential. At 1000 draws of the fixed seed (measured 2026-10-02), 792 reach a
+comparison and agree, 156 both refuse, 7 are refused by Open CASCADE, and
+39 by Arris (all `Degenerate(Empty)`). 6 are under named exclusions, each
+waiting on a `regression/` fixture, and none fails. That is 0.165 s of
+wall clock per recipe. The hook runs 32 cases over what a commit reaches (ADR-0032), a plan's retirement 256 and CI 1000, all on the fixed seed;
 depth comes from `nightly.yml`, which runs every property at 5000 cases
 on a seed drawn from the date, 99,600 CPU-seconds split over six jobs,
 plus the differential at 1000 recipes on the same seed. The corpus
-benchmark times 294 cases on the reference machine: 260 from 130
-fixtures, build 5.15 s and mesh 3.16 s, and 34 from 17 real parts' files,
-read 20.99 s (docs/ARCHITECTURE.md §Formats and tools). Each night compares against the
+benchmark times 316 cases on the reference machine: 282 from 141
+fixtures, build 4.56 s and mesh 3.25 s, and 34 from 17 real parts' files,
+read 21.63 s (docs/ARCHITECTURE.md §Formats and tools). Each night compares against the
 last, flagging a case past 3×. Three fuzz targets over the intersectors
 (`fuzz/`, outside the workspace) are seeded from every geometry pair.
 Their first hour, on 24 cores after the three faults a triage run
@@ -613,8 +614,9 @@ found were fixed, reached 25, 42 and 28 executions per second with no
 crash, slowed by sections against very thin elliptic cylinders. Each night runs 30
 minutes per target from the corpus the nights before grew; the first
 night found a fourth, two planes a hair from parallel meeting in a line
-with a NaN origin. A night takes about 2 h 30 min, its longest property
-job 2 h 23 min. A red night is a finding to triage, not a gate; CI's
+with a NaN origin. A night takes about 5 hours: its longest property
+job, `workspace-rest`, took 4 h 46 min on 2026-10-01 and 5 h 19 min on
+the three nights before, against the workflow's 350-minute timeout. A red night is a finding to triage, not a gate; CI's
 fixed seed is the gate (ADR-0024, amendment of 2026-09-25).
 A fourth, `step_read`, runs the STEP reader on Arris's and Open
 CASCADE's STEP of every solid fixture: over the parser alone its first
@@ -645,28 +647,6 @@ consumer's regressions rank first while there is a consumer waiting on a
 swap, and the histogram after (ADR-0020). Each cycle earns its own
 section, with an acceptance corpus and a number, when `/close-cycle`
 opens it.
-
-- **The blend-network cycle** — first by C4's refusal histogram, next in
-  line after C5. Tangent edge chains blended as one (5
-  `Degenerate(TangentChain)` fillet refusals); blends on the face pairs
-  outside ADR-0007's table (a circular edge where the table asks a line,
-  circle × plane, 9; plane × cone, cylinder × cone, cylinder × cylinder;
-  then sphere, torus and elliptic cylinder); the corners refused as
-  `VertexBlend`; the remaining chamfer modes; variable radius and blends
-  over blends. The histogram over both tiers it was ranked on
-  (2026-09-26, `tools/real-parts.sh`'s `both.md`: 38 parts, 70 solids,
-  29 read and 41 refused; 143 battery stages, 107 agree, 7 both refuse,
-  29 Arris refuses):
-
-  | Cycle | Parts blocked | read | measure | write_read | box_cut | drill_x | drill_y | drill_z | fillet |
-  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-  | blend network | 17 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 17 |
-  | healing | 14 | 14 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-  | NURBS | 3 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
-  | itself: faceted | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-  | itself: supplemental geometry | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-  | itself: unparsed | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-  | sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 - **The NURBS cycle** — NURBS–NURBS surface intersection (a marcher with
   explicit seam handling); NURBS operands in booleans.
