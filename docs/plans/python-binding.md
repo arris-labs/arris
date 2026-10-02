@@ -325,14 +325,20 @@ bound has to be established here.
   run on `main` shows whether any needs a bump. The version question is
   settled: `0.5.0-dev` builds as `0.5.0.dev0` (the wheel's name shows it),
   and `pypi-build` refuses it by the Cargo spelling, as the crates job does.
-- [ ] Step 13 **[1]** — The rules and the docs of the workflow. The
+- [x] Step 13 **[1]** — The rules and the docs of the workflow. The
   sentence in `.agents/rules/git.md` §Tags, `/release` and
   `/close-cycle` skills (the wheel packages and the stubs check join the
   proof; `pypi` joins the human's tag steps), `.agents/rules/kernel.md`
   §API (a break updates the binding in the same commit),
   `tools/gate.sh` (a path under `crates/arris-py` runs its own tests and
   the crate's rdeps; nothing else) with its test `tools/gate-test.sh`.
-  Test: `tools/gate-test.sh` and `tools/check-layers.sh --self-test`.
+  Test: `tools/gate-test.sh` and `tools/check-layers.sh --self-test`. *Found at step 13:*
+  the classifier already sent a path under `crates/arris-py` to its rdeps
+  but, by its default arm, to the whole corpus too; the new arm keeps the
+  binding to its own tests (`rdeps(arris-py)`, or `package(arris-py)` for
+  its `tests/`), with `gate-test.sh` cases for a Rust file, a stub, the
+  `pyproject.toml`, a pytest file and the binding beside a kernel crate.
+  The Python suite stays out of the hook, as decision 4 says.
 
 ## Acceptance
 

@@ -58,7 +58,18 @@ updated by it. A change to a public type or signature names it here.
   publish --workspace` and opens a GitHub Release. CI runs on the tag as
   well, and the publish waits for the `crates-io` environment's reviewer,
   so the human approves it with that run's result in front of them. Every
-  crate but `arris-debug` goes up; that one is `publish = false`.
+  crate but `arris-debug` and `arris-py` goes up; those two are
+  `publish = false`.
+- **The same tag publishes the Python package** `arris` to PyPI, in
+  lockstep (ADR-0034 §3): `release.yml`'s `pypi-build` builds the wheel and
+  the sdist and checks them with `twine`, and `pypi` uploads them behind its
+  own `pypi` environment reviewer, by trusted publishing. The package's
+  version is the workspace's in PEP 440 (`0.5.0-dev` is `0.5.0.dev0`, a
+  release is `0.5.0`), so the bump that drops `-dev` is the one commit for
+  both, and the build refuses a pre-release as the crates job does. A
+  release therefore has two approvals, `crates-io` and `pypi`, and the
+  human gives each with the tag's CI run, its `python` job included, in
+  front of them. The platforms of the wheel are the human's call.
 
 ### The version
 

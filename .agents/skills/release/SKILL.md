@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a release of the workspace to crates.io — pick the version from CHANGELOG.md's Unreleased section, cross-checked against the log and the semver gate, turn that section into the version's notes, bump the version and its pins, prove the workspace still packages, and hand the human the exact tag command. Use when the human says "release", "cut a version", "publish", "ship 0.2", or at the end of /close-cycle. Never tags, never pushes, never runs cargo publish.
+description: Cut a release of the workspace to crates.io and its Python package to PyPI — pick the version from CHANGELOG.md's Unreleased section, cross-checked against the log and the semver gate, turn that section into the version's notes, bump the version and its pins, prove the workspace still packages, and hand the human the exact tag command. Use when the human says "release", "cut a version", "publish", "ship 0.2", or at the end of /close-cycle. Never tags, never pushes, never runs cargo publish.
 argument-hint: <nothing, or a version to force, e.g. 0.2.0>
 ---
 
@@ -8,8 +8,10 @@ argument-hint: <nothing, or a version to force, e.g. 0.2.0>
 
 Nothing is published from a laptop. The human tags a commit on `main` and
 pushes the tag; `.github/workflows/release.yml` runs `cargo publish
---workspace` behind the `crates-io` environment's reviewer and opens a
-GitHub Release. This skill prepares the commit that tag will point at.
+--workspace` behind the `crates-io` environment's reviewer, builds and
+uploads the Python package `arris` to PyPI behind the `pypi` environment's
+(`pypi-build`, `pypi`), and opens a GitHub Release. This skill prepares the
+commit that tag will point at.
 
 The version scheme, the `-dev` convention and who does what are
 `.agents/rules/git.md` §Tags. Read it first; this skill executes it.
@@ -23,7 +25,8 @@ The version scheme, the `-dev` convention and who does what are
    `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`,
    `tools/check-layers.sh`, and the last CI run on `main` green in every
    job — neither the hook nor a plan step runs CI's `oracle`, `wasm` or
-   `parallel` jobs.
+   `parallel` jobs. The `python` job is part of "every job": the binding
+   ships from the same tag.
    A release is not the place to discover a red suite. An active plan in `docs/plans/` does not block a patch release —
    say in the reply which plans are open, so the human knows what is
    half-landed.
@@ -71,7 +74,15 @@ The version scheme, the `-dev` convention and who does what are
 5. **Prove it publishes.** `cargo package --workspace` on the clean tree:
    every crate packages and its verifying build passes. A crate that fails
    here fails in the workflow after some of the others are already on
-   crates.io, where a version can be yanked but never replaced.
+   crates.io, where a version can be yanked but never replaced. The wheel
+   is part of the same proof, in a venv with `maturin` and `twine`:
+   `maturin develop --manifest-path crates/arris-py/Cargo.toml --extras test`,
+   `pytest crates/arris-py` (the oracle numbers, the docstring examples and
+   `mypy.stubtest` against the stubs), then `maturin build --release` and
+   `maturin sdist` with `twine check --strict` on both, and the wheel's
+   version is the release's (`X.Y.Z`, no `.dev0`). A stub that drifted or a
+   wheel `twine` refuses fails here and not in `pypi-build`, after the crates
+   are already up.
 6. **Commit** the bump and `CHANGELOG.md` together as `chore(arris):
    release X.Y.Z`. The body gives the derivation from step 2 (the bullets
    and commits that set the number) and the breaking list.
@@ -92,9 +103,12 @@ The version scheme, the `-dev` convention and who does what are
    git push origin vX.Y.Z
    ```
 
-   Then: they approve the `crates-io` environment when GitHub asks, with
-   the tag's CI run in front of them. Remind them of that — the approval
-   is the last checkpoint before a version exists forever.
+   Then: they approve the `crates-io` environment and the `pypi`
+   environment when GitHub asks, with the tag's CI run in front of them.
+   Remind them of that — each approval is the last checkpoint before a
+   version exists forever. (A PyPI file can be yanked, never replaced; and
+   the first upload also needs the `pypi` environment and the pending
+   publisher registered, `release.yml`'s header says how.)
 9. **Once they have pushed, cancel `main`'s duplicate CI run.** The two
    pushes start two full runs, about three hours each: the tag's, which
    is the release gate, and `main`'s tip, which is the same code plus
@@ -128,8 +142,9 @@ A release blocked by something the workflow itself gets wrong is a fix on
 
 ## Don't
 
-- Don't tag, don't push, don't run `cargo publish`. All three are the
-  human's, and the last one would skip the gate and the reviewer both.
+- Don't tag, don't push, don't run `cargo publish` or `twine upload`. All
+  of them are the human's, and the last two would skip the gate and the
+  reviewer both.
 - Don't put the version in a doc, a README or a rustdoc line.
   `Cargo.toml` holds the current version, and `CHANGELOG.md`'s headings
   record the released ones. Nothing else states either.

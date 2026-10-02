@@ -24,6 +24,9 @@
 #                                     corpus `boolean_*` and `provenance_*`
 #   arris-ops/src/{sweep,blend,transform,mirror}   that area's corpus tests
 #   any other crate source (mesh, debug, the rest of ops)   the whole corpus
+#   crates/arris-py/ (anything)       its own tests and its rdeps (none), no
+#                                     corpus: the binding adds no geometry, and
+#                                     the Python suite is CI's (ADR-0034 §4)
 #   crates/arris/                     the whole `arris` package, corpus included
 #   tests/fixtures/<area>/            that area's corpus tests
 #   prose (`*.md`, docs/, .agents/)   the docs tests, nothing else
@@ -94,6 +97,7 @@ while IFS= read -r p; do
             src/transform.rs|src/mirror.rs) need_corpus part; add_area transform ;;
             *) corpus=all ;;
           esac ;;
+        arris-py) ;;
         *) corpus=all ;;
       esac ;;
     crates/*) whole=yes ;;

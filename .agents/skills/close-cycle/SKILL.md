@@ -23,7 +23,8 @@ second roadmap file would only ever raise "which one is current?".
    cycle's full run; and the last CI run on
    `main` green in every job (`gh run list --branch main`, then `gh run view
    <id>` for its jobs) — neither the hook nor `/work` runs CI's `oracle`,
-   `wasm` or `parallel` jobs, so a job red on `main` is only visible there. If not, stop and report exactly what is open — do not close
+   `wasm` or `parallel` jobs, so a job red on `main` is only visible there
+   (the `python` job too: the binding's pytest and stub check run only in CI). If not, stop and report exactly what is open — do not close
    around it.
 2. **Reconcile the findings** (`docs/BACKLOG.md` §Findings). List the
    scheduled `Nightly` runs since the cycle opened (`gh run list
@@ -75,8 +76,9 @@ second roadmap file would only ever raise "which one is current?".
 9. **Run `/release`.** A closed cycle is a release: it bumps the minor
    (`.agents/rules/git.md` §Tags), and that skill picks the number, turns
    `CHANGELOG.md`'s `Unreleased` into the version's section, bumps the
-   version and its pins, proves the workspace still packages, and hands
-   the human the tag. Tags and pushes are theirs
+   version and its pins, proves the workspace still packages (the Python
+   wheel and its stub check included) and hands the human the tag, whose
+   push also publishes the wheel to PyPI behind the `pypi` approval. Tags and pushes are theirs
    (`.agents/rules/git.md`), never yours.
 
 ## Don't

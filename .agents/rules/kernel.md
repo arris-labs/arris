@@ -71,6 +71,13 @@ down. They apply to every crate; `SEED.md` §9 holds the reasons.
   kind is a breaking change that makes every `match` fail to compile —
   that is the feature. Never add a wildcard arm to an intersection or
   classification dispatch.
+- **A break updates the binding in the same commit.** `crates/arris-py`
+  maps every kernel error enum with an exhaustive `match`, so a variant
+  added in the kernel stops it compiling until it has its Python class, its
+  attributes and its line in `python/arris/_arris.pyi`; a changed signature
+  of a bound operation changes its method, stub and docstring example. The
+  hook compiles the crate, so the Rust half fails locally; the `python`
+  CI job (pytest, the docstring examples, `mypy.stubtest`) holds the rest.
 - **A change to a public type or signature is a design delta** in the plan
   and is named in the commit body. Pre-1.0 it is allowed; it is never
   silent.

@@ -51,6 +51,20 @@ equals "tests dir" "$f" "package(arris-geom)"
 f=$(key filter "$(plan crates/arris-debug/src/lib.rs)")
 has "debug" "$f" "rdeps(arris-debug) | binary_id(arris::corpus)"
 
+# The Python binding: whatever file under it, its own tests and no corpus
+# (it adds no geometry; its Python suite is CI's job, not the hook's).
+for p in crates/arris-py/src/model.rs crates/arris-py/Cargo.toml \
+  crates/arris-py/python/arris/_arris.pyi crates/arris-py/pyproject.toml; do
+  f=$(key filter "$(plan "$p")")
+  equals "py $p" "$f" "rdeps(arris-py)"
+done
+equals "py tests" "$(key filter "$(plan crates/arris-py/tests/test_io.py)")" "package(arris-py)"
+# Alongside a kernel crate it adds only itself.
+f=$(key filter "$(plan crates/arris-py/src/io.rs crates/arris-geom/src/curve.rs)")
+has "py+geom" "$f" "rdeps(arris-py)"
+has "py+geom" "$f" "rdeps(arris-geom)"
+lacks "py+geom" "$f" "all()"
+
 # The arris crate: the whole package, corpus included.
 f=$(key filter "$(plan crates/arris/tests/docs_refs.rs)")
 has "arris" "$f" "package(arris) | binary_id(arris::corpus)"
