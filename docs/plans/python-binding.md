@@ -141,7 +141,7 @@ bound has to be established here.
   confined to this crate and the plan stops for the human. Result:
   `docs/adr/0034-the-python-binding.md`, and `docs/adr/README.md`'s index
   line.
-- [ ] Step 2 **[1]** — The crate skeleton. `crates/arris-py`
+- [x] Step 2 **[1]** — The crate skeleton. `crates/arris-py`
   (`publish = false`, `cdylib` + `rlib`, pyo3 gated off wasm), a module
   that exposes `arris.__version__` and `ArrisError`; `pyproject.toml`; the
   layer table gains layer 8 in `tools/check-layers.sh` (self-test still

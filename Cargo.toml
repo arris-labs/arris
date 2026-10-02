@@ -49,6 +49,10 @@ arris-io = { path = "crates/arris-io", version = "=0.5.0-dev", default-features 
 # fixtures, strategies — never part of the kernel a consumer builds
 # against (docs/ARCHITECTURE.md §Formats and tools).
 arris-debug = { path = "crates/arris-debug" }
+# The facade, as `arris-py` (unpublished, layer above it) depends on it: path-only,
+# since nothing published may depend on an unpublished crate and this one is not
+# published either (docs/ARCHITECTURE.md §Crates, ADR-0034).
+arris = { path = "crates/arris" }
 
 # External crates, pinned here and used with `workspace = true` (SEED.md §4).
 nalgebra = { version = "0.35", default-features = false, features = ["std"] }
@@ -72,6 +76,10 @@ rerun = { version = "0.37.1", default-features = false, features = ["sdk"] }
 # The `parallel` features of `arris-mesh` and `arris-ops` only, and never on
 # wasm32 (01 §Threading).
 rayon = "1.10"
+# `arris-py` only, and never on wasm32 (ADR-0034 §2, §7). Pinned to the minor;
+# an upgrade is a plan step that re-runs the `forbid(unsafe_code)` check.
+# `extension-module` is `arris-py`'s own feature, set by maturin.
+pyo3 = { version = "0.26", default-features = false, features = ["macros", "abi3-py310"] }
 
 # Every crate opts in with `[lints] workspace = true`
 # (.agents/rules/kernel.md §API).

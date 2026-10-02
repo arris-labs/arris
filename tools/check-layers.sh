@@ -23,6 +23,7 @@ layer() {
     arris-io) echo 5 ;; # depends on arris-mesh for the mesh formats (ADR-0013)
     arris-debug) echo 6 ;;
     arris) echo 7 ;;
+    arris-py) echo 8 ;; # the Python binding: depends on the facade alone (ADR-0034)
     *)
       echo "check-layers: '$1' is not in the layer table; add it to docs/ARCHITECTURE.md and to $0" >&2
       exit 2

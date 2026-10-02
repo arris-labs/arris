@@ -26,6 +26,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 | `arris-io` | STEP AP214 Part 21 writer and reader (`step::write`, `step::read`, ADR-0025) over the Part 21 parser (`step::part21`), the native format (`native`), body bytes (`body`, ADR-0029), STL and OBJ mesh writers (`stl`, `obj`, ADR-0013); re-exports `arris-check` and `arris-mesh` | `arris-check`, `arris-mesh`, `thiserror`, `serde`, `serde_json`, `postcard` (the last three behind the `serde` feature) | 2 — algorithms |
 | `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
 | `arris` | Facade: re-exports | `math` through `io`; `debug` as a dev-dependency only | 4 |
+| `arris-py` | The Python binding (PyPI `arris`, ADR-0034): a thin 1:1 layer over the facade, `publish = false`, a `cdylib` + `rlib`, empty on `wasm32` | `arris`, `pyo3` (not on `wasm32`) | 5 — binding |
 
 `math`, `geom` and `topo` are the representation: they change rarely and a
 change there is a design delta named in a plan. Everything from `check` up
@@ -42,7 +43,7 @@ itself.
 The rule is enforced, not remembered: `tools/check-layers.sh` walks the
 declared edges of `cargo metadata` with a layer number per crate — its
 place in the chain `math` ← `geom` ← `topo` ← `check` ←
-`ops`/`mesh` ← `io` ← `debug` ← `arris`, finer than the table's tiers — and
+`ops`/`mesh` ← `io` ← `debug` ← `arris` ← `arris-py`, finer than the table's tiers — and
 fails on any edge that does not go strictly downward; dev-dependencies
 are exempt so a lower crate's tests may use `arris-debug`, which is itself a
 dev-dependency of the facade and never reaches a consumer. CI runs the

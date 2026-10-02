@@ -11,3 +11,6 @@ __pycache__/
 /docs/notes
 # Personal scratch crates and notebooks.
 /scratch
+# `maturin develop` drops the built module beside the package.
+/crates/arris-py/python/arris/*.so
+.pytest_cache/

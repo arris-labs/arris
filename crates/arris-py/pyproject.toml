@@ -1,0 +1,23 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "arris"
+# maturin reads the version from Cargo.toml, which inherits the workspace's.
+dynamic = ["version"]
+description = "A B-Rep geometric kernel: analytic and NURBS geometry, booleans with provenance, tessellation, STEP"
+readme = "../../README.md"
+requires-python = ">=3.10"
+license = { text = "MIT OR Apache-2.0" }
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "arris._arris"
+features = ["extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
