@@ -75,6 +75,13 @@ impl std::hash::Hash for Model {
 }
 
 impl Model {
+    /// The model that owns `shared`.
+    pub(crate) fn sharing(shared: &Arc<Shared>) -> Model {
+        Model {
+            shared: Arc::clone(shared),
+        }
+    }
+
     /// A model around `model`, with a serial of its own.
     pub fn wrapping(model: topo::Model) -> Model {
         Model {

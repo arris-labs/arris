@@ -114,7 +114,7 @@ impl Attr {
     }
 }
 
-fn entity<'py>(
+pub(crate) fn entity<'py>(
     py: Python<'py>,
     model: Option<&Model>,
     shape: Shape,

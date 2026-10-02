@@ -173,11 +173,18 @@ bound has to be established here.
   InvalidInput` and the `Rejected` variants carry the checker's report as
   text until step 8 has a `Report` class; step 8 makes it one. Step 6
   gives `Interrupted` the builtin `InterruptedError` as a second base.
-- [ ] Step 5 **[1]** — `Provenance` as Python values. `generated`,
+- [x] Step 5 **[1]** — `Provenance` as Python values. `generated`,
   `modified`, `deleted` as lists of `(origin, outputs)`, the roles as
   readable objects (`Role::Consumer`'s namespace and key included), and
   `Provenance.then`. Test: the bolt-pattern fixture's eight walls under
-  one origin, read from Python.
+  one origin, read from Python. *Found at step 5:* no operation exists in
+  Python yet to produce a record, so the bolt pattern's eight walls run in
+  Rust (`provenance::tests`, over the kernel's own primitives and cuts,
+  read through the same `recorded` view the getters use) and the pytest
+  holds `Role`; step 6's pytest reads the same record through
+  `Model.primitive_*` and `cut` (add it there). `Role(kind, part, *fields)`
+  is also the way to name an origin for `generated_from`; a record of one
+  model `then`-ed with another's raises `ForeignHandleError`.
 - [ ] Step 6 **[2]** — Operations. `primitive_box`, `primitive_cylinder`,
   `transform`, `mirror`, `cut`, `fuse`, `common`, `fillet`, `chamfer`,
   `extrude`, `revolve`, each returning `(Body, Provenance)`, with the

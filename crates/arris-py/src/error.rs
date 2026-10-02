@@ -147,6 +147,14 @@ pub enum BindError {
         /// The serial of the model it was given to.
         this: u64,
     },
+    /// A provenance record of model `owner` was combined with one of model
+    /// `this`: its origins and outputs name entities of different arenas.
+    ForeignRecord {
+        /// The serial of the model the record belongs to.
+        owner: u64,
+        /// The serial of the model it was combined with.
+        this: u64,
+    },
     /// The kernel does not resolve the handle: its slot was freed or reused.
     Stale(NotFound),
     /// An earlier call panicked while holding the model's lock.
@@ -173,6 +181,10 @@ impl core::fmt::Display for BindError {
                 f,
                 "handle {entity} belongs to model {owner}, not to model {this}"
             ),
+            BindError::ForeignRecord { owner, this } => write!(
+                f,
+                "a record of model {owner} cannot be combined with one of model {this}"
+            ),
             BindError::Stale(not_found) => not_found.fmt(f),
             BindError::Poisoned { model } => write!(
                 f,
@@ -189,6 +201,7 @@ impl BindError {
     pub fn class(&self) -> Class {
         match self {
             BindError::Foreign { .. } => Class::ForeignHandleError,
+            BindError::ForeignRecord { .. } => Class::ForeignHandleError,
             BindError::Stale(_) => Class::StaleHandleError,
             BindError::Poisoned { .. } => Class::ModelPoisonedError,
         }

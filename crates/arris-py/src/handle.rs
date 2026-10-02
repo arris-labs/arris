@@ -117,6 +117,36 @@ pub(crate) enum AnyHandle<'py> {
 }
 
 impl AnyHandle<'_> {
+    /// The entity and the orientation it was reached with, if `owner` minted
+    /// this handle.
+    pub(crate) fn resolve_shape(
+        &self,
+        owner: &Arc<Shared>,
+    ) -> Result<(EntityId, Orientation), BindError> {
+        Ok(match self {
+            AnyHandle::Body(h) => {
+                let k = h.resolve(owner)?;
+                (EntityId::Body(k.id), k.orientation)
+            }
+            AnyHandle::Shell(h) => {
+                let k = h.resolve(owner)?;
+                (EntityId::Shell(k.id), k.orientation)
+            }
+            AnyHandle::Face(h) => {
+                let k = h.resolve(owner)?;
+                (EntityId::Face(k.id), k.orientation)
+            }
+            AnyHandle::Edge(h) => {
+                let k = h.resolve(owner)?;
+                (EntityId::Edge(k.id), k.orientation)
+            }
+            AnyHandle::Vertex(h) => {
+                let k = h.resolve(owner)?;
+                (EntityId::Vertex(k.id), k.orientation)
+            }
+        })
+    }
+
     /// The entity, if `owner` minted this handle.
     pub(crate) fn resolve(&self, owner: &Arc<Shared>) -> Result<EntityId, BindError> {
         Ok(match self {
