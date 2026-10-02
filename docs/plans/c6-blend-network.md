@@ -185,7 +185,7 @@ bound has to be established here.
   way for a chamfer, its centroid `d / 3` from each face, the call
   deterministic and its record complete, the differential against Open
   CASCADE counting it among the agreeing recipes.
-- [ ] Step 9 **[1]** — Measure and close the plan's loop. Rerun
+- [x] Step 9 **[1]** — Measure and close the plan's loop. Rerun
   `tools/real-parts.sh`; the battery's `fillet` column, the committed tier's
   and `docs/ROADMAP.md` §C6 and §C4's table get the new numbers beside
   C4's 17 of 38; each part that left the column agrees with Open CASCADE or
@@ -233,6 +233,8 @@ out to need more than a commit each; say so in that commit.
 - `AGENTS.md` current state — C6's first plan landed.
 
 ## Open questions
+
+- **Measured at step 9 (agent, 2026-10-02): the open arc is gone from the fetched tier's column, the column's count is not.** `tools/real-parts.sh`: 27 parts, 20 read; the `fillet` column holds 11 parts (12 at step 1's baseline; the committed tier's 6 of 11 did not move), `Unsupported(circle curve × plane)` 8 → 0, `TangentChain` 1. Each of the 11 is refused as a named line: cylinder × cylinder 2, torus × cylinder 2, torus × plane 1, cone × plane 1, cylinder × cone 1 (later C6 pairs), `BlendTooLarge` 3 and `TangentChain` 1 (new lines in the roadmap: a blend running out of its face, a tangent corner the walk stops at), and one NURBS (the NURBS cycle's). No part left the column by agreeing: the acceptance's "each agrees or is refused as a named later line" holds, but the plan did not shrink the column; it moved the parts to the next pairs. The three `BlendTooLarge` parts (827-9999-906 and -908, CTC-03) fail at the battery's radius, a tenth of the sampled edge, which on 906 is 6.35 on a 63.5-long edge beside faces 1.27 wide; Open CASCADE builds it. The 76 junction edges Open CASCADE returned not-done on (step 6) were not classified: the battery records the oracle's refusals per stage, not per edge, and the throwaway probe was not rebuilt.
 
 - **Found at step 8 (agent): the property found one kernel gap and drops one clause.** `outline_prop` (`arris-ops/tests/outline_prop.rs`: a stadium, a rounded rectangle and a D-notch plate in a random pose, one top edge named, fillet and chamfer, 1000 cases clean) found a stadium turned in space whose two half tori the checker's S5 leaves undecided at `Full` (`f19 (torus) against f20 (torus) is not decided`); the unturned body is clean. Shrunk to `regression/turned-stadium-fillet-torus-pair`, `#[ignore]`d, with a backlog line; the property excludes by name exactly an unchecked pair of two tori and nothing else, and the exclusion goes when the fixture passes. The plan's "then chamfered" is dropped: a chamfer over the fillet's faces is a blend over a blend, this plan's non-goal; fillet and chamfer are separate shards, as `blend_prop.rs` has them. The differential's `prop::recipe` has a `Rim` operand (stadium or D-notch plate, the whole top blended through one edge, fillet or chamfer), 256 recipes: 196 agree, none fail.
 

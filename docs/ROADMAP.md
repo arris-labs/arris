@@ -555,13 +555,34 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 | itself: unparsed | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-**Status: opened 2026-10-02; scope confirmed by the human the same day.**
+**Status: opened 2026-10-02; scope confirmed by the human the same day;
+first plan (`c6-blend-network`) landed 2026-10-02, the cycle stays open.**
+The first plan took the two lines marked done below. On the fetched tier
+(27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column holds 11
+parts where the step-1 baseline held 12 (C4's 17 of 38 counted both tiers;
+the committed tier's 6 of 11 did not move): `Unsupported(circle curve ×
+plane)` 8 → 0, and what each of those parts now meets is the next line's —
+`BlendTooLarge` 3 (a blend that runs out of its face at the battery's
+radius, a tenth of the sampled edge, on faces 1.27 wide beside a 63.5-long
+edge: Open CASCADE builds it by running over the neighbour), cylinder ×
+cylinder 2, torus × cylinder 2, torus × plane 1, cone × plane 1, cylinder ×
+cone 1, `TangentChain` 1 (NIST STC-09, not read further). No fetched part
+left the column by agreeing; each is refused as a line named below. The
+residue is the next plan's sizing.
 
-- Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
-  refusals).
-- Blends on face pairs outside ADR-0007's table: a circular edge where the
-  table asks a line (circle × plane, 9), plane × cone, cylinder × cone,
-  cylinder × cylinder; then sphere, torus and elliptic cylinder.
+- ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
+  refusals).~~ Done: a stripe follows a chain of line and arc edges
+  (ADR-0035), open or closed; the chain's refusals are named
+  (`Unsupported` for a pair or an oblique end, `BlendTooLarge`,
+  `TangentChain`).
+- Blends on face pairs outside ADR-0007's table: ~~a circular edge where
+  the table asks a line (circle × plane, 9)~~ done for a plane against a
+  cylinder, an open arc or a closed circle, fillet and chamfer; plane ×
+  cone, cylinder × cone, cylinder × cylinder, plane × torus and torus ×
+  cylinder remain; then sphere and elliptic cylinder.
+- A blend that runs out of its face onto the next (`BlendTooLarge` at a
+  large radius; 1198 of the census's edges), and a tangent corner the
+  walk stops at (`TangentChain`, STC-09).
 - The corners refused as `VertexBlend`.
 - The remaining chamfer modes (two distances, a distance and an angle).
 - Variable radius, and blends over blends.
