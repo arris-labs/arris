@@ -13,6 +13,7 @@ pub mod error;
 mod handle;
 pub mod kernel_error;
 mod model;
+mod profile;
 mod provenance;
 mod role;
 
@@ -20,6 +21,7 @@ pub use control::Cancel;
 pub use error::{ArrisError, BindError, Class};
 pub use handle::{Body, Edge, Face, Shell, Vertex};
 pub use model::Model;
+pub use profile::{Loop, Profile, Segment};
 pub use provenance::Provenance;
 pub use role::Role;
 
@@ -48,6 +50,9 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Vertex>()?;
     module.add_class::<Cancel>()?;
     module.add_class::<Role>()?;
+    module.add_class::<Segment>()?;
+    module.add_class::<Loop>()?;
+    module.add_class::<Profile>()?;
     module.add_class::<Provenance>()?;
     Ok(())
 }

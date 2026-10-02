@@ -15,6 +15,7 @@ use crate::control::{Cancel, Limits};
 use crate::error::BindError;
 use crate::handle::{AnyHandle, Body, Edge};
 use crate::kernel_error::op_error;
+use crate::profile::Profile;
 use crate::provenance::Provenance;
 
 /// Serial numbers for models, in creation order within the process: what a
@@ -160,7 +161,7 @@ fn finite(what: &'static str, v: [f64; 3]) -> Result<(), OpError> {
 }
 
 /// A direction from three numbers: finite, and not zero.
-fn direction(what: &'static str, v: [f64; 3]) -> Result<Vec3, OpError> {
+fn direction_of(what: &'static str, v: [f64; 3]) -> Result<Vec3, OpError> {
     finite(what, v)?;
     let v = Vec3::from(v);
     if v.norm() > 0.0 {
@@ -275,7 +276,7 @@ impl Model {
         budget: Option<u64>,
     ) -> PyResult<Made> {
         let axis = finite("axis origin", origin)
-            .and_then(|()| direction("axis direction", axis))
+            .and_then(|()| direction_of("axis direction", axis))
             .and_then(|d| Axis::new(Point3::from(origin), d).map_err(OpError::from))
             .map_err(|e| self.refuse(py, e))?;
         let limits = Limits::new(cancel, budget);
@@ -303,7 +304,7 @@ impl Model {
     ) -> PyResult<Made> {
         let body = body.resolve(&self.shared)?;
         let motion = finite("translation", translation)
-            .and_then(|()| direction("rotation axis", axis))
+            .and_then(|()| direction_of("rotation axis", axis))
             .and_then(|a| {
                 if angle.is_finite() {
                     let turn = UnitQuaternion::from_axis_angle(&UnitVec3::new_normalize(a), angle);
@@ -336,7 +337,7 @@ impl Model {
     ) -> PyResult<Made> {
         let body = body.resolve(&self.shared)?;
         let plane = finite("mirror origin", origin)
-            .and_then(|()| direction("mirror normal", normal))
+            .and_then(|()| direction_of("mirror normal", normal))
             .and_then(|n| {
                 Reflection::new(Point3::from(origin), n).map_err(|_| {
                     refused(Reason::NonFinite {
@@ -404,6 +405,61 @@ impl Model {
         let limits = Limits::new(cancel, budget);
         self.operate(py, &limits, move |m, control| {
             arris::ops::common(m, a, b, control)
+        })
+    }
+
+    /// The solid `profile` sweeps along `direction` for `length`: caps from
+    /// the profile's face and a side face for each of its segments, every
+    /// entity named by the part of the sketch it came from
+    /// (`Role("extrude", "Side", loop, segment)`).
+    ///
+    /// Raises `OpProfileError` for an invalid sketch and `OpDegenerateError`
+    /// for a length that is not positive or finite or a direction that is
+    /// not along the profile's normal.
+    #[pyo3(signature = (profile, direction, length, *, cancel=None, budget=None))]
+    fn extrude(
+        &self,
+        py: Python<'_>,
+        profile: &Profile,
+        direction: [f64; 3],
+        length: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let direction =
+            direction_of("extrude direction", direction).map_err(|e| self.refuse(py, e))?;
+        let (profile, limits) = (profile.kernel.clone(), Limits::new(cancel, budget));
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::extrude(m, &profile, direction, length, control)
+        })
+    }
+
+    /// The solid `profile` sweeps turning by `angle` radians (a full turn
+    /// is `2π`) about the line through `origin` along `axis`; the axis must
+    /// lie in the profile's plane.
+    ///
+    /// Raises `OpProfileError` for an invalid sketch and `OpDegenerateError`
+    /// for an axis off the plane, a profile across the axis, or an angle
+    /// that is not in `(0, 2π]`.
+    #[pyo3(signature = (profile, origin, axis, angle, *, cancel=None, budget=None))]
+    #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
+    fn revolve(
+        &self,
+        py: Python<'_>,
+        profile: &Profile,
+        origin: [f64; 3],
+        axis: [f64; 3],
+        angle: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let axis = finite("axis origin", origin)
+            .and_then(|()| direction_of("axis direction", axis))
+            .and_then(|d| Axis::new(Point3::from(origin), d).map_err(OpError::from))
+            .map_err(|e| self.refuse(py, e))?;
+        let (profile, limits) = (profile.kernel.clone(), Limits::new(cancel, budget));
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::revolve(m, &profile, axis, angle, control)
         })
     }
 

@@ -206,10 +206,21 @@ bound has to be established here.
   alone, so step 7's `revolve` is where to look for one. Operation
   arguments the kernel's types refuse (a zero axis, a non-finite corner)
   are `OpDegenerateError` naming the argument, raised by the binding.
-- [ ] Step 7 **[2]** — Profiles. `Profile` of lines, arcs and elliptic
+- [x] Step 7 **[2]** — Profiles. `Profile` of lines, arcs and elliptic
   arcs with holes, built from Python values and checked on `extrude` and
   `revolve`. Test: Pappus's theorems on a profile built in Python, to the
-  fixtures' tolerance.
+  fixtures' tolerance. *Found at step 7:* the volume half of Pappus needs
+  `mass_properties`, which is step 8's; this step's pytest holds the
+  profile's own area and centroid to their closed forms (disc, ellipse,
+  half disc by arc, elliptic-arc quadrant, a plate with a hole), every
+  sweep entity's `Role("extrude" | "revolve", "Side", loop, segment)`, and
+  the refusals (`OpProfileError` with `detail`, `OpDegenerateError` for a
+  plane, direction, axis or angle the kernel refuses); step 8's pytest adds
+  `volume == area * length` and `volume == 2π · ȳ · area` for the same
+  profiles. The sketch is `Segment`, `Loop` and `Profile` (frozen values,
+  `Loop.polygon` for the common case). No `OpUnsupportedError` is
+  reachable from a profile either (elliptic revolve is `OpDegenerateError`),
+  so that attribute case stays Rust-tested.
 - [ ] Step 8 **[1]** — Queries and walks. Mass properties, face frames,
   `check(body, level)` returning the `Report` and its `Violation`s,
   adjacency walks. Test: the oracle's volume, area, centroid and inertia
@@ -299,9 +310,9 @@ bound has to be established here.
 - **Settled at step 6: Ctrl-C inside a released-GIL call.** The poll
   re-attaches every 256 polls and calls `check_signals`; a `KeyboardInterrupt`
   surfaces and the model is as it was. Measured on eight bolt-hole cuts
-  (26 steps each, 20 s of CPU in total): signals every poll, every 256 and
-  never differ by less than the run-to-run noise (0.71–0.80 s for forty
-  builds), so the interval is not tuned further. The thin-elliptic
+  (26 steps each): signals every poll, every 256 and never differ by
+  less than the run-to-run noise (best of seven runs of five builds:
+  0.71–0.80 s), so the interval is not tuned further. The thin-elliptic
   section the question named needs `Profile` and waits for step 7; the
   interval is a constant (`control::SIGNAL_EVERY`) if it shows a cost.
 - - **⚠ OPEN: platforms of the wheel (human, by step 12).** The plan builds
