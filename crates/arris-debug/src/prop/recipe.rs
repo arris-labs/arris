@@ -10,7 +10,10 @@
 //! cylinder may have one edge filleted or chamfered first, where the
 //! edge's point is known in closed form, and a stadium or a plate with a
 //! D-shaped notch has its whole top outline blended through one edge
-//! (ADR-0035). Every operand is then placed by
+//! (ADR-0035). [`turned_recipe`] draws a turned part alone, a coned
+//! shoulder, a dome or a toroidal bead revolved about `y` with a pick of
+//! its circular corners blended in one call (ADR-0036), outside the
+//! general draw so that one's seeded stream is unchanged. Every operand is then placed by
 //! one `transform`: its own motion within [`OFFSET`] of the others (so
 //! the operands overlap), under a motion the recipe shares, which is the
 //! identity half the time and a pose at [`super::DEFAULT_SCALE`]
@@ -32,6 +35,7 @@ use arris_math::{Axis, Frame, Isometry, Point2, Point3, Reflection, Vec3};
 use proptest::prelude::*;
 
 use super::body::{MAX_EXTENT, MIN_EXTENT};
+use super::turned::Turned;
 use super::{finite_f64, point_in_box, pose, radius, rotation, unit_vec3};
 use crate::fixtures::{
     self, Analytic, Circle, Ellipse, Loop, MirrorPlane, Num, Plane, PrecisionSpec, Probe, Recipe,
@@ -87,6 +91,9 @@ enum Shape {
         size: f64,
         chamfer: bool,
     },
+    /// A turned part: lines and an arc revolved a whole turn about `y`,
+    /// some of its circular edges blended in one call (ADR-0036).
+    Turned(Turned),
     /// A profile in the `xy` plane revolved about an axis in that plane;
     /// `centre` is a point of the material in the profile.
     Revolve {
@@ -269,6 +276,24 @@ fn rim() -> impl Strategy<Value = Shape> {
             }
         ),
     ]
+}
+
+/// Recipes of one turned part each, no boolean: what the differential
+/// holds to Open CASCADE for the meridian row's blends alone (ADR-0036).
+pub fn turned_recipe() -> impl Strategy<Value = Recipe> {
+    (
+        super::turned::turned(),
+        prop_oneof![Just(Isometry::identity()), pose()],
+    )
+        .prop_map(|(t, shared)| {
+            let operand = Operand {
+                shape: Shape::Turned(t),
+                blend: None,
+                local: Isometry::identity(),
+                mirror: None,
+            };
+            write(&[operand], &[], &shared)
+        })
 }
 
 fn blend() -> impl Strategy<Value = Blend> {
@@ -515,6 +540,43 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                 });
                 rim_body = Some(name);
                 Point3::new(centre.x, centre.y, length / 2.0)
+            }
+            Shape::Turned(turned) => {
+                let sketch = format!("sk{i}");
+                steps.push(profile_step(&sketch, &turned.profile()));
+                steps.push(Step::Revolve {
+                    name: base.clone(),
+                    profile: sketch,
+                    axis: fixtures::Axis {
+                        origin: num3([0.0, 0.0, 0.0]),
+                        direction: num3([0.0, 1.0, 0.0]),
+                    },
+                    angle_deg: 360.0.into(),
+                });
+                let name = format!("f{i}");
+                let (of, size) = (base.clone(), turned.size.into());
+                let edges = turned
+                    .blended
+                    .iter()
+                    .map(|&k| point3(turned.edge_point(k)))
+                    .collect();
+                steps.push(if turned.chamfer {
+                    Step::Chamfer {
+                        name: name.clone(),
+                        of,
+                        edges,
+                        distance: size,
+                    }
+                } else {
+                    Step::Fillet {
+                        name: name.clone(),
+                        of,
+                        edges,
+                        radius: size,
+                    }
+                });
+                rim_body = Some(name);
+                turned.centre()
             }
             Shape::Revolve {
                 profile,

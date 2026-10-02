@@ -9,12 +9,17 @@
 //! fixture under `tests/fixtures/regression/` (`tests/fixtures/README.md`
 //! §Property-test failures).
 
+use arris_debug::prop::turned::{Piece, Turned, sweep, turned};
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
-use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, transform};
+use arris_debug::unmetered::{
+    chamfer, extrude, fillet, mass_properties, primitive_box, revolve, transform,
+};
 use arris_debug::{dump_text, prop, prop_shards};
 use arris_ops::OpError;
-use arris_ops::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
-use arris_ops::arris_check::arris_topo::arris_math::{Frame, Isometry, Point2, Point3, Vec3};
+use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
+use arris_ops::arris_check::arris_topo::arris_math::{
+    Axis, Frame, Isometry, Point2, Point3, Vec2, Vec3,
+};
 use arris_ops::arris_check::arris_topo::provenance::audit;
 use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Provenance};
 use arris_ops::arris_check::{Level, Report, check};
@@ -466,8 +471,8 @@ fn a_small_fillet_corner_far_out_is_still_square() {
         prism: Prism::Ell {
             x: 1.0,
             y: 1.0,
-            arm_x: 0.3762546790021239,
-            arm_y: 0.5247994758022808,
+            arm_x: 0.376254679002123,
+            arm_y: 0.524799475802280,
             height: 1.0,
         },
         edges: vec![
@@ -486,12 +491,12 @@ fn a_small_fillet_corner_far_out_is_still_square() {
             PrismEdge::Top(5),
             PrismEdge::Rise(5),
         ],
-        size: 0.012445353519596015,
+        size: 0.012445353519596,
         pose: Isometry::new(
             Unit::new_unchecked(Quaternion::new(
-                0.47173495514794034,
+                0.471734955147940,
                 0.0,
-                0.7989230761002037,
+                0.798923076100203,
                 0.373079147857608,
             )),
             Vec3::new(66.25009385227327, 66.38690084404882, 0.0),
@@ -500,4 +505,375 @@ fn a_small_fillet_corner_far_out_is_still_square() {
     if let Err(e) = blends_as_their_closed_forms(case, Blend::Fillet) {
         panic!("{e}");
     }
+}
+
+// Turned parts: the meridian row (ADR-0036) in one call. A profile of lines
+// and an arc revolved about `y`, some of its corners blended; the volume is
+// the part's by Pappus less (a fillet or chamfer of a convex corner) or
+// plus (a concave one) each corner's section swept about the axis — a
+// region this test bounds itself, from the two meridians and the ball, not
+// from the kernel's contacts.
+
+/// A meridian leaving a corner `v`: its point at arc length `s` from it.
+#[derive(Debug, Clone, Copy)]
+enum Ray {
+    Line {
+        v: Point2,
+        out: Vec2,
+        /// The left of the outline's direction of travel, the material's
+        /// side.
+        left: Vec2,
+    },
+    Circle {
+        centre: Point2,
+        radius: f64,
+        /// The angle of the corner, and the way the angle runs leaving it.
+        from: f64,
+        way: f64,
+        /// Whether the outline travels the circle counter-clockwise.
+        ccw: bool,
+    },
+}
+
+impl Ray {
+    /// Piece `k` of the outline as it leaves corner `k` (`forward`) or
+    /// piece `k − 1` as it leaves it backward.
+    fn leaving(t: &Turned, k: usize, forward: bool) -> Ray {
+        let i = if forward { k } else { k - 1 };
+        let (from, to) = (t.from(i), t.pieces[i].end());
+        let v = t.corner(k);
+        match &t.pieces[i] {
+            Piece::Line { .. } => {
+                let travel = (to - from).normalize();
+                Ray::Line {
+                    v,
+                    out: if forward { travel } else { -travel },
+                    left: Vec2::new(-travel.y, travel.x),
+                }
+            }
+            &Piece::Arc {
+                via,
+                centre,
+                radius,
+                ..
+            } => {
+                let swept = sweep(from, via, to, centre);
+                Ray::Circle {
+                    centre,
+                    radius,
+                    from: (v.y - centre.y).atan2(v.x - centre.x),
+                    way: if (swept > 0.0) == forward { 1.0 } else { -1.0 },
+                    ccw: swept > 0.0,
+                }
+            }
+        }
+    }
+
+    fn start(&self) -> Point2 {
+        match *self {
+            Ray::Line { v, .. } => v,
+            Ray::Circle {
+                centre,
+                radius,
+                from,
+                ..
+            } => centre + Vec2::new(from.cos(), from.sin()) * radius,
+        }
+    }
+
+    fn direction(&self) -> Vec2 {
+        match *self {
+            Ray::Line { out, .. } => out,
+            Ray::Circle { from, way, .. } => Vec2::new(-from.sin(), from.cos()) * way,
+        }
+    }
+
+    /// The unit direction of motion at arc length `s`.
+    fn direction_at(&self, s: f64) -> Vec2 {
+        match *self {
+            Ray::Line { out, .. } => out,
+            Ray::Circle {
+                radius, from, way, ..
+            } => {
+                let a = from + way * s / radius;
+                Vec2::new(-a.sin(), a.cos()) * way
+            }
+        }
+    }
+
+    fn at(&self, s: f64) -> Point2 {
+        match *self {
+            Ray::Line { v, out, .. } => v + out * s,
+            Ray::Circle {
+                centre,
+                radius,
+                from,
+                way,
+                ..
+            } => {
+                let a = from + way * s / radius;
+                centre + Vec2::new(a.cos(), a.sin()) * radius
+            }
+        }
+    }
+
+    /// The arc length from the corner to the point of the meridian nearest
+    /// `p`.
+    fn foot(&self, p: Point2) -> f64 {
+        match *self {
+            Ray::Line { v, out, .. } => (p - v).dot(&out),
+            Ray::Circle {
+                centre,
+                radius,
+                from,
+                way,
+                ..
+            } => {
+                let a = (p.y - centre.y).atan2(p.x - centre.x);
+                radius * (way * (a - from)).rem_euclid(2.0 * PI)
+            }
+        }
+    }
+
+    /// The arc length at distance `d` from the corner: along a line, the
+    /// chord on a circle.
+    fn at_distance(&self, d: f64) -> f64 {
+        match *self {
+            Ray::Line { .. } => d,
+            Ray::Circle { radius, .. } => radius * 2.0 * (d / (2.0 * radius)).asin(),
+        }
+    }
+}
+
+/// Where a ball of radius `r` on side `side` (`1` the left of the
+/// outline's travel, the material) of both meridians touches them: its
+/// centre.
+fn ball_centre(a: &Ray, b: &Ray, side: f64, r: f64) -> Point2 {
+    let v = a.start();
+    // A meridian offset to the ball's side: a line through a point and
+    // direction, or a circle.
+    enum Offset {
+        Line(Point2, Vec2),
+        Circle(Point2, f64),
+    }
+    let offset = |ray: &Ray| match *ray {
+        Ray::Line { v, out, left } => Offset::Line(v + left * (side * r), out),
+        Ray::Circle {
+            centre,
+            radius,
+            ccw,
+            ..
+        } => Offset::Circle(centre, radius - side * r * if ccw { 1.0 } else { -1.0 }),
+    };
+    let nearest = |points: Vec<Point2>| {
+        points
+            .into_iter()
+            .min_by(|p, q| (p - v).norm().total_cmp(&(q - v).norm()))
+            .expect("an offset meridian meets the other")
+    };
+    match (offset(a), offset(b)) {
+        (Offset::Line(p, d), Offset::Line(q, e)) => {
+            let s = (q - p).perp(&e) / d.perp(&e);
+            p + d * s
+        }
+        (Offset::Line(p, d), Offset::Circle(c, rho))
+        | (Offset::Circle(c, rho), Offset::Line(p, d)) => {
+            let w = p - c;
+            let (half, rest) = (w.dot(&d), w.dot(&w) - rho * rho);
+            let disc = (half * half - rest).sqrt();
+            nearest(vec![p + d * (-half + disc), p + d * (-half - disc)])
+        }
+        (Offset::Circle(..), Offset::Circle(..)) => unreachable!("two arcs never meet at a corner"),
+    }
+}
+
+/// `π ∮ x² dy` along `n` samples of `curve` on `[0, 1]`: the volume of
+/// revolution about `y` of the region the boundary encloses, by Gauss–
+/// Legendre quadrature of 24 points.
+fn swept(curve: &dyn Fn(f64) -> (Point2, Vec2)) -> f64 {
+    // The nodes and weights of the 8-point rule on three sub-intervals.
+    const NODES: [f64; 4] = [
+        0.183434642495649,
+        0.525532409916328,
+        0.796666477413626,
+        0.960289856497536,
+    ];
+    const WEIGHTS: [f64; 4] = [
+        0.362683783378361,
+        0.313706645877887,
+        0.222381034453374,
+        0.101228536290376,
+    ];
+    let mut sum = 0.0;
+    for part in 0..3 {
+        let (lo, hi) = (part as f64 / 3.0, (part + 1) as f64 / 3.0);
+        for (x, w) in NODES.iter().zip(WEIGHTS) {
+            for sign in [-1.0, 1.0] {
+                let t = (lo + hi) / 2.0 + sign * x * (hi - lo) / 2.0;
+                let (p, d) = curve(t);
+                sum += w * (hi - lo) / 2.0 * p.x * p.x * d.y;
+            }
+        }
+    }
+    PI * sum
+}
+
+/// The volume of the part's own outline, by Pappus about `y`.
+fn turned_volume(t: &Turned) -> f64 {
+    let mut total = 0.0;
+    for i in 0..t.pieces.len() {
+        let (from, to) = (t.from(i), t.pieces[i].end());
+        total += match &t.pieces[i] {
+            Piece::Line { .. } => swept(&|s| (from + (to - from) * s, to - from)),
+            &Piece::Arc {
+                via,
+                centre,
+                radius,
+                ..
+            } => {
+                let sw = sweep(from, via, to, centre);
+                let a0 = (from.y - centre.y).atan2(from.x - centre.x);
+                swept(&|s| {
+                    let a = a0 + sw * s;
+                    (
+                        centre + Vec2::new(a.cos(), a.sin()) * radius,
+                        Vec2::new(-a.sin(), a.cos()) * (radius * sw),
+                    )
+                })
+            }
+        };
+    }
+    total.abs()
+}
+
+/// A boundary piece: its point and velocity at `s` in `[0, 1]`.
+type Closing = Box<dyn Fn(f64) -> (Point2, Vec2)>;
+
+/// The section corner `k` loses (convex) or gains (concave), swept: the
+/// region between the corner, the two contacts and the ball's arc or the
+/// chamfer's chord.
+fn corner_volume(t: &Turned, k: usize) -> (f64, bool) {
+    let (a, b) = (Ray::leaving(t, k, false), Ray::leaving(t, k, true));
+    let (t_in, t_out) = (-a.direction(), b.direction());
+    let convex = t_in.perp(&t_out) > 0.0;
+    let side = if convex { 1.0 } else { -1.0 };
+    let r = t.size;
+    let (sa, sb, closing): (f64, f64, Closing) = if t.chamfer {
+        let (sa, sb) = (a.at_distance(r), b.at_distance(r));
+        let (pa, pb) = (a.at(sa), b.at(sb));
+        (sa, sb, Box::new(move |s| (pa + (pb - pa) * s, pb - pa)))
+    } else {
+        let c = ball_centre(&a, &b, side, r);
+        let (sa, sb) = (a.foot(c), b.foot(c));
+        let (pa, pb) = (a.at(sa), b.at(sb));
+        let angle = |p: Point2| (p.y - c.y).atan2(p.x - c.x);
+        let mut turn = angle(pb) - angle(pa);
+        while turn > PI {
+            turn -= 2.0 * PI;
+        }
+        while turn < -PI {
+            turn += 2.0 * PI;
+        }
+        let a0 = angle(pa);
+        (
+            sa,
+            sb,
+            Box::new(move |s| {
+                let q = a0 + turn * s;
+                (
+                    c + Vec2::new(q.cos(), q.sin()) * r,
+                    Vec2::new(-q.sin(), q.cos()) * (r * turn),
+                )
+            }),
+        )
+    };
+    // The corner out along one meridian to its contact, the closing arc or
+    // chord, and back along the other.
+    let out = swept(&|s| (a.at(sa * s), a.direction_at(sa * s) * sa));
+    let back = swept(&|s| (b.at(sb * (1.0 - s)), -b.direction_at(sb * (1.0 - s)) * sb));
+    let close = swept(&|s| closing(s));
+    ((out + close + back).abs(), convex)
+}
+
+/// The edge of `body` that is the circle about `(0, y, 0)` of radius `x`.
+fn circle_at(m: &Model, body: Body, x: f64, y: f64) -> Result<Edge, TestCaseError> {
+    for e in m.edges(body).map_err(fail)? {
+        let entity = m.edge(e.id).map_err(fail)?;
+        let Some((curve, _)) = entity.curve() else {
+            continue;
+        };
+        if let Curve::Circle { frame, radius } = m.curve(curve).map_err(fail)?
+            && (frame.origin() - Point3::new(0.0, y, 0.0)).norm() < 1e-9
+            && (radius - x).abs() < 1e-9
+        {
+            return Ok(e);
+        }
+    }
+    Err(fail(format!("no circle of radius {x} at height {y}")))
+}
+
+fn turned_in(m: &mut Model, t: &Turned) -> Result<Body, TestCaseError> {
+    let axis = Axis::new(Point3::origin(), Vec3::y()).map_err(fail)?;
+    Ok(revolve(m, &t.profile(), axis, 2.0 * PI).map_err(fail)?.0)
+}
+
+fn blend_turned(
+    m: &mut Model,
+    body: Body,
+    t: &Turned,
+) -> Result<(Body, Provenance), TestCaseError> {
+    let edges = t
+        .blended
+        .iter()
+        .map(|&k| circle_at(m, body, t.corner(k).x, t.corner(k).y))
+        .collect::<Result<Vec<_>, _>>()?;
+    let kind = if t.chamfer {
+        Blend::Chamfer
+    } else {
+        Blend::Fillet
+    };
+    op(kind)(m, body, &edges, t.size).map_err(|e| fail(format!("{kind:?} of the turned part: {e}")))
+}
+
+fn turned_matches_pappus(t: Turned) -> Result<(), TestCaseError> {
+    let mut m = Model::default();
+    let part = turned_in(&mut m, &t)?;
+    let (blended, p) = blend_turned(&mut m, part, &t)?;
+    assert_checked(&check(&m, blended, Level::Full))?;
+    audit(&m, &[part], blended, &p).map_err(|e| fail(format!("provenance: {e}")))?;
+    let props = mass_properties(&m, blended).map_err(fail)?;
+    let mut want = turned_volume(&t);
+    for &k in &t.blended {
+        let (section, convex) = corner_volume(&t, k);
+        want += if convex { -section } else { section };
+    }
+    // A section on a cone, a sphere or a torus is fitted, so the volume
+    // holds to the model's tolerance over the body's size.
+    let rel = fitted_rel(&m, &props);
+    prop_assert!(
+        close_to(props.volume, want, 1.0, rel),
+        "volume {} vs Pappus {}",
+        props.volume,
+        want
+    );
+    let mut again = Model::default();
+    let part = turned_in(&mut again, &t)?;
+    let (twice, again_p) = blend_turned(&mut again, part, &t)?;
+    prop_assert_eq!(
+        dump_text(&again, twice).map_err(fail)?,
+        dump_text(&m, blended).map_err(fail)?
+    );
+    prop_assert_eq!(again_p, p);
+    Ok(())
+}
+
+prop_shards! {
+    /// A turned part — a coned shoulder, a dome, a toroidal bead — with a
+    /// pick of its circular corners filleted or chamfered in one call:
+    /// clean at `Full` with nothing unchecked, audited, at Pappus' volume
+    /// about the axis and deterministic.
+    turned_parts_blend_as_pappus
+        [shard_0 shard_1 shard_2 shard_3] (t) = turned() => {
+            turned_matches_pappus(t)
+        }
 }

@@ -24,3 +24,42 @@ fn arris_and_the_oracle_agree_on_drawn_recipes() {
         run.failures_text()
     );
 }
+
+/// The turned parts alone (ADR-0036): a coned shoulder, a dome or a
+/// toroidal bead with a pick of its circular corners blended in one call,
+/// each against Open CASCADE. The recipes the meridian row builds are
+/// counted among the agreeing — Open CASCADE walks its torus and its
+/// cone-against-cylinder blends, so the mass properties are held to what
+/// both shapes' own tolerances support — and none may disagree or be
+/// refused by Arris alone.
+#[test]
+fn arris_and_the_oracle_agree_on_turned_parts() {
+    let run = differential::run_over(
+        "turned",
+        arris_debug::prop::recipe::turned_recipe(),
+        &prop::seed(),
+        differential::cases(),
+    )
+    .unwrap_or_else(|e| panic!("the differential could not run: {e}"));
+    println!("{}", run.report());
+    assert!(
+        run.failures.is_empty(),
+        "{}\n{} failing recipes:\n\n{}",
+        run.report(),
+        run.failures.len(),
+        run.failures_text()
+    );
+    let histogram = run.histogram();
+    let count = |class: &str| histogram.get(class).copied().unwrap_or(0);
+    assert_eq!(
+        count("ArrisRefuses"),
+        0,
+        "Arris refuses a turned part Open CASCADE builds\n{}",
+        run.report()
+    );
+    assert!(
+        count("Agree") > 0,
+        "no turned part compared\n{}",
+        run.report()
+    );
+}

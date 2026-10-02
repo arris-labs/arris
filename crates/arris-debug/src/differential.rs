@@ -752,9 +752,13 @@ impl Run {
     }
 }
 
-/// The scratch directory case `name` is written to.
-fn case_dir(name: &str) -> PathBuf {
-    oracle::scratch_dir().join("differential").join(name)
+/// The scratch directory case `name` of `family` is written to: runs
+/// over different families may be at once, so they never share one.
+fn case_dir(family: &str, name: &str) -> PathBuf {
+    oracle::scratch_dir()
+        .join("differential")
+        .join(family)
+        .join(name)
 }
 
 /// The oracle's answer for a scratch fixture it answered: the fixture
@@ -779,8 +783,18 @@ fn load(dir: &Path, answer: Result<(), String>) -> Result<Fixture, String> {
 /// assert!(run.failures.is_empty(), "{}", run.failures_text());
 /// ```
 pub fn run(seed: &[u8; 32], n: usize) -> Result<Run, OracleError> {
+    run_over("", recipe(), seed, n)
+}
+
+/// [`run`] over the recipes `strategy` draws instead of [`recipe`]'s: a
+/// family of them, held to Open CASCADE alone, its scratch cases under
+/// `family` so a run of another family at once does not share them.
+/// Errors: [`run`]'s.
+pub fn run_over<S>(family: &str, strategy: S, seed: &[u8; 32], n: usize) -> Result<Run, OracleError>
+where
+    S: Strategy<Value = Recipe>,
+{
     let start = Instant::now();
-    let strategy = recipe();
     let mut runner = prop::runner_with_seed(seed);
     let mut trees = Vec::with_capacity(n);
     for _ in 0..n {
@@ -794,7 +808,7 @@ pub fn run(seed: &[u8; 32], n: usize) -> Result<Run, OracleError> {
     }
     let recipes: Vec<Recipe> = trees.iter().map(|t| t.current()).collect();
     let names: Vec<String> = (0..n).map(|i| format!("{i:04}")).collect();
-    let dirs: Vec<PathBuf> = names.iter().map(|name| case_dir(name)).collect();
+    let dirs: Vec<PathBuf> = names.iter().map(|name| case_dir(family, name)).collect();
     for (dir, recipe) in dirs.iter().zip(&recipes) {
         oracle::write_recipe(dir, recipe)?;
     }
@@ -854,7 +868,7 @@ pub fn run(seed: &[u8; 32], n: usize) -> Result<Run, OracleError> {
         if !case.outcome.fails() {
             continue;
         }
-        let dir = case_dir(&format!("{}-shrink", names[case.index]));
+        let dir = case_dir(family, &format!("{}-shrink", names[case.index]));
         let name = format!("differential/{}-shrink", names[case.index]);
         let (recipe, shrunk, tried) = shrink(tree, &case.outcome, budget, |candidate| {
             oracle::write_recipe(&dir, candidate)?;

@@ -207,5 +207,10 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: decide whether the union and the common should fit their pcurves of the same section to one result (then it is a kernel fault) or whether `fitted_rel`'s allowance should apply here (then it is the test's).
 
+- S5 of a cone against a cylinder in a fuse result: the differential's case
+  found a twice-fused elliptic cylinder, revolved cone and extrusion whose
+  result leaves two cone × cylinder pairs undecided at `Full`
+  (`regression/cone-cylinder-fuse-s5-undecided`, `#[ignore]`d).
+
 ## Rejected
 - The checker's S5 leaves two faces of one torus undecided in some poses: a stadium's outline filleted through one edge gives two half tori of one torus, and once the body is turned (rotation about (0, 0.936, 0.350) by 242.6°) `Full` reports `torus against torus is not decided`, where the same body unturned is clean — `regression/turned-stadium-fillet-torus-pair`, found by the outline property (C6 blend-network step 8 finding; the property excludes an unchecked torus pair by name until this passes)

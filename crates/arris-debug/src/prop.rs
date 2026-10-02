@@ -48,6 +48,7 @@ pub mod geom;
 pub mod profile;
 pub mod recipe;
 pub mod sweep;
+pub mod turned;
 
 use core::fmt::Debug;
 use core::ops::RangeInclusive;
