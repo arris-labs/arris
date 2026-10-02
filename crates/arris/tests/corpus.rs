@@ -2195,8 +2195,8 @@ fn real_nist_ftc_11() {
     run_part("real/nist-ftc-11");
 }
 
-/// Found by the differential at 256 cases while step 8 of
-/// `plans/c6-blend-pairs` changed the draw: no blend in it.
+/// Found by the differential at 256 cases while the turned parts changed
+/// its draw: no blend in it.
 #[test]
 #[ignore = "checker: S5 cannot decide a cylinder against a cone in a twice-fused result, two pairs unchecked at Full (docs/BACKLOG.md, S5 of a cone against a cylinder)"]
 fn regression_cone_cylinder_fuse_s5_undecided() {

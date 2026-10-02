@@ -20,6 +20,18 @@ into its version (ADR-0027).
   the cylinder's axis nor square to it, is `Unsupported` naming the pair;
   a blend that runs out of its face is `BlendTooLarge`.
 
+- `fillet` and `chamfer` blend the circles of a turned part: a cone against a
+  plane, a cylinder or another cone (a frustum's rim, a conical boss's base,
+  a shoulder between a cone and a cylinder), and a sphere or a torus against
+  a coaxial plane, cylinder or cone (a dome on a cylinder, a toroidal bead
+  on a disc), open arc or closed circle, in a chain with the lines and arcs
+  beside them. A convex blend that ends at a concave corner (a rib's root
+  on its plate) now builds. Refusals you will meet: a ball whose contact
+  would pass a cone's apex, or whose centre circle is no ring torus, is
+  `BlendTooLarge`; a plane meeting a cone obliquely or through its apex,
+  two cylinders, and a torus against a cylinder off its axis are
+  `Unsupported` naming the pair.
+
 - A Python package, `arris`, over the same kernel: `pip install arris` and,
   in a script, build a body from primitives, sketches (lines, arcs and
   elliptic arcs, with holes) and their extrusions and revolutions; cut, fuse

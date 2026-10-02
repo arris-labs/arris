@@ -794,9 +794,13 @@ of them is cut at both its ends in one edge. A contact line or an end arc that
 would leave its face through an edge that is not the corner's own, or a
 corner edge shorter than the trim — decided in the face's own (u, v)
 through `FaceDomain::side` at `check_samples` interior parameters, a
-contact inside its face and an end arc inside the face across when the
-blend removes the corner and outside it when a concave blend adds the
-corner to that face — is
+contact inside its face and an end arc inside the face across where the
+blend and both corner edges share a convexity — a convex blend between two
+convex corner edges — and outside it where they differ, a convex blend at
+concave corner edges (a rib's root on its plate) or a concave blend at
+convex ones (a pocket's rim), the arc lying in the hole the footprint
+leaves or the corner gained; corner edges of unlike convexity are
+`VertexBlend` — is
 `Reason::BlendTooLarge` naming the edge and the face or edge the blend
 runs out of; a tangent dihedral, or an end at a vertex where a corner
 edge's two faces are tangent but which is not a tangent vertex — the next
@@ -809,7 +813,10 @@ of blends not both convex or both concave, or a corner of three blended
 edges whose faces are not all planes, whose blends are mixed, or — three
 fillets — none of whose faces is square to the other two, is
 `Reason::VertexBlend` naming the vertex; a surface pair
-outside the table, or a face across an end that is not a plane, is
+outside the table — two cylinders, a torus against a cylinder off its axis
+or a plane through its axis, a plane against a cone that is not a coaxial
+circle (an oblique plane's ellipse, a plane through the apex along a
+ruling), a NURBS face — or a face across an end that is not a plane, is
 `OpError::Unsupported` naming the kinds and the faces; an empty list,
 an edge listed twice and an edge of another body are `Reason::NoEdges`,
 `RepeatedEdge` and `EdgeNotInBody`. A blend that meets a third face while
