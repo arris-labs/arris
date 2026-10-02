@@ -3,11 +3,19 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use arris::math::nalgebra::UnitQuaternion;
+use arris::math::{Axis, Isometry, Point3, Reflection, UnitVec3, Vec3};
+use arris::ops::{OpError, Reason};
 use arris::topo;
+use arris::{Control, Interrupted, Stop};
+use pyo3::exceptions::PyKeyboardInterrupt;
 use pyo3::prelude::*;
 
+use crate::control::{Cancel, Limits};
 use crate::error::BindError;
-use crate::handle::{AnyHandle, Body};
+use crate::handle::{AnyHandle, Body, Edge};
+use crate::kernel_error::op_error;
+use crate::provenance::Provenance;
 
 /// Serial numbers for models, in creation order within the process: what a
 /// handle compares and hashes by, and what an error names.
@@ -113,6 +121,100 @@ impl Model {
     }
 }
 
+/// An operation's result in Python: the body and its record.
+pub type Made = (Body, Provenance);
+
+/// Why a call did not produce a body: the binding refused it, or the kernel
+/// did.
+enum Failure {
+    Bind(BindError),
+    Op(OpError),
+}
+
+impl From<BindError> for Failure {
+    fn from(e: BindError) -> Self {
+        Failure::Bind(e)
+    }
+}
+
+impl From<OpError> for Failure {
+    fn from(e: OpError) -> Self {
+        Failure::Op(e)
+    }
+}
+
+/// An argument no kernel call could take, as the kernel's own refusal.
+fn refused(reason: Reason) -> OpError {
+    OpError::Degenerate {
+        entities: Vec::new(),
+        reason,
+    }
+}
+
+fn finite(what: &'static str, v: [f64; 3]) -> Result<(), OpError> {
+    if v.iter().all(|c| c.is_finite()) {
+        Ok(())
+    } else {
+        Err(refused(Reason::NonFinite { what }))
+    }
+}
+
+/// A direction from three numbers: finite, and not zero.
+fn direction(what: &'static str, v: [f64; 3]) -> Result<Vec3, OpError> {
+    finite(what, v)?;
+    let v = Vec3::from(v);
+    if v.norm() > 0.0 {
+        Ok(v)
+    } else {
+        Err(refused(Reason::NotPositive { what, value: 0.0 }))
+    }
+}
+
+impl Model {
+    /// Runs one kernel operation on this model with the GIL released and
+    /// `limits` enforced, and mints its result.
+    ///
+    /// The model's lock is held for the call, so two threads' operations on
+    /// one model run one after the other. A stop leaves the model as it was
+    /// (the kernel rolls back); Ctrl-C is a `KeyboardInterrupt` and the
+    /// other stops are `Interrupted`.
+    fn operate(
+        &self,
+        py: Python<'_>,
+        limits: &Limits,
+        call: impl FnOnce(
+            &mut topo::Model,
+            &Control<'_>,
+        ) -> Result<(topo::Body, arris::topo::provenance::Provenance), OpError>
+        + Send,
+    ) -> PyResult<Made> {
+        let (outcome, signalled) = py.detach(|| {
+            limits.run(|control| {
+                let mut kernel = self.shared.lock()?;
+                Ok::<_, Failure>(call(&mut kernel, control)?)
+            })
+        });
+        match outcome {
+            Ok((body, record)) => Ok((
+                Body::minted_by(self, body),
+                Provenance::minted_by(self, record),
+            )),
+            Err(Failure::Bind(error)) => Err(error.into()),
+            Err(Failure::Op(OpError::Interrupted(Interrupted { by: Stop::Poll, .. })))
+                if signalled =>
+            {
+                Err(PyKeyboardInterrupt::new_err("interrupted by Ctrl-C"))
+            }
+            Err(Failure::Op(error)) => Err(op_error(&error).raise(py, Some(self))),
+        }
+    }
+
+    /// An argument refusal, raised as the kernel's would be.
+    fn refuse(&self, py: Python<'_>, error: OpError) -> PyErr {
+        op_error(&error).raise(py, Some(self))
+    }
+}
+
 #[pymethods]
 impl Model {
     /// An empty model with the default precision.
@@ -135,8 +237,227 @@ impl Model {
         Ok(py.detach(|| self.retaining(&keep))?)
     }
 
+    /// A box with corners `min` and `max`, every face, edge and vertex
+    /// named by a `Role` in the returned `Provenance`.
+    ///
+    /// Raises `OpDegenerateError` for a corner that is not finite or an
+    /// extent that is not positive.
+    #[pyo3(signature = (min, max, *, cancel=None, budget=None))]
+    fn primitive_box(
+        &self,
+        py: Python<'_>,
+        min: [f64; 3],
+        max: [f64; 3],
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::primitive_box(m, min, max, control)
+        })
+    }
+
+    /// A cylinder whose bottom cap is centred on `origin`, rising `height`
+    /// along `axis` with the given `radius`.
+    ///
+    /// Raises `OpDegenerateError` for a radius or height that is not
+    /// positive or an axis that is not finite or is zero.
+    #[pyo3(signature = (origin, axis, radius, height, *, cancel=None, budget=None))]
+    #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
+    fn primitive_cylinder(
+        &self,
+        py: Python<'_>,
+        origin: [f64; 3],
+        axis: [f64; 3],
+        radius: f64,
+        height: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let axis = finite("axis origin", origin)
+            .and_then(|()| direction("axis direction", axis))
+            .and_then(|d| Axis::new(Point3::from(origin), d).map_err(OpError::from))
+            .map_err(|e| self.refuse(py, e))?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::primitive_cylinder(m, axis, radius, height, control)
+        })
+    }
+
+    /// A copy of `body` turned by `angle` radians about the line through
+    /// the origin along `axis`, then moved by `translation`.
+    ///
+    /// Raises `OpDegenerateError` for a number that is not finite or an
+    /// axis of zero length; `ForeignHandleError` for a body of another model.
+    #[pyo3(signature = (body, translation=[0.0; 3], *, axis=[0.0, 0.0, 1.0], angle=0.0, cancel=None, budget=None))]
+    #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
+    fn transform(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        translation: [f64; 3],
+        axis: [f64; 3],
+        angle: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let body = body.resolve(&self.shared)?;
+        let motion = finite("translation", translation)
+            .and_then(|()| direction("rotation axis", axis))
+            .and_then(|a| {
+                if angle.is_finite() {
+                    let turn = UnitQuaternion::from_axis_angle(&UnitVec3::new_normalize(a), angle);
+                    Ok(Isometry::new(turn, Vec3::from(translation)))
+                } else {
+                    Err(refused(Reason::NonFinite { what: "angle" }))
+                }
+            })
+            .map_err(|e| self.refuse(py, e))?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::transform(m, body, &motion, control)
+        })
+    }
+
+    /// A copy of `body` reflected in the plane through `origin` with the
+    /// given `normal`; its faces face outward again.
+    ///
+    /// Raises `OpDegenerateError` for a coordinate that is not finite or a
+    /// normal of zero length.
+    #[pyo3(signature = (body, origin, normal, *, cancel=None, budget=None))]
+    fn mirror(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        origin: [f64; 3],
+        normal: [f64; 3],
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let body = body.resolve(&self.shared)?;
+        let plane = finite("mirror origin", origin)
+            .and_then(|()| direction("mirror normal", normal))
+            .and_then(|n| {
+                Reflection::new(Point3::from(origin), n).map_err(|_| {
+                    refused(Reason::NonFinite {
+                        what: "mirror plane",
+                    })
+                })
+            })
+            .map_err(|e| self.refuse(py, e))?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::mirror(m, body, &plane, control)
+        })
+    }
+
+    /// `target` with `tool` removed. The tool's faces that bound the new
+    /// cavity are generated from; see the returned `Provenance`.
+    ///
+    /// Raises `OpUnsupportedError` (naming both operands) for a pair of
+    /// surfaces with no closed form yet, `OpDegenerateError` when nothing
+    /// would remain, and `Interrupted` when `cancel` or `budget` stops it.
+    #[pyo3(signature = (target, tool, *, cancel=None, budget=None))]
+    fn cut(
+        &self,
+        py: Python<'_>,
+        target: &Body,
+        tool: &Body,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let (target, tool) = (target.resolve(&self.shared)?, tool.resolve(&self.shared)?);
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::cut(m, target, tool, control)
+        })
+    }
+
+    /// The union of `a` and `b`. Errors as for `cut`.
+    #[pyo3(signature = (a, b, *, cancel=None, budget=None))]
+    fn fuse(
+        &self,
+        py: Python<'_>,
+        a: &Body,
+        b: &Body,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let (a, b) = (a.resolve(&self.shared)?, b.resolve(&self.shared)?);
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::fuse(m, a, b, control)
+        })
+    }
+
+    /// The intersection of `a` and `b`. Errors as for `cut`.
+    #[pyo3(signature = (a, b, *, cancel=None, budget=None))]
+    fn common(
+        &self,
+        py: Python<'_>,
+        a: &Body,
+        b: &Body,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let (a, b) = (a.resolve(&self.shared)?, b.resolve(&self.shared)?);
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::common(m, a, b, control)
+        })
+    }
+
+    /// `body` with the given `edges` rounded to `radius`.
+    ///
+    /// Raises `OpDegenerateError`, `OpUnsupportedError` or `OpToleranceError`
+    /// for an edge set the blend network cannot build, and
+    /// `ForeignHandleError` for an edge of another model.
+    #[pyo3(signature = (body, edges, radius, *, cancel=None, budget=None))]
+    fn fillet(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        edges: Vec<PyRef<'_, Edge>>,
+        radius: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let body = body.resolve(&self.shared)?;
+        let edges = self.edges(&edges)?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::fillet(m, body, &edges, radius, control)
+        })
+    }
+
+    /// `body` with the given `edges` cut back by `distance` on each side.
+    /// Errors as for `fillet`.
+    #[pyo3(signature = (body, edges, distance, *, cancel=None, budget=None))]
+    fn chamfer(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        edges: Vec<PyRef<'_, Edge>>,
+        distance: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let body = body.resolve(&self.shared)?;
+        let edges = self.edges(&edges)?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::chamfer(m, body, &edges, distance, control)
+        })
+    }
+
     fn __repr__(&self) -> String {
         format!("Model({})", self.shared.serial)
+    }
+}
+
+impl Model {
+    fn edges(&self, edges: &[PyRef<'_, Edge>]) -> Result<Vec<topo::Edge>, BindError> {
+        edges.iter().map(|e| e.resolve(&self.shared)).collect()
     }
 }
 

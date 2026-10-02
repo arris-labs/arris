@@ -19,6 +19,41 @@ create_exception!(
     "Every error the kernel or the binding returns is an instance of this class."
 );
 
+/// `Interrupted` as callers meet it: the macro's class under `ArrisError`
+/// and the builtin `InterruptedError`, so `except InterruptedError` and
+/// `except ArrisError` both catch it. `create_exception!` takes one base,
+/// so the two-base class is made once, with `type(...)`.
+fn interrupted_type(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyType>> {
+    use pyo3::sync::PyOnceLock;
+    use pyo3::types::{PyDict, PyTuple, PyType};
+    static TYPE: PyOnceLock<Py<PyType>> = PyOnceLock::new();
+    TYPE.get_or_try_init(py, || {
+        let bases = PyTuple::new(
+            py,
+            [
+                py.get_type::<Interrupted>().into_any(),
+                py.get_type::<pyo3::exceptions::PyInterruptedError>()
+                    .into_any(),
+            ],
+        )?;
+        let namespace = PyDict::new(py);
+        namespace.set_item("__module__", "arris")?;
+        namespace.set_item("__doc__", Class::Interrupted.doc())?;
+        let made = py
+            .get_type::<PyType>()
+            .call1(("Interrupted", bases, namespace))?;
+        Ok::<_, PyErr>(made.cast_into::<PyType>()?.unbind())
+    })
+    .map(|t| t.bind(py).clone())
+}
+
+fn interrupted_error(message: String) -> PyErr {
+    Python::attach(|py| match interrupted_type(py) {
+        Ok(class) => PyErr::from_type(class, message),
+        Err(failure) => failure,
+    })
+}
+
 /// Declares each exception class once: its Python type, its place in the
 /// [`Class`] enum, its name, and its registration in the module.
 macro_rules! classes {
@@ -38,6 +73,14 @@ macro_rules! classes {
             /// Every class, in declaration order.
             pub const ALL: &'static [Class] = &[Class::Arris, $( Class::$name, )*];
 
+            /// The class's docstring.
+            pub const fn doc(self) -> &'static str {
+                match self {
+                    Class::Arris => "Every error the kernel or the binding returns is an instance of this class.",
+                    $( Class::$name => $doc, )*
+                }
+            }
+
             /// The class's name in Python.
             pub const fn name(self) -> &'static str {
                 match self {
@@ -56,6 +99,9 @@ macro_rules! classes {
 
             /// An error of this class with `message`.
             pub fn new_err(self, message: String) -> PyErr {
+                if self == Class::Interrupted {
+                    return interrupted_error(message);
+                }
                 match self {
                     Class::Arris => ArrisError::new_err(message),
                     $( Class::$name => $name::new_err(message), )*
@@ -68,6 +114,7 @@ macro_rules! classes {
             let py = module.py();
             module.add("ArrisError", py.get_type::<ArrisError>())?;
             $( module.add(stringify!($name), py.get_type::<$name>())?; )*
+            module.add("Interrupted", interrupted_type(py)?)?;
             Ok(())
         }
     };
@@ -77,7 +124,7 @@ classes! {
     ForeignHandleError(ArrisError) = "A handle from one `Model` was given to another.";
     StaleHandleError(ArrisError) = "An id no longer resolves in its model: its entity was freed by `Model.retain`, or the kernel was handed an id that never named one.";
     ModelPoisonedError(ArrisError) = "A call panicked inside this model's lock, so its contents cannot be trusted.";
-    Interrupted(ArrisError) = "The caller stopped the call, by its poll or its budget of steps; the model is as it was.";
+    Interrupted(ArrisError) = "The caller stopped the call, by its poll or its budget of steps; the model is as it was. Also an `InterruptedError`.";
 
     OpError(ArrisError) = "Why an operation (`ops`) failed.";
     OpInvalidInputError(OpError) = "An input body fails the checker.";

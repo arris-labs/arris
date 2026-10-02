@@ -185,7 +185,7 @@ bound has to be established here.
   `Model.primitive_*` and `cut` (add it there). `Role(kind, part, *fields)`
   is also the way to name an origin for `generated_from`; a record of one
   model `then`-ed with another's raises `ForeignHandleError`.
-- [ ] Step 6 **[2]** — Operations. `primitive_box`, `primitive_cylinder`,
+- [x] Step 6 **[2]** — Operations. `primitive_box`, `primitive_cylinder`,
   `transform`, `mirror`, `cut`, `fuse`, `common`, `fillet`, `chamfer`,
   `extrude`, `revolve`, each returning `(Body, Provenance)`, with the
   `Cancel` token, a step budget and Ctrl-C as keyword arguments, and the
@@ -194,7 +194,18 @@ bound has to be established here.
   one stale (step 3's pytest half) and a boolean's `Unsupported` raised with
   its operands as attributes (step 4's), through the operations; an operation cancelled from another thread returns
   `InterruptedError`'s subclass and leaves the model as it was (ids
-  included); a budget stops at the same step run twice.
+  included); a budget stops at the same step run twice. *Found at step 6:*
+  `extrude` and `revolve` take a `Profile`, which step 7 builds, so they
+  are bound there with the Pappus test; and no query exists yet to read a
+  volume, so the booleans' closed forms (volume, area) are step 8's pytest
+  and this step's check the structure through provenance (the bolt
+  pattern's eight walls under `Role("cylinder", "Wall")`, step 5's pytest
+  half) and the error cases: a disjoint `common` raises `OpDegenerateError`
+  with its operands as `entities`; a boolean's `OpUnsupportedError` with
+  `a`/`b` is Rust-tested (step 4) and has no reachable case from primitives
+  alone, so step 7's `revolve` is where to look for one. Operation
+  arguments the kernel's types refuse (a zero axis, a non-finite corner)
+  are `OpDegenerateError` naming the argument, raised by the binding.
 - [ ] Step 7 **[2]** — Profiles. `Profile` of lines, arcs and elliptic
   arcs with holes, built from Python values and checked on `extrude` and
   `revolve`. Test: Pappus's theorems on a profile built in Python, to the
@@ -285,14 +296,15 @@ bound has to be established here.
 
 ## Open questions
 
-- **⚠ OPEN: Ctrl-C inside a released-GIL call (agent decides by step 6).**
-  A poll cannot call Python without the GIL. Options: the poll re-attaches
-  every N steps and calls `check_signals` (cost: a GIL acquire per N
-  steps), or only the `Cancel` token and the budget are offered. The
-  step measures the first on the thin-elliptic section, the longest
-  operation the suite has, and keeps it if the overhead is below the
-  kernel's own poll cost.
-- **⚠ OPEN: platforms of the wheel (human, by step 12).** The plan builds
+- **Settled at step 6: Ctrl-C inside a released-GIL call.** The poll
+  re-attaches every 256 polls and calls `check_signals`; a `KeyboardInterrupt`
+  surfaces and the model is as it was. Measured on eight bolt-hole cuts
+  (26 steps each, 20 s of CPU in total): signals every poll, every 256 and
+  never differ by less than the run-to-run noise (0.71–0.80 s for forty
+  builds), so the interval is not tuned further. The thin-elliptic
+  section the question named needs `Profile` and waits for step 7; the
+  interval is a constant (`control::SIGNAL_EVERY`) if it shows a cost.
+- - **⚠ OPEN: platforms of the wheel (human, by step 12).** The plan builds
   and tests the Linux x86_64 wheel in CI. manylinux/macOS/Windows wheels
   for release are a matrix the release job can add; which ones PyPI
   carries at 0.5.0 is the human's call, with the first upload.

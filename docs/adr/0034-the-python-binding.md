@@ -99,7 +99,13 @@ rather than assumed, in a scratch crate on 2026-10-02:
    family's prefix (`OpUnsupportedError`). Two conditions recur in several
    enums and have one class each, so a caller catches them once: every
    `NotFound` is `StaleHandleError` and every `Interrupted` is `Interrupted`
-   (directly under `ArrisError`). A nested kernel error with no structure a
+   (directly under `ArrisError`, and also the builtin `InterruptedError`,
+   so `except InterruptedError` catches a stop; `create_exception!` takes
+   one base, so that class is made with `type(...)` at import). Ctrl-C
+   inside an operation is a `KeyboardInterrupt`, not `Interrupted`: the
+   kernel's poll, with the GIL released, takes it back every 256 polls to
+   ask Python for pending signals (measured: no difference from never
+   asking, within the noise of eight bolt-hole cuts). A nested kernel error with no structure a
    caller would branch on is the exception's `detail` text; entities are
    handles of the model the call was made on.
 

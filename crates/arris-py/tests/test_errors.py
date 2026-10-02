@@ -46,7 +46,9 @@ def test_the_shared_conditions_are_one_class_each():
     # A NotFound is stale whichever operation raised it; a stop is
     # Interrupted whichever operation was stopped.
     assert arris.StaleHandleError.__bases__ == (arris.ArrisError,)
-    assert arris.Interrupted.__bases__ == (arris.ArrisError,)
+    # Also the builtin, so `except InterruptedError` catches a stop.
+    assert issubclass(arris.Interrupted, arris.ArrisError)
+    assert issubclass(arris.Interrupted, InterruptedError)
 
 
 def test_the_exceptions_say_where_they_live():
