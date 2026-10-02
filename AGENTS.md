@@ -43,8 +43,10 @@ cancellation, mirror, the STEP product structure. ADR-0028 to 0033.
 **Beside the cycles (2026-10-02): the Python binding**, `crates/arris-py`,
 PyPI `arris` in lockstep from the `v*` tag; its first upload waits on the
 human. ADR-0034.
-**Next:** C6, the blend network (opened 2026-10-02, scope for the human to
-confirm).
+**C6 open (2026-10-02): the blend network.** Its first plan landed: a
+fillet or chamfer follows a chain of line and arc edges, open or closed,
+and a plane against a cylinder blends along an open arc (ADR-0035). The
+residue (cone, sphere and torus pairs, corners) is the next plan's sizing.
 
 ## Rules that are not derivable from the code
 

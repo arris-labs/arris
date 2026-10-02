@@ -1837,7 +1837,7 @@ fn blend_stadium_outline_fillet() {
 /// the two half tori of one torus are a pair the checker's S5 leaves
 /// undecided at `Full`, where the same body unturned has nothing unchecked.
 #[test]
-#[ignore = "S5 leaves two faces of one torus undecided in a turned pose: f19 (torus) against f20 (torus) is not decided, so Full has an unchecked pair (docs/BACKLOG.md, coincident tori in S5; found by plans/c6-blend-network step 8)"]
+#[ignore = "S5 leaves two faces of one torus undecided in a turned pose: f19 (torus) against f20 (torus) is not decided, so Full has an unchecked pair (docs/BACKLOG.md, coincident tori in S5; found by the C6 outline property)"]
 fn regression_turned_stadium_fillet_torus_pair() {
     run("regression/turned-stadium-fillet-torus-pair");
 }

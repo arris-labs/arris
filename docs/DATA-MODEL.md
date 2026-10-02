@@ -1800,7 +1800,13 @@ blends' ends are one edge and two vertices, `Generated` from both edges
 they join, so `generated_pair` finds them; the corner's third edge,
 shortened, is `Modified`; no face across takes an arc. A chamfer's record
 is a fillet's with its end segments in place of the arcs, and two
-chamfers at a corner meet in a line recorded as a miter's ellipse is. A
+chamfers at a corner meet in a line recorded as a miter's ellipse is. At a
+tangent vertex of a chain the two stripes meet in a junction arc (a chord
+for chamfers) recorded the same way: it and its two vertices are
+`Generated` from both edges, the third edge, shortened, is `Modified` and
+the vertex is `Deleted`; every edge of the chain keeps its own blend face. An
+open arc's blend face, its contact arcs and its trimmed ends are
+`Generated` from the arc. A
 closed edge's blend has no ends: its torus or cone face, its two contact
 circles, its seam and the seam's two vertices are `Generated` from the
 edge; the edge's two faces and the cylinder's seam, shortened to the

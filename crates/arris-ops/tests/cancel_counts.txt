@@ -131,6 +131,7 @@ blend/box-four-verticals: 20
 blend/box-oblique-end: 297
 blend/box-posed-edge-fillet: 5
 blend/d-chord-edge: 5
+blend/d-notch-rim-chamfer: 2
 blend/d-notch-rim-fillet: 2
 blend/fillet-miter: 301
 blend/hole-rim-chamfer: 2
@@ -141,6 +142,10 @@ blend/probe-cap-and-vertical-fillet-m: 10
 blend/probe-second-fillet-m: 5
 blend/rib-root-edge: 5
 blend/second-fillet: 5
+blend/split-rim-disc-chamfer: 6
+blend/split-rim-disc-fillet: 6
+blend/stadium-outline-chamfer: 14
+blend/stadium-outline-fillet: 14
 blend/tangent-chain-cap-edge: 12
 build/frame: 10
 build/l-prism: 8

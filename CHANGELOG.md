@@ -8,6 +8,18 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` follow an outline: naming one edge of a chain of
+  lines and arcs that meet tangentially (a slot's rim, a stadium, a D-shaped
+  notch) blends the whole chain, open or closed, one blend face per edge,
+  and a plane against a cylinder blends along an open arc as well as a
+  closed circle, so a hole's rim split in two half circles blends. The
+  result matches Open CASCADE's on the committed outlines. Refusals you
+  will meet: an edge that is itself a tangent dihedral, and a chain turning
+  from convex to concave, are `TangentChain`; a chain reaching a cone,
+  sphere, torus or NURBS face, or an arc ending on a plane neither through
+  the cylinder's axis nor square to it, is `Unsupported` naming the pair;
+  a blend that runs out of its face is `BlendTooLarge`.
+
 - A Python package, `arris`, over the same kernel: `pip install arris` and,
   in a script, build a body from primitives, sketches (lines, arcs and
   elliptic arcs, with holes) and their extrusions and revolutions; cut, fuse
