@@ -1783,17 +1783,15 @@ fn regression_tangent_chain_horn_torus() {
 /// a closed chain of two open arcs at tangent vertices, the shape a rim has
 /// in the real parts where the file splits it at its seam.
 #[test]
-#[ignore = "builds since the junction, its dump not yet blessed: a closed chain's orientation and seams are inspected and the fixture moved to blend/ in docs/plans/c6-blend-network.md step 5"]
-fn regression_split_rim_disc_fillet() {
-    run("regression/split-rim-disc-fillet");
+fn blend_split_rim_disc_fillet() {
+    run("blend/split-rim-disc-fillet");
 }
 
 /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
 /// a closed chain through four tangent vertices.
 #[test]
-#[ignore = "builds since the junction, its dump not yet blessed: a closed chain's orientation and seams are inspected and the fixture moved to blend/ in docs/plans/c6-blend-network.md step 5"]
-fn regression_stadium_outline_fillet() {
-    run("regression/stadium-outline-fillet");
+fn blend_stadium_outline_fillet() {
+    run("blend/stadium-outline-fillet");
 }
 
 /// A cylinder whose circles are placed on the axis `(-1, -6.1e-17, 0)`

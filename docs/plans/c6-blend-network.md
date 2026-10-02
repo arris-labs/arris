@@ -147,7 +147,7 @@ bound has to be established here.
   the first fillet's arc) moves to `blend/` building. Test: those two
   fixtures against the oracle, and the junction arc's pcurves held to the
   checker's E4 at the arc's tolerance.
-- [ ] Step 5 **[2]** — Closed chains. (Since step 4 the stadium and the
+- [x] Step 5 **[2]** — Closed chains. (Since step 4 the stadium and the
   split rim build and pass every corpus stage but the dump, unblessed:
   this step inspects their orientation and seams, blesses them and moves
   them, rather than building anything new, unless the inspection finds
@@ -233,6 +233,8 @@ out to need more than a commit each; say so in that commit.
 - `AGENTS.md` current state — C6's first plan landed.
 
 ## Open questions
+
+- **Answered at step 5 (agent): the closed chains needed no new code.** The stadium (10 faces, Euler 12/20/10) and the split rim (6 faces, Euler 6/10/6) match Open CASCADE's counts, volume and probes at `Full`; the junction arcs' orientation closes every loop (the checker's coedge pairing and the signed volume hold it), a torus face spans one edge each and the cylinders' seams sit at the junctions of the half circles (`e12`/`e13` at x = ±1.5). Both moved to `blend/` with their blessed dumps.
 
 - **Answered early (2026-10-02, agent; step 1 confirms on real parts): Open
   CASCADE refuses an edge whose dihedral is tangent.** Run through the

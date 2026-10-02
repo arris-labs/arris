@@ -132,7 +132,7 @@ variant.
 
 ### Worked example: the stadium's outline
 
-The stadium (`regression/stadium-outline-fillet`): two lines of length 2
+The stadium (`blend/stadium-outline-fillet`): two lines of length 2
 and two half circles of radius 1, extruded 1, the four top edges
 filleted at 0.25. The body has 8 vertices, 12 edges, 6 faces (top,
 bottom, two planes, two half cylinders) and 6 loops. Every top vertex is
@@ -159,7 +159,7 @@ top face, the two plane sides, the two half-cylinder sides and the four
 vertical edges `Modified`, the bottom and its four edges kept. 24
 distinct outputs are generated: 4 faces, 8 contacts, 4 arcs, 8 vertices.
 
-The D-notch (`regression/d-notch-rim-fillet`), an open arc trimmed at
+The D-notch (`blend/d-notch-rim-fillet`), an open arc trimmed at
 both ends: the plate's 12 vertices, 18 edges and 8 faces lose the arc and
 its two vertices and gain two contacts, two meridians and four vertices,
 with one face: 14, 21, 9, Open CASCADE's counts.
