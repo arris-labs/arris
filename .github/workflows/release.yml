@@ -1,7 +1,9 @@
 # The release (.agents/rules/git.md §Tags): a `v*` tag push publishes the
-# eight library crates to crates.io and opens a GitHub Release. The gate is
-# CI, which runs on this tag too (`ci.yml`) — the publish waits on the
-# `crates-io` environment's reviewer, who has that run in front of them.
+# eight library crates to crates.io, the Python package `arris` to PyPI in
+# lockstep (ADR-0034), and opens a GitHub Release. The gate is CI, which
+# runs on this tag too (`ci.yml`) — each publish waits on its own
+# environment's reviewer (`crates-io`, `pypi`), who has that run in front of
+# them. The two publishes are independent: one failing never stops the other.
 # `cargo publish` then builds every packaged crate before uploading any, so
 # a crate that does not compile from its tarball uploads nothing.
 #
@@ -20,6 +22,15 @@
 #     Trusted Publishing › add: owner arris-labs, repository arris, workflow
 #     release.yml, environment crates-io. Then delete the secret; the job
 #     falls back to it only while it exists.
+#
+# PyPI is trusted publishing too, with no token anywhere. One-time setup, by
+# the human:
+#   GitHub  › Settings › Environments: `pypi`, with a required reviewer — a
+#     PyPI file can be yanked, never replaced.
+#   pypi.org › Your projects › Publishing › add a pending publisher for the
+#     name `arris`: owner arris-labs, repository arris, workflow
+#     release.yml, environment pypi. (Reserves the name at the first
+#     upload; the plan leaves that upload to the human.)
 name: Release
 
 on:
@@ -87,3 +98,57 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           body_path: ${{ runner.temp }}/notes.md
+
+  # The wheel and the sdist are built outside the `pypi` environment, so the
+  # reviewer approves files that already exist and `twine check` has
+  # accepted. The Linux x86_64 wheel is the one the plan builds; the
+  # platform matrix PyPI carries is a release-time decision (the plan's
+  # open question), added here as another `target`.
+  pypi-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+
+      # PyPI never lets a file be replaced, so the tag must name the version
+      # the package carries and a pre-release (`0.5.0-dev` is `0.5.0.dev0` to
+      # Python) never goes up under a release tag.
+      - shell: bash
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 --locked \
+            | python3 -c 'import json, sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"] == "arris-py"))')
+          echo "package version $version, tag $GITHUB_REF_NAME"
+          case "$version" in
+            *-*) echo "::error::refusing to publish the pre-release $version"; exit 1 ;;
+          esac
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not name version $version"; exit 1
+          fi
+
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --out dist --manifest-path crates/arris-py/Cargo.toml
+          manylinux: auto
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist --manifest-path crates/arris-py/Cargo.toml
+      - run: pipx run twine check --strict dist/*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*
+
+  pypi:
+    needs: pypi-build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: python-dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

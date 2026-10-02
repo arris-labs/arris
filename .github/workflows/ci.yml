@@ -208,6 +208,44 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --workspace --target wasm32-unknown-unknown
 
+  # The Python binding (ADR-0034): a `maturin develop` build, the pytest
+  # over it (the oracle's numbers for corpus fixtures, every docstring
+  # example, `mypy.stubtest` against the stubs), at the oldest and the
+  # newest Python the abi3 wheel supports. Never in the pre-commit hook; the
+  # hook's Rust checks still compile the crate. The last step is the build
+  # half of the release's `pypi` job: a release-profile wheel and the sdist,
+  # which `twine check` accepts, uploaded as an artifact; nothing publishes.
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: astral-sh/setup-uv@v10.1.0
+      - name: a virtual environment with the build tools
+        shell: bash
+        run: |
+          uv venv --python ${{ matrix.python }} "$RUNNER_TEMP/venv"
+          echo "VIRTUAL_ENV=$RUNNER_TEMP/venv" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+          uv pip install --python "$RUNNER_TEMP/venv/bin/python" maturin twine
+      - run: maturin develop --uv --manifest-path crates/arris-py/Cargo.toml --extras test
+      - run: pytest crates/arris-py
+      - if: matrix.python == '3.13'
+        run: |
+          maturin build --release --manifest-path crates/arris-py/Cargo.toml --out dist
+          maturin sdist --manifest-path crates/arris-py/Cargo.toml --out dist
+          twine check --strict dist/*
+      - if: matrix.python == '3.13'
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*
+
   # arris-debug's `rerun` feature pulls in the large `rerun` SDK crate:
   # kept out of the hook and the `test` job so that feature's build time
   # never slows either, but still blocking here since a broken feature is

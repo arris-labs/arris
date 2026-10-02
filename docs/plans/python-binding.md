@@ -300,7 +300,7 @@ bound has to be established here.
   the one entry it needs. Stubtest does not check an exception's attributes
   (`OpUnsupportedError.a`, …), which the pyo3 classes set on the instance;
   the stub declares them and the pytest of step 4 and 6 reads them.
-- [ ] Step 12 **[2]** — CI and release. `ci.yml`'s `python` job (uv,
+- [x] Step 12 **[2]** — CI and release. `ci.yml`'s `python` job (uv,
   maturin develop, pytest, stubtest, the Linux wheel as an artifact) and
   `release.yml`'s `pypi` job behind a `pypi` environment reviewer with
   trusted publishing, refusing a pre-release version; the version read
@@ -308,7 +308,23 @@ bound has to be established here.
   build half runs without publishing (`maturin build`, `twine check`). **The
   step stops at the `pypi` environment and the trusted-publisher
   registration, which the human does** (the idea's decision 3); the first
-  upload is not part of this plan.
+  upload is not part of this plan. *Found at step 12:*
+  every command of the `python` job ran locally from a fresh Python 3.10
+  venv (`maturin develop --uv --extras test`, `pytest crates/arris-py`: 374
+  passed; a release `maturin build` and `maturin sdist`, both accepted by
+  `twine check --strict`; the sdist builds into a wheel on its own), so the
+  workflow is the same commands, but the job itself has not run: that waits
+  on the human's push (never the agent's). The job runs at Python 3.10 and
+  3.13 and uploads the 3.13 run's wheel and sdist. The release's build half
+  is its own `pypi-build` job (version check, `maturin-action` in the
+  manylinux container, `twine check`) outside the `pypi` environment, so the
+  reviewer approves files that exist; `pypi` only downloads them and runs
+  `gh-action-pypi-publish`. The `actions/*-artifact@v7` and
+  `maturin-action@v1` pins are the ones the repository's other workflows
+  use or the current majors and could not be resolved offline: the first
+  run on `main` shows whether any needs a bump. The version question is
+  settled: `0.5.0-dev` builds as `0.5.0.dev0` (the wheel's name shows it),
+  and `pypi-build` refuses it by the Cargo spelling, as the crates job does.
 - [ ] Step 13 **[1]** — The rules and the docs of the workflow. The
   sentence in `.agents/rules/git.md` §Tags, `/release` and
   `/close-cycle` skills (the wheel packages and the stubs check join the
@@ -381,7 +397,7 @@ bound has to be established here.
   `arris-labs`, repository `arris`, workflow `release.yml`, environment
   `pypi`); the crates.io first-release precedent (a token, then trusted
   publishing) applies here as a pending publisher.
-- **⚠ OPEN: how the version reads (agent decides at step 12).** maturin
+- **Settled at step 12: how the version reads.** maturin
   reads `[workspace.package].version`; `0.5.0-dev` becomes `0.5.0.dev0`,
   and the release job must still refuse it. The step checks the mapping
   with `maturin build` rather than assuming it.
