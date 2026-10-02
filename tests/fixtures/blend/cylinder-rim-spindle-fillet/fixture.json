@@ -1,0 +1,108 @@
+{
+  "description": "a cylinder of radius 2 and height 3, revolved whole about z, its top rim filleted at r 1.5: the ball's centre circle has radius 2 \u2212 1.5 = 0.5, less than the ball's own, so the blend's torus is a spindle torus whose tube crosses its axis, not a ring torus. Arris refuses it as BlendTooLarge naming the edge and the cylinder (ADR-0036 \u00a73); Open CASCADE builds it",
+  "params": {
+    "r": 1.5
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              2,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          2,
+          3
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "blend-too-large",
+    "genus": 0
+  }
+}

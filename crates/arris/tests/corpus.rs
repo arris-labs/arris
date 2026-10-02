@@ -1521,6 +1521,44 @@ fn blend_chain_through_torus_unsupported() {
     run("blend/chain-through-torus-unsupported");
 }
 
+/// A cylinder's top rim filleted past its radius: the ball's centre circle
+/// is narrower than its tube, a spindle torus, which Arris refuses as
+/// `BlendTooLarge` where Open CASCADE builds it (ADR-0036 §3).
+#[test]
+fn blend_cylinder_rim_spindle_fillet() {
+    run("blend/cylinder-rim-spindle-fillet");
+}
+
+/// A cone cut by an oblique plane, the ellipse between them filleted: a
+/// centre locus that is no circle, `Unsupported` where Open CASCADE builds
+/// it (ADR-0036 §4).
+#[test]
+fn blend_oblique_cut_cone_fillet() {
+    run("blend/oblique-cut-cone-fillet");
+}
+
+/// A half cone's ruling on the end plane through its apex, filleted:
+/// `Unsupported`, the pair outside the table, where Open CASCADE builds it.
+#[test]
+fn blend_half_cone_ruling_fillet() {
+    run("blend/half-cone-ruling-fillet");
+}
+
+/// The branch of a tee of two cylinders with crossing axes filleted along
+/// the quartic they meet in: `Unsupported`, where Open CASCADE builds it.
+#[test]
+fn blend_tee_cylinders_fillet() {
+    run("blend/tee-cylinders-fillet");
+}
+
+/// A torus drilled parallel to its axis and off it, the bore's edge
+/// filleted: a torus against a cylinder off its axis, `Unsupported`, where
+/// Open CASCADE builds it.
+#[test]
+fn blend_drilled_torus_fillet() {
+    run("blend/drilled-torus-fillet");
+}
+
 /// The D-notch with its circle's centre off the side face's plane: the open
 /// arc ends on a plane neither through the cylinder's axis nor square to
 /// it, an end Arris refuses as `Unsupported` where Open CASCADE builds it

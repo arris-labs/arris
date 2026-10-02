@@ -1,0 +1,108 @@
+{
+  "description": "the half frustum of blend/half-frustum-rim-fillet, the edge along its ruling in the end plane y = 0 (a plane through the cone's axis, so through its apex) filleted at r 0.1: a line where a plane meets a cone along a ruling, the blend a stripe whose section changes with the cone's radius, no closed form in ADR-0007's table. Arris refuses it as Unsupported naming the plane and the cone (ADR-0036 \u00a74); Open CASCADE builds it",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "half",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 180
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "half",
+      "edges": [
+        [
+          1.5,
+          0,
+          0.5
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "unsupported",
+    "genus": 0
+  }
+}

@@ -162,7 +162,7 @@ bound has to be established here.
   torus ring cut square to its axis, convex and concave, fillet and
   chamfer. Where Open CASCADE walks rather than placing a torus, the
   closed forms and `measure_differs` (ADR-0015), as at step 5.
-- [ ] Step 7 **[2]** — The refusals the rows leave, each named, as the
+- [x] Step 7 **[2]** — The refusals the rows leave, each named, as the
   first plan's step 6 did: a cone whose offset reaches its apex, a centre
   circle that is no ring torus, a cone × plane edge that is not a coaxial
   circle (a plane oblique to the axis gives an ellipse and a quartic
@@ -398,3 +398,14 @@ more than a commit each; say so in that commit.
   new `analytic.occt_nurbs_refused`). A torus × cone or sphere × cone
   parallel, and cone or cylinder × torus, go through the same code with
   no fixture of their own; step 8's property is where they are drawn.
+- **Found at step 7 (agent, 2026-10-03): five refusals are fixtures, the
+  apex one a unit test.** `blend/{cylinder-rim-spindle-fillet,
+  oblique-cut-cone-fillet, half-cone-ruling-fillet, tee-cylinders-fillet,
+  drilled-torus-fillet}` carry `expect_error` with Open CASCADE's body
+  (a spindle torus `blend-too-large`; an ellipse, a ruling through the
+  apex, crossing cylinders and a torus off its axis `unsupported`). Open
+  CASCADE does not build a ball past a cone's apex at any radius tried
+  (6.9 to 10, "not done"), so that refusal has no oracle body to hold and
+  is `a_contact_past_a_cones_apex_is_too_large` in `fillet.rs`, fillet and
+  chamfer. The chord square to the axis a circle meridian can make is not
+  reached by a solid the recipe grammar draws, and stays unfixtured.

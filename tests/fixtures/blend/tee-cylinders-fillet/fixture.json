@@ -1,0 +1,75 @@
+{
+  "description": "a vertical cylinder of radius 1 and a horizontal one of radius 0.6 from its axis out along +x, fused, the edge where the branch meets the trunk filleted at r 0.1 at (0.8, 0, 0.6): two cylinders with crossing axes meet along a quartic, and the blend between them has no closed form. Arris refuses it as Unsupported naming the two cylinders (ADR-0036 \u00a74); Open CASCADE builds it",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -3
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1,
+      "height": 6
+    },
+    {
+      "name": "b",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 0.6,
+      "height": 3
+    },
+    {
+      "name": "tee",
+      "op": "fuse",
+      "a": "a",
+      "b": "b"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "tee",
+      "edges": [
+        [
+          0.9539392014169457,
+          0.3,
+          0.5196152422706632
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "unsupported",
+    "genus": 0
+  }
+}

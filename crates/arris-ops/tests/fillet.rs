@@ -8,7 +8,7 @@
 
 use arris_debug::fixtures::Class;
 use arris_debug::unmetered::cut;
-use arris_debug::unmetered::{extrude, fillet, mass_properties, primitive_box, revolve};
+use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, revolve};
 use arris_debug::{corpus, dump_text, fixtures};
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Curve, Profile, ProfileLoop, ProfileSegment, Surface,
@@ -735,6 +735,46 @@ fn a_rim_blend_too_large_is_refused() {
     let plate = holed_plate(&mut m);
     let rim = rim_at(&m, plate, Point3::new(2.0, 2.0, 1.0), 1.0);
     let err = fillet(&mut m, plate, &[rim], 1.2).unwrap_err();
+    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+}
+
+/// The cone row's refusals (ADR-0036 §3): a pointed cone boss on a wide
+/// disc, radius 2 at its base and its apex 2 above, its base rim at 135°.
+/// A ball of radius 1 builds; one of radius 8 touches the cone 8·tan(π/8)
+/// ≈ 3.3 up the ruling, past the apex at 2√2 ≈ 2.8, and a chamfer 4 along
+/// it likewise: `BlendTooLarge`, naming the edge and the cone.
+#[test]
+fn a_contact_past_a_cones_apex_is_too_large() {
+    let mut m = Model::default();
+    let p = |u, v| Point2::new(u, v);
+    let plane = Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap();
+    let profile = Profile {
+        plane,
+        outer: ProfileLoop::Path {
+            start: p(0.0, 0.0),
+            segments: vec![
+                line_to(20.0, 0.0),
+                line_to(20.0, 1.0),
+                line_to(2.0, 1.0),
+                line_to(0.0, 3.0),
+                line_to(0.0, 0.0),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let part = revolve(
+        &mut m,
+        &profile,
+        Axis::z_at(Point3::origin()),
+        core::f64::consts::TAU,
+    )
+    .unwrap()
+    .0;
+    let base = rim_at(&m, part, Point3::new(0.0, 0.0, 1.0), 2.0);
+    fillet(&mut m, part, &[base], 1.0).unwrap();
+    let err = fillet(&mut m, part, &[base], 8.0).unwrap_err();
+    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    let err = chamfer(&mut m, part, &[base], 4.0).unwrap_err();
     assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
 }
 
