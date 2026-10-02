@@ -1818,6 +1818,16 @@ fn regression_tangent_chain_horn_torus() {
     run("regression/tangent-chain-horn-torus");
 }
 
+/// A rib standing on a plate, its vertical corner edge filleted down to the
+/// plate: a convex blend ending on a face that surrounds the rib, the edge's
+/// corner with it concave, so the end arc lies in the rib's footprint and the
+/// plate's top gains the corner. The desired body is Open CASCADE's.
+#[test]
+#[ignore = "Reason::BlendTooLarge at every radius: face_end takes the end arc's side from the blend's convexity, inside the face across, where a concave corner with it puts the arc in the hole the rib leaves (docs/BACKLOG.md, a convex blend ending at a concave corner)"]
+fn regression_rib_corner_fillet_to_plate() {
+    run("regression/rib-corner-fillet-to-plate");
+}
+
 /// A disc whose outline is two half circles, both filleted in one call:
 /// a closed chain of two open arcs at tangent vertices, the shape a rim has
 /// in the real parts where the file splits it at its seam.

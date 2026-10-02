@@ -7,10 +7,11 @@
 ## Goal
 
 The fetched tier's `fillet` column is read on edges the kernel is meant to
-blend, and the pairs it ranks first are built. The battery stops choosing a
-radius no face can hold, so the three `BlendTooLarge` parts (827-9999-906,
--908, CTC-03) either agree with Open CASCADE or surface the pair they were
-hiding behind it. Then, in the order step 1's probe ranks them, a blend of
+blend, and the pairs it ranks first are built. The three
+`BlendTooLarge` parts (827-9999-906, -908, CTC-03) either agree with Open
+CASCADE or surface the pair they were hiding behind it; step 1 found their
+refusal is not the battery's radius but a convex blend ending at a concave
+corner, which step 2 builds. Then, in the order step 1's probe ranks them, a blend of
 a cone against a plane or a coaxial cylinder along a circle (a torus for a
 fillet, a cone for a chamfer: `ring`'s construction with a cone face), and
 of two cylinders with parallel axes along a ruling (a cylinder), fillet
@@ -41,14 +42,12 @@ radius, blends over blends. The cycle stays open when this one retires.
 
 ## Design deltas
 
-- **The battery** (`arris-debug`, `battery.rs`): `FILLET_FRACTION` of the
-  shortest sampled edge becomes the smaller of that and a fraction of the
-  narrowest face across the sampled edges, so a stage never asks a radius a
-  face of the part cannot hold. The cases are Open CASCADE's too (the oracle
-  runs the same radius), so a part's stage moves from one class to another
-  and the histogram is re-measured; docs/ARCHITECTURE.md §Formats and tools
-  states the rule. No public kernel type changes.
-- **ADR-0036 (step 2): the cone and parallel-cylinder rows of the table.**
+- **The battery** (`arris-debug`): unchanged. Step 1 tried bounding
+  its radius by the narrowest adjacent face and dropped it: the committed
+  tier's stored operands are held equal to the derived ones, so the rule
+  moved a committed part's radius (FTC-11, 4.49 to 0.15) and its oracle
+  values, and the three `BlendTooLarge` parts refused at any radius anyway.
+- **ADR-0036 (step 3): the cone and parallel-cylinder rows of the table.**
   Plane × cone, cone × coaxial cylinder along a circle: the ball's centre is
   on the plane's offset by `r` and on the cone's offset surface (a cone of
   the same axis and half-angle, its apex moved along the axis by
@@ -77,7 +76,7 @@ radius, blends over blends. The cycle stays open when this one retires.
   (`.agents/rules/kernel.md` §API).
 - Crate boundaries and layers: none. The kernel half is `arris-ops`'s
   `blend.rs`; a split of `ring` into a surface-agnostic part and a
-  per-face-kind part is a refactor step 3 names if the cone row wants one.
+  per-face-kind part is a refactor step 4 names if the cone row wants one.
 
 ## Steps
 
@@ -87,9 +86,9 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — The battery's radius, and the probe that ranks the
-  residue. Fix the radius rule above, rerun `tools/real-parts.sh` and read
-  what the three `BlendTooLarge` parts do now: each agrees, or is refused
+- [x] Step 1 **[2]** — The three `BlendTooLarge` parts, and the probe that
+  ranks the residue. Try a face-bounded radius, rerun `tools/real-parts.sh`
+  and read what the three parts do now: each agrees, or is refused
   by the pair it was hiding, or really runs over a neighbour at a radius no
   smaller face-bounded rule can avoid (then it is named with its fixture
   under `regression/`, `#[ignore]`d with the oracle's body, and stays the
@@ -100,9 +99,25 @@ bound has to be established here.
   refusal with the edge's curve kind — the census the residue is chosen
   from. Test: the battery's unit tests; the histogram's before and after in
   the commit body; the probe's table goes into this plan's open questions.
-- [ ] Step 2 **[3]** — ADR-0036 against the probe: the cone row, the
+- [ ] Step 2 **[2]** — A convex blend ending at a concave corner (found at
+  step 1). `face_end` takes the end arc's side of the face across from the
+  blend's own convexity alone; where both corner edges are concave (a rib's
+  root on the plate round it, a boss on a plate) the arc lies in the hole
+  the footprint leaves and the face gains the corner, so the side flips,
+  and likewise for a concave blend at concave corners. Move
+  `regression/rib-corner-fillet-to-plate` to `blend/` with its blessed dump
+  and add its siblings: the 45° sloped rib end (NIST 827-9999-906's edge),
+  the same corner chamfered, a concave blend at a pocket's concave corners,
+  and a boss's rim edge. Re-run step 1's probe: the 1561 `BlendTooLarge`
+  edges are the baseline, 959 after the rule. Test: those fixtures against
+  the oracle at `Full` with nothing unchecked; the three parts' `fillet`
+  stage agrees or names the pair it reaches; and the 514 edges the probe
+  turned from `BlendTooLarge` to `ok` are held to the checker (a throwaway
+  run, its count in the commit body), since the probe built them without
+  checking.
+- [ ] Step 3 **[3]** — ADR-0036 against the probe: the cone row, the
   parallel-cylinder row and which of the two the probe ranks first (the
-  order of steps 3 to 6 follows it; a pair the probe finds absent from the
+  order of steps 4 to 7 follows it; a pair the probe finds absent from the
   parts but present in the census stays a backlog line). Fixtures first, as
   `tests/fixtures/regression/` entries with Open CASCADE's oracle values and
   `#[ignore]`d with the desired assertion: a frustum's rim against its cap
@@ -111,7 +126,7 @@ bound has to be established here.
   ends. Test: the fixtures run ignored and fail with the refusals the
   probe names (`cargo nextest run -p arris --run-ignored only -E
   'test(/regression_/)'`).
-- [ ] Step 3 **[3]** — The cone against a plane along a closed circle:
+- [ ] Step 4 **[3]** — The cone against a plane along a closed circle:
   `ring` generalises its cylinder face to a cone face (the offset cone, the
   foot-of-normal contact, the torus and the chamfer cone), the cone's seam
   kept or shortened as the cylinder's, a contact reaching the apex or a
@@ -120,14 +135,14 @@ bound has to be established here.
   form for the removed section swept about the axis, checker green at
   `Full` with nothing unchecked. Test: those fixtures; the frustum rim's
   `Full` check names no unchecked pair.
-- [ ] Step 4 **[2]** — The cone row's open arcs, chains and cone ×
+- [ ] Step 5 **[2]** — The cone row's open arcs, chains and cone ×
   cylinder: an arc of such a circle (a split rim) with its ends trimmed on
   a plane through the axis or square to it (step 3 of the first plan's
   rule, on a cone), and a chain whose junction is a cone stripe meeting a
   line or a cylinder stripe on the ball's cross-section (ADR-0035 §2, an
   existing construction). Fixtures: the split frustum rim, a turned step
   (cone into cylinder at a shoulder) and its chamfer, against the oracle.
-- [ ] Step 5 **[3]** — Two parallel cylinders along a ruling: a new row in
+- [ ] Step 6 **[3]** — Two parallel cylinders along a ruling: a new row in
   `stripe` (the ruling ball), the contacts rulings on each face, the
   cylinder or plane between them, the ends trimmed by the face across
   (planes square to the axes, the usual three faces) and the miter of two
@@ -138,14 +153,14 @@ bound has to be established here.
   right-angled edge does not hold between curved faces; the section is
   computed from the two offset circles and written in the fixture's
   `analytic` block).
-- [ ] Step 6 **[2]** — The refusals the rows leave, each named, as the
+- [ ] Step 7 **[2]** — The refusals the rows leave, each named, as the
   first plan's step 6 did: a cone whose offset reaches its apex, a cone ×
   plane edge that is not a coaxial circle (a plane oblique to the axis
   gives an ellipse and a quartic centre locus: `Unsupported` naming the
   pair), a cylinder pair with crossing or skew axes, a chain through a
   torus. Each a committed fixture with `expect_error`, Open CASCADE's body
   beside it where it builds one.
-- [ ] Step 7 **[2]** — The property. `prop::recipe` gains a turned part
+- [ ] Step 8 **[2]** — The property. `prop::recipe` gains a turned part
   with a coned shoulder (a revolve of a profile with a line at an angle)
   and a bar with two round ends, one edge or the whole outline blended in
   one call at a random radius below the bound, fillet and chamfer. Checks:
@@ -153,7 +168,7 @@ bound has to be established here.
   axis for the cone row, the swept section along the ruling for the
   cylinder row), deterministic, the record complete, and the differential
   against Open CASCADE counting these recipes among the agreeing.
-- [ ] Step 8 **[1]** — Measure and close the plan's loop. Rerun
+- [ ] Step 9 **[1]** — Measure and close the plan's loop. Rerun
   `tools/real-parts.sh` and the committed tier: the `fillet` column and
   `docs/ROADMAP.md` §C6 get the numbers beside step 1's baseline, each
   part that left the column agreeing with Open CASCADE or refused as a
@@ -162,7 +177,7 @@ bound has to be established here.
   `docs/BACKLOG.md`.
 
 Each step is one commit-sized unit with its own test, fixture or oracle
-comparison. Steps 3 and 5 may split if the construction and its ends need
+comparison. Steps 4 and 6 may split if the construction and its ends need
 more than a commit each; say so in that commit.
 
 ## Acceptance
@@ -187,12 +202,11 @@ more than a commit each; say so in that commit.
 ## Docs to update on completion
 
 - `docs/ARCHITECTURE.md` §Operations (blends) — the cone and parallel-
-  cylinder rows, the refusals that remain; §Errors' `Unsupported` row;
-  §Formats and tools — the battery's radius rule.
+  cylinder rows, the refusals that remain; §Errors' `Unsupported` row.
 - `docs/DATA-MODEL.md` §Provenance — only if a row's record differs from
   ADR-0007's (a cone stripe's seam, a cylinder pair's contacts): checked
   against the audit.
-- `docs/adr/0036-….md` and `docs/adr/README.md` — written at step 2.
+- `docs/adr/0036-….md` and `docs/adr/README.md` — written at step 3.
 - `docs/ROADMAP.md` §C6 — status line "second plan landed", the line-2
   pairs marked done within the section, the new histogram numbers.
 - `docs/BACKLOG.md` — drop the lines this plan covers (cone and
@@ -206,19 +220,14 @@ more than a commit each; say so in that commit.
 
 ## Open questions
 
-- ⚠ OPEN: **Which pair families, in which order** — human decides at step 2,
+- ⚠ OPEN: **Which pair families, in which order** — human decides at step 3,
   from step 1's probe (agent writes the table). The plan assumes the cone
   row (700 edges in the first plan's census, the largest `Unsupported`
   left) and the parallel-cylinder ruling (CTC-01's refusal) rank first and
   the torus pairs wait. If the probe puts torus × cylinder or torus ×
-  plane above them, steps 3 to 5 are replaced by that family's rows (a
+  plane above them, steps 4 to 6 are replaced by that family's rows (a
   meridian or parallel circle of the torus on a plane through the axis or
   square to it, as the first plan's open arc) and the ADR says so.
-- ⚠ OPEN: **The battery's face bound** — agent decides at step 1: the
-  fraction of the narrowest adjacent face (the sampled edges' faces, or
-  every face of the part), and whether the stage skips an edge whose faces
-  are narrower than a floor. The rule is recorded in the commit body with
-  the before/after histogram.
 - ⚠ OPEN: **Whether the run-over is a line of its own** — human decides
   after step 1. Open CASCADE consumes a face a radius outgrows; if the
   corpus's parts need that at their sampled radius, it becomes C6's next
@@ -227,3 +236,39 @@ more than a commit each; say so in that commit.
   past a right angle from its axis is a plane's neighbour, one whose offset
   apex crosses the face is `BlendTooLarge`; the bounds are written, not
   assumed, and held by fixtures.
+- **Found at step 1 (agent, 2026-10-02): the three `BlendTooLarge` parts are not
+  a radius.** A battery radius of a tenth of the narrowest length the blend
+  must fit in (the sampled edge's, and the shortest edge on either of its
+  faces' boundaries) moved only a NURBS stage of the fetched tier's 11
+  parts, to both-refuse, and was dropped (it moves a committed part's
+  stored operands); the three kept `BlendTooLarge` — 827-9999-906, -908 and CTC-03 — at any radius down to
+  0.01. 906's edge is the sloped corner of a 63.5-long rib (1.27 thick,
+  45° end) standing on a plate: a convex blend whose lower end meets the
+  plate's top, which surrounds the rib, so the corner with it is concave
+  and the end arc lies in the footprint, a hole of that face. `face_end`
+  asked for it inside. It is not Open CASCADE running over a neighbour:
+  the answer to the run-over question is no for these parts, and the
+  roadmap's run-over line stays only for what a larger probe shows. Shrunk
+  to `regression/rib-corner-fillet-to-plate` (a rib box on a plate box,
+  one vertical corner edge, r 0.5; the oracle builds it, volume to the
+  closed form `(1 − π/4) r² · 6` off the fused body); step 2 fixes it.
+- **The census at step 1 (agent): every blendable edge of the fetched tier's
+  solids, 14066, filleted alone at a tenth of the narrowest bound, with
+  step 2's rule applied** (a throwaway probe, not committed; edges
+  with their parts out of 29): built 4169, `TangentChain` 5106 (tangent
+  dihedrals and ends at tangent corners, 29), `BlendTooLarge` 959 (plane ×
+  plane lines 632 in 25 parts, cylinder × plane lines 191, circles 124;
+  before the rule 1561 — cause of the remaining 959 not yet classified:
+  step 2's re-run reads them), `VertexBlend` 372, and `Unsupported` by the
+  pair the edge or its chain reaches: cylinder × cylinder 614 (a line 477
+  in 22 parts, a circle 137), cone × cylinder 490 (446 circles in 21
+  parts), plane × torus 582 (361 circles in 22 parts, 221 lines), cylinder
+  × torus 250, cone × plane 309 (187 circles in 12 parts, 122 lines),
+  cylinder × sphere 183, NURBS 600+, cone × torus 48, elliptic 80. So the
+  plan's order holds for the cone (799 edges across the two cone pairs)
+  and the cylinder pair, but the torus pairs together (832) outrank either
+  family and are one family (a part's own blends met by a second edge):
+  the human's decision at step 3 is whether they replace the cylinder
+  pair in this plan or open the next one. One fault: 2 edges answer
+  `Internal(Geometry(NotOnSurface))` — a finding with its own fixture when
+  step 2 re-runs the probe.
