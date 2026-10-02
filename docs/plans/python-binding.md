@@ -130,7 +130,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — Re-run the idea's pyo3 check and write ADR-0034. In
+- [x] Step 1 **[2]** — Re-run the idea's pyo3 check and write ADR-0034. In
   a scratch crate: pyo3 0.26, `abi3-py310`, `#![forbid(unsafe_code)]`,
   one `#[pyclass]` with `&mut self`, `create_exception!` with a subclass
   chain, `py.detach`, and `cargo build --target wasm32-unknown-unknown`

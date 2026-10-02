@@ -44,3 +44,4 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0031](0031-mirror.md) | Mirror: a `Reflection` of its own, frames kept right-handed, a quadric's `u` reflected, the loops of such a face reversed | accepted |
 | [0032](0032-lean-gate.md) | The lean gate: a path-scoped fast hook at 32 cases, the full suite at retirement and in CI | accepted |
 | [0033](0033-the-product-tree.md) | The product tree: occurrences beside the flattened bodies, read from the walk the flattening makes, written back from the same value | accepted |
+| [0034](0034-the-python-binding.md) | The Python binding: a thin layer above the facade, `forbid(unsafe_code)` kept, PyPI in lockstep, handles that carry their model (amends ADR-0020 §2) | accepted |
