@@ -149,13 +149,17 @@ bound has to be established here.
   workspace's `wasm`, `no-default-features` and `layers` CI jobs pass on
   the new crate. Test: `cargo test -p arris-py`, `tools/check-layers.sh`,
   the wasm build, and a pytest that imports the built module.
-- [ ] Step 3 **[2]** — `Model` and handles carrying their model. The
+- [x] Step 3 **[2]** — `Model` and handles carrying their model. The
   lock, the frozen hashable handle classes, `ForeignHandleError` raised
   before the kernel, handle equality and hashing by `(model, slot,
   generation)`, a stale handle surfacing the kernel's `NotFound` as
   `StaleHandleError`. Test (Rust and pytest): two models, the same slot in
   each, a handle from one refused by the other — the case that today
-  resolves to a different real entity.
+  resolves to a different real entity. *Found at step 3:* no operation
+  exists in Python yet to mint a handle, so the foreign, stale and
+  retained-handle cases run in Rust (`model::tests`, over the kernel's own
+  `primitive_box`) and the pytest holds what Python can reach; step 6's
+  pytest adds the same three cases through `Model.primitive_box`.
 - [ ] Step 4 **[1]** — Errors: the exception hierarchy. One subclass per
   variant of every error enum the binding can raise, entities and reasons
   as attributes, built by an exhaustive `match` per enum (no wildcard
@@ -172,7 +176,8 @@ bound has to be established here.
   `extrude`, `revolve`, each returning `(Body, Provenance)`, with the
   `Cancel` token, a step budget and Ctrl-C as keyword arguments, and the
   GIL released around the kernel call. Test: pytest of each against the
-  closed form; an operation cancelled from another thread returns
+  closed form; a handle from one model refused by another and a freed
+  one stale, through the operations (step 3's pytest half); an operation cancelled from another thread returns
   `InterruptedError`'s subclass and leaves the model as it was (ids
   included); a budget stops at the same step run twice.
 - [ ] Step 7 **[2]** — Profiles. `Profile` of lines, arcs and elliptic
@@ -286,8 +291,8 @@ bound has to be established here.
   reads `[workspace.package].version`; `0.5.0-dev` becomes `0.5.0.dev0`,
   and the release job must still refuse it. The step checks the mapping
   with `maturin build` rather than assuming it.
-- **⚠ OPEN: a handle's lifetime across `Model.retain` (agent decides at
-  step 3).** `retain` never renumbers (ADR-0010), so a handle to a
-  retained entity stays valid and one to a dropped entity is stale; step 3
-  confirms that is what `StaleHandleError` reports, with a test, and does
-  not add a generation check of its own.
+- **Settled at step 3: a handle's lifetime across `Model.retain`.**
+  `retain` never renumbers (ADR-0010), so a handle to a retained entity
+  stays valid and one to a dropped entity is stale; `StaleHandleError` is
+  the kernel's `NotFound` and the binding adds no generation check of its
+  own (`model::tests::a_freed_entity_is_stale_and_a_kept_one_stays_valid`).

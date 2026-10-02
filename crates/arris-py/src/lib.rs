@@ -8,16 +8,15 @@
 #![warn(missing_docs)]
 #![cfg(not(target_arch = "wasm32"))]
 
-use pyo3::create_exception;
-use pyo3::exceptions::PyException;
-use pyo3::prelude::*;
+mod error;
+mod handle;
+mod model;
 
-create_exception!(
-    _arris,
-    ArrisError,
-    PyException,
-    "Every error the kernel returns is an instance of this class."
-);
+pub use error::{ArrisError, BindError, ForeignHandleError, ModelPoisonedError, StaleHandleError};
+pub use handle::{Body, Edge, Face, Shell, Vertex};
+pub use model::Model;
+
+use pyo3::prelude::*;
 
 /// The package version in PEP 440 form: the workspace's `0.5.0-dev` is
 /// `0.5.0.dev0` to Python, and a release is the same string with no suffix.
@@ -33,7 +32,17 @@ pub fn python_version(cargo: &str) -> String {
 #[pyo3(name = "_arris")]
 fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("__version__", python_version(env!("CARGO_PKG_VERSION")))?;
-    module.add("ArrisError", module.py().get_type::<ArrisError>())?;
+    let py = module.py();
+    module.add("ArrisError", py.get_type::<ArrisError>())?;
+    module.add("ForeignHandleError", py.get_type::<ForeignHandleError>())?;
+    module.add("StaleHandleError", py.get_type::<StaleHandleError>())?;
+    module.add("ModelPoisonedError", py.get_type::<ModelPoisonedError>())?;
+    module.add_class::<Model>()?;
+    module.add_class::<Body>()?;
+    module.add_class::<Shell>()?;
+    module.add_class::<Face>()?;
+    module.add_class::<Edge>()?;
+    module.add_class::<Vertex>()?;
     Ok(())
 }
 
