@@ -1,0 +1,25 @@
+{
+  "description": "a disc of radius R 1.5 and height 1 whose outline is two half circles, so its side is two half cylinders that meet along rulings at the two tangent vertices (±R, 0) — the shape a hole's or a boss's rim has in the real parts, split where the file's vertices are — and the top rim's two half circles filleted at r 0.25 in one call: two plane-against-cylinder arcs, convex, which form a closed chain with no ends, the blend a torus of major radius R − r and minor r coaxial with the disc (two half tori or one whole, the ADR's choice), tangent to the top along a circle and to the side along a circle. The removed corner's section (1 − π/4) r² swept a full turn about the axis at R − r (10 − 3π) / (12 − 3π) by Pappus. Arris refuses it today as Unsupported (a circle curve against a plane): each half circle is an open arc",
+  "params": {"r": 0.25},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [1.5, 0], "segments": [{"arc_to": [-1.5, 0], "via": [0, 1.5]}, {"arc_to": [1.5, 0], "via": [0, -1.5]}]}},
+    {"name": "disc", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 1},
+    {"name": "result", "op": "fillet", "of": "disc", "edges": [[0, 1.5, 1], [0, -1.5, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [0, 0, 0.5], "expect": "in"},
+    {"label": "corner_gone", "point": [0, "1.5 - r + (r + 0.05) * cos(radians(45))", "1 - r + (r + 0.05) * sin(radians(45))"], "expect": "out"},
+    {"label": "on_blend", "point": [0, "1.5 - r + r * cos(radians(45))", "1 - r + r * sin(radians(45))"], "expect": "on"},
+    {"label": "on_blend_behind", "point": [0, "-(1.5 - r + r * cos(radians(45)))", "1 - r + r * sin(radians(45))"], "expect": "on"},
+    {"label": "on_top_contact", "point": [0, "1.5 - r", 1], "expect": "on"},
+    {"label": "on_side_contact", "point": [0, 1.5, "1 - r"], "expect": "on"},
+    {"label": "on_bottom_rim", "point": [0, 1.5, 0], "expect": "on"},
+    {"label": "on_top", "point": [0, 0, 1], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "pi * 1.5^2 - 2 * pi * (1.5 - r * (10 - 3 * pi) / (12 - 3 * pi)) * (1 - pi / 4) * r^2",
+    "genus": 0
+  }
+}

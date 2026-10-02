@@ -1429,14 +1429,6 @@ fn blend_probe_cap_and_vertical_fillet_m() {
     run("blend/probe-cap-and-vertical-fillet-m");
 }
 
-/// The cap edge of a face a first blend trimmed, ending where that
-/// blend's contact meets its arc: a tangent chain Open CASCADE follows,
-/// `Reason::TangentChain` through the runner's expected-error path.
-#[test]
-fn blend_tangent_chain_cap_edge() {
-    run("blend/tangent-chain-cap-edge");
-}
-
 /// A rise ending at a vertex of five edges, where a box stands on its
 /// corner on another's top edge: `Reason::VertexBlend`.
 #[test]
@@ -1749,6 +1741,41 @@ fn regression_nist_ftc_10_ap242_mesh_off_face() {
 #[ignore = "drill_y: OpError::Internal(Fault::Geometry) where Open CASCADE builds the drilled part (docs/BACKLOG.md, a drill's geometry fault on the fetched tier)"]
 fn regression_nist_ctc_04_ap203_drill_geometry_fault() {
     run_part("regression/nist-ctc-04-ap203-drill-geometry-fault");
+}
+
+/// The cap edge of a face a first blend trimmed, ending where that
+/// blend's contact meets its arc: a tangent chain Open CASCADE follows and
+/// blends through the arc's torus. The desired body is Open CASCADE's.
+#[test]
+#[ignore = "Reason::TangentChain: the cap edge's end sits at a tangent junction with the first blend's arc, which nothing blends as a chain yet (docs/plans/c6-blend-network.md step 4)"]
+fn regression_tangent_chain_cap_edge() {
+    run("regression/tangent-chain-cap-edge");
+}
+
+/// A plate with a D-shaped notch in one side, its top rim filleted: an
+/// open half circle between the top plane and the notch's cylinder, its
+/// ends at the plane through the cylinder's axis.
+#[test]
+#[ignore = "Unsupported(circle curve x plane): the rim is an open arc, a stripe the closed circle's ring does not cover (docs/plans/c6-blend-network.md step 3)"]
+fn regression_d_notch_rim_fillet() {
+    run("regression/d-notch-rim-fillet");
+}
+
+/// A disc whose outline is two half circles, both filleted in one call:
+/// a closed chain of two open arcs at tangent vertices, the shape a rim has
+/// in the real parts where the file splits it at its seam.
+#[test]
+#[ignore = "Unsupported(circle curve x plane): each half circle is an open arc, and the two meet at tangent vertices (docs/plans/c6-blend-network.md steps 3 and 5)"]
+fn regression_split_rim_disc_fillet() {
+    run("regression/split-rim-disc-fillet");
+}
+
+/// A stadium's whole top outline filleted in one call: line, arc, line, arc,
+/// a closed chain through four tangent vertices.
+#[test]
+#[ignore = "Unsupported(circle curve x plane) at an arc, Reason::TangentChain at a line: every edge of the outline ends at a tangent junction, which nothing blends as a chain yet (docs/plans/c6-blend-network.md steps 3 to 5)"]
+fn regression_stadium_outline_fillet() {
+    run("regression/stadium-outline-fillet");
 }
 
 /// A cylinder whose circles are placed on the axis `(-1, -6.1e-17, 0)`

@@ -39,7 +39,15 @@ the NIST files it is a hole's rim split at its seam into two half circles.
 And `TangentChain` is two things the refusal does not separate: an edge
 that is itself a tangent dihedral (a blend's own contact edge, which no
 rolling ball can blend), and an edge whose end sits at a tangent junction,
-which a chain blends. Step 1 separates them before anything is built.
+which a chain blends. Step 1 separated them on the fetched tier (a second probe, not committed,
+each edge blended alone at a tenth of its length, entities of the refusal
+read): of 2854 `TangentChain` edges **2479 are tangent dihedrals themselves**
+(1766 lines, 614 circles, 99 NURBS) and **375 sit at a junction** (all
+lines), 13% of the two. That probe saw 6087 edges where the census says
+14066; the difference is unexplained and the census table's counts are
+therefore orders of magnitude, re-measured at step 9. The ranking holds: the
+open arc is `Unsupported` on every edge it touches, and the junction rows are
+the chain's.
 
 ## Non-goals
 
@@ -78,8 +86,9 @@ which a chain blends. Step 1 separates them before anything is built.
   gains a variant: an exhaustive-enum change, named in that step's commit
   body and under `CHANGELOG.md`'s `### Breaking`. No other public type or
   signature changes: `fillet` and `chamfer` take the same edges.
-- `arris-debug`: the battery's `fillet` stage samples edges; step 1 decides
-  whether it may skip an edge no rolling ball can blend (open question 1).
+- `arris-debug`: the battery's `fillet` stage no longer samples an edge whose
+  faces are tangent along it (step 1; `battery::is_tangent_dihedral`, the
+  test `blend.rs` refuses with, at the curve's midpoint).
   `prop::recipe` gains an outline-fillet recipe (step 8).
 - Crate boundaries and layers: none. All of it is `arris-ops`'s `blend.rs`
   (2976 lines today); a chain module split out of it is a refactor step 2
@@ -93,7 +102,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — The anatomy, as fixtures, before any code. Shrink
+- [x] Step 1 **[2]** — The anatomy, as fixtures, before any code. Shrink
   the census's two top rows to `tests/fixtures/regression/` entries with
   Open CASCADE's oracle values, `#[ignore]`d with the desired assertion: a
   plate with a D-shaped notch (an open arc between the top plane and the
@@ -125,8 +134,10 @@ bound has to be established here.
   plane through the axis or square to it (and the corner is the usual three
   faces). Fixture: the D-notch moves from `regression/` to `blend/` with its
   oracle, checker green at `Full`, volume to the fixture's tolerance and to
-  the closed form (the removed volume is `(1 − π/4) r²` times the arc's
-  length, no end effect past it).
+  the closed form (the removed corner's section `(1 − π/4) r²` swept by
+  Pappus about the axis at `R ± r (10 − 3π) / (12 − 3π)`, half a turn, no
+  end effect past the trimming plane — the fixture's `analytic.volume`,
+  which the corpus lint already holds to the oracle).
 - [ ] Step 4 **[3]** — The tangent junction. Two stripes meeting at a
   tangent vertex end on one shared cross-section arc: no trim by a face
   across, the contact points meet, the blend faces meet along the arc with
@@ -160,8 +171,11 @@ bound has to be established here.
   a random convex outline (a stadium, a rounded rectangle, a D) extruded in
   a random pose, filleted along the top outline in one call at a random
   radius below the arc's, then chamfered. Checks: the checker at `Full`,
-  volume additivity with the tool-free closed form `V − (1 − π/4) r² L` (and
-  `V − d² L / 2` for a chamfer, `L` the outline's length), the call
+  volume additivity with the tool-free closed form: the removed corner's
+  section `(1 − π/4) r²` swept along the outline by Pappus (`L` times it on
+  a line; on an arc the centroid's radius `R ∓ r (10 − 3π) / (12 − 3π)`
+  times the angle, as step 1's fixtures hold), and `d² / 2` swept the same
+  way for a chamfer, its centroid `d / 3` from each face, the call
   deterministic and its record complete, the differential against Open
   CASCADE counting it among the agreeing recipes.
 - [ ] Step 9 **[1]** — Measure and close the plan's loop. Rerun
@@ -220,10 +234,17 @@ out to need more than a commit each; say so in that commit.
   tangent contact lines raise `Standard_Failure: There are no suitable
   edges for chamfer or fillet` (`ChFi3d_Builder.cxx`, the throw;
   `ChFi3d::IsTangentFaces` is the test); the two end arcs build and
-  check valid. One case on one pair: step 1 repeats it on the real parts'
-  plane × plane and cylinder × cylinder tangent edges before the stage
-  skips them, and says in its commit that the histogram moves with no
-  kernel change. The question as first written: the census's `TangentChain` rows include a blend's own
+  check valid. **Confirmed on the fetched tier in step 1: all 2479
+  tangent-dihedral edges (lines, circles, NURBS) are refused with that
+  message; the battery's stage skips them, and the `fillet` column moves
+  without any kernel change** — on this tier's 27 parts the column's
+  blocked parts went from 11 to 12, `TangentChain` from 4 refusals to 1,
+  `Unsupported(circle curve × plane)` from 6 to 8, `BlendTooLarge` from 0 to
+  2, and 4 stages where both refused became 3 (step 9's baseline is the
+  new numbers, not C4's). The 375 junction edges, by contrast, are the
+  chain's: Open CASCADE built 299 and returned not-done on 76 (step 2's ADR
+  reads those 76 before it names what a chain refuses). The question as
+  first written: the census's `TangentChain` rows include a blend's own
   contact edges, which the battery's `fillet` sample picks like any edge.
   If Open CASCADE also refuses them, that sample is wrong, not Arris: the
   stage skips an edge no ball can blend and the histogram moves without any
@@ -236,8 +257,9 @@ out to need more than a commit each; say so in that commit.
   2).** From the spine's tangent vertex (a `Generated` from a vertex that is
   also `Deleted`'s image) or from both edges. The ADR picks; the audit
   (`testing::recorded_parts`) and DATA-MODEL §Provenance follow it.
-- **⚠ OPEN: one torus face per chain or one per edge (agent, step 5).**
-  One face keeps the part's face count and the oracle's counts closer;
-  one per edge keeps every stripe's frame its own. Decided by which one
-  Open CASCADE's counts (`expected.json`'s `counts`) agree with at step 1,
-  and recorded in the ADR.
+- **Answered by step 1's counts (agent): one blend face per edge.** Open
+  Cascade's stadium has 10 faces (top, bottom, four sides, four blends) and
+  the split-rim disc 6 (top, bottom, two sides, two tori): a blend face
+  never spans an edge boundary, even over a tangent chain of the same
+  surface. Step 5 builds one per edge and the ADR records it; the
+  fixtures' counts are `expected.json`'s.

@@ -617,7 +617,7 @@ sorted into the differential's classes (ADR-0024 §2):
 | `write_read` | the body written to STEP and read back by Arris: every solid read, the checker green, the same counts, the mass properties within the body's own tolerance. Arris's alone |
 | `box_cut` | cut by a box with a corner at the oracle's centroid, its edges along the oracle's principal axes, reaching past the part |
 | `drill_x`, `drill_y`, `drill_z` | cut by a cylinder through the centroid along each principal axis, smallest moment first, of a tenth of the smallest radius of gyration |
-| `fillet` | at most four of the solid's edges between two faces, in id order at a fixed stride, each named by its curve's midpoint, blended at a tenth of the shortest one's length |
+| `fillet` | at most four of the solid's edges between two faces, in id order at a fixed stride, each named by its curve's midpoint, blended at a tenth of the shortest one's length — an edge whose two faces are tangent along it is not sampled: no rolling ball blends one, and Open CASCADE refused all 2479 of the fetched tier's |
 
 ```json
 "solids": [

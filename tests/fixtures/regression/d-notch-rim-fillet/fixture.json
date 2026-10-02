@@ -1,0 +1,25 @@
+{
+  "description": "a 4 × 4 plate 1 thick with a D-shaped notch cut into its y = 0 side, the half disc of radius R 1 about (2, 0), and the notch's top rim filleted at r 0.25: a plane against a cylinder along an open half circle, convex, whose two ends are the corners where the notch's wall meets the side face y = 0, a plane through the cylinder's axis; the blend is half a torus coaxial with the notch, major radius R + r and minor r, trimmed at each end by that plane with no end effect past it. The removed corner's section (1 − π/4) r² swept half a turn about the axis at R + r (10 − 3π) / (12 − 3π) by Pappus. Arris refuses it today as Unsupported (a circle curve against a plane), the blend-network cycle's open arc",
+  "params": {"r": 0.25},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [1, 0]}, {"arc_to": [3, 0], "via": [2, 1]}, {"line_to": [4, 0]}, {"line_to": [4, 4]}, {"line_to": [0, 4]}, {"line_to": [0, 0]}]}},
+    {"name": "plate", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 1},
+    {"name": "result", "op": "fillet", "of": "plate", "edges": [[2, 1, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [0.5, 2, 0.5], "expect": "in"},
+    {"label": "in_the_notch", "point": [2, 0.5, 0.5], "expect": "out"},
+    {"label": "corner_gone", "point": [2, "1 + r - (r + 0.05) * cos(radians(45))", "1 - r + (r + 0.05) * sin(radians(45))"], "expect": "out"},
+    {"label": "on_blend", "point": [2, "1 + r - r * cos(radians(45))", "1 - r + r * sin(radians(45))"], "expect": "on"},
+    {"label": "on_top_contact", "point": [2, "1 + r", 1], "expect": "on"},
+    {"label": "on_wall_contact", "point": [2, 1, "1 - r"], "expect": "on"},
+    {"label": "on_bottom_rim", "point": [2, 1, 0], "expect": "on"},
+    {"label": "on_top", "point": [0.5, 2, 1], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "16 - pi / 2 - pi * (1 + r * (10 - 3 * pi) / (12 - 3 * pi)) * (1 - pi / 4) * r^2",
+    "genus": 0
+  }
+}

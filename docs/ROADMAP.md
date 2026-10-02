@@ -109,8 +109,8 @@ fixtures:
 
 | Refusal | Stage | Count | Blocks |
 |---|---|---:|---|
+| Unsupported(circle curve × plane surface) | fillet | 4 | blend network |
 | unsupported entity | read | 3 | healing |
-| Unsupported(circle curve × plane surface) | fillet | 3 | blend network |
 | gap past the cap | read | 2 | healing |
 | Unsupported(plane surface × NURBS surface) | box_cut | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_x | 2 | NURBS |
@@ -118,7 +118,6 @@ fixtures:
 | Unsupported(plane surface × NURBS surface) | drill_z | 2 | NURBS |
 | unsupported entity | read | 2 | itself: supplemental geometry |
 | Degenerate(TangentChain) | fillet | 1 | blend network |
-| Unsupported(cylinder surface × cone surface) | fillet | 1 | blend network |
 | Unsupported(cylinder surface × cylinder surface) | fillet | 1 | blend network |
 <!-- /histogram -->
 

@@ -31,7 +31,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use arris_io::arris_check::arris_topo::arris_math::nalgebra::SymmetricEigen;
 use arris_io::arris_check::arris_topo::arris_math::{Matrix3, Point3, Vec3};
-use arris_io::arris_check::arris_topo::{Body, EdgeId, Model};
+use arris_io::arris_check::arris_topo::{Body, EdgeId, FaceId, Model, Orientation};
 use arris_io::step::{self, ReadOptions};
 use serde::{Deserialize, Serialize};
 
@@ -271,12 +271,61 @@ fn reach(m: &Model, body: Body, centre: Point3) -> Result<f64, String> {
     Ok(far)
 }
 
+/// Whether the two faces of `e` meet tangentially at its curve's midpoint:
+/// the outward normals are parallel within the model's angular tolerance,
+/// so there is no corner for a rolling ball to fill. Open CASCADE refuses
+/// such an edge (`There are no suitable edges for chamfer or fillet`), as
+/// it did every one of the fetched tier's 2479, and Arris refuses it as
+/// `Reason::TangentChain` — a refusal the battery's sample
+/// has no use for. A face with no normal there is not tangent.
+fn is_tangent_dihedral(
+    m: &Model,
+    orientation: &BTreeMap<FaceId, Orientation>,
+    e: EdgeId,
+) -> Result<bool, String> {
+    let edge = m.edge(e).map_err(|e| e.to_string())?;
+    let Some((_, range)) = edge.curve() else {
+        return Ok(false);
+    };
+    let mut normals = Vec::new();
+    for u in m.edge_uses(e).map_err(|e| e.to_string())? {
+        let face = m.face(u.face).map_err(|e| e.to_string())?;
+        let coedge = face
+            .loops()
+            .get(u.loop_index)
+            .and_then(|l| l.coedges().get(u.coedge_index))
+            .ok_or("an edge use names no coedge")?;
+        let uv = m
+            .curve2(coedge.pcurve())
+            .map_err(|e| e.to_string())?
+            .point(range.midpoint());
+        let surface = m.surface(face.surface()).map_err(|e| e.to_string())?;
+        let Some(n) = surface.normal(uv.x, uv.y) else {
+            return Ok(false);
+        };
+        let sign = orientation.get(&u.face).ok_or("a face of no shell")?.sign();
+        normals.push(n.into_inner() * sign);
+    }
+    let [a, b] = normals[..] else {
+        return Ok(false);
+    };
+    Ok(a.cross(&b).norm() <= m.precision().angular_tolerance)
+}
+
 /// The edges the fillet stage blends: every edge of `body` between two
-/// distinct faces that has a curve, in id order, taken at the stride that
-/// leaves at most [`FILLET_EDGES`]; each with its curve's midpoint and
-/// its length.
+/// distinct faces that has a curve and is not a tangent dihedral (no
+/// rolling ball blends one: [`is_tangent_dihedral`]), in id order, taken at
+/// the stride that leaves at most [`FILLET_EDGES`]; each with its curve's
+/// midpoint and its length.
 fn fillet_sample(m: &Model, body: Body) -> Result<Vec<(Point3, f64)>, String> {
     let closure = m.closure(body).map_err(|e| e.to_string())?;
+    let mut orientation: BTreeMap<FaceId, Orientation> = BTreeMap::new();
+    for shell in m.shells(body).map_err(|e| e.to_string())? {
+        for face_use in m.shell(shell.id).map_err(|e| e.to_string())?.faces() {
+            let face = face_use.oriented_by(shell.orientation);
+            orientation.insert(face.id, face.orientation);
+        }
+    }
     let mut edges: Vec<EdgeId> = Vec::new();
     for &e in &closure.edges {
         let edge = m.edge(e).map_err(|e| e.to_string())?;
@@ -287,7 +336,7 @@ fn fillet_sample(m: &Model, body: Body) -> Result<Vec<(Point3, f64)>, String> {
         let mut faces: Vec<_> = uses.iter().map(|u| u.face).collect();
         faces.sort();
         faces.dedup();
-        if uses.len() == 2 && faces.len() == 2 {
+        if uses.len() == 2 && faces.len() == 2 && !is_tangent_dihedral(m, &orientation, e)? {
             edges.push(e);
         }
     }
