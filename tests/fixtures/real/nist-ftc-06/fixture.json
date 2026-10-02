@@ -16,7 +16,7 @@
         "drill_y": "agree",
         "drill_z": "agree",
         "fillet": {
-          "arris-refuses": "Unsupported(circle curve × plane surface)"
+          "arris-refuses": "Degenerate(VertexBlend)"
         },
         "write_read": "agree"
       },

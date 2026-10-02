@@ -680,8 +680,21 @@ has the cylinder's `Z` and its `X` at the edge's vertex, so its `u` seam
 — a tube circle of the torus, a ruling of the cone — runs between the
 two contacts' vertices in the half-plane of the cylinder's own seam,
 which is shortened to the contact on the cylinder; that vertex must
-carry no other edge, else `VertexBlend`. A torus that would not be a
-ring torus, a contact that reaches the axis or a seam shorter than the
+carry no other edge, else `VertexBlend`. An open arc of such a circle —
+a rim split where a file put its vertices, a D-shaped notch — blends to
+the same torus or cone over the arc's own range (ADR-0035), with the
+blend's `X` at the arc's start vertex and no seam: its loop is a
+rectangle in (u, v). Each end is a corner of three edges trimmed by the
+face across, which must be a plane through the cylinder's axis: it meets
+the torus in the tube circle at the vertex's angle and the cone in its
+ruling, exact on the plane and a line at constant `u` on the blend; the
+corner's radial line on the plane and ruling on the cylinder are
+shortened to the contacts, and the face across takes the section between
+them. Any other face across meets a torus in a quartic and is
+`Unsupported` naming the blend's surface and that face; an arc that meets
+another blended edge at a vertex is `VertexBlend`. A torus that would not
+be a ring torus, a contact that reaches the axis, a contact or an end
+section that leaves its face, or a seam or a corner edge shorter than the
 trim is `BlendTooLarge`. `ops::chamfer(m, body, edges, distance)` is the same
 operation cut flat: two planes chamfer to the plane through the lines at
 `distance` from the edge along each face — its frame's origin on one

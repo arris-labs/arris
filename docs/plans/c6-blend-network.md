@@ -126,7 +126,7 @@ bound has to be established here.
   Test: the ADR's worked example (the stadium outline's entity counts,
   Euler line and provenance records) is the expected value of step 4's
   fixture, computed here by hand and by the oracle's counts.
-- [ ] Step 3 **[3]** — The open-arc stripe. `ring` generalises from a closed
+- [x] Step 3 **[3]** — The open-arc stripe. `ring` generalises from a closed
   circle to an open arc between a plane and a cylinder: a torus section
   (fillet) or cone section (chamfer) over the arc's range, its two contacts
   arcs of the same circles, the cylinder's seam kept or shortened as the
@@ -162,7 +162,10 @@ bound has to be established here.
   `TangentChain` with the edge. Each is a committed fixture with
   `expect_error` and the oracle's own result recorded beside it (the
   `analytic.occt_*` fields) where Open CASCADE builds one.
-- [ ] Step 7 **[2]** — Chain chamfers. The same chains with a flat cut: the
+- [ ] Step 7 **[2]** — Chain chamfers. (Step 3 already builds the open
+  arc's cone section: the D-notch chamfered at 0.25 checked by hand at
+  `Full` with nothing unchecked, volume to the closed form within 2e-15;
+  this step commits it as a fixture.) The same chains with a flat cut: the
   open arc's cone section, the junction a straight chord between the two
   contact points, the closed forms exact on every plane they lie on.
   Fixtures: the D-notch, the stadium and the split rim chamfered, against

@@ -1482,6 +1482,15 @@ fn blend_rib_root_edge() {
     run("blend/rib-root-edge");
 }
 
+/// A plate with a D-shaped notch in one side, its top rim filleted: an
+/// open half circle between the top plane and the notch's cylinder, the
+/// blend half a torus trimmed at each end on its meridian in the plane
+/// through the cylinder's axis (ADR-0035).
+#[test]
+fn blend_d_notch_rim_fillet() {
+    run("blend/d-notch-rim-fillet");
+}
+
 /// A hole's top rim: a plane against a cylinder along a circle, convex,
 /// the blend a quarter of a torus coaxial with the hole with no ends
 /// (ADR-0007), S5 deciding it against the top face and the wall by the
@@ -1752,20 +1761,11 @@ fn regression_tangent_chain_cap_edge() {
     run("regression/tangent-chain-cap-edge");
 }
 
-/// A plate with a D-shaped notch in one side, its top rim filleted: an
-/// open half circle between the top plane and the notch's cylinder, its
-/// ends at the plane through the cylinder's axis.
-#[test]
-#[ignore = "Unsupported(circle curve x plane): the rim is an open arc, a stripe the closed circle's ring does not cover (docs/plans/c6-blend-network.md step 3)"]
-fn regression_d_notch_rim_fillet() {
-    run("regression/d-notch-rim-fillet");
-}
-
 /// A disc whose outline is two half circles, both filleted in one call:
 /// a closed chain of two open arcs at tangent vertices, the shape a rim has
 /// in the real parts where the file splits it at its seam.
 #[test]
-#[ignore = "Unsupported(circle curve x plane): each half circle is an open arc, and the two meet at tangent vertices (docs/plans/c6-blend-network.md steps 3 and 5)"]
+#[ignore = "Reason::VertexBlend: each half circle blends as an open arc, but the two meet at tangent vertices, a junction nothing builds yet (docs/plans/c6-blend-network.md steps 4 and 5)"]
 fn regression_split_rim_disc_fillet() {
     run("regression/split-rim-disc-fillet");
 }
@@ -1773,7 +1773,7 @@ fn regression_split_rim_disc_fillet() {
 /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
 /// a closed chain through four tangent vertices.
 #[test]
-#[ignore = "Unsupported(circle curve x plane) at an arc, Reason::TangentChain at a line: every edge of the outline ends at a tangent junction, which nothing blends as a chain yet (docs/plans/c6-blend-network.md steps 3 to 5)"]
+#[ignore = "Reason::VertexBlend: every edge of the outline ends at a tangent junction with an arc, which nothing blends as a chain yet (docs/plans/c6-blend-network.md steps 4 and 5)"]
 fn regression_stadium_outline_fillet() {
     run("regression/stadium-outline-fillet");
 }
