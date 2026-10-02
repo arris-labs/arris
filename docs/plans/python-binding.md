@@ -239,13 +239,24 @@ bound has to be established here.
   when it had none), as step 4 recorded. Walks are `shells`, `faces`,
   `edges`, `vertices` of a body, and `edges_of(face)`, `vertices_of(edge)`,
   `faces_of(body, edge)`, `edges_at(body, vertex)`.
-- [ ] Step 9 **[2]** — Tessellation and mesh bytes. `tessellate(body,
+- [x] Step 9 **[2]** — Tessellation and mesh bytes. `tessellate(body,
   chord, angle)` returns a `Mesh` of bytes plus counts, `Mesh.to_numpy()`
   in a pure-Python shim that imports `numpy` only when called. Test: the
   mesh of a cylinder is closed, its signed volume within the corpus's
   `mesh_volume_rel` of the oracle's, and `to_numpy()` agrees with the
   bytes when numpy is installed and raises a clear `ImportError` when it
-  is not.
+  is not. *Found at step 9:* the kernel's request has no angle (the chord
+  is the only knob, ADR-0011), so the signature is `tessellate(body, chord,
+  *, cancel, budget)` and not the plan's `(body, chord, angle)`; an ignored
+  argument would lie. `Model.tessellate` also takes the usual stop keywords
+  and runs with the GIL released. `Mesh` carries `positions` and
+  `triangles` (and `edge_indices`) as bytes with `n_positions` and
+  `n_triangles`, the per-face and per-edge runs as handles, and
+  `is_closed`, `signed_volume`, `area`, `bounds`. The kernel's per-corner
+  normals and (u, v) block (`MeshRequest::with_corners`, ADR-0012) is not
+  bound: a backlog line for the binding, since a renderer wants it. The
+  not-installed `ImportError` is tested by blocking `numpy` in
+  `sys.modules`, so it holds whether or not numpy is installed.
 - [ ] Step 10 **[1]** — io. `step.write`, `step.read` (every solid its
   own result or `Refusal`, the product tree beside it), `stl`, `obj`,
   `native` and `body` bytes and JSON. Test: write → read round trip of a

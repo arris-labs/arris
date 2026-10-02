@@ -14,7 +14,8 @@ use pyo3::prelude::*;
 use crate::control::{Cancel, Limits};
 use crate::error::BindError;
 use crate::handle::{AnyHandle, Body, Edge, Face, Shell, Vertex};
-use crate::kernel_error::op_error;
+use crate::kernel_error::{Mapped, mesh_error, op_error};
+use crate::mesh::Mesh;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
 use crate::query::{Frame, MassProperties, Report, level_of};
@@ -128,20 +129,14 @@ pub type Made = (Body, Provenance);
 
 /// Why a call did not produce a body: the binding refused it, or the kernel
 /// did.
-enum Failure {
+enum Failure<E> {
     Bind(BindError),
-    Op(OpError),
+    Kernel(E),
 }
 
-impl From<BindError> for Failure {
+impl<E> From<BindError> for Failure<E> {
     fn from(e: BindError) -> Self {
         Failure::Bind(e)
-    }
-}
-
-impl From<OpError> for Failure {
-    fn from(e: OpError) -> Self {
-        Failure::Op(e)
     }
 }
 
@@ -186,21 +181,38 @@ impl Model {
         limits: &Limits,
         call: impl FnOnce(&mut topo::Model, &Control<'_>) -> Result<T, OpError> + Send,
     ) -> PyResult<T> {
+        self.run_with(py, limits, call, op_error, |error| {
+            matches!(
+                error,
+                OpError::Interrupted(Interrupted { by: Stop::Poll, .. })
+            )
+        })
+    }
+
+    /// [`Model::run`] for any kernel error type: `map` says how `E` is
+    /// raised and `by_poll` whether it is a stop by the poll, which Ctrl-C
+    /// answers.
+    fn run_with<T: Send, E: Send>(
+        &self,
+        py: Python<'_>,
+        limits: &Limits,
+        call: impl FnOnce(&mut topo::Model, &Control<'_>) -> Result<T, E> + Send,
+        map: impl FnOnce(&E) -> Mapped,
+        by_poll: impl FnOnce(&E) -> bool,
+    ) -> PyResult<T> {
         let (outcome, signalled) = py.detach(|| {
             limits.run(|control| {
                 let mut kernel = self.shared.lock()?;
-                Ok::<_, Failure>(call(&mut kernel, control)?)
+                call(&mut kernel, control).map_err(Failure::Kernel)
             })
         });
         match outcome {
             Ok(value) => Ok(value),
             Err(Failure::Bind(error)) => Err(error.into()),
-            Err(Failure::Op(OpError::Interrupted(Interrupted { by: Stop::Poll, .. })))
-                if signalled =>
-            {
+            Err(Failure::Kernel(error)) if signalled && by_poll(&error) => {
                 Err(PyKeyboardInterrupt::new_err("interrupted by Ctrl-C"))
             }
-            Err(Failure::Op(error)) => Err(op_error(&error).raise(py, Some(self))),
+            Err(Failure::Kernel(error)) => Err(map(&error).raise(py, Some(self))),
         }
     }
 
@@ -576,6 +588,41 @@ impl Model {
             Ok::<_, BindError>(arris::check::check(&kernel, body, level))
         })?;
         Ok(Report::new(Some(self), report))
+    }
+
+    /// The triangle mesh of `body`: every position within `chord` of the
+    /// surface it stands on, closed along shared edges, every triangle
+    /// counter-clockwise seen from outside. `chord` is the caller's
+    /// resolution, not a model tolerance: finite and positive.
+    ///
+    /// Raises `MeshChordError` for a bad chord, `MeshInvalidInputError` for
+    /// a body that fails the checker (debug builds), `MeshFaceError` for a
+    /// face that cannot be triangulated, and `Interrupted` when `cancel` or
+    /// `budget` stops it.
+    #[pyo3(signature = (body, chord, *, cancel=None, budget=None))]
+    fn tessellate(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        chord: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Mesh> {
+        let body = body.resolve(&self.shared)?;
+        let limits = Limits::new(cancel, budget);
+        let kernel = self.run_with(
+            py,
+            &limits,
+            move |m, control| arris::mesh::tessellate(m, body, chord, control),
+            mesh_error,
+            |error| {
+                matches!(
+                    error,
+                    arris::mesh::MeshError::Interrupted(Interrupted { by: Stop::Poll, .. })
+                )
+            },
+        )?;
+        Ok(Mesh::minted_by(self, kernel))
     }
 
     /// The shells of `body`, in stored order.
