@@ -1833,6 +1833,15 @@ fn blend_stadium_outline_fillet() {
     run("blend/stadium-outline-fillet");
 }
 
+/// A stadium turned in space, its outline filleted through one named edge:
+/// the two half tori of one torus are a pair the checker's S5 leaves
+/// undecided at `Full`, where the same body unturned has nothing unchecked.
+#[test]
+#[ignore = "S5 leaves two faces of one torus undecided in a turned pose: f19 (torus) against f20 (torus) is not decided, so Full has an unchecked pair (docs/BACKLOG.md, coincident tori in S5; found by plans/c6-blend-network step 8)"]
+fn regression_turned_stadium_fillet_torus_pair() {
+    run("regression/turned-stadium-fillet-torus-pair");
+}
+
 /// A cylinder whose circles are placed on the axis `(-1, -6.1e-17, 0)`
 /// with no reference direction, as NIST's CTC-04 and FTC-08 write them:
 /// ISO 10303-42's reference direction is world `Y` for an axis along `X`

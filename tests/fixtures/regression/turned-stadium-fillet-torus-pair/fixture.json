@@ -1,0 +1,126 @@
+{
+  "description": "a stadium, two straight sides of length 1.8 joined by two half circles of radius 2.85, extruded 1.97 and turned about the axis (0, 0.936, 0.350) by 242.6 degrees, with its top outline filleted at 0.51 through one named edge: the walk reaches the four edges and the result is two half tori of one torus, which the checker's S5 leaves undecided at Full \u2014 `f19 (torus) against f20 (torus) is not decided` \u2014 where the same body unturned (blend/stadium-outline-fillet) has nothing unchecked. Found by outline_prop at the fixed seed (c6-blend-network step 8)",
+  "params": {
+    "r": 0.5127334911528952
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -2.846748451103713
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.7996948311965064,
+              -2.846748451103713
+            ]
+          },
+          {
+            "arc_to": [
+              1.7996948311965064,
+              2.846748451103713
+            ],
+            "via": [
+              4.646443282300219,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              2.846748451103713
+            ]
+          },
+          {
+            "arc_to": [
+              0,
+              -2.846748451103713
+            ],
+            "via": [
+              -2.846748451103713,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "stadium",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1.969408350098582
+    },
+    {
+      "name": "turned",
+      "op": "transform",
+      "of": "stadium",
+      "rotate": {
+        "axis": [
+          0.0,
+          0.9365971249209605,
+          0.35040808436705717
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": -136.52990704060414
+      }
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "turned",
+      "edges": [
+        [
+          -2.608322176744067,
+          -1.345048252841977,
+          -2.0444490662499017
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        -1.2875497304870467,
+        0.3407791887686801,
+        0.07384388764991298
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

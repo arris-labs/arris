@@ -174,7 +174,7 @@ bound has to be established here.
   contact points, the closed forms exact on every plane they lie on.
   Fixtures: the D-notch, the stadium and the split rim chamfered, against
   the oracle.
-- [ ] Step 8 **[2]** — The property. `prop::recipe` gains an outline fillet:
+- [x] Step 8 **[2]** — The property. `prop::recipe` gains an outline fillet:
   a random convex outline (a stadium, a rounded rectangle, a D) extruded in
   a random pose, filleted along the top outline in one call at a random
   radius below the arc's, then chamfered. Checks: the checker at `Full`,
@@ -233,6 +233,8 @@ out to need more than a commit each; say so in that commit.
 - `AGENTS.md` current state — C6's first plan landed.
 
 ## Open questions
+
+- **Found at step 8 (agent): the property found one kernel gap and drops one clause.** `outline_prop` (`arris-ops/tests/outline_prop.rs`: a stadium, a rounded rectangle and a D-notch plate in a random pose, one top edge named, fillet and chamfer, 1000 cases clean) found a stadium turned in space whose two half tori the checker's S5 leaves undecided at `Full` (`f19 (torus) against f20 (torus) is not decided`); the unturned body is clean. Shrunk to `regression/turned-stadium-fillet-torus-pair`, `#[ignore]`d, with a backlog line; the property excludes by name exactly an unchecked pair of two tori and nothing else, and the exclusion goes when the fixture passes. The plan's "then chamfered" is dropped: a chamfer over the fillet's faces is a blend over a blend, this plan's non-goal; fillet and chamfer are separate shards, as `blend_prop.rs` has them. The differential's `prop::recipe` has a `Rim` operand (stadium or D-notch plate, the whole top blended through one edge, fillet or chamfer), 256 recipes: 196 agree, none fail.
 
 - **Found at step 6 (agent): two of the refusals have an oracle fixture, two have a unit test, and the 76 are not read yet.** Committed with Open CASCADE's body beside them and `analytic.expect_error: "unsupported"` (a new `ExpectError` variant, `arris-debug` only, README and runner updated): `blend/chain-through-torus-unsupported` (a revolved bend's end-plane edge along a flat, the chain reaching plane × torus) and `blend/oblique-end-unsupported` (the D-notch with its centre off the side plane, torus × plane). There is no `analytic.occt_*` field; the oracle's body *is* `expected.json`. A junction's `BlendTooLarge` has no Open CASCADE body: a ball too large for the arc is one it refuses too, and the far contact on the top face reaches the axis exactly when the torus stops being a ring torus, so `a_chain_whose_ball_leaves_the_arc_is_too_large` (`arris-ops/tests/fillet.rs`) holds it. The tangent dihedral keeps `a_tangent_dihedral_is_a_tangent_chain` and the battery's recorded refusals; Open CASCADE builds nothing there. The re-run of step 1's probe over the 375 junction edges to classify the 76 Open CASCADE returned not-done on was not done here; step 9's `tools/real-parts.sh` run is where it is read.
 

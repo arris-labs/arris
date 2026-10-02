@@ -8,7 +8,9 @@
 //! `fuse`, `common` and `cut`. Each operand is a box, a cylinder, or a
 //! profile from [`super::profile`] extruded or revolved; a box or a
 //! cylinder may have one edge filleted or chamfered first, where the
-//! edge's point is known in closed form. Every operand is then placed by
+//! edge's point is known in closed form, and a stadium or a plate with a
+//! D-shaped notch has its whole top outline blended through one edge
+//! (ADR-0035). Every operand is then placed by
 //! one `transform`: its own motion within [`OFFSET`] of the others (so
 //! the operands overlap), under a motion the recipe shares, which is the
 //! identity half the time and a pose at [`super::DEFAULT_SCALE`]
@@ -71,6 +73,19 @@ enum Shape {
         profile: Profile,
         length: f64,
         centre: Point2,
+    },
+    /// A stadium or a plate with a D-shaped notch, extruded along `z`, its
+    /// whole top outline blended through the one edge at `edge`, a point
+    /// of the edge in the shape's own frame (ADR-0035): a chain of line and
+    /// arc stripes, or an open arc. `centre` is a point of the material in
+    /// the profile.
+    Rim {
+        profile: Profile,
+        length: f64,
+        centre: Point2,
+        edge: Point3,
+        size: f64,
+        chamfer: bool,
     },
     /// A profile in the `xy` plane revolved about an axis in that plane;
     /// `centre` is a point of the material in the profile.
@@ -162,6 +177,7 @@ fn shape() -> impl Strategy<Value = Shape> {
                 centre,
             }
         }),
+        1 => rim(),
         1 => super::profile::general().prop_map(|s| Shape::Extrude {
             profile: flatten(&s.profile, None).0,
             length: s.length,
@@ -176,6 +192,82 @@ fn shape() -> impl Strategy<Value = Shape> {
                 centre: Point2::origin(),
             })
         }),
+    ]
+}
+
+/// A stadium of two lines `l` long and two half circles of radius `r`, or a
+/// `w × h` plate with a half disc of radius `r` cut from its `y = 0` side,
+/// extruded `length` and blended along its top at a fraction of the
+/// smaller of `r` and `length` ([`BLEND_FRACTION`]).
+fn rim() -> impl Strategy<Value = Shape> {
+    let line = |u: f64, v: f64| ProfileSegment::LineTo(Point2::new(u, v));
+    let arc = |u: f64, v: f64, via: (f64, f64)| ProfileSegment::ArcTo {
+        to: Point2::new(u, v),
+        via: Point2::new(via.0, via.1),
+    };
+    let path = move |start: (f64, f64), segments: Vec<ProfileSegment>| Profile {
+        plane: Frame::world(),
+        outer: ProfileLoop::Path {
+            start: Point2::new(start.0, start.1),
+            segments,
+        },
+        holes: Vec::new(),
+    };
+    let common = || {
+        (
+            finite_f64(1.0..=4.0),
+            finite_f64(1.0..=4.0),
+            finite_f64(0.5..=3.0),
+            finite_f64(BLEND_FRACTION),
+            any::<bool>(),
+        )
+    };
+    prop_oneof![
+        (common(), 0usize..4).prop_map(move |((l, r, length, fraction, chamfer), pick)| {
+            let profile = path(
+                (0.0, -r),
+                vec![
+                    line(l, -r),
+                    arc(l, r, (l + r, 0.0)),
+                    line(0.0, r),
+                    arc(0.0, -r, (-r, 0.0)),
+                ],
+            );
+            let edge = [(l / 2.0, -r), (l + r, 0.0), (l / 2.0, r), (-r, 0.0)][pick];
+            Shape::Rim {
+                profile,
+                length,
+                centre: Point2::new(l / 2.0, 0.0),
+                edge: Point3::new(edge.0, edge.1, length),
+                size: fraction * r.min(length),
+                chamfer,
+            }
+        }),
+        (common(), finite_f64(0.2..=0.6)).prop_map(
+            move |((w, h, length, fraction, chamfer), f)| {
+                let (w, h) = (w + 2.0, h + 2.0);
+                let r = f * w / 2.0;
+                let profile = path(
+                    (0.0, 0.0),
+                    vec![
+                        line(w / 2.0 - r, 0.0),
+                        arc(w / 2.0 + r, 0.0, (w / 2.0, r)),
+                        line(w, 0.0),
+                        line(w, h),
+                        line(0.0, h),
+                        line(0.0, 0.0),
+                    ],
+                );
+                Shape::Rim {
+                    profile,
+                    length,
+                    centre: Point2::new(w / 2.0, (r + h) / 2.0),
+                    edge: Point3::new(w / 2.0, r, length),
+                    size: fraction * r.min(length),
+                    chamfer,
+                }
+            }
+        ),
     ]
 }
 
@@ -346,6 +438,7 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
         // The operand's centre in its own frame, and the probes along its
         // axes before the motion.
         let mut local: Vec<(String, Point3)> = Vec::new();
+        let mut rim_body = None;
         let centre = match &o.shape {
             Shape::Box { extents } => {
                 let e = *extents;
@@ -387,6 +480,42 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                 });
                 Point3::new(centre.x, centre.y, length / 2.0)
             }
+            Shape::Rim {
+                profile,
+                length,
+                centre,
+                edge,
+                size,
+                chamfer,
+            } => {
+                let sketch = format!("sk{i}");
+                steps.push(profile_step(&sketch, profile));
+                steps.push(Step::Extrude {
+                    name: base.clone(),
+                    profile: sketch,
+                    direction: num3([0.0, 0.0, 1.0]),
+                    length: (*length).into(),
+                });
+                let name = format!("f{i}");
+                let (of, edges, size) = (base.clone(), vec![point3(*edge)], (*size).into());
+                steps.push(if *chamfer {
+                    Step::Chamfer {
+                        name: name.clone(),
+                        of,
+                        edges,
+                        distance: size,
+                    }
+                } else {
+                    Step::Fillet {
+                        name: name.clone(),
+                        of,
+                        edges,
+                        radius: size,
+                    }
+                });
+                rim_body = Some(name);
+                Point3::new(centre.x, centre.y, length / 2.0)
+            }
             Shape::Revolve {
                 profile,
                 axis,
@@ -410,7 +539,7 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                 axis.origin + half * (c - axis.origin)
             }
         };
-        let mut body = base;
+        let mut body = rim_body.unwrap_or(base);
         if let Some(b) = o.blend {
             let (point, size) = match &o.shape {
                 Shape::Box { extents } => box_edge(*extents, b.edge),
