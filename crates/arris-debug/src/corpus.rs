@@ -400,6 +400,7 @@ impl Refusal {
             Refusal::Error(ExpectError::Nurbs) => {
                 "OpError::Unsupported with a NURBS surface or curve in the pair".into()
             }
+            Refusal::Error(ExpectError::Unsupported) => "OpError::Unsupported".into(),
         }
     }
 
@@ -426,7 +427,7 @@ impl Refusal {
                     Refusal::Error(ExpectError::EllipticRevolve) => {
                         matches!(reason, Reason::EllipticRevolve { .. })
                     }
-                    Refusal::Error(ExpectError::Nurbs) => false,
+                    Refusal::Error(ExpectError::Nurbs | ExpectError::Unsupported) => false,
                 };
                 if matches {
                     return Ok(());
@@ -444,6 +445,9 @@ impl Refusal {
                     )
                 };
                 if self == Refusal::Error(ExpectError::Nurbs) && (nurbs(a.0) || nurbs(b.0)) {
+                    return Ok(());
+                }
+                if self == Refusal::Error(ExpectError::Unsupported) {
                     return Ok(());
                 }
                 format!(

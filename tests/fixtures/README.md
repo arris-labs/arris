@@ -229,7 +229,7 @@ of the step that made the fixture pass, and a later change to it is a
   `boolean/swallow-cut`, `boolean/disjoint-common`), and then nothing
   else is compared.
   `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
-  "tangent-chain" | "vertex-blend" | "elliptic-revolve"` says Open CASCADE
+  "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "unsupported"` says Open CASCADE
   builds a result Arris refuses by design (the tangent cases,
   `Reason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
@@ -241,7 +241,7 @@ of the step that made the fixture pass, and a later change to it is a
   refuses as `Reason::BlendTooLarge`, `TangentChain` or `VertexBlend` —
   ADR-0007; a revolve of an elliptic profile segment, which it sweeps
   into a surface of revolution with an elliptic meridian and Arris
-  refuses as `Reason::EllipticRevolve` — ADR-0014): the oracle's numbers are
+  refuses as `Reason::EllipticRevolve` — ADR-0014; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
   recorded and the lint still
   cross-checks them against the other `analytic` values, but the runner asserts the typed error and compares
   nothing — and the oracle's self-test records the result without

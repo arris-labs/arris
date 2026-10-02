@@ -1,0 +1,19 @@
+{
+  "description": "a quarter turn of a revolved profile, a flat from radius 1 to 3 running tangentially into a quarter-round of radius 1 and up a wall to height 2, its end plane's edge along the flat filleted at r 0.1: the edge between the end plane y = 0 and the annulus ends at a tangent vertex, the third edge there the circle where the annulus runs tangentially into the torus, so the chain runs on into the arc between the end plane and the torus — a plane against a torus, a pair with no stripe — which Arris refuses as Unsupported, naming the edge the walk reached rather than the one named. Open CASCADE follows the chain and builds it",
+  "params": {"r": 0.1},
+  "steps": [
+    {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+     "outer": {"start": [1, 0], "segments": [{"line_to": [3, 0]}, {"arc_to": [4, 1], "via": [3.7071067811865475, 0.2928932188134524]}, {"line_to": [4, 2]}, {"line_to": [1, 2]}, {"line_to": [1, 0]}]}},
+    {"name": "bend", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 90},
+    {"name": "result", "op": "fillet", "of": "bend", "edges": [[2, 0, 0]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [1.5, 1.5, 1], "expect": "in"},
+    {"label": "far_corner", "point": [0, 4, 2], "expect": "on"}
+  ],
+  "analytic": {
+    "expect_error": "unsupported",
+    "genus": 0
+  }
+}

@@ -441,6 +441,32 @@ fn arc_area(c: Point2, a: Point2, b: Point2) -> f64 {
     (u.norm_squared() * sweep + c.x * w.y - c.y * w.x) / 2.0
 }
 
+/// A chain whose ball does not fit the arc it runs into (ADR-0035 §6): a
+/// wall running tangentially into a quarter cylinder of radius 1, filleted
+/// at a radius past it, where the arc's torus would not be a ring torus
+/// and its contact on the top reaches the axis. Open CASCADE builds none
+/// of these, so there is no fixture; a radius the arc holds builds.
+#[test]
+fn a_chain_whose_ball_leaves_the_arc_is_too_large() {
+    let mut m = Model::default();
+    let bar = extruded(
+        &mut m,
+        (0.0, 0.0),
+        vec![
+            line_to(3.0, 0.0),
+            arc_to(4.0, 1.0, (3.7071067811865475, 0.2928932188134524)),
+            line_to(0.0, 1.0),
+            line_to(0.0, 0.0),
+        ],
+    );
+    let wall = edge_at(&m, bar, Point3::new(1.5, 0.0, 2.0));
+    for r in [1.0, 1.1] {
+        let err = fillet(&mut m, bar, &[wall], r).unwrap_err();
+        assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "r {r}: {err}");
+    }
+    fillet(&mut m, bar, &[wall], 0.25).unwrap();
+}
+
 /// A plane against a cylinder along a ruling (ADR-0007): the chord edge
 /// of a disc's segment at three chord heights — a right dihedral, an
 /// obtuse and an acute one — the rim of a half-round notch in a plate,

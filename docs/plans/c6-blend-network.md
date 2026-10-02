@@ -158,7 +158,7 @@ bound has to be established here.
   torus face that spans several edges (one face or one per edge: the ADR's
   answer, tested). Test: the stadium and split-rim fixtures against the
   oracle; the fixtures' `Full` check with nothing unchecked.
-- [ ] Step 6 **[2]** — The chain's refusals, each named. A chain through a
+- [x] Step 6 **[2]** — The chain's refusals, each named. A chain through a
   pair with no stripe (cone, sphere, torus, NURBS) is `Unsupported` naming
   the pair and the edge in the chain; a junction whose far contact leaves
   its face is `BlendTooLarge`; an end on a plane neither through the axis
@@ -233,6 +233,8 @@ out to need more than a commit each; say so in that commit.
 - `AGENTS.md` current state — C6's first plan landed.
 
 ## Open questions
+
+- **Found at step 6 (agent): two of the refusals have an oracle fixture, two have a unit test, and the 76 are not read yet.** Committed with Open CASCADE's body beside them and `analytic.expect_error: "unsupported"` (a new `ExpectError` variant, `arris-debug` only, README and runner updated): `blend/chain-through-torus-unsupported` (a revolved bend's end-plane edge along a flat, the chain reaching plane × torus) and `blend/oblique-end-unsupported` (the D-notch with its centre off the side plane, torus × plane). There is no `analytic.occt_*` field; the oracle's body *is* `expected.json`. A junction's `BlendTooLarge` has no Open CASCADE body: a ball too large for the arc is one it refuses too, and the far contact on the top face reaches the axis exactly when the torus stops being a ring torus, so `a_chain_whose_ball_leaves_the_arc_is_too_large` (`arris-ops/tests/fillet.rs`) holds it. The tangent dihedral keeps `a_tangent_dihedral_is_a_tangent_chain` and the battery's recorded refusals; Open CASCADE builds nothing there. The re-run of step 1's probe over the 375 junction edges to classify the 76 Open CASCADE returned not-done on was not done here; step 9's `tools/real-parts.sh` run is where it is read.
 
 - **Answered at step 5 (agent): the closed chains needed no new code.** The stadium (10 faces, Euler 12/20/10) and the split rim (6 faces, Euler 6/10/6) match Open CASCADE's counts, volume and probes at `Full`; the junction arcs' orientation closes every loop (the checker's coedge pairing and the signed volume hold it), a torus face spans one edge each and the cylinders' seams sit at the junctions of the half circles (`e12`/`e13` at x = ±1.5). Both moved to `blend/` with their blessed dumps.
 

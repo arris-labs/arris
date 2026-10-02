@@ -662,6 +662,11 @@ pub enum ExpectError {
     /// an operation on a free-form face the kernel has no closed form
     /// for, the NURBS cycle's (ADR-0026 §5).
     Nurbs,
+    /// `OpError::Unsupported`, whatever the pair: an operation on faces
+    /// whose pair has no closed form yet, or an end the closed forms do not
+    /// cover (a blend's chain through a cone, sphere or torus, an open arc
+    /// ending on an oblique plane — ADR-0035 §6).
+    Unsupported,
 }
 
 /// A refusal the STEP reader is expected to return for Open CASCADE's own

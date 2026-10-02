@@ -1491,6 +1491,24 @@ fn blend_d_notch_rim_fillet() {
     run("blend/d-notch-rim-fillet");
 }
 
+/// A flat running tangentially into a quarter-round of a revolved bend, the
+/// edge along the flat filleted: the chain runs on into the arc between the
+/// end plane and the torus, a pair with no stripe, and Arris refuses it as
+/// `Unsupported` where Open CASCADE builds the chain (ADR-0035 §6).
+#[test]
+fn blend_chain_through_torus_unsupported() {
+    run("blend/chain-through-torus-unsupported");
+}
+
+/// The D-notch with its circle's centre off the side face's plane: the open
+/// arc ends on a plane neither through the cylinder's axis nor square to
+/// it, an end Arris refuses as `Unsupported` where Open CASCADE builds it
+/// (ADR-0035 §4, §6).
+#[test]
+fn blend_oblique_end_unsupported() {
+    run("blend/oblique-end-unsupported");
+}
+
 /// A bar's wall running tangentially into a quarter cylinder, its top edge
 /// filleted: the fillet runs on from the line into the arc at the tangent
 /// vertex, a cylinder stripe and a torus section meeting on the ball's
