@@ -177,7 +177,7 @@ bound has to be established here.
   radius below the bound, fillet and chamfer. Checks: the checker at
   `Full`, volume against Pappus about the axis, deterministic, the record complete, and the differential
   against Open CASCADE counting these recipes among the agreeing.
-- [ ] Step 9 **[1]** — Measure and close the plan's loop. Rerun
+- [x] Step 9 **[1]** — Measure and close the plan's loop. Rerun
   `tools/real-parts.sh` and the committed tier: the `fillet` column and
   `docs/ROADMAP.md` §C6 get the numbers beside step 1's baseline, each
   part that left the column agreeing with Open CASCADE or refused as a
@@ -426,3 +426,11 @@ more than a commit each; say so in that commit.
   fuse-s5-undecided` (S5 cannot decide a cone against a cylinder in a
   twice-fused result), `#[ignore]`d with a backlog line; the draw's other
   outcomes at 256: 190 agree, 20 Arris refuses, 43 both refuse, 2 excluded.
+- **Measured at step 9 (agent, 2026-10-03): the fetched tier's `fillet`
+  column is 8 parts, 11 before.** `tools/real-parts.sh`: 27 parts, 54
+  solids, 20 read; 89 battery stages, 73 agree, 3 both refuse, 13 Arris
+  refuses; the column's lines are in `docs/ROADMAP.md` §C6. The committed
+  tier's `real_*` tests had three recorded refusals that moved and were not
+  in the hook's slice: NIST CTC-04 and FTC-09 (cone × cylinder, now
+  `VertexBlend`) and FTC-10 (a NURBS curve against a cylinder, `NURBS`
+  not `blend network`), updated in this commit as `fixtures:`.

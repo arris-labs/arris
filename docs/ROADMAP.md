@@ -101,7 +101,7 @@ fixtures:
 
 | Cycle | Parts blocked | read | measure | write_read | box_cut | drill_x | drill_y | drill_z | fillet |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| blend network | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 6 |
+| blend network | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
 | healing | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | NURBS | 2 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | itself: supplemental geometry | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -116,9 +116,9 @@ fixtures:
 | Unsupported(plane surface × NURBS surface) | drill_y | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_z | 2 | NURBS |
 | Degenerate(TangentChain) | fillet | 2 | blend network |
-| Unsupported(cone surface × cylinder surface) | fillet | 2 | blend network |
+| Degenerate(VertexBlend) | fillet | 2 | blend network |
 | unsupported entity | read | 2 | itself: supplemental geometry |
-| Unsupported(cylinder surface × cylinder surface) | fillet | 1 | blend network |
+| Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
 | Unsupported(torus surface × cylinder surface) | fillet | 1 | blend network |
 <!-- /histogram -->
 
@@ -556,19 +556,28 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 | sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 **Status: opened 2026-10-02; scope confirmed by the human the same day;
-first plan (`c6-blend-network`) landed 2026-10-02, the cycle stays open.**
+first plan (`c6-blend-network`) landed 2026-10-02, second plan
+(`c6-blend-pairs`) landed 2026-10-03, the cycle stays open.**
 The first plan took the two lines marked done below. On the fetched tier
-(27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column holds 11
+(27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column held 11
 parts where the step-1 baseline held 12 (C4's 17 of 38 counted both tiers;
 the committed tier's 6 of 11 did not move): `Unsupported(circle curve ×
-plane)` 8 → 0, and what each of those parts now meets is the next line's —
-`BlendTooLarge` 3 (a blend that runs out of its face at the battery's
-radius, a tenth of the sampled edge, on faces 1.27 wide beside a 63.5-long
-edge: Open CASCADE builds it by running over the neighbour), cylinder ×
-cylinder 2, torus × cylinder 2, torus × plane 1, cone × plane 1, cylinder ×
-cone 1, `TangentChain` 1 (NIST STC-09, not read further). No fetched part
-left the column by agreeing; each is refused as a line named below. The
-residue is the next plan's sizing.
+plane)` 8 → 0.
+The second plan (2026-10-03) built a convex blend ending at a concave
+corner (NIST 827-9999-906 and -908 no longer refuse), the cone against a
+plane, a cylinder or a cone along a coaxial circle, and a sphere or a torus
+against a coaxial plane, cylinder or cone along a parallel (ADR-0036), and
+measured the fetched tier again: the `fillet` column holds **8** parts, 11
+before. It is refused as cylinder × cylinder 2 (crossing axes), torus ×
+cylinder 2 (off its axis), torus × plane 1, `BlendTooLarge` 1 (CTC-03),
+`TangentChain` 1 (STC-09), `VertexBlend` 1 and a NURBS curve 1; the
+committed tier's 6 are `TangentChain` 2, `VertexBlend` 2, torus × cylinder
+1 and NURBS 1 (cone × cylinder was 2, now `VertexBlend`: the next refusal
+the part meets). The battery stages: 73 agree, 3 both refuse, 13 Arris
+refuses. No fetched part left the column by agreeing at the battery's
+radius; each meets a line named below. The residue — the torus pairs off
+the axis, an open arc's torus on a plane off its axis, a ruling stripe on a
+curved face across, the run-over, the corners — is the next plan's sizing.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
@@ -578,8 +587,10 @@ residue is the next plan's sizing.
 - Blends on face pairs outside ADR-0007's table: ~~a circular edge where
   the table asks a line (circle × plane, 9)~~ done for a plane against a
   cylinder, an open arc or a closed circle, fillet and chamfer; plane ×
-  cone, cylinder × cone, cylinder × cylinder, plane × torus and torus ×
-  cylinder remain; then sphere and elliptic cylinder.
+  ~~plane × cone, cone × cylinder or cone, a sphere or a torus against a
+  coaxial plane, cylinder or cone~~ done (ADR-0036); cylinder × cylinder
+  (crossing axes, parallel axes), torus × cylinder off its axis and torus ×
+  plane off its axis remain; then elliptic cylinder.
 - A blend that runs out of its face onto the next (`BlendTooLarge` at a
   large radius; 1198 of the census's edges), and a tangent corner the
   walk stops at (`TangentChain`, STC-09).

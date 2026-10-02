@@ -24,7 +24,7 @@
           "arris-refuses": "Unsupported(plane surface × NURBS surface)"
         },
         "fillet": {
-          "arris-refuses": "Unsupported(cylinder surface × cylinder surface)"
+          "arris-refuses": "Unsupported(NURBS curve × cylinder surface)"
         },
         "write_read": "agree"
       },
@@ -33,7 +33,7 @@
         "drill_x": "NURBS",
         "drill_y": "NURBS",
         "drill_z": "NURBS",
-        "fillet": "blend network"
+        "fillet": "NURBS"
       }
     }
   ],
