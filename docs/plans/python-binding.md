@@ -283,11 +283,23 @@ bound has to be established here.
   Python cannot enumerate, because `topo::Model` has no public iteration of
   its bodies (a kernel API line, then `Model.bodies()`). The kernel's
   corner-block OBJ (`vt`/`vn`) waits on the corner block (step 9's line).
-- [ ] Step 11 **[1]** — Stubs, docstrings, and the stub check. A `.pyi`
+- [x] Step 11 **[1]** — Stubs, docstrings, and the stub check. A `.pyi`
   per module, a docstring with a runnable example on every public item,
   and a CI check that the stubs match the built module (`mypy.stubtest`)
   and that every example runs (pytest `--doctest-modules`). Test: a stub
-  drifting from the module, or an example that fails, fails the job.
+  drifting from the module, or an example that fails, fails the job. *Found at step 11:*
+  the examples are the fenced `python` blocks of the Rust doc comments
+  (what pyo3 makes `__doc__`), which `--doctest-modules` cannot see (it
+  reads `>>>` prompts and `.py` files), so `tests/test_docstrings.py` runs
+  each block with `exec` and also fails any class, module function or
+  `Model` method without a docstring and an example (48 were missing when
+  it was written, now written). The stubs are `_arris.pyi` (the module),
+  `__init__.pyi` (the package's names and `__all__`), `_numpy.pyi` and
+  `py.typed`; `tests/test_stubs.py` runs `mypy.stubtest arris` (the `test`
+  extra now carries `mypy` and `numpy`) and `stubtest_allowlist.txt` holds
+  the one entry it needs. Stubtest does not check an exception's attributes
+  (`OpUnsupportedError.a`, …), which the pyo3 classes set on the instance;
+  the stub declares them and the pytest of step 4 and 6 reads them.
 - [ ] Step 12 **[2]** — CI and release. `ci.yml`'s `python` job (uv,
   maturin develop, pytest, stubtest, the Linux wheel as an artifact) and
   `release.yml`'s `pypi` job behind a `pypi` environment reviewer with

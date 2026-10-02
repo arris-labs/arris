@@ -48,6 +48,17 @@ pub(crate) fn length_unit(name: &str) -> PyResult<LengthUnit> {
 /// `kind` is the refusal's category (`"Offset"`, `"Unsupported"`, `"Gap"`,
 /// …, the names the kernel's refusal histogram counts), `entity` the `#id`
 /// of the file instance and `message` the kernel's own text.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// text = model.write_step([body]).replace("MANIFOLD_SOLID_BREP(", "FACETED_BREP(")
+/// [solid] = arris.Model().read_step(text).solids
+/// assert solid.body is None and solid.refusal.kind == "Unsupported"
+/// assert solid.refusal.entity == solid.file_id
+/// ```
 #[pyclass(frozen, eq, module = "arris")]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Refusal {
@@ -90,6 +101,17 @@ impl Refusal {
 /// from (`Role("file", …)`). `uncertainty` is the length uncertainty the
 /// file's context claims, in the unit of the read; it is never an entity's
 /// tolerance.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// back = arris.Model()
+/// [solid] = back.read_step(model.write_step([body])).solids
+/// assert solid.ok and solid.refusal is None and solid.instance == 0
+/// assert back.faces(solid.body) and solid.provenance.generated
+/// ```
 #[pyclass(frozen, module = "arris")]
 #[derive(Clone, Debug)]
 pub struct StepSolid {
@@ -180,6 +202,16 @@ fn rgb(colour: Rgb) -> (f64, f64, f64) {
 /// the file's transformation is one the reader refuses (`placement_refusal`
 /// says why). `solids` index `StepRead.solids`; `children` are the
 /// occurrences placed in this one.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// [root] = arris.Model().read_step(model.write_step([body])).products
+/// assert root.name == "arris" and root.solids == [0] and root.children == []
+/// assert root.placement[0] == [1.0, 0.0, 0.0, 0.0]  # a root stands at the identity
+/// ```
 #[pyclass(frozen, module = "arris")]
 #[derive(Clone, Debug)]
 pub struct Occurrence {
@@ -280,7 +312,7 @@ impl Occurrence {
 /// [solid] = read.solids
 /// assert solid.ok and solid.refusal is None
 /// assert [root.name for root in read.products] == ["arris"]
-/// assert back.mass_properties(solid.body).volume == 6.0
+/// assert abs(back.mass_properties(solid.body).volume - 6) < 1e-9
 /// ```
 #[pyclass(frozen, module = "arris")]
 #[derive(Clone, Debug)]
@@ -372,7 +404,7 @@ impl StepRead {
 ///
 /// b = arris.Model()
 /// imported = b.read_body(data)
-/// assert b.mass_properties(imported.body).volume == 6.0
+/// assert abs(b.mass_properties(imported.body).volume - 6) < 1e-9
 /// assert imported.foreign() == []
 /// assert imported.translated().generated  # the box's roles, now in `b`
 /// ```

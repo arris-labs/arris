@@ -170,6 +170,15 @@ impl MassProperties {
 ///
 /// A line, never a violation: a body whose line does not close is reported
 /// by the rows that are broken, if any.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// line = model.check(body).euler
+/// assert (line.vertices, line.edges, line.faces, line.genus) == (8, 12, 6, 0)
+/// ```
 #[pyclass(frozen, eq, hash, module = "arris")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct EulerLine {
@@ -243,6 +252,15 @@ fn name<'py>(
 /// the entity that breaks it (a handle, or its text for a report with no
 /// model), `level` `"fast"` or `"full"`, and `str(violation)` the checker's
 /// own line with the numbers.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// report = model.check(body, "full")
+/// assert [(v.code, v.entity) for v in report.violations] == []  # a valid body has none
+/// ```
 #[pyclass(frozen, module = "arris")]
 #[derive(Clone, Debug)]
 pub struct Violation {
@@ -281,6 +299,15 @@ impl Violation {
 
 /// A `Full` row the checker could not decide on a body: neither a violation
 /// nor a pass.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// report = model.check(body, "fast")
+/// assert [row.code for row in report.unchecked] == []  # rows a level skips, if any
+/// ```
 #[pyclass(frozen, module = "arris")]
 #[derive(Clone, Debug)]
 pub struct UncheckedRow {

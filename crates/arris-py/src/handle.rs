@@ -95,14 +95,64 @@ macro_rules! handles {
 
 handles! {
     /// A body of a model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    /// handle = body
+    /// assert handle == body and hash(handle) == hash(body)
+    /// assert handle.model == model and not handle.reversed
+    /// ```
     Body(Body, BodyId) => Body,
     /// A shell of a model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    /// handle = model.shells(body)[0]
+    /// assert handle == model.shells(body)[0] and hash(handle) == hash(model.shells(body)[0])
+    /// assert handle.model == model and not handle.reversed
+    /// ```
     Shell(Shell, ShellId) => Shell,
     /// A face of a model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    /// handle = model.faces(body)[0]
+    /// assert handle == model.faces(body)[0] and hash(handle) == hash(model.faces(body)[0])
+    /// assert handle.model == model and not handle.reversed
+    /// ```
     Face(Face, FaceId) => Face,
     /// An edge of a model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    /// handle = model.edges(body)[0]
+    /// assert handle == model.edges(body)[0] and hash(handle) == hash(model.edges(body)[0])
+    /// assert handle.model == model and isinstance(handle.reversed, bool)
+    /// ```
     Edge(Edge, EdgeId) => Edge,
     /// A vertex of a model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    /// handle = model.vertices(body)[0]
+    /// assert handle == model.vertices(body)[0] and hash(handle) == hash(model.vertices(body)[0])
+    /// assert handle.model == model and isinstance(handle.reversed, bool)
+    /// ```
     Vertex(Vertex, VertexId) => Vertex,
 }
 

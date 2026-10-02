@@ -256,6 +256,20 @@ impl Model {
 
     /// Whether `handle` still resolves in this model; raises
     /// `ForeignHandleError` for a handle another model minted.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert model.contains(body)
+    /// try:
+    ///     arris.Model().contains(body)
+    /// except arris.ForeignHandleError:
+    ///     pass
+    /// else:
+    ///     raise AssertionError("another model refuses the handle")
+    /// ```
     fn contains(&self, handle: AnyHandle<'_>) -> PyResult<bool> {
         Ok(self.holds(handle.resolve(&self.shared)?)?)
     }
@@ -263,6 +277,16 @@ impl Model {
     /// Frees every entity not reachable from the bodies in `keep`, and
     /// returns how many it freed. A kept entity's handle stays valid; the
     /// others go stale (ids are never renumbered).
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// kept, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    /// dropped, _ = model.primitive_box((5, 5, 5), (6, 6, 6))
+    /// assert model.retain([kept]) > 0
+    /// assert model.contains(kept) and not model.contains(dropped)
+    /// ```
     fn retain(&self, py: Python<'_>, keep: Vec<PyRef<'_, Body>>) -> PyResult<usize> {
         let keep: Vec<Body> = keep.iter().map(|body| (**body).clone()).collect();
         Ok(py.detach(|| self.retaining(&keep))?)
@@ -273,6 +297,15 @@ impl Model {
     ///
     /// Raises `OpDegenerateError` for a corner that is not finite or an
     /// extent that is not positive.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert abs(model.mass_properties(body).volume - 6) < 1e-12
+    /// assert record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+    /// ```
     #[pyo3(signature = (min, max, *, cancel=None, budget=None))]
     fn primitive_box(
         &self,
@@ -293,6 +326,16 @@ impl Model {
     ///
     /// Raises `OpDegenerateError` for a radius or height that is not
     /// positive or an axis that is not finite or is zero.
+    ///
+    /// ```python
+    /// import math
+    ///
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 5)
+    /// assert abs(model.mass_properties(body).volume - math.pi * 4 * 5) < 1e-9
+    /// ```
     #[pyo3(signature = (origin, axis, radius, height, *, cancel=None, budget=None))]
     #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
     fn primitive_cylinder(
@@ -320,6 +363,15 @@ impl Model {
     ///
     /// Raises `OpDegenerateError` for a number that is not finite or an
     /// axis of zero length; `ForeignHandleError` for a body of another model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// moved, _ = model.transform(body, (10, 0, 0))
+    /// assert abs(model.mass_properties(moved).centroid[0] - 10.5) < 1e-12
+    /// ```
     #[pyo3(signature = (body, translation=[0.0; 3], *, axis=[0.0, 0.0, 1.0], angle=0.0, cancel=None, budget=None))]
     #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
     fn transform(
@@ -355,6 +407,16 @@ impl Model {
     ///
     /// Raises `OpDegenerateError` for a coordinate that is not finite or a
     /// normal of zero length.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// mirrored, _ = model.mirror(body, (0, 0, 0), (1, 0, 0))
+    /// assert abs(model.mass_properties(mirrored).centroid[0] + 0.5) < 1e-12
+    /// assert abs(model.mass_properties(mirrored).volume - 6) < 1e-12
+    /// ```
     #[pyo3(signature = (body, origin, normal, *, cancel=None, budget=None))]
     fn mirror(
         &self,
@@ -388,6 +450,20 @@ impl Model {
     /// Raises `OpUnsupportedError` (naming both operands) for a pair of
     /// surfaces with no closed form yet, `OpDegenerateError` when nothing
     /// would remain, and `Interrupted` when `cancel` or `budget` stops it.
+    ///
+    /// ```python
+    /// import math
+    ///
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// plate, _ = model.primitive_box((0, 0, 0), (10, 10, 10))
+    /// tool, _ = model.primitive_cylinder((5, 5, -1), (0, 0, 1), 2, 12)
+    /// holed, record = model.cut(plate, tool)
+    /// volume = model.mass_properties(holed).volume
+    /// assert abs(volume - (1000 - math.pi * 4 * 10)) < 1e-9
+    /// assert record.generated
+    /// ```
     #[pyo3(signature = (target, tool, *, cancel=None, budget=None))]
     fn cut(
         &self,
@@ -405,6 +481,16 @@ impl Model {
     }
 
     /// The union of `a` and `b`. Errors as for `cut`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// a, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    /// b, _ = model.primitive_box((1, 0, 0), (3, 2, 2))
+    /// union, _ = model.fuse(a, b)
+    /// assert abs(model.mass_properties(union).volume - 12) < 1e-9
+    /// ```
     #[pyo3(signature = (a, b, *, cancel=None, budget=None))]
     fn fuse(
         &self,
@@ -422,6 +508,16 @@ impl Model {
     }
 
     /// The intersection of `a` and `b`. Errors as for `cut`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// a, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    /// b, _ = model.primitive_box((1, 0, 0), (3, 2, 2))
+    /// overlap, _ = model.common(a, b)
+    /// assert abs(model.mass_properties(overlap).volume - 4) < 1e-9
+    /// ```
     #[pyo3(signature = (a, b, *, cancel=None, budget=None))]
     fn common(
         &self,
@@ -446,6 +542,16 @@ impl Model {
     /// Raises `OpProfileError` for an invalid sketch and `OpDegenerateError`
     /// for a length that is not positive or finite or a direction that is
     /// not along the profile's normal.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// sketch = arris.Profile(arris.Loop.polygon([(0, 0), (4, 0), (4, 3), (0, 3)]))
+    /// body, record = model.extrude(sketch, (0, 0, 1), 2)
+    /// assert abs(model.mass_properties(body).volume - 24) < 1e-9
+    /// assert record.generated_from(arris.Role("extrude", "Side", 0, 0))
+    /// ```
     #[pyo3(signature = (profile, direction, length, *, cancel=None, budget=None))]
     fn extrude(
         &self,
@@ -471,6 +577,17 @@ impl Model {
     /// Raises `OpProfileError` for an invalid sketch and `OpDegenerateError`
     /// for an axis off the plane, a profile across the axis, or an angle
     /// that is not in `(0, 2π]`.
+    ///
+    /// ```python
+    /// import math
+    ///
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// sketch = arris.Profile(arris.Loop.polygon([(1, 0), (2, 0), (2, 1), (1, 1)]))
+    /// body, _ = model.revolve(sketch, (0, 0, 0), (0, 1, 0), 2 * math.pi)
+    /// assert abs(model.mass_properties(body).volume - 3 * math.pi) < 1e-9
+    /// ```
     #[pyo3(signature = (profile, origin, axis, angle, *, cancel=None, budget=None))]
     #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
     fn revolve(
@@ -498,6 +615,19 @@ impl Model {
     /// Raises `OpDegenerateError`, `OpUnsupportedError` or `OpToleranceError`
     /// for an edge set the blend network cannot build, and
     /// `ForeignHandleError` for an edge of another model.
+    ///
+    /// ```python
+    /// import math
+    ///
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// cube, record = model.primitive_box((0, 0, 0), (2, 2, 2))
+    /// edge = record.generated_from(arris.Role("box", "Edge", "Z", "Max", "Max"))
+    /// rounded, _ = model.fillet(cube, [e for e in edge if isinstance(e, arris.Edge)], 0.2)
+    /// removed = (1 - math.pi / 4) * 0.2**2 * 2
+    /// assert abs(model.mass_properties(rounded).volume - (8 - removed)) < 1e-9
+    /// ```
     #[pyo3(signature = (body, edges, radius, *, cancel=None, budget=None))]
     fn fillet(
         &self,
@@ -518,6 +648,16 @@ impl Model {
 
     /// `body` with the given `edges` cut back by `distance` on each side.
     /// Errors as for `fillet`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// cube, record = model.primitive_box((0, 0, 0), (2, 2, 2))
+    /// edge = record.generated_from(arris.Role("box", "Edge", "Z", "Max", "Max"))
+    /// cut, _ = model.chamfer(cube, [e for e in edge if isinstance(e, arris.Edge)], 0.2)
+    /// assert abs(model.mass_properties(cut).volume - (8 - 0.5 * 0.2**2 * 2)) < 1e-9
+    /// ```
     #[pyo3(signature = (body, edges, distance, *, cancel=None, budget=None))]
     fn chamfer(
         &self,
@@ -541,6 +681,16 @@ impl Model {
     ///
     /// Raises `OpDegenerateError` for a body that is not a solid and
     /// `Interrupted` when `cancel` or `budget` stops it.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// props = model.mass_properties(body)
+    /// assert abs(props.volume - 6) < 1e-12 and abs(props.area - 22) < 1e-12
+    /// assert props.centroid == (0.5, 1.0, 1.5)
+    /// ```
     #[pyo3(signature = (body, *, cancel=None, budget=None))]
     fn mass_properties(
         &self,
@@ -561,6 +711,16 @@ impl Model {
     /// for a face reached against its orientation.
     ///
     /// Raises `OpDegenerateError` for a face that is not planar.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [top] = [f for f in record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+    ///          if isinstance(f, arris.Face)]
+    /// assert model.face_frame(top).z == (0.0, 0.0, 1.0)
+    /// ```
     fn face_frame(&self, py: Python<'_>, face: &Face) -> PyResult<Frame> {
         let face = face.resolve(&self.shared)?;
         let kernel = arris::ops::query::face_frame(&*self.shared.lock()?, face)
@@ -573,6 +733,17 @@ impl Model {
     ///
     /// Raises `OpDegenerateError` for a point outside the face or at a
     /// singularity of its surface.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [top] = [f for f in record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+    ///          if isinstance(f, arris.Face)]
+    /// frame = model.frame_at(top, 0.5, 0.5)
+    /// assert frame.z == (0.0, 0.0, 1.0) and frame.origin[2] == 3.0
+    /// ```
     fn frame_at(&self, py: Python<'_>, face: &Face, u: f64, v: f64) -> PyResult<Frame> {
         let face = face.resolve(&self.shared)?;
         let uv = arris::math::Point2::new(u, v);
@@ -585,6 +756,15 @@ impl Model {
     /// body, what every operation asserts of its result in debug builds) or
     /// `"full"` (adds the global rows: face-face intersection, shell
     /// nesting, enclosed volume).
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// report = model.check(body, "full")
+    /// assert report and not report.violations and not report.unchecked
+    /// ```
     #[pyo3(signature = (body, level="fast"))]
     fn check(&self, py: Python<'_>, body: &Body, level: &str) -> PyResult<Report> {
         let (body, level) = (body.resolve(&self.shared)?, level_of(level)?);
@@ -604,6 +784,16 @@ impl Model {
     /// a body that fails the checker (debug builds), `MeshFaceError` for a
     /// face that cannot be triangulated, and `Interrupted` when `cancel` or
     /// `budget` stops it.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// mesh = model.tessellate(body, 1e-3)
+    /// assert mesh.is_closed() and mesh.n_triangles == 12
+    /// assert abs(mesh.signed_volume() - 6) < 1e-9
+    /// ```
     #[pyo3(signature = (body, chord, *, cancel=None, budget=None))]
     fn tessellate(
         &self,
@@ -632,6 +822,14 @@ impl Model {
     }
 
     /// The shells of `body`, in stored order.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert len(model.shells(body)) == 1
+    /// ```
     fn shells(&self, body: &Body) -> PyResult<Vec<Shell>> {
         let body = body.resolve(&self.shared)?;
         let shells = self.shared.lock()?.shells(body).map_err(BindError::from)?;
@@ -642,6 +840,14 @@ impl Model {
     }
 
     /// The faces of `body`, each once, depth-first through its shells.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert len(model.faces(body)) == 6
+    /// ```
     fn faces(&self, body: &Body) -> PyResult<Vec<Face>> {
         let body = body.resolve(&self.shared)?;
         let faces = self.shared.lock()?.faces(body).map_err(BindError::from)?;
@@ -653,6 +859,14 @@ impl Model {
 
     /// The edges of `body`, each once, in the order its faces' loops reach
     /// them; a seam appears once.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert len(model.edges(body)) == 12
+    /// ```
     fn edges(&self, body: &Body) -> PyResult<Vec<Edge>> {
         let body = body.resolve(&self.shared)?;
         let edges = self.shared.lock()?.edges(body).map_err(BindError::from)?;
@@ -664,6 +878,14 @@ impl Model {
 
     /// The vertices of `body`, each once, in the order the edge walk
     /// reaches them.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert len(model.vertices(body)) == 8
+    /// ```
     fn vertices(&self, body: &Body) -> PyResult<Vec<Vertex>> {
         let body = body.resolve(&self.shared)?;
         let vertices = self
@@ -680,6 +902,15 @@ impl Model {
     /// The edges that bound `face`, each once, in the order of its loops
     /// (the outer loop first) and their coedges, with the orientation each
     /// is used in.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [face, *_] = model.faces(body)
+    /// assert len(model.edges_of(face)) == 4
+    /// ```
     fn edges_of(&self, face: &Face) -> PyResult<Vec<Edge>> {
         let face = face.resolve(&self.shared)?;
         let kernel = self.shared.lock()?;
@@ -699,6 +930,16 @@ impl Model {
 
     /// The vertices at the two ends of `edge`, in the direction it was
     /// reached: a reversed edge starts at its curve's end.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [edge, *_] = model.edges(body)
+    /// start, end = model.vertices_of(edge)
+    /// assert start != end
+    /// ```
     fn vertices_of(&self, edge: &Edge) -> PyResult<(Vertex, Vertex)> {
         let edge = edge.resolve(&self.shared)?;
         let kernel = self.shared.lock()?;
@@ -715,6 +956,15 @@ impl Model {
 
     /// The faces of `body` that use `edge`: two for an edge between faces
     /// of a solid (one face twice for a seam, listed once).
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [edge, *_] = model.edges(body)
+    /// assert len(model.faces_of(body, edge)) == 2
+    /// ```
     fn faces_of(&self, body: &Body, edge: &Edge) -> PyResult<Vec<Face>> {
         let (body, edge) = (body.resolve(&self.shared)?, edge.resolve(&self.shared)?);
         let kernel = self.shared.lock()?;
@@ -728,6 +978,15 @@ impl Model {
     }
 
     /// The edges of `body` that start or end at `vertex`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [vertex, *_] = model.vertices(body)
+    /// assert len(model.edges_at(body, vertex)) == 3
+    /// ```
     fn edges_at(&self, body: &Body, vertex: &Vertex) -> PyResult<Vec<Edge>> {
         let (body, vertex) = (body.resolve(&self.shared)?, vertex.resolve(&self.shared)?);
         let kernel = self.shared.lock()?;
@@ -748,6 +1007,15 @@ impl Model {
     /// form STEP cannot hold, `StepLumpsError` for shells that do not nest,
     /// `StepNoBodiesError` for an empty list and `ForeignHandleError` for a
     /// body of another model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// text = model.write_step([body])
+    /// assert text.startswith("ISO-10303-21;") and "MANIFOLD_SOLID_BREP" in text
+    /// ```
     fn write_step(&self, py: Python<'_>, bodies: Vec<PyRef<'_, Body>>) -> PyResult<String> {
         let bodies = bodies
             .iter()
@@ -770,6 +1038,16 @@ impl Model {
     /// when the text is not Part 21 at all, `Interrupted` when `cancel` or
     /// `budget` stops it (the model is as it was) and `ValueError` for an
     /// unknown unit.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// back = arris.Model()
+    /// [solid] = back.read_step(model.write_step([body])).solids
+    /// assert solid.ok and abs(back.mass_properties(solid.body).volume - 6) < 1e-9
+    /// ```
     #[pyo3(signature = (text, *, length_unit="mm", cancel=None, budget=None))]
     fn read_step(
         &self,
@@ -805,6 +1083,15 @@ impl Model {
     /// boolean's inputs.
     ///
     /// Raises `ForeignHandleError` for a body or record of another model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// data = model.write_body(body, record)
+    /// assert data[:8] == b"ARRISBDY"
+    /// ```
     #[pyo3(signature = (body, provenance=None))]
     fn write_body<'py>(
         &self,
@@ -820,6 +1107,14 @@ impl Model {
 
     /// The same body as `write_body`, as one line of JSON text, for diffs
     /// and tests.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert model.write_body_json(body, record).startswith('{"magic":"ARRISBDY"')
+    /// ```
     #[pyo3(signature = (body, provenance=None))]
     fn write_body_json(
         &self,
@@ -840,6 +1135,15 @@ impl Model {
     /// damaged stream, `BodyPrecisionError` for a tolerance this model
     /// cannot hold and `BodyRejectedError` for a body the checker rejects.
     /// On any error the model is as it was.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// imported = arris.Model().read_body(model.write_body(body, record))
+    /// assert imported.foreign() == []
+    /// ```
     #[pyo3(signature = (data, *, cancel=None, budget=None))]
     fn read_body(
         &self,
@@ -855,6 +1159,15 @@ impl Model {
     }
 
     /// As `read_body`, for `write_body_json`'s text.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// imported = arris.Model().read_body_json(model.write_body_json(body, record))
+    /// assert imported.version >= 1
+    /// ```
     #[pyo3(signature = (text, *, cancel=None, budget=None))]
     fn read_body_json(
         &self,
@@ -871,6 +1184,15 @@ impl Model {
 
     /// The whole model, every entity and freed slot, as native-format
     /// bytes: deterministic, and read back to a model that dumps the same.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// data = model.to_native()
+    /// assert arris.Model.from_native(data).to_native() == data
+    /// ```
     fn to_native<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyBytes>> {
         let bytes = py
             .detach(|| {
@@ -882,6 +1204,15 @@ impl Model {
     }
 
     /// The whole model as native-format JSON text, for diffs.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// text = model.to_native_json()
+    /// assert arris.Model.from_native_json(text).to_native_json() == text
+    /// ```
     fn to_native_json(&self, py: Python<'_>) -> PyResult<String> {
         py.detach(|| {
             let kernel = self.shared.lock()?;
@@ -895,6 +1226,15 @@ impl Model {
     ///
     /// Raises `NativeVersionError` for another version and
     /// `NativeDecodeError` for data that is not a model.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// data = model.to_native()
+    /// assert arris.Model.from_native(data).to_native() == data
+    /// ```
     #[staticmethod]
     fn from_native(py: Python<'_>, data: &[u8]) -> PyResult<Model> {
         let kernel = py
@@ -905,6 +1245,15 @@ impl Model {
 
     /// A new model read from `to_native_json`'s text. Errors as for
     /// `from_native`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// text = model.to_native_json()
+    /// assert arris.Model.from_native_json(text).to_native_json() == text
+    /// ```
     #[staticmethod]
     fn from_native_json(py: Python<'_>, text: &str) -> PyResult<Model> {
         let kernel = py

@@ -24,6 +24,17 @@ use crate::role::Role;
 /// in the kernel's split order, which is a contract: piece `k` of a split
 /// face means the same piece after an edit that keeps which entities bound
 /// which piece. An entity an operation leaves alone is in no list.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// assert record.generated and not record.deleted
+/// [top] = [f for f in record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+///          if isinstance(f, arris.Face)]
+/// assert record.origins(top) == [("generated", arris.Role("box", "Face", "Z", "Max"))]
+/// ```
 #[pyclass(frozen, eq, module = "arris")]
 #[derive(Clone, Debug)]
 pub struct Provenance {

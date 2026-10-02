@@ -12,7 +12,9 @@ requires-python = ">=3.10"
 license = { text = "MIT OR Apache-2.0" }
 
 [project.optional-dependencies]
-test = ["pytest>=8"]
+# mypy for `mypy.stubtest` (tests/test_stubs.py); numpy only so
+# `Mesh.to_numpy` is exercised, the package never needs it.
+test = ["pytest>=8", "mypy>=1.18", "numpy"]
 
 [tool.maturin]
 python-source = "python"
