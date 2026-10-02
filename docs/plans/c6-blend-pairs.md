@@ -99,7 +99,7 @@ bound has to be established here.
   refusal with the edge's curve kind — the census the residue is chosen
   from. Test: the battery's unit tests; the histogram's before and after in
   the commit body; the probe's table goes into this plan's open questions.
-- [ ] Step 2 **[2]** — A convex blend ending at a concave corner (found at
+- [x] Step 2 **[2]** — A convex blend ending at a concave corner (found at
   step 1). `face_end` takes the end arc's side of the face across from the
   blend's own convexity alone; where both corner edges are concave (a rib's
   root on the plate round it, a boss on a plate) the arc lies in the hole
@@ -272,3 +272,17 @@ more than a commit each; say so in that commit.
   pair in this plan or open the next one. One fault: 2 edges answer
   `Internal(Geometry(NotOnSurface))` — a finding with its own fixture when
   step 2 re-runs the probe.
+- **Found at step 2 (agent, 2026-10-02): the rule is the corner's convexity
+  against the blend's, and 906 and 908 now build.** `end_side` (blend.rs)
+  puts the end arc inside the face across where blend and both corner edges
+  share a convexity and outside where they differ (a concave blend at a
+  convex corner, a pocket's top rim, gains the face; at a concave corner,
+  the floor, loses it); corner edges of unlike convexity are `VertexBlend`,
+  which no committed fixture or property met. `tools/real-parts.sh`: the
+  `BlendTooLarge` line fell from 3 parts to 1 (CTC-03, cause not yet
+  classified); 827-9999-906 and -908 report no refusal. The step's census
+  re-run was **not** done: step 1's probe was a throwaway and was not kept,
+  so the 514-edge checker pass and the 959 classification wait for a probe
+  rewritten at step 3, which needs it for the ranking anyway. The boss's
+  rim edge of the step's text is a square boss's corner here, a circle's
+  rim being a ring, whose end rule is the same function.

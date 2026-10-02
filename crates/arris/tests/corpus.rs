@@ -1821,11 +1821,37 @@ fn regression_tangent_chain_horn_torus() {
 /// A rib standing on a plate, its vertical corner edge filleted down to the
 /// plate: a convex blend ending on a face that surrounds the rib, the edge's
 /// corner with it concave, so the end arc lies in the rib's footprint and the
-/// plate's top gains the corner. The desired body is Open CASCADE's.
+/// plate's top gains the corner.
 #[test]
-#[ignore = "Reason::BlendTooLarge at every radius: face_end takes the end arc's side from the blend's convexity, inside the face across, where a concave corner with it puts the arc in the hole the rib leaves (docs/BACKLOG.md, a convex blend ending at a concave corner)"]
-fn regression_rib_corner_fillet_to_plate() {
-    run("regression/rib-corner-fillet-to-plate");
+fn blend_rib_corner_fillet_to_plate() {
+    run("blend/rib-corner-fillet-to-plate");
+}
+
+/// The same rib's corner chamfered: the chamfer's end a segment in the
+/// footprint, the plate's top gaining the corner.
+#[test]
+fn blend_rib_corner_chamfer_to_plate() {
+    run("blend/rib-corner-chamfer-to-plate");
+}
+
+/// A rib with a 45° sloped end, the sloped corner filleted: concave at the
+/// plate below it, convex at the rib's top above.
+#[test]
+fn blend_rib_sloped_end_fillet() {
+    run("blend/rib-sloped-end-fillet");
+}
+
+/// A pocket's vertical corner filleted: a concave blend adding material, at
+/// a concave corner with the floor and a convex one with the block's top.
+#[test]
+fn blend_pocket_corner_fillet() {
+    run("blend/pocket-corner-fillet");
+}
+
+/// A square boss's vertical corner filleted down to its plate.
+#[test]
+fn blend_boss_corner_fillet() {
+    run("blend/boss-corner-fillet");
 }
 
 /// A disc whose outline is two half circles, both filleted in one call:

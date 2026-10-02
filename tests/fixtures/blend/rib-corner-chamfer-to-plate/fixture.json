@@ -1,0 +1,124 @@
+{
+  "description": "the same rib's corner edge chamfered at d 0.5: a plane through the two contact lines, its lower end a segment on the plate's top, in the rib's footprint",
+  "params": {
+    "d": 0.5
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        10,
+        2
+      ]
+    },
+    {
+      "name": "rib",
+      "op": "box",
+      "min": [
+        5,
+        4,
+        2
+      ],
+      "max": [
+        15,
+        6,
+        8
+      ]
+    },
+    {
+      "name": "ribbed",
+      "op": "fuse",
+      "a": "plate",
+      "b": "rib"
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "ribbed",
+      "edges": [
+        [
+          5,
+          4,
+          5
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_rib",
+      "point": [
+        10,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "removed_corner",
+      "point": [
+        5.02,
+        4.02,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_chamfer",
+      "point": [
+        "5 + 3 * d / 4",
+        "4 + 3 * d / 4",
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_chamfer",
+      "point": [
+        "5 + d / 2",
+        "4 + d / 2",
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_contact",
+      "point": [
+        "5 + d",
+        4,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "rib_top_corner_gone",
+      "point": [
+        5.02,
+        4.02,
+        8
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "far_vertex",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "20 * 10 * 2 + 10 * 2 * 6 - d^2 / 2 * 6"
+  }
+}

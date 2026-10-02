@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "8b910173ae091ffb1cf1c62d3759bafc69c9f176c8c27fa51c80867568dd9c75",
+  "results": {
+    "default": {
+      "area": 662.2426406871192,
+      "centroid": [
+        10.006981222917668,
+        5.001203659123736,
+        1.9186326432354357
+      ],
+      "counts": {
+        "edges": 27,
+        "faces": 12,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          5333.696893556413,
+          3.0199882643210003,
+          -11.169956668272789
+        ],
+        [
+          3.0199882643210003,
+          16276.672338910292,
+          -1.9258545979773771
+        ],
+        [
+          -11.169956668272789,
+          -1.9258545979773771,
+          17688.578107446643
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 27,
+        "faces": 12,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_rib",
+          "point": [
+            10.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "removed_corner",
+          "point": [
+            5.02,
+            4.02,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_chamfer",
+          "point": [
+            5.375,
+            4.375,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamfer",
+          "point": [
+            5.25,
+            4.25,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_contact",
+          "point": [
+            5.5,
+            4.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "rib_top_corner_gone",
+          "point": [
+            5.02,
+            4.02,
+            8.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "far_vertex",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 519.25
+    }
+  }
+}

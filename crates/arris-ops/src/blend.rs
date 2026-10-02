@@ -998,6 +998,35 @@ fn cut_corner(
     })
 }
 
+/// The side of the face across a blend's end arc lies on: inside it where
+/// the blend and the corner edges it ends at have the same convexity (a
+/// convex blend cutting a convex corner takes the corner from the face), the
+/// outside where they differ (a convex blend at a concave corner leaves the
+/// face the corner, the arc in the hole its footprint has). Corner edges
+/// of different convexity are `Reason::VertexBlend`.
+fn end_side(
+    m: &Model,
+    view: &View,
+    edge: EdgeId,
+    vertex: VertexId,
+    convex: bool,
+    corner_edges: [EdgeId; 2],
+) -> Result<Side, OpError> {
+    let corner = |c: EdgeId| convex_edge(m, view, c)?.ok_or(invariant("a corner edge's convexity"));
+    let first = corner(corner_edges[0])?;
+    if corner(corner_edges[1])? != first {
+        return Err(degenerate(
+            vec![forward(edge), forward(vertex)],
+            Reason::VertexBlend,
+        ));
+    }
+    Ok(if convex == first {
+        Side::Inside
+    } else {
+        Side::Outside
+    })
+}
+
 /// The end of `s` at its start (`at_lo`) or its end vertex, trimmed by
 /// the face across the corner: the vertex's other two edges, the plane
 /// they share, where each contact pierces it, the corner edges shortened
@@ -1115,11 +1144,7 @@ fn face_end(
     let arc_tolerance = s.tolerance.max(face3_tolerance);
     let arc_tol = Tolerance::new(arc_tolerance, tol.angular);
     let on_face = pcurve_on(&arc_curve, arc_range, surface3, arc_tol, meter).map_err(fault_of)?;
-    let arc_side = if s.convex {
-        Side::Inside
-    } else {
-        Side::Outside
-    };
+    let arc_side = end_side(m, view, edge, vertex, s.convex, corner_edges)?;
     if !on_side_of_face(m, face3, &on_face, arc_range, arc_side, samples)? {
         return Err(degenerate(vec![e, forward(face3)], Reason::BlendTooLarge));
     }
@@ -2556,7 +2581,7 @@ fn ring(
             let end_tol = Tolerance::new(end_tolerance, tol.angular);
             let on_face = pcurve_on(&end_curve, end_range, across_surface, end_tol, meter)
                 .map_err(geometry)?;
-            let end_side = if convex { Side::Inside } else { Side::Outside };
+            let end_side = end_side(m, view, edge, vertex, convex, corner_edges)?;
             if !on_side_of_face(m, across, &on_face, end_range, end_side, samples)? {
                 return Err(too_large(across));
             }

@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "7f02573d981fbe0c979b3e1b95cd390772a7046bdce714db3bd5d619ccf34383",
+  "results": {
+    "default": {
+      "area": 871.1415926535898,
+      "centroid": [
+        9.998991514254662,
+        4.999610430302053,
+        2.8463918907874586
+      ],
+      "counts": {
+        "edges": 27,
+        "faces": 12,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          12990.0566802732,
+          -1.979403722252755,
+          1.2101828944068984
+        ],
+        [
+          -1.979403722252755,
+          41874.41861325622,
+          0.46748363753613376
+        ],
+        [
+          1.2101828944068984,
+          0.46748363753613376,
+          48459.22915074194
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 27,
+        "faces": 12,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_block",
+          "point": [
+            2.0,
+            5.0,
+            3.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "pocket_open",
+          "point": [
+            10.0,
+            5.0,
+            4.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            5.02,
+            3.02,
+            4.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            5.146446609406726,
+            3.146446609406726,
+            4.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "far_vertex",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 1040.2146018366025
+    }
+  }
+}

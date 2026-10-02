@@ -1,0 +1,144 @@
+{
+  "description": "a rib standing on a plate [0,0,0]\u2013[20,10,2], 2 thick in y, its end sloped at 45\u00b0: the side profile (5,2) (15,2) (15,8) (11,8) extruded from y 4 to 6, the sloped corner edge from (5,4,2) to (11,4,8) filleted at r 0.5 (NIST 827-9999-906's edge): a convex blend whose lower end meets the plate's top at a concave corner and whose upper end meets the rib's top at a convex one",
+  "params": {
+    "r": 0.5
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        10,
+        2
+      ]
+    },
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          4,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          5,
+          2
+        ],
+        "segments": [
+          {
+            "line_to": [
+              15,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              15,
+              8
+            ]
+          },
+          {
+            "line_to": [
+              11,
+              8
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "rib",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        1,
+        0
+      ],
+      "length": 2
+    },
+    {
+      "name": "ribbed",
+      "op": "fuse",
+      "a": "plate",
+      "b": "rib"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "ribbed",
+      "edges": [
+        [
+          8,
+          4,
+          5
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_rib",
+      "point": [
+        10,
+        5,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "removed_corner",
+      "point": [
+        8.015,
+        4.021,
+        4.985
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        "8 + r * (1 - 1 / sqrt(2)) / sqrt(2)",
+        "4 + r * (1 - 1 / sqrt(2))",
+        "5 - r * (1 - 1 / sqrt(2)) / sqrt(2)"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "far_vertex",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ]
+}

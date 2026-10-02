@@ -1,0 +1,106 @@
+{
+  "description": "a block [0,0,0]\u2013[20,10,6] with a pocket [5,3,2]\u2013[15,7,8] cut through its top, the pocket's vertical corner edge at (5, 3) filleted at r 0.5: a concave blend adding material, its lower end meeting the pocket's floor at a concave corner (the arc in the floor, which loses the corner) and its upper end the block's top at a convex one (the arc outside the top face, which gains the corner)",
+  "params": {
+    "r": 0.5
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        10,
+        6
+      ]
+    },
+    {
+      "name": "tool",
+      "op": "box",
+      "min": [
+        5,
+        3,
+        2
+      ],
+      "max": [
+        15,
+        7,
+        8
+      ]
+    },
+    {
+      "name": "pocketed",
+      "op": "cut",
+      "target": "block",
+      "tool": "tool"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "pocketed",
+      "edges": [
+        [
+          5,
+          3,
+          4
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_block",
+      "point": [
+        2,
+        5,
+        3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "pocket_open",
+      "point": [
+        10,
+        5,
+        4
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        5.02,
+        3.02,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        "5 + r - r / sqrt(2)",
+        "3 + r - r / sqrt(2)",
+        4
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "far_vertex",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "20 * 10 * 6 - 10 * 4 * 4 + (1 - pi / 4) * r^2 * 4"
+  }
+}
