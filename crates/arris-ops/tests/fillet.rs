@@ -361,8 +361,8 @@ fn a_tangent_dihedral_is_a_tangent_chain() {
     assert_eq!(reason(&err), Some(Reason::TangentChain), "{err}");
 }
 
-/// A revolve's cone edge — a plane against a cone — is outside the
-/// table and is named as such.
+/// A revolve's cone ruling on its end cap — a plane through the cone's
+/// apex, along a ruling — is outside the table and is named as such.
 #[test]
 fn a_pair_outside_the_table_is_unsupported() {
     let mut m = Model::default();
@@ -388,17 +388,10 @@ fn a_pair_outside_the_table_is_unsupported() {
     )
     .unwrap()
     .0;
-    // The rise of the outer vertex: an edge between the annulus and the cone.
-    let rim = edge_at(
-        &m,
-        ring,
-        Point3::new(
-            2.0 * core::f64::consts::FRAC_PI_4.cos(),
-            2.0 * core::f64::consts::FRAC_PI_4.sin(),
-            0.0,
-        ),
-    );
-    let err = fillet(&mut m, ring, &[rim], 0.1).unwrap_err();
+    // The cone's ruling on the start cap, the plane `y = 0` through the
+    // axis.
+    let ruling = edge_at(&m, ring, Point3::new(1.5, 0.0, 1.0));
+    let err = fillet(&mut m, ring, &[ruling], 0.1).unwrap_err();
     assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
 }
 

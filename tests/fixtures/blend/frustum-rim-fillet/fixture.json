@@ -1,7 +1,7 @@
 {
-  "description": "a frustum of a cone revolved whole about z, radius 2 at its base and 1 at its top a height 1 above, so its side is a cone of half-angle 45° whose apex is at z = 2, its top rim chamfered at d 0.2: a plane against a cone along a circle coaxial with it, convex at an interior angle of 135°, the chamfer a cone coaxial with the frustum through the circle of radius 1 − d on the top and the circle d down the cone's ruling, with no ends. The corner's section d² sin(3π/4) / 2, a triangle, swept about the axis by Pappus. Arris refuses it today as Unsupported, a cone against a plane (ADR-0036)",
+  "description": "a frustum of a cone revolved whole about z, radius 2 at its base and 1 at its top a height 1 above, so its side is a cone of half-angle 45° whose apex is at z = 2, its top rim filleted at r 0.25: a plane against a cone along a circle coaxial with it, convex at an interior angle of 135°, the blend a ring torus coaxial with the frustum, minor radius r, tangent to the top along a circle of radius 1 − r tan(π/8) and to the cone along the circle at r tan(π/8) down its ruling, with no ends. The corner's section r² (tan(π/8) − π/8), the kite of the two contacts less the ball's sector of π/4, swept about the axis by Pappus.",
   "params": {
-    "d": 0.2
+    "r": 0.25
   },
   "steps": [
     {
@@ -77,7 +77,7 @@
     },
     {
       "name": "result",
-      "op": "chamfer",
+      "op": "fillet",
       "of": "part",
       "edges": [
         [
@@ -86,7 +86,7 @@
           1
         ]
       ],
-      "distance": "d"
+      "radius": "r"
     }
   ],
   "result": "result",
@@ -121,9 +121,9 @@
     {
       "label": "on_blend",
       "point": [
-        -0.9707106781186547,
+        -0.9921174674979987,
         0,
-        0.9292893218813453
+        0.9809698831278216
       ],
       "expect": "on"
     },
@@ -131,8 +131,8 @@
       "label": "on_blend_behind",
       "point": [
         0,
-        -0.9707106781186547,
-        0.9292893218813453
+        -0.9921174674979987,
+        0.9809698831278216
       ],
       "expect": "on"
     },
@@ -156,7 +156,7 @@
     }
   ],
   "analytic": {
-    "volume": "7 * pi / 3 - 2 * pi * (d^2 * sin(radians(135)) / 2 * (1 + d * (-0.29289321881345254) / 3))",
+    "volume": "7 * pi / 3 - 2 * pi * (r * r * (sqrt(2) - 1) * ((2 * 1 + (1 + r * (sqrt(2) - 1) * (-1)) + (1 + r * (sqrt(2) - 1) * (0.7071067811865475)) + 2 * (1 + (-0.38268343236508984) * r / sin(radians(67.5)))) / 6) - pi / 8 * r^2 * ((1 + (-0.38268343236508984) * r / sin(radians(67.5))) - (-0.38268343236508984) * 16 * r * sin(radians(22.5)) / (3 * pi)))",
     "genus": 0
   }
 }

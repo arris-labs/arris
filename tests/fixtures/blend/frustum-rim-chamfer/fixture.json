@@ -1,5 +1,5 @@
 {
-  "description": "a disc of radius 3 and height 1 with a conical boss on it, radius 2 at its base and 1 at its top a height 1 above, revolved whole about z, the boss's base chamfered at d 0.2: a plane against a cone along a circle coaxial with it, concave, the empty wedge 135°, the chamfer a cone coaxial with the boss, adding material, with no ends. The section added d² sin(3π/4) / 2, a triangle, swept about the axis by Pappus. Arris refuses it today as Unsupported, a cone against a plane (ADR-0036)",
+  "description": "a frustum of a cone revolved whole about z, radius 2 at its base and 1 at its top a height 1 above, so its side is a cone of half-angle 45° whose apex is at z = 2, its top rim chamfered at d 0.2: a plane against a cone along a circle coaxial with it, convex at an interior angle of 135°, the chamfer a cone coaxial with the frustum through the circle of radius 1 − d on the top and the circle d down the cone's ruling, with no ends. The corner's section d² sin(3π/4) / 2, a triangle, swept about the axis by Pappus.",
   "params": {
     "d": 0.2
   },
@@ -32,32 +32,20 @@
         "segments": [
           {
             "line_to": [
-              3,
+              2,
               0
             ]
           },
           {
             "line_to": [
-              3,
-              1
-            ]
-          },
-          {
-            "line_to": [
-              2,
-              1
-            ]
-          },
-          {
-            "line_to": [
               1,
-              2
+              1
             ]
           },
           {
             "line_to": [
               0,
-              2
+              1
             ]
           },
           {
@@ -93,7 +81,7 @@
       "of": "part",
       "edges": [
         [
-          -2,
+          -1,
           0,
           1
         ]
@@ -106,7 +94,7 @@
     {
       "label": "inside",
       "point": [
-        2.5,
+        0,
         0,
         0.5
       ],
@@ -115,27 +103,27 @@
     {
       "label": "outside",
       "point": [
-        2.5,
+        0,
         0,
         1.5
       ],
       "expect": "out"
     },
     {
-      "label": "corner_filled",
+      "label": "corner_gone",
       "point": [
-        -2,
+        -1,
         0,
         1
       ],
-      "expect": "in"
+      "expect": "out"
     },
     {
       "label": "on_blend",
       "point": [
-        -2.029289321881345,
+        -0.9707106781186547,
         0,
-        1.0707106781186548
+        0.9292893218813453
       ],
       "expect": "on"
     },
@@ -143,32 +131,32 @@
       "label": "on_blend_behind",
       "point": [
         0,
-        -2.029289321881345,
-        1.0707106781186548
+        -0.9707106781186547,
+        0.9292893218813453
       ],
       "expect": "on"
     },
     {
-      "label": "on_disc",
+      "label": "on_top",
       "point": [
-        2.8,
+        0.3,
         0,
         1
       ],
       "expect": "on"
     },
     {
-      "label": "on_boss_top",
+      "label": "on_side",
       "point": [
-        0.5,
+        -1.5,
         0,
-        2
+        0.5
       ],
       "expect": "on"
     }
   ],
   "analytic": {
-    "volume": "9 * pi + 7 * pi / 3 + 2 * pi * (d^2 * sin(radians(135)) / 2 * (2 + d * (0.29289321881345254) / 3))",
+    "volume": "7 * pi / 3 - 2 * pi * (d^2 * sin(radians(135)) / 2 * (1 + d * (-0.29289321881345254) / 3))",
     "genus": 0
   }
 }

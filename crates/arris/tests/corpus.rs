@@ -1881,31 +1881,27 @@ fn regression_turned_stadium_fillet_torus_pair() {
 /// A frustum's top rim filleted: a plane against a cone along a coaxial
 /// circle, convex, the blend a ring torus (ADR-0036).
 #[test]
-#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
-fn regression_frustum_rim_fillet() {
-    run("regression/frustum-rim-fillet");
+fn blend_frustum_rim_fillet() {
+    run("blend/frustum-rim-fillet");
 }
 
 /// The same rim chamfered: a cone coaxial with the frustum.
 #[test]
-#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
-fn regression_frustum_rim_chamfer() {
-    run("regression/frustum-rim-chamfer");
+fn blend_frustum_rim_chamfer() {
+    run("blend/frustum-rim-chamfer");
 }
 
 /// A conical boss's base on its disc filleted: the cone row concave, the
 /// torus adding material.
 #[test]
-#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
-fn regression_cone_boss_base_fillet() {
-    run("regression/cone-boss-base-fillet");
+fn blend_cone_boss_base_fillet() {
+    run("blend/cone-boss-base-fillet");
 }
 
 /// The same base chamfered, concave.
 #[test]
-#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
-fn regression_cone_boss_base_chamfer() {
-    run("regression/cone-boss-base-chamfer");
+fn blend_cone_boss_base_chamfer() {
+    run("blend/cone-boss-base-chamfer");
 }
 
 /// A turned part's shoulder, a cylinder into a coaxial cone, filleted: the

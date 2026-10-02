@@ -132,7 +132,7 @@ bound has to be established here.
   ends. Test: the fixtures run ignored and fail with the refusals the
   probe names (`cargo nextest run -p arris --run-ignored only -E
   'test(/regression_/)'`).
-- [ ] Step 4 **[3]** — The cone against a plane along a closed circle:
+- [x] Step 4 **[3]** — The cone against a plane along a closed circle:
   `ring` generalises its cylinder face to a cone face (the offset cone, the
   foot-of-normal contact, the torus and the chamfer cone), the cone's seam
   kept or shortened as the cylinder's, a contact reaching the apex or a
@@ -334,3 +334,16 @@ more than a commit each; say so in that commit.
   `analytic.volume`. Step 5 writes its closed forms (volume, area,
   centroid, inertia) and `measure_differs` when it moves the fixture. The
   four plane × cone fixtures match their Pappus volumes to 1e-9.
+- **Found at step 4 (agent, 2026-10-02): `ring` is the meridian
+  construction, no split needed.** Each face is a `Meridian`, a line in
+  the half-plane bounded by the axis; the centre, the feet, the torus's
+  `v`s and the chamfer's chord come from the two lines, and the plane
+  against a cylinder reproduces its old numbers exactly (no blessed dump
+  moved). The seam, ends and junctions were already face-agnostic. Open
+  CASCADE's own STEP of the concave boss fillet is refused on read
+  (`not a closed shell`): its writer keeps a reversed torus face's bounds,
+  as on `blend/boss-base-fillet`, so the fixture names it
+  `occt_step_refused`. The unit test that held plane × cone `Unsupported`
+  now holds a cone's ruling on a plane through its apex (step 7's
+  refusal). An open arc of the cone row goes through the same code
+  unproven until step 5's fixtures.

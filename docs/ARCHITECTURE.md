@@ -680,7 +680,18 @@ has the cylinder's `Z` and its `X` at the edge's vertex, so its `u` seam
 — a tube circle of the torus, a ruling of the cone — runs between the
 two contacts' vertices in the half-plane of the cylinder's own seam,
 which is shortened to the contact on the cylinder; that vertex must
-carry no other edge, else `VertexBlend`. An open arc of such a circle —
+carry no other edge, else `VertexBlend`. A plane against a cone along a
+circle coaxial with it — a frustum's rim, a conical boss's base — is the
+same construction read in the half-plane bounded by the axis (ADR-0036):
+each face's meridian is a line there, the ball's centre is where the two
+lines offset by `r` toward the ball cross, and each contact is the foot
+of the centre on its meridian, a parallel of its face; the fillet is the
+torus of the centre's distance from the axis and minor radius `r`, the
+chamfer the cone through the two circles at `distance` along each
+meridian, at the chord's angle to the axis. The plane against a cylinder
+is the case of one meridian square to the axis and one parallel to it.
+The cone's seam is shortened to its contact as the cylinder's is, and a
+contact at the axis or past the cone's apex is `BlendTooLarge`. An open arc of such a circle —
 a rim split where a file put its vertices, a D-shaped notch — blends to
 the same torus or cone over the arc's own range (ADR-0035), with the
 blend's `X` at the arc's start vertex and no seam: its loop is a

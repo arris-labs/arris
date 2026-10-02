@@ -1,5 +1,5 @@
 {
-  "description": "a frustum of a cone revolved whole about z, radius 2 at its base and 1 at its top a height 1 above, so its side is a cone of half-angle 45° whose apex is at z = 2, its top rim filleted at r 0.25: a plane against a cone along a circle coaxial with it, convex at an interior angle of 135°, the blend a ring torus coaxial with the frustum, minor radius r, tangent to the top along a circle of radius 1 − r tan(π/8) and to the cone along the circle at r tan(π/8) down its ruling, with no ends. The corner's section r² (tan(π/8) − π/8), the kite of the two contacts less the ball's sector of π/4, swept about the axis by Pappus. Arris refuses it today as Unsupported, a cone against a plane (ADR-0036)",
+  "description": "a disc of radius 3 and height 1 with a conical boss on it, radius 2 at its base and 1 at its top a height 1 above, revolved whole about z, the boss's base filleted at r 0.25: a plane against a cone along a circle coaxial with it, concave, the empty wedge 135°, the blend a ring torus coaxial with the boss, minor radius r, adding material, with no ends. The section added r² (tan(π/8) − π/8) swept about the axis by Pappus.",
   "params": {
     "r": 0.25
   },
@@ -32,20 +32,32 @@
         "segments": [
           {
             "line_to": [
-              2,
+              3,
               0
             ]
           },
           {
             "line_to": [
-              1,
+              3,
               1
             ]
           },
           {
             "line_to": [
-              0,
+              2,
               1
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              2
             ]
           },
           {
@@ -81,7 +93,7 @@
       "of": "part",
       "edges": [
         [
-          -1,
+          -2,
           0,
           1
         ]
@@ -94,7 +106,7 @@
     {
       "label": "inside",
       "point": [
-        0,
+        2.5,
         0,
         0.5
       ],
@@ -103,27 +115,27 @@
     {
       "label": "outside",
       "point": [
-        0,
+        2.5,
         0,
         1.5
       ],
       "expect": "out"
     },
     {
-      "label": "corner_gone",
+      "label": "corner_filled",
       "point": [
-        -1,
+        -2,
         0,
         1
       ],
-      "expect": "out"
+      "expect": "in"
     },
     {
       "label": "on_blend",
       "point": [
-        -0.9921174674979987,
+        -2.0078825325020015,
         0,
-        0.9809698831278216
+        1.0190301168721783
       ],
       "expect": "on"
     },
@@ -131,32 +143,33 @@
       "label": "on_blend_behind",
       "point": [
         0,
-        -0.9921174674979987,
-        0.9809698831278216
+        -2.0078825325020015,
+        1.0190301168721783
       ],
       "expect": "on"
     },
     {
-      "label": "on_top",
+      "label": "on_disc",
       "point": [
-        0.3,
+        2.8,
         0,
         1
       ],
       "expect": "on"
     },
     {
-      "label": "on_side",
+      "label": "on_boss_top",
       "point": [
-        -1.5,
+        0.5,
         0,
-        0.5
+        2
       ],
       "expect": "on"
     }
   ],
   "analytic": {
-    "volume": "7 * pi / 3 - 2 * pi * (r * r * (sqrt(2) - 1) * ((2 * 1 + (1 + r * (sqrt(2) - 1) * (-1)) + (1 + r * (sqrt(2) - 1) * (0.7071067811865475)) + 2 * (1 + (-0.38268343236508984) * r / sin(radians(67.5)))) / 6) - pi / 8 * r^2 * ((1 + (-0.38268343236508984) * r / sin(radians(67.5))) - (-0.38268343236508984) * 16 * r * sin(radians(22.5)) / (3 * pi)))",
+    "occt_step_refused": {"kind": "not a closed shell", "why": "Open CASCADE's writer turns the bounds of the fillet's torus face, as in blend/boss-base-fillet: the face is written reversed on a torus whose axis points down, its bounds' sense kept, so the file's face walks both its edges, the contact on the disc and the contact on the cone, the same way the disc and the cone do. Turning it back is orientation healing (ADR-0025 §2)"},
+    "volume": "9 * pi + 7 * pi / 3 + 2 * pi * (r * r * (sqrt(2) - 1) * ((2 * 2 + (2 + r * (sqrt(2) - 1) * (1)) + (2 + r * (sqrt(2) - 1) * (-0.7071067811865475)) + 2 * (2 + (0.38268343236508984) * r / sin(radians(67.5)))) / 6) - pi / 8 * r^2 * ((2 + (0.38268343236508984) * r / sin(radians(67.5))) - (0.38268343236508984) * 16 * r * sin(radians(22.5)) / (3 * pi)))",
     "genus": 0
   }
 }

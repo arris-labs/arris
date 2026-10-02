@@ -1,7 +1,7 @@
 {
-  "description": "a disc of radius 3 and height 1 with a conical boss on it, radius 2 at its base and 1 at its top a height 1 above, revolved whole about z, the boss's base filleted at r 0.25: a plane against a cone along a circle coaxial with it, concave, the empty wedge 135°, the blend a ring torus coaxial with the boss, minor radius r, adding material, with no ends. The section added r² (tan(π/8) − π/8) swept about the axis by Pappus. Arris refuses it today as Unsupported, a cone against a plane (ADR-0036)",
+  "description": "a disc of radius 3 and height 1 with a conical boss on it, radius 2 at its base and 1 at its top a height 1 above, revolved whole about z, the boss's base chamfered at d 0.2: a plane against a cone along a circle coaxial with it, concave, the empty wedge 135°, the chamfer a cone coaxial with the boss, adding material, with no ends. The section added d² sin(3π/4) / 2, a triangle, swept about the axis by Pappus.",
   "params": {
-    "r": 0.25
+    "d": 0.2
   },
   "steps": [
     {
@@ -89,7 +89,7 @@
     },
     {
       "name": "result",
-      "op": "fillet",
+      "op": "chamfer",
       "of": "part",
       "edges": [
         [
@@ -98,7 +98,7 @@
           1
         ]
       ],
-      "radius": "r"
+      "distance": "d"
     }
   ],
   "result": "result",
@@ -133,9 +133,9 @@
     {
       "label": "on_blend",
       "point": [
-        -2.0078825325020015,
+        -2.029289321881345,
         0,
-        1.0190301168721783
+        1.0707106781186548
       ],
       "expect": "on"
     },
@@ -143,8 +143,8 @@
       "label": "on_blend_behind",
       "point": [
         0,
-        -2.0078825325020015,
-        1.0190301168721783
+        -2.029289321881345,
+        1.0707106781186548
       ],
       "expect": "on"
     },
@@ -168,7 +168,7 @@
     }
   ],
   "analytic": {
-    "volume": "9 * pi + 7 * pi / 3 + 2 * pi * (r * r * (sqrt(2) - 1) * ((2 * 2 + (2 + r * (sqrt(2) - 1) * (1)) + (2 + r * (sqrt(2) - 1) * (-0.7071067811865475)) + 2 * (2 + (0.38268343236508984) * r / sin(radians(67.5)))) / 6) - pi / 8 * r^2 * ((2 + (0.38268343236508984) * r / sin(radians(67.5))) - (0.38268343236508984) * 16 * r * sin(radians(22.5)) / (3 * pi)))",
+    "volume": "9 * pi + 7 * pi / 3 + 2 * pi * (d^2 * sin(radians(135)) / 2 * (2 + d * (0.29289321881345254) / 3))",
     "genus": 0
   }
 }

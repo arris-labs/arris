@@ -4,8 +4,9 @@
 //! planes blend to a cylinder on the line where their offset planes meet,
 //! and chamfer to the plane through the lines at the distance from the
 //! edge on each; a plane and a cylinder along a ruling blend to a cylinder
-//! on the line where the plane's offset meets the cylinder's, and along a
-//! circle to a torus coaxial with it or chamfer to a cone — with its
+//! on the line where the plane's offset meets the cylinder's, and a plane
+//! and a cylinder or a cone along a coaxial circle to a torus found in the
+//! half-plane through the axis or chamfer to a cone — with its
 //! contact curves read off the construction, each end of an open edge
 //! trimmed by the face across the corner or met by the blends sharing its
 //! vertex — two in a miter, three in a sphere or a triangle, or the next
@@ -14,7 +15,7 @@
 //! entity kept by id (`docs/ARCHITECTURE.md` §Operations,
 //! `docs/DATA-MODEL.md` §Provenance).
 
-use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, SQRT_2, TAU};
+use core::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::arris_topo::arris_geom::region2::Side;
@@ -2080,8 +2081,7 @@ fn corner(
     })
 }
 
-/// A contact of a circular edge's blend: a circle about the cylinder's
-/// axis on one of the edge's faces, the edge's own frame moved along the
+/// A contact of a circular edge's blend: a circle about the axis on one of the edge's faces, the edge's own frame moved along the
 /// axis and its radius changed, so it runs as the edge ran over the same
 /// range.
 struct RingContact {
@@ -2099,7 +2099,7 @@ struct RingContact {
 }
 
 /// One end of an open arc's blend (ADR-0035), trimmed by a plane through
-/// the cylinder's axis: the meridian of the torus there or the ruling of
+/// the axis: the meridian of the torus there or the ruling of
 /// the cone, between the two contacts' points, inserted into that plane's
 /// loop between the two corner edges it shortens.
 struct ArcEnd {
@@ -2121,13 +2121,13 @@ struct ArcEnd {
 
 /// A closed edge's blend seam, from the first contact's vertex to the
 /// second's, with its pcurves at `u = 0` then at `u = 2π`, and the
-/// cylinder's own seam shortened to the contact on the cylinder.
+/// curved face's own seam shortened to its contact.
 struct RingSeam {
     curve: Curve,
     range: Interval,
     on_blend: [Curve2; 2],
     trim: Trim,
-    /// The contact whose vertex the cylinder's seam is cut at.
+    /// The contact whose vertex the curved face's seam is cut at.
     cut_by: usize,
     vertex_tolerance: f64,
 }
@@ -2148,14 +2148,14 @@ enum RingEnds {
     Open(Box<[RingEnd; 2]>),
 }
 
-/// The blend of a circular edge where a plane meets a cylinder
-/// perpendicular to its axis (ADR-0007, ADR-0035): a torus coaxial with
-/// the cylinder, or a cone, over the edge's own range. The blend's frame
-/// has the cylinder's `Z` and its `X` at the edge's start vertex. A closed
-/// edge has no ends, its `u` seam — a tube circle of the torus, a ruling
-/// of the cone — running from one contact's vertex to the other's through
-/// the half-plane the cylinder's own seam lies in, which is shortened to
-/// the contact on the cylinder; an open arc is trimmed at each end by the
+/// The blend of a circular edge where a plane meets a cylinder or a cone
+/// perpendicular to its axis (ADR-0007, ADR-0035, ADR-0036): a torus
+/// coaxial with the curved face, or a cone, over the edge's own range. The
+/// blend's frame has the curved face's `Z` and its `X` at the edge's start
+/// vertex. A closed edge has no ends, its `u` seam — a tube circle of the
+/// torus, a ruling of the cone — running from one contact's vertex to the
+/// other's through the half-plane the curved face's own seam lies in,
+/// which is shortened to its contact; an open arc is trimmed at each end by the
 /// face across, a plane through the axis, on the same tube circle or
 /// ruling at the vertex's angle.
 struct Ring {
@@ -2175,6 +2175,45 @@ struct Ring {
     tolerance: f64,
 }
 
+/// A face of revolution's meridian where it is a line, in the half-plane
+/// bounded by the axis: `(ρ, h)`, the distance from the axis and the
+/// height along it (ADR-0036 §1).
+#[derive(Debug, Clone, Copy)]
+struct Meridian {
+    /// A point of the line.
+    point: Vec2,
+    /// Its unit direction.
+    along: Vec2,
+    /// The face's outward normal in the section, a unit vector square to
+    /// `along`.
+    normal: Vec2,
+}
+
+impl Meridian {
+    /// Where the two lines cross; `None` for parallel lines.
+    fn meet(&self, other: &Meridian) -> Option<Vec2> {
+        let cross = |a: Vec2, b: Vec2| a.x * b.y - a.y * b.x;
+        let det = cross(self.along, other.along);
+        if det == 0.0 {
+            return None;
+        }
+        let t = cross(other.point - self.point, other.along) / det;
+        Some(self.point + t * self.along)
+    }
+
+    /// The foot of `p` on the line.
+    fn foot(&self, p: Vec2) -> Vec2 {
+        self.point + (p - self.point).dot(&self.along) * self.along
+    }
+
+    /// The line's direction away from the corner into its own face, where
+    /// `other` is the face across the edge: the way `other`'s outward
+    /// normal reads `s`, `−1` at a convex corner and `1` at a concave one.
+    fn inward(&self, other: &Meridian, s: f64) -> Vec2 {
+        self.along * (s * other.normal.dot(&self.along)).signum()
+    }
+}
+
 /// `pcurve` translated by whole turns in `u` and `v` so that its point at
 /// `t` is nearest `target`: a periodic surface's pcurve placed in the
 /// translate of the blend's loop.
@@ -2187,18 +2226,22 @@ fn placed_uv(pcurve: Curve2, t: f64, target: Point2) -> Curve2 {
     }
 }
 
-/// The blend of a circular edge `edge` where a plane meets a cylinder.
-/// The ball's centre is on the plane offset by `r` into the ball's side
-/// and on the cylinder coaxial with the face at `R ∓ r`, so its centre
-/// circle is at radius `R + sσr` — `s` `−1` on a convex edge, `σ` the side
-/// of the axis the cylinder's outward normal points to — and a fillet is
-/// the torus of that major radius and minor `r`, the one quarter of its
-/// tube between the contacts; a chamfer is the 45° cone through the same
-/// two circles at `d`. A closed edge's one vertex is on the cylinder's
-/// seam and on nothing else; an open arc's two vertices are each a corner
+/// The blend of a circular edge `edge` where a plane meets a cylinder or
+/// a cone, read in the half-plane bounded by the axis, where each face's
+/// meridian is a line (ADR-0036 §1). The ball's centre is where the two
+/// meridians offset by `r` into the ball's side cross, and a fillet is the
+/// torus of the centre's distance from the axis and minor `r`, the arc of
+/// its tube between the feet of the centre on the two meridians; a
+/// chamfer is the cone through the two circles at `d` along each
+/// meridian from the edge. Against a cylinder the centre circle is at
+/// radius `R + sσr` — `s` `−1` on a convex edge, `σ` the side of the axis
+/// the cylinder's outward normal points to — and the chamfer is at 45°.
+/// A closed edge's one vertex is on the curved face's seam and on nothing
+/// else; an open arc's two vertices are each a corner
 /// of three edges whose face across is a plane through the axis, or one of
 /// the `junctions`, which the junction builds. A torus that is not a ring
-/// torus and a contact that reaches the axis are `Reason::BlendTooLarge`,
+/// torus and a contact that reaches the axis or a cone's apex are
+/// `Reason::BlendTooLarge`,
 /// as is a contact or an end that leaves its face or a seam or a corner
 /// edge shorter than the trim.
 #[allow(clippy::too_many_arguments)]
@@ -2249,11 +2292,18 @@ fn ring(
         a: (GeomKind::Surface(surfaces[0].kind()), forward(f1)),
         b: (GeomKind::Surface(surfaces[1].kind()), forward(f2)),
     };
-    // The table's circle row: a plane and a cylinder along a circle — the
-    // cylinder's index, frame and radius.
-    let (k, axis, big) = match (surfaces[0], surfaces[1]) {
-        (Surface::Plane { .. }, &Surface::Cylinder { frame, radius }) => (1, frame, radius),
-        (&Surface::Cylinder { frame, radius }, Surface::Plane { .. }) => (0, frame, radius),
+    // The meridian row's line meridians (ADR-0036 §1): a plane against a
+    // cylinder or a cone along a parallel — the curved face's index and
+    // frame, whose `Z` is the axis.
+    let (k, axis) = match (surfaces[0], surfaces[1]) {
+        (
+            Surface::Plane { .. },
+            &(Surface::Cylinder { frame, .. } | Surface::Cone { frame, .. }),
+        ) => (1, frame),
+        (
+            &(Surface::Cylinder { frame, .. } | Surface::Cone { frame, .. }),
+            Surface::Plane { .. },
+        ) => (0, frame),
         (
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
@@ -2275,7 +2325,7 @@ fn ring(
     let &Curve::Circle { frame: rim, .. } = curve else {
         return Err(OpError::Unsupported {
             a: (GeomKind::Curve(curve.kind()), e),
-            b: (GeomKind::Surface(SurfaceKind::Cylinder), forward(faces[k])),
+            b: (GeomKind::Surface(surfaces[k].kind()), forward(faces[k])),
         });
     };
     let tolerance = m
@@ -2286,108 +2336,176 @@ fn ring(
     let z: Vec3 = axis.z().into_inner();
     let centre = axis.to_local(rim.origin());
     if rim.z().cross(&axis.z()).norm() > tol.angular || centre.x.hypot(centre.y) > tolerance {
-        return Err(invariant("a circular edge of a cylinder about its axis"));
+        return Err(invariant(
+            "a circular edge of a face of revolution about its axis",
+        ));
     }
     let eval = curve.eval(mid);
     let t1 = eval.d1 * view.orientation[&f1].compose(ua.orientation).sign();
     let convex = n1.cross(&t1).dot(&n2) < 0.0;
     let s = if convex { -1.0 } else { 1.0 };
-    let (n_plane, n_cylinder) = if k == 1 { (n1, n2) } else { (n2, n1) };
-    let radial_mid = eval.point - rim.origin();
-    let sigma = n_cylinder.dot(&radial_mid).signum();
-    let up = n_plane.dot(&z).signum();
-    let size = match kind {
-        Kind::Fillet { radius } => radius,
-        Kind::Chamfer { distance } => distance,
-    };
-    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
-    // The contact on the cylinder is the edge lifted by `s·size` along the
-    // plane's normal; the contact on the plane is the edge widened by
-    // `sσ·size`.
-    let lift = s * size * up;
-    let plane_radius = big + s * sigma * size;
-    if plane_radius <= tolerance {
-        return Err(too_large(faces[1 - k]));
-    }
+    let (n_plane, n_curved) = if k == 1 { (n1, n2) } else { (n2, n1) };
     let radial_at = |t: f64| -> Result<Vec3, OpError> {
         UnitVec3::try_new(curve.point(t) - rim.origin(), tol.linear)
             .map(UnitVec3::into_inner)
             .ok_or(invariant("a circular edge off its axis"))
     };
-    let x = radial_at(range.lo())?;
-    let lifted = rim.origin() + lift * z;
-    let circle = |origin: Point3, radius: f64| -> Result<Curve, OpError> {
-        Ok(Curve::Circle {
-            frame: Frame::new(origin, rim.z().into_inner(), rim.x().into_inner())?,
+    // The section in the half-plane through the axis at the edge's
+    // midpoint, `(ρ, h)` from the edge's centre: the plane is `h = 0`.
+    let radial_mid = radial_at(mid)?;
+    let plane = Meridian {
+        point: Vec2::zeros(),
+        along: Vec2::new(1.0, 0.0),
+        normal: Vec2::new(0.0, n_plane.dot(&z).signum()),
+    };
+    let curved = match *surfaces[k] {
+        Surface::Cylinder { radius, .. } => Meridian {
+            point: Vec2::new(radius, 0.0),
+            along: Vec2::new(0.0, 1.0),
+            normal: Vec2::new(n_curved.dot(&radial_mid).signum(), 0.0),
+        },
+        Surface::Cone {
+            frame,
             radius,
+            half_angle,
+        } => {
+            // The ruling at `u`: `(R + v sin α, h₀ + v cos α)`, its normal
+            // read off the face's outward one.
+            let (sa, ca) = half_angle.sin_cos();
+            let normal = Vec2::new(ca, -sa);
+            let read = Vec2::new(n_curved.dot(&radial_mid), n_curved.dot(&z));
+            Meridian {
+                point: Vec2::new(radius, (frame.origin() - rim.origin()).dot(&z)),
+                along: Vec2::new(sa, ca),
+                normal: normal * read.dot(&normal).signum(),
+            }
+        }
+        Surface::Plane { .. }
+        | Surface::EllipticCylinder { .. }
+        | Surface::Sphere { .. }
+        | Surface::Torus { .. }
+        | Surface::Nurbs(_) => return Err(invariant("a cylinder or a cone in the row")),
+    };
+    let corner = plane
+        .meet(&curved)
+        .ok_or(invariant("two meridians crossing at the edge"))?;
+    // Along each meridian into its face: the way the other face's outward
+    // normal reads `s`.
+    let d_plane = plane.inward(&curved, s);
+    let d_curved = curved.inward(&plane, s);
+    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
+    // The ball's centre is `r` off both meridians on the ball's side, each
+    // fillet contact the foot of it on its meridian; a chamfer's contacts
+    // are `d` along each from the corner. A contact at the axis, or past a
+    // cone's apex, has no circle.
+    let contacts_on = |on_plane: Vec2, on_curved: Vec2| {
+        if on_plane.x <= tolerance {
+            Err(too_large(faces[1 - k]))
+        } else if on_curved.x <= tolerance {
+            Err(too_large(faces[k]))
+        } else {
+            Ok((on_plane, on_curved))
+        }
+    };
+    let x = radial_at(range.lo())?;
+    let at_height = |h: f64| rim.origin() + h * z;
+    let circle = |at: Vec2| -> Result<Curve, OpError> {
+        Ok(Curve::Circle {
+            frame: Frame::new(at_height(at.y), rim.z().into_inner(), rim.x().into_inner())?,
+            radius: at.x,
         })
     };
-    let on_plane = circle(rim.origin(), plane_radius)?;
-    let on_cyl = circle(lifted, big)?;
-    // The blend, and each contact's `v` on it.
-    let (surface, v_plane, v_cylinder) = match kind {
+    // The blend, the contacts in the section, each contact's `v` on the
+    // blend, and the centre's circle.
+    let (surface, on_plane, on_curved, v_plane, v_curved, centres) = match kind {
         Kind::Fillet { radius } => {
-            if plane_radius <= radius + tolerance {
+            let along =
+                s * radius * (1.0 - plane.normal.dot(&curved.normal)) / curved.normal.dot(&d_plane);
+            let c = corner + along * d_plane + s * radius * plane.normal;
+            let (on_plane, on_curved) = contacts_on(plane.foot(c), curved.foot(c))?;
+            if c.x <= radius + tolerance {
                 return Err(too_large(faces[k]));
             }
-            // From the tube's centre, the plane's contact is along `−s`
-            // times its normal and the cylinder's along `−sσ` radially.
-            let v_plane = if -s * up > 0.0 {
-                FRAC_PI_2
-            } else {
-                3.0 * FRAC_PI_2
+            // Each contact's angle about the tube's centre, the two taken
+            // the short way round.
+            let angle = |p: Vec2| {
+                let v = (p.y - c.y).atan2(p.x - c.x);
+                if v < 0.0 { v + TAU } else { v }
             };
-            let v_cylinder = match (-s * sigma > 0.0, v_plane > PI) {
-                (true, false) => 0.0,
-                (true, true) => TAU,
-                (false, _) => PI,
-            };
+            let (mut v_plane, mut v_curved) = (angle(on_plane), angle(on_curved));
+            if (v_plane - v_curved).abs() > PI {
+                if v_plane < v_curved {
+                    v_plane += TAU;
+                } else {
+                    v_curved += TAU;
+                }
+            }
             (
                 Surface::Torus {
-                    frame: Frame::new(lifted, z, x)?,
-                    major_radius: plane_radius,
+                    frame: Frame::new(at_height(c.y), z, x)?,
+                    major_radius: c.x,
                     minor_radius: radius,
                 },
+                on_plane,
+                on_curved,
                 v_plane,
-                v_cylinder,
+                v_curved,
+                Some(circle(c)?),
             )
         }
         Kind::Chamfer { distance } => {
-            // The cone's `Z` toward its wider circle, its `v` from the
-            // narrower along a ruling.
-            let wide_plane = plane_radius > big;
-            let (narrow, narrow_radius, wide) = if wide_plane {
-                (lifted, big, rim.origin())
+            let (on_plane, on_curved) =
+                contacts_on(corner + distance * d_plane, corner + distance * d_curved)?;
+            // The cone through the two contacts, its `Z` toward its wider
+            // circle, its `v` from the narrower along a ruling. Two line
+            // meridians that are not tangent leave the chord oblique to the
+            // axis when one is a plane's.
+            let chord = distance * (d_curved - d_plane);
+            let length = chord.norm();
+            if chord.x.abs() <= tol.angular * length || chord.y.abs() <= tol.angular * length {
+                return Err(invariant("a chamfer's chord oblique to the axis"));
+            }
+            let wide_plane = on_plane.x > on_curved.x;
+            let (narrow, wide) = if wide_plane {
+                (on_curved, on_plane)
             } else {
-                (rim.origin(), plane_radius, lifted)
+                (on_plane, on_curved)
             };
-            let length = distance * SQRT_2;
-            let (v_plane, v_cylinder) = if wide_plane {
+            let (v_plane, v_curved) = if wide_plane {
                 (length, 0.0)
             } else {
                 (0.0, length)
             };
             (
                 Surface::Cone {
-                    frame: Frame::new(narrow, wide - narrow, x)?,
-                    radius: narrow_radius,
-                    half_angle: FRAC_PI_4,
+                    frame: Frame::new(
+                        at_height(narrow.y),
+                        at_height(wide.y) - at_height(narrow.y),
+                        x,
+                    )?,
+                    radius: narrow.x,
+                    half_angle: chord.x.abs().atan2(chord.y.abs()),
                 },
+                on_plane,
+                on_curved,
                 v_plane,
-                v_cylinder,
+                v_curved,
+                None,
             )
         }
     };
+    let on_plane = circle(on_plane)?;
+    let on_curved = circle(on_curved)?;
     let line_tol = Tolerance::new(tolerance, tol.angular);
     let geometry = fault_of;
-    let cylinder_use_u = m.curve2(uses[k].pcurve)?.point(range.lo()).x;
+    let curved_use_u = m.curve2(uses[k].pcurve)?.point(range.lo()).x;
     let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
     let mut by_v = [
         (faces[1 - k], on_plane, v_plane),
-        (faces[k], on_cyl, v_cylinder),
+        (faces[k], on_curved, v_curved),
     ];
-    let cylinder_first = v_cylinder < v_plane;
-    if cylinder_first {
+    let curved_first = v_curved < v_plane;
+    if curved_first {
         by_v.swap(0, 1);
     }
     // An open arc's corners, read before its contacts as a stripe's are:
@@ -2416,7 +2534,7 @@ fn ring(
         let on_face =
             pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
         let on_face = if face == faces[k] {
-            placed(on_face, range.lo(), cylinder_use_u)
+            placed(on_face, range.lo(), curved_use_u)
         } else {
             on_face
         };
@@ -2438,20 +2556,20 @@ fn ring(
     let contacts: [RingContact; 2] = contacts
         .try_into()
         .map_err(|_| invariant("two contacts of the blend"))?;
-    let on_cylinder = usize::from(!cylinder_first);
-    let (v0, v1) = (v_plane.min(v_cylinder), v_plane.max(v_cylinder));
+    let on_curved_face = usize::from(!curved_first);
+    let (v0, v1) = (v_plane.min(v_curved), v_plane.max(v_curved));
     // The blend's section through the axis at the radial direction `w`:
     // the tube circle there, or the ruling between the contacts' points
     // `ends`, from the lower contact to the upper.
     let section = |w: Vec3, ends: [Point3; 2]| -> Result<(Curve, Interval), OpError> {
         match surface {
             Surface::Torus {
+                frame,
                 major_radius,
                 minor_radius,
-                ..
             } => Ok((
                 Curve::Circle {
-                    frame: Frame::new(lifted + major_radius * w, w.cross(&z), w)?,
+                    frame: Frame::new(frame.origin() + major_radius * w, w.cross(&z), w)?,
                     radius: minor_radius,
                 },
                 Interval::new(v0, v1).map_err(|_| invariant("a quarter of the tube"))?,
@@ -2465,7 +2583,7 @@ fn ring(
         }
     };
     let ends = if !open {
-        // The vertex's one other edge: the cylinder's seam, used twice by
+        // The vertex's one other edge: the curved face's seam, used twice by
         // it.
         let at_vertex = view
             .vertex_edges
@@ -2492,12 +2610,12 @@ fn ring(
             pcurve_on(&seam_curve_new, seam_range, &surface, line_tol, meter).map_err(geometry)?;
         let seam_on_blend =
             [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
-        // The cylinder's seam shortened to the contact on the cylinder.
-        let cut_at = contacts[on_cylinder].points[0];
+        // The curved face's seam shortened to its contact.
+        let cut_at = contacts[on_curved_face].points[0];
         let projection = seam_curve.project(cut_at).map_err(geometry)?;
         if projection.distance > seam_entity.tolerance().max(tolerance) {
             return Err(invariant(
-                "the cylinder's seam through the contact's vertex",
+                "the curved face's seam through the contact's vertex",
             ));
         }
         let Some(tc) = into_range(seam_range0, projection.t, seam_curve.period()) else {
@@ -2526,7 +2644,7 @@ fn ring(
                 t: tc,
                 cuts_lo,
             },
-            cut_by: on_cylinder,
+            cut_by: on_curved_face,
             vertex_tolerance: tolerance.max(seam_entity.tolerance()),
         }))
     } else {
@@ -2612,14 +2730,11 @@ fn ring(
     let normal = surface
         .normal(0.0, (v0 + v1) / 2.0)
         .ok_or(invariant("a regular blend surface"))?;
-    let orientation = if normal.dot(&(n_plane + sigma * x)) > 0.0 {
+    let outward_curved = curved.normal.x * x + curved.normal.y * z;
+    let orientation = if normal.dot(&(n_plane + outward_curved)) > 0.0 {
         Orientation::Forward
     } else {
         Orientation::Reversed
-    };
-    let centres = match kind {
-        Kind::Fillet { .. } => Some(circle(lifted, plane_radius)?),
-        Kind::Chamfer { .. } => None,
     };
     Ok(Ring {
         edge,
@@ -3518,15 +3633,17 @@ fn build(
 /// of a face square to the other two, so its sides are its equator and two
 /// meridians, exact lines in (u, v), meeting at its pole, a degenerate
 /// edge; no corner edge is cut. A plane and a
-/// cylinder along a circle — a closed edge, a hole's rim or a boss's
-/// base — blend with no ends to a torus coaxial with the cylinder, its
-/// centre circle where the plane's offset meets the cylinder's and its
-/// minor radius `radius`, the contacts the edge's circle moved along the
-/// axis and widened, the torus's `u` seam a tube circle from one contact's
-/// vertex to the other's in the half-plane of the cylinder's seam, which
-/// is shortened to the contact on the cylinder. An open arc of such a
+/// cylinder or a cone along a circle coaxial with it — a closed edge, a
+/// hole's rim, a boss's base, a frustum's rim — blend with no ends to a
+/// torus coaxial with the curved face, its centre circle where the
+/// plane's offset meets the curved face's in the half-plane through the
+/// axis (ADR-0036) and its minor radius `radius`, each contact the foot of
+/// that circle on its face, a parallel of it, the torus's `u` seam a tube
+/// circle from one contact's vertex to the other's in the half-plane of
+/// the curved face's seam, which is shortened to its contact. An open arc
+/// of such a
 /// circle blends to the same torus over the arc's own range, each end
-/// trimmed by the face across, a plane through the cylinder's axis, on
+/// trimmed by the face across, a plane through the axis, on
 /// the tube circle at the vertex's angle (ADR-0035). The selection
 /// follows chains: at a tangent vertex — three edges, the third's two
 /// faces tangent there, the next edge sharing one face with this one,
@@ -3552,7 +3669,7 @@ fn build(
 /// the two edges whose contacts cross there; the sphere face and its pole
 /// from all three. A closed edge's torus face, its two contact
 /// circles, its seam and the seam's two vertices are `Generated` from it,
-/// the cylinder's seam `Modified` and the edge's vertex `Deleted`; an open
+/// the curved face's seam `Modified` and the edge's vertex `Deleted`; an open
 /// arc's torus face, its two contacts, its two end sections and their four
 /// vertices are `Generated` from it, its faces across and corner edges
 /// `Modified`, the arc and its two vertices `Deleted`. An edge the chain
@@ -3581,17 +3698,19 @@ fn build(
 /// [`Reason::BlendTooLarge`] where a contact line or an end arc leaves
 /// its face through an edge that is not the corner's own or a corner
 /// edge is shorter than the trim, or a closed edge's torus would not be a
-/// ring torus or its seam is shorter than the trim, or the third edge at
+/// ring torus, a contact reaches the axis or a cone's apex, or its seam is
+/// shorter than the trim, or the third edge at
 /// a chain's junction is shorter than the cut; a closed edge whose vertex
-/// carries more than the cylinder's seam, or an open arc that meets
+/// carries more than the curved face's seam, or an open arc that meets
 /// another blended edge at a vertex that is no tangent vertex, is
 /// [`Reason::VertexBlend`];
 /// [`OpError::Unsupported`] naming the two faces for a pair outside the
-/// table (every pair but two planes and a plane and a cylinder along a
-/// ruling or a circle, today), an edge the chain reached included, and
+/// table (every pair but two planes, a plane and a cylinder along a
+/// ruling or a circle, and a plane and a cone along a coaxial circle,
+/// today), an edge the chain reached included, and
 /// naming the face
 /// across an end that is not a plane, or, at an open arc's end, that is
-/// not a plane through the cylinder's axis;
+/// not a plane through the axis;
 /// [`OpError::NotFound`] for an edge id that does not resolve.
 ///
 /// ```
@@ -3641,10 +3760,11 @@ pub fn fillet(
 /// or all concave, meet in the triangle of the points where each face's
 /// two contacts cross, each side a segment in one chamfer's plane, at any
 /// such corner; the triangle and every corner point are recorded as a
-/// fillet's sphere and points are. A plane and a cylinder along a circle chamfer with
-/// no ends to the 45° cone coaxial with the cylinder through the two
-/// circles at `distance` from the edge, its `Z` toward the wider, its `u`
-/// seam the ruling between the contacts' vertices, the cylinder's seam
+/// fillet's sphere and points are. A plane and a cylinder or a cone along
+/// a coaxial circle chamfer with no ends to the cone coaxial with it
+/// through the two circles at `distance` from the edge along each face —
+/// 45° against a cylinder — its `Z` toward the wider, its `u` seam the
+/// ruling between the contacts' vertices, the curved face's seam
 /// shortened as a fillet's is; an open arc chamfers to the same cone over
 /// its range, each end on the cone's ruling in a plane through the axis.
 /// Convex or concave is read from the dihedral: a
