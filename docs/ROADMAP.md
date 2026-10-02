@@ -555,8 +555,7 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 | itself: unparsed | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-**Status: opened 2026-10-02; scope proposed, not yet confirmed by the
-human.**
+**Status: opened 2026-10-02; scope confirmed by the human the same day.**
 
 - Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).
