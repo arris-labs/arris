@@ -1,0 +1,150 @@
+{
+  "description": "a bar 1 thick whose end is an ogive: two arcs of radius 2, centred at (4, 1) and (4, −1), each running tangentially out of a side of the bar and meeting at (4 + √3, 0), extruded along z; the vertical edge where they meet filleted at r 0.2: two cylinders with parallel axes 2 apart along a ruling, convex at an interior angle of 120°, the blend a cylinder of radius r whose axis is on both offset cylinders (radius 2 − r) at (4 + √((2 − r)² − 1), 0), tangent to each wall along a ruling and trimmed by the two caps. Arris refuses it today as Unsupported, a cylinder against a cylinder (ADR-0036)",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -1
+            ]
+          },
+          {
+            "arc_to": [
+              5.732050807568877,
+              0
+            ],
+            "via": [
+              5,
+              -0.7320508075688772
+            ]
+          },
+          {
+            "arc_to": [
+              4,
+              1
+            ],
+            "via": [
+              5,
+              0.7320508075688772
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bar",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "bar",
+      "edges": [
+        [
+          5.732050807568877,
+          0,
+          0.5
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        5.722050807568877,
+        0,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        5.696662954709577,
+        0,
+        0.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_cap",
+      "point": [
+        2,
+        0,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        6,
+        0,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

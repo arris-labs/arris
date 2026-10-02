@@ -1,0 +1,174 @@
+{
+  "description": "a disc of radius 3 and height 1 with a conical boss on it, radius 2 at its base and 1 at its top a height 1 above, revolved whole about z, the boss's base filleted at r 0.25: a plane against a cone along a circle coaxial with it, concave, the empty wedge 135°, the blend a ring torus coaxial with the boss, minor radius r, adding material, with no ends. The section added r² (tan(π/8) − π/8) swept about the axis by Pappus. Arris refuses it today as Unsupported, a cone against a plane (ADR-0036)",
+  "params": {
+    "r": 0.25
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              2,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -2,
+          0,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2.5,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        2.5,
+        0,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        -2,
+        0,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        -2.0078825325020015,
+        0,
+        1.0190301168721783
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_blend_behind",
+      "point": [
+        0,
+        -2.0078825325020015,
+        1.0190301168721783
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_disc",
+      "point": [
+        2.8,
+        0,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_boss_top",
+      "point": [
+        0.5,
+        0,
+        2
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "9 * pi + 7 * pi / 3 + 2 * pi * (r * r * (sqrt(2) - 1) * ((2 * 2 + (2 + r * (sqrt(2) - 1) * (1)) + (2 + r * (sqrt(2) - 1) * (-0.7071067811865475)) + 2 * (2 + (0.38268343236508984) * r / sin(radians(67.5)))) / 6) - pi / 8 * r^2 * ((2 + (0.38268343236508984) * r / sin(radians(67.5))) - (0.38268343236508984) * 16 * r * sin(radians(22.5)) / (3 * pi)))",
+    "genus": 0
+  }
+}

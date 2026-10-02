@@ -1878,6 +1878,70 @@ fn regression_turned_stadium_fillet_torus_pair() {
     run("regression/turned-stadium-fillet-torus-pair");
 }
 
+/// A frustum's top rim filleted: a plane against a cone along a coaxial
+/// circle, convex, the blend a ring torus (ADR-0036).
+#[test]
+#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
+fn regression_frustum_rim_fillet() {
+    run("regression/frustum-rim-fillet");
+}
+
+/// The same rim chamfered: a cone coaxial with the frustum.
+#[test]
+#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
+fn regression_frustum_rim_chamfer() {
+    run("regression/frustum-rim-chamfer");
+}
+
+/// A conical boss's base on its disc filleted: the cone row concave, the
+/// torus adding material.
+#[test]
+#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
+fn regression_cone_boss_base_fillet() {
+    run("regression/cone-boss-base-fillet");
+}
+
+/// The same base chamfered, concave.
+#[test]
+#[ignore = "Unsupported, a cone against a plane: the blend table has no cone row (plans/c6-blend-pairs step 4, ADR-0036)"]
+fn regression_cone_boss_base_chamfer() {
+    run("regression/cone-boss-base-chamfer");
+}
+
+/// A turned part's shoulder, a cylinder into a coaxial cone, filleted: the
+/// blend a ring torus coaxial with both. Open CASCADE's blend is a B-spline
+/// off the torus, so the fixture's closed forms come with the pair.
+#[test]
+#[ignore = "Unsupported, a cone against a cylinder: the blend table has no cone row (plans/c6-blend-pairs step 5, ADR-0036)"]
+fn regression_turned_shoulder_fillet() {
+    run("regression/turned-shoulder-fillet");
+}
+
+/// An ogive bar end, two arcs meeting at a corner, its ruling filleted: two
+/// cylinders with parallel axes, convex, the blend a cylinder.
+#[test]
+#[ignore = "Unsupported, a cylinder against a cylinder: the parallel-cylinder row is decided and not built (ADR-0036 §5; docs/BACKLOG.md, the parallel-cylinder row of the blend table)"]
+fn regression_ogive_bar_ruling_fillet() {
+    run("regression/ogive-bar-ruling-fillet");
+}
+
+/// A figure eight's waist filleted: two cylinders with parallel axes,
+/// concave, the blend a cylinder adding material.
+#[test]
+#[ignore = "Unsupported, a cylinder against a cylinder: the parallel-cylinder row is decided and not built (ADR-0036 §5; docs/BACKLOG.md, the parallel-cylinder row of the blend table)"]
+fn regression_figure_eight_waist_fillet() {
+    run("regression/figure-eight-waist-fillet");
+}
+
+/// A cube whose filleted edge lies 1.3e-7 off one of its faces in the file,
+/// as two of NIST FTC-06's edges do: within the edge's tolerance, outside
+/// the face's.
+#[test]
+#[ignore = "kernel bug: Internal(Geometry(NotOnSurface)), a blend curve 1.3e-7 off the plane it is drawn on, held to the faces' tolerance where the edge's covers it (docs/BACKLOG.md, a blend of an edge off its face)"]
+fn regression_edge_off_its_plane_fillet() {
+    run("regression/edge-off-its-plane-fillet");
+}
+
 /// A cylinder whose circles are placed on the axis `(-1, -6.1e-17, 0)`
 /// with no reference direction, as NIST's CTC-04 and FTC-08 write them:
 /// ISO 10303-42's reference direction is world `Y` for an axis along `X`

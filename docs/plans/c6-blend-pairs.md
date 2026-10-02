@@ -13,23 +13,29 @@ CASCADE or surface the pair they were hiding behind it; step 1 found their
 refusal is not the battery's radius but a convex blend ending at a concave
 corner, which step 2 builds. Then, in the order step 1's probe ranks them, a blend of
 a cone against a plane or a coaxial cylinder along a circle (a torus for a
-fillet, a cone for a chamfer: `ring`'s construction with a cone face), and
-of two cylinders with parallel axes along a ruling (a cylinder), fillet
-and chamfer, open or closed, in a chain, checker-green at `Full`, matching
-Open CASCADE on the committed fixtures and the real parts the probe names.
-What stays with later C6 plans: the torus pairs (torus × cylinder, torus ×
-plane), the blend that really runs over its neighbour (a radius past the
+fillet, a cone for a chamfer: `ring`'s construction with a cone face), then
+the same meridian construction for a sphere's or a torus's parallel against
+a coaxial plane, cylinder or cone (ADR-0036, which step 3's census ordered
+so), fillet and chamfer, open or closed, in a chain, checker-green at
+`Full`, matching Open CASCADE on the committed fixtures and the real parts
+the probe names. What stays with later C6 plans: the blend ends with no
+closed form (step 3's census: an open arc's torus on a plane off its axis,
+a ruling stripe on a curved face across), the parallel-cylinder row
+(decided in ADR-0036, 29 edges), a torus against a cylinder off its axis,
+the blend that really runs over its neighbour (a radius past the
 face's width, which Open CASCADE builds by consuming the face), the
 corners refused as `VertexBlend`, the other chamfer modes, variable
 radius, blends over blends. The cycle stays open when this one retires.
 
 ## Non-goals
 
-- The torus pairs. The residue holds them (torus × cylinder 2 parts, torus
-  × plane 1), and a rolling ball between a torus and a plane is a closed
-  form only on planes through the axis or square to it; whether a part's
-  edges are that case is step 1's finding, and a family that ranks first
-  there is a decision for the human (open question 1), not an addition.
+- The torus pairs off the axis: a torus against a cylinder off its axis,
+  and a torus against a plane through its axis along a meridian circle.
+  The coaxial parallels are the meridian row's (step 6, ADR-0036 §6).
+- Two cylinders with parallel axes along a ruling: decided (ADR-0036 §5),
+  built when a census ranks it; its step-3 fixtures stay under
+  `regression/`.
+- Blend ends that are no closed form (ADR-0036 §6): the next plan's idea.
 - A blend that runs over its neighbour: the face it leaves is consumed, a
   topological change (a face deleted, a loop rewritten) that no stripe of
   ADR-0007's shape makes. It stays the roadmap's line, with the parts that
@@ -115,7 +121,7 @@ bound has to be established here.
   turned from `BlendTooLarge` to `ok` are held to the checker (a throwaway
   run, its count in the commit body), since the probe built them without
   checking.
-- [ ] Step 3 **[3]** — ADR-0036 against the probe: the cone row, the
+- [x] Step 3 **[3]** — ADR-0036 against the probe: the cone row, the
   parallel-cylinder row and which of the two the probe ranks first (the
   order of steps 4 to 7 follows it; a pair the probe finds absent from the
   parts but present in the census stays a backlog line). Fixtures first, as
@@ -141,32 +147,35 @@ bound has to be established here.
   rule, on a cone), and a chain whose junction is a cone stripe meeting a
   line or a cylinder stripe on the ball's cross-section (ADR-0035 §2, an
   existing construction). Fixtures: the split frustum rim, a turned step
-  (cone into cylinder at a shoulder) and its chamfer, against the oracle.
-- [ ] Step 6 **[3]** — Two parallel cylinders along a ruling: a new row in
-  `stripe` (the ruling ball), the contacts rulings on each face, the
-  cylinder or plane between them, the ends trimmed by the face across
-  (planes square to the axes, the usual three faces) and the miter of two
-  of them at a corner whose third edge stays sharp refused as
-  `VertexBlend`. Fixtures: the bar with two round ends, convex and
-  concave, fillet and chamfer. Test: the oracle's volume, area and
-  counts; the closed form of the removed section (`(1 − π/4) r²` for a
-  right-angled edge does not hold between curved faces; the section is
-  computed from the two offset circles and written in the fixture's
-  `analytic` block).
+  (cone into cylinder at a shoulder) and its chamfer, against the oracle;
+  `regression/turned-shoulder-fillet` moves to `blend/` with its closed
+  forms and `measure_differs`, Open CASCADE's blend there being a walked
+  B-spline (step 3).
+- [ ] Step 6 **[3]** — The meridian row's circle meridians (ADR-0036 §1,
+  §6; replaces the parallel cylinders at step 3): a sphere centred on the
+  axis or a torus against a coaxial plane, cylinder or cone along a
+  parallel — the meridian offset is a concentric circle, the centre the
+  root on the edge's side, the contact on the torus or the sphere a line
+  at constant `v`, the chamfer at the chord. Fixtures first under
+  `regression/` with Open CASCADE's oracle, then moved to `blend/`: a
+  cylinder capped by a coaxial spherical dome meeting it at an angle, a
+  torus ring cut square to its axis, convex and concave, fillet and
+  chamfer. Where Open CASCADE walks rather than placing a torus, the
+  closed forms and `measure_differs` (ADR-0015), as at step 5.
 - [ ] Step 7 **[2]** — The refusals the rows leave, each named, as the
-  first plan's step 6 did: a cone whose offset reaches its apex, a cone ×
-  plane edge that is not a coaxial circle (a plane oblique to the axis
-  gives an ellipse and a quartic centre locus: `Unsupported` naming the
-  pair), a cylinder pair with crossing or skew axes, a chain through a
-  torus. Each a committed fixture with `expect_error`, Open CASCADE's body
+  first plan's step 6 did: a cone whose offset reaches its apex, a centre
+  circle that is no ring torus, a cone × plane edge that is not a coaxial
+  circle (a plane oblique to the axis gives an ellipse and a quartic
+  centre locus; a plane through the apex along a ruling, 64 edges at step
+  3: `Unsupported` naming the pair), a cylinder pair with crossing axes, a
+  torus against a cylinder off its axis. Each a committed fixture with `expect_error`, Open CASCADE's body
   beside it where it builds one.
 - [ ] Step 8 **[2]** — The property. `prop::recipe` gains a turned part
   with a coned shoulder (a revolve of a profile with a line at an angle)
-  and a bar with two round ends, one edge or the whole outline blended in
-  one call at a random radius below the bound, fillet and chamfer. Checks:
-  the checker at `Full`, volume against the closed form (Pappus about the
-  axis for the cone row, the swept section along the ruling for the
-  cylinder row), deterministic, the record complete, and the differential
+  and a domed or toroidal one (an arc in the profile meeting a line at an
+  angle), one edge or the whole outline blended in one call at a random
+  radius below the bound, fillet and chamfer. Checks: the checker at
+  `Full`, volume against Pappus about the axis, deterministic, the record complete, and the differential
   against Open CASCADE counting these recipes among the agreeing.
 - [ ] Step 9 **[1]** — Measure and close the plan's loop. Rerun
   `tools/real-parts.sh` and the committed tier: the `fillet` column and
@@ -187,7 +196,7 @@ more than a commit each; say so in that commit.
   counts, the checker at `Full` with nothing unchecked, and no fixture left
   under `regression/` for a line of this plan (the torus pairs' and the
   run-over's keep their `#[ignore]` and reason).
-- The cone and parallel-cylinder properties at 256 cases (the retirement
+- The meridian-row properties at 256 cases (the retirement
   run) and 1000 in CI, seeded; the differential counts those recipes among
   the agreeing.
 - `tools/real-parts.sh`: each part of the fetched tier's `fillet` column
@@ -201,38 +210,46 @@ more than a commit each; say so in that commit.
 
 ## Docs to update on completion
 
-- `docs/ARCHITECTURE.md` §Operations (blends) — the cone and parallel-
-  cylinder rows, the refusals that remain; §Errors' `Unsupported` row.
+- `docs/ARCHITECTURE.md` §Operations (blends) — the meridian row (line
+  and circle meridians), the refusals that remain; §Errors' `Unsupported`
+  row.
 - `docs/DATA-MODEL.md` §Provenance — only if a row's record differs from
   ADR-0007's (a cone stripe's seam, a cylinder pair's contacts): checked
   against the audit.
-- `docs/adr/0036-….md` and `docs/adr/README.md` — written at step 3.
+- `docs/adr/0036-the-meridian-row-and-the-parallel-cylinder-row.md` and
+  `docs/adr/README.md` — written at step 3.
 - `docs/ROADMAP.md` §C6 — status line "second plan landed", the line-2
   pairs marked done within the section, the new histogram numbers.
-- `docs/BACKLOG.md` — drop the lines this plan covers (cone and
-  cylinder × cylinder in the `Blends on face pairs outside ADR-0007's
-  table` line); add the residue and any run-over part step 1 names.
-- `CHANGELOG.md` `## Unreleased` — a fillet or chamfer of a cone's rim
-  against a plane or coaxial cylinder, and of two parallel round faces
-  along a ruling, and which refusals remain; a `### Breaking` bullet only
+- `docs/BACKLOG.md` — drop the lines this plan covers (the cone and the
+  coaxial sphere and torus pairs in the `Blends on face pairs outside
+  ADR-0007's table` line); keep step 3's lines (the ends, the parallel
+  cylinders, B-spline-written edges, the edge off its face).
+- `CHANGELOG.md` `## Unreleased` — a fillet or chamfer of a circle where
+  a cone, a sphere or a torus meets a coaxial plane, cylinder or cone, and
+  which refusals remain; a `### Breaking` bullet only
   if `Reason` gained a variant.
 - `AGENTS.md` current state — C6's second plan landed.
 
 ## Open questions
 
-- ⚠ OPEN: **Which pair families, in which order** — human decides at step 3,
-  from step 1's probe (agent writes the table). The plan assumes the cone
+- **Decided at step 3 (agent, delegated, 2026-10-02): which pair families,
+  in which order** — the cone row (steps 4–5), then the circle meridians
+  (step 6), the parallel cylinders waiting (ADR-0036 §6, the census below).
+  The question as it stood: The plan assumes the cone
   row (700 edges in the first plan's census, the largest `Unsupported`
   left) and the parallel-cylinder ruling (CTC-01's refusal) rank first and
   the torus pairs wait. If the probe puts torus × cylinder or torus ×
   plane above them, steps 4 to 6 are replaced by that family's rows (a
   meridian or parallel circle of the torus on a plane through the axis or
   square to it, as the first plan's open arc) and the ADR says so.
-- ⚠ OPEN: **Whether the run-over is a line of its own** — human decides
-  after step 1. Open CASCADE consumes a face a radius outgrows; if the
+- **Answered at step 1 (no for these parts), closed at step 3: whether
+  the run-over is a line of its own.** Open CASCADE consumes a face a radius outgrows; if the
   corpus's parts need that at their sampled radius, it becomes C6's next
   plan rather than a harness fix.
-- ⚠ OPEN: **Cone half-angle range** — agent decides in ADR-0036: a cone
+- **Decided at step 3 (ADR-0036 §3): cone half-angle range** — none beyond
+  the data model's `(0, π/2)`: the construction sees only the corner's
+  angle, and what bounds a blend is where it lands. The question as it
+  stood: a cone
   past a right angle from its axis is a plane's neighbour, one whose offset
   apex crosses the face is `BlendTooLarge`; the bounds are written, not
   assumed, and held by fixtures.
@@ -286,3 +303,34 @@ more than a commit each; say so in that commit.
   rewritten at step 3, which needs it for the ranking anyway. The boss's
   rim edge of the step's text is a square boss's corner here, a circle's
   rim being a ring, whose end rule is the same function.
+- **The census at step 3 (agent, 2026-10-02): the probe rewritten**, still
+  throwaway and not committed, now naming for each `Unsupported` the two
+  faces and how they sit, or the edge and the face across its end. 9567
+  edges over the 18 parts of the fetched tier that read (step 1's 14066
+  counted the committed tier's files too): built 2932 (2248 checker-green
+  at `Full`; 684 on the 4 parts whose own reading fails S5,
+  `regression/nist-*-s5`, so every blend there inherits the failure —
+  that is step 2's check of the edges it turned to `ok`, with no failure
+  of a blend's own), `TangentChain` 3325, `Unsupported` of a pair 1269,
+  `Unsupported` of an end 1093, `BlendTooLarge` 670 (plane × plane lines
+  432 in 17 files, cylinder × plane lines 142, arcs 76, circles 12; their
+  cause is still unclassified, read at step 9), `VertexBlend` 276,
+  `Internal` 2. The pairs: the cone coaxial with a cylinder or a plane
+  411 edges in 15 parts, a sphere or a torus coaxial 218 in 6, crossing
+  cylinders 186 in 8, NURBS faces 250 in 6, a torus against a cylinder
+  off its axis 82 in 4, a plane through a cone's apex 64 in 2, parallel
+  cylinders 29 in 5. The ends: an open arc's torus on a plane parallel to
+  its axis 321 in 12, a ruling stripe on a curved face across 422 in 14,
+  an edge written as a B-spline 287 in 5. Step 1's "torus pairs 832" was
+  mostly the first of those ends, the pair sorted so the ring's own torus
+  read as a face. The two `Internal` edges (FTC-06) are
+  `regression/edge-off-its-plane-fillet`, a cube with one edge lifted
+  1.3e-7 off its plane in the file.
+- **Found at step 3 (agent): Open CASCADE walks the cone against a
+  cylinder.** Its known parts stop at the plane against a cone; the turned
+  shoulder's blend is a B-spline up to 8e-6 off the torus and its volume
+  2.7e-8 relative under the Pappus form, so
+  `regression/turned-shoulder-fillet` has no probe on the blend and no
+  `analytic.volume`. Step 5 writes its closed forms (volume, area,
+  centroid, inertia) and `measure_differs` when it moves the fixture. The
+  four plane × cone fixtures match their Pappus volumes to 1e-9.

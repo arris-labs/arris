@@ -1,0 +1,17 @@
+{
+  "description": "a 10 cube written by Open CASCADE whose top front edge, its two vertices and its line, are lifted 1.3e-7 off the top face's plane in the file — the shape of NIST FTC-06's (AP242 e2, solid #7516) two plane-against-plane edges at (76.2, 52.07, −15.875) and (−88.9, 52.07, −15.875), whose lines lie 1.27e-7 off a face they bound — that edge filleted at r 1: two planes, convex, the blend a quarter cylinder. Arris faults with Internal(Geometry(NotOnSurface)) where the edge's tolerance covers what the faces' does not (plans/c6-blend-pairs step 3, found by the blend census)",
+  "steps": [
+    {"name": "part", "op": "step", "file": "operand.step", "sha256": "64723f93193ec0d9a3d9053ce5e16b911645a4907cdf74ffbaa44cbaed05850f", "id": 15},
+    {"name": "result", "op": "fillet", "of": "part", "edges": [[5, 0, 10.00000013]], "radius": 1}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 5], "expect": "in"},
+    {"label": "corner_gone", "point": [5, 0.05, 9.95], "expect": "out"},
+    {"label": "on_top", "point": [5, 5, 10], "expect": "on"},
+    {"label": "on_front", "point": [5, 0, 5], "expect": "on"}
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

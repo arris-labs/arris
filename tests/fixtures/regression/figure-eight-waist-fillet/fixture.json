@@ -1,0 +1,132 @@
+{
+  "description": "a figure eight 1 thick: two discs of radius 1 centred at (0, 0) and (1.5, 0) united in one outline, whose arcs meet at (0.75, ±√(1 − 0.75²)), extruded along z; the waist's upper vertical edge filleted at r 0.2: two cylinders with parallel axes 1.5 apart along a ruling, concave, the blend a cylinder of radius r adding material whose axis is on both offset cylinders (radius 1 + r) at (0.75, √((1 + r)² − 0.75²)), tangent to each wall along a ruling and trimmed by the two caps. Arris refuses it today as Unsupported, a cylinder against a cylinder (ADR-0036)",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0.75,
+          0.6614378277661477
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0.75,
+              -0.6614378277661477
+            ],
+            "via": [
+              -1,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              0.75,
+              0.6614378277661477
+            ],
+            "via": [
+              2.5,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "eight",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "eight",
+      "edges": [
+        [
+          0.75,
+          0.6614378277661477,
+          0.5
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0.75,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "waist_filled",
+      "point": [
+        0.75,
+        0.6714378277661477,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "lower_waist_empty",
+      "point": [
+        0.75,
+        -0.6714378277661477,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        0.75,
+        0.7367496997597598,
+        0.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_cap",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

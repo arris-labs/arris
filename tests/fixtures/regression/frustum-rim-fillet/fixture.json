@@ -1,0 +1,162 @@
+{
+  "description": "a frustum of a cone revolved whole about z, radius 2 at its base and 1 at its top a height 1 above, so its side is a cone of half-angle 45° whose apex is at z = 2, its top rim filleted at r 0.25: a plane against a cone along a circle coaxial with it, convex at an interior angle of 135°, the blend a ring torus coaxial with the frustum, minor radius r, tangent to the top along a circle of radius 1 − r tan(π/8) and to the cone along the circle at r tan(π/8) down its ruling, with no ends. The corner's section r² (tan(π/8) − π/8), the kite of the two contacts less the ball's sector of π/4, swept about the axis by Pappus. Arris refuses it today as Unsupported, a cone against a plane (ADR-0036)",
+  "params": {
+    "r": 0.25
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -1,
+          0,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        0,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        -1,
+        0,
+        1
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        -0.9921174674979987,
+        0,
+        0.9809698831278216
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_blend_behind",
+      "point": [
+        0,
+        -0.9921174674979987,
+        0.9809698831278216
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        0.3,
+        0,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_side",
+      "point": [
+        -1.5,
+        0,
+        0.5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "7 * pi / 3 - 2 * pi * (r * r * (sqrt(2) - 1) * ((2 * 1 + (1 + r * (sqrt(2) - 1) * (-1)) + (1 + r * (sqrt(2) - 1) * (0.7071067811865475)) + 2 * (1 + (-0.38268343236508984) * r / sin(radians(67.5)))) / 6) - pi / 8 * r^2 * ((1 + (-0.38268343236508984) * r / sin(radians(67.5))) - (-0.38268343236508984) * 16 * r * sin(radians(22.5)) / (3 * pi)))",
+    "genus": 0
+  }
+}
