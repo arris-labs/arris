@@ -921,8 +921,8 @@ pub fn read_back_stage(
 /// conversion can add seams), and with the rows the checker cannot
 /// decide on a NURBS face left unchecked: S5's and B1's face pairs with
 /// a NURBS face in them, and B1's nesting of a shell no ray is cast from,
-/// which a NURBS face never answers. `analytic.occt_step_refused` names
-/// the plain file's refusal only. Errors: as [`read_back_stage`], and
+/// which a NURBS face never answers. `analytic.occt_step_refused` passes
+/// this file too where it refuses the same way. Errors: as [`read_back_stage`], and
 /// [`CorpusError::ReadBack`] where `expected.json` records no
 /// `nurbs_counts`.
 pub fn read_back_nurbs_stage(
@@ -966,9 +966,12 @@ fn read_back(
     let read = step_read(&mut model, text, &step::ReadOptions::default())
         .map_err(|e| fail(e.to_string()))?;
     let nurbs = which == "NURBS";
-    if let (Some(refused), false) = (&fixture.recipe.analytic.occt_step_refused, nurbs) {
+    if let Some(refused) = &fixture.recipe.analytic.occt_step_refused {
         // The file describes no solid by the standard: the refusal it
-        // names is the pass, and a read is the failure that lifts it.
+        // names is the pass, and a read is the failure that lifts it. The
+        // converted file is passed on the same refusal where it has it,
+        // and read as any other where it does not: a conversion of a
+        // walked face can refuse for the reader's own reason (ADR-0025).
         let kinds: Vec<String> = (read.solids.iter())
             .filter_map(|s| s.result.as_ref().err())
             .map(|r| r.kind().to_string())
@@ -976,10 +979,12 @@ fn read_back(
         if kinds.contains(&refused.kind) {
             return Ok(());
         }
-        return Err(fail(format!(
-            "with {kinds:?}, not the refusal analytic.occt_step_refused names ({}): lift it if it reads",
-            refused.kind
-        )));
+        if !nurbs {
+            return Err(fail(format!(
+                "with {kinds:?}, not the refusal analytic.occt_step_refused names ({}): lift it if it reads",
+                refused.kind
+            )));
+        }
     }
     let mut bodies = Vec::with_capacity(read.solids.len());
     for solid in &read.solids {
@@ -1038,7 +1043,7 @@ fn read_back(
     held.recipe.analytic.measure_differs = None;
     held.recipe.tolerances =
         within_own_tolerance(&fixture.recipe.tolerances, &chain.model, body).map_err(fail)?;
-    let report = if nurbs {
+    let report = if nurbs || fixture.recipe.analytic.occt_walked.is_some() {
         check_leaving_nurbs(&held.name, &chain.model, body)?
     } else {
         check_stage(&held, &chain)?.1

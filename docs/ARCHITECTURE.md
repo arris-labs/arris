@@ -689,9 +689,13 @@ of the centre on its meridian, a parallel of its face; the fillet is the
 torus of the centre's distance from the axis and minor radius `r`, the
 chamfer the cone through the two circles at `distance` along each
 meridian, at the chord's angle to the axis. The plane against a cylinder
-is the case of one meridian square to the axis and one parallel to it.
-The cone's seam is shortened to its contact as the cylinder's is, and a
-contact at the axis or past the cone's apex is `BlendTooLarge`. An open arc of such a circle —
+is the case of one meridian square to the axis and one parallel to it, and
+a cone against a coaxial cylinder or cone — a turned part's shoulder — is
+the case of neither a plane's: the same two lines, the torus coaxial with
+both, or a chamfer cone through the two contacts. Each curved face's seam
+is shortened to its own contact as the cylinder's is (a vertex with a seam
+of each, and no other edge, is the closed edge's), and a contact at the
+axis or past the cone's apex is `BlendTooLarge`. An open arc of such a circle —
 a rim split where a file put its vertices, a D-shaped notch — blends to
 the same torus or cone over the arc's own range (ADR-0035), with the
 blend's `X` at the arc's start vertex and no seam: its loop is a

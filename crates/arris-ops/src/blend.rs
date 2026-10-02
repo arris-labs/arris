@@ -2081,6 +2081,20 @@ fn corner(
     })
 }
 
+/// A face of the meridian row (ADR-0036 §1): `Some(None)` for a plane,
+/// `Some(Some(frame))` for a cylinder or a cone, whose `Z` is its axis, and
+/// `None` for any other surface.
+fn row_frame(surface: &Surface) -> Option<Option<Frame>> {
+    match *surface {
+        Surface::Plane { .. } => Some(None),
+        Surface::Cylinder { frame, .. } | Surface::Cone { frame, .. } => Some(Some(frame)),
+        Surface::EllipticCylinder { .. }
+        | Surface::Sphere { .. }
+        | Surface::Torus { .. }
+        | Surface::Nurbs(_) => None,
+    }
+}
+
 /// A contact of a circular edge's blend: a circle about the axis on one of the edge's faces, the edge's own frame moved along the
 /// axis and its radius changed, so it runs as the edge ran over the same
 /// range.
@@ -2120,15 +2134,14 @@ struct ArcEnd {
 }
 
 /// A closed edge's blend seam, from the first contact's vertex to the
-/// second's, with its pcurves at `u = 0` then at `u = 2π`, and the
+/// second's, with its pcurves at `u = 0` then at `u = 2π`, and each
 /// curved face's own seam shortened to its contact.
 struct RingSeam {
     curve: Curve,
     range: Interval,
     on_blend: [Curve2; 2],
-    trim: Trim,
-    /// The contact whose vertex the curved face's seam is cut at.
-    cut_by: usize,
+    /// Each curved face's seam, and the contact whose vertex it is cut at.
+    cuts: Vec<(Trim, usize)>,
     vertex_tolerance: f64,
 }
 
@@ -2292,35 +2305,17 @@ fn ring(
         a: (GeomKind::Surface(surfaces[0].kind()), forward(f1)),
         b: (GeomKind::Surface(surfaces[1].kind()), forward(f2)),
     };
-    // The meridian row's line meridians (ADR-0036 §1): a plane against a
-    // cylinder or a cone along a parallel — the curved face's index and
-    // frame, whose `Z` is the axis.
-    let (k, axis) = match (surfaces[0], surfaces[1]) {
-        (
-            Surface::Plane { .. },
-            &(Surface::Cylinder { frame, .. } | Surface::Cone { frame, .. }),
-        ) => (1, frame),
-        (
-            &(Surface::Cylinder { frame, .. } | Surface::Cone { frame, .. }),
-            Surface::Plane { .. },
-        ) => (0, frame),
-        (
-            Surface::Plane { .. }
-            | Surface::Cylinder { .. }
-            | Surface::EllipticCylinder { .. }
-            | Surface::Cone { .. }
-            | Surface::Sphere { .. }
-            | Surface::Torus { .. }
-            | Surface::Nurbs(_),
-            Surface::Plane { .. }
-            | Surface::Cylinder { .. }
-            | Surface::EllipticCylinder { .. }
-            | Surface::Cone { .. }
-            | Surface::Sphere { .. }
-            | Surface::Torus { .. }
-            | Surface::Nurbs(_),
-        ) => return Err(unsupported()),
+    // The meridian row's line meridians (ADR-0036 §1): two of a plane
+    // square to the axis, a cylinder and a cone, at most one a plane — each
+    // curved face's frame, whose `Z` is the axis.
+    let frames = [row_frame(surfaces[0]), row_frame(surfaces[1])];
+    let [Some(fa), Some(fb)] = frames else {
+        return Err(unsupported());
     };
+    let Some(axis) = fa.or(fb) else {
+        return Err(unsupported());
+    };
+    let k = if fa.is_some() { 0 } else { 1 };
     let curve = m.curve(curve_id)?;
     let &Curve::Circle { frame: rim, .. } = curve else {
         return Err(OpError::Unsupported {
@@ -2334,77 +2329,88 @@ fn ring(
         .max(m.face(f1)?.tolerance())
         .max(m.face(f2)?.tolerance());
     let z: Vec3 = axis.z().into_inner();
-    let centre = axis.to_local(rim.origin());
-    if rim.z().cross(&axis.z()).norm() > tol.angular || centre.x.hypot(centre.y) > tolerance {
-        return Err(invariant(
-            "a circular edge of a face of revolution about its axis",
-        ));
+    for frame in [fa, fb].into_iter().flatten() {
+        let centre = frame.to_local(rim.origin());
+        if rim.z().cross(&frame.z()).norm() > tol.angular || centre.x.hypot(centre.y) > tolerance {
+            return Err(invariant(
+                "a circular edge of a face of revolution about its axis",
+            ));
+        }
     }
     let eval = curve.eval(mid);
     let t1 = eval.d1 * view.orientation[&f1].compose(ua.orientation).sign();
     let convex = n1.cross(&t1).dot(&n2) < 0.0;
     let s = if convex { -1.0 } else { 1.0 };
-    let (n_plane, n_curved) = if k == 1 { (n1, n2) } else { (n2, n1) };
+    let normals = [n1, n2];
     let radial_at = |t: f64| -> Result<Vec3, OpError> {
         UnitVec3::try_new(curve.point(t) - rim.origin(), tol.linear)
             .map(UnitVec3::into_inner)
             .ok_or(invariant("a circular edge off its axis"))
     };
     // The section in the half-plane through the axis at the edge's
-    // midpoint, `(ρ, h)` from the edge's centre: the plane is `h = 0`.
+    // midpoint, `(ρ, h)` from the edge's centre: each face's meridian.
     let radial_mid = radial_at(mid)?;
-    let plane = Meridian {
-        point: Vec2::zeros(),
-        along: Vec2::new(1.0, 0.0),
-        normal: Vec2::new(0.0, n_plane.dot(&z).signum()),
-    };
-    let curved = match *surfaces[k] {
-        Surface::Cylinder { radius, .. } => Meridian {
-            point: Vec2::new(radius, 0.0),
-            along: Vec2::new(0.0, 1.0),
-            normal: Vec2::new(n_curved.dot(&radial_mid).signum(), 0.0),
-        },
-        Surface::Cone {
-            frame,
-            radius,
-            half_angle,
-        } => {
-            // The ruling at `u`: `(R + v sin α, h₀ + v cos α)`, its normal
-            // read off the face's outward one.
-            let (sa, ca) = half_angle.sin_cos();
-            let normal = Vec2::new(ca, -sa);
-            let read = Vec2::new(n_curved.dot(&radial_mid), n_curved.dot(&z));
-            Meridian {
-                point: Vec2::new(radius, (frame.origin() - rim.origin()).dot(&z)),
-                along: Vec2::new(sa, ca),
-                normal: normal * read.dot(&normal).signum(),
+    let mut meridians: Vec<Meridian> = Vec::with_capacity(2);
+    for i in 0..2 {
+        meridians.push(match *surfaces[i] {
+            Surface::Plane { .. } => Meridian {
+                point: Vec2::zeros(),
+                along: Vec2::new(1.0, 0.0),
+                normal: Vec2::new(0.0, normals[i].dot(&z).signum()),
+            },
+            Surface::Cylinder { radius, .. } => Meridian {
+                point: Vec2::new(radius, 0.0),
+                along: Vec2::new(0.0, 1.0),
+                normal: Vec2::new(normals[i].dot(&radial_mid).signum(), 0.0),
+            },
+            Surface::Cone {
+                frame,
+                radius,
+                half_angle,
+            } => {
+                // The ruling at `u`: `(R + v sin α, h₀ ± v cos α)`, the sign
+                // of the cone's `Z` against the axis, its normal read off
+                // the face's outward one.
+                let (sa, ca) = half_angle.sin_cos();
+                let up = frame.z().dot(&axis.z()).signum();
+                let normal = Vec2::new(up * ca, -sa);
+                let read = Vec2::new(normals[i].dot(&radial_mid), normals[i].dot(&z));
+                Meridian {
+                    point: Vec2::new(radius, (frame.origin() - rim.origin()).dot(&z)),
+                    along: Vec2::new(sa, up * ca),
+                    normal: normal * read.dot(&normal).signum(),
+                }
             }
-        }
-        Surface::Plane { .. }
-        | Surface::EllipticCylinder { .. }
-        | Surface::Sphere { .. }
-        | Surface::Torus { .. }
-        | Surface::Nurbs(_) => return Err(invariant("a cylinder or a cone in the row")),
-    };
-    let corner = plane
-        .meet(&curved)
+            Surface::EllipticCylinder { .. }
+            | Surface::Sphere { .. }
+            | Surface::Torus { .. }
+            | Surface::Nurbs(_) => {
+                return Err(invariant("a plane, a cylinder or a cone in the row"));
+            }
+        });
+    }
+    let [mer_a, mer_b]: [Meridian; 2] = meridians
+        .try_into()
+        .map_err(|_| invariant("two meridians"))?;
+    let corner = mer_a
+        .meet(&mer_b)
         .ok_or(invariant("two meridians crossing at the edge"))?;
     // Along each meridian into its face: the way the other face's outward
     // normal reads `s`.
-    let d_plane = plane.inward(&curved, s);
-    let d_curved = curved.inward(&plane, s);
+    let d_a = mer_a.inward(&mer_b, s);
+    let d_b = mer_b.inward(&mer_a, s);
     let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
     // The ball's centre is `r` off both meridians on the ball's side, each
     // fillet contact the foot of it on its meridian; a chamfer's contacts
     // are `d` along each from the corner. A contact at the axis, or past a
     // cone's apex, has no circle.
-    let contacts_on = |on_plane: Vec2, on_curved: Vec2| {
-        if on_plane.x <= tolerance {
-            Err(too_large(faces[1 - k]))
-        } else if on_curved.x <= tolerance {
-            Err(too_large(faces[k]))
+    let contacts_on = |on_a: Vec2, on_b: Vec2| {
+        if on_a.x <= tolerance {
+            Err(too_large(faces[0]))
+        } else if on_b.x <= tolerance {
+            Err(too_large(faces[1]))
         } else {
-            Ok((on_plane, on_curved))
+            Ok((on_a, on_b))
         }
     };
     let x = radial_at(range.lo())?;
@@ -2417,12 +2423,12 @@ fn ring(
     };
     // The blend, the contacts in the section, each contact's `v` on the
     // blend, and the centre's circle.
-    let (surface, on_plane, on_curved, v_plane, v_curved, centres) = match kind {
+    let (surface, on_a, on_b, v_a, v_b, centres) = match kind {
         Kind::Fillet { radius } => {
             let along =
-                s * radius * (1.0 - plane.normal.dot(&curved.normal)) / curved.normal.dot(&d_plane);
-            let c = corner + along * d_plane + s * radius * plane.normal;
-            let (on_plane, on_curved) = contacts_on(plane.foot(c), curved.foot(c))?;
+                s * radius * (1.0 - mer_a.normal.dot(&mer_b.normal)) / mer_b.normal.dot(&d_a);
+            let c = corner + along * d_a + s * radius * mer_a.normal;
+            let (on_a, on_b) = contacts_on(mer_a.foot(c), mer_b.foot(c))?;
             if c.x <= radius + tolerance {
                 return Err(too_large(faces[k]));
             }
@@ -2432,12 +2438,12 @@ fn ring(
                 let v = (p.y - c.y).atan2(p.x - c.x);
                 if v < 0.0 { v + TAU } else { v }
             };
-            let (mut v_plane, mut v_curved) = (angle(on_plane), angle(on_curved));
-            if (v_plane - v_curved).abs() > PI {
-                if v_plane < v_curved {
-                    v_plane += TAU;
+            let (mut v_a, mut v_b) = (angle(on_a), angle(on_b));
+            if (v_a - v_b).abs() > PI {
+                if v_a < v_b {
+                    v_a += TAU;
                 } else {
-                    v_curved += TAU;
+                    v_b += TAU;
                 }
             }
             (
@@ -2446,36 +2452,27 @@ fn ring(
                     major_radius: c.x,
                     minor_radius: radius,
                 },
-                on_plane,
-                on_curved,
-                v_plane,
-                v_curved,
+                on_a,
+                on_b,
+                v_a,
+                v_b,
                 Some(circle(c)?),
             )
         }
         Kind::Chamfer { distance } => {
-            let (on_plane, on_curved) =
-                contacts_on(corner + distance * d_plane, corner + distance * d_curved)?;
+            let (on_a, on_b) = contacts_on(corner + distance * d_a, corner + distance * d_b)?;
             // The cone through the two contacts, its `Z` toward its wider
             // circle, its `v` from the narrower along a ruling. Two line
             // meridians that are not tangent leave the chord oblique to the
             // axis when one is a plane's.
-            let chord = distance * (d_curved - d_plane);
+            let chord = distance * (d_b - d_a);
             let length = chord.norm();
             if chord.x.abs() <= tol.angular * length || chord.y.abs() <= tol.angular * length {
                 return Err(invariant("a chamfer's chord oblique to the axis"));
             }
-            let wide_plane = on_plane.x > on_curved.x;
-            let (narrow, wide) = if wide_plane {
-                (on_curved, on_plane)
-            } else {
-                (on_plane, on_curved)
-            };
-            let (v_plane, v_curved) = if wide_plane {
-                (length, 0.0)
-            } else {
-                (0.0, length)
-            };
+            let wide_a = on_a.x > on_b.x;
+            let (narrow, wide) = if wide_a { (on_b, on_a) } else { (on_a, on_b) };
+            let (v_a, v_b) = if wide_a { (length, 0.0) } else { (0.0, length) };
             (
                 Surface::Cone {
                     frame: Frame::new(
@@ -2486,28 +2483,34 @@ fn ring(
                     radius: narrow.x,
                     half_angle: chord.x.abs().atan2(chord.y.abs()),
                 },
-                on_plane,
-                on_curved,
-                v_plane,
-                v_curved,
+                on_a,
+                on_b,
+                v_a,
+                v_b,
                 None,
             )
         }
     };
-    let on_plane = circle(on_plane)?;
-    let on_curved = circle(on_curved)?;
+    let on_a = circle(on_a)?;
+    let on_b = circle(on_b)?;
     let line_tol = Tolerance::new(tolerance, tol.angular);
     let geometry = fault_of;
-    let curved_use_u = m.curve2(uses[k].pcurve)?.point(range.lo()).x;
+    // A curved face's own `u` at the edge's start, which its contact's
+    // pcurve is placed at; a plane has none.
+    let mut use_u = [None; 2];
+    for (i, u) in use_u.iter_mut().enumerate() {
+        if [fa, fb][i].is_some() {
+            *u = Some(m.curve2(uses[i].pcurve)?.point(range.lo()).x);
+        }
+    }
     let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
-    let mut by_v = [
-        (faces[1 - k], on_plane, v_plane),
-        (faces[k], on_curved, v_curved),
-    ];
-    let curved_first = v_curved < v_plane;
-    if curved_first {
+    let mut by_v = [(0, faces[0], on_a, v_a), (1, faces[1], on_b, v_b)];
+    let swapped = v_b < v_a;
+    if swapped {
         by_v.swap(0, 1);
     }
+    // The contact's slot, by the face it is on.
+    let slot_of = |i: usize| if swapped { 1 - i } else { i };
     // An open arc's corners, read before its contacts as a stripe's are:
     // an end at a tangent corner edge that is no junction is
     // `Reason::TangentChain`, whatever the contacts do beside it.
@@ -2521,7 +2524,7 @@ fn ring(
                 .find(|u| u.face == face)
                 .ok_or(invariant("a contact on one of the edge's faces"))
         };
-        let contact_uses = [use_of(by_v[0].0)?, use_of(by_v[1].0)?];
+        let contact_uses = [use_of(by_v[0].1)?, use_of(by_v[1].1)?];
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
             if !junctions.contains(&vertex) {
@@ -2529,14 +2532,13 @@ fn ring(
             }
         }
     }
-    for (face, contact, v) in by_v {
+    for (i, face, contact, v) in by_v {
         let face_surface = m.surface(m.face(face)?.surface())?;
         let on_face =
             pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
-        let on_face = if face == faces[k] {
-            placed(on_face, range.lo(), curved_use_u)
-        } else {
-            on_face
+        let on_face = match use_u[i] {
+            Some(u) => placed(on_face, range.lo(), u),
+            None => on_face,
         };
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
             return Err(too_large(face));
@@ -2556,8 +2558,7 @@ fn ring(
     let contacts: [RingContact; 2] = contacts
         .try_into()
         .map_err(|_| invariant("two contacts of the blend"))?;
-    let on_curved_face = usize::from(!curved_first);
-    let (v0, v1) = (v_plane.min(v_curved), v_plane.max(v_curved));
+    let (v0, v1) = (v_a.min(v_b), v_a.max(v_b));
     // The blend's section through the axis at the radial direction `w`:
     // the tube circle there, or the ruling between the contacts' points
     // `ends`, from the lower contact to the upper.
@@ -2583,25 +2584,16 @@ fn ring(
         }
     };
     let ends = if !open {
-        // The vertex's one other edge: the curved face's seam, used twice by
-        // it.
+        // The vertex's other edges: each curved face's seam, used twice by
+        // it, one seam to a curved face.
         let at_vertex = view
             .vertex_edges
             .get(&vertex)
             .ok_or(invariant("the closed edge's vertex's edges"))?;
         let others: Vec<EdgeId> = at_vertex.iter().copied().filter(|&x| x != edge).collect();
-        let [seam] = others[..] else {
-            return Err(vertex_blend());
-        };
-        let seam_uses = view.uses.get(&seam).ok_or(invariant("the seam's uses"))?;
-        if seam_uses.len() != 2 || seam_uses.iter().any(|u| u.face != faces[k]) {
+        if others.len() != [fa, fb].iter().flatten().count() {
             return Err(vertex_blend());
         }
-        let seam_entity = *m.edge(seam)?;
-        let Some((seam_curve_id, seam_range0)) = seam_entity.curve() else {
-            return Err(vertex_blend());
-        };
-        let seam_curve = m.curve(seam_curve_id)?;
         // The blend's seam: the section at `u = 0`, in the plane of `X`
         // and `Z`.
         let (seam_curve_new, seam_range) =
@@ -2610,42 +2602,67 @@ fn ring(
             pcurve_on(&seam_curve_new, seam_range, &surface, line_tol, meter).map_err(geometry)?;
         let seam_on_blend =
             [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
-        // The curved face's seam shortened to its contact.
-        let cut_at = contacts[on_curved_face].points[0];
-        let projection = seam_curve.project(cut_at).map_err(geometry)?;
-        if projection.distance > seam_entity.tolerance().max(tolerance) {
-            return Err(invariant(
-                "the curved face's seam through the contact's vertex",
+        // Each curved face's seam shortened to its contact.
+        let mut cuts: Vec<(Trim, usize)> = Vec::with_capacity(2);
+        let mut vertex_tolerance = tolerance;
+        let mut seen = [false; 2];
+        for seam in others {
+            let seam_uses = view.uses.get(&seam).ok_or(invariant("the seam's uses"))?;
+            let [su, sv] = seam_uses[..] else {
+                return Err(vertex_blend());
+            };
+            let Some(i) = (0..2).find(|&i| [fa, fb][i].is_some() && su.face == faces[i]) else {
+                return Err(vertex_blend());
+            };
+            if su.face != sv.face || std::mem::replace(&mut seen[i], true) {
+                return Err(vertex_blend());
+            }
+            let seam_entity = *m.edge(seam)?;
+            let Some((seam_curve_id, seam_range0)) = seam_entity.curve() else {
+                return Err(vertex_blend());
+            };
+            let seam_curve = m.curve(seam_curve_id)?;
+            let slot = slot_of(i);
+            let cut_at = contacts[slot].points[0];
+            let projection = seam_curve.project(cut_at).map_err(geometry)?;
+            if projection.distance > seam_entity.tolerance().max(tolerance) {
+                return Err(invariant(
+                    "the curved face's seam through the contact's vertex",
+                ));
+            }
+            let Some(tc) = into_range(seam_range0, projection.t, seam_curve.period()) else {
+                return Err(too_large(faces[i]));
+            };
+            let cuts_lo = seam_entity.start() == vertex;
+            let far = m.vertex(if cuts_lo {
+                seam_entity.end()
+            } else {
+                seam_entity.start()
+            })?;
+            let kept_length = if cuts_lo {
+                seam_range0.hi() - tc
+            } else {
+                tc - seam_range0.lo()
+            };
+            if kept_length <= 0.0 || (cut_at - far.point()).norm() <= far.tolerance() {
+                return Err(degenerate(vec![e, forward(seam)], Reason::BlendTooLarge));
+            }
+            vertex_tolerance = vertex_tolerance.max(seam_entity.tolerance());
+            cuts.push((
+                Trim {
+                    edge: seam,
+                    t: tc,
+                    cuts_lo,
+                },
+                slot,
             ));
-        }
-        let Some(tc) = into_range(seam_range0, projection.t, seam_curve.period()) else {
-            return Err(too_large(faces[k]));
-        };
-        let cuts_lo = seam_entity.start() == vertex;
-        let far = m.vertex(if cuts_lo {
-            seam_entity.end()
-        } else {
-            seam_entity.start()
-        })?;
-        let kept_length = if cuts_lo {
-            seam_range0.hi() - tc
-        } else {
-            tc - seam_range0.lo()
-        };
-        if kept_length <= 0.0 || (cut_at - far.point()).norm() <= far.tolerance() {
-            return Err(degenerate(vec![e, forward(seam)], Reason::BlendTooLarge));
         }
         RingEnds::Seam(Box::new(RingSeam {
             curve: seam_curve_new,
             range: seam_range,
             on_blend: seam_on_blend,
-            trim: Trim {
-                edge: seam,
-                t: tc,
-                cuts_lo,
-            },
-            cut_by: on_curved_face,
-            vertex_tolerance: tolerance.max(seam_entity.tolerance()),
+            cuts,
+            vertex_tolerance,
         }))
     } else {
         let mut ends: Vec<RingEnd> = Vec::with_capacity(2);
@@ -2730,8 +2747,8 @@ fn ring(
     let normal = surface
         .normal(0.0, (v0 + v1) / 2.0)
         .ok_or(invariant("a regular blend surface"))?;
-    let outward_curved = curved.normal.x * x + curved.normal.y * z;
-    let orientation = if normal.dot(&(n_plane + outward_curved)) > 0.0 {
+    let outward = |mer: &Meridian| mer.normal.x * x + mer.normal.y * z;
+    let orientation = if normal.dot(&(outward(&mer_a) + outward(&mer_b))) > 0.0 {
         Orientation::Forward
     } else {
         Orientation::Reversed
@@ -3258,7 +3275,9 @@ fn build(
                     },
                     None,
                 ));
-                cut_once(&mut cuts, &seam.trim, vertices[0][seam.cut_by])?;
+                for (trim, by) in &seam.cuts {
+                    cut_once(&mut cuts, trim, vertices[0][*by])?;
+                }
             }
             RingEnds::Open(ends) => {
                 for (j, end) in ends.iter().enumerate() {
@@ -3632,15 +3651,16 @@ fn build(
 /// where each face's two contacts cross: its frame's `Z` toward the point
 /// of a face square to the other two, so its sides are its equator and two
 /// meridians, exact lines in (u, v), meeting at its pole, a degenerate
-/// edge; no corner edge is cut. A plane and a
-/// cylinder or a cone along a circle coaxial with it — a closed edge, a
-/// hole's rim, a boss's base, a frustum's rim — blend with no ends to a
-/// torus coaxial with the curved face, its centre circle where the
-/// plane's offset meets the curved face's in the half-plane through the
+/// edge; no corner edge is cut. A plane, a
+/// cylinder or a cone against another of them, at most one a plane, along
+/// a circle coaxial with both — a closed edge, a hole's rim, a boss's
+/// base, a frustum's rim, a turned shoulder — blend with no ends to a
+/// torus coaxial with the curved faces, its centre circle where the
+/// first face's offset meets the second's in the half-plane through the
 /// axis (ADR-0036) and its minor radius `radius`, each contact the foot of
 /// that circle on its face, a parallel of it, the torus's `u` seam a tube
 /// circle from one contact's vertex to the other's in the half-plane of
-/// the curved face's seam, which is shortened to its contact. An open arc
+/// each curved face's seam, which is shortened to its contact. An open arc
 /// of such a
 /// circle blends to the same torus over the arc's own range, each end
 /// trimmed by the face across, a plane through the axis, on
@@ -3701,13 +3721,13 @@ fn build(
 /// ring torus, a contact reaches the axis or a cone's apex, or its seam is
 /// shorter than the trim, or the third edge at
 /// a chain's junction is shorter than the cut; a closed edge whose vertex
-/// carries more than the curved face's seam, or an open arc that meets
+/// carries more than the curved faces' seams, or an open arc that meets
 /// another blended edge at a vertex that is no tangent vertex, is
 /// [`Reason::VertexBlend`];
 /// [`OpError::Unsupported`] naming the two faces for a pair outside the
 /// table (every pair but two planes, a plane and a cylinder along a
-/// ruling or a circle, and a plane and a cone along a coaxial circle,
-/// today), an edge the chain reached included, and
+/// ruling, and, along a circle coaxial with both, a plane, a cylinder or a
+/// cone against another of them, today), an edge the chain reached included, and
 /// naming the face
 /// across an end that is not a plane, or, at an open arc's end, that is
 /// not a plane through the axis;

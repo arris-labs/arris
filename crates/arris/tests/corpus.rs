@@ -1904,13 +1904,32 @@ fn blend_cone_boss_base_chamfer() {
     run("blend/cone-boss-base-chamfer");
 }
 
+/// A frustum revolved a half turn, its rim's half circle filleted: the cone
+/// row's open arc, ended on the two planes through the axis.
+#[test]
+fn blend_half_frustum_rim_fillet() {
+    run("blend/half-frustum-rim-fillet");
+}
+
+/// The same half frustum's rim arc chamfered: a cone over the arc's range.
+#[test]
+fn blend_half_frustum_rim_chamfer() {
+    run("blend/half-frustum-rim-chamfer");
+}
+
+/// A turned part's shoulder, a cylinder into a coaxial cone, chamfered: a
+/// cone through the two contacts, both faces' seams shortened.
+#[test]
+fn blend_turned_shoulder_chamfer() {
+    run("blend/turned-shoulder-chamfer");
+}
+
 /// A turned part's shoulder, a cylinder into a coaxial cone, filleted: the
 /// blend a ring torus coaxial with both. Open CASCADE's blend is a B-spline
 /// off the torus, so the fixture's closed forms come with the pair.
 #[test]
-#[ignore = "Unsupported, a cone against a cylinder: the blend table has no cone row (plans/c6-blend-pairs step 5, ADR-0036)"]
-fn regression_turned_shoulder_fillet() {
-    run("regression/turned-shoulder-fillet");
+fn blend_turned_shoulder_fillet() {
+    run("blend/turned-shoulder-fillet");
 }
 
 /// An ogive bar end, two arcs meeting at a corner, its ruling filleted: two

@@ -740,9 +740,20 @@ pub struct Analytic {
     /// bounds, or its own boolean leaving a face that does not close. The
     /// runner's read-back stage then asserts that refusal instead of
     /// comparing, and fails once the file reads, so the entry is lifted
-    /// with the change that reads it.
+    /// with the change that reads it. The file converted to B-splines is
+    /// passed on the same refusal where it has it, and read as any other
+    /// where it does not.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occt_step_refused: Option<ReadRefused>,
+    /// Why Open CASCADE's own STEP of this result carries a B-spline face
+    /// where Arris's result has an exact one: its blend there is a walked
+    /// surface (`blend/turned-shoulder-fillet`). The runner's plain
+    /// read-back stage then leaves the checker's rows that a NURBS face
+    /// makes undecidable (S5's and B1's, ADR-0025) unchecked in that file
+    /// as it does in the converted one; Arris's own result is held to
+    /// `Full` with nothing unchecked as always.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occt_walked: Option<String>,
     /// Genus.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genus: Option<i64>,

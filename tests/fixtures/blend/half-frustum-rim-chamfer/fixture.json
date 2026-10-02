@@ -1,0 +1,153 @@
+{
+  "description": "the frustum of blend/frustum-rim-chamfer revolved a half turn (0\u00b0 to 180\u00b0 about z, so its profile's two planes through the axis are its ends, at y = 0), its top rim, now a half circle, chamfered at the same size: a plane against a cone along an open arc of a circle coaxial with it, the blend the same ring cone over the arc's own range, its two ends trimmed on the planes through the axis, square to the rim, at the vertex's angle. Half the full frustum's volume by the same Pappus form",
+  "params": {
+    "d": 0.2
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 180
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          1,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0.3,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        -0.5,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        0,
+        1,
+        1
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        0,
+        0.3,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_side",
+      "point": [
+        0,
+        1.5,
+        0.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_end",
+      "point": [
+        1.2,
+        0,
+        0.5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "(7 * pi / 3 - 2 * pi * (d^2 * sin(radians(135)) / 2 * (1 + d * (-0.29289321881345254) / 3))) / 2",
+    "genus": 0
+  }
+}

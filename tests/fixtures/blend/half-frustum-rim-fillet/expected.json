@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3a4b40bb96e589100823985d9446fa860fecc3fb907fd0ba7bd5ff5f2a14b7a4",
+  "results": {
+    "default": {
+      "area": 17.480387906234093,
+      "centroid": [
+        5.790565900217359e-17,
+        0.6821487109680442,
+        0.3921785501348516
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          0.9997094681335676,
+          1.211778052047392e-16,
+          4.2541979023201056e-17
+        ],
+        [
+          1.211778052047392e-16,
+          2.7032680409047,
+          0.1153536576821016
+        ],
+        [
+          4.2541979023201056e-17,
+          0.1153536576821016,
+          3.161753992203419
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.0,
+            0.3,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            0.0,
+            -0.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            0.0,
+            0.3,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_side",
+          "point": [
+            0.0,
+            1.5,
+            0.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end",
+          "point": [
+            1.2,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            0.0,
+            0.9921174674979987,
+            0.9809698831278216
+          ]
+        }
+      ],
+      "volume": 3.66099338985815
+    }
+  }
+}

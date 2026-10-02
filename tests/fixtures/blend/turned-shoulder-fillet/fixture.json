@@ -1,0 +1,185 @@
+{
+  "description": "a turned part revolved whole about z: a cylinder of radius 2 from z 0 to 2, a cone of half-angle 45\u00b0 narrowing to radius 1 at z 3, and a cylinder of radius 1 up to z 4; the shoulder where the wide cylinder meets the cone filleted at r 0.25: a cylinder against a coaxial cone along a circle, convex at an interior angle of 135\u00b0, the blend a ring torus coaxial with both, minor radius r, with no ends, and both faces' seams shortened to their contacts. The corner's section, the kite of the two contacts less the ball's sector of \u03c0/4, is r\u00b2 (tan(\u03c0/8) \u2212 \u03c0/8), swept about the axis: the closed forms are the part's less the section's, each moment of the kite's two triangles and the sector by integration. Open CASCADE builds the blend as a B-spline surface, not the torus: the exact torus's points lie up to 8e-6 off it, so no probe sits on the blend, and its volume is 9.5e-7 (2.7e-8 relative) under the closed form 35.587946387, its area 9.9e-7 under it (analytic.measure_differs) The oracle's blend is walked, so the fixture's measure tolerances are 3e-7 (volume and area) and 1e-6 (inertia) where the oracle's volume is 2.7e-8 and its area 1.6e-8 from the exact closed forms in analytic, which Arris matches to rounding; the walked surface is not the truth to hold a closed form to (ADR-0015 asks for a difference past 1e-6 to claim one).",
+  "params": {
+    "r": 0.25
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              2,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -2,
+          0,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        2.5,
+        0,
+        1
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        -2,
+        0,
+        2
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        -2,
+        0,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_neck",
+      "point": [
+        -1,
+        0,
+        3.5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "pi*(-r^2*(-18*sqrt(2)*r + 16*r + 3*pi*(r - 2) - 48 + 48*sqrt(2)) + 136)/12",
+    "area": "pi*(-4*r^2 - pi*r^2 + 5*sqrt(2)*r^2 - 16*sqrt(2)*r + 2*pi*r + 16*r + 6*sqrt(2) + 30)/2",
+    "centroid": [
+      0,
+      0,
+      "(pi*(-r^2*(-56*sqrt(2)*r^2 - 6*sqrt(2)*pi*r^2 + 6*pi*r^2 + 87*r^2 - 144*r + 12*sqrt(2)*pi*r + 64*sqrt(2)*r - 192 - 24*pi + 192*sqrt(2)) + 410)/24) / (pi*(-r^2*(-18*sqrt(2)*r + 16*r + 3*pi*(r - 2) - 48 + 48*sqrt(2)) + 136)/12)"
+    ],
+    "inertia": [
+      [
+        "(pi*(-r^2*(-526*sqrt(2)*r^3 + 105*pi*r^3 + 414*r^3 - 1980*r^2 - 450*pi*r^2 + 2400*sqrt(2)*r^2 - 4320*sqrt(2)*r + 720*pi*r + 3840*r - 3840 - 480*pi + 3840*sqrt(2)) + 4704)/240) / 2 + (pi*(r^2*(-1858*r^3 - 195*pi*r^3 + 120*sqrt(2)*pi*r^3 + 1370*sqrt(2)*r^3 - 800*sqrt(2)*r^2 + 150*pi*r^2 + 660*r^2 - 4000*sqrt(2)*r - 480*sqrt(2)*pi*r + 240*pi*r + 7040*r - 3840*sqrt(2) + 480*pi + 3840) + 8768)/240) - (pi*(-r^2*(-56*sqrt(2)*r^2 - 6*sqrt(2)*pi*r^2 + 6*pi*r^2 + 87*r^2 - 144*r + 12*sqrt(2)*pi*r + 64*sqrt(2)*r - 192 - 24*pi + 192*sqrt(2)) + 410)/24)^2 / (pi*(-r^2*(-18*sqrt(2)*r + 16*r + 3*pi*(r - 2) - 48 + 48*sqrt(2)) + 136)/12)",
+        0,
+        0
+      ],
+      [
+        0,
+        "(pi*(-r^2*(-526*sqrt(2)*r^3 + 105*pi*r^3 + 414*r^3 - 1980*r^2 - 450*pi*r^2 + 2400*sqrt(2)*r^2 - 4320*sqrt(2)*r + 720*pi*r + 3840*r - 3840 - 480*pi + 3840*sqrt(2)) + 4704)/240) / 2 + (pi*(r^2*(-1858*r^3 - 195*pi*r^3 + 120*sqrt(2)*pi*r^3 + 1370*sqrt(2)*r^3 - 800*sqrt(2)*r^2 + 150*pi*r^2 + 660*r^2 - 4000*sqrt(2)*r - 480*sqrt(2)*pi*r + 240*pi*r + 7040*r - 3840*sqrt(2) + 480*pi + 3840) + 8768)/240) - (pi*(-r^2*(-56*sqrt(2)*r^2 - 6*sqrt(2)*pi*r^2 + 6*pi*r^2 + 87*r^2 - 144*r + 12*sqrt(2)*pi*r + 64*sqrt(2)*r - 192 - 24*pi + 192*sqrt(2)) + 410)/24)^2 / (pi*(-r^2*(-18*sqrt(2)*r + 16*r + 3*pi*(r - 2) - 48 + 48*sqrt(2)) + 136)/12)",
+        0
+      ],
+      [
+        0,
+        0,
+        "pi*(-r^2*(-526*sqrt(2)*r^3 + 105*pi*r^3 + 414*r^3 - 1980*r^2 - 450*pi*r^2 + 2400*sqrt(2)*r^2 - 4320*sqrt(2)*r + 720*pi*r + 3840*r - 3840 - 480*pi + 3840*sqrt(2)) + 4704)/240"
+      ]
+    ],
+    "genus": 0,
+    "occt_walked": "Open CASCADE's blend of a cylinder against a cone is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the cylinder and the cone, whose pairs the checker's S5 leaves undecided"
+  },
+  "tolerances": {
+    "volume_rel": 3e-07,
+    "area_rel": 3e-07,
+    "inertia_rel": 1e-06
+  }
+}

@@ -141,7 +141,7 @@ bound has to be established here.
   form for the removed section swept about the axis, checker green at
   `Full` with nothing unchecked. Test: those fixtures; the frustum rim's
   `Full` check names no unchecked pair.
-- [ ] Step 5 **[2]** — The cone row's open arcs, chains and cone ×
+- [x] Step 5 **[2]** — The cone row's open arcs, chains and cone ×
   cylinder: an arc of such a circle (a split rim) with its ends trimmed on
   a plane through the axis or square to it (step 3 of the first plan's
   rule, on a cone), and a chain whose junction is a cone stripe meeting a
@@ -347,3 +347,27 @@ more than a commit each; say so in that commit.
   now holds a cone's ruling on a plane through its apex (step 7's
   refusal). An open arc of the cone row goes through the same code
   unproven until step 5's fixtures.
+- **Found at step 5 (agent, 2026-10-02): `ring` takes two curved faces, and
+  the junction clause is moot.** The faces of the row are now two
+  meridians of a plane, a cylinder or a cone, at most one a plane; a cone's
+  `Z` against the axis picks the sign of its ruling, and a closed edge's
+  vertex carries one seam per curved face, each shortened to its own
+  contact (`RingSeam::cuts`). An open arc of the cone row needed no code:
+  the half frustum's rim, fillet and chamfer, matches the oracle at
+  `Full`. A cone has no stripe (a ruling stripe is a line edge of a plane
+  against a cone through the apex, `Unsupported` at step 7), so "a chain
+  whose junction is a cone stripe" does not arise; a junction of a cone's
+  ring with a line stripe is ADR-0035 §3 unchanged and is not exercised by
+  a fixture here. Open CASCADE's blend of a cylinder against a cone, fillet
+  and chamfer, is a walked B-spline, 2.7e-8 and 8.4e-8 relative off the
+  exact forms; the corpus lint holds `analytic.measure_differs` to a
+  difference past 1e-6, so those two fixtures carry the derived closed
+  forms (volume, area, centroid, inertia) and widened measure tolerances
+  instead, not `measure_differs`. Two fixture keys followed from the walked
+  surface: `analytic.occt_walked` leaves the S5 pairs a NURBS face makes
+  undecidable unchecked in Open CASCADE's plain STEP, and
+  `analytic.occt_step_refused` also passes the converted file on the same
+  refusal (design delta, `arris-debug`, unpublished): the chamfer's file is
+  refused by the reader as an open loop (docs/BACKLOG.md). Not folded in:
+  an open arc of a cone against a cylinder, whose B-spline oracle blend would
+  need the same widened tolerances and adds no construction.
