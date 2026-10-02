@@ -14,7 +14,10 @@ use pyo3::prelude::*;
 use crate::control::{Cancel, Limits};
 use crate::error::BindError;
 use crate::handle::{AnyHandle, Body, Edge, Face, Shell, Vertex};
-use crate::kernel_error::{Mapped, mesh_error, op_error};
+use crate::io::{Imported, StepRead, length_unit as length_unit_of};
+use crate::kernel_error::{
+    Mapped, body_error, mesh_error, native_error, op_error, step_error, step_read_error,
+};
 use crate::mesh::Mesh;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
@@ -181,7 +184,7 @@ impl Model {
         limits: &Limits,
         call: impl FnOnce(&mut topo::Model, &Control<'_>) -> Result<T, OpError> + Send,
     ) -> PyResult<T> {
-        self.run_with(py, limits, call, op_error, |error| {
+        self.run_with(py, limits, call, op_error, true, |error| {
             matches!(
                 error,
                 OpError::Interrupted(Interrupted { by: Stop::Poll, .. })
@@ -190,14 +193,16 @@ impl Model {
     }
 
     /// [`Model::run`] for any kernel error type: `map` says how `E` is
-    /// raised and `by_poll` whether it is a stop by the poll, which Ctrl-C
-    /// answers.
+    /// raised, `own_ids` whether the ids it names are this model's (false for
+    /// a read of bytes, whose errors name the writer's) and `by_poll`
+    /// whether it is a stop by the poll, which Ctrl-C answers.
     fn run_with<T: Send, E: Send>(
         &self,
         py: Python<'_>,
         limits: &Limits,
         call: impl FnOnce(&mut topo::Model, &Control<'_>) -> Result<T, E> + Send,
         map: impl FnOnce(&E) -> Mapped,
+        own_ids: bool,
         by_poll: impl FnOnce(&E) -> bool,
     ) -> PyResult<T> {
         let (outcome, signalled) = py.detach(|| {
@@ -212,7 +217,7 @@ impl Model {
             Err(Failure::Kernel(error)) if signalled && by_poll(&error) => {
                 Err(PyKeyboardInterrupt::new_err("interrupted by Ctrl-C"))
             }
-            Err(Failure::Kernel(error)) => Err(map(&error).raise(py, Some(self))),
+            Err(Failure::Kernel(error)) => Err(map(&error).raise(py, own_ids.then_some(self))),
         }
     }
 
@@ -615,6 +620,7 @@ impl Model {
             &limits,
             move |m, control| arris::mesh::tessellate(m, body, chord, control),
             mesh_error,
+            true,
             |error| {
                 matches!(
                     error,
@@ -734,12 +740,233 @@ impl Model {
             .collect())
     }
 
+    /// The STEP text of `bodies`, in the order given, as one product with a
+    /// solid entity per lump of each body (AP214, lengths in millimetres).
+    /// Deterministic: the same bodies write the same text.
+    ///
+    /// Raises `StepUnsupportedError` for a body that is not a solid or has a
+    /// form STEP cannot hold, `StepLumpsError` for shells that do not nest,
+    /// `StepNoBodiesError` for an empty list and `ForeignHandleError` for a
+    /// body of another model.
+    fn write_step(&self, py: Python<'_>, bodies: Vec<PyRef<'_, Body>>) -> PyResult<String> {
+        let bodies = bodies
+            .iter()
+            .map(|b| b.resolve(&self.shared))
+            .collect::<Result<Vec<_>, _>>()?;
+        py.detach(|| {
+            let kernel = self.shared.lock()?;
+            Ok::<_, BindError>(arris::io::step::write(&kernel, &bodies))
+        })?
+        .map_err(|e| step_error(&e).raise(py, Some(self)))
+    }
+
+    /// Reads every solid of the STEP file `text` into this model, lengths
+    /// converted to `length_unit` (`"mm"` by default; also `"um"`, `"cm"`,
+    /// `"m"`, `"in"`, `"ft"`).
+    ///
+    /// A solid the reader cannot read is a `StepSolid` with a `refusal`
+    /// naming the file entity where it stopped and leaves nothing in the
+    /// model; one refused solid never hides another. Raises `StepParseError`
+    /// when the text is not Part 21 at all, `Interrupted` when `cancel` or
+    /// `budget` stops it (the model is as it was) and `ValueError` for an
+    /// unknown unit.
+    #[pyo3(signature = (text, *, length_unit="mm", cancel=None, budget=None))]
+    fn read_step(
+        &self,
+        py: Python<'_>,
+        text: &str,
+        length_unit: &str,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<StepRead> {
+        let options = arris::io::step::ReadOptions {
+            length_unit: length_unit_of(length_unit)?,
+        };
+        let limits = Limits::new(cancel, budget);
+        let read = self.run_with(
+            py,
+            &limits,
+            |m, control| arris::io::step::read(m, text, &options, control),
+            step_read_error,
+            true,
+            |error| {
+                matches!(
+                    error,
+                    arris::io::step::ReadError::Interrupted(Interrupted { by: Stop::Poll, .. })
+                )
+            },
+        )?;
+        Ok(StepRead::minted_by(self, read))
+    }
+
+    /// `body` and its `provenance` (empty by default) as body bytes: a
+    /// self-contained, versioned record for storage, read by every later
+    /// release. The record may name entities outside the body, such as a
+    /// boolean's inputs.
+    ///
+    /// Raises `ForeignHandleError` for a body or record of another model.
+    #[pyo3(signature = (body, provenance=None))]
+    fn write_body<'py>(
+        &self,
+        py: Python<'py>,
+        body: &Body,
+        provenance: Option<&Provenance>,
+    ) -> PyResult<Bound<'py, pyo3::types::PyBytes>> {
+        let bytes = self.write_body_with(py, body, provenance, |m, b, r| {
+            arris::io::body::write(m, b, r)
+        })?;
+        Ok(pyo3::types::PyBytes::new(py, &bytes))
+    }
+
+    /// The same body as `write_body`, as one line of JSON text, for diffs
+    /// and tests.
+    #[pyo3(signature = (body, provenance=None))]
+    fn write_body_json(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        provenance: Option<&Provenance>,
+    ) -> PyResult<String> {
+        self.write_body_with(py, body, provenance, |m, b, r| {
+            arris::io::body::to_json(m, b, r)
+        })
+    }
+
+    /// Imports the body in `data` (`write_body`'s bytes) into this model,
+    /// checked at the `full` level, and returns it with its record.
+    ///
+    /// Raises `BodyMagicError` for data that is not body bytes,
+    /// `BodyVersionError` for a newer version, `BodyDecodeError` for a
+    /// damaged stream, `BodyPrecisionError` for a tolerance this model
+    /// cannot hold and `BodyRejectedError` for a body the checker rejects.
+    /// On any error the model is as it was.
+    #[pyo3(signature = (data, *, cancel=None, budget=None))]
+    fn read_body(
+        &self,
+        py: Python<'_>,
+        data: &[u8],
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Imported> {
+        let limits = Limits::new(cancel, budget);
+        self.read_body_with(py, &limits, |m, control| {
+            arris::io::body::read(m, data, control)
+        })
+    }
+
+    /// As `read_body`, for `write_body_json`'s text.
+    #[pyo3(signature = (text, *, cancel=None, budget=None))]
+    fn read_body_json(
+        &self,
+        py: Python<'_>,
+        text: &str,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Imported> {
+        let limits = Limits::new(cancel, budget);
+        self.read_body_with(py, &limits, |m, control| {
+            arris::io::body::from_json(m, text, control)
+        })
+    }
+
+    /// The whole model, every entity and freed slot, as native-format
+    /// bytes: deterministic, and read back to a model that dumps the same.
+    fn to_native<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyBytes>> {
+        let bytes = py
+            .detach(|| {
+                let kernel = self.shared.lock()?;
+                Ok::<_, BindError>(arris::io::native::to_bytes(&kernel))
+            })?
+            .map_err(|e| native_error(&e).raise(py, None))?;
+        Ok(pyo3::types::PyBytes::new(py, &bytes))
+    }
+
+    /// The whole model as native-format JSON text, for diffs.
+    fn to_native_json(&self, py: Python<'_>) -> PyResult<String> {
+        py.detach(|| {
+            let kernel = self.shared.lock()?;
+            Ok::<_, BindError>(arris::io::native::to_json(&kernel))
+        })?
+        .map_err(|e| native_error(&e).raise(py, None))
+    }
+
+    /// A new model read from `to_native`'s bytes. It is a model of its own:
+    /// no handle of the one that wrote them belongs to it.
+    ///
+    /// Raises `NativeVersionError` for another version and
+    /// `NativeDecodeError` for data that is not a model.
+    #[staticmethod]
+    fn from_native(py: Python<'_>, data: &[u8]) -> PyResult<Model> {
+        let kernel = py
+            .detach(|| arris::io::native::from_bytes(data))
+            .map_err(|e| native_error(&e).raise(py, None))?;
+        Ok(Model::wrapping(kernel))
+    }
+
+    /// A new model read from `to_native_json`'s text. Errors as for
+    /// `from_native`.
+    #[staticmethod]
+    fn from_native_json(py: Python<'_>, text: &str) -> PyResult<Model> {
+        let kernel = py
+            .detach(|| arris::io::native::from_json(text))
+            .map_err(|e| native_error(&e).raise(py, None))?;
+        Ok(Model::wrapping(kernel))
+    }
+
     fn __repr__(&self) -> String {
         format!("Model({})", self.shared.serial)
     }
 }
 
 impl Model {
+    /// A body write, with `write` the kernel's encoder: the record must be
+    /// this model's.
+    fn write_body_with<T: Send>(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        provenance: Option<&Provenance>,
+        write: impl FnOnce(
+            &topo::Model,
+            topo::Body,
+            &arris::topo::provenance::Provenance,
+        ) -> Result<T, arris::io::body::BodyError>
+        + Send,
+    ) -> PyResult<T> {
+        let body = body.resolve(&self.shared)?;
+        let empty = arris::topo::provenance::Provenance::default();
+        let record = match provenance {
+            Some(record) => record.kernel_in(&self.shared)?,
+            None => &empty,
+        };
+        py.detach(|| {
+            let kernel = self.shared.lock()?;
+            Ok::<_, BindError>(write(&kernel, body, record))
+        })?
+        .map_err(|e| body_error(&e).raise(py, Some(self)))
+    }
+
+    /// A body read, with `read` the kernel's decoder. Its errors name the
+    /// writer's ids, so they are raised with no model.
+    fn read_body_with(
+        &self,
+        py: Python<'_>,
+        limits: &Limits,
+        read: impl FnOnce(
+            &mut topo::Model,
+            &Control<'_>,
+        ) -> Result<arris::io::body::Imported, arris::io::body::BodyError>
+        + Send,
+    ) -> PyResult<Imported> {
+        let imported = self.run_with(py, limits, read, body_error, false, |error| {
+            matches!(
+                error,
+                arris::io::body::BodyError::Interrupted(Interrupted { by: Stop::Poll, .. })
+            )
+        })?;
+        Ok(Imported::minted_by(self, imported))
+    }
+
     fn edges_list(&self, edges: &[PyRef<'_, Edge>]) -> Result<Vec<topo::Edge>, BindError> {
         edges.iter().map(|e| e.resolve(&self.shared)).collect()
     }

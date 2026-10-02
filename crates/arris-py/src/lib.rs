@@ -11,6 +11,7 @@
 mod control;
 pub mod error;
 mod handle;
+mod io;
 pub mod kernel_error;
 mod mesh;
 mod model;
@@ -22,6 +23,7 @@ mod role;
 pub use control::Cancel;
 pub use error::{ArrisError, BindError, Class};
 pub use handle::{Body, Edge, Face, Shell, Vertex};
+pub use io::{Imported, Occurrence, Refusal, StepRead, StepSolid};
 pub use mesh::Mesh;
 pub use model::Model;
 pub use profile::{Loop, Profile, Segment};
@@ -65,6 +67,14 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Violation>()?;
     module.add_class::<UncheckedRow>()?;
     module.add_class::<Report>()?;
+    module.add_class::<Refusal>()?;
+    module.add_class::<StepSolid>()?;
+    module.add_class::<Occurrence>()?;
+    module.add_class::<StepRead>()?;
+    module.add_class::<Imported>()?;
+    module.add_function(wrap_pyfunction!(io::stl_binary, module)?)?;
+    module.add_function(wrap_pyfunction!(io::stl_ascii, module)?)?;
+    module.add_function(wrap_pyfunction!(io::obj, module)?)?;
     Ok(())
 }
 

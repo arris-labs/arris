@@ -56,6 +56,11 @@ impl Mesh {
         }
     }
 
+    /// The kernel's mesh.
+    pub(crate) fn kernel(&self) -> &TriMesh {
+        &self.kernel
+    }
+
     fn face_handle(&self, id: FaceId) -> Face {
         Face::minted_by(&Model::sharing(&self.model), topo::Face::forward(id))
     }

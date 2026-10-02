@@ -155,7 +155,8 @@ classes! {
     TopoError(ArrisError) = "Why a topological call on a model failed.";
     TopoPrecisionError(TopoError) = "The model's precision is not consistent, or a tolerance is outside it.";
 
-    StepError(ArrisError) = "Why a STEP file could not be written.";
+    StepError(ArrisError) = "Why a STEP file could not be written or read.";
+    StepParseError(StepError) = "The text is not a Part 21 exchange structure; `line`, `column` and `instance` say where.";
     StepUnsupportedError(StepError) = "The body has a structure the STEP writer has no form for.";
     StepLumpsError(StepError) = "The body's shells could not be read as lumps.";
     StepNonFiniteError(StepError) = "A number is not finite, and STEP has no spelling for it.";
@@ -170,7 +171,13 @@ classes! {
     BodyPrecisionError(BodyError) = "An entity's tolerance is outside the reading model's.";
     BodyRejectedError(BodyError) = "The body decoded but fails the checker in the reading model.";
 
+    NativeError(ArrisError) = "Why a model could not be written to or read from the native format.";
+    NativeVersionError(NativeError) = "The data is of a native-format version this build does not read.";
+    NativeEncodeError(NativeError) = "The model could not be encoded.";
+    NativeDecodeError(NativeError) = "The data is not a model of this version.";
+
     MeshError(ArrisError) = "Why a mesh could not be built or a body tessellated.";
+    MeshTooManyTrianglesError(MeshError) = "Binary STL's triangle count is a u32 and the meshes hold more triangles than that.";
     MeshIndexOutOfRangeError(MeshError) = "A triangle or edge index names no position.";
     MeshRangeOutOfBoundsError(MeshError) = "A range does not fit the list it indexes.";
     MeshNonFinitePositionError(MeshError) = "A position has a non-finite coordinate.";

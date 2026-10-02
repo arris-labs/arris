@@ -257,12 +257,32 @@ bound has to be established here.
   bound: a backlog line for the binding, since a renderer wants it. The
   not-installed `ImportError` is tested by blocking `numpy` in
   `sys.modules`, so it holds whether or not numpy is installed.
-- [ ] Step 10 **[1]** — io. `step.write`, `step.read` (every solid its
+- [x] Step 10 **[1]** — io. `step.write`, `step.read` (every solid its
   own result or `Refusal`, the product tree beside it), `stl`, `obj`,
   `native` and `body` bytes and JSON. Test: write → read round trip of a
   filleted body keeps volume to the entities' tolerance; body bytes
   written in one `Model` are imported into a second and keep their record
-  through `Imported.translated` (the A10 interop the idea names).
+  through `Imported.translated` (the A10 interop the idea names). *Found at step 10:*
+  the plan's `step.write`/`step.read` are `Model.write_step` and
+  `Model.read_step` (they write into or read out of a model, so they are
+  its methods), with `StepRead` (`solids` of `StepSolid`, each a `body`
+  and `provenance` or a `refusal`; `products` as `Occurrence`s with a 4×4
+  `placement`; `face_colours`) and `length_unit=`. The body and native
+  bytes are `write_body`/`write_body_json`/`read_body`/`read_body_json`
+  and `to_native`/`to_native_json`/`Model.from_native`/`from_native_json`;
+  STL and OBJ are the module functions `stl_binary`, `stl_ascii` and `obj`
+  over a list of `Mesh`es. New error classes close the readers' variants:
+  `StepParseError`, `NativeError` with `NativeVersionError`,
+  `NativeEncodeError` and `NativeDecodeError`, and `MeshTooManyTrianglesError`.
+  A body read's errors name the writer's ids, so they are raised with no
+  model (ids as text). Two limits, both for the backlog at retirement:
+  `Imported.translated()` raises `ValueError` when the record names
+  entities outside the body (a cut's inputs), since the kernel's `IdMap`
+  has no handle in the reading model for them and guessing one would name a
+  different entity; and `Model.from_native` returns a model whose bodies
+  Python cannot enumerate, because `topo::Model` has no public iteration of
+  its bodies (a kernel API line, then `Model.bodies()`). The kernel's
+  corner-block OBJ (`vt`/`vn`) waits on the corner block (step 9's line).
 - [ ] Step 11 **[1]** — Stubs, docstrings, and the stub check. A `.pyi`
   per module, a docstring with a runnable example on every public item,
   and a CI check that the stubs match the built module (`mypy.stubtest`)

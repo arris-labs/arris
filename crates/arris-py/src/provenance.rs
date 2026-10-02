@@ -59,6 +59,18 @@ impl Provenance {
         &self.kernel
     }
 
+    /// The record the kernel holds, if `owner` is the model it belongs to.
+    pub(crate) fn kernel_in(&self, owner: &Arc<Shared>) -> Result<&Kernel, BindError> {
+        if self.model.serial() == owner.serial() {
+            Ok(&self.kernel)
+        } else {
+            Err(BindError::ForeignRecord {
+                owner: self.model.serial(),
+                this: owner.serial(),
+            })
+        }
+    }
+
     fn origin(&self, origin: &AnyOrigin<'_>) -> Result<KernelOrigin, BindError> {
         Ok(match origin {
             AnyOrigin::Role(role) => KernelOrigin::Role(role.kernel),

@@ -15,8 +15,10 @@
 //! exception's `detail` text.
 
 use arris::geom::{FitError, GeomError};
+use arris::io::MeshWriteError;
 use arris::io::body::BodyError;
-use arris::io::step::StepError;
+use arris::io::native::NativeError;
+use arris::io::step::{ReadError, StepError};
 use arris::mesh::MeshError;
 use arris::ops::OpError;
 use arris::topo::{AnyId, EntityId, Shape, TopoError};
@@ -33,6 +35,8 @@ use crate::query::Report;
 /// A value an exception carries as an attribute.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Attr {
+    /// Nothing: Python's `None`.
+    None,
     /// Text.
     Str(String),
     /// A count or an index.
@@ -102,6 +106,7 @@ impl Mapped {
 impl Attr {
     fn into_py<'py>(self, py: Python<'py>, model: Option<&Model>) -> PyResult<Bound<'py, PyAny>> {
         match self {
+            Attr::None => py.None().into_bound_py_any(py),
             Attr::Str(text) => text.into_bound_py_any(py),
             Attr::Uint(n) => n.into_bound_py_any(py),
             Attr::Float(x) => x.into_bound_py_any(py),
@@ -290,6 +295,49 @@ pub fn step_error(error: &StepError) -> Mapped {
     }
 }
 
+/// A STEP reader's error: the text is not Part 21, or the call was stopped.
+/// A refused solid is not an error; it is a result of the read.
+pub fn step_read_error(error: &ReadError) -> Mapped {
+    let message = error.to_string();
+    match error {
+        ReadError::Parse(parse) => Mapped::new(Class::StepParseError, message)
+            .with("line", Attr::Uint(u64::from(parse.line)))
+            .with("column", Attr::Uint(u64::from(parse.column)))
+            .with("instance", parse.instance.map_or(Attr::None, Attr::Uint))
+            .text("detail", &parse.kind),
+        ReadError::Interrupted(stop) => interrupted(stop),
+    }
+}
+
+/// A native-format error.
+pub fn native_error(error: &NativeError) -> Mapped {
+    let message = error.to_string();
+    match error {
+        NativeError::Version { found, supported } => {
+            Mapped::new(Class::NativeVersionError, message)
+                .with("found", Attr::Uint(u64::from(*found)))
+                .with("supported", Attr::Uint(u64::from(*supported)))
+        }
+        NativeError::Encode(detail) => {
+            Mapped::new(Class::NativeEncodeError, message).text("detail", detail)
+        }
+        NativeError::Decode(detail) => {
+            Mapped::new(Class::NativeDecodeError, message).text("detail", detail)
+        }
+    }
+}
+
+/// A mesh-format writer's error.
+pub fn mesh_write_error(error: &MeshWriteError) -> Mapped {
+    let message = error.to_string();
+    match error {
+        MeshWriteError::TooManyTriangles { triangles } => {
+            Mapped::new(Class::MeshTooManyTrianglesError, message)
+                .with("triangles", Attr::Uint(*triangles as u64))
+        }
+    }
+}
+
 /// A body-bytes error. The ids it names are the writer's or the decoded
 /// model's, never the caller's, so a caller raises it with no model.
 pub fn body_error(error: &BodyError) -> Mapped {
@@ -380,6 +428,7 @@ mod tests {
 
     use arris::check::Report;
     use arris::geom::{AmbiguousLocus, GeomKind, ProfileError, SectionFault, SurfaceKind};
+    use arris::io::step::part21::{Part21Error, Part21ErrorKind};
     use arris::io::step::{TreeError, Unsupported};
     use arris::math::{Point2, Point3, Precision, Tolerance};
     use arris::mesh::cdt::CdtError;
@@ -503,6 +552,20 @@ mod tests {
             step_error(&StepError::NoBodies),
             step_error(&StepError::Tree(TreeError::SolidShared { index: 0 })),
             step_error(&StepError::Interrupted(stop())),
+            step_read_error(&ReadError::Parse(Part21Error {
+                line: 1,
+                column: 1,
+                instance: None,
+                kind: Part21ErrorKind::UnexpectedEnd,
+            })),
+            step_read_error(&ReadError::Interrupted(stop())),
+            native_error(&NativeError::Version {
+                found: 2,
+                supported: 1,
+            }),
+            native_error(&NativeError::Encode(String::new())),
+            native_error(&NativeError::Decode(String::new())),
+            mesh_write_error(&MeshWriteError::TooManyTriangles { triangles: 1 << 33 }),
             body_error(&BodyError::Magic),
             body_error(&BodyError::Version {
                 found: 2,
@@ -600,8 +663,8 @@ mod tests {
         );
         assert_eq!(
             of(Class::Interrupted),
-            6,
-            "the Interrupted of every one of the six enums"
+            7,
+            "the Interrupted of every one of the six enums, and the STEP reader's"
         );
     }
 
