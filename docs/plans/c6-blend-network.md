@@ -166,7 +166,7 @@ bound has to be established here.
   `TangentChain` with the edge. Each is a committed fixture with
   `expect_error` and the oracle's own result recorded beside it (the
   `analytic.occt_*` fields) where Open CASCADE builds one.
-- [ ] Step 7 **[2]** — Chain chamfers. (Step 3 already builds the open
+- [x] Step 7 **[2]** — Chain chamfers. (Step 3 already builds the open
   arc's cone section: the D-notch chamfered at 0.25 checked by hand at
   `Full` with nothing unchecked, volume to the closed form within 2e-15;
   this step commits it as a fixture.) The same chains with a flat cut: the

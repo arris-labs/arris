@@ -1491,6 +1491,27 @@ fn blend_d_notch_rim_fillet() {
     run("blend/d-notch-rim-fillet");
 }
 
+/// The D-notch's open arc chamfered: half a cone coaxial with the notch,
+/// trimmed on the plane through its axis (ADR-0035).
+#[test]
+fn blend_d_notch_rim_chamfer() {
+    run("blend/d-notch-rim-chamfer");
+}
+
+/// The stadium's whole outline chamfered in one call: strips and half
+/// cones meeting in straight chords at the tangent vertices (ADR-0035).
+#[test]
+fn blend_stadium_outline_chamfer() {
+    run("blend/stadium-outline-chamfer");
+}
+
+/// A disc's rim split in two half circles, chamfered: one half cone per
+/// edge (ADR-0035).
+#[test]
+fn blend_split_rim_disc_chamfer() {
+    run("blend/split-rim-disc-chamfer");
+}
+
 /// A flat running tangentially into a quarter-round of a revolved bend, the
 /// edge along the flat filleted: the chain runs on into the arc between the
 /// end plane and the torus, a pair with no stripe, and Arris refuses it as

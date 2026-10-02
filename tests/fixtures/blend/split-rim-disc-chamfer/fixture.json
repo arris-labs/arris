@@ -1,0 +1,165 @@
+{
+  "description": "the split-rim disc of blend/split-rim-disc-fillet with its rim, two half circles, chamfered at d 0.25: two half cones, one per edge, meeting on the chord of the junction at each seam. The removed corner's section d\u00b2 / 2 swept a full turn about the radius 1.5 \u2212 d / 3 by Pappus",
+  "params": {
+    "d": 0.25
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          1.5,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              -1.5,
+              0
+            ],
+            "via": [
+              0,
+              1.5
+            ]
+          },
+          {
+            "arc_to": [
+              1.5,
+              0
+            ],
+            "via": [
+              0,
+              -1.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "disc",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "disc",
+      "edges": [
+        [
+          0,
+          1.5,
+          1
+        ],
+        [
+          0,
+          -1.5,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        0,
+        "1.5 - d / 4",
+        "1 - d / 4"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_chamfer",
+      "point": [
+        0,
+        "1.5 - d / 2",
+        "1 - d / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_chamfer_behind",
+      "point": [
+        0,
+        "-(1.5 - d / 2)",
+        "1 - d / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top_contact",
+      "point": [
+        0,
+        "1.5 - d",
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_side_contact",
+      "point": [
+        0,
+        1.5,
+        "1 - d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bottom_rim",
+      "point": [
+        0,
+        1.5,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0,
+    "volume": "pi * 1.5^2 - 2 * pi * (1.5 - d / 3) * d^2 / 2"
+  }
+}

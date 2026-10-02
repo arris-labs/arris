@@ -1,0 +1,125 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "c3bee0d6f5ae292b67d749c61fb7f33693324c8cb2fddba17258a26db9582bb2",
+  "results": {
+    "default": {
+      "area": 22.979102349436122,
+      "centroid": [
+        1.0,
+        2.4359084618757158e-17,
+        0.48146198963363285
+      ],
+      "counts": {
+        "edges": 20,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2.4757649526256946,
+          -8.049116928532385e-16,
+          0.0
+        ],
+        [
+          -8.049116928532385e-16,
+          7.956901777103573,
+          -1.696498669873656e-17
+        ],
+        [
+          0.0,
+          -1.696498669873656e-17,
+          9.354571035308457
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 20,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            1.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            1.0,
+            0.9375,
+            0.9375
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamfer",
+          "point": [
+            1.0,
+            0.875,
+            0.875
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamfer_round",
+          "point": [
+            2.875,
+            0.0,
+            0.875
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_contact",
+          "point": [
+            1.0,
+            0.75,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_side_contact",
+          "point": [
+            1.0,
+            1.0,
+            0.75
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bottom_rim",
+          "point": [
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            1.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 6.836605574477876
+    }
+  }
+}
