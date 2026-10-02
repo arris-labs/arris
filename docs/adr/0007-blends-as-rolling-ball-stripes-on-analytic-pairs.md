@@ -79,6 +79,11 @@ the two kinds and faces; a tangent dihedral, or an edge that meets a
 blend face, is `TangentChain`; a vertex of other than three edges, or a
 corner the closed forms do not cover, is `VertexBlend`. There is no
 marcher, no plate and no fallback.
+*(Amended by ADR-0035: an end at a tangent vertex is a junction of two
+stripes on the ball's cross-section and the selection follows the chain;
+`TangentChain` keeps the tangent dihedral and a tangent end that is not
+such a vertex. An open circle between a plane and a cylinder blends as
+the ring does, its ends trimmed on a plane through the axis.)*
 
 **The `BlendTooLarge` bound.** A contact curve or an end arc that would
 leave its face through any edge but the corner's own is refused by name,

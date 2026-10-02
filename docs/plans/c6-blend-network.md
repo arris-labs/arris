@@ -116,7 +116,7 @@ bound has to be established here.
   ignored and fail for the reason the census names; `cargo nextest run -p
   arris --run-ignored only -E 'test(/regression_/)'` shows each with its
   refusal.
-- [ ] Step 2 **[3]** — ADR-0035, the chain model, written against step 1's
+- [x] Step 2 **[3]** — ADR-0035, the chain model, written against step 1's
   fixtures: the spine, tangent vertices, the shared cross-section arc at a
   junction, open and closed chains, the open-arc stripe's ends (a plane
   through the axis gives a meridian circle of the torus, a plane square to
@@ -253,10 +253,20 @@ out to need more than a commit each; say so in that commit.
   does not yet have, and step 2's ADR takes it or names it for the next plan.
 - **Decided (2026-10-02, human): C6's scope is confirmed.** This plan
   takes the census's two largest rows and nothing else; steps 3 to 7 stand.
-- **⚠ OPEN: where the junction arc comes from in provenance (agent, step
-  2).** From the spine's tangent vertex (a `Generated` from a vertex that is
-  also `Deleted`'s image) or from both edges. The ADR picks; the audit
-  (`testing::recorded_parts`) and DATA-MODEL §Provenance follow it.
+- **Decided by ADR-0035 (step 2, agent): the junction arc comes from both
+  edges.** It and its two vertices are `Generated` from the two edges it
+  joins, as a miter's are; the vertex it replaces is `Deleted`. The audit
+  and DATA-MODEL §Provenance need no new kind of record (step 4 checks).
+- **Decided by ADR-0035 (step 2, agent): the selection follows the chain.**
+  As Open CASCADE's spine does, a named edge reaches every edge beyond a
+  tangent vertex, each with its own blend face; the cap-edge fixture names
+  one edge and its oracle body is the chain of three. Step 4 builds the
+  walk with the junction.
+- **Moved to step 6 (step 2, agent): the 76 junction edges Open CASCADE
+  returned not-done on.** Step 1's probe was not committed, so the ADR
+  names the chain's refusals from the closed forms; step 6 re-runs the
+  probe over the junction edges and fixes each class it finds as a fixture
+  with the oracle's own result beside it.
 - **Answered by step 1's counts (agent): one blend face per edge.** Open
   Cascade's stadium has 10 faces (top, bottom, four sides, four blends) and
   the split-rim disc 6 (top, bottom, two sides, two tori): a blend face
