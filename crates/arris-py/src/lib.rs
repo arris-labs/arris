@@ -15,6 +15,7 @@ pub mod kernel_error;
 mod model;
 mod profile;
 mod provenance;
+mod query;
 mod role;
 
 pub use control::Cancel;
@@ -23,6 +24,7 @@ pub use handle::{Body, Edge, Face, Shell, Vertex};
 pub use model::Model;
 pub use profile::{Loop, Profile, Segment};
 pub use provenance::Provenance;
+pub use query::{EulerLine, Frame, MassProperties, Report, UncheckedRow, Violation};
 pub use role::Role;
 
 use pyo3::prelude::*;
@@ -54,6 +56,12 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Loop>()?;
     module.add_class::<Profile>()?;
     module.add_class::<Provenance>()?;
+    module.add_class::<Frame>()?;
+    module.add_class::<MassProperties>()?;
+    module.add_class::<EulerLine>()?;
+    module.add_class::<Violation>()?;
+    module.add_class::<UncheckedRow>()?;
+    module.add_class::<Report>()?;
     Ok(())
 }
 

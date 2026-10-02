@@ -221,11 +221,24 @@ bound has to be established here.
   `Loop.polygon` for the common case). No `OpUnsupportedError` is
   reachable from a profile either (elliptic revolve is `OpDegenerateError`),
   so that attribute case stays Rust-tested.
-- [ ] Step 8 **[1]** — Queries and walks. Mass properties, face frames,
+- [x] Step 8 **[1]** — Queries and walks. Mass properties, face frames,
   `check(body, level)` returning the `Report` and its `Violation`s,
   adjacency walks. Test: the oracle's volume, area, centroid and inertia
   for three corpus fixtures read from their `expected.json`, to the
-  fixture's tolerance.
+  fixture's tolerance. *Found at step 8:* the pytest holds six fixtures to
+  the oracle, not three — through hole, blind hole, the 8-hole bolt
+  pattern, a filleted box, an extruded plate with a hole and a revolved
+  frustum, the acceptance list — each with the checker at `full` clean,
+  nothing unchecked and the Euler line's counts and genus equal to the
+  oracle's, plus step 6's and 7's deferred halves: `Pappus` (volume =
+  area · length, 2π · ū · area, half of it for a half turn). `Report`,
+  `Violation`, `EulerLine`, `Frame` and `MassProperties` are frozen
+  values; `OpInvalidInputError`, `MeshInvalidInputError` and
+  `BodyRejectedError` now carry their checker report as a `Report` (with
+  the model's handles when the call had a model, the kernel's text names
+  when it had none), as step 4 recorded. Walks are `shells`, `faces`,
+  `edges`, `vertices` of a body, and `edges_of(face)`, `vertices_of(edge)`,
+  `faces_of(body, edge)`, `edges_at(body, vertex)`.
 - [ ] Step 9 **[2]** — Tessellation and mesh bytes. `tessellate(body,
   chord, angle)` returns a `Mesh` of bytes plus counts, `Mesh.to_numpy()`
   in a pure-Python shim that imports `numpy` only when called. Test: the

@@ -13,10 +13,11 @@ use pyo3::prelude::*;
 
 use crate::control::{Cancel, Limits};
 use crate::error::BindError;
-use crate::handle::{AnyHandle, Body, Edge};
+use crate::handle::{AnyHandle, Body, Edge, Face, Shell, Vertex};
 use crate::kernel_error::op_error;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
+use crate::query::{Frame, MassProperties, Report, level_of};
 
 /// Serial numbers for models, in creation order within the process: what a
 /// handle compares and hashes by, and what an error names.
@@ -172,13 +173,39 @@ fn direction_of(what: &'static str, v: [f64; 3]) -> Result<Vec3, OpError> {
 }
 
 impl Model {
-    /// Runs one kernel operation on this model with the GIL released and
-    /// `limits` enforced, and mints its result.
+    /// Runs one kernel call on this model with the GIL released and
+    /// `limits` enforced.
     ///
-    /// The model's lock is held for the call, so two threads' operations on
-    /// one model run one after the other. A stop leaves the model as it was
-    /// (the kernel rolls back); Ctrl-C is a `KeyboardInterrupt` and the
-    /// other stops are `Interrupted`.
+    /// The model's lock is held for the call, so two threads' calls on one
+    /// model run one after the other. A stop leaves the model as it was (the
+    /// kernel rolls back); Ctrl-C is a `KeyboardInterrupt` and the other
+    /// stops are `Interrupted`.
+    fn run<T: Send>(
+        &self,
+        py: Python<'_>,
+        limits: &Limits,
+        call: impl FnOnce(&mut topo::Model, &Control<'_>) -> Result<T, OpError> + Send,
+    ) -> PyResult<T> {
+        let (outcome, signalled) = py.detach(|| {
+            limits.run(|control| {
+                let mut kernel = self.shared.lock()?;
+                Ok::<_, Failure>(call(&mut kernel, control)?)
+            })
+        });
+        match outcome {
+            Ok(value) => Ok(value),
+            Err(Failure::Bind(error)) => Err(error.into()),
+            Err(Failure::Op(OpError::Interrupted(Interrupted { by: Stop::Poll, .. })))
+                if signalled =>
+            {
+                Err(PyKeyboardInterrupt::new_err("interrupted by Ctrl-C"))
+            }
+            Err(Failure::Op(error)) => Err(op_error(&error).raise(py, Some(self))),
+        }
+    }
+
+    /// Runs one kernel operation as [`Model::run`] does and mints its
+    /// result.
     fn operate(
         &self,
         py: Python<'_>,
@@ -189,25 +216,11 @@ impl Model {
         ) -> Result<(topo::Body, arris::topo::provenance::Provenance), OpError>
         + Send,
     ) -> PyResult<Made> {
-        let (outcome, signalled) = py.detach(|| {
-            limits.run(|control| {
-                let mut kernel = self.shared.lock()?;
-                Ok::<_, Failure>(call(&mut kernel, control)?)
-            })
-        });
-        match outcome {
-            Ok((body, record)) => Ok((
-                Body::minted_by(self, body),
-                Provenance::minted_by(self, record),
-            )),
-            Err(Failure::Bind(error)) => Err(error.into()),
-            Err(Failure::Op(OpError::Interrupted(Interrupted { by: Stop::Poll, .. })))
-                if signalled =>
-            {
-                Err(PyKeyboardInterrupt::new_err("interrupted by Ctrl-C"))
-            }
-            Err(Failure::Op(error)) => Err(op_error(&error).raise(py, Some(self))),
-        }
+        let (body, record) = self.run(py, limits, call)?;
+        Ok((
+            Body::minted_by(self, body),
+            Provenance::minted_by(self, record),
+        ))
     }
 
     /// An argument refusal, raised as the kernel's would be.
@@ -479,7 +492,7 @@ impl Model {
         budget: Option<u64>,
     ) -> PyResult<Made> {
         let body = body.resolve(&self.shared)?;
-        let edges = self.edges(&edges)?;
+        let edges = self.edges_list(&edges)?;
         let limits = Limits::new(cancel, budget);
         self.operate(py, &limits, move |m, control| {
             arris::ops::fillet(m, body, &edges, radius, control)
@@ -499,11 +512,179 @@ impl Model {
         budget: Option<u64>,
     ) -> PyResult<Made> {
         let body = body.resolve(&self.shared)?;
-        let edges = self.edges(&edges)?;
+        let edges = self.edges_list(&edges)?;
         let limits = Limits::new(cancel, budget);
         self.operate(py, &limits, move |m, control| {
             arris::ops::chamfer(m, body, &edges, distance, control)
         })
+    }
+
+    /// The volume, area, centroid and inertia of the solid `body`, at unit
+    /// density.
+    ///
+    /// Raises `OpDegenerateError` for a body that is not a solid and
+    /// `Interrupted` when `cancel` or `budget` stops it.
+    #[pyo3(signature = (body, *, cancel=None, budget=None))]
+    fn mass_properties(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<MassProperties> {
+        let body = body.resolve(&self.shared)?;
+        let limits = Limits::new(cancel, budget);
+        let kernel = self.run(py, &limits, move |m, control| {
+            arris::ops::measure::mass_properties(m, body, control)
+        })?;
+        Ok(MassProperties::new(kernel))
+    }
+
+    /// The frame of a planar `face`: `z` is its outward normal, reversed
+    /// for a face reached against its orientation.
+    ///
+    /// Raises `OpDegenerateError` for a face that is not planar.
+    fn face_frame(&self, py: Python<'_>, face: &Face) -> PyResult<Frame> {
+        let face = face.resolve(&self.shared)?;
+        let kernel = arris::ops::query::face_frame(&*self.shared.lock()?, face)
+            .map_err(|e| self.refuse(py, e))?;
+        Ok(Frame::new(kernel))
+    }
+
+    /// The outward frame of `face`'s surface at `(u, v)`: `z` is the
+    /// normal there, `x` the tangent along `u`.
+    ///
+    /// Raises `OpDegenerateError` for a point outside the face or at a
+    /// singularity of its surface.
+    fn frame_at(&self, py: Python<'_>, face: &Face, u: f64, v: f64) -> PyResult<Frame> {
+        let face = face.resolve(&self.shared)?;
+        let uv = arris::math::Point2::new(u, v);
+        let kernel = arris::ops::query::frame_at(&*self.shared.lock()?, face, uv)
+            .map_err(|e| self.refuse(py, e))?;
+        Ok(Frame::new(kernel))
+    }
+
+    /// The checker's report on `body`: `level` is `"fast"` (linear in the
+    /// body, what every operation asserts of its result in debug builds) or
+    /// `"full"` (adds the global rows: face-face intersection, shell
+    /// nesting, enclosed volume).
+    #[pyo3(signature = (body, level="fast"))]
+    fn check(&self, py: Python<'_>, body: &Body, level: &str) -> PyResult<Report> {
+        let (body, level) = (body.resolve(&self.shared)?, level_of(level)?);
+        let report = py.detach(|| {
+            let kernel = self.shared.lock()?;
+            Ok::<_, BindError>(arris::check::check(&kernel, body, level))
+        })?;
+        Ok(Report::new(Some(self), report))
+    }
+
+    /// The shells of `body`, in stored order.
+    fn shells(&self, body: &Body) -> PyResult<Vec<Shell>> {
+        let body = body.resolve(&self.shared)?;
+        let shells = self.shared.lock()?.shells(body).map_err(BindError::from)?;
+        Ok(shells
+            .into_iter()
+            .map(|s| Shell::minted_by(self, s))
+            .collect())
+    }
+
+    /// The faces of `body`, each once, depth-first through its shells.
+    fn faces(&self, body: &Body) -> PyResult<Vec<Face>> {
+        let body = body.resolve(&self.shared)?;
+        let faces = self.shared.lock()?.faces(body).map_err(BindError::from)?;
+        Ok(faces
+            .into_iter()
+            .map(|f| Face::minted_by(self, f))
+            .collect())
+    }
+
+    /// The edges of `body`, each once, in the order its faces' loops reach
+    /// them; a seam appears once.
+    fn edges(&self, body: &Body) -> PyResult<Vec<Edge>> {
+        let body = body.resolve(&self.shared)?;
+        let edges = self.shared.lock()?.edges(body).map_err(BindError::from)?;
+        Ok(edges
+            .into_iter()
+            .map(|e| Edge::minted_by(self, e))
+            .collect())
+    }
+
+    /// The vertices of `body`, each once, in the order the edge walk
+    /// reaches them.
+    fn vertices(&self, body: &Body) -> PyResult<Vec<Vertex>> {
+        let body = body.resolve(&self.shared)?;
+        let vertices = self
+            .shared
+            .lock()?
+            .vertices(body)
+            .map_err(BindError::from)?;
+        Ok(vertices
+            .into_iter()
+            .map(|v| Vertex::minted_by(self, v))
+            .collect())
+    }
+
+    /// The edges that bound `face`, each once, in the order of its loops
+    /// (the outer loop first) and their coedges, with the orientation each
+    /// is used in.
+    fn edges_of(&self, face: &Face) -> PyResult<Vec<Edge>> {
+        let face = face.resolve(&self.shared)?;
+        let kernel = self.shared.lock()?;
+        let entity = kernel.face(face.id).map_err(BindError::from)?;
+        let mut edges: Vec<topo::Edge> = Vec::new();
+        for coedge in entity.loops().iter().flat_map(|l| l.coedges()) {
+            let used = coedge.edge_use().oriented_by(face.orientation);
+            if !edges.iter().any(|e| e.id == used.id) {
+                edges.push(used);
+            }
+        }
+        Ok(edges
+            .into_iter()
+            .map(|e| Edge::minted_by(self, e))
+            .collect())
+    }
+
+    /// The vertices at the two ends of `edge`, in the direction it was
+    /// reached: a reversed edge starts at its curve's end.
+    fn vertices_of(&self, edge: &Edge) -> PyResult<(Vertex, Vertex)> {
+        let edge = edge.resolve(&self.shared)?;
+        let kernel = self.shared.lock()?;
+        let entity = kernel.edge(edge.id).map_err(BindError::from)?;
+        let (start, end) = match edge.orientation {
+            topo::Orientation::Forward => (entity.start(), entity.end()),
+            topo::Orientation::Reversed => (entity.end(), entity.start()),
+        };
+        Ok((
+            Vertex::minted_by(self, topo::Vertex::forward(start)),
+            Vertex::minted_by(self, topo::Vertex::forward(end)),
+        ))
+    }
+
+    /// The faces of `body` that use `edge`: two for an edge between faces
+    /// of a solid (one face twice for a seam, listed once).
+    fn faces_of(&self, body: &Body, edge: &Edge) -> PyResult<Vec<Face>> {
+        let (body, edge) = (body.resolve(&self.shared)?, edge.resolve(&self.shared)?);
+        let kernel = self.shared.lock()?;
+        let uses = kernel.edge_uses(edge.id).map_err(BindError::from)?;
+        let faces = kernel.faces(body).map_err(BindError::from)?;
+        Ok(faces
+            .into_iter()
+            .filter(|f| uses.iter().any(|u| u.face == f.id))
+            .map(|f| Face::minted_by(self, f))
+            .collect())
+    }
+
+    /// The edges of `body` that start or end at `vertex`.
+    fn edges_at(&self, body: &Body, vertex: &Vertex) -> PyResult<Vec<Edge>> {
+        let (body, vertex) = (body.resolve(&self.shared)?, vertex.resolve(&self.shared)?);
+        let kernel = self.shared.lock()?;
+        let at = kernel.vertex_edges(vertex.id).map_err(BindError::from)?;
+        let edges = kernel.edges(body).map_err(BindError::from)?;
+        Ok(edges
+            .into_iter()
+            .filter(|e| at.contains(&e.id))
+            .map(|e| Edge::minted_by(self, e))
+            .collect())
     }
 
     fn __repr__(&self) -> String {
@@ -512,7 +693,7 @@ impl Model {
 }
 
 impl Model {
-    fn edges(&self, edges: &[PyRef<'_, Edge>]) -> Result<Vec<topo::Edge>, BindError> {
+    fn edges_list(&self, edges: &[PyRef<'_, Edge>]) -> Result<Vec<topo::Edge>, BindError> {
         edges.iter().map(|e| e.resolve(&self.shared)).collect()
     }
 }

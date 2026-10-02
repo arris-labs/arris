@@ -9,9 +9,10 @@
 //!
 //! Variants that name the same condition share one class: every `NotFound`
 //! is `StaleHandleError` and every `Interrupted` is `Interrupted`, so a
-//! caller catches each once, whichever operation raised it. A nested kernel
-//! error that has no structure a caller would branch on (a checker report, a
-//! builder refusal, a profile loop's index) is the exception's `detail` text.
+//! caller catches each once, whichever operation raised it. A checker report
+//! is a `Report` attribute; a nested kernel error with no structure a caller
+//! would branch on (a builder refusal, a profile loop's index) is the
+//! exception's `detail` text.
 
 use arris::geom::{FitError, GeomError};
 use arris::io::body::BodyError;
@@ -27,6 +28,7 @@ use pyo3::types::PyTuple;
 use crate::error::Class;
 use crate::handle::{Body, Edge, Face, Shell, Vertex};
 use crate::model::Model;
+use crate::query::Report;
 
 /// A value an exception carries as an attribute.
 #[derive(Debug, Clone, PartialEq)]
@@ -46,6 +48,8 @@ pub enum Attr {
     Shapes(Vec<Shape>),
     /// Several real numbers, as a tuple.
     Floats(Vec<f64>),
+    /// A checker report, as a `Report`.
+    Report(Box<arris::check::Report>),
 }
 
 /// A kernel error as the exception that will be raised for it.
@@ -110,6 +114,7 @@ impl Attr {
                 .collect::<PyResult<Vec<_>>>()?
                 .into_bound_py_any(py),
             Attr::Floats(xs) => PyTuple::new(py, xs)?.into_bound_py_any(py),
+            Attr::Report(report) => Report::new(model, *report).into_bound_py_any(py),
         }
     }
 }
@@ -153,7 +158,7 @@ pub fn op_error(error: &OpError) -> Mapped {
     match error {
         OpError::InvalidInput { body, report } => Mapped::new(Class::OpInvalidInputError, message)
             .with("body", Attr::Shape(body.shape()))
-            .text("report", report),
+            .with("report", Attr::Report(report.clone())),
         OpError::Unsupported { a, b } => Mapped::new(Class::OpUnsupportedError, message)
             .text("a_kind", a.0)
             .with("a", Attr::Shape(a.1))
@@ -311,9 +316,8 @@ pub fn body_error(error: &BodyError) -> Mapped {
             .with("tolerance", Attr::Float(*tolerance))
             .with("min", Attr::Float(*min))
             .with("max", Attr::Float(*max)),
-        BodyError::Rejected(report) => {
-            Mapped::new(Class::BodyRejectedError, message).text("report", report)
-        }
+        BodyError::Rejected(report) => Mapped::new(Class::BodyRejectedError, message)
+            .with("report", Attr::Report(report.clone())),
         BodyError::Interrupted(stop) => interrupted(stop),
     }
 }
@@ -341,7 +345,7 @@ pub fn mesh_error(error: &MeshError) -> Mapped {
         MeshError::InvalidInput { body, report } => {
             Mapped::new(Class::MeshInvalidInputError, message)
                 .with("body", Attr::Shape(body.shape()))
-                .text("report", report)
+                .with("report", Attr::Report(report.clone()))
         }
         MeshError::Chord(chord) => {
             Mapped::new(Class::MeshChordError, message).with("chord", Attr::Float(*chord))
