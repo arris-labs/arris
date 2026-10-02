@@ -1,0 +1,252 @@
+{
+  "description": "a torus ring, its tube of radius 1 about the circle of radius 3, cut square to its axis at z −0.6 and the part above kept, revolved whole about z: a plane annulus from radius 2.2 to 3.8 under the tube, meeting it along two parallels each at an interior angle of π − acos(0.6), both rims filleted at r 0.2 in one call: a plane against a coaxial torus along a parallel, convex, each blend a ring torus coaxial with the ring, minor radius r, its centre circle where the plane's offset (z −0.6 + r) meets the tube's (radius 1 − r), tangent to the floor and to the tube along a parallel, with no ends, the tube's seam shortened at both contacts. The closed forms are the part's less (or, concave, plus) the corner's section swept about the axis by Pappus, its moments integrated over the section's two meridian pieces and the ball to 40 digits: the angles there are arc tangents the expression grammar has no word for, so they are written as numbers. Open CASCADE's blend of a plane against a torus is a B-spline surface walked along the edge, not the exact surface, so no probe sits on it: two sit a tenth of the size either side of its middle, and its volume is 2.4e-9 and its area 1.4e-8 relative off the closed forms, which Arris matches to rounding; the measure tolerances are widened to cover the walk, under the 1e-6 ADR-0015 asks of a claimed difference.",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          2.2,
+          -0.6
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3.8,
+              -0.6
+            ]
+          },
+          {
+            "arc_to": [
+              2.2,
+              -0.6
+            ],
+            "via": [
+              3,
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -3.8,
+          0,
+          -0.6
+        ],
+        [
+          -2.2,
+          0,
+          -0.6
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        -3.0,
+        0,
+        0.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside_hole",
+      "point": [
+        -0.0,
+        0,
+        0.0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -3.0,
+        0,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        -3.8,
+        0,
+        -0.6
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        -3.0,
+        0,
+        1.0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_floor",
+      "point": [
+        -3.0,
+        0,
+        -0.6
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outer_past_blend",
+      "point": [
+        -3.797996703929601,
+        0,
+        -0.5925235972826691
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outer_past_blend_behind",
+      "point": [
+        0,
+        -3.797996703929601,
+        -0.5925235972826691
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outer_short_of_blend",
+      "point": [
+        -3.7876439421255004,
+        0,
+        -0.5538865642311064
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outer_short_of_blend_behind",
+      "point": [
+        0,
+        -3.7876439421255004,
+        -0.5538865642311064
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_past_blend",
+      "point": [
+        -2.202003296070399,
+        0,
+        -0.5925235972826691
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_past_blend_behind",
+      "point": [
+        0,
+        -2.202003296070399,
+        -0.5925235972826691
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_short_of_blend",
+      "point": [
+        -2.2123560578744996,
+        0,
+        -0.5538865642311064
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_short_of_blend_behind",
+      "point": [
+        0,
+        -2.2123560578744996,
+        -0.5538865642311064
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "volume": 50.71547029443368,
+    "area": 112.97122957455909,
+    "centroid": [
+      0,
+      0,
+      0.12767381316325338
+    ],
+    "inertia": [
+      [
+        257.59604299343636,
+        0,
+        0
+      ],
+      [
+        0,
+        257.59604299343636,
+        0
+      ],
+      [
+        0,
+        0,
+        497.2905337168988
+      ]
+    ],
+    "genus": 1,
+    "occt_walked": "Open CASCADE's blend of a plane against a torus along a parallel is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the plane and the torus, whose pairs the checker's S5 leaves undecided",
+    "occt_step_unread": "Open CASCADE's blend of a plane against a torus is a B-spline surface of degree 2 by 14 walked along each edge, its contacts B-spline curves of degree 14; Arris's reader fits a contact's pcurve on it for minutes and refuses its file (no pcurve: the normal equations are singular), which measures the reader on the walked surface, not the blend: regression/bead-root-fillet-occt-step holds that reading"
+  },
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 5e-08,
+    "inertia_rel": 3e-08
+  }
+}

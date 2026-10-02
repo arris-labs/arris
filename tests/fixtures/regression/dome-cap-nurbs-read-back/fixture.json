@@ -1,0 +1,54 @@
+{
+  "description": "Open CASCADE's STEP, converted to B-splines by BRepBuilderAPI_NurbsConvert, of a cylinder of radius 3 from z 0 to 4 capped by the spherical dome of radius 5 about the origin, revolved whole about z: no blend. The converted sphere cap is a B-spline surface bounded by its rim circle and its seam to the pole, the pole a vertex with no degenerate edge, and Arris's reader refuses it as an unsupported entity: '#157: a face of one loop wrapping a period, with no singular point on its side is outside the subset the reader maps' (plans/c6-blend-pairs step 6, found by the converted read-back of blend/dome-rim-fillet, which names it by analytic.occt_nurbs_refused). The desired assertion: it reads, its pole rebuilt as a singular row, and matches Open CASCADE's reading.",
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "operand.step",
+      "sha256": "e25cefc27226d87ae2312792981db9046766f4890e118ba33687988663df367d",
+      "id": 15
+    }
+  ],
+  "result": "part",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        0,
+        5.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        -3,
+        0,
+        2
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_dome",
+      "point": [
+        -1.4,
+        0,
+        4.8
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

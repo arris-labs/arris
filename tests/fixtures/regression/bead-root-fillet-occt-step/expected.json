@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d9df2ab5d9a5f603790e1f287f2645b3455592fd73a291f3c618d32c1d1955dc",
+  "results": {
+    "default": {
+      "area": 232.27889275518754,
+      "centroid": [
+        1.0560818109793237e-08,
+        3.3281291776281596e-14,
+        0.9822520982656504
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          806.7595210386711,
+          -2.6918178325542343e-12,
+          -1.5649959033862164e-07
+        ],
+        [
+          -2.6918178325542343e-12,
+          806.7595262928418,
+          -9.804102887448753e-13
+        ],
+        [
+          -1.5649959033862164e-07,
+          -9.804102887448753e-13,
+          1489.619588339672
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            -3.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_bead",
+          "point": [
+            -3.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            -3.0,
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_disc",
+          "point": [
+            -4.7,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 130.17449161754124
+    }
+  }
+}

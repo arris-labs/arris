@@ -1932,6 +1932,48 @@ fn blend_turned_shoulder_fillet() {
     run("blend/turned-shoulder-fillet");
 }
 
+/// A cylinder capped by a coaxial spherical dome, its rim filleted: a
+/// circle meridian against a line, the blend a ring torus coaxial with
+/// both, both faces' seams shortened.
+#[test]
+fn blend_dome_rim_fillet() {
+    run("blend/dome-rim-fillet");
+}
+
+/// The dome's rim chamfered: the cone through the cylinder's contact and
+/// the sphere's at the chord.
+#[test]
+fn blend_dome_rim_chamfer() {
+    run("blend/dome-rim-chamfer");
+}
+
+/// A torus ring cut square to its axis, both rims filleted: a plane against
+/// a coaxial torus along two parallels, convex.
+#[test]
+fn blend_cut_torus_rims_fillet() {
+    run("blend/cut-torus-rims-fillet");
+}
+
+/// The cut ring's rims chamfered: a cone through the floor's contact and
+/// the tube's at the chord.
+#[test]
+fn blend_cut_torus_rims_chamfer() {
+    run("blend/cut-torus-rims-chamfer");
+}
+
+/// A toroidal bead on a disc, both roots filleted: a plane against a
+/// coaxial torus along two parallels, concave, the blend adding material.
+#[test]
+fn blend_bead_root_fillet() {
+    run("blend/bead-root-fillet");
+}
+
+/// The bead's roots chamfered, concave.
+#[test]
+fn blend_bead_root_chamfer() {
+    run("blend/bead-root-chamfer");
+}
+
 /// An ogive bar end, two arcs meeting at a corner, its ruling filleted: two
 /// cylinders with parallel axes, convex, the blend a cylinder.
 #[test]
@@ -1955,6 +1997,24 @@ fn regression_figure_eight_waist_fillet() {
 #[ignore = "kernel bug: Internal(Geometry(NotOnSurface)), a blend curve 1.3e-7 off the plane it is drawn on, held to the faces' tolerance where the edge's covers it (docs/BACKLOG.md, a blend of an edge off its face)"]
 fn regression_edge_off_its_plane_fillet() {
     run("regression/edge-off-its-plane-fillet");
+}
+
+/// Open CASCADE's own STEP of `blend/bead-root-fillet`, read as a part: its
+/// walked blend of degree 2 by 14, on which the reader fits a contact's
+/// pcurve for minutes and then refuses it.
+#[test]
+#[ignore = "reader: no pcurve, #21 on face #149, the fit's normal equations singular on Open CASCADE's walked blend surface after minutes of fitting (docs/BACKLOG.md, a walked blend's file)"]
+fn regression_bead_root_fillet_occt_step() {
+    run("regression/bead-root-fillet-occt-step");
+}
+
+/// Open CASCADE's STEP of a cylinder capped by a spherical dome, converted
+/// to B-splines: the cap's pole a vertex the reader finds no singular row
+/// for.
+#[test]
+#[ignore = "reader: unsupported entity, a face of one loop wrapping a period with no singular point on its side, the converted sphere cap's pole (docs/BACKLOG.md, a converted sphere cap)"]
+fn regression_dome_cap_nurbs_read_back() {
+    run("regression/dome-cap-nurbs-read-back");
 }
 
 /// A cylinder whose circles are placed on the axis `(-1, -6.1e-17, 0)`

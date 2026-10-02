@@ -1,0 +1,179 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d073ec9e8b51d8801b132abeacea75163784269ef81645382f7c444cbb874f1c",
+  "results": {
+    "default": {
+      "area": 111.67718708270971,
+      "centroid": [
+        1.7744142823615175e-08,
+        3.163635834396657e-14,
+        0.13563384882310378
+      ],
+      "counts": {
+        "edges": 7,
+        "faces": 4,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          254.09234952356883,
+          -4.360117326942242e-12,
+          5.831042444657593e-07
+        ],
+        [
+          -4.360117326942242e-12,
+          254.09235287856413,
+          9.79791168207902e-13
+        ],
+        [
+          5.831042444657593e-07,
+          9.79791168207902e-13,
+          490.8221114950421
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 7,
+        "faces": 4,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            -3.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_hole",
+          "point": [
+            -0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            -3.0,
+            0.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            -3.8,
+            0.0,
+            -0.6
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            -3.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor",
+          "point": [
+            -3.0,
+            0.0,
+            -0.6
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outer_past_blend",
+          "point": [
+            -3.761527852818748,
+            0.0,
+            -0.5318193428526516
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outer_past_blend_behind",
+          "point": [
+            0.0,
+            -3.761527852818748,
+            -0.5318193428526516
+          ]
+        },
+        {
+          "class": "in",
+          "label": "outer_short_of_blend",
+          "point": [
+            -3.741870639634046,
+            0.0,
+            -0.4969826672102891
+          ]
+        },
+        {
+          "class": "in",
+          "label": "outer_short_of_blend_behind",
+          "point": [
+            0.0,
+            -3.741870639634046,
+            -0.4969826672102891
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inner_past_blend",
+          "point": [
+            -2.238472147181252,
+            0.0,
+            -0.5318193428526516
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inner_past_blend_behind",
+          "point": [
+            0.0,
+            -2.238472147181252,
+            -0.5318193428526516
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner_short_of_blend",
+          "point": [
+            -2.258129360365954,
+            0.0,
+            -0.4969826672102891
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner_short_of_blend_behind",
+          "point": [
+            0.0,
+            -2.258129360365954,
+            -0.4969826672102891
+          ]
+        }
+      ],
+      "volume": 50.11570060805764
+    }
+  }
+}

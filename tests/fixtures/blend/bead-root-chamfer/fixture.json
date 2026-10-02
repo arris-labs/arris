@@ -1,0 +1,284 @@
+{
+  "description": "a disc of radius 5 and height 1 with a bead on its top, the part of a torus's tube of radius 1 about the circle of radius 3 at z 1.6 above the disc, revolved whole about z: the disc's top meets the tube along two parallels at a concave interior angle of π + acos(0.6), both roots chamfered at d 0.2 in one call: a plane against a coaxial torus along a parallel, concave, each chamfer a cone coaxial with the bead through the circle d along the disc and the circle on the tube at the chord d from the root (ADR-0036 §2), adding material, with no ends, the tube's seam shortened at both contacts. The closed forms are the part's less (or, concave, plus) the corner's section swept about the axis by Pappus, its moments integrated over the section's two meridian pieces and the chord to 40 digits: the angles there are arc tangents the expression grammar has no word for, so they are written as numbers. Open CASCADE's chamfer of a plane against a torus is a B-spline surface walked along the edge, not the exact surface, so no probe sits on it: two sit a tenth of the size either side of its middle, and its volume is 1.2e-9 and its area 6.7e-9 relative off the closed forms, which Arris matches to rounding; the measure tolerances are widened to cover the walk, under the 1e-6 ADR-0015 asks of a claimed difference.",
+  "params": {
+    "d": 0.2
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              3.8,
+              1
+            ]
+          },
+          {
+            "arc_to": [
+              2.2,
+              1
+            ],
+            "via": [
+              3,
+              2.6
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          -3.8,
+          0,
+          1
+        ],
+        [
+          -2.2,
+          0,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        -3.0,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_bead",
+      "point": [
+        -3.0,
+        0,
+        2.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -3.0,
+        0,
+        3.0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        -3.8,
+        0,
+        1.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_disc",
+      "point": [
+        -4.7,
+        0,
+        1.0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bead",
+      "point": [
+        -3.0,
+        0,
+        2.6
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_disc_middle",
+      "point": [
+        -1.0,
+        0,
+        1.0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outer_past_blend",
+      "point": [
+        -3.9342809084052157,
+        0,
+        1.0757703883761787
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outer_past_blend_behind",
+      "point": [
+        0,
+        -3.9342809084052157,
+        1.0757703883761787
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outer_short_of_blend",
+      "point": [
+        -3.9691175840475785,
+        0,
+        1.0954276015608806
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outer_short_of_blend_behind",
+      "point": [
+        0,
+        -3.9691175840475785,
+        1.0954276015608806
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_past_blend",
+      "point": [
+        -2.0657190915947843,
+        0,
+        1.0757703883761787
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_past_blend_behind",
+      "point": [
+        0,
+        -2.0657190915947843,
+        1.0757703883761787
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_short_of_blend",
+      "point": [
+        -2.0308824159524215,
+        0,
+        1.0954276015608806
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_short_of_blend_behind",
+      "point": [
+        0,
+        -2.0308824159524215,
+        1.0954276015608806
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": 129.94631919210912,
+    "area": 234.13164320731707,
+    "centroid": [
+      0,
+      0,
+      0.9820738167335115
+    ],
+    "inertia": [
+      [
+        805.4020707401246,
+        0,
+        0
+      ],
+      [
+        0,
+        805.4020707401246,
+        0
+      ],
+      [
+        0,
+        0,
+        1486.9116380270893
+      ]
+    ],
+    "genus": 0,
+    "occt_walked": "Open CASCADE's chamfer of a plane against a torus along a parallel is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the plane and the torus, whose pairs the checker's S5 leaves undecided"
+  },
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 5e-08,
+    "inertia_rel": 3e-08
+  }
+}

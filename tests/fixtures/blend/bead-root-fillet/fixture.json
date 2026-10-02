@@ -1,0 +1,285 @@
+{
+  "description": "a disc of radius 5 and height 1 with a bead on its top, the part of a torus's tube of radius 1 about the circle of radius 3 at z 1.6 above the disc, revolved whole about z: the disc's top meets the tube along two parallels at a concave interior angle of π + acos(0.6), both roots filleted at r 0.2 in one call: a plane against a coaxial torus along a parallel, concave, each blend a ring torus coaxial with the bead, minor radius r, its centre circle where the plane's offset (z 1 + r) meets the tube's (radius 1 + r), adding material, tangent to the disc and to the tube along a parallel, with no ends, the tube's seam shortened at both contacts. The closed forms are the part's less (or, concave, plus) the corner's section swept about the axis by Pappus, its moments integrated over the section's two meridian pieces and the ball to 40 digits: the angles there are arc tangents the expression grammar has no word for, so they are written as numbers. Open CASCADE's blend of a plane against a torus is a B-spline surface walked along the edge, not the exact surface, so no probe sits on it: two sit a tenth of the size either side of its middle, and its volume is 2.2e-9 and its area 6.6e-9 relative off the closed forms, which Arris matches to rounding; the measure tolerances are widened to cover the walk, under the 1e-6 ADR-0015 asks of a claimed difference.",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              3.8,
+              1
+            ]
+          },
+          {
+            "arc_to": [
+              2.2,
+              1
+            ],
+            "via": [
+              3,
+              2.6
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -3.8,
+          0,
+          1
+        ],
+        [
+          -2.2,
+          0,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        -3.0,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_bead",
+      "point": [
+        -3.0,
+        0,
+        2.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -3.0,
+        0,
+        3.0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        -3.8,
+        0,
+        1.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_disc",
+      "point": [
+        -4.7,
+        0,
+        1.0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bead",
+      "point": [
+        -3.0,
+        0,
+        2.6
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_disc_middle",
+      "point": [
+        -1.0,
+        0,
+        1.0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outer_past_blend",
+      "point": [
+        -3.9502040535054177,
+        0,
+        1.0755436704577506
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outer_past_blend_behind",
+      "point": [
+        0,
+        -3.9502040535054177,
+        1.0755436704577506
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outer_short_of_blend",
+      "point": [
+        -3.985939013920444,
+        0,
+        1.0935162218663992
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outer_short_of_blend_behind",
+      "point": [
+        0,
+        -3.985939013920444,
+        1.0935162218663992
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_past_blend",
+      "point": [
+        -2.0497959464945823,
+        0,
+        1.0755436704577506
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_past_blend_behind",
+      "point": [
+        0,
+        -2.0497959464945823,
+        1.0755436704577506
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_short_of_blend",
+      "point": [
+        -2.014060986079556,
+        0,
+        1.0935162218663992
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_short_of_blend_behind",
+      "point": [
+        0,
+        -2.014060986079556,
+        1.0935162218663992
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": 130.17449133321034,
+    "area": 232.27889428641078,
+    "centroid": [
+      0,
+      0,
+      0.9822520980200098
+    ],
+    "inertia": [
+      [
+        806.7595206907471,
+        0,
+        0
+      ],
+      [
+        0,
+        806.7595206907471,
+        0
+      ],
+      [
+        0,
+        0,
+        1489.6195823992005
+      ]
+    ],
+    "genus": 0,
+    "occt_walked": "Open CASCADE's blend of a plane against a torus along a parallel is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the plane and the torus, whose pairs the checker's S5 leaves undecided",
+    "occt_step_unread": "Open CASCADE's blend of a plane against a torus is a B-spline surface of degree 2 by 14 walked along each edge, its contacts B-spline curves of degree 14; Arris's reader fits a contact's pcurve on it for minutes and refuses its file (no pcurve: the normal equations are singular), which measures the reader on the walked surface, not the blend: regression/bead-root-fillet-occt-step holds that reading"
+  },
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 5e-08,
+    "inertia_rel": 3e-08
+  }
+}

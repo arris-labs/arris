@@ -2082,16 +2082,17 @@ fn corner(
 }
 
 /// A face of the meridian row (ADR-0036 §1): `Some(None)` for a plane,
-/// `Some(Some(frame))` for a cylinder or a cone, whose `Z` is its axis, and
-/// `None` for any other surface.
+/// `Some(Some(frame))` for a cylinder, a cone, a sphere or a torus, whose
+/// `Z` is the axis when the face is coaxial with the edge, and `None` for
+/// any other surface.
 fn row_frame(surface: &Surface) -> Option<Option<Frame>> {
     match *surface {
         Surface::Plane { .. } => Some(None),
-        Surface::Cylinder { frame, .. } | Surface::Cone { frame, .. } => Some(Some(frame)),
-        Surface::EllipticCylinder { .. }
-        | Surface::Sphere { .. }
-        | Surface::Torus { .. }
-        | Surface::Nurbs(_) => None,
+        Surface::Cylinder { frame, .. }
+        | Surface::Cone { frame, .. }
+        | Surface::Sphere { frame, .. }
+        | Surface::Torus { frame, .. } => Some(Some(frame)),
+        Surface::EllipticCylinder { .. } | Surface::Nurbs(_) => None,
     }
 }
 
@@ -2161,8 +2162,9 @@ enum RingEnds {
     Open(Box<[RingEnd; 2]>),
 }
 
-/// The blend of a circular edge where a plane meets a cylinder or a cone
-/// perpendicular to its axis (ADR-0007, ADR-0035, ADR-0036): a torus
+/// The blend of a circular edge where two faces of revolution about one
+/// axis meet along a parallel — a plane square to it, a cylinder, a cone, a
+/// sphere centred on it or a torus (ADR-0007, ADR-0035, ADR-0036): a torus
 /// coaxial with the curved face, or a cone, over the edge's own range. The
 /// blend's frame has the curved face's `Z` and its `X` at the edge's start
 /// vertex. A closed edge has no ends, its `u` seam — a tube circle of the
@@ -2188,42 +2190,136 @@ struct Ring {
     tolerance: f64,
 }
 
-/// A face of revolution's meridian where it is a line, in the half-plane
-/// bounded by the axis: `(ρ, h)`, the distance from the axis and the
-/// height along it (ADR-0036 §1).
+/// A face of revolution's meridian in the half-plane bounded by the axis,
+/// `(ρ, h)`, the distance from the axis and the height along it from the
+/// edge's centre: a line for a plane, a cylinder or a cone, a circle for a
+/// sphere centred on the axis or a coaxial torus (ADR-0036 §1).
+#[derive(Debug, Clone, Copy)]
+enum Trace {
+    /// The line through `point` along the unit `along`.
+    Line { point: Vec2, along: Vec2 },
+    /// The circle about `centre` of `radius`.
+    Circle { centre: Vec2, radius: f64 },
+}
+
+impl Trace {
+    /// Where the two traces cross nearest `near`; `None` where they do
+    /// not, or run parallel.
+    fn crossing(&self, other: &Trace, near: Vec2) -> Option<Vec2> {
+        let cross = |a: Vec2, b: Vec2| a.x * b.y - a.y * b.x;
+        let nearest = |roots: [Vec2; 2]| {
+            if (roots[0] - near).norm() <= (roots[1] - near).norm() {
+                roots[0]
+            } else {
+                roots[1]
+            }
+        };
+        match (*self, *other) {
+            (Trace::Line { point: p, along: a }, Trace::Line { point: q, along: b }) => {
+                let det = cross(a, b);
+                if det == 0.0 {
+                    return None;
+                }
+                Some(p + cross(q - p, b) / det * a)
+            }
+            (Trace::Line { point, along }, Trace::Circle { centre, radius })
+            | (Trace::Circle { centre, radius }, Trace::Line { point, along }) => {
+                // `|point + t along − centre|² = radius²`, `along` a unit.
+                let w = point - centre;
+                let b = along.dot(&w);
+                let disc = b * b - (w.norm_squared() - radius * radius);
+                if disc < 0.0 {
+                    return None;
+                }
+                let root = disc.sqrt();
+                Some(nearest([
+                    point + (-b - root) * along,
+                    point + (-b + root) * along,
+                ]))
+            }
+            (
+                Trace::Circle {
+                    centre: c1,
+                    radius: r1,
+                },
+                Trace::Circle {
+                    centre: c2,
+                    radius: r2,
+                },
+            ) => {
+                let w = c2 - c1;
+                let d = w.norm();
+                if d == 0.0 {
+                    return None;
+                }
+                let along = (d * d + r1 * r1 - r2 * r2) / (2.0 * d);
+                let across = r1 * r1 - along * along;
+                if across < 0.0 {
+                    return None;
+                }
+                let u = w / d;
+                let foot = c1 + along * u;
+                let side = across.sqrt() * Vec2::new(-u.y, u.x);
+                Some(nearest([foot + side, foot - side]))
+            }
+        }
+    }
+}
+
+/// A face of the meridian row read in the section (ADR-0036 §1): its
+/// trace, and its outward normal at the edge.
 #[derive(Debug, Clone, Copy)]
 struct Meridian {
-    /// A point of the line.
-    point: Vec2,
-    /// Its unit direction.
-    along: Vec2,
-    /// The face's outward normal in the section, a unit vector square to
-    /// `along`.
+    trace: Trace,
+    /// The face's outward normal in the section at the edge, a unit
+    /// vector; on a line, its normal everywhere.
     normal: Vec2,
 }
 
 impl Meridian {
-    /// Where the two lines cross; `None` for parallel lines.
-    fn meet(&self, other: &Meridian) -> Option<Vec2> {
-        let cross = |a: Vec2, b: Vec2| a.x * b.y - a.y * b.x;
-        let det = cross(self.along, other.along);
-        if det == 0.0 {
-            return None;
+    /// The trace's unit tangent at the edge, either way along it.
+    fn along(&self) -> Vec2 {
+        match self.trace {
+            Trace::Line { along, .. } => along,
+            Trace::Circle { .. } => Vec2::new(-self.normal.y, self.normal.x),
         }
-        let t = cross(other.point - self.point, other.along) / det;
-        Some(self.point + t * self.along)
     }
 
-    /// The foot of `p` on the line.
-    fn foot(&self, p: Vec2) -> Vec2 {
-        self.point + (p - self.point).dot(&self.along) * self.along
+    /// The foot of `p` on the trace; `None` at a circle's centre.
+    fn foot(&self, p: Vec2) -> Option<Vec2> {
+        match self.trace {
+            Trace::Line { point, along } => Some(point + (p - point).dot(&along) * along),
+            Trace::Circle { centre, radius } => {
+                let w = p - centre;
+                let d = w.norm();
+                (d > 0.0).then(|| centre + radius / d * w)
+            }
+        }
     }
 
-    /// The line's direction away from the corner into its own face, where
+    /// The trace moved `offset` along the face's outward normal; `None` for
+    /// a circle shrunk to no radius.
+    fn offset(&self, edge: Vec2, offset: f64) -> Option<Trace> {
+        match self.trace {
+            Trace::Line { point, along } => Some(Trace::Line {
+                point: point + offset * self.normal,
+                along,
+            }),
+            Trace::Circle { centre, radius } => {
+                // `+1` where the outward normal points away from the centre.
+                let away = self.normal.dot(&(edge - centre)).signum();
+                let radius = radius + away * offset;
+                (radius > 0.0).then_some(Trace::Circle { centre, radius })
+            }
+        }
+    }
+
+    /// The trace's direction away from the corner into its own face, where
     /// `other` is the face across the edge: the way `other`'s outward
     /// normal reads `s`, `−1` at a convex corner and `1` at a concave one.
     fn inward(&self, other: &Meridian, s: f64) -> Vec2 {
-        self.along * (s * other.normal.dot(&self.along)).signum()
+        let along = self.along();
+        along * (s * other.normal.dot(&along)).signum()
     }
 }
 
@@ -2239,14 +2335,15 @@ fn placed_uv(pcurve: Curve2, t: f64, target: Point2) -> Curve2 {
     }
 }
 
-/// The blend of a circular edge `edge` where a plane meets a cylinder or
-/// a cone, read in the half-plane bounded by the axis, where each face's
-/// meridian is a line (ADR-0036 §1). The ball's centre is where the two
-/// meridians offset by `r` into the ball's side cross, and a fillet is the
-/// torus of the centre's distance from the axis and minor `r`, the arc of
-/// its tube between the feet of the centre on the two meridians; a
-/// chamfer is the cone through the two circles at `d` along each
-/// meridian from the edge. Against a cylinder the centre circle is at
+/// The blend of a circular edge `edge` where two faces of the meridian row
+/// meet, read in the half-plane bounded by the axis, where each face's
+/// meridian is a line or a circle (ADR-0036 §1). The ball's centre is
+/// where the two meridians offset by `r` into the ball's side cross — of
+/// two crossings, the nearer the edge — and a fillet is the torus of the
+/// centre's distance from the axis and minor `r`, the arc of its tube
+/// between the feet of the centre on the two meridians; a chamfer is the
+/// cone through the two circles at `d` from the edge along each line
+/// meridian, or at the chord `d` on a circle (§2). Against a cylinder the centre circle is at
 /// radius `R + sσr` — `s` `−1` on a convex edge, `σ` the side of the axis
 /// the cylinder's outward normal points to — and the chamfer is at 45°.
 /// A closed edge's one vertex is on the curved face's seam and on nothing
@@ -2305,8 +2402,8 @@ fn ring(
         a: (GeomKind::Surface(surfaces[0].kind()), forward(f1)),
         b: (GeomKind::Surface(surfaces[1].kind()), forward(f2)),
     };
-    // The meridian row's line meridians (ADR-0036 §1): two of a plane
-    // square to the axis, a cylinder and a cone, at most one a plane — each
+    // The meridian row (ADR-0036 §1): two of a plane square to the axis, a
+    // cylinder, a cone, a sphere and a torus, at most one a plane — each
     // curved face's frame, whose `Z` is the axis.
     let frames = [row_frame(surfaces[0]), row_frame(surfaces[1])];
     let [Some(fa), Some(fb)] = frames else {
@@ -2317,7 +2414,11 @@ fn ring(
     };
     let k = if fa.is_some() { 0 } else { 1 };
     let curve = m.curve(curve_id)?;
-    let &Curve::Circle { frame: rim, .. } = curve else {
+    let &Curve::Circle {
+        frame: rim,
+        radius: rim_radius,
+    } = curve
+    else {
         return Err(OpError::Unsupported {
             a: (GeomKind::Curve(curve.kind()), e),
             b: (GeomKind::Surface(surfaces[k].kind()), forward(faces[k])),
@@ -2329,12 +2430,26 @@ fn ring(
         .max(m.face(f1)?.tolerance())
         .max(m.face(f2)?.tolerance());
     let z: Vec3 = axis.z().into_inner();
-    for frame in [fa, fb].into_iter().flatten() {
+    for i in 0..2 {
+        let Some(frame) = frames[i].flatten() else {
+            continue;
+        };
         let centre = frame.to_local(rim.origin());
         if rim.z().cross(&frame.z()).norm() > tol.angular || centre.x.hypot(centre.y) > tolerance {
-            return Err(invariant(
-                "a circular edge of a face of revolution about its axis",
-            ));
+            // A circle on a cylinder or a cone is one of its parallels; on
+            // a sphere or a torus it may be a circle about another axis —
+            // a sphere's tilted to its frame, a torus's meridian — which
+            // is not this row.
+            return Err(match surfaces[i] {
+                Surface::Sphere { .. } | Surface::Torus { .. } => unsupported(),
+                Surface::Plane { .. }
+                | Surface::Cylinder { .. }
+                | Surface::Cone { .. }
+                | Surface::EllipticCylinder { .. }
+                | Surface::Nurbs(_) => {
+                    invariant("a circular edge of a face of revolution about its axis")
+                }
+            });
         }
     }
     let eval = curve.eval(mid);
@@ -2350,17 +2465,34 @@ fn ring(
     // The section in the half-plane through the axis at the edge's
     // midpoint, `(ρ, h)` from the edge's centre: each face's meridian.
     let radial_mid = radial_at(mid)?;
+    let edge_at = Vec2::new(rim_radius, 0.0);
+    let height = |p: Point3| (p - rim.origin()).dot(&z);
     let mut meridians: Vec<Meridian> = Vec::with_capacity(2);
     for i in 0..2 {
+        // The face's outward normal at the edge, in the section.
+        let read = Vec2::new(normals[i].dot(&radial_mid), normals[i].dot(&z));
+        // A circle meridian's outward normal at the edge: from its centre,
+        // or toward it.
+        let round = |centre: Vec2, radius: f64| {
+            let away = (edge_at - centre) / radius;
+            Meridian {
+                trace: Trace::Circle { centre, radius },
+                normal: away * read.dot(&away).signum(),
+            }
+        };
         meridians.push(match *surfaces[i] {
             Surface::Plane { .. } => Meridian {
-                point: Vec2::zeros(),
-                along: Vec2::new(1.0, 0.0),
+                trace: Trace::Line {
+                    point: Vec2::zeros(),
+                    along: Vec2::new(1.0, 0.0),
+                },
                 normal: Vec2::new(0.0, normals[i].dot(&z).signum()),
             },
             Surface::Cylinder { radius, .. } => Meridian {
-                point: Vec2::new(radius, 0.0),
-                along: Vec2::new(0.0, 1.0),
+                trace: Trace::Line {
+                    point: Vec2::new(radius, 0.0),
+                    along: Vec2::new(0.0, 1.0),
+                },
                 normal: Vec2::new(normals[i].dot(&radial_mid).signum(), 0.0),
             },
             Surface::Cone {
@@ -2374,27 +2506,47 @@ fn ring(
                 let (sa, ca) = half_angle.sin_cos();
                 let up = frame.z().dot(&axis.z()).signum();
                 let normal = Vec2::new(up * ca, -sa);
-                let read = Vec2::new(normals[i].dot(&radial_mid), normals[i].dot(&z));
                 Meridian {
-                    point: Vec2::new(radius, (frame.origin() - rim.origin()).dot(&z)),
-                    along: Vec2::new(sa, up * ca),
+                    trace: Trace::Line {
+                        point: Vec2::new(radius, height(frame.origin())),
+                        along: Vec2::new(sa, up * ca),
+                    },
                     normal: normal * read.dot(&normal).signum(),
                 }
             }
-            Surface::EllipticCylinder { .. }
-            | Surface::Sphere { .. }
-            | Surface::Torus { .. }
-            | Surface::Nurbs(_) => {
-                return Err(invariant("a plane, a cylinder or a cone in the row"));
+            // A sphere centred on the axis: the circle of its radius about
+            // its centre; a torus: its tube circle in the half-plane.
+            Surface::Sphere { frame, radius } => {
+                round(Vec2::new(0.0, height(frame.origin())), radius)
+            }
+            Surface::Torus {
+                frame,
+                major_radius,
+                minor_radius,
+            } => round(
+                Vec2::new(major_radius, height(frame.origin())),
+                minor_radius,
+            ),
+            Surface::EllipticCylinder { .. } | Surface::Nurbs(_) => {
+                return Err(invariant("a face of revolution in the row"));
             }
         });
     }
     let [mer_a, mer_b]: [Meridian; 2] = meridians
         .try_into()
         .map_err(|_| invariant("two meridians"))?;
-    let corner = mer_a
-        .meet(&mer_b)
-        .ok_or(invariant("two meridians crossing at the edge"))?;
+    // Two lines cross at the edge; a circle meridian passes through it.
+    let corner = match (mer_a.trace, mer_b.trace) {
+        (Trace::Line { .. }, Trace::Line { .. }) => mer_a
+            .trace
+            .crossing(&mer_b.trace, edge_at)
+            .ok_or(invariant("two meridians crossing at the edge"))?,
+        (Trace::Circle { .. }, _) | (_, Trace::Circle { .. }) => edge_at,
+    };
+    let lines = matches!(
+        (mer_a.trace, mer_b.trace),
+        (Trace::Line { .. }, Trace::Line { .. })
+    );
     // Along each meridian into its face: the way the other face's outward
     // normal reads `s`.
     let d_a = mer_a.inward(&mer_b, s);
@@ -2425,10 +2577,25 @@ fn ring(
     // blend, and the centre's circle.
     let (surface, on_a, on_b, v_a, v_b, centres) = match kind {
         Kind::Fillet { radius } => {
-            let along =
-                s * radius * (1.0 - mer_a.normal.dot(&mer_b.normal)) / mer_b.normal.dot(&d_a);
-            let c = corner + along * d_a + s * radius * mer_a.normal;
-            let (on_a, on_b) = contacts_on(mer_a.foot(c), mer_b.foot(c))?;
+            let c = if lines {
+                let along =
+                    s * radius * (1.0 - mer_a.normal.dot(&mer_b.normal)) / mer_b.normal.dot(&d_a);
+                corner + along * d_a + s * radius * mer_a.normal
+            } else {
+                // Each meridian offset by `r` to the ball's side, a circle
+                // shrunk to nothing or two that miss being no ball; of
+                // their two crossings the centre is the one the corner is
+                // the limit of as `r` goes to `0`, the nearer.
+                let offset = |i: usize, mer: &Meridian| {
+                    mer.offset(edge_at, s * radius)
+                        .ok_or_else(|| too_large(faces[i]))
+                };
+                offset(0, &mer_a)?
+                    .crossing(&offset(1, &mer_b)?, corner)
+                    .ok_or_else(|| too_large(faces[k]))?
+            };
+            let foot = |i: usize, mer: &Meridian| mer.foot(c).ok_or_else(|| too_large(faces[i]));
+            let (on_a, on_b) = contacts_on(foot(0, &mer_a)?, foot(1, &mer_b)?)?;
             if c.x <= radius + tolerance {
                 return Err(too_large(faces[k]));
             }
@@ -2460,15 +2627,36 @@ fn ring(
             )
         }
         Kind::Chamfer { distance } => {
-            let (on_a, on_b) = contacts_on(corner + distance * d_a, corner + distance * d_b)?;
+            // `d` from the corner along a line meridian; on a circle, the
+            // chord of `d` into the face (ADR-0036 §2).
+            let leg = |i: usize, mer: &Meridian, d: Vec2| match mer.trace {
+                Trace::Line { .. } => Ok(corner + distance * d),
+                Trace::Circle { .. } => Trace::Circle {
+                    centre: corner,
+                    radius: distance,
+                }
+                .crossing(&mer.trace, corner + distance * d)
+                .ok_or_else(|| too_large(faces[i])),
+            };
+            let (on_a, on_b) = contacts_on(leg(0, &mer_a, d_a)?, leg(1, &mer_b, d_b)?)?;
             // The cone through the two contacts, its `Z` toward its wider
             // circle, its `v` from the narrower along a ruling. Two line
             // meridians that are not tangent leave the chord oblique to the
-            // axis when one is a plane's.
-            let chord = distance * (d_b - d_a);
+            // axis when one is a plane's; a circle meridian can put it
+            // square to the axis or along it, a plane's annulus or a
+            // cylinder that no fixture holds yet.
+            let chord = if lines {
+                distance * (d_b - d_a)
+            } else {
+                on_b - on_a
+            };
             let length = chord.norm();
             if chord.x.abs() <= tol.angular * length || chord.y.abs() <= tol.angular * length {
-                return Err(invariant("a chamfer's chord oblique to the axis"));
+                return Err(if lines {
+                    invariant("a chamfer's chord oblique to the axis")
+                } else {
+                    unsupported()
+                });
             }
             let wide_a = on_a.x > on_b.x;
             let (narrow, wide) = if wide_a { (on_b, on_a) } else { (on_a, on_b) };
@@ -2495,12 +2683,14 @@ fn ring(
     let on_b = circle(on_b)?;
     let line_tol = Tolerance::new(tolerance, tol.angular);
     let geometry = fault_of;
-    // A curved face's own `u` at the edge's start, which its contact's
-    // pcurve is placed at; a plane has none.
-    let mut use_u = [None; 2];
-    for (i, u) in use_u.iter_mut().enumerate() {
+    // A curved face's own `(u, v)` at the edge's start, which its
+    // contact's pcurve is placed at, in `u` and on a torus in `v` too: the
+    // contact is within half a turn of the edge round the tube. A plane has
+    // none.
+    let mut use_uv = [None; 2];
+    for (i, uv) in use_uv.iter_mut().enumerate() {
         if [fa, fb][i].is_some() {
-            *u = Some(m.curve2(uses[i].pcurve)?.point(range.lo()).x);
+            *uv = Some(m.curve2(uses[i].pcurve)?.point(range.lo()));
         }
     }
     let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
@@ -2536,9 +2726,10 @@ fn ring(
         let face_surface = m.surface(m.face(face)?.surface())?;
         let on_face =
             pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
-        let on_face = match use_u[i] {
-            Some(u) => placed(on_face, range.lo(), u),
-            None => on_face,
+        let on_face = match (use_uv[i], face_surface) {
+            (Some(uv), Surface::Torus { .. }) => placed_uv(on_face, range.lo(), uv),
+            (Some(uv), _) => placed(on_face, range.lo(), uv.x),
+            (None, _) => on_face,
         };
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
             return Err(too_large(face));

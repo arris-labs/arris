@@ -1,0 +1,188 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "070dd8bd9f9c90f3f936b9e4fa2059278192a440a66b652c573bd5173b8206cd",
+  "results": {
+    "default": {
+      "area": 232.27889275523066,
+      "centroid": [
+        1.0560880741584824e-08,
+        -1.8657238423894068e-14,
+        0.9822520982656371
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          806.7595210386331,
+          9.706121156292169e-12,
+          -1.5650106816642775e-07
+        ],
+        [
+          9.706121156292169e-12,
+          806.759526292859,
+          2.8413352934615995e-13
+        ],
+        [
+          -1.5650106816642775e-07,
+          2.8413352934615995e-13,
+          1489.6195883396524
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            -3.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_bead",
+          "point": [
+            -3.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            -3.0,
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            -3.8,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_disc",
+          "point": [
+            -4.7,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bead",
+          "point": [
+            -3.0,
+            0.0,
+            2.6
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_disc_middle",
+          "point": [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "outer_past_blend",
+          "point": [
+            -3.9502040535054177,
+            0.0,
+            1.0755436704577506
+          ]
+        },
+        {
+          "class": "in",
+          "label": "outer_past_blend_behind",
+          "point": [
+            0.0,
+            -3.9502040535054177,
+            1.0755436704577506
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outer_short_of_blend",
+          "point": [
+            -3.985939013920444,
+            0.0,
+            1.0935162218663992
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outer_short_of_blend_behind",
+          "point": [
+            0.0,
+            -3.985939013920444,
+            1.0935162218663992
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner_past_blend",
+          "point": [
+            -2.0497959464945823,
+            0.0,
+            1.0755436704577506
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner_past_blend_behind",
+          "point": [
+            0.0,
+            -2.0497959464945823,
+            1.0755436704577506
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inner_short_of_blend",
+          "point": [
+            -2.014060986079556,
+            0.0,
+            1.0935162218663992
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inner_short_of_blend_behind",
+          "point": [
+            0.0,
+            -2.014060986079556,
+            1.0935162218663992
+          ]
+        }
+      ],
+      "volume": 130.17449161753464
+    }
+  }
+}

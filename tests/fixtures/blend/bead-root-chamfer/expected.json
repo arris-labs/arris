@@ -1,0 +1,188 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "2a0655f13cfd1aa0ca91aaf8735becca8fd920f4919e7109c3288072e9fa992c",
+  "results": {
+    "default": {
+      "area": 234.13164164512477,
+      "centroid": [
+        5.834937493251252e-09,
+        -2.427969763205772e-14,
+        0.9820738168300106
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          805.4020709517768,
+          6.163918251477237e-12,
+          -6.17463176633788e-08
+        ],
+        [
+          6.163918251477237e-12,
+          805.4020738258134,
+          2.277812637656146e-13
+        ],
+        [
+          -6.17463176633788e-08,
+          2.277812637656146e-13,
+          1486.9116413219183
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            -3.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_bead",
+          "point": [
+            -3.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            -3.0,
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            -3.8,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_disc",
+          "point": [
+            -4.7,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bead",
+          "point": [
+            -3.0,
+            0.0,
+            2.6
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_disc_middle",
+          "point": [
+            -1.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "outer_past_blend",
+          "point": [
+            -3.9342809084052157,
+            0.0,
+            1.0757703883761787
+          ]
+        },
+        {
+          "class": "in",
+          "label": "outer_past_blend_behind",
+          "point": [
+            0.0,
+            -3.9342809084052157,
+            1.0757703883761787
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outer_short_of_blend",
+          "point": [
+            -3.9691175840475785,
+            0.0,
+            1.0954276015608806
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outer_short_of_blend_behind",
+          "point": [
+            0.0,
+            -3.9691175840475785,
+            1.0954276015608806
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner_past_blend",
+          "point": [
+            -2.0657190915947843,
+            0.0,
+            1.0757703883761787
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner_past_blend_behind",
+          "point": [
+            0.0,
+            -2.0657190915947843,
+            1.0757703883761787
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inner_short_of_blend",
+          "point": [
+            -2.0308824159524215,
+            0.0,
+            1.0954276015608806
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inner_short_of_blend_behind",
+          "point": [
+            0.0,
+            -2.0308824159524215,
+            1.0954276015608806
+          ]
+        }
+      ],
+      "volume": 129.946319346623
+    }
+  }
+}

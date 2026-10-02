@@ -692,10 +692,23 @@ meridian, at the chord's angle to the axis. The plane against a cylinder
 is the case of one meridian square to the axis and one parallel to it, and
 a cone against a coaxial cylinder or cone — a turned part's shoulder — is
 the case of neither a plane's: the same two lines, the torus coaxial with
-both, or a chamfer cone through the two contacts. Each curved face's seam
+both, or a chamfer cone through the two contacts. A sphere centred on the
+axis or a coaxial torus is a circle meridian — the sphere's great circle,
+the torus's tube circle — against a plane, a cylinder, a cone or another
+of them along a parallel (a dome on a cylinder, a toroidal bead on a
+disc, a torus ring cut square to its axis): its offset is the concentric
+circle `r` toward the ball, the centre the crossing of the two offsets
+nearest the edge, its contact the foot along the radius, a line at
+constant `v` on the sphere or the torus; a chamfer's contact on it is at
+the chord `distance` from the edge, as Open CASCADE measures it. A sphere
+or a torus whose axis is not the edge's (a torus's meridian circle, a
+sphere's tilted circle) is `Unsupported` naming the pair, and so is a
+chamfer whose chord lands square to the axis or along it, which a circle
+meridian can make and no fixture holds yet. Each curved face's seam
 is shortened to its own contact as the cylinder's is (a vertex with a seam
 of each, and no other edge, is the closed edge's), and a contact at the
-axis or past the cone's apex is `BlendTooLarge`. An open arc of such a circle —
+axis or past the cone's apex, an offset circle shrunk to nothing or two
+offsets that do not cross is `BlendTooLarge`. An open arc of such a circle —
 a rim split where a file put its vertices, a D-shaped notch — blends to
 the same torus or cone over the arc's own range (ADR-0035), with the
 blend's `X` at the arc's start vertex and no seam: its loop is a

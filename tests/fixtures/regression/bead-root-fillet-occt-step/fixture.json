@@ -1,0 +1,54 @@
+{
+  "description": "Open CASCADE's own STEP of blend/bead-root-fillet (a toroidal bead on a disc, both roots filleted at r 0.2), read as a part: its blend is a B-spline surface of degree 2 by 14 walked along each root, and its contacts B-spline curves of degree 14. Arris's reader fits the outer contact's pcurve on that surface for about four minutes in a release build and refuses it: no pcurve, #21 on face #149, 'fit: cannot fit: the normal equations are singular' (plans/c6-blend-pairs step 6, found by the read-back stage; blend/cut-torus-rims-fillet's file is refused the same way). The desired assertion: it reads, quickly, and matches Open CASCADE's reading.",
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "operand.step",
+      "sha256": "00aff919e0c6d1128a84054556d08bc1bdfc433078355c36e84652fa8e5f42d7",
+      "id": 15
+    }
+  ],
+  "result": "part",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        -3,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_bead",
+      "point": [
+        -3,
+        0,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -3,
+        0,
+        3
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_disc",
+      "point": [
+        -4.7,
+        0,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

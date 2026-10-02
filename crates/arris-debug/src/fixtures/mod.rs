@@ -745,6 +745,24 @@ pub struct Analytic {
     /// where it does not.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occt_step_refused: Option<ReadRefused>,
+    /// Why Arris's STEP reader refuses Open CASCADE's STEP of this result
+    /// converted to B-splines, with which refusal, where the plain file is
+    /// read or refused otherwise: a gap of the reader's on the converted
+    /// file alone (`blend/dome-rim-fillet`: a sphere cap's pole, which the
+    /// conversion leaves with no singular row the reader finds). The
+    /// converted file's read-back stage then asserts that refusal instead
+    /// of comparing, and fails once the file reads.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occt_nurbs_refused: Option<ReadRefused>,
+    /// Why Arris's reader is not run on Open CASCADE's own STEP of this
+    /// result, plain or converted: reading it measures the reader on Open
+    /// CASCADE's walked blend, not the operation, and a regression fixture
+    /// holds that reading (`regression/bead-root-fillet-occt-step`: minutes
+    /// of fitting a contact's pcurve on a walked B-spline, then refused).
+    /// The runner skips both read-back stages; Arris's own STEP is still
+    /// read back by Open CASCADE and compared.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occt_step_unread: Option<String>,
     /// Why Open CASCADE's own STEP of this result carries a B-spline face
     /// where Arris's result has an exact one: its blend there is a walked
     /// surface (`blend/turned-shoulder-fillet`). The runner's plain
@@ -1173,13 +1191,16 @@ pub fn lint(dir: &Path) -> Vec<String> {
         if a.step_differs.is_some() && (a.degenerate || a.expect_error.is_some()) {
             problem("analytic.step_differs needs a result Arris builds".into());
         }
-        if a.occt_step_refused.is_some()
-            && (a.degenerate || a.expect_error.is_some() || a.step_differs.is_some())
-        {
-            problem(
-                "analytic.occt_step_refused needs a result Arris builds whose Open CASCADE STEP is read back"
-                    .into(),
-            );
+        for (key, refused) in [
+            ("occt_step_refused", a.occt_step_refused.is_some()),
+            ("occt_nurbs_refused", a.occt_nurbs_refused.is_some()),
+            ("occt_step_unread", a.occt_step_unread.is_some()),
+        ] {
+            if refused && (a.degenerate || a.expect_error.is_some() || a.step_differs.is_some()) {
+                problem(format!(
+                    "analytic.{key} needs a result Arris builds whose Open CASCADE STEP is read back"
+                ));
+            }
         }
         if a.degenerate != m.degenerate {
             problem(format!(

@@ -283,7 +283,15 @@ of the step that made the fixture pass, and a later change to it is a
   10303-42 — Open CASCADE's writer turning a face's bounds, its boolean
   leaving a face whose walk does not close. The read-back stage asserts
   that refusal and fails once the file reads, so the entry is lifted with
-  the change that reads it. The runner holds a `measure_differs` fixture's
+  the change that reads it. `occt_nurbs_refused: {"kind": …, "why": …}`
+  does the same for the converted file alone, where the plain one reads
+  or is refused otherwise: a gap of the reader's on Open CASCADE's
+  conversion, held by a regression fixture of its own.
+  `occt_step_unread: "why"` skips both read-backs of Open CASCADE's own
+  STEP where reading it measures the reader on a walked blend rather than
+  the operation — minutes of fitting, then a refusal — and names the
+  regression fixture that holds that reading instead; Arris's own STEP is
+  still read back by Open CASCADE and compared. The runner holds a `measure_differs` fixture's
   read-back to the oracle's own measurements: all of them blame Open
   CASCADE's boolean, whose shape its file carries. Every other round trip in
   the self-test is held to the result's own tolerance where that is wider

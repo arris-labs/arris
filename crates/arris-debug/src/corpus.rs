@@ -817,8 +817,11 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
     oracle::compare_dir(dir, &text, Some(variant), &tag)?;
 
     // Open CASCADE's own STEP of the recipe, read back by Arris — unless
-    // the recipe says that file is lossy (ADR-0023).
-    if fixture.recipe.analytic.step_differs.is_none() {
+    // the recipe says that file is lossy (ADR-0023), or that reading it
+    // measures the reader on a walked blend, which a regression fixture
+    // holds instead.
+    let analytic = &fixture.recipe.analytic;
+    if analytic.step_differs.is_none() && analytic.occt_step_unread.is_none() {
         let occt = oracle::occt_step(dir, Some(variant), false, &format!("occt-{tag}"))?;
         read_back_stage(&fixture, variant, &occt, expected)?;
         // And converted to B-splines first: free-form faces with seams
@@ -922,7 +925,9 @@ pub fn read_back_stage(
 /// decide on a NURBS face left unchecked: S5's and B1's face pairs with
 /// a NURBS face in them, and B1's nesting of a shell no ray is cast from,
 /// which a NURBS face never answers. `analytic.occt_step_refused` passes
-/// this file too where it refuses the same way. Errors: as [`read_back_stage`], and
+/// this file too where it refuses the same way, and
+/// `analytic.occt_nurbs_refused` names a refusal of this file alone, which
+/// passes on it and fails on a read. Errors: as [`read_back_stage`], and
 /// [`CorpusError::ReadBack`] where `expected.json` records no
 /// `nurbs_counts`.
 pub fn read_back_nurbs_stage(
@@ -966,6 +971,22 @@ fn read_back(
     let read = step_read(&mut model, text, &step::ReadOptions::default())
         .map_err(|e| fail(e.to_string()))?;
     let nurbs = which == "NURBS";
+    if let (true, Some(refused)) = (nurbs, &fixture.recipe.analytic.occt_nurbs_refused) {
+        // The converted file alone is refused, for the reader's own gap:
+        // the refusal it names is the pass, and a read lifts it.
+        let kinds: Vec<String> = (read.solids.iter())
+            .filter_map(|s| s.result.as_ref().err())
+            .map(|r| r.kind().to_string())
+            .collect();
+        return if kinds.contains(&refused.kind) {
+            Ok(())
+        } else {
+            Err(fail(format!(
+                "with {kinds:?}, not the refusal analytic.occt_nurbs_refused names ({}): lift it if it reads",
+                refused.kind
+            )))
+        };
+    }
     if let Some(refused) = &fixture.recipe.analytic.occt_step_refused {
         // The file describes no solid by the standard: the refusal it
         // names is the pass, and a read is the failure that lifts it. The

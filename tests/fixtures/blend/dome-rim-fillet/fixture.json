@@ -1,0 +1,218 @@
+{
+  "description": "a cylinder of radius 3 from z 0 to 4 capped by the spherical dome of radius 5 about the origin, revolved whole about z, the two meeting at the rim at an interior angle of π − acos(0.6) (the sphere's normal there (0.6, 0.8) in the section), the rim filleted at r 0.5: a cylinder against a sphere centred on its axis along a parallel, convex, the blend a ring torus coaxial with both, minor radius r, its centre circle where the cylinder's offset (radius 3 − r) meets the sphere's (radius 5 − r), tangent to each along a parallel, with no ends, both faces' seams shortened to their contacts. The closed forms are the part's less (or, concave, plus) the corner's section swept about the axis by Pappus, its moments integrated over the section's two meridian pieces and the ball to 40 digits: the angles there are arc tangents the expression grammar has no word for, so they are written as numbers. Open CASCADE's blend of a cylinder against a sphere is a B-spline surface walked along the edge, not the exact surface, so no probe sits on it: two sit a tenth of the size either side of its middle, and its volume is 4.6e-8 and its area 2.9e-8 relative off the closed forms, which Arris matches to rounding; the measure tolerances are widened to cover the walk, under the 1e-6 ADR-0015 asks of a claimed difference.",
+  "params": {
+    "r": 0.5
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              4
+            ]
+          },
+          {
+            "arc_to": [
+              0,
+              5
+            ],
+            "via": [
+              1.4,
+              4.8
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -3,
+          0,
+          4
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        -0.0,
+        0,
+        2.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -0.0,
+        0,
+        5.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        -3.0,
+        0,
+        4.0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        -3.0,
+        0,
+        2.0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_dome",
+      "point": [
+        -1.4,
+        0,
+        4.8
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "past_blend",
+      "point": [
+        -2.98764379665783,
+        0,
+        3.9952618234807864
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "past_blend_behind",
+      "point": [
+        0,
+        -2.98764379665783,
+        3.9952618234807864
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "short_of_blend",
+      "point": [
+        -2.8942733070303666,
+        0,
+        3.959457470858128
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "short_of_blend_behind",
+      "point": [
+        0,
+        -2.8942733070303666,
+        3.959457470858128
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "volume": 127.5677373325996,
+    "area": 134.29091684854373,
+    "centroid": [
+      0,
+      0,
+      2.2658891156210186
+    ],
+    "inertia": [
+      [
+        498.1318828034618,
+        0,
+        0
+      ],
+      [
+        0,
+        498.1318828034618,
+        0
+      ],
+      [
+        0,
+        0,
+        552.0957765621697
+      ]
+    ],
+    "genus": 0,
+    "occt_walked": "Open CASCADE's blend of a cylinder against a sphere along a parallel is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the cylinder and the sphere, whose pairs the checker's S5 leaves undecided",
+    "occt_nurbs_refused": {
+      "kind": "unsupported entity",
+      "why": "Open CASCADE's STEP of the result converted to B-splines writes the sphere cap as a B-spline surface bounded by its contact circle and its seam to the pole, the pole a vertex with no degenerate edge, and the reader finds no singular row on the loop's side (\"a face of one loop wrapping a period, with no singular point on its side\"): the same refusal as the dome revolved alone, before any blend (regression/dome-cap-nurbs-read-back, docs/BACKLOG.md)"
+    }
+  },
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 2e-07,
+    "centroid_abs": 3e-07,
+    "inertia_rel": 5e-07
+  }
+}

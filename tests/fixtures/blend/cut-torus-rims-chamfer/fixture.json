@@ -1,0 +1,251 @@
+{
+  "description": "a torus ring, its tube of radius 1 about the circle of radius 3, cut square to its axis at z −0.6 and the part above kept, revolved whole about z: a plane annulus from radius 2.2 to 3.8 under the tube, meeting it along two parallels each at an interior angle of π − acos(0.6), both rims chamfered at d 0.2 in one call: a plane against a coaxial torus along a parallel, convex, each chamfer a cone coaxial with the ring through the circle d along the floor and the circle on the tube at the chord d from the rim (ADR-0036 §2), with no ends, the tube's seam shortened at both contacts. The closed forms are the part's less (or, concave, plus) the corner's section swept about the axis by Pappus, its moments integrated over the section's two meridian pieces and the chord to 40 digits: the angles there are arc tangents the expression grammar has no word for, so they are written as numbers. Open CASCADE's chamfer of a plane against a torus is a B-spline surface walked along the edge, not the exact surface, so no probe sits on it: two sit a tenth of the size either side of its middle, and its volume is 3.8e-9 and its area 1.4e-8 relative off the closed forms, which Arris matches to rounding; the measure tolerances are widened to cover the walk, under the 1e-6 ADR-0015 asks of a claimed difference.",
+  "params": {
+    "d": 0.2
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          2.2,
+          -0.6
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3.8,
+              -0.6
+            ]
+          },
+          {
+            "arc_to": [
+              2.2,
+              -0.6
+            ],
+            "via": [
+              3,
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          -3.8,
+          0,
+          -0.6
+        ],
+        [
+          -2.2,
+          0,
+          -0.6
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        -3.0,
+        0,
+        0.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside_hole",
+      "point": [
+        -0.0,
+        0,
+        0.0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -3.0,
+        0,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        -3.8,
+        0,
+        -0.6
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        -3.0,
+        0,
+        1.0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_floor",
+      "point": [
+        -3.0,
+        0,
+        -0.6
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outer_past_blend",
+      "point": [
+        -3.761527852818748,
+        0,
+        -0.5318193428526516
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outer_past_blend_behind",
+      "point": [
+        0,
+        -3.761527852818748,
+        -0.5318193428526516
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outer_short_of_blend",
+      "point": [
+        -3.741870639634046,
+        0,
+        -0.4969826672102891
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outer_short_of_blend_behind",
+      "point": [
+        0,
+        -3.741870639634046,
+        -0.4969826672102891
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_past_blend",
+      "point": [
+        -2.238472147181252,
+        0,
+        -0.5318193428526516
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_past_blend_behind",
+      "point": [
+        0,
+        -2.238472147181252,
+        -0.5318193428526516
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inner_short_of_blend",
+      "point": [
+        -2.258129360365954,
+        0,
+        -0.4969826672102891
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inner_short_of_blend_behind",
+      "point": [
+        0,
+        -2.258129360365954,
+        -0.4969826672102891
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "volume": 50.11570041837483,
+    "area": 111.6771854699449,
+    "centroid": [
+      0,
+      0,
+      0.13563385130987055
+    ],
+    "inertia": [
+      [
+        254.09234925461993,
+        0,
+        0
+      ],
+      [
+        0,
+        254.09234925461993,
+        0
+      ],
+      [
+        0,
+        0,
+        490.82210776664186
+      ]
+    ],
+    "genus": 1,
+    "occt_walked": "Open CASCADE's chamfer of a plane against a torus along a parallel is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the plane and the torus, whose pairs the checker's S5 leaves undecided"
+  },
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 5e-08,
+    "inertia_rel": 3e-08
+  }
+}

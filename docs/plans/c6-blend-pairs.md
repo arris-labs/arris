@@ -151,7 +151,7 @@ bound has to be established here.
   `regression/turned-shoulder-fillet` moves to `blend/` with its closed
   forms and `measure_differs`, Open CASCADE's blend there being a walked
   B-spline (step 3).
-- [ ] Step 6 **[3]** — The meridian row's circle meridians (ADR-0036 §1,
+- [x] Step 6 **[3]** — The meridian row's circle meridians (ADR-0036 §1,
   §6; replaces the parallel cylinders at step 3): a sphere centred on the
   axis or a torus against a coaxial plane, cylinder or cone along a
   parallel — the meridian offset is a concentric circle, the centre the
@@ -371,3 +371,30 @@ more than a commit each; say so in that commit.
   refused by the reader as an open loop (docs/BACKLOG.md). Not folded in:
   an open arc of a cone against a cylinder, whose B-spline oracle blend would
   need the same widened tolerances and adds no construction.
+- **Found at step 6 (agent, 2026-10-03): a circle meridian is one more
+  trace, and Open CASCADE walks every pair of it.** `ring`'s meridian is a
+  line or a circle (`Trace`); a fillet's centre is the crossing of the two
+  offsets nearest the edge (two lines keep their old closed form, so no
+  blessed dump moved), a chamfer's contact on a circle is the chord `d`
+  from the edge, and a torus face's contact is placed in `v` as well as
+  `u`. A sphere or a torus not coaxial with the edge is `Unsupported`
+  naming the pair (a torus's meridian circle is not this row), and so is
+  a chamfer chord square to the axis or along it, which only a circle
+  meridian makes and no fixture holds (step 7 names it). Fixtures went
+  straight to `blend/`: a dome on a cylinder, a torus ring cut square to
+  its axis (both rims), a toroidal bead on a disc (both roots, concave),
+  each filleted and chamfered. Open CASCADE's blend of every one is a
+  walked B-spline, 1e-9 to 1.1e-7 relative off the Pappus closed forms
+  that Arris matches to rounding, so each carries its closed forms
+  (numbers: the section's angles are arc tangents the expression grammar
+  lacks), widened measure tolerances, and probes a tenth of the size
+  either side of the blend instead of on it. Reading Open CASCADE's own
+  files met two reader gaps, each a regression fixture and a backlog
+  line: a walked plane-against-torus blend whose contact pcurve the reader
+  fits for minutes and refuses (`regression/bead-root-fillet-occt-step`;
+  the two torus fillets skip the read by the new
+  `analytic.occt_step_unread`), and a converted sphere cap's pole
+  (`regression/dome-cap-nurbs-read-back`; the dome fillet names it by the
+  new `analytic.occt_nurbs_refused`). A torus × cone or sphere × cone
+  parallel, and cone or cylinder × torus, go through the same code with
+  no fixture of their own; step 8's property is where they are drawn.

@@ -1,0 +1,134 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3f41e0b4440153b5555ab5c69f43a62ed5eb2d19539370a0d86e7c382a713578",
+  "results": {
+    "default": {
+      "area": 132.37271258597778,
+      "centroid": [
+        -3.23013827680389e-07,
+        3.5101360210159416e-14,
+        2.243413236797377
+      ],
+      "counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          486.3699548628424,
+          1.396008109710803e-12,
+          5.925978761178208e-05
+        ],
+        [
+          1.396008109710803e-12,
+          486.36977466352016,
+          -5.862209297779891e-12
+        ],
+        [
+          5.925978761178208e-05,
+          -5.862209297779891e-12,
+          538.1574255972153
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            -0.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            -0.0,
+            0.0,
+            5.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            -3.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            -3.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_dome",
+          "point": [
+            -1.4,
+            0.0,
+            4.8
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_blend",
+          "point": [
+            -2.8368983377595627,
+            0.0,
+            3.9132844530191035
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_blend_behind",
+          "point": [
+            0.0,
+            -2.8368983377595627,
+            3.9132844530191035
+          ]
+        },
+        {
+          "class": "in",
+          "label": "short_of_blend",
+          "point": [
+            -2.7486019751316735,
+            0.0,
+            3.8663403123124693
+          ]
+        },
+        {
+          "class": "in",
+          "label": "short_of_blend_behind",
+          "point": [
+            0.0,
+            -2.7486019751316735,
+            3.8663403123124693
+          ]
+        }
+      ],
+      "volume": 125.85816029859973
+    }
+  }
+}
