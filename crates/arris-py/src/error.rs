@@ -1,36 +1,139 @@
-//! What a binding call can refuse before the kernel is reached, and its
-//! Python classes. The kernel's own errors map here in `plans/python-binding`
-//! step 4.
+//! The exceptions: one class per kernel error variant a binding call can
+//! raise, under `ArrisError` (ADR-0034 §8), and what the binding refuses
+//! before it reaches the kernel.
+//!
+//! [`Class`] lists every class once. The maps in [`crate::kernel_error`]
+//! pick one with an exhaustive `match` per kernel enum, so a variant added
+//! in the kernel stops this crate compiling until it has a class.
 
 use arris::topo::{EntityId, NotFound};
 use pyo3::PyErr;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
+use pyo3::prelude::*;
 
 create_exception!(
-    _arris,
+    arris,
     ArrisError,
     PyException,
     "Every error the kernel or the binding returns is an instance of this class."
 );
-create_exception!(
-    _arris,
-    ForeignHandleError,
-    ArrisError,
-    "A handle from one `Model` was given to another."
-);
-create_exception!(
-    _arris,
-    StaleHandleError,
-    ArrisError,
-    "A handle no longer resolves in its model: its entity was freed by `Model.retain`."
-);
-create_exception!(
-    _arris,
-    ModelPoisonedError,
-    ArrisError,
-    "A call panicked inside this model's lock, so its contents cannot be trusted."
-);
+
+/// Declares each exception class once: its Python type, its place in the
+/// [`Class`] enum, its name, and its registration in the module.
+macro_rules! classes {
+    ($( $name:ident($base:ident) = $doc:literal; )*) => {
+        $( create_exception!(arris, $name, $base, $doc); )*
+
+        /// An exception class of the module, by name: what a kernel error
+        /// maps to before it is raised.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub enum Class {
+            /// [`ArrisError`] itself: the common base, never raised bare.
+            Arris,
+            $( #[doc = $doc] $name, )*
+        }
+
+        impl Class {
+            /// Every class, in declaration order.
+            pub const ALL: &'static [Class] = &[Class::Arris, $( Class::$name, )*];
+
+            /// The class's name in Python.
+            pub const fn name(self) -> &'static str {
+                match self {
+                    Class::Arris => "ArrisError",
+                    $( Class::$name => stringify!($name), )*
+                }
+            }
+
+            /// The name of the class this one derives from.
+            pub const fn base(self) -> &'static str {
+                match self {
+                    Class::Arris => "Exception",
+                    $( Class::$name => stringify!($base), )*
+                }
+            }
+
+            /// An error of this class with `message`.
+            pub fn new_err(self, message: String) -> PyErr {
+                match self {
+                    Class::Arris => ArrisError::new_err(message),
+                    $( Class::$name => $name::new_err(message), )*
+                }
+            }
+        }
+
+        /// Adds every exception class to the extension module.
+        pub(crate) fn register(module: &Bound<'_, PyModule>) -> PyResult<()> {
+            let py = module.py();
+            module.add("ArrisError", py.get_type::<ArrisError>())?;
+            $( module.add(stringify!($name), py.get_type::<$name>())?; )*
+            Ok(())
+        }
+    };
+}
+
+classes! {
+    ForeignHandleError(ArrisError) = "A handle from one `Model` was given to another.";
+    StaleHandleError(ArrisError) = "An id no longer resolves in its model: its entity was freed by `Model.retain`, or the kernel was handed an id that never named one.";
+    ModelPoisonedError(ArrisError) = "A call panicked inside this model's lock, so its contents cannot be trusted.";
+    Interrupted(ArrisError) = "The caller stopped the call, by its poll or its budget of steps; the model is as it was.";
+
+    OpError(ArrisError) = "Why an operation (`ops`) failed.";
+    OpInvalidInputError(OpError) = "An input body fails the checker.";
+    OpUnsupportedError(OpError) = "No closed form for this pair of surfaces or curves yet.";
+    OpDegenerateError(OpError) = "The requested result has no valid representation.";
+    OpProfileError(OpError) = "The profile of a sweep is not a valid sketch.";
+    OpToleranceError(OpError) = "The result would need an entity tolerance above the model's maximum.";
+    OpInternalError(OpError) = "A kernel bug, caught by the operation's own checks.";
+    OpUnkeyedError(OpError) = "A consumer-built slot has no key.";
+    OpRejectedError(OpError) = "The consumer's topology was refused as a solid.";
+
+    GeomError(ArrisError) = "Why a geometric query has no answer.";
+    GeomUnsupportedError(GeomError) = "No closed form for this pair of kinds yet.";
+    GeomDegenerateError(GeomError) = "An operand has no valid representation for the query.";
+    GeomInvalidToleranceError(GeomError) = "The tolerance given is not finite and positive.";
+    GeomAmbiguousError(GeomError) = "The point has no unique nearest point.";
+    GeomAmbiguousUvError(GeomError) = "The (u, v) point has no unique nearest point on the pcurve.";
+    GeomNotOnSurfaceError(GeomError) = "The curve does not lie on the surface within the tolerance.";
+    GeomThroughSingularityError(GeomError) = "The curve runs through a singular point of the surface.";
+    GeomDegenerateSectionError(GeomError) = "The section of two quadrics is degenerate.";
+
+    FitError(ArrisError) = "Why a NURBS fit did not produce a curve.";
+    FitDegenerateError(FitError) = "The fit request cannot be fitted.";
+    FitInvalidToleranceError(FitError) = "The fit tolerance is not finite and positive.";
+    FitNonFiniteError(FitError) = "The curve or its deviation is not finite.";
+    FitDivergedError(FitError) = "The fit still deviates beyond the tolerance with the most spans it may use.";
+
+    TopoError(ArrisError) = "Why a topological call on a model failed.";
+    TopoPrecisionError(TopoError) = "The model's precision is not consistent, or a tolerance is outside it.";
+
+    StepError(ArrisError) = "Why a STEP file could not be written.";
+    StepUnsupportedError(StepError) = "The body has a structure the STEP writer has no form for.";
+    StepLumpsError(StepError) = "The body's shells could not be read as lumps.";
+    StepNonFiniteError(StepError) = "A number is not finite, and STEP has no spelling for it.";
+    StepNoBodiesError(StepError) = "Nothing to write.";
+    StepTreeError(StepError) = "The product tree cannot be written.";
+
+    BodyError(ArrisError) = "Why a body's bytes could not be written or read.";
+    BodyMagicError(BodyError) = "The data does not begin with the body magic.";
+    BodyVersionError(BodyError) = "The data is of a newer version than this build reads.";
+    BodyEncodeError(BodyError) = "The body could not be encoded.";
+    BodyDecodeError(BodyError) = "The data is not a body of its version.";
+    BodyPrecisionError(BodyError) = "An entity's tolerance is outside the reading model's.";
+    BodyRejectedError(BodyError) = "The body decoded but fails the checker in the reading model.";
+
+    MeshError(ArrisError) = "Why a mesh could not be built or a body tessellated.";
+    MeshIndexOutOfRangeError(MeshError) = "A triangle or edge index names no position.";
+    MeshRangeOutOfBoundsError(MeshError) = "A range does not fit the list it indexes.";
+    MeshNonFinitePositionError(MeshError) = "A position has a non-finite coordinate.";
+    MeshInvalidInputError(MeshError) = "The body fails the checker before tessellation.";
+    MeshChordError(MeshError) = "The chord tolerance is not finite and positive.";
+    MeshFaceError(MeshError) = "A face's domain could not be triangulated.";
+    MeshGridTooLargeError(MeshError) = "A face's interior lattice would need too many points.";
+    MeshCornersError(MeshError) = "A corner block does not fit together.";
+    MeshInternalError(MeshError) = "Tessellation's own bookkeeping broke on validated input.";
+}
 
 /// Why the binding refused a call before, or while, reaching the kernel.
 #[derive(Debug, Clone, PartialEq)]
@@ -81,13 +184,19 @@ impl core::fmt::Display for BindError {
 
 impl std::error::Error for BindError {}
 
+impl BindError {
+    /// The class this error is raised as.
+    pub fn class(&self) -> Class {
+        match self {
+            BindError::Foreign { .. } => Class::ForeignHandleError,
+            BindError::Stale(_) => Class::StaleHandleError,
+            BindError::Poisoned { .. } => Class::ModelPoisonedError,
+        }
+    }
+}
+
 impl From<BindError> for PyErr {
     fn from(error: BindError) -> PyErr {
-        let message = error.to_string();
-        match error {
-            BindError::Foreign { .. } => ForeignHandleError::new_err(message),
-            BindError::Stale(_) => StaleHandleError::new_err(message),
-            BindError::Poisoned { .. } => ModelPoisonedError::new_err(message),
-        }
+        error.class().new_err(error.to_string())
     }
 }

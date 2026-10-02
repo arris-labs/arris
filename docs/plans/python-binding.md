@@ -160,12 +160,19 @@ bound has to be established here.
   retained-handle cases run in Rust (`model::tests`, over the kernel's own
   `primitive_box`) and the pytest holds what Python can reach; step 6's
   pytest adds the same three cases through `Model.primitive_box`.
-- [ ] Step 4 **[1]** — Errors: the exception hierarchy. One subclass per
+- [x] Step 4 **[1]** — Errors: the exception hierarchy. One subclass per
   variant of every error enum the binding can raise, entities and reasons
   as attributes, built by an exhaustive `match` per enum (no wildcard
   arm). Test: a Rust test that each variant maps to its own class, and a
   pytest that catches a boolean's `Unsupported` and reads its operand
-  ids.
+  ids. *Found at step 4:* the maps are pure (`kernel_error::Mapped`), so
+  the Rust test covers every variant and its attributes without an
+  interpreter; the pytest checks the hierarchy, and the raised-with-
+  attributes case waits for step 6, where a Python operation can fail
+  (add it to step 6's pytest). `OpError::InvalidInput`, `MeshError::
+  InvalidInput` and the `Rejected` variants carry the checker's report as
+  text until step 8 has a `Report` class; step 8 makes it one. Step 6
+  gives `Interrupted` the builtin `InterruptedError` as a second base.
 - [ ] Step 5 **[1]** — `Provenance` as Python values. `generated`,
   `modified`, `deleted` as lists of `(origin, outputs)`, the roles as
   readable objects (`Role::Consumer`'s namespace and key included), and
@@ -177,7 +184,8 @@ bound has to be established here.
   `Cancel` token, a step budget and Ctrl-C as keyword arguments, and the
   GIL released around the kernel call. Test: pytest of each against the
   closed form; a handle from one model refused by another and a freed
-  one stale, through the operations (step 3's pytest half); an operation cancelled from another thread returns
+  one stale (step 3's pytest half) and a boolean's `Unsupported` raised with
+  its operands as attributes (step 4's), through the operations; an operation cancelled from another thread returns
   `InterruptedError`'s subclass and leaves the model as it was (ids
   included); a budget stops at the same step run twice.
 - [ ] Step 7 **[2]** — Profiles. `Profile` of lines, arcs and elliptic

@@ -8,11 +8,12 @@
 #![warn(missing_docs)]
 #![cfg(not(target_arch = "wasm32"))]
 
-mod error;
+pub mod error;
 mod handle;
+pub mod kernel_error;
 mod model;
 
-pub use error::{ArrisError, BindError, ForeignHandleError, ModelPoisonedError, StaleHandleError};
+pub use error::{ArrisError, BindError, Class};
 pub use handle::{Body, Edge, Face, Shell, Vertex};
 pub use model::Model;
 
@@ -32,11 +33,7 @@ pub fn python_version(cargo: &str) -> String {
 #[pyo3(name = "_arris")]
 fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("__version__", python_version(env!("CARGO_PKG_VERSION")))?;
-    let py = module.py();
-    module.add("ArrisError", py.get_type::<ArrisError>())?;
-    module.add("ForeignHandleError", py.get_type::<ForeignHandleError>())?;
-    module.add("StaleHandleError", py.get_type::<StaleHandleError>())?;
-    module.add("ModelPoisonedError", py.get_type::<ModelPoisonedError>())?;
+    error::register(module)?;
     module.add_class::<Model>()?;
     module.add_class::<Body>()?;
     module.add_class::<Shell>()?;

@@ -94,7 +94,14 @@ rather than assumed, in a scratch crate on 2026-10-02:
    exhaustive `match` per enum with no wildcard arm. A variant added in the
    kernel therefore fails the binding's compile, which is the kernel rule's
    intent (`.agents/rules/kernel.md` §API); the same commit updates the
-   binding.
+   binding. Each enum has a family class (`OpError`, `GeomError`, …) under
+   `ArrisError` and each variant a class under its family, named by the
+   family's prefix (`OpUnsupportedError`). Two conditions recur in several
+   enums and have one class each, so a caller catches them once: every
+   `NotFound` is `StaleHandleError` and every `Interrupted` is `Interrupted`
+   (directly under `ArrisError`). A nested kernel error with no structure a
+   caller would branch on is the exception's `detail` text; entities are
+   handles of the model the call was made on.
 
 ## Consequences
 
