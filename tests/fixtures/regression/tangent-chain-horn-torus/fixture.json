@@ -1,5 +1,5 @@
 {
-  "description": "a second blend that meets the first at a vertex: the extruded 2-square's side edge 0–1 (the rise at (2, 0)) filleted at r 0.2, then the cap edge of side face 0 (y = 0, z = 2), which now ends where the first blend's contact line and end arc meet — the contact is a tangent edge, so the cap edge continues into a chain through the arc, which Open CASCADE follows and blends and Arris refuses today as Reason::TangentChain (the blend-network cycle's chain); the desired body is Open CASCADE's, the stripe running from the cap edge through the arc's torus; the second radius is below the arc's so Open CASCADE's torus over the arc is not degenerate",
+  "description": "blend/tangent-chain-cap-edge with the first radius at twice the second, r 0.2 and r2 0.1: the chain of cap edge, the first blend's end arc and the next cap edge, where the arc's fillet is the torus of major radius r − r2 = 0.1 and minor r2 = 0.1, a horn torus whose tube touches the axis. Open CASCADE builds it; Arris's ring holds a torus to major radius above minor and refuses it as Reason::BlendTooLarge naming the arc and the first blend's face. The desired body is Open CASCADE's",
   "params": {"r": 0.2, "r2": 0.1},
   "steps": [
     {

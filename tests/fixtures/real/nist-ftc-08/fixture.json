@@ -16,7 +16,7 @@
         "drill_y": "agree",
         "drill_z": "agree",
         "fillet": {
-          "arris-refuses": "Degenerate(TangentChain)"
+          "arris-refuses": "Unsupported(torus surface × cylinder surface)"
         },
         "write_read": "agree"
       },

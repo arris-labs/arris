@@ -138,7 +138,7 @@ bound has to be established here.
   Pappus about the axis at `R ± r (10 − 3π) / (12 − 3π)`, half a turn, no
   end effect past the trimming plane — the fixture's `analytic.volume`,
   which the corpus lint already holds to the oracle).
-- [ ] Step 4 **[3]** — The tangent junction. Two stripes meeting at a
+- [x] Step 4 **[3]** — The tangent junction. Two stripes meeting at a
   tangent vertex end on one shared cross-section arc: no trim by a face
   across, the contact points meet, the blend faces meet along the arc with
   a tangent dihedral and the checker's rows agree. The first chain is an
@@ -147,7 +147,11 @@ bound has to be established here.
   the first fillet's arc) moves to `blend/` building. Test: those two
   fixtures against the oracle, and the junction arc's pcurves held to the
   checker's E4 at the arc's tolerance.
-- [ ] Step 5 **[2]** — Closed chains. The stadium's whole outline, a hole's
+- [ ] Step 5 **[2]** — Closed chains. (Since step 4 the stadium and the
+  split rim build and pass every corpus stage but the dump, unblessed:
+  this step inspects their orientation and seams, blesses them and moves
+  them, rather than building anything new, unless the inspection finds
+  otherwise.) The stadium's whole outline, a hole's
   rim as two half circles, a rounded rectangle: a chain that returns to
   its first vertex has no ends and no trim, as a closed circle has none.
   Orientation of the junction arcs around the loop, and the seam of a
@@ -276,3 +280,21 @@ out to need more than a commit each; say so in that commit.
   never spans an edge boundary, even over a tangent chain of the same
   surface. Step 5 builds one per edge and the ADR records it; the
   fixtures' counts are `expected.json`'s.
+- **Found at step 4 (agent): a tangent vertex also needs one sense.**
+  NIST FTC-06's plate has a convex bottom edge running tangentially into
+  the concave rim of a boss below it: the outline inflects, the vertical
+  edge between the walls is tangent, and ADR-0035 §1 as written made it a
+  tangent vertex, which §3 had called unreachable. Both edges convex or
+  both concave is now part of the test (ADR-0035 amendment, step 4). Such
+  a vertex stops the walk as `TangentChain`, and an open arc reads its
+  corners before its contacts so the refusal names that edge. FTC-06's
+  recorded fillet moved from `VertexBlend` to `TangentChain`; FTC-08's and
+  FTC-09's from `TangentChain` to the pairs their chains reach, torus ×
+  cylinder and cone × cylinder, later C6 lines.
+- **Found at step 4 (agent): the cap-edge chain at step 1's radii needs a
+  horn torus.** The first blend's end arc, filleted at half the first
+  radius, is a torus of major radius equal to minor, which the ring
+  refuses (`BlendTooLarge`, a ring torus only). The fixture that moved to
+  `blend/` is held at a first radius of 0.3. The step-1 radii are
+  `regression/tangent-chain-horn-torus` and a backlog line. The "straight
+  wall into an arc" is `blend/line-into-arc-fillet`.

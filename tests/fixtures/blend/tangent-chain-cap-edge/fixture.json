@@ -1,0 +1,28 @@
+{
+  "description": "a second blend that meets the first at a vertex: the extruded 2-square's side edge 0–1 (the rise at (2, 0)) filleted at r 0.3, then the cap edge of side face 0 (y = 0, z = 2), which now ends where the first blend's contact line and end arc meet — the contact is a tangent edge, so the cap edge's vertex there is a tangent vertex and the fillet runs on through the first blend's end arc into the cap edge of side face 1 (x = 2), an open chain of line, arc, line that Open CASCADE follows and blends; Arris builds it as three stripes, a cylinder, a torus section of major radius r − r2 and minor r2 and a cylinder, meeting on the ball's great circles at the two junctions (ADR-0035). The first radius is three times the second so the torus is a ring torus; at twice it the torus is a horn torus, regression/tangent-chain-horn-torus",
+  "params": {"r": 0.3, "r2": 0.1},
+  "steps": [
+    {
+      "name": "square",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, 0], "segments": [{"line_to": [2, 0]}, {"line_to": [2, 2]}, {"line_to": [0, 2]}, {"line_to": [0, 0]}]}
+    },
+    {"name": "cube", "op": "extrude", "profile": "square", "direction": [0, 0, 1], "length": 2},
+    {"name": "first", "op": "fillet", "of": "cube", "edges": [[2, 0, 1]], "radius": "r"},
+    {"name": "result", "op": "fillet", "of": "first", "edges": [[1, 0, 2]], "radius": "r2"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [1, 1, 1], "expect": "in"},
+    {"label": "far_vertex", "point": [0, 2, 0], "expect": "on"},
+    {"label": "cap_corner_gone", "point": [1, "r2 - (r2 + 0.02) * cos(radians(45))", "2 - r2 + (r2 + 0.02) * sin(radians(45))"], "expect": "out"},
+    {"label": "on_cap_blend", "point": [1, "r2 - r2 * cos(radians(45))", "2 - r2 + r2 * sin(radians(45))"], "expect": "on"},
+    {"label": "on_junction", "point": ["2 - r", "r2 - r2 * cos(radians(45))", "2 - r2 + r2 * sin(radians(45))"], "expect": "on"},
+    {"label": "on_torus", "point": ["2 - r + (r - r2 + r2 * cos(radians(45))) * cos(radians(45))", "r - (r - r2 + r2 * cos(radians(45))) * sin(radians(45))", "2 - r2 + r2 * sin(radians(45))"], "expect": "on"},
+    {"label": "on_far_cap_blend", "point": ["2 - r2 + r2 * cos(radians(45))", 1, "2 - r2 + r2 * sin(radians(45))"], "expect": "on"}
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

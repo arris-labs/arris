@@ -1,0 +1,26 @@
+{
+  "description": "a 3 × 1 bar with a quarter disc of radius 1 about (3, 1) on its end, extruded 1, and the top edge of its y = 0 wall filleted at r 0.25: the wall runs tangentially into the quarter cylinder at (3, 0), so the vertex there is a tangent vertex and the fillet runs on from the line into the arc, an open chain of two. The line's stripe is a cylinder trimmed by the plane x = 0; the arc's is a quarter of the torus of major radius 1 − r and minor r, trimmed by the plane y = 1 through the cylinder's axis; the two meet on the ball's great circle in the plane x = 3 (ADR-0035). The removed corner's section (1 − π/4) r² swept 3 along the line and a quarter turn about the axis at 1 − r (10 − 3π) / (12 − 3π) by Pappus",
+  "params": {"r": 0.25},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [3, 0]}, {"arc_to": [4, 1], "via": [3.7071067811865475, 0.2928932188134524]}, {"line_to": [0, 1]}, {"line_to": [0, 0]}]}},
+    {"name": "bar", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 1},
+    {"name": "result", "op": "fillet", "of": "bar", "edges": [[1.5, 0, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [1.5, 0.5, 0.5], "expect": "in"},
+    {"label": "corner_gone", "point": [1.5, "r - (r + 0.05) * cos(radians(45))", "1 - r + (r + 0.05) * sin(radians(45))"], "expect": "out"},
+    {"label": "on_blend", "point": [1.5, "r - r * cos(radians(45))", "1 - r + r * sin(radians(45))"], "expect": "on"},
+    {"label": "on_junction", "point": [3, "r - r * cos(radians(45))", "1 - r + r * sin(radians(45))"], "expect": "on"},
+    {"label": "on_torus", "point": ["3 + (1 - r + r * cos(radians(45))) * cos(radians(45))", "1 - (1 - r + r * cos(radians(45))) * sin(radians(45))", "1 - r + r * sin(radians(45))"], "expect": "on"},
+    {"label": "torus_corner_gone", "point": ["3 + (1 - r + (r + 0.05) * cos(radians(45))) * cos(radians(45))", "1 - (1 - r + (r + 0.05) * cos(radians(45))) * sin(radians(45))", "1 - r + (r + 0.05) * sin(radians(45))"], "expect": "out"},
+    {"label": "on_top_contact", "point": [3, "r", 1], "expect": "on"},
+    {"label": "on_wall_contact", "point": [3, 0, "1 - r"], "expect": "on"},
+    {"label": "on_end_face", "point": [3.5, 1, 0.5], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "3 + pi / 4 - 3 * (1 - pi / 4) * r^2 - pi / 2 * (1 - r * (10 - 3 * pi) / (12 - 3 * pi)) * (1 - pi / 4) * r^2",
+    "genus": 0
+  }
+}

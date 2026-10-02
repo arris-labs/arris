@@ -110,16 +110,16 @@ fixtures:
 | Refusal | Stage | Count | Blocks |
 |---|---|---:|---|
 | unsupported entity | read | 3 | healing |
-| Degenerate(TangentChain) | fillet | 3 | blend network |
 | gap past the cap | read | 2 | healing |
 | Unsupported(plane surface × NURBS surface) | box_cut | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_x | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_y | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_z | 2 | NURBS |
+| Degenerate(TangentChain) | fillet | 2 | blend network |
+| Unsupported(cone surface × cylinder surface) | fillet | 2 | blend network |
 | unsupported entity | read | 2 | itself: supplemental geometry |
-| Degenerate(VertexBlend) | fillet | 1 | blend network |
-| Unsupported(cone surface × cylinder surface) | fillet | 1 | blend network |
 | Unsupported(cylinder surface × cylinder surface) | fillet | 1 | blend network |
+| Unsupported(torus surface × cylinder surface) | fillet | 1 | blend network |
 <!-- /histogram -->
 
 ---

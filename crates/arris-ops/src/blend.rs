@@ -8,7 +8,8 @@
 //! circle to a torus coaxial with it or chamfer to a cone — with its
 //! contact curves read off the construction, each end of an open edge
 //! trimmed by the face across the corner or met by the blends sharing its
-//! vertex — two in a miter, three in a sphere or a triangle — and the
+//! vertex — two in a miter, three in a sphere or a triangle, or the next
+//! blend of a chain at a tangent vertex on the ball's great circle — and the
 //! result assembled through `rebuild::rewrite` with every untouched
 //! entity kept by id (`docs/ARCHITECTURE.md` §Operations,
 //! `docs/DATA-MODEL.md` §Provenance).
@@ -720,6 +721,158 @@ fn stripe(
     })
 }
 
+/// The parameter of `edge` at its end `vertex`, its start's on a closed
+/// edge; `None` for an edge with no curve.
+fn parameter_at(m: &Model, edge: EdgeId, vertex: VertexId) -> Result<Option<f64>, OpError> {
+    let entity = *m.edge(edge)?;
+    Ok(entity.curve().map(|(_, range)| {
+        if entity.start() == vertex {
+            range.lo()
+        } else {
+            range.hi()
+        }
+    }))
+}
+
+/// Whether the two faces of `edge` are tangent at its parameter `t`, their
+/// outward normals parallel within `tol.angular`; `None` for an edge not
+/// used by exactly two faces.
+fn tangent_at(
+    m: &Model,
+    view: &View,
+    edge: EdgeId,
+    t: f64,
+    tol: Tolerance,
+) -> Result<Option<bool>, OpError> {
+    let Some(uses) = view.uses.get(&edge).filter(|u| u.len() == 2) else {
+        return Ok(None);
+    };
+    let mut normals = [Vec3::zeros(); 2];
+    for (n, u) in normals.iter_mut().zip(uses) {
+        *n = view.outward(m, u.face, m.curve2(u.pcurve)?.point(t))?;
+    }
+    Ok(Some(normals[0].cross(&normals[1]).norm() <= tol.angular))
+}
+
+/// Whether `edge` is convex, read at its midpoint as a stripe or a ring
+/// reads it: the direction into its first face against the second face's
+/// outward normal. `None` for an edge with no curve or not used by exactly
+/// two faces.
+fn convex_edge(m: &Model, view: &View, edge: EdgeId) -> Result<Option<bool>, OpError> {
+    let Some((curve, range)) = m.edge(edge)?.curve() else {
+        return Ok(None);
+    };
+    let Some(&[ua, ub]) = view.uses.get(&edge).map(Vec::as_slice) else {
+        return Ok(None);
+    };
+    let mid = range.midpoint();
+    let n1 = view.outward(m, ua.face, m.curve2(ua.pcurve)?.point(mid))?;
+    let n2 = view.outward(m, ub.face, m.curve2(ub.pcurve)?.point(mid))?;
+    let t1 =
+        m.curve(curve)?.eval(mid).d1 * view.orientation[&ua.face].compose(ua.orientation).sign();
+    Ok(Some(n1.cross(&t1).dot(&n2) < 0.0))
+}
+
+/// The edge a blend of `edge` runs on into at `vertex`, when that is a
+/// tangent vertex (ADR-0035 §1): exactly three edges `edge`, `next` and
+/// `w`, the two faces of `w` tangent at the vertex, `next` open and not a
+/// tangent dihedral at its midpoint, `edge` and `next` sharing exactly one
+/// face, both convex or both concave — an outline that turns from one to
+/// the other there puts the ball on the far side of the shared face — and
+/// the direction leaving the vertex along `next` within a right angle of
+/// the one arriving along `edge`. `None` at any other vertex, and where
+/// both of the vertex's other edges would qualify.
+fn tangent_vertex(
+    m: &Model,
+    view: &View,
+    edge: EdgeId,
+    vertex: VertexId,
+    tol: Tolerance,
+) -> Result<Option<EdgeId>, OpError> {
+    let Some(at) = view.vertex_edges.get(&vertex) else {
+        return Ok(None);
+    };
+    if at.len() != 3 || !at.contains(&edge) {
+        return Ok(None);
+    }
+    let others: Vec<EdgeId> = at.iter().copied().filter(|&x| x != edge).collect();
+    let faces_of = |x: EdgeId| -> BTreeSet<FaceId> {
+        view.uses
+            .get(&x)
+            .map(|u| u.iter().map(|u| u.face).collect())
+            .unwrap_or_default()
+    };
+    // The unit tangent of `x` at the vertex, pointing away from it.
+    let leaving = |x: EdgeId| -> Result<Option<Vec3>, OpError> {
+        let entity = *m.edge(x)?;
+        let Some((curve, range)) = entity.curve() else {
+            return Ok(None);
+        };
+        let at_lo = entity.start() == vertex;
+        let t = if at_lo { range.lo() } else { range.hi() };
+        let d1 = m.curve(curve)?.eval(t).d1;
+        let away = if at_lo { d1 } else { -d1 };
+        Ok(UnitVec3::try_new(away, tol.linear).map(UnitVec3::into_inner))
+    };
+    let Some(arriving) = leaving(edge)?.map(|d| -d) else {
+        return Ok(None);
+    };
+    let own = faces_of(edge);
+    let mut found = None;
+    for (i, &next) in others.iter().enumerate() {
+        let w = others[1 - i];
+        let next_entity = *m.edge(next)?;
+        let (Some(t_w), Some((_, next_range))) = (parameter_at(m, w, vertex)?, next_entity.curve())
+        else {
+            continue;
+        };
+        if next_entity.start() == next_entity.end()
+            || tangent_at(m, view, w, t_w, tol)? != Some(true)
+            || tangent_at(m, view, next, next_range.midpoint(), tol)? != Some(false)
+            || own.intersection(&faces_of(next)).count() != 1
+            || convex_edge(m, view, next)? != convex_edge(m, view, edge)?
+        {
+            continue;
+        }
+        let Some(away) = leaving(next)? else {
+            continue;
+        };
+        if away.dot(&arriving) > 0.0 && found.replace(next).is_some() {
+            return Ok(None);
+        }
+    }
+    Ok(found)
+}
+
+/// `named` closed under tangent continuation (ADR-0035 §1): every edge a
+/// blend of one of them runs on into through tangent vertices, walked
+/// from each end until a vertex that is not one.
+fn chain(
+    m: &Model,
+    view: &View,
+    named: &[EdgeId],
+    tol: Tolerance,
+    meter: &mut Meter<'_>,
+) -> Result<BTreeSet<EdgeId>, OpError> {
+    let mut reached: BTreeSet<EdgeId> = named.iter().copied().collect();
+    let mut todo: Vec<EdgeId> = named.to_vec();
+    while let Some(edge) = todo.pop() {
+        meter.tick()?;
+        let entity = *m.edge(edge)?;
+        if entity.start() == entity.end() {
+            continue;
+        }
+        for vertex in [entity.start(), entity.end()] {
+            if let Some(next) = tangent_vertex(m, view, edge, vertex, tol)?
+                && reached.insert(next)
+            {
+                todo.push(next);
+            }
+        }
+    }
+    Ok(reached)
+}
+
 /// The corner at `vertex`, the end of the blended `edge` at its start
 /// (`at_lo`) or its end, `uses` the edge's uses by its two faces: the
 /// corner edge each of those faces' loops runs on to there, in the same
@@ -727,8 +880,9 @@ fn stripe(
 /// beyond the edge's own. A vertex of other than these three edges, or
 /// corner edges that share no such face, is `Reason::VertexBlend`; a corner
 /// edge whose two faces meet tangentially at the vertex — the contact line
-/// every blend face meets its neighbours along — carries the edge on into
-/// a chain, `Reason::TangentChain` until the chain is built.
+/// every blend face meets its neighbours along — at a vertex the chain did
+/// not run on through, the next edge turning back or itself a tangent
+/// dihedral, is `Reason::TangentChain` (ADR-0035 §6).
 fn corner_of(
     m: &Model,
     view: &View,
@@ -766,25 +920,10 @@ fn corner_of(
         return Err(vertex_blend());
     }
     for &corner in &corner_edges {
-        let ce = *m.edge(corner)?;
-        let Some((_, crange)) = ce.curve() else {
+        let Some(t) = parameter_at(m, corner, vertex)? else {
             return Err(vertex_blend());
         };
-        let t = if ce.start() == vertex {
-            crange.lo()
-        } else {
-            crange.hi()
-        };
-        let corner_uses = view
-            .uses
-            .get(&corner)
-            .filter(|u| u.len() == 2)
-            .ok_or(invariant("two uses of the corner edge"))?;
-        let mut normals = [Vec3::zeros(); 2];
-        for (n, u) in normals.iter_mut().zip(corner_uses) {
-            *n = view.outward(m, u.face, m.curve2(u.pcurve)?.point(t))?;
-        }
-        if normals[0].cross(&normals[1]).norm() <= tol.angular {
+        if tangent_at(m, view, corner, t, tol)?.ok_or(invariant("two uses of the corner edge"))? {
             return Err(degenerate(
                 vec![e, forward(corner), v],
                 Reason::TangentChain,
@@ -1353,6 +1492,223 @@ fn miter(
     })
 }
 
+/// One side of a junction: a line's stripe or an arc's ring.
+#[derive(Clone, Copy)]
+enum Run<'a> {
+    Line(&'a Stripe),
+    Arc(&'a Ring),
+}
+
+/// A side of a junction read at its vertex.
+struct RunAt<'a> {
+    edge: EdgeId,
+    /// The faces of the contacts, by contact.
+    faces: [FaceId; 2],
+    /// The contacts' points at the vertex, by contact.
+    points: [Point3; 2],
+    /// A fillet's ball centre there.
+    centre: Option<Point3>,
+    convex: bool,
+    tolerance: f64,
+    surface: &'a Surface,
+    /// The edge's parameter there, which the contacts share.
+    t: f64,
+}
+
+impl<'a> Run<'a> {
+    fn at(self, m: &Model, vertex: VertexId) -> Result<RunAt<'a>, OpError> {
+        match self {
+            Run::Line(s) => {
+                let t = parameter_at(m, s.edge, vertex)?.ok_or(invariant("a line edge's curve"))?;
+                let mut points = [Point3::origin(); 2];
+                for (p, line) in points.iter_mut().zip(&s.lines) {
+                    *p = line_origin(line)? + t * s.d;
+                }
+                Ok(RunAt {
+                    edge: s.edge,
+                    faces: s.faces,
+                    points,
+                    centre: match s.section {
+                        Section::Round { axis_origin, .. } => Some(axis_origin + t * s.d),
+                        Section::Flat => None,
+                    },
+                    convex: s.convex,
+                    tolerance: s.tolerance,
+                    surface: &s.surface,
+                    t,
+                })
+            }
+            Run::Arc(r) => {
+                let at_lo = m.edge(r.edge)?.start() == vertex;
+                let (j, t) = if at_lo {
+                    (0, r.range.lo())
+                } else {
+                    (1, r.range.hi())
+                };
+                Ok(RunAt {
+                    edge: r.edge,
+                    faces: r.contacts.each_ref().map(|c| c.face),
+                    points: r.contacts.each_ref().map(|c| c.points[j]),
+                    centre: r.centres.as_ref().map(|c| c.point(t)),
+                    convex: r.convex,
+                    tolerance: r.tolerance,
+                    surface: &r.surface,
+                    t,
+                })
+            }
+        }
+    }
+
+    /// `pcurve` on the blend placed in its loop's translate, its point at
+    /// `lo` on contact `contact` at the junction `at`: on a stripe at that
+    /// contact's `u`, on a ring at the contacts' `u` there and that
+    /// contact's `v`.
+    fn place(self, pcurve: Curve2, lo: f64, contact: usize, at: &RunAt<'_>) -> Curve2 {
+        match self {
+            Run::Line(s) => s.place(pcurve, lo, if contact == 0 { 0.0 } else { s.u1 }),
+            Run::Arc(r) => {
+                let u = r.contacts[0].on_blend.point(at.t).x;
+                let v = r.contacts[contact].on_blend.point(at.t).y;
+                placed_uv(pcurve, lo, Point2::new(u, v))
+            }
+        }
+    }
+}
+
+/// The junction of `a` and `b` at the tangent vertex `vertex` (ADR-0035
+/// §3), recorded as a miter is: the two runs share one face, their
+/// contacts on it meet at `q`, and their other two meet at `p` on the
+/// vertex's third edge `w`, which is shortened there. The arc between them
+/// is the ball's great circle through `q` and `p` for fillets, square to
+/// the edges' common direction, or the chord from `q` to `p` for chamfers;
+/// every pcurve of it exact. Two runs whose points or ball centres differ
+/// by more than their tolerance, or one convex and one concave, is an
+/// internal fault the tangent-vertex test makes unreachable; a `w` shorter
+/// than the cut is `Reason::BlendTooLarge`.
+fn junction(
+    m: &Model,
+    view: &View,
+    a: Run<'_>,
+    b: Run<'_>,
+    vertex: VertexId,
+    tol: Tolerance,
+    meter: &mut Meter<'_>,
+) -> Result<Miter, OpError> {
+    meter.tick()?;
+    let (ra, rb) = (a.at(m, vertex)?, b.at(m, vertex)?);
+    let v = forward(vertex);
+    let vertex_blend = || {
+        degenerate(
+            vec![forward(ra.edge), forward(rb.edge), v],
+            Reason::VertexBlend,
+        )
+    };
+    let mut shared: Option<(usize, usize)> = None;
+    for (ka, fa) in ra.faces.iter().enumerate() {
+        for (kb, fb) in rb.faces.iter().enumerate() {
+            if fa == fb && shared.replace((ka, kb)).is_some() {
+                return Err(vertex_blend());
+            }
+        }
+    }
+    let Some((ka, kb)) = shared else {
+        return Err(vertex_blend());
+    };
+    // The third edge, between the two faces the runs do not share.
+    let at_vertex = view
+        .vertex_edges
+        .get(&vertex)
+        .ok_or(invariant("the junction vertex's edges"))?;
+    let third: Vec<EdgeId> = at_vertex
+        .iter()
+        .copied()
+        .filter(|&e| e != ra.edge && e != rb.edge)
+        .collect();
+    let [w] = third[..] else {
+        return Err(vertex_blend());
+    };
+    let faces_w: BTreeSet<FaceId> = view
+        .uses
+        .get(&w)
+        .ok_or(invariant("the third edge's uses"))?
+        .iter()
+        .map(|u| u.face)
+        .collect();
+    if faces_w != BTreeSet::from([ra.faces[1 - ka], rb.faces[1 - kb]]) {
+        return Err(vertex_blend());
+    }
+    let tolerance = ra.tolerance.max(rb.tolerance);
+    if ra.convex != rb.convex {
+        return Err(invariant("both runs of a junction convex or both concave"));
+    }
+    let meet = |pa: Point3, pb: Point3, what: &'static str| {
+        if (pa - pb).norm() > tolerance {
+            return Err(invariant(what));
+        }
+        Ok(pa + (pb - pa) * 0.5)
+    };
+    let q = meet(
+        ra.points[ka],
+        rb.points[kb],
+        "the contacts on the shared face through one point",
+    )?;
+    let p = meet(
+        ra.points[1 - ka],
+        rb.points[1 - kb],
+        "the other contacts through one point of the third edge",
+    )?;
+    let trim = cut_corner(m, ra.edge, w, vertex, p)?;
+    let (curve, range) = match (ra.centre, rb.centre) {
+        (None, None) => chord(q, p, tol)?,
+        (Some(ca), Some(cb)) => {
+            let centre = meet(ca, cb, "the runs' balls one ball")?;
+            let (x, y) = (q - centre, p - centre);
+            let radius = x.norm();
+            if (y.norm() - radius).abs() > tolerance {
+                return Err(invariant("the ball touching both faces across"));
+            }
+            let Some(normal) = UnitVec3::try_new(x.cross(&y), tol.linear) else {
+                return Err(invariant("a junction arc of positive angle"));
+            };
+            let frame = Frame::new(centre, normal.into_inner(), x)?;
+            let angle = x.cross(&y).norm().atan2(x.dot(&y));
+            (
+                Curve::Circle { frame, radius },
+                Interval::new(0.0, angle)
+                    .map_err(|_| invariant("a junction arc of positive angle"))?,
+            )
+        }
+        (Some(_), None) | (None, Some(_)) => {
+            return Err(invariant("one kind of blend in one call"));
+        }
+    };
+    let arc_tol = Tolerance::new(tolerance, tol.angular);
+    let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
+    for (run, at, k) in [(a, &ra, ka), (b, &rb, kb)] {
+        let pcurve = pcurve_on(&curve, range, at.surface, arc_tol, meter).map_err(fault_of)?;
+        on_blend.push(run.place(pcurve, range.lo(), k, at));
+    }
+    let on_blend: [Curve2; 2] = on_blend
+        .try_into()
+        .map_err(|_| invariant("the junction's two pcurves"))?;
+    Ok(Miter {
+        edges: [ra.edge, rb.edge],
+        shared: [ka, kb],
+        t: [[ra.t; 2], [rb.t; 2]],
+        q,
+        p3: p,
+        curve,
+        range,
+        q_first: true,
+        lo_first: [ka == 0, kb == 0],
+        on_blend,
+        trim,
+        tolerance,
+        q_tolerance: tolerance,
+        p3_tolerance: tolerance.max(m.edge(w)?.tolerance()),
+    })
+}
+
 /// The corner of stripes `stripes` at `vertex`, a vertex of these three
 /// edges and no other (ADR-0007). Every face there a plane and every blend
 /// convex or every one concave is what puts the three fillets' axes
@@ -1751,12 +2107,20 @@ struct RingSeam {
     vertex_tolerance: f64,
 }
 
+/// One end of an open arc's blend: trimmed by the face across, or a
+/// junction at a tangent vertex, whose arc and vertices the junction holds
+/// (ADR-0035 §3).
+enum RingEnd {
+    Face(Box<ArcEnd>),
+    Junction(VertexId),
+}
+
 /// How a circular edge's blend closes: a closed edge's runs a whole turn
 /// round to its own seam, an open arc's ends at its two vertices.
 enum RingEnds {
     Seam(Box<RingSeam>),
     /// At the edge's start, then its end.
-    Open(Box<[ArcEnd; 2]>),
+    Open(Box<[RingEnd; 2]>),
 }
 
 /// The blend of a circular edge where a plane meets a cylinder
@@ -1775,6 +2139,11 @@ struct Ring {
     range: Interval,
     surface: Surface,
     orientation: Orientation,
+    convex: bool,
+    /// A fillet's circle of the ball's centre, its frame the edge's
+    /// moved along the axis so that it runs as the edge runs; `None` on a
+    /// chamfer.
+    centres: Option<Curve>,
     /// The contacts at the blend's lower `v`, then its upper.
     contacts: [RingContact; 2],
     ends: RingEnds,
@@ -1802,15 +2171,18 @@ fn placed_uv(pcurve: Curve2, t: f64, target: Point2) -> Curve2 {
 /// tube between the contacts; a chamfer is the 45° cone through the same
 /// two circles at `d`. A closed edge's one vertex is on the cylinder's
 /// seam and on nothing else; an open arc's two vertices are each a corner
-/// of three edges whose face across is a plane through the axis. A torus
-/// that is not a ring torus and a contact that reaches the axis are
-/// `Reason::BlendTooLarge`, as is a contact or an end that leaves its face
-/// or a seam or a corner edge shorter than the trim.
+/// of three edges whose face across is a plane through the axis, or one of
+/// the `junctions`, which the junction builds. A torus that is not a ring
+/// torus and a contact that reaches the axis are `Reason::BlendTooLarge`,
+/// as is a contact or an end that leaves its face or a seam or a corner
+/// edge shorter than the trim.
+#[allow(clippy::too_many_arguments)]
 fn ring(
     m: &Model,
     view: &View,
     edge: EdgeId,
     kind: Kind,
+    junctions: &BTreeSet<VertexId>,
     tol: Tolerance,
     samples: usize,
     meter: &mut Meter<'_>,
@@ -1993,6 +2365,27 @@ fn ring(
     if cylinder_first {
         by_v.swap(0, 1);
     }
+    // An open arc's corners, read before its contacts as a stripe's are:
+    // an end at a tangent corner edge that is no junction is
+    // `Reason::TangentChain`, whatever the contacts do beside it.
+    let open = entity.start() != entity.end();
+    let mut corners: [Option<([EdgeId; 2], FaceId)>; 2] = [None, None];
+    if open {
+        // The edge's uses by contact, which the corner is read through.
+        let use_of = |face: FaceId| {
+            uses.iter()
+                .copied()
+                .find(|u| u.face == face)
+                .ok_or(invariant("a contact on one of the edge's faces"))
+        };
+        let contact_uses = [use_of(by_v[0].0)?, use_of(by_v[1].0)?];
+        for (j, at_lo) in [(0, true), (1, false)] {
+            let vertex = if at_lo { entity.start() } else { entity.end() };
+            if !junctions.contains(&vertex) {
+                corners[j] = Some(corner_of(m, view, edge, &contact_uses, vertex, at_lo, tol)?);
+            }
+        }
+    }
     for (face, contact, v) in by_v {
         let face_surface = m.surface(m.face(face)?.surface())?;
         let on_face =
@@ -2046,7 +2439,7 @@ fn ring(
             | Surface::Nurbs(_) => chord(ends[0], ends[1], tol),
         }
     };
-    let ends = if entity.start() == entity.end() {
+    let ends = if !open {
         // The vertex's one other edge: the cylinder's seam, used twice by
         // it.
         let at_vertex = view
@@ -2112,19 +2505,13 @@ fn ring(
             vertex_tolerance: tolerance.max(seam_entity.tolerance()),
         }))
     } else {
-        // The edge's uses by contact, which the corner is read through.
-        let use_of = |face: FaceId| {
-            uses.iter()
-                .copied()
-                .find(|u| u.face == face)
-                .ok_or(invariant("a contact on one of the edge's faces"))
-        };
-        let contact_uses = [use_of(contacts[0].face)?, use_of(contacts[1].face)?];
-        let mut ends: Vec<ArcEnd> = Vec::with_capacity(2);
+        let mut ends: Vec<RingEnd> = Vec::with_capacity(2);
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
-            let (corner_edges, across) =
-                corner_of(m, view, edge, &contact_uses, vertex, at_lo, tol)?;
+            let Some((corner_edges, across)) = corners[j] else {
+                ends.push(RingEnd::Junction(vertex));
+                continue;
+            };
             // The face across holds the vertex, so a plane through the axis
             // is the half-plane at the vertex's angle, which meets the blend
             // in its section there; anything else meets a torus in a
@@ -2178,7 +2565,7 @@ fn ring(
             // In the blend loop's translate: at the contacts' `u` there.
             let u = contacts[0].on_blend.point(t).x;
             let on_blend = placed_uv(on_blend, end_range.lo(), Point2::new(u, v0));
-            ends.push(ArcEnd {
+            ends.push(RingEnd::Face(Box::new(ArcEnd {
                 vertex,
                 face: across,
                 trims,
@@ -2188,9 +2575,9 @@ fn ring(
                 on_blend,
                 tolerance: end_tolerance,
                 vertex_tolerance,
-            });
+            })));
         }
-        let ends: [ArcEnd; 2] = ends
+        let ends: [RingEnd; 2] = ends
             .try_into()
             .map_err(|_| invariant("two ends of the blend"))?;
         RingEnds::Open(Box::new(ends))
@@ -2205,11 +2592,17 @@ fn ring(
     } else {
         Orientation::Reversed
     };
+    let centres = match kind {
+        Kind::Fillet { .. } => Some(circle(lifted, plane_radius)?),
+        Kind::Chamfer { .. } => None,
+    };
     Ok(Ring {
         edge,
         range,
         surface,
         orientation,
+        convex,
+        centres,
         contacts,
         ends,
         tolerance,
@@ -2310,16 +2703,27 @@ fn build(
     let tol = precision.tolerance();
     let samples = precision.check_samples;
     let view = View::of(m, body)?;
+    // The named edges and every edge their chains run on into, in the
+    // body's order.
+    let reached = chain(m, &view, edges, tol, meter)?;
+    let chained: Vec<EdgeId> = m
+        .edges(body)?
+        .into_iter()
+        .map(|e| e.id)
+        .filter(|id| reached.contains(id))
+        .collect();
+    let no_junctions = BTreeSet::new();
     // A closed edge and a circular arc are rings, the one with no ends and
-    // the other trimmed at its two; the rest are stripes.
-    let mut open: Vec<EdgeId> = Vec::with_capacity(edges.len());
+    // the other trimmed at its two or met at a junction; the rest are
+    // stripes.
+    let mut open: Vec<EdgeId> = Vec::with_capacity(chained.len());
     let mut arcs: Vec<EdgeId> = Vec::new();
     let mut rings: Vec<Ring> = Vec::new();
-    for &e in edges {
+    for &e in &chained {
         let entity = *m.edge(e)?;
         match entity.curve() {
             Some(_) if entity.start() == entity.end() => {
-                rings.push(ring(m, &view, e, kind, tol, samples, meter)?);
+                rings.push(ring(m, &view, e, kind, &no_junctions, tol, samples, meter)?);
             }
             Some((curve, _)) if matches!(m.curve(curve)?, Curve::Circle { .. }) => {
                 arcs.push(e);
@@ -2328,9 +2732,10 @@ fn build(
         }
     }
     let edges = &open[..];
-    // The blended edges at each vertex: two meet in a miter, three in a
-    // corner, and more at a vertex the closed forms do not cover; an arc
-    // meets no other blend there.
+    // The blended edges at each vertex: two at a tangent vertex meet in a
+    // junction, two elsewhere in a miter, three in a corner, and more at a
+    // vertex the closed forms do not cover; an arc meets no other blend but
+    // at a junction.
     let mut at_vertex: BTreeMap<VertexId, Vec<EdgeId>> = BTreeMap::new();
     for &e in edges.iter().chain(&arcs) {
         let entity = *m.edge(e)?;
@@ -2338,16 +2743,23 @@ fn build(
             at_vertex.entry(v).or_default().push(e);
         }
     }
+    let mut junctions: BTreeSet<VertexId> = BTreeSet::new();
     for (&v, es) in &at_vertex {
+        if let [ea, eb] = es[..]
+            && tangent_vertex(m, &view, ea, v, tol)? == Some(eb)
+        {
+            junctions.insert(v);
+            continue;
+        }
         if es.len() > 3 || (es.len() > 1 && es.iter().any(|e| arcs.contains(e))) {
             let entities = es.iter().map(|&e| forward(e)).chain([forward(v)]).collect();
             return Err(degenerate(entities, Reason::VertexBlend));
         }
     }
     for &e in &arcs {
-        rings.push(ring(m, &view, e, kind, tol, samples, meter)?);
+        rings.push(ring(m, &view, e, kind, &junctions, tol, samples, meter)?);
     }
-    at_vertex.retain(|_, es| !es.iter().any(|e| arcs.contains(e)));
+    at_vertex.retain(|v, es| junctions.contains(v) || !es.iter().any(|e| arcs.contains(e)));
     let mut stripes: Vec<Stripe> = Vec::with_capacity(edges.len());
     for &e in edges {
         meter.tick()?;
@@ -2355,13 +2767,24 @@ fn build(
     }
     let index_of: BTreeMap<EdgeId, usize> =
         edges.iter().enumerate().map(|(i, &e)| (e, i)).collect();
-    // The miters and the corners, in vertex order.
+    let ring_of: BTreeMap<EdgeId, usize> =
+        rings.iter().enumerate().map(|(i, r)| (r.edge, i)).collect();
+    let run = |e: EdgeId| match (index_of.get(&e), ring_of.get(&e)) {
+        (Some(&i), _) => Ok(Run::Line(&stripes[i])),
+        (None, Some(&i)) => Ok(Run::Arc(&rings[i])),
+        (None, None) => Err(invariant("a blended edge's stripe or ring")),
+    };
+    // The miters, the junctions and the corners, in vertex order.
     let mut miters: Vec<Miter> = Vec::new();
     let mut miter_at: BTreeMap<VertexId, usize> = BTreeMap::new();
     let mut corners: Vec<Corner> = Vec::new();
     let mut corner_at: BTreeMap<VertexId, usize> = BTreeMap::new();
     for (&v, es) in &at_vertex {
         match es[..] {
+            [ea, eb] if junctions.contains(&v) => {
+                miter_at.insert(v, miters.len());
+                miters.push(junction(m, &view, run(ea)?, run(eb)?, v, tol, meter)?);
+            }
             [ea, eb] => {
                 miter_at.insert(v, miters.len());
                 miters.push(miter(
@@ -2634,12 +3057,25 @@ fn build(
             }
             RingEnds::Open(ends) => {
                 for (j, end) in ends.iter().enumerate() {
-                    for (c, contact) in r.contacts.iter().enumerate() {
-                        vertices[j][c] = rw.vertices.len();
-                        rw.vertices.push(VertexSpec::New {
-                            point: contact.points[j],
-                            tolerance: end.vertex_tolerance[c],
-                        });
+                    match end {
+                        RingEnd::Face(end) => {
+                            for (c, contact) in r.contacts.iter().enumerate() {
+                                vertices[j][c] = rw.vertices.len();
+                                rw.vertices.push(VertexSpec::New {
+                                    point: contact.points[j],
+                                    tolerance: end.vertex_tolerance[c],
+                                });
+                            }
+                        }
+                        RingEnd::Junction(vertex) => {
+                            let at = *miter_at
+                                .get(vertex)
+                                .ok_or(invariant("a junction at the ring's end"))?;
+                            let side = usize::from(miters[at].edges[0] != r.edge);
+                            let shared = miters[at].shared[side];
+                            vertices[j][shared] = miter_made[at].vertices[0];
+                            vertices[j][1 - shared] = miter_made[at].vertices[1];
+                        }
                     }
                 }
             }
@@ -2686,6 +3122,13 @@ fn build(
             }
             RingEnds::Open(ends) => {
                 for (j, end) in ends.iter().enumerate() {
+                    let end = match end {
+                        RingEnd::Face(end) => end,
+                        RingEnd::Junction(vertex) => {
+                            arcs[j] = miter_made[miter_at[vertex]].edge;
+                            continue;
+                        }
+                    };
                     arcs[j] = rw.edges.len();
                     rw.edges.push((
                         EdgeSpec::New {
@@ -2914,19 +3357,31 @@ fn build(
                 Orientation::Reversed
             }
         };
+        // Each end's edge, its pcurve, and whether it runs up from the
+        // lower contact: a seam's and a face end's do, a junction's when
+        // its `q` is on the lower contact.
         let (far, near) = match &r.ends {
             RingEnds::Seam(seam) => (
-                (EdgeKey::New(made.arcs[0]), seam.on_blend[1].clone()),
-                (EdgeKey::New(made.arcs[0]), seam.on_blend[0].clone()),
+                (made.arcs[0], seam.on_blend[1].clone(), true),
+                (made.arcs[0], seam.on_blend[0].clone(), true),
             ),
             RingEnds::Open(ends) => {
                 // The edge's end is at the far `u` when the contacts run
                 // with `u`, its start otherwise.
                 let (hi, lo) = if lower.along_u { (1, 0) } else { (0, 1) };
-                (
-                    (EdgeKey::New(made.arcs[hi]), ends[hi].on_blend.clone()),
-                    (EdgeKey::New(made.arcs[lo]), ends[lo].on_blend.clone()),
-                )
+                let end = |j: usize| match &ends[j] {
+                    RingEnd::Face(end) => (made.arcs[j], end.on_blend.clone(), true),
+                    RingEnd::Junction(vertex) => {
+                        let junction = &miters[miter_at[vertex]];
+                        let side = usize::from(junction.edges[0] != r.edge);
+                        (
+                            made.arcs[j],
+                            junction.on_blend[side].clone(),
+                            junction.shared[side] == 0,
+                        )
+                    }
+                };
+                (end(hi), end(lo))
             }
         };
         let loop_uses = vec![
@@ -2936,8 +3391,8 @@ fn build(
                 pcurve: m.add_curve2(lower.on_blend.clone()),
             },
             StoredUse {
-                edge: far.0,
-                orientation: Orientation::Forward,
+                edge: EdgeKey::New(far.0),
+                orientation: along(far.2),
                 pcurve: m.add_curve2(far.1),
             },
             StoredUse {
@@ -2946,8 +3401,8 @@ fn build(
                 pcurve: m.add_curve2(upper.on_blend.clone()),
             },
             StoredUse {
-                edge: near.0,
-                orientation: Orientation::Reversed,
+                edge: EdgeKey::New(near.0),
+                orientation: along(!near.2),
                 pcurve: m.add_curve2(near.1),
             },
         ];
@@ -3047,7 +3502,15 @@ fn build(
 /// is shortened to the contact on the cylinder. An open arc of such a
 /// circle blends to the same torus over the arc's own range, each end
 /// trimmed by the face across, a plane through the cylinder's axis, on
-/// the tube circle at the vertex's angle (ADR-0035). Convex or
+/// the tube circle at the vertex's angle (ADR-0035). The selection
+/// follows chains: at a tangent vertex — three edges, the third's two
+/// faces tangent there, the next edge sharing one face with this one,
+/// of its sense and running on — the blend runs on into the next edge,
+/// and on until a vertex that is not one, each edge with its own blend
+/// face; two blends meet there on the ball's great circle square to the
+/// edges' direction, an exact line in (u, v) on each, from where their
+/// contacts on the shared face meet to where the other two meet on the
+/// third edge, which is shortened to it. Convex or
 /// concave is read from the dihedral. Every surface is exact, every
 /// untouched entity keeps its id, and the result's ids are the same for
 /// any order of the same edges (the blends are built in the body's
@@ -3067,7 +3530,11 @@ fn build(
 /// the cylinder's seam `Modified` and the edge's vertex `Deleted`; an open
 /// arc's torus face, its two contacts, its two end sections and their four
 /// vertices are `Generated` from it, its faces across and corner edges
-/// `Modified`, the arc and its two vertices `Deleted`.
+/// `Modified`, the arc and its two vertices `Deleted`. An edge the chain
+/// reached is recorded as a named one is; the great circle where two
+/// blends of a chain meet and its two vertices are `Generated` from both
+/// edges, as a miter's are, the third edge `Modified` and the vertex
+/// `Deleted`.
 /// `arris_topo::provenance::audit` holds on every result
 /// (`docs/DATA-MODEL.md` §Provenance).
 ///
@@ -3076,8 +3543,9 @@ fn build(
 /// [`Reason::NoEdges`] for an empty list, [`Reason::RepeatedEdge`] for
 /// an edge listed twice, [`Reason::EdgeNotInBody`] for one that is not
 /// the body's, [`Reason::TangentChain`] where the edge's faces meet at a
-/// tangent dihedral or an end's corner edge has tangent faces at the
-/// vertex — a blend's contact, where a second blend meets a first —
+/// tangent dihedral or an end's corner edge has tangent faces at a vertex
+/// the chain does not run on through — the next edge turning back,
+/// itself a tangent dihedral, or of the other sense —
 /// [`Reason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges, a miter
 /// whose two blends have unequal dihedrals or are not both convex or
@@ -3088,12 +3556,15 @@ fn build(
 /// [`Reason::BlendTooLarge`] where a contact line or an end arc leaves
 /// its face through an edge that is not the corner's own or a corner
 /// edge is shorter than the trim, or a closed edge's torus would not be a
-/// ring torus or its seam is shorter than the trim; a closed edge whose
-/// vertex carries more than the cylinder's seam, or an open arc that meets
-/// another blended edge at a vertex, is [`Reason::VertexBlend`];
+/// ring torus or its seam is shorter than the trim, or the third edge at
+/// a chain's junction is shorter than the cut; a closed edge whose vertex
+/// carries more than the cylinder's seam, or an open arc that meets
+/// another blended edge at a vertex that is no tangent vertex, is
+/// [`Reason::VertexBlend`];
 /// [`OpError::Unsupported`] naming the two faces for a pair outside the
 /// table (every pair but two planes and a plane and a cylinder along a
-/// ruling or a circle, today) and naming the face
+/// ruling or a circle, today), an edge the chain reached included, and
+/// naming the face
 /// across an end that is not a plane, or, at an open arc's end, that is
 /// not a plane through the cylinder's axis;
 /// [`OpError::NotFound`] for an edge id that does not resolve.

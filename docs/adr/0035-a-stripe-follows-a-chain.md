@@ -205,3 +205,30 @@ with one face: 14, 21, 9, Open CASCADE's counts.
   traced for the boolean (ADR-0019) and could be borrowed, but the end
   then needs a fitted 3D curve, which ADR-0007 rules out; it stays a
   refusal until a census asks for it.
+
+## Amendment (2026-10-02, plan `c6-blend-network` step 4)
+
+- **A tangent vertex also joins two edges of one sense: both convex or
+  both concave.** §3 called a convex run meeting a concave one at a
+  junction unreachable. It is not: NIST FTC-06 has a plate's bottom edge,
+  rounded where the outline turns (convex), running tangentially into the
+  rim of a boss hanging below the plate (concave). The wall above and the
+  boss's wall below are tangent along the vertical edge between them, so
+  §1 as written made the vertex a tangent vertex. The ball cannot cross
+  there: the outline inflects, and the two contacts on the plate's bottom
+  lie on opposite sides of it. Open CASCADE's walk (`PerformElement`)
+  checks face tangency and turn-back only, so it does not settle the case.
+  §1's test now also requires one sense. Such a vertex stops the walk, and
+  the end there is §6's `TangentChain`, naming the edge, the tangent
+  corner edge and the vertex. With that condition §3's consistency check
+  stays an internal fault that cannot be reached.
+- **An open arc reads its ends' corners before its contacts**, as a line's
+  stripe does, so an end at a tangent corner edge is `TangentChain` rather
+  than the `BlendTooLarge` of a contact that runs past it.
+- **The horn torus stays refused.** The cap-edge chain at the step-1
+  radii (first fillet 0.2, second 0.1) puts a torus of major radius equal
+  to minor on the first blend's end arc. Open CASCADE builds it, and the
+  ring refuses any torus that is not a ring torus (§4, ADR-0007) as
+  `BlendTooLarge`. The fixture that builds is held at a first radius of
+  0.3. The horn torus is `regression/tangent-chain-horn-torus` and a
+  backlog line.

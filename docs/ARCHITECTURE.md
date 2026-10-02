@@ -692,7 +692,8 @@ corner's radial line on the plane and ruling on the cylinder are
 shortened to the contacts, and the face across takes the section between
 them. Any other face across meets a torus in a quartic and is
 `Unsupported` naming the blend's surface and that face; an arc that meets
-another blended edge at a vertex is `VertexBlend`. A torus that would not
+another blended edge anywhere but at a junction (below) is `VertexBlend`.
+A torus that would not
 be a ring torus, a contact that reaches the axis, a contact or an end
 section that leaves its face, or a seam or a corner edge shorter than the
 trim is `BlendTooLarge`. `ops::chamfer(m, body, edges, distance)` is the same
@@ -740,8 +741,25 @@ meet at the pole, that point, crossed by a degenerate edge as a
 revolve's sphere closes at its axis. A fillet corner with no face square
 to the other two would put a side on a tilted great circle with a fitted
 pcurve and is the blend-network cycle's. Three chamfers meet in the triangle of the three
-points, each side a chord in one chamfer's plane, at any such corner. The edges are blended in the
-body's iteration order, whatever order they are listed in, so the result
+points, each side a chord in one chamfer's plane, at any such corner.
+The selection follows chains (ADR-0035): at a *tangent vertex* — three
+edges, the two faces of the third tangent there, the next edge open, not
+itself a tangent dihedral, sharing exactly one face with the blended one,
+convex where it is convex and concave where it is concave, and running on
+within a right angle — the blend runs on into the next edge with the same
+kind and size, and on from there until a vertex that is not one, so naming
+one edge of a chain or all of them gives one result with the same ids.
+Each edge keeps its own stripe and its own blend face. At a tangent vertex
+the two stripes are one ball's, and they meet in a *junction*, recorded as
+a miter is: the ball's great circle square to the edges' common direction
+for fillets, the chord of the same two points for chamfers, from the point
+`q` where the two contacts on the shared face meet to the point `p` where
+the other two meet on the third edge — a line at constant `v` on a
+stripe's cylinder and at constant `u` on a ring's torus or cone, every
+pcurve exact; the third edge is shortened to `p`, the vertex goes, and no
+face across takes an arc. A chain that reaches a pair outside the table is
+refused naming that pair and the edge the walk reached. The edges are
+blended in the body's iteration order, whatever order they are listed in, so the result
 and its ids are the same for any order of one set; disjoint blends share
 nothing but the faces across their ends, where a corner edge between two
 of them is cut at both its ends in one edge. A contact line or an end arc that
@@ -753,9 +771,10 @@ blend removes the corner and outside it when a concave blend adds the
 corner to that face — is
 `Reason::BlendTooLarge` naming the edge and the face or edge the blend
 runs out of; a tangent dihedral, or an end at a vertex where a corner
-edge's two faces are tangent — the contact every blend face meets its
-neighbours along, so a second blend that reaches a first one's end — is
-`Reason::TangentChain`; a vertex of
+edge's two faces are tangent but which is not a tangent vertex — the next
+edge turning back, itself a tangent dihedral, or convex where the blended
+edge is concave or the other way round — is `Reason::TangentChain`; a
+vertex of
 other than three edges, a miter of two fillets with unequal dihedrals,
 of two chamfers whose edges make unequal angles with its third edge, or
 of blends not both convex or both concave, or a corner of three blended
