@@ -630,10 +630,16 @@ typed error, and the model it reads into is unchanged on an error.
 **The first-party binding.** Code-first and agent-driven modelling is one
 of the consumers `SEED.md` §1 names, and a binding in this repository is
 how that consumer exists before an application is written on top of it.
-It waited for C3 to close, since a second crate under every C3 API break
-would have paid for the break twice; it can start now. Its layer position, the `#![forbid(unsafe_code)]`
-exception a binding needs, `publish`, the wasm job and PyPI beside
-crates.io are its own idea and its own ADR.
+**Landed (2026-10-02):** `crates/arris-py`, a thin 1:1 layer above the
+facade (ADR-0034), published to PyPI as `arris` in lockstep from the same
+`v*` tag. It binds the operations with cancel, budget and Ctrl-C, profiles,
+measures, the checker's report, adjacency walks, tessellation as mesh
+bytes, and STEP, body bytes, native, STL and OBJ; every error is a typed
+exception and a handle carries its model. What it waits on: the human's
+`pypi` environment and pending-publisher registration, the first upload,
+and the platforms of the wheel beyond Linux x86_64. Its own backlog lines
+(corner blocks, enumerating a model's bodies, a record naming foreign
+inputs) are in `docs/BACKLOG.md`.
 
 ---
 

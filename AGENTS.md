@@ -40,8 +40,11 @@ parts read or refused by kind; the histogram's top line is the blend network
 (17 parts), then healing (14). ADR-0023 to 0026.
 **C5 done (2026-10-02): the consumer's API.** Roles, body bytes,
 cancellation, mirror, the STEP product structure. ADR-0028 to 0033.
+**Beside the cycles (2026-10-02): the Python binding**, `crates/arris-py`,
+PyPI `arris` in lockstep from the `v*` tag; its first upload waits on the
+human. ADR-0034.
 **Next:** C6, the blend network (opened 2026-10-02, scope for the human to
-confirm); the first-party binding beside it (ADR-0020 and its amendment).
+confirm).
 
 ## Rules that are not derivable from the code
 

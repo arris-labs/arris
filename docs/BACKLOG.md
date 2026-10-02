@@ -8,6 +8,11 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 [Findings](#findings) below, in the fixed shape, with the number that
 reproduces it.
 
+- The Python binding's mesh does not carry the kernel's per-corner normals and (u, v) block (`MeshRequest::with_corners`, ADR-0012), which a renderer wants; bind it, and `vt`/`vn` in the OBJ writer with it (python-binding step 9)
+- `topo::Model` has no public iteration of its bodies, so Python cannot list the bodies of a model read by `Model.from_native`; add the kernel API and `Model.bodies()` (python-binding step 10)
+- `Imported.translated()` raises when the written record names entities outside the body (a boolean's inputs): import those entities too, or take an `IdMap` for them, so a cut's whole record crosses models (python-binding step 10)
+- Python wheels beyond Linux x86_64 (manylinux aarch64, macOS, Windows) in `release.yml`'s `pypi-build`, and a rule for upgrading pyo3 that re-runs the `forbid(unsafe_code)` check (python-binding steps 1 and 12)
+- The STEP product tree as Python values is read-only: `step.write_products` has no binding, so an assembly cannot be written from Python (python-binding step 10)
 - A typed lineage value (`Provenance::lineage(output)`, a tree down to `Role`s), if a second consumer asks for one rather than walking the record itself (ADR-0009 alternative)
 - Two tolerance fractions are named constants in `arris-geom` (`SECTION_FIT_FRACTION`, `PCURVE_SINGULAR_BAND`), where `.agents/rules/kernel.md` and DATA-MODEL §Tolerances ask for `arris-math`: move them, or let the rule name the crate whose algorithm owns the constant (C4 close drift review)
 - `region2` as public API over `Curve2`, with exact predicates, so a consumer's sketcher shades exactly the regions `extrude` accepts; weigh against the backlog's narrowing of `pub` internals (plugin-cad-consumer-asks A5)

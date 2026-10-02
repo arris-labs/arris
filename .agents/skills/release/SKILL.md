@@ -71,7 +71,10 @@ The version scheme, the `-dev` convention and who does what are
    `[workspace.dependencies]` with it — eight places, one edit, and a
    `cargo check` that fails if one was missed. `arris-debug` has no
    version to bump: it is path-only and never published.
-5. **Prove it publishes.** `cargo package --workspace` on the clean tree:
+5. **Prove it publishes.** `cargo package --workspace --exclude arris-py` on the clean tree
+   (`arris-py` is `publish = false` with a path-only dependency on the
+   facade, which `cargo package` refuses; `cargo publish --workspace`
+   skips it, and the wheel below is its proof):
    every crate packages and its verifying build passes. A crate that fails
    here fails in the workflow after some of the others are already on
    crates.io, where a version can be yanked but never replaced. The wheel

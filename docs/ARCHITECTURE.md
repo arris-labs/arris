@@ -88,6 +88,15 @@ current occupant. Geometry is inserted by value (`add_curve`,
 `SurfaceId` because the operation that split them handed both the same
 id, not because the arena matched two equal surfaces.
 
+**An id names no model.** It is a slot and a generation and nothing else, so
+a Rust caller who gives one model another's id gets whatever entity sits in
+that slot, or `NotFound`. The Python binding closes that for its callers
+without a kernel change: its `Model` owns the arena behind a lock and a
+serial, and every handle it returns carries that serial, so a handle from
+another model raises `ForeignHandleError` before the id reaches the kernel
+and a freed one surfaces the kernel's `NotFound` as `StaleHandleError`
+(`crates/arris-py`, ADR-0034 §6).
+
 **Entities are immutable.** An operation never edits an entity in place; it
 appends new ones and returns a handle to a new body that references the
 untouched old entities by id. Two bodies that share a face share its id,
@@ -1233,7 +1242,8 @@ B-Rep).
   budget's result is exact; where a poll lands under `parallel` is the
   schedule's, and only its rollback is promised.
 - `wasm32-unknown-unknown` builds every crate with default features; CI
-  checks it. No kernel crate touches the filesystem, the clock, threads or
+  checks it. `arris-py` is empty there (pyo3 does not build for it) and
+  its dependency is gated, so the job is unchanged. No kernel crate touches the filesystem, the clock, threads or
   randomness; `arris-debug` is the only crate that writes files, and the
   oracle is not a crate at all.
 - `f64` everywhere inside, the tessellation boundary included (ADR-0011):
@@ -1668,6 +1678,22 @@ B-Rep).
   derivatives (`central_differences_curve`, `central_differences_surface`)
   — now imported once by `ops`, `geom`, `mesh` and `io`'s tests instead of held
   per file).
+
+- **The Python wheel** (`crates/arris-py`, PyPI `arris`, ADR-0034): the
+  binding is built by `maturin` into one `abi3` wheel (Python 3.10 and up)
+  and an sdist, with the version read from the workspace (`0.5.0-dev` is
+  `0.5.0.dev0`). It ships hand-written stubs (`_arris.pyi`, `__init__.pyi`,
+  `_numpy.pyi`, `py.typed`) and every public class, function and `Model`
+  method carries a runnable example in its doc comment. CI's `python` job
+  builds it with `maturin develop`, runs the pytest — the oracle's numbers
+  for corpus fixtures scripted in Python, every docstring example, and
+  `mypy.stubtest` against the stubs, so a stub that drifts fails — at the
+  oldest and newest supported Python, and builds the release wheel and sdist
+  for `twine check`. The hook only compiles the crate; the Python suite
+  never runs there. The wheel carries no rasteriser and no numpy
+  dependency: a `Mesh` crosses as little-endian `f64` and `u32` bytes, with
+  `to_numpy()` importing numpy only when called. `release.yml` publishes it
+  from the same `v*` tag, behind its own `pypi` environment.
 
 ## How a consumer's kernel facade maps on
 

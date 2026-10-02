@@ -8,6 +8,22 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A Python package, `arris`, over the same kernel: `pip install arris` and,
+  in a script, build a body from primitives, sketches (lines, arcs and
+  elliptic arcs, with holes) and their extrusions and revolutions; cut, fuse
+  and intersect, fillet and chamfer, transform and mirror; read volume,
+  area, centroid and inertia and the checker's report; walk a body's
+  faces, edges and vertices; tessellate to little-endian mesh bytes (with
+  `to_numpy()` when numpy is installed); and write and read STEP (every
+  solid of a file its own result or a named refusal, with the product
+  structure), STL, OBJ, body bytes and the native format. Every operation
+  returns the body and its provenance, takes `cancel=` and `budget=` and
+  stops on Ctrl-C leaving the model as it was, and every error is a typed
+  exception that names the entities it concerns. A handle carries its model:
+  one from another model raises `ForeignHandleError`. Not in the package: a
+  PNG renderer, a way to write an assembly, and the kernel's per-corner
+  normals.
+
 ## 0.4.0 — 2026-10-02
 
 - `step::read` returns the file's product structure beside the flattened
