@@ -1498,9 +1498,24 @@ mod tests {
                 edge_midpoint(&m, h.id).is_some_and(|p| (p - P3::new(1.0, 2.0, 2.5)).norm() < 1e-9)
             })
             .expect("the rise at (1, 2, 2.5)");
+        // The fillet builds (ADR-0043); the census names the vertex it
+        // would have refused, the rise's foot on the top edge.
         let mut scratch = m.clone();
-        let Err(Refused::Op(e)) = blend(&mut scratch, fused, &[rise], 0.1) else {
-            panic!("a fillet into a five-edge vertex is refused");
+        assert!(blend(&mut scratch, fused, &[rise], 0.1).is_ok());
+        use arris_io::arris_check::arris_topo::{Orientation, Shape};
+        let foot = [
+            m.edge(rise.id).unwrap().start(),
+            m.edge(rise.id).unwrap().end(),
+        ]
+        .into_iter()
+        .find(|&v| m.vertex(v).unwrap().point().z < 2.1)
+        .expect("the rise's foot");
+        let e = OpError::Degenerate {
+            entities: vec![
+                Shape::new(rise.id, Orientation::Forward),
+                Shape::new(foot, Orientation::Forward),
+            ],
+            reason: Reason::VertexBlend,
         };
         assert_eq!(
             vertex_blend_cause(&m, rise.id, &e).unwrap(),
@@ -1872,7 +1887,8 @@ mod tests {
     /// The hexagonal prism's chamfered top, the foot of a facet blended: at
     /// each end the faces across are two, separated by a sharp edge, a fan
     /// that builds (ADR-0043) and is named as one where a refusal names its
-    /// vertex; `blend/five-edge-vertex`'s are one face met twice, refused.
+    /// vertex; `blend/five-edge-vertex`'s are one face met twice, which builds
+    /// too.
     #[test]
     fn a_fan_is_named_apart_from_the_face_across_met_twice() {
         for dir in [
@@ -1892,7 +1908,7 @@ mod tests {
             vertex_cause_of("blend/five-edge-vertex", P3::new(1.0, 2.0, 2.5), 0.1),
             (
                 "a vertex of 5 edges, the face across met twice; edge plane × plane".to_string(),
-                false
+                true
             )
         );
     }

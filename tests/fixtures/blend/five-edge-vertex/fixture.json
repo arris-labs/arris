@@ -1,5 +1,5 @@
 {
-  "description": "a plane–plane edge ending at a vertex of five edges: a unit box turned −135° about the vertical and set on the 2-cube's top with its bottom corner at (1, 2, 2) on the top edge y = 2, z = 2, the rest of its bottom square inside the top face; the fuse splits that top edge at the corner, so the upper box's rise there, the edge filleted, ends at a vertex of the rise, the upper box's two bottom edges and the top edge's two halves — Reason::VertexBlend (the blend-network cycle's), which Open CASCADE builds (a fillet of either top-edge half it reports not done)",
+  "description": "a plane–plane edge ending at a vertex of five edges: a unit box turned −135° about the vertical and set on the 2-cube's top with its bottom corner at (1, 2, 2) on the top edge y = 2, z = 2, the rest of its bottom square inside the top face; the fuse splits that top edge at the corner, so the upper box's rise there, the edge filleted, ends at a vertex of the rise, the upper box's two bottom edges and the top edge's two halves. Both bottom edges lead to the one face, the lower box's top, met twice at the vertex: the end is its single arc, the vertex stays with the two halves, and the top face gains a loop, as Open CASCADE builds it at 19 vertices, 28 edges, 12 faces and 13 loops (a fillet of either top-edge half it reports not done) (ADR-0043)",
   "params": {"r": 0.1},
   "steps": [
     {"name": "lower", "op": "box", "min": [0, 0, 0], "max": [2, 2, 2]},
@@ -15,7 +15,6 @@
     {"label": "far_vertex", "point": [0, 0, 0], "expect": "on"}
   ],
   "analytic": {
-    "expect_error": "vertex-blend",
     "volume": "9 - (1 - pi / 4) * r^2 * 1",
     "genus": 0
   }

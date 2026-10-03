@@ -9,15 +9,15 @@
 use std::collections::BTreeSet;
 
 use arris_debug::fixtures::Class;
-use arris_debug::unmetered::cut;
 use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, revolve};
+use arris_debug::unmetered::{cut, fuse, transform};
 use arris_debug::{corpus, dump_text, fixtures};
 use arris_ops::arris_check::arris_topo::arris_geom::{
     Curve, Profile, ProfileLoop, ProfileSegment, Surface,
 };
 
 use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Unit, UnitQuaternion};
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Point3, Vec3};
+use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec3};
 use arris_ops::arris_check::arris_topo::provenance::{Origin, Relation, Role, SweepPart, audit};
 use arris_ops::arris_check::arris_topo::{
     Body, Edge, EntityId, Model, Orientation, Provenance, Shape,
@@ -1476,4 +1476,55 @@ fn a_fan_crossing_past_its_extra_edge_is_too_large() {
         assert_eq!(*reason, Reason::BlendTooLarge, "{err}");
         assert_eq!(entities[..], [forward(vertical), forward(miter)], "{err}");
     }
+}
+
+/// A box on another's top edge (ADR-0043 §4): the unit box turned −135°
+/// about the vertical stands on the 2-cube's top with its bottom corner on
+/// the edge y = 2, which the fuse splits there. The rise at that corner
+/// ends at a vertex of five edges, and both of its bottom edges lead to the
+/// cube's top, met twice. The end is that face's one arc, the vertex stays
+/// with the two halves of the top edge, and the top gains a loop; a radius
+/// past the bottom edges is `BlendTooLarge`.
+#[test]
+fn the_face_across_met_twice_keeps_the_vertex() {
+    let mut m = Model::default();
+    let lower = cube(&mut m, 2.0);
+    let unit = cube(&mut m, 1.0);
+    let q = UnitQuaternion::from_axis_angle(&Vec3::z_axis(), (-135f64).to_radians());
+    let motion = Isometry::new(q, Vec3::new(1.0, 2.0, 2.0));
+    let (upper, _) = transform(&mut m, unit, &motion).unwrap();
+    let (body, _) = fuse(&mut m, lower, upper).unwrap();
+    let rise = edge_at(&m, body, Point3::new(1.0, 2.0, 2.5));
+    let corner = m.edge(rise.id).unwrap().start();
+    let corner = if m.vertex(corner).unwrap().point().z < 2.1 {
+        corner
+    } else {
+        m.edge(rise.id).unwrap().end()
+    };
+
+    let r = 0.1;
+    let (blended, provenance) = fillet(&mut m, body, &[rise], r).unwrap();
+    let report = check(&m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    let line = report.euler().unwrap();
+    assert_eq!(
+        (line.vertices, line.edges, line.faces, line.loops),
+        (19, 28, 12, 13)
+    );
+    audit(&m, &[body], blended, &provenance).unwrap();
+    // The vertex is not consumed: it is still the body's, with the halves.
+    let kept = m
+        .vertices(blended)
+        .unwrap()
+        .into_iter()
+        .any(|v| v.id == corner);
+    assert!(kept);
+    let forward = |e: Edge| Shape::new(e.id, Orientation::Forward);
+    assert!(provenance.deleted().any(|s| s == forward(rise)));
+    let volume = mass_properties(&m, blended).unwrap().volume;
+    let exact = 9.0 - (1.0 - core::f64::consts::FRAC_PI_4) * r * r;
+    assert!((volume - exact).abs() < 1e-9, "{volume} {exact}");
+
+    let err = fillet(&mut m, body, &[rise], 1.2).unwrap_err();
+    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
 }

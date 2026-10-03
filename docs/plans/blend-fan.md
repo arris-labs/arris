@@ -123,12 +123,19 @@ bound has to be established here.
     Each piece's section is `section_between`, the cylinder and cone
     branch of a lone end factored out, so a curved piece (step 5) is
     already traced.
-- [ ] Step 4 **[2]** — **The face across met twice.**
+- [x] Step 4 **[2]** — **The face across met twice.**
   - The vertex stays with the edges the end does not reach, and the face
     across takes the end arc into a second loop.
   - `blend/five-edge-vertex` goes from `expect_error` to Open CASCADE's
     19 / 28 / 12, loops 13. This is a `fixtures:` commit: the fixture's
     expectation changes with an intentional geometry change.
+  - Seen: the fixture matches Open CASCADE at 19 / 28 / 12 / 13 with every
+    stage green. `twice_at` walks the star (corner edge, extra, third face,
+    extra, the face across again, the other corner edge); the extras may be
+    of either sense, as the box's top edges are against its concave
+    bottom ones. The surviving vertex is kept, so provenance records
+    nothing for it (ADR-0043 §5 says so now). The arc crossing a staying
+    edge within both ranges is `BlendTooLarge` naming the edge.
 - [ ] Step 5 **[2]** — **A curved piece across.** A fan with one piece a
   cylinder, the face `across_of` admits as a post, so the piece is
   traced (ADR-0037). It is shrunk as a fixture with its oracle, so the

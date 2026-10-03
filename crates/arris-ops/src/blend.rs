@@ -20,8 +20,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::arris_topo::arris_geom::region2::Side;
 use arris_check::arris_topo::arris_geom::{
-    Curve, Curve2, CurveSurfaceIntersection, GeomKind, MeetKind, Surface, SurfaceIntersection,
-    SurfaceKind, intersect_curve_surface, intersect_surfaces, pcurve_on,
+    Curve, Curve2, CurveIntersection, CurveSurfaceIntersection, GeomKind, MeetKind, Surface,
+    SurfaceIntersection, SurfaceKind, intersect_curve_surface, intersect_curves,
+    intersect_surfaces, pcurve_on,
 };
 use arris_check::arris_topo::arris_math::{
     Aabb, Control, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3, Vec2,
@@ -177,6 +178,9 @@ struct End {
     crossings: Vec<Crossing>,
     /// The tolerance of each trim vertex.
     vertex_tolerance: [f64; 2],
+    /// The edges that stay at the vertex, which survives with them, where
+    /// the face across is met twice (ADR-0043 §4); none otherwise.
+    stays: Vec<EdgeId>,
 }
 
 /// A contact of the blend with one of the edge's faces: the line at
@@ -1071,6 +1075,9 @@ struct CornerAt {
     /// A fan's extra edges, `extras[i]` between `pieces[i]` and
     /// `pieces[i + 1]`; none for one face across.
     extras: Vec<EdgeId>,
+    /// The edges that stay at the vertex where the one face across is met
+    /// twice, the end not reaching them (ADR-0043 §4); none otherwise.
+    stays: Vec<EdgeId>,
     /// The index of the corner edge that is a cusp's spine where the end is
     /// one (ADR-0042).
     spine: Option<usize>,
@@ -1084,7 +1091,7 @@ type LoneCorner = ([EdgeId; 2], FaceId, Option<usize>);
 impl CornerAt {
     fn lone(self, edge: EdgeId, vertex: VertexId) -> Result<LoneCorner, OpError> {
         match self.pieces[..] {
-            [face] => Ok((self.edges, face, self.spine)),
+            [face] if self.stays.is_empty() => Ok((self.edges, face, self.spine)),
             _ => Err(degenerate(
                 vec![forward(edge), forward(vertex)],
                 Reason::VertexBlend,
@@ -1199,6 +1206,69 @@ fn fan_at(
     Ok(None)
 }
 
+/// The face across met twice at `vertex` (ADR-0043 §1, §4): both corner
+/// edges lead to one face `A` other than the blended edge's, and the two
+/// extra edges at the vertex, each sharp with a curve between two faces,
+/// are `A`'s on one side of it and a third face's on the other. Walked
+/// through the star from `corners[0]` in `A`: an extra edge, the third
+/// face across it, the other extra edge, `A` again, `corners[1]`. `None` at
+/// any other star.
+#[allow(clippy::too_many_arguments)]
+fn twice_at(
+    m: &Model,
+    view: &View,
+    faces: [FaceId; 2],
+    corners: [EdgeId; 2],
+    extras_at: &BTreeSet<EdgeId>,
+    vertex: VertexId,
+    size: f64,
+    tol: Tolerance,
+) -> Result<Option<FaceId>, OpError> {
+    let two_faces = |x: EdgeId| -> Option<[FaceId; 2]> {
+        match view.uses.get(&x).map(Vec::as_slice) {
+            Some(&[a, b]) if a.face != b.face => Some([a.face, b.face]),
+            _ => None,
+        }
+    };
+    let other =
+        |x: EdgeId, own: FaceId| two_faces(x).and_then(|f| f.into_iter().find(|&g| g != own));
+    let (Some(across), Some(last)) = (other(corners[0], faces[0]), other(corners[1], faces[1]))
+    else {
+        return Ok(None);
+    };
+    if across != last || faces.contains(&across) || extras_at.len() != 2 {
+        return Ok(None);
+    }
+    for &x in corners.iter().chain(extras_at) {
+        let Some(t) = parameter_at(m, x, vertex)? else {
+            return Ok(None);
+        };
+        if two_faces(x).is_none() || tangent_at(m, view, x, t, size, tol)? != Some(false) {
+            return Ok(None);
+        }
+    }
+    let Some(first) = beside_at(m, across, corners[0], vertex)? else {
+        return Ok(None);
+    };
+    let Some(third) = other(first, across) else {
+        return Ok(None);
+    };
+    if !extras_at.contains(&first) || faces.contains(&third) {
+        return Ok(None);
+    }
+    let Some(second) = beside_at(m, third, first, vertex)? else {
+        return Ok(None);
+    };
+    if second == first
+        || !extras_at.contains(&second)
+        || other(second, third) != Some(across)
+        || beside_at(m, across, second, vertex)? != Some(corners[1])
+    {
+        return Ok(None);
+    }
+    Ok(Some(across))
+}
+
 /// The corner at `vertex`, the end of the blended `edge` at its start
 /// (`at_lo`) or its end, `uses` the edge's uses by its two faces: the
 /// corner edge each of those faces' loops runs on to there, in the same
@@ -1267,11 +1337,22 @@ fn corner_of(
             convex,
             tol,
         )?;
-        let (pieces, extras) = fan.ok_or_else(vertex_blend)?;
+        if let Some((pieces, extras)) = fan {
+            return Ok(CornerAt {
+                edges: corner_edges,
+                pieces,
+                extras,
+                stays: Vec::new(),
+                spine: None,
+            });
+        }
+        let across = twice_at(m, view, faces, corner_edges, &extras_at, vertex, size, tol)?
+            .ok_or_else(vertex_blend)?;
         return Ok(CornerAt {
             edges: corner_edges,
-            pieces,
-            extras,
+            pieces: vec![across],
+            extras: Vec::new(),
+            stays: extras_at.into_iter().collect(),
             spine: None,
         });
     }
@@ -1324,6 +1405,7 @@ fn corner_of(
         edges: corner_edges,
         pieces: vec![across],
         extras: Vec::new(),
+        stays: Vec::new(),
         spine,
     })
 }
@@ -1571,10 +1653,11 @@ fn face_end(
     let e = forward(edge);
     let vertex = if at_lo { s.start } else { s.end };
     let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
-    let corner = corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
+    let mut corner = corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
     if corner.pieces.len() > 1 {
         return fan_end(m, view, s, vertex, &corner, tol, samples, meter);
     }
+    let stays = std::mem::take(&mut corner.stays);
     let (corner_edges, face3, spine) = corner.lone(edge, vertex)?;
     // At a cusp (ADR-0042): the spine, which the contact on the wall
     // tangent to the face across meets at `Q`, a line where a line edge's
@@ -1791,6 +1874,28 @@ fn face_end(
             placed_uv(on_face, arc_end(arc_range, lo_first, c), at)
         }
     };
+    // The edges that stay at the vertex are not reached: an arc that
+    // crosses one within its range has run past the face (ADR-0043 §4).
+    for &x in &stays {
+        let (curve_id, range) = m
+            .edge(x)?
+            .curve()
+            .ok_or(invariant("a staying edge's curve"))?;
+        let curve = m.curve(curve_id)?;
+        let hits = match intersect_curves(&arc_curve, curve, arc_tol, meter).map_err(fault_of)? {
+            CurveIntersection::Points(hits) => hits,
+            CurveIntersection::Coincident => {
+                return Err(degenerate(vec![e, forward(x)], Reason::BlendTooLarge));
+            }
+        };
+        for hit in &hits {
+            if into_range(range, hit.tb, curve.period()).is_some()
+                && into_range(arc_range, hit.ta, arc_curve.period()).is_some()
+            {
+                return Err(degenerate(vec![e, forward(x)], Reason::BlendTooLarge));
+            }
+        }
+    }
     if !on_side_of_face(m, face3, &on_face, arc_range, corner.side, samples)? {
         return Err(degenerate(vec![e, forward(face3)], Reason::BlendTooLarge));
     }
@@ -1815,6 +1920,7 @@ fn face_end(
         }],
         crossings: Vec::new(),
         vertex_tolerance,
+        stays,
     })
 }
 
@@ -2118,6 +2224,7 @@ fn fan_end(
         pieces,
         crossings,
         vertex_tolerance,
+        stays: Vec::new(),
     })
 }
 
@@ -4307,6 +4414,10 @@ struct Insertion {
     lo_first: bool,
     /// The corner edge the contact at `u = 0` cuts.
     edge_at_lo: EdgeId,
+    /// Where the face across is met twice (ADR-0043 §4): the two corner
+    /// edges, whose stretch of the loop through the vertex becomes a loop
+    /// of its own, closed by the arc.
+    splits: Option<[EdgeId; 2]>,
 }
 
 /// What a face's loops are rewritten with: a blended edge replaced by
@@ -4753,6 +4864,8 @@ fn build(
                         pcurve,
                         lo_first: piece.arc.lo_first,
                         edge_at_lo,
+                        splits: (!face_end.stays.is_empty())
+                            .then_some(face_end.trims.map(|trim| trim.edge)),
                     },
                 );
             }
@@ -4892,6 +5005,7 @@ fn build(
                             pcurve,
                             lo_first: end.lo_first,
                             edge_at_lo: end.trims[0].edge,
+                            splits: None,
                         },
                     );
                 }
@@ -4968,6 +5082,8 @@ fn build(
         let mut loops: Vec<Vec<StoredUse>> = Vec::with_capacity(entity.loops().len());
         for l in entity.loops() {
             let mut uses: Vec<StoredUse> = Vec::with_capacity(l.coedges().len() + 1);
+            // Where each coedge's use sits in `uses`.
+            let mut at: Vec<usize> = Vec::with_capacity(l.coedges().len());
             for c in l.coedges() {
                 let id = c.edge();
                 let (edge, pcurve) = match edit.and_then(|e| e.replace.get(&id)) {
@@ -4977,6 +5093,7 @@ fn build(
                         (rederived.get(&(id, c.pcurve())).copied()).unwrap_or(c.pcurve()),
                     ),
                 };
+                at.push(uses.len());
                 uses.push(StoredUse {
                     edge,
                     orientation: c.orientation(),
@@ -4988,7 +5105,10 @@ fn build(
                 } else {
                     ce.start()
                 };
-                if let Some(ins) = edit.and_then(|e| e.insert.get(&junction)) {
+                if let Some(ins) = edit
+                    .and_then(|e| e.insert.get(&junction))
+                    .filter(|ins| ins.splits.is_none())
+                {
                     // The arc runs from the end of the corner edge just
                     // walked to the start of the next.
                     let arrived_at_lo = id == ins.edge_at_lo;
@@ -5004,7 +5124,62 @@ fn build(
                     });
                 }
             }
+            // The face across met twice: the stretch of the loop from the
+            // corner edge leaving the surviving vertex to the one arriving
+            // at it, closed by the arc, is a loop of its own; the rest
+            // keeps the vertex with the edges that stay (ADR-0043 §4).
+            let mut inner: Option<Vec<StoredUse>> = None;
+            for (&vertex, ins) in edit.iter().flat_map(|e| &e.insert) {
+                let Some(corners) = ins.splits else { continue };
+                let ends = |i: usize| -> Result<(VertexId, VertexId), OpError> {
+                    let c = l.coedges()[i];
+                    let ce = m.edge(c.edge())?;
+                    Ok(if c.orientation() == Orientation::Forward {
+                        (ce.start(), ce.end())
+                    } else {
+                        (ce.end(), ce.start())
+                    })
+                };
+                let (mut leaves, mut arrives) = (None, None);
+                for i in 0..l.coedges().len() {
+                    let (from, to) = ends(i)?;
+                    if !corners.contains(&l.coedges()[i].edge()) {
+                        continue;
+                    }
+                    if from == vertex {
+                        leaves = Some(i);
+                    }
+                    if to == vertex {
+                        arrives = Some(i);
+                    }
+                }
+                let (Some(leaves), Some(arrives)) = (leaves, arrives) else {
+                    continue;
+                };
+                let (first, last) = (at[leaves], at[arrives]);
+                let (mut stretch, rest): (Vec<StoredUse>, Vec<StoredUse>) = if first <= last {
+                    let stretch = uses[first..=last].to_vec();
+                    let rest = [&uses[..first], &uses[last + 1..]].concat();
+                    (stretch, rest)
+                } else {
+                    let stretch = [&uses[first..], &uses[..=last]].concat();
+                    (stretch, uses[last + 1..first].to_vec())
+                };
+                let arrived_at_lo = l.coedges()[arrives].edge() == ins.edge_at_lo;
+                stretch.push(StoredUse {
+                    edge: ins.arc,
+                    orientation: if ins.lo_first == arrived_at_lo {
+                        Orientation::Forward
+                    } else {
+                        Orientation::Reversed
+                    },
+                    pcurve: ins.pcurve,
+                });
+                uses = rest;
+                inner = Some(stretch);
+            }
             loops.push(uses);
+            loops.extend(inner);
         }
         rw.faces.insert(face, loops);
     }

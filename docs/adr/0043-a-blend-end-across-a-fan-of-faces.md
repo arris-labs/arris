@@ -103,8 +103,8 @@ more, as Open CASCADE's 13 loops over 12 faces say.
   point lies and shortened toward its far vertex. Each arc is `Generated`
   from `e`, and each `A_i` is `Modified` and gains its arc in its loop in
   place of the part of the loop that went round `v`.
-- A face met twice: `v` is `Modified`, with its edges, which are
-  unchanged. The trim points and the arc are `Generated` from `e`. `c1`
+- A face met twice: `v` is kept, with the edges that stay at it, which
+  are unchanged; it keeps its id, so the record names nothing for it. The trim points and the arc are `Generated` from `e`. `c1`
   and `c2` are `Modified`, and `A` is `Modified`.
 - Counts. A fan of `k` pieces at one end adds `k` vertices (two trim points
   and `k − 1` crossings, in place of `v`) and `k` edges (the arcs) to a
