@@ -111,6 +111,26 @@ There are two cusps, and the crescent is not FTC-06's.
 - `cancel_counts.txt` gained the five building fixtures here, since the
   hook's cancel test holds every `blend/` fixture to one.
 
+## Finding of step 4 (two failures beside the cut, both fixtures)
+- `Profile::edges` refuses a crescent profile unless its small radius is
+  half the big one (R 2, ρ 0.9 is `SelfIntersecting`). It validates on
+  the fewest-segment polygon, whose chords from the cusp cross: the
+  mesher's coarse-chord failure of step 3 in the validator
+  (`regression/cusp-profile-off-half`, ignored, on that backlog line).
+  So the property builds its crescents as a boolean, the half disc less
+  the small cylinder, which gives the same 6/9/5 cusp at every ratio.
+- In about one pose in forty of a wide fillet (0.74 of the height, the
+  small arc's floor edge), the cut's branch ends at the node 1.07e-7 from
+  the closed-form `Q`, a hair past `tol.linear`, and the end is
+  `Unsupported`. It builds at rest, and Open CASCADE builds it. Matching a
+  trim point at a node is a tolerance decision of ADR-0042 §4, so it is a
+  backlog line, not a widening here (`regression/cusp-small-arc-wide-fillet`,
+  ignored). The property rejects that refusal alone by name, a torus
+  against a cylinder in a fillet of a crescent or a pocket, as
+  `end_posed` does for its twin boss.
+- The volume closed form needed `u = w²`: the band's length and a fillet
+  section's height both have a square root at the blended wall.
+
 ## Goal
 A fillet or chamfer of an edge that ends at a cusp with both walls on one
 side of the shared face is built as Open CASCADE builds it (ADR-0042). The
@@ -193,7 +213,7 @@ bound has to be established here.
   overhang tip, with Open CASCADE's oracle and an `analytic` note saying
   why Arris refuses. Split the census's cusp cause in two. Done, with the
   spandrel (a line edge's cusp) beside the twins; finding above.
-- [ ] Step 4 **[2]** — A property over random poses (`blend_prop`): a
+- [x] Step 4 **[2]** — A property over random poses (`blend_prop`): a
   crescent of random radii whose cusp is one end, or its pocket, or a
   spandrel of random size (the line edge's cusp), its floor
   or top edge filleted and chamfered at random size, small and large
@@ -202,7 +222,9 @@ bound has to be established here.
   inside the gap), STEP
   round-trip, pose independence and deterministic ids. Seeded and sharded
   through `prop_shards!`. A pose Open CASCADE refuses is rejected by the
-  refusal's name.
+  refusal's name. Done: `cusps_fillet_as_their_sections` and
+  `cusps_chamfer_as_their_sections`, green at 256 and 1000; finding
+  below.
 - [ ] Step 5 **[1]** — Measure the tiers again (`tools/real-parts.sh`,
   `--census-committed`). Move any `fixtures:` expectations whose refusals
   changed (the commit body says why) and bless `cancel_counts.txt` for

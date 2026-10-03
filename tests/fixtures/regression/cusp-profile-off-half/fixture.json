@@ -1,0 +1,108 @@
+{
+  "description": "the crescent of blend/cusp-crescent-fillet with its small circle's radius 0.9 instead of 1: below the x axis, inside the circle of radius 2 about the origin and outside the circle of radius 0.9 about (-1.1, 0), the two tangent at (-2, 0), a cusp, extruded one high. The profile is valid, but Profile::edges refuses it as SelfIntersecting (segments 0 and 2): its minimal polygon samples the two tangent arcs at the fewest segments per turn, and their chords from the cusp cross. At a small radius of exactly half the big one the chords happen to lie along each other and it passes. Found by blend_prop's cusp property at random radii (plans/cusp-run-out step 4); the same cause as regression/crescent-hole-coarse-mesh in the mesher",
+  "params": {
+    "R": 2,
+    "s": 0.9
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          "-R",
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              "R",
+              0
+            ],
+            "via": [
+              0,
+              "-R"
+            ]
+          },
+          {
+            "line_to": [
+              "2 * s - R",
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              "-R",
+              0
+            ],
+            "via": [
+              "s - R",
+              "-s"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "result",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_the_bite",
+      "point": [
+        "s - R",
+        -0.5,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_spine",
+      "point": [
+        "-R",
+        0,
+        0.5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * (R * R - s * s) / 2"
+  }
+}

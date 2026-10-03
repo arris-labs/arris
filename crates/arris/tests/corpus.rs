@@ -1993,6 +1993,25 @@ fn regression_crescent_hole_coarse_mesh() {
     run("regression/crescent-hole-coarse-mesh");
 }
 
+/// A crescent profile whose small radius is not half the big one: its
+/// minimal polygon's chords from the cusp cross, and the profile is refused
+/// as self-intersecting. The desired body is Open CASCADE's prism.
+#[test]
+#[ignore = "ProfileError::SelfIntersecting: at the fewest segments per turn the chords of the loop's two tangent arcs cross at the cusp (docs/BACKLOG.md, a loop with a cusp at a coarse chord)"]
+fn regression_cusp_profile_off_half() {
+    run("regression/cusp-profile-off-half");
+}
+
+/// A crescent's small arc filleted at 0.74 of its height in one pose: the
+/// trace's branch ends at the node `Q` a hair past `tol.linear` from the
+/// closed-form `Q`, and the cut is refused. The desired body is Open
+/// CASCADE's, as it is at rest.
+#[test]
+#[ignore = "OpError::Unsupported: the torus's branch ends at the node Q a hair past tol.linear from the closed-form Q, so no stretch holds both trim points (docs/BACKLOG.md, a cusp's node Q matched within tol.linear)"]
+fn regression_cusp_small_arc_wide_fillet() {
+    run("regression/cusp-small-arc-wide-fillet");
+}
+
 /// A rib standing on a plate, its vertical corner edge filleted down to the
 /// plate: a convex blend ending on a face that surrounds the rib, the edge's
 /// corner with it concave, so the end arc lies in the rib's footprint and the
