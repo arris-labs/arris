@@ -2134,6 +2134,23 @@ fn blend_stadium_pocket_chamfer_root_fillet() {
     run("blend/stadium-pocket-chamfer-root-fillet");
 }
 
+/// A hexagonal prism with its top edges chamfered, the foot of one facet
+/// filleted: each end reaches a vertex of four edges whose faces across are
+/// two, the next side face and the next facet, a fan. The end is an arc on
+/// each, and the extra edge between them is cut where the blend crosses it
+/// (ADR-0043; CTC-01's 12 plane × plane edges).
+#[test]
+fn blend_hex_chamfer_foot_fan_fillet() {
+    run("blend/hex-chamfer-foot-fan-fillet");
+}
+
+/// The chamfer twin of `blend_hex_chamfer_foot_fan_fillet`: a chord on
+/// each piece across (ADR-0043).
+#[test]
+fn blend_hex_chamfer_foot_fan_chamfer() {
+    run("blend/hex-chamfer-foot-fan-chamfer");
+}
+
 /// The shrunk CTC-04 and FTC-09 pin: a split disc's rim chamfered into two
 /// half cones, one half of the chamfer's foot filleted, the chain running on
 /// into the other half where both its faces turn at the split. Two rings
@@ -2375,24 +2392,6 @@ fn regression_edge_off_its_plane_fillet() {
 #[ignore = "kernel bug: the blend's output fails the checker at L2, pcurves 4.6e-7 apart where the file's faces are 1e-7 tolerant (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
 fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
     run("regression/nist-ctc-03-two-plane-edges-fillet-checker-fault");
-}
-
-/// A hexagonal prism with its top edges chamfered, the foot of one facet
-/// filleted: each end reaches a vertex of four edges whose faces across are
-/// two (a fan), `Reason::VertexBlend`, where Open CASCADE cuts the end on
-/// each face across and puts a vertex on the extra edge (plans/blend-fan
-/// step 1; CTC-01's 12 plane × plane edges).
-#[test]
-#[ignore = "VertexBlend: the end's face across is a fan of two faces (plans/blend-fan step 3)"]
-fn regression_hex_chamfer_foot_fan_fillet() {
-    run("regression/hex-chamfer-foot-fan-fillet");
-}
-
-/// The chamfer twin of `regression_hex_chamfer_foot_fan_fillet`.
-#[test]
-#[ignore = "VertexBlend: the end's face across is a fan of two faces (plans/blend-fan step 3)"]
-fn regression_hex_chamfer_foot_fan_chamfer() {
-    run("regression/hex-chamfer-foot-fan-chamfer");
 }
 
 /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,

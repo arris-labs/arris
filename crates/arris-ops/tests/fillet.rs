@@ -19,7 +19,9 @@ use arris_ops::arris_check::arris_topo::arris_geom::{
 use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Unit, UnitQuaternion};
 use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Point3, Vec3};
 use arris_ops::arris_check::arris_topo::provenance::{Origin, Relation, Role, SweepPart, audit};
-use arris_ops::arris_check::arris_topo::{Body, Edge, EntityId, Model, Orientation, Shape};
+use arris_ops::arris_check::arris_topo::{
+    Body, Edge, EntityId, Model, Orientation, Provenance, Shape,
+};
 use arris_ops::arris_check::classify::{Classification, classify_point};
 use arris_ops::arris_check::{Level, check};
 use arris_ops::{OpError, Reason};
@@ -1393,4 +1395,85 @@ fn a_corner_of_mixed_blends_or_no_square_face_is_a_vertex_blend() {
     let err = fillet(&mut m, cornered, &oblique, 0.1).unwrap_err();
     assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
     assert_eq!(dump_text(&m, cornered).unwrap(), before);
+}
+
+/// A hexagonal prism of circumradius 1 and height 2, its six top edges
+/// chamfered at 0.2: each vertical edge's top vertex has four edges, its
+/// faces across the two facets that meet over it in a miter.
+fn chamfered_hexagon(m: &mut Model) -> Body {
+    let h = 3f64.sqrt() / 2.0;
+    let body = extruded(
+        m,
+        (1.0, 0.0),
+        vec![
+            line_to(0.5, h),
+            line_to(-0.5, h),
+            line_to(-1.0, 0.0),
+            line_to(-0.5, -h),
+            line_to(0.5, -h),
+            line_to(1.0, 0.0),
+        ],
+    );
+    let tops: Vec<Edge> = m
+        .edges(body)
+        .unwrap()
+        .into_iter()
+        .filter(|e| {
+            let (curve, range) = m.edge(e.id).unwrap().curve().unwrap();
+            (m.curve(curve).unwrap().point(range.midpoint()).z - 2.0).abs() < 1e-9
+        })
+        .collect();
+    chamfer(m, body, &tops, 0.2).unwrap().0
+}
+
+/// A vertical edge of the chamfered hexagon blended: at its top the end is a
+/// fan of the two facets, cut by the blend where it crosses the miter
+/// between them, a vertex generated there and the miter shortened to it
+/// (ADR-0043). Past the miter's top, where the blend's surface crosses its
+/// line beyond the edge, the end is `BlendTooLarge` naming the blended edge
+/// and the miter: a fillet's arc bulges toward the edge 0.155 r at its
+/// middle and a chamfer's chord 0.5 d, so the miter runs out between r 1.4
+/// and 1.5 and between d 0.4 and 0.5.
+#[test]
+fn a_fan_crossing_past_its_extra_edge_is_too_large() {
+    let at = Point3::new(1.0, 0.0, 0.9);
+    let miter_at = Point3::new(1.0 - 0.2 / 3f64.sqrt(), 0.0, 1.9);
+    type Blend = fn(&mut Model, Body, &[Edge], f64) -> Result<(Body, Provenance), OpError>;
+    let blends: [(Blend, f64, f64); 2] = [(fillet, 1.4, 1.5), (chamfer, 0.4, 0.5)];
+    for (blend, holds, too_large) in blends {
+        let mut m = Model::default();
+        let body = chamfered_hexagon(&mut m);
+        let vertical = edge_at(&m, body, at);
+        let miter = edge_at(&m, body, miter_at);
+        let (blended, provenance) = blend(&mut m, body, &[vertical], holds).unwrap();
+        let report = check(&m, blended, Level::Full);
+        assert!(report.is_ok(), "{report}");
+        let line = report.euler().unwrap();
+        // Two trim points and a crossing at the fan's end, two trim points
+        // at the floor's; three arcs and two contacts for the edge.
+        assert_eq!(
+            (line.vertices, line.edges, line.faces, line.loops),
+            (21, 34, 15, 15)
+        );
+        audit(&m, &[body], blended, &provenance).unwrap();
+        let forward = |e: Edge| Shape::new(e.id, Orientation::Forward);
+        let generated = provenance.generated_from(forward(vertical));
+        let count = |f: fn(&EntityId) -> bool| generated.iter().filter(|s| f(&s.id)).count();
+        assert_eq!(
+            (
+                count(|id| matches!(id, EntityId::Face(_))),
+                count(|id| matches!(id, EntityId::Edge(_))),
+                count(|id| matches!(id, EntityId::Vertex(_))),
+            ),
+            (1, 5, 5)
+        );
+        assert_eq!(provenance.modified_from(forward(miter)).len(), 1);
+
+        let err = blend(&mut m, body, &[vertical], too_large).unwrap_err();
+        let OpError::Degenerate { entities, reason } = &err else {
+            panic!("{err}");
+        };
+        assert_eq!(*reason, Reason::BlendTooLarge, "{err}");
+        assert_eq!(entities[..], [forward(vertical), forward(miter)], "{err}");
+    }
 }

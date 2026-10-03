@@ -102,7 +102,7 @@ bound has to be established here.
 - [x] Step 2 **[1]** — **ADR-0043**, as the design deltas state it, from
   what step 1 saw. It records the counts Open CASCADE reports for each
   site, and the pieces' order rule in the vertex's star.
-- [ ] Step 3 **[3]** — **The crossing fan built.**
+- [x] Step 3 **[3]** — **The crossing fan built.**
   - `corner_of` reads the pieces, and `face_end` cuts each one between
     its trim point and the crossings.
   - The extra edges are cut at the crossings, provenance as ADR-0043
@@ -111,6 +111,18 @@ bound has to be established here.
     blessed dumps, held to the oracle, checker green.
   - A crossing that misses its extra edge is `BlendTooLarge`, tested on a
     radius past it.
+  - Seen: both fixtures match Open CASCADE at 22 / 35 / 15 / 15 with
+    every stage green, and no other dump in `blend/` moved. The foot's
+    crossing lies within a few hundredths of the vertex at any radius
+    its facet holds, so the `BlendTooLarge` test is on the hexagon's
+    vertical edge instead. Its top is a fan of the two facets with the
+    miter as the extra edge. The miter runs out between r 1.4 and 1.5
+    for a fillet and between d 0.4 and 0.5 for a chamfer, where the
+    arc's and the chord's nearest approach to the edge (0.155 r, 0.5 d)
+    passes the miter's top (`a_fan_crossing_past_its_extra_edge_is_too_large`).
+    Each piece's section is `section_between`, the cylinder and cone
+    branch of a lone end factored out, so a curved piece (step 5) is
+    already traced.
 - [ ] Step 4 **[2]** — **The face across met twice.**
   - The vertex stays with the edges the end does not reach, and the face
     across takes the end arc into a second loop.
@@ -182,6 +194,13 @@ bound has to be established here.
   other, on the side away from the blended edge, is unique.
 - Decided (ADR-0043 §4): at the surviving vertex the two edges left there
   are kept, as Open CASCADE does (19 vertices).
+- Decided (step 3): a fan is built only where every edge at the vertex,
+  the corner edges and the extras, is of the blend's sense. The blend
+  then takes the corner from every piece. A fan with an edge of the
+  other sense, the mixed corner of ADR-0038 spread over several faces,
+  stays `VertexBlend`: no corpus edge has one, and each piece's side
+  would have to be read apart. ADR-0043 §6 does not list it, so
+  `/retire-plan` adds it there as an amendment note.
 - ⚠ OPEN: how the attribution tells a non-parallel cylinder pair apart.
   Either `blocks_reason` reads the model, or the survey passes the census
   cause in. Agent, by step 7. Preferred: the survey passes the cause, so

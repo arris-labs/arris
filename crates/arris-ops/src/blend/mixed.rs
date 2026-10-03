@@ -289,8 +289,8 @@ mod tests {
         let at_lo = (m.vertex(s.start).unwrap().point() - at).norm() < 1e-9;
         let vertex = if at_lo { s.start } else { s.end };
         assert!((m.vertex(vertex).unwrap().point() - at).norm() < 1e-9);
-        let (corner_edges, across, _) =
-            corner_of(m, &view, edge, &s.uses, vertex, at_lo, s.size, tol).unwrap();
+        let corner = corner_of(m, &view, edge, &s.uses, vertex, at_lo, s.size, tol).unwrap();
+        let (corner_edges, across) = (corner.edges, corner.pieces[0]);
         let points = pierce_plane(m, &s, across);
         let mut meter = Meter::new(&Control::NONE);
         let trims = corner_trims(

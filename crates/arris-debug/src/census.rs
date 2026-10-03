@@ -1827,8 +1827,10 @@ mod tests {
     }
 
     /// The part of the fixture `dir` before its last step (the blend), the
-    /// edge nearest `at` blended alone, and the census's cause.
-    fn vertex_cause_of(dir: &str, at: P3, radius: f64) -> String {
+    /// edge nearest `at` blended alone, and the census's cause: of its
+    /// refusal, or where it builds of a `VertexBlend` constructed at its
+    /// start, naming the edge and that vertex. `true` where it builds.
+    fn vertex_cause_of(dir: &str, at: P3, radius: f64) -> (String, bool) {
         let dir = corpus_root().join(dir);
         let mut fixture: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(dir.join("fixture.json")).unwrap())
@@ -1848,30 +1850,50 @@ mod tests {
             .find(|h| edge_midpoint(&m, h.id).is_some_and(|p| (p - at).norm() < 1e-6))
             .expect("the blended edge");
         let mut scratch = m.clone();
-        let Err(Refused::Op(e)) = blend(&mut scratch, body, &[edge], radius) else {
-            panic!("the edge is refused");
+        let (e, built) = match blend(&mut scratch, body, &[edge], radius) {
+            Err(Refused::Op(e)) => (e, false),
+            Ok(_) => {
+                use arris_io::arris_check::arris_topo::{Orientation, Shape};
+                let start = m.edge(edge.id).unwrap().start();
+                let e = OpError::Degenerate {
+                    entities: vec![
+                        Shape::new(edge.id, Orientation::Forward),
+                        Shape::new(start, Orientation::Forward),
+                    ],
+                    reason: Reason::VertexBlend,
+                };
+                (e, true)
+            }
+            Err(_) => panic!("the edge is refused, but not by the operation"),
         };
-        vertex_blend_cause(&m, edge.id, &e).unwrap()
+        (vertex_blend_cause(&m, edge.id, &e).unwrap(), built)
     }
 
     /// The hexagonal prism's chamfered top, the foot of a facet blended: at
-    /// each end the faces across are two, separated by a sharp edge, and
-    /// `blend/five-edge-vertex`'s are one face met twice (ADR-0043).
+    /// each end the faces across are two, separated by a sharp edge, a fan
+    /// that builds (ADR-0043) and is named as one where a refusal names its
+    /// vertex; `blend/five-edge-vertex`'s are one face met twice, refused.
     #[test]
     fn a_fan_is_named_apart_from_the_face_across_met_twice() {
         for dir in [
-            "regression/hex-chamfer-foot-fan-fillet",
-            "regression/hex-chamfer-foot-fan-chamfer",
+            "blend/hex-chamfer-foot-fan-fillet",
+            "blend/hex-chamfer-foot-fan-chamfer",
         ] {
             assert_eq!(
                 vertex_cause_of(dir, P3::new(0.75, 3f64.sqrt() / 4.0, 1.8), 0.1),
-                "a vertex of 4 edges, a fan of 2 faces across; edge plane × plane",
+                (
+                    "a vertex of 4 edges, a fan of 2 faces across; edge plane × plane".to_string(),
+                    true
+                ),
                 "{dir}"
             );
         }
         assert_eq!(
             vertex_cause_of("blend/five-edge-vertex", P3::new(1.0, 2.0, 2.5), 0.1),
-            "a vertex of 5 edges, the face across met twice; edge plane × plane"
+            (
+                "a vertex of 5 edges, the face across met twice; edge plane × plane".to_string(),
+                false
+            )
         );
     }
 }

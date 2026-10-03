@@ -1,0 +1,213 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b2 solid
+  shell +s2
+    face -f0 S0 tol 0.0000001
+      surface plane origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e1 p1 line origin (0.5, 0.866025403784) direction (-1, 0)
+        coedge -e2 p2 line origin (-0.5, 0.866025403784) direction (-0.5, -0.866025403784)
+        coedge -e3 p3 line origin (-1, 0) direction (0.5, -0.866025403784)
+        coedge -e4 p4 line origin (-0.5, -0.866025403784) direction (1, 0)
+        coedge -e5 p5 line origin (0.5, -0.866025403784) direction (0.5, 0.866025403784)
+        coedge -e0 p0 line origin (1, 0) direction (-0.5, 0.866025403784)
+    face +f8 S1 tol 0.0000001
+      surface plane origin (0, 0, 2) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge +e24 p36 line origin (0.826794919243, -0.1) direction (-0.5, 0.866025403784)
+        coedge +e26 p38 line origin (0.5, 0.666025403784) direction (-1, 0)
+        coedge +e28 p40 line origin (-0.326794919243, 0.766025403784) direction (-0.5, -0.866025403784)
+        coedge +e30 p42 line origin (-0.826794919243, 0.1) direction (0.5, -0.866025403784)
+        coedge +e32 p44 line origin (-0.5, -0.666025403784) direction (1, 0)
+        coedge +e34 p46 line origin (0.326794919243, -0.766025403784) direction (0.5, 0.866025403784)
+    face +f21 S2 tol 0.0000001
+      surface plane origin (1, 0, 0) x (-0.5, 0.866025403784, 0) y (0, 0, 1) z (0.866025403784, 0.5, 0)
+      loop 0
+        coedge -e43 p77 line origin (0, 1.7) direction (1, 0)
+        coedge -e52 p15 line origin (0, 0) direction (0, 1)
+        coedge +e0 p12 line origin (0, 0) direction (1, 0)
+        coedge +e53 p13 line origin (1, 0) direction (0, 1)
+    face +f22 S3 tol 0.0000001
+      surface plane origin (0.5, 0.866025403784, 0) x (-1, 0, 0) y (0, 0, 1) z (0, 1, 0)
+      loop 0
+        coedge +e47 p75 line origin (0.047829262348, 1.8) direction (-0.431478810545, -0.902123071455)
+        coedge -e53 p19 line origin (0, 0) direction (0, 1)
+        coedge +e1 p16 line origin (0, 0) direction (1, 0)
+        coedge +e38 p17 line origin (1, 0) direction (0, 1)
+        coedge -e50 p39 line origin (0, 1.8) direction (1, 0)
+    face +f11 S4 tol 0.0000001
+      surface plane origin (-0.5, 0.866025403784, 0) x (-0.5, -0.866025403784, 0) y (0, 0, 1) z (-0.866025403784, 0.5, 0)
+      loop 0
+        coedge -e29 p41 line origin (0, 1.8) direction (1, 0)
+        coedge -e38 p23 line origin (0, 0) direction (0, 1)
+        coedge +e2 p20 line origin (0, 0) direction (1, 0)
+        coedge +e39 p21 line origin (1, 0) direction (0, 1)
+    face +f12 S5 tol 0.0000001
+      surface plane origin (-1, 0, 0) x (0.5, -0.866025403784, 0) y (0, 0, 1) z (-0.866025403784, -0.5, 0)
+      loop 0
+        coedge -e31 p43 line origin (0, 1.8) direction (1, 0)
+        coedge -e39 p27 line origin (0, 0) direction (0, 1)
+        coedge +e3 p24 line origin (0, 0) direction (1, 0)
+        coedge +e40 p25 line origin (1, 0) direction (0, 1)
+    face +f13 S6 tol 0.0000001
+      surface plane origin (-0.5, -0.866025403784, 0) x (1, 0, 0) y (0, 0, 1) z (0, -1, 0)
+      loop 0
+        coedge -e33 p45 line origin (0, 1.8) direction (1, 0)
+        coedge -e40 p31 line origin (0, 0) direction (0, 1)
+        coedge +e4 p28 line origin (0, 0) direction (1, 0)
+        coedge +e41 p29 line origin (1, 0) direction (0, 1)
+    face +f23 S7 tol 0.0000001
+      surface plane origin (0.5, -0.866025403784, 0) x (0.5, 0.866025403784, 0) y (0, 0, 1) z (0.866025403784, -0.5, 0)
+      loop 0
+        coedge -e45 p73 line origin (0.952170737652, 1.8) direction (0.431478810544, -0.902123071455)
+        coedge -e51 p47 line origin (0, 1.8) direction (1, 0)
+        coedge -e41 p35 line origin (0, 0) direction (0, 1)
+        coedge +e5 p32 line origin (0, 0) direction (1, 0)
+        coedge +e52 p33 line origin (1, 0) direction (0, 1)
+    face +f24 S8 tol 0.0000001
+      surface plane origin (0.826794919243, -0.1, 2) x (0.612372435696, 0.353553390593, -0.707106781187) y (-0.5, 0.866025403784, 0) z (0.612372435696, 0.353553390593, 0.707106781187)
+      loop 0
+        coedge +e42 p76 line origin (0.182842712475, 0) direction (0, 1)
+        coedge -e49 p49 line origin (0, 0.884529946162) direction (0.925820099773, 0.377964473009)
+        coedge -e24 p51 line origin (0, 0) direction (0, 1)
+        coedge +e48 p48 line origin (0, 0.115470053838) direction (0.925820099772, -0.377964473009)
+    face +f25 S9 tol 0.0000001
+      surface plane origin (0.5, 0.666025403784, 2) x (0, 0.707106781187, -0.707106781187) y (-1, 0, 0) z (0, 0.707106781187, 0.707106781187)
+      loop 0
+        coedge +e46 p74 line origin (0.182842712475, 0.040824829046) direction (0.99755588554, 0.069873136645)
+        coedge +e50 p54 line origin (0.282842712475, 0) direction (0, 1)
+        coedge -e20 p53 line origin (0, 0.884529946162) direction (0.925820099773, 0.377964473009)
+        coedge -e26 p55 line origin (0, 0) direction (0, 1)
+        coedge +e49 p52 line origin (0, 0.115470053838) direction (0.925820099773, -0.377964473009)
+    face +f17 S10 tol 0.0000001
+      surface plane origin (-0.326794919243, 0.766025403784, 2) x (-0.612372435696, 0.353553390593, -0.707106781187) y (-0.5, -0.866025403784, 0) z (-0.612372435696, 0.353553390593, 0.707106781187)
+      loop 0
+        coedge +e20 p56 line origin (0, 0.115470053838) direction (0.925820099773, -0.377964473009)
+        coedge +e29 p58 line origin (0.282842712475, 0) direction (0, 1)
+        coedge -e21 p57 line origin (0, 0.884529946162) direction (0.925820099772, 0.377964473009)
+        coedge -e28 p59 line origin (0, 0) direction (0, 1)
+    face +f18 S11 tol 0.0000001
+      surface plane origin (-0.826794919243, 0.1, 2) x (-0.612372435696, -0.353553390593, -0.707106781187) y (0.5, -0.866025403784, 0) z (-0.612372435696, -0.353553390593, 0.707106781187)
+      loop 0
+        coedge +e21 p60 line origin (0, 0.115470053838) direction (0.925820099772, -0.377964473009)
+        coedge +e31 p62 line origin (0.282842712475, 0) direction (0, 1)
+        coedge -e22 p61 line origin (0, 0.884529946162) direction (0.925820099773, 0.377964473009)
+        coedge -e30 p63 line origin (0, 0) direction (0, 1)
+    face +f19 S12 tol 0.0000001
+      surface plane origin (-0.5, -0.666025403784, 2) x (0, -0.707106781187, -0.707106781187) y (1, 0, 0) z (0, -0.707106781187, 0.707106781187)
+      loop 0
+        coedge +e22 p64 line origin (0, 0.115470053838) direction (0.925820099773, -0.377964473009)
+        coedge +e33 p66 line origin (0.282842712475, 0) direction (0, 1)
+        coedge -e23 p65 line origin (0, 0.884529946162) direction (0.925820099773, 0.377964473009)
+        coedge -e32 p67 line origin (0, 0) direction (0, 1)
+    face +f26 S13 tol 0.0000001
+      surface plane origin (0.326794919243, -0.766025403784, 2) x (0.612372435696, -0.353553390593, -0.707106781187) y (0.5, 0.866025403784, 0) z (0.612372435696, -0.353553390593, 0.707106781187)
+      loop 0
+        coedge -e44 p72 line origin (0.182842712475, 0.959175170953) direction (0.99755588554, -0.069873136645)
+        coedge -e48 p69 line origin (0, 0.884529946162) direction (0.925820099772, 0.377964473009)
+        coedge -e34 p71 line origin (0, 0) direction (0, 1)
+        coedge +e23 p68 line origin (0, 0.115470053838) direction (0.925820099773, -0.377964473009)
+        coedge +e51 p70 line origin (0.282842712475, 0) direction (0, 1)
+    face +f27 S14 tol 0.0000001
+      surface plane origin (0.93876275643, -0.035355339059, 1.870710678119) x (0.331413574036, 0.191341716183, -0.923879532511) y (-0.5, 0.866025403784, 0) z (0.800103145191, 0.461939766256, 0.382683432365)
+      loop 0
+        coedge -e42 p83 line origin (0, 0) direction (0, 1)
+        coedge +e44 p78 line origin (0, 0.040824829046) direction (0.763496220509, -0.645812295693)
+        coedge +e45 p79 line origin (0.076536686473, -0.023914631174) direction (0.976450976247, 0.215739405272)
+        coedge +e43 p82 line origin (0.184775906502, 0) direction (0, 1)
+        coedge -e47 p81 line origin (0.076536686473, 1.023914631173) direction (0.976450976246, -0.215739405272)
+        coedge -e46 p80 line origin (0, 0.959175170953) direction (0.763496220509, 0.645812295693)
+edges
+  -e1 v1 -> v2 c1 [0, 1] tol 0.0000001
+    curve line origin (0.5, 0.866025403784, 0) direction (-1, 0, 0)
+  -e2 v2 -> v3 c2 [0, 1] tol 0.0000001
+    curve line origin (-0.5, 0.866025403784, 0) direction (-0.5, -0.866025403784, 0)
+  -e3 v3 -> v4 c3 [0, 1] tol 0.0000001
+    curve line origin (-1, 0, 0) direction (0.5, -0.866025403784, 0)
+  -e4 v4 -> v5 c4 [0, 1] tol 0.0000001
+    curve line origin (-0.5, -0.866025403784, 0) direction (1, 0, 0)
+  -e5 v5 -> v0 c5 [0, 1] tol 0.0000001
+    curve line origin (0.5, -0.866025403784, 0) direction (0.5, 0.866025403784, 0)
+  -e0 v0 -> v1 c0 [0, 1] tol 0.0000001
+    curve line origin (1, 0, 0) direction (-0.5, 0.866025403784, 0)
+  +e24 v12 -> v14 c24 [0.115470053838, 0.884529946162] tol 0.0000001
+    curve line origin (0.826794919243, -0.1, 2) direction (-0.5, 0.866025403784, 0)
+  +e26 v14 -> v16 c26 [0.115470053838, 0.884529946162] tol 0.0000001
+    curve line origin (0.5, 0.666025403784, 2) direction (-1, 0, 0)
+  +e28 v16 -> v18 c28 [0.115470053838, 0.884529946162] tol 0.0000001
+    curve line origin (-0.326794919243, 0.766025403784, 2) direction (-0.5, -0.866025403784, 0)
+  +e30 v18 -> v20 c30 [0.115470053838, 0.884529946162] tol 0.0000001
+    curve line origin (-0.826794919243, 0.1, 2) direction (0.5, -0.866025403784, 0)
+  +e32 v20 -> v22 c32 [0.115470053838, 0.884529946162] tol 0.0000001
+    curve line origin (-0.5, -0.666025403784, 2) direction (1, 0, 0)
+  +e34 v22 -> v12 c34 [0.115470053838, 0.884529946162] tol 0.0000001
+    curve line origin (0.326794919243, -0.766025403784, 2) direction (0.5, 0.866025403784, 0)
+  -e43 v25 -> v27 c37 [0, 1] tol 0.0000001
+    curve line origin (1, 0, 1.7) direction (-0.5, 0.866025403784, 0)
+  -e52 v0 -> v25 c12 [0, 1.7] tol 0.0000001
+    curve line origin (1, 0, 0) direction (0, 0, 1)
+  +e53 v1 -> v27 c13 [0, 1.7] tol 0.0000001
+    curve line origin (0.5, 0.866025403784, 0) direction (0, 0, 1)
+  +e47 v29 -> v27 c41 [0, 0.110849620372] tol 0.0000001
+    curve line origin (0.452170737652, 0.866025403784, 1.8) direction (0.431478810545, 0, -0.902123071455)
+  +e38 v2 -> v17 c14 [0, 1.8] tol 0.0000001
+    curve line origin (-0.5, 0.866025403784, 0) direction (0, 0, 1)
+  -e50 v29 -> v17 c27 [0.047829262348, 1] tol 0.0000001
+    curve line origin (0.5, 0.866025403784, 1.8) direction (-1, 0, 0)
+  -e29 v17 -> v19 c29 [0, 1] tol 0.0000001
+    curve line origin (-0.5, 0.866025403784, 1.8) direction (-0.5, -0.866025403784, 0)
+  +e39 v3 -> v19 c15 [0, 1.8] tol 0.0000001
+    curve line origin (-1, 0, 0) direction (0, 0, 1)
+  -e31 v19 -> v21 c31 [0, 1] tol 0.0000001
+    curve line origin (-1, 0, 1.8) direction (0.5, -0.866025403784, 0)
+  +e40 v4 -> v21 c16 [0, 1.8] tol 0.0000001
+    curve line origin (-0.5, -0.866025403784, 0) direction (0, 0, 1)
+  -e33 v21 -> v23 c33 [0, 1] tol 0.0000001
+    curve line origin (-0.5, -0.866025403784, 1.8) direction (1, 0, 0)
+  +e41 v5 -> v23 c17 [0, 1.8] tol 0.0000001
+    curve line origin (0.5, -0.866025403784, 0) direction (0, 0, 1)
+  -e45 v28 -> v25 c39 [0, 0.110849620372] tol 0.0000001
+    curve line origin (0.976085368826, -0.041421356237, 1.8) direction (0.215739405272, 0.373671611126, -0.902123071455)
+  -e51 v23 -> v28 c35 [0, 0.952170737652] tol 0.0000001
+    curve line origin (0.5, -0.866025403784, 1.8) direction (0.5, 0.866025403784, 0)
+  +e42 v24 -> v26 c36 [0.040824829046, 0.959175170953] tol 0.0000001
+    curve line origin (0.93876275643, -0.035355339059, 1.870710678119) direction (-0.5, 0.866025403784, 0)
+  -e49 v14 -> v26 c19 [0, 0.197492701357] tol 0.0000001
+    curve line origin (0.384529946162, 0.666025403784, 2) direction (0.377964473009, 0.654653670708, -0.654653670708)
+  +e48 v12 -> v24 c18 [0, 0.197492701357] tol 0.0000001
+    curve line origin (0.769059892324, 0, 2) direction (0.755928946018, 0, -0.654653670708)
+  +e46 v26 -> v29 c40 [0, 0.100245010279] tol 0.0000001
+    curve line origin (0.459175170954, 0.795314725665, 1.870710678119) direction (-0.069873136645, 0.705378531278, -0.705378531278)
+  -e20 v16 -> v17 c20 [0, 0.30550504633] tol 0.0000001
+    curve line origin (-0.384529946162, 0.666025403784, 2) direction (-0.377964473009, 0.654653670708, -0.654653670708)
+  -e21 v18 -> v19 c21 [0, 0.30550504633] tol 0.0000001
+    curve line origin (-0.769059892324, 0, 2) direction (-0.755928946018, 0, -0.654653670708)
+  -e22 v20 -> v21 c22 [0, 0.30550504633] tol 0.0000001
+    curve line origin (-0.384529946162, -0.666025403784, 2) direction (-0.377964473009, -0.654653670708, -0.654653670708)
+  -e23 v22 -> v23 c23 [0, 0.30550504633] tol 0.0000001
+    curve line origin (0.384529946162, -0.666025403784, 2) direction (0.377964473009, -0.654653670708, -0.654653670708)
+  -e44 v24 -> v28 c38 [0, 0.100245010279] tol 0.0000001
+    curve line origin (0.918350341907, 0, 1.870710678119) direction (0.575939159048, -0.413201177016, -0.705378531278)
+vertices
+  v2 (-0.5, 0.866025403784, 0) tol 0.0000001
+  v1 (0.5, 0.866025403784, 0) tol 0.0000001
+  v3 (-1, 0, 0) tol 0.0000001
+  v4 (-0.5, -0.866025403784, 0) tol 0.0000001
+  v5 (0.5, -0.866025403784, 0) tol 0.0000001
+  v0 (1, 0, 0) tol 0.0000001
+  v12 (0.769059892324, 0, 2) tol 0.0000001
+  v14 (0.384529946162, 0.666025403784, 2) tol 0.0000001
+  v16 (-0.384529946162, 0.666025403784, 2) tol 0.0000001
+  v18 (-0.769059892324, 0, 2) tol 0.0000001
+  v20 (-0.384529946162, -0.666025403784, 2) tol 0.0000001
+  v22 (0.384529946162, -0.666025403784, 2) tol 0.0000001
+  v27 (0.5, 0.866025403784, 1.7) tol 0.0000001
+  v25 (1, 0, 1.7) tol 0.0000001
+  v29 (0.452170737652, 0.866025403784, 1.8) tol 0.0000001
+  v17 (-0.5, 0.866025403784, 1.8) tol 0.0000001
+  v19 (-1, 0, 1.8) tol 0.0000001
+  v21 (-0.5, -0.866025403784, 1.8) tol 0.0000001
+  v23 (0.5, -0.866025403784, 1.8) tol 0.0000001
+  v28 (0.976085368826, -0.041421356237, 1.8) tol 0.0000001
+  v24 (0.918350341907, 0, 1.870710678119) tol 0.0000001
+  v26 (0.459175170954, 0.795314725665, 1.870710678119) tol 0.0000001
+euler 22/35/15/15/1 g0 = 0

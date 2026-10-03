@@ -20,8 +20,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::arris_topo::arris_geom::region2::Side;
 use arris_check::arris_topo::arris_geom::{
-    Curve, Curve2, GeomKind, MeetKind, Surface, SurfaceIntersection, SurfaceKind,
-    intersect_surfaces, pcurve_on,
+    Curve, Curve2, CurveSurfaceIntersection, GeomKind, MeetKind, Surface, SurfaceIntersection,
+    SurfaceKind, intersect_curve_surface, intersect_surfaces, pcurve_on,
 };
 use arris_check::arris_topo::arris_math::{
     Aabb, Control, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3, Vec2,
@@ -134,7 +134,9 @@ struct Trim {
 struct Arc {
     curve: Curve,
     range: Interval,
-    /// `true` when `range.lo()` is at the contact at `u = 0`.
+    /// `true` when `range.lo()` is at the arc's start in the end's order
+    /// from the contact at `u = 0` to the other: that contact's trim point
+    /// for the first piece across, a crossing for a later one.
     lo_first: bool,
     /// Its pcurve on the face across, exact.
     on_face: Curve2,
@@ -143,19 +145,36 @@ struct Arc {
     tolerance: f64,
 }
 
-/// One end of a blend: the corner vertex it consumes, the face across
+/// One face across an end and the arc the blend cuts it in.
+struct Piece {
+    face: FaceId,
+    arc: Arc,
+}
+
+/// Where a fan's end crosses an extra edge between two pieces (ADR-0043
+/// §3): the point, the extra edge cut there, and the vertex's tolerance.
+struct Crossing {
+    point: Point3,
+    trim: Trim,
+    tolerance: f64,
+}
+
+/// One end of a blend: the corner vertex it consumes, the faces across
 /// it, the two trim points on the contact lines and the corner edges
-/// they shorten, and the arc between them.
+/// they shorten, and the arcs between them — one, or one per piece of a
+/// fan with a crossing between each two (ADR-0043).
 struct End {
     vertex: VertexId,
-    face: FaceId,
     /// The trim points, one per contact (`u = 0` first).
     points: [Point3; 2],
     /// The contact lines' parameters there.
     t: [f64; 2],
     /// The corner edge each contact's trim point cuts.
     trims: [Trim; 2],
-    arc: Arc,
+    /// From the contact at `u = 0`'s corner edge to the other's.
+    pieces: Vec<Piece>,
+    /// `crossings[i]` between `pieces[i]` and `pieces[i + 1]`.
+    crossings: Vec<Crossing>,
     /// The tolerance of each trim vertex.
     vertex_tolerance: [f64; 2],
 }
@@ -1042,16 +1061,151 @@ fn chain(
     Ok(reached)
 }
 
-/// An end's corner as [`corner_of`] reads it: the corner edge of each of
-/// the blended edge's faces, the face across, and the index of the corner
-/// edge that is a cusp's spine where the end is one (ADR-0042).
-type CornerAt = ([EdgeId; 2], FaceId, Option<usize>);
+/// An end's corner as [`corner_of`] reads it.
+struct CornerAt {
+    /// The corner edge of each of the blended edge's faces, by its use.
+    edges: [EdgeId; 2],
+    /// The faces across, in the vertex's star from `edges[0]`'s to
+    /// `edges[1]`'s: the one face across, or a fan's pieces (ADR-0043).
+    pieces: Vec<FaceId>,
+    /// A fan's extra edges, `extras[i]` between `pieces[i]` and
+    /// `pieces[i + 1]`; none for one face across.
+    extras: Vec<EdgeId>,
+    /// The index of the corner edge that is a cusp's spine where the end is
+    /// one (ADR-0042).
+    spine: Option<usize>,
+}
+
+/// A lone face across, as a ring's end reads its corner: the corner edges,
+/// the face and the spine. A fan is `Reason::VertexBlend` naming `edge` and
+/// `vertex`: only a stripe's face end fans (ADR-0043 §6).
+type LoneCorner = ([EdgeId; 2], FaceId, Option<usize>);
+
+impl CornerAt {
+    fn lone(self, edge: EdgeId, vertex: VertexId) -> Result<LoneCorner, OpError> {
+        match self.pieces[..] {
+            [face] => Ok((self.edges, face, self.spine)),
+            _ => Err(degenerate(
+                vec![forward(edge), forward(vertex)],
+                Reason::VertexBlend,
+            )),
+        }
+    }
+}
+
+/// The one edge beside `edge` in `face`'s loops that also has `vertex` as
+/// an end, other than `edge` itself; `None` where there is none or more
+/// than one.
+fn beside_at(
+    m: &Model,
+    face: FaceId,
+    edge: EdgeId,
+    vertex: VertexId,
+) -> Result<Option<EdgeId>, OpError> {
+    let mut found = None;
+    for l in m.face(face)?.loops() {
+        let n = l.coedges().len();
+        for i in (0..n).filter(|&i| l.coedges()[i].edge() == edge) {
+            for j in [(i + n - 1) % n, (i + 1) % n] {
+                let c = l.coedges()[j].edge();
+                let entity = m.edge(c)?;
+                if c == edge || (entity.start() != vertex && entity.end() != vertex) {
+                    continue;
+                }
+                if found.is_some_and(|x| x != c) {
+                    return Ok(None);
+                }
+                found = Some(c);
+            }
+        }
+    }
+    Ok(found)
+}
+
+/// A fan's pieces across and the extra edges between them, in the walk's
+/// order (`CornerAt`).
+type Fan = (Vec<FaceId>, Vec<EdgeId>);
+
+/// The fan at `vertex` (ADR-0043 §1, §2): the pieces across and the extra
+/// edges between them, walked through the vertex's star from `corners[0]`
+/// in its face other than `faces[0]` to `corners[1]` in its face other than
+/// `faces[1]`, on the side away from the blended edge. Every edge at the
+/// vertex but the blended one is sharp at it for a blend of `size`, with a
+/// curve, between two faces, and of the blend's sense — `convex` — and
+/// every extra is met once by the walk, no face twice. `None` at any other
+/// star: the face across met twice among them (`blend-fan` step 4).
+#[allow(clippy::too_many_arguments)]
+fn fan_at(
+    m: &Model,
+    view: &View,
+    faces: [FaceId; 2],
+    corners: [EdgeId; 2],
+    extras_at: &BTreeSet<EdgeId>,
+    vertex: VertexId,
+    size: f64,
+    convex: Option<bool>,
+    tol: Tolerance,
+) -> Result<Option<Fan>, OpError> {
+    let two_faces = |x: EdgeId| -> Option<[FaceId; 2]> {
+        match view.uses.get(&x).map(Vec::as_slice) {
+            Some(&[a, b]) if a.face != b.face => Some([a.face, b.face]),
+            _ => None,
+        }
+    };
+    for &x in corners.iter().chain(extras_at) {
+        let Some(t) = parameter_at(m, x, vertex)? else {
+            return Ok(None);
+        };
+        if two_faces(x).is_none()
+            || tangent_at(m, view, x, t, size, tol)? != Some(false)
+            || convex_edge(m, view, x)? != convex
+        {
+            return Ok(None);
+        }
+    }
+    let other =
+        |x: EdgeId, own: FaceId| two_faces(x).and_then(|f| f.into_iter().find(|&g| g != own));
+    let (Some(first), Some(last)) = (other(corners[0], faces[0]), other(corners[1], faces[1]))
+    else {
+        return Ok(None);
+    };
+    if first == last || faces.contains(&first) || faces.contains(&last) {
+        return Ok(None);
+    }
+    let (mut pieces, mut extras) = (vec![first], Vec::new());
+    let mut at = corners[0];
+    for _ in 0..=extras_at.len() {
+        let face = pieces[pieces.len() - 1];
+        let Some(next) = beside_at(m, face, at, vertex)? else {
+            return Ok(None);
+        };
+        if next == corners[1] {
+            let whole = face == last && extras.len() == extras_at.len();
+            return Ok(whole.then_some((pieces, extras)));
+        }
+        if !extras_at.contains(&next) || extras.contains(&next) {
+            return Ok(None);
+        }
+        let Some(beyond) = other(next, face) else {
+            return Ok(None);
+        };
+        if pieces.contains(&beyond) || faces.contains(&beyond) {
+            return Ok(None);
+        }
+        extras.push(next);
+        pieces.push(beyond);
+        at = next;
+    }
+    Ok(None)
+}
 
 /// The corner at `vertex`, the end of the blended `edge` at its start
 /// (`at_lo`) or its end, `uses` the edge's uses by its two faces: the
 /// corner edge each of those faces' loops runs on to there, in the same
 /// order, and the face across, the one face the two corner edges share
-/// beyond the edge's own. A vertex of other than these three edges, or
+/// beyond the edge's own. At a vertex of more edges than these three, the
+/// faces across are a fan's pieces where `fan_at` walks one (ADR-0043). Any
+/// other vertex of other than these three edges, or
 /// corner edges that share no such face, is `Reason::VertexBlend`. A corner
 /// edge whose two faces meet tangentially at the vertex is the spine of a
 /// cusp whose two edges are of one sense (`cusp_at`, ADR-0042 §1), and its
@@ -1095,8 +1249,31 @@ fn corner_of(
     let three: BTreeSet<EdgeId> = [edge, corner_edges[0], corner_edges[1]]
         .into_iter()
         .collect();
-    if three.len() != 3 || *at_vertex != three {
+    if three.len() != 3 || !three.is_subset(at_vertex) {
         return Err(vertex_blend());
+    }
+    let faces = uses.map(|u| u.face);
+    if at_vertex.len() > 3 {
+        let extras_at: BTreeSet<EdgeId> = at_vertex.difference(&three).copied().collect();
+        let convex = convex_edge(m, view, edge)?;
+        let fan = fan_at(
+            m,
+            view,
+            faces,
+            corner_edges,
+            &extras_at,
+            vertex,
+            size,
+            convex,
+            tol,
+        )?;
+        let (pieces, extras) = fan.ok_or_else(vertex_blend)?;
+        return Ok(CornerAt {
+            edges: corner_edges,
+            pieces,
+            extras,
+            spine: None,
+        });
     }
     let mut spine = None;
     for (k, &corner) in corner_edges.iter().enumerate() {
@@ -1124,7 +1301,6 @@ fn corner_of(
         }
         spine = Some(k);
     }
-    let faces = uses.map(|u| u.face);
     let other_face = |corner: EdgeId, own: FaceId| -> Result<FaceId, OpError> {
         let corner_uses = view
             .uses
@@ -1144,7 +1320,12 @@ fn corner_of(
     if other_face(corner_edges[1], faces[1])? != across {
         return Err(vertex_blend());
     }
-    Ok((corner_edges, across, spine))
+    Ok(CornerAt {
+        edges: corner_edges,
+        pieces: vec![across],
+        extras: Vec::new(),
+        spine,
+    })
 }
 
 /// The corner edge `corner` cut at `point`, its end at `vertex` moving
@@ -1390,8 +1571,11 @@ fn face_end(
     let e = forward(edge);
     let vertex = if at_lo { s.start } else { s.end };
     let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
-    let (corner_edges, face3, spine) =
-        corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
+    let corner = corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
+    if corner.pieces.len() > 1 {
+        return fan_end(m, view, s, vertex, &corner, tol, samples, meter);
+    }
+    let (corner_edges, face3, spine) = corner.lone(edge, vertex)?;
     // At a cusp (ADR-0042): the spine, which the contact on the wall
     // tangent to the face across meets at `Q`, a line where a line edge's
     // walls are a plane and a cylinder tangent along it.
@@ -1549,59 +1733,9 @@ fn face_end(
                 };
                 points[k] = q + t[k] * d;
             }
-            // The blend's band between its contacts: `u` in `[0, u₁]`.
-            let band = |p: Point3| -> Result<bool, OpError> {
-                Ok(match s.section {
-                    Section::Round { radius, .. } => {
-                        let u = s.surface.project(p).map_err(fault_of)?.uv.x;
-                        let slack = arc_tolerance / radius;
-                        u <= s.u1 + slack || u >= TAU - slack
-                    }
-                    Section::Flat => {
-                        let u = s.frame.to_local(p).x;
-                        u >= -arc_tolerance && u <= s.u1 + arc_tolerance
-                    }
-                })
-            };
-            let reach = match s.section {
-                Section::Round { radius, .. } => 2.0 * radius,
-                Section::Flat => s.u1,
-            };
-            let within = Aabb::of_point(points[0])
-                .union(Aabb::of_point(points[1]))
-                .inflated(reach);
-            match s.section {
-                Section::Round { .. } => {
-                    let traced = traced::traced_end(
-                        &s.surface, surface3, points, &within, &band, &refuse, arc_tol, meter,
-                    )?;
-                    gaps = traced.gaps;
-                    (traced.curve, traced.range, traced.lo_first)
-                }
-                Section::Flat => {
-                    // A plane meets a cylinder or a cone in a conic, which
-                    // the intersector writes exactly.
-                    let cut = intersect_surfaces(&s.surface, surface3, &within, arc_tol, meter)
-                        .map_err(fault_of)?;
-                    let curves: Vec<Curve> = match cut {
-                        SurfaceIntersection::Meets { curves, .. } => curves
-                            .into_iter()
-                            .filter(|c| c.kind == MeetKind::Crossing)
-                            .map(|c| c.curve)
-                            .collect(),
-                        SurfaceIntersection::Empty | SurfaceIntersection::Coincident => Vec::new(),
-                    };
-                    let found = stretch_between(&curves, points, &band, arc_tolerance)?;
-                    let (curve, range, lo_first) = found.ok_or_else(refuse)?;
-                    let ends = if lo_first {
-                        [range.lo(), range.hi()]
-                    } else {
-                        [range.hi(), range.lo()]
-                    };
-                    gaps = [0, 1].map(|k| (points[k] - curve.point(ends[k])).norm());
-                    (curve, range, lo_first)
-                }
-            }
+            let section = section_between(s, surface3, points, &refuse, arc_tol, meter)?;
+            gaps = section.gaps;
+            (section.curve, section.range, section.lo_first)
         }
         Surface::EllipticCylinder { .. }
         | Surface::Sphere { .. }
@@ -1665,18 +1799,324 @@ fn face_end(
     let on_blend = s.place(on_blend, arc_range.lo(), if lo_first { 0.0 } else { s.u1 });
     Ok(End {
         vertex,
-        face: face3,
         points,
         t,
         trims,
-        arc: Arc {
-            curve: arc_curve,
-            range: arc_range,
+        pieces: vec![Piece {
+            face: face3,
+            arc: Arc {
+                curve: arc_curve,
+                range: arc_range,
+                lo_first,
+                on_face,
+                on_blend,
+                tolerance: arc_tolerance,
+            },
+        }],
+        crossings: Vec::new(),
+        vertex_tolerance,
+    })
+}
+
+/// Whether `p` lies on the stripe's band between its contacts: `u` in
+/// `[0, u₁]`, widened by `tolerance` — on a fillet's cylinder by the angle
+/// it subtends.
+fn in_band(s: &Stripe, p: Point3, tolerance: f64) -> Result<bool, OpError> {
+    Ok(match s.section {
+        Section::Round { radius, .. } => {
+            let u = s.surface.project(p).map_err(fault_of)?.uv.x;
+            let slack = tolerance / radius;
+            u <= s.u1 + slack || u >= TAU - slack
+        }
+        Section::Flat => {
+            let u = s.frame.to_local(p).x;
+            u >= -tolerance && u <= s.u1 + tolerance
+        }
+    })
+}
+
+/// The `u` of `p`, a point of the stripe's band, in the blend loop's
+/// translate: a fillet's just below `0` rather than just below `2π`.
+fn band_u(s: &Stripe, p: Point3) -> Result<f64, OpError> {
+    Ok(match s.section {
+        Section::Round { .. } => {
+            let u = s.surface.project(p).map_err(fault_of)?.uv.x;
+            if u > (s.u1 + TAU) / 2.0 { u - TAU } else { u }
+        }
+        Section::Flat => s.frame.to_local(p).x,
+    })
+}
+
+/// The section of the stripe `s` by a face across of `surface` from
+/// `points[0]` to `points[1]`, each on both, on the stripe's band: a
+/// chamfer's chord on a plane; a fillet's conic on a plane and a chamfer's
+/// on a cylinder or a cone, the intersector's, exact; a fillet's quartic on
+/// a cylinder or a cone, traced and fitted (ADR-0037). `refuse` — the
+/// caller's `Unsupported` naming the blend and the face — where no single
+/// stretch holds both points within `tol.linear` on the band, or the
+/// surface is none of these.
+fn section_between(
+    s: &Stripe,
+    surface: &Surface,
+    points: [Point3; 2],
+    refuse: &dyn Fn() -> OpError,
+    tol: Tolerance,
+    meter: &mut Meter<'_>,
+) -> Result<traced::TracedEnd, OpError> {
+    let band = |p: Point3| in_band(s, p, tol.linear);
+    let reach = match s.section {
+        Section::Round { radius, .. } => 2.0 * radius,
+        Section::Flat => s.u1,
+    };
+    let within = Aabb::of_point(points[0])
+        .union(Aabb::of_point(points[1]))
+        .inflated(reach);
+    let exact = |meter: &mut Meter<'_>| -> Result<traced::TracedEnd, OpError> {
+        let cut = intersect_surfaces(&s.surface, surface, &within, tol, meter).map_err(fault_of)?;
+        let curves: Vec<Curve> = match cut {
+            SurfaceIntersection::Meets { curves, .. } => curves
+                .into_iter()
+                .filter(|c| c.kind == MeetKind::Crossing)
+                .map(|c| c.curve)
+                .collect(),
+            SurfaceIntersection::Empty | SurfaceIntersection::Coincident => Vec::new(),
+        };
+        let found = stretch_between(&curves, points, &band, tol.linear)?;
+        let (curve, range, lo_first) = found.ok_or_else(refuse)?;
+        let ends = if lo_first {
+            [range.lo(), range.hi()]
+        } else {
+            [range.hi(), range.lo()]
+        };
+        let gaps = [0, 1].map(|k| (points[k] - curve.point(ends[k])).norm());
+        Ok(traced::TracedEnd {
+            curve,
+            range,
             lo_first,
-            on_face,
-            on_blend,
-            tolerance: arc_tolerance,
-        },
+            gaps,
+        })
+    };
+    match (surface, s.section) {
+        (Surface::Plane { .. }, Section::Flat) => {
+            let (curve, range) = chord(points[0], points[1], tol)?;
+            Ok(traced::TracedEnd {
+                curve,
+                range,
+                lo_first: true,
+                gaps: [0.0; 2],
+            })
+        }
+        // A plane meets a cylinder or a cone in a conic, which the
+        // intersector writes exactly.
+        (Surface::Plane { .. }, Section::Round { .. })
+        | (Surface::Cylinder { .. } | Surface::Cone { .. }, Section::Flat) => exact(meter),
+        (Surface::Cylinder { .. } | Surface::Cone { .. }, Section::Round { .. }) => {
+            traced::traced_end(
+                &s.surface, surface, points, &within, &band, refuse, tol, meter,
+            )
+        }
+        (
+            Surface::EllipticCylinder { .. }
+            | Surface::Sphere { .. }
+            | Surface::Torus { .. }
+            | Surface::Nurbs(_),
+            Section::Round { .. } | Section::Flat,
+        ) => Err(refuse()),
+    }
+}
+
+/// The end of `s` at `vertex` across a fan (ADR-0043 §3): each contact
+/// trimmed where it pierces its corner edge's piece, as against a lone face
+/// across, each extra edge cut where the blend's surface crosses it on the
+/// band, and each piece cut in the stripe's section between its two
+/// points (`section_between`), inside the piece — every edge at the vertex
+/// is of the blend's sense (`fan_at`), so the blend takes the corner from
+/// each. A contact parallel to a plane piece is `Reason::VertexBlend`; a
+/// piece the contact misses or whose section is not decided is
+/// `Unsupported` naming the blend and the piece; a crossing not on its
+/// extra edge — none on the band within its range, more than one, or at
+/// its far vertex — a corner edge shorter than its trim, and an arc
+/// leaving its piece are `Reason::BlendTooLarge`.
+#[allow(clippy::too_many_arguments)]
+fn fan_end(
+    m: &Model,
+    view: &View,
+    s: &Stripe,
+    vertex: VertexId,
+    corner: &CornerAt,
+    tol: Tolerance,
+    samples: usize,
+    meter: &mut Meter<'_>,
+) -> Result<End, OpError> {
+    let (edge, d) = (s.edge, s.d);
+    let e = forward(edge);
+    let k = corner.pieces.len();
+    let mut surfaces: Vec<&Surface> = Vec::with_capacity(k);
+    let mut tolerances: Vec<f64> = Vec::with_capacity(k);
+    for &face in &corner.pieces {
+        let entity = m.face(face)?;
+        surfaces.push(m.surface(entity.surface())?);
+        tolerances.push(s.tolerance.max(entity.tolerance()));
+    }
+    let unsupported = |i: usize| OpError::Unsupported {
+        a: (GeomKind::Surface(s.surface.kind()), e),
+        b: (
+            GeomKind::Surface(surfaces[i].kind()),
+            forward(corner.pieces[i]),
+        ),
+    };
+    // Each contact against its corner edge's piece: the first against the
+    // first, the other against the last.
+    let at = m.vertex(vertex)?.point();
+    let mut points = [Point3::origin(); 2];
+    let mut t = [0.0; 2];
+    for c in 0..2 {
+        let i = if c == 0 { 0 } else { k - 1 };
+        let q = line_origin(&s.lines[c])?;
+        t[c] = match *surfaces[i] {
+            Surface::Plane { frame } => {
+                let n: Vec3 = frame.z().into_inner();
+                let dn = d.dot(&n);
+                if dn.abs() <= tol.angular {
+                    return Err(degenerate(vec![e, forward(vertex)], Reason::VertexBlend));
+                }
+                (frame.origin() - q).dot(&n) / dn
+            }
+            Surface::Cylinder { .. } | Surface::Cone { .. } => {
+                pierce(q, d, surfaces[i], (at - q).dot(&d), tolerances[i])
+                    .ok_or_else(|| unsupported(i))?
+            }
+            Surface::EllipticCylinder { .. }
+            | Surface::Sphere { .. }
+            | Surface::Torus { .. }
+            | Surface::Nurbs(_) => return Err(unsupported(i)),
+        };
+        points[c] = q + t[c] * d;
+    }
+    let mut trims = [Trim {
+        edge,
+        t: 0.0,
+        cuts_lo: true,
+    }; 2];
+    for c in 0..2 {
+        trims[c] = cut_corner(m, edge, corner.edges[c], vertex, points[c])?;
+    }
+    // Where the blend's surface crosses each extra edge on its band, within
+    // the edge.
+    let mut crossings: Vec<Crossing> = Vec::with_capacity(k - 1);
+    for (i, &x) in corner.extras.iter().enumerate() {
+        meter.tick()?;
+        let too_large = || degenerate(vec![e, forward(x)], Reason::BlendTooLarge);
+        let entity = *m.edge(x)?;
+        let (curve_id, range) = entity.curve().ok_or(invariant("an extra edge's curve"))?;
+        let curve = m.curve(curve_id)?;
+        let tolerance = tolerances[i].max(tolerances[i + 1]).max(entity.tolerance());
+        let x_tol = Tolerance::new(tolerance, tol.angular);
+        let hits =
+            match intersect_curve_surface(curve, &s.surface, x_tol, meter).map_err(fault_of)? {
+                CurveSurfaceIntersection::Points(hits) => hits,
+                CurveSurfaceIntersection::Coincident => Vec::new(),
+            };
+        let mut found = None;
+        for hit in hits.iter().filter(|h| !h.tangent) {
+            if into_range(range, hit.t, curve.period()).is_none()
+                || !in_band(s, hit.point, tolerance)?
+            {
+                continue;
+            }
+            if found.replace(hit.point).is_some() {
+                return Err(too_large());
+            }
+        }
+        let point = found.ok_or_else(too_large)?;
+        let trim = cut_corner(m, edge, x, vertex, point)?;
+        crossings.push(Crossing {
+            point,
+            trim,
+            tolerance,
+        });
+    }
+    // Each piece's arc between its two points, in the end's order.
+    let mut gaps = [0.0; 2];
+    let mut pieces: Vec<Piece> = Vec::with_capacity(k);
+    for (i, &face) in corner.pieces.iter().enumerate() {
+        meter.tick()?;
+        let (from, from_u, from_edge, from_t) = match i.checked_sub(1) {
+            None => (points[0], 0.0, corner.edges[0], trims[0].t),
+            Some(j) => {
+                let x = &crossings[j];
+                (x.point, band_u(s, x.point)?, x.trim.edge, x.trim.t)
+            }
+        };
+        let (to, to_u) = match crossings.get(i) {
+            Some(x) => (x.point, band_u(s, x.point)?),
+            None => (points[1], s.u1),
+        };
+        let arc_tol = Tolerance::new(tolerances[i], tol.angular);
+        let section = section_between(
+            s,
+            surfaces[i],
+            [from, to],
+            &|| unsupported(i),
+            arc_tol,
+            meter,
+        )?;
+        match i.checked_sub(1) {
+            None => gaps[0] = section.gaps[0],
+            Some(j) => crossings[j].tolerance = crossings[j].tolerance.max(section.gaps[0]),
+        }
+        if i + 1 < k {
+            crossings[i].tolerance = crossings[i].tolerance.max(section.gaps[1]);
+        } else {
+            gaps[1] = section.gaps[1];
+        }
+        let (curve, range, lo_first) = (section.curve, section.range, section.lo_first);
+        let on_face = pcurve_on(&curve, range, surfaces[i], arc_tol, meter).map_err(fault_of)?;
+        // On a curved piece, in its loop's translate at the edge cut at the
+        // arc's start.
+        let on_face = match surfaces[i] {
+            Surface::Plane { .. } => on_face,
+            Surface::Cylinder { .. }
+            | Surface::EllipticCylinder { .. }
+            | Surface::Cone { .. }
+            | Surface::Sphere { .. }
+            | Surface::Torus { .. }
+            | Surface::Nurbs(_) => {
+                let at = at_cut_corner(m, view, face, from_edge, from_t)?;
+                placed_uv(on_face, arc_end(range, lo_first, 0), at)
+            }
+        };
+        if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
+            return Err(degenerate(vec![e, forward(face)], Reason::BlendTooLarge));
+        }
+        let on_blend = pcurve_on(&curve, range, &s.surface, arc_tol, meter).map_err(fault_of)?;
+        let on_blend = s.place(on_blend, range.lo(), if lo_first { from_u } else { to_u });
+        pieces.push(Piece {
+            face,
+            arc: Arc {
+                curve,
+                range,
+                lo_first,
+                on_face,
+                on_blend,
+                tolerance: tolerances[i],
+            },
+        });
+    }
+    let mut vertex_tolerance = [0.0; 2];
+    for c in 0..2 {
+        let i = if c == 0 { 0 } else { k - 1 };
+        vertex_tolerance[c] = tolerances[i]
+            .max(m.edge(corner.edges[c])?.tolerance())
+            .max(gaps[c]);
+    }
+    Ok(End {
+        vertex,
+        points,
+        t,
+        trims,
+        pieces,
+        crossings,
         vertex_tolerance,
     })
 }
@@ -3424,7 +3864,7 @@ fn ring(
     // an end at a tangent corner edge that is no junction is
     // `Reason::TangentChain`, whatever the contacts do beside it.
     let open = entity.start() != entity.end();
-    let mut corners: [Option<CornerAt>; 2] = [None, None];
+    let mut corners: [Option<LoneCorner>; 2] = [None, None];
     if open {
         // The edge's uses by contact, which the corner is read through.
         let use_of = |face: FaceId| {
@@ -3437,16 +3877,19 @@ fn ring(
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
             if !junctions.contains(&vertex) {
-                corners[j] = Some(corner_of(
-                    m,
-                    view,
-                    edge,
-                    &contact_uses,
-                    vertex,
-                    at_lo,
-                    kind.size(),
-                    tol,
-                )?);
+                corners[j] = Some(
+                    corner_of(
+                        m,
+                        view,
+                        edge,
+                        &contact_uses,
+                        vertex,
+                        at_lo,
+                        kind.size(),
+                        tol,
+                    )?
+                    .lone(edge, vertex)?,
+                );
             }
         }
     }
@@ -3894,6 +4337,20 @@ struct Made {
     added: usize,
 }
 
+/// The rewrite's indices of one stripe's entities: its four trim vertices
+/// `[end][contact]` and a fan's crossings, its two contact edges, each
+/// end's arcs in the end's order and its added face. At a miter or a corner
+/// the vertices and the one arc are the miter's or the corner's, shared
+/// with the other blends.
+#[derive(Default, Clone)]
+struct StripeMade {
+    vertices: [[usize; 2]; 2],
+    crossings: Vec<usize>,
+    contacts: [usize; 2],
+    arcs: [Vec<usize>; 2],
+    added: usize,
+}
+
 /// The rewrite's indices of one miter's entities: its two vertices, `q`
 /// then `p3`, and its edge.
 #[derive(Clone, Copy)]
@@ -4187,9 +4644,10 @@ fn build(
             added: 0,
         });
     }
-    let mut made: Vec<Made> = Vec::with_capacity(blends.len());
+    let mut made: Vec<StripeMade> = Vec::with_capacity(blends.len());
     for blend in &blends {
         let mut vertices = [[0usize; 2]; 2];
+        let mut crossings: Vec<usize> = Vec::new();
         for (end_index, end) in blend.ends.iter().enumerate() {
             match end {
                 EndKind::Face(face_end) => {
@@ -4229,50 +4687,75 @@ fn build(
                 None,
             ));
         }
-        let mut arcs = [0usize; 2];
+        let mut arcs: [Vec<usize>; 2] = Default::default();
         for (end_index, end) in blend.ends.iter().enumerate() {
             let face_end = match end {
                 EndKind::Face(face_end) => face_end,
                 EndKind::Miter { at, .. } => {
-                    arcs[end_index] = miter_made[*at].edge;
+                    arcs[end_index].push(miter_made[*at].edge);
                     continue;
                 }
                 EndKind::Corner { at, side } => {
-                    arcs[end_index] = corner_made[*at].arcs[*side];
+                    arcs[end_index].push(corner_made[*at].arcs[*side]);
                     continue;
                 }
             };
-            let (first, second) = if face_end.arc.lo_first {
-                (0, 1)
-            } else {
-                (1, 0)
-            };
-            arcs[end_index] = rw.edges.len();
-            rw.edges.push((
-                EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(face_end.arc.curve.clone()),
-                        range: face_end.arc.range,
-                    },
-                    start: VertexKey::New(vertices[end_index][first]),
-                    end: VertexKey::New(vertices[end_index][second]),
-                    tolerance: face_end.arc.tolerance,
-                },
-                None,
-            ));
+            // The points of the end in its order: the first trim point, a
+            // fan's crossings, the other trim point; each crossing cuts its
+            // extra edge (ADR-0043 §5).
+            let mut along = vec![vertices[end_index][0]];
+            for crossing in &face_end.crossings {
+                let v = rw.vertices.len();
+                rw.vertices.push(VertexSpec::New {
+                    point: crossing.point,
+                    tolerance: crossing.tolerance,
+                });
+                cut_once(&mut cuts, &crossing.trim, v)?;
+                crossings.push(v);
+                along.push(v);
+            }
+            along.push(vertices[end_index][1]);
             for (k, trim) in face_end.trims.iter().enumerate() {
                 cut_once(&mut cuts, trim, vertices[end_index][k])?;
             }
-            let pcurve = m.add_curve2(face_end.arc.on_face.clone());
-            edits.entry(face_end.face).or_default().insert.insert(
-                face_end.vertex,
-                Insertion {
-                    arc: EdgeKey::New(arcs[end_index]),
-                    pcurve,
-                    lo_first: face_end.arc.lo_first,
-                    edge_at_lo: face_end.trims[0].edge,
-                },
-            );
+            for (i, piece) in face_end.pieces.iter().enumerate() {
+                let (from, to) = (along[i], along[i + 1]);
+                let (first, second) = if piece.arc.lo_first {
+                    (from, to)
+                } else {
+                    (to, from)
+                };
+                let arc = rw.edges.len();
+                arcs[end_index].push(arc);
+                rw.edges.push((
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(piece.arc.curve.clone()),
+                            range: piece.arc.range,
+                        },
+                        start: VertexKey::New(first),
+                        end: VertexKey::New(second),
+                        tolerance: piece.arc.tolerance,
+                    },
+                    None,
+                ));
+                // The edge cut at the arc's start: the first corner edge,
+                // or the extra edge before this piece.
+                let edge_at_lo = match i.checked_sub(1) {
+                    None => face_end.trims[0].edge,
+                    Some(j) => face_end.crossings[j].trim.edge,
+                };
+                let pcurve = m.add_curve2(piece.arc.on_face.clone());
+                edits.entry(piece.face).or_default().insert.insert(
+                    face_end.vertex,
+                    Insertion {
+                        arc: EdgeKey::New(arc),
+                        pcurve,
+                        lo_first: piece.arc.lo_first,
+                        edge_at_lo,
+                    },
+                );
+            }
         }
         for (k, contact) in blend.contacts.iter().enumerate() {
             let pcurve = m.add_curve2(contact.on_face.clone());
@@ -4282,8 +4765,9 @@ fn build(
                 .replace
                 .insert(blend.stripe.edge, (EdgeKey::New(contact_edges[k]), pcurve));
         }
-        made.push(Made {
+        made.push(StripeMade {
             vertices,
+            crossings,
             contacts: contact_edges,
             arcs,
             added: 0,
@@ -4528,51 +5012,60 @@ fn build(
     // arc walked from one contact to the other, the miter's with its
     // pcurve on this blend's cylinder.
     for (blend, made) in blends.iter().zip(made.iter_mut()) {
-        let (contact_edges, arcs) = (made.contacts, made.arcs);
+        let contact_edges = made.contacts;
         let [lo, hi] = &blend.contacts;
         let surface = m.add_surface(blend.stripe.surface.clone());
-        let mut end_uses = [None; 2];
+        let mut end_uses: [Vec<StoredUse>; 2] = Default::default();
         for (end_index, end) in blend.ends.iter().enumerate() {
-            let (lo_first, pcurve) = match end {
-                EndKind::Face(face_end) => (face_end.arc.lo_first, &face_end.arc.on_blend),
+            let arcs: Vec<(bool, &Curve2)> = match end {
+                EndKind::Face(face_end) => face_end
+                    .pieces
+                    .iter()
+                    .map(|p| (p.arc.lo_first, &p.arc.on_blend))
+                    .collect(),
                 EndKind::Miter { at, side } => {
-                    (miters[*at].lo_first[*side], &miters[*at].on_blend[*side])
+                    vec![(miters[*at].lo_first[*side], &miters[*at].on_blend[*side])]
                 }
                 EndKind::Corner { at, side } => {
                     let arc = &corners[*at].arcs[*side];
-                    (arc.lo_first, &arc.on_blend)
+                    vec![(arc.lo_first, &arc.on_blend)]
                 }
             };
-            // The start arc is walked from `u = 0` to `u = β`, the end
-            // arc back.
-            let along = lo_first == (end_index == 0);
-            end_uses[end_index] = Some(StoredUse {
-                edge: EdgeKey::New(arcs[end_index]),
-                orientation: if along {
-                    Orientation::Forward
-                } else {
-                    Orientation::Reversed
-                },
-                pcurve: m.add_curve2(pcurve.clone()),
-            });
+            if arcs.len() != made.arcs[end_index].len() {
+                return Err(invariant("an edge per arc of the blend's end"));
+            }
+            // The start's arcs are walked from `u = 0` to `u = β`, the
+            // end's back, a fan's pieces in reverse.
+            let uses = &mut end_uses[end_index];
+            for (&(lo_first, pcurve), &edge) in arcs.iter().zip(&made.arcs[end_index]) {
+                let along = lo_first == (end_index == 0);
+                uses.push(StoredUse {
+                    edge: EdgeKey::New(edge),
+                    orientation: if along {
+                        Orientation::Forward
+                    } else {
+                        Orientation::Reversed
+                    },
+                    pcurve: m.add_curve2(pcurve.clone()),
+                });
+            }
+            if end_index == 1 {
+                uses.reverse();
+            }
         }
-        let [Some(start_arc), Some(end_arc)] = end_uses else {
-            return Err(invariant("two ends of the blend"));
-        };
-        let loop_uses = vec![
-            start_arc,
-            StoredUse {
-                edge: EdgeKey::New(contact_edges[1]),
-                orientation: Orientation::Forward,
-                pcurve: m.add_curve2(hi.on_blend.clone()),
-            },
-            end_arc,
-            StoredUse {
-                edge: EdgeKey::New(contact_edges[0]),
-                orientation: Orientation::Reversed,
-                pcurve: m.add_curve2(lo.on_blend.clone()),
-            },
-        ];
+        let [start_arcs, end_arcs] = end_uses;
+        let mut loop_uses = start_arcs;
+        loop_uses.push(StoredUse {
+            edge: EdgeKey::New(contact_edges[1]),
+            orientation: Orientation::Forward,
+            pcurve: m.add_curve2(hi.on_blend.clone()),
+        });
+        loop_uses.extend(end_arcs);
+        loop_uses.push(StoredUse {
+            edge: EdgeKey::New(contact_edges[0]),
+            orientation: Orientation::Reversed,
+            pcurve: m.add_curve2(lo.on_blend.clone()),
+        });
         made.added = rw.added.len();
         rw.added.push(AddedFace {
             shell: view.shell_of[&lo.face],
@@ -4700,10 +5193,10 @@ fn build(
     for (blend, made) in blends.iter().zip(&made) {
         let origin = forward(blend.stripe.edge);
         p.add_generated(origin, forward(out.added[made.added]));
-        for &k in made.contacts.iter().chain(&made.arcs) {
+        for &k in made.contacts.iter().chain(made.arcs.iter().flatten()) {
             p.add_generated(origin, forward(out.edges[k]));
         }
-        for &v in made.vertices.iter().flatten() {
+        for &v in made.vertices.iter().flatten().chain(&made.crossings) {
             p.add_generated(origin, forward(out.vertices[v]));
         }
     }
@@ -4763,7 +5256,12 @@ fn build(
 /// At a face across whose two corner edges differ in convexity — a blend
 /// running into a step, on a stripe or a ring's open arc — the corner edge of the blend's own convexity is
 /// lengthened past the vertex along its curve to the trim, and the face
-/// across takes the region the arc bounds (ADR-0038).
+/// across takes the region the arc bounds (ADR-0038). Where the vertex has
+/// more edges, every one sharp and of the blend's sense, and the faces
+/// across from one corner edge to the other are a fan — the hexagonal
+/// boss's chamfer facet at its foot — the end is one section per face, as
+/// a lone face across would cut it, and each edge between two of them is
+/// cut where the blend's surface crosses it (ADR-0043).
 /// Two blends meeting at a vertex whose third edge stays sharp
 /// meet in a miter: the ellipse of the two cylinders in the plane
 /// through the ball's centre bisecting their axes, from where the two
@@ -4831,7 +5329,8 @@ fn build(
 /// `Generated` from it; each of the edge's faces, each face across an
 /// end and each corner edge the trim shortens or lengthens `Modified` into its new
 /// self; the edge and the two corner vertices `Deleted`; the shell and
-/// the body `Modified`. A miter's edge and two vertices are `Generated`
+/// the body `Modified`. At a fan, each section and each crossing vertex
+/// is `Generated` from the edge too, and each edge crossed `Modified`. A miter's edge and two vertices are `Generated`
 /// from both edges they join. At a corner of three, each side of the
 /// sphere is its blend's end arc and each corner point is `Generated` from
 /// the two edges whose contacts cross there; the sphere face and its pole
@@ -4860,7 +5359,9 @@ fn build(
 /// sense, or blended too at a cusp —
 /// [`Reason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges that the chain
-/// does not run on through, a miter
+/// does not run on through and that is no fan — the faces across not one
+/// walk through its star, an edge at it smooth, a seam or of the other
+/// sense, or a fan at a miter, a corner or a ring's end — a miter
 /// whose two blends have unequal dihedrals or are not both convex or
 /// both concave, a miter with a blend along a ruling, whose contact on
 /// the cylinder misses the other's on the third edge, or a corner of three
@@ -4868,7 +5369,7 @@ fn build(
 /// none of whose faces is square to the other two — and
 /// [`Reason::BlendTooLarge`] where a contact line or an end arc leaves
 /// its face through an edge that is not the corner's own or a corner
-/// edge is shorter than the trim, a trim past the corner's vertex that is
+/// edge is shorter than the trim, a fan's crossing lies past its edge, a trim past the corner's vertex that is
 /// no such lengthening or whose stretch leaves its face, or a closed edge's torus would not be a
 /// ring torus, a contact reaches the axis or a cone's apex, or its seam is
 /// shorter than the trim, or the third edge or a tangent edge at
