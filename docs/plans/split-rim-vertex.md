@@ -125,12 +125,20 @@ bound has to be established here.
   writes no valid operand: the pole of the sphere breaks its closed-edge
   split, and no revolve of the other pair was drawn). No pair was refused at
   the junction, so no `Unsupported`.)*
-- [ ] Step 5 **[2]** — A property over random poses (`blend_prop`): a boss
+- [x] Step 5 **[2]** — A property over random poses (`blend_prop`): a boss
   or a hole split into two to four arcs at random angles, with the seam at a
   vertex or elsewhere, fillet and chamfer at random size, convex and concave.
   Checks the checker, volume additivity to the closed forms, STEP round-trip,
   deterministic ids. Seeded, sharded through `prop_shards!`; a pose the end
   leaves is rejected by the refusal's name.
+  *(Done: `fillets_/chamfers_of_a_split_rim_match_their_closed_forms`, four
+  shards each, green at 256 cases. No operation splits an edge, so the test
+  splices the plate's own STEP text (the ring's closed edge becomes the arcs)
+  and reads it back, as a writer that splits closed edges would give it; it
+  asserts the arcs are there. The seam is always at the first vertex: a rim
+  with the seam elsewhere cannot occur (step 3). The ring is a hole's top edge
+  or a boss's foot, the cylinder only; the turned pairs are fixtures (step
+  4).)*
 - [ ] Step 6 **[1]** — Measure the tiers again (`tools/real-parts.sh`,
   `--census-committed`). Move `fixtures:` expectations whose refusals changed
   (the commit body says why) and bless `cancel_counts.txt` for step 4's
