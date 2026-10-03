@@ -72,6 +72,10 @@ pub struct Report {
     pub classes: Vec<(String, String, String)>,
     /// Every kernel bug met, in words.
     pub failures: Vec<String>,
+    /// The fillet column of each solid whose fillet stage Arris refuses
+    /// and Open CASCADE builds, by part (`crate::census`).
+    #[serde(default)]
+    pub fillet_census: Vec<crate::census::SolidCensus>,
 }
 
 /// The class's name, as a fixture records it.
@@ -361,6 +365,17 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
             report
                 .classes
                 .push((key.clone(), stage.clone(), class_name(&class).into()));
+            if stage == "fillet" && matches!(class, Class::ArrisRefuses(_)) {
+                match catch_unwind(AssertUnwindSafe(|| {
+                    crate::census::blend_census(&m, back.body, &key)
+                })) {
+                    Ok(Ok(census)) => report.fillet_census.push(census),
+                    Ok(Err(e)) => report.failures.push(format!("{key} census: {e}")),
+                    Err(payload) => report
+                        .failures
+                        .push(format!("{key} census: {}", panicked(&*payload))),
+                }
+            }
             let (Outcome::ArrisRefuses(why), Some(refused)) = (&judged.outcome, &judged.refused)
             else {
                 continue;

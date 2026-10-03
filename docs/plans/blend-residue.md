@@ -53,7 +53,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — The re-census by part. Extend the survey's fillet
+- [x] Step 1 **[2]** — The re-census by part. Extend the survey's fillet
   stage (`arris_debug::survey`, `tools/real-parts.sh`) to print, for every
   part in the column of both tiers, the **first refusal at the battery's
   radius** (kind, faces, how they sit) and the refusals the part's other

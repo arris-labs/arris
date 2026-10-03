@@ -312,12 +312,10 @@ fn is_tangent_dihedral(
     Ok(a.cross(&b).norm() <= m.precision().angular_tolerance)
 }
 
-/// The edges the fillet stage blends: every edge of `body` between two
+/// The edges a fillet may be asked of: every edge of `body` between two
 /// distinct faces that has a curve and is not a tangent dihedral (no
-/// rolling ball blends one: [`is_tangent_dihedral`]), in id order, taken at
-/// the stride that leaves at most [`FILLET_EDGES`]; each with its curve's
-/// midpoint and its length.
-fn fillet_sample(m: &Model, body: Body) -> Result<Vec<(Point3, f64)>, String> {
+/// rolling ball blends one: [`is_tangent_dihedral`]), in id order.
+pub(crate) fn blendable_edges(m: &Model, body: Body) -> Result<Vec<EdgeId>, String> {
     let closure = m.closure(body).map_err(|e| e.to_string())?;
     let mut orientation: BTreeMap<FaceId, Orientation> = BTreeMap::new();
     for shell in m.shells(body).map_err(|e| e.to_string())? {
@@ -340,6 +338,14 @@ fn fillet_sample(m: &Model, body: Body) -> Result<Vec<(Point3, f64)>, String> {
             edges.push(e);
         }
     }
+    Ok(edges)
+}
+
+/// The edges the fillet stage blends: [`blendable_edges`] of `body` taken
+/// at the stride that leaves at most [`FILLET_EDGES`]; each with its
+/// curve's midpoint and its length.
+pub(crate) fn fillet_sampled(m: &Model, body: Body) -> Result<Vec<(EdgeId, Point3, f64)>, String> {
+    let edges = blendable_edges(m, body)?;
     let stride = edges.len().div_ceil(FILLET_EDGES).max(1);
     let mut out = Vec::new();
     for &e in edges.iter().step_by(stride) {
@@ -351,9 +357,15 @@ fn fillet_sample(m: &Model, body: Body) -> Result<Vec<(Point3, f64)>, String> {
             .map(|i| curve.point(range.lerp(i as f64 / LENGTH_CHORDS as f64)))
             .collect();
         let length = points.windows(2).map(|w| (w[1] - w[0]).norm()).sum();
-        out.push((curve.point(range.lerp(0.5)), length));
+        out.push((e, curve.point(range.lerp(0.5)), length));
     }
     Ok(out)
+}
+
+/// The fillet stage's radius for a sample: [`FILLET_FRACTION`] of its
+/// shortest edge.
+pub(crate) fn fillet_radius(sample: &[(EdgeId, Point3, f64)]) -> f64 {
+    FILLET_FRACTION * sample.iter().map(|s| s.2).fold(f64::INFINITY, f64::min)
 }
 
 /// The operation stages' operands for one solid Arris read, `body` in
@@ -449,8 +461,8 @@ pub fn operands(
             },
         );
     }
-    let sample = fillet_sample(m, body)?;
-    let shortest = sample.iter().map(|s| s.1).fold(f64::INFINITY, f64::min);
+    let sample = fillet_sampled(m, body)?;
+    let radius = fillet_radius(&sample);
     if !sample.is_empty() {
         out.insert(
             "fillet".to_string(),
@@ -460,8 +472,11 @@ pub fn operands(
                     Step::Fillet {
                         name: "result".into(),
                         of: "part".into(),
-                        edges: sample.iter().map(|(p, _)| lits([p.x, p.y, p.z])).collect(),
-                        radius: lit(FILLET_FRACTION * shortest),
+                        edges: sample
+                            .iter()
+                            .map(|(_, p, _)| lits([p.x, p.y, p.z]))
+                            .collect(),
+                        radius: lit(radius),
                     },
                 ],
                 result: "result".into(),

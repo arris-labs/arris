@@ -1557,7 +1557,12 @@ B-Rep).
   the oracle's cache, then the battery). A failure is a panic, a
   checker-rejected `Ok`, an `Ok` outside the oracle's measures or a
   battery stage that is a kernel fault. It writes `histogram.md`,
-  `failures.md` and `both.md`, the histogram over both tiers, and exits
+  `failures.md` and `both.md`, the histogram over both tiers, and
+  `fillet-by-part.md`, the fillet column by part (`arris_debug::census`:
+  for each solid whose fillet stage Arris refuses, its first refusal at
+  the battery's radius and what every blendable edge alone meets;
+  `--example real_parts -- --census-committed` for the committed tier),
+  and exits
   1 on a failure no line of `tools/real-parts.waits` excludes by a
   fixture still under `regression/`. `cargo run -p arris-debug
   --example real_parts -- --committed` prints the committed tier's

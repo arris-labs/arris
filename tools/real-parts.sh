@@ -11,7 +11,8 @@
 # lists, and surveys each in its own process of the `real_parts` example
 # (arris_debug::survey) under a timeout: Arris's read, Open CASCADE's
 # through the oracle's cache, every solid held to it, and the battery.
-# Writes target/real-parts/histogram.md and failures.md. Exits 1 if a
+# Writes target/real-parts/histogram.md, failures.md and
+# fillet-by-part.md (the fillet column by part, from the survey). Exits 1 if a
 # failure is not excluded by tools/real-parts.waits.
 set -euo pipefail
 

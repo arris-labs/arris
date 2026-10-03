@@ -16,6 +16,7 @@ pub mod battery;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod bench;
 pub mod body;
+pub mod census;
 pub mod corpus;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod differential;

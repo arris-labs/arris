@@ -8,6 +8,12 @@
 //!   surveys one file of the fetched tier (`arris_debug::survey`) and
 //!   writes its report. `tools/real-parts.sh` runs one process per file,
 //!   under a timeout.
+//! - `real_parts --census-committed` prints the committed tier's fillet
+//!   column by part (`arris_debug::census`): each solid whose fillet stage
+//!   Arris refuses, its first refusal at the battery's radius and what
+//!   each blendable edge alone meets. `real_parts --census <file.stp>...`
+//!   counts every solid of a file, no oracle asked. The fetched tier's is
+//!   `fillet-by-part.md`, written by `--summary` from the survey.
 //! - `real_parts --summary <manifest> <reports-dir> <waits> <out-dir>`
 //!   reads every report the manifest's files should have, writes
 //!   `histogram.md` and `failures.md` into `<out-dir>`, and `both.md`,
@@ -19,6 +25,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use arris_debug::census;
 use arris_debug::histogram::{COMMITTED_TIER, Histogram};
 use arris_debug::survey::{self, Report};
 use arris_debug::{fixtures, part};
@@ -27,7 +34,7 @@ type Error = Box<dyn std::error::Error>;
 
 fn usage() -> ! {
     eprintln!(
-        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
+        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
     );
     std::process::exit(2);
 }
@@ -61,6 +68,20 @@ fn main() -> Result<(), Error> {
             Path::new(&args[3]),
             Path::new(&args[4]),
         ),
+        Some("--census") if args.len() >= 2 => {
+            let mut parts = Vec::new();
+            for file in &args[1..] {
+                let path = Path::new(file);
+                let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or(file);
+                parts.push((name.to_string(), census::census_file(path, &|_| true)?));
+            }
+            print!("{}", census::markdown(&parts));
+            Ok(())
+        }
+        Some("--census-committed") => {
+            print!("{}", census::markdown(&census::committed()?));
+            Ok(())
+        }
         _ => usage(),
     }
 }
@@ -133,6 +154,7 @@ fn summary(manifest: &Path, reports: &Path, waits_file: &Path, out: &Path) -> Re
     let mut both = committed_tier()?;
     let mut failures = String::from("# Failures\n\n");
     let mut open = 0;
+    let mut fillet_column: Vec<(String, Vec<arris_debug::census::SolidCensus>)> = Vec::new();
     for name in &parts {
         let path: PathBuf = reports.join(format!("{name}.json"));
         let (report, mut found) = match std::fs::read_to_string(&path) {
@@ -149,6 +171,9 @@ fn summary(manifest: &Path, reports: &Path, waits_file: &Path, out: &Path) -> Re
         if let Some(report) = &report {
             histogram.add_report(report);
             both.add_report(report);
+            if !report.fillet_census.is_empty() {
+                fillet_column.push((name.clone(), report.fillet_census.clone()));
+            }
         }
         let excluded_by = waits.get(name).cloned().unwrap_or_default();
         for slug in &excluded_by {
@@ -189,6 +214,10 @@ fn summary(manifest: &Path, reports: &Path, waits_file: &Path, out: &Path) -> Re
     std::fs::write(out.join("histogram.md"), histogram.markdown())?;
     std::fs::write(out.join("both.md"), both.markdown())?;
     std::fs::write(out.join("failures.md"), &failures)?;
+    std::fs::write(
+        out.join("fillet-by-part.md"),
+        census::markdown(&fillet_column),
+    )?;
     print!("{}", histogram.markdown());
     println!(
         "\n{open} failing part(s) not excluded; {}",
