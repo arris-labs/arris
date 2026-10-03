@@ -1,0 +1,158 @@
+{
+  "description": "a hexagonal prism (circumradius 1, height 2) with its six top edges chamfered at d 0.2, then the chamfer's foot on the first side face \u2014 the edge between the side plane and the chamfer facet, at (0.75, 0.433, 1.8) \u2014 chamfered at c 0.1. Both of its ends reach a vertex of four edges: the blended edge, the vertical edge of the prism and the miter between two facets are the corner edges, and the edge between the next side face and the next facet, sharp, stands between the faces across. Reason::VertexBlend today (the blend network's, the fan of two faces across: CTC-01's 12 plane \u00d7 plane edges); Open CASCADE builds it, the end one piece on each face across, a new vertex on the extra edge (plans/blend-fan step 1)",
+  "params": {
+    "d": 0.2,
+    "r": 0.1,
+    "c": 0.1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          1,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              0.5,
+              0.866025403784
+            ]
+          },
+          {
+            "line_to": [
+              -0.5,
+              0.866025403784
+            ]
+          },
+          {
+            "line_to": [
+              -1.0,
+              0.0
+            ]
+          },
+          {
+            "line_to": [
+              -0.5,
+              -0.866025403784
+            ]
+          },
+          {
+            "line_to": [
+              0.5,
+              -0.866025403784
+            ]
+          },
+          {
+            "line_to": [
+              1,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "prism",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 2
+    },
+    {
+      "name": "chamfered",
+      "op": "chamfer",
+      "of": "prism",
+      "edges": [
+        [
+          0.75,
+          0.433012701892,
+          2
+        ],
+        [
+          0.0,
+          0.866025403784,
+          2
+        ],
+        [
+          -0.75,
+          0.433012701892,
+          2
+        ],
+        [
+          -0.75,
+          -0.433012701892,
+          2
+        ],
+        [
+          -0.0,
+          -0.866025403784,
+          2
+        ],
+        [
+          0.75,
+          -0.433012701892,
+          2
+        ]
+      ],
+      "distance": "d"
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "chamfered",
+      "edges": [
+        [
+          0.75,
+          0.433012701892,
+          "2 - d"
+        ]
+      ],
+      "distance": "c"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "far_vertex",
+      "point": [
+        1,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ]
+}

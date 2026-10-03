@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 
 use arris_io::arris_check::arris_topo::arris_geom::GeomKind;
 use arris_io::arris_check::arris_topo::arris_math::{Point3, Vec3};
-use arris_io::arris_check::arris_topo::{Body, EdgeId, EntityId, Model, VertexId};
+use arris_io::arris_check::arris_topo::{Body, EdgeId, EntityId, FaceId, Model, VertexId};
 use arris_io::step::ReadOptions;
 use arris_ops::{OpError, Reason};
 
@@ -488,10 +488,83 @@ fn second_kind(m: &Model, other: EdgeId, vertex: VertexId, blended: EdgeId) -> &
     }
 }
 
+/// The faces of `edge`'s uses, sorted and without repeats.
+fn faces_of(m: &Model, edge: EdgeId) -> Vec<FaceId> {
+    let mut f: Vec<FaceId> = m
+        .edge_uses(edge)
+        .map(|u| u.iter().map(|x| x.face).collect())
+        .unwrap_or_default();
+    f.sort();
+    f.dedup();
+    f
+}
+
+/// The one edge beside `edge` in `face`'s loop that also touches `vertex`.
+fn next_at_vertex(m: &Model, face: FaceId, edge: EdgeId, vertex: VertexId) -> Option<EdgeId> {
+    let f = m.face(face).ok()?;
+    let mut found = None;
+    for l in f.loops() {
+        let n = l.coedges().len();
+        for i in (0..n).filter(|&i| l.coedges()[i].edge() == edge) {
+            for j in [(i + n - 1) % n, (i + 1) % n] {
+                let c = l.coedges()[j].edge();
+                let touches = m
+                    .edge(c)
+                    .is_ok_and(|x| x.start() == vertex || x.end() == vertex);
+                if c != edge && touches && found.is_some_and(|x| x != c) {
+                    return None;
+                }
+                if c != edge && touches {
+                    found = Some(c);
+                }
+            }
+        }
+    }
+    found
+}
+
+/// What the faces across a blended edge's end are at `vertex`: the one face
+/// met by both corner edges (*the face across met twice*), or the faces in
+/// the vertex's star from one corner edge to the other, each a piece of the
+/// end (*a fan of k faces across*). `None` where the star is not one simple
+/// walk between the two corner edges (ADR-0043).
+fn faces_across(
+    m: &Model,
+    blended: EdgeId,
+    vertex: VertexId,
+    corners: &[EdgeId],
+) -> Option<String> {
+    let [c1, c2] = corners[..] else { return None };
+    let blend_faces = faces_of(m, blended);
+    let across = |c| match &faces_of(m, c)
+        .into_iter()
+        .filter(|f| !blend_faces.contains(f))
+        .collect::<Vec<_>>()[..]
+    {
+        [f] => Some(*f),
+        _ => None,
+    };
+    let (a1, a2) = (across(c1)?, across(c2)?);
+    if a1 == a2 {
+        return Some("the face across met twice".to_string());
+    }
+    let (mut e, mut f, mut k) = (c1, a1, 1);
+    for _ in 0..m.vertex_edges(vertex).ok()?.len() {
+        let next = next_at_vertex(m, f, e, vertex)?;
+        if next == c2 {
+            return (f == a2).then(|| format!("a fan of {k} faces across"));
+        }
+        f = *faces_of(m, next).iter().find(|&&x| x != f)?;
+        (e, k) = (next, k + 1);
+    }
+    None
+}
+
 /// Which site refused a `VertexBlend` of `edge` blended alone, from the
 /// entities the error names and the vertex's edges (`None` for any other
 /// refusal): *a vertex of more than three edges*, with what the extra edges
-/// are (a sharp edge between two faces across; a smooth edge; a seam; a
+/// are (sharp edges between two faces across, named by what they make of the
+/// end: a fan of k faces across, or the face across met twice; a smooth edge; a seam; a
 /// degenerate edge; the blended edge's tangent continuation; an edge
 /// continuing a corner edge); *a corner edge with
 /// no curve*; *corner edges that share no face across*; *a closed edge's
@@ -540,11 +613,15 @@ pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String
                     .collect();
                 kinds.sort_unstable();
                 kinds.dedup();
-                format!(
-                    "a vertex of {} edges, the extra: {}",
-                    at.len(),
-                    kinds.join(", ")
-                )
+                let sharp = kinds == ["a sharp edge between two faces across"];
+                match sharp.then(|| faces_across(m, edge, v, &corners)).flatten() {
+                    Some(across) => format!("a vertex of {} edges, {across}", at.len()),
+                    None => format!(
+                        "a vertex of {} edges, the extra: {}",
+                        at.len(),
+                        kinds.join(", ")
+                    ),
+                }
             } else if corners
                 .iter()
                 .any(|&c| m.edge(c).is_ok_and(|x| x.curve().is_none()))
@@ -1427,7 +1504,7 @@ mod tests {
         };
         assert_eq!(
             vertex_blend_cause(&m, rise.id, &e).unwrap(),
-            "a vertex of 5 edges, the extra: a sharp edge between two faces across; edge plane × plane"
+            "a vertex of 5 edges, the face across met twice; edge plane × plane"
         );
         assert_eq!(run_over_cause(&m, rise.id, &e), None);
         let set = vertex_set_cause(&m, &e).unwrap();
@@ -1747,5 +1824,54 @@ mod tests {
             .expect("the spine");
         let tip = m.edge(spine.id).unwrap().start();
         assert_eq!(walls_fold(&m, spine.id, tip), Some(true));
+    }
+
+    /// The part of the fixture `dir` before its last step (the blend), the
+    /// edge nearest `at` blended alone, and the census's cause.
+    fn vertex_cause_of(dir: &str, at: P3, radius: f64) -> String {
+        let dir = corpus_root().join(dir);
+        let mut fixture: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("fixture.json")).unwrap())
+                .unwrap();
+        let last = fixture["steps"].as_array_mut().unwrap().pop().unwrap();
+        fixture["result"] = fixture["steps"].as_array().unwrap().last().unwrap()["name"].clone();
+        assert!(last["op"] == "fillet" || last["op"] == "chamfer");
+        let recipe: crate::fixtures::Recipe = serde_json::from_str(&fixture.to_string()).unwrap();
+        let chain = crate::corpus::build("generated/fan", &recipe).unwrap();
+        let body = chain.result().unwrap();
+        let mut m = chain.model;
+        m.retain(&[body]).unwrap();
+        let edge = m
+            .edges(body)
+            .unwrap()
+            .into_iter()
+            .find(|h| edge_midpoint(&m, h.id).is_some_and(|p| (p - at).norm() < 1e-6))
+            .expect("the blended edge");
+        let mut scratch = m.clone();
+        let Err(Refused::Op(e)) = blend(&mut scratch, body, &[edge], radius) else {
+            panic!("the edge is refused");
+        };
+        vertex_blend_cause(&m, edge.id, &e).unwrap()
+    }
+
+    /// The hexagonal prism's chamfered top, the foot of a facet blended: at
+    /// each end the faces across are two, separated by a sharp edge, and
+    /// `blend/five-edge-vertex`'s are one face met twice (ADR-0043).
+    #[test]
+    fn a_fan_is_named_apart_from_the_face_across_met_twice() {
+        for dir in [
+            "regression/hex-chamfer-foot-fan-fillet",
+            "regression/hex-chamfer-foot-fan-chamfer",
+        ] {
+            assert_eq!(
+                vertex_cause_of(dir, P3::new(0.75, 3f64.sqrt() / 4.0, 1.8), 0.1),
+                "a vertex of 4 edges, a fan of 2 faces across; edge plane × plane",
+                "{dir}"
+            );
+        }
+        assert_eq!(
+            vertex_cause_of("blend/five-edge-vertex", P3::new(1.0, 2.0, 2.5), 0.1),
+            "a vertex of 5 edges, the face across met twice; edge plane × plane"
+        );
     }
 }

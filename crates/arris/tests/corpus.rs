@@ -2377,6 +2377,24 @@ fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
     run("regression/nist-ctc-03-two-plane-edges-fillet-checker-fault");
 }
 
+/// A hexagonal prism with its top edges chamfered, the foot of one facet
+/// filleted: each end reaches a vertex of four edges whose faces across are
+/// two (a fan), `Reason::VertexBlend`, where Open CASCADE cuts the end on
+/// each face across and puts a vertex on the extra edge (plans/blend-fan
+/// step 1; CTC-01's 12 plane × plane edges).
+#[test]
+#[ignore = "VertexBlend: the end's face across is a fan of two faces (plans/blend-fan step 3)"]
+fn regression_hex_chamfer_foot_fan_fillet() {
+    run("regression/hex-chamfer-foot-fan-fillet");
+}
+
+/// The chamfer twin of `regression_hex_chamfer_foot_fan_fillet`.
+#[test]
+#[ignore = "VertexBlend: the end's face across is a fan of two faces (plans/blend-fan step 3)"]
+fn regression_hex_chamfer_foot_fan_chamfer() {
+    run("regression/hex-chamfer-foot-fan-chamfer");
+}
+
 /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
 /// a chain of three: the output fails the checker at L2 where Open CASCADE
 /// builds it, as it did before the blend's tangency took the faces'

@@ -80,7 +80,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — **The fan, shrunk and named.**
+- [x] Step 1 **[2]** — **The fan, shrunk and named.**
   - Look at one of CTC-01's 12 fan vertices (`inspect` skill): which
     faces lie across, the angle of the extra edge, and where the end must
     cross it.
@@ -92,6 +92,13 @@ bound has to be established here.
   - `census::vertex_blend_cause` names "a fan of k faces across" and "the
     face across met twice" apart. The census test holds both on these
     fixtures and on `blend/five-edge-vertex`.
+  - Seen: CTC-01's fan vertex is the foot of a chamfer facet where two
+    facets meet over the side faces: corner edges the vertical edge and the
+    facet miter, the extra edge the next side face against the next facet,
+    k = 2. Open CASCADE builds the shrunk prism at 22 / 35 / 15 / 15 (loops)
+    for both fillet and chamfer. The fixtures are
+    `regression/hex-chamfer-foot-fan-{fillet,chamfer}`, a circumradius-1,
+    height-2 prism, d 0.2, r and c 0.1.
 - [ ] Step 2 **[1]** — **ADR-0043**, as the design deltas state it, from
   what step 1 saw. It records the counts Open CASCADE reports for each
   site, and the pieces' order rule in the vertex's star.
