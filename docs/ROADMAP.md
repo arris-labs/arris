@@ -647,6 +647,24 @@ spindle torus ADR-0036 §3 refuses; and no blend runs onto a third face.
 The sampled edges of CTC-03 and FTC-08 are mixed corners, STC-06's two are
 the ring's, so the plan builds the mixed corner and the column it can
 clear is CTC-03 and FTC-08.
+The plan built the mixed corner (ADR-0038: a blend running into a step
+lengthens its corner edge, the face across plane, cylinder or cone taking the
+end; a ring's open arc likewise) and measured the tiers again
+(`tools/real-parts.sh`, `--census-committed`, 2026-10-03). The fetched
+tier's `fillet` column holds **6** parts (5 blend network, 1 NURBS), 8
+before: `ctc_03` and `ftc_08` left it, no part disagreeing with Open CASCADE
+(0 failing parts; the battery's stages 76 agree, 3 both refuse, 10 Arris
+refuses, from 74, 3, 12). Its first refusals are a cylinder pair 1, an end on
+a cylinder 1 (`ctc_01` ap242), `VertexBlend` 1 (`ctc_04`), `TangentChain` 1
+(`stc_09`), `BlendTooLarge` 1 (`stc_06`: the ring's contact at the axis, a
+horn or spindle torus, ADR-0036 §3) and a NURBS curve 1. The committed
+tier's 6 do not move (`VertexBlend` 2, `BlendTooLarge` 1 — `ftc-08`'s
+sampled edge, which Open CASCADE refuses too — `TangentChain` 1, a cylinder
+pair 1, NURBS 1), so its histogram stands. Over both tiers (38 parts) the
+blend network blocks 10 at `fillet`, beside C4's 17. What is left of the
+run-over is the horn and spindle torus at the axis and radii Open CASCADE
+refuses; the corners (`VertexBlend`), tangent continuation, the crossing
+cylinders and a trace that misses are the next plan's.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges

@@ -102,7 +102,7 @@ bound has to be established here.
   and the removed material, STEP round-trip, determinism of ids; poses beyond
   the lengthening's reach (a stretch out of its face) rejected by the
   refusal's name, not silently. Seeded; shards via `prop_shards!`.
-- [ ] Step 7 **[1]** — Measure the fetched and committed tiers again
+- [x] Step 7 **[1]** — Measure the fetched and committed tiers again
   (`tools/real-parts.sh`), print the column beside C4's 17 of 38 and
   `blend-residue`'s line, move the `fixtures:` expectations whose refusals
   changed (the commit body saying why; `cancel_counts.txt` blessed for the
