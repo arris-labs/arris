@@ -114,7 +114,7 @@ bound has to be established here.
     chamfer's far face). A concave pocket version builds too (20/30/13);
     mixed convexity stays out of scope. Arris refuses both fixtures
     `VertexBlend`.
-- [ ] Step 2 **[1]** — **ADR-0044**, as the design deltas say, from what
+- [x] Step 2 **[1]** — **ADR-0044**, as the design deltas say, from what
   step 1 saw. Include the counts, which blend is wider, and the arc's face.
 - [ ] Step 3 **[3]** — **The fillet miter built.**
   - `miter` computes `m` and the trim arc (the existing plane–cylinder
