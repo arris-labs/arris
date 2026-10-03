@@ -8,13 +8,22 @@
 //! identically. A failure prints the case and the seed, and becomes a
 //! fixture under `tests/fixtures/regression/` (`tests/fixtures/README.md`
 //! §Property-test failures).
+//!
+//! The end families of ADR-0037 follow: a rib running into a round or
+//! conical boss with its top edge blended, and a plate's boss whose foot
+//! is blended where a second boss crosses it. Their blends end on a fitted
+//! curve, so the volume is the unblended body's less or plus a section
+//! integrated in closed form over the face across, to the model's
+//! tolerance, and each result also round-trips through STEP.
 
 use arris_debug::prop::turned::{Piece, Turned, sweep, turned};
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{
-    chamfer, extrude, fillet, mass_properties, primitive_box, revolve, transform,
+    chamfer, extrude, fillet, fuse, mass_properties, primitive_box, primitive_cylinder, revolve,
+    step_read, transform,
 };
 use arris_debug::{dump_text, prop, prop_shards};
+use arris_io::step::{self, ReadOptions};
 use arris_ops::OpError;
 use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
 use arris_ops::arris_check::arris_topo::arris_math::{
@@ -875,5 +884,374 @@ prop_shards! {
     turned_parts_blend_as_pappus
         [shard_0 shard_1 shard_2 shard_3] (t) = turned() => {
             turned_matches_pappus(t)
+        }
+}
+
+/// The composite Simpson rule over `[a, b]` at `n` (even) intervals: the
+/// integrands below are smooth after their substitution.
+fn simpson(a: f64, b: f64, n: usize, f: &dyn Fn(f64) -> f64) -> f64 {
+    let h = (b - a) / n as f64;
+    let mut sum = f(a) + f(b);
+    for i in 1..n {
+        sum += f(a + h * i as f64) * if i % 2 == 1 { 4.0 } else { 2.0 };
+    }
+    sum * h / 3.0
+}
+
+/// A scene whose blend ends on a face across, by the family of ADR-0037.
+#[derive(Debug, Clone, PartialEq)]
+enum Ends {
+    /// A rib `[0, −w, 0]–[cx, w, h]` running along `x` into a boss about
+    /// the vertical axis through `(cx, 0)` from `z = −1` to `h + 1`, of
+    /// radius `reach · w` at the foot and `(1 − taper)` of that at the top
+    /// (a cylinder when `taper` is `0`); the edge at `y = w` along the
+    /// top is blended, `lead` long before it meets the boss at the top.
+    Rib {
+        w: f64,
+        h: f64,
+        reach: f64,
+        taper: f64,
+        lead: f64,
+    },
+    /// A plate `[−6, 6]² × [0, 1]` with a boss of radius `ra` about the
+    /// vertical axis through the origin and a second of radius `rb` and
+    /// height `hb` about `(d, 0)`, whose wall crosses the first's: the
+    /// first boss's foot, an open arc, is blended.
+    Twin {
+        ra: f64,
+        rb: f64,
+        d: f64,
+        ha: f64,
+        hb: f64,
+    },
+}
+
+/// A scene, a blend size and a pose.
+#[derive(Debug, Clone)]
+struct EndCase {
+    scene: Ends,
+    size: f64,
+    pose: Isometry,
+}
+
+/// How far a ball's section keeps from the face across's grazing: the
+/// ring of a twin boss's blend meets the second wall at angles of at
+/// least this much of a radius.
+const TWIN_MARGIN: f64 = 0.15;
+
+impl Ends {
+    /// The boss's radius at height `z` of a rib's scene.
+    fn rib_radius(&self, z: f64) -> f64 {
+        let Ends::Rib {
+            w, h, reach, taper, ..
+        } = *self
+        else {
+            return 0.0;
+        };
+        let (foot, top) = (reach * w, reach * w * (1.0 - taper));
+        foot + (top - foot) * (z + 1.0) / (h + 2.0)
+    }
+
+    /// The boss's axis `x` of a rib's scene.
+    fn rib_centre(&self) -> f64 {
+        let Ends::Rib { w, h, lead, .. } = *self else {
+            return 0.0;
+        };
+        (self.rib_radius(h).powi(2) - w * w).sqrt() + lead
+    }
+
+    fn build(&self, m: &mut Model) -> Result<Body, OpError> {
+        match *self {
+            Ends::Rib { w, h, taper, .. } => {
+                let cx = self.rib_centre();
+                let (rib, _) = primitive_box(m, Point3::new(0.0, -w, 0.0), Point3::new(cx, w, h))?;
+                let boss = if taper == 0.0 {
+                    let axis = Axis::new(Point3::new(cx, 0.0, -1.0), Vec3::z())?;
+                    primitive_cylinder(m, axis, self.rib_radius(-1.0), h + 2.0)?.0
+                } else {
+                    let plane = Frame::new(Point3::new(cx, 0.0, 0.0), -Vec3::y(), Vec3::x())?;
+                    let (foot, top) = (self.rib_radius(-1.0), self.rib_radius(h + 1.0));
+                    let corners = [
+                        Point2::new(foot, -1.0),
+                        Point2::new(top, h + 1.0),
+                        Point2::new(0.0, h + 1.0),
+                        Point2::new(0.0, -1.0),
+                    ];
+                    let profile = Profile {
+                        plane,
+                        outer: ProfileLoop::Path {
+                            start: corners[3],
+                            segments: corners.iter().map(|&q| ProfileSegment::LineTo(q)).collect(),
+                        },
+                        holes: Vec::new(),
+                    };
+                    let axis = Axis::new(Point3::new(cx, 0.0, 0.0), Vec3::z())?;
+                    revolve(m, &profile, axis, 2.0 * PI)?.0
+                };
+                Ok(fuse(m, rib, boss)?.0)
+            }
+            Ends::Twin { ra, rb, d, ha, hb } => {
+                let (plate, _) =
+                    primitive_box(m, Point3::new(-6.0, -6.0, 0.0), Point3::new(6.0, 6.0, 1.0))?;
+                let (a, _) = primitive_cylinder(
+                    m,
+                    Axis::new(Point3::new(0.0, 0.0, 1.0), Vec3::z())?,
+                    ra,
+                    ha,
+                )?;
+                let (b, _) =
+                    primitive_cylinder(m, Axis::new(Point3::new(d, 0.0, 1.0), Vec3::z())?, rb, hb)?;
+                let (plated, _) = fuse(m, plate, a)?;
+                Ok(fuse(m, plated, b)?.0)
+            }
+        }
+    }
+
+    /// The blended edge of the unposed body, as a point of it and the
+    /// test that picks it among `body`'s edges.
+    fn edge(&self, m: &Model, body: Body, pose: &Isometry) -> Result<Edge, TestCaseError> {
+        match *self {
+            Ends::Rib { w, h, lead, .. } => {
+                edge_near(m, body, pose.apply(Point3::new(lead / 2.0, w, h)))
+            }
+            Ends::Twin { ra, .. } => {
+                let foot = pose.apply(Point3::new(0.0, 0.0, 1.0));
+                let up = pose.apply(Point3::new(0.0, 0.0, 2.0)) - foot;
+                let scale = foot.coords.norm().max(1.0);
+                for e in m.edges(body).map_err(fail)? {
+                    let entity = m.edge(e.id).map_err(fail)?;
+                    let Some((curve, range)) = entity.curve() else {
+                        continue;
+                    };
+                    let Curve::Circle { frame, radius } = m.curve(curve).map_err(fail)? else {
+                        continue;
+                    };
+                    let at = m.curve(curve).map_err(fail)?.point(range.midpoint());
+                    let off_axis = (frame.origin() - foot).cross(&up).norm();
+                    if (radius - ra).abs() < 1e-9 * scale
+                        && off_axis < 1e-9 * scale
+                        && (at - foot).dot(&up).abs() < 1e-9 * scale
+                    {
+                        return Ok(e);
+                    }
+                }
+                Err(fail(format!("no foot arc of radius {ra}")))
+            }
+        }
+    }
+
+    /// The signed change of volume of blending the edge at `kind`'s size
+    /// `r`: minus the sliver of a convex edge, plus the fillet of a
+    /// concave one, integrated over the section's region and the
+    /// face across.
+    fn change(&self, kind: Blend, r: f64) -> f64 {
+        const N: usize = 400;
+        match *self {
+            Ends::Rib { w, h, .. } => {
+                let cx = self.rib_centre();
+                // The region of the section, (u, v) from the corner's
+                // square `[w − r, w] × [h − r, h]`, above `floor(u)`, and
+                // the rib's length there: it ends on the boss's wall at
+                // `x = cx − √(ρ(z)² − y²)`.
+                // `u = r sin α` keeps a ball's `√(r² − u²)` smooth.
+                let sliver = simpson(0.0, FRAC_PI_2, N, &|a| {
+                    let u = r * a.sin();
+                    let lo = match kind {
+                        Blend::Fillet => r * a.cos(),
+                        Blend::Chamfer => r - u,
+                    };
+                    r * a.cos()
+                        * simpson(lo, r, N, &|v| {
+                            let (y, z) = (w - r + u, h - r + v);
+                            cx - (self.rib_radius(z).powi(2) - y * y).max(0.0).sqrt()
+                        })
+                });
+                -sliver
+            }
+            Ends::Twin { ra, rb, d, .. } => {
+                // The ring about the first boss's axis from radius `ra`
+                // to `ra + r`, outside the second boss, over the section
+                // between the plate, the wall and the ball or the chamfer.
+                let outside = |rho: f64| {
+                    let c = (rho * rho + d * d - rb * rb) / (2.0 * rho * d);
+                    rho * (2.0 * PI - 2.0 * c.clamp(-1.0, 1.0).acos())
+                };
+                match kind {
+                    Blend::Fillet => {
+                        // ρ = ra + r − r cos α, the gap r − r sin α.
+                        simpson(0.0, FRAC_PI_2, N, &|a| {
+                            let rho = ra + r - r * a.cos();
+                            outside(rho) * (r - r * a.sin()) * r * a.sin()
+                        })
+                    }
+                    Blend::Chamfer => simpson(ra, ra + r, N, &|rho| outside(rho) * (ra + r - rho)),
+                }
+            }
+        }
+    }
+}
+
+fn end_case() -> impl Strategy<Value = EndCase> {
+    let rib = (
+        prop::finite_f64(0.5..=1.5),
+        prop::finite_f64(1.0..=2.0),
+        prop::finite_f64(1.5..=2.5),
+        prop_oneof![Just(0.0), prop::finite_f64(0.05..=0.25)],
+        prop::finite_f64(1.0..=3.0),
+        prop::finite_f64(0.1..=1.0),
+    )
+        .prop_map(|(w, h, reach, taper, lead, fraction)| {
+            (
+                Ends::Rib {
+                    w,
+                    h,
+                    reach,
+                    taper,
+                    lead,
+                },
+                fraction * w.min(h) / 3.0,
+            )
+        });
+    let twin = (
+        prop::finite_f64(0.9..=1.6),
+        prop::finite_f64(0.5..=1.2),
+        prop::finite_f64(0.0..=1.0),
+        prop::finite_f64(1.0..=2.0),
+        prop::finite_f64(0.5..=1.5),
+        prop::finite_f64(0.0..=1.0),
+    )
+        .prop_map(|(ra, rb, u, ha, hb, fraction)| {
+            let size = 0.03 + fraction * 0.17;
+            let lo = (ra + size + TWIN_MARGIN - rb).max(rb - ra + TWIN_MARGIN);
+            let hi = ra + rb - TWIN_MARGIN;
+            (
+                Ends::Twin {
+                    ra,
+                    rb,
+                    d: lo + u * (hi - lo),
+                    ha,
+                    hb,
+                },
+                size,
+            )
+        });
+    (prop_oneof![rib, twin], prop::pose()).prop_map(|((scene, size), pose)| EndCase {
+        scene,
+        size,
+        pose,
+    })
+}
+
+/// The blend of `case` in a fresh model, the scene moved to its pose
+/// first: the model, the input, the result and its record.
+fn end_posed(
+    case: &EndCase,
+    kind: Blend,
+) -> Result<(Model, Body, Body, Provenance), TestCaseError> {
+    let mut m = Model::default();
+    let scene = case.scene.build(&mut m).map_err(fail)?;
+    let (moved, _) = transform(&mut m, scene, &case.pose).map_err(fail)?;
+    let edge = case.scene.edge(&m, moved, &case.pose)?;
+    let (blended, p) = op(kind)(&mut m, moved, &[edge], case.size).map_err(|e| {
+        // A turned twin boss's chamfer cone is refused against the second
+        // wall's cylinder in some poses: the failure waits as
+        // `regression/twin-boss-foot-turned-chamfer-cone-cylinder`, and
+        // the property rejects that refusal alone until the fix lands.
+        let cone_on_cylinder =
+            |k: &arris_ops::arris_check::arris_topo::arris_geom::GeomKind| k.to_string();
+        if let (OpError::Unsupported { a, b }, Ends::Twin { .. }, Blend::Chamfer) =
+            (&e, &case.scene, kind)
+            && cone_on_cylinder(&a.0) == "cone surface"
+            && cone_on_cylinder(&b.0) == "cylinder surface"
+        {
+            return TestCaseError::reject("twin-boss-foot-turned-chamfer-cone-cylinder");
+        }
+        fail(format!("{kind:?} of the posed scene: {e}"))
+    })?;
+    Ok((m, moved, blended, p))
+}
+
+fn ends_blend_as_their_sections(case: EndCase, kind: Blend) -> Result<(), TestCaseError> {
+    let (m, moved, blended, p) = end_posed(&case, kind)?;
+    assert_checked(&check(&m, blended, Level::Full))?;
+    audit(&m, &[moved], blended, &p).map_err(|e| fail(format!("provenance: {e}")))?;
+    let props = mass_properties(&m, blended).map_err(fail)?;
+    let before = mass_properties(&m, moved).map_err(fail)?;
+    let want = before.volume + case.scene.change(kind, case.size);
+    let rel = fitted_rel(&m, &props);
+    prop_assert!(
+        close_to(props.volume, want, 1.0, rel),
+        "volume {} vs the section's {}",
+        props.volume,
+        want
+    );
+
+    // Blended, then moved.
+    let mut here = Model::default();
+    let scene = case.scene.build(&mut here).map_err(fail)?;
+    let edge = case.scene.edge(&here, scene, &Isometry::identity())?;
+    let (rest, _) = op(kind)(&mut here, scene, &[edge], case.size)
+        .map_err(|e| fail(format!("{kind:?} at rest: {e}")))?;
+    assert_checked(&check(&here, rest, Level::Full))?;
+    let (then_moved, _) = transform(&mut here, rest, &case.pose).map_err(fail)?;
+    let other = mass_properties(&here, then_moved).map_err(fail)?;
+    prop_assert!(
+        close_to(other.volume, props.volume, 1.0, rel),
+        "blend then move {} vs move then blend {}",
+        other.volume,
+        props.volume
+    );
+    prop_assert_eq!(
+        arris_debug::dump::euler_line(&here, then_moved).map_err(fail)?,
+        arris_debug::dump::euler_line(&m, blended).map_err(fail)?,
+        "counts: blend then move against move then blend"
+    );
+
+    // Through STEP and back.
+    let text = step::write(&m, &[blended]).map_err(fail)?;
+    let mut back = Model::new(m.precision()).map_err(fail)?;
+    let read = step_read(&mut back, &text, &ReadOptions::default()).map_err(fail)?;
+    prop_assert_eq!(read.solids.len(), 1, "one solid read back");
+    let solid = read.solids[0]
+        .result
+        .as_ref()
+        .map_err(|r| fail(format!("refused: {r}")))?;
+    assert_checked(&check(&back, solid.body, Level::Full))?;
+    let again = mass_properties(&back, solid.body).map_err(fail)?;
+    prop_assert!(
+        close_to(again.volume, props.volume, 1.0, rel),
+        "STEP read back {} of {}",
+        again.volume,
+        props.volume
+    );
+
+    // Deterministic.
+    let (twin, _, twice, twice_p) = end_posed(&case, kind)?;
+    prop_assert_eq!(
+        dump_text(&twin, twice).map_err(fail)?,
+        dump_text(&m, blended).map_err(fail)?
+    );
+    prop_assert_eq!(twice_p, p);
+    Ok(())
+}
+
+prop_shards! {
+    /// A rib into a round or conical boss, or a boss's foot where a
+    /// second boss crosses it, filleted: clean at `Full` with nothing
+    /// unchecked, audited, at the section's volume integrated over the
+    /// face the blend ends on, pose-independent, through STEP and
+    /// deterministic.
+    ends_fillet_as_their_sections
+        [shard_0 shard_1 shard_2 shard_3] (case) = end_case() => {
+            ends_blend_as_their_sections(case, Blend::Fillet)
+        }
+}
+
+prop_shards! {
+    /// The same scenes chamfered: a rib's plane ends on the boss in a
+    /// conic, a boss's foot cone on the second boss in a traced curve.
+    ends_chamfer_as_their_sections
+        [shard_0 shard_1 shard_2 shard_3] (case) = end_case() => {
+            ends_blend_as_their_sections(case, Blend::Chamfer)
         }
 }

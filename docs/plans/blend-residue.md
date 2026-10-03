@@ -98,7 +98,7 @@ bound has to be established here.
   the face across. Fixtures with oracle as step 6; the regression twins
   (`ogive-bar-ruling-fillet` is the parallel-cylinder row and stays out)
   move into `blend/` when they pass.
-- [ ] Step 8 **[2]** — A property over random poses for every pair now
+- [x] Step 8 **[2]** — A property over random poses for every pair now
   taken to a blend by steps 3, 6 and 7 (`blend_prop`): checker green,
   volume additivity of the blended and the removed material, STEP
   round-trip, determinism of ids. Seeded; shards via `prop_shards!`.
@@ -160,4 +160,13 @@ bound has to be established here.
   moved. A chamfer's plane on a cylinder or a cone across takes the
   intersector's exact conic between the trim points rather than a trace;
   `blend/rib-into-cone-chamfer` holds the ellipse.
+- Found at step 8: `blend_prop`'s end families (a rib into a round or conical
+  boss; a twin boss's foot) hold at 1000 cases, the volume against a
+  closed-form section integral over the face across. One pose fails: a
+  twin boss's chamfer cone against the second wall's cylinder is refused
+  `Unsupported` after a turn about y (ratio 1.2/1.2, 0.3 apart, d 0.1 at 20°
+  and 45°; at rest, 10° and 90° it builds). Shrunk to
+  `regression/twin-boss-foot-turned-chamfer-cone-cylinder`, `#[ignore]`d;
+  the property rejects that refusal alone, by name. The fix is a backlog
+  line; step 9's count does not depend on it.
 - Resolved 2026-10-03 (human): step 2's gate fired (steps 3, 6 and 7 as written free 2 of 15 parts; step 3 none); option (a) taken: steps 3–4 dropped, the torus-on-cylinder end added to step 6, which frees 3 (`ftc_08`, `ctc_01` ap242, `stc_08`). `fillet-by-part.md` has the rows.

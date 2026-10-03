@@ -1,0 +1,148 @@
+{
+  "description": "a plate [-6,-6,0]\u2013[6,6,1] with two round bosses fused on it, the first of radius 1.2 and height 1 about the origin, the second of radius 1.2 and height 0.5 about (0.3, 0), nearly on the first: the first boss's foot chamfered at d 0.1, concave, an open arc whose ends are where the second boss's wall meets it, the whole body turned 45\u00b0 about y. The chamfer's cone against the second wall's cylinder (axes parallel, 0.3 apart) is the quartic ADR-0037 traces and fits; the same body at rest, or turned 10\u00b0 or 90\u00b0, builds, and the turned one is refused as Unsupported, no closed form for the cone against the cylinder (found by plans/blend-residue step 8's property, shrunk)",
+  "params": {
+    "d": 0.1
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        -6,
+        -6,
+        0
+      ],
+      "max": [
+        6,
+        6,
+        1
+      ]
+    },
+    {
+      "name": "a",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.2,
+      "height": 1
+    },
+    {
+      "name": "b",
+      "op": "cylinder",
+      "base": [
+        0.3,
+        0,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.2,
+      "height": 0.5
+    },
+    {
+      "name": "plated",
+      "op": "fuse",
+      "a": "plate",
+      "b": "a"
+    },
+    {
+      "name": "bossed",
+      "op": "fuse",
+      "a": "plated",
+      "b": "b"
+    },
+    {
+      "name": "posed",
+      "op": "transform",
+      "of": "bossed",
+      "rotate": {
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "angle_deg": 45
+      },
+      "translate": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "posed",
+      "edges": [
+        [
+          -0.141421356237,
+          0,
+          1.55563491861
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_plate",
+      "point": [
+        -1.767766952966,
+        1,
+        2.474873734153
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_boss",
+      "point": [
+        0.707106781187,
+        0,
+        1.414213562373
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above_plate",
+      "point": [
+        -1.06066017178,
+        1,
+        3.181980515339
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_plate_contact",
+      "point": [
+        -0.212132034356,
+        0,
+        1.626345596729
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall_contact",
+      "point": [
+        -0.070710678119,
+        0,
+        1.626345596729
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}
