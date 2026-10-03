@@ -1,0 +1,122 @@
+{
+  "description": "a box [0,3]\u00b3 cut to a barrel (a cylinder of radius 5 about the axis y = 0.5, z = \u22123.5 along x) and, beside the corner, a plane z = h + 0.3 x through the corner's top (0, 0, h), so the top of the box's vertical edge at the origin is a vertex of four edges: the edge, its two corner edges (the plane's against x = 0, the barrel's against y = 0) and the ridge between plane and barrel. The faces across it are a plane and a cylinder (a fan of two with one piece curved), the edge blended at 0.1",
+  "params": {
+    "r": 0.1,
+    "c": 0.1
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "name": "barrel",
+      "op": "cylinder",
+      "base": [
+        -1,
+        0.5,
+        -3.5
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 5,
+      "height": 6
+    },
+    {
+      "name": "round",
+      "op": "common",
+      "a": "block",
+      "b": "barrel"
+    },
+    {
+      "name": "slab",
+      "op": "box",
+      "min": [
+        -6,
+        -6,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        6
+      ]
+    },
+    {
+      "name": "tilted",
+      "op": "transform",
+      "of": "slab",
+      "rotate": {
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": -16.69924423399362
+      },
+      "translate": [
+        0,
+        0,
+        1.4749371855330997
+      ]
+    },
+    {
+      "name": "solid",
+      "op": "cut",
+      "target": "round",
+      "tool": "tilted"
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "solid",
+      "edges": [
+        [
+          0,
+          0,
+          0.7
+        ]
+      ],
+      "distance": "c"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        1,
+        1,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "far_vertex",
+      "point": [
+        3,
+        3,
+        0
+      ],
+      "expect": "on"
+    }
+  ]
+}

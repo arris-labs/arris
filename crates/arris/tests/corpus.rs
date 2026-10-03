@@ -2394,6 +2394,22 @@ fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
     run("regression/nist-ctc-03-two-plane-edges-fillet-checker-fault");
 }
 
+/// A box cut to a barrel and a plane beside the corner, the vertical edge
+/// at the origin blended: its end reaches a vertex of four edges whose faces
+/// across are a plane and a cylinder, a fan of two with a curved piece,
+/// where Open CASCADE cuts the end on each and puts a vertex on the ridge
+/// (plans/blend-fan step 5, ADR-0043).
+#[test]
+fn blend_barrel_ridge_fan_fillet() {
+    run("blend/barrel-ridge-fan-fillet");
+}
+
+/// The chamfer twin of `blend_barrel_ridge_fan_fillet`.
+#[test]
+fn blend_barrel_ridge_fan_chamfer() {
+    run("blend/barrel-ridge-fan-chamfer");
+}
+
 /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
 /// a chain of three: the output fails the checker at L2 where Open CASCADE
 /// builds it, as it did before the blend's tangency took the faces'

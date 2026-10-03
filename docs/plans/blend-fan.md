@@ -136,11 +136,19 @@ bound has to be established here.
     bottom ones. The surviving vertex is kept, so provenance records
     nothing for it (ADR-0043 §5 says so now). The arc crossing a staying
     edge within both ranges is `BlendTooLarge` naming the edge.
-- [ ] Step 5 **[2]** — **A curved piece across.** A fan with one piece a
+- [x] Step 5 **[2]** — **A curved piece across.** A fan with one piece a
   cylinder, the face `across_of` admits as a post, so the piece is
   traced (ADR-0037). It is shrunk as a fixture with its oracle, so the
   per-piece cut is proven beyond planes. If Open CASCADE does not build
   it, the fixture records a named refusal instead, and the step says so.
+  - Seen: Open CASCADE builds it. The fixtures are
+    `blend/barrel-ridge-fan-{fillet,chamfer}`: a 3-cube cut to a barrel
+    (radius 5 about an axis along x) and a plane z = h + 0.3 x through the
+    corner's top, so the vertical edge at the origin ends at a vertex of
+    four edges whose faces across are the plane and the cylinder. Both
+    match the oracle at 14 / 21 / 9 / 9 with the checker green, and needed
+    no code: `section_between` traces the cylinder piece as it does a lone
+    one. They moved to `blend/` with their dumps in this step.
 - [ ] Step 6 **[2]** — **A property over random poses.**
   - The operands are prisms whose top is cut by two planes meeting along
     a sharp edge (k = 2 pieces, random angles), plus k = 3. Fillet and
