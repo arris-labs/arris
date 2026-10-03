@@ -99,7 +99,7 @@ bound has to be established here.
     for both fillet and chamfer. The fixtures are
     `regression/hex-chamfer-foot-fan-{fillet,chamfer}`, a circumradius-1,
     height-2 prism, d 0.2, r and c 0.1.
-- [ ] Step 2 **[1]** — **ADR-0043**, as the design deltas state it, from
+- [x] Step 2 **[1]** — **ADR-0043**, as the design deltas state it, from
   what step 1 saw. It records the counts Open CASCADE reports for each
   site, and the pieces' order rule in the vertex's star.
 - [ ] Step 3 **[3]** — **The crossing fan built.**
@@ -177,14 +177,11 @@ bound has to be established here.
   refused."
 
 ## Open questions
-- ⚠ OPEN: the order of the pieces in the vertex's star when the star is
-  not a simple fan (a sheet's edge, an edge used twice). Agent, by step 2:
-  refuse `VertexBlend` unless the walk from one corner edge to the other
-  is unique.
-- ⚠ OPEN: at the surviving vertex, whether the two edges left there
-  merge into one. Agent, by step 4. Preferred: keep them, as Open
-  CASCADE does (19 vertices), never merging a consumer's edges (ADR-0039,
-  alternatives).
+- Decided (ADR-0043 §2): the pieces' order when the star is not a simple
+  fan — refuse `VertexBlend` unless the walk from one corner edge to the
+  other, on the side away from the blended edge, is unique.
+- Decided (ADR-0043 §4): at the surviving vertex the two edges left there
+  are kept, as Open CASCADE does (19 vertices).
 - ⚠ OPEN: how the attribution tells a non-parallel cylinder pair apart.
   Either `blocks_reason` reads the model, or the survey passes the census
   cause in. Agent, by step 7. Preferred: the survey passes the cause, so

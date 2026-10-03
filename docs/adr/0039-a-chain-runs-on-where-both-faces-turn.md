@@ -104,7 +104,8 @@ sharp corner edges with the face across split by a sharp edge. So is a
 vertex of four edges where only one corner edge is tangent, and one whose
 extra edge is smooth, a seam, or continues a corner edge (step 1's census:
 Open CASCADE builds 2 of the 37 of those it was asked about). `Reason`
-gains no variant.
+gains no variant. *(Amended by ADR-0043: the fan, and the vertex where the
+face across is met twice, are built.)*
 
 ## Consequences
 
