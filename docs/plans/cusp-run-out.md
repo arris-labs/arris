@@ -25,6 +25,52 @@ edges and a volume 4.3% of the fillet's corner short of the full-length
 removal, i.e. the blend is cut where the gap between the walls is
 narrower than the ball and the faces keep their count.
 
+## Finding of step 2 (the gate tripped: two cusps, one of them capped)
+There are two cusps, and the crescent is not FTC-06's.
+- **The crescent's cusp** has material in the sliver between the walls,
+  and both of its floor/top edges are convex. Open CASCADE cuts the stripe
+  with the next wall and that's all. A fillet or chamfer of either arc,
+  top or floor, at 0.02 to 0.8, always gives 6 faces, 12 edges and 8
+  vertices, all valid. The cut is a B-spline from P to Q. P is where the
+  contact on the shared face crosses the next edge, a circle against a
+  circle in closed form. Q is where the wall contact meets the spine.
+  Between them the cut is the blend's torus (or cone) against the next
+  wall's cylinder, on parallel axes. It is a graph over the next wall's
+  base circle (the height read off the tube at the point's distance from
+  the blend's axis), so it is exact pointwise and is traced and fitted as
+  in ADR-0037. At Q the torus is tangent to the next wall, through the
+  wall it is tangent to: the section has a node there. The branch *ends*
+  at the singular point; it does not pass one (ADR-0037 §6 refuses the
+  latter). The cone's cut at Q is transverse. Every removed volume
+  matches a closed-form integral (the corner section over the face's
+  footprint inside the gap) within 5e-7: for the fillet of the big arc,
+  r 0.02 → 1.9%, 0.1 → 4.3%, 0.8 → 11.8% short of the full-length
+  removal.
+- **FTC-06's cusp is an overhang tip.** Its floor (z −234.95, facing
+  down) is the underside of a horn. The horn is bounded by a pillar's wall
+  (R 22.225, a concave edge whose fillet *adds* material) and a hole's wall
+  (R 3.175, a convex edge). The spine runs up into the hole. Each of the 10
+  cusp edges Open CASCADE builds at 0.254 closes its stripe with **B-spline
+  surface caps**: on the big arcs a torus and two caps, on the small arcs
+  a torus, a cylinder and one cap. The cap at the sampled edge rises up
+  the spine 1.19 (4.7 r) into the hole. It is a filling, not a cut. The
+  other 11 (not 7: step 1 asked a stride, this step asked all 21) are
+  invalid at **every** radius from 0.1 to 1.5. The invalid face is always
+  the pillar's cylinder, the volume collapses by about 13 139 mm³, and a
+  mirror pair splits (x = +131.7 and +143.1 build, −131.7 and −143.1
+  are invalid). That is Open CASCADE failing to split the face. It is not
+  a radius against a gap. A recipe twin of the overhang (a pillar fused
+  with a lip, a hole kissing it) repeats both: B-spline caps, and the
+  concave arc invalid with its volume collapsed.
+- Where the cut stops: the crescent family has a construction, exact
+  surfaces and a traced cut, at Open CASCADE's counts. FTC-06's family has
+  a cut that would be the same curve: the next wall's cylinder carried
+  down through the stripe's added material. But Open CASCADE answers it
+  with fitted cap surfaces, which ADR-0007 and ADR-0037 §1 rule out until
+  the NURBS cycle. Arris's cut would disagree with the battery's counts.
+  So the plan's goal (FTC-06 leaves the `fillet` column) is out of
+  reach, and the human decides how the plan continues (step 2's gate).
+
 ## Goal
 A fillet or chamfer of an edge that ends at a cusp is built where Open
 CASCADE builds it: the stripe runs to the cusp and is cut by the other wall
@@ -144,9 +190,16 @@ bound has to be established here.
   count.
 
 ## Open questions
-- ⚠ OPEN (agent, step 2): is the cut of the stripe by the next wall a
-  closed form or a traced curve, and does it keep Open CASCADE's face
-  count (6 on the crescent) with the contact lines ending on it?
-- ⚠ OPEN (agent, step 2): what makes Open CASCADE's 7 of 13 cusps invalid,
-  and is that a radius against the gap (refuse by name) or something Arris
-  can build?
+- Answered (step 2): the cut is traced and fitted (ADR-0037's machinery)
+  between two closed-form trim points. Its branch ends at a node where the
+  torus touches the next wall. It keeps the crescent's 6 faces, and the
+  contact lines end on it.
+- Answered (step 2): Open CASCADE's invalid cusps (11 of 21) do not depend
+  on the radius and are not consistent between mirror images: it fails to
+  split the pillar's face. Arris would not refuse them by name.
+- ⚠ OPEN (human, step 2's gate): FTC-06's cusps are overhang tips that
+  Open CASCADE caps with fitted surfaces. Either (a) land the crescent
+  family (both cusp kinds cut by the next wall, exact surfaces; FTC-06
+  stays in the column, its refusal moved to a named cap site), or (b)
+  park the plan and let FTC-06 wait for the NURBS cycle, or (c) cap with a
+  fitted surface here, which reverses ADR-0007 and ADR-0037 §1.
