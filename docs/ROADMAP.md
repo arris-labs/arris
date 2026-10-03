@@ -578,6 +578,22 @@ refuses. No fetched part left the column by agreeing at the battery's
 radius; each meets a line named below. The residue — the torus pairs off
 the axis, an open arc's torus on a plane off its axis, a ruling stripe on a
 curved face across, the run-over, the corners — is the next plan's sizing.
+The third plan (`blend-residue`, opened 2026-10-03) counted the column by
+part: each solid's first refusal at the battery's radius and what stands
+behind it (`arris_debug::census`, `fillet-by-part.md`). By *first* refusal
+the fetched tier's 9 parts (8 blend network, 1 NURBS) are a torus end on a
+cylinder 2, a torus end on a plane 1, a cylinder stripe's end on a cylinder
+1, a cylinder pair 1, `BlendTooLarge` 1, `TangentChain` 1, `VertexBlend` 1
+and a NURBS edge 1; the committed tier's 6 are `VertexBlend` 2,
+`TangentChain` 1, a cylinder pair 1, a torus end on a cylinder 1 and a NURBS
+edge 1. The four edges the battery samples decide a part, not the first
+refusal: clearing the end families alone frees the fetched tier's torus end
+on a plane (`ftc_08`), the cylinder stripe's end (`ctc_01` ap242) and a torus
+end on a cylinder (`stc_08`); the other parts that meet an end first
+(`stc_06`; committed `ftc-08`, `ftc-09`) also have a `BlendTooLarge` or a
+`VertexBlend` among their four. The B-spline-written conic edge is a first
+refusal in two parts only, both NURBS-cycle, whose sampled edges name NURBS
+faces as well.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges

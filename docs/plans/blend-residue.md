@@ -62,7 +62,7 @@ bound has to be established here.
   next refusal` in `target/real-parts/` and its summary in the commit body;
   a unit test on a small recipe holds the classification. Decides step 2's
   go/no-go and whether steps 6–7 are what frees parts.
-- [ ] Step 2 **[1]** — Record the census in docs/ROADMAP.md §C6 and
+- [x] Step 2 **[1]** — Record the census in docs/ROADMAP.md §C6 and
   BACKLOG: the 14 parts, each with the residue that holds it; the order of
   steps 3–7 confirmed or changed against it. **Gate (idea's "change my
   mind" line):** if fewer than three of the 14 parts leave the column by
@@ -155,3 +155,17 @@ bound has to be established here.
 - ⚠ OPEN: whether the fitted end curve's pcurve on the blend face is a
   fit from the 3D curve, as C3's sections, or traced in `(u, v)`. Agent,
   step 5.
+- ⚠ OPEN (human, before step 4): **step 2's gate fired.** Of the 15 parts
+  (fetched 9 with the NURBS one, committed 6), steps 3, 6 and 7 as written
+  free **2**: the torus end on a plane (`ftc_08`) and the cylinder stripe's
+  end on a cylinder (`ctc_01` ap242). Step 3 frees none: the B-spline-written
+  conic edge is the first refusal only in `stc_07` and committed `ftc-10`,
+  both with NURBS faces among their four sampled edges (NURBS cycle). A
+  third family the plan did not name leads two more fetched parts: an open
+  arc's torus ending on a **cylinder** across (`stc_06`, `stc_08`, committed
+  `ftc-08`); added to steps 6–7 it frees `stc_08`, making 3, because
+  `stc_06` and committed `ftc-08` also have a `BlendTooLarge` among their
+  four. `fillet-by-part.md` has the rows. Options, preferred first:
+  (a) drop steps 3–4, keep 5–9, and add the torus-on-cylinder end to
+  step 6 (frees 3 of 15, the end machinery is the same); (b) the plan as
+  written (frees 2; step 3 costs 2 steps for no part); (c) close C6 here.
