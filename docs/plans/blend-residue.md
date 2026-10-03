@@ -8,10 +8,8 @@
 ## Goal
 The fetched tier's `fillet` column (8 parts) and the committed tier's (6 of
 11) are measured **by part**, each part's first refusal named and what
-stands behind it; an edge a B-spline writes where two analytic faces meet
-in a circle or a line blends as that circle or line; and the two end
-families ADR-0036 §6 postponed (an open arc's torus ending on a plane
-parallel to its axis and off it; a ruling stripe ending on a cylinder or
+stands behind it, and the end families ADR-0036 §6 postponed (an open arc's torus ending on a plane
+parallel to its axis and off it, or on a cylinder across; a ruling stripe ending on a cylinder or
 cone square across) build, the blend's surface exact and only the end curve
 traced and fitted at the arc's tolerance, as ADR-0019 fits a section. The
 column is printed again beside C4's 17 of 38 and this plan's first line.
@@ -27,6 +25,9 @@ column is printed again beside C4's 17 of 38 and this plan's first line.
   apex, the tilted three-plane corner) and other `VertexBlend`s: the
   re-census decides whether a next plan takes them; none is built here.
 - NURBS faces as operands, healing, variable radius, other chamfer modes.
+- The B-spline-written conic edge (idea option B): the step-1 census found it
+  a first refusal only in two NURBS-cycle parts, so it frees no part; it
+  stays a backlog line (decided 2026-10-03, option (a) of step 2's gate).
 
 ## Design deltas
 - **ADR (step 5), new:** a blend's end curve may be traced and fitted while
@@ -68,21 +69,8 @@ bound has to be established here.
   mind" line):** if fewer than three of the 14 parts leave the column by
   steps 3 + 7 together, stop and ask the human before step 4. A change of
   order is recorded here, not silent.
-- [ ] Step 3 **[2]** — The conic edge: an edge whose curve is a B-spline
-  within the edge's tolerance of the circle or line where its two analytic
-  faces meet is blended as that circle or line (the faces' own
-  intersection, ADR-0018's closed forms, not a refit of the B-spline).
-  Refused as before when it is not within tolerance. Fixtures: a plane ×
-  cylinder and a plane × plane filleted and chamfered with the edge
-  written as a B-spline (recipe option on the fixture builder; oracle:
-  Open CASCADE's blend of the same recipe, Pappus forms by closed form).
-  Property: random pose, the B-spline-written solid and the analytic one
-  blend to the same volume and counts.
-- [ ] Step 4 **[2]** — Move the 287-edge census through step 3 on the
-  fetched tier; record in the commit body how many edges and parts leave
-  `Unsupported(… B-spline curve …)`; shrink a leftover into
-  `regression/` if one does not build. (Skip if step 3's own commit
-  already carries the numbers.)
+- ~~Step 3~~ dropped 2026-10-03: the conic edge frees no part (step 2's gate). Backlog line kept.
+- ~~Step 4~~ dropped with step 3.
 - [ ] Step 5 **[3]** — The decision and the tracer: write the ADR (a
   blend's end curve fitted, the surface exact; the fit's tolerance
   fraction; which checker arms decide it; what is refused when the fit
@@ -94,7 +82,9 @@ bound has to be established here.
   `SECTION_FIT_FRACTION · tol.linear`; a `regression/` fixture for every
   trace that fails, `#[ignore]`d with its desired assertion.
 - [ ] Step 6 **[3]** — The open arc's torus ending on a plane parallel to
-  its axis and off it (the spiric section): the end trimmed by the fitted
+  its axis and off it (the spiric section) and, by the same trace, on a
+  cylinder across (the census's third family, leading `stc_06` and
+  `stc_08`): the end trimmed by the fitted
   curve, the face across and the blend taking it as an edge with a
   fitted pcurve, the neighbours' edges shortened, provenance as ADR-0036
   §7 (end vertices `Generated`, shortened edges `Modified`). Fixtures with
@@ -129,10 +119,9 @@ bound has to be established here.
 
 ## Docs to update on completion
 - `docs/ROADMAP.md` §C6 — status paragraph with the new `fillet` column
-  counts and the lines this plan struck (the end families, the B-spline
-  conic edge); the corners and the run-over named as the next plan's.
-- `docs/BACKLOG.md` — the conic-edge line removed; the quartic pairs
-  and the run-over as lines or ideas; the closed-form pairs left (parallel
+  counts and the lines this plan struck (the end families); the corners and the run-over named as the next plan's.
+- `docs/BACKLOG.md` — the conic-edge line stays (it frees no part today:
+  the census); the quartic pairs and the run-over as lines or ideas; the closed-form pairs left (parallel
   cylinders, apex plane) kept.
 - `docs/adr/` — the new ADR (step 5), ADR-0007 and ADR-0036 get a
   one-line "Amended by" pointer.
@@ -144,10 +133,6 @@ bound has to be established here.
   count.
 
 ## Open questions
-- ⚠ OPEN: does step 1's per-part table say the B-spline-written conic is
-  the first refusal of any part, or only a refusal behind others?
-  Agent decides at step 2 (the gate above); the human is asked only if
-  fewer than three parts leave the column.
 - ⚠ OPEN: the end curve's fit degree and fraction — `SECTION_FIT_DEGREE`
   (5) and `SECTION_FIT_FRACTION` as ADR-0019, or tighter for an edge a
   neighbour must share. Agent decides at step 5 from the trace's miss
@@ -155,17 +140,4 @@ bound has to be established here.
 - ⚠ OPEN: whether the fitted end curve's pcurve on the blend face is a
   fit from the 3D curve, as C3's sections, or traced in `(u, v)`. Agent,
   step 5.
-- ⚠ OPEN (human, before step 4): **step 2's gate fired.** Of the 15 parts
-  (fetched 9 with the NURBS one, committed 6), steps 3, 6 and 7 as written
-  free **2**: the torus end on a plane (`ftc_08`) and the cylinder stripe's
-  end on a cylinder (`ctc_01` ap242). Step 3 frees none: the B-spline-written
-  conic edge is the first refusal only in `stc_07` and committed `ftc-10`,
-  both with NURBS faces among their four sampled edges (NURBS cycle). A
-  third family the plan did not name leads two more fetched parts: an open
-  arc's torus ending on a **cylinder** across (`stc_06`, `stc_08`, committed
-  `ftc-08`); added to steps 6–7 it frees `stc_08`, making 3, because
-  `stc_06` and committed `ftc-08` also have a `BlendTooLarge` among their
-  four. `fillet-by-part.md` has the rows. Options, preferred first:
-  (a) drop steps 3–4, keep 5–9, and add the torus-on-cylinder end to
-  step 6 (frees 3 of 15, the end machinery is the same); (b) the plan as
-  written (frees 2; step 3 costs 2 steps for no part); (c) close C6 here.
+- Resolved 2026-10-03 (human): step 2's gate fired (steps 3, 6 and 7 as written free 2 of 15 parts; step 3 none); option (a) taken: steps 3–4 dropped, the torus-on-cylinder end added to step 6, which frees 3 (`ftc_08`, `ctc_01` ap242, `stc_08`). `fillet-by-part.md` has the rows.
