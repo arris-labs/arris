@@ -118,6 +118,8 @@ sweep/revolve-onto-axis: 20
 sweep/revolve-quarter: 24
 sweep/revolve-ring: 5
 sweep/revolve-tube: 20
+blend/barrel-ridge-fan-chamfer: 154
+blend/barrel-ridge-fan-fillet: 596
 blend/bead-root-chamfer: 4
 blend/bead-root-fillet: 4
 blend/boss-base-fillet: 2
@@ -157,10 +159,13 @@ blend/fillet-into-a-leaning-step: 151
 blend/fillet-into-a-step: 5
 blend/fillet-into-a-turned-step: 2339
 blend/fillet-miter: 301
+blend/five-edge-vertex: 5
 blend/frustum-rim-chamfer: 2
 blend/frustum-rim-fillet: 2
 blend/half-frustum-rim-chamfer: 2
 blend/half-frustum-rim-fillet: 2
+blend/hex-chamfer-foot-fan-chamfer: 11
+blend/hex-chamfer-foot-fan-fillet: 595
 blend/hole-rim-chamfer: 2
 blend/hole-rim-fillet: 2
 blend/l-inner-edge: 5
@@ -180,6 +185,8 @@ blend/rib-sloped-end-fillet: 805
 blend/rim-chamfer-into-a-step: 2
 blend/rim-fillet-into-a-step: 2
 blend/rim-fillet-into-an-off-axis-step: 935
+blend/roof-fan-three-chamfer: 10
+blend/roof-fan-three-fillet: 448
 blend/second-fillet: 5
 blend/split-boss-base-chamfer: 6
 blend/split-boss-base-fillet: 6

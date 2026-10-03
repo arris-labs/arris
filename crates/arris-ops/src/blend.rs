@@ -1140,7 +1140,7 @@ type Fan = (Vec<FaceId>, Vec<EdgeId>);
 /// vertex but the blended one is sharp at it for a blend of `size`, with a
 /// curve, between two faces, and of the blend's sense — `convex` — and
 /// every extra is met once by the walk, no face twice. `None` at any other
-/// star: the face across met twice among them (`blend-fan` step 4).
+/// star: the face across met twice among them (`twice_at`).
 #[allow(clippy::too_many_arguments)]
 fn fan_at(
     m: &Model,

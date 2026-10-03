@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` run to a corner where the face across is split by
+  another sharp edge, or is met twice: a facet's foot on a chamfered boss,
+  a rise under a roof of several planes, a box standing on another's top
+  edge. The end is one arc on each face across, with a vertex where it
+  crosses the edge between them, or, where the face is met twice, the
+  face's one arc with its loop split in two, as Open CASCADE builds it.
+  Refusals you will meet: a blend wide enough to run past the edge between
+  the faces is `BlendTooLarge`; a fan with an edge of the other
+  convexity, and a fillet along the crease where two equal rounds cross,
+  are still refused.
+
 - `fillet` and `chamfer` blend an edge that ends at a cusp with both walls on
   one side of the face they share: a crescent's tip, a crescent-shaped pocket,
   the sliver between a line and an arc tangent to it. The stripe runs to the

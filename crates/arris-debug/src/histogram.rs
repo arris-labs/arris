@@ -198,7 +198,7 @@ pub fn blocks_refusal(refusal: &Refusal) -> Cycle {
 }
 
 /// How the axes of two cylinders a blend is refused for lie
-/// (`blend-fan` step 7): the pair is the blend network's only where they
+///: the pair is the blend network's only where they
 /// are parallel, which ADR-0036 §5 closes with a cylinder; any other pair
 /// meets in a curve that is a quartic or an ellipse, and its blend is a
 /// surface with no exact kind, which is the NURBS cycle's.

@@ -2398,7 +2398,7 @@ fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
 /// at the origin blended: its end reaches a vertex of four edges whose faces
 /// across are a plane and a cylinder, a fan of two with a curved piece,
 /// where Open CASCADE cuts the end on each and puts a vertex on the ridge
-/// (plans/blend-fan step 5, ADR-0043).
+/// (ADR-0043).
 #[test]
 fn blend_barrel_ridge_fan_fillet() {
     run("blend/barrel-ridge-fan-fillet");
@@ -2413,7 +2413,7 @@ fn blend_barrel_ridge_fan_chamfer() {
 /// A block under a convex roof of three planes, the rise at the origin
 /// blended: its end reaches a vertex of five edges whose faces across are a
 /// fan of three, one arc on each and a vertex on each of the two ridges, as
-/// Open CASCADE builds it (plans/blend-fan step 6, ADR-0043).
+/// Open CASCADE builds it (ADR-0043).
 #[test]
 fn blend_roof_fan_three_fillet() {
     run("blend/roof-fan-three-fillet");

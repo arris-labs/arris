@@ -808,6 +808,30 @@ CTC-04's 2 as walls on either side), 0 failing parts, the battery's stages
 before. What the cycle has left is the fan, the overhang tip (the NURBS
 cycle's caps), the crossing cylinders, a cylinder against a sphere, a trace
 that misses and the horn and spindle torus at the axis.
+The eighth plan (`blend-fan`, 2026-10-03) built the two sites ADR-0039 left
+at a vertex of more than three edges (ADR-0043). A fan, where both corner
+edges are sharp and the faces across are several separated by sharp extra
+edges, ends in one arc per face, each cut as a lone face across would cut
+it, with a vertex where the blend's surface crosses each extra edge; the
+curved piece is traced as a lone curved face across is. The face across
+met twice ends in its single arc, the vertex stays with the two edges the
+end does not reach and the face's loop splits in two
+(`blend/five-edge-vertex`, Open CASCADE's 19/28/12, loops 13). Held to
+Open CASCADE on a hexagonal boss's chamfer foot (CTC-01's 12 edges), a
+barrel under a plane, a roof of three planes, and to a property over
+random poses (roofs of two and three planes, the roof's height integrated
+over the section). The crease where two equal-radius cylinders cross, CTC-01's
+other refusal, is the NURBS cycle's: its fillet is a pipe about an ellipse
+and the census and survey attribute it there. The tiers measured
+(`tools/real-parts.sh`, `--census-committed`, 2026-10-04): `VertexBlend` is
+0 edges on the fetched tier, from 12, and 3 on the committed, from 15
+(`ftc-06`); no part leaves the `fillet` column, since no fan edge is
+sampled, but `ctc_01`'s refusal moves from the blend network to NURBS on
+both tiers, 0 failing parts, the battery's 89 stages 79 agree, 4 both
+refuse, 6 Arris refuses. Over both tiers (38 parts) the blend network blocks
+3 at `fillet`, from 5. What the cycle has left is the overhang tip (the NURBS
+cycle's caps), a cylinder against a sphere, a trace that misses, the
+miters and the horn and spindle torus at the axis.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
@@ -819,20 +843,24 @@ that misses and the horn and spindle torus at the axis.
   cylinder, an open arc or a closed circle, fillet and chamfer; plane ×
   ~~plane × cone, cone × cylinder or cone, a sphere or a torus against a
   coaxial plane, cylinder or cone~~ done (ADR-0036); cylinder × cylinder
-  (crossing axes, parallel axes), torus × cylinder off its axis and torus ×
-  plane off its axis remain; then elliptic cylinder.
+  with parallel axes (ADR-0036 §5, no corpus edge), and crossing axes (the
+  NURBS cycle's), torus × cylinder off its axis and torus × plane off its
+  axis remain; then elliptic cylinder.
 - ~~A blend running into a step (`BlendTooLarge`, a mixed corner)~~ done
   (ADR-0038); what stays `BlendTooLarge` is the ring's contact at the axis
   (a horn or spindle torus) and radii Open CASCADE refuses; and a tangent
   corner the walk stops at (`TangentChain`, STC-09).
 - The corners refused as `VertexBlend`: ~~a chain through a vertex of four
   edges~~ done (ADR-0039, ADR-0040); ~~the vertex of two edges of a split
-  rim~~ done (ADR-0041); the fan (CTC-01) and the miters remain.
+  rim~~ done (ADR-0041); ~~the fan (CTC-01) and the face across met twice~~
+  done (ADR-0043); the miters remain.
 - The remaining chamfer modes (two distances, a distance and an angle).
 - Variable radius, and blends over blends.
 
-**Out:** NURBS faces as blend operands (the NURBS cycle's), healing (the
-reader's 14 parts), shell and offset (the sweep cycle's).
+**Out:** NURBS faces as blend operands (the NURBS cycle's), a blend whose
+surface has no closed form (the crease between equal-radius cylinders, the
+overhang tip's caps: the NURBS cycle's), healing (the reader's 14 parts),
+shell and offset (the sweep cycle's).
 
 **Accept:** the committed tier's `fillet` column and the fetched tier's
 printed beside C4's 17 of 38, every part leaving it either agreeing with

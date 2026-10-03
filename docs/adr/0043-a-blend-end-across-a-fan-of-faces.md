@@ -123,6 +123,11 @@ more, as Open CASCADE's 13 loops over 12 faces say.
   continuation, a corner edge with no curve: `VertexBlend`, as before.
 - A fan at a junction, a miter or a corner end: only a face end
   (`EndKind::Face`) fans.
+- A fan with an edge at the vertex of the other sense than the blend's, the
+  mixed corner of ADR-0038 spread over several faces: `VertexBlend`. No
+  corpus edge has one, and each piece's side would have to be read apart.
+  *(Added at the plan's retirement; the face met twice takes extras of
+  either sense.)*
 
 `Reason` gains no variant, so the binding does not change.
 

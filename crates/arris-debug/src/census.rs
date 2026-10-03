@@ -226,7 +226,7 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
                     occt: None,
                 });
             }
-            // A cylinder pair is named by its axes (`blend-fan` step 7).
+            // A cylinder pair is named by its axes.
             match cylinder_pair(m, &e) {
                 Some(pair) => format!("{} ({pair})", class_of(&e)),
                 None => class_of(&e),
@@ -1371,7 +1371,7 @@ mod tests {
     /// The committed CTC-01's sample is refused at the crease of two
     /// cylinders whose axes cross: the census names the pair by its axes
     /// and the survey puts it with the NURBS cycle, whose blend has no
-    /// exact surface (`blend-fan` step 7), where a pair of parallel axes
+    /// exact surface, where a pair of parallel axes
     /// stays the blend network's.
     #[test]
     fn ctc_01s_crossing_cylinders_are_the_nurbs_cycles() {

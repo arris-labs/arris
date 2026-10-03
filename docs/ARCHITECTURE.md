@@ -760,7 +760,16 @@ blend's own convexity lies past the vertex, and that edge is lengthened
 along its own analytic curve to it instead (`blend/mixed.rs`,
 ADR-0038): one edge, `Modified`, its pcurves derived again over the new
 range, the stretch checked inside the face it runs down; the face across
-grows by the region the arc bounds. Two blends meeting at a vertex whose third
+grows by the region the arc bounds. The face across an end may be several
+pieces (ADR-0043): at a vertex of more than three edges whose extra edges
+are all sharp and of the blend's sense, and the faces between the two corner
+edges a fan walked through the vertex's star, the end is one arc per piece,
+each the section a lone face across would give, with a vertex where the
+blend's surface crosses each extra edge, which is cut there; the vertex is
+`Deleted`. Where both corner edges lead to the one face and other edges
+also stand at the vertex (a box set on another's top edge), the end is that
+face's single arc, the vertex stays with the edges it does not reach, and
+the face's loop splits in two. Two blends meeting at a vertex whose third
 edge stays sharp meet in a miter: the two equal-radius cylinders' axes
 cross at the ball's one centre, and the miter is the ellipse of the
 plane through it bisecting the axes — minor radius `r` toward the shared
