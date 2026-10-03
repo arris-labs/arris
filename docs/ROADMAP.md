@@ -613,6 +613,30 @@ and the part now meets the run-over). Over both tiers (38 parts) the blend
 network blocks 12 at `fillet`, beside C4's 17. The run-over and the corners
 are the next plan's sizing; a turned chamfer's cone against a cylinder across
 is refused in some poses (`regression/twin-boss-foot-turned-chamfer-cone-cylinder`).
+The fourth plan (`blend-run-over`, opened 2026-10-03) took the run-over
+apart: each `BlendTooLarge` edge blended alone at the battery's radius, by
+the site that refused it (`arris_debug::census::run_over_cause`: the entities
+the refusal names and the pair its edge separates) and, for a sample of each
+cause and every edge of the battery's sample, Open CASCADE's verdict on that
+edge alone (`occt_fillet_edges.py`; `real_parts --run-over`,
+`target/real-parts/run-over.md`). On the fetched tier 515 edges are refused
+`BlendTooLarge`; of the 285 put to Open CASCADE, 205 build, 6 build an
+invalid solid, 72 refuse and 2 found no edge. By cause: *a corner edge
+shorter than the trim* 257 edges (120 asked, 95 built), *the contact leaves
+a plane face* 96 (96 asked, 76 built), *a cylinder face* 49 (41 asked, 34
+built), *the ball finds no place on either face* 89 (14 asked, none built:
+Open CASCADE refuses these too, a radius no run-over builds) and *the contact
+leaves a torus face* 24 (14 asked, none built: NURBS-cycle faces, Open
+CASCADE refuses 12 and finds no edge for 2). The committed tier says the
+same (82 of 101 built for the corner edge, 72 of 86 for a plane face, none
+of 21 for the ball). Every cause Open CASCADE builds lies on a plane against a
+plane or a cylinder, the pairs the closed forms and the trace take. The
+battery's six sampled edges refused `BlendTooLarge` on the fetched tier all
+build in Open CASCADE: `ctc_03` e2, `ftc_08` e2 and `stc_06` each hold only
+those among their four, so clearing them takes three parts out of the column
+(`ctc_04` and `stc_09` meet `VertexBlend` and `TangentChain` behind it); on the
+committed tier `ftc-10`'s sampled edge builds and `ftc-08`'s is refused by
+Open CASCADE too.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges

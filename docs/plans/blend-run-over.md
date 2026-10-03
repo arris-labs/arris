@@ -69,7 +69,7 @@ bound has to be established here.
   refuses, through `tools/oracle/`). Output `target/real-parts/run-over.md`:
   `part → sub-cause → count → OCC builds / refuses`; a unit test on a small
   recipe per sub-cause holds the classification. Decides step 2's go/no-go.
-- [ ] Step 2 **[1]** — Record the census in docs/ROADMAP.md §C6 and
+- [x] Step 2 **[1]** — Record the census in docs/ROADMAP.md §C6 and
   BACKLOG: the sub-causes, each with its count and Open CASCADE's verdict,
   and the order of steps 3–6 confirmed or changed. **Gate:** if the edges
   Open CASCADE builds are fewer than three parts' worth of the fetched

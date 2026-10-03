@@ -213,6 +213,7 @@ above when it wants a fix; the block moves or is deleted then.
   result leaves two cone × cylinder pairs undecided at `Full`
   (`regression/cone-cylinder-fuse-s5-undecided`, `#[ignore]`d).
 - A twin boss's foot chamfered after a turn: the chamfer's cone against the second wall's cylinder (parallel axes, 0.3 apart) is refused `Unsupported`, no closed form, in some poses (20° and 45° about y) and builds at rest, 10° and 90° — the trace does not decide — `regression/twin-boss-foot-turned-chamfer-cone-cylinder`, found by the end families' property (blend-residue step 8; the property rejects that refusal by name until this passes)
+- Open CASCADE's per-edge verdict in the run-over census is asked of a stride sample (twelve per cause and every sampled edge), not all 515 + 471 edges, and it is `builds` where its builder is done and the result passes `BRepCheck_Analyzer`, not where it matches Arris's blend: the volume and area comparison belongs to each fixture of the plan's steps 4 and 5 (blend-run-over step 1 finding)
 
 ## Rejected
 - The checker's S5 leaves two faces of one torus undecided in some poses: a stadium's outline filleted through one edge gives two half tori of one torus, and once the body is turned (rotation about (0, 0.936, 0.350) by 242.6°) `Full` reports `torus against torus is not decided`, where the same body unturned is clean — `regression/turned-stadium-fillet-torus-pair`, found by the outline property (C6 blend-network step 8 finding; the property excludes an unchecked torus pair by name until this passes)
