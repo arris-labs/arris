@@ -1,0 +1,182 @@
+{
+  "description": "CTC-04's and FTC-09's split pin, shrunk (blend-corners step 5): a disc of radius R 1 and height 1 whose outline is two half circles, so its side is two half cylinders meeting along rulings at (±R, 0), its top rim chamfered at d 0.25 into two half cones split at the same angles, then one half of the chamfer's foot filleted at r 0.1 — the convex arc between a half cylinder and a half cone. At each end it runs on into the other half at a vertex of four edges where both of its faces turn: the ruling between the two half cylinders and the one between the two half cones are tangent dihedrals, each one surface read twice. The chain is the whole foot circle, two half tori, and each junction is the ball's meridian between a point on each ruling, both cut (ADR-0039 §2), the two rings meeting at both ends: 8 vertices, 14 edges, 8 faces. The closed forms are Pappus's over the section in (ρ, z): the disc less the chamfer's triangle and the fillet's corner, its ball centred at (R − r, 1 − d − (√2 − 1) r), the contact on the cone a tangent length (√2 − 1) r up the chamfer. Open CASCADE builds the cylinder-against-cone blend as a B-spline surface walked along the edge, not the torus, and its volume is 1.1e-7, its area 7.2e-8 and its inertia up to 3.9e-7 relative off the closed forms, its centroid 2e-8 off the axis; the measure tolerances are widened to cover the walk, under the 1e-6 ADR-0015 asks of a claimed difference, as blend/chamfered-stadium-foot-fillet's are. The desired body is Open CASCADE's",
+  "params": {
+    "R": 1,
+    "d": 0.25,
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          "R",
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              "-R",
+              0
+            ],
+            "via": [
+              0,
+              "R"
+            ]
+          },
+          {
+            "arc_to": [
+              "R",
+              0
+            ],
+            "via": [
+              0,
+              "-R"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "disc",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "pin",
+      "op": "chamfer",
+      "of": "disc",
+      "edges": [
+        [
+          0,
+          "R",
+          1
+        ],
+        [
+          0,
+          "-R",
+          1
+        ]
+      ],
+      "distance": "d"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "pin",
+      "edges": [
+        [
+          0,
+          "R",
+          "1 - d"
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "foot_gone",
+      "point": [
+        0,
+        "R - 0.004 * 0.9238795",
+        "1 - d - 0.004 * 0.3826834"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "far_foot_gone",
+      "point": [
+        0,
+        "-R + 0.004 * 0.9238795",
+        "1 - d - 0.004 * 0.3826834"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bottom_rim",
+      "point": [
+        "R",
+        0,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 2e-07,
+    "inertia_rel": 5e-07
+  },
+  "analytic": {
+    "volume": "pi*(12*R^2 - 12*R*d^2 - 24*sqrt(2)*R*r^2 + 3*pi*R*r^2 + 24*R*r^2 + 4*d^3 - 16*r^3 - 3*pi*r^3 + 18*sqrt(2)*r^3)/12",
+    "area": "2*pi*R^2 - 4*pi*R*d + 2*sqrt(2)*pi*R*d - 4*sqrt(2)*pi*R*r + pi^2*R*r/2 + 4*pi*R*r + 2*pi*R - sqrt(2)*pi*d^2 + pi*d^2 - 2*pi*r^2 - pi^2*r^2/2 + 5*sqrt(2)*pi*r^2/2",
+    "centroid": [
+      0,
+      0,
+      "(12*R^2 + 8*R*d^3 - 24*R*d^2 - 48*R*d*r^2 - 6*pi*R*d*r^2 + 48*sqrt(2)*R*d*r^2 - 68*sqrt(2)*R*r^3 - 6*sqrt(2)*pi*R*r^3 + 6*pi*R*r^3 + 104*R*r^3 - 48*sqrt(2)*R*r^2 + 6*pi*R*r^2 + 48*R*r^2 - 2*d^4 + 8*d^3 - 36*sqrt(2)*d*r^3 + 6*pi*d*r^3 + 32*d*r^3 - 87*r^4 - 6*pi*r^4 + 6*sqrt(2)*pi*r^4 + 56*sqrt(2)*r^4 - 32*r^3 - 6*pi*r^3 + 36*sqrt(2)*r^3)/(2*(12*R^2 - 12*R*d^2 - 24*sqrt(2)*R*r^2 + 3*pi*R*r^2 + 24*R*r^2 + 4*d^3 - 16*r^3 - 3*pi*r^3 + 18*sqrt(2)*r^3))"
+    ],
+    "inertia": [
+      [
+        "pi*(120*R^4 - 240*R^3*d^2 - 480*sqrt(2)*R^3*r^2 + 60*pi*R^3*r^2 + 480*R^3*r^2 + 240*R^2*d^3 - 960*R^2*r^3 - 180*pi*R^2*r^3 + 1080*sqrt(2)*R^2*r^3 + 160*R^2 - 200*R*d^4 + 320*R*d^3 - 960*sqrt(2)*R*d^2*r^2 + 120*pi*R*d^2*r^2 + 960*R*d^2*r^2 - 480*R*d^2 - 4160*R*d*r^3 - 240*pi*R*d*r^3 + 240*sqrt(2)*pi*R*d*r^3 + 2720*sqrt(2)*R*d*r^3 - 1920*R*d*r^2 - 240*pi*R*d*r^2 + 1920*sqrt(2)*R*d*r^2 - 4240*sqrt(2)*R*r^4 - 240*sqrt(2)*pi*R*r^4 + 615*pi*R*r^4 + 5130*R*r^4 - 2720*sqrt(2)*R*r^3 - 240*sqrt(2)*pi*R*r^3 + 240*pi*R*r^3 + 4160*R*r^3 - 960*sqrt(2)*R*r^2 + 120*pi*R*r^2 + 960*R*r^2 + 40*d^5 - 80*d^4 + 160*d^3 - 640*d^2*r^3 - 120*pi*d^2*r^3 + 720*sqrt(2)*d^2*r^3 - 2240*sqrt(2)*d*r^4 - 240*sqrt(2)*pi*d*r^4 + 240*pi*d*r^4 + 3480*d*r^4 - 1440*sqrt(2)*d*r^3 + 240*pi*d*r^3 + 1280*d*r^3 - 4130*r^5 - 495*pi*r^5 + 240*sqrt(2)*pi*r^5 + 3266*sqrt(2)*r^5 - 3480*r^4 - 240*pi*r^4 + 240*sqrt(2)*pi*r^4 + 2240*sqrt(2)*r^4 - 640*r^3 - 120*pi*r^3 + 720*sqrt(2)*r^3)/480 - pi*(12*R^2 + 8*R*d^3 - 24*R*d^2 - 48*R*d*r^2 - 6*pi*R*d*r^2 + 48*sqrt(2)*R*d*r^2 - 68*sqrt(2)*R*r^3 - 6*sqrt(2)*pi*R*r^3 + 6*pi*R*r^3 + 104*R*r^3 - 48*sqrt(2)*R*r^2 + 6*pi*R*r^2 + 48*R*r^2 - 2*d^4 + 8*d^3 - 36*sqrt(2)*d*r^3 + 6*pi*d*r^3 + 32*d*r^3 - 87*r^4 - 6*pi*r^4 + 6*sqrt(2)*pi*r^4 + 56*sqrt(2)*r^4 - 32*r^3 - 6*pi*r^3 + 36*sqrt(2)*r^3)^2/(48*(12*R^2 - 12*R*d^2 - 24*sqrt(2)*R*r^2 + 3*pi*R*r^2 + 24*R*r^2 + 4*d^3 - 16*r^3 - 3*pi*r^3 + 18*sqrt(2)*r^3))",
+        0,
+        0
+      ],
+      [
+        0,
+        "pi*(120*R^4 - 240*R^3*d^2 - 480*sqrt(2)*R^3*r^2 + 60*pi*R^3*r^2 + 480*R^3*r^2 + 240*R^2*d^3 - 960*R^2*r^3 - 180*pi*R^2*r^3 + 1080*sqrt(2)*R^2*r^3 + 160*R^2 - 200*R*d^4 + 320*R*d^3 - 960*sqrt(2)*R*d^2*r^2 + 120*pi*R*d^2*r^2 + 960*R*d^2*r^2 - 480*R*d^2 - 4160*R*d*r^3 - 240*pi*R*d*r^3 + 240*sqrt(2)*pi*R*d*r^3 + 2720*sqrt(2)*R*d*r^3 - 1920*R*d*r^2 - 240*pi*R*d*r^2 + 1920*sqrt(2)*R*d*r^2 - 4240*sqrt(2)*R*r^4 - 240*sqrt(2)*pi*R*r^4 + 615*pi*R*r^4 + 5130*R*r^4 - 2720*sqrt(2)*R*r^3 - 240*sqrt(2)*pi*R*r^3 + 240*pi*R*r^3 + 4160*R*r^3 - 960*sqrt(2)*R*r^2 + 120*pi*R*r^2 + 960*R*r^2 + 40*d^5 - 80*d^4 + 160*d^3 - 640*d^2*r^3 - 120*pi*d^2*r^3 + 720*sqrt(2)*d^2*r^3 - 2240*sqrt(2)*d*r^4 - 240*sqrt(2)*pi*d*r^4 + 240*pi*d*r^4 + 3480*d*r^4 - 1440*sqrt(2)*d*r^3 + 240*pi*d*r^3 + 1280*d*r^3 - 4130*r^5 - 495*pi*r^5 + 240*sqrt(2)*pi*r^5 + 3266*sqrt(2)*r^5 - 3480*r^4 - 240*pi*r^4 + 240*sqrt(2)*pi*r^4 + 2240*sqrt(2)*r^4 - 640*r^3 - 120*pi*r^3 + 720*sqrt(2)*r^3)/480 - pi*(12*R^2 + 8*R*d^3 - 24*R*d^2 - 48*R*d*r^2 - 6*pi*R*d*r^2 + 48*sqrt(2)*R*d*r^2 - 68*sqrt(2)*R*r^3 - 6*sqrt(2)*pi*R*r^3 + 6*pi*R*r^3 + 104*R*r^3 - 48*sqrt(2)*R*r^2 + 6*pi*R*r^2 + 48*R*r^2 - 2*d^4 + 8*d^3 - 36*sqrt(2)*d*r^3 + 6*pi*d*r^3 + 32*d*r^3 - 87*r^4 - 6*pi*r^4 + 6*sqrt(2)*pi*r^4 + 56*sqrt(2)*r^4 - 32*r^3 - 6*pi*r^3 + 36*sqrt(2)*r^3)^2/(48*(12*R^2 - 12*R*d^2 - 24*sqrt(2)*R*r^2 + 3*pi*R*r^2 + 24*R*r^2 + 4*d^3 - 16*r^3 - 3*pi*r^3 + 18*sqrt(2)*r^3))",
+        0
+      ],
+      [
+        0,
+        0,
+        "pi*(120*R^4 - 240*R^3*d^2 - 480*sqrt(2)*R^3*r^2 + 60*pi*R^3*r^2 + 480*R^3*r^2 + 240*R^2*d^3 - 960*R^2*r^3 - 180*pi*R^2*r^3 + 1080*sqrt(2)*R^2*r^3 - 120*R*d^4 - 1200*sqrt(2)*R*r^4 + 225*pi*R*r^4 + 990*R*r^4 + 24*d^5 - 414*r^5 - 105*pi*r^5 + 526*sqrt(2)*r^5)/240"
+      ]
+    ],
+    "genus": 0,
+    "occt_walked": "Open CASCADE's blend of a cylinder against a cone is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the cylinder and the cone, whose pairs the checker's S5 leaves undecided"
+  }
+}

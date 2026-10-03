@@ -801,6 +801,15 @@ it, and each of the two others tangent there and between one face of each
 — the blend runs on into the next edge with the same
 kind and size, and on from there until a vertex that is not one, so naming
 one edge of a chain or all of them gives one result with the same ids.
+Two faces are *tangent* for a blend — at a vertex the walk reads, along
+the blended edge itself, and at a corner edge — where their outward
+normals agree to the angular precision, or where the blend's radius or
+distance times the sine between them is within the faces' tolerance
+(the default where theirs is smaller): a ball touching one face then
+touches the other within the tolerance the blend is built to, so the two
+stripes' contacts meet as one ball's would (ADR-0040). A file writes a
+tangency to a few `1e-10`, which the angular precision alone reads as a
+sharp edge.
 Each edge keeps its own stripe and its own blend face. At a tangent vertex
 the two stripes are one ball's, and they meet in a *junction*, recorded as
 a miter is: the ball's great circle square to the edges' common direction

@@ -179,6 +179,36 @@ enum Kind {
     Chamfer { distance: f64 },
 }
 
+impl Kind {
+    /// The fillet's radius or the chamfer's distance: how far from the
+    /// edge the blend reaches.
+    fn size(self) -> f64 {
+        match self {
+            Kind::Fillet { radius } => radius,
+            Kind::Chamfer { distance } => distance,
+        }
+    }
+}
+
+/// Whether two faces with outward normals `n1` and `n2` at a point of
+/// their edge meet tangentially for a blend of `size` (ADR-0040): the
+/// normals parallel within `tol.angular`, or the ball — a chamfer's
+/// contacts — that touches one face moved by no more than `tolerance`, the
+/// faces' own, to touch the other, `size` times the sine between them.
+fn tangent_normals(n1: Vec3, n2: Vec3, size: f64, tolerance: f64, tol: Tolerance) -> bool {
+    let sine = n1.cross(&n2).norm();
+    sine <= tol.angular || size * sine <= tolerance
+}
+
+/// The tolerance a blend is built to beside the faces `f1` and `f2`: the
+/// model's default, or the larger of the faces' own where that is wider.
+fn faces_tolerance(m: &Model, f1: FaceId, f2: FaceId) -> Result<f64, OpError> {
+    Ok(m.precision()
+        .default_tolerance
+        .max(m.face(f1)?.tolerance())
+        .max(m.face(f2)?.tolerance()))
+}
+
 /// A stripe's cross-section, which its end curves are decided from.
 #[derive(Debug, Clone, Copy)]
 enum Section {
@@ -217,6 +247,8 @@ struct Stripe {
     faces: [FaceId; 2],
     /// The edge's use by each of those faces, in the same order.
     uses: [UseAt; 2],
+    /// The fillet's radius or the chamfer's distance.
+    size: f64,
     tolerance: f64,
 }
 
@@ -561,9 +593,10 @@ fn stripe(
     }
     let [n1, n2] = normals;
     let [f1, f2] = faces;
+    let tolerance = faces_tolerance(m, f1, f2)?;
     // A tangent dihedral has no corner to roll a ball into, whatever the
     // surfaces are.
-    if n1.cross(&n2).norm() <= tol.angular {
+    if tangent_normals(n1, n2, kind.size(), tolerance, tol) {
         return Err(degenerate(
             vec![e, forward(f1), forward(f2)],
             Reason::TangentChain,
@@ -701,11 +734,6 @@ fn stripe(
             )
         }
     };
-    let tolerance = m
-        .precision()
-        .default_tolerance
-        .max(m.face(f1)?.tolerance())
-        .max(m.face(f2)?.tolerance());
     let by_u = [lo, 1 - lo];
     Ok(Stripe {
         edge,
@@ -725,6 +753,7 @@ fn stripe(
         }),
         faces: by_u.map(|i| faces[i]),
         uses: by_u.map(|i| uses[i]),
+        size: kind.size(),
         tolerance,
     })
 }
@@ -742,24 +771,24 @@ fn parameter_at(m: &Model, edge: EdgeId, vertex: VertexId) -> Result<Option<f64>
     }))
 }
 
-/// Whether the two faces of `edge` are tangent at its parameter `t`, their
-/// outward normals parallel within `tol.angular`; `None` for an edge not
-/// used by exactly two faces.
+/// Whether the two faces of `edge` are tangent at its parameter `t` for a
+/// blend of `size`, by `tangent_normals` at their own tolerance; `None` for
+/// an edge not used by exactly two faces.
 fn tangent_at(
     m: &Model,
     view: &View,
     edge: EdgeId,
     t: f64,
+    size: f64,
     tol: Tolerance,
 ) -> Result<Option<bool>, OpError> {
-    let Some(uses) = view.uses.get(&edge).filter(|u| u.len() == 2) else {
+    let Some(&[ua, ub]) = view.uses.get(&edge).map(Vec::as_slice) else {
         return Ok(None);
     };
-    let mut normals = [Vec3::zeros(); 2];
-    for (n, u) in normals.iter_mut().zip(uses) {
-        *n = view.outward(m, u.face, m.curve2(u.pcurve)?.point(t))?;
-    }
-    Ok(Some(normals[0].cross(&normals[1]).norm() <= tol.angular))
+    let n1 = view.outward(m, ua.face, m.curve2(ua.pcurve)?.point(t))?;
+    let n2 = view.outward(m, ub.face, m.curve2(ub.pcurve)?.point(t))?;
+    let tolerance = faces_tolerance(m, ua.face, ub.face)?;
+    Ok(Some(tangent_normals(n1, n2, size, tolerance, tol)))
 }
 
 /// Whether `edge` is convex, read at its midpoint as a stripe or a ring
@@ -799,6 +828,7 @@ fn tangent_vertex(
     view: &View,
     edge: EdgeId,
     vertex: VertexId,
+    size: f64,
     tol: Tolerance,
 ) -> Result<Option<EdgeId>, OpError> {
     let Some(at) = view.vertex_edges.get(&vertex) else {
@@ -845,7 +875,7 @@ fn tangent_vertex(
         };
         let theirs = faces_of(next);
         if next_entity.start() == next_entity.end()
-            || tangent_at(m, view, next, next_range.midpoint(), tol)? != Some(false)
+            || tangent_at(m, view, next, next_range.midpoint(), size, tol)? != Some(false)
             || own.intersection(&theirs).count() != shared
             || convex_edge(m, view, next)? != convex_edge(m, view, edge)?
         {
@@ -858,7 +888,7 @@ fn tangent_vertex(
             let Some(t_w) = parameter_at(m, w, vertex)? else {
                 continue 'next;
             };
-            if tangent_at(m, view, w, t_w, tol)? != Some(true) {
+            if tangent_at(m, view, w, t_w, size, tol)? != Some(true) {
                 continue 'next;
             }
             if shared == 0 {
@@ -888,6 +918,7 @@ fn chain(
     m: &Model,
     view: &View,
     named: &[EdgeId],
+    size: f64,
     tol: Tolerance,
     meter: &mut Meter<'_>,
 ) -> Result<BTreeSet<EdgeId>, OpError> {
@@ -900,7 +931,7 @@ fn chain(
             continue;
         }
         for vertex in [entity.start(), entity.end()] {
-            if let Some(next) = tangent_vertex(m, view, edge, vertex, tol)?
+            if let Some(next) = tangent_vertex(m, view, edge, vertex, size, tol)?
                 && reached.insert(next)
             {
                 todo.push(next);
@@ -920,6 +951,7 @@ fn chain(
 /// every blend face meets its neighbours along — at a vertex the chain did
 /// not run on through, the next edge turning back or itself a tangent
 /// dihedral, is `Reason::TangentChain` (ADR-0035 §6).
+#[allow(clippy::too_many_arguments)]
 fn corner_of(
     m: &Model,
     view: &View,
@@ -927,6 +959,7 @@ fn corner_of(
     uses: &[UseAt; 2],
     vertex: VertexId,
     at_lo: bool,
+    size: f64,
     tol: Tolerance,
 ) -> Result<([EdgeId; 2], FaceId), OpError> {
     let e = forward(edge);
@@ -960,7 +993,9 @@ fn corner_of(
         let Some(t) = parameter_at(m, corner, vertex)? else {
             return Err(vertex_blend());
         };
-        if tangent_at(m, view, corner, t, tol)?.ok_or(invariant("two uses of the corner edge"))? {
+        if tangent_at(m, view, corner, t, size, tol)?
+            .ok_or(invariant("two uses of the corner edge"))?
+        {
             return Err(degenerate(
                 vec![e, forward(corner), v],
                 Reason::TangentChain,
@@ -1204,7 +1239,7 @@ fn face_end(
     let e = forward(edge);
     let vertex = if at_lo { s.start } else { s.end };
     let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
-    let (corner_edges, face3) = corner_of(m, view, edge, &s.uses, vertex, at_lo, tol)?;
+    let (corner_edges, face3) = corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
     let surface3 = m.surface(m.face(face3)?.surface())?;
     let face3_tolerance = m.face(face3)?.tolerance();
     let arc_tolerance = s.tolerance.max(face3_tolerance);
@@ -2815,7 +2850,7 @@ fn ring(
     let pcurves = [m.curve2(ua.pcurve)?, m.curve2(ub.pcurve)?];
     let n1 = view.outward(m, f1, pcurves[0].point(mid))?;
     let n2 = view.outward(m, f2, pcurves[1].point(mid))?;
-    if n1.cross(&n2).norm() <= tol.angular {
+    if tangent_normals(n1, n2, kind.size(), faces_tolerance(m, f1, f2)?, tol) {
         return Err(degenerate(
             vec![e, forward(f1), forward(f2)],
             Reason::TangentChain,
@@ -2851,11 +2886,7 @@ fn ring(
             b: (GeomKind::Surface(surfaces[k].kind()), forward(faces[k])),
         });
     };
-    let tolerance = m
-        .precision()
-        .default_tolerance
-        .max(m.face(f1)?.tolerance())
-        .max(m.face(f2)?.tolerance());
+    let tolerance = faces_tolerance(m, f1, f2)?;
     let z: Vec3 = axis.z().into_inner();
     for i in 0..2 {
         let Some(frame) = frames[i].flatten() else {
@@ -3145,7 +3176,16 @@ fn ring(
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
             if !junctions.contains(&vertex) {
-                corners[j] = Some(corner_of(m, view, edge, &contact_uses, vertex, at_lo, tol)?);
+                corners[j] = Some(corner_of(
+                    m,
+                    view,
+                    edge,
+                    &contact_uses,
+                    vertex,
+                    at_lo,
+                    kind.size(),
+                    tol,
+                )?);
             }
         }
     }
@@ -3609,7 +3649,7 @@ fn build(
     let view = View::of(m, body)?;
     // The named edges and every edge their chains run on into, in the
     // body's order.
-    let reached = chain(m, &view, edges, tol, meter)?;
+    let reached = chain(m, &view, edges, kind.size(), tol, meter)?;
     let chained: Vec<EdgeId> = m
         .edges(body)?
         .into_iter()
@@ -3650,7 +3690,7 @@ fn build(
     let mut junctions: BTreeSet<VertexId> = BTreeSet::new();
     for (&v, es) in &at_vertex {
         if let [ea, eb] = es[..]
-            && tangent_vertex(m, &view, ea, v, tol)? == Some(eb)
+            && tangent_vertex(m, &view, ea, v, kind.size(), tol)? == Some(eb)
         {
             junctions.insert(v);
             continue;
@@ -4460,7 +4500,11 @@ fn build(
 /// of four edges where both of the edge's faces turn — the next edge
 /// sharing no face with it, each other edge tangent there between a face
 /// of each — and the great circle there runs between the two points where
-/// the contacts meet on those two tangent edges, both shortened. Convex or
+/// the contacts meet on those two tangent edges, both shortened. Two
+/// faces are tangent for the blend where their normals agree to the
+/// angular precision, or where the radius times the sine between them is
+/// within the faces' tolerance: a ball touching one then touches the
+/// other, as across a tangency a file wrote to a few 1e-10. Convex or
 /// concave is read from the dihedral. Every surface is exact, every
 /// untouched entity keeps its id, and the result's ids are the same for
 /// any order of the same edges (the blends are built in the body's

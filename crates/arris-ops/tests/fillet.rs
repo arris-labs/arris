@@ -364,6 +364,51 @@ fn a_tangent_dihedral_is_a_tangent_chain() {
     assert_eq!(reason(&err), Some(Reason::TangentChain), "{err}");
 }
 
+/// Faces are tangent for a blend when the ball touching one, moved by the
+/// blend's size times the sine between their normals, still touches the
+/// other within their tolerance (ADR-0040), not only when the normals agree
+/// to the angular precision. A stadium whose arcs pass through `(3, ε)` and
+/// `(−1, −ε)` has its centres `ε²/2` off the lines' ends, and its plane
+/// sides meet its half cylinders `ε²/2` off tangent. At `ε = 3e-5` that is
+/// 4.5e-10, which a ball of 0.25 moves by 1.1e-10: the vertical edges are
+/// tangent dihedrals, and a top edge's fillet walks the whole outline as
+/// on an exact stadium. At `ε = 1e-2` it is 5e-5, a move of 1.25e-5 past
+/// the faces' 1e-7: the vertical edges are sharp, and the walk stops.
+#[test]
+fn faces_are_tangent_within_the_blends_tolerance() {
+    let stadium = |m: &mut Model, eps: f64| {
+        extruded(
+            m,
+            (0.0, -1.0),
+            vec![
+                line_to(2.0, -1.0),
+                arc_to(2.0, 1.0, (3.0, eps)),
+                line_to(0.0, 1.0),
+                arc_to(0.0, -1.0, (-1.0, -eps)),
+            ],
+        )
+    };
+    let mut m = Model::default();
+    let near = stadium(&mut m, 3e-5);
+    let vertical = edge_at(&m, near, Point3::new(2.0, -1.0, 1.0));
+    let err = fillet(&mut m, near, &[vertical], 0.25).unwrap_err();
+    assert_eq!(reason(&err), Some(Reason::TangentChain), "{err}");
+    let top = edge_at(&m, near, Point3::new(1.0, 1.0, 2.0));
+    let (blended, provenance) = fillet(&mut m, near, &[top], 0.25).unwrap();
+    let report = check(&m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    let line = report.euler().unwrap();
+    assert_eq!((line.vertices, line.edges, line.faces), (12, 20, 10));
+    audit(&m, &[near], blended, &provenance).unwrap();
+
+    let off = stadium(&mut m, 1e-2);
+    let top = edge_at(&m, off, Point3::new(1.0, 1.0, 2.0));
+    // The end is trimmed by the half cylinder across instead, whose section
+    // with the stripe has no closed form.
+    let err = fillet(&mut m, off, &[top], 0.25).unwrap_err();
+    assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
+}
+
 /// A revolve's cone ruling on its end cap — a plane through the cone's
 /// apex, along a ruling — is outside the table and is named as such.
 #[test]

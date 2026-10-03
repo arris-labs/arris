@@ -1,0 +1,33 @@
+{
+  "description": "CTC-04's chamfered walls, read from STEP (blend-corners step 5): the part read in place and the foot of one chamfered wall filleted at the census's radius, the edge between a plane wall and its plane chamfer strip. At each end it runs on into a rounded corner, where the wall turns into a cylinder and the strip into a cone, at a vertex of four edges whose two other edges are tangent dihedrals as written but not as read: the normals across them are 7e-11 to 9e-10 apart, past the model's angular precision. A ball of the fillet's radius moved by that sine moves by under 1e-9, inside the faces' tolerance, so the faces are tangent for this blend and the chain walks on round the whole chamfered outline, twelve edges, each its own blend face: Open CASCADE's counts, 12 vertices, 24 edges and 12 faces more than the part's (ADR-0040); at 1e-12 alone it stopped there and the edge was refused VertexBlend. The file is not shrunk further (ADR-0026 §4); blend/chamfered-stadium-foot-fillet is the same corner built from a recipe. The desired body is Open CASCADE's",
+  "params": {
+    "r": 0.7854
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ctc-04/nist_ctc_04_asme1_rd.stp",
+      "sha256": "cdb59a085a3364941b881f96b511265a7cb5f6e94180c4426bdc3025481f405a",
+      "id": 24
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -143.442920084,
+          369.191372479,
+          -35.0
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "genus": 34,
+    "occt_walked": "Open CASCADE's blend of a cylinder against a cone round each rounded corner is a B-spline surface walked along the edge, so its own STEP has NURBS faces beside the planes, the cylinders and the cones, whose pairs the checker's S5 leaves undecided"
+  }
+}

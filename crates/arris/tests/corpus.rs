@@ -1971,6 +1971,24 @@ fn blend_stadium_pocket_chamfer_root_fillet() {
     run("blend/stadium-pocket-chamfer-root-fillet");
 }
 
+/// The shrunk CTC-04 and FTC-09 pin: a split disc's rim chamfered into two
+/// half cones, one half of the chamfer's foot filleted, the chain running on
+/// into the other half where both its faces turn at the split. Two rings
+/// meet at both ends, each junction the ball's meridian between the two
+/// split rulings, both cut (ADR-0039 §2).
+#[test]
+fn blend_split_pin_foot_fillet() {
+    run("blend/split-pin-foot-fillet");
+}
+
+/// CTC-04's chamfered wall, read from STEP, its foot filleted: the walls
+/// turn round their rounded corners at faces tangent only to 9e-10 as
+/// read, which the blend's own tolerance takes as tangent (ADR-0040).
+#[test]
+fn blend_nist_ctc_04_chamfered_wall_fillet() {
+    run("blend/nist-ctc-04-chamfered-wall-fillet");
+}
+
 /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
 /// a closed chain through four tangent vertices.
 #[test]
@@ -2194,6 +2212,17 @@ fn regression_edge_off_its_plane_fillet() {
 #[ignore = "kernel bug: the blend's output fails the checker at L2, pcurves 4.6e-7 apart where the file's faces are 1e-7 tolerant (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
 fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
     run("regression/nist-ctc-03-two-plane-edges-fillet-checker-fault");
+}
+
+/// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
+/// a chain of three: the output fails the checker at L2 where Open CASCADE
+/// builds it, as it did before the blend's tangency took the faces'
+/// tolerance. A release build does not check, so the census counted it as
+/// built.
+#[test]
+#[ignore = "kernel bug: the blend's output fails the checker at L2, two loops' pcurves jump 3.1e-7 and 2.4e-6 in (u, v) (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
+fn regression_nist_ftc_08_fillet_pcurve_jump_checker_fault() {
+    run("regression/nist-ftc-08-fillet-pcurve-jump-checker-fault");
 }
 
 /// Open CASCADE's own STEP of `blend/bead-root-fillet`, read as a part: its

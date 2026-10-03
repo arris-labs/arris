@@ -16,7 +16,7 @@
         "drill_y": "agree",
         "drill_z": "agree",
         "fillet": {
-          "arris-refuses": "Degenerate(BlendTooLarge)"
+          "arris-refuses": "Degenerate(TangentChain)"
         },
         "write_read": "agree"
       },

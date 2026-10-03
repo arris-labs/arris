@@ -135,6 +135,8 @@ blend/box-oblique-end: 297
 blend/box-posed-edge-fillet: 5
 blend/chamfer-into-a-step: 5
 blend/chamfer-into-a-turned-step: 297
+blend/chamfered-stadium-foot-chamfer: 14
+blend/chamfered-stadium-foot-fillet: 14
 blend/concave-fillet-into-a-step: 5
 blend/cone-boss-base-chamfer: 2
 blend/cone-boss-base-fillet: 2
@@ -158,6 +160,7 @@ blend/hole-rim-chamfer: 2
 blend/hole-rim-fillet: 2
 blend/l-inner-edge: 5
 blend/line-into-arc-fillet: 7
+blend/nist-ctc-04-chamfered-wall-fillet: 1210
 blend/pocket-corner-fillet: 5
 blend/probe-cap-and-vertical-fillet-m: 10
 blend/probe-second-fillet-m: 5
@@ -173,10 +176,12 @@ blend/rim-chamfer-into-a-step: 2
 blend/rim-fillet-into-a-step: 2
 blend/rim-fillet-into-an-off-axis-step: 935
 blend/second-fillet: 5
+blend/split-pin-foot-fillet: 6
 blend/split-rim-disc-chamfer: 6
 blend/split-rim-disc-fillet: 6
 blend/stadium-outline-chamfer: 14
 blend/stadium-outline-fillet: 14
+blend/stadium-pocket-chamfer-root-fillet: 14
 blend/tangent-chain-cap-edge: 12
 blend/turned-shoulder-chamfer: 2
 blend/turned-shoulder-fillet: 2

@@ -126,7 +126,8 @@ gains no variant.
   takes 104 of CTC-04's 128 committed edges and all 8 of FTC-09's. Judging
   tangency by the edge's own tolerance instead is a change to ADR-0035's
   test for every chain, and is the plan's open question, not this
-  decision.
+  decision. *(Decided by ADR-0040: tangent for the blend, its size times
+  the normals' sine within the faces' tolerance; the walls walk.)*
 - The fan, the plan's opening hypothesis, is CTC-01's 18 edges and frees
   no part of either tier's column. It stays a backlog line, with
   `blend/five-edge-vertex`, a vertex of five edges where the face across

@@ -109,8 +109,8 @@ fixtures:
 
 | Refusal | Stage | Count | Blocks |
 |---|---|---:|---|
+| Degenerate(TangentChain) | fillet | 4 | blend network |
 | unsupported entity | read | 3 | healing |
-| Degenerate(TangentChain) | fillet | 3 | blend network |
 | gap past the cap | read | 2 | healing |
 | Unsupported(plane surface × NURBS surface) | box_cut | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_x | 2 | NURBS |
@@ -118,7 +118,6 @@ fixtures:
 | Unsupported(plane surface × NURBS surface) | drill_z | 2 | NURBS |
 | unsupported entity | read | 2 | itself: supplemental geometry |
 | Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
-| Degenerate(BlendTooLarge) | fillet | 1 | blend network |
 <!-- /histogram -->
 
 ---
@@ -712,6 +711,22 @@ walked: as read, their faces are tangent only to `7e-11`–`9e-10`, beyond
 the angular precision ADR-0035's test uses. CTC-04's battery fillet now
 first meets a named tangent dihedral (`TangentChain`) that the vertex used
 to hide.
+Step 5 held the junction of two arcs to Open CASCADE on a split pin
+(`blend/split-pin-foot-fillet`) and decided the tangency every blend reads
+(ADR-0040): two faces are tangent for a blend where its radius or
+distance times the sine between their normals is within the faces'
+tolerance, not only at the angular precision. CTC-04's chamfered walls now
+walk (`blend/nist-ctc-04-chamfered-wall-fillet`, the part read in place),
+and the committed tier's `VertexBlend` edges go from 63 to 35, none of them
+on CTC-04. Tangencies a file wrote elsewhere read as such too: on FTC-08
+113 more edges build alone (139 `BlendTooLarge` become 17), and on FTC-10
+the 24 refusals of a cylinder against a sphere are a tangent cap's
+dihedral, `TangentChain`. FTC-08's battery fillet now stops at a sampled
+tangent dihedral where it ran over, so the committed histogram above is
+printed again. The battery still picks its sample by the angular
+precision alone, and step 8 aligns it. Run with the checker on, the census
+found three FTC-08 edges whose body fails it, as they did before
+(`regression/nist-ftc-08-fillet-pcurve-jump-checker-fault`).
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges

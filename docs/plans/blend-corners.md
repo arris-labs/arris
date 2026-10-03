@@ -64,6 +64,11 @@ fan is a backlog line.)*
   ADR-0007 (the face across, the `VertexBlend` bound). If step 1 leads
   elsewhere, the ADR records that corner instead, and step 2 rewrites
   steps 3 to 5 in this file.
+- **ADR-0040 (step 5), written.** Tangency for a blend: `tangent_normals`
+  (the angular precision, or the size times the sine within the faces'
+  tolerance) behind `tangent_at`, the stripe's and the ring's own
+  dihedral; `tangent_vertex`, `chain` and `corner_of` take the blend's
+  size, `Stripe` carries it. No public type or signature change.
 - `arris-ops` `blend.rs` `corner_of`: from three edges and one face across
   to the vertex's fan (the corner edges, the faces across and the edges
   between them, in loop order). `face_end`, `End` and `build` take a fan
@@ -152,7 +157,7 @@ bound has to be established here.
   fillet, held by its pin's split rim, now builds and agrees with Open
   CASCADE, and its `fixtures:` expectation and the committed histogram
   moved here, not at step 8.)*
-- [ ] Step 5 **[3]** — *(Step 4 found the code already takes it, FTC-09
+- [x] Step 5 **[3]** — *(Step 4 found the code already takes it, FTC-09
   agreeing; what is left is the fixture and the tangency question.)* The junction of two arcs: a rim split in half with
   both its faces, the ring of each half meeting the other's at both ends
   (CTC-04's and FTC-09's pins, a cone against a cylinder; a plane against a
@@ -160,6 +165,20 @@ bound has to be established here.
   decide the open question on tangency as read, and if it is decided for
   the edge's own tolerance, amend ADR-0035's test with its ADR and cover
   CTC-04's chamfered walls with a fixture read from STEP.
+  *(Done: `blend/split-pin-foot-fillet`, two half tori at Open CASCADE's
+  counts and probes, the closed forms Pappus's, Open CASCADE's walked
+  blend 1e-7 to 4e-7 off them. ADR-0040 decides tangency for the blend:
+  its size times the normals' sine within the faces' tolerance (the
+  faces', not the edge's: the junction meets contacts at theirs), at every
+  tangency a blend reads. `blend/nist-ctc-04-chamfered-wall-fillet` reads
+  the part in place and walks a wall's whole outline, twelve edges, at
+  Open CASCADE's counts. The committed `VertexBlend` edges go from 63 to
+  35; FTC-08 and FTC-10 read written tangencies as tangent too. `fixtures:`
+  FTC-08's battery fillet now refuses `TangentChain`, and the committed
+  histogram is printed again here, not at step 8. The checker-on census
+  found FTC-08's pre-existing fault:
+  `regression/nist-ftc-08-fillet-pcurve-jump-checker-fault`. Step 4's
+  fixtures' `cancel_counts.txt` lines are blessed here.)*
 - [-] Step 6 **[3]** — Struck at step 2 (the census found no part whose sampled set is refused `VertexBlend` while each edge alone builds: in all three sets a single sampled edge is refused alone, so the miter lines stay in the backlog). Was: conditional on step 2: the sampled set blended
   together. Only if step 1 finds a part's set refused `VertexBlend` where
   each edge alone builds, build the miter or corner it names, from the
@@ -181,9 +200,13 @@ bound has to be established here.
   (`tools/real-parts.sh`, `--census-committed`). Print the column beside
   C4's 17 of 38 and `blend-run-over`'s line. Move the `fixtures:`
   expectations whose refusals changed (`nist-ctc-04`; `nist-ftc-09` moved
-  at step 4), with
+  at step 4, `nist-ftc-08` at step 5), with
   the commit body saying why and `cancel_counts.txt` blessed for the new
-  fixtures. Update `docs/ROADMAP.md` §C6's status paragraph with the new
+  fixtures. Align the battery's tangent-dihedral filter
+  (`arris_debug::battery::is_tangent_dihedral`, the angular precision
+  alone) with ADR-0040 first, at the battery's radius, so the sample holds
+  no edge the kernel names a tangent dihedral, and say in the commit body
+  which parts' samples moved. Update `docs/ROADMAP.md` §C6's status paragraph with the new
   count and what each remaining part meets. Run the docs-refs tests: the
   roadmap's histogram is checked against the printout.
 
@@ -212,7 +235,8 @@ bound has to be established here.
   are not backlog; causes needing a filled patch are. Strike or keep the
   three miter lines (65, 66, 68) per step 6.
 - `docs/adr/`: ADR-0039, its ADR-0007 and ADR-0035 pointers and its
-  README row (written at step 3).
+  README row (written at step 3); ADR-0040, its ADR-0035 and ADR-0039
+  pointers and its README row (written at step 5).
 - `docs/ARCHITECTURE.md` §blend: the chain through a vertex of four edges
   and its junction (the walk written at step 3) and the `VertexBlend`
   paragraph (what builds now and what is refused).
@@ -261,7 +285,9 @@ bound has to be established here.
   otherwise.
 - Not reached: ⚠ OPEN (human, step 2, only if the gate fires): whether to stop the plan
   or go on with a cause Open CASCADE builds that frees no part.
-- ⚠ OPEN (agent, step 5): whether a corner edge is tangent by the model's
+- Answered at step 5 (ADR-0040): tangent for the blend, its size times the
+  normals' sine within the faces' tolerance, at every tangency it reads.
+- Was ⚠ OPEN (agent, step 5), answered above: whether a corner edge is tangent by the model's
   angular precision (`1e-12`, ADR-0035's test) or by its own tolerance.
   CTC-04's chamfered walls, read from STEP, meet tangentially only to
   `7e-11`–`9e-10` between normals, which moves the ball by `r` times that,

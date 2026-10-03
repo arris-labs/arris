@@ -65,6 +65,9 @@ with that edge's own refusal, which names it.
 vertex too where `e` and `e′` share no face and each of the two others is
 tangent at `v` between one face of each; its junction runs between points
 on those two edges, both cut.)*
+*(Amended by ADR-0040: "tangent" here, and in §6, is tangent for the
+blend: normals parallel to the angular precision, or the blend's size
+times their sine within the faces' tolerance.)*
 
 **2. One stripe per edge, still.** Each edge of a chain keeps its own
 closed-form stripe and its own blend face, `Generated` from that edge

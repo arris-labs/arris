@@ -1,0 +1,26 @@
+{
+  "description": "NIST's FTC-08 (AP203, solid #27): the edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721, the census's radius for the part. Its chain takes the edges at (52.07, 39.05, 44.831) and (67.31, 39.69, 44.831) as well, and the output fails the checker at L2: two faces' loops have pcurves that jump 3.1e-7 and 2.4e-6 in (u, v), where Open CASCADE builds it. A release build does not check, so the census counted these three edges as built; the paranoid census found them (plans/blend-corners step 5), and they fail the same way before that step. The desired result is a checker-green body that matches Open CASCADE's",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ftc-08/nist_ftc_08_asme1_rc.stp",
+      "sha256": "4b7011b0b86cf6301058aa954b76a9587d23478b6dee2660f4a80caf0dfe8b73",
+      "id": 27
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          59.690000000253995,
+          30.4800000002286,
+          44.831000000253994
+        ]
+      ],
+      "radius": 0.2721
+    }
+  ],
+  "result": "result"
+}
