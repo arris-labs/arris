@@ -555,8 +555,9 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 
 **Status: opened 2026-10-02; scope confirmed by the human the same day;
 first plan (`c6-blend-network`) landed 2026-10-02, second plan
-(`c6-blend-pairs`) landed 2026-10-03, third (`blend-residue`) and fourth
-(`blend-run-over`) the same day, the cycle stays open.**
+(`c6-blend-pairs`) landed 2026-10-03, third (`blend-residue`), fourth
+(`blend-run-over`), fifth (`blend-corners`) and sixth (`split-rim-vertex`)
+the same day, the cycle stays open.**
 The first plan took the two lines marked done below. On the fetched tier
 (27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column held 11
 parts where the step-1 baseline held 12 (C4's 17 of 38 counted both tiers;

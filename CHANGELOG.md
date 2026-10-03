@@ -8,6 +8,15 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` blend a rim split into arcs: where a hole's or a
+  boss's circle is written as two, three or more edges (a file that splits
+  its closed edges, or a part cut in halves), naming one arc blends the whole
+  ring, one blend face per arc, whether the cylinder's seam is at one of the
+  splits or not. The same holds for a cone, a sphere or a torus against a
+  coaxial plane, cylinder or cone. Refusals you will meet: a vertex of two
+  edges that are not one circle between the same two faces stays
+  `VertexBlend`.
+
 - `fillet` and `chamfer` run on through a vertex of four edges where both of
   the blended edge's faces turn tangentially (a chamfered stadium's foot, a
   pin's rim split in half by its cylinder and cone, a wall turning round a
@@ -15,9 +24,8 @@ into its version (ADR-0027).
   cut at the junction. Faces a file writes as tangent to a few `1e-10` now read
   as tangent for a blend within its tolerance, so such walls build and a
   tangent cap reports `TangentChain` rather than another refusal. Refusals you
-  will meet: a vertex of two edges where a cylinder meets a plane, a fan of
-  faces across (a face across split by a sharp edge) and a miter of blends
-  with unequal dihedrals stay `VertexBlend`.
+  will meet: a fan of faces across (a face across split by a sharp edge) and
+  a miter of blends with unequal dihedrals stay `VertexBlend`.
 
 - `fillet` and `chamfer` blend an edge that runs into a step: where the
   blended edge meets a corner whose other two edges differ in convexity (a
