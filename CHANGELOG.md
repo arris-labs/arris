@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` run on through a vertex of four edges where both of
+  the blended edge's faces turn tangentially (a chamfered stadium's foot, a
+  pin's rim split in half by its cylinder and cone, a wall turning round a
+  rounded corner): the blend follows the chain and the two tangent edges are
+  cut at the junction. Faces a file writes as tangent to a few `1e-10` now read
+  as tangent for a blend within its tolerance, so such walls build and a
+  tangent cap reports `TangentChain` rather than another refusal. Refusals you
+  will meet: a vertex of two edges where a cylinder meets a plane, a fan of
+  faces across (a face across split by a sharp edge) and a miter of blends
+  with unequal dihedrals stay `VertexBlend`.
+
 - `fillet` and `chamfer` blend an edge that runs into a step: where the
   blended edge meets a corner whose other two edges differ in convexity (a
   low block against a taller one, a rib meeting a shoulder, leaning either

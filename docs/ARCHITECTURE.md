@@ -821,7 +821,8 @@ pcurve exact; the third edge is shortened to `p`, the vertex goes, and no
 face across takes an arc. At a vertex of four edges the runs share no
 face, and `q` lies on the second tangent edge instead: each contact meets
 the other run's contact across the tangent edge between their faces, and
-both tangent edges are cut, `Modified`, at their points (ADR-0039 §2). A chain that reaches a pair outside the table is
+both tangent edges are cut, `Modified`, at their points (ADR-0039 §2).
+A chain that reaches a pair outside the table is
 refused naming that pair and the edge the walk reached. The edges are
 blended in the body's iteration order, whatever order they are listed in, so the result
 and its ids are the same for any order of one set; disjoint blends share
@@ -846,7 +847,7 @@ edge's two faces are tangent but which is not a tangent vertex — the next
 edge turning back, itself a tangent dihedral, or convex where the blended
 edge is concave or the other way round — is `Reason::TangentChain`; a
 vertex of
-other than three edges, a miter of two fillets with unequal dihedrals,
+other than three edges (but the four-edge chain junction above), a miter of two fillets with unequal dihedrals,
 of two chamfers whose edges make unequal angles with its third edge, or
 of blends not both convex or both concave, or a corner of three blended
 edges whose faces are not all planes, whose blends are mixed, or — three
