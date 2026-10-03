@@ -639,6 +639,35 @@ fn doubles_back(m: &Model, edge: EdgeId, w: EdgeId, vertex: VertexId) -> Option<
     Some(a.dot(&b) > 0.0)
 }
 
+/// Whether the two faces of the tangent edge `w` fold back at `vertex`:
+/// their outward normals there opposite, both walls of a cusp on one side
+/// of the face the cusp's edges share (a knife-edge sliver, material or
+/// void), rather than equal, the walls on either side of it (an overhang
+/// tip, ADR-0042). Each normal is its face's in its shell, whose own sense
+/// in the body is the same for both and cancels. `None` where a face's
+/// normal or sense cannot be read.
+fn walls_fold(m: &Model, w: EdgeId, vertex: VertexId) -> Option<bool> {
+    let uses = m.edge_uses(w).ok()?;
+    let [a, b] = uses else { return None };
+    let at = m.vertex(vertex).ok()?.point();
+    let outward = |face| -> Option<Vec3> {
+        let surface = m.surface(m.face(face).ok()?.surface()).ok()?;
+        let uv = surface.project(at).ok()?.uv;
+        let n = surface.normal(uv.x, uv.y)?.into_inner();
+        let shell = *m.face_shells(face).ok()?.first()?;
+        let sense = m
+            .shell(shell)
+            .ok()?
+            .faces()
+            .iter()
+            .find(|f| f.id == face)?
+            .orientation
+            .sign();
+        Some(n * sense)
+    };
+    Some(outward(a.face)?.dot(&outward(b.face)?) < 0.0)
+}
+
 /// Which site refused a `TangentChain` of `edge` blended alone, from the
 /// entities the error names (`None` for any other refusal): *the edge
 /// itself*, a tangent dihedral (the error names the edge and its two
@@ -646,7 +675,10 @@ fn doubles_back(m: &Model, edge: EdgeId, w: EdgeId, vertex: VertexId) -> Option<
 /// the corner edge and the vertex: the edge is the run's, not always the
 /// one asked), by what is there — *a cusp* (the
 /// blended edge and the third edge leave the vertex the same way, the
-/// outline doubling back instead of running on), else by what turns:
+/// outline doubling back instead of running on), with its walls *on one
+/// side* of the face the two edges share, which a blend of one sense is cut
+/// at and is refused only where the stripe is not a ring's, or *on either
+/// side*, an overhang tip (ADR-0042), else by what turns:
 /// *an inflection*
 /// (the two faces of the tangent edge curve opposite ways: a floor whose
 /// wall is an S-bend), *a turn one way* (they curve the same way), *a flat
@@ -668,7 +700,11 @@ pub fn tangent_chain_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<Strin
         }
         [EntityId::Edge(run), EntityId::Edge(w), EntityId::Vertex(v)] => {
             if doubles_back(m, *run, *w, *v) == Some(true) {
-                "an end at a cusp".to_string()
+                match walls_fold(m, *w, *v) {
+                    Some(true) => "an end at a cusp, walls on one side".to_string(),
+                    Some(false) => "an end at a cusp, walls on either side".to_string(),
+                    None => "an end at a cusp".to_string(),
+                }
             } else {
                 match turn_across(m, *w, *v) {
                     Some(Some(true)) => "an end at an inflection".to_string(),
@@ -1643,7 +1679,73 @@ mod tests {
         };
         assert_eq!(
             tangent_chain_cause(&m, sampled.id, &e).unwrap(),
-            "an end at a cusp; edge cylinder × plane"
+            "an end at a cusp, walls on either side; edge cylinder × plane"
         );
+    }
+
+    /// The edge of `recipe`'s body nearest `at` blended alone at `radius`,
+    /// refused `TangentChain`, and the census's cause.
+    fn cusp_cause(recipe: &str, at: P3, radius: f64) -> String {
+        let recipe: crate::fixtures::Recipe = serde_json::from_str(recipe).unwrap();
+        let chain = crate::corpus::build("generated/cusp", &recipe).unwrap();
+        let body = chain.result().unwrap();
+        // The part alone, as a read part is: no operand shares its edges.
+        let mut m = chain.model;
+        m.retain(&[body]).unwrap();
+        let edge = m
+            .edges(body)
+            .unwrap()
+            .into_iter()
+            .find(|h| edge_midpoint(&m, h.id).is_some_and(|p| (p - at).norm() < 1e-6))
+            .expect("the blended edge");
+        let mut scratch = m.clone();
+        let Err(Refused::Op(e)) = blend(&mut scratch, body, &[edge], radius) else {
+            panic!("the edge is refused");
+        };
+        tangent_chain_cause(&m, edge.id, &e).unwrap()
+    }
+
+    /// An overhang tip, the lip's underside arc against the pillar's, is a
+    /// cusp with its walls on either side (ADR-0042 §6).
+    #[test]
+    fn an_overhang_tip_is_a_cusp_with_walls_on_either_side() {
+        let dir = corpus_root().join("blend/cusp-overhang-tip-fillet");
+        let mut fixture: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("fixture.json")).unwrap())
+                .unwrap();
+        // The part before its fillet.
+        fixture["steps"].as_array_mut().unwrap().pop();
+        fixture["result"] = "part".into();
+        assert_eq!(
+            cusp_cause(&fixture.to_string(), P3::new(-3.0, -1.0, 1.0), 0.1),
+            "an end at a cusp, walls on either side; edge cylinder × plane"
+        );
+    }
+
+    /// A spandrel prism's spine, where the arc leaves the bottom edge
+    /// tangent with material in the sliver between the walls, folds: its
+    /// walls are on one side of the top (ADR-0042).
+    #[test]
+    fn a_spandrel_spine_folds() {
+        let recipe = r#"{"steps": [
+            {"name": "s", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+             "outer": {"start": [0, 0], "segments": [{"line_to": [10, 0]}, {"line_to": [10, 10]},
+               {"arc_to": [0, 0], "via": [7.0710678118654755, 2.9289321881345245]}]}},
+            {"name": "p", "op": "extrude", "profile": "s", "direction": [0, 0, 1], "length": 2}],
+            "result": "p"}"#;
+        let recipe: crate::fixtures::Recipe = serde_json::from_str(recipe).unwrap();
+        let chain = crate::corpus::build("generated/spandrel", &recipe).unwrap();
+        let body = chain.result().unwrap();
+        let m = chain.model;
+        let spine = m
+            .edges(body)
+            .unwrap()
+            .into_iter()
+            .find(|h| {
+                edge_midpoint(&m, h.id).is_some_and(|p| (p - P3::new(0.0, 0.0, 1.0)).norm() < 1e-6)
+            })
+            .expect("the spine");
+        let tip = m.edge(spine.id).unwrap().start();
+        assert_eq!(walls_fold(&m, spine.id, tip), Some(true));
     }
 }

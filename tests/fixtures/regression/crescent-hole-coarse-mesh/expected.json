@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "846ab2cc55a4581b4a5f336df8ea6e0d05e881258f7e3e8396d4072cd261d0c5",
+  "results": {
+    "default": {
+      "area": 70.0,
+      "centroid": [
+        -0.08144068880264184,
+        -1.0023705534952736,
+        0.5
+      ],
+      "counts": {
+        "edges": 21,
+        "faces": 9,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          32.33765065857846,
+          0.9078533168510767,
+          0.0
+        ],
+        [
+          0.9078533168510767,
+          69.15968428479249,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          98.2827331067684
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 21,
+        "faces": 9,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_plate",
+          "point": [
+            2.5,
+            -2.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            0.0,
+            -1.5,
+            0.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spine",
+          "point": [
+            -2.0,
+            0.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 19.287611019615312
+    }
+  }
+}

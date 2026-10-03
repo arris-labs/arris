@@ -140,6 +140,11 @@ blend/chamfered-stadium-foot-fillet: 14
 blend/concave-fillet-into-a-step: 5
 blend/cone-boss-base-chamfer: 2
 blend/cone-boss-base-fillet: 2
+blend/cusp-crescent-chamfer: 444
+blend/cusp-crescent-fillet: 1455
+blend/cusp-crescent-small-arc-fillet: 1383
+blend/cusp-pocket-fillet: 1447
+blend/cusp-spandrel-fillet: 701
 blend/cut-torus-rims-chamfer: 4
 blend/cut-torus-rims-fillet: 4
 blend/d-chord-edge: 5

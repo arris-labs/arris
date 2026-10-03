@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "9a100ecc9ab737e5dc2d4029bc277cddf9e3bf90aa3ba91b7e5e697c3b7a031c",
+  "results": {
+    "default": {
+      "area": 20.67942306358501,
+      "centroid": [
+        0.33499086953197094,
+        -0.9906908503856054,
+        0.4993610277942338
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          1.6592879134803526,
+          -0.8908679499777491,
+          -0.003724838133400854
+        ],
+        [
+          -0.8908679499777491,
+          4.174735271912125,
+          0.0008827080061513115
+        ],
+        [
+          -0.003724838133400854,
+          0.0008827080061513115,
+          5.051504166851881
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.0,
+            -1.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_bite",
+          "point": [
+            -1.0,
+            -0.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            -1.0,
+            -1.01,
+            0.99
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            -1.0,
+            -1.0292893218813453,
+            0.9707106781186547
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spine",
+          "point": [
+            -2.0,
+            0.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 4.706089407100943
+    }
+  }
+}

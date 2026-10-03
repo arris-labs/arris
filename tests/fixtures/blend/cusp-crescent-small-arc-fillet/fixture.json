@@ -1,0 +1,135 @@
+{
+  "description": "a crescent prism one high: below the x axis, inside the circle of radius 2 about the origin and outside the circle of radius 1 about (-1, 0), the two circles tangent at (-2, 0) so that the outline's two arcs leave that vertex the same way, a cusp, the two walls tangent along its vertical edge, the spine, and both top edges convex: the sliver between the walls is material. The small arc's top edge filleted at r 0.1 runs to the cusp: the stripe is cut by the big wall, from where its contact on the top crosses the big arc to where its contact on the small wall meets the spine, the torus about the small axis against the big cylinder (ADR-0042)",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -1,
+          -1,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_the_bite",
+      "point": [
+        -1,
+        -0.5,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        -1,
+        "-1 - r / 10",
+        "1 - r / 10"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        -1,
+        "-(1 + r - r * 0.7071067811865476)",
+        "1 - r + r * 0.7071067811865476"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_spine",
+      "point": [
+        -2,
+        0,
+        0.5
+      ],
+      "expect": "on"
+    }
+  ]
+}

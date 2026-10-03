@@ -853,10 +853,26 @@ convexity, on a fitted curve, or along a stretch that leaves its face —
 the same at a face across of any kind the end takes (a plane, a cylinder
 or a cone, ADR-0037) and at a ring's open arc end — is
 `Reason::BlendTooLarge` naming the edge and the face or edge the blend
-runs out of; a tangent dihedral, or an end at a vertex where a corner
-edge's two faces are tangent but which is not a tangent vertex — the next
-edge turning back, itself a tangent dihedral, or convex where the blended
-edge is concave or the other way round — is `Reason::TangentChain`; a
+runs out of. An end at a cusp — a vertex of three edges where the
+next edge leaves the way the blended one does, the two walls tangent
+along the third edge, the spine, both edges of one sense so that both
+walls lie on one side of the face they share (a crescent's sliver of
+material, or its pocket) — is cut by the next wall (ADR-0042): the
+contact on the shared face is trimmed where it crosses the next edge,
+in closed form, and the contact on the blended edge's wall where it
+meets the spine, at the vertex's own angle on a ring and where the two
+lines cross on a stripe, the next edge and the spine shortened to those
+points, and the cut between them is the stripe's section with the next
+wall, traced and fitted as an end on a curved face across is, its
+stretch ending at the node where a fillet touches that wall on the spine
+— a branch that starts and ends at the node reaches it at either end. A
+tangent dihedral, or an end at a vertex where a corner edge's two faces
+are tangent but which is neither a tangent vertex nor such a cusp — an
+overhang tip, a cusp whose edges are of opposite senses, its walls on
+either side of the shared face, which Open CASCADE caps with fitted
+surfaces; a cusp whose next edge is blended too, which takes a corner
+patch; the next edge turning back with no cusp, or itself a tangent
+dihedral — is `Reason::TangentChain`; a
 vertex of
 other than three edges (but the chain junctions of two and four above), a miter of two fillets with unequal dihedrals,
 of two chamfers whose edges make unequal angles with its third edge, or

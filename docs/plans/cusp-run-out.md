@@ -76,6 +76,41 @@ There are two cusps, and the crescent is not FTC-06's.
   The human chose (a). The goal below is re-scoped, and ADR-0042 records
   the rule.
 
+## Finding of step 3 (the cut is the face end's, and a line edge too)
+- The cusp needs no new topology. `corner_of` already finds `n` (on `T`)
+  and `w` (on `W_e`) as the corner edges and `W_n` as the face across, so
+  the end is an ordinary face end: `corner_of` now returns the spine's
+  index where the site holds (`cusp_at`, ADR-0042 §1) instead of refusing,
+  and the end takes `P` and `Q` in closed form and cuts both corner edges
+  (`cusp_trims`, side inside, nothing lengthened).
+- At `Q` the torus's trace against `W_n` is two branches, each a loop
+  pinched at the node: it starts and ends at `Q`. The locator found `Q` at
+  the branch's start, while the stripe's stretch reaches it at the other
+  end. `traced_end` now takes an open branch's end within `tol.linear` of a
+  trim point as standing for it, either end. That is ADR-0042 §4, nothing
+  more.
+- At the cusp the vertex lies on the line through both axes, so
+  `Across::meet` cannot read the side from it. The side is read at the
+  edge's midpoint (an open arc is under a turn); on a line edge the pierce
+  takes the root nearest the midpoint.
+- A line edge's cusp builds the same way (ADR-0042 §1 does not restrict
+  the site to arcs): `blend/cusp-spandrel-fillet`, the stripe's cylinder
+  cut by the arc's, at Open CASCADE's 8/12/6. Added beside the planned
+  twins. It is sized 4 so the default mesh bound holds: at 2 its concave
+  wall's chord error, an ordinary inscribed one, is 2.0e-3 of a 0.85 volume.
+- The census tells the two cusps apart by the spine, not by convexity:
+  the walls' outward normals at the tip are opposite where both walls lie
+  on one side (a knife-edge sliver, material or void) and equal at an
+  overhang tip. FTC-06's sampled edge reads "an end at a cusp, walls on
+  either side". A one-side cusp is now refused only where `Q` misses the
+  spine or the spine is not a line.
+- Outside the step: the render's coarse first pass fails on the pocket's
+  top face, before any fillet. A loop with a cusp, meshed at the fewest
+  segments per turn, has its two tangent arcs' polygons crossing
+  (`regression/crescent-hole-coarse-mesh`, ignored; a backlog line).
+- `cancel_counts.txt` gained the five building fixtures here, since the
+  hook's cancel test holds every `blend/` fixture to one.
+
 ## Goal
 A fillet or chamfer of an edge that ends at a cusp with both walls on one
 side of the shared face is built as Open CASCADE builds it (ADR-0042). The
@@ -148,7 +183,7 @@ bound has to be established here.
   has no construction short of a general surface–surface walk, stop and
   ask the human whether FTC-06 waits for the NURBS cycle. Done: the gate
   tripped (finding above), the human chose (a), and ADR-0042 is written.
-- [ ] Step 3 **[3]** — `corner_of` and the end at a cusp (ADR-0042 §1–§6):
+- [x] Step 3 **[3]** — `corner_of` and the end at a cusp (ADR-0042 §1–§6):
   the site test, `P` and `Q`, the cut, and the topology and provenance of
   §5. The `regression/` fixture moves to `blend/` with its blessed dump,
   checker green at `Full`, at Open CASCADE's counts, measures and probes.
@@ -156,9 +191,11 @@ bound has to be established here.
   wall), and the pocket (the crescent cut from a block, the floor edge
   concave). Add as `TangentChain` fixtures both arcs blended and the
   overhang tip, with Open CASCADE's oracle and an `analytic` note saying
-  why Arris refuses. Split the census's cusp cause in two.
+  why Arris refuses. Split the census's cusp cause in two. Done, with the
+  spandrel (a line edge's cusp) beside the twins; finding above.
 - [ ] Step 4 **[2]** — A property over random poses (`blend_prop`): a
-  crescent of random radii whose cusp is one end, or its pocket, its floor
+  crescent of random radii whose cusp is one end, or its pocket, or a
+  spandrel of random size (the line edge's cusp), its floor
   or top edge filleted and chamfered at random size, small and large
   against the gap, against the checker at `Full`, the closed-form volume
   (ADR-0042, Consequences: the corner section integrated over its band
@@ -192,11 +229,10 @@ bound has to be established here.
 - `docs/adr/`: ADR-0042 and its README row, with pointers in ADR-0035 and
   ADR-0037.
 - `docs/ARCHITECTURE.md` §Operations: the end at a cusp, and what
-  `TangentChain` still means.
-- `docs/BACKLOG.md`: any other `TangentChain` end site; the S-bend
-  (inflection) chain as a line with the reason it waits; the overhang tip
-  (FTC-06), waiting on a fitted cap surface in the NURBS cycle; and a cusp
-  whose two edges are both blended (a corner patch).
+  `TangentChain` still means (written in step 3; check it at retirement).
+- `docs/BACKLOG.md`: any other `TangentChain` end site. The S-bend, the
+  overhang tip and the corner patch lines were written in step 3, with the
+  coarse-mesh finding.
 - `tests/fixtures/README.md`: the `TangentChain` line if its cases change.
 - `CHANGELOG.md` `Unreleased`: a fillet or chamfer now ends at a cusp
   where two walls meet tangent, and what still refuses (no ADR numbers or

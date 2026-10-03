@@ -1,0 +1,135 @@
+{
+  "description": "a crescent prism one high: below the x axis, inside the circle of radius 2 about the origin and outside the circle of radius 1 about (-1, 0), the two circles tangent at (-2, 0) so that the outline's two arcs leave that vertex the same way, a cusp, the two walls tangent along its vertical edge, the spine, and both top edges convex: the sliver between the walls is material. The big arc's top edge chamfered at d 0.1 runs to the cusp: the cone is cut by the small wall from where its contact on the top crosses the small arc to where its contact on the big wall meets the spine, transverse there, the cut traced and fitted (ADR-0042)",
+  "params": {
+    "d": 0.1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          -2,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        1,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        0,
+        "-2 + d / 4",
+        "1 - d / 4"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_chamfer",
+      "point": [
+        0,
+        "-2 + d / 2",
+        "1 - d / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_spine",
+      "point": [
+        -2,
+        0,
+        0.5
+      ],
+      "expect": "on"
+    }
+  ]
+}

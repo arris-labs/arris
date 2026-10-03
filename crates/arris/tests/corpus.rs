@@ -1984,13 +1984,13 @@ fn regression_tangent_chain_horn_torus() {
     run("regression/tangent-chain-horn-torus");
 }
 
-/// A crescent prism's big arc filleted to the cusp where it is tangent to
-/// the concave small arc, both leaving the vertex the same way: the blend
-/// meets a gap narrower than its ball. The desired body is Open CASCADE's.
+/// A plate with a crescent hole tessellated at a coarse chord: the hole's
+/// two tangent arcs' polygons cross at the cusp, and the mesher refuses a
+/// valid face. The desired mesh is closed and within the inscribed bound.
 #[test]
-#[ignore = "Reason::TangentChain naming the arc, the cusp's tangent edge and its vertex: the walk does not run on at a cusp, where the next edge is concave and leaves the vertex the way the blended one does (docs/plans/cusp-run-out.md)"]
-fn regression_cusp_crescent_fillet() {
-    run("regression/cusp-crescent-fillet");
+#[ignore = "MeshError::Face: at the fewest segments per turn the polygons of the hole's two tangent arcs cross near the cusp (docs/BACKLOG.md, a loop with a cusp at a coarse chord)"]
+fn regression_crescent_hole_coarse_mesh() {
+    run("regression/crescent-hole-coarse-mesh");
 }
 
 /// A rib standing on a plate, its vertical corner edge filleted down to the
@@ -2014,6 +2014,59 @@ fn blend_rib_corner_chamfer_to_plate() {
 #[test]
 fn blend_rib_sloped_end_fillet() {
     run("blend/rib-sloped-end-fillet");
+}
+
+/// A crescent prism's big arc filleted to the cusp where it is tangent to
+/// the small arc, both leaving the vertex the same way and both convex: the
+/// stripe is cut by the small wall, its traced cut ending at the node where
+/// the torus touches it on the spine (ADR-0042).
+#[test]
+fn blend_cusp_crescent_fillet() {
+    run("blend/cusp-crescent-fillet");
+}
+
+/// The crescent's big arc chamfered to the cusp: the cone cut by the small
+/// wall, transverse at the spine (ADR-0042).
+#[test]
+fn blend_cusp_crescent_chamfer() {
+    run("blend/cusp-crescent-chamfer");
+}
+
+/// The crescent's small arc filleted to the cusp: the stripe about the
+/// small axis cut by the big wall (ADR-0042).
+#[test]
+fn blend_cusp_crescent_small_arc_fillet() {
+    run("blend/cusp-crescent-small-arc-fillet");
+}
+
+/// The crescent cut as a pocket, its big arc's floor edge filleted to the
+/// cusp: a concave stripe adding material, cut by the small wall (ADR-0042).
+#[test]
+fn blend_cusp_pocket_fillet() {
+    run("blend/cusp-pocket-fillet");
+}
+
+/// A spandrel prism's bottom edge, a line between two planes, filleted to
+/// the cusp where the arc leaves it tangent: the stripe's cylinder cut by
+/// the arc's, ending at the node on the spine (ADR-0042).
+#[test]
+fn blend_cusp_spandrel_fillet() {
+    run("blend/cusp-spandrel-fillet");
+}
+
+/// Both of the crescent's top arcs filleted: the stripes meet at the cusp in
+/// a corner patch, refused as `TangentChain` (ADR-0042 §6).
+#[test]
+fn blend_cusp_crescent_both_arcs_fillet() {
+    run("blend/cusp-crescent-both-arcs-fillet");
+}
+
+/// A lip's underside arc filleted to an overhang tip, the cusp of FTC-06,
+/// its edges of opposite senses: Open CASCADE caps it with B-spline faces,
+/// and Arris refuses it as `TangentChain` (ADR-0042 §6).
+#[test]
+fn blend_cusp_overhang_tip_fillet() {
+    run("blend/cusp-overhang-tip-fillet");
 }
 
 /// A pocket's vertical corner filleted: a concave blend adding material, at

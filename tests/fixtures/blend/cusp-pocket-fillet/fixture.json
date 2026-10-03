@@ -1,0 +1,155 @@
+{
+  "description": "the crescent of blend/cusp-crescent-fillet cut one deep as a pocket from the block [-3,-3,0]-[3,1,2]: the sliver between the walls is void and both floor edges concave, the walls tangent along the spine from the floor to the top. The big arc's floor edge filleted at r 0.1 adds material and runs to the cusp, where the small wall cuts it from where its contact on the floor crosses the small arc to where its contact on the big wall meets the spine (ADR-0042)",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        -3,
+        -3,
+        0
+      ],
+      "max": [
+        3,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          1
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "tool",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 2
+    },
+    {
+      "name": "pocketed",
+      "op": "cut",
+      "target": "block",
+      "tool": "tool"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "pocketed",
+      "edges": [
+        [
+          0,
+          -2,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_block",
+      "point": [
+        2.5,
+        -2.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "pocket_open",
+      "point": [
+        0,
+        -1.5,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        0,
+        "-2 + r / 10",
+        "1 + r / 10"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        0,
+        "-(2 - r + r * 0.7071067811865476)",
+        "1 + r - r * 0.7071067811865476"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_spine",
+      "point": [
+        -2,
+        0,
+        1.5
+      ],
+      "expect": "on"
+    }
+  ]
+}

@@ -811,6 +811,97 @@ fn convex_edge(m: &Model, view: &View, edge: EdgeId) -> Result<Option<bool>, OpE
     Ok(Some(n1.cross(&t1).dot(&n2) < 0.0))
 }
 
+/// The unit tangent of `edge` at its end `vertex`, pointing away from it;
+/// `None` for an edge with no curve or no tangent there.
+fn leaving_vertex(
+    m: &Model,
+    edge: EdgeId,
+    vertex: VertexId,
+    tol: Tolerance,
+) -> Result<Option<Vec3>, OpError> {
+    let entity = *m.edge(edge)?;
+    let Some((curve, range)) = entity.curve() else {
+        return Ok(None);
+    };
+    let at_lo = entity.start() == vertex;
+    let t = if at_lo { range.lo() } else { range.hi() };
+    let d1 = m.curve(curve)?.eval(t).d1;
+    let away = if at_lo { d1 } else { -d1 };
+    Ok(UnitVec3::try_new(away, tol.linear).map(UnitVec3::into_inner))
+}
+
+/// The cusp `edge` ends at, at `vertex` (ADR-0042 §1), whatever the
+/// senses of its edges and whatever is blended: `(next, spine)` where the
+/// vertex has exactly the three edges `edge`, `next` and `spine`, `edge`
+/// and `next` share exactly one face, `spine` joins the other face of each
+/// and is tangent at the vertex for a blend of `size`, `next` is open and
+/// not tangent there, and `next` leaves the vertex the way `edge` does —
+/// the outline doubling back. `None` at any other vertex.
+fn cusp_at(
+    m: &Model,
+    view: &View,
+    edge: EdgeId,
+    vertex: VertexId,
+    size: f64,
+    tol: Tolerance,
+) -> Result<Option<(EdgeId, EdgeId)>, OpError> {
+    let Some(at) = view.vertex_edges.get(&vertex) else {
+        return Ok(None);
+    };
+    if at.len() != 3 || !at.contains(&edge) {
+        return Ok(None);
+    }
+    let faces_of = |x: EdgeId| -> BTreeSet<FaceId> {
+        view.uses
+            .get(&x)
+            .map(|u| u.iter().map(|u| u.face).collect())
+            .unwrap_or_default()
+    };
+    let own = faces_of(edge);
+    let Some(away) = leaving_vertex(m, edge, vertex, tol)? else {
+        return Ok(None);
+    };
+    let others: Vec<EdgeId> = at.iter().copied().filter(|&x| x != edge).collect();
+    let [a, b] = others[..] else {
+        return Ok(None);
+    };
+    for (next, spine) in [(a, b), (b, a)] {
+        let (theirs, joins) = (faces_of(next), faces_of(spine));
+        let shared: Vec<FaceId> = own.intersection(&theirs).copied().collect();
+        let [face] = shared[..] else {
+            continue;
+        };
+        let bridges = own.len() == 2
+            && theirs.len() == 2
+            && joins.len() == 2
+            && !joins.contains(&face)
+            && own
+                .iter()
+                .chain(&theirs)
+                .filter(|f| joins.contains(f))
+                .count()
+                == 2;
+        let next_entity = *m.edge(next)?;
+        let (Some(t_next), Some(t_spine)) = (
+            parameter_at(m, next, vertex)?,
+            parameter_at(m, spine, vertex)?,
+        ) else {
+            continue;
+        };
+        if !bridges
+            || next_entity.start() == next_entity.end()
+            || tangent_at(m, view, spine, t_spine, size, tol)? != Some(true)
+            || tangent_at(m, view, next, t_next, size, tol)? != Some(false)
+        {
+            continue;
+        }
+        if leaving_vertex(m, next, vertex, tol)?.is_some_and(|d| d.dot(&away) > 0.0) {
+            return Ok(Some((next, spine)));
+        }
+    }
+    Ok(None)
+}
+
 /// The edge a blend of `edge` runs on into at `vertex`, when that is a
 /// tangent vertex (ADR-0035 §1): exactly three edges `edge`, `next` and
 /// `w`, the two faces of `w` tangent at the vertex, `next` open and not a
@@ -865,18 +956,7 @@ fn tangent_vertex(
         4 if others.iter().filter(|&&w| is_seam(w)).count() == 2 => 2,
         _ => 0,
     };
-    // The unit tangent of `x` at the vertex, pointing away from it.
-    let leaving = |x: EdgeId| -> Result<Option<Vec3>, OpError> {
-        let entity = *m.edge(x)?;
-        let Some((curve, range)) = entity.curve() else {
-            return Ok(None);
-        };
-        let at_lo = entity.start() == vertex;
-        let t = if at_lo { range.lo() } else { range.hi() };
-        let d1 = m.curve(curve)?.eval(t).d1;
-        let away = if at_lo { d1 } else { -d1 };
-        Ok(UnitVec3::try_new(away, tol.linear).map(UnitVec3::into_inner))
-    };
+    let leaving = |x: EdgeId| leaving_vertex(m, x, vertex, tol);
     let Some(arriving) = leaving(edge)?.map(|d| -d) else {
         return Ok(None);
     };
@@ -962,16 +1042,24 @@ fn chain(
     Ok(reached)
 }
 
+/// An end's corner as [`corner_of`] reads it: the corner edge of each of
+/// the blended edge's faces, the face across, and the index of the corner
+/// edge that is a cusp's spine where the end is one (ADR-0042).
+type CornerAt = ([EdgeId; 2], FaceId, Option<usize>);
+
 /// The corner at `vertex`, the end of the blended `edge` at its start
 /// (`at_lo`) or its end, `uses` the edge's uses by its two faces: the
 /// corner edge each of those faces' loops runs on to there, in the same
 /// order, and the face across, the one face the two corner edges share
 /// beyond the edge's own. A vertex of other than these three edges, or
-/// corner edges that share no such face, is `Reason::VertexBlend`; a corner
-/// edge whose two faces meet tangentially at the vertex — the contact line
-/// every blend face meets its neighbours along — at a vertex the chain did
-/// not run on through, the next edge turning back or itself a tangent
-/// dihedral, is `Reason::TangentChain` (ADR-0035 §6).
+/// corner edges that share no such face, is `Reason::VertexBlend`. A corner
+/// edge whose two faces meet tangentially at the vertex is the spine of a
+/// cusp whose two edges are of one sense (`cusp_at`, ADR-0042 §1), and its
+/// index is returned with the corner: the face across is then the next
+/// wall, which cuts the stripe. At any other vertex the chain did not run
+/// on through — an overhang tip, the next edge turning back with no cusp,
+/// itself a tangent dihedral — it is `Reason::TangentChain` naming the
+/// edge, that corner edge and the vertex (ADR-0035 §6).
 #[allow(clippy::too_many_arguments)]
 fn corner_of(
     m: &Model,
@@ -982,7 +1070,7 @@ fn corner_of(
     at_lo: bool,
     size: f64,
     tol: Tolerance,
-) -> Result<([EdgeId; 2], FaceId), OpError> {
+) -> Result<CornerAt, OpError> {
     let e = forward(edge);
     let v = forward(vertex);
     let vertex_blend = || degenerate(vec![e, v], Reason::VertexBlend);
@@ -1010,18 +1098,31 @@ fn corner_of(
     if three.len() != 3 || *at_vertex != three {
         return Err(vertex_blend());
     }
-    for &corner in &corner_edges {
+    let mut spine = None;
+    for (k, &corner) in corner_edges.iter().enumerate() {
         let Some(t) = parameter_at(m, corner, vertex)? else {
             return Err(vertex_blend());
         };
-        if tangent_at(m, view, corner, t, size, tol)?
+        if !tangent_at(m, view, corner, t, size, tol)?
             .ok_or(invariant("two uses of the corner edge"))?
+        {
+            continue;
+        }
+        // A cusp whose edges are of one sense is cut by the next wall
+        // (ADR-0042 §1); an overhang tip, of opposite senses, is not.
+        let next = corner_edges[1 - k];
+        let one_sense = convex_edge(m, view, next)?.is_some()
+            && convex_edge(m, view, next)? == convex_edge(m, view, edge)?;
+        if spine.is_some()
+            || !one_sense
+            || cusp_at(m, view, edge, vertex, size, tol)? != Some((next, corner))
         {
             return Err(degenerate(
                 vec![e, forward(corner), v],
                 Reason::TangentChain,
             ));
         }
+        spine = Some(k);
     }
     let faces = uses.map(|u| u.face);
     let other_face = |corner: EdgeId, own: FaceId| -> Result<FaceId, OpError> {
@@ -1043,7 +1144,7 @@ fn corner_of(
     if other_face(corner_edges[1], faces[1])? != across {
         return Err(vertex_blend());
     }
-    Ok((corner_edges, across))
+    Ok((corner_edges, across, spine))
 }
 
 /// The corner edge `corner` cut at `point`, its end at `vertex` moving
@@ -1088,6 +1189,32 @@ fn cut_corner(
         edge: corner,
         t: tc,
         cuts_lo,
+    })
+}
+
+/// A blend's end at a cusp (ADR-0042 §2, §5): the next edge cut at `P`
+/// and the spine at `Q`, by contact as `corner_edges` are, each within its
+/// edge (`cut_corner`, `Reason::BlendTooLarge` otherwise), and the cut
+/// inside the next wall, whose corner the stripe takes whatever its sense.
+fn cusp_trims(
+    m: &Model,
+    edge: EdgeId,
+    corner_edges: [EdgeId; 2],
+    vertex: VertexId,
+    points: [Point3; 2],
+) -> Result<mixed::CornerTrims, OpError> {
+    let mut trims = [Trim {
+        edge,
+        t: 0.0,
+        cuts_lo: true,
+    }; 2];
+    for c in 0..2 {
+        trims[c] = cut_corner(m, edge, corner_edges[c], vertex, points[c])?;
+    }
+    Ok(mixed::CornerTrims {
+        trims,
+        lengthened: None,
+        side: Side::Inside,
     })
 }
 
@@ -1243,9 +1370,12 @@ fn stretch_between(
 /// plane across cuts the stripe in a conic, exact (ADR-0007); a cylinder
 /// or a cone across cuts a fillet's cylinder in a quartic, traced and
 /// fitted between the trim points (ADR-0037), and a chamfer's plane in a
-/// conic the intersector writes exactly. A pierce or a section that does
-/// not decide the end is `Unsupported` naming the blend and the face
-/// across.
+/// conic the intersector writes exactly. At a cusp the face across is the
+/// next wall, tangent to the edge's own along the spine: the contact on
+/// that wall is trimmed where it crosses the spine and the other where it
+/// pierces the next wall on the edge's side, and both corner edges are
+/// cut (`cusp_trims`, ADR-0042). A pierce or a section that does not
+/// decide the end is `Unsupported` naming the blend and the face across.
 fn face_end(
     m: &Model,
     view: &View,
@@ -1260,7 +1390,32 @@ fn face_end(
     let e = forward(edge);
     let vertex = if at_lo { s.start } else { s.end };
     let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
-    let (corner_edges, face3) = corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
+    let (corner_edges, face3, spine) =
+        corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
+    // At a cusp (ADR-0042): the spine, which the contact on the wall
+    // tangent to the face across meets at `Q`, a line where a line edge's
+    // walls are a plane and a cylinder tangent along it.
+    let spine_line = match spine {
+        None => None,
+        Some(k) => {
+            let tangent_chain = || {
+                degenerate(
+                    vec![e, forward(corner_edges[k]), forward(vertex)],
+                    Reason::TangentChain,
+                )
+            };
+            let (curve, _) = m
+                .edge(corner_edges[k])?
+                .curve()
+                .ok_or(invariant("the cusp's spine's curve"))?;
+            match *m.curve(curve)? {
+                Curve::Line { origin, direction } => Some((k, origin, direction.into_inner())),
+                Curve::Circle { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_) => {
+                    return Err(tangent_chain());
+                }
+            }
+        }
+    };
     let surface3 = m.surface(m.face(face3)?.surface())?;
     let face3_tolerance = m.face(face3)?.tolerance();
     let arc_tolerance = s.tolerance.max(face3_tolerance);
@@ -1278,6 +1433,14 @@ fn face_end(
     let mut gaps = [0.0; 2];
     let (arc_curve, arc_range, lo_first) = match *surface3 {
         Surface::Plane { frame: plane3 } => {
+            // A plane tangent to the edge's wall along the spine is that
+            // wall's own plane, which no cusp has.
+            if let Some((k, ..)) = spine_line {
+                return Err(degenerate(
+                    vec![e, forward(corner_edges[k]), forward(vertex)],
+                    Reason::TangentChain,
+                ));
+            }
             let n3: Vec3 = plane3.z().into_inner();
             let dn = d.dot(&n3);
             if dn.abs() <= tol.angular {
@@ -1348,12 +1511,42 @@ fn face_end(
         }
         Surface::Cylinder { .. } | Surface::Cone { .. } => {
             // The edge's own line pierces the face at the vertex; each
-            // contact, beside it, at the root nearest there.
-            let at = m.vertex(vertex)?.point();
+            // contact, beside it, at the root nearest there. At a cusp the
+            // edge's line touches the face across at the vertex, so the
+            // root is the one nearest the edge's midpoint, on its side,
+            // and the contact on the wall tangent to the face meets the
+            // spine instead, at `Q` (ADR-0042 §2).
+            let at = match spine_line {
+                None => m.vertex(vertex)?.point(),
+                Some(_) => {
+                    let (curve, range) = m
+                        .edge(edge)?
+                        .curve()
+                        .ok_or(invariant("the blended edge's curve"))?;
+                    m.curve(curve)?.point(range.midpoint())
+                }
+            };
             for k in 0..2 {
                 let q = line_origin(&s.lines[k])?;
-                t[k] =
-                    pierce(q, d, surface3, (at - q).dot(&d), arc_tolerance).ok_or_else(refuse)?;
+                t[k] = match spine_line {
+                    Some((j, origin, along)) if j == k => {
+                        let (tq, ts) = lines_cross(q, d, origin, along, tol).ok_or_else(|| {
+                            degenerate(
+                                vec![e, forward(corner_edges[k]), forward(vertex)],
+                                Reason::TangentChain,
+                            )
+                        })?;
+                        if (q + tq * d - (origin + ts * along)).norm() > arc_tolerance {
+                            return Err(degenerate(
+                                vec![e, forward(corner_edges[k]), forward(vertex)],
+                                Reason::TangentChain,
+                            ));
+                        }
+                        tq
+                    }
+                    Some(_) | None => pierce(q, d, surface3, (at - q).dot(&d), arc_tolerance)
+                        .ok_or_else(refuse)?,
+                };
                 points[k] = q + t[k] * d;
             }
             // The blend's band between its contacts: `u` in `[0, u₁]`.
@@ -1422,19 +1615,22 @@ fn face_end(
     };
     // The corner edges cut or lengthened to the trim points, and the side
     // of the face across the arc lies on (ADR-0038).
-    let corner = mixed::corner_trims(
-        m,
-        view,
-        edge,
-        s.faces,
-        corner_edges,
-        vertex,
-        points,
-        s.convex,
-        tol,
-        samples,
-        meter,
-    )?;
+    let corner = match spine {
+        Some(_) => cusp_trims(m, edge, corner_edges, vertex, points)?,
+        None => mixed::corner_trims(
+            m,
+            view,
+            edge,
+            s.faces,
+            corner_edges,
+            vertex,
+            points,
+            s.convex,
+            tol,
+            samples,
+            meter,
+        )?,
+    };
     let trims = corner.trims;
     let mut vertex_tolerance = [0.0; 2];
     for k in 0..2 {
@@ -2873,8 +3069,10 @@ impl Across {
 /// of three edges whose face across is a plane through the axis, a plane
 /// parallel to it or a cylinder about a parallel axis — each contact then
 /// trimmed where it meets that face, the end traced and fitted (ADR-0037),
-/// a corner edge lengthened past the vertex at a mixed corner (ADR-0038)
-/// — or one of the `junctions`, which the junction builds. A torus that is not a ring
+/// a corner edge lengthened past the vertex at a mixed corner (ADR-0038),
+/// and at a cusp the contact on the wall tangent to that face trimmed on
+/// the spine at the vertex's angle and the other on the edge's side of it
+/// (ADR-0042) — or one of the `junctions`, which the junction builds. A torus that is not a ring
 /// torus and a contact that reaches the axis or a cone's apex are
 /// `Reason::BlendTooLarge`,
 /// as is a contact or an end that leaves its face or a seam or a corner
@@ -3226,7 +3424,7 @@ fn ring(
     // an end at a tangent corner edge that is no junction is
     // `Reason::TangentChain`, whatever the contacts do beside it.
     let open = entity.start() != entity.end();
-    let mut corners: [Option<([EdgeId; 2], FaceId)>; 2] = [None, None];
+    let mut corners: [Option<CornerAt>; 2] = [None, None];
     if open {
         // The edge's uses by contact, which the corner is read through.
         let use_of = |face: FaceId| {
@@ -3259,7 +3457,7 @@ fn ring(
     let mut across: [Option<Across>; 2] = [None, None];
     let mut ends_at = [[range.lo(), range.hi()]; 2];
     for (j, at_lo) in [(0, true), (1, false)] {
-        let Some((_, face)) = corners[j] else {
+        let Some((_, face, spine)) = corners[j] else {
             continue;
         };
         // A face of no family is refused at its end, after the contacts.
@@ -3269,13 +3467,26 @@ fn ring(
             continue;
         };
         let t_end = if at_lo { range.lo() } else { range.hi() };
-        let vertex_point = curve.point(t_end);
+        // At a cusp the vertex is on the line through both axes, so the
+        // side is the edge's own, read at its midpoint: an open arc is
+        // under a turn, so it lies wholly on one side (ADR-0042 §2).
+        let side_point = if spine.is_some() {
+            curve.point(mid)
+        } else {
+            curve.point(t_end)
+        };
         for (slot, (_, _, contact, _)) in by_v.iter().enumerate() {
+            // The contact on the wall tangent to the face across meets it
+            // on the spine, at the vertex's own angle: the contact runs
+            // on that wall as the edge does, `Q` (ADR-0042 §2).
+            if spine == Some(slot) {
+                continue;
+            }
             let &Curve::Circle { frame, radius } = contact else {
                 return Err(invariant("a contact circle"));
             };
             let point = kind
-                .meet(frame.origin(), z, radius, vertex_point, tolerance)
+                .meet(frame.origin(), z, radius, side_point, tolerance)
                 .ok_or_else(|| too_large(face))?;
             let t = contact.project(point).map_err(geometry)?.t;
             ends_at[slot][j] = t + TAU * ((t_end - t) / TAU).round();
@@ -3430,7 +3641,7 @@ fn ring(
         let mut ends: Vec<RingEnd> = Vec::with_capacity(2);
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
-            let Some((corner_edges, across_face)) = corners[j] else {
+            let Some((corner_edges, across_face, spine)) = corners[j] else {
                 ends.push(RingEnd::Junction(vertex));
                 continue;
             };
@@ -3438,20 +3649,38 @@ fn ring(
             let t = if at_lo { range.lo() } else { range.hi() };
             let points = [contacts[0].points[j], contacts[1].points[j]];
             // The corner edges cut or lengthened to the trim points, and
-            // the side of the face across the end lies on (ADR-0038).
-            let corner = mixed::corner_trims(
-                m,
-                view,
-                edge,
-                [contacts[0].face, contacts[1].face],
-                corner_edges,
-                vertex,
-                points,
-                convex,
-                tol,
-                samples,
-                meter,
-            )?;
+            // the side of the face across the end lies on (ADR-0038); at a
+            // cusp, `Q` checked on the spine first.
+            let corner = match spine {
+                Some(k) => {
+                    let spine_edge = corner_edges[k];
+                    let (curve, _) = m
+                        .edge(spine_edge)?
+                        .curve()
+                        .ok_or(invariant("the cusp's spine's curve"))?;
+                    let off = m.curve(curve)?.project(points[k]).map_err(geometry)?;
+                    if off.distance > m.edge(spine_edge)?.tolerance().max(tolerance) {
+                        return Err(degenerate(
+                            vec![e, forward(spine_edge), forward(vertex)],
+                            Reason::TangentChain,
+                        ));
+                    }
+                    cusp_trims(m, edge, corner_edges, vertex, points)?
+                }
+                None => mixed::corner_trims(
+                    m,
+                    view,
+                    edge,
+                    [contacts[0].face, contacts[1].face],
+                    corner_edges,
+                    vertex,
+                    points,
+                    convex,
+                    tol,
+                    samples,
+                    meter,
+                )?,
+            };
             let trims = corner.trims;
             let across_tolerance = m.face(across_face)?.tolerance();
             let mut vertex_tolerance = [0.0; 2];
@@ -3757,6 +3986,17 @@ fn build(
         {
             junctions.insert(v);
             continue;
+        }
+        // Both edges of a cusp blended meet in a corner patch, which no
+        // closed form holds (ADR-0042 §6).
+        if let [ea, eb] = es[..]
+            && let Some((next, spine)) = cusp_at(m, &view, ea, v, kind.size(), tol)?
+            && next == eb
+        {
+            return Err(degenerate(
+                vec![forward(ea), forward(spine), forward(v)],
+                Reason::TangentChain,
+            ));
         }
         if es.len() > 3 || (es.len() > 1 && es.iter().any(|e| arcs.contains(e))) {
             let entities = es.iter().map(|&e| forward(e)).chain([forward(v)]).collect();
@@ -4571,7 +4811,12 @@ fn build(
 /// or a seam of each — the vertices of a rim split in arcs — the great circle between the
 /// point where the contacts meet on one face and where they meet on the
 /// other, the seam shortened to its point and nothing cut at a vertex of
-/// two edges. Two
+/// two edges. An end at a cusp — a vertex of three edges where the next
+/// edge leaves the way this one does, the walls tangent along the third,
+/// both edges convex or both concave — is cut by the next wall, from where
+/// the contact on the shared face crosses the next edge to where the other
+/// contact meets the third edge, both shortened there, on the section
+/// traced and fitted as an end on a curved face across is (ADR-0042). Two
 /// faces are tangent for the blend where their normals agree to the
 /// angular precision, or where the radius times the sine between them is
 /// within the faces' tolerance: a ball touching one then touches the
@@ -4610,8 +4855,9 @@ fn build(
 /// an edge listed twice, [`Reason::EdgeNotInBody`] for one that is not
 /// the body's, [`Reason::TangentChain`] where the edge's faces meet at a
 /// tangent dihedral or an end's corner edge has tangent faces at a vertex
-/// the chain does not run on through — the next edge turning back,
-/// itself a tangent dihedral, or of the other sense —
+/// the chain does not run on through and that is no cusp it is cut at —
+/// the next edge turning back, itself a tangent dihedral, of the other
+/// sense, or blended too at a cusp —
 /// [`Reason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges that the chain
 /// does not run on through, a miter

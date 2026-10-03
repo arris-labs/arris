@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "b624dc755d35b12335a0e1dfc59fabff6d98edf4c3949a94a90e40772937a3e8",
+  "results": {
+    "default": {
+      "area": 20.927214301117836,
+      "centroid": [
+        3.1086158193000597,
+        0.8954488827452239,
+        0.4989183608108396
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2.209988052081485,
+          -1.1300380136252404,
+          -0.0034114438755858956
+        ],
+        [
+          -1.1300380136252404,
+          2.200704673402484,
+          -0.003237158156948583
+        ],
+        [
+          -0.0034114438755858956,
+          -0.003237158156948583,
+          3.841970428136811
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            3.5,
+            1.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            1.0,
+            3.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            3.0,
+            0.01,
+            0.99
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            3.0,
+            0.02928932188134524,
+            0.9707106781186547
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spine",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 3.425862173737266
+    }
+  }
+}

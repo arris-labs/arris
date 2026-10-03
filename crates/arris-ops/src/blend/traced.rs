@@ -68,6 +68,22 @@ impl Piece<'_> {
         }
     }
 
+    /// The parameters on an open branch that stand for `q`, located at
+    /// `t`: `t` itself, or each end of the branch within `tol.linear` of
+    /// `q` where one is — a branch that starts and ends at one node, the
+    /// point there, has it at both.
+    fn ends_at(&self, t: f64, q: Point3, tol: Tolerance) -> Vec<f64> {
+        let Piece::Branch(b) = self else {
+            return vec![t];
+        };
+        let domain = b.domain();
+        let ends: Vec<f64> = [domain.lo(), domain.hi()]
+            .into_iter()
+            .filter(|&end| (b.point(end) - q).norm() <= tol.linear)
+            .collect();
+        if ends.is_empty() { vec![t] } else { ends }
+    }
+
     /// The parameter of the point of the piece nearest `q`, and how far
     /// it is. On a branch the nearest of samples [`LOCATE_STEP`] apart,
     /// narrowed by a golden-section search over the two steps beside it.
@@ -175,9 +191,21 @@ pub(super) fn traced_end(
             continue;
         }
         // The stretches from one point to the other: one on an open
-        // branch, either way round a loop.
+        // branch, either way round a loop. A point at a node the branch
+        // starts and ends at is at both its ends, and the stretch may
+        // reach it at either (ADR-0042 §4).
         let stretches = match piece.period() {
-            None => vec![(t0.min(t1), t0.max(t1), t0 <= t1)],
+            None => {
+                let [a0, a1] =
+                    [(t0, points[0]), (t1, points[1])].map(|(t, q)| piece.ends_at(t, q, tol));
+                let mut stretches = Vec::new();
+                for &s0 in &a0 {
+                    for &s1 in &a1 {
+                        stretches.push((s0.min(s1), s0.max(s1), s0 <= s1));
+                    }
+                }
+                stretches
+            }
             Some(p) => {
                 let up = |t: f64, from: f64| from + (t - from).rem_euclid(p);
                 vec![(t0, up(t1, t0), true), (t1, up(t0, t1), false)]

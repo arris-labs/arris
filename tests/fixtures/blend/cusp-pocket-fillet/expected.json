@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "00b4d57edc7b25dcd6f0bf78ab25ef1b64d437aae5e41ba4ca6f4b16e9349756",
+  "results": {
+    "default": {
+      "area": 99.11587527430459,
+      "centroid": [
+        -0.03625092683325429,
+        -1.0011467711186157,
+        0.9455915811249596
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          77.03686440243942,
+          0.9049914349280219,
+          0.8707829476196907
+        ],
+        [
+          0.9049914349280219,
+          153.9483326679207,
+          0.02565049966102606
+        ],
+        [
+          0.8707829476196907,
+          0.02565049966102606,
+          202.38312959525894
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_block",
+          "point": [
+            2.5,
+            -2.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "pocket_open",
+          "point": [
+            0.0,
+            -1.5,
+            1.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            0.0,
+            -1.99,
+            1.01
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            0.0,
+            -1.9707106781186547,
+            1.0292893218813453
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spine",
+          "point": [
+            -2.0,
+            0.0,
+            1.5
+          ]
+        }
+      ],
+      "volume": 43.30037376673805
+    }
+  }
+}

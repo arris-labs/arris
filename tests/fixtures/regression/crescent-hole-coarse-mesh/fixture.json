@@ -1,0 +1,125 @@
+{
+  "description": "a plate [-3,-3,0]-[3,1,1] with the crescent of blend/cusp-crescent-fillet cut through it, tessellated at a coarse chord of 0.25: the hole's loop has a cusp at (-2, 0), its two arcs tangent there, and at the fewest segments per turn the two arcs' polygons cross near the cusp, so the mesher refuses the top and bottom faces ('polygon 0 segment 7 crosses polygon 0 segment 0') where a valid face must mesh at any chord. The same body meshes at 1e-3. Found by the render's coarse first pass on blend/cusp-pocket-fillet (plans/cusp-run-out step 3). mesh_volume_rel is this body's inscribed-chord bound at that chord, curved area 3\u03c0 \u00d7 0.25 over the volume 24 \u2212 3\u03c0/2: about 0.122",
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        -3,
+        -3,
+        0
+      ],
+      "max": [
+        3,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          -1
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "tool",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 3
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "block",
+      "tool": "tool"
+    }
+  ],
+  "result": "result",
+  "tolerances": {
+    "mesh_chord": 0.25,
+    "mesh_volume_rel": 0.13
+  },
+  "probes": [
+    {
+      "label": "in_plate",
+      "point": [
+        2.5,
+        -2.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_the_hole",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_spine",
+      "point": [
+        -2,
+        0,
+        0.5
+      ],
+      "expect": "on"
+    }
+  ]
+}
