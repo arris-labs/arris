@@ -1,0 +1,166 @@
+{
+  "description": "a rise at the origin of a 3 \u00d7 3 block whose top is a convex roof of three planes meeting along two sharp ridges from the rise's top: its top is a vertex of five edges, the rise, its two corner edges and the two ridges, and the faces across are a fan of three (ADR-0043). The rise is blended at 0.1",
+  "params": {
+    "r": 0.1,
+    "c": 0.1
+  },
+  "steps": [
+    {
+      "name": "roof",
+      "op": "polyhedron",
+      "points": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          3.0,
+          0,
+          0
+        ],
+        [
+          3.0,
+          3.0,
+          0
+        ],
+        [
+          0,
+          3.0,
+          0
+        ],
+        [
+          0,
+          0,
+          3.3024366711657684
+        ],
+        [
+          0,
+          3.0,
+          1.8024366711657684
+        ],
+        [
+          1.0,
+          3.0,
+          1.8024366711657684
+        ],
+        [
+          3.0,
+          3.0,
+          1.0
+        ],
+        [
+          3.0,
+          1.2,
+          1.6592689986502698
+        ],
+        [
+          3.0,
+          0,
+          1.65926899865027
+        ]
+      ],
+      "faces": [
+        [
+          [
+            6,
+            5,
+            4
+          ]
+        ],
+        [
+          [
+            8,
+            7,
+            6,
+            4
+          ]
+        ],
+        [
+          [
+            9,
+            8,
+            4
+          ]
+        ],
+        [
+          [
+            3,
+            2,
+            1,
+            0
+          ]
+        ],
+        [
+          [
+            4,
+            5,
+            3,
+            0
+          ]
+        ],
+        [
+          [
+            0,
+            1,
+            9,
+            4
+          ]
+        ],
+        [
+          [
+            5,
+            6,
+            7,
+            2,
+            3
+          ]
+        ],
+        [
+          [
+            1,
+            2,
+            7,
+            8,
+            9
+          ]
+        ]
+      ],
+      "namespace": 3
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "roof",
+      "edges": [
+        [
+          0,
+          0,
+          1.6512183355828842
+        ]
+      ],
+      "distance": "c"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        1,
+        1,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "far_vertex",
+      "point": [
+        3,
+        3,
+        0
+      ],
+      "expect": "on"
+    }
+  ]
+}

@@ -137,8 +137,9 @@ more, as Open CASCADE's 13 loops over 12 faces say.
   (internal to `arris-ops`), and a corner edge's cut vertex may now be
   shared with an extra edge's crossing, so each piece's arcs are placed in
   its own loop.
-- A fan of three or more faces is not in the corpus. The property of step 6
-  covers `k = 3`, and the oracle's answer for it is part of that step.
+- A fan of three faces is in the corpus, `blend/roof-fan-three-{fillet,
+  chamfer}`: Open CASCADE builds it at 14 vertices, 21 edges and 9 faces,
+  and Arris matches. The property of step 6 covers `k = 2` and `k = 3`.
 
 ## Alternatives considered
 

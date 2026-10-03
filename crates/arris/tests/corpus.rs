@@ -2410,6 +2410,21 @@ fn blend_barrel_ridge_fan_chamfer() {
     run("blend/barrel-ridge-fan-chamfer");
 }
 
+/// A block under a convex roof of three planes, the rise at the origin
+/// blended: its end reaches a vertex of five edges whose faces across are a
+/// fan of three, one arc on each and a vertex on each of the two ridges, as
+/// Open CASCADE builds it (plans/blend-fan step 6, ADR-0043).
+#[test]
+fn blend_roof_fan_three_fillet() {
+    run("blend/roof-fan-three-fillet");
+}
+
+/// The chamfer twin of `blend_roof_fan_three_fillet`.
+#[test]
+fn blend_roof_fan_three_chamfer() {
+    run("blend/roof-fan-three-chamfer");
+}
+
 /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
 /// a chain of three: the output fails the checker at L2 where Open CASCADE
 /// builds it, as it did before the blend's tangency took the faces'

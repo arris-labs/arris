@@ -149,7 +149,7 @@ bound has to be established here.
     match the oracle at 14 / 21 / 9 / 9 with the checker green, and needed
     no code: `section_between` traces the cylinder piece as it does a lone
     one. They moved to `blend/` with their dumps in this step.
-- [ ] Step 6 **[2]** — **A property over random poses.**
+- [x] Step 6 **[2]** — **A property over random poses.**
   - The operands are prisms whose top is cut by two planes meeting along
     a sharp edge (k = 2 pieces, random angles), plus k = 3. Fillet and
     chamfer at random size, in random poses.
@@ -157,6 +157,16 @@ bound has to be established here.
     stripe's cross-section area times its centroid's run between the
     piece planes, piecewise across each crossing.
   - Sharded and seeded (`prop_shards!`).
+  - Seen: `fans_{fillet,chamfer}_as_their_sections` in
+    `blend_prop.rs`, 4 shards each, pass at 256 and at 1000 cases, and a
+    volume off by 0.1% fails them. The operand is a block under a convex
+    roof `h − max g_i·P` of two or three planes through the rise's top,
+    built as a polyhedron; the volume change is minus the roof's height
+    integrated over the blend's cross-section, exact in the corner the
+    rise stands in, so the closed form does not need the crossings. The
+    oracle's answer for `k = 3` is two fixtures,
+    `blend/roof-fan-three-{fillet,chamfer}`: Open CASCADE builds both at
+    14 / 21 / 9, and Arris matches (ADR-0043 §Consequences says so).
 - [ ] Step 7 **[1]** — **The crease attributed to NURBS.**
   - The census names a cylinder pair by its axes. The survey's fillet
     attribution puts a non-parallel pair under `Cycle::Nurbs`, with a
