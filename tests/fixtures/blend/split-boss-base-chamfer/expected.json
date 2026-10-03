@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "37671adc511bc4c38b5c34fbbf792a88df8426d0c24ee549da13ee5c0f24114d",
+  "results": {
+    "default": {
+      "area": 53.4443647654533,
+      "centroid": [
+        2.000000000000007,
+        2.0,
+        0.6687135667484304
+      ],
+      "counts": {
+        "edges": 21,
+        "faces": 10,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          26.503201276442695,
+          0.0,
+          -8.526512829121202e-14
+        ],
+        [
+          0.0,
+          26.503201276442738,
+          0.0
+        ],
+        [
+          -8.526512829121202e-14,
+          0.0,
+          44.48934263883248
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 21,
+        "faces": 10,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            2.0,
+            3.05,
+            1.05
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamfer_at_the_two_edge_vertex",
+          "point": [
+            0.875,
+            2.0,
+            1.125
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamfer_at_the_seam",
+          "point": [
+            3.125,
+            2.0,
+            1.125
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_beyond",
+          "point": [
+            2.8308504678941935,
+            2.8308504678941935,
+            1.175
+          ]
+        }
+      ],
+      "volume": 19.35430465617668
+    }
+  }
+}

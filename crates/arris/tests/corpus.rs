@@ -1647,6 +1647,46 @@ fn blend_hole_rim_chamfer() {
     run("blend/hole-rim-chamfer");
 }
 
+/// A hole's rim read from NIST FTC-06, one half of its split circle
+/// filleted: the chain runs on through the seam's vertex and through the
+/// vertex of only the two arcs, where they continue one another (ADR-0041),
+/// and closes as a ring of two half tori. Open CASCADE's two faces each
+/// span a whole turn, so the fixture is held to its own counts and closed
+/// forms.
+#[test]
+fn blend_split_rim_two_edge_vertex_fillet() {
+    run("blend/split-rim-two-edge-vertex-fillet");
+}
+
+/// The same rim chamfered: two half cones meeting on the chord at each
+/// vertex.
+#[test]
+fn blend_split_rim_two_edge_vertex_chamfer() {
+    run("blend/split-rim-two-edge-vertex-chamfer");
+}
+
+/// A boss's base split in two half circles, the wall's seam at one vertex
+/// and nothing but the arcs at the other, one half filleted: concave, a
+/// ring of two half tori (ADR-0041).
+#[test]
+fn blend_split_boss_base_fillet() {
+    run("blend/split-boss-base-fillet");
+}
+
+/// The same base chamfered.
+#[test]
+fn blend_split_boss_base_chamfer() {
+    run("blend/split-boss-base-chamfer");
+}
+
+/// A hole's rim of three arcs, two of its vertices carrying nothing but
+/// two arcs, one arc filleted: the chain runs on through all three and
+/// closes as a ring of three pieces of one torus (ADR-0041).
+#[test]
+fn blend_three_arc_hole_rim_fillet() {
+    run("blend/three-arc-hole-rim-fillet");
+}
+
 /// A boss's base on a revolved disc: the circle arm concave, the torus
 /// adding material, every face on the one axis.
 #[test]
@@ -1891,18 +1931,6 @@ fn regression_nist_ftc_10_ap242_mesh_off_face() {
 #[ignore = "drill_y: OpError::Internal(Fault::Geometry) where Open CASCADE builds the drilled part (docs/BACKLOG.md, a drill's geometry fault on the fetched tier)"]
 fn regression_nist_ctc_04_ap203_drill_geometry_fault() {
     run_part("regression/nist-ctc-04-ap203-drill-geometry-fault");
-}
-
-/// A hole's rim read from STEP, one half of its split circle filleted: the
-/// rim's second vertex carries only the two arcs, which continue one
-/// another between one plane and one cylinder, where the first has the
-/// cylinder's seam. Arris refuses the vertex of two edges as `VertexBlend`
-/// where Open CASCADE builds the whole ring. The desired body is Open
-/// CASCADE's.
-#[test]
-#[ignore = "VertexBlend at the split rim's second vertex, a vertex of two edges (ADR-0035 does not take it; plans/split-rim-vertex step 3)"]
-fn regression_split_rim_two_edge_vertex_fillet() {
-    run("regression/split-rim-two-edge-vertex-fillet");
 }
 
 /// The cap-edge chain with the first radius at twice the second: the

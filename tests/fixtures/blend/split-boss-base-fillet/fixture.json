@@ -1,0 +1,107 @@
+{
+  "description": "a 4 × 4 plate 1 thick with a boss of radius R 1 and height 1 on its top, written by Open CASCADE with every closed edge split in two (ShapeUpgrade_ShapeDivideClosedEdges): the boss's base is two half circles between the top and the boss's wall, the wall's seam at (3, 2, 1) and nothing but the two arcs at (1, 2, 1), a vertex of two edges (ADR-0041). One half of the base filleted at r 0.25: concave, the chain runs on through both vertices and closes as a whole ring, two half tori of major radius R + r and minor r coaxial with the boss, the boss's seam shortened to the contact on the wall. The added corner's section (1 − π/4) r² swept a full turn about the axis at R + r (10 − 3π) / (12 − 3π) by Pappus",
+  "params": {
+    "r": 0.25
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "operand.step",
+      "sha256": "229d9c21edc19bcefdba578180a877bc3761c4f964087d4fb3f80c0e82ff3599",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          2,
+          3,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        "2 + (1 + 0.05) * cos(radians(90))",
+        "2 + (1 + 0.05) * sin(radians(90))",
+        "1 + 0.05"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        "2 + (1 + r - r * cos(radians(45))) * cos(radians(90))",
+        "2 + (1 + r - r * cos(radians(45))) * sin(radians(90))",
+        "1 + r - r * sin(radians(45))"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_blend_at_the_two_edge_vertex",
+      "point": [
+        "2 + (1 + r - r * cos(radians(45))) * cos(radians(180))",
+        "2 + (1 + r - r * cos(radians(45))) * sin(radians(180))",
+        "1 + r - r * sin(radians(45))"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_blend_at_the_seam",
+      "point": [
+        "2 + (1 + r - r * cos(radians(45))) * cos(radians(0))",
+        "2 + (1 + r - r * cos(radians(45))) * sin(radians(0))",
+        "1 + r - r * sin(radians(45))"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top_contact",
+      "point": [
+        "2 + (1 + r) * cos(radians(270))",
+        "2 + (1 + r) * sin(radians(270))",
+        "1"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall_contact",
+      "point": [
+        "2 + (1) * cos(radians(270))",
+        "2 + (1) * sin(radians(270))",
+        "1 + r"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside_beyond",
+      "point": [
+        "2 + (1 + r + 0.05) * cos(radians(45))",
+        "2 + (1 + r + 0.05) * sin(radians(45))",
+        "1 + 0.02"
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "16 + pi + 2 * pi * (1 + r * (10 - 3 * pi) / (12 - 3 * pi)) * (1 - pi / 4) * r^2",
+    "genus": 0
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "description": "a 4 × 4 plate 1 thick with a boss of radius R 1 and height 1 on its top, written by Open CASCADE with every closed edge split in two (ShapeUpgrade_ShapeDivideClosedEdges): the boss's base is two half circles between the top and the boss's wall, the wall's seam at (3, 2, 1) and nothing but the two arcs at (1, 2, 1), a vertex of two edges (ADR-0041). One half of the base chamfered at d 0.25, the fillet's chamfer twin (blend/split-boss-base-fillet): concave, two half cones at 45° meeting on the chord at each vertex. The added triangle d² / 2 swept a full turn about the axis at R + d / 3 by Pappus",
+  "params": {
+    "d": 0.25
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../split-boss-base-fillet/operand.step",
+      "sha256": "229d9c21edc19bcefdba578180a877bc3761c4f964087d4fb3f80c0e82ff3599",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          2,
+          3,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        "2 + (1 + 0.05) * cos(radians(90))",
+        "2 + (1 + 0.05) * sin(radians(90))",
+        "1 + 0.05"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_chamfer_at_the_two_edge_vertex",
+      "point": [
+        "2 + (1 + d / 2) * cos(radians(180))",
+        "2 + (1 + d / 2) * sin(radians(180))",
+        "1 + d / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_chamfer_at_the_seam",
+      "point": [
+        "2 + (1 + d / 2) * cos(radians(0))",
+        "2 + (1 + d / 2) * sin(radians(0))",
+        "1 + d / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside_beyond",
+      "point": [
+        "2 + (1 + d / 2 + 0.05) * cos(radians(45))",
+        "2 + (1 + d / 2 + 0.05) * sin(radians(45))",
+        "1 + d / 2 + 0.05"
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "16 + pi + 2 * pi * (1 + d / 3) * d^2 / 2",
+    "genus": 0
+  }
+}

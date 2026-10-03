@@ -79,13 +79,27 @@ bound has to be established here.
   144 → 146, edges 373 → 377, vertices 250 → 250. The recipe could not build a split rim with no
   seam at a vertex: extruded half circles give two cylinder faces, so the part is read, not
   shrunk (ADR-0026 §4). The unit test of step 1 reads the same part.)*
-- [ ] Step 3 **[3]** — The walk and the junction: `tangent_vertex` takes the
+- [x] Step 3 **[3]** — The walk and the junction: `tangent_vertex` takes the
   two-edge continuation, the junction runs between the two points on the
   shared contacts with no cut, provenance as ADR-0041. The fixture moves to
   `blend/` with its blessed dump, checker green at `Full`; fillet and its
   chamfer twin, convex and concave, at Open CASCADE's counts and probes. A
   closed rim of two arcs with no seam at either vertex, and one of three arcs,
   are fixtures of their own.
+  *(Done, with two findings. The seam's vertex was not walked either: its
+  third edge is a seam the cylinder uses twice, which ADR-0035 §1 does not
+  take, so `tangent_vertex` and the junction take it too, the seam cut at
+  `p` (ADR-0041 corrected). A rim with the seam at no vertex cannot occur:
+  a seam ends on the rim, and the reader rebuilds a missing one through a
+  rim vertex. Fixtures: `blend/split-rim-two-edge-vertex-{fillet,chamfer}`
+  (FTC-06, convex), `blend/split-boss-base-{fillet,chamfer}` (concave) and
+  `blend/three-arc-hole-rim-fillet`, the last three on plates Open CASCADE
+  wrote with its closed edges split, the three-arc rim split once more in
+  the file. Open CASCADE matches Arris's counts there; on FTC-06 it builds
+  two faces of a whole turn each, genus 11, so those two are held to
+  Arris's counts and the closed forms, and its STEP is refused as a face
+  wrapping a period. `cancel_counts.txt` blessed for the five here, to keep
+  `main` green.)*
 - [ ] Step 4 **[2]** — Cylinder pair coverage: the same vertex with the
   pairs ADR-0036 builds along a circle (a cone, a sphere or a torus against a
   coaxial plane, cylinder or cone) — each a fixture or its absence named in the
@@ -99,8 +113,8 @@ bound has to be established here.
   leaves is rejected by the refusal's name.
 - [ ] Step 6 **[1]** — Measure the tiers again (`tools/real-parts.sh`,
   `--census-committed`). Move `fixtures:` expectations whose refusals changed
-  (the commit body says why) and bless `cancel_counts.txt` for the new
-  fixtures. Update ROADMAP §C6's status paragraph with the new `fillet`
+  (the commit body says why) and bless `cancel_counts.txt` for step 4's
+  fixtures (step 3's are blessed). Update ROADMAP §C6's status paragraph with the new `fillet`
   count beside C4's 17 of 38; run the docs-refs tests.
 
 ## Acceptance
@@ -130,7 +144,7 @@ bound has to be established here.
 - Answered at step 1: no cause but a continuation. Was ⚠ OPEN (agent, step 1): whether the two-edge site holds causes other than
   a continuation (a face across, a seam-less tangent junction); the gate
   above fires if the continuation is not the majority.
-- ⚠ OPEN (agent, step 3): whether a vertex of two edges on one circle needs
-  a junction at all where both blends are the same torus (the halves of one
-  ring). ADR-0035 §2 says two faces, as Open CASCADE builds them; the fixture's
-  oracle counts decide, and the ADR records which.
+- Answered at step 3: yes, a junction and two faces, at Open CASCADE's
+  counts on the operands it builds whole (ADR-0041 §3). Was ⚠ OPEN (agent,
+  step 3): whether a vertex of two edges on one circle needs a junction at
+  all where both blends are the same torus (the halves of one ring).

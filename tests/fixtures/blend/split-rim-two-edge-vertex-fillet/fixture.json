@@ -1,0 +1,69 @@
+{
+  "description": "NIST FTC-06's rim of a hole, read from STEP: the part read in place and one half of a rim circle between a plane and a cylinder filleted at r 2. The rim is two half circles between the same plane and the same cylinder; the cylinder's seam is at the first vertex, a vertex of three edges whose third is the seam, and the second carries nothing but the two arcs, a vertex of two edges where the arcs continue one another (ADR-0041). The chain runs on through both and closes as a whole ring, two half tori of major radius R + r about the hole's axis meeting on the ball's cross-section at each vertex, the seam shortened to the contact on the wall at the first. Shrunk from the census's refused site (plans/split-rim-vertex); the file is not shrunk (ADR-0026 §4)",
+  "params": {
+    "r": 2
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ftc-06/nist_ftc_06_asme1_rd.stp",
+      "sha256": "5e30f0903f9470c14a98e70395ca005fe90bcd3fb704c381a80a69958838f169",
+      "id": 101
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -128.0795,
+          0.0,
+          -184.15
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "counts": {
+      "vertices": 248,
+      "edges": 373,
+      "faces": 146,
+      "loops": 185,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE heals FTC-06 as it reads it (occt_heals, ADR-0026 §3), 227/310/144/223 in the file become 250/373/144/183, so its counts are not the file's; Arris's are its own reading of the file, 246/369/144/183 (real/nist-ftc-06), and the fillet takes the two arcs and their two vertices for four contact arcs, two junction arcs and four vertices, 248/373/146/185, genus 10 as the part. Open CASCADE's 250/377/146/185 is genus 11: each of its two half tori spans a whole turn, its plane and cylinder contacts closed circles over [0, 2π] meeting at the seam's vertex only, and its two junction edges are one tube circle at the seam's angle twice, so the vertex of two edges leaves no vertex",
+    "genus": 10,
+    "volume": 3323515.2346811374,
+    "area": 283388.77556429437,
+    "centroid": [
+      0.0013217267956769042,
+      29.009103414711053,
+      -109.59938101800583
+    ],
+    "inertia": [
+      [
+        21667038911.57959,
+        114416.83523083907,
+        341391.71436706686
+      ],
+      [
+        114416.83523083907,
+        44622428459.07672,
+        -1303351466.3341095
+      ],
+      [
+        341391.71436706686,
+        -1303351466.3341095,
+        26389921200.652718
+      ]
+    ],
+    "measure_differs": "Open CASCADE's two half tori each span a whole turn (counts_differ), so its volume is 1371.43 below the part's less the fillet's ring and its area 47.68 below. The closed forms are the part's own, Open CASCADE's measure of the healed reading the real/nist-ftc-06 fixture holds Arris to, less the ring a convex r 2 fillet takes from the rim of the R 5.2705 hole about x = −133.35, z = −184.15 at the plane y = 0: the square less the quarter disc in the (ρ, y) section, ρ in [R, R + r], swept a whole turn, 30.836 by Pappus; the area loses the plane annulus π((R + r)² − R²) and the band 2πRr of the hole and gains the quarter tube (π/2)r · 2π(R + r − 2r/π); the centroid and inertia the part's less the ring's moments, ∫(x − cx)² = ∫(z − cz)² = π∫ρ³ and ∫y² = 2π∫ρy² over the section, shifted to the result's centroid",
+    "occt_step_refused": {
+      "kind": "unsupported entity",
+      "why": "Open CASCADE's two half tori each span a whole turn, bounded by a contact circle closed at the seam's vertex on each side and the one tube circle at the seam's angle twice (counts_differ), and the reader finds no singular row on the loop's side (\"a face of one loop wrapping a period, with no singular point on its side\"): a face that wraps its period where the blend covers half of it"
+    }
+  }
+}

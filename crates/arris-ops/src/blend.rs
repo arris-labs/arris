@@ -316,8 +316,9 @@ struct Miter {
     lo_first: [bool; 2],
     /// The ellipse's pcurve on each stripe's cylinder, placed.
     on_blend: [Curve2; 2],
-    /// The third edge shortened to `p3`.
-    trim: Trim,
+    /// The third edge shortened to `p3`; `None` at a vertex of two edges
+    /// that continue one another (ADR-0041), which has no third edge.
+    trim: Option<Trim>,
     /// At a junction whose runs share no face (ADR-0039 §2), the tangent
     /// edge `q` lies on, shortened to it.
     q_trim: Option<Trim>,
@@ -821,8 +822,11 @@ fn convex_edge(m: &Model, view: &View, edge: EdgeId) -> Result<Option<bool>, OpE
 /// there (ADR-0039 §1), exactly four edges `edge`, `next`, `w₀` and `w₁`,
 /// `edge` and `next` sharing no face, each `w` tangent at the vertex and
 /// between one face of `edge` and one of `next`, a different one of each,
-/// and `next` as above. `None` at any other vertex, and where more than
-/// one of the vertex's other edges would qualify.
+/// and `next` as above. Or, where the edge runs on with nothing turning
+/// (ADR-0041 §1), `edge` and `next` sharing both their faces, with no other
+/// edge at the vertex or only a seam of one of those faces, used twice by
+/// it, and `next` as above. `None` at any other vertex, and where more
+/// than one of the vertex's other edges would qualify.
 fn tangent_vertex(
     m: &Model,
     view: &View,
@@ -834,14 +838,7 @@ fn tangent_vertex(
     let Some(at) = view.vertex_edges.get(&vertex) else {
         return Ok(None);
     };
-    // The faces `edge` and `next` share: one at a vertex of three edges,
-    // none at a vertex of four.
-    let shared = match at.len() {
-        3 => 1,
-        4 => 0,
-        _ => return Ok(None),
-    };
-    if !at.contains(&edge) {
+    if !at.contains(&edge) || !(2..=4).contains(&at.len()) {
         return Ok(None);
     }
     let others: Vec<EdgeId> = at.iter().copied().filter(|&x| x != edge).collect();
@@ -850,6 +847,22 @@ fn tangent_vertex(
             .get(&x)
             .map(|u| u.iter().map(|u| u.face).collect())
             .unwrap_or_default()
+    };
+    let own = faces_of(edge);
+    // A seam of one of the edge's faces, the one face using it twice.
+    let is_seam = |w: EdgeId| {
+        view.uses
+            .get(&w)
+            .is_some_and(|u| matches!(u[..], [a, b] if a.face == b.face && own.contains(&a.face)))
+    };
+    // The faces `edge` and `next` share: both where the edge runs on with
+    // nothing turning — a vertex of two edges, or of three whose third is a
+    // seam — one at another vertex of three edges, none at a vertex of four.
+    let shared = match at.len() {
+        2 => 2,
+        3 if others.iter().any(|&w| is_seam(w)) => 2,
+        3 => 1,
+        _ => 0,
     };
     // The unit tangent of `x` at the vertex, pointing away from it.
     let leaving = |x: EdgeId| -> Result<Option<Vec3>, OpError> {
@@ -866,7 +879,9 @@ fn tangent_vertex(
     let Some(arriving) = leaving(edge)?.map(|d| -d) else {
         return Ok(None);
     };
-    let own = faces_of(edge);
+    if shared == 2 && own.len() != 2 {
+        return Ok(None);
+    }
     let mut found = None;
     'next: for &next in &others {
         let next_entity = *m.edge(next)?;
@@ -888,7 +903,8 @@ fn tangent_vertex(
             let Some(t_w) = parameter_at(m, w, vertex)? else {
                 continue 'next;
             };
-            if tangent_at(m, view, w, t_w, size, tol)? != Some(true) {
+            if tangent_at(m, view, w, t_w, size, tol)? != Some(true) || (shared == 2 && !is_seam(w))
+            {
                 continue 'next;
             }
             if shared == 0 {
@@ -1805,7 +1821,7 @@ fn miter(
         q_first,
         lo_first,
         on_blend,
-        trim,
+        trim: Some(trim),
         q_trim: None,
         tolerance,
         q_tolerance: tolerance,
@@ -1928,11 +1944,12 @@ fn junction(
             Reason::VertexBlend,
         )
     };
-    let mut shared: Option<(usize, usize)> = None;
+    // The contacts of `a` and `b` on one face, as `(ka, kb)` pairs.
+    let mut pairs: Vec<(usize, usize)> = Vec::with_capacity(2);
     for (ka, fa) in ra.faces.iter().enumerate() {
         for (kb, fb) in rb.faces.iter().enumerate() {
-            if fa == fb && shared.replace((ka, kb)).is_some() {
-                return Err(vertex_blend());
+            if fa == fb {
+                pairs.push((ka, kb));
             }
         }
     }
@@ -1956,21 +1973,38 @@ fn junction(
             .collect())
     };
     // `ka` and `kb` the contacts that meet at `q`, `wq` the edge `q` cuts
-    // where the runs share no face, `w` the edge `p` cuts.
-    let (ka, kb, wq, w) = match (shared, &others[..]) {
+    // where the runs share no face, `w` the edge `p` cuts, if any.
+    let (ka, kb, wq, w) = match (&pairs[..], &others[..]) {
         // A vertex of three edges: `q` on the shared face, `p` on the
         // third edge between the two faces the runs do not share.
-        (Some((ka, kb)), &[w]) => {
+        (&[(ka, kb)], &[w]) => {
             if faces_of(w)? != BTreeSet::from([ra.faces[1 - ka], rb.faces[1 - kb]]) {
                 return Err(vertex_blend());
             }
-            (ka, kb, None, w)
+            (ka, kb, None, Some(w))
+        }
+        // Runs that continue one another between the same two faces
+        // (ADR-0041 §2): each contact meets the other run's on its own
+        // face, `q` on `a`'s contact at `u = 0`, nothing cut.
+        (&[(0, kb), (1, jb)], &[]) if jb == 1 - kb => (0, kb, None, None),
+        // The same with the seam of one face at the vertex: `p` on the
+        // contacts on that face, the seam cut there as a closed edge's is.
+        (&[(0, kb), (1, jb)], &[w]) if jb == 1 - kb => {
+            let seam = view
+                .uses
+                .get(&w)
+                .ok_or(invariant("the junction's seam's uses"))?;
+            match seam[..] {
+                [s, t] if s.face == t.face && s.face == ra.faces[1] => (0, kb, None, Some(w)),
+                [s, t] if s.face == t.face && s.face == ra.faces[0] => (1, 1 - kb, None, Some(w)),
+                _ => return Err(vertex_blend()),
+            }
         }
         // A vertex of four where both faces turn (ADR-0039 §2): each
         // contact of `a` meets the contact of `b` across the tangent edge
         // between their faces, `q` on the one from `a`'s contact at
         // `u = 0`, `p` on the other.
-        (None, &[w0, w1]) => {
+        (&[], &[w0, w1]) => {
             let mut across: [Option<(usize, EdgeId)>; 2] = [None; 2];
             for w in [w0, w1] {
                 let faces_w = faces_of(w)?;
@@ -1990,7 +2024,7 @@ fn junction(
             if jb == kb || wq == w {
                 return Err(vertex_blend());
             }
-            (0, kb, Some(wq), w)
+            (0, kb, Some(wq), Some(w))
         }
         _ => return Err(vertex_blend()),
     };
@@ -2017,7 +2051,9 @@ fn junction(
     let q_trim = wq
         .map(|wq| cut_corner(m, ra.edge, wq, vertex, q))
         .transpose()?;
-    let trim = cut_corner(m, ra.edge, w, vertex, p)?;
+    let trim = w
+        .map(|w| cut_corner(m, ra.edge, w, vertex, p))
+        .transpose()?;
     let (curve, range) = match (ra.centre, rb.centre) {
         (None, None) => chord(q, p, tol)?,
         (Some(ca), Some(cb)) => {
@@ -2069,7 +2105,10 @@ fn junction(
             Some(wq) => tolerance.max(m.edge(wq)?.tolerance()),
             None => tolerance,
         },
-        p3_tolerance: tolerance.max(m.edge(w)?.tolerance()),
+        p3_tolerance: match w {
+            Some(w) => tolerance.max(m.edge(w)?.tolerance()),
+            None => tolerance,
+        },
     })
 }
 
@@ -3825,7 +3864,9 @@ fn build(
             },
             None,
         ));
-        cut_once(&mut cuts, &mt.trim, p3)?;
+        if let Some(trim) = &mt.trim {
+            cut_once(&mut cuts, trim, p3)?;
+        }
         if let Some(trim) = &mt.q_trim {
             cut_once(&mut cuts, trim, q)?;
         }
@@ -4500,7 +4541,13 @@ fn build(
 /// of four edges where both of the edge's faces turn — the next edge
 /// sharing no face with it, each other edge tangent there between a face
 /// of each — and the great circle there runs between the two points where
-/// the contacts meet on those two tangent edges, both shortened. Two
+/// the contacts meet on those two tangent edges, both shortened. And it
+/// runs on where nothing turns: the next edge sharing both the edge's
+/// faces, the vertex carrying no other edge or only a seam of one of them —
+/// the vertices of a rim split in arcs — the great circle between the
+/// point where the contacts meet on one face and where they meet on the
+/// other, the seam shortened to its point and nothing cut at a vertex of
+/// two edges. Two
 /// faces are tangent for the blend where their normals agree to the
 /// angular precision, or where the radius times the sine between them is
 /// within the faces' tolerance: a ball touching one then touches the
@@ -4528,7 +4575,8 @@ fn build(
 /// reached is recorded as a named one is; the great circle where two
 /// blends of a chain meet and its two vertices are `Generated` from both
 /// edges, as a miter's are, the third edge — or, at a vertex of four, both
-/// tangent edges — `Modified` and the vertex `Deleted`.
+/// tangent edges, at the seam's vertex of a split rim its seam, and at a
+/// vertex of two edges none — `Modified` and the vertex `Deleted`.
 /// `arris_topo::provenance::audit` holds on every result
 /// (`docs/DATA-MODEL.md` §Provenance).
 ///
@@ -4541,7 +4589,8 @@ fn build(
 /// the chain does not run on through — the next edge turning back,
 /// itself a tangent dihedral, or of the other sense —
 /// [`Reason::VertexBlend`] at a corner the closed
-/// forms do not cover — a vertex of other than three edges, a miter
+/// forms do not cover — a vertex of other than three edges that the chain
+/// does not run on through, a miter
 /// whose two blends have unequal dihedrals or are not both convex or
 /// both concave, a miter with a blend along a ruling, whose contact on
 /// the cylinder misses the other's on the third edge, or a corner of three

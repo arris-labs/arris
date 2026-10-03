@@ -1353,11 +1353,12 @@ mod tests {
 
     /// The committed `nist-ftc-06`'s holes: a rim circle in two half arcs
     /// between one plane and one cylinder, the cylinder's seam at the first
-    /// vertex and nothing but the two arcs at the second. The arc's far
-    /// vertex is a vertex of two edges, a continuation between the same two
-    /// faces.
+    /// vertex and nothing but the two arcs at the second. The chain runs on
+    /// through both (ADR-0041), so no edge of the part is refused at a
+    /// vertex of two edges that continue one another, and the arc the
+    /// census once named there blends.
     #[test]
-    fn a_split_rims_second_vertex_is_a_continuation() {
+    fn no_split_rims_second_vertex_is_refused() {
         let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
         let bytes = std::fs::read(&file).unwrap();
         let mut m = Model::new(PrecisionSpec::default().precision()).unwrap();
@@ -1374,24 +1375,32 @@ mod tests {
             .unwrap()
             .body;
         let handles = m.edges(body).unwrap();
-        let mut seen = 0;
+        let mut arcs = 0;
         for h in &handles {
             let mut scratch = m.clone();
-            let Err(Refused::Op(e)) = blend(&mut scratch, body, &[*h], 0.05) else {
-                continue;
-            };
-            let Some(cause) = vertex_blend_cause(&m, h.id, &e) else {
-                continue;
-            };
-            if cause.starts_with("a vertex of 2 edges") {
-                assert_eq!(
-                    cause,
-                    "a vertex of 2 edges, the second: a continuation between the same two faces; edge cylinder × plane"
-                );
-                seen += 1;
-                break;
+            match blend(&mut scratch, body, &[*h], 0.05) {
+                Err(Refused::Op(e)) => {
+                    let cause = vertex_blend_cause(&m, h.id, &e).unwrap_or_default();
+                    assert!(
+                        !cause.contains("a continuation between the same two faces"),
+                        "{cause}"
+                    );
+                }
+                Ok(_) => {
+                    let entity = m.edge(h.id).unwrap();
+                    let at = |v| m.vertex_edges(v).unwrap().len();
+                    if entity.start() != entity.end()
+                        && (at(entity.start()) == 2 || at(entity.end()) == 2)
+                    {
+                        arcs += 1;
+                    }
+                }
+                Err(_) => {}
             }
         }
-        assert!(seen > 0, "a split rim's second vertex is in the part");
+        assert!(
+            arcs > 0,
+            "a split rim's arc blends through its second vertex"
+        );
     }
 }

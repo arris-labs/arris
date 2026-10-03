@@ -1,0 +1,2239 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b1 solid
+  shell +s1
+    face -f0 S0 tol 0.0000001
+      surface plane origin (152.4, 0, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e314 p0 circle origin (-260.985, 50.8) x (1, 0) y (0, -1) radius 22.225
+        coedge +e19 p23 circle origin (-286.18578123789, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e18 p22 line origin (0, 50.8) direction (-1, 0)
+        coedge +e17 p21 line origin (-304.8, 0) direction (0, 1)
+        coedge +e16 p20 line origin (0, 0) direction (-1, 0)
+        coedge -e15 p19 line origin (0, 0) direction (0, 1)
+        coedge -e14 p18 line origin (0, 50.8) direction (-1, 0)
+        coedge +e13 p17 circle origin (-18.61421876211, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e12 p16 circle origin (-43.815, 50.8) x (1, 0) y (0, -1) radius 22.225
+        coedge -e311 p15 circle origin (-43.815, 50.8) x (1, 0) y (0, -1) radius 22.225
+        coedge +e11 p14 circle origin (-69.01578123789, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e10 p13 line origin (0, 50.8) direction (-1, 0)
+        coedge +e9 p12 circle origin (-91.00421876211, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e8 p11 circle origin (-116.205, 50.8) x (1, 0) y (0, -1) radius 22.225
+        coedge -e312 p10 circle origin (-116.205, 50.8) x (1, 0) y (0, -1) radius 22.225
+        coedge +e7 p9 circle origin (-141.40578123789, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e6 p8 line origin (0, 50.8) direction (-1, 0)
+        coedge +e5 p7 circle origin (-163.39421876211, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e4 p6 circle origin (-188.595, 50.8) x (1, 0) y (0, -1) radius 22.225
+        coedge -e313 p5 circle origin (-188.595, 50.8) x (1, 0) y (0, -1) radius 22.225
+        coedge +e3 p4 circle origin (-213.79578123789, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e2 p3 line origin (0, 50.8) direction (-1, 0)
+        coedge +e1 p2 circle origin (-235.78421876211, 53.975) x (1, 0) y (0, 1) radius 3.175
+        coedge -e0 p1 circle origin (-260.985, 50.8) x (1, 0) y (0, -1) radius 22.225
+      loop 1
+        coedge +e31 p35 line origin (-141.097654708264, 9.941855358465) direction (0, 1)
+        coedge +e30 p34 circle origin (-140.684466466816, 9.907165889162) x (-1, 0) y (0, 1) radius 0.414641872164
+        coedge +e29 p33 line origin (-130.115185125322, 20.726078045825) direction (-0.678933507932, -0.734199762876)
+        coedge +e28 p32 circle origin (-127.720976760799, 18.512091654331) x (-1, 0) y (0, -1) radius 3.260976760799
+        coedge +e27 p31 line origin (-124.46, 6.35) direction (0, 1)
+        coedge +e26 p30 line origin (-127.562492442822, 6.35) direction (1, 0)
+        coedge +e25 p29 line origin (-127.562492442822, 17.593484624116) direction (0, -1)
+        coedge +e24 p28 circle origin (-128.102363480922, 17.593484624116) x (-1, 0) y (0, 1) radius 0.5398710381
+        coedge +e23 p27 line origin (-137.966812441151, 7.669424487722) direction (0.677084591162, 0.735905195261)
+        coedge +e22 p26 circle origin (-140.712777708056, 9.867141872164) x (-1, 0) y (0, -1) radius 3.517141872164
+        coedge +e21 p25 line origin (-144.22991958022, 21.35) direction (0, -1)
+        coedge +e20 p24 line origin (-141.097654708264, 21.35) direction (-1, 0)
+      loop 2
+        coedge +e51 p55 circle origin (-155.724130496777, 16.803277032713) x (-1, 0) y (0, -1) radius 4.546722967287
+        coedge +e50 p54 line origin (-165.119898477157, 12.269580220156) direction (1, 0)
+        coedge +e49 p53 circle origin (-164.997185717588, 10.858286801284) x (-1, 0) y (0, 1) radius 1.416618345043
+        coedge +e48 p52 line origin (-150.465924199831, 9.45317686648) direction (-1, 0)
+        coedge +e47 p51 circle origin (-150.465924199831, 10.545737694384) x (-1, 0) y (0, 1) radius 1.092560827904
+        coedge +e46 p50 line origin (-149.373363371927, 21.35) direction (0, -1)
+        coedge +e45 p49 line origin (-146.241098499972, 21.35) direction (-1, 0)
+        coedge +e44 p48 line origin (-146.241098499972, 10.545737694384) direction (0, 1)
+        coedge +e43 p47 circle origin (-150.436836194355, 10.545737694384) x (-1, 0) y (0, -1) radius 4.195737694384
+        coedge +e42 p46 line origin (-165.63732276279, 6.35) direction (1, 0)
+        coedge +e41 p45 circle origin (-164.918897232837, 10.861464096276) x (-1, 0) y (0, -1) radius 4.568308607578
+        coedge +e40 p44 line origin (-156.010561797753, 15.372928192551) direction (-1, 0)
+        coedge +e39 p43 circle origin (-156.010561797753, 16.783306214359) x (-1, 0) y (0, 1) radius 1.410378021808
+        coedge +e38 p42 line origin (-171.815615125763, 18.188989334398) direction (1, 0)
+        coedge +e37 p41 line origin (-171.815615125763, 6.35) direction (0, 1)
+        coedge +e36 p40 line origin (-174.918107568585, 6.35) direction (1, 0)
+        coedge +e35 p39 line origin (-174.918107568585, 18.188989334398) direction (0, -1)
+        coedge +e34 p38 line origin (-181.327392916215, 18.188989334398) direction (1, 0)
+        coedge +e33 p37 line origin (-181.327392916215, 21.35) direction (0, -1)
+        coedge +e32 p36 line origin (-155.724130496777, 21.35) direction (-1, 0)
+    face -f1 S1 tol 0.0000001
+      surface plane origin (152.4, 50.8, -234.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e53 p57 line origin (0, -286.18578123789) direction (1, 0)
+        coedge -e52 p56 line origin (-25.4, 0) direction (0, -1)
+        coedge +e54 p59 line origin (0, -304.8) direction (-1, 0)
+        coedge +e18 p58 line origin (0, 0) direction (0, -1)
+    face -f2 S2 tol 0.0000001
+      surface plane origin (152.4, 50.8, -234.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e57 p63 line origin (0, -213.79578123789) direction (1, 0)
+        coedge -e56 p62 line origin (-25.4, 0) direction (0, -1)
+        coedge +e55 p61 line origin (-25.4, -235.78421876211) direction (-1, 0)
+        coedge +e2 p60 line origin (0, 0) direction (0, -1)
+    face -f3 S3 tol 0.0000001
+      surface plane origin (152.4, 50.8, -234.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e60 p67 line origin (0, -141.40578123789) direction (1, 0)
+        coedge -e59 p66 line origin (-25.4, 0) direction (0, -1)
+        coedge +e58 p65 line origin (-25.4, -163.39421876211) direction (-1, 0)
+        coedge +e6 p64 line origin (0, 0) direction (0, -1)
+    face -f4 S4 tol 0.0000001
+      surface plane origin (152.4, 50.8, -234.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e63 p71 line origin (0, -69.01578123789) direction (1, 0)
+        coedge -e62 p70 line origin (-25.4, 0) direction (0, -1)
+        coedge +e61 p69 line origin (-25.4, -91.00421876211) direction (-1, 0)
+        coedge +e10 p68 line origin (0, 0) direction (0, -1)
+    face -f5 S5 tol 0.0000001
+      surface plane origin (152.4, 31.75, -31.75) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1)
+      loop 0
+        coedge +e64 p72 circle origin (-46.99, -25.4) x (1, 0) y (0, 1) radius 10.31875
+      loop 1
+        coedge -e75 p83 line origin (0, 0) direction (-1, 0)
+        coedge +e74 p82 circle origin (-53.34, -12.7) x (1, 0) y (0, -1) radius 12.7
+        coedge -e73 p81 line origin (-66.04, 0) direction (0, -1)
+        coedge -e72 p80 line origin (-66.04, -48.694731853579) direction (0.906307787037, -0.422618261741)
+        coedge -e71 p79 line origin (-34.29, -63.5) direction (1, 0)
+        coedge -e70 p78 line origin (-20.32, -63.5) direction (0, -1)
+        coedge -e69 p77 line origin (-20.32, -76.2) direction (-1, 0)
+        coedge -e68 p76 line origin (-34.29, -76.2) direction (-0.906307787037, -0.422618261741)
+        coedge -e67 p75 line origin (-66.04, 0) direction (0, -1)
+        coedge +e66 p74 line origin (-66.04, -136.525) direction (-1, 0)
+        coedge +e65 p73 line origin (-3.175, -139.7) direction (0, -1)
+    face -f6 S6 tol 0.0000001
+      surface plane origin (152.4, 97.79, -31.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e77 p85 line origin (0, -12.7) direction (1, 0)
+        coedge -e76 p84 line origin (-31.75, 0) direction (0, -1)
+        coedge -e78 p87 line origin (-38.1, -48.694731853579) direction (1, 0)
+        coedge +e73 p86 line origin (0, 0) direction (0, -1)
+    face -f7 S7 tol 0.0000001
+      surface plane origin (152.4, 31.75, -31.75) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1)
+      loop 0
+        coedge +e79 p88 circle origin (-46.99, -279.4) x (1, 0) y (0, 1) radius 10.31875
+      loop 1
+        coedge -e90 p99 line origin (-66.04, 0) direction (0, -1)
+        coedge -e89 p98 line origin (-66.04, -213.794731853579) direction (0.906307787037, -0.422618261741)
+        coedge -e88 p97 line origin (-34.29, -228.6) direction (1, 0)
+        coedge -e87 p96 line origin (-20.32, -228.6) direction (0, -1)
+        coedge -e86 p95 line origin (-20.32, -241.3) direction (-1, 0)
+        coedge -e85 p94 line origin (-34.29, -241.3) direction (-0.906307787037, -0.422618261741)
+        coedge -e84 p93 line origin (-66.04, 0) direction (0, -1)
+        coedge +e83 p92 circle origin (-53.34, -292.1) x (1, 0) y (0, -1) radius 12.7
+        coedge +e82 p91 line origin (0, -304.8) direction (-1, 0)
+        coedge +e81 p90 line origin (-3.175, -304.8) direction (0, -1)
+        coedge +e80 p89 line origin (0, -168.275) direction (1, 0)
+    face -f8 S8 tol 0.0000001
+      surface plane origin (152.4, 97.79, -31.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e93 p103 line origin (-38.1, -91.005268146421) direction (1, 0)
+        coedge -e92 p102 line origin (-31.75, 0) direction (0, -1)
+        coedge -e95 p107 line origin (-38.1, -213.794731853579) direction (1, 0)
+        coedge +e90 p106 line origin (0, 0) direction (0, -1)
+        coedge +e94 p105 line origin (0, -139.7) direction (0, -1)
+        coedge +e67 p104 line origin (0, 0) direction (0, -1)
+      loop 1
+        coedge +e310 p101 circle origin (-15.875, -152.4) x (1, 0) y (0, 1) radius 12.7
+        coedge +e91 p100 circle origin (-15.875, -152.4) x (1, 0) y (0, 1) radius 12.7
+    face -f9 S9 tol 0.0000001
+      surface plane origin (152.4, 50.8, -234.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e98 p111 line origin (0, 0) direction (-1, 0)
+        coedge -e97 p110 line origin (-25.4, 0) direction (0, -1)
+        coedge +e96 p109 line origin (-25.4, -18.61421876211) direction (-1, 0)
+        coedge +e14 p108 line origin (0, 0) direction (0, -1)
+    face -f144 S10 tol 0.0000001
+      surface plane origin (152.4, 0, 0) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge +e382 p749 circle origin (-184.15, -285.75) x (1, 0) y (0, 1) radius 7.2705
+        coedge +e380 p747 circle origin (-184.15, -285.75) x (1, 0) y (0, 1) radius 7.2705
+      loop 1
+        coedge +e103 p120 line origin (0, -304.8) direction (-1, 0)
+        coedge +e105 p123 line origin (0, 0) direction (0, -1)
+        coedge -e104 p122 line origin (0, 0) direction (-1, 0)
+        coedge -e16 p121 line origin (-234.95, 0) direction (0, -1)
+      loop 2
+        coedge +e318 p115 circle origin (-57.15, -285.75) x (1, 0) y (0, 1) radius 5.2705
+        coedge +e100 p114 circle origin (-57.15, -285.75) x (1, 0) y (0, 1) radius 5.2705
+      loop 3
+        coedge +e317 p117 circle origin (-184.15, -19.05) x (1, 0) y (0, 1) radius 5.2705
+        coedge +e101 p116 circle origin (-184.15, -19.05) x (1, 0) y (0, 1) radius 5.2705
+      loop 4
+        coedge +e316 p119 circle origin (-57.15, -19.05) x (1, 0) y (0, 1) radius 5.2705
+        coedge +e102 p118 circle origin (-57.15, -19.05) x (1, 0) y (0, 1) radius 5.2705
+    face -f11 S11 tol 0.0000001
+      surface plane origin (152.4, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1)
+      loop 0
+        coedge +e124 p150 circle origin (286.18578123789, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge +e123 p149 circle origin (260.985, 0) x (-1, 0) y (0, 1) radius 22.225
+        coedge +e122 p148 circle origin (235.78421876211, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge +e56 p147 line origin (0, 0) direction (1, 0)
+        coedge +e121 p146 circle origin (213.79578123789, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge +e120 p145 circle origin (188.595, 0) x (-1, 0) y (0, 1) radius 22.225
+        coedge +e119 p144 circle origin (163.39421876211, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge +e59 p143 line origin (0, 0) direction (1, 0)
+        coedge +e118 p142 circle origin (141.40578123789, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge +e117 p141 circle origin (116.205, 0) x (-1, 0) y (0, 1) radius 22.225
+        coedge +e116 p140 circle origin (91.00421876211, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge +e62 p139 line origin (0, 0) direction (1, 0)
+        coedge +e115 p138 circle origin (69.01578123789, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge -e114 p137 circle origin (43.815, 0) x (-1, 0) y (0, -1) radius 22.225
+        coedge +e113 p136 circle origin (18.61421876211, 3.175) x (1, 0) y (0, 1) radius 3.175
+        coedge +e97 p135 line origin (0, 0) direction (1, 0)
+        coedge -e112 p134 line origin (0, 0) direction (0, -1)
+        coedge +e111 p133 line origin (0, -15.875) direction (-1, 0)
+        coedge +e110 p132 line origin (304.8, 0) direction (0, -1)
+        coedge +e52 p151 line origin (0, 0) direction (1, 0)
+      loop 1
+        coedge +e325 p125 circle origin (260.985, 0) x (1, 0) y (0, 1) radius 3.5687
+        coedge +e106 p124 circle origin (260.985, 0) x (1, 0) y (0, 1) radius 3.5687
+      loop 2
+        coedge +e324 p127 circle origin (188.595, 0) x (1, 0) y (0, 1) radius 3.5687
+        coedge +e107 p126 circle origin (188.595, 0) x (1, 0) y (0, 1) radius 3.5687
+      loop 3
+        coedge +e323 p129 circle origin (116.205, 0) x (1, 0) y (0, 1) radius 3.5687
+        coedge +e108 p128 circle origin (116.205, 0) x (1, 0) y (0, 1) radius 3.5687
+      loop 4
+        coedge +e322 p131 circle origin (43.815, 0) x (1, 0) y (0, 1) radius 3.5687
+        coedge +e109 p130 circle origin (43.815, 0) x (1, 0) y (0, 1) radius 3.5687
+    face -f12 S12 tol 0.0000001
+      surface plane origin (152.4, 31.75, -209.55) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e125 p152 circle origin (-101.6, -266.7) x (1, 0) y (0, 1) radius 14.605
+      loop 1
+        coedge +e126 p153 circle origin (-50.8, -228.6) x (1, 0) y (0, 1) radius 19.05
+      loop 2
+        coedge +e127 p154 circle origin (-50.8, -76.2) x (1, 0) y (0, 1) radius 19.05
+      loop 3
+        coedge +e128 p155 circle origin (-101.6, -38.1) x (1, 0) y (0, 1) radius 14.605000000007
+      loop 4
+        coedge +e129 p156 circle origin (-25.4, -285.75) x (1, 0) y (0, 1) radius 7.9375
+      loop 5
+        coedge +e130 p157 circle origin (-152.4, -285.75) x (1, 0) y (0, 1) radius 7.9375
+      loop 6
+        coedge +e131 p158 circle origin (-25.4, -19.05) x (1, 0) y (0, 1) radius 7.9375
+      loop 7
+        coedge +e132 p159 circle origin (-152.4, -19.05) x (1, 0) y (0, 1) radius 7.9375
+      loop 8
+        coedge +e140 p167 line origin (-3.175, -304.8) direction (0, -1)
+        coedge -e139 p166 line origin (0, 0) direction (-1, 0)
+        coedge +e138 p165 line origin (-174.625, 0) direction (0, 1)
+        coedge +e137 p164 line origin (-177.8, -136.525) direction (-1, 0)
+        coedge +e136 p163 line origin (-73.025, 0) direction (0, 1)
+        coedge +e135 p162 line origin (0, -168.275) direction (1, 0)
+        coedge +e134 p161 line origin (-174.625, -165.1) direction (0, 1)
+        coedge +e133 p160 line origin (0, -304.8) direction (-1, 0)
+    face -f13 S13 tol 0.0000001
+      surface plane origin (152.4, 97.79, -31.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e143 p171 line origin (-38.1, -256.105268146421) direction (1, 0)
+        coedge -e142 p170 line origin (-31.75, 0) direction (0, -1)
+        coedge +e141 p169 line origin (0, -292.1) direction (-1, 0)
+        coedge +e84 p168 line origin (0, 0) direction (0, -1)
+    face -f14 S14 tol 0.0000001
+      surface plane origin (152.4, 97.79, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1)
+      loop 0
+        coedge +e149 p181 circle origin (12.7, -12.7) x (1, 0) y (0, -1) radius 12.7
+        coedge -e148 p180 line origin (0, 0) direction (0, -1)
+        coedge -e105 p179 line origin (0, -97.79) direction (1, 0)
+        coedge +e147 p178 line origin (304.8, 0) direction (0, -1)
+        coedge +e146 p177 circle origin (292.1, -12.7) x (1, 0) y (0, -1) radius 12.7
+        coedge +e142 p176 line origin (0, 0) direction (1, 0)
+        coedge +e159 p193 line origin (210.363280643195, -98.094008758531) direction (0.422618261741, 0.906307787037)
+        coedge +e158 p192 line origin (241.3, 0) direction (0, 1)
+        coedge +e157 p191 line origin (0, -45.72) direction (1, 0)
+        coedge +e156 p190 line origin (228.6, 0) direction (0, -1)
+        coedge +e155 p189 line origin (175.609668252658, 81.888133152273) direction (0.422618261741, -0.906307787037)
+        coedge +e92 p188 line origin (0, 0) direction (1, 0)
+        coedge +e154 p187 line origin (74.751163463571, -34.857039979059) direction (0.422618261741, 0.906307787037)
+        coedge +e153 p186 line origin (76.2, 0) direction (0, 1)
+        coedge +e152 p185 line origin (0, -45.72) direction (1, 0)
+        coedge +e151 p184 line origin (63.5, 0) direction (0, -1)
+        coedge +e150 p183 line origin (39.997551073034, 18.651164372801) direction (0.422618261741, -0.906307787037)
+        coedge +e76 p182 line origin (0, 0) direction (1, 0)
+      loop 1
+        coedge +e321 p173 circle origin (279.4, -19.05) x (1, 0) y (0, 1) radius 7.14375
+        coedge +e144 p172 circle origin (279.4, -19.05) x (1, 0) y (0, 1) radius 7.14375
+      loop 2
+        coedge +e320 p175 circle origin (25.4, -19.05) x (1, 0) y (0, 1) radius 7.14375
+        coedge +e145 p174 circle origin (25.4, -19.05) x (1, 0) y (0, 1) radius 7.14375
+    face +f15 S15 tol 0.0000001
+      surface plane origin (152.4, 0, 0) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge +e15 p200 line origin (234.95, 0) direction (0, 1)
+        coedge +e98 p201 line origin (234.95, 50.8) direction (-1, 0)
+        coedge +e112 p202 line origin (209.55, 50.8) direction (0, -1)
+        coedge +e162 p203 circle origin (206.375, 34.925) x (1, 0) y (0, -1) radius 3.175
+        coedge +e139 p194 line origin (209.55, 31.75) direction (-1, 0)
+        coedge +e160 p195 circle origin (34.925, 34.925) x (1, 0) y (0, -1) radius 3.175
+        coedge +e75 p196 line origin (31.75, 31.75) direction (0, 1)
+        coedge +e161 p197 line origin (0, 85.09) direction (-1, 0)
+        coedge +e148 p198 line origin (0, 97.79) direction (0, -1)
+        coedge +e104 p199 line origin (0, 0) direction (1, 0)
+    face -f16 S16 tol 0.0000001
+      surface plane origin (-152.4, 0, 0) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e54 p211 line origin (234.95, 50.8) direction (-1, 0)
+        coedge -e110 p210 line origin (209.55, 50.8) direction (0, -1)
+        coedge +e165 p209 circle origin (206.375, 34.925) x (1, 0) y (0, 1) radius 3.175
+        coedge -e133 p208 line origin (209.55, 31.75) direction (-1, 0)
+        coedge +e164 p207 circle origin (34.925, 34.925) x (1, 0) y (0, 1) radius 3.175
+        coedge -e82 p206 line origin (31.75, 31.75) direction (0, 1)
+        coedge +e163 p205 line origin (0, 85.09) direction (1, 0)
+        coedge -e147 p204 line origin (0, 97.79) direction (0, -1)
+        coedge -e103 p213 line origin (0, 0) direction (1, 0)
+        coedge -e17 p212 line origin (234.95, 0) direction (0, 1)
+    face +f17 S17 tol 0.0000001
+      surface plane origin (12.7, 97.79, -31.75) x (0, 0.4472135955, 0.894427191) y (1, 0, 0) z (0, 0.894427191, -0.4472135955)
+      loop 0
+        coedge -e94 p216 line origin (0, 0) direction (0, -1)
+        coedge +e168 p217 ellipse origin (-3.549757914281, 3.175) x (-1, 0) y (0, 1) major 3.549757914281 minor 3.175
+        coedge +e169 p218 line origin (0, 0) direction (-1, 0)
+        coedge +e170 p219 line origin (-113.592253256989, 0) direction (0, -1)
+        coedge -e166 p214 line origin (0, -25.4) direction (-1, 0)
+        coedge +e167 p215 ellipse origin (-3.549757914281, -28.575) x (-1, 0) y (0, 1) major 3.549757914281 minor 3.175
+    face +f18 S18 tol 0.0000001
+      surface plane origin (12.7, 46.99, -133.35) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1)
+      loop 0
+        coedge -e170 p223 line origin (0, 0) direction (0, -1)
+        coedge +e171 p220 line origin (0, 0) direction (-1, 0)
+        coedge +e172 p221 line origin (-12.065, 0) direction (0, -1)
+        coedge -e173 p222 line origin (0, -25.4) direction (-1, 0)
+    face -f19 S19 tol 0.0000001
+      surface plane origin (12.7, 0, 0) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge -e171 p226 line origin (-133.35, 46.99) direction (0, -1)
+        coedge +e175 p225 line origin (-133.35, 34.925) direction (-1, 0)
+        coedge +e174 p224 line origin (-34.925, 31.75) direction (0, -1)
+        coedge -e169 p227 line origin (-31.75, 97.79) direction (-0.894427191, -0.4472135955)
+    face +f20 S20 tol 0.0000001
+      surface plane origin (-12.7, 0, 0) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge +e166 p230 line origin (-31.75, 97.79) direction (-0.894427191, -0.4472135955)
+        coedge +e173 p231 line origin (-133.35, 46.99) direction (0, -1)
+        coedge +e176 p228 line origin (0, 34.925) direction (1, 0)
+        coedge +e177 p229 line origin (-34.925, 0) direction (0, 1)
+    face +f21 S21 tol 0.0000001
+      surface cylinder origin (108.585, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 22.225
+      loop 0
+        coedge +e12 p238 line origin (3.14159265359, 25.4) direction (1, 0)
+        coedge -e327 p239 line origin (9.424777960769, 38.1) direction (0, -1)
+        coedge +e178 p232 line origin (9.424777960769, 38.1) direction (-1, 0)
+        coedge +e327 p233 line origin (3.14159265359, 38.1) direction (0, -1)
+        coedge +e311 p234 line origin (-3.14159265359, 25.4) direction (1, 0)
+        coedge +e179 p235 line origin (6.408513138348, 0) direction (0, -1)
+        coedge +e114 p236 line origin (3.14159265359, 0) direction (1, 0)
+        coedge +e180 p237 line origin (9.299450129601, 0) direction (0, 1)
+    face -f22 S22 tol 0.0000001
+      surface plane origin (108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e178 p241 circle origin (0, 0) x (1, 0) y (0, 1) radius 22.225
+      loop 1
+        coedge +e181 p240 circle origin (0, 0) x (1, 0) y (0, 1) radius 5.08
+    face -f23 S23 tol 0.0000001
+      surface plane origin (-88.9, 66.04, 6.35) x (0.422618261741, -0.906307787037, 0) y (0, 0, 1) z (-0.906307787037, -0.422618261741, 0)
+      loop 0
+        coedge -e182 p242 line origin (0, 0) direction (0, 1)
+        coedge -e159 p245 line origin (73.202514319617, -6.35) direction (-1, 0)
+        coedge -e143 p244 line origin (-35.032248927059, 0) direction (0, -1)
+        coedge +e85 p243 line origin (0, -38.1) direction (-1, 0)
+    face -f24 S24 tol 0.0000001
+      surface plane origin (-61.394731853579, 97.79, 6.35) x (0.422618261741, 0.906307787037, 0) y (0, 0, 1) z (0.906307787037, -0.422618261741, 0)
+      loop 0
+        coedge +e95 p246 line origin (0, 0) direction (0, -1)
+        coedge -e155 p249 line origin (90.353557945278, -6.35) direction (-1, 0)
+        coedge +e183 p248 line origin (-35.032248927059, 0) direction (0, 1)
+        coedge +e89 p247 line origin (0, -38.1) direction (-1, 0)
+    face -f25 S25 tol 0.0000001
+      surface plane origin (-76.2, 66.04, 6.35) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e183 p250 line origin (0, 0) direction (-1, 0)
+        coedge -e156 p253 line origin (6.35, 31.75) direction (0, -1)
+        coedge +e184 p252 line origin (0, -13.97) direction (-1, 0)
+        coedge +e88 p251 line origin (38.1, 0) direction (0, -1)
+    face -f26 S26 tol 0.0000001
+      surface plane origin (-76.2, 52.07, 6.35) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e184 p254 line origin (0, 0) direction (-1, 0)
+        coedge -e157 p257 line origin (6.35, 228.6) direction (0, -1)
+        coedge +e185 p256 line origin (0, -12.7) direction (-1, 0)
+        coedge +e87 p255 line origin (38.1, 0) direction (0, -1)
+    face -f27 S27 tol 0.0000001
+      surface plane origin (-88.9, 52.07, 6.35) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge -e185 p258 line origin (0, 0) direction (1, 0)
+        coedge -e158 p261 line origin (-6.35, 45.72) direction (0, 1)
+        coedge +e182 p260 line origin (0, 13.97) direction (1, 0)
+        coedge +e86 p259 line origin (-38.1, 0) direction (0, 1)
+    face -f28 S28 tol 0.0000001
+      surface plane origin (76.2, 66.04, 6.35) x (0.422618261741, -0.906307787037, 0) y (0, 0, 1) z (-0.906307787037, -0.422618261741, 0)
+      loop 0
+        coedge -e186 p262 line origin (0, 0) direction (0, 1)
+        coedge -e154 p265 line origin (3.428239306228, -6.35) direction (-1, 0)
+        coedge -e93 p264 line origin (-35.032248927059, 0) direction (0, -1)
+        coedge +e68 p263 line origin (0, -38.1) direction (-1, 0)
+    face -f29 S29 tol 0.0000001
+      surface plane origin (103.705268146421, 97.79, 6.35) x (0.422618261741, 0.906307787037, 0) y (0, 0, 1) z (0.906307787037, -0.422618261741, 0)
+      loop 0
+        coedge +e78 p266 line origin (0, 0) direction (0, -1)
+        coedge -e150 p269 line origin (20.579282931889, -6.35) direction (-1, 0)
+        coedge +e187 p268 line origin (-35.032248927059, 0) direction (0, 1)
+        coedge +e72 p267 line origin (0, -38.1) direction (-1, 0)
+    face -f30 S30 tol 0.0000001
+      surface plane origin (88.9, 66.04, 6.35) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e187 p270 line origin (0, 0) direction (-1, 0)
+        coedge -e151 p273 line origin (6.35, 31.75) direction (0, -1)
+        coedge +e188 p272 line origin (0, -13.97) direction (-1, 0)
+        coedge +e71 p271 line origin (38.1, 0) direction (0, -1)
+    face -f31 S31 tol 0.0000001
+      surface plane origin (88.9, 52.07, 6.35) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e188 p274 line origin (0, 0) direction (-1, 0)
+        coedge -e152 p277 line origin (6.35, 63.5) direction (0, -1)
+        coedge +e189 p276 line origin (0, -12.7) direction (-1, 0)
+        coedge +e70 p275 line origin (38.1, 0) direction (0, -1)
+    face -f32 S32 tol 0.0000001
+      surface plane origin (76.2, 52.07, 6.35) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge -e189 p278 line origin (0, 0) direction (1, 0)
+        coedge -e153 p281 line origin (-6.35, 45.72) direction (0, 1)
+        coedge +e186 p280 line origin (0, 13.97) direction (1, 0)
+        coedge +e69 p279 line origin (-38.1, 0) direction (0, 1)
+    face +f33 S33 tol 0.0000001
+      surface cylinder origin (36.195, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 22.225
+      loop 0
+        coedge +e8 p288 line origin (3.14159265359, 25.4) direction (1, 0)
+        coedge -e328 p289 line origin (9.424777960769, 38.1) direction (0, -1)
+        coedge +e190 p282 line origin (9.424777960769, 38.1) direction (-1, 0)
+        coedge +e328 p283 line origin (3.14159265359, 38.1) direction (0, -1)
+        coedge +e312 p284 line origin (-3.14159265359, 25.4) direction (1, 0)
+        coedge +e191 p285 line origin (6.408513138348, 0) direction (0, -1)
+        coedge -e117 p286 line origin (9.424777960769, 0) direction (-1, 0)
+        coedge +e192 p287 line origin (9.299450129601, 0) direction (0, 1)
+    face -f34 S34 tol 0.0000001
+      surface plane origin (36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e190 p291 circle origin (0, 0) x (1, 0) y (0, 1) radius 22.225
+      loop 1
+        coedge +e193 p290 circle origin (0, 0) x (1, 0) y (0, 1) radius 5.08
+    face +f35 S35 tol 0.0000001
+      surface cylinder origin (-36.195, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 22.225
+      loop 0
+        coedge +e4 p298 line origin (3.14159265359, 25.4) direction (1, 0)
+        coedge -e329 p299 line origin (9.424777960769, 38.1) direction (0, -1)
+        coedge +e194 p292 line origin (9.424777960769, 38.1) direction (-1, 0)
+        coedge +e329 p293 line origin (3.14159265359, 38.1) direction (0, -1)
+        coedge +e313 p294 line origin (-3.14159265359, 25.4) direction (1, 0)
+        coedge +e195 p295 line origin (6.408513138348, 0) direction (0, -1)
+        coedge -e120 p296 line origin (9.424777960769, 0) direction (-1, 0)
+        coedge +e196 p297 line origin (9.299450129601, 0) direction (0, 1)
+    face -f36 S36 tol 0.0000001
+      surface plane origin (-36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e194 p301 circle origin (0, 0) x (1, 0) y (0, 1) radius 22.225
+      loop 1
+        coedge +e197 p300 circle origin (0, 0) x (1, 0) y (0, 1) radius 5.08
+    face +f37 S37 tol 0.0000001
+      surface cylinder origin (-108.585, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 22.225
+      loop 0
+        coedge +e0 p308 line origin (3.14159265359, 25.4) direction (1, 0)
+        coedge -e330 p309 line origin (9.424777960769, 38.1) direction (0, -1)
+        coedge +e198 p302 line origin (9.424777960769, 38.1) direction (-1, 0)
+        coedge +e330 p303 line origin (3.14159265359, 38.1) direction (0, -1)
+        coedge +e314 p304 line origin (-3.14159265359, 25.4) direction (1, 0)
+        coedge +e199 p305 line origin (6.408513138348, 0) direction (0, -1)
+        coedge -e123 p306 line origin (9.424777960769, 0) direction (-1, 0)
+        coedge +e200 p307 line origin (9.299450129601, 0) direction (0, 1)
+    face -f38 S38 tol 0.0000001
+      surface plane origin (-108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e198 p311 circle origin (0, 0) x (1, 0) y (0, 1) radius 22.225
+      loop 1
+        coedge +e201 p310 circle origin (0, 0) x (1, 0) y (0, 1) radius 5.08
+    face -f39 S39 tol 0.0000001
+      surface plane origin (76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e202 p312 circle origin (0, 0) x (1, 0) y (0, 1) radius 3.175
+      loop 1
+        coedge +e203 p313 circle origin (0, 0) x (1, 0) y (0, -1) radius 9.525
+    face +f40 S40 tol 0.0000001
+      surface cone origin (76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 9.525 half_angle 0.165148677226
+      loop 0
+        coedge -e203 p316 line origin (6.28318530718, 0) direction (-1, 0)
+        coedge -e331 p317 nurbs degree 5 knots [0 0 0 0 0 0 9.656385516848 19.312771033697 28.969156550545 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394] points [(6.28318530718, 38.625542067394) (6.28318530718, 36.694264964024) (6.28318530718, 32.831710757285) (6.28318530718, 27.037879447175) (6.28318530718, 19.312771033698) (6.28318530718, 11.587662620217) (6.28318530718, 5.793831310109) (6.28318530718, 1.93127710337) (6.28318530718, 0)] weights [1 1 1 1 1 1 1 1 1]
+        coedge -e204 p314 line origin (0, 38.625542066179) direction (1, 0)
+        coedge +e331 p315 nurbs degree 5 knots [0 0 0 0 0 0 9.656385516848 19.312771033697 28.969156550545 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394] points [(0, 38.625542067394) (0, 36.694264964024) (0, 32.831710757285) (0, 27.037879447175) (0, 19.312771033698) (0, 11.587662620217) (0, 5.793831310109) (0, 1.93127710337) (0, 0)] weights [1 1 1 1 1 1 1 1 1]
+    face +f41 S41 tol 0.0000001
+      surface cylinder origin (76.2, 88.104514753683, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 15.875
+      loop 0
+        coedge +e204 p320 line origin (0, 41.114514753683) direction (1, 0)
+        coedge -e332 p321 line origin (6.28318530718, 53.179514753683) direction (0, -1)
+        coedge +e205 p318 line origin (6.28318530718, 53.179514753683) direction (-1, 0)
+        coedge +e332 p319 line origin (0, 53.179514753683) direction (0, -1)
+    face +f42 S42 tol 0.0000001
+      surface sphere origin (114.3, 63.5, -107.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 15.875
+      loop 0
+        coedge +e206 p322 line origin (3.14159265359, 0.697163133642) direction (-1, 0)
+        coedge +e333 p323 line origin (-3.14159265359, 0.697163133642) direction (0, -1)
+        coedge +e334 p324 line origin (-3.14159265359, -1.570796326795) direction (1, 0)
+        coedge -e333 p325 line origin (3.14159265359, 0.697163133642) direction (0, -1)
+    face +f43 S43 tol 0.0000001
+      surface cylinder origin (114.3, 85.598, -107.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 11.430000000007
+      loop 0
+        coedge +e207 p326 line origin (-3.14159265359, 34.328963780496) direction (1, 0)
+        coedge +e335 p327 line origin (3.14159265359, 34.328963780496) direction (0, 1)
+        coedge +e315 p328 line origin (6.28318530718, 50.673) direction (-1, 0)
+        coedge +e208 p329 line origin (0, 50.673) direction (-1, 0)
+        coedge -e335 p330 line origin (-3.14159265359, 34.328963780496) direction (0, 1)
+    face -f44 S44 tol 0.0000001
+      surface plane origin (-76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge +e209 p331 circle origin (0, 0) x (1, 0) y (0, 1) radius 3.175
+      loop 1
+        coedge +e210 p332 circle origin (0, 0) x (1, 0) y (0, -1) radius 9.525
+    face +f45 S45 tol 0.0000001
+      surface cone origin (-76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 9.525 half_angle 0.165148677226
+      loop 0
+        coedge -e210 p335 line origin (6.28318530718, 0) direction (-1, 0)
+        coedge -e336 p336 nurbs degree 5 knots [0 0 0 0 0 0 9.656385516848 19.312771033697 28.969156550545 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394] points [(6.28318530718, 38.625542067394) (6.28318530718, 36.694264964024) (6.28318530718, 32.831710757285) (6.28318530718, 27.037879447175) (6.28318530718, 19.312771033698) (6.28318530718, 11.587662620217) (6.28318530718, 5.793831310109) (6.28318530718, 1.93127710337) (6.28318530718, 0)] weights [1 1 1 1 1 1 1 1 1]
+        coedge -e211 p333 line origin (0, 38.625542066179) direction (1, 0)
+        coedge +e336 p334 nurbs degree 5 knots [0 0 0 0 0 0 9.656385516848 19.312771033697 28.969156550545 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394 38.625542067394] points [(0, 38.625542067394) (0, 36.694264964024) (0, 32.831710757285) (0, 27.037879447175) (0, 19.312771033698) (0, 11.587662620217) (0, 5.793831310109) (0, 1.93127710337) (0, 0)] weights [1 1 1 1 1 1 1 1 1]
+    face +f46 S46 tol 0.0000001
+      surface cylinder origin (-76.2, 88.104514753683, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 15.875
+      loop 0
+        coedge +e211 p339 line origin (0, 41.114514753683) direction (1, 0)
+        coedge -e337 p340 line origin (6.28318530718, 53.179514753683) direction (0, -1)
+        coedge +e212 p337 line origin (6.28318530718, 53.179514753683) direction (-1, 0)
+        coedge +e337 p338 line origin (0, 53.179514753683) direction (0, -1)
+    face -f47 S47 tol 0.0000001
+      surface cylinder origin (133.35, -116.394613400083, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 5.2705
+      loop 0
+        coedge +e338 p342 line origin (0, -135.444613400083) direction (0, 1)
+        coedge +e213 p341 line origin (6.28318530718, -135.444613400083) direction (-1, 0)
+        coedge -e338 p345 line origin (6.28318530718, -135.444613400083) direction (0, 1)
+        coedge -e316 p344 line origin (9.424777960769, -116.394613400083) direction (-1, 0)
+        coedge -e102 p343 line origin (3.14159265359, -116.394613400083) direction (-1, 0)
+    face -f48 S48 tol 0.0000001
+      surface plane origin (133.35, 19.05, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e213 p346 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.2705
+      loop 1
+        coedge +e214 p347 circle origin (0, 0) x (1, 0) y (0, -1) radius 7.9375
+    face -f49 S49 tol 0.0000001
+      surface cylinder origin (133.35, 31.75, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+      loop 0
+        coedge +e339 p349 line origin (6.28318530718, 12.7) direction (0, -1)
+        coedge -e214 p348 line origin (6.28318530718, 12.7) direction (-1, 0)
+        coedge -e339 p351 line origin (0, 12.7) direction (0, -1)
+        coedge -e132 p350 line origin (0, 0) direction (1, 0)
+    face -f50 S50 tol 0.0000001
+      surface cylinder origin (133.35, -118.81636813544, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 5.2705
+      loop 0
+        coedge +e340 p353 line origin (0, -137.86636813544) direction (0, 1)
+        coedge +e215 p352 line origin (6.28318530718, -137.86636813544) direction (-1, 0)
+        coedge -e340 p356 line origin (6.28318530718, -137.86636813544) direction (0, 1)
+        coedge -e317 p355 line origin (9.424777960769, -118.81636813544) direction (-1, 0)
+        coedge -e101 p354 line origin (3.14159265359, -118.81636813544) direction (-1, 0)
+    face -f51 S51 tol 0.0000001
+      surface plane origin (133.35, 19.05, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e215 p357 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.2705
+      loop 1
+        coedge +e216 p358 circle origin (0, 0) x (1, 0) y (0, -1) radius 7.9375
+    face -f52 S52 tol 0.0000001
+      surface cylinder origin (133.35, 31.75, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+      loop 0
+        coedge +e341 p360 line origin (6.28318530718, 12.7) direction (0, -1)
+        coedge -e216 p359 line origin (6.28318530718, 12.7) direction (-1, 0)
+        coedge -e341 p362 line origin (0, 12.7) direction (0, -1)
+        coedge -e131 p361 line origin (0, 0) direction (1, 0)
+    face -f53 S53 tol 0.0000001
+      surface cylinder origin (-133.35, -116.394613400083, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 5.2705
+      loop 0
+        coedge +e342 p364 line origin (0, -135.444613400083) direction (0, 1)
+        coedge +e217 p363 line origin (6.28318530718, -135.444613400083) direction (-1, 0)
+        coedge -e342 p367 line origin (6.28318530718, -135.444613400083) direction (0, 1)
+        coedge -e318 p366 line origin (9.424777960769, -116.394613400083) direction (-1, 0)
+        coedge -e100 p365 line origin (3.14159265359, -116.394613400083) direction (-1, 0)
+    face -f54 S54 tol 0.0000001
+      surface plane origin (-133.35, 19.05, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e217 p368 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.2705
+      loop 1
+        coedge +e218 p369 circle origin (0, 0) x (1, 0) y (0, -1) radius 7.9375
+    face -f55 S55 tol 0.0000001
+      surface cylinder origin (-133.35, 31.75, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+      loop 0
+        coedge +e343 p371 line origin (6.28318530718, 12.7) direction (0, -1)
+        coedge -e218 p370 line origin (6.28318530718, 12.7) direction (-1, 0)
+        coedge -e343 p373 line origin (0, 12.7) direction (0, -1)
+        coedge -e130 p372 line origin (0, 0) direction (1, 0)
+    face -f145 S56 tol 0.0000001
+      surface cylinder origin (-133.35, -118.81636813544, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 5.2705
+      loop 0
+        coedge -e381 p748 line origin (3.14159265359, -120.81636813544) direction (-1, 0)
+        coedge +e383 p375 line origin (0, -137.86636813544) direction (0, 1)
+        coedge +e219 p374 line origin (6.28318530718, -137.86636813544) direction (-1, 0)
+        coedge -e383 p378 line origin (6.28318530718, -137.86636813544) direction (0, 1)
+        coedge -e379 p746 line origin (9.424777960769, -120.81636813544) direction (-1, 0)
+    face -f57 S57 tol 0.0000001
+      surface plane origin (-133.35, 19.05, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e219 p379 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.2705
+      loop 1
+        coedge +e220 p380 circle origin (0, 0) x (1, 0) y (0, -1) radius 7.9375
+    face -f58 S58 tol 0.0000001
+      surface cylinder origin (-133.35, 31.75, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+      loop 0
+        coedge +e345 p382 line origin (6.28318530718, 12.7) direction (0, -1)
+        coedge -e220 p381 line origin (6.28318530718, 12.7) direction (-1, 0)
+        coedge -e345 p384 line origin (0, 12.7) direction (0, -1)
+        coedge -e129 p383 line origin (0, 0) direction (1, 0)
+    face -f59 S59 tol 0.0000001
+      surface cylinder origin (127, 78.74, 56.532209439309) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1) radius 7.14375
+      loop 0
+        coedge +e346 p386 line origin (0, -73.994709439309) direction (0, 1)
+        coedge +e221 p385 line origin (6.28318530718, -73.994709439309) direction (-1, 0)
+        coedge -e346 p389 line origin (6.28318530718, -73.994709439309) direction (0, 1)
+        coedge -e320 p388 line origin (10.995574287564, -56.532209439309) direction (-1, 0)
+        coedge -e145 p387 line origin (4.712388980385, -56.532209439309) direction (-1, 0)
+    face -f60 S60 tol 0.0000001
+      surface plane origin (127, 78.74, -17.4625) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1)
+      loop 0
+        coedge -e221 p390 circle origin (0, 0) x (1, 0) y (0, -1) radius 7.14375
+      loop 1
+        coedge +e222 p391 circle origin (0, 0) x (1, 0) y (0, -1) radius 10.31875
+    face -f61 S61 tol 0.0000001
+      surface cylinder origin (127, 78.74, -31.75) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1) radius 10.31875
+      loop 0
+        coedge +e347 p393 line origin (6.28318530718, 14.2875) direction (0, -1)
+        coedge -e222 p392 line origin (6.28318530718, 14.2875) direction (-1, 0)
+        coedge -e347 p395 line origin (0, 14.2875) direction (0, -1)
+        coedge -e64 p394 line origin (0, 0) direction (1, 0)
+    face -f62 S62 tol 0.0000001
+      surface cylinder origin (-127, 78.74, 56.532209439309) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1) radius 7.14375
+      loop 0
+        coedge +e348 p397 line origin (0, -73.994709439309) direction (0, 1)
+        coedge +e223 p396 line origin (6.28318530718, -73.994709439309) direction (-1, 0)
+        coedge -e348 p400 line origin (6.28318530718, -73.994709439309) direction (0, 1)
+        coedge -e321 p399 line origin (10.995574287564, -56.532209439309) direction (-1, 0)
+        coedge -e144 p398 line origin (4.712388980385, -56.532209439309) direction (-1, 0)
+    face -f63 S63 tol 0.0000001
+      surface plane origin (-127, 78.74, -17.4625) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1)
+      loop 0
+        coedge -e223 p401 circle origin (0, 0) x (1, 0) y (0, -1) radius 7.14375
+      loop 1
+        coedge +e224 p402 circle origin (0, 0) x (1, 0) y (0, -1) radius 10.31875
+    face -f64 S64 tol 0.0000001
+      surface cylinder origin (-127, 78.74, -31.75) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1) radius 10.31875
+      loop 0
+        coedge +e349 p404 line origin (6.28318530718, 14.2875) direction (0, -1)
+        coedge -e224 p403 line origin (6.28318530718, 14.2875) direction (-1, 0)
+        coedge -e349 p406 line origin (0, 14.2875) direction (0, -1)
+        coedge -e79 p405 line origin (0, 0) direction (1, 0)
+    face -f65 S65 tol 0.0000001
+      surface cylinder origin (108.585, 50.8, 70.479180921073) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.5687
+      loop 0
+        coedge +e350 p408 line origin (0, -310.191680921073) direction (0, 1)
+        coedge +e225 p407 line origin (6.28318530718, -310.191680921073) direction (-1, 0)
+        coedge -e350 p411 line origin (6.28318530718, -310.191680921073) direction (0, 1)
+        coedge -e322 p410 line origin (9.424777960769, -280.029180921073) direction (-1, 0)
+        coedge -e109 p409 line origin (3.14159265359, -280.029180921073) direction (-1, 0)
+    face -f66 S66 tol 0.0000001
+      surface plane origin (108.585, 50.8, -239.7125) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e225 p412 circle origin (0, 0) x (1, 0) y (0, -1) radius 3.5687
+      loop 1
+        coedge +e226 p413 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.08
+    face -f67 S67 tol 0.0000001
+      surface cylinder origin (108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+      loop 0
+        coedge +e351 p415 line origin (6.28318530718, 7.9375) direction (0, -1)
+        coedge -e226 p414 line origin (6.28318530718, 7.9375) direction (-1, 0)
+        coedge -e351 p417 line origin (0, 7.9375) direction (0, -1)
+        coedge -e181 p416 line origin (0, 0) direction (1, 0)
+    face -f68 S68 tol 0.0000001
+      surface cylinder origin (36.195, 50.8, 95.799086922193) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.5687
+      loop 0
+        coedge +e352 p419 line origin (0, -335.511586922193) direction (0, 1)
+        coedge +e227 p418 line origin (6.28318530718, -335.511586922193) direction (-1, 0)
+        coedge -e352 p422 line origin (6.28318530718, -335.511586922193) direction (0, 1)
+        coedge -e323 p421 line origin (9.424777960769, -305.349086922193) direction (-1, 0)
+        coedge -e108 p420 line origin (3.14159265359, -305.349086922193) direction (-1, 0)
+    face -f69 S69 tol 0.0000001
+      surface plane origin (36.195, 50.8, -239.7125) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e227 p423 circle origin (0, 0) x (1, 0) y (0, -1) radius 3.5687
+      loop 1
+        coedge +e228 p424 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.08
+    face -f70 S70 tol 0.0000001
+      surface cylinder origin (36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+      loop 0
+        coedge +e353 p426 line origin (6.28318530718, 7.9375) direction (0, -1)
+        coedge -e228 p425 line origin (6.28318530718, 7.9375) direction (-1, 0)
+        coedge -e353 p428 line origin (0, 7.9375) direction (0, -1)
+        coedge -e193 p427 line origin (0, 0) direction (1, 0)
+    face -f71 S71 tol 0.0000001
+      surface cylinder origin (-36.195, 50.8, 95.799086922193) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.5687
+      loop 0
+        coedge +e354 p430 line origin (0, -335.511586922193) direction (0, 1)
+        coedge +e229 p429 line origin (6.28318530718, -335.511586922193) direction (-1, 0)
+        coedge -e354 p433 line origin (6.28318530718, -335.511586922193) direction (0, 1)
+        coedge -e324 p432 line origin (9.424777960769, -305.349086922193) direction (-1, 0)
+        coedge -e107 p431 line origin (3.14159265359, -305.349086922193) direction (-1, 0)
+    face -f72 S72 tol 0.0000001
+      surface plane origin (-36.195, 50.8, -239.7125) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e229 p434 circle origin (0, 0) x (1, 0) y (0, -1) radius 3.5687
+      loop 1
+        coedge +e230 p435 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.08
+    face -f73 S73 tol 0.0000001
+      surface cylinder origin (-36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+      loop 0
+        coedge +e355 p437 line origin (6.28318530718, 7.9375) direction (0, -1)
+        coedge -e230 p436 line origin (6.28318530718, 7.9375) direction (-1, 0)
+        coedge -e355 p439 line origin (0, 7.9375) direction (0, -1)
+        coedge -e197 p438 line origin (0, 0) direction (1, 0)
+    face -f74 S74 tol 0.0000001
+      surface cylinder origin (-108.585, 50.8, 70.479180921073) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.5687
+      loop 0
+        coedge +e356 p441 line origin (0, -310.191680921073) direction (0, 1)
+        coedge +e231 p440 line origin (6.28318530718, -310.191680921073) direction (-1, 0)
+        coedge -e356 p444 line origin (6.28318530718, -310.191680921073) direction (0, 1)
+        coedge -e325 p443 line origin (9.424777960769, -280.029180921073) direction (-1, 0)
+        coedge -e106 p442 line origin (3.14159265359, -280.029180921073) direction (-1, 0)
+    face -f75 S75 tol 0.0000001
+      surface plane origin (-108.585, 50.8, -239.7125) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e231 p445 circle origin (0, 0) x (1, 0) y (0, -1) radius 3.5687
+      loop 1
+        coedge +e232 p446 circle origin (0, 0) x (1, 0) y (0, -1) radius 5.08
+    face -f76 S76 tol 0.0000001
+      surface cylinder origin (-108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+      loop 0
+        coedge +e357 p448 line origin (6.28318530718, 7.9375) direction (0, -1)
+        coedge -e232 p447 line origin (6.28318530718, 7.9375) direction (-1, 0)
+        coedge -e357 p450 line origin (0, 7.9375) direction (0, -1)
+        coedge -e201 p449 line origin (0, 0) direction (1, 0)
+    face -f77 S77 tol 0.0000001
+      surface torus origin (-76.2, 34.925, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) major 19.05 minor 3.175
+      loop 0
+        coedge +e358 p452 line origin (6.28318530718, 3.14159265359) direction (0, -1)
+        coedge -e212 p451 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+        coedge -e358 p454 line origin (0, 3.14159265359) direction (0, -1)
+        coedge -e126 p453 line origin (0, 1.570796326795) direction (1, 0)
+    face -f78 S78 tol 0.0000001
+      surface torus origin (76.2, 34.925, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) major 19.05 minor 3.175
+      loop 0
+        coedge +e359 p456 line origin (6.28318530718, 3.14159265359) direction (0, -1)
+        coedge -e205 p455 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+        coedge -e359 p458 line origin (0, 3.14159265359) direction (0, -1)
+        coedge -e127 p457 line origin (0, 1.570796326795) direction (1, 0)
+    face -f79 S79 tol 0.0000001
+      surface torus origin (114.3, 34.925, -107.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) major 14.605000000007 minor 3.175
+      loop 0
+        coedge +e360 p461 line origin (6.28318530718, 3.14159265359) direction (0, -1)
+        coedge -e208 p460 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+        coedge -e315 p459 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+        coedge -e360 p463 line origin (0, 3.14159265359) direction (0, -1)
+        coedge -e128 p462 line origin (0, 1.570796326795) direction (1, 0)
+    face -f80 S80 tol 0.0000001
+      surface cylinder origin (-133.78578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e199 p467 line origin (3.266920484758, 0) direction (0, -1)
+        coedge -e124 p466 line origin (0, 0) direction (1, 0)
+        coedge -e53 p465 line origin (4.712388980385, 25.4) direction (0, 1)
+        coedge -e19 p464 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f81 S81 tol 0.0000001
+      surface cylinder origin (-83.38421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e55 p469 line origin (4.712388980385, 0) direction (0, -1)
+        coedge -e122 p468 line origin (0, 0) direction (1, 0)
+        coedge -e200 p471 line origin (6.157857476012, 0) direction (0, 1)
+        coedge -e1 p470 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f82 S82 tol 0.0000001
+      surface cylinder origin (-61.39578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e195 p475 line origin (3.266920484758, 0) direction (0, -1)
+        coedge -e121 p474 line origin (0, 0) direction (1, 0)
+        coedge -e57 p473 line origin (4.712388980385, 25.4) direction (0, 1)
+        coedge -e3 p472 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f83 S83 tol 0.0000001
+      surface cylinder origin (-10.99421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e58 p477 line origin (4.712388980385, 0) direction (0, -1)
+        coedge -e119 p476 line origin (0, 0) direction (1, 0)
+        coedge -e196 p479 line origin (6.157857476012, 0) direction (0, 1)
+        coedge -e5 p478 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f84 S84 tol 0.0000001
+      surface cylinder origin (10.99421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e191 p483 line origin (3.266920484758, 0) direction (0, -1)
+        coedge -e118 p482 line origin (0, 0) direction (1, 0)
+        coedge -e60 p481 line origin (4.712388980385, 25.4) direction (0, 1)
+        coedge -e7 p480 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f85 S85 tol 0.0000001
+      surface cylinder origin (61.39578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e61 p485 line origin (4.712388980385, 0) direction (0, -1)
+        coedge -e116 p484 line origin (0, 0) direction (1, 0)
+        coedge -e192 p487 line origin (6.157857476012, 0) direction (0, 1)
+        coedge -e9 p486 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f86 S86 tol 0.0000001
+      surface cylinder origin (83.38421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e179 p491 line origin (3.266920484758, 0) direction (0, -1)
+        coedge -e115 p490 line origin (0, 0) direction (1, 0)
+        coedge -e63 p489 line origin (4.712388980385, 25.4) direction (0, 1)
+        coedge -e11 p488 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f87 S87 tol 0.0000001
+      surface cylinder origin (133.78578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e96 p493 line origin (4.712388980385, 0) direction (0, -1)
+        coedge -e113 p492 line origin (0, 0) direction (1, 0)
+        coedge -e180 p495 line origin (6.157857476012, 0) direction (0, 1)
+        coedge -e13 p494 line origin (9.424777960769, 25.4) direction (-1, 0)
+    face -f88 S88 tol 0.0000001
+      surface cylinder origin (152.4, 34.925, -206.375) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 3.175
+      loop 0
+        coedge -e162 p496 line origin (6.28318530718, 0) direction (-1, 0)
+        coedge -e140 p499 line origin (4.712388980385, -304.8) direction (0, -1)
+        coedge -e165 p498 line origin (0, -304.8) direction (1, 0)
+        coedge -e111 p497 line origin (6.28318530718, 0) direction (0, 1)
+    face -f89 S89 tol 0.0000001
+      surface sphere origin (0, 97.79, -15.875) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 12.7
+      loop 0
+        coedge +e361 p501 line origin (3.14159265359, -1.570796326795) direction (-1, 0)
+        coedge -e310 p500 line origin (3.14159265359, -4.712388980385) direction (0, 1)
+        coedge +e362 p503 line origin (0, 1.570796326795) direction (1, 0)
+        coedge -e91 p502 line origin (0, 1.570796326795) direction (0, -1)
+    face +f90 S90 tol 0.0000001
+      surface cylinder origin (-114.3, 79.375, -107.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 11.43
+      loop 0
+        coedge +e233 p504 line origin (6.28318530718, 44.45) direction (-1, 0)
+        coedge +e363 p505 line origin (0, 44.45) direction (0, -1)
+        coedge +e326 p506 line origin (-3.14159265359, 28.105963780504) direction (1, 0)
+        coedge +e234 p507 line origin (3.14159265359, 28.105963780504) direction (1, 0)
+        coedge -e363 p508 line origin (6.28318530718, 44.45) direction (0, -1)
+    face +f91 S91 tol 0.0000001
+      surface sphere origin (-114.3, 63.5, -107.95) x (-1, 0, 0) y (0, 0, -1) z (0, -1, 0) radius 15.875
+      loop 0
+        coedge +e235 p509 line origin (4.712388980385, 0.697163133642) direction (-1, 0)
+        coedge +e364 p510 line origin (-1.570796326795, 0.697163133642) direction (0, -1)
+        coedge +e365 p511 line origin (-1.570796326795, -1.570796326795) direction (1, 0)
+        coedge -e364 p512 line origin (4.712388980385, 0.697163133642) direction (0, -1)
+    face +f92 S92 tol 0.0000001
+      surface cylinder origin (-139.7, 85.09, -31.75) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 12.7
+      loop 0
+        coedge -e83 p513 line origin (4.712388980385, 0) direction (-1, 0)
+        coedge -e163 p514 line origin (3.14159265359, 31.75) direction (0, -1)
+        coedge -e146 p515 line origin (-3.14159265359, 31.75) direction (1, 0)
+        coedge -e141 p516 line origin (1.570796326795, 0) direction (0, 1)
+    face +f93 S93 tol 0.0000001
+      surface cylinder origin (139.7, 85.09, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 12.7
+      loop 0
+        coedge -e74 p517 line origin (-1.570796326795, 31.75) direction (1, 0)
+        coedge -e77 p518 line origin (1.570796326795, 31.75) direction (0, 1)
+        coedge -e149 p519 line origin (6.28318530718, 0) direction (-1, 0)
+        coedge -e161 p520 line origin (3.14159265359, 0) direction (0, -1)
+    face -f94 S94 tol 0.0000001
+      surface cylinder origin (-15.875, 31.75, -34.925) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 3.175
+      loop 0
+        coedge -e236 p523 line origin (3.14159265359, -3.175) direction (-1, 0)
+        coedge -e177 p522 line origin (1.570796326795, 31.75) direction (0, -1)
+        coedge -e167 p521 nurbs degree 5 knots [1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.767145867644 1.963495408494 2.159844949343 2.356194490192 2.552544031042 2.748893571891 2.94524311274 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359] points [(1.570796326795, -64.4525) (1.610066234965, -64.514840980396) (1.688606051305, -64.639522933805) (1.806415775814, -64.825344160459) (1.963495408494, -65.065895511583) (2.159844949343, -65.343012259266) (2.356194490192, -65.585907118575) (2.552544031042, -65.785245778179) (2.748893571891, -65.933367765779) (2.905973204571, -66.006338220344) (3.02378292908, -66.033879678057) (3.10232274542, -66.040000006541) (3.14159265359, -66.04)] weights [1 1 1 1 1 1 1 1 1 1 1 1 1]
+        coedge -e80 p524 line origin (3.14159265359, 0) direction (0, 1)
+    face -f95 S95 tol 0.0000001
+      surface cylinder origin (152.4, 34.925, -34.925) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 3.175
+      loop 0
+        coedge -e164 p525 line origin (0, -304.8) direction (1, 0)
+        coedge -e134 p528 line origin (4.712388980385, -165.1) direction (0, 1)
+        coedge -e237 p527 line origin (9.424777960769, -168.275) direction (-1, 0)
+        coedge -e81 p526 line origin (3.14159265359, -304.8) direction (0, -1)
+    face -f96 S96 tol 0.0000001
+      surface cylinder origin (152.4, 34.925, -34.925) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 3.175
+      loop 0
+        coedge -e238 p531 line origin (0, -136.525) direction (1, 0)
+        coedge -e138 p530 line origin (4.712388980385, 0) direction (0, 1)
+        coedge -e160 p529 line origin (6.28318530718, 0) direction (-1, 0)
+        coedge -e65 p532 line origin (3.14159265359, -139.7) direction (0, -1)
+    face -f97 S97 tol 0.0000001
+      surface cylinder origin (15.875, 31.75, -34.925) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 3.175
+      loop 0
+        coedge -e168 p533 nurbs degree 5 knots [3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.337942194439 3.534291735289 3.730641276138 3.926990816987 4.123340357837 4.319689898686 4.516039439535 4.712388980385 4.712388980385 4.712388980385 4.712388980385 4.712388980385 4.712388980385] points [(3.14159265359, -66.04) (3.18086256176, -66.040000006541) (3.259402378099, -66.033879678057) (3.377212102609, -66.006338220343) (3.534291735289, -65.93336776578) (3.730641276138, -65.785245778178) (3.926990816987, -65.585907118574) (4.123340357837, -65.343012259267) (4.319689898686, -65.065895511581) (4.476769531366, -64.825344160462) (4.594579255875, -64.639522933804) (4.673119072215, -64.514840980397) (4.712388980385, -64.4525)] weights [1 1 1 1 1 1 1 1 1 1 1 1 1]
+        coedge -e174 p536 line origin (4.712388980385, 0) direction (0, 1)
+        coedge -e239 p535 line origin (9.424777960769, -3.175) direction (-1, 0)
+        coedge -e66 p534 line origin (3.14159265359, -66.04) direction (0, -1)
+    face -f98 S98 tol 0.0000001
+      surface sphere origin (-15.875, 34.925, -34.925) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+      loop 0
+        coedge +e366 p538 line origin (4.712388980385, 1.570796326795) direction (1, 0)
+        coedge +e237 p537 line origin (4.712388980385, -4.712388980385) direction (0, 1)
+        coedge +e240 p540 line origin (9.424777960769, 0) direction (-1, 0)
+        coedge +e236 p539 line origin (6.28318530718, 1.570796326795) direction (0, -1)
+    face -f99 S99 tol 0.0000001
+      surface sphere origin (15.875, 34.925, -34.925) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+      loop 0
+        coedge +e367 p542 line origin (3.14159265359, 1.570796326795) direction (1, 0)
+        coedge +e239 p541 line origin (3.14159265359, -4.712388980385) direction (0, 1)
+        coedge -e241 p544 line origin (3.14159265359, 0) direction (1, 0)
+        coedge +e238 p543 line origin (4.712388980385, 4.712388980385) direction (0, -1)
+    face -f100 S100 tol 0.0000001
+      surface cylinder origin (-15.875, 34.925, -209.55) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge -e242 p547 nurbs degree 5 knots [1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.767145867644 1.963495408494 2.159844949343 2.356194490192 2.552544031042 2.748893571891 2.94524311274 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359] points [(3.14159265359, -73.025) (3.10232274542, -73.149681960792) (3.02378292908, -73.399045867612) (2.905973204571, -73.770688320916) (2.748893571891, -74.25179102317) (2.552544031042, -74.806024518528) (2.356194490192, -75.291814237153) (2.159844949343, -75.690491556354) (1.963495408494, -75.986735531562) (1.806415775814, -76.132676440685) (1.688606051305, -76.187759356115) (1.610066234965, -76.200000013082) (1.570796326795, -76.2)] weights [1 1 1 1 1 1 1 1 1 1 1 1 1]
+        coedge -e176 p546 line origin (1.570796326795, -209.55) direction (0, -1)
+        coedge -e240 p545 line origin (-1.570796326795, -174.625) direction (1, 0)
+        coedge -e135 p548 line origin (3.14159265359, 0) direction (0, 1)
+    face -f101 S101 tol 0.0000001
+      surface cylinder origin (15.875, 34.925, -209.55) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 3.175
+      loop 0
+        coedge +e241 p549 line origin (4.712388980385, -174.625) direction (-1, 0)
+        coedge -e175 p552 line origin (4.712388980385, -76.2) direction (0, 1)
+        coedge -e243 p551 nurbs degree 5 knots [3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.337942194439 3.534291735289 3.730641276138 3.926990816987 4.123340357837 4.319689898686 4.516039439535 4.712388980385 4.712388980385 4.712388980385 4.712388980385 4.712388980385 4.712388980385] points [(4.712388980385, -76.2) (4.673119072215, -76.200000013082) (4.594579255875, -76.187759356113) (4.476769531365, -76.132676440687) (4.319689898686, -75.986735531559) (4.123340357837, -75.690491556356) (3.926990816987, -75.29181423715) (3.730641276138, -74.806024518531) (3.534291735289, -74.251791023167) (3.377212102609, -73.770688320919) (3.259402378099, -73.39904586761) (3.18086256176, -73.149681960793) (3.14159265359, -73.025)] weights [1 1 1 1 1 1 1 1 1 1 1 1 1]
+        coedge -e137 p550 line origin (3.14159265359, -177.8) direction (0, -1)
+    face -f102 S102 tol 0.0000001
+      surface cylinder origin (152.4, 34.925, -136.525) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 3.175
+      loop 0
+        coedge +e243 p555 nurbs degree 5 knots [3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.337942194439 3.534291735289 3.730641276138 3.926990816987 4.123340357837 4.319689898686 4.516039439535 4.712388980385 4.712388980385 4.712388980385 4.712388980385 4.712388980385 4.712388980385] points [(3.14159265359, -139.7) (3.18086256176, -139.700000013082) (3.259402378099, -139.687759356114) (3.377212102609, -139.632676440686) (3.534291735288, -139.48673553156) (3.730641276138, -139.190491556355) (3.926990816987, -138.791814237151) (4.123340357837, -138.306024518531) (4.319689898686, -137.751791023166) (4.476769531366, -137.27068832092) (4.594579255875, -136.899045867609) (4.673119072215, -136.649681960794) (4.712388980385, -136.525)] weights [1 1 1 1 1 1 1 1 1 1 1 1 1]
+        coedge -e172 p554 line origin (3.14159265359, -139.7) direction (0, -1)
+        coedge +e242 p553 nurbs degree 5 knots [1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.570796326795 1.767145867644 1.963495408494 2.159844949343 2.356194490192 2.552544031042 2.748893571891 2.94524311274 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359 3.14159265359] points [(4.712388980385, -168.275) (4.673119072215, -168.150318039206) (4.594579255875, -167.900954132392) (4.476769531365, -167.529311679079) (4.319689898686, -167.048208976835) (4.123340357836, -166.493975481468) (3.926990816987, -166.00818576285) (3.730641276138, -165.609508443643) (3.534291735289, -165.313264468441) (3.377212102609, -165.167323559313) (3.2594023781, -165.112240643886) (3.18086256176, -165.099999986918) (3.14159265359, -165.1)] weights [1 1 1 1 1 1 1 1 1 1 1 1 1]
+        coedge -e136 p556 line origin (4.712388980385, 0) direction (0, 1)
+    face -f103 S103 tol 0.0000001
+      surface torus origin (-114.3, 34.925, -107.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) major 14.605 minor 3.175
+      loop 0
+        coedge +e368 p558 line origin (6.28318530718, 3.14159265359) direction (0, -1)
+        coedge -e233 p557 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+        coedge -e368 p560 line origin (0, 3.14159265359) direction (0, -1)
+        coedge -e125 p559 line origin (0, 1.570796326795) direction (1, 0)
+    face -f104 S104 tol 0.0000001
+      surface torus origin (-114.3, 51.269036219496, -107.95) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) major 14.605 minor 3.175
+      loop 0
+        coedge -e326 p563 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+        coedge +e369 p562 line origin (0, 2.444429519948) direction (0, 1)
+        coedge -e235 p561 line origin (0, 2.444429519948) direction (1, 0)
+        coedge -e369 p565 line origin (6.28318530718, 2.444429519948) direction (0, 1)
+        coedge -e234 p564 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+    face -f105 S105 tol 0.0000001
+      surface torus origin (114.3, 51.269036219504, -107.95) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) major 14.605000000007 minor 3.175
+      loop 0
+        coedge -e370 p569 line origin (6.28318530718, 2.444429519948) direction (0, 1)
+        coedge -e207 p568 line origin (6.28318530718, 3.14159265359) direction (-1, 0)
+        coedge +e370 p567 line origin (0, 2.444429519948) direction (0, 1)
+        coedge -e206 p566 line origin (0, 2.444429519948) direction (1, 0)
+    face -f106 S106 tol 0.0000001
+      surface cone origin (76.2, 72.39, -158.75) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 3.175 half_angle 1.0297442575
+      loop 0
+        coedge -e371 p573 line origin (-3.14159265359, 0) direction (0, -1)
+        coedge +e372 p572 line origin (3.14159265359, -3.704061038777) direction (-1, 0)
+        coedge +e371 p571 line origin (3.14159265359, 0) direction (0, -1)
+        coedge +e244 p570 line origin (-3.14159265359, 0) direction (1, 0)
+    face -f107 S107 tol 0.0000001
+      surface cylinder origin (76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 3.175
+      loop 0
+        coedge +e373 p575 line origin (6.28318530718, 12.7) direction (0, -1)
+        coedge -e244 p574 line origin (6.28318530718, 12.7) direction (-1, 0)
+        coedge -e373 p577 line origin (0, 12.7) direction (0, -1)
+        coedge -e202 p576 line origin (0, 0) direction (1, 0)
+    face -f108 S108 tol 0.0000001
+      surface cone origin (-76.2, 72.39, -158.75) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 3.175 half_angle 1.0297442575
+      loop 0
+        coedge -e374 p581 line origin (-3.14159265359, 0) direction (0, -1)
+        coedge +e375 p580 line origin (3.14159265359, -3.704061038777) direction (-1, 0)
+        coedge +e374 p579 line origin (3.14159265359, 0) direction (0, -1)
+        coedge +e245 p578 line origin (-3.14159265359, 0) direction (1, 0)
+    face -f109 S109 tol 0.0000001
+      surface cylinder origin (-76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 3.175
+      loop 0
+        coedge +e376 p583 line origin (6.28318530718, 12.7) direction (0, -1)
+        coedge -e245 p582 line origin (6.28318530718, 12.7) direction (-1, 0)
+        coedge -e376 p585 line origin (0, 12.7) direction (0, -1)
+        coedge -e209 p584 line origin (0, 0) direction (1, 0)
+    face +f110 S110 tol 0.0000001
+      surface plane origin (8.17008041978, 21.35, -232.41) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e21 p586 line origin (2.54, 0) direction (0, -1)
+        coedge +e246 p587 line origin (0, 0) direction (-1, 0)
+        coedge -e247 p588 line origin (0, 0) direction (0, 1)
+        coedge -e248 p589 line origin (0, -11.482858127836) direction (-1, 0)
+    face -f111 S111 tol 0.0000001
+      surface cylinder origin (11.687222291944, 9.867141872164, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 3.517141872164
+      loop 0
+        coedge -e250 p593 line origin (2.245747113978, 0) direction (0, -1)
+        coedge -e249 p592 line origin (-1.570796326795, 0) direction (1, 0)
+        coedge +e248 p591 line origin (4.712388980385, 0) direction (0, -1)
+        coedge -e22 p590 line origin (10.995574287564, 2.54) direction (-1, 0)
+    face +f112 S112 tol 0.0000001
+      surface plane origin (14.433187558849, 7.669424487722, -232.41) x (-0.677084591162, -0.735905195261, 0) y (0, 0, 1) z (-0.735905195261, 0.677084591162, 0)
+      loop 0
+        coedge -e23 p594 line origin (0, -2.54) direction (-1, 0)
+        coedge +e250 p595 line origin (0, 0) direction (0, 1)
+        coedge -e251 p596 line origin (0, 0) direction (1, 0)
+        coedge -e252 p597 line origin (-13.982233803722, 0) direction (0, 1)
+    face +f113 S113 tol 0.0000001
+      surface cylinder origin (24.297636519078, 17.593484624116, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 0.5398710381
+      loop 0
+        coedge -e24 p598 line origin (-1.570796326795, 2.54) direction (1, 0)
+        coedge +e252 p599 line origin (-0.82700261279, 0) direction (0, -1)
+        coedge -e253 p600 line origin (4.712388980385, 0) direction (-1, 0)
+        coedge -e254 p601 line origin (1.570796326795, 0) direction (0, -1)
+    face +f114 S114 tol 0.0000001
+      surface plane origin (24.837507557178, 17.593484624116, -232.41) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e25 p602 line origin (2.54, 0) direction (0, -1)
+        coedge +e254 p603 line origin (0, 0) direction (-1, 0)
+        coedge -e255 p604 line origin (0, 0) direction (0, 1)
+        coedge -e256 p605 line origin (0, -11.243484624116) direction (-1, 0)
+    face +f115 S115 tol 0.0000001
+      surface plane origin (24.837507557178, 6.35, -232.41) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e26 p606 line origin (-2.54, 0) direction (0, 1)
+        coedge +e256 p607 line origin (0, 0) direction (1, 0)
+        coedge -e257 p608 line origin (0, 0) direction (0, -1)
+        coedge -e258 p609 line origin (0, 3.102492442822) direction (1, 0)
+    face +f116 S116 tol 0.0000001
+      surface plane origin (27.94, 6.35, -232.41) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge -e27 p610 line origin (-2.54, 0) direction (0, 1)
+        coedge +e258 p611 line origin (0, 0) direction (1, 0)
+        coedge -e259 p612 line origin (0, 0) direction (0, -1)
+        coedge -e260 p613 line origin (0, 12.162091654332) direction (1, 0)
+    face -f117 S117 tol 0.0000001
+      surface cylinder origin (24.679023239201, 18.512091654331, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 3.260976760799
+      loop 0
+        coedge -e262 p617 line origin (-0.824487260692, 0) direction (0, -1)
+        coedge -e261 p616 line origin (-1.570796326795, 0) direction (1, 0)
+        coedge +e260 p615 line origin (1.570796326795, 0) direction (0, -1)
+        coedge -e28 p614 line origin (4.712388980385, 2.54) direction (-1, 0)
+    face +f118 S118 tol 0.0000001
+      surface plane origin (22.284814874678, 20.726078045825, -232.41) x (0.678933507932, 0.734199762876, 0) y (0, 0, 1) z (0.734199762876, -0.678933507932, 0)
+      loop 0
+        coedge -e29 p618 line origin (0, -2.54) direction (-1, 0)
+        coedge +e262 p619 line origin (0, 0) direction (0, 1)
+        coedge -e263 p620 line origin (0, 0) direction (1, 0)
+        coedge -e264 p621 line origin (-15.1190819975, 0) direction (0, 1)
+    face +f119 S119 tol 0.0000001
+      surface cylinder origin (11.715533533184, 9.907165889162, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 0.414641872164
+      loop 0
+        coedge -e30 p622 line origin (-1.570796326795, 2.54) direction (1, 0)
+        coedge +e264 p623 line origin (2.317105392898, 0) direction (0, -1)
+        coedge -e265 p624 line origin (10.995574287564, 0) direction (-1, 0)
+        coedge -e266 p625 line origin (4.796148161745, 0) direction (0, -1)
+    face +f120 S120 tol 0.0000001
+      surface plane origin (11.302345291736, 9.941855358465, -232.41) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge -e31 p626 line origin (-2.54, 0) direction (0, 1)
+        coedge +e266 p627 line origin (0, 0) direction (1, 0)
+        coedge -e267 p628 line origin (0, 0) direction (0, -1)
+        coedge -e268 p629 line origin (0, 11.408144641535) direction (1, 0)
+    face +f121 S121 tol 0.0000001
+      surface plane origin (11.302345291736, 21.35, -232.41) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e20 p630 line origin (2.54, 0) direction (0, -1)
+        coedge +e268 p631 line origin (0, 0) direction (-1, 0)
+        coedge -e269 p632 line origin (0, 0) direction (0, 1)
+        coedge -e246 p633 line origin (0, -3.132264871956) direction (-1, 0)
+    face -f122 S122 tol 0.0000001
+      surface plane origin (11.687222291944, 9.867141872164, -232.41) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge +e249 p645 circle origin (0, 0) x (-1, 0) y (0, 1) radius 3.517141872164
+        coedge +e251 p644 line origin (2.745965266905, -2.197717384442) direction (-0.677084591162, -0.735905195261)
+        coedge +e253 p643 circle origin (12.610414227134, 7.726342751952) x (-1, 0) y (0, -1) radius 0.5398710381
+        coedge +e255 p642 line origin (13.150285265234, 7.726342751952) direction (0, 1)
+        coedge +e257 p641 line origin (13.150285265234, -3.517141872164) direction (-1, 0)
+        coedge +e259 p640 line origin (16.252777708056, -3.517141872164) direction (0, -1)
+        coedge +e261 p639 circle origin (12.991800947257, 8.644949782168) x (-1, 0) y (0, 1) radius 3.260976760799
+        coedge +e263 p638 line origin (10.597592582735, 10.858936173661) direction (0.678933507932, 0.734199762876)
+        coedge +e265 p637 circle origin (0.02831124124, 0.040024016998) x (-1, 0) y (0, -1) radius 0.414641872164
+        coedge +e267 p636 line origin (-0.384877000208, 0.074713486302) direction (0, -1)
+        coedge +e269 p635 line origin (-0.384877000208, 11.482858127836) direction (1, 0)
+        coedge +e247 p634 line origin (-3.517141872164, 11.482858127836) direction (0, 1)
+    face +f123 S123 tol 0.0000001
+      surface plane origin (-28.927392916215, 21.35, -232.41) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e33 p646 line origin (2.54, 0) direction (0, -1)
+        coedge +e270 p647 line origin (0, 0) direction (-1, 0)
+        coedge -e271 p648 line origin (0, 0) direction (0, 1)
+        coedge -e272 p649 line origin (0, -3.161010665602) direction (-1, 0)
+    face +f124 S124 tol 0.0000001
+      surface plane origin (-28.927392916215, 18.188989334398, -232.41) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e34 p650 line origin (-2.54, 0) direction (0, 1)
+        coedge +e272 p651 line origin (0, 0) direction (1, 0)
+        coedge -e273 p652 line origin (0, 0) direction (0, -1)
+        coedge -e274 p653 line origin (0, 6.40928534763) direction (1, 0)
+    face +f125 S125 tol 0.0000001
+      surface plane origin (-22.518107568585, 18.188989334398, -232.41) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e35 p654 line origin (2.54, 0) direction (0, -1)
+        coedge +e274 p655 line origin (0, 0) direction (-1, 0)
+        coedge -e275 p656 line origin (0, 0) direction (0, 1)
+        coedge -e276 p657 line origin (0, -11.838989334398) direction (-1, 0)
+    face +f126 S126 tol 0.0000001
+      surface plane origin (-22.518107568585, 6.35, -232.41) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e36 p658 line origin (-2.54, 0) direction (0, 1)
+        coedge +e276 p659 line origin (0, 0) direction (1, 0)
+        coedge -e277 p660 line origin (0, 0) direction (0, -1)
+        coedge -e278 p661 line origin (0, 3.102492442822) direction (1, 0)
+    face +f127 S127 tol 0.0000001
+      surface plane origin (-19.415615125763, 6.35, -232.41) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge -e37 p662 line origin (-2.54, 0) direction (0, 1)
+        coedge +e278 p663 line origin (0, 0) direction (1, 0)
+        coedge -e279 p664 line origin (0, 0) direction (0, -1)
+        coedge -e280 p665 line origin (0, 11.838989334398) direction (1, 0)
+    face +f128 S128 tol 0.0000001
+      surface plane origin (-19.415615125763, 18.188989334398, -232.41) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e38 p666 line origin (-2.54, 0) direction (0, 1)
+        coedge +e280 p667 line origin (0, 0) direction (1, 0)
+        coedge -e281 p668 line origin (0, 0) direction (0, -1)
+        coedge -e282 p669 line origin (0, 15.690070153425) direction (1, 0)
+    face +f129 S129 tol 0.0000001
+      surface cylinder origin (-3.610561797753, 16.783306214359, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 1.410378021808
+      loop 0
+        coedge -e39 p670 line origin (-1.570796326795, 2.54) direction (1, 0)
+        coedge +e282 p671 line origin (-0.081617076575, 0) direction (0, -1)
+        coedge -e283 p672 line origin (4.712388980385, 0) direction (-1, 0)
+        coedge -e284 p673 line origin (3.14159265359, 0) direction (0, -1)
+    face +f130 S130 tol 0.0000001
+      surface plane origin (-3.610561797753, 15.372928192551, -232.41) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e40 p674 line origin (2.54, 0) direction (0, -1)
+        coedge +e284 p675 line origin (0, 0) direction (-1, 0)
+        coedge -e285 p676 line origin (0, 0) direction (0, 1)
+        coedge -e286 p677 line origin (0, -9.626760965037) direction (-1, 0)
+    face -f131 S131 tol 0.0000001
+      surface cylinder origin (-12.518897232837, 10.861464096276, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 4.568308607578
+      loop 0
+        coedge -e288 p681 line origin (3.299511119161, 0) direction (0, -1)
+        coedge -e287 p680 line origin (-1.570796326795, 0) direction (1, 0)
+        coedge +e286 p679 line origin (6.125266841608, 0) direction (0, -1)
+        coedge -e41 p678 line origin (10.995574287564, 2.54) direction (-1, 0)
+    face +f132 S132 tol 0.0000001
+      surface plane origin (-13.23732276279, 6.35, -232.41) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e42 p682 line origin (-2.54, 0) direction (0, 1)
+        coedge +e288 p683 line origin (0, 0) direction (1, 0)
+        coedge -e289 p684 line origin (0, 0) direction (0, -1)
+        coedge -e290 p685 line origin (0, 15.200486568435) direction (1, 0)
+    face -f133 S133 tol 0.0000001
+      surface cylinder origin (1.963163805645, 10.545737694384, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 4.195737694384
+      loop 0
+        coedge -e292 p689 line origin (1.570796326795, 0) direction (0, -1)
+        coedge -e291 p688 line origin (-1.570796326795, 0) direction (1, 0)
+        coedge +e290 p687 line origin (3.14159265359, 0) direction (0, -1)
+        coedge -e43 p686 line origin (4.712388980385, 2.54) direction (-1, 0)
+    face +f134 S134 tol 0.0000001
+      surface plane origin (6.158901500028, 10.545737694384, -232.41) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0)
+      loop 0
+        coedge -e44 p690 line origin (-2.54, 0) direction (0, 1)
+        coedge +e292 p691 line origin (0, 0) direction (1, 0)
+        coedge -e293 p692 line origin (0, 0) direction (0, -1)
+        coedge -e294 p693 line origin (0, 10.804262305616) direction (1, 0)
+    face +f135 S135 tol 0.0000001
+      surface plane origin (6.158901500028, 21.35, -232.41) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e45 p694 line origin (2.54, 0) direction (0, -1)
+        coedge +e294 p695 line origin (0, 0) direction (-1, 0)
+        coedge -e295 p696 line origin (0, 0) direction (0, 1)
+        coedge -e296 p697 line origin (0, -3.132264871956) direction (-1, 0)
+    face +f136 S136 tol 0.0000001
+      surface plane origin (3.026636628073, 21.35, -232.41) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e46 p698 line origin (2.54, 0) direction (0, -1)
+        coedge +e296 p699 line origin (0, 0) direction (-1, 0)
+        coedge -e297 p700 line origin (0, 0) direction (0, 1)
+        coedge -e298 p701 line origin (0, -10.804262305616) direction (-1, 0)
+    face +f137 S137 tol 0.0000001
+      surface cylinder origin (1.934075800169, 10.545737694384, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 1.092560827904
+      loop 0
+        coedge -e47 p702 line origin (-1.570796326795, 2.54) direction (1, 0)
+        coedge +e298 p703 line origin (1.570796326795, 0) direction (0, -1)
+        coedge -e299 p704 line origin (4.712388980385, 0) direction (-1, 0)
+        coedge -e300 p705 line origin (3.14159265359, 0) direction (0, -1)
+    face +f138 S138 tol 0.0000001
+      surface plane origin (1.934075800169, 9.45317686648, -232.41) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e48 p706 line origin (2.54, 0) direction (0, -1)
+        coedge +e300 p707 line origin (0, 0) direction (-1, 0)
+        coedge -e301 p708 line origin (0, 0) direction (0, 1)
+        coedge -e302 p709 line origin (0, -14.711465864619) direction (-1, 0)
+    face +f139 S139 tol 0.0000001
+      surface cylinder origin (-12.597185717588, 10.858286801284, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 1.416618345043
+      loop 0
+        coedge -e49 p710 line origin (-1.570796326795, 2.54) direction (1, 0)
+        coedge +e302 p711 line origin (3.269145655973, 0) direction (0, -1)
+        coedge -e303 p712 line origin (10.995574287564, 0) direction (-1, 0)
+        coedge -e304 p713 line origin (6.196452880952, 0) direction (0, -1)
+    face +f140 S140 tol 0.0000001
+      surface plane origin (-12.719898477157, 12.269580220156, -232.41) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e50 p714 line origin (-2.54, 0) direction (0, 1)
+        coedge +e304 p715 line origin (0, 0) direction (1, 0)
+        coedge -e305 p716 line origin (0, 0) direction (0, -1)
+        coedge -e306 p717 line origin (0, 9.051845092112) direction (1, 0)
+    face -f141 S141 tol 0.0000001
+      surface cylinder origin (-3.324130496778, 16.803277032713, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1) radius 4.546722967287
+      loop 0
+        coedge -e308 p721 line origin (0, 0) direction (0, -1)
+        coedge -e307 p720 line origin (-1.570796326795, 0) direction (1, 0)
+        coedge +e306 p719 line origin (3.217306900696, 0) direction (0, -1)
+        coedge -e51 p718 line origin (4.712388980385, 2.54) direction (-1, 0)
+    face +f142 S142 tol 0.0000001
+      surface plane origin (-3.324130496778, 21.35, -232.41) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0)
+      loop 0
+        coedge -e32 p722 line origin (2.54, 0) direction (0, -1)
+        coedge +e308 p723 line origin (0, 0) direction (-1, 0)
+        coedge -e309 p724 line origin (0, 0) direction (0, 1)
+        coedge -e270 p725 line origin (0, -25.603262419438) direction (-1, 0)
+    face +f143 S143 tol 0.0000001
+      surface plane origin (-3.610561797753, 16.783306214359, -232.41) x (0, 1, 0) y (1, 0, 0) z (0, 0, -1)
+      loop 0
+        coedge +e271 p726 line origin (4.566693785641, -25.316831118462) direction (1, 0)
+        coedge +e309 p727 line origin (4.566693785641, 0.286431300975) direction (0, 1)
+        coedge +e307 p728 circle origin (0.019970818353, 0.286431300975) x (0, -1) y (1, 0) radius 4.546722967287
+        coedge +e305 p729 line origin (-4.513725994203, -9.109336679405) direction (0, -1)
+        coedge +e303 p730 circle origin (-5.925019413075, -8.986623919835) x (0, -1) y (-1, 0) radius 1.416618345043
+        coedge +e301 p731 line origin (-7.330129347879, 5.544637597922) direction (0, 1)
+        coedge +e299 p732 circle origin (-6.237568519975, 5.544637597922) x (0, -1) y (-1, 0) radius 1.092560827904
+        coedge +e297 p733 line origin (4.566693785641, 6.637198425826) direction (1, 0)
+        coedge +e295 p734 line origin (4.566693785641, 9.769463297781) direction (0, 1)
+        coedge +e293 p735 line origin (-6.237568519975, 9.769463297781) direction (-1, 0)
+        coedge +e291 p736 circle origin (-6.237568519975, 5.573725603397) x (0, -1) y (1, 0) radius 4.195737694384
+        coedge +e289 p737 line origin (-10.433306214359, -9.626760965037) direction (0, -1)
+        coedge +e287 p738 circle origin (-5.921842118084, -8.908335435084) x (0, -1) y (1, 0) radius 4.568308607578
+        coedge +e285 p739 line origin (-1.410378021808, 0) direction (0, 1)
+        coedge +e283 p740 circle origin (0, 0) x (0, -1) y (-1, 0) radius 1.410378021808
+        coedge +e281 p741 line origin (1.405683120039, -15.80505332801) direction (0, -1)
+        coedge +e279 p742 line origin (-10.433306214359, -15.80505332801) direction (-1, 0)
+        coedge +e277 p743 line origin (-10.433306214359, -18.907545770832) direction (0, -1)
+        coedge +e275 p744 line origin (1.405683120039, -18.907545770832) direction (1, 0)
+        coedge +e273 p745 line origin (1.405683120039, -25.316831118462) direction (0, -1)
+    face -f146 S144 tol 0.0000001
+      surface cone origin (-133.35, 2, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 5.2705 half_angle 0.785398163397
+      loop 0
+        coedge +e379 p750 line origin (9.424777960769, 0) direction (-1, 0)
+        coedge +e378 p751 line origin (6.28318530718, 2.828427124746) direction (0, -1)
+        coedge -e380 p752 line origin (9.424777960769, 2.828427124746) direction (-1, 0)
+        coedge +e377 p753 line origin (3.14159265359, 0) direction (0, 1)
+    face -f147 S145 tol 0.0000001
+      surface cone origin (-133.35, 2, -184.15) x (0, 0, 1) y (-1, 0, 0) z (0, -1, 0) radius 5.2705 half_angle 0.785398163397
+      loop 0
+        coedge -e382 p756 line origin (6.28318530718, 2.828427124746) direction (-1, 0)
+        coedge -e378 p757 line origin (3.14159265359, 2.828427124746) direction (0, -1)
+        coedge +e381 p754 line origin (6.28318530718, 0) direction (-1, 0)
+        coedge -e377 p755 line origin (6.28318530718, 0) direction (0, 1)
+edges
+  -e314 v231 -> v1 c0 [6.28318530718, 9.550105791937] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  +e19 v19 -> v1 c19 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (-133.78578123789, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e18 v19 -> v18 c18 [286.18578123789, 304.8] tol 0.0000001
+    curve line origin (152.4, 50.8, -234.95) direction (-1, 0, 0)
+  +e17 v17 -> v18 c17 [0, 50.8] tol 0.0000001
+    curve line origin (-152.4, 0, -234.95) direction (0, 1, 0)
+  +e16 v16 -> v17 c16 [0, 304.8] tol 0.0000001
+    curve line origin (152.4, 0, -234.95) direction (-1, 0, 0)
+  -e15 v16 -> v15 c15 [0, 50.8] tol 0.0000001
+    curve line origin (152.4, 0, -234.95) direction (0, 1, 0)
+  -e14 v15 -> v14 c14 [0, 18.61421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -234.95) direction (-1, 0, 0)
+  +e13 v13 -> v14 c13 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (133.78578123789, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e12 v13 -> v228 c12 [6.157857476012, 6.28318530718] tol 0.0000001
+    curve circle origin (108.585, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  -e311 v228 -> v12 c12 [6.28318530718, 9.550105791937] tol 0.0000001
+    curve circle origin (108.585, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  +e11 v11 -> v12 c11 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (83.38421876211, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e10 v11 -> v10 c10 [69.01578123789, 91.00421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -234.95) direction (-1, 0, 0)
+  +e9 v9 -> v10 c9 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (61.39578123789, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e8 v9 -> v229 c8 [6.157857476012, 6.28318530718] tol 0.0000001
+    curve circle origin (36.195, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  -e312 v229 -> v8 c8 [6.28318530718, 9.550105791937] tol 0.0000001
+    curve circle origin (36.195, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  +e7 v7 -> v8 c7 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (10.99421876211, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e6 v7 -> v6 c6 [141.40578123789, 163.39421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -234.95) direction (-1, 0, 0)
+  +e5 v5 -> v6 c5 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (-10.99421876211, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e4 v5 -> v230 c4 [6.157857476012, 6.28318530718] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  -e313 v230 -> v4 c4 [6.28318530718, 9.550105791937] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  +e3 v3 -> v4 c3 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (-61.39578123789, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e2 v3 -> v2 c2 [213.79578123789, 235.78421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -234.95) direction (-1, 0, 0)
+  +e1 v0 -> v2 c1 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (-83.38421876211, 53.975, -234.95) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3.175
+  -e0 v0 -> v231 c0 [6.157857476012, 6.28318530718] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -234.95) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  +e31 v31 -> v20 c31 [0, 11.408144641535] tol 0.0000001
+    curve line origin (11.302345291736, 9.941855358465, -234.95) direction (0, 1, 0)
+  +e30 v30 -> v31 c30 [3.887901719693, 6.366944488539] tol 0.0000001
+    curve circle origin (11.715533533184, 9.907165889162, -234.95) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 0.414641872164
+  +e29 v29 -> v30 c29 [0, 15.1190819975] tol 0.0000001
+    curve line origin (22.284814874678, 20.726078045825, -234.95) direction (-0.678933507932, -0.734199762876, 0)
+  +e28 v28 -> v29 c28 [3.14159265359, 5.536876241077] tol 0.0000001
+    curve circle origin (24.679023239201, 18.512091654331, -234.95) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 3.260976760799
+  +e27 v27 -> v28 c27 [0, 12.162091654332] tol 0.0000001
+    curve line origin (27.94, 6.35, -234.95) direction (0, 1, 0)
+  +e26 v26 -> v27 c26 [0, 3.102492442822] tol 0.0000001
+    curve line origin (24.837507557178, 6.35, -234.95) direction (1, 0, 0)
+  +e25 v25 -> v26 c25 [0, 11.243484624116] tol 0.0000001
+    curve line origin (24.837507557178, 17.593484624116, -234.95) direction (0, -1, 0)
+  +e24 v24 -> v25 c24 [0.743793714005, 3.14159265359] tol 0.0000001
+    curve circle origin (24.297636519078, 17.593484624116, -234.95) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 0.5398710381
+  +e23 v23 -> v24 c23 [0, 13.982233803722] tol 0.0000001
+    curve line origin (14.433187558849, 7.669424487722, -234.95) direction (0.677084591162, 0.735905195261, 0)
+  +e22 v22 -> v23 c22 [6.28318530718, 8.749827173586] tol 0.0000001
+    curve circle origin (11.687222291944, 9.867141872164, -234.95) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 3.517141872164
+  +e21 v21 -> v22 c21 [0, 11.482858127836] tol 0.0000001
+    curve line origin (8.17008041978, 21.35, -234.95) direction (0, -1, 0)
+  +e20 v20 -> v21 c20 [0, 3.132264871956] tol 0.0000001
+    curve line origin (11.302345291736, 21.35, -234.95) direction (-1, 0, 0)
+  +e51 v51 -> v32 c51 [1.495082079689, 4.712388980385] tol 0.0000001
+    curve circle origin (-3.324130496778, 16.803277032713, -234.95) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 4.546722967287
+  +e50 v50 -> v51 c50 [0, 9.051845092112] tol 0.0000001
+    curve line origin (-12.719898477157, 12.269580220156, -234.95) direction (1, 0, 0)
+  +e49 v49 -> v50 c49 [4.839941982768, 7.767249207746] tol 0.0000001
+    curve circle origin (-12.597185717588, 10.858286801284, -234.95) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 1.416618345043
+  +e48 v48 -> v49 c48 [0, 14.711465864619] tol 0.0000001
+    curve line origin (1.934075800169, 9.45317686648, -234.95) direction (-1, 0, 0)
+  +e47 v47 -> v48 c47 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve circle origin (1.934075800169, 10.545737694384, -234.95) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 1.092560827904
+  +e46 v46 -> v47 c46 [0, 10.804262305616] tol 0.0000001
+    curve line origin (3.026636628073, 21.35, -234.95) direction (0, -1, 0)
+  +e45 v45 -> v46 c45 [0, 3.132264871956] tol 0.0000001
+    curve line origin (6.158901500028, 21.35, -234.95) direction (-1, 0, 0)
+  +e44 v44 -> v45 c44 [0, 10.804262305616] tol 0.0000001
+    curve line origin (6.158901500028, 10.545737694384, -234.95) direction (0, 1, 0)
+  +e43 v43 -> v44 c43 [1.570796326795, 3.14159265359] tol 0.0000001
+    curve circle origin (1.963163805645, 10.545737694384, -234.95) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 4.195737694384
+  +e42 v42 -> v43 c42 [0, 15.200486568435] tol 0.0000001
+    curve line origin (-13.23732276279, 6.35, -234.95) direction (1, 0, 0)
+  +e41 v41 -> v42 c41 [4.870307445956, 7.696063168403] tol 0.0000001
+    curve circle origin (-12.518897232837, 10.861464096276, -234.95) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 4.568308607578
+  +e40 v40 -> v41 c40 [0, 9.626760965037] tol 0.0000001
+    curve line origin (-3.610561797753, 15.372928192551, -234.95) direction (-1, 0, 0)
+  +e39 v39 -> v40 c39 [1.48917925022, 4.712388980385] tol 0.0000001
+    curve circle origin (-3.610561797753, 16.783306214359, -234.95) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 1.410378021808
+  +e38 v38 -> v39 c38 [0, 15.690070153425] tol 0.0000001
+    curve line origin (-19.415615125763, 18.188989334398, -234.95) direction (1, 0, 0)
+  +e37 v37 -> v38 c37 [0, 11.838989334398] tol 0.0000001
+    curve line origin (-19.415615125763, 6.35, -234.95) direction (0, 1, 0)
+  +e36 v36 -> v37 c36 [0, 3.102492442822] tol 0.0000001
+    curve line origin (-22.518107568585, 6.35, -234.95) direction (1, 0, 0)
+  +e35 v35 -> v36 c35 [0, 11.838989334398] tol 0.0000001
+    curve line origin (-22.518107568585, 18.188989334398, -234.95) direction (0, -1, 0)
+  +e34 v34 -> v35 c34 [0, 6.40928534763] tol 0.0000001
+    curve line origin (-28.927392916215, 18.188989334398, -234.95) direction (1, 0, 0)
+  +e33 v33 -> v34 c33 [0, 3.161010665602] tol 0.0000001
+    curve line origin (-28.927392916215, 21.35, -234.95) direction (0, -1, 0)
+  +e32 v32 -> v33 c32 [0, 25.603262419438] tol 0.0000001
+    curve line origin (-3.324130496778, 21.35, -234.95) direction (-1, 0, 0)
+  +e53 v52 -> v19 c53 [-25.4, 0] tol 0.0000001
+    curve line origin (-133.78578123789, 50.8, -234.95) direction (0, 0, -1)
+  -e52 v52 -> v53 c52 [286.18578123789, 304.8] tol 0.0000001
+    curve line origin (152.4, 50.8, -209.55) direction (-1, 0, 0)
+  +e54 v18 -> v53 c54 [0, 25.4] tol 0.0000001
+    curve line origin (-152.4, 50.8, -234.95) direction (0, 0, 1)
+  +e57 v55 -> v3 c57 [-25.4, 0] tol 0.0000001
+    curve line origin (-61.39578123789, 50.8, -234.95) direction (0, 0, -1)
+  -e56 v55 -> v54 c56 [213.79578123789, 235.78421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -209.55) direction (-1, 0, 0)
+  +e55 v2 -> v54 c55 [-25.4, 0] tol 0.0000001
+    curve line origin (-83.38421876211, 50.8, -209.55) direction (0, 0, 1)
+  +e60 v57 -> v7 c60 [-25.4, 0] tol 0.0000001
+    curve line origin (10.99421876211, 50.8, -234.95) direction (0, 0, -1)
+  -e59 v57 -> v56 c59 [141.40578123789, 163.39421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -209.55) direction (-1, 0, 0)
+  +e58 v6 -> v56 c58 [-25.4, 0] tol 0.0000001
+    curve line origin (-10.99421876211, 50.8, -209.55) direction (0, 0, 1)
+  +e63 v59 -> v11 c63 [-25.4, 0] tol 0.0000001
+    curve line origin (83.38421876211, 50.8, -234.95) direction (0, 0, -1)
+  -e62 v59 -> v58 c62 [69.01578123789, 91.00421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -209.55) direction (-1, 0, 0)
+  +e61 v10 -> v58 c61 [-25.4, 0] tol 0.0000001
+    curve line origin (61.39578123789, 50.8, -209.55) direction (0, 0, 1)
+  +e64 v60 -> v60 c64 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (127, 78.74, -31.75) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1) radius 10.31875
+  -e75 v61 -> v71 c75 [3.175, 53.34] tol 0.0000001
+    curve line origin (152.4, 31.75, -31.75) direction (0, 1, 0)
+  +e74 v70 -> v71 c74 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve circle origin (139.7, 85.09, -31.75) x (0, -1, 0) y (-1, 0, 0) z (0, 0, -1) radius 12.7
+  -e73 v70 -> v69 c73 [12.7, 48.694731853579] tol 0.0000001
+    curve line origin (152.4, 97.79, -31.75) direction (-1, 0, 0)
+  -e72 v69 -> v68 c72 [0, 35.032248927059] tol 0.0000001
+    curve line origin (103.705268146421, 97.79, -31.75) direction (-0.422618261741, -0.906307787037, 0)
+  -e71 v68 -> v67 c71 [0, 13.97] tol 0.0000001
+    curve line origin (88.9, 66.04, -31.75) direction (0, -1, 0)
+  -e70 v67 -> v66 c70 [0, 12.7] tol 0.0000001
+    curve line origin (88.9, 52.07, -31.75) direction (-1, 0, 0)
+  -e69 v66 -> v65 c69 [0, 13.97] tol 0.0000001
+    curve line origin (76.2, 52.07, -31.75) direction (0, 1, 0)
+  -e68 v65 -> v64 c68 [0, 35.032248927059] tol 0.0000001
+    curve line origin (76.2, 66.04, -31.75) direction (-0.422618261741, 0.906307787037, 0)
+  -e67 v64 -> v63 c67 [91.005268146421, 136.525] tol 0.0000001
+    curve line origin (152.4, 97.79, -31.75) direction (-1, 0, 0)
+  +e66 v62 -> v63 c66 [-62.865, 0] tol 0.0000001
+    curve line origin (15.875, 97.79, -31.75) direction (0, 1, 0)
+  +e65 v61 -> v62 c65 [-139.7, -3.175] tol 0.0000001
+    curve line origin (12.7, 34.925, -31.75) direction (-1, 0, 0)
+  +e77 v72 -> v70 c77 [-31.75, 0] tol 0.0000001
+    curve line origin (139.7, 97.79, -31.75) direction (0, 0, -1)
+  -e76 v72 -> v73 c76 [12.7, 48.694731853579] tol 0.0000001
+    curve line origin (152.4, 97.79, 0) direction (-1, 0, 0)
+  -e78 v73 -> v69 c78 [6.35, 38.1] tol 0.0000001
+    curve line origin (103.705268146421, 97.79, 6.35) direction (0, 0, -1)
+  +e79 v74 -> v74 c79 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-127, 78.74, -31.75) x (0, -1, 0) y (1, 0, 0) z (0, 0, 1) radius 10.31875
+  -e90 v75 -> v85 c90 [168.275, 213.794731853579] tol 0.0000001
+    curve line origin (152.4, 97.79, -31.75) direction (-1, 0, 0)
+  -e89 v85 -> v84 c89 [0, 35.032248927059] tol 0.0000001
+    curve line origin (-61.394731853579, 97.79, -31.75) direction (-0.422618261741, -0.906307787037, 0)
+  -e88 v84 -> v83 c88 [0, 13.97] tol 0.0000001
+    curve line origin (-76.2, 66.04, -31.75) direction (0, -1, 0)
+  -e87 v83 -> v82 c87 [0, 12.7] tol 0.0000001
+    curve line origin (-76.2, 52.07, -31.75) direction (-1, 0, 0)
+  -e86 v82 -> v81 c86 [0, 13.97] tol 0.0000001
+    curve line origin (-88.9, 52.07, -31.75) direction (0, 1, 0)
+  -e85 v81 -> v80 c85 [0, 35.032248927059] tol 0.0000001
+    curve line origin (-88.9, 66.04, -31.75) direction (-0.422618261741, 0.906307787037, 0)
+  -e84 v80 -> v79 c84 [256.105268146421, 292.1] tol 0.0000001
+    curve line origin (152.4, 97.79, -31.75) direction (-1, 0, 0)
+  +e83 v78 -> v79 c83 [1.570796326795, 3.14159265359] tol 0.0000001
+    curve circle origin (-139.7, 85.09, -31.75) x (0, -1, 0) y (-1, 0, 0) z (0, 0, -1) radius 12.7
+  +e82 v77 -> v78 c82 [3.175, 53.34] tol 0.0000001
+    curve line origin (-152.4, 31.75, -31.75) direction (0, 1, 0)
+  +e81 v76 -> v77 c81 [-136.525, 0] tol 0.0000001
+    curve line origin (-152.4, 34.925, -31.75) direction (-1, 0, 0)
+  +e80 v75 -> v76 c80 [-66.04, -3.175] tol 0.0000001
+    curve line origin (-15.875, 31.75, -31.75) direction (0, -1, 0)
+  +e93 v87 -> v64 c93 [6.35, 38.1] tol 0.0000001
+    curve line origin (61.394731853579, 97.79, 6.35) direction (0, 0, -1)
+  -e92 v87 -> v88 c92 [91.005268146421, 213.794731853579] tol 0.0000001
+    curve line origin (152.4, 97.79, 0) direction (-1, 0, 0)
+  -e95 v88 -> v85 c95 [6.35, 38.1] tol 0.0000001
+    curve line origin (-61.394731853579, 97.79, 6.35) direction (0, 0, -1)
+  +e94 v63 -> v75 c94 [-3.175, 28.575] tol 0.0000001
+    curve line origin (12.7, 97.79, -31.75) direction (-1, 0, 0)
+  +e310 v227 -> v86 c91 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (0, 97.79, -15.875) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 12.7
+  +e91 v86 -> v227 c91 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (0, 97.79, -15.875) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 12.7
+  -e98 v15 -> v90 c98 [0, 25.4] tol 0.0000001
+    curve line origin (152.4, 50.8, -234.95) direction (0, 0, 1)
+  -e97 v90 -> v89 c97 [0, 18.61421876211] tol 0.0000001
+    curve line origin (152.4, 50.8, -209.55) direction (-1, 0, 0)
+  +e96 v14 -> v89 c96 [-25.4, 0] tol 0.0000001
+    curve line origin (133.78578123789, 50.8, -209.55) direction (0, 0, 1)
+  +e382 v247 -> v248 c357 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (-133.35, 0, -184.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 7.2705
+  +e380 v248 -> v247 c355 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 0, -184.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 7.2705
+  +e103 v95 -> v17 c103 [0, 234.95] tol 0.0000001
+    curve line origin (-152.4, 0, 0) direction (0, 0, -1)
+  +e105 v96 -> v95 c105 [0, 304.8] tol 0.0000001
+    curve line origin (152.4, 0, 0) direction (-1, 0, 0)
+  -e104 v96 -> v16 c104 [0, 234.95] tol 0.0000001
+    curve line origin (152.4, 0, 0) direction (0, 0, -1)
+  +e318 v236 -> v92 c100 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 0, -57.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e100 v92 -> v236 c100 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (-133.35, 0, -57.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e317 v235 -> v93 c101 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 0, -184.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e101 v93 -> v235 c101 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (133.35, 0, -184.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e316 v234 -> v94 c102 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 0, -57.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e102 v94 -> v234 c102 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (133.35, 0, -57.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e124 v110 -> v52 c124 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (-133.78578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  +e123 v109 -> v110 c123 [0.125327831168, 3.016264822422] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -209.55) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 22.225
+  +e122 v54 -> v109 c122 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (-83.38421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  +e121 v108 -> v55 c121 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (-61.39578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  +e120 v107 -> v108 c120 [0.125327831168, 3.016264822422] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -209.55) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 22.225
+  +e119 v56 -> v107 c119 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (-10.99421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  +e118 v106 -> v57 c118 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (10.99421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  +e117 v105 -> v106 c117 [0.125327831168, 3.016264822422] tol 0.0000001
+    curve circle origin (36.195, 50.8, -209.55) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 22.225
+  +e116 v58 -> v105 c116 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (61.39578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  +e115 v104 -> v59 c115 [3.266920484758, 4.712388980385] tol 0.0000001
+    curve circle origin (83.38421876211, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  -e114 v104 -> v103 c114 [3.266920484758, 6.157857476012] tol 0.0000001
+    curve circle origin (108.585, 50.8, -209.55) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 22.225
+  +e113 v89 -> v103 c113 [4.712388980385, 6.157857476012] tol 0.0000001
+    curve circle origin (133.78578123789, 53.975, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  -e112 v90 -> v102 c112 [0, 15.875] tol 0.0000001
+    curve line origin (152.4, 50.8, -209.55) direction (0, -1, 0)
+  +e111 v101 -> v102 c111 [-304.8, 0] tol 0.0000001
+    curve line origin (152.4, 34.925, -209.55) direction (1, 0, 0)
+  +e110 v53 -> v101 c110 [0, 15.875] tol 0.0000001
+    curve line origin (-152.4, 50.8, -209.55) direction (0, -1, 0)
+  +e325 v243 -> v97 c106 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e106 v97 -> v243 c106 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e324 v242 -> v98 c107 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e107 v98 -> v242 c107 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e323 v241 -> v99 c108 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (36.195, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e108 v99 -> v241 c108 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (36.195, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e322 v240 -> v100 c109 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (108.585, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e109 v100 -> v240 c109 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (108.585, 50.8, -209.55) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.5687
+  +e125 v111 -> v111 c125 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-114.3, 31.75, -107.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 14.605
+  +e126 v112 -> v112 c126 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-76.2, 31.75, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 19.05
+  +e127 v113 -> v113 c127 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (76.2, 31.75, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 19.05
+  +e128 v114 -> v114 c128 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (114.3, 31.75, -107.95) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 14.605000000007
+  +e129 v115 -> v115 c129 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 31.75, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+  +e130 v116 -> v116 c130 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 31.75, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+  +e131 v117 -> v117 c131 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 31.75, -184.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+  +e132 v118 -> v118 c132 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 31.75, -57.15) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 7.9375
+  +e140 v126 -> v119 c140 [-304.8, 0] tol 0.0000001
+    curve line origin (-152.4, 31.75, -206.375) direction (-1, 0, 0)
+  -e139 v126 -> v125 c139 [3.175, 174.625] tol 0.0000001
+    curve line origin (152.4, 31.75, -209.55) direction (0, 0, 1)
+  +e138 v124 -> v125 c138 [-136.525, 0] tol 0.0000001
+    curve line origin (152.4, 31.75, -34.925) direction (1, 0, 0)
+  +e137 v123 -> v124 c137 [-104.775, -3.175] tol 0.0000001
+    curve line origin (15.875, 31.75, -31.75) direction (0, 0, 1)
+  +e136 v122 -> v123 c136 [-168.275, -136.525] tol 0.0000001
+    curve line origin (152.4, 31.75, -136.525) direction (1, 0, 0)
+  +e135 v121 -> v122 c135 [-174.625, -73.025] tol 0.0000001
+    curve line origin (-15.875, 31.75, -209.55) direction (0, 0, -1)
+  +e134 v120 -> v121 c134 [-139.7, -3.175] tol 0.0000001
+    curve line origin (-12.7, 31.75, -34.925) direction (1, 0, 0)
+  +e133 v119 -> v120 c133 [3.175, 174.625] tol 0.0000001
+    curve line origin (-152.4, 31.75, -209.55) direction (0, 0, 1)
+  +e143 v128 -> v80 c143 [6.35, 38.1] tol 0.0000001
+    curve line origin (-103.705268146421, 97.79, 6.35) direction (0, 0, -1)
+  -e142 v128 -> v127 c142 [256.105268146421, 292.1] tol 0.0000001
+    curve line origin (152.4, 97.79, 0) direction (-1, 0, 0)
+  +e141 v79 -> v127 c141 [0, 31.75] tol 0.0000001
+    curve line origin (-139.7, 97.79, -31.75) direction (0, 0, 1)
+  +e149 v132 -> v72 c149 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve circle origin (139.7, 85.09, 0) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 12.7
+  -e148 v132 -> v96 c148 [12.7, 97.79] tol 0.0000001
+    curve line origin (152.4, 97.79, 0) direction (0, -1, 0)
+  +e147 v131 -> v95 c147 [12.7, 97.79] tol 0.0000001
+    curve line origin (-152.4, 97.79, 0) direction (0, -1, 0)
+  +e146 v127 -> v131 c146 [4.712388980385, 6.28318530718] tol 0.0000001
+    curve circle origin (-139.7, 85.09, 0) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 12.7
+  +e159 v140 -> v128 c159 [73.202514319617, 108.234763246676] tol 0.0000001
+    curve line origin (-57.963280643195, -0.304008758531, 0) direction (-0.422618261741, 0.906307787037, 0)
+  +e158 v139 -> v140 c158 [-45.72, -31.75] tol 0.0000001
+    curve line origin (-88.9, 97.79, 0) direction (0, 1, 0)
+  +e157 v138 -> v139 c157 [228.6, 241.3] tol 0.0000001
+    curve line origin (152.4, 52.07, 0) direction (-1, 0, 0)
+  +e156 v137 -> v138 c156 [31.75, 45.72] tol 0.0000001
+    curve line origin (-76.2, 97.79, 0) direction (0, -1, 0)
+  +e155 v88 -> v137 c155 [90.353557945278, 125.385806872337] tol 0.0000001
+    curve line origin (-23.209668252658, 179.678133152273, 0) direction (-0.422618261741, -0.906307787037, 0)
+  +e154 v136 -> v87 c154 [3.428239306228, 38.460488233287] tol 0.0000001
+    curve line origin (77.648836536429, 62.932960020941, 0) direction (-0.422618261741, 0.906307787037, 0)
+  +e153 v135 -> v136 c153 [-45.72, -31.75] tol 0.0000001
+    curve line origin (76.2, 97.79, 0) direction (0, 1, 0)
+  +e152 v134 -> v135 c152 [63.5, 76.2] tol 0.0000001
+    curve line origin (152.4, 52.07, 0) direction (-1, 0, 0)
+  +e151 v133 -> v134 c151 [31.75, 45.72] tol 0.0000001
+    curve line origin (88.9, 97.79, 0) direction (0, -1, 0)
+  +e150 v73 -> v133 c150 [20.579282931889, 55.611531858948] tol 0.0000001
+    curve line origin (112.402448926966, 116.441164372801, 0) direction (-0.422618261741, -0.906307787037, 0)
+  +e321 v239 -> v129 c144 [4.712388980385, 6.28318530718] tol 0.0000001
+    curve circle origin (-127, 78.74, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 7.14375
+  +e144 v129 -> v239 c144 [0, 4.712388980385] tol 0.0000001
+    curve circle origin (-127, 78.74, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 7.14375
+  +e320 v238 -> v130 c145 [4.712388980385, 6.28318530718] tol 0.0000001
+    curve circle origin (127, 78.74, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 7.14375
+  +e145 v130 -> v238 c145 [0, 4.712388980385] tol 0.0000001
+    curve circle origin (127, 78.74, 0) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 7.14375
+  +e162 v102 -> v126 c162 [0, 1.570796326795] tol 0.0000001
+    curve circle origin (152.4, 34.925, -206.375) x (0, 0, -1) y (0, -1, 0) z (-1, 0, 0) radius 3.175
+  +e160 v125 -> v61 c160 [1.570796326795, 3.14159265359] tol 0.0000001
+    curve circle origin (152.4, 34.925, -34.925) x (0, 0, -1) y (0, -1, 0) z (-1, 0, 0) radius 3.175
+  +e161 v71 -> v132 c161 [-31.75, 0] tol 0.0000001
+    curve line origin (152.4, 85.09, 0) direction (0, 0, 1)
+  +e165 v119 -> v101 c165 [4.712388980385, 6.28318530718] tol 0.0000001
+    curve circle origin (-152.4, 34.925, -206.375) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 3.175
+  +e164 v77 -> v120 c164 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve circle origin (-152.4, 34.925, -34.925) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 3.175
+  +e163 v131 -> v78 c163 [0, 31.75] tol 0.0000001
+    curve line origin (-152.4, 85.09, 0) direction (0, 0, -1)
+  +e168 v63 -> v143 c168 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve ellipse origin (15.875, 96.2025, -34.925) x (0, -0.4472135955, -0.894427191) y (1, 0, 0) z (0, -0.894427191, 0.4472135955) major 3.549757914281 minor 3.175
+  +e169 v143 -> v144 c169 [3.549757914281, 113.592253256989] tol 0.0000001
+    curve line origin (12.7, 97.79, -31.75) direction (0, -0.4472135955, -0.894427191)
+  +e170 v144 -> v142 c170 [0, 25.4] tol 0.0000001
+    curve line origin (12.7, 46.99, -133.35) direction (-1, 0, 0)
+  -e166 v141 -> v142 c166 [3.549757914281, 113.592253256989] tol 0.0000001
+    curve line origin (-12.7, 97.79, -31.75) direction (0, -0.4472135955, -0.894427191)
+  +e167 v141 -> v75 c167 [1.570796326795, 3.14159265359] tol 0.0000001
+    curve ellipse origin (-15.875, 96.2025, -34.925) x (0, -0.4472135955, -0.894427191) y (1, 0, 0) z (0, -0.894427191, 0.4472135955) major 3.549757914281 minor 3.175
+  +e171 v144 -> v145 c171 [0, 12.065] tol 0.0000001
+    curve line origin (12.7, 46.99, -133.35) direction (0, -1, 0)
+  +e172 v145 -> v146 c172 [0, 25.4] tol 0.0000001
+    curve line origin (12.7, 34.925, -133.35) direction (-1, 0, 0)
+  -e173 v142 -> v146 c173 [0, 12.065] tol 0.0000001
+    curve line origin (-12.7, 46.99, -133.35) direction (0, -1, 0)
+  +e175 v147 -> v145 c175 [-98.425, 0] tol 0.0000001
+    curve line origin (12.7, 34.925, -133.35) direction (0, 0, -1)
+  +e174 v143 -> v147 c174 [-64.4525, -3.175] tol 0.0000001
+    curve line origin (12.7, 31.75, -34.925) direction (0, -1, 0)
+  +e176 v146 -> v148 c176 [-133.35, -34.925] tol 0.0000001
+    curve line origin (-12.7, 34.925, 0) direction (0, 0, 1)
+  +e177 v148 -> v141 c177 [34.925, 96.2025] tol 0.0000001
+    curve line origin (-12.7, 0, -34.925) direction (0, 1, 0)
+  -e327 v149 -> v228 c310 [0, 12.7] tol 0.0000001
+    curve line origin (130.81, 50.8, -247.65) direction (0, 0, 1)
+  +e178 v149 -> v149 c178 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 22.225
+  +e179 v12 -> v104 c179 [-25.4, 0] tol 0.0000001
+    curve line origin (86.534316416846, 53.578125, -209.55) direction (0, 0, 1)
+  +e180 v103 -> v13 c180 [0, 25.4] tol 0.0000001
+    curve line origin (130.635683583154, 53.578125, -209.55) direction (0, 0, -1)
+  +e181 v150 -> v150 c181 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+  -e182 v81 -> v140 c182 [-38.1, -6.35] tol 0.0000001
+    curve line origin (-88.9, 66.04, 6.35) direction (0, 0, 1)
+  +e183 v84 -> v137 c183 [-38.1, -6.35] tol 0.0000001
+    curve line origin (-76.2, 66.04, 6.35) direction (0, 0, 1)
+  +e184 v83 -> v138 c184 [-38.1, -6.35] tol 0.0000001
+    curve line origin (-76.2, 52.07, 6.35) direction (0, 0, 1)
+  +e185 v82 -> v139 c185 [-38.1, -6.35] tol 0.0000001
+    curve line origin (-88.9, 52.07, 6.35) direction (0, 0, 1)
+  -e186 v65 -> v136 c186 [-38.1, -6.35] tol 0.0000001
+    curve line origin (76.2, 66.04, 6.35) direction (0, 0, 1)
+  +e187 v68 -> v133 c187 [-38.1, -6.35] tol 0.0000001
+    curve line origin (88.9, 66.04, 6.35) direction (0, 0, 1)
+  +e188 v67 -> v134 c188 [-38.1, -6.35] tol 0.0000001
+    curve line origin (88.9, 52.07, 6.35) direction (0, 0, 1)
+  +e189 v66 -> v135 c189 [-38.1, -6.35] tol 0.0000001
+    curve line origin (76.2, 52.07, 6.35) direction (0, 0, 1)
+  -e328 v151 -> v229 c311 [0, 12.7] tol 0.0000001
+    curve line origin (58.42, 50.8, -247.65) direction (0, 0, 1)
+  +e190 v151 -> v151 c190 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 22.225
+  +e191 v8 -> v106 c191 [-25.4, 0] tol 0.0000001
+    curve line origin (14.144316416846, 53.578125, -209.55) direction (0, 0, 1)
+  +e192 v105 -> v9 c192 [0, 25.4] tol 0.0000001
+    curve line origin (58.245683583154, 53.578125, -209.55) direction (0, 0, -1)
+  +e193 v152 -> v152 c193 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+  -e329 v153 -> v230 c312 [0, 12.7] tol 0.0000001
+    curve line origin (-13.97, 50.8, -247.65) direction (0, 0, 1)
+  +e194 v153 -> v153 c194 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 22.225
+  +e195 v4 -> v108 c195 [-25.4, 0] tol 0.0000001
+    curve line origin (-58.245683583154, 53.578125, -209.55) direction (0, 0, 1)
+  +e196 v107 -> v5 c196 [0, 25.4] tol 0.0000001
+    curve line origin (-14.144316416846, 53.578125, -209.55) direction (0, 0, -1)
+  +e197 v154 -> v154 c197 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+  -e330 v155 -> v231 c313 [0, 12.7] tol 0.0000001
+    curve line origin (-86.36, 50.8, -247.65) direction (0, 0, 1)
+  +e198 v155 -> v155 c198 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 22.225
+  +e199 v1 -> v110 c199 [-25.4, 0] tol 0.0000001
+    curve line origin (-130.635683583154, 53.578125, -209.55) direction (0, 0, 1)
+  +e200 v109 -> v0 c200 [0, 25.4] tol 0.0000001
+    curve line origin (-86.534316416846, 53.578125, -209.55) direction (0, 0, -1)
+  +e201 v156 -> v156 c201 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -247.65) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5.08
+  +e202 v157 -> v157 c202 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 3.175
+  +e203 v158 -> v158 c203 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (76.2, 85.09, -158.75) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 9.525
+  -e331 v159 -> v158 c314 [0, 38.625542067394] tol 0.0000001
+    curve line origin (76.2, 46.99, -174.625) direction (0, 0.986393923832, 0.164398987305)
+  -e204 v159 -> v159 c204 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (76.2, 46.99, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 15.875
+  -e332 v160 -> v159 c315 [0, 12.065] tol 0.0000001
+    curve line origin (76.2, 34.925, -174.625) direction (0, 1, 0)
+  +e205 v160 -> v160 c205 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (76.2, 34.925, -158.75) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 15.875
+  +e206 v161 -> v161 c206 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (114.3, 53.30753018292, -107.95) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 12.170833333339
+  +e333 v161 -> v232 c316 [0, 2.267959460437] tol 0.0000001
+    curve circle origin (114.3, 63.5, -107.95) x (0, -0.642045342808, 0.766666666667) y (0, 0.766666666667, 0.642045342808) z (-1, 0, 0) radius 15.875
+  +e334 v232 -> v232 degenerate [0, 6.28318530718] tol 0.0000001
+  +e207 v162 -> v162 c207 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (114.3, 51.269036219504, -107.95) x (0, 0, 1) y (-1, 0, 0) z (0, -1, 0) radius 11.430000000007
+  +e335 v162 -> v233 c317 [0, 16.344036219504] tol 0.0000001
+    curve line origin (114.3, 51.269036219504, -96.519999999993) direction (0, -1, 0)
+  +e315 v233 -> v163 c208 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (114.3, 34.925, -107.95) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 11.430000000007
+  +e208 v163 -> v233 c208 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (114.3, 34.925, -107.95) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 11.430000000007
+  +e209 v164 -> v164 c209 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-76.2, 85.09, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 3.175
+  +e210 v165 -> v165 c210 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-76.2, 85.09, -158.75) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 9.525
+  -e336 v166 -> v165 c318 [0, 38.625542067394] tol 0.0000001
+    curve line origin (-76.2, 46.99, -174.625) direction (0, 0.986393923832, 0.164398987305)
+  -e211 v166 -> v166 c211 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-76.2, 46.99, -158.75) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 15.875
+  -e337 v167 -> v166 c319 [0, 12.065] tol 0.0000001
+    curve line origin (-76.2, 34.925, -174.625) direction (0, 1, 0)
+  +e212 v167 -> v167 c212 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-76.2, 34.925, -158.75) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 15.875
+  +e338 v168 -> v234 c320 [0, 19.05] tol 0.0000001
+    curve line origin (133.35, 19.05, -62.4205) direction (0, -1, 0)
+  +e213 v168 -> v168 c213 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 19.05, -57.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e214 v169 -> v169 c214 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 19.05, -57.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 7.9375
+  +e339 v169 -> v118 c321 [0, 12.7] tol 0.0000001
+    curve line origin (133.35, 19.05, -65.0875) direction (0, 1, 0)
+  +e340 v170 -> v235 c322 [0, 19.05] tol 0.0000001
+    curve line origin (133.35, 19.05, -189.4205) direction (0, -1, 0)
+  +e215 v170 -> v170 c215 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 19.05, -184.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e216 v171 -> v171 c216 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (133.35, 19.05, -184.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 7.9375
+  +e341 v171 -> v117 c323 [0, 12.7] tol 0.0000001
+    curve line origin (133.35, 19.05, -192.0875) direction (0, 1, 0)
+  +e342 v172 -> v236 c324 [0, 19.05] tol 0.0000001
+    curve line origin (-133.35, 19.05, -62.4205) direction (0, -1, 0)
+  +e217 v172 -> v172 c217 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 19.05, -57.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e218 v173 -> v173 c218 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 19.05, -57.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 7.9375
+  +e343 v173 -> v116 c325 [0, 12.7] tol 0.0000001
+    curve line origin (-133.35, 19.05, -65.0875) direction (0, 1, 0)
+  -e381 v246 -> v249 c356 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (-133.35, 2, -184.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e383 v174 -> v249 c326 [0, 17.05] tol 0.0000001
+    curve line origin (-133.35, 19.05, -189.4205) direction (0, -1, 0)
+  +e219 v174 -> v174 c219 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 19.05, -184.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 5.2705
+  -e379 v249 -> v246 c354 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 2, -184.15) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 5.2705
+  +e220 v175 -> v175 c220 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-133.35, 19.05, -184.15) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 7.9375
+  +e345 v175 -> v115 c327 [0, 12.7] tol 0.0000001
+    curve line origin (-133.35, 19.05, -192.0875) direction (0, 1, 0)
+  +e346 v176 -> v238 c328 [0, 17.4625] tol 0.0000001
+    curve line origin (127, 71.59625, -17.4625) direction (0, 0, 1)
+  +e221 v176 -> v176 c221 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (127, 78.74, -17.4625) x (0, -1, 0) y (-1, 0, 0) z (0, 0, -1) radius 7.14375
+  +e222 v177 -> v177 c222 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (127, 78.74, -17.4625) x (0, -1, 0) y (-1, 0, 0) z (0, 0, -1) radius 10.31875
+  +e347 v177 -> v60 c329 [0, 14.2875] tol 0.0000001
+    curve line origin (127, 68.42125, -17.4625) direction (0, 0, -1)
+  +e348 v178 -> v239 c330 [0, 17.4625] tol 0.0000001
+    curve line origin (-127, 71.59625, -17.4625) direction (0, 0, 1)
+  +e223 v178 -> v178 c223 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-127, 78.74, -17.4625) x (0, -1, 0) y (-1, 0, 0) z (0, 0, -1) radius 7.14375
+  +e224 v179 -> v179 c224 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-127, 78.74, -17.4625) x (0, -1, 0) y (-1, 0, 0) z (0, 0, -1) radius 10.31875
+  +e349 v179 -> v74 c331 [0, 14.2875] tol 0.0000001
+    curve line origin (-127, 68.42125, -17.4625) direction (0, 0, -1)
+  +e350 v180 -> v240 c332 [0, 30.1625] tol 0.0000001
+    curve line origin (112.1537, 50.8, -239.7125) direction (0, 0, 1)
+  +e225 v180 -> v180 c225 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (108.585, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 3.5687
+  +e226 v181 -> v181 c226 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (108.585, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 5.08
+  +e351 v181 -> v150 c333 [0, 7.9375] tol 0.0000001
+    curve line origin (113.665, 50.8, -239.7125) direction (0, 0, -1)
+  +e352 v182 -> v241 c334 [0, 30.1625] tol 0.0000001
+    curve line origin (39.7637, 50.8, -239.7125) direction (0, 0, 1)
+  +e227 v182 -> v182 c227 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (36.195, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 3.5687
+  +e228 v183 -> v183 c228 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (36.195, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 5.08
+  +e353 v183 -> v152 c335 [0, 7.9375] tol 0.0000001
+    curve line origin (41.275, 50.8, -239.7125) direction (0, 0, -1)
+  +e354 v184 -> v242 c336 [0, 30.1625] tol 0.0000001
+    curve line origin (-32.6263, 50.8, -239.7125) direction (0, 0, 1)
+  +e229 v184 -> v184 c229 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 3.5687
+  +e230 v185 -> v185 c230 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-36.195, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 5.08
+  +e355 v185 -> v154 c337 [0, 7.9375] tol 0.0000001
+    curve line origin (-31.115, 50.8, -239.7125) direction (0, 0, -1)
+  +e356 v186 -> v243 c338 [0, 30.1625] tol 0.0000001
+    curve line origin (-105.0163, 50.8, -239.7125) direction (0, 0, 1)
+  +e231 v186 -> v186 c231 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 3.5687
+  +e232 v187 -> v187 c232 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-108.585, 50.8, -239.7125) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 5.08
+  +e357 v187 -> v156 c339 [0, 7.9375] tol 0.0000001
+    curve line origin (-103.505, 50.8, -239.7125) direction (0, 0, -1)
+  +e358 v167 -> v112 c340 [0, 1.570796326795] tol 0.0000001
+    curve circle origin (-76.2, 34.925, -177.8) x (0, 0, 1) y (0, -1, 0) z (1, 0, 0) radius 3.175
+  +e359 v160 -> v113 c341 [0, 1.570796326795] tol 0.0000001
+    curve circle origin (76.2, 34.925, -177.8) x (0, 0, 1) y (0, -1, 0) z (1, 0, 0) radius 3.175
+  +e360 v163 -> v114 c342 [0, 1.570796326795] tol 0.0000001
+    curve circle origin (114.3, 34.925, -122.555000000007) x (0, 0, 1) y (0, -1, 0) z (1, 0, 0) radius 3.175
+  +e361 v227 -> v227 degenerate [0, 3.14159265359] tol 0.0000001
+  +e362 v86 -> v86 degenerate [0, 3.14159265359] tol 0.0000001
+  +e233 v188 -> v188 c233 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-114.3, 34.925, -107.95) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 11.43
+  +e363 v188 -> v244 c343 [0, 16.344036219496] tol 0.0000001
+    curve line origin (-114.3, 34.925, -119.38) direction (0, 1, 0)
+  +e326 v244 -> v189 c234 [3.14159265359, 6.28318530718] tol 0.0000001
+    curve circle origin (-114.3, 51.269036219496, -107.95) x (0, 0, 1) y (-1, 0, 0) z (0, -1, 0) radius 11.43
+  +e234 v189 -> v244 c234 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (-114.3, 51.269036219496, -107.95) x (0, 0, 1) y (-1, 0, 0) z (0, -1, 0) radius 11.43
+  +e235 v190 -> v190 c235 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-114.3, 53.307530182913, -107.95) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 12.170833333333
+  +e364 v190 -> v245 c344 [0, 2.267959460437] tol 0.0000001
+    curve circle origin (-114.3, 63.5, -107.95) x (0, -0.642045342809, 0.766666666667) y (0, 0.766666666667, 0.642045342809) z (-1, 0, 0) radius 15.875
+  +e365 v245 -> v245 degenerate [0, 6.28318530718] tol 0.0000001
+  -e236 v76 -> v148 c236 [0, 1.570796326795] tol 0.0000001
+    curve circle origin (-15.875, 34.925, -34.925) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 3.175
+  -e237 v121 -> v76 c237 [4.712388980385, 6.28318530718] tol 0.0000001
+    curve circle origin (-15.875, 34.925, -34.925) x (0, 0, 1) y (0, 1, 0) z (-1, 0, 0) radius 3.175
+  -e238 v62 -> v124 c238 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve circle origin (15.875, 34.925, -34.925) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 3.175
+  -e239 v147 -> v62 c239 [4.712388980385, 6.28318530718] tol 0.0000001
+    curve circle origin (15.875, 34.925, -34.925) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0) radius 3.175
+  +e366 v76 -> v76 degenerate [0, 1.570796326795] tol 0.0000001
+  +e240 v148 -> v121 c240 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve circle origin (-15.875, 34.925, -34.925) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.175
+  +e367 v62 -> v62 degenerate [0, 1.570796326795] tol 0.0000001
+  -e241 v147 -> v124 c241 [0, 1.570796326795] tol 0.0000001
+    curve circle origin (15.875, 34.925, -34.925) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 3.175
+  -e242 v122 -> v146 c242 [1.570796326795, 3.14159265359] tol 0.0000001
+    curve ellipse origin (-15.875, 34.925, -136.525) x (-0.707106781187, 0, -0.707106781187) y (0, -1, 0) z (-0.707106781187, 0, 0.707106781187) major 4.490128060535 minor 3.175
+  -e243 v145 -> v123 c243 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve ellipse origin (15.875, 34.925, -136.525) x (0.707106781187, 0, -0.707106781187) y (0, 1, 0) z (0.707106781187, 0, 0.707106781187) major 4.490128060535 minor 3.175
+  +e368 v188 -> v111 c345 [0, 1.570796326795] tol 0.0000001
+    curve circle origin (-114.3, 34.925, -122.555) x (0, 0, 1) y (0, -1, 0) z (1, 0, 0) radius 3.175
+  +e369 v190 -> v189 c346 [0, 0.697163133642] tol 0.0000001
+    curve circle origin (-114.3, 51.269036219496, -93.345) x (0, 0.642045342809, -0.766666666667) y (0, -0.766666666667, -0.642045342809) z (-1, 0, 0) radius 3.175
+  -e370 v161 -> v162 c347 [0, 0.697163133642] tol 0.0000001
+    curve circle origin (114.3, 51.269036219504, -93.344999999993) x (0, 0.642045342808, -0.766666666667) y (0, -0.766666666667, -0.642045342808) z (-1, 0, 0) radius 3.175
+  -e371 v191 -> v192 c348 [0, 3.704061038777] tol 0.0000001
+    curve line origin (76.2, 72.39, -161.925) direction (0, -0.515038075919, 0.857167300096)
+  +e372 v192 -> v192 degenerate [0, 6.28318530718] tol 0.0000001
+  +e244 v191 -> v191 c244 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (76.2, 72.39, -158.75) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 3.175
+  +e373 v191 -> v157 c349 [0, 12.7] tol 0.0000001
+    curve line origin (76.2, 72.39, -161.925) direction (0, 1, 0)
+  -e374 v193 -> v194 c350 [0, 3.704061038777] tol 0.0000001
+    curve line origin (-76.2, 72.39, -161.925) direction (0, -0.515038075919, 0.857167300096)
+  +e375 v194 -> v194 degenerate [0, 6.28318530718] tol 0.0000001
+  +e245 v193 -> v193 c245 [0, 6.28318530718] tol 0.0000001
+    curve circle origin (-76.2, 72.39, -158.75) x (0, 0, -1) y (-1, 0, 0) z (0, 1, 0) radius 3.175
+  +e376 v193 -> v164 c351 [0, 12.7] tol 0.0000001
+    curve line origin (-76.2, 72.39, -161.925) direction (0, 1, 0)
+  +e246 v21 -> v195 c246 [-2.54, 0] tol 0.0000001
+    curve line origin (8.17008041978, 21.35, -232.41) direction (0, 0, 1)
+  -e247 v196 -> v195 c247 [-11.482858127836, 0] tol 0.0000001
+    curve line origin (8.17008041978, 21.35, -232.41) direction (0, 1, 0)
+  -e248 v22 -> v196 c248 [-2.54, 0] tol 0.0000001
+    curve line origin (8.17008041978, 9.867141872164, -232.41) direction (0, 0, 1)
+  -e250 v23 -> v197 c250 [-2.54, 0] tol 0.0000001
+    curve line origin (14.433187558849, 7.669424487722, -232.41) direction (0, 0, 1)
+  -e249 v197 -> v196 c249 [3.816543440773, 6.28318530718] tol 0.0000001
+    curve circle origin (11.687222291944, 9.867141872164, -232.41) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.517141872164
+  -e251 v198 -> v197 c251 [-13.982233803722, 0] tol 0.0000001
+    curve line origin (14.433187558849, 7.669424487722, -232.41) direction (-0.677084591162, -0.735905195261, 0)
+  -e252 v24 -> v198 c252 [-2.54, 0] tol 0.0000001
+    curve line origin (23.900342617369, 17.959022985228, -232.41) direction (0, 0, 1)
+  -e253 v199 -> v198 c253 [3.14159265359, 5.539391593175] tol 0.0000001
+    curve circle origin (24.297636519078, 17.593484624116, -232.41) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 0.5398710381
+  -e254 v25 -> v199 c254 [-2.54, 0] tol 0.0000001
+    curve line origin (24.837507557178, 17.593484624116, -232.41) direction (0, 0, 1)
+  -e255 v200 -> v199 c255 [-11.243484624116, 0] tol 0.0000001
+    curve line origin (24.837507557178, 17.593484624116, -232.41) direction (0, 1, 0)
+  -e256 v26 -> v200 c256 [-2.54, 0] tol 0.0000001
+    curve line origin (24.837507557178, 6.35, -232.41) direction (0, 0, 1)
+  -e257 v201 -> v200 c257 [-3.102492442822, 0] tol 0.0000001
+    curve line origin (24.837507557178, 6.35, -232.41) direction (-1, 0, 0)
+  -e258 v27 -> v201 c258 [-2.54, 0] tol 0.0000001
+    curve line origin (27.94, 6.35, -232.41) direction (0, 0, 1)
+  -e259 v202 -> v201 c259 [-12.162091654332, 0] tol 0.0000001
+    curve line origin (27.94, 6.35, -232.41) direction (0, -1, 0)
+  -e260 v28 -> v202 c260 [-2.54, 0] tol 0.0000001
+    curve line origin (27.94, 18.512091654332, -232.41) direction (0, 0, 1)
+  -e262 v29 -> v203 c262 [-2.54, 0] tol 0.0000001
+    curve line origin (22.284814874678, 20.726078045825, -232.41) direction (0, 0, 1)
+  -e261 v203 -> v202 c261 [0.746309066103, 3.14159265359] tol 0.0000001
+    curve circle origin (24.679023239201, 18.512091654331, -232.41) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 3.260976760799
+  -e263 v204 -> v203 c263 [-15.1190819975, 0] tol 0.0000001
+    curve line origin (22.284814874678, 20.726078045825, -232.41) direction (0.678933507932, 0.734199762876, 0)
+  -e264 v30 -> v204 c264 [-2.54, 0] tol 0.0000001
+    curve line origin (12.019963497405, 9.625651628358, -232.41) direction (0, 0, 1)
+  -e265 v205 -> v204 c265 [6.19942612582, 8.678468894667] tol 0.0000001
+    curve circle origin (11.715533533184, 9.907165889162, -232.41) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 0.414641872164
+  -e266 v31 -> v205 c266 [-2.54, 0] tol 0.0000001
+    curve line origin (11.302345291735, 9.941855358465, -232.41) direction (0, 0, 1)
+  -e267 v206 -> v205 c267 [-11.408144641535, 0] tol 0.0000001
+    curve line origin (11.302345291736, 9.941855358465, -232.41) direction (0, -1, 0)
+  -e268 v20 -> v206 c268 [-2.54, 0] tol 0.0000001
+    curve line origin (11.302345291736, 21.35, -232.41) direction (0, 0, 1)
+  -e269 v195 -> v206 c269 [-3.132264871956, 0] tol 0.0000001
+    curve line origin (11.302345291736, 21.35, -232.41) direction (1, 0, 0)
+  +e270 v33 -> v207 c270 [-2.54, 0] tol 0.0000001
+    curve line origin (-28.927392916215, 21.35, -232.41) direction (0, 0, 1)
+  -e271 v208 -> v207 c271 [-3.161010665602, 0] tol 0.0000001
+    curve line origin (-28.927392916215, 21.35, -232.41) direction (0, 1, 0)
+  -e272 v34 -> v208 c272 [-2.54, 0] tol 0.0000001
+    curve line origin (-28.927392916215, 18.188989334398, -232.41) direction (0, 0, 1)
+  -e273 v209 -> v208 c273 [-6.40928534763, 0] tol 0.0000001
+    curve line origin (-28.927392916215, 18.188989334398, -232.41) direction (-1, 0, 0)
+  -e274 v35 -> v209 c274 [-2.54, 0] tol 0.0000001
+    curve line origin (-22.518107568585, 18.188989334398, -232.41) direction (0, 0, 1)
+  -e275 v210 -> v209 c275 [-11.838989334398, 0] tol 0.0000001
+    curve line origin (-22.518107568585, 18.188989334398, -232.41) direction (0, 1, 0)
+  -e276 v36 -> v210 c276 [-2.54, 0] tol 0.0000001
+    curve line origin (-22.518107568585, 6.35, -232.41) direction (0, 0, 1)
+  -e277 v211 -> v210 c277 [-3.102492442822, 0] tol 0.0000001
+    curve line origin (-22.518107568585, 6.35, -232.41) direction (-1, 0, 0)
+  -e278 v37 -> v211 c278 [-2.54, 0] tol 0.0000001
+    curve line origin (-19.415615125763, 6.35, -232.41) direction (0, 0, 1)
+  -e279 v212 -> v211 c279 [-11.838989334398, 0] tol 0.0000001
+    curve line origin (-19.415615125763, 6.35, -232.41) direction (0, -1, 0)
+  -e280 v38 -> v212 c280 [-2.54, 0] tol 0.0000001
+    curve line origin (-19.415615125763, 18.188989334398, -232.41) direction (0, 0, 1)
+  -e281 v213 -> v212 c281 [-15.690070153425, 0] tol 0.0000001
+    curve line origin (-19.415615125763, 18.188989334398, -232.41) direction (-1, 0, 0)
+  -e282 v39 -> v213 c282 [-2.54, 0] tol 0.0000001
+    curve line origin (-3.725544972338, 18.188989334398, -232.41) direction (0, 0, 1)
+  -e283 v214 -> v213 c283 [1.570796326795, 4.79400605696] tol 0.0000001
+    curve circle origin (-3.610561797753, 16.783306214359, -232.41) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 1.410378021808
+  -e284 v40 -> v214 c284 [-2.54, 0] tol 0.0000001
+    curve line origin (-3.610561797753, 15.372928192551, -232.41) direction (0, 0, 1)
+  -e285 v215 -> v214 c285 [-9.626760965037, 0] tol 0.0000001
+    curve line origin (-3.610561797753, 15.372928192551, -232.41) direction (1, 0, 0)
+  -e286 v41 -> v215 c286 [-2.54, 0] tol 0.0000001
+    curve line origin (-13.23732276279, 15.372928192551, -232.41) direction (0, 0, 1)
+  -e288 v42 -> v216 c288 [-2.54, 0] tol 0.0000001
+    curve line origin (-13.23732276279, 6.35, -232.41) direction (0, 0, 1)
+  -e287 v216 -> v215 c287 [4.870307445956, 7.696063168403] tol 0.0000001
+    curve circle origin (-12.518897232837, 10.861464096276, -232.41) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 4.568308607578
+  -e289 v217 -> v216 c289 [-15.200486568435, 0] tol 0.0000001
+    curve line origin (-13.23732276279, 6.35, -232.41) direction (-1, 0, 0)
+  -e290 v43 -> v217 c290 [-2.54, 0] tol 0.0000001
+    curve line origin (1.963163805645, 6.35, -232.41) direction (0, 0, 1)
+  -e292 v44 -> v218 c292 [-2.54, 0] tol 0.0000001
+    curve line origin (6.158901500028, 10.545737694384, -232.41) direction (0, 0, 1)
+  -e291 v218 -> v217 c291 [3.14159265359, 4.712388980385] tol 0.0000001
+    curve circle origin (1.963163805645, 10.545737694384, -232.41) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 4.195737694384
+  -e293 v219 -> v218 c293 [-10.804262305616, 0] tol 0.0000001
+    curve line origin (6.158901500028, 10.545737694384, -232.41) direction (0, -1, 0)
+  -e294 v45 -> v219 c294 [-2.54, 0] tol 0.0000001
+    curve line origin (6.158901500028, 21.35, -232.41) direction (0, 0, 1)
+  -e295 v220 -> v219 c295 [-3.132264871956, 0] tol 0.0000001
+    curve line origin (6.158901500028, 21.35, -232.41) direction (1, 0, 0)
+  -e296 v46 -> v220 c296 [-2.54, 0] tol 0.0000001
+    curve line origin (3.026636628073, 21.35, -232.41) direction (0, 0, 1)
+  -e297 v221 -> v220 c297 [-10.804262305616, 0] tol 0.0000001
+    curve line origin (3.026636628073, 21.35, -232.41) direction (0, 1, 0)
+  -e298 v47 -> v221 c298 [-2.54, 0] tol 0.0000001
+    curve line origin (3.026636628073, 10.545737694384, -232.41) direction (0, 0, 1)
+  -e299 v222 -> v221 c299 [1.570796326795, 3.14159265359] tol 0.0000001
+    curve circle origin (1.934075800169, 10.545737694384, -232.41) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 1.092560827904
+  -e300 v48 -> v222 c300 [-2.54, 0] tol 0.0000001
+    curve line origin (1.934075800169, 9.45317686648, -232.41) direction (0, 0, 1)
+  -e301 v223 -> v222 c301 [-14.711465864619, 0] tol 0.0000001
+    curve line origin (1.934075800169, 9.45317686648, -232.41) direction (1, 0, 0)
+  -e302 v49 -> v223 c302 [-2.54, 0] tol 0.0000001
+    curve line origin (-12.77739006445, 9.45317686648, -232.41) direction (0, 0, 1)
+  -e303 v224 -> v223 c303 [4.799121406613, 7.726428631591] tol 0.0000001
+    curve circle origin (-12.597185717588, 10.858286801284, -232.41) x (-1, 0, 0) y (0, -1, 0) z (0, 0, 1) radius 1.416618345043
+  -e304 v50 -> v224 c304 [-2.54, 0] tol 0.0000001
+    curve line origin (-12.719898477157, 12.269580220156, -232.41) direction (0, 0, 1)
+  -e305 v225 -> v224 c305 [-9.051845092112, 0] tol 0.0000001
+    curve line origin (-12.719898477157, 12.269580220156, -232.41) direction (-1, 0, 0)
+  -e306 v51 -> v225 c306 [-2.54, 0] tol 0.0000001
+    curve line origin (-3.668053385045, 12.269580220156, -232.41) direction (0, 0, 1)
+  -e308 v32 -> v226 c308 [-2.54, 0] tol 0.0000001
+    curve line origin (-3.324130496778, 21.35, -232.41) direction (0, 0, 1)
+  -e307 v226 -> v225 c307 [1.570796326795, 4.788103227491] tol 0.0000001
+    curve circle origin (-3.324130496778, 16.803277032713, -232.41) x (-1, 0, 0) y (0, 1, 0) z (0, 0, -1) radius 4.546722967287
+  -e309 v207 -> v226 c309 [-25.603262419438, 0] tol 0.0000001
+    curve line origin (-3.324130496778, 21.35, -232.41) direction (1, 0, 0)
+  +e378 v248 -> v249 c353 [0, 2.828427124746] tol 0.0000001
+    curve line origin (-133.35, 0, -191.4205) direction (0, 0.707106781187, 0.707106781187)
+  +e377 v246 -> v247 c352 [0, 2.828427124746] tol 0.0000001
+    curve line origin (-133.35, 2, -178.8795) direction (0, -0.707106781187, 0.707106781187)
+vertices
+  v1 (-130.635683583154, 53.578125, -234.95) tol 0.0000001
+  v231 (-86.36, 50.8, -234.95) tol 0.0000001
+  v19 (-133.78578123789, 50.8, -234.95) tol 0.0000001
+  v18 (-152.4, 50.8, -234.95) tol 0.0000001
+  v17 (-152.4, 0, -234.95) tol 0.0000001
+  v16 (152.4, 0, -234.95) tol 0.0000001
+  v15 (152.4, 50.8, -234.95) tol 0.0000001
+  v14 (133.78578123789, 50.8, -234.95) tol 0.0000001
+  v13 (130.635683583154, 53.578125, -234.95) tol 0.0000001
+  v228 (130.81, 50.8, -234.95) tol 0.0000001
+  v12 (86.534316416846, 53.578125, -234.95) tol 0.0000001
+  v11 (83.38421876211, 50.8, -234.95) tol 0.0000001
+  v10 (61.39578123789, 50.8, -234.95) tol 0.0000001
+  v9 (58.245683583154, 53.578125, -234.95) tol 0.0000001
+  v229 (58.42, 50.8, -234.95) tol 0.0000001
+  v8 (14.144316416846, 53.578125, -234.95) tol 0.0000001
+  v7 (10.99421876211, 50.8, -234.95) tol 0.0000001
+  v6 (-10.99421876211, 50.8, -234.95) tol 0.0000001
+  v5 (-14.144316416846, 53.578125, -234.95) tol 0.0000001
+  v230 (-13.97, 50.8, -234.95) tol 0.0000001
+  v4 (-58.245683583154, 53.578125, -234.95) tol 0.0000001
+  v3 (-61.39578123789, 50.8, -234.95) tol 0.0000001
+  v2 (-83.38421876211, 50.8, -234.95) tol 0.0000001
+  v0 (-86.534316416846, 53.578125, -234.95) tol 0.0000001
+  v31 (11.302345291735, 9.941855358465, -234.95) tol 0.0000001
+  v20 (11.302345291736, 21.35, -234.95) tol 0.0000001
+  v30 (12.019963497405, 9.625651628358, -234.95) tol 0.0000001
+  v29 (22.284814874678, 20.726078045825, -234.95) tol 0.0000001
+  v28 (27.94, 18.512091654332, -234.95) tol 0.0000001
+  v27 (27.94, 6.35, -234.95) tol 0.0000001
+  v26 (24.837507557178, 6.35, -234.95) tol 0.0000001
+  v25 (24.837507557178, 17.593484624116, -234.95) tol 0.0000001
+  v24 (23.900342617369, 17.959022985228, -234.95) tol 0.0000001
+  v23 (14.433187558849, 7.669424487722, -234.95) tol 0.0000001
+  v22 (8.17008041978, 9.867141872164, -234.95) tol 0.0000001
+  v21 (8.17008041978, 21.35, -234.95) tol 0.0000001
+  v51 (-3.668053385045, 12.269580220156, -234.95) tol 0.0000001
+  v32 (-3.324130496778, 21.35, -234.95) tol 0.0000001
+  v50 (-12.719898477157, 12.269580220156, -234.95) tol 0.0000001
+  v49 (-12.77739006445, 9.45317686648, -234.95) tol 0.0000001
+  v48 (1.934075800169, 9.45317686648, -234.95) tol 0.0000001
+  v47 (3.026636628073, 10.545737694384, -234.95) tol 0.0000001
+  v46 (3.026636628073, 21.35, -234.95) tol 0.0000001
+  v45 (6.158901500028, 21.35, -234.95) tol 0.0000001
+  v44 (6.158901500028, 10.545737694384, -234.95) tol 0.0000001
+  v43 (1.963163805645, 6.35, -234.95) tol 0.0000001
+  v42 (-13.23732276279, 6.35, -234.95) tol 0.0000001
+  v41 (-13.23732276279, 15.372928192551, -234.95) tol 0.0000001
+  v40 (-3.610561797753, 15.372928192551, -234.95) tol 0.0000001
+  v39 (-3.725544972338, 18.188989334398, -234.95) tol 0.0000001
+  v38 (-19.415615125763, 18.188989334398, -234.95) tol 0.0000001
+  v37 (-19.415615125763, 6.35, -234.95) tol 0.0000001
+  v36 (-22.518107568585, 6.35, -234.95) tol 0.0000001
+  v35 (-22.518107568585, 18.188989334398, -234.95) tol 0.0000001
+  v34 (-28.927392916215, 18.188989334398, -234.95) tol 0.0000001
+  v33 (-28.927392916215, 21.35, -234.95) tol 0.0000001
+  v52 (-133.78578123789, 50.8, -209.55) tol 0.0000001
+  v53 (-152.4, 50.8, -209.55) tol 0.0000001
+  v55 (-61.39578123789, 50.8, -209.55) tol 0.0000001
+  v54 (-83.38421876211, 50.8, -209.55) tol 0.0000001
+  v57 (10.99421876211, 50.8, -209.55) tol 0.0000001
+  v56 (-10.99421876211, 50.8, -209.55) tol 0.0000001
+  v59 (83.38421876211, 50.8, -209.55) tol 0.0000001
+  v58 (61.39578123789, 50.8, -209.55) tol 0.0000001
+  v60 (127, 68.42125, -31.75) tol 0.0000001
+  v71 (152.4, 85.09, -31.75) tol 0.0000001
+  v61 (152.4, 34.925, -31.75) tol 0.0000001
+  v70 (139.7, 97.79, -31.75) tol 0.0000001
+  v69 (103.705268146421, 97.79, -31.75) tol 0.0000001
+  v68 (88.9, 66.04, -31.75) tol 0.0000001
+  v67 (88.9, 52.07, -31.75) tol 0.0000001
+  v66 (76.2, 52.07, -31.75) tol 0.0000001
+  v65 (76.2, 66.04, -31.75) tol 0.0000001
+  v64 (61.394731853579, 97.79, -31.75) tol 0.0000001
+  v63 (15.875, 97.79, -31.75) tol 0.0000001
+  v62 (15.875, 34.925, -31.75) tol 0.0000001
+  v72 (139.7, 97.79, 0) tol 0.0000001
+  v73 (103.705268146421, 97.79, 0) tol 0.0000001
+  v74 (-127, 68.42125, -31.75) tol 0.0000001
+  v85 (-61.394731853579, 97.79, -31.75) tol 0.0000001
+  v75 (-15.875, 97.79, -31.75) tol 0.0000001
+  v84 (-76.2, 66.04, -31.75) tol 0.0000001
+  v83 (-76.2, 52.07, -31.75) tol 0.0000001
+  v82 (-88.9, 52.07, -31.75) tol 0.0000001
+  v81 (-88.9, 66.04, -31.75) tol 0.0000001
+  v80 (-103.705268146421, 97.79, -31.75) tol 0.0000001
+  v79 (-139.7, 97.79, -31.75) tol 0.0000001
+  v78 (-152.4, 85.09, -31.75) tol 0.0000001
+  v77 (-152.4, 34.925, -31.75) tol 0.0000001
+  v76 (-15.875, 34.925, -31.75) tol 0.0000001
+  v87 (61.394731853579, 97.79, 0) tol 0.0000001
+  v88 (-61.394731853579, 97.79, 0) tol 0.0000001
+  v227 (0, 97.79, -3.175) tol 0.0000001
+  v86 (0, 97.79, -28.575) tol 0.0000001
+  v90 (152.4, 50.8, -209.55) tol 0.0000001
+  v89 (133.78578123789, 50.8, -209.55) tol 0.0000001
+  v247 (-133.35, 0, -176.8795) tol 0.0000001
+  v248 (-133.35, 0, -191.4205) tol 0.0000001
+  v95 (-152.4, 0, 0) tol 0.0000001
+  v96 (152.4, 0, 0) tol 0.0000001
+  v236 (-133.35, 0, -62.4205) tol 0.0000001
+  v92 (-133.35, 0, -51.8795) tol 0.0000001
+  v235 (133.35, 0, -189.4205) tol 0.0000001
+  v93 (133.35, 0, -178.8795) tol 0.0000001
+  v234 (133.35, 0, -62.4205) tol 0.0000001
+  v94 (133.35, 0, -51.8795) tol 0.0000001
+  v110 (-130.635683583154, 53.578125, -209.55) tol 0.0000001
+  v109 (-86.534316416846, 53.578125, -209.55) tol 0.0000001
+  v108 (-58.245683583154, 53.578125, -209.55) tol 0.0000001
+  v107 (-14.144316416846, 53.578125, -209.55) tol 0.0000001
+  v106 (14.144316416846, 53.578125, -209.55) tol 0.0000001
+  v105 (58.245683583154, 53.578125, -209.55) tol 0.0000001
+  v104 (86.534316416846, 53.578125, -209.55) tol 0.0000001
+  v103 (130.635683583154, 53.578125, -209.55) tol 0.0000001
+  v102 (152.4, 34.925, -209.55) tol 0.0000001
+  v101 (-152.4, 34.925, -209.55) tol 0.0000001
+  v243 (-105.0163, 50.8, -209.55) tol 0.0000001
+  v97 (-112.1537, 50.8, -209.55) tol 0.0000001
+  v242 (-32.6263, 50.8, -209.55) tol 0.0000001
+  v98 (-39.7637, 50.8, -209.55) tol 0.0000001
+  v241 (39.7637, 50.8, -209.55) tol 0.0000001
+  v99 (32.6263, 50.8, -209.55) tol 0.0000001
+  v240 (112.1537, 50.8, -209.55) tol 0.0000001
+  v100 (105.0163, 50.8, -209.55) tol 0.0000001
+  v111 (-114.3, 31.75, -122.555) tol 0.0000001
+  v112 (-76.2, 31.75, -177.8) tol 0.0000001
+  v113 (76.2, 31.75, -177.8) tol 0.0000001
+  v114 (114.3, 31.75, -122.555000000007) tol 0.0000001
+  v115 (-133.35, 31.75, -192.0875) tol 0.0000001
+  v116 (-133.35, 31.75, -65.0875) tol 0.0000001
+  v117 (133.35, 31.75, -192.0875) tol 0.0000001
+  v118 (133.35, 31.75, -65.0875) tol 0.0000001
+  v126 (152.4, 31.75, -206.375) tol 0.0000001
+  v119 (-152.4, 31.75, -206.375) tol 0.0000001
+  v125 (152.4, 31.75, -34.925) tol 0.0000001
+  v124 (15.875, 31.75, -34.925) tol 0.0000001
+  v123 (15.875, 31.75, -136.525) tol 0.0000001
+  v122 (-15.875, 31.75, -136.525) tol 0.0000001
+  v121 (-15.875, 31.75, -34.925) tol 0.0000001
+  v120 (-152.4, 31.75, -34.925) tol 0.0000001
+  v128 (-103.705268146421, 97.79, 0) tol 0.0000001
+  v127 (-139.7, 97.79, 0) tol 0.0000001
+  v132 (152.4, 85.09, 0) tol 0.0000001
+  v131 (-152.4, 85.09, 0) tol 0.0000001
+  v140 (-88.9, 66.04, 0) tol 0.0000001
+  v139 (-88.9, 52.07, 0) tol 0.0000001
+  v138 (-76.2, 52.07, 0) tol 0.0000001
+  v137 (-76.2, 66.04, 0) tol 0.0000001
+  v136 (76.2, 66.04, 0) tol 0.0000001
+  v135 (76.2, 52.07, 0) tol 0.0000001
+  v134 (88.9, 52.07, 0) tol 0.0000001
+  v133 (88.9, 66.04, 0) tol 0.0000001
+  v239 (-127, 71.59625, 0) tol 0.0000001
+  v129 (-134.14375, 78.74, 0) tol 0.0000001
+  v238 (127, 71.59625, 0) tol 0.0000001
+  v130 (119.85625, 78.74, 0) tol 0.0000001
+  v143 (12.7, 96.2025, -34.925) tol 0.0000001
+  v144 (12.7, 46.99, -133.35) tol 0.0000001
+  v142 (-12.7, 46.99, -133.35) tol 0.0000001
+  v141 (-12.7, 96.2025, -34.925) tol 0.0000001
+  v145 (12.7, 34.925, -133.35) tol 0.0000001
+  v146 (-12.7, 34.925, -133.35) tol 0.0000001
+  v147 (12.7, 34.925, -34.925) tol 0.0000001
+  v148 (-12.7, 34.925, -34.925) tol 0.0000001
+  v149 (130.81, 50.8, -247.65) tol 0.0000001
+  v150 (113.665, 50.8, -247.65) tol 0.0000001
+  v151 (58.42, 50.8, -247.65) tol 0.0000001
+  v152 (41.275, 50.8, -247.65) tol 0.0000001
+  v153 (-13.97, 50.8, -247.65) tol 0.0000001
+  v154 (-31.115, 50.8, -247.65) tol 0.0000001
+  v155 (-86.36, 50.8, -247.65) tol 0.0000001
+  v156 (-103.505, 50.8, -247.65) tol 0.0000001
+  v157 (76.2, 85.09, -161.925) tol 0.0000001
+  v158 (76.2, 85.09, -168.275) tol 0.0000001
+  v159 (76.2, 46.99, -174.625) tol 0.0000001
+  v160 (76.2, 34.925, -174.625) tol 0.0000001
+  v161 (114.3, 53.30753018292, -95.779166666661) tol 0.0000001
+  v232 (114.3, 79.375, -107.95) tol 0.0000001
+  v162 (114.3, 51.269036219504, -96.519999999993) tol 0.0000001
+  v233 (114.3, 34.925, -96.519999999993) tol 0.0000001
+  v163 (114.3, 34.925, -119.380000000007) tol 0.0000001
+  v164 (-76.2, 85.09, -161.925) tol 0.0000001
+  v165 (-76.2, 85.09, -168.275) tol 0.0000001
+  v166 (-76.2, 46.99, -174.625) tol 0.0000001
+  v167 (-76.2, 34.925, -174.625) tol 0.0000001
+  v168 (133.35, 19.05, -62.4205) tol 0.0000001
+  v169 (133.35, 19.05, -65.0875) tol 0.0000001
+  v170 (133.35, 19.05, -189.4205) tol 0.0000001
+  v171 (133.35, 19.05, -192.0875) tol 0.0000001
+  v172 (-133.35, 19.05, -62.4205) tol 0.0000001
+  v173 (-133.35, 19.05, -65.0875) tol 0.0000001
+  v249 (-133.35, 2, -189.4205) tol 0.0000001
+  v246 (-133.35, 2, -178.8795) tol 0.0000001
+  v174 (-133.35, 19.05, -189.4205) tol 0.0000001
+  v175 (-133.35, 19.05, -192.0875) tol 0.0000001
+  v176 (127, 71.59625, -17.4625) tol 0.0000001
+  v177 (127, 68.42125, -17.4625) tol 0.0000001
+  v178 (-127, 71.59625, -17.4625) tol 0.0000001
+  v179 (-127, 68.42125, -17.4625) tol 0.0000001
+  v180 (112.1537, 50.8, -239.7125) tol 0.0000001
+  v181 (113.665, 50.8, -239.7125) tol 0.0000001
+  v182 (39.7637, 50.8, -239.7125) tol 0.0000001
+  v183 (41.275, 50.8, -239.7125) tol 0.0000001
+  v184 (-32.6263, 50.8, -239.7125) tol 0.0000001
+  v185 (-31.115, 50.8, -239.7125) tol 0.0000001
+  v186 (-105.0163, 50.8, -239.7125) tol 0.0000001
+  v187 (-103.505, 50.8, -239.7125) tol 0.0000001
+  v188 (-114.3, 34.925, -119.38) tol 0.0000001
+  v244 (-114.3, 51.269036219496, -119.38) tol 0.0000001
+  v189 (-114.3, 51.269036219496, -96.52) tol 0.0000001
+  v190 (-114.3, 53.307530182913, -95.779166666667) tol 0.0000001
+  v245 (-114.3, 79.375, -107.95) tol 0.0000001
+  v192 (76.2, 70.482267534587, -158.75) tol 0.0000001
+  v191 (76.2, 72.39, -161.925) tol 0.0000001
+  v194 (-76.2, 70.482267534587, -158.75) tol 0.0000001
+  v193 (-76.2, 72.39, -161.925) tol 0.0000001
+  v195 (8.17008041978, 21.35, -232.41) tol 0.0000001
+  v196 (8.17008041978, 9.867141872164, -232.41) tol 0.0000001
+  v197 (14.433187558849, 7.669424487722, -232.41) tol 0.0000001
+  v198 (23.900342617369, 17.959022985228, -232.41) tol 0.0000001
+  v199 (24.837507557178, 17.593484624116, -232.41) tol 0.0000001
+  v200 (24.837507557178, 6.35, -232.41) tol 0.0000001
+  v201 (27.94, 6.35, -232.41) tol 0.0000001
+  v202 (27.94, 18.512091654332, -232.41) tol 0.0000001
+  v203 (22.284814874678, 20.726078045825, -232.41) tol 0.0000001
+  v204 (12.019963497405, 9.625651628358, -232.41) tol 0.0000001
+  v205 (11.302345291735, 9.941855358465, -232.41) tol 0.0000001
+  v206 (11.302345291736, 21.35, -232.41) tol 0.0000001
+  v207 (-28.927392916215, 21.35, -232.41) tol 0.0000001
+  v208 (-28.927392916215, 18.188989334398, -232.41) tol 0.0000001
+  v209 (-22.518107568585, 18.188989334398, -232.41) tol 0.0000001
+  v210 (-22.518107568585, 6.35, -232.41) tol 0.0000001
+  v211 (-19.415615125763, 6.35, -232.41) tol 0.0000001
+  v212 (-19.415615125763, 18.188989334398, -232.41) tol 0.0000001
+  v213 (-3.725544972338, 18.188989334398, -232.41) tol 0.0000001
+  v214 (-3.610561797753, 15.372928192551, -232.41) tol 0.0000001
+  v215 (-13.23732276279, 15.372928192551, -232.41) tol 0.0000001
+  v216 (-13.23732276279, 6.35, -232.41) tol 0.0000001
+  v217 (1.963163805645, 6.35, -232.41) tol 0.0000001
+  v218 (6.158901500028, 10.545737694384, -232.41) tol 0.0000001
+  v219 (6.158901500028, 21.35, -232.41) tol 0.0000001
+  v220 (3.026636628073, 21.35, -232.41) tol 0.0000001
+  v221 (3.026636628073, 10.545737694384, -232.41) tol 0.0000001
+  v222 (1.934075800169, 9.45317686648, -232.41) tol 0.0000001
+  v223 (-12.77739006445, 9.45317686648, -232.41) tol 0.0000001
+  v224 (-12.719898477157, 12.269580220156, -232.41) tol 0.0000001
+  v225 (-3.668053385045, 12.269580220156, -232.41) tol 0.0000001
+  v226 (-3.324130496778, 21.35, -232.41) tol 0.0000001
+euler 248/373/146/185/1 g10 = 0

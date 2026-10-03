@@ -1,0 +1,69 @@
+{
+  "description": "NIST FTC-06's rim of a hole, the fillet's chamfer twin (blend/split-rim-two-edge-vertex-fillet): one half of the split rim circle chamfered at d 2, the chain run on through the seam's vertex and the vertex of two edges (ADR-0041), two half cones meeting on the chord at each. The file is not shrunk (ADR-0026 §4)",
+  "params": {
+    "d": 2
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ftc-06/nist_ftc_06_asme1_rd.stp",
+      "sha256": "5e30f0903f9470c14a98e70395ca005fe90bcd3fb704c381a80a69958838f169",
+      "id": 101
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          -128.0795,
+          0.0,
+          -184.15
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "counts": {
+      "vertices": 248,
+      "edges": 373,
+      "faces": 146,
+      "loops": 185,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE heals FTC-06 as it reads it (occt_heals, ADR-0026 §3), 227/310/144/223 in the file become 250/373/144/183, so its counts are not the file's; Arris's are its own reading of the file, 246/369/144/183 (real/nist-ftc-06), and the chamfer takes the two arcs and their two vertices for four contact arcs, two junction arcs and four vertices, 248/373/146/185, genus 10 as the part. Open CASCADE's 250/377/146/185 is genus 11: each of its two half cones spans a whole turn, its plane and cylinder contacts closed circles over [0, 2π] meeting at the seam's vertex only, and its two junction edges are one tube circle at the seam's angle twice, so the vertex of two edges leaves no vertex",
+    "genus": 10,
+    "volume": 3323471.462141502,
+    "area": 283381.8307777817,
+    "centroid": [
+      0.0030780608223576773,
+      29.009474950522858,
+      -109.59839913205874
+    ],
+    "inertia": [
+      [
+        21666759957.604443,
+        279079.7048210734,
+        776558.8033025481
+      ],
+      [
+        279079.7048210734,
+        44621405119.15635,
+        -1303259410.8622003
+      ],
+      [
+        776558.8033025481,
+        -1303259410.8622003,
+        26389107129.953266
+      ]
+    ],
+    "measure_differs": "Open CASCADE's two half cones each span a whole turn (counts_differ), so its volume is 1415.20 below the part's less the chamfer's ring and its area 54.63 below. The closed forms are the part's own, Open CASCADE's measure of the healed reading the real/nist-ftc-06 fixture holds Arris to, less the ring a convex d 2 chamfer takes from the rim of the R 5.2705 hole about x = −133.35, z = −184.15 at the plane y = 0: the triangle d² / 2 in the (ρ, y) section swept a whole turn about the axis at R + d / 3, 74.609 by Pappus; the area loses the plane annulus π((R + d)² − R²) and the band 2πRd of the hole and gains the cone π(2R + d)d√2; the centroid and inertia the part's less the ring's moments, ∫(x − cx)² = ∫(z − cz)² = π∫ρ³ and ∫y² = 2π∫ρy² over the section, shifted to the result's centroid",
+    "occt_step_refused": {
+      "kind": "unsupported entity",
+      "why": "Open CASCADE's two half cones each span a whole turn, bounded by a contact circle closed at the seam's vertex on each side and the one tube circle at the seam's angle twice (counts_differ), and the reader finds no singular row on the loop's side (\"a face of one loop wrapping a period, with no singular point on its side\"): a face that wraps its period where the chamfer covers half of it"
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "9f95d5f2ac9254118af750f14e2795687593e152231195d9ebd4c0ce97a89c76",
+  "results": {
+    "default": {
+      "area": 53.63679540638094,
+      "centroid": [
+        2.000000000000007,
+        2.0,
+        0.6659307071639146
+      ],
+      "counts": {
+        "edges": 21,
+        "faces": 10,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          26.403439340429514,
+          1.4210854715202004e-14,
+          -7.460698725481052e-14
+        ],
+        [
+          1.4210854715202004e-14,
+          26.403439340429543,
+          3.552713678800501e-15
+        ],
+        [
+          -7.460698725481052e-14,
+          3.552713678800501e-15,
+          44.33725347391825
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 21,
+        "faces": 10,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            2.0,
+            3.05,
+            1.05
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            2.0,
+            3.073223304703363,
+            1.073223304703363
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend_at_the_two_edge_vertex",
+          "point": [
+            0.926776695296637,
+            2.0,
+            1.073223304703363
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend_at_the_seam",
+          "point": [
+            3.073223304703363,
+            2.0,
+            1.073223304703363
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_contact",
+          "point": [
+            1.9999999999999998,
+            0.75,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_contact",
+          "point": [
+            1.9999999999999998,
+            1.0,
+            1.25
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_beyond",
+          "point": [
+            2.9192388155425117,
+            2.9192388155425117,
+            1.02
+          ]
+        }
+      ],
+      "volume": 19.23057262205827
+    }
+  }
+}
