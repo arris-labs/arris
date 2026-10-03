@@ -2058,6 +2058,36 @@ fn blend_bead_root_chamfer() {
     run("blend/bead-root-chamfer");
 }
 
+/// A convex fillet running into a step, as NIST CTC-03's and FTC-08's
+/// sampled edges do: the end is a mixed corner, whose convex corner edge
+/// the trim lengthens past the vertex and whose face across takes the
+/// spandrel (ADR-0038).
+#[test]
+fn blend_fillet_into_a_step() {
+    run("blend/fillet-into-a-step");
+}
+
+/// The chamfer twin: the step's face takes the triangle between the chord
+/// and the corner.
+#[test]
+fn blend_chamfer_into_a_step() {
+    run("blend/chamfer-into-a-step");
+}
+
+/// The step's face leaning back and overhanging: an ellipse across, the
+/// slanted corner edge lengthened along its own line.
+#[test]
+fn blend_fillet_into_a_leaning_step() {
+    run("blend/fillet-into-a-leaning-step");
+}
+
+/// A concave fillet at a mixed corner at both ends, the mirror image of
+/// a convex one into a step: the concave corner edges lengthen.
+#[test]
+fn blend_concave_fillet_into_a_step() {
+    run("blend/concave-fillet-into-a-step");
+}
+
 /// A plate with two round bosses nearly on each other, the first's foot
 /// chamfered, the body turned 45° about y: the chamfer's cone against the
 /// second wall's cylinder (parallel axes, 0.3 apart) is refused in this
@@ -2102,16 +2132,6 @@ fn regression_edge_off_its_plane_fillet() {
 #[ignore = "kernel bug: the blend's output fails the checker at L2, pcurves 4.6e-7 apart where the file's faces are 1e-7 tolerant (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
 fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
     run("regression/nist-ctc-03-two-plane-edges-fillet-checker-fault");
-}
-
-/// A convex fillet running into a step, as NIST CTC-03's and FTC-08's
-/// sampled edges do: the end is a mixed corner, whose convex corner edge
-/// the trim lengthens past the vertex and whose face across takes the
-/// spandrel (ADR-0038).
-#[test]
-#[ignore = "Reason::BlendTooLarge naming the edge and the step's convex corner edge: the trim lies past the vertex on its extension, which ADR-0038 lengthens and the blend does not build yet (plans/blend-run-over step 4)"]
-fn regression_fillet_into_a_step() {
-    run("regression/fillet-into-a-step");
 }
 
 /// Open CASCADE's own STEP of `blend/bead-root-fillet`, read as a part: its

@@ -133,6 +133,8 @@ blend/box-four-vertical-chamfers: 20
 blend/box-four-verticals: 20
 blend/box-oblique-end: 297
 blend/box-posed-edge-fillet: 5
+blend/chamfer-into-a-step: 5
+blend/concave-fillet-into-a-step: 5
 blend/cone-boss-base-chamfer: 2
 blend/cone-boss-base-fillet: 2
 blend/cut-torus-rims-chamfer: 4
@@ -143,6 +145,8 @@ blend/d-notch-rim-chamfer: 2
 blend/d-notch-rim-fillet: 2
 blend/dome-rim-chamfer: 2
 blend/dome-rim-fillet: 2
+blend/fillet-into-a-leaning-step: 151
+blend/fillet-into-a-step: 5
 blend/fillet-miter: 301
 blend/frustum-rim-chamfer: 2
 blend/frustum-rim-fillet: 2

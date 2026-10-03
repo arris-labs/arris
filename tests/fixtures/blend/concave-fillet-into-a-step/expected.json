@@ -1,0 +1,161 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "137cd3b1243ff8f8809815ba21d3205ab0c23745e198b6da4f0b61ce7f248188",
+  "results": {
+    "default": {
+      "area": 32.845486677646164,
+      "centroid": [
+        0.5966096318346596,
+        -0.057322862641160245,
+        1.306582210909838
+      ],
+      "counts": {
+        "edges": 35,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          8.736659263809056,
+          -0.6640157060382593,
+          -0.4598733163647575
+        ],
+        [
+          -0.6640157060382593,
+          9.559541880255246,
+          -1.953031140471702
+        ],
+        [
+          -0.4598733163647575,
+          -1.953031140471702,
+          9.884060497035799
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 35,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_slab",
+          "point": [
+            0.5,
+            -0.5,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_block",
+          "point": [
+            0.75,
+            0.75,
+            1.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "filled",
+          "point": [
+            0.75,
+            0.02,
+            0.98
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under_blend",
+          "point": [
+            0.75,
+            0.3,
+            0.7
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            0.75,
+            0.08786796564403576,
+            0.9121320343559642
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_back_contact",
+          "point": [
+            0.75,
+            0.0,
+            0.7
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_under_contact",
+          "point": [
+            0.75,
+            0.3,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end",
+          "point": [
+            0.0,
+            0.02,
+            0.98
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_end",
+          "point": [
+            -0.01,
+            0.02,
+            0.98
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_far_end",
+          "point": [
+            1.5,
+            0.02,
+            0.98
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_lengthened_edge",
+          "point": [
+            0.0,
+            0.0,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_far_lengthened_edge",
+          "point": [
+            1.5,
+            0.0,
+            0.85
+          ]
+        }
+      ],
+      "volume": 9.778971247941346
+    }
+  }
+}

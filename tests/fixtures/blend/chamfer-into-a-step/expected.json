@@ -1,0 +1,170 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "8677b2923cefa38fc876e579575fb8967306635f8fd36b0f21ce1a8bbe235770",
+  "results": {
+    "default": {
+      "area": 22.648528137423853,
+      "centroid": [
+        0.2385786802030458,
+        0.7598984771573605,
+        0.7477157360406091
+      ],
+      "counts": {
+        "edges": 22,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2.708440101522841,
+          -0.04454314720812125,
+          1.1352791878172597
+        ],
+        [
+          -0.04454314720812125,
+          6.166098223350254,
+          -0.008683629441623708
+        ],
+        [
+          1.1352791878172597,
+          -0.008683629441623708,
+          5.629549999999999
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 22,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            1.0,
+            0.75,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "tall_inside",
+          "point": [
+            -0.5,
+            0.75,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_blend",
+          "point": [
+            1.0,
+            0.02,
+            0.98
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            1.0,
+            0.15,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front_contact",
+          "point": [
+            1.0,
+            0.0,
+            0.7
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_contact",
+          "point": [
+            1.0,
+            0.3,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spandrel",
+          "point": [
+            0.0,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "in",
+          "label": "behind_spandrel",
+          "point": [
+            -0.01,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "out",
+          "label": "before_spandrel",
+          "point": [
+            0.01,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_step_chord",
+          "point": [
+            0.0,
+            0.15,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_far_chord",
+          "point": [
+            2.0,
+            0.15,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_lengthened_edge",
+          "point": [
+            0.0,
+            0.0,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "step_face",
+          "point": [
+            0.0,
+            0.75,
+            1.5
+          ]
+        }
+      ],
+      "volume": 5.91
+    }
+  }
+}

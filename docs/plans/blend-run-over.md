@@ -85,7 +85,7 @@ bound has to be established here.
   edge; run over every corner end of four fetched parts (170 mixed-corner
   ends lengthen, none refused). `regression/fillet-into-a-step`, the shrunk
   CTC-03 corner with Open CASCADE's oracle, `#[ignore]`d.
-- [ ] Step 4 **[3]** — Build it for a plane across: `face_end` takes
+- [x] Step 4 **[3]** — Build it for a plane across: `face_end` takes
   `corner_trims`; `build` lengthens the edge, its pcurves derived again
   over the new range (ADR-0038 §4), the face across taking the arc from
   outside; provenance as ADR-0007 roots an end. `regression/fillet-into-a-step`
@@ -169,6 +169,17 @@ bound has to be established here.
   Open CASCADE builds it, and the gate's bound counted parts where the
   edges are the measure; the census's mislabel and the third-face case are
   backlog lines.
+- Found at step 4 (agent): Open CASCADE builds the leaning step's end with
+  exact conics but off them: its volume is 2.4e-9 (leaning back) and 1.6e-9
+  (overhanging) relative from the closed form and its area 5.9e-9 and
+  4.2e-9. Its fixed-order, adaptive and Gauss–Kronrod integrations agree,
+  so the error is in its geometry, and it turns sign with the lean. Arris
+  matches both closed forms to 1e-11. The difference is under ADR-0015's
+  1e-6, so `blend/fillet-into-a-leaning-step` states volume and area
+  tolerances of 1e-8 with the closed forms beside them, as
+  `blend/turned-shoulder-fillet` does; no kernel tolerance moved. A mixed
+  corner on a cylinder or a cone across keeps its refusal from before
+  ADR-0038 (`BlendTooLarge` naming the lengthened corner edge) until step 5.
 - Order of steps 3–6 confirmed at step 2. The dominant cause (a corner edge shorter
   than the trim, plane × plane, 62 of `ctc_03` e2's 90 edges) is the case
   step 3 proves first, not the plane wall nearer the edge than `r` the plan

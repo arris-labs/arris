@@ -1,0 +1,31 @@
+{
+  "description": "a slab [−1,−1,0]–[2,0,2] and a block [0,−0.5,1]–[1.5,1.5,2.5] standing out of its back face, fused, the concave edge where the block's underside z = 1 meets the slab's back face y = 0 filleted at r 0.3: a concave blend, the mirror image of a convex one running into a step. At each end the block's side meets the slab's back in a concave vertical edge and the block's underside in a convex one, a mixed corner: the trim on the concave edge lies r below the vertex, on its extension down the slab's back, and that edge is lengthened to it; the convex edge along the underside is cut r from the vertex; the block's side, the face across, takes the end of the added material between the arc and the corner (ADR-0038)",
+  "params": {"r": 0.3},
+  "steps": [
+    {"name": "slab", "op": "box", "min": [-1, -1, 0], "max": [2, 0, 2]},
+    {"name": "block", "op": "box", "min": [0, -0.5, 1], "max": [1.5, 1.5, 2.5]},
+    {"name": "joined", "op": "fuse", "a": "slab", "b": "block"},
+    {"name": "result", "op": "fillet", "of": "joined", "edges": [[0.75, 0, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_slab", "point": [0.5, -0.5, 0.5], "expect": "in"},
+    {"label": "inside_block", "point": [0.75, 0.75, 1.5], "expect": "in"},
+    {"label": "filled", "point": [0.75, 0.02, 0.98], "expect": "in"},
+    {"label": "under_blend", "point": [0.75, "r", "1 - r"], "expect": "out"},
+    {"label": "on_blend", "point": [0.75, "r - r / sqrt(2)", "1 - r + r / sqrt(2)"], "expect": "on"},
+    {"label": "on_back_contact", "point": [0.75, 0, "1 - r"], "expect": "on"},
+    {"label": "on_under_contact", "point": [0.75, "r", 1], "expect": "on"},
+    {"label": "on_end", "point": [0, 0.02, 0.98], "expect": "on"},
+    {"label": "past_end", "point": [-0.01, 0.02, 0.98], "expect": "out"},
+    {"label": "on_far_end", "point": [1.5, 0.02, 0.98], "expect": "on"},
+    {"label": "on_lengthened_edge", "point": [0, 0, "1 - r / 2"], "expect": "on"},
+    {"label": "on_far_lengthened_edge", "point": [1.5, 0, "1 - r / 2"], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "6 + 4.5 - 0.75 + 1.5 * (1 - pi / 4) * r^2",
+    "counts": {"vertices": 22, "edges": 33, "faces": 13, "loops": 13, "shells": 1},
+    "genus": 0,
+    "counts_differ": "Open CASCADE keeps each consumed corner vertex on its lengthened corner edge, two edges of one line between the same two faces at each end; Arris lengthens the one edge to the trim (ADR-0038)"
+  }
+}

@@ -1,0 +1,316 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "04ee08b5a30d8e77d7eed033ad978003a09dba02835ff63ab1561f2c8b267dc7",
+  "results": {
+    "default": {
+      "area": 21.856966526457505,
+      "centroid": [
+        0.2651735840152758,
+        0.7545947163101978,
+        0.7001936053257586
+      ],
+      "counts": {
+        "edges": 22,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2.391551781280321,
+          -0.019475753364681436,
+          1.0172888550256494
+        ],
+        [
+          -0.019475753364681436,
+          5.883169175026638,
+          -0.006002386205378407
+        ],
+        [
+          1.0172888550256494,
+          -0.006002386205378407,
+          5.593120159954286
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 22,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            1.0,
+            0.75,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "tall_inside",
+          "point": [
+            -0.7,
+            0.75,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_blend",
+          "point": [
+            1.0,
+            0.02,
+            0.98
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            1.0,
+            0.08786796564403576,
+            0.9121320343559642
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front_contact",
+          "point": [
+            1.0,
+            0.0,
+            0.7
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_contact",
+          "point": [
+            1.0,
+            0.3,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spandrel",
+          "point": [
+            0.020000000000000018,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "in",
+          "label": "behind_spandrel",
+          "point": [
+            0.010000000000000018,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "out",
+          "label": "before_spandrel",
+          "point": [
+            0.03000000000000002,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_far_arc",
+          "point": [
+            2.0,
+            0.08786796564403576,
+            0.9121320343559642
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_lengthened_edge",
+          "point": [
+            0.06,
+            0.0,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "step_face",
+          "point": [
+            -0.2,
+            0.75,
+            1.5
+          ]
+        }
+      ],
+      "volume": 5.661889382689909
+    },
+    "overhang": {
+      "area": 23.561285593115567,
+      "centroid": [
+        0.2398775150303731,
+        0.7543095377297622,
+        0.7821903066109063
+      ],
+      "counts": {
+        "edges": 22,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2.9674627318452087,
+          -0.019983102748455606,
+          1.1573343901016073
+        ],
+        [
+          -0.019983102748455606,
+          6.414649529298995,
+          -0.003934593805297926
+        ],
+        [
+          1.1573343901016073,
+          -0.003934593805297926,
+          5.74465584299131
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 22,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            1.0,
+            0.75,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "tall_inside",
+          "point": [
+            -0.7,
+            0.75,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_blend",
+          "point": [
+            1.0,
+            0.02,
+            0.98
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            1.0,
+            0.08786796564403576,
+            0.9121320343559642
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front_contact",
+          "point": [
+            1.0,
+            0.0,
+            0.7
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_contact",
+          "point": [
+            1.0,
+            0.3,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spandrel",
+          "point": [
+            -0.015000000000000013,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "in",
+          "label": "behind_spandrel",
+          "point": [
+            -0.025000000000000015,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "out",
+          "label": "before_spandrel",
+          "point": [
+            -0.005000000000000013,
+            0.05,
+            0.95
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_far_arc",
+          "point": [
+            2.0,
+            0.08786796564403576,
+            0.9121320343559642
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_lengthened_edge",
+          "point": [
+            -0.045,
+            0.0,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "step_face",
+          "point": [
+            0.15,
+            0.75,
+            1.5
+          ]
+        }
+      ],
+      "volume": 6.185983384358575
+    }
+  }
+}

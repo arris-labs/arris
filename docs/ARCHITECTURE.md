@@ -754,7 +754,13 @@ the intersector writes exactly, the stretch between the two points on the
 chamfer's band; that face's pcurve is placed in its loop's translate at
 the corner edge. The corner vertex goes, the corner's other two edges are
 shortened on their own curves to the arc's ends, and the face across
-takes the arc in its loop. Two blends meeting at a vertex whose third
+takes the arc in its loop. At a *mixed* corner — its two edges of unlike
+convexity, a blend running into a step — the trim on the edge of the
+blend's own convexity lies past the vertex, and that edge is lengthened
+along its own analytic curve to it instead (`blend/mixed.rs`,
+ADR-0038): one edge, `Modified`, its pcurves derived again over the new
+range, the stretch checked inside the face it runs down; the face across
+grows by the region the arc bounds. Two blends meeting at a vertex whose third
 edge stays sharp meet in a miter: the two equal-radius cylinders' axes
 cross at the ball's one centre, and the miter is the ellipse of the
 plane through it bisecting the axes — minor radius `r` toward the shared
@@ -814,8 +820,11 @@ blend and both corner edges share a convexity — a convex blend between two
 convex corner edges — and outside it where they differ, a convex blend at
 concave corner edges (a rib's root on its plate) or a concave blend at
 convex ones (a pocket's rim), the arc lying in the hole the footprint
-leaves or the corner gained; corner edges of unlike convexity are
-`VertexBlend` — is
+leaves or the corner gained, and outside it at a mixed corner; a trim
+past the vertex anywhere but on a mixed corner's edge of the blend's
+convexity, on a fitted curve, along a stretch that leaves its face, or at
+a mixed corner whose face across is not a plane (a ring's open arc end
+there is `VertexBlend`) — is
 `Reason::BlendTooLarge` naming the edge and the face or edge the blend
 runs out of; a tangent dihedral, or an end at a vertex where a corner
 edge's two faces are tangent but which is not a tangent vertex — the next

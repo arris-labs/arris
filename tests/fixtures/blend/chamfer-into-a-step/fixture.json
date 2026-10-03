@@ -1,0 +1,33 @@
+{
+  "description": "blend/fillet-into-a-step's L, the low block's top front edge chamfered at d 0.3: a convex chamfer running into a step, its end at x = 0 a mixed corner. The trim on the tall block's convex front vertical edge lies d past the vertex, on its extension down the front cap, and that edge is lengthened to it; the step's foot is cut d from the vertex; the step's face x = 0 takes the triangle between the chamfer's chord and the corner (ADR-0038). The far end at x = 2 is a box corner",
+  "params": {"d": 0.3},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+     "outer": {"start": [-1, 0], "segments": [{"line_to": [2, 0]}, {"line_to": [2, 1]}, {"line_to": [0, 1]}, {"line_to": [0, 2]}, {"line_to": [-1, 2]}, {"line_to": [-1, 0]}]}},
+    {"name": "step", "op": "extrude", "profile": "sketch", "direction": [0, 1, 0], "length": 1.5},
+    {"name": "result", "op": "chamfer", "of": "step", "edges": [[1, 0, 1]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [1, 0.75, 0.5], "expect": "in"},
+    {"label": "tall_inside", "point": [-0.5, 0.75, 1.5], "expect": "in"},
+    {"label": "past_blend", "point": [1, 0.02, 0.98], "expect": "out"},
+    {"label": "on_blend", "point": [1, "d / 2", "1 - d / 2"], "expect": "on"},
+    {"label": "on_front_contact", "point": [1, 0, "1 - d"], "expect": "on"},
+    {"label": "on_top_contact", "point": [1, "d", 1], "expect": "on"},
+    {"label": "on_spandrel", "point": [0, 0.05, 0.95], "expect": "on"},
+    {"label": "behind_spandrel", "point": [-0.01, 0.05, 0.95], "expect": "in"},
+    {"label": "before_spandrel", "point": [0.01, 0.05, 0.95], "expect": "out"},
+    {"label": "on_step_chord", "point": [0, "d / 2", "1 - d / 2"], "expect": "on"},
+    {"label": "on_far_chord", "point": [2, "d / 2", "1 - d / 2"], "expect": "on"},
+    {"label": "on_lengthened_edge", "point": [0, 0, "1 - d / 2"], "expect": "on"},
+    {"label": "step_face", "point": [0, 0.75, 1.5], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "6 - d^2",
+    "area": "23 - 4 * d + 2 * sqrt(2) * d",
+    "counts": {"vertices": 14, "edges": 21, "faces": 9, "loops": 9, "shells": 1},
+    "genus": 0,
+    "counts_differ": "Open CASCADE keeps the consumed corner vertex on the lengthened corner edge, two edges of one line between the same two faces; Arris lengthens the one edge to the trim (ADR-0038)"
+  }
+}

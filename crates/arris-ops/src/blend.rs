@@ -37,13 +37,6 @@ use arris_check::domain::FaceDomain;
 use crate::error::{Fault, OpError, Reason, fault_of};
 use crate::rebuild::{self, AddedFace, Rewrite, StoredUse, forward};
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the ends call it from plans/blend-run-over step 4"
-    )
-)]
 mod mixed;
 mod traced;
 
@@ -1156,8 +1149,9 @@ fn stretch_between(
 
 /// The end of `s` at its start (`at_lo`) or its end vertex, trimmed by
 /// the face across the corner: the vertex's other two edges, the face
-/// they share, where each contact pierces it, the corner edges shortened
-/// there and the arc between — every one checked against the body. A
+/// they share, where each contact pierces it, the corner edges cut or, at
+/// a mixed corner on a plane, one lengthened there (`mixed::corner_trims`,
+/// ADR-0038) and the arc between — every one checked against the body. A
 /// plane across cuts the stripe in a conic, exact (ADR-0007); a cylinder
 /// or a cone across cuts a fillet's cylinder in a quartic, traced and
 /// fitted between the trim points (ADR-0037), and a chamfer's plane in a
@@ -1338,15 +1332,34 @@ fn face_end(
             });
         }
     };
-    // The corner edges shortened to the trim points.
-    let mut trims = [Trim {
+    // The corner edges cut or lengthened to the trim points, and the side
+    // of the face across the arc lies on (ADR-0038).
+    let corner = mixed::corner_trims(
+        m,
+        view,
         edge,
-        t: 0.0,
-        cuts_lo: true,
-    }; 2];
+        s.faces,
+        corner_edges,
+        vertex,
+        points,
+        s.convex,
+        tol,
+        samples,
+        meter,
+    )?;
+    if let Some(k) = corner.lengthened
+        && !matches!(surface3, Surface::Plane { .. })
+    {
+        // A mixed corner on a curved face across is refused as before
+        // ADR-0038 until plans/blend-run-over step 5 builds it.
+        return Err(degenerate(
+            vec![e, forward(corner_edges[k])],
+            Reason::BlendTooLarge,
+        ));
+    }
+    let trims = corner.trims;
     let mut vertex_tolerance = [0.0; 2];
     for k in 0..2 {
-        trims[k] = cut_corner(m, edge, corner_edges[k], vertex, points[k])?;
         vertex_tolerance[k] = s
             .tolerance
             .max(m.edge(corner_edges[k])?.tolerance())
@@ -1378,8 +1391,7 @@ fn face_end(
             placed_uv(on_face, first, at_corner)
         }
     };
-    let arc_side = end_side(m, view, edge, vertex, s.convex, corner_edges)?;
-    if !on_side_of_face(m, face3, &on_face, arc_range, arc_side, samples)? {
+    if !on_side_of_face(m, face3, &on_face, arc_range, corner.side, samples)? {
         return Err(degenerate(vec![e, forward(face3)], Reason::BlendTooLarge));
     }
     let on_blend =
@@ -3994,17 +4006,39 @@ fn build(
             added: 0,
         });
     }
-    // The corner edges shortened, in id order.
+    // The corner edges shortened or lengthened, in id order; a lengthened
+    // edge's pcurves derived again over its new range (ADR-0038 §4), by
+    // the edge and the pcurve each replaces.
     let mut shortened: BTreeMap<EdgeId, EdgeKey> = BTreeMap::new();
+    let mut rederived: BTreeMap<(EdgeId, Curve2Id), Curve2Id> = BTreeMap::new();
     for (&edge, cut) in &cuts {
         let entity = *m.edge(edge)?;
-        let Some((curve, range)) = entity.curve() else {
+        let Some((curve, old)) = entity.curve() else {
             return Err(invariant("a corner edge's curve"));
         };
-        let lo = cut.lo.map_or(range.lo(), |(_, t)| t);
-        let hi = cut.hi.map_or(range.hi(), |(_, t)| t);
+        let lo = cut.lo.map_or(old.lo(), |(_, t)| t);
+        let hi = cut.hi.map_or(old.hi(), |(_, t)| t);
         let range = Interval::new(lo, hi)
             .map_err(|_| degenerate(vec![forward(edge)], Reason::BlendTooLarge))?;
+        // Placed where the old pcurve still runs: at the end lengthened.
+        let anchor = if lo < old.lo() {
+            Some(old.lo())
+        } else if hi > old.hi() {
+            Some(old.hi())
+        } else {
+            None
+        };
+        if let Some(anchor) = anchor {
+            let edge_tol = Tolerance::new(entity.tolerance(), tol.angular);
+            for u in view.uses.get(&edge).into_iter().flatten() {
+                let surface = m.surface(m.face(u.face)?.surface())?;
+                let fresh = pcurve_on(m.curve(curve)?, range, surface, edge_tol, meter)
+                    .map_err(fault_of)?;
+                let fresh = placed_uv(fresh, anchor, m.curve2(u.pcurve)?.point(anchor));
+                let id = m.add_curve2(fresh);
+                rederived.insert((edge, u.pcurve), id);
+            }
+        }
         shortened.insert(edge, EdgeKey::New(rw.edges.len()));
         rw.edges.push((
             EdgeSpec::New {
@@ -4042,7 +4076,7 @@ fn build(
                     Some(&(key, pcurve)) => (key, pcurve),
                     None => (
                         shortened.get(&id).copied().unwrap_or(EdgeKey::Kept(id)),
-                        c.pcurve(),
+                        (rederived.get(&(id, c.pcurve())).copied()).unwrap_or(c.pcurve()),
                     ),
                 };
                 uses.push(StoredUse {
@@ -4312,6 +4346,10 @@ fn build(
 /// cylinder; on a cylinder or a cone across — a rib running into a boss —
 /// the quartic of the two, traced and fitted between where each contact
 /// pierces that face (ADR-0037), the one fitted curve on an exact surface.
+/// At a plane across whose two corner edges differ in convexity — a blend
+/// running into a step — the corner edge of the blend's own convexity is
+/// lengthened past the vertex along its curve to the trim, and the face
+/// across takes the region the arc bounds (ADR-0038).
 /// Two blends meeting at a vertex whose third edge stays sharp
 /// meet in a miter: the ellipse of the two cylinders in the plane
 /// through the ball's centre bisecting their axes, from where the two
@@ -4358,7 +4396,7 @@ fn build(
 /// Provenance, every record against the blended edge: the blend face, its
 /// two contact edges, its two end arcs and the four trim vertices
 /// `Generated` from it; each of the edge's faces, each face across an
-/// end and each corner edge the trim shortens `Modified` into its new
+/// end and each corner edge the trim shortens or lengthens `Modified` into its new
 /// self; the edge and the two corner vertices `Deleted`; the shell and
 /// the body `Modified`. A miter's edge and two vertices are `Generated`
 /// from both edges they join. At a corner of three, each side of the
@@ -4394,7 +4432,8 @@ fn build(
 /// none of whose faces is square to the other two — and
 /// [`Reason::BlendTooLarge`] where a contact line or an end arc leaves
 /// its face through an edge that is not the corner's own or a corner
-/// edge is shorter than the trim, or a closed edge's torus would not be a
+/// edge is shorter than the trim, a trim past the corner's vertex that is
+/// no such lengthening or whose stretch leaves its face, or a closed edge's torus would not be a
 /// ring torus, a contact reaches the axis or a cone's apex, or its seam is
 /// shorter than the trim, or the third edge at
 /// a chain's junction is shorter than the cut; a closed edge whose vertex
