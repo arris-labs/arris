@@ -33,15 +33,17 @@ column is printed again beside C4's 17 of 38 and this plan's first line.
 - **ADR (step 5), new:** a blend's end curve may be traced and fitted while
   its surface stays exact. Amends ADR-0007 §Consequences ("nothing is
   fitted but a pcurve") and closes ADR-0036 §6's deferral; cites ADR-0019's
-  `SECTION_FIT_FRACTION` rule. Whether the end curve's fit is a new
-  `arris-geom` entry or `section::traced` reused is decided by step 5's
-  read of the code.
+  `SECTION_FIT_FRACTION` rule. Decided at step 5 (ADR-0037): both — the
+  tracers' dispatch and the fit leave `section::traced` as two public
+  `arris-geom` entries, `trace_section` and `fit_branch`, which the
+  intersector and `arris-ops`' `blend/traced.rs` share (additive).
 - `arris-ops` `blend.rs`: edge curve recognition (step 3) and two end
   trimmers (steps 6, 7). No public type or signature changes expected;
   `Unsupported` loses cases, no `Reason` variant is added. If step 5 finds
   otherwise it is a design delta named in that commit.
-- `arris-check`: the S5/E4 rows decide a fitted end curve on a blend at the
-  arc's tolerance (step 5 states which arms, step 6 adds them).
+- `arris-check`: no change (ADR-0037 §5) — E4 holds the fitted pcurves,
+  S5 decides the blend against the face across by the same tracers;
+  steps 6 and 7 show it with their fixtures at `Full`.
 - `docs/ARCHITECTURE.md` §blend, `docs/DATA-MODEL.md` §Tolerances if a
   fitted end curve carries its own tolerance; ROADMAP §C6 status.
 - Python binding: no new error variants planned; if one appears the stub and
@@ -71,7 +73,7 @@ bound has to be established here.
   order is recorded here, not silent.
 - ~~Step 3~~ dropped 2026-10-03: the conic edge frees no part (step 2's gate). Backlog line kept.
 - ~~Step 4~~ dropped with step 3.
-- [ ] Step 5 **[3]** — The decision and the tracer: write the ADR (a
+- [x] Step 5 **[3]** — The decision and the tracer: write the ADR (a
   blend's end curve fitted, the surface exact; the fit's tolerance
   fraction; which checker arms decide it; what is refused when the fit
   misses) and reuse `section::traced` to trace the intersection of an
@@ -133,11 +135,15 @@ bound has to be established here.
   count.
 
 ## Open questions
-- ⚠ OPEN: the end curve's fit degree and fraction — `SECTION_FIT_DEGREE`
-  (5) and `SECTION_FIT_FRACTION` as ADR-0019, or tighter for an edge a
-  neighbour must share. Agent decides at step 5 from the trace's miss
-  rate on the fixtures.
-- ⚠ OPEN: whether the fitted end curve's pcurve on the blend face is a
-  fit from the 3D curve, as C3's sections, or traced in `(u, v)`. Agent,
-  step 5.
+- Resolved 2026-10-03 (step 5, ADR-0037 §3): the end curve's fit is
+  `SECTION_FIT_DEGREE` (5) at `SECTION_FIT_FRACTION` as ADR-0019; over 80
+  posed ends none missed, the worst sample at 1.2e-8 against the 2.5e-8
+  bound.
+- Resolved 2026-10-03 (step 5, ADR-0037 §4): both pcurves are fitted from
+  the 3D curve (`pcurve_on`), as C3's sections are.
+- Found at step 5: the tracer's tests pose the three end families
+  directly (`blend/traced.rs`) rather than on shrunk parts — no part
+  fixture exists for an end the kernel does not build yet; steps 6 and 7
+  add the part-shaped fixtures with Open CASCADE's oracle. No trace
+  failed, so no `regression/` fixture was added.
 - Resolved 2026-10-03 (human): step 2's gate fired (steps 3, 6 and 7 as written free 2 of 15 parts; step 3 none); option (a) taken: steps 3–4 dropped, the torus-on-cylinder end added to step 6, which frees 3 (`ftc_08`, `ctc_01` ap242, `stc_08`). `fillet-by-part.md` has the rows.

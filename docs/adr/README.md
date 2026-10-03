@@ -17,7 +17,7 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0004](0004-booleans-by-general-fuse-over-coedges.md) | Booleans by a General Fuse over coedges: shared paves, faces split in (u, v), the result assembled with kept ids | accepted |
 | [0005](0005-ruled-direction-flattened-for-the-triangulation.md) | A ruled direction is flattened before the triangulation | accepted |
 | [0006](0006-lumps-in-one-solid.md) | Lumps in one `Solid`: several shells, nested by B1, derived and never stored | accepted |
-| [0007](0007-blends-as-rolling-ball-stripes-on-analytic-pairs.md) | Blends are rolling-ball stripes on analytic face pairs, built in closed form and assembled with kept ids (amended by ADR-0035) | accepted |
+| [0007](0007-blends-as-rolling-ball-stripes-on-analytic-pairs.md) | Blends are rolling-ball stripes on analytic face pairs, built in closed form and assembled with kept ids (amended by ADR-0035, ADR-0037) | accepted |
 | [0008](0008-coaxial-surfaces-of-revolution-meet-through-their-meridians.md) | Coaxial surfaces of revolution meet through their meridians: one arm over the meridian sections, `Points` on the axis, the boolean's quadric guard | accepted |
 | [0009](0009-no-name-grammar-a-guaranteed-split-order.md) | Arris owns no name grammar: a consumer names from `Provenance`, and the kernel guarantees the split order | accepted |
 | [0010](0010-retain-keeps-slots-sparse.md) | `Model::retain` keeps slots sparse: a live id never moves, a dead one never aliases | accepted |
@@ -47,3 +47,4 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0034](0034-the-python-binding.md) | The Python binding: a thin layer above the facade, `forbid(unsafe_code)` kept, PyPI in lockstep, handles that carry their model (amends ADR-0020 §2) | accepted |
 | [0035](0035-a-stripe-follows-a-chain.md) | A stripe follows a chain: tangent vertices propagate the selection, two stripes meet on the ball's cross-section, an open arc blends to a torus section trimmed on its meridian (amends ADR-0007) | accepted |
 | [0036](0036-the-meridian-row-and-the-parallel-cylinder-row.md) | The meridian row and the parallel-cylinder row: a coaxial pair along a parallel blends to a torus found in the meridian half-plane, two parallel cylinders along a ruling to a cylinder found in the cross-section (amends ADR-0007) | accepted |
+| [0037](0037-a-blend-end-is-traced-and-fitted-the-surface-exact.md) | A blend's end the face across cuts in no closed form is traced by the intersector's tracers and fitted as a section is; the blend's surface stays exact (amends ADR-0007) | accepted |

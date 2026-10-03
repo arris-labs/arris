@@ -4,11 +4,11 @@
 //! singular point a point of the result (ADR-0018, ADR-0019,
 //! `docs/DATA-MODEL.md` §Curves).
 
-use arris_math::{Aabb, Meter, Point3, Tolerance};
+use arris_math::{Aabb, Interval, Meter, Point3, Tolerance};
 
 use crate::{
-    Curve, GeomError, MeetCurve, MeetKind, MeetPoint, SectionBranch, Surface, SurfaceIntersection,
-    fit_curve, fit_curve_periodic, trace_quadrics, trace_torus,
+    Curve, GeomError, MeetCurve, MeetKind, MeetPoint, SectionBranch, SectionTrace, Surface,
+    SurfaceIntersection, fit_curve, fit_curve_periodic, trace_quadrics, trace_torus,
 };
 
 /// The fraction of the pair's `tol.linear` a fitted section curve is
@@ -73,12 +73,7 @@ pub(crate) fn traced(
     tol: Tolerance,
     meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
-    let torus = |s: &Surface| matches!(s, Surface::Torus { .. });
-    let trace = if torus(a) || torus(b) {
-        trace_torus(a, b, tol, meter)?
-    } else {
-        trace_quadrics(a, b, within, tol, meter)?
-    };
+    let trace = trace_section(a, b, within, tol, meter)?;
     let circles = trace.circles().iter().map(|c| {
         Ok(MeetCurve {
             curve: c.circle.clone(),
@@ -91,7 +86,7 @@ pub(crate) fn traced(
     });
     let curves = circles
         .chain(trace.branches().iter().map(|branch| {
-            fitted(branch, tol, meter).map(|curve| MeetCurve {
+            fit_branch(branch, branch.domain(), tol, meter).map(|curve| MeetCurve {
                 curve,
                 kind: MeetKind::Crossing,
             })
@@ -116,45 +111,112 @@ pub(crate) fn traced(
     })
 }
 
-/// One branch as a `Curve::Nurbs`, held to the branch at the branch's
-/// own parameter. That distance bounds each surface's too — a
-/// projection's distance is 1-Lipschitz, so a point `d` from the branch
-/// is no more than `d` further from either surface than the branch is —
-/// and it also keeps the fit on the section where the two surfaces meet
-/// at a small angle `θ`: a point `ε` off both can be `ε / sin(θ/2)`
-/// across from the section, a hundred times `ε` at a degree, which the
-/// surfaces alone never see. Against the two surfaces' distances, on
-/// the probes of [`SECTION_FIT_DEGREE`]'s doc: at most a third more
-/// control points, at the same speed; a curve distance (the nearest
-/// point of the branch, found by Newton along it) kept their counts at
-/// five to eight times the time. Measured to the branch's stretch, not
-/// its point: where a ruling or a tube circle runs a hair from tangent to
-/// the other surface, the root on it steps along the section by up to
-/// `3·10⁻⁶` from one float of the walked angle to the next, on both
-/// surfaces all the while, and a fit held to the point ran out of spans
-/// on two rods a quarter of a tolerance off parallel.
-fn fitted(branch: &SectionBranch, tol: Tolerance, meter: &mut Meter) -> Result<Curve, GeomError> {
+/// The section of two surfaces as the intersector traces it where it has
+/// no closed form: in the torus's own parameter plane when either is a
+/// torus ([`trace_torus`], which ignores `within`), along the rulings of
+/// one of two quadrics inside `within` otherwise ([`trace_quadrics`]) —
+/// the one dispatch the intersector's sections and a blend's traced end
+/// share, so the two are fits of the same branches (ADR-0019, ADR-0037).
+///
+/// Guarantees: those of the tracer the pair takes, its named refusals
+/// ([`GeomError::DegenerateSection`]) among them; a pair neither tracer
+/// takes — a plane against a plane, a `Nurbs` — is the tracer's
+/// [`GeomError::Unsupported`].
+///
+/// ```
+/// use arris_geom::{Surface, trace_section};
+/// use arris_math::{Aabb, Frame, Meter, Point3, Precision, Vec3};
+///
+/// // A ring torus cut by a plane parallel to its axis, off it: a spiric
+/// // section, traced as one loop round the tube's outer side.
+/// let torus = Surface::Torus { frame: Frame::world(), major_radius: 3.0, minor_radius: 1.0 };
+/// let across = Frame::from_z(Point3::new(3.5, 0.0, 0.0), Vec3::x()).unwrap();
+/// let plane = Surface::Plane { frame: across };
+/// let within = Aabb { min: [-5.0; 3], max: [5.0; 3] };
+/// let tol = Precision::DEFAULT.tolerance();
+/// let trace = trace_section(&torus, &plane, &within, tol, &mut Meter::default()).unwrap();
+/// assert_eq!(trace.branches().len(), 1);
+/// assert!(trace.branches()[0].is_closed());
+/// ```
+pub fn trace_section(
+    a: &Surface,
+    b: &Surface,
+    within: &Aabb,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<SectionTrace, GeomError> {
+    let torus = |s: &Surface| matches!(s, Surface::Torus { .. });
+    if torus(a) || torus(b) {
+        trace_torus(a, b, tol, meter)
+    } else {
+        trace_quadrics(a, b, within, tol, meter)
+    }
+}
+
+/// The stretch `range` of `branch` as a `Curve::Nurbs` of degree
+/// [`SECTION_FIT_DEGREE`], fitted at the branch's own parameter until it
+/// is nowhere farther than [`SECTION_FIT_FRACTION`] of `tol.linear` from
+/// the exact branch at the same parameter ([`SectionBranch::distance`]):
+/// the rule every traced section of the intersector is held to, for the
+/// whole branch or for the stretch of it a blend's end takes (ADR-0019,
+/// ADR-0037).
+///
+/// Guarantees: the curve's domain is `range` exactly, both ends
+/// interpolated; periodic when the branch is closed and `range` is its
+/// whole period, open otherwise. On a closed branch `range` may run past
+/// the domain's end — the branch wraps — so a stretch across the
+/// branch's start is one range. [`GeomError::Fit`] when the fit does not
+/// get under the fraction within [`crate::MAX_FIT_SPANS`].
+///
+/// ```
+/// use arris_geom::{Surface, fit_branch, trace_section};
+/// use arris_math::{Aabb, Frame, Interval, Meter, Point3, Precision, Vec3};
+///
+/// let torus = Surface::Torus { frame: Frame::world(), major_radius: 3.0, minor_radius: 1.0 };
+/// let across = Frame::from_z(Point3::new(3.5, 0.0, 0.0), Vec3::x()).unwrap();
+/// let plane = Surface::Plane { frame: across };
+/// let within = Aabb { min: [-5.0; 3], max: [5.0; 3] };
+/// let tol = Precision::DEFAULT.tolerance();
+/// let mut meter = Meter::default();
+/// let trace = trace_section(&torus, &plane, &within, tol, &mut meter).unwrap();
+/// let branch = &trace.branches()[0];
+/// // A third of the loop, across its start.
+/// let len = branch.domain().hi();
+/// let range = Interval::new(0.8 * len, 1.133 * len).unwrap();
+/// let curve = fit_branch(branch, range, tol, &mut meter).unwrap();
+/// let t = 1.1 * len;
+/// assert!((curve.point(t) - branch.point(t)).norm() <= 0.25 * tol.linear);
+/// ```
+pub fn fit_branch(
+    branch: &SectionBranch,
+    range: Interval,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<Curve, GeomError> {
+    // Why the fit is held to the branch and not to the two surfaces: a
+    // projection's distance is 1-Lipschitz, so a point `d` from the branch
+    // is no more than `d` further from either surface than the branch is —
+    // and it also keeps the fit on the section where the two surfaces meet
+    // at a small angle `θ`: a point `ε` off both can be `ε / sin(θ/2)`
+    // across from the section, a hundred times `ε` at a degree, which the
+    // surfaces alone never see. Against the two surfaces' distances, on
+    // the probes of [`SECTION_FIT_DEGREE`]'s doc: at most a third more
+    // control points, at the same speed; a curve distance (the nearest
+    // point of the branch, found by Newton along it) kept their counts at
+    // five to eight times the time. Measured to the branch's stretch, not
+    // its point: where a ruling or a tube circle runs a hair from tangent to
+    // the other surface, the root on it steps along the section by up to
+    // `3·10⁻⁶` from one float of the walked angle to the next, on both
+    // surfaces all the while, and a fit held to the point ran out of spans
+    // on two rods a quarter of a tolerance off parallel.
     let deviation = |t: f64, q: Point3| branch.distance(t, q);
     let f = |t: f64| branch.point(t);
     let target = SECTION_FIT_FRACTION * tol.linear;
-    let fit = if branch.is_closed() {
-        fit_curve_periodic(
-            f,
-            branch.domain(),
-            SECTION_FIT_DEGREE,
-            deviation,
-            target,
-            meter,
-        )
+    let whole = branch.is_closed() && range == branch.domain();
+    let fit = if whole {
+        fit_curve_periodic(f, range, SECTION_FIT_DEGREE, deviation, target, meter)
     } else {
-        fit_curve(
-            f,
-            branch.domain(),
-            SECTION_FIT_DEGREE,
-            deviation,
-            target,
-            meter,
-        )
+        fit_curve(f, range, SECTION_FIT_DEGREE, deviation, target, meter)
     }?;
     Ok(Curve::Nurbs(fit))
 }

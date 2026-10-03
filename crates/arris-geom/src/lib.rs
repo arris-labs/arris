@@ -64,7 +64,7 @@ pub use pcurve::{
 };
 pub use profile::{Profile, ProfileEdge, ProfileError, ProfileLoop, ProfileSegment};
 pub use project::{CurveProjection, SurfaceProjection};
-pub use section::{SECTION_FIT_DEGREE, SECTION_FIT_FRACTION};
+pub use section::{SECTION_FIT_DEGREE, SECTION_FIT_FRACTION, fit_branch, trace_section};
 pub use surface::{ParamMap, Singularity, Surface, SurfaceEval, SurfaceKind};
 pub use torus_walk::trace_torus;
 pub use trace::{

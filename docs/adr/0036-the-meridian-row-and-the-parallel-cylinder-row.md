@@ -199,7 +199,8 @@ second.
   refusal after this plan, in 12 and 14 parts. Building them means an end
   curve traced on the blend and fitted, as C3's sections are (ADR-0019),
   which ADR-0007 rules out for a blend; that is the next plan's idea,
-  with the census as its input.
+  with the census as its input. *(Decided by ADR-0037: the end traced by
+  the intersector's tracers and fitted as a section is.)*
 
 ## Alternatives considered
 

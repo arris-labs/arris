@@ -122,6 +122,8 @@ matcher, and a second blend takes any body.
 - A fitted pcurve on the blend is the one non-exact item, held to the
   arc's tolerance by the fit and to E4 by the checker; a fit that misses
   the corpus is a finding with its fixture, never a raised tolerance.
+  *(Amended by ADR-0037: an end the face across cuts in no closed form
+  is traced and fitted as a section is, the blend's surface exact.)*
 - The `Reason` enum grows six variants, flat; grouping it by operation is
   a backlog line.
 - Nothing here carries a variable radius, a tangent chain, a vertex of

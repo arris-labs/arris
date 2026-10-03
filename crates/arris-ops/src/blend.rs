@@ -37,6 +37,8 @@ use arris_check::domain::FaceDomain;
 use crate::error::{Fault, OpError, Reason, fault_of};
 use crate::rebuild::{self, AddedFace, Rewrite, StoredUse, forward};
 
+mod traced;
+
 fn degenerate(entities: Vec<Shape>, reason: Reason) -> OpError {
     OpError::Degenerate { entities, reason }
 }

@@ -1137,7 +1137,10 @@ quarter-turn patches, the branches proven by isolated turning and
 singular points rather than sampled, a tube circle the other surface
 holds returned as an exact `Curve::Circle` — and fitted by the same
 code path as a ruled pair's, over the whole torus rather than a region
-(ADR-0019). The elliptic cylinder an extruded elliptic segment sweeps
+(ADR-0019). Both tracers are reached through `trace_section`, and a
+branch, or a stretch of one, is fitted by `fit_branch`: the intersector's
+sections and a blend's end that the face across cuts in no closed form
+share the one dispatch and the one fit rule (ADR-0037). The elliptic cylinder an extruded elliptic segment sweeps
 (ADR-0014) is decided against a plane in every pose and against a
 cylinder or another elliptic cylinder with a parallel axis by closed
 form, through the two sections in the plane across the axes — the
