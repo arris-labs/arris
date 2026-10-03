@@ -1,7 +1,7 @@
 # Idea: blend-fan
 
 - Status: Parked (2026-10-03). Split out of `tangent-continuation-and-fan`,
-  whose other half (the S-bend walk) became `plans/s-bend-walk`.
+  whose other half (the tangent continuation, which turned out to be a cusp) became `plans/cusp-run-out`.
 - Raised: 2026-10-03
 - Prompt (verbatim from the human): "/idea tangent-continuation-and-fan",
   then "I accept B, /plan it"
