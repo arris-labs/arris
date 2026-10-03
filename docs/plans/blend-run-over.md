@@ -92,7 +92,7 @@ bound has to be established here.
   moves to `blend/` with its blessed dump; a chamfer twin, a leaning step
   and a concave blend at a mixed corner, each with Open CASCADE's oracle
   and `counts_differ` (ADR-0038 §5); checker green at `Full`.
-- [ ] Step 5 **[3]** — The mixed corner on a cylinder or a cone across (the
+- [x] Step 5 **[3]** — The mixed corner on a cylinder or a cone across (the
   end traced, ADR-0037) and at the ring rows' open arc ends (`ring`'s
   `cut_corner` and `end_side`), for the 16 such ends of the four parts
   probed and what the census adds. `Unsupported` stays, naming the face
@@ -180,6 +180,18 @@ bound has to be established here.
   `blend/turned-shoulder-fillet` does; no kernel tolerance moved. A mixed
   corner on a cylinder or a cone across keeps its refusal from before
   ADR-0038 (`BlendTooLarge` naming the lengthened corner edge) until step 5.
+- Found at step 5 (agent): with the mixed corner built on a cylinder or
+  a cone across and at a ring's open arc (both a plane through the axis
+  and one off it), the run-over census over the four parts probed at step
+  3 (CTC-01, CTC-03, FTC-08, STC-06) counts 101 `BlendTooLarge` edges
+  where it counted 277. *A corner edge shorter than the trim* falls from
+  178 to 2, both STC-06 cylinder × plane edges that Open CASCADE refuses
+  too, and CTC-03 has none left. What remains is the ring's contact at the
+  axis (ADR-0036 §3) and the two torus-face edges, as step 3 found. Edges
+  that leave `BlendTooLarge` may meet another refusal further on; step 7's
+  measurement says which. Closed forms hold the two rings at the axis.
+  The ends traced on a riser or an off-axis step are held to the oracle,
+  since no closed form exists for them.
 - Order of steps 3–6 confirmed at step 2. The dominant cause (a corner edge shorter
   than the trim, plane × plane, 62 of `ctc_03` e2's 90 edges) is the case
   step 3 proves first, not the plane wall nearer the edge than `r` the plan

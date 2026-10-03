@@ -822,9 +822,9 @@ concave corner edges (a rib's root on its plate) or a concave blend at
 convex ones (a pocket's rim), the arc lying in the hole the footprint
 leaves or the corner gained, and outside it at a mixed corner; a trim
 past the vertex anywhere but on a mixed corner's edge of the blend's
-convexity, on a fitted curve, along a stretch that leaves its face, or at
-a mixed corner whose face across is not a plane (a ring's open arc end
-there is `VertexBlend`) — is
+convexity, on a fitted curve, or along a stretch that leaves its face —
+the same at a face across of any kind the end takes (a plane, a cylinder
+or a cone, ADR-0037) and at a ring's open arc end — is
 `Reason::BlendTooLarge` naming the edge and the face or edge the blend
 runs out of; a tangent dihedral, or an end at a vertex where a corner
 edge's two faces are tangent but which is not a tangent vertex — the next

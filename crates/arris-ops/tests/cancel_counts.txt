@@ -134,6 +134,7 @@ blend/box-four-verticals: 20
 blend/box-oblique-end: 297
 blend/box-posed-edge-fillet: 5
 blend/chamfer-into-a-step: 5
+blend/chamfer-into-a-turned-step: 297
 blend/concave-fillet-into-a-step: 5
 blend/cone-boss-base-chamfer: 2
 blend/cone-boss-base-fillet: 2
@@ -147,6 +148,7 @@ blend/dome-rim-chamfer: 2
 blend/dome-rim-fillet: 2
 blend/fillet-into-a-leaning-step: 151
 blend/fillet-into-a-step: 5
+blend/fillet-into-a-turned-step: 2339
 blend/fillet-miter: 301
 blend/frustum-rim-chamfer: 2
 blend/frustum-rim-fillet: 2
@@ -167,6 +169,9 @@ blend/rib-into-cone-chamfer: 151
 blend/rib-into-cone-fillet: 2185
 blend/rib-root-edge: 5
 blend/rib-sloped-end-fillet: 805
+blend/rim-chamfer-into-a-step: 2
+blend/rim-fillet-into-a-step: 2
+blend/rim-fillet-into-an-off-axis-step: 935
 blend/second-fillet: 5
 blend/split-rim-disc-chamfer: 6
 blend/split-rim-disc-fillet: 6

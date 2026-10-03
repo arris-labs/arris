@@ -1002,33 +1002,32 @@ fn cut_corner(
     })
 }
 
-/// The side of the face across a blend's end arc lies on: inside it where
-/// the blend and the corner edges it ends at have the same convexity (a
-/// convex blend cutting a convex corner takes the corner from the face), the
-/// outside where they differ (a convex blend at a concave corner leaves the
-/// face the corner, the arc in the hole its footprint has). Corner edges
-/// of different convexity are `Reason::VertexBlend`.
-fn end_side(
+/// The point of the face across's own `(u, v)` at `t` on the corner edge
+/// `corner`, which a contact cuts there: the translate an end arc's pcurve
+/// on a curved face across is placed in.
+fn at_cut_corner(
     m: &Model,
     view: &View,
-    edge: EdgeId,
-    vertex: VertexId,
-    convex: bool,
-    corner_edges: [EdgeId; 2],
-) -> Result<Side, OpError> {
-    let corner = |c: EdgeId| convex_edge(m, view, c)?.ok_or(invariant("a corner edge's convexity"));
-    let first = corner(corner_edges[0])?;
-    if corner(corner_edges[1])? != first {
-        return Err(degenerate(
-            vec![forward(edge), forward(vertex)],
-            Reason::VertexBlend,
-        ));
-    }
-    Ok(if convex == first {
-        Side::Inside
+    across: FaceId,
+    corner: EdgeId,
+    t: f64,
+) -> Result<Point2, OpError> {
+    let corner_use = view
+        .uses
+        .get(&corner)
+        .and_then(|u| u.iter().find(|u| u.face == across))
+        .ok_or(invariant("the corner edge on the face across"))?;
+    Ok(m.curve2(corner_use.pcurve)?.point(t))
+}
+
+/// The end arc's parameter at contact `c`'s trim point: `range.lo()` is at
+/// the first contact's when `lo_first`.
+fn arc_end(range: Interval, lo_first: bool, c: usize) -> f64 {
+    if lo_first == (c == 0) {
+        range.lo()
     } else {
-        Side::Outside
-    })
+        range.hi()
+    }
 }
 
 /// Where the line through `q` along the unit `d` pierces a cylinder or a
@@ -1150,8 +1149,8 @@ fn stretch_between(
 /// The end of `s` at its start (`at_lo`) or its end vertex, trimmed by
 /// the face across the corner: the vertex's other two edges, the face
 /// they share, where each contact pierces it, the corner edges cut or, at
-/// a mixed corner on a plane, one lengthened there (`mixed::corner_trims`,
-/// ADR-0038) and the arc between — every one checked against the body. A
+/// a mixed corner, one lengthened there (`mixed::corner_trims`, ADR-0038)
+/// and the arc between — every one checked against the body. A
 /// plane across cuts the stripe in a conic, exact (ADR-0007); a cylinder
 /// or a cone across cuts a fillet's cylinder in a quartic, traced and
 /// fitted between the trim points (ADR-0037), and a chamfer's plane in a
@@ -1347,16 +1346,6 @@ fn face_end(
         samples,
         meter,
     )?;
-    if let Some(k) = corner.lengthened
-        && !matches!(surface3, Surface::Plane { .. })
-    {
-        // A mixed corner on a curved face across is refused as before
-        // ADR-0038 until plans/blend-run-over step 5 builds it.
-        return Err(degenerate(
-            vec![e, forward(corner_edges[k])],
-            Reason::BlendTooLarge,
-        ));
-    }
     let trims = corner.trims;
     let mut vertex_tolerance = [0.0; 2];
     for k in 0..2 {
@@ -1368,7 +1357,8 @@ fn face_end(
     }
     let on_face = pcurve_on(&arc_curve, arc_range, surface3, arc_tol, meter).map_err(fault_of)?;
     // On a curved face across, in its loop's translate: at the corner edge
-    // the first contact cuts.
+    // a contact cuts, never one lengthened past the range its pcurve was
+    // stored for (ADR-0038 §4).
     let on_face = match surface3 {
         Surface::Plane { .. } => on_face,
         Surface::Cylinder { .. }
@@ -1377,18 +1367,9 @@ fn face_end(
         | Surface::Sphere { .. }
         | Surface::Torus { .. }
         | Surface::Nurbs(_) => {
-            let corner_use = view
-                .uses
-                .get(&corner_edges[0])
-                .and_then(|u| u.iter().find(|u| u.face == face3))
-                .ok_or(invariant("the corner edge on the face across"))?;
-            let at_corner = m.curve2(corner_use.pcurve)?.point(trims[0].t);
-            let first = if lo_first {
-                arc_range.lo()
-            } else {
-                arc_range.hi()
-            };
-            placed_uv(on_face, first, at_corner)
+            let c = usize::from(corner.lengthened == Some(0));
+            let at = at_cut_corner(m, view, face3, corner_edges[c], trims[c].t)?;
+            placed_uv(on_face, arc_end(arc_range, lo_first, c), at)
         }
     };
     if !on_side_of_face(m, face3, &on_face, arc_range, corner.side, samples)? {
@@ -2716,7 +2697,8 @@ impl Across {
 /// else; an open arc's two vertices are each a corner
 /// of three edges whose face across is a plane through the axis, a plane
 /// parallel to it or a cylinder about a parallel axis — each contact then
-/// trimmed where it meets that face, the end traced and fitted (ADR-0037)
+/// trimmed where it meets that face, the end traced and fitted (ADR-0037),
+/// a corner edge lengthened past the vertex at a mixed corner (ADR-0038)
 /// — or one of the `junctions`, which the junction builds. A torus that is not a ring
 /// torus and a contact that reaches the axis or a cone's apex are
 /// `Reason::BlendTooLarge`,
@@ -3275,15 +3257,25 @@ fn ring(
             let across_surface = m.surface(m.face(across_face)?.surface())?;
             let t = if at_lo { range.lo() } else { range.hi() };
             let points = [contacts[0].points[j], contacts[1].points[j]];
-            let mut trims = [Trim {
+            // The corner edges cut or lengthened to the trim points, and
+            // the side of the face across the end lies on (ADR-0038).
+            let corner = mixed::corner_trims(
+                m,
+                view,
                 edge,
-                t: 0.0,
-                cuts_lo: true,
-            }; 2];
+                [contacts[0].face, contacts[1].face],
+                corner_edges,
+                vertex,
+                points,
+                convex,
+                tol,
+                samples,
+                meter,
+            )?;
+            let trims = corner.trims;
             let across_tolerance = m.face(across_face)?.tolerance();
             let mut vertex_tolerance = [0.0; 2];
             for c in 0..2 {
-                trims[c] = cut_corner(m, edge, corner_edges[c], vertex, points[c])?;
                 vertex_tolerance[c] = tolerance
                     .max(m.edge(corner_edges[c])?.tolerance())
                     .max(across_tolerance);
@@ -3364,19 +3356,17 @@ fn ring(
                         *held = held.max(gap);
                     }
                     let (range, lo_first) = (traced.range, traced.lo_first);
-                    let first = if lo_first { range.lo() } else { range.hi() };
+                    let first = arc_end(range, lo_first, 0);
                     // On the face across in its loop's translate, at the
-                    // corner edge the first contact cuts; on the blend at
-                    // the first contact's end.
-                    let corner_use = view
-                        .uses
-                        .get(&corner_edges[0])
-                        .and_then(|u| u.iter().find(|u| u.face == across_face))
-                        .ok_or(invariant("the corner edge on the face across"))?;
-                    let at_corner = m.curve2(corner_use.pcurve)?.point(trims[0].t);
+                    // corner edge a contact cuts, never one lengthened
+                    // (ADR-0038 §4); on the blend at the first contact's
+                    // end.
+                    let c = usize::from(corner.lengthened == Some(0));
+                    let at_corner =
+                        at_cut_corner(m, view, across_face, corner_edges[c], trims[c].t)?;
                     let on_face = pcurve_on(&traced.curve, range, across_surface, end_tol, meter)
                         .map_err(geometry)?;
-                    let on_face = placed_uv(on_face, first, at_corner);
+                    let on_face = placed_uv(on_face, arc_end(range, lo_first, c), at_corner);
                     let on_blend = pcurve_on(&traced.curve, range, &surface, end_tol, meter)
                         .map_err(geometry)?;
                     let at_contact = contacts[0].on_blend.point(contacts[0].range.lo());
@@ -3401,8 +3391,7 @@ fn ring(
                 }
             };
             let (end_curve, end_range, lo_first, on_face, on_blend) = end;
-            let end_side = end_side(m, view, edge, vertex, convex, corner_edges)?;
-            if !on_side_of_face(m, across_face, &on_face, end_range, end_side, samples)? {
+            if !on_side_of_face(m, across_face, &on_face, end_range, corner.side, samples)? {
                 return Err(too_large(across_face));
             }
             ends.push(RingEnd::Face(Box::new(ArcEnd {
@@ -4346,8 +4335,8 @@ fn build(
 /// cylinder; on a cylinder or a cone across — a rib running into a boss —
 /// the quartic of the two, traced and fitted between where each contact
 /// pierces that face (ADR-0037), the one fitted curve on an exact surface.
-/// At a plane across whose two corner edges differ in convexity — a blend
-/// running into a step — the corner edge of the blend's own convexity is
+/// At a face across whose two corner edges differ in convexity — a blend
+/// running into a step, on a stripe or a ring's open arc — the corner edge of the blend's own convexity is
 /// lengthened past the vertex along its curve to the trim, and the face
 /// across takes the region the arc bounds (ADR-0038).
 /// Two blends meeting at a vertex whose third edge stays sharp

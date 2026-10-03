@@ -2088,6 +2088,43 @@ fn blend_concave_fillet_into_a_step() {
     run("blend/concave-fillet-into-a-step");
 }
 
+/// A fillet on a half-turned part's end face running into its riser, a
+/// cone (and a cylinder in the variant): the mixed corner on a curved
+/// face across, the ruling lengthened down the end face and the end traced
+/// on the riser (ADR-0037, ADR-0038).
+#[test]
+fn blend_fillet_into_a_turned_step() {
+    run("blend/fillet-into-a-turned-step");
+}
+
+/// The chamfer twin: the chamfer's plane meets the riser in a conic,
+/// exact, and the riser takes the end from outside.
+#[test]
+fn blend_chamfer_into_a_turned_step() {
+    run("blend/chamfer-into-a-turned-step");
+}
+
+/// A ring's open arc running into a step at both ends, the planes through
+/// its axis: each vertical edge lengthened down the cylinder, the step
+/// taking the torus's section (ADR-0038).
+#[test]
+fn blend_rim_fillet_into_a_step() {
+    run("blend/rim-fillet-into-a-step");
+}
+
+/// The chamfer twin: a quarter cone, the steps taking its triangle.
+#[test]
+fn blend_rim_chamfer_into_a_step() {
+    run("blend/rim-chamfer-into-a-step");
+}
+
+/// The step moved off the axis at one end: a plane parallel to it, which
+/// takes the torus's section traced and fitted (ADR-0037, ADR-0038).
+#[test]
+fn blend_rim_fillet_into_an_off_axis_step() {
+    run("blend/rim-fillet-into-an-off-axis-step");
+}
+
 /// A plate with two round bosses nearly on each other, the first's foot
 /// chamfered, the body turned 45° about y: the chamfer's cone against the
 /// second wall's cylinder (parallel axes, 0.3 apart) is refused in this

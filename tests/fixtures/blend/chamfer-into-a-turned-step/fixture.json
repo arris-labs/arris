@@ -1,0 +1,31 @@
+{
+  "description": "blend/fillet-into-a-turned-step's part, the end face's top edge chamfered at d 0.3: the chamfer's plane meets the riser, a cone (a cylinder in the variant), in a conic the intersector writes exactly, the ruling lengthened past the vertex down the end face to the chamfer's leg and the riser taking the triangle-like end (ADR-0038). The far end on the disc's side cylinder is a convex corner, an ellipse there. No closed form for the volume: the oracle's",
+  "params": {"d": 0.3, "top": 0.5},
+  "variants": {"cylinder": {"top": 1}},
+  "steps": [
+    {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [2, 0]}, {"line_to": [2, 1]}, {"line_to": [1, 1]}, {"line_to": ["top", 2]}, {"line_to": [0, 2]}, {"line_to": [0, 0]}]}},
+    {"name": "part", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 180},
+    {"name": "result", "op": "chamfer", "of": "part", "edges": [[1.5, 0, 1]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [1.5, 0.5, 0.5], "expect": "in"},
+    {"label": "riser_inside", "point": [0.2, 0.3, 1.5], "expect": "in"},
+    {"label": "corner_gone", "point": [1.5, 0.05, 0.95], "expect": "out"},
+    {"label": "on_chamfer", "point": [1.5, "d / 2", "1 - d / 2"], "expect": "on"},
+    {"label": "on_end_contact", "point": [1.5, 0, "1 - d"], "expect": "on"},
+    {"label": "on_top_contact", "point": [1.5, "d", 1], "expect": "on"},
+    {"label": "on_end_face", "point": [1.5, 0, 0.5], "expect": "on"},
+    {"label": "on_lengthened_edge", "point": ["1 + (1 - top) * d / 2", 0, "1 - d / 2"], "expect": "on"},
+    {"label": "on_spandrel", "point": ["sqrt((1 + (1 - top) * 0.05)^2 - 0.05^2)", 0.05, 0.95], "expect": "on"},
+    {"label": "behind_spandrel", "point": ["sqrt((1 + (1 - top) * 0.05)^2 - 0.05^2) - 0.01", 0.05, 0.95], "expect": "in"},
+    {"label": "before_spandrel", "point": ["sqrt((1 + (1 - top) * 0.05)^2 - 0.05^2) + 0.01", 0.05, 0.95], "expect": "out"},
+    {"label": "on_riser", "point": [0, "(1 + top) / 2", 1.5], "expect": "on"}
+  ],
+  "analytic": {
+    "counts": {"vertices": 12, "edges": 18, "faces": 8, "loops": 8, "shells": 1},
+    "genus": 0,
+    "counts_differ": "Open CASCADE keeps the consumed corner vertex on the lengthened ruling, two edges of one line between the same two faces; Arris lengthens the one edge to the trim (ADR-0038)"
+  }
+}

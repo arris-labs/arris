@@ -1,0 +1,179 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "296a3ceadcaf755d2d44102ccd599e0121ff1aab0a7fd59930012ce44995b589",
+  "results": {
+    "default": {
+      "area": 50.74799460753767,
+      "centroid": [
+        0.1248783144368089,
+        -0.12487831443680908,
+        0.9285621899509435
+      ],
+      "counts": {
+        "edges": 17,
+        "faces": 7,
+        "loops": 7,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          28.757278852004866,
+          -2.411952385034823,
+          -1.5240161830888934
+        ],
+        [
+          -2.411952385034823,
+          28.757278852004532,
+          1.5240161830888934
+        ],
+        [
+          -1.5240161830888934,
+          1.5240161830888934,
+          43.078567772743504
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 17,
+        "faces": 7,
+        "loops": 7,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            -1.0,
+            1.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "tall_inside",
+          "point": [
+            1.0,
+            1.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_low",
+          "point": [
+            -1.0,
+            1.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            -1.400071426749364,
+            1.400071426749364,
+            0.98
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            -1.3520815280171308,
+            1.3520815280171308,
+            0.9121320343559642
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_side_contact",
+          "point": [
+            -1.4142135623730951,
+            1.4142135623730951,
+            0.7
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_contact",
+          "point": [
+            -1.2020815280171306,
+            1.2020815280171306,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_lengthened_edge",
+          "point": [
+            0.0,
+            2.0,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_other_lengthened_edge",
+          "point": [
+            -2.0,
+            0.0,
+            0.85
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_spandrel",
+          "point": [
+            0.0,
+            1.95,
+            0.95
+          ]
+        },
+        {
+          "class": "in",
+          "label": "behind_spandrel",
+          "point": [
+            0.01,
+            1.95,
+            0.95
+          ]
+        },
+        {
+          "class": "out",
+          "label": "before_spandrel",
+          "point": [
+            -0.01,
+            1.95,
+            0.95
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_other_spandrel",
+          "point": [
+            -1.95,
+            0.0,
+            0.95
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_step",
+          "point": [
+            0.0,
+            1.0,
+            1.5
+          ]
+        }
+      ],
+      "volume": 21.93250433782919
+    }
+  }
+}
