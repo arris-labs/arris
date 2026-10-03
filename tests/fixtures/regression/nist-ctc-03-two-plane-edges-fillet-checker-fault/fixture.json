@@ -1,0 +1,67 @@
+{
+  "description": "NIST's CTC-03 (AP203, solid #101): the plane-against-plane edge at (-232.41, 425.455, 77.1538), and the one at (-232.41, 59.9897, 77.1538), each filleted alone at r 0.889, the battery's radius for the part. The reader's faces and edges are 1e-7 tolerant and the faces' pcurves meet at the third face's corner 4.6e-7 apart, so the blend's output fails the checker at L2 (a loop's pcurves jump 4.6e-7 in (u, v)) where Open CASCADE builds it; a release build, which does not check, returns the body, so the battery's census counted these two edges as built (plans/blend-residue step 1). The desired result is a checker-green body that matches Open CASCADE's",
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "nist_ctc_03_asme1_rc.stp",
+      "sha256": "95a775b1acdbc34de11319cb83b4cf6c6fdd7de8cbfc4af2d0afe5d3565cfdf8",
+      "id": 101
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -232.41,
+          425.45508,
+          77.15377
+        ]
+      ],
+      "radius": 0.889
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "p1",
+      "point": [
+        -237,
+        420,
+        77.15
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "p2",
+      "point": [
+        -228,
+        430,
+        77.15
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "p3",
+      "point": [
+        -237,
+        430,
+        77.15
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "p4",
+      "point": [
+        -228,
+        420,
+        77.15
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "genus": 17
+  }
+}

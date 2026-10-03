@@ -2037,6 +2037,17 @@ fn regression_edge_off_its_plane_fillet() {
     run("regression/edge-off-its-plane-fillet");
 }
 
+/// NIST CTC-03's solid #101, one of two plane-against-plane edges filleted
+/// at the battery's radius: the blend's output fails the checker at L2 (a
+/// loop's pcurves jump 4.6e-7 in (u, v)) where Open CASCADE builds the
+/// body. A release build does not check, so the battery's census counted the
+/// edge as built.
+#[test]
+#[ignore = "kernel bug: the blend's output fails the checker at L2, pcurves 4.6e-7 apart where the file's faces are 1e-7 tolerant (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
+fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
+    run("regression/nist-ctc-03-two-plane-edges-fillet-checker-fault");
+}
+
 /// Open CASCADE's own STEP of `blend/bead-root-fillet`, read as a part: its
 /// walked blend of degree 2 by 14, on which the reader fits a contact's
 /// pcurve for minutes and then refuses it.
