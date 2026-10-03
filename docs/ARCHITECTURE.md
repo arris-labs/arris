@@ -800,8 +800,9 @@ blended edge's faces turn (ADR-0039): the next edge sharing no face with
 it, and each of the two others tangent there and between one face of each
 — or a vertex where the blended edge runs on with nothing turning
 (ADR-0041): the next edge sharing both its faces, the vertex carrying no
-other edge (the second vertex of a rim split in arcs) or only a seam of one
-of those faces (the first) — the blend runs on into the next edge with the same
+other edge (the second vertex of a rim split in arcs), only a seam of one
+of those faces (the first), or a seam of each where both turn (a cylinder
+against a cone) — the blend runs on into the next edge with the same
 kind and size, and on from there until a vertex that is not one, so naming
 one edge of a chain or all of them gives one result with the same ids.
 Two faces are *tangent* for a blend — at a vertex the walk reads, along
@@ -828,7 +829,8 @@ both tangent edges are cut, `Modified`, at their points (ADR-0039 §2).
 Where the runs share both faces (ADR-0041 §2) each contact meets the other
 run's on its own face, `q` on one face and `p` on the other; nothing is cut
 at a vertex of two edges, and at the seam's vertex the seam is shortened to
-`p`, as a closed edge's is. Every vertex of a rim split in arcs is one of
+`p`, as a closed edge's is; where both faces turn, each seam is cut at the
+contact on its own face. Every vertex of a rim split in arcs is one of
 these two, since a seam ends on the rim, so the rim blends as the ring it
 is, one face per arc.
 A chain that reaches a pair outside the table is

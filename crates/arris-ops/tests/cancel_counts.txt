@@ -178,11 +178,17 @@ blend/rim-fillet-into-an-off-axis-step: 935
 blend/second-fillet: 5
 blend/split-boss-base-chamfer: 6
 blend/split-boss-base-fillet: 6
+blend/split-cone-hole-rim-chamfer: 6
+blend/split-cone-hole-rim-fillet: 6
+blend/split-dimple-rim-fillet: 6
 blend/split-pin-foot-fillet: 6
+blend/split-pin-shoulder-fillet: 6
 blend/split-rim-disc-chamfer: 6
 blend/split-rim-disc-fillet: 6
 blend/split-rim-two-edge-vertex-chamfer: 6
 blend/split-rim-two-edge-vertex-fillet: 6
+blend/split-torus-collar-fillet: 6
+blend/split-torus-ring-fillet: 6
 blend/stadium-outline-chamfer: 14
 blend/stadium-outline-fillet: 14
 blend/stadium-pocket-chamfer-root-fillet: 14

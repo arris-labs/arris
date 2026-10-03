@@ -825,7 +825,7 @@ fn convex_edge(m: &Model, view: &View, edge: EdgeId) -> Result<Option<bool>, OpE
 /// and `next` as above. Or, where the edge runs on with nothing turning
 /// (ADR-0041 §1), `edge` and `next` sharing both their faces, with no other
 /// edge at the vertex or only a seam of one of those faces, used twice by
-/// it, and `next` as above. `None` at any other vertex, and where more
+/// it, or a seam of each when both turn, and `next` as above. `None` at any other vertex, and where more
 /// than one of the vertex's other edges would qualify.
 fn tangent_vertex(
     m: &Model,
@@ -862,6 +862,7 @@ fn tangent_vertex(
         2 => 2,
         3 if others.iter().any(|&w| is_seam(w)) => 2,
         3 => 1,
+        4 if others.iter().filter(|&&w| is_seam(w)).count() == 2 => 2,
         _ => 0,
     };
     // The unit tangent of `x` at the vertex, pointing away from it.
@@ -900,6 +901,10 @@ fn tangent_vertex(
         // joins a face of `edge` to a face of `next`, no face twice.
         let mut joined: BTreeSet<FaceId> = BTreeSet::new();
         for &w in others.iter().filter(|&&w| w != next) {
+            // The two seams of a vertex of four are one face's each.
+            if shared == 2 && at.len() == 4 && !faces_of(w).iter().all(|&f| joined.insert(f)) {
+                continue 'next;
+            }
             let Some(t_w) = parameter_at(m, w, vertex)? else {
                 continue 'next;
             };
@@ -1998,6 +2003,25 @@ fn junction(
                 [s, t] if s.face == t.face && s.face == ra.faces[1] => (0, kb, None, Some(w)),
                 [s, t] if s.face == t.face && s.face == ra.faces[0] => (1, 1 - kb, None, Some(w)),
                 _ => return Err(vertex_blend()),
+            }
+        }
+        // The same with a seam of each face at the vertex, both curved:
+        // `q` on the contacts on `a`'s first face, its seam cut there, `p`
+        // on the second's, that seam cut there.
+        (&[(0, kb), (1, jb)], &[w0, w1]) if jb == 1 - kb => {
+            let seam_of = |w: EdgeId, face: FaceId| -> Result<bool, OpError> {
+                let uses = view
+                    .uses
+                    .get(&w)
+                    .ok_or(invariant("the junction's seam's uses"))?;
+                Ok(matches!(uses[..], [s, t] if s.face == t.face && s.face == face))
+            };
+            if seam_of(w0, ra.faces[0])? && seam_of(w1, ra.faces[1])? {
+                (0, kb, Some(w0), Some(w1))
+            } else if seam_of(w1, ra.faces[0])? && seam_of(w0, ra.faces[1])? {
+                (0, kb, Some(w1), Some(w0))
+            } else {
+                return Err(vertex_blend());
             }
         }
         // A vertex of four where both faces turn (ADR-0039 §2): each
@@ -4543,8 +4567,8 @@ fn build(
 /// of each — and the great circle there runs between the two points where
 /// the contacts meet on those two tangent edges, both shortened. And it
 /// runs on where nothing turns: the next edge sharing both the edge's
-/// faces, the vertex carrying no other edge or only a seam of one of them —
-/// the vertices of a rim split in arcs — the great circle between the
+/// faces, the vertex carrying no other edge or only a seam of one of them,
+/// or a seam of each — the vertices of a rim split in arcs — the great circle between the
 /// point where the contacts meet on one face and where they meet on the
 /// other, the seam shortened to its point and nothing cut at a vertex of
 /// two edges. Two
@@ -4575,8 +4599,8 @@ fn build(
 /// reached is recorded as a named one is; the great circle where two
 /// blends of a chain meet and its two vertices are `Generated` from both
 /// edges, as a miter's are, the third edge — or, at a vertex of four, both
-/// tangent edges, at the seam's vertex of a split rim its seam, and at a
-/// vertex of two edges none — `Modified` and the vertex `Deleted`.
+/// tangent edges, at the seam's vertex of a split rim its seam (both seams
+/// where both faces turn), and at a vertex of two edges none — `Modified` and the vertex `Deleted`.
 /// `arris_topo::provenance::audit` holds on every result
 /// (`docs/DATA-MODEL.md` §Provenance).
 ///

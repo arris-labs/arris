@@ -1679,6 +1679,48 @@ fn blend_split_boss_base_chamfer() {
     run("blend/split-boss-base-chamfer");
 }
 
+/// A conical hole's rim split in two half circles, one half filleted: a
+/// plane against a cone, convex, the ring of two half tori (ADR-0041).
+#[test]
+fn blend_split_cone_hole_rim_fillet() {
+    run("blend/split-cone-hole-rim-fillet");
+}
+
+/// The same rim chamfered: two half cones meeting on the chord.
+#[test]
+fn blend_split_cone_hole_rim_chamfer() {
+    run("blend/split-cone-hole-rim-chamfer");
+}
+
+/// A spherical dimple's rim split in two, one half filleted: a plane
+/// against a sphere, convex; Open CASCADE builds the ring as one face.
+#[test]
+fn blend_split_dimple_rim_fillet() {
+    run("blend/split-dimple-rim-fillet");
+}
+
+/// A ring torus on a plate, its outer circle split in two, one half
+/// filleted: a plane against a torus, concave.
+#[test]
+fn blend_split_torus_ring_fillet() {
+    run("blend/split-torus-ring-fillet");
+}
+
+/// A pin's shoulder split in two, one half filleted: a cylinder against a
+/// cone, both faces carrying their seam at the one vertex, so a vertex of
+/// four edges with two seams, each cut at its own contact (ADR-0041).
+#[test]
+fn blend_split_pin_shoulder_fillet() {
+    run("blend/split-pin-shoulder-fillet");
+}
+
+/// A cylinder with a torus collar, the circle where they meet split in
+/// two, one half filleted: a cylinder against a torus, concave, two seams.
+#[test]
+fn blend_split_torus_collar_fillet() {
+    run("blend/split-torus-collar-fillet");
+}
+
 /// A hole's rim of three arcs, two of its vertices carrying nothing but
 /// two arcs, one arc filleted: the chain runs on through all three and
 /// closes as a ring of three pieces of one torus (ADR-0041).

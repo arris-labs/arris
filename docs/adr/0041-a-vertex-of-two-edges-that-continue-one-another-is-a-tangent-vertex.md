@@ -36,12 +36,14 @@ there is no third edge for a junction to cut.
 continue one another.** At an end vertex `v` of a blended edge `e`, `v` is
 a tangent vertex when it has exactly two edges `e` and `e′`, or those two
 and a seam of one of their faces (an edge that face uses twice, found at
-step 3), where `e` and `e′` share both of their faces, `e′` is open and not a tangent dihedral, and the
+step 3), or those two and a seam of each of their faces where both turn (a
+cylinder against a cone, a torus against a cylinder: found at step 4), where `e` and `e′` share both of their faces, `e′` is open and not a tangent dihedral, and the
 direction leaving `v` along `e′` is within a right angle of the one
 arriving along `e`. The selection follows it as ADR-0035 §1 follows a
 vertex of three edges: `e′` is blended with the same kind and size, and
 the walk goes on from its far vertex. A chain of arcs whose vertices are
-all of one of the kinds (three edges with the seam, four, two) is closed
+all of one of the kinds (three edges with the seam, four with two seams or
+with two tangent edges, two) is closed
 when the walks meet.
 
 **2. The junction is the ball's cross-section, with nothing cut.** The
@@ -56,7 +58,9 @@ Each of `F₀` and `F₁` keeps its loop, with `v` replaced by the one contact
 vertex of its own and the junction not in it. At a vertex of two edges no
 edge is cut, because `v` has none but `e` and `e′`; at the seam's vertex
 the seam is shortened to the contact vertex on its face, as a closed
-edge's seam is (ADR-0036), and `p` is that one.
+edge's seam is (ADR-0036), and `p` is that one. Where both faces turn each
+has its seam there, and each is shortened to the contact on its own face,
+`q` on the one and `p` on the other.
 
 **3. Provenance is ADR-0035 §5's.** The junction arc and its two vertices
 are `Generated` from both edges, `v` is `Deleted`, a seam shortened is

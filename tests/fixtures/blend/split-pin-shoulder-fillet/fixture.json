@@ -1,0 +1,75 @@
+{
+  "description": "a pin, a cylinder of radius 1.5 from z 0 to 1 and a cone from it to radius 0.5 at z 2 on top, written by Open CASCADE with every closed edge split in two (ShapeUpgrade_ShapeDivideClosedEdges): the shoulder is two half circles between the cylinder and the cone, both faces carrying their seam at one vertex and nothing else at the other, a vertex of four edges there (ADR-0041). One half of the shoulder filleted at r 0.2: a cylinder against a cone, both turning, convex, the chain runs on through both vertices and closes as a whole ring, two half tori, both seams shortened to their contacts. Open CASCADE builds the ring as one face",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "operand.step",
+      "sha256": "cdc4656309e7fbb07d4ea082451fb5075cf9bc943d5cd19234f87d94c36cac6b",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          2,
+          3.5,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "p0",
+      "point": [
+        2,
+        2,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "p1",
+      "point": [
+        0.2,
+        0.2,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "p2",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "counts": {
+      "vertices": 8,
+      "edges": 12,
+      "faces": 6,
+      "loops": 6,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE builds the blend of the ring (a cylinder's circle against a cone) as one face spanning a whole turn, V/E/F/L 6/9/5/5, where Arris builds one face per arc and a junction arc and two vertices at each vertex of the split, 8/12/6/6 (ADR-0041); the part and the blend are the same solid, the measures and probes agree with the oracle's",
+    "step_differs": "Open CASCADE's own STEP of the result carries its 6/9/5/5 where Arris's carries its 8/12/6/6, one whole-turn blend face against two halves (counts_differ)"
+  },
+  "tolerances": {
+    "volume_rel": 5e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 1e-06
+  }
+}

@@ -100,11 +100,31 @@ bound has to be established here.
   Arris's counts and the closed forms, and its STEP is refused as a face
   wrapping a period. `cancel_counts.txt` blessed for the five here, to keep
   `main` green.)*
-- [ ] Step 4 **[2]** — Cylinder pair coverage: the same vertex with the
+- [x] Step 4 **[2]** — Cylinder pair coverage: the same vertex with the
   pairs ADR-0036 builds along a circle (a cone, a sphere or a torus against a
   coaxial plane, cylinder or cone) — each a fixture or its absence named in the
   commit. Where a pair is refused at the junction, `Unsupported` names it, no
   new `Reason`.
+  *(Done, with one finding. A rim between two turning faces has a seam of
+  each at the vertex, four edges, which neither ADR-0035 §1 nor step 3 took:
+  `tangent_vertex` and the junction take it, each seam cut at its own face's
+  contact (ADR-0041 corrected). Fixtures `blend/split-{cone-hole-rim-fillet,
+  cone-hole-rim-chamfer,dimple-rim-fillet,torus-ring-fillet,pin-shoulder-
+  fillet,torus-collar-fillet}`: plane against cone (convex), sphere (convex)
+  and torus (concave), cylinder against cone and against torus, all on
+  operands Open CASCADE wrote with closed edges split. On the sphere, torus
+  and two-seam pairs Open CASCADE builds the ring as one face, so those are
+  held to Arris's counts (`counts_differ`, `step_differs`) with measures and
+  probes at the oracle's, tolerances widened to its blend's approximation
+  (1e-7 to 5e-7). Absent, named: the concave cone (Open CASCADE refuses a
+  split concave cone base, `not done`, though it builds the whole circle),
+  the pin's chamfer (Open CASCADE's volume of the split ring is 2.2e-4 below
+  its own whole-circle chamfer, which Arris matches to 1.3e-7; a closed form
+  with all four measures is a fixture of its own, a backlog line), a sphere
+  against a cylinder or a cone and a cone against a torus (Open CASCADE
+  writes no valid operand: the pole of the sphere breaks its closed-edge
+  split, and no revolve of the other pair was drawn). No pair was refused at
+  the junction, so no `Unsupported`.)*
 - [ ] Step 5 **[2]** — A property over random poses (`blend_prop`): a boss
   or a hole split into two to four arcs at random angles, with the seam at a
   vertex or elsewhere, fillet and chamfer at random size, convex and concave.

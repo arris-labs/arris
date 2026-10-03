@@ -1,0 +1,58 @@
+{
+  "description": "the rim of blend/split-cone-hole-rim-fillet (written by Open CASCADE with every closed edge split in two (ShapeUpgrade_ShapeDivideClosedEdges)) chamfered at d 0.2, one half of it: two half cones meeting on the chord at each vertex of the split (ADR-0041)",
+  "params": {
+    "d": 0.2
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "operand.step",
+      "sha256": "eb366350afce8e9f2ab5100755e71f8bc7fa072587d24b933fb1124b0fe265b0",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          2,
+          3,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "p0",
+      "point": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "p1",
+      "point": [
+        2,
+        2,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "p2",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ]
+}

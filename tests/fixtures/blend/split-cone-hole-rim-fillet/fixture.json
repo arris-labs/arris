@@ -1,0 +1,58 @@
+{
+  "description": "a 4 \u00d7 4 plate 1 thick with a conical hole through it, radius 0.5 at the bottom and 1 at the top, written by Open CASCADE with every closed edge split in two (ShapeUpgrade_ShapeDivideClosedEdges): the top rim is two half circles between the top and the cone, the cone's seam at (3, 2, 1) and nothing but the two arcs at (1, 2, 1), a vertex of two edges (ADR-0041). One half of the rim filleted at r 0.2: a plane against a cone along a circle coaxial with it, convex, the chain runs on through both vertices and closes as a whole ring, two half tori coaxial with the hole, the cone's seam shortened to the contact on the cone",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "operand.step",
+      "sha256": "eb366350afce8e9f2ab5100755e71f8bc7fa072587d24b933fb1124b0fe265b0",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          2,
+          3,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "p0",
+      "point": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "p1",
+      "point": [
+        2,
+        2,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "p2",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ]
+}

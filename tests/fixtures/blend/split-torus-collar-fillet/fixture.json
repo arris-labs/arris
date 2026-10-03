@@ -1,0 +1,75 @@
+{
+  "description": "a cylinder of radius 1 from z 0 to 2 with a ring torus about it, major radius 1 and minor 0.4 centred at z 1, written by Open CASCADE with every closed edge split in two (ShapeUpgrade_ShapeDivideClosedEdges): the circle at z 1.4 where the torus meets the cylinder above is two half circles between the cylinder and the torus, both faces carrying their seam at one vertex (ADR-0041). One half filleted at r 0.1: a torus against a cylinder, both turning, concave, the chain runs on through both vertices and closes as a whole ring, two half tori. Open CASCADE builds the ring as one face",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "operand.step",
+      "sha256": "01c85a98d45495377bdcbbf4bef7294d06de2841be87ac2aac74eb09865e46a4",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          2,
+          3,
+          1.4
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "p0",
+      "point": [
+        2,
+        2,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "p1",
+      "point": [
+        0.2,
+        0.2,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "p2",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "counts": {
+      "vertices": 12,
+      "edges": 18,
+      "faces": 8,
+      "loops": 8,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE builds the blend of the ring (a cylinder's circle against a torus) as one face spanning a whole turn, V/E/F/L 10/15/7/7, where Arris builds one face per arc and a junction arc and two vertices at each vertex of the split, 12/18/8/8 (ADR-0041); the part and the blend are the same solid, the measures and probes agree with the oracle's",
+    "step_differs": "Open CASCADE's own STEP of the result carries its 10/15/7/7 where Arris's carries its 12/18/8/8, one whole-turn blend face against two halves (counts_differ)"
+  },
+  "tolerances": {
+    "volume_rel": 1e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 1e-06
+  }
+}
