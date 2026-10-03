@@ -6,8 +6,11 @@ JSON, one verdict per point, in order: `builds` (the builder is done and the
 result passes `BRepCheck_Analyzer`), `invalid` (done, the result fails the
 analyzer), `refuses` (not done, or the builder raises) with `why`, or
 `no-edge` where the point is not within `probe` of exactly one edge. A solid
-placed more than once is the placement nearest the points. What the run-over
-census holds `BlendTooLarge` against: whether Open CASCADE builds the same
+placed more than once is the placement nearest the points. An entry of the
+list may instead be a list of points: those edges filleted together, one
+verdict for the set (`no-edge` if any point names no single edge). What the
+run-over and vertex-blend censuses hold `BlendTooLarge` and `VertexBlend`
+against: whether Open CASCADE builds the same
 blend. Exits 2 with `occt_fillet_edges: ERROR <why>` on stderr for a file or
 a solid it cannot read. Run as
 `uv run --project tools/oracle tools/oracle/occt_fillet_edges.py`.
@@ -95,7 +98,8 @@ def main() -> int:
         if not candidates:
             raise OracleError(f"{path} has no solid #{wanted} that Open CASCADE reads")
         if len(candidates) > 1:
-            candidates.sort(key=lambda s: total_distance(s, points[:8], probe))
+            flat = [q for pt in points for q in (pt if isinstance(pt[0], list) else [pt])]
+            candidates.sort(key=lambda s: total_distance(s, flat[:8], probe))
         shape = candidates[0]
     except OracleError as e:
         print(f"occt_fillet_edges: ERROR {e}", file=sys.stderr)
@@ -103,13 +107,20 @@ def main() -> int:
     edges = edges_of(shape)
     out = []
     for pt in points:
-        near = near_edges(edges, pt, probe)
-        if len(near) != 1:
+        group = pt if isinstance(pt[0], list) else [pt]
+        named = []
+        for q in group:
+            near = near_edges(edges, q, probe)
+            if len(near) != 1:
+                break
+            named.append(near[0])
+        if len(named) != len(group):
             out.append({"verdict": "no-edge", "why": f"{len(near)} edges within {probe}"})
             continue
         try:
             mf = BRepFilletAPI_MakeFillet(shape)
-            mf.Add(radius, near[0])
+            for edge in named:
+                mf.Add(radius, edge)
             mf.Build()
             if not mf.IsDone():
                 out.append({"verdict": "refuses", "why": "not done"})

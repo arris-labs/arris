@@ -12,7 +12,9 @@
 # (arris_debug::survey) under a timeout: Arris's read, Open CASCADE's
 # through the oracle's cache, every solid held to it, and the battery.
 # Writes target/real-parts/histogram.md, failures.md and
-# fillet-by-part.md (the fillet column by part, from the survey). Exits 1 if a
+# fillet-by-part.md (the fillet column by part, from the survey), and
+# vertex-blend.md (the `VertexBlend` census over those parts and the
+# committed tier, each edge and sampled set put to Open CASCADE). Exits 1 if a
 # failure is not excluded by tools/real-parts.waits.
 set -euo pipefail
 
@@ -75,3 +77,25 @@ grep -v '^#' "$manifest" | cut -c67- | tr '\n' '\0' |
 
 target/release/examples/real_parts --summary "$manifest" "$root/reports" \
   tools/real-parts.waits "$root"
+
+# The VertexBlend census (ADR-0039's sizing): every part the fillet column
+# still refuses, then the committed tier, each as a table of
+# part → site → edges → Open CASCADE's verdict.
+refused=()
+while read -r stem; do
+  file=$(find "$root/files" -name "$stem.stp" | head -1)
+  [ -n "$file" ] && refused+=("$file")
+done < <(awk -F'|' '/^\| nist/ { gsub(/ /, "", $2); print $2 }' "$root/fillet-by-part.md")
+{
+  echo "# VertexBlend by site"
+  echo
+  echo "## Fetched tier"
+  echo
+  if [ ${#refused[@]} -gt 0 ]; then
+    target/release/examples/real_parts --vertex-blend "${refused[@]}"
+  fi
+  echo
+  echo "## Committed tier"
+  echo
+  target/release/examples/real_parts --vertex-blend-committed
+} >"$root/vertex-blend.md"

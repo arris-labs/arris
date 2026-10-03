@@ -659,6 +659,29 @@ pub fn fillet_edges(
     probe: f64,
     points: &[[f64; 3]],
 ) -> Result<Vec<EdgeVerdict>, OracleError> {
+    fillet_named(file, solid_id, radius, probe, points)
+}
+
+/// As [`fillet_edges`], each entry a set of edges named by a point apiece
+/// and filleted *together*: one verdict per set, `no-edge` when any of its
+/// points does not name exactly one edge.
+pub fn fillet_edge_sets(
+    file: &Path,
+    solid_id: u64,
+    radius: f64,
+    probe: f64,
+    sets: &[Vec<[f64; 3]>],
+) -> Result<Vec<EdgeVerdict>, OracleError> {
+    fillet_named(file, solid_id, radius, probe, sets)
+}
+
+fn fillet_named<P: core::fmt::Debug + serde::Serialize>(
+    file: &Path,
+    solid_id: u64,
+    radius: f64,
+    probe: f64,
+    points: &[P],
+) -> Result<Vec<EdgeVerdict>, OracleError> {
     let bytes = std::fs::read(file).map_err(|e| OracleError::Write {
         path: file.to_path_buf(),
         message: e.to_string(),

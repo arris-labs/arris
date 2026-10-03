@@ -1,0 +1,210 @@
+# Plan: blend-corners
+
+- Started: 2026-10-03
+- Milestone: C6 (the blend network, docs/ROADMAP.md), fifth plan
+- Idea: none. `blend-run-over` named the corners (`VertexBlend`) as the next
+  plan's, and its census (`fillet-by-part.md`, `run-over.md`) stands in for
+  the brainstorm: `VertexBlend` is `ctc_04`'s first refusal on the fetched
+  tier and two of the committed tier's six, and 227 edges blended alone
+  over six fetched parts. Step 2's gate is the idea's "change my mind"
+  line: if step 1 shows the corners are mostly ones Open CASCADE also
+  refuses, the plan stops there and the human is asked.
+- Idea (verbatim from the human): "/plan blend-corners"
+
+## Goal
+`VertexBlend` is counted by sub-cause. Each edge is blended alone at the
+battery's radius, and each sampled set is blended together, and every one
+is held against Open CASCADE's verdict on it, so a refusal Open CASCADE
+shares is told apart from one it builds. The sub-causes that Open CASCADE
+builds and that a closed form or ADR-0037's trace can take are built. The
+hypothesis step 1 tests first is a blend ending at a vertex of more than
+three edges, where the end arc crosses a fan of faces across rather than
+the one face ADR-0007 asks for. The surface stays exact and only the end
+curve is traced where no closed form exists. The fetched tier's `fillet`
+column (6 of 27) and the committed tier's (6 of 11) are measured again
+beside C4's 17 of 38 and `blend-run-over`'s line, and what is left of
+`VertexBlend` is named by part.
+
+## Non-goals
+- Corners Open CASCADE also refuses. They stay `VertexBlend`, correctly
+  (`both refuse` in the battery).
+- Tangent continuation (`TangentChain`, STC-09), the horn and spindle torus
+  at the axis (`BlendTooLarge`, STC-06), crossing cylinders, the torus off
+  its axis, and a trace that misses (`ctc_01` ap242). Each is its own line.
+- A corner patch that is not a closed form or an exact surface: no fitted
+  N-sided filling (Open CASCADE's `PerformMoreThreeCorner`) and no
+  setback vertex blend. ADR-0007's rejected alternative stays rejected.
+  Where a sub-cause needs one, it is named and left for a later idea.
+- Variable radius, blends over blends, other chamfer modes, NURBS faces as
+  operands, healing.
+- The miters of several blended edges in the backlog (unequal dihedrals,
+  a ruling blend's miter, the oblique three-plane fillet corner). These
+  are in scope only if step 1 finds them behind a part's sampled set
+  blended together (step 6). Otherwise they stay backlog lines.
+
+## Design deltas
+- **ADR-0039 (step 3), new.** This is the corner the census finds leading.
+  For the hypothesis, an end at a vertex of more than three edges: the
+  end's section is cut by each face across in turn around the vertex,
+  every face across taking its piece of the end curve. The edges between
+  those faces are cut where the curve crosses them, and the corner edges
+  are cut or lengthened as ADR-0007 and ADR-0038 already rule. It amends
+  ADR-0007 (the face across, the `VertexBlend` bound). If step 1 leads
+  elsewhere, the ADR records that corner instead, and step 2 rewrites
+  steps 3 to 5 in this file.
+- `arris-ops` `blend.rs` `corner_of`: from three edges and one face across
+  to the vertex's fan (the corner edges, the faces across and the edges
+  between them, in loop order). `face_end`, `End` and `build` take a fan
+  of more than one face across. Expect a new module, `blend/fan.rs`, beside
+  `mixed.rs` and `traced.rs`. No public type or signature change.
+  `Reason::VertexBlend` keeps its variant and loses cases, and the
+  `fillet` rustdoc's error list is narrowed to match. `Reason` gains no
+  variant, so the binding (`crates/arris-py`) does not change.
+- `arris-check`: no change expected (S5 decides each face across by the
+  same tracers, ADR-0037 §5). Step 4 shows this at `Full`.
+- `arris-debug` `census.rs`: `vertex_blend_cause`, read from the entities
+  the refusal names as `run_over_cause` is, plus the sampled set blended
+  together, plus Open CASCADE's verdict on each (step 1).
+- Docs: `docs/ARCHITECTURE.md` §blend (the end at a corner and the
+  `VertexBlend` paragraph) and ROADMAP §C6.
+
+## Steps
+Complexity grades the human uses to pick the agent for a step: **[1]**
+routine — the design says exactly what to write and the tests are
+mechanical; **[2]** careful — a geometric or numeric case to get right
+within a given design; **[3]** unproven — an algorithm whose robustness or
+bound has to be established here.
+
+- [x] Step 1 **[2]** — The census of `VertexBlend` by site. Extend
+  `arris_debug::census` with `vertex_blend_cause`. It classifies every
+  `VertexBlend` edge, blended alone at the battery's radius, by the site
+  that refused it:
+  - a vertex of more than three edges, split by what the extra edges are:
+    a sharp edge between two faces across; a smooth or tangent edge; a
+    seam; a degenerate edge; or an edge that continues the corner edge
+    collinearly;
+  - corner edges that share no face across;
+  - a corner edge with no curve (an apex or a pole);
+  - a closed edge's vertex carrying more than its seams.
+
+  It also blends each part's sampled set together, and where that alone
+  is `VertexBlend`, classifies the miter or corner the edges make. Each
+  edge and set gets **Open CASCADE's verdict** through
+  `occt_fillet_edges.py` (`ask_the_oracle`, a stride per cause plus every
+  sampled edge). The output is `target/real-parts/vertex-blend.md`,
+  `part → cause → edges → asked → builds / invalid / refuses`, written
+  through `real_parts --vertex-blend` and both tiers. A unit test on a
+  small recipe per cause holds the classification: `blend/five-edge-vertex`
+  for the fan, a cone apex for the curveless corner edge, and so on.
+- [ ] Step 2 **[1]** — Record the census in `docs/ROADMAP.md` §C6 and
+  `docs/BACKLOG.md`: each cause with its count and Open CASCADE's verdict,
+  and the parts its sampled edges would free. Confirm the order of steps 3
+  to 6 or rewrite them here. **Gate:** if the edges Open CASCADE builds
+  fall in no cause that a closed form or the trace can take, or would
+  free no part of either tier's column, stop and ask the human before
+  step 3. A change of order is recorded here, not made silently.
+- [ ] Step 3 **[3]** — The decision and the fan. Write ADR-0039. Write
+  `corner_of`'s fan, which walks the vertex's faces in loop order from one
+  corner edge to the other. Write the end's section cut against each face
+  across in turn, where each crossing of an edge between two faces across
+  is found on that edge and lies inside its range, and the pieces chain
+  end to end. Test it on posed recipes against the closed forms: a box
+  edge ending at a vertex whose face across is split in two by a fused
+  block, `blend/five-edge-vertex`, fillet and chamfer, and the far corner
+  unchanged. Refuse by name an end arc that leaves the fan (crossing an
+  edge out of range). Add `regression/<ctc-04-corner>`, the shrunk CTC-04
+  corner with Open CASCADE's oracle, `#[ignore]`d. Run it over every
+  `VertexBlend` end of the parts step 1 names, and count how many the fan
+  decides.
+- [ ] Step 4 **[3]** — Build it for planes across. `face_end` takes the fan,
+  and `build` cuts each edge between two faces across at its crossing and
+  gives each face across its piece of the arc from outside. Provenance
+  marks each face across `Modified` and each cut edge `Modified` into its
+  pieces, as ADR-0007 roots an end. `blend/five-edge-vertex` turns from
+  `expect_error` to a built fixture with Open CASCADE's oracle, and the
+  `regression/` corner moves to `blend/` with its blessed dump. Add a
+  chamfer twin and a concave blend into a fan, each with its oracle, and
+  `counts_differ` where Open CASCADE splits differently (ADR-0038 §5).
+  The checker is green at `Full`.
+- [ ] Step 5 **[3]** — The fan with a cylinder or a cone among its faces
+  across (the piece traced, ADR-0037), a mixed corner inside a fan
+  (ADR-0038's lengthening), and a ring's open arc ending at a fan. Cover
+  the ends step 3's run counted. `Unsupported` stays where the trace does
+  not take the end, naming the face across. Add fixtures with an oracle,
+  as in step 4.
+- [ ] Step 6 **[3]** — Conditional on step 2: the sampled set blended
+  together. Only if step 1 finds a part's set refused `VertexBlend` where
+  each edge alone builds, build the miter or corner it names, from the
+  backlog's three: unequal dihedrals, a ruling blend's miter, or the
+  oblique three-plane fillet corner (a tilted great circle whose pcurve is
+  fitted on the sphere). Add a fixture with Open CASCADE's oracle. If the
+  census finds none, this step is struck at step 2, and the reason is
+  written here.
+- [ ] Step 7 **[2]** — A property over random poses for every case steps 4
+  to 6 build (`blend_prop`): a fan of two to four faces across, a split
+  angle and a lean. It checks that the checker is green, that the blended
+  and removed material add up in volume, that a STEP round-trip holds,
+  and that ids are deterministic. Poses where the end leaves the fan are
+  rejected by the refusal's name, not silently. Seeded, and sharded via
+  `prop_shards!`.
+- [ ] Step 8 **[1]** — Measure the fetched and committed tiers again
+  (`tools/real-parts.sh`, `--census-committed`). Print the column beside
+  C4's 17 of 38 and `blend-run-over`'s line. Move the `fixtures:`
+  expectations whose refusals changed (`nist-ctc-04`, `nist-ftc-09`), with
+  the commit body saying why and `cancel_counts.txt` blessed for the new
+  fixtures. Update `docs/ROADMAP.md` §C6's status paragraph with the new
+  count and what each remaining part meets. Run the docs-refs tests: the
+  roadmap's histogram is checked against the printout.
+
+## Acceptance
+- Step 1's cause table is reproduced, and the column's summary line in §C6
+  is the number `tools/real-parts.sh` prints after step 8.
+- Every fixture of steps 4 to 6 passes under `blend/`, checker green at
+  `Full`. Each is held to Open CASCADE's oracle, or to its closed form
+  under `analytic.measure_differs` with ADR-0015's evidence.
+  `blend/five-edge-vertex` is built, not expected to fail.
+- Step 7's property is green at 256 cases (retirement) and 1000 (CI).
+- Every part that leaves the column agrees with Open CASCADE's fillet at
+  the battery's radius, or is refused as another line's (tangent
+  continuation, the horn torus, NURBS, a corner Open CASCADE refuses).
+  The full profile is green.
+
+## Docs to update on completion
+- `docs/ROADMAP.md` §C6: the status paragraph with the new `fillet` counts
+  and the line this plan strikes (the corners). Name what the cycle has
+  left: tangent continuation, the crossing cylinders, the torus off its
+  axis, a trace that misses, the horn torus. Judge whether the cycle can
+  close, and leave that judgement for `/close-cycle`.
+- `docs/BACKLOG.md`: what the census leaves. Corners Open CASCADE refuses
+  are not backlog; causes needing a filled patch are. Strike or keep the
+  three miter lines (65, 66, 68) per step 6.
+- `docs/adr/`: ADR-0039, its ADR-0007 pointer and its README row (written
+  at step 3).
+- `docs/ARCHITECTURE.md` §blend: the end at a corner (a fan of faces
+  across) and the `VertexBlend` paragraph (what builds now and what is
+  refused).
+- `tests/fixtures/README.md`: the `VertexBlend` line, if its cases change.
+- `CHANGELOG.md` `Unreleased`: that a blend ending at a vertex of more than
+  three edges now builds, and which corner refusals remain (no ADR numbers
+  or fixture names).
+- `AGENTS.md` current state: C6's fifth plan landed, and the column's
+  count.
+
+## Open questions
+- ⚠ OPEN (agent, step 2): which cause leads. The fan of faces across is
+  the hypothesis. `blend/five-edge-vertex` is a fan, and a real part's face
+  split or a fused boss at an edge's end makes one. If step 1 finds that
+  the curveless corner edge or a corner with no face across leads, steps 3
+  to 5 are rewritten for it at step 2, keeping their grades and
+  acceptance.
+- ⚠ OPEN (agent, step 3): whether a vertex whose extra edge is smooth or a
+  seam is a fan of faces across, or the tangent junction of ADR-0035. If
+  it is a junction, it is `TangentChain`'s, and the census counts it
+  there.
+- ⚠ OPEN (agent, step 4): whether an edge between two faces across, cut by
+  the end, keeps its id on the piece away from the vertex (`Modified`), or
+  is deleted and both pieces generated. Decide it the way ADR-0007 decides
+  a shortened corner edge (`Modified`), unless ADR-0009's split order says
+  otherwise.
+- ⚠ OPEN (human, step 2, only if the gate fires): whether to stop the plan
+  or go on with a cause Open CASCADE builds that frees no part.
