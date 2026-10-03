@@ -450,6 +450,37 @@ fn extra_kind(
     }
 }
 
+/// What the second edge at a vertex of two edges is, `blended` being the
+/// edge whose blend was refused there: its continuation on one curve between
+/// the same two faces (a split rim's second vertex, the seam being at the
+/// other), the same two faces turning, or a different pair of faces.
+fn second_kind(m: &Model, other: EdgeId, vertex: VertexId, blended: EdgeId) -> &'static str {
+    let faces = |e| {
+        let mut f: Vec<_> = m
+            .edge_uses(e)
+            .map(|u| u.iter().map(|x| x.face).collect())
+            .unwrap_or_default();
+        f.sort();
+        f.dedup();
+        f
+    };
+    if faces(blended) != faces(other) {
+        return "an edge between a different pair of faces";
+    }
+    let runs_on = match (
+        tangent_at_vertex(m, blended, vertex),
+        tangent_at_vertex(m, other, vertex),
+    ) {
+        (Some(a), Some(b)) => parallel(a, b),
+        _ => false,
+    };
+    if runs_on {
+        "a continuation between the same two faces"
+    } else {
+        "an edge between the same two faces, turning"
+    }
+}
+
 /// Which site refused a `VertexBlend` of `edge` blended alone, from the
 /// entities the error names and the vertex's edges (`None` for any other
 /// refusal): *a vertex of more than three edges*, with what the extra edges
@@ -512,6 +543,16 @@ pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String
                 .any(|&c| m.edge(c).is_ok_and(|x| x.curve().is_none()))
             {
                 "a corner edge with no curve".to_string()
+            } else if let [other] = at
+                .iter()
+                .copied()
+                .filter(|&x| x != edge)
+                .collect::<Vec<_>>()[..]
+            {
+                format!(
+                    "a vertex of 2 edges, the second: {}",
+                    second_kind(m, edge, v, other)
+                )
             } else {
                 format!("corner edges that share no face across, {} edges", at.len())
             }
@@ -1308,5 +1349,49 @@ mod tests {
             table.contains("Total: 3 `VertexBlend` edges, 2 put to Open CASCADE"),
             "{table}"
         );
+    }
+
+    /// The committed `nist-ftc-06`'s holes: a rim circle in two half arcs
+    /// between one plane and one cylinder, the cylinder's seam at the first
+    /// vertex and nothing but the two arcs at the second. The arc's far
+    /// vertex is a vertex of two edges, a continuation between the same two
+    /// faces.
+    #[test]
+    fn a_split_rims_second_vertex_is_a_continuation() {
+        let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
+        let bytes = std::fs::read(&file).unwrap();
+        let mut m = Model::new(PrecisionSpec::default().precision()).unwrap();
+        let read = step_read(
+            &mut m,
+            &String::from_utf8_lossy(&bytes),
+            &ReadOptions::default(),
+        )
+        .unwrap();
+        let body = read
+            .solids
+            .iter()
+            .find_map(|s| s.result.as_ref().ok())
+            .unwrap()
+            .body;
+        let handles = m.edges(body).unwrap();
+        let mut seen = 0;
+        for h in &handles {
+            let mut scratch = m.clone();
+            let Err(Refused::Op(e)) = blend(&mut scratch, body, &[*h], 0.05) else {
+                continue;
+            };
+            let Some(cause) = vertex_blend_cause(&m, h.id, &e) else {
+                continue;
+            };
+            if cause.starts_with("a vertex of 2 edges") {
+                assert_eq!(
+                    cause,
+                    "a vertex of 2 edges, the second: a continuation between the same two faces; edge cylinder × plane"
+                );
+                seen += 1;
+                break;
+            }
+        }
+        assert!(seen > 0, "a split rim's second vertex is in the part");
     }
 }

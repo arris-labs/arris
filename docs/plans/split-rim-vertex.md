@@ -56,7 +56,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — The two-edge site counted by cause. Extend
+- [x] Step 1 **[2]** — The two-edge site counted by cause. Extend
   `vertex_blend_cause` so the site splits into: a continuation (both edges
   on one circle, the same two faces, directions running on), and every other
   two-edge vertex, named by what the second edge is. Run
@@ -66,6 +66,10 @@ bound has to be established here.
   at one of the vertices. **Gate:** if the continuation is under half the
   site's edges, or frees no sampled edge of either tier, stop and ask the
   human; otherwise record the counts in ROADMAP §C6.
+  *(Done: the site is a continuation throughout, 67 of 79 fetched edges and
+  all 20 committed, and it holds `ctc_04`'s sampled edge; the gate does not
+  fire. No other two-edge cause found, so the first open question is
+  answered. `a_split_rims_second_vertex_is_a_continuation` reads `ftc-06`.)*
 - [ ] Step 2 **[1]** — ADR-0041 and its README row, with ADR-0035's and
   ADR-0039's pointers. Write the fixture's inputs: `regression/split-rim-
   two-edge-vertex-fillet`, a boss or hole whose rim is two half circles with
@@ -118,7 +122,7 @@ bound has to be established here.
 - `AGENTS.md` current state: C6's sixth plan landed, and the column's count.
 
 ## Open questions
-- ⚠ OPEN (agent, step 1): whether the two-edge site holds causes other than
+- Answered at step 1: no cause but a continuation. Was ⚠ OPEN (agent, step 1): whether the two-edge site holds causes other than
   a continuation (a face across, a seam-less tangent junction); the gate
   above fires if the continuation is not the majority.
 - ⚠ OPEN (agent, step 3): whether a vertex of two edges on one circle needs

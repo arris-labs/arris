@@ -754,6 +754,15 @@ Over both tiers (38 parts) the blend network blocks 7 at `fillet`, from 10,
 beside C4's 17. What the cycle has left is the two-edge corner of a cylinder
 against a plane, tangent continuation, the crossing cylinders, a trace that
 misses and the horn and spindle torus at the axis.
+The sixth plan (`split-rim-vertex`, opened 2026-10-03) read the two-edge
+site (step 1, `census::vertex_blend_cause`): every one of its edges is a
+cylinder against a plane at the second vertex of a split rim, where the
+two arcs continue one another between the same two faces and the
+cylinder's seam is at the other vertex. Fetched, 67 of the 79 `VertexBlend`
+edges (`ctc_01` 4, `ctc_04` 34, `stc_09` 29), 27 asked of Open CASCADE, 26
+build; committed, all 20 (`ctc-01` 4, `ftc-06` 10, `ftc-10` 6), 17 build, 2
+build an invalid solid, 1 refuses. It holds the battery's one sampled
+`VertexBlend` edge (`ctc_04`); `stc_09` meets `TangentChain` first.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
