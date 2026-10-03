@@ -633,6 +633,78 @@ pub fn occt_read_assembly(step_text: &str, tag: &str) -> Result<ReadAssembly, Or
     Ok(read)
 }
 
+/// Open CASCADE's verdict on one edge filleted alone (`occt_fillet_edges.py`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct EdgeVerdict {
+    /// `builds` (done, and the result passes `BRepCheck_Analyzer`),
+    /// `invalid` (done, the result fails it), `refuses`, or `no-edge`
+    /// where the point is not within the probe of exactly one edge.
+    pub verdict: String,
+    /// Open CASCADE's reason, where it refuses or no edge was found.
+    #[serde(default)]
+    pub why: String,
+}
+
+/// Each edge of solid `#solid_id` of the STEP file `file`, named by a
+/// point on it in the model's frame, filleted alone at `radius` in Open
+/// CASCADE, in order: what a census holds a refusal of Arris's against.
+/// A point is an edge within `probe` of it and no other. Cached under the
+/// file's bytes and the request (ADR-0024). Errors:
+/// [`OracleError::Write`]; [`OracleError::Environment`] when `uv` could not
+/// run or the file or solid cannot be read.
+pub fn fillet_edges(
+    file: &Path,
+    solid_id: u64,
+    radius: f64,
+    probe: f64,
+    points: &[[f64; 3]],
+) -> Result<Vec<EdgeVerdict>, OracleError> {
+    let bytes = std::fs::read(file).map_err(|e| OracleError::Write {
+        path: file.to_path_buf(),
+        message: e.to_string(),
+    })?;
+    let request = format!("{solid_id} {radius:e} {probe:e} {points:?}");
+    let slot = cache::slot(
+        "occt_fillet_edges.py",
+        &[Some(&bytes), Some(request.as_bytes())],
+        None,
+    );
+    let parse = |bytes: &[u8]| {
+        serde_json::from_slice::<Vec<EdgeVerdict>>(bytes).map_err(|e| OracleError::Environment {
+            message: format!("occt_fillet_edges.py's output did not parse as JSON: {e}"),
+        })
+    };
+    if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
+        if let Ok(v) = parse(&bytes) {
+            return Ok(v);
+        }
+    }
+    let scratch = scratch_dir();
+    let list = scratch.join(format!("fillet-edges-{}.json", std::process::id()));
+    std::fs::create_dir_all(&scratch)
+        .and_then(|()| std::fs::write(&list, serde_json::to_vec(points).unwrap_or_default()))
+        .map_err(|e| OracleError::Write {
+            path: list.clone(),
+            message: e.to_string(),
+        })?;
+    let output = spawn(
+        uv("occt_fillet_edges.py")
+            .arg(file)
+            .arg(solid_id.to_string())
+            .arg(format!("{radius:e}"))
+            .arg(format!("{probe:e}"))
+            .arg(&list),
+    );
+    let _ = std::fs::remove_file(&list);
+    let output = output?;
+    if !output.status.success() {
+        return Err(environment(&output));
+    }
+    let verdicts = parse(&output.stdout)?;
+    keep(slot, &output.stdout);
+    Ok(verdicts)
+}
+
 /// Open CASCADE's `RWStl` reading of an STL file: how many facets it saw,
 /// their total area and their signed volume by the divergence theorem —
 /// the same formula `arris_mesh::TriMesh::signed_volume` and `area` use —

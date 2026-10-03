@@ -14,6 +14,12 @@
 //! census is about what Arris refuses, and the battery's survey holds the
 //! agreement.
 //!
+//! A `BlendTooLarge` is the one refusal the census takes apart further
+//! (`docs/plans/blend-run-over.md`): [`run_over_cause`] names which site
+//! refused from the entities the error carries, and
+//! [`ask_the_oracle`] puts each such edge to Open CASCADE alone at the same
+//! radius, because a radius it refuses too is no run-over to build.
+//!
 //! [`FILLET_EDGES`]: crate::battery::FILLET_EDGES
 
 use std::collections::BTreeMap;
@@ -23,9 +29,10 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use arris_io::arris_check::arris_topo::arris_geom::GeomKind;
+use arris_io::arris_check::arris_topo::arris_math::Point3;
 use arris_io::arris_check::arris_topo::{Body, EdgeId, EntityId, Model};
 use arris_io::step::ReadOptions;
-use arris_ops::OpError;
+use arris_ops::{OpError, Reason};
 
 use crate::battery::Class;
 use crate::battery::{blendable_edges, fillet_radius, fillet_sampled};
@@ -81,6 +88,30 @@ pub struct SolidCensus {
     /// Every blendable edge blended alone at the radius: the class and how
     /// many edges fall in it, sorted by class.
     pub alone: BTreeMap<String, usize>,
+    /// Every blendable edge alone that is refused `BlendTooLarge`, with the
+    /// site that refused it ([`run_over_cause`]) and, once
+    /// [`ask_the_oracle`] ran, Open CASCADE's verdict on it.
+    #[serde(default)]
+    pub too_large: Vec<RunOverEdge>,
+}
+
+/// One edge refused `BlendTooLarge` when blended alone.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RunOverEdge {
+    /// The edge, as `{:?}` prints its id.
+    pub edge: String,
+    /// The midpoint of its curve, the oracle's name for it.
+    pub at: [f64; 3],
+    /// [`run_over_cause`]'s sub-cause.
+    pub cause: String,
+    /// One of the battery's sampled edges: the four that decide whether the
+    /// part leaves the fillet column.
+    #[serde(default)]
+    pub sampled: bool,
+    /// Open CASCADE's verdict on this edge alone at the census's radius
+    /// (`builds`, `invalid`, `refuses`, `no-edge`); `None` where it was not
+    /// asked.
+    pub occt: Option<String>,
 }
 
 /// A refusal's class: what a plan can name and a census can add up. An
@@ -139,6 +170,7 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
         blocks: None,
         sampled: Vec::new(),
         alone: BTreeMap::new(),
+        too_large: Vec::new(),
     };
     if sample.is_empty() {
         return Ok(out);
@@ -164,7 +196,20 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
         let Some(edge) = handle(id) else { continue };
         let class = match blend(&mut scratch, body, &[edge], out.radius) {
             Ok(_) => BUILT.to_string(),
-            Err(Refused::Op(e)) => class_of(&e),
+            Err(Refused::Op(e)) => {
+                if let Some(cause) = run_over_cause(m, id, &e) {
+                    if let Some(at) = edge_midpoint(m, id) {
+                        out.too_large.push(RunOverEdge {
+                            edge: format!("{id:?}"),
+                            at: [at.x, at.y, at.z],
+                            cause,
+                            sampled: sample.iter().any(|x| x.0 == id),
+                            occt: None,
+                        });
+                    }
+                }
+                class_of(&e)
+            }
             Err(Refused::Panic(why)) => {
                 eprintln!("{solid}: edge {id:?} alone panics: {why}");
                 PANICKED.to_string()
@@ -182,6 +227,190 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
         }
     }
     Ok(out)
+}
+
+/// The midpoint of `edge`'s curve; `None` for an edge with none.
+fn edge_midpoint(m: &Model, edge: EdgeId) -> Option<Point3> {
+    let (c, range) = m.edge(edge).ok()?.curve()?;
+    Some(m.curve(c).ok()?.point(range.lerp(0.5)))
+}
+
+/// The surface kind of face `f`.
+fn face_kind(m: &Model, f: arris_io::arris_check::arris_topo::FaceId) -> Option<String> {
+    let surface = m.surface(m.face(f).ok()?.surface()).ok()?;
+    Some(surface.kind().to_string())
+}
+
+/// The two surface kinds an edge separates, sorted: the pair a blend of it
+/// asks the construction for.
+fn pair_of(m: &Model, edge: EdgeId) -> Option<String> {
+    let mut kinds: Vec<String> = m
+        .edge_uses(edge)
+        .ok()?
+        .iter()
+        .filter_map(|u| face_kind(m, u.face))
+        .collect();
+    kinds.sort();
+    Some(kinds.join(" × "))
+}
+
+/// Which site refused a `BlendTooLarge` of `edge` blended alone, from the
+/// entities the error names (`None` for any other refusal): *the contact
+/// leaves a face* (the edge and the face it runs out of), *the ball finds
+/// no place on either face* (the edge and both faces), *a corner edge or a
+/// seam is shorter than the trim* (the edge and that edge), *a corner of
+/// three edges whose trims run past one another* (three edges), *the
+/// blend's closing or its fit* (the edge alone). Each is followed by the
+/// pair of surface kinds the blended edge separates, which is what a
+/// construction is keyed by.
+pub fn run_over_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String> {
+    let OpError::Degenerate {
+        entities,
+        reason: Reason::BlendTooLarge,
+    } = e
+    else {
+        return None;
+    };
+    let pair = pair_of(m, edge).unwrap_or_default();
+    let ids: Vec<EntityId> = entities.iter().map(|s| s.id).collect();
+    let what = match ids.as_slice() {
+        [EntityId::Edge(_), EntityId::Face(f)] => {
+            format!(
+                "the contact leaves a {} face",
+                face_kind(m, *f).unwrap_or_default()
+            )
+        }
+        [EntityId::Edge(_), EntityId::Face(_), EntityId::Face(_)] => {
+            "the ball finds no place on either face".to_string()
+        }
+        [EntityId::Edge(_), EntityId::Edge(other)] => {
+            let seam = m
+                .edge_uses(*other)
+                .is_ok_and(|u| u.len() == 2 && u[0].face == u[1].face);
+            if seam {
+                "a seam shorter than the trim".to_string()
+            } else {
+                "a corner edge shorter than the trim".to_string()
+            }
+        }
+        [EntityId::Edge(_), EntityId::Edge(_), EntityId::Edge(_)] => {
+            "a corner whose trims run past one another".to_string()
+        }
+        [EntityId::Edge(_)] => "the closing or the fit".to_string(),
+        _ => "another site".to_string(),
+    };
+    Some(format!("{what}; edge {pair}"))
+}
+
+/// How many edges of one (solid, cause) [`ask_the_oracle`] puts to Open
+/// CASCADE: a stride over them in id order. A cause with fewer is asked
+/// whole.
+pub const ASKED_PER_CAUSE: usize = 12;
+
+/// How close to an edge a census point must lie for Open CASCADE to name
+/// that edge by it: the midpoints agree to the file's own digits, and the
+/// edges of a part are far further apart.
+pub const ORACLE_PROBE: f64 = 1e-4;
+
+/// Puts a sample of every cause's `BlendTooLarge` edges of `census`, a
+/// solid of `file`, to Open CASCADE alone at the census's radius, and
+/// records each verdict in `occt`. At most [`ASKED_PER_CAUSE`] per cause,
+/// and every edge of the battery's sample besides.
+///
+/// # Errors
+/// The solid's key is not `#id[instance]`, or the oracle could not run.
+pub fn ask_the_oracle(file: &Path, census: &mut SolidCensus) -> Result<(), String> {
+    let id: u64 = census
+        .solid
+        .trim_start_matches('#')
+        .split('[')
+        .next()
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| format!("{}: not a solid key", census.solid))?;
+    let mut by_cause: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    for (i, e) in census.too_large.iter().enumerate() {
+        by_cause.entry(e.cause.clone()).or_default().push(i);
+    }
+    let mut asked: Vec<usize> = Vec::new();
+    for list in by_cause.values() {
+        let stride = list.len().div_ceil(ASKED_PER_CAUSE).max(1);
+        asked.extend(list.iter().step_by(stride));
+    }
+    asked.extend((0..census.too_large.len()).filter(|&i| census.too_large[i].sampled));
+    asked.sort_unstable();
+    asked.dedup();
+    if asked.is_empty() {
+        return Ok(());
+    }
+    let points: Vec<[f64; 3]> = asked.iter().map(|&i| census.too_large[i].at).collect();
+    let verdicts = crate::oracle::fillet_edges(file, id, census.radius, ORACLE_PROBE, &points)
+        .map_err(|e| e.to_string())?;
+    for (&i, v) in asked.iter().zip(verdicts) {
+        census.too_large[i].occt = Some(v.verdict);
+    }
+    Ok(())
+}
+
+/// The `BlendTooLarge` edges of the solids, counted by `part → cause`:
+/// how many edges, how many were put to Open CASCADE and what it said.
+pub fn run_over_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
+    let mut out = String::from(
+        "| part | solid | cause | edges | asked | builds | invalid | refuses | no edge |\n|---|---|---|---:|---:|---:|---:|---:|---:|\n",
+    );
+    let mut totals = [0usize; 6];
+    for (part, solids) in parts {
+        for s in solids {
+            let mut by_cause: BTreeMap<&str, Vec<&RunOverEdge>> = BTreeMap::new();
+            for e in &s.too_large {
+                by_cause.entry(&e.cause).or_default().push(e);
+            }
+            for (cause, edges) in by_cause {
+                let said = |v: &str| {
+                    edges
+                        .iter()
+                        .filter(|e| e.occt.as_deref() == Some(v))
+                        .count()
+                };
+                let asked = edges.iter().filter(|e| e.occt.is_some()).count();
+                let row = [
+                    edges.len(),
+                    asked,
+                    said("builds"),
+                    said("invalid"),
+                    said("refuses"),
+                    said("no-edge"),
+                ];
+                for (t, r) in totals.iter_mut().zip(row) {
+                    *t += r;
+                }
+                let _ = writeln!(
+                    out,
+                    "| {part} | {} | {cause} | {} | {} | {} | {} | {} | {} |",
+                    s.solid, row[0], row[1], row[2], row[3], row[4], row[5]
+                );
+            }
+        }
+    }
+    out.push_str("\nThe battery's sampled edges refused `BlendTooLarge`, each alone:\n\n");
+    for (part, solids) in parts {
+        for s in solids {
+            for e in s.too_large.iter().filter(|e| e.sampled) {
+                let _ = writeln!(
+                    out,
+                    "- {part} {}: {} → Open CASCADE {}",
+                    s.solid,
+                    e.cause,
+                    e.occt.as_deref().unwrap_or("not asked")
+                );
+            }
+        }
+    }
+    let _ = writeln!(
+        out,
+        "\nTotal: {} `BlendTooLarge` edges, {} put to Open CASCADE: {} build, {} build invalid, {} refused, {} found no edge.",
+        totals[0], totals[1], totals[2], totals[3], totals[4], totals[5]
+    );
+    out
 }
 
 /// Reads the STEP file `file` and counts the first placement of each
@@ -240,6 +469,44 @@ pub fn committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
     Ok(out)
 }
 
+/// [`census_file`] of `file`, and each solid's `BlendTooLarge` edges put to
+/// Open CASCADE ([`ask_the_oracle`]).
+///
+/// # Errors
+/// As [`census_file`] and [`ask_the_oracle`].
+pub fn run_over_file(
+    file: &Path,
+    wanted: &dyn Fn(&str) -> bool,
+) -> Result<Vec<SolidCensus>, String> {
+    let mut solids = census_file(file, wanted)?;
+    for s in &mut solids {
+        ask_the_oracle(file, s)?;
+    }
+    Ok(solids)
+}
+
+/// [`committed`] with each solid's `BlendTooLarge` edges put to Open CASCADE.
+///
+/// # Errors
+/// As [`committed`] and [`ask_the_oracle`].
+pub fn run_over_committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
+    let mut out = Vec::new();
+    for name in COMMITTED_TIER {
+        let fixture = part::load(&corpus_root().join(name)).map_err(|e| e.to_string())?;
+        let refused: Vec<String> = (fixture.part.solids.iter())
+            .filter(|s| matches!(s.battery.get("fillet"), Some(Class::ArrisRefuses(_))))
+            .map(|s| crate::battery::key(s.id, s.instance))
+            .collect();
+        let file = fixture.dir.join(&fixture.part.file);
+        let part = name.rsplit('/').next().unwrap_or(name).to_string();
+        out.push((
+            part,
+            run_over_file(&file, &|k| refused.iter().any(|r| r == k))?,
+        ));
+    }
+    Ok(out)
+}
+
 /// The table `part → first refusal → what stands behind it`, markdown: one
 /// row per solid whose fillet stage is refused, the refusals of the other
 /// edges beside the count of edges each holds, and a last line counting
@@ -289,6 +556,7 @@ pub fn markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
 mod tests {
     use super::*;
     use crate::unmetered::{fuse, primitive_box, primitive_cylinder};
+    use arris_io::arris_check::arris_topo::arris_math::Point3 as P3;
     use arris_io::arris_check::arris_topo::arris_math::{Axis, Point3, Vec3};
 
     #[test]
@@ -323,5 +591,114 @@ mod tests {
                 assert!(table.contains(first), "{table}");
             }
         }
+    }
+
+    /// A box fillet at a radius past its faces is refused at its corner
+    /// edge, named with the pair its edge separates; a radius that builds
+    /// is no refusal and has no cause, and nor is another reason.
+    #[test]
+    fn a_radius_past_the_faces_meets_the_corner_edge() {
+        let mut m = Model::default();
+        let (b, _) = primitive_box(&mut m, P3::origin(), P3::new(2.0, 3.0, 4.0)).unwrap();
+        let handles = m.edges(b).unwrap();
+        let edge = handles[0];
+        let mut scratch = m.clone();
+        let refused = match blend(&mut scratch, b, &[edge], 5.0) {
+            Err(Refused::Op(e)) => e,
+            other => panic!(
+                "a radius of 5 on a 2 × 3 × 4 box is refused: {}",
+                other.is_ok()
+            ),
+        };
+        let cause = run_over_cause(&m, edge.id, &refused).expect("a BlendTooLarge");
+        assert_eq!(
+            cause,
+            "a corner edge shorter than the trim; edge plane × plane"
+        );
+        let mut scratch = m.clone();
+        assert!(blend(&mut scratch, b, &[edge], 0.1).is_ok());
+        let other = OpError::Degenerate {
+            entities: Vec::new(),
+            reason: Reason::NoEdges,
+        };
+        assert_eq!(run_over_cause(&m, edge.id, &other), None);
+    }
+
+    /// Each shape of entity list is its own site.
+    #[test]
+    fn the_entities_a_refusal_names_decide_its_site() {
+        use arris_io::arris_check::arris_topo::{Orientation, Shape};
+        let mut m = Model::default();
+        let (b, _) = primitive_box(&mut m, P3::origin(), P3::new(2.0, 3.0, 4.0)).unwrap();
+        let handles = m.edges(b).unwrap();
+        let edge = handles[0].id;
+        let uses = m.edge_uses(edge).unwrap().to_vec();
+        let e = |id: EdgeId| Shape::new(id, Orientation::Forward);
+        let f = |u: usize| Shape::new(uses[u].face, Orientation::Forward);
+        let cause = |entities: Vec<Shape>| {
+            let err = OpError::Degenerate {
+                entities,
+                reason: Reason::BlendTooLarge,
+            };
+            run_over_cause(&m, edge, &err).unwrap()
+        };
+        let pair = "edge plane × plane";
+        assert_eq!(
+            cause(vec![e(edge), f(0)]),
+            format!("the contact leaves a plane face; {pair}")
+        );
+        assert_eq!(
+            cause(vec![e(edge), f(0), f(1)]),
+            format!("the ball finds no place on either face; {pair}")
+        );
+        assert_eq!(
+            cause(vec![e(edge), e(handles[1].id)]),
+            format!("a corner edge shorter than the trim; {pair}")
+        );
+        assert_eq!(
+            cause(vec![e(edge), e(handles[1].id), e(handles[2].id)]),
+            format!("a corner whose trims run past one another; {pair}")
+        );
+        assert_eq!(
+            cause(vec![e(edge)]),
+            format!("the closing or the fit; {pair}")
+        );
+    }
+
+    /// The census's table keeps a cause apart from its pair and totals
+    /// what the oracle said.
+    #[test]
+    fn the_run_over_table_counts_by_cause_and_verdict() {
+        let edge = |cause: &str, occt: Option<&str>| RunOverEdge {
+            edge: "e".into(),
+            at: [0.0; 3],
+            cause: cause.into(),
+            sampled: false,
+            occt: occt.map(str::to_string),
+        };
+        let solid = SolidCensus {
+            solid: "#1[0]".into(),
+            radius: 1.0,
+            sample: None,
+            blocks: None,
+            sampled: Vec::new(),
+            alone: BTreeMap::new(),
+            too_large: vec![
+                edge("a; edge plane × plane", Some("builds")),
+                edge("a; edge plane × plane", Some("refuses")),
+                edge("a; edge plane × plane", None),
+                edge("b; edge cone × plane", Some("refuses")),
+            ],
+        };
+        let table = run_over_markdown(&[("p".into(), vec![solid])]);
+        assert!(
+            table.contains("| p | #1[0] | a; edge plane × plane | 3 | 2 | 1 | 0 | 1 | 0 |"),
+            "{table}"
+        );
+        assert!(
+            table.contains("| p | #1[0] | b; edge cone × plane | 1 | 1 | 0 | 0 | 1 | 0 |"),
+            "{table}"
+        );
+        assert!(table.contains("Total: 4 `BlendTooLarge` edges, 3 put to Open CASCADE: 1 build, 0 build invalid, 2 refused"), "{table}");
     }
 }

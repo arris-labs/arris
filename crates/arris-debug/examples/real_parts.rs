@@ -14,6 +14,11 @@
 //!   each blendable edge alone meets. `real_parts --census <file.stp>...`
 //!   counts every solid of a file, no oracle asked. The fetched tier's is
 //!   `fillet-by-part.md`, written by `--summary` from the survey.
+//! - `real_parts --run-over <file.stp>...` and `--run-over-committed` take
+//!   every `BlendTooLarge` edge of those solids apart by the site that
+//!   refused it and put a sample of each cause to Open CASCADE alone at
+//!   the same radius (`census::run_over_markdown`; a part's census is the
+//!   minutes' work, the oracle's answers are cached).
 //! - `real_parts --summary <manifest> <reports-dir> <waits> <out-dir>`
 //!   reads every report the manifest's files should have, writes
 //!   `histogram.md` and `failures.md` into `<out-dir>`, and `both.md`,
@@ -34,7 +39,7 @@ type Error = Box<dyn std::error::Error>;
 
 fn usage() -> ! {
     eprintln!(
-        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
+        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --run-over <file.stp>...\n       real_parts --run-over-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
     );
     std::process::exit(2);
 }
@@ -76,6 +81,23 @@ fn main() -> Result<(), Error> {
                 parts.push((name.to_string(), census::census_file(path, &|_| true)?));
             }
             print!("{}", census::markdown(&parts));
+            Ok(())
+        }
+        Some("--run-over") if args.len() >= 2 => {
+            let mut parts = Vec::new();
+            for file in &args[1..] {
+                let path = Path::new(file);
+                let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or(file);
+                parts.push((name.to_string(), census::run_over_file(path, &|_| true)?));
+            }
+            print!("{}", census::run_over_markdown(&parts));
+            Ok(())
+        }
+        Some("--run-over-committed") => {
+            print!(
+                "{}",
+                census::run_over_markdown(&census::run_over_committed()?)
+            );
             Ok(())
         }
         Some("--census-committed") => {
