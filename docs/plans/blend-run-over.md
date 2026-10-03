@@ -13,9 +13,11 @@
 `BlendTooLarge` is counted by sub-cause, each edge against Open CASCADE's
 verdict on it alone, so a refusal Open CASCADE shares is told from one it
 builds. The sub-causes Open CASCADE builds and a closed form or ADR-0037's
-trace can take are built: a blend whose contact would leave its face meets
-the face it runs onto and ends on the trace of its surface with that face,
-the surface exact. The fetched tier's `fillet` column (8 of 9) and the
+trace can take are built: a blend running into a step — a corner of mixed
+convexity, the trim past the vertex — lengthens its corner edge of the
+blend's convexity and ends on the face across as every corner end does,
+the surface exact (ADR-0038; step 3 found this, not a clip on a face run
+onto, to be the run-over). The fetched tier's `fillet` column (8 of 9) and the
 committed tier's (6 of 11) are measured again beside C4's 17 of 38 and
 `blend-residue`'s line, and what is left of the run-over is named by part.
 
@@ -32,20 +34,16 @@ committed tier's (6 of 11) are measured again beside C4's 17 of 38 and
 - NURBS faces as operands, healing.
 
 ## Design deltas
-- **ADR (step 3), new:** how a blend whose contact would leave its face
-  through a non-corner edge is completed — the face across clips the blend
-  at the trace of the blend surface with it, and the face's own boundary is
-  re-cut there. Closes ADR-0007 §"The `BlendTooLarge` bound" ("a regression
-  entry for C6") and amends it; cites ADR-0037 (tracers, fit) and ADR-0035
-  (the chain walk). Shaped by step 1's sub-cause table; the numbering is the
-  next free one at the time.
-- `arris-ops` `blend.rs` / `blend/traced.rs`: the contact-leaves-face sites
-  (`too_large` in the contacts, ring and seam paths) stop at the clip rather
-  than refuse where the face across takes it. No public type or signature
-  change expected; `BlendTooLarge` loses cases and keeps its variant. If a
-  new `Reason` is wanted (for example a sub-cause naming) it is a design
-  delta named in that commit, with the Python class, attributes and stub in
-  the same commit (`kernel.md` §API).
+- **ADR-0038 (step 3), new:** a blend running into a step — a corner whose
+  two edges differ in convexity — lengthens the corner edge of the blend's
+  convexity past the vertex to its trim, cuts the other, and the face
+  across takes the end arc from outside; amends ADR-0007 (the end, the
+  `BlendTooLarge` bound, the mixed corner's `VertexBlend`).
+- `arris-ops` `blend/mixed.rs` (`corner_trims`, step 3) replaces
+  `cut_corner` and `end_side` at a face end (step 4) and at the ring's open
+  arc ends (step 5); `build` re-derives a lengthened edge's pcurves over its
+  new range (ADR-0038 §4). No public type or signature change;
+  `BlendTooLarge` loses cases and keeps its variant, `Reason` gains none.
 - `arris-check`: expected no change (S5 decides the blend against the face
   across by the same tracers, ADR-0037 §5); step 4 shows it at `Full`.
 - `arris-debug` `census.rs`: the sub-cause column and Open CASCADE's verdict
@@ -76,32 +74,34 @@ bound has to be established here.
   tier's column, or fall in a sub-cause with no closed form and no trace,
   stop and ask the human before step 3. A change of order is recorded here,
   not silent.
-- [ ] Step 3 **[3]** — The decision and its tracer: write the ADR (the clip
-  on the face across; what the face's boundary becomes; the end curve fitted
-  at `SECTION_FIT_FRACTION` as ADR-0037; what is refused when the clip
-  misses) and prove the riskiest case first, a plane wall nearer the edge
-  than `r` (the ADR-0007 "third face" case), by tracing the exact blend
-  surface against it through `section::trace_section`. Test: the trace and
-  fit on posed fixtures, the fit's distance from a dense sample within the
-  bound; a `regression/` fixture, `#[ignore]`d with its desired assertion,
-  for every trace that fails.
-- [ ] Step 4 **[3]** — Build it for the plane wall: the face across's loop
-  re-cut at the clip, the blend taking the trace as an edge with a fitted
-  pcurve, the neighbours shortened, provenance as ADR-0036 §7 (new vertices
-  `Generated`, shortened edges `Modified`). Fixtures with Open CASCADE's
-  oracle (volume, area, centroid, counts, probes) at a radius where it
-  builds; checker green at `Full`; one chamfer.
-- [ ] Step 5 **[3]** — The same clip on a cylinder or a cone across, and on
-  the ring rows (a cone, sphere or torus blend's contact running off its
-  face), for the sub-causes the census says Open CASCADE builds. `Unsupported`
-  stays, naming the face across, where the clip is oblique and the trace does
-  not take it. Fixtures with oracle as step 4; `regression/` twins that now
-  pass move into `blend/` with their blessed dump.
+- [x] Step 3 **[3]** — The decision and its trims (reshaped by what the
+  step found, Open questions): ADR-0038, the mixed corner; `blend/mixed.rs`
+  `corner_trims` — each trim located on its corner edge, a trim past the
+  vertex lengthening the edge of the blend's convexity at a mixed corner
+  only, its curve analytic and the stretch inside its face, the arc's side
+  outside the face across — tested on posed L-steps (fillet and chamfer,
+  upright and leaning both ways) against the closed forms, the far box
+  corner unchanged, and a hole across the stretch refused naming the corner
+  edge; run over every corner end of four fetched parts (170 mixed-corner
+  ends lengthen, none refused). `regression/fillet-into-a-step`, the shrunk
+  CTC-03 corner with Open CASCADE's oracle, `#[ignore]`d.
+- [ ] Step 4 **[3]** — Build it for a plane across: `face_end` takes
+  `corner_trims`; `build` lengthens the edge, its pcurves derived again
+  over the new range (ADR-0038 §4), the face across taking the arc from
+  outside; provenance as ADR-0007 roots an end. `regression/fillet-into-a-step`
+  moves to `blend/` with its blessed dump; a chamfer twin, a leaning step
+  and a concave blend at a mixed corner, each with Open CASCADE's oracle
+  and `counts_differ` (ADR-0038 §5); checker green at `Full`.
+- [ ] Step 5 **[3]** — The mixed corner on a cylinder or a cone across (the
+  end traced, ADR-0037) and at the ring rows' open arc ends (`ring`'s
+  `cut_corner` and `end_side`), for the 16 such ends of the four parts
+  probed and what the census adds. `Unsupported` stays, naming the face
+  across, where the trace does not take it. Fixtures with oracle as step 4.
 - [ ] Step 6 **[2]** — A property over random poses for every case steps 4
   and 5 build (`blend_prop`): checker green, volume additivity of the blended
   and the removed material, STEP round-trip, determinism of ids; poses beyond
-  the clip's reach rejected by the refusal's name, not silently. Seeded;
-  shards via `prop_shards!`.
+  the lengthening's reach (a stretch out of its face) rejected by the
+  refusal's name, not silently. Seeded; shards via `prop_shards!`.
 - [ ] Step 7 **[1]** — Measure the fetched and committed tiers again
   (`tools/real-parts.sh`), print the column beside C4's 17 of 38 and
   `blend-residue`'s line, move the `fixtures:` expectations whose refusals
@@ -128,21 +128,18 @@ bound has to be established here.
 - `docs/BACKLOG.md` — what the census leaves (radii Open CASCADE refuses are
   not backlog; the sub-causes with no closed form are), the horn-torus line
   kept.
-- `docs/adr/` — the new ADR (step 3); ADR-0007's `BlendTooLarge`-bound
-  paragraph gets an "Amended by" pointer; `docs/adr/README.md` row.
+- `docs/adr/` — ADR-0038, its ADR-0007 pointer and README row (done at
+  step 3).
 - `docs/ARCHITECTURE.md` §blend (the `BlendTooLarge` paragraph: which cases
-  build now, which refuse) and `docs/DATA-MODEL.md` §Tolerances if the
-  clip's end curve changed them.
-- `CHANGELOG.md` `Unreleased` — which blends that ran out of their face now
-  build and which refusals remain (no ADR numbers or fixture names).
+  build now — the mixed corner — and which refuse); `docs/DATA-MODEL.md`
+  §Tolerances only if a lengthened edge's tolerance changed.
+- `CHANGELOG.md` `Unreleased` — that a blend running into a step now
+  builds and which refusals remain (no ADR numbers or fixture names).
 - `AGENTS.md` current state — C6's fourth plan landed, the column's count.
 
 ## Open questions
-- ⚠ OPEN: does the face across's boundary become the clip with a new edge,
-  or does the blend overrun split the face across into two (a rib narrower
-  than `r`: the blend meets both walls)? Agent decides at step 3 from step
-  1's table; if both shapes occur, step 4 takes the one-wall case and the
-  two-wall case is recorded for step 5 or the backlog.
+- Resolved at step 3 (agent): the face across is neither clipped nor split;
+  at a mixed corner it grows by the end's region (ADR-0038 §2).
 - Resolved at step 1 (agent): the census asks `occt_fillet_edges.py` once
   per solid, reading its STEP once, for a stride of twelve edges per cause
   and every edge of the battery's sample; both tiers take about five
@@ -157,7 +154,22 @@ bound has to be established here.
   CASCADE: clearing them takes `ctc_03` e2, `ftc_08` e2 and `stc_06` out of
   the column (three, the gate's bound), and `ctc_04`, `stc_09` wait on their
   `VertexBlend` and `TangentChain`. Step 2's gate did not fire.
-- Order of steps 3–6 confirmed. The dominant cause (a corner edge shorter
+- Found at step 3 (agent): probed by site on four fetched parts (CTC-01,
+  CTC-03, FTC-08, STC-06; 277 of the tier's 515 edges), every *corner edge
+  shorter than the trim* (178) is a trim past the vertex at a mixed corner,
+  every *contact leaves a plane / cylinder face* (98) is the ring's contact
+  at the axis — a horn or spindle torus, ADR-0036 §3, a surface-kind
+  question this plan does not take — and no blend runs onto a third face.
+  The plan's clip did not exist; steps 3–5 are reshaped to the mixed corner
+  (ADR-0038), and the open question above on a face across split in two is
+  moot. STC-06's sampled edges are the ring's, so the parts this plan can
+  clear are CTC-03 and FTC-08: two, under step 2's gate of three. Decided
+  (agent, the human delegates such calls): go on. The mixed corner is the
+  largest single refusal of the blend network (178 of the 277 edges probed),
+  Open CASCADE builds it, and the gate's bound counted parts where the
+  edges are the measure; the census's mislabel and the third-face case are
+  backlog lines.
+- Order of steps 3–6 confirmed at step 2. The dominant cause (a corner edge shorter
   than the trim, plane × plane, 62 of `ctc_03` e2's 90 edges) is the case
   step 3 proves first, not the plane wall nearer the edge than `r` the plan
   named: the ADR's clip must hold both, and the sampled edges of the three

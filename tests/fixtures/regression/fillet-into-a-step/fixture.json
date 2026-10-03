@@ -1,0 +1,33 @@
+{
+  "description": "an L extruded 1.5 along y — a low block x 0..2, z 0..1 beside a tall one x −1..0, z 0..2, the front cap at y = 0 one L-shaped face — the low block's top front edge filleted at r 0.3, as NIST CTC-03's and FTC-08's sampled edges are: a convex blend running into a step, its end at x = 0 a mixed corner (the tall block's front vertical edge convex, the step's foot concave). The trim on the convex corner edge lies r past the vertex, on its extension down the front cap; the face across, the step's face x = 0, takes the spandrel between the arc and the corner. Arris refuses it BlendTooLarge naming the edge and the convex corner edge; Open CASCADE builds it",
+  "params": {"r": 0.3},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+     "outer": {"start": [-1, 0], "segments": [{"line_to": [2, 0]}, {"line_to": [2, 1]}, {"line_to": [0, 1]}, {"line_to": [0, 2]}, {"line_to": [-1, 2]}, {"line_to": [-1, 0]}]}},
+    {"name": "step", "op": "extrude", "profile": "sketch", "direction": [0, 1, 0], "length": 1.5},
+    {"name": "result", "op": "fillet", "of": "step", "edges": [[1, 0, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [1, 0.75, 0.5], "expect": "in"},
+    {"label": "tall_inside", "point": [-0.5, 0.75, 1.5], "expect": "in"},
+    {"label": "past_blend", "point": [1, 0.02, 0.98], "expect": "out"},
+    {"label": "on_blend", "point": [1, "r - r / sqrt(2)", "1 - r + r / sqrt(2)"], "expect": "on"},
+    {"label": "on_front_contact", "point": [1, 0, "1 - r"], "expect": "on"},
+    {"label": "on_top_contact", "point": [1, "r", 1], "expect": "on"},
+    {"label": "on_spandrel", "point": [0, 0.05, 0.95], "expect": "on"},
+    {"label": "behind_spandrel", "point": [-0.01, 0.05, 0.95], "expect": "in"},
+    {"label": "before_spandrel", "point": [0.01, 0.05, 0.95], "expect": "out"},
+    {"label": "on_step_arc", "point": [0, "r - r / sqrt(2)", "1 - r + r / sqrt(2)"], "expect": "on"},
+    {"label": "on_far_arc", "point": [2, "r - r / sqrt(2)", "1 - r + r / sqrt(2)"], "expect": "on"},
+    {"label": "on_lengthened_edge", "point": [0, 0, "1 - r / 2"], "expect": "on"},
+    {"label": "step_face", "point": [0, 0.75, 1.5], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "6 - 2 * (1 - pi / 4) * r^2",
+    "area": "23 - 4 * r + pi * r",
+    "counts": {"vertices": 14, "edges": 21, "faces": 9, "loops": 9, "shells": 1},
+    "genus": 0,
+    "counts_differ": "Open CASCADE keeps the consumed corner vertex on the lengthened corner edge, two edges of one line between the same two faces; Arris lengthens the one edge to the trim (ADR-0038)"
+  }
+}

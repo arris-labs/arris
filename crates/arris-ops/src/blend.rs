@@ -37,6 +37,14 @@ use arris_check::domain::FaceDomain;
 use crate::error::{Fault, OpError, Reason, fault_of};
 use crate::rebuild::{self, AddedFace, Rewrite, StoredUse, forward};
 
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the ends call it from plans/blend-run-over step 4"
+    )
+)]
+mod mixed;
 mod traced;
 
 fn degenerate(entities: Vec<Shape>, reason: Reason) -> OpError {

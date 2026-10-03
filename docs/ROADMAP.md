@@ -636,7 +636,17 @@ build in Open CASCADE: `ctc_03` e2, `ftc_08` e2 and `stc_06` each hold only
 those among their four, so clearing them takes three parts out of the column
 (`ctc_04` and `stc_09` meet `VertexBlend` and `TangentChain` behind it); on the
 committed tier `ftc-10`'s sampled edge builds and `ftc-08`'s is refused by
-Open CASCADE too.
+Open CASCADE too. Probed by site on four of the fetched parts (CTC-01, CTC-03,
+FTC-08, STC-06: 277 of the 515 edges), the causes read differently:
+every one of the 178 *corner edge shorter than the trim* is a trim past
+the corner's vertex, a blend running into a step (a mixed corner, whose
+corner edge of the blend's convexity is lengthened: ADR-0038); all 98 *the
+contact leaves a plane / cylinder face* are the ring's contact at the axis
+in a chain into a rounded corner of radius at most `r`, the horn and
+spindle torus ADR-0036 §3 refuses; and no blend runs onto a third face.
+The sampled edges of CTC-03 and FTC-08 are mixed corners, STC-06's two are
+the ring's, so the plan builds the mixed corner and the column it can
+clear is CTC-03 and FTC-08.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges

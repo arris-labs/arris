@@ -93,6 +93,11 @@ blend that meets a third face while its contacts stay inside their
 faces — a hole nearer the edge than `r` — is not detected by the
 operation in C2: S5 catches it in the corpus, and the fixture that shows
 it is a `regression/` entry for C6.
+*(Amended by ADR-0038: at a corner whose two edges differ in convexity —
+a blend running into a step — the trim on the edge of the blend's
+convexity lies past the vertex, and that edge is lengthened to it, the
+face across taking the end; the corner of mixed convexity is no longer
+`VertexBlend`.)*
 
 **Assembled through `ops::rebuild` with untouched entities kept.**
 `rebuild::rewrite` is the blend's entry: the operand's faces kept by id

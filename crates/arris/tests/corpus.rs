@@ -2104,6 +2104,16 @@ fn regression_nist_ctc_03_two_plane_edges_fillet_checker_fault() {
     run("regression/nist-ctc-03-two-plane-edges-fillet-checker-fault");
 }
 
+/// A convex fillet running into a step, as NIST CTC-03's and FTC-08's
+/// sampled edges do: the end is a mixed corner, whose convex corner edge
+/// the trim lengthens past the vertex and whose face across takes the
+/// spandrel (ADR-0038).
+#[test]
+#[ignore = "Reason::BlendTooLarge naming the edge and the step's convex corner edge: the trim lies past the vertex on its extension, which ADR-0038 lengthens and the blend does not build yet (plans/blend-run-over step 4)"]
+fn regression_fillet_into_a_step() {
+    run("regression/fillet-into-a-step");
+}
+
 /// Open CASCADE's own STEP of `blend/bead-root-fillet`, read as a part: its
 /// walked blend of degree 2 by 14, on which the reader fits a contact's
 /// pcurve for minutes and then refuses it.
