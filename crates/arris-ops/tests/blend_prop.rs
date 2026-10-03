@@ -19,8 +19,8 @@
 use arris_debug::prop::turned::{Piece, Turned, sweep, turned};
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{
-    chamfer, extrude, fillet, fuse, mass_properties, primitive_box, primitive_cylinder, revolve,
-    step_read, transform,
+    chamfer, cut, extrude, fillet, fuse, mass_properties, primitive_box, primitive_cylinder,
+    revolve, step_read, transform,
 };
 use arris_debug::{dump_text, prop, prop_shards};
 use arris_io::step::{self, ReadOptions};
@@ -1253,5 +1253,317 @@ prop_shards! {
     ends_chamfer_as_their_sections
         [shard_0 shard_1 shard_2 shard_3] (case) = end_case() => {
             ends_blend_as_their_sections(case, Blend::Chamfer)
+        }
+}
+
+// A blend running into a step (ADR-0038): the mixed corner at an end, its
+// corner edge lengthened past the vertex and the face across taking the
+// end from outside. Closed forms for each scene, held at random poses.
+
+/// A scene with a convex edge that ends in a step.
+#[derive(Debug, Clone, PartialEq)]
+enum Stepped {
+    /// An L in the `xz` plane extruded `depth` along `y`: a low block
+    /// `x ∈ [0, low]` of height `foot` beside a tall one `x ∈ [−tall, 0]`
+    /// of height `foot + rise`, the step's face leaning from `(0, foot)`
+    /// to `(lean, foot + rise)`. The low block's top front edge is
+    /// blended: its near end runs into the step across a plane, its far
+    /// end is a box corner.
+    Lean {
+        tall: f64,
+        low: f64,
+        foot: f64,
+        rise: f64,
+        depth: f64,
+        lean: f64,
+    },
+    /// A cylinder of `radius` about `z` and `height`, its second quadrant
+    /// cut down to `cut`; the low quarter's rim, an open arc, is blended,
+    /// each end running into a plane through the axis.
+    Drum { radius: f64, height: f64, cut: f64 },
+}
+
+/// A scene, a blend size and a pose.
+#[derive(Debug, Clone)]
+struct StepCase {
+    scene: Stepped,
+    size: f64,
+    pose: Isometry,
+}
+
+impl Stepped {
+    fn build(&self, m: &mut Model) -> Result<Body, OpError> {
+        match *self {
+            Stepped::Lean {
+                tall,
+                low,
+                foot,
+                rise,
+                depth,
+                lean,
+            } => {
+                let corners = [
+                    Point2::new(low, 0.0),
+                    Point2::new(low, foot),
+                    Point2::new(0.0, foot),
+                    Point2::new(lean, foot + rise),
+                    Point2::new(-tall, foot + rise),
+                    Point2::new(-tall, 0.0),
+                ];
+                let profile = Profile {
+                    plane: Frame::new(Point3::origin(), -Vec3::y(), Vec3::x())?,
+                    outer: ProfileLoop::Path {
+                        start: corners[5],
+                        segments: corners.iter().map(|&q| ProfileSegment::LineTo(q)).collect(),
+                    },
+                    holes: Vec::new(),
+                };
+                Ok(extrude(m, &profile, -Vec3::y(), depth)?.0)
+            }
+            Stepped::Drum {
+                radius,
+                height,
+                cut: z,
+            } => {
+                let axis = Axis::new(Point3::origin(), Vec3::z())?;
+                let (drum, _) = primitive_cylinder(m, axis, radius, height)?;
+                let (quarter, _) = primitive_box(
+                    m,
+                    Point3::new(-2.0 * radius, 0.0, z),
+                    Point3::new(0.0, 2.0 * radius, height + 1.0),
+                )?;
+                Ok(cut(m, drum, quarter)?.0)
+            }
+        }
+    }
+
+    /// A point on the blended edge of the unposed body.
+    fn midpoint(&self) -> Point3 {
+        match *self {
+            Stepped::Lean { low, foot, .. } => Point3::new(low / 2.0, 0.0, foot),
+            Stepped::Drum { radius, cut, .. } => {
+                let q = radius / 2.0_f64.sqrt();
+                Point3::new(-q, q, cut)
+            }
+        }
+    }
+
+    /// The largest size the scene's faces allow.
+    fn room(&self) -> f64 {
+        match *self {
+            Stepped::Lean {
+                foot, depth, low, ..
+            } => foot.min(depth).min(low / 2.0),
+            Stepped::Drum { radius, cut, .. } => radius.min(cut),
+        }
+    }
+
+    /// The volume after blending the edge at `size`: the scene's, less the
+    /// section's area over the edge's length, moved by the step's end —
+    /// the end plane meets the section at `x = −(lean / rise) w` for `w`
+    /// below the edge — or, about the axis, the section swept a quarter
+    /// turn by Pappus.
+    fn volume(&self, kind: Blend, r: f64) -> f64 {
+        let (area, first_moment, centroid) = match kind {
+            // The spandrel's area, its moment `∫ w dA` over the depth
+            // below the edge, and its centroid's distance in from the
+            // rim `r (10 − 3π) / (12 − 3π)`.
+            Blend::Fillet => (
+                (1.0 - FRAC_PI_4) * r * r,
+                (5.0 / 6.0 - FRAC_PI_4) * r * r * r,
+                r * (10.0 - 3.0 * PI) / (12.0 - 3.0 * PI),
+            ),
+            Blend::Chamfer => (r * r / 2.0, r * r * r / 6.0, r / 3.0),
+        };
+        match *self {
+            Stepped::Lean {
+                tall,
+                low,
+                foot,
+                rise,
+                depth,
+                lean,
+            } => {
+                // The L's area: the full width to `foot`, then the tall
+                // block's trapezoid, `tall` wide at its foot and
+                // `tall + lean` at its top.
+                let section = (tall + low) * foot + rise * (2.0 * tall + lean) / 2.0;
+                depth * section - (area * low + lean / rise * first_moment)
+            }
+            Stepped::Drum {
+                radius,
+                height,
+                cut,
+            } => {
+                let whole = PI * radius * radius * (0.75 * height + 0.25 * cut);
+                whole - FRAC_PI_2 * (radius - centroid) * area
+            }
+        }
+    }
+}
+
+/// Scenes at random: the lean as a fraction of the rise, `±reach` — within
+/// `0.8` the end plane keeps the section's end inside both blocks' faces —
+/// and a size up to 0.4 of the room.
+fn step_case(reach: f64) -> impl Strategy<Value = StepCase> {
+    let lean = (
+        prop::finite_f64(1.0..=2.5),
+        prop::finite_f64(1.5..=3.0),
+        prop::finite_f64(1.0..=2.0),
+        prop::finite_f64(0.5..=2.0),
+        prop::finite_f64(1.5..=3.0),
+        prop::finite_f64(-reach..=reach),
+    )
+        .prop_map(|(tall, low, foot, rise, depth, ratio)| Stepped::Lean {
+            tall,
+            low,
+            foot,
+            rise,
+            depth,
+            // Still a simple outline: the top edge stays over the tall
+            // block's back side.
+            lean: (ratio * rise).max(-0.9 * tall),
+        });
+    let drum = (
+        prop::finite_f64(1.5..=3.0),
+        prop::finite_f64(1.5..=3.0),
+        prop::finite_f64(0.6..=1.0),
+    )
+        .prop_map(|(radius, height, at)| Stepped::Drum {
+            radius,
+            height,
+            cut: at * (height - 0.3),
+        });
+    (
+        prop_oneof![lean, drum],
+        prop::finite_f64(0.1..=1.0),
+        prop::pose(),
+    )
+        .prop_map(|(scene, fraction, pose)| StepCase {
+            size: fraction * 0.4 * scene.room(),
+            scene,
+            pose,
+        })
+}
+
+/// The blend of `case` in a fresh model, the scene moved to its pose first.
+/// With `wide`, a refusal that names the corner (`BlendTooLarge`) rejects
+/// the case: the lean passed the end's reach.
+fn step_posed(
+    case: &StepCase,
+    kind: Blend,
+    wide: bool,
+) -> Result<(Model, Body, Body, Provenance), TestCaseError> {
+    let mut m = Model::default();
+    let scene = case.scene.build(&mut m).map_err(fail)?;
+    let (moved, _) = transform(&mut m, scene, &case.pose).map_err(fail)?;
+    let edge = edge_near(&m, moved, case.pose.apply(case.scene.midpoint()))?;
+    let (blended, p) = op(kind)(&mut m, moved, &[edge], case.size).map_err(|e| {
+        if wide
+            && let OpError::Degenerate {
+                reason: arris_ops::Reason::BlendTooLarge,
+                ..
+            } = e
+        {
+            return TestCaseError::reject("the lean is past the end's reach");
+        }
+        fail(format!("{kind:?} of the posed step: {e}"))
+    })?;
+    Ok((m, moved, blended, p))
+}
+
+fn steps_blend_as_their_closed_forms(
+    case: StepCase,
+    kind: Blend,
+    wide: bool,
+) -> Result<(), TestCaseError> {
+    let (m, moved, blended, p) = step_posed(&case, kind, wide)?;
+    assert_checked(&check(&m, blended, Level::Full))?;
+    audit(&m, &[moved], blended, &p).map_err(|e| fail(format!("provenance: {e}")))?;
+    let props = mass_properties(&m, blended).map_err(fail)?;
+    let want = case.scene.volume(kind, case.size);
+    let rel = fitted_rel(&m, &props);
+    prop_assert!(
+        close_to(props.volume, want, 1.0, rel),
+        "volume {} vs the closed form {}",
+        props.volume,
+        want
+    );
+
+    // Blended, then moved.
+    let mut here = Model::default();
+    let scene = case.scene.build(&mut here).map_err(fail)?;
+    let edge = edge_near(&here, scene, case.scene.midpoint())?;
+    let (rest, _) = op(kind)(&mut here, scene, &[edge], case.size)
+        .map_err(|e| fail(format!("{kind:?} at rest: {e}")))?;
+    assert_checked(&check(&here, rest, Level::Full))?;
+    let (then_moved, _) = transform(&mut here, rest, &case.pose).map_err(fail)?;
+    let other = mass_properties(&here, then_moved).map_err(fail)?;
+    prop_assert!(
+        close_to(other.volume, props.volume, 1.0, rel),
+        "blend then move {} vs move then blend {}",
+        other.volume,
+        props.volume
+    );
+    prop_assert_eq!(
+        arris_debug::dump::euler_line(&here, then_moved).map_err(fail)?,
+        arris_debug::dump::euler_line(&m, blended).map_err(fail)?,
+        "counts: blend then move against move then blend"
+    );
+
+    // Through STEP and back.
+    let text = step::write(&m, &[blended]).map_err(fail)?;
+    let mut back = Model::new(m.precision()).map_err(fail)?;
+    let read = step_read(&mut back, &text, &ReadOptions::default()).map_err(fail)?;
+    prop_assert_eq!(read.solids.len(), 1, "one solid read back");
+    let solid = read.solids[0]
+        .result
+        .as_ref()
+        .map_err(|r| fail(format!("refused: {r}")))?;
+    assert_checked(&check(&back, solid.body, Level::Full))?;
+    let again = mass_properties(&back, solid.body).map_err(fail)?;
+    prop_assert!(
+        close_to(again.volume, props.volume, 1.0, rel),
+        "STEP read back {} of {}",
+        again.volume,
+        props.volume
+    );
+
+    // Deterministic.
+    let (twin, _, twice, twice_p) = step_posed(&case, kind, wide)?;
+    prop_assert_eq!(
+        dump_text(&twin, twice).map_err(fail)?,
+        dump_text(&m, blended).map_err(fail)?
+    );
+    prop_assert_eq!(twice_p, p);
+    Ok(())
+}
+
+prop_shards! {
+    /// A convex edge running into a step, filleted — across a leaning
+    /// plane, or along a drum's rim into planes through its axis: clean at
+    /// `Full`, audited, at the closed-form volume, pose-independent, through
+    /// STEP and deterministic.
+    fillets_into_a_step_match_their_closed_forms
+        [shard_0 shard_1 shard_2 shard_3] (case) = step_case(0.8) => {
+            steps_blend_as_their_closed_forms(case, Blend::Fillet, false)
+        }
+}
+
+prop_shards! {
+    /// The same scenes chamfered.
+    chamfers_into_a_step_match_their_closed_forms
+        [shard_0 shard_1 shard_2 shard_3] (case) = step_case(0.8) => {
+            steps_blend_as_their_closed_forms(case, Blend::Chamfer, false)
+        }
+}
+
+prop_shards! {
+    /// A lean beyond the end's reach either builds at its closed form or
+    /// is refused as `BlendTooLarge`, naming the corner; never another
+    /// failure, never a wrong solid.
+    leans_past_the_reach_build_or_are_refused_by_name
+        [shard_0 shard_1] (case) = step_case(4.0) => {
+            steps_blend_as_their_closed_forms(case, Blend::Fillet, true)
         }
 }

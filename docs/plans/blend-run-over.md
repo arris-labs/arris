@@ -97,7 +97,7 @@ bound has to be established here.
   `cut_corner` and `end_side`), for the 16 such ends of the four parts
   probed and what the census adds. `Unsupported` stays, naming the face
   across, where the trace does not take it. Fixtures with oracle as step 4.
-- [ ] Step 6 **[2]** — A property over random poses for every case steps 4
+- [x] Step 6 **[2]** — A property over random poses for every case steps 4
   and 5 build (`blend_prop`): checker green, volume additivity of the blended
   and the removed material, STEP round-trip, determinism of ids; poses beyond
   the lengthening's reach (a stretch out of its face) rejected by the
@@ -192,6 +192,10 @@ bound has to be established here.
   measurement says which. Closed forms hold the two rings at the axis.
   The ends traced on a riser or an off-axis step are held to the oracle,
   since no closed form exists for them.
+- Found at step 6 (agent): a lean as far as 4 rises either way builds at its
+  closed form; of 512 wide cases 3 are refused `BlendTooLarge`, the rest
+  build. The generator holds the outline simple (the top edge over the tall
+  block's back side), which is the only bound it needed.
 - Order of steps 3–6 confirmed at step 2. The dominant cause (a corner edge shorter
   than the trim, plane × plane, 62 of `ctc_03` e2's 90 edges) is the case
   step 3 proves first, not the plane wall nearer the edge than `r` the plan
