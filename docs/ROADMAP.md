@@ -97,11 +97,11 @@ The committed tier's refusal histogram (`cargo run -p arris-debug
 fixtures:
 
 <!-- histogram: committed -->
-11 parts, 16 solids: 9 read, 7 refused. 54 battery stages: 37 agree, 3 both refuse, 0 Open CASCADE refuses, 14 Arris refuses.
+11 parts, 16 solids: 9 read, 7 refused. 54 battery stages: 38 agree, 3 both refuse, 0 Open CASCADE refuses, 13 Arris refuses.
 
 | Cycle | Parts blocked | read | measure | write_read | box_cut | drill_x | drill_y | drill_z | fillet |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| blend network | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
+| blend network | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 |
 | healing | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | NURBS | 2 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | itself: supplemental geometry | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -119,7 +119,6 @@ fixtures:
 | unsupported entity | read | 2 | itself: supplemental geometry |
 | Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
 | Degenerate(BlendTooLarge) | fillet | 1 | blend network |
-| Degenerate(VertexBlend) | fillet | 1 | blend network |
 <!-- /histogram -->
 
 ---
@@ -698,8 +697,15 @@ its faces turn: a pin's rim split in half with its cylinder and cone
 edges, and now names the continuation apart. Only CTC-01's 18 edges are a
 fan, and no sampled edge is one. The selection now follows such a vertex
 as ADR-0035 follows one of three edges. The junction there, whose runs
-share no face, is refused `VertexBlend` naming both edges until step 4
-builds it. Walked, the committed tier's `VertexBlend` site table reads 112
+share no face, was refused `VertexBlend` naming both edges until step 4
+built it where a line meets an arc: the chamfered stadium's foot filleted
+and chamfered, and a stadium pocket's chamfered floor filleted at its root,
+each junction cutting both tangent edges, every one at Open CASCADE's
+counts and at the closed forms Open CASCADE's walked blend misses by
+5e-9 to 2e-7. The same junction takes two arcs: FTC-09's battery fillet,
+held by its pin's split rim, now builds and agrees with Open CASCADE, so
+the committed histogram above is printed again with one Arris refusal
+fewer. Walked, the committed tier's `VertexBlend` site table reads 112
 edges at that junction (CTC-04 104, FTC-09 8) and the fetched tier's 20
 (STC-07 16, CTC-01's AP242 edition 4). CTC-04's chamfered walls are not
 walked: as read, their faces are tangent only to `7e-11`–`9e-10`, beyond

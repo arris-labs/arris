@@ -265,12 +265,13 @@ impl EndKind {
 struct Miter {
     /// The two blended edges, in the blends' order.
     edges: [EdgeId; 2],
-    /// For each of the two stripes, which of its contacts lies on the
-    /// shared face.
+    /// For each of the two stripes, which of its contacts ends at `q`: the
+    /// one on the shared face.
     shared: [usize; 2],
     /// The contact lines' parameters at the miter, `[side][contact]`.
     t: [[f64; 2]; 2],
-    /// Where the two contacts on the shared face cross.
+    /// Where the two contacts on the shared face cross; at a junction
+    /// whose runs share no face, where two meet on a tangent edge.
     q: Point3,
     /// Where the other two contacts meet the third edge.
     p3: Point3,
@@ -285,6 +286,9 @@ struct Miter {
     on_blend: [Curve2; 2],
     /// The third edge shortened to `p3`.
     trim: Trim,
+    /// At a junction whose runs share no face (ADR-0039 §2), the tangent
+    /// edge `q` lies on, shortened to it.
+    q_trim: Option<Trim>,
     tolerance: f64,
     q_tolerance: f64,
     p3_tolerance: f64,
@@ -1767,6 +1771,7 @@ fn miter(
         lo_first,
         on_blend,
         trim,
+        q_trim: None,
         tolerance,
         q_tolerance: tolerance,
         p3_tolerance: tolerance.max(e3_entity.tolerance()),
@@ -1866,9 +1871,10 @@ impl<'a> Run<'a> {
 /// by more than their tolerance, or one convex and one concave, is an
 /// internal fault the tangent-vertex test makes unreachable; a `w` shorter
 /// than the cut is `Reason::BlendTooLarge`. Runs that share no face, met at
-/// a vertex of four edges where both faces turn (ADR-0039), are
-/// `Reason::VertexBlend` naming both edges and the vertex until that
-/// junction is built.
+/// a vertex of four edges where both faces turn (ADR-0039 §2), meet the
+/// same way with `q` on a second tangent edge, cut there too: each contact
+/// of `a` meets the contact of `b` across the tangent edge between their
+/// faces, `q` being the one from `a`'s contact at `u = 0`.
 fn junction(
     m: &Model,
     view: &View,
@@ -1895,32 +1901,64 @@ fn junction(
             }
         }
     }
-    let Some((ka, kb)) = shared else {
-        return Err(vertex_blend());
-    };
-    // The third edge, between the two faces the runs do not share.
+    // The vertex's other edges, the ones the runs' contacts end on.
     let at_vertex = view
         .vertex_edges
         .get(&vertex)
         .ok_or(invariant("the junction vertex's edges"))?;
-    let third: Vec<EdgeId> = at_vertex
+    let others: Vec<EdgeId> = at_vertex
         .iter()
         .copied()
         .filter(|&e| e != ra.edge && e != rb.edge)
         .collect();
-    let [w] = third[..] else {
-        return Err(vertex_blend());
+    let faces_of = |w: EdgeId| -> Result<BTreeSet<FaceId>, OpError> {
+        Ok(view
+            .uses
+            .get(&w)
+            .ok_or(invariant("the junction's corner edge's uses"))?
+            .iter()
+            .map(|u| u.face)
+            .collect())
     };
-    let faces_w: BTreeSet<FaceId> = view
-        .uses
-        .get(&w)
-        .ok_or(invariant("the third edge's uses"))?
-        .iter()
-        .map(|u| u.face)
-        .collect();
-    if faces_w != BTreeSet::from([ra.faces[1 - ka], rb.faces[1 - kb]]) {
-        return Err(vertex_blend());
-    }
+    // `ka` and `kb` the contacts that meet at `q`, `wq` the edge `q` cuts
+    // where the runs share no face, `w` the edge `p` cuts.
+    let (ka, kb, wq, w) = match (shared, &others[..]) {
+        // A vertex of three edges: `q` on the shared face, `p` on the
+        // third edge between the two faces the runs do not share.
+        (Some((ka, kb)), &[w]) => {
+            if faces_of(w)? != BTreeSet::from([ra.faces[1 - ka], rb.faces[1 - kb]]) {
+                return Err(vertex_blend());
+            }
+            (ka, kb, None, w)
+        }
+        // A vertex of four where both faces turn (ADR-0039 §2): each
+        // contact of `a` meets the contact of `b` across the tangent edge
+        // between their faces, `q` on the one from `a`'s contact at
+        // `u = 0`, `p` on the other.
+        (None, &[w0, w1]) => {
+            let mut across: [Option<(usize, EdgeId)>; 2] = [None; 2];
+            for w in [w0, w1] {
+                let faces_w = faces_of(w)?;
+                for (k, slot) in across.iter_mut().enumerate() {
+                    for (j, &fb) in rb.faces.iter().enumerate() {
+                        if faces_w == BTreeSet::from([ra.faces[k], fb])
+                            && slot.replace((j, w)).is_some()
+                        {
+                            return Err(vertex_blend());
+                        }
+                    }
+                }
+            }
+            let [Some((kb, wq)), Some((jb, w))] = across else {
+                return Err(vertex_blend());
+            };
+            if jb == kb || wq == w {
+                return Err(vertex_blend());
+            }
+            (0, kb, Some(wq), w)
+        }
+        _ => return Err(vertex_blend()),
+    };
     let tolerance = ra.tolerance.max(rb.tolerance);
     if ra.convex != rb.convex {
         return Err(invariant("both runs of a junction convex or both concave"));
@@ -1934,13 +1972,16 @@ fn junction(
     let q = meet(
         ra.points[ka],
         rb.points[kb],
-        "the contacts on the shared face through one point",
+        "the contacts on the shared face or the first tangent edge through one point",
     )?;
     let p = meet(
         ra.points[1 - ka],
         rb.points[1 - kb],
         "the other contacts through one point of the third edge",
     )?;
+    let q_trim = wq
+        .map(|wq| cut_corner(m, ra.edge, wq, vertex, q))
+        .transpose()?;
     let trim = cut_corner(m, ra.edge, w, vertex, p)?;
     let (curve, range) = match (ra.centre, rb.centre) {
         (None, None) => chord(q, p, tol)?,
@@ -1987,8 +2028,12 @@ fn junction(
         lo_first: [ka == 0, kb == 0],
         on_blend,
         trim,
+        q_trim,
         tolerance,
-        q_tolerance: tolerance,
+        q_tolerance: match wq {
+            Some(wq) => tolerance.max(m.edge(wq)?.tolerance()),
+            None => tolerance,
+        },
         p3_tolerance: tolerance.max(m.edge(w)?.tolerance()),
     })
 }
@@ -3741,6 +3786,9 @@ fn build(
             None,
         ));
         cut_once(&mut cuts, &mt.trim, p3)?;
+        if let Some(trim) = &mt.q_trim {
+            cut_once(&mut cuts, trim, q)?;
+        }
         miter_made.push(MiterMade {
             vertices: [q, p3],
             edge,
@@ -4408,7 +4456,11 @@ fn build(
 /// face; two blends meet there on the ball's great circle square to the
 /// edges' direction, an exact line in (u, v) on each, from where their
 /// contacts on the shared face meet to where the other two meet on the
-/// third edge, which is shortened to it. Convex or
+/// third edge, which is shortened to it. It also runs on through a vertex
+/// of four edges where both of the edge's faces turn — the next edge
+/// sharing no face with it, each other edge tangent there between a face
+/// of each — and the great circle there runs between the two points where
+/// the contacts meet on those two tangent edges, both shortened. Convex or
 /// concave is read from the dihedral. Every surface is exact, every
 /// untouched entity keeps its id, and the result's ids are the same for
 /// any order of the same edges (the blends are built in the body's
@@ -4431,8 +4483,8 @@ fn build(
 /// `Modified`, the arc and its two vertices `Deleted`. An edge the chain
 /// reached is recorded as a named one is; the great circle where two
 /// blends of a chain meet and its two vertices are `Generated` from both
-/// edges, as a miter's are, the third edge `Modified` and the vertex
-/// `Deleted`.
+/// edges, as a miter's are, the third edge — or, at a vertex of four, both
+/// tangent edges — `Modified` and the vertex `Deleted`.
 /// `arris_topo::provenance::audit` holds on every result
 /// (`docs/DATA-MODEL.md` §Provenance).
 ///
@@ -4456,7 +4508,7 @@ fn build(
 /// edge is shorter than the trim, a trim past the corner's vertex that is
 /// no such lengthening or whose stretch leaves its face, or a closed edge's torus would not be a
 /// ring torus, a contact reaches the axis or a cone's apex, or its seam is
-/// shorter than the trim, or the third edge at
+/// shorter than the trim, or the third edge or a tangent edge at
 /// a chain's junction is shorter than the cut; a closed edge whose vertex
 /// carries more than the curved faces' seams, or an open arc that meets
 /// another blended edge at a vertex that is no tangent vertex, is

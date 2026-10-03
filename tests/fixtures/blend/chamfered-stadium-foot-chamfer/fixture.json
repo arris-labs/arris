@@ -1,0 +1,195 @@
+{
+  "description": "the chamfer twin of blend/chamfered-stadium-foot-fillet (blend-corners step 4): the stadium chamfered at d 0.25, then the chamfer's foot on the side y = 1 chamfered at c 0.1 — the convex edge between the side plane and the chamfer strip, running on at each end into the foot of the half cone over the half cylinder at a vertex of four edges where both of its faces turn (ADR-0039). The chain is the whole foot outline, two plane strips and two half cones, and each junction is the chord between a point on each tangent edge, both cut (§2), as Open CASCADE builds it: 16 vertices, 28 edges, 14 faces. The closed forms integrate the section in (s, z), s the depth in from the wall, over the offset curves of the segment [0, 2] at distance 1 − s, each of length 4 + 2π(1 − s): the wall, the new chamfer from (0, 1 − d − c) to (c/√2, 1 − d + c/√2), the first chamfer and the top. Open CASCADE builds the cylinder-against-cone chamfer as a B-spline surface walked along the edge, not the cone, and its volume is 8.0e-8, its area 4.4e-8 and its inertia up to 2.2e-7 relative off the closed forms, which Arris matches to rounding; the measure tolerances are widened to cover the walk, under the 1e-6 ADR-0015 asks of a claimed difference",
+  "params": {
+    "d": 0.25,
+    "c": 0.1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2,
+              -1
+            ]
+          },
+          {
+            "arc_to": [
+              2,
+              1
+            ],
+            "via": [
+              3,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "arc_to": [
+              0,
+              -1
+            ],
+            "via": [
+              -1,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "stadium",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "chamfered",
+      "op": "chamfer",
+      "of": "stadium",
+      "edges": [
+        [
+          1,
+          -1,
+          1
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          1
+        ],
+        [
+          -1,
+          0,
+          1
+        ]
+      ],
+      "distance": "d"
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "chamfered",
+      "edges": [
+        [
+          1,
+          1,
+          "1 - d"
+        ]
+      ],
+      "distance": "c"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        1,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "foot_gone",
+      "point": [
+        1,
+        "1 - 0.004 * 0.9238795",
+        "1 - d - 0.004 * 0.3826834"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bottom_rim",
+      "point": [
+        1,
+        1,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        1,
+        0,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 1e-07,
+    "centroid_abs": 1e-07,
+    "inertia_rel": 5e-07
+  },
+  "analytic": {
+    "volume": "pi*c^3/6 - sqrt(2)*pi*c^2/2 - sqrt(2)*c^2 + pi*d^3/3 - pi*d^2 - 2*d^2 + pi + 4",
+    "area": "-pi*c^2*sqrt(2*sqrt(2) + 4)/2 + sqrt(2)*pi*c^2/2 - 4*pi*c - 8*c + 4*c*sqrt(sqrt(2) + 2) + 2*pi*c*sqrt(sqrt(2) + 2) - sqrt(2)*pi*d^2 + pi*d^2 - 4*pi*d - 8*d + 4*sqrt(2)*d + 2*sqrt(2)*pi*d + 12 + 4*pi",
+    "centroid": [
+      1,
+      0,
+      "(-pi*c^4/24 + sqrt(2)*pi*c^4/24 - pi*c^3*d/6 - c^3/3 + sqrt(2)*c^3/3 + sqrt(2)*pi*c^3/6 + sqrt(2)*c^2*d + sqrt(2)*pi*c^2*d/2 - sqrt(2)*pi*c^2/2 - sqrt(2)*c^2 - pi*d^4/12 + 2*d^3/3 + 2*pi*d^3/3 - pi*d^2 - 2*d^2 + pi/2 + 2) / (pi*c^3/6 - sqrt(2)*pi*c^2/2 - sqrt(2)*c^2 + pi*d^3/3 - pi*d^2 - 2*d^2 + pi + 4)"
+    ],
+    "inertia": [
+      [
+        "-sqrt(2)*pi*c^5/60 + 13*pi*c^5/240 - sqrt(2)*pi*c^4*d/12 + pi*c^4*d/12 - sqrt(2)*c^4/3 - 5*sqrt(2)*pi*c^4/48 + c^4/6 + pi*c^3*d^2/6 - sqrt(2)*pi*c^3*d/3 - 2*sqrt(2)*c^3*d/3 + 2*c^3*d/3 + pi*c^3/12 + 2*sqrt(2)*c^3/3 + sqrt(2)*pi*c^3/3 - sqrt(2)*pi*c^2*d^2/2 - sqrt(2)*c^2*d^2 + 2*sqrt(2)*c^2*d + sqrt(2)*pi*c^2*d - 3*sqrt(2)*pi*c^2/4 - 2*sqrt(2)*c^2 + pi*d^5/12 - 7*pi*d^4/12 - 2*d^4/3 + 8*d^3/3 + 3*pi*d^3/2 - 3*pi*d^2/2 - 4*d^2 + 7*pi/12 + 8/3 - (-pi*c^4/24 + sqrt(2)*pi*c^4/24 - pi*c^3*d/6 - c^3/3 + sqrt(2)*c^3/3 + sqrt(2)*pi*c^3/6 + sqrt(2)*c^2*d + sqrt(2)*pi*c^2*d/2 - sqrt(2)*pi*c^2/2 - sqrt(2)*c^2 - pi*d^4/12 + 2*d^3/3 + 2*pi*d^3/3 - pi*d^2 - 2*d^2 + pi/2 + 2)^2 / (pi*c^3/6 - sqrt(2)*pi*c^2/2 - sqrt(2)*c^2 + pi*d^3/3 - pi*d^2 - 2*d^2 + pi + 4)",
+        0,
+        0
+      ],
+      [
+        0,
+        "-sqrt(2)*pi*c^5/60 + 13*pi*c^5/240 - sqrt(2)*pi*c^4*d/12 + pi*c^4*d/12 - 5*sqrt(2)*c^4/12 - 5*sqrt(2)*pi*c^4/48 + c^4/6 + pi*c^3*d^2/6 - sqrt(2)*pi*c^3*d/3 - 2*sqrt(2)*c^3*d/3 + 2*c^3*d/3 + 2*c^3/3 + pi*c^3/4 + 2*sqrt(2)*c^3/3 + sqrt(2)*pi*c^3/3 - sqrt(2)*pi*c^2*d^2/2 - sqrt(2)*c^2*d^2 + 2*sqrt(2)*c^2*d + sqrt(2)*pi*c^2*d - 5*sqrt(2)*pi*c^2/4 - 10*sqrt(2)*c^2/3 + pi*d^5/12 - 7*pi*d^4/12 - d^4 + 4*d^3 + 11*pi*d^3/6 - 5*pi*d^2/2 - 20*d^2/3 + 19*pi/12 + 16/3 - (-pi*c^4/24 + sqrt(2)*pi*c^4/24 - pi*c^3*d/6 - c^3/3 + sqrt(2)*c^3/3 + sqrt(2)*pi*c^3/6 + sqrt(2)*c^2*d + sqrt(2)*pi*c^2*d/2 - sqrt(2)*pi*c^2/2 - sqrt(2)*c^2 - pi*d^4/12 + 2*d^3/3 + 2*pi*d^3/3 - pi*d^2 - 2*d^2 + pi/2 + 2)^2 / (pi*c^3/6 - sqrt(2)*pi*c^2/2 - sqrt(2)*c^2 + pi*d^3/3 - pi*d^2 - 2*d^2 + pi + 4)",
+        0
+      ],
+      [
+        0,
+        0,
+        "pi*c^5/40 - sqrt(2)*pi*c^4/8 - sqrt(2)*c^4/4 + 2*c^3 + 2*pi*c^3/3 - 10*sqrt(2)*c^2/3 - sqrt(2)*pi*c^2 + pi*d^5/10 - pi*d^4/2 - d^4 + 4*d^3 + 4*pi*d^3/3 - 20*d^2/3 - 2*pi*d^2 + 3*pi/2 + 16/3"
+      ]
+    ],
+    "genus": 0,
+    "occt_walked": "Open CASCADE's chamfer of a cylinder against a cone is a B-spline surface walked along the edge, so its own STEP has a NURBS face beside the cylinder and the cone, whose pairs the checker's S5 leaves undecided"
+  }
+}

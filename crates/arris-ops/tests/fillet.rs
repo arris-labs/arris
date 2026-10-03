@@ -6,6 +6,8 @@
 //! on a filleted body, its records composed back to the extrude; and
 //! every typed refusal.
 
+use std::collections::BTreeSet;
+
 use arris_debug::fixtures::Class;
 use arris_debug::unmetered::cut;
 use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, revolve};
@@ -1063,19 +1065,45 @@ fn a_miter_of_unequal_dihedrals_is_a_vertex_blend() {
 }
 
 /// A chain runs on through a vertex of four edges where both of its faces
-/// turn tangentially (ADR-0039 §1): the foot of a chamfered stadium's
+/// turn tangentially (ADR-0039): the foot of a chamfered stadium's
 /// chamfer, between the side plane and the chamfer strip, meets the foot
 /// of the half cone over the half cylinder at a vertex whose two other
 /// edges — side plane to half cylinder, strip to half cone — are tangent
-/// dihedrals. A fillet or a chamfer of the foot line walks on into the
-/// arc, and the junction, its runs sharing no face, is refused by name
-/// with both edges and the vertex until it is built (`plans/blend-corners`
-/// step 4), the model untouched. In two poses.
+/// dihedrals. A fillet or a chamfer of one foot line walks on round the
+/// whole foot outline, and each junction is the ball's great circle or the
+/// chord between a point on each tangent edge, both cut (§2): clean at
+/// `Full` with nothing unchecked, at Open CASCADE's counts, at the volume
+/// the corner's section swept along the outline leaves, the eight tangent
+/// edges `Modified`, the four vertices `Deleted`, the record audited. In
+/// two poses.
 #[test]
 fn a_chain_runs_on_where_both_faces_turn() {
+    use core::f64::consts::{PI, SQRT_2};
     let turn =
         UnitQuaternion::from_axis_angle(&Unit::new_normalize(Vec3::new(0.3, -0.5, 0.8)), 1.1);
-    let d = 0.25;
+    let (d, r): (f64, f64) = (0.25, 0.1);
+    // A corner's section of `area`, its centroid `depth` in from the wall,
+    // swept along the outline's offset of length `4 + 2π(1 − depth)`.
+    let section = |area: f64, depth: f64| area * (4.0 + 2.0 * PI * (1.0 - depth));
+    // The fillet's closed form, `blend/chamfered-stadium-foot-fillet`'s;
+    // the chamfer's, the chamfered stadium less the triangle of two legs
+    // `r` at 135°, its centroid a third of `r/√2` in.
+    let (pi, s2) = (PI, SQRT_2);
+    let filleted = pi * d.powi(3) / 3.0
+        - pi * d * d
+        - 2.0 * d * d
+        - 4.0 * pi * r.powi(3) / 3.0
+        - pi * pi * r.powi(3) / 4.0
+        + 3.0 * s2 * pi * r.powi(3) / 2.0
+        - 2.0 * s2 * pi * r * r
+        - 4.0 * s2 * r * r
+        + pi * pi * r * r / 4.0
+        + 4.0 * r * r
+        + 5.0 * pi * r * r / 2.0
+        + pi
+        + 4.0;
+    let chamfered_volume = 4.0 + PI - section(d * d / 2.0, d / 3.0);
+    let chamfered_foot = chamfered_volume - section(r * r * SQRT_2 / 4.0, r / (3.0 * SQRT_2));
     for pose in [
         Frame::world(),
         Frame::from_rotation(Point3::new(120.0, -75.0, 40.0), &turn),
@@ -1107,41 +1135,73 @@ fn a_chain_runs_on_where_both_faces_turn() {
         let top = edge_at(&m, stadium, at(1.0, 1.0, 1.0));
         let chamfered = chamfer(&mut m, stadium, &[top], d).unwrap().0;
         let foot = edge_at(&m, chamfered, at(1.0, 1.0, 1.0 - d));
-        let before = dump_text(&m, chamfered).unwrap();
-        for blend in [fillet, chamfer] {
-            let err = blend(&mut m, chamfered, &[foot], 0.1).unwrap_err();
-            let OpError::Degenerate { entities, reason } = &err else {
-                panic!("{err}");
-            };
-            assert_eq!(*reason, Reason::VertexBlend, "{err}");
-            let [a, b, v] = entities[..] else {
-                panic!("two edges and a vertex: {err}");
-            };
-            let (EntityId::Edge(ea), EntityId::Edge(eb), EntityId::Vertex(v)) = (a.id, b.id, v.id)
-            else {
-                panic!("two edges and a vertex: {err}");
-            };
-            // The closed chain's first junction in vertex order: a foot
-            // line and a foot arc, at one of the four corners of the foot.
-            let circles = [ea, eb]
-                .iter()
-                .filter(|&&e| {
-                    let (curve, _) = m.edge(e).unwrap().curve().unwrap();
-                    matches!(m.curve(curve).unwrap(), Curve::Circle { .. })
-                })
-                .count();
-            assert_eq!(circles, 1, "{err}");
-            let corner = m.vertex(v).unwrap().point();
-            let corners = [(0.0, 1.0), (2.0, 1.0), (0.0, -1.0), (2.0, -1.0)];
-            assert!(
-                corners
-                    .iter()
-                    .any(|&(x, y)| (corner - at(x, y, 1.0 - d)).norm() < 1e-9),
-                "{corner:?}"
+        // The four foot edges and the four vertices between them, and the
+        // eight tangent edges at those vertices.
+        let feet: Vec<Edge> = m
+            .edges(chamfered)
+            .unwrap()
+            .into_iter()
+            .filter(|e| {
+                let entity = m.edge(e.id).unwrap();
+                let (curve, range) = entity.curve().unwrap();
+                let mid = pose.to_local(m.curve(curve).unwrap().point(range.midpoint()));
+                (mid.z - (1.0 - d)).abs() < 1e-9
+            })
+            .collect();
+        assert_eq!(feet.len(), 4);
+        let corners: BTreeSet<_> = feet
+            .iter()
+            .flat_map(|e| {
+                let entity = m.edge(e.id).unwrap();
+                [entity.start(), entity.end()]
+            })
+            .collect();
+        assert_eq!(corners.len(), 4);
+        let tangent: BTreeSet<_> = corners
+            .iter()
+            .flat_map(|&v| m.vertex_edges(v).unwrap().to_vec())
+            .filter(|e| !feet.iter().any(|f| f.id == *e))
+            .collect();
+        assert_eq!(tangent.len(), 8);
+        for (blend, volume) in [fillet, chamfer]
+            .into_iter()
+            .zip([filleted, chamfered_foot])
+        {
+            let (blended, provenance) = blend(&mut m, chamfered, &[foot], r).unwrap();
+            let report = check(&m, blended, Level::Full);
+            assert!(report.is_ok(), "{report}");
+            assert!(report.unchecked().is_empty(), "{report}");
+            let line = report.euler().unwrap();
+            assert_eq!(
+                (
+                    line.vertices,
+                    line.edges,
+                    line.faces,
+                    line.loops,
+                    line.genus
+                ),
+                (16, 28, 14, 14, 0)
             );
-            assert_eq!(m.vertex_edges(v).unwrap().len(), 4);
+            let props = mass_properties(&m, blended).unwrap();
+            assert!(
+                (props.volume - volume).abs() <= 1e-9 * volume,
+                "{} against {volume}",
+                props.volume
+            );
+            audit(&m, &[chamfered], blended, &provenance).unwrap();
+            for f in &feet {
+                let shape = Shape::new(f.id, Orientation::Forward);
+                assert!(provenance.is_deleted(shape));
+                assert_eq!(provenance.generated_from(shape).len(), 9);
+            }
+            for &v in &corners {
+                assert!(provenance.is_deleted(Shape::new(v, Orientation::Forward)));
+            }
+            for &e in &tangent {
+                let shape = Shape::new(e, Orientation::Forward);
+                assert_eq!(provenance.modified_from(shape).len(), 1, "{provenance}");
+            }
         }
-        assert_eq!(dump_text(&m, chamfered).unwrap(), before);
     }
 }
 

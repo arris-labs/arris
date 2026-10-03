@@ -131,7 +131,7 @@ bound has to be established here.
   104, FTC-09 8) and 20 fetched; CTC-04's chamfered walls are tangent only
   to `9e-10` as read and are not walked (open question below).
   `fixtures:` CTC-04's battery fillet now meets `TangentChain` first.
-- [ ] Step 4 **[3]** — Build the junction at a vertex of four edges, on a
+- [x] Step 4 **[3]** — Build the junction at a vertex of four edges, on a
   line meeting an arc (the chamfered stadium's foot). `junction` takes runs
   that share no face: the arc between the points on `w₀` and `w₁`, both
   cut, and each blend face's contacts meeting there. Provenance as ADR-0039
@@ -139,7 +139,21 @@ bound has to be established here.
   its blessed dump. Add a chamfer twin and a concave chain through such a
   vertex (a pocket's floor edge running round a rounded, chamfered corner),
   each with Open CASCADE's oracle. The checker is green at `Full`.
-- [ ] Step 5 **[3]** — The junction of two arcs: a rim split in half with
+  *(Done: `Miter` gained `q_trim`, `build` cuts it at `q`.
+  `blend/chamfered-stadium-foot-fillet`, `-chamfer` and
+  `blend/stadium-pocket-chamfer-root-fillet` pass at Open CASCADE's counts
+  and probes. Open CASCADE's cylinder-against-cone blend, fillet and
+  chamfer, is a walked B-spline, off the closed forms by 5e-9 to 2e-7, so
+  each fixture states every closed form (the section swept along the
+  stadium's offset curves), `occt_walked`, and measure tolerances widened
+  under ADR-0015's 1e-6, as `blend/turned-shoulder-fillet` does; Arris
+  matches the closed forms to rounding. `junction` reads either run as a
+  stripe or a ring, so two arcs meet the same way: FTC-09's battery
+  fillet, held by its pin's split rim, now builds and agrees with Open
+  CASCADE, and its `fixtures:` expectation and the committed histogram
+  moved here, not at step 8.)*
+- [ ] Step 5 **[3]** — *(Step 4 found the code already takes it, FTC-09
+  agreeing; what is left is the fixture and the tangency question.)* The junction of two arcs: a rim split in half with
   both its faces, the ring of each half meeting the other's at both ends
   (CTC-04's and FTC-09's pins, a cone against a cylinder; a plane against a
   cylinder beside it). A fixture of a split pin with its oracle. Then
@@ -166,7 +180,8 @@ bound has to be established here.
 - [ ] Step 8 **[1]** — Measure the fetched and committed tiers again
   (`tools/real-parts.sh`, `--census-committed`). Print the column beside
   C4's 17 of 38 and `blend-run-over`'s line. Move the `fixtures:`
-  expectations whose refusals changed (`nist-ctc-04`, `nist-ftc-09`), with
+  expectations whose refusals changed (`nist-ctc-04`; `nist-ftc-09` moved
+  at step 4), with
   the commit body saying why and `cancel_counts.txt` blessed for the new
   fixtures. Update `docs/ROADMAP.md` §C6's status paragraph with the new
   count and what each remaining part meets. Run the docs-refs tests: the

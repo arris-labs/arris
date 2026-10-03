@@ -15,13 +15,8 @@
         "drill_x": "agree",
         "drill_y": "agree",
         "drill_z": "agree",
-        "fillet": {
-          "arris-refuses": "Degenerate(VertexBlend)"
-        },
+        "fillet": "agree",
         "write_read": "agree"
-      },
-      "blocks": {
-        "fillet": "blend network"
       }
     }
   ],

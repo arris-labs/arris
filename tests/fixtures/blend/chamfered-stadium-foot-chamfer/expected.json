@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "419945a3ea1e2b7af349d667bf80f1d43e309650260d77f14ac8b4756229b254",
+  "results": {
+    "default": {
+      "area": 22.80371669783983,
+      "centroid": [
+        0.9999999999999999,
+        3.8771769630834255e-17,
+        0.4801000474185976
+      ],
+      "counts": {
+        "edges": 28,
+        "faces": 14,
+        "loops": 14,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2.4494774185911288,
+          -1.3931064635208656e-11,
+          0.0
+        ],
+        [
+          -1.3931064635208656e-11,
+          7.890721821540819,
+          5.720286606826987e-17
+        ],
+        [
+          0.0,
+          5.720286606826987e-17,
+          9.267004707696291
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 28,
+        "faces": 14,
+        "loops": 14,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            1.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "foot_gone",
+          "point": [
+            1.0,
+            0.996304482,
+            0.7484692664
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bottom_rim",
+          "point": [
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            1.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 6.800772078733748
+    }
+  }
+}

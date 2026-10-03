@@ -1157,10 +1157,11 @@ mod tests {
         );
     }
 
-    /// The fixture `regression/chamfered-stadium-foot-fillet`: the chamfer's
+    /// The fixture `blend/chamfered-stadium-foot-fillet`: the chamfer's
     /// foot runs on into the half cone's at a vertex of four edges where
-    /// both faces turn (ADR-0039), and the junction is named by the run's
-    /// two edges and its vertex.
+    /// both faces turn (ADR-0039), and the junction there builds. A
+    /// junction refused at such a vertex, naming the run's two edges and
+    /// the vertex, is named by them.
     #[test]
     fn a_junction_at_a_vertex_of_four_edges_is_named_by_the_run() {
         use crate::unmetered::{chamfer, extrude};
@@ -1199,8 +1200,23 @@ mod tests {
         let (chamfered, _) = chamfer(&mut m, stadium, &[top], 0.25).unwrap();
         let foot = at(&m, chamfered, P3::new(1.0, 1.0, 0.75));
         let mut scratch = m.clone();
-        let Err(Refused::Op(e)) = blend(&mut scratch, chamfered, &[foot], 0.1) else {
-            panic!("the junction is refused until it is built");
+        assert!(blend(&mut scratch, chamfered, &[foot], 0.1).is_ok());
+        // The foot line's end at the corner (0, 1), and the foot arc there.
+        let corner = m
+            .vertices(chamfered)
+            .unwrap()
+            .into_iter()
+            .find(|v| (m.vertex(v.id).unwrap().point() - P3::new(0.0, 1.0, 0.75)).norm() < 1e-9)
+            .unwrap();
+        let arc = at(&m, chamfered, P3::new(-1.0, 0.0, 0.75));
+        use arris_io::arris_check::arris_topo::{Orientation, Shape};
+        let e = OpError::Degenerate {
+            entities: vec![
+                Shape::new(foot.id, Orientation::Forward),
+                Shape::new(arc.id, Orientation::Forward),
+                Shape::new(corner.id, Orientation::Forward),
+            ],
+            reason: Reason::VertexBlend,
         };
         assert_eq!(
             vertex_blend_cause(&m, foot.id, &e).unwrap(),

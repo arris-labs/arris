@@ -809,9 +809,10 @@ for fillets, the chord of the same two points for chamfers, from the point
 the other two meet on the third edge — a line at constant `v` on a
 stripe's cylinder and at constant `u` on a ring's torus or cone, every
 pcurve exact; the third edge is shortened to `p`, the vertex goes, and no
-face across takes an arc. A junction at a vertex of four edges, its runs
-sharing no face, is `Reason::VertexBlend` naming both edges and the vertex
-until it is built (ADR-0039 §2). A chain that reaches a pair outside the table is
+face across takes an arc. At a vertex of four edges the runs share no
+face, and `q` lies on the second tangent edge instead: each contact meets
+the other run's contact across the tangent edge between their faces, and
+both tangent edges are cut, `Modified`, at their points (ADR-0039 §2). A chain that reaches a pair outside the table is
 refused naming that pair and the edge the walk reached. The edges are
 blended in the body's iteration order, whatever order they are listed in, so the result
 and its ids are the same for any order of one set; disjoint blends share

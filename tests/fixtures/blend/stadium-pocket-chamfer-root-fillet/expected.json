@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "327f68347d453def1bba1aa3d562ee34cabdd5d3fb962aeca22716f666831ea2",
+  "results": {
+    "default": {
+      "area": 96.6505613106476,
+      "centroid": [
+        1.0,
+        -2.820787456354555e-18,
+        0.9138969608903117
+      ],
+      "counts": {
+        "edges": 40,
+        "faces": 19,
+        "loops": 20,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          75.38246155598702,
+          1.5662051673336433e-11,
+          0.0
+        ],
+        [
+          1.5662051673336433e-11,
+          149.90380565739446,
+          1.6925006942074619e-15
+        ],
+        [
+          0.0,
+          1.6925006942074619e-15,
+          198.65093855763777
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 40,
+        "faces": 19,
+        "loops": 20,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_wall",
+          "point": [
+            1.0,
+            1.5,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_pocket",
+          "point": [
+            1.0,
+            0.0,
+            1.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "root_filled",
+          "point": [
+            1.0,
+            0.996304482,
+            1.2515307336
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor",
+          "point": [
+            1.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 41.16559889523801
+    }
+  }
+}

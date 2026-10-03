@@ -1902,15 +1902,6 @@ fn regression_tangent_chain_horn_torus() {
     run("regression/tangent-chain-horn-torus");
 }
 
-/// The shrunk CTC-04 corner: a chamfered stadium's chamfer foot filleted,
-/// the chain running on at a vertex of four edges where both its faces
-/// turn tangentially (ADR-0039). The desired body is Open CASCADE's.
-#[test]
-#[ignore = "Reason::VertexBlend: the chain is walked through the four-edge vertex, but a junction whose runs share no face is not built yet (docs/plans/blend-corners.md step 4)"]
-fn regression_chamfered_stadium_foot_fillet() {
-    run("regression/chamfered-stadium-foot-fillet");
-}
-
 /// A rib standing on a plate, its vertical corner edge filleted down to the
 /// plate: a convex blend ending on a face that surrounds the rib, the edge's
 /// corner with it concave, so the end arc lies in the rib's footprint and the
@@ -1953,6 +1944,31 @@ fn blend_boss_corner_fillet() {
 #[test]
 fn blend_split_rim_disc_fillet() {
     run("blend/split-rim-disc-fillet");
+}
+
+/// The shrunk CTC-04 corner: a chamfered stadium's chamfer foot filleted,
+/// the chain running on at a vertex of four edges where both its faces
+/// turn tangentially, each junction the ball's great circle between the two
+/// tangent edges, both cut (ADR-0039). Open CASCADE's cylinder-against-cone
+/// blend is walked, so the measures are held to the closed forms' band.
+#[test]
+fn blend_chamfered_stadium_foot_fillet() {
+    run("blend/chamfered-stadium-foot-fillet");
+}
+
+/// The chamfer twin of `blend_chamfered_stadium_foot_fillet`: each junction
+/// a chord between the two tangent edges, both cut (ADR-0039).
+#[test]
+fn blend_chamfered_stadium_foot_chamfer() {
+    run("blend/chamfered-stadium-foot-chamfer");
+}
+
+/// The concave twin: a stadium pocket's floor outline chamfered, the
+/// chamfer's root against the wall filleted, adding material round the
+/// whole outline through four vertices of four edges (ADR-0039).
+#[test]
+fn blend_stadium_pocket_chamfer_root_fillet() {
+    run("blend/stadium-pocket-chamfer-root-fillet");
 }
 
 /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
