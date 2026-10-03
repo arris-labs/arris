@@ -1,0 +1,45 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "212cf7f10c8f8bcb689c3e919672dc3b7cd5d3fcca306f915579ad04f3a9405e",
+  "results": {
+    "default": {
+      "area": 283341.0916181363,
+      "centroid": [
+        0.04477801692513864,
+        29.01680279452706,
+        -109.57098400437327
+      ],
+      "counts": {
+        "edges": 377,
+        "faces": 146,
+        "loops": 185,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 250
+      },
+      "degenerate": false,
+      "euler_characteristic": -20,
+      "genus": 11,
+      "inertia": [
+        [
+          21659930912.65544,
+          3103761.5929312916,
+          10472068.08551934
+        ],
+        [
+          3103761.5929312916,
+          44599725624.29371,
+          -1301530574.7921486
+        ],
+        [
+          10472068.08551934,
+          -1301530574.7921486,
+          26373188098.683365
+        ]
+      ],
+      "nurbs_fails": "BSpline curve: Knots interval values too close",
+      "probes": [],
+      "volume": 3322143.8039948847
+    }
+  }
+}

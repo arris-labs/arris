@@ -70,10 +70,15 @@ bound has to be established here.
   all 20 committed, and it holds `ctc_04`'s sampled edge; the gate does not
   fire. No other two-edge cause found, so the first open question is
   answered. `a_split_rims_second_vertex_is_a_continuation` reads `ftc-06`.)*
-- [ ] Step 2 **[1]** — ADR-0041 and its README row, with ADR-0035's and
+- [x] Step 2 **[1]** — ADR-0041 and its README row, with ADR-0035's and
   ADR-0039's pointers. Write the fixture's inputs: `regression/split-rim-
   two-edge-vertex-fillet`, a boss or hole whose rim is two half circles with
   the cylinder's seam elsewhere, with Open CASCADE's oracle, `#[ignore]`d.
+  *(Done: ADR-0041. The fixture reads FTC-06 in place and fillets one half of a hole's
+  rim at r 2, `#[ignore]`d at `VertexBlend` naming the vertex; Open CASCADE's counts: faces
+  144 → 146, edges 373 → 377, vertices 250 → 250. The recipe could not build a split rim with no
+  seam at a vertex: extruded half circles give two cylinder faces, so the part is read, not
+  shrunk (ADR-0026 §4). The unit test of step 1 reads the same part.)*
 - [ ] Step 3 **[3]** — The walk and the junction: `tangent_vertex` takes the
   two-edge continuation, the junction runs between the two points on the
   shared contacts with no cut, provenance as ADR-0041. The fixture moves to

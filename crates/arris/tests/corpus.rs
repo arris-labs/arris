@@ -1893,6 +1893,18 @@ fn regression_nist_ctc_04_ap203_drill_geometry_fault() {
     run_part("regression/nist-ctc-04-ap203-drill-geometry-fault");
 }
 
+/// A hole's rim read from STEP, one half of its split circle filleted: the
+/// rim's second vertex carries only the two arcs, which continue one
+/// another between one plane and one cylinder, where the first has the
+/// cylinder's seam. Arris refuses the vertex of two edges as `VertexBlend`
+/// where Open CASCADE builds the whole ring. The desired body is Open
+/// CASCADE's.
+#[test]
+#[ignore = "VertexBlend at the split rim's second vertex, a vertex of two edges (ADR-0035 does not take it; plans/split-rim-vertex step 3)"]
+fn regression_split_rim_two_edge_vertex_fillet() {
+    run("regression/split-rim-two-edge-vertex-fillet");
+}
+
 /// The cap-edge chain with the first radius at twice the second: the
 /// arc's torus is a horn torus, its major radius equal to its minor, which
 /// the ring refuses. The desired body is Open CASCADE's.

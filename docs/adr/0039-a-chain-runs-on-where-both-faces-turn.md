@@ -147,3 +147,5 @@ gains no variant.
   That covers CTC-04's pin and not its chamfered wall. It also changes the
   operand's topology behind the consumer's back, and the consumer names
   one blend face per edge (ADR-0035 §2).
+
+*(ADR-0041 takes the vertex of two edges of a split rim; the rejection of merging halves above stands.)*
