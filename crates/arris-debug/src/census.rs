@@ -102,6 +102,10 @@ pub struct SolidCensus {
     /// `VertexBlend`.
     #[serde(default)]
     pub vertex_set: Option<VertexSet>,
+    /// Every blendable edge alone that is refused `TangentChain`, with the
+    /// site that refused it ([`tangent_chain_cause`]); no oracle is asked.
+    #[serde(default)]
+    pub tangent_chain: Vec<RunOverEdge>,
 }
 
 /// The battery's sample, blended together and refused `VertexBlend`.
@@ -196,6 +200,7 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
         too_large: Vec::new(),
         vertex_blend: Vec::new(),
         vertex_set: None,
+        tangent_chain: Vec::new(),
     };
     if sample.is_empty() {
         return Ok(out);
@@ -248,6 +253,8 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
                     out.too_large.push(x);
                 } else if let Some(x) = vertex_blend_cause(m, id, &e).and_then(entry) {
                     out.vertex_blend.push(x);
+                } else if let Some(x) = tangent_chain_cause(m, id, &e).and_then(entry) {
+                    out.tangent_chain.push(x);
                 }
                 class_of(&e)
             }
@@ -561,6 +568,121 @@ pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String
     Some(format!("{what}; edge {pair}"))
 }
 
+/// How far from the vertex, as a fraction of the tangent edge's chord, the
+/// census probes a face's height above the common tangent plane.
+const PROBE_STEP: f64 = 1e-2;
+
+/// A height above the tangent plane under this fraction of the probe step
+/// is a flat face's: the census names a site, so the cut is a wide one.
+const FLAT: f64 = 1e-9;
+
+/// Which way the faces of the tangent edge `w` curve at `vertex`, each the
+/// side of their common tangent plane that the surface lies on a step away
+/// along the plane and across `w`: `Some(true)` if opposite sides (an
+/// inflection), `Some(false)` if one, `None` if either face is flat or
+/// cannot be read.
+fn turn_across(m: &Model, w: EdgeId, vertex: VertexId) -> Option<Option<bool>> {
+    let uses = m.edge_uses(w).ok()?;
+    let [a, b] = uses else { return None };
+    let at = m.vertex(vertex).ok()?.point();
+    let t = tangent_at_vertex(m, w, vertex)?;
+    let entity = m.edge(w).ok()?;
+    let chord = (m.vertex(entity.start()).ok()?.point() - m.vertex(entity.end()).ok()?.point())
+        .norm()
+        .max(t.norm());
+    let step = PROBE_STEP * chord;
+    let surface = |f| m.surface(m.face(f).ok()?.surface()).ok();
+    let (sa, sb) = (surface(a.face)?, surface(b.face)?);
+    let uv = sa.project(at).ok()?.uv;
+    let n0 = sa.normal(uv.x, uv.y)?.into_inner();
+    let across = n0.cross(&t).normalize();
+    let height = |s: &arris_io::arris_check::arris_topo::arris_geom::Surface| {
+        let q = at + across * step;
+        let on = s.project(q).ok()?;
+        Some((s.point(on.uv.x, on.uv.y) - at).dot(&n0))
+    };
+    let (ha, hb) = (height(sa)?, height(sb)?);
+    if ha.abs() <= FLAT * step || hb.abs() <= FLAT * step {
+        return Some(None);
+    }
+    Some(Some((ha > 0.0) != (hb > 0.0)))
+}
+
+/// The unit direction in which `edge` leaves `vertex`.
+fn leaving_vertex(m: &Model, edge: EdgeId, vertex: VertexId) -> Option<Vec3> {
+    let d = tangent_at_vertex(m, edge, vertex)?;
+    let away = if m.edge(edge).ok()?.start() == vertex {
+        d
+    } else {
+        -d
+    };
+    Some(away.normalize())
+}
+
+/// Whether, at `vertex` of three edges, `edge` and the third edge beside the
+/// tangent `w` leave it the same way: the outline then doubles back on
+/// itself there (a cusp) instead of running on through.
+fn doubles_back(m: &Model, edge: EdgeId, w: EdgeId, vertex: VertexId) -> Option<bool> {
+    let at = m.vertex_edges(vertex).ok()?;
+    let [next] = at
+        .iter()
+        .copied()
+        .filter(|&x| x != edge && x != w)
+        .collect::<Vec<_>>()[..]
+    else {
+        return None;
+    };
+    let (a, b) = (
+        leaving_vertex(m, edge, vertex)?,
+        leaving_vertex(m, next, vertex)?,
+    );
+    Some(a.dot(&b) > 0.0)
+}
+
+/// Which site refused a `TangentChain` of `edge` blended alone, from the
+/// entities the error names (`None` for any other refusal): *the edge
+/// itself*, a tangent dihedral (the error names the edge and its two
+/// faces), or *an end* at a vertex whose corner edge is tangent (the edge,
+/// the corner edge and the vertex: the edge is the run's, not always the
+/// one asked), by what is there — *a cusp* (the
+/// blended edge and the third edge leave the vertex the same way, the
+/// outline doubling back instead of running on), else by what turns:
+/// *an inflection*
+/// (the two faces of the tangent edge curve opposite ways: a floor whose
+/// wall is an S-bend), *a turn one way* (they curve the same way), *a flat
+/// face against a curved one*, or *a turn the census cannot read*. Each is
+/// followed by the pair of surface kinds the blended edge separates.
+pub fn tangent_chain_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String> {
+    let OpError::Degenerate {
+        entities,
+        reason: Reason::TangentChain,
+    } = e
+    else {
+        return None;
+    };
+    let pair = pair_of(m, edge).unwrap_or_default();
+    let ids: Vec<EntityId> = entities.iter().map(|s| s.id).collect();
+    let what = match ids.as_slice() {
+        [EntityId::Edge(_), EntityId::Face(_), EntityId::Face(_)] => {
+            "the edge itself, a tangent dihedral".to_string()
+        }
+        [EntityId::Edge(run), EntityId::Edge(w), EntityId::Vertex(v)] => {
+            if doubles_back(m, *run, *w, *v) == Some(true) {
+                "an end at a cusp".to_string()
+            } else {
+                match turn_across(m, *w, *v) {
+                    Some(Some(true)) => "an end at an inflection".to_string(),
+                    Some(Some(false)) => "an end at a turn one way".to_string(),
+                    Some(None) => "an end at a flat face against a curved one".to_string(),
+                    None => "an end at a turn the census cannot read".to_string(),
+                }
+            }
+        }
+        _ => "another site".to_string(),
+    };
+    Some(format!("{what}; edge {pair}"))
+}
+
 /// The miter or corner a `VertexBlend` of a set of edges blended together
 /// names (`None` for any other refusal): how many blended edges meet at
 /// how many edges, and the kinds of face pair they separate.
@@ -807,6 +929,63 @@ pub fn ask_the_oracle(file: &Path, census: &mut SolidCensus) -> Result<(), Strin
     Ok(())
 }
 
+/// Puts a sample of every site's `TangentChain` edges of `census`, a solid
+/// of `file`, to Open CASCADE alone at the census's radius, as
+/// [`ask_the_oracle`] does for `BlendTooLarge`.
+///
+/// # Errors
+/// As [`ask_the_oracle`].
+pub fn ask_the_oracle_tangent(file: &Path, census: &mut SolidCensus) -> Result<(), String> {
+    let id = solid_id(&census.solid)?;
+    let asked = stride_per_cause(&census.tangent_chain);
+    if asked.is_empty() {
+        return Ok(());
+    }
+    let points: Vec<[f64; 3]> = asked.iter().map(|&i| census.tangent_chain[i].at).collect();
+    let verdicts = crate::oracle::fillet_edges(file, id, census.radius, ORACLE_PROBE, &points)
+        .map_err(|e| e.to_string())?;
+    for (&i, v) in asked.iter().zip(verdicts) {
+        census.tangent_chain[i].occt = Some(v.verdict);
+    }
+    Ok(())
+}
+
+/// [`census_file`] of `file`, with each solid's `TangentChain` edges put to
+/// Open CASCADE ([`ask_the_oracle_tangent`]), printed by site and verdict.
+///
+/// # Errors
+/// As [`census_file`] and [`ask_the_oracle_tangent`].
+pub fn tangent_chain_file(file: &Path) -> Result<String, String> {
+    let mut out = String::new();
+    for mut s in census_file(file, &|_| true)? {
+        ask_the_oracle_tangent(file, &mut s)?;
+        let mut by: BTreeMap<(&str, &str), usize> = BTreeMap::new();
+        for e in &s.tangent_chain {
+            *by.entry((&e.cause, e.occt.as_deref().unwrap_or("not asked")))
+                .or_default() += 1;
+        }
+        for e in s.tangent_chain.iter().filter(|e| e.sampled) {
+            let _ = writeln!(
+                out,
+                "- sampled {:?} at {:?}: {} → Open CASCADE {}",
+                e.edge,
+                e.at,
+                e.cause,
+                e.occt.as_deref().unwrap_or("not asked")
+            );
+        }
+        for ((cause, verdict), n) in by {
+            let _ = writeln!(
+                out,
+                "- {} {}: {n} × {cause} → Open CASCADE {verdict}",
+                file.display(),
+                s.solid
+            );
+        }
+    }
+    Ok(out)
+}
+
 /// The `BlendTooLarge` edges of the solids, counted by `part → cause`:
 /// how many edges, how many were put to Open CASCADE and what it said.
 pub fn run_over_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
@@ -1005,7 +1184,30 @@ pub fn markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
     for (first, list) in rows {
         let _ = writeln!(out, "- {first}: {} ({})", list.len(), list.join(", "));
     }
+    out.push_str(&tangent_chain_section(parts));
     out
+}
+
+/// The `TangentChain` edges of the solids, each alone, counted by
+/// `part → site` ([`tangent_chain_cause`]); empty where there are none.
+fn tangent_chain_section(parts: &[(String, Vec<SolidCensus>)]) -> String {
+    let mut out = String::new();
+    for (part, solids) in parts {
+        for s in solids {
+            let mut by_cause: BTreeMap<&str, usize> = BTreeMap::new();
+            for e in &s.tangent_chain {
+                *by_cause.entry(&e.cause).or_default() += 1;
+            }
+            for (cause, n) in by_cause {
+                let _ = writeln!(out, "- {part} {}: {n} × {cause}", s.solid);
+            }
+        }
+    }
+    if out.is_empty() {
+        out
+    } else {
+        format!("\n`TangentChain` edges, each alone, by site:\n\n{out}")
+    }
 }
 
 #[cfg(test)]
@@ -1141,6 +1343,7 @@ mod tests {
             alone: BTreeMap::new(),
             vertex_blend: Vec::new(),
             vertex_set: None,
+            tangent_chain: Vec::new(),
             too_large: vec![
                 edge("a; edge plane × plane", Some("builds")),
                 edge("a; edge plane × plane", Some("refuses")),
@@ -1322,6 +1525,7 @@ mod tests {
             sampled: Vec::new(),
             alone: BTreeMap::new(),
             too_large: Vec::new(),
+            tangent_chain: Vec::new(),
             vertex_blend: vec![
                 edge("a vertex of 5 edges", Some("builds")),
                 edge("a vertex of 5 edges", Some("refuses")),
@@ -1401,6 +1605,45 @@ mod tests {
         assert!(
             arcs > 0,
             "a split rim's arc blends through its second vertex"
+        );
+    }
+
+    /// The committed `nist-ftc-06`'s sampled edge, at (−86.40, 52.19,
+    /// −234.95), is refused `TangentChain` at an end, and the census names
+    /// what is there.
+    #[test]
+    fn ftc_06_sampled_edge_is_an_end_at_a_cusp() {
+        let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
+        let bytes = std::fs::read(&file).unwrap();
+        let mut m = Model::new(PrecisionSpec::default().precision()).unwrap();
+        let read = step_read(
+            &mut m,
+            &String::from_utf8_lossy(&bytes),
+            &ReadOptions::default(),
+        )
+        .unwrap();
+        let body = read
+            .solids
+            .iter()
+            .find_map(|s| s.result.as_ref().ok())
+            .unwrap()
+            .body;
+        let sampled = m
+            .edges(body)
+            .unwrap()
+            .into_iter()
+            .find(|h| {
+                edge_midpoint(&m, h.id)
+                    .is_some_and(|p| (p - P3::new(-86.40, 52.19, -234.95)).norm() < 0.01)
+            })
+            .expect("the sampled edge");
+        let mut scratch = m.clone();
+        let Err(Refused::Op(e)) = blend(&mut scratch, body, &[sampled], 0.254) else {
+            panic!("the sampled edge is refused");
+        };
+        assert_eq!(
+            tangent_chain_cause(&m, sampled.id, &e).unwrap(),
+            "an end at a cusp; edge cylinder × plane"
         );
     }
 }

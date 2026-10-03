@@ -1,0 +1,26 @@
+{
+  "description": "a crescent prism: below the x axis, inside the circle of radius 2 about the origin and outside the circle of radius 1 about (-1, 0), the two circles tangent at (-2, 0) so that the outline's two arcs leave that vertex the same way, a cusp, the walls tangent along its vertical line with the one convex and the other concave against the floor's plane. The big arc's top edge filleted at r 0.1 runs to the cusp, where its fillet and the concave neighbour's meet in a gap narrower than the ball",
+  "params": {"r": 0.1},
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {
+        "start": [-2, 0],
+        "segments": [
+          {"arc_to": [2, 0], "via": [0, -2]},
+          {"line_to": [0, 0]},
+          {"arc_to": [-2, 0], "via": [-1, -1]}
+        ]
+      }
+    },
+    {"name": "part", "op": "extrude", "profile": "section", "direction": [0, 0, 1], "length": 1},
+    {"name": "result", "op": "fillet", "of": "part", "edges": [[0, -2, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [0, -1.5, 0.5], "expect": "in"},
+    {"label": "outside", "point": [0, 1, 0.5], "expect": "out"}
+  ]
+}

@@ -1984,6 +1984,15 @@ fn regression_tangent_chain_horn_torus() {
     run("regression/tangent-chain-horn-torus");
 }
 
+/// A crescent prism's big arc filleted to the cusp where it is tangent to
+/// the concave small arc, both leaving the vertex the same way: the blend
+/// meets a gap narrower than its ball. The desired body is Open CASCADE's.
+#[test]
+#[ignore = "Reason::TangentChain naming the arc, the cusp's tangent edge and its vertex: the walk does not run on at a cusp, where the next edge is concave and leaves the vertex the way the blended one does (docs/plans/cusp-run-out.md)"]
+fn regression_cusp_crescent_fillet() {
+    run("regression/cusp-crescent-fillet");
+}
+
 /// A rib standing on a plate, its vertical corner edge filleted down to the
 /// plate: a convex blend ending on a face that surrounds the rib, the edge's
 /// corner with it concave, so the end arc lies in the rib's footprint and the
