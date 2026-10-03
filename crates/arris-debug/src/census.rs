@@ -15,7 +15,7 @@
 //! agreement.
 //!
 //! A `BlendTooLarge` is the one refusal the census takes apart further
-//! (`docs/plans/blend-run-over.md`): [`run_over_cause`] names which site
+//! (ADR-0038): [`run_over_cause`] names which site
 //! refused from the entities the error carries, and
 //! [`ask_the_oracle`] puts each such edge to Open CASCADE alone at the same
 //! radius, because a radius it refuses too is no run-over to build.

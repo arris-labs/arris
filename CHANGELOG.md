@@ -8,6 +8,16 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` blend an edge that runs into a step: where the
+  blended edge meets a corner whose other two edges differ in convexity (a
+  low block against a taller one, a rib meeting a shoulder, leaning either
+  way), the blend lengthens the corner edge of its own convexity past the
+  vertex and ends on the face across, which may be a plane, a cylinder or a
+  cone, and likewise at an open arc's ends. The blend's surface stays exact.
+  Refusals you will meet: a stretch that would leave its face, or a ball
+  that finds no place on either face, is `BlendTooLarge`, as is a ring's
+  contact at the axis (a horn or spindle torus).
+
 - `fillet` and `chamfer` blend an edge that ends on a face the blend does not
   meet square: an open arc ending on a plane parallel to its axis and off it,
   or on a cylinder across (a rib's foot against a round or conical boss, a

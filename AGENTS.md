@@ -43,13 +43,14 @@ cancellation, mirror, the STEP product structure. ADR-0028 to 0033.
 **Beside the cycles (2026-10-02): the Python binding**, `crates/arris-py`,
 PyPI `arris` in lockstep from the `v*` tag; its first upload waits on the
 human. ADR-0034.
-**C6 open (2026-10-02): the blend network.** Three plans landed: a fillet or
+**C6 open (2026-10-02): the blend network.** Four plans landed: a fillet or
 chamfer follows a chain of line and arc edges (ADR-0035), a cone, a sphere
 or a torus against a coaxial plane, cylinder or cone along a circle blends
 (ADR-0036), and an end the face across cuts in no closed form is traced and
-fitted, the surface exact (ADR-0037). The fetched tier's `fillet` column is
-8 parts (of 9), the committed tier's 6; the residue (the run-over, corners,
-crossing cylinders) is the next plan's sizing.
+fitted, the surface exact (ADR-0037), and a blend running into a step
+lengthens its corner edge (ADR-0038). The fetched tier's `fillet` column is
+6 parts (of 27), the committed tier's 6 (of 11); the residue (corners,
+tangent continuation, crossing cylinders) is the next plan's sizing.
 
 ## Rules that are not derivable from the code
 

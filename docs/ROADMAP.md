@@ -557,7 +557,8 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 
 **Status: opened 2026-10-02; scope confirmed by the human the same day;
 first plan (`c6-blend-network`) landed 2026-10-02, second plan
-(`c6-blend-pairs`) landed 2026-10-03, the cycle stays open.**
+(`c6-blend-pairs`) landed 2026-10-03, third (`blend-residue`) and fourth
+(`blend-run-over`) the same day, the cycle stays open.**
 The first plan took the two lines marked done below. On the fetched tier
 (27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column held 11
 parts where the step-1 baseline held 12 (C4's 17 of 38 counted both tiers;
@@ -678,9 +679,10 @@ cylinders and a trace that misses are the next plan's.
   coaxial plane, cylinder or cone~~ done (ADR-0036); cylinder × cylinder
   (crossing axes, parallel axes), torus × cylinder off its axis and torus ×
   plane off its axis remain; then elliptic cylinder.
-- A blend that runs out of its face onto the next (`BlendTooLarge` at a
-  large radius; 1198 of the census's edges), and a tangent corner the
-  walk stops at (`TangentChain`, STC-09).
+- ~~A blend running into a step (`BlendTooLarge`, a mixed corner)~~ done
+  (ADR-0038); what stays `BlendTooLarge` is the ring's contact at the axis
+  (a horn or spindle torus) and radii Open CASCADE refuses; and a tangent
+  corner the walk stops at (`TangentChain`, STC-09).
 - The corners refused as `VertexBlend`.
 - The remaining chamfer modes (two distances, a distance and an angle).
 - Variable radius, and blends over blends.
