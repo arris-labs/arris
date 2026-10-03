@@ -110,16 +110,16 @@ fixtures:
 | Refusal | Stage | Count | Blocks |
 |---|---|---:|---|
 | unsupported entity | read | 3 | healing |
+| Degenerate(TangentChain) | fillet | 3 | blend network |
 | gap past the cap | read | 2 | healing |
 | Unsupported(plane surface × NURBS surface) | box_cut | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_x | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_y | 2 | NURBS |
 | Unsupported(plane surface × NURBS surface) | drill_z | 2 | NURBS |
-| Degenerate(TangentChain) | fillet | 2 | blend network |
-| Degenerate(VertexBlend) | fillet | 2 | blend network |
 | unsupported entity | read | 2 | itself: supplemental geometry |
 | Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
 | Degenerate(BlendTooLarge) | fillet | 1 | blend network |
+| Degenerate(VertexBlend) | fillet | 1 | blend network |
 <!-- /histogram -->
 
 ---
@@ -688,6 +688,24 @@ refused alone, so no part's set is refused for a miter of several blended
 edges. The corners the plan takes are the four-edge vertex whose face
 across is split in two; the two-edge site and the miters stay behind it as
 backlog lines.
+Step 3 read the four-edge sites before building and found that most are
+not a split face across (ADR-0039). In 142 of the committed tier's 160,
+both corner edges are tangent dihedrals and the extra edge is the blended
+edge's own tangent continuation. That is a chain running on where both of
+its faces turn: a pin's rim split in half with its cylinder and cone
+(CTC-04, FTC-09), or a chamfered wall turning round a rounded corner
+(CTC-04). The census had compared the extra edge only with the corner
+edges, and now names the continuation apart. Only CTC-01's 18 edges are a
+fan, and no sampled edge is one. The selection now follows such a vertex
+as ADR-0035 follows one of three edges. The junction there, whose runs
+share no face, is refused `VertexBlend` naming both edges until step 4
+builds it. Walked, the committed tier's `VertexBlend` site table reads 112
+edges at that junction (CTC-04 104, FTC-09 8) and the fetched tier's 20
+(STC-07 16, CTC-01's AP242 edition 4). CTC-04's chamfered walls are not
+walked: as read, their faces are tangent only to `7e-11`–`9e-10`, beyond
+the angular precision ADR-0035's test uses. CTC-04's battery fillet now
+first meets a named tangent dihedral (`TangentChain`) that the vertex used
+to hide.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges

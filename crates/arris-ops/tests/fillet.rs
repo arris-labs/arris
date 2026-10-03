@@ -14,6 +14,7 @@ use arris_ops::arris_check::arris_topo::arris_geom::{
     Curve, Profile, ProfileLoop, ProfileSegment, Surface,
 };
 
+use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Unit, UnitQuaternion};
 use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Point3, Vec3};
 use arris_ops::arris_check::arris_topo::provenance::{Origin, Relation, Role, SweepPart, audit};
 use arris_ops::arris_check::arris_topo::{Body, Edge, EntityId, Model, Orientation, Shape};
@@ -1059,6 +1060,89 @@ fn a_miter_of_unequal_dihedrals_is_a_vertex_blend() {
     // Each edge alone blends.
     fillet(&mut m, prism, &[vertical], 0.2).unwrap();
     fillet(&mut m, prism, &[cap], 0.2).unwrap();
+}
+
+/// A chain runs on through a vertex of four edges where both of its faces
+/// turn tangentially (ADR-0039 §1): the foot of a chamfered stadium's
+/// chamfer, between the side plane and the chamfer strip, meets the foot
+/// of the half cone over the half cylinder at a vertex whose two other
+/// edges — side plane to half cylinder, strip to half cone — are tangent
+/// dihedrals. A fillet or a chamfer of the foot line walks on into the
+/// arc, and the junction, its runs sharing no face, is refused by name
+/// with both edges and the vertex until it is built (`plans/blend-corners`
+/// step 4), the model untouched. In two poses.
+#[test]
+fn a_chain_runs_on_where_both_faces_turn() {
+    let turn =
+        UnitQuaternion::from_axis_angle(&Unit::new_normalize(Vec3::new(0.3, -0.5, 0.8)), 1.1);
+    let d = 0.25;
+    for pose in [
+        Frame::world(),
+        Frame::from_rotation(Point3::new(120.0, -75.0, 40.0), &turn),
+    ] {
+        let mut m = Model::default();
+        let at = |x, y, z| pose.to_world(Point3::new(x, y, z));
+        let p = |u, v| Point2::new(u, v);
+        let profile = Profile {
+            plane: pose,
+            outer: ProfileLoop::Path {
+                start: p(0.0, -1.0),
+                segments: vec![
+                    ProfileSegment::LineTo(p(2.0, -1.0)),
+                    ProfileSegment::ArcTo {
+                        to: p(2.0, 1.0),
+                        via: p(3.0, 0.0),
+                    },
+                    ProfileSegment::LineTo(p(0.0, 1.0)),
+                    ProfileSegment::ArcTo {
+                        to: p(0.0, -1.0),
+                        via: p(-1.0, 0.0),
+                    },
+                ],
+            },
+            holes: Vec::new(),
+        };
+        let direction = pose.vec_to_world(Vec3::z());
+        let stadium = extrude(&mut m, &profile, direction, 1.0).unwrap().0;
+        let top = edge_at(&m, stadium, at(1.0, 1.0, 1.0));
+        let chamfered = chamfer(&mut m, stadium, &[top], d).unwrap().0;
+        let foot = edge_at(&m, chamfered, at(1.0, 1.0, 1.0 - d));
+        let before = dump_text(&m, chamfered).unwrap();
+        for blend in [fillet, chamfer] {
+            let err = blend(&mut m, chamfered, &[foot], 0.1).unwrap_err();
+            let OpError::Degenerate { entities, reason } = &err else {
+                panic!("{err}");
+            };
+            assert_eq!(*reason, Reason::VertexBlend, "{err}");
+            let [a, b, v] = entities[..] else {
+                panic!("two edges and a vertex: {err}");
+            };
+            let (EntityId::Edge(ea), EntityId::Edge(eb), EntityId::Vertex(v)) = (a.id, b.id, v.id)
+            else {
+                panic!("two edges and a vertex: {err}");
+            };
+            // The closed chain's first junction in vertex order: a foot
+            // line and a foot arc, at one of the four corners of the foot.
+            let circles = [ea, eb]
+                .iter()
+                .filter(|&&e| {
+                    let (curve, _) = m.edge(e).unwrap().curve().unwrap();
+                    matches!(m.curve(curve).unwrap(), Curve::Circle { .. })
+                })
+                .count();
+            assert_eq!(circles, 1, "{err}");
+            let corner = m.vertex(v).unwrap().point();
+            let corners = [(0.0, 1.0), (2.0, 1.0), (0.0, -1.0), (2.0, -1.0)];
+            assert!(
+                corners
+                    .iter()
+                    .any(|&(x, y)| (corner - at(x, y, 1.0 - d)).norm() < 1e-9),
+                "{corner:?}"
+            );
+            assert_eq!(m.vertex_edges(v).unwrap().len(), 4);
+        }
+        assert_eq!(dump_text(&m, chamfered).unwrap(), before);
+    }
 }
 
 /// Three fillets at a box corner meet in a sphere octant about the ball's

@@ -84,6 +84,9 @@ stripes on the ball's cross-section and the selection follows the chain;
 `TangentChain` keeps the tangent dihedral and a tangent end that is not
 such a vertex. An open circle between a plane and a cylinder blends as
 the ring does, its ends trimmed on a plane through the axis.)*
+*(Amended by ADR-0039: a vertex of four edges where both of the edge's
+faces turn tangentially is a tangent vertex too, and its junction cuts
+two edges; other vertices of four edges stay `VertexBlend`.)*
 
 **The `BlendTooLarge` bound.** A contact curve or an end arc that would
 leave its face through any edge but the corner's own is refused by name,

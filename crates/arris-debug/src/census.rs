@@ -416,8 +416,15 @@ fn smooth_edge(m: &Model, edge: EdgeId) -> bool {
     }
 }
 
-/// What an extra edge at a vertex of more than three edges is.
-fn extra_kind(m: &Model, edge: EdgeId, vertex: VertexId, corners: &[EdgeId]) -> &'static str {
+/// What an extra edge at a vertex of more than three edges is; `blended`
+/// is the edge whose blend was refused there.
+fn extra_kind(
+    m: &Model,
+    edge: EdgeId,
+    vertex: VertexId,
+    blended: EdgeId,
+    corners: &[EdgeId],
+) -> &'static str {
     let seam = m
         .edge_uses(edge)
         .is_ok_and(|u| u.len() == 2 && u[0].face == u[1].face);
@@ -427,11 +434,14 @@ fn extra_kind(m: &Model, edge: EdgeId, vertex: VertexId, corners: &[EdgeId]) -> 
     let Some(t) = tangent_at_vertex(m, edge, vertex) else {
         return "a degenerate edge";
     };
+    let continues = tangent_at_vertex(m, blended, vertex).is_some_and(|b| parallel(b, t));
     let collinear = corners
         .iter()
         .filter_map(|&c| tangent_at_vertex(m, c, vertex))
         .any(|c| parallel(c, t));
-    if collinear {
+    if continues {
+        "the blended edge's tangent continuation"
+    } else if collinear {
         "an edge continuing a corner edge"
     } else if smooth_edge(m, edge) {
         "a smooth edge"
@@ -444,10 +454,12 @@ fn extra_kind(m: &Model, edge: EdgeId, vertex: VertexId, corners: &[EdgeId]) -> 
 /// entities the error names and the vertex's edges (`None` for any other
 /// refusal): *a vertex of more than three edges*, with what the extra edges
 /// are (a sharp edge between two faces across; a smooth edge; a seam; a
-/// degenerate edge; an edge continuing a corner edge); *a corner edge with
+/// degenerate edge; the blended edge's tangent continuation; an edge
+/// continuing a corner edge); *a corner edge with
 /// no curve*; *corner edges that share no face across*; *a closed edge's
 /// vertex*; *a blended edge with no curve*; or *an end that more than one
-/// blended edge meets*. Each is followed by the pair of surface kinds the
+/// blended edge meets*, by its vertex's edges — the chain's junction at a
+/// vertex of four edges where both faces turn is one (ADR-0039). Each is followed by the pair of surface kinds the
 /// blended edge separates.
 pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String> {
     let OpError::Degenerate {
@@ -469,7 +481,10 @@ pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String
         .count();
     let what = match (vertex, blended) {
         (None, _) => "a blended edge with no curve".to_string(),
-        (Some(_), n) if n > 1 => format!("{n} edges of the run meet at an end"),
+        (Some(v), n) if n > 1 => {
+            let at = m.vertex_edges(v).map_or(0, <[EdgeId]>::len);
+            format!("{n} edges of the run meet at a vertex of {at} edges")
+        }
         (Some(v), _) => {
             let at = m
                 .vertex_edges(v)
@@ -483,7 +498,7 @@ pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String
                 let mut kinds: Vec<&str> = at
                     .iter()
                     .filter(|&&x| x != edge && !corners.contains(&x))
-                    .map(|&x| extra_kind(m, x, v, &corners))
+                    .map(|&x| extra_kind(m, x, v, edge, &corners))
                     .collect();
                 kinds.sort_unstable();
                 kinds.dedup();
@@ -1139,6 +1154,57 @@ mod tests {
         assert!(
             set.starts_with("1 blended edges at a vertex of 5 edges"),
             "{set}"
+        );
+    }
+
+    /// The fixture `regression/chamfered-stadium-foot-fillet`: the chamfer's
+    /// foot runs on into the half cone's at a vertex of four edges where
+    /// both faces turn (ADR-0039), and the junction is named by the run's
+    /// two edges and its vertex.
+    #[test]
+    fn a_junction_at_a_vertex_of_four_edges_is_named_by_the_run() {
+        use crate::unmetered::{chamfer, extrude};
+        use arris_io::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
+        use arris_io::arris_check::arris_topo::arris_math::{Frame, Point2};
+        let mut m = Model::default();
+        let p = |u, v| Point2::new(u, v);
+        let profile = Profile {
+            plane: Frame::world(),
+            outer: ProfileLoop::Path {
+                start: p(0.0, -1.0),
+                segments: vec![
+                    ProfileSegment::LineTo(p(2.0, -1.0)),
+                    ProfileSegment::ArcTo {
+                        to: p(2.0, 1.0),
+                        via: p(3.0, 0.0),
+                    },
+                    ProfileSegment::LineTo(p(0.0, 1.0)),
+                    ProfileSegment::ArcTo {
+                        to: p(0.0, -1.0),
+                        via: p(-1.0, 0.0),
+                    },
+                ],
+            },
+            holes: Vec::new(),
+        };
+        let (stadium, _) = extrude(&mut m, &profile, Vec3::z(), 1.0).unwrap();
+        let at = |m: &Model, body, q: P3| {
+            m.edges(body)
+                .unwrap()
+                .into_iter()
+                .find(|h| edge_midpoint(m, h.id).is_some_and(|p| (p - q).norm() < 1e-9))
+                .unwrap()
+        };
+        let top = at(&m, stadium, P3::new(1.0, 1.0, 1.0));
+        let (chamfered, _) = chamfer(&mut m, stadium, &[top], 0.25).unwrap();
+        let foot = at(&m, chamfered, P3::new(1.0, 1.0, 0.75));
+        let mut scratch = m.clone();
+        let Err(Refused::Op(e)) = blend(&mut scratch, chamfered, &[foot], 0.1) else {
+            panic!("the junction is refused until it is built");
+        };
+        assert_eq!(
+            vertex_blend_cause(&m, foot.id, &e).unwrap(),
+            "2 edges of the run meet at a vertex of 4 edges; edge plane × plane"
         );
     }
 

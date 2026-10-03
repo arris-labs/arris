@@ -784,8 +784,12 @@ fn convex_edge(m: &Model, view: &View, edge: EdgeId) -> Result<Option<bool>, OpE
 /// face, both convex or both concave — an outline that turns from one to
 /// the other there puts the ball on the far side of the shared face — and
 /// the direction leaving the vertex along `next` within a right angle of
-/// the one arriving along `edge`. `None` at any other vertex, and where
-/// both of the vertex's other edges would qualify.
+/// the one arriving along `edge`. Or, where both of the edge's faces turn
+/// there (ADR-0039 §1), exactly four edges `edge`, `next`, `w₀` and `w₁`,
+/// `edge` and `next` sharing no face, each `w` tangent at the vertex and
+/// between one face of `edge` and one of `next`, a different one of each,
+/// and `next` as above. `None` at any other vertex, and where more than
+/// one of the vertex's other edges would qualify.
 fn tangent_vertex(
     m: &Model,
     view: &View,
@@ -796,7 +800,14 @@ fn tangent_vertex(
     let Some(at) = view.vertex_edges.get(&vertex) else {
         return Ok(None);
     };
-    if at.len() != 3 || !at.contains(&edge) {
+    // The faces `edge` and `next` share: one at a vertex of three edges,
+    // none at a vertex of four.
+    let shared = match at.len() {
+        3 => 1,
+        4 => 0,
+        _ => return Ok(None),
+    };
+    if !at.contains(&edge) {
         return Ok(None);
     }
     let others: Vec<EdgeId> = at.iter().copied().filter(|&x| x != edge).collect();
@@ -823,20 +834,38 @@ fn tangent_vertex(
     };
     let own = faces_of(edge);
     let mut found = None;
-    for (i, &next) in others.iter().enumerate() {
-        let w = others[1 - i];
+    'next: for &next in &others {
         let next_entity = *m.edge(next)?;
-        let (Some(t_w), Some((_, next_range))) = (parameter_at(m, w, vertex)?, next_entity.curve())
-        else {
+        let Some((_, next_range)) = next_entity.curve() else {
             continue;
         };
+        let theirs = faces_of(next);
         if next_entity.start() == next_entity.end()
-            || tangent_at(m, view, w, t_w, tol)? != Some(true)
             || tangent_at(m, view, next, next_range.midpoint(), tol)? != Some(false)
-            || own.intersection(&faces_of(next)).count() != 1
+            || own.intersection(&theirs).count() != shared
             || convex_edge(m, view, next)? != convex_edge(m, view, edge)?
         {
             continue;
+        }
+        // Each other edge tangent at the vertex; at a vertex of four, each
+        // joins a face of `edge` to a face of `next`, no face twice.
+        let mut joined: BTreeSet<FaceId> = BTreeSet::new();
+        for &w in others.iter().filter(|&&w| w != next) {
+            let Some(t_w) = parameter_at(m, w, vertex)? else {
+                continue 'next;
+            };
+            if tangent_at(m, view, w, t_w, tol)? != Some(true) {
+                continue 'next;
+            }
+            if shared == 0 {
+                let faces_w = faces_of(w);
+                let bridges = faces_w.len() == 2
+                    && own.intersection(&faces_w).count() == 1
+                    && theirs.intersection(&faces_w).count() == 1;
+                if !bridges || !faces_w.iter().all(|&f| joined.insert(f)) {
+                    continue 'next;
+                }
+            }
         }
         let Some(away) = leaving(next)? else {
             continue;
@@ -1836,7 +1865,10 @@ impl<'a> Run<'a> {
 /// every pcurve of it exact. Two runs whose points or ball centres differ
 /// by more than their tolerance, or one convex and one concave, is an
 /// internal fault the tangent-vertex test makes unreachable; a `w` shorter
-/// than the cut is `Reason::BlendTooLarge`.
+/// than the cut is `Reason::BlendTooLarge`. Runs that share no face, met at
+/// a vertex of four edges where both faces turn (ADR-0039), are
+/// `Reason::VertexBlend` naming both edges and the vertex until that
+/// junction is built.
 fn junction(
     m: &Model,
     view: &View,

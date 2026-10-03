@@ -1902,6 +1902,15 @@ fn regression_tangent_chain_horn_torus() {
     run("regression/tangent-chain-horn-torus");
 }
 
+/// The shrunk CTC-04 corner: a chamfered stadium's chamfer foot filleted,
+/// the chain running on at a vertex of four edges where both its faces
+/// turn tangentially (ADR-0039). The desired body is Open CASCADE's.
+#[test]
+#[ignore = "Reason::VertexBlend: the chain is walked through the four-edge vertex, but a junction whose runs share no face is not built yet (docs/plans/blend-corners.md step 4)"]
+fn regression_chamfered_stadium_foot_fillet() {
+    run("regression/chamfered-stadium-foot-fillet");
+}
+
 /// A rib standing on a plate, its vertical corner edge filleted down to the
 /// plate: a convex blend ending on a face that surrounds the rib, the edge's
 /// corner with it concave, so the end arc lies in the rib's footprint and the

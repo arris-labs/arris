@@ -1,0 +1,164 @@
+{
+  "description": "the shrunk CTC-04 corner (blend-corners step 3): blend/stadium-outline-chamfer's stadium chamfered at d 0.25, then the chamfer's foot on the side y = 1 filleted at r 0.1 — the convex edge between the side plane and the chamfer strip. At each end it runs on tangentially into the foot of the half cone over the half cylinder, at a vertex of four edges where both of its faces turn: the vertical line where the side plane meets the half cylinder and the chord where the chamfer strip meets the half cone are both tangent dihedrals. Open CASCADE follows the chain round the whole outline and blends it; Arris walks the chain (ADR-0039) and refuses the junction, the runs sharing no face, as Reason::VertexBlend naming both edges and the vertex. The desired body is Open CASCADE's",
+  "params": {
+    "d": 0.25,
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2,
+              -1
+            ]
+          },
+          {
+            "arc_to": [
+              2,
+              1
+            ],
+            "via": [
+              3,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "arc_to": [
+              0,
+              -1
+            ],
+            "via": [
+              -1,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "stadium",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "chamfered",
+      "op": "chamfer",
+      "of": "stadium",
+      "edges": [
+        [
+          1,
+          -1,
+          1
+        ],
+        [
+          3,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          1
+        ],
+        [
+          -1,
+          0,
+          1
+        ]
+      ],
+      "distance": "d"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "chamfered",
+      "edges": [
+        [
+          1,
+          1,
+          "1 - d"
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        1,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "foot_gone",
+      "point": [
+        1,
+        "1 - 0.004 * 0.9238795",
+        "1 - d - 0.004 * 0.3826834"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bottom_rim",
+      "point": [
+        1,
+        1,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        1,
+        0,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

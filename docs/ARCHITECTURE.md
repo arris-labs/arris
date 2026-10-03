@@ -795,7 +795,10 @@ The selection follows chains (ADR-0035): at a *tangent vertex* — three
 edges, the two faces of the third tangent there, the next edge open, not
 itself a tangent dihedral, sharing exactly one face with the blended one,
 convex where it is convex and concave where it is concave, and running on
-within a right angle — the blend runs on into the next edge with the same
+within a right angle — or a vertex of four edges where both of the
+blended edge's faces turn (ADR-0039): the next edge sharing no face with
+it, and each of the two others tangent there and between one face of each
+— the blend runs on into the next edge with the same
 kind and size, and on from there until a vertex that is not one, so naming
 one edge of a chain or all of them gives one result with the same ids.
 Each edge keeps its own stripe and its own blend face. At a tangent vertex
@@ -806,7 +809,9 @@ for fillets, the chord of the same two points for chamfers, from the point
 the other two meet on the third edge — a line at constant `v` on a
 stripe's cylinder and at constant `u` on a ring's torus or cone, every
 pcurve exact; the third edge is shortened to `p`, the vertex goes, and no
-face across takes an arc. A chain that reaches a pair outside the table is
+face across takes an arc. A junction at a vertex of four edges, its runs
+sharing no face, is `Reason::VertexBlend` naming both edges and the vertex
+until it is built (ADR-0039 §2). A chain that reaches a pair outside the table is
 refused naming that pair and the edge the walk reached. The edges are
 blended in the body's iteration order, whatever order they are listed in, so the result
 and its ids are the same for any order of one set; disjoint blends share

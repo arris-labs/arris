@@ -61,6 +61,10 @@ or all, gives the same result with the same ids: the operation blends
 the union of the chains in the body's iteration order, as ADR-0007 does
 the named set. A walk that reaches an edge outside the table refuses
 with that edge's own refusal, which names it.
+*(Amended by ADR-0039: a vertex of exactly four edges is a tangent
+vertex too where `e` and `e′` share no face and each of the two others is
+tangent at `v` between one face of each; its junction runs between points
+on those two edges, both cut.)*
 
 **2. One stripe per edge, still.** Each edge of a chain keeps its own
 closed-form stripe and its own blend face, `Generated` from that edge
@@ -129,6 +133,9 @@ contact `p` leaves `w`, or whose `w` is shorter than the cut, is
 `BlendTooLarge` naming the edge and `w`. A chain through a pair outside
 the table is `Unsupported` naming that edge's pair. `Reason` gains no
 variant.
+*(Amended by ADR-0039: `VertexBlend` no longer keeps the vertex of four
+edges where both faces turn tangentially; it keeps every other vertex of
+more than three.)*
 
 ### Worked example: the stadium's outline
 
