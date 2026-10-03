@@ -92,7 +92,7 @@ bound has to be established here.
   §7 (end vertices `Generated`, shortened edges `Modified`). Fixtures with
   Open CASCADE's oracle (volume, area, centroid, counts, probes) at a
   radius where the ball fits; checker green at `Full`; one chamfer.
-- [ ] Step 7 **[3]** — The ruling stripe ending on a cylinder or cone
+- [x] Step 7 **[3]** — The ruling stripe ending on a cylinder or cone
   square across (the quartic): the same machinery on the stripe's end;
   `Unsupported` stays for an oblique case the trace does not take, naming
   the face across. Fixtures with oracle as step 6; the regression twins
@@ -153,4 +153,11 @@ bound has to be established here.
   torus on both families and the cone on a cylinder across build;
   `blend/oblique-end-unsupported` was that family's refusal and is now
   `blend/d-notch-off-axis-rim-fillet`, built against the same oracle.
+- Found at step 7: no `regression/` twin was an end family — the seven
+  blend regressions fail as before on their own lines (the parallel-cylinder
+  row, an edge off its plane, the checker fault at CTC-03, the turned
+  stadium's torus pair, a fuse's fit, the walked blend's file), so none
+  moved. A chamfer's plane on a cylinder or a cone across takes the
+  intersector's exact conic between the trim points rather than a trace;
+  `blend/rib-into-cone-chamfer` holds the ellipse.
 - Resolved 2026-10-03 (human): step 2's gate fired (steps 3, 6 and 7 as written free 2 of 15 parts; step 3 none); option (a) taken: steps 3–4 dropped, the torus-on-cylinder end added to step 6, which frees 3 (`ftc_08`, `ctc_01` ap242, `stc_08`). `fillet-by-part.md` has the rows.

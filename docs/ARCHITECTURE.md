@@ -745,7 +745,14 @@ vertex of three edges, the plane the corner's other two edges share:
 the section is a circle when that plane is perpendicular to the edge
 and an ellipse when oblique, exact on the plane and a `Line` or a
 fitted `Nurbs` on the cylinder by the oblique-section rule, at the arc's
-own tolerance; the corner vertex goes, the corner's other two edges are
+own tolerance. A cylinder or a cone across — a rib running into a boss —
+is pierced by each contact line at the root nearest the vertex, in closed
+form; a fillet's cylinder meets it in a quartic, traced along the rulings
+by `trace_section` and fitted between the two trim points on the blend's
+band (`blend/traced.rs`, ADR-0037), and a chamfer's plane in the conic
+the intersector writes exactly, the stretch between the two points on the
+chamfer's band; that face's pcurve is placed in its loop's translate at
+the corner edge. The corner vertex goes, the corner's other two edges are
 shortened on their own curves to the arc's ends, and the face across
 takes the arc in its loop. Two blends meeting at a vertex whose third
 edge stays sharp meet in a miter: the two equal-radius cylinders' axes

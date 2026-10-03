@@ -1584,6 +1584,36 @@ fn blend_twin_boss_foot_chamfer() {
     run("blend/twin-boss-foot-chamfer");
 }
 
+/// A rib running into a round boss, its top edge filleted: the ruling
+/// stripe's cylinder ends on the boss's cylinder square across it in a
+/// quartic, traced along the rulings and fitted between where each
+/// contact line pierces the boss (ADR-0037).
+#[test]
+fn blend_rib_into_boss_fillet() {
+    run("blend/rib-into-boss-fillet");
+}
+
+/// The same edge chamfered: the chamfer's plane ends on the boss in an
+/// ellipse, exact.
+#[test]
+fn blend_rib_into_boss_chamfer() {
+    run("blend/rib-into-boss-chamfer");
+}
+
+/// The rib running into a conical boss, filleted: the stripe's cylinder
+/// ends on the cone in a quartic, traced and fitted (ADR-0037).
+#[test]
+fn blend_rib_into_cone_fillet() {
+    run("blend/rib-into-cone-fillet");
+}
+
+/// The rib into the conical boss chamfered: the chamfer's plane ends on
+/// the cone in an ellipse the intersector writes exactly (`plane_cone`).
+#[test]
+fn blend_rib_into_cone_chamfer() {
+    run("blend/rib-into-cone-chamfer");
+}
+
 /// A bar's wall running tangentially into a quarter cylinder, its top edge
 /// filleted: the fillet runs on from the line into the arc at the tangent
 /// vertex, a cylinder stripe and a torus section meeting on the ball's

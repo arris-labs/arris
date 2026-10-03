@@ -1,0 +1,144 @@
+{
+  "description": "a rib [0,-1,0]\u2013[5,1,2] running along x into a round boss of radius 1.5 about the vertical axis through (6, 0), standing from z = -1 to 3, fused, the rib's top edge at y = 1 filleted at r 0.3, convex: two planes blend to a cylinder of radius r, a ruling stripe; its far end on the plane x = 0 is square to it, and the end on the boss is the quartic where the stripe's cylinder meets the boss's cylinder, traced along the rulings and fitted between where each contact line pierces it (ADR-0037), the surface exact. The blend meets the boss at a concave corner, so the boss's face takes the end in its footprint of the rib. No closed form for the volume: the oracle's",
+  "params": {
+    "r": 0.3
+  },
+  "steps": [
+    {
+      "name": "rib",
+      "op": "box",
+      "min": [
+        0,
+        -1,
+        0
+      ],
+      "max": [
+        5,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "boss",
+      "op": "cylinder",
+      "base": [
+        6,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 4
+    },
+    {
+      "name": "ribbed",
+      "op": "fuse",
+      "a": "rib",
+      "b": "boss"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "ribbed",
+      "edges": [
+        [
+          2,
+          1,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_rib",
+      "point": [
+        2,
+        0,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_boss",
+      "point": [
+        6,
+        0,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        2,
+        0.98,
+        1.98
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone_near_boss",
+      "point": [
+        4.6,
+        0.98,
+        1.98
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "rib_end_kept",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "above_rib",
+      "point": [
+        3,
+        0,
+        2.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        2,
+        "1 - r + r / sqrt(2)",
+        "2 - r + r / sqrt(2)"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top_contact",
+      "point": [
+        2,
+        "1 - r",
+        2
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_side_contact",
+      "point": [
+        2,
+        1,
+        "2 - r"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}
