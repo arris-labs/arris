@@ -534,7 +534,17 @@ def round_trip(name: str, fixture: dict, expected: dict, tmp: Path) -> bool:
         path = tmp / f"{name.replace('/', '_')}-{variant}.step"
         step.write(shape, path)
         back = step.read(path)
-        actual = measure(back, probes(fixture, variant), tol["probe"])
+        try:
+            actual = measure(back, probes(fixture, variant), tol["probe"])
+        except OracleError as e:
+            # A result whose own STEP Arris's reader refuses
+            # (`analytic.occt_step_refused`) may be one Open CASCADE reads
+            # back as no closed surface either: the file is the refused one,
+            # and the corpus runner asserts that refusal.
+            if not fixture.get("analytic", {}).get("occt_step_refused"):
+                raise
+            print(f"  {name}[{variant}]: Open CASCADE's own STEP reads back as no closed surface ({e}), refused by Arris's reader (analytic.occt_step_refused)")
+            continue
         # The reader may move the boundary within the tolerances the file
         # carries (ADR-0023); the fixture's own tolerance where it is wider.
         rows = compare(expected["results"][variant], actual, within_own_tolerance(tol, shape, expected["results"][variant]))
