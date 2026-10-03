@@ -96,7 +96,7 @@ bound has to be established here.
   through `real_parts --vertex-blend` and both tiers. A unit test on a
   small recipe per cause holds the classification: `blend/five-edge-vertex`
   for the fan, a cone apex for the curveless corner edge, and so on.
-- [ ] Step 2 **[1]** — Record the census in `docs/ROADMAP.md` §C6 and
+- [x] Step 2 **[1]** — Record the census in `docs/ROADMAP.md` §C6 and
   `docs/BACKLOG.md`: each cause with its count and Open CASCADE's verdict,
   and the parts its sampled edges would free. Confirm the order of steps 3
   to 6 or rewrite them here. **Gate:** if the edges Open CASCADE builds
@@ -132,7 +132,7 @@ bound has to be established here.
   the ends step 3's run counted. `Unsupported` stays where the trace does
   not take the end, naming the face across. Add fixtures with an oracle,
   as in step 4.
-- [ ] Step 6 **[3]** — Conditional on step 2: the sampled set blended
+- [-] Step 6 **[3]** — Struck at step 2 (the census found no part whose sampled set is refused `VertexBlend` while each edge alone builds: in all three sets a single sampled edge is refused alone, so the miter lines stay in the backlog). Was: conditional on step 2: the sampled set blended
   together. Only if step 1 finds a part's set refused `VertexBlend` where
   each edge alone builds, build the miter or corner it names, from the
   backlog's three: unequal dihedrals, a ruling blend's miter, or the
@@ -191,6 +191,13 @@ bound has to be established here.
   count.
 
 ## Open questions
+- Step 2's census (2026-10-03): the fan is the leading site and Open CASCADE
+  builds it (the four-edge vertex with one sharp extra edge: 60 of 60 asked on
+  plane × plane and cone × cylinder, fetched; 46 of 46, committed), so the
+  gate does not fire and the order of steps 3 to 5 stands. The fan is two
+  faces across, one extra edge, not a larger one: step 7's property takes two
+  to four faces across all the same. A second site (a vertex of two edges on a
+  cylinder × plane, 77 fetched edges) is a backlog line, not this plan's.
 - ⚠ OPEN (agent, step 2): which cause leads. The fan of faces across is
   the hypothesis. `blend/five-edge-vertex` is a fan, and a real part's face
   split or a fused boss at an edge's end makes one. If step 1 finds that

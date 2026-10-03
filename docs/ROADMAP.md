@@ -666,6 +666,28 @@ blend network blocks 10 at `fillet`, beside C4's 17. What is left of the
 run-over is the horn and spindle torus at the axis and radii Open CASCADE
 refuses; the corners (`VertexBlend`), tangent continuation, the crossing
 cylinders and a trace that misses are the next plan's.
+The fifth plan (`blend-corners`, opened 2026-10-03) counted `VertexBlend` by
+site, each edge blended alone at the battery's radius and the battery's
+sample together, each put to Open CASCADE (`census::vertex_blend_cause`,
+`real_parts --vertex-blend`, `target/real-parts/vertex-blend.md`). On the six
+fetched parts that still refuse at `fillet` 227 edges are refused
+`VertexBlend`; of the 141 put to Open CASCADE 92 build, 11 build an invalid
+solid and 38 refuse. The leading site is *a vertex of four edges whose one
+extra edge is sharp, between two faces across*: 104 edges, and the 60 of
+them on a plane against a plane or a cone against a cylinder that were asked
+all build (the 7 asked on a cylinder against a plane in `stc_07` are
+refused). Next, *corner edges that share no face across at a vertex of two
+edges* on a cylinder against a plane: 77 edges, 30 of 37 asked build. A
+smooth, seam or collinear extra edge (28 + 18 edges in `stc_06` and
+`stc_07`) is built by Open CASCADE in 2 of 37 asked. The committed tier says
+the same: of 187 edges 160 are the four-edge sharp site (46 asked, 46
+build), 20 the two-edge site (17 of 20 build). The sampled set blended
+together is refused `VertexBlend` in three solids (`ctc_04`, committed
+`ctc-04` and `ftc-09`), and in each a single sampled edge is already
+refused alone, so no part's set is refused for a miter of several blended
+edges. The corners the plan takes are the four-edge vertex whose face
+across is split in two; the two-edge site and the miters stay behind it as
+backlog lines.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
