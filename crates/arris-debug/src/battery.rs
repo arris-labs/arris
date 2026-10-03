@@ -142,6 +142,20 @@ impl Refused {
             Refused::Op(e) => crate::histogram::blocks_reason(stage, e),
         }
     }
+
+    /// [`Refused::blocks`] for a refusal raised on the model `m`: a
+    /// cylinder pair whose axes are not parallel is the NURBS cycle's
+    /// (`crate::histogram::blocks_reason_in`).
+    pub fn blocks_in(
+        &self,
+        m: &arris_io::arris_check::arris_topo::Model,
+        stage: crate::histogram::Stage,
+    ) -> Option<crate::histogram::Cycle> {
+        match self {
+            Refused::Read(r) => Some(crate::histogram::blocks_refusal(r)),
+            Refused::Op(e) => crate::histogram::blocks_reason_in(m, stage, e),
+        }
+    }
 }
 
 /// A stage judged: its outcome, and the refusal behind it where Arris

@@ -383,7 +383,7 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
             let Some(at) = Stage::of_name(&stage) else {
                 continue;
             };
-            match refused.blocks(at) {
+            match refused.blocks_in(&m, at) {
                 Some(cycle) => report.refusals.push(Counted {
                     at: key.clone(),
                     stage,

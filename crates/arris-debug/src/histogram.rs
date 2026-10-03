@@ -18,7 +18,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use arris_io::arris_check::arris_topo::arris_geom::{CurveKind, GeomKind, SurfaceKind};
+use arris_io::arris_check::arris_topo::arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
+use arris_io::arris_check::arris_topo::{EntityId, Model};
 use arris_io::step::{ReadError, Refusal};
 use arris_ops::{OpError, Reason};
 
@@ -193,6 +194,92 @@ pub fn blocks_refusal(refusal: &Refusal) -> Cycle {
         | Refusal::Gap { .. }
         | Refusal::Invalid { .. } => Cycle::Healing,
         Refusal::Pcurve { .. } => Cycle::Nurbs,
+    }
+}
+
+/// How the axes of two cylinders a blend is refused for lie
+/// (`blend-fan` step 7): the pair is the blend network's only where they
+/// are parallel, which ADR-0036 §5 closes with a cylinder; any other pair
+/// meets in a curve that is a quartic or an ellipse, and its blend is a
+/// surface with no exact kind, which is the NURBS cycle's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CylinderPair {
+    /// The axes are parallel.
+    Parallel,
+    /// The axes meet: a crease of two cylinders, whose radii are equal
+    /// where the crease is a planar ellipse.
+    Crossing {
+        /// Whether the two radii are equal.
+        equal_radii: bool,
+    },
+    /// The axes are skew.
+    Skew,
+}
+
+impl core::fmt::Display for CylinderPair {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(match self {
+            CylinderPair::Parallel => "parallel axes",
+            CylinderPair::Crossing { equal_radii: true } => "crossing axes, equal radii",
+            CylinderPair::Crossing { equal_radii: false } => "crossing axes",
+            CylinderPair::Skew => "skew axes",
+        })
+    }
+}
+
+/// The axes of the two cylinders an `Unsupported` pair names, in `m`'s
+/// tolerances: `None` unless both are faces of `m` on cylinders.
+pub fn cylinder_pair(m: &Model, error: &OpError) -> Option<CylinderPair> {
+    let OpError::Unsupported { a, b } = error else {
+        return None;
+    };
+    let cylinder = |id: EntityId| -> Option<(
+        arris_io::arris_check::arris_topo::arris_math::Point3,
+        arris_io::arris_check::arris_topo::arris_math::Vec3,
+        f64,
+    )> {
+        let EntityId::Face(face) = id else {
+            return None;
+        };
+        match m.surface(m.face(face).ok()?.surface()).ok()? {
+            Surface::Cylinder { frame, radius } => {
+                Some((frame.origin(), frame.z().into_inner(), *radius))
+            }
+            Surface::Plane { .. }
+            | Surface::EllipticCylinder { .. }
+            | Surface::Cone { .. }
+            | Surface::Sphere { .. }
+            | Surface::Torus { .. }
+            | Surface::Nurbs(_) => None,
+        }
+    };
+    let ((oa, da, ra), (ob, db, rb)) = (cylinder(a.1.id)?, cylinder(b.1.id)?);
+    let precision = m.precision();
+    let across = da.cross(&db);
+    if across.norm() <= precision.angular_tolerance {
+        return Some(CylinderPair::Parallel);
+    }
+    let gap = (ob - oa).dot(&across).abs() / across.norm();
+    Some(if gap <= precision.default_tolerance {
+        CylinderPair::Crossing {
+            equal_radii: (ra - rb).abs() <= precision.default_tolerance,
+        }
+    } else {
+        CylinderPair::Skew
+    })
+}
+
+/// [`blocks_reason`] for a refusal in the model `m` it was raised on: a
+/// fillet's cylinder pair whose axes are not parallel is the NURBS cycle's,
+/// its blend having no exact surface; every other refusal is
+/// [`blocks_reason`]'s.
+pub fn blocks_reason_in(m: &Model, stage: Stage, error: &OpError) -> Option<Cycle> {
+    match cylinder_pair(m, error) {
+        Some(CylinderPair::Crossing { .. } | CylinderPair::Skew) if stage == Stage::Fillet => {
+            Some(Cycle::Nurbs)
+        }
+        Some(CylinderPair::Parallel | CylinderPair::Crossing { .. } | CylinderPair::Skew)
+        | None => blocks_reason(stage, error),
     }
 }
 

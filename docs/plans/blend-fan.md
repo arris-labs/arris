@@ -167,7 +167,7 @@ bound has to be established here.
     oracle's answer for `k = 3` is two fixtures,
     `blend/roof-fan-three-{fillet,chamfer}`: Open CASCADE builds both at
     14 / 21 / 9, and Arris matches (ADR-0043 §Consequences says so).
-- [ ] Step 7 **[1]** — **The crease attributed to NURBS.**
+- [x] Step 7 **[1]** — **The crease attributed to NURBS.**
   - The census names a cylinder pair by its axes. The survey's fillet
     attribution puts a non-parallel pair under `Cycle::Nurbs`, with a
     test on CTC-01's committed edition (`real/nist-ctc-01`) that its
@@ -176,6 +176,19 @@ bound has to be established here.
     under the NURBS cycle, carrying `crossing-cylinders`' geometry: the
     spine an ellipse, the contacts ellipses, the chamfer an
     `EllipticCylinder`.
+  - Seen: `histogram::cylinder_pair` names the pair by its axes
+    (`CylinderPair`: parallel, crossing with equal radii or not, skew),
+    and `histogram::blocks_reason_in` takes the model, so the survey
+    (`Refused::blocks_in`) and the census put a fillet's non-parallel pair
+    under `Cycle::Nurbs`. That is the survey passing the cause in, as the
+    open question preferred. The committed fixtures' recorded `blocks` and
+    the battery example keep `blocks`, which has no model: CTC-01's
+    committed fixture records `TangentChain` for its frozen battery
+    operand, and the committed tier's column is the census's (ROADMAP
+    §C6). The census
+    prints the sample's pair with its axes. The test
+    `ctc_01s_crossing_cylinders_are_the_nurbs_cycles` reads the
+    committed STEP and holds it: crossing axes, equal radii, NURBS.
 - [ ] Step 8 **[1]** — **The tiers measured.** Run `tools/real-parts.sh`
   and `real_parts --census-committed`, and record the numbers in this
   plan:
@@ -226,7 +239,6 @@ bound has to be established here.
   stays `VertexBlend`: no corpus edge has one, and each piece's side
   would have to be read apart. ADR-0043 §6 does not list it, so
   `/retire-plan` adds it there as an amendment note.
-- ⚠ OPEN: how the attribution tells a non-parallel cylinder pair apart.
-  Either `blocks_reason` reads the model, or the survey passes the census
-  cause in. Agent, by step 7. Preferred: the survey passes the cause, so
-  `blocks_reason` stays a function of the refusal and its context.
+- Decided (step 7): the attribution tells a non-parallel cylinder pair
+  apart where the model is at hand (`blocks_reason_in`, the survey and the
+  census), and `blocks_reason` stays a function of the refusal alone.

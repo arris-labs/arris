@@ -38,7 +38,7 @@ use crate::battery::Class;
 use crate::battery::{fillet_edges, fillet_radius};
 use crate::differential::panicked;
 use crate::fixtures::{PrecisionSpec, corpus_root};
-use crate::histogram::{COMMITTED_TIER, Stage, blocks_reason};
+use crate::histogram::{COMMITTED_TIER, Stage, blocks_reason_in, cylinder_pair};
 use crate::part;
 use crate::unmetered::{fillet, step_read};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -212,7 +212,7 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
     out.sample = Some(match blend(&mut scratch, body, &chosen, out.radius) {
         Ok(_) => BUILT.to_string(),
         Err(Refused::Op(e)) => {
-            out.blocks = blocks_reason(Stage::Fillet, &e).map(|c| c.to_string());
+            out.blocks = blocks_reason_in(m, Stage::Fillet, &e).map(|c| c.to_string());
             if let Some(cause) = vertex_set_cause(m, &e) {
                 let points: Vec<[f64; 3]> = chosen
                     .iter()
@@ -226,7 +226,11 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
                     occt: None,
                 });
             }
-            class_of(&e)
+            // A cylinder pair is named by its axes (`blend-fan` step 7).
+            match cylinder_pair(m, &e) {
+                Some(pair) => format!("{} ({pair})", class_of(&e)),
+                None => class_of(&e),
+            }
         }
         Err(Refused::Panic(_)) => PANICKED.to_string(),
     });
@@ -1362,6 +1366,81 @@ mod tests {
                 assert!(table.contains(first), "{table}");
             }
         }
+    }
+
+    /// The committed CTC-01's sample is refused at the crease of two
+    /// cylinders whose axes cross: the census names the pair by its axes
+    /// and the survey puts it with the NURBS cycle, whose blend has no
+    /// exact surface (`blend-fan` step 7), where a pair of parallel axes
+    /// stays the blend network's.
+    #[test]
+    fn ctc_01s_crossing_cylinders_are_the_nurbs_cycles() {
+        let fixture = part::load(&corpus_root().join("real/nist-ctc-01")).unwrap();
+        let file = fixture.dir.join(&fixture.part.file);
+        let text = std::fs::read_to_string(&file).unwrap();
+        let mut m = Model::new(PrecisionSpec::default().precision()).unwrap();
+        let read = step_read(&mut m, &text, &ReadOptions::default()).unwrap();
+        let body = read.solids[0].result.as_ref().unwrap().body;
+        let (_, sample) = fillet_edges(&m, body).unwrap();
+        let handles = m.edges(body).unwrap();
+        let chosen: Vec<_> = (sample.iter())
+            .filter_map(|s| handles.iter().find(|h| h.id == s.0).copied())
+            .collect();
+        let mut scratch = m.clone();
+        let Err(Refused::Op(e)) = blend(&mut scratch, body, &chosen, fillet_radius(&sample)) else {
+            panic!("the sample is refused");
+        };
+        assert_eq!(
+            cylinder_pair(&m, &e).map(|p| p.to_string()).as_deref(),
+            Some("crossing axes, equal radii")
+        );
+        assert_eq!(
+            blocks_reason_in(&m, Stage::Fillet, &e),
+            Some(crate::histogram::Cycle::Nurbs)
+        );
+        assert_eq!(
+            crate::histogram::blocks_reason(Stage::Fillet, &e),
+            Some(crate::histogram::Cycle::BlendNetwork)
+        );
+
+        let mut m = Model::default();
+        let (a, _) =
+            primitive_cylinder(&mut m, Axis::z_at(Point3::new(0.0, 0.0, -2.0)), 1.0, 4.0).unwrap();
+        let (b, _) =
+            primitive_cylinder(&mut m, Axis::z_at(Point3::new(5.0, 0.0, -2.0)), 1.0, 4.0).unwrap();
+        let faces = |body| {
+            m.faces(body)
+                .unwrap()
+                .into_iter()
+                .find(|f| {
+                    matches!(
+                        m.surface(m.face(f.id).unwrap().surface()),
+                        Ok(arris_io::arris_check::arris_topo::arris_geom::Surface::Cylinder { .. })
+                    )
+                })
+                .unwrap()
+        };
+        let (fa, fb) = (faces(a), faces(b));
+        let shape = |f: arris_io::arris_check::arris_topo::Face| {
+            arris_io::arris_check::arris_topo::Shape::new(
+                f.id,
+                arris_io::arris_check::arris_topo::Orientation::Forward,
+            )
+        };
+        let kind =
+            GeomKind::Surface(arris_io::arris_check::arris_topo::arris_geom::SurfaceKind::Cylinder);
+        let error = OpError::Unsupported {
+            a: (kind, shape(fa)),
+            b: (kind, shape(fb)),
+        };
+        assert_eq!(
+            crate::histogram::cylinder_pair(&m, &error),
+            Some(crate::histogram::CylinderPair::Parallel)
+        );
+        assert_eq!(
+            blocks_reason_in(&m, Stage::Fillet, &error),
+            Some(crate::histogram::Cycle::BlendNetwork)
+        );
     }
 
     /// A box fillet at a radius past its faces is refused at its corner
