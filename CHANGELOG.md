@@ -8,6 +8,16 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` blend an edge that ends at a cusp with both walls on
+  one side of the face they share: a crescent's tip, a crescent-shaped pocket,
+  the sliver between a line and an arc tangent to it. The stripe runs to the
+  cusp and is cut by the next wall, with exact surfaces, as Open CASCADE cuts
+  it. Refusals you will meet: an overhang tip, a cusp whose two edges are of
+  opposite senses and whose walls lie on either side of the face (Open CASCADE
+  caps it with fitted surfaces), a cusp whose next edge is blended too, and a
+  wide blend whose cut ends a hair from the cusp's node, stay refused
+  (`TangentChain`, or `Unsupported` for the last).
+
 - `fillet` and `chamfer` blend a rim split into arcs: where a hole's or a
   boss's circle is written as two, three or more edges (a file that splits
   its closed edges, or a part cut in halves), naming one arc blends the whole
