@@ -7,6 +7,9 @@
 - Idea (verbatim from the human): "I accept B, /plan it"; after step 1
   found the premise wrong: "Do A" (re-plan around the cusp)
 - Renamed from `s-bend-walk` at step 1 (see its finding)
+- Step 2's gate (verbatim from the human): "(a) Crescent family
+  (Recommended)", meaning land the cut with exact surfaces, while FTC-06
+  waits for the NURBS cycle
 
 ## Finding of step 1 (why this is not an S-bend)
 All 21 of FTC-06's `TangentChain` chain ends are **cusps**, none an
@@ -70,17 +73,21 @@ There are two cusps, and the crescent is not FTC-06's.
   the NURBS cycle. Arris's cut would disagree with the battery's counts.
   So the plan's goal (FTC-06 leaves the `fillet` column) is out of
   reach, and the human decides how the plan continues (step 2's gate).
+  The human chose (a). The goal below is re-scoped, and ADR-0042 records
+  the rule.
 
 ## Goal
-A fillet or chamfer of an edge that ends at a cusp is built where Open
-CASCADE builds it: the stripe runs to the cusp and is cut by the other wall
-where the gap is narrower than the blend (a contact that leaves the top
-face runs onto the next wall), at Open CASCADE's counts, measures and
-probes. FTC-06 leaves the committed tier's `fillet` column (5 → 4) if its
-four sampled edges together agree with Open CASCADE's stage
-(`tests/fixtures/real/nist-ftc-06`). The cusps Open CASCADE builds invalid
-stay refused, named by site. The census names a `TangentChain` end by its
-site, the way it already names `BlendTooLarge` and `VertexBlend`.
+A fillet or chamfer of an edge that ends at a cusp with both walls on one
+side of the shared face is built as Open CASCADE builds it (ADR-0042). The
+stripe runs to the cusp and is cut by the next wall, between the point
+where its contact leaves the shared face and the point where its other
+contact reaches the spine. The result matches Open CASCADE's counts,
+measures and probes. The overhang tip, a cusp of opposite senses and
+FTC-06's kind, stays `TangentChain`. Open CASCADE caps it with fitted
+surfaces, so FTC-06 stays in the `fillet` column and waits for the NURBS
+cycle. The census names the two cusps apart, and names a `TangentChain`
+end by its site the way it already names `BlendTooLarge` and
+`VertexBlend`.
 
 ## Non-goals
 - The fan (CTC-01) and `blend/five-edge-vertex`: `docs/ideas/blend-fan.md`.
@@ -95,21 +102,21 @@ site, the way it already names `BlendTooLarge` and `VertexBlend`.
   the miters, chamfer modes, variable radius, NURBS faces, healing.
 
 ## Design deltas
-- **A new rule for the walk's end at a cusp**, decided in step 2 and
-  written as ADR-0042 (amending ADR-0035 §6, what `TangentChain` keeps, and
-  ADR-0037/0038 if the cut reuses their end machinery): at a vertex of three
-  edges where the blended edge's corner edge is a tangent dihedral and the
-  next edge leaves the vertex the same way, the stripe is cut by the next
-  edge's face where the gap is narrower than the blend. Whether the cut is
-  the traced-and-fitted curve of ADR-0037 or a closed form is step 2's
-  finding.
-- `arris-ops` `blend.rs`: `corner_of` stops refusing a cusp's corner edge
-  as `TangentChain` where the rule says it builds. No public type or
+- **A new rule for the walk's end at a cusp**, ADR-0042 (amending ADR-0035
+  §6 and ADR-0037 §6). It applies at a vertex of three edges where the
+  blended edge's corner edge is a tangent dihedral, the next edge doubles
+  back, is of the same sense and is not blended. There the stripe is cut
+  by the next wall: closed-form trim points `P` and `Q`, and the cut is
+  the intersector's closed form or ADR-0037's trace and fit, ending at the
+  node at `Q`.
+- `arris-ops` `blend.rs`: `corner_of` stops refusing that site's corner
+  edge as `TangentChain`. No public type or
   signature change expected; `Reason` gains no variant, so
   `crates/arris-py` does not change.
 - `arris-debug` `census.rs` (step 1, done): `tangent_chain_cause`, a
   `tangent_chain` field on `SolidCensus`, `ask_the_oracle_tangent` and
-  `real_parts --tangent-chain <file>`.
+  `real_parts --tangent-chain <file>`. In step 3, "an end at a cusp" is
+  split into "walls on one side" and "walls on either side".
 - `arris-check`: no change expected. Step 3 shows it at `Full`.
 - Docs: `docs/ARCHITECTURE.md` §Operations (the tangent vertex paragraph
   and the `TangentChain` one), ROADMAP §C6.
@@ -128,7 +135,7 @@ bound has to be established here.
   `regression/cusp-crescent-fillet` with Open CASCADE's oracle,
   `#[ignore]`d at `TangentChain`. Finding above: the gate (the S-bend under
   half of the refusals) tripped and the human chose to re-plan on the cusp.
-- [ ] Step 2 **[3]** — The construction, on paper and against the oracle,
+- [x] Step 2 **[3]** — The construction, on paper and against the oracle,
   before any code. Dump Open CASCADE's crescent (its faces, edges, the
   fillet face's bounds, volume against the full-length removal) at two or
   three radii, and with the big arc a chamfer; find where the stripe's
@@ -139,17 +146,23 @@ bound has to be established here.
   same by name. Write ADR-0042 with its README row and pointers in ADR-0035
   and ADR-0037, and close the open questions below. **Gate:** if the cut
   has no construction short of a general surface–surface walk, stop and
-  ask the human whether FTC-06 waits for the NURBS cycle.
-- [ ] Step 3 **[3]** — `corner_of` and the end at a cusp: the stripe cut by
-  the next wall, the face counts and provenance of Open CASCADE's. The
-  `regression/` fixture moves to `blend/` with its blessed dump, checker
-  green at `Full`, at Open CASCADE's counts, measures and probes. Add the
-  chamfer twin and the twin whose big arc is the concave one.
+  ask the human whether FTC-06 waits for the NURBS cycle. Done: the gate
+  tripped (finding above), the human chose (a), and ADR-0042 is written.
+- [ ] Step 3 **[3]** — `corner_of` and the end at a cusp (ADR-0042 §1–§6):
+  the site test, `P` and `Q`, the cut, and the topology and provenance of
+  §5. The `regression/` fixture moves to `blend/` with its blessed dump,
+  checker green at `Full`, at Open CASCADE's counts, measures and probes.
+  Add as twins the chamfer, the small arc blended (its cut on the big
+  wall), and the pocket (the crescent cut from a block, the floor edge
+  concave). Add as `TangentChain` fixtures both arcs blended and the
+  overhang tip, with Open CASCADE's oracle and an `analytic` note saying
+  why Arris refuses. Split the census's cusp cause in two.
 - [ ] Step 4 **[2]** — A property over random poses (`blend_prop`): a
-  crescent of random radii whose cusp is one end, its floor or top edge
-  filleted and chamfered at random size, small and large against the gap,
-  against the checker at `Full`, the closed-form volume (the corner
-  section swept along the arc, less the part cut by the wall), STEP
+  crescent of random radii whose cusp is one end, or its pocket, its floor
+  or top edge filleted and chamfered at random size, small and large
+  against the gap, against the checker at `Full`, the closed-form volume
+  (ADR-0042, Consequences: the corner section integrated over its band
+  inside the gap), STEP
   round-trip, pose independence and deterministic ids. Seeded and sharded
   through `prop_shards!`. A pose Open CASCADE refuses is rejected by the
   refusal's name.
@@ -167,9 +180,9 @@ bound has to be established here.
   `Full`, at Open CASCADE's oracle, or at the closed form under
   `analytic.measure_differs` with ADR-0015's evidence.
 - Step 4's property is green at 256 cases (retirement) and 1000 (CI).
-- FTC-06's battery fillet agrees with Open CASCADE, or the plan names
-  what refuses behind it and whose line that is. The full profile is
-  green.
+- FTC-06's battery fillet stays refused at an overhang tip by name, and
+  the census counts its 21 ends under "walls on either side". The full
+  profile is green.
 
 ## Docs to update on completion
 - `docs/ROADMAP.md` §C6: the status paragraph, the counts, the census of
@@ -180,8 +193,10 @@ bound has to be established here.
   ADR-0037.
 - `docs/ARCHITECTURE.md` §Operations: the end at a cusp, and what
   `TangentChain` still means.
-- `docs/BACKLOG.md`: any other `TangentChain` end site, and the S-bend
-  (inflection) chain as a line with the reason it waits.
+- `docs/BACKLOG.md`: any other `TangentChain` end site; the S-bend
+  (inflection) chain as a line with the reason it waits; the overhang tip
+  (FTC-06), waiting on a fitted cap surface in the NURBS cycle; and a cusp
+  whose two edges are both blended (a corner patch).
 - `tests/fixtures/README.md`: the `TangentChain` line if its cases change.
 - `CHANGELOG.md` `Unreleased`: a fillet or chamfer now ends at a cusp
   where two walls meet tangent, and what still refuses (no ADR numbers or
@@ -197,9 +212,6 @@ bound has to be established here.
 - Answered (step 2): Open CASCADE's invalid cusps (11 of 21) do not depend
   on the radius and are not consistent between mirror images: it fails to
   split the pillar's face. Arris would not refuse them by name.
-- ⚠ OPEN (human, step 2's gate): FTC-06's cusps are overhang tips that
-  Open CASCADE caps with fitted surfaces. Either (a) land the crescent
-  family (both cusp kinds cut by the next wall, exact surfaces; FTC-06
-  stays in the column, its refusal moved to a named cap site), or (b)
-  park the plan and let FTC-06 wait for the NURBS cycle, or (c) cap with a
-  fitted surface here, which reverses ADR-0007 and ADR-0037 §1.
+- Answered (human, step 2's gate): (a). Land the crescent family (the
+  crescent and the pocket, cut by the next wall, exact surfaces). FTC-06
+  stays in the column, its refusal moved to a named overhang-tip site.

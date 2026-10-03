@@ -113,6 +113,10 @@ one. `Reason` gains no variant; a stop is the caller's
 `OpError::Interrupted`; any other geometry error is a fault. An end
 leaving the face across is `BlendTooLarge` by `FaceDomain::side`, as a
 closed-form end arc is.
+*(Amended by ADR-0042: a singular point *at* a trim point ends the stretch
+and is not refused. This is the node where a fillet cut by the next wall at
+a cusp touches it. Only a singular point between the two trim points is
+refused.)*
 
 ## Consequences
 

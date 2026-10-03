@@ -141,6 +141,10 @@ variant.
 *(Amended by ADR-0039: `VertexBlend` no longer keeps the vertex of four
 edges where both faces turn tangentially; it keeps every other vertex of
 more than three.)*
+*(Amended by ADR-0042: an end at a cusp, where the next edge turns back
+and is of the blended edge's sense, is no longer `TangentChain`. The next
+wall cuts the stripe there. A cusp of opposite senses, the tip of an
+overhang, stays `TangentChain`.)*
 
 ### Worked example: the stadium's outline
 
