@@ -723,10 +723,37 @@ on CTC-04. Tangencies a file wrote elsewhere read as such too: on FTC-08
 the 24 refusals of a cylinder against a sphere are a tangent cap's
 dihedral, `TangentChain`. FTC-08's battery fillet now stops at a sampled
 tangent dihedral where it ran over, so the committed histogram above is
-printed again. The battery still picks its sample by the angular
-precision alone, and step 8 aligns it. Run with the checker on, the census
+printed again. Run with the checker on, the census
 found three FTC-08 edges whose body fails it, as they did before
 (`regression/nist-ftc-08-fillet-pcurve-jump-checker-fault`).
+Step 7 holds the walk and its junction to a property over random poses (a
+stadium or a split rim, chamfer and radius at random, the corner's section
+swept along the outline's offsets in closed form), which found one knife-edge
+pose where S5 leaves a plane against a torus undecided
+(`a_walked_chain_in_a_far_pose_is_decided`, `#[ignore]`d; a backlog line).
+Step 8 aligned the battery's sample with ADR-0040: an edge is out of it where
+the kernel reads its dihedral as tangent at the battery's own radius, which
+is settled with the sample (the edges tangent at the radius a sample gives
+are dropped and the sample is taken again). It measured the tiers again
+(`tools/real-parts.sh`, `--census-committed`, 2026-10-03). The fetched
+tier's `fillet` column holds **4** parts (3 blend network, 1 NURBS), 6
+before, no part disagreeing with Open CASCADE (0 failing parts; the
+battery's stages 77 agree, 4 both refuse, 8 Arris refuses, from 76, 3, 10).
+`ctc_01`'s AP242 edition and `stc_06` left it by the sample's move, not by a
+new case built: the first now agrees, the second is a stage both refuse (an
+end on a cylinder, which Open CASCADE refuses too). What is left
+is a cylinder pair 1 (`ctc_01`), `VertexBlend` 1 (`ctc_04`: the vertex of two
+edges on a cylinder against a plane, 13 of 13 asked built by Open CASCADE),
+`TangentChain` 1 (`stc_09`) and a NURBS surface 1 (`stc_07`). `VertexBlend`
+is 79 edges on the fetched tier, from 227, 39 asked of Open CASCADE (38
+build), almost all that two-edge site; on the committed tier 35 edges, as
+at step 5. The committed tier's `fillet` column holds **5** (cylinder pair 1,
+cylinder against sphere 1, `TangentChain` 1, `BlendTooLarge` 1, NURBS 1), 6
+before; its histogram, whose battery operands the fixtures freeze, stands.
+Over both tiers (38 parts) the blend network blocks 7 at `fillet`, from 10,
+beside C4's 17. What the cycle has left is the two-edge corner of a cylinder
+against a plane, tangent continuation, the crossing cylinders, a trace that
+misses and the horn and spindle torus at the axis.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
@@ -744,7 +771,9 @@ found three FTC-08 edges whose body fails it, as they did before
   (ADR-0038); what stays `BlendTooLarge` is the ring's contact at the axis
   (a horn or spindle torus) and radii Open CASCADE refuses; and a tangent
   corner the walk stops at (`TangentChain`, STC-09).
-- The corners refused as `VertexBlend`.
+- The corners refused as `VertexBlend`: ~~a chain through a vertex of four
+  edges~~ done (ADR-0039, ADR-0040); the vertex of two edges on a cylinder
+  against a plane, the fan (CTC-01) and the miters remain.
 - The remaining chamfer modes (two distances, a distance and an angle).
 - Variable radius, and blends over blends.
 

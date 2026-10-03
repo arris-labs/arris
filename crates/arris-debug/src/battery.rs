@@ -271,9 +271,12 @@ fn reach(m: &Model, body: Body, centre: Point3) -> Result<f64, String> {
     Ok(far)
 }
 
-/// Whether the two faces of `e` meet tangentially at its curve's midpoint:
-/// the outward normals are parallel within the model's angular tolerance,
-/// so there is no corner for a rolling ball to fill. Open CASCADE refuses
+/// Whether the two faces of `e` meet tangentially at its curve's midpoint
+/// as the kernel reads it (ADR-0040): the outward normals are parallel
+/// within the model's angular tolerance, or, given the `size` of a blend,
+/// `size` times the sine between them is within the faces' tolerance — the
+/// model's default or a face's own, the larger — so there is no corner for
+/// a rolling ball to fill. Open CASCADE refuses
 /// such an edge (`There are no suitable edges for chamfer or fillet`), as
 /// it did every one of the fetched tier's 2479, and Arris refuses it as
 /// `Reason::TangentChain` — a refusal the battery's sample
@@ -282,14 +285,17 @@ fn is_tangent_dihedral(
     m: &Model,
     orientation: &BTreeMap<FaceId, Orientation>,
     e: EdgeId,
+    size: Option<f64>,
 ) -> Result<bool, String> {
     let edge = m.edge(e).map_err(|e| e.to_string())?;
     let Some((_, range)) = edge.curve() else {
         return Ok(false);
     };
     let mut normals = Vec::new();
+    let mut tolerance = m.precision().default_tolerance;
     for u in m.edge_uses(e).map_err(|e| e.to_string())? {
         let face = m.face(u.face).map_err(|e| e.to_string())?;
+        tolerance = tolerance.max(face.tolerance());
         let coedge = face
             .loops()
             .get(u.loop_index)
@@ -309,13 +315,19 @@ fn is_tangent_dihedral(
     let [a, b] = normals[..] else {
         return Ok(false);
     };
-    Ok(a.cross(&b).norm() <= m.precision().angular_tolerance)
+    let sine = a.cross(&b).norm();
+    Ok(sine <= m.precision().angular_tolerance || size.is_some_and(|s| s * sine <= tolerance))
 }
 
 /// The edges a fillet may be asked of: every edge of `body` between two
-/// distinct faces that has a curve and is not a tangent dihedral (no
-/// rolling ball blends one: [`is_tangent_dihedral`]), in id order.
-pub(crate) fn blendable_edges(m: &Model, body: Body) -> Result<Vec<EdgeId>, String> {
+/// distinct faces that has a curve and is not a tangent dihedral for a
+/// blend of `size` (no rolling ball blends one: [`is_tangent_dihedral`]),
+/// in id order.
+pub(crate) fn blendable_edges(
+    m: &Model,
+    body: Body,
+    size: Option<f64>,
+) -> Result<Vec<EdgeId>, String> {
     let closure = m.closure(body).map_err(|e| e.to_string())?;
     let mut orientation: BTreeMap<FaceId, Orientation> = BTreeMap::new();
     for shell in m.shells(body).map_err(|e| e.to_string())? {
@@ -334,18 +346,48 @@ pub(crate) fn blendable_edges(m: &Model, body: Body) -> Result<Vec<EdgeId>, Stri
         let mut faces: Vec<_> = uses.iter().map(|u| u.face).collect();
         faces.sort();
         faces.dedup();
-        if uses.len() == 2 && faces.len() == 2 && !is_tangent_dihedral(m, &orientation, e)? {
+        if uses.len() == 2 && faces.len() == 2 && !is_tangent_dihedral(m, &orientation, e, size)? {
             edges.push(e);
         }
     }
     Ok(edges)
 }
 
-/// The edges the fillet stage blends: [`blendable_edges`] of `body` taken
-/// at the stride that leaves at most [`FILLET_EDGES`]; each with its
-/// curve's midpoint and its length.
+/// The edges the fillet stage blends and the sample of them: [`blendable_edges`]
+/// of `body` at the battery's radius, which is [`FILLET_FRACTION`] of the
+/// shortest edge of a sample of those edges, so the two are settled
+/// together — the edges tangent at the radius a sample gives are dropped and
+/// the sample taken again, until none is. The sample is at the stride that
+/// leaves at most [`FILLET_EDGES`], each edge with its curve's midpoint and
+/// its length. Deterministic: the edges only shrink, in id order.
+pub(crate) fn fillet_edges(m: &Model, body: Body) -> Result<FilletEdges, String> {
+    let mut edges = blendable_edges(m, body, None)?;
+    loop {
+        let sample = sampled(m, &edges)?;
+        let radius = fillet_radius(&sample);
+        let kept = blendable_edges(m, body, Some(radius))?
+            .into_iter()
+            .filter(|e| edges.contains(e))
+            .collect::<Vec<_>>();
+        if kept.len() == edges.len() {
+            return Ok((edges, sample));
+        }
+        edges = kept;
+    }
+}
+
+/// The edges the fillet stage may be asked of and the sample taken from
+/// them: [`fillet_edges`].
+pub(crate) type FilletEdges = (Vec<EdgeId>, Vec<(EdgeId, Point3, f64)>);
+
+/// The sample of [`fillet_edges`]: at most [`FILLET_EDGES`] of `body`'s
+/// edges, each with its curve's midpoint and its length.
 pub(crate) fn fillet_sampled(m: &Model, body: Body) -> Result<Vec<(EdgeId, Point3, f64)>, String> {
-    let edges = blendable_edges(m, body)?;
+    Ok(fillet_edges(m, body)?.1)
+}
+
+/// `edges` taken at the stride that leaves at most [`FILLET_EDGES`].
+fn sampled(m: &Model, edges: &[EdgeId]) -> Result<Vec<(EdgeId, Point3, f64)>, String> {
     let stride = edges.len().div_ceil(FILLET_EDGES).max(1);
     let mut out = Vec::new();
     for &e in edges.iter().step_by(stride) {

@@ -35,7 +35,7 @@ use arris_io::step::ReadOptions;
 use arris_ops::{OpError, Reason};
 
 use crate::battery::Class;
-use crate::battery::{blendable_edges, fillet_radius, fillet_sampled};
+use crate::battery::{fillet_edges, fillet_radius};
 use crate::differential::panicked;
 use crate::fixtures::{PrecisionSpec, corpus_root};
 use crate::histogram::{COMMITTED_TIER, Stage, blocks_reason};
@@ -185,7 +185,7 @@ pub fn class_of(e: &OpError) -> String {
 /// A walk of `body` fails: never a refusal of the operation, which is the
 /// census's data.
 pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, String> {
-    let sample = fillet_sampled(m, body)?;
+    let (blendable, sample) = fillet_edges(m, body)?;
     let mut out = SolidCensus {
         solid: solid.to_string(),
         radius: fillet_radius(&sample),
@@ -226,7 +226,7 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
         Err(Refused::Panic(_)) => PANICKED.to_string(),
     });
     let mut classes: BTreeMap<EdgeId, String> = BTreeMap::new();
-    let mut ids = blendable_edges(m, body)?;
+    let mut ids = blendable.clone();
     ids.extend(sample.iter().map(|s| s.0));
     ids.sort();
     ids.dedup();
@@ -265,7 +265,7 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
     if let Some(set) = &mut out.vertex_set {
         set.each_alone_builds = !out.sampled.is_empty() && out.sampled.iter().all(|c| c == BUILT);
     }
-    for id in blendable_edges(m, body)? {
+    for id in blendable {
         if let Some(class) = classes.get(&id) {
             *out.alone.entry(class.clone()).or_default() += 1;
         }

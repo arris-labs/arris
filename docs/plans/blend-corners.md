@@ -204,7 +204,7 @@ bound has to be established here.
   fixture's axis and angle cannot carry the exact quaternion, so it is the
   `#[ignore]`d `a_walked_chain_in_a_far_pose_is_decided` beside the property,
   which excludes that pair by name until it passes. A backlog line.)*
-- [ ] Step 8 **[1]** — Measure the fetched and committed tiers again
+- [x] Step 8 **[1]** — Measure the fetched and committed tiers again
   (`tools/real-parts.sh`, `--census-committed`). Print the column beside
   C4's 17 of 38 and `blend-run-over`'s line. Move the `fixtures:`
   expectations whose refusals changed (`nist-ctc-04`; `nist-ftc-09` moved
@@ -217,6 +217,11 @@ bound has to be established here.
   which parts' samples moved. Update `docs/ROADMAP.md` §C6's status paragraph with the new
   count and what each remaining part meets. Run the docs-refs tests: the
   roadmap's histogram is checked against the printout.
+  *(Done: `fillet_edges` settles the sample and the radius together, the
+  tangent test at the radius as ADR-0040 reads it. The fetched column is 4
+  of 27 (from 6), the committed census's 5 of 11 (from 6); no fixture
+  expectation moves, the battery operands being frozen data and the
+  committed histogram unchanged.)*
 
 ## Acceptance
 - Step 1's cause table is reproduced, and the column's summary line in §C6
