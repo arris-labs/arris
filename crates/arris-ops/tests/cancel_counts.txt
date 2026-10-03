@@ -138,6 +138,7 @@ blend/cone-boss-base-fillet: 2
 blend/cut-torus-rims-chamfer: 4
 blend/cut-torus-rims-fillet: 4
 blend/d-chord-edge: 5
+blend/d-notch-off-axis-rim-fillet: 2020
 blend/d-notch-rim-chamfer: 2
 blend/d-notch-rim-fillet: 2
 blend/dome-rim-chamfer: 2
@@ -156,6 +157,10 @@ blend/probe-cap-and-vertical-fillet-m: 10
 blend/probe-second-fillet-m: 5
 blend/rib-corner-chamfer-to-plate: 5
 blend/rib-corner-fillet-to-plate: 5
+blend/rib-into-boss-chamfer: 151
+blend/rib-into-boss-fillet: 1317
+blend/rib-into-cone-chamfer: 151
+blend/rib-into-cone-fillet: 2185
 blend/rib-root-edge: 5
 blend/rib-sloped-end-fillet: 805
 blend/second-fillet: 5
@@ -166,6 +171,8 @@ blend/stadium-outline-fillet: 14
 blend/tangent-chain-cap-edge: 12
 blend/turned-shoulder-chamfer: 2
 blend/turned-shoulder-fillet: 2
+blend/twin-boss-foot-chamfer: 886
+blend/twin-boss-foot-fillet: 4092
 build/frame: 10
 build/l-prism: 8
 build/tetrahedron: 4

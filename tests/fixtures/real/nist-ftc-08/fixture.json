@@ -16,7 +16,7 @@
         "drill_y": "agree",
         "drill_z": "agree",
         "fillet": {
-          "arris-refuses": "Unsupported(torus surface × cylinder surface)"
+          "arris-refuses": "Degenerate(BlendTooLarge)"
         },
         "write_read": "agree"
       },

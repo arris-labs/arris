@@ -119,7 +119,7 @@ fixtures:
 | Degenerate(VertexBlend) | fillet | 2 | blend network |
 | unsupported entity | read | 2 | itself: supplemental geometry |
 | Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
-| Unsupported(torus surface × cylinder surface) | fillet | 1 | blend network |
+| Degenerate(BlendTooLarge) | fillet | 1 | blend network |
 <!-- /histogram -->
 
 ---

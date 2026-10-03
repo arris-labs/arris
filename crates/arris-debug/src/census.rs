@@ -1,5 +1,5 @@
-//! The fillet column, counted by part (`docs/plans/blend-residue.md`
-//! step 1): what each part's first refusal at the battery's radius is, and
+//! The fillet column, counted by part (ADR-0037, `docs/ROADMAP.md` §C6):
+//! what each part's first refusal at the battery's radius is, and
 //! what every other edge of it would meet once that one is cleared.
 //!
 //! The battery's fillet stage blends a sample of [`FILLET_EDGES`] edges

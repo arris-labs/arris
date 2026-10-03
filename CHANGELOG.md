@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` blend an edge that ends on a face the blend does not
+  meet square: an open arc ending on a plane parallel to its axis and off it,
+  or on a cylinder across (a rib's foot against a round or conical boss, a
+  twin boss's foot), and a straight edge along a ruling ending on a
+  cylinder or a cone. The blend's surface stays exact and its end curve is
+  fitted within the edge's tolerance. Refusals you will meet: a chamfer's
+  cone ending on a plane parallel to its axis, two crossing cylinders and a
+  torus against a cylinder off its axis are `Unsupported` naming the pair;
+  a blend that runs out of its face onto the next is `BlendTooLarge`, so
+  several parts that cleared the end now meet that.
+
 - `fillet` and `chamfer` follow an outline: naming one edge of a chain of
   lines and arcs that meet tangentially (a slot's rim, a stadium, a D-shaped
   notch) blends the whole chain, open or closed, one blend face per edge,

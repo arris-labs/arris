@@ -2063,7 +2063,7 @@ fn blend_bead_root_chamfer() {
 /// second wall's cylinder (parallel axes, 0.3 apart) is refused in this
 /// pose and built at rest (found by `blend_prop`'s end families).
 #[test]
-#[ignore = "Unsupported, a cone against a cylinder: the quartic's trace does not decide in this pose (plans/blend-residue step 8's property)"]
+#[ignore = "Unsupported, a cone against a cylinder: the quartic's trace does not decide in this pose (found by the end families' property in `blend_prop`)"]
 fn regression_twin_boss_foot_turned_chamfer_cone_cylinder() {
     run("regression/twin-boss-foot-turned-chamfer-cone-cylinder");
 }
