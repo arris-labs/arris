@@ -225,12 +225,15 @@ bound has to be established here.
   refusal's name. Done: `cusps_fillet_as_their_sections` and
   `cusps_chamfer_as_their_sections`, green at 256 and 1000; finding
   below.
-- [ ] Step 5 **[1]** — Measure the tiers again (`tools/real-parts.sh`,
+- [x] Step 5 **[1]** — Measure the tiers again (`tools/real-parts.sh`,
   `--census-committed`). Move any `fixtures:` expectations whose refusals
   changed (the commit body says why) and bless `cancel_counts.txt` for
   the new fixtures. Update ROADMAP §C6's status paragraph with the
   `fillet` counts beside C4's 17 of 38 and the `TangentChain` census, and
   run the docs-refs tests.
+  Done: no part leaves the column (fetched 2 of 27, committed 5 of 11, 0
+  failing parts), so no `fixtures:` expectation moved and `cancel_counts.txt`
+  was blessed in step 3; the ROADMAP paragraph is written.
 
 ## Acceptance
 - Step 1's census reproduces: FTC-06's 21 chain ends are named cusps, and

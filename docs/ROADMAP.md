@@ -556,8 +556,8 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 **Status: opened 2026-10-02; scope confirmed by the human the same day;
 first plan (`c6-blend-network`) landed 2026-10-02, second plan
 (`c6-blend-pairs`) landed 2026-10-03, third (`blend-residue`), fourth
-(`blend-run-over`), fifth (`blend-corners`) and sixth (`split-rim-vertex`)
-the same day, the cycle stays open.**
+(`blend-run-over`), fifth (`blend-corners`), sixth (`split-rim-vertex`) and
+seventh (`cusp-run-out`) the same day, the cycle stays open.**
 The first plan took the two lines marked done below. On the fetched tier
 (27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column held 11
 parts where the step-1 baseline held 12 (C4's 17 of 38 counted both tiers;
@@ -784,6 +784,30 @@ blend network blocks 5 at `fillet`, from 7, beside C4's 17. What the cycle has
 left is the fan, tangent continuation, the crossing cylinders, a cylinder
 against a sphere, a trace that misses and the horn and spindle torus at the
 axis.
+The seventh plan (`cusp-run-out`, opened 2026-10-03) counted `TangentChain`
+by site (`census::tangent_chain_cause`, `real_parts --tangent-chain`) and
+found no S-bend: every one of FTC-06's 21 chain ends is a cusp, where the
+outline doubles back and the next edge reaches the vertex from the same
+side. There are two cusps (ADR-0042). One has both walls on one side of the
+shared face, a knife-edge sliver of material or void: a crescent, a pocket
+or a spandrel. Open CASCADE cuts the stripe with the next wall, and so does
+Arris now, between two closed-form trim points, the cut traced and fitted
+with the surfaces exact (fillet and chamfer, held to a property over random
+poses against the closed-form volume). The other is an overhang tip, the
+walls on either side, FTC-06's: Open CASCADE closes its stripe with fitted
+B-spline caps (and builds 10 of the 21 cusp edges, the other 11 invalid at
+every radius), which waits for the NURBS cycle, so it stays `TangentChain`
+and the census names it "an end at a cusp, walls on either side". The
+tiers measured again (`tools/real-parts.sh`, `--census-committed`,
+2026-10-03): no part leaves the column, since the cusp the plan builds is
+no sampled edge's. The fetched tier holds **2** of 27 and the committed tier
+**5** of 11 (`TangentChain` 1, FTC-06; the census counts its 21 edges and
+CTC-04's 2 as walls on either side), 0 failing parts, the battery's stages
+117 agree, 7 both refuse, 19 Arris refuses over both tiers. Over both tiers
+(38 parts) the blend network blocks 5 at `fillet`, beside C4's 17, as
+before. What the cycle has left is the fan, the overhang tip (the NURBS
+cycle's caps), the crossing cylinders, a cylinder against a sphere, a trace
+that misses and the horn and spindle torus at the axis.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
