@@ -763,6 +763,26 @@ edges (`ctc_01` 4, `ctc_04` 34, `stc_09` 29), 27 asked of Open CASCADE, 26
 build; committed, all 20 (`ctc-01` 4, `ftc-06` 10, `ftc-10` 6), 17 build, 2
 build an invalid solid, 1 refuses. It holds the battery's one sampled
 `VertexBlend` edge (`ctc_04`); `stc_09` meets `TangentChain` first.
+Steps 3 and 4 built it (ADR-0041): a vertex of two edges that continue one
+another on one circle between the same two faces is a continuation, its
+junction the ball's cross-section with no cut, the seams of the turning faces
+shortened to their contacts. Step 5 holds it to a property over random poses
+(a hole's edge or a boss's foot split into two to four arcs, fillet and
+chamfer at random size, the swept closed form). The tiers measured again
+(`tools/real-parts.sh`, `--census-committed`, 2026-10-03): the fetched
+tier's `fillet` column holds **2** parts of 27 (`ctc_01`'s cylinder pair, a
+blend network line, and `stc_07`'s NURBS surface), 4 before: `ctc_04` and
+`stc_09` left it, no part disagreeing with Open CASCADE (0 failing parts; the
+battery's stages 79 agree, 4 both refuse, 6 Arris refuses, from 77, 4, 8).
+`VertexBlend` is 12 edges on the fetched tier, from 79, all the four-edge fan
+(`ctc_01`). The committed tier's column holds **5** (cylinder pair 1,
+cylinder against sphere 1 — `ctc-04` now meets it behind the vertex —
+`TangentChain` 1, `BlendTooLarge` 1, NURBS 1) as before, and its `VertexBlend`
+edges 15, from 35 (the fan 12, `ftc-06` 3). Over both tiers (38 parts) the
+blend network blocks 5 at `fillet`, from 7, beside C4's 17. What the cycle has
+left is the fan, tangent continuation, the crossing cylinders, a cylinder
+against a sphere, a trace that misses and the horn and spindle torus at the
+axis.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
@@ -781,8 +801,8 @@ build an invalid solid, 1 refuses. It holds the battery's one sampled
   (a horn or spindle torus) and radii Open CASCADE refuses; and a tangent
   corner the walk stops at (`TangentChain`, STC-09).
 - The corners refused as `VertexBlend`: ~~a chain through a vertex of four
-  edges~~ done (ADR-0039, ADR-0040); the vertex of two edges on a cylinder
-  against a plane, the fan (CTC-01) and the miters remain.
+  edges~~ done (ADR-0039, ADR-0040); ~~the vertex of two edges of a split
+  rim~~ done (ADR-0041); the fan (CTC-01) and the miters remain.
 - The remaining chamfer modes (two distances, a distance and an angle).
 - Variable radius, and blends over blends.
 

@@ -139,11 +139,15 @@ bound has to be established here.
   with the seam elsewhere cannot occur (step 3). The ring is a hole's top edge
   or a boss's foot, the cylinder only; the turned pairs are fixtures (step
   4).)*
-- [ ] Step 6 **[1]** — Measure the tiers again (`tools/real-parts.sh`,
+- [x] Step 6 **[1]** — Measure the tiers again (`tools/real-parts.sh`,
   `--census-committed`). Move `fixtures:` expectations whose refusals changed
   (the commit body says why) and bless `cancel_counts.txt` for step 4's
   fixtures (step 3's are blessed). Update ROADMAP §C6's status paragraph with the new `fillet`
   count beside C4's 17 of 38; run the docs-refs tests.
+  *(Done: fetched `fillet` column 2 of 27 (from 4), committed 5 of 11 (as
+  before); `VertexBlend` edges 79 → 12 fetched, 35 → 15 committed. No
+  fixture expectation moved: the `real_` corpus is green as it stands, and
+  step 4 blessed `cancel_counts.txt`. ROADMAP §C6 carries the numbers.)*
 
 ## Acceptance
 - Step 1's counts are reproduced, and the §C6 summary line is the number
