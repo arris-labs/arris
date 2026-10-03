@@ -116,7 +116,7 @@ bound has to be established here.
     `VertexBlend`.
 - [x] Step 2 **[1]** — **ADR-0044**, as the design deltas say, from what
   step 1 saw. Include the counts, which blend is wider, and the arc's face.
-- [ ] Step 3 **[3]** — **The fillet miter built.**
+- [x] Step 3 **[3]** — **The fillet miter built.**
   - `miter` computes `m` and the trim arc (the existing plane–cylinder
     section, exact on the plane, the pcurve on the cylinder fitted by the
     oblique-section rule).
@@ -129,6 +129,21 @@ bound has to be established here.
     `VertexBlend`, tested.
   - A trim arc leaving its face is `BlendTooLarge`, tested at a radius past
     it.
+  - **Found:** the fixture is held to closed forms where Open CASCADE
+    drifts. Its volume is 1.7e-9 and its area 2.8e-9 (relative) under the
+    closed forms, which Arris matches to about 1e-11. The volume is the
+    two fillets' regions less their overlap; the area is summed face by
+    face. Both are now in `analytic`. The fixture expressions gain `atan`
+    for them. That drift is far short of ADR-0015's 1e-6, so this is not
+    `measure_differs`. The volume, area and inertia tolerances are 1e-8,
+    as `blend/turned-shoulder-fillet` widened its own.
+  - **Found:** on a convex far face the trim arc cannot leave alone. It is
+    tangent to the third edge at its end, and at `m` it is square to the
+    narrower blend's contact. So it stays in the corner those two lines
+    bound, and it leaves only after the third edge or a contact has run
+    out. The check stays as a guard. The test at r = 1.5 is refused by
+    whichever bound fails first. A third edge of the other sense is
+    `VertexBlend`, since no fixture shows it.
 - [ ] Step 4 **[2]** — **The chamfer miter built.** The same with lines:
   the chamfers' meeting line to `m`, then the wider chamfer's chord in the
   face across. The fixture moves to `blend/`, held to the oracle.

@@ -1077,14 +1077,9 @@ fn two_cap_edges_are_the_same_miter_rotated() {
     assert!((top - Point3::new(2.0, 2.0, 1.8)).norm() < 1e-9, "{top}");
 }
 
-/// A corner whose two blended edges have different dihedrals — the
-/// slanted vertical edge of an extruded parallelogram and its cap edge
-/// — is not one ellipse: the two far contacts meet the third edge at two
-/// points. Refused by name, the model untouched (the blend-network
-/// cycle's).
-#[test]
-fn a_miter_of_unequal_dihedrals_is_a_vertex_blend() {
-    let mut m = Model::default();
+/// The slanted prism: the parallelogram (0,0) (2,0) (3,2) (1,2) extruded
+/// 2, its vertical edge at (3, 2) between faces at the acute angle atan 2.
+fn slanted_prism(m: &mut Model) -> Body {
     let p = |u, v| Point2::new(u, v);
     let profile = Profile {
         plane: Frame::world(),
@@ -1099,16 +1094,121 @@ fn a_miter_of_unequal_dihedrals_is_a_vertex_blend() {
         },
         holes: Vec::new(),
     };
-    let prism = extrude(&mut m, &profile, Vec3::z(), 2.0).unwrap().0;
+    extrude(m, &profile, Vec3::z(), 2.0).unwrap().0
+}
+
+/// A corner whose two blended edges have different dihedrals — the
+/// slanted vertical edge of an extruded parallelogram and its cap edge —
+/// is a miter of two pieces (ADR-0044): the two cylinders' ellipse up to
+/// `m` on the cap's far contact, then the vertical's cylinder, the wider
+/// blend, trimmed by the top face in a circle the top face takes, the
+/// third edge shortened to its end `r cot(atan(2)/2)` from the corner.
+/// Clean at `Full` with nothing unchecked, at Open CASCADE's counts, at the
+/// closed-form volume (`blend/miter-unequal-dihedrals-fillet`), the trim
+/// arc generated from the vertical edge alone and `m` from both, the record
+/// audited.
+#[test]
+fn a_miter_of_unequal_dihedrals_is_two_pieces_and_a_trim_arc() {
+    use core::f64::consts::{FRAC_PI_4, PI};
+    let mut m = Model::default();
+    let prism = slanted_prism(&mut m);
+    let vertical = edge_at(&m, prism, Point3::new(3.0, 2.0, 1.0));
+    let cap = edge_at(&m, prism, Point3::new(2.0, 2.0, 2.0));
+    let third = edge_at(&m, prism, Point3::new(2.5, 1.0, 2.0));
+    let r: f64 = 0.2;
+    let (blended, provenance) = fillet(&mut m, prism, &[vertical, cap], r).unwrap();
+    let report = check(&m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    let line = report.euler().unwrap();
+    assert_eq!(
+        (line.vertices, line.edges, line.faces, line.loops),
+        (12, 18, 8, 8)
+    );
+    // Each fillet's removed region whole along its edge, less their
+    // overlap at the corner; `cot(atan(2)/2)` is the golden ratio.
+    let golden = (1.0 + 5.0_f64.sqrt()) / 2.0;
+    let volume = 8.0
+        - 2.0 * r * r * (golden - (PI - 2.0_f64.atan()) / 2.0)
+        - 2.0 * r * r * (1.0 - FRAC_PI_4)
+        + r.powi(3) * (golden - 0.5) * (1.0 - FRAC_PI_4)
+        + r.powi(3) * (3.0 - PI) / 4.0;
+    let props = mass_properties(&m, blended).unwrap();
+    assert!(
+        (props.volume - volume).abs() <= 1e-9 * volume,
+        "{} against {volume}",
+        props.volume
+    );
+    audit(&m, &[prism], blended, &provenance).unwrap();
+    // The vertical: its face, two contacts, the bottom arc, the ellipse and
+    // the trim arc; the bottom's two vertices, `q`, `m` and the trim arc's
+    // end. The cap: its face, two contacts, its far arc and the ellipse;
+    // its far arc's two vertices, `q` and `m`. They share the ellipse,
+    // `q` and `m`.
+    let generated = |e: &Edge| -> BTreeSet<Shape> {
+        provenance
+            .generated_from(e.shape())
+            .iter()
+            .copied()
+            .collect()
+    };
+    let (wide, narrow) = (generated(&vertical), generated(&cap));
+    let count = |set: &BTreeSet<Shape>| {
+        let mut n = (0, 0, 0);
+        for s in set {
+            match s.id {
+                EntityId::Face(_) => n.0 += 1,
+                EntityId::Edge(_) => n.1 += 1,
+                EntityId::Vertex(_) => n.2 += 1,
+                _ => {}
+            }
+        }
+        n
+    };
+    assert_eq!(count(&wide), (1, 5, 5), "{provenance}");
+    assert_eq!(count(&narrow), (1, 4, 4), "{provenance}");
+    let both: BTreeSet<Shape> = wide.intersection(&narrow).copied().collect();
+    assert_eq!(count(&both), (0, 1, 2), "{provenance}");
+    // The third edge is shortened to the trim arc's end.
+    let [shortened] = provenance.modified_from(third.shape()) else {
+        panic!("{provenance}");
+    };
+    let EntityId::Edge(id) = shortened.id else {
+        panic!("{shortened:?}")
+    };
+    let (curve, range) = m.edge(id).unwrap().curve().unwrap();
+    let curve = m.curve(curve).unwrap();
+    let ends = [curve.point(range.lo()), curve.point(range.hi())];
+    let end = Point3::new(3.0, 2.0, 2.0) + r * golden * Vec3::new(-1.0, -2.0, 0.0) / 5.0_f64.sqrt();
+    assert!(
+        ends.iter().any(|p| (p - end).norm() < 1e-9),
+        "{ends:?} against {end}"
+    );
+}
+
+/// The miter's refusals: a vertical edge of the L's reflex corner, concave,
+/// with a convex top edge meeting it at the top — mixed convexity, which no
+/// miter covers — is `VertexBlend`, and the slanted prism's unequal miter at
+/// a radius past its corner is `BlendTooLarge`; the model untouched both
+/// times.
+#[test]
+fn a_miter_of_mixed_convexity_or_too_large_is_refused() {
+    let mut m = Model::default();
+    let ell = ell(&mut m);
+    let rise = edge_at(&m, ell, Point3::new(1.0, 1.0, 1.0));
+    let top = edge_at(&m, ell, Point3::new(1.5, 1.0, 2.0));
+    let before = dump_text(&m, ell).unwrap();
+    let err = fillet(&mut m, ell, &[rise, top], 0.1).unwrap_err();
+    assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
+    assert_eq!(dump_text(&m, ell).unwrap(), before);
+
+    let prism = slanted_prism(&mut m);
     let vertical = edge_at(&m, prism, Point3::new(3.0, 2.0, 1.0));
     let cap = edge_at(&m, prism, Point3::new(2.0, 2.0, 2.0));
     let before = dump_text(&m, prism).unwrap();
-    let err = fillet(&mut m, prism, &[vertical, cap], 0.2).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
+    let err = fillet(&mut m, prism, &[vertical, cap], 1.5).unwrap_err();
+    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
     assert_eq!(dump_text(&m, prism).unwrap(), before);
-    // Each edge alone blends.
-    fillet(&mut m, prism, &[vertical], 0.2).unwrap();
-    fillet(&mut m, prism, &[cap], 0.2).unwrap();
 }
 
 /// A chain runs on through a vertex of four edges where both of its faces

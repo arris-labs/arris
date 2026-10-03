@@ -317,6 +317,9 @@ impl EndKind {
 /// through the ball's one centre, or the line where two chamfer planes
 /// cross — from the point where the two contacts on the shared face cross
 /// to the point on the third edge where the other two contacts meet it.
+/// Where the dihedrals differ (ADR-0044) the curve stops at `m` on the
+/// narrower blend's far contact, and a trim arc on the wider blend runs on
+/// from `m` to the third edge.
 struct Miter {
     /// The two blended edges, in the blends' order.
     edges: [EdgeId; 2],
@@ -328,7 +331,8 @@ struct Miter {
     /// Where the two contacts on the shared face cross; at a junction
     /// whose runs share no face, where two meet on a tangent edge.
     q: Point3,
-    /// Where the other two contacts meet the third edge.
+    /// Where the other two contacts meet the third edge; `m`, on the
+    /// narrower blend's far contact, where a trim arc runs on from it.
     p3: Point3,
     curve: Curve,
     range: Interval,
@@ -339,15 +343,68 @@ struct Miter {
     lo_first: [bool; 2],
     /// The ellipse's pcurve on each stripe's cylinder, placed.
     on_blend: [Curve2; 2],
-    /// The third edge shortened to `p3`; `None` at a vertex of two edges
-    /// that continue one another (ADR-0041), which has no third edge.
+    /// The third edge shortened to `p3`, or to the trim arc's end where
+    /// there is one; `None` at a vertex of two edges that continue one
+    /// another (ADR-0041), which has no third edge.
     trim: Option<Trim>,
     /// At a junction whose runs share no face (ADR-0039 §2), the tangent
     /// edge `q` lies on, shortened to it.
     q_trim: Option<Trim>,
+    /// Where the dihedrals differ, the wider blend's trim arc (ADR-0044).
+    trim_arc: Option<TrimArc>,
     tolerance: f64,
     q_tolerance: f64,
     p3_tolerance: f64,
+}
+
+/// The trim arc of a miter of unequal dihedrals (ADR-0044 §3): the
+/// section of the wider blend with the narrower blend's far face, from
+/// `m` (the miter's `p3`) to where the wider blend's far contact meets the
+/// third edge, which that face takes in its loop at the corner vertex.
+struct TrimArc {
+    /// The wider blend's side in the miter.
+    wide: usize,
+    /// The corner vertex, where the face's loop takes the arc.
+    vertex: VertexId,
+    /// The narrower blend's far face.
+    face: FaceId,
+    /// The narrower blend's edge: the corner edge of `face` at `m`.
+    narrow_edge: EdgeId,
+    /// The arc's end on the third edge.
+    end: Point3,
+    end_tolerance: f64,
+    curve: Curve,
+    range: Interval,
+    /// `true` when `range.lo()` is at `m`.
+    m_first: bool,
+    /// Its pcurve on `face`, exact.
+    on_face: Curve2,
+    /// Its pcurve on the wider blend, placed.
+    on_blend: Curve2,
+    tolerance: f64,
+}
+
+impl Miter {
+    /// The stripe at `side`'s arcs at the miter in its end's order, from
+    /// its contact at `u = 0` to the other: whether each runs along its
+    /// range in that order, and its pcurve on the blend. The wider blend of
+    /// a miter of unequal dihedrals has the curve and the trim arc, the
+    /// trim arc at its far contact.
+    fn arcs(&self, side: usize) -> Vec<(bool, &Curve2)> {
+        let curve = (self.lo_first[side], &self.on_blend[side]);
+        match &self.trim_arc {
+            Some(arc) if arc.wide == side => {
+                let at_zero = self.shared[side] == 0;
+                let trim = (arc.m_first == at_zero, &arc.on_blend);
+                if at_zero {
+                    vec![curve, trim]
+                } else {
+                    vec![trim, curve]
+                }
+            }
+            Some(_) | None => vec![curve],
+        }
+    }
 }
 
 /// One side of a corner: where one of its three blends meets the corner
@@ -2287,17 +2344,21 @@ fn contacts(
 
 /// The miter of stripes `a` and `b` at `vertex`, a corner of three edges
 /// whose third stays sharp (ADR-0007). The two stripes share one face,
-/// and their contacts on the faces the third edge separates meet it at
-/// one point, where the third edge is shortened. Two fillets have equal
-/// dihedrals, so their axes cross at the ball's one centre and the miter
-/// is the ellipse of the two cylinders in the plane bisecting their axes,
-/// from where the two contacts on the shared face cross to that point,
-/// its pcurve on each cylinder fitted by the oblique-section rule; two
-/// chamfers meet in the line between the same two points. A corner of
-/// two fillets whose dihedrals differ or of two chamfers whose far
-/// contacts miss each other on the third edge, whose blends are not both
-/// convex or both concave, or whose edges do not share exactly one face
-/// is `Reason::VertexBlend`.
+/// so two fillets' axes, both `r` off it, cross at the ball's one centre,
+/// and the miter is the ellipse of the two cylinders in the plane
+/// bisecting their axes from where the two contacts on the shared face
+/// cross, its pcurve on each cylinder fitted by the oblique-section rule;
+/// two chamfers meet in the line from the same point. Where the far
+/// contacts meet the third edge at one point, the curve ends there and the
+/// third edge is shortened to it. Where two fillets' dihedrals differ they
+/// meet it at two (ADR-0044): the ellipse ends at `m`, where it crosses the
+/// narrower blend's far contact, and the wider blend's trim arc runs on
+/// from `m` to its own point, where the third edge is cut (`trim_arc`). Two
+/// chamfers whose far contacts miss each other on the third edge, blends
+/// not both convex or both concave, or edges that do not share exactly one
+/// face are `Reason::VertexBlend`; a third edge shorter than the cut is
+/// `Reason::BlendTooLarge`.
+#[allow(clippy::too_many_arguments)]
 fn miter(
     m: &Model,
     view: &View,
@@ -2305,6 +2366,7 @@ fn miter(
     b: &Stripe,
     vertex: VertexId,
     tol: Tolerance,
+    samples: usize,
     meter: &mut Meter<'_>,
 ) -> Result<Miter, OpError> {
     meter.tick()?;
@@ -2353,19 +2415,9 @@ fn miter(
     if faces3 != BTreeSet::from([face_a, face_b]) {
         return Err(vertex_blend());
     }
-    // Both convex or both concave, and two fillets of equal dihedrals:
-    // what puts their axes through one centre and their far contacts
-    // through one point of the third edge; anything else is a corner of
-    // two arcs, the
-    // blend-network cycle's.
-    let unequal = match (a.section, b.section) {
-        (Section::Round { .. }, Section::Round { .. }) => (a.beta - b.beta).abs() > tol.angular,
-        (Section::Flat, Section::Flat) => false,
-        (Section::Round { .. }, Section::Flat) | (Section::Flat, Section::Round { .. }) => {
-            return Err(invariant("one kind of blend in one call"));
-        }
-    };
-    if unequal || a.convex != b.convex {
+    // Both convex or both concave: one convex and one concave is a corner
+    // the closed forms do not cover.
+    if a.convex != b.convex {
         return Err(vertex_blend());
     }
     let tolerance = a.tolerance.max(b.tolerance);
@@ -2402,32 +2454,47 @@ fn miter(
         });
     };
     let d3: Vec3 = d3.into_inner();
-    let (p3, tpa, t3) = crossing(
+    let (pa, tpa, t3a) = crossing(
         line_origin(&a.lines[1 - ka])?,
         a.d,
         o3,
         d3,
         "the first blend's contact through the third edge",
     )?;
-    let (p3b, tpb, _) = crossing(
+    let (pb, tpb, t3b) = crossing(
         line_origin(&b.lines[1 - kb])?,
         b.d,
         o3,
         d3,
         "the second blend's contact through the third edge",
     )?;
-    if (p3 - p3b).norm() > tolerance {
-        return Err(match a.section {
-            // Equal dihedrals put two fillets' far contacts through one
-            // point.
-            Section::Round { .. } => {
-                invariant("the two contacts through one point of the third edge")
+    // Unequal dihedrals put the far contacts through two points of the
+    // third edge: the wider blend's, the farther from the vertex, is where
+    // the edge is cut, and the curve stops at the narrower's far contact
+    // (ADR-0044 §2).
+    let corner_point = m.vertex(vertex)?.point();
+    let wide = match (a.section, (pa - pb).norm() > tolerance) {
+        (_, false) => None,
+        (Section::Round { .. }, true) => {
+            if (a.beta - b.beta).abs() <= tol.angular {
+                // Equal dihedrals put two fillets' far contacts through
+                // one point.
+                return Err(invariant(
+                    "the two contacts through one point of the third edge",
+                ));
             }
-            // Two chamfers' meet there only when their edges make equal
-            // angles with the third edge.
-            Section::Flat => vertex_blend(),
-        });
-    }
+            Some(usize::from(
+                (pb - corner_point).norm() > (pa - corner_point).norm(),
+            ))
+        }
+        // Two chamfers' meet there only when their edges make equal
+        // angles with the third edge.
+        (Section::Flat, true) => return Err(vertex_blend()),
+    };
+    let (p3, t3) = match wide {
+        Some(1) => (pb, t3b),
+        Some(_) | None => (pa, t3a),
+    };
     // The third edge shortened to that point.
     let too_large = || degenerate(vec![ea, eb, forward(e3)], Reason::BlendTooLarge);
     let Some(tc) = into_range(range3, t3, c3.period()) else {
@@ -2453,10 +2520,12 @@ fn miter(
         t: tc,
         cuts_lo,
     };
-    let (curve, range, q_first) = match (a.section, b.section) {
+    // The curve, and where it ends: `p3`, or `m` on the narrower blend's
+    // far contact with that contact's parameter there.
+    let (curve, range, q_first, end, t_m) = match (a.section, b.section) {
         (Section::Flat, Section::Flat) => {
             let (curve, range) = chord(q, p3, tol)?;
-            (curve, range, true)
+            (curve, range, true, p3, None)
         }
         (Section::Round { .. }, Section::Flat) | (Section::Flat, Section::Round { .. }) => {
             return Err(invariant("one kind of blend in one call"));
@@ -2519,7 +2588,22 @@ fn miter(
                 }
                 Ok(projection.t)
             };
-            let (tq, tp) = (param(q)?, param(p3)?);
+            // Where the dihedrals differ, `m`: the narrower blend's far
+            // contact, a ruling of its cylinder, through the ellipse's plane.
+            let (end, t_m) = match wide {
+                None => (p3, None),
+                Some(w) => {
+                    let (narrow, k) = if w == 0 { (b, kb) } else { (a, ka) };
+                    let origin = line_origin(&narrow.lines[1 - k])?;
+                    let along = narrow.d.dot(&n);
+                    if along.abs() <= tol.angular {
+                        return Err(invariant("the narrower contact across the miter plane"));
+                    }
+                    let t_m = (centre - origin).dot(&n) / along;
+                    (origin + t_m * narrow.d, Some(t_m))
+                }
+            };
+            let (tq, tp) = (param(q)?, param(end)?);
             // The arc between them: the way round that lies inside both blends,
             // between their contacts in `u`.
             let inside = |t: f64| {
@@ -2539,7 +2623,7 @@ fn miter(
                 return Err(invariant("a miter arc inside both blends"));
             };
             let (range, q_first) = arc_between(tq, tp, mid)?;
-            (curve, range, q_first)
+            (curve, range, q_first, end, t_m)
         }
     };
     let arc_tol = Tolerance::new(tolerance, tol.angular);
@@ -2558,12 +2642,39 @@ fn miter(
     t[0][1 - ka] = tpa;
     t[1][kb] = tqb;
     t[1][1 - kb] = tpb;
+    let end_tolerance = tolerance.max(e3_entity.tolerance());
+    let trim_arc = match (wide, t_m) {
+        (Some(w), Some(t_m)) => {
+            let narrow = 1 - w;
+            t[narrow][1 - shared[narrow]] = t_m;
+            let (ws, ns) = if w == 0 { (a, b) } else { (b, a) };
+            let face = ns.faces[1 - shared[narrow]];
+            Some(trim_arc(
+                m,
+                view,
+                [ws, ns],
+                w,
+                face,
+                e3,
+                vertex,
+                [end, p3],
+                end_tolerance,
+                tol,
+                samples,
+                meter,
+            )?)
+        }
+        (Some(_), None) | (None, Some(_)) => {
+            return Err(invariant("a trim arc where the dihedrals differ"));
+        }
+        (None, None) => None,
+    };
     Ok(Miter {
         edges: [a.edge, b.edge],
         shared,
         t,
         q,
-        p3,
+        p3: end,
         curve,
         range,
         q_first,
@@ -2571,9 +2682,84 @@ fn miter(
         on_blend,
         trim: Some(trim),
         q_trim: None,
+        trim_arc,
         tolerance,
         q_tolerance: tolerance,
-        p3_tolerance: tolerance.max(e3_entity.tolerance()),
+        p3_tolerance: if wide.is_some() {
+            tolerance
+        } else {
+            end_tolerance
+        },
+    })
+}
+
+/// The trim arc of a miter of unequal dihedrals (ADR-0044 §3): the
+/// section of the wider stripe `stripes[0]`, the miter's side `wide`, with
+/// `face`, the narrower stripe's far face, from `points[0]`, `m`, to
+/// `points[1]` on the third edge `e3` — `section_between`'s, a conic exact
+/// on the plane — with its pcurves on the face and on the wider blend. The
+/// arc lies inside the face where the third edge is of the blends' sense;
+/// a third edge of the other sense is `Reason::VertexBlend`, and an arc
+/// leaving the face `Reason::BlendTooLarge`.
+#[allow(clippy::too_many_arguments)]
+fn trim_arc(
+    m: &Model,
+    view: &View,
+    stripes: [&Stripe; 2],
+    wide: usize,
+    face: FaceId,
+    e3: EdgeId,
+    vertex: VertexId,
+    points: [Point3; 2],
+    end_tolerance: f64,
+    tol: Tolerance,
+    samples: usize,
+    meter: &mut Meter<'_>,
+) -> Result<TrimArc, OpError> {
+    let [ws, ns] = stripes;
+    let side = match convex_edge(m, view, e3)? {
+        Some(convex) if convex == ws.convex => Side::Inside,
+        Some(_) | None => {
+            return Err(degenerate(
+                vec![forward(ws.edge), forward(ns.edge), forward(vertex)],
+                Reason::VertexBlend,
+            ));
+        }
+    };
+    let surface = m.surface(m.face(face)?.surface())?;
+    let tolerance = ws
+        .tolerance
+        .max(ns.tolerance)
+        .max(m.face(face)?.tolerance());
+    let arc_tol = Tolerance::new(tolerance, tol.angular);
+    let refuse = || OpError::Unsupported {
+        a: (GeomKind::Surface(ws.surface.kind()), forward(ws.edge)),
+        b: (GeomKind::Surface(surface.kind()), forward(face)),
+    };
+    let section = section_between(ws, surface, points, &refuse, arc_tol, meter)?;
+    let (curve, range) = (section.curve, section.range);
+    let on_face = pcurve_on(&curve, range, surface, arc_tol, meter).map_err(fault_of)?;
+    if !on_side_of_face(m, face, &on_face, range, side, samples)? {
+        return Err(degenerate(
+            vec![forward(ws.edge), forward(ns.edge), forward(face)],
+            Reason::BlendTooLarge,
+        ));
+    }
+    let on_blend = pcurve_on(&curve, range, &ws.surface, arc_tol, meter).map_err(fault_of)?;
+    let on_blend = ws.place(on_blend, range.lo(), band_u(ws, curve.point(range.lo()))?);
+    Ok(TrimArc {
+        wide,
+        vertex,
+        face,
+        narrow_edge: ns.edge,
+        end: points[1],
+        end_tolerance: end_tolerance.max(section.gaps[1]),
+        curve,
+        range,
+        m_first: section.lo_first,
+        on_face,
+        on_blend,
+        tolerance,
     })
 }
 
@@ -2867,6 +3053,7 @@ fn junction(
         on_blend,
         trim,
         q_trim,
+        trim_arc: None,
         tolerance,
         q_tolerance: match wq {
             Some(wq) => tolerance.max(m.edge(wq)?.tolerance()),
@@ -4463,11 +4650,38 @@ struct StripeMade {
 }
 
 /// The rewrite's indices of one miter's entities: its two vertices, `q`
-/// then `p3`, and its edge.
+/// then `p3`, its edge, and a trim arc's end vertex and edge.
 #[derive(Clone, Copy)]
 struct MiterMade {
     vertices: [usize; 2],
     edge: usize,
+    trim_arc: Option<(usize, usize)>,
+}
+
+impl MiterMade {
+    /// The vertex the stripe at `side`'s far contact ends at: `p3`, or the
+    /// trim arc's end on the wider blend.
+    fn far(&self, mt: &Miter, side: usize) -> usize {
+        match (&mt.trim_arc, self.trim_arc) {
+            (Some(arc), Some((end, _))) if arc.wide == side => end,
+            _ => self.vertices[1],
+        }
+    }
+
+    /// The stripe at `side`'s edges at the miter in its end's order, as
+    /// `Miter::arcs` lists their curves.
+    fn arcs(&self, mt: &Miter, side: usize) -> Vec<usize> {
+        match (&mt.trim_arc, self.trim_arc) {
+            (Some(arc), Some((_, edge))) if arc.wide == side => {
+                if mt.shared[side] == 0 {
+                    vec![self.edge, edge]
+                } else {
+                    vec![edge, self.edge]
+                }
+            }
+            _ => vec![self.edge],
+        }
+    }
 }
 
 /// The rewrite's indices of one corner's entities: its three vertices,
@@ -4609,6 +4823,7 @@ fn build(
                     &stripes[index_of[&eb]],
                     v,
                     tol,
+                    samples,
                     meter,
                 )?);
             }
@@ -4696,8 +4911,47 @@ fn build(
             },
             None,
         ));
+        // A miter of unequal dihedrals: the trim arc from `m` on to the
+        // third edge, which the narrower blend's far face takes at the
+        // corner vertex (ADR-0044 §4).
+        let trim_arc = match &mt.trim_arc {
+            None => None,
+            Some(arc) => {
+                let end = rw.vertices.len();
+                rw.vertices.push(VertexSpec::New {
+                    point: arc.end,
+                    tolerance: arc.end_tolerance,
+                });
+                let (first, second) = if arc.m_first { (p3, end) } else { (end, p3) };
+                let edge = rw.edges.len();
+                rw.edges.push((
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(arc.curve.clone()),
+                            range: arc.range,
+                        },
+                        start: VertexKey::New(first),
+                        end: VertexKey::New(second),
+                        tolerance: arc.tolerance,
+                    },
+                    None,
+                ));
+                let pcurve = m.add_curve2(arc.on_face.clone());
+                edits.entry(arc.face).or_default().insert.insert(
+                    arc.vertex,
+                    Insertion {
+                        arc: EdgeKey::New(edge),
+                        pcurve,
+                        lo_first: arc.m_first,
+                        edge_at_lo: arc.narrow_edge,
+                        splits: None,
+                    },
+                );
+                Some((end, edge))
+            }
+        };
         if let Some(trim) = &mt.trim {
-            cut_once(&mut cuts, trim, p3)?;
+            cut_once(&mut cuts, trim, trim_arc.map_or(p3, |(end, _)| end))?;
         }
         if let Some(trim) = &mt.q_trim {
             cut_once(&mut cuts, trim, q)?;
@@ -4705,6 +4959,7 @@ fn build(
         miter_made.push(MiterMade {
             vertices: [q, p3],
             edge,
+            trim_arc,
         });
     }
     // The corners next: their three vertices, their three arcs and a
@@ -4773,7 +5028,7 @@ fn build(
                 EndKind::Miter { at, side } => {
                     let shared = miters[*at].shared[*side];
                     vertices[end_index][shared] = miter_made[*at].vertices[0];
-                    vertices[end_index][1 - shared] = miter_made[*at].vertices[1];
+                    vertices[end_index][1 - shared] = miter_made[*at].far(&miters[*at], *side);
                 }
                 EndKind::Corner { at, side } => {
                     for (k, slot) in vertices[end_index].iter_mut().enumerate() {
@@ -4802,8 +5057,8 @@ fn build(
         for (end_index, end) in blend.ends.iter().enumerate() {
             let face_end = match end {
                 EndKind::Face(face_end) => face_end,
-                EndKind::Miter { at, .. } => {
-                    arcs[end_index].push(miter_made[*at].edge);
+                EndKind::Miter { at, side } => {
+                    arcs[end_index] = miter_made[*at].arcs(&miters[*at], *side);
                     continue;
                 }
                 EndKind::Corner { at, side } => {
@@ -5198,9 +5453,7 @@ fn build(
                     .iter()
                     .map(|p| (p.arc.lo_first, &p.arc.on_blend))
                     .collect(),
-                EndKind::Miter { at, side } => {
-                    vec![(miters[*at].lo_first[*side], &miters[*at].on_blend[*side])]
-                }
+                EndKind::Miter { at, side } => miters[*at].arcs(*side),
                 EndKind::Corner { at, side } => {
                     let arc = &corners[*at].arcs[*side];
                     vec![(arc.lo_first, &arc.on_blend)]
@@ -5375,6 +5628,16 @@ fn build(
             p.add_generated(origin, forward(out.vertices[v]));
         }
     }
+    // A trim arc's `m`, the narrower blend's vertex, from the wider
+    // blend's edge too (ADR-0044 §5).
+    for (mt, made) in miters.iter().zip(&miter_made) {
+        if let Some(arc) = &mt.trim_arc {
+            p.add_generated(
+                forward(mt.edges[arc.wide]),
+                forward(out.vertices[made.vertices[1]]),
+            );
+        }
+    }
     // A corner's face and a sphere's pole from each of its three edges;
     // its vertices and sides are its blends' own, recorded above.
     for (c, made) in corners.iter().zip(&corner_made) {
@@ -5442,7 +5705,12 @@ fn build(
 /// through the ball's centre bisecting their axes, from where the two
 /// contacts on the shared face cross to where the other two meet the
 /// third edge, a fitted `Nurbs` pcurve on each cylinder; the third edge
-/// is shortened to that point and no face takes an arc. Three blends at a
+/// is shortened to that point and no face takes an arc. Where their
+/// dihedrals differ (ADR-0044) the far contacts meet the third edge at two
+/// points: the ellipse stops at `m` on the narrower blend's far contact,
+/// and the wider blend — the one reaching farther along the third edge —
+/// is trimmed on from `m` by the narrower's far face, in a circle or an
+/// ellipse that face takes; the third edge is shortened to its end. Three blends at a
 /// vertex of three planes, all convex or all concave, meet in the sphere of
 /// `radius` about the ball's one centre, tangent to each cylinder along the
 /// great circle through the centre square to its axis, between the points
@@ -5506,7 +5774,8 @@ fn build(
 /// self; the edge and the two corner vertices `Deleted`; the shell and
 /// the body `Modified`. At a fan, each section and each crossing vertex
 /// is `Generated` from the edge too, and each edge crossed `Modified`. A miter's edge and two vertices are `Generated`
-/// from both edges they join. At a corner of three, each side of the
+/// from both edges they join; a trim arc and its end on the third edge from
+/// the wider blend's edge alone. At a corner of three, each side of the
 /// sphere is its blend's end arc and each corner point is `Generated` from
 /// the two edges whose contacts cross there; the sphere face and its pole
 /// from all three. A closed edge's torus face, its two contact
@@ -5537,8 +5806,8 @@ fn build(
 /// does not run on through and that is no fan — the faces across not one
 /// walk through its star, an edge at it smooth, a seam or of the other
 /// sense, or a fan at a miter, a corner or a ring's end — a miter
-/// whose two blends have unequal dihedrals or are not both convex or
-/// both concave, a miter with a blend along a ruling, whose contact on
+/// whose two blends are not both convex or both concave, or whose
+/// dihedrals differ at a third edge of the other sense, a miter with a blend along a ruling, whose contact on
 /// the cylinder misses the other's on the third edge, or a corner of three
 /// blended edges whose faces are not all planes, whose blends are mixed or
 /// none of whose faces is square to the other two — and

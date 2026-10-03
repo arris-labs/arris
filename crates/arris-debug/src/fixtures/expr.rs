@@ -39,7 +39,7 @@ pub enum ExprError {
 
 /// Evaluates `text` over `params`. Grammar: `+ - * / ^`, unary `-`,
 /// parentheses, decimal numbers, names from `params` and `pi`, and the
-/// functions `sin cos tan sqrt radians degrees abs` of one argument.
+/// functions `sin cos tan atan sqrt radians degrees abs` of one argument.
 pub fn eval(text: &str, params: &BTreeMap<String, f64>) -> Result<f64, ExprError> {
     let mut p = Parser {
         text,
@@ -217,6 +217,7 @@ impl Parser<'_> {
                 ("sin", 1) => f64::sin,
                 ("cos", 1) => f64::cos,
                 ("tan", 1) => f64::tan,
+                ("atan", 1) => f64::atan,
                 ("sqrt", 1) => f64::sqrt,
                 ("radians", 1) => f64::to_radians,
                 ("degrees", 1) => f64::to_degrees,
@@ -272,6 +273,7 @@ mod tests {
         assert_eq!(eval("(1 + 2) * 3", &p), Ok(9.0));
         assert_eq!(eval("1e-3 * 1000", &p), Ok(1.0));
         assert_eq!(eval("sqrt(16) / 2", &p), Ok(2.0));
+        assert_eq!(eval("4 * atan(1)", &p), Ok(core::f64::consts::PI));
     }
 
     #[test]

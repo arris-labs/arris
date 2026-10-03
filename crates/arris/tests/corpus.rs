@@ -649,15 +649,6 @@ fn regression_boss_flush_posed_gap_fuse() {
     run("regression/boss-flush-posed-gap-fuse");
 }
 
-/// Two fillets of a slanted prism's corner, the vertical edge at the
-/// parallelogram's acute vertex and its cap edge, whose dihedrals differ:
-/// Open CASCADE builds the corner at 12 vertices, 18 edges and 8 faces.
-#[test]
-#[ignore = "VertexBlend: a miter of unequal dihedrals is the corner's two-piece curve and a trim arc, not one ellipse (plans/blend-miters)"]
-fn regression_miter_unequal_dihedrals_fillet() {
-    run("regression/miter-unequal-dihedrals-fillet");
-}
-
 /// The chamfer twin: the edges make unequal angles with the third edge, so
 /// the chamfers' line stops short of it and the wider chamfer's chord
 /// crosses the face across.
@@ -1483,6 +1474,17 @@ fn blend_box_corner_three_chamfers() {
 #[test]
 fn blend_fillet_miter() {
     run("blend/fillet-miter");
+}
+
+/// Two fillets of a slanted prism's corner, the vertical edge at the
+/// parallelogram's acute vertex and its cap edge, whose dihedrals differ
+/// (ADR-0044): the ellipse of the two cylinders up to the cap's far
+/// contact, then the vertical's cylinder trimmed by the top face in a
+/// circle the top face takes, the third edge cut at its end — 12
+/// vertices, 18 edges and 8 faces, Open CASCADE's counts.
+#[test]
+fn blend_miter_unequal_dihedrals_fillet() {
+    run("blend/miter-unequal-dihedrals-fillet");
 }
 
 /// A half disc's chord edge: a plane against a cylinder along a ruling,

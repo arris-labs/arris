@@ -112,6 +112,7 @@ _FUNCS = {
     "sin": math.sin,
     "cos": math.cos,
     "tan": math.tan,
+    "atan": math.atan,
     "sqrt": math.sqrt,
     "radians": math.radians,
     "degrees": math.degrees,
