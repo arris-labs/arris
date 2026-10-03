@@ -649,6 +649,24 @@ fn regression_boss_flush_posed_gap_fuse() {
     run("regression/boss-flush-posed-gap-fuse");
 }
 
+/// Two fillets of a slanted prism's corner, the vertical edge at the
+/// parallelogram's acute vertex and its cap edge, whose dihedrals differ:
+/// Open CASCADE builds the corner at 12 vertices, 18 edges and 8 faces.
+#[test]
+#[ignore = "VertexBlend: a miter of unequal dihedrals is the corner's two-piece curve and a trim arc, not one ellipse (plans/blend-miters)"]
+fn regression_miter_unequal_dihedrals_fillet() {
+    run("regression/miter-unequal-dihedrals-fillet");
+}
+
+/// The chamfer twin: the edges make unequal angles with the third edge, so
+/// the chamfers' line stops short of it and the wider chamfer's chord
+/// crosses the face across.
+#[test]
+#[ignore = "VertexBlend: a miter of unequal chamfers is the meeting line and a trim chord, not one line (plans/blend-miters)"]
+fn regression_miter_unequal_dihedrals_chamfer() {
+    run("regression/miter-unequal-dihedrals-chamfer");
+}
+
 /// pin-in-bore-fuse's pin a tolerance or two out through the bore's wall, turned, or grown.
 #[test]
 #[ignore = "Fault::Split Dangling and NoInterior, and a union that fails the checker (docs/BACKLOG.md, ADR-0022)"]
