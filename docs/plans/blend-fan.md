@@ -189,13 +189,21 @@ bound has to be established here.
     prints the sample's pair with its axes. The test
     `ctc_01s_crossing_cylinders_are_the_nurbs_cycles` reads the
     committed STEP and holds it: crossing axes, equal radii, NURBS.
-- [ ] Step 8 **[1]** — **The tiers measured.** Run `tools/real-parts.sh`
+- [x] Step 8 **[1]** — **The tiers measured.** Run `tools/real-parts.sh`
   and `real_parts --census-committed`, and record the numbers in this
   plan:
   - the fetched and committed `VertexBlend` counts (expected 12 → 0 and
     15 → 3);
   - the `fillet` column by cycle (CTC-01 under NURBS on both tiers);
   - the battery stages (0 failing parts).
+  - Measured (2026-10-04): the fetched tier's `VertexBlend` is 0 edges,
+    from 12; the committed tier's 3 (`ftc-06`), from 15 (`census`, `--census-committed`).
+    The fetched `fillet` column holds 2 parts of 27: `ctc_01` under NURBS
+    (crossing axes, equal radii) and `stc_07` under NURBS. The committed
+    tier's census has `ctc-01` under NURBS, `ftc-10` NURBS, `ctc-04` and
+    `ftc-06` and `ftc-08` the blend network. Battery: 89 stages, 79
+    agree, 4 both refuse, 6 Arris refuses; 0 failing parts. No part left
+    the column, as the acceptance states.
 
 ## Acceptance
 - `cargo nextest run` at `ARRIS_GATE=full`: the fan fixtures (fillet,
