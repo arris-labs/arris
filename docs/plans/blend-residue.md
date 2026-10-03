@@ -102,7 +102,7 @@ bound has to be established here.
   taken to a blend by steps 3, 6 and 7 (`blend_prop`): checker green,
   volume additivity of the blended and the removed material, STEP
   round-trip, determinism of ids. Seeded; shards via `prop_shards!`.
-- [ ] Step 9 **[1]** — Measure the fetched and committed tiers again
+- [x] Step 9 **[1]** — Measure the fetched and committed tiers again
   (`tools/real-parts.sh`), print the column beside C4's 17 of 38 and
   step 1's line, move the `fixtures:` expectations whose refusals changed
   with the commit body saying why, and update `docs/ROADMAP.md` §C6's
@@ -169,4 +169,9 @@ bound has to be established here.
   `regression/twin-boss-foot-turned-chamfer-cone-cylinder`, `#[ignore]`d;
   the property rejects that refusal alone, by name. The fix is a backlog
   line; step 9's count does not depend on it.
+- Found at step 9: the column fell 9 → 8 on the fetched tier (`stc_08`) and
+  stayed 6 on the committed one, not the 3 and 0 the census counted: the
+  census's four sampled edges meet the next refusal (`BlendTooLarge` in
+  `ftc_08`, `stc_06`, committed `ftc-08`; an end the trace does not take in
+  `ctc_01` ap242). No `fixtures:` expectation moved; none changed refusal.
 - Resolved 2026-10-03 (human): step 2's gate fired (steps 3, 6 and 7 as written free 2 of 15 parts; step 3 none); option (a) taken: steps 3–4 dropped, the torus-on-cylinder end added to step 6, which frees 3 (`ftc_08`, `ctc_01` ap242, `stc_08`). `fillet-by-part.md` has the rows.

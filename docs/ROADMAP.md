@@ -594,6 +594,25 @@ end on a cylinder (`stc_08`); the other parts that meet an end first
 `VertexBlend` among their four. The B-spline-written conic edge is a first
 refusal in two parts only, both NURBS-cycle, whose sampled edges name NURBS
 faces as well.
+The third plan built the open arc's torus ending on a plane off its axis or
+on a cylinder across, and a ruling stripe ending on a cylinder or a cone
+(ADR-0037: the end curve traced and fitted, the surface exact), and measured
+the tiers again (`tools/real-parts.sh`, `--census-committed`, 2026-10-03).
+The fetched tier's `fillet` column holds **8** parts by first refusal (7 blend
+network, 1 NURBS), 9 before: `stc_08` left it, no part disagreeing with Open
+CASCADE (0 failing parts; the battery's stages 74 agree, 3 both refuse, 12
+Arris refuses, from 73, 3, 13). The census had counted three leaving
+(`ftc_08`, `ctc_01` ap242, `stc_08`); the other two met the next refusal of
+their four sampled edges: `ftc_08` and `stc_06` now first meet
+`BlendTooLarge`, `ctc_01` ap242 an end on a cylinder the trace does not take
+(the pierce misses or grazes). The fetched first refusals are `BlendTooLarge`
+3, a cylinder pair 2 (one an end), `TangentChain` 1, `VertexBlend` 1 and a
+NURBS curve 1. The committed tier holds its 6 (`VertexBlend` 2, `BlendTooLarge`
+1, `TangentChain` 1, a cylinder pair 1, NURBS 1: `ftc-08`'s torus end is built
+and the part now meets the run-over). Over both tiers (38 parts) the blend
+network blocks 12 at `fillet`, beside C4's 17. The run-over and the corners
+are the next plan's sizing; a turned chamfer's cone against a cylinder across
+is refused in some poses (`regression/twin-boss-foot-turned-chamfer-cone-cylinder`).
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
