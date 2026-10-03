@@ -1,0 +1,197 @@
+{
+  "description": "the D-notch with its circle's centre 0.3 below the plate's side y = 0 (about (2, -0.3), radius \u221a1.09), the notch's top rim filleted at r 0.25: an open arc between the top plane and the cylinder, convex, whose ends lie on the side face y = 0, a plane parallel to the cylinder's axis and 0.3 off it. The blend is a torus coaxial with the notch, major radius \u221a1.09 + r and minor r; each contact meets the side face at its own angle, and the end between them is the torus's spiric section with that plane, traced and fitted (ADR-0037), the surface exact. No closed form for the volume: the oracle's",
+  "params": {
+    "r": 0.25
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              3,
+              0
+            ],
+            "via": [
+              2,
+              0.744030650891055
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "plate",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "plate",
+      "edges": [
+        [
+          2,
+          0.744030650891055,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0.5,
+        2,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_the_notch",
+      "point": [
+        2,
+        0.3,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        2,
+        "-0.3 + sqrt(1.09) + r - (r + 0.05) * cos(radians(45))",
+        "1 - r + (r + 0.05) * sin(radians(45))"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        2,
+        "-0.3 + sqrt(1.09) + r - r * cos(radians(45))",
+        "1 - r + r * sin(radians(45))"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top_contact",
+      "point": [
+        2,
+        "-0.3 + sqrt(1.09) + r",
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall_contact",
+      "point": [
+        2,
+        "-0.3 + sqrt(1.09)",
+        "1 - r"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "corner_gone_at_end",
+      "point": [
+        0.98,
+        0.01,
+        0.98
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "kept_beside_end",
+      "point": [
+        0.7,
+        0.01,
+        0.98
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_side",
+      "point": [
+        0.5,
+        0,
+        0.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        0.5,
+        2,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

@@ -5,13 +5,6 @@
 //! stripe's side, and that stretch fitted at the branch's parameter
 //! (`fit_branch`) — the surface stays exact, the end curve is the one
 //! fitted item, held to the section as every traced section is.
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the end trimmers of plans/blend-residue steps 6 and 7 call it"
-    )
-)]
 
 use core::f64::consts::{PI, TAU};
 

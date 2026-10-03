@@ -83,7 +83,7 @@ bound has to be established here.
   fixtures of step 1's list, the fit's distance from a dense sample within
   `SECTION_FIT_FRACTION · tol.linear`; a `regression/` fixture for every
   trace that fails, `#[ignore]`d with its desired assertion.
-- [ ] Step 6 **[3]** — The open arc's torus ending on a plane parallel to
+- [x] Step 6 **[3]** — The open arc's torus ending on a plane parallel to
   its axis and off it (the spiric section) and, by the same trace, on a
   cylinder across (the census's third family, leading `stc_06` and
   `stc_08`): the end trimmed by the fitted
@@ -146,4 +146,11 @@ bound has to be established here.
   fixture exists for an end the kernel does not build yet; steps 6 and 7
   add the part-shaped fixtures with Open CASCADE's oracle. No trace
   failed, so no `regression/` fixture was added.
+- Found at step 6: a chamfer's cone ending on a plane parallel to its
+  axis meets it in a hyperbola, which neither tracer takes (a plane has no
+  quadric form in `trace_quadrics`); it stays `Unsupported` naming the cone
+  and the plane, a backlog line (its exact form is `plane_cone`'s). The
+  torus on both families and the cone on a cylinder across build;
+  `blend/oblique-end-unsupported` was that family's refusal and is now
+  `blend/d-notch-off-axis-rim-fillet`, built against the same oracle.
 - Resolved 2026-10-03 (human): step 2's gate fired (steps 3, 6 and 7 as written free 2 of 15 parts; step 3 none); option (a) taken: steps 3–4 dropped, the torus-on-cylinder end added to step 6, which frees 3 (`ftc_08`, `ctc_01` ap242, `stc_08`). `fillet-by-part.md` has the rows.

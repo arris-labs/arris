@@ -1,0 +1,166 @@
+{
+  "description": "a plate [0,0,0]\u2013[8,6,1] with two round bosses fused on it, the first of radius 1.2 and height 2 about (3, 3), the second of radius 0.8 and height 1.5 about (4.6, 3), overlapping it: the first boss's foot filleted at r 0.2, concave, an open arc between the plate's top and the first boss's wall whose two ends are the corners where the second boss's wall meets them, a cylinder about an axis parallel to the arc's and off it. The blend is a torus coaxial with the first boss, major radius 1.2 + r and minor r, adding material; each contact meets the second boss's wall at its own angle, the plate's contact on the second boss's foot and the wall's on the line where the bosses meet, and the end between them is the section of the blend with that cylinder, traced and fitted (ADR-0037), the surface exact. No closed form for the volume: the oracle's",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        8,
+        6,
+        1
+      ]
+    },
+    {
+      "name": "a",
+      "op": "cylinder",
+      "base": [
+        3,
+        3,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.2,
+      "height": 2
+    },
+    {
+      "name": "b",
+      "op": "cylinder",
+      "base": [
+        4.6,
+        3,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 0.8,
+      "height": 1.5
+    },
+    {
+      "name": "plated",
+      "op": "fuse",
+      "a": "plate",
+      "b": "a"
+    },
+    {
+      "name": "bossed",
+      "op": "fuse",
+      "a": "plated",
+      "b": "b"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "bossed",
+      "edges": [
+        [
+          1.8,
+          3,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_plate",
+      "point": [
+        1,
+        1,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_boss",
+      "point": [
+        3,
+        3,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_second",
+      "point": [
+        5,
+        3,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_filled",
+      "point": [
+        "1.8 - 0.03",
+        3,
+        "1 + 0.03"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "beyond_blend",
+      "point": [
+        "1.8 - 0.19",
+        3,
+        "1 + 0.19"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_plate_contact",
+      "point": [
+        "1.8 - r",
+        3,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall_contact",
+      "point": [
+        1.8,
+        3,
+        "1 + r"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "second_foot_kept",
+      "point": [
+        5.4,
+        3,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "above_plate",
+      "point": [
+        1,
+        1,
+        1.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

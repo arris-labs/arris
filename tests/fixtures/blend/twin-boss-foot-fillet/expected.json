@@ -1,0 +1,134 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "57235199356838fed24d44e9c8452eec1baf64b4493441a38d9190e83ea58fb1",
+  "results": {
+    "default": {
+      "area": 142.3026572514829,
+      "centroid": [
+        3.8774115927754558,
+        3.0000000000000013,
+        0.7812635398011084
+      ],
+      "counts": {
+        "edges": 27,
+        "faces": 12,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          174.8712413514029,
+          8.526512829121202e-12,
+          9.295933456485272
+        ],
+        [
+          8.526512829121202e-12,
+          296.20534701876045,
+          -1.1368683772161603e-13
+        ],
+        [
+          9.295933456485272,
+          -1.1368683772161603e-13,
+          416.84846574010794
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 27,
+        "faces": 12,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_plate",
+          "point": [
+            1.0,
+            1.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_boss",
+          "point": [
+            3.0,
+            3.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_second",
+          "point": [
+            5.0,
+            3.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            1.77,
+            3.0,
+            1.03
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beyond_blend",
+          "point": [
+            1.61,
+            3.0,
+            1.19
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_plate_contact",
+          "point": [
+            1.6,
+            3.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_contact",
+          "point": [
+            1.8,
+            3.0,
+            1.2
+          ]
+        },
+        {
+          "class": "on",
+          "label": "second_foot_kept",
+          "point": [
+            5.4,
+            3.0,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_plate",
+          "point": [
+            1.0,
+            1.0,
+            1.5
+          ]
+        }
+      ],
+      "volume": 59.642339933901034
+    }
+  }
+}

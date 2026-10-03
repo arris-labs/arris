@@ -2104,6 +2104,9 @@ fn row_frame(surface: &Surface) -> Option<Option<Frame>> {
 struct RingContact {
     face: FaceId,
     curve: Curve,
+    /// The edge's range, or where an end off the axis trims this contact
+    /// apart from the other (ADR-0037).
+    range: Interval,
     /// Its points at the range's start and end, one vertex on a closed
     /// edge.
     points: [Point3; 2],
@@ -2116,20 +2119,24 @@ struct RingContact {
 }
 
 /// One end of an open arc's blend (ADR-0035), trimmed by a plane through
-/// the axis: the meridian of the torus there or the ruling of
-/// the cone, between the two contacts' points, inserted into that plane's
-/// loop between the two corner edges it shortens.
+/// the axis — the meridian of the torus there or the ruling of the cone —
+/// or by a face off the axis, a plane parallel to it or a cylinder about
+/// a parallel axis, on the section traced and fitted (ADR-0037); between
+/// the two contacts' points, inserted into that face's loop between the
+/// two corner edges it shortens.
 struct ArcEnd {
     vertex: VertexId,
     face: FaceId,
     /// The corner edge each contact's point cuts, by contact.
     trims: [Trim; 2],
-    /// From the first contact's point to the second's.
     curve: Curve,
     range: Interval,
-    /// Its pcurve on the face across, exact.
+    /// `true` when `range.lo()` is at the first contact's point.
+    lo_first: bool,
+    /// Its pcurve on the face across, placed in that face loop's translate.
     on_face: Curve2,
-    /// Its pcurve on the blend, a line at constant `u`, placed.
+    /// Its pcurve on the blend, placed: a line at constant `u` on the
+    /// section through the axis.
     on_blend: Curve2,
     tolerance: f64,
     /// The tolerance of each trim vertex, by contact.
@@ -2337,6 +2344,120 @@ fn placed_uv(pcurve: Curve2, t: f64, target: Point2) -> Curve2 {
     }
 }
 
+/// The face across an open arc's end, read against the arc's axis `z`
+/// through `centre`: a plane through the axis, which cuts the blend in its
+/// section at the vertex's angle (ADR-0035); a plane parallel to the axis
+/// and off it, or a cylinder about an axis parallel to it and off it, which
+/// each contact meets at its own angle and the blend in a section traced
+/// and fitted (ADR-0037); `None` for any other face.
+fn across_of(
+    surface: &Surface,
+    centre: Point3,
+    z: Vec3,
+    tol: Tolerance,
+    tolerance: f64,
+) -> Option<Across> {
+    match *surface {
+        Surface::Plane { frame } => {
+            let n = frame.z().into_inner();
+            if n.dot(&z).abs() > tol.angular {
+                return None;
+            }
+            let offset = (frame.origin() - centre).dot(&n);
+            Some(if offset.abs() <= tolerance {
+                Across::Axis
+            } else {
+                Across::Wall {
+                    point: frame.origin(),
+                    normal: n,
+                }
+            })
+        }
+        Surface::Cylinder { frame, radius } => {
+            let w: Vec3 = frame.z().into_inner();
+            let off = frame.origin() - centre;
+            let apart = off - off.dot(&z) * z;
+            (w.cross(&z).norm() <= tol.angular && apart.norm() > tolerance).then_some(
+                Across::Post {
+                    point: frame.origin(),
+                    radius,
+                },
+            )
+        }
+        Surface::EllipticCylinder { .. }
+        | Surface::Cone { .. }
+        | Surface::Sphere { .. }
+        | Surface::Torus { .. }
+        | Surface::Nurbs(_) => None,
+    }
+}
+
+/// How the face across an open arc's end meets the arc's axis
+/// ([`across_of`]).
+#[derive(Debug, Clone, Copy)]
+enum Across {
+    /// A plane through the axis.
+    Axis,
+    /// A plane parallel to the axis and off it, through `point` with unit
+    /// `normal`.
+    Wall { point: Point3, normal: Vec3 },
+    /// A cylinder of `radius` about an axis parallel to the arc's through
+    /// `point`, off it.
+    Post { point: Point3, radius: f64 },
+}
+
+impl Across {
+    /// Where the circle of `radius` about the axis `z` through `centre`,
+    /// square to it, meets the face across off the axis — a line in the
+    /// circle's plane for a wall, a circle for a post, whose radical line
+    /// with the contact's circle the crossings lie on — the crossing on the
+    /// side of the line through `centre` square to that one that `vertex`
+    /// is on, where the edge itself meets the face. `None` where the circle
+    /// misses or grazes the face within `tolerance`, or the vertex is on
+    /// that line, and on a plane through the axis, whose end is the
+    /// section's.
+    fn meet(
+        &self,
+        centre: Point3,
+        z: Vec3,
+        radius: f64,
+        vertex: Point3,
+        tolerance: f64,
+    ) -> Option<Point3> {
+        let flat = |v: Vec3| v - v.dot(&z) * z;
+        // The line the crossings lie on: its unit normal `n` in the plane
+        // and its distance `offset` from `centre` along it.
+        let (n, offset) = match *self {
+            Across::Axis => return None,
+            Across::Wall { point, normal } => {
+                let n = flat(normal).normalize();
+                (n, (point - centre).dot(&n))
+            }
+            Across::Post {
+                point,
+                radius: post,
+            } => {
+                let apart = flat(point - centre);
+                let d = apart.norm();
+                (
+                    apart / d,
+                    (radius * radius - post * post + d * d) / (2.0 * d),
+                )
+            }
+        };
+        let half = radius * radius - offset * offset;
+        if half <= 0.0 || half.sqrt() <= tolerance {
+            return None;
+        }
+        let w = z.cross(&n);
+        let side = (vertex - centre).dot(&w);
+        if side.abs() <= tolerance {
+            return None;
+        }
+        Some(centre + offset * n + side.signum() * half.sqrt() * w)
+    }
+}
+
 /// The blend of a circular edge `edge` where two faces of the meridian row
 /// meet, read in the half-plane bounded by the axis, where each face's
 /// meridian is a line or a circle (ADR-0036 §1). The ball's centre is
@@ -2350,8 +2471,10 @@ fn placed_uv(pcurve: Curve2, t: f64, target: Point2) -> Curve2 {
 /// the cylinder's outward normal points to — and the chamfer is at 45°.
 /// A closed edge's one vertex is on the curved face's seam and on nothing
 /// else; an open arc's two vertices are each a corner
-/// of three edges whose face across is a plane through the axis, or one of
-/// the `junctions`, which the junction builds. A torus that is not a ring
+/// of three edges whose face across is a plane through the axis, a plane
+/// parallel to it or a cylinder about a parallel axis — each contact then
+/// trimmed where it meets that face, the end traced and fitted (ADR-0037)
+/// — or one of the `junctions`, which the junction builds. A torus that is not a ring
 /// torus and a contact that reaches the axis or a cone's apex are
 /// `Reason::BlendTooLarge`,
 /// as is a contact or an end that leaves its face or a seam or a corner
@@ -2724,7 +2847,47 @@ fn ring(
             }
         }
     }
-    for (i, face, contact, v) in by_v {
+    // Each open end's face across, read against the axis; where it is off
+    // the axis each contact's own parameter there, in the edge's, which
+    // the contact circles share: the crossing on the vertex's side, moved
+    // by whole turns to the edge's own end.
+    let mut across: [Option<Across>; 2] = [None, None];
+    let mut ends_at = [[range.lo(), range.hi()]; 2];
+    for (j, at_lo) in [(0, true), (1, false)] {
+        let Some((_, face)) = corners[j] else {
+            continue;
+        };
+        // A face of no family is refused at its end, after the contacts.
+        let across_surface = m.surface(m.face(face)?.surface())?;
+        across[j] = across_of(across_surface, rim.origin(), z, tol, tolerance);
+        let Some(kind) = across[j].filter(|k| !matches!(k, Across::Axis)) else {
+            continue;
+        };
+        let t_end = if at_lo { range.lo() } else { range.hi() };
+        let vertex_point = curve.point(t_end);
+        for (slot, (_, _, contact, _)) in by_v.iter().enumerate() {
+            let &Curve::Circle { frame, radius } = contact else {
+                return Err(invariant("a contact circle"));
+            };
+            let point = kind
+                .meet(frame.origin(), z, radius, vertex_point, tolerance)
+                .ok_or_else(|| too_large(face))?;
+            let t = contact.project(point).map_err(geometry)?.t;
+            ends_at[slot][j] = t + TAU * ((t_end - t) / TAU).round();
+        }
+    }
+    for (slot, (i, face, contact, v)) in by_v.into_iter().enumerate() {
+        // A contact the end trims to nothing has left its face.
+        let [lo, hi] = ends_at[slot];
+        let length = match contact {
+            Curve::Circle { radius, .. } => (hi - lo) * radius,
+            Curve::Line { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_) => 0.0,
+        };
+        if length <= tolerance {
+            return Err(too_large(face));
+        }
+        let range = Interval::new(lo, hi).map_err(|_| too_large(face))?;
+        let mid = range.midpoint();
         let face_surface = m.surface(m.face(face)?.surface())?;
         let on_face =
             pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
@@ -2741,6 +2904,7 @@ fn ring(
         let target = Point2::new(if along_u { 0.0 } else { TAU }, v);
         contacts.push(RingContact {
             face,
+            range,
             points: [contact.point(range.lo()), contact.point(range.hi())],
             curve: contact,
             on_face,
@@ -2861,34 +3025,11 @@ fn ring(
         let mut ends: Vec<RingEnd> = Vec::with_capacity(2);
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
-            let Some((corner_edges, across)) = corners[j] else {
+            let Some((corner_edges, across_face)) = corners[j] else {
                 ends.push(RingEnd::Junction(vertex));
                 continue;
             };
-            // The face across holds the vertex, so a plane through the axis
-            // is the half-plane at the vertex's angle, which meets the blend
-            // in its section there; anything else meets a torus in a
-            // quartic.
-            let across_surface = m.surface(m.face(across)?.surface())?;
-            let through_axis = match across_surface {
-                Surface::Plane { frame } => {
-                    let n = frame.z().into_inner();
-                    n.dot(&z).abs() <= tol.angular
-                        && (rim.origin() - frame.origin()).dot(&n).abs() <= tolerance
-                }
-                Surface::Cylinder { .. }
-                | Surface::EllipticCylinder { .. }
-                | Surface::Cone { .. }
-                | Surface::Sphere { .. }
-                | Surface::Torus { .. }
-                | Surface::Nurbs(_) => false,
-            };
-            if !through_axis {
-                return Err(OpError::Unsupported {
-                    a: (GeomKind::Surface(surface.kind()), e),
-                    b: (GeomKind::Surface(across_surface.kind()), forward(across)),
-                });
-            }
+            let across_surface = m.surface(m.face(across_face)?.surface())?;
             let t = if at_lo { range.lo() } else { range.hi() };
             let points = [contacts[0].points[j], contacts[1].points[j]];
             let mut trims = [Trim {
@@ -2896,7 +3037,7 @@ fn ring(
                 t: 0.0,
                 cuts_lo: true,
             }; 2];
-            let across_tolerance = m.face(across)?.tolerance();
+            let across_tolerance = m.face(across_face)?.tolerance();
             let mut vertex_tolerance = [0.0; 2];
             for c in 0..2 {
                 trims[c] = cut_corner(m, edge, corner_edges[c], vertex, points[c])?;
@@ -2904,26 +3045,130 @@ fn ring(
                     .max(m.edge(corner_edges[c])?.tolerance())
                     .max(across_tolerance);
             }
-            let (end_curve, end_range) = section(radial_at(t)?, points)?;
             let end_tolerance = tolerance.max(across_tolerance);
             let end_tol = Tolerance::new(end_tolerance, tol.angular);
-            let on_face = pcurve_on(&end_curve, end_range, across_surface, end_tol, meter)
-                .map_err(geometry)?;
+            let end = match across[j] {
+                // A plane through the axis is the half-plane at the
+                // vertex's angle, which meets the blend in its section
+                // there, exact.
+                Some(Across::Axis) => {
+                    let (curve, range) = section(radial_at(t)?, points)?;
+                    let on_face = pcurve_on(&curve, range, across_surface, end_tol, meter)
+                        .map_err(geometry)?;
+                    let on_blend =
+                        pcurve_on(&curve, range, &surface, end_tol, meter).map_err(geometry)?;
+                    // In the blend loop's translate: at the contacts' `u`
+                    // there.
+                    let u = contacts[0].on_blend.point(t).x;
+                    let on_blend = placed_uv(on_blend, range.lo(), Point2::new(u, v0));
+                    (curve, range, true, on_face, on_blend)
+                }
+                // Off the axis: the section of the blend's exact surface
+                // with the face across, traced, its stretch between the two
+                // trim points on the blend's band between its contacts
+                // fitted (ADR-0037).
+                Some(Across::Wall { .. } | Across::Post { .. }) => {
+                    let band = |p: Point3| -> Result<bool, OpError> {
+                        let v = surface.project(p).map_err(geometry)?.uv.y;
+                        Ok(match surface {
+                            Surface::Torus { minor_radius, .. } => {
+                                let slack = end_tolerance / minor_radius;
+                                let w = v0 + (v - v0).rem_euclid(TAU);
+                                w <= v1 + slack || w >= v0 + TAU - slack
+                            }
+                            Surface::Plane { .. }
+                            | Surface::Cylinder { .. }
+                            | Surface::EllipticCylinder { .. }
+                            | Surface::Cone { .. }
+                            | Surface::Sphere { .. }
+                            | Surface::Nurbs(_) => {
+                                v >= v0 - end_tolerance && v <= v1 + end_tolerance
+                            }
+                        })
+                    };
+                    let refuse = || OpError::Unsupported {
+                        a: (GeomKind::Surface(surface.kind()), e),
+                        b: (
+                            GeomKind::Surface(across_surface.kind()),
+                            forward(across_face),
+                        ),
+                    };
+                    // The stretch runs round the blend's section between
+                    // the two points, within its width of either.
+                    let width = match surface {
+                        Surface::Torus { minor_radius, .. } => 2.0 * minor_radius,
+                        Surface::Plane { .. }
+                        | Surface::Cylinder { .. }
+                        | Surface::EllipticCylinder { .. }
+                        | Surface::Cone { .. }
+                        | Surface::Sphere { .. }
+                        | Surface::Nurbs(_) => v1 - v0,
+                    };
+                    let within = Aabb::of_point(points[0])
+                        .union(Aabb::of_point(points[1]))
+                        .inflated(width);
+                    let traced = traced::traced_end(
+                        &surface,
+                        across_surface,
+                        points,
+                        &within,
+                        &band,
+                        &refuse,
+                        end_tol,
+                        meter,
+                    )?;
+                    for (held, gap) in vertex_tolerance.iter_mut().zip(traced.gaps) {
+                        *held = held.max(gap);
+                    }
+                    let (range, lo_first) = (traced.range, traced.lo_first);
+                    let first = if lo_first { range.lo() } else { range.hi() };
+                    // On the face across in its loop's translate, at the
+                    // corner edge the first contact cuts; on the blend at
+                    // the first contact's end.
+                    let corner_use = view
+                        .uses
+                        .get(&corner_edges[0])
+                        .and_then(|u| u.iter().find(|u| u.face == across_face))
+                        .ok_or(invariant("the corner edge on the face across"))?;
+                    let at_corner = m.curve2(corner_use.pcurve)?.point(trims[0].t);
+                    let on_face = pcurve_on(&traced.curve, range, across_surface, end_tol, meter)
+                        .map_err(geometry)?;
+                    let on_face = placed_uv(on_face, first, at_corner);
+                    let on_blend = pcurve_on(&traced.curve, range, &surface, end_tol, meter)
+                        .map_err(geometry)?;
+                    let at_contact = contacts[0].on_blend.point(contacts[0].range.lo());
+                    let at_contact = if at_lo {
+                        at_contact
+                    } else {
+                        contacts[0].on_blend.point(contacts[0].range.hi())
+                    };
+                    let on_blend = placed_uv(on_blend, first, at_contact);
+                    (traced.curve, range, lo_first, on_face, on_blend)
+                }
+                // Anything else meets a torus in a quartic no family
+                // holds.
+                None => {
+                    return Err(OpError::Unsupported {
+                        a: (GeomKind::Surface(surface.kind()), e),
+                        b: (
+                            GeomKind::Surface(across_surface.kind()),
+                            forward(across_face),
+                        ),
+                    });
+                }
+            };
+            let (end_curve, end_range, lo_first, on_face, on_blend) = end;
             let end_side = end_side(m, view, edge, vertex, convex, corner_edges)?;
-            if !on_side_of_face(m, across, &on_face, end_range, end_side, samples)? {
-                return Err(too_large(across));
+            if !on_side_of_face(m, across_face, &on_face, end_range, end_side, samples)? {
+                return Err(too_large(across_face));
             }
-            let on_blend =
-                pcurve_on(&end_curve, end_range, &surface, end_tol, meter).map_err(geometry)?;
-            // In the blend loop's translate: at the contacts' `u` there.
-            let u = contacts[0].on_blend.point(t).x;
-            let on_blend = placed_uv(on_blend, end_range.lo(), Point2::new(u, v0));
             ends.push(RingEnd::Face(Box::new(ArcEnd {
                 vertex,
-                face: across,
+                face: across_face,
                 trims,
                 curve: end_curve,
                 range: end_range,
+                lo_first,
                 on_face,
                 on_blend,
                 tolerance: end_tolerance,
@@ -3437,7 +3682,7 @@ fn build(
                 EdgeSpec::New {
                     geometry: EdgeGeometry::Curve {
                         curve: m.add_curve(contact.curve.clone()),
-                        range: r.range,
+                        range: contact.range,
                     },
                     start: VertexKey::New(vertices[0][c]),
                     end: VertexKey::New(vertices[1][c]),
@@ -3481,6 +3726,7 @@ fn build(
                             continue;
                         }
                     };
+                    let (first, second) = if end.lo_first { (0, 1) } else { (1, 0) };
                     arcs[j] = rw.edges.len();
                     rw.edges.push((
                         EdgeSpec::New {
@@ -3488,8 +3734,8 @@ fn build(
                                 curve: m.add_curve(end.curve.clone()),
                                 range: end.range,
                             },
-                            start: VertexKey::New(vertices[j][0]),
-                            end: VertexKey::New(vertices[j][1]),
+                            start: VertexKey::New(vertices[j][first]),
+                            end: VertexKey::New(vertices[j][second]),
                             tolerance: end.tolerance,
                         },
                         None,
@@ -3503,7 +3749,7 @@ fn build(
                         Insertion {
                             arc: EdgeKey::New(arcs[j]),
                             pcurve,
-                            lo_first: true,
+                            lo_first: end.lo_first,
                             edge_at_lo: end.trims[0].edge,
                         },
                     );
@@ -3722,7 +3968,7 @@ fn build(
                 // with `u`, its start otherwise.
                 let (hi, lo) = if lower.along_u { (1, 0) } else { (0, 1) };
                 let end = |j: usize| match &ends[j] {
-                    RingEnd::Face(end) => (made.arcs[j], end.on_blend.clone(), true),
+                    RingEnd::Face(end) => (made.arcs[j], end.on_blend.clone(), end.lo_first),
                     RingEnd::Junction(vertex) => {
                         let junction = &miters[miter_at[vertex]];
                         let side = usize::from(junction.edges[0] != r.edge);
@@ -3856,8 +4102,12 @@ fn build(
 /// each curved face's seam, which is shortened to its contact. An open arc
 /// of such a
 /// circle blends to the same torus over the arc's own range, each end
-/// trimmed by the face across, a plane through the axis, on
-/// the tube circle at the vertex's angle (ADR-0035). The selection
+/// trimmed by the face across: a plane through the axis on
+/// the tube circle at the vertex's angle (ADR-0035); a plane parallel to
+/// the axis or a cylinder about a parallel axis, off it, on the section of
+/// the torus with that face, traced and fitted between where each contact
+/// meets it, the contacts then trimmed at their own angles (ADR-0037) —
+/// the one fitted curve on an exact surface. The selection
 /// follows chains: at a tangent vertex — three edges, the third's two
 /// faces tangent there, the next edge sharing one face with this one,
 /// of its sense and running on — the blend runs on into the next edge,
@@ -3923,7 +4173,9 @@ fn build(
 /// cone against another of them, today), an edge the chain reached included, and
 /// naming the face
 /// across an end that is not a plane, or, at an open arc's end, that is
-/// not a plane through the axis;
+/// none of a plane through the axis, a plane parallel to it and a cylinder
+/// about a parallel axis — or one of those two the tracer does not decide,
+/// a chamfer's cone on a plane off the axis among them;
 /// [`OpError::NotFound`] for an edge id that does not resolve.
 ///
 /// ```
@@ -3979,7 +4231,9 @@ pub fn fillet(
 /// 45° against a cylinder — its `Z` toward the wider, its `u` seam the
 /// ruling between the contacts' vertices, the curved face's seam
 /// shortened as a fillet's is; an open arc chamfers to the same cone over
-/// its range, each end on the cone's ruling in a plane through the axis.
+/// its range, each end on the cone's ruling in a plane through the axis,
+/// or on a cylinder about a parallel axis off it on the cone's traced and
+/// fitted section with it, as a [`fillet`]'s torus ends there.
 /// Convex or concave is read from the dihedral: a
 /// concave chamfer adds a prism. The result's ids are the same for any
 /// order of the same edges.

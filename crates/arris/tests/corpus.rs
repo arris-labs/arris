@@ -1560,12 +1560,28 @@ fn blend_drilled_torus_fillet() {
 }
 
 /// The D-notch with its circle's centre off the side face's plane: the open
-/// arc ends on a plane neither through the cylinder's axis nor square to
-/// it, an end Arris refuses as `Unsupported` where Open CASCADE builds it
-/// (ADR-0035 §4, §6).
+/// arc ends on a plane parallel to the cylinder's axis and off it, which
+/// cuts the torus in a spiric section, traced and fitted between the two
+/// contacts' trim points, each contact trimmed at its own angle (ADR-0037).
 #[test]
-fn blend_oblique_end_unsupported() {
-    run("blend/oblique-end-unsupported");
+fn blend_d_notch_off_axis_rim_fillet() {
+    run("blend/d-notch-off-axis-rim-fillet");
+}
+
+/// Two overlapping bosses on a plate, the first's foot filleted: an open
+/// arc whose ends lie on the second boss's wall, a cylinder about a
+/// parallel axis off the arc's, which each contact meets at its own angle
+/// and the torus in a section traced and fitted (ADR-0037).
+#[test]
+fn blend_twin_boss_foot_fillet() {
+    run("blend/twin-boss-foot-fillet");
+}
+
+/// The same foot chamfered: the cone's end on the second boss's wall,
+/// traced along its rulings and fitted (ADR-0037).
+#[test]
+fn blend_twin_boss_foot_chamfer() {
+    run("blend/twin-boss-foot-chamfer");
 }
 
 /// A bar's wall running tangentially into a quarter cylinder, its top edge

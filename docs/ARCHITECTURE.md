@@ -713,13 +713,21 @@ a rim split where a file put its vertices, a D-shaped notch — blends to
 the same torus or cone over the arc's own range (ADR-0035), with the
 blend's `X` at the arc's start vertex and no seam: its loop is a
 rectangle in (u, v). Each end is a corner of three edges trimmed by the
-face across, which must be a plane through the cylinder's axis: it meets
-the torus in the tube circle at the vertex's angle and the cone in its
-ruling, exact on the plane and a line at constant `u` on the blend; the
-corner's radial line on the plane and ruling on the cylinder are
-shortened to the contacts, and the face across takes the section between
-them. Any other face across meets a torus in a quartic and is
-`Unsupported` naming the blend's surface and that face; an arc that meets
+face across. A plane through the cylinder's axis meets the torus in the
+tube circle at the vertex's angle and the cone in its ruling, exact on
+the plane and a line at constant `u` on the blend; the corner's radial
+line on the plane and ruling on the cylinder are shortened to the
+contacts, and the face across takes the section between them. A plane
+parallel to the axis and off it, or a cylinder about a parallel axis off
+it (a second boss), is met by each contact circle at its own angle, in
+closed form in the circle's plane — the crossing on the vertex's side —
+so each contact keeps its own range; the end is the section of the
+blend's exact surface with that face, traced by `trace_section` and
+fitted between the two trim points by `fit_branch` (`blend/traced.rs`,
+ADR-0037), its pcurves fitted from it, and the face across takes it as
+an edge. A cone's end on a plane off the axis (a hyperbola) is a pair the
+tracers do not take and stays `Unsupported`, as does any other face
+across, naming the blend's surface and that face; an arc that meets
 another blended edge anywhere but at a junction (below) is `VertexBlend`.
 A torus that would not
 be a ring torus, a contact that reaches the axis, a contact or an end
