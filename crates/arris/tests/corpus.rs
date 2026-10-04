@@ -2634,3 +2634,15 @@ fn real_nist_ftc_11() {
 fn regression_cone_cylinder_fuse_s5_undecided() {
     run("regression/cone-cylinder-fuse-s5-undecided");
 }
+
+/// A hexagon with an off-centre hole revolved about one of its edges,
+/// posed, cut by a cylinder and fused with a prism, drawn by the body
+/// bytes' property (nightly 2026-10-01): the result had a hole loop that
+/// met its outer loop (L5), because a closed section edge's box ignored the
+/// part of its range past the curve's domain; fixed, and what it waits for
+/// is the reader.
+#[test]
+#[ignore = "reader: Open CASCADE's STEP of it is refused, an edge's end at 0 on its periodic curve is not past its start (plans/nightly-failures step 8)"]
+fn regression_body_bytes_revolved_hole_loops_intersect() {
+    run("regression/body-bytes-revolved-hole-loops-intersect");
+}

@@ -600,6 +600,46 @@ arris_debug::prop_shards! {
     }
 }
 
+/// The nightly of 2026-10-01 (seed `e016178c…`, shard s3 of the property
+/// above): a revolved hexagon with a hole, cut and fused, whose result had
+/// a hole loop crossing its outer loop, so the bytes were refused as an
+/// invalid body. The fixture is `regression/body-bytes-revolved-hole-loops-intersect`.
+#[test]
+fn a_fuse_whose_edge_runs_past_its_curves_domain_round_trips_through_its_bytes() {
+    let dir = arris_debug::fixtures::corpus_root()
+        .join("regression/body-bytes-revolved-hole-loops-intersect");
+    let fixture = arris_debug::fixtures::load(&dir).unwrap();
+    let chain = corpus::build("regression/body-bytes", &fixture.recipe).unwrap();
+    let body = chain.result().unwrap();
+    let record = &chain.steps[&chain.result].provenance;
+    let m = &chain.model;
+    let report = check(m, body, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    let closure = m.closure(body).unwrap();
+    let measures = mass_properties(m, body).unwrap();
+    let bytes = body::write(m, body, record).unwrap();
+    let mut fresh = Model::default();
+    let read = body_read(&mut fresh, &bytes).unwrap();
+    let report = check(&fresh, read.body, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    let c = fresh.closure(read.body).unwrap();
+    assert_eq!(
+        (
+            c.faces.len(),
+            c.edges.len(),
+            c.vertices.len(),
+            c.shells.len()
+        ),
+        (
+            closure.faces.len(),
+            closure.edges.len(),
+            closure.vertices.len(),
+            closure.shells.len()
+        )
+    );
+    assert_eq!(mass_properties(&fresh, read.body).unwrap(), measures);
+}
+
 /// Found by the `body_read` fuzz target: the elliptic guard body with a
 /// pcurve mutated so far off its face that the checker's loop sweep
 /// discretises a ring of segments that all meet, and collects every pair

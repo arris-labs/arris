@@ -172,7 +172,9 @@ impl Curve {
     /// per axis, which are the two parameters where each coordinate's
     /// sinusoid turns, taken only when the range reaches them); an outer
     /// bound for a NURBS, whose control hull over the spans the range
-    /// touches contains it.
+    /// touches contains it — of a periodic one, over the spans of its
+    /// domain the range reaches once wrapped by whole periods, the whole
+    /// domain for a range of a period or more.
     ///
     /// ```
     /// use arris_geom::Curve;
@@ -204,10 +206,34 @@ impl Curve {
                 minor_radius,
             } => Some(conic_bounds(&frame, [major_radius, minor_radius], range)),
             Curve::Nurbs(c) => {
-                let hull: Vec<[f64; 3]> = active_points(c.knots(), c.degree(), range)
-                    .filter_map(|i| c.control_points().get(i).map(|p| coords(*p)))
-                    .collect();
-                Aabb::of_points(&hull)
+                let hull = |range: Interval| {
+                    let points: Vec<[f64; 3]> = active_points(c.knots(), c.degree(), range)
+                        .filter_map(|i| c.control_points().get(i).map(|p| coords(*p)))
+                        .collect();
+                    Aabb::of_points(&points)
+                };
+                let domain = c.domain();
+                let Some(period) = c.period() else {
+                    return hull(range);
+                };
+                // A periodic curve's range may run past its domain, as a
+                // closed section's edge cut at a seam does: the knots
+                // beyond the domain carry only the few points beside its
+                // ends, so the range is taken a period at a time, back
+                // in the domain.
+                if range.length() >= period {
+                    return hull(domain);
+                }
+                let turns = ((range.lo() - domain.lo()) / period).floor();
+                let (lo, hi) = (range.lo() - turns * period, range.hi() - turns * period);
+                match (Interval::new(lo, hi.min(domain.hi())), hi > domain.hi()) {
+                    (Ok(head), false) => hull(head),
+                    (Ok(head), true) => {
+                        let tail = Interval::new(domain.lo(), hi - period).ok()?;
+                        Some(hull(head)?.union(hull(tail)?))
+                    }
+                    (Err(_), _) => None,
+                }
             }
         }
     }

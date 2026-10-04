@@ -223,3 +223,47 @@ fn a_plane_rectangles_bounds_are_its_four_corners() {
         },
     );
 }
+
+/// The nightly of 2026-10-01: a closed section curve whose edge starts
+/// near the end of its domain and runs on into the next period, as the
+/// edge of a result that was cut at a seam does. The box held only the
+/// few control points beside the end of the knots, so a boolean's face
+/// pair was rejected by it and a crossing of the edge was never found.
+#[test]
+fn a_periodic_nurbs_over_a_range_past_its_domain_is_bounded_by_the_whole_curve() {
+    use arris_geom::fit_curve_periodic;
+    use arris_math::Meter;
+    use core::f64::consts::{PI, TAU};
+
+    let f = |t: f64| Point3::new(2.0 * t.cos(), t.sin(), 0.5 * t.sin());
+    let fit = fit_curve_periodic(
+        f,
+        Interval::new(0.0, TAU).unwrap(),
+        5,
+        |t, q| (q - f(t)).norm(),
+        1e-9,
+        &mut Meter::default(),
+    )
+    .unwrap();
+    let c = Curve::Nurbs(fit);
+    // From just before the end of the domain a whole turn on, from the
+    // middle of it a whole turn on, and from before its start.
+    for (lo, hi) in [
+        (TAU - 0.02, 2.0 * TAU - 0.02),
+        (PI, 3.0 * PI),
+        (-1.0, TAU - 1.0),
+        (TAU - 0.5, TAU + 0.5),
+        (1.0, 1.0 + 3.0 * TAU),
+    ] {
+        let range = Interval::new(lo, hi).unwrap();
+        let bounds = c.bounds(range).expect("a finite range");
+        for i in 0..=SAMPLES {
+            let t = lo + (hi - lo) * i as f64 / SAMPLES as f64;
+            let p = f(t);
+            assert!(
+                (0..3).all(|k| p[k] >= bounds.min[k] - 1e-8 && p[k] <= bounds.max[k] + 1e-8),
+                "{p:?} outside {bounds:?} at {t} of [{lo}, {hi}]"
+            );
+        }
+    }
+}

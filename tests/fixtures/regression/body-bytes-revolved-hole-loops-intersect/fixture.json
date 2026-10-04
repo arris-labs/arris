@@ -1,0 +1,387 @@
+{
+  "description": "A hexagon with an off-centre circular hole revolved about one of its own edges, posed, cut by an off-centre cylinder and fused with a hexagonal prism; its body bytes read back as a face whose loops 0 and 1 intersect (L5), where the model written passes the checker. Drawn by arris_debug::prop::recipe at seed e016178c\u2026 (nightly 2026-10-01), shard s3 of arris-io::body::every_drawn_body_round_trips_through_its_bytes.",
+  "params": {},
+  "variants": {},
+  "steps": [
+    {
+      "op": "profile",
+      "name": "sk0",
+      "plane": {
+        "origin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "x": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "y": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      "outer": {
+        "start": [
+          10.0,
+          0.0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5.000000000000001,
+              8.660254037844386
+            ]
+          },
+          {
+            "line_to": [
+              -4.999999999999998,
+              8.660254037844387
+            ]
+          },
+          {
+            "line_to": [
+              -10.0,
+              1.2246467991473533e-15
+            ]
+          },
+          {
+            "line_to": [
+              -5.000000000000004,
+              -8.660254037844384
+            ]
+          },
+          {
+            "line_to": [
+              4.999999999999993,
+              -8.66025403784439
+            ]
+          },
+          {
+            "line_to": [
+              10.0,
+              0.0
+            ]
+          }
+        ]
+      },
+      "holes": [
+        {
+          "circle": {
+            "center": [
+              3.8971143170299736,
+              0.0
+            ],
+            "radius": 1.0392304845413263
+          }
+        }
+      ]
+    },
+    {
+      "op": "revolve",
+      "name": "b0",
+      "profile": "sk0",
+      "axis": {
+        "origin": [
+          5.000000000000001,
+          8.660254037844386,
+          0.0
+        ],
+        "direction": [
+          -1.0,
+          1.7763568394002506e-16,
+          0.0
+        ]
+      },
+      "angle_deg": 360.0
+    },
+    {
+      "op": "transform",
+      "name": "o0",
+      "of": "b0",
+      "translate": [
+        9.206531409121165,
+        -12.440118065200021,
+        7.505948238259131
+      ],
+      "rotate": {
+        "axis": [
+          -0.46836319097735246,
+          0.8835360328461495,
+          0.0
+        ],
+        "angle_deg": 106.52795261300972
+      }
+    },
+    {
+      "op": "cylinder",
+      "name": "b1",
+      "base": [
+        0.0,
+        0.0,
+        -4.8574981587087915
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "radius": 8.287217501596595,
+      "height": 9.714996317417583
+    },
+    {
+      "op": "transform",
+      "name": "o1",
+      "of": "b1",
+      "translate": [
+        -3.7448945886209346,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "op": "profile",
+      "name": "sk2",
+      "plane": {
+        "origin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "x": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "y": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      "outer": {
+        "start": [
+          10.0,
+          0.0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5.000000000000001,
+              8.660254037844386
+            ]
+          },
+          {
+            "line_to": [
+              -4.999999999999998,
+              8.660254037844387
+            ]
+          },
+          {
+            "line_to": [
+              -10.0,
+              1.2246467991473533e-15
+            ]
+          },
+          {
+            "line_to": [
+              -5.000000000000004,
+              -8.660254037844384
+            ]
+          },
+          {
+            "line_to": [
+              4.999999999999993,
+              -8.66025403784439
+            ]
+          },
+          {
+            "line_to": [
+              10.0,
+              0.0
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "op": "extrude",
+      "name": "b2",
+      "profile": "sk2",
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "length": 6.900159788855843
+    },
+    {
+      "op": "transform",
+      "name": "o2",
+      "of": "b2",
+      "translate": [
+        0.0,
+        0.0,
+        -0.6533503086375512
+      ]
+    },
+    {
+      "op": "common",
+      "name": "r1",
+      "a": "o0",
+      "b": "o1"
+    },
+    {
+      "op": "fuse",
+      "name": "r2",
+      "a": "r1",
+      "b": "o2"
+    }
+  ],
+  "result": "r2",
+  "probes": [
+    {
+      "label": "o0-centre",
+      "point": [
+        0.0,
+        0.0,
+        -0.27114903107919375
+      ]
+    },
+    {
+      "label": "o1-centre",
+      "point": [
+        -3.7448945886209346,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-x--in",
+      "point": [
+        -12.02211209021753,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-x--out",
+      "point": [
+        -12.042112090217529,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-x+-in",
+      "point": [
+        4.532322912975661,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-x+-out",
+      "point": [
+        4.552322912975661,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-y--in",
+      "point": [
+        -3.7448945886209346,
+        -8.277217501596596,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-y--out",
+      "point": [
+        -3.7448945886209346,
+        -8.297217501596595,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-y+-in",
+      "point": [
+        -3.7448945886209346,
+        8.277217501596596,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-y+-out",
+      "point": [
+        -3.7448945886209346,
+        8.297217501596595,
+        0.0
+      ]
+    },
+    {
+      "label": "o1-z--in",
+      "point": [
+        -3.7448945886209346,
+        0.0,
+        -4.847498158708792
+      ]
+    },
+    {
+      "label": "o1-z--out",
+      "point": [
+        -3.7448945886209346,
+        0.0,
+        -4.867498158708791
+      ]
+    },
+    {
+      "label": "o1-z+-in",
+      "point": [
+        -3.7448945886209346,
+        0.0,
+        4.847498158708792
+      ]
+    },
+    {
+      "label": "o1-z+-out",
+      "point": [
+        -3.7448945886209346,
+        0.0,
+        4.867498158708791
+      ]
+    },
+    {
+      "label": "o2-centre",
+      "point": [
+        0.0,
+        0.0,
+        2.7967295857903705
+      ]
+    }
+  ],
+  "precision": {
+    "default_tolerance": 1e-07,
+    "min_tolerance": 1e-12,
+    "max_tolerance": 0.01,
+    "angular_tolerance": 1e-12,
+    "parametric_tolerance": 1e-07,
+    "check_samples": 23
+  },
+  "tolerances": {
+    "volume_rel": 1e-09,
+    "area_rel": 1e-08,
+    "centroid_abs": 1e-07,
+    "probe": 1e-07,
+    "mesh_chord": 0.001,
+    "mesh_volume_rel": 0.002,
+    "inertia_rel": 1e-09
+  },
+  "analytic": {
+    "degenerate": false
+  }
+}

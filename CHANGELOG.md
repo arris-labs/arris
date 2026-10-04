@@ -8,6 +8,15 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A boolean no longer misses where a closed section curve's edge crosses
+  the other operand when the edge was cut at the curve's seam: the edge's
+  bounding box covered only the part of its range inside the curve's
+  domain, so a face it crossed was skipped and the result's hole loop
+  crossed its outer loop (the checker's loop-intersection row). A fused
+  hexagon-with-a-hole revolve, cut and fused again, was refused as an
+  invalid body; `Curve::bounds` of a periodic NURBS now wraps a range that
+  runs past its domain.
+
 - A curve that passes a cone's apex or a sphere's pole closer than a 256th
   of its length but farther than the tolerance now has a pcurve on the
   surface: the section of a cone and a cylinder that passed the apex at
