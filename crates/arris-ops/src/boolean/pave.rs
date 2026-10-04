@@ -2061,13 +2061,19 @@ impl<'m, 'c> Build<'m, 'c> {
     }
 
     /// The largest deviation of `pc`'s image on `f` from `curve` at the
-    /// model's check parameters over `range`.
+    /// model's check parameters over `range`, with the rounding of the
+    /// coordinates it is made of at each (the checker's own allowance
+    /// for E4): a tolerance raised to it holds when the surfaces and the
+    /// curve are evaluated again from the stored model, which rounds
+    /// every point.
     fn residual(&self, f: &FaceInfo<'m>, curve: &Curve, range: Interval, pc: &Curve2) -> f64 {
         samples(range, self.precision.check_samples)
             .into_iter()
             .map(|t| {
                 let q = pc.point(t);
-                (f.surface.point(q.x, q.y) - curve.point(t)).norm()
+                let (on_surface, on_curve) = (f.surface.point(q.x, q.y), curve.point(t));
+                (on_surface - on_curve).norm()
+                    + RELATIVE_ROUNDING * on_surface.coords.norm().max(on_curve.coords.norm())
             })
             .fold(0.0, f64::max)
     }
@@ -2109,15 +2115,7 @@ impl<'m, 'c> Build<'m, 'c> {
         let pc = self
             .metered(|mt| pcurve_ending_on(&pc, range, [start, end], f.surface, base, mt))
             .map_err(|e| geometry(e, other.shape(), f.shape()))?;
-        // The move is the residual's largest term, at an end, and the
-        // tolerance it sets is exactly that: rounding at the positions'
-        // own scale above it keeps the edge within its tube when the body
-        // is moved, which rounds every point it compares.
-        let scale = [range.lo(), range.hi()]
-            .map(|t| curve.point(t).coords.norm())
-            .into_iter()
-            .fold(0.0, f64::max);
-        let residual = self.residual(f, curve, range, &pc) + RELATIVE_ROUNDING * scale;
+        let residual = self.residual(f, curve, range, &pc);
         Ok((pc, residual))
     }
 

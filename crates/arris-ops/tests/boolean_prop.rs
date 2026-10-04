@@ -1734,15 +1734,16 @@ fn a_pipe_through_a_cylinder_far_from_the_origin_passes_the_checker() {
 /// The shrunk failure of the nightly of 2026-10-02
 /// (`ARRIS_PROPTEST_SEED=29a5102c…`, 5000 cases, shard 2 of 16): a frustum
 /// and a pipe through it, posed 60 from the origin. The checker's E4 found
-/// a section edge's pcurve 1.00036e-7 off its curve.
+/// a section edge's pcurve 1.00036e-7 off its curve (the numbers are the
+/// whole shard's final shrink; the first one printed passes).
 #[test]
 fn a_pipe_through_a_frustum_far_from_the_origin_passes_the_checker() {
     let pose = printed_pose(
         [
             0.0352982588521497,
             0.9275792477249976,
-            -0.18526522400381099,
-            -0.3225330508440215,
+            0.0,
+            0.3719553361788676,
         ],
         [59.55015422791381, 0.0, 0.0],
     );
@@ -1753,10 +1754,10 @@ fn a_pipe_through_a_frustum_far_from_the_origin_passes_the_checker() {
             height: 7.596003427461487,
         },
         tool: printed_pipe(
-            [-1.6739221729825582, -1.4202991467137847, 3.468799404744462],
+            [-1.9323479265652481, -1.742746103016946, 3.440097701893266],
             [0.6238825555963347, 0.7784403386805128, 0.0692906627010817],
             1.0802719024055645,
-            17.274572986252593,
+            17.688794783712012,
             pose,
         ),
         pose,
