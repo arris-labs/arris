@@ -152,12 +152,19 @@ bound has to be established here.
     chord. Arris matches Open CASCADE's counts and volume with no closed
     form added; the cap chamfer is the wider and cuts the third edge at
     (2.9, 1.8, 2).
-- [ ] Step 5 **[2]** — **A property over random slanted corners.**
+- [x] Step 5 **[2]** — **A property over random slanted corners.**
   - Draw prisms over random parallelograms in random poses, fillet and
     chamfer at random size, two edges at one corner.
   - Check: checker green, the same ids for either edge order, determinism,
     and the volume. Where the volume oracle comes from is ⚠ OPEN 2.
   - Shard it with `prop_shards!` as the other blend properties are.
+  - **Found (OPEN 2 decided):** the closed form. The prism less the corner
+    section over the rise, less the top edge's section over its length
+    (the slant's gain at one end paid back at the other), plus the overlap
+    `∫ L(n) g(n) dn` over the wall strip, `g(n) = r − √(2rn − n²)`; chamfers
+    in a polynomial. It reproduces the fixture's closed form at the slanted
+    prism and Arris's volume at 2000 cases per shard, acute and obtuse
+    corners, either top edge.
 - [ ] Step 6 **[2]** — **The tangent cylinder–sphere edges read as
   tangent.**
   - Find where ctc-04's 7 edges are refused as a pair while their twins are
@@ -223,7 +230,7 @@ bound has to be established here.
   (ADR-0015), or does the plan drop steps 2–5 and keep 6–8? **Agent
   decides at step 1.** Preferred: closed forms if the corner's volume has
   one, otherwise drop.
-- ⚠ OPEN 2 — The step 5 property's volume oracle. Options are a closed form
+- ⚠ OPEN 2 (decided at step 5: the closed form) — The step 5 property's volume oracle. Options are a closed form
   for the corner's removed volume (the stripes' sections × length,
   corrected by the miter wedge and the trim cap), or the differential's
   cached Open CASCADE run per drawn pose. **Agent decides at step 5.**
