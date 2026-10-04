@@ -253,6 +253,25 @@ fn counts_of(outcome: &Outcome, field: &str) -> Option<(usize, usize)> {
     Some((values.next()?, values.next()?))
 }
 
+/// Whether the oracle's counts are Arris's with `k > 0` faces each cut in
+/// two and nothing else: `k` more faces and loops and vertices, `2k` more
+/// edges, the same shells. The Euler line is unchanged, so the oracle's
+/// shape is Arris's with its faces subdivided (a blend written as several
+/// fitted strips against Arris's one exact face), never a missing hole.
+fn oracle_subdivides_faces(outcome: &Outcome) -> bool {
+    let (Some(v), Some(e), Some(f), Some(l), Some((sa, so))) = (
+        counts_of(outcome, "vertices"),
+        counts_of(outcome, "edges"),
+        counts_of(outcome, "faces"),
+        counts_of(outcome, "loops"),
+        counts_of(outcome, "shells"),
+    ) else {
+        return false;
+    };
+    let k = f.1.saturating_sub(f.0);
+    k > 0 && f.0 < f.1 && v.1 == v.0 + k && e.1 == e.0 + 2 * k && l.1 == l.0 + k && sa == so
+}
+
 /// Every named exclusion, each citing the regression fixtures that pin
 /// its failure (ADR-0024).
 pub const EXCLUSIONS: &[Exclusion] = &[
@@ -291,6 +310,12 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         fixtures: &["revolve-cut-by-extrusion-extra-faces"],
         symptom: "more faces than Open CASCADE",
         covers: |o| counts_of(o, "faces").is_some_and(|(arris, oracle)| arris > oracle),
+    },
+    Exclusion {
+        name: "oracle-subdivides-faces",
+        fixtures: &["turned-dome-three-rim-fillet"],
+        symptom: "Open CASCADE's faces are Arris's cut in pieces: k more faces, loops and vertices, 2k more edges",
+        covers: oracle_subdivides_faces,
     },
     Exclusion {
         name: "mesh-not-closed",
@@ -1093,6 +1118,22 @@ mod tests {
         assert!(
             excluded(more, EXCLUSIONS).fails(),
             "a vertex more is no exclusion's"
+        );
+        let strips = Outcome::Disagree {
+            stage: Stage::Counts,
+            what: "counts Counts { vertices: 6, edges: 11, faces: 7, loops: 7, shells: 1, solids: 1 } but the oracle says Counts { vertices: 12, edges: 23, faces: 13, loops: 13, shells: 1, solids: 1 }".into(),
+        };
+        assert!(
+            !excluded(strips, EXCLUSIONS).fails(),
+            "case 216: six strips of one blend"
+        );
+        let hole = Outcome::Disagree {
+            stage: Stage::Counts,
+            what: "counts Counts { vertices: 6, edges: 11, faces: 7, loops: 7, shells: 1, solids: 1 } but the oracle says Counts { vertices: 12, edges: 22, faces: 13, loops: 13, shells: 1, solids: 1 }".into(),
+        };
+        assert!(
+            excluded(hole, EXCLUSIONS).fails(),
+            "an edge short of 2k is a change of genus, not a subdivision"
         );
         assert!(internal_is(
             &Outcome::Internal("Internal(Split)".into()),
