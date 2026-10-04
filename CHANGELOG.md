@@ -8,6 +8,13 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A closed NURBS curve whose first knot span is vanishingly narrow no
+  longer reports a plane crossing that is not on the plane: a clamped cubic
+  whose second knot was 3.6e-304 jumped from its first control point to its
+  second inside that span, and a crossing in it came back at a parameter
+  of 9e-16, 0.3 off the surface. `intersect_curve_surface` now solves each
+  side of the join of a closed curve alone and finds it at 1e-304.
+
 - A boolean no longer misses where a closed section curve's edge crosses
   the other operand when the edge was cut at the curve's seam: the edge's
   bounding box covered only the part of its range inside the curve's

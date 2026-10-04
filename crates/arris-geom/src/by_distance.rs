@@ -172,7 +172,23 @@ pub(crate) fn hits_by_distance(
         if stop.touch || next.touch || (stop.distance < 0.0) == (next.distance < 0.0) {
             continue;
         }
-        let mut t = crossing(stop.t, next_t)?;
+        let mut t = if closed && stop.t < domain.hi() && next_t > domain.hi() {
+            // The stretch runs over the join of a closed curve whose two
+            // ends are one point, but which is no smoother there than
+            // its first span: that span can be narrower than a parameter
+            // near the end resolves, so a bracket across the join
+            // converges on the jump from the end to the start's far side,
+            // not on a root. Each side of the join is looked at alone,
+            // the sign at the join (the start's) saying which holds the
+            // crossing.
+            if (stop.distance < 0.0) != (distance(domain.lo()) < 0.0) {
+                crossing(stop.t, domain.hi())?
+            } else {
+                crossing(domain.lo(), next_t - period.unwrap_or(0.0))?
+            }
+        } else {
+            crossing(stop.t, next_t)?
+        };
         if let Some(period) = period {
             if t >= domain.hi() {
                 t = (t - period).max(domain.lo());

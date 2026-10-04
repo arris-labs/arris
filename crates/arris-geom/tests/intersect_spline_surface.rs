@@ -881,3 +881,73 @@ fn a_nurbs_curve_against_a_nurbs_surface_stays_unsupported() {
         },
     );
 }
+
+/// Found by the `intersect_curve_surface` fuzz target (nightly 2026-09-28,
+/// `fuzz/`, ADR-0024 §5): a closed clamped cubic whose first span is
+/// 3.6e-304 wide — the curve jumps from its first control point to its
+/// second inside it — crosses a plane inside that span. The stretch over
+/// the join of a closed curve was bracketed across it, and the
+/// bracket's bisection converged on the jump from the end to the first
+/// parameter after the span the end's rounding can reach, 0.3 off the
+/// plane. Each side of the join is solved alone now, and the hit is
+/// the crossing, at a parameter of 1e-304.
+#[test]
+fn a_closed_curve_whose_first_span_is_a_hair_wide_meets_a_plane_inside_it() {
+    let pts = [
+        [
+            -1.6428571428571428,
+            0.035714285714285365,
+            1.0714285714285716,
+        ],
+        [0.0857142857142863, 0.37857142857142856, 1.2571428571428573],
+        [0.41428571428571503, 3.121428571428572, 0.24285714285714266],
+        [-2.1714285714285713, 4.492857142857144, -0.5142857142857145],
+        [-5.028571428571429, 3.2071428571428573, -0.08571428571428574],
+        [-5.357142857142858, 0.46428571428571397, 0.9285714285714287],
+        [-3.371428571428572, -0.30714285714285783, 0.8857142857142857],
+        [
+            -1.6428571428571428,
+            0.035714285714285365,
+            1.0714285714285716,
+        ],
+    ];
+    let knots = vec![
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        3.645561009778199e-304,
+        2.000120162963867,
+        3.0000038146972656,
+        4.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+    ];
+    let curve = Curve::Nurbs(
+        NurbsCurve::new(
+            3,
+            knots,
+            pts.iter().map(|p| Point3::new(p[0], p[1], p[2])).collect(),
+            vec![1.0; 8],
+        )
+        .unwrap(),
+    );
+    let frame = Frame::new(
+        Point3::new(-2.357142857142857, 1.9642857142857144, 0.9285714285714286),
+        Vec3::new(0.28571428571428575, 0.4285714285714286, 0.8571428571428572),
+        Vec3::new(0.42857142857142855, -0.8571428571428571, 0.2857142857142857),
+    )
+    .unwrap();
+    let surface = Surface::Plane { frame };
+    let r = intersect_curve_surface(&curve, &surface, tol(), &mut arris_math::Meter::default())
+        .unwrap();
+    let hits = hits_of(&r);
+    for h in hits {
+        let off = (h.point - frame.origin()).dot(&frame.z()).abs();
+        assert!(off <= tol().linear, "t = {:e}: {off:e} off the plane", h.t);
+    }
+    assert!(hits.iter().any(|h| h.t < 1e-300), "{hits:?}");
+    assert_eq!(hits.len(), 2, "{hits:?}");
+}
