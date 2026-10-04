@@ -1,5 +1,5 @@
 {
-  "description": "a prism over the parallelogram (0,0) (2,0) (3,2) (1,2), 2 high, its slanted vertical edge at (3, 2) and the cap edge at (2, 2, 2) chamfered in one call at d 0.2: the two edges meet at the corner (3, 2, 2) with unequal dihedrals (the vertical's is 63.4 degrees off square, the cap's a right angle), the third edge staying sharp; Open CASCADE builds the corner and Arris refuses it as VertexBlend (plans/blend-miters)",
+  "description": "a prism over the parallelogram (0,0) (2,0) (3,2) (1,2), 2 high, its slanted vertical edge at (3, 2) and the cap edge at (2, 2, 2) chamfered in one call at d 0.2: the two edges meet at the corner (3, 2, 2) with unequal dihedrals (the vertical's is 63.4 degrees off square, the cap's a right angle), the third edge staying sharp (ADR-0044). The cap chamfer is the wider (its plane cuts the third edge at y = 1.8, the vertical's at 1.82): the two chamfer planes meet in a line from the shared face to m on the vertical's far contact, and the cap's plane runs on from m in a chord across the slanted face, which takes it, the third edge cut at its end. The volume and area are Open CASCADE's, which Arris matches",
   "params": {
     "d": 0.2
   },

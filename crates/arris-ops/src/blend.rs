@@ -2353,11 +2353,12 @@ fn contacts(
 /// third edge is shortened to it. Where two fillets' dihedrals differ they
 /// meet it at two (ADR-0044): the ellipse ends at `m`, where it crosses the
 /// narrower blend's far contact, and the wider blend's trim arc runs on
-/// from `m` to its own point, where the third edge is cut (`trim_arc`). Two
-/// chamfers whose far contacts miss each other on the third edge, blends
-/// not both convex or both concave, or edges that do not share exactly one
-/// face are `Reason::VertexBlend`; a third edge shorter than the cut is
-/// `Reason::BlendTooLarge`.
+/// from `m` to its own point, where the third edge is cut (`trim_arc`); two
+/// chamfers of unequal angles with the third edge do the same in lines, `m`
+/// where the narrower chamfer's far contact crosses the wider's plane.
+/// Blends not both convex or both concave, or edges that do not share
+/// exactly one face are `Reason::VertexBlend`; a third edge shorter than
+/// the cut is `Reason::BlendTooLarge`.
 #[allow(clippy::too_many_arguments)]
 fn miter(
     m: &Model,
@@ -2475,21 +2476,19 @@ fn miter(
     let corner_point = m.vertex(vertex)?.point();
     let wide = match (a.section, (pa - pb).norm() > tolerance) {
         (_, false) => None,
-        (Section::Round { .. }, true) => {
-            if (a.beta - b.beta).abs() <= tol.angular {
-                // Equal dihedrals put two fillets' far contacts through
-                // one point.
-                return Err(invariant(
-                    "the two contacts through one point of the third edge",
-                ));
-            }
-            Some(usize::from(
-                (pb - corner_point).norm() > (pa - corner_point).norm(),
-            ))
+        (Section::Round { .. }, true) if (a.beta - b.beta).abs() <= tol.angular => {
+            // Equal dihedrals put two fillets' far contacts through one
+            // point.
+            return Err(invariant(
+                "the two contacts through one point of the third edge",
+            ));
         }
-        // Two chamfers' meet there only when their edges make equal
-        // angles with the third edge.
-        (Section::Flat, true) => return Err(vertex_blend()),
+        // Two chamfers' meet there only when their edges make equal angles
+        // with the third edge; otherwise the wider one is the same
+        // distance's farther.
+        (Section::Round { .. } | Section::Flat, true) => Some(usize::from(
+            (pb - corner_point).norm() > (pa - corner_point).norm(),
+        )),
     };
     let (p3, t3) = match wide {
         Some(1) => (pb, t3b),
@@ -2524,8 +2523,26 @@ fn miter(
     // far contact with that contact's parameter there.
     let (curve, range, q_first, end, t_m) = match (a.section, b.section) {
         (Section::Flat, Section::Flat) => {
-            let (curve, range) = chord(q, p3, tol)?;
-            (curve, range, true, p3, None)
+            // Where the angles differ, `m`: the narrower chamfer's far
+            // contact through the wider chamfer's plane.
+            let (end, t_m) = match wide {
+                None => (p3, None),
+                Some(w) => {
+                    let (narrow, wider, k) = if w == 0 { (b, a, kb) } else { (a, b, ka) };
+                    let origin = line_origin(&narrow.lines[1 - k])?;
+                    let o0 = line_origin(&wider.lines[0])?;
+                    let o1 = line_origin(&wider.lines[1])?;
+                    let n = wider.d.cross(&(o1 - o0));
+                    let along = narrow.d.dot(&n);
+                    if along.abs() <= tol.angular * n.norm() {
+                        return Err(invariant("the narrower contact across the wider plane"));
+                    }
+                    let t_m = (o0 - origin).dot(&n) / along;
+                    (origin + t_m * narrow.d, Some(t_m))
+                }
+            };
+            let (curve, range) = chord(q, end, tol)?;
+            (curve, range, true, end, t_m)
         }
         (Section::Round { .. }, Section::Flat) | (Section::Flat, Section::Round { .. }) => {
             return Err(invariant("one kind of blend in one call"));
@@ -5877,7 +5894,11 @@ pub fn fillet(
 /// the shared face cross to where the other two meet the third edge,
 /// which is shortened to that point; those two meet it at one point
 /// exactly when the two edges make equal angles with it (a box corner,
-/// any right prism). Three chamfers at a vertex of three planes, all convex
+/// any right prism). Where the angles differ (ADR-0044) the line stops at
+/// `m` on the narrower chamfer's far contact, and the wider chamfer, the one
+/// reaching farther along the third edge, runs on in a chord in the
+/// narrower's far face, which takes it; the third edge is shortened to the
+/// chord's end. Three chamfers at a vertex of three planes, all convex
 /// or all concave, meet in the triangle of the points where each face's
 /// two contacts cross, each side a segment in one chamfer's plane, at any
 /// such corner; the triangle and every corner point are recorded as a
@@ -5900,12 +5921,13 @@ pub fn fillet(
 /// the faces across its ends and the corner edges the trim shortens
 /// `Modified`; the edge and its corner vertices `Deleted`. The line where
 /// two chamfers meet and its two vertices are `Generated` from both
-/// edges. `arris_topo::provenance::audit` holds on every result.
+/// edges; a trim chord and its end on the third edge from the wider
+/// chamfer's edge alone. `arris_topo::provenance::audit` holds on every result.
 ///
 /// Errors, the model untouched: a [`fillet`]'s, with
 /// [`Reason::NonFinite`] or [`Reason::NotPositive`] naming the distance,
-/// [`Reason::VertexBlend`] for two chamfers at a corner whose edges
-/// make unequal angles with its third edge, and [`OpError::Unsupported`]
+/// [`Reason::VertexBlend`] for two chamfers at a corner of mixed
+/// convexity, and [`OpError::Unsupported`]
 /// for a plane and a cylinder along a ruling, which fillets but has no
 /// chamfer in the table.
 ///

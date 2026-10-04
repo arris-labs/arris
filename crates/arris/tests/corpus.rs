@@ -649,15 +649,6 @@ fn regression_boss_flush_posed_gap_fuse() {
     run("regression/boss-flush-posed-gap-fuse");
 }
 
-/// The chamfer twin: the edges make unequal angles with the third edge, so
-/// the chamfers' line stops short of it and the wider chamfer's chord
-/// crosses the face across.
-#[test]
-#[ignore = "VertexBlend: a miter of unequal chamfers is the meeting line and a trim chord, not one line (plans/blend-miters)"]
-fn regression_miter_unequal_dihedrals_chamfer() {
-    run("regression/miter-unequal-dihedrals-chamfer");
-}
-
 /// pin-in-bore-fuse's pin a tolerance or two out through the bore's wall, turned, or grown.
 #[test]
 #[ignore = "Fault::Split Dangling and NoInterior, and a union that fails the checker (docs/BACKLOG.md, ADR-0022)"]
@@ -1485,6 +1476,16 @@ fn blend_fillet_miter() {
 #[test]
 fn blend_miter_unequal_dihedrals_fillet() {
     run("blend/miter-unequal-dihedrals-fillet");
+}
+
+/// The chamfer twin: the edges make unequal angles with the third edge, so
+/// the chamfers' line stops at `m` on the vertical's far contact and the
+/// cap chamfer, the wider, runs on in a chord across the slanted face, which
+/// takes it; the third edge is cut at its end (ADR-0044) — Open CASCADE's 12
+/// vertices, 18 edges and 8 faces.
+#[test]
+fn blend_miter_unequal_dihedrals_chamfer() {
+    run("blend/miter-unequal-dihedrals-chamfer");
 }
 
 /// A half disc's chord edge: a plane against a cylinder along a ruling,

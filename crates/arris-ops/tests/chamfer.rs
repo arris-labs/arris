@@ -4,6 +4,8 @@
 //! a line, fully checked; a concave edge; and the refusals a chamfer
 //! words differently from a fillet.
 
+use std::collections::BTreeSet;
+
 use arris_debug::dump_text;
 use arris_debug::unmetered::cut;
 use arris_debug::unmetered::{chamfer, extrude, mass_properties, primitive_box, revolve};
@@ -359,21 +361,81 @@ fn a_bad_distance_is_refused_by_name() {
     assert_eq!(dump_text(&m, body).unwrap(), before);
 }
 
+/// The slanted prism: the parallelogram (0,0) (2,0) (3,2) (1,2) extruded
+/// 2, its vertical edge at (3, 2) between faces at the acute angle atan 2.
+fn slanted_prism(m: &mut Model) -> Body {
+    prism(m, &[(0.0, 0.0), (2.0, 0.0), (3.0, 2.0), (1.0, 2.0)])
+}
+
 /// Two chamfers at a corner whose edges make unequal angles with its
 /// third edge — the slanted vertical edge of an extruded parallelogram
-/// and its cap edge, 90° and 63.4° to the top of the slanted face — have
-/// far contacts that meet it at two points: refused by name, the model
-/// untouched (the blend-network cycle's). Each edge alone chamfers.
+/// and its cap edge, 90° and 63.4° to the top of the slanted face — are a
+/// miter of two pieces (ADR-0044): the chamfers' line up to `m` on the
+/// vertical's far contact, then the cap chamfer, the wider (its plane cuts
+/// the third edge at `y = 1.8`, the vertical's at `1.82`), in a chord on
+/// the slanted face, which takes it, the third edge cut at its end. Clean at
+/// `Full` with nothing unchecked, at Open CASCADE's counts, the chord
+/// generated from the cap edge alone and `m` from both, the record audited
+/// (`blend/miter-unequal-dihedrals-chamfer` holds the oracle's volume).
 #[test]
-fn a_corner_of_unequal_angles_is_a_vertex_blend() {
+fn a_miter_of_unequal_angles_is_two_pieces_and_a_trim_chord() {
     let mut m = Model::default();
-    let body = prism(&mut m, &[(0.0, 0.0), (2.0, 0.0), (3.0, 2.0), (1.0, 2.0)]);
+    let body = slanted_prism(&mut m);
     let vertical = edge_at(&m, body, Point3::new(3.0, 2.0, 1.0));
     let cap = edge_at(&m, body, Point3::new(2.0, 2.0, 2.0));
-    let before = dump_text(&m, body).unwrap();
-    let err = chamfer(&mut m, body, &[vertical, cap], D).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
-    assert_eq!(dump_text(&m, body).unwrap(), before);
+    let third = edge_at(&m, body, Point3::new(2.5, 1.0, 2.0));
+    let (chamfered, provenance) = chamfer(&mut m, body, &[vertical, cap], D).unwrap();
+    let report = check(&m, chamfered, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    let line = report.euler().unwrap();
+    assert_eq!(
+        (line.vertices, line.edges, line.faces, line.loops),
+        (12, 18, 8, 8)
+    );
+    audit(&m, &[body], chamfered, &provenance).unwrap();
+    let generated = |e: &Edge| -> BTreeSet<Shape> {
+        provenance
+            .generated_from(e.shape())
+            .iter()
+            .copied()
+            .collect()
+    };
+    let count = |set: &BTreeSet<Shape>| {
+        let mut n = (0, 0, 0);
+        for s in set {
+            match s.id {
+                EntityId::Face(_) => n.0 += 1,
+                EntityId::Edge(_) => n.1 += 1,
+                EntityId::Vertex(_) => n.2 += 1,
+                _ => {}
+            }
+        }
+        n
+    };
+    let (wide, narrow) = (generated(&cap), generated(&vertical));
+    let both: BTreeSet<Shape> = wide.intersection(&narrow).copied().collect();
+    // Each: its face, two contacts, the far arc and the line; the cap's also
+    // the chord. They share the line, `q` and `m`.
+    assert_eq!(count(&wide), (1, 5, 5), "{provenance}");
+    assert_eq!(count(&narrow), (1, 4, 4), "{provenance}");
+    assert_eq!(count(&both), (0, 1, 2), "{provenance}");
+    // The third edge is shortened to the chord's end.
+    let [shortened] = provenance.modified_from(third.shape()) else {
+        panic!("{provenance}");
+    };
+    let EntityId::Edge(id) = shortened.id else {
+        panic!("{shortened:?}")
+    };
+    let (curve, range) = m.edge(id).unwrap().curve().unwrap();
+    let curve = m.curve(curve).unwrap();
+    let ends = [curve.point(range.lo()), curve.point(range.hi())];
+    let end = Point3::new(2.9, 1.8, 2.0);
+    assert!(
+        ends.iter().any(|p| (p - end).norm() < 1e-9),
+        "{ends:?} against {end}"
+    );
+    // Each edge alone chamfers.
     chamfer(&mut m, body, &[vertical], D).unwrap();
     chamfer(&mut m, body, &[cap], D).unwrap();
 }

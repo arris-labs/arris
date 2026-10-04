@@ -144,9 +144,14 @@ bound has to be established here.
     out. The check stays as a guard. The test at r = 1.5 is refused by
     whichever bound fails first. A third edge of the other sense is
     `VertexBlend`, since no fixture shows it.
-- [ ] Step 4 **[2]** — **The chamfer miter built.** The same with lines:
+- [x] Step 4 **[2]** — **The chamfer miter built.** The same with lines:
   the chamfers' meeting line to `m`, then the wider chamfer's chord in the
   face across. The fixture moves to `blend/`, held to the oracle.
+  - **Found:** `m` is the narrower chamfer's far contact through the wider
+    chamfer's plane; the trim chord is `section_between`'s plane–plane
+    chord. Arris matches Open CASCADE's counts and volume with no closed
+    form added; the cap chamfer is the wider and cuts the third edge at
+    (2.9, 1.8, 2).
 - [ ] Step 5 **[2]** — **A property over random slanted corners.**
   - Draw prisms over random parallelograms in random poses, fillet and
     chamfer at random size, two edges at one corner.
