@@ -337,7 +337,8 @@ pub enum Violation {
         edge: EdgeId,
     },
     /// **E4** — the surface evaluated along a coedge's pcurve is farther
-    /// from the 3D curve at the same parameter than the edge's tolerance.
+    /// from the 3D curve at the same parameter than the edge's tolerance and
+    /// the rounding of their coordinates.
     PcurveOffCurve {
         /// The edge.
         edge: EdgeId,

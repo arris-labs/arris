@@ -10,7 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_topo::arris_math::{Frame, Frame2, Interval, Point3, Precision};
+use arris_topo::arris_math::{Frame, Frame2, Interval, Point3, Precision, RELATIVE_ROUNDING};
 use arris_topo::entity::{BodyKind, Coedge, Edge, EdgeGeometry, Face};
 use arris_topo::euler::EulerLine;
 use arris_topo::{
@@ -638,8 +638,17 @@ impl Checker<'_> {
                         let mut worst: Option<(f64, f64)> = None;
                         for t in samples(range, precision.check_samples) {
                             let uv = pcurve.point(t);
-                            let gap = (surface.point(uv.x, uv.y) - curve.point(t)).norm();
-                            if gap > edge.tolerance() && worst.is_none_or(|(_, g)| gap > g) {
+                            let (on_surface, on_curve) =
+                                (surface.point(uv.x, uv.y), curve.point(t));
+                            let gap = (on_surface - on_curve).norm();
+                            // A tolerance raised to a measured gap, or a body
+                            // moved rigidly, leaves the gap at the tolerance to
+                            // the rounding of the coordinates it is made of.
+                            let rounding = RELATIVE_ROUNDING
+                                * on_surface.coords.norm().max(on_curve.coords.norm());
+                            if gap > edge.tolerance() + rounding
+                                && worst.is_none_or(|(_, g)| gap > g)
+                            {
                                 worst = Some((t, gap));
                             }
                         }

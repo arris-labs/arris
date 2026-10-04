@@ -1302,6 +1302,47 @@ fn printed_pair(
     }
 }
 
+/// The shrunk failure of the nightly of 2026-10-03
+/// (`ARRIS_PROPTEST_SEED=56c7709c…`, 5000 cases, shard 13 of 16): a pipe
+/// through a wider cylinder, the section fitted. The checker's E4 found the
+/// pcurve of an edge on `f52` 1.00002e-7 off its curve at a sample the fit
+/// had not verified, 2e-5 of the tolerance over it.
+#[test]
+fn a_fitted_section_pcurve_stays_within_its_edges_tolerance() {
+    let pair = printed_pair(
+        (
+            -32.645288741979265,
+            4.585967523682559,
+            65.29057748395853,
+            [
+                0.0,
+                0.5272031288669888,
+                0.8270659522717962,
+                -0.19498402884750365,
+            ],
+            [0.0; 3],
+        ),
+        (
+            [-13.78745304751915, 3.1830378291452073, -18.857835694460114],
+            [0.5902042911287625, 0.0, 0.8072539220921723],
+            2.9129217959635363,
+            46.720951557809656,
+            [
+                0.056683684682950986,
+                0.6074548131731985,
+                0.7276314401215783,
+                -0.31358905782899443,
+            ],
+            [
+                -0.6451723780053112,
+                -0.9636808512452482,
+                0.07514465143248916,
+            ],
+        ),
+    );
+    quartic_identities(&pair).unwrap();
+}
+
 /// The shrunk failures of the property above at 1000 cases (seed, count
 /// and shards in the commit body), each a pipe breaking out of a wider
 /// cylinder's side, posed. In `fuse(a − b, b)` the notch's loop edge
