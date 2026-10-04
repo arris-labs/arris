@@ -209,12 +209,22 @@ bound has to be established here.
     network for the rest. The census test is
     `census::tests::ftc_06_run_is_a_dihedral_jump_of_the_nurbs_cycle`.
 
-- [ ] Step 8 **[1]** — **The tiers measured.**
+- [x] Step 8 **[1]** — **The tiers measured.**
   - Run `tools/real-parts.sh` and `--census-committed`.
   - Record the expected outcome in the plan: `VertexBlend` 0 edges in C6 on
     both tiers (ftc-06's 3 under NURBS), the cylinder–sphere edges counted
     under `TangentChain`, and whether ctc-04 leaves the `fillet` column.
   - 0 failing parts.
+  - **Measured (2026-10-04):** `tools/real-parts.sh` shows 0 failing parts.
+    The fetched tier's `VertexBlend` census is 0 edges and its fillet
+    column 2 parts of 27 (ctc_01, stc_07), as before. The committed tier's
+    census is `VertexBlend` 3 edges, all ftc-06's dihedral jump attributed
+    to the NURBS cycle, so 0 attributed to the blend network on either
+    tier; its fillet column is 5 parts of 11 as before. The tangent
+    cylinder–sphere edges are counted under `TangentChain` (ctc-04 7,
+    ftc-08 2, ftc-10 2 beside ftc-08's 2 cylinder–plane). ctc-04 does not
+    leave the fillet column: its first refusal is now `TangentChain`, the
+    blend network's, instead of the unsupported pair.
 
 ## Acceptance
 - `blend/miter-unequal-dihedrals-{fillet,chamfer}` match Open CASCADE's
