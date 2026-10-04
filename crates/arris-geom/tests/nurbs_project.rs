@@ -17,7 +17,7 @@ use core::f64::consts::{FRAC_PI_2, TAU};
 use arris_debug::prop::geom::nurbs_surface;
 use arris_debug::prop::{check, finite_f64, frame, point_in_box, radius, unit_vec3};
 use arris_geom::{AmbiguousLocus, GeomError, NurbsSurface, Surface};
-use arris_math::{Interval, Point3};
+use arris_math::{Frame, Interval, Point3, Vec3};
 use common::*;
 use proptest::prelude::*;
 
@@ -138,6 +138,42 @@ fn a_pole_is_a_row_with_u_at_the_start_of_the_knots() {
             Ok(())
         },
     );
+}
+
+/// A pole found a hair off its row, far from the origin: the sphere the
+/// nightly drew at `ARRIS_PROPTEST_SEED=29a5102c…` is projected onto from a
+/// point on its axis, and the minimum lands 1e-13 short of the pole in `v`,
+/// where the derivative in `u` is too large for rounding to call it zero.
+/// The pole is still one point, reported at `u` at the start of the knots
+/// and `v` at the row.
+#[test]
+fn a_pole_found_a_hair_off_its_row_is_reported_on_it() {
+    let f = Frame::from_orthonormal(
+        Point3::new(-59.860638027004754, 59.554181674241875, -74.581896414637),
+        Vec3::new(0.1733734454526067, 0.8695476117044877, -0.4624160457757859),
+        Vec3::new(-0.2607258009695479, 0.49329854358465286, 0.8298666179610119),
+        Vec3::new(
+            0.9497176975926477,
+            -0.023313040905939775,
+            0.3122383656808341,
+        ),
+    )
+    .unwrap();
+    let r = 5.156992731543929;
+    let sphere = Surface::Sphere {
+        frame: f,
+        radius: r,
+    };
+    let u = Interval::new(1.1858312516335736, 2.1663736345674307).unwrap();
+    let twin = sphere
+        .to_nurbs([u, Interval::new(-FRAC_PI_2, FRAC_PI_2).unwrap()])
+        .unwrap();
+    let found = twin
+        .project(f.origin() + 29.49995745801499 * r * f.z().into_inner())
+        .unwrap();
+    let [du, dv] = twin.domain();
+    assert_eq!(found.uv.x, du.lo());
+    assert_eq!(found.uv.y, dv.hi());
 }
 
 #[test]

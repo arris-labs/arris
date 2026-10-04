@@ -27,6 +27,11 @@ use arris_math::{Point2, Point3, RELATIVE_ROUNDING, Vec3, is_negligible};
 use super::NurbsSurface;
 use crate::{AmbiguousLocus, GeomError, GeomKind, SurfaceKind, SurfaceProjection};
 
+/// How many times the rounding of the coordinates a minimum is located to:
+/// a Newton iteration on noisy evaluations stops a few units of it short of
+/// an end of the domain or a pole, more the farther the query is.
+const LOCATION: f64 = 8.0;
+
 /// A patch is a leaf, handed to Newton's iteration, once the diagonal of
 /// its control net's box is at most this fraction of the whole surface's.
 /// A ratio that sets how small a patch is before one Newton start inside it
@@ -636,17 +641,28 @@ impl NurbsSurface {
         // reached, by a Newton iteration on noisy evaluations. The end of a
         // periodic or closed direction is its start, and a collapsed row is
         // one point whatever its `u` says.
+        //
+        // The iteration locates a parameter to a few times the rounding of
+        // the coordinates it works in, which include the query's, however
+        // far it is (`LOCATION`): at a pole the parameter along the row is
+        // then free to that much, and the row's own derivative, a hair off
+        // it, is no longer zero to rounding itself.
+        let noise = LOCATION * reach;
         let derivative = [e.du.norm(), e.dv.norm()];
         for k in 0..2 {
             let [lo, hi] = [domain[k].lo(), domain[k].hi()];
-            if is_negligible((x[k] - lo) * derivative[k], reach) {
+            if is_negligible((x[k] - lo) * derivative[k], noise) {
                 x[k] = lo;
-            } else if is_negligible((hi - x[k]) * derivative[k], reach) {
+            } else if is_negligible((hi - x[k]) * derivative[k], noise) {
                 x[k] = if closure[k].is_some() { lo } else { hi };
             }
         }
+        let derivative = [
+            self.eval(x[0], x[1]).du.norm(),
+            self.eval(x[0], x[1]).dv.norm(),
+        ];
         for k in 0..2 {
-            if is_negligible(derivative[k] * domain[k].length(), reach) {
+            if is_negligible(derivative[k] * domain[k].length(), noise) {
                 x[k] = domain[k].lo();
             }
         }
