@@ -2635,6 +2635,14 @@ fn regression_cone_cylinder_fuse_s5_undecided() {
     run("regression/cone-cylinder-fuse-s5-undecided");
 }
 
+/// Found by the differential at 1000 cases of nightly 2026-09-28's seed: a
+/// revolve cut by an extrusion, the same S5 family as the fuse above.
+#[test]
+#[ignore = "checker: S5 cannot decide a cone against a cylinder in a cut result (docs/BACKLOG.md, S5 of a cone against a cylinder)"]
+fn regression_revolve_cut_extrusion_s5_undecided() {
+    run("regression/revolve-cut-extrusion-s5-undecided");
+}
+
 /// A hexagon with an off-centre hole revolved about one of its edges,
 /// posed, cut by a cylinder and fused with a prism, drawn by the body
 /// bytes' property (nightly 2026-10-01): the result had a hole loop that

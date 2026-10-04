@@ -169,7 +169,7 @@ above when it wants a fix; the block moves or is deleted then.
 - S5 of a cone against a cylinder in a fuse result: the differential's case
   found a twice-fused elliptic cylinder, revolved cone and extrusion whose
   result leaves two cone × cylinder pairs undecided at `Full`
-  (`regression/cone-cylinder-fuse-s5-undecided`, `#[ignore]`d).
+  (`regression/cone-cylinder-fuse-s5-undecided`, `#[ignore]`d); a revolve cut by an extrusion leaves one too (`regression/revolve-cut-extrusion-s5-undecided`, nightly 09-28's differential case 60); the differential excludes both as `s5-undecided` until S5 decides the pair.
 - A twin boss's foot chamfered after a turn: the chamfer's cone against the second wall's cylinder (parallel axes, 0.3 apart) is refused `Unsupported`, no closed form, in some poses (20° and 45° about y) and builds at rest, 10° and 90° — the trace does not decide — `regression/twin-boss-foot-turned-chamfer-cone-cylinder`, found by the end families' property (blend-residue step 8; the property rejects that refusal by name until this passes)
 - A blend that meets a third face while its contacts stay inside their faces (a hole nearer the edge than `r`) is not detected by the operation, only by S5 (ADR-0007); the run-over census of four fetched parts holds none, so its `regression/` fixture is still owed (blend-run-over step 3 finding, ADR-0038)
 - The census's cause *a corner edge shorter than the trim* names the refusing site, not the geometry: on four fetched parts all 178 are a trim past the corner's vertex, the mixed corner ADR-0038 builds; `run_over_cause` could tell the two apart by where the trim falls (blend-run-over step 3 finding)

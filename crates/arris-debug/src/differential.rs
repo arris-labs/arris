@@ -319,6 +319,15 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         covers: oracle_subdivides_faces,
     },
     Exclusion {
+        name: "s5-undecided",
+        fixtures: &[
+            "cone-cylinder-fuse-s5-undecided",
+            "revolve-cut-extrusion-s5-undecided",
+        ],
+        symptom: "the checker's S5 cannot decide a cone against a cylinder",
+        covers: |o| checker_says(o, "is not decided"),
+    },
+    Exclusion {
         name: "mesh-polygon-crosses",
         fixtures: &["prism-mirror-revolve-fuse-mesh-crossing"],
         symptom: "a face's loop polygon crosses itself at a chord of 0.001",
