@@ -39,6 +39,7 @@ use crate::corpus::{self, CorpusError, Stage};
 use crate::fixtures::{self, Fixture, Measured, Recipe, Tolerances};
 use crate::oracle::{self, OracleError};
 use crate::prop::{self, recipe::recipe};
+use crate::unmetered;
 
 /// The environment variable that sets how many recipes [`run`] draws.
 pub const CASES_VAR: &str = "ARRIS_DIFF_CASES";
@@ -318,6 +319,12 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         covers: oracle_subdivides_faces,
     },
     Exclusion {
+        name: "mesh-polygon-crosses",
+        fixtures: &["prism-mirror-revolve-fuse-mesh-crossing"],
+        symptom: "a face's loop polygon crosses itself at a chord of 0.001",
+        covers: |o| matches!(o, Outcome::Disagree { stage: Stage::Mesh, what } if what.contains("polygon") && what.contains("crosses polygon")),
+    },
+    Exclusion {
         name: "mesh-not-closed",
         fixtures: &["revolve-box-fuse-mesh-not-closed"],
         symptom: "the tessellation is not closed",
@@ -525,10 +532,23 @@ fn sort(name: &str, recipe: &Recipe, oracle: Result<&Fixture, &str>) -> Outcome 
         return Outcome::OracleRefuses("expected.json has no default result".into());
     };
     if expected.degenerate {
-        return Outcome::Disagree {
-            stage: Stage::Build,
-            what: "Open CASCADE records no solid and Arris builds a body".into(),
+        return match additive(recipe, &chain) {
+            Ok(()) => Outcome::OracleRefuses(
+                "Open CASCADE records no solid, Arris's body is additive".into(),
+            ),
+            Err(why) => Outcome::Disagree {
+                stage: Stage::Build,
+                what: format!("Open CASCADE records no solid and Arris builds a body ({why})"),
+            },
         };
+    }
+    if let (Some((low, high)), Some(volume)) = (volume_bounds(recipe, &chain), expected.volume)
+        && (volume < low - ADDITIVE_REL * low || volume > high + ADDITIVE_REL * high)
+        && additive(recipe, &chain).is_ok()
+    {
+        return Outcome::OracleRefuses(format!(
+            "Open CASCADE's volume {volume} is outside what the operands bound, Arris's body is additive"
+        ));
     }
     let mut fixture = fixture.clone();
     fixture.recipe.tolerances = held_to(&fixture, &chain, expected);
@@ -544,6 +564,108 @@ fn sort(name: &str, recipe: &Recipe, oracle: Result<&Fixture, &str>) -> Outcome 
         },
         Err(payload) => panicked(&*payload),
     }
+}
+
+/// The relative slack of [`additive`]'s volume identity: the sum of the
+/// operands' volumes and the sum of the union's and the common's are
+/// each integrated over faces fitted to within the model's tolerance,
+/// and agree far inside this on every body the identity has held for.
+const ADDITIVE_REL: f64 = 1e-6;
+
+/// Whether Arris's result, where Open CASCADE could record no solid to
+/// compare it with, holds by itself: the checker green at `Full`, and
+/// when the recipe's result is a boolean of two operands, the volume
+/// identity `V(A ∪ B) + V(A ∩ B) = V(A) + V(B)` over a fresh union and
+/// common of them (an empty common counting as nothing), and the result's
+/// volume the one of its operation (`A ∪ B`, `A ∩ B`, `V(A) − V(A ∩ B)`).
+/// A result that is no boolean has no identity to hold it to and is the
+/// `Err`, as before.
+fn additive(recipe: &Recipe, chain: &corpus::Chain) -> Result<(), String> {
+    use fixtures::Step;
+    let Some(made) = chain.steps.get(&chain.result) else {
+        return Err("the result step has no body".into());
+    };
+    let step = recipe.steps.iter().find(|s| s.name() == chain.result);
+    let &[a, b] = made.inputs.as_slice() else {
+        return Err("the result is no boolean to hold to additivity".into());
+    };
+    if !matches!(
+        step,
+        Some(Step::Fuse { .. } | Step::Common { .. } | Step::Cut { .. })
+    ) {
+        return Err("the result is no boolean to hold to additivity".into());
+    }
+    let report =
+        arris_ops::arris_check::check(&chain.model, made.body, arris_ops::arris_check::Level::Full);
+    if !report.is_ok() {
+        return Err(format!("the result fails the checker: {report}"));
+    }
+    let mut scratch = chain.model.clone();
+    let union = match unmetered::fuse(&mut scratch, a, b) {
+        Ok((body, _)) => volume_in(&scratch, body)?,
+        Err(e) => return Err(format!("the union of the operands: {e}")),
+    };
+    let common = match unmetered::common(&mut scratch, a, b) {
+        Ok((body, _)) => volume_in(&scratch, body)?,
+        Err(OpError::Degenerate { .. }) => 0.0,
+        Err(e) => return Err(format!("the common of the operands: {e}")),
+    };
+    let model = &chain.model;
+    let (va, vb, vr) = (
+        volume_in(model, a)?,
+        volume_in(model, b)?,
+        volume_in(model, made.body)?,
+    );
+    let near = |x: f64, y: f64| (x - y).abs() <= ADDITIVE_REL * x.abs().max(y.abs());
+    if !near(union + common, va + vb) {
+        return Err(format!(
+            "the operands' volumes do not add up: {} against {}",
+            union + common,
+            va + vb
+        ));
+    }
+    let want = match step {
+        Some(Step::Fuse { .. }) => union,
+        Some(Step::Common { .. }) => common,
+        _ => va - common,
+    };
+    if near(vr, want) {
+        Ok(())
+    } else {
+        Err(format!(
+            "the result's volume is {vr}, the identity says {want}"
+        ))
+    }
+}
+
+/// What the volume of the recipe's result can be, whatever the kernel:
+/// for `A ∪ B`, from the larger operand to the two together; for
+/// `A ∩ B`, nothing to the smaller; for `A − B`, `V(A) − V(B)` (not below
+/// nothing) to `V(A)`. `None` where the result is no boolean of two
+/// operands.
+fn volume_bounds(recipe: &Recipe, chain: &corpus::Chain) -> Option<(f64, f64)> {
+    use fixtures::Step;
+    let made = chain.steps.get(&chain.result)?;
+    let &[a, b] = made.inputs.as_slice() else {
+        return None;
+    };
+    let (va, vb) = (
+        volume_in(&chain.model, a).ok()?,
+        volume_in(&chain.model, b).ok()?,
+    );
+    match recipe.steps.iter().find(|s| s.name() == chain.result)? {
+        Step::Fuse { .. } => Some((va.max(vb), va + vb)),
+        Step::Common { .. } => Some((0.0, va.min(vb))),
+        Step::Cut { .. } => Some(((va - vb).max(0.0), va)),
+        _ => None,
+    }
+}
+
+/// `body`'s volume in `model`.
+fn volume_in(model: &Model, body: Body) -> Result<f64, String> {
+    unmetered::mass_properties(model, body)
+        .map(|p| p.volume)
+        .map_err(|e| e.to_string())
 }
 
 /// The tolerances a drawn recipe's result is held to against `expected`:

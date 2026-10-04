@@ -1,0 +1,17 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3a5c3bf346d693f9a5ae00720c6b5f4c919f0b13da524dbcc9a7f7a2a6703033",
+  "results": {
+    "default": {
+      "counts": {
+        "edges": 0,
+        "faces": 0,
+        "loops": 0,
+        "shells": 0,
+        "solids": 0,
+        "vertices": 0
+      },
+      "degenerate": true
+    }
+  }
+}

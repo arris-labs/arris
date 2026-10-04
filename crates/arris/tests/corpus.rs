@@ -2646,3 +2646,43 @@ fn regression_cone_cylinder_fuse_s5_undecided() {
 fn regression_body_bytes_revolved_hole_loops_intersect() {
     run("regression/body-bytes-revolved-hole-loops-intersect");
 }
+
+/// A cylinder cut by a turned part, fused with a box blended at one edge
+/// (nightly 2026-09-30, case 862, seed `9f2abc6e…`): the fuse refused as
+/// `Internal(Lumps)`, an undecided nesting of two lumps. Cleared by the
+/// work since (the fillet's tolerance and the checker's rounding); kept as
+/// the case it was.
+#[test]
+fn boolean_cylinder_revolve_common_fillet_box_fuse() {
+    run("boolean/cylinder-revolve-common-fillet-box-fuse");
+}
+
+/// A turned part cut by a cylinder and fused with a thin box (nightly
+/// 2026-10-01, case 476, seed `e016178c…`): `Internal(Builder)` then; Arris
+/// now builds it and agrees with Open CASCADE in the differential, and the
+/// corpus waits on the reader only.
+#[test]
+#[ignore = "reader: Open CASCADE's STEP of it is refused, an edge's end at 0 on its periodic curve is not past its start (plans/nightly-failures step 8)"]
+fn regression_revolve_cylinder_cut_box_fuse_builder_fault() {
+    run("regression/revolve-cylinder-cut-box-fuse-builder-fault");
+}
+
+/// A cylinder and a posed prism in common, a chamfered box cut from it
+/// (nightly 2026-10-01, case 991): the checker's L5 then, since fixed by
+/// the bounds of a periodic NURBS (plans/nightly-failures step 4); the
+/// corpus waits on the reader only.
+#[test]
+#[ignore = "reader: Open CASCADE's STEP of it is refused, an edge's end at 0 on its periodic curve is not past its start (plans/nightly-failures step 8)"]
+fn regression_cylinder_prism_common_chamfer_cut_loops_intersect() {
+    run("regression/cylinder-prism-common-chamfer-cut-loops-intersect");
+}
+
+/// An elliptic prism, mirrored, fused with a posed revolve (nightly
+/// 2026-10-04, case 328, seed `3549c46a…`): a planar cap bounded by the
+/// ellipse and two section edges, whose polygon at chord 0.001 crosses
+/// itself, so the mesh is refused. The desired mesh is closed and valid.
+#[test]
+#[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
+fn regression_prism_mirror_revolve_fuse_mesh_crossing() {
+    run("regression/prism-mirror-revolve-fuse-mesh-crossing");
+}

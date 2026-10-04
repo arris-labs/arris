@@ -63,3 +63,28 @@ fn arris_and_the_oracle_agree_on_turned_parts() {
         run.report()
     );
 }
+
+/// Where Open CASCADE's boolean records no solid of operands it built, or
+/// a volume they cannot bound (a fuse smaller than one operand), and
+/// Arris's result is a valid body that adds up (`V(A ∪ B) + V(A ∩ B) =
+/// V(A) + V(B)`), the case is an oracle refusal, counted, not a
+/// disagreement (ADR-0046; the cases, with the oracle's answers as it gave
+/// them, are under `tests/oracle-wrong/`: nightly 2026-10-01's 335, 856
+/// and 696). A result that does not add up stays a disagreement.
+#[test]
+fn an_oracle_with_no_solid_holds_arris_to_additivity() {
+    use arris_debug::{differential::Outcome, fixtures};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/oracle-wrong");
+    for slug in [
+        "revolve-pair-fuse-oracle-no-solid",
+        "revolve-triple-fuse-common-oracle-no-solid",
+        "extrude-mirrored-revolve-fuse-oracle-drops-an-operand",
+    ] {
+        let fixture = fixtures::load(&root.join(slug)).unwrap();
+        let outcome = differential::judge(slug, &fixture.recipe, Ok(&fixture));
+        assert!(
+            matches!(&outcome, Outcome::OracleRefuses(why) if why.contains("additive")),
+            "{slug}: {outcome}"
+        );
+    }
+}
