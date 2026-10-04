@@ -167,6 +167,17 @@ bound has to be established here.
     corners, either top edge.
 - [ ] Step 6 **[2]** — **The tangent cylinder–sphere edges read as
   tangent.**
+  - **Blocked (2026-10-04), ⚠ OPEN 3.** The premise is wrong: no refusal
+    order is at fault. The 7 edges (ctc-04's NURBS-written circles between a
+    sphere and a cylinder of one radius, centre on the axis; the three plane
+    × cylinder line edges beside them name the same pair from their ends)
+    read as a *crease*, not as tangent, under ADR-0040 §1: `|n₁ × n₂|` is
+    `7.5e-7` to `1.2e-5` (the file writes its coordinates to about 1e-6) and
+    the ball's move `r · sine` is `5.9e-7` or more against the faces'
+    tolerance `1e-7`, while the edges' own tolerances are `8e-6` to `1.5e-4`.
+    ADR-0040 §3 chose the faces' tolerance over the edge's on purpose, so
+    the stripe's contacts stay within what a junction accepts. Their
+    "twins" are tangent within it.
   - Find where ctc-04's 7 edges are refused as a pair while their twins are
     `TangentChain`.
   - Shrink to the smallest body that shows it (a rounding ending in its
@@ -225,6 +236,17 @@ bound has to be established here.
 - `AGENTS.md` current state: C6's line gains the miter (ADR-0044).
 
 ## Open questions
+- ⚠ OPEN 3 — Step 6's tangent cylinder–sphere edges. Whether the blended
+  edge's own dihedral (a stripe's and a ring's `TangentChain`, the one place
+  no stripe is built) reads tangency at the larger of the faces' tolerance
+  and the edge's, an amendment of ADR-0040 §3 (an ADR-0045) that the
+  junctions and corner edges keep; or the 7 edges stay `Unsupported pair`
+  and step 6 shrinks to a census re-attribution (the NURBS cycle's, the file
+  being loose) with no kernel change. Preferred: the amendment, if a corpus
+  run shows no edge that builds today turns `TangentChain`; otherwise the
+  re-attribution. **Agent decides, but widening a tolerance is a design
+  change** (`/work`'s rules), so it waits for a word from the human before
+  steps 6 and 8.
 - ⚠ OPEN 1 — If Open CASCADE refuses or builds the slanted miter invalid
   (step 1), is it held to closed forms under `analytic.measure_differs`
   (ADR-0015), or does the plan drop steps 2–5 and keep 6–8? **Agent
