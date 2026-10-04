@@ -845,19 +845,24 @@ fn fade(x: f64) -> f64 {
 /// The ends of `range` that are within the band of a singular point of
 /// the surface ([`PCURVE_SINGULAR_BAND`]), or [`GeomError::ThroughSingularity`] when the curve
 /// comes that near one anywhere else: the decision is a distance, taken
-/// at the nearest approach inside each sampling interval that dips.
+/// at the nearest approach inside each sampling interval that dips. The
+/// parameters of the nearer approaches that stay outside the band come
+/// with them, ascending: beside a singular point `u` swings by `π` and
+/// back over a stretch as long as the miss, which a sampling coarser than
+/// that never sees.
 fn singular_ends(
     curve: &Curve,
     range: Interval,
     surface: &Surface,
     tol: Tolerance,
-) -> Result<[Option<SingularEnd>; 2], GeomError> {
+) -> Result<([Option<SingularEnd>; 2], Vec<f64>), GeomError> {
     let kind = GeomKind::Curve(curve.kind());
     let n = PCURVE_SAMPLES;
     let ts: Vec<f64> = (0..=n).map(|i| range.lerp(i as f64 / n as f64)).collect();
     let points: Vec<Point3> = ts.iter().map(|&t| curve.point(t)).collect();
     let band = PCURVE_SINGULAR_BAND * tol.linear;
     let mut ends = [None, None];
+    let mut passes = Vec::new();
     for singular in surface.singularities() {
         let d: Vec<f64> = (points.iter())
             .map(|p| (p - singular.point).norm())
@@ -878,6 +883,9 @@ fn singular_ends(
                     surface: GeomKind::Surface(surface.kind()),
                     t,
                 });
+            }
+            if !of_an_end && range.lo() < t && t < range.hi() {
+                passes.push(t);
             }
         }
         for (side, &end) in [0, n].iter().enumerate() {
@@ -927,7 +935,9 @@ fn singular_ends(
             });
         }
     }
-    Ok(ends)
+    passes.sort_by(f64::total_cmp);
+    passes.dedup();
+    Ok((ends, passes))
 }
 
 /// A NURBS pcurve fitted over the surface's own projection of the curve
@@ -942,7 +952,7 @@ fn fitted_on(
     meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     let kind = GeomKind::Curve(curve.kind());
-    let ends = singular_ends(curve, range, surface, tol)?;
+    let (ends, passes) = singular_ends(curve, range, surface, tol)?;
     let origin = surface.frame().map_or(0.0, |f| f.origin().coords.norm());
     let band = PCURVE_SINGULAR_BAND * tol.linear;
     let raw = |t: f64| -> Result<Point2, GeomError> {
@@ -1012,33 +1022,45 @@ fn fitted_on(
     table.push((range.lo(), start));
     even.push(0);
     for i in 1..=n {
-        // Depth-first over the halvings of this interval, nearest first.
-        let mut pending = vec![(range.lerp(i as f64 / n as f64), 0usize)];
-        while let Some(&(t, depth)) = pending.last() {
-            let (t0, last) = table[table.len() - 1];
-            let next = beside(last, raw(t)?);
-            // The swing as a fraction of the turn.
-            let swing = (0..2)
-                .filter_map(|k| periods[k].map(|period| (next[k] - last[k]).abs() / period))
-                .fold(0.0, f64::max);
-            // A NaN is not below the bound, and is not halved away either.
-            if swing < 0.25 {
-                table.push((t, next));
-                pending.pop();
-            } else if depth < UNWRAP_DEPTH && swing.is_finite() {
-                // Both halves are one level down: the rest of the
-                // interval is looked at again once the near half is in.
-                if let Some(rest) = pending.last_mut() {
-                    rest.1 = depth + 1;
+        // The interval's end, after the nearest approach to a singular
+        // point inside it, each of which is a sample: the table follows
+        // the swing of `u` there, which the even samples step over.
+        let end = range.lerp(i as f64 / n as f64);
+        let before = table[table.len() - 1].0;
+        let targets = passes
+            .iter()
+            .copied()
+            .filter(|&t| before < t && t < end)
+            .chain([end]);
+        for target in targets {
+            // Depth-first over the halvings of this step, nearest first.
+            let mut pending = vec![(target, 0usize)];
+            while let Some(&(t, depth)) = pending.last() {
+                let (t0, last) = table[table.len() - 1];
+                let next = beside(last, raw(t)?);
+                // The swing as a fraction of the turn.
+                let swing = (0..2)
+                    .filter_map(|k| periods[k].map(|period| (next[k] - last[k]).abs() / period))
+                    .fold(0.0, f64::max);
+                // A NaN is not below the bound, and is not halved away either.
+                if swing < 0.25 {
+                    table.push((t, next));
+                    pending.pop();
+                } else if depth < UNWRAP_DEPTH && swing.is_finite() {
+                    // Both halves are one level down: the rest of the
+                    // interval is looked at again once the near half is in.
+                    if let Some(rest) = pending.last_mut() {
+                        rest.1 = depth + 1;
+                    }
+                    pending.push((0.5 * (t0 + t), depth + 1));
+                } else {
+                    return Err(degenerate(
+                        kind,
+                        format!(
+                            "winds {swing} of a turn around the axis between two of {n} samples halved {UNWRAP_DEPTH} times: faster than the pcurve sampling resolves"
+                        ),
+                    ));
                 }
-                pending.push((0.5 * (t0 + t), depth + 1));
-            } else {
-                return Err(degenerate(
-                    kind,
-                    format!(
-                        "winds {swing} of a turn around the axis between two of {n} samples halved {UNWRAP_DEPTH} times: faster than the pcurve sampling resolves"
-                    ),
-                ));
             }
         }
         even.push(table.len() - 1);

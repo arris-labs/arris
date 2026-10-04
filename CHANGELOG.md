@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A curve that passes a cone's apex or a sphere's pole closer than a 256th
+  of its length but farther than the tolerance now has a pcurve on the
+  surface: the section of a cone and a cylinder that passed the apex at
+  0.0136 failed in the fit ("the normal equations are singular") because
+  the angle's swing there was narrower than the sampling that unwraps it.
+
 - `fillet` and `chamfer` build two blends meeting at a corner whose third
   edge stays sharp when the two edges' dihedrals differ (two fillets of a
   slanted prism's vertical and cap edges) or, for chamfers, make unequal

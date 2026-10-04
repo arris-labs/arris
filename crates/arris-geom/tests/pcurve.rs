@@ -1560,3 +1560,56 @@ fn a_circle_nearly_perpendicular_to_a_far_plane_is_held_to_its_conditioning() {
     .unwrap();
     circle_projects_to_the_expected_ellipse(target, circle, 0.1, 2.8077318630220667).unwrap();
 }
+
+/// The nightly of 2026-09-28 (shard 2): a cone cut by a cylinder whose
+/// quartic section passes the apex at 0.0136. Its `u` swings by `π` and
+/// back over a stretch of 2e-3 of the parameter, narrower than a 256th of
+/// the range, so that the samples either side of it differ by nearly
+/// exactly a half turn and the pcurve jumps a whole turn between them; the
+/// fit chased the jump down to a span of no width ("the normal equations
+/// are singular").
+#[test]
+fn a_cone_cut_by_a_cylinder_has_a_pcurve_for_its_quartic() {
+    let cone = Surface::Cone {
+        frame: Frame::from_orthonormal(
+            Point3::origin(),
+            Vec3::new(0.6235907270930956, 0.7064310712632316, -0.33479806844930804),
+            Vec3::new(
+                -0.21585684883377937,
+                -0.2560212836903177,
+                -0.9422626614214917,
+            ),
+            Vec3::new(
+                -0.7513590525807586,
+                0.659854714199607,
+                -0.007164513486600741,
+            ),
+        )
+        .unwrap(),
+        radius: 5.746628876001658,
+        half_angle: 0.49458559660268836,
+    };
+    let cylinder = Surface::Cylinder {
+        frame: Frame::from_orthonormal(
+            Point3::new(-0.319207523686479, -2.3135327990343493, -5.8590059136621635),
+            Vec3::new(
+                0.41642410984386896,
+                -0.06073791075088093,
+                0.9071393867197914,
+            ),
+            Vec3::new(
+                -0.8134647342500505,
+                -0.47049503832820117,
+                0.34192037821697535,
+            ),
+            Vec3::new(
+                0.40603705110769905,
+                -0.8803097892822519,
+                -0.24533362594964683,
+            ),
+        )
+        .unwrap(),
+        radius: 9.468823076175141,
+    };
+    section_has_pcurves((cone, cylinder)).unwrap();
+}
