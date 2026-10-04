@@ -17,7 +17,7 @@ use arris_geom::{
     Curve, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, MAX_DEGREE, NurbsCurve, Surface,
     SurfaceIntersection, fit_curve_periodic, intersect_curve_surface, intersect_surfaces,
 };
-use arris_math::{Aabb, Frame, Interval, Isometry, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Aabb, Frame, Interval, Isometry, Point3, Precision, Tolerance, UnitVec3, Vec3};
 use proptest::prelude::*;
 
 /// Hit points against both operands, in length units.
@@ -251,6 +251,16 @@ fn expect_points(
     expected: &[Point3],
     bound: f64,
 ) -> Result<(), TestCaseError> {
+    let each: Vec<(Point3, f64)> = expected.iter().map(|&p| (p, bound)).collect();
+    expect_points_within(what, hits, &each)
+}
+
+/// [`expect_points`] with a bound of its own for each expected point.
+fn expect_points_within(
+    what: &str,
+    hits: &[CurveSurfaceHit],
+    expected: &[(Point3, f64)],
+) -> Result<(), TestCaseError> {
     prop_assert_eq!(
         hits.len(),
         expected.len(),
@@ -259,8 +269,8 @@ fn expect_points(
         hits,
         expected
     );
-    for p in expected {
-        let Some(h) = hits.iter().find(|h| (h.point - p).norm() <= bound) else {
+    for (p, bound) in expected {
+        let Some(h) = hits.iter().find(|h| (h.point - p).norm() <= *bound) else {
             return fail(format!("{what}: no hit at {p} among {hits:?}"));
         };
         prop_assert!(!h.tangent, "{what}: a crossing reported as a touch: {h:?}");
@@ -344,6 +354,76 @@ fn segment(l: &Curve, lo: f64, hi: f64, weight: Option<f64>) -> NurbsCurve {
     .unwrap()
 }
 
+/// How far a NURBS's hit may be from the line's own: [`EXACT`] over the
+/// sine of the crossing angle, since a rounding of the surface's distance
+/// moves a grazing crossing along the curve by that much more. A crossing
+/// within [`GRAZE`] of tangent is held to that sine; the hit being on the
+/// curve and on the surface is held to [`EXACT`] by `common_properties`
+/// whatever the angle.
+fn along(l: &Curve, s: &Surface, h: &CurveSurfaceHit) -> f64 {
+    let Curve::Line { direction, .. } = l else {
+        return EXACT;
+    };
+    let sine = s
+        .normal(h.uv.x, h.uv.y)
+        .map_or(1.0, |n| n.dot(direction).abs())
+        .max(GRAZE);
+    EXACT / sine
+}
+
+/// The sine below which a crossing is no better conditioned than this.
+const GRAZE: f64 = 1e-6;
+
+/// The straight-NURBS property's body: `s` is moved so that it meets the
+/// line `l` at its point at `(u, v)`, and every NURBS that is the line
+/// meets it where the line does.
+fn straight_nurbs_meets_where_the_line_does(
+    l: &Curve,
+    s: &Surface,
+    (u, v): (f64, f64),
+    w: f64,
+) -> Result<(), TestCaseError> {
+    // The line through a point of the surface, the segment well
+    // past every hit a bounded surface can have.
+    let shift = l.point(0.0) - s.point(u, v);
+    let s = s.transformed(&Isometry::from_translation(shift));
+    let reach = 4.0 * DEFAULT_SCALE;
+    let CurveSurfaceIntersection::Points(of_line) =
+        intersect_curve_surface(l, &s, tol(), &mut arris_math::Meter::default())
+            .map_err(|e| TestCaseError::fail(e.to_string()))?
+    else {
+        return Ok(());
+    };
+    let inside: Vec<&CurveSurfaceHit> = of_line.iter().filter(|h| h.t.abs() < reach).collect();
+    if inside.iter().any(|h| h.tangent) {
+        return Ok(());
+    }
+    let expected: Vec<(Point3, f64)> = inside.iter().map(|h| (h.point, along(l, &s, h))).collect();
+    let straight = Curve::Nurbs(segment(l, -reach, reach, None));
+    let r = common_properties(&straight, &s)?;
+    expect_points_within("degree one", hits_of(&r), &expected)?;
+    for (h, of_line) in hits_of(&r).iter().zip(&inside) {
+        prop_assert!(
+            (h.t - of_line.t).abs() <= along(l, &s, of_line),
+            "{h:?} against {of_line:?}"
+        );
+    }
+    let bent = Curve::Nurbs(segment(l, -reach, reach, Some(w)));
+    let r = common_properties(&bent, &s)?;
+    expect_points_within("rational", hits_of(&r), &expected)?;
+    // One span of the highest degree there is, its control points
+    // even along the line: against a torus, a polynomial of
+    // degree a hundred.
+    let p = MAX_DEGREE;
+    let knots = [vec![-reach; p + 1], vec![reach; p + 1]].concat();
+    let points = (0..=p)
+        .map(|i| l.point(-reach + 2.0 * reach * i as f64 / p as f64))
+        .collect();
+    let tall = Curve::Nurbs(NurbsCurve::new(p, knots, points, vec![1.0; p + 1]).unwrap());
+    let r = common_properties(&tall, &s)?;
+    expect_points_within("the highest degree", hits_of(&r), &expected)
+}
+
 #[test]
 fn a_straight_nurbs_meets_each_surface_where_the_line_does() {
     check(
@@ -354,49 +434,41 @@ fn a_straight_nurbs_meets_each_surface_where_the_line_does() {
             finite_f64(-1.0..=1.0),
             finite_f64(0.5..=2.0),
         ),
-        |(l, s, u, v, w)| {
-            // The line through a point of the surface, the segment well
-            // past every hit a bounded surface can have.
-            let shift = l.point(0.0) - s.point(u, v);
-            let s = s.transformed(&Isometry::from_translation(shift));
-            let reach = 4.0 * DEFAULT_SCALE;
-            let CurveSurfaceIntersection::Points(of_line) =
-                intersect_curve_surface(&l, &s, tol(), &mut arris_math::Meter::default())
-                    .map_err(|e| TestCaseError::fail(e.to_string()))?
-            else {
-                return Ok(());
-            };
-            let inside: Vec<&CurveSurfaceHit> =
-                of_line.iter().filter(|h| h.t.abs() < reach).collect();
-            if inside.iter().any(|h| h.tangent) {
-                return Ok(());
-            }
-            let expected: Vec<Point3> = inside.iter().map(|h| h.point).collect();
-            let straight = Curve::Nurbs(segment(&l, -reach, reach, None));
-            let r = common_properties(&straight, &s)?;
-            expect_points("degree one", hits_of(&r), &expected, EXACT)?;
-            for (h, of_line) in hits_of(&r).iter().zip(&inside) {
-                prop_assert!(
-                    (h.t - of_line.t).abs() <= EXACT,
-                    "{h:?} against {of_line:?}"
-                );
-            }
-            let bent = Curve::Nurbs(segment(&l, -reach, reach, Some(w)));
-            let r = common_properties(&bent, &s)?;
-            expect_points("rational", hits_of(&r), &expected, EXACT)?;
-            // One span of the highest degree there is, its control points
-            // even along the line: against a torus, a polynomial of
-            // degree a hundred.
-            let p = MAX_DEGREE;
-            let knots = [vec![-reach; p + 1], vec![reach; p + 1]].concat();
-            let points = (0..=p)
-                .map(|i| l.point(-reach + 2.0 * reach * i as f64 / p as f64))
-                .collect();
-            let tall = Curve::Nurbs(NurbsCurve::new(p, knots, points, vec![1.0; p + 1]).unwrap());
-            let r = common_properties(&tall, &s)?;
-            expect_points("the highest degree", hits_of(&r), &expected, EXACT)
-        },
+        |(l, s, u, v, w)| straight_nurbs_meets_where_the_line_does(&l, &s, (u, v), w),
     );
+}
+
+/// The nightly of 2026-10-03: a line crossing a plane at a sine of 1e-4,
+/// where the hit of the rational NURBS is 1.2e-10 along the line from the
+/// line's own, the surface's distance there is rounding (1e-14).
+#[test]
+fn a_straight_nurbs_across_a_grazing_plane_is_held_to_the_crossings_conditioning() {
+    let l = Curve::Line {
+        origin: Point3::new(0.0, 0.0, 13.503956146623702),
+        direction: UnitVec3::new_unchecked(Vec3::new(
+            -0.14724798110694118,
+            0.8237195066646757,
+            -0.5475437940475933,
+        )),
+    };
+    let frame = Frame::from_orthonormal(
+        Point3::origin(),
+        Vec3::new(-0.6207176274123941, 0.552843686608977, -0.5559437788087243),
+        Vec3::new(-0.7260810910704453, -0.672882195737566, 0.14154787122858453),
+        Vec3::new(
+            -0.29583082362979063,
+            0.49152152428554674,
+            0.8190791872307173,
+        ),
+    )
+    .unwrap();
+    straight_nurbs_meets_where_the_line_does(
+        &l,
+        &Surface::Plane { frame },
+        (0.0, 0.0),
+        0.6602040923002235,
+    )
+    .unwrap();
 }
 
 #[test]
