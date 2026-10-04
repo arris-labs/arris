@@ -170,6 +170,8 @@ blend/hole-rim-chamfer: 2
 blend/hole-rim-fillet: 2
 blend/l-inner-edge: 5
 blend/line-into-arc-fillet: 7
+blend/miter-unequal-dihedrals-chamfer: 9
+blend/miter-unequal-dihedrals-fillet: 447
 blend/nist-ctc-04-chamfered-wall-fillet: 1210
 blend/pocket-corner-fillet: 5
 blend/probe-cap-and-vertical-fillet-m: 10
