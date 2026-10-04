@@ -146,6 +146,16 @@ but no fixture yet, `fixture` and `excluded` are pinned somewhere that
 fails when the bug moves. Any of these three becomes a fixture and a line
 above when it wants a fix; the block moves or is deleted then.
 
+### strip-pcurve-fit-deviates-in-occts-step-of-a-blend
+
+- What: the reader refuses Open CASCADE's STEP of the turned dome's three-rim fillet: `#773 on face #769: fit: the fit still deviates by 2.4383 with 3673 spans, the most it may use`.
+- Where: `regression_turned_dome_three_rim_fillet` (`#[ignore]`d), the corpus's read-back stage of Open CASCADE's own STEP of the fixture.
+- Seen: reached by `/work` on 2026-10-04 (plans/nightly-failures step 8) once the seam edge `#139` reads; commit after `610c11c`, no seed (a fixture).
+- Reproduce: `cargo nextest run -p arris --test corpus --run-ignored only -E 'test(regression_turned_dome_three_rim_fillet)'`; the STEP is `target/inspect/occt-regression-turned-dome-three-rim-fillet-default.step`.
+- Evidence: the edge's curve `#143` is a rational degree-14 B-spline of one piece, domain [1.5e-16, 7.66], poles within 3e-11 of unit weight, closed; its pcurve on the strip's B-spline face does not fit within 3673 spans, 2.4 off.
+- State: measured.
+- The fix is: decide whether a pcurve for a closed high-degree strip edge is fitted from the face's own parameterisation (the projection jumping over the face's seam is the candidate) before more spans; then the fixture moves to `blend/` and the `oracle-subdivides-faces` exclusion is lifted if the lint asks.
+
 ### step-round-trip-meets-a-section-beside-a-pole
 
 - What: a ball cut by a box whose face passes the ball's pole without running through it is refused `OpError::Degenerate` (`Reason::BesideSingularity`), and the STEP round-trip property, which treats every typed refusal that is not an excluded `Internal` as a failure, fails on it.

@@ -82,7 +82,7 @@ use arris_check::arris_topo::arris_geom::{
 };
 use arris_check::arris_topo::arris_math::{
     Aabb, Frame, Interrupted, Interval, Meter, Point2, Point3, Precision, READ_GAP_FRACTION,
-    RELATIVE_ROUNDING, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3,
+    RELATIVE_ROUNDING, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3, is_negligible,
 };
 use arris_check::arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec,
@@ -1143,6 +1143,23 @@ fn edge_range(
             if let Some(p) = period {
                 if t1 <= t0 {
                     t1 += p * ((t0 - t1) / p).floor() + p;
+                }
+            } else if t1 <= t0 {
+                // A closed curve that is not periodic — a B-spline
+                // circle whose first and last poles are one point — has
+                // its seam at the two ends of its domain; an edge that
+                // ends there ends at the domain's end, though the vertex
+                // projects onto its start.
+                let d = curve.domain();
+                let scale = d.lo().abs().max(d.hi().abs());
+                if d.is_bounded()
+                    && is_negligible(t1 - d.lo(), scale)
+                    && is_negligible(
+                        (curve.point(d.lo()) - curve.point(d.hi())).norm(),
+                        curve.point(d.lo()).coords.norm(),
+                    )
+                {
+                    t1 = d.hi();
                 }
             }
             if t1 <= t0 {

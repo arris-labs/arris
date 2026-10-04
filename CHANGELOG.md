@@ -8,6 +8,15 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- The STEP reader reads an edge that ends at the seam of a closed B-spline
+  curve: a rational degree-14 circle whose first and last poles are one
+  point, with the edge running from a vertex on it to that point, was
+  refused as "the edge's end is not past its start" because the end vertex
+  projects onto the curve's start; the edge now ends at the domain's end.
+  Open CASCADE's STEP of a revolve cut by a cylinder, of a prism cut from a
+  common and of a hexagon revolved about its edge read back as the same
+  solid.
+
 - The intersection of two cones of one radius and half-angle on parallel
   axes no longer returns two isolated touch points that lie on neither the
   other cone nor the section: a ruling parallel to a generator of the other

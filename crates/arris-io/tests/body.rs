@@ -603,11 +603,11 @@ arris_debug::prop_shards! {
 /// The nightly of 2026-10-01 (seed `e016178c…`, shard s3 of the property
 /// above): a revolved hexagon with a hole, cut and fused, whose result had
 /// a hole loop crossing its outer loop, so the bytes were refused as an
-/// invalid body. The fixture is `regression/body-bytes-revolved-hole-loops-intersect`.
+/// invalid body. The fixture is `boolean/body-bytes-revolved-hole-loops-intersect`.
 #[test]
 fn a_fuse_whose_edge_runs_past_its_curves_domain_round_trips_through_its_bytes() {
     let dir = arris_debug::fixtures::corpus_root()
-        .join("regression/body-bytes-revolved-hole-loops-intersect");
+        .join("boolean/body-bytes-revolved-hole-loops-intersect");
     let fixture = arris_debug::fixtures::load(&dir).unwrap();
     let chain = corpus::build("regression/body-bytes", &fixture.recipe).unwrap();
     let body = chain.result().unwrap();

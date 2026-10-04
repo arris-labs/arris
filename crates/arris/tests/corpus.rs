@@ -626,7 +626,7 @@ fn regression_singular_bore_cut() {
 /// and a corner patch (12/23/13), held as `counts_differ`. What fails is the
 /// read-back of Open CASCADE's own STEP of it.
 #[test]
-#[ignore = "read-back: #139 the edge's end is at 1.5e-16 on its curve, not past its start at 6.9478: the reader refuses a periodic B-spline strip's seam edge in Open CASCADE's STEP of the blend (the differential's counts disagreement on this recipe is Open CASCADE's convention, not Arris's)"]
+#[ignore = "read-back: #773 on face #769: the pcurve fit still deviates by 2.4 with 3673 spans, the most it may use, on a strip of Open CASCADE's STEP of the blend (the seam edge of #139 reads since plans/nightly-failures step 8; the differential's counts disagreement on this recipe is Open CASCADE's convention, not Arris's)"]
 fn regression_turned_dome_three_rim_fillet() {
     run("regression/turned-dome-three-rim-fillet");
 }
@@ -2639,12 +2639,11 @@ fn regression_cone_cylinder_fuse_s5_undecided() {
 /// posed, cut by a cylinder and fused with a prism, drawn by the body
 /// bytes' property (nightly 2026-10-01): the result had a hole loop that
 /// met its outer loop (L5), because a closed section edge's box ignored the
-/// part of its range past the curve's domain; fixed, and what it waits for
-/// is the reader.
+/// part of its range past the curve's domain; fixed, and what it waited for
+/// was the reader (a closed B-spline edge ending at its seam, plans/nightly-failures step 8).
 #[test]
-#[ignore = "reader: Open CASCADE's STEP of it is refused, an edge's end at 0 on its periodic curve is not past its start (plans/nightly-failures step 8)"]
-fn regression_body_bytes_revolved_hole_loops_intersect() {
-    run("regression/body-bytes-revolved-hole-loops-intersect");
+fn boolean_body_bytes_revolved_hole_loops_intersect() {
+    run("boolean/body-bytes-revolved-hole-loops-intersect");
 }
 
 /// A cylinder cut by a turned part, fused with a box blended at one edge
@@ -2662,9 +2661,8 @@ fn boolean_cylinder_revolve_common_fillet_box_fuse() {
 /// now builds it and agrees with Open CASCADE in the differential, and the
 /// corpus waits on the reader only.
 #[test]
-#[ignore = "reader: Open CASCADE's STEP of it is refused, an edge's end at 0 on its periodic curve is not past its start (plans/nightly-failures step 8)"]
-fn regression_revolve_cylinder_cut_box_fuse_builder_fault() {
-    run("regression/revolve-cylinder-cut-box-fuse-builder-fault");
+fn boolean_revolve_cylinder_cut_box_fuse_builder_fault() {
+    run("boolean/revolve-cylinder-cut-box-fuse-builder-fault");
 }
 
 /// A cylinder and a posed prism in common, a chamfered box cut from it
@@ -2672,9 +2670,8 @@ fn regression_revolve_cylinder_cut_box_fuse_builder_fault() {
 /// the bounds of a periodic NURBS (plans/nightly-failures step 4); the
 /// corpus waits on the reader only.
 #[test]
-#[ignore = "reader: Open CASCADE's STEP of it is refused, an edge's end at 0 on its periodic curve is not past its start (plans/nightly-failures step 8)"]
-fn regression_cylinder_prism_common_chamfer_cut_loops_intersect() {
-    run("regression/cylinder-prism-common-chamfer-cut-loops-intersect");
+fn boolean_cylinder_prism_common_chamfer_cut_loops_intersect() {
+    run("boolean/cylinder-prism-common-chamfer-cut-loops-intersect");
 }
 
 /// An elliptic prism, mirrored, fused with a posed revolve (nightly
