@@ -2806,3 +2806,59 @@ fn a_plane_tangent_to_a_torus_rim_on_its_seam_touches_it_once() {
         "{p}"
     );
 }
+
+/// Found by the `intersect_surfaces` fuzz target (nightly 2026-09-30,
+/// `fuzz/`, ADR-0024 §5): two cones of one radius and half-angle on
+/// parallel axes. A ruling of one is parallel to a generator of the other
+/// at two parameters, where its quadratic term is rounding and the
+/// discriminant touches zero at infinity; the point those were taken for,
+/// the quotient of two roundings, lay on the walked cone and 1.2 and
+/// 1.6 off the other, and came back as two isolated `Touch` points. A
+/// double root at infinity is no point of the clip.
+#[test]
+fn two_congruent_cones_on_parallel_axes_meet_in_their_branches_alone() {
+    let z = Vec3::new(0.28571428571428575, 0.4285714285714286, 0.8571428571428572);
+    let cone = |origin: Point3, x: Vec3| Surface::Cone {
+        frame: Frame::new(origin, z, x).unwrap(),
+        radius: 2.0,
+        half_angle: 0.5235987755982988,
+    };
+    let a = cone(
+        Point3::new(-2.071428571428571, 2.3928571428571432, 1.785714285714286),
+        Vec3::new(
+            0.8376945264427494,
+            -0.5461041060954286,
+            -0.006179455766535584,
+        ),
+    );
+    let b = cone(
+        Point3::new(
+            -1.4999999999999998,
+            1.1665795231290236e-302,
+            3.5000000000000044,
+        ),
+        Vec3::new(0.46544089561042357, 0.7197894385985099, -0.5150416845027295),
+    );
+    let hit = intersect_surfaces(
+        &a,
+        &b,
+        &Aabb {
+            min: [-100.0; 3],
+            max: [100.0; 3],
+        },
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
+    assert_eq!(hit.curves().len(), 2, "{hit:?}");
+    for p in hit.points() {
+        for s in [&a, &b] {
+            assert!(
+                implicit_distance(s, p.point) <= tol().linear,
+                "{p:?} is {:e} off a cone",
+                implicit_distance(s, p.point)
+            );
+        }
+    }
+    assert!(hit.points().is_empty(), "{hit:?}");
+}

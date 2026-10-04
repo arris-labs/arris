@@ -146,36 +146,6 @@ but no fixture yet, `fixture` and `excluded` are pinned somewhere that
 fails when the bug moves. Any of these three becomes a fixture and a line
 above when it wants a fix; the block moves or is deleted then.
 
-### curve-surface-on-a-subnormal-knot-span
-
-- What: `intersect_curve_surface` reports a hit 0.30 off the surface it is supposed to lie on, where the hit is the curve's own first control point.
-- Where: the `intersect_curve_surface` fuzz target, `hold` at `fuzz/src/lib.rs:514`.
-- Seen: Nightly [36398829993](https://github.com/arris-labs/arris/actions/runs/36398829993), commit `ab424ae`, 1800 s on 4 cores; the input itself carries no seed.
-- Reproduce: `gh run download 36398829993 -n fuzz-intersect_curve_surface`, then from `fuzz/` `cargo fuzz run -s none intersect_curve_surface artifacts/intersect_curve_surface/crash-46e779573a4af9ae2a07caeef5e86328ee2ee630`; the artifact is 428 bytes, `sha256 f9c1d0ac1e95d1827857e3adc139f6688fbb9c3ba38dc6737061408f4d1f26ba`. Reproduced on `ab424ae` and again on the later `main`, from `fuzz/`, as `hit 0 at t = 8.88e-16 on the surface: 3.0e-1 off, allowed 1.0e-7`. `cargo fuzz tmin` does not shrink it further.
-- Evidence: a cubic NURBS curve whose third knot span is `3.645561009778199e-304` — the control point at the seam sits on its own neighbour — against a plane. The reported hit is `[-1.6428571428571428, 0.035714285714285365, 1.0714285714285716]` (the curve's first control point) at `t = 8.8e-16`, which is `0.3000000000000006` from the plane, 3e6 tolerances; the curve's real crossing is the other reported hit, at `t = 1.5402`. A span that small is numerically a coincident knot pair, and the local solve that classifies the endpoint divides by it. Not in any fixture yet; the fixture belongs in `crates/arris-geom/tests/intersect_curve_surface.rs` as an `#[ignore]`d case, as the earlier fuzz findings did.
-- State: measured.
-- The fix is: decide what the intersector does with a span below the rounding of its own knots — refuse it by name, or coalesce the knots first — rather than solving across it.
-
-### cone-section-pcurve-fit-is-singular
-
-- What: a cone's section pcurve cannot be fitted at all: `fit: cannot fit: the normal equations are singular`.
-- Where: `every_section_of_a_cone_has_a_pcurve_on_it::shard_2`, `crates/arris-geom/tests/pcurve.rs:837`.
-- Seen: Nightly [36398829993](https://github.com/arris-labs/arris/actions/runs/36398829993), commit `ab424ae`, seed `9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1`, 5000 cases.
-- Reproduce: `ARRIS_PROPTEST_SEED=9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom every_section_of_a_cone_has_a_pcurve_on_it`.
-- Evidence: shrunk to `Cone { origin [0, 0, 0], x [0.6235907270930956, 0.7064310712632316, -0.33479806844930804], y [-0.21585684883377937, -0.2560212836903177, -0.9422626614214917], z [-0.7513590525807586, 0.659854714199607, -0.007164513486600741], radius 5.746628876001658, half_angle 0.49458559660268836 }` against a cutter, whose traced section is a degree-5 NURBS reaching the cone's apex. The fit refuses at `crates/arris-geom/src/nurbs/fit.rs:440` — the same `FitError::Degenerate` class as the band survey's 488, but reached through a cone's own pcurve, which no existing fixture or exclusion names. Not in any fixture yet.
-- State: measured.
-- The fix is: hold or split the section where the cone's apex makes the normal equations singular, as the sphere's pole already is.
-
-### pole-projection-is-off-the-domain-end-by-a-rounding
-
-- What: `Surface::project` onto a sphere's NURBS twin returns a pole whose `v` is not the domain's `lo`, so the exact-endpoint assertion fails.
-- Where: `a_pole_is_a_row_with_u_at_the_start_of_the_knots`, `crates/arris-geom/tests/nurbs_project.rs:137`.
-- Seen: Nightly [36398829993](https://github.com/arris-labs/arris/actions/runs/36398829993), commit `ab424ae`, seed `9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1`, 5000 cases. Unsharded.
-- Reproduce: `ARRIS_PROPTEST_SEED=9c84d43649eea52e7b2f9f0b36a3a2899d51e07ca565ca631e613958283b12d1 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom a_pole_is_a_row_with_u_at_the_start_of_the_knots`.
-- Evidence: `found.uv.y = -1.5707963267948646` against the domain's `-1.5707963267948966`, `3.2e-14` — far inside every tolerance, and the point and distance assertions above it pass. Whether that is a bug or an over-strict assertion is the finding: the test asks for the endpoint *exactly*, and the projection's Newton solve returns it a rounding away.
-- State: measured.
-- The fix is: a decision first, then either snap the parameter to the domain's own end where the projection lands on a singular row, or hold `uv` to a tolerance where the parameter is one.
-
 ### step-round-trip-meets-a-section-beside-a-pole
 
 - What: a ball cut by a box whose face passes the ball's pole without running through it is refused `OpError::Degenerate` (`Reason::BesideSingularity`), and the STEP round-trip property, which treats every typed refusal that is not an excluded `Internal` as a failure, fails on it.
@@ -195,16 +165,6 @@ above when it wants a fix; the block moves or is deleted then.
 - Evidence: shrunk to `QuadricPair { solid: Ring { major: 9.85510, minor: 3.73527 }, tool: Box { min [-2.58616, -17.48825, -7.25235], max [2.58616, 17.48825, 7.25235], rotation [0.38948, 0.31833, -0.37370, -0.77930], translation [17.01479, 48.47334, -7.75855] }, pose: { rotation [0.0, 0.81074, -0.55197, 0.19495], translation [21.24868, 48.68403, 0.0] } }`; the pose is the shrinker's, not hand-picked. The same fault name as `box-revolve-cylinder-fuse-lumps-fault` (an undecided nesting), a different operand pair: whether it is the same cause is not known.
 - State: measured.
 - The fix is: shrink it by hand to the smallest pose that still gives `Lumps` and file it as `regression/<slug>` with its oracle; decide whether the nesting test or the cut that left the void is the fault; the differential holds no `Internal(Lumps)` exclusion either, so a draw that reaches it fails that run as well.
-
-### intersect-surfaces-fuzz-hit-1-46-off-the-surface
-
-- What: `intersect_surfaces` reports a point on `b` 1.457 away from `b`, where 1.0e-7 is allowed.
-- Where: the `intersect_surfaces` fuzz target, `hold` at `fuzz/src/lib.rs:521` (`point 0 on b`).
-- Seen: Nightly [36690407229](https://github.com/arris-labs/arris/actions/runs/36690407229), commit `69273fc`, 1800 s on 4 cores; the input itself carries no seed.
-- Reproduce: `gh run download 36690407229 -n fuzz-intersect_surfaces`, then from `fuzz/` `cargo +nightly fuzz run -s none intersect_surfaces artifacts/intersect_surfaces/crash-35dd778a9466a37fbae1af8b92a4eaaf3de5d95e`; the artifact is 186 bytes, `sha256 1478b89be97391d4b747220e0721af7c60407c0291980f3dafe2dcc64e86a081`. Replayed 2026-10-01 on `613f564` in 27 s as `point 0 on b: 1.4574163312120683e0 off, allowed 1.0000508225703893e-7`. Not shrunk (`cargo fuzz tmin` not run).
-- Evidence: the same artifact carries 23 `slow-unit-*` inputs of 3.8 to 4.7 s each, which libFuzzer reports and which do not fail the job; the surface pair of the crash is not decoded here.
-- State: raw.
-- The fix is: `cargo fuzz tmin` the crash, decode the pair and its kind, then commit it as a regression fixture or a named exclusion in `fuzz/`; the point is a wrong answer, not a refusal, so it is not the no-verdict class the band's refusals are.
 
 ### quartic-cylinders-additivity-misses-1e-9-by-a-hair
 

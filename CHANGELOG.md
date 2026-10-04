@@ -8,6 +8,13 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- The intersection of two cones of one radius and half-angle on parallel
+  axes no longer returns two isolated touch points that lie on neither the
+  other cone nor the section: a ruling parallel to a generator of the other
+  cone has its double root at infinity, and the quotient of two roundings
+  that stood for it landed inside the region. The two branches are returned
+  alone.
+
 - A closed NURBS curve whose first knot span is vanishingly narrow no
   longer reports a plane crossing that is not on the plane: a clamped cubic
   whose second knot was 3.6e-304 jumped from its first control point to its

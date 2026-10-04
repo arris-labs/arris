@@ -1054,8 +1054,20 @@ pub fn trace_quadrics(
         meter.tick()?;
         let value = disc.eval(s);
         let (a, b, c, p, d) = pencil.at(s);
-        let mid = -b / (2.0 * a);
-        let gradient = pencil.quadric.gradient(p + d * mid).norm();
+        // A ruling whose quadratic term is rounding — parallel to a
+        // generator of the other surface — has its double root at
+        // infinity, not at the quotient of two roundings: no point of
+        // the clip, and no distance to measure the tangency by.
+        let mid = if a.abs() <= POLYNOMIAL_ROUNDING * ma.sum_abs() {
+            f64::INFINITY
+        } else {
+            -b / (2.0 * a)
+        };
+        let gradient = if mid.is_finite() {
+            pencil.quadric.gradient(p + d * mid).norm()
+        } else {
+            f64::NAN
+        };
         // How far the other surface has to move for the ruling to touch
         // it: the discriminant's value as a distance.
         let offset = value.abs() / (4.0 * a.abs() * gradient);
