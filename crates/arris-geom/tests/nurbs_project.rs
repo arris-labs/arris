@@ -486,3 +486,31 @@ fn a_ruled_free_form_surface_projects_to_the_nearest_sample() {
         .fold(f64::INFINITY, f64::min);
     assert!(found.distance <= nearest_sample + EXACT);
 }
+
+/// A shrunk nightly failure: a long thin elliptic cylinder's twin, queried
+/// at a point of the surface, answered a distance of 0.0097 away.
+#[test]
+fn a_thin_elliptic_cylinders_twin_projects_a_point_on_it_to_itself() {
+    let frame = Frame::new(
+        Point3::origin(),
+        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(-1.0, 0.0, 0.0),
+    )
+    .unwrap();
+    let surface = Surface::EllipticCylinder {
+        frame,
+        major_radius: 8.34179017666112,
+        minor_radius: 0.1,
+    };
+    let bounds = [
+        Interval::new(-0.6655848900118034, 4.566330570137586).unwrap(),
+        Interval::new(0.0, 20.72113723539266).unwrap(),
+    ];
+    let on = surface.point(
+        bounds[0].lerp(0.7372937277008503),
+        bounds[1].lerp(0.06187675919691015),
+    );
+    let twin = surface.to_nurbs(bounds).unwrap();
+    let found = twin.project(on).unwrap();
+    assert!(found.distance <= EXACT, "{}", found.distance);
+}

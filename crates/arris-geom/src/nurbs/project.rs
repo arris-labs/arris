@@ -467,7 +467,20 @@ impl NurbsSurface {
                 let candidate =
                     self.refine(p, patch.middle(), [patch.u, patch.v], patch.span, reach);
                 best = best.min(candidate.distance);
+                // A leaf whose answer is farther above its own lower bound
+                // than a minimum is located to may hold something nearer
+                // that one start did not reach (a patch across a feature
+                // thinner than itself: a long thin ellipse). Its halves
+                // are searched too, until the bound closes on the answer;
+                // the answer stays a candidate, being a minimum of the
+                // surface.
+                let unresolved = candidate.distance - bound > RELATIVE_ROUNDING.sqrt() * reach;
                 found.push(candidate);
+                if unresolved && patch.depth < MAX_DEPTH {
+                    for half in patch.halves(patch.longer()) {
+                        push(&mut queue, &mut best, half);
+                    }
+                }
             } else {
                 for half in patch.halves(patch.longer()) {
                     push(&mut queue, &mut best, half);
