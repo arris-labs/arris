@@ -195,12 +195,20 @@ bound has to be established here.
     on the committed part itself, since a recipe cannot set an edge's
     tolerance; the census and the fixture now agree (`TangentChain`).
 
-- [ ] Step 7 **[1]** — **ftc-06's 3 edges re-filed.**
+- [x] Step 7 **[1]** — **ftc-06's 3 edges re-filed.**
   - `census::vertex_blend_cause` names "a dihedral jump on a collinear run".
   - The census test holds that name on ftc-06, and its attribution is the
     NURBS cycle's.
   - `regression/` gains no fixture: Open CASCADE builds none of the three
     (2 invalid, 1 refused), so there is no oracle.
+  - **Found:** the run is three collinear edges on one face (y = 97.79,
+    z = −31.75) whose second face is 5, 17 and 7; the cause is read where an
+    edge at the vertex is the same straight line and shares exactly one face.
+    The vertex-blend table gains a `cycle` column (`vertex_blend_cycle`, in
+    `arris-debug`, which is not published): NURBS for this cause, the blend
+    network for the rest. The census test is
+    `census::tests::ftc_06_run_is_a_dihedral_jump_of_the_nurbs_cycle`.
+
 - [ ] Step 8 **[1]** — **The tiers measured.**
   - Run `tools/real-parts.sh` and `--census-committed`.
   - Record the expected outcome in the plan: `VertexBlend` 0 edges in C6 on

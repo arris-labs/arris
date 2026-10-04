@@ -427,6 +427,41 @@ fn smooth_edge(m: &Model, edge: EdgeId) -> bool {
     }
 }
 
+/// The cause [`vertex_blend_cause`] names where `edge`'s run goes on
+/// straight through `vertex` on another edge that shares exactly one of its
+/// faces: the run's second face jumps there, a patch no closed form holds
+/// and Open CASCADE does not build either (`blend-miters`, ftc-06).
+const DIHEDRAL_JUMP: &str = "a dihedral jump on a collinear run";
+
+/// Whether `edge` and another edge at `vertex` are one straight line
+/// through it and share exactly one face.
+fn collinear_jump(m: &Model, edge: EdgeId, vertex: VertexId) -> bool {
+    let Some(t) = tangent_at_vertex(m, edge, vertex) else {
+        return false;
+    };
+    let Ok(at) = m.vertex_edges(vertex) else {
+        return false;
+    };
+    let faces = |e: EdgeId| -> Vec<FaceId> { faces_of(m, e) };
+    let own = faces(edge);
+    at.iter().any(|&x| {
+        x != edge
+            && tangent_at_vertex(m, x, vertex).is_some_and(|d| parallel(d, t))
+            && faces(x).iter().filter(|f| own.contains(f)).count() == 1
+    })
+}
+
+/// The cycle a `VertexBlend` cause belongs to: the NURBS cycle's where the
+/// blend would be a patch with no closed form, the blend network's
+/// otherwise.
+pub fn vertex_blend_cycle(cause: &str) -> crate::histogram::Cycle {
+    if cause.starts_with(DIHEDRAL_JUMP) {
+        crate::histogram::Cycle::Nurbs
+    } else {
+        crate::histogram::Cycle::BlendNetwork
+    }
+}
+
 /// What an extra edge at a vertex of more than three edges is; `blended`
 /// is the edge whose blend was refused there.
 fn extra_kind(
@@ -609,6 +644,8 @@ pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String
             let closed = m.edge(edge).is_ok_and(|x| x.start() == x.end());
             if closed {
                 format!("a closed edge's vertex of {} edges", at.len())
+            } else if at.len() > 3 && collinear_jump(m, edge, v) {
+                DIHEDRAL_JUMP.to_string()
             } else if at.len() > 3 {
                 let mut kinds: Vec<&str> = at
                     .iter()
@@ -937,7 +974,7 @@ pub fn vertex_blend_committed() -> Result<Vec<(String, Vec<SolidCensus>)>, Strin
 /// were put to Open CASCADE and what it said.
 pub fn vertex_blend_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
     let mut out = String::from(
-        "| part | solid | cause | edges | asked | builds | invalid | refuses | no edge |\n|---|---|---|---:|---:|---:|---:|---:|---:|\n",
+        "| part | solid | cause | cycle | edges | asked | builds | invalid | refuses | no edge |\n|---|---|---|---|---:|---:|---:|---:|---:|---:|\n",
     );
     let mut totals = [0usize; 6];
     for (part, solids) in parts {
@@ -967,8 +1004,15 @@ pub fn vertex_blend_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
                 }
                 let _ = writeln!(
                     out,
-                    "| {part} | {} | {cause} | {} | {} | {} | {} | {} | {} |",
-                    s.solid, row[0], row[1], row[2], row[3], row[4], row[5]
+                    "| {part} | {} | {cause} | {} | {} | {} | {} | {} | {} | {} |",
+                    s.solid,
+                    vertex_blend_cycle(cause),
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3],
+                    row[4],
+                    row[5]
                 );
             }
         }
@@ -1747,7 +1791,9 @@ mod tests {
         };
         let table = vertex_blend_markdown(&[("p".into(), vec![solid])]);
         assert!(
-            table.contains("| p | #1[0] | a vertex of 5 edges | 3 | 2 | 1 | 0 | 1 | 0 |"),
+            table.contains(
+                "| p | #1[0] | a vertex of 5 edges | blend network | 3 | 2 | 1 | 0 | 1 | 0 |"
+            ),
             "{table}"
         );
         assert!(
@@ -1852,6 +1898,26 @@ mod tests {
             tangent_chain_cause(&m, sampled.id, &e).unwrap(),
             "an end at a cusp, walls on either side; edge cylinder × plane"
         );
+    }
+
+    /// The committed `nist-ftc-06`'s three `VertexBlend` edges are one
+    /// straight run on one face whose second face jumps at a vertex of four
+    /// edges: the census names "a dihedral jump on a collinear run" and
+    /// attributes it to the NURBS cycle, the patch having no closed form
+    /// (`blend-miters` step 7).
+    #[test]
+    fn ftc_06_run_is_a_dihedral_jump_of_the_nurbs_cycle() {
+        let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
+        let solids = census_file(&file, &|_| true).unwrap();
+        let edges: Vec<&RunOverEdge> = solids.iter().flat_map(|s| &s.vertex_blend).collect();
+        assert_eq!(edges.len(), 3, "{edges:?}");
+        for e in edges {
+            assert_eq!(
+                e.cause,
+                "a dihedral jump on a collinear run; edge plane × plane"
+            );
+            assert_eq!(vertex_blend_cycle(&e.cause), crate::histogram::Cycle::Nurbs);
+        }
     }
 
     /// The committed `nist-ctc-04`'s sphere written as a NURBS circle against
