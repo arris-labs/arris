@@ -1342,14 +1342,26 @@ enum Coaxial {
     Torus,
 }
 
-fn coaxial_kind() -> impl Strategy<Value = Coaxial> {
-    prop_oneof![
-        Just(Coaxial::Plane),
-        Just(Coaxial::Cylinder),
-        Just(Coaxial::Cone),
-        Just(Coaxial::Sphere),
-        Just(Coaxial::Torus),
-    ]
+/// Two kinds of operand with a cone, a sphere or a torus among them: the
+/// closed forms the coaxial property is about. Two planes and a plane
+/// against a cylinder are cycle 1's arms, two cylinders the cylinder
+/// plan's. Drawn from the valid pairs, since a filter over every pair
+/// rejects 16% of them, past what proptest allows over a long run.
+fn coaxial_quadric_pair() -> impl Strategy<Value = (Coaxial, Coaxial)> {
+    let all = [
+        Coaxial::Plane,
+        Coaxial::Cylinder,
+        Coaxial::Cone,
+        Coaxial::Sphere,
+        Coaxial::Torus,
+    ];
+    let quadric = |k| matches!(k, Coaxial::Cone | Coaxial::Sphere | Coaxial::Torus);
+    let pairs: Vec<(Coaxial, Coaxial)> = all
+        .into_iter()
+        .flat_map(|a| all.into_iter().map(move |b| (a, b)))
+        .filter(|&(a, b)| quadric(a) || quadric(b))
+        .collect();
+    proptest::sample::select(pairs)
 }
 
 /// Where an operand sits on the axis: slid `slide` along it, its own
@@ -1627,20 +1639,9 @@ fn meets_where_the_meridians_meet(
 #[test]
 fn coaxial_pairs_meet_where_their_meridians_meet() {
     check(
-        (
-            frame(),
-            coaxial_kind(),
-            placement(),
-            coaxial_kind(),
-            placement(),
-        ),
-        |(axis, ka, pa, kb, pb)| {
+        (frame(), coaxial_quadric_pair(), placement(), placement()),
+        |(axis, (ka, kb), pa, pb)| {
             let (a, b) = (on_axis(ka, &axis, pa), on_axis(kb, &axis, pb));
-            // Two planes and a plane against a cylinder are cycle 1's arms,
-            // two cylinders the cylinder plan's: the closed forms this
-            // property is about have a cone, a sphere or a torus in them.
-            let quadric = |k| matches!(k, Coaxial::Cone | Coaxial::Sphere | Coaxial::Torus);
-            prop_assume!(quadric(ka) || quadric(kb));
             let r = common_properties(&a, &b)?;
             meets_where_the_meridians_meet(&a, &b, &axis, &r)
         },
