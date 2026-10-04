@@ -806,7 +806,7 @@ two sides meridians, every pcurve on the sphere a line; the meridians
 meet at the pole, that point, crossed by a degenerate edge as a
 revolve's sphere closes at its axis. A fillet corner with no face square
 to the other two would put a side on a tilted great circle with a fitted
-pcurve and is the blend-network cycle's. Three chamfers meet in the triangle of the three
+pcurve and stays refused, a backlog line. Three chamfers meet in the triangle of the three
 points, each side a chord in one chamfer's plane, at any such corner.
 The selection follows chains (ADR-0035): at a *tangent vertex* — three
 edges, the two faces of the third tangent there, the next edge open, not
@@ -900,7 +900,8 @@ fillets — none of whose faces is square to the other two, is
 outside the table — two cylinders, a torus against a cylinder off its axis
 or a plane through its axis, a plane against a cone that is not a coaxial
 circle (an oblique plane's ellipse, a plane through the apex along a
-ruling), a NURBS face — or a face across an end that is not a plane, is
+ruling), a NURBS face — or a face across an end the closed forms and the
+tracers do not take, is
 `OpError::Unsupported` naming the kinds and the faces; an empty list,
 an edge listed twice and an edge of another body are `Reason::NoEdges`,
 `RepeatedEdge` and `EdgeNotInBody`. A blend that meets a third face while
@@ -987,8 +988,8 @@ shell.
 along its plane's normal, either way: `direction` is the normal or its
 opposite within `angular_tolerance` (`Reason::DirectionNotNormal`
 otherwise — an oblique extrusion of an arc is a cylinder of elliptical
-section, which `Surface::EllipticCylinder` (ADR-0014) could hold, but it
-waits for the sweep cycle's sweep along a path), `length` finite and above
+section, which `Surface::EllipticCylinder` (ADR-0014) could hold, but no
+sweep builds it yet: a backlog line, ADR-0047), `length` finite and above
 `default_tolerance` (`NotPositive` at or below zero, `ZeroThickness`
 within the tolerance). The sweep is the plane's exact normal, never the
 caller's rounding of it. The profile face keeps its plane's frame

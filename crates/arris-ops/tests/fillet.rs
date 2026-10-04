@@ -1466,7 +1466,7 @@ fn cut_corner(m: &mut Model) -> Body {
 }
 
 /// Three fillets at a corner the sphere's exact sides do not cover are
-/// refused by name, the model untouched (the blend-network cycle's): the
+/// refused by name, the model untouched (a backlog line C6 left): the
 /// L's reflex top
 /// corner, its rise concave and its top edges convex, and the corner of a
 /// cut where no face is square to the other two, so no meridian frame

@@ -27,37 +27,18 @@ cargo install cargo-fuzz --locked
 
 ## Current state
 
-**C1 done (2026-09-12): the vertical slice.** Primitives, transform,
-booleans on plane and cylinder, extrude, revolve, tessellation, mass
-properties and STEP against Open CASCADE; failures wait under
-`tests/fixtures/regression/`. ADR-0001 to 0005.
-**C2 done (2026-09-19): the application gate.** The first consumer's probe
-shapes pass the corpus in its own units. ADR-0006 to 0017.
-**C3 done (2026-09-24): every quadric pair.** Every analytic face is a
-boolean operand in any pose. ADR-0018 to 0022.
-**C4 done (2026-09-26): the reader and the real-part corpus.** 38 NIST
-parts read or refused by kind; the histogram's top line is the blend network
-(17 parts), then healing (14). ADR-0023 to 0026.
-**C5 done (2026-10-02): the consumer's API.** Roles, body bytes,
-cancellation, mirror, the STEP product structure. ADR-0028 to 0033.
-**Beside the cycles (2026-10-02): the Python binding**, `crates/arris-py`,
-PyPI `arris` in lockstep from the `v*` tag; its first upload waits on the
-human. ADR-0034.
-**C6 open (2026-10-04): the blend network.** Eight plans landed: a fillet or
-chamfer follows a chain of line and arc edges (ADR-0035), a cone, a sphere
-or a torus against a coaxial plane, cylinder or cone along a circle blends
-(ADR-0036), an end the face across cuts in no closed form is traced and
-fitted, the surface exact (ADR-0037), a blend running into a step lengthens
-its corner edge (ADR-0038), a chain runs on through a vertex of four edges
-where both faces turn, tangency read within the blend's tolerance (ADR-0039,
-0040), and a rim split into arcs blends through its two-edge vertices, the
-junction the ball's cross-section (ADR-0041), and an end at a cusp with both
-walls on one side is cut by the next wall (ADR-0042), and an end across a fan
-of faces, or a face met twice, is built (ADR-0043), and a miter of unequal
-dihedrals is the meeting curve plus a trim arc (ADR-0044). The fetched tier's `fillet`
-column is 2 parts (of 27), the committed tier's 5 (of 11); crossing cylinders
-are the NURBS cycle's; the residue (the overhang tip, a cylinder against a
-sphere, the ruling miter) is the next plan's sizing.
+**C1–C5 done (2026-09-12 to 10-02):** the vertical slice, the application
+gate, every quadric pair, the STEP reader with its real-part corpus
+(healing then blocks 14 of 38 parts), the consumer's API (roles, body
+bytes, cancellation, mirror, products). ADR-0001 to 0033. Beside them the
+Python binding, PyPI `arris` from the `v*` tag (ADR-0034).
+**C6 done (2026-10-05): the blend network.** Chains, the coaxial pairs, traced
+ends, steps, tangent vertices, cusps, fans and unequal miters blend; the
+fetched tier's `fillet` column is 2 parts of 27, both the NURBS cycle's;
+the residue is on the backlog. ADR-0035 to 0046.
+**Next: C7, prismatic features** (opened 2026-10-05): shell, offset faces,
+the multi-tool boolean and split by a plane, with per-face tessellation
+beside it; sweep and loft went to the NURBS cycle (ADR-0047).
 
 ## Rules that are not derivable from the code
 

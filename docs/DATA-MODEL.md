@@ -1797,7 +1797,10 @@ arcs and the four vertices where the arcs meet the contacts are
 across an end and each corner edge the trim shortens is `Modified` into
 its new self; the edge and the two corner vertices it consumes are
 `Deleted`; the shell and the body are `Modified` one-to-one, and every
-other entity of the body is kept by id. Two blends that share a face
+other entity of the body is kept by id. A corner edge a mixed corner
+lengthens (ADR-0038) is `Modified` as a shortened one is; at a fan
+(ADR-0043) each section and each crossing vertex is `Generated` from the
+edge too, and each extra edge crossed is `Modified`. Two blends that share a face
 modify it once, into the face rewritten by both. At a miter the two
 blends' ends are one edge and two vertices, `Generated` from both edges
 they join, so `generated_pair` finds them; the corner's third edge,
@@ -1811,7 +1814,10 @@ chamfers at a corner meet in a line recorded as a miter's ellipse is. At a
 tangent vertex of a chain the two stripes meet in a junction arc (a chord
 for chamfers) recorded the same way: it and its two vertices are
 `Generated` from both edges, the third edge, shortened, is `Modified` and
-the vertex is `Deleted`; every edge of the chain keeps its own blend face. An
+the vertex is `Deleted` — at a vertex of four edges both tangent edges are
+`Modified` (ADR-0039), at a split rim's seam vertex its seam (both seams
+where both faces turn), and at a vertex of two edges nothing is cut
+(ADR-0041); every edge of the chain keeps its own blend face. An
 open arc's blend face, its contact arcs and its trimmed ends are
 `Generated` from the arc. A
 closed edge's blend has no ends: its torus or cone face, its two contact

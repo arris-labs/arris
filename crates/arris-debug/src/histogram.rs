@@ -55,7 +55,10 @@ pub enum Cycle {
     /// The blend-network cycle: chains, vertex blends, the pairs outside
     /// ADR-0007's table.
     BlendNetwork,
-    /// The sweep cycle: paths, lofts, shells, offsets.
+    /// The sweep row: STEP offsets and composites, oblique and elliptic
+    /// sweeps. ADR-0047 split the sweep cycle (shell and offset are the
+    /// prismatic-features cycle's, sweep and loft the NURBS cycle's); the
+    /// row splits with them when a plan next touches this attribution.
     Sweep,
     /// Counted as itself, under this name.
     Itself(&'static str),

@@ -12,7 +12,9 @@ pair — closure: what Arris builds, Arris takes as an operand; done
 corpus; done 2026-09-26), then **C5** (the consumer's API: what a
 plugin-based CAD cannot start without, ADR-0020's amendment; done
 2026-10-02), then **C6** (the blend network: fillets and chamfers on the
-face pairs real parts ask for, opened 2026-10-02). An unopened cycle carries
+face pairs real parts ask for; done 2026-10-05), then **C7** (prismatic
+features: shell, offset faces, the multi-tool boolean, split by a plane;
+opened 2026-10-05, ADR-0047). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -553,303 +555,27 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 | itself: unparsed | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-**Status: opened 2026-10-02; scope confirmed by the human the same day;
-first plan (`c6-blend-network`) landed 2026-10-02, second plan
-(`c6-blend-pairs`) landed 2026-10-03, third (`blend-residue`), fourth
-(`blend-run-over`), fifth (`blend-corners`), sixth (`split-rim-vertex`) and
-seventh (`cusp-run-out`) the same day, the eighth (`blend-fan`) and ninth
-(`blend-miters`) on 2026-10-03 and 2026-10-04, the cycle stays open.**
-The first plan took the two lines marked done below. On the fetched tier
-(27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column held 11
-parts where the step-1 baseline held 12 (C4's 17 of 38 counted both tiers;
-the committed tier's 6 of 11 did not move): `Unsupported(circle curve ×
-plane)` 8 → 0.
-The second plan (2026-10-03) built a convex blend ending at a concave
-corner (NIST 827-9999-906 and -908 no longer refuse), the cone against a
-plane, a cylinder or a cone along a coaxial circle, and a sphere or a torus
-against a coaxial plane, cylinder or cone along a parallel (ADR-0036), and
-measured the fetched tier again: the `fillet` column holds **8** parts, 11
-before. It is refused as cylinder × cylinder 2 (crossing axes), torus ×
-cylinder 2 (off its axis), torus × plane 1, `BlendTooLarge` 1 (CTC-03),
-`TangentChain` 1 (STC-09), `VertexBlend` 1 and a NURBS curve 1; the
-committed tier's 6 are `TangentChain` 2, `VertexBlend` 2, torus × cylinder
-1 and NURBS 1 (cone × cylinder was 2, now `VertexBlend`: the next refusal
-the part meets). The battery stages: 73 agree, 3 both refuse, 13 Arris
-refuses. No fetched part left the column by agreeing at the battery's
-radius; each meets a line named below. The residue — the torus pairs off
-the axis, an open arc's torus on a plane off its axis, a ruling stripe on a
-curved face across, the run-over, the corners — is the next plan's sizing.
-The third plan (`blend-residue`, opened 2026-10-03) counted the column by
-part: each solid's first refusal at the battery's radius and what stands
-behind it (`arris_debug::census`, `fillet-by-part.md`). By *first* refusal
-the fetched tier's 9 parts (8 blend network, 1 NURBS) are a torus end on a
-cylinder 2, a torus end on a plane 1, a cylinder stripe's end on a cylinder
-1, a cylinder pair 1, `BlendTooLarge` 1, `TangentChain` 1, `VertexBlend` 1
-and a NURBS edge 1; the committed tier's 6 are `VertexBlend` 2,
-`TangentChain` 1, a cylinder pair 1, a torus end on a cylinder 1 and a NURBS
-edge 1. The four edges the battery samples decide a part, not the first
-refusal: clearing the end families alone frees the fetched tier's torus end
-on a plane (`ftc_08`), the cylinder stripe's end (`ctc_01` ap242) and a torus
-end on a cylinder (`stc_08`); the other parts that meet an end first
-(`stc_06`; committed `ftc-08`, `ftc-09`) also have a `BlendTooLarge` or a
-`VertexBlend` among their four. The B-spline-written conic edge is a first
-refusal in two parts only, both NURBS-cycle, whose sampled edges name NURBS
-faces as well.
-The third plan built the open arc's torus ending on a plane off its axis or
-on a cylinder across, and a ruling stripe ending on a cylinder or a cone
-(ADR-0037: the end curve traced and fitted, the surface exact), and measured
-the tiers again (`tools/real-parts.sh`, `--census-committed`, 2026-10-03).
-The fetched tier's `fillet` column holds **8** parts by first refusal (7 blend
-network, 1 NURBS), 9 before: `stc_08` left it, no part disagreeing with Open
-CASCADE (0 failing parts; the battery's stages 74 agree, 3 both refuse, 12
-Arris refuses, from 73, 3, 13). The census had counted three leaving
-(`ftc_08`, `ctc_01` ap242, `stc_08`); the other two met the next refusal of
-their four sampled edges: `ftc_08` and `stc_06` now first meet
-`BlendTooLarge`, `ctc_01` ap242 an end on a cylinder the trace does not take
-(the pierce misses or grazes). The fetched first refusals are `BlendTooLarge`
-3, a cylinder pair 2 (one an end), `TangentChain` 1, `VertexBlend` 1 and a
-NURBS curve 1. The committed tier holds its 6 (`VertexBlend` 2, `BlendTooLarge`
-1, `TangentChain` 1, a cylinder pair 1, NURBS 1: `ftc-08`'s torus end is built
-and the part now meets the run-over). Over both tiers (38 parts) the blend
-network blocks 12 at `fillet`, beside C4's 17. The run-over and the corners
-are the next plan's sizing; a turned chamfer's cone against a cylinder across
-is refused in some poses (`regression/twin-boss-foot-turned-chamfer-cone-cylinder`).
-The fourth plan (`blend-run-over`, opened 2026-10-03) took the run-over
-apart: each `BlendTooLarge` edge blended alone at the battery's radius, by
-the site that refused it (`arris_debug::census::run_over_cause`: the entities
-the refusal names and the pair its edge separates) and, for a sample of each
-cause and every edge of the battery's sample, Open CASCADE's verdict on that
-edge alone (`occt_fillet_edges.py`; `real_parts --run-over`,
-`target/real-parts/run-over.md`). On the fetched tier 515 edges are refused
-`BlendTooLarge`; of the 285 put to Open CASCADE, 205 build, 6 build an
-invalid solid, 72 refuse and 2 found no edge. By cause: *a corner edge
-shorter than the trim* 257 edges (120 asked, 95 built), *the contact leaves
-a plane face* 96 (96 asked, 76 built), *a cylinder face* 49 (41 asked, 34
-built), *the ball finds no place on either face* 89 (14 asked, none built:
-Open CASCADE refuses these too, a radius no run-over builds) and *the contact
-leaves a torus face* 24 (14 asked, none built: NURBS-cycle faces, Open
-CASCADE refuses 12 and finds no edge for 2). The committed tier says the
-same (82 of 101 built for the corner edge, 72 of 86 for a plane face, none
-of 21 for the ball). Every cause Open CASCADE builds lies on a plane against a
-plane or a cylinder, the pairs the closed forms and the trace take. The
-battery's six sampled edges refused `BlendTooLarge` on the fetched tier all
-build in Open CASCADE: `ctc_03` e2, `ftc_08` e2 and `stc_06` each hold only
-those among their four, so clearing them takes three parts out of the column
-(`ctc_04` and `stc_09` meet `VertexBlend` and `TangentChain` behind it); on the
-committed tier `ftc-10`'s sampled edge builds and `ftc-08`'s is refused by
-Open CASCADE too. Probed by site on four of the fetched parts (CTC-01, CTC-03,
-FTC-08, STC-06: 277 of the 515 edges), the causes read differently:
-every one of the 178 *corner edge shorter than the trim* is a trim past
-the corner's vertex, a blend running into a step (a mixed corner, whose
-corner edge of the blend's convexity is lengthened: ADR-0038); all 98 *the
-contact leaves a plane / cylinder face* are the ring's contact at the axis
-in a chain into a rounded corner of radius at most `r`, the horn and
-spindle torus ADR-0036 §3 refuses; and no blend runs onto a third face.
-The sampled edges of CTC-03 and FTC-08 are mixed corners, STC-06's two are
-the ring's, so the plan builds the mixed corner and the column it can
-clear is CTC-03 and FTC-08.
-The plan built the mixed corner (ADR-0038: a blend running into a step
-lengthens its corner edge, the face across plane, cylinder or cone taking the
-end; a ring's open arc likewise) and measured the tiers again
-(`tools/real-parts.sh`, `--census-committed`, 2026-10-03). The fetched
-tier's `fillet` column holds **6** parts (5 blend network, 1 NURBS), 8
-before: `ctc_03` and `ftc_08` left it, no part disagreeing with Open CASCADE
-(0 failing parts; the battery's stages 76 agree, 3 both refuse, 10 Arris
-refuses, from 74, 3, 12). Its first refusals are a cylinder pair 1, an end on
-a cylinder 1 (`ctc_01` ap242), `VertexBlend` 1 (`ctc_04`), `TangentChain` 1
-(`stc_09`), `BlendTooLarge` 1 (`stc_06`: the ring's contact at the axis, a
-horn or spindle torus, ADR-0036 §3) and a NURBS curve 1. The committed
-tier's 6 do not move (`VertexBlend` 2, `BlendTooLarge` 1 — `ftc-08`'s
-sampled edge, which Open CASCADE refuses too — `TangentChain` 1, a cylinder
-pair 1, NURBS 1), so its histogram stands. Over both tiers (38 parts) the
-blend network blocks 10 at `fillet`, beside C4's 17. What is left of the
-run-over is the horn and spindle torus at the axis and radii Open CASCADE
-refuses; the corners (`VertexBlend`), tangent continuation, the crossing
-cylinders and a trace that misses are the next plan's.
-The fifth plan (`blend-corners`, opened 2026-10-03) counted `VertexBlend` by
-site, each edge blended alone at the battery's radius and the battery's
-sample together, each put to Open CASCADE (`census::vertex_blend_cause`,
-`real_parts --vertex-blend`, `target/real-parts/vertex-blend.md`). On the six
-fetched parts that still refuse at `fillet` 227 edges are refused
-`VertexBlend`; of the 141 put to Open CASCADE 92 build, 11 build an invalid
-solid and 38 refuse. The leading site is *a vertex of four edges whose one
-extra edge is sharp, between two faces across*: 104 edges, and the 60 of
-them on a plane against a plane or a cone against a cylinder that were asked
-all build (the 7 asked on a cylinder against a plane in `stc_07` are
-refused). Next, *corner edges that share no face across at a vertex of two
-edges* on a cylinder against a plane: 77 edges, 30 of 37 asked build. A
-smooth, seam or collinear extra edge (28 + 18 edges in `stc_06` and
-`stc_07`) is built by Open CASCADE in 2 of 37 asked. The committed tier says
-the same: of 187 edges 160 are the four-edge sharp site (46 asked, 46
-build), 20 the two-edge site (17 of 20 build). The sampled set blended
-together is refused `VertexBlend` in three solids (`ctc_04`, committed
-`ctc-04` and `ftc-09`), and in each a single sampled edge is already
-refused alone, so no part's set is refused for a miter of several blended
-edges. The corners the plan takes are the four-edge vertex whose face
-across is split in two; the two-edge site and the miters stay behind it as
-backlog lines.
-Step 3 read the four-edge sites before building and found that most are
-not a split face across (ADR-0039). In 142 of the committed tier's 160,
-both corner edges are tangent dihedrals and the extra edge is the blended
-edge's own tangent continuation. That is a chain running on where both of
-its faces turn: a pin's rim split in half with its cylinder and cone
-(CTC-04, FTC-09), or a chamfered wall turning round a rounded corner
-(CTC-04). The census had compared the extra edge only with the corner
-edges, and now names the continuation apart. Only CTC-01's 18 edges are a
-fan, and no sampled edge is one. The selection now follows such a vertex
-as ADR-0035 follows one of three edges. The junction there, whose runs
-share no face, was refused `VertexBlend` naming both edges until step 4
-built it where a line meets an arc: the chamfered stadium's foot filleted
-and chamfered, and a stadium pocket's chamfered floor filleted at its root,
-each junction cutting both tangent edges, every one at Open CASCADE's
-counts and at the closed forms Open CASCADE's walked blend misses by
-5e-9 to 2e-7. The same junction takes two arcs: FTC-09's battery fillet,
-held by its pin's split rim, now builds and agrees with Open CASCADE, so
-the committed histogram above is printed again with one Arris refusal
-fewer. Walked, the committed tier's `VertexBlend` site table reads 112
-edges at that junction (CTC-04 104, FTC-09 8) and the fetched tier's 20
-(STC-07 16, CTC-01's AP242 edition 4). CTC-04's chamfered walls are not
-walked: as read, their faces are tangent only to `7e-11`–`9e-10`, beyond
-the angular precision ADR-0035's test uses. CTC-04's battery fillet now
-first meets a named tangent dihedral (`TangentChain`) that the vertex used
-to hide.
-Step 5 held the junction of two arcs to Open CASCADE on a split pin
-(`blend/split-pin-foot-fillet`) and decided the tangency every blend reads
-(ADR-0040): two faces are tangent for a blend where its radius or
-distance times the sine between their normals is within the faces'
-tolerance, not only at the angular precision. CTC-04's chamfered walls now
-walk (`blend/nist-ctc-04-chamfered-wall-fillet`, the part read in place),
-and the committed tier's `VertexBlend` edges go from 63 to 35, none of them
-on CTC-04. Tangencies a file wrote elsewhere read as such too: on FTC-08
-113 more edges build alone (139 `BlendTooLarge` become 17), and on FTC-10
-the 24 refusals of a cylinder against a sphere are a tangent cap's
-dihedral, `TangentChain`. FTC-08's battery fillet now stops at a sampled
-tangent dihedral where it ran over, so the committed histogram above is
-printed again. Run with the checker on, the census
-found three FTC-08 edges whose body fails it, as they did before
-(`regression/nist-ftc-08-fillet-pcurve-jump-checker-fault`).
-Step 7 holds the walk and its junction to a property over random poses (a
-stadium or a split rim, chamfer and radius at random, the corner's section
-swept along the outline's offsets in closed form), which found one knife-edge
-pose where S5 leaves a plane against a torus undecided
-(`a_walked_chain_in_a_far_pose_is_decided`, `#[ignore]`d; a backlog line).
-Step 8 aligned the battery's sample with ADR-0040: an edge is out of it where
-the kernel reads its dihedral as tangent at the battery's own radius, which
-is settled with the sample (the edges tangent at the radius a sample gives
-are dropped and the sample is taken again). It measured the tiers again
-(`tools/real-parts.sh`, `--census-committed`, 2026-10-03). The fetched
-tier's `fillet` column holds **4** parts (3 blend network, 1 NURBS), 6
-before, no part disagreeing with Open CASCADE (0 failing parts; the
-battery's stages 77 agree, 4 both refuse, 8 Arris refuses, from 76, 3, 10).
-`ctc_01`'s AP242 edition and `stc_06` left it by the sample's move, not by a
-new case built: the first now agrees, the second is a stage both refuse (an
-end on a cylinder, which Open CASCADE refuses too). What is left
-is a cylinder pair 1 (`ctc_01`), `VertexBlend` 1 (`ctc_04`: the vertex of two
-edges on a cylinder against a plane, 13 of 13 asked built by Open CASCADE),
-`TangentChain` 1 (`stc_09`) and a NURBS surface 1 (`stc_07`). `VertexBlend`
-is 79 edges on the fetched tier, from 227, 39 asked of Open CASCADE (38
-build), almost all that two-edge site; on the committed tier 35 edges, as
-at step 5. The committed tier's `fillet` column holds **5** (cylinder pair 1,
-cylinder against sphere 1, `TangentChain` 1, `BlendTooLarge` 1, NURBS 1), 6
-before; its histogram, whose battery operands the fixtures freeze, stands.
-Over both tiers (38 parts) the blend network blocks 7 at `fillet`, from 10,
-beside C4's 17. What the cycle has left is the two-edge corner of a cylinder
-against a plane, tangent continuation, the crossing cylinders, a trace that
-misses and the horn and spindle torus at the axis.
-The sixth plan (`split-rim-vertex`, opened 2026-10-03) read the two-edge
-site (step 1, `census::vertex_blend_cause`): every one of its edges is a
-cylinder against a plane at the second vertex of a split rim, where the
-two arcs continue one another between the same two faces and the
-cylinder's seam is at the other vertex. Fetched, 67 of the 79 `VertexBlend`
-edges (`ctc_01` 4, `ctc_04` 34, `stc_09` 29), 27 asked of Open CASCADE, 26
-build; committed, all 20 (`ctc-01` 4, `ftc-06` 10, `ftc-10` 6), 17 build, 2
-build an invalid solid, 1 refuses. It holds the battery's one sampled
-`VertexBlend` edge (`ctc_04`); `stc_09` meets `TangentChain` first.
-Steps 3 and 4 built it (ADR-0041): a vertex of two edges that continue one
-another on one circle between the same two faces is a continuation, its
-junction the ball's cross-section with no cut, the seams of the turning faces
-shortened to their contacts. Step 5 holds it to a property over random poses
-(a hole's edge or a boss's foot split into two to four arcs, fillet and
-chamfer at random size, the swept closed form). The tiers measured again
-(`tools/real-parts.sh`, `--census-committed`, 2026-10-03): the fetched
-tier's `fillet` column holds **2** parts of 27 (`ctc_01`'s cylinder pair, a
-blend network line, and `stc_07`'s NURBS surface), 4 before: `ctc_04` and
-`stc_09` left it, no part disagreeing with Open CASCADE (0 failing parts; the
-battery's stages 79 agree, 4 both refuse, 6 Arris refuses, from 77, 4, 8).
-`VertexBlend` is 12 edges on the fetched tier, from 79, all the four-edge fan
-(`ctc_01`). The committed tier's column holds **5** (cylinder pair 1,
-cylinder against sphere 1 — `ctc-04` now meets it behind the vertex —
-`TangentChain` 1, `BlendTooLarge` 1, NURBS 1) as before, and its `VertexBlend`
-edges 15, from 35 (the fan 12, `ftc-06` 3). Over both tiers (38 parts) the
-blend network blocks 5 at `fillet`, from 7, beside C4's 17. What the cycle has
-left is the fan, tangent continuation, the crossing cylinders, a cylinder
-against a sphere, a trace that misses and the horn and spindle torus at the
-axis.
-The seventh plan (`cusp-run-out`, opened 2026-10-03) counted `TangentChain`
-by site (`census::tangent_chain_cause`, `real_parts --tangent-chain`) and
-found no S-bend: every one of FTC-06's 21 chain ends is a cusp, where the
-outline doubles back and the next edge reaches the vertex from the same
-side. There are two cusps (ADR-0042). One has both walls on one side of the
-shared face, a knife-edge sliver of material or void: a crescent, a pocket
-or a spandrel. Open CASCADE cuts the stripe with the next wall, and so does
-Arris now, between two closed-form trim points, the cut traced and fitted
-with the surfaces exact (fillet and chamfer, held to a property over random
-poses against the closed-form volume). The other is an overhang tip, the
-walls on either side, FTC-06's: Open CASCADE closes its stripe with fitted
-B-spline caps (and builds 10 of the 21 cusp edges, the other 11 invalid at
-every radius), which waits for the NURBS cycle, so it stays `TangentChain`
-and the census names it "an end at a cusp, walls on either side". The
-tiers measured again (`tools/real-parts.sh`, `--census-committed`,
-2026-10-03): no part leaves the column, since the cusp the plan builds is
-no sampled edge's. The fetched tier holds **2** of 27 and the committed tier
-**5** of 11 (`TangentChain` 1, FTC-06; the census counts its 21 edges and
-CTC-04's 2 as walls on either side), 0 failing parts, the battery's stages
-117 agree, 7 both refuse, 19 Arris refuses over both tiers. Over both tiers
-(38 parts) the blend network blocks 5 at `fillet`, beside C4's 17, as
-before. What the cycle has left is the fan, the overhang tip (the NURBS
-cycle's caps), the crossing cylinders, a cylinder against a sphere, a trace
-that misses and the horn and spindle torus at the axis.
-The eighth plan (`blend-fan`, 2026-10-03) built the two sites ADR-0039 left
-at a vertex of more than three edges (ADR-0043). A fan, where both corner
-edges are sharp and the faces across are several separated by sharp extra
-edges, ends in one arc per face, each cut as a lone face across would cut
-it, with a vertex where the blend's surface crosses each extra edge; the
-curved piece is traced as a lone curved face across is. The face across
-met twice ends in its single arc, the vertex stays with the two edges the
-end does not reach and the face's loop splits in two
-(`blend/five-edge-vertex`, Open CASCADE's 19/28/12, loops 13). Held to
-Open CASCADE on a hexagonal boss's chamfer foot (CTC-01's 12 edges), a
-barrel under a plane, a roof of three planes, and to a property over
-random poses (roofs of two and three planes, the roof's height integrated
-over the section). The crease where two equal-radius cylinders cross, CTC-01's
-other refusal, is the NURBS cycle's: its fillet is a pipe about an ellipse
-and the census and survey attribute it there. The tiers measured
-(`tools/real-parts.sh`, `--census-committed`, 2026-10-04): `VertexBlend` is
-0 edges on the fetched tier, from 12, and 3 on the committed, from 15
-(`ftc-06`); no part leaves the `fillet` column, since no fan edge is
-sampled, but `ctc_01`'s refusal moves from the blend network to NURBS on
-both tiers, 0 failing parts, the battery's 89 stages 79 agree, 4 both
-refuse, 6 Arris refuses. Over both tiers (38 parts) the blend network blocks
-3 at `fillet`, from 5. What the cycle has left is the overhang tip (the NURBS
-cycle's caps), a cylinder against a sphere, a trace that misses, the
-miters and the horn and spindle torus at the axis.
-The ninth plan (`blend-miters`, 2026-10-04) built the miter of unequal
-dihedrals (ADR-0044): two fillets, or two chamfers whose edges make unequal
-angles with the sharp third edge, meet along the miter curve to where it
-reaches the narrower blend's far contact, then the wider blend is trimmed
-by the narrower one's far face in one conic or line, and the third edge
-ends at its end (`blend/miter-unequal-dihedrals-{fillet,chamfer}`, Open
-CASCADE's 12/18/8; a property over random slanted corners against a closed
-form). Two misattributions were corrected: ftc-06's three `VertexBlend`
-edges are a dihedral jump on a collinear run, the NURBS cycle's, and the
-tangent cylinder–sphere edges (ctc-04's 7, ftc-08's 2, ftc-10's 2) are
-`TangentChain`, since a blended edge's own dihedral is read tangent within
-the edge's tolerance (ADR-0045). The tiers measured (2026-10-04): 0 failing
-parts; `VertexBlend` attributed to the blend network is 0 edges on both
-tiers (the committed tier's 3 are ftc-06's, the NURBS cycle's); the `fillet`
-column holds 2 of 27 and 5 of 11 as before. What the cycle has left is the
-overhang tip (the NURBS cycle's caps), a cylinder against a sphere, a trace
-that misses, the ruling miter and the horn and spindle torus at the axis.
+**Status: done 2026-10-05, tag `c6`, released as `v0.5.0`.** Retired the
+blend network: a fillet or chamfer follows a chain of line and arc edges
+(ADR-0035); the cone, sphere and torus pairs along a coaxial circle blend
+(ADR-0036); an end the face across cuts in no closed form is traced and
+fitted, the surface exact (ADR-0037); a blend into a step lengthens its
+corner edge (ADR-0038); a chain runs on through a four-edge vertex where both
+faces turn, tangency read within the blend's size times the normals' sine
+(ADR-0039, ADR-0040, ADR-0045); a split rim's two-edge vertex is a
+continuation (ADR-0041); an end at a cusp with both walls on one side is cut
+by the next wall (ADR-0042); an end across a fan, or a face met twice, is
+built (ADR-0043); a miter of unequal dihedrals is two pieces and a trim arc
+(ADR-0044). Measured with `tools/real-parts.sh` and `--census-committed`
+(2026-10-04): the fetched tier's `fillet` column holds 2 of 27 parts, both
+the NURBS cycle's (CTC-01's crossing cylinders, STC-07's NURBS surface), the
+committed tier's 5 of 11; 0 failing parts; the fetched battery's 89 stages
+79 agree, 4 both refuse, 6 Arris refuses; over both tiers the blend network
+blocks 3 at `fillet`, beside C4's 17. Each plan's census is in its ADR. What
+is left went to `docs/BACKLOG.md`: the pairs off the axis, a cylinder against
+a sphere, the parallel-cylinder row, the overhang tip, the horn and spindle
+torus at the axis, the ruling miter, the other chamfer modes, variable
+radius and blends over blends.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
@@ -863,7 +589,7 @@ that misses, the ruling miter and the horn and spindle torus at the axis.
   coaxial plane, cylinder or cone~~ done (ADR-0036); cylinder × cylinder
   with parallel axes (ADR-0036 §5, no corpus edge), and crossing axes (the
   NURBS cycle's), torus × cylinder off its axis and torus × plane off its
-  axis remain; then elliptic cylinder.
+  axis remain, with the elliptic cylinder: moved to the backlog.
 - ~~A blend running into a step (`BlendTooLarge`, a mixed corner)~~ done
   (ADR-0038); what stays `BlendTooLarge` is the ring's contact at the axis
   (a horn or spindle torus) and radii Open CASCADE refuses; and a tangent
@@ -875,13 +601,14 @@ that misses, the ruling miter and the horn and spindle torus at the axis.
 ftc-06's dihedral jump on a collinear run and the tangent cylinder–sphere
 edges are attributed (the NURBS cycle's; `TangentChain`, ADR-0045); the
 ruling miter remains, on the backlog.
-- The remaining chamfer modes (two distances, a distance and an angle).
-- Variable radius, and blends over blends.
+- The remaining chamfer modes (two distances, a distance and an angle):
+  moved to the backlog.
+- Variable radius, and blends over blends: moved to the backlog.
 
 **Out:** NURBS faces as blend operands (the NURBS cycle's), a blend whose
 surface has no closed form (the crease between equal-radius cylinders, the
 overhang tip's caps: the NURBS cycle's), healing (the reader's 14 parts),
-shell and offset (the sweep cycle's).
+shell and offset (C7's, ADR-0047).
 
 **Accept:** the committed tier's `fillet` column and the fetched tier's
 printed beside C4's 17 of 38, every part leaving it either agreeing with
@@ -889,6 +616,59 @@ Open CASCADE's fillet within its fixture's tolerance or refused as another
 cycle's; each new face pair a corpus fixture with its oracle, checker
 green, and a property over random poses for every pair the intersector
 now takes to a blend.
+
+---
+
+## C7 — prismatic features
+
+*Goal: a hobbyist's prismatic part can be modelled on Arris end to end:
+hollowed to a wall, its faces pushed and pulled, a pattern of holes cut in
+one go, the body split in two. Chosen by ADR-0020's amendment (a consumer
+blocked on missing API ranks first) over the histogram: at C6's close the
+real-part histogram ranks healing first (14 of 38 parts at `read`), the
+NURBS cycle 3 at `box_cut`, the `fillet` column 2 of 27 fetched and 5 of 11
+committed; the first consumer, the plugin-based CAD, has no users because
+it cannot model an ordinary mechanical part, and its recorded asks are
+shell and offset (A7) and the multi-tool boolean (A8) of
+`docs/ideas/plugin-cad-consumer-asks.md`. ADR-0047 split the sweep cycle to
+take shell and offset without sweep and loft.*
+
+**Status: opened 2026-10-05; scope set by the human the same day.**
+
+- Shell: a solid hollowed to a thickness, inward or outward, with the
+  chosen faces removed as openings, or none for a closed void; the offset
+  faces met by the intersectors every quadric pair already has, a vertex of
+  three or more offset faces closed by their meeting.
+- Offset faces (press-pull): chosen faces moved along their normals by a
+  distance, their neighbours extended or trimmed to meet them; the whole
+  body's offset is the case where every face moves.
+- A boolean with many tools: `cut` and `fuse` of one body by N tools in one
+  general fuse, one decomposition rather than N chained ones, provenance
+  naming each tool (A8).
+- Split by a plane: a body cut by a plane into the solids on either side,
+  both kept, provenance naming the side each piece came from.
+- Beside the cycle, a side plan: per-face incremental tessellation (A9), an
+  edge's discretisation a pure function of the edge and the chord and
+  `tessellate_faces` over a subset, so faces meshed at different times stay
+  watertight (ADR-0010).
+
+**Out:** sweep along a path and loft (the NURBS cycle's, ADR-0047); the
+shell or offset of a NURBS face, and variable thickness (no exact kind
+holds them: the NURBS cycle's); draft and thicken (backlog lines); a split
+by a surface other than a plane, or by a body; healing; C6's blend residue
+(backlog lines).
+
+**Accept:** each operation a corpus of fixtures with Open CASCADE's answer
+(its thick solid, its offset shape, its boolean with several tools, its
+splitter), checker green, provenance complete; properties over random poses
+and operands, blended bodies among them: a shell's volume against the body
+less its inner offset where a closed form has one, a multi-tool cut against
+the chained cuts (volume, area, counts), the pieces of a split summing to
+the body and each equal to its common with the half-space; every result an
+operand of fillet, chamfer and every boolean (ADR-0020 §1); an offset that
+would drive a radius through zero or a face out of existence refused by
+name. The side plan: faces meshed in any subsets and order give the same
+edge polylines bit for bit as one call, and their union is closed.
 
 ---
 
@@ -968,8 +748,9 @@ section, with an acceptance corpus and a number, when `/close-cycle`
 opens it.
 
 - **The NURBS cycle** — NURBS–NURBS surface intersection (a marcher with
-  explicit seam handling); NURBS operands in booleans.
-- **The sweep cycle** — sweep along a path, loft, shell, offset.
+  explicit seam handling); NURBS operands in booleans; the operations that
+  build free-form faces, sweep along a path and loft (ADR-0047 split them
+  from shell and offset, which are C7's).
 - **The healing cycle** — healing; sheet and wire bodies in every
   operation.
 - **The query cycle** — distance, clash, ray fire, selection; none of

@@ -58,8 +58,8 @@ pub enum Reason {
         segment: usize,
     },
     /// An extrude direction is off the profile plane's normal by more than
-    /// the angular tolerance; an oblique extrusion is a sweep along a path
-    /// (the sweep cycle's).
+    /// the angular tolerance; an oblique extrusion is not built yet
+    /// (ADR-0047).
     DirectionNotNormal,
     /// The query needs an enclosed volume and the body is not a solid:
     /// a sheet, a wire, a general body.
@@ -113,7 +113,7 @@ pub enum Reason {
     /// there is no corner to roll a ball into; or the edge ends at a
     /// vertex where a corner edge's faces are tangent — a blend's contact
     /// line, where a second blend reaches a first one's end — so the blend
-    /// would run on along a chain. A tangent chain is the blend-network cycle's. The
+    /// would run on along a chain, at a vertex the chain walk does not take. The
     /// error's entities are the edge and its two faces, or at an end the
     /// edge, the tangent corner edge and the vertex.
     TangentChain,

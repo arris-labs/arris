@@ -2377,7 +2377,7 @@ fn miter(
     let (ea, eb) = (forward(a.edge), forward(b.edge));
     let vertex_blend = || degenerate(vec![ea, eb, v], Reason::VertexBlend);
     // A ruling blend's contact on its cylinder meets no other blend's
-    // contact on the third edge: two arcs, the blend-network cycle's.
+    // contact on the third edge: two arcs, a backlog line C6 left.
     if a.ruling || b.ruling {
         return Err(vertex_blend());
     }
@@ -3091,8 +3091,8 @@ fn junction(
 /// through one centre; a fillet corner also needs a face square to the
 /// other two, so that its sides are the sphere's equator and two meridians
 /// with exact pcurves. A corner that is not all planes, of mixed blends or,
-/// for fillets, with no such face is `Reason::VertexBlend`, the
-/// blend-network cycle's.
+/// for fillets, with no such face is `Reason::VertexBlend` (a backlog
+/// line C6 left).
 fn corner(
     m: &Model,
     view: &View,
