@@ -8,6 +8,14 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A boolean whose result holds a sliver of a lump far from the origin is no
+  longer refused as "the shells do not nest: void is inside no shell": a
+  pipe cut from an elliptic prism it grazes, posed 86 from the origin, left
+  a lens of 3e-13 whose enclosed volume, integrated about the origin, lost
+  its sign to the gaps between fitted edges. The checker now integrates a
+  shell's volume about the centre of its own vertices, as `mass_properties`
+  already did, and the lens is a lump of its own.
+
 - The STEP reader reads an edge that ends at the seam of a closed B-spline
   curve: a rational degree-14 circle whose first and last poles are one
   point, with the edge running from a vertex on it to that point, was

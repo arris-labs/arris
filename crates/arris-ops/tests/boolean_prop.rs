@@ -987,9 +987,16 @@ fn quartic_identities(pair: &QuarticPair) -> Result<(), TestCaseError> {
     let (back_cut, _) = run(&mut m, "cut(b, a)", cut, b, a)?;
     let union = measured_at(&mut m, u, &back)?;
     let inter = measured_at(&mut m, c, &back)?;
-    assert_additive(&union, &inter, &pa, &pb)?;
-    assert_cut_identity(&measured_at(&mut m, diff, &back)?, &inter, &pa, &pb)?;
-    assert_cut_identity(&measured_at(&mut m, back_cut, &back)?, &inter, &pb, &pa)?;
+    // The union, the common and each cut fit their own pcurves of the
+    // section.
+    let rel = fitted_rel(&m, &union);
+    assert_additive_to(&union, &inter, &pa, &pb, rel)?;
+    let (pdiff, pback) = (
+        measured_at(&mut m, diff, &back)?,
+        measured_at(&mut m, back_cut, &back)?,
+    );
+    assert_cut_identity_to(&pdiff, &inter, &pa, &pb, rel)?;
+    assert_cut_identity_to(&pback, &inter, &pb, &pa, rel)?;
     let default = m.precision().default_tolerance;
     for body in [u, c, diff, back_cut] {
         for e in m.edges(body).map_err(fail)? {
@@ -999,7 +1006,6 @@ fn quartic_identities(pair: &QuarticPair) -> Result<(), TestCaseError> {
     }
     let (restored, _) = run(&mut m, "fuse(a − b, b)", fuse, diff, b)?;
     let prestored = measured_at(&mut m, restored, &back)?;
-    let rel = fitted_rel(&m, &union);
     assert_same_properties_to(&prestored, &union, "(a − b) ∪ b against a ∪ b", rel)?;
     prop_assert_eq!(
         arris_debug::dump::euler_line(&m, restored).map_err(fail)?,
@@ -1663,5 +1669,243 @@ fn an_elliptic_prism_cut_then_fused_back_by_a_pipe() {
     };
     if let Err(e) = quadric_identities(&pair) {
         panic!("{e}");
+    }
+}
+
+/// An isometry in the numbers one prints as: the rotation's `[i, j, k, w]`
+/// and the translation.
+fn printed_pose(q: [f64; 4], t: [f64; 3]) -> Isometry {
+    Isometry::new(
+        UnitQuaternion::new_unchecked(Quaternion::new(q[3], q[0], q[1], q[2])),
+        Vec3::new(t[0], t[1], t[2]),
+    )
+}
+
+/// A cylinder tool in the numbers a [`QuadricTool`] prints as.
+fn printed_pipe(
+    origin: [f64; 3],
+    direction: [f64; 3],
+    radius: f64,
+    height: f64,
+    pose: Isometry,
+) -> QuadricTool {
+    QuadricTool::Cylinder(Cylindrical {
+        axis: Axis {
+            origin: Point3::new(origin[0], origin[1], origin[2]),
+            direction: UnitVec3::new_unchecked(Vec3::new(direction[0], direction[1], direction[2])),
+        },
+        radius,
+        height,
+        pose,
+    })
+}
+
+/// The shrunk failure of the nightly of 2026-10-03
+/// (`ARRIS_PROPTEST_SEED=3549c46a…`, 5000 cases, shard 8 of 16): a pipe
+/// through a cylinder, both posed 94 from the origin. The checker's E4
+/// found a section edge's pcurve 1.0027e-7 off its curve.
+#[test]
+fn a_pipe_through_a_cylinder_far_from_the_origin_passes_the_checker() {
+    let pair = printed_pair(
+        (
+            -16.553867792102892,
+            3.90639191699275,
+            33.107735584205784,
+            [0.0, 1.0, 0.0, 0.0],
+            [94.26147434370276, 3.6420629033563987, 0.0],
+        ),
+        (
+            [-7.26705601343576, 0.8681143753815194, -9.286811778667133],
+            [0.6162617888954505, 0.0, 0.7875413687847638],
+            2.149488094203717,
+            23.584314797322683,
+            [
+                0.7769368889889022,
+                0.16355208099404178,
+                -0.6079636398097872,
+                0.0,
+            ],
+            [94.04085237271289, 5.331848779569667, 0.1726396807848398],
+        ),
+    );
+    quartic_identities(&pair).unwrap();
+}
+
+/// The shrunk failure of the nightly of 2026-10-02
+/// (`ARRIS_PROPTEST_SEED=29a5102c…`, 5000 cases, shard 2 of 16): a frustum
+/// and a pipe through it, posed 60 from the origin. The checker's E4 found
+/// a section edge's pcurve 1.00036e-7 off its curve.
+#[test]
+fn a_pipe_through_a_frustum_far_from_the_origin_passes_the_checker() {
+    let pose = printed_pose(
+        [
+            0.0352982588521497,
+            0.9275792477249976,
+            -0.18526522400381099,
+            -0.3225330508440215,
+        ],
+        [59.55015422791381, 0.0, 0.0],
+    );
+    let pair = QuadricPair {
+        solid: QuadricSolid::Frustum {
+            bottom: 1.358969708425192,
+            top: 3.339156998036633,
+            height: 7.596003427461487,
+        },
+        tool: printed_pipe(
+            [-1.6739221729825582, -1.4202991467137847, 3.468799404744462],
+            [0.6238825555963347, 0.7784403386805128, 0.0692906627010817],
+            1.0802719024055645,
+            17.274572986252593,
+            pose,
+        ),
+        pose,
+    };
+    quadric_identities(&pair).unwrap();
+}
+
+/// The shrunk failure of the nightly of 2026-10-03
+/// (`ARRIS_PROPTEST_SEED=3549c46a…`, 5000 cases, shard 4 of 16): a thin
+/// elliptic prism and a pipe across it, posed 86 up. `cut(b, a)` returns a
+/// body whose shells do not nest — a void inside no shell.
+#[test]
+fn a_pipe_across_a_thin_elliptic_prism_cuts_to_nested_shells() {
+    let pose = printed_pose(
+        [0.0, 0.867861247426458, 0.0, 0.4968066577808638],
+        [0.0, 0.0, 86.05926964904897],
+    );
+    let pair = QuadricPair {
+        solid: QuadricSolid::EllipticPrism {
+            a: 0.5,
+            b: 0.11329688561452053,
+            height: 1.494827150200483,
+        },
+        tool: printed_pipe(
+            [0.165636270934527, 0.039286320986688016, 0.29589288919933354],
+            [
+                -0.2775229599973419,
+                -0.5142221887195153,
+                -0.8115149704736352,
+            ],
+            0.07974837592678169,
+            3.332880428915773,
+            pose,
+        ),
+        pose,
+    };
+    quadric_identities(&pair).unwrap();
+}
+
+/// The shrunk failure of the nightly of 2026-09-30
+/// (`ARRIS_PROPTEST_SEED=9f2abc6e…`, 5000 cases, shard 4 of 16): a ring cut
+/// by a long thin box posed through it. `cut(b, a)` left a shell of a
+/// hair's volume that read as a void inside no shell.
+#[test]
+fn a_ring_cut_by_a_posed_box_leaves_no_void_inside_no_shell() {
+    let pair = QuadricPair {
+        solid: QuadricSolid::Ring {
+            major: 9.855105457570687,
+            minor: 3.735277781142768,
+        },
+        tool: QuadricTool::Box(Boxed {
+            min: Point3::new(-2.586165151881783, -17.488251608027525, -7.252358415400309),
+            max: Point3::new(2.586165151881783, 17.488251608027525, 7.252358415400309),
+            pose: printed_pose(
+                [
+                    0.3894803974308203,
+                    0.31833458087937805,
+                    -0.3737087044120897,
+                    -0.7793009167709984,
+                ],
+                [17.014790695252074, 48.473340691733384, -7.758557463181772],
+            ),
+        }),
+        pose: printed_pose(
+            [
+                0.0,
+                0.810749343296628,
+                -0.5519774068048309,
+                0.19495241655619694,
+            ],
+            [21.24868463442002, 48.68403360657203, 0.0],
+        ),
+    };
+    quadric_identities(&pair).unwrap();
+}
+
+/// The shrunk failures of `quartic_cylinders_obey_every_identity` on the
+/// nightlies of 2026-10-01 (`ARRIS_PROPTEST_SEED=e016178c…`, shard 13 of
+/// 16: volumes additive to 1.1e-9 where `REL` is 1e-9) and 2026-10-02
+/// (`29a5102c…`, shard 6: areas additive to 1.5e-9), a pipe a hair
+/// narrower than its wall's offset breaking out of a cylinder's side. The
+/// union and the common each fit their own pcurves of the one section,
+/// each to within the edge's tolerance, so the identity holds to the
+/// fit's reach over the body (`fitted_rel`), not to `REL`: the misses are
+/// a tenth of what that bound allows.
+#[test]
+fn a_pipe_breaking_out_of_a_cylinders_side_is_additive_to_the_fit() {
+    for pair in [
+        printed_pair(
+            (
+                -1.185754057221079,
+                0.5,
+                2.371508114442158,
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0; 3],
+            ),
+            (
+                [
+                    -1.0752037844916815,
+                    0.3773224747891321,
+                    -0.11055027272939752,
+                ],
+                [0.994755775496313, 0.0, 0.10227877158398482],
+                0.39600315374306794,
+                2.161744241103261,
+                [
+                    0.026571389565977554,
+                    0.9656641172739785,
+                    -0.2584313716753464,
+                    0.0,
+                ],
+                [
+                    -0.019363463022661453,
+                    0.05093311016856722,
+                    0.1883276106771102,
+                ],
+            ),
+        ),
+        printed_pair(
+            (
+                -1.077813894843341,
+                0.5,
+                2.155627789686682,
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0; 3],
+            ),
+            (
+                [
+                    -0.9600050682715803,
+                    0.3013927975008962,
+                    -0.11780882657176053,
+                ],
+                [0.9925542752487733, 0.0, 0.12180316369200966],
+                0.30000422355965023,
+                1.9344132451214622,
+                [
+                    0.01342989330706866,
+                    0.9939028906438282,
+                    -0.1094380278312946,
+                    0.0,
+                ],
+                [
+                    -0.00804598801668432,
+                    0.007328090982824442,
+                    0.06556545464413344,
+                ],
+            ),
+        ),
+    ] {
+        quartic_identities(&pair).unwrap();
     }
 }

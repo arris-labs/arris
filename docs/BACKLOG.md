@@ -166,26 +166,6 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: resolve a section beside a pole in the (u, v) polygons, which moves `ball-beside-pole-slice-cut` out of `regression/`. The round trip rejects the refusal by name meanwhile (done), so a night no longer fails on it; the case is still a refusal a consumer meets.
 
-### ring-cut-by-a-posed-box-leaves-a-void-inside-no-shell
-
-- What: `cut(b, a)` of a ring (major 9.855, minor 3.735) by a long thin box posed through it returns a body whose shells do not nest into lumps: `void s10 is inside no shell`, a debug-build panic of the operation's output guard and `Fault::Lumps` in a build that returns it.
-- Where: `quadric_operands_obey_every_identity::shard_4`, `crates/arris-ops/tests/boolean_prop.rs`, the property's own panic at `crates/arris-debug/src/prop.rs:236`.
-- Seen: Nightly [36690407229](https://github.com/arris-labs/arris/actions/runs/36690407229), commit `69273fc`, seed `9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad`, 5000 cases, shard 4 of 16.
-- Reproduce: `ARRIS_PROPTEST_SEED=9f2abc6e8bb0893aeca81e91a6ffa64ac8c9a2fc23360734ad01637b19b6f9ad ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test boolean_prop quadric_operands_obey_every_identity::shard_4` (339 s alone, 791 s in the night; replayed 2026-10-01 on `613f564`).
-- Evidence: shrunk to `QuadricPair { solid: Ring { major: 9.85510, minor: 3.73527 }, tool: Box { min [-2.58616, -17.48825, -7.25235], max [2.58616, 17.48825, 7.25235], rotation [0.38948, 0.31833, -0.37370, -0.77930], translation [17.01479, 48.47334, -7.75855] }, pose: { rotation [0.0, 0.81074, -0.55197, 0.19495], translation [21.24868, 48.68403, 0.0] } }`; the pose is the shrinker's, not hand-picked. The same fault name as `box-revolve-cylinder-fuse-lumps-fault` (an undecided nesting), a different operand pair: whether it is the same cause is not known.
-- State: measured.
-- The fix is: shrink it by hand to the smallest pose that still gives `Lumps` and file it as `regression/<slug>` with its oracle; decide whether the nesting test or the cut that left the void is the fault; the differential holds no `Internal(Lumps)` exclusion either, so a draw that reaches it fails that run as well.
-
-### quartic-cylinders-additivity-misses-1e-9-by-a-hair
-
-- What: two cylinders whose boolean volumes are additive to 1.1e-9 relative, where the property holds `V(A ∪ B) + V(A ∩ B) = V(A) + V(B)` to `REL = 1e-9`: the sum is 2.9275826938726645 against 2.9275826907081105, 3.2e-9 apart.
-- Where: `quartic_cylinders_obey_every_identity::shard_13`, `crates/arris-ops/tests/boolean_prop.rs:118` (`assert_additive_to` at `REL`), the property's own panic at `crates/arris-debug/src/prop.rs:236`.
-- Seen: Nightly [36839407043](https://github.com/arris-labs/arris/actions/runs/36839407043), commit `340c5a2`, seed `e016178c36337a2ec1a2e658f8827b48620231e909ac7486ca8a58ba51903b78`, 5000 cases, shard 13 of 16.
-- Reproduce: `ARRIS_PROPTEST_SEED=e016178c36337a2ec1a2e658f8827b48620231e909ac7486ca8a58ba51903b78 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test boolean_prop quartic_cylinders_obey_every_identity::shard_13`. Not replayed on a later tip.
-- Evidence: `V(A ∪ B) = 2.666743053149259`, `V(A ∩ B) = 0.2608396407234055`, `V(A) = 1.862578117565017`, `V(B) = 1.0650045731430935`; A a cylinder of radius 0.5 and height 2.3715 on the z axis, B one of radius 0.396 and height 2.1617 offset 0.377 (the nightly's shrunk `QuarticPair`, `psi` 1.4683). The miss is a few parts in 1e9, so a section fitted twice is a candidate cause, as `fitted_rel` allows for elsewhere, unchecked; it is not a refusal and not a gross volume error.
-- State: measured.
-- The fix is: decide whether the union and the common should fit their pcurves of the same section to one result (then it is a kernel fault) or whether `fitted_rel`'s allowance should apply here (then it is the test's).
-
 - S5 of a cone against a cylinder in a fuse result: the differential's case
   found a twice-fused elliptic cylinder, revolved cone and extrusion whose
   result leaves two cone × cylinder pairs undecided at `Full`

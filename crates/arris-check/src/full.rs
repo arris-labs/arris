@@ -19,7 +19,7 @@ use arris_topo::arris_geom::region2::Side;
 use arris_topo::arris_geom::{
     Curve, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces,
 };
-use arris_topo::arris_math::{Aabb, Interval, Point2, Point3, Tolerance};
+use arris_topo::arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
 use arris_topo::entity::BodyKind;
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
@@ -520,14 +520,44 @@ impl<'m> Checker<'m> {
     /// (the body handle's orientation and the shell use's). `None` when a
     /// reference does not resolve or a loop cannot be integrated — M1's,
     /// L1's and E1's to report.
+    ///
+    /// The flux is taken about the centre of the box round the shell's
+    /// own vertices, not the origin: the faces of a shell close only to
+    /// their tolerance, each gap leaks flux in proportion to its distance
+    /// from the point the integral is taken about, and a sliver shell
+    /// posed 86 from the origin enclosing 3e-13 lost its sign to the
+    /// leak about the origin, where about itself the leak is a thousand
+    /// times smaller — as `arris_ops::measure::mass_properties` does for
+    /// the same reason.
     pub(crate) fn shell_volume(&self, shell_id: ShellId, outer: Orientation) -> Option<f64> {
         let shell = self.model.shell(shell_id).ok()?;
+        let reference = self.shell_reference(shell)?;
         let mut total = 0.0;
         for face_use in shell.faces() {
-            let volume = face_flux(self.model, face_use.id, |p, n| p.coords.dot(&n) / 3.0).ok()?;
+            let volume = face_flux(self.model, face_use.id, |p, n| {
+                (p.coords - reference).dot(&n) / 3.0
+            })
+            .ok()?;
             total += outer.compose(face_use.orientation).sign() * volume;
         }
         Some(total)
+    }
+
+    /// The centre of the box round the vertices of `shell`'s edges, the
+    /// origin for a shell with none; `None` when a reference does not
+    /// resolve.
+    fn shell_reference(&self, shell: &arris_topo::entity::Shell) -> Option<Vec3> {
+        let mut points: Vec<[f64; 3]> = Vec::new();
+        for face_use in shell.faces() {
+            let face = self.model.face(face_use.id).ok()?;
+            for (_, _, c) in coedges(face) {
+                let edge = self.model.edge(c.edge()).ok()?;
+                for v in [edge.start(), edge.end()] {
+                    points.push(self.model.vertex(v).ok()?.point().coords.into());
+                }
+            }
+        }
+        Some(Aabb::of_points(&points).map_or_else(Vec3::zeros, |b| Vec3::from(b.center())))
     }
 
     /// B1 (the shells nest into lumps, `crate::lumps`) and B2 (positive
