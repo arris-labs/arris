@@ -64,6 +64,11 @@ const NODES_PER_PATCH: usize = 32;
 /// a leaf, so the count is reached only by a start that cycles on rounding.
 const MAX_STEPS: usize = 64;
 
+/// The fraction of the decrease the slope promises that a step must deliver
+/// (Armijo's condition, *Numerical Optimization* §3.1): a conventional
+/// value that only has to be small, not tuned.
+const SUFFICIENT_DECREASE: f64 = 1e-4;
+
 /// Halvings of a Newton step that fails to decrease the distance.
 const MAX_BACKTRACKS: usize = 40;
 
@@ -459,7 +464,8 @@ impl NurbsSurface {
                 return Err(ambiguous());
             }
             if patch.diagonal() <= LEAF_FRACTION * extent || patch.depth >= MAX_DEPTH {
-                let candidate = self.refine(p, patch.middle(), patch.span, reach);
+                let candidate =
+                    self.refine(p, patch.middle(), [patch.u, patch.v], patch.span, reach);
                 best = best.min(candidate.distance);
                 found.push(candidate);
             } else {
@@ -585,10 +591,16 @@ impl NurbsSurface {
     /// spans is a minimum of each, held at their shared wall, where an
     /// iteration across it would only oscillate. The neighbouring span's own
     /// leaf finds the same point, which merges.
-    fn refine(&self, p: Point3, start: [f64; 2], span: [[f64; 2]; 2], reach: f64) -> Candidate {
+    fn refine(
+        &self,
+        p: Point3,
+        start: [f64; 2],
+        patch: [[f64; 2]; 2],
+        span: [[f64; 2]; 2],
+        reach: f64,
+    ) -> Candidate {
         let domain = self.domain();
         let closure = self.closure();
-        let wall = |k: usize, x: f64| x.clamp(span[k][0], span[k][1]);
         let eval = |x: [f64; 2]| {
             // The span's end belongs to the next span, or wraps to the first
             // of a periodic direction: nudged inside, it is the polynomial
@@ -602,37 +614,78 @@ impl NurbsSurface {
             };
             self.eval(inside(0), inside(1))
         };
-        let mut x = [wall(0, start[0]), wall(1, start[1])];
+        let mut x = [
+            start[0].clamp(span[0][0], span[0][1]),
+            start[1].clamp(span[1][0], span[1][1]),
+        ];
         let mut e = eval(x);
         let mut f = (e.point - p).norm_squared();
-        for _ in 0..MAX_STEPS {
-            let r = e.point - p;
-            let g = [e.du.dot(&r), e.dv.dot(&r)];
-            let held =
-                |k: usize| (x[k] <= span[k][0] && g[k] > 0.0) || (x[k] >= span[k][1] && g[k] < 0.0);
-            let free = [!held(0), !held(1)];
-            let step = newton_step(&e.du, &e.dv, &e.duu, &e.duv, &e.dvv, &r, g, free);
-            let mut alpha = 1.0;
-            let mut moved = None;
-            for _ in 0..MAX_BACKTRACKS {
-                let y = [
-                    wall(0, x[0] + alpha * step[0]),
-                    wall(1, x[1] + alpha * step[1]),
-                ];
-                let ey = eval(y);
-                let fy = (ey.point - p).norm_squared();
-                if fy <= f + RELATIVE_ROUNDING * reach * reach {
-                    moved = Some((y, ey, fy));
+        // Twice: held inside the patch's own box first, then released to
+        // the span. From a small box the iteration cannot cross a corner
+        // into a worse basin than the one the patch holds, and the second
+        // pass carries the result on to the minimum proper, which may lie
+        // beyond the box's wall.
+        for limit in [patch, span] {
+            let wall = |k: usize, x: f64| x.clamp(limit[k][0], limit[k][1]);
+            for _ in 0..MAX_STEPS {
+                let r = e.point - p;
+                let g = [e.du.dot(&r), e.dv.dot(&r)];
+                let held = |k: usize| {
+                    (x[k] <= limit[k][0] && g[k] > 0.0) || (x[k] >= limit[k][1] && g[k] < 0.0)
+                };
+                let free = [!held(0), !held(1)];
+                // The line search along one Newton step: the first halving
+                // that decreases the distance enough.
+                let search = |step: [f64; 2]| {
+                    let mut alpha = 1.0;
+                    for _ in 0..MAX_BACKTRACKS {
+                        let y = [
+                            wall(0, x[0] + alpha * step[0]),
+                            wall(1, x[1] + alpha * step[1]),
+                        ];
+                        let ey = eval(y);
+                        let fy = (ey.point - p).norm_squared();
+                        // Sufficient decrease against the slope along the step
+                        // taken (`f` is the squared distance, `g` is half its
+                        // gradient): "no worse" lets a step across a narrow
+                        // valley zig-zag between its walls without converging.
+                        let slope = 2.0 * (g[0] * (y[0] - x[0]) + g[1] * (y[1] - x[1]));
+                        if fy <= f + SUFFICIENT_DECREASE * slope + RELATIVE_ROUNDING * reach * reach
+                        {
+                            return Some((y, ey, fy, alpha));
+                        }
+                        alpha *= 0.5;
+                    }
+                    None
+                };
+                // The step in both parameters. Where it is taken whole it is
+                // Newton's, with its quadratic convergence. Where it needed
+                // halving, the surface is nearly degenerate in one direction (a
+                // collapsing row), the joint step is dominated by it and
+                // crawls along the other: each parameter's own step is tried
+                // too, and the lowest wins.
+                let joint = newton_step(&e.du, &e.dv, &e.duu, &e.duv, &e.dvv, &r, g, free);
+                let mut moved = search(joint);
+                if moved.as_ref().is_none_or(|m| m.3 < 1.0) {
+                    for mask in [[free[0], false], [false, free[1]]] {
+                        if mask == [false, false] {
+                            continue;
+                        }
+                        let step = newton_step(&e.du, &e.dv, &e.duu, &e.duv, &e.dvv, &r, g, mask);
+                        if let Some(found) = search(step)
+                            && moved.as_ref().is_none_or(|m| found.2 < m.2)
+                        {
+                            moved = Some(found);
+                        }
+                    }
+                }
+                let Some((y, ey, fy, _)) = moved else { break };
+                let travelled =
+                    ((y[0] - x[0]) * e.du.norm()).abs() + ((y[1] - x[1]) * e.dv.norm()).abs();
+                (x, e, f) = (y, ey, fy);
+                if is_negligible(travelled, reach) {
                     break;
                 }
-                alpha *= 0.5;
-            }
-            let Some((y, ey, fy)) = moved else { break };
-            let travelled =
-                ((y[0] - x[0]) * e.du.norm()).abs() + ((y[1] - x[1]) * e.dv.norm()).abs();
-            (x, e, f) = (y, ey, fy);
-            if is_negligible(travelled, reach) {
-                break;
             }
         }
         // The same point at its lowest parameters. A parameter that is
