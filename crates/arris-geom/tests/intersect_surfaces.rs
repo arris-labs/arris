@@ -1685,104 +1685,151 @@ fn one_point(r: &SurfaceIntersection) -> Result<Point3, TestCaseError> {
     }
 }
 
+/// The body of the constructed-touches property: each touch built from
+/// `axis` and the placements `pa` and `pb` is one tangent circle or one
+/// point, `upper` choosing the side.
+fn constructed_touches(
+    axis: Frame,
+    pa: Placement,
+    pb: Placement,
+    upper: bool,
+) -> Result<(), TestCaseError> {
+    let z = axis.z().into_inner();
+    let sign = if upper { 1.0 } else { -1.0 };
+    let torus = on_axis(Coaxial::Torus, &axis, pa);
+    let Surface::Torus {
+        frame: tf,
+        major_radius: big,
+        minor_radius: small,
+    } = torus
+    else {
+        unreachable!()
+    };
+    // A torus on a plane at `z0 ± r`: the tube's top or bottom
+    // circle, of radius `R`.
+    let plane = Surface::Plane {
+        frame: Frame::new(
+            tf.origin() + sign * small * z + pb.shift * tilted(&axis, FRAC_PI_2, pb.phase),
+            if pb.flip { -z } else { z },
+            tilted(&axis, FRAC_PI_2, pb.phase),
+        )
+        .unwrap(),
+    };
+    let r = common_properties(&torus, &plane)?;
+    let (centre, radius) = one_tangent_circle(&r)?;
+    prop_assert!((centre - (tf.origin() + sign * small * z)).norm() <= EXACT);
+    prop_assert!((radius - big).abs() <= EXACT);
+    normals_parallel(&torus, &plane, centre + radius * axis.x().into_inner())?;
+    // A torus inside a cylinder of radius `R + r`, and around one of
+    // `R − r`: the outer or the inner equator.
+    let cylinder = Surface::Cylinder {
+        frame: on_axis(Coaxial::Cylinder, &axis, pb)
+            .frame()
+            .unwrap()
+            .to_owned(),
+        radius: big + sign * small,
+    };
+    let r = common_properties(&cylinder, &torus)?;
+    let (centre, radius) = one_tangent_circle(&r)?;
+    prop_assert!((centre - tf.origin()).norm() <= EXACT);
+    prop_assert!((radius - (big + sign * small)).abs() <= EXACT);
+    normals_parallel(&cylinder, &torus, centre + radius * axis.x().into_inner())?;
+    // A sphere on a plane: the pole, one point on the axis.
+    let sphere = on_axis(Coaxial::Sphere, &axis, pa);
+    let Surface::Sphere {
+        frame: sf,
+        radius: ball,
+    } = sphere
+    else {
+        unreachable!()
+    };
+    let cap = Surface::Plane {
+        frame: plane.frame().unwrap().with_origin(
+            sf.origin() + sign * ball * z + pb.shift * tilted(&axis, FRAC_PI_2, pb.phase),
+        ),
+    };
+    let r = common_properties(&sphere, &cap)?;
+    let p = one_point(&r)?;
+    prop_assert!((p - (sf.origin() + sign * ball * z)).norm() <= EXACT, "{p}");
+    // A sphere on a cylinder of its radius: the equator.
+    let hoop = Surface::Cylinder {
+        frame: on_axis(Coaxial::Cylinder, &axis, pb)
+            .frame()
+            .unwrap()
+            .to_owned(),
+        radius: ball,
+    };
+    let r = common_properties(&sphere, &hoop)?;
+    let (centre, radius) = one_tangent_circle(&r)?;
+    prop_assert!((centre - sf.origin()).norm() <= EXACT);
+    prop_assert!((radius - ball).abs() <= EXACT);
+    normals_parallel(&sphere, &hoop, centre + radius * axis.x().into_inner())?;
+    // Two spheres touching from outside along a random direction,
+    // and from inside.
+    let direction = tilted(&axis, pb.tilt, pb.phase);
+    for (distance, other) in [(ball + pb.r1, pb.r1), (ball - 0.5 * pb.r1, 0.5 * pb.r1)] {
+        let touch = Surface::Sphere {
+            frame: Frame::new(
+                sf.origin() + distance * direction,
+                tilted(&axis, pb.tilt, pb.phase + 2.0),
+                z,
+            )
+            .unwrap(),
+            radius: other,
+        };
+        let r = common_properties(&sphere, &touch)?;
+        let p = one_point(&r)?;
+        // The contact lies along the line between the centres, which the
+        // rounding of the centres' coordinates turns by that much over their
+        // distance: nearly equal spheres touch nowhere better than that.
+        let rounding = 16.0 * f64::EPSILON * (sf.origin().coords.norm() + distance.abs() + ball);
+        let bound = EXACT + rounding * (ball / distance.abs()).max(1.0);
+        prop_assert!(
+            (p - (sf.origin() + ball * direction)).norm() <= bound,
+            "{p} against {} (off {}, bound {bound})",
+            sf.origin() + ball * direction,
+            (p - (sf.origin() + ball * direction)).norm()
+        );
+    }
+    Ok(())
+}
+
 #[test]
 fn constructed_touches_are_tangent_and_touches_on_the_axis_are_points() {
     check(
         (frame(), placement(), placement(), any::<bool>()),
-        |(axis, pa, pb, upper)| {
-            let z = axis.z().into_inner();
-            let sign = if upper { 1.0 } else { -1.0 };
-            let torus = on_axis(Coaxial::Torus, &axis, pa);
-            let Surface::Torus {
-                frame: tf,
-                major_radius: big,
-                minor_radius: small,
-            } = torus
-            else {
-                unreachable!()
-            };
-            // A torus on a plane at `z0 ± r`: the tube's top or bottom
-            // circle, of radius `R`.
-            let plane = Surface::Plane {
-                frame: Frame::new(
-                    tf.origin() + sign * small * z + pb.shift * tilted(&axis, FRAC_PI_2, pb.phase),
-                    if pb.flip { -z } else { z },
-                    tilted(&axis, FRAC_PI_2, pb.phase),
-                )
-                .unwrap(),
-            };
-            let r = common_properties(&torus, &plane)?;
-            let (centre, radius) = one_tangent_circle(&r)?;
-            prop_assert!((centre - (tf.origin() + sign * small * z)).norm() <= EXACT);
-            prop_assert!((radius - big).abs() <= EXACT);
-            normals_parallel(&torus, &plane, centre + radius * axis.x().into_inner())?;
-            // A torus inside a cylinder of radius `R + r`, and around one of
-            // `R − r`: the outer or the inner equator.
-            let cylinder = Surface::Cylinder {
-                frame: on_axis(Coaxial::Cylinder, &axis, pb)
-                    .frame()
-                    .unwrap()
-                    .to_owned(),
-                radius: big + sign * small,
-            };
-            let r = common_properties(&cylinder, &torus)?;
-            let (centre, radius) = one_tangent_circle(&r)?;
-            prop_assert!((centre - tf.origin()).norm() <= EXACT);
-            prop_assert!((radius - (big + sign * small)).abs() <= EXACT);
-            normals_parallel(&cylinder, &torus, centre + radius * axis.x().into_inner())?;
-            // A sphere on a plane: the pole, one point on the axis.
-            let sphere = on_axis(Coaxial::Sphere, &axis, pa);
-            let Surface::Sphere {
-                frame: sf,
-                radius: ball,
-            } = sphere
-            else {
-                unreachable!()
-            };
-            let cap = Surface::Plane {
-                frame: plane.frame().unwrap().with_origin(
-                    sf.origin() + sign * ball * z + pb.shift * tilted(&axis, FRAC_PI_2, pb.phase),
-                ),
-            };
-            let r = common_properties(&sphere, &cap)?;
-            let p = one_point(&r)?;
-            prop_assert!((p - (sf.origin() + sign * ball * z)).norm() <= EXACT, "{p}");
-            // A sphere on a cylinder of its radius: the equator.
-            let hoop = Surface::Cylinder {
-                frame: on_axis(Coaxial::Cylinder, &axis, pb)
-                    .frame()
-                    .unwrap()
-                    .to_owned(),
-                radius: ball,
-            };
-            let r = common_properties(&sphere, &hoop)?;
-            let (centre, radius) = one_tangent_circle(&r)?;
-            prop_assert!((centre - sf.origin()).norm() <= EXACT);
-            prop_assert!((radius - ball).abs() <= EXACT);
-            normals_parallel(&sphere, &hoop, centre + radius * axis.x().into_inner())?;
-            // Two spheres touching from outside along a random direction,
-            // and from inside.
-            let direction = tilted(&axis, pb.tilt, pb.phase);
-            for (distance, other) in [(ball + pb.r1, pb.r1), (ball - 0.5 * pb.r1, 0.5 * pb.r1)] {
-                let touch = Surface::Sphere {
-                    frame: Frame::new(
-                        sf.origin() + distance * direction,
-                        tilted(&axis, pb.tilt, pb.phase + 2.0),
-                        z,
-                    )
-                    .unwrap(),
-                    radius: other,
-                };
-                let r = common_properties(&sphere, &touch)?;
-                let p = one_point(&r)?;
-                prop_assert!(
-                    (p - (sf.origin() + ball * direction)).norm() <= EXACT,
-                    "{p}"
-                );
-            }
-            Ok(())
-        },
+        |(axis, pa, pb, upper)| constructed_touches(axis, pa, pb, upper),
     );
+}
+
+/// The nightly of 2026-09-29: a sphere and a sphere inside it of radius
+/// 3.19439934… whose centre is 1.7e-6 from its own.
+#[test]
+fn a_sphere_touched_from_inside_by_one_nearly_its_own_size() {
+    let axis = Frame::from_orthonormal(
+        Point3::origin(),
+        Vec3::new(-1.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        Vec3::new(0.0, 0.0, -1.0),
+    )
+    .unwrap();
+    let pa = Placement {
+        slide: -50.24157320904401,
+        phase: 0.0,
+        flip: false,
+        shift: 0.0,
+        tilt: 0.1,
+        aligned: false,
+        r1: 3.1944010823494944,
+        r2: 0.1,
+        angle: 0.05,
+    };
+    let pb = Placement {
+        slide: 0.0,
+        r1: 6.388798694487638,
+        ..pa
+    };
+    constructed_touches(axis, pa, pb, false).unwrap();
 }
 
 #[test]
