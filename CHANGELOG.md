@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.5.0 — 2026-10-05
+
 - `NurbsSurface::project` finds the nearest point on a free-form surface
   that is thin, collapsed to a pole or ruled: from a patch beside a corner
   the search crossed into a worse basin and returned a local minimum that
@@ -110,9 +112,7 @@ into its version (ADR-0027).
   rounded corner): the blend follows the chain and the two tangent edges are
   cut at the junction. Faces a file writes as tangent to a few `1e-10` now read
   as tangent for a blend within its tolerance, so such walls build and a
-  tangent cap reports `TangentChain` rather than another refusal. Refusals you
-  will meet: a fan of faces across (a face across split by a sharp edge) and
-  a miter of blends with unequal dihedrals stay `VertexBlend`.
+  tangent cap reports `TangentChain` rather than another refusal.
 
 - `fillet` and `chamfer` blend an edge that runs into a step: where the
   blended edge meets a corner whose other two edges differ in convexity (a
@@ -142,10 +142,9 @@ into its version (ADR-0027).
   closed circle, so a hole's rim split in two half circles blends. The
   result matches Open CASCADE's on the committed outlines. Refusals you
   will meet: an edge that is itself a tangent dihedral, and a chain turning
-  from convex to concave, are `TangentChain`; a chain reaching a cone,
-  sphere, torus or NURBS face, or an arc ending on a plane neither through
-  the cylinder's axis nor square to it, is `Unsupported` naming the pair;
-  a blend that runs out of its face is `BlendTooLarge`.
+  from convex to concave, are `TangentChain`; a chain reaching a pair no
+  blend takes (a torus off its axis, a NURBS face) is `Unsupported` naming
+  the pair; a blend that runs out of its face is `BlendTooLarge`.
 
 - `fillet` and `chamfer` blend the circles of a turned part: a cone against a
   plane, a cylinder or another cone (a frustum's rim, a conical boss's base,
