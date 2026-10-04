@@ -780,11 +780,19 @@ construction and fitted as a `Nurbs` pcurve on each cylinder; the third
 edge is shortened to that point, no arc enters any face, and the miter
 edge belongs to both blend faces. The two far contacts meet the third
 edge at one point exactly when the two edges' dihedrals are equal (a box
-corner, any right-angled prism), which the operation requires; a corner
-of unequal dihedrals is two arcs and the blend-network cycle's. Two chamfers at such a corner
-meet in the line between the same two points; their far contacts meet
-the third edge at one point exactly when the two edges make equal angles
-with it, which a chamfer corner requires instead. Three blended edges at
+corner, any right-angled prism). Where they differ (a slanted prism's
+vertical edge and its cap edge) the corner is two pieces (ADR-0044): the
+miter curve runs from the point where the contacts cross on the shared face
+to `m`, where it meets the narrower blend's far contact, and a trim arc
+then runs from `m` to the wider blend's far contact on the third edge — the
+section of the wider blend with the narrower blend's far face, a circle or
+line, exact on the plane and fitted on a cylinder. The wider blend is the
+one whose far contact reaches farther along the third edge (a pair's
+property, not an edge's), the far face takes the arc in its loop, and the
+third edge ends at the arc's end; equal dihedrals are the case of an empty
+arc. Two chamfers at such a corner meet in the line between the same two
+points, and unequal angles with the third edge give the same two pieces
+with a chord for the arc. Three blended edges at
 a vertex of three planes, every blend convex or every one concave, meet
 in a corner, and no corner edge is cut: each face's two contacts cross at
 one point, the corner's three points, and each blend ends on the
@@ -883,9 +891,9 @@ surfaces; a cusp whose next edge is blended too, which takes a corner
 patch; the next edge turning back with no cusp, or itself a tangent
 dihedral — is `Reason::TangentChain`; a
 vertex of
-other than three edges (but the chain junctions of two and four above), a miter of two fillets with unequal dihedrals,
-of two chamfers whose edges make unequal angles with its third edge, or
-of blends not both convex or both concave, or a corner of three blended
+other than three edges (but the chain junctions of two and four above), a miter
+of blends not both convex or both concave, a miter with a ruling
+plane–cylinder blend, or a corner of three blended
 edges whose faces are not all planes, whose blends are mixed, or — three
 fillets — none of whose faces is square to the other two, is
 `Reason::VertexBlend` naming the vertex; a surface pair

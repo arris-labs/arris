@@ -53,10 +53,11 @@ where both faces turn, tangency read within the blend's tolerance (ADR-0039,
 0040), and a rim split into arcs blends through its two-edge vertices, the
 junction the ball's cross-section (ADR-0041), and an end at a cusp with both
 walls on one side is cut by the next wall (ADR-0042), and an end across a fan
-of faces, or a face met twice, is built (ADR-0043). The fetched tier's `fillet`
+of faces, or a face met twice, is built (ADR-0043), and a miter of unequal
+dihedrals is the meeting curve plus a trim arc (ADR-0044). The fetched tier's `fillet`
 column is 2 parts (of 27), the committed tier's 5 (of 11); crossing cylinders
 are the NURBS cycle's; the residue (the overhang tip, a cylinder against a
-sphere, the miters) is the next plan's sizing.
+sphere, the ruling miter) is the next plan's sizing.
 
 ## Rules that are not derivable from the code
 

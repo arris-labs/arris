@@ -1798,7 +1798,11 @@ other entity of the body is kept by id. Two blends that share a face
 modify it once, into the face rewritten by both. At a miter the two
 blends' ends are one edge and two vertices, `Generated` from both edges
 they join, so `generated_pair` finds them; the corner's third edge,
-shortened, is `Modified`; no face across takes an arc. A chamfer's record
+shortened, is `Modified`; no face across takes an arc. At a miter of unequal
+dihedrals (ADR-0044) the miter curve ends at `m`, a vertex `Generated` from
+both edges, and the trim arc from `m` to the third edge is `Generated` from
+the wider blend's edge; the narrower blend's far face, which takes the arc,
+is `Modified` with the third edge. A chamfer's record
 is a fillet's with its end segments in place of the arcs, and two
 chamfers at a corner meet in a line recorded as a miter's ellipse is. At a
 tangent vertex of a chain the two stripes meet in a junction arc (a chord

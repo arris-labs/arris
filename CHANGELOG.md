@@ -8,6 +8,18 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` build two blends meeting at a corner whose third
+  edge stays sharp when the two edges' dihedrals differ (two fillets of a
+  slanted prism's vertical and cap edges) or, for chamfers, make unequal
+  angles with the third edge. The blends meet along their usual curve, the
+  wider one is trimmed by the other's far face, and the third edge ends at
+  that trim, as Open CASCADE builds it. A tangent edge between a rounding
+  and its ball (a cylinder and a sphere of one radius) is now refused as
+  `TangentChain` rather than as an unsupported pair. Refusals you will
+  meet: a miter of one convex and one concave blend, and one with a
+  plane–cylinder ruling blend, are still `VertexBlend`; a trim that runs
+  off its face is `BlendTooLarge`.
+
 - `fillet` and `chamfer` run to a corner where the face across is split by
   another sharp edge, or is met twice: a facet's foot on a chamfered boss,
   a rise under a roof of several planes, a box standing on another's top

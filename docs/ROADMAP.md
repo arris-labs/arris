@@ -557,7 +557,8 @@ three. The committed tier today (§Fixtures) blocks 6 of its 11.*
 first plan (`c6-blend-network`) landed 2026-10-02, second plan
 (`c6-blend-pairs`) landed 2026-10-03, third (`blend-residue`), fourth
 (`blend-run-over`), fifth (`blend-corners`), sixth (`split-rim-vertex`) and
-seventh (`cusp-run-out`) the same day, the cycle stays open.**
+seventh (`cusp-run-out`) the same day, the eighth (`blend-fan`) and ninth
+(`blend-miters`) on 2026-10-03 and 2026-10-04, the cycle stays open.**
 The first plan took the two lines marked done below. On the fetched tier
 (27 parts, `tools/real-parts.sh`, 2026-10-02) the `fillet` column held 11
 parts where the step-1 baseline held 12 (C4's 17 of 38 counted both tiers;
@@ -832,6 +833,23 @@ refuse, 6 Arris refuses. Over both tiers (38 parts) the blend network blocks
 3 at `fillet`, from 5. What the cycle has left is the overhang tip (the NURBS
 cycle's caps), a cylinder against a sphere, a trace that misses, the
 miters and the horn and spindle torus at the axis.
+The ninth plan (`blend-miters`, 2026-10-04) built the miter of unequal
+dihedrals (ADR-0044): two fillets, or two chamfers whose edges make unequal
+angles with the sharp third edge, meet along the miter curve to where it
+reaches the narrower blend's far contact, then the wider blend is trimmed
+by the narrower one's far face in one conic or line, and the third edge
+ends at its end (`blend/miter-unequal-dihedrals-{fillet,chamfer}`, Open
+CASCADE's 12/18/8; a property over random slanted corners against a closed
+form). Two misattributions were corrected: ftc-06's three `VertexBlend`
+edges are a dihedral jump on a collinear run, the NURBS cycle's, and the
+tangent cylinder–sphere edges (ctc-04's 7, ftc-08's 2, ftc-10's 2) are
+`TangentChain`, since a blended edge's own dihedral is read tangent within
+the edge's tolerance (ADR-0045). The tiers measured (2026-10-04): 0 failing
+parts; `VertexBlend` attributed to the blend network is 0 edges on both
+tiers (the committed tier's 3 are ftc-06's, the NURBS cycle's); the `fillet`
+column holds 2 of 27 and 5 of 11 as before. What the cycle has left is the
+overhang tip (the NURBS cycle's caps), a cylinder against a sphere, a trace
+that misses, the ruling miter and the horn and spindle torus at the axis.
 
 - ~~Tangent edge chains blended as one (5 `Degenerate(TangentChain)`
   refusals).~~ Done: a stripe follows a chain of line and arc edges
@@ -853,7 +871,10 @@ miters and the horn and spindle torus at the axis.
 - The corners refused as `VertexBlend`: ~~a chain through a vertex of four
   edges~~ done (ADR-0039, ADR-0040); ~~the vertex of two edges of a split
   rim~~ done (ADR-0041); ~~the fan (CTC-01) and the face across met twice~~
-  done (ADR-0043); the miters remain.
+  done (ADR-0043); ~~the miter of unequal dihedrals~~ done (ADR-0044);
+ftc-06's dihedral jump on a collinear run and the tangent cylinder–sphere
+edges are attributed (the NURBS cycle's; `TangentChain`, ADR-0045); the
+ruling miter remains, on the backlog.
 - The remaining chamfer modes (two distances, a distance and an angle).
 - Variable radius, and blends over blends.
 
