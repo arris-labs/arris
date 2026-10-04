@@ -619,6 +619,18 @@ fn regression_singular_bore_cut() {
     run("regression/singular-bore-cut");
 }
 
+/// Case 216 of the differential's turned draw: a cylinder under a
+/// toroidal dome, revolved a full turn, its three circular edges filleted
+/// in one call. Arris builds one exact face per fillet (6/11/7, measures
+/// matching); Open CASCADE walks the dome's rim with fitted B-spline strips
+/// and a corner patch (12/23/13), held as `counts_differ`. What fails is the
+/// read-back of Open CASCADE's own STEP of it.
+#[test]
+#[ignore = "read-back: #139 the edge's end is at 1.5e-16 on its curve, not past its start at 6.9478: the reader refuses a periodic B-spline strip's seam edge in Open CASCADE's STEP of the blend (the differential's counts disagreement on this recipe is Open CASCADE's convention, not Arris's)"]
+fn regression_turned_dome_three_rim_fillet() {
+    run("regression/turned-dome-three-rim-fillet");
+}
+
 /// A ball sliced by a face 3.7e-7 from its pole: not through the singular
 /// point and nearer than the sphere's (u, v) polygons resolve, refused by
 /// name rather than built.

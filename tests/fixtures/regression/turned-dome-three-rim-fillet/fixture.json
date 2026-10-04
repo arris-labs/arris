@@ -1,0 +1,162 @@
+{
+  "description": "Case 216 of the differential's turned draw (CI, 1000 recipes, the run of 2026-10-03): a cylinder under a toroidal dome, revolved a full turn, its three circular edges (base rim, cylinder-torus, torus-top plane) filleted at r 0.0166 in one call. Arris builds one exact face per fillet (6/11/7, volume and area matching Open CASCADE's); Open CASCADE walks the dome rim's torus-against-plane blend as six B-spline strips and a corner patch (12/23/13), so the counts differ by that convention. The failing assertion is the read-back: Arris's reader refuses Open CASCADE's own STEP of the result, '#139: the edge's end is at 1.5e-16 on its curve, not past its start at 6.9478326775114985' (a periodic B-spline strip's seam edge).",
+  "params": {},
+  "variants": {},
+  "steps": [
+    {
+      "op": "profile",
+      "name": "sk0",
+      "plane": {
+        "origin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "x": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "y": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      "outer": {
+        "start": [
+          0.0,
+          0.0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.2198463103929542,
+              0.0
+            ]
+          },
+          {
+            "line_to": [
+              1.2198463103929542,
+              1.0
+            ]
+          },
+          {
+            "arc_to": [
+              0.3316277141730139,
+              1.1027866238101072
+            ],
+            "via": [
+              0.8074775287379736,
+              1.3256752751012668
+            ]
+          },
+          {
+            "line_to": [
+              0.0,
+              1.1027866238101072
+            ]
+          },
+          {
+            "line_to": [
+              0.0,
+              0.0
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "op": "revolve",
+      "name": "b0",
+      "profile": "sk0",
+      "axis": {
+        "origin": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "direction": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      "angle_deg": 360.0
+    },
+    {
+      "op": "fillet",
+      "name": "f0",
+      "of": "b0",
+      "edges": [
+        [
+          0.0,
+          0.0,
+          -1.2198463103929542
+        ],
+        [
+          0.0,
+          1.0,
+          -1.2198463103929542
+        ],
+        [
+          0.0,
+          1.1027866238101072,
+          -0.3316277141730139
+        ]
+      ],
+      "radius": 0.016581385708650694
+    },
+    {
+      "op": "transform",
+      "name": "o0",
+      "of": "f0",
+      "translate": [
+        0.0,
+        -0.5513933119050536,
+        0.0
+      ]
+    }
+  ],
+  "result": "o0",
+  "probes": [
+    {
+      "label": "o0-centre",
+      "point": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "precision": {
+    "default_tolerance": 1e-07,
+    "min_tolerance": 1e-12,
+    "max_tolerance": 0.01,
+    "angular_tolerance": 1e-12,
+    "parametric_tolerance": 1e-07,
+    "check_samples": 23
+  },
+  "tolerances": {
+    "volume_rel": 0.018462738936668343,
+    "area_rel": 0.02377445328911466,
+    "centroid_abs": 0.04783272005773402,
+    "probe": 1e-07,
+    "mesh_chord": 0.001,
+    "mesh_volume_rel": 0.0216135507513967,
+    "inertia_rel": 0.1687875474178541
+  },
+  "analytic": {
+    "degenerate": false,
+    "counts": {
+      "vertices": 6,
+      "edges": 11,
+      "faces": 7,
+      "loops": 7,
+      "shells": 1
+    },
+    "genus": 0,
+    "counts_differ": "Open CASCADE splits the dome rim's torus-against-plane blend into six B-spline strips and a corner patch (12/23/13); Arris's is the one exact torus face"
+  }
+}
