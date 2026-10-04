@@ -303,63 +303,81 @@ fn every_section_of_a_cylinder_has_a_pcurve_on_it() {
     );
 }
 
+/// The property's body: a circle of radius `r` in `circle_frame`
+/// projected to the plane of `target` is the ellipse of semi-axes `r` and
+/// `r·cos`, through the projection of the circle's point at `t`.
+fn circle_projects_to_the_expected_ellipse(
+    target: Frame,
+    circle_frame: Frame,
+    r: f64,
+    t: f64,
+) -> Result<(), TestCaseError> {
+    let circle = Curve::Circle {
+        frame: circle_frame,
+        radius: r,
+    };
+    let cos = circle_frame.z().dot(&target.z()).abs();
+    let projected = project_to_plane(&circle, &target).unwrap();
+    let Curve2::Ellipse {
+        frame: f2,
+        major_radius,
+        minor_radius,
+    } = &projected
+    else {
+        // Only a circle parallel to the target stays a circle.
+        let stays_a_circle = matches!(projected, Curve2::Circle { .. });
+        prop_assert!(stays_a_circle && cos > 1.0 - 1e-12, "{projected:?}");
+        return Ok(());
+    };
+    prop_assert!(
+        (major_radius - r).abs() <= EXACT,
+        "major {major_radius} vs {r}"
+    );
+    prop_assert!(
+        (minor_radius - r * cos).abs() <= EXACT,
+        "minor {minor_radius} vs {}",
+        r * cos
+    );
+    // The point set: the projection of every circle point lies on
+    // the ellipse (its implicit form in the ellipse's own frame).
+    let p = target.to_local(circle.point(t));
+    let q = f2.to_local(arris_math::Point2::new(p.x, p.y));
+    let implicit = (q.x / major_radius).powi(2) + (q.y / minor_radius).powi(2);
+    // A rounding of the coordinates moves the implicit form by twice
+    // its size over the minor radius, which a circle nearly
+    // perpendicular to the plane makes small.
+    let rounding = 8.0
+        * f64::EPSILON
+        * (circle_frame.origin().coords.norm() + target.origin().coords.norm() + r);
+    prop_assert!(
+        (implicit - 1.0).abs() <= 1e-9 + 2.0 * rounding / minor_radius,
+        "implicit {implicit} at t = {t}"
+    );
+    // The traversal sense is the sign of Z against the normal.
+    prop_assert_eq!(
+        f2.is_right_handed(),
+        circle_frame.z().dot(&target.z()) > 0.0
+    );
+    // A projected line is the line of projected points.
+    let line = Curve::Line {
+        origin: circle_frame.origin(),
+        direction: circle_frame.x(),
+    };
+    if let Ok(Curve2::Line { .. }) = project_to_plane(&line, &target) {
+        let pl = project_to_plane(&line, &target).unwrap();
+        let p3 = target.to_local(line.point(t));
+        let proj = pl.project(arris_math::Point2::new(p3.x, p3.y)).unwrap();
+        prop_assert!(proj.distance <= EXACT);
+    }
+    Ok(())
+}
+
 #[test]
 fn a_circle_projected_to_an_oblique_plane_is_the_expected_ellipse() {
     check(
         (frame(), frame(), radius(0.1..=10.0), finite_f64(0.0..=TAU)),
         |(target, circle_frame, r, t)| {
-            let circle = Curve::Circle {
-                frame: circle_frame,
-                radius: r,
-            };
-            let cos = circle_frame.z().dot(&target.z()).abs();
-            let projected = project_to_plane(&circle, &target).unwrap();
-            let Curve2::Ellipse {
-                frame: f2,
-                major_radius,
-                minor_radius,
-            } = &projected
-            else {
-                // Only a circle parallel to the target stays a circle.
-                let stays_a_circle = matches!(projected, Curve2::Circle { .. });
-                prop_assert!(stays_a_circle && cos > 1.0 - 1e-12, "{projected:?}");
-                return Ok(());
-            };
-            prop_assert!(
-                (major_radius - r).abs() <= EXACT,
-                "major {major_radius} vs {r}"
-            );
-            prop_assert!(
-                (minor_radius - r * cos).abs() <= EXACT,
-                "minor {minor_radius} vs {}",
-                r * cos
-            );
-            // The point set: the projection of every circle point lies on
-            // the ellipse (its implicit form in the ellipse's own frame).
-            let p = target.to_local(circle.point(t));
-            let q = f2.to_local(arris_math::Point2::new(p.x, p.y));
-            let implicit = (q.x / major_radius).powi(2) + (q.y / minor_radius).powi(2);
-            prop_assert!(
-                (implicit - 1.0).abs() <= 1e-9,
-                "implicit {implicit} at t = {t}"
-            );
-            // The traversal sense is the sign of Z against the normal.
-            prop_assert_eq!(
-                f2.is_right_handed(),
-                circle_frame.z().dot(&target.z()) > 0.0
-            );
-            // A projected line is the line of projected points.
-            let line = Curve::Line {
-                origin: circle_frame.origin(),
-                direction: circle_frame.x(),
-            };
-            if let Ok(Curve2::Line { .. }) = project_to_plane(&line, &target) {
-                let pl = project_to_plane(&line, &target).unwrap();
-                let p3 = target.to_local(line.point(t));
-                let proj = pl.project(arris_math::Point2::new(p3.x, p3.y)).unwrap();
-                prop_assert!(proj.distance <= EXACT);
-            }
-            Ok(())
+            circle_projects_to_the_expected_ellipse(target, circle_frame, r, t)
         },
     );
 }
@@ -1510,4 +1528,35 @@ fn a_nurbs_surface_answers_every_curve() {
             }
         },
     );
+}
+
+/// The nightly of 2026-10-03: a circle of radius 0.1 at a cosine of 1e-4
+/// to a plane a hundred away. The minor radius is 1e-5, so the rounding of
+/// the coordinates (1e-14) is 2e-9 of the implicit form: the property's
+/// conditioning, not an error of the projection.
+#[test]
+fn a_circle_nearly_perpendicular_to_a_far_plane_is_held_to_its_conditioning() {
+    let target = Frame::from_orthonormal(
+        Point3::new(47.79953633735795, -87.92253844625674, 27.641203251716362),
+        Vec3::new(
+            -0.8694537858378548,
+            0.4838003234894943,
+            -0.09993678643864023,
+        ),
+        Vec3::new(0.3694873617434822, 0.502564788899189, -0.7816058613332902),
+        Vec3::new(
+            -0.32791645857453217,
+            -0.7164955547316217,
+            -0.6157149634739788,
+        ),
+    )
+    .unwrap();
+    let circle = Frame::from_orthonormal(
+        Point3::new(-70.81861402369576, 0.0, 0.0),
+        Vec3::new(-0.776538802537452, -0.5682703804410408, -0.2721328037321022),
+        Vec3::new(0.5658260918001677, -0.4389570136662874, -0.6979667427544975),
+        Vec3::new(0.27717922359341496, -0.6959780994159008, 0.6624093622085834),
+    )
+    .unwrap();
+    circle_projects_to_the_expected_ellipse(target, circle, 0.1, 2.8077318630220667).unwrap();
 }
