@@ -1854,6 +1854,50 @@ mod tests {
         );
     }
 
+    /// The committed `nist-ctc-04`'s sphere written as a NURBS circle against
+    /// the cylinder of its radius, whose axis runs through its centre, at
+    /// (179.47, 377.98, 16.95): the file's normals are `7.5e-7` apart, past
+    /// the faces' `1e-7` and within the edge's own `1.5e-5`, so the edge
+    /// alone is refused `TangentChain` as a tangent dihedral, not as an
+    /// unsupported pair (ADR-0045).
+    #[test]
+    fn ctc_04_sphere_against_its_cylinder_is_a_tangent_dihedral() {
+        let file = corpus_root().join("real/nist-ctc-04/nist_ctc_04_asme1_rd.stp");
+        let bytes = std::fs::read(&file).unwrap();
+        let mut m = Model::new(PrecisionSpec::default().precision()).unwrap();
+        let read = step_read(
+            &mut m,
+            &String::from_utf8_lossy(&bytes),
+            &ReadOptions::default(),
+        )
+        .unwrap();
+        let body = read
+            .solids
+            .iter()
+            .find(|s| s.entity.id == 24)
+            .and_then(|s| s.result.as_ref().ok())
+            .unwrap()
+            .body;
+        let edge = m
+            .edges(body)
+            .unwrap()
+            .into_iter()
+            .find(|h| {
+                edge_midpoint(&m, h.id)
+                    .is_some_and(|p| (p - P3::new(179.4726, 377.9816, 16.9539)).norm() < 0.01)
+            })
+            .expect("the sphere's edge");
+        let mut scratch = m.clone();
+        let Err(Refused::Op(e)) = blend(&mut scratch, body, &[edge], 0.785) else {
+            panic!("the edge is refused");
+        };
+        assert_eq!(class_of(&e), "Degenerate: TangentChain");
+        assert_eq!(
+            tangent_chain_cause(&m, edge.id, &e).unwrap(),
+            "the edge itself, a tangent dihedral; edge cylinder × sphere"
+        );
+    }
+
     /// The edge of `recipe`'s body nearest `at` blended alone at `radius`,
     /// refused `TangentChain`, and the census's cause.
     fn cusp_cause(recipe: &str, at: P3, radius: f64) -> String {

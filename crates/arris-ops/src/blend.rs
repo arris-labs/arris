@@ -676,8 +676,10 @@ fn stripe(
     let [f1, f2] = faces;
     let tolerance = faces_tolerance(m, f1, f2)?;
     // A tangent dihedral has no corner to roll a ball into, whatever the
-    // surfaces are.
-    if tangent_normals(n1, n2, kind.size(), tolerance, tol) {
+    // surfaces are. It builds no stripe, so the edge's own tolerance, which
+    // is where a loose file puts the gap between its faces, may widen the
+    // test (ADR-0045).
+    if tangent_normals(n1, n2, kind.size(), tolerance.max(entity.tolerance()), tol) {
         return Err(degenerate(
             vec![e, forward(f1), forward(f2)],
             Reason::TangentChain,
@@ -3862,7 +3864,10 @@ fn ring(
     let pcurves = [m.curve2(ua.pcurve)?, m.curve2(ub.pcurve)?];
     let n1 = view.outward(m, f1, pcurves[0].point(mid))?;
     let n2 = view.outward(m, f2, pcurves[1].point(mid))?;
-    if tangent_normals(n1, n2, kind.size(), faces_tolerance(m, f1, f2)?, tol) {
+    // The edge's own tolerance widens the test as a stripe's does
+    // (ADR-0045): a ring builds nothing where it is tangent.
+    let tangent_tolerance = faces_tolerance(m, f1, f2)?.max(entity.tolerance());
+    if tangent_normals(n1, n2, kind.size(), tangent_tolerance, tol) {
         return Err(degenerate(
             vec![e, forward(f1), forward(f2)],
             Reason::TangentChain,

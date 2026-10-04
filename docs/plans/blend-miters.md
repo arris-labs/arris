@@ -165,7 +165,7 @@ bound has to be established here.
     in a polynomial. It reproduces the fixture's closed form at the slanted
     prism and Arris's volume at 2000 cases per shard, acute and obtuse
     corners, either top edge.
-- [ ] Step 6 **[2]** — **The tangent cylinder–sphere edges read as
+- [x] Step 6 **[2]** — **The tangent cylinder–sphere edges read as
   tangent.**
   - **Blocked (2026-10-04), ⚠ OPEN 3.** The premise is wrong: no refusal
     order is at fault. The 7 edges (ctc-04's NURBS-written circles between a
@@ -187,6 +187,14 @@ bound has to be established here.
     fixture records the sample as `TangentChain` while the census names
     this pair. If the fixture is stale, re-bless it in a `fixtures:` commit
     whose body says why.
+  - **Done as OPEN 3's amendment (ADR-0045):** the blended edge's own
+    dihedral (stripe and ring) reads tangency within the edge's tolerance
+    too. The committed census's built counts are unchanged (505, 326, 141);
+    ctc-04's 7, ftc-08's 4 and ftc-10's 2 edges are `TangentChain`. The
+    regression is `census::tests::ctc_04_sphere_against_its_cylinder_is_a_tangent_dihedral`
+    on the committed part itself, since a recipe cannot set an edge's
+    tolerance; the census and the fixture now agree (`TangentChain`).
+
 - [ ] Step 7 **[1]** — **ftc-06's 3 edges re-filed.**
   - `census::vertex_blend_cause` names "a dihedral jump on a collinear run".
   - The census test holds that name on ftc-06, and its attribution is the
@@ -236,7 +244,7 @@ bound has to be established here.
 - `AGENTS.md` current state: C6's line gains the miter (ADR-0044).
 
 ## Open questions
-- ⚠ OPEN 3 — Step 6's tangent cylinder–sphere edges. Whether the blended
+- ⚠ OPEN 3 (decided by the human, 2026-10-04: the amendment, ADR-0045) — Step 6's tangent cylinder–sphere edges. Whether the blended
   edge's own dihedral (a stripe's and a ring's `TangentChain`, the one place
   no stripe is built) reads tangency at the larger of the faces' tolerance
   and the edge's, an amendment of ADR-0040 §3 (an ADR-0045) that the
