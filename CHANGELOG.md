@@ -8,6 +8,14 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `NurbsSurface::project` finds the nearest point on a free-form surface
+  that is thin, collapsed to a pole or ruled: from a patch beside a corner
+  the search crossed into a worse basin and returned a local minimum that
+  was not the nearest, and a pole found a rounding's width off its row was
+  reported with its parameters at the end of the knots. The search now
+  descends inside its patch first, and a point on a pole's axis is
+  reported on the pole.
+
 - A boolean whose result holds a sliver of a lump far from the origin is no
   longer refused as "the shells do not nest: void is inside no shell": a
   pipe cut from an elliptic prism it grazes, posed 86 from the origin, left

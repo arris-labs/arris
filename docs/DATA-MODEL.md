@@ -153,8 +153,11 @@ into its Bézier patches, each bounded from below by its control hull
 (the larger of the distance to the hull's box and two support bounds), and
 a best-first search halves the patches whose bound is within the best
 distance found and hands each small survivor to a projected Newton
-iteration confined to its knot span, so a minimum on a kink between spans
-is a minimum of each. What comes out is every local minimum as near as the
+iteration that descends inside the patch's own box first, is then released
+to its knot span, and takes a step only if it decreases the distance by a
+fixed fraction of its slope, so a minimum on a kink between spans is a
+minimum of each and a patch beside a corner does not run into a worse
+basin. What comes out is every local minimum as near as the
 nearest to rounding, and two *distinct* points among them are
 `GeomError::Ambiguous` at `AmbiguousLocus::MedialAxis` — the surface's
 medial axis, the analogue of a quadric's axis — as is a query with more

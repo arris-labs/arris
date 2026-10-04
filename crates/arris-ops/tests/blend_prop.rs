@@ -1602,7 +1602,7 @@ fn rejecting_a_loop_that_meets_itself(e: TestCaseError) -> TestCaseError {
     }
 }
 
-/// The shrunk failure of the step-9 run of `plans/nightly-failures`
+/// The shrunk failure of the nightly-failures cleanup's final property run
 /// (`ARRIS_PROPTEST_SEED=d226ff33…`, 1000 cases, shard 0 of 2), a lean at
 /// ratio 3.98 of the rise, past the reach the end plane keeps its corner
 /// inside both blocks: the result is built and its face 16's loop meets

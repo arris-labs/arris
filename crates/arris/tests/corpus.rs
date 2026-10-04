@@ -626,7 +626,7 @@ fn regression_singular_bore_cut() {
 /// and a corner patch (12/23/13), held as `counts_differ`. What fails is the
 /// read-back of Open CASCADE's own STEP of it.
 #[test]
-#[ignore = "read-back: #773 on face #769: the pcurve fit still deviates by 2.4 with 3673 spans, the most it may use, on a strip of Open CASCADE's STEP of the blend (the seam edge of #139 reads since plans/nightly-failures step 8; the differential's counts disagreement on this recipe is Open CASCADE's convention, not Arris's)"]
+#[ignore = "read-back: #773 on face #769: the pcurve fit still deviates by 2.4 with 3673 spans, the most it may use, on a strip of Open CASCADE's STEP of the blend (the seam edge of #139 reads since the 2026-10-04 reader fix; the differential's counts disagreement on this recipe is Open CASCADE's convention, not Arris's)"]
 fn regression_turned_dome_three_rim_fillet() {
     run("regression/turned-dome-three-rim-fillet");
 }
@@ -2648,7 +2648,7 @@ fn regression_revolve_cut_extrusion_s5_undecided() {
 /// bytes' property (nightly 2026-10-01): the result had a hole loop that
 /// met its outer loop (L5), because a closed section edge's box ignored the
 /// part of its range past the curve's domain; fixed, and what it waited for
-/// was the reader (a closed B-spline edge ending at its seam, plans/nightly-failures step 8).
+/// was the reader (a closed B-spline edge ending at its seam).
 #[test]
 fn boolean_body_bytes_revolved_hole_loops_intersect() {
     run("boolean/body-bytes-revolved-hole-loops-intersect");
@@ -2675,7 +2675,7 @@ fn boolean_revolve_cylinder_cut_box_fuse_builder_fault() {
 
 /// A cylinder and a posed prism in common, a chamfered box cut from it
 /// (nightly 2026-10-01, case 991): the checker's L5 then, since fixed by
-/// the bounds of a periodic NURBS (plans/nightly-failures step 4); the
+/// the bounds of a periodic NURBS; the
 /// corpus waits on the reader only.
 #[test]
 fn boolean_cylinder_prism_common_chamfer_cut_loops_intersect() {
