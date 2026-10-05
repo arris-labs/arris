@@ -1189,6 +1189,13 @@ corpus_tests! {
     /// The same sliced block's top pushed: the dragged strip meets the
     /// fixed flat further up it, their section a new line.
     offset_fillet_cut_pushed => run "offset/fillet-cut-pushed";
+    /// A pocket's floor pulled below the block's bottom face: the walls
+    /// run through a face no moved face touches, refused as
+    /// `SelfIntersects` from the `Full` report.
+    offset_pocket_floor_through => run "offset/pocket-floor-through";
+    /// A boss's side pushed past the plate's own side: the boss hangs
+    /// through the plate's edge, refused as `SelfIntersects`.
+    offset_boss_through_side => run "offset/boss-through-side";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'

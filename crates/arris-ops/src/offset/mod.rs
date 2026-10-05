@@ -12,7 +12,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::Level;
+use arris_check::{Level, Violation};
 use arris_geom::Surface;
 use arris_math::{Control, Meter, Tolerance};
 use arris_topo::{Body, Face, FaceId, Model, Provenance};
@@ -101,7 +101,9 @@ impl Moves {
 /// move drives through zero or whose cone it carries to the axis — a
 /// dragged fillet moved in past its radius — and [`OffsetReason::Gap`]
 /// naming the edge where a dragged face no longer meets a face beside it
-/// that stays; [`OpError::Unsupported`] naming a face on an elliptic
+/// that stays, [`OffsetReason::SelfIntersects`] naming the faces the
+/// checker's global level finds running into each other — a pocket floor
+/// pulled through the bottom of the block; [`OpError::Unsupported`] naming a face on an elliptic
 /// cylinder or a free-form surface beside a moved one, two faces whose new
 /// surfaces only touch, and a pole or apex the move cannot place;
 /// [`OpError::NotFound`] for a face id that does not resolve;
@@ -192,12 +194,42 @@ fn build(
     let points = vertices::moved_vertices(m, &view, &moves, &carried, tol, meter)?;
     let edges = edges::moved_edges(m, &view, &moves, &carried, &points, tol, meter)?;
     let rw = faces::rewrite_of(m, &view.faces, &moves, &points, &edges, tol, meter)?;
-    let out = rebuild::rewrite(m, body, rw)?;
+    let out = rebuild::rewrite_unverified(m, body, rw)?;
     let report = arris_check::check(m, out.body, Level::Full);
     if !report.is_ok() {
-        return Err(OpError::Internal(Fault::Checker(Box::new(report))));
+        return Err(self_intersection(&report)
+            .unwrap_or_else(|| OpError::Internal(Fault::Checker(Box::new(report)))));
     }
     Ok((out.body, out.provenance))
+}
+
+/// [`OffsetReason::SelfIntersects`] naming what the report names, when
+/// every violation is one the global level finds in a locally well-built
+/// result — faces or loops crossing, an edge crossing itself, a shell
+/// nested wrongly or enclosing no volume; any other violation is the
+/// construction's own fault, and `None`.
+fn self_intersection(report: &arris_check::Report) -> Option<OpError> {
+    let mut entities = Vec::new();
+    for v in report {
+        match v {
+            Violation::FacesIntersect { face_a, face_b, .. } => {
+                entities.extend([forward(*face_a), forward(*face_b)])
+            }
+            Violation::LoopsIntersect { face, .. } | Violation::LoopNesting { face, .. } => {
+                entities.push(forward(*face));
+            }
+            Violation::EdgeSelfIntersects { edge, .. } => entities.push(forward(*edge)),
+            Violation::ShellNesting { body, .. } | Violation::NonPositiveVolume { body, .. } => {
+                entities.push(forward(*body));
+            }
+            _ => return None,
+        }
+    }
+    entities.dedup();
+    Some(OpError::Degenerate {
+        entities,
+        reason: Reason::Offset(OffsetReason::SelfIntersects),
+    })
 }
 
 /// Each moved face's offset surface: its own surface's offset by the

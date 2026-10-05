@@ -425,6 +425,9 @@ impl Refusal {
                 "OpError::Degenerate with Reason::SurfaceCollapses".into()
             }
             Refusal::Error(ExpectError::Gap) => "OpError::Degenerate with Reason::Gap".into(),
+            Refusal::Error(ExpectError::SelfIntersects) => {
+                "OpError::Degenerate with Reason::SelfIntersects".into()
+            }
             Refusal::Error(ExpectError::Nurbs) => {
                 "OpError::Unsupported with a NURBS surface or curve in the pair".into()
             }
@@ -478,6 +481,9 @@ impl Refusal {
                         reason == Reason::Offset(OffsetReason::SurfaceCollapses)
                     }
                     Refusal::Error(ExpectError::Gap) => reason == Reason::Offset(OffsetReason::Gap),
+                    Refusal::Error(ExpectError::SelfIntersects) => {
+                        reason == Reason::Offset(OffsetReason::SelfIntersects)
+                    }
                     Refusal::Error(ExpectError::Nurbs | ExpectError::Unsupported) => false,
                 };
                 if matches {

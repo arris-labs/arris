@@ -695,6 +695,10 @@ pub enum ExpectError {
     /// face dragged by a tangent neighbour no longer meets a face that
     /// stays (ADR-0048 §6).
     Gap,
+    /// `OpError::Degenerate` with `OffsetReason::SelfIntersects`: an
+    /// offset whose built result has faces running into each other, found
+    /// by the checker's global level (ADR-0048 §7).
+    SelfIntersects,
     /// `OpError::Unsupported` with a NURBS surface or curve in the pair:
     /// an operation on a free-form face the kernel has no closed form
     /// for, the NURBS cycle's (ADR-0026 §5).

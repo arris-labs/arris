@@ -231,7 +231,7 @@ of the step that made the fixture pass, and a later change to it is a
   else is compared.
   `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
   "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
-  "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" |
+  "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" | "self-intersects" |
   "unsupported"` says Open CASCADE
   builds a result Arris refuses by design (the tangent cases,
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
@@ -254,7 +254,9 @@ of the step that made the fixture pass, and a later change to it is a
   pulls clear of a fixed neighbour, `Gap`, where Open CASCADE makes nothing
   and the oracle records the empty result — ADR-0048 §6, the one case where
   an `expect_error` recipe's oracle may be degenerate without the recipe
-  saying `degenerate`, which the two together never do; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
+  saying `degenerate`, which the two together never do; a push whose
+  built result has faces running into each other away from their shared
+  edges, `SelfIntersects`, from the checker's global level — ADR-0048 §7; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
   recorded and the lint still
   cross-checks them against the other `analytic` values, but the runner asserts the typed error and compares
   nothing — and the oracle's self-test records the result without

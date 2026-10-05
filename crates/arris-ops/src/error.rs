@@ -365,6 +365,13 @@ pub enum OffsetReason {
     /// beside it that stays: its offset has pulled clear of the other's
     /// surface where their edge was. The error's entity is that edge.
     Gap,
+    /// The offset is built and its faces run into each other away from
+    /// their shared edges — a boss pushed through the body's side, a
+    /// pocket floor pulled through the bottom — which the checker's global
+    /// level reports and the local construction cannot see. The error's
+    /// entities are the faces the report names (the edge, for one that
+    /// crosses itself).
+    SelfIntersects,
 }
 
 impl OffsetReason {
@@ -379,6 +386,7 @@ impl OffsetReason {
             OffsetReason::NoExactOffset => "NoExactOffset",
             OffsetReason::SurfaceCollapses => "SurfaceCollapses",
             OffsetReason::Gap => "Gap",
+            OffsetReason::SelfIntersects => "SelfIntersects",
         }
     }
 }
@@ -404,6 +412,9 @@ impl core::fmt::Display for OffsetReason {
             OffsetReason::Gap => f.write_str(
                 "a face dragged by a tangent neighbour no longer meets the face beside it that stays",
             ),
+            OffsetReason::SelfIntersects => {
+                f.write_str("the offset body's faces run into each other")
+            }
         }
     }
 }

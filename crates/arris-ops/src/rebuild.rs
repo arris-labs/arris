@@ -515,6 +515,19 @@ pub(crate) struct Rewritten {
 /// The output is verified as every operation's is. Errors: the builder's
 /// refusal as [`OpError::Internal`], an id that does not resolve.
 pub(crate) fn rewrite(m: &mut Model, body: Body, rewrite: Rewrite) -> Result<Rewritten, OpError> {
+    let out = rewrite_unverified(m, body, rewrite)?;
+    crate::verify(m, out.body)?;
+    Ok(out)
+}
+
+/// [`rewrite`] without the output guard, for an operation whose result may
+/// be well-formed locally and wrong globally and that runs the checker
+/// itself, at a level that includes the guard's, to refuse it by name.
+pub(crate) fn rewrite_unverified(
+    m: &mut Model,
+    body: Body,
+    rewrite: Rewrite,
+) -> Result<Rewritten, OpError> {
     let precision = m.precision();
     let closure = m.closure(body)?;
     let shells = m.shells(body)?;
@@ -671,7 +684,6 @@ pub(crate) fn rewrite(m: &mut Model, body: Body, rewrite: Rewrite) -> Result<Rew
         p.add_modified(forward(old.id), forward(new));
     }
     p.add_modified(forward(body.id), forward(built.body.id));
-    crate::verify(m, built.body)?;
     Ok(Rewritten {
         body: built.body,
         vertices,

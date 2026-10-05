@@ -185,10 +185,19 @@ bound has to be established here.
   with `pulled`), `fillet-cut-pushed`, `fillet-cut-gap` (`Gap`). A step-4
   drift fixed on the way: `tests/fixtures/README.md`'s `expect_error` list
   lacked `no-exact-offset` and `surface-collapses`.
-- [ ] Step 6 **[2]** — Global refusal: a push that runs into a distant
+- [x] Step 6 **[2]** — Global refusal: a push that runs into a distant
   face (a thin wall pushed through a parallel one, a boss pushed into the
   body's other side) refused as `SelfIntersects` from the `Full` report,
   the model untouched; fixtures for both.
+  *Done:* `OffsetReason::SelfIntersects` (ADR-0048 §7). Finding: a thin wall
+  pushed through a parallel one always inverts the face that joins them
+  (`Vanishes`, already refused), so the two fixtures are the ones that reach
+  the global level: `pocket-floor-through` (floor pulled below the bottom)
+  and `boss-through-side` (a boss's side pushed past the plate's edge). The
+  second fails `L4` — a `Fast` violation — and `rebuild::rewrite`'s debug
+  guard would panic on it, so the offset builds through `rewrite_unverified`
+  and its own `Full` check maps loop, face and edge crossings and the shell
+  checks to `SelfIntersects`; any other violation stays `Internal`.
 - [ ] Step 7 **[1]** — The facade and the binding: `arris` re-export,
   `Model.offset_faces` with cancel and budget, its stub and docstring
   example, a pytest per refusal group, the rustdoc example on

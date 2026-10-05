@@ -96,6 +96,24 @@ forked child first and records an offset it refuses or crashes on as the
 empty compound — no solid — which only a fixture expecting Arris's refusal
 accepts.
 
+**7. Global refusal (step 6).** Everything above is local: each new edge and
+vertex is placed from the faces beside it. A push can pass all of that and
+still build a body that crosses itself far from what moved — a pocket floor
+pulled below the block's bottom face, whose walls then run through a face no
+moved face touches, or a boss side pushed past the plate's own edge, whose top
+face then crosses the plate's outer loop. The operation therefore runs
+`Level::Full` on its result in every profile, skipping `rebuild`'s `Fast`
+debug guard (`rewrite_unverified`: `Full` includes it, and the guard's panic
+would turn a refusable push into a crash in a debug build), and a report made
+only of violations the global level owns — faces or loops that cross, an edge
+that crosses itself, a loop outside its outer loop, a shell nested wrongly or
+enclosing no volume — is `SelfIntersects` naming the faces (the edge or body
+for the other two) the report names. Any other violation is the construction's
+own fault and stays `Internal` with the report. Open CASCADE builds a body for
+both fixtures (the pocket one with a through opening, genus 1), so the
+fixtures say `expect_error` and the oracle's numbers are the record of an
+answer Arris does not give.
+
 ## Consequences
 
 - `recipe.py` and `arris_debug::fixtures` carry the `offset` op; the six

@@ -1,0 +1,18 @@
+{
+  "description": "a 20 × 20 × 2 plate with a 4 × 4 × 4 boss on its top (x 14 to 18), the boss's +x face pushed by 4: it would lie at x = 22, past the plate's own side face at x = 20. The boss's top and the plate's top are trimmed and extended along their own planes, so every edge is well-formed and the result's boss hangs through the plate's side — refused as SelfIntersects from the Full report, the model untouched (ADR-0048 §7)",
+  "params": {"d": 4},
+  "steps": [
+    {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [20, 20, 2]},
+    {"name": "stud", "op": "box", "min": [14, 8, 2], "max": [18, 12, 6]},
+    {"name": "joined", "op": "fuse", "a": "plate", "b": "stud"},
+    {"name": "result", "op": "offset", "of": "joined", "faces": [[18, 10, 4]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 1], "expect": "in"}
+  ],
+  "analytic": {
+    "expect_error": "self-intersects",
+    "genus": 0
+  }
+}

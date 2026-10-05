@@ -249,3 +249,38 @@ fn a_pyramid_apex_splits() {
     let (out, p) = offset_faces(&mut m, b, &sides, 1.0).unwrap();
     assert_clean(&m, b, out, &p);
 }
+
+/// A pocket floor pulled below the block's bottom: every edge is well
+/// formed, but the walls run through a face nothing moved touches — the
+/// global level's finding, named as `SelfIntersects` with faces, the model
+/// as it was.
+#[test]
+fn a_push_through_the_far_side_self_intersects() {
+    let mut m = Model::default();
+    let (block, _) =
+        primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap();
+    let (tool, _) = primitive_box(
+        &mut m,
+        Point3::new(10.0, 10.0, 5.0),
+        Point3::new(30.0, 20.0, 11.0),
+    )
+    .unwrap();
+    let (cut, _) = arris_debug::unmetered::cut(&mut m, block, tool).unwrap();
+    let floor = face_at(&m, cut, Point3::new(20.0, 15.0, 5.0));
+    let before = dump_text(&m, cut).unwrap();
+    match offset_faces(&mut m, cut, &[floor], -6.0) {
+        Err(OpError::Degenerate { entities, reason }) => {
+            assert_eq!(reason, Reason::Offset(OffsetReason::SelfIntersects));
+            assert!(
+                entities.iter().all(|s| matches!(s.id, EntityId::Face(_))),
+                "{entities:?}"
+            );
+            assert!(!entities.is_empty());
+        }
+        other => panic!("expected SelfIntersects, got {other:?}"),
+    }
+    assert_eq!(dump_text(&m, cut).unwrap(), before);
+    // Pulled by less than the floor's thickness it stays a body.
+    let (out, p) = offset_faces(&mut m, cut, &[floor], -4.0).unwrap();
+    assert_clean(&m, cut, out, &p);
+}

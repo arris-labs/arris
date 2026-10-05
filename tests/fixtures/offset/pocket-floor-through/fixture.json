@@ -1,0 +1,18 @@
+{
+  "description": "the 40 × 30 × 10 block with its 5-deep pocket of pocket-floor, the floor pulled by 6: it would lie at z = -1, below the block's bottom face. The walls are extended past a face no moved face touches, so every local edge is well-formed and the result is a body whose pocket walls run through its own bottom — refused as SelfIntersects from the Full report, the model untouched (ADR-0048 §7)",
+  "params": {"d": -6},
+  "steps": [
+    {"name": "block", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]},
+    {"name": "pocket", "op": "box", "min": [10, 10, 5], "max": [30, 20, 11]},
+    {"name": "cut", "op": "cut", "target": "block", "tool": "pocket"},
+    {"name": "result", "op": "offset", "of": "cut", "faces": [[20, 15, 5]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 5], "expect": "in"}
+  ],
+  "analytic": {
+    "expect_error": "self-intersects",
+    "genus": 1
+  }
+}
