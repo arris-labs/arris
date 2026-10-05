@@ -1220,6 +1220,30 @@ corpus_tests! {
     shell_wedge_in => run "shell/wedge-in";
     /// A wedge hollowed outward, open on both slanted faces: the skin runs to the ridge extended.
     shell_wedge_out => run "shell/wedge-out";
+    /// A cylinder hollowed inward, open at both ends: a tube, genus 1.
+    shell_tube_in => run "shell/tube-in";
+    /// A cylinder hollowed outward, open at both ends: the side the bore.
+    shell_tube_out => run "shell/tube-out";
+    /// A revolved cup (floor, torus fillet, cone) hollowed inward, open at the top.
+    shell_cup_in => run "shell/cup-in";
+    /// A revolved cup (floor, torus fillet, cone) hollowed outward, open at the top.
+    shell_cup_out => run "shell/cup-out";
+    /// A hemisphere hollowed inward, open on its flat: the skin through the pole.
+    shell_bowl_in => run "shell/bowl-in";
+    /// A hemisphere hollowed outward, open on its flat.
+    shell_bowl_out => run "shell/bowl-out";
+    /// A ball hollowed inward with no opening: a spherical void.
+    shell_sphere_closed_in => run "shell/sphere-closed-in";
+    /// A ball hollowed outward with no opening: the ball the void.
+    shell_sphere_closed_out => run "shell/sphere-closed-out";
+    /// A torus ring hollowed inward with no opening: a toroidal void.
+    shell_torus_closed_in => run "shell/torus-closed-in";
+    /// A torus ring hollowed outward with no opening: the ring the void.
+    shell_torus_closed_out => run "shell/torus-closed-out";
+    /// A pin hollowed inward past its radius: `SurfaceCollapses`, refused.
+    shell_pin_collapses => run "shell/pin-collapses";
+    /// An elliptic prism hollowed inward: `NoExactOffset`, refused.
+    shell_ellipse_wall => run "shell/ellipse-wall";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'

@@ -1,0 +1,43 @@
+{
+  "description": "a pin r 1 h 10 hollowed inward to a wall of t = 2 > r, open on top: the side's offset passes the axis, refused naming it",
+  "params": {
+    "t": 2
+  },
+  "steps": [
+    {
+      "name": "pin",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1,
+      "height": 10
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "pin",
+      "openings": [
+        [
+          0.2,
+          0.2,
+          10
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "expect_error": "surface-collapses",
+    "genus": 0
+  }
+}

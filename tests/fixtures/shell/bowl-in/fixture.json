@@ -1,0 +1,149 @@
+{
+  "description": "a hemisphere r 5 on its flat at z 0, hollowed inward to a wall of t, open on the flat: a bowl upside down, its inner skin a concentric sphere through the pole, the flat an annulus",
+  "params": {
+    "t": 1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              0,
+              5
+            ],
+            "via": [
+              "5 * sqrt(0.5)",
+              "5 * sqrt(0.5)"
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "part",
+      "openings": [
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "cavity",
+      "point": [
+        0,
+        0,
+        2
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_dome",
+      "point": [
+        0,
+        0,
+        4.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_rim",
+      "point": [
+        0,
+        4.5,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_inner_pole",
+      "point": [
+        0,
+        0,
+        "5 - t"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        0,
+        6
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "2 / 3 * pi * (125 - (5 - t)^3)",
+    "area": "2 * pi * (25 + (5 - t)^2) + pi * (25 - (5 - t)^2)",
+    "centroid": [
+      0,
+      0,
+      "3 / 8 * (5^4 - (5 - t)^4) / (125 - (5 - t)^3)"
+    ],
+    "genus": 0
+  }
+}

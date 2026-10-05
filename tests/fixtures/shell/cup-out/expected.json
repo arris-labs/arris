@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "8443c927e11053830ccb0075f0d856ad49a9d3c7bbab3714c048877c83f923bd",
+  "results": {
+    "default": {
+      "area": 589.9710384172059,
+      "centroid": [
+        -1.2405209079760142e-15,
+        -2.025425662235463e-16,
+        3.421083391378146
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2432.35569561166,
+          -5.215117241279706e-14,
+          -1.0233739884629762e-12
+        ],
+        [
+          -5.215117241279706e-14,
+          2432.3556956116363,
+          4.997473601100851e-13
+        ],
+        [
+          -1.0233739884629762e-12,
+          4.997473601100851e-13,
+          2832.86179055743
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 7,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "cavity",
+          "point": [
+            0.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_floor",
+          "point": [
+            1.0,
+            0.0,
+            -0.25
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_rim",
+          "point": [
+            0.0,
+            5.2,
+            8.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            0.0,
+            0.0,
+            -1.5
+          ]
+        }
+      ],
+      "volume": 143.1944296931267
+    }
+  }
+}

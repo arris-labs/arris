@@ -1,0 +1,108 @@
+{
+  "description": "a cylinder r 5 h 10 hollowed outward to a wall of t, open at both ends: the cylinder's side the bore, a coaxial skin outside it, each end an annulus; genus 1",
+  "params": {
+    "t": 1
+  },
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 5,
+      "height": 10
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "cyl",
+      "openings": [
+        [
+          1,
+          1,
+          10
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "thickness": "t",
+      "side": "outward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        0,
+        5.5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "bore",
+      "point": [
+        0,
+        0,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_rim",
+      "point": [
+        0,
+        5.5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bore",
+      "point": [
+        0,
+        5,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        "5 + t + 1",
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * ((5 + t)^2 - 25) * 10",
+    "area": "2 * pi * (10 + t) * 10 + 2 * pi * ((5 + t)^2 - 25)",
+    "centroid": [
+      0,
+      0,
+      5
+    ],
+    "counts": {
+      "vertices": 4,
+      "edges": 6,
+      "faces": 4,
+      "loops": 6,
+      "shells": 1
+    },
+    "genus": 1
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "description": "a cup revolved from a floor, a quarter-circle fillet r 1 (a torus) and a flaring side (a cone) to a rim at z 8, hollowed outward to a wall of t, open at the top: the cup's faces the cavity, the skin each face's offset to its own kind",
+  "params": {
+    "t": 0.5
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              4,
+              1
+            ],
+            "via": [
+              "3 + sqrt(0.5)",
+              "1 - sqrt(0.5)"
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              8
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              8
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "part",
+      "openings": [
+        [
+          1,
+          1,
+          8
+        ]
+      ],
+      "thickness": "t",
+      "side": "outward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "cavity",
+      "point": [
+        0,
+        0,
+        4
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_floor",
+      "point": [
+        1,
+        0,
+        -0.25
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_rim",
+      "point": [
+        0,
+        5.2,
+        8
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        0,
+        "-t - 1"
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

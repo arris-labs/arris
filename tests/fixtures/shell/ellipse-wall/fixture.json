@@ -1,0 +1,72 @@
+{
+  "description": "an elliptic prism (semi-axes 3, 2, height 4) hollowed inward to a wall of t, open on top: the elliptic cylinder's offset is no elliptic cylinder, refused naming it",
+  "params": {
+    "t": 0.5
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "ellipse": {
+          "center": [
+            0,
+            0
+          ],
+          "major": [
+            3,
+            0
+          ],
+          "minor_radius": 2
+        }
+      }
+    },
+    {
+      "name": "slug",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 4
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "slug",
+      "openings": [
+        [
+          0.5,
+          0.5,
+          4
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "expect_error": "no-exact-offset",
+    "genus": 0
+  }
+}

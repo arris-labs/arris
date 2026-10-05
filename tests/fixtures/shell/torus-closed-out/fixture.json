@@ -1,0 +1,113 @@
+{
+  "description": "a torus ring R 5 r 1 hollowed outward to a wall of t with no opening: the ring the void, reversed inside a torus of minor radius 1 + t; genus 2, one per shell",
+  "params": {
+    "t": 0.25
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            5,
+            0
+          ],
+          "radius": 1
+        }
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "part",
+      "openings": [],
+      "thickness": "t",
+      "side": "outward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "void",
+      "point": [
+        5,
+        0,
+        0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_wall",
+      "point": [
+        5,
+        0,
+        1.1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_void",
+      "point": [
+        5,
+        0,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "hole",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "2 * pi^2 * 5 * ((1 + t)^2 - 1)",
+    "area": "4 * pi^2 * 5 * (1 + (1 + t))",
+    "centroid": [
+      0,
+      0,
+      0
+    ],
+    "genus": 2
+  }
+}

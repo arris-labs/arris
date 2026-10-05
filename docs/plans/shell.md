@@ -129,7 +129,7 @@ bound has to be established here.
   vertex, and an opening whose neighbour is an opening across a seam.
   Fixtures: the box open on top and one side (both sides), a box open on
   three faces, a wedge open on both its slanted faces.
-- [ ] Step 4 **[2]** — Quadric walls: cylinders, cones, spheres and tori
+- [x] Step 4 **[2]** — Quadric walls: cylinders, cones, spheres and tori
   hollowed, seams and poles carried by `offset_faces`' phases. Fixtures: a
   tube (cylinder open at both ends), a cup revolved from a profile with an
   arc and a cone, a hemispherical bowl open on its flat, a closed sphere
@@ -227,3 +227,12 @@ job's pytest, docstring examples and `mypy.stubtest` green.
   closed edge whose vertex moves. Fixtures moved or added under `shell/`:
   the box open on top and front, on three faces at a corner (both sides
   each), a wedge open on both slants (both sides), all Open CASCADE's.
+- Done at step 4: the quadric walls needed no code. `offset_faces`' phases
+  carry the seams and poles, and the splice of step 3 is only reached
+  where two openings share an edge. Twelve fixtures under `shell/`: tube,
+  cup (floor, torus, cone), hemispherical bowl, sphere and torus voids,
+  each both sides; a pin past its radius (`SurfaceCollapses`) and an
+  elliptic prism (`NoExactOffset`), refused. Both sphere voids carry
+  `occt_step_refused`: Open CASCADE writes the whole sphere of its cut as
+  one `VERTEX_LOOP` with no seam, which the reader does not map (a backlog
+  line). A two-shell torus void reports genus 2, one per shell.

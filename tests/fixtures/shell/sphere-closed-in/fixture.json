@@ -1,0 +1,132 @@
+{
+  "description": "a ball r 5 hollowed inward to a wall of t with no opening: a closed spherical void, the second shell a concentric sphere reversed",
+  "params": {
+    "t": 1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -5
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              5
+            ],
+            "via": [
+              5,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "part",
+      "openings": [],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "void",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_wall",
+      "point": [
+        0,
+        0,
+        4.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_void",
+      "point": [
+        0,
+        0,
+        "5 - t"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        0,
+        6
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "4 / 3 * pi * (125 - (5 - t)^3)",
+    "area": "4 * pi * (25 + (5 - t)^2)",
+    "centroid": [
+      0,
+      0,
+      0
+    ],
+    "genus": 0,
+    "occt_step_refused": {
+      "kind": "unsupported entity",
+      "why": "Open CASCADE's void, the body less its offset, writes each whole sphere as a face of one VERTEX_LOOP and no seam (#18, #31): the reader maps a VERTEX_LOOP only beside one EDGE_LOOP, the seam it joins, and a whole sphere bounded by a lone vertex is outside that subset (docs/BACKLOG.md)"
+    }
+  }
+}

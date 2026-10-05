@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "72784f523516ad216aa437f403753179db0759c30d9a59b50c6c56adc1a0fb44",
+  "results": {
+    "default": {
+      "area": 285.8849314766711,
+      "centroid": [
+        1.7797202152014427e-15,
+        -1.63100113308532e-16,
+        2.268442622950819
+      ],
+      "counts": {
+        "edges": 4,
+        "faces": 3,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          1102.7079268810044,
+          7.523944078858527e-14,
+          -9.35062592018723e-14
+        ],
+        [
+          7.523944078858527e-14,
+          1102.7079268809944,
+          -3.534996244142251e-14
+        ],
+        [
+          -9.35062592018723e-14,
+          -3.534996244142251e-14,
+          1760.1296440512465
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 4,
+        "faces": 3,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "cavity",
+          "point": [
+            0.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_dome",
+          "point": [
+            0.0,
+            0.0,
+            4.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_rim",
+          "point": [
+            0.0,
+            4.5,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_inner_pole",
+          "point": [
+            0.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            0.0,
+            0.0,
+            6.0
+          ]
+        }
+      ],
+      "volume": 127.75810124598495
+    }
+  }
+}

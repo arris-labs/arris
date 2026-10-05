@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "e8a207d700b87acd40026d17ada98b843acf50ff10e065bc146711a22e1139c2",
+  "results": {
+    "default": {
+      "area": 766.5486074759094,
+      "centroid": [
+        -7.898840296065326e-17,
+        -4.216329942099777e-17,
+        3.2208667967147398e-16
+      ],
+      "counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 2,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 4,
+      "genus": 0,
+      "inertia": [
+        [
+          7792.8252969846,
+          4.604167225653812e-13,
+          -6.273147023642861e-14
+        ],
+        [
+          4.604167225653812e-13,
+          7792.825296984603,
+          -2.476044002617984e-13
+        ],
+        [
+          -6.273147023642861e-14,
+          -2.476044002617984e-13,
+          7792.825296984599
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 2,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "void",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_wall",
+          "point": [
+            0.0,
+            0.0,
+            5.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_void",
+          "point": [
+            0.0,
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            0.0,
+            0.0,
+            7.0
+          ]
+        }
+      ],
+      "volume": 381.17990863556156
+    }
+  }
+}
