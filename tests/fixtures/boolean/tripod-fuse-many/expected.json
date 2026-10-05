@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "f53282d87e9dde14c5aa372d39eb727c9c8482e66705de2f316a0f87921ef5f0",
+  "results": {
+    "default": {
+      "area": 3392.6219452920736,
+      "centroid": [
+        -5.937980213802307e-13,
+        2.1648605310578086e-13,
+        1.8309245396334503e-13
+      ],
+      "counts": {
+        "edges": 32,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 22
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          898227.350676015,
+          -9.597329153622133e-09,
+          -1.095486368285579e-08
+        ],
+        [
+          -9.597329153622133e-09,
+          898227.3506760106,
+          1.4461551955949735e-09
+        ],
+        [
+          -1.095486368285579e-08,
+          1.4461551955949735e-09,
+          898227.3506760076
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 32,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 22
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "centre",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_x_leg",
+          "point": [
+            15.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_z_leg",
+          "point": [
+            0.0,
+            1.0,
+            -15.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "between_legs",
+          "point": [
+            10.0,
+            10.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beyond_the_end",
+          "point": [
+            0.0,
+            21.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_x_wall",
+          "point": [
+            15.0,
+            5.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_y_cap",
+          "point": [
+            1.0,
+            20.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 8010.56439901229
+    }
+  }
+}

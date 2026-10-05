@@ -112,3 +112,32 @@ measured there.
   set (ADR-0032) and the round radial holes of a curved wall are a test
   against the chain, the corpus holding the same wall pierced by square
   pockets.
+
+## Landed with step 4
+
+- The guard on tools that meet one another is gone: tool × tool pairs are
+  sections of the one decomposition, and a piece is kept by the N-ary row
+  of §4 against every operand it lies in.
+- The triple point is found once per point, as the crossing curve of the
+  pair of the two lower operands `i < j` against each face of an operand
+  `k > j` whose box reaches both faces; a crossing on all three faces is
+  kept, a touch and a curve lying in the third surface are not. Its vertex
+  paves the three section curves through it like any other, the curve it
+  was found on at its own parameter.
+- A triple point on an operand edge — a blind bore whose cap's rim runs
+  through four of the eight triple points of three orthogonal bores —
+  needs no rule of its own: it lies within the tolerance of the rim's hits
+  on the other two walls, and the tolerance components that merge every
+  section vertex make the two one (`multi_tool.rs`, the bore ending at
+  the triple points).
+- The coincident row between two tools of a cut is the fuse's: the tools
+  are taken away as their union, so two tool faces coincident with each
+  other and agreeing are kept once, from the earlier tool, reversed —
+  two crossing pockets' floors. Between the target and a tool, and in a
+  fuse or a common, the row is as before, kept from the lower operand.
+- Where Open CASCADE's counts differ it is the convention the
+  two-operand corpus already records for equal crossing cylinders: it
+  also cuts a section ellipse at its parameter origin, one vertex and edge
+  more for each pair of equal bores (three bores through one point, the
+  tripod), and Arris's one call gives its own chain's counts; those two
+  fixtures carry Arris's counts under `counts_differ`.

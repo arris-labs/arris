@@ -1,0 +1,60 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus a counterbore in one call: a through hole r 3 and a coaxial bore R 6 from z 6 up through the top, two tools of different radii, the hole's wall between z 6 and 10 inside the bore and the bore's floor cut by the hole's wall, genus 1",
+  "params": {
+    "r": 3,
+    "R": 6,
+    "t": 10,
+    "d": 4
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [0, 0, 0],
+      "max": [100, 100, "t"]
+    },
+    {
+      "name": "hole",
+      "op": "cylinder",
+      "base": [50, 50, -1],
+      "axis": [0, 0, 1],
+      "radius": "r",
+      "height": "t + 2"
+    },
+    {
+      "name": "bore",
+      "op": "cylinder",
+      "base": [50, 50, "t - d"],
+      "axis": [0, 0, 1],
+      "radius": "R",
+      "height": "d + 2"
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": ["hole", "bore"]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 5], "expect": "in"},
+    {"label": "in_hole", "point": [50, 50, 2], "expect": "out"},
+    {"label": "in_bore", "point": [54.5, 50, 8], "expect": "out"},
+    {"label": "below_bore_floor", "point": [54.5, 50, 5], "expect": "in"},
+    {"label": "on_bore_floor", "point": [54.5, 50, 6], "expect": "on"},
+    {"label": "on_hole_wall", "point": [53, 50, 3], "expect": "on"},
+    {"label": "on_bore_wall", "point": [56, 50, 8], "expect": "on"},
+    {"label": "outside", "point": [50, 50, 12], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - pi * r * r * (t - d) - pi * R * R * d",
+    "area": "2 * 100 * 100 + 4 * 100 * t - pi * r * r - pi * R * R + pi * (R * R - r * r) + 2 * pi * r * (t - d) + 2 * pi * R * d",
+    "centroid": [
+      50,
+      50,
+      "(100 * 100 * t * t / 2 - pi * r * r * (t - d) * (t - d) / 2 - pi * R * R * d * (t - d / 2)) / (100 * 100 * t - pi * r * r * (t - d) - pi * R * R * d)"
+    ],
+    "genus": 1
+  }
+}

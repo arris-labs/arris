@@ -150,13 +150,20 @@ bound has to be established here.
   (ADR-0032); tools meeting each other are refused as `Unsupported` until
   step 4; the `NoTools`/`RepeatedOperand` refusals need no binding arm
   (`arris-py` carries a boolean reason as its text).
-- [ ] Step 4 **[3]** — Overlapping tools: tool × tool pairs, the triple
+- [x] Step 4 **[3]** — Overlapping tools: tool × tool pairs, the triple
   point on a face of a third operand, and the classification of a tool's
   piece against the target and every other tool. Fixtures: the slot of three
   overlapping holes, the two crossing pockets, the three holes through one
   point, a counterbore cut as two coaxial cylinders of different radii in
   one call (a tool's cap inside another tool), fuse of three mutually
   overlapping cylinders (a tripod).
+  Landed as found: the crossing pockets' floors are coincident with each
+  other, so the coincident row between two tools of a cut (the fuse's,
+  kept once from the earlier tool) landed here rather than in step 5; the
+  three bores and the tripod carry Arris's counts under `counts_differ`,
+  Open CASCADE cutting each pair of equal cylinders' ellipse at its
+  parameter origin as in `cross-cylinders-common` (Arris's one call equals
+  its own chain).
 - [ ] Step 5 **[3]** — Coincident and tangent between tools: two tools flush
   on a face (stacked boxes), two tools both flush with the target's face
   (two pockets opening on one top face that touch along an edge), a tool
@@ -232,7 +239,7 @@ benchmark showing `cut_many` faster than the chain on the 10×10 grid; the
   dump bit for bit (the corpus, provenance and boolean tests ran unchanged
   with the region computed per operand pair), so ADR-0050 §6 stands as
   written.
-- ⚠ OPEN: Does a triple point at a tool's edge (three holes through one
-  point where the point is also on a cap's rim) need a case beyond the
-  tolerance components the section vertices already merge by? Agent decides
-  at step 4 from the fixture; a new rule is a line in ADR-0050.
+- Resolved at step 4: a triple point at a tool's edge needs no case of its
+  own — a blind bore whose rim runs through four triple points of three
+  orthogonal bores merges each with the rim's hits by the tolerance
+  components, the result its chain's (ADR-0050, landed with step 4).

@@ -164,6 +164,16 @@ corpus_tests! {
     boolean_radial_pockets_cut_many => run "boolean/radial-pockets-cut-many";
     /// A plate cut by two tools that miss it: both deleted whole, every id of the plate kept.
     boolean_cut_many_tools_miss_target => run "boolean/cut-many-tools-miss-target";
+    /// A plate cut by three overlapping holes in a row in one call: one slot, the holes' own overlaps sections of the one decomposition and the triple points on the plate's faces where two holes' circles cross.
+    boolean_slot_three_overlapping_holes_cut_many => run "boolean/slot-three-overlapping-holes-cut-many";
+    /// A plate cut by two crossing rectangular pockets in one call: a triple point where the pockets' walls cross on the plate's top, the pockets' floors coincident with each other.
+    boolean_crossing_pockets_cut_many => run "boolean/crossing-pockets-cut-many";
+    /// A cube cut by three orthogonal bores through one common point in one call: the eight triple points of the three walls.
+    boolean_three_bores_one_point_cut_many => run "boolean/three-bores-one-point-cut-many";
+    /// A counterbore cut as two coaxial cylinders of different radii in one call: the hole's wall inside the bore dropped, the bore's floor cut by the hole.
+    boolean_counterbore_cut_many => run "boolean/counterbore-cut-many";
+    /// Three orthogonal cylinders through one point fused in one call: a tripod, every operand against every other and the eight triple points.
+    boolean_tripod_fuse_many => run "boolean/tripod-fuse-many";
     /// The boss's bottom cap coincident with the plate's top: the cap
     /// vanishes, the plate's top is split by the cap's rim and keeps the
     /// outside, and the rim is the wall's own edge.
@@ -1385,15 +1395,6 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
-    /// A plate cut by three overlapping holes in a row: one slot.
-    #[ignore = "tool against tool sections, plans/multi-tool-boolean step 4"]
-    regression_slot_three_overlapping_holes_cut_many => run "regression/slot-three-overlapping-holes-cut-many";
-    /// A plate cut by two crossing rectangular pockets.
-    #[ignore = "tool against tool sections, plans/multi-tool-boolean step 4"]
-    regression_crossing_pockets_cut_many => run "regression/crossing-pockets-cut-many";
-    /// A cube cut by three orthogonal bores through one common point.
-    #[ignore = "the triple point, plans/multi-tool-boolean step 4"]
-    regression_three_bores_one_point_cut_many => run "regression/three-bores-one-point-cut-many";
 }
 
 /// A variant the recipe does not have fails naming it.

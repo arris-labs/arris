@@ -88,12 +88,23 @@ impl Op {
         }
     }
 
-    /// Whether a piece of the first operand kept from a coincident face
-    /// lies inside it, as [`Op::select`] reads the operand: the table's
-    /// coincident row keeps it when a fuse's normals agree (outside), a
-    /// common's agree (inside) and a cut's oppose (outside).
-    fn inside_when_kept_on(self, agree: bool) -> bool {
+    /// The operation the coincident row reads between operands `side`
+    /// and `other`: a cut's tools are taken away as their union, so two
+    /// of them meet by the fuse's row.
+    fn between(self, side: usize, other: usize) -> Op {
         match self {
+            Op::Cut if side > 0 && other > 0 => Op::Fuse,
+            op => op,
+        }
+    }
+
+    /// Whether a piece of operand `side` kept from a coincident face of
+    /// `other` lies inside `other`, as [`Op::select`] reads it: the
+    /// table's coincident row keeps it when a fuse's normals agree
+    /// (outside), a common's agree (inside) and a cut's oppose (outside)
+    /// — two tools of a cut by the fuse's ([`Op::between`]).
+    fn inside_when_kept_on(self, side: usize, other: usize, agree: bool) -> bool {
+        match self.between(side, other) {
             Op::Fuse => !agree,
             Op::Common | Op::Cut => agree,
         }
@@ -109,13 +120,14 @@ impl Op {
     }
 
     /// Whether a piece of operand `side` lying on a coincident face of
-    /// the other survives, given whether the two effective normals
-    /// agree: once, from the first operand, when they agree in `fuse`
-    /// and `common` and when they oppose in `cut`; never from the
-    /// second (the selection table's coincident row).
-    fn select_on(self, side: usize, agree: bool) -> bool {
-        side == 0
-            && match self {
+    /// operand `other` survives, given whether the two effective normals
+    /// agree: once, from the lower of the two, when they agree in `fuse`
+    /// and `common` and when they oppose in `cut`; never from the higher
+    /// (the selection table's coincident row). Two tools of a cut read
+    /// the fuse's row ([`Op::between`]).
+    fn select_on(self, side: usize, other: usize, agree: bool) -> bool {
+        side < other
+            && match self.between(side, other) {
                 Op::Fuse | Op::Common => agree,
                 Op::Cut => !agree,
             }
@@ -823,7 +835,7 @@ impl<'m> Build<'m> {
                     Some((other, shape)) => {
                         if let Some(g) = self.coincident_partner(side, f.id, shape) {
                             let agree = self.normals_agree(f, piece.uv, piece.interior, g)?;
-                            if !self.op.select_on(side, agree) {
+                            if !self.op.select_on(side, other, agree) {
                                 self.dropped_on = true;
                                 continue;
                             }
@@ -832,7 +844,7 @@ impl<'m> Build<'m> {
                             // operands leave it, they say as for a piece
                             // that is inside the coincident one exactly
                             // when the table would drop it.
-                            inside[other] = self.op.inside_when_kept_on(agree);
+                            inside[other] = self.op.inside_when_kept_on(side, other, agree);
                             let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
@@ -1196,7 +1208,19 @@ impl<'m> Build<'m> {
                     .filter_map(|&x| self.i.section_crossings.get(x))
                     .filter_map(|x| self.i.pairs.get(x.pair))
                     .flat_map(|p| [forward(p.a), forward(p.b)]);
-                hits.chain(crossings).chain(section_crossings).collect()
+                let triple_points = sv
+                    .triple_points
+                    .iter()
+                    .filter_map(|&x| self.i.triple_points.get(x))
+                    .filter_map(|x| {
+                        let p = self.i.pairs.get(x.pair)?;
+                        Some([forward(p.a), forward(p.b), forward(x.face)])
+                    })
+                    .flatten();
+                hits.chain(crossings)
+                    .chain(section_crossings)
+                    .chain(triple_points)
+                    .collect()
             }
         }
     }
@@ -1209,16 +1233,6 @@ pub(super) fn boolean(
     op: Op,
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    // Tools that meet one another are the next step of the multi-tool
-    // boolean: a pair of faces of two operands other than the first that
-    // meet in anything is refused, naming the two faces.
-    if let Some(pair) = i
-        .pairs
-        .iter()
-        .find(|p| p.operands[0] > 0 && p.intersection != SurfaceIntersection::Empty)
-    {
-        return Err(unsupported(m, pair.a, forward(pair.b)));
-    }
     let bodies = i.operands.clone();
     let closures = bodies
         .iter()
@@ -1390,7 +1404,7 @@ pub(super) fn boolean(
                 continue;
             };
             match v.source {
-                VertexSource::Hits | VertexSource::SectionCrossing => {
+                VertexSource::Hits | VertexSource::SectionCrossing | VertexSource::TriplePoint => {
                     for &h in &v.hits {
                         p.add_generated(forward(i.hits[h].edge), forward(*id));
                         p.add_generated(forward(i.hits[h].face), forward(*id));
@@ -1403,6 +1417,13 @@ pub(super) fn boolean(
                         let pair = &i.pairs[i.section_crossings[x].pair];
                         p.add_generated(forward(pair.a), forward(*id));
                         p.add_generated(forward(pair.b), forward(*id));
+                    }
+                    for &x in &v.triple_points {
+                        let q = &i.triple_points[x];
+                        let pair = &i.pairs[q.pair];
+                        p.add_generated(forward(pair.a), forward(*id));
+                        p.add_generated(forward(pair.b), forward(*id));
+                        p.add_generated(forward(q.face), forward(*id));
                     }
                 }
                 VertexSource::CurveStart { pair, .. } => {

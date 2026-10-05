@@ -18,7 +18,7 @@ use super::{
 };
 use crate::boolean::faces::{EdgeInfo, FaceInfo};
 use crate::boolean::{
-    EdgeEdgeHit, EdgeFaceHit, FacePair, Landing, Pave, SectionCrossing, meet_curves,
+    EdgeEdgeHit, EdgeFaceHit, FacePair, Landing, Pave, SectionCrossing, TriplePoint, meet_curves,
 };
 use crate::error::{BooleanReason, Fault, OpError, Reason};
 use crate::pass::pass;
@@ -456,6 +456,85 @@ impl<'m, 'c> Build<'m, 'c> {
         Ok(())
     }
 
+    /// The triple points (ADR-0050 §5): each crossing curve of a pair of
+    /// faces of operands `i < j` against every face of an operand `k > j`
+    /// whose box reaches both, a crossing on all three faces recorded,
+    /// sorted by `(pair, curve, face, t)`. Each point of three faces is
+    /// found once, from its two lower operands' curve, and the other two
+    /// curves through it are paved by its vertex as by any other. A curve
+    /// lying in the third face's surface is three faces along one curve,
+    /// not a point, and a touch splits nothing: neither makes one.
+    pub(super) fn triple_points(&mut self) -> Result<(), OpError> {
+        let mut found: Vec<(TriplePoint, f64)> = Vec::new();
+        for (pi, pair) in self.pairs.iter().enumerate() {
+            let [_, ob] = pair.operands;
+            if ob + 1 >= self.operands.len() {
+                continue;
+            }
+            let (fa, fb) = self.pair_infos(pi);
+            for (ci, curve) in meet_curves(&pair.intersection, MeetKind::Crossing) {
+                for fc in self.faces[ob + 1..].iter().flatten() {
+                    if !(fc.bounds.intersects(&fa.bounds) && fc.bounds.intersects(&fb.bounds)) {
+                        continue;
+                    }
+                    self.tick()?;
+                    let tol = tolerance_of(
+                        &self.precision,
+                        fa.tolerance.max(fb.tolerance),
+                        fc.tolerance,
+                    );
+                    let hits = match self
+                        .metered(|mt| intersect_curve_surface(curve, fc.surface, tol, mt))
+                        .map_err(|e| geometry(e, fa.shape(), fc.shape()))?
+                    {
+                        CurveSurfaceIntersection::Coincident => continue,
+                        CurveSurfaceIntersection::Points(hits) => hits,
+                    };
+                    for h in hits {
+                        if h.tangent {
+                            continue;
+                        }
+                        let mut on_all = true;
+                        for f in [fa, fb, fc] {
+                            if self.on_face(f, h.point)?.is_none() {
+                                on_all = false;
+                                break;
+                            }
+                        }
+                        if !on_all {
+                            continue;
+                        }
+                        found.push((
+                            TriplePoint {
+                                pair: pi,
+                                curve: ci,
+                                face: fc.id,
+                                t: curve
+                                    .period()
+                                    .map_or(h.t, |p| wrap_into(h.t, curve.domain().lo(), p)),
+                                point: h.point,
+                                vertex: None,
+                            },
+                            tol.linear,
+                        ));
+                    }
+                }
+            }
+        }
+        found.sort_by(|x, y| {
+            x.0.pair
+                .cmp(&y.0.pair)
+                .then_with(|| x.0.curve.cmp(&y.0.curve))
+                .then_with(|| x.0.face.cmp(&y.0.face))
+                .then_with(|| x.0.t.total_cmp(&y.0.t))
+        });
+        for (point, tolerance) in found {
+            self.triple_points.push(point);
+            self.triple_point_tolerance.push(tolerance);
+        }
+        Ok(())
+    }
+
     /// The crossings a traced pair's singular points make: each `Crossing`
     /// point of the pair's `Meets` on both faces, with the branches that
     /// end there — within `tolerance` of it, which they end at exactly —
@@ -585,6 +664,16 @@ impl<'m, 'c> Build<'m, 'c> {
                 },
             ));
         }
+        for (i, x) in self.triple_points.iter().enumerate() {
+            members.push((
+                Member::TriplePoint(i),
+                Candidate {
+                    point: x.point,
+                    tolerance: self.triple_point_tolerance[i],
+                    existing: Vec::new(),
+                },
+            ));
+        }
         for (point, tolerance, vertex) in self.singular_vertices()? {
             members.push((
                 Member::Singular,
@@ -681,6 +770,7 @@ impl<'m, 'c> Build<'m, 'c> {
                         hits: Vec::new(),
                         crossings: Vec::new(),
                         section_crossings: Vec::new(),
+                        triple_points: Vec::new(),
                         existing: candidate.existing,
                         source: member.source(),
                     });
@@ -701,6 +791,10 @@ impl<'m, 'c> Build<'m, 'c> {
                 Member::SectionCrossing(i) => {
                     v.section_crossings.push(i);
                     self.section_crossings[i].vertex = Some(k);
+                }
+                Member::TriplePoint(i) => {
+                    v.triple_points.push(i);
+                    self.triple_points[i].vertex = Some(k);
                 }
                 Member::Singular => {}
             }
@@ -732,6 +826,11 @@ impl<'m, 'c> Build<'m, 'c> {
                                 self.orientation(),
                             )
                         })
+                    })
+                    .or_else(|| {
+                        v.triple_points
+                            .first()
+                            .map(|&x| Shape::new(self.triple_points[x].face, self.orientation()))
                     })
                     .unwrap_or_else(|| shape_of(self.operands[0]));
                 return Err(OpError::Tolerance { entity, wanted });

@@ -149,6 +149,11 @@ pub enum VertexSource {
     /// hit's and its source [`VertexSource::Hits`]; either way the face's
     /// degenerate edge is paved for every section edge that ends there.
     Singular,
+    /// A section curve of one pair crossing a face of a third operand
+    /// where no edge of any operand pierces (ADR-0050 §5): two
+    /// overlapping holes' circles on a plate's top. At least one triple
+    /// point, and no hit or section crossing.
+    TriplePoint,
 }
 
 /// A point of the section, made once and shared: a pave on the edge
@@ -174,6 +179,9 @@ pub struct SectionVertex {
     /// The section crossings merged into it, ascending indices into
     /// [`Interferences::section_crossings`].
     pub section_crossings: Vec<usize>,
+    /// The triple points merged into it, ascending indices into
+    /// [`Interferences::triple_points`].
+    pub triple_points: Vec<usize>,
     /// The operand vertices it coincides with — a hit at an edge's end,
     /// or one landing on a vertex of the face — ascending. Usually none.
     pub existing: Vec<VertexId>,
@@ -241,6 +249,35 @@ pub struct SectionCrossing {
     /// no vertex and no pave.
     pub tangent: bool,
     /// The section vertex it was merged into; `None` for a touch.
+    pub vertex: Option<usize>,
+}
+
+/// Where a section curve of a pair of faces of two operands crosses a
+/// face of a third operand, on all three faces (ADR-0050 §5). Three
+/// surfaces meet in points, and where three faces of three operands meet
+/// at one off every operand edge — two overlapping holes' circles on a
+/// plate's top, three bores' walls at the point their axes share —
+/// nothing else marks it: the point paves the three section curves
+/// through it, those of each two of the three faces, so the pieces of all
+/// three meet there. Found once, as the curve of the pair of the two
+/// lower operands against the face of the highest; a point on an edge of
+/// one of the faces is merged with that edge's hit, as any two section
+/// vertices within each other's tolerance are.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TriplePoint {
+    /// The pair, an index into [`Interferences::pairs`].
+    pub pair: usize,
+    /// Which of the pair's crossing curves, an index into its `Meets`
+    /// curves.
+    pub curve: usize,
+    /// The face of the third operand.
+    pub face: FaceId,
+    /// The curve's parameter, a periodic one in `[lo, lo + period)` of
+    /// its domain.
+    pub t: f64,
+    /// The point, on the curve.
+    pub point: Point3,
+    /// The section vertex it was merged into.
     pub vertex: Option<usize>,
 }
 
@@ -408,6 +445,10 @@ pub struct Interferences {
     /// Every crossing of two section curves of one crossing pair on
     /// both faces, ascending by `(pair, curves, t on the first)`.
     pub section_crossings: Vec<SectionCrossing>,
+    /// Every crossing of a section curve of two operands' faces with a
+    /// face of a third, on all three faces, ascending by `(pair, curve,
+    /// face, t)`.
+    pub triple_points: Vec<TriplePoint>,
     /// The section vertices.
     pub vertices: Vec<SectionVertex>,
     /// The paves on every operand edge that has one, ascending by `t`,
@@ -672,15 +713,22 @@ pub fn cut(
 /// `Modified` from the target's; every entity of every tool is `Deleted`
 /// and a piece of it that survives is `Generated` from the tool entity it
 /// is a piece of; a section edge is `Generated` from both faces of its
-/// pair. The ids are a function of the order of `tools` (split order,
+/// pair, a triple point from its three. The ids are a function of the order of `tools` (split order,
 /// ADR-0009); the geometry is not. A tool that misses the target is
 /// `Deleted` whole and changes nothing else. `cut(m, t, tool)` is
 /// `cut_many(m, t, &[tool])`.
 ///
-/// The tools must not touch one another: a face of one that meets a
-/// face of another is refused as [`OpError::Unsupported`], naming the
-/// two faces, until tools overlapping each other are decomposed (the
-/// next step of the multi-tool boolean).
+/// The tools may overlap one another as they may the target: a tool's
+/// section with another tool is a section of the one decomposition, a
+/// piece of a tool inside another tool is dropped as the chain drops it,
+/// and where the sections of three operands' faces cross off every edge
+/// — two overlapping holes' circles on a plate's top — the triple point
+/// is one vertex all three sections end at, `Generated` from the three
+/// faces. Two tools' faces coincident with each other inside the target
+/// are kept once, from the earlier tool. A piece lying on faces of two
+/// other operands at once — two tools flush with each other on the
+/// target's face, tools tangent to each other — is
+/// [`OpError::Unsupported`], naming the piece's face and one of them.
 ///
 /// Errors, the model untouched on each: as [`cut`]'s, and
 /// [`crate::BooleanReason::NoTools`] for an empty `tools`,
@@ -738,10 +786,9 @@ pub fn cut_many(
 /// `fuse(m, a, b)` is `fuse_many(m, &[a, b])`. The ids are a function of
 /// the order of `bodies`; the geometry is not.
 ///
-/// Every operand but the first must stay clear of every other of them,
-/// as [`cut_many`]'s tools must: a face of one meeting a face of another
-/// is [`OpError::Unsupported`], naming both. Put the body the others are
-/// fused onto first.
+/// The operands may overlap one another in any way [`cut_many`]'s tools
+/// may, three of them meeting at triple points; a piece lying on faces of
+/// two other operands at once is [`OpError::Unsupported`], as there.
 ///
 /// Errors, the model untouched on each: as [`fuse`]'s, and
 /// [`crate::BooleanReason::NoTools`] for fewer than two bodies,
@@ -1084,6 +1131,22 @@ impl fmt::Display for Interferences {
                 if x.tangent { " tangent" } else { "" }
             )?;
         }
+        writeln!(f, "triple points {}", self.triple_points.len())?;
+        for (i, x) in self.triple_points.iter().enumerate() {
+            let vertex = match x.vertex {
+                Some(v) => format!("v{v}"),
+                None => "-".to_string(),
+            };
+            writeln!(
+                f,
+                "  q{i} p{} curve {} t {} x {} at {} -> {vertex}",
+                x.pair,
+                x.curve,
+                num(x.t),
+                x.face,
+                point3(x.point),
+            )?;
+        }
         writeln!(f, "vertices {}", self.vertices.len())?;
         for (i, v) in self.vertices.iter().enumerate() {
             let hits: Vec<String> = v.hits.iter().map(|h| format!("h{h}")).collect();
@@ -1102,6 +1165,11 @@ impl fmt::Display for Interferences {
                     format!(" start of curve {curve} of p{pair}")
                 }
                 VertexSource::Singular => " singular".to_string(),
+                VertexSource::TriplePoint => {
+                    let list: Vec<String> =
+                        v.triple_points.iter().map(|k| format!("q{k}")).collect();
+                    format!(" triple point [{}]", list.join(" "))
+                }
             };
             writeln!(
                 f,

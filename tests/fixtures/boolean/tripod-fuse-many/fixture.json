@@ -1,0 +1,56 @@
+{
+  "description": "three cylinders r 5, length 40, along x, y and z, centred on one point and fused in one call: every two cross in the two ellipses of equal cylinders, all three meet at the eight triple points of the Steinmetz tricylinder, genus 0",
+  "params": {
+    "r": 5,
+    "L": 40
+  },
+  "steps": [
+    {
+      "name": "cx",
+      "op": "cylinder",
+      "base": [-20, 0, 0],
+      "axis": [1, 0, 0],
+      "radius": "r",
+      "height": "L"
+    },
+    {
+      "name": "cy",
+      "op": "cylinder",
+      "base": [0, -20, 0],
+      "axis": [0, 1, 0],
+      "radius": "r",
+      "height": "L"
+    },
+    {
+      "name": "cz",
+      "op": "cylinder",
+      "base": [0, 0, -20],
+      "axis": [0, 0, 1],
+      "radius": "r",
+      "height": "L"
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "bodies": ["cx", "cy", "cz"]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "centre", "point": [0, 0, 0], "expect": "in"},
+    {"label": "in_x_leg", "point": [15, 0, 0], "expect": "in"},
+    {"label": "in_z_leg", "point": [0, 1, -15], "expect": "in"},
+    {"label": "between_legs", "point": [10, 10, 0], "expect": "out"},
+    {"label": "beyond_the_end", "point": [0, 21, 0], "expect": "out"},
+    {"label": "on_x_wall", "point": [15, 5, 0], "expect": "on"},
+    {"label": "on_y_cap", "point": [1, 20, 1], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "3 * pi * r * r * L - 16 * r ^ 3 + 8 * (2 - sqrt(2)) * r ^ 3",
+    "area": "6 * pi * r * r + 3 * (2 * pi * r * L - 16 * r * r + 8 * (2 - sqrt(2)) * r * r)",
+    "centroid": [0, 0, 0],
+    "genus": 0,
+    "counts": {"vertices": 19, "edges": 29, "faces": 12, "loops": 12, "shells": 1},
+    "counts_differ": "Open CASCADE also cuts the section arc that runs through an ellipse's parameter origin, once for each of the three pairs of cylinders, three more vertices and edges, as in cross-cylinders-common and three-bores-one-point-cut-many; Arris's edge range crosses the period once (E1). Arris's chain of two-operand fuses gives the same 19/29 as its one call"
+  }
+}

@@ -166,17 +166,25 @@ impl<'m, 'c> Build<'m, 'c> {
                 continue;
             }
             if projection.distance <= v.tolerance(m) {
-                // Where a section crossing of this curve and another is
-                // one of the vertex's members, the curve is paved at that
-                // crossing's own parameter, as an edge is at its hit's:
-                // the curves then end on the same point whatever the
-                // vertex's representative one is.
+                // Where a section crossing of this curve and another, or
+                // a triple point found on this curve, is one of the
+                // vertex's members, the curve is paved at that member's
+                // own parameter, as an edge is at its hit's: the curves
+                // then end on the same point whatever the vertex's
+                // representative one is.
                 let t = v
                     .section_crossings
                     .iter()
                     .map(|&x| &self.section_crossings[x])
                     .filter(|x| x.pair == pi && x.curves[0] != x.curves[1])
                     .find_map(|x| x.curves.iter().position(|&c| c == ci).map(|i| x.t[i]))
+                    .or_else(|| {
+                        v.triple_points
+                            .iter()
+                            .map(|&x| &self.triple_points[x])
+                            .find(|x| x.pair == pi && x.curve == ci)
+                            .map(|x| x.t)
+                    })
                     .unwrap_or(projection.t);
                 paves.push(Pave {
                     t: curve
@@ -203,6 +211,7 @@ impl<'m, 'c> Build<'m, 'c> {
                     hits: Vec::new(),
                     crossings: Vec::new(),
                     section_crossings: Vec::new(),
+                    triple_points: Vec::new(),
                     existing: Vec::new(),
                     source: VertexSource::CurveStart {
                         pair: pi,

@@ -534,10 +534,19 @@ piece of operand `k` is classified against every other operand whose box
 holds its interior point (a point outside a box is outside the operand,
 with no ray cast) and kept by the operand's row of the table: a fuse keeps
 what is inside no other operand, a cut the target outside every tool and a
-tool inside the target and outside every other tool, reversed. Tools that
-meet one another are refused (`OpError::Unsupported`, naming the two
-faces) until their own sections and the triple points on a third operand's
-face are decomposed. Every
+tool inside the target and outside every other tool, reversed. Tools meet
+one another as they meet the target, their sections those of the one
+decomposition; where a section curve of two operands' faces crosses a
+face of a third off every edge — two overlapping holes' circles on a
+plate's top — the build makes a **triple point**, found once, as the curve
+of the two lower operands' pair against the highest operand's face, kept
+when it lies on all three faces and merged with the other section vertices
+by the same tolerance components, so a triple point on an edge is that
+edge's hit; it paves the three section curves through it
+(`VertexSource::TriplePoint`). The coincident row between two tools of a
+cut reads the fuse's row, the tools being taken away as their union, and
+keeps the piece once, from the earlier operand; a piece on faces of two
+other operands at once is `OpError::Unsupported` naming it. Every
 face of both operands is split in its own (u, v): the pieces of its
 loops between consecutive paves and the section edges on it make a
 planar arrangement — half-edges ordered around each node by the pcurves'
@@ -1950,7 +1959,7 @@ refusal histogram, what picks the cycle after the reader's.
 | Primitives (box, cylinder) | `ops::primitive_box`, `ops::primitive_cylinder` |
 | Extrude / revolve of a sketched profile with holes | `ops::extrude`, `ops::revolve` over `Profile` (lines, arcs and elliptic arcs; a revolve refuses an elliptic segment, ADR-0014) |
 | Boolean union / intersect / cut | `ops::fuse`, `ops::common`, `ops::cut` |
-| Cut or fuse many tools at once (a pattern of holes or bosses) | `ops::cut_many`, `ops::fuse_many` (ADR-0050): one decomposition over the body and every tool, provenance naming each tool; tools that stay clear of one another until the next step lifts that |
+| Cut or fuse many tools at once (a pattern of holes or bosses) | `ops::cut_many`, `ops::fuse_many` (ADR-0050): one decomposition over the body and every tool, provenance naming each tool; tools that overlap one another and the triple points where three operands' sections cross included; a piece flush with two other operands at once refused |
 | Transform (geometry only, topology and index order preserved) | `ops::transform` — new ids, provenance `Modified` one-to-one in iteration order |
 | Mirror a body in a plane | `ops::mirror` — new ids, provenance `Modified` one-to-one, the image a solid with its material inside (ADR-0031) |
 | Fillet / chamfer of named edges, one call for all edges | `ops::fillet`, `ops::chamfer` (ADR-0007) |

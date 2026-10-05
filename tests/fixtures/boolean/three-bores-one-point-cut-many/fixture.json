@@ -134,6 +134,14 @@
       20,
       20
     ],
-    "genus": 5
+    "genus": 5,
+    "counts": {
+      "vertices": 27,
+      "edges": 41,
+      "faces": 12,
+      "loops": 18,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE also cuts the section arc that runs through an ellipse's parameter origin, once for each of the three pairs of bores, three more vertices and edges, as in cross-cylinders-common; Arris's edge range crosses the period once (E1). Arris's chain of three two-operand cuts gives the same 27/41 as its one call"
   }
 }

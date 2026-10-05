@@ -264,23 +264,136 @@ fn no_tool_and_a_body_twice_are_refused_by_name() {
     );
 }
 
+/// Three cylinders of radius 5 along x, y and z through `centre`, each
+/// `length` long and centred on it.
+fn three_orthogonal(m: &mut Model, centre: Point3, length: f64) -> Vec<Body> {
+    [Vec3::x(), Vec3::y(), Vec3::z()]
+        .into_iter()
+        .map(|d| {
+            let axis = Axis::new(centre - d * (0.5 * length), d).unwrap();
+            primitive_cylinder(m, axis, 5.0, length).unwrap().0
+        })
+        .collect()
+}
+
 #[test]
-fn tools_that_meet_each_other_are_refused_until_they_are_decomposed() {
+fn overlapping_holes_cut_in_one_call_are_the_chain_of_cuts() {
+    // Three holes 4 apart with radius 3: a slot, each two neighbours'
+    // circles crossing on both of the plate's faces off every edge.
     let mut m = Model::default();
     let (plate, _) = plate_and_holes(&mut m, 0);
-    let mut overlapping = Vec::new();
-    for x in [40.0, 44.0] {
-        let axis = Axis::z_at(Point3::new(x, 50.0, -1.0));
-        overlapping.push(primitive_cylinder(&mut m, axis, 3.0, 12.0).unwrap().0);
-    }
-    let before = arris_io::native::to_bytes(&m).unwrap();
-    let err = cut_many(&mut m, plate, &overlapping).unwrap_err();
-    assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
-    assert_eq!(
-        arris_io::native::to_bytes(&m).unwrap(),
-        before,
-        "the model moved"
+    let holes: Vec<Body> = [40.0, 44.0, 48.0]
+        .into_iter()
+        .map(|x| {
+            let axis = Axis::z_at(Point3::new(x, 50.0, -1.0));
+            primitive_cylinder(&mut m, axis, 3.0, 12.0).unwrap().0
+        })
+        .collect();
+    let mut operands = vec![plate];
+    operands.extend(&holes);
+    let i = interferences_many(&m, &operands).unwrap();
+    // Two neighbouring pairs, two crossings each, on the top and the
+    // bottom: eight triple points, each its own section vertex.
+    assert_eq!(i.triple_points.len(), 8, "{i}");
+    assert!(
+        i.triple_points.iter().all(|q| {
+            q.vertex.is_some_and(|v| {
+                i.vertices[v].source == arris_ops::boolean::VertexSource::TriplePoint
+            })
+        }),
+        "{i}"
     );
+    let (many, _) = cut_many(&mut m, plate, &holes).unwrap();
+    let mut chained = plate;
+    for &h in &holes {
+        chained = cut(&mut m, chained, h).unwrap().0;
+    }
+    assert_same_solid(&m, many, chained, "a slot");
+}
+
+#[test]
+fn three_bores_through_one_point_are_the_chain_of_cuts() {
+    let mut m = Model::default();
+    let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 40.0, 40.0)).unwrap();
+    let bores = three_orthogonal(&mut m, Point3::new(20.0, 20.0, 20.0), 60.0);
+    let (many, _) = cut_many(&mut m, cube, &bores).unwrap();
+    let mut chained = cube;
+    for &b in &bores {
+        chained = cut(&mut m, chained, b).unwrap().0;
+    }
+    assert_same_solid(&m, many, chained, "three bores");
+}
+
+#[test]
+fn a_counterbore_in_one_call_is_the_chain_of_cuts() {
+    // A tool's wall inside another tool: the hole's wall above the bore's
+    // floor is dropped, the floor is cut by the hole.
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let hole = primitive_cylinder(&mut m, Axis::z_at(Point3::new(50.0, 50.0, -1.0)), 3.0, 12.0)
+        .unwrap()
+        .0;
+    let bore = primitive_cylinder(&mut m, Axis::z_at(Point3::new(50.0, 50.0, 6.0)), 6.0, 6.0)
+        .unwrap()
+        .0;
+    let (many, _) = cut_many(&mut m, plate, &[hole, bore]).unwrap();
+    let chained = cut(&mut m, plate, hole).unwrap().0;
+    let chained = cut(&mut m, chained, bore).unwrap().0;
+    assert_same_solid(&m, many, chained, "a counterbore");
+}
+
+#[test]
+fn a_tripod_fused_in_one_call_is_the_chain_of_fuses() {
+    let mut m = Model::default();
+    let legs = three_orthogonal(&mut m, Point3::origin(), 40.0);
+    let (many, _) = fuse_many(&mut m, &legs).unwrap();
+    let chained = fuse(&mut m, legs[0], legs[1]).unwrap().0;
+    let chained = fuse(&mut m, chained, legs[2]).unwrap().0;
+    assert_same_solid(&m, many, chained, "a tripod");
+}
+
+#[test]
+fn a_triple_point_is_generated_from_its_three_faces() {
+    // Two crossing pockets: on the plate's top their walls' lines cross
+    // at (40, 40, 10), where no edge of any operand passes.
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let (p1, _) = primitive_box(
+        &mut m,
+        Point3::new(20.0, 40.0, 5.0),
+        Point3::new(80.0, 60.0, 12.0),
+    )
+    .unwrap();
+    let (p2, _) = primitive_box(
+        &mut m,
+        Point3::new(40.0, 20.0, 5.0),
+        Point3::new(60.0, 80.0, 12.0),
+    )
+    .unwrap();
+    let i = interferences_many(&m, &[plate, p1, p2]).unwrap();
+    let corner = Point3::new(40.0, 40.0, 10.0);
+    let q = i
+        .triple_points
+        .iter()
+        .find(|q| (q.point - corner).norm() < 1e-9)
+        .unwrap_or_else(|| panic!("no triple point at the corner\n{i}"));
+    let pair = &i.pairs[q.pair];
+    let faces = [pair.a, pair.b, q.face];
+
+    let (body, p) = cut_many(&mut m, plate, &[p1, p2]).unwrap();
+    let vertex = m
+        .vertices(body)
+        .unwrap()
+        .into_iter()
+        .find(|v| (m.vertex(v.id).unwrap().point() - corner).norm() < 1e-9)
+        .expect("the corner is a vertex of the result");
+    for f in faces {
+        assert!(
+            p.generated_from(shape(f)).contains(&shape(vertex.id)),
+            "{} not generated from {f}\n{p}",
+            vertex.id
+        );
+    }
 }
 
 #[test]
@@ -296,4 +409,41 @@ fn the_decomposition_over_three_operands_pairs_only_the_ones_that_meet() {
     assert!(i.pairs.iter().all(|p| p.operands[0] == 0), "{i}");
     let used: std::collections::BTreeSet<usize> = i.pairs.iter().map(|p| p.operands[1]).collect();
     assert_eq!(used, [1, 2].into_iter().collect());
+}
+
+#[test]
+fn a_triple_point_on_a_rim_is_the_rim_s_hit() {
+    // The z bore blind, its cap's rim at the height of four of the eight
+    // triple points: each is where the rim pierces the other two bores'
+    // walls as well, and the tolerance components make the two one
+    // section vertex, with no rule of its own (ADR-0050 §5).
+    let mut m = Model::default();
+    let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 40.0, 40.0)).unwrap();
+    let mut bores = three_orthogonal(&mut m, Point3::new(20.0, 20.0, 20.0), 60.0);
+    let rim = 20.0 + 5.0 / 2f64.sqrt();
+    bores[2] = primitive_cylinder(
+        &mut m,
+        Axis::z_at(Point3::new(20.0, 20.0, -10.0)),
+        5.0,
+        rim + 10.0,
+    )
+    .unwrap()
+    .0;
+    let mut operands = vec![cube];
+    operands.extend(&bores);
+    let i = interferences_many(&m, &operands).unwrap();
+    let on_rim: Vec<_> = i
+        .vertices
+        .iter()
+        .filter(|v| !v.triple_points.is_empty() && (v.point.z - rim).abs() < 1e-9)
+        .collect();
+    assert_eq!(on_rim.len(), 4, "{i}");
+    assert!(on_rim.iter().all(|v| !v.hits.is_empty()), "{i}");
+
+    let (many, _) = cut_many(&mut m, cube, &bores).unwrap();
+    let mut chained = cube;
+    for &b in &bores {
+        chained = cut(&mut m, chained, b).unwrap().0;
+    }
+    assert_same_solid(&m, many, chained, "a bore ending at the triple points");
 }

@@ -1,0 +1,125 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3d8a9f6049ea1e5e415619d2f0fc526616e192091dc26a906d954282d97fab6e",
+  "results": {
+    "default": {
+      "area": 24207.34511513693,
+      "centroid": [
+        49.99999999999999,
+        50.0,
+        4.989757528006325
+      ],
+      "counts": {
+        "edges": 18,
+        "faces": 9,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          84156340.82162192,
+          -2.9802322387695312e-08,
+          -7.450580596923828e-09
+        ],
+        [
+          -2.9802322387695312e-08,
+          84156340.82162207,
+          0.0
+        ],
+        [
+          -7.450580596923828e-09,
+          0.0,
+          166657760.2514938
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 18,
+        "faces": 9,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_hole",
+          "point": [
+            50.0,
+            50.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_bore",
+          "point": [
+            54.5,
+            50.0,
+            8.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "below_bore_floor",
+          "point": [
+            54.5,
+            50.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bore_floor",
+          "point": [
+            54.5,
+            50.0,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_hole_wall",
+          "point": [
+            53.0,
+            50.0,
+            3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bore_wall",
+          "point": [
+            56.0,
+            50.0,
+            8.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            50.0,
+            50.0,
+            12.0
+          ]
+        }
+      ],
+      "volume": 99377.96465458922
+    }
+  }
+}

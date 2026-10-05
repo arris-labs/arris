@@ -24,8 +24,10 @@ boolean/cone-apex-slice-cut: 25
 boolean/corner-common: 42
 boolean/corner-cut: 42
 boolean/corner-union: 42
+boolean/counterbore-cut-many: 46
 boolean/cross-cylinders-common: 6056
 boolean/cross-cylinders-fuse: 6056
+boolean/crossing-pockets-cut-many: 139
 boolean/cut-many-tools-miss-target: 24
 boolean/cylinder-prism-common-chamfer-cut-loops-intersect: 1476
 boolean/cylinder-revolve-common-fillet-box-fuse: 35164
@@ -93,6 +95,7 @@ boolean/short-cross-cylinders-fuse: 5699
 boolean/skew-bore-cut: 21563
 boolean/skew-hole-cut: 12807
 boolean/sliver-common: 29
+boolean/slot-three-overlapping-holes-cut-many: 136
 boolean/spandrel-cavity-cut: 44
 boolean/split-cut: 50
 boolean/step-operand-cut: 48
@@ -109,8 +112,10 @@ boolean/tee-unequal-cut: 18822
 boolean/tee-unequal-drill-cut: 13700
 boolean/tee-unequal-fuse: 18822
 boolean/tee-unequal-slot-cut: 4267
+boolean/three-bores-one-point-cut-many: 16145
 boolean/through-hole: 26
 boolean/tilted-cylinder-slot-cut: 1547
+boolean/tripod-fuse-many: 16109
 sweep/extrude-downward: 20
 sweep/extrude-ellipse: 4
 sweep/extrude-elliptic-slot: 16

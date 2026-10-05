@@ -15,8 +15,11 @@ into its version (ADR-0027).
   booleans gives, with one provenance record naming each tool (its entities
   deleted, its surviving walls generated from it) and every entity no tool
   touched keeping its id. `cut` and `fuse` are their one-tool case. The
-  tools must stay clear of one another for now: a face of one tool meeting a
-  face of another is refused as `Unsupported`, naming both faces. An empty
+  tools may overlap one another — a slot of overlapping holes, crossing
+  pockets, a counterbore as two coaxial cylinders, bores through one point
+  — and where the sections of three bodies cross off every edge the result
+  has one vertex there, generated from the three faces. A face lying flush
+  with two other bodies at once is refused as `Unsupported` for now. An empty
   `tools`, fewer than two `bodies` and a body named twice are refused as
   `BooleanReason::NoTools` and `RepeatedOperand`.
 - `arris_ops::boolean::interferences_many(model, operands, control)` is the
@@ -118,6 +121,12 @@ into its version (ADR-0027).
 - `arris_ops::boolean::Interferences` gains `bounds: Vec<Aabb>`, each
   operand's box. Fix: a struct literal names it; a reader of the fields is
   unaffected.
+- The boolean decomposition records its triple points: `Interferences`
+  gains `triple_points: Vec<TriplePoint>` (where a section curve of two
+  operands' faces crosses a face of a third), `SectionVertex` gains
+  `triple_points: Vec<usize>`, and `VertexSource` gains `TriplePoint`.
+  Fix: a struct literal names the new fields; an exhaustive `match` on
+  `VertexSource` adds its arm.
 
 ## 0.5.0 — 2026-10-05
 

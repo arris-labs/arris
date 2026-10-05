@@ -1,6 +1,7 @@
 //! Building the pave model (ADR-0004): face pairs, edge-on-face hits,
-//! the crossings of a pair's section curves with one another, the hits
-//! and crossings merged into section vertices, a touch off every vertex
+//! the crossings of a pair's section curves with one another, the triple
+//! points where a pair's section curve crosses a third operand's face
+//! (ADR-0050 §5), the hits and crossings merged into section vertices, a touch off every vertex
 //! resolved into its crossings through the section curves (ADR-0016),
 //! paves, section curves cut into blocks and the blocks kept as section
 //! edges with their pcurves; and, for the coincident pairs, the edge–edge
@@ -19,7 +20,7 @@ use arris_topo::{Body, EdgeId, FaceId, Model, Shape, VertexId};
 use super::faces::{EdgeInfo, FaceInfo};
 use super::{
     CommonBlock, Contact, EdgeEdgeHit, EdgeFaceHit, EdgeImage, FacePair, Interferences, Pave,
-    SectionCrossing, SectionCurve, SectionEdge, SectionVertex, VertexSource,
+    SectionCrossing, SectionCurve, SectionEdge, SectionVertex, TriplePoint, VertexSource,
 };
 use crate::error::OpError;
 
@@ -42,6 +43,7 @@ struct VertexBuild {
     hits: Vec<usize>,
     crossings: Vec<usize>,
     section_crossings: Vec<usize>,
+    triple_points: Vec<usize>,
     existing: Vec<VertexId>,
     source: VertexSource,
 }
@@ -78,6 +80,7 @@ impl VertexBuild {
             hits: self.hits.clone(),
             crossings: self.crossings.clone(),
             section_crossings: self.section_crossings.clone(),
+            triple_points: self.triple_points.clone(),
             existing: self.existing.clone(),
             source: self.source,
         }
@@ -90,6 +93,7 @@ enum Member {
     Hit(usize),
     Crossing(usize),
     SectionCrossing(usize),
+    TriplePoint(usize),
     Singular,
 }
 
@@ -99,6 +103,7 @@ impl Member {
         match self {
             Member::Hit(_) | Member::Crossing(_) => VertexSource::Hits,
             Member::SectionCrossing(_) => VertexSource::SectionCrossing,
+            Member::TriplePoint(_) => VertexSource::TriplePoint,
             Member::Singular => VertexSource::Singular,
         }
     }
@@ -211,6 +216,9 @@ struct Build<'m, 'c> {
     section_crossings: Vec<SectionCrossing>,
     /// Per section crossing, the tolerance of the pair that made it.
     section_crossing_tolerance: Vec<f64>,
+    triple_points: Vec<TriplePoint>,
+    /// Per triple point, the largest tolerance of its three faces.
+    triple_point_tolerance: Vec<f64>,
     /// Edge pairs of the coincident face pairs whose curves are the same
     /// curve, the lower operand's edge first.
     same_curve: BTreeSet<(EdgeId, EdgeId)>,
@@ -266,6 +274,7 @@ pub(super) fn build<'c>(
             pairs: Vec::new(),
             hits: Vec::new(),
             section_crossings: Vec::new(),
+            triple_points: Vec::new(),
             vertices: Vec::new(),
             paves: BTreeMap::new(),
             curves: Vec::new(),
@@ -295,6 +304,8 @@ pub(super) fn build<'c>(
         crossing_tolerance: Vec::new(),
         section_crossings: Vec::new(),
         section_crossing_tolerance: Vec::new(),
+        triple_points: Vec::new(),
+        triple_point_tolerance: Vec::new(),
         same_curve: BTreeSet::new(),
         vertices: Vec::new(),
         paves: BTreeMap::new(),
@@ -310,6 +321,7 @@ pub(super) fn build<'c>(
     build.hits()?;
     build.crossings()?;
     build.section_crossings()?;
+    build.triple_points()?;
     build.merge()?;
     build.pave_edges();
     build.sections()?;
@@ -621,6 +633,7 @@ impl<'m, 'c> Build<'m, 'c> {
             pairs: self.pairs,
             hits: self.hits,
             section_crossings: self.section_crossings,
+            triple_points: self.triple_points,
             vertices,
             paves: self.paves,
             curves: self.curves,
