@@ -374,6 +374,22 @@ pub enum Step {
         /// The distance from the edge, measured on each of its faces.
         distance: Num,
     },
+    /// The chosen faces of a step's body moved along their outward normals
+    /// by a signed distance (`arris_ops::offset_faces`; positive adds
+    /// material), each face named by a point on it as a `Fillet`'s edges
+    /// are: Arris takes the face `classify_point` answers `On(Face)` for,
+    /// the oracle the face the point lies on (`BRepExtrema`, within
+    /// `probe`), and both refuse a point on no face or on an edge or vertex.
+    Offset {
+        /// Step name.
+        name: String,
+        /// The body offset.
+        of: String,
+        /// One point on each face to move.
+        faces: Vec<[Num; 3]>,
+        /// The signed distance along each face's outward normal.
+        distance: Num,
+    },
     /// A solid bounded by planar faces over `points`, each face a list of
     /// loops of point indices — the outer loop counter-clockwise seen
     /// from outside, a hole's clockwise: a consumer's own topology. Arris
@@ -431,6 +447,7 @@ impl Step {
             | Step::Cut { name, .. }
             | Step::Fillet { name, .. }
             | Step::Chamfer { name, .. }
+            | Step::Offset { name, .. }
             | Step::Polyhedron { name, .. }
             | Step::Read { name, .. } => name,
         }

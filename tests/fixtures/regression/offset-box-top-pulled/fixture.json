@@ -1,0 +1,100 @@
+{
+  "description": "a 10-cube whose top face is pulled in by 2: the four walls are trimmed to the moved plane, a 10 \u00d7 10 \u00d7 8 block",
+  "params": {
+    "d": -2
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "box",
+      "faces": [
+        [
+          5,
+          5,
+          10
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        7
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "cut_away",
+      "point": [
+        5,
+        5,
+        9
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_new_top",
+      "point": [
+        5,
+        5,
+        8
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall_trimmed",
+      "point": [
+        10,
+        5,
+        4
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_new_top_edge",
+      "point": [
+        10,
+        5,
+        8
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * (10 + d)",
+    "area": "200 + 40 * (10 + d)",
+    "centroid": [
+      5,
+      5,
+      "(10 + d) / 2"
+    ],
+    "counts": {
+      "vertices": 8,
+      "edges": 12,
+      "faces": 6,
+      "loops": 6,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

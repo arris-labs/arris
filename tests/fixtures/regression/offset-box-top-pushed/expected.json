@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "172fe6d5818b02ba3182e807ac2ca9c8ceaa5e4ddd0edbc64aaa4e945ddf7d4c",
+  "results": {
+    "default": {
+      "area": 680.0,
+      "centroid": [
+        5.0,
+        5.0,
+        6.0
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          24400.000000000015,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          24400.000000000015,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          20000.0
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            11.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "old_top_is_interior",
+          "point": [
+            5.0,
+            5.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_new_top",
+          "point": [
+            5.0,
+            5.0,
+            12.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above",
+          "point": [
+            5.0,
+            5.0,
+            12.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_extended",
+          "point": [
+            10.0,
+            5.0,
+            11.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_new_top_edge",
+          "point": [
+            10.0,
+            5.0,
+            12.0
+          ]
+        }
+      ],
+      "volume": 1199.9999999999998
+    }
+  }
+}

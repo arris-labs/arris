@@ -1,0 +1,161 @@
+{
+  "description": "a 20 \u00d7 20 \u00d7 10 plate with a through hole of radius 3 whose wall is offset by 1 along its outward normal, which points into the hole: material is added, the hole narrows to radius 2, and the wall stays a coaxial cylinder met by the two planes",
+  "params": {
+    "d": 1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              20,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              20,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      "holes": [
+        {
+          "circle": {
+            "center": [
+              10,
+              10
+            ],
+            "radius": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "plate",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 10
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "plate",
+      "faces": [
+        [
+          13,
+          10,
+          5
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        2,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_the_hole",
+      "point": [
+        10,
+        10,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_the_added_ring",
+      "point": [
+        7.5,
+        10,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_new_wall",
+      "point": [
+        8,
+        10,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top_rim",
+      "point": [
+        8,
+        10,
+        10
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "4000 - pi * (3 - d)^2 * 10",
+    "area": "2 * (400 - pi * (3 - d)^2) + 2 * pi * (3 - d) * 10 + 800",
+    "centroid": [
+      10,
+      10,
+      5
+    ],
+    "counts": {
+      "vertices": 10,
+      "edges": 15,
+      "faces": 7,
+      "loops": 9,
+      "shells": 1
+    },
+    "genus": 1
+  }
+}

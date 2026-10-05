@@ -53,10 +53,13 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
 
 - `oracle/recipe.py` — the recipe interpreter: `box`, `cylinder`, `profile`
   (lines, three-point arcs, circles, holes), `extrude`, `revolve`,
-  `transform`, `mirror`, `fuse`, `common`, `cut`, `fillet` and `chamfer`
+  `transform`, `mirror`, `fuse`, `common`, `cut`, `fillet`, `chamfer` and `offset`
   (`BRepFilletAPI_MakeFillet`, `MakeChamfer` with one distance, each edge
   the nearest to a recipe point by `BRepExtrema`, which must be
-  the only edge within the fixture's `probe`), and `step` (a solid of a
+  the only edge within the fixture's `probe`; `offset` is
+  `BRepOffset_MakeOffset` with offset 0 and the intersection join, each
+  moved face given its distance by `SetOffsetOnFace` and named by a point
+  the same way, ADR-0048), and `step` (a solid of a
   STEP file beside the recipe, by `step.solids`, its SHA-256 checked),
   chained by step name; `params`
   with string expressions and `variants` overriding them. The grammar is

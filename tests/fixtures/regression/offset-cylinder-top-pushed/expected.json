@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "af08f05affd050a00ea17e4605a6c1e61cc42f1aa11ac1004e0c2ffd3c8854e0",
+  "results": {
+    "default": {
+      "area": 477.5220833456485,
+      "centroid": [
+        -6.785183320455503e-16,
+        2.31441023753239e-17,
+        7.500000000000001
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          17153.0958886003,
+          2.6215691598157376e-13,
+          1.4210854715202004e-13
+        ],
+        [
+          2.6215691598157376e-13,
+          17153.09588860024,
+          4.839417540986978e-14
+        ],
+        [
+          1.4210854715202004e-13,
+          4.839417540986978e-14,
+          6031.857894892437
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            1.0,
+            1.0,
+            13.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above",
+          "point": [
+            1.0,
+            1.0,
+            15.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_new_cap",
+          "point": [
+            1.0,
+            1.0,
+            15.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_extended",
+          "point": [
+            4.0,
+            0.0,
+            13.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_new_rim",
+          "point": [
+            0.0,
+            4.0,
+            15.0
+          ]
+        }
+      ],
+      "volume": 753.9822368615503
+    }
+  }
+}

@@ -49,6 +49,13 @@ Operations, by `op`:
     chamfer    of <name>, edges [[x,y,z], ...], distance
                (edges named as a fillet's; one distance, measured on both
                faces from the edge)
+    offset     of <name>, faces [[x,y,z], ...], distance
+               (the faces moved along their outward normals by the signed
+               distance, positive adding material, each named by a point
+               that lies on that face alone, within the fixture's `probe`;
+               Open CASCADE's `BRepOffset_MakeOffset` with offset 0 on the
+               fixed faces and `SetOffsetOnFace` on the moved ones, the
+               intersection join — ADR-0048)
     polyhedron points [[x,y,z], ...], faces [[[i, j, k, ...], <hole>...], ...],
                namespace <u32>
                (each face its loops of point indices, the outer one
@@ -88,6 +95,7 @@ from OCP.BRepBuilderAPI import (
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer, BRepFilletAPI_MakeFillet
 from OCP.BRepGProp import BRepGProp
+from OCP.BRepOffset import BRepOffset_MakeOffset, BRepOffset_Skin
 from OCP.BRepLib import BRepLib
 from OCP.BRepPrimAPI import (
     BRepPrimAPI_MakeBox,
@@ -95,11 +103,12 @@ from OCP.BRepPrimAPI import (
     BRepPrimAPI_MakePrism,
     BRepPrimAPI_MakeRevol,
 )
+from OCP.GeomAbs import GeomAbs_Intersection
 from OCP.GC import GC_MakeArcOfCircle, GC_MakeArcOfEllipse
 from OCP.GProp import GProp_GProps
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Ax3, gp_Circ, gp_Dir, gp_Elips, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCP.ShapeFix import ShapeFix_Face
-from OCP.TopAbs import TopAbs_EDGE, TopAbs_SHELL
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_SHELL
 from OCP.TopExp import TopExp
 from OCP.TopoDS import TopoDS, TopoDS_Shape
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
@@ -478,6 +487,38 @@ def _edge_at(shape: TopoDS_Shape, point: list[float], probe: float):
     return near[0]
 
 
+def _face_at(shape: TopoDS_Shape, point: list[float], probe: float):
+    """The face of `shape` that `point` lies on: the only face within
+    `probe` of it by `BRepExtrema`, so a point on an edge (two faces) or
+    off the body (none) is refused — Arris's runner keeps the rule with
+    `classify_point` (tests/fixtures/README.md)."""
+    vertex = BRepBuilderAPI_MakeVertex(_pnt(point)).Vertex()
+    faces = IndexedMapOfShape()
+    TopExp.MapShapes_s(shape, TopAbs_FACE, faces)
+    near = []
+    for i in range(1, faces.Extent() + 1):
+        face = TopoDS.Face(faces.FindKey(i))
+        d = BRepExtrema_DistShapeShape(face, vertex)
+        if d.IsDone() and d.Value() <= probe:
+            near.append(face)
+    if len(near) != 1:
+        raise OracleError(f"face point {point} is within {probe} of {len(near)} faces, not one")
+    return near[0]
+
+
+def _offset_faces(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float) -> TopoDS_Shape:
+    """`shape` with `faces` moved by `distance` along their outward
+    normals and every other face held (offset 0), joined by intersection."""
+    mo = BRepOffset_MakeOffset()
+    mo.Initialize(shape, 0.0, 1e-7, BRepOffset_Skin, True, False, GeomAbs_Intersection, False)
+    for f in faces:
+        mo.SetOffsetOnFace(f, distance)
+    mo.MakeOffsetShape()
+    if not mo.IsDone():
+        raise OracleError(f"offset: Open CASCADE refuses (error {mo.Error()})")
+    return mo.Shape()
+
+
 def _read_solid(step: dict, params: dict[str, float], probe: float, base: str | None) -> TopoDS_Shape:
     """The solid a `step` operand names: of the file's solids from `#id`,
     the only one, or the one whose centroid is nearest `near`, a tie
@@ -602,6 +643,16 @@ def _build_step(
         for p in points:
             mc.Add(distance, _edge_at(shape, vector(p, params), probe))
         return _checked(mc, "chamfer")
+    if op == "offset":
+        shape = ref(step["of"])
+        distance = number(step["distance"], params)
+        if not math.isfinite(distance) or distance == 0.0:
+            raise OracleError("offset distance must be finite and nonzero")
+        points = step["faces"]
+        if not isinstance(points, list) or not points:
+            raise OracleError("offset needs a list of face points")
+        faces = [_face_at(shape, vector(p, params), probe) for p in points]
+        return _offset_faces(shape, faces, distance)
     if op == "polyhedron":
         return _polyhedron(step, params)
     if op == "step":

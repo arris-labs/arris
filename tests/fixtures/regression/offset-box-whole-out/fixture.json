@@ -1,0 +1,125 @@
+{
+  "description": "a 10-cube with every face pushed out by 1: the body's offset, a 12-cube, each edge a sharp join of the neighbouring offsets (the plan's convex join)",
+  "params": {
+    "d": 1
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "box",
+      "faces": [
+        [
+          5,
+          5,
+          10
+        ],
+        [
+          5,
+          5,
+          0
+        ],
+        [
+          0,
+          5,
+          5
+        ],
+        [
+          10,
+          5,
+          5
+        ],
+        [
+          5,
+          0,
+          5
+        ],
+        [
+          5,
+          10,
+          5
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_the_skin",
+      "point": [
+        -0.5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_new_face",
+      "point": [
+        -1,
+        5,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_new_corner",
+      "point": [
+        11,
+        11,
+        11
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -1.5,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "(10 + 2 * d)^3",
+    "area": "6 * (10 + 2 * d)^2",
+    "centroid": [
+      5,
+      5,
+      5
+    ],
+    "counts": {
+      "vertices": 8,
+      "edges": 12,
+      "faces": 6,
+      "loops": 6,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}
