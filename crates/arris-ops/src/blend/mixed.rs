@@ -13,11 +13,11 @@ use arris_geom::{Curve, pcurve_on};
 use arris_math::{Interval, Meter, Point3, Tolerance, shift_into_range};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
+use super::build::Env;
 use super::ends::{Trim, cut_corner};
 use super::ring::placed_uv;
 use super::stripe::on_side_of_face;
 use super::{degenerate, invariant};
-use crate::body_view::BodyView;
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -39,6 +39,16 @@ pub(super) struct CornerTrims {
     pub(super) side: Side,
 }
 
+/// The blend end whose corner [`corner_trims`] cuts: the blended `edge`
+/// and its two `faces`, the two corner edges at `vertex`.
+#[derive(Clone, Copy)]
+pub(super) struct CornerAt {
+    pub(super) edge: EdgeId,
+    pub(super) faces: [FaceId; 2],
+    pub(super) corner_edges: [EdgeId; 2],
+    pub(super) vertex: VertexId,
+}
+
 /// The corner edges `corner_edges` of a blend of `edge` at `vertex` moved
 /// to the trim points `points`, by contact: the edge's two faces `faces`
 /// carry them in the same order, and `convex` is the blend's.
@@ -54,20 +64,21 @@ pub(super) struct CornerTrims {
 /// `Reason::BlendTooLarge` naming `edge` and the corner edge: the trim
 /// past the far vertex, past the vertex at a corner that is not mixed or
 /// on the wrong edge of one, or a stretch that leaves its face.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn corner_trims(
-    m: &Model,
-    view: &BodyView,
-    edge: EdgeId,
-    faces: [FaceId; 2],
-    corner_edges: [EdgeId; 2],
-    vertex: VertexId,
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    at: &CornerAt,
     points: [Point3; 2],
     convex: bool,
-    tol: Tolerance,
-    samples: usize,
-    meter: &mut Meter<'_>,
 ) -> Result<CornerTrims, OpError> {
+    let (m, view) = (env.m, env.view);
+    let (tol, samples) = (env.tol, env.samples);
+    let CornerAt {
+        edge,
+        faces,
+        corner_edges,
+        vertex,
+    } = *at;
     let convexity = |c: EdgeId| {
         view.convex(m, c)?
             .ok_or(invariant("a corner edge's convexity"))
@@ -191,6 +202,7 @@ fn past_vertex(
 
 #[cfg(test)]
 mod tests {
+    use crate::body_view::BodyView;
     use arris_geom::{Profile, ProfileLoop, ProfileSegment, Surface};
     use arris_math::nalgebra::{Unit, UnitQuaternion};
     use arris_math::{Control, Frame, Point2, Vec3};
@@ -288,28 +300,34 @@ mod tests {
     ) {
         let tol = m.precision().tolerance();
         let view = BodyView::of(m, body).unwrap();
+        let env = Env {
+            m,
+            view: &view,
+            kind,
+            tol,
+            samples: m.precision().check_samples,
+        };
         let edge = edge_at(m, body, pose.to_world(Point3::new(1.0, 0.0, 1.0)));
         let s = stripe(m, &view, edge, kind, tol).unwrap();
         let at = pose.to_world(at);
         let at_lo = (m.vertex(s.start).unwrap().point() - at).norm() < 1e-9;
         let vertex = if at_lo { s.start } else { s.end };
         assert!((m.vertex(vertex).unwrap().point() - at).norm() < 1e-9);
-        let corner = corner_of(m, &view, edge, &s.uses, vertex, at_lo, s.size, tol).unwrap();
+        let corner = corner_of(&env, edge, &s.uses, vertex, at_lo).unwrap();
         let (corner_edges, across) = (corner.edges, corner.pieces[0]);
         let points = pierce_plane(m, &s, across);
         let mut meter = Meter::new(&Control::NONE);
         let trims = corner_trims(
-            m,
-            &view,
-            edge,
-            s.faces,
-            corner_edges,
-            vertex,
+            &env,
+            &mut meter,
+            &CornerAt {
+                edge,
+                faces: s.faces,
+                corner_edges,
+                vertex,
+            },
             points,
             s.convex,
-            tol,
-            m.precision().check_samples,
-            &mut meter,
         );
         (s, corner_edges, points, trims)
     }

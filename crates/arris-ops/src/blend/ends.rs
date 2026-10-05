@@ -11,6 +11,7 @@ use arris_geom::{
 use arris_math::{Aabb, Interval, Meter, Point2, Point3, Tolerance, Vec3, shift_into_range};
 use arris_topo::{EdgeId, FaceId, Model, Orientation, VertexId};
 
+use super::build::Env;
 use super::chain::{cusp_at, parameter_at};
 use super::corner::Corner;
 use super::miter::Miter;
@@ -200,18 +201,17 @@ pub(super) type Fan = (Vec<FaceId>, Vec<EdgeId>);
 /// curve, between two faces, and of the blend's sense — `convex` — and
 /// every extra is met once by the walk, no face twice. `None` at any other
 /// star: the face across met twice among them (`twice_at`).
-#[allow(clippy::too_many_arguments)]
 pub(super) fn fan_at(
-    m: &Model,
-    view: &BodyView,
+    env: &Env<'_>,
     faces: [FaceId; 2],
     corners: [EdgeId; 2],
     extras_at: &BTreeSet<EdgeId>,
     vertex: VertexId,
-    size: f64,
     convex: Option<bool>,
-    tol: Tolerance,
 ) -> Result<Option<Fan>, OpError> {
+    let (m, view) = (env.m, env.view);
+    let tol = env.tol;
+    let size = env.kind.size();
     let two_faces = |x: EdgeId| -> Option<[FaceId; 2]> {
         match view.uses.get(&x).map(Vec::as_slice) {
             Some(&[a, b]) if a.face != b.face => Some([a.face, b.face]),
@@ -272,17 +272,16 @@ pub(super) fn fan_at(
 /// through the star from `corners[0]` in `A`: an extra edge, the third
 /// face across it, the other extra edge, `A` again, `corners[1]`. `None` at
 /// any other star.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn twice_at(
-    m: &Model,
-    view: &BodyView,
+    env: &Env<'_>,
     faces: [FaceId; 2],
     corners: [EdgeId; 2],
     extras_at: &BTreeSet<EdgeId>,
     vertex: VertexId,
-    size: f64,
-    tol: Tolerance,
 ) -> Result<Option<FaceId>, OpError> {
+    let (m, view) = (env.m, env.view);
+    let tol = env.tol;
+    let size = env.kind.size();
     let two_faces = |x: EdgeId| -> Option<[FaceId; 2]> {
         match view.uses.get(&x).map(Vec::as_slice) {
             Some(&[a, b]) if a.face != b.face => Some([a.face, b.face]),
@@ -343,17 +342,16 @@ pub(super) fn twice_at(
 /// on through — an overhang tip, the next edge turning back with no cusp,
 /// itself a tangent dihedral — it is `Reason::TangentChain` naming the
 /// edge, that corner edge and the vertex (ADR-0035 §6).
-#[allow(clippy::too_many_arguments)]
 pub(super) fn corner_of(
-    m: &Model,
-    view: &BodyView,
+    env: &Env<'_>,
     edge: EdgeId,
     uses: &[UseAt; 2],
     vertex: VertexId,
     at_lo: bool,
-    size: f64,
-    tol: Tolerance,
 ) -> Result<CornerAt, OpError> {
+    let (m, view) = (env.m, env.view);
+    let tol = env.tol;
+    let size = env.kind.size();
     let e = forward(edge);
     let v = forward(vertex);
     let vertex_blend = || degenerate(vec![e, v], Reason::VertexBlend);
@@ -385,17 +383,7 @@ pub(super) fn corner_of(
     if at_vertex.len() > 3 {
         let extras_at: BTreeSet<EdgeId> = at_vertex.difference(&three).copied().collect();
         let convex = view.convex(m, edge)?;
-        let fan = fan_at(
-            m,
-            view,
-            faces,
-            corner_edges,
-            &extras_at,
-            vertex,
-            size,
-            convex,
-            tol,
-        )?;
+        let fan = fan_at(env, faces, corner_edges, &extras_at, vertex, convex)?;
         if let Some((pieces, extras)) = fan {
             return Ok(CornerAt {
                 edges: corner_edges,
@@ -405,8 +393,8 @@ pub(super) fn corner_of(
                 spine: None,
             });
         }
-        let across = twice_at(m, view, faces, corner_edges, &extras_at, vertex, size, tol)?
-            .ok_or_else(vertex_blend)?;
+        let across =
+            twice_at(env, faces, corner_edges, &extras_at, vertex)?.ok_or_else(vertex_blend)?;
         return Ok(CornerAt {
             edges: corner_edges,
             pieces: vec![across],
@@ -706,22 +694,21 @@ pub(super) fn stretch_between(
 /// cut (`cusp_trims`, ADR-0042). A pierce or a section that does not
 /// decide the end is `Unsupported` naming the blend and the face across.
 pub(super) fn face_end(
-    m: &Model,
-    view: &BodyView,
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
     s: &Stripe,
     at_lo: bool,
-    tol: Tolerance,
-    samples: usize,
-    meter: &mut Meter<'_>,
 ) -> Result<End, OpError> {
+    let (m, view) = (env.m, env.view);
+    let (tol, samples) = (env.tol, env.samples);
     meter.tick()?;
     let (edge, d) = (s.edge, s.d);
     let e = forward(edge);
     let vertex = if at_lo { s.start } else { s.end };
     let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
-    let mut corner = corner_of(m, view, edge, &s.uses, vertex, at_lo, s.size, tol)?;
+    let mut corner = corner_of(env, edge, &s.uses, vertex, at_lo)?;
     if corner.pieces.len() > 1 {
-        return fan_end(m, view, s, vertex, &corner, tol, samples, meter);
+        return fan_end(env, meter, s, vertex, &corner);
     }
     let stays = std::mem::take(&mut corner.stays);
     let (corner_edges, face3, spine) = corner.lone(edge, vertex)?;
@@ -901,17 +888,16 @@ pub(super) fn face_end(
     let corner = match spine {
         Some(_) => cusp_trims(m, edge, corner_edges, vertex, points)?,
         None => mixed::corner_trims(
-            m,
-            view,
-            edge,
-            s.faces,
-            corner_edges,
-            vertex,
+            env,
+            meter,
+            &mixed::CornerAt {
+                edge,
+                faces: s.faces,
+                corner_edges,
+                vertex,
+            },
             points,
             s.convex,
-            tol,
-            samples,
-            meter,
         )?,
     };
     let trims = corner.trims;
@@ -1002,17 +988,15 @@ pub(super) fn face_end(
 /// extra edge — none on the band within its range, more than one, or at
 /// its far vertex — a corner edge shorter than its trim, and an arc
 /// leaving its piece are `Reason::BlendTooLarge`.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn fan_end(
-    m: &Model,
-    view: &BodyView,
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
     s: &Stripe,
     vertex: VertexId,
     corner: &CornerAt,
-    tol: Tolerance,
-    samples: usize,
-    meter: &mut Meter<'_>,
 ) -> Result<End, OpError> {
+    let (m, view) = (env.m, env.view);
+    let (tol, samples) = (env.tol, env.samples);
     let (edge, d) = (s.edge, s.d);
     let e = forward(edge);
     let k = corner.pieces.len();

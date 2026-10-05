@@ -160,10 +160,8 @@ fn golden(f: impl Fn(f64) -> f64, mut a: f64, mut b: f64) -> f64 {
 /// get under the fraction, no single stretch of one branch or tube
 /// circle holds both points within `tol.linear` on the stripe's side, or
 /// the two points are one; a stop is the caller's.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn traced_end(
-    blend: &Surface,
-    across: &Surface,
+    surfaces: [&Surface; 2],
     points: [Point3; 2],
     within: &Aabb,
     inside: &dyn Fn(Point3) -> Result<bool, OpError>,
@@ -172,6 +170,7 @@ pub(super) fn traced_end(
     meter: &mut Meter<'_>,
 ) -> Result<TracedEnd, OpError> {
     meter.tick()?;
+    let [blend, across] = surfaces;
     let trace = trace_section(blend, across, within, tol, meter).map_err(|e| match e {
         GeomError::DegenerateSection { .. } | GeomError::Unsupported { .. } => refuse(),
         other => fault_of(other),
@@ -356,8 +355,7 @@ mod tests {
                         .union(Aabb::of_point(points[1]))
                         .inflated(2.0 * r);
                     let end = traced_end(
-                        &blend,
-                        &across,
+                        [&blend, &across],
                         points,
                         &within,
                         &inside,
@@ -420,8 +418,7 @@ mod tests {
                     .union(Aabb::of_point(points[1]))
                     .inflated(2.0 * r);
                 let end = traced_end(
-                    &blend,
-                    &across,
+                    [&blend, &across],
                     points,
                     &within,
                     &inside,
@@ -486,8 +483,7 @@ mod tests {
                     .union(Aabb::of_point(points[1]))
                     .inflated(2.0 * r);
                 let end = traced_end(
-                    &blend,
-                    &across,
+                    [&blend, &across],
                     points,
                     &within,
                     &inside,
@@ -523,8 +519,7 @@ mod tests {
         let within = Aabb::of_point(points[0]).inflated(2.0);
         let inside = |_: Point3| -> Result<bool, OpError> { Ok(true) };
         let err = traced_end(
-            &blend,
-            &across,
+            [&blend, &across],
             points,
             &within,
             &inside,

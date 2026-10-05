@@ -174,6 +174,20 @@ impl<'a, 'b> BlendCtx<'a, 'b> {
         })
     }
 
+    /// The read-only environment and the meter, split so a phase holds both.
+    pub(super) fn split(&mut self) -> (Env<'_>, &mut Meter<'b>) {
+        (
+            Env {
+                m: &*self.m,
+                view: &self.view,
+                kind: self.kind,
+                tol: self.tol,
+                samples: self.samples,
+            },
+            &mut *self.meter,
+        )
+    }
+
     /// The fields a phase uses, split so each borrows on its own.
     fn parts(
         &mut self,
@@ -204,6 +218,18 @@ type Rederived = BTreeMap<(EdgeId, Curve2Id), Curve2Id>;
 
 /// The blended edges at each vertex.
 type AtVertex = BTreeMap<VertexId, Vec<EdgeId>>;
+
+/// What a phase reads without changing it: the model, the body's view, the
+/// kind of blend and the model's tolerance and sample count. `Copy`, so a
+/// phase takes it beside the meter it polls.
+#[derive(Clone, Copy)]
+pub(super) struct Env<'a> {
+    pub(super) m: &'a Model,
+    pub(super) view: &'a BodyView,
+    pub(super) kind: Kind,
+    pub(super) tol: Tolerance,
+    pub(super) samples: usize,
+}
 
 /// The chained edges sorted by what builds them.
 struct Classified {
@@ -288,7 +314,10 @@ fn classify(
     body: Body,
     edges: &[EdgeId],
 ) -> Result<Classified, OpError> {
-    let (m, view, kind, tol, samples, meter) = ctx.parts();
+    let (env, meter) = ctx.split();
+    let Env {
+        m, view, kind, tol, ..
+    } = env;
     // The named edges and every edge their chains run on into, in the
     // body's order.
     let reached = chain(m, view, edges, kind.size(), tol, meter)?;
@@ -309,7 +338,7 @@ fn classify(
         let entity = *m.edge(e)?;
         match entity.curve() {
             Some(_) if entity.start() == entity.end() => {
-                rings.push(ring(m, view, e, kind, &no_junctions, tol, samples, meter)?);
+                rings.push(ring(&env, meter, e, &no_junctions)?);
             }
             Some((curve, _)) if matches!(m.curve(curve)?, Curve::Circle { .. }) => {
                 arcs.push(e);
@@ -327,7 +356,10 @@ fn vertex_joins(
     arcs: &[EdgeId],
     rings: &mut Vec<Ring>,
 ) -> Result<(AtVertex, BTreeSet<VertexId>), OpError> {
-    let (m, view, kind, tol, samples, meter) = ctx.parts();
+    let (env, meter) = ctx.split();
+    let Env {
+        m, view, kind, tol, ..
+    } = env;
     let edges = open;
     // The blended edges at each vertex: two at a tangent vertex meet in a
     // junction, two elsewhere in a miter, three in a corner, and more at a
@@ -365,7 +397,7 @@ fn vertex_joins(
         }
     }
     for &e in arcs {
-        rings.push(ring(m, view, e, kind, &junctions, tol, samples, meter)?);
+        rings.push(ring(&env, meter, e, &junctions)?);
     }
     at_vertex.retain(|v, es| junctions.contains(v) || !es.iter().any(|e| arcs.contains(e)));
     Ok((at_vertex, junctions))
@@ -392,7 +424,8 @@ fn join_blends(
     at_vertex: &AtVertex,
     junctions: &BTreeSet<VertexId>,
 ) -> Result<Joins, OpError> {
-    let (m, view, _, tol, samples, meter) = ctx.parts();
+    let (env, meter) = ctx.split();
+    let Env { m, view, tol, .. } = env;
     let edges = open;
     let index_of: BTreeMap<EdgeId, usize> =
         edges.iter().enumerate().map(|(i, &e)| (e, i)).collect();
@@ -417,29 +450,24 @@ fn join_blends(
             [ea, eb] => {
                 miter_at.insert(v, miters.len());
                 miters.push(miter(
-                    m,
-                    view,
+                    &env,
+                    meter,
                     &stripes[index_of[&ea]],
                     &stripes[index_of[&eb]],
                     v,
-                    tol,
-                    samples,
-                    meter,
                 )?);
             }
             [ea, eb, ec] => {
                 corner_at.insert(v, corners.len());
                 corners.push(corner(
-                    m,
-                    view,
+                    &env,
+                    meter,
                     [
                         &stripes[index_of[&ea]],
                         &stripes[index_of[&eb]],
                         &stripes[index_of[&ec]],
                     ],
                     v,
-                    tol,
-                    meter,
                 )?);
             }
             _ => {}
@@ -459,7 +487,10 @@ fn make_blends(
     stripes: Vec<Stripe>,
     joins: &Joins,
 ) -> Result<Vec<Blend>, OpError> {
-    let (m, view, _, tol, samples, meter) = ctx.parts();
+    let (env, meter) = ctx.split();
+    let Env {
+        m, tol, samples, ..
+    } = env;
     let Joins {
         miters,
         miter_at,
@@ -484,9 +515,7 @@ fn make_blends(
                         .position(|&e| e == s.edge)
                         .ok_or(invariant("a corner's own blend"))?,
                 },
-                (None, None) => {
-                    EndKind::Face(Box::new(face_end(m, view, &s, at_lo, tol, samples, meter)?))
-                }
+                (None, None) => EndKind::Face(Box::new(face_end(&env, meter, &s, at_lo)?)),
             });
         }
         let ends: [EndKind; 2] = ends

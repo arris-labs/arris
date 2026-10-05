@@ -8,15 +8,16 @@ use arris_geom::{Curve, Curve2, GeomKind, SurfaceKind, pcurve_on};
 use arris_math::{
     Frame, Interval, Meter, Point3, Tolerance, UnitVec3, Vec3, shift_into_range, wrap_angle,
 };
-use arris_topo::{EdgeId, FaceId, Model, VertexId};
+use arris_topo::entity::Edge;
+use arris_topo::{EdgeId, FaceId, VertexId};
 
+use super::build::Env;
 use super::ends::Trim;
 use super::stripe::{
     Section, Stripe, arc_between, band_u, chord, line_origin, lines_cross, on_side_of_face,
     section_between,
 };
 use super::{degenerate, invariant};
-use crate::body_view::BodyView;
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -133,18 +134,152 @@ impl Miter {
 /// Blends not both convex or both concave, or edges that do not share
 /// exactly one face are `Reason::VertexBlend`; a third edge shorter than
 /// the cut is `Reason::BlendTooLarge`.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn miter(
-    m: &Model,
-    view: &BodyView,
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
     a: &Stripe,
     b: &Stripe,
     vertex: VertexId,
-    tol: Tolerance,
-    samples: usize,
-    meter: &mut Meter<'_>,
 ) -> Result<Miter, OpError> {
     meter.tick()?;
+    let tol = env.tol;
+    let rd = read_miter(env, a, b, vertex)?;
+    let MiterRead {
+        ka,
+        kb,
+        e3,
+        e3_entity,
+        q,
+        tqa,
+        tqb,
+        tpa,
+        tpb,
+        wide,
+        p3,
+        tolerance,
+        trim,
+        ..
+    } = rd;
+    let (curve, range, q_first, end, t_m) = miter_curve(env, a, b, vertex, &rd)?;
+    let arc_tol = Tolerance::new(tolerance, tol.angular);
+    let shared = [ka, kb];
+    let lo_first = shared.map(|k| q_first == (k == 0));
+    let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
+    for (i, s) in [a, b].into_iter().enumerate() {
+        let pcurve = pcurve_on(&curve, range, &s.surface, arc_tol, meter).map_err(fault_of)?;
+        on_blend.push(s.place(pcurve, range.lo(), if lo_first[i] { 0.0 } else { s.u1 }));
+    }
+    let on_blend: [Curve2; 2] = on_blend
+        .try_into()
+        .map_err(|_| invariant("the miter's two pcurves"))?;
+    let mut t = [[0.0; 2]; 2];
+    t[0][ka] = tqa;
+    t[0][1 - ka] = tpa;
+    t[1][kb] = tqb;
+    t[1][1 - kb] = tpb;
+    let end_tolerance = tolerance.max(e3_entity.tolerance());
+    let trim_arc = match (wide, t_m) {
+        (Some(w), Some(t_m)) => {
+            let narrow = 1 - w;
+            t[narrow][1 - shared[narrow]] = t_m;
+            let (ws, ns) = if w == 0 { (a, b) } else { (b, a) };
+            let face = ns.faces[1 - shared[narrow]];
+            let at = TrimAt {
+                wide: w,
+                face,
+                e3,
+                vertex,
+            };
+            Some(trim_arc(
+                env,
+                meter,
+                [ws, ns],
+                &at,
+                [end, p3],
+                end_tolerance,
+            )?)
+        }
+        (Some(_), None) | (None, Some(_)) => {
+            return Err(invariant("a trim arc where the dihedrals differ"));
+        }
+        (None, None) => None,
+    };
+    Ok(Miter {
+        edges: [a.edge, b.edge],
+        shared,
+        t,
+        q,
+        p3: end,
+        curve,
+        range,
+        q_first,
+        lo_first,
+        on_blend,
+        trim: Some(trim),
+        q_trim: None,
+        trim_arc,
+        tolerance,
+        q_tolerance: tolerance,
+        p3_tolerance: if wide.is_some() {
+            tolerance
+        } else {
+            end_tolerance
+        },
+    })
+}
+
+/// What a miter reads of its two stripes and the third edge: the shared
+/// face's contacts crossing, the far contacts meeting the third edge and
+/// where it is cut.
+struct MiterRead {
+    /// The index of the shared face in each stripe's faces.
+    ka: usize,
+    kb: usize,
+    e3: EdgeId,
+    e3_entity: Edge,
+    q: Point3,
+    tqa: f64,
+    tqb: f64,
+    tpa: f64,
+    tpb: f64,
+    wide: Option<usize>,
+    p3: Point3,
+    tolerance: f64,
+    trim: Trim,
+}
+
+/// Where the lines `o1 + t d1` and `o2 + t d2` cross: the midpoint of
+/// their nearest points and each line's parameter there, or `None` where
+/// they do not meet; they must agree within `tolerance`.
+pub(super) fn cross_lines(
+    tol: Tolerance,
+    tolerance: f64,
+    o1: Point3,
+    d1: Vec3,
+    o2: Point3,
+    d2: Vec3,
+    what: &'static str,
+) -> Result<Option<(Point3, f64, f64)>, OpError> {
+    let Some((t1, t2)) = lines_cross(o1, d1, o2, d2, tol) else {
+        return Ok(None);
+    };
+    let (p1, p2) = (o1 + t1 * d1, o2 + t2 * d2);
+    if (p1 - p2).norm() > tolerance {
+        return Err(invariant(what));
+    }
+    Ok(Some((p1 + (p2 - p1) * 0.5, t1, t2)))
+}
+
+/// The two stripes' shared face, the third edge and where the miter
+/// meets it.
+fn read_miter(
+    env: &Env<'_>,
+    a: &Stripe,
+    b: &Stripe,
+    vertex: VertexId,
+) -> Result<MiterRead, OpError> {
+    let (m, view) = (env.m, env.view);
+    let tol = env.tol;
     let v = forward(vertex);
     let (ea, eb) = (forward(a.edge), forward(b.edge));
     let vertex_blend = || degenerate(vec![ea, eb, v], Reason::VertexBlend);
@@ -197,12 +332,7 @@ pub(super) fn miter(
     }
     let tolerance = a.tolerance.max(b.tolerance);
     let crossing = |o1: Point3, d1: Vec3, o2: Point3, d2: Vec3, what: &'static str| {
-        let (t1, t2) = lines_cross(o1, d1, o2, d2, tol).ok_or_else(vertex_blend)?;
-        let (p1, p2) = (o1 + t1 * d1, o2 + t2 * d2);
-        if (p1 - p2).norm() > tolerance {
-            return Err(invariant(what));
-        }
-        Ok((p1 + (p2 - p1) * 0.5, t1, t2))
+        cross_lines(tol, tolerance, o1, d1, o2, d2, what)?.ok_or_else(vertex_blend)
     };
     // Where the two contacts on the shared face cross.
     let (q, tqa, tqb) = crossing(
@@ -293,8 +423,47 @@ pub(super) fn miter(
         t: tc,
         cuts_lo,
     };
-    // The curve, and where it ends: `p3`, or `m` on the narrower blend's
-    // far contact with that contact's parameter there.
+    Ok(MiterRead {
+        ka,
+        kb,
+        e3,
+        e3_entity,
+        q,
+        tqa,
+        tqb,
+        tpa,
+        tpb,
+        wide,
+        p3,
+        tolerance,
+        trim,
+    })
+}
+
+/// The curve the two blends meet in, where it ends and the parameter of
+/// `m` on the narrower blend's far contact.
+fn miter_curve(
+    env: &Env<'_>,
+    a: &Stripe,
+    b: &Stripe,
+    vertex: VertexId,
+    rd: &MiterRead,
+) -> Result<MiterCurve, OpError> {
+    let tol = env.tol;
+    let MiterRead {
+        ka,
+        kb,
+        q,
+        wide,
+        p3,
+        tolerance,
+        ..
+    } = *rd;
+    let (ea, eb) = (forward(a.edge), forward(b.edge));
+    let vertex_blend = || degenerate(vec![ea, eb, forward(vertex)], Reason::VertexBlend);
+    let crossing = |o1: Point3, d1: Vec3, o2: Point3, d2: Vec3, what: &'static str| {
+        cross_lines(tol, tolerance, o1, d1, o2, d2, what)?.ok_or_else(vertex_blend)
+    };
     let (curve, range, q_first, end, t_m) = match (a.section, b.section) {
         (Section::Flat, Section::Flat) => {
             // Where the angles differ, `m`: the narrower chamfer's far
@@ -417,71 +586,22 @@ pub(super) fn miter(
             (curve, range, q_first, end, t_m)
         }
     };
-    let arc_tol = Tolerance::new(tolerance, tol.angular);
-    let shared = [ka, kb];
-    let lo_first = shared.map(|k| q_first == (k == 0));
-    let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
-    for (i, s) in [a, b].into_iter().enumerate() {
-        let pcurve = pcurve_on(&curve, range, &s.surface, arc_tol, meter).map_err(fault_of)?;
-        on_blend.push(s.place(pcurve, range.lo(), if lo_first[i] { 0.0 } else { s.u1 }));
-    }
-    let on_blend: [Curve2; 2] = on_blend
-        .try_into()
-        .map_err(|_| invariant("the miter's two pcurves"))?;
-    let mut t = [[0.0; 2]; 2];
-    t[0][ka] = tqa;
-    t[0][1 - ka] = tpa;
-    t[1][kb] = tqb;
-    t[1][1 - kb] = tpb;
-    let end_tolerance = tolerance.max(e3_entity.tolerance());
-    let trim_arc = match (wide, t_m) {
-        (Some(w), Some(t_m)) => {
-            let narrow = 1 - w;
-            t[narrow][1 - shared[narrow]] = t_m;
-            let (ws, ns) = if w == 0 { (a, b) } else { (b, a) };
-            let face = ns.faces[1 - shared[narrow]];
-            Some(trim_arc(
-                m,
-                view,
-                [ws, ns],
-                w,
-                face,
-                e3,
-                vertex,
-                [end, p3],
-                end_tolerance,
-                tol,
-                samples,
-                meter,
-            )?)
-        }
-        (Some(_), None) | (None, Some(_)) => {
-            return Err(invariant("a trim arc where the dihedrals differ"));
-        }
-        (None, None) => None,
-    };
-    Ok(Miter {
-        edges: [a.edge, b.edge],
-        shared,
-        t,
-        q,
-        p3: end,
-        curve,
-        range,
-        q_first,
-        lo_first,
-        on_blend,
-        trim: Some(trim),
-        q_trim: None,
-        trim_arc,
-        tolerance,
-        q_tolerance: tolerance,
-        p3_tolerance: if wide.is_some() {
-            tolerance
-        } else {
-            end_tolerance
-        },
-    })
+    Ok((curve, range, q_first, end, t_m))
+}
+
+/// A miter's curve, its range, whether `q` is first on it, its far end
+/// and the parameter of `m`.
+type MiterCurve = (Curve, Interval, bool, Point3, Option<f64>);
+
+/// Where a miter's trim arc is, [`trim_arc`]'s: the wider stripe's miter side
+/// `wide`, the narrower stripe's far `face`, the third edge `e3` and the
+/// miter's `vertex`.
+#[derive(Clone, Copy)]
+pub(super) struct TrimAt {
+    pub(super) wide: usize,
+    pub(super) face: FaceId,
+    pub(super) e3: EdgeId,
+    pub(super) vertex: VertexId,
 }
 
 /// The trim arc of a miter of unequal dihedrals (ADR-0044 §3): the
@@ -492,21 +612,22 @@ pub(super) fn miter(
 /// arc lies inside the face where the third edge is of the blends' sense;
 /// a third edge of the other sense is `Reason::VertexBlend`, and an arc
 /// leaving the face `Reason::BlendTooLarge`.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn trim_arc(
-    m: &Model,
-    view: &BodyView,
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
     stripes: [&Stripe; 2],
-    wide: usize,
-    face: FaceId,
-    e3: EdgeId,
-    vertex: VertexId,
+    at: &TrimAt,
     points: [Point3; 2],
     end_tolerance: f64,
-    tol: Tolerance,
-    samples: usize,
-    meter: &mut Meter<'_>,
 ) -> Result<TrimArc, OpError> {
+    let (m, view) = (env.m, env.view);
+    let (tol, samples) = (env.tol, env.samples);
+    let TrimAt {
+        wide,
+        face,
+        e3,
+        vertex,
+    } = *at;
     let [ws, ns] = stripes;
     let side = match view.convex(m, e3)? {
         Some(convex) if convex == ws.convex => Side::Inside,

@@ -208,10 +208,14 @@ and ignored tests.
     what `cancel_counts.txt` holds.
   - Test: `cancel` and `cancel_prop`, the blend corpus, `blend_prop` at
     the fast case count, `provenance_prop`.
-- [ ] Step 7 **[2]** — **`ring`, `miter`, `corner` and `face_end` in
+- [x] Step 7 **[2]** — **`ring`, `miter`, `corner` and `face_end` in
   phases over the same context.** No function in `blend/` is over 300
   lines, and none of `blend/` keeps
   `#[allow(clippy::too_many_arguments)]`. Same tests as step 6.
+  - Landed as `Env { m, view, kind, tol, samples }` (`Copy`, read-only) beside
+    the meter, split off `BlendCtx::split`: a phase that only reads takes
+    `(env, meter, …)`, so ring, miter, corner, face_end and the helpers
+    under them no longer thread six arguments.
 - [ ] Step 8 **[1]** — **`boolean/pave.rs` into `boolean/pave/`, a pure
   move.**
   - `mod.rs` (`Build` and its core);

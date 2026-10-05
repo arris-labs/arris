@@ -71,8 +71,6 @@ pub(super) struct Stripe {
     pub(super) faces: [FaceId; 2],
     /// The edge's use by each of those faces, in the same order.
     pub(super) uses: [UseAt; 2],
-    /// The fillet's radius or the chamfer's distance.
-    pub(super) size: f64,
     pub(super) tolerance: f64,
 }
 
@@ -194,6 +192,22 @@ pub(super) fn arc_between(t_a: f64, t_b: f64, t_mid: f64) -> Result<(Interval, b
         .map_err(|_| invariant("an end arc of positive length"))
 }
 
+/// The edge, the two faces and the ball [`ruling_ball`] fits: the edge
+/// through `origin` along `d`, the plane's and the cylinder's outward
+/// normals at it, the cylinder's `axis` and `big` radius, the ball's
+/// `radius` and the side `s` it is on.
+#[derive(Clone, Copy)]
+pub(super) struct RulingBall<'a> {
+    pub(super) origin: Point3,
+    pub(super) d: Vec3,
+    pub(super) n_plane: Vec3,
+    pub(super) n_cylinder: Vec3,
+    pub(super) axis: &'a Frame,
+    pub(super) big: f64,
+    pub(super) radius: f64,
+    pub(super) s: f64,
+}
+
 /// The ball of `radius` rolling along a line edge, through `origin` along
 /// `d`, between a plane of outward normal `n_plane` and a cylinder
 /// (`axis`, radius `big`) whose ruling the edge is, `n_cylinder` its
@@ -207,18 +221,17 @@ pub(super) fn arc_between(t_a: f64, t_b: f64, t_mid: f64) -> Result<(Interval, b
 /// the edge itself is on and the root follows from `r = 0`. `None` when
 /// no ball of `radius` touches both, the plane offset clear of the
 /// cylinder or the cylinder's offset at no radius.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn ruling_ball(
-    origin: Point3,
-    d: Vec3,
-    n_plane: Vec3,
-    n_cylinder: Vec3,
-    axis: &Frame,
-    big: f64,
-    radius: f64,
-    s: f64,
-    tol: Tolerance,
-) -> Option<(Point3, Vec3, Vec3)> {
+pub(super) fn ruling_ball(ball: &RulingBall<'_>, tol: Tolerance) -> Option<(Point3, Vec3, Vec3)> {
+    let RulingBall {
+        origin,
+        d,
+        n_plane,
+        n_cylinder,
+        axis,
+        big,
+        radius,
+        s,
+    } = *ball;
     // The axis's point level with the edge's origin, and the face's
     // normal against the axis's outward direction there.
     let axis_point = axis.origin() + (origin - axis.origin()).dot(&d) * d;
@@ -352,14 +365,16 @@ pub(super) fn stripe(
                 None => (origin + unit_offset * radius, [-s * n1, -s * n2]),
                 Some((k, axis, big)) => {
                     let (centre, on_plane, on_cylinder) = ruling_ball(
-                        origin,
-                        d,
-                        normals[1 - k],
-                        normals[k],
-                        &axis,
-                        big,
-                        radius,
-                        s,
+                        &RulingBall {
+                            origin,
+                            d,
+                            n_plane: normals[1 - k],
+                            n_cylinder: normals[k],
+                            axis: &axis,
+                            big,
+                            radius,
+                            s,
+                        },
                         tol,
                     )
                     .ok_or_else(|| {
@@ -435,7 +450,6 @@ pub(super) fn stripe(
         }),
         faces: by_u.map(|i| faces[i]),
         uses: by_u.map(|i| uses[i]),
-        size: kind.size(),
         tolerance,
     })
 }
@@ -534,7 +548,13 @@ pub(super) fn section_between(
         | (Surface::Cylinder { .. } | Surface::Cone { .. }, Section::Flat) => exact(meter),
         (Surface::Cylinder { .. } | Surface::Cone { .. }, Section::Round { .. }) => {
             traced::traced_end(
-                &s.surface, surface, points, &within, &band, refuse, tol, meter,
+                [&s.surface, surface],
+                points,
+                &within,
+                &band,
+                refuse,
+                tol,
+                meter,
             )
         }
         (

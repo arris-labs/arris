@@ -8,14 +8,16 @@ use arris_geom::{Curve, Curve2, GeomKind, Surface, pcurve_on};
 use arris_math::{
     Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, shift_into_range,
 };
-use arris_topo::{EdgeId, FaceId, Model, Orientation, VertexId};
+use arris_topo::entity::Edge;
+use arris_topo::{EdgeId, FaceId, Orientation, Shape, VertexId};
 
+use super::build::Env;
 use super::ends::{EndKind, LoneCorner, Trim, arc_end, at_cut_corner, corner_of, cusp_trims};
 use super::stripe::{chord, on_side_of_face, placed};
 use super::{Kind, degenerate, invariant};
 use super::{mixed, traced};
 use crate::body_view::tangent_normals;
-use crate::body_view::{BodyView, faces_tolerance};
+use crate::body_view::{UseAt, faces_tolerance};
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -418,18 +420,184 @@ impl Across {
 /// `Reason::BlendTooLarge`,
 /// as is a contact or an end that leaves its face or a seam or a corner
 /// edge shorter than the trim.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn ring(
-    m: &Model,
-    view: &BodyView,
-    edge: EdgeId,
-    kind: Kind,
-    junctions: &BTreeSet<VertexId>,
-    tol: Tolerance,
-    samples: usize,
+    env: &Env<'_>,
     meter: &mut Meter<'_>,
+    edge: EdgeId,
+    junctions: &BTreeSet<VertexId>,
 ) -> Result<Ring, OpError> {
     meter.tick()?;
+    let rd = read_ring(env, edge)?;
+    let sec = read_section(env, &rd)?;
+    let bl = blend_surface(env, &rd, &sec)?;
+    let placed = place_contacts(env, meter, &rd, &bl, junctions)?;
+    let ends = if rd.entity.start() != rd.entity.end() {
+        open_ends(env, meter, &rd, &bl, &placed)?
+    } else {
+        seam_end(env, meter, &rd, &bl, &placed)?
+    };
+    // The blend faces out of the material: the corner's outward direction
+    // at the start's half-plane against the surface's normal there.
+    let (v0, v1, x, z) = (bl.v0, bl.v1, bl.x, rd.z);
+    let (mer_a, mer_b) = (sec.mer_a, sec.mer_b);
+    let normal = bl
+        .surface
+        .normal(0.0, (v0 + v1) / 2.0)
+        .ok_or(invariant("a regular blend surface"))?;
+    let outward = |mer: &Meridian| mer.normal.x * x + mer.normal.y * z;
+    let orientation = if normal.dot(&(outward(&mer_a) + outward(&mer_b))) > 0.0 {
+        Orientation::Forward
+    } else {
+        Orientation::Reversed
+    };
+    Ok(Ring {
+        edge,
+        range: rd.range,
+        surface: bl.surface,
+        orientation,
+        convex: rd.convex,
+        centres: bl.centres,
+        contacts: placed.contacts,
+        ends,
+        tolerance: rd.tolerance,
+    })
+}
+
+/// What a ring's phases read off its edge, its two faces and their axis.
+#[derive(Clone, Copy)]
+struct RingRead<'a> {
+    edge: EdgeId,
+    e: Shape,
+    entity: Edge,
+    vertex: VertexId,
+    curve: &'a Curve,
+    range: Interval,
+    mid: f64,
+    uses: &'a [UseAt],
+    faces: [FaceId; 2],
+    surfaces: [&'a Surface; 2],
+    /// Each face's axis frame: `None` for a plane.
+    curved: [Option<Frame>; 2],
+    axis: Frame,
+    k: usize,
+    rim: Frame,
+    rim_radius: f64,
+    tolerance: f64,
+    z: Vec3,
+    normals: [Vec3; 2],
+    convex: bool,
+    s: f64,
+}
+
+impl RingRead<'_> {
+    /// The refusal for a pair the meridian row does not hold.
+    fn unsupported(&self) -> OpError {
+        OpError::Unsupported {
+            a: (
+                GeomKind::Surface(self.surfaces[0].kind()),
+                forward(self.faces[0]),
+            ),
+            b: (
+                GeomKind::Surface(self.surfaces[1].kind()),
+                forward(self.faces[1]),
+            ),
+        }
+    }
+
+    /// The unit direction from the edge's centre to its point at `t`.
+    fn radial_at(&self, tol: Tolerance, t: f64) -> Result<Vec3, OpError> {
+        UnitVec3::try_new(self.curve.point(t) - self.rim.origin(), tol.linear)
+            .map(UnitVec3::into_inner)
+            .ok_or(invariant("a circular edge off its axis"))
+    }
+}
+
+/// The edge's faces in the half-plane through the axis: each face's
+/// meridian and how they meet.
+#[derive(Clone, Copy)]
+struct Section {
+    mer_a: Meridian,
+    mer_b: Meridian,
+    corner: Vec2,
+    lines: bool,
+    d_a: Vec2,
+    d_b: Vec2,
+    edge_at: Vec2,
+}
+
+/// The blend's surface, its contacts in the section and the parameters
+/// they sit at.
+struct Blended {
+    surface: Surface,
+    on_a: Curve,
+    on_b: Curve,
+    v_a: f64,
+    v_b: f64,
+    /// The lower and the upper of `v_a`, `v_b`.
+    v0: f64,
+    v1: f64,
+    centres: Option<Curve>,
+    x: Vec3,
+}
+
+impl Blended {
+    /// The blend's section through the axis at the radial direction `w`:
+    /// the tube circle there, or the ruling between the contacts' points
+    /// `ends`, from the lower contact to the upper.
+    fn section(
+        &self,
+        rd: &RingRead<'_>,
+        tol: Tolerance,
+        w: Vec3,
+        ends: [Point3; 2],
+    ) -> Result<(Curve, Interval), OpError> {
+        let (z, v0, v1) = (rd.z, self.v0, self.v1);
+        match self.surface {
+            Surface::Torus {
+                frame,
+                major_radius,
+                minor_radius,
+            } => Ok((
+                Curve::Circle {
+                    frame: Frame::new(frame.origin() + major_radius * w, w.cross(&z), w)?,
+                    radius: minor_radius,
+                },
+                Interval::new(v0, v1).map_err(|_| invariant("a quarter of the tube"))?,
+            )),
+            Surface::Plane { .. }
+            | Surface::Cylinder { .. }
+            | Surface::EllipticCylinder { .. }
+            | Surface::Cone { .. }
+            | Surface::Sphere { .. }
+            | Surface::Nurbs(_) => chord(ends[0], ends[1], tol),
+        }
+    }
+}
+
+/// The contacts placed on their faces and the blend, and what each open
+/// end reads of its corner.
+struct Placed {
+    contacts: [RingContact; 2],
+    corners: [Option<LoneCorner>; 2],
+    across: [Option<Across>; 2],
+    /// Whether the second face's contact is at the lower `v`.
+    swapped: bool,
+}
+
+/// One open end of the ring: its slot, its vertex and the corner it meets.
+struct EndAt {
+    j: usize,
+    at_lo: bool,
+    vertex: VertexId,
+    corner_edges: [EdgeId; 2],
+    across_face: FaceId,
+    spine: Option<usize>,
+}
+
+/// The edge, its faces and the frame of their axis.
+fn read_ring<'a>(env: &Env<'a>, edge: EdgeId) -> Result<RingRead<'a>, OpError> {
+    let (m, view) = (env.m, env.view);
+    let (kind, tol) = (env.kind, env.tol);
     let e = forward(edge);
     let entity = *m.edge(edge)?;
     let vertex = entity.start();
@@ -520,6 +688,46 @@ pub(super) fn ring(
     let convex = n1.cross(&t1).dot(&n2) < 0.0;
     let s = if convex { -1.0 } else { 1.0 };
     let normals = [n1, n2];
+    Ok(RingRead {
+        edge,
+        e,
+        entity,
+        vertex,
+        curve,
+        range,
+        mid,
+        uses,
+        faces,
+        surfaces,
+        curved: [fa, fb],
+        axis,
+        k,
+        rim,
+        rim_radius,
+        tolerance,
+        z,
+        normals,
+        convex,
+        s,
+    })
+}
+
+/// Each face's meridian in the half-plane through the axis, and where they
+/// meet.
+fn read_section(env: &Env<'_>, rd: &RingRead<'_>) -> Result<Section, OpError> {
+    let tol = env.tol;
+    let RingRead {
+        curve,
+        mid,
+        surfaces,
+        axis,
+        rim,
+        rim_radius,
+        z,
+        normals,
+        s,
+        ..
+    } = *rd;
     let radial_at = |t: f64| -> Result<Vec3, OpError> {
         UnitVec3::try_new(curve.point(t) - rim.origin(), tol.linear)
             .map(UnitVec3::into_inner)
@@ -614,6 +822,44 @@ pub(super) fn ring(
     // normal reads `s`.
     let d_a = mer_a.inward(&mer_b, s);
     let d_b = mer_b.inward(&mer_a, s);
+    Ok(Section {
+        mer_a,
+        mer_b,
+        corner,
+        lines,
+        d_a,
+        d_b,
+        edge_at,
+    })
+}
+
+/// The blend surface, by the kind of blend, and its contacts in the
+/// section.
+fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blended, OpError> {
+    let (kind, tol) = (env.kind, env.tol);
+    let RingRead {
+        e,
+        range,
+        faces,
+        k,
+        rim,
+        tolerance,
+        z,
+        s,
+        ..
+    } = *rd;
+    let Section {
+        mer_a,
+        mer_b,
+        corner,
+        lines,
+        d_a,
+        d_b,
+        edge_at,
+        ..
+    } = *sec;
+    let radial_at = |t: f64| rd.radial_at(tol, t);
+    let unsupported = || rd.unsupported();
     let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
     // The ball's centre is `r` off both meridians on the ball's side, each
     // fillet contact the foot of it on its meridian; a chamfer's contacts
@@ -744,6 +990,50 @@ pub(super) fn ring(
     };
     let on_a = circle(on_a)?;
     let on_b = circle(on_b)?;
+    Ok(Blended {
+        surface,
+        on_a,
+        on_b,
+        v_a,
+        v_b,
+        v0: v_a.min(v_b),
+        v1: v_a.max(v_b),
+        centres,
+        x,
+    })
+}
+
+/// The open arc's corners, each contact's end parameters and the contacts
+/// themselves, on their faces and the blend.
+fn place_contacts(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    rd: &RingRead<'_>,
+    bl: &Blended,
+    junctions: &BTreeSet<VertexId>,
+) -> Result<Placed, OpError> {
+    let m = env.m;
+    let (tol, samples) = (env.tol, env.samples);
+    let RingRead {
+        e,
+        range,
+        mid,
+        edge,
+        entity,
+        curve,
+        uses,
+        faces,
+        rim,
+        tolerance,
+        z,
+        curved: [fa, fb],
+        ..
+    } = *rd;
+    let (v_a, v_b) = (bl.v_a, bl.v_b);
+    let surface = &bl.surface;
+    let on_a = bl.on_a.clone();
+    let on_b = bl.on_b.clone();
+    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
     let line_tol = Tolerance::new(tolerance, tol.angular);
     let geometry = fault_of;
     // A curved face's own `(u, v)` at the edge's start, which its
@@ -762,8 +1052,6 @@ pub(super) fn ring(
     if swapped {
         by_v.swap(0, 1);
     }
-    // The contact's slot, by the face it is on.
-    let slot_of = |i: usize| if swapped { 1 - i } else { i };
     // An open arc's corners, read before its contacts as a stripe's are:
     // an end at a tangent corner edge that is no junction is
     // `Reason::TangentChain`, whatever the contacts do beside it.
@@ -781,19 +1069,8 @@ pub(super) fn ring(
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
             if !junctions.contains(&vertex) {
-                corners[j] = Some(
-                    corner_of(
-                        m,
-                        view,
-                        edge,
-                        &contact_uses,
-                        vertex,
-                        at_lo,
-                        kind.size(),
-                        tol,
-                    )?
-                    .lone(edge, vertex)?,
-                );
+                corners[j] =
+                    Some(corner_of(env, edge, &contact_uses, vertex, at_lo)?.lone(edge, vertex)?);
             }
         }
     }
@@ -862,7 +1139,7 @@ pub(super) fn ring(
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
             return Err(too_large(face));
         }
-        let on_blend = pcurve_on(&contact, range, &surface, line_tol, meter).map_err(geometry)?;
+        let on_blend = pcurve_on(&contact, range, surface, line_tol, meter).map_err(geometry)?;
         let along_u = on_blend.point(mid).x > on_blend.point(range.lo()).x;
         let target = Point2::new(if along_u { 0.0 } else { TAU }, v);
         contacts.push(RingContact {
@@ -878,318 +1155,361 @@ pub(super) fn ring(
     let contacts: [RingContact; 2] = contacts
         .try_into()
         .map_err(|_| invariant("two contacts of the blend"))?;
-    let (v0, v1) = (v_a.min(v_b), v_a.max(v_b));
-    // The blend's section through the axis at the radial direction `w`:
-    // the tube circle there, or the ruling between the contacts' points
-    // `ends`, from the lower contact to the upper.
-    let section = |w: Vec3, ends: [Point3; 2]| -> Result<(Curve, Interval), OpError> {
-        match surface {
-            Surface::Torus {
-                frame,
-                major_radius,
-                minor_radius,
-            } => Ok((
-                Curve::Circle {
-                    frame: Frame::new(frame.origin() + major_radius * w, w.cross(&z), w)?,
-                    radius: minor_radius,
-                },
-                Interval::new(v0, v1).map_err(|_| invariant("a quarter of the tube"))?,
-            )),
-            Surface::Plane { .. }
-            | Surface::Cylinder { .. }
-            | Surface::EllipticCylinder { .. }
-            | Surface::Cone { .. }
-            | Surface::Sphere { .. }
-            | Surface::Nurbs(_) => chord(ends[0], ends[1], tol),
-        }
-    };
-    let ends = if !open {
-        // The vertex's other edges: each curved face's seam, used twice by
-        // it, one seam to a curved face.
-        let at_vertex = view
-            .vertex_edges
-            .get(&vertex)
-            .ok_or(invariant("the closed edge's vertex's edges"))?;
-        let others: Vec<EdgeId> = at_vertex.iter().copied().filter(|&x| x != edge).collect();
-        if others.len() != [fa, fb].iter().flatten().count() {
+    Ok(Placed {
+        contacts,
+        corners,
+        across,
+        swapped,
+    })
+}
+
+/// A closed edge's blend: its seam, and each curved face's seam cut to its
+/// contact.
+fn seam_end(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    rd: &RingRead<'_>,
+    bl: &Blended,
+    placed: &Placed,
+) -> Result<RingEnds, OpError> {
+    let (m, view) = (env.m, env.view);
+    let tol = env.tol;
+    let RingRead {
+        faces,
+        edge,
+        e,
+        vertex,
+        tolerance,
+        curved: [fa, fb],
+        ..
+    } = *rd;
+    let (v0, x) = (bl.v0, bl.x);
+    let surface = &bl.surface;
+    let contacts = &placed.contacts;
+    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
+    let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
+    let swapped = placed.swapped;
+    let slot_of = |i: usize| if swapped { 1 - i } else { i };
+    let line_tol = Tolerance::new(tolerance, tol.angular);
+    let geometry = fault_of;
+    let section = |w: Vec3, ends: [Point3; 2]| bl.section(rd, tol, w, ends);
+    // The vertex's other edges: each curved face's seam, used twice by
+    // it, one seam to a curved face.
+    let at_vertex = view
+        .vertex_edges
+        .get(&vertex)
+        .ok_or(invariant("the closed edge's vertex's edges"))?;
+    let others: Vec<EdgeId> = at_vertex.iter().copied().filter(|&x| x != edge).collect();
+    if others.len() != [fa, fb].iter().flatten().count() {
+        return Err(vertex_blend());
+    }
+    // The blend's seam: the section at `u = 0`, in the plane of `X`
+    // and `Z`.
+    let (seam_curve_new, seam_range) = section(x, [contacts[0].points[0], contacts[1].points[0]])?;
+    let seam_on =
+        pcurve_on(&seam_curve_new, seam_range, surface, line_tol, meter).map_err(geometry)?;
+    let seam_on_blend =
+        [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
+    // Each curved face's seam shortened to its contact.
+    let mut cuts: Vec<(Trim, usize)> = Vec::with_capacity(2);
+    let mut vertex_tolerance = tolerance;
+    let mut seen = [false; 2];
+    for seam in others {
+        let seam_uses = view.uses.get(&seam).ok_or(invariant("the seam's uses"))?;
+        let [su, sv] = seam_uses[..] else {
+            return Err(vertex_blend());
+        };
+        let Some(i) = (0..2).find(|&i| [fa, fb][i].is_some() && su.face == faces[i]) else {
+            return Err(vertex_blend());
+        };
+        if su.face != sv.face || std::mem::replace(&mut seen[i], true) {
             return Err(vertex_blend());
         }
-        // The blend's seam: the section at `u = 0`, in the plane of `X`
-        // and `Z`.
-        let (seam_curve_new, seam_range) =
-            section(x, [contacts[0].points[0], contacts[1].points[0]])?;
-        let seam_on =
-            pcurve_on(&seam_curve_new, seam_range, &surface, line_tol, meter).map_err(geometry)?;
-        let seam_on_blend =
-            [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
-        // Each curved face's seam shortened to its contact.
-        let mut cuts: Vec<(Trim, usize)> = Vec::with_capacity(2);
-        let mut vertex_tolerance = tolerance;
-        let mut seen = [false; 2];
-        for seam in others {
-            let seam_uses = view.uses.get(&seam).ok_or(invariant("the seam's uses"))?;
-            let [su, sv] = seam_uses[..] else {
-                return Err(vertex_blend());
-            };
-            let Some(i) = (0..2).find(|&i| [fa, fb][i].is_some() && su.face == faces[i]) else {
-                return Err(vertex_blend());
-            };
-            if su.face != sv.face || std::mem::replace(&mut seen[i], true) {
-                return Err(vertex_blend());
-            }
-            let seam_entity = *m.edge(seam)?;
-            let Some((seam_curve_id, seam_range0)) = seam_entity.curve() else {
-                return Err(vertex_blend());
-            };
-            let seam_curve = m.curve(seam_curve_id)?;
-            let slot = slot_of(i);
-            let cut_at = contacts[slot].points[0];
-            let projection = seam_curve.project(cut_at).map_err(geometry)?;
-            if projection.distance > seam_entity.tolerance().max(tolerance) {
-                return Err(invariant(
-                    "the curved face's seam through the contact's vertex",
-                ));
-            }
-            let Some(tc) = shift_into_range(seam_range0, projection.t, seam_curve.period()) else {
-                return Err(too_large(faces[i]));
-            };
-            let cuts_lo = seam_entity.start() == vertex;
-            let far = m.vertex(if cuts_lo {
-                seam_entity.end()
-            } else {
-                seam_entity.start()
-            })?;
-            let kept_length = if cuts_lo {
-                seam_range0.hi() - tc
-            } else {
-                tc - seam_range0.lo()
-            };
-            if kept_length <= 0.0 || (cut_at - far.point()).norm() <= far.tolerance() {
-                return Err(degenerate(vec![e, forward(seam)], Reason::BlendTooLarge));
-            }
-            vertex_tolerance = vertex_tolerance.max(seam_entity.tolerance());
-            cuts.push((
-                Trim {
-                    edge: seam,
-                    t: tc,
-                    cuts_lo,
-                },
-                slot,
+        let seam_entity = *m.edge(seam)?;
+        let Some((seam_curve_id, seam_range0)) = seam_entity.curve() else {
+            return Err(vertex_blend());
+        };
+        let seam_curve = m.curve(seam_curve_id)?;
+        let slot = slot_of(i);
+        let cut_at = contacts[slot].points[0];
+        let projection = seam_curve.project(cut_at).map_err(geometry)?;
+        if projection.distance > seam_entity.tolerance().max(tolerance) {
+            return Err(invariant(
+                "the curved face's seam through the contact's vertex",
             ));
         }
-        RingEnds::Seam(Box::new(RingSeam {
-            curve: seam_curve_new,
-            range: seam_range,
-            on_blend: seam_on_blend,
-            cuts,
-            vertex_tolerance,
-        }))
-    } else {
-        let mut ends: Vec<RingEnd> = Vec::with_capacity(2);
-        for (j, at_lo) in [(0, true), (1, false)] {
-            let vertex = if at_lo { entity.start() } else { entity.end() };
-            let Some((corner_edges, across_face, spine)) = corners[j] else {
-                ends.push(RingEnd::Junction(vertex));
-                continue;
-            };
-            let across_surface = m.surface(m.face(across_face)?.surface())?;
-            let t = if at_lo { range.lo() } else { range.hi() };
-            let points = [contacts[0].points[j], contacts[1].points[j]];
-            // The corner edges cut or lengthened to the trim points, and
-            // the side of the face across the end lies on (ADR-0038); at a
-            // cusp, `Q` checked on the spine first.
-            let corner = match spine {
-                Some(k) => {
-                    let spine_edge = corner_edges[k];
-                    let (curve, _) = m
-                        .edge(spine_edge)?
-                        .curve()
-                        .ok_or(invariant("the cusp's spine's curve"))?;
-                    let off = m.curve(curve)?.project(points[k]).map_err(geometry)?;
-                    if off.distance > m.edge(spine_edge)?.tolerance().max(tolerance) {
-                        return Err(degenerate(
-                            vec![e, forward(spine_edge), forward(vertex)],
-                            Reason::TangentChain,
-                        ));
-                    }
-                    cusp_trims(m, edge, corner_edges, vertex, points)?
-                }
-                None => mixed::corner_trims(
-                    m,
-                    view,
-                    edge,
-                    [contacts[0].face, contacts[1].face],
-                    corner_edges,
-                    vertex,
-                    points,
-                    convex,
-                    tol,
-                    samples,
-                    meter,
-                )?,
-            };
-            let trims = corner.trims;
-            let across_tolerance = m.face(across_face)?.tolerance();
-            let mut vertex_tolerance = [0.0; 2];
-            for c in 0..2 {
-                vertex_tolerance[c] = tolerance
-                    .max(m.edge(corner_edges[c])?.tolerance())
-                    .max(across_tolerance);
-            }
-            let end_tolerance = tolerance.max(across_tolerance);
-            let end_tol = Tolerance::new(end_tolerance, tol.angular);
-            let end = match across[j] {
-                // A plane through the axis is the half-plane at the
-                // vertex's angle, which meets the blend in its section
-                // there, exact.
-                Some(Across::Axis) => {
-                    let (curve, range) = section(radial_at(t)?, points)?;
-                    let on_face = pcurve_on(&curve, range, across_surface, end_tol, meter)
-                        .map_err(geometry)?;
-                    let on_blend =
-                        pcurve_on(&curve, range, &surface, end_tol, meter).map_err(geometry)?;
-                    // In the blend loop's translate: at the contacts' `u`
-                    // there.
-                    let u = contacts[0].on_blend.point(t).x;
-                    let on_blend = placed_uv(on_blend, range.lo(), Point2::new(u, v0));
-                    (curve, range, true, on_face, on_blend)
-                }
-                // Off the axis: the section of the blend's exact surface
-                // with the face across, traced, its stretch between the two
-                // trim points on the blend's band between its contacts
-                // fitted (ADR-0037).
-                Some(Across::Wall { .. } | Across::Post { .. }) => {
-                    let band = |p: Point3| -> Result<bool, OpError> {
-                        let v = surface.project(p).map_err(geometry)?.uv.y;
-                        Ok(match surface {
-                            Surface::Torus { minor_radius, .. } => {
-                                let slack = end_tolerance / minor_radius;
-                                let w = v0 + (v - v0).rem_euclid(TAU);
-                                w <= v1 + slack || w >= v0 + TAU - slack
-                            }
-                            Surface::Plane { .. }
-                            | Surface::Cylinder { .. }
-                            | Surface::EllipticCylinder { .. }
-                            | Surface::Cone { .. }
-                            | Surface::Sphere { .. }
-                            | Surface::Nurbs(_) => {
-                                v >= v0 - end_tolerance && v <= v1 + end_tolerance
-                            }
-                        })
-                    };
-                    let refuse = || OpError::Unsupported {
-                        a: (GeomKind::Surface(surface.kind()), e),
-                        b: (
-                            GeomKind::Surface(across_surface.kind()),
-                            forward(across_face),
-                        ),
-                    };
-                    // The stretch runs round the blend's section between
-                    // the two points, within its width of either.
-                    let width = match surface {
-                        Surface::Torus { minor_radius, .. } => 2.0 * minor_radius,
-                        Surface::Plane { .. }
-                        | Surface::Cylinder { .. }
-                        | Surface::EllipticCylinder { .. }
-                        | Surface::Cone { .. }
-                        | Surface::Sphere { .. }
-                        | Surface::Nurbs(_) => v1 - v0,
-                    };
-                    let within = Aabb::of_point(points[0])
-                        .union(Aabb::of_point(points[1]))
-                        .inflated(width);
-                    let traced = traced::traced_end(
-                        &surface,
-                        across_surface,
-                        points,
-                        &within,
-                        &band,
-                        &refuse,
-                        end_tol,
-                        meter,
-                    )?;
-                    for (held, gap) in vertex_tolerance.iter_mut().zip(traced.gaps) {
-                        *held = held.max(gap);
-                    }
-                    let (range, lo_first) = (traced.range, traced.lo_first);
-                    let first = arc_end(range, lo_first, 0);
-                    // On the face across in its loop's translate, at the
-                    // corner edge a contact cuts, never one lengthened
-                    // (ADR-0038 §4); on the blend at the first contact's
-                    // end.
-                    let c = usize::from(corner.lengthened == Some(0));
-                    let at_corner =
-                        at_cut_corner(m, view, across_face, corner_edges[c], trims[c].t)?;
-                    let on_face = pcurve_on(&traced.curve, range, across_surface, end_tol, meter)
-                        .map_err(geometry)?;
-                    let on_face = placed_uv(on_face, arc_end(range, lo_first, c), at_corner);
-                    let on_blend = pcurve_on(&traced.curve, range, &surface, end_tol, meter)
-                        .map_err(geometry)?;
-                    let at_contact = contacts[0].on_blend.point(contacts[0].range.lo());
-                    let at_contact = if at_lo {
-                        at_contact
-                    } else {
-                        contacts[0].on_blend.point(contacts[0].range.hi())
-                    };
-                    let on_blend = placed_uv(on_blend, first, at_contact);
-                    (traced.curve, range, lo_first, on_face, on_blend)
-                }
-                // Anything else meets a torus in a quartic no family
-                // holds.
-                None => {
-                    return Err(OpError::Unsupported {
-                        a: (GeomKind::Surface(surface.kind()), e),
-                        b: (
-                            GeomKind::Surface(across_surface.kind()),
-                            forward(across_face),
-                        ),
-                    });
-                }
-            };
-            let (end_curve, end_range, lo_first, on_face, on_blend) = end;
-            if !on_side_of_face(m, across_face, &on_face, end_range, corner.side, samples)? {
-                return Err(too_large(across_face));
-            }
-            ends.push(RingEnd::Face(Box::new(ArcEnd {
-                vertex,
-                face: across_face,
-                trims,
-                curve: end_curve,
-                range: end_range,
-                lo_first,
-                on_face,
-                on_blend,
-                tolerance: end_tolerance,
-                vertex_tolerance,
-            })));
+        let Some(tc) = shift_into_range(seam_range0, projection.t, seam_curve.period()) else {
+            return Err(too_large(faces[i]));
+        };
+        let cuts_lo = seam_entity.start() == vertex;
+        let far = m.vertex(if cuts_lo {
+            seam_entity.end()
+        } else {
+            seam_entity.start()
+        })?;
+        let kept_length = if cuts_lo {
+            seam_range0.hi() - tc
+        } else {
+            tc - seam_range0.lo()
+        };
+        if kept_length <= 0.0 || (cut_at - far.point()).norm() <= far.tolerance() {
+            return Err(degenerate(vec![e, forward(seam)], Reason::BlendTooLarge));
         }
-        let ends: [RingEnd; 2] = ends
-            .try_into()
-            .map_err(|_| invariant("two ends of the blend"))?;
-        RingEnds::Open(Box::new(ends))
-    };
-    // The blend faces out of the material: the corner's outward direction
-    // at the start's half-plane against the surface's normal there.
-    let normal = surface
-        .normal(0.0, (v0 + v1) / 2.0)
-        .ok_or(invariant("a regular blend surface"))?;
-    let outward = |mer: &Meridian| mer.normal.x * x + mer.normal.y * z;
-    let orientation = if normal.dot(&(outward(&mer_a) + outward(&mer_b))) > 0.0 {
-        Orientation::Forward
-    } else {
-        Orientation::Reversed
-    };
-    Ok(Ring {
-        edge,
+        vertex_tolerance = vertex_tolerance.max(seam_entity.tolerance());
+        cuts.push((
+            Trim {
+                edge: seam,
+                t: tc,
+                cuts_lo,
+            },
+            slot,
+        ));
+    }
+    Ok(RingEnds::Seam(Box::new(RingSeam {
+        curve: seam_curve_new,
+        range: seam_range,
+        on_blend: seam_on_blend,
+        cuts,
+        vertex_tolerance,
+    })))
+}
+
+/// An open arc's two ends: a junction at a tangent vertex, or the face
+/// across, each trimmed and fitted.
+fn open_ends(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    rd: &RingRead<'_>,
+    bl: &Blended,
+    placed: &Placed,
+) -> Result<RingEnds, OpError> {
+    let entity = rd.entity;
+    let range = rd.range;
+    let corners = placed.corners;
+    let mut ends: Vec<RingEnd> = Vec::with_capacity(2);
+    for (j, at_lo) in [(0, true), (1, false)] {
+        let vertex = if at_lo { entity.start() } else { entity.end() };
+        let Some((corner_edges, across_face, spine)) = corners[j] else {
+            ends.push(RingEnd::Junction(vertex));
+            continue;
+        };
+        let end = EndAt {
+            j,
+            at_lo,
+            vertex,
+            corner_edges,
+            across_face,
+            spine,
+        };
+        ends.push(face_end_of(env, meter, rd, bl, placed, &end)?);
+    }
+    let _ = range;
+    let ends: [RingEnd; 2] = ends
+        .try_into()
+        .map_err(|_| invariant("two ends of the blend"))?;
+    Ok(RingEnds::Open(Box::new(ends)))
+}
+
+/// The open arc's end at the face across: the corner edges cut or
+/// lengthened to the trim points, and the end's arc on both faces.
+fn face_end_of(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    rd: &RingRead<'_>,
+    bl: &Blended,
+    placed: &Placed,
+    end_at: &EndAt,
+) -> Result<RingEnd, OpError> {
+    let EndAt {
+        j,
+        at_lo,
+        vertex,
+        corner_edges,
+        across_face,
+        spine,
+    } = *end_at;
+    let (m, view) = (env.m, env.view);
+    let (tol, samples) = (env.tol, env.samples);
+    let RingRead {
         range,
-        surface,
-        orientation,
-        convex,
-        centres,
-        contacts,
-        ends,
+        edge,
+        e,
         tolerance,
-    })
+        convex,
+        ..
+    } = *rd;
+    let (v0, v1) = (bl.v0, bl.v1);
+    let surface = &bl.surface;
+    let contacts = &placed.contacts;
+    let across = placed.across;
+    let radial_at = |t: f64| rd.radial_at(tol, t);
+    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
+    let geometry = fault_of;
+    let section = |w: Vec3, ends: [Point3; 2]| bl.section(rd, tol, w, ends);
+    let across_surface = m.surface(m.face(across_face)?.surface())?;
+    let t = if at_lo { range.lo() } else { range.hi() };
+    let points = [contacts[0].points[j], contacts[1].points[j]];
+    // The corner edges cut or lengthened to the trim points, and
+    // the side of the face across the end lies on (ADR-0038); at a
+    // cusp, `Q` checked on the spine first.
+    let corner = match spine {
+        Some(k) => {
+            let spine_edge = corner_edges[k];
+            let (curve, _) = m
+                .edge(spine_edge)?
+                .curve()
+                .ok_or(invariant("the cusp's spine's curve"))?;
+            let off = m.curve(curve)?.project(points[k]).map_err(geometry)?;
+            if off.distance > m.edge(spine_edge)?.tolerance().max(tolerance) {
+                return Err(degenerate(
+                    vec![e, forward(spine_edge), forward(vertex)],
+                    Reason::TangentChain,
+                ));
+            }
+            cusp_trims(m, edge, corner_edges, vertex, points)?
+        }
+        None => mixed::corner_trims(
+            env,
+            meter,
+            &mixed::CornerAt {
+                edge,
+                faces: [contacts[0].face, contacts[1].face],
+                corner_edges,
+                vertex,
+            },
+            points,
+            convex,
+        )?,
+    };
+    let trims = corner.trims;
+    let across_tolerance = m.face(across_face)?.tolerance();
+    let mut vertex_tolerance = [0.0; 2];
+    for c in 0..2 {
+        vertex_tolerance[c] = tolerance
+            .max(m.edge(corner_edges[c])?.tolerance())
+            .max(across_tolerance);
+    }
+    let end_tolerance = tolerance.max(across_tolerance);
+    let end_tol = Tolerance::new(end_tolerance, tol.angular);
+    let end = match across[j] {
+        // A plane through the axis is the half-plane at the
+        // vertex's angle, which meets the blend in its section
+        // there, exact.
+        Some(Across::Axis) => {
+            let (curve, range) = section(radial_at(t)?, points)?;
+            let on_face =
+                pcurve_on(&curve, range, across_surface, end_tol, meter).map_err(geometry)?;
+            let on_blend = pcurve_on(&curve, range, surface, end_tol, meter).map_err(geometry)?;
+            // In the blend loop's translate: at the contacts' `u`
+            // there.
+            let u = contacts[0].on_blend.point(t).x;
+            let on_blend = placed_uv(on_blend, range.lo(), Point2::new(u, v0));
+            (curve, range, true, on_face, on_blend)
+        }
+        // Off the axis: the section of the blend's exact surface
+        // with the face across, traced, its stretch between the two
+        // trim points on the blend's band between its contacts
+        // fitted (ADR-0037).
+        Some(Across::Wall { .. } | Across::Post { .. }) => {
+            let band = |p: Point3| -> Result<bool, OpError> {
+                let v = surface.project(p).map_err(geometry)?.uv.y;
+                Ok(match surface {
+                    Surface::Torus { minor_radius, .. } => {
+                        let slack = end_tolerance / minor_radius;
+                        let w = v0 + (v - v0).rem_euclid(TAU);
+                        w <= v1 + slack || w >= v0 + TAU - slack
+                    }
+                    Surface::Plane { .. }
+                    | Surface::Cylinder { .. }
+                    | Surface::EllipticCylinder { .. }
+                    | Surface::Cone { .. }
+                    | Surface::Sphere { .. }
+                    | Surface::Nurbs(_) => v >= v0 - end_tolerance && v <= v1 + end_tolerance,
+                })
+            };
+            let refuse = || OpError::Unsupported {
+                a: (GeomKind::Surface(surface.kind()), e),
+                b: (
+                    GeomKind::Surface(across_surface.kind()),
+                    forward(across_face),
+                ),
+            };
+            // The stretch runs round the blend's section between
+            // the two points, within its width of either.
+            let width = match surface {
+                Surface::Torus { minor_radius, .. } => 2.0 * minor_radius,
+                Surface::Plane { .. }
+                | Surface::Cylinder { .. }
+                | Surface::EllipticCylinder { .. }
+                | Surface::Cone { .. }
+                | Surface::Sphere { .. }
+                | Surface::Nurbs(_) => v1 - v0,
+            };
+            let within = Aabb::of_point(points[0])
+                .union(Aabb::of_point(points[1]))
+                .inflated(width);
+            let traced = traced::traced_end(
+                [surface, across_surface],
+                points,
+                &within,
+                &band,
+                &refuse,
+                end_tol,
+                meter,
+            )?;
+            for (held, gap) in vertex_tolerance.iter_mut().zip(traced.gaps) {
+                *held = held.max(gap);
+            }
+            let (range, lo_first) = (traced.range, traced.lo_first);
+            let first = arc_end(range, lo_first, 0);
+            // On the face across in its loop's translate, at the
+            // corner edge a contact cuts, never one lengthened
+            // (ADR-0038 §4); on the blend at the first contact's
+            // end.
+            let c = usize::from(corner.lengthened == Some(0));
+            let at_corner = at_cut_corner(m, view, across_face, corner_edges[c], trims[c].t)?;
+            let on_face = pcurve_on(&traced.curve, range, across_surface, end_tol, meter)
+                .map_err(geometry)?;
+            let on_face = placed_uv(on_face, arc_end(range, lo_first, c), at_corner);
+            let on_blend =
+                pcurve_on(&traced.curve, range, surface, end_tol, meter).map_err(geometry)?;
+            let at_contact = contacts[0].on_blend.point(contacts[0].range.lo());
+            let at_contact = if at_lo {
+                at_contact
+            } else {
+                contacts[0].on_blend.point(contacts[0].range.hi())
+            };
+            let on_blend = placed_uv(on_blend, first, at_contact);
+            (traced.curve, range, lo_first, on_face, on_blend)
+        }
+        // Anything else meets a torus in a quartic no family
+        // holds.
+        None => {
+            return Err(OpError::Unsupported {
+                a: (GeomKind::Surface(surface.kind()), e),
+                b: (
+                    GeomKind::Surface(across_surface.kind()),
+                    forward(across_face),
+                ),
+            });
+        }
+    };
+    let (end_curve, end_range, lo_first, on_face, on_blend) = end;
+    if !on_side_of_face(m, across_face, &on_face, end_range, corner.side, samples)? {
+        return Err(too_large(across_face));
+    }
+    Ok(RingEnd::Face(Box::new(ArcEnd {
+        vertex,
+        face: across_face,
+        trims,
+        curve: end_curve,
+        range: end_range,
+        lo_first,
+        on_face,
+        on_blend,
+        tolerance: end_tolerance,
+        vertex_tolerance,
+    })))
 }
 
 /// The tolerance a face end's trim vertex carries: the largest of the
