@@ -1,0 +1,115 @@
+{
+  "description": "a 10-cube hollowed inward to a wall of t, open on top and on the front (y = 0), which share an edge: each opening's rim face is one loop, the two meeting along the old edge's ends, and the edge's middle, across the mouth, is in no face",
+  "params": {
+    "t": 2
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "box",
+      "openings": [
+        [
+          5,
+          5,
+          10
+        ],
+        [
+          5,
+          0,
+          5
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        1,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "cavity",
+      "point": [
+        5,
+        4,
+        6
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "mouth",
+      "point": [
+        5,
+        -0.5,
+        9
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_top_rim",
+      "point": [
+        1,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_front_rim",
+      "point": [
+        1,
+        0,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_inner_floor",
+      "point": [
+        5,
+        4,
+        "t"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "1000 - (10 - 2 * t) * (10 - t)^2",
+    "area": "600 + 2 * (10 - t)^2",
+    "centroid": [
+      5,
+      "(5000 - (10 - 2 * t) * (10 - t)^3 / 2) / (1000 - (10 - 2 * t) * (10 - t)^2)",
+      "(5000 - (10 - 2 * t) * (10 - t)^2 * (10 + t) / 2) / (1000 - (10 - 2 * t) * (10 - t)^2)"
+    ],
+    "counts": {
+      "vertices": 16,
+      "edges": 24,
+      "faces": 10,
+      "loops": 10,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

@@ -135,6 +135,18 @@ pub enum CorpusError {
         /// What it names instead of one face.
         what: String,
     },
+    /// A step names an operation Arris does not run yet: the recipe is
+    /// the oracle's and the fixture waits (`regression/`) for the plan
+    /// that adds the operation.
+    #[error("{fixture}: step {step:?}: {what}")]
+    Unsupported {
+        /// The fixture.
+        fixture: String,
+        /// The step's name.
+        step: String,
+        /// What is not run yet.
+        what: String,
+    },
     /// The recipe's `precision` is not a consistent
     /// `arris_math::Precision`, so no model could be created for it.
     #[error("{fixture}: precision: {source}")]
@@ -767,6 +779,7 @@ impl CorpusError {
             | CorpusError::Profile { .. }
             | CorpusError::EdgePoint { .. }
             | CorpusError::FacePoint { .. }
+            | CorpusError::Unsupported { .. }
             | CorpusError::Precision { .. }
             | CorpusError::Axis { .. }
             | CorpusError::Plane { .. }
@@ -1623,6 +1636,7 @@ impl Inputs {
             | Step::Fillet { .. }
             | Step::Chamfer { .. }
             | Step::Offset { .. }
+            | Step::Shell { .. }
             | Step::Polyhedron { .. }
             | Step::Read { .. } => return None,
         };
@@ -2028,6 +2042,11 @@ fn build_step(
                 vec![of_body],
             )
         }
+        Step::Shell { .. } => Err(CorpusError::Unsupported {
+            fixture: name.clone(),
+            step: step.name().to_string(),
+            what: "shell is not run by Arris yet (plans/shell step 2)".into(),
+        }),
         Step::Polyhedron {
             points,
             faces,

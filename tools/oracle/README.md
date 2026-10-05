@@ -53,7 +53,7 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
 
 - `oracle/recipe.py` — the recipe interpreter: `box`, `cylinder`, `profile`
   (lines, three-point arcs, circles, holes), `extrude`, `revolve`,
-  `transform`, `mirror`, `fuse`, `common`, `cut`, `fillet`, `chamfer` and `offset`
+  `transform`, `mirror`, `fuse`, `common`, `cut`, `fillet`, `chamfer`, `offset`, `shell`
   (`BRepFilletAPI_MakeFillet`, `MakeChamfer` with one distance, each edge
   the nearest to a recipe point by `BRepExtrema`, which must be
   the only edge within the fixture's `probe`; `offset` is
@@ -65,7 +65,13 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
   tried in a forked child first, and one Open CASCADE refuses or crashes on
   — a dragged face pulled clear of a fixed one kills the process — is
   recorded as the empty compound, no solid, for a fixture that expects
-  Arris's refusal, §6), and `step` (a solid of a
+  Arris's refusal, §6), `shell` (`BRepOffsetAPI_MakeThickSolid` by join,
+  the intersection join, the openings named by a point as `offset`'s faces
+  are and the thickness negated for an inward wall; with no openings,
+  which it answers with the offset solid alone, the closed void is built
+  as the body less its inward offset or its outward offset less the body,
+  `BRepOffsetAPI_MakeOffsetShape` and a cut; either tried in a forked child
+  as `offset` is, ADR-0049), and `step` (a solid of a
   STEP file beside the recipe, by `step.solids`, its SHA-256 checked),
   chained by step name; `params`
   with string expressions and `variants` overriding them. The grammar is

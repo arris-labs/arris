@@ -1,0 +1,86 @@
+{
+  "description": "a 10-cube hollowed inward to a wall of t with no opening: a closed void, the cube's faces the outer shell and a (10 - 2t) cube's faces, reversed, the inner one; Open CASCADE's thick solid answers a closed body with its offset alone, so the oracle is the cube less its inward offset",
+  "params": {
+    "t": 2
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "box",
+      "openings": [],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "void",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_wall",
+      "point": [
+        1,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_void",
+      "point": [
+        "t",
+        5,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_outer",
+      "point": [
+        0,
+        5,
+        5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "1000 - (10 - 2 * t)^3",
+    "area": "600 + 6 * (10 - 2 * t)^2",
+    "centroid": [
+      5,
+      5,
+      5
+    ],
+    "counts": {
+      "vertices": 16,
+      "edges": 24,
+      "faces": 12,
+      "loops": 12,
+      "shells": 2
+    },
+    "genus": 0
+  }
+}

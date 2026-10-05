@@ -1,0 +1,172 @@
+{
+  "description": "an extruded L (0,0)-(20,0)-(20,5)-(5,5)-(5,20)-(0,20), height 10, hollowed inward to a wall of t, open at the long arm's end (y = 20): the cavity an L offset t inside, its concave corner a sharp join, the end a rectangular ring",
+  "params": {
+    "t": 1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              20,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              20,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ell",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 10
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "ell",
+      "openings": [
+        [
+          2.5,
+          20,
+          5
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "cavity",
+      "point": [
+        2.5,
+        10,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_wall",
+      "point": [
+        0.5,
+        10,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "notch",
+      "point": [
+        15,
+        15,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_rim",
+      "point": [
+        0.5,
+        20,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_inner_wall",
+      "point": [
+        "t",
+        10,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_inner_corner",
+      "point": [
+        "5 - t",
+        "5 - t",
+        5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "(1750 - ((20 - 2 * t) * (5 - 2 * t) + (5 - 2 * t) * (15 + t)) * (10 - 2 * t))",
+    "area": "1100 + 2 * ((20 - 2 * t) * (5 - 2 * t) + (5 - 2 * t) * (15 + t)) + (10 - 2 * t) * (75 - 4 * t) + 50 - (5 - 2 * t) * (10 - 2 * t)",
+    "centroid": [
+      "(11875 - ((20 - 2 * t) * (5 - 2 * t) * 10 + (5 - 2 * t) * (15 + t) * 2.5) * (10 - 2 * t)) / (1750 - ((20 - 2 * t) * (5 - 2 * t) + (5 - 2 * t) * (15 + t)) * (10 - 2 * t))",
+      "(11875 - ((20 - 2 * t) * (5 - 2 * t) * 2.5 + (5 - 2 * t) * (15 + t) * (20 + 5 - t) / 2) * (10 - 2 * t)) / (1750 - ((20 - 2 * t) * (5 - 2 * t) + (5 - 2 * t) * (15 + t)) * (10 - 2 * t))",
+      5
+    ],
+    "counts": {
+      "vertices": 24,
+      "edges": 36,
+      "faces": 15,
+      "loops": 16,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

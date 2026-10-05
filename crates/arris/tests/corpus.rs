@@ -1310,6 +1310,30 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
+    /// A 10-cube hollowed inward to a wall of 2, open on top.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell step 2)"]
+    regression_shell_box_top_in => run "regression/shell-box-top-in";
+    /// A 10-cube hollowed outward to a wall of 2, open on top: the skin runs up to the opening's plane.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell step 2)"]
+    regression_shell_box_top_out => run "regression/shell-box-top-out";
+    /// A 10-cube hollowed inward with no opening: a closed void, the second shell reversed.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell step 2)"]
+    regression_shell_box_closed_in => run "regression/shell-box-closed-in";
+    /// A 10-cube hollowed outward with no opening: the cube's faces the void inside a 14-cube.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell step 2)"]
+    regression_shell_box_closed_out => run "regression/shell-box-closed-out";
+    /// A 10-cube hollowed inward, open on top and front, which share an edge: each rim face one loop.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell steps 2-3)"]
+    regression_shell_box_top_side_in => run "regression/shell-box-top-side-in";
+    /// A 10-cube hollowed outward, open on top and front, which share an edge.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell steps 2-3)"]
+    regression_shell_box_top_side_out => run "regression/shell-box-top-side-out";
+    /// A 10-cube hollowed inward, open on top and bottom: a square tube, genus 1.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell step 2)"]
+    regression_shell_box_tube => run "regression/shell-box-tube";
+    /// An extruded L hollowed inward to a wall of 1, open at its long arm's end.
+    #[ignore = "CorpusError::Unsupported: Arris runs no `shell` yet (plans/shell step 2)"]
+    regression_shell_l_bracket => run "regression/shell-l-bracket";
 }
 
 /// A variant the recipe does not have fails naming it.

@@ -1,0 +1,115 @@
+{
+  "description": "a 10-cube hollowed outward to a wall of t, open on top and on the front (y = 0), which share an edge: the skin's walls run to both openings' planes, each rim face one loop, the shared edge's middle in no face",
+  "params": {
+    "t": 2
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "box",
+      "openings": [
+        [
+          5,
+          5,
+          10
+        ],
+        [
+          5,
+          0,
+          5
+        ]
+      ],
+      "thickness": "t",
+      "side": "outward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        -1,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "cavity",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_floor",
+      "point": [
+        5,
+        5,
+        -1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_top_rim",
+      "point": [
+        -1,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_front_rim",
+      "point": [
+        -1,
+        0,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        "-t - 1",
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "(10 + 2 * t) * (10 + t)^2 - 1000",
+    "area": "4 * (10 + 2 * t) * (10 + t) + 2 * (10 + t)^2 + 200",
+    "centroid": [
+      5,
+      "((10 + 2 * t) * (10 + t)^3 / 2 - 5000) / ((10 + 2 * t) * (10 + t)^2 - 1000)",
+      "((10 + 2 * t) * (10 + t)^2 * (10 - t) / 2 - 5000) / ((10 + 2 * t) * (10 + t)^2 - 1000)"
+    ],
+    "counts": {
+      "vertices": 16,
+      "edges": 24,
+      "faces": 10,
+      "loops": 10,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

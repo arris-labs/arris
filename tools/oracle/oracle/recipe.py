@@ -61,6 +61,19 @@ Operations, by `op`:
                it, as Arris drags the chain; an offset Open CASCADE
                refuses or crashes on, tried in a forked child, is the
                empty compound — ADR-0048)
+    shell      of <name>, openings [[x,y,z], ...], thickness, side
+               (the body hollowed to a wall of `thickness`, `side` "inward"
+               — the body's faces kept, the cavity inside them — or
+               "outward" — the body's faces the cavity, a skin outside
+               them; each opening named by a point on that face alone, as
+               an offset's faces are. Open CASCADE's
+               `BRepOffsetAPI_MakeThickSolid` by join, the intersection
+               join, the thickness negated for "inward"; with no openings,
+               which it answers with the offset solid alone, the void is
+               built as the body less its inward offset, or its outward
+               offset less the body (`BRepOffsetAPI_MakeOffsetShape`, a
+               cut). Either tried in a forked child, a refusal or a crash
+               recorded as the empty compound — ADR-0049)
     polyhedron points [[x,y,z], ...], faces [[[i, j, k, ...], <hole>...], ...],
                namespace <u32>
                (each face its loops of point indices, the outer one
@@ -104,6 +117,7 @@ from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer, BRepFilletAPI_MakeFillet
 from OCP.BRepGProp import BRepGProp
 from OCP.BRepOffset import BRepOffset_MakeOffset, BRepOffset_Skin
+from OCP.BRepOffsetAPI import BRepOffsetAPI_MakeOffsetShape, BRepOffsetAPI_MakeThickSolid
 from OCP.BRepLib import BRepLib
 from OCP.BRepLProp import BRepLProp_SLProps
 from OCP.BRepPrimAPI import (
@@ -122,6 +136,7 @@ from OCP.TopExp import TopExp
 from OCP.TopoDS import TopoDS, TopoDS_Compound, TopoDS_Shape
 from OCP.collections import IndexedDataMap_TopoDS_Shape_List_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedDataMapOfShapeListOfShape
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
+from OCP.collections import List_TopoDS_Shape
 
 from . import OracleError, step as step_file
 
@@ -569,22 +584,6 @@ def _make_offset(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float
     return mo
 
 
-def _offset_survives(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float) -> bool:
-    """Whether Open CASCADE's offset finishes with a shape, tried in a
-    forked child first: where a moved chain pulls clear of a fixed face
-    its intersection join has nothing to meet and the process dies
-    (ADR-0048 §6), which would take the whole batch with it."""
-    pid = os.fork()
-    if pid == 0:
-        try:
-            mo = _make_offset(shape, faces, distance)
-            os._exit(0 if mo.IsDone() and not mo.Shape().IsNull() else 1)
-        except BaseException:
-            os._exit(1)
-    _, status = os.waitpid(pid, 0)
-    return os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
-
-
 def _offset_faces(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float) -> TopoDS_Shape:
     """`shape` with `faces` moved by `distance` along their outward
     normals, with every face tangent to a moved one, and every other face
@@ -593,12 +592,16 @@ def _offset_faces(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: floa
     with no solid, which only a fixture that expects Arris's refusal
     accepts."""
     chain = _tangent_chain(shape, faces)
-    if not _offset_survives(shape, chain, distance):
-        empty = TopoDS_Compound()
-        BRep_Builder().MakeCompound(empty)
-        return empty
-    mo = _make_offset(shape, chain, distance)
-    result = mo.Shape()
+
+    def build() -> TopoDS_Shape:
+        mo = _make_offset(shape, chain, distance)
+        if not mo.IsDone():
+            raise OracleError(f"offset: Open CASCADE refuses (error {mo.Error()})")
+        return mo.Shape()
+
+    if not _survives(build):
+        return _empty()
+    result = build()
     # Skin mode hands back the bare shell where the moved face sits among
     # concave neighbours (a pocket's floor): closed, it bounds the solid.
     if result.ShapeType() == TopAbs_SHELL:
@@ -607,6 +610,64 @@ def _offset_faces(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: floa
             raise OracleError("offset: Open CASCADE's result is an open shell")
         result = _checked(BRepBuilderAPI_MakeSolid(shell), "offset solid")
     return result
+
+
+def _empty() -> TopoDS_Shape:
+    """The empty compound: Open CASCADE made nothing, a result with no
+    solid, which only a fixture that expects Arris's refusal accepts."""
+    empty = TopoDS_Compound()
+    BRep_Builder().MakeCompound(empty)
+    return empty
+
+
+def _survives(build) -> bool:
+    """Whether `build()` finishes with a shape, tried in a forked child
+    first: an offset Open CASCADE cannot join kills the process, which
+    would take the whole batch with it (ADR-0048 §6)."""
+    pid = os.fork()
+    if pid == 0:
+        try:
+            shape = build()
+            os._exit(0 if not shape.IsNull() else 1)
+        except BaseException:
+            os._exit(1)
+    _, status = os.waitpid(pid, 0)
+    return os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
+
+
+def _thick_solid(shape: TopoDS_Shape, openings: list[TopoDS_Shape], offset: float) -> TopoDS_Shape:
+    """Open CASCADE's thick solid of `shape` open at `openings`, its wall
+    `offset` along the outward normal (negative inside), the intersection
+    join."""
+    closing = List_TopoDS_Shape()
+    for f in openings:
+        closing.Append(f)
+    mk = BRepOffsetAPI_MakeThickSolid()
+    mk.MakeThickSolidByJoin(shape, closing, offset, 1e-7, BRepOffset_Skin, False, False, GeomAbs_Intersection, False)
+    return _checked(mk, "shell")
+
+
+def _void(shape: TopoDS_Shape, offset: float) -> TopoDS_Shape:
+    """`shape` with a closed void of wall `offset`: the body less its
+    inward offset, or its outward offset less the body, the intersection
+    join — the thick solid answers a closed body with the offset alone."""
+    mk = BRepOffsetAPI_MakeOffsetShape()
+    mk.PerformByJoin(shape, offset, 1e-7, BRepOffset_Skin, False, False, GeomAbs_Intersection, False)
+    skin = _checked(mk, "shell offset")
+    if offset < 0.0:
+        return _checked(BRepAlgoAPI_Cut(shape, skin), "shell void")
+    return _checked(BRepAlgoAPI_Cut(skin, shape), "shell void")
+
+
+def _shell(shape: TopoDS_Shape, openings: list[TopoDS_Shape], offset: float) -> TopoDS_Shape:
+    """`shape` hollowed to a wall of `offset` (negative inward) open at
+    `openings`, or the empty compound where Open CASCADE refuses or
+    crashes (ADR-0049)."""
+
+    def build() -> TopoDS_Shape:
+        return _thick_solid(shape, openings, offset) if openings else _void(shape, offset)
+
+    return build() if _survives(build) else _empty()
 
 
 def _read_solid(step: dict, params: dict[str, float], probe: float, base: str | None) -> TopoDS_Shape:
@@ -743,6 +804,19 @@ def _build_step(
             raise OracleError("offset needs a list of face points")
         faces = [_face_at(shape, vector(p, params), probe) for p in points]
         return _offset_faces(shape, faces, distance)
+    if op == "shell":
+        shape = ref(step["of"])
+        thickness = number(step["thickness"], params)
+        if not math.isfinite(thickness) or thickness <= 0.0:
+            raise OracleError("shell thickness must be finite and positive")
+        side = step["side"]
+        if side not in ("inward", "outward"):
+            raise OracleError(f"shell side must be \"inward\" or \"outward\", not {side!r}")
+        points = step.get("openings", [])
+        if not isinstance(points, list):
+            raise OracleError("shell openings must be a list of face points")
+        openings = [_face_at(shape, vector(p, params), probe) for p in points]
+        return _shell(shape, openings, -thickness if side == "inward" else thickness)
     if op == "polyhedron":
         return _polyhedron(step, params)
     if op == "step":

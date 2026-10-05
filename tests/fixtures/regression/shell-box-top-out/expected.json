@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "6458554c25c6099cb66ac6137e3f6798125564e42fa52aba90b11c47ad49d059",
+  "results": {
+    "default": {
+      "area": 1464.0,
+      "centroid": [
+        5.0,
+        5.0,
+        3.2603550295857993
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          48233.688362919136,
+          7.275957614183426e-12,
+          3.637978807091713e-12
+        ],
+        [
+          7.275957614183426e-12,
+          48233.68836291912,
+          7.275957614183426e-12
+        ],
+        [
+          3.637978807091713e-12,
+          7.275957614183426e-12,
+          60165.33333333333
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_wall",
+          "point": [
+            -1.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "cavity",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_floor",
+          "point": [
+            5.0,
+            5.0,
+            -1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_rim",
+          "point": [
+            -1.0,
+            5.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cavity_wall",
+          "point": [
+            0.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            -3.0,
+            5.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 1352.0000000000005
+    }
+  }
+}

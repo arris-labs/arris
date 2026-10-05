@@ -101,7 +101,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — The oracle and the grammar. `shell` in `recipe.py`
+- [x] Step 1 **[2]** — The oracle and the grammar. `shell` in `recipe.py`
   driving Open CASCADE (`BRepOffsetAPI_MakeThickSolid` by join, the
   intersection join, openings named by a point, a negative offset for
   `Inward`) and in `arris_debug::fixtures`, the Rust runner refusing it
@@ -190,10 +190,12 @@ job's pytest, docstring examples and `mypy.stubtest` green.
 
 ## Open questions
 
-- ⚠ OPEN: Does Open CASCADE's thick solid give the closed void (no closing
-  face) and the adjacent-openings case, or refuse or crash on either?
-  Agent decides at step 1 from its runs; the fallback is closed forms,
-  recorded in ADR-0049.
+- Answered at step 1 (ADR-0049 §7): Open CASCADE's thick solid gives every
+  opened case's closed forms exactly, adjacent openings included (each rim
+  face one loop); with no openings it returns the offset solid alone, so the
+  driver builds the void as the body less its inward offset (or its outward
+  offset less the body), which gives the closed forms. No fixture needs
+  `analytic.measure_differs`.
 - ⚠ OPEN: Does the assembler take an inner shell on a body today, and does
   `mass_properties` integrate a body of two shells with the second
   reversed? Agent decides at step 2; if either needs a change it is a

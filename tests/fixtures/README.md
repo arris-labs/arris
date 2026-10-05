@@ -142,6 +142,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `fillet` | `of`, `edges` (a list of points, one on each edge to blend), `radius` |
 | `chamfer` | `of`, `edges` (as a `fillet`'s), `distance` (one, measured on both faces from the edge) |
 | `offset` | `of`, `faces` (a point on each face to move, within `probe` of that face alone — Arris takes the face the point classifies `On`, so a point on an edge or a seam names none; every face tangent to a named one moves with it, ADR-0048 §6), `distance` (signed along the outward normal, positive adds material; ADR-0048) |
+| `shell` | `of`, `openings` (a point on each face to open, as an `offset`'s faces; none or absent for a closed void), `thickness` (positive), `side` (`"inward"`: the body's faces kept, the cavity inside them; `"outward"`: the body's faces the cavity, a skin outside them; ADR-0049) |
 | `polyhedron` | `points` (a list of `[x, y, z]`), `faces` (each a list of loops, each a list of indices into `points`: the outer loop counter-clockwise seen from outside the solid, a hole's clockwise), `namespace` (Arris's key space) |
 | `step` | `file` (beside `fixture.json`), `sha256` (of the file), `id` (the `#id` of its `MANIFOLD_SOLID_BREP` or `BREP_WITH_VOIDS`), `near` (a point; only where the file places that solid more than once) |
 

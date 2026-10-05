@@ -390,6 +390,26 @@ pub enum Step {
         /// The signed distance along each face's outward normal.
         distance: Num,
     },
+    /// A step's body hollowed to a wall of constant thickness
+    /// (`arris_ops::shell`): every face but the openings offset by
+    /// `thickness` to the `side`, each opening named by a point on it as an
+    /// `Offset`'s faces are. No openings leaves a closed void, a second
+    /// shell. The oracle is Open CASCADE's thick solid, and for a void the
+    /// body less its inward offset, or its outward offset less the body
+    /// (ADR-0049).
+    Shell {
+        /// Step name.
+        name: String,
+        /// The body hollowed.
+        of: String,
+        /// One point on each face to open; none for a closed void.
+        #[serde(default)]
+        openings: Vec<[Num; 3]>,
+        /// The wall's thickness, positive.
+        thickness: Num,
+        /// Which side of the body's faces the wall grows on.
+        side: ShellSide,
+    },
     /// A solid bounded by planar faces over `points`, each face a list of
     /// loops of point indices — the outer loop counter-clockwise seen
     /// from outside, a hole's clockwise: a consumer's own topology. Arris
@@ -431,6 +451,16 @@ pub enum Step {
     },
 }
 
+/// The side of a body's faces a [`Step::Shell`]'s wall grows on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ShellSide {
+    /// The body's faces kept as the outside, the cavity grown inside them.
+    Inward,
+    /// The body's faces become the cavity, a skin grown outside them.
+    Outward,
+}
+
 impl Step {
     /// The step's name.
     pub fn name(&self) -> &str {
@@ -448,6 +478,7 @@ impl Step {
             | Step::Fillet { name, .. }
             | Step::Chamfer { name, .. }
             | Step::Offset { name, .. }
+            | Step::Shell { name, .. }
             | Step::Polyhedron { name, .. }
             | Step::Read { name, .. } => name,
         }

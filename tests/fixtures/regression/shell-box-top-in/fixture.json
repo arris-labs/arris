@@ -1,0 +1,110 @@
+{
+  "description": "a 10-cube hollowed inward to a wall of t, open on top: the five kept faces outside, a cavity (10 - 2t) square and 10 - t deep inside them, and the top a square ring between the body's rim and the skin's",
+  "params": {
+    "t": 2
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "box",
+      "openings": [
+        [
+          5,
+          5,
+          10
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        1,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "cavity",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_floor",
+      "point": [
+        5,
+        5,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_rim",
+      "point": [
+        1,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_inner_floor",
+      "point": [
+        5,
+        5,
+        "t"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_inner_wall",
+      "point": [
+        "t",
+        5,
+        5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "1000 - (10 - 2 * t)^2 * (10 - t)",
+    "area": "600 + 4 * (10 - 2 * t) * (10 - t)",
+    "centroid": [
+      5,
+      5,
+      "(5000 - (10 - 2 * t)^2 * (10 - t) * (10 + t) / 2) / (1000 - (10 - 2 * t)^2 * (10 - t))"
+    ],
+    "counts": {
+      "vertices": 16,
+      "edges": 24,
+      "faces": 11,
+      "loops": 12,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}
