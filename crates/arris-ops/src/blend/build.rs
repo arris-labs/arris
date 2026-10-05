@@ -142,6 +142,103 @@ pub(super) fn cut_once(
     Ok(())
 }
 
+/// What every phase of a blend reads and writes through: the model, the
+/// body's view, the kind of blend, the tolerance and sample count of the
+/// model's precision, and the meter whose polls `cancel_counts.txt` holds.
+pub(super) struct BlendCtx<'a, 'b> {
+    pub(super) m: &'a mut Model,
+    pub(super) view: BodyView,
+    pub(super) kind: Kind,
+    pub(super) tol: Tolerance,
+    pub(super) samples: usize,
+    pub(super) meter: &'a mut Meter<'b>,
+}
+
+impl<'a, 'b> BlendCtx<'a, 'b> {
+    /// Reads `body` and the model's precision.
+    fn new(
+        m: &'a mut Model,
+        body: Body,
+        kind: Kind,
+        meter: &'a mut Meter<'b>,
+    ) -> Result<Self, OpError> {
+        let precision = m.precision();
+        let view = BodyView::of(m, body)?;
+        Ok(BlendCtx {
+            m,
+            view,
+            kind,
+            tol: precision.tolerance(),
+            samples: precision.check_samples,
+            meter,
+        })
+    }
+
+    /// The fields a phase uses, split so each borrows on its own.
+    fn parts(
+        &mut self,
+    ) -> (
+        &mut Model,
+        &BodyView,
+        Kind,
+        Tolerance,
+        usize,
+        &mut Meter<'b>,
+    ) {
+        (
+            &mut *self.m,
+            &self.view,
+            self.kind,
+            self.tol,
+            self.samples,
+            &mut *self.meter,
+        )
+    }
+}
+
+/// The corner edges replaced by a shortened or lengthened one.
+type Shortened = BTreeMap<EdgeId, EdgeKey>;
+
+/// The pcurves derived again over a lengthened edge's range.
+type Rederived = BTreeMap<(EdgeId, Curve2Id), Curve2Id>;
+
+/// The blended edges at each vertex.
+type AtVertex = BTreeMap<VertexId, Vec<EdgeId>>;
+
+/// The chained edges sorted by what builds them.
+struct Classified {
+    /// Stripes: the open edges that are not circular arcs.
+    open: Vec<EdgeId>,
+    /// Circular arcs, built once the junctions are known.
+    arcs: Vec<EdgeId>,
+    /// The closed edges' rings, built already.
+    rings: Vec<Ring>,
+}
+
+/// The vertex joins of the blended edges, by vertex.
+struct Joins {
+    miters: Vec<Miter>,
+    miter_at: BTreeMap<VertexId, usize>,
+    corners: Vec<Corner>,
+    corner_at: BTreeMap<VertexId, usize>,
+}
+
+/// The rewrite being filled in: its entities, the cuts to corner edges and
+/// the edits to faces.
+struct Draft {
+    rw: Rewrite,
+    cuts: BTreeMap<EdgeId, Cuts>,
+    edits: BTreeMap<FaceId, FaceEdit>,
+}
+
+/// Every blend entity's indices in the rewrite.
+struct Drafted {
+    miters: Vec<MiterMade>,
+    corners: Vec<CornerMade>,
+    stripes: Vec<StripeMade>,
+    rings: Vec<Made>,
+}
+
 /// Builds the blends of `edges`, in that order, into a rewrite of `body`
 /// and returns the result with its provenance.
 pub(super) fn build(
@@ -151,13 +248,50 @@ pub(super) fn build(
     kind: Kind,
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    let precision = m.precision();
-    let tol = precision.tolerance();
-    let samples = precision.check_samples;
-    let view = BodyView::of(m, body)?;
+    let mut ctx = BlendCtx::new(m, body, kind, meter)?;
+    let Classified {
+        open,
+        arcs,
+        mut rings,
+    } = classify(&mut ctx, body, edges)?;
+    let (at_vertex, junctions) = vertex_joins(&mut ctx, &open, &arcs, &mut rings)?;
+    let stripes = make_stripes(&mut ctx, &open)?;
+    let joins = join_blends(&mut ctx, &open, &stripes, &rings, &at_vertex, &junctions)?;
+    let blends = make_blends(&mut ctx, stripes, &joins)?;
+    let mut draft = Draft {
+        rw: Rewrite::default(),
+        cuts: BTreeMap::new(),
+        edits: BTreeMap::new(),
+    };
+    let miter_made = add_miters(&mut ctx, &mut draft, &joins.miters)?;
+    let corner_made = add_corners(&mut ctx, &mut draft, &joins.corners);
+    let mut made = Drafted {
+        miters: miter_made,
+        corners: corner_made,
+        stripes: Vec::new(),
+        rings: Vec::new(),
+    };
+    made.stripes = add_stripes(&mut ctx, &mut draft, &blends, &joins, &made)?;
+    made.rings = add_rings(&mut ctx, &mut draft, &rings, &joins, &made)?;
+    let (shortened, rederived) = shorten_edges(&mut ctx, &mut draft)?;
+    rewrite_faces(&mut ctx, &mut draft, &shortened, &rederived)?;
+    add_blend_faces(&mut ctx, &mut draft, &blends, &joins, &mut made)?;
+    add_corner_faces(&mut ctx, &mut draft, &joins, &mut made);
+    add_ring_faces(&mut ctx, &mut draft, &rings, &joins, &mut made);
+    let out = rebuild::rewrite(ctx.m, body, draft.rw)?;
+    Ok(record(out, &blends, &rings, &joins, &made))
+}
+
+/// The chained edges, each into the group that builds it: the closed edges' rings are built here.
+fn classify(
+    ctx: &mut BlendCtx<'_, '_>,
+    body: Body,
+    edges: &[EdgeId],
+) -> Result<Classified, OpError> {
+    let (m, view, kind, tol, samples, meter) = ctx.parts();
     // The named edges and every edge their chains run on into, in the
     // body's order.
-    let reached = chain(m, &view, edges, kind.size(), tol, meter)?;
+    let reached = chain(m, view, edges, kind.size(), tol, meter)?;
     let chained: Vec<EdgeId> = m
         .edges(body)?
         .into_iter()
@@ -175,7 +309,7 @@ pub(super) fn build(
         let entity = *m.edge(e)?;
         match entity.curve() {
             Some(_) if entity.start() == entity.end() => {
-                rings.push(ring(m, &view, e, kind, &no_junctions, tol, samples, meter)?);
+                rings.push(ring(m, view, e, kind, &no_junctions, tol, samples, meter)?);
             }
             Some((curve, _)) if matches!(m.curve(curve)?, Curve::Circle { .. }) => {
                 arcs.push(e);
@@ -183,13 +317,24 @@ pub(super) fn build(
             Some(_) | None => open.push(e),
         }
     }
-    let edges = &open[..];
+    Ok(Classified { open, arcs, rings })
+}
+
+/// The blended edges at each vertex, and the vertices that are junctions; the arcs' rings are built here.
+fn vertex_joins(
+    ctx: &mut BlendCtx<'_, '_>,
+    open: &[EdgeId],
+    arcs: &[EdgeId],
+    rings: &mut Vec<Ring>,
+) -> Result<(AtVertex, BTreeSet<VertexId>), OpError> {
+    let (m, view, kind, tol, samples, meter) = ctx.parts();
+    let edges = open;
     // The blended edges at each vertex: two at a tangent vertex meet in a
     // junction, two elsewhere in a miter, three in a corner, and more at a
     // vertex the closed forms do not cover; an arc meets no other blend but
     // at a junction.
     let mut at_vertex: BTreeMap<VertexId, Vec<EdgeId>> = BTreeMap::new();
-    for &e in edges.iter().chain(&arcs) {
+    for &e in edges.iter().chain(arcs) {
         let entity = *m.edge(e)?;
         for v in [entity.start(), entity.end()] {
             at_vertex.entry(v).or_default().push(e);
@@ -198,7 +343,7 @@ pub(super) fn build(
     let mut junctions: BTreeSet<VertexId> = BTreeSet::new();
     for (&v, es) in &at_vertex {
         if let [ea, eb] = es[..]
-            && tangent_vertex(m, &view, ea, v, kind.size(), tol)? == Some(eb)
+            && tangent_vertex(m, view, ea, v, kind.size(), tol)? == Some(eb)
         {
             junctions.insert(v);
             continue;
@@ -206,7 +351,7 @@ pub(super) fn build(
         // Both edges of a cusp blended meet in a corner patch, which no
         // closed form holds (ADR-0042 §6).
         if let [ea, eb] = es[..]
-            && let Some((next, spine)) = cusp_at(m, &view, ea, v, kind.size(), tol)?
+            && let Some((next, spine)) = cusp_at(m, view, ea, v, kind.size(), tol)?
             && next == eb
         {
             return Err(degenerate(
@@ -219,15 +364,36 @@ pub(super) fn build(
             return Err(degenerate(entities, Reason::VertexBlend));
         }
     }
-    for &e in &arcs {
-        rings.push(ring(m, &view, e, kind, &junctions, tol, samples, meter)?);
+    for &e in arcs {
+        rings.push(ring(m, view, e, kind, &junctions, tol, samples, meter)?);
     }
     at_vertex.retain(|v, es| junctions.contains(v) || !es.iter().any(|e| arcs.contains(e)));
+    Ok((at_vertex, junctions))
+}
+
+/// One stripe per open edge.
+fn make_stripes(ctx: &mut BlendCtx<'_, '_>, open: &[EdgeId]) -> Result<Vec<Stripe>, OpError> {
+    let (m, view, kind, tol, _, meter) = ctx.parts();
+    let edges = open;
     let mut stripes: Vec<Stripe> = Vec::with_capacity(edges.len());
     for &e in edges {
         meter.tick()?;
-        stripes.push(stripe(m, &view, e, kind, tol)?);
+        stripes.push(stripe(m, view, e, kind, tol)?);
     }
+    Ok(stripes)
+}
+
+/// The miters, the junctions and the corners, in vertex order.
+fn join_blends(
+    ctx: &mut BlendCtx<'_, '_>,
+    open: &[EdgeId],
+    stripes: &[Stripe],
+    rings: &[Ring],
+    at_vertex: &AtVertex,
+    junctions: &BTreeSet<VertexId>,
+) -> Result<Joins, OpError> {
+    let (m, view, _, tol, samples, meter) = ctx.parts();
+    let edges = open;
     let index_of: BTreeMap<EdgeId, usize> =
         edges.iter().enumerate().map(|(i, &e)| (e, i)).collect();
     let ring_of: BTreeMap<EdgeId, usize> =
@@ -242,17 +408,17 @@ pub(super) fn build(
     let mut miter_at: BTreeMap<VertexId, usize> = BTreeMap::new();
     let mut corners: Vec<Corner> = Vec::new();
     let mut corner_at: BTreeMap<VertexId, usize> = BTreeMap::new();
-    for (&v, es) in &at_vertex {
+    for (&v, es) in at_vertex {
         match es[..] {
             [ea, eb] if junctions.contains(&v) => {
                 miter_at.insert(v, miters.len());
-                miters.push(junction(m, &view, run(ea)?, run(eb)?, v, tol, meter)?);
+                miters.push(junction(m, view, run(ea)?, run(eb)?, v, tol, meter)?);
             }
             [ea, eb] => {
                 miter_at.insert(v, miters.len());
                 miters.push(miter(
                     m,
-                    &view,
+                    view,
                     &stripes[index_of[&ea]],
                     &stripes[index_of[&eb]],
                     v,
@@ -265,7 +431,7 @@ pub(super) fn build(
                 corner_at.insert(v, corners.len());
                 corners.push(corner(
                     m,
-                    &view,
+                    view,
                     [
                         &stripes[index_of[&ea]],
                         &stripes[index_of[&eb]],
@@ -279,6 +445,27 @@ pub(super) fn build(
             _ => {}
         }
     }
+    Ok(Joins {
+        miters,
+        miter_at,
+        corners,
+        corner_at,
+    })
+}
+
+/// Each stripe's ends, then its contacts between them.
+fn make_blends(
+    ctx: &mut BlendCtx<'_, '_>,
+    stripes: Vec<Stripe>,
+    joins: &Joins,
+) -> Result<Vec<Blend>, OpError> {
+    let (m, view, _, tol, samples, meter) = ctx.parts();
+    let Joins {
+        miters,
+        miter_at,
+        corners,
+        corner_at,
+    } = joins;
     // Each stripe's ends, then its contacts between them.
     let mut blends: Vec<Blend> = Vec::with_capacity(stripes.len());
     for s in stripes {
@@ -297,15 +484,15 @@ pub(super) fn build(
                         .position(|&e| e == s.edge)
                         .ok_or(invariant("a corner's own blend"))?,
                 },
-                (None, None) => EndKind::Face(Box::new(face_end(
-                    m, &view, &s, at_lo, tol, samples, meter,
-                )?)),
+                (None, None) => {
+                    EndKind::Face(Box::new(face_end(m, view, &s, at_lo, tol, samples, meter)?))
+                }
             });
         }
         let ends: [EndKind; 2] = ends
             .try_into()
             .map_err(|_| invariant("two ends of the blend"))?;
-        let t = [0, 1].map(|end| [0, 1].map(|k| ends[end].t(&miters, &corners, k)));
+        let t = [0, 1].map(|end| [0, 1].map(|k| ends[end].t(miters, corners, k)));
         let contacts = contacts(m, &s, t, tol, samples, meter)?;
         blends.push(Blend {
             stripe: s,
@@ -314,13 +501,19 @@ pub(super) fn build(
         });
     }
 
-    let mut rw = Rewrite::default();
-    let mut cuts: BTreeMap<EdgeId, Cuts> = BTreeMap::new();
-    let mut edits: BTreeMap<FaceId, FaceEdit> = BTreeMap::new();
-    // The miters first: their two vertices, their edge, the third edge
-    // cut.
+    Ok(blends)
+}
+
+/// The miters first: their two vertices, their edge, the third edge cut.
+fn add_miters(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    miters: &[Miter],
+) -> Result<Vec<MiterMade>, OpError> {
+    let m = &mut *ctx.m;
+    let Draft { rw, cuts, edits } = draft;
     let mut miter_made: Vec<MiterMade> = Vec::with_capacity(miters.len());
-    for mt in &miters {
+    for mt in miters {
         let q = rw.vertices.len();
         rw.vertices.push(VertexSpec::New {
             point: mt.q,
@@ -385,10 +578,10 @@ pub(super) fn build(
             }
         };
         if let Some(trim) = &mt.trim {
-            cut_once(&mut cuts, trim, trim_arc.map_or(p3, |(end, _)| end))?;
+            cut_once(cuts, trim, trim_arc.map_or(p3, |(end, _)| end))?;
         }
         if let Some(trim) = &mt.q_trim {
-            cut_once(&mut cuts, trim, q)?;
+            cut_once(cuts, trim, q)?;
         }
         miter_made.push(MiterMade {
             vertices: [q, p3],
@@ -396,10 +589,19 @@ pub(super) fn build(
             trim_arc,
         });
     }
-    // The corners next: their three vertices, their three arcs and a
-    // sphere's pole; no corner edge is cut.
+    Ok(miter_made)
+}
+
+/// The corners next: their three vertices, their three arcs and a sphere's pole; no corner edge is cut.
+fn add_corners(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    corners: &[Corner],
+) -> Vec<CornerMade> {
+    let m = &mut *ctx.m;
+    let rw = &mut draft.rw;
     let mut corner_made: Vec<CornerMade> = Vec::with_capacity(corners.len());
-    for c in &corners {
+    for c in corners {
         let mut vertices = [0usize; 3];
         for (slot, &point) in vertices.iter_mut().zip(&c.points) {
             *slot = rw.vertices.len();
@@ -444,8 +646,28 @@ pub(super) fn build(
             added: 0,
         });
     }
+    corner_made
+}
+
+/// The stripes: four trim vertices, two contact edges and each end's arcs.
+fn add_stripes(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    blends: &[Blend],
+    joins: &Joins,
+    drafted: &Drafted,
+) -> Result<Vec<StripeMade>, OpError> {
+    let m = &mut *ctx.m;
+    let Draft { rw, cuts, edits } = draft;
+    let Joins {
+        miters,
+        miter_at: _,
+        corners,
+        corner_at: _,
+    } = joins;
+    let (miter_made, corner_made) = (&drafted.miters, &drafted.corners);
     let mut made: Vec<StripeMade> = Vec::with_capacity(blends.len());
-    for blend in &blends {
+    for blend in blends {
         let mut vertices = [[0usize; 2]; 2];
         let mut crossings: Vec<usize> = Vec::new();
         for (end_index, end) in blend.ends.iter().enumerate() {
@@ -510,13 +732,13 @@ pub(super) fn build(
                     point: crossing.point,
                     tolerance: crossing.tolerance,
                 });
-                cut_once(&mut cuts, &crossing.trim, v)?;
+                cut_once(cuts, &crossing.trim, v)?;
                 crossings.push(v);
                 along.push(v);
             }
             along.push(vertices[end_index][1]);
             for (k, trim) in face_end.trims.iter().enumerate() {
-                cut_once(&mut cuts, trim, vertices[end_index][k])?;
+                cut_once(cuts, trim, vertices[end_index][k])?;
             }
             for (i, piece) in face_end.pieces.iter().enumerate() {
                 let (from, to) = (along[i], along[i + 1]);
@@ -575,12 +797,25 @@ pub(super) fn build(
             added: 0,
         });
     }
-    // The rings: a closed edge's two vertices, two contact circles, the
-    // blend's seam and the cylinder's seam cut; an open arc's four
-    // vertices, two contact arcs and two ends, each inserted into its face
-    // across with the corner edges cut.
+    Ok(made)
+}
+
+/// The rings: a closed edge's two vertices, two contact circles, the blend's seam and the cylinder's seam cut; an open arc's four vertices, two contact arcs and two ends, each inserted into its face across with the corner edges cut.
+fn add_rings(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    rings: &[Ring],
+    joins: &Joins,
+    drafted: &Drafted,
+) -> Result<Vec<Made>, OpError> {
+    let m = &mut *ctx.m;
+    let Draft { rw, cuts, edits } = draft;
+    let Joins {
+        miters, miter_at, ..
+    } = joins;
+    let miter_made = &drafted.miters;
     let mut ring_made: Vec<Made> = Vec::with_capacity(rings.len());
-    for r in &rings {
+    for r in rings {
         let mut vertices = [[0usize; 2]; 2];
         match &r.ends {
             RingEnds::Seam(seam) => {
@@ -657,7 +892,7 @@ pub(super) fn build(
                     None,
                 ));
                 for (trim, by) in &seam.cuts {
-                    cut_once(&mut cuts, trim, vertices[0][*by])?;
+                    cut_once(cuts, trim, vertices[0][*by])?;
                 }
             }
             RingEnds::Open(ends) => {
@@ -684,7 +919,7 @@ pub(super) fn build(
                         None,
                     ));
                     for (c, trim) in end.trims.iter().enumerate() {
-                        cut_once(&mut cuts, trim, vertices[j][c])?;
+                        cut_once(cuts, trim, vertices[j][c])?;
                     }
                     let pcurve = m.add_curve2(end.on_face.clone());
                     edits.entry(end.face).or_default().insert.insert(
@@ -707,12 +942,19 @@ pub(super) fn build(
             added: 0,
         });
     }
-    // The corner edges shortened or lengthened, in id order; a lengthened
-    // edge's pcurves derived again over its new range (ADR-0038 §4), by
-    // the edge and the pcurve each replaces.
+    Ok(ring_made)
+}
+
+/// The corner edges shortened or lengthened, in id order; a lengthened edge's pcurves derived again over its new range (ADR-0038 §4), by the edge and the pcurve each replaces.
+fn shorten_edges(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+) -> Result<(Shortened, Rederived), OpError> {
+    let (m, view, _, tol, _, meter) = ctx.parts();
+    let Draft { rw, cuts, .. } = draft;
     let mut shortened: BTreeMap<EdgeId, EdgeKey> = BTreeMap::new();
     let mut rederived: BTreeMap<(EdgeId, Curve2Id), Curve2Id> = BTreeMap::new();
-    for (&edge, cut) in &cuts {
+    for (&edge, cut) in &*cuts {
         let entity = *m.edge(edge)?;
         let Some((curve, old)) = entity.curve() else {
             return Err(invariant("a corner edge's curve"));
@@ -755,7 +997,18 @@ pub(super) fn build(
             Some(edge),
         ));
     }
-    // Every touched face's loops rewritten, in the body's face order.
+    Ok((shortened, rederived))
+}
+
+/// Every touched face's loops rewritten, in the body's face order.
+fn rewrite_faces(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    shortened: &Shortened,
+    rederived: &Rederived,
+) -> Result<(), OpError> {
+    let (m, view, ..) = ctx.parts();
+    let Draft { rw, edits, .. } = draft;
     for &face in &view.faces {
         let entity = m.face(face)?;
         let edit = edits.get(&face);
@@ -872,9 +1125,23 @@ pub(super) fn build(
         }
         rw.faces.insert(face, loops);
     }
-    // The blend faces, one per edge, after the shell's own: each end's
-    // arc walked from one contact to the other, the miter's with its
-    // pcurve on this blend's cylinder.
+    Ok(())
+}
+
+/// The blend faces, one per edge, after the shell's own: each end's arc walked from one contact to the other, the miter's with its pcurve on this blend's cylinder.
+fn add_blend_faces(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    blends: &[Blend],
+    joins: &Joins,
+    made: &mut Drafted,
+) -> Result<(), OpError> {
+    let (m, view, ..) = ctx.parts();
+    let rw = &mut draft.rw;
+    let Joins {
+        miters, corners, ..
+    } = joins;
+    let made = &mut made.stripes;
     for (blend, made) in blends.iter().zip(made.iter_mut()) {
         let contact_edges = made.contacts;
         let [lo, hi] = &blend.contacts;
@@ -941,8 +1208,20 @@ pub(super) fn build(
             tolerance: blend.stripe.tolerance,
         });
     }
-    // The corner faces, one per corner, their sides in walking order with
-    // a sphere's pole crossed where its meridians meet.
+    Ok(())
+}
+
+/// The corner faces, one per corner, their sides in walking order with a sphere's pole crossed where its meridians meet.
+fn add_corner_faces(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    joins: &Joins,
+    made: &mut Drafted,
+) {
+    let (m, view, ..) = ctx.parts();
+    let rw = &mut draft.rw;
+    let corners = &joins.corners;
+    let corner_made = &mut made.corners;
     for (c, made) in corners.iter().zip(corner_made.iter_mut()) {
         let surface = m.add_surface(c.surface.clone());
         let mut loop_uses: Vec<StoredUse> = Vec::with_capacity(4);
@@ -976,9 +1255,22 @@ pub(super) fn build(
             tolerance: c.tolerance,
         });
     }
-    // The ring faces, one per circular edge, in (u, v) counter-clockwise:
-    // the lower contact along `u`, up at its far `u` — the seam at `u = 2π`
-    // or the end there — the upper contact back, down at its near `u`.
+}
+
+/// The ring faces, one per circular edge, in (u, v) counter-clockwise: the lower contact along `u`, up at its far `u` — the seam at `u = 2π` or the end there — the upper contact back, down at its near `u`.
+fn add_ring_faces(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    rings: &[Ring],
+    joins: &Joins,
+    made: &mut Drafted,
+) {
+    let (m, view, ..) = ctx.parts();
+    let rw = &mut draft.rw;
+    let Joins {
+        miters, miter_at, ..
+    } = joins;
+    let ring_made = &mut made.rings;
     for (r, made) in rings.iter().zip(ring_made.iter_mut()) {
         let [lower, upper] = &r.contacts;
         let surface = m.add_surface(r.surface.clone());
@@ -1047,12 +1339,28 @@ pub(super) fn build(
             tolerance: r.tolerance,
         });
     }
+}
 
-    let out = rebuild::rewrite(m, body, rw)?;
+/// The provenance of the rewrite: every record against the blended edge.
+fn record(
+    out: rebuild::Rewritten,
+    blends: &[Blend],
+    rings: &[Ring],
+    joins: &Joins,
+    drafted: &Drafted,
+) -> (Body, Provenance) {
+    let Joins { miters, .. } = joins;
+    let corners = &joins.corners;
+    let (made, miter_made, corner_made, ring_made) = (
+        &drafted.stripes,
+        &drafted.miters,
+        &drafted.corners,
+        &drafted.rings,
+    );
     let mut p = out.provenance;
     // Every record against the blended edge; a miter's edge and vertices
     // are generated from both edges it joins, so each records them.
-    for (blend, made) in blends.iter().zip(&made) {
+    for (blend, made) in blends.iter().zip(made) {
         let origin = forward(blend.stripe.edge);
         p.add_generated(origin, forward(out.added[made.added]));
         for &k in made.contacts.iter().chain(made.arcs.iter().flatten()) {
@@ -1064,7 +1372,7 @@ pub(super) fn build(
     }
     // A trim arc's `m`, the narrower blend's vertex, from the wider
     // blend's edge too (ADR-0044 §5).
-    for (mt, made) in miters.iter().zip(&miter_made) {
+    for (mt, made) in miters.iter().zip(miter_made) {
         if let Some(arc) = &mt.trim_arc {
             p.add_generated(
                 forward(mt.edges[arc.wide]),
@@ -1074,7 +1382,7 @@ pub(super) fn build(
     }
     // A corner's face and a sphere's pole from each of its three edges;
     // its vertices and sides are its blends' own, recorded above.
-    for (c, made) in corners.iter().zip(&corner_made) {
+    for (c, made) in corners.iter().zip(corner_made) {
         for &edge in &c.edges {
             let origin = forward(edge);
             p.add_generated(origin, forward(out.added[made.added]));
@@ -1085,7 +1393,7 @@ pub(super) fn build(
     }
     // A ring's face, its two contacts, its seam or its two ends, and its
     // two or four vertices.
-    for (r, made) in rings.iter().zip(&ring_made) {
+    for (r, made) in rings.iter().zip(ring_made) {
         let origin = forward(r.edge);
         let ends = match r.ends {
             RingEnds::Seam(_) => 1,
@@ -1099,5 +1407,5 @@ pub(super) fn build(
             p.add_generated(origin, forward(out.vertices[v]));
         }
     }
-    Ok((out.body, p))
+    (out.body, p)
 }

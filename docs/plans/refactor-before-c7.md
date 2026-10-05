@@ -197,7 +197,7 @@ and ignored tests.
     - a void shell's face is reversed;
     - edge uses come in the body's order;
     - a seam's two uses are in one face.
-- [ ] Step 6 **[2]** — **`blend::build` in phases over a context.**
+- [x] Step 6 **[2]** — **`blend::build` in phases over a context.**
   - A `BlendCtx { m, view, kind, tol, samples, meter }` replaces the
     threaded arguments.
   - `build` (956 lines) splits into: classify the chained edges
