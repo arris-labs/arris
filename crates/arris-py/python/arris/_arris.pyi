@@ -387,6 +387,17 @@ class Model:
     def fuse(
         self, a: Body, b: Body, *, cancel: Cancel | None = None, budget: int | None = None
     ) -> _Made: ...
+    def cut_many(
+        self,
+        target: Body,
+        tools: Sequence[Body],
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> _Made: ...
+    def fuse_many(
+        self, bodies: Sequence[Body], *, cancel: Cancel | None = None, budget: int | None = None
+    ) -> _Made: ...
     def common(
         self, a: Body, b: Body, *, cancel: Cancel | None = None, budget: int | None = None
     ) -> _Made: ...

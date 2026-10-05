@@ -27,6 +27,9 @@ into its version (ADR-0027).
   `InputReason::NonManifold`. An empty
   `tools`, fewer than two `bodies` and a body named twice are refused as
   `BooleanReason::NoTools` and `RepeatedOperand`.
+- Python: `Model.cut_many(target, tools)` and `Model.fuse_many(bodies)` run
+  the multi-tool booleans with `cancel` and `budget`; their refusals raise
+  `OpDegenerateError` with the reason's text.
 - `arris_ops::boolean::interferences_many(model, operands, control)` is the
   boolean's decomposition over any number of operands in one build: every
   face pair of two different operands whose boxes overlap, the section

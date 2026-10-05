@@ -512,6 +512,90 @@ impl Model {
         })
     }
 
+    /// `target` with every body of `tools` removed, in one decomposition: the
+    /// result of cutting them one after another, made by one pass over all of
+    /// them, with one provenance record that names each tool. A pattern of
+    /// holes is one call. The tools may overlap one another.
+    ///
+    /// Raises `OpDegenerateError` for an empty `tools` or a body named twice
+    /// among the target and the tools, `OpUnsupportedError` for tools that
+    /// touch one another where no result is defined (flush on one face,
+    /// tangent), and otherwise as for `cut`.
+    ///
+    /// ```python
+    /// import math
+    ///
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// plate, _ = model.primitive_box((0, 0, 0), (40, 30, 10))
+    /// tools = [
+    ///     model.primitive_cylinder((x, 15, -1), (0, 0, 1), 3, 12)[0]
+    ///     for x in (10, 20, 30)
+    /// ]
+    /// holed, record = model.cut_many(plate, tools)
+    /// volume = model.mass_properties(holed).volume
+    /// assert abs(volume - (12000 - 3 * math.pi * 9 * 10)) < 1e-9 * 12000
+    /// assert record.generated
+    /// ```
+    #[pyo3(signature = (target, tools, *, cancel=None, budget=None))]
+    fn cut_many(
+        &self,
+        py: Python<'_>,
+        target: &Body,
+        tools: Vec<PyRef<'_, Body>>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let target = target.resolve(&self.shared)?;
+        let tools = tools
+            .iter()
+            .map(|t| t.resolve(&self.shared))
+            .collect::<Result<Vec<_>, _>>()?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::cut_many(m, target, &tools, control)
+        })
+    }
+
+    /// The union of every body of `bodies`, in one decomposition: the result
+    /// of fusing them one after another, with one provenance record that
+    /// names each. Errors as for `cut_many`; fewer than two bodies is
+    /// `OpDegenerateError`.
+    ///
+    /// ```python
+    /// import math
+    ///
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// plate, _ = model.primitive_box((0, 0, 0), (60, 30, 10))
+    /// bosses = [
+    ///     model.primitive_cylinder((x, 15, 5), (0, 0, 1), 4, 15)[0]
+    ///     for x in (15, 45)
+    /// ]
+    /// fused, _ = model.fuse_many([plate, *bosses])
+    /// volume = model.mass_properties(fused).volume
+    /// assert abs(volume - (18000 + 2 * math.pi * 16 * 10)) < 1e-9 * 18000
+    /// ```
+    #[pyo3(signature = (bodies, *, cancel=None, budget=None))]
+    fn fuse_many(
+        &self,
+        py: Python<'_>,
+        bodies: Vec<PyRef<'_, Body>>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let bodies = bodies
+            .iter()
+            .map(|b| b.resolve(&self.shared))
+            .collect::<Result<Vec<_>, _>>()?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::fuse_many(m, &bodies, control)
+        })
+    }
+
     /// The intersection of `a` and `b`. Errors as for `cut`.
     ///
     /// ```python

@@ -400,3 +400,63 @@ def test_shell_honours_cancel_and_budget():
     assert model.contains(a)
     token.reset()
     model.shell(a, top_of(record), 1.0, cancel=token, budget=10_000)
+
+
+def test_cut_many_is_the_chain_of_cuts_in_one_call_with_every_tool_recorded():
+    model = arris.Model()
+    plate, _ = box(model, (0, 0, 0), (40, 30, 10))
+    tools = [hole(model, x, 15)[0] for x in (10, 20, 30)]
+    holed, record = model.cut_many(plate, tools)
+    chained = plate
+    for tool in tools:
+        chained, _ = model.cut(chained, tool)
+    one, other = model.mass_properties(holed), model.mass_properties(chained)
+    assert abs(one.volume - other.volume) < 1e-9 * other.volume
+    assert len(model.faces(holed)) == len(model.faces(chained)) == 9
+    assert all(record.is_deleted(tool) for tool in tools)
+
+
+def test_fuse_many_unites_every_body():
+    model = arris.Model()
+    bodies = [box(model, (0, 0, 0), (60, 30, 10))[0]]
+    bodies += [
+        model.primitive_cylinder((x, 15, 5), (0, 0, 1), 4, 15)[0] for x in (15, 45)
+    ]
+    fused, _ = model.fuse_many(bodies)
+    volume = 18000 + 2 * math.pi * 16 * 10
+    assert abs(model.mass_properties(fused).volume - volume) < 1e-9 * volume
+
+
+def test_a_multi_tool_boolean_without_tools_or_with_a_repeat_names_why():
+    model = arris.Model()
+    a, _ = box(model)
+    tool, _ = hole(model, 5, 5)
+    with pytest.raises(arris.OpDegenerateError) as raised:
+        model.cut_many(a, [])
+    assert "NoTools" in raised.value.reason or "tool" in raised.value.reason
+    with pytest.raises(arris.OpDegenerateError):
+        model.fuse_many([a])
+    with pytest.raises(arris.OpDegenerateError) as raised:
+        model.cut_many(a, [tool, tool])
+    assert tool in raised.value.entities
+    with pytest.raises(arris.OpDegenerateError):
+        model.fuse_many([a, tool, a])
+
+
+def test_a_multi_tool_boolean_honours_cancel_and_budget():
+    model = arris.Model()
+    a, _ = box(model, (0, 0, 0), (100, 100, 10))
+    tools = [hole(model, 20 * i, 50)[0] for i in range(1, 5)]
+    token = arris.Cancel()
+    token.set()
+    with pytest.raises(arris.Interrupted):
+        model.cut_many(a, tools, cancel=token)
+    with pytest.raises(arris.Interrupted) as raised:
+        model.cut_many(a, tools, budget=0)
+    assert raised.value.by == "budget"
+    other = arris.Model()
+    b, _ = box(other)
+    with pytest.raises(arris.ForeignHandleError):
+        other.cut_many(b, tools)
+    with pytest.raises(arris.ForeignHandleError):
+        other.fuse_many([b, tools[0]])

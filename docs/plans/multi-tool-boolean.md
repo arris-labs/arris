@@ -187,7 +187,7 @@ bound has to be established here.
   `NonManifold` (the touch is the seam's image); their two-operand chain
   fails with `Fault::Split`, the family `regression/tangent-seam-on-face-cut`
   already holds.
-- [ ] Step 6 **[1]** — The facade and the binding: `Model.cut_many` and
+- [x] Step 6 **[1]** — The facade and the binding: `Model.cut_many` and
   `Model.fuse_many` with cancel and budget, stubs, docstring examples, a
   pytest per refusal; the rustdoc example on both functions; the cancel
   step counts of the two-operand fixtures unchanged, the multi-tool ones
