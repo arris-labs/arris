@@ -1,0 +1,135 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus two blind rectangular pockets [20,80]×[40,60] and [40,60]×[20,80], both z 5 to 12 (open on top), crossing in a plus: a cut with two tools that overlap each other, genus 0",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "p1",
+      "op": "box",
+      "min": [
+        20,
+        40,
+        5
+      ],
+      "max": [
+        80,
+        60,
+        12
+      ]
+    },
+    {
+      "name": "p2",
+      "op": "box",
+      "min": [
+        40,
+        20,
+        5
+      ],
+      "max": [
+        60,
+        80,
+        12
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "p1",
+        "p2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "under_floor",
+      "point": [
+        50,
+        50,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_pocket",
+      "point": [
+        50,
+        50,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_corner_notch",
+      "point": [
+        30,
+        30,
+        7
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        5,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_floor",
+      "point": [
+        70,
+        50,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        20,
+        50,
+        7
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - 2000 * 5",
+    "area": "2 * 100 * 100 + 4 * 100 * t + 240 * 5",
+    "centroid": [
+      50,
+      50,
+      "(100 * 100 * t * 5 - 2000 * 5 * 7.5) / (100 * 100 * t - 2000 * 5)"
+    ],
+    "genus": 0
+  }
+}

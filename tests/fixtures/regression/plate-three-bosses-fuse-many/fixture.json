@@ -1,0 +1,131 @@
+{
+  "description": "plate [0,0,0]–[100,30,10] ∪ three cylinders r 4 at pitch 30 from z 5 to 20, one fuse of four bodies: bosses whose walls cross the top face and whose bottom caps are swallowed, genus 0",
+  "params": {
+    "r": 4
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        30,
+        10
+      ]
+    },
+    {
+      "name": "b",
+      "op": "cylinder",
+      "base": [
+        20,
+        15,
+        5
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": 15
+    },
+    {
+      "name": "bosses",
+      "op": "pattern",
+      "of": "b",
+      "step": [
+        30,
+        0,
+        0
+      ],
+      "count": 3
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "bodies": [
+        "plate",
+        "bosses"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_plate",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_boss",
+      "point": [
+        50,
+        15,
+        15
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        35,
+        15,
+        15
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        5,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        84,
+        15,
+        15
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_cap",
+      "point": [
+        80,
+        15,
+        20
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 30 * 10 + 3 * pi * r * r * 10",
+    "area": "2 * 100 * 30 + 2 * (100 + 30) * 10 + 3 * 2 * pi * r * 10",
+    "centroid": [
+      50,
+      15,
+      "(100 * 30 * 10 * 5 + 3 * pi * r * r * 10 * 15) / (100 * 30 * 10 + 3 * pi * r * r * 10)"
+    ],
+    "counts": {
+      "vertices": 14,
+      "edges": 21,
+      "faces": 12,
+      "loops": 15,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

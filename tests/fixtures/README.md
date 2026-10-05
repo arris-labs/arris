@@ -137,8 +137,9 @@ of the step that made the fixture pass, and a later change to it is a
 | `revolve` | `profile`, `axis` `{origin, direction}`, `angle_deg` |
 | `transform` | `of`, optional `translate`, optional `rotate` `{axis, origin, angle_deg}`; rotation first |
 | `mirror` | `of`, `plane` `{origin, normal}`: the reflection in it (`ops::mirror`; `gp_Trsf::SetMirror` in the oracle) |
-| `fuse`, `common` | `a`, `b` |
-| `cut` | `target`, `tool` |
+| `fuse`, `common` | `a`, `b`; a `fuse` may instead take `bodies`, a list of two or more step names (one General Fuse, `arris_ops::fuse_many`; ADR-0050) |
+| `cut` | `target`, `tool`; or `tools`, a list of step names cut away in one call (`arris_ops::cut_many`; ADR-0050) |
+| `pattern` | `of`, `step` (`[x, y, z]`), `count`, and for a grid `step2` and `count2`: the copies of `of` translated by `i * step` (plus `j * step2`), a list a `tools` or `bodies` field takes by the pattern's name. `count`s are plain integers; each copy is a `transform` step named `name[i]` or `name[i,j]`, expanded when the recipe is read (`fixtures::expand_patterns`, `recipe.py`'s `expand_patterns`) and not part of the recipe hash |
 | `fillet` | `of`, `edges` (a list of points, one on each edge to blend), `radius` |
 | `chamfer` | `of`, `edges` (as a `fillet`'s), `distance` (one, measured on both faces from the edge) |
 | `offset` | `of`, `faces` (a point on each face to move, within `probe` of that face alone — Arris takes the face the point classifies `On`, so a point on an edge or a seam names none; every face tangent to a named one moves with it, ADR-0048 §6), `distance` (signed along the outward normal, positive adds material; ADR-0048) |

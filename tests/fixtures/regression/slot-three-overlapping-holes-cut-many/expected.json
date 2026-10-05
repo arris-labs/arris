@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "8d970736602a9947c682dccfda6c1cdaff371fd3fd7587b77e94f3e9cfca6d43",
+  "results": {
+    "default": {
+      "area": 24218.764050056907,
+      "centroid": [
+        50.04377693378136,
+        50.00000000000001,
+        5.0
+      ],
+      "counts": {
+        "edges": 27,
+        "faces": 11,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          84158851.76187441,
+          1.1920928955078125e-07,
+          7.450580596923828e-09
+        ],
+        [
+          1.1920928955078125e-07,
+          84123932.72423494,
+          0.0
+        ],
+        [
+          7.450580596923828e-09,
+          0.0,
+          166628189.99833024
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 27,
+        "faces": 11,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            44.0,
+            50.0,
+            12.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_slot_middle",
+          "point": [
+            44.0,
+            50.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_lens",
+          "point": [
+            42.0,
+            50.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_face",
+          "point": [
+            5.0,
+            5.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end_wall",
+          "point": [
+            37.0,
+            50.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_rim",
+          "point": [
+            37.0,
+            50.0,
+            10.0
+          ]
+        }
+      ],
+      "volume": 99275.66926673523
+    }
+  }
+}

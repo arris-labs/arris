@@ -867,8 +867,9 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
         steps.push(match op {
             Op::Fuse => Step::Fuse {
                 name: name.clone(),
-                a: last,
-                b: next,
+                a: Some(last),
+                b: Some(next),
+                bodies: Vec::new(),
             },
             Op::Common => Step::Common {
                 name: name.clone(),
@@ -878,7 +879,8 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
             Op::Cut => Step::Cut {
                 name: name.clone(),
                 target: last,
-                tool: next,
+                tool: Some(next),
+                tools: Vec::new(),
             },
         });
         last = name;

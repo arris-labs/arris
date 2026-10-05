@@ -320,14 +320,20 @@ pub enum Step {
         /// The plane it is reflected in.
         plane: MirrorPlane,
     },
-    /// Boolean union.
+    /// Boolean union: of the two operands `a` and `b`, or of the
+    /// `bodies` list (two or more, `arris_ops::fuse_many`), never both.
     Fuse {
         /// Step name.
         name: String,
-        /// First operand.
-        a: String,
-        /// Second operand.
-        b: String,
+        /// First operand; absent where `bodies` is given.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        a: Option<String>,
+        /// Second operand; absent where `bodies` is given.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        b: Option<String>,
+        /// The operands of a many-body fuse, by step name.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        bodies: Vec<String>,
     },
     /// Boolean intersection.
     Common {
@@ -338,14 +344,19 @@ pub enum Step {
         /// Second operand.
         b: String,
     },
-    /// Boolean difference.
+    /// Boolean difference: of one `tool`, or of the `tools` list
+    /// (`arris_ops::cut_many`), never both.
     Cut {
         /// Step name.
         name: String,
         /// The body cut from.
         target: String,
-        /// The body cut away.
-        tool: String,
+        /// The body cut away; absent where `tools` is given.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tool: Option<String>,
+        /// The bodies cut away in one call, by step name.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tools: Vec<String>,
     },
     /// A constant-radius fillet of edges of a step's body, named by a
     /// point on each: Arris takes the edge `classify_point` answers
@@ -1040,6 +1051,16 @@ pub enum FixtureError {
         /// The value found.
         kind: String,
     },
+    /// A `pattern` step is malformed.
+    #[error("{path}: step {step:?}: pattern: {why}")]
+    Pattern {
+        /// The file.
+        path: PathBuf,
+        /// The step's name.
+        step: String,
+        /// What is wrong.
+        why: String,
+    },
 }
 
 /// The corpus root: `tests/fixtures/` at the workspace root.
@@ -1119,11 +1140,16 @@ pub fn recipe_hash(raw: &serde_json::Value) -> Result<String, String> {
 /// Loads a fixture directory: both files, and the recipe's hash.
 pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
     let raw: serde_json::Value = read_json(&dir.join("fixture.json"))?;
-    let recipe: Recipe =
-        serde_json::from_value(raw.clone()).map_err(|source| FixtureError::Json {
-            path: dir.join("fixture.json"),
-            source,
-        })?;
+    let mut expanded = raw.clone();
+    expand_patterns(&mut expanded).map_err(|(step, why)| FixtureError::Pattern {
+        path: dir.join("fixture.json"),
+        step,
+        why,
+    })?;
+    let recipe: Recipe = serde_json::from_value(expanded).map_err(|source| FixtureError::Json {
+        path: dir.join("fixture.json"),
+        source,
+    })?;
     let expected: Expected = read_json(&dir.join("expected.json"))?;
     let recipe_sha256 = recipe_hash(&raw).map_err(|kind| FixtureError::UnknownKind {
         path: dir.join("fixture.json"),
@@ -1136,6 +1162,120 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
         recipe,
         expected,
     })
+}
+
+/// Replaces every `pattern` step of a recipe's raw JSON by the
+/// `transform` steps it stands for, and each mention of the pattern in a
+/// later step's `tools` or `bodies` list by their names: the copies of the
+/// step `of`, translated by `i * step` (and `+ j * step2` for a grid),
+/// `i` in `0..count`, `j` in `0..count2`, named `name[i]` or `name[i,j]`
+/// in that order. The translations are expressions over the recipe's
+/// params, so the expansion does not depend on the variant; `count` and
+/// `count2` are plain integers. The oracle's interpreter
+/// (`tools/oracle/oracle/recipe.py`) expands the same way, and the recipe
+/// hash is of the unexpanded JSON. Errors: the offending step's name and
+/// what is wrong with it.
+pub fn expand_patterns(raw: &mut serde_json::Value) -> Result<(), (String, String)> {
+    use serde_json::{Value, json};
+
+    let Some(steps) = raw.get_mut("steps").and_then(Value::as_array_mut) else {
+        return Ok(());
+    };
+    let mut patterns: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut out: Vec<Value> = Vec::with_capacity(steps.len());
+    for mut step in std::mem::take(steps) {
+        let name = step
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        if step.get("op").and_then(Value::as_str) != Some("pattern") {
+            for key in ["tools", "bodies"] {
+                let Some(list) = step.get_mut(key).and_then(Value::as_array_mut) else {
+                    continue;
+                };
+                let mut names: Vec<Value> = Vec::new();
+                for item in std::mem::take(list) {
+                    match item.as_str().and_then(|n| patterns.get(n)) {
+                        Some(copies) => names.extend(copies.iter().map(|c| json!(c))),
+                        None => names.push(item),
+                    }
+                }
+                *list = names;
+            }
+            out.push(step);
+            continue;
+        }
+        let bad = |why: &str| (name.clone(), why.to_string());
+        let of = step
+            .get("of")
+            .and_then(Value::as_str)
+            .ok_or_else(|| bad("needs `of`, a step name"))?
+            .to_string();
+        let count = |key: &str| -> Result<Option<u64>, (String, String)> {
+            match step.get(key) {
+                None => Ok(None),
+                Some(v) => match v.as_u64() {
+                    Some(n) if n >= 1 => Ok(Some(n)),
+                    _ => Err(bad(&format!("`{key}` must be a positive integer"))),
+                },
+            }
+        };
+        let vector = |key: &str| -> Result<Option<Vec<String>>, (String, String)> {
+            let Some(v) = step.get(key) else {
+                return Ok(None);
+            };
+            let items = v
+                .as_array()
+                .filter(|a| a.len() == 3)
+                .ok_or_else(|| bad(&format!("`{key}` must be [x, y, z]")))?;
+            items
+                .iter()
+                .map(|c| match c {
+                    Value::Number(n) => Ok(n.to_string()),
+                    Value::String(e) => Ok(e.clone()),
+                    _ => Err(bad(&format!("`{key}` must be [x, y, z]"))),
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map(Some)
+        };
+        let n = count("count")?.ok_or_else(|| bad("needs `count`"))?;
+        let first = vector("step")?.ok_or_else(|| bad("needs `step`"))?;
+        let grid = match (count("count2")?, vector("step2")?) {
+            (Some(m), Some(v)) => Some((m, v)),
+            (None, None) => None,
+            _ => return Err(bad("`step2` and `count2` come together")),
+        };
+        let mut copies = Vec::new();
+        for i in 0..n {
+            for j in 0..grid.as_ref().map_or(1, |(m, _)| *m) {
+                let (copy, shift): (String, Vec<String>) = match &grid {
+                    None => (
+                        format!("{name}[{i}]"),
+                        first.iter().map(|a| format!("({a}) * {i}")).collect(),
+                    ),
+                    Some((_, second)) => (
+                        format!("{name}[{i},{j}]"),
+                        first
+                            .iter()
+                            .zip(second)
+                            .map(|(a, b)| format!("({a}) * {i} + ({b}) * {j}"))
+                            .collect(),
+                    ),
+                };
+                out.push(json!({
+                    "name": copy,
+                    "op": "transform",
+                    "of": of,
+                    "translate": shift,
+                }));
+                copies.push(copy);
+            }
+        }
+        patterns.insert(name, copies);
+    }
+    *steps = out;
+    Ok(())
 }
 
 /// The areas of the corpus whose comparable solid fixtures must carry a
@@ -1492,6 +1632,53 @@ mod tests {
             }
         }
         assert!(r.params_of("nope").is_none());
+    }
+
+    #[test]
+    fn a_pattern_expands_to_transforms_a_list_names_in_order() {
+        let mut raw: serde_json::Value = serde_json::from_str(
+            r#"{"steps": [
+                {"name": "h", "op": "cylinder", "base": [0,0,0], "axis": [0,0,1], "radius": 1, "height": 2},
+                {"name": "g", "op": "pattern", "of": "h", "step": ["d", 0, 0], "count": 2, "step2": [0, 5, 0], "count2": 2},
+                {"name": "p", "op": "box", "min": [0,0,0], "max": [9,9,9]},
+                {"name": "r", "op": "cut", "target": "p", "tools": ["g"]}
+            ], "result": "r"}"#,
+        )
+        .unwrap();
+        expand_patterns(&mut raw).unwrap();
+        let r: Recipe = serde_json::from_value(raw).unwrap();
+        let names: Vec<_> = r.steps.iter().map(Step::name).collect();
+        assert_eq!(
+            names,
+            ["h", "g[0,0]", "g[0,1]", "g[1,0]", "g[1,1]", "p", "r"]
+        );
+        let Step::Cut {
+            tools, tool: None, ..
+        } = &r.steps[6]
+        else {
+            panic!("not a many-tool cut");
+        };
+        assert_eq!(tools, &["g[0,0]", "g[0,1]", "g[1,0]", "g[1,1]"]);
+        let params = BTreeMap::from([("d".to_string(), 3.0)]);
+        let Step::Transform {
+            translate: Some(t), ..
+        } = &r.steps[4]
+        else {
+            panic!("not a transform");
+        };
+        let at: Vec<f64> = t.iter().map(|n| n.eval(&params).unwrap()).collect();
+        assert_eq!(at, [3.0, 5.0, 0.0]);
+    }
+
+    #[test]
+    fn a_malformed_pattern_names_its_step() {
+        let mut raw: serde_json::Value = serde_json::from_str(
+            r#"{"steps": [{"name": "g", "op": "pattern", "of": "h", "step": [1,0,0], "count": 0}]}"#,
+        )
+        .unwrap();
+        let (step, why) = expand_patterns(&mut raw).unwrap_err();
+        assert_eq!(step, "g");
+        assert!(why.contains("count"), "{why}");
     }
 
     #[test]

@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "cda463e897bcc10254955f6817daf5bee21f4274b403b872b882c6646b7b13e1",
+  "results": {
+    "default": {
+      "area": 25200.0,
+      "centroid": [
+        49.99999999999994,
+        49.99999999999994,
+        4.722222222222222
+      ],
+      "counts": {
+        "edges": 52,
+        "faces": 23,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          82143055.555556,
+          -3.5762786865234375e-07,
+          -1.4901161193847656e-08
+        ],
+        [
+          -3.5762786865234375e-07,
+          82143055.55555606,
+          -1.4901161193847656e-08
+        ],
+        [
+          -1.4901161193847656e-08,
+          -1.4901161193847656e-08,
+          162800000.00000054
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 52,
+        "faces": 23,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_floor",
+          "point": [
+            50.0,
+            50.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_pocket",
+          "point": [
+            50.0,
+            50.0,
+            7.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_corner_notch",
+          "point": [
+            30.0,
+            30.0,
+            7.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            5.0,
+            5.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor",
+          "point": [
+            70.0,
+            50.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            20.0,
+            50.0,
+            7.0
+          ]
+        }
+      ],
+      "volume": 90000.00000000001
+    }
+  }
+}

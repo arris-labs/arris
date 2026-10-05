@@ -87,6 +87,17 @@ pub enum CorpusError {
         /// The name it refers to.
         name: String,
     },
+    /// A `fuse` or `cut` step names its operands wrongly, or as a list the
+    /// runner does not run yet.
+    #[error("{fixture}: step {step:?}: {what}")]
+    Operands {
+        /// The fixture.
+        fixture: String,
+        /// The step's name.
+        step: String,
+        /// What is wrong.
+        what: String,
+    },
     /// A number in the recipe could not be evaluated.
     #[error("{fixture}: step {step:?}: {source}")]
     Expression {
@@ -769,6 +780,7 @@ impl CorpusError {
             CorpusError::Fixture(_)
             | CorpusError::Variant { .. }
             | CorpusError::Reference { .. }
+            | CorpusError::Operands { .. }
             | CorpusError::Expression { .. }
             | CorpusError::Profile { .. }
             | CorpusError::EdgePoint { .. }
@@ -1618,8 +1630,18 @@ impl Inputs {
     /// the result is not a boolean.
     pub fn operands(&self) -> Option<(Body, Body)> {
         let (x, y) = match &self.result {
-            Step::Fuse { a, b, .. } | Step::Common { a, b, .. } => (a, b),
-            Step::Cut { target, tool, .. } => (target, tool),
+            Step::Fuse {
+                a: Some(a),
+                b: Some(b),
+                ..
+            }
+            | Step::Common { a, b, .. } => (a, b),
+            Step::Cut {
+                target,
+                tool: Some(tool),
+                ..
+            } => (target, tool),
+            Step::Fuse { .. } | Step::Cut { .. } => return None,
             Step::Box { .. }
             | Step::Cylinder { .. }
             | Step::Profile { .. }
@@ -1960,7 +1982,18 @@ fn build_step(
                 vec![of_body],
             )
         }
-        Step::Fuse { a, b, .. } => {
+        Step::Fuse { a, b, bodies, .. } => {
+            let names = operand_names(fixture, step, [a, b], bodies, "fuse")?;
+            let [a, b] = names[..] else {
+                return Err(CorpusError::Operands {
+                    fixture: name.clone(),
+                    step: step.name().to_string(),
+                    what: format!(
+                        "fuse of {} bodies: the many-body boolean is not built yet",
+                        names.len()
+                    ),
+                });
+            };
             let a = reference(fixture, step, a, made)?.body;
             let b = reference(fixture, step, b, made)?.body;
             body(fuse(m, a, b, control).map_err(op)?, vec![a, b])
@@ -1970,7 +2003,23 @@ fn build_step(
             let b = reference(fixture, step, b, made)?.body;
             body(common(m, a, b, control).map_err(op)?, vec![a, b])
         }
-        Step::Cut { target, tool, .. } => {
+        Step::Cut {
+            target,
+            tool,
+            tools,
+            ..
+        } => {
+            let names = operand_names(fixture, step, [tool, &None], tools, "cut")?;
+            let [tool] = names[..] else {
+                return Err(CorpusError::Operands {
+                    fixture: name.clone(),
+                    step: step.name().to_string(),
+                    what: format!(
+                        "cut of {} tools: the multi-tool boolean is not built yet",
+                        names.len()
+                    ),
+                });
+            };
             let target = reference(fixture, step, target, made)?.body;
             let tool = reference(fixture, step, tool, made)?.body;
             body(
@@ -2255,6 +2304,31 @@ fn edge_at(m: &Model, body: Body, point: Point3, probe: f64) -> Result<Edge, Str
         ));
     }
     Ok(Edge::forward(id))
+}
+
+/// The operand names of a `fuse` or `cut` step, from its two single-name
+/// fields or its list, never both.
+fn operand_names<'a>(
+    fixture: &Fixture,
+    step: &Step,
+    single: [&'a Option<String>; 2],
+    list: &'a [String],
+    what: &str,
+) -> Result<Vec<&'a str>, CorpusError> {
+    let named: Vec<&str> = single.iter().filter_map(|n| n.as_deref()).collect();
+    let wrong = |what: String| CorpusError::Operands {
+        fixture: fixture.name.clone(),
+        step: step.name().to_string(),
+        what,
+    };
+    match (named.is_empty(), list.is_empty()) {
+        (false, false) => Err(wrong(format!(
+            "a {what} names its operands singly or as a list, not both"
+        ))),
+        (true, true) => Err(wrong(format!("a {what} names no operands"))),
+        (false, true) => Ok(named),
+        (true, false) => Ok(list.iter().map(String::as_str).collect()),
+    }
 }
 
 fn reference<'a>(

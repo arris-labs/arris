@@ -458,7 +458,8 @@ pub fn operands(
     let cut = |tool: &str| Step::Cut {
         name: "result".into(),
         target: "part".into(),
-        tool: tool.into(),
+        tool: Some(tool.into()),
+        tools: Vec::new(),
     };
     let arr = |v: Vec3| [v.x, v.y, v.z];
     let mut out = BTreeMap::new();

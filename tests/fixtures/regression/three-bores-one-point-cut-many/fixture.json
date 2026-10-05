@@ -1,0 +1,139 @@
+{
+  "description": "cube [0,40]³ minus three orthogonal through bores r 5 whose axes meet at the centre, one cut with three tools that all pass through one point (the triple point of three cylinders): a Steinmetz union, genus 5",
+  "params": {
+    "r": 5,
+    "L": 40
+  },
+  "steps": [
+    {
+      "name": "cube",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        "L",
+        "L",
+        "L"
+      ]
+    },
+    {
+      "name": "bx",
+      "op": "cylinder",
+      "base": [
+        -10,
+        20,
+        20
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": "r",
+      "height": "L + 20"
+    },
+    {
+      "name": "by",
+      "op": "cylinder",
+      "base": [
+        20,
+        -10,
+        20
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "radius": "r",
+      "height": "L + 20"
+    },
+    {
+      "name": "bz",
+      "op": "cylinder",
+      "base": [
+        20,
+        20,
+        -10
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": "L + 20"
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "cube",
+      "tools": [
+        "bx",
+        "by",
+        "bz"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "centre",
+      "point": [
+        20,
+        20,
+        20
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_bore",
+      "point": [
+        5,
+        20,
+        20
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        5,
+        5,
+        40
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bore_wall",
+      "point": [
+        5,
+        25,
+        20
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "L ^ 3 - (3 * pi * r * r * L - 16 * r ^ 3 + 8 * (2 - sqrt(2)) * r ^ 3)",
+    "area": "6 * L * L - 6 * pi * r * r + 3 * (2 * pi * r * L - 16 * r * r + 8 * (2 - sqrt(2)) * r * r)",
+    "centroid": [
+      20,
+      20,
+      20
+    ],
+    "genus": 5
+  }
+}

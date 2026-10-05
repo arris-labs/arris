@@ -1,0 +1,135 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus three through holes r 3 centred 4 apart on a line (neighbours overlap, the ends do not): one slot, a cut with three tools whose own overlaps are sections of the one decomposition, genus 1",
+  "params": {
+    "r": 3,
+    "d": 4,
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "h",
+      "op": "cylinder",
+      "base": [
+        40,
+        50,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": "t + 2"
+    },
+    {
+      "name": "holes",
+      "op": "pattern",
+      "of": "h",
+      "step": [
+        "d",
+        0,
+        0
+      ],
+      "count": 3
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "holes"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        44,
+        50,
+        12
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_slot_middle",
+      "point": [
+        44,
+        50,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_lens",
+      "point": [
+        42,
+        50,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        5,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_end_wall",
+      "point": [
+        37,
+        50,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top_rim",
+      "point": [
+        37,
+        50,
+        10
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - t * (3 * pi * r * r - 2 * (2 * r * r * atan(sqrt(1 - (d / (2 * r)) ^ 2) / (d / (2 * r))) - d / 2 * sqrt(4 * r * r - d * d)))",
+    "area": "2 * 100 * 100 + 4 * 100 * t - 2 * (3 * pi * r * r - 2 * (2 * r * r * atan(sqrt(1 - (d / (2 * r)) ^ 2) / (d / (2 * r))) - d / 2 * sqrt(4 * r * r - d * d))) + t * (6 * pi * r - 8 * atan(sqrt(1 - (d / (2 * r)) ^ 2) / (d / (2 * r))) * r)",
+    "centroid": [
+      "(100 * 100 * t * 50 - t * (3 * pi * r * r - 2 * (2 * r * r * atan(sqrt(1 - (d / (2 * r)) ^ 2) / (d / (2 * r))) - d / 2 * sqrt(4 * r * r - d * d))) * 44) / (100 * 100 * t - t * (3 * pi * r * r - 2 * (2 * r * r * atan(sqrt(1 - (d / (2 * r)) ^ 2) / (d / (2 * r))) - d / 2 * sqrt(4 * r * r - d * d))))",
+      50,
+      5
+    ],
+    "genus": 1
+  }
+}

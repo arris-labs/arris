@@ -41,6 +41,22 @@ MEASUREMENTS = ("volume", "area", "centroid", "inertia")
 # the real ones; these run even on a checkout with no corpus yet.
 SMOKES = [
     {
+        "name": "box − a pattern of three cylinders, one cut",
+        "recipe": {
+            "params": {"r": 3, "d": 20},
+            "steps": [
+                {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [100, 30, 10]},
+                {"name": "h", "op": "cylinder", "base": [20, 15, -1], "axis": [0, 0, 1], "radius": "r", "height": 12},
+                {"name": "holes", "op": "pattern", "of": "h", "step": ["d", 0, 0], "count": 3},
+                {"name": "result", "op": "cut", "target": "plate", "tools": ["holes"]},
+            ],
+            "result": "result",
+            "probes": [{"label": "in_hole", "point": [40, 15, 5]}, {"label": "between", "point": [30, 15, 5]}],
+        },
+        "analytic": {"default": {"volume": 30000 - 3 * PI * 9 * 10, "counts": (14, 21, 9, 15), "genus": 3}},
+        "probes": {"in_hole": "out", "between": "in"},
+    },
+    {
         "name": "box − cylinder, params and a variant",
         "recipe": {
             "params": {"r": 4},

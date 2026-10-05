@@ -265,7 +265,8 @@ fn lumps_and_voids_are_read_back_as_solids_and_shells() {
         Step::Cut {
             name: "result".into(),
             target: "a".into(),
-            tool: "b".into(),
+            tool: Some("b".into()),
+            tools: Vec::new(),
         },
     );
     let dir = oracle::scratch_fixture("step-hollow-box", &recipe).unwrap();
@@ -293,8 +294,9 @@ fn lumps_and_voids_are_read_back_as_solids_and_shells() {
         ([20.0, 0.0, 0.0], [30.0, 10.0, 10.0]),
         Step::Fuse {
             name: "result".into(),
-            a: "a".into(),
-            b: "b".into(),
+            a: Some("a".into()),
+            b: Some("b".into()),
+            bodies: Vec::new(),
         },
     );
     let dir = oracle::scratch_fixture("step-two-boxes", &recipe).unwrap();

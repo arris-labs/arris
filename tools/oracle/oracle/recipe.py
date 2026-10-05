@@ -40,9 +40,21 @@ Operations, by `op`:
     transform  of <name>, translate [x,y,z] (optional),
                rotate {axis [x,y,z], origin [x,y,z], angle_deg} (optional)
     mirror     of <name>, plane {origin [x,y,z], normal [x,y,z]}
-    fuse       a <name>, b <name>
+    fuse       a <name>, b <name>  |  bodies [<name>, ...]
+               (the list form is one `BRepAlgoAPI_Fuse` with the first body
+               the argument and the rest its tools: one General Fuse)
     common     a <name>, b <name>
-    cut        target <name>, tool <name>
+    cut        target <name>, tool <name>  |  tools [<name>, ...]
+               (the list form is one `BRepAlgoAPI_Cut`, the target its
+               argument and every tool in `SetTools`, one General Fuse)
+    pattern    of <name>, step [x,y,z], count n,
+               step2 [x,y,z], count2 m (optional: a grid)
+               (n copies of `of` translated by i * step, and by
+               + j * step2 for a grid: steps `name[i]` or `name[i,j]`, each
+               a `transform`, which a `tools` or `bodies` list names as
+               `name` for all of them in order. `count` and `count2` are
+               plain integers. Expanded before any step is built, as
+               `arris_debug::fixtures::expand_patterns` does)
     fillet     of <name>, edges [[x,y,z], ...], radius
                (each point names the edge nearest to it, which must be the
                only edge within the fixture's `probe` tolerance)
@@ -311,6 +323,19 @@ def _dir(v: list[float]) -> gp_Dir:
     return gp_Dir(v[0], v[1], v[2])
 
 
+def _boolean(op, arguments: list[TopoDS_Shape], tools: list[TopoDS_Shape]):
+    """`op` (an empty `BRepAlgoAPI_Cut` or `Fuse`) run over the lists: one
+    General Fuse of every argument and tool at once, not a chain."""
+    a, t = List_TopoDS_Shape(), List_TopoDS_Shape()
+    for shape in arguments:
+        a.Append(shape)
+    for shape in tools:
+        t.Append(shape)
+    op.SetArguments(a)
+    op.SetTools(t)
+    return op
+
+
 def _checked(builder, what: str) -> TopoDS_Shape:
     # The MakeXxx builders are lazy: IsDone is meaningful only after Build.
     if hasattr(builder, "Build"):
@@ -465,6 +490,70 @@ def _polyhedron(step: dict, params: dict[str, float]) -> TopoDS_Shape:
     return solid
 
 
+def expand_patterns(steps: list[dict]) -> list[dict]:
+    """`steps` with every `pattern` replaced by the `transform` steps it
+    stands for, and its name in a later `tools` or `bodies` list by theirs:
+    the same expansion as `arris_debug::fixtures::expand_patterns`: the
+    names `name[i]` and `name[i,j]`, translations `(step) * i (+ (step2) *
+    j)` per component."""
+
+    def counted(step: dict, key: str, required: bool = True) -> int | None:
+        if key not in step:
+            if required:
+                raise OracleError(f"pattern {step.get('name')!r}: needs `{key}`")
+            return None
+        n = step[key]
+        if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+            raise OracleError(f"pattern {step.get('name')!r}: `{key}` must be a positive integer")
+        return n
+
+    def vector_of(step: dict, key: str) -> list[str] | None:
+        if key not in step:
+            return None
+        v = step[key]
+        if not isinstance(v, list) or len(v) != 3:
+            raise OracleError(f"pattern {step.get('name')!r}: `{key}` must be [x, y, z]")
+        return [json.dumps(c) if isinstance(c, (int, float)) and not isinstance(c, bool) else str(c) for c in v]
+
+    patterns: dict[str, list[str]] = {}
+    out: list[dict] = []
+    for step in steps:
+        if step.get("op") != "pattern":
+            step = dict(step)
+            for key in ("tools", "bodies"):
+                if isinstance(step.get(key), list):
+                    names: list[str] = []
+                    for item in step[key]:
+                        names.extend(patterns.get(item, [item]) if isinstance(item, str) else [item])
+                    step[key] = names
+            out.append(step)
+            continue
+        name = step.get("name")
+        if not name or not isinstance(step.get("of"), str):
+            raise OracleError(f"pattern {name!r}: needs a name and `of`, a step name")
+        n = counted(step, "count")
+        first = vector_of(step, "step")
+        if first is None:
+            raise OracleError(f"pattern {name!r}: needs `step`")
+        m = counted(step, "count2", required=False)
+        second = vector_of(step, "step2")
+        if (m is None) != (second is None):
+            raise OracleError(f"pattern {name!r}: `step2` and `count2` come together")
+        copies: list[str] = []
+        for i in range(n):
+            for j in range(m or 1):
+                if second is None:
+                    copy = f"{name}[{i}]"
+                    shift = [f"({a}) * {i}" for a in first]
+                else:
+                    copy = f"{name}[{i},{j}]"
+                    shift = [f"({a}) * {i} + ({b}) * {j}" for a, b in zip(first, second)]
+                out.append({"name": copy, "op": "transform", "of": step["of"], "translate": shift})
+                copies.append(copy)
+        patterns[name] = copies
+    return out
+
+
 def build(fixture: dict, variant: str = "default") -> tuple[TopoDS_Shape, dict[str, TopoDS_Shape]]:
     """The result shape of `fixture` for `variant`, and every named step."""
     params = resolve_params(fixture, variant)
@@ -477,7 +566,7 @@ def build(fixture: dict, variant: str = "default") -> tuple[TopoDS_Shape, dict[s
             raise OracleError(f"step refers to {name!r}, which is not built yet")
         return shapes[name]
 
-    for i, step in enumerate(fixture.get("steps", [])):
+    for i, step in enumerate(expand_patterns(fixture.get("steps", []))):
         name = step.get("name")
         op = step.get("op")
         if not name or not op:
@@ -765,10 +854,24 @@ def _build_step(
         )
         return _checked(BRepBuilderAPI_Transform(ref(step["of"]), trsf, True), "mirror")
     if op == "fuse":
+        if "bodies" in step:
+            if "a" in step or "b" in step:
+                raise OracleError("fuse names its operands singly or as `bodies`, not both")
+            bodies = [ref(n) for n in step["bodies"]]
+            if len(bodies) < 2:
+                raise OracleError("fuse of `bodies` needs two or more")
+            return _checked(_boolean(BRepAlgoAPI_Fuse(), bodies[:1], bodies[1:]), "fuse")
         return _checked(BRepAlgoAPI_Fuse(ref(step["a"]), ref(step["b"])), "fuse")
     if op == "common":
         return _checked(BRepAlgoAPI_Common(ref(step["a"]), ref(step["b"])), "common")
     if op == "cut":
+        if "tools" in step:
+            if "tool" in step:
+                raise OracleError("cut names its tool singly or as `tools`, not both")
+            tools = [ref(n) for n in step["tools"]]
+            if not tools:
+                raise OracleError("cut of `tools` needs one or more")
+            return _checked(_boolean(BRepAlgoAPI_Cut(), [ref(step["target"])], tools), "cut")
         return _checked(BRepAlgoAPI_Cut(ref(step["target"]), ref(step["tool"])), "cut")
     if op == "fillet":
         shape = ref(step["of"])

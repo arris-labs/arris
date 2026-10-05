@@ -1,0 +1,129 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus a 2×2 grid of through holes r 3 at pitch 40, one cut with four tools (pattern): genus 4",
+  "params": {
+    "r": 3,
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "h",
+      "op": "cylinder",
+      "base": [
+        30,
+        30,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": "t + 2"
+    },
+    {
+      "name": "holes",
+      "op": "pattern",
+      "of": "h",
+      "step": [
+        40,
+        0,
+        0
+      ],
+      "count": 2,
+      "step2": [
+        0,
+        40,
+        0
+      ],
+      "count2": 2
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "holes"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        50.0,
+        50.0,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        50,
+        50,
+        12
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_hole",
+      "point": [
+        30,
+        30,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        1,
+        1,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        33,
+        30,
+        5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - 4 * pi * r * r * t",
+    "area": "2 * 100 * 100 + 4 * 100 * t - 4 * 2 * pi * r * r + 4 * 2 * pi * r * t",
+    "centroid": [
+      50,
+      50,
+      5
+    ],
+    "counts": {
+      "vertices": 16,
+      "edges": 24,
+      "faces": 10,
+      "loops": 18,
+      "shells": 1
+    },
+    "genus": 4
+  }
+}

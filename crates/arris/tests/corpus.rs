@@ -1375,6 +1375,24 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
+    /// A plate cut by a 2×2 grid of four disjoint holes in one call.
+    #[ignore = "the runner refuses a cut of more than one tool until the multi-tool boolean lands (plans/multi-tool-boolean step 3)"]
+    regression_plate_2x2_holes_cut_many => run "regression/plate-2x2-holes-cut-many";
+    /// A plate cut by a 10×10 grid of a hundred disjoint holes in one call.
+    #[ignore = "the runner refuses a cut of more than one tool until the multi-tool boolean lands (plans/multi-tool-boolean step 3)"]
+    regression_plate_10x10_holes_cut_many => run "regression/plate-10x10-holes-cut-many";
+    /// A plate fused with three bosses in one call.
+    #[ignore = "the runner refuses a fuse of more than two bodies until the multi-tool boolean lands (plans/multi-tool-boolean step 3)"]
+    regression_plate_three_bosses_fuse_many => run "regression/plate-three-bosses-fuse-many";
+    /// A plate cut by three overlapping holes in a row: one slot.
+    #[ignore = "tool against tool sections, plans/multi-tool-boolean step 4"]
+    regression_slot_three_overlapping_holes_cut_many => run "regression/slot-three-overlapping-holes-cut-many";
+    /// A plate cut by two crossing rectangular pockets.
+    #[ignore = "tool against tool sections, plans/multi-tool-boolean step 4"]
+    regression_crossing_pockets_cut_many => run "regression/crossing-pockets-cut-many";
+    /// A cube cut by three orthogonal bores through one common point.
+    #[ignore = "the triple point, plans/multi-tool-boolean step 4"]
+    regression_three_bores_one_point_cut_many => run "regression/three-bores-one-point-cut-many";
 }
 
 /// A variant the recipe does not have fails naming it.

@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "84efda0073fc53c56962ea39d731b7f9137a32fdaab25949ddd0ee34c8d5793b",
+  "results": {
+    "default": {
+      "area": 9353.982236861548,
+      "centroid": [
+        50.0,
+        14.999999999999998,
+        5.478597871652645
+      ],
+      "counts": {
+        "edges": 21,
+        "faces": 12,
+        "loops": 15,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2662177.590005045,
+          -3.725290298461914e-09,
+          1.862645149230957e-09
+        ],
+        [
+          -3.725290298461914e-09,
+          26316956.274238884,
+          0.0
+        ],
+        [
+          1.862645149230957e-09,
+          0.0,
+          28166842.40002367
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 21,
+        "faces": 12,
+        "loops": 15,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_plate",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_boss",
+          "point": [
+            50.0,
+            15.0,
+            15.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            35.0,
+            15.0,
+            15.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_face",
+          "point": [
+            5.0,
+            5.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            84.0,
+            15.0,
+            15.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            80.0,
+            15.0,
+            20.0
+          ]
+        }
+      ],
+      "volume": 31507.9644737231
+    }
+  }
+}

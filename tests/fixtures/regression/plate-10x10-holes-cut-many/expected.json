@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "5e7fa9fed0091ed416a9d28df31ad9bc3c1379cd9889e86cf03e42d2e08e6dcb",
+  "results": {
+    "default": {
+      "area": 37194.689145077275,
+      "centroid": [
+        49.99999999999981,
+        50.00000000000005,
+        5.000000000000024
+      ],
+      "counts": {
+        "edges": 312,
+        "faces": 106,
+        "loops": 306,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 208
+      },
+      "degenerate": false,
+      "euler_characteristic": -198,
+      "genus": 100,
+      "inertia": [
+        [
+          68938581.6765536,
+          -5.960464477539063e-08,
+          5.960464477539063e-08
+        ],
+        [
+          -5.960464477539063e-08,
+          68938581.67655408,
+          1.5273690223693848e-07
+        ],
+        [
+          5.960464477539063e-08,
+          1.5273690223693848e-07,
+          136681735.58447933
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 312,
+        "faces": 106,
+        "loops": 306,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 208
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            18.0,
+            18.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            50.0,
+            50.0,
+            12.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_hole",
+          "point": [
+            14.0,
+            14.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_face",
+          "point": [
+            1.0,
+            1.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            17.0,
+            14.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 71725.66611769215
+    }
+  }
+}

@@ -53,7 +53,7 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
 
 - `oracle/recipe.py` — the recipe interpreter: `box`, `cylinder`, `profile`
   (lines, three-point arcs, circles, holes), `extrude`, `revolve`,
-  `transform`, `mirror`, `fuse`, `common`, `cut`, `fillet`, `chamfer`, `offset`, `shell`
+  `transform`, `mirror`, `pattern` (expanded to `transform`s before any step is built), `fuse`, `common`, `cut` (a `tools` or `bodies` list is one `BRepAlgoAPI_Cut` or `Fuse` with `SetArguments` and `SetTools`, one General Fuse, not a chain), `fillet`, `chamfer`, `offset`, `shell`
   (`BRepFilletAPI_MakeFillet`, `MakeChamfer` with one distance, each edge
   the nearest to a recipe point by `BRepExtrema`, which must be
   the only edge within the fixture's `probe`; `offset` is
