@@ -1,0 +1,66 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus two blind pockets open on its top, [20,40]×[20,40] and [40,60]×[40,60], both z 5 to 10: the tools' tops coincident with the plate's top, the pockets touching along the line x = 40, y = 40, where the plate's two remaining quadrants meet in an edge of four faces, which a manifold solid does not hold — Arris refuses with OpError::Degenerate and Reason::NonManifold naming the edge, as edge-touching-fuse does",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "p1",
+      "op": "box",
+      "min": [
+        20,
+        20,
+        5
+      ],
+      "max": [
+        40,
+        40,
+        "t"
+      ]
+    },
+    {
+      "name": "p2",
+      "op": "box",
+      "min": [
+        40,
+        40,
+        5
+      ],
+      "max": [
+        60,
+        60,
+        "t"
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "p1",
+        "p2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "non-manifold",
+    "volume": "100 * 100 * t - 800 * 5",
+    "area": "2 * 100 * 100 + 4 * 100 * t + 160 * 5"
+  }
+}

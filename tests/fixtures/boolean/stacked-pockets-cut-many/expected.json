@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "2be54f01671c69046317b6d9b5b945f8a41c46b4a2494ac81fda960e52060896",
+  "results": {
+    "default": {
+      "area": 24400.0,
+      "centroid": [
+        50.408163265306115,
+        50.408163265306115,
+        4.948979591836733
+      ],
+      "counts": {
+        "edges": 32,
+        "faces": 15,
+        "loops": 16,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          83266751.70068032,
+          816326.5306122005,
+          -102040.81632653996
+        ],
+        [
+          816326.5306122005,
+          83266751.70068026,
+          -102040.81632653996
+        ],
+        [
+          -102040.81632653996,
+          -102040.81632653996,
+          164900680.2721091
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 32,
+        "faces": 15,
+        "loops": 16,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_floor",
+          "point": [
+            30.0,
+            30.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_pocket",
+          "point": [
+            30.0,
+            30.0,
+            9.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "where_the_tools_meet",
+          "point": [
+            30.0,
+            30.0,
+            8.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor",
+          "point": [
+            30.0,
+            30.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            20.0,
+            30.0,
+            7.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            5.0,
+            5.0,
+            10.0
+          ]
+        }
+      ],
+      "volume": 98000.00000000001
+    }
+  }
+}

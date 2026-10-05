@@ -53,9 +53,9 @@ pub(crate) struct Kept {
     /// A point strictly inside the piece in the face's own (u, v): the
     /// split order's tiebreak (ADR-0009).
     pub uv: Point2,
-    /// The coincident face of the other operand the piece lies on and
+    /// The coincident faces of the other operands the piece lies on and
     /// stands in for, when it does.
-    pub stands_for: Option<FaceId>,
+    pub stands_for: Vec<FaceId>,
 }
 
 /// The assembly and the order its new slots were given in.
@@ -423,8 +423,10 @@ pub(crate) fn write_provenance(
     // A piece kept once from a coincident pair stands for the other
     // operand's face too.
     for (k, piece) in kept.iter().enumerate() {
-        if let (Some(g), Some(&id)) = (piece.stands_for, out_faces.get(&k)) {
-            p.add_generated(forward(g), forward(id));
+        if let Some(&id) = out_faces.get(&k) {
+            for &g in &piece.stands_for {
+                p.add_generated(forward(g), forward(id));
+            }
         }
     }
     p

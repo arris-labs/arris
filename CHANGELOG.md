@@ -18,8 +18,13 @@ into its version (ADR-0027).
   tools may overlap one another — a slot of overlapping holes, crossing
   pockets, a counterbore as two coaxial cylinders, bores through one point
   — and where the sections of three bodies cross off every edge the result
-  has one vertex there, generated from the three faces. A face lying flush
-  with two other bodies at once is refused as `Unsupported` for now. An empty
+  has one vertex there, generated from the three faces. Tools may lie flush
+  with one another and with the target — stacked pockets, pockets
+  overlapping or side by side on a top face, a tool repeated by value — as
+  their chain of booleans builds them. Two tools touching along a line
+  inside the target are refused as `BooleanReason::TangentContact`, and two
+  touching along an edge so that the result would pinch there as
+  `InputReason::NonManifold`. An empty
   `tools`, fewer than two `bodies` and a body named twice are refused as
   `BooleanReason::NoTools` and `RepeatedOperand`.
 - `arris_ops::boolean::interferences_many(model, operands, control)` is the
@@ -127,6 +132,11 @@ into its version (ADR-0027).
   `triple_points: Vec<usize>`, and `VertexSource` gains `TriplePoint`.
   Fix: a struct literal names the new fields; an exhaustive `match` on
   `VertexSource` adds its arm.
+- A section edge two pairs of the boolean decomposition share is held
+  once: `arris_ops::boolean::SectionEdge` gains `shared:
+  Vec<SharedSection>` (the other pairs' blocks that are this edge, each on
+  its own face with the edge's pcurve there), and `SharedSection` is added.
+  Fix: a struct literal names the new field.
 
 ## 0.5.0 — 2026-10-05
 

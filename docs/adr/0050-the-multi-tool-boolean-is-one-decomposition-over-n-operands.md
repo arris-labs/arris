@@ -141,3 +141,48 @@ measured there.
   more for each pair of equal bores (three bores through one point, the
   tripod), and Arris's one call gives its own chain's counts; those two
   fixtures carry Arris's counts under `counts_differ`.
+
+## Landed with step 5
+
+- **A section edge two pairs share.** Two tools' walls cutting one face of
+  a third operand along one curve — a tool repeated by value, two pockets'
+  walls in one plane — give two pairs one section block each, on that face
+  side by side, which no arrangement orders (the tie is a
+  `TangentContact`). A block of a later pair that runs between the same two
+  section vertices as an earlier pair's section edge on a face both pairs
+  hold, within the edge's tolerance at every check point and with the
+  edge's midpoint on it, is that edge: `SectionEdge::shared` records the
+  later pair and its other face with the edge's pcurve there, fitted,
+  placed and ended as the edge's own. The result splits each face by the
+  one edge, and the edge is generated from all three faces.
+- **An image held once.** Two tools' edges along one line of a third
+  operand's face, both flush with it — two pockets side by side on a
+  plate's top — are each imaged on that face, and are already one common
+  block between the tools' own coincident faces; the image of the block's
+  `b` piece is dropped where its `a` piece is imaged on the same face.
+- **A piece flush with several operands.** A piece lying on faces of two
+  other operands or more at once is read on the face's two sides: ahead of
+  it (along its normal) it is outside its own operand and inside each flush
+  operand whose normal opposes, behind it the reverse, every other operand
+  the same on both sides as classified. It is a boundary of the result
+  exactly when the result holds one side and not the other, and is kept
+  once, from the lowest flush operand, facing out of the material,
+  standing for every flush face in the provenance. With one flush operand
+  this is the coincident row §4 already reads, which stays the path for
+  that case, so no two-operand result moves.
+- **A contact between two tools** is read against every other operand,
+  along the contact at the model's check points, a point on a third
+  operand's boundary deciding nothing: two tools touching inside a cut's
+  target both survive there and are `TangentContact`, as the two-operand
+  rule says. A touch that runs along a tool's seam is an image of the seam,
+  not a contact, and the result pinches there: `NonManifold`, as two
+  pockets touching along an edge are.
+- **Open CASCADE on the flush and tangent cases** (the ⚠ OPEN of step 1):
+  on the stacked pockets and bosses, the pockets side by side and
+  overlapping on a top face, the overlapping bosses, the adjoining
+  cavities and the repeated hole, its multi-tool answer equals its own
+  chain in counts, volume and area, and Arris's equals both. On the two
+  pockets touching along an edge and the two holes touching along a
+  ruling it builds a non-manifold shape from the one call, which its own
+  chain's measure rejects as an open surface; those fixtures carry the
+  refusal Arris gives (`expect_error`).

@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "9392b650b3d14a4f267c765a23ee6b2c10d2a6cd97f4f8f7c11762c46f9921ca",
+  "results": {
+    "default": {
+      "area": 24800.0,
+      "centroid": [
+        49.230769230769255,
+        49.230769230769255,
+        5.384615384615385
+      ],
+      "counts": {
+        "edges": 32,
+        "faces": 15,
+        "loops": 16,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          86256410.25641009,
+          -1538461.5384613872,
+          769230.7692307755
+        ],
+        [
+          -1538461.5384613872,
+          86256410.25641009,
+          769230.7692307755
+        ],
+        [
+          769230.7692307755,
+          769230.7692307755,
+          170010256.4102558
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 32,
+        "faces": 15,
+        "loops": 16,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_boss",
+          "point": [
+            30.0,
+            30.0,
+            12.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "where_the_bosses_meet",
+          "point": [
+            30.0,
+            30.0,
+            15.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "where_the_boss_meets_the_plate",
+          "point": [
+            30.0,
+            30.0,
+            10.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above",
+          "point": [
+            30.0,
+            30.0,
+            21.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_boss_top",
+          "point": [
+            30.0,
+            30.0,
+            20.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_boss_wall",
+          "point": [
+            20.0,
+            30.0,
+            17.0
+          ]
+        }
+      ],
+      "volume": 103999.99999999996
+    }
+  }
+}

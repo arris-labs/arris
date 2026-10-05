@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "10d267d981284aed6cd26593264c832ca311a867974448bc7e66ce6f8f1a01ec",
+  "results": {
+    "default": {
+      "area": 26440.0,
+      "centroid": [
+        50.50420168067226,
+        50.75630252100839,
+        4.999999999999999
+      ],
+      "counts": {
+        "edges": 38,
+        "faces": 18,
+        "loops": 18,
+        "shells": 2,
+        "solids": 1,
+        "vertices": 24
+      },
+      "degenerate": false,
+      "euler_characteristic": 4,
+      "genus": 0,
+      "inertia": [
+        [
+          82737812.88515419,
+          996302.5210083127,
+          -7.450580596923828e-09
+        ],
+        [
+          996302.5210083127,
+          83008064.98599452,
+          -7.450580596923828e-09
+        ],
+        [
+          -7.450580596923828e-09,
+          -7.450580596923828e-09,
+          164108011.20448178
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 38,
+        "faces": 18,
+        "loops": 18,
+        "shells": 2,
+        "solids": 1,
+        "vertices": 24
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "above_void",
+          "point": [
+            30.0,
+            30.0,
+            9.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_first",
+          "point": [
+            30.0,
+            30.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_second",
+          "point": [
+            50.0,
+            40.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "where_the_cavities_meet",
+          "point": [
+            40.0,
+            35.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_first_wall_at_x40",
+          "point": [
+            40.0,
+            25.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_second_wall_at_x40",
+          "point": [
+            40.0,
+            45.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 95200.0
+    }
+  }
+}

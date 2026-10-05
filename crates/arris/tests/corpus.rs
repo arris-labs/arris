@@ -174,6 +174,24 @@ corpus_tests! {
     boolean_counterbore_cut_many => run "boolean/counterbore-cut-many";
     /// Three orthogonal cylinders through one point fused in one call: a tripod, every operand against every other and the eight triple points.
     boolean_tripod_fuse_many => run "boolean/tripod-fuse-many";
+    /// Two boxes stacked one on the other cut in one call: two tools flush on a face, the face between them dropped from both.
+    boolean_stacked_pockets_cut_many => run "boolean/stacked-pockets-cut-many";
+    /// Two boxes stacked on a plate fused in one call: three operands flush on two faces.
+    boolean_stacked_bosses_fuse_many => run "boolean/stacked-bosses-fuse-many";
+    /// Two pockets open on a plate's top, their tops flush with it and their walls flush with each other over part of their width: the tools' top edges along one line of the plate's top, held once.
+    boolean_adjacent_pockets_cut_many => run "boolean/adjacent-pockets-cut-many";
+    /// Two closed cavities whose walls lie against each other inside the plate: one L-shaped void.
+    boolean_adjoining_cavities_cut_many => run "boolean/adjoining-cavities-cut-many";
+    /// One hole repeated by value: two tools of one geometry, their circles on the plate's faces one section edge.
+    boolean_repeated_hole_cut_many => run "boolean/repeated-hole-cut-many";
+    /// Two pockets overlapping on a plate's top, flush with it: a piece of the top on both tools' tops at once, decided on the face's two sides.
+    boolean_overlapping_pockets_cut_many => run "boolean/overlapping-pockets-cut-many";
+    /// Two bosses overlapping on a plate's top fused in one call: the top flush with both bosses' bottoms at once.
+    boolean_overlapping_bosses_fuse_many => run "boolean/overlapping-bosses-fuse-many";
+    /// Two pockets touching along an edge: Arris refuses with `InputReason::NonManifold`.
+    boolean_pockets_touching_edge_cut_many => run "boolean/pockets-touching-edge-cut-many";
+    /// Two holes whose walls touch along a ruling inside the plate: Arris refuses with `BooleanReason::TangentContact`.
+    boolean_tangent_holes_cut_many => run "boolean/tangent-holes-cut-many";
     /// The boss's bottom cap coincident with the plate's top: the cap
     /// vanishes, the plate's top is split by the cap's rim and keeps the
     /// outside, and the rim is the wall's own edge.

@@ -1,0 +1,144 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus two blind pockets open on its top that overlap, [20,40]×[20,40] and [30,50]×[20,40], both z 5 to 10: over [30,40]×[20,40] the plate's top lies flush with both tools' tops at once, and their floors coincide with each other, so a piece there is on two other operands and is decided on the face's two sides. One pocket [20,50]×[20,40], genus 0",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "p1",
+      "op": "box",
+      "min": [
+        20,
+        20,
+        5
+      ],
+      "max": [
+        40,
+        40,
+        "t"
+      ]
+    },
+    {
+      "name": "p2",
+      "op": "box",
+      "min": [
+        30,
+        20,
+        5
+      ],
+      "max": [
+        50,
+        40,
+        "t"
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "p1",
+        "p2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_both",
+      "point": [
+        35,
+        30,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_first",
+      "point": [
+        25,
+        30,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_second",
+      "point": [
+        45,
+        30,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_floor",
+      "point": [
+        35,
+        30,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_floor",
+      "point": [
+        35,
+        30,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        35,
+        20,
+        7
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        35,
+        45,
+        "t"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - 600 * 5",
+    "area": "2 * 100 * 100 + 4 * 100 * t + 100 * 5",
+    "centroid": [
+      "(100 * 100 * t * 50 - 600 * 5 * 35) / (100 * 100 * t - 600 * 5)",
+      "(100 * 100 * t * 50 - 600 * 5 * 30) / (100 * 100 * t - 600 * 5)",
+      "(100 * 100 * t * 5 - 600 * 5 * 7.5) / (100 * 100 * t - 600 * 5)"
+    ],
+    "genus": 0
+  }
+}

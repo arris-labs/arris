@@ -304,6 +304,30 @@ pub struct SectionEdge {
     /// vertex merged points further apart (`docs/ARCHITECTURE.md`
     /// §Operations).
     pub pcurves: [Curve2; 2],
+    /// The blocks of other pairs' section curves that are this edge: each
+    /// on a face of its own pair this edge's pair does not hold, with the
+    /// edge's pcurve there (ADR-0050, landed with step 5).
+    pub shared: Vec<SharedSection>,
+}
+
+/// A block of a section curve that is a section edge an earlier pair
+/// made: the two pairs hold one face in common, the block runs between
+/// the edge's two section vertices, and every point the model checks it
+/// at lies within the tolerance of the edge — two tools' walls cut from
+/// one face along one curve, a tool repeated by value. The result holds
+/// the one edge, on the shared face once and on this pair's other face
+/// with this pcurve, so the two sections never lie on one face side by
+/// side, which no arrangement orders (ADR-0050, landed with step 5).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SharedSection {
+    /// The pair whose block it is, an index into [`Interferences::pairs`].
+    pub pair: usize,
+    /// The pair's face the edge is not otherwise on.
+    pub face: FaceId,
+    /// The edge's pcurve on `face`, same-parameter with the edge's own
+    /// curve and range, in the translate of the domain the face's loops
+    /// are written in.
+    pub pcurve: Curve2,
 }
 
 /// A block of a pair's touching curve interior to both faces: where the
@@ -1219,6 +1243,9 @@ impl fmt::Display for Interferences {
             )?;
             writeln!(f, "    on a: {}", curve2(&s.pcurves[0]))?;
             writeln!(f, "    on b: {}", curve2(&s.pcurves[1]))?;
+            for u in &s.shared {
+                writeln!(f, "    p{} on {}: {}", u.pair, u.face, curve2(&u.pcurve))?;
+            }
         }
         writeln!(f, "contacts {}", self.contacts.len())?;
         for (i, c) in self.contacts.iter().enumerate() {

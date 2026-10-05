@@ -164,7 +164,7 @@ bound has to be established here.
   Open CASCADE cutting each pair of equal cylinders' ellipse at its
   parameter origin as in `cross-cylinders-common` (Arris's one call equals
   its own chain).
-- [ ] Step 5 **[3]** — Coincident and tangent between tools: two tools flush
+- [x] Step 5 **[3]** — Coincident and tangent between tools: two tools flush
   on a face (stacked boxes), two tools both flush with the target's face
   (two pockets opening on one top face that touch along an edge), a tool
   repeated by value — a second body of the same geometry, every face
@@ -172,6 +172,21 @@ bound has to be established here.
   the target: `TangentContact` where both pieces survive, as the
   two-operand rule says), and coincident tool faces inside the target.
   Fixtures for each, the refusals among them named.
+  Landed as found: three gaps, not one. Two pairs' section blocks on one
+  face along one curve (a repeated tool) are now one section edge,
+  `SectionEdge::shared`; two tools' edge images on one face that are a
+  common block of each other are held once; and a piece flush with two
+  other operands at once — two pockets overlapping on a plate's top, the
+  case a pattern of pockets hits first — is decided on the face's two
+  sides instead of refused. The tool × tool contact is read against the
+  target along its length. Fixtures: stacked pockets and bosses, pockets
+  side by side and overlapping on a top face, overlapping bosses, adjoining
+  cavities, a repeated hole, and the two refusals (pockets touching along
+  an edge, `NonManifold`; holes touching along a ruling,
+  `TangentContact`). Two holes touching along one's seam are refused as
+  `NonManifold` (the touch is the seam's image); their two-operand chain
+  fails with `Fault::Split`, the family `regression/tangent-seam-on-face-cut`
+  already holds.
 - [ ] Step 6 **[1]** — The facade and the binding: `Model.cut_many` and
   `Model.fuse_many` with cancel and budget, stubs, docstring examples, a
   pytest per refusal; the rustdoc example on both functions; the cancel
@@ -230,11 +245,11 @@ benchmark showing `cut_many` faster than the chain on the 10×10 grid; the
 
 ## Open questions
 
-- ⚠ OPEN: Does Open CASCADE's multi-tool `BRepAlgoAPI_Cut` agree with its own
-  chained cuts on overlapping tools and on the flush cases of step 5, or
-  does it differ (fused coplanar faces, a refusal)? Agent decides at step 1
-  from its runs; where it differs the fixture is held to the chained result
-  or its closed forms, recorded in ADR-0050.
+- Resolved at steps 1 and 5: Open CASCADE's multi-tool `BRepAlgoAPI_Cut`
+  and `Fuse` equal its own chains on every overlapping and flush fixture
+  (counts, volume, area); on the two touching cases it builds a
+  non-manifold shape its chain's measure rejects, and the fixtures carry
+  Arris's refusal (ADR-0050, landed with step 5).
 - Resolved at step 2: the per-pair traced region keeps every two-operand
   dump bit for bit (the corpus, provenance and boolean tests ran unchanged
   with the region computed per operand pair), so ADR-0050 §6 stands as

@@ -1,0 +1,135 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus two closed cavities [20,40]×[20,40] and [40,60]×[30,50], both z 2 to 8: coincident tool faces inside the target, the walls at x = 40 against each other over y 30 to 40. One L-shaped void, a second shell, genus 0",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "c1",
+      "op": "box",
+      "min": [
+        20,
+        20,
+        2
+      ],
+      "max": [
+        40,
+        40,
+        8
+      ]
+    },
+    {
+      "name": "c2",
+      "op": "box",
+      "min": [
+        40,
+        30,
+        2
+      ],
+      "max": [
+        60,
+        50,
+        8
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "c1",
+        "c2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above_void",
+      "point": [
+        30,
+        30,
+        9
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_first",
+      "point": [
+        30,
+        30,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_second",
+      "point": [
+        50,
+        40,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "where_the_cavities_meet",
+      "point": [
+        40,
+        35,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_first_wall_at_x40",
+      "point": [
+        40,
+        25,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_second_wall_at_x40",
+      "point": [
+        40,
+        45,
+        5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - 800 * 6",
+    "area": "2 * 100 * 100 + 4 * 100 * t + 2 * 800 + 140 * 6",
+    "centroid": [
+      "(100 * 100 * t * 50 - 400 * 6 * 30 - 400 * 6 * 50) / (100 * 100 * t - 800 * 6)",
+      "(100 * 100 * t * 50 - 400 * 6 * 30 - 400 * 6 * 40) / (100 * 100 * t - 800 * 6)",
+      "(100 * 100 * t * 5 - 800 * 6 * 5) / (100 * 100 * t - 800 * 6)"
+    ],
+    "genus": 0
+  }
+}

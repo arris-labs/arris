@@ -1,3 +1,5 @@
+boolean/adjacent-pockets-cut-many: 118
+boolean/adjoining-cavities-cut-many: 85
 boolean/ball-ball-common: 7862
 boolean/ball-corner-cut: 3433
 boolean/ball-offset-drill-cut: 26354
@@ -64,6 +66,8 @@ boolean/nist-ctc-04-face-arrangement-turn: 1046
 boolean/nist-ftc-06-face-arrangement-turn: 300
 boolean/oblique-cross-common: 6272
 boolean/oblique-hole: 4362
+boolean/overlapping-bosses-fuse-many: 166
+boolean/overlapping-pockets-cut-many: 166
 boolean/parallel-cylinders-common: 24
 boolean/parallel-cylinders-cut: 24
 boolean/parallel-cylinders-fuse: 24
@@ -83,6 +87,7 @@ boolean/probe-blind-hole-m: 22
 boolean/probe-flush-union-m: 125
 boolean/probe-through-hole-m: 26
 boolean/radial-pockets-cut-many: 78
+boolean/repeated-hole-cut-many: 66
 boolean/revolve-cylinder-cut-box-fuse-builder-fault: 29969
 boolean/revolve-extrude-fuse-cut-rounding-knots: 758682
 boolean/ring-corner-common: 94526
@@ -98,6 +103,8 @@ boolean/sliver-common: 29
 boolean/slot-three-overlapping-holes-cut-many: 136
 boolean/spandrel-cavity-cut: 44
 boolean/split-cut: 50
+boolean/stacked-bosses-fuse-many: 151
+boolean/stacked-pockets-cut-many: 150
 boolean/step-operand-cut: 48
 boolean/tangent-cylinders-a-quarter-off: 19
 boolean/tangent-cylinders-cut: 19

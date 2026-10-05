@@ -1,0 +1,144 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus two blind pockets open on its top, [20,40]×[20,40] and [40,60]×[30,50], both z 5 to 10: the tools' tops both coincident with the plate's top, and their walls at x = 40 coincident with each other over y 30 to 40 with the normals opposed. One L-shaped pocket, its wall at x = 40 only where one pocket is, genus 0",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "p1",
+      "op": "box",
+      "min": [
+        20,
+        20,
+        5
+      ],
+      "max": [
+        40,
+        40,
+        "t"
+      ]
+    },
+    {
+      "name": "p2",
+      "op": "box",
+      "min": [
+        40,
+        30,
+        5
+      ],
+      "max": [
+        60,
+        50,
+        "t"
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "p1",
+        "p2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_first",
+      "point": [
+        30,
+        30,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_second",
+      "point": [
+        50,
+        40,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "where_the_pockets_meet",
+      "point": [
+        40,
+        35,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_floor",
+      "point": [
+        40,
+        35,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_first_wall_at_x40",
+      "point": [
+        40,
+        25,
+        7
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_second_wall_at_x40",
+      "point": [
+        40,
+        45,
+        7
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_floor",
+      "point": [
+        40,
+        35,
+        5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - 800 * 5",
+    "area": "2 * 100 * 100 + 4 * 100 * t + 140 * 5",
+    "centroid": [
+      "(100 * 100 * t * 50 - 400 * 5 * 30 - 400 * 5 * 50) / (100 * 100 * t - 800 * 5)",
+      "(100 * 100 * t * 50 - 400 * 5 * 30 - 400 * 5 * 40) / (100 * 100 * t - 800 * 5)",
+      "(100 * 100 * t * 5 - 800 * 5 * 7.5) / (100 * 100 * t - 800 * 5)"
+    ],
+    "genus": 0
+  }
+}

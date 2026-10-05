@@ -1,0 +1,135 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] fused with two boxes [20,40]×[20,40] stacked on its top, z 10 to 15 and 15 to 20, in one call: the lower boss flush with the plate's top and with the upper boss's bottom, both faces between them inside the union. One boss of height 10, genus 0",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "lower",
+      "op": "box",
+      "min": [
+        20,
+        20,
+        "t"
+      ],
+      "max": [
+        40,
+        40,
+        15
+      ]
+    },
+    {
+      "name": "upper",
+      "op": "box",
+      "min": [
+        20,
+        20,
+        15
+      ],
+      "max": [
+        40,
+        40,
+        20
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "bodies": [
+        "plate",
+        "lower",
+        "upper"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_boss",
+      "point": [
+        30,
+        30,
+        12
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "where_the_bosses_meet",
+      "point": [
+        30,
+        30,
+        15
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "where_the_boss_meets_the_plate",
+      "point": [
+        30,
+        30,
+        "t"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above",
+      "point": [
+        30,
+        30,
+        21
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_boss_top",
+      "point": [
+        30,
+        30,
+        20
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_boss_wall",
+      "point": [
+        20,
+        30,
+        17
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t + 400 * 10",
+    "area": "2 * 100 * 100 + 4 * 100 * t + 80 * 10",
+    "centroid": [
+      "(100 * 100 * t * 50 + 400 * 10 * 30) / (100 * 100 * t + 400 * 10)",
+      "(100 * 100 * t * 50 + 400 * 10 * 30) / (100 * 100 * t + 400 * 10)",
+      "(100 * 100 * t * 5 + 400 * 10 * 15) / (100 * 100 * t + 400 * 10)"
+    ],
+    "genus": 0
+  }
+}

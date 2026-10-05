@@ -1,0 +1,71 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus two through holes of radius 5 at (50, 40) and (50, 50), whose walls touch from outside along the ruling x = 50, y = 45 inside the plate, off both seams: both walls survive a cut there, so the result would carry two faces sharing a line with no material between them. Open CASCADE builds it; Arris refuses with OpError::Degenerate and Reason::TangentContact naming the two walls, the two-operand rule read against the target as well",
+  "params": {
+    "t": 10,
+    "r": 5
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "h1",
+      "op": "cylinder",
+      "base": [
+        50,
+        40,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": 12
+    },
+    {
+      "name": "h2",
+      "op": "cylinder",
+      "base": [
+        50,
+        50,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": 12
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "h1",
+        "h2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "tangent-contact",
+    "volume": "100 * 100 * t - 2 * pi * r^2 * t",
+    "area": "2 * 100 * 100 + 4 * 100 * t - 4 * pi * r^2 + 4 * pi * r * t"
+  }
+}

@@ -12,7 +12,9 @@ use arris_check::domain::bands;
 
 use super::{Along, Block, Build, End, VertexBuild, geometry, samples, tolerance_of};
 use crate::boolean::faces::{EdgeInfo, FaceInfo};
-use crate::boolean::{Contact, Pave, SectionCurve, SectionEdge, VertexSource, meet_curves};
+use crate::boolean::{
+    Contact, Pave, SectionCurve, SectionEdge, SharedSection, VertexSource, meet_curves,
+};
 use crate::error::{Fault, OpError};
 
 impl<'m, 'c> Build<'m, 'c> {
@@ -327,6 +329,20 @@ impl<'m, 'c> Build<'m, 'c> {
             let Some(uv) = Self::inside_both(fa, fb, curve.point(range.midpoint())) else {
                 continue;
             };
+            // A section edge another pair already made on a face this one
+            // holds: that edge, given its pcurve on this pair's other face.
+            if let Some((k, shared, tolerance)) =
+                self.shared_section(pi, [(oa, fa), (ob, fb)], curve, range, start, end)?
+            {
+                let s = &mut self.sections[k];
+                s.tolerance = s.tolerance.max(tolerance);
+                s.shared.push(shared);
+                for v in [s.start, s.end] {
+                    let floor = &mut self.vertices[v].floor;
+                    *floor = floor.max(tolerance);
+                }
+                continue;
+            }
             let section = self.section_edge(
                 [oa, ob],
                 (fa, fb),
@@ -354,6 +370,102 @@ impl<'m, 'c> Build<'m, 'c> {
             edges,
         });
         Ok(())
+    }
+
+    /// The section edge of an earlier pair that the block `range` of
+    /// `curve` of pair `pi`, from section vertex `start` to `end`, is
+    /// (ADR-0050, landed with step 5): one whose pair holds one of `pi`'s
+    /// faces, between the same two vertices in either order, every point
+    /// the model checks the block at within the edge's tolerance of its
+    /// curve, and the
+    /// edge's own midpoint on the block — so two arcs of one circle
+    /// between the same two vertices stay two. With the index, the
+    /// [`SharedSection`] on `pi`'s other face — the edge's pcurve there,
+    /// fitted, placed and ended as a section edge's own — and the
+    /// tolerance it needs. `None` when no edge is that block.
+    pub(super) fn shared_section(
+        &self,
+        pi: usize,
+        faces: [(usize, &FaceInfo<'m>); 2],
+        curve: &Curve,
+        range: Interval,
+        start: usize,
+        end: usize,
+    ) -> Result<Option<(usize, SharedSection, f64)>, OpError> {
+        let [(_, fa), (_, fb)] = faces;
+        let base = fa.tolerance.max(fb.tolerance);
+        let points: Vec<Point3> = samples(range, self.precision.check_samples)
+            .into_iter()
+            .map(|t| curve.point(t))
+            .collect();
+        for (k, s) in self.sections.iter().enumerate() {
+            // The current pair's own edges have no curve listed yet.
+            let Some(c) = self.curves.get(s.curve) else {
+                continue;
+            };
+            let same_ends = (s.start, s.end) == (start, end) || (s.start, s.end) == (end, start);
+            if c.pair == pi || !same_ends {
+                continue;
+            }
+            let held = &self.pairs[c.pair];
+            let Some(own) = [0, 1]
+                .into_iter()
+                .find(|&i| faces[1 - i].1.id == held.a || faces[1 - i].1.id == held.b)
+            else {
+                continue;
+            };
+            let ((operand, f), (_, shared)) = (faces[own], faces[1 - own]);
+            if held.a == f.id || held.b == f.id || s.shared.iter().any(|u| u.face == f.id) {
+                continue;
+            }
+            let within = s.tolerance.max(base);
+            let along = points
+                .iter()
+                .all(|&p| c.curve.project(p).is_ok_and(|on| on.distance <= within));
+            let mid = c.curve.point(s.range.midpoint());
+            let on_block = curve.project(mid).is_ok_and(|on| {
+                let t = curve
+                    .period()
+                    .map_or(on.t, |p| wrap_into(on.t, range.lo(), p));
+                on.distance <= within && range.contains(t)
+            });
+            if !(along && on_block) {
+                continue;
+            }
+            let Some([uv, _]) = Self::inside_both(f, shared, mid) else {
+                continue;
+            };
+            let m = self.m;
+            let ends = [s.start, s.end].map(|v| {
+                let v = &self.vertices[v];
+                (v.point(m), v.tolerance(m))
+            });
+            let fitted = self.pcurve_of(f, shared, &c.curve, s.range, uv, base, &ends)?;
+            let (pcurve, residual) = self.ended(
+                operand,
+                f,
+                shared,
+                &c.curve,
+                s.range,
+                base,
+                [s.start, s.end],
+                fitted,
+            )?;
+            let tolerance = base.max(residual);
+            if tolerance > self.precision.max_tolerance {
+                return Err(OpError::Tolerance {
+                    entity: f.shape(),
+                    wanted: tolerance,
+                });
+            }
+            let shared = SharedSection {
+                pair: pi,
+                face: f.id,
+                pcurve,
+            };
+            return Ok(Some((k, shared, tolerance)));
+        }
+        Ok(None)
     }
 
     /// Whether a face of operand `side` other than `f` that uses `e` lies
@@ -595,6 +707,7 @@ impl<'m, 'c> Build<'m, 'c> {
             end,
             tolerance,
             pcurves: [pa, pb],
+            shared: Vec::new(),
         })
     }
 

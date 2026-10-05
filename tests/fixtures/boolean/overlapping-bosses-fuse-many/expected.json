@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a00286e110dcf0f634bc4eae05de7bfc8f210ca56031eb91494e358243849cb6",
+  "results": {
+    "default": {
+      "area": 24500.0,
+      "centroid": [
+        49.5631067961165,
+        49.417475728155374,
+        5.218446601941744
+      ],
+      "counts": {
+        "edges": 38,
+        "faces": 17,
+        "loops": 18,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          85601800.16181195,
+          -873786.4077669084,
+          327669.9029125944
+        ],
+        [
+          -873786.4077669084,
+          85217091.42394826,
+          436893.2038834989
+        ],
+        [
+          327669.9029125944,
+          436893.2038834989,
+          168812055.01618087
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 38,
+        "faces": 17,
+        "loops": 18,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_both",
+          "point": [
+            35.0,
+            30.0,
+            12.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "where_both_meet_the_plate",
+          "point": [
+            35.0,
+            30.0,
+            10.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beside",
+          "point": [
+            55.0,
+            30.0,
+            12.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            35.0,
+            30.0,
+            15.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            35.0,
+            20.0,
+            12.0
+          ]
+        }
+      ],
+      "volume": 102999.99999999999
+    }
+  }
+}

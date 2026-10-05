@@ -1,0 +1,125 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "25eec4b62d28fe2ca08f06cac91559012137b821ed394b5f192528f8e6cbc623",
+  "results": {
+    "default": {
+      "area": 24700.0,
+      "centroid": [
+        50.41666666666669,
+        50.625000000000014,
+        4.8958333333333375
+      ],
+      "counts": {
+        "edges": 37,
+        "faces": 16,
+        "loops": 17,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          82961458.33333316,
+          825000.000000149,
+          -104166.6666666381
+        ],
+        [
+          825000.000000149,
+          83182291.6666663,
+          -156249.99999997765
+        ],
+        [
+          -104166.6666666381,
+          -156249.99999997765,
+          164545833.33333313
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 37,
+        "faces": 16,
+        "loops": 17,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_first",
+          "point": [
+            30.0,
+            30.0,
+            7.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_second",
+          "point": [
+            50.0,
+            40.0,
+            7.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "where_the_pockets_meet",
+          "point": [
+            40.0,
+            35.0,
+            7.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_floor",
+          "point": [
+            40.0,
+            35.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_first_wall_at_x40",
+          "point": [
+            40.0,
+            25.0,
+            7.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_second_wall_at_x40",
+          "point": [
+            40.0,
+            45.0,
+            7.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor",
+          "point": [
+            40.0,
+            35.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 95999.99999999999
+    }
+  }
+}

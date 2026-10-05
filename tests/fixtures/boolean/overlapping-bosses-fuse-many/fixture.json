@@ -1,0 +1,126 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] fused with two bosses that overlap, [20,40]×[20,40] and [30,50]×[20,40], both z 10 to 15, in one call: over [30,40]×[20,40] the plate's top is flush with both bosses' bottoms at once, and the bosses' tops coincide with each other. One boss [20,50]×[20,40], genus 0",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "b1",
+      "op": "box",
+      "min": [
+        20,
+        20,
+        "t"
+      ],
+      "max": [
+        40,
+        40,
+        15
+      ]
+    },
+    {
+      "name": "b2",
+      "op": "box",
+      "min": [
+        30,
+        20,
+        "t"
+      ],
+      "max": [
+        50,
+        40,
+        15
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "bodies": [
+        "plate",
+        "b1",
+        "b2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_both",
+      "point": [
+        35,
+        30,
+        12
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "where_both_meet_the_plate",
+      "point": [
+        35,
+        30,
+        "t"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "beside",
+      "point": [
+        55,
+        30,
+        12
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        35,
+        30,
+        15
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        35,
+        20,
+        12
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t + 600 * 5",
+    "area": "2 * 100 * 100 + 4 * 100 * t + 100 * 5",
+    "centroid": [
+      "(100 * 100 * t * 50 + 600 * 5 * 35) / (100 * 100 * t + 600 * 5)",
+      "(100 * 100 * t * 50 + 600 * 5 * 30) / (100 * 100 * t + 600 * 5)",
+      "(100 * 100 * t * 5 + 600 * 5 * 12.5) / (100 * 100 * t + 600 * 5)"
+    ],
+    "genus": 0
+  }
+}

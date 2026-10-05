@@ -1,0 +1,122 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] minus two through holes of radius 3 at (50, 50), one tool repeated by value — a second body of the same geometry, every face of it coincident with the first's: the two walls cut the plate's faces along one circle, held as one section edge. One hole, genus 1",
+  "params": {
+    "t": 10,
+    "r": 3
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "h1",
+      "op": "cylinder",
+      "base": [
+        50,
+        50,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": 12
+    },
+    {
+      "name": "h2",
+      "op": "cylinder",
+      "base": [
+        50,
+        50,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": 12
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "h1",
+        "h2"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_hole",
+      "point": [
+        50,
+        50,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "beside_hole",
+      "point": [
+        60,
+        50,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        "50 + r",
+        50,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        5,
+        5,
+        "t"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t - pi * r^2 * t",
+    "area": "2 * 100 * 100 + 4 * 100 * t - 2 * pi * r^2 + 2 * pi * r * t",
+    "centroid": [
+      50,
+      50,
+      "t / 2"
+    ],
+    "genus": 1
+  }
+}

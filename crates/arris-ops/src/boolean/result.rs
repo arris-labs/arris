@@ -20,7 +20,7 @@ use arris_topo::{
 };
 
 use super::pieces::{Alias, ERef, EdgeOnFace, PieceUse, SplitFace, SubEdge, VRef, split_face};
-use super::{Interferences, VertexSource, meet_curves};
+use super::{EdgeImage, Interferences, VertexSource, meet_curves};
 use crate::error::{BooleanReason, Fault, InputReason, OpError, Reason, SplitFault};
 use crate::pass::pass;
 use crate::rebuild::{self, Kept, Plan, Policy, forward};
@@ -110,13 +110,43 @@ impl Op {
         }
     }
 
-    /// [`Op::select`] for a piece of operand `side` known only against
-    /// operand `other`, `inside` it or not, and outside every operand
-    /// else.
-    fn select_against(self, operands: usize, side: usize, other: usize, inside: bool) -> Selection {
-        let mut flags = vec![false; operands];
-        flags[other] = inside;
-        self.select(side, &flags)
+    /// Whether a point lies in the result, given which operands it lies
+    /// inside: in any for a fuse, in every one for a common, in the
+    /// target and in no tool for a cut.
+    fn contains(self, inside: &[bool]) -> bool {
+        match self {
+            Op::Fuse => inside.iter().any(|&i| i),
+            Op::Common => inside.iter().all(|&i| i),
+            Op::Cut => inside.first() == Some(&true) && !inside.iter().skip(1).any(|&i| i),
+        }
+    }
+
+    /// The coincident row for a piece of operand `side` lying on faces of
+    /// several other operands at once (ADR-0050, landed with step 5),
+    /// `flush` naming each with whether its effective normal agrees with
+    /// the piece's, `inside` every other operand as classified: read on
+    /// the face's two sides. Ahead of the piece — the side its normal
+    /// points to — it lies outside its own operand and inside each flush
+    /// operand whose normal opposes; behind it, the reverse; every other
+    /// operand is the same on both sides. The result has a boundary there
+    /// exactly when it holds one side and not the other, and holds it
+    /// once, from the lowest of the flush operands: `Some(flip)` for that
+    /// piece, reversed when the material is ahead of it, `None` for every
+    /// other. With one flush operand it is the coincident row
+    /// [`Op::select_on`] reads.
+    fn select_flush(self, side: usize, inside: &[bool], flush: &[(usize, bool)]) -> Option<bool> {
+        if flush.iter().any(|&(other, _)| other < side) {
+            return None;
+        }
+        let (mut ahead, mut behind) = (inside.to_vec(), inside.to_vec());
+        ahead[side] = false;
+        behind[side] = true;
+        for &(other, agree) in flush {
+            ahead[other] = !agree;
+            behind[other] = agree;
+        }
+        let held = self.contains(&ahead);
+        (held != self.contains(&behind)).then_some(held)
     }
 
     /// Whether a piece of operand `side` lying on a coincident face of
@@ -208,6 +238,9 @@ struct Build<'m> {
     faces: Vec<Vec<FaceHandle>>,
     curve_ids: Vec<CurveId>,
     section_pcurves: Vec<[Curve2Id; 2]>,
+    /// Per section edge, the pcurve of each of its shared uses, in the
+    /// order of [`SectionEdge::shared`](super::SectionEdge::shared).
+    shared_pcurves: Vec<Vec<Curve2Id>>,
     /// Per image, its pcurve on the face it lies in.
     image_pcurves: Vec<Curve2Id>,
     /// Per common block, the pcurve for each use of `b`'s piece, keyed
@@ -447,14 +480,56 @@ impl<'m> Build<'m> {
                     other,
                 });
             }
+            for (u, &pcurve) in s.shared.iter().zip(&self.shared_pcurves[k]) {
+                let held = &self.i.pairs[u.pair];
+                let other = if held.a == u.face { held.b } else { held.a };
+                on.entry(u.face).or_default().push(EdgeOnFace {
+                    edge: ERef::Section(k),
+                    range: s.range,
+                    start: self.vref_of[s.start],
+                    end: self.vref_of[s.end],
+                    pcurve,
+                    other,
+                });
+            }
         }
-        for (k, im) in self.i.images.iter().enumerate() {
+        let face_of = |im: &EdgeImage| {
             let pair = &self.i.pairs[im.pair];
-            let (face, other) = if im.on == pair.operands[1] {
+            if im.on == pair.operands[1] {
                 (pair.b, pair.a)
             } else {
                 (pair.a, pair.b)
+            }
+        };
+        let imaged: BTreeSet<(FaceId, ERef)> = self
+            .i
+            .images
+            .iter()
+            .map(|im| {
+                let r = ERef::Sub {
+                    edge: im.edge,
+                    index: im.index,
+                };
+                (face_of(im).0, r)
+            })
+            .collect();
+        for (k, im) in self.i.images.iter().enumerate() {
+            let (face, other) = face_of(im);
+            let own = ERef::Sub {
+                edge: im.edge,
+                index: im.index,
             };
+            // A piece that is a common block of another operand's piece
+            // whose own image lies on this face too — two tools' edges
+            // along one line of a third operand's face, flush with both —
+            // is that piece there, held once (ADR-0050, landed with step 5).
+            if self
+                .alias_of
+                .get(&own)
+                .is_some_and(|&target| imaged.contains(&(face, target)))
+            {
+                continue;
+            }
             let Some(sub) = self.sub_edges.get(&im.edge).and_then(|s| s.get(im.index)) else {
                 continue;
             };
@@ -655,6 +730,14 @@ impl<'m> Build<'m> {
             if !crossing {
                 continue;
             }
+            // On a face a shared use puts the edge on, the face across is
+            // that use's pair's.
+            let pair = s
+                .shared
+                .iter()
+                .find(|u| u.face == f.id)
+                .and_then(|u| self.i.pairs.get(u.pair))
+                .unwrap_or(pair);
             let (g, other) = if pair.operands[0] == side {
                 (pair.b, pair.operands[1])
             } else {
@@ -735,17 +818,15 @@ impl<'m> Build<'m> {
             };
             let [oa, ob] = pair.operands;
             let (fa, fb) = (find(oa, pair.a)?, find(ob, pair.b)?);
-            let along = pair
+            let touch = pair
                 .intersection
                 .curves()
                 .get(c.curve)
                 .filter(|m| m.kind == MeetKind::Touch)
                 .ok_or(OpError::Internal(Fault::Invariant {
                     what: "a contact's curve touches",
-                }))?
-                .curve
-                .eval(c.range.midpoint())
-                .d1;
+                }))?;
+            let along = touch.curve.eval(c.range.midpoint()).d1;
             let (Some(inside_a), Some(inside_b)) = (
                 self.tangent_side(fa, c.point, fb, along)?,
                 self.tangent_side(fb, c.point, fa, along)?,
@@ -756,10 +837,70 @@ impl<'m> Build<'m> {
                     Shape::new(fb.id, fb.orientation),
                 ));
             };
+            // Every operand but the pair's two, read along the contact:
+            // two tools touching inside a cut's target both survive
+            // there. The contact may run out of a third operand — two
+            // blind bores touching up through a plate's top — so it is
+            // read at the model's check points, a point on the third
+            // operand's boundary deciding nothing, and both pieces
+            // surviving at any one is the slit.
             let operands = self.bodies.len();
-            if self.op.select_against(operands, oa, ob, inside_a) != Selection::Drop
-                && self.op.select_against(operands, ob, oa, inside_b) != Selection::Drop
-            {
+            let mut slit = false;
+            let mut decided = false;
+            let classifiers = (0..operands)
+                .filter(|&o| o != oa && o != ob)
+                .map(|o| {
+                    Classifier::of_body(self.m, self.bodies[o])
+                        .map(|k| (o, k))
+                        .map_err(|e| classify_fault(self.m, fa.id, self.bodies[o], e))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let checks = if classifiers.is_empty() {
+                1
+            } else {
+                self.precision.check_samples.max(2)
+            };
+            'points: for k in 0..checks {
+                let point = if checks == 1 {
+                    c.point
+                } else {
+                    touch
+                        .curve
+                        .point(c.range.lerp((k as f64 + 0.5) / checks as f64))
+                };
+                let mut inside = vec![false; operands];
+                for (other, classifier) in &classifiers {
+                    if !Aabb::of_point(point).intersects(&self.i.bounds[*other]) {
+                        continue;
+                    }
+                    match classifier
+                        .classify(point)
+                        .map_err(|e| classify_fault(self.m, fa.id, self.bodies[*other], e))?
+                    {
+                        Classification::Inside => inside[*other] = true,
+                        Classification::Outside => {}
+                        Classification::On(_) => continue 'points,
+                    }
+                }
+                decided = true;
+                let survives = |side: usize, other: usize, within: bool| {
+                    let mut flags = inside.clone();
+                    flags[other] = within;
+                    self.op.select(side, &flags) != Selection::Drop
+                };
+                if survives(oa, ob, inside_a) && survives(ob, oa, inside_b) {
+                    slit = true;
+                    break;
+                }
+            }
+            if !decided {
+                return Err(unsupported(
+                    self.m,
+                    fa.id,
+                    Shape::new(fb.id, fb.orientation),
+                ));
+            }
+            if slit {
                 return Err(OpError::Degenerate {
                     entities: vec![
                         Shape::new(fa.id, fa.orientation),
@@ -803,7 +944,7 @@ impl<'m> Build<'m> {
                 // interior point: one outside every box is outside every
                 // operand, with no ray cast.
                 let mut inside = vec![false; operands];
-                let mut on: Option<(usize, Shape)> = None;
+                let mut on: Vec<(usize, Shape)> = Vec::new();
                 for other in (0..operands).filter(|&o| o != side) {
                     if !Aabb::of_point(piece.interior).intersects(&self.i.bounds[other]) {
                         continue;
@@ -814,25 +955,17 @@ impl<'m> Build<'m> {
                     match class {
                         Classification::Inside => inside[other] = true,
                         Classification::Outside => {}
-                        Classification::On(shape) => {
-                            // On two other operands at once: coincident or
-                            // tangent faces of two tools, which no rule
-                            // reads yet.
-                            if on.is_some() {
-                                return Err(unsupported(self.m, f.id, shape));
-                            }
-                            on = Some((other, shape));
-                        }
+                        Classification::On(shape) => on.push((other, shape)),
                     }
                 }
-                let (flip, stands_for) = match on {
-                    None => {
+                let (flip, stands_for) = match on[..] {
+                    [] => {
                         let Some(flip) = self.op.select(side, &inside).flip() else {
                             continue;
                         };
-                        (flip, None)
+                        (flip, Vec::new())
                     }
-                    Some((other, shape)) => {
+                    [(other, shape)] => {
                         if let Some(g) = self.coincident_partner(side, f.id, shape) {
                             let agree = self.normals_agree(f, piece.uv, piece.interior, g)?;
                             if !self.op.select_on(side, other, agree) {
@@ -848,7 +981,7 @@ impl<'m> Build<'m> {
                             let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
-                            (flip, Some(g.id))
+                            (flip, vec![g.id])
                         } else if let Some(g) = self.tangent_partner(side, f.id, shape) {
                             // The interior point lies on the curve the
                             // two faces touch along; the piece lies to one
@@ -864,7 +997,7 @@ impl<'m> Build<'m> {
                             let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
-                            (flip, None)
+                            (flip, Vec::new())
                         } else {
                             // Within the tolerance of a face its own is
                             // transversal to, or of an edge or a vertex:
@@ -877,8 +1010,29 @@ impl<'m> Build<'m> {
                             let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
-                            (flip, None)
+                            (flip, Vec::new())
                         }
+                    }
+                    // Flush with faces of two other operands or more at
+                    // once — two pockets overlapping on a plate's top, a
+                    // pocket repeated by value open on it: each must be a
+                    // coincident face, and the face's two sides decide.
+                    _ => {
+                        let mut flush = Vec::with_capacity(on.len());
+                        let mut partners = Vec::with_capacity(on.len());
+                        for &(other, shape) in &on {
+                            let Some(g) = self.coincident_partner(side, f.id, shape) else {
+                                return Err(unsupported(self.m, f.id, shape));
+                            };
+                            let agree = self.normals_agree(f, piece.uv, piece.interior, g)?;
+                            flush.push((other, agree));
+                            partners.push(g.id);
+                        }
+                        let Some(flip) = self.op.select_flush(side, &inside, &flush) else {
+                            self.dropped_on = true;
+                            continue;
+                        };
+                        (flip, partners)
                     }
                 };
                 pieces.push(self.kept.len());
@@ -1275,6 +1429,16 @@ pub(super) fn boolean(
                 ]
             })
             .collect();
+        let shared_pcurves: Vec<Vec<Curve2Id>> = i
+            .sections
+            .iter()
+            .map(|s| {
+                s.shared
+                    .iter()
+                    .map(|u| m.add_curve2(u.pcurve.clone()))
+                    .collect()
+            })
+            .collect();
         let image_pcurves: Vec<Curve2Id> = i
             .images
             .iter()
@@ -1302,6 +1466,7 @@ pub(super) fn boolean(
             faces: faces.clone(),
             curve_ids,
             section_pcurves,
+            shared_pcurves,
             image_pcurves,
             block_pcurves,
             vref_of: Vec::new(),
@@ -1444,6 +1609,9 @@ pub(super) fn boolean(
             let pair = &i.pairs[i.curves[s.curve].pair];
             p.add_generated(forward(pair.a), forward(id));
             p.add_generated(forward(pair.b), forward(id));
+            for u in &s.shared {
+                p.add_generated(forward(u.face), forward(id));
+            }
         }
         crate::verify(m, built.body)?;
         Ok((built.body, p))

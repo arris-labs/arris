@@ -447,3 +447,209 @@ fn a_triple_point_on_a_rim_is_the_rim_s_hit() {
     }
     assert_same_solid(&m, many, chained, "a bore ending at the triple points");
 }
+
+#[test]
+fn a_box_repeated_by_value_is_one_pocket() {
+    // Every face of the second tool coincident with the first's: the
+    // walls cut the plate's top along four lines each pair of tools'
+    // sections share, held once (ADR-0050, landed with step 5).
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let tools: Vec<Body> = (0..2)
+        .map(|_| {
+            primitive_box(
+                &mut m,
+                Point3::new(20.0, 20.0, 5.0),
+                Point3::new(40.0, 40.0, 12.0),
+            )
+            .unwrap()
+            .0
+        })
+        .collect();
+    let (many, _) = cut_many(&mut m, plate, &tools).unwrap();
+    let chained = cut(&mut m, plate, tools[0]).unwrap().0;
+    assert_same_solid(&m, many, chained, "a box twice");
+}
+
+#[test]
+fn a_section_two_tools_share_is_generated_from_all_three_faces() {
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let holes: Vec<Body> = (0..2)
+        .map(|_| {
+            let axis = Axis::z_at(Point3::new(50.0, 50.0, -1.0));
+            primitive_cylinder(&mut m, axis, 3.0, 12.0).unwrap().0
+        })
+        .collect();
+    let mut operands = vec![plate];
+    operands.extend(&holes);
+    let i = interferences_many(&m, &operands).unwrap();
+    // The circle on the top and on the bottom, each one edge with a
+    // shared use on the second tool's wall.
+    assert_eq!(i.sections.len(), 2, "{i}");
+    let walls: Vec<_> = holes
+        .iter()
+        .map(|&h| {
+            m.faces(h)
+                .unwrap()
+                .into_iter()
+                .find(|f| {
+                    matches!(
+                        m.surface(m.face(f.id).unwrap().surface()).unwrap(),
+                        arris_geom::Surface::Cylinder { .. }
+                    )
+                })
+                .unwrap()
+                .id
+        })
+        .collect();
+    for s in &i.sections {
+        let shared: Vec<_> = s.shared.iter().map(|u| u.face).collect();
+        assert_eq!(shared, vec![walls[1]], "{i}");
+    }
+
+    let (body, p) = cut_many(&mut m, plate, &holes).unwrap();
+    let top = m
+        .faces(plate)
+        .unwrap()
+        .into_iter()
+        .find(|f| {
+            let mid = Point3::new(10.0, 10.0, 10.0);
+            m.surface(m.face(f.id).unwrap().surface())
+                .unwrap()
+                .project(mid)
+                .is_ok_and(|q| q.distance < 1e-9)
+        })
+        .unwrap()
+        .id;
+    let rim = m
+        .edges(body)
+        .unwrap()
+        .into_iter()
+        .find(|e| p.generated_from(shape(top)).contains(&shape(e.id)))
+        .expect("the hole's rim on the top is generated from the top");
+    for w in &walls {
+        assert!(
+            p.generated_from(shape(*w)).contains(&shape(rim.id)),
+            "{} not generated from {w}\n{p}",
+            rim.id
+        );
+    }
+}
+
+#[test]
+fn tools_touching_inside_the_target_are_a_tangent_contact() {
+    // Two blind bores whose walls touch along a ruling that runs up out
+    // of the plate's top: inside the plate both walls survive, above it
+    // neither, and the contact is read along its length, not at its
+    // midpoint, which lies on the top.
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let bores: Vec<Body> = [40.0, 50.0]
+        .into_iter()
+        .map(|y| {
+            let axis = Axis::z_at(Point3::new(50.0, y, 4.0));
+            primitive_cylinder(&mut m, axis, 5.0, 12.0).unwrap().0
+        })
+        .collect();
+    let (_, reason) = refused(cut_many(&mut m, plate, &bores).unwrap_err());
+    assert_eq!(reason, BooleanReason::TangentContact);
+}
+
+#[test]
+fn tools_touching_along_a_seam_are_refused_as_non_manifold() {
+    // The touch is the first hole's seam: an image of the seam on the
+    // second wall, not a contact, and the two plate quadrants beside it
+    // meet in an edge of four faces.
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let holes: Vec<Body> = [40.0, 50.0]
+        .into_iter()
+        .map(|x| {
+            let axis = Axis::z_at(Point3::new(x, 50.0, -1.0));
+            primitive_cylinder(&mut m, axis, 5.0, 12.0).unwrap().0
+        })
+        .collect();
+    let e = cut_many(&mut m, plate, &holes).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            OpError::Degenerate {
+                reason: Reason::Input(arris_ops::InputReason::NonManifold),
+                ..
+            }
+        ),
+        "{e}"
+    );
+}
+
+#[test]
+fn pockets_flush_with_the_top_and_each_other_are_the_chain_of_cuts() {
+    // Over the overlap the plate's top lies on both tools' tops at once:
+    // the piece is decided on the face's two sides, void on both.
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let pocket = |m: &mut Model, x: f64| {
+        primitive_box(
+            m,
+            Point3::new(x, 20.0, 5.0),
+            Point3::new(x + 20.0, 40.0, 10.0),
+        )
+        .unwrap()
+        .0
+    };
+    for (what, second) in [("overlapping", 30.0), ("repeated", 20.0)] {
+        let tools = [pocket(&mut m, 20.0), pocket(&mut m, second)];
+        let (many, _) = cut_many(&mut m, plate, &tools).unwrap();
+        let chained = cut(&mut m, plate, tools[0]).unwrap().0;
+        let chained = cut(&mut m, chained, tools[1]).unwrap().0;
+        assert_same_solid(&m, many, chained, what);
+    }
+}
+
+#[test]
+fn a_piece_flush_with_two_tools_stands_for_both() {
+    // Two overlapping boxes resting on the plate's top: the top under
+    // both is kept from the plate, the lowest of the three, and stands
+    // for both tools' bottoms.
+    let mut m = Model::default();
+    let (plate, _) = plate_and_holes(&mut m, 0);
+    let tools: Vec<Body> = [20.0, 30.0]
+        .into_iter()
+        .map(|x| {
+            primitive_box(
+                &mut m,
+                Point3::new(x, 20.0, 10.0),
+                Point3::new(x + 20.0, 40.0, 15.0),
+            )
+            .unwrap()
+            .0
+        })
+        .collect();
+    let (body, p) = cut_many(&mut m, plate, &tools).unwrap();
+    let volume = mass_properties(&m, body).unwrap().volume;
+    assert!((volume - 1e5).abs() <= 1e-9 * 1e5, "{volume}");
+    let bottom = |t: Body| {
+        m.faces(t)
+            .unwrap()
+            .into_iter()
+            .find(|f| {
+                m.surface(m.face(f.id).unwrap().surface())
+                    .unwrap()
+                    .project(Point3::new(35.0, 30.0, 10.0))
+                    .is_ok_and(|q| q.distance < 1e-9)
+            })
+            .unwrap()
+            .id
+    };
+    let under = |g| -> Vec<Shape> {
+        p.generated_from(shape(g))
+            .iter()
+            .copied()
+            .filter(|s| matches!(s.id, arris_topo::EntityId::Face(_)))
+            .collect()
+    };
+    let (first, second) = (under(bottom(tools[0])), under(bottom(tools[1])));
+    let both: Vec<_> = first.iter().filter(|s| second.contains(s)).collect();
+    assert_eq!(both.len(), 1, "{p}");
+}
