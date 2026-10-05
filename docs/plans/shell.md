@@ -147,7 +147,7 @@ bound has to be established here.
   box with its top fillet's neighbour opened (refused), a thin plate hollowed
   past its half-thickness (refused), a boss's shell past the boss's
   radius (refused), a pyramid hollowed (apex splits, refused).
-- [ ] Step 6 **[1]** — The facade and the binding: `Model.shell` with cancel
+- [x] Step 6 **[1]** — The facade and the binding: `Model.shell` with cancel
   and budget, `side` as a string, its stub and docstring example, a pytest
   per refusal group, the rustdoc example on `shell`.
 - [ ] Step 7 **[2]** — Properties, sharded and seeded: a shell's volume plus
@@ -248,3 +248,9 @@ job's pytest, docstring examples and `mypy.stubtest` green.
   corpus runner accepted any `Degenerate` over the recipe's named
   `expect_error`; the named error now comes first, and the four such
   fixtures (two offset, two shell) hold to it.
+- Done at step 6: `Model.shell(body, openings, thickness, side="inward")`,
+  `side` defaulting to inward as the CAD tools' shell does and any other
+  string a `ValueError`; pytests for the result on both sides and the
+  void, the opening refusals, `OpeningDragged`, the offset's refusals
+  reaching the caller, a foreign handle, cancel and budget. The rustdoc
+  example on `shell` was written at step 2.

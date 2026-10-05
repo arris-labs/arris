@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use arris::math::nalgebra::UnitQuaternion;
 use arris::math::{Axis, Isometry, Point3, Reflection, UnitVec3, Vec3};
-use arris::ops::{InputReason, OpError, Reason};
+use arris::ops::{InputReason, OpError, Reason, ShellSide};
 use arris::topo;
 use arris::{Control, Interrupted, Stop};
 use pyo3::exceptions::PyKeyboardInterrupt;
@@ -725,6 +725,61 @@ impl Model {
         })
     }
 
+    /// `body` hollowed to a wall of `thickness`, open at `openings`. With
+    /// `side="inward"` the body's faces stay the outside and the cavity
+    /// grows inside them; with `side="outward"` the body's faces become the
+    /// cavity and a skin grows outside them. The inner skin is every face
+    /// but the openings moved by `thickness`, each on the offset of its own
+    /// surface; each opening becomes a rim face between the two skins. No
+    /// openings leaves a closed void: a body of two shells. Each skin face
+    /// is generated from the face it copies.
+    ///
+    /// Raises `ValueError` for a `side` other than `"inward"` or
+    /// `"outward"`; `OpDegenerateError` with the reason's name in `reason`
+    /// for a shell the kernel refuses — the openings themselves
+    /// (`RepeatedOpening`, `OpeningNotInBody`, `NoWalls`), an opening
+    /// tangent to a wall (`OpeningDragged`), the walls' offset (`Vanishes`,
+    /// `VertexSplits`, `NoExactOffset`, `SurfaceCollapses`, `Gap`, or
+    /// `SelfIntersects` for a thickness past the thinnest wall) — or a
+    /// non-positive or non-finite `thickness`; `OpUnsupportedError` for
+    /// openings meeting in a way it cannot splice; and `ForeignHandleError`
+    /// for a face of another model. The model is left as it was on every
+    /// refusal.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// cube, record = model.primitive_box((0, 0, 0), (10, 10, 10))
+    /// top = record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+    /// cup, _ = model.shell(cube, [f for f in top if isinstance(f, arris.Face)], 1.0)
+    /// assert abs(model.mass_properties(cup).volume - (1000 - 8 * 8 * 9)) < 1e-9
+    /// assert len(model.faces(cup)) == 11
+    /// ```
+    #[pyo3(signature = (body, openings, thickness, side="inward", *, cancel=None, budget=None))]
+    #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
+    fn shell(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        openings: Vec<PyRef<'_, Face>>,
+        thickness: f64,
+        side: &str,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let side = shell_side_of(side)?;
+        let body = body.resolve(&self.shared)?;
+        let openings = openings
+            .iter()
+            .map(|f| f.resolve(&self.shared))
+            .collect::<Result<Vec<topo::Face>, BindError>>()?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::shell(m, body, &openings, thickness, side, control)
+        })
+    }
+
     /// The volume, area, centroid and inertia of the solid `body`, at unit
     /// density.
     ///
@@ -1367,6 +1422,17 @@ impl Model {
 
     fn edges_list(&self, edges: &[PyRef<'_, Edge>]) -> Result<Vec<topo::Edge>, BindError> {
         edges.iter().map(|e| e.resolve(&self.shared)).collect()
+    }
+}
+
+/// The side of a shell's wall named by `text`: `"inward"` or `"outward"`.
+fn shell_side_of(text: &str) -> PyResult<ShellSide> {
+    match text {
+        "inward" => Ok(ShellSide::Inward),
+        "outward" => Ok(ShellSide::Outward),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "{other:?} is not a shell side (\"inward\" or \"outward\")"
+        ))),
     }
 }
 

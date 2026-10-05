@@ -292,3 +292,111 @@ def test_offset_faces_honours_cancel_and_budget():
     assert model.contains(a)
     token.reset()
     model.offset_faces(a, top_of(record), 1.0, cancel=token, budget=10_000)
+
+
+def face_on(model, body, normal, at):
+    """The planar faces of `body` whose normal is `normal` and whose plane
+    passes through `at` along it."""
+    axis = max(range(3), key=lambda i: abs(normal[i]))
+    found = []
+    for f in model.faces(body):
+        try:
+            frame = model.face_frame(f)
+        except arris.OpDegenerateError:
+            continue  # not a plane
+        if all(abs(frame.z[i] - normal[i]) < 1e-9 for i in range(3)) and abs(frame.origin[axis] - at) < 1e-9:
+            found.append(f)
+    return found
+
+
+def shell_refused(model, *args, **kw):
+    with pytest.raises(arris.OpDegenerateError) as raised:
+        model.shell(*args, **kw)
+    return raised.value
+
+
+def test_shell_hollows_a_box_on_either_side():
+    model = arris.Model()
+    a, record = box(model)
+    cup, made = model.shell(a, top_of(record), 1.0)
+    assert abs(model.mass_properties(cup).volume - (1000 - 8 * 8 * 9)) < 1e-6
+    assert model.check(cup, "full").ok
+    # Each inner wall is generated from the outer wall it copies.
+    bottom = faces(record.generated_from(arris.Role("box", "Face", "Z", "Min")))
+    assert len(faces(made.generated_from(bottom[0]))) == 1
+    grown, _ = model.shell(a, top_of(record), 1.0, "outward")
+    assert abs(model.mass_properties(grown).volume - (12 * 12 * 11 - 1000)) < 1e-6
+    void, _ = model.shell(a, [], 1.0)
+    assert len(model.shells(void)) == 2
+    assert abs(model.mass_properties(void).volume - (1000 - 512)) < 1e-6
+
+
+def test_shell_refuses_its_openings_by_name():
+    model = arris.Model()
+    a, record = box(model)
+    other, other_record = box(model, (20, 0, 0), (30, 10, 10))
+    top = top_of(record)
+    assert "twice" in shell_refused(model, a, top + top, 1.0).reason
+    assert "not a face of the body" in shell_refused(model, a, top_of(other_record), 1.0).reason
+    every = faces(model.faces(a))
+    assert shell_refused(model, a, every, 1.0).reason
+    for bad in (0.0, -1.0, math.nan, math.inf):
+        shell_refused(model, a, top, bad)
+    with pytest.raises(ValueError):
+        model.shell(a, top, 1.0, "sideways")
+    assert model.contains(a)
+
+
+def test_shell_refuses_an_opening_a_wall_would_drag():
+    model = arris.Model()
+    a, record = box(model)
+    made = record.generated_from(arris.Role("box", "Edge", "Z", "Min", "Min"))
+    edge = [e for e in made if isinstance(e, arris.Edge)]
+    rounded, _ = model.fillet(a, edge, 2.0)
+    # The side at x = 0 is tangent to the blend, which is a wall.
+    side = face_on(model, rounded, (-1, 0, 0), 0)
+    assert len(side) == 1
+    error = shell_refused(model, rounded, side, 1.0)
+    assert "drag" in error.reason
+    assert error.entities == side
+    assert model.contains(rounded)
+
+
+def test_shell_refuses_what_the_walls_offset_refuses():
+    model = arris.Model()
+    a, record = box(model)
+    # Past half the cube: the inner walls turn inside out.
+    assert "vanish" in shell_refused(model, a, top_of(record), 6.0).reason
+    pin, pin_record = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 1, 10)
+    cap = faces(pin_record.generated_from(arris.Role("cylinder", "TopCap")))
+    assert "through zero" in shell_refused(model, pin, cap, 2.0).reason
+    # A pocket floor 2 thick hollowed by 1.5 from both sides.
+    block, _ = box(model, (0, 0, 0), (20, 20, 10))
+    pocket, _ = box(model, (6, 6, 2), (14, 14, 11))
+    cut, _ = model.cut(block, pocket)
+    rim = face_on(model, cut, (0, 0, 1), 10)
+    assert len(rim) == 1
+    assert "run into each other" in shell_refused(model, cut, rim, 1.5).reason
+    assert model.check(cut, "full").ok
+
+
+def test_shell_takes_handles_of_its_own_model_only():
+    one, other = arris.Model(), arris.Model()
+    a, record = box(one)
+    b, _ = box(other)
+    with pytest.raises(arris.ForeignHandleError):
+        other.shell(b, top_of(record), 1.0)
+
+
+def test_shell_honours_cancel_and_budget():
+    model = arris.Model()
+    a, record = box(model)
+    token = arris.Cancel()
+    token.set()
+    with pytest.raises(arris.Interrupted):
+        model.shell(a, top_of(record), 1.0, cancel=token)
+    with pytest.raises(arris.Interrupted):
+        model.shell(a, top_of(record), 1.0, budget=0)
+    assert model.contains(a)
+    token.reset()
+    model.shell(a, top_of(record), 1.0, cancel=token, budget=10_000)
