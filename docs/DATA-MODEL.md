@@ -117,6 +117,20 @@ revolve makes shares that one frame's origin on the axis and its `X`
 into the profile's plane, so `u = 0` is the profile plane and every seam
 lies in it.
 
+`Surface::offset(d)` moves a surface `d` along its own normal (positive
+the way the normal points) into a surface of the same kind, keeping the
+frame so that `u` and every seam stay put: a plane's origin moves `d` along
+`Z`; a cylinder's radius is `R + d`; a cone keeps its half-angle and has
+radius `R + d / cos α` at `v = 0` (its `v` moves by `−d tan α`); a sphere's
+radius is `R + d`; a torus keeps `R` and has `r + d`. It is `None` for an
+elliptic cylinder (an ellipse's parallel curve is no ellipse), a NURBS
+surface (the NURBS cycle's), a non-finite `d`, and a radius driven to or
+through zero (a cylinder or sphere with `R + d` not positive, a torus with
+`r + d` not positive or reaching `R`). A cone is offset on the nappe its
+normal is outward on; whether a face reaches the axis or the apex the
+move carries is the operation's to decide per face, so the cone's
+surface-level offset never collapses.
+
 A surface's parametric domain is unbounded where the table says ℝ; a face
 trims it with loops. Periodic directions are stored as a period, and a
 pcurve on a periodic surface may run outside `[0, 2π)` — a loop that crosses

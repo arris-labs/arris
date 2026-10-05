@@ -57,10 +57,13 @@ matched against Open CASCADE on a fixture corpus.
 
 - **`arris-geom`**: `Surface::offset(&self, distance) -> Option<Surface>`
   along the surface's own normal (`None` for `EllipticCylinder`, `Nurbs`
-  and a radius driven to or through zero, a cone whose apex the offset
-  passes, a torus whose minor radius would reach its major); a pure
-  function, so it lives in geom (ADR-0013). docs/DATA-MODEL.md §Surfaces
-  gains each kind's offset.
+  and a radius driven to or through zero, a torus whose minor radius would
+  reach its major); a pure function, so it lives in geom (ADR-0013).
+  docs/DATA-MODEL.md §Surfaces gains each kind's offset. Step 2 found a
+  cone's apex is not the surface's to judge: the offset cone always
+  exists, and a point whose move crosses the axis is on its other nappe, so
+  "the offset passes the apex" is `SurfaceCollapses` decided per face in
+  step 4, not a `None`.
 - **`arris-ops`, public**: `pub fn offset_faces(m: &mut Model, body: Body,
   faces: &[Face], distance: f64, control: &Control<'_>) -> Result<(Body,
   Provenance), OpError>`. New `Reason::Offset(OffsetReason)` group:
@@ -111,7 +114,7 @@ bound has to be established here.
   offset is shown wrong or refuses, the fixture is held to its closed
   forms (`analytic.measure_differs`, ADR-0015) and the fallback is
   recorded. ADR-0048 written here with what the oracle does.
-- [ ] Step 2 **[1]** — `Surface::offset` in geom for every analytic kind,
+- [x] Step 2 **[1]** — `Surface::offset` in geom for every analytic kind,
   `None` for the rest and for every collapse; geometry tests per kind
   (a point of the offset at exactly `|d|` from the original along its
   normal, at sampled (u, v)), and DATA-MODEL §Surfaces.

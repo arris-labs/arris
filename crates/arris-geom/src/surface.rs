@@ -889,6 +889,102 @@ impl Surface {
         }
     }
 
+    /// The surface moved by `distance` along its own [`Surface::normal`]
+    /// (positive: the way the normal points), as a surface of the same
+    /// kind: a plane's parallel plane, a cylinder's coaxial cylinder of
+    /// radius `R + d`, a cone's coaxial cone of the same half-angle with
+    /// radius `R + d / cos α` at `v = 0`, a sphere's concentric sphere of
+    /// radius `R + d` and a torus of the same major radius and minor
+    /// radius `r + d`. Every parametrisation keeps its frame, so `u` is
+    /// unchanged and a seam stays where it was; a plane's offset keeps
+    /// its `(u, v)` too, and a cone's `v` moves by `−d tan α`.
+    ///
+    /// A cone is offset on the nappe its normal is outward on, where
+    /// `R + v sin α > 0`, and the offset's own nappe is the one where its
+    /// radius is positive: a point whose move along the normal crosses the
+    /// axis (`R + v sin α + d cos α ≤ 0`) is on the offset's other nappe,
+    /// and whether a face reaches the axis or the apex it moves is the
+    /// face's to decide, not the surface's.
+    ///
+    /// `None` where no surface of the kind is the offset: a non-finite
+    /// `distance`, an elliptic cylinder (the parallel curve of an ellipse
+    /// is no ellipse), a NURBS surface (no closed form; the NURBS cycle's),
+    /// and a radius driven to or through zero — a cylinder or a sphere
+    /// whose new radius is not positive beyond rounding
+    /// ([`arris_math::is_negligible`]), a torus whose new minor radius is
+    /// not, or reaches its major radius.
+    ///
+    /// ```
+    /// use arris_geom::Surface;
+    /// use arris_math::Frame;
+    ///
+    /// let hole = Surface::Cylinder { frame: Frame::world(), radius: 3.0 };
+    /// // The normal points out from the axis: a positive distance widens it.
+    /// let wider = hole.offset(1.0).unwrap();
+    /// assert!(matches!(wider, Surface::Cylinder { radius, .. } if radius == 4.0));
+    /// assert!(hole.offset(-3.0).is_none());
+    /// ```
+    pub fn offset(&self, distance: f64) -> Option<Surface> {
+        if !distance.is_finite() {
+            return None;
+        }
+        // A radius `scale` was driven to `moved`: gone to rounding.
+        let collapsed = |moved: f64, scale: f64| {
+            moved <= 0.0 || is_negligible(moved, scale.abs().max(distance.abs()))
+        };
+        match *self {
+            Surface::Nurbs(_) | Surface::EllipticCylinder { .. } => None,
+            Surface::Plane { frame } => {
+                let by = distance * frame.z().into_inner();
+                let frame = Frame::from_orthonormal(
+                    frame.origin() + by,
+                    frame.x().into_inner(),
+                    frame.y().into_inner(),
+                    frame.z().into_inner(),
+                )
+                .ok()?;
+                Some(Surface::Plane { frame })
+            }
+            Surface::Cylinder { frame, radius } => {
+                let moved = radius + distance;
+                (!collapsed(moved, radius)).then_some(Surface::Cylinder {
+                    frame,
+                    radius: moved,
+                })
+            }
+            Surface::Cone {
+                frame,
+                radius,
+                half_angle,
+            } => Some(Surface::Cone {
+                frame,
+                radius: radius + distance / half_angle.cos(),
+                half_angle,
+            }),
+            Surface::Sphere { frame, radius } => {
+                let moved = radius + distance;
+                (!collapsed(moved, radius)).then_some(Surface::Sphere {
+                    frame,
+                    radius: moved,
+                })
+            }
+            Surface::Torus {
+                frame,
+                major_radius,
+                minor_radius,
+            } => {
+                let moved = minor_radius + distance;
+                let reaches = moved >= major_radius
+                    || is_negligible(major_radius - moved, major_radius.abs().max(moved.abs()));
+                (!collapsed(moved, minor_radius) && !reaches).then_some(Surface::Torus {
+                    frame,
+                    major_radius,
+                    minor_radius: moved,
+                })
+            }
+        }
+    }
+
     /// The mirror image of the surface and the parameter map that
     /// relates them: `image.eval(m(u, v)).point == plane.apply(self.eval(u,
     /// v).point)` to rounding, with `m` the returned [`ParamMap`]. Frames

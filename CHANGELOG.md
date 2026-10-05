@@ -13,6 +13,11 @@ into its version (ADR-0027).
   `shift_nearest`, `shift_nearest_uv` and `shift_into_range`, each taking
   the period from the caller, so a period that is not a turn is wrapped
   correctly.
+- `arris_geom::Surface::offset(distance)` returns the surface moved along
+  its own normal as a surface of the same kind (a plane's parallel plane,
+  a coaxial cylinder or cone, a concentric sphere, a torus of the same
+  major radius), and `None` for an elliptic cylinder, a NURBS surface, a
+  non-finite distance and a radius driven to or through zero.
 
 ### Breaking
 
