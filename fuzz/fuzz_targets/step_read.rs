@@ -5,8 +5,8 @@
 //! guarantee (ADR-0025 §5); refusals are answers, not findings.
 #![no_main]
 
-use arris_io::arris_check::arris_topo::Model;
-use arris_io::arris_check::arris_topo::arris_math::Control;
+use arris_topo::Model;
+use arris_math::Control;
 use arris_io::step::{self, ReadError, ReadOptions};
 use libfuzzer_sys::fuzz_target;
 

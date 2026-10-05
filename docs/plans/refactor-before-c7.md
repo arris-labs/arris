@@ -134,7 +134,7 @@ and ignored tests.
   - Test: `cargo nextest list -p arris --test corpus` gives the same
     names before and after (diff the two listings in the commit body's
     check).
-- [ ] Step 2 **[1]** — **Direct dependencies, chains gone.**
+- [x] Step 2 **[1]** — **Direct dependencies, chains gone.**
   - Each of `arris-topo`, `-check`, `-mesh`, `-ops`, `-io`, `-debug`,
     `-py` and the crates' tests declares and imports the crates it names.
     This replaces about 600 `arris_x::arris_y::` paths.

@@ -6,15 +6,15 @@
 
 use std::collections::BTreeSet;
 
+use arris_check::{Level, check};
 use arris_debug::dump_text;
 use arris_debug::unmetered::cut;
 use arris_debug::unmetered::{chamfer, extrude, mass_properties, primitive_box, revolve};
-use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Point3, Vec3};
-use arris_ops::arris_check::arris_topo::provenance::audit;
-use arris_ops::arris_check::arris_topo::{Body, Edge, EntityId, Model, Orientation, Shape};
-use arris_ops::arris_check::{Level, check};
+use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
+use arris_math::{Axis, Frame, Point2, Point3, Vec3};
 use arris_ops::{OpError, Reason};
+use arris_topo::provenance::audit;
+use arris_topo::{Body, Edge, EntityId, Model, Orientation, Shape};
 /// The edge of `body` whose curve's midpoint is `at`.
 fn edge_at(m: &Model, body: Body, at: Point3) -> Edge {
     m.edges(body)

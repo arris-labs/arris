@@ -26,9 +26,9 @@ use crate::unmetered::step_read;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use arris_io::arris_check::arris_topo::arris_math::Point3;
-use arris_io::arris_check::arris_topo::{Body, Model};
 use arris_io::step::ReadOptions;
+use arris_math::Point3;
+use arris_topo::{Body, Model};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

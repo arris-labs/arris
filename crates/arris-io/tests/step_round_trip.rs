@@ -10,6 +10,8 @@
 //! probe points. A failure prints the shrunk case and the seed, and
 //! becomes a fixture (`tests/fixtures/README.md` §Property-test failures).
 
+use arris_check::classify::{Classification, classify_point};
+use arris_check::{Level, check};
 use arris_debug::corpus::within_own_tolerance;
 use arris_debug::fixtures::Tolerances;
 use arris_debug::prop::body::{QuadricPair, QuadricSolid};
@@ -18,13 +20,11 @@ use arris_debug::unmetered::step_read;
 use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::unmetered::{mass_properties, transform};
 use arris_debug::{prop, prop_shards};
-use arris_io::arris_check::arris_topo::arris_math::{Isometry, Point3, Vec3};
-use arris_io::arris_check::arris_topo::{Body, Model};
-use arris_io::arris_check::classify::{Classification, classify_point};
-use arris_io::arris_check::{Level, check};
 use arris_io::step::{self, ReadOptions};
+use arris_math::{Isometry, Point3, Vec3};
 use arris_ops::measure::MassProperties;
 use arris_ops::{OpError, Reason};
+use arris_topo::{Body, Model};
 use proptest::prelude::*;
 
 /// What is written: a solid alone, or a boolean of a pair.
@@ -272,8 +272,8 @@ prop_shards! {
 #[test]
 fn a_frustum_cut_through_its_wide_cap_reads_back_as_itself() {
     use arris_debug::prop::body::{Cylindrical, QuadricTool};
-    use arris_io::arris_check::arris_topo::arris_math::Axis;
-    use arris_io::arris_check::arris_topo::arris_math::nalgebra::{Quaternion, UnitQuaternion};
+    use arris_math::Axis;
+    use arris_math::nalgebra::{Quaternion, UnitQuaternion};
 
     let half_turn = Isometry::new(
         UnitQuaternion::new_unchecked(Quaternion::new(0.0, 0.0, 1.0, 0.0)),

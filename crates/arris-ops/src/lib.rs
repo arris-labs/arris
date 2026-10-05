@@ -41,8 +41,7 @@ mod rebuild;
 mod sweep;
 mod transform;
 
-pub use arris_check;
-pub use arris_check::arris_topo::arris_math::{Control, Interrupted, Stop};
+pub use arris_math::{Control, Interrupted, Stop};
 
 pub use blend::{chamfer, fillet};
 pub use boolean::{common, cut, fuse};
@@ -53,7 +52,7 @@ pub use primitive::{primitive_box, primitive_cylinder};
 pub use sweep::{extrude, revolve};
 pub use transform::transform;
 
-use arris_check::arris_topo::{Body, Model};
+use arris_topo::{Body, Model};
 
 /// The input check every operation and query runs before it reads a
 /// body: the handle resolves ([`OpError::NotFound`] otherwise), and in

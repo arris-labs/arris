@@ -14,10 +14,8 @@ use arris_check::{
     WireFault, check,
 };
 use arris_debug::sample;
-use arris_topo::arris_geom::{Curve, Curve2, NurbsSurface, Surface};
-use arris_topo::arris_math::{
-    Frame, Interval, Point2, Point3, Precision, UnitVec2, UnitVec3, Vec2, Vec3,
-};
+use arris_geom::{Curve, Curve2, NurbsSurface, Surface};
+use arris_math::{Frame, Interval, Point2, Point3, Precision, UnitVec2, UnitVec3, Vec2, Vec3};
 use arris_topo::entity::{
     Body as BodyEntity, BodyKind, Coedge, Edge, EdgeGeometry, Face, Loop, Shell, Vertex,
 };

@@ -29,7 +29,7 @@ mod trimesh;
 
 // `Aabb` and `Interval` live in `arris-math` (01 §Crates); re-exported
 // so a mesh caller reaches them through this crate as it always has.
-pub use arris_topo::arris_math::{Aabb, Interval};
+pub use arris_math::{Aabb, Interval};
 pub use corners::{CornerFace, Corners, NORMAL_UNIT_SLACK};
 pub use polyline::Polyline;
 pub use tessellate::{MAX_INTERIOR_POINTS, MeshRequest, tessellate, tessellate_with};

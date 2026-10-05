@@ -9,10 +9,10 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arris_debug::{dump, fixtures, sample};
-use arris_io::arris_check::arris_topo::arris_math::{Control, Interrupted, Stop};
-use arris_io::arris_check::arris_topo::{Model, Provenance};
 use arris_io::step::{self, Read, ReadError, ReadOptions};
 use arris_io::{body, native};
+use arris_math::{Control, Interrupted, Stop};
+use arris_topo::{Model, Provenance};
 
 /// The steps `f` takes under a poll that never stops it.
 fn steps_of<T>(f: impl FnOnce(&Control<'_>) -> T) -> (T, u64) {
@@ -194,17 +194,17 @@ fn a_budget_stops_the_body_readers() {
 /// stops it too. The model is read only, so there is nothing to roll back.
 #[test]
 fn a_budget_stops_write_products_and_a_read_of_its_tree_ticks_per_occurrence() {
-    use arris_io::arris_check::arris_topo::arris_math::Isometry;
     use arris_io::step::{Occurrence, ProductTree, StepError};
+    use arris_math::Isometry;
 
     let mut m = Model::default();
     let cylinder = sample::cylinder(&mut m, 4.0, 12.0).unwrap();
     let part = |x: f64| Occurrence {
         product: Some(1),
         name: "pin".into(),
-        placement: Ok(Isometry::from_translation(
-            arris_io::arris_check::arris_topo::arris_math::Vec3::new(x, 0.0, 0.0),
-        )),
+        placement: Ok(Isometry::from_translation(arris_math::Vec3::new(
+            x, 0.0, 0.0,
+        ))),
         colour: None,
         solids: vec![0],
         children: vec![],

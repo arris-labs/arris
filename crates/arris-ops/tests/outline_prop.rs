@@ -11,17 +11,15 @@
 //! `tests/fixtures/regression/` (`tests/fixtures/README.md` §Property-test
 //! failures).
 
+use arris_check::{Level, Report, Unchecked, check};
 use arris_debug::testing::{REL, close_to, fail};
 use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, transform};
 use arris_debug::{dump_text, prop, prop_shards};
+use arris_geom::{Profile, ProfileLoop, ProfileSegment, SurfaceKind};
+use arris_math::{Frame, Isometry, Point2, Point3, Vec3};
 use arris_ops::OpError;
-use arris_ops::arris_check::arris_topo::arris_geom::{
-    Profile, ProfileLoop, ProfileSegment, SurfaceKind,
-};
-use arris_ops::arris_check::arris_topo::arris_math::{Frame, Isometry, Point2, Point3, Vec3};
-use arris_ops::arris_check::arris_topo::provenance::audit;
-use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Provenance};
-use arris_ops::arris_check::{Level, Report, Unchecked, check};
+use arris_topo::provenance::audit;
+use arris_topo::{Body, Edge, Model, Provenance};
 use core::f64::consts::{FRAC_PI_4, PI};
 use proptest::prelude::*;
 

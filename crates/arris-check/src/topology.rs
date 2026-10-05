@@ -10,9 +10,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_topo::arris_geom::region2::{Polygon2, discretise};
-use arris_topo::arris_geom::{Curve2, Surface};
-use arris_topo::arris_math::{Point2, Vec2};
+use arris_geom::region2::{Polygon2, discretise};
+use arris_geom::{Curve2, Surface};
+use arris_math::{Point2, Vec2};
 use arris_topo::entity::{BodyKind, Face, Loop};
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 

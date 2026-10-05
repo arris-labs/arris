@@ -72,19 +72,15 @@ pub use reader::{
 use core::fmt::Write as _;
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_geom::region2::{Piece, discretise};
-use arris_check::arris_topo::arris_geom::{
-    Curve, Curve2, NurbsCurve, NurbsCurve2, NurbsSurface, Surface,
-};
-use arris_check::arris_topo::arris_math::{
-    Frame, Frame2, Interrupted, Interval, Point2, Point3, Vec2, Vec3,
-};
-use arris_check::arris_topo::entity::{BodyKind, Coedge, Loop};
-use arris_check::arris_topo::{
+use arris_check::{LumpError, lumps};
+use arris_geom::region2::{Piece, discretise};
+use arris_geom::{Curve, Curve2, NurbsCurve, NurbsCurve2, NurbsSurface, Surface};
+use arris_math::{Frame, Frame2, Interrupted, Interval, Point2, Point3, Vec2, Vec3};
+use arris_topo::entity::{BodyKind, Coedge, Loop};
+use arris_topo::{
     AnyId, Body, CoedgeRef, Curve2Id, CurveId, EdgeId, FaceId, Model, NotFound, Orientation, Shell,
     SurfaceId, VertexId,
 };
-use arris_check::{LumpError, lumps};
 
 /// Why a body could not be written.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -191,7 +187,7 @@ impl core::fmt::Display for Unsupported {
 ///
 /// ```
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::Model;
+/// use arris_topo::Model;
 /// use arris_io::step;
 ///
 /// let mut m = Model::default();

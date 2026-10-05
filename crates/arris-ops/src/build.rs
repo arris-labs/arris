@@ -4,12 +4,12 @@
 use core::fmt;
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_math::{Control, Meter};
-use arris_check::arris_topo::builder::{BuildError, Builder, Built, EdgeRef, FaceRef, VertexRef};
-use arris_check::arris_topo::entity::BodyKind;
-use arris_check::arris_topo::provenance::ConsumerKey;
-use arris_check::arris_topo::{Body, Model, Orientation, Provenance, Role, Shape};
 use arris_check::{Level, Report};
+use arris_math::{Control, Meter};
+use arris_topo::builder::{BuildError, Builder, Built, EdgeRef, FaceRef, VertexRef};
+use arris_topo::entity::BodyKind;
+use arris_topo::provenance::ConsumerKey;
+use arris_topo::{Body, Model, Orientation, Provenance, Role, Shape};
 
 use crate::error::{Fault, OpError};
 
@@ -33,7 +33,7 @@ pub struct BuildKeys {
     /// The key of each shell, by its index: the shell index its faces
     /// carry ([`StagedFace::shell`]), `0` for a builder of operators.
     ///
-    /// [`StagedFace::shell`]: arris_check::arris_topo::builder::StagedFace::shell
+    /// [`StagedFace::shell`]: arris_topo::builder::StagedFace::shell
     pub shells: Vec<u64>,
     /// The body's key.
     pub body: u64,
@@ -125,7 +125,7 @@ pub(crate) fn roles(
 /// not only in debug builds as other operations' outputs do: the
 /// topology is the consumer's input, and a body that fails is refused
 /// rather than treated as a kernel bug. The record passes
-/// [`audit`](arris_check::arris_topo::provenance::audit) with no inputs.
+/// [`audit`](arris_topo::provenance::audit) with no inputs.
 ///
 /// Errors, each leaving the model as it was: [`OpError::Unkeyed`] naming
 /// the first live slot, in vertex, edge, face, shell order, that `keys`
@@ -136,9 +136,9 @@ pub(crate) fn roles(
 ///
 /// ```
 /// use arris_debug::polyhedron::polyhedron;
-/// use arris_ops::arris_check::arris_topo::arris_math::Point3;
-/// use arris_ops::arris_check::arris_topo::provenance::{ConsumerKey, Role};
-/// use arris_ops::arris_check::arris_topo::Model;
+/// use arris_math::Point3;
+/// use arris_topo::provenance::{ConsumerKey, Role};
+/// use arris_topo::Model;
 /// use arris_ops::build;
 ///
 /// // A tetrahedron, its faces counter-clockwise from outside, filled into

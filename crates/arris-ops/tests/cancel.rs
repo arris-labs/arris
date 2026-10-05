@@ -183,7 +183,7 @@ fn a_poll_stops_an_operation_and_rolls_the_model_back() {
 
 #[test]
 fn mass_properties_stops_at_its_budget() {
-    let mut m = arris_ops::arris_check::arris_topo::Model::default();
+    let mut m = arris_topo::Model::default();
     let (body, _) = primitive_box(&mut m, [0.0; 3], [3.0, 2.0, 1.0], &Control::NONE).unwrap();
     let (whole, n) = steps_of(|c| mass_properties(&m, body, c));
     let whole = whole.unwrap();

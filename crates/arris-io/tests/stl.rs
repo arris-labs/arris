@@ -11,8 +11,8 @@ use arris_debug::sample;
 use arris_debug::unmetered::tessellate;
 use arris_debug::unmetered::{fillet, primitive_box};
 use arris_io::stl;
-use arris_ops::arris_check::arris_topo::arris_math::Point3;
-use arris_ops::arris_check::arris_topo::{Body, Edge, Model};
+use arris_math::Point3;
+use arris_topo::{Body, Edge, Model};
 fn filleted_box(m: &mut Model) -> Body {
     let (body, _) = primitive_box(m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
     let edge: Edge = m

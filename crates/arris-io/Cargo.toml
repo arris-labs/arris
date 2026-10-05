@@ -17,6 +17,9 @@ default = ["serde"]
 serde = ["dep:serde", "dep:serde_json", "dep:postcard", "arris-check/serde"]
 
 [dependencies]
+arris-math.workspace = true
+arris-geom.workspace = true
+arris-topo.workspace = true
 arris-check.workspace = true
 # Mesh formats: STL and OBJ write an `arris_mesh::TriMesh` (ADR-0013).
 arris-mesh.workspace = true

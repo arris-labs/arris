@@ -13,16 +13,14 @@ use arris_debug::unmetered::{body_from_json, body_read};
 use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder};
 use std::collections::BTreeSet;
 
+use arris_check::{Level, check};
 use arris_debug::unmetered::cut;
 use arris_debug::{dump_text, sample};
-use arris_io::arris_check::arris_topo::arris_math::{Axis, Point2, Point3, Precision};
-use arris_io::arris_check::arris_topo::provenance::ConsumerKey;
-use arris_io::arris_check::arris_topo::{
-    Body, EntityId, IdMap, Model, Origin, Provenance, Role, TopoError, VertexId,
-};
-use arris_io::arris_check::{Level, check};
 use arris_io::body::{self, BODY_VERSION, BodyError, Imported};
 use arris_io::native;
+use arris_math::{Axis, Point2, Point3, Precision};
+use arris_topo::provenance::ConsumerKey;
+use arris_topo::{Body, EntityId, IdMap, Model, Origin, Provenance, Role, TopoError, VertexId};
 
 use arris_debug::corpus;
 use arris_debug::prop::recipe::recipe;

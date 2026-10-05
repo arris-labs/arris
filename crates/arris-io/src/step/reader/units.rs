@@ -15,7 +15,7 @@
 //! result in the caller's unit; it is never an entity's tolerance
 //! (ADR-0025 §4).
 
-use arris_check::arris_topo::arris_math::{Frame, FrameError, Isometry, Point3, Vec3};
+use arris_math::{Frame, FrameError, Isometry, Point3, Vec3};
 
 use super::entities::{Args, Entities, describe, malformed, number};
 use super::{LengthUnit, Refusal};
@@ -378,8 +378,8 @@ pub(crate) fn context_of(
 mod tests {
     use super::*;
     use crate::step::part21;
-    use arris_check::arris_topo::arris_geom::Surface;
-    use arris_check::arris_topo::arris_math::is_negligible;
+    use arris_geom::Surface;
+    use arris_math::is_negligible;
     use core::f64::consts::PI;
 
     /// A one-block file: `units` are the instances `#10` onwards that the

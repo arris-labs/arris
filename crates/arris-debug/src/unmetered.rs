@@ -3,15 +3,13 @@
 //! in place of `arris_ops`'s, so its calls read as the operation and its
 //! operands. A test that does care calls the operation itself.
 
-use arris_ops::arris_check::arris_topo::arris_geom::Profile;
-use arris_ops::arris_check::arris_topo::arris_math::{
-    Axis, Control, Isometry, Point3, Reflection, Vec3,
-};
-use arris_ops::arris_check::arris_topo::builder::Builder;
-use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Provenance};
+use arris_geom::Profile;
+use arris_math::{Axis, Control, Isometry, Point3, Reflection, Vec3};
 use arris_ops::boolean::Interferences;
 use arris_ops::measure::MassProperties;
 use arris_ops::{self, BuildKeys, OpError};
+use arris_topo::builder::Builder;
+use arris_topo::{Body, Edge, Model, Provenance};
 /// [`arris_ops::cut`] to its end.
 pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance), OpError> {
     arris_ops::cut(m, target, tool, &Control::NONE)

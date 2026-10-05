@@ -3,13 +3,11 @@
 //! [`crate::measure`], of the same shape: it takes `&Model`, makes no
 //! body, records no provenance and opens no transaction.
 
-use arris_check::arris_topo::arris_geom::region2::Side;
-use arris_check::arris_topo::arris_geom::{
-    Curve, Curve2, GeomError, Surface, project_to_plane as project,
-};
-use arris_check::arris_topo::arris_math::{Frame, Interval, Point2, Vec2, wrap_angle};
-use arris_check::arris_topo::{EdgeId, EntityId, Face, Model, Orientation, Shape, VertexId};
 use arris_check::domain::FaceDomain;
+use arris_geom::region2::Side;
+use arris_geom::{Curve, Curve2, GeomError, Surface, project_to_plane as project};
+use arris_math::{Frame, Interval, Point2, Vec2, wrap_angle};
+use arris_topo::{EdgeId, EntityId, Face, Model, Orientation, Shape, VertexId};
 
 use crate::error::{Fault, OpError, Reason};
 
@@ -71,9 +69,9 @@ pub enum Projection {
 /// use arris_ops::primitive_cylinder;
 /// use arris_ops::query::{Projection, project_to_plane};
 /// use arris_ops::{OpError, Reason};
-/// use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Curve2};
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point3, Vec3};
-/// use arris_ops::arris_check::arris_topo::Model;
+/// use arris_geom::{Curve, Curve2};
+/// use arris_math::{Axis, Frame, Point3, Vec3};
+/// use arris_topo::Model;
 /// use core::f64::consts::FRAC_1_SQRT_2;
 ///
 /// let mut m = Model::default();
@@ -212,9 +210,9 @@ fn carried_range(
 /// ```
 /// use arris_ops::primitive_box;
 /// use arris_ops::query::face_frame;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_geom::Surface;
-/// use arris_ops::arris_check::arris_topo::arris_math::Point3;
+/// use arris_topo::Model;
+/// use arris_geom::Surface;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let (body, _) =
@@ -269,9 +267,9 @@ pub fn face_frame(m: &Model, face: Face) -> Result<Frame, OpError> {
 /// ```
 /// use arris_ops::primitive_cylinder;
 /// use arris_ops::query::frame_at;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_geom::Surface;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point2, Point3};
+/// use arris_topo::Model;
+/// use arris_geom::Surface;
+/// use arris_math::{Axis, Point2, Point3};
 /// use core::f64::consts::FRAC_PI_2;
 ///
 /// let mut m = Model::default();

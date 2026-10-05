@@ -7,11 +7,11 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use arris_check::{Level, LumpError, check};
 use arris_debug::fixtures::{self, Num, Recipe, Step};
 use arris_debug::{oracle, sample};
-use arris_io::arris_check::{Level, LumpError, arris_topo, check};
 use arris_io::step::{self, StepError, Unsupported};
-use arris_topo::arris_math::Point3;
+use arris_math::Point3;
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
 use arris_topo::entity::{Body as BodyEntity, BodyKind};
 use arris_topo::{Body, Model};
@@ -134,8 +134,8 @@ fn the_seam_is_one_edge_with_two_pcurves_and_the_wall_one_face() {
 /// (`sweep/extrude-ellipse`).
 #[test]
 fn an_elliptic_cylinder_is_a_surface_of_linear_extrusion() {
-    use arris_io::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop};
-    use arris_io::arris_check::arris_topo::arris_math::{Frame, Point2, Vec2, Vec3};
+    use arris_geom::{Profile, ProfileLoop};
+    use arris_math::{Frame, Point2, Vec2, Vec3};
     let mut m = Model::default();
     let profile = Profile {
         plane: Frame::world(),

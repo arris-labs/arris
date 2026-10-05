@@ -10,9 +10,9 @@ use arris_debug::prop::body::{QuadricSolid, quadric_solid};
 use arris_debug::testing::fail;
 use arris_debug::unmetered::{mass_properties, step_read};
 use arris_debug::{prop, prop_shards};
-use arris_io::arris_check::arris_topo::arris_math::{Control, Isometry};
-use arris_io::arris_check::arris_topo::{Body, Model};
 use arris_io::step::{self, Occurrence, ProductTree, Read, ReadOptions, Rgb};
+use arris_math::{Control, Isometry};
+use arris_topo::{Body, Model};
 use proptest::prelude::*;
 
 /// What one node of the random tree is, before it is a product.
@@ -177,7 +177,7 @@ fn same(
 
 /// The prototype bodies' volumes and centroids.
 struct Path {
-    prototypes: Vec<(f64, arris_io::arris_check::arris_topo::arris_math::Point3)>,
+    prototypes: Vec<(f64, arris_math::Point3)>,
 }
 
 fn round_trip(root: &Node) -> Result<(), TestCaseError> {

@@ -6,12 +6,12 @@
 use arris_debug::oracle::{self, OracleOccurrence};
 use arris_debug::unmetered::step_read;
 use arris_debug::{fixtures, sample};
-use arris_io::arris_check::arris_topo::Model;
-use arris_io::arris_check::arris_topo::arris_math::Point3;
 use arris_io::step::{self, Occurrence, ReadOptions, Rgb};
+use arris_math::Point3;
+use arris_topo::Model;
 
 /// A placement as the oracle prints it, a 3×4 row-major matrix.
-fn matrix(placement: &arris_io::arris_check::arris_topo::arris_math::Isometry) -> [f64; 12] {
+fn matrix(placement: &arris_math::Isometry) -> [f64; 12] {
     let r = placement.rotation().to_rotation_matrix();
     let t = placement.translation();
     let mut out = [0.0; 12];

@@ -19,15 +19,13 @@ use arris_debug::testing::{close, fail};
 use arris_debug::unmetered::cut;
 use arris_debug::unmetered::tessellate;
 use arris_debug::{dump_text, prop, prop_shards};
-use arris_ops::arris_check::arris_topo::arris_geom::{
-    Profile, ProfileError, ProfileLoop, ProfileSegment, Surface,
-};
+use arris_geom::{Profile, ProfileError, ProfileLoop, ProfileSegment, Surface};
 
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Tolerance, Vec2, Vec3};
-use arris_ops::arris_check::arris_topo::provenance::SweepPart;
-use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role};
-use arris_ops::arris_check::{Level, check};
+use arris_check::{Level, check};
+use arris_math::{Axis, Frame, Point2, Tolerance, Vec2, Vec3};
 use arris_ops::{OpError, Reason};
+use arris_topo::provenance::SweepPart;
+use arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role};
 use core::f64::consts::TAU;
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngAlgorithm, TestRng, TestRunner};

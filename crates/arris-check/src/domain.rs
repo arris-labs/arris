@@ -11,9 +11,9 @@
 
 use std::collections::BTreeSet;
 
-use arris_topo::arris_geom::Surface;
-use arris_topo::arris_geom::region2::{Piece, Polygon2, Side, SideIndex, discretise};
-use arris_topo::arris_math::{Aabb, Interval, Point2, Point3, Vec2, is_negligible};
+use arris_geom::Surface;
+use arris_geom::region2::{Piece, Polygon2, Side, SideIndex, discretise};
+use arris_math::{Aabb, Interval, Point2, Point3, Vec2, is_negligible};
 use arris_topo::entity::{Face, Loop};
 use arris_topo::{EdgeId, FaceId, Model, NotFound, Orientation, Shape};
 
@@ -50,8 +50,8 @@ pub fn shifts(period: Option<f64>) -> impl Iterator<Item = f64> {
 ///
 /// ```
 /// use arris_check::domain::bands;
-/// use arris_topo::arris_geom::Surface;
-/// use arris_topo::arris_math::{Frame, Point2};
+/// use arris_geom::Surface;
+/// use arris_math::{Frame, Point2};
 ///
 /// let cylinder = Surface::Cylinder { frame: Frame::world(), radius: 4.0 };
 /// let [du, dv] = bands(&cylinder, Point2::new(1.0, 2.0), 1e-6);
@@ -168,8 +168,8 @@ impl<'m> FaceDomain<'m> {
     /// use arris_check::domain::FaceDomain;
     /// use arris_debug::sample;
     /// use arris_topo::Model;
-    /// use arris_topo::arris_geom::region2::Side;
-    /// use arris_topo::arris_math::{Point2, Vec2};
+    /// use arris_geom::region2::Side;
+    /// use arris_math::{Point2, Vec2};
     /// use core::f64::consts::TAU;
     ///
     /// let mut m = Model::default();

@@ -31,8 +31,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use arris_ops::arris_check::arris_topo::{Body, EdgeId, FaceId, Model};
 use arris_ops::{Fault, OpError};
+use arris_topo::{Body, EdgeId, FaceId, Model};
 use proptest::strategy::{Strategy, ValueTree};
 
 use crate::corpus::{self, CorpusError, Stage};
@@ -604,8 +604,7 @@ fn additive(recipe: &Recipe, chain: &corpus::Chain) -> Result<(), String> {
     ) {
         return Err("the result is no boolean to hold to additivity".into());
     }
-    let report =
-        arris_ops::arris_check::check(&chain.model, made.body, arris_ops::arris_check::Level::Full);
+    let report = arris_check::check(&chain.model, made.body, arris_check::Level::Full);
     if !report.is_ok() {
         return Err(format!("the result fails the checker: {report}"));
     }
@@ -1205,7 +1204,7 @@ mod tests {
     /// an edge.
     #[test]
     fn a_primitive_has_no_removable_vertex() {
-        use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3};
+        use arris_math::{Axis, Point3};
 
         let mut m = Model::default();
         let (cuboid, _) =

@@ -11,14 +11,14 @@
 //! slot-cut` and `pin-at-disc-rim-common-fuse` are the two this draw
 //! found first).
 
+use arris_check::classify::{Classification, classify_point};
 use arris_debug::corpus::{self, CorpusError};
 use arris_debug::fixtures::{self, Recipe};
 use arris_debug::oracle;
 use arris_debug::prop::recipe::recipe;
 use arris_debug::prop::{DEFAULT_SEED, runner_with_seed};
 use arris_debug::testing::fail;
-use arris_io::arris_check::arris_topo::arris_math::Point3;
-use arris_io::arris_check::classify::{Classification, classify_point};
+use arris_math::Point3;
 use proptest::prelude::*;
 use proptest::strategy::ValueTree;
 

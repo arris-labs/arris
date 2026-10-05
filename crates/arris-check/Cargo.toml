@@ -16,6 +16,8 @@ readme.workspace = true
 serde = ["arris-topo/serde"]
 
 [dependencies]
+arris-math.workspace = true
+arris-geom.workspace = true
 arris-topo.workspace = true
 
 # The sample bodies the violation tests break live in `arris-debug`; a

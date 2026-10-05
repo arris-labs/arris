@@ -9,21 +9,19 @@
 use core::f64::consts::TAU;
 use std::collections::BTreeMap;
 
-use arris_check::arris_topo::arris_geom::{
-    Curve, Curve2, GeomError, GeomKind, Profile, ProfileEdge, Surface, pcurve_on,
-};
-use arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
-use arris_check::arris_topo::arris_math::{
+use arris_geom::{Curve, Curve2, GeomError, GeomKind, Profile, ProfileEdge, Surface, pcurve_on};
+use arris_math::nalgebra::UnitQuaternion;
+use arris_math::{
     Axis, Control, Frame, Interval, Isometry, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3,
     Vec2, Vec3, wrap_angle,
 };
-use arris_check::arris_topo::builder::{
+use arris_topo::builder::{
     Assembly, AssemblySlots, Builder, Built, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey,
     VertexSpec,
 };
-use arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
-use arris_check::arris_topo::provenance::SweepPart;
-use arris_check::arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role, Shape};
+use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::provenance::SweepPart;
+use arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role, Shape};
 
 use crate::error::{Fault, OpError, Reason, fault_of};
 use crate::verify;
@@ -593,10 +591,10 @@ fn record(
 ///
 /// ```
 /// use arris_ops::revolve;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Point2, Point3, Vec3};
-/// use arris_ops::arris_check::arris_topo::provenance::{Role, SweepPart};
+/// use arris_topo::Model;
+/// use arris_geom::{Profile, ProfileLoop, ProfileSegment};
+/// use arris_math::{Axis, Frame, Point2, Point3, Vec3};
+/// use arris_topo::provenance::{Role, SweepPart};
 /// use core::f64::consts::TAU;
 ///
 /// // A rectangle x ∈ [1, 2], z ∈ [−1, 1] in the xz plane, revolved about z: a tube.
@@ -1234,10 +1232,10 @@ pub fn revolve(
 ///
 /// ```
 /// use arris_ops::extrude;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
-/// use arris_ops::arris_check::arris_topo::arris_math::{Frame, Point2, Vec3};
-/// use arris_ops::arris_check::arris_topo::provenance::{Role, SweepPart};
+/// use arris_topo::Model;
+/// use arris_geom::{Profile, ProfileLoop, ProfileSegment};
+/// use arris_math::{Frame, Point2, Vec3};
+/// use arris_topo::provenance::{Role, SweepPart};
 ///
 /// // A plate 40×30 with a hole of radius 4, extruded 10 up the z axis.
 /// let p = |u, v| Point2::new(u, v);

@@ -8,8 +8,8 @@ use arris_debug::oracle::compare_stl;
 use arris_debug::sample;
 use arris_debug::unmetered::tessellate;
 use arris_io::{obj, stl};
-use arris_ops::arris_check::arris_topo::Model;
-use arris_ops::arris_check::arris_topo::arris_math::Point3;
+use arris_math::Point3;
+use arris_topo::Model;
 
 /// `v` lines and bare `f v1 v2 v3` lines, in file order. These meshes
 /// carry no corner block, so OBJ's `f` is the bare form.

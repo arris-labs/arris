@@ -10,10 +10,8 @@ use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, TAU};
 
 use arris_check::{Level, Lump, Report, ShellNestingFault, Violation, check, lumps};
 use arris_debug::sample;
-use arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_topo::arris_math::{
-    Frame, Frame2, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
-};
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{Frame, Frame2, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3};
 use arris_topo::entity::{
     Body as BodyEntity, BodyKind, Coedge, Edge, EdgeGeometry, Face, Loop, Shell, Vertex,
 };

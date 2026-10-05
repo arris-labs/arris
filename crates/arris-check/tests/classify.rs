@@ -5,8 +5,8 @@
 use arris_check::classify::{Classification, Classifier, ClassifyError, classify_point};
 use arris_debug::prop::{DEFAULT_SCALE, check as prop_check, point_in_box, radius};
 use arris_debug::sample;
-use arris_topo::arris_geom::{GeomError, Surface};
-use arris_topo::arris_math::{Frame, Point2, Point3};
+use arris_geom::{GeomError, Surface};
+use arris_math::{Frame, Point2, Point3};
 use arris_topo::{Body, EntityKind, Model};
 use proptest::prelude::*;
 
@@ -247,8 +247,8 @@ fn a_patch_is_not_a_solid_and_its_points_are_outside_or_on() {
     let patch = sample::patch(
         &mut m,
         plane,
-        arris_topo::arris_math::Interval::new(0.0, 4.0).unwrap(),
-        arris_topo::arris_math::Interval::new(0.0, 3.0).unwrap(),
+        arris_math::Interval::new(0.0, 4.0).unwrap(),
+        arris_math::Interval::new(0.0, 3.0).unwrap(),
     )
     .unwrap();
     assert_eq!(

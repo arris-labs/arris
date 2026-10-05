@@ -27,8 +27,8 @@ use arris_debug::testing::fail;
 use arris_debug::unmetered::cut;
 use arris_debug::{prop, prop_shards};
 use arris_ops::OpError;
-use arris_ops::arris_check::arris_topo::provenance::{Origin, Relation, Role, audit};
-use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Orientation, Provenance, Shape};
+use arris_topo::provenance::{Origin, Relation, Role, audit};
+use arris_topo::{Body, EntityId, Model, Orientation, Provenance, Shape};
 use proptest::prelude::*;
 
 /// What an entity of an input body is called, whichever build it belongs
@@ -350,14 +350,7 @@ const CONSUMER_BODIES: [(&str, &str); 4] = [
 /// box about a point of it: which body, the pose, where the box's centre
 /// is in the body's own bounding box (fractions of it), and the box's
 /// half-extents (fractions of the body's largest extent).
-fn consumer_cut() -> impl Strategy<
-    Value = (
-        usize,
-        arris_ops::arris_check::arris_topo::arris_math::Isometry,
-        [f64; 3],
-        [f64; 3],
-    ),
-> {
+fn consumer_cut() -> impl Strategy<Value = (usize, arris_math::Isometry, [f64; 3], [f64; 3])> {
     (
         0..CONSUMER_BODIES.len(),
         prop::pose_in(50.0),
@@ -402,7 +395,7 @@ prop_shards! {
             let hi = points.iter().fold([f64::NEG_INFINITY; 3], |a, p| [a[0].max(p.x), a[1].max(p.y), a[2].max(p.z)]);
             let size = (0..3).map(|i| hi[i] - lo[i]).fold(0.0, f64::max);
             let (moved, motion) = transform(m, body, &pose).map_err(fail)?;
-            let local = arris_ops::arris_check::arris_topo::arris_math::Point3::new(
+            let local = arris_math::Point3::new(
                 lo[0] + at[0] * (hi[0] - lo[0]),
                 lo[1] + at[1] * (hi[1] - lo[1]),
                 lo[2] + at[2] * (hi[2] - lo[2]),

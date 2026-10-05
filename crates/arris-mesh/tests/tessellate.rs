@@ -17,10 +17,10 @@ use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box, radius, 
 use arris_debug::sample;
 use arris_debug::testing::fail;
 use arris_debug::unmetered::tessellate;
+use arris_geom::region2::MIN_SEGMENTS_PER_TURN;
+use arris_geom::{CurveKind, NurbsSurface, Surface, SurfaceKind};
+use arris_math::{Axis, Interval, Point2, Point3, Vec3};
 use arris_mesh::{MeshError, TriMesh};
-use arris_topo::arris_geom::region2::MIN_SEGMENTS_PER_TURN;
-use arris_topo::arris_geom::{CurveKind, NurbsSurface, Surface, SurfaceKind};
-use arris_topo::arris_math::{Axis, Interval, Point2, Point3, Vec3};
 use arris_topo::entity::{Body as BodyEntity, EdgeGeometry};
 use arris_topo::{Body, Model, Shell as ShellHandle, ShellId};
 use proptest::prelude::*;

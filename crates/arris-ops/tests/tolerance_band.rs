@@ -59,14 +59,14 @@
 //! numbers where it reproduces there and at the survey's where it does
 //! not; the report prints every failure as the recipe it came from.
 
+use arris_check::{Level, check};
 use arris_debug::prop::body::{BAND_STEPS, BandContact, BandMotion, BandPair};
 use arris_debug::testing::REL;
 use arris_debug::unmetered::mass_properties;
 use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::{dump, prop};
-use arris_ops::arris_check::arris_topo::{Body, Model, Provenance};
-use arris_ops::arris_check::{Level, check};
 use arris_ops::{Fault, OpError};
+use arris_topo::{Body, Model, Provenance};
 
 use proptest::prop_assert;
 use std::collections::BTreeMap;
@@ -569,7 +569,7 @@ fn line(classes: &BTreeMap<String, usize>) -> String {
 /// that moves it: where a failure of the survey is shrunk to.
 fn fixture_pairs() -> Vec<BandPair> {
     use arris_debug::prop::body::BandSolid;
-    use arris_ops::arris_check::arris_topo::arris_math::{Axis, Isometry, Point3, Vec3};
+    use arris_math::{Axis, Isometry, Point3, Vec3};
     let p = Point3::new;
     let rod = |at: Point3, d: Vec3, radius: f64, height: f64| BandSolid::Rod {
         axis: Axis::new(at, d).expect("a unit axis"),
@@ -942,7 +942,7 @@ fn solid_steps(name: &str, solid: &arris_debug::prop::body::BandSolid, grow: boo
             num(h)
         )
     };
-    let v = |p: arris_ops::arris_check::arris_topo::arris_math::Point3| [p.x, p.y, p.z];
+    let v = |p: arris_math::Point3| [p.x, p.y, p.z];
     match *solid {
         BandSolid::Block { min, max } => vec![format!(
             "{{\"name\": \"{name}\", \"op\": \"box\", \"min\": {}, \"max\": {}}}",
@@ -1037,7 +1037,7 @@ fn recipe(
         num(n.z)
     ));
     let (mut first, mut second) = ("a".to_string(), "b".to_string());
-    if pair.pose != arris_ops::arris_check::arris_topo::arris_math::Isometry::identity() {
+    if pair.pose != arris_math::Isometry::identity() {
         let q = pair.pose.rotation();
         let (axis, angle) = q
             .axis_angle()

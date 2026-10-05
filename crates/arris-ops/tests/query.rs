@@ -13,16 +13,14 @@ use arris_debug::prop::geom::{circle, ellipse, line, nurbs_curve};
 use arris_debug::sample;
 use arris_debug::unmetered::cut;
 use arris_debug::{prop, prop_shards};
-use arris_ops::arris_check::arris_topo::arris_geom::region2::Side;
-use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_ops::arris_check::arris_topo::arris_math::{Frame, Interval, Point2, Point3, Vec3};
-use arris_ops::arris_check::arris_topo::entity::{Edge, EdgeGeometry, Vertex};
-use arris_ops::arris_check::arris_topo::{
-    AnyId, EdgeId, Face, Model, Orientation, Shape, VertexId,
-};
+use arris_geom::region2::Side;
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{Frame, Interval, Point2, Point3, Vec3};
+use arris_topo::entity::{Edge, EdgeGeometry, Vertex};
+use arris_topo::{AnyId, EdgeId, Face, Model, Orientation, Shape, VertexId};
 
-use arris_ops::arris_check::classify::{Classification, classify_point};
-use arris_ops::arris_check::domain::FaceDomain;
+use arris_check::classify::{Classification, classify_point};
+use arris_check::domain::FaceDomain;
 use arris_ops::query::{Projection, face_frame, frame_at, project_to_plane};
 use arris_ops::{OpError, Reason};
 use proptest::prelude::*;
@@ -57,7 +55,7 @@ fn add_edge(m: &mut Model, curve: Curve, range: Interval) -> (EdgeId, VertexId, 
     (edge, start, end)
 }
 
-fn forward(id: impl Into<arris_ops::arris_check::arris_topo::EntityId>) -> Shape {
+fn forward(id: impl Into<arris_topo::EntityId>) -> Shape {
     Shape::new(id, Orientation::Forward)
 }
 

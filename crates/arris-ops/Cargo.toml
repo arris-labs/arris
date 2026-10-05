@@ -18,6 +18,9 @@ parallel = ["dep:rayon"]
 paranoid = []
 
 [dependencies]
+arris-math.workspace = true
+arris-geom.workspace = true
+arris-topo.workspace = true
 arris-check.workspace = true
 thiserror.workspace = true
 rayon = { workspace = true, optional = true }

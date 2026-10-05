@@ -33,8 +33,8 @@
 
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
-use arris_check::arris_topo::arris_geom::{Curve, MAX_DEGREE, NurbsCurve, NurbsSurface, Surface};
-use arris_check::arris_topo::arris_math::{Frame, Interval, Point3, UnitVec3, Vec3, is_negligible};
+use arris_geom::{Curve, MAX_DEGREE, NurbsCurve, NurbsSurface, Surface};
+use arris_math::{Frame, Interval, Point3, UnitVec3, Vec3, is_negligible};
 
 use super::Refusal;
 use super::entities::{Args, Entities, describe};
@@ -1008,8 +1008,7 @@ impl ReadSurface {
     /// be built over the range.
     pub(crate) fn resolve(&self, within: &Ball) -> Result<Surface, Refusal> {
         let id = self.id;
-        let fault =
-            |e: arris_check::arris_topo::arris_geom::GeomError| degenerate(id, e.to_string());
+        let fault = |e: arris_geom::GeomError| degenerate(id, e.to_string());
         match &self.form {
             SurfaceForm::Exact(s) => Ok(s.clone()),
             SurfaceForm::Extrusion { curve, direction } => {
@@ -1275,8 +1274,8 @@ impl<'a> Spline<'a> {
 mod tests {
     use super::*;
     use crate::step::part21;
-    use arris_check::arris_topo::arris_geom::CurveKind;
-    use arris_check::arris_topo::arris_math::Precision;
+    use arris_geom::CurveKind;
+    use arris_math::Precision;
     use std::collections::BTreeMap;
 
     /// A file of the given data lines, in millimetres and radians.
@@ -2254,13 +2253,13 @@ mod tests {
 
     #[test]
     fn the_writers_own_geometry_maps_back_equal() {
-        use arris_check::arris_topo::Model;
         use arris_debug::{corpus, fixtures, sample};
+        use arris_topo::Model;
         let mut kinds = (
             std::collections::BTreeSet::new(),
             std::collections::BTreeSet::new(),
         );
-        let mut cases: Vec<(Model, arris_check::arris_topo::Body)> = Vec::new();
+        let mut cases: Vec<(Model, arris_topo::Body)> = Vec::new();
         for name in [
             "primitive/box",
             "sweep/revolve-frustum",

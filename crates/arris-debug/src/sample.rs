@@ -105,7 +105,7 @@ pub fn unit_box(m: &mut Model) -> Result<Body, SampleError> {
 /// ```
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let b = sample::cuboid(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap();
@@ -127,7 +127,7 @@ pub fn cuboid(m: &mut Model, min: Point3, max: Point3) -> Result<Body, SampleErr
 /// ```
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let b = sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap();
@@ -465,7 +465,7 @@ pub fn cylinder(m: &mut Model, radius: f64, height: f64) -> Result<Body, SampleE
 /// ```
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::{Point2, Point3};
+/// use arris_math::{Point2, Point3};
 ///
 /// let mut m = Model::default();
 /// let b = sample::frame(
@@ -705,14 +705,14 @@ pub fn frame(
 /// ```
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let b = sample::sphere(&mut m, Point3::origin(), 3.0).unwrap();
 /// assert_eq!(m.faces(b).unwrap().len(), 1);
 /// assert_eq!(m.edges(b).unwrap().len(), 3);
 /// assert_eq!(m.vertices(b).unwrap().len(), 2);
-/// use arris_io::arris_check::{Level, check};
+/// use arris_check::{Level, check};
 /// assert!(check(&m, b, Level::Fast).is_ok());
 /// ```
 pub fn sphere(m: &mut Model, centre: Point3, radius: f64) -> Result<Body, SampleError> {
@@ -808,7 +808,7 @@ pub fn sphere(m: &mut Model, centre: Point3, radius: f64) -> Result<Body, Sample
 /// ```
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let b = sample::torus(&mut m, Point3::origin(), 5.0, 2.0).unwrap();
@@ -921,8 +921,8 @@ pub fn torus(
 /// ```
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_geom::Surface;
-/// use arris_topo::arris_math::{Frame, Interval};
+/// use arris_geom::Surface;
+/// use arris_math::{Frame, Interval};
 ///
 /// let mut m = Model::default();
 /// let sphere = Surface::Sphere { frame: Frame::world(), radius: 2.0 };
@@ -931,7 +931,7 @@ pub fn torus(
 /// let b = sample::patch(&mut m, sphere, u, v).unwrap();
 /// assert_eq!(m.faces(b).unwrap().len(), 1);
 /// assert_eq!(m.edges(b).unwrap().len(), 4);
-/// use arris_io::arris_check::{Level, check};
+/// use arris_check::{Level, check};
 /// assert!(check(&m, b, Level::Fast).is_ok());
 /// ```
 pub fn patch(

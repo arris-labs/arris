@@ -15,6 +15,8 @@ readme.workspace = true
 parallel = ["dep:rayon"]
 
 [dependencies]
+arris-math.workspace = true
+arris-geom.workspace = true
 arris-topo.workspace = true
 arris-check.workspace = true
 thiserror.workspace = true

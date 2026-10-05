@@ -7,10 +7,10 @@
 use arris_debug::oracle::{self, OracleOccurrence};
 use arris_debug::sample;
 use arris_debug::unmetered::{mass_properties, step_read};
-use arris_io::arris_check::arris_topo::Model;
-use arris_io::arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
-use arris_io::arris_check::arris_topo::arris_math::{Control, Isometry, Point3, UnitVec3, Vec3};
 use arris_io::step::{self, Occurrence, ProductTree, ReadOptions, Rgb, StepError, TreeError};
+use arris_math::nalgebra::UnitQuaternion;
+use arris_math::{Control, Isometry, Point3, UnitVec3, Vec3};
+use arris_topo::Model;
 
 fn turn(axis: [f64; 3], degrees: f64, by: [f64; 3]) -> Isometry {
     let axis = UnitVec3::new_normalize(Vec3::new(axis[0], axis[1], axis[2]));
@@ -83,7 +83,7 @@ fn tree() -> ProductTree {
     }
 }
 
-fn bodies(m: &mut Model) -> Vec<arris_io::arris_check::arris_topo::Body> {
+fn bodies(m: &mut Model) -> Vec<arris_topo::Body> {
     vec![
         sample::cylinder(m, 4.0, 12.0).unwrap(),
         sample::cuboid(m, Point3::new(1.0, 2.0, 3.0), Point3::new(6.0, 9.0, 13.0)).unwrap(),

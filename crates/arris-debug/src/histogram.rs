@@ -18,10 +18,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use arris_io::arris_check::arris_topo::arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
-use arris_io::arris_check::arris_topo::{EntityId, Model};
+use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::step::{ReadError, Refusal};
 use arris_ops::{OpError, Reason};
+use arris_topo::{EntityId, Model};
 
 use crate::battery::Class;
 use crate::part::{Outcome as ReadOutcome, PartFixture};
@@ -236,11 +236,7 @@ pub fn cylinder_pair(m: &Model, error: &OpError) -> Option<CylinderPair> {
     let OpError::Unsupported { a, b } = error else {
         return None;
     };
-    let cylinder = |id: EntityId| -> Option<(
-        arris_io::arris_check::arris_topo::arris_math::Point3,
-        arris_io::arris_check::arris_topo::arris_math::Vec3,
-        f64,
-    )> {
+    let cylinder = |id: EntityId| -> Option<(arris_math::Point3, arris_math::Vec3, f64)> {
         let EntityId::Face(face) = id else {
             return None;
         };
@@ -667,7 +663,7 @@ mod tests {
     /// fault never counted.
     #[test]
     fn an_unsupported_pair_splits_by_nurbs_and_stage() {
-        use arris_io::arris_check::arris_topo::{FaceId, Orientation, Shape};
+        use arris_topo::{FaceId, Orientation, Shape};
         let shape = Shape::new(FaceId::new(0, 0), Orientation::Forward);
         let pair = |a: GeomKind, b: GeomKind| OpError::Unsupported {
             a: (a, shape),

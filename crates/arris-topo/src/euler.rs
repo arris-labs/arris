@@ -28,7 +28,7 @@ use crate::walk::Closure;
 /// assert_eq!(line.to_string(), "2/3/3/3/1 g0 = 0");
 /// assert!(line.closes());
 /// // The sphere's two pole edges are left out.
-/// let sphere = sample::sphere(&mut m, arris_topo::arris_math::Point3::origin(), 3.0)?;
+/// let sphere = sample::sphere(&mut m, arris_math::Point3::origin(), 3.0)?;
 /// assert_eq!(EulerLine::of(&m, &m.closure(sphere)?).to_string(), "2/1/1/1/1 g0 = 0");
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```

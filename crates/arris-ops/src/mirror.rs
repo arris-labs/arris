@@ -3,10 +3,10 @@
 
 use std::collections::BTreeMap;
 
-use arris_check::arris_topo::arris_geom::ParamMap;
-use arris_check::arris_topo::arris_math::{Control, Point3, Reflection};
-use arris_check::arris_topo::builder::{FaceRemap, GeometryRemap};
-use arris_check::arris_topo::{Body, Curve2Id, CurveId, Model, Provenance, SurfaceId};
+use arris_geom::ParamMap;
+use arris_math::{Control, Point3, Reflection};
+use arris_topo::builder::{FaceRemap, GeometryRemap};
+use arris_topo::{Body, Curve2Id, CurveId, Model, Provenance, SurfaceId};
 
 use crate::error::OpError;
 use crate::transform::copy_body;
@@ -17,7 +17,7 @@ use crate::transform::copy_body;
 /// and its loops are stored walked the other way, and where its normal
 /// turns against the image of the original's the face's use is toggled.
 ///
-/// [`Assembly::of_body`]: arris_check::arris_topo::builder::Assembly::of_body
+/// [`Assembly::of_body`]: arris_topo::builder::Assembly::of_body
 struct Reflect<'a> {
     plane: &'a Reflection,
     maps: BTreeMap<SurfaceId, ParamMap>,
@@ -94,12 +94,12 @@ impl GeometryRemap for Reflect<'_> {
 /// when it does not resolve; [`OpError::Interrupted`] when `control` stops
 /// it (one step per face). The model is untouched on error.
 ///
-/// [`Builder::assemble`]: arris_check::arris_topo::builder::Builder::assemble
+/// [`Builder::assemble`]: arris_topo::builder::Builder::assemble
 ///
 /// ```
 /// use arris_ops::{mirror, primitive_cylinder};
-/// use arris_ops::arris_check::arris_topo::{Model, Shape};
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3, Reflection, Vec3};
+/// use arris_topo::{Model, Shape};
+/// use arris_math::{Axis, Point3, Reflection, Vec3};
 ///
 /// let mut m = Model::default();
 /// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &arris_ops::Control::NONE).unwrap();

@@ -8,10 +8,10 @@
 //! the face it runs down — the face of the blended edge that edge shares —
 //! or the blend has run over (`Reason::BlendTooLarge`).
 
-use arris_check::arris_topo::arris_geom::region2::Side;
-use arris_check::arris_topo::arris_geom::{Curve, pcurve_on};
-use arris_check::arris_topo::arris_math::{Interval, Meter, Point3, Tolerance};
-use arris_check::arris_topo::{EdgeId, FaceId, Model, VertexId};
+use arris_geom::region2::Side;
+use arris_geom::{Curve, pcurve_on};
+use arris_math::{Interval, Meter, Point3, Tolerance};
+use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
 use super::{
     Trim, View, convex_edge, cut_corner, degenerate, into_range, invariant, on_side_of_face,
@@ -188,10 +188,10 @@ fn past_vertex(
 
 #[cfg(test)]
 mod tests {
-    use arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment, Surface};
-    use arris_check::arris_topo::arris_math::nalgebra::{Unit, UnitQuaternion};
-    use arris_check::arris_topo::arris_math::{Control, Frame, Point2, Vec3};
-    use arris_check::arris_topo::{Body, Shape};
+    use arris_geom::{Profile, ProfileLoop, ProfileSegment, Surface};
+    use arris_math::nalgebra::{Unit, UnitQuaternion};
+    use arris_math::{Control, Frame, Point2, Vec3};
+    use arris_topo::{Body, Shape};
 
     use super::super::{Kind, Stripe, corner_of, line_origin, stripe};
     use super::*;

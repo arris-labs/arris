@@ -2,7 +2,7 @@
 //! behind `parallel`, a plain loop otherwise, and stopped at the same
 //! item with the same count either way.
 
-use arris_check::arris_topo::arris_math::Meter;
+use arris_math::Meter;
 
 use crate::error::OpError;
 

@@ -29,10 +29,10 @@ use std::collections::BTreeMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use arris_io::arris_check::arris_topo::arris_math::nalgebra::SymmetricEigen;
-use arris_io::arris_check::arris_topo::arris_math::{Matrix3, Point3, Vec3};
-use arris_io::arris_check::arris_topo::{Body, EdgeId, FaceId, Model, Orientation};
 use arris_io::step::{self, ReadOptions};
+use arris_math::nalgebra::SymmetricEigen;
+use arris_math::{Matrix3, Point3, Vec3};
+use arris_topo::{Body, EdgeId, FaceId, Model, Orientation};
 use serde::{Deserialize, Serialize};
 
 use crate::fixtures::{Analytic, Loop, Measured, Num, Plane, Recipe, Segment, Step};
@@ -148,7 +148,7 @@ impl Refused {
     /// (`crate::histogram::blocks_reason_in`).
     pub fn blocks_in(
         &self,
-        m: &arris_io::arris_check::arris_topo::Model,
+        m: &arris_topo::Model,
         stage: crate::histogram::Stage,
     ) -> Option<crate::histogram::Cycle> {
         match self {
@@ -716,7 +716,7 @@ pub fn write_read(name: &str, m: &Model, body: Body, tolerances: &Tolerances) ->
         let was = check_leaving_nurbs(name, m, body).map_err(|e| (Stage::Check, e.to_string()))?;
         let is = check_leaving_nurbs(name, &back, read.body)
             .map_err(|e| (Stage::Check, e.to_string()))?;
-        let counts = |r: &arris_io::arris_check::Report| {
+        let counts = |r: &arris_check::Report| {
             r.euler().map(|l| Counts {
                 vertices: l.vertices,
                 edges: l.edges,

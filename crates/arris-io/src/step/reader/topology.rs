@@ -76,22 +76,22 @@
 use std::collections::BTreeMap;
 use std::f64::consts::TAU;
 
-use arris_check::arris_topo::arris_geom::{
+use arris_check::domain::bands;
+use arris_check::{Level, check};
+use arris_geom::{
     Curve, Curve2, GeomError, NurbsCurve2, PCURVE_SAMPLES, PCURVE_SINGULAR_BAND, Singularity,
     Surface, pcurve_ending_on, pcurve_on,
 };
-use arris_check::arris_topo::arris_math::{
+use arris_math::{
     Aabb, Frame, Interrupted, Interval, Meter, Point2, Point3, Precision, READ_GAP_FRACTION,
     RELATIVE_ROUNDING, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3, is_negligible,
 };
-use arris_check::arris_topo::builder::{
+use arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec,
 };
-use arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
-use arris_check::arris_topo::provenance::{FileEntity, Role};
-use arris_check::arris_topo::{Body, CurveId, Model, Orientation, Provenance, Shape, SurfaceId};
-use arris_check::domain::bands;
-use arris_check::{Level, check};
+use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::provenance::{FileEntity, Role};
+use arris_topo::{Body, CurveId, Model, Orientation, Provenance, Shape, SurfaceId};
 
 use super::Refusal;
 use super::entities::{Args, describe, malformed};
@@ -931,7 +931,7 @@ impl Geometry<'_> {
                 .collect(),
             shells,
         };
-        let topology = |e: arris_check::arris_topo::builder::BuildError| Refusal::Topology {
+        let topology = |e: arris_topo::builder::BuildError| Refusal::Topology {
             entity: solid,
             what: e.to_string(),
         };
@@ -2509,7 +2509,7 @@ mod tests {
 
     #[test]
     fn a_pcurve_past_a_nurbs_domain_is_held_inside_it() {
-        use arris_check::arris_topo::arris_geom::NurbsSurface;
+        use arris_geom::NurbsSurface;
         let corners = [(0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0)];
         let sheet = Surface::Nurbs(
             NurbsSurface::new(

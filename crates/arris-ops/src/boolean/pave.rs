@@ -11,19 +11,17 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Mutex, PoisonError};
 
-use arris_check::arris_topo::arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Side};
-use arris_check::arris_topo::arris_geom::{
+use arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Side};
+use arris_geom::{
     Curve, Curve2, CurveIntersection, CurveSurfaceIntersection, GeomError, MeetKind,
     PCURVE_SINGULAR_BAND, Surface, SurfaceIntersection, conic_crossings, curves_coincide,
     intersect_curve_surface, intersect_curves, intersect_surfaces, pcurve_ending_on, pcurve_on,
 };
-use arris_check::arris_topo::arris_math::{
+use arris_math::{
     Aabb, Interval, Meter, Point2, Point3, Precision, RELATIVE_ROUNDING, Tolerance, Vec2,
     period_end,
 };
-use arris_check::arris_topo::{
-    Body, EdgeId, FaceId, Model, Shape, Vertex as VertexHandle, VertexId,
-};
+use arris_topo::{Body, EdgeId, FaceId, Model, Shape, Vertex as VertexHandle, VertexId};
 
 use arris_check::domain::bands;
 
@@ -2702,7 +2700,7 @@ fn g_face_of<'b, 'm>(build: &'b Build<'m, '_>, gid: EdgeId) -> &'b FaceInfo<'m> 
 #[cfg(test)]
 mod tests {
     use super::{BTreeMap, Candidate, VertexId, components};
-    use arris_check::arris_topo::arris_math::Point3;
+    use arris_math::Point3;
 
     fn at(x: f64, y: f64, tolerance: f64, existing: &[u32]) -> Candidate {
         Candidate {

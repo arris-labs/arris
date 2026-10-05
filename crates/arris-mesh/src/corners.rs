@@ -3,8 +3,8 @@
 
 use core::ops::Range;
 
+use arris_math::Interval;
 use arris_topo::FaceId;
-use arris_topo::arris_math::Interval;
 
 use crate::MeshError;
 

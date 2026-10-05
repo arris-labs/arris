@@ -26,9 +26,6 @@ mod pairs;
 pub mod provenance;
 mod walk;
 
-pub use arris_geom;
-pub use arris_math;
-
 pub use arena::CHUNK_SIZE;
 pub use builder::Builder;
 pub use error::{AnyId, NotFound, TopoError};

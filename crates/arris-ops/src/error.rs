@@ -1,11 +1,11 @@
 //! The typed errors of the operations (`docs/ARCHITECTURE.md` §Errors):
 //! every variant names the entities involved.
 
-use arris_check::arris_topo::arris_geom::{GeomError, GeomKind, ProfileError};
-use arris_check::arris_topo::arris_math::{FrameError, Interrupted};
-use arris_check::arris_topo::builder::BuildError;
-use arris_check::arris_topo::{AnyId, Body, EdgeId, FaceId, NotFound, Shape};
 use arris_check::{ClassifyError, LumpError, Report};
+use arris_geom::{GeomError, GeomKind, ProfileError};
+use arris_math::{FrameError, Interrupted};
+use arris_topo::builder::BuildError;
+use arris_topo::{AnyId, Body, EdgeId, FaceId, NotFound, Shape};
 
 use crate::build::{BuildSlot, Rejection};
 

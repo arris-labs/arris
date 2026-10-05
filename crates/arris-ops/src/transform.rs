@@ -1,11 +1,9 @@
 //! `transform`: a rigid motion of a body (`docs/ARCHITECTURE.md`
 //! §Operations).
 
-use arris_check::arris_topo::arris_math::{Control, Isometry, Meter, Point3};
-use arris_check::arris_topo::builder::{Assembly, Builder, GeometryRemap};
-use arris_check::arris_topo::{
-    Body, CurveId, EntityId, Model, Orientation, Provenance, Shape, SurfaceId,
-};
+use arris_math::{Control, Isometry, Meter, Point3};
+use arris_topo::builder::{Assembly, Builder, GeometryRemap};
+use arris_topo::{Body, CurveId, EntityId, Model, Orientation, Provenance, Shape, SurfaceId};
 
 use crate::error::OpError;
 use crate::verify;
@@ -60,8 +58,8 @@ impl GeometryRemap for Move<'_> {
 ///
 /// ```
 /// use arris_ops::{primitive_cylinder, transform};
-/// use arris_ops::arris_check::arris_topo::{Model, Shape};
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Isometry, Point3, Vec3};
+/// use arris_topo::{Model, Shape};
+/// use arris_math::{Axis, Isometry, Point3, Vec3};
 ///
 /// let mut m = Model::default();
 /// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &arris_ops::Control::NONE).unwrap();

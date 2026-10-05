@@ -5,9 +5,9 @@
 use std::collections::BTreeMap;
 
 use arris_check::domain::FaceDomain;
-use arris_topo::arris_geom::Surface;
-use arris_topo::arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Polygon2};
-use arris_topo::arris_math::{Control, Interval, Meter, Point2, UnitVec3, Vec3};
+use arris_geom::Surface;
+use arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Polygon2};
+use arris_math::{Control, Interval, Meter, Point2, UnitVec3, Vec3};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::{Body, EdgeId, FaceId, Model, NotFound, Orientation, VertexId};
 
@@ -74,10 +74,10 @@ struct EdgeSamples {
 ///
 /// Every topo vertex of the body is one mesh vertex. Every edge is
 /// sampled once, at `n` uniform parameters over its range — `n` the
-/// largest of its curve's [`arris_topo::arris_geom::Curve::chord_segments`]
+/// largest of its curve's [`arris_geom::Curve::chord_segments`]
 /// at `chord` and, per coedge, the count that keeps each step's `u`- and
 /// `v`-travel under the face's surface's
-/// [`arris_topo::arris_geom::Surface::chord_steps`], so a triangle
+/// [`arris_geom::Surface::chord_steps`], so a triangle
 /// standing on the edge is within `chord` of the surface — and its
 /// samples are one run of positions, its [`crate::EdgeRange`] the
 /// polyline from its start vertex to its end vertex along its curve's
@@ -119,7 +119,7 @@ struct EdgeSamples {
 /// use arris_debug::sample;
 /// use arris_mesh::tessellate;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Control;
+/// use arris_math::Control;
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
@@ -173,7 +173,7 @@ pub fn tessellate(
 /// use arris_debug::sample;
 /// use arris_mesh::{MeshRequest, tessellate};
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::{Control, Point3};
+/// use arris_math::{Control, Point3};
 ///
 /// let mut m = Model::default();
 /// let ball = sample::sphere(&mut m, Point3::origin(), 3.0).unwrap();
@@ -899,7 +899,7 @@ fn scaled_point(p: Point2, scale: [f64; 2]) -> Point2 {
 /// cylinder and a cone: there the loops' own samples already bound the
 /// chord (ADR-0003). A sphere, a torus and a NURBS surface curve in both
 /// directions and get a lattice sized by
-/// [`arris_topo::arris_geom::Surface::chord_steps`], never by a
+/// [`arris_geom::Surface::chord_steps`], never by a
 /// per-triangle error estimate.
 fn interior_grid(
     face: FaceId,
@@ -946,7 +946,7 @@ fn interior_grid(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arris_topo::arris_math::Frame;
+    use arris_math::Frame;
 
     fn cylinder(radius: f64) -> Surface {
         Surface::Cylinder {

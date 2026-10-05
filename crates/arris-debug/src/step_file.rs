@@ -6,10 +6,10 @@
 use crate::unmetered::step_read;
 use std::path::{Path, PathBuf};
 
-use arris_io::arris_check::arris_topo::Model;
-use arris_io::arris_check::arris_topo::provenance::FileEntity;
-use arris_io::arris_check::{Level, Report, check};
+use arris_check::{Level, Report, check};
 use arris_io::step::{ReadError, ReadOptions, Refusal};
+use arris_topo::Model;
+use arris_topo::provenance::FileEntity;
 
 use crate::{View, dump_text, render_body};
 
@@ -60,7 +60,7 @@ pub enum InspectError {
 ///
 /// ```no_run
 /// use arris_debug::step_file;
-/// use arris_io::arris_check::arris_topo::Model;
+/// use arris_topo::Model;
 ///
 /// let mut m = Model::default();
 /// for seen in step_file::inspect(&mut m, "part.step".as_ref(), "part").unwrap() {

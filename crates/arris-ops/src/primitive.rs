@@ -4,16 +4,16 @@
 
 use core::f64::consts::TAU;
 
-use arris_check::arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_check::arris_topo::arris_math::{
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{
     Axis, Control, Frame, Frame2, Interval, Meter, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
 };
-use arris_check::arris_topo::builder::{
+use arris_topo::builder::{
     BuildError, Builder, EdgeRef, FaceRef, Position, Seed, Split, Strut, VertexRef,
 };
-use arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
-use arris_check::arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
-use arris_check::arris_topo::{Body, Model, Orientation, Provenance, Role};
+use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
+use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::build::roles;
 use crate::error::{Fault, OpError, Reason};
@@ -62,12 +62,7 @@ fn line(m: &mut Model, p: Point3, q: Point3) -> Result<EdgeGeometry, BuildError>
 
 /// The pcurve of the line from `p` to `q` in `plane`, at the edge's own
 /// parameter.
-fn line_in_plane(
-    m: &mut Model,
-    plane: &Frame,
-    p: Point3,
-    q: Point3,
-) -> arris_check::arris_topo::Curve2Id {
+fn line_in_plane(m: &mut Model, plane: &Frame, p: Point3, q: Point3) -> arris_topo::Curve2Id {
     let origin = plane.to_local(p);
     let direction = plane.vec_to_local(q - p);
     m.add_curve2(Curve2::Line {
@@ -119,9 +114,9 @@ fn plane_pcurves(
 ///
 /// ```
 /// use arris_ops::primitive_box;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::Point3;
-/// use arris_ops::arris_check::arris_topo::provenance::{BoxPart, Coord, Role, Side};
+/// use arris_topo::Model;
+/// use arris_math::Point3;
+/// use arris_topo::provenance::{BoxPart, Coord, Role, Side};
 ///
 /// let mut m = Model::default();
 /// let (body, provenance) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), &arris_ops::Control::NONE).unwrap();
@@ -298,9 +293,9 @@ pub fn primitive_box(
 ///
 /// ```
 /// use arris_ops::primitive_cylinder;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3};
-/// use arris_ops::arris_check::arris_topo::provenance::{CylinderPart, Role};
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Point3};
+/// use arris_topo::provenance::{CylinderPart, Role};
 ///
 /// let mut m = Model::default();
 /// let (body, provenance) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &arris_ops::Control::NONE).unwrap();

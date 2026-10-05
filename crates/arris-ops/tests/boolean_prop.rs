@@ -21,16 +21,14 @@ use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::unmetered::{mass_properties, transform};
 use arris_debug::{dump_text, prop, prop_shards};
-use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Quaternion, UnitQuaternion};
-use arris_ops::arris_check::arris_topo::arris_math::{
-    Axis, Frame, Isometry, Point3, UnitVec3, Vec3,
-};
+use arris_math::nalgebra::{Quaternion, UnitQuaternion};
+use arris_math::{Axis, Frame, Isometry, Point3, UnitVec3, Vec3};
 
-use arris_ops::arris_check::arris_topo::provenance::audit;
-use arris_ops::arris_check::arris_topo::{Body, Model, Provenance};
-use arris_ops::arris_check::{Level, check};
+use arris_check::{Level, check};
 use arris_ops::measure::MassProperties;
 use arris_ops::{OpError, Reason};
+use arris_topo::provenance::audit;
+use arris_topo::{Body, Model, Provenance};
 use proptest::prelude::*;
 
 /// A boolean of two bodies: `fuse`, `common` or `cut`.
@@ -240,9 +238,7 @@ fn a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing() {
 /// grazes the edge (`a_rim_grazing_the_face_edge_keeps_its_ids`). Lifted
 /// by their fix (ADR-0024).
 fn touch_at_the_face_rim(pair: &TangentPair) -> bool {
-    let tol = arris_ops::arris_check::arris_topo::arris_math::Precision::DEFAULT
-        .tolerance()
-        .linear;
+    let tol = arris_math::Precision::DEFAULT.tolerance().linear;
     let (min, max) = (pair.cuboid.min, pair.cuboid.max);
     let (j, k) = ((pair.face.0 + 1) % 3, (pair.face.0 + 2) % 3);
     let axis = &pair.cylinder.axis;
@@ -315,9 +311,7 @@ fn a_rim_grazing_the_face_edge_keeps_its_ids() {
 /// with `Fault::Split`, a section edge ending at a node nothing else
 /// reaches (`regression/tangent-seam-on-face-cut`, ADR-0024); the fix lifts it.
 fn seam_on_the_touch(pair: &TangentPair) -> bool {
-    let tol = arris_ops::arris_check::arris_topo::arris_math::Precision::DEFAULT
-        .tolerance()
-        .linear;
+    let tol = arris_math::Precision::DEFAULT.tolerance().linear;
     let axis = &pair.cylinder.axis;
     let Ok(frame) = Frame::from_z(axis.origin, axis.direction.into_inner()) else {
         return false;

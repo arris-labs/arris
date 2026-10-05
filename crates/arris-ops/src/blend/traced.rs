@@ -8,10 +8,8 @@
 
 use core::f64::consts::{PI, TAU};
 
-use arris_check::arris_topo::arris_geom::{
-    Curve, FitError, GeomError, SectionBranch, Surface, fit_branch, trace_section,
-};
-use arris_check::arris_topo::arris_math::{Aabb, Interval, Meter, Point3, Tolerance};
+use arris_geom::{Curve, FitError, GeomError, SectionBranch, Surface, fit_branch, trace_section};
+use arris_math::{Aabb, Interval, Meter, Point3, Tolerance};
 
 use crate::error::{OpError, fault_of};
 
@@ -249,9 +247,9 @@ pub(super) fn traced_end(
 
 #[cfg(test)]
 mod tests {
-    use arris_check::arris_topo::arris_geom::SECTION_FIT_FRACTION;
-    use arris_check::arris_topo::arris_math::nalgebra::{Unit, UnitQuaternion};
-    use arris_check::arris_topo::arris_math::{Frame, Precision, Vec3};
+    use arris_geom::SECTION_FIT_FRACTION;
+    use arris_math::nalgebra::{Unit, UnitQuaternion};
+    use arris_math::{Frame, Precision, Vec3};
 
     use super::*;
 

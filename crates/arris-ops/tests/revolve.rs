@@ -22,22 +22,20 @@ use arris_debug::prop::sweep;
 use arris_debug::testing::{close, fail};
 use arris_debug::unmetered::tessellate;
 use arris_debug::{corpus, dump_text, euler_line, fixtures, oracle, prop, prop_shards, sample};
-use arris_io::step;
-use arris_ops::arris_check::arris_topo::arris_geom::region2::Side;
-use arris_ops::arris_check::arris_topo::arris_geom::{
+use arris_geom::region2::Side;
+use arris_geom::{
     Curve2, Profile, ProfileEdge, ProfileError, ProfileLoop, ProfileSegment, Surface, SurfaceKind,
 };
+use arris_io::step;
 
-use arris_ops::arris_check::arris_topo::arris_math::{
-    Axis, Frame, Point2, Point3, Tolerance, Vec2, Vec3,
-};
+use arris_math::{Axis, Frame, Point2, Point3, Tolerance, Vec2, Vec3};
 
-use arris_ops::arris_check::arris_topo::provenance::SweepPart;
-use arris_ops::arris_check::arris_topo::{Body, EntityId, Model, Provenance, Role, Shape};
-use arris_ops::arris_check::classify::{Classification, classify_point};
-use arris_ops::arris_check::domain::FaceDomain;
-use arris_ops::arris_check::{Level, check, lumps};
+use arris_check::classify::{Classification, classify_point};
+use arris_check::domain::FaceDomain;
+use arris_check::{Level, check, lumps};
 use arris_ops::{OpError, Reason};
+use arris_topo::provenance::SweepPart;
+use arris_topo::{Body, EntityId, Model, Provenance, Role, Shape};
 use core::f64::consts::{PI, TAU};
 use proptest::prelude::*;
 

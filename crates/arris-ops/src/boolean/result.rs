@@ -9,19 +9,15 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_geom::{
-    GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection,
-};
-use arris_check::arris_topo::arris_math::{
-    Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3,
-};
-use arris_check::arris_topo::builder::Builder;
-use arris_check::arris_topo::entity::BodyKind;
-use arris_check::arris_topo::{
+use arris_check::{Classification, Classifier, ClassifyError, lumps};
+use arris_geom::{GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
+use arris_math::{Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
+use arris_topo::builder::Builder;
+use arris_topo::entity::BodyKind;
+use arris_topo::{
     Body, Curve2Id, CurveId, EdgeId, EntityId, Face as FaceHandle, FaceId, Model, Provenance,
     Shape, ShellId, VertexId,
 };
-use arris_check::{Classification, Classifier, ClassifyError, lumps};
 
 use super::pieces::{Alias, ERef, EdgeOnFace, PieceUse, SplitFace, SubEdge, VRef, split_face};
 use super::{Interferences, VertexSource, meet_curves};

@@ -23,8 +23,8 @@ use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 
-use arris_io::arris_check::arris_topo::Model;
 use arris_io::step::ReadOptions;
+use arris_topo::Model;
 use serde::{Deserialize, Serialize};
 
 use crate::battery::{self, Class};

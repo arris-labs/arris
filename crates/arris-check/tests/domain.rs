@@ -6,9 +6,9 @@ use core::f64::consts::TAU;
 
 use arris_check::domain::{FaceDomain, band, shifts};
 use arris_debug::prop::finite_f64;
-use arris_topo::arris_geom::region2::{Side, point_side};
-use arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_topo::arris_math::{Frame, Interval, Point2, Point3, Vec2, Vec3};
+use arris_geom::region2::{Side, point_side};
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{Frame, Interval, Point2, Point3, Vec2, Vec3};
 use arris_topo::entity::{Coedge, Edge, EdgeGeometry, Face, Loop, Vertex};
 use arris_topo::{FaceId, Model, NotFound, Orientation};
 use proptest::prelude::*;

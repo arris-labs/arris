@@ -18,22 +18,22 @@
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_geom::region2::Side;
-use arris_check::arris_topo::arris_geom::{
+use arris_check::domain::FaceDomain;
+use arris_geom::region2::Side;
+use arris_geom::{
     Curve, Curve2, CurveIntersection, CurveSurfaceIntersection, GeomKind, MeetKind, Surface,
     SurfaceIntersection, SurfaceKind, intersect_curve_surface, intersect_curves,
     intersect_surfaces, pcurve_on,
 };
-use arris_check::arris_topo::arris_math::{
+use arris_math::{
     Aabb, Control, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3, Vec2,
     Vec3, wrap_angle,
 };
-use arris_check::arris_topo::builder::{EdgeKey, EdgeSpec, VertexKey, VertexSpec};
-use arris_check::arris_topo::entity::EdgeGeometry;
-use arris_check::arris_topo::{
+use arris_topo::builder::{EdgeKey, EdgeSpec, VertexKey, VertexSpec};
+use arris_topo::entity::EdgeGeometry;
+use arris_topo::{
     Body, Curve2Id, Edge, EdgeId, FaceId, Model, Orientation, Provenance, Shape, VertexId,
 };
-use arris_check::domain::FaceDomain;
 
 use crate::error::{Fault, OpError, Reason, fault_of};
 use crate::rebuild::{self, AddedFace, Rewrite, StoredUse, forward};
@@ -5858,8 +5858,8 @@ fn build(
 ///
 /// ```
 /// use arris_ops::{fillet, primitive_box};
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::Point3;
+/// use arris_topo::Model;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0), &arris_ops::Control::NONE).unwrap();
@@ -5939,8 +5939,8 @@ pub fn fillet(
 /// ```
 /// use arris_ops::measure::mass_properties;
 /// use arris_ops::{chamfer, primitive_box};
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::Point3;
+/// use arris_topo::Model;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let (cube, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0), &arris_ops::Control::NONE).unwrap();

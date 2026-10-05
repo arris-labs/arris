@@ -14,12 +14,12 @@
 //! and not a mesh's: they match Open CASCADE to 1e-9 relative on the
 //! fixture corpus.
 
-use arris_check::arris_topo::arris_geom::integrate::{region_integral, surface_grid};
-use arris_check::arris_topo::arris_math::{Aabb, Control, Matrix3, Meter, Point3, Vec3};
-use arris_check::arris_topo::entity::{Body as BodyEntity, BodyKind};
-use arris_check::arris_topo::{Body, FaceId, Model, Shape};
 use arris_check::flux::{FluxError, face_flux};
 use arris_check::{Level, check};
+use arris_geom::integrate::{region_integral, surface_grid};
+use arris_math::{Aabb, Control, Matrix3, Meter, Point3, Vec3};
+use arris_topo::entity::{Body as BodyEntity, BodyKind};
+use arris_topo::{Body, FaceId, Model, Shape};
 
 use crate::error::{OpError, Reason};
 
@@ -52,8 +52,8 @@ impl MassProperties {
     ///
     /// ```
     /// use arris_ops::{measure, primitive_box};
-    /// use arris_ops::arris_check::arris_topo::Model;
-    /// use arris_ops::arris_check::arris_topo::arris_math::Point3;
+    /// use arris_topo::Model;
+    /// use arris_math::Point3;
     ///
     /// let mut m = Model::default();
     /// let (body, _) = primitive_box(
@@ -133,8 +133,8 @@ const SECOND: [Integrand; 6] = [
 /// ```
 /// use arris_ops::measure::mass_properties;
 /// use arris_ops::primitive_cylinder;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3};
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Point3};
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
@@ -290,8 +290,8 @@ fn face_area(m: &Model, faces: &[(FaceId, f64)], meter: &mut Meter<'_>) -> Resul
 
 #[cfg(test)]
 mod tests {
-    use arris_check::arris_topo::entity::Face;
-    use arris_check::arris_topo::{AnyId, SurfaceId};
+    use arris_topo::entity::Face;
+    use arris_topo::{AnyId, SurfaceId};
 
     use super::*;
 
@@ -319,7 +319,7 @@ mod tests {
     fn a_body_far_from_the_origin_measures_to_its_closed_form() {
         use core::f64::consts::PI;
 
-        use arris_check::arris_topo::arris_math::Axis;
+        use arris_math::Axis;
 
         use crate::{Control, common, primitive_box, primitive_cylinder};
 

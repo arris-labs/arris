@@ -6,14 +6,14 @@
 //! mirrors is the mirror of the boolean — `fuse`, `common` and `cut` —
 //! in volume, area and centroid.
 
+use arris_check::{Level, check};
 use arris_debug::testing::{REL, close_to, fail};
 use arris_debug::unmetered::{common, cut, fuse, mass_properties, mirror};
 use arris_debug::{prop, prop_shards};
+use arris_math::{Point3, Reflection, UnitVec3};
 use arris_ops::OpError;
-use arris_ops::arris_check::arris_topo::arris_math::{Point3, Reflection, UnitVec3};
-use arris_ops::arris_check::arris_topo::{Body, Model, Provenance};
-use arris_ops::arris_check::{Level, check};
 use arris_ops::measure::MassProperties;
+use arris_topo::{Body, Model, Provenance};
 use proptest::prelude::*;
 
 /// A random plane: a point of the workspace and a unit normal.

@@ -11,8 +11,8 @@ use arris_check::{
     Level, Lump, LumpError, Report, ShellNestingFault, Unchecked, Violation, check, lumps,
 };
 use arris_debug::sample;
-use arris_topo::arris_geom::{Curve, Curve2, NurbsCurve, Surface, SurfaceKind};
-use arris_topo::arris_math::{
+use arris_geom::{Curve, Curve2, NurbsCurve, Surface, SurfaceKind};
+use arris_math::{
     Frame, Frame2, Handedness, Interval, Point2, Point3, Precision, UnitVec2, UnitVec3, Vec2, Vec3,
 };
 use arris_topo::entity::{

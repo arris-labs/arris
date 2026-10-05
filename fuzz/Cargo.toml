@@ -18,6 +18,8 @@ libfuzzer-sys = "0.4"
 arris-math = { path = "../crates/arris-math" }
 arris-geom = { path = "../crates/arris-geom" }
 # The Part 21 parser, and the native format's serde for body bytes.
+arris-topo = { path = "../crates/arris-topo" }
+arris-check = { path = "../crates/arris-check" }
 arris-io = { path = "../crates/arris-io", default-features = false, features = ["serde"] }
 
 # The seed writer reads the geometry fixtures through the loader the

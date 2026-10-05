@@ -22,9 +22,6 @@ pub mod obj;
 pub mod step;
 pub mod stl;
 
-pub use arris_check;
-pub use arris_mesh;
-
 /// Why a mesh format writer could not write an [`arris_mesh::TriMesh`]:
 /// shared by [`stl`] and [`obj`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]

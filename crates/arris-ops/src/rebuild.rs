@@ -8,12 +8,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_math::Point2;
-use arris_check::arris_topo::builder::{
+use arris_math::Point2;
+use arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec, effective_uses,
 };
-use arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
-use arris_check::arris_topo::{
+use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::{
     Body, Curve2Id, CurveId, EdgeId, EntityId, Face as FaceHandle, FaceId, Model, Orientation,
     Provenance, Shape, ShellId, SurfaceId, VertexId,
 };

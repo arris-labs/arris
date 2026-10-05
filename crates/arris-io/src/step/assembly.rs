@@ -4,8 +4,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_math::{Control, Frame, Isometry, Meter};
-use arris_check::arris_topo::{Body, FaceId, Model};
+use arris_math::{Control, Frame, Isometry, Meter};
+use arris_topo::{Body, FaceId, Model};
 
 use super::{Occurrence, ProductTree, Rgb, StepError, Writer, real, refs, string};
 
@@ -104,8 +104,8 @@ pub enum TreeError {
 ///
 /// ```
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::Model;
-/// use arris_io::arris_check::arris_topo::arris_math::{Control, Isometry, Vec3};
+/// use arris_topo::Model;
+/// use arris_math::{Control, Isometry, Vec3};
 /// use arris_io::step::{self, Occurrence, ProductTree};
 ///
 /// let mut m = Model::default();
@@ -144,10 +144,9 @@ pub fn write_products(
     for &i in &used {
         faces_written.extend(model.closure(bodies[i])?.faces);
     }
-    let owner = bodies.first().map_or_else(
-        || arris_check::arris_topo::AnyId::from(model_anchor()),
-        |b| b.id.into(),
-    );
+    let owner = bodies
+        .first()
+        .map_or_else(|| arris_topo::AnyId::from(model_anchor()), |b| b.id.into());
     let mut w = Writer::new(model, faces_written, owner, &first.name)?;
     let mut emit = Emit {
         bodies,
@@ -192,8 +191,8 @@ pub fn write_products(
 
 /// A body id to name a number that is not in a body when there are no
 /// bodies at all: the model's first, which never exists to be named.
-fn model_anchor() -> arris_check::arris_topo::BodyId {
-    arris_check::arris_topo::BodyId::new(0, 0)
+fn model_anchor() -> arris_topo::BodyId {
+    arris_topo::BodyId::new(0, 0)
 }
 
 /// The state one [`write_products`] carries.
@@ -210,7 +209,7 @@ struct Emit<'a> {
     usages: usize,
     /// The solid entities of each body written.
     solid_entities: BTreeMap<usize, Vec<usize>>,
-    owner: arris_check::arris_topo::AnyId,
+    owner: arris_topo::AnyId,
 }
 
 /// A product written: its `PRODUCT_DEFINITION` and its representation.

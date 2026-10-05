@@ -8,22 +8,16 @@ use arris_debug::unmetered::{build, primitive_box};
 use std::collections::BTreeMap;
 
 use arris_debug::polyhedron::{edge_key, polyhedron};
-use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_ops::arris_check::arris_topo::arris_math::{
-    Frame, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
-};
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{Frame, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3};
 
-use arris_ops::arris_check::arris_topo::builder::{
-    Assembly, Builder, FaceRef, FaceSpec, Position, Seed, Split, Strut,
-};
+use arris_topo::builder::{Assembly, Builder, FaceRef, FaceSpec, Position, Seed, Split, Strut};
 
-use arris_ops::arris_check::arris_topo::entity::{BodyKind, EdgeGeometry};
-use arris_ops::arris_check::arris_topo::provenance::{ConsumerKey, Origin, Relation, audit};
-use arris_ops::arris_check::arris_topo::{
-    Body, EntityId, Model, Orientation, Provenance, Role, Shape,
-};
+use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::provenance::{ConsumerKey, Origin, Relation, audit};
+use arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role, Shape};
 
-use arris_ops::arris_check::{Level, check};
+use arris_check::{Level, check};
 use arris_ops::{BuildKeys, BuildSlot, OpError, Rejection};
 const NS: u32 = 7;
 

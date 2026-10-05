@@ -12,19 +12,15 @@ use arris_debug::fixtures::Class;
 use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, revolve};
 use arris_debug::unmetered::{cut, fuse, transform};
 use arris_debug::{corpus, dump_text, fixtures};
-use arris_ops::arris_check::arris_topo::arris_geom::{
-    Curve, Profile, ProfileLoop, ProfileSegment, Surface,
-};
+use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment, Surface};
 
-use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Unit, UnitQuaternion};
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec3};
-use arris_ops::arris_check::arris_topo::provenance::{Origin, Relation, Role, SweepPart, audit};
-use arris_ops::arris_check::arris_topo::{
-    Body, Edge, EntityId, Model, Orientation, Provenance, Shape,
-};
-use arris_ops::arris_check::classify::{Classification, classify_point};
-use arris_ops::arris_check::{Level, check};
+use arris_check::classify::{Classification, classify_point};
+use arris_check::{Level, check};
+use arris_math::nalgebra::{Unit, UnitQuaternion};
+use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec3};
 use arris_ops::{OpError, Reason};
+use arris_topo::provenance::{Origin, Relation, Role, SweepPart, audit};
+use arris_topo::{Body, Edge, EntityId, Model, Orientation, Provenance, Shape};
 /// The edge of `body` whose curve's midpoint is `at`.
 fn edge_at(m: &Model, body: Body, at: Point3) -> Edge {
     m.edges(body)

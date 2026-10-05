@@ -4,14 +4,14 @@
 //! of a mirror is the original, and a budget stops it and leaves the model
 //! as it was.
 
+use arris_check::{Level, check};
 use arris_debug::testing::entities_of;
 use arris_debug::unmetered::{mass_properties, mirror, primitive_box, primitive_cylinder};
 use arris_debug::{corpus, dump_text, fixtures};
 use arris_io::native;
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3, Reflection, Vec3};
-use arris_ops::arris_check::arris_topo::{Body, Model, Relation};
-use arris_ops::arris_check::{Level, check};
+use arris_math::{Axis, Point3, Reflection, Vec3};
 use arris_ops::{Control, OpError, Stop};
+use arris_topo::{Body, Model, Relation};
 
 /// The planes each body is mirrored in: one beside it (axis-aligned),
 /// one oblique through it, one through its middle.
@@ -137,7 +137,7 @@ fn a_mirror_of_a_mirror_in_the_same_plane_is_the_original() {
             assert_eq!(a.len(), b.len(), "{label}");
             // The same vertices, in whatever order the walk over the
             // mirrored loops listed them.
-            let points = |vs: &[arris_ops::arris_check::arris_topo::Vertex]| -> Vec<Point3> {
+            let points = |vs: &[arris_topo::Vertex]| -> Vec<Point3> {
                 vs.iter().map(|v| m.vertex(v.id).unwrap().point()).collect()
             };
             let (pa, mut pb) = (points(&a), points(&b));
@@ -224,7 +224,7 @@ fn a_budget_stops_a_mirror_and_leaves_the_model_as_it_was() {
 #[test]
 fn a_body_that_does_not_resolve_is_not_found() {
     let mut m = Model::default();
-    let body = Body::forward(arris_ops::arris_check::arris_topo::BodyId::new(3, 0));
+    let body = Body::forward(arris_topo::BodyId::new(3, 0));
     let plane = Reflection::new(Point3::origin(), Vec3::z()).unwrap();
     assert!(matches!(
         mirror(&mut m, body, &plane),
@@ -241,7 +241,7 @@ fn a_body_that_does_not_resolve_is_not_found() {
 /// centroid.
 #[test]
 fn a_body_of_nurbs_faces_mirrors_to_the_same_measures() {
-    use arris_ops::arris_check::Unchecked;
+    use arris_check::Unchecked;
     let path = fixtures::corpus_root().join("boolean/nurbs-box-cavity-cut/nurbs-box.step");
     let text = String::from_utf8_lossy(&std::fs::read(path).unwrap()).into_owned();
     let mut m = Model::default();
@@ -280,9 +280,7 @@ fn a_body_of_nurbs_faces_mirrors_to_the_same_measures() {
     for (i, plane) in planes.iter().enumerate() {
         let (image, _) = mirror(&mut m, body, plane).unwrap();
         let report = check(&m, image, Level::Full);
-        let nurbs = |k: arris_ops::arris_check::arris_topo::arris_geom::SurfaceKind| {
-            k == arris_ops::arris_check::arris_topo::arris_geom::SurfaceKind::Nurbs
-        };
+        let nurbs = |k: arris_geom::SurfaceKind| k == arris_geom::SurfaceKind::Nurbs;
         assert!(report.is_ok(), "plane {i}: {report}");
         assert!(
             report.unchecked().iter().all(|u| matches!(

@@ -33,6 +33,7 @@
 //! parallelogram, the rise at one vertex and a top edge there blended, at
 //! the two blends' regions in closed form less their overlap.
 
+use arris_check::{Level, Report, Unchecked, check};
 use arris_debug::polyhedron::polyhedron;
 use arris_debug::prop::turned::{Piece, Turned, sweep, turned};
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
@@ -42,16 +43,13 @@ use arris_debug::unmetered::{
     revolve, step_read, transform,
 };
 use arris_debug::{dump_text, prop, prop_shards};
+use arris_geom::SurfaceKind;
+use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
 use arris_io::step::{self, ReadOptions};
+use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec2, Vec3};
 use arris_ops::OpError;
-use arris_ops::arris_check::arris_topo::arris_geom::SurfaceKind;
-use arris_ops::arris_check::arris_topo::arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
-use arris_ops::arris_check::arris_topo::arris_math::{
-    Axis, Frame, Isometry, Point2, Point3, Vec2, Vec3,
-};
-use arris_ops::arris_check::arris_topo::provenance::audit;
-use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Provenance};
-use arris_ops::arris_check::{Level, Report, Unchecked, check};
+use arris_topo::provenance::audit;
+use arris_topo::{Body, Edge, Model, Provenance};
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, SQRT_2};
 use proptest::prelude::*;
 
@@ -495,7 +493,7 @@ prop_shards! {
 /// corner was refused as `VertexBlend` (ADR-0024).
 #[test]
 fn a_small_fillet_corner_far_out_is_still_square() {
-    use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Quaternion, Unit};
+    use arris_math::nalgebra::{Quaternion, Unit};
     let case = Case {
         prism: Prism::Ell {
             x: 1.0,
@@ -1177,8 +1175,7 @@ fn end_posed(
         // wall's cylinder in some poses: the failure waits as
         // `regression/twin-boss-foot-turned-chamfer-cone-cylinder`, and
         // the property rejects that refusal alone until the fix lands.
-        let cone_on_cylinder =
-            |k: &arris_ops::arris_check::arris_topo::arris_geom::GeomKind| k.to_string();
+        let cone_on_cylinder = |k: &arris_geom::GeomKind| k.to_string();
         if let (OpError::Unsupported { a, b }, Ends::Twin { .. }, Blend::Chamfer) =
             (&e, &case.scene, kind)
             && cone_on_cylinder(&a.0) == "cone surface"
@@ -1610,7 +1607,7 @@ fn rejecting_a_loop_that_meets_itself(e: TestCaseError) -> TestCaseError {
 #[test]
 #[ignore = "L5: a lean past the end's reach builds a face whose loop meets itself, where the property wants the closed form or BlendTooLarge (docs/BACKLOG.md, a lean past the reach)"]
 fn a_lean_far_past_the_reach_builds_or_is_refused() {
-    use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Quaternion, Unit};
+    use arris_math::nalgebra::{Quaternion, Unit};
     let case = StepCase {
         scene: Stepped::Lean {
             tall: 1.9147732443785255,
@@ -1894,7 +1891,7 @@ prop_shards! {
 #[test]
 #[ignore = "S5: a plane against a torus is not decided in this far pose of a walked chain, so Full has an unchecked pair (docs/BACKLOG.md, a plane against a torus in S5)"]
 fn a_walked_chain_in_a_far_pose_is_decided() {
-    use arris_ops::arris_check::arris_topo::arris_math::nalgebra::{Quaternion, UnitQuaternion};
+    use arris_math::nalgebra::{Quaternion, UnitQuaternion};
     let q = UnitQuaternion::from_quaternion(Quaternion::new(
         -0.09475886763043798,
         0.5890236655990984,
@@ -2579,7 +2576,7 @@ fn cusp_posed(
         // `tol.linear` from `Q`: the failure waits as
         // `regression/cusp-small-arc-wide-fillet`, and the property rejects
         // that refusal alone until the fix lands.
-        let kind_of = |k: &arris_ops::arris_check::arris_topo::arris_geom::GeomKind| k.to_string();
+        let kind_of = |k: &arris_geom::GeomKind| k.to_string();
         if let (OpError::Unsupported { a, b }, Blend::Fillet) = (&e, kind)
             && !matches!(case.scene, Cusped::Spandrel { .. })
             && kind_of(&a.0) == "torus surface"

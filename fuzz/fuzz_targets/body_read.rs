@@ -8,9 +8,9 @@
 
 use std::sync::OnceLock;
 
-use arris_io::arris_check::arris_topo::Model;
-use arris_io::arris_check::arris_topo::arris_math::Control;
-use arris_io::arris_check::{Level, check};
+use arris_topo::Model;
+use arris_math::Control;
+use arris_check::{Level, check};
 use arris_io::body::{self, BodyError, Imported};
 use arris_io::native;
 use libfuzzer_sys::fuzz_target;

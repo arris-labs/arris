@@ -18,8 +18,8 @@ use arris_check::{
     Violation, check,
 };
 use arris_debug::sample;
-use arris_topo::arris_geom::{Curve, Curve2, NurbsCurve2, Surface};
-use arris_topo::arris_math::{Frame, Frame2, Interval, Point2, Point3, Precision, Vec2};
+use arris_geom::{Curve, Curve2, NurbsCurve2, Surface};
+use arris_math::{Frame, Frame2, Interval, Point2, Point3, Precision, Vec2};
 use arris_topo::entity::{
     Body as BodyEntity, BodyKind, Coedge, Edge, EdgeGeometry, Face, Loop, Shell, Vertex,
 };
@@ -501,7 +501,7 @@ fn v3_a_pcurve_whose_end_misses_the_vertex() {
         frame: Frame2::new(
             Point2::new(1.0, 0.0),
             Vec2::x(),
-            arris_topo::arris_math::Handedness::Right,
+            arris_math::Handedness::Right,
         )
         .unwrap(),
         radius: 4.0,
@@ -685,7 +685,7 @@ fn e3_an_edge_of_a_solid_used_by_no_coedge() {
     let (v0, v7) = (VertexId::new(0, 0), VertexId::new(7, 0));
     let diagonal = m.add_curve(Curve::Line {
         origin: Point3::origin(),
-        direction: arris_topo::arris_math::UnitVec3::new_normalize(
+        direction: arris_math::UnitVec3::new_normalize(
             m.vertex(v7).unwrap().point() - Point3::origin(),
         ),
     });
@@ -1027,7 +1027,7 @@ fn the_report_is_the_same_on_two_builds() {
             &|i, v| {
                 if i == 1 {
                     Vertex::new(
-                        v.point() + arris_topo::arris_math::Vec3::new(0.0, 0.0, 1.0),
+                        v.point() + arris_math::Vec3::new(0.0, 0.0, 1.0),
                         v.tolerance(),
                     )
                 } else {

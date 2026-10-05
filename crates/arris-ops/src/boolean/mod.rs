@@ -18,9 +18,9 @@ mod result;
 use core::fmt;
 use std::collections::BTreeMap;
 
-use arris_check::arris_topo::arris_geom::{Curve, Curve2, MeetKind, SurfaceIntersection};
-use arris_check::arris_topo::arris_math::{Control, Interval, Meter, Point2, Point3};
-use arris_check::arris_topo::{Body, Curve2Id, EdgeId, FaceId, Model, Provenance, Shape, VertexId};
+use arris_geom::{Curve, Curve2, MeetKind, SurfaceIntersection};
+use arris_math::{Control, Interval, Meter, Point2, Point3};
+use arris_topo::{Body, Curve2Id, EdgeId, FaceId, Model, Provenance, Shape, VertexId};
 
 use crate::error::OpError;
 
@@ -478,8 +478,8 @@ pub struct Interferences {
 /// ```
 /// use arris_ops::boolean::interferences;
 /// use arris_ops::{primitive_box, primitive_cylinder};
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Point3};
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Control, Point3};
 ///
 /// let mut m = Model::default();
 /// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), &arris_ops::Control::NONE)?;
@@ -582,8 +582,8 @@ pub fn interferences(
 /// ```
 /// use arris_ops::{cut, primitive_box, primitive_cylinder};
 /// use arris_ops::measure::mass_properties;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Point3};
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Control, Point3};
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
@@ -645,8 +645,8 @@ pub fn cut(
 /// ```
 /// use arris_ops::{fuse, primitive_box, primitive_cylinder};
 /// use arris_ops::measure::mass_properties;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Axis, Control, Point3};
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Control, Point3};
 /// use core::f64::consts::PI;
 ///
 /// let mut m = Model::default();
@@ -696,8 +696,8 @@ pub fn fuse(
 /// ```
 /// use arris_ops::{common, primitive_box};
 /// use arris_ops::measure::mass_properties;
-/// use arris_ops::arris_check::arris_topo::Model;
-/// use arris_ops::arris_check::arris_topo::arris_math::{Control, Point3};
+/// use arris_topo::Model;
+/// use arris_math::{Control, Point3};
 ///
 /// let mut m = Model::default();
 /// let (a, _) = primitive_box(&mut m, Point3::new(-1.0, -1.0, -1.0), Point3::new(1.0, 1.0, 1.0), &arris_ops::Control::NONE)?;

@@ -10,10 +10,10 @@ use std::collections::BTreeMap;
 
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, radius};
 use arris_debug::testing::fail;
+use arris_geom::region2::Polygon2;
+use arris_math::Point2;
+use arris_math::predicates::{Sign, incircle, orient2d};
 use arris_mesh::cdt::{CdtError, SegmentRef, Triangulation2, VertexRef, triangulate};
-use arris_topo::arris_geom::region2::Polygon2;
-use arris_topo::arris_math::Point2;
-use arris_topo::arris_math::predicates::{Sign, incircle, orient2d};
 use proptest::prelude::*;
 
 fn p(x: f64, y: f64) -> Point2 {

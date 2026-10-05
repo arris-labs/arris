@@ -11,7 +11,7 @@
 //! [`NativeError::Version`] — a refusal, since no migration exists yet
 //! (a bump is a design delta that comes with one or with this refusal).
 
-use arris_check::arris_topo::Model;
+use arris_topo::Model;
 use serde::{Deserialize, Serialize};
 
 /// The version this crate writes and the only one it reads.
@@ -77,7 +77,7 @@ fn check_version(found: u32) -> Result<(), NativeError> {
 /// real in the shortest form that round-trips. For diffs and tests.
 ///
 /// ```
-/// use arris_io::arris_check::arris_topo::Model;
+/// use arris_topo::Model;
 /// use arris_io::native;
 ///
 /// let m = Model::default();
@@ -109,7 +109,7 @@ pub fn from_json(text: &str) -> Result<Model, NativeError> {
 /// the stream. For storage.
 ///
 /// ```
-/// use arris_io::arris_check::arris_topo::Model;
+/// use arris_topo::Model;
 /// use arris_io::native;
 ///
 /// let m = Model::default();

@@ -9,13 +9,11 @@ use std::collections::BTreeSet;
 
 use arris_debug::{dump_text, oracle, sample};
 use arris_io::step;
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Point3, Vec3};
-use arris_ops::arris_check::arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
-use arris_ops::arris_check::arris_topo::{
-    Body, Model, Orientation, Provenance, Relation, Role, Shape, SurfaceId,
-};
+use arris_math::{Axis, Point3, Vec3};
+use arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
+use arris_topo::{Body, Model, Orientation, Provenance, Relation, Role, Shape, SurfaceId};
 
-use arris_ops::arris_check::{Level, check};
+use arris_check::{Level, check};
 use arris_ops::{OpError, Reason};
 fn the_box(m: &mut Model) -> (Body, Provenance) {
     primitive_box(m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap()
@@ -51,7 +49,7 @@ fn assert_roles(m: &Model, body: Body, p: &Provenance) {
         let (relation, origin) = origins[0];
         assert_eq!(relation, Relation::Generated, "{e}");
         assert!(
-            matches!(origin, arris_ops::arris_check::arris_topo::Origin::Role(_)),
+            matches!(origin, arris_topo::Origin::Role(_)),
             "{e}: {origin}"
         );
         assert!(roles.insert(origin), "{origin} names two entities");
@@ -247,7 +245,7 @@ fn bad_parameters_are_degenerate_with_a_reason_and_the_model_untouched() {
     assert!(m.surface(probe).is_err(), "nothing was appended");
     assert_eq!(
         the_box(&mut m).0.id,
-        arris_ops::arris_check::arris_topo::BodyId::new(0, 0),
+        arris_topo::BodyId::new(0, 0),
         "not even an id was consumed"
     );
     let text = OpError::Degenerate {
@@ -312,25 +310,25 @@ fn both_primitives_match_their_fixtures_through_the_oracle() {
 
 /// A helper the tests read handles with.
 trait TryIntoId {
-    fn try_into_face(self) -> Option<arris_ops::arris_check::arris_topo::FaceId>;
-    fn try_into_edge(self) -> Option<arris_ops::arris_check::arris_topo::EdgeId>;
-    fn try_into_vertex(self) -> Option<arris_ops::arris_check::arris_topo::VertexId>;
+    fn try_into_face(self) -> Option<arris_topo::FaceId>;
+    fn try_into_edge(self) -> Option<arris_topo::EdgeId>;
+    fn try_into_vertex(self) -> Option<arris_topo::VertexId>;
 }
 
-impl TryIntoId for arris_ops::arris_check::arris_topo::EntityId {
-    fn try_into_face(self) -> Option<arris_ops::arris_check::arris_topo::FaceId> {
+impl TryIntoId for arris_topo::EntityId {
+    fn try_into_face(self) -> Option<arris_topo::FaceId> {
         match self {
             Self::Face(f) => Some(f),
             _ => None,
         }
     }
-    fn try_into_edge(self) -> Option<arris_ops::arris_check::arris_topo::EdgeId> {
+    fn try_into_edge(self) -> Option<arris_topo::EdgeId> {
         match self {
             Self::Edge(e) => Some(e),
             _ => None,
         }
     }
-    fn try_into_vertex(self) -> Option<arris_ops::arris_check::arris_topo::VertexId> {
+    fn try_into_vertex(self) -> Option<arris_topo::VertexId> {
         match self {
             Self::Vertex(v) => Some(v),
             _ => None,

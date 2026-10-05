@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use arris_check::arris_topo::arris_math::{Interrupted, Isometry, Meter};
+use arris_math::{Interrupted, Isometry, Meter};
 
 use super::Refusal;
 use super::assembly::Flat;
@@ -30,7 +30,7 @@ pub struct FaceColour {
     /// The solid, an index into [`Read::solids`](super::Read::solids).
     pub solid: usize,
     /// The face, of that solid's body.
-    pub face: arris_check::arris_topo::FaceId,
+    pub face: arris_topo::FaceId,
     /// Its colour.
     pub colour: Rgb,
 }
@@ -72,8 +72,8 @@ pub struct Occurrence {
 ///
 /// ```
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::Model;
-/// use arris_io::arris_check::arris_topo::arris_math::Control;
+/// use arris_topo::Model;
+/// use arris_math::Control;
 /// use arris_io::step::{self, ReadOptions};
 ///
 /// let mut m = Model::default();

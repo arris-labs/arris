@@ -9,8 +9,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_topo::arris_math::{Frame, Frame2, Interval, Point3, Precision, RELATIVE_ROUNDING};
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{Frame, Frame2, Interval, Point3, Precision, RELATIVE_ROUNDING};
 use arris_topo::entity::{BodyKind, Coedge, Edge, EdgeGeometry, Face};
 use arris_topo::euler::EulerLine;
 use arris_topo::{

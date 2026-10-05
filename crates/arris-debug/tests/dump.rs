@@ -3,9 +3,9 @@
 
 use core::f64::consts::{FRAC_PI_4, SQRT_2, TAU};
 
+use arris_check::{Level, check};
 use arris_debug::{dump_text, euler_line, sample};
 use arris_geom::{Curve, Curve2, Surface};
-use arris_io::arris_check::{Level, check};
 use arris_math::{Frame, Frame2, Interval, Point2, Point3, UnitVec3, Vec2, Vec3};
 use arris_topo::entity::{Coedge, Edge, EdgeGeometry, Face, Loop, Vertex};
 use arris_topo::{

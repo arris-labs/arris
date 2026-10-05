@@ -84,7 +84,7 @@ struct Lengths {
 /// ```
 /// use arris_topo::entity::Vertex;
 /// use arris_topo::{Model, VertexId};
-/// use arris_topo::arris_math::{Point3, Precision};
+/// use arris_math::{Point3, Precision};
 ///
 /// let mut m = Model::new(Precision::DEFAULT).unwrap();
 /// let v = m.raw().add_vertex(Vertex::new(Point3::origin(), 1e-7));
@@ -276,7 +276,7 @@ impl Model {
     /// ```
     /// use arris_topo::entity::Vertex;
     /// use arris_topo::{Model, VertexId};
-    /// use arris_topo::arris_math::Point3;
+    /// use arris_math::Point3;
     ///
     /// let mut m = Model::default();
     /// let r: Result<(), &str> = m.transaction(|m| {
@@ -563,7 +563,7 @@ impl Model {
     /// ```
     /// use arris_debug::sample;
     /// use arris_topo::Model;
-    /// use arris_topo::arris_math::Point3;
+    /// use arris_math::Point3;
     ///
     /// let mut m = Model::default();
     /// let cube = sample::unit_box(&mut m).unwrap();

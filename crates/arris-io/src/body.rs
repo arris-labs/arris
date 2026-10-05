@@ -3,7 +3,7 @@
 //! release.
 //!
 //! [`write()`] imports the body into a fresh model under the writer's
-//! [`Precision`](arris_check::arris_topo::arris_math::Precision), so its
+//! [`Precision`](arris_math::Precision), so its
 //! geometry and topology are dense from zero whatever holes the writer's
 //! model had, and encodes that model with the record as the writer holds
 //! it and the map from the writer's ids to the dense ones. The record
@@ -28,11 +28,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_math::{Control, Interrupted, Meter};
-use arris_check::arris_topo::{
-    Body, Closure, EntityId, IdMap, Model, Origin, Provenance, Shape, TopoError,
-};
 use arris_check::{Level, Report, check};
+use arris_math::{Control, Interrupted, Meter};
+use arris_topo::{Body, Closure, EntityId, IdMap, Model, Origin, Provenance, Shape, TopoError};
 use serde::{Deserialize, Serialize};
 
 pub mod compat;
@@ -150,7 +148,7 @@ impl Imported {
     /// use is never translated twice.
     ///
     /// ```
-    /// use arris_io::arris_check::arris_topo::{IdMap, Model};
+    /// use arris_topo::{IdMap, Model};
     /// use arris_io::body;
     /// use arris_ops::{Control, primitive_box};
     ///
@@ -160,7 +158,7 @@ impl Imported {
     /// let bytes = body::write(&a, cube, &record).unwrap();
     ///
     /// let mut b = Model::default();
-    /// let read = body::read(&mut b, &bytes, &arris_io::arris_check::arris_topo::arris_math::Control::NONE).unwrap();
+    /// let read = body::read(&mut b, &bytes, &arris_math::Control::NONE).unwrap();
     /// assert!(read.foreign().is_empty(), "a primitive names only its own");
     /// let mine = read.translated(&IdMap::default());
     /// assert_eq!(mine, record.mapped(&read.map));
@@ -221,7 +219,7 @@ fn dense(model: &Model, body: Body) -> Result<(Model, Body, IdMap), BodyError> {
 ///
 /// ```
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::{Model, Provenance};
+/// use arris_topo::{Model, Provenance};
 /// use arris_io::body;
 ///
 /// let mut a = Model::default();
@@ -230,7 +228,7 @@ fn dense(model: &Model, body: Body) -> Result<(Model, Body, IdMap), BodyError> {
 /// assert_eq!(bytes[..8], body::BODY_MAGIC);
 ///
 /// let mut b = Model::default();
-/// let read = body::read(&mut b, &bytes, &arris_io::arris_check::arris_topo::arris_math::Control::NONE).unwrap();
+/// let read = body::read(&mut b, &bytes, &arris_math::Control::NONE).unwrap();
 /// assert_eq!(b.closure(read.body).unwrap().faces.len(), 6);
 /// ```
 pub fn write(model: &Model, body: Body, record: &Provenance) -> Result<Vec<u8>, BodyError> {
@@ -254,7 +252,7 @@ pub fn write(model: &Model, body: Body, record: &Provenance) -> Result<Vec<u8>, 
 ///
 /// ```
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::{Model, Provenance};
+/// use arris_topo::{Model, Provenance};
 /// use arris_io::body;
 ///
 /// let mut a = Model::default();
@@ -291,14 +289,14 @@ pub fn to_json(model: &Model, body: Body, record: &Provenance) -> Result<String,
 ///
 /// ```
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::{Model, Provenance};
+/// use arris_topo::{Model, Provenance};
 /// use arris_io::{body, native};
 ///
 /// let mut a = Model::default();
 /// sample::unit_box(&mut a).unwrap();
 /// let model_bytes = native::to_bytes(&a).unwrap();
 /// let mut b = Model::default();
-/// assert_eq!(body::read(&mut b, &model_bytes, &arris_io::arris_check::arris_topo::arris_math::Control::NONE), Err(body::BodyError::Magic));
+/// assert_eq!(body::read(&mut b, &model_bytes, &arris_math::Control::NONE), Err(body::BodyError::Magic));
 /// ```
 pub fn read(model: &mut Model, bytes: &[u8], control: &Control<'_>) -> Result<Imported, BodyError> {
     let mut meter = Meter::new(control);
@@ -316,14 +314,14 @@ pub fn read(model: &mut Model, bytes: &[u8], control: &Control<'_>) -> Result<Im
 ///
 /// ```
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::{Model, Provenance};
+/// use arris_topo::{Model, Provenance};
 /// use arris_io::body;
 ///
 /// let mut a = Model::default();
 /// let cube = sample::unit_box(&mut a).unwrap();
 /// let text = body::to_json(&a, cube, &Provenance::default()).unwrap();
 /// let mut b = Model::default();
-/// assert_eq!(body::from_json(&mut b, &text, &arris_io::arris_check::arris_topo::arris_math::Control::NONE).unwrap().version, body::BODY_VERSION);
+/// assert_eq!(body::from_json(&mut b, &text, &arris_math::Control::NONE).unwrap().version, body::BODY_VERSION);
 /// ```
 pub fn from_json(
     model: &mut Model,

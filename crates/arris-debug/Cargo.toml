@@ -18,6 +18,7 @@ rerun = ["dep:rerun"]
 arris-math.workspace = true
 arris-geom.workspace = true
 arris-topo.workspace = true
+arris-check.workspace = true
 arris-ops.workspace = true
 arris-mesh.workspace = true
 arris-io = { workspace = true, features = ["serde"] }

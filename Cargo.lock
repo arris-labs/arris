@@ -90,6 +90,8 @@ name = "arris-check"
 version = "0.6.0-dev"
 dependencies = [
  "arris-debug",
+ "arris-geom",
+ "arris-math",
  "arris-topo",
  "proptest",
 ]
@@ -98,6 +100,7 @@ dependencies = [
 name = "arris-debug"
 version = "0.6.0-dev"
 dependencies = [
+ "arris-check",
  "arris-geom",
  "arris-io",
  "arris-math",
@@ -131,8 +134,11 @@ version = "0.6.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
+ "arris-geom",
+ "arris-math",
  "arris-mesh",
  "arris-ops",
+ "arris-topo",
  "postcard",
  "proptest",
  "serde",
@@ -158,6 +164,8 @@ version = "0.6.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
+ "arris-geom",
+ "arris-math",
  "arris-ops",
  "arris-topo",
  "proptest",
@@ -171,8 +179,11 @@ version = "0.6.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
+ "arris-geom",
  "arris-io",
+ "arris-math",
  "arris-mesh",
+ "arris-topo",
  "proptest",
  "rayon",
  "thiserror",

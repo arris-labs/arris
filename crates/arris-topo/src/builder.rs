@@ -1290,8 +1290,8 @@ fn kept(id: Option<impl fmt::Display>) -> String {
 /// cap.
 ///
 /// ```
-/// use arris_topo::arris_geom::{Curve, Curve2, Surface};
-/// use arris_topo::arris_math::{Frame, Frame2, Interval, Point2, Point3, Vec2};
+/// use arris_geom::{Curve, Curve2, Surface};
+/// use arris_math::{Frame, Frame2, Interval, Point2, Point3, Vec2};
 /// use arris_topo::builder::{Builder, Position, Seed, Split, Strut};
 /// use arris_topo::entity::{BodyKind, EdgeGeometry};
 /// use arris_topo::{Model, Orientation};
@@ -1321,7 +1321,7 @@ fn kept(id: Option<impl fmt::Display>) -> String {
 ///     orientation: Orientation::Forward,
 ///     pcurves: [Some(p_wall_bottom), Some(p_cap_bottom)],
 /// })?;
-/// let seam = m.add_curve(Curve::Line { origin: Point3::new(r, 0.0, 0.0), direction: arris_topo::arris_math::Vec3::z_axis() });
+/// let seam = m.add_curve(Curve::Line { origin: Point3::new(r, 0.0, 0.0), direction: arris_math::Vec3::z_axis() });
 /// let (up, down) = (uv_line(&mut m, TAU, 0.0, false), uv_line(&mut m, 0.0, 0.0, false));
 /// let (v1, _e_seam) = b.mev(b.find_position(f_wall, 0, v0)?, Strut {
 ///     point: Point3::new(r, 0.0, h),

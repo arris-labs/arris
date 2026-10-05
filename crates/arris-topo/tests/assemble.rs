@@ -11,8 +11,8 @@ use std::collections::BTreeMap;
 
 use arris_check::{Level, check};
 use arris_debug::{corpus, dump_text, euler_line, fixtures, sample};
-use arris_topo::arris_geom::{Curve2, Profile, ProfileLoop, ProfileSegment, Surface};
-use arris_topo::arris_math::{Axis, Frame, Frame2, Interval, Point2, Point3, Vec3};
+use arris_geom::{Curve2, Profile, ProfileLoop, ProfileSegment, Surface};
+use arris_math::{Axis, Frame, Frame2, Interval, Point2, Point3, Vec3};
 use arris_topo::builder::{
     Assembly, AssemblySlots, BuildError, Builder, EdgeKey, EdgeSpec, FaceSpec, KeepGeometry,
     UseSpec, VertexKey, VertexSpec, effective_uses,

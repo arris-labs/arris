@@ -8,8 +8,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arris_debug::{corpus, dump, sample};
+use arris_math::{Control, Interrupted, Point3, Stop};
 use arris_mesh::{MeshError, MeshRequest, TriMesh, tessellate_with};
-use arris_topo::arris_math::{Control, Interrupted, Point3, Stop};
 use arris_topo::{Body, Model};
 
 fn stopped(e: MeshError) -> Interrupted {

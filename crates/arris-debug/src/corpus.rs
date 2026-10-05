@@ -39,23 +39,21 @@ use crate::fixtures::{
 };
 use crate::oracle::{self, OracleError};
 use crate::polyhedron::{PolyhedronError, polyhedron};
+use arris_check::classify::{Classification, classify_point};
+use arris_check::{Level, LumpError, Report, Unchecked, check, lumps};
 use arris_geom::Profile;
-use arris_io::arris_check::arris_topo::FaceId;
-use arris_io::arris_check::arris_topo::arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
-use arris_io::arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
-use arris_io::arris_check::arris_topo::arris_math::{
+use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
+use arris_io::step::{self, StepError};
+use arris_math::nalgebra::UnitQuaternion;
+use arris_math::{
     Axis, Control, FrameError, Isometry, Point3, Reflection, ReflectionError, UnitVec3, Vec3,
 };
-use arris_io::arris_check::arris_topo::builder::{Assembly, Builder, FaceSpec};
-use arris_io::arris_check::arris_topo::entity::BodyKind;
-use arris_io::arris_check::arris_topo::{
-    Body, Edge, EntityId, Model, Orientation, Provenance, TopoError,
-};
-use arris_io::arris_check::classify::{Classification, classify_point};
-use arris_io::arris_check::{Level, LumpError, Report, Unchecked, check, lumps};
-use arris_io::step::{self, StepError};
 use arris_mesh::{MeshRequest, TriMesh};
 use arris_ops::{OpError, Reason, common, cut, fuse};
+use arris_topo::FaceId;
+use arris_topo::builder::{Assembly, Builder, FaceSpec};
+use arris_topo::entity::BodyKind;
+use arris_topo::{Body, Edge, EntityId, Model, Orientation, Provenance, TopoError};
 use sha2::{Digest, Sha256};
 
 /// The environment variable that makes [`run`] write `dump.txt` instead
@@ -1318,7 +1316,7 @@ const OWN_TOLERANCE_CHORDS: usize = 64;
 /// use arris_debug::corpus::within_own_tolerance;
 /// use arris_debug::fixtures::Tolerances;
 /// use arris_debug::sample;
-/// use arris_io::arris_check::arris_topo::Model;
+/// use arris_topo::Model;
 ///
 /// let mut m = Model::default();
 /// let body = sample::cylinder(&mut m, 4.0, 12.0)?;
@@ -2390,10 +2388,7 @@ mod tests {
 
         let millimetres = crate::fixtures::corpus_root().join("boolean/through-hole");
         let default = chain(&millimetres, "default").expect("the default units");
-        assert_eq!(
-            default.model.precision(),
-            arris_io::arris_check::arris_topo::arris_math::Precision::DEFAULT
-        );
+        assert_eq!(default.model.precision(), arris_math::Precision::DEFAULT);
 
         // A floor above the default tolerance is no precision at all, and
         // the runner says which fixture rather than unwrapping.

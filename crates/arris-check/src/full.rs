@@ -15,11 +15,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_topo::arris_geom::region2::Side;
-use arris_topo::arris_geom::{
-    Curve, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces,
-};
-use arris_topo::arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
+use arris_geom::region2::Side;
+use arris_geom::{Curve, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces};
+use arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
 use arris_topo::entity::BodyKind;
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
@@ -231,13 +229,7 @@ impl<'m> Checker<'m> {
             return Ok(false);
         };
         Ok(
-            match intersect_surfaces(
-                sa,
-                sb,
-                &within,
-                query,
-                &mut arris_topo::arris_math::Meter::default(),
-            ) {
+            match intersect_surfaces(sa, sb, &within, query, &mut arris_math::Meter::default()) {
                 Err(_) => return Err((sa.kind(), sb.kind())),
                 Ok(SurfaceIntersection::Empty) => false,
                 Ok(SurfaceIntersection::Coincident) => {

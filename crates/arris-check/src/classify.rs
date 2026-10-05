@@ -10,9 +10,9 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use arris_topo::arris_geom::region2::Side;
-use arris_topo::arris_geom::{Curve, CurveSurfaceIntersection, GeomError, intersect_curve_surface};
-use arris_topo::arris_math::{Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_geom::region2::Side;
+use arris_geom::{Curve, CurveSurfaceIntersection, GeomError, intersect_curve_surface};
+use arris_math::{Point3, Precision, Tolerance, UnitVec3, Vec3};
 use arris_topo::{Body, FaceId, Model, NotFound, Orientation, Shape};
 
 use crate::domain::{FaceDomain, boundary_entity};
@@ -114,7 +114,7 @@ impl From<GeomError> for ClassifyError {
 /// use arris_check::classify::{Classification, classify_point};
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let body = sample::cylinder(&mut m, 4.0, 12.0)?;
@@ -155,7 +155,7 @@ impl<'m> Classifier<'m> {
     /// use arris_check::classify::{Classification, Classifier};
     /// use arris_debug::sample;
     /// use arris_topo::Model;
-    /// use arris_topo::arris_math::Point3;
+    /// use arris_math::Point3;
     ///
     /// let mut m = Model::default();
     /// let body = sample::cylinder(&mut m, 4.0, 12.0)?;
@@ -212,7 +212,7 @@ impl<'m> Classifier<'m> {
 
     /// Where `uv` lies with respect to `face`'s loops, in whichever
     /// translate they are written ([`FaceDomain::side`]).
-    fn side(&self, face: FaceId, uv: arris_topo::arris_math::Point2) -> Side {
+    fn side(&self, face: FaceId, uv: arris_math::Point2) -> Side {
         self.domains
             .get(&face)
             .map_or(Side::Outside, |d| d.side(uv).0)
@@ -272,7 +272,7 @@ impl<'m> Classifier<'m> {
                     &ray,
                     surface,
                     tolerance,
-                    &mut arris_topo::arris_math::Meter::default(),
+                    &mut arris_math::Meter::default(),
                 )? {
                     CurveSurfaceIntersection::Points(hits) => hits,
                     CurveSurfaceIntersection::Coincident => continue 'direction,

@@ -4,7 +4,7 @@
 //! `target/inspect/` — or its refusal (`arris_debug::step_file`).
 
 use arris_debug::step_file;
-use arris_io::arris_check::arris_topo::Model;
+use arris_topo::Model;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);

@@ -6,8 +6,8 @@
 //! as one, because the tree is about structure.
 
 use arris_debug::unmetered::step_read;
-use arris_io::arris_check::arris_topo::Model;
 use arris_io::step::{Occurrence, Read, ReadOptions, RefusalKind};
+use arris_topo::Model;
 
 /// A file under construction: the units and the world axis are `#1`–`#9`.
 struct File {

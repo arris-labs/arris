@@ -11,12 +11,12 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use arris_check::{Level, check};
 use arris_debug::{corpus, dump_text, fixtures, sample};
-use arris_io::arris_check::arris_topo::arris_geom::{Curve2Kind, CurveKind, SurfaceKind};
-use arris_io::arris_check::arris_topo::arris_math::Point3;
-use arris_io::arris_check::arris_topo::{Body, Model, Origin, Provenance, Role};
-use arris_io::arris_check::{Level, check};
+use arris_geom::{Curve2Kind, CurveKind, SurfaceKind};
 use arris_io::body::{self, BODY_VERSION, Imported};
+use arris_math::Point3;
+use arris_topo::{Body, Model, Origin, Provenance, Role};
 
 /// A body of the current version's set and the record written with it.
 struct Written {

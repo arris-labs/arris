@@ -4,7 +4,7 @@ use core::ops::Range;
 use std::collections::BTreeMap;
 
 use arris_check::Report;
-use arris_topo::arris_math::Interrupted;
+use arris_math::Interrupted;
 use arris_topo::{Body, EdgeId, FaceId, NotFound};
 
 use crate::Aabb;

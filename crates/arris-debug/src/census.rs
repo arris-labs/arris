@@ -28,11 +28,11 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use arris_io::arris_check::arris_topo::arris_geom::GeomKind;
-use arris_io::arris_check::arris_topo::arris_math::{Point3, Vec3};
-use arris_io::arris_check::arris_topo::{Body, EdgeId, EntityId, FaceId, Model, VertexId};
+use arris_geom::GeomKind;
 use arris_io::step::ReadOptions;
+use arris_math::{Point3, Vec3};
 use arris_ops::{OpError, Reason};
+use arris_topo::{Body, EdgeId, EntityId, FaceId, Model, VertexId};
 
 use crate::battery::Class;
 use crate::battery::{fillet_edges, fillet_radius};
@@ -60,7 +60,7 @@ enum Refused {
 fn blend(
     m: &mut Model,
     body: Body,
-    edges: &[arris_io::arris_check::arris_topo::Edge],
+    edges: &[arris_topo::Edge],
     radius: f64,
 ) -> Result<(), Refused> {
     match catch_unwind(AssertUnwindSafe(|| fillet(m, body, edges, radius))) {
@@ -291,7 +291,7 @@ fn edge_midpoint(m: &Model, edge: EdgeId) -> Option<Point3> {
 }
 
 /// The surface kind of face `f`.
-fn face_kind(m: &Model, f: arris_io::arris_check::arris_topo::FaceId) -> Option<String> {
+fn face_kind(m: &Model, f: arris_topo::FaceId) -> Option<String> {
     let surface = m.surface(m.face(f).ok()?.surface()).ok()?;
     Some(surface.kind().to_string())
 }
@@ -714,7 +714,7 @@ fn turn_across(m: &Model, w: EdgeId, vertex: VertexId) -> Option<Option<bool>> {
     let uv = sa.project(at).ok()?.uv;
     let n0 = sa.normal(uv.x, uv.y)?.into_inner();
     let across = n0.cross(&t).normalize();
-    let height = |s: &arris_io::arris_check::arris_topo::arris_geom::Surface| {
+    let height = |s: &arris_geom::Surface| {
         let q = at + across * step;
         let on = s.project(q).ok()?;
         Some((s.point(on.uv.x, on.uv.y) - at).dot(&n0))
@@ -1375,8 +1375,8 @@ fn tangent_chain_section(parts: &[(String, Vec<SolidCensus>)]) -> String {
 mod tests {
     use super::*;
     use crate::unmetered::{fuse, primitive_box, primitive_cylinder};
-    use arris_io::arris_check::arris_topo::arris_math::Point3 as P3;
-    use arris_io::arris_check::arris_topo::arris_math::{Axis, Point3, Vec3};
+    use arris_math::Point3 as P3;
+    use arris_math::{Axis, Point3, Vec3};
 
     #[test]
     fn a_box_blends_on_every_edge() {
@@ -1459,20 +1459,15 @@ mod tests {
                 .find(|f| {
                     matches!(
                         m.surface(m.face(f.id).unwrap().surface()),
-                        Ok(arris_io::arris_check::arris_topo::arris_geom::Surface::Cylinder { .. })
+                        Ok(arris_geom::Surface::Cylinder { .. })
                     )
                 })
                 .unwrap()
         };
         let (fa, fb) = (faces(a), faces(b));
-        let shape = |f: arris_io::arris_check::arris_topo::Face| {
-            arris_io::arris_check::arris_topo::Shape::new(
-                f.id,
-                arris_io::arris_check::arris_topo::Orientation::Forward,
-            )
-        };
-        let kind =
-            GeomKind::Surface(arris_io::arris_check::arris_topo::arris_geom::SurfaceKind::Cylinder);
+        let shape =
+            |f: arris_topo::Face| arris_topo::Shape::new(f.id, arris_topo::Orientation::Forward);
+        let kind = GeomKind::Surface(arris_geom::SurfaceKind::Cylinder);
         let error = OpError::Unsupported {
             a: (kind, shape(fa)),
             b: (kind, shape(fb)),
@@ -1521,7 +1516,7 @@ mod tests {
     /// Each shape of entity list is its own site.
     #[test]
     fn the_entities_a_refusal_names_decide_its_site() {
-        use arris_io::arris_check::arris_topo::{Orientation, Shape};
+        use arris_topo::{Orientation, Shape};
         let mut m = Model::default();
         let (b, _) = primitive_box(&mut m, P3::origin(), P3::new(2.0, 3.0, 4.0)).unwrap();
         let handles = m.edges(b).unwrap();
@@ -1604,8 +1599,8 @@ mod tests {
     #[test]
     fn a_vertex_of_five_edges_is_named_by_what_the_extra_edges_are() {
         use crate::unmetered::transform;
-        use arris_io::arris_check::arris_topo::arris_math::Isometry;
-        use arris_io::arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
+        use arris_math::Isometry;
+        use arris_math::nalgebra::UnitQuaternion;
         let mut m = Model::default();
         let (lower, _) = primitive_box(&mut m, P3::origin(), P3::new(2.0, 2.0, 2.0)).unwrap();
         let (unit, _) = primitive_box(&mut m, P3::origin(), P3::new(1.0, 1.0, 1.0)).unwrap();
@@ -1625,7 +1620,7 @@ mod tests {
         // would have refused, the rise's foot on the top edge.
         let mut scratch = m.clone();
         assert!(blend(&mut scratch, fused, &[rise], 0.1).is_ok());
-        use arris_io::arris_check::arris_topo::{Orientation, Shape};
+        use arris_topo::{Orientation, Shape};
         let foot = [
             m.edge(rise.id).unwrap().start(),
             m.edge(rise.id).unwrap().end(),
@@ -1660,8 +1655,8 @@ mod tests {
     #[test]
     fn a_junction_at_a_vertex_of_four_edges_is_named_by_the_run() {
         use crate::unmetered::{chamfer, extrude};
-        use arris_io::arris_check::arris_topo::arris_geom::{Profile, ProfileLoop, ProfileSegment};
-        use arris_io::arris_check::arris_topo::arris_math::{Frame, Point2};
+        use arris_geom::{Profile, ProfileLoop, ProfileSegment};
+        use arris_math::{Frame, Point2};
         let mut m = Model::default();
         let p = |u, v| Point2::new(u, v);
         let profile = Profile {
@@ -1704,7 +1699,7 @@ mod tests {
             .find(|v| (m.vertex(v.id).unwrap().point() - P3::new(0.0, 1.0, 0.75)).norm() < 1e-9)
             .unwrap();
         let arc = at(&m, chamfered, P3::new(-1.0, 0.0, 0.75));
-        use arris_io::arris_check::arris_topo::{Orientation, Shape};
+        use arris_topo::{Orientation, Shape};
         let e = OpError::Degenerate {
             entities: vec![
                 Shape::new(foot.id, Orientation::Forward),
@@ -1723,7 +1718,7 @@ mod tests {
     /// miter is named by how many edges meet and what they separate.
     #[test]
     fn only_a_vertex_blend_has_a_vertex_site() {
-        use arris_io::arris_check::arris_topo::{Orientation, Shape};
+        use arris_topo::{Orientation, Shape};
         let mut m = Model::default();
         let (b, _) = primitive_box(&mut m, P3::origin(), P3::new(2.0, 3.0, 4.0)).unwrap();
         let handles = m.edges(b).unwrap();
@@ -2057,7 +2052,7 @@ mod tests {
         let (e, built) = match blend(&mut scratch, body, &[edge], radius) {
             Err(Refused::Op(e)) => (e, false),
             Ok(_) => {
-                use arris_io::arris_check::arris_topo::{Orientation, Shape};
+                use arris_topo::{Orientation, Shape};
                 let start = m.edge(edge.id).unwrap().start();
                 let e = OpError::Degenerate {
                     entities: vec![

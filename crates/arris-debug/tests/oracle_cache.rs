@@ -9,8 +9,8 @@ use std::sync::Mutex;
 
 use arris_debug::corpus;
 use arris_debug::oracle::{self, OracleError, cache};
-use arris_io::arris_check::arris_topo::Model;
 use arris_io::step;
+use arris_topo::Model;
 
 /// The cache setting and the spawn count are the process's, so the tests
 /// here take turns under `cargo test`'s threads.

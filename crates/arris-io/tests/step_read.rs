@@ -6,16 +6,14 @@
 use arris_debug::unmetered::step_read;
 use std::collections::BTreeMap;
 
+use arris_check::{Level, check};
 use arris_debug::corpus::{self, Chain, Made};
 use arris_debug::fixtures::{self, DUMPED_AREAS, Fixture};
-use arris_io::arris_check::arris_topo::builder::{Assembly, Builder, FaceSpec};
-use arris_io::arris_check::arris_topo::entity::BodyKind;
-use arris_io::arris_check::arris_topo::provenance::{Origin, Relation, Role};
-use arris_io::arris_check::arris_topo::{
-    Body, Edge, Face, FileEntity, Model, Shape, Shell, Vertex,
-};
-use arris_io::arris_check::{Level, check};
 use arris_io::step::{self, ReadBody, ReadOptions};
+use arris_topo::builder::{Assembly, Builder, FaceSpec};
+use arris_topo::entity::BodyKind;
+use arris_topo::provenance::{Origin, Relation, Role};
+use arris_topo::{Body, Edge, Face, FileEntity, Model, Shape, Shell, Vertex};
 
 /// The number of degenerate edges of the body.
 fn degenerate_edges(m: &Model, body: Body) -> Result<usize, String> {
@@ -51,7 +49,7 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
     let read = step_read(&mut model, &text, &ReadOptions::default()).map_err(|e| e.to_string())?;
     // The writer writes a solid per lump (ADR-0006), and the oracle
     // counts them so.
-    let lumps = arris_io::arris_check::lumps(&chain.model, body)
+    let lumps = arris_check::lumps(&chain.model, body)
         .map_err(|e| e.to_string())?
         .len();
     if read.solids.len() != lumps {
@@ -531,7 +529,7 @@ fn largest_tolerances(m: &Model, body: Body) -> (f64, f64) {
 /// ball holding its box, `[−4, 4]² × [0, 12]`.
 fn cylinder_cap() -> f64 {
     let diameter = (8.0f64 * 8.0 + 8.0 * 8.0 + 12.0 * 12.0).sqrt();
-    arris_io::arris_check::arris_topo::arris_math::READ_GAP_FRACTION * diameter
+    arris_math::READ_GAP_FRACTION * diameter
 }
 
 /// A vertex moved by δ off the curves that meet it (ADR-0025 §4): below
@@ -646,9 +644,7 @@ fn an_assembly_reads_to_a_body_per_placed_solid() {
             oracle.volume
         );
         let c = oracle.centroid;
-        let apart = (mass.centroid
-            - arris_io::arris_check::arris_topo::arris_math::Point3::new(c[0], c[1], c[2]))
-        .norm();
+        let apart = (mass.centroid - arris_math::Point3::new(c[0], c[1], c[2])).norm();
         assert!(
             apart <= 1e-7,
             "{:?}: centroid {} vs {c:?}",
@@ -701,8 +697,8 @@ fn a_refused_solid_does_not_hide_the_others() {
     let mut m = Model::default();
     let block = arris_debug::sample::cuboid(
         &mut m,
-        arris_io::arris_check::arris_topo::arris_math::Point3::new(10.0, 0.0, 0.0),
-        arris_io::arris_check::arris_topo::arris_math::Point3::new(12.0, 3.0, 4.0),
+        arris_math::Point3::new(10.0, 0.0, 0.0),
+        arris_math::Point3::new(12.0, 3.0, 4.0),
     )
     .unwrap();
     let cylinder = arris_debug::sample::cylinder(&mut m, 4.0, 12.0).unwrap();

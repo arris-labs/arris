@@ -8,19 +8,17 @@ use arris_debug::unmetered::{
     mass_properties, primitive_box, primitive_cylinder, revolve, transform,
 };
 use arris_debug::{corpus, fixtures, prop, sample};
-use arris_ops::OpError;
-use arris_ops::arris_check::arris_topo::arris_geom::{
+use arris_geom::{
     Curve, Curve2, GeomKind, MeetKind, Profile, ProfileLoop, ProfileSegment, Surface,
     SurfaceIntersection, SurfaceKind,
 };
+use arris_ops::OpError;
 
-use arris_ops::arris_check::arris_topo::arris_math::nalgebra::UnitQuaternion;
-use arris_ops::arris_check::arris_topo::arris_math::{
-    Axis, Frame, Interval, Isometry, Point3, Vec3,
-};
+use arris_math::nalgebra::UnitQuaternion;
+use arris_math::{Axis, Frame, Interval, Isometry, Point3, Vec3};
 
-use arris_ops::arris_check::arris_topo::{Body, EdgeId, Model};
 use arris_ops::boolean::{Interferences, Landing, VertexSource};
+use arris_topo::{Body, EdgeId, Model};
 use core::f64::consts::TAU;
 use proptest::prelude::*;
 
@@ -716,13 +714,11 @@ fn a_pin_tangent_at_its_cap_circles_own_start_paves_no_short_block() {
 
 // ---- `ops::cut` (plan step 7): split, classify, assemble ----
 
+use arris_math::Point2;
 use arris_ops::Reason;
-use arris_ops::arris_check::arris_topo::arris_math::Point2;
-use arris_ops::arris_check::arris_topo::{
-    AnyId, EntityId, Face as FaceHandle, Orientation, Origin, Provenance, Shape,
-};
+use arris_topo::{AnyId, EntityId, Face as FaceHandle, Orientation, Origin, Provenance, Shape};
 
-use arris_ops::arris_check::{Level, check, lumps};
+use arris_check::{Level, check, lumps};
 /// A piece within the tolerance of the other operand throughout is
 /// decided by the transversal rule (`docs/ARCHITECTURE.md` §Operations).
 /// With the tool's seam `R sin δ` beside a crossing vertex, the piece of

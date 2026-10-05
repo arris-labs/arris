@@ -37,7 +37,7 @@ use crate::MeshWriteError;
 /// facet count.
 ///
 /// ```
-/// use arris_io::arris_mesh::TriMesh;
+/// use arris_mesh::TriMesh;
 /// use arris_io::stl;
 ///
 /// let mut mesh = TriMesh::new();
@@ -100,7 +100,7 @@ pub fn write_ascii(meshes: &[TriMesh], name: &str) -> Result<String, MeshWriteEr
 /// have more triangles than a `u32` count can hold.
 ///
 /// ```
-/// use arris_io::arris_mesh::TriMesh;
+/// use arris_mesh::TriMesh;
 /// use arris_io::stl;
 ///
 /// let mut mesh = TriMesh::new();

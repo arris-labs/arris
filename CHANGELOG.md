@@ -8,6 +8,14 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+### Breaking
+
+- A lower crate no longer re-exports the crates beneath it:
+  `arris_topo::{arris_geom, arris_math}`, `arris_check::arris_topo`,
+  `arris_io::{arris_check, arris_mesh}` and `arris_ops::arris_check` are
+  gone. Depend on each crate directly, or use the facade's
+  `arris::{math, geom, topo, …}`.
+
 ## 0.5.0 — 2026-10-05
 
 - `NurbsSurface::project` finds the nearest point on a free-form surface

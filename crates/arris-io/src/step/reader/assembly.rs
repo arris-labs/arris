@@ -34,7 +34,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_math::Isometry;
+use arris_math::Isometry;
 
 use super::Refusal;
 use super::entities::{Args, Entities, describe};

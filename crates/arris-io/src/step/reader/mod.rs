@@ -24,9 +24,9 @@ use core::fmt;
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::Report;
-use arris_check::arris_topo::arris_math::{Control, Interrupted, Meter};
-use arris_check::arris_topo::provenance::FileEntity;
-use arris_check::arris_topo::{Body, Model, Provenance};
+use arris_math::{Control, Interrupted, Meter};
+use arris_topo::provenance::FileEntity;
+use arris_topo::{Body, Model, Provenance};
 
 use super::part21::{self, Part21Error};
 use entities::Entities;
@@ -508,9 +508,9 @@ const SUPPLEMENTAL: &str = "CONSTRUCTIVE_GEOMETRY_REPRESENTATION";
 ///
 /// ```
 /// use arris_io::step::{self, ReadOptions};
-/// use arris_io::arris_check::{check, Level};
-/// use arris_io::arris_check::arris_topo::Model;
-/// use arris_io::arris_check::arris_topo::arris_math::Control;
+/// use arris_check::{check, Level};
+/// use arris_topo::Model;
+/// use arris_math::Control;
 /// use arris_debug::sample;
 ///
 /// let mut m = Model::default();

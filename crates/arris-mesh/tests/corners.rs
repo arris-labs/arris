@@ -12,13 +12,11 @@ use core::f64::consts::{PI, TAU};
 
 use arris_debug::sample;
 use arris_debug::unmetered::{tessellate, tessellate_with};
+use arris_geom::{Profile, ProfileLoop, ProfileSegment, Surface};
 use arris_mesh::{CornerFace, Corners, MeshError, MeshRequest, TriMesh};
-use arris_ops::arris_check::arris_topo::arris_geom::{
-    Profile, ProfileLoop, ProfileSegment, Surface,
-};
 
-use arris_ops::arris_check::arris_topo::arris_math::{Axis, Frame, Interval, Point2, Point3, Vec3};
-use arris_ops::arris_check::arris_topo::{Body, Edge, Model, Orientation};
+use arris_math::{Axis, Frame, Interval, Point2, Point3, Vec3};
+use arris_topo::{Body, Edge, Model, Orientation};
 /// Rounding at the scale of a coordinate.
 const EXACT: f64 = 1e-12;
 

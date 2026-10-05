@@ -16,9 +16,9 @@
 use core::fmt;
 use std::collections::{BTreeMap, VecDeque};
 
-use arris_topo::arris_geom::region2::Polygon2;
-use arris_topo::arris_math::predicates::{Sign, incircle, orient2d};
-use arris_topo::arris_math::{Interrupted, Meter, Point2};
+use arris_geom::region2::Polygon2;
+use arris_math::predicates::{Sign, incircle, orient2d};
+use arris_math::{Interrupted, Meter, Point2};
 
 /// One segment of one input polygon: from the polygon's point `segment`
 /// to the next one, the last segment closing onto the first point.
@@ -218,8 +218,8 @@ impl Triangulation2 {
 ///
 /// ```
 /// use arris_mesh::cdt::triangulate;
-/// use arris_topo::arris_geom::region2::Polygon2;
-/// use arris_topo::arris_math::Point2;
+/// use arris_geom::region2::Polygon2;
+/// use arris_math::Point2;
 ///
 /// let p = |x, y| Point2::new(x, y);
 /// let outer = Polygon2::from_points([p(0.0, 0.0), p(4.0, 0.0), p(4.0, 4.0), p(0.0, 4.0)]);
@@ -247,8 +247,8 @@ pub fn triangulate(polygons: &[Polygon2], interior: &[Point2]) -> Result<Triangu
 ///
 /// ```
 /// use arris_mesh::cdt::{CdtError, triangulate_metered};
-/// use arris_topo::arris_geom::region2::Polygon2;
-/// use arris_topo::arris_math::{Control, Meter, Point2};
+/// use arris_geom::region2::Polygon2;
+/// use arris_math::{Control, Meter, Point2};
 ///
 /// let p = |x, y| Point2::new(x, y);
 /// let square = Polygon2::from_points([p(0.0, 0.0), p(1.0, 0.0), p(1.0, 1.0), p(0.0, 1.0)]);

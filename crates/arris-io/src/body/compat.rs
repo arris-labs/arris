@@ -72,7 +72,7 @@ pub(super) fn decode(version: u32, source: impl Source) -> Result<BodyIn, BodyEr
 /// record optional, `None` where a body was written with none.
 #[cfg(test)]
 mod v0 {
-    use arris_check::arris_topo::{Body, IdMap, Model, Provenance};
+    use arris_topo::{Body, IdMap, Model, Provenance};
     use serde::{Deserialize, Serialize};
 
     #[derive(Serialize, Deserialize)]
@@ -101,13 +101,13 @@ mod tests {
     use super::super::{self as body, BODY_MAGIC, Imported, dense};
     use super::v0;
     use crate::native;
-    use arris_check::arris_topo::arris_math::Control;
-    use arris_check::arris_topo::{Model, Provenance};
     use arris_debug::unmetered::primitive_box;
+    use arris_math::Control;
+    use arris_topo::{Model, Provenance};
 
     /// A box and its primitive's record, in a model that holds another
     /// box first so its ids are not dense.
-    fn written() -> (Model, arris_check::arris_topo::Body, Provenance) {
+    fn written() -> (Model, arris_topo::Body, Provenance) {
         let mut m = Model::default();
         primitive_box(&mut m, [5.0; 3], [6.0; 3]).unwrap();
         let (b, record) = primitive_box(&mut m, [0.0; 3], [4.0, 3.0, 2.0]).unwrap();

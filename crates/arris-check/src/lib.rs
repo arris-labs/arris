@@ -23,8 +23,6 @@ mod topology;
 mod unchecked;
 mod violation;
 
-pub use arris_topo;
-
 pub use arris_topo::euler::EulerLine;
 pub use check::check;
 pub use classify::{Classification, Classifier, ClassifyError, classify_point};

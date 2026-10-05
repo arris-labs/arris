@@ -9,15 +9,13 @@ use core::f64::consts::PI;
 
 use arris_debug::testing::close_to;
 use arris_debug::{fixtures, prop, sample};
-use arris_ops::arris_check::arris_topo::arris_geom::Surface;
-use arris_ops::arris_check::arris_topo::arris_math::{
-    Axis, Frame, Interval, Matrix3, Point2, Point3, Vec3,
-};
+use arris_geom::Surface;
+use arris_math::{Axis, Frame, Interval, Matrix3, Point2, Point3, Vec3};
 
-use arris_ops::arris_check::arris_topo::entity::Body as BodyEntity;
-use arris_ops::arris_check::arris_topo::{Body, Model, Shell as ShellHandle, ShellId};
 use arris_ops::measure::MassProperties;
 use arris_ops::{OpError, Reason};
+use arris_topo::entity::Body as BodyEntity;
+use arris_topo::{Body, Model, Shell as ShellHandle, ShellId};
 use proptest::prelude::*;
 
 /// [`arris_debug::testing::close_to`] at a floor of `1.0`.
@@ -261,7 +259,7 @@ fn a_body_that_is_not_a_solid_is_degenerate() {
 #[test]
 fn a_body_that_does_not_resolve_is_not_found() {
     let m = Model::default();
-    let body = Body::forward(arris_ops::arris_check::arris_topo::BodyId::new(3, 0));
+    let body = Body::forward(arris_topo::BodyId::new(3, 0));
     assert!(matches!(
         mass_properties(&m, body),
         Err(OpError::NotFound(_))

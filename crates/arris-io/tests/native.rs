@@ -4,11 +4,11 @@
 //! a bumped version and a truncated stream are typed errors; a value that
 //! fails its type's validation is refused on the way in.
 
+use arris_check::{Level, check};
 use arris_debug::{dump_text, sample};
-use arris_io::arris_check::arris_topo::arris_math::{Point2, Point3};
-use arris_io::arris_check::arris_topo::{Body, Model};
-use arris_io::arris_check::{Level, check};
 use arris_io::native::{self, NATIVE_VERSION, NativeError};
+use arris_math::{Point2, Point3};
+use arris_topo::{Body, Model};
 
 /// A model holding a box, a cylinder and a frame, with the NURBS probe
 /// box for the B-spline arms.

@@ -9,8 +9,8 @@
 
 use core::fmt;
 
-use arris_topo::arris_geom::integrate::{region_integral, surface_grid};
-use arris_topo::arris_math::{Point3, Vec3};
+use arris_geom::integrate::{region_integral, surface_grid};
+use arris_math::{Point3, Vec3};
 use arris_topo::{FaceId, Model, NotFound};
 
 use crate::domain::bounded_pieces;
@@ -67,7 +67,7 @@ impl From<NotFound> for FluxError {
 /// use arris_check::flux::face_flux;
 /// use arris_debug::sample;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let body = sample::cuboid(&mut m, Point3::origin(), Point3::new(4.0, 3.0, 2.0))?;

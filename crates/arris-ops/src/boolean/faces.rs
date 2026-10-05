@@ -3,12 +3,10 @@
 //! point on me" — and its boxes; every edge with its curve, range, ends
 //! and box.
 
-use arris_check::arris_topo::arris_geom::{Curve, Curve2, Surface};
-use arris_check::arris_topo::arris_math::{Aabb, Interval, Point2, Point3};
-use arris_check::arris_topo::{
-    Body, EdgeId, FaceId, Model, NotFound, Orientation, Shape, VertexId,
-};
 use arris_check::domain::{FaceDomain, shifts};
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{Aabb, Interval, Point2, Point3};
+use arris_topo::{Body, EdgeId, FaceId, Model, NotFound, Orientation, Shape, VertexId};
 
 /// A singular point of a face's surface on its boundary — a cone's apex,
 /// a sphere's pole — as the face holds it: the degenerate edge there, a

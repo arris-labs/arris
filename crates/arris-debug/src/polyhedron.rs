@@ -82,7 +82,7 @@ pub const fn edge_key(a: usize, b: usize) -> u64 {
 /// ```
 /// use arris_debug::polyhedron::polyhedron;
 /// use arris_topo::Model;
-/// use arris_topo::arris_math::Point3;
+/// use arris_math::Point3;
 ///
 /// let mut m = Model::default();
 /// let points = [

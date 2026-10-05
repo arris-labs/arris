@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use arris_topo::arris_geom::SurfaceKind;
+use arris_geom::SurfaceKind;
 use arris_topo::{BodyId, EntityId, FaceId, ShellId};
 
 /// A `Full` invariant the checker could not decide on this body, listed

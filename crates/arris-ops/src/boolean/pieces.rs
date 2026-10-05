@@ -18,14 +18,10 @@
 use core::f64::consts::{PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::arris_topo::arris_geom::region2::{
-    Piece as Walk, Polygon2, discretise, interior_point,
-};
-use arris_check::arris_topo::arris_geom::{Curve2, Surface};
-use arris_check::arris_topo::arris_math::{
-    Interval, Point2, Point3, Precision, is_negligible, wrap_angle,
-};
-use arris_check::arris_topo::{Curve2Id, EdgeId, FaceId, Model, Orientation, Shape, VertexId};
+use arris_geom::region2::{Piece as Walk, Polygon2, discretise, interior_point};
+use arris_geom::{Curve2, Surface};
+use arris_math::{Interval, Point2, Point3, Precision, is_negligible, wrap_angle};
+use arris_topo::{Curve2Id, EdgeId, FaceId, Model, Orientation, Shape, VertexId};
 
 use arris_check::domain::chord;
 

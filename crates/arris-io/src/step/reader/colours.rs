@@ -13,8 +13,8 @@
 
 use std::collections::BTreeMap;
 
-use arris_check::arris_topo::EntityId;
-use arris_check::arris_topo::provenance::{FileEntity, Role};
+use arris_topo::EntityId;
+use arris_topo::provenance::{FileEntity, Role};
 
 use super::ReadSolid;
 use super::products::{FaceColour, ProductTree, Rgb};

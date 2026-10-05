@@ -40,7 +40,7 @@ use crate::MeshWriteError;
 /// enforces.
 ///
 /// ```
-/// use arris_io::arris_mesh::TriMesh;
+/// use arris_mesh::TriMesh;
 /// use arris_io::obj;
 ///
 /// let mut mesh = TriMesh::new();
@@ -48,7 +48,7 @@ use crate::MeshWriteError;
 ///     mesh.push_position(p).unwrap();
 /// }
 /// mesh.push_face(
-///     arris_io::arris_check::arris_topo::FaceId::new(0, 0),
+///     arris_topo::FaceId::new(0, 0),
 ///     [[0, 1, 2]],
 /// )
 /// .unwrap();
@@ -122,7 +122,7 @@ fn real(x: f64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use arris_check::arris_topo::FaceId;
+    use arris_topo::FaceId;
 
     use super::*;
 
