@@ -216,7 +216,7 @@ and ignored tests.
     the meter, split off `BlendCtx::split`: a phase that only reads takes
     `(env, meter, …)`, so ring, miter, corner, face_end and the helpers
     under them no longer thread six arguments.
-- [ ] Step 8 **[1]** — **`boolean/pave.rs` into `boolean/pave/`, a pure
+- [x] Step 8 **[1]** — **`boolean/pave.rs` into `boolean/pave/`, a pure
   move.**
   - `mod.rs` (`Build` and its core);
   - `hits.rs` (edge-on-face hits, vertex builds);
