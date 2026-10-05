@@ -8,7 +8,7 @@ use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_math::{
     Frame, Frame2, Handedness, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, Vec2, Vec3,
-    is_negligible, wrap_angle as wrap_turn,
+    is_negligible, wrap_angle as wrap_turn, wrap_signed,
 };
 
 use crate::project::{ellipse_distance, ellipse_nearest};
@@ -44,11 +44,6 @@ pub const PCURVE_FIT_DEGREE: usize = 5;
 /// its exact branch, and so its surfaces, a fitted section is held. A ratio between two fits, not a
 /// tolerance.
 pub const PCURVE_SINGULAR_BAND: f64 = 0.25;
-
-/// `d` moved into `(−period / 2, period / 2]`.
-fn wrap_half(d: f64, period: f64) -> f64 {
-    d - period * (d / period).round()
-}
 
 /// The (u, v) coordinates of `p` in a plane's frame.
 fn in_plane(plane: &Frame, p: arris_math::Point3) -> Point2 {
@@ -1005,7 +1000,7 @@ fn fitted_on(
     // `near`'s, which is how far along the unwrapping it is.
     let beside = |near: [f64; 2], q: Point2| {
         [0, 1].map(|k| match periods[k] {
-            Some(period) => near[k] + wrap_half(q[k] - near[k], period),
+            Some(period) => near[k] + wrap_signed(q[k] - near[k], period),
             None => q[k],
         })
     };

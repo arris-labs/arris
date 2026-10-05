@@ -27,7 +27,7 @@ use arris_geom::{
 };
 use arris_math::{
     Aabb, Control, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3, Vec2,
-    Vec3, wrap_angle,
+    Vec3, shift_into_range, shift_nearest, wrap_angle,
 };
 use arris_topo::builder::{EdgeKey, EdgeSpec, VertexKey, VertexSpec};
 use arris_topo::entity::EdgeGeometry;
@@ -497,29 +497,19 @@ fn line_origin(line: &Curve) -> Result<Point3, OpError> {
     }
 }
 
-/// `t` moved by whole periods into `range`, when it can be; a parameter
-/// of a non-periodic curve as it is.
-fn into_range(range: Interval, t: f64, period: Option<f64>) -> Option<f64> {
-    match period {
-        Some(p) => {
-            let k = ((range.lo() - t) / p).ceil();
-            let shifted = t + k * p;
-            (shifted <= range.hi()).then_some(shifted)
-        }
-        None => range.contains(t).then_some(t),
-    }
-}
-
-/// `pcurve` translated by whole turns in `u` so that its point at `t`
-/// has `u` nearest `target`: the blend loop is written in one translate
-/// of the cylinder's domain, and `pcurve_on` reports `u` in `[0, 2π)`.
-fn placed(pcurve: Curve2, t: f64, target: f64) -> Curve2 {
-    let u = pcurve.point(t).x;
-    let k = ((target - u) / TAU).round();
-    if k == 0.0 {
+/// `pcurve` translated by whole periods of the surface in `u` so that its
+/// point at `t` has `u` nearest `target`: the blend loop is written in one
+/// translate of the cylinder's domain, and `pcurve_on` reports `u` in
+/// `[0, 2π)`. A surface with no period in `u` leaves it as it is.
+fn placed(pcurve: Curve2, t: f64, target: f64, period: Option<f64>) -> Curve2 {
+    let Some(period) = period else {
+        return pcurve;
+    };
+    let by = shift_nearest(pcurve.point(t).x, target, period);
+    if by == 0.0 {
         pcurve
     } else {
-        pcurve.translated(Vec2::new(k * TAU, 0.0))
+        pcurve.translated(Vec2::new(by, 0.0))
     }
 }
 
@@ -529,7 +519,7 @@ impl Stripe {
     /// it is on a chamfer's plane.
     fn place(&self, pcurve: Curve2, t: f64, target: f64) -> Curve2 {
         match self.section {
-            Section::Round { .. } => placed(pcurve, t, target),
+            Section::Round { .. } => placed(pcurve, t, target, self.surface.period()[0]),
             Section::Flat => pcurve,
         }
     }
@@ -1493,7 +1483,7 @@ fn cut_corner(
         return Err(invariant("the corner edge through the trim point"));
     }
     let too_large = || degenerate(vec![forward(edge), forward(corner)], Reason::BlendTooLarge);
-    let Some(tc) = into_range(crange, projection.t, ccurve.period()) else {
+    let Some(tc) = shift_into_range(crange, projection.t, ccurve.period()) else {
         return Err(too_large());
     };
     let cuts_lo = ce.start() == vertex;
@@ -1948,8 +1938,8 @@ fn face_end(
             }
         };
         for hit in &hits {
-            if into_range(range, hit.tb, curve.period()).is_some()
-                && into_range(arc_range, hit.ta, arc_curve.period()).is_some()
+            if shift_into_range(range, hit.tb, curve.period()).is_some()
+                && shift_into_range(arc_range, hit.ta, arc_curve.period()).is_some()
             {
                 return Err(degenerate(vec![e, forward(x)], Reason::BlendTooLarge));
             }
@@ -2184,7 +2174,7 @@ fn fan_end(
             };
         let mut found = None;
         for hit in hits.iter().filter(|h| !h.tangent) {
-            if into_range(range, hit.t, curve.period()).is_none()
+            if shift_into_range(range, hit.t, curve.period()).is_none()
                 || !in_band(s, hit.point, tolerance)?
             {
                 continue;
@@ -2315,7 +2305,7 @@ fn contacts(
         let on_face = match surface {
             Surface::Cylinder { .. } => {
                 let edge_u = m.curve2(s.uses[k].pcurve)?.point(range.midpoint()).x;
-                placed(on_face, range.lo(), edge_u)
+                placed(on_face, range.lo(), edge_u, surface.period()[0])
             }
             Surface::Plane { .. }
             | Surface::EllipticCylinder { .. }
@@ -2498,7 +2488,7 @@ fn miter(
     };
     // The third edge shortened to that point.
     let too_large = || degenerate(vec![ea, eb, forward(e3)], Reason::BlendTooLarge);
-    let Some(tc) = into_range(range3, t3, c3.period()) else {
+    let Some(tc) = shift_into_range(range3, t3, c3.period()) else {
         return Err(too_large());
     };
     let cuts_lo = e3_entity.start() == vertex;
@@ -3293,7 +3283,7 @@ fn corner(
                              meter: &mut Meter<'_>|
              -> Result<Curve2, OpError> {
                 let pcurve = pcurve_on(curve, range, &sphere, arc_tol, meter).map_err(geometry)?;
-                Ok(placed(pcurve, range.lo(), u))
+                Ok(placed(pcurve, range.lo(), u, sphere.period()[0]))
             };
             // Each meridian from its equator point up to the pole.
             let meridian = |q: usize| -> Result<Curve, OpError> {
@@ -4268,7 +4258,7 @@ fn ring(
             pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
         let on_face = match (use_uv[i], face_surface) {
             (Some(uv), Surface::Torus { .. }) => placed_uv(on_face, range.lo(), uv),
-            (Some(uv), _) => placed(on_face, range.lo(), uv.x),
+            (Some(uv), _) => placed(on_face, range.lo(), uv.x, face_surface.period()[0]),
             (None, _) => on_face,
         };
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
@@ -4362,7 +4352,7 @@ fn ring(
                     "the curved face's seam through the contact's vertex",
                 ));
             }
-            let Some(tc) = into_range(seam_range0, projection.t, seam_curve.period()) else {
+            let Some(tc) = shift_into_range(seam_range0, projection.t, seam_curve.period()) else {
                 return Err(too_large(faces[i]));
             };
             let cuts_lo = seam_entity.start() == vertex;

@@ -928,18 +928,15 @@ fn circle_circle_coplanar(
 /// A hit at `point`, with each curve's parameter from its own projection.
 fn hit(a: &Curve, b: &Curve, point: Point3, tangent: bool) -> Result<CurveCurveHit, GeomError> {
     Ok(CurveCurveHit {
-        ta: wrap_angle_if_periodic(a, a.project(point)?.t),
-        tb: wrap_angle_if_periodic(b, b.project(point)?.t),
+        ta: {
+            let t = a.project(point)?.t;
+            a.period().map_or(t, |_| wrap_angle(t))
+        },
+        tb: {
+            let t = b.project(point)?.t;
+            b.period().map_or(t, |_| wrap_angle(t))
+        },
         point,
         tangent,
     })
-}
-
-/// A periodic curve's parameter in `[0, 2π)`; anything else unchanged.
-fn wrap_angle_if_periodic(c: &Curve, t: f64) -> f64 {
-    if c.period().is_some() {
-        wrap_angle(t)
-    } else {
-        t
-    }
 }

@@ -22,6 +22,7 @@ mod control;
 mod frame;
 mod interval;
 mod isometry;
+mod periodic;
 mod precision;
 pub mod predicates;
 mod reflection;
@@ -36,6 +37,10 @@ pub use control::{Control, Interrupted, Meter, Poll, Stop};
 pub use frame::{Frame, Frame2, FrameError, Handedness};
 pub use interval::{Interval, IntervalError};
 pub use isometry::Isometry;
+pub use periodic::{
+    period_end, shift_into_range, shift_nearest, shift_nearest_uv, wrap_angle, wrap_into,
+    wrap_offset, wrap_signed,
+};
 pub use precision::Precision;
 pub use reflection::{Reflection, ReflectionError};
 pub use tolerance::Tolerance;
@@ -90,64 +95,6 @@ pub const READ_GAP_FRACTION: f64 = 2e-4;
 /// ```
 pub fn is_negligible(x: f64, scale: f64) -> bool {
     x.abs() <= RELATIVE_ROUNDING * scale.abs()
-}
-
-/// An angle moved into `[0, 2π)`: what a periodic curve's or surface's
-/// parameter is reported in (`docs/DATA-MODEL.md` §Conventions). A
-/// negative angle whose sum with `2π` rounds up to `2π` becomes `0` —
-/// the same point on the circle, and inside the domain. A non-finite
-/// angle comes back unchanged.
-///
-/// ```
-/// use arris_math::wrap_angle;
-/// use core::f64::consts::TAU;
-///
-/// assert_eq!(wrap_angle(0.0), 0.0);
-/// assert_eq!(wrap_angle(-1.0), TAU - 1.0);
-/// assert_eq!(wrap_angle(-1e-300), 0.0);
-/// assert_eq!(wrap_angle(TAU + 1.0), 1.0);
-/// ```
-pub fn wrap_angle(t: f64) -> f64 {
-    if !t.is_finite() {
-        return t;
-    }
-    let t = if (0.0..core::f64::consts::TAU).contains(&t) {
-        t
-    } else {
-        t.rem_euclid(core::f64::consts::TAU)
-    };
-    if t >= core::f64::consts::TAU { 0.0 } else { t }
-}
-
-/// The end of one whole period from `lo`: `lo + period`, stepped down to
-/// the representable value below when that sum rounds up, so that
-/// `end - lo <= period` holds exactly. A closed edge spans one period and
-/// no more (`docs/DATA-MODEL.md` §Invariants, E1), and for a
-/// `lo` that is not a small multiple of the period the sum can round to
-/// one unit in the last place too far; this is the range's construction,
-/// not a tolerance. A non-finite argument, or a `period` that is not
-/// positive, comes back as `lo + period`.
-///
-/// ```
-/// use arris_math::period_end;
-/// use core::f64::consts::TAU;
-///
-/// assert_eq!(period_end(0.0, TAU), TAU);
-/// // A pave one unit in the last place below a full turn: the sum
-/// // rounds up, and the end is stepped back to keep the turn one turn.
-/// let lo = f64::from_bits(TAU.to_bits() - 1);
-/// assert!(lo + TAU - lo > TAU);
-/// assert!(period_end(lo, TAU) - lo <= TAU);
-/// ```
-pub fn period_end(lo: f64, period: f64) -> f64 {
-    let mut end = lo + period;
-    if !(end.is_finite() && period > 0.0) {
-        return end;
-    }
-    while end - lo > period {
-        end = f64::from_bits(end.to_bits() - 1);
-    }
-    end
 }
 
 /// A position in 3D. `nalgebra::Point3<f64>` (ADR-0001).

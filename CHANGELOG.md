@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_math` gains the periodic-parameter toolkit beside `wrap_angle`:
+  `wrap_into` (into `[lo, lo + period)`), `wrap_signed`, `wrap_offset`,
+  `shift_nearest`, `shift_nearest_uv` and `shift_into_range`, each taking
+  the period from the caller, so a period that is not a turn is wrapped
+  correctly.
+
 ### Breaking
 
 - A lower crate no longer re-exports the crates beneath it:

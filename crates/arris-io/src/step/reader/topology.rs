@@ -84,7 +84,7 @@ use arris_geom::{
 };
 use arris_math::{
     Aabb, Frame, Interrupted, Interval, Meter, Point2, Point3, Precision, READ_GAP_FRACTION,
-    RELATIVE_ROUNDING, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3, is_negligible,
+    RELATIVE_ROUNDING, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3, is_negligible, shift_nearest_uv,
 };
 use arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec,
@@ -1278,7 +1278,7 @@ impl Junctions<'_> {
         let (start, _) = next.ends();
         let d = start - end;
         let Some(row) = self.singular_at(vertex) else {
-            let by = whole_periods(-d, period);
+            let by = shift_nearest_uv(-d, period);
             if self.jumps(end, d + by) {
                 let gap = self.gap(end, d + by);
                 if gap > self.cap {
@@ -1301,7 +1301,7 @@ impl Junctions<'_> {
         // keeping a wedge of it between them; where it turns back on
         // itself or away — a seam's two uses — it runs a whole turn.
         let meet = |run: f64| run <= self.parametric && self.turns_in(prev, next);
-        let mut by = whole_periods(-d, period);
+        let mut by = shift_nearest_uv(-d, period);
         let run = match period[free] {
             Some(p) => {
                 let run = (sense * d[free]).rem_euclid(p);
@@ -1379,7 +1379,7 @@ impl Junctions<'_> {
     fn own_uv(&self, vertex: usize, near: Point2) -> Option<Point2> {
         let p = *self.points.get(vertex)?;
         let uv = self.surface.project(p).ok()?.uv;
-        Some(uv + whole_periods(near - uv, self.surface.period()))
+        Some(uv + shift_nearest_uv(near - uv, self.surface.period()))
     }
 
     /// How far apart in 3D the two ends of the step `gap` from `at` in
@@ -1439,7 +1439,7 @@ impl Junctions<'_> {
             let (_, end) = prev.ends();
             let (start, _) = next.ends();
             let d = start - end;
-            let wrap = whole_periods(-d, period);
+            let wrap = shift_nearest_uv(-d, period);
             let gap = d + wrap;
             let band = bands(self.surface, end, self.parametric);
             if gap.x.abs() <= band[0] && gap.y.abs() <= band[1] {
@@ -2067,7 +2067,7 @@ fn band(
         }
         let (first, last) = (uses.first()?, uses.last()?);
         // Once round, in one parameter: a loop wound twice is no band.
-        let turns = whole_periods(last.ends().1 - first.ends().0, period);
+        let turns = shift_nearest_uv(last.ends().1 - first.ends().0, period);
         let once = |k: usize| period[k].is_some_and(|p| (turns[k].abs() / p - 1.0).abs() < 0.5);
         match (turns[0] != 0.0, turns[1] != 0.0) {
             (true, false) if once(0) => Some(0),
@@ -2435,17 +2435,10 @@ fn seam_crosses(
             let at = |k: usize| u.pcurve.point(u.range.lerp(k as f64 / n as f64));
             (0..n).any(|k| {
                 let (c, d) = (at(k), at(k + 1));
-                let by = whole_periods(a - c, period);
+                let by = shift_nearest_uv(a - c, period);
                 proper(c + by, d + by)
             })
         })
-}
-
-/// `d` rounded to whole periods in each periodic parameter, zero in the
-/// others.
-fn whole_periods(d: Vec2, period: [Option<f64>; 2]) -> Vec2 {
-    let round = |x: f64, p: Option<f64>| p.map_or(0.0, |p| p * (x / p).round());
-    Vec2::new(round(d.x, period[0]), round(d.y, period[1]))
 }
 
 /// Moves each loop by whole periods, parameter by parameter: the widest

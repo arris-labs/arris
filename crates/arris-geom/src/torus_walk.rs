@@ -82,7 +82,7 @@ use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 use std::sync::Arc;
 
 use arris_math::roots::{POLYNOMIAL_ROUNDING, newton_in_interval};
-use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, wrap_angle};
+use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, wrap_angle, wrap_offset};
 
 use crate::bernstein2::Zero2;
 use crate::halt::Halt;
@@ -203,11 +203,6 @@ const QUOTIENT_STEP: f64 = 1e-5;
 /// not a tolerance.
 const STRETCH_HALVINGS: usize = 60;
 
-/// An angle difference in `[−π, π)`.
-fn wrap_pi(x: f64) -> f64 {
-    wrap_angle(x + PI) - PI
-}
-
 /// A singular point's correction to the distance: `value` at `at`,
 /// falling to zero by a smoothstep of `y = √(xᵀ·M·x) / reach`, `x` the
 /// offset in the parameter plane. `M` is the Hessian of the distance
@@ -227,7 +222,10 @@ struct Bump {
 impl Bump {
     /// `y` at `(u, v)`, and `M·x`.
     fn measure(&self, u: f64, v: f64) -> (f64, [f64; 2]) {
-        let x = [wrap_pi(u - self.at[0]), wrap_pi(v - self.at[1])];
+        let x = [
+            wrap_offset(u - self.at[0], TAU),
+            wrap_offset(v - self.at[1], TAU),
+        ];
         let [muu, muv, mvv] = self.metric;
         let mx = [muu * x[0] + muv * x[1], muv * x[0] + mvv * x[1]];
         let y = (x[0] * mx[0] + x[1] * mx[1]).max(0.0).sqrt() / self.reach;
@@ -910,7 +908,7 @@ fn walked_torus<'s>(a: &'s Surface, b: &'s Surface) -> Option<(&'s Surface, &'s 
 
 /// `p` inside `at ± half`, as angles.
 fn in_box(p: [f64; 2], at: [f64; 2], half: [f64; 2]) -> bool {
-    (0..2).all(|k| wrap_pi(p[k] - at[k]).abs() <= half[k])
+    (0..2).all(|k| wrap_offset(p[k] - at[k], TAU).abs() <= half[k])
 }
 
 impl Tracer<'_> {
@@ -971,7 +969,7 @@ impl Tracer<'_> {
                 let held = !z.certified
                     && (0..2).all(|k| {
                         let half = 0.5 * (z.hi[k] - z.lo[k]);
-                        wrap_pi(s.at[k] - 0.5 * (z.lo[k] + z.hi[k])).abs() <= half
+                        wrap_offset(s.at[k] - 0.5 * (z.lo[k] + z.hi[k]), TAU).abs() <= half
                     });
                 held || s.holds(z.at, 1.0)
             })
@@ -1004,7 +1002,7 @@ impl Tracer<'_> {
         ) = (self.walker.factor, &self.walker.torus)
         {
             let near = self.tol.linear / (major_radius + minor_radius);
-            let off = |u: f64| wrap_pi(u - factor.u0).abs();
+            let off = |u: f64| wrap_offset(u - factor.u0, TAU).abs();
             let crowded = (self.turning.iter().any(|t| off(t.at[0]) <= near))
                 || (self.walker.singular.iter()).any(|s| off(s.at[0]) <= s.half[0] + near);
             if crowded {
@@ -1065,14 +1063,14 @@ impl Tracer<'_> {
         let near: Vec<f64> = (self.section.tube_circle_candidates().into_iter())
             .filter(|&u| on(u, 2.0 * tol))
             .collect();
-        let joined = |a: f64, b: f64| on(a + 0.5 * wrap_pi(b - a), tol);
+        let joined = |a: f64, b: f64| on(a + 0.5 * wrap_offset(b - a, TAU), tol);
         // A group is its first candidate and how far the others reach
         // either side of it, the short way round.
         let mut groups: Vec<(f64, [f64; 2])> = Vec::new();
         for (i, &u) in near.iter().enumerate() {
             match groups.last_mut() {
                 Some((anchor, reach)) if i > 0 && joined(near[i - 1], u) => {
-                    let off = wrap_pi(u - *anchor);
+                    let off = wrap_offset(u - *anchor, TAU);
                     *reach = [reach[0].min(off), reach[1].max(off)];
                 }
                 _ => groups.push((u, [0.0; 2])),
@@ -1085,7 +1083,7 @@ impl Tracer<'_> {
             if joined(last, anchor) {
                 groups.remove(0);
                 if let Some((end, span)) = groups.last_mut() {
-                    let off = wrap_pi(anchor - *end);
+                    let off = wrap_offset(anchor - *end, TAU);
                     *span = [span[0].min(off + reach[0]), span[1].max(off + reach[1])];
                 }
             }
@@ -1417,7 +1415,7 @@ impl Tracer<'_> {
             // away and well apart in `v` — leaves the cell half the way
             // to it.
             for (j, t) in turning.iter().enumerate() {
-                let d = [0, 1].map(|c| wrap_pi(t[c] - at[c]).abs());
+                let d = [0, 1].map(|c| wrap_offset(t[c] - at[c], TAU).abs());
                 if j != index && d[0] <= a {
                     b = b.min(0.5 * d[1]);
                 }
@@ -1480,8 +1478,8 @@ impl Tracer<'_> {
                 continue;
             }
             for arm in 0..2 {
-                let ahead = dir * wrap_pi(t.at[0] - u);
-                let dv = wrap_pi(v - t.at[1]);
+                let ahead = dir * wrap_offset(t.at[0] - u, TAU);
+                let dv = wrap_offset(v - t.at[1], TAU);
                 let inside = if arm == 1 {
                     (0.0..=t.half[1]).contains(&dv)
                 } else {
@@ -1503,8 +1501,8 @@ impl Tracer<'_> {
             }
         }
         for (i, s) in self.walker.singular.iter().enumerate() {
-            let ahead = dir * wrap_pi(s.at[0] - u);
-            let dv = wrap_pi(v - s.at[1]);
+            let ahead = dir * wrap_offset(s.at[0] - u, TAU);
+            let dv = wrap_offset(v - s.at[1], TAU);
             let near = ahead > 0.0 && ahead <= s.half[0] + ANGLE_SLACK;
             if s.crossing && near && dv.abs() <= s.half[1] {
                 let centre = [u + dir * ahead, v - dv];
@@ -1565,8 +1563,8 @@ impl Tracer<'_> {
                 cells.push(cell);
                 break (end, centre);
             }
-            let back = !cells.is_empty() && wrap_pi(u).abs() <= ANGLE_SLACK;
-            if seeded && back && wrap_pi(v - start[1]).abs() <= home {
+            let back = !cells.is_empty() && wrap_offset(u, TAU).abs() <= ANGLE_SLACK;
+            if seeded && back && wrap_offset(v - start[1], TAU).abs() <= home {
                 break (ArcEnd::Home, [u, v]);
             }
             if cells.len() >= MAX_CELLS {

@@ -10,12 +10,11 @@
 
 use arris_geom::region2::Side;
 use arris_geom::{Curve, pcurve_on};
-use arris_math::{Interval, Meter, Point3, Tolerance};
+use arris_math::{Interval, Meter, Point3, Tolerance, shift_into_range};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
 use super::{
-    Trim, View, convex_edge, cut_corner, degenerate, into_range, invariant, on_side_of_face,
-    placed_uv,
+    Trim, View, convex_edge, cut_corner, degenerate, invariant, on_side_of_face, placed_uv,
 };
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
@@ -160,7 +159,7 @@ fn past_vertex(
         return Err(invariant("the corner edge's curve through the trim point"));
     }
     let t = projection.t;
-    if into_range(range, t, curve.period()).is_some() {
+    if shift_into_range(range, t, curve.period()).is_some() {
         return Ok(None);
     }
     let cuts_lo = entity.start() == vertex;

@@ -149,7 +149,7 @@ and ignored tests.
     geom, topo, …}`".
   - Test: the full workspace builds, and
     `rg 'arris_[a-z]+::arris_' crates` is empty.
-- [ ] Step 3 **[2]** — **One periodic-parameter toolkit.** Add it to
+- [x] Step 3 **[2]** — **One periodic-parameter toolkit.** Add it to
   `arris-math` with doctests at the boundaries:
   - a value exactly at `lo + p`;
   - `−1e-300`, mirroring `wrap_angle`'s own;

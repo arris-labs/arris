@@ -122,6 +122,13 @@ trims it with loops. Periodic directions are stored as a period, and a
 pcurve on a periodic surface may run outside `[0, 2π)` — a loop that crosses
 the seam is written with a seam edge (§Seams), not by unwrapping.
 
+A periodic parameter is wrapped, differenced and shifted by one toolkit in
+`arris-math` (`wrap_into`, `wrap_angle`, `wrap_signed`, `wrap_offset`,
+`shift_nearest`, `shift_nearest_uv`, `shift_into_range`, `period_end`),
+which takes the period from the entity (`Curve::period`,
+`Surface::period`) and the start of the range from its domain; only
+`wrap_angle` is written for `2π`, and says so.
+
 `Surface::eval(u, v)` returns `SurfaceEval { point, du, dv, duu, duv, dvv }`
 for every finite parameter, inside the domain or not (a periodic parameter
 wraps, and so does a NURBS direction closed without being periodic, by

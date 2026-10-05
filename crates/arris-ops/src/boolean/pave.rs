@@ -19,7 +19,7 @@ use arris_geom::{
 };
 use arris_math::{
     Aabb, Interval, Meter, Point2, Point3, Precision, RELATIVE_ROUNDING, Tolerance, Vec2,
-    period_end,
+    period_end, wrap_into,
 };
 use arris_topo::{Body, EdgeId, FaceId, Model, Shape, Vertex as VertexHandle, VertexId};
 
@@ -416,22 +416,6 @@ fn geometry(e: GeomError, a: Shape, b: Shape) -> OpError {
         },
         other => crate::error::fault_of(other),
     }
-}
-
-/// `t` on a periodic curve wrapped into `[lo, lo + period)` of its
-/// domain — `[0, 2π)` for a conic, the knots' for a periodic NURBS
-/// section loop — and unchanged on any other curve.
-fn wrap_on(c: &Curve, t: f64) -> f64 {
-    let Some(period) = c.period() else {
-        return t;
-    };
-    let lo = c.domain().lo();
-    let w = if t >= lo && t - lo < period {
-        t
-    } else {
-        lo + (t - lo).rem_euclid(period)
-    };
-    if w - lo >= period { lo } else { w }
 }
 
 /// `n` parameters over `range`, both ends included.
@@ -851,7 +835,12 @@ impl<'m, 'c> Build<'m, 'c> {
                             SectionCrossing {
                                 pair: pi,
                                 curves: [ci, cj],
-                                t: [wrap_on(ca, h.ta), wrap_on(cb, h.tb)],
+                                t: [
+                                    ca.period()
+                                        .map_or(h.ta, |p| wrap_into(h.ta, ca.domain().lo(), p)),
+                                    cb.period()
+                                        .map_or(h.tb, |p| wrap_into(h.tb, cb.domain().lo(), p)),
+                                ],
                                 point: h.point,
                                 tangent: h.tangent,
                                 vertex: None,
@@ -1569,7 +1558,9 @@ impl<'m, 'c> Build<'m, 'c> {
                 continue;
             };
             if projection.distance <= self.hit_tolerance[k] {
-                paves.push(wrap_on(curve, projection.t));
+                paves.push(curve.period().map_or(projection.t, |p| {
+                    wrap_into(projection.t, curve.domain().lo(), p)
+                }));
             }
         }
         paves.sort_by(f64::total_cmp);
@@ -1658,7 +1649,9 @@ impl<'m, 'c> Build<'m, 'c> {
                     .find_map(|x| x.curves.iter().position(|&c| c == ci).map(|i| x.t[i]))
                     .unwrap_or(projection.t);
                 paves.push(Pave {
-                    t: wrap_on(curve, t),
+                    t: curve
+                        .period()
+                        .map_or(t, |p| wrap_into(t, curve.domain().lo(), p)),
                     vertex: k,
                 });
             }
