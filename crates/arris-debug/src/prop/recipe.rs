@@ -8,7 +8,8 @@
 //! `fuse`, `common` and `cut`. Each operand is a box, a cylinder, or a
 //! profile from [`super::profile`] extruded or revolved; a box or a
 //! cylinder may have one edge filleted or chamfered first, where the
-//! edge's point is known in closed form, and a stadium or a plate with a
+//! edge's point is known in closed form (or, of those without a blend, have
+//! one face moved by `offset`, ADR-0048), and a stadium or a plate with a
 //! D-shaped notch has its whole top outline blended through one edge
 //! (ADR-0035). [`turned_recipe`] draws a turned part alone, a coned
 //! shoulder, a dome or a toroidal bead revolved about `y` with a pick of
@@ -117,11 +118,38 @@ struct Blend {
     fraction: f64,
 }
 
+/// One face of a box or a cylinder moved along its normal by `offset`
+/// before the operand is placed: its whole body is the operand's, so no
+/// blend has run first and the face's point is known in closed form.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Push {
+    /// Which face: a box's six by `face % 6`, a cylinder's side, top and
+    /// bottom by `face % 3`.
+    face: usize,
+    /// Where on a cylinder's side the face's point lies, in radians from
+    /// the seam ([`CAP_ANGLE`]).
+    angle: f64,
+    /// The distance as a signed fraction of the extent behind the face
+    /// ([`PUSH_FRACTION`]): never near zero, and pulled in by less than
+    /// half the extent.
+    fraction: f64,
+}
+
+/// How far a face is moved, as a fraction of the extent along its normal:
+/// outward up to half again, inward up to two fifths — no face then
+/// vanishes — and never within [`PUSH_MIN`] of zero.
+const PUSH_FRACTION: RangeInclusive<f64> = -0.4..=0.5;
+
+/// The least fraction of the extent a drawn push moves a face by.
+const PUSH_MIN: f64 = 0.05;
+
 /// One operand as drawn.
 #[derive(Debug, Clone, PartialEq)]
 struct Operand {
     shape: Shape,
     blend: Option<Blend>,
+    /// A face moved by an offset, on a box or a cylinder with no blend.
+    push: Option<Push>,
     /// Its own motion about the others', its centre at the origin.
     local: Isometry,
     /// The plane it is reflected in after its motions: a point and a
@@ -289,6 +317,7 @@ pub fn turned_recipe() -> impl Strategy<Value = Recipe> {
             let operand = Operand {
                 shape: Shape::Turned(t),
                 blend: None,
+                push: None,
                 local: Isometry::identity(),
                 mirror: None,
             };
@@ -311,6 +340,20 @@ fn blend() -> impl Strategy<Value = Blend> {
         })
 }
 
+fn push() -> impl Strategy<Value = Push> {
+    (0usize..6, finite_f64(CAP_ANGLE), finite_f64(PUSH_FRACTION)).prop_map(
+        |(face, angle, fraction)| Push {
+            face,
+            angle,
+            fraction: if fraction.abs() < PUSH_MIN {
+                PUSH_MIN.copysign(fraction)
+            } else {
+                fraction
+            },
+        },
+    )
+}
+
 fn operand() -> impl Strategy<Value = Operand> {
     let turn = prop_oneof![Just(UnitQuaternion::identity()), rotation()];
     (
@@ -319,15 +362,22 @@ fn operand() -> impl Strategy<Value = Operand> {
         turn,
         point_in_box(OFFSET),
         proptest::option::weighted(0.25, (point_in_box(OFFSET), unit_vec3())),
+        proptest::option::weighted(0.2, push()),
     )
-        .prop_map(|(shape, blend, q, at, mirror)| Operand {
-            mirror: mirror.map(|(o, n)| (o, n.into_inner())),
-            blend: match shape {
-                Shape::Box { .. } | Shape::Cylinder { .. } => blend,
-                _ => None,
-            },
-            shape,
-            local: Isometry::new(q, at.coords),
+        .prop_map(|(shape, blend, q, at, mirror, push)| {
+            let simple = matches!(shape, Shape::Box { .. } | Shape::Cylinder { .. });
+            let blend = if simple { blend } else { None };
+            Operand {
+                mirror: mirror.map(|(o, n)| (o, n.into_inner())),
+                push: if simple && blend.is_none() {
+                    push
+                } else {
+                    None
+                },
+                blend,
+                shape,
+                local: Isometry::new(q, at.coords),
+            }
         })
 }
 
@@ -473,7 +523,12 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                     max: vec3(e / 2.0),
                 });
                 for axis in 0..3 {
-                    along_axis(&mut local, axis, e[axis] / 2.0);
+                    let moved = |side: usize| push_of(o, axis * 2 + side) * e[axis];
+                    along_axis(
+                        &mut local,
+                        axis,
+                        [e[axis] / 2.0 + moved(0), e[axis] / 2.0 + moved(1)],
+                    );
                 }
                 Point3::origin()
             }
@@ -485,9 +540,15 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                     radius: (*radius).into(),
                     height: (*height).into(),
                 });
-                along_axis(&mut local, 0, *radius);
-                along_axis(&mut local, 1, *radius);
-                along_axis(&mut local, 2, height / 2.0);
+                let side = radius + push_of(o, 0) * radius;
+                along_axis(&mut local, 0, [side, side]);
+                along_axis(&mut local, 1, [side, side]);
+                // The caps: face 2 is the bottom, 1 the top.
+                let caps = [
+                    height / 2.0 + push_of(o, 2) * height,
+                    height / 2.0 + push_of(o, 1) * height,
+                ];
+                along_axis(&mut local, 2, caps);
                 Point3::origin()
             }
             Shape::Extrude {
@@ -602,6 +663,34 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
             }
         };
         let mut body = rim_body.unwrap_or(base);
+        if let Some(p) = o.push {
+            let (point, extent) = match &o.shape {
+                Shape::Box { extents } => {
+                    let axis = (p.face % 6) / 2;
+                    let side = if p.face % 2 == 0 { -0.5 } else { 0.5 };
+                    let mut at = Vec3::zeros();
+                    at[axis] = side * extents[axis];
+                    (Point3::from(at), extents[axis])
+                }
+                Shape::Cylinder { radius, height } => match p.face % 3 {
+                    0 => (
+                        Point3::new(radius * p.angle.cos(), radius * p.angle.sin(), 0.0),
+                        *radius,
+                    ),
+                    1 => (Point3::new(0.0, 0.0, height / 2.0), *height),
+                    _ => (Point3::new(0.0, 0.0, -height / 2.0), *height),
+                },
+                _ => unreachable!("only a box or a cylinder is pushed"),
+            };
+            let name = format!("p{i}");
+            steps.push(Step::Offset {
+                name: name.clone(),
+                of: body,
+                faces: vec![point3(point)],
+                distance: (p.fraction * extent).into(),
+            });
+            body = name;
+        }
         if let Some(b) = o.blend {
             let (point, size) = match &o.shape {
                 Shape::Box { extents } => box_edge(*extents, b.edge),
@@ -704,11 +793,31 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
     }
 }
 
+/// The signed fraction of its extent that the operand's face `face` is
+/// moved by: a box's six by `face % 6` (`axis * 2 + side`, the side `0` at
+/// the minimum), a cylinder's side, top and bottom by `face % 3`; zero for
+/// every other face, and for an operand with no push.
+fn push_of(o: &Operand, face: usize) -> f64 {
+    let Some(p) = o.push else {
+        return 0.0;
+    };
+    let modulus = match o.shape {
+        Shape::Box { .. } => 6,
+        _ => 3,
+    };
+    if p.face % modulus == face {
+        p.fraction
+    } else {
+        0.0
+    }
+}
+
 /// The four probes along `axis` of an operand whose faces across it are
-/// `half` from its centre: just in and just out on either side.
-fn along_axis(out: &mut Vec<(String, Point3)>, axis: usize, half: f64) {
+/// `half` from its centre — the minimum side's, then the maximum side's:
+/// just in and just out on either side.
+fn along_axis(out: &mut Vec<(String, Point3)>, axis: usize, half: [f64; 2]) {
     let name = ["x", "y", "z"][axis];
-    for (sign, side) in [(-1.0, "-"), (1.0, "+")] {
+    for (sign, side, half) in [(-1.0, "-", half[0]), (1.0, "+", half[1])] {
         for (reach, how) in [(half - PROBE_STEP, "in"), (half + PROBE_STEP, "out")] {
             let mut p = Vec3::zeros();
             p[axis] = sign * reach;

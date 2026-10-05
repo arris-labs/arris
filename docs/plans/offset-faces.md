@@ -210,7 +210,7 @@ bound has to be established here.
   Pytests: the move, the input refusals, `Vanishes`, `SelfIntersects`, a
   foreign handle, cancel and budget. The `CHANGELOG.md` bullet for the op is
   `/retire-plan`'s.
-- [ ] Step 8 **[2]** — Properties, sharded and seeded: the whole-body
+- [x] Step 8 **[2]** — Properties, sharded and seeded: the whole-body
   offset of a box, a cylinder and a rounded box against their closed
   forms in random poses; offset by `d` then `−d` returns the body's
   volume, area and counts; a perpendicular-walled face pushed by `d`
@@ -218,6 +218,16 @@ bound has to be established here.
   `transform`; the result (blended bodies among the operands) is an
   operand of fillet, chamfer and a cut, checker green; `prop::recipe` and
   the differential draw `offset`.
+  *Done:* `crates/arris-ops/tests/offset_prop.rs`, nine sharded properties
+  (box, cylinder, rounded box in random poses; box side subsets; L, cylinder
+  caps). `prop::recipe` draws one pushed face on a box or cylinder operand
+  with no blend (`Push`, a fifth of them), its probes following the moved
+  face; the differential ran 1000 recipes: 793 agree, 33 `Empty` and the
+  rest both-refuse or oracle-refuse, no disagreement. Finding: the first run
+  failed `a_whole_offset_is_the_closed_form` (default seed, 256 cases, shard
+  2) on a tilted cylinder 22 below the origin: a rim's full-turn range was
+  `t + period` rounded past one period, E1. Fixed in `offset/edges.rs`
+  (`whole_turn`) with the hand-picked test beside the property.
 
 ## Acceptance
 

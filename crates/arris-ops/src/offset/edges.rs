@@ -300,7 +300,7 @@ fn along(
     let t_a = best.project(first).map_err(fault_of)?.t;
     let t_b = best.project(last).map_err(fault_of)?.t;
     let range = match best.period() {
-        Some(period) if closed => interval(t_a, t_a + period)?,
+        Some(period) if closed => interval(t_a, whole_turn(t_a, period))?,
         Some(period) => {
             let span = (t_b - t_a).rem_euclid(period);
             if span <= tolerance || period - span <= tolerance {
@@ -317,6 +317,20 @@ fn along(
     };
     let mid = shift_into_range(range, near.t, best.period()).unwrap_or(range.midpoint());
     Ok((best.clone(), reversed, range, mid))
+}
+
+/// `lo + period` rounded down until it is no more than a period from `lo`:
+/// the checker holds a range to at most one period, and far from zero the
+/// sum rounds past it.
+fn whole_turn(lo: f64, period: f64) -> f64 {
+    let mut hi = lo + period;
+    while hi - lo > period {
+        // `f64::next_down` is stable from Rust 1.86 and the workspace
+        // supports 1.85.
+        let bits = hi.to_bits();
+        hi = f64::from_bits(if hi > 0.0 { bits - 1 } else { bits + 1 });
+    }
+    hi
 }
 
 fn interval(lo: f64, hi: f64) -> Result<Interval, OpError> {
