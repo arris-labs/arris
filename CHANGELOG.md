@@ -34,6 +34,24 @@ into its version (ADR-0027).
   would vanish or turn inside out, a vertex that would split, a moved face
   that no longer meets a fixed neighbour, and a result that runs into
   itself. The round join at an outward convex edge is not offered.
+- `arris_ops::shell(model, body, openings, thickness, side, control)`
+  hollows a solid to a wall of constant thickness: `ShellSide::Inward`
+  grows the cavity inside the body, `ShellSide::Outward` grows a skin
+  outside it, and the faces listed as `openings` are left open (a box open
+  on top, a tube, a cup), or none for a closed void, a body of two shells.
+  Two openings that share an edge become one rim, and a wall that is a
+  plane, cylinder, cone, sphere or torus stays its own kind, with a filleted
+  edge's blend and the face beyond it dragged along. The result is checked
+  at the full level in every build, provenance names the inner copy of each
+  face after the face it came from, and it is an operand of fillet, chamfer,
+  `offset_faces` and every boolean. `Model.shell(body, openings, thickness,
+  side="inward")` is the same call in Python. It refuses, naming the
+  entity and leaving the model untouched: every face an opening, an opening
+  listed twice or of another body, an opening tangent to a wall, every
+  refusal of `offset_faces` for the walls (a NURBS or elliptic-cylinder
+  face, a radius driven through zero, a face that would vanish, a vertex
+  that would split) and a thickness that runs the skin into the outer
+  faces. The round join at a concave edge of an inward shell is not offered.
 
 ### Breaking
 

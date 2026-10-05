@@ -8,7 +8,7 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 [Findings](#findings) below, in the fixed shape, with the number that
 reproduces it.
 
-- The round (arc) join at an outward convex edge of `offset_faces`, which meets sharp today (ADR-0048 §2): add it when a fixture or a consumer asks.
+- The round (arc) join at an outward convex edge of `offset_faces`, and at a concave edge of an inward `shell` (a convex one of an outward), which meet sharp today (ADR-0048 §2, ADR-0049): add it when a fixture or a consumer asks.
 - `offset_faces` keeps a filleted pocket wall's floor dragged with it (the tangent chain is transitive); a press-pull that keeps the floor and re-blends the fillet at its old radius is the blend's, if a consumer asks (ADR-0048 §6).
 - An `offset_faces` that changes topology (a face vanishing and its neighbours meeting, a degree-four vertex splitting into an edge) is refused as `Vanishes` or `VertexSplits`; the global arrangement (the idea's option B) is raised only if the real-part corpus asks.
 - The Python binding's mesh does not carry the kernel's per-corner normals and (u, v) block (`MeshRequest::with_corners`, ADR-0012), which a renderer wants; bind it, and `vt`/`vn` in the OBJ writer with it (python-binding step 9)

@@ -36,8 +36,8 @@ Python binding, PyPI `arris` from the `v*` tag (ADR-0034).
 ends, steps, tangent vertices, cusps, fans and unequal miters blend; the
 fetched tier's `fillet` column is 2 parts of 27, both the NURBS cycle's;
 the residue is on the backlog. ADR-0035 to 0046.
-**Next: C7, prismatic features** (opened 2026-10-05; preparatory refactor landed, offset faces landed 2026-10-05): shell,
-the multi-tool boolean and split by a plane, with per-face tessellation
+**Next: C7, prismatic features** (opened 2026-10-05; preparatory refactor, offset faces and shell landed 2026-10-05): the
+multi-tool boolean and split by a plane, with per-face tessellation
 beside it; sweep and loft went to the NURBS cycle (ADR-0047).
 
 ## Rules that are not derivable from the code

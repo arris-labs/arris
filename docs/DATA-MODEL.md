@@ -1305,7 +1305,8 @@ test scaffolding that stores a dangling reference as given), the builder
   closed, every edge used by exactly two coedges, no edge or vertex used by
   two shells, and the shells nesting into *lumps* — a lump an outer shell,
   enclosing positive volume, with the void shells whose innermost
-  container it is (B1) — so one solid holds a cavity, the two halves of a
+  container it is (B1) — so one solid holds a cavity (a `shell` with no opening: the
+  body's faces and the offset's, reversed, ADR-0049), the two halves of a
   split, disjoint pieces, and a piece inside another's cavity (ADR-0006).
   A lump is derived, never stored: `arris_check::lumps(&Model, Body)`
   returns them, and an operation stores a body's shells lump by lump, the
@@ -1856,6 +1857,19 @@ kept or modified, so the records composed with `then` name each blend
 face from the role its edge came from (`blend/second-fillet`: both blend
 faces from the extrude's `Rise`s, the side face both trimmed still from
 its `Side`).
+
+A shell writes its record beside the offset's, since it adds what the
+offset never does (ADR-0049): a wall face is kept and `Modified` into
+itself (its new id), and its inner copy — the face, and the edges and
+vertices the skin copies — is `Generated` from it, so a consumer names the
+inner face after the face it came from. Each opening is `Modified` into its
+rim face (or `Deleted` where the skin's loop on it is its own and no rim is
+left); an edge two openings share is `Deleted`, the pieces left between
+their rims `Modified` from it where they lie on it and `Generated` from it
+where they lie beyond it on the skin's copy. The shell holding the kept
+faces is `Modified`, a void's second shell is `Generated` from the body, and
+the body `Modified`. A body of two shells so made is one solid with a cavity
+(§Topology, B1).
 
 An offset writes its record against the faces it moved and generates
 nothing, since topology is kept (ADR-0048): a moved face — a chosen one or

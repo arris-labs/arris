@@ -940,6 +940,31 @@ that splits, a dragged face that no longer meets a fixed neighbour
 (`Gap`). The result is checked at `Level::Full` in every profile (§Checker),
 a crossing far from what moved being `SelfIntersects`.
 
+`ops::shell(m, body, openings: &[Face], thickness, side: ShellSide, control)`
+hollows a solid to a wall of constant thickness (ADR-0049), by phase in
+`shell/` over `offset/`: `offset::pieces` is the offset's phases up to the
+rewrite (the chain, the moves, the vertices, the edges, the new faces),
+which `offset_faces` rewrites in place and `shell` assembles into a second
+skin, so no phase is copied. `thickness` is positive and `ShellSide` says
+which way: `Inward` keeps the body's faces as the outside and puts the skin,
+reversed, inside them; `Outward` makes the body's faces the cavity,
+reversed, and grows the skin outside them. The skin is the offset of every
+face but the openings, each on the offset of its own surface and joined
+sharp, so what the offset refuses reaches the caller as `Reason::Offset`
+naming the entity. The result goes through `Builder::assemble`, not
+`rewrite`, since it adds faces and a shell (`shell/assemble.rs`): the body's
+faces, the skin, and for each opening one rim face on the opening's own
+surface bounded by the body's loop and the skin's. Where two openings share
+an edge, or one meets itself across its seam, the rims cancel along it
+(`shell/rim.rs`): what is left at each end is a piece of the one curve
+shared by both rims, one loop each, and the edge's middle, across the mouth,
+is in no face. With no openings the skin closes on itself and the body has
+two shells, the void inside the outer (`ShellNesting`). `Reason::Shell`
+holds what only the shell can get wrong: `NoWalls` (every face an
+opening), `RepeatedOpening`, `OpeningNotInBody` and `OpeningDragged` (an
+opening tangent to a wall, which the wall's move would drag). The result is
+checked at `Level::Full` in every profile, as the offset's is.
+
 Sweeps take a planar `geom::Profile` — an outer loop and holes of lines
 and arcs in a plane's own (u, v), validated and oriented by
 `Profile::edges` (data-model §Profiles) — so a consumer's sketch never has
@@ -1198,12 +1223,12 @@ name. `ops::build` is the exception: the body it finishes is the
 consumer's topology, not the kernel's work, so it runs `Level::Full` in
 every build and refuses a failure as `OpError::Rejected` instead of
 panicking.
-`ops::offset_faces` is the other: a push can build a body that is well
+`ops::offset_faces` and `ops::shell` are the others: a push can build a body that is well
 formed edge by edge and crosses itself far from the face it moved, which
 no local step sees, so it checks its own result at `Level::Full` in every
-build (skipping the debug guard, which `Full` includes) and refuses what
+build (skipping the debug guard, which `Full` includes) and refuse what
 the global level finds as `OffsetReason::SelfIntersects`, naming the faces
-the report names, the model untouched (ADR-0048 §7). A violation the
+the report names, the model untouched (ADR-0048 §7, ADR-0049 §6). A violation the
 global level does not own is still `Internal`.
 
 **In release builds nothing runs unless asked.** `arris_check::check` is
@@ -1753,7 +1778,7 @@ B-Rep).
   that feed it a curve or a surface without a body (`polyline_of`,
   `wireframe_of`), the Rerun stream, the fixture loader and corpus lint
   (`fixtures`; a solid fixture the runner compares under `primitive/`,
-  `transform/`, `boolean/`, `sweep/`, `provenance/`, `blend/` or `offset/` without its
+  `transform/`, `boolean/`, `sweep/`, `provenance/`, `blend/`, `offset/` or `shell/` without its
   committed dump per variant fails the lint, so an ignored fixture there does; a
   failure waiting for its fix sits under `regression/`, and fails the lint
   once it has a dump), the corpus runner (`corpus::run`, the fixture test of
@@ -1915,6 +1940,7 @@ refusal histogram, what picks the cycle after the reader's.
 | Mirror a body in a plane | `ops::mirror` — new ids, provenance `Modified` one-to-one, the image a solid with its material inside (ADR-0031) |
 | Fillet / chamfer of named edges, one call for all edges | `ops::fillet`, `ops::chamfer` (ADR-0007) |
 | Press-pull: chosen faces moved along their normals, neighbours extended or trimmed | `ops::offset_faces` (ADR-0048) — each moved face `Modified` from itself, the whole body's offset when every face moves |
+| Hollow a solid to a wall of constant thickness, inward or outward, faces opened or none (a closed void) | `ops::shell` (ADR-0049) — each wall face `Modified` from itself with its inner copy `Generated` from it, each opening `Modified` into its rim face, a void's second shell `Generated` from the body |
 | Tessellation into a render mesh with per-face and per-edge ranges | `arris_mesh::tessellate` → `TriMesh` with `FaceRange`/`EdgeRange` keyed by `FaceId`/`EdgeId`; `arris_mesh::tessellate_with` of a `MeshRequest::with_corners` adds the render buffer beside it — face-local vertices with outward normals and the surface's own (u, v), which a renderer uploads as they stand (ADR-0012) |
 | A face's outward-oriented frame | `ops::query::face_frame(&model, face)` for a plane (stable across re-evaluation, since a primitive's frame or a sweep's profile plane is), `ops::query::frame_at(&model, face, uv)` for any face at a `(u, v)` its domain contains |
 | Mass properties (volume, area, centroid, inertia) | `ops::measure::mass_properties` → `MassProperties` (exact over the B-Rep, the tensor about the centroid); or the consumer's own integrator over `TriMesh` |
