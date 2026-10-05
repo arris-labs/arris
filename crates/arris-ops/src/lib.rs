@@ -47,7 +47,7 @@ mod transform;
 pub use arris_math::{Control, Interrupted, Stop};
 
 pub use blend::{chamfer, fillet};
-pub use boolean::{common, cut, fuse};
+pub use boolean::{common, cut, cut_many, fuse, fuse_many};
 pub use build::{BuildKeys, BuildSlot, Rejection, build};
 pub use error::{
     BlendReason, BooleanReason, Fault, InputReason, OffsetReason, OpError, QueryReason, Reason,

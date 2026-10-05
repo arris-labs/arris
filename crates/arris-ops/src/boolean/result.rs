@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::{Classification, Classifier, ClassifyError, lumps};
 use arris_geom::{GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
-use arris_math::{Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Aabb, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
 use arris_topo::builder::Builder;
 use arris_topo::entity::BodyKind;
 use arris_topo::{
@@ -62,16 +62,50 @@ impl Selection {
 }
 
 impl Op {
-    /// What happens to a piece of operand `side` that is inside
-    /// (`true`) or outside the other (`docs/ARCHITECTURE.md`
-    /// §Operations, the selection table): operand 0 is a cut's target,
-    /// every other a tool.
-    fn select(self, side: usize, inside: bool) -> Selection {
-        match (self, side, inside) {
-            (Op::Fuse, _, false) | (Op::Common, _, true) | (Op::Cut, 0, false) => Selection::Keep,
-            (Op::Cut, 1.., true) => Selection::KeepReversed,
-            _ => Selection::Drop,
+    /// What happens to a piece of operand `side` given which operands it
+    /// lies inside, `inside[j]` for operand `j` (`docs/ARCHITECTURE.md`
+    /// §Operations, the selection table, ADR-0050 §4): operand 0 is a
+    /// cut's target, every other a tool. A fuse keeps what is inside no
+    /// other operand; a common what is inside every other; a cut keeps
+    /// the target outside every tool, and a tool inside the target and
+    /// outside every other tool, reversed. `inside[side]` is never read.
+    fn select(self, side: usize, inside: &[bool]) -> Selection {
+        let others = || {
+            inside
+                .iter()
+                .enumerate()
+                .filter(move |&(j, _)| j != side)
+                .map(|(_, &i)| i)
+        };
+        match self {
+            Op::Fuse if !others().any(|i| i) => Selection::Keep,
+            Op::Common if others().all(|i| i) => Selection::Keep,
+            Op::Cut if side == 0 && !others().any(|i| i) => Selection::Keep,
+            Op::Cut if side > 0 && inside[0] && !others().skip(1).any(|i| i) => {
+                Selection::KeepReversed
+            }
+            Op::Fuse | Op::Common | Op::Cut => Selection::Drop,
         }
+    }
+
+    /// Whether a piece of the first operand kept from a coincident face
+    /// lies inside it, as [`Op::select`] reads the operand: the table's
+    /// coincident row keeps it when a fuse's normals agree (outside), a
+    /// common's agree (inside) and a cut's oppose (outside).
+    fn inside_when_kept_on(self, agree: bool) -> bool {
+        match self {
+            Op::Fuse => !agree,
+            Op::Common | Op::Cut => agree,
+        }
+    }
+
+    /// [`Op::select`] for a piece of operand `side` known only against
+    /// operand `other`, `inside` it or not, and outside every operand
+    /// else.
+    fn select_against(self, operands: usize, side: usize, other: usize, inside: bool) -> Selection {
+        let mut flags = vec![false; operands];
+        flags[other] = inside;
+        self.select(side, &flags)
     }
 
     /// Whether a piece of operand `side` lying on a coincident face of
@@ -710,8 +744,9 @@ impl<'m> Build<'m> {
                     Shape::new(fb.id, fb.orientation),
                 ));
             };
-            if self.op.select(oa, inside_a) != Selection::Drop
-                && self.op.select(ob, inside_b) != Selection::Drop
+            let operands = self.bodies.len();
+            if self.op.select_against(operands, oa, ob, inside_a) != Selection::Drop
+                && self.op.select_against(operands, ob, oa, inside_b) != Selection::Drop
             {
                 return Err(OpError::Degenerate {
                     entities: vec![
@@ -746,43 +781,75 @@ impl<'m> Build<'m> {
             .iter()
             .map(|&body| Classifier::of_body(m, body).map_err(fault))
             .collect::<Result<Vec<_>, _>>()?;
+        let operands = self.bodies.len();
         for ((side, f), split) in work.into_iter().zip(splits) {
-            let other = &classifiers[1 - side];
             let policy = self.op.policy(side);
             let mut pieces = Vec::new();
             for piece in split.pieces {
                 meter.tick()?;
-                let class = other
-                    .classify(piece.interior)
-                    .map_err(|e| classify_fault(m, f.id, bodies[1 - side], e))?;
-                let (flip, stands_for) = match class {
-                    Classification::Inside | Classification::Outside => {
-                        let inside = class == Classification::Inside;
-                        let Some(flip) = self.op.select(side, inside).flip() else {
+                // The piece against every other operand whose box holds its
+                // interior point: one outside every box is outside every
+                // operand, with no ray cast.
+                let mut inside = vec![false; operands];
+                let mut on: Option<(usize, Shape)> = None;
+                for other in (0..operands).filter(|&o| o != side) {
+                    if !Aabb::of_point(piece.interior).intersects(&self.i.bounds[other]) {
+                        continue;
+                    }
+                    let class = classifiers[other]
+                        .classify(piece.interior)
+                        .map_err(|e| classify_fault(m, f.id, bodies[other], e))?;
+                    match class {
+                        Classification::Inside => inside[other] = true,
+                        Classification::Outside => {}
+                        Classification::On(shape) => {
+                            // On two other operands at once: coincident or
+                            // tangent faces of two tools, which no rule
+                            // reads yet.
+                            if on.is_some() {
+                                return Err(unsupported(self.m, f.id, shape));
+                            }
+                            on = Some((other, shape));
+                        }
+                    }
+                }
+                let (flip, stands_for) = match on {
+                    None => {
+                        let Some(flip) = self.op.select(side, &inside).flip() else {
                             continue;
                         };
                         (flip, None)
                     }
-                    Classification::On(shape) => {
+                    Some((other, shape)) => {
                         if let Some(g) = self.coincident_partner(side, f.id, shape) {
                             let agree = self.normals_agree(f, piece.uv, piece.interior, g)?;
                             if !self.op.select_on(side, agree) {
                                 self.dropped_on = true;
                                 continue;
                             }
-                            (false, Some(g.id))
+                            // Kept from this operand once, as the table's
+                            // coincident row says; whether the other
+                            // operands leave it, they say as for a piece
+                            // that is inside the coincident one exactly
+                            // when the table would drop it.
+                            inside[other] = self.op.inside_when_kept_on(agree);
+                            let Some(flip) = self.op.select(side, &inside).flip() else {
+                                continue;
+                            };
+                            (flip, Some(g.id))
                         } else if let Some(g) = self.tangent_partner(side, f.id, shape) {
                             // The interior point lies on the curve the
                             // two faces touch along; the piece lies to one
                             // side of the other operand everywhere else.
-                            let inside = match self.contact_tangent(f.id, g.id, piece.interior) {
+                            let tangent = match self.contact_tangent(f.id, g.id, piece.interior) {
                                 Some(along) => self.tangent_side(f, piece.interior, g, along)?,
                                 None => None,
                             };
-                            let Some(inside) = inside else {
+                            let Some(tangent) = tangent else {
                                 return Err(unsupported(self.m, f.id, shape));
                             };
-                            let Some(flip) = self.op.select(side, inside).flip() else {
+                            inside[other] = tangent;
+                            let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
                             (flip, None)
@@ -790,10 +857,12 @@ impl<'m> Build<'m> {
                             // Within the tolerance of a face its own is
                             // transversal to, or of an edge or a vertex:
                             // read at a section edge the piece has instead.
-                            let Some(inside) = self.transversal_side(side, f, &piece.loops)? else {
+                            let Some(transversal) = self.transversal_side(side, f, &piece.loops)?
+                            else {
                                 return Err(unsupported(self.m, f.id, shape));
                             };
-                            let Some(flip) = self.op.select(side, inside).flip() else {
+                            inside[other] = transversal;
+                            let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
                             (flip, None)
@@ -1140,10 +1209,15 @@ pub(super) fn boolean(
     op: Op,
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    if i.operands.len() != 2 {
-        return Err(OpError::Internal(Fault::Invariant {
-            what: "a boolean's selection over other than two operands",
-        }));
+    // Tools that meet one another are the next step of the multi-tool
+    // boolean: a pair of faces of two operands other than the first that
+    // meet in anything is refused, naming the two faces.
+    if let Some(pair) = i
+        .pairs
+        .iter()
+        .find(|p| p.operands[0] > 0 && p.intersection != SurfaceIntersection::Empty)
+    {
+        return Err(unsupported(m, pair.a, forward(pair.b)));
     }
     let bodies = i.operands.clone();
     let closures = bodies

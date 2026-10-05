@@ -341,6 +341,10 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             Reason::Blend(BlendReason::NoEdges) => Cycle::Itself("NoEdges"),
             Reason::Blend(BlendReason::RepeatedEdge) => Cycle::Itself("RepeatedEdge"),
             Reason::Blend(BlendReason::EdgeNotInBody) => Cycle::Itself("EdgeNotInBody"),
+            // The battery runs one tool at a time: nor does it ask for
+            // none, or a body twice.
+            Reason::Boolean(BooleanReason::NoTools) => Cycle::Itself("NoTools"),
+            Reason::Boolean(BooleanReason::RepeatedOperand) => Cycle::Itself("RepeatedOperand"),
             // The battery runs no offset: a count here is a battery bug too.
             Reason::Offset(OffsetReason::NoFaces) => Cycle::Itself("NoFaces"),
             Reason::Offset(OffsetReason::RepeatedFace) => Cycle::Itself("RepeatedFace"),

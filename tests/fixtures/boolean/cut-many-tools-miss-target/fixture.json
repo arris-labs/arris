@@ -1,0 +1,104 @@
+{
+  "description": "plate [0,0,0]–[100,100,10] cut by two cylinders r 3 far beside it, one call: neither tool meets the target, so both are deleted whole and every entity of the plate keeps its id",
+  "params": {
+    "t": 10
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        100,
+        "t"
+      ]
+    },
+    {
+      "name": "far",
+      "op": "cylinder",
+      "base": [
+        200,
+        50,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": "t + 2"
+    },
+    {
+      "name": "fars",
+      "op": "pattern",
+      "of": "far",
+      "step": [
+        0,
+        20,
+        0
+      ],
+      "count": 2
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "fars"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        50,
+        50,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        200,
+        50,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        50,
+        50,
+        10
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "100 * 100 * t",
+    "area": "2 * 100 * 100 + 4 * 100 * t",
+    "centroid": [
+      50,
+      50,
+      5
+    ],
+    "counts": {
+      "vertices": 8,
+      "edges": 12,
+      "faces": 6,
+      "loops": 6,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

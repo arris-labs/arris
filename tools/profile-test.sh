@@ -10,6 +10,7 @@ cd "$(git rev-parse --show-toplevel)"
 # The slow set, by test name. Keep in step with `.config/nextest.toml`.
 slow='guard::coverage
 boolean_fixtures_read_back
+boolean_plate_10x10_holes_cut_many
 part::tests::a_battery_stage_is_held_to_its_class
 a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was'
 

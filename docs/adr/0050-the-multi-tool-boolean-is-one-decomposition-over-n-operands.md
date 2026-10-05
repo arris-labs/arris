@@ -91,3 +91,24 @@ fixtures to the corpus lint's 1e-6. So on the overlapping and the
 through-one-point cases Open CASCADE's multi-tool answer is its chain's, and
 the fixtures are held to it. The flush and tangent cases of step 5 are
 measured there.
+
+## Landed with step 3
+
+- The classification of a piece reads every other operand whose box holds
+  its interior point, and no other: `Interferences::bounds` (each operand's
+  box, the union of its faces' boxes grown by their tolerances) is what a
+  point outside is outside of with no ray cast. A piece on two other
+  operands at once is `Unsupported` until step 5.
+- Tools that meet one another are refused as `OpError::Unsupported` naming
+  the two faces — a face pair of two operands other than the first that
+  meets in anything — until step 4 decomposes them. A fuse's operands are
+  symmetric in the table but not in this guard: the body the others are
+  fused onto goes first.
+- `cut` and `fuse` are `cut_many` with one tool and `fuse_many` with two
+  bodies; the corpus, provenance and boolean tests, every dump and every
+  two-operand cancel step count run unchanged.
+- The corpus run of a pattern of N holes is dominated by the B-spline
+  read-back, about 1.7 s a hole, so the 10×10 grid (170 s) is in the slow
+  set (ADR-0032) and the round radial holes of a curved wall are a test
+  against the chain, the corpus holding the same wall pierced by square
+  pockets.

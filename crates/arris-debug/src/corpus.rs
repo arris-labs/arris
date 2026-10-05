@@ -51,7 +51,7 @@ use arris_math::{
 use arris_mesh::{MeshRequest, TriMesh};
 use arris_ops::{
     BlendReason, BooleanReason, InputReason, OffsetReason, OpError, Reason, ShellReason,
-    SweepReason, common, cut, fuse,
+    SweepReason, common,
 };
 use arris_topo::FaceId;
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
@@ -87,8 +87,8 @@ pub enum CorpusError {
         /// The name it refers to.
         name: String,
     },
-    /// A `fuse` or `cut` step names its operands wrongly, or as a list the
-    /// runner does not run yet.
+    /// A `fuse` or `cut` step names its operands both singly and as a
+    /// list, or neither.
     #[error("{fixture}: step {step:?}: {what}")]
     Operands {
         /// The fixture.
@@ -1984,19 +1984,14 @@ fn build_step(
         }
         Step::Fuse { a, b, bodies, .. } => {
             let names = operand_names(fixture, step, [a, b], bodies, "fuse")?;
-            let [a, b] = names[..] else {
-                return Err(CorpusError::Operands {
-                    fixture: name.clone(),
-                    step: step.name().to_string(),
-                    what: format!(
-                        "fuse of {} bodies: the many-body boolean is not built yet",
-                        names.len()
-                    ),
-                });
-            };
-            let a = reference(fixture, step, a, made)?.body;
-            let b = reference(fixture, step, b, made)?.body;
-            body(fuse(m, a, b, control).map_err(op)?, vec![a, b])
+            let operands = names
+                .into_iter()
+                .map(|n| Ok(reference(fixture, step, n, made)?.body))
+                .collect::<Result<Vec<Body>, CorpusError>>()?;
+            body(
+                arris_ops::fuse_many(m, &operands, control).map_err(op)?,
+                operands,
+            )
         }
         Step::Common { a, b, .. } => {
             let a = reference(fixture, step, a, made)?.body;
@@ -2010,21 +2005,17 @@ fn build_step(
             ..
         } => {
             let names = operand_names(fixture, step, [tool, &None], tools, "cut")?;
-            let [tool] = names[..] else {
-                return Err(CorpusError::Operands {
-                    fixture: name.clone(),
-                    step: step.name().to_string(),
-                    what: format!(
-                        "cut of {} tools: the multi-tool boolean is not built yet",
-                        names.len()
-                    ),
-                });
-            };
             let target = reference(fixture, step, target, made)?.body;
-            let tool = reference(fixture, step, tool, made)?.body;
+            let tools = names
+                .into_iter()
+                .map(|n| Ok(reference(fixture, step, n, made)?.body))
+                .collect::<Result<Vec<Body>, CorpusError>>()?;
+            let operands: Vec<Body> = core::iter::once(target)
+                .chain(tools.iter().copied())
+                .collect();
             body(
-                cut(m, target, tool, control).map_err(op)?,
-                vec![target, tool],
+                arris_ops::cut_many(m, target, &tools, control).map_err(op)?,
+                operands,
             )
         }
         Step::Fillet {

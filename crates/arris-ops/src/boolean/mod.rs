@@ -19,10 +19,10 @@ use core::fmt;
 use std::collections::BTreeMap;
 
 use arris_geom::{Curve, Curve2, MeetKind, SurfaceIntersection};
-use arris_math::{Control, Interval, Meter, Point2, Point3};
+use arris_math::{Aabb, Control, Interval, Meter, Point2, Point3};
 use arris_topo::{Body, Curve2Id, EdgeId, FaceId, Model, Provenance, Shape, VertexId};
 
-use crate::error::OpError;
+use crate::error::{BooleanReason, OpError, Reason};
 
 /// The curves of `intersection` that meet as `kind`, each with its
 /// index among the `Meets` curves: what a section curve's or a contact's
@@ -394,6 +394,10 @@ pub struct Interferences {
     /// The operands, in the caller's order: [`FacePair::operands`] and
     /// [`EdgeImage::operand`] index into this.
     pub operands: Vec<Body>,
+    /// Each operand's box: the union of its faces' boxes, each grown by
+    /// the face's tolerance. A point outside an operand's box is outside
+    /// the operand, which is what a boolean's classification asks first.
+    pub bounds: Vec<Aabb>,
     /// Every face pair of two operands whose boxes overlap and whose
     /// faces' boxes overlap, the lower operand's faces outer, operand
     /// pairs in ascending order.
@@ -648,11 +652,166 @@ pub fn cut(
     tool: Body,
     control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    crate::verify_input(m, target)?;
-    crate::verify_input(m, tool)?;
+    cut_many(m, target, &[tool], control)
+}
+
+/// `target` minus every one of `tools`, in one decomposition: the
+/// boolean difference of a solid and several, whose faces lie on planes
+/// and cylinders (ADR-0050).
+///
+/// Guarantees. [`cut`]'s, for each tool: the result is the solid the
+/// chain of two-operand cuts gives — the same volume, area and counts —
+/// but made by one General Fuse (ADR-0004) over the target and every
+/// tool, so every section vertex is made once and shared, every face is
+/// split once by every section on it, and each piece is classified
+/// against every other operand whose box holds a point of it and kept by
+/// the selection table: a piece of the target outside every tool, a piece
+/// of a tool inside the target and outside every other tool, reversed.
+/// Every entity of the target no tool touched keeps its id. The
+/// provenance is one record naming each tool: the result's body is
+/// `Modified` from the target's; every entity of every tool is `Deleted`
+/// and a piece of it that survives is `Generated` from the tool entity it
+/// is a piece of; a section edge is `Generated` from both faces of its
+/// pair. The ids are a function of the order of `tools` (split order,
+/// ADR-0009); the geometry is not. A tool that misses the target is
+/// `Deleted` whole and changes nothing else. `cut(m, t, tool)` is
+/// `cut_many(m, t, &[tool])`.
+///
+/// The tools must not touch one another: a face of one that meets a
+/// face of another is refused as [`OpError::Unsupported`], naming the
+/// two faces, until tools overlapping each other are decomposed (the
+/// next step of the multi-tool boolean).
+///
+/// Errors, the model untouched on each: as [`cut`]'s, and
+/// [`crate::BooleanReason::NoTools`] for an empty `tools`,
+/// [`crate::BooleanReason::RepeatedOperand`] for a body twice among the
+/// target and the tools, naming it.
+///
+/// ```
+/// use arris_ops::{cut_many, primitive_box, primitive_cylinder};
+/// use arris_ops::measure::mass_properties;
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Control, Point3};
+/// use core::f64::consts::PI;
+///
+/// let mut m = Model::default();
+/// let none = Control::NONE;
+/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), &none)?;
+/// let mut holes = Vec::new();
+/// for x in [10.0, 20.0, 30.0] {
+///     let axis = Axis::z_at(Point3::new(x, 15.0, -1.0));
+///     holes.push(primitive_cylinder(&mut m, axis, 3.0, 12.0, &none)?.0);
+/// }
+/// let (plate_with_holes, provenance) = cut_many(&mut m, plate, &holes, &none)?;
+/// assert_eq!(m.faces(plate_with_holes)?.len(), 6 + 3);
+/// let volume = mass_properties(&m, plate_with_holes, &none)?.volume;
+/// assert!((volume - (12000.0 - 3.0 * PI * 9.0 * 10.0)).abs() < 1e-9 * 12000.0);
+/// // Every tool is in the record: its entities deleted, its wall generated.
+/// assert!(holes.iter().all(|h| provenance.is_deleted(arris_topo::Shape::new(h.id, arris_topo::Orientation::Forward))));
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn cut_many(
+    m: &mut Model,
+    target: Body,
+    tools: &[Body],
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
+    if tools.is_empty() {
+        return Err(refusal(target, BooleanReason::NoTools));
+    }
+    let operands: Vec<Body> = core::iter::once(target)
+        .chain(tools.iter().copied())
+        .collect();
+    many(m, &operands, result::Op::Cut, control)
+}
+
+/// `a` ∪ `b` ∪ …: the boolean union of any number of solids in one
+/// decomposition (ADR-0050).
+///
+/// Guarantees. [`fuse`]'s, over every operand at once: the solid the
+/// chain of two-operand fuses gives, made by one General Fuse, a piece of
+/// each operand kept when it is outside every other, in the operand's
+/// own orientation; entities reused from every operand, whatever the
+/// operation did not touch keeping its id; the result's body `Modified`
+/// from every operand's and each result shell from the operand shells its
+/// pieces came from, operands that do not meet being lumps of one solid.
+/// `fuse(m, a, b)` is `fuse_many(m, &[a, b])`. The ids are a function of
+/// the order of `bodies`; the geometry is not.
+///
+/// Every operand but the first must stay clear of every other of them,
+/// as [`cut_many`]'s tools must: a face of one meeting a face of another
+/// is [`OpError::Unsupported`], naming both. Put the body the others are
+/// fused onto first.
+///
+/// Errors, the model untouched on each: as [`fuse`]'s, and
+/// [`crate::BooleanReason::NoTools`] for fewer than two bodies,
+/// [`crate::BooleanReason::RepeatedOperand`] for a body twice.
+///
+/// ```
+/// use arris_ops::{fuse_many, primitive_box, primitive_cylinder};
+/// use arris_ops::measure::mass_properties;
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Control, Point3};
+/// use core::f64::consts::PI;
+///
+/// let mut m = Model::default();
+/// let none = Control::NONE;
+/// let (plate, _) = primitive_box(&mut m, Point3::origin(), Point3::new(60.0, 30.0, 10.0), &none)?;
+/// let mut bodies = vec![plate];
+/// for x in [15.0, 45.0] {
+///     let axis = Axis::z_at(Point3::new(x, 15.0, 5.0));
+///     bodies.push(primitive_cylinder(&mut m, axis, 4.0, 15.0, &none)?.0);
+/// }
+/// let (plate_with_bosses, _) = fuse_many(&mut m, &bodies, &none)?;
+/// assert_eq!(m.faces(plate_with_bosses)?.len(), 6 + 2 * 2);
+/// let volume = mass_properties(&m, plate_with_bosses, &none)?.volume;
+/// assert!((volume - (18000.0 + 2.0 * PI * 16.0 * 10.0)).abs() < 1e-9 * 18000.0);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn fuse_many(
+    m: &mut Model,
+    bodies: &[Body],
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
+    if bodies.len() < 2 {
+        return Err(match bodies.first() {
+            Some(&body) => refusal(body, BooleanReason::NoTools),
+            None => OpError::Degenerate {
+                entities: Vec::new(),
+                reason: Reason::Boolean(BooleanReason::NoTools),
+            },
+        });
+    }
+    many(m, bodies, result::Op::Fuse, control)
+}
+
+/// The refusal of a boolean over `operands` that names a body twice, and
+/// otherwise the boolean itself.
+fn many(
+    m: &mut Model,
+    operands: &[Body],
+    op: result::Op,
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
+    for (k, body) in operands.iter().enumerate() {
+        if operands[..k].iter().any(|b| b.id == body.id) {
+            return Err(refusal(*body, BooleanReason::RepeatedOperand));
+        }
+    }
+    for &body in operands {
+        crate::verify_input(m, body)?;
+    }
     let mut meter = Meter::new(control);
-    let i = pave::build(m, &[target, tool], &mut meter)?;
-    result::boolean(m, &i, result::Op::Cut, &mut meter)
+    let i = pave::build(m, operands, &mut meter)?;
+    result::boolean(m, &i, op, &mut meter)
+}
+
+/// `body` named by a boolean's refusal.
+fn refusal(body: Body, reason: BooleanReason) -> OpError {
+    OpError::Degenerate {
+        entities: vec![Shape::new(body.id, body.orientation)],
+        reason: Reason::Boolean(reason),
+    }
 }
 
 /// `a` ∪ `b`: the boolean union of two solids whose faces lie on planes
@@ -713,11 +872,7 @@ pub fn fuse(
     b: Body,
     control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    crate::verify_input(m, a)?;
-    crate::verify_input(m, b)?;
-    let mut meter = Meter::new(control);
-    let i = pave::build(m, &[a, b], &mut meter)?;
-    result::boolean(m, &i, result::Op::Fuse, &mut meter)
+    fuse_many(m, &[a, b], control)
 }
 
 /// `a` ∩ `b`: the boolean intersection of two solids whose faces lie on

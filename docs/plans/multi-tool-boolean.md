@@ -134,13 +134,22 @@ bound has to be established here.
   existing corpus fixture, dump, `interferences` doctest and property
   unchanged bit for bit; the arris-debug interference dump and draw take the
   new shape. Closes the backlog line.
-- [ ] Step 3 **[2]** — Disjoint tools: `cut_many` and `fuse_many` where no
+- [x] Step 3 **[2]** — Disjoint tools: `cut_many` and `fuse_many` where no
   two tools' faces have overlapping boxes, so every pair is target × tool;
   the N-ary selection with the box prefilter on classification; `cut` and
   `fuse` routed through them; `NoTools`, `RepeatedOperand` and the binding's
   arms. Fixtures move to `boolean/` and are blessed: the 2×2 and 10×10 hole
   grids, the fused bosses, a pattern on a cylinder wall (radial holes), a
   tool that misses the target (`Deleted` whole, the target's ids all kept).
+  Landed as found: the cylinder-wall fixture is two square pockets
+  (`radial-pockets-cut-many`), since round radial holes meet the wall in
+  saddle curves whose B-spline read-back stage of the corpus run takes 35 s
+  for two (the round case is a test against the chain, `multi_tool.rs`);
+  the 10×10 grid's corpus run is 170 s, about 1.7 s a hole of that same
+  read-back, so `boolean_plate_10x10_holes_cut_many` joins the slow set
+  (ADR-0032); tools meeting each other are refused as `Unsupported` until
+  step 4; the `NoTools`/`RepeatedOperand` refusals need no binding arm
+  (`arris-py` carries a boolean reason as its text).
 - [ ] Step 4 **[3]** — Overlapping tools: tool × tool pairs, the triple
   point on a face of a third operand, and the classification of a tool's
   piece against the target and every other tool. Fixtures: the slot of three

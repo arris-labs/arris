@@ -154,6 +154,16 @@ corpus_tests! {
     /// expected-error path.
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
     boolean_boss => run "boolean/boss";
+    /// A plate cut by a 2×2 grid of four disjoint holes in one call.
+    boolean_plate_2x2_holes_cut_many => run "boolean/plate-2x2-holes-cut-many";
+    /// A plate cut by a 10×10 grid of a hundred disjoint holes in one call: the multi-tool boolean's cost case; its corpus run is dominated by the B-spline read-back, about a second and a half a hole, so it is in the slow set.
+    boolean_plate_10x10_holes_cut_many => run "boolean/plate-10x10-holes-cut-many";
+    /// A plate fused with three bosses in one call.
+    boolean_plate_three_bosses_fuse_many => run "boolean/plate-three-bosses-fuse-many";
+    /// A cylinder cut by two square pockets in its wall in one call: the tools' planes meet the target's wall in rulings and arcs.
+    boolean_radial_pockets_cut_many => run "boolean/radial-pockets-cut-many";
+    /// A plate cut by two tools that miss it: both deleted whole, every id of the plate kept.
+    boolean_cut_many_tools_miss_target => run "boolean/cut-many-tools-miss-target";
     /// The boss's bottom cap coincident with the plate's top: the cap
     /// vanishes, the plate's top is split by the cap's rim and keeps the
     /// outside, and the rim is the wall's own edge.
@@ -1375,15 +1385,6 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
-    /// A plate cut by a 2×2 grid of four disjoint holes in one call.
-    #[ignore = "the runner refuses a cut of more than one tool until the multi-tool boolean lands (plans/multi-tool-boolean step 3)"]
-    regression_plate_2x2_holes_cut_many => run "regression/plate-2x2-holes-cut-many";
-    /// A plate cut by a 10×10 grid of a hundred disjoint holes in one call.
-    #[ignore = "the runner refuses a cut of more than one tool until the multi-tool boolean lands (plans/multi-tool-boolean step 3)"]
-    regression_plate_10x10_holes_cut_many => run "regression/plate-10x10-holes-cut-many";
-    /// A plate fused with three bosses in one call.
-    #[ignore = "the runner refuses a fuse of more than two bodies until the multi-tool boolean lands (plans/multi-tool-boolean step 3)"]
-    regression_plate_three_bosses_fuse_many => run "regression/plate-three-bosses-fuse-many";
     /// A plate cut by three overlapping holes in a row: one slot.
     #[ignore = "tool against tool sections, plans/multi-tool-boolean step 4"]
     regression_slot_three_overlapping_holes_cut_many => run "regression/slot-three-overlapping-holes-cut-many";

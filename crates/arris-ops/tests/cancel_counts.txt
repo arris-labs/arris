@@ -26,6 +26,7 @@ boolean/corner-cut: 42
 boolean/corner-union: 42
 boolean/cross-cylinders-common: 6056
 boolean/cross-cylinders-fuse: 6056
+boolean/cut-many-tools-miss-target: 24
 boolean/cylinder-prism-common-chamfer-cut-loops-intersect: 1476
 boolean/cylinder-revolve-common-fillet-box-fuse: 35164
 boolean/disjoint-cut: 18
@@ -71,11 +72,15 @@ boolean/pin-in-bore-fuse: 20
 boolean/pin-in-bore-fuse-band-ends: 20
 boolean/pipe-elbow-fuse: 5026
 boolean/pipe-elbow-fuse-band-ends: 5026
+boolean/plate-10x10-holes-cut-many: 1412
+boolean/plate-2x2-holes-cut-many: 68
+boolean/plate-three-bosses-fuse-many: 42
 boolean/pole-slice-beside-seam-cut: 3920
 boolean/posed-through-hole: 34
 boolean/probe-blind-hole-m: 22
 boolean/probe-flush-union-m: 125
 boolean/probe-through-hole-m: 26
+boolean/radial-pockets-cut-many: 78
 boolean/revolve-cylinder-cut-box-fuse-builder-fault: 29969
 boolean/revolve-extrude-fuse-cut-rounding-knots: 758682
 boolean/ring-corner-common: 94526

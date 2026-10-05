@@ -262,6 +262,7 @@ pub(super) fn build<'c>(
         // Nothing to decompose: an operand against none.
         return Ok(Interferences {
             operands: operands.to_vec(),
+            bounds: operand_bounds(&faces),
             pairs: Vec::new(),
             hits: Vec::new(),
             section_crossings: Vec::new(),
@@ -345,6 +346,19 @@ fn region(first: &[FaceInfo<'_>], second: &[FaceInfo<'_>]) -> Aabb {
         return a.union(b);
     }
     overlap.inflated(overlap.diagonal())
+}
+
+/// Each operand's box: the union of its faces' boxes.
+fn operand_bounds(faces: &[Vec<FaceInfo<'_>>]) -> Vec<Aabb> {
+    faces
+        .iter()
+        .map(|side| {
+            side.iter()
+                .map(|f| f.bounds)
+                .reduce(Aabb::union)
+                .unwrap_or(Aabb::of_point(Point3::origin()))
+        })
+        .collect()
 }
 
 fn shape_of(body: Body) -> Shape {
@@ -603,6 +617,7 @@ impl<'m, 'c> Build<'m, 'c> {
         let vertices = self.vertices.iter().map(|v| v.finish(m)).collect();
         Interferences {
             operands: self.operands,
+            bounds: operand_bounds(&self.faces),
             pairs: self.pairs,
             hits: self.hits,
             section_crossings: self.section_crossings,

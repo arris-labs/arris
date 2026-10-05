@@ -15,6 +15,7 @@ not (
   test(/^real_/)
   or test(=guard::coverage)
   or test(=boolean_fixtures_read_back)
+  or test(=boolean_plate_10x10_holes_cut_many)
   or test(=part::tests::a_battery_stage_is_held_to_its_class)
   or test(=a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was)
 )

@@ -1,0 +1,126 @@
+{
+  "description": "cylinder r 20, z 0 to 40, with two square pockets 6 wide entering its wall at z 10 and 24 (a pattern of boxes), one cut with two tools whose planes meet the target's wall in rulings and arcs and whose far faces are inside it: genus 0",
+  "params": {
+    "R": 20
+  },
+  "steps": [
+    {
+      "name": "drum",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "R",
+      "height": 40
+    },
+    {
+      "name": "pocket",
+      "op": "box",
+      "min": [
+        10,
+        -3,
+        10
+      ],
+      "max": [
+        30,
+        3,
+        16
+      ]
+    },
+    {
+      "name": "pockets",
+      "op": "pattern",
+      "of": "pocket",
+      "step": [
+        0,
+        0,
+        14
+      ],
+      "count": 2
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "drum",
+      "tools": [
+        "pockets"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        10,
+        20
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        0,
+        50
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_pocket",
+      "point": [
+        15,
+        0,
+        13
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_far_pocket",
+      "point": [
+        15,
+        0,
+        27
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "behind_floor",
+      "point": [
+        5,
+        0,
+        13
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_cap",
+      "point": [
+        0,
+        5,
+        40
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_pocket_wall",
+      "point": [
+        15,
+        3,
+        13
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

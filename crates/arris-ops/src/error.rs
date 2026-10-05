@@ -233,6 +233,14 @@ pub enum BooleanReason {
     /// built, and so is clear of it; the error's entities are the face,
     /// the other face of the pair and the singular vertex.
     BesideSingularity,
+    /// A boolean over several tools was given none, or a fuse of several
+    /// bodies fewer than two: there is nothing to combine. The error's
+    /// entities are the target, or the one body.
+    NoTools,
+    /// One body is an operand of a boolean twice — a tool listed twice, or
+    /// the target among its tools — so its faces would be cut by
+    /// themselves. The error's entity is the body.
+    RepeatedOperand,
 }
 
 impl BooleanReason {
@@ -243,6 +251,8 @@ impl BooleanReason {
             BooleanReason::Empty => "Empty",
             BooleanReason::TangentContact => "TangentContact",
             BooleanReason::BesideSingularity => "BesideSingularity",
+            BooleanReason::NoTools => "NoTools",
+            BooleanReason::RepeatedOperand => "RepeatedOperand",
         }
     }
 }
@@ -257,6 +267,12 @@ impl core::fmt::Display for BooleanReason {
             BooleanReason::BesideSingularity => f.write_str(
                 "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves",
             ),
+            BooleanReason::NoTools => {
+                f.write_str("the boolean has no tool, or fewer than two bodies, to combine")
+            }
+            BooleanReason::RepeatedOperand => {
+                f.write_str("a body is an operand of the boolean twice")
+            }
         }
     }
 }
@@ -916,6 +932,16 @@ mod tests {
                 "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves",
             ),
             (
+                Reason::Boolean(BooleanReason::NoTools),
+                "NoTools",
+                "the boolean has no tool, or fewer than two bodies, to combine",
+            ),
+            (
+                Reason::Boolean(BooleanReason::RepeatedOperand),
+                "RepeatedOperand",
+                "a body is an operand of the boolean twice",
+            ),
+            (
                 Reason::Blend(BlendReason::NoEdges),
                 "NoEdges",
                 "no edges were given to blend",
@@ -976,7 +1002,7 @@ mod tests {
                 "the surface's parametrisation is singular there: it has no normal",
             ),
         ];
-        assert_eq!(leaves.len(), 26);
+        assert_eq!(leaves.len(), 28);
         for (reason, name, message) in leaves {
             assert_eq!(reason.name(), name);
             assert_eq!(reason.to_string(), message, "{name}");

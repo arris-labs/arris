@@ -20,6 +20,20 @@ pub fn fuse(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpErr
     arris_ops::fuse(m, a, b, &Control::NONE)
 }
 
+/// [`arris_ops::cut_many`] to its end.
+pub fn cut_many(
+    m: &mut Model,
+    target: Body,
+    tools: &[Body],
+) -> Result<(Body, Provenance), OpError> {
+    arris_ops::cut_many(m, target, tools, &Control::NONE)
+}
+
+/// [`arris_ops::fuse_many`] to its end.
+pub fn fuse_many(m: &mut Model, bodies: &[Body]) -> Result<(Body, Provenance), OpError> {
+    arris_ops::fuse_many(m, bodies, &Control::NONE)
+}
+
 /// [`arris_ops::common`] to its end.
 pub fn common(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpError> {
     arris_ops::common(m, a, b, &Control::NONE)
@@ -28,6 +42,11 @@ pub fn common(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpE
 /// [`arris_ops::boolean::interferences`] to its end.
 pub fn interferences(m: &Model, a: Body, b: Body) -> Result<Interferences, OpError> {
     arris_ops::boolean::interferences(m, a, b, &Control::NONE)
+}
+
+/// [`arris_ops::boolean::interferences_many`] to its end.
+pub fn interferences_many(m: &Model, operands: &[Body]) -> Result<Interferences, OpError> {
+    arris_ops::boolean::interferences_many(m, operands, &Control::NONE)
 }
 
 /// [`arris_ops::primitive_box`] to its end.

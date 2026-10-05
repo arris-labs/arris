@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a4058384e17c6281eae9e5f9f6514871e911243dd67fb00615d568c472219971",
+  "results": {
+    "default": {
+      "area": 8012.312751723659,
+      "centroid": [
+        -0.21577811544884484,
+        -8.600145711636098e-16,
+        20.000000000000004
+      ],
+      "counts": {
+        "edges": 33,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 22
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          11689323.60699962,
+          6.184683230726336e-10,
+          8.731149137020111e-10
+        ],
+        [
+          6.184683230726336e-10,
+          11523299.919535182,
+          7.833374632022504e-13
+        ],
+        [
+          8.731149137020111e-10,
+          7.833374632022504e-13,
+          9882811.360418718
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 33,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 22
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.0,
+            10.0,
+            20.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            0.0,
+            0.0,
+            50.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_pocket",
+          "point": [
+            15.0,
+            0.0,
+            13.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_far_pocket",
+          "point": [
+            15.0,
+            0.0,
+            27.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "behind_floor",
+          "point": [
+            5.0,
+            0.0,
+            13.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            0.0,
+            5.0,
+            40.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_pocket_wall",
+          "point": [
+            15.0,
+            3.0,
+            13.0
+          ]
+        }
+      ],
+      "volume": 49550.90083051031
+    }
+  }
+}

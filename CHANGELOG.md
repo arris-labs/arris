@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_ops::cut_many(model, target, tools, control)` and
+  `arris_ops::fuse_many(model, bodies, control)` cut or fuse any number of
+  bodies in one call: a plate with a pattern of holes or bosses is one
+  boolean over one decomposition, the same solid the chain of two-operand
+  booleans gives, with one provenance record naming each tool (its entities
+  deleted, its surviving walls generated from it) and every entity no tool
+  touched keeping its id. `cut` and `fuse` are their one-tool case. The
+  tools must stay clear of one another for now: a face of one tool meeting a
+  face of another is refused as `Unsupported`, naming both faces. An empty
+  `tools`, fewer than two `bodies` and a body named twice are refused as
+  `BooleanReason::NoTools` and `RepeatedOperand`.
 - `arris_ops::boolean::interferences_many(model, operands, control)` is the
   boolean's decomposition over any number of operands in one build: every
   face pair of two different operands whose boxes overlap, the section
@@ -101,6 +112,12 @@ into its version (ADR-0027).
   `pair.operands` for a pair's sides, and `image.operand == 0` for
   `image.side == 0`. `interferences(model, a, b, control)` keeps its
   signature.
+- `arris_ops::BooleanReason` gains `NoTools` and `RepeatedOperand`, the
+  refusals of `cut_many` and `fuse_many`. An exhaustive `match` on
+  `BooleanReason` adds its arms.
+- `arris_ops::boolean::Interferences` gains `bounds: Vec<Aabb>`, each
+  operand's box. Fix: a struct literal names it; a reader of the fields is
+  unaffected.
 
 ## 0.5.0 — 2026-10-05
 
