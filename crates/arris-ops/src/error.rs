@@ -26,6 +26,9 @@ pub enum Reason {
     /// An offset of faces refused its faces, or a move that would change
     /// the body's topology.
     Offset(OffsetReason),
+    /// A shell refused its openings; what the offset of its walls refuses
+    /// is the offset's reason.
+    Shell(ShellReason),
     /// A query refused the shape or the point it was handed.
     Query(QueryReason),
 }
@@ -47,6 +50,7 @@ impl Reason {
             Reason::Boolean(reason) => reason.name(),
             Reason::Blend(reason) => reason.name(),
             Reason::Offset(reason) => reason.name(),
+            Reason::Shell(reason) => reason.name(),
             Reason::Query(reason) => reason.name(),
         }
     }
@@ -60,6 +64,7 @@ impl core::fmt::Display for Reason {
             Reason::Boolean(reason) => reason.fmt(f),
             Reason::Blend(reason) => reason.fmt(f),
             Reason::Offset(reason) => reason.fmt(f),
+            Reason::Shell(reason) => reason.fmt(f),
             Reason::Query(reason) => reason.fmt(f),
         }
     }
@@ -414,6 +419,52 @@ impl core::fmt::Display for OffsetReason {
             ),
             OffsetReason::SelfIntersects => {
                 f.write_str("the offset body's faces run into each other")
+            }
+        }
+    }
+}
+
+/// A shell refused its openings (ADR-0049 §5). Everything the offset of
+/// its walls refuses — a vanishing edge, a split vertex, a collapsing
+/// surface, a skin running into the outer faces — is [`Reason::Offset`],
+/// naming the entity, since it is the offset's.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ShellReason {
+    /// Every face of the body is an opening, so there is no wall to
+    /// thicken; the error's entity is the body.
+    NoWalls,
+    /// An opening is listed twice; the error's entity is the face.
+    RepeatedOpening,
+    /// An opening resolves in the model but is not a face of the body the
+    /// shell was asked to hollow; the error's entities are the face and
+    /// the body.
+    OpeningNotInBody,
+    /// An opening is tangent to a wall, which the wall's offset would
+    /// drag along with it (ADR-0048 §6): an opening stays where it is, so
+    /// the two cannot both hold. The error's entity is the opening.
+    OpeningDragged,
+}
+
+impl ShellReason {
+    /// The variant's name, as [`Reason::name`] gives it.
+    pub fn name(&self) -> &'static str {
+        match self {
+            ShellReason::NoWalls => "NoWalls",
+            ShellReason::RepeatedOpening => "RepeatedOpening",
+            ShellReason::OpeningNotInBody => "OpeningNotInBody",
+            ShellReason::OpeningDragged => "OpeningDragged",
+        }
+    }
+}
+
+impl core::fmt::Display for ShellReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ShellReason::NoWalls => f.write_str("every face is an opening, so no wall is left"),
+            ShellReason::RepeatedOpening => f.write_str("an opening is listed twice"),
+            ShellReason::OpeningNotInBody => f.write_str("the opening is not a face of the body"),
+            ShellReason::OpeningDragged => {
+                f.write_str("the opening is tangent to a wall whose offset would drag it")
             }
         }
     }

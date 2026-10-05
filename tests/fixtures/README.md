@@ -21,7 +21,7 @@ directory: both files present and parseable, `expected.json` not stale, the
 Euler line zero, every `analytic` value matching the oracle to 1e-6
 relative, counts and probe expectations exactly — and every solid under
 `primitive/`, `build/`, `transform/`, `boolean/`, `sweep/`,
-`provenance/`, `blend/` or `offset/` that the
+`provenance/`, `blend/`, `offset/` or `shell/` that the
 runner compares (the oracle built a solid, the recipe expects no refusal)
 carrying its committed dump per variant, which a fixture only has once it
 passed and was blessed. An `#[ignore]`d fixture in those areas therefore

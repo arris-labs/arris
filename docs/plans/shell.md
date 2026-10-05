@@ -113,7 +113,7 @@ bound has to be established here.
   top, inward and outward, a closed box (a void), a box open on top and one
   side (adjacent openings), a box open on two opposite faces (a square tube),
   an L-bracket open on one face. ADR-0049 written here.
-- [ ] Step 2 **[3]** — The planar core with no shared edge between openings:
+- [x] Step 2 **[3]** — The planar core with no shared edge between openings:
   split `offset::build` into the offset's pieces and its rewrite, then
   `shell` over bodies of planes, none or any non-adjacent openings, both
   sides. The assembly: outer faces, the inner skin, each opening's rim
@@ -196,7 +196,18 @@ job's pytest, docstring examples and `mypy.stubtest` green.
   driver builds the void as the body less its inward offset (or its outward
   offset less the body), which gives the closed forms. No fixture needs
   `analytic.measure_differs`.
-- ⚠ OPEN: Does the assembler take an inner shell on a body today, and does
-  `mass_properties` integrate a body of two shells with the second
-  reversed? Agent decides at step 2; if either needs a change it is a
-  design delta there and a line in the commit body.
+- Answered at step 2: the assembler takes a body of several shells and a
+  kept face used reversed (`FaceSpec::Keep` with either orientation), the
+  checker nests the void at `Full`, and `mass_properties` integrates every
+  face use of the body, so a reversed second shell subtracts: no change to
+  either. The shell builds its `Assembly` itself rather than through
+  `rebuild::rewrite`, whose stored→effective walk it shares
+  (`rebuild::stored_to_spec`).
+- Found at step 2: a wall kept by id that also has its skin copy
+  `Generated` from it is recorded `Modified` into itself, or the audit finds
+  it recorded with no origin — what the plan's provenance line meant by
+  "Modified from itself". `OpeningDragged` landed with the other
+  `ShellReason`s at step 2, read off the offset's moved set, since a dragged
+  opening would otherwise reach the checker as `Internal`; step 5 keeps its
+  fixtures. Until step 3, two openings sharing an edge (or one across its
+  own seam) are `OpError::Unsupported` naming both.

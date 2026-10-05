@@ -212,7 +212,8 @@ fn every_area_is_known() {
                 "sweep",
                 "provenance",
                 "blend",
-                "offset"
+                "offset",
+                "shell"
             ]
             .contains(&a),
             "{a} has no read-back test"
@@ -258,6 +259,11 @@ fn blend_fixtures_read_back() {
 #[test]
 fn offset_fixtures_read_back() {
     area("offset");
+}
+
+#[test]
+fn shell_fixtures_read_back() {
+    area("shell");
 }
 
 /// A cylinder's STEP, as Arris writes it.

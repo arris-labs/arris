@@ -64,6 +64,10 @@ into its version (ADR-0027).
   `NoExactOffset`, `SurfaceCollapses`, `Gap`, `SelfIntersects` —
   the refusals of `offset_faces`. An exhaustive `match` on `Reason` adds
   its arm.
+- `arris_ops::Reason` gains the group `Reason::Shell(ShellReason)` —
+  `NoWalls`, `RepeatedOpening`, `OpeningNotInBody`, `OpeningDragged` —
+  the refusals of `shell` that are not its walls' offset's. An exhaustive
+  `match` on `Reason` adds its arm.
 
 ## 0.5.0 — 2026-10-05
 

@@ -434,7 +434,7 @@ mod tests {
     use arris::mesh::cdt::CdtError;
     use arris::ops::{
         BlendReason, BooleanReason, BuildSlot, Fault, InputReason, OffsetReason, QueryReason,
-        Reason, Rejection, SweepReason,
+        Reason, Rejection, ShellReason, SweepReason,
     };
     use arris::topo::entity::BodyKind;
     use arris::topo::{BodyId, EntityId, FaceId, NotFound};
@@ -499,6 +499,10 @@ mod tests {
             op_error(&OpError::Degenerate {
                 entities: vec![shape()],
                 reason: Reason::Offset(OffsetReason::VertexSplits),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
+                reason: Reason::Shell(ShellReason::NoWalls),
             }),
             op_error(&OpError::Degenerate {
                 entities: vec![shape()],

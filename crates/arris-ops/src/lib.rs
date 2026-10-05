@@ -1,7 +1,7 @@
 //! Operations of the Arris kernel: primitives, `build` for a consumer's
 //! own topology, planar profiles, extrude,
 //! revolve, transform, the booleans (and `boolean::interferences`, their
-//! decomposition as a value), the blends (`fillet`, `chamfer`), `offset_faces`, `measure` for
+//! decomposition as a value), the blends (`fillet`, `chamfer`), `offset_faces`, `shell`, `measure` for
 //! mass properties, and `query` for the projection of edges and vertices
 //! onto a plane.
 //!
@@ -40,6 +40,7 @@ mod pass;
 mod primitive;
 pub mod query;
 mod rebuild;
+mod shell;
 mod sweep;
 mod transform;
 
@@ -50,11 +51,12 @@ pub use boolean::{common, cut, fuse};
 pub use build::{BuildKeys, BuildSlot, Rejection, build};
 pub use error::{
     BlendReason, BooleanReason, Fault, InputReason, OffsetReason, OpError, QueryReason, Reason,
-    SplitFault, SweepReason,
+    ShellReason, SplitFault, SweepReason,
 };
 pub use mirror::mirror;
 pub use offset::offset_faces;
 pub use primitive::{primitive_box, primitive_cylinder};
+pub use shell::{ShellSide, shell};
 pub use sweep::{extrude, revolve};
 pub use transform::transform;
 

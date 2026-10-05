@@ -484,6 +484,30 @@ pub(crate) struct Rewrite {
     pub added: Vec<AddedFace>,
 }
 
+/// `loops`, written in the stored sense, as the effective walks a face
+/// used with `orientation` hands the builder.
+pub(crate) fn stored_to_spec(
+    orientation: Orientation,
+    loops: &[Vec<StoredUse>],
+) -> Vec<Vec<UseSpec>> {
+    loops
+        .iter()
+        .map(|l| {
+            effective_uses(
+                orientation,
+                l.iter().map(|u| (u.edge, u.orientation, u.pcurve)),
+            )
+            .into_iter()
+            .map(|(edge, orientation, pcurve)| UseSpec {
+                edge,
+                orientation,
+                pcurve,
+            })
+            .collect()
+        })
+        .collect()
+}
+
 /// What [`rewrite`] built: the body, the ids behind the rewrite's new
 /// vertices, edges and added faces, and the generic half
 /// of the provenance — every operand entity kept, `Modified` into its
@@ -536,25 +560,6 @@ pub(crate) fn rewrite_unverified(
         edges: rewrite.edges.iter().map(|(spec, _)| *spec).collect(),
         shells: Vec::with_capacity(shells.len()),
     };
-    let stored_to_spec =
-        |orientation: Orientation, loops: &[Vec<StoredUse>]| -> Vec<Vec<UseSpec>> {
-            loops
-                .iter()
-                .map(|l| {
-                    effective_uses(
-                        orientation,
-                        l.iter().map(|u| (u.edge, u.orientation, u.pcurve)),
-                    )
-                    .into_iter()
-                    .map(|(edge, orientation, pcurve)| UseSpec {
-                        edge,
-                        orientation,
-                        pcurve,
-                    })
-                    .collect()
-                })
-                .collect()
-        };
     // Where each replaced and added face sits in the assembly's shells.
     let mut replaced_at: BTreeMap<FaceId, (usize, usize)> = BTreeMap::new();
     let mut added_at: Vec<(usize, usize)> = Vec::with_capacity(rewrite.added.len());

@@ -99,6 +99,17 @@ pub fn offset_faces(
     arris_ops::offset_faces(m, body, faces, distance, &Control::NONE)
 }
 
+/// [`arris_ops::shell`] to its end.
+pub fn shell(
+    m: &mut Model,
+    body: Body,
+    openings: &[Face],
+    thickness: f64,
+    side: arris_ops::ShellSide,
+) -> Result<(Body, Provenance), OpError> {
+    arris_ops::shell(m, body, openings, thickness, side, &Control::NONE)
+}
+
 /// [`arris_ops::transform`] to its end.
 pub fn transform(
     m: &mut Model,

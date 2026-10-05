@@ -22,7 +22,7 @@ use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::step::{ReadError, Refusal};
 use arris_ops::{
     BlendReason, BooleanReason, InputReason, OffsetReason, OpError, QueryReason, Reason,
-    SweepReason,
+    ShellReason, SweepReason,
 };
 use arris_topo::{EntityId, Model};
 
@@ -351,6 +351,11 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             Reason::Offset(OffsetReason::SurfaceCollapses) => Cycle::Itself("SurfaceCollapses"),
             Reason::Offset(OffsetReason::Gap) => Cycle::Itself("Gap"),
             Reason::Offset(OffsetReason::SelfIntersects) => Cycle::Itself("SelfIntersects"),
+            // Nor any shell.
+            Reason::Shell(ShellReason::NoWalls) => Cycle::Itself("NoWalls"),
+            Reason::Shell(ShellReason::RepeatedOpening) => Cycle::Itself("RepeatedOpening"),
+            Reason::Shell(ShellReason::OpeningNotInBody) => Cycle::Itself("OpeningNotInBody"),
+            Reason::Shell(ShellReason::OpeningDragged) => Cycle::Itself("OpeningDragged"),
             Reason::Query(QueryReason::NotProjectable) => Cycle::Itself("NotProjectable"),
             Reason::Query(QueryReason::DegenerateEdge) => Cycle::Itself("DegenerateEdge"),
             Reason::Query(QueryReason::ProjectionCollapses) => Cycle::Itself("ProjectionCollapses"),

@@ -178,6 +178,17 @@ pub fn offset_faces(
     m.transaction(|m| build(m, body, &selected, distance, &mut meter))
 }
 
+/// The offset's pieces before the body is rebuilt: the rewrite that moves
+/// the faces — new vertices with their parents, new edges with theirs,
+/// each touched face's new loops and each moved face's new surface — and
+/// the faces that move, the chosen ones closed over tangent edges.
+/// `offset_faces` rewrites the body with it in place; `shell` keeps the
+/// body and assembles the moved faces beside it as a second skin.
+pub(crate) struct Offset {
+    pub(crate) rewrite: rebuild::Rewrite,
+    pub(crate) moved: BTreeSet<FaceId>,
+}
+
 /// The offset of `chosen` by `distance`, built and checked.
 fn build(
     m: &mut Model,
@@ -186,6 +197,21 @@ fn build(
     distance: f64,
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
+    let offset = pieces(m, body, chosen, distance, meter)?;
+    let out = rebuild::rewrite_unverified(m, body, offset.rewrite)?;
+    checked_full(m, out.body)?;
+    Ok((out.body, out.provenance))
+}
+
+/// The phases of the offset of `chosen` by `distance` up to the rewrite:
+/// the chain, the moves, the vertices, the edges and the faces' new loops.
+pub(crate) fn pieces(
+    m: &mut Model,
+    body: Body,
+    chosen: &BTreeSet<FaceId>,
+    distance: f64,
+    meter: &mut Meter<'_>,
+) -> Result<Offset, OpError> {
     let tol = m.precision().tolerance();
     let view = BodyView::of(m, body)?;
     let chain = chain::chain(m, &view, chosen, distance, tol)?;
@@ -193,14 +219,24 @@ fn build(
     let carried = chain::carried(m, &view, &chain, distance, tol)?;
     let points = vertices::moved_vertices(m, &view, &moves, &carried, tol, meter)?;
     let edges = edges::moved_edges(m, &view, &moves, &carried, &points, tol, meter)?;
-    let rw = faces::rewrite_of(m, &view.faces, &moves, &points, &edges, tol, meter)?;
-    let out = rebuild::rewrite_unverified(m, body, rw)?;
-    let report = arris_check::check(m, out.body, Level::Full);
-    if !report.is_ok() {
-        return Err(self_intersection(&report)
-            .unwrap_or_else(|| OpError::Internal(Fault::Checker(Box::new(report)))));
+    let rewrite = faces::rewrite_of(m, &view.faces, &moves, &points, &edges, tol, meter)?;
+    Ok(Offset {
+        rewrite,
+        moved: chain.moved,
+    })
+}
+
+/// The checker at `Level::Full` on `body`, in every build profile
+/// (ADR-0048 §7): a report of global violations alone is
+/// [`OffsetReason::SelfIntersects`], any other the construction's own
+/// fault, [`OpError::Internal`] with the report.
+pub(crate) fn checked_full(m: &Model, body: Body) -> Result<(), OpError> {
+    let report = arris_check::check(m, body, Level::Full);
+    if report.is_ok() {
+        return Ok(());
     }
-    Ok((out.body, out.provenance))
+    Err(self_intersection(&report)
+        .unwrap_or_else(|| OpError::Internal(Fault::Checker(Box::new(report)))))
 }
 
 /// [`OffsetReason::SelfIntersects`] naming what the report names, when

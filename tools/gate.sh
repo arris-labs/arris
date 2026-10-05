@@ -22,7 +22,8 @@
 #   crates/<c>/{tests,benches,examples}   <c> alone
 #   crates/arris-{math,geom,topo,check,io}, arris-ops/src/boolean
 #                                     corpus `boolean_*` and `provenance_*`
-#   arris-ops/src/{sweep,blend,offset,transform,mirror}   that area's corpus tests
+#   arris-ops/src/{sweep,blend,offset,shell,transform,mirror}   that area's corpus tests
+#                                     (offset/ reaches shell/ too: shell is built over it)
 #   any other crate source (mesh, debug, the rest of ops)   the whole corpus
 #   crates/arris-py/ (anything)       its own tests and its rdeps (none), no
 #                                     corpus: the binding adds no geometry, and
@@ -94,7 +95,8 @@ while IFS= read -r p; do
             src/boolean/*) need_corpus part; add_area boolean; add_area provenance ;;
             src/sweep.rs) need_corpus part; add_area sweep ;;
             src/blend.rs) need_corpus part; add_area blend ;;
-            src/offset/*) need_corpus part; add_area offset ;;
+            src/offset/*) need_corpus part; add_area offset; add_area shell ;;
+            src/shell/*) need_corpus part; add_area shell ;;
             src/transform.rs|src/mirror.rs) need_corpus part; add_area transform ;;
             *) corpus=all ;;
           esac ;;
@@ -105,7 +107,7 @@ while IFS= read -r p; do
     tests/fixtures/*/*)
       a=${p#tests/fixtures/}; a=${a%%/*}
       case "$a" in
-        blend|boolean|build|offset|primitive|provenance|sweep|transform|real)
+        blend|boolean|build|offset|primitive|provenance|shell|sweep|transform|real)
           add_term "package(arris)"; need_corpus part; add_area "$a" ;;
         *) whole=yes ;;
       esac ;;

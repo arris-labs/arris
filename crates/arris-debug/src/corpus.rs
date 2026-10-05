@@ -35,7 +35,7 @@ use crate::dump::dump_text;
 use crate::fixtures::geom::{self as geom_spec, build_profile};
 use crate::fixtures::{
     self, Class, Counts, ExpectError, Expected, ExprError, Fixture, FixtureError, Measured, Num,
-    Recipe, Rotate, Step, Tolerances,
+    Recipe, Rotate, ShellSide, Step, Tolerances,
 };
 use crate::oracle::{self, OracleError};
 use crate::polyhedron::{PolyhedronError, polyhedron};
@@ -133,18 +133,6 @@ pub enum CorpusError {
         /// The point.
         point: [f64; 3],
         /// What it names instead of one face.
-        what: String,
-    },
-    /// A step names an operation Arris does not run yet: the recipe is
-    /// the oracle's and the fixture waits (`regression/`) for the plan
-    /// that adds the operation.
-    #[error("{fixture}: step {step:?}: {what}")]
-    Unsupported {
-        /// The fixture.
-        fixture: String,
-        /// The step's name.
-        step: String,
-        /// What is not run yet.
         what: String,
     },
     /// The recipe's `precision` is not a consistent
@@ -779,7 +767,6 @@ impl CorpusError {
             | CorpusError::Profile { .. }
             | CorpusError::EdgePoint { .. }
             | CorpusError::FacePoint { .. }
-            | CorpusError::Unsupported { .. }
             | CorpusError::Precision { .. }
             | CorpusError::Axis { .. }
             | CorpusError::Plane { .. }
@@ -2042,11 +2029,35 @@ fn build_step(
                 vec![of_body],
             )
         }
-        Step::Shell { .. } => Err(CorpusError::Unsupported {
-            fixture: name.clone(),
-            step: step.name().to_string(),
-            what: "shell is not run by Arris yet (plans/shell step 2)".into(),
-        }),
+        Step::Shell {
+            of,
+            openings,
+            thickness,
+            side,
+            ..
+        } => {
+            let of_body = reference(fixture, step, of, made)?.body;
+            let mut selected = Vec::with_capacity(openings.len());
+            for p in openings {
+                let point = point(fixture, step, p, params)?;
+                let face = face_at(m, of_body, point).map_err(|what| CorpusError::FacePoint {
+                    fixture: name.clone(),
+                    step: step.name().to_string(),
+                    point: [point.x, point.y, point.z],
+                    what,
+                })?;
+                selected.push(face);
+            }
+            let thickness = number(fixture, step, thickness, params)?;
+            let side = match side {
+                ShellSide::Inward => arris_ops::ShellSide::Inward,
+                ShellSide::Outward => arris_ops::ShellSide::Outward,
+            };
+            body(
+                arris_ops::shell(m, of_body, &selected, thickness, side, control).map_err(op)?,
+                vec![of_body],
+            )
+        }
         Step::Polyhedron {
             points,
             faces,

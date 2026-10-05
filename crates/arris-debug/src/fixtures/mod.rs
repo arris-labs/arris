@@ -1139,7 +1139,7 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
 /// fixture there has passed and been blessed, and none is `#[ignore]`d.
 /// `real/` holds parts, whose lint holds their dumps the same way
 /// (`crate::part::lint`).
-pub const DUMPED_AREAS: [&str; 8] = [
+pub const DUMPED_AREAS: [&str; 9] = [
     "primitive",
     "build",
     "transform",
@@ -1148,6 +1148,7 @@ pub const DUMPED_AREAS: [&str; 8] = [
     "provenance",
     "blend",
     "offset",
+    "shell",
 ];
 
 /// The area a failure shrunk to a fixture waits in until it passes
