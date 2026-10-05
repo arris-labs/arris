@@ -453,6 +453,95 @@ pub fn recipe() -> impl Strategy<Value = Recipe> {
         })
 }
 
+/// How many tools a [`multi_tool_recipe`]'s one boolean takes.
+pub const TOOLS: RangeInclusive<usize> = 2..=4;
+
+/// Recipes of one `cut` with [`TOOLS`] tools or one `fuse` of one body
+/// more than that, in one call each (ADR-0050): operands as [`recipe`]'s,
+/// the chain of two-operand booleans [`recipe`] would write folded into
+/// the one multi-tool step, so the differential holds the one call to
+/// Open CASCADE's multi-tool boolean. A separate draw, so [`recipe`]'s
+/// seeded stream is unchanged.
+pub fn multi_tool_recipe() -> impl Strategy<Value = Recipe> {
+    (
+        proptest::collection::vec(operand(), TOOLS.start() + 1..=TOOLS.end() + 1),
+        prop_oneof![Just(Op::Fuse), Just(Op::Cut)],
+        prop_oneof![Just(Isometry::identity()), pose()],
+    )
+        .prop_map(|(operands, op, shared)| {
+            let ops = vec![op; operands.len() - 1];
+            fold_run(write(&operands, &ops, &shared))
+        })
+}
+
+/// `recipe` with its trailing chain of one kind of boolean — each step
+/// taking the one before it as `a` or `target` — written as one multi-tool
+/// step named as the last, and the steps it replaces dropped. A recipe
+/// whose booleans do not chain is returned as it is.
+fn fold_run(mut recipe: Recipe) -> Recipe {
+    let mut tail: Vec<Step> = Vec::new();
+    while matches!(
+        recipe.steps.last(),
+        Some(Step::Fuse { .. } | Step::Cut { .. })
+    ) {
+        tail.push(recipe.steps.pop().expect("a step was just seen"));
+    }
+    tail.reverse();
+    let mut folded: Option<Step> = None;
+    for step in tail {
+        folded = Some(match (folded.take(), step) {
+            (None, step) => step,
+            (
+                Some(Step::Cut {
+                    target,
+                    mut tools,
+                    tool,
+                    ..
+                }),
+                Step::Cut {
+                    name,
+                    tool: Some(next),
+                    ..
+                },
+            ) => {
+                tools.splice(0..0, tool);
+                tools.push(next);
+                Step::Cut {
+                    name,
+                    target,
+                    tool: None,
+                    tools,
+                }
+            }
+            (
+                Some(Step::Fuse {
+                    a, b, mut bodies, ..
+                }),
+                Step::Fuse {
+                    name,
+                    b: Some(next),
+                    ..
+                },
+            ) => {
+                bodies.splice(0..0, a.into_iter().chain(b));
+                bodies.push(next);
+                Step::Fuse {
+                    name,
+                    a: None,
+                    b: None,
+                    bodies,
+                }
+            }
+            (Some(previous), step) => {
+                recipe.steps.push(previous);
+                step
+            }
+        });
+    }
+    recipe.steps.extend(folded);
+    recipe
+}
+
 fn num3(v: [f64; 3]) -> [Num; 3] {
     v.map(Num::from)
 }

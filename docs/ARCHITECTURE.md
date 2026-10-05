@@ -1917,7 +1917,10 @@ B-Rep).
   `ValueTree` for at most `ARRIS_DIFF_SHRINK` candidates, the oracle run
   per candidate through its cache, and printed as a `fixture.json`;
   `crates/arris/tests/differential.rs` runs it and prints the
-  histogram). `prop` runs a
+  histogram; `prop::recipe::multi_tool_recipe` draws one multi-tool `cut`
+  or `fuse` of two to four tools in one call, a separate draw so the
+  general one's seeded stream is unchanged, and the differential runs it
+  against Open CASCADE's multi-tool boolean as well). `prop` runs a
   property whole through `check`, or split across `k` shards through
   `prop_shards!`, which writes one `#[test]` per shard over a body given
   once so libtest's pool runs them at once instead of one property holding

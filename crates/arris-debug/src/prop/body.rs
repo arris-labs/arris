@@ -1972,3 +1972,221 @@ mod tests {
         });
     }
 }
+
+/// The body a [`MultiCut`] cuts or fuses into, before its motion.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MultiTarget {
+    /// A box centred at the origin, `extent` across.
+    Box {
+        /// The three sides.
+        extent: Vec3,
+    },
+    /// A cylinder on the `z` axis centred at the origin.
+    Cylinder {
+        /// The radius.
+        radius: f64,
+        /// The height.
+        height: f64,
+    },
+    /// A rectangle with its four corners rounded, extruded along `z` and
+    /// centred at the origin: a rounded box.
+    Rounded {
+        /// The sides across `x` and `y`, and the height along `z`.
+        extent: Vec3,
+        /// The corners' radius, under half the shorter side.
+        corner: f64,
+    },
+}
+
+impl MultiTarget {
+    /// The body as one of `m`, before its motion.
+    pub fn build(&self, m: &mut Model) -> Result<Body, OpError> {
+        match *self {
+            MultiTarget::Box { extent } => {
+                Ok(primitive_box(m, Point3::from(-extent / 2.0), Point3::from(extent / 2.0))?.0)
+            }
+            MultiTarget::Cylinder { radius, height } => Ok(primitive_cylinder(
+                m,
+                Axis::z_at(Point3::new(0.0, 0.0, -height / 2.0)),
+                radius,
+                height,
+            )?
+            .0),
+            MultiTarget::Rounded { extent, corner: c } => {
+                let (a, b) = (extent.x / 2.0, extent.y / 2.0);
+                let p = Point2::new;
+                let k = c * core::f64::consts::FRAC_1_SQRT_2;
+                let outer = ProfileLoop::Path {
+                    start: p(-a + c, -b),
+                    segments: vec![
+                        ProfileSegment::LineTo(p(a - c, -b)),
+                        ProfileSegment::ArcTo {
+                            to: p(a, -b + c),
+                            via: p(a - c + k, -b + c - k),
+                        },
+                        ProfileSegment::LineTo(p(a, b - c)),
+                        ProfileSegment::ArcTo {
+                            to: p(a - c, b),
+                            via: p(a - c + k, b - c + k),
+                        },
+                        ProfileSegment::LineTo(p(-a + c, b)),
+                        ProfileSegment::ArcTo {
+                            to: p(-a, b - c),
+                            via: p(-a + c - k, b - c + k),
+                        },
+                        ProfileSegment::LineTo(p(-a, -b + c)),
+                        ProfileSegment::ArcTo {
+                            to: p(-a + c, -b),
+                            via: p(-a + c - k, -b + c - k),
+                        },
+                    ],
+                };
+                let plane = Frame::from_rotation(
+                    Point3::new(0.0, 0.0, -extent.z / 2.0),
+                    &UnitQuaternion::identity(),
+                );
+                let profile = Profile {
+                    plane,
+                    outer,
+                    holes: Vec::new(),
+                };
+                Ok(extrude(m, &profile, Vec3::z(), extent.z)?.0)
+            }
+        }
+    }
+
+    /// A box inside the body, centred at the origin: the volume a tool's
+    /// axis is drawn through, so every tool enters the body.
+    fn inner(&self) -> Vec3 {
+        match *self {
+            MultiTarget::Box { extent } => extent,
+            MultiTarget::Cylinder { radius, height } => {
+                let side = radius * core::f64::consts::SQRT_2 * 0.9;
+                Vec3::new(side, side, height)
+            }
+            MultiTarget::Rounded { extent, corner } => {
+                Vec3::new(extent.x - 2.0 * corner, extent.y - 2.0 * corner, extent.z)
+            }
+        }
+    }
+}
+
+/// One tool of a [`MultiCut`]: where its axis passes through the body's
+/// inner box (as fractions of it), its direction, and its radius as a
+/// fraction of the inner box's shortest side.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MultiTool {
+    /// The fractions of the inner box's sides, from its centre.
+    pub through: (f64, f64, f64),
+    /// The axis direction.
+    pub direction: UnitVec3,
+    /// The radius over the inner box's shortest side.
+    pub radius: f64,
+}
+
+/// A body and two to four cylinders through it in random directions, all
+/// under one motion: the operands of the multi-tool boolean's properties
+/// (ADR-0050). The tools meet the body and, in most draws, one another.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MultiCut {
+    /// The body.
+    pub target: MultiTarget,
+    /// The tools, in the order of the call.
+    pub tools: Vec<MultiTool>,
+    /// The motion every operand is under.
+    pub pose: Isometry,
+}
+
+impl MultiCut {
+    /// The body and the tools in `m`, each under the motion.
+    pub fn build(&self, m: &mut Model) -> Result<(Body, Vec<Body>), OpError> {
+        let target = {
+            let body = self.target.build(m)?;
+            transform(m, body, &self.pose)?.0
+        };
+        let inner = self.target.inner();
+        let diagonal = self.target_diagonal();
+        let shortest = inner.x.min(inner.y).min(inner.z);
+        let mut tools = Vec::with_capacity(self.tools.len());
+        for t in &self.tools {
+            let through = Point3::new(
+                (t.through.0 - 0.5) * inner.x,
+                (t.through.1 - 0.5) * inner.y,
+                (t.through.2 - 0.5) * inner.z,
+            );
+            let d = t.direction.into_inner();
+            let height = 3.0 * diagonal;
+            let axis =
+                Axis::new(through - (height / 2.0) * d, d).map_err(|_| OpError::Degenerate {
+                    entities: Vec::new(),
+                    reason: arris_ops::Reason::Input(arris_ops::InputReason::NonFinite {
+                        what: "tool axis",
+                    }),
+                })?;
+            let cylinder = Cylindrical {
+                axis,
+                radius: t.radius * shortest,
+                height,
+                pose: self.pose,
+            };
+            tools.push(cylinder.build(m)?);
+        }
+        Ok((target, tools))
+    }
+
+    fn target_diagonal(&self) -> f64 {
+        match self.target {
+            MultiTarget::Box { extent } | MultiTarget::Rounded { extent, .. } => extent.norm(),
+            MultiTarget::Cylinder { radius, height } => {
+                Vec3::new(2.0 * radius, 2.0 * radius, height).norm()
+            }
+        }
+    }
+}
+
+/// [`MultiCut`]s: a box, a cylinder or a rounded box, two to four tools
+/// through random interior points in random directions, a radius between
+/// a tenth and four tenths of the inner box's shortest side, all under
+/// one motion at [`DEFAULT_SCALE`].
+pub fn multi_cut() -> impl Strategy<Value = MultiCut> {
+    let target = prop_oneof![
+        extents().prop_map(|extent| MultiTarget::Box { extent }),
+        (
+            radius(MIN_EXTENT..=MAX_EXTENT / 2.0),
+            radius(MIN_EXTENT..=MAX_EXTENT)
+        )
+            .prop_map(|(radius, height)| MultiTarget::Cylinder {
+                // Keep the inscribed box a real solid.
+                radius: radius.max(MIN_EXTENT),
+                height,
+            }),
+        (extents(), finite_f64(0.15..=0.4)).prop_map(|(extent, f)| MultiTarget::Rounded {
+            extent,
+            corner: f * extent.x.min(extent.y),
+        }),
+    ];
+    let tool = (
+        (
+            finite_f64(0.1..=0.9),
+            finite_f64(0.1..=0.9),
+            finite_f64(0.1..=0.9),
+        ),
+        unit_vec3(),
+        finite_f64(0.1..=0.4),
+    )
+        .prop_map(|(through, direction, radius)| MultiTool {
+            through,
+            direction,
+            radius,
+        });
+    (
+        target,
+        proptest::collection::vec(tool, 2..=4),
+        pose_in(DEFAULT_SCALE),
+    )
+        .prop_map(|(target, tools, pose)| MultiCut {
+            target,
+            tools,
+            pose,
+        })
+}

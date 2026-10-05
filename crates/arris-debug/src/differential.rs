@@ -307,6 +307,12 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         covers: |o| counts_of(o, "shells").is_some_and(|(arris, oracle)| arris < oracle),
     },
     Exclusion {
+        name: "extra-shells",
+        fixtures: &["multi-tool-fuse-counts-differ"],
+        symptom: "more shells than Open CASCADE: a multi-tool fuse keeps apart what the oracle joins",
+        covers: |o| counts_of(o, "shells").is_some_and(|(arris, oracle)| arris > oracle),
+    },
+    Exclusion {
         name: "extra-faces",
         fixtures: &["revolve-cut-by-extrusion-extra-faces"],
         symptom: "more faces than Open CASCADE",

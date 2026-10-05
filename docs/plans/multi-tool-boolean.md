@@ -206,7 +206,7 @@ bound has to be established here.
   cancel record: the multi-tool fixtures were in it from step 3 and the
   two-operand counts did not move; a boolean's reason crosses to Python as
   its text, so one pytest covers both refusals.
-- [ ] Step 8 **[2]** — Properties, sharded and seeded: `cut_many` against
+- [x] Step 8 **[2]** — Properties, sharded and seeded: `cut_many` against
   the chained `cut`s and `fuse_many` against the chained `fuse`s (volume,
   area, counts) over random tools in random poses on boxes, cylinders and
   rounded boxes, overlapping and not; the result's geometry (volume, area,
@@ -214,6 +214,18 @@ bound has to be established here.
   `transform`; the result is an operand of fillet, chamfer, `offset_faces`,
   `shell` and every boolean, checker green; `prop::recipe` and the
   differential draw `cut`/`fuse` with two to four tools.
+  Landed as found: `prop::body::multi_cut` (a box, a cylinder or a
+  rounded box, two to four cylinders through it in random poses) and
+  `multi_tool_prop.rs`: the chains of `cut`s and `fuse`s, the order of the
+  tools, `transform`, and the result as an operand of a boolean, a
+  blend, `offset_faces` and `shell`. Counts compare shells and faces
+  exactly and edges and vertices up to a split edge, as the differential
+  compares them (see Open questions). A blend, an offset and a shell of a
+  random result that fault are held to the chain's result under the same
+  call; a fillet or chamfer fault is the blend cycle's residue
+  (backlog). The differential draws the multi-tool booleans as a separate
+  strategy, `prop::recipe::multi_tool_recipe` (a fold of the chain the
+  general draw writes), so `recipe()`'s seeded stream does not move.
 
 ## Acceptance
 
@@ -265,3 +277,9 @@ benchmark showing `cut_many` faster than the chain on the 10×10 grid; the
   own — a blind bore whose rim runs through four triple points of three
   orthogonal bores merges each with the rim's hits by the tolerance
   components, the result its chain's (ADR-0050, landed with step 4).
+- Found at step 8: the chain of `cut`s of three skew cylinders through a
+  cylinder has one more NURBS section edge and one more vertex than the one
+  call (volume, area, faces and the checker equal): the chain splits a
+  traced section where the call keeps it whole. The properties hold shells
+  and faces exactly and edges and vertices up to that split; whether the
+  chain's split is a defect is the backlog line.

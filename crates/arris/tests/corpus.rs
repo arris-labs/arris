@@ -455,6 +455,11 @@ corpus_tests! {
     /// ADR-0024).
     #[ignore = "Fault::Split, a section edge ending at a node nothing else reaches, where the desired cut is the plate (docs/BACKLOG.md, the seam on a touch)"]
     regression_tangent_seam_on_face_cut => run "regression/tangent-seam-on-face-cut";
+    /// Three revolves and extrusions fused in one call (the multi-tool
+    /// differential's case 46, shrunk): Arris's result has three shells
+    /// and 46 faces where Open CASCADE's has two and 55.
+    #[ignore = "counts differ from Open CASCADE's multi-tool fuse: 3 shells and 46 faces against 2 and 55 (docs/BACKLOG.md, multi-tool-boolean step 8)"]
+    regression_multi_tool_fuse_counts_differ => run "regression/multi-tool-fuse-counts-differ";
     /// A square less a quarter disc, extruded and cut by a box inside it:
     /// the arc is tangent to both lines it meets, so each cap's loop has two
     /// cusps, each a turn of +π round its spike (ADR-0026 §4, the battery's

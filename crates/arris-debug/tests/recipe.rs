@@ -91,3 +91,35 @@ fn a_drawn_recipe_hashes_alike_through_the_oracle_and_the_loader() {
         refused.join("\n")
     );
 }
+
+arris_debug::prop_shards! {
+    /// The multi-tool draw (ADR-0050): one boolean with two to four tools
+    /// (or one fuse of three to five bodies), a fixture both kernels read,
+    /// built by Arris to a body or a typed refusal, never to a malformed
+    /// recipe's error.
+    every_multi_tool_recipe_is_a_fixture_arris_builds_or_refuses
+        [s0 s1 s2 s3] (r) = arris_debug::prop::recipe::multi_tool_recipe() => {
+        let text = serde_json::to_string_pretty(&r).map_err(fail)?;
+        let back: Recipe = serde_json::from_str(&text).map_err(fail)?;
+        prop_assert_eq!(&back, &r);
+        let last = r.steps.last().expect("a recipe has steps");
+        match last {
+            fixtures::Step::Cut { tool: None, tools, .. } => {
+                prop_assert!((2..=4).contains(&tools.len()), "{} tools\n{}", tools.len(), text);
+            }
+            fixtures::Step::Fuse { a: None, b: None, bodies, .. } => {
+                prop_assert!((3..=5).contains(&bodies.len()), "{} bodies\n{}", bodies.len(), text);
+            }
+            other => return Err(fail(format!("not one multi-tool step: {other:?}\n{text}"))),
+        }
+        let Ok(built) = std::panic::catch_unwind(|| corpus::build("generated/multi-tool", &r)) else {
+            return Ok(());
+        };
+        match built {
+            Ok(chain) => prop_assert!(chain.result().is_some()),
+            Err(CorpusError::Op { .. }) => {}
+            Err(e) => return Err(fail(format!("a malformed recipe: {e}\n{text}"))),
+        }
+        Ok(())
+    }
+}

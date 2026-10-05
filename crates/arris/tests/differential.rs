@@ -64,6 +64,30 @@ fn arris_and_the_oracle_agree_on_turned_parts() {
     );
 }
 
+/// The multi-tool booleans (ADR-0050): one `cut` with two to four tools
+/// or one `fuse` of three to five bodies, in one call, against Open
+/// CASCADE's multi-tool `BRepAlgoAPI_Cut` and `Fuse`. Judged as the
+/// general draw is: an agreement, a named exclusion or a refusal, never a
+/// disagreement.
+#[test]
+fn arris_and_the_oracle_agree_on_multi_tool_booleans() {
+    let run = differential::run_over(
+        "multi-tool",
+        arris_debug::prop::recipe::multi_tool_recipe(),
+        &prop::seed(),
+        differential::cases(),
+    )
+    .unwrap_or_else(|e| panic!("the differential could not run: {e}"));
+    println!("{}", run.report());
+    assert!(
+        run.failures.is_empty(),
+        "{}\n{} failing recipes:\n\n{}",
+        run.report(),
+        run.failures.len(),
+        run.failures_text()
+    );
+}
+
 /// Where Open CASCADE's boolean records no solid of operands it built, or
 /// a volume they cannot bound (a fuse smaller than one operand), and
 /// Arris's result is a valid body that adds up (`V(A ∪ B) + V(A ∩ B) =
