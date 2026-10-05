@@ -1827,7 +1827,8 @@ B-Rep).
   in the profile's plane by `region_integral` and a quadrature over its
   boundary, an independent path from `measure`'s flux; and
   `prop::recipe`, whole corpus recipes — two to four boxes, cylinders and
-  swept sketches, a box or cylinder edge blended first, each placed near
+  swept sketches, a box or cylinder edge blended, one face offset or the
+  whole hollowed by `shell` first, each placed near
   the others under a shared pose and chained by one to three booleans,
   probed at every operand's centre and just in and out of its faces —
   which `corpus::build` builds without a directory or an oracle answer,

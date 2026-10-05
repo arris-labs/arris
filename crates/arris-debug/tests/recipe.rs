@@ -2,8 +2,8 @@
 //! is a fixture both kernels can read. It survives the serde round trip,
 //! builds in Arris to a body or a typed refusal and never to a malformed
 //! recipe's error, and its probes say what the generator meant — every
-//! operand's centre inside it, a box's or a cylinder's probes inside and
-//! outside it as labelled. One drawn recipe goes through the oracle and
+//! operand's centre inside it (a hollowed one's in its cavity, outside),
+//! a box's or a cylinder's probes inside and outside it as labelled. One drawn recipe goes through the oracle and
 //! the fixture loader, which hash it alike.
 //!
 //! A kernel panic is not the draw's fault, so it is let pass here: the

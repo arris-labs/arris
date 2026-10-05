@@ -9,7 +9,8 @@
 //! profile from [`super::profile`] extruded or revolved; a box or a
 //! cylinder may have one edge filleted or chamfered first, where the
 //! edge's point is known in closed form (or, of those without a blend, have
-//! one face moved by `offset`, ADR-0048), and a stadium or a plate with a
+//! one face moved by `offset`, ADR-0048, or the whole hollowed by `shell`,
+//! open on one face or closed, ADR-0049), and a stadium or a plate with a
 //! D-shaped notch has its whole top outline blended through one edge
 //! (ADR-0035). [`turned_recipe`] draws a turned part alone, a coned
 //! shoulder, a dome or a toroidal bead revolved about `y` with a pick of
@@ -24,7 +25,8 @@
 //!
 //! The probes are every operand's centre and, for a box or a cylinder,
 //! points [`PROBE_STEP`] inside and outside each of its faces along its
-//! own axes, placed by the operand's motion. Tolerances and precision are
+//! own axes, placed by the operand's motion; a hollowed one's centre is in
+//! its cavity, and its probes straddle both skins and its mouth. Tolerances and precision are
 //! the fixture defaults.
 
 use core::f64::consts::TAU;
@@ -40,7 +42,7 @@ use super::turned::Turned;
 use super::{finite_f64, point_in_box, pose, radius, rotation, unit_vec3};
 use crate::fixtures::{
     self, Analytic, Circle, Ellipse, Loop, MirrorPlane, Num, Plane, PrecisionSpec, Probe, Recipe,
-    Rotate, Segment, Step, Tolerances,
+    Rotate, Segment, ShellSide, Step, Tolerances,
 };
 
 /// How many booleans a recipe chains; it has one operand more.
@@ -143,6 +145,27 @@ const PUSH_FRACTION: RangeInclusive<f64> = -0.4..=0.5;
 /// The least fraction of the extent a drawn push moves a face by.
 const PUSH_MIN: f64 = 0.05;
 
+/// A box or a cylinder hollowed by `shell` before the operand is placed:
+/// its whole body is the operand's, so no blend or push has run first.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Hollow {
+    /// The face left open: a box's six by `face % 6`, a cylinder's top
+    /// and bottom by `face % 2` (its side is never opened); `None` for a
+    /// closed void.
+    opening: Option<usize>,
+    /// The thickness as a fraction of the operand's half-extent
+    /// ([`HOLLOW_FRACTION`]).
+    fraction: f64,
+    /// The wall grown outside the faces, not inside them.
+    outward: bool,
+}
+
+/// A hollow's thickness as a fraction of the operand's least half-extent
+/// (a cylinder's radius or half its height): well clear of [`PROBE_STEP`]
+/// at the smallest extent, and inward, a cavity left of at least four
+/// tenths of the extent.
+const HOLLOW_FRACTION: RangeInclusive<f64> = 0.1..=0.6;
+
 /// One operand as drawn.
 #[derive(Debug, Clone, PartialEq)]
 struct Operand {
@@ -150,6 +173,8 @@ struct Operand {
     blend: Option<Blend>,
     /// A face moved by an offset, on a box or a cylinder with no blend.
     push: Option<Push>,
+    /// The whole hollowed, on a box or a cylinder with no blend or push.
+    hollow: Option<Hollow>,
     /// Its own motion about the others', its centre at the origin.
     local: Isometry,
     /// The plane it is reflected in after its motions: a point and a
@@ -318,6 +343,7 @@ pub fn turned_recipe() -> impl Strategy<Value = Recipe> {
                 shape: Shape::Turned(t),
                 blend: None,
                 push: None,
+                hollow: None,
                 local: Isometry::identity(),
                 mirror: None,
             };
@@ -354,6 +380,19 @@ fn push() -> impl Strategy<Value = Push> {
     )
 }
 
+fn hollow() -> impl Strategy<Value = Hollow> {
+    (
+        proptest::option::weighted(0.75, 0usize..6),
+        finite_f64(HOLLOW_FRACTION),
+        any::<bool>(),
+    )
+        .prop_map(|(opening, fraction, outward)| Hollow {
+            opening,
+            fraction,
+            outward,
+        })
+}
+
 fn operand() -> impl Strategy<Value = Operand> {
     let turn = prop_oneof![Just(UnitQuaternion::identity()), rotation()];
     (
@@ -363,17 +402,24 @@ fn operand() -> impl Strategy<Value = Operand> {
         point_in_box(OFFSET),
         proptest::option::weighted(0.25, (point_in_box(OFFSET), unit_vec3())),
         proptest::option::weighted(0.2, push()),
+        proptest::option::weighted(0.2, hollow()),
     )
-        .prop_map(|(shape, blend, q, at, mirror, push)| {
+        .prop_map(|(shape, blend, q, at, mirror, push, hollow)| {
             let simple = matches!(shape, Shape::Box { .. } | Shape::Cylinder { .. });
             let blend = if simple { blend } else { None };
+            let push = if simple && blend.is_none() {
+                push
+            } else {
+                None
+            };
             Operand {
                 mirror: mirror.map(|(o, n)| (o, n.into_inner())),
-                push: if simple && blend.is_none() {
-                    push
+                hollow: if simple && blend.is_none() && push.is_none() {
+                    hollow
                 } else {
                     None
                 },
+                push,
                 blend,
                 shape,
                 local: Isometry::new(q, at.coords),
@@ -524,11 +570,16 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                 });
                 for axis in 0..3 {
                     let moved = |side: usize| push_of(o, axis * 2 + side) * e[axis];
-                    along_axis(
-                        &mut local,
-                        axis,
-                        [e[axis] / 2.0 + moved(0), e[axis] / 2.0 + moved(1)],
-                    );
+                    let half = [e[axis] / 2.0 + moved(0), e[axis] / 2.0 + moved(1)];
+                    match o.hollow {
+                        Some(h) => {
+                            let open =
+                                |side: usize| h.opening.map(|f| f % 6) == Some(axis * 2 + side);
+                            let t = h.fraction * e.min() / 2.0;
+                            along_hollow(&mut local, axis, half, t, h.outward, [open(0), open(1)]);
+                        }
+                        None => along_axis(&mut local, axis, half),
+                    }
                 }
                 Point3::origin()
             }
@@ -541,14 +592,26 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                     height: (*height).into(),
                 });
                 let side = radius + push_of(o, 0) * radius;
-                along_axis(&mut local, 0, [side, side]);
-                along_axis(&mut local, 1, [side, side]);
                 // The caps: face 2 is the bottom, 1 the top.
                 let caps = [
                     height / 2.0 + push_of(o, 2) * height,
                     height / 2.0 + push_of(o, 1) * height,
                 ];
-                along_axis(&mut local, 2, caps);
+                match o.hollow {
+                    Some(h) => {
+                        // A hollow's opening: 0 the bottom, 1 the top.
+                        let open = |side: usize| h.opening.map(|f| f % 2) == Some(side);
+                        let t = h.fraction * radius.min(height / 2.0);
+                        along_hollow(&mut local, 0, [side, side], t, h.outward, [false; 2]);
+                        along_hollow(&mut local, 1, [side, side], t, h.outward, [false; 2]);
+                        along_hollow(&mut local, 2, caps, t, h.outward, [open(0), open(1)]);
+                    }
+                    None => {
+                        along_axis(&mut local, 0, [side, side]);
+                        along_axis(&mut local, 1, [side, side]);
+                        along_axis(&mut local, 2, caps);
+                    }
+                }
                 Point3::origin()
             }
             Shape::Extrude {
@@ -691,6 +754,40 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
             });
             body = name;
         }
+        if let Some(h) = o.hollow {
+            let (openings, thickness) = match &o.shape {
+                Shape::Box { extents } => {
+                    let opening = h.opening.map(|f| {
+                        let face = f % 6;
+                        let mut at = Vec3::zeros();
+                        at[face / 2] = if face % 2 == 0 { -0.5 } else { 0.5 } * extents[face / 2];
+                        point3(Point3::from(at))
+                    });
+                    (opening, h.fraction * extents.min() / 2.0)
+                }
+                Shape::Cylinder { radius, height } => {
+                    let opening = h.opening.map(|f| {
+                        let z = if f % 2 == 0 { -height } else { *height } / 2.0;
+                        point3(Point3::new(0.0, 0.0, z))
+                    });
+                    (opening, h.fraction * radius.min(height / 2.0))
+                }
+                _ => unreachable!("only a box or a cylinder is hollowed"),
+            };
+            let name = format!("h{i}");
+            steps.push(Step::Shell {
+                name: name.clone(),
+                of: body,
+                openings: openings.into_iter().collect(),
+                thickness: thickness.into(),
+                side: if h.outward {
+                    ShellSide::Outward
+                } else {
+                    ShellSide::Inward
+                },
+            });
+            body = name;
+        }
         if let Some(b) = o.blend {
             let (point, size) = match &o.shape {
                 Shape::Box { extents } => box_edge(*extents, b.edge),
@@ -751,7 +848,13 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
             let moved = motion.apply(p);
             place.as_ref().map_or(moved, |plane| plane.apply(moved))
         };
-        probes.push(probe(format!("{name}-centre"), at(centre)));
+        // A hollow's centre is in its cavity.
+        let centre_label = if o.hollow.is_some() {
+            "cavity-out"
+        } else {
+            "centre"
+        };
+        probes.push(probe(format!("{name}-{centre_label}"), at(centre)));
         for (label, p) in local {
             probes.push(probe(format!("{name}-{label}"), at(p)));
         }
@@ -819,6 +922,51 @@ fn along_axis(out: &mut Vec<(String, Point3)>, axis: usize, half: [f64; 2]) {
     let name = ["x", "y", "z"][axis];
     for (sign, side, half) in [(-1.0, "-", half[0]), (1.0, "+", half[1])] {
         for (reach, how) in [(half - PROBE_STEP, "in"), (half + PROBE_STEP, "out")] {
+            let mut p = Vec3::zeros();
+            p[axis] = sign * reach;
+            out.push((format!("{name}{side}-{how}"), Point3::from(p)));
+        }
+    }
+}
+
+/// The probes along `axis` of a hollowed operand whose faces across it
+/// are `half` from its centre, its wall `t` thick and grown `outward` or
+/// in, the side at either end `open` or not: just in and just out of
+/// each skin, the cavity's labelled `cavity-out`, and at an opening, the
+/// mouth's either side of its plane, both out.
+fn along_hollow(
+    out: &mut Vec<(String, Point3)>,
+    axis: usize,
+    half: [f64; 2],
+    t: f64,
+    outward: bool,
+    open: [bool; 2],
+) {
+    let name = ["x", "y", "z"][axis];
+    for ((sign, side, half), open) in [(-1.0, "-", half[0]), (1.0, "+", half[1])]
+        .into_iter()
+        .zip(open)
+    {
+        // Each skin's distance from the centre, the inner then the outer.
+        let (inner, outer) = if outward {
+            (half, half + t)
+        } else {
+            (half - t, half)
+        };
+        let reaches: Vec<(f64, &str)> = if open {
+            vec![
+                (inner - PROBE_STEP, "cavity-out"),
+                (outer + PROBE_STEP, "mouth-out"),
+            ]
+        } else {
+            vec![
+                (inner - PROBE_STEP, "cavity-out"),
+                (inner + PROBE_STEP, "wall-in"),
+                (outer - PROBE_STEP, "in"),
+                (outer + PROBE_STEP, "out"),
+            ]
+        };
+        for (reach, how) in reaches {
             let mut p = Vec3::zeros();
             p[axis] = sign * reach;
             out.push((format!("{name}{side}-{how}"), Point3::from(p)));

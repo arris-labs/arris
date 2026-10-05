@@ -150,7 +150,7 @@ bound has to be established here.
 - [x] Step 6 **[1]** — The facade and the binding: `Model.shell` with cancel
   and budget, `side` as a string, its stub and docstring example, a pytest
   per refusal group, the rustdoc example on `shell`.
-- [ ] Step 7 **[2]** — Properties, sharded and seeded: a shell's volume plus
+- [x] Step 7 **[2]** — Properties, sharded and seeded: a shell's volume plus
   the volume of `offset_faces` of every face but its openings by the signed
   thickness equals the body's (inward) in random poses on a box, a cylinder
   and a rounded box; a closed void's volume against the closed form; shell
@@ -254,3 +254,15 @@ job's pytest, docstring examples and `mypy.stubtest` green.
   void, the opening refusals, `OpeningDragged`, the offset's refusals
   reaching the caller, a foreign handle, cancel and budget. The rustdoc
   example on `shell` was written at step 2.
+- Done at step 7: `arris-ops/tests/shell_prop.rs`, five properties of
+  four shards. The "rounded box" is a box with its four upright edges
+  rounded, not all twelve: with every edge rounded each face is tangent
+  to a wall, so any opening is `OpeningDragged`, and only the void would
+  be drawn. The volume is held to its closed form on both sides, open or
+  closed, besides the inward identity with `offset_faces`. `prop::recipe`
+  hollows a fifth of the box and cylinder operands with no blend or push,
+  open on one face (a cylinder's cap) or closed, either side; a hollowed
+  operand's centre probe is its cavity, its axis probes straddle both
+  skins and the mouth. Every drawn hollow builds in Arris (252 of 252
+  over 1500 draws at the default seed), and the differential agrees at
+  300 recipes.
