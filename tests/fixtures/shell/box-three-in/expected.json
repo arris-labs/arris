@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "0c05f77f8ca3bf23dc5e2d5a68910e769a4f4270a502796ef6ecbeba239e8b18",
+  "results": {
+    "default": {
+      "area": 600.0,
+      "centroid": [
+        6.049180327868855,
+        6.049180327868855,
+        3.9508196721311473
+      ],
+      "counts": {
+        "edges": 21,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          9106.972677595633,
+          1049.1803278688567,
+          -1049.180327868853
+        ],
+        [
+          1049.1803278688567,
+          9106.972677595633,
+          -1049.180327868853
+        ],
+        [
+          -1049.180327868853,
+          -1049.180327868853,
+          9106.972677595615
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 21,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_wall",
+          "point": [
+            9.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "cavity",
+          "point": [
+            4.0,
+            4.0,
+            6.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_mouth",
+          "point": [
+            0.5,
+            0.5,
+            9.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_rim",
+          "point": [
+            9.0,
+            5.0,
+            10.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_left_rim",
+          "point": [
+            0.0,
+            9.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_inner_floor",
+          "point": [
+            4.0,
+            4.0,
+            2.0
+          ]
+        }
+      ],
+      "volume": 487.9999999999998
+    }
+  }
+}

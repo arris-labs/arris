@@ -5,17 +5,16 @@
 
 use std::collections::BTreeSet;
 
-use arris_geom::GeomKind;
 use arris_math::Meter;
-use arris_topo::builder::{Assembly, Builder, EdgeKey, FaceSpec};
+use arris_topo::builder::{Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec};
 use arris_topo::entity::BodyKind;
 use arris_topo::{Body, Face as FaceHandle, FaceId, Model, Provenance};
 
-use super::ShellSide;
+use super::{ShellSide, rim};
 use crate::body_view::BodyView;
 use crate::error::{Fault, OpError, Reason, ShellReason};
 use crate::offset;
-use crate::rebuild::{StoredUse, forward, stored_to_spec};
+use crate::rebuild::{forward, stored_to_spec};
 
 /// Where a face spec came from, for the provenance.
 #[derive(Debug, Clone, Copy)]
@@ -40,23 +39,6 @@ pub(super) fn build(
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     let view = BodyView::of(m, body)?;
-    // Two openings sharing an edge — or one meeting itself across a seam
-    // — merge their rims into one loop, which this release does not build
-    // yet (plans/shell step 3).
-    for uses in view.uses.values() {
-        if let [a, b] = uses.as_slice()
-            && open.contains(&a.face)
-            && open.contains(&b.face)
-        {
-            let kind = |f: FaceId| -> Result<GeomKind, OpError> {
-                Ok(GeomKind::Surface(m.surface(m.face(f)?.surface())?.kind()))
-            };
-            return Err(OpError::Unsupported {
-                a: (kind(a.face)?, forward(a.face)),
-                b: (kind(b.face)?, forward(b.face)),
-            });
-        }
-    }
     let offset = offset::pieces(m, body, walls, distance, meter)?;
     if let Some(&dragged) = open.iter().find(|f| offset.moved.contains(f)) {
         return Err(OpError::Degenerate {
@@ -67,9 +49,14 @@ pub(super) fn build(
     let rw = offset.rewrite;
     let missing = |what| OpError::Internal(Fault::Invariant { what });
 
+    let tol = m.precision().tolerance();
+    let mut pieces = rim::Pieces::new(rw.edges.len());
+    // The openings whose rim cancels whole: the skin's loop on them is the
+    // body's.
+    let mut vanished: Vec<FaceId> = Vec::new();
     let mut assembly = Assembly {
         vertices: rw.vertices.clone(),
-        edges: rw.edges.iter().map(|(spec, _)| *spec).collect(),
+        edges: Vec::new(),
         shells: Vec::new(),
     };
     // The role of each face spec, shell by shell, and the body shell each
@@ -81,34 +68,17 @@ pub(super) fn build(
         let mut kept: Vec<(FaceSpec, Role)> = Vec::new();
         let mut rims: Vec<(FaceSpec, Role)> = Vec::new();
         let mut skin: Vec<(FaceSpec, Role)> = Vec::new();
+        let mut has_opening = false;
         for face_use in m.shell(body_shell.id)?.faces() {
             let face = face_use.oriented_by(body_shell.orientation);
             let entity = m.face(face.id)?;
-            let new_loops = rw
-                .faces
-                .get(&face.id)
-                .ok_or(missing("a face's loops on the skin"))?;
             if open.contains(&face.id) {
-                for (i, l) in entity.loops().iter().enumerate() {
-                    let old: Vec<StoredUse> = l
-                        .coedges()
-                        .iter()
-                        .map(|c| StoredUse {
-                            edge: EdgeKey::Kept(c.edge()),
-                            orientation: c.orientation(),
-                            pcurve: c.pcurve(),
-                        })
-                        .collect();
-                    let new = new_loops
-                        .get(i)
-                        .cloned()
-                        .ok_or(missing("an opening's loop on the skin"))?;
-                    // The larger loop as stored, the other walked back: the
-                    // body's for an inward wall, the skin's for an outward.
-                    let loops = match side {
-                        ShellSide::Inward => vec![old, walked_back(&new)],
-                        ShellSide::Outward => vec![new, walked_back(&old)],
-                    };
+                has_opening = true;
+                let faces = rim::faces(m, &rw, &view, open, face.id, side, &mut pieces, tol)?;
+                if faces.is_empty() {
+                    vanished.push(face.id);
+                }
+                for loops in faces {
                     rims.push((
                         FaceSpec::New {
                             surface: entity.surface(),
@@ -121,6 +91,10 @@ pub(super) fn build(
                 }
                 continue;
             }
+            let new_loops = rw
+                .faces
+                .get(&face.id)
+                .ok_or(missing("a wall's loops on the skin"))?;
             let surface = *rw
                 .surfaces
                 .get(&face.id)
@@ -140,7 +114,7 @@ pub(super) fn build(
                 Role::Skin(face.id),
             ));
         }
-        if rims.is_empty() {
+        if !has_opening {
             // A closed void: the skin is a shell of its own, inside the
             // body's for an inward wall, around it for an outward one.
             let (outer, inner) = match side {
@@ -172,6 +146,17 @@ pub(super) fn build(
         origin.push(keeps);
     }
 
+    // Every edge a face uses — the skin's copy of an edge two openings
+    // share is in none, its pieces stand in for it — addressed afresh.
+    let all: Vec<EdgeSpec> = rw
+        .edges
+        .iter()
+        .map(|(spec, _)| *spec)
+        .chain(pieces.list.iter().map(|piece| piece.spec))
+        .collect();
+    let slot_of = compact(&mut assembly, &all);
+    let at = |k: usize| slot_of.get(k).copied().flatten();
+
     let precision = m.precision();
     let body_shells = m.shells(body)?;
     let closure = m.closure(body)?;
@@ -195,12 +180,23 @@ pub(super) fn build(
         let Some(parent) = *parent else {
             return Err(missing("the wall edge a skin edge copies"));
         };
+        let Some(k) = at(k) else { continue };
         let slot = slots.edges.get(k).ok_or(missing("a skin edge's slot"))?;
         let id = *built.edges.get(slot).ok_or(missing("a skin edge"))?;
         if out.edges.binary_search(&parent).is_ok() {
             p.add_modified(forward(parent), forward(parent));
         }
         p.add_generated(forward(parent), forward(id));
+    }
+    for (i, piece) in pieces.list.iter().enumerate() {
+        let k = at(rw.edges.len() + i).ok_or(missing("a rim piece used"))?;
+        let slot = slots.edges.get(k).ok_or(missing("a rim piece's slot"))?;
+        let id = *built.edges.get(slot).ok_or(missing("a rim piece"))?;
+        if piece.on_parent {
+            p.add_modified(forward(piece.parent), forward(id));
+        } else {
+            p.add_generated(forward(piece.parent), forward(id));
+        }
     }
     for (shell_roles, shell_slots) in roles.iter().zip(&slots.faces) {
         for (role, slot) in shell_roles.iter().zip(shell_slots) {
@@ -215,13 +211,16 @@ pub(super) fn build(
             }
         }
     }
+    for &f in &vanished {
+        p.add_deleted(forward(f));
+    }
     for &v in &closure.vertices {
-        if out.vertices.binary_search(&v).is_err() && p.generated_from(forward(v)).is_empty() {
+        if out.vertices.binary_search(&v).is_err() && p.modified_from(forward(v)).is_empty() {
             p.add_deleted(forward(v));
         }
     }
     for &e in &closure.edges {
-        if out.edges.binary_search(&e).is_err() && p.generated_from(forward(e)).is_empty() {
+        if out.edges.binary_search(&e).is_err() && p.modified_from(forward(e)).is_empty() {
             p.add_deleted(forward(e));
         }
     }
@@ -236,14 +235,41 @@ pub(super) fn build(
     Ok((built.body, p))
 }
 
-/// A loop in the stored sense walked the other way: its uses in reverse
-/// order, each flipped, over the same pcurves.
-fn walked_back(uses: &[StoredUse]) -> Vec<StoredUse> {
-    uses.iter()
-        .rev()
-        .map(|u| StoredUse {
-            orientation: u.orientation.flipped(),
-            ..*u
-        })
-        .collect()
+/// Puts into `assembly` the edges of `all` its faces use, in order, each
+/// use renumbered, and returns the new index of each of `all` — `None`
+/// for one no face uses.
+fn compact(assembly: &mut Assembly, all: &[EdgeSpec]) -> Vec<Option<usize>> {
+    let mut used = vec![false; all.len()];
+    for spec in assembly.shells.iter().flatten() {
+        if let FaceSpec::New { loops, .. } = spec {
+            for u in loops.iter().flatten() {
+                if let EdgeKey::New(k) = u.edge
+                    && let Some(flag) = used.get_mut(k)
+                {
+                    *flag = true;
+                }
+            }
+        }
+    }
+    let mut slot_of = Vec::with_capacity(all.len());
+    for (spec, &is_used) in all.iter().zip(&used) {
+        if is_used {
+            slot_of.push(Some(assembly.edges.len()));
+            assembly.edges.push(*spec);
+        } else {
+            slot_of.push(None);
+        }
+    }
+    for spec in assembly.shells.iter_mut().flatten() {
+        if let FaceSpec::New { loops, .. } = spec {
+            for u in loops.iter_mut().flatten() {
+                if let EdgeKey::New(k) = u.edge
+                    && let Some(Some(to)) = slot_of.get(k)
+                {
+                    u.edge = EdgeKey::New(*to);
+                }
+            }
+        }
+    }
+    slot_of
 }

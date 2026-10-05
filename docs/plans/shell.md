@@ -123,7 +123,7 @@ bound has to be established here.
   move to `shell/` and are blessed: the box open on top (both sides), the
   closed box, the square tube, the L-bracket. Checked at this step: the
   assembler and `mass_properties` take a body of two shells.
-- [ ] Step 3 **[3]** — Adjacent openings: two openings sharing an edge, the
+- [x] Step 3 **[3]** — Adjacent openings: two openings sharing an edge, the
   rim faces' outer and inner loops touching along it, merged into one loop
   with the shared edge in no face; the same where three openings meet at a
   vertex, and an opening whose neighbour is an opening across a seam.
@@ -211,3 +211,19 @@ job's pytest, docstring examples and `mypy.stubtest` green.
   opening would otherwise reach the checker as `Internal`; step 5 keeps its
   fixtures. Until step 3, two openings sharing an edge (or one across its
   own seam) are `OpError::Unsupported` naming both.
+- Done at step 3: the merge is a cancellation, not a geometric search. An
+  edge between two openings and the skin's copy of it lie on one curve (the
+  offset re-ranges an edge between fixed faces on its own curve) and are
+  walked opposite ways by the rim, so each rim's stored loop and walked-back
+  skin loop are spliced, position by position, where they cancel: what is
+  left at each end is a piece of that curve, one edge shared by both rims
+  (`shell/rim.rs`) — on the body's edge inward (`Modified` from it), beyond
+  it on the skin's copy outward (`Generated`, the edge `Deleted`). The
+  skin's copy is in no face and is never built. "Across a seam" is the
+  same splice on an opening's own seam: a cylinder open on its side and
+  top leaves a disc, the top's rim cancelling whole (`Deleted`). Where the
+  splice leaves several loops they are grouped into faces by winding on a
+  plane, and refused `Unsupported` on any other surface; so is a shared
+  closed edge whose vertex moves. Fixtures moved or added under `shell/`:
+  the box open on top and front, on three faces at a corner (both sides
+  each), a wedge open on both slants (both sides), all Open CASCADE's.

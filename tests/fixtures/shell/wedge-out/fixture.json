@@ -1,0 +1,159 @@
+{
+  "description": "a wedge, the triangle (0,0)-(20,0)-(10,10) in x-z extruded 10 along y, hollowed outward to a wall of t and open on both slanted faces, which share the ridge: the skin runs up both slants' planes to the ridge extended, each rim face one U-shaped loop, the old ridge in no face",
+  "params": {
+    "t": 1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              20,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              10,
+              10
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wedge",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        1,
+        0
+      ],
+      "length": 10
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "wedge",
+      "openings": [
+        [
+          5,
+          5,
+          5
+        ],
+        [
+          15,
+          5,
+          5
+        ]
+      ],
+      "thickness": "t",
+      "side": "outward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "under_floor",
+      "point": [
+        10,
+        5,
+        -0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "cavity",
+      "point": [
+        10,
+        5,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_end",
+      "point": [
+        10,
+        -0.5,
+        3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_left_rim",
+      "point": [
+        -0.5,
+        5,
+        -0.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_ridge_beyond",
+      "point": [
+        10,
+        -0.5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        10,
+        5,
+        "-t - 1"
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "(((10 + t)^2 * (10 + 2 * t)) - 1000)",
+    "area": "(20 + 2 * t) * (10 + 2 * t) + 2 * (10 + t)^2 + 400 + 2 * sqrt(2) * ((10 + t) * (10 + 2 * t) - 100)",
+    "centroid": [
+      10,
+      5,
+      "(((10 + t)^2 * (10 + 2 * t)) * ((10 + t) / 3 - t) - 10000 / 3) / (((10 + t)^2 * (10 + 2 * t)) - 1000)"
+    ],
+    "counts": {
+      "vertices": 12,
+      "edges": 18,
+      "faces": 8,
+      "loops": 8,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

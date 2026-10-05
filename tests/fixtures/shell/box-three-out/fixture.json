@@ -1,0 +1,120 @@
+{
+  "description": "a 10-cube hollowed outward to a wall of t, open on top, front (y = 0) and left (x = 0), which meet at a corner: the skin runs to the three openings' planes, each rim face one L-shaped loop, the corner vertex in no face",
+  "params": {
+    "t": 2
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "box",
+      "openings": [
+        [
+          5,
+          5,
+          10
+        ],
+        [
+          5,
+          0,
+          5
+        ],
+        [
+          0,
+          5,
+          5
+        ]
+      ],
+      "thickness": "t",
+      "side": "outward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        11,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "cavity",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_floor",
+      "point": [
+        5,
+        5,
+        -1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_top_rim",
+      "point": [
+        11,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_left_rim",
+      "point": [
+        0,
+        11,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -1,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "((10 + t)^3 - 1000)",
+    "area": "6 * (10 + t)^2",
+    "centroid": [
+      "((10 + t)^4 / 2 - 5000) / ((10 + t)^3 - 1000)",
+      "((10 + t)^4 / 2 - 5000) / ((10 + t)^3 - 1000)",
+      "((10 + t)^3 * (10 - t) / 2 - 5000) / ((10 + t)^3 - 1000)"
+    ],
+    "counts": {
+      "vertices": 14,
+      "edges": 21,
+      "faces": 9,
+      "loops": 9,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

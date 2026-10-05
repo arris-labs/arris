@@ -8,8 +8,8 @@
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, check};
 use arris_debug::dump_text;
-use arris_debug::unmetered::{mass_properties, primitive_box, shell};
-use arris_math::Point3;
+use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder, shell};
+use arris_math::{Axis, Point3};
 use arris_ops::{InputReason, OffsetReason, OpError, Reason, ShellReason, ShellSide};
 use arris_topo::provenance::audit;
 use arris_topo::{Body, EntityId, Face, Model, Orientation, Provenance, Shape};
@@ -179,16 +179,103 @@ fn a_wall_past_half_the_box_is_the_offsets_refusal() {
     assert_eq!(dump_text(&m, b).unwrap(), before);
 }
 
-/// Two openings sharing an edge are not merged into one rim loop yet:
-/// refused naming both, the model as it was.
+/// The entity of `body` that `at` lies on: a face, an edge or a vertex.
+fn on(m: &Model, body: Body, at: Point3) -> Shape {
+    match classify_point(m, body, at).unwrap() {
+        Classification::On(s) => s,
+        other => panic!("{at} is {other:?}, on nothing"),
+    }
+}
+
+/// Open on top and front, which share an edge, both sides: each rim face
+/// one loop, the shared edge gone and its two end pieces left between the
+/// rims — inward on the body's edge, `Modified` from it; outward beyond
+/// it on the skin's copy, `Generated` from it, the edge `Deleted`.
 #[test]
-fn adjacent_openings_are_unsupported_for_now() {
-    let mut m = Model::default();
-    let b = cube(&mut m);
-    let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
-    let front = face_at(&m, b, Point3::new(5.0, 0.0, 5.0));
-    let before = dump_text(&m, b).unwrap();
-    let err = shell(&mut m, b, &[top, front], 2.0, ShellSide::Inward).unwrap_err();
-    assert!(matches!(err, OpError::Unsupported { .. }), "{err:?}");
-    assert_eq!(dump_text(&m, b).unwrap(), before);
+fn two_openings_sharing_an_edge_merge_their_rims() {
+    for (side, volume) in [
+        (ShellSide::Inward, 1000.0 - 6.0 * 8.0 * 8.0),
+        (ShellSide::Outward, 14.0 * 12.0 * 12.0 - 1000.0),
+    ] {
+        let mut m = Model::default();
+        let b = cube(&mut m);
+        let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
+        let front = face_at(&m, b, Point3::new(5.0, 0.0, 5.0));
+        let shared = on(&m, b, Point3::new(5.0, 0.0, 10.0));
+        let (out, p) = shell(&mut m, b, &[top, front], 2.0, side).unwrap();
+        assert_clean(&m, b, out, &p);
+        let mp = mass_properties(&m, out).unwrap();
+        assert!((mp.volume - volume).abs() < 1e-9, "{side:?}: {}", mp.volume);
+        assert_eq!(m.faces(out).unwrap().len(), 10);
+        for opening in [top, front] {
+            let rims = p.modified_from(opening.shape());
+            assert_eq!(rims.len(), 1, "{side:?}");
+            let EntityId::Face(rim) = rims[0].id else {
+                panic!("{:?} is no face", rims[0]);
+            };
+            assert_eq!(m.face(rim).unwrap().loops().len(), 1, "{side:?}");
+        }
+        let edges: Vec<_> = m.edges(out).unwrap().into_iter().map(|e| e.id).collect();
+        assert!(!edges.iter().any(|&e| EntityId::from(e) == shared.id));
+        let (pieces, deleted) = match side {
+            ShellSide::Inward => (p.modified_from(shared), false),
+            ShellSide::Outward => (p.generated_from(shared), true),
+        };
+        assert_eq!(pieces.len(), 2, "{side:?}: {p:?}");
+        assert_eq!(p.is_deleted(shared), deleted, "{side:?}");
+        let mouth = Point3::new(5.0, 0.0, 10.0);
+        assert_eq!(
+            classify_point(&m, out, mouth).unwrap(),
+            Classification::Outside
+        );
+    }
+}
+
+/// Open on three faces meeting at a corner: the corner is in no face, and
+/// is `Deleted`.
+#[test]
+fn three_openings_at_a_corner_drop_it() {
+    for (side, volume) in [
+        (ShellSide::Inward, 1000.0 - 512.0),
+        (ShellSide::Outward, 1728.0 - 1000.0),
+    ] {
+        let mut m = Model::default();
+        let b = cube(&mut m);
+        let openings = [
+            face_at(&m, b, Point3::new(5.0, 5.0, 10.0)),
+            face_at(&m, b, Point3::new(5.0, 0.0, 5.0)),
+            face_at(&m, b, Point3::new(0.0, 5.0, 5.0)),
+        ];
+        let corner = on(&m, b, Point3::new(0.0, 0.0, 10.0));
+        let (out, p) = shell(&mut m, b, &openings, 2.0, side).unwrap();
+        assert_clean(&m, b, out, &p);
+        let mp = mass_properties(&m, out).unwrap();
+        assert!((mp.volume - volume).abs() < 1e-9, "{side:?}: {}", mp.volume);
+        assert_eq!(m.faces(out).unwrap().len(), 9);
+        assert!(p.is_deleted(corner), "{side:?}: {p:?}");
+    }
+}
+
+/// A cylinder open on its side and top: the side's rim meets itself
+/// across the seam, the seam's piece left between the two sides of the
+/// band, and the top's rim cancels whole — the skin's loop on it is the
+/// body's — so the top is `Deleted`, and what is left is a disc as thick
+/// as the wall.
+#[test]
+fn an_opening_meeting_itself_across_its_seam_merges() {
+    for side in [ShellSide::Inward, ShellSide::Outward] {
+        let mut m = Model::default();
+        let (b, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 5.0, 10.0).unwrap();
+        let wall = face_at(&m, b, Point3::new(0.0, 5.0, 5.0));
+        let top = face_at(&m, b, Point3::new(1.0, 1.0, 10.0));
+        let (out, p) = shell(&mut m, b, &[wall, top], 2.0, side).unwrap();
+        assert_clean(&m, b, out, &p);
+        let mp = mass_properties(&m, out).unwrap();
+        let disc = std::f64::consts::PI * 25.0 * 2.0;
+        assert!((mp.volume - disc).abs() < 1e-6, "{side:?}: {}", mp.volume);
+        assert_eq!(m.faces(out).unwrap().len(), 3, "{side:?}");
+        assert!(p.is_deleted(top.shape()), "{side:?}: {p:?}");
+        assert!(p.modified_from(top.shape()).is_empty());
+        assert_eq!(p.modified_from(wall.shape()).len(), 1, "{side:?}");
+    }
 }

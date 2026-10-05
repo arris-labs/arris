@@ -14,6 +14,7 @@ use crate::error::{InputReason, OpError, Reason, ShellReason};
 use crate::rebuild::forward;
 
 mod assemble;
+mod rim;
 
 /// The side of a body's faces a [`shell`]'s wall grows on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -35,14 +36,20 @@ pub enum ShellSide {
 /// them; `Outward` keeps the body's faces, reversed, as the cavity and
 /// puts the skin outside them. Each loop of an opening becomes a rim face
 /// on the opening's own surface, bounded by the body's loop and the
-/// skin's. With no openings the cavity is a closed void: the result has
+/// skin's; where two openings share an edge — or one meets itself across
+/// its seam — the two rims meet along what is left of it at each end,
+/// one loop, and its middle, across the mouth, is in no face. With no openings the cavity is a closed void: the result has
 /// a second shell, nested inside the first. The result passes the checker
 /// at `Level::Full` in every build profile.
 ///
 /// Provenance: each wall face, and each edge and vertex the skin copies,
 /// is kept and `Modified` into itself, with its skin copy `Generated` from
 /// it — a consumer names the inner face after the face it came from; each
-/// opening `Modified` into its rim faces; each shell `Modified` into the
+/// opening `Modified` into its rim faces, or `Deleted` where the skin's
+/// loop on it is its own and no rim is left; an edge two openings share
+/// gone, the pieces of it left between their rims `Modified` from it
+/// where they lie on it and `Generated` from it where they lie beyond it
+/// on the skin's copy; each shell `Modified` into the
 /// shell holding its kept faces, a void's second shell `Generated` from
 /// the body, and the body `Modified`. `arris_topo::provenance::audit`
 /// holds on every result.
@@ -58,8 +65,9 @@ pub enum ShellSide {
 /// entity, as [`crate::offset_faces`] documents them — the skin running
 /// into the outer faces, a thickness past the thinnest wall, is
 /// [`crate::OffsetReason::SelfIntersects`]; [`OpError::Unsupported`]
-/// naming two openings that share an edge, which this release does not
-/// merge yet; [`OpError::NotFound`] for a face id that does not resolve;
+/// naming two openings that share a closed edge whose vertex moves, or
+/// whose skin copy leaves the edge's curve, and naming an opening off a
+/// plane whose merged rim falls into several loops; [`OpError::NotFound`] for a face id that does not resolve;
 /// [`OpError::Internal`] with the report where the result fails the
 /// checker.
 ///

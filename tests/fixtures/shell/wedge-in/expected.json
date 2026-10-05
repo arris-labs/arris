@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d15bedd1e91e0ae1e1fdbd5565e6ce6375bbbc703afc1dfb543d3ccdbcd90cf0",
+  "results": {
+    "default": {
+      "area": 785.1959594928933,
+      "centroid": [
+        10.000000000000002,
+        5.0,
+        2.1060606060606073
+      ],
+      "counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          6698.707070707069,
+          3.637978807091713e-12,
+          8.185452315956354e-12
+        ],
+        [
+          3.637978807091713e-12,
+          9740.040404040366,
+          1.8189894035458565e-12
+        ],
+        [
+          8.185452315956354e-12,
+          1.8189894035458565e-12,
+          12795.99999999997
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_floor",
+          "point": [
+            10.0,
+            5.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "cavity",
+          "point": [
+            10.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_slant",
+          "point": [
+            5.0,
+            5.0,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_left_rim",
+          "point": [
+            5.0,
+            0.5,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_inner_floor",
+          "point": [
+            10.0,
+            5.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_inner_end",
+          "point": [
+            10.0,
+            1.0,
+            3.0
+          ]
+        }
+      ],
+      "volume": 352.0
+    }
+  }
+}

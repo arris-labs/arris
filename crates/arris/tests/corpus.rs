@@ -1208,6 +1208,18 @@ corpus_tests! {
     shell_box_tube => run "shell/box-tube";
     /// An extruded L hollowed inward to a wall of 1, open at its long arm's end.
     shell_l_bracket => run "shell/l-bracket";
+    /// A 10-cube hollowed inward, open on top and front, which share an edge: each rim face one loop.
+    shell_box_top_side_in => run "shell/box-top-side-in";
+    /// A 10-cube hollowed outward, open on top and front, which share an edge.
+    shell_box_top_side_out => run "shell/box-top-side-out";
+    /// A 10-cube hollowed inward, open on three faces meeting at a corner: the corner in no face.
+    shell_box_three_in => run "shell/box-three-in";
+    /// A 10-cube hollowed outward, open on three faces meeting at a corner.
+    shell_box_three_out => run "shell/box-three-out";
+    /// A wedge hollowed inward, open on both slanted faces, which share the ridge.
+    shell_wedge_in => run "shell/wedge-in";
+    /// A wedge hollowed outward, open on both slanted faces: the skin runs to the ridge extended.
+    shell_wedge_out => run "shell/wedge-out";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'
@@ -1322,12 +1334,6 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
-    /// A 10-cube hollowed inward, open on top and front, which share an edge: each rim face one loop.
-    #[ignore = "OpError::Unsupported: two openings sharing an edge are not merged into one rim loop yet (plans/shell step 3)"]
-    regression_shell_box_top_side_in => run "regression/shell-box-top-side-in";
-    /// A 10-cube hollowed outward, open on top and front, which share an edge.
-    #[ignore = "OpError::Unsupported: two openings sharing an edge are not merged into one rim loop yet (plans/shell step 3)"]
-    regression_shell_box_top_side_out => run "regression/shell-box-top-side-out";
 }
 
 /// A variant the recipe does not have fails naming it.
