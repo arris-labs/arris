@@ -1857,6 +1857,15 @@ face from the role its edge came from (`blend/second-fillet`: both blend
 faces from the extrude's `Rise`s, the side face both trimmed still from
 its `Side`).
 
+An offset writes its record against the faces it moved and generates
+nothing, since topology is kept (ADR-0048): a moved face — a chosen one or
+one dragged along a tangent chain — is `Modified` from its old self on its
+new surface, a fixed face whose loop changed `Modified` from itself, and a
+recomputed edge or vertex `Modified` from the one it replaced, one to one.
+Nothing is `Deleted`; an offset that would delete or split an entity is
+refused. A new face takes a new id, so "from itself" reads as "its new
+self".
+
 Queries: `generated_from(origin) -> &[Shape]`, `modified_from(origin)`,
 `is_deleted(input)`, `origins(output) -> Vec<(Relation, Origin)>` (the
 inverse), `outputs()`, `origins_recorded()`, and `Provenance::then(&self,

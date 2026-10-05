@@ -633,7 +633,7 @@ shell and offset (A7) and the multi-tool boolean (A8) of
 `docs/ideas/plugin-cad-consumer-asks.md`. ADR-0047 split the sweep cycle to
 take shell and offset without sweep and loft.*
 
-**Status: opened 2026-10-05; scope set by the human the same day. The preparatory refactor landed the same day: the blend in `blend/` by phase over a crate-private `body_view`, the pave model in `pave/`, one periodic-parameter toolkit, direct crate dependencies, `Reason` grouped by operation, and the corpus as one table with a coverage lint.**
+**Status: opened 2026-10-05; scope set by the human the same day. The preparatory refactor landed the same day: the blend in `blend/` by phase over a crate-private `body_view`, the pave model in `pave/`, one periodic-parameter toolkit, direct crate dependencies, `Reason` grouped by operation, and the corpus as one table with a coverage lint. Offset faces landed 2026-10-05: `ops::offset_faces`, the sharp join with the tangent chain dragged, topology kept, `Full` in every profile, bound in Python, 24 fixtures in `offset/` matched to Open CASCADE or their closed forms.**
 
 - Shell: a solid hollowed to a thickness, inward or outward, with the
   chosen faces removed as openings, or none for a closed void; the offset

@@ -915,6 +915,31 @@ its contacts stay inside their faces is not detected by the operation:
 S5 catches it in the corpus. Provenance is rooted at the edge with no new
 `Role` (data-model §Provenance).
 
+`ops::offset_faces(m, body, faces: &[Face], distance, control)` moves the
+chosen faces of a solid along their outward normals by a signed distance —
+positive adds material — and returns the result with its provenance
+(ADR-0048). It works as `blend` does, over `body_view` and
+`rebuild::rewrite`, by phase in `offset/`. The chosen faces are closed over
+tangent edges (`chain`), so a filleted edge's blend and the face beyond it
+move with the one chosen, as a consumer's press-pull selects its chain; an
+edge between two moved faces that are tangent is carried along their shared
+normal, a line shifted and a circle re-radiused and moved along its axis,
+and any other such curve is `NoExactOffset`. Each moved face lies on
+`Surface::offset` of its own surface, the same kind (a plane's plane, a
+coaxial cylinder or cone, a concentric sphere, a torus of the same major
+radius). Each vertex is then the point nearest its old one on every surface
+around it once moved (Gauss–Newton on signed distances, a seam adding the
+plane it lies in), and each edge the branch of the section of its two new
+surfaces, from the intersectors every quadric pair already has, that passes
+through both new ends, running the old edge's way: the join is sharp, a
+moved and a fixed face meeting where the moved face's offset meets the fixed
+face's own surface. Topology is kept, so what would change it is refused by
+name, the model untouched: a face with no exact offset, a surface driven
+through zero, an edge or face that vanishes or turns inside out, a vertex
+that splits, a dragged face that no longer meets a fixed neighbour
+(`Gap`). The result is checked at `Level::Full` in every profile (§Checker),
+a crossing far from what moved being `SelfIntersects`.
+
 Sweeps take a planar `geom::Profile` — an outer loop and holes of lines
 and arcs in a plane's own (u, v), validated and oriented by
 `Profile::edges` (data-model §Profiles) — so a consumer's sketch never has
@@ -1728,7 +1753,7 @@ B-Rep).
   that feed it a curve or a surface without a body (`polyline_of`,
   `wireframe_of`), the Rerun stream, the fixture loader and corpus lint
   (`fixtures`; a solid fixture the runner compares under `primitive/`,
-  `transform/`, `boolean/`, `sweep/`, `provenance/` or `blend/` without its
+  `transform/`, `boolean/`, `sweep/`, `provenance/`, `blend/` or `offset/` without its
   committed dump per variant fails the lint, so an ignored fixture there does; a
   failure waiting for its fix sits under `regression/`, and fails the lint
   once it has a dump), the corpus runner (`corpus::run`, the fixture test of
@@ -1888,6 +1913,7 @@ refusal histogram, what picks the cycle after the reader's.
 | Transform (geometry only, topology and index order preserved) | `ops::transform` — new ids, provenance `Modified` one-to-one in iteration order |
 | Mirror a body in a plane | `ops::mirror` — new ids, provenance `Modified` one-to-one, the image a solid with its material inside (ADR-0031) |
 | Fillet / chamfer of named edges, one call for all edges | `ops::fillet`, `ops::chamfer` (ADR-0007) |
+| Press-pull: chosen faces moved along their normals, neighbours extended or trimmed | `ops::offset_faces` (ADR-0048) — each moved face `Modified` from itself, the whole body's offset when every face moves |
 | Tessellation into a render mesh with per-face and per-edge ranges | `arris_mesh::tessellate` → `TriMesh` with `FaceRange`/`EdgeRange` keyed by `FaceId`/`EdgeId`; `arris_mesh::tessellate_with` of a `MeshRequest::with_corners` adds the render buffer beside it — face-local vertices with outward normals and the surface's own (u, v), which a renderer uploads as they stand (ADR-0012) |
 | A face's outward-oriented frame | `ops::query::face_frame(&model, face)` for a plane (stable across re-evaluation, since a primitive's frame or a sweep's profile plane is), `ops::query::frame_at(&model, face, uv)` for any face at a `(u, v)` its domain contains |
 | Mass properties (volume, area, centroid, inertia) | `ops::measure::mass_properties` → `MassProperties` (exact over the B-Rep, the tensor about the centroid); or the consumer's own integrator over `TriMesh` |

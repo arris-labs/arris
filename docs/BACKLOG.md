@@ -8,6 +8,9 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 [Findings](#findings) below, in the fixed shape, with the number that
 reproduces it.
 
+- The round (arc) join at an outward convex edge of `offset_faces`, which meets sharp today (ADR-0048 §2): add it when a fixture or a consumer asks.
+- `offset_faces` keeps a filleted pocket wall's floor dragged with it (the tangent chain is transitive); a press-pull that keeps the floor and re-blends the fillet at its old radius is the blend's, if a consumer asks (ADR-0048 §6).
+- An `offset_faces` that changes topology (a face vanishing and its neighbours meeting, a degree-four vertex splitting into an edge) is refused as `Vanishes` or `VertexSplits`; the global arrangement (the idea's option B) is raised only if the real-part corpus asks.
 - The Python binding's mesh does not carry the kernel's per-corner normals and (u, v) block (`MeshRequest::with_corners`, ADR-0012), which a renderer wants; bind it, and `vt`/`vn` in the OBJ writer with it (python-binding step 9)
 - `topo::Model` has no public iteration of its bodies, so Python cannot list the bodies of a model read by `Model.from_native`; add the kernel API and `Model.bodies()` (python-binding step 10)
 - `Imported.translated()` raises when the written record names entities outside the body (a boolean's inputs): import those entities too, or take an `IdMap` for them, so a cut's whole record crosses models (python-binding step 10)

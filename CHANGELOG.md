@@ -18,6 +18,22 @@ into its version (ADR-0027).
   a coaxial cylinder or cone, a concentric sphere, a torus of the same
   major radius), and `None` for an elliptic cylinder, a NURBS surface, a
   non-finite distance and a radius driven to or through zero.
+- `arris_ops::offset_faces(model, body, faces, distance, control)` moves
+  chosen faces of a solid along their outward normals by a signed distance
+  (positive adds material), the press-pull of a CAD: a pushed top face makes
+  the body taller, a pushed hole wall narrows the hole, and every face
+  moving is the body's offset. A moved plane, cylinder, cone, sphere or
+  torus stays its own kind, its neighbours are extended or trimmed to meet
+  it at a sharp edge, and a face tangent to a moved one (a fillet and the
+  face beyond it) moves with it. The result is checked at the full level in
+  every build, provenance names every moved face, and it is an operand of
+  fillet, chamfer and every boolean. `Model.offset_faces` is the same call
+  in Python. It refuses, naming the face or edge and leaving the model
+  untouched: no faces, a face twice or of another body, a NURBS or
+  elliptic-cylinder face, a radius driven through zero, an edge or face that
+  would vanish or turn inside out, a vertex that would split, a moved face
+  that no longer meets a fixed neighbour, and a result that runs into
+  itself. The round join at an outward convex edge is not offered.
 
 ### Breaking
 
