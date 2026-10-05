@@ -18,7 +18,7 @@ use super::stripe::{
     section_between,
 };
 use super::{degenerate, invariant};
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
 /// Two blends meeting at a vertex whose third edge stays sharp
@@ -132,8 +132,8 @@ impl Miter {
 /// chamfers of unequal angles with the third edge do the same in lines, `m`
 /// where the narrower chamfer's far contact crosses the wider's plane.
 /// Blends not both convex or both concave, or edges that do not share
-/// exactly one face are `Reason::VertexBlend`; a third edge shorter than
-/// the cut is `Reason::BlendTooLarge`.
+/// exactly one face are `BlendReason::VertexBlend`; a third edge shorter than
+/// the cut is `BlendReason::TooLarge`.
 pub(super) fn miter(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -282,7 +282,7 @@ fn read_miter(
     let tol = env.tol;
     let v = forward(vertex);
     let (ea, eb) = (forward(a.edge), forward(b.edge));
-    let vertex_blend = || degenerate(vec![ea, eb, v], Reason::VertexBlend);
+    let vertex_blend = || degenerate(vec![ea, eb, v], Reason::Blend(BlendReason::VertexBlend));
     // A ruling blend's contact on its cylinder meets no other blend's
     // contact on the third edge: two arcs, a backlog line C6 left.
     if a.ruling || b.ruling {
@@ -399,7 +399,12 @@ fn read_miter(
         Some(_) | None => (pa, t3a),
     };
     // The third edge shortened to that point.
-    let too_large = || degenerate(vec![ea, eb, forward(e3)], Reason::BlendTooLarge);
+    let too_large = || {
+        degenerate(
+            vec![ea, eb, forward(e3)],
+            Reason::Blend(BlendReason::TooLarge),
+        )
+    };
     let Some(tc) = shift_into_range(range3, t3, c3.period()) else {
         return Err(too_large());
     };
@@ -460,7 +465,12 @@ fn miter_curve(
         ..
     } = *rd;
     let (ea, eb) = (forward(a.edge), forward(b.edge));
-    let vertex_blend = || degenerate(vec![ea, eb, forward(vertex)], Reason::VertexBlend);
+    let vertex_blend = || {
+        degenerate(
+            vec![ea, eb, forward(vertex)],
+            Reason::Blend(BlendReason::VertexBlend),
+        )
+    };
     let crossing = |o1: Point3, d1: Vec3, o2: Point3, d2: Vec3, what: &'static str| {
         cross_lines(tol, tolerance, o1, d1, o2, d2, what)?.ok_or_else(vertex_blend)
     };
@@ -610,8 +620,8 @@ pub(super) struct TrimAt {
 /// `points[1]` on the third edge `e3` — `section_between`'s, a conic exact
 /// on the plane — with its pcurves on the face and on the wider blend. The
 /// arc lies inside the face where the third edge is of the blends' sense;
-/// a third edge of the other sense is `Reason::VertexBlend`, and an arc
-/// leaving the face `Reason::BlendTooLarge`.
+/// a third edge of the other sense is `BlendReason::VertexBlend`, and an arc
+/// leaving the face `BlendReason::TooLarge`.
 pub(super) fn trim_arc(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -634,7 +644,7 @@ pub(super) fn trim_arc(
         Some(_) | None => {
             return Err(degenerate(
                 vec![forward(ws.edge), forward(ns.edge), forward(vertex)],
-                Reason::VertexBlend,
+                Reason::Blend(BlendReason::VertexBlend),
             ));
         }
     };
@@ -654,7 +664,7 @@ pub(super) fn trim_arc(
     if !on_side_of_face(m, face, &on_face, range, side, samples)? {
         return Err(degenerate(
             vec![forward(ws.edge), forward(ns.edge), forward(face)],
-            Reason::BlendTooLarge,
+            Reason::Blend(BlendReason::TooLarge),
         ));
     }
     let on_blend = pcurve_on(&curve, range, &ws.surface, arc_tol, meter).map_err(fault_of)?;

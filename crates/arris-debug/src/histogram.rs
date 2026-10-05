@@ -20,7 +20,9 @@ use std::fmt::Write as _;
 
 use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::step::{ReadError, Refusal};
-use arris_ops::{OpError, Reason};
+use arris_ops::{
+    BlendReason, BooleanReason, InputReason, OpError, QueryReason, Reason, SweepReason,
+};
 use arris_topo::{EntityId, Model};
 
 use crate::battery::Class;
@@ -287,11 +289,17 @@ pub fn blocks_reason_in(m: &Model, stage: Stage, error: &OpError) -> Option<Cycl
 ///
 /// ```
 /// use arris_debug::histogram::{Cycle, Stage, blocks_reason};
-/// use arris_ops::{OpError, Reason};
+/// use arris_ops::{BlendReason, BooleanReason, OpError, Reason};
 ///
-/// let chain = OpError::Degenerate { entities: Vec::new(), reason: Reason::TangentChain };
+/// let chain = OpError::Degenerate {
+///     entities: Vec::new(),
+///     reason: Reason::Blend(BlendReason::TangentChain),
+/// };
 /// assert_eq!(blocks_reason(Stage::Fillet, &chain), Some(Cycle::BlendNetwork));
-/// let empty = OpError::Degenerate { entities: Vec::new(), reason: Reason::Empty };
+/// let empty = OpError::Degenerate {
+///     entities: Vec::new(),
+///     reason: Reason::Boolean(BooleanReason::Empty),
+/// };
 /// assert_eq!(blocks_reason(Stage::BoxCut, &empty), Some(Cycle::Itself("no material")));
 /// ```
 pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
@@ -311,31 +319,39 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             }
         }
         OpError::Degenerate { reason, .. } => match reason {
-            Reason::BlendTooLarge | Reason::TangentChain | Reason::VertexBlend => {
-                Cycle::BlendNetwork
+            Reason::Blend(BlendReason::TooLarge)
+            | Reason::Blend(BlendReason::TangentChain)
+            | Reason::Blend(BlendReason::VertexBlend) => Cycle::BlendNetwork,
+            Reason::Sweep(SweepReason::DirectionNotNormal)
+            | Reason::Sweep(SweepReason::EllipticRevolve { .. }) => Cycle::Sweep,
+            Reason::Input(InputReason::NotSolid) => Cycle::Healing,
+            Reason::Boolean(BooleanReason::TangentContact)
+            | Reason::Input(InputReason::NonManifold) => Cycle::Itself("non-manifold"),
+            Reason::Boolean(BooleanReason::BesideSingularity) => {
+                Cycle::Itself("beside a singularity")
             }
-            Reason::DirectionNotNormal | Reason::EllipticRevolve { .. } => Cycle::Sweep,
-            Reason::NotSolid => Cycle::Healing,
-            Reason::TangentContact | Reason::NonManifold => Cycle::Itself("non-manifold"),
-            Reason::BesideSingularity => Cycle::Itself("beside a singularity"),
-            Reason::Empty | Reason::ZeroThickness => Cycle::Itself("no material"),
+            Reason::Boolean(BooleanReason::Empty) | Reason::Input(InputReason::ZeroThickness) => {
+                Cycle::Itself("no material")
+            }
             // Argument and sweep-profile errors the battery should never
             // raise: a count here is a battery bug to read.
-            Reason::NonFinite { .. } => Cycle::Itself("NonFinite"),
-            Reason::NotPositive { .. } => Cycle::Itself("NotPositive"),
-            Reason::NoEdges => Cycle::Itself("NoEdges"),
-            Reason::RepeatedEdge => Cycle::Itself("RepeatedEdge"),
-            Reason::EdgeNotInBody => Cycle::Itself("EdgeNotInBody"),
-            Reason::NotProjectable => Cycle::Itself("NotProjectable"),
-            Reason::DegenerateEdge => Cycle::Itself("DegenerateEdge"),
-            Reason::ProjectionCollapses => Cycle::Itself("ProjectionCollapses"),
-            Reason::NotPlanar => Cycle::Itself("NotPlanar"),
-            Reason::OutOfDomain => Cycle::Itself("OutOfDomain"),
-            Reason::Singular => Cycle::Itself("Singular"),
-            Reason::ProfileCrossesAxis => Cycle::Itself("ProfileCrossesAxis"),
-            Reason::AxisNotInProfilePlane => Cycle::Itself("AxisNotInProfilePlane"),
-            Reason::AngleAboveTurn => Cycle::Itself("AngleAboveTurn"),
-            Reason::SpindleTorus => Cycle::Itself("SpindleTorus"),
+            Reason::Input(InputReason::NonFinite { .. }) => Cycle::Itself("NonFinite"),
+            Reason::Input(InputReason::NotPositive { .. }) => Cycle::Itself("NotPositive"),
+            Reason::Blend(BlendReason::NoEdges) => Cycle::Itself("NoEdges"),
+            Reason::Blend(BlendReason::RepeatedEdge) => Cycle::Itself("RepeatedEdge"),
+            Reason::Blend(BlendReason::EdgeNotInBody) => Cycle::Itself("EdgeNotInBody"),
+            Reason::Query(QueryReason::NotProjectable) => Cycle::Itself("NotProjectable"),
+            Reason::Query(QueryReason::DegenerateEdge) => Cycle::Itself("DegenerateEdge"),
+            Reason::Query(QueryReason::ProjectionCollapses) => Cycle::Itself("ProjectionCollapses"),
+            Reason::Query(QueryReason::NotPlanar) => Cycle::Itself("NotPlanar"),
+            Reason::Query(QueryReason::OutOfDomain) => Cycle::Itself("OutOfDomain"),
+            Reason::Query(QueryReason::Singular) => Cycle::Itself("Singular"),
+            Reason::Sweep(SweepReason::ProfileCrossesAxis) => Cycle::Itself("ProfileCrossesAxis"),
+            Reason::Sweep(SweepReason::AxisNotInProfilePlane) => {
+                Cycle::Itself("AxisNotInProfilePlane")
+            }
+            Reason::Sweep(SweepReason::AngleAboveTurn) => Cycle::Itself("AngleAboveTurn"),
+            Reason::Sweep(SweepReason::SpindleTorus) => Cycle::Itself("SpindleTorus"),
         },
         OpError::InvalidInput { .. } => Cycle::Itself("InvalidInput"),
         OpError::Profile(_) => Cycle::Itself("Profile"),

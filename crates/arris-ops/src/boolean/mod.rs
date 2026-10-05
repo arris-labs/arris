@@ -275,7 +275,7 @@ pub struct SectionEdge {
 /// period. A contact contributes no section edge and splits
 /// nothing; the boolean decides at its midpoint, by the curvature rule,
 /// whether the piece of each face through it would survive, and refuses
-/// with [`crate::Reason::TangentContact`] when both would — the slit no
+/// with [`crate::BooleanReason::TangentContact`] when both would — the slit no
 /// manifold `Solid` can carry (ADR-0004).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Contact {
@@ -560,12 +560,12 @@ pub fn interferences(
 /// closed form, and for a piece lying on an edge or a vertex of the
 /// other operand, or on a face of it that its own face is neither
 /// coincident nor tangent with; [`OpError::Degenerate`] with
-/// [`crate::Reason::Empty`] when nothing survives (the target inside the
-/// tool), [`crate::Reason::ZeroThickness`] when nothing survives and
+/// [`crate::BooleanReason::Empty`] when nothing survives (the target inside the
+/// tool), [`crate::InputReason::ZeroThickness`] when nothing survives and
 /// what was dropped lay on the other operand (two solids touching along
-/// a face), [`crate::Reason::NonManifold`] naming the shared edges or
+/// a face), [`crate::InputReason::NonManifold`] naming the shared edges or
 /// vertices when two shells of the result would touch along an edge or at
-/// a vertex, [`crate::Reason::TangentContact`] when two faces touch along a
+/// a vertex, [`crate::BooleanReason::TangentContact`] when two faces touch along a
 /// curve interior to both and both pieces through it would survive —
 /// a hole wall tangent to a side face, a ball in a bore of its radius —
 /// or a section edge is tangent to
@@ -689,8 +689,8 @@ pub fn fuse(
 /// result shell from the operand shells its pieces came from.
 ///
 /// Errors, the model untouched on each: as [`cut`]'s, with
-/// [`crate::Reason::Empty`] where two operands share no material — the
-/// common of disjoint solids — and [`crate::Reason::ZeroThickness`]
+/// [`crate::BooleanReason::Empty`] where two operands share no material — the
+/// common of disjoint solids — and [`crate::InputReason::ZeroThickness`]
 /// where they share only a face.
 ///
 /// ```

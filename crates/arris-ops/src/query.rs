@@ -9,7 +9,7 @@ use arris_geom::{Curve, Curve2, GeomError, Surface, project_to_plane as project}
 use arris_math::{Frame, Interval, Point2, Vec2, wrap_angle};
 use arris_topo::{EdgeId, EntityId, Face, Model, Orientation, Shape, VertexId};
 
-use crate::error::{Fault, OpError, Reason};
+use crate::error::{Fault, OpError, QueryReason, Reason};
 
 /// One entity of a [`project_to_plane`] call, projected: what the
 /// consumer draws on its sketch plane. Coordinates are the plane frame's
@@ -58,9 +58,9 @@ pub enum Projection {
 /// which of its edges a view shows is the caller's to decide.
 ///
 /// Errors, each naming the shape: [`OpError::Degenerate`] with
-/// [`Reason::NotProjectable`] for a shape that is not an edge or a
-/// vertex, [`Reason::DegenerateEdge`] for an edge with no 3D curve, and
-/// [`Reason::ProjectionCollapses`] for a curve whose projection is a
+/// [`QueryReason::NotProjectable`] for a shape that is not an edge or a
+/// vertex, [`QueryReason::DegenerateEdge`] for an edge with no 3D curve, and
+/// [`QueryReason::ProjectionCollapses`] for a curve whose projection is a
 /// point or a segment — a line perpendicular to the plane, a conic whose
 /// plane is; [`OpError::NotFound`] for an id, or a curve an edge holds,
 /// that does not resolve.
@@ -68,7 +68,7 @@ pub enum Projection {
 /// ```
 /// use arris_ops::primitive_cylinder;
 /// use arris_ops::query::{Projection, project_to_plane};
-/// use arris_ops::{OpError, Reason};
+/// use arris_ops::{OpError, QueryReason, Reason};
 /// use arris_geom::{Curve, Curve2};
 /// use arris_math::{Axis, Frame, Point3, Vec3};
 /// use arris_topo::Model;
@@ -94,7 +94,7 @@ pub enum Projection {
 /// // Seen from the side, it is a segment: refused, naming the edge.
 /// let side = Frame::from_z(Point3::origin(), Vec3::y()).unwrap();
 /// let err = project_to_plane(&m, &[rim.shape()], &side).unwrap_err();
-/// assert!(matches!(err, OpError::Degenerate { reason: Reason::ProjectionCollapses, .. }));
+/// assert!(matches!(err, OpError::Degenerate { reason: Reason::Query(QueryReason::ProjectionCollapses), .. }));
 /// ```
 pub fn project_to_plane(
     m: &Model,
@@ -112,9 +112,10 @@ pub fn project_to_plane(
                 })
             }
             EntityId::Edge(edge) => project_edge(m, shape, edge, plane),
-            EntityId::Face(_) | EntityId::Shell(_) | EntityId::Body(_) => {
-                Err(degenerate(shape, Reason::NotProjectable))
-            }
+            EntityId::Face(_) | EntityId::Shell(_) | EntityId::Body(_) => Err(degenerate(
+                shape,
+                Reason::Query(QueryReason::NotProjectable),
+            )),
         })
         .collect()
 }
@@ -133,11 +134,16 @@ fn project_edge(
     plane: &Frame,
 ) -> Result<Projection, OpError> {
     let Some((curve_id, range)) = m.edge(edge)?.curve() else {
-        return Err(degenerate(shape, Reason::DegenerateEdge));
+        return Err(degenerate(
+            shape,
+            Reason::Query(QueryReason::DegenerateEdge),
+        ));
     };
     let curve = m.curve(curve_id)?;
     let projected = project(curve, plane).map_err(|e| match e {
-        GeomError::Degenerate { .. } => degenerate(shape, Reason::ProjectionCollapses),
+        GeomError::Degenerate { .. } => {
+            degenerate(shape, Reason::Query(QueryReason::ProjectionCollapses))
+        }
         other => OpError::Internal(Fault::Geometry(other)),
     })?;
     let range = carried_range(curve, &projected, range, plane)?;
@@ -204,7 +210,7 @@ fn carried_range(
 /// with `(u, v)`, which [`frame_at`] answers.
 ///
 /// Errors: [`OpError::NotFound`] for an id that does not resolve;
-/// [`OpError::Degenerate`] with [`Reason::NotPlanar`], naming the face,
+/// [`OpError::Degenerate`] with [`QueryReason::NotPlanar`], naming the face,
 /// when its surface is not a plane.
 ///
 /// ```
@@ -236,7 +242,10 @@ pub fn face_frame(m: &Model, face: Face) -> Result<Frame, OpError> {
     let entity = m.face(face.id)?;
     let surface = m.surface(entity.surface())?;
     let Surface::Plane { frame } = surface else {
-        return Err(degenerate(face.shape(), Reason::NotPlanar));
+        return Err(degenerate(
+            face.shape(),
+            Reason::Query(QueryReason::NotPlanar),
+        ));
     };
     Ok(if face.orientation == Orientation::Reversed {
         Frame::from_orthonormal(
@@ -258,9 +267,9 @@ pub fn face_frame(m: &Model, face: Face) -> Result<Frame, OpError> {
 /// normal does not depend on the parameter.
 ///
 /// Errors: [`OpError::NotFound`] for an id that does not resolve;
-/// [`OpError::Degenerate`], naming the face, with [`Reason::OutOfDomain`]
+/// [`OpError::Degenerate`], naming the face, with [`QueryReason::OutOfDomain`]
 /// when `(u, v)` lies outside the face's own domain
-/// ([`arris_check::domain::FaceDomain`]) and [`Reason::Singular`] when
+/// ([`arris_check::domain::FaceDomain`]) and [`QueryReason::Singular`] when
 /// the surface's parametrisation is singular there — a sphere's pole, a
 /// cone's apex — so it has no normal to compose.
 ///
@@ -292,11 +301,17 @@ pub fn frame_at(m: &Model, face: Face, uv: Point2) -> Result<Frame, OpError> {
     let entity = m.face(face.id)?;
     let domain = FaceDomain::of(m, face.id, entity.tolerance())?;
     if domain.side(uv).0 == Side::Outside {
-        return Err(degenerate(face.shape(), Reason::OutOfDomain));
+        return Err(degenerate(
+            face.shape(),
+            Reason::Query(QueryReason::OutOfDomain),
+        ));
     }
     let surface = m.surface(entity.surface())?;
     let Some(normal) = surface.normal(uv.x, uv.y) else {
-        return Err(degenerate(face.shape(), Reason::Singular));
+        return Err(degenerate(
+            face.shape(),
+            Reason::Query(QueryReason::Singular),
+        ));
     };
     let normal = if face.orientation == Orientation::Reversed {
         -normal.into_inner()

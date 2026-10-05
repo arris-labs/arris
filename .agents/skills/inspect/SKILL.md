@@ -50,7 +50,7 @@ and `render_png(&TriMesh::new(), &polylines, View::Top,
 Some(Highlight::Point([u, v, 0.0])), "name")` with the named segment's
 start as the highlight. `View::Top` looks down the sketch's normal, so the
 picture is the sketch as it was drawn. For a revolve's axis refusal
-(`Reason::ProfileCrossesAxis`, `SpindleTorus`, a full turn's `NonManifold`) add
+(`SweepReason::ProfileCrossesAxis`, `SpindleTorus`, a full turn's `NonManifold`) add
 the axis as one more polyline, its origin and a far point taken into the
 plane's (u, v) by dotting their offset from `plane` with its `X` and `Y`.
 

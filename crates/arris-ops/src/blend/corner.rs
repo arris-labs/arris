@@ -13,7 +13,7 @@ use super::build::Env;
 use super::miter::cross_lines;
 use super::stripe::{Section, Stripe, chord, line_origin, placed};
 use super::{degenerate, invariant};
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
 /// One side of a corner: where one of its three blends meets the corner
@@ -80,7 +80,7 @@ pub(super) struct Corner {
 /// through one centre; a fillet corner also needs a face square to the
 /// other two, so that its sides are the sphere's equator and two meridians
 /// with exact pcurves. A corner that is not all planes, of mixed blends or,
-/// for fillets, with no such face is `Reason::VertexBlend` (a backlog
+/// for fillets, with no such face is `BlendReason::VertexBlend` (a backlog
 /// line C6 left).
 pub(super) fn corner(
     env: &Env<'_>,
@@ -169,7 +169,7 @@ impl CornerRead<'_> {
             .map(|&e| forward(e))
             .chain([forward(self.vertex)])
             .collect();
-        degenerate(entities, Reason::VertexBlend)
+        degenerate(entities, Reason::Blend(BlendReason::VertexBlend))
     }
 
     /// The side between two of the corner's points.
@@ -228,7 +228,7 @@ fn read_corner<'a>(
             .map(|&e| forward(e))
             .chain([forward(vertex)])
             .collect();
-        degenerate(entities, Reason::VertexBlend)
+        degenerate(entities, Reason::Blend(BlendReason::VertexBlend))
     };
     let at_vertex = view
         .vertex_edges

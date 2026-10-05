@@ -23,7 +23,7 @@ use arris_geom::{Profile, ProfileError, ProfileLoop, ProfileSegment, Surface};
 
 use arris_check::{Level, check};
 use arris_math::{Axis, Frame, Point2, Tolerance, Vec2, Vec3};
-use arris_ops::{OpError, Reason};
+use arris_ops::{InputReason, OpError, Reason, SweepReason};
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role};
 use core::f64::consts::TAU;
@@ -418,39 +418,39 @@ fn every_refusal_is_typed_and_leaves_the_model_untouched() {
     let tilted = Vec3::new(0.0, one_degree.sin(), one_degree.cos());
     assert_eq!(
         reason(&mut m, &plate(), tilted, 1.0),
-        Reason::DirectionNotNormal
+        Reason::Sweep(SweepReason::DirectionNotNormal)
     );
     assert_eq!(
         reason(&mut m, &plate(), -tilted, 1.0),
-        Reason::DirectionNotNormal
+        Reason::Sweep(SweepReason::DirectionNotNormal)
     );
     assert_eq!(
         reason(&mut m, &plate(), Vec3::x(), 1.0),
-        Reason::DirectionNotNormal
+        Reason::Sweep(SweepReason::DirectionNotNormal)
     );
     assert!(matches!(
         reason(&mut m, &plate(), z, 0.0),
-        Reason::NotPositive { what: "length", .. }
+        Reason::Input(InputReason::NotPositive { what: "length", .. })
     ));
     assert!(matches!(
         reason(&mut m, &plate(), z, -1.0),
-        Reason::NotPositive { what: "length", .. }
+        Reason::Input(InputReason::NotPositive { what: "length", .. })
     ));
     assert!(matches!(
         reason(&mut m, &plate(), z, f64::NAN),
-        Reason::NonFinite { what: "length" }
+        Reason::Input(InputReason::NonFinite { what: "length" })
     ));
     assert_eq!(
         reason(&mut m, &plate(), z, tol.linear / 2.0),
-        Reason::ZeroThickness
+        Reason::Input(InputReason::ZeroThickness)
     );
     assert!(matches!(
         reason(&mut m, &plate(), Vec3::zeros(), 1.0),
-        Reason::NotPositive { .. }
+        Reason::Input(InputReason::NotPositive { .. })
     ));
     assert!(matches!(
         reason(&mut m, &plate(), Vec3::new(0.0, f64::INFINITY, 1.0), 1.0),
-        Reason::NonFinite { what: "direction" }
+        Reason::Input(InputReason::NonFinite { what: "direction" })
     ));
 
     // Every fault of the sketch, as `Profile::edges` names it.

@@ -686,7 +686,7 @@ pub const SEAM_CLEARANCE: f64 = 0.05;
 /// `boolean/ball-pole-slice-cut`. A
 /// ball's tilt keeps [`SEAM_CLEARANCE`] from `90°` unless it is `90°`
 /// exactly: a circle through one pole at `90° + δ` passes the other
-/// `2R sin δ` away, and beside a pole is `Reason::BesideSingularity` by
+/// `2R sin δ` away, and beside a pole is `BooleanReason::BesideSingularity` by
 /// design (ADR-0021), met at `δ = 8e-5` in eight thousand poses.
 pub fn singular_slice() -> impl Strategy<Value = SingularSlice> {
     (

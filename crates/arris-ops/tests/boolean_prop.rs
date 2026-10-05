@@ -26,7 +26,7 @@ use arris_math::{Axis, Frame, Isometry, Point3, UnitVec3, Vec3};
 
 use arris_check::{Level, check};
 use arris_ops::measure::MassProperties;
-use arris_ops::{OpError, Reason};
+use arris_ops::{BooleanReason, InputReason, OpError, Reason};
 use arris_topo::provenance::audit;
 use arris_topo::{Body, Model, Provenance};
 use proptest::prelude::*;
@@ -336,7 +336,7 @@ fn a_tangent_cylinder_leaves_the_box(pair: &TangentPair) -> Result<(), TestCaseE
     prop_assert!((after.centroid - pa.centroid).norm() <= REL * pa.area.sqrt());
     match common(&mut m, a, b) {
         Err(OpError::Degenerate {
-            reason: Reason::Empty,
+            reason: Reason::Boolean(BooleanReason::Empty),
             ..
         }) => {}
         Ok(_) => return Err(fail("common(box, cylinder): a touch shares no material")),
@@ -344,7 +344,7 @@ fn a_tangent_cylinder_leaves_the_box(pair: &TangentPair) -> Result<(), TestCaseE
     }
     match fuse(&mut m, a, b) {
         Err(OpError::Degenerate {
-            reason: Reason::TangentContact,
+            reason: Reason::Boolean(BooleanReason::TangentContact),
             ..
         }) => {}
         Ok(_) => {
@@ -794,7 +794,7 @@ prop_shards! {
             for (name, target, tool) in [("cut(a, b)", a, b), ("cut(b, a)", b, a)] {
                 match cut(&mut m, target, tool) {
                     Err(OpError::Degenerate {
-                        reason: Reason::NonManifold,
+                        reason: Reason::Input(InputReason::NonManifold),
                         ..
                     }) => {}
                     Ok(_) => {
@@ -1447,7 +1447,7 @@ fn run_unless_beside(
 ) -> Result<Option<Body>, TestCaseError> {
     match op(m, a, b) {
         Err(OpError::Degenerate {
-            reason: Reason::BesideSingularity,
+            reason: Reason::Boolean(BooleanReason::BesideSingularity),
             ..
         }) => Ok(None),
         // A fault one of the differential's named exclusions covers, as

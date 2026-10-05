@@ -18,7 +18,7 @@ use super::traced;
 use super::{Kind, degenerate, invariant};
 use crate::body_view::tangent_normals;
 use crate::body_view::{BodyView, UseAt, faces_tolerance};
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
 /// A contact of the blend with one of the edge's faces: the line at
@@ -267,7 +267,7 @@ pub(super) fn stripe(
     let e = forward(edge);
     let entity = *m.edge(edge)?;
     let Some((curve_id, range)) = entity.curve() else {
-        return Err(degenerate(vec![e], Reason::VertexBlend));
+        return Err(degenerate(vec![e], Reason::Blend(BlendReason::VertexBlend)));
     };
     if entity.start() == entity.end() {
         return Err(invariant("an open edge, a closed one being a ring"));
@@ -294,7 +294,7 @@ pub(super) fn stripe(
     if tangent_normals(n1, n2, kind.size(), tolerance.max(entity.tolerance()), tol) {
         return Err(degenerate(
             vec![e, forward(f1), forward(f2)],
-            Reason::TangentChain,
+            Reason::Blend(BlendReason::TangentChain),
         ));
     }
     let surfaces = [
@@ -378,7 +378,10 @@ pub(super) fn stripe(
                         tol,
                     )
                     .ok_or_else(|| {
-                        degenerate(vec![e, forward(f1), forward(f2)], Reason::BlendTooLarge)
+                        degenerate(
+                            vec![e, forward(f1), forward(f2)],
+                            Reason::Blend(BlendReason::TooLarge),
+                        )
                     })?;
                     let mut x = [on_plane; 2];
                     x[k] = on_cylinder;
@@ -582,7 +585,7 @@ pub(super) fn contacts(
     let mut contacts: Vec<Contact> = Vec::with_capacity(2);
     let spans = [0, 1].map(|k| (t[0][k], t[1][k]));
     for (k, ((&face, line), &(lo, hi))) in s.faces.iter().zip(&s.lines).zip(&spans).enumerate() {
-        let too_large = || degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
+        let too_large = || degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
         if hi - lo <= s.tolerance {
             return Err(too_large());
         }

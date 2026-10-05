@@ -12,7 +12,7 @@ use arris_debug::unmetered::cut;
 use arris_debug::unmetered::{chamfer, extrude, mass_properties, primitive_box, revolve};
 use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
 use arris_math::{Axis, Frame, Point2, Point3, Vec3};
-use arris_ops::{OpError, Reason};
+use arris_ops::{InputReason, OpError, Reason};
 use arris_topo::provenance::audit;
 use arris_topo::{Body, Edge, EntityId, Model, Orientation, Shape};
 /// The edge of `body` whose curve's midpoint is `at`.
@@ -349,14 +349,14 @@ fn a_bad_distance_is_refused_by_name() {
     let before = dump_text(&m, body).unwrap();
     assert!(matches!(
         reason(&chamfer(&mut m, body, &[edge], f64::INFINITY).unwrap_err()),
-        Some(Reason::NonFinite { what: "distance" })
+        Some(Reason::Input(InputReason::NonFinite { what: "distance" }))
     ));
     assert!(matches!(
         reason(&chamfer(&mut m, body, &[edge], -0.2).unwrap_err()),
-        Some(Reason::NotPositive {
+        Some(Reason::Input(InputReason::NotPositive {
             what: "distance",
             ..
-        })
+        }))
     ));
     assert_eq!(dump_text(&m, body).unwrap(), before);
 }

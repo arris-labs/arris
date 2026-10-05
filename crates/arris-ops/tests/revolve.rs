@@ -33,7 +33,7 @@ use arris_math::{Axis, Frame, Point2, Point3, Tolerance, Vec2, Vec3};
 use arris_check::classify::{Classification, classify_point};
 use arris_check::domain::FaceDomain;
 use arris_check::{Level, check, lumps};
-use arris_ops::{OpError, Reason};
+use arris_ops::{InputReason, OpError, Reason, SweepReason};
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, EntityId, Model, Provenance, Role, Shape};
 use core::f64::consts::{PI, TAU};
@@ -366,21 +366,21 @@ fn the_angle_is_held_to_a_turn() {
     assert!(matches!(
         refused(TAU + 1e-3),
         OpError::Degenerate {
-            reason: Reason::AngleAboveTurn,
+            reason: Reason::Sweep(SweepReason::AngleAboveTurn),
             ..
         }
     ));
     assert!(matches!(
         refused(0.0),
         OpError::Degenerate {
-            reason: Reason::NotPositive { what: "angle", .. },
+            reason: Reason::Input(InputReason::NotPositive { what: "angle", .. }),
             ..
         }
     ));
     assert!(matches!(
         refused(f64::NAN),
         OpError::Degenerate {
-            reason: Reason::NonFinite { what: "angle" },
+            reason: Reason::Input(InputReason::NonFinite { what: "angle" }),
             ..
         }
     ));
@@ -417,19 +417,28 @@ fn the_profile_is_held_clear_of_the_axis_and_the_axis_to_the_plane() {
     assert!(matches!(
         revolve(&mut m, &apex, z, TAU),
         Err(OpError::Degenerate {
-            reason: Reason::NonManifold,
+            reason: Reason::Input(InputReason::NonManifold),
             ..
         })
     ));
     // Straddling it.
     let across = sketch(rectangle(-1.0, 1.0, -1.0, 1.0, false));
-    assert_eq!(reason(&mut m, &across, z), Reason::ProfileCrossesAxis);
+    assert_eq!(
+        reason(&mut m, &across, z),
+        Reason::Sweep(SweepReason::ProfileCrossesAxis)
+    );
     // An axis tilted out of the plane, and one lifted off it.
     let tube = tube_profile(false);
     let tilted = Axis::new(Point3::origin(), Vec3::new(0.0, 0.1, 1.0)).unwrap();
-    assert_eq!(reason(&mut m, &tube, tilted), Reason::AxisNotInProfilePlane);
+    assert_eq!(
+        reason(&mut m, &tube, tilted),
+        Reason::Sweep(SweepReason::AxisNotInProfilePlane)
+    );
     let lifted = Axis::z_at(Point3::new(0.0, 1.0, 0.0));
-    assert_eq!(reason(&mut m, &tube, lifted), Reason::AxisNotInProfilePlane);
+    assert_eq!(
+        reason(&mut m, &tube, lifted),
+        Reason::Sweep(SweepReason::AxisNotInProfilePlane)
+    );
     // A full turn of a profile with a hole closes the hole into a cavity:
     // one lump, its void the hole's sides, Generated from the hole's loop.
     // It is no refusal, so it is built in a model of its own.
@@ -673,7 +682,7 @@ fn notches_reaching_the_axis_close_into_voids_and_a_pinch_is_non_manifold() {
     assert!(matches!(
         revolve(&mut m, &kite, z, TAU),
         Err(OpError::Degenerate {
-            reason: Reason::NonManifold,
+            reason: Reason::Input(InputReason::NonManifold),
             entities,
         }) if entities.is_empty()
     ));
@@ -1202,7 +1211,7 @@ fn an_arc_whose_circle_crosses_the_axis_is_a_spindle_torus() {
     assert!(matches!(
         revolve(&mut m, &bulge, z, TAU),
         Err(OpError::Degenerate {
-            reason: Reason::SpindleTorus,
+            reason: Reason::Sweep(SweepReason::SpindleTorus),
             ..
         })
     ));
@@ -1217,7 +1226,7 @@ fn an_arc_whose_circle_crosses_the_axis_is_a_spindle_torus() {
     assert!(matches!(
         revolve(&mut m, &circle, z, TAU),
         Err(OpError::Degenerate {
-            reason: Reason::ProfileCrossesAxis,
+            reason: Reason::Sweep(SweepReason::ProfileCrossesAxis),
             ..
         })
     ));
@@ -1245,10 +1254,10 @@ fn an_elliptic_segment_is_refused_naming_the_sketch() {
     let elliptic_revolve = |profile: &Profile, m: &mut Model| match revolve(m, profile, z, TAU) {
         Err(OpError::Degenerate {
             reason:
-                Reason::EllipticRevolve {
+                Reason::Sweep(SweepReason::EllipticRevolve {
                     loop_index,
                     segment,
-                },
+                }),
             ..
         }) => (loop_index, segment),
         other => panic!("expected an elliptic refusal, got {other:?}"),

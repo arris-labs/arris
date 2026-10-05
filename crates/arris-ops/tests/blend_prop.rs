@@ -1478,7 +1478,7 @@ fn step_posed(
     let (blended, p) = op(kind)(&mut m, moved, &[edge], case.size).map_err(|e| {
         if wide
             && let OpError::Degenerate {
-                reason: arris_ops::Reason::BlendTooLarge,
+                reason: arris_ops::Reason::Blend(arris_ops::BlendReason::TooLarge),
                 ..
             } = e
         {

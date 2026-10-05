@@ -23,7 +23,7 @@ use arris_debug::{prop, prop_shards};
 use arris_io::step::{self, ReadOptions};
 use arris_math::{Isometry, Point3, Vec3};
 use arris_ops::measure::MassProperties;
-use arris_ops::{OpError, Reason};
+use arris_ops::{BooleanReason, OpError, Reason};
 use arris_topo::{Body, Model};
 use proptest::prelude::*;
 
@@ -56,7 +56,7 @@ impl Shape {
                     // resolution is a designed refusal, not a body to write
                     // (`ball-beside-pole-slice-cut`).
                     Err(OpError::Degenerate {
-                        reason: Reason::BesideSingularity,
+                        reason: Reason::Boolean(BooleanReason::BesideSingularity),
                         ..
                     }) => Err(TestCaseError::reject("beside a singularity")),
                     Err(e) => match arris_debug::differential::exclusion_of_error(&e) {

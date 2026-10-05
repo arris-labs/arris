@@ -17,7 +17,7 @@ use super::ring::{Ring, RingEnd, RingEnds, placed_uv, ring, vertex_tolerance_of}
 use super::stripe::{Stripe, contacts, stripe};
 use super::{Blend, Kind, degenerate, invariant};
 use crate::body_view::BodyView;
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild;
 use crate::rebuild::{AddedFace, Rewrite, StoredUse, forward};
 
@@ -388,12 +388,15 @@ fn vertex_joins(
         {
             return Err(degenerate(
                 vec![forward(ea), forward(spine), forward(v)],
-                Reason::TangentChain,
+                Reason::Blend(BlendReason::TangentChain),
             ));
         }
         if es.len() > 3 || (es.len() > 1 && es.iter().any(|e| arcs.contains(e))) {
             let entities = es.iter().map(|&e| forward(e)).chain([forward(v)]).collect();
-            return Err(degenerate(entities, Reason::VertexBlend));
+            return Err(degenerate(
+                entities,
+                Reason::Blend(BlendReason::VertexBlend),
+            ));
         }
     }
     for &e in arcs {
@@ -991,7 +994,7 @@ fn shorten_edges(
         let lo = cut.lo.map_or(old.lo(), |(_, t)| t);
         let hi = cut.hi.map_or(old.hi(), |(_, t)| t);
         let range = Interval::new(lo, hi)
-            .map_err(|_| degenerate(vec![forward(edge)], Reason::BlendTooLarge))?;
+            .map_err(|_| degenerate(vec![forward(edge)], Reason::Blend(BlendReason::TooLarge)))?;
         // Placed where the old pcurve still runs: at the end lengthened.
         let anchor = if lo < old.lo() {
             Some(old.lo())

@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use arris_geom::GeomKind;
 use arris_io::step::ReadOptions;
 use arris_math::{Point3, Vec3};
-use arris_ops::{OpError, Reason};
+use arris_ops::{BlendReason, OpError, Reason};
 use arris_topo::{Body, EdgeId, EntityId, FaceId, Model, VertexId};
 
 use crate::battery::Class;
@@ -163,13 +163,7 @@ pub fn class_of(e: &OpError) -> String {
             }
             format!("Unsupported {what}: {x} × {y}")
         }
-        OpError::Degenerate { reason, .. } => {
-            let name = format!("{reason:?}");
-            let end = name
-                .find(|c: char| !c.is_alphanumeric())
-                .unwrap_or(name.len());
-            format!("Degenerate: {}", &name[..end])
-        }
+        OpError::Degenerate { reason, .. } => format!("Degenerate: {}", reason.name()),
         OpError::Internal(_) => "Internal".to_string(),
         OpError::InvalidInput { .. } => "InvalidInput".to_string(),
         OpError::Profile(_) => "Profile".to_string(),
@@ -321,7 +315,7 @@ fn pair_of(m: &Model, edge: EdgeId) -> Option<String> {
 pub fn run_over_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String> {
     let OpError::Degenerate {
         entities,
-        reason: Reason::BlendTooLarge,
+        reason: Reason::Blend(BlendReason::TooLarge),
     } = e
     else {
         return None;
@@ -614,7 +608,7 @@ fn faces_across(
 pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String> {
     let OpError::Degenerate {
         entities,
-        reason: Reason::VertexBlend,
+        reason: Reason::Blend(BlendReason::VertexBlend),
     } = e
     else {
         return None;
@@ -805,7 +799,7 @@ fn walls_fold(m: &Model, w: EdgeId, vertex: VertexId) -> Option<bool> {
 pub fn tangent_chain_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String> {
     let OpError::Degenerate {
         entities,
-        reason: Reason::TangentChain,
+        reason: Reason::Blend(BlendReason::TangentChain),
     } = e
     else {
         return None;
@@ -843,7 +837,7 @@ pub fn tangent_chain_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<Strin
 pub fn vertex_set_cause(m: &Model, e: &OpError) -> Option<String> {
     let OpError::Degenerate {
         entities,
-        reason: Reason::VertexBlend,
+        reason: Reason::Blend(BlendReason::VertexBlend),
     } = e
     else {
         return None;
@@ -1508,7 +1502,7 @@ mod tests {
         assert!(blend(&mut scratch, b, &[edge], 0.1).is_ok());
         let other = OpError::Degenerate {
             entities: Vec::new(),
-            reason: Reason::NoEdges,
+            reason: Reason::Blend(BlendReason::NoEdges),
         };
         assert_eq!(run_over_cause(&m, edge.id, &other), None);
     }
@@ -1527,7 +1521,7 @@ mod tests {
         let cause = |entities: Vec<Shape>| {
             let err = OpError::Degenerate {
                 entities,
-                reason: Reason::BlendTooLarge,
+                reason: Reason::Blend(BlendReason::TooLarge),
             };
             run_over_cause(&m, edge, &err).unwrap()
         };
@@ -1633,7 +1627,7 @@ mod tests {
                 Shape::new(rise.id, Orientation::Forward),
                 Shape::new(foot, Orientation::Forward),
             ],
-            reason: Reason::VertexBlend,
+            reason: Reason::Blend(BlendReason::VertexBlend),
         };
         assert_eq!(
             vertex_blend_cause(&m, rise.id, &e).unwrap(),
@@ -1706,7 +1700,7 @@ mod tests {
                 Shape::new(arc.id, Orientation::Forward),
                 Shape::new(corner.id, Orientation::Forward),
             ],
-            reason: Reason::VertexBlend,
+            reason: Reason::Blend(BlendReason::VertexBlend),
         };
         assert_eq!(
             vertex_blend_cause(&m, foot.id, &e).unwrap(),
@@ -1724,7 +1718,7 @@ mod tests {
         let handles = m.edges(b).unwrap();
         let other = OpError::Degenerate {
             entities: Vec::new(),
-            reason: Reason::BlendTooLarge,
+            reason: Reason::Blend(BlendReason::TooLarge),
         };
         assert_eq!(vertex_blend_cause(&m, handles[0].id, &other), None);
         assert_eq!(vertex_set_cause(&m, &other), None);
@@ -1736,7 +1730,7 @@ mod tests {
                 shape(handles[1].id),
                 Shape::new(v, Orientation::Forward),
             ],
-            reason: Reason::VertexBlend,
+            reason: Reason::Blend(BlendReason::VertexBlend),
         };
         assert_eq!(
             vertex_set_cause(&m, &miter).unwrap(),
@@ -1744,7 +1738,7 @@ mod tests {
         );
         let curveless = OpError::Degenerate {
             entities: vec![shape(handles[0].id)],
-            reason: Reason::VertexBlend,
+            reason: Reason::Blend(BlendReason::VertexBlend),
         };
         assert_eq!(
             vertex_blend_cause(&m, handles[0].id, &curveless).unwrap(),
@@ -2059,7 +2053,7 @@ mod tests {
                         Shape::new(edge.id, Orientation::Forward),
                         Shape::new(start, Orientation::Forward),
                     ],
-                    reason: Reason::VertexBlend,
+                    reason: Reason::Blend(BlendReason::VertexBlend),
                 };
                 (e, true)
             }

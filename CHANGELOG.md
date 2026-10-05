@@ -21,6 +21,23 @@ into its version (ADR-0027).
   `arris_io::{arris_check, arris_mesh}` and `arris_ops::arris_check` are
   gone. Depend on each crate directly, or use the facade's
   `arris::{math, geom, topo, …}`.
+- `arris_ops::Reason` is grouped by the operation that raises it, and each
+  group is its own enum, so a match names the operation first:
+  `Reason::Input(InputReason)`, `Reason::Sweep(SweepReason)`,
+  `Reason::Boolean(BooleanReason)`, `Reason::Blend(BlendReason)` and
+  `Reason::Query(QueryReason)`. Messages are unchanged, and the new
+  `Reason::name()` returns the leaf's name as it was spelt before (so a
+  refusal count keyed on `BlendTooLarge` still reads `BlendTooLarge`).
+  The old and the new:
+
+  | Was | Is |
+  |---|---|
+  | `NonFinite`, `NotPositive`, `ZeroThickness`, `NonManifold`, `NotSolid` | `Reason::Input(InputReason::…)`, the same names |
+  | `ProfileCrossesAxis`, `AxisNotInProfilePlane`, `AngleAboveTurn`, `SpindleTorus`, `EllipticRevolve`, `DirectionNotNormal` | `Reason::Sweep(SweepReason::…)`, the same names |
+  | `Empty`, `TangentContact`, `BesideSingularity` | `Reason::Boolean(BooleanReason::…)`, the same names |
+  | `NoEdges`, `RepeatedEdge`, `EdgeNotInBody`, `TangentChain`, `VertexBlend` | `Reason::Blend(BlendReason::…)`, the same names |
+  | `BlendTooLarge` | `Reason::Blend(BlendReason::TooLarge)` |
+  | `NotProjectable`, `DegenerateEdge`, `ProjectionCollapses`, `NotPlanar`, `OutOfDomain`, `Singular` | `Reason::Query(QueryReason::…)`, the same names |
 
 ## 0.5.0 — 2026-10-05
 

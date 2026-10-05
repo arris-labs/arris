@@ -22,7 +22,7 @@ use arris_topo::{AnyId, EdgeId, Face, Model, Orientation, Shape, VertexId};
 use arris_check::classify::{Classification, classify_point};
 use arris_check::domain::FaceDomain;
 use arris_ops::query::{Projection, face_frame, frame_at, project_to_plane};
-use arris_ops::{OpError, Reason};
+use arris_ops::{OpError, QueryReason, Reason};
 use proptest::prelude::*;
 
 /// How far a projected point may be from the projection of the 3D point,
@@ -102,7 +102,7 @@ prop_shards! {
             let shapes = [forward(start), forward(edge), forward(end)];
             let projected = match project_to_plane(&m, &shapes, &plane) {
                 Ok(p) => p,
-                Err(OpError::Degenerate { reason: Reason::ProjectionCollapses, entities }) => {
+                Err(OpError::Degenerate { reason: Reason::Query(QueryReason::ProjectionCollapses), entities }) => {
                     // Only a curve seen edge-on collapses, and a random
                     // pose is that only to rounding.
                     prop_assert_eq!(entities, vec![forward(edge)]);
@@ -206,7 +206,7 @@ fn refusals_name_the_shape() {
             project_to_plane(m, &[shape], &plane),
             Err(OpError::Degenerate {
                 entities: vec![shape],
-                reason: Reason::ProjectionCollapses,
+                reason: Reason::Query(QueryReason::ProjectionCollapses),
             })
         );
     };
@@ -248,7 +248,7 @@ fn refusals_name_the_shape() {
         project_to_plane(&m, &[forward(degenerate)], &plane),
         Err(OpError::Degenerate {
             entities: vec![forward(degenerate)],
-            reason: Reason::DegenerateEdge,
+            reason: Reason::Query(QueryReason::DegenerateEdge),
         })
     );
 
@@ -260,7 +260,7 @@ fn refusals_name_the_shape() {
             project_to_plane(&m, &[shape], &plane),
             Err(OpError::Degenerate {
                 entities: vec![shape],
-                reason: Reason::NotProjectable,
+                reason: Reason::Query(QueryReason::NotProjectable),
             })
         );
     }
@@ -280,7 +280,7 @@ fn refusals_name_the_shape() {
             &plane
         ),
         Err(OpError::Degenerate {
-            reason: Reason::ProjectionCollapses,
+            reason: Reason::Query(QueryReason::ProjectionCollapses),
             ..
         })
     ));
@@ -401,7 +401,7 @@ fn face_frame_refuses_a_curved_face() {
         face_frame(&m, wall),
         Err(OpError::Degenerate {
             entities: vec![wall.shape()],
-            reason: Reason::NotPlanar,
+            reason: Reason::Query(QueryReason::NotPlanar),
         })
     );
 }
@@ -459,14 +459,14 @@ fn frame_at_refuses_a_pole_and_off_domain() {
         frame_at(&m, face, Point2::new(0.0, FRAC_PI_2)),
         Err(OpError::Degenerate {
             entities: vec![face.shape()],
-            reason: Reason::Singular,
+            reason: Reason::Query(QueryReason::Singular),
         })
     );
     assert_eq!(
         frame_at(&m, face, Point2::new(0.0, 10.0)),
         Err(OpError::Degenerate {
             entities: vec![face.shape()],
-            reason: Reason::OutOfDomain,
+            reason: Reason::Query(QueryReason::OutOfDomain),
         })
     );
 }

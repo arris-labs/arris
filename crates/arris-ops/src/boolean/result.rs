@@ -21,7 +21,7 @@ use arris_topo::{
 
 use super::pieces::{Alias, ERef, EdgeOnFace, PieceUse, SplitFace, SubEdge, VRef, split_face};
 use super::{Interferences, VertexSource, meet_curves};
-use crate::error::{Fault, OpError, Reason, SplitFault};
+use crate::error::{BooleanReason, Fault, InputReason, OpError, Reason, SplitFault};
 use crate::pass::pass;
 use crate::rebuild::{self, Kept, Plan, Policy, forward};
 
@@ -686,7 +686,7 @@ impl<'m> Build<'m> {
                         Shape::new(fa.id, fa.orientation),
                         Shape::new(fb.id, fb.orientation),
                     ],
-                    reason: Reason::TangentContact,
+                    reason: Reason::Boolean(BooleanReason::TangentContact),
                 });
             }
         }
@@ -884,9 +884,9 @@ impl<'m> Build<'m> {
             return Err(OpError::Degenerate {
                 entities: entities(),
                 reason: if self.dropped_on {
-                    Reason::ZeroThickness
+                    Reason::Input(InputReason::ZeroThickness)
                 } else {
-                    Reason::Empty
+                    Reason::Boolean(BooleanReason::Empty)
                 },
             });
         }
@@ -961,7 +961,7 @@ impl<'m> Build<'m> {
         if !shared.is_empty() {
             return Err(OpError::Degenerate {
                 entities: shared.into_iter().collect(),
-                reason: Reason::NonManifold,
+                reason: Reason::Input(InputReason::NonManifold),
             });
         }
         // One shell touching itself at a vertex is the same statement: the
@@ -977,7 +977,7 @@ impl<'m> Build<'m> {
                     .collect::<BTreeSet<_>>()
                     .into_iter()
                     .collect(),
-                reason: Reason::NonManifold,
+                reason: Reason::Input(InputReason::NonManifold),
             });
         }
         Ok(shells)

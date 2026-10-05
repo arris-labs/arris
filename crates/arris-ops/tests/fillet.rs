@@ -18,7 +18,7 @@ use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, check};
 use arris_math::nalgebra::{Unit, UnitQuaternion};
 use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec3};
-use arris_ops::{OpError, Reason};
+use arris_ops::{BlendReason, InputReason, OpError, Reason};
 use arris_topo::provenance::{Origin, Relation, Role, SweepPart, audit};
 use arris_topo::{Body, Edge, EntityId, Model, Orientation, Provenance, Shape};
 /// The edge of `body` whose curve's midpoint is `at`.
@@ -205,7 +205,11 @@ fn a_concave_edge_adds_material() {
 
     // The walls of the notch are 1 long: a ball of 1.2 does not fit.
     let err = fillet(&mut m, body, &[edge], 1.2).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
 }
 
 /// The four vertical edges of the consumer's cube in one call: each cap
@@ -267,11 +271,14 @@ fn a_bad_radius_is_refused_by_name() {
     let before = dump_text(&m, body).unwrap();
     assert!(matches!(
         reason(&fillet(&mut m, body, &[edge], f64::NAN).unwrap_err()),
-        Some(Reason::NonFinite { what: "radius" })
+        Some(Reason::Input(InputReason::NonFinite { what: "radius" }))
     ));
     assert!(matches!(
         reason(&fillet(&mut m, body, &[edge], 0.0).unwrap_err()),
-        Some(Reason::NotPositive { what: "radius", .. })
+        Some(Reason::Input(InputReason::NotPositive {
+            what: "radius",
+            ..
+        }))
     ));
     assert_eq!(
         dump_text(&m, body).unwrap(),
@@ -296,14 +303,17 @@ fn the_edge_list_is_checked_before_anything_is_built() {
     let foreign = edge_at(&m, other, Point3::new(7.0, 2.0, 1.0));
     assert_eq!(
         reason(&fillet(&mut m, body, &[], 0.2).unwrap_err()),
-        Some(Reason::NoEdges)
+        Some(Reason::Blend(BlendReason::NoEdges))
     );
     assert_eq!(
         reason(&fillet(&mut m, body, &[edge, edge], 0.2).unwrap_err()),
-        Some(Reason::RepeatedEdge)
+        Some(Reason::Blend(BlendReason::RepeatedEdge))
     );
     let err = fillet(&mut m, body, &[foreign], 0.2).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::EdgeNotInBody));
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::EdgeNotInBody))
+    );
     assert!(matches!(&err, OpError::Degenerate { entities, .. } if entities[0] == foreign.shape()));
 }
 
@@ -316,17 +326,29 @@ fn a_blend_too_large_for_its_faces_is_refused() {
     let body = cube(&mut m, 2.0);
     let edge = edge_at(&m, body, Point3::new(2.0, 2.0, 1.0));
     let err = fillet(&mut m, body, &[edge], 2.5).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
     // Exactly the face's width: the contact would lie on the far edge.
     let err = fillet(&mut m, body, &[edge], 2.0).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
 
     let plate = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 0.5))
         .unwrap()
         .0;
     let top = edge_at(&m, plate, Point3::new(1.0, 2.0, 0.5));
     let err = fillet(&mut m, plate, &[top], 1.0).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
     // And a radius the plate holds builds.
     fillet(&mut m, plate, &[top], 0.2).unwrap();
 }
@@ -359,7 +381,11 @@ fn a_tangent_dihedral_is_a_tangent_chain() {
     let slot = extrude(&mut m, &profile, Vec3::z(), 2.0).unwrap().0;
     let seam = edge_at(&m, slot, Point3::new(4.0, -1.0, 1.0));
     let err = fillet(&mut m, slot, &[seam], 0.2).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::TangentChain), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TangentChain)),
+        "{err}"
+    );
 }
 
 /// Faces are tangent for a blend when the ball touching one, moved by the
@@ -390,7 +416,11 @@ fn faces_are_tangent_within_the_blends_tolerance() {
     let near = stadium(&mut m, 3e-5);
     let vertical = edge_at(&m, near, Point3::new(2.0, -1.0, 1.0));
     let err = fillet(&mut m, near, &[vertical], 0.25).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::TangentChain), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TangentChain)),
+        "{err}"
+    );
     let top = edge_at(&m, near, Point3::new(1.0, 1.0, 2.0));
     let (blended, provenance) = fillet(&mut m, near, &[top], 0.25).unwrap();
     let report = check(&m, blended, Level::Full);
@@ -501,7 +531,11 @@ fn a_chain_whose_ball_leaves_the_arc_is_too_large() {
     let wall = edge_at(&m, bar, Point3::new(1.5, 0.0, 2.0));
     for r in [1.0, 1.1] {
         let err = fillet(&mut m, bar, &[wall], r).unwrap_err();
-        assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "r {r}: {err}");
+        assert_eq!(
+            reason(&err),
+            Some(Reason::Blend(BlendReason::TooLarge)),
+            "r {r}: {err}"
+        );
     }
     fillet(&mut m, bar, &[wall], 0.25).unwrap();
 }
@@ -776,12 +810,20 @@ fn a_rim_blend_too_large_is_refused() {
     let disc = bossed_disc(&mut m);
     let top = rim_at(&m, disc, Point3::new(0.0, 0.0, 2.0), 1.0);
     let err = fillet(&mut m, disc, &[top], 0.5).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
     fillet(&mut m, disc, &[top], 0.45).unwrap();
     let plate = holed_plate(&mut m);
     let rim = rim_at(&m, plate, Point3::new(2.0, 2.0, 1.0), 1.0);
     let err = fillet(&mut m, plate, &[rim], 1.2).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
 }
 
 /// The cone row's refusals (ADR-0036 §3): a pointed cone boss on a wide
@@ -819,9 +861,17 @@ fn a_contact_past_a_cones_apex_is_too_large() {
     let base = rim_at(&m, part, Point3::new(0.0, 0.0, 1.0), 2.0);
     fillet(&mut m, part, &[base], 1.0).unwrap();
     let err = fillet(&mut m, part, &[base], 8.0).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
     let err = chamfer(&mut m, part, &[base], 4.0).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
 }
 
 /// The ruling arm's refusals: a ruling blend meeting a plane–plane blend
@@ -839,9 +889,17 @@ fn a_ruling_blend_refuses_a_miter_and_a_ball_too_large() {
     let ruling = edge_at(&m, d, Point3::new(1.5, 0.0, 1.0));
     let cap = edge_at(&m, d, Point3::new(0.0, 0.0, 2.0));
     let err = fillet(&mut m, d, &[ruling, cap], 0.2).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::VertexBlend)),
+        "{err}"
+    );
     let err = fillet(&mut m, d, &[ruling], 1.6).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
 }
 
 /// The miter (ADR-0007): the vertical and the cap edge at one corner of
@@ -1195,7 +1253,11 @@ fn a_miter_of_mixed_convexity_or_too_large_is_refused() {
     let top = edge_at(&m, ell, Point3::new(1.5, 1.0, 2.0));
     let before = dump_text(&m, ell).unwrap();
     let err = fillet(&mut m, ell, &[rise, top], 0.1).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::VertexBlend)),
+        "{err}"
+    );
     assert_eq!(dump_text(&m, ell).unwrap(), before);
 
     let prism = slanted_prism(&mut m);
@@ -1203,7 +1265,11 @@ fn a_miter_of_mixed_convexity_or_too_large_is_refused() {
     let cap = edge_at(&m, prism, Point3::new(2.0, 2.0, 2.0));
     let before = dump_text(&m, prism).unwrap();
     let err = fillet(&mut m, prism, &[vertical, cap], 1.5).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
     assert_eq!(dump_text(&m, prism).unwrap(), before);
 }
 
@@ -1478,7 +1544,11 @@ fn a_corner_of_mixed_blends_or_no_square_face_is_a_vertex_blend() {
     ];
     let before = dump_text(&m, ell).unwrap();
     let err = fillet(&mut m, ell, &reflex, 0.1).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::VertexBlend)),
+        "{err}"
+    );
     assert_eq!(dump_text(&m, ell).unwrap(), before);
 
     let cornered = cut_corner(&mut m);
@@ -1489,7 +1559,11 @@ fn a_corner_of_mixed_blends_or_no_square_face_is_a_vertex_blend() {
     ];
     let before = dump_text(&m, cornered).unwrap();
     let err = fillet(&mut m, cornered, &oblique, 0.1).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::VertexBlend), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::VertexBlend)),
+        "{err}"
+    );
     assert_eq!(dump_text(&m, cornered).unwrap(), before);
 }
 
@@ -1569,7 +1643,7 @@ fn a_fan_crossing_past_its_extra_edge_is_too_large() {
         let OpError::Degenerate { entities, reason } = &err else {
             panic!("{err}");
         };
-        assert_eq!(*reason, Reason::BlendTooLarge, "{err}");
+        assert_eq!(*reason, Reason::Blend(BlendReason::TooLarge), "{err}");
         assert_eq!(entities[..], [forward(vertical), forward(miter)], "{err}");
     }
 }
@@ -1622,5 +1696,9 @@ fn the_face_across_met_twice_keeps_the_vertex() {
     assert!((volume - exact).abs() < 1e-9, "{volume} {exact}");
 
     let err = fillet(&mut m, body, &[rise], 1.2).unwrap_err();
-    assert_eq!(reason(&err), Some(Reason::BlendTooLarge), "{err}");
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
 }

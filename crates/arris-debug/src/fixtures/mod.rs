@@ -634,27 +634,27 @@ fn one() -> usize {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ExpectError {
-    /// `OpError::Degenerate` with `Reason::TangentContact`: two faces
+    /// `OpError::Degenerate` with `BooleanReason::TangentContact`: two faces
     /// touch along a curve interior to both. The oracle's result carries
     /// the contact as an edge of four faces; where that makes its Euler
     /// characteristic odd it records no genus, and the recipe states none.
     TangentContact,
-    /// `OpError::Degenerate` with `Reason::NonManifold`: two shells of the
+    /// `OpError::Degenerate` with `InputReason::NonManifold`: two shells of the
     /// result would share an edge or a vertex (ADR-0006). The oracle's
     /// compound of solids sharing it has an odd Euler characteristic, so
     /// it records no genus and the recipe states none.
     NonManifold,
-    /// `OpError::Degenerate` with `Reason::BlendTooLarge`: a blend's
+    /// `OpError::Degenerate` with `BlendReason::TooLarge`: a blend's
     /// contact or end arc leaves its face (ADR-0007).
     BlendTooLarge,
-    /// `OpError::Degenerate` with `Reason::TangentChain`: a blended edge's
+    /// `OpError::Degenerate` with `BlendReason::TangentChain`: a blended edge's
     /// faces meet at a tangent dihedral, or the edge runs into a blend
     /// face (ADR-0007).
     TangentChain,
-    /// `OpError::Degenerate` with `Reason::VertexBlend`: a corner the
+    /// `OpError::Degenerate` with `BlendReason::VertexBlend`: a corner the
     /// blend's closed forms do not cover (ADR-0007).
     VertexBlend,
-    /// `OpError::Degenerate` with `Reason::EllipticRevolve`: a revolve of
+    /// `OpError::Degenerate` with `SweepReason::EllipticRevolve`: a revolve of
     /// a profile with an elliptic segment, whose swept surface has no
     /// variant (ADR-0014).
     EllipticRevolve,

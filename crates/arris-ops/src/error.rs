@@ -9,9 +9,60 @@ use arris_topo::{AnyId, Body, EdgeId, FaceId, NotFound, Shape};
 
 use crate::build::{BuildSlot, Rejection};
 
-/// Why a requested result has no valid representation.
+/// Why a requested result has no valid representation, grouped by the
+/// operation that raises it. [`Reason::name`] is the stable name of the
+/// leaf reason — the one a histogram or a census counts a refusal under —
+/// whatever the grouping; `Display` is each leaf's own message.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Reason {
+    /// An operand or a parameter no operation can use: the reasons more than one operation raises.
+    Input(InputReason),
+    /// A revolve or an extrude refused its profile, axis, angle or direction.
+    Sweep(SweepReason),
+    /// A fuse, cut or common whose result a manifold solid cannot hold.
+    Boolean(BooleanReason),
+    /// A fillet or a chamfer refused an edge, a chain or a corner.
+    Blend(BlendReason),
+    /// A query refused the shape or the point it was handed.
+    Query(QueryReason),
+}
+
+impl Reason {
+    /// The leaf reason's name — `"BlendTooLarge"`, `"NonFinite"` — without
+    /// its group, its entities or its numbers: stable across regroupings,
+    /// so a refusal histogram keys on it.
+    ///
+    /// ```
+    /// use arris_ops::{BlendReason, Reason};
+    ///
+    /// assert_eq!(Reason::Blend(BlendReason::TooLarge).name(), "BlendTooLarge");
+    /// ```
+    pub fn name(&self) -> &'static str {
+        match self {
+            Reason::Input(reason) => reason.name(),
+            Reason::Sweep(reason) => reason.name(),
+            Reason::Boolean(reason) => reason.name(),
+            Reason::Blend(reason) => reason.name(),
+            Reason::Query(reason) => reason.name(),
+        }
+    }
+}
+
+impl core::fmt::Display for Reason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Reason::Input(reason) => reason.fmt(f),
+            Reason::Sweep(reason) => reason.fmt(f),
+            Reason::Boolean(reason) => reason.fmt(f),
+            Reason::Blend(reason) => reason.fmt(f),
+            Reason::Query(reason) => reason.fmt(f),
+        }
+    }
+}
+
+/// An operand or a parameter no operation can use: the reasons more than one operation raises.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum InputReason {
     /// A parameter is NaN or infinite.
     NonFinite {
         /// Which parameter.
@@ -29,6 +80,55 @@ pub enum Reason {
     /// The result has no thickness: a common of flush bodies, a sweep of
     /// zero length.
     ZeroThickness,
+    /// The result's shells would touch along an edge or at a vertex — an
+    /// edge used by four faces, a vertex two lumps share, a shell touching
+    /// itself at a vertex where its faces close into more than one fan, a
+    /// full revolve's profile touching its axis at a vertex with no
+    /// segment along it — which a manifold `Solid`'s shells never do
+    /// (ADR-0006); the error's entities are the shared edges or vertices —
+    /// a section vertex named by the edges and faces whose hits and
+    /// crossings made it — none for a sweep. A body
+    /// that touches itself so is a `General` one, which no operation builds
+    /// yet.
+    NonManifold,
+    /// The query needs an enclosed volume and the body is not a solid:
+    /// a sheet, a wire, a general body.
+    NotSolid,
+}
+
+impl InputReason {
+    /// The leaf reason's name: the name it had before the reasons were
+    /// grouped, without its fields.
+    pub fn name(&self) -> &'static str {
+        match self {
+            InputReason::NonFinite { .. } => "NonFinite",
+            InputReason::NotPositive { .. } => "NotPositive",
+            InputReason::ZeroThickness => "ZeroThickness",
+            InputReason::NonManifold => "NonManifold",
+            InputReason::NotSolid => "NotSolid",
+        }
+    }
+}
+
+impl core::fmt::Display for InputReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            InputReason::NonFinite { what } => write!(f, "{what} is not finite"),
+            InputReason::NotPositive { what, value } => {
+                write!(f, "{what} must be positive, not {value}")
+            }
+            InputReason::ZeroThickness => f.write_str("the result has no thickness"),
+            InputReason::NonManifold => f.write_str(
+                "the result's shells would touch along an edge or at a vertex, which a solid does not hold",
+            ),
+            InputReason::NotSolid => f.write_str("the body is not a solid"),
+        }
+    }
+}
+
+/// A revolve or an extrude refused its profile, axis, angle or direction.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SweepReason {
     /// A revolve profile crosses its axis: it has points on both sides of
     /// the axis line in its plane, beyond the tolerance.
     ProfileCrossesAxis,
@@ -61,9 +161,51 @@ pub enum Reason {
     /// the angular tolerance; an oblique extrusion is not built yet
     /// (ADR-0047).
     DirectionNotNormal,
-    /// The query needs an enclosed volume and the body is not a solid:
-    /// a sheet, a wire, a general body.
-    NotSolid,
+}
+
+impl SweepReason {
+    /// The leaf reason's name: the name it had before the reasons were
+    /// grouped, without its fields.
+    pub fn name(&self) -> &'static str {
+        match self {
+            SweepReason::ProfileCrossesAxis => "ProfileCrossesAxis",
+            SweepReason::AxisNotInProfilePlane => "AxisNotInProfilePlane",
+            SweepReason::AngleAboveTurn => "AngleAboveTurn",
+            SweepReason::SpindleTorus => "SpindleTorus",
+            SweepReason::EllipticRevolve { .. } => "EllipticRevolve",
+            SweepReason::DirectionNotNormal => "DirectionNotNormal",
+        }
+    }
+}
+
+impl core::fmt::Display for SweepReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SweepReason::ProfileCrossesAxis => f.write_str("the profile crosses the revolve axis"),
+            SweepReason::AxisNotInProfilePlane => {
+                f.write_str("the revolve axis does not lie in the profile's plane")
+            }
+            SweepReason::AngleAboveTurn => f.write_str("the revolve angle is above a full turn"),
+            SweepReason::SpindleTorus => {
+                f.write_str("an arc's circle crosses the revolve axis: a spindle torus")
+            }
+            SweepReason::EllipticRevolve {
+                loop_index,
+                segment,
+            } => write!(
+                f,
+                "loop {loop_index}, segment {segment} is elliptic, which a revolve does not sweep"
+            ),
+            SweepReason::DirectionNotNormal => {
+                f.write_str("the extrude direction is not the profile plane's normal")
+            }
+        }
+    }
+}
+
+/// A fuse, cut or common whose result a manifold solid cannot hold.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BooleanReason {
     /// A boolean selected no material: a `common` of disjoint operands,
     /// a target swallowed by its tool.
     Empty,
@@ -81,17 +223,37 @@ pub enum Reason {
     /// built, and so is clear of it; the error's entities are the face,
     /// the other face of the pair and the singular vertex.
     BesideSingularity,
-    /// The result's shells would touch along an edge or at a vertex — an
-    /// edge used by four faces, a vertex two lumps share, a shell touching
-    /// itself at a vertex where its faces close into more than one fan, a
-    /// full revolve's profile touching its axis at a vertex with no
-    /// segment along it — which a manifold `Solid`'s shells never do
-    /// (ADR-0006); the error's entities are the shared edges or vertices —
-    /// a section vertex named by the edges and faces whose hits and
-    /// crossings made it — none for a sweep. A body
-    /// that touches itself so is a `General` one, which no operation builds
-    /// yet.
-    NonManifold,
+}
+
+impl BooleanReason {
+    /// The leaf reason's name: the name it had before the reasons were
+    /// grouped, without its fields.
+    pub fn name(&self) -> &'static str {
+        match self {
+            BooleanReason::Empty => "Empty",
+            BooleanReason::TangentContact => "TangentContact",
+            BooleanReason::BesideSingularity => "BesideSingularity",
+        }
+    }
+}
+
+impl core::fmt::Display for BooleanReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BooleanReason::Empty => f.write_str("the result has no material"),
+            BooleanReason::TangentContact => {
+                f.write_str("the faces touch along a curve interior to both result faces")
+            }
+            BooleanReason::BesideSingularity => f.write_str(
+                "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves",
+            ),
+        }
+    }
+}
+
+/// A fillet or a chamfer refused an edge, a chain or a corner.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BlendReason {
     /// A blend was asked for no edges at all; the error's entity is the
     /// body.
     NoEdges,
@@ -107,7 +269,7 @@ pub enum Reason {
     /// corner's own, or a corner edge is shorter than the trim would cut
     /// from it (ADR-0007). The error's entities are the blended edge and
     /// the face or edge the blend runs out of.
-    BlendTooLarge,
+    TooLarge,
     /// The blended edge's two faces meet at a tangent dihedral — the arc
     /// and the line of a slot's wall, a blend face and its neighbour — so
     /// there is no corner to roll a ball into; or the edge ends at a
@@ -125,6 +287,45 @@ pub enum Reason {
     /// the other two. The error's entities are the blended edges and the
     /// vertex.
     VertexBlend,
+}
+
+impl BlendReason {
+    /// The leaf reason's name: the name it had before the reasons were
+    /// grouped, without its fields.
+    pub fn name(&self) -> &'static str {
+        match self {
+            BlendReason::NoEdges => "NoEdges",
+            BlendReason::RepeatedEdge => "RepeatedEdge",
+            BlendReason::EdgeNotInBody => "EdgeNotInBody",
+            BlendReason::TooLarge => "BlendTooLarge",
+            BlendReason::TangentChain => "TangentChain",
+            BlendReason::VertexBlend => "VertexBlend",
+        }
+    }
+}
+
+impl core::fmt::Display for BlendReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BlendReason::NoEdges => f.write_str("no edges were given to blend"),
+            BlendReason::RepeatedEdge => f.write_str("an edge is listed twice"),
+            BlendReason::EdgeNotInBody => f.write_str("the edge is not an edge of the body"),
+            BlendReason::TooLarge => f.write_str(
+                "the blend leaves its face through an edge that is not the corner's own",
+            ),
+            BlendReason::TangentChain => f.write_str(
+                "the edge's faces meet at a tangent dihedral, which has no corner to blend",
+            ),
+            BlendReason::VertexBlend => f.write_str(
+                "the corner at the edge's end is one the blend's closed forms do not cover",
+            ),
+        }
+    }
+}
+
+/// A query refused the shape or the point it was handed.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum QueryReason {
     /// A query that projects edges and vertices was handed a face, a
     /// shell or a body; the error's entity is that shape.
     NotProjectable,
@@ -151,63 +352,36 @@ pub enum Reason {
     Singular,
 }
 
-impl core::fmt::Display for Reason {
+impl QueryReason {
+    /// The leaf reason's name: the name it had before the reasons were
+    /// grouped, without its fields.
+    pub fn name(&self) -> &'static str {
+        match self {
+            QueryReason::NotProjectable => "NotProjectable",
+            QueryReason::DegenerateEdge => "DegenerateEdge",
+            QueryReason::ProjectionCollapses => "ProjectionCollapses",
+            QueryReason::NotPlanar => "NotPlanar",
+            QueryReason::OutOfDomain => "OutOfDomain",
+            QueryReason::Singular => "Singular",
+        }
+    }
+}
+
+impl core::fmt::Display for QueryReason {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Reason::NonFinite { what } => write!(f, "{what} is not finite"),
-            Reason::NotPositive { what, value } => {
-                write!(f, "{what} must be positive, not {value}")
+            QueryReason::NotProjectable => {
+                f.write_str("only an edge or a vertex projects onto a plane")
             }
-            Reason::ZeroThickness => f.write_str("the result has no thickness"),
-            Reason::ProfileCrossesAxis => f.write_str("the profile crosses the revolve axis"),
-            Reason::AxisNotInProfilePlane => {
-                f.write_str("the revolve axis does not lie in the profile's plane")
+            QueryReason::DegenerateEdge => {
+                f.write_str("the edge is degenerate: it has no 3D curve")
             }
-            Reason::AngleAboveTurn => f.write_str("the revolve angle is above a full turn"),
-            Reason::SpindleTorus => {
-                f.write_str("an arc's circle crosses the revolve axis: a spindle torus")
-            }
-            Reason::EllipticRevolve {
-                loop_index,
-                segment,
-            } => write!(
-                f,
-                "loop {loop_index}, segment {segment} is elliptic, which a revolve does not sweep"
-            ),
-            Reason::DirectionNotNormal => {
-                f.write_str("the extrude direction is not the profile plane's normal")
-            }
-            Reason::NotSolid => f.write_str("the body is not a solid"),
-            Reason::Empty => f.write_str("the result has no material"),
-            Reason::TangentContact => {
-                f.write_str("the faces touch along a curve interior to both result faces")
-            }
-            Reason::BesideSingularity => f.write_str(
-                "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves",
-            ),
-            Reason::NonManifold => f.write_str(
-                "the result's shells would touch along an edge or at a vertex, which a solid does not hold",
-            ),
-            Reason::NoEdges => f.write_str("no edges were given to blend"),
-            Reason::RepeatedEdge => f.write_str("an edge is listed twice"),
-            Reason::EdgeNotInBody => f.write_str("the edge is not an edge of the body"),
-            Reason::BlendTooLarge => f.write_str(
-                "the blend leaves its face through an edge that is not the corner's own",
-            ),
-            Reason::TangentChain => f.write_str(
-                "the edge's faces meet at a tangent dihedral, which has no corner to blend",
-            ),
-            Reason::VertexBlend => f.write_str(
-                "the corner at the edge's end is one the blend's closed forms do not cover",
-            ),
-            Reason::NotProjectable => f.write_str("only an edge or a vertex projects onto a plane"),
-            Reason::DegenerateEdge => f.write_str("the edge is degenerate: it has no 3D curve"),
-            Reason::ProjectionCollapses => {
+            QueryReason::ProjectionCollapses => {
                 f.write_str("the curve projects onto the plane as a point or a segment")
             }
-            Reason::NotPlanar => f.write_str("the face's surface is not a plane"),
-            Reason::OutOfDomain => f.write_str("the point is outside the face's own domain"),
-            Reason::Singular => {
+            QueryReason::NotPlanar => f.write_str("the face's surface is not a plane"),
+            QueryReason::OutOfDomain => f.write_str("the point is outside the face's own domain"),
+            QueryReason::Singular => {
                 f.write_str("the surface's parametrisation is singular there: it has no normal")
             }
         }
@@ -505,5 +679,160 @@ impl From<FrameError> for OpError {
 impl From<NotFound> for OpError {
     fn from(e: NotFound) -> Self {
         OpError::NotFound(e.id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every leaf reason prints the message it printed before the reasons
+    /// were grouped, and names itself as it was named: the Python binding's
+    /// `reason` text and every refusal histogram depend on both.
+    #[test]
+    fn every_leaf_reason_keeps_its_message_and_its_name() {
+        let leaves: Vec<(Reason, &str, &str)> = vec![
+            (
+                Reason::Input(InputReason::NonFinite { what: "radius" }),
+                "NonFinite",
+                "radius is not finite",
+            ),
+            (
+                Reason::Input(InputReason::NotPositive {
+                    what: "radius",
+                    value: 0.0,
+                }),
+                "NotPositive",
+                "radius must be positive, not 0",
+            ),
+            (
+                Reason::Sweep(SweepReason::EllipticRevolve {
+                    loop_index: 1,
+                    segment: 2,
+                }),
+                "EllipticRevolve",
+                "loop 1, segment 2 is elliptic, which a revolve does not sweep",
+            ),
+            (
+                Reason::Input(InputReason::ZeroThickness),
+                "ZeroThickness",
+                "the result has no thickness",
+            ),
+            (
+                Reason::Input(InputReason::NonManifold),
+                "NonManifold",
+                "the result's shells would touch along an edge or at a vertex, which a solid does not hold",
+            ),
+            (
+                Reason::Input(InputReason::NotSolid),
+                "NotSolid",
+                "the body is not a solid",
+            ),
+            (
+                Reason::Sweep(SweepReason::ProfileCrossesAxis),
+                "ProfileCrossesAxis",
+                "the profile crosses the revolve axis",
+            ),
+            (
+                Reason::Sweep(SweepReason::AxisNotInProfilePlane),
+                "AxisNotInProfilePlane",
+                "the revolve axis does not lie in the profile's plane",
+            ),
+            (
+                Reason::Sweep(SweepReason::AngleAboveTurn),
+                "AngleAboveTurn",
+                "the revolve angle is above a full turn",
+            ),
+            (
+                Reason::Sweep(SweepReason::SpindleTorus),
+                "SpindleTorus",
+                "an arc's circle crosses the revolve axis: a spindle torus",
+            ),
+            (
+                Reason::Sweep(SweepReason::DirectionNotNormal),
+                "DirectionNotNormal",
+                "the extrude direction is not the profile plane's normal",
+            ),
+            (
+                Reason::Boolean(BooleanReason::Empty),
+                "Empty",
+                "the result has no material",
+            ),
+            (
+                Reason::Boolean(BooleanReason::TangentContact),
+                "TangentContact",
+                "the faces touch along a curve interior to both result faces",
+            ),
+            (
+                Reason::Boolean(BooleanReason::BesideSingularity),
+                "BesideSingularity",
+                "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves",
+            ),
+            (
+                Reason::Blend(BlendReason::NoEdges),
+                "NoEdges",
+                "no edges were given to blend",
+            ),
+            (
+                Reason::Blend(BlendReason::RepeatedEdge),
+                "RepeatedEdge",
+                "an edge is listed twice",
+            ),
+            (
+                Reason::Blend(BlendReason::EdgeNotInBody),
+                "EdgeNotInBody",
+                "the edge is not an edge of the body",
+            ),
+            (
+                Reason::Blend(BlendReason::TooLarge),
+                "BlendTooLarge",
+                "the blend leaves its face through an edge that is not the corner's own",
+            ),
+            (
+                Reason::Blend(BlendReason::TangentChain),
+                "TangentChain",
+                "the edge's faces meet at a tangent dihedral, which has no corner to blend",
+            ),
+            (
+                Reason::Blend(BlendReason::VertexBlend),
+                "VertexBlend",
+                "the corner at the edge's end is one the blend's closed forms do not cover",
+            ),
+            (
+                Reason::Query(QueryReason::NotProjectable),
+                "NotProjectable",
+                "only an edge or a vertex projects onto a plane",
+            ),
+            (
+                Reason::Query(QueryReason::DegenerateEdge),
+                "DegenerateEdge",
+                "the edge is degenerate: it has no 3D curve",
+            ),
+            (
+                Reason::Query(QueryReason::ProjectionCollapses),
+                "ProjectionCollapses",
+                "the curve projects onto the plane as a point or a segment",
+            ),
+            (
+                Reason::Query(QueryReason::NotPlanar),
+                "NotPlanar",
+                "the face's surface is not a plane",
+            ),
+            (
+                Reason::Query(QueryReason::OutOfDomain),
+                "OutOfDomain",
+                "the point is outside the face's own domain",
+            ),
+            (
+                Reason::Query(QueryReason::Singular),
+                "Singular",
+                "the surface's parametrisation is singular there: it has no normal",
+            ),
+        ];
+        assert_eq!(leaves.len(), 26);
+        for (reason, name, message) in leaves {
+            assert_eq!(reason.name(), name);
+            assert_eq!(reason.to_string(), message, "{name}");
+        }
     }
 }

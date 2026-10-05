@@ -165,7 +165,7 @@ fn outcome(m: &mut Model, op: Boolean, a: Body, b: Body) -> Outcome {
             }
         }
         Err(OpError::Internal(fault)) => Outcome::Internal(fault_kind(&fault)),
-        Err(OpError::Degenerate { reason, .. }) => Outcome::Refused(format!("{reason:?}")),
+        Err(OpError::Degenerate { reason, .. }) => Outcome::Refused(reason.name().to_string()),
         Err(e @ OpError::Unsupported { .. }) => {
             // The two kinds, from "no closed form for +f7 (plane surface)
             // against +e3 (circle curve)".

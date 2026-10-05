@@ -21,7 +21,7 @@ use arris_math::{Aabb, Control, Matrix3, Meter, Point3, Vec3};
 use arris_topo::entity::{Body as BodyEntity, BodyKind};
 use arris_topo::{Body, FaceId, Model, Shape};
 
-use crate::error::{OpError, Reason};
+use crate::error::{InputReason, OpError, Reason};
 
 /// The mass properties of a body of unit density
 /// (`docs/ARCHITECTURE.md` §Operations): what
@@ -121,7 +121,7 @@ const SECOND: [Integrand; 6] = [
 /// A query: it takes `&Model`, returns no body and records no
 /// provenance. The body must be a `Solid`; a `Sheet` or a wire has no
 /// enclosed volume and is [`OpError::Degenerate`] with
-/// [`Reason::NotSolid`].
+/// [`InputReason::NotSolid`].
 ///
 /// Errors: [`OpError::InvalidInput`] when the body fails the checker
 /// (debug builds, and release with the `paranoid` feature, as every
@@ -157,7 +157,7 @@ pub fn mass_properties(
     if entity.kind() != BodyKind::Solid {
         return Err(OpError::Degenerate {
             entities: vec![Shape::new(body.id, body.orientation)],
-            reason: Reason::NotSolid,
+            reason: Reason::Input(InputReason::NotSolid),
         });
     }
     let faces = face_uses(m, body, entity)?;
@@ -168,10 +168,10 @@ pub fn mass_properties(
     if !(volume.is_finite() && volume > 0.0) {
         return Err(OpError::Degenerate {
             entities: vec![Shape::new(body.id, body.orientation)],
-            reason: Reason::NotPositive {
+            reason: Reason::Input(InputReason::NotPositive {
                 what: "the enclosed volume",
                 value: volume,
-            },
+            }),
         });
     }
     let centroid = Point3::from(reference + Vec3::new(first[1], first[2], first[3]) / volume);

@@ -226,7 +226,7 @@ and ignored tests.
 
   No type changes, including `[_; 2]` and `side`. Test: the gate's
   boolean area, `boolean_prop` at the fast case count, `tolerance_band`.
-- [ ] Step 9 **[2]** — **`Reason` grouped by operation**, as the design
+- [x] Step 9 **[2]** — **`Reason` grouped by operation**, as the design
   deltas give it.
   - Add `Reason::name`.
   - `Display` is unchanged, held by a test that formats every leaf, so

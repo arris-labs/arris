@@ -13,7 +13,7 @@ use super::ring::{Ring, placed_uv};
 use super::stripe::{Section, Stripe, chord, line_origin};
 use super::{degenerate, invariant};
 use crate::body_view::BodyView;
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
 /// One side of a junction: a line's stripe or an arc's ring.
@@ -108,7 +108,7 @@ impl<'a> Run<'a> {
 /// every pcurve of it exact. Two runs whose points or ball centres differ
 /// by more than their tolerance, or one convex and one concave, is an
 /// internal fault the tangent-vertex test makes unreachable; a `w` shorter
-/// than the cut is `Reason::BlendTooLarge`. Runs that share no face, met at
+/// than the cut is `BlendReason::TooLarge`. Runs that share no face, met at
 /// a vertex of four edges where both faces turn (ADR-0039 §2), meet the
 /// same way with `q` on a second tangent edge, cut there too: each contact
 /// of `a` meets the contact of `b` across the tangent edge between their
@@ -128,7 +128,7 @@ pub(super) fn junction(
     let vertex_blend = || {
         degenerate(
             vec![forward(ra.edge), forward(rb.edge), v],
-            Reason::VertexBlend,
+            Reason::Blend(BlendReason::VertexBlend),
         )
     };
     // The contacts of `a` and `b` on one face, as `(ka, kb)` pairs.

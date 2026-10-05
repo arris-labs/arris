@@ -9,7 +9,7 @@
 //! section edge. At each node the half-edges leaving it are ordered by
 //! the angle of their pcurve's tangent, ties within the model's angular
 //! tolerance by the signed curvature, and a tie of both is
-//! [`Reason::TangentContact`]. A region is walked by taking, at the end
+//! [`BooleanReason::TangentContact`]. A region is walked by taking, at the end
 //! of each half-edge, the next half-edge clockwise from the direction
 //! one came from; a cycle turning once counter-clockwise bounds a region
 //! and one turning clockwise is a hole, assigned to the innermost
@@ -25,7 +25,7 @@ use arris_topo::{Curve2Id, EdgeId, FaceId, Model, Orientation, Shape, VertexId};
 
 use arris_check::domain::chord;
 
-use crate::error::{Fault, OpError, Reason, SplitFault};
+use crate::error::{BooleanReason, Fault, OpError, Reason, SplitFault};
 
 /// A vertex of the result as the split names it before it has an id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -505,7 +505,7 @@ impl<'m> Arrangement<'m> {
                                 self.entry_shape(w[0]),
                                 self.entry_shape(w[1]),
                             ],
-                            reason: Reason::TangentContact,
+                            reason: Reason::Boolean(BooleanReason::TangentContact),
                         });
                     }
                 }
@@ -715,7 +715,7 @@ fn a_key(e: Entry) -> (usize, usize) {
 /// `touched` is untouched and has one piece, itself, still with its
 /// interior point.
 ///
-/// Errors: [`OpError::Degenerate`] with [`Reason::TangentContact`] for a
+/// Errors: [`OpError::Degenerate`] with [`BooleanReason::TangentContact`] for a
 /// tie at a node; [`OpError::Internal`] with a [`SplitFault`] for an
 /// arrangement that is not a subdivision; [`OpError::NotFound`] for an id
 /// that does not resolve.

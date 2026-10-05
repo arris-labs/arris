@@ -417,7 +417,7 @@ equivalence decided once per level. ADR-0018 to ADR-0022.
 - Features a tolerance apart (ADR-0022): section vertices by closure,
   fits held to the exact branch, a section edge known by its surfaces, a
   block along an operand edge that edge's piece, a pinch refused as
-  `Reason::NonManifold`; `tolerance_band.rs` holding the band where it
+  `InputReason::NonManifold`; `tolerance_band.rs` holding the band where it
   holds and ratcheting the rest, whose failures are `regression/`
   fixtures and `docs/BACKLOG.md` lines.
 

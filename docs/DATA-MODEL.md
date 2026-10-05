@@ -90,7 +90,7 @@ With `O, X, Y, Z` the frame and `c = cos`, `s = sin`:
 | EllipticCylinder | `O + a c u·X + b s u·Y + v·Z`, `a ≥ b > 0` | u ∈ [0, 2π), v ∈ ℝ | u, period 2π | seam at u = 0, the ruling through `O + a·X`; `X` is the section's major axis. What an extruded elliptic profile segment sweeps (ADR-0014) |
 | Cone | `O + (R + v·s α)(c u·X + s u·Y) + v·c α·Z` | u ∈ [0, 2π), v ∈ ℝ | u | seam at u = 0; apex at v = −R / s α, a degenerate edge. `α` ∈ (0, π/2) is the half-angle; `R` the radius at v = 0 |
 | Sphere | `O + R c v (c u·X + s u·Y) + R s v·Z` | u ∈ [0, 2π), v ∈ [−π/2, π/2] | u | seam at u = 0; poles at v = ±π/2, degenerate edges |
-| Torus | `O + (R + r c v)(c u·X + s u·Y) + r s v·Z` | u, v ∈ [0, 2π) | u and v | seams at u = 0 and v = 0; `R > r` (no self-intersecting tori until an operation needs them: a revolve refuses one as `Reason::SpindleTorus`) |
+| Torus | `O + (R + r c v)(c u·X + s u·Y) + r s v·Z` | u, v ∈ [0, 2π) | u and v | seams at u = 0 and v = 0; `R > r` (no self-intersecting tori until an operation needs them: a revolve refuses one as `SweepReason::SpindleTorus`) |
 | Nurbs | Piegl & Tiller, rational; clamped or not (§NURBS) | knot range | either, where the knots and net wrap or a clamped direction's end rows are one row (its closure) | as the knots say; a clamped end row that is one point is a collapsed row, a singularity |
 
 `Surface::singularities()` lists a surface's singular points as
@@ -908,7 +908,7 @@ that only comes within the band of an apex turns back there, its tangent
 perpendicular to the axis, where one through it leaves along a ruling.
 A section that passes the point outside the band and within four polygon
 segments of the face's box diagonal (`diagonal × 4 /
-MAX_SEGMENTS_PER_PIECE`) is `Reason::BesideSingularity`: the fit above
+MAX_SEGMENTS_PER_PIECE`) is `BooleanReason::BesideSingularity`: the fit above
 follows it, and the face's polygons — cut evenly in the parameter, at most
 `MAX_SEGMENTS_PER_PIECE` to a piece — do not, built from a miss of `1e-4`
 on a ball of radius 2 and not at `1e-5`, for a circle and a traced loop
@@ -1303,7 +1303,7 @@ test scaffolding that stores a dangling reference as given), the builder
   Non-manifold structure is thus representable from day one (`SEED.md`
   §9); every operation today produces and accepts `Solid` only: the builder's
   `finish` builds no other kind (`BuildError::Kind`), and `measure`
-  refuses one as `OpError::Degenerate` with `Reason::NotSolid`.
+  refuses one as `OpError::Degenerate` with `InputReason::NotSolid`.
 
 ### Orientation
 

@@ -6,7 +6,7 @@
 //! any corner; the end arc lies outside the face across, which takes the
 //! region between the arc and the corner. The extension has to lie inside
 //! the face it runs down — the face of the blended edge that edge shares —
-//! or the blend has run over (`Reason::BlendTooLarge`).
+//! or the blend has run over (`BlendReason::TooLarge`).
 
 use arris_geom::region2::Side;
 use arris_geom::{Curve, pcurve_on};
@@ -18,7 +18,7 @@ use super::ends::{Trim, cut_corner};
 use super::ring::placed_uv;
 use super::stripe::on_side_of_face;
 use super::{degenerate, invariant};
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
 /// A blend's end against the two edges of its corner: where each is cut
@@ -61,7 +61,7 @@ pub(super) struct CornerAt {
 /// extension — and the stretch from the vertex to the trim point must lie
 /// inside the face of `faces` the corner edge bounds, at `samples`
 /// interior parameters by the face's own domain. Anything else is
-/// `Reason::BlendTooLarge` naming `edge` and the corner edge: the trim
+/// `BlendReason::TooLarge` naming `edge` and the corner edge: the trim
 /// past the far vertex, past the vertex at a corner that is not mixed or
 /// on the wrong edge of one, or a stretch that leaves its face.
 pub(super) fn corner_trims(
@@ -98,7 +98,12 @@ pub(super) fn corner_trims(
     let mut lengthened = None;
     for k in 0..2 {
         let corner = corner_edges[k];
-        let too_large = || degenerate(vec![forward(edge), forward(corner)], Reason::BlendTooLarge);
+        let too_large = || {
+            degenerate(
+                vec![forward(edge), forward(corner)],
+                Reason::Blend(BlendReason::TooLarge),
+            )
+        };
         let past = past_vertex(m, corner, vertex, points[k])?;
         let Some(t) = past else {
             trims[k] = cut_corner(m, edge, corner, vertex, points[k])?;
@@ -429,7 +434,7 @@ mod tests {
             let Err(OpError::Degenerate { entities, reason }) = trims else {
                 panic!("refused: {trims:?}");
             };
-            assert_eq!(reason, Reason::BlendTooLarge);
+            assert_eq!(reason, Reason::Blend(BlendReason::TooLarge));
             assert_eq!(entities[0], forward(s.edge));
             let named: Vec<Shape> = corner_edges.iter().map(|&c| forward(c)).collect();
             assert!(named.contains(&entities[1]), "{entities:?}");

@@ -14,7 +14,7 @@ use arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
 use arris_topo::{Body, Model, Orientation, Provenance, Relation, Role, Shape, SurfaceId};
 
 use arris_check::{Level, check};
-use arris_ops::{OpError, Reason};
+use arris_ops::{InputReason, OpError, Reason};
 fn the_box(m: &mut Model) -> (Body, Provenance) {
     primitive_box(m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap()
 }
@@ -181,10 +181,10 @@ fn bad_parameters_are_degenerate_with_a_reason_and_the_model_untouched() {
             Point3::origin(),
             Point3::new(40.0, 0.0, 10.0)
         )),
-        Reason::NotPositive {
+        Reason::Input(InputReason::NotPositive {
             what: "y extent",
             value: 0.0
-        }
+        })
     );
     assert_eq!(
         degenerate(primitive_box(
@@ -192,10 +192,10 @@ fn bad_parameters_are_degenerate_with_a_reason_and_the_model_untouched() {
             Point3::new(1.0, 0.0, 0.0),
             Point3::new(0.0, 1.0, 1.0)
         )),
-        Reason::NotPositive {
+        Reason::Input(InputReason::NotPositive {
             what: "x extent",
             value: -1.0
-        }
+        })
     );
     assert_eq!(
         degenerate(primitive_box(
@@ -203,7 +203,7 @@ fn bad_parameters_are_degenerate_with_a_reason_and_the_model_untouched() {
             Point3::new(f64::NAN, 0.0, 0.0),
             Point3::new(1.0, 1.0, 1.0)
         )),
-        Reason::NonFinite { what: "min" }
+        Reason::Input(InputReason::NonFinite { what: "min" })
     );
     assert_eq!(
         degenerate(primitive_box(
@@ -211,26 +211,26 @@ fn bad_parameters_are_degenerate_with_a_reason_and_the_model_untouched() {
             Point3::origin(),
             Point3::new(1.0, f64::INFINITY, 1.0)
         )),
-        Reason::NonFinite { what: "max" }
+        Reason::Input(InputReason::NonFinite { what: "max" })
     );
     let z = Axis::z_at(Point3::origin());
     assert_eq!(
         degenerate(primitive_cylinder(&mut m, z, 0.0, 12.0)),
-        Reason::NotPositive {
+        Reason::Input(InputReason::NotPositive {
             what: "radius",
             value: 0.0
-        }
+        })
     );
     assert_eq!(
         degenerate(primitive_cylinder(&mut m, z, 4.0, -12.0)),
-        Reason::NotPositive {
+        Reason::Input(InputReason::NotPositive {
             what: "height",
             value: -12.0
-        }
+        })
     );
     assert_eq!(
         degenerate(primitive_cylinder(&mut m, z, f64::NAN, 12.0)),
-        Reason::NonFinite { what: "radius" }
+        Reason::Input(InputReason::NonFinite { what: "radius" })
     );
     let bad = Axis {
         origin: Point3::new(f64::INFINITY, 0.0, 0.0),
@@ -238,9 +238,9 @@ fn bad_parameters_are_degenerate_with_a_reason_and_the_model_untouched() {
     };
     assert_eq!(
         degenerate(primitive_cylinder(&mut m, bad, 4.0, 12.0)),
-        Reason::NonFinite {
+        Reason::Input(InputReason::NonFinite {
             what: "axis origin"
-        }
+        })
     );
     assert!(m.surface(probe).is_err(), "nothing was appended");
     assert_eq!(
@@ -250,10 +250,10 @@ fn bad_parameters_are_degenerate_with_a_reason_and_the_model_untouched() {
     );
     let text = OpError::Degenerate {
         entities: Vec::new(),
-        reason: Reason::NotPositive {
+        reason: Reason::Input(InputReason::NotPositive {
             what: "radius",
             value: 0.0,
-        },
+        }),
     }
     .to_string();
     assert_eq!(text, "degenerate result: radius must be positive, not 0");

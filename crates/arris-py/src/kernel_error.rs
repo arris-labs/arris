@@ -432,7 +432,10 @@ mod tests {
     use arris::io::step::{TreeError, Unsupported};
     use arris::math::{Point2, Point3, Precision, Tolerance};
     use arris::mesh::cdt::CdtError;
-    use arris::ops::{BuildSlot, Fault, Reason, Rejection};
+    use arris::ops::{
+        BlendReason, BooleanReason, BuildSlot, Fault, InputReason, QueryReason, Reason, Rejection,
+        SweepReason,
+    };
     use arris::topo::entity::BodyKind;
     use arris::topo::{BodyId, EntityId, FaceId, NotFound};
 
@@ -479,7 +482,23 @@ mod tests {
             }),
             op_error(&OpError::Degenerate {
                 entities: vec![shape()],
-                reason: Reason::ZeroThickness,
+                reason: Reason::Input(InputReason::ZeroThickness),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
+                reason: Reason::Sweep(SweepReason::AngleAboveTurn),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
+                reason: Reason::Boolean(BooleanReason::Empty),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
+                reason: Reason::Blend(BlendReason::TooLarge),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
+                reason: Reason::Query(QueryReason::Singular),
             }),
             op_error(&OpError::Profile(ProfileError::TooFewSegments {
                 loop_index: 0,

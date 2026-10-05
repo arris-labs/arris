@@ -13,7 +13,7 @@ use arris_geom::Surface;
 use arris_math::{Axis, Frame, Interval, Matrix3, Point2, Point3, Vec3};
 
 use arris_ops::measure::MassProperties;
-use arris_ops::{OpError, Reason};
+use arris_ops::{InputReason, OpError, Reason};
 use arris_topo::entity::Body as BodyEntity;
 use arris_topo::{Body, Model, Shell as ShellHandle, ShellId};
 use proptest::prelude::*;
@@ -247,7 +247,7 @@ fn a_body_that_is_not_a_solid_is_degenerate() {
         matches!(
             err,
             OpError::Degenerate {
-                reason: Reason::NotSolid,
+                reason: Reason::Input(InputReason::NotSolid),
                 ..
             }
         ),

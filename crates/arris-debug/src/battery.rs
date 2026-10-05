@@ -293,7 +293,7 @@ fn reach(m: &Model, body: Body, centre: Point3) -> Result<f64, String> {
 /// a rolling ball to fill. Open CASCADE refuses
 /// such an edge (`There are no suitable edges for chamfer or fillet`), as
 /// it did every one of the fetched tier's 2479, and Arris refuses it as
-/// `Reason::TangentChain` — a refusal the battery's sample
+/// `BlendReason::TangentChain` — a refusal the battery's sample
 /// has no use for. A face with no normal there is not tangent.
 fn is_tangent_dihedral(
     m: &Model,

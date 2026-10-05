@@ -16,7 +16,7 @@ use arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::build::roles;
-use crate::error::{Fault, OpError, Reason};
+use crate::error::{Fault, InputReason, OpError, Reason};
 use crate::verify;
 
 fn finite(what: &'static str, p: Point3) -> Result<(), OpError> {
@@ -25,7 +25,7 @@ fn finite(what: &'static str, p: Point3) -> Result<(), OpError> {
     } else {
         Err(OpError::Degenerate {
             entities: Vec::new(),
-            reason: Reason::NonFinite { what },
+            reason: Reason::Input(InputReason::NonFinite { what }),
         })
     }
 }
@@ -34,12 +34,12 @@ fn positive(what: &'static str, value: f64) -> Result<f64, OpError> {
     if !value.is_finite() {
         Err(OpError::Degenerate {
             entities: Vec::new(),
-            reason: Reason::NonFinite { what },
+            reason: Reason::Input(InputReason::NonFinite { what }),
         })
     } else if value <= 0.0 {
         Err(OpError::Degenerate {
             entities: Vec::new(),
-            reason: Reason::NotPositive { what, value },
+            reason: Reason::Input(InputReason::NotPositive { what, value }),
         })
     } else {
         Ok(value)
@@ -107,8 +107,8 @@ fn plane_pcurves(
 /// an edge by the coordinate it runs along and its sides, a vertex by its
 /// three sides.
 ///
-/// Errors: [`OpError::Degenerate`] with [`Reason::NonFinite`] for a
-/// coordinate that is not finite, [`Reason::NotPositive`] naming the
+/// Errors: [`OpError::Degenerate`] with [`InputReason::NonFinite`] for a
+/// coordinate that is not finite, [`InputReason::NotPositive`] naming the
 /// extent when `min` is not strictly below `max` along every coordinate.
 /// The model is untouched on error.
 ///
@@ -287,8 +287,8 @@ pub fn primitive_box(
 /// and recorded as `Generated` from [`CylinderPart`] roles. Every
 /// tolerance is the model's `default_tolerance`.
 ///
-/// Errors: [`OpError::Degenerate`] with [`Reason::NotPositive`] or
-/// [`Reason::NonFinite`] naming the radius, the height or the axis
+/// Errors: [`OpError::Degenerate`] with [`InputReason::NotPositive`] or
+/// [`InputReason::NonFinite`] naming the radius, the height or the axis
 /// origin. The model is untouched on error.
 ///
 /// ```

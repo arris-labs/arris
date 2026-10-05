@@ -23,7 +23,7 @@ use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role, Shape};
 
-use crate::error::{Fault, OpError, Reason, fault_of};
+use crate::error::{Fault, InputReason, OpError, Reason, SweepReason, fault_of};
 use crate::verify;
 
 fn degenerate(reason: Reason) -> OpError {
@@ -89,7 +89,7 @@ fn rho_range(edge: &ProfileEdge, axis: &AxisInPlane) -> (f64, f64) {
 }
 
 /// The axis validated against the profile's plane: in it within the
-/// tolerances ([`Reason::AxisNotInProfilePlane`] otherwise), then
+/// tolerances ([`SweepReason::AxisNotInProfilePlane`] otherwise), then
 /// projected exactly into it, so every surface of revolution is placed
 /// by an axis the profile's curves lie in a plane through. Returns the
 /// projected axis and its (u, v) view with `radial` the *left* normal of
@@ -101,9 +101,9 @@ fn axis_in_plane(
     tol: Tolerance,
 ) -> Result<(Axis, AxisInPlane), OpError> {
     if !axis.origin.coords.iter().all(|c| c.is_finite()) {
-        return Err(degenerate(Reason::NonFinite {
+        return Err(degenerate(Reason::Input(InputReason::NonFinite {
             what: "axis origin",
-        }));
+        })));
     }
     let plane = &profile.plane;
     let n = plane.z().into_inner();
@@ -114,11 +114,14 @@ fn axis_in_plane(
     let off_plane = dn.abs().atan2((1.0 - dn * dn).max(0.0).sqrt());
     let height = (axis.origin - plane.origin()).dot(&n);
     if !(off_plane <= tol.angular && height.abs() <= tol.linear) {
-        return Err(degenerate(Reason::AxisNotInProfilePlane));
+        return Err(degenerate(Reason::Sweep(
+            SweepReason::AxisNotInProfilePlane,
+        )));
     }
     let origin = axis.origin - height * n;
-    let direction =
-        UnitVec3::try_new(d - dn * n, 0.0).ok_or(degenerate(Reason::AxisNotInProfilePlane))?;
+    let direction = UnitVec3::try_new(d - dn * n, 0.0).ok_or(degenerate(Reason::Sweep(
+        SweepReason::AxisNotInProfilePlane,
+    )))?;
     let projected = Axis { origin, direction };
     let o = plane.to_local(origin);
     let a = plane.vec_to_local(direction.into_inner());
@@ -151,10 +154,10 @@ fn elliptic(loops: &[Vec<ProfileEdge>]) -> Option<&ProfileEdge> {
 /// The profile held to one side of the axis: `radial` turned to face the
 /// side every point of every edge lies on, reaching at worst within
 /// `tol.linear` of the axis — a point that near is *on* it —
-/// ([`Reason::ProfileCrossesAxis`] for points beyond the tolerance on
-/// both sides, [`Reason::ZeroThickness`] for a profile within it
+/// ([`SweepReason::ProfileCrossesAxis`] for points beyond the tolerance on
+/// both sides, [`InputReason::ZeroThickness`] for a profile within it
 /// everywhere), and no arc's circle crossing the axis off its centre
-/// ([`Reason::SpindleTorus`]).
+/// ([`SweepReason::SpindleTorus`]).
 fn orient(
     loops: &[Vec<ProfileEdge>],
     mut axis: AxisInPlane,
@@ -167,23 +170,25 @@ fn orient(
         hi = hi.max(b);
     }
     if !(lo.is_finite() && hi.is_finite()) {
-        return Err(degenerate(Reason::NonFinite { what: "profile" }));
+        return Err(degenerate(Reason::Input(InputReason::NonFinite {
+            what: "profile",
+        })));
     }
     if lo < -tol.linear && hi > tol.linear {
-        return Err(degenerate(Reason::ProfileCrossesAxis));
+        return Err(degenerate(Reason::Sweep(SweepReason::ProfileCrossesAxis)));
     }
     if hi <= tol.linear {
         axis.radial = -axis.radial;
         hi = -lo;
     }
     if hi <= tol.linear {
-        return Err(degenerate(Reason::ZeroThickness));
+        return Err(degenerate(Reason::Input(InputReason::ZeroThickness)));
     }
     for edge in loops.iter().flatten() {
         if let Curve2::Circle { frame, radius } = &edge.pcurve {
             let centre = axis.rho(frame.origin());
             if centre.abs() > tol.linear && centre - radius <= tol.linear {
-                return Err(degenerate(Reason::SpindleTorus));
+                return Err(degenerate(Reason::Sweep(SweepReason::SpindleTorus)));
             }
         }
     }
@@ -576,17 +581,17 @@ fn record(
 ///
 /// Errors, the model untouched: [`OpError::Profile`] when
 /// `Profile::edges` refuses the sketch; [`OpError::Degenerate`] with
-/// [`Reason::NonFinite`] for a non-finite angle, axis origin or profile,
-/// [`Reason::NotPositive`] for an angle at or below zero,
-/// [`Reason::AngleAboveTurn`] above `2π`, [`Reason::AxisNotInProfilePlane`]
+/// [`InputReason::NonFinite`] for a non-finite angle, axis origin or profile,
+/// [`InputReason::NotPositive`] for an angle at or below zero,
+/// [`SweepReason::AngleAboveTurn`] above `2π`, [`SweepReason::AxisNotInProfilePlane`]
 /// when the axis is off the plane by more than the tolerances,
-/// [`Reason::ProfileCrossesAxis`] when the profile has points on both
-/// sides of the axis, [`Reason::ZeroThickness`] when it lies within
+/// [`SweepReason::ProfileCrossesAxis`] when the profile has points on both
+/// sides of the axis, [`InputReason::ZeroThickness`] when it lies within
 /// `default_tolerance` of the axis everywhere,
-/// [`Reason::NonManifold`] when a full turn's profile touches the axis at
+/// [`InputReason::NonManifold`] when a full turn's profile touches the axis at
 /// a vertex with no segment along it, where the swept surface would touch
-/// itself, [`Reason::SpindleTorus`] when an arc's circle crosses it off
-/// its centre, and [`Reason::EllipticRevolve`] naming the first elliptic
+/// itself, [`SweepReason::SpindleTorus`] when an arc's circle crosses it off
+/// its centre, and [`SweepReason::EllipticRevolve`] naming the first elliptic
 /// segment of the sketch, whose swept surface has no variant (ADR-0014).
 ///
 /// ```
@@ -632,26 +637,28 @@ pub fn revolve(
     let precision = m.precision();
     let tol = precision.tolerance();
     if !angle.is_finite() {
-        return Err(degenerate(Reason::NonFinite { what: "angle" }));
+        return Err(degenerate(Reason::Input(InputReason::NonFinite {
+            what: "angle",
+        })));
     }
     if angle <= 0.0 {
-        return Err(degenerate(Reason::NotPositive {
+        return Err(degenerate(Reason::Input(InputReason::NotPositive {
             what: "angle",
             value: angle,
-        }));
+        })));
     }
     if angle > TAU + tol.angular {
-        return Err(degenerate(Reason::AngleAboveTurn));
+        return Err(degenerate(Reason::Sweep(SweepReason::AngleAboveTurn)));
     }
     let full = (angle - TAU).abs() <= tol.angular;
     let angle = if full { TAU } else { angle };
     let (axis, in_plane) = axis_in_plane(profile, axis, tol)?;
     let loops = profile.edges(tol)?;
     if let Some(edge) = elliptic(&loops) {
-        return Err(degenerate(Reason::EllipticRevolve {
+        return Err(degenerate(Reason::Sweep(SweepReason::EllipticRevolve {
             loop_index: edge.loop_index,
             segment: edge.segment,
-        }));
+        })));
     }
     let in_plane = orient(&loops, in_plane, tol)?;
 
@@ -732,7 +739,7 @@ pub fn revolve(
             (0..n).any(|j| on_axis[li][j] && !along[li][j] && !along[li][(j + n - 1) % n])
         })
     {
-        return Err(degenerate(Reason::NonManifold));
+        return Err(degenerate(Reason::Input(InputReason::NonManifold)));
     }
     // A full turn's shells: each loop's chains, `chain[li][j]` the chain of
     // segment `j` and `None` along the axis, walked from just past the
@@ -777,7 +784,7 @@ pub fn revolve(
         .filter(|&c| chains[c].loop_index == 0)
         .max_by(|&a, &b| width(&chains[a]).total_cmp(&width(&chains[b])))
     else {
-        return Err(degenerate(Reason::ZeroThickness));
+        return Err(degenerate(Reason::Input(InputReason::ZeroThickness)));
     };
     let mut shell_order: Vec<usize> = (0..chains.len()).filter(|&c| c != outer).collect();
     shell_order.sort_by_key(|&c| (chains[c].loop_index, chains[c].segment));
@@ -788,10 +795,10 @@ pub fn revolve(
         Interval::TURN
     } else {
         Interval::new(0.0, angle).map_err(|_| {
-            degenerate(Reason::NotPositive {
+            degenerate(Reason::Input(InputReason::NotPositive {
                 what: "angle",
                 value: angle,
-            })
+            }))
         })?
     };
     let part = |p: SweepPart| Role::Revolve(p);
@@ -1223,10 +1230,10 @@ pub fn revolve(
 ///
 /// Errors, the model untouched: [`OpError::Profile`] when
 /// `Profile::edges` refuses the sketch; [`OpError::Degenerate`] with
-/// [`Reason::NonFinite`] for a non-finite length or direction,
-/// [`Reason::NotPositive`] for a length at or below zero or a zero
-/// direction, [`Reason::ZeroThickness`] for a length within
-/// `default_tolerance` of zero, and [`Reason::DirectionNotNormal`] for a
+/// [`InputReason::NonFinite`] for a non-finite length or direction,
+/// [`InputReason::NotPositive`] for a length at or below zero or a zero
+/// direction, [`InputReason::ZeroThickness`] for a length within
+/// `default_tolerance` of zero, and [`SweepReason::DirectionNotNormal`] for a
 /// direction off the plane's normal — an oblique extrusion of an arc is a
 /// cylinder of elliptical section, which no sweep builds yet (ADR-0047).
 ///
@@ -1271,32 +1278,36 @@ pub fn extrude(
     let precision = m.precision();
     let tol = precision.tolerance();
     if !length.is_finite() {
-        return Err(degenerate(Reason::NonFinite { what: "length" }));
+        return Err(degenerate(Reason::Input(InputReason::NonFinite {
+            what: "length",
+        })));
     }
     if length <= 0.0 {
-        return Err(degenerate(Reason::NotPositive {
+        return Err(degenerate(Reason::Input(InputReason::NotPositive {
             what: "length",
             value: length,
-        }));
+        })));
     }
     if length <= tol.linear {
-        return Err(degenerate(Reason::ZeroThickness));
+        return Err(degenerate(Reason::Input(InputReason::ZeroThickness)));
     }
     if !direction.iter().all(|c| c.is_finite()) {
-        return Err(degenerate(Reason::NonFinite { what: "direction" }));
+        return Err(degenerate(Reason::Input(InputReason::NonFinite {
+            what: "direction",
+        })));
     }
     let Some(d) = UnitVec3::try_new(direction, 0.0) else {
-        return Err(degenerate(Reason::NotPositive {
+        return Err(degenerate(Reason::Input(InputReason::NotPositive {
             what: "direction's length",
             value: direction.norm(),
-        }));
+        })));
     };
     let plane = &profile.plane;
     let normal = plane.z().into_inner();
     let dn = d.dot(&normal);
     let off_normal = d.cross(&normal).norm().atan2(dn.abs());
     if off_normal > tol.angular {
-        return Err(degenerate(Reason::DirectionNotNormal));
+        return Err(degenerate(Reason::Sweep(SweepReason::DirectionNotNormal)));
     }
     let loops = profile.edges(tol)?;
     // The sweep is the exact normal, never the caller's rounding of it.
@@ -1343,10 +1354,10 @@ pub fn extrude(
 
     let tolerance = precision.default_tolerance;
     let rise_range = Interval::new(0.0, length).map_err(|_| {
-        degenerate(Reason::NotPositive {
+        degenerate(Reason::Input(InputReason::NotPositive {
             what: "length",
             value: length,
-        })
+        }))
     })?;
     let part = |p: SweepPart| Role::Extrude(p);
 

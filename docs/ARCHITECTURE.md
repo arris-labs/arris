@@ -264,7 +264,7 @@ the origin: the parallel-axis theorem would pay for its distance in
 cancellation, and faces whose pcurves of one section are fitted apart
 close only to the fit, so every gap leaks flux in proportion to its
 distance from the point the integral is taken about. A body that is not a `Solid`
-is `OpError::Degenerate` with `Reason::NotSolid`; an invalid one
+is `OpError::Degenerate` with `InputReason::NotSolid`; an invalid one
 `InvalidInput`, as an operation's input is.
 
 `ops::query::project_to_plane(&Model, &[Shape], &Frame) ->
@@ -277,10 +277,10 @@ through the projected curve's own parameter** (data-model §Pcurves), so
 `edge.range().lerp(s)` and the piece covers the edge and no more. The
 projection is the edge's own curve in its own direction; a `Reversed`
 handle does not reverse it. It refuses, as `Degenerate` naming the
-shape, a face, shell or body (`Reason::NotProjectable` — which edges a
+shape, a face, shell or body (`QueryReason::NotProjectable` — which edges a
 view shows is the caller's to decide), a degenerate edge
-(`Reason::DegenerateEdge`), and a curve seen edge-on
-(`Reason::ProjectionCollapses`).
+(`QueryReason::DegenerateEdge`), and a curve seen edge-on
+(`QueryReason::ProjectionCollapses`).
 
 `ops::query::face_frame(&Model, Face) -> Result<Frame, OpError>` and
 `ops::query::frame_at(&Model, Face, Point2) -> Result<Frame, OpError>`
@@ -288,14 +288,14 @@ answer the outward-oriented frame a facade needs at a face: `face_frame`
 is a planar face's own surface frame, `Z` its outward normal — negated
 together with `X` (`Y` kept, so the flip stays right-handed) when the
 handle's use is `Reversed` — refused, naming the face, for a curved
-surface (`Reason::NotPlanar`), since only a plane has one frame for its
+surface (`QueryReason::NotPlanar`), since only a plane has one frame for its
 whole domain. `frame_at` is any face's frame at a `(u, v)` its own domain
 contains (`check::domain::FaceDomain`): `Z` is `Surface::normal` there
 composed with the use exactly as `face_frame`'s is, `X` the surface's own
 `∂P/∂u`, `Y = Z × X` — so on a plane it agrees with `face_frame`'s at
 every `(u, v)`. It refuses, naming the face, a `(u, v)` outside the
-domain (`Reason::OutOfDomain`) and a singular one — a sphere's pole, a
-cone's apex — where the surface has no normal (`Reason::Singular`).
+domain (`QueryReason::OutOfDomain`) and a singular one — a sphere's pole, a
+cone's apex — where the surface has no normal (`QueryReason::Singular`).
 
 `ops::boolean::interferences(&Model, a, b) -> Result<Interferences,
 OpError>` is another query: the boolean decomposition of ADR-0004 as
@@ -393,7 +393,7 @@ that operand vertex: the one a seam ending there made by piercing the
 other face, or one of its own (`VertexSource::Singular`) where the seam
 only touches it, so no block has the point inside it; a section that
 passes beside the point, nearer than the face's (u, v) polygons resolve,
-is refused by name (`Reason::BesideSingularity`, ADR-0021);
+is refused by name (`BooleanReason::BesideSingularity`, ADR-0021);
 the paves each vertex puts on the edge that hit or touched it — none
 where the vertex holds one of that edge's own ends — and on
 every section curve it projects onto within its tolerance — at the
@@ -499,7 +499,7 @@ leaves one face inside the other), and each block between consecutive
 touches whose midpoint is inside both faces is a *contact*, the segment
 the two faces share; on a closed curve the last block wraps round to the
 first touch, and a closed curve no edge reaches is one block
-(`boolean/ball-in-bore-cut`, refused as `Reason::TangentContact`). Every list is in a deterministic order and `Display` prints the
+(`boolean/ball-in-bore-cut`, refused as `BooleanReason::TangentContact`). Every list is in a deterministic order and `Display` prints the
 whole model, which is what the `inspect` skill reads when a boolean is
 wrong. The property tests build their
 operands through `arris_debug::prop::body` — a box and a cylinder whose
@@ -515,7 +515,7 @@ apart between the two tangent distances, some with a seam on a ruling or
 flush caps — and `crossing_pair` — equal radii crossing at 30° to 90°,
 each through the other, some with a seam through a crossing vertex, its
 `common` held to `16R³/(3 sin ψ)` and either `cut` to
-`Reason::NonManifold`. `bar_cut` is the split-order property's operand
+`InputReason::NonManifold`. `bar_cut` is the split-order property's operand
 (ADR-0009): a box cut by one or two slabs that cross it, drawn together
 with a second set of slabs and a resized, re-posed box, so the same
 recipe is built twice under a parameter edit that never changes which
@@ -528,7 +528,7 @@ face of both operands is split in its own (u, v): the pieces of its
 loops between consecutive paves and the section edges on it make a
 planar arrangement — half-edges ordered around each node by the pcurves'
 tangent angle, a tie within the angular tolerance by the signed
-curvature, a tie of both `Reason::TangentContact` — whose regions are
+curvature, a tie of both `BooleanReason::TangentContact` — whose regions are
 walked by taking the next half-edge clockwise from the direction one
 arrived from; a cycle turning once counter-clockwise bounds a piece, one
 turning clockwise is a hole, assigned by winding to the innermost piece
@@ -580,7 +580,7 @@ Before any face is
 split, every contact is decided at its midpoint by the same rule and the
 table: a contact whose two pieces would both survive is two result faces
 touching along a curve interior to both, and the operation is
-`Degenerate` with `Reason::TangentContact` naming the pair — a hole wall
+`Degenerate` with `BooleanReason::TangentContact` naming the pair — a hole wall
 tangent to a side face, or a `fuse` of two solids that touch along a
 line — because the manifold `Solid` cannot carry the slit (ADR-0004). A
 touch from outside in a `cut` or a `common` passes: the tool's piece is
@@ -602,10 +602,10 @@ tolerance decides it. A piece with no section edge of a crossing
 pair, or whose surfaces are tangent within the angular tolerance along
 every one, is `OpError::Unsupported` naming the pair. The survivors are
 grouped into shells by shared edges — none is
-`Degenerate` with `Reason::Empty`, or with `Reason::ZeroThickness` when
+`Degenerate` with `BooleanReason::Empty`, or with `InputReason::ZeroThickness` when
 what was dropped lay on the other operand (two solids sharing only a
 face); an edge piece used by more than two faces, or a vertex two shells
-reach, is two lumps touching and `Reason::NonManifold` naming it, and so
+reach, is two lumps touching and `InputReason::NonManifold` naming it, and so
 is a vertex whose face uses close into more than one fan — the corners
 there, a use arriving and the next leaving, joined where two share an
 edge piece — one shell touching itself at a point, as a wall is left
@@ -875,7 +875,7 @@ past the vertex anywhere but on a mixed corner's edge of the blend's
 convexity, on a fitted curve, or along a stretch that leaves its face —
 the same at a face across of any kind the end takes (a plane, a cylinder
 or a cone, ADR-0037) and at a ring's open arc end — is
-`Reason::BlendTooLarge` naming the edge and the face or edge the blend
+`BlendReason::TooLarge` naming the edge and the face or edge the blend
 runs out of. An end at a cusp — a vertex of three edges where the
 next edge leaves the way the blended one does, the two walls tangent
 along the third edge, the spine, both edges of one sense so that both
@@ -895,21 +895,21 @@ overhang tip, a cusp whose edges are of opposite senses, its walls on
 either side of the shared face, which Open CASCADE caps with fitted
 surfaces; a cusp whose next edge is blended too, which takes a corner
 patch; the next edge turning back with no cusp, or itself a tangent
-dihedral — is `Reason::TangentChain`; a
+dihedral — is `BlendReason::TangentChain`; a
 vertex of
 other than three edges (but the chain junctions of two and four above), a miter
 of blends not both convex or both concave, a miter with a ruling
 plane–cylinder blend, or a corner of three blended
 edges whose faces are not all planes, whose blends are mixed, or — three
 fillets — none of whose faces is square to the other two, is
-`Reason::VertexBlend` naming the vertex; a surface pair
+`BlendReason::VertexBlend` naming the vertex; a surface pair
 outside the table — two cylinders, a torus against a cylinder off its axis
 or a plane through its axis, a plane against a cone that is not a coaxial
 circle (an oblique plane's ellipse, a plane through the apex along a
 ruling), a NURBS face — or a face across an end the closed forms and the
 tracers do not take, is
 `OpError::Unsupported` naming the kinds and the faces; an empty list,
-an edge listed twice and an edge of another body are `Reason::NoEdges`,
+an edge listed twice and an edge of another body are `BlendReason::NoEdges`,
 `RepeatedEdge` and `EdgeNotInBody`. A blend that meets a third face while
 its contacts stay inside their faces is not detected by the operation:
 S5 catches it in the corpus. Provenance is rooted at the edge with no new
@@ -929,15 +929,15 @@ sketch it came from (data-model §Provenance, `SweepPart`).
 
 `ops::revolve(m, &profile, axis: Axis, angle)` sweeps the profile about
 an axis lying in its plane within the tolerances
-(`Reason::AxisNotInProfilePlane` otherwise): a partial turn with two flat
+(`SweepReason::AxisNotInProfilePlane` otherwise): a partial turn with two flat
 ends — the profile face, its outward normal against the turn, and its
 copy rotated by `angle` — or a full turn with seams when `angle` is within
-`angular_tolerance` of `2π` (`Reason::AngleAboveTurn` above it,
+`angular_tolerance` of `2π` (`SweepReason::AngleAboveTurn` above it,
 `NotPositive` at or below zero). The profile lies wholly on one side of
-the axis (`Reason::ProfileCrossesAxis` across it, `ZeroThickness` within
+the axis (`SweepReason::ProfileCrossesAxis` across it, `ZeroThickness` within
 `default_tolerance` of it everywhere), and an arc whose centre is off the
-axis and nearer it than its radius is `Reason::SpindleTorus`. An
-elliptic segment or a full-ellipse loop is `Reason::EllipticRevolve`
+axis and nearer it than its radius is `SweepReason::SpindleTorus`. An
+elliptic segment or a full-ellipse loop is `SweepReason::EllipticRevolve`
 naming the first of them in the sketch's own order, the surface it would
 sweep having no variant (ADR-0014); an ellipse whose radii agree within
 `default_tolerance` is a circle edge and sweeps as one. It may
@@ -953,7 +953,7 @@ pcurve the line at the singular `v` over the rise's range, one per face
 closing there, and a full turn keeps the vertex for it: the first
 degenerate edges an operation makes, which `Builder::assemble` takes used
 once and the Euler line leaves out. A full turn touching the axis at a
-vertex with no segment along it is `Reason::NonManifold`, since the
+vertex with no segment along it is `InputReason::NonManifold`, since the
 surface would touch itself there; a partial turn's flat ends make that
 vertex manifold. Every other segment sweeps one face: a segment
 parallel to the axis a cylinder, perpendicular a plane (an annulus, or a
@@ -992,7 +992,7 @@ shell.
 
 `ops::extrude(m, &profile, direction: Vec3, length)` sweeps the profile
 along its plane's normal, either way: `direction` is the normal or its
-opposite within `angular_tolerance` (`Reason::DirectionNotNormal`
+opposite within `angular_tolerance` (`SweepReason::DirectionNotNormal`
 otherwise — an oblique extrusion of an arc is a cylinder of elliptical
 section, which `Surface::EllipticCylinder` (ADR-0014) could hold, but no
 sweep builds it yet: a backlog line, ADR-0047), `length` finite and above
@@ -1024,7 +1024,7 @@ involved, so the message a consumer shows — or the agent reads — says
 |---|---|---|
 | `InvalidInput` | an input body fails the checker (checked in debug builds before the operation starts, and in release when the `paranoid` feature is on) | `Body`, the `Report` |
 | `Unsupported` | the exhaustive dispatch reached a surface or curve pair the kernel has no formula for yet — a boolean's face pair with a NURBS face in it, a piece whose classifying ray reaches a NURBS face, a tangent contact or an `On` piece that neither the curvature rule nor the transversal rule decides, a blend's face pair outside its table or the face across a blend's end | the two `GeomKind`s with their entities |
-| `Degenerate` | the requested result has no valid representation: a parameter that makes no geometry (`Reason::NonFinite`, `Reason::NotPositive` naming it — a zero radius, a box whose `min` is not below its `max`, a revolve angle at or below zero, a zero extrude direction; `Reason::AngleAboveTurn` past `2π`), a zero-thickness intersection or an extrude of zero length (`Reason::ZeroThickness`), a revolve whose axis is off the profile's plane (`Reason::AxisNotInProfilePlane`), whose profile crosses its axis (`Reason::ProfileCrossesAxis`) or lies within the tolerance of it everywhere (`Reason::ZeroThickness`), or whose arc's circle crosses it (`Reason::SpindleTorus`), or whose profile has an elliptic segment (`Reason::EllipticRevolve` naming the loop and segment, ADR-0014); an extrude off its plane's normal (`Reason::DirectionNotNormal`); a boolean that selects no material (`Reason::Empty`: a target inside its tool, a `common` of disjoint operands); result shells that would touch along an edge or at a vertex, a shell that would touch itself at a vertex whose faces close into more than one fan — a wall pinched at a singular point of a section — or a full revolve touching its axis at a vertex with no segment along it (`Reason::NonManifold`, naming the shared edges or vertices, none for a sweep); faces touching along a curve interior to both result faces (`Reason::TangentContact`); a section passing a face's apex or pole without running through it, nearer than the face's (u, v) polygons resolve (`Reason::BesideSingularity`, naming the two faces and the vertex, ADR-0021); a blend asked for no edges (`Reason::NoEdges`), for an edge twice (`Reason::RepeatedEdge`) or for an edge of another body (`Reason::EdgeNotInBody`), one that leaves its face, outruns a corner edge or a seam, or around a closed edge would need a torus that is not a ring torus or a contact reaching the axis (`Reason::BlendTooLarge`), one at a tangent dihedral or ending on a tangent corner edge (`Reason::TangentChain`), or one at a corner the closed forms do not cover (`Reason::VertexBlend`, ADR-0007); a query on a body that is not a `Solid` (`Reason::NotSolid`); a projection handed a face, shell or body (`Reason::NotProjectable`), a degenerate edge (`Reason::DegenerateEdge`), or a curve that projects to a point or a segment (`Reason::ProjectionCollapses`); `face_frame` on a curved face (`Reason::NotPlanar`); `frame_at` at a `(u, v)` outside the face's domain (`Reason::OutOfDomain`) or at a singular one with no normal (`Reason::Singular`) | the entities (none for a primitive or a sweep) and a `Reason` enum |
+| `Degenerate` | the requested result has no valid representation: a parameter that makes no geometry (`InputReason::NonFinite`, `InputReason::NotPositive` naming it — a zero radius, a box whose `min` is not below its `max`, a revolve angle at or below zero, a zero extrude direction; `SweepReason::AngleAboveTurn` past `2π`), a zero-thickness intersection or an extrude of zero length (`InputReason::ZeroThickness`), a revolve whose axis is off the profile's plane (`SweepReason::AxisNotInProfilePlane`), whose profile crosses its axis (`SweepReason::ProfileCrossesAxis`) or lies within the tolerance of it everywhere (`InputReason::ZeroThickness`), or whose arc's circle crosses it (`SweepReason::SpindleTorus`), or whose profile has an elliptic segment (`SweepReason::EllipticRevolve` naming the loop and segment, ADR-0014); an extrude off its plane's normal (`SweepReason::DirectionNotNormal`); a boolean that selects no material (`BooleanReason::Empty`: a target inside its tool, a `common` of disjoint operands); result shells that would touch along an edge or at a vertex, a shell that would touch itself at a vertex whose faces close into more than one fan — a wall pinched at a singular point of a section — or a full revolve touching its axis at a vertex with no segment along it (`InputReason::NonManifold`, naming the shared edges or vertices, none for a sweep); faces touching along a curve interior to both result faces (`BooleanReason::TangentContact`); a section passing a face's apex or pole without running through it, nearer than the face's (u, v) polygons resolve (`BooleanReason::BesideSingularity`, naming the two faces and the vertex, ADR-0021); a blend asked for no edges (`BlendReason::NoEdges`), for an edge twice (`BlendReason::RepeatedEdge`) or for an edge of another body (`BlendReason::EdgeNotInBody`), one that leaves its face, outruns a corner edge or a seam, or around a closed edge would need a torus that is not a ring torus or a contact reaching the axis (`BlendReason::TooLarge`), one at a tangent dihedral or ending on a tangent corner edge (`BlendReason::TangentChain`), or one at a corner the closed forms do not cover (`BlendReason::VertexBlend`, ADR-0007); a query on a body that is not a `Solid` (`InputReason::NotSolid`); a projection handed a face, shell or body (`QueryReason::NotProjectable`), a degenerate edge (`QueryReason::DegenerateEdge`), or a curve that projects to a point or a segment (`QueryReason::ProjectionCollapses`); `face_frame` on a curved face (`QueryReason::NotPlanar`); `frame_at` at a `(u, v)` outside the face's domain (`QueryReason::OutOfDomain`) or at a singular one with no normal (`QueryReason::Singular`) | the entities (none for a primitive or a sweep) and a `Reason`, grouped by the operation that raises it: `Input` (`NonFinite`, `NotPositive`, `ZeroThickness`, `NonManifold`, `NotSolid`), `Sweep`, `Boolean`, `Blend` and `Query`, each its own enum. `Reason::name()` is the leaf's stable name (`BlendTooLarge`), which the refusal histograms key on; `Display` is the leaf's own message |
 | `Profile` | a sweep's sketch is not a valid profile: `Profile::edges` refused it (data-model §Profiles). An invalid profile has no entities to name, so it is neither `InvalidInput` nor `Degenerate` | the `ProfileError`, naming the loop and segment |
 | `Tolerance` | the result would need an entity tolerance above `Precision::max_tolerance` | the entity, the tolerance it wanted |
 | `NotFound` | an id does not resolve in this model (wrong model, or compacted away) | the `AnyId` that failed to resolve itself, never an entity that merely holds it |

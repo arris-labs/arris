@@ -23,7 +23,7 @@ use super::stripe::{
 };
 use super::{degenerate, invariant};
 use crate::body_view::{BodyView, UseAt};
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
 /// A corner edge cut short by a blend's end: where on its curve, and at
@@ -144,7 +144,7 @@ pub(super) struct CornerAt {
 }
 
 /// A lone face across, as a ring's end reads its corner: the corner edges,
-/// the face and the spine. A fan is `Reason::VertexBlend` naming `edge` and
+/// the face and the spine. A fan is `BlendReason::VertexBlend` naming `edge` and
 /// `vertex`: only a stripe's face end fans (ADR-0043 §6).
 pub(super) type LoneCorner = ([EdgeId; 2], FaceId, Option<usize>);
 
@@ -154,7 +154,7 @@ impl CornerAt {
             [face] if self.stays.is_empty() => Ok((self.edges, face, self.spine)),
             _ => Err(degenerate(
                 vec![forward(edge), forward(vertex)],
-                Reason::VertexBlend,
+                Reason::Blend(BlendReason::VertexBlend),
             )),
         }
     }
@@ -334,13 +334,13 @@ pub(super) fn twice_at(
 /// beyond the edge's own. At a vertex of more edges than these three, the
 /// faces across are a fan's pieces where `fan_at` walks one (ADR-0043). Any
 /// other vertex of other than these three edges, or
-/// corner edges that share no such face, is `Reason::VertexBlend`. A corner
+/// corner edges that share no such face, is `BlendReason::VertexBlend`. A corner
 /// edge whose two faces meet tangentially at the vertex is the spine of a
 /// cusp whose two edges are of one sense (`cusp_at`, ADR-0042 §1), and its
 /// index is returned with the corner: the face across is then the next
 /// wall, which cuts the stripe. At any other vertex the chain did not run
 /// on through — an overhang tip, the next edge turning back with no cusp,
-/// itself a tangent dihedral — it is `Reason::TangentChain` naming the
+/// itself a tangent dihedral — it is `BlendReason::TangentChain` naming the
 /// edge, that corner edge and the vertex (ADR-0035 §6).
 pub(super) fn corner_of(
     env: &Env<'_>,
@@ -354,7 +354,7 @@ pub(super) fn corner_of(
     let size = env.kind.size();
     let e = forward(edge);
     let v = forward(vertex);
-    let vertex_blend = || degenerate(vec![e, v], Reason::VertexBlend);
+    let vertex_blend = || degenerate(vec![e, v], Reason::Blend(BlendReason::VertexBlend));
     // The neighbour of the blended edge's coedge at this end in each
     // face's loop.
     let mut corner_edges = [edge; 2];
@@ -425,7 +425,7 @@ pub(super) fn corner_of(
         {
             return Err(degenerate(
                 vec![e, forward(corner), v],
-                Reason::TangentChain,
+                Reason::Blend(BlendReason::TangentChain),
             ));
         }
         spine = Some(k);
@@ -460,7 +460,7 @@ pub(super) fn corner_of(
 
 /// The corner edge `corner` cut at `point`, its end at `vertex` moving
 /// there: its parameter and which end it cuts, checked to leave the edge a
-/// positive length clear of its far vertex — `Reason::BlendTooLarge`
+/// positive length clear of its far vertex — `BlendReason::TooLarge`
 /// naming the blended `edge` and the corner edge otherwise.
 pub(super) fn cut_corner(
     m: &Model,
@@ -473,7 +473,7 @@ pub(super) fn cut_corner(
     let Some((cid, crange)) = ce.curve() else {
         return Err(degenerate(
             vec![forward(edge), forward(vertex)],
-            Reason::VertexBlend,
+            Reason::Blend(BlendReason::VertexBlend),
         ));
     };
     let ccurve = m.curve(cid)?;
@@ -481,7 +481,12 @@ pub(super) fn cut_corner(
     if projection.distance > ce.tolerance() {
         return Err(invariant("the corner edge through the trim point"));
     }
-    let too_large = || degenerate(vec![forward(edge), forward(corner)], Reason::BlendTooLarge);
+    let too_large = || {
+        degenerate(
+            vec![forward(edge), forward(corner)],
+            Reason::Blend(BlendReason::TooLarge),
+        )
+    };
     let Some(tc) = shift_into_range(crange, projection.t, ccurve.period()) else {
         return Err(too_large());
     };
@@ -505,7 +510,7 @@ pub(super) fn cut_corner(
 
 /// A blend's end at a cusp (ADR-0042 §2, §5): the next edge cut at `P`
 /// and the spine at `Q`, by contact as `corner_edges` are, each within its
-/// edge (`cut_corner`, `Reason::BlendTooLarge` otherwise), and the cut
+/// edge (`cut_corner`, `BlendReason::TooLarge` otherwise), and the cut
 /// inside the next wall, whose corner the stripe takes whatever its sense.
 pub(super) fn cusp_trims(
     m: &Model,
@@ -705,7 +710,12 @@ pub(super) fn face_end(
     let (edge, d) = (s.edge, s.d);
     let e = forward(edge);
     let vertex = if at_lo { s.start } else { s.end };
-    let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
+    let vertex_blend = || {
+        degenerate(
+            vec![e, forward(vertex)],
+            Reason::Blend(BlendReason::VertexBlend),
+        )
+    };
     let mut corner = corner_of(env, edge, &s.uses, vertex, at_lo)?;
     if corner.pieces.len() > 1 {
         return fan_end(env, meter, s, vertex, &corner);
@@ -721,7 +731,7 @@ pub(super) fn face_end(
             let tangent_chain = || {
                 degenerate(
                     vec![e, forward(corner_edges[k]), forward(vertex)],
-                    Reason::TangentChain,
+                    Reason::Blend(BlendReason::TangentChain),
                 )
             };
             let (curve, _) = m
@@ -758,7 +768,7 @@ pub(super) fn face_end(
             if let Some((k, ..)) = spine_line {
                 return Err(degenerate(
                     vec![e, forward(corner_edges[k]), forward(vertex)],
-                    Reason::TangentChain,
+                    Reason::Blend(BlendReason::TangentChain),
                 ));
             }
             let n3: Vec3 = plane3.z().into_inner();
@@ -853,13 +863,13 @@ pub(super) fn face_end(
                         let (tq, ts) = lines_cross(q, d, origin, along, tol).ok_or_else(|| {
                             degenerate(
                                 vec![e, forward(corner_edges[k]), forward(vertex)],
-                                Reason::TangentChain,
+                                Reason::Blend(BlendReason::TangentChain),
                             )
                         })?;
                         if (q + tq * d - (origin + ts * along)).norm() > arc_tolerance {
                             return Err(degenerate(
                                 vec![e, forward(corner_edges[k]), forward(vertex)],
-                                Reason::TangentChain,
+                                Reason::Blend(BlendReason::TangentChain),
                             ));
                         }
                         tq
@@ -937,19 +947,28 @@ pub(super) fn face_end(
         let hits = match intersect_curves(&arc_curve, curve, arc_tol, meter).map_err(fault_of)? {
             CurveIntersection::Points(hits) => hits,
             CurveIntersection::Coincident => {
-                return Err(degenerate(vec![e, forward(x)], Reason::BlendTooLarge));
+                return Err(degenerate(
+                    vec![e, forward(x)],
+                    Reason::Blend(BlendReason::TooLarge),
+                ));
             }
         };
         for hit in &hits {
             if shift_into_range(range, hit.tb, curve.period()).is_some()
                 && shift_into_range(arc_range, hit.ta, arc_curve.period()).is_some()
             {
-                return Err(degenerate(vec![e, forward(x)], Reason::BlendTooLarge));
+                return Err(degenerate(
+                    vec![e, forward(x)],
+                    Reason::Blend(BlendReason::TooLarge),
+                ));
             }
         }
     }
     if !on_side_of_face(m, face3, &on_face, arc_range, corner.side, samples)? {
-        return Err(degenerate(vec![e, forward(face3)], Reason::BlendTooLarge));
+        return Err(degenerate(
+            vec![e, forward(face3)],
+            Reason::Blend(BlendReason::TooLarge),
+        ));
     }
     let on_blend =
         pcurve_on(&arc_curve, arc_range, &s.surface, arc_tol, meter).map_err(fault_of)?;
@@ -982,12 +1001,12 @@ pub(super) fn face_end(
 /// band, and each piece cut in the stripe's section between its two
 /// points (`section_between`), inside the piece — every edge at the vertex
 /// is of the blend's sense (`fan_at`), so the blend takes the corner from
-/// each. A contact parallel to a plane piece is `Reason::VertexBlend`; a
+/// each. A contact parallel to a plane piece is `BlendReason::VertexBlend`; a
 /// piece the contact misses or whose section is not decided is
 /// `Unsupported` naming the blend and the piece; a crossing not on its
 /// extra edge — none on the band within its range, more than one, or at
 /// its far vertex — a corner edge shorter than its trim, and an arc
-/// leaving its piece are `Reason::BlendTooLarge`.
+/// leaving its piece are `BlendReason::TooLarge`.
 pub(super) fn fan_end(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -1027,7 +1046,10 @@ pub(super) fn fan_end(
                 let n: Vec3 = frame.z().into_inner();
                 let dn = d.dot(&n);
                 if dn.abs() <= tol.angular {
-                    return Err(degenerate(vec![e, forward(vertex)], Reason::VertexBlend));
+                    return Err(degenerate(
+                        vec![e, forward(vertex)],
+                        Reason::Blend(BlendReason::VertexBlend),
+                    ));
                 }
                 (frame.origin() - q).dot(&n) / dn
             }
@@ -1055,7 +1077,7 @@ pub(super) fn fan_end(
     let mut crossings: Vec<Crossing> = Vec::with_capacity(k - 1);
     for (i, &x) in corner.extras.iter().enumerate() {
         meter.tick()?;
-        let too_large = || degenerate(vec![e, forward(x)], Reason::BlendTooLarge);
+        let too_large = || degenerate(vec![e, forward(x)], Reason::Blend(BlendReason::TooLarge));
         let entity = *m.edge(x)?;
         let (curve_id, range) = entity.curve().ok_or(invariant("an extra edge's curve"))?;
         let curve = m.curve(curve_id)?;
@@ -1136,7 +1158,10 @@ pub(super) fn fan_end(
             }
         };
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
-            return Err(degenerate(vec![e, forward(face)], Reason::BlendTooLarge));
+            return Err(degenerate(
+                vec![e, forward(face)],
+                Reason::Blend(BlendReason::TooLarge),
+            ));
         }
         let on_blend = pcurve_on(&curve, range, &s.surface, arc_tol, meter).map_err(fault_of)?;
         let on_blend = s.place(on_blend, range.lo(), if lo_first { from_u } else { to_u });

@@ -715,7 +715,7 @@ fn a_pin_tangent_at_its_cap_circles_own_start_paves_no_short_block() {
 // ---- `ops::cut` (plan step 7): split, classify, assemble ----
 
 use arris_math::Point2;
-use arris_ops::Reason;
+use arris_ops::{BooleanReason, InputReason, Reason};
 use arris_topo::{AnyId, EntityId, Face as FaceHandle, Orientation, Origin, Provenance, Shape};
 
 use arris_check::{Level, check, lumps};
@@ -1227,7 +1227,7 @@ fn a_swallowed_target_is_a_typed_refusal() {
     let faces = m.faces(a).unwrap().len();
     match cut(&mut m, a, b).unwrap_err() {
         OpError::Degenerate {
-            reason: Reason::Empty,
+            reason: Reason::Boolean(BooleanReason::Empty),
             entities,
         } => assert_eq!(entities.as_slice(), [Shape::from(a), Shape::from(b)]),
         other => panic!("{other:?}"),
@@ -1258,7 +1258,7 @@ fn a_boolean_over_a_body_that_does_not_resolve_still_names_that_body() {
 /// Two boxes touching along an edge, and two touching at a corner, fused:
 /// the two lumps would share the edge — used by four faces — or the
 /// vertex, which a manifold solid's shells never do (ADR-0006, plan
-/// `⚠ OPEN` 2). Each is `Reason::NonManifold` naming exactly what is
+/// `⚠ OPEN` 2). Each is `InputReason::NonManifold` naming exactly what is
 /// shared, before anything is assembled, and the model is as it was.
 #[test]
 fn boxes_touching_along_an_edge_or_at_a_corner_are_non_manifold() {
@@ -1277,7 +1277,7 @@ fn boxes_touching_along_an_edge_or_at_a_corner_are_non_manifold() {
         let before = arris_debug::dump_text(&m, a).unwrap();
         let entities = match fuse(&mut m, a, b) {
             Err(OpError::Degenerate {
-                reason: Reason::NonManifold,
+                reason: Reason::Input(InputReason::NonManifold),
                 entities,
             }) => entities,
             other => panic!("{what}: {other:?}"),
@@ -1433,7 +1433,7 @@ fn a_flush_common_has_no_thickness() {
     let before = arris_debug::dump_text(&m, a).unwrap();
     match common(&mut m, a, b) {
         Err(OpError::Degenerate {
-            reason: Reason::ZeroThickness,
+            reason: Reason::Input(InputReason::ZeroThickness),
             entities,
         }) => assert_eq!(entities.len(), 2),
         other => panic!("{other:?}"),
@@ -1645,7 +1645,7 @@ fn disjoint_operands_are_empty_in_common_and_two_lumps_in_fuse() {
     let before = arris_debug::dump_text(&m, a).unwrap();
     match common(&mut m, a, b).unwrap_err() {
         OpError::Degenerate {
-            reason: Reason::Empty,
+            reason: Reason::Boolean(BooleanReason::Empty),
             entities,
         } => assert_eq!(entities.as_slice(), [Shape::from(a), Shape::from(b)]),
         other => panic!("{other:?}"),
@@ -1725,7 +1725,7 @@ fn a_posed_through_hole_is_the_through_hole_moved() {
 /// touching the plate's side face from outside: `cut` is the plate with
 /// every id kept — the interior point of the touched face lies on the
 /// ruling, classified `On` the wall, and the curvature rule puts the
-/// face outside the rod; `common` selects nothing, `Reason::Empty` and
+/// face outside the rod; `common` selects nothing, `BooleanReason::Empty` and
 /// not `ZeroThickness`, since no piece lay *on* the other operand in the
 /// coincident sense; `fuse` would keep the face and the wall touching
 /// along the contact, the designed refusal naming the pair. And the
@@ -1754,14 +1754,14 @@ fn a_touch_from_outside_is_the_plate_and_a_slit_is_refused_by_name() {
     let (mut m, plate, post) = inputs("boolean/tangent-outside-cut");
     match common(&mut m, plate, post) {
         Err(OpError::Degenerate {
-            reason: Reason::Empty,
+            reason: Reason::Boolean(BooleanReason::Empty),
             ..
         }) => {}
         other => panic!("common: {other:?}"),
     }
     match fuse(&mut m, plate, post) {
         Err(OpError::Degenerate {
-            reason: Reason::TangentContact,
+            reason: Reason::Boolean(BooleanReason::TangentContact),
             entities,
         }) => {
             let plate_faces: Vec<_> = m.faces(plate).unwrap().iter().map(|f| f.id).collect();
@@ -1777,7 +1777,7 @@ fn a_touch_from_outside_is_the_plate_and_a_slit_is_refused_by_name() {
     let before = arris_debug::dump_text(&m, plate).unwrap();
     match cut(&mut m, plate, hole) {
         Err(OpError::Degenerate {
-            reason: Reason::TangentContact,
+            reason: Reason::Boolean(BooleanReason::TangentContact),
             ..
         }) => {}
         other => panic!("tangent-hole: {other:?}"),
@@ -1886,7 +1886,7 @@ fn a_section_beside_a_pole_is_refused_by_name() {
     for op in [cut, common, fuse] {
         match op(&mut m, ball, half).unwrap_err() {
             OpError::Degenerate {
-                reason: Reason::BesideSingularity,
+                reason: Reason::Boolean(BooleanReason::BesideSingularity),
                 entities,
             } => {
                 let ball_faces: Vec<_> = m.faces(ball).unwrap().iter().map(|f| f.id).collect();
@@ -1910,7 +1910,7 @@ fn a_section_beside_a_pole_is_refused_by_name() {
 /// their section leaves the wall two pieces meeting only at that vertex,
 /// pinched between the drill's exits: one shell touching itself at a
 /// point, which a manifold `Solid` does not hold. The cut is
-/// `Reason::NonManifold` naming the vertex by the two faces whose section
+/// `InputReason::NonManifold` naming the vertex by the two faces whose section
 /// made it — it was `Internal`, the builder unable to close the shell —
 /// and the model is as it was (`regression/singular-bore-cut`).
 #[test]
@@ -1933,7 +1933,7 @@ fn a_wall_pinched_at_a_singular_point_is_non_manifold() {
     let before = arris_debug::dump_text(&m, main).unwrap();
     match cut(&mut m, main, drill) {
         Err(OpError::Degenerate {
-            reason: Reason::NonManifold,
+            reason: Reason::Input(InputReason::NonManifold),
             entities,
         }) => assert_eq!(entities, named),
         other => panic!("{other:?}"),

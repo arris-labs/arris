@@ -411,7 +411,7 @@ pub fn refusal(e: &OpError) -> String {
     }
     match e {
         OpError::Degenerate { reason, .. } => {
-            format!("Degenerate({})", head(format!("{reason:?}")))
+            format!("Degenerate({})", reason.name())
         }
         OpError::Unsupported { a, b } => format!("Unsupported({} × {})", a.0, b.0),
         OpError::Internal(fault) => format!("Internal({})", head(format!("{fault:?}"))),

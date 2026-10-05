@@ -150,7 +150,7 @@ corpus_tests! {
     /// of them in the other's void.
     boolean_lump_in_cavity => run "boolean/lump-in-cavity";
     /// Two boxes touching along an edge: Open CASCADE builds two solids that
-    /// share it, Arris refuses with `Reason::NonManifold` — the runner's
+    /// share it, Arris refuses with `InputReason::NonManifold` — the runner's
     /// expected-error path.
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
     boolean_boss => run "boolean/boss";
@@ -175,7 +175,7 @@ corpus_tests! {
     boolean_tangent_outside_cut => run "boolean/tangent-outside-cut";
     /// A blind hole whose wall touches a side face from inside along a
     /// ruling interior to both: the slit no manifold `Solid` can carry,
-    /// `Reason::TangentContact` through the runner's expected-error path
+    /// `BooleanReason::TangentContact` through the runner's expected-error path
     /// (plan m4-booleans `⚠ OPEN` 1).
     boolean_tangent_hole => run "boolean/tangent-hole";
     /// The same solid as `through-hole` in another pose: both operands moved
@@ -201,7 +201,7 @@ corpus_tests! {
     /// other, meeting at the crossing vertices.
     boolean_cross_cylinders_fuse => run "boolean/cross-cylinders-fuse";
     /// The target minus the tool that is as wide as it: two lumps whose
-    /// closures touch at the crossing vertices, `Reason::NonManifold`
+    /// closures touch at the crossing vertices, `InputReason::NonManifold`
     /// through the runner's expected-error path (ADR-0006).
     boolean_cross_cylinders_cut => run "boolean/cross-cylinders-cut";
     /// The common at ψ = 60°: ellipses of two different major radii still
@@ -241,7 +241,7 @@ corpus_tests! {
     boolean_tangent_cylinders_cut_band_ends => run "boolean/tangent-cylinders-cut-band-ends";
     /// tangent-hole's hole four tolerances out through and in off the side face: a clean cut either way (ADR-0022).
     boolean_tangent_hole_band_ends => run "boolean/tangent-hole-band-ends";
-    /// tangent-hole's hole a quarter of a tolerance out through and in off the side face: the contact's own refusal, Reason::TangentContact (ADR-0022).
+    /// tangent-hole's hole a quarter of a tolerance out through and in off the side face: the contact's own refusal, BooleanReason::TangentContact (ADR-0022).
     boolean_tangent_hole_a_quarter_off => run "boolean/tangent-hole-a-quarter-off";
     /// tangent-outside-cut's tool four tolerances into and away from the plate, and turned half a tolerance about the contact's middle (ADR-0022).
     boolean_tangent_outside_cut_band_ends => run "boolean/tangent-outside-cut-band-ends";
@@ -482,13 +482,13 @@ corpus_tests! {
     /// Open CASCADE imprints the ruling (`analytic.counts_differ`).
     boolean_tangent_cylinders_cut => run "boolean/tangent-cylinders-cut";
     /// The same operands fused: both walls survive through the contact,
-    /// `Reason::TangentContact` through the runner's expected-error path.
+    /// `BooleanReason::TangentContact` through the runner's expected-error path.
     boolean_tangent_cylinders_fuse => run "boolean/tangent-cylinders-fuse";
     /// A pin touching a bore's wall from inside: the pin's wall is inside the
     /// bore, and the fuse is the bore with every id kept.
     boolean_pin_in_bore_fuse => run "boolean/pin-in-bore-fuse";
     /// The pin cut from the bore: both walls survive through the contact,
-    /// `Reason::TangentContact`.
+    /// `BooleanReason::TangentContact`.
     boolean_pin_in_bore_cut => run "boolean/pin-in-bore-cut";
     /// Two short cylinders crossing at 30°: each of the tool's cap planes cuts
     /// the target's wall in an ellipse coplanar with the tool's rim circle, and
@@ -633,7 +633,7 @@ corpus_tests! {
     /// circles (ADR-0008).
     sweep_revolve_ring => run "sweep/revolve-ring";
     /// An ellipse revolved about z: Open CASCADE builds the elliptic torus
-    /// and Arris refuses it, `Reason::EllipticRevolve` naming the segment,
+    /// and Arris refuses it, `SweepReason::EllipticRevolve` naming the segment,
     /// since the surface it would sweep has no variant (ADR-0014).
     sweep_revolve_ellipse => run "sweep/revolve-ellipse";
     /// The consumer's 2-cube with one vertical edge filleted: a plane–plane
@@ -679,7 +679,7 @@ corpus_tests! {
     /// meeting on it.
     blend_probe_cap_and_vertical_fillet_m => run "blend/probe-cap-and-vertical-fillet-m";
     /// A rise ending at a vertex of five edges, where a box stands on its
-    /// corner on another's top edge: `Reason::VertexBlend`.
+    /// corner on another's top edge: `BlendReason::VertexBlend`.
     blend_five_edge_vertex => run "blend/five-edge-vertex";
     /// Three fillets at one box corner: the sphere corner, an octant about
     /// the ball's centre tangent to the three cylinders, its pole a degenerate

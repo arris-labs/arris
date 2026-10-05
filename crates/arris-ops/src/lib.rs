@@ -47,7 +47,10 @@ pub use arris_math::{Control, Interrupted, Stop};
 pub use blend::{chamfer, fillet};
 pub use boolean::{common, cut, fuse};
 pub use build::{BuildKeys, BuildSlot, Rejection, build};
-pub use error::{Fault, OpError, Reason, SplitFault};
+pub use error::{
+    BlendReason, BooleanReason, Fault, InputReason, OpError, QueryReason, Reason, SplitFault,
+    SweepReason,
+};
 pub use mirror::mirror;
 pub use primitive::{primitive_box, primitive_cylinder};
 pub use sweep::{extrude, revolve};

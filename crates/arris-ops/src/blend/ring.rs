@@ -18,7 +18,7 @@ use super::{Kind, degenerate, invariant};
 use super::{mixed, traced};
 use crate::body_view::tangent_normals;
 use crate::body_view::{UseAt, faces_tolerance};
-use crate::error::{OpError, Reason, fault_of};
+use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
 /// A face of the meridian row (ADR-0036 §1): `Some(None)` for a plane,
@@ -417,7 +417,7 @@ impl Across {
 /// the spine at the vertex's angle and the other on the edge's side of it
 /// (ADR-0042) — or one of the `junctions`, which the junction builds. A torus that is not a ring
 /// torus and a contact that reaches the axis or a cone's apex are
-/// `Reason::BlendTooLarge`,
+/// `BlendReason::TooLarge`,
 /// as is a contact or an end that leaves its face or a seam or a corner
 /// edge shorter than the trim.
 pub(super) fn ring(
@@ -601,7 +601,12 @@ fn read_ring<'a>(env: &Env<'a>, edge: EdgeId) -> Result<RingRead<'a>, OpError> {
     let e = forward(edge);
     let entity = *m.edge(edge)?;
     let vertex = entity.start();
-    let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
+    let vertex_blend = || {
+        degenerate(
+            vec![e, forward(vertex)],
+            Reason::Blend(BlendReason::VertexBlend),
+        )
+    };
     let Some((curve_id, range)) = entity.curve() else {
         return Err(vertex_blend());
     };
@@ -626,7 +631,7 @@ fn read_ring<'a>(env: &Env<'a>, edge: EdgeId) -> Result<RingRead<'a>, OpError> {
     if tangent_normals(n1, n2, kind.size(), tangent_tolerance, tol) {
         return Err(degenerate(
             vec![e, forward(f1), forward(f2)],
-            Reason::TangentChain,
+            Reason::Blend(BlendReason::TangentChain),
         ));
     }
     let surfaces = [
@@ -860,7 +865,8 @@ fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blen
     } = *sec;
     let radial_at = |t: f64| rd.radial_at(tol, t);
     let unsupported = || rd.unsupported();
-    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
+    let too_large =
+        |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
     // The ball's centre is `r` off both meridians on the ball's side, each
     // fillet contact the foot of it on its meridian; a chamfer's contacts
     // are `d` along each from the corner. A contact at the axis, or past a
@@ -1033,7 +1039,8 @@ fn place_contacts(
     let surface = &bl.surface;
     let on_a = bl.on_a.clone();
     let on_b = bl.on_b.clone();
-    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
+    let too_large =
+        |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
     let line_tol = Tolerance::new(tolerance, tol.angular);
     let geometry = fault_of;
     // A curved face's own `(u, v)` at the edge's start, which its
@@ -1054,7 +1061,7 @@ fn place_contacts(
     }
     // An open arc's corners, read before its contacts as a stripe's are:
     // an end at a tangent corner edge that is no junction is
-    // `Reason::TangentChain`, whatever the contacts do beside it.
+    // `BlendReason::TangentChain`, whatever the contacts do beside it.
     let open = entity.start() != entity.end();
     let mut corners: [Option<LoneCorner>; 2] = [None, None];
     if open {
@@ -1186,8 +1193,14 @@ fn seam_end(
     let (v0, x) = (bl.v0, bl.x);
     let surface = &bl.surface;
     let contacts = &placed.contacts;
-    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
-    let vertex_blend = || degenerate(vec![e, forward(vertex)], Reason::VertexBlend);
+    let too_large =
+        |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
+    let vertex_blend = || {
+        degenerate(
+            vec![e, forward(vertex)],
+            Reason::Blend(BlendReason::VertexBlend),
+        )
+    };
     let swapped = placed.swapped;
     let slot_of = |i: usize| if swapped { 1 - i } else { i };
     let line_tol = Tolerance::new(tolerance, tol.angular);
@@ -1253,7 +1266,10 @@ fn seam_end(
             tc - seam_range0.lo()
         };
         if kept_length <= 0.0 || (cut_at - far.point()).norm() <= far.tolerance() {
-            return Err(degenerate(vec![e, forward(seam)], Reason::BlendTooLarge));
+            return Err(degenerate(
+                vec![e, forward(seam)],
+                Reason::Blend(BlendReason::TooLarge),
+            ));
         }
         vertex_tolerance = vertex_tolerance.max(seam_entity.tolerance());
         cuts.push((
@@ -1343,7 +1359,8 @@ fn face_end_of(
     let contacts = &placed.contacts;
     let across = placed.across;
     let radial_at = |t: f64| rd.radial_at(tol, t);
-    let too_large = |face: FaceId| degenerate(vec![e, forward(face)], Reason::BlendTooLarge);
+    let too_large =
+        |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
     let geometry = fault_of;
     let section = |w: Vec3, ends: [Point3; 2]| bl.section(rd, tol, w, ends);
     let across_surface = m.surface(m.face(across_face)?.surface())?;
@@ -1363,7 +1380,7 @@ fn face_end_of(
             if off.distance > m.edge(spine_edge)?.tolerance().max(tolerance) {
                 return Err(degenerate(
                     vec![e, forward(spine_edge), forward(vertex)],
-                    Reason::TangentChain,
+                    Reason::Blend(BlendReason::TangentChain),
                 ));
             }
             cusp_trims(m, edge, corner_edges, vertex, points)?

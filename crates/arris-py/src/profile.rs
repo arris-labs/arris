@@ -7,7 +7,7 @@
 
 use arris::geom::profile::{Profile as Kernel, ProfileLoop, ProfileSegment};
 use arris::math::{Frame, Point2, Point3, Vec2, Vec3};
-use arris::ops::{OpError, Reason};
+use arris::ops::{InputReason, OpError, Reason};
 use pyo3::prelude::*;
 
 use crate::kernel_error::op_error;
@@ -192,21 +192,21 @@ fn frame_refusal(error: arris::math::FrameError) -> OpError {
     OpError::Degenerate {
         entities: Vec::new(),
         reason: match error {
-            F::NonFinite => Reason::NonFinite {
+            F::NonFinite => Reason::Input(InputReason::NonFinite {
                 what: "profile plane",
-            },
-            F::ZeroAxis => Reason::NotPositive {
+            }),
+            F::ZeroAxis => Reason::Input(InputReason::NotPositive {
                 what: "profile plane normal",
                 value: 0.0,
-            },
-            F::DegenerateHint => Reason::NotPositive {
+            }),
+            F::DegenerateHint => Reason::Input(InputReason::NotPositive {
                 what: "profile x axis component across the normal",
                 value: 0.0,
-            },
-            F::NotOrthonormal => Reason::NotPositive {
+            }),
+            F::NotOrthonormal => Reason::Input(InputReason::NotPositive {
                 what: "profile plane axes",
                 value: 0.0,
-            },
+            }),
         },
     }
 }

@@ -20,7 +20,7 @@ use crate::boolean::faces::{EdgeInfo, FaceInfo};
 use crate::boolean::{
     EdgeEdgeHit, EdgeFaceHit, FacePair, Landing, Pave, SectionCrossing, meet_curves,
 };
-use crate::error::{Fault, OpError, Reason};
+use crate::error::{BooleanReason, Fault, OpError, Reason};
 use crate::pass::pass;
 
 impl<'m, 'c> Build<'m, 'c> {
@@ -776,7 +776,7 @@ impl<'m, 'c> Build<'m, 'c> {
     /// [`pcurve_on`]'s own band, decided in length, so the pave and the
     /// pcurve of the block it ends never disagree; a curve outside the
     /// band and inside [`SINGULAR_CLEARANCE`] is
-    /// [`Reason::BesideSingularity`].
+    /// [`BooleanReason::BesideSingularity`].
     pub(super) fn singular_vertices(&self) -> Result<Vec<(Point3, f64, VertexId)>, OpError> {
         let mut wanted: Vec<(Point3, f64, VertexId)> = Vec::new();
         for (pi, pair) in self.pairs.iter().enumerate() {
@@ -828,7 +828,7 @@ impl<'m, 'c> Build<'m, 'c> {
                                 other.shape(),
                                 Shape::new(s.vertex, self.a.orientation),
                             ],
-                            reason: Reason::BesideSingularity,
+                            reason: Reason::Boolean(BooleanReason::BesideSingularity),
                         });
                     }
                     wanted.push((s.point, s.tolerance, s.vertex));

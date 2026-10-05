@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use arris::math::nalgebra::UnitQuaternion;
 use arris::math::{Axis, Isometry, Point3, Reflection, UnitVec3, Vec3};
-use arris::ops::{OpError, Reason};
+use arris::ops::{InputReason, OpError, Reason};
 use arris::topo;
 use arris::{Control, Interrupted, Stop};
 use pyo3::exceptions::PyKeyboardInterrupt;
@@ -155,7 +155,7 @@ fn finite(what: &'static str, v: [f64; 3]) -> Result<(), OpError> {
     if v.iter().all(|c| c.is_finite()) {
         Ok(())
     } else {
-        Err(refused(Reason::NonFinite { what }))
+        Err(refused(Reason::Input(InputReason::NonFinite { what })))
     }
 }
 
@@ -166,7 +166,10 @@ fn direction_of(what: &'static str, v: [f64; 3]) -> Result<Vec3, OpError> {
     if v.norm() > 0.0 {
         Ok(v)
     } else {
-        Err(refused(Reason::NotPositive { what, value: 0.0 }))
+        Err(refused(Reason::Input(InputReason::NotPositive {
+            what,
+            value: 0.0,
+        })))
     }
 }
 
@@ -392,7 +395,9 @@ impl Model {
                     let turn = UnitQuaternion::from_axis_angle(&UnitVec3::new_normalize(a), angle);
                     Ok(Isometry::new(turn, Vec3::from(translation)))
                 } else {
-                    Err(refused(Reason::NonFinite { what: "angle" }))
+                    Err(refused(Reason::Input(InputReason::NonFinite {
+                        what: "angle",
+                    })))
                 }
             })
             .map_err(|e| self.refuse(py, e))?;
@@ -432,9 +437,9 @@ impl Model {
             .and_then(|()| direction_of("mirror normal", normal))
             .and_then(|n| {
                 Reflection::new(Point3::from(origin), n).map_err(|_| {
-                    refused(Reason::NonFinite {
+                    refused(Reason::Input(InputReason::NonFinite {
                         what: "mirror plane",
-                    })
+                    }))
                 })
             })
             .map_err(|e| self.refuse(py, e))?;

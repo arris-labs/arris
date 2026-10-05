@@ -49,7 +49,9 @@ use arris_math::{
     Axis, Control, FrameError, Isometry, Point3, Reflection, ReflectionError, UnitVec3, Vec3,
 };
 use arris_mesh::{MeshRequest, TriMesh};
-use arris_ops::{OpError, Reason, common, cut, fuse};
+use arris_ops::{
+    BlendReason, BooleanReason, InputReason, OpError, Reason, SweepReason, common, cut, fuse,
+};
 use arris_topo::FaceId;
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
 use arris_topo::entity::BodyKind;
@@ -417,13 +419,23 @@ impl Refusal {
             }) => {
                 let matches = match self {
                     Refusal::Degenerate => true,
-                    Refusal::Error(ExpectError::TangentContact) => reason == Reason::TangentContact,
-                    Refusal::Error(ExpectError::NonManifold) => reason == Reason::NonManifold,
-                    Refusal::Error(ExpectError::BlendTooLarge) => reason == Reason::BlendTooLarge,
-                    Refusal::Error(ExpectError::TangentChain) => reason == Reason::TangentChain,
-                    Refusal::Error(ExpectError::VertexBlend) => reason == Reason::VertexBlend,
+                    Refusal::Error(ExpectError::TangentContact) => {
+                        reason == Reason::Boolean(BooleanReason::TangentContact)
+                    }
+                    Refusal::Error(ExpectError::NonManifold) => {
+                        reason == Reason::Input(InputReason::NonManifold)
+                    }
+                    Refusal::Error(ExpectError::BlendTooLarge) => {
+                        reason == Reason::Blend(BlendReason::TooLarge)
+                    }
+                    Refusal::Error(ExpectError::TangentChain) => {
+                        reason == Reason::Blend(BlendReason::TangentChain)
+                    }
+                    Refusal::Error(ExpectError::VertexBlend) => {
+                        reason == Reason::Blend(BlendReason::VertexBlend)
+                    }
                     Refusal::Error(ExpectError::EllipticRevolve) => {
-                        matches!(reason, Reason::EllipticRevolve { .. })
+                        matches!(reason, Reason::Sweep(SweepReason::EllipticRevolve { .. }))
                     }
                     Refusal::Error(ExpectError::Nurbs | ExpectError::Unsupported) => false,
                 };

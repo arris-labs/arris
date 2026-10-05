@@ -23,7 +23,7 @@ use arris_topo::{Body, Edge, EdgeId, Model, Provenance, Shape};
 use self::build::build;
 use self::ends::EndKind;
 use self::stripe::{Contact, Stripe};
-use crate::error::{Fault, OpError, Reason};
+use crate::error::{BlendReason, Fault, InputReason, OpError, Reason};
 use crate::rebuild::forward;
 
 mod build;
@@ -197,15 +197,15 @@ struct Blend {
 /// (`docs/DATA-MODEL.md` §Provenance).
 ///
 /// Errors, the model untouched: [`OpError::Degenerate`] with
-/// [`Reason::NonFinite`] or [`Reason::NotPositive`] on the radius,
-/// [`Reason::NoEdges`] for an empty list, [`Reason::RepeatedEdge`] for
-/// an edge listed twice, [`Reason::EdgeNotInBody`] for one that is not
-/// the body's, [`Reason::TangentChain`] where the edge's faces meet at a
+/// [`InputReason::NonFinite`] or [`InputReason::NotPositive`] on the radius,
+/// [`BlendReason::NoEdges`] for an empty list, [`BlendReason::RepeatedEdge`] for
+/// an edge listed twice, [`BlendReason::EdgeNotInBody`] for one that is not
+/// the body's, [`BlendReason::TangentChain`] where the edge's faces meet at a
 /// tangent dihedral or an end's corner edge has tangent faces at a vertex
 /// the chain does not run on through and that is no cusp it is cut at —
 /// the next edge turning back, itself a tangent dihedral, of the other
 /// sense, or blended too at a cusp —
-/// [`Reason::VertexBlend`] at a corner the closed
+/// [`BlendReason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges that the chain
 /// does not run on through and that is no fan — the faces across not one
 /// walk through its star, an edge at it smooth, a seam or of the other
@@ -215,7 +215,7 @@ struct Blend {
 /// the cylinder misses the other's on the third edge, or a corner of three
 /// blended edges whose faces are not all planes, whose blends are mixed or
 /// none of whose faces is square to the other two — and
-/// [`Reason::BlendTooLarge`] where a contact line or an end arc leaves
+/// [`BlendReason::TooLarge`] where a contact line or an end arc leaves
 /// its face through an edge that is not the corner's own or a corner
 /// edge is shorter than the trim, a fan's crossing lies past its edge, a trim past the corner's vertex that is
 /// no such lengthening or whose stretch leaves its face, or a closed edge's torus would not be a
@@ -224,7 +224,7 @@ struct Blend {
 /// a chain's junction is shorter than the cut; a closed edge whose vertex
 /// carries more than the curved faces' seams, or an open arc that meets
 /// another blended edge at a vertex that is no tangent vertex, is
-/// [`Reason::VertexBlend`];
+/// [`BlendReason::VertexBlend`];
 /// [`OpError::Unsupported`] naming the two faces for a pair outside the
 /// table (every pair but two planes, a plane and a cylinder along a
 /// ruling, and, along a circle coaxial with both, a plane, a cylinder or a
@@ -312,8 +312,8 @@ pub fn fillet(
 /// chamfer's edge alone. `arris_topo::provenance::audit` holds on every result.
 ///
 /// Errors, the model untouched: a [`fillet`]'s, with
-/// [`Reason::NonFinite`] or [`Reason::NotPositive`] naming the distance,
-/// [`Reason::VertexBlend`] for two chamfers at a corner of mixed
+/// [`InputReason::NonFinite`] or [`InputReason::NotPositive`] naming the distance,
+/// [`BlendReason::VertexBlend`] for two chamfers at a corner of mixed
 /// convexity, and [`OpError::Unsupported`]
 /// for a plane and a cylinder along a ruling, which fillets but has no
 /// chamfer in the table.
@@ -367,26 +367,35 @@ fn blend(
         Kind::Chamfer { distance } => ("distance", distance),
     };
     if !size.is_finite() {
-        return Err(degenerate(vec![b], Reason::NonFinite { what }));
+        return Err(degenerate(
+            vec![b],
+            Reason::Input(InputReason::NonFinite { what }),
+        ));
     }
     if size <= 0.0 {
         return Err(degenerate(
             vec![b],
-            Reason::NotPositive { what, value: size },
+            Reason::Input(InputReason::NotPositive { what, value: size }),
         ));
     }
     if edges.is_empty() {
-        return Err(degenerate(vec![b], Reason::NoEdges));
+        return Err(degenerate(vec![b], Reason::Blend(BlendReason::NoEdges)));
     }
     let closure = m.closure(body)?;
     let mut selected: BTreeSet<EdgeId> = BTreeSet::new();
     for edge in edges {
         m.edge(edge.id)?;
         if !selected.insert(edge.id) {
-            return Err(degenerate(vec![forward(edge.id)], Reason::RepeatedEdge));
+            return Err(degenerate(
+                vec![forward(edge.id)],
+                Reason::Blend(BlendReason::RepeatedEdge),
+            ));
         }
         if closure.edges.binary_search(&edge.id).is_err() {
-            return Err(degenerate(vec![forward(edge.id), b], Reason::EdgeNotInBody));
+            return Err(degenerate(
+                vec![forward(edge.id), b],
+                Reason::Blend(BlendReason::EdgeNotInBody),
+            ));
         }
     }
     let ordered: Vec<EdgeId> = m
