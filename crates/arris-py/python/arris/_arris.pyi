@@ -427,6 +427,15 @@ class Model:
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> _Made: ...
+    def offset_faces(
+        self,
+        body: Body,
+        faces: Sequence[Face],
+        distance: float,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> _Made: ...
     def mass_properties(
         self, body: Body, *, cancel: Cancel | None = None, budget: int | None = None
     ) -> MassProperties: ...

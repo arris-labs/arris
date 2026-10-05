@@ -681,6 +681,50 @@ impl Model {
         })
     }
 
+    /// `body` with the given `faces` moved along their outward normals by
+    /// `distance`: positive adds material, negative removes it. Each moved
+    /// face stays on the offset of its own surface, the faces beside it are
+    /// extended or trimmed to meet it, and a face tangent to a moved one
+    /// moves with it.
+    ///
+    /// Raises `OpDegenerateError` with the reason's name in `reason` for a
+    /// move the kernel refuses (`NoFaces`, `RepeatedFace`, `FaceNotInBody`,
+    /// `Vanishes`, `VertexSplits`, `NoExactOffset`, `SurfaceCollapses`,
+    /// `Gap` or `SelfIntersects`) or a zero or non-finite `distance`,
+    /// `OpUnsupportedError` for a neighbouring face it cannot place, and
+    /// `ForeignHandleError` for a face of another model. The model is left
+    /// as it was on every refusal.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// cube, record = model.primitive_box((0, 0, 0), (2, 2, 2))
+    /// top = record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+    /// taller, _ = model.offset_faces(cube, [f for f in top if isinstance(f, arris.Face)], 0.5)
+    /// assert abs(model.mass_properties(taller).volume - 10) < 1e-9
+    /// ```
+    #[pyo3(signature = (body, faces, distance, *, cancel=None, budget=None))]
+    fn offset_faces(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        faces: Vec<PyRef<'_, Face>>,
+        distance: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let body = body.resolve(&self.shared)?;
+        let faces = faces
+            .iter()
+            .map(|f| f.resolve(&self.shared))
+            .collect::<Result<Vec<topo::Face>, BindError>>()?;
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::offset_faces(m, body, &faces, distance, control)
+        })
+    }
+
     /// The volume, area, centroid and inertia of the solid `body`, at unit
     /// density.
     ///

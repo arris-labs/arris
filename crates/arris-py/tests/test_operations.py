@@ -207,3 +207,88 @@ def test_ctrl_c_is_a_keyboard_interrupt_and_the_model_stays_usable():
             model.cut(a, tool)
     assert model.contains(a) and model.contains(tool)
     model.cut(a, tool)
+
+
+def top_of(record):
+    return faces(record.generated_from(arris.Role("box", "Face", "Z", "Max")))
+
+
+def test_offset_faces_moves_a_face_and_records_it():
+    model = arris.Model()
+    a, record = box(model)
+    taller, made = model.offset_faces(a, top_of(record), 2.0)
+    assert taller != a and made
+    assert abs(model.mass_properties(taller).volume - 1200) < 1e-6
+    shorter, _ = model.offset_faces(a, top_of(record), -2.0)
+    assert abs(model.mass_properties(shorter).volume - 800) < 1e-6
+    assert model.check(taller, "full").ok
+
+
+def refused(model, *args):
+    with pytest.raises(arris.OpDegenerateError) as raised:
+        model.offset_faces(*args)
+    return raised.value
+
+
+def test_offset_faces_refuses_its_inputs_by_name():
+    model = arris.Model()
+    a, record = box(model)
+    other, other_record = box(model, (20, 0, 0), (30, 10, 10))
+    top = top_of(record)
+    assert "no faces" in refused(model, a, [], 1.0).reason
+    assert "twice" in refused(model, a, top + top, 1.0).reason
+    assert "not a face of the body" in refused(model, a, top_of(other_record), 1.0).reason
+    for bad in (0.0, math.nan, math.inf):
+        refused(model, a, top, bad)
+
+
+def test_offset_faces_refuses_a_move_that_changes_topology():
+    model = arris.Model()
+    a, record = box(model)
+    # Pulled through the opposite face: the walls would turn inside out.
+    error = refused(model, a, top_of(record), -12.0)
+    assert "vanish" in error.reason
+    assert all(isinstance(e, (arris.Face, arris.Edge)) for e in error.entities)
+
+
+def test_offset_faces_refuses_a_result_that_runs_into_itself():
+    model = arris.Model()
+    block, _ = box(model, (0, 0, 0), (40, 30, 10))
+    pocket, _ = box(model, (10, 10, 5), (30, 20, 11))
+    cut, _ = model.cut(block, pocket)
+    floor = [
+        f
+        for f in model.faces(cut)
+        if abs(model.face_frame(f).origin[2] - 5) < 1e-9
+        and abs(model.face_frame(f).z[2] - 1) < 1e-9
+    ]
+    assert len(floor) == 1
+    # Shallower is fine; pulled below the block's bottom the walls cross it.
+    model.offset_faces(cut, floor, 2.0)
+    error = refused(model, cut, floor, -6.0)
+    assert "run into each other" in error.reason
+    assert all(isinstance(e, arris.Face) for e in error.entities) and error.entities
+    assert model.contains(cut)
+    assert model.check(cut, "full").ok
+
+
+def test_offset_faces_takes_handles_of_its_own_model_only():
+    one, other = arris.Model(), arris.Model()
+    a, record = box(one)
+    b, _ = box(other)
+    with pytest.raises(arris.ForeignHandleError):
+        other.offset_faces(b, top_of(record), 1.0)
+
+
+def test_offset_faces_honours_cancel_and_budget():
+    model = arris.Model()
+    a, record = box(model)
+    token = arris.Cancel()
+    token.set()
+    with pytest.raises(arris.Interrupted):
+        model.offset_faces(a, top_of(record), 1.0, cancel=token)
+    with pytest.raises(arris.Interrupted):
+        model.offset_faces(a, top_of(record), 1.0, budget=0)
+    assert model.contains(a)
+    token.reset()
+    model.offset_faces(a, top_of(record), 1.0, cancel=token, budget=10_000)

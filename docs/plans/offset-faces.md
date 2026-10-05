@@ -198,10 +198,18 @@ bound has to be established here.
   guard would panic on it, so the offset builds through `rewrite_unverified`
   and its own `Full` check maps loop, face and edge crossings and the shell
   checks to `SelfIntersects`; any other violation stays `Internal`.
-- [ ] Step 7 **[1]** — The facade and the binding: `arris` re-export,
+- [x] Step 7 **[1]** — The facade and the binding: `arris` re-export,
   `Model.offset_faces` with cancel and budget, its stub and docstring
   example, a pytest per refusal group, the rustdoc example on
   `offset_faces`.
+  *Done:* the facade already re-exports the crate as `arris::ops`, so
+  `arris::ops::offset_faces` needed nothing; the rustdoc example landed with
+  step 3. `Model.offset_faces(body, faces, distance, *, cancel, budget)`
+  with stub and docstring example; kernel refusals reach Python as
+  `OpDegenerateError` with the reason's message, so no new class per reason.
+  Pytests: the move, the input refusals, `Vanishes`, `SelfIntersects`, a
+  foreign handle, cancel and budget. The `CHANGELOG.md` bullet for the op is
+  `/retire-plan`'s.
 - [ ] Step 8 **[2]** — Properties, sharded and seeded: the whole-body
   offset of a box, a cylinder and a rounded box against their closed
   forms in random poses; offset by `d` then `−d` returns the body's
