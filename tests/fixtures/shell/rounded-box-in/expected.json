@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "c50ae77391ab1e704c1716e6dbbfb272fcc2e649626d54f9c51cfddc35c5d0fe",
+  "results": {
+    "default": {
+      "area": 831.3451151369263,
+      "centroid": [
+        4.999999999999996,
+        4.9999999999999964,
+        4.284990523716531
+      ],
+      "counts": {
+        "edges": 48,
+        "faces": 19,
+        "loops": 20,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          8521.215920117775,
+          -9.094947017729282e-12,
+          -2.000888343900442e-11
+        ],
+        [
+          -9.094947017729282e-12,
+          8521.215920117786,
+          -2.000888343900442e-11
+        ],
+        [
+          -2.000888343900442e-11,
+          -2.000888343900442e-11,
+          9310.198946049153
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 48,
+        "faces": 19,
+        "loops": 20,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "cavity",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_wall",
+          "point": [
+            5.0,
+            0.5,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_floor",
+          "point": [
+            5.0,
+            5.0,
+            0.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_inner_blend",
+          "point": [
+            1.2928932188134525,
+            1.2928932188134525,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_rim",
+          "point": [
+            5.0,
+            0.5,
+            10.0
+          ]
+        }
+      ],
+      "volume": 397.3893722612837
+    }
+  }
+}

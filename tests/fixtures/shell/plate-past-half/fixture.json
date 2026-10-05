@@ -1,0 +1,46 @@
+{
+  "description": "a closed 10 x 10 x 1 plate hollowed inward to a wall of t = 0.6, past its half-thickness: the top's inner copy lies below the bottom's, the void turned inside out — refused by name, the model untouched",
+  "params": {
+    "t": 0.6
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        1
+      ]
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "plate",
+      "openings": [],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        0.5
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "vanishes",
+    "genus": 0
+  }
+}

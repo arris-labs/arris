@@ -137,7 +137,7 @@ bound has to be established here.
   holds; a cylinder of radius below the thickness
   (`SurfaceCollapses`) and an elliptic-extrusion face (`NoExactOffset`),
   refused.
-- [ ] Step 5 **[3]** — The dragged chain and the global refusals:
+- [x] Step 5 **[3]** — The dragged chain and the global refusals:
   `OpeningDragged` where an opening is tangent to a wall (a face beside a
   fillet that is itself an opening), the blend and its far face dragged
   where the opening is not tangent; `Vanishes`, `VertexSplits` and `Gap`
@@ -236,3 +236,15 @@ job's pytest, docstring examples and `mypy.stubtest` green.
   `occt_step_refused`: Open CASCADE writes the whole sphere of its cut as
   one `VERTEX_LOOP` with no seam, which the reader does not map (a backlog
   line). A two-shell torus void reports genus 2, one per shell.
+- Done at step 5: the refusals needed no code — `OpeningDragged` landed at
+  step 2 and the rest are the offset's. Seven fixtures under `shell/`: the
+  rounded box (four vertical blends, each re-radiused with its sides, both
+  sides), the blend whose neighbour is the opening (`OpeningDragged`), a
+  closed plate past its half-thickness (`Vanishes`, the void's vertical
+  edges reversed), a boss past its radius (`SurfaceCollapses`), a pyramid
+  on an oblong base (`VertexSplits`) and a pocket floor thinner than two
+  walls (`SelfIntersects`), the last added because none of the others
+  reaches the global level. Found: where the oracle makes nothing the
+  corpus runner accepted any `Degenerate` over the recipe's named
+  `expect_error`; the named error now comes first, and the four such
+  fixtures (two offset, two shell) hold to it.

@@ -1,0 +1,74 @@
+{
+  "description": "a 10 x 10 x 2 block with a boss of radius 1 and height 3 on its top, hollowed inward to a wall of t = 1.5, open at the bottom: the boss's wall would pass its axis — refused naming it, the model untouched",
+  "params": {
+    "t": 1.5
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        2
+      ]
+    },
+    {
+      "name": "post",
+      "op": "cylinder",
+      "base": [
+        5,
+        5,
+        2
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1,
+      "height": 3
+    },
+    {
+      "name": "part",
+      "op": "fuse",
+      "a": "block",
+      "b": "post"
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "part",
+      "openings": [
+        [
+          2,
+          2,
+          0
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        0.5,
+        5,
+        1
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "surface-collapses",
+    "genus": 0
+  }
+}

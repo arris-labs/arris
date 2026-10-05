@@ -233,7 +233,7 @@ of the step that made the fixture pass, and a later change to it is a
   `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
   "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
   "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" | "self-intersects" |
-  "unsupported"` says Open CASCADE
+  "opening-dragged" | "unsupported"` says Open CASCADE
   builds a result Arris refuses by design (the tangent cases,
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
@@ -253,11 +253,14 @@ of the step that made the fixture pass, and a later change to it is a
   crashes) `SurfaceCollapses`, and the face of an elliptic cylinder
   `NoExactOffset` — ADR-0048 §3; a face dragged along a tangent chain that
   pulls clear of a fixed neighbour, `Gap`, where Open CASCADE makes nothing
-  and the oracle records the empty result — ADR-0048 §6, the one case where
-  an `expect_error` recipe's oracle may be degenerate without the recipe
-  saying `degenerate`, which the two together never do; a push whose
+  and the oracle records the empty result — ADR-0048 §6; an `expect_error`
+  recipe's oracle may be degenerate without the recipe saying
+  `degenerate`, which the two together never do, and the runner still
+  asserts the named error, not any `Degenerate`; a push whose
   built result has faces running into each other away from their shared
-  edges, `SelfIntersects`, from the checker's global level — ADR-0048 §7; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
+  edges, `SelfIntersects`, from the checker's global level — ADR-0048 §7; a
+  shell opening tangent to a wall, which Open CASCADE answers with the body
+  unhollowed and Arris refuses as `ShellReason::OpeningDragged` — ADR-0049; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
   recorded and the lint still
   cross-checks them against the other `analytic` values, but the runner asserts the typed error and compares
   nothing — and the oracle's self-test records the result without

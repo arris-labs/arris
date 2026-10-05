@@ -1,0 +1,72 @@
+{
+  "description": "a 20 x 20 x 10 block with a 8 x 8 pocket down to z = 2 from its top, hollowed inward to a wall of t = 1.5, open on top: the floor between the pocket and the bottom is 2 thick, so the pocket floor's inner copy (z = 2 - t) passes below the bottom's (z = t) — faces sharing no edge run into each other, which the checker's global level finds, refused as SelfIntersects, the model untouched",
+  "params": {
+    "t": 1.5
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        20,
+        10
+      ]
+    },
+    {
+      "name": "pocket",
+      "op": "box",
+      "min": [
+        6,
+        6,
+        2
+      ],
+      "max": [
+        14,
+        14,
+        11
+      ]
+    },
+    {
+      "name": "cut",
+      "op": "cut",
+      "target": "block",
+      "tool": "pocket"
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "cut",
+      "openings": [
+        [
+          2,
+          2,
+          10
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        2,
+        5
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "self-intersects",
+    "genus": 0
+  }
+}

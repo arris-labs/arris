@@ -730,6 +730,10 @@ pub enum ExpectError {
     /// offset whose built result has faces running into each other, found
     /// by the checker's global level (ADR-0048 §7).
     SelfIntersects,
+    /// `OpError::Degenerate` with `ShellReason::OpeningDragged`: a shell
+    /// opening tangent to a wall, which the wall's move would drag
+    /// (ADR-0049).
+    OpeningDragged,
     /// `OpError::Unsupported` with a NURBS surface or curve in the pair:
     /// an operation on a free-form face the kernel has no closed form
     /// for, the NURBS cycle's (ADR-0026 §5).

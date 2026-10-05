@@ -50,8 +50,8 @@ use arris_math::{
 };
 use arris_mesh::{MeshRequest, TriMesh};
 use arris_ops::{
-    BlendReason, BooleanReason, InputReason, OffsetReason, OpError, Reason, SweepReason, common,
-    cut, fuse,
+    BlendReason, BooleanReason, InputReason, OffsetReason, OpError, Reason, ShellReason,
+    SweepReason, common, cut, fuse,
 };
 use arris_topo::FaceId;
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
@@ -428,6 +428,9 @@ impl Refusal {
             Refusal::Error(ExpectError::SelfIntersects) => {
                 "OpError::Degenerate with Reason::SelfIntersects".into()
             }
+            Refusal::Error(ExpectError::OpeningDragged) => {
+                "OpError::Degenerate with Reason::OpeningDragged".into()
+            }
             Refusal::Error(ExpectError::Nurbs) => {
                 "OpError::Unsupported with a NURBS surface or curve in the pair".into()
             }
@@ -483,6 +486,9 @@ impl Refusal {
                     Refusal::Error(ExpectError::Gap) => reason == Reason::Offset(OffsetReason::Gap),
                     Refusal::Error(ExpectError::SelfIntersects) => {
                         reason == Reason::Offset(OffsetReason::SelfIntersects)
+                    }
+                    Refusal::Error(ExpectError::OpeningDragged) => {
+                        reason == Reason::Shell(ShellReason::OpeningDragged)
                     }
                     Refusal::Error(ExpectError::Nurbs | ExpectError::Unsupported) => false,
                 };
@@ -819,13 +825,14 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
             variant: variant.to_string(),
         });
     };
-    // A result the oracle records no solid for, or one the recipe says
-    // Arris refuses by design, must fail with its typed error at the
-    // result step; nothing after it is compared.
-    let refusal = if expected.degenerate {
-        Some(Refusal::Degenerate)
-    } else {
-        fixture.recipe.analytic.expect_error.map(Refusal::Error)
+    // A result the recipe says Arris refuses by design, or one the oracle
+    // records no solid for, must fail with its typed error at the result
+    // step; nothing after it is compared. The recipe's named error comes
+    // first: an oracle that makes nothing does not loosen it to any
+    // `Degenerate`.
+    let refusal = match fixture.recipe.analytic.expect_error {
+        Some(error) => Some(Refusal::Error(error)),
+        None => expected.degenerate.then_some(Refusal::Degenerate),
     };
     let mut model = model_for(&fixture)?;
     let mut steps: BTreeMap<String, Made> = BTreeMap::new();

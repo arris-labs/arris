@@ -1,0 +1,66 @@
+{
+  "description": "a 6 x 4 x 4 block whose top-front edge is filleted at r, hollowed inward to a wall of t with its top face open: the blend is a wall, tangent to the top, and its move would drag the opening with it — refused as OpeningDragged naming the top, the model untouched (ADR-0049)",
+  "params": {
+    "r": 1,
+    "t": 0.5
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        6,
+        4,
+        4
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "block",
+      "edges": [
+        [
+          3,
+          0,
+          4
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "rounded",
+      "openings": [
+        [
+          3,
+          2.5,
+          4
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        3,
+        2,
+        2
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "opening-dragged",
+    "genus": 0
+  }
+}

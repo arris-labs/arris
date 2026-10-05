@@ -1244,6 +1244,23 @@ corpus_tests! {
     shell_pin_collapses => run "shell/pin-collapses";
     /// An elliptic prism hollowed inward: `NoExactOffset`, refused.
     shell_ellipse_wall => run "shell/ellipse-wall";
+    /// A 10-cube with its vertical edges filleted, hollowed inward open on
+    /// top: each blend moves with its tangent sides, re-radiused to r - t.
+    shell_rounded_box_in => run "shell/rounded-box-in";
+    /// The same rounded cube shelled outward: each blend re-radiused to r + t.
+    shell_rounded_box_out => run "shell/rounded-box-out";
+    /// A block filleted along its top-front edge, its top opened: the blend
+    /// would drag the opening, refused as `OpeningDragged`.
+    shell_fillet_neighbour_open => run "shell/fillet-neighbour-open";
+    /// A closed plate hollowed past its half-thickness: refused.
+    shell_plate_past_half => run "shell/plate-past-half";
+    /// A block with a boss hollowed past the boss's radius: refused.
+    shell_boss_past_radius => run "shell/boss-past-radius";
+    /// A pyramid on an oblong base hollowed: its apex splits, `VertexSplits`.
+    shell_pyramid_apex => run "shell/pyramid-apex";
+    /// A pocket whose floor is thinner than two walls, hollowed: the floor's
+    /// skin runs through the bottom's, `SelfIntersects` from the `Full` report.
+    shell_pocket_floor_thin => run "shell/pocket-floor-thin";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'

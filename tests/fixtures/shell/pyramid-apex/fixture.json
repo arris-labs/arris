@@ -1,0 +1,108 @@
+{
+  "description": "a pyramid on a 10 x 6 base with its apex (5, 3, 6) over the centre, hollowed inward to a wall of t, open at the base: the long and the short sides lean at different angles, so their inner copies no longer meet in one point and the apex would split into an edge — refused as VertexSplits, the model untouched",
+  "params": {
+    "t": 0.5
+  },
+  "steps": [
+    {
+      "name": "pyramid",
+      "op": "polyhedron",
+      "namespace": 1,
+      "points": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          0,
+          0
+        ],
+        [
+          10,
+          6,
+          0
+        ],
+        [
+          0,
+          6,
+          0
+        ],
+        [
+          5,
+          3,
+          6
+        ]
+      ],
+      "faces": [
+        [
+          [
+            0,
+            3,
+            2,
+            1
+          ]
+        ],
+        [
+          [
+            0,
+            1,
+            4
+          ]
+        ],
+        [
+          [
+            1,
+            2,
+            4
+          ]
+        ],
+        [
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        [
+          [
+            3,
+            0,
+            4
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "pyramid",
+      "openings": [
+        [
+          5,
+          3,
+          0
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        3,
+        2
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "vertex-splits",
+    "genus": 0
+  }
+}

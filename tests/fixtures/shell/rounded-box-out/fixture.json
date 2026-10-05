@@ -1,0 +1,117 @@
+{
+  "description": "a 10-cube whose four vertical edges are filleted at r, shelled outward to a wall of t, open on top: the body's faces the cavity, the skin each wall moved out by t, each blend cylinder with the two sides it is tangent to, re-radiused to r + t about its own axis; the rim a rounded square ring",
+  "params": {
+    "r": 2,
+    "t": 1
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "block",
+      "edges": [
+        [
+          0,
+          0,
+          5
+        ],
+        [
+          10,
+          0,
+          5
+        ],
+        [
+          10,
+          10,
+          5
+        ],
+        [
+          0,
+          10,
+          5
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "shell",
+      "of": "rounded",
+      "openings": [
+        [
+          5,
+          5,
+          10
+        ]
+      ],
+      "thickness": "t",
+      "side": "outward"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "cavity",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_wall",
+      "point": [
+        5,
+        "-t / 2",
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_floor",
+      "point": [
+        5,
+        5,
+        "-t / 2"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_outer_blend",
+      "point": [
+        "r - (r + t) / sqrt(2)",
+        "r - (r + t) / sqrt(2)",
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_rim",
+      "point": [
+        5,
+        "-t / 2",
+        10
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "((10 + 2 * t)^2 - (4 - pi) * (r + t)^2) * (10 + t) - (100 - (4 - pi) * r^2) * 10",
+    "genus": 0
+  }
+}
