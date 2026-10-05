@@ -13,9 +13,11 @@ use arris_geom::{Curve, pcurve_on};
 use arris_math::{Interval, Meter, Point3, Tolerance, shift_into_range};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
-use super::{
-    Trim, View, convex_edge, cut_corner, degenerate, invariant, on_side_of_face, placed_uv,
-};
+use super::ends::{Trim, cut_corner};
+use super::ring::placed_uv;
+use super::stripe::on_side_of_face;
+use super::view::{View, convex_edge};
+use super::{degenerate, invariant};
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -192,7 +194,9 @@ mod tests {
     use arris_math::{Control, Frame, Point2, Vec3};
     use arris_topo::{Body, Shape};
 
-    use super::super::{Kind, Stripe, corner_of, line_origin, stripe};
+    use super::super::Kind;
+    use super::super::ends::corner_of;
+    use super::super::stripe::{Stripe, line_origin, stripe};
     use super::*;
     use crate::extrude;
 

@@ -170,7 +170,7 @@ and ignored tests.
 
   Test: the toolkit's unit and property tests (seeded), and the step-wide
   byte-identity check.
-- [ ] Step 4 **[1]** — **`blend.rs` into `blend/`, a pure move.** Split
+- [x] Step 4 **[1]** — **`blend.rs` into `blend/`, a pure move.** Split
   by the phases in its outline:
   - `mod.rs` (`fillet`, `chamfer`, `blend`, `Kind`, `Blend`);
   - `view.rs`;
