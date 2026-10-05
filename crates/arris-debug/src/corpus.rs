@@ -1625,6 +1625,37 @@ impl Inputs {
         })
     }
 
+    /// The target and the tools of a result step that is a `cut`, in the
+    /// recipe's order — what the one call and the chain of cuts the
+    /// benchmark times against each other both take — or `None` when the
+    /// result is not a cut or a name does not resolve.
+    ///
+    /// ```no_run
+    /// use arris_debug::{corpus, fixtures};
+    ///
+    /// let dir = fixtures::corpus_root().join("boolean/plate-2x2-holes-cut-many");
+    /// let inputs = corpus::inputs(&dir, "default").unwrap();
+    /// let (_plate, holes) = inputs.cut_operands().unwrap();
+    /// assert_eq!(holes.len(), 4);
+    /// ```
+    pub fn cut_operands(&self) -> Option<(Body, Vec<Body>)> {
+        let Step::Cut {
+            target,
+            tool,
+            tools,
+            ..
+        } = &self.result
+        else {
+            return None;
+        };
+        let names: Vec<&String> = tool.iter().chain(tools.iter()).collect();
+        let tools = names
+            .into_iter()
+            .map(|n| self.bodies.get(n).copied())
+            .collect::<Option<Vec<_>>>()?;
+        Some((*self.bodies.get(target)?, tools))
+    }
+
     /// The two bodies the result step combines — `a` and `b` of a `fuse`
     /// or `common`, the target and the tool of a `cut` — or `None` when
     /// the result is not a boolean.

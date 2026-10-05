@@ -192,13 +192,20 @@ bound has to be established here.
   pytest per refusal; the rustdoc example on both functions; the cancel
   step counts of the two-operand fixtures unchanged, the multi-tool ones
   recorded.
-- [ ] Step 7 **[2]** — Cost: the corpus benchmark gains the 10×10 grid as
+- [x] Step 7 **[2]** — Cost: the corpus benchmark gains the 10×10 grid as
   `cut_many` and as 100 chained `cut`s, timed apart; `cut_many` must be the
   faster, and the measured ratio is recorded in ADR-0050. If the face-pair
   search or the classifier's per-piece ray against every tool dominates,
   a sort-and-sweep over face boxes (and the box prefilter of step 3 for
   the classifier) is added here, its result bit for bit the quadratic
   search's.
+  Landed as found: 0.94 s against 21.5 s, 23×, so the sort-and-sweep was
+  not needed and is a backlog line; the benchmark times every
+  `*-holes-cut-many` fixture that does not refuse (`Inputs::cut_operands`
+  in `arris-debug`, its one addition). Step 6 landed with no change to the
+  cancel record: the multi-tool fixtures were in it from step 3 and the
+  two-operand counts did not move; a boolean's reason crosses to Python as
+  its text, so one pytest covers both refusals.
 - [ ] Step 8 **[2]** — Properties, sharded and seeded: `cut_many` against
   the chained `cut`s and `fuse_many` against the chained `fuse`s (volume,
   area, counts) over random tools in random poses on boxes, cylinders and

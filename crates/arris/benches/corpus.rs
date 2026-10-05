@@ -140,6 +140,52 @@ fn main() -> ExitCode {
             report.cases.push(case);
         }
     }
+    // A pattern of holes in one call against the chain of cuts that
+    // makes the same solid (ADR-0050 §Cost), timed apart.
+    for dir in fixtures::corpus() {
+        let name = fixtures::name_of(&dir);
+        if !name.contains("-holes-cut-many")
+            || args.filter.as_ref().is_some_and(|f| !name.contains(f))
+        {
+            continue;
+        }
+        let Ok(inputs) = corpus::inputs(&dir, "default") else {
+            continue;
+        };
+        let Some((target, tools)) = inputs.cut_operands() else {
+            continue;
+        };
+        // A refusal by design has nothing to time.
+        if arris::ops::cut_many(&mut inputs.model.clone(), target, &tools, &Control::NONE).is_err()
+        {
+            eprintln!("skipped {name}: it refuses");
+            continue;
+        }
+        let many = bench::time(&format!("{name} cut_many"), config, &mut clock, || {
+            let mut m = inputs.model.clone();
+            std::hint::black_box(arris::ops::cut_many(&mut m, target, &tools, &Control::NONE).ok());
+        });
+        let chained = bench::time(&format!("{name} chained cuts"), config, &mut clock, || {
+            let mut m = inputs.model.clone();
+            let mut body = target;
+            for &tool in &tools {
+                match arris::ops::cut(&mut m, body, tool, &Control::NONE) {
+                    Ok((next, _)) => body = next,
+                    Err(_) => break,
+                }
+            }
+            std::hint::black_box(body);
+        });
+        println!(
+            "{name}: cut_many {:.4} s, {} chained cuts {:.4} s, ratio {:.2}",
+            many.median,
+            tools.len(),
+            chained.median,
+            chained.median / many.median
+        );
+        report.cases.push(many);
+        report.cases.push(chained);
+    }
     let mut solids_read = 0;
     let mut timed: Vec<String> = Vec::new();
     for dir in fixtures::corpus() {

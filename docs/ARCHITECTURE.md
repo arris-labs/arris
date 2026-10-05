@@ -1721,7 +1721,9 @@ B-Rep).
   deviation, and writes a JSON `Report`. `--save` writes a report,
   `--compare` prints each case's ratio against a saved one, flagging
   those past `bench::RATIO_FLAG` (3×), and `--table` writes that
-  comparison as markdown. Time is never a gate. `tools/bench-compare.sh`
+  comparison as markdown. A `*-holes-cut-many` fixture adds two cases, its
+  `cut_many` and the chain of one-tool `cut`s that makes the same solid,
+  timed apart (the 10×10 grid: 0.94 s against 21.5 s, 23×). Time is never a gate. `tools/bench-compare.sh`
   runs it against `target/bench/baseline.json` (`--bless` sets it) or a
   report named, and the nightly runs the same script against the last
   night's report. On the reference machine it is 316 cases: 282 from 141

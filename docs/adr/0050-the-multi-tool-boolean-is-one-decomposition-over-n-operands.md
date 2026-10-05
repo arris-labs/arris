@@ -186,3 +186,17 @@ measured there.
   ruling it builds a non-manifold shape from the one call, which its own
   chain's measure rejects as an open surface; those fixtures carry the
   refusal Arris gives (`expect_error`).
+
+## Landed with step 7
+
+The corpus benchmark times the 10×10 grid of holes as one `cut_many` and
+as the 100 chained `cut`s, apart (`cargo bench -p arris --bench corpus --
+--filter holes-cut-many`, release build, median of five): **0.94 s against
+21.5 s, 23×**; the 2×2 grid 1.7×, the slot of three overlapping holes
+1.1×. The chain's cost is the quadratic one the decomposition removes —
+each cut re-intersects and re-classifies every hole already made — so the
+one call is the cheaper by a factor that grows with the pattern. The
+acceptance (`cut_many` the faster on the grid) holds without the
+sort-and-sweep over face boxes the plan held in reserve; the call was not
+profiled, so it is not claimed what its 0.94 s goes to, and the sweep is a
+backlog line for a pattern of a thousand, if a consumer's corpus has one.
