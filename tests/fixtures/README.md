@@ -246,7 +246,10 @@ of the step that made the fixture pass, and a later change to it is a
   refuses as `SweepReason::EllipticRevolve` — ADR-0014; an offset whose
   move it carries through a change of topology, dropping a face or
   splitting a vertex into an edge, which Arris refuses as
-  `OffsetReason::Vanishes` or `VertexSplits` — ADR-0048 §3; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
+  `OffsetReason::Vanishes` or `VertexSplits`, a distance that drives a surface's
+  radius through zero (where Open CASCADE builds an inverted surface or
+  crashes) `SurfaceCollapses`, and the face of an elliptic cylinder
+  `NoExactOffset` — ADR-0048 §3; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
   recorded and the lint still
   cross-checks them against the other `analytic` values, but the runner asserts the typed error and compares
   nothing — and the oracle's self-test records the result without

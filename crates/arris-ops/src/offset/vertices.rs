@@ -8,6 +8,7 @@ use arris_math::{Meter, Point3, Tolerance, Vec3};
 use arris_topo::{FaceId, Model, VertexId};
 
 use super::Moves;
+use super::meet::{Constraint, meet_near, seam_plane};
 use crate::body_view::BodyView;
 use crate::error::{OffsetReason, OpError, Reason};
 use crate::rebuild::forward;
@@ -19,35 +20,22 @@ pub(super) struct PlaneEq {
     pub(super) offset: f64,
 }
 
-/// The plane `face` lies on once the offset is made — its offset when it
-/// moves, its own otherwise. A face that is not a plane is
-/// [`OpError::Unsupported`] against `beside`, the moved face whose move
-/// reaches it: the planar core holds planes alone.
-pub(super) fn plane_of(
-    m: &Model,
-    moves: &Moves,
-    face: FaceId,
-    beside: FaceId,
-) -> Result<PlaneEq, OpError> {
-    let surface = match moves.surfaces.get(&face) {
-        Some(s) => s,
-        None => m.surface(m.face(face)?.surface())?,
-    };
+/// The plane `surface` is, as `n · x = c`, or `None` for another kind.
+fn plane_eq(surface: &Surface) -> Option<PlaneEq> {
     match surface {
         Surface::Plane { frame } => {
             let normal = frame.z().into_inner();
-            Ok(PlaneEq {
+            Some(PlaneEq {
                 normal,
                 offset: normal.dot(&frame.origin().coords),
             })
         }
-        other => {
-            let near = m.surface(m.face(beside)?.surface())?;
-            Err(OpError::Unsupported {
-                a: (GeomKind::Surface(other.kind()), forward(face)),
-                b: (GeomKind::Surface(near.kind()), forward(beside)),
-            })
-        }
+        Surface::Cylinder { .. }
+        | Surface::EllipticCylinder { .. }
+        | Surface::Cone { .. }
+        | Surface::Sphere { .. }
+        | Surface::Torus { .. }
+        | Surface::Nurbs(_) => None,
     }
 }
 
@@ -65,10 +53,14 @@ pub(super) fn faces_at(view: &BodyView, v: VertexId) -> Vec<FaceId> {
 }
 
 /// Every vertex of a moved face at its new point: the point nearest its
-/// old one on every plane around it (three independent planes meet in
-/// one point; a vertex between two, on a straight run, slides square to
-/// their line). A vertex whose planes do not all pass through that point
-/// within its tolerance is [`OffsetReason::VertexSplits`].
+/// old one on every surface around it once the move is made (three
+/// independent planes meet in one point; a vertex between two, on a
+/// straight run, slides square to their line; a vertex on a seam also
+/// lies on the plane the seam is in). A vertex whose surfaces do not all
+/// pass through that point within its tolerance is
+/// [`OffsetReason::VertexSplits`]; a face on an elliptic cylinder or a
+/// free-form surface, or a surface with no distance there, is
+/// [`OpError::Unsupported`] against the moved face that reaches it.
 pub(super) fn moved_vertices(
     m: &Model,
     view: &BodyView,
@@ -97,25 +89,76 @@ pub(super) fn moved_vertices(
             .ok_or(OpError::Internal(crate::error::Fault::Invariant {
                 what: "a moved face at a moved vertex",
             }))?;
-        let planes = faces
-            .iter()
-            .map(|&f| plane_of(m, moves, f, beside))
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut constraints = Vec::with_capacity(faces.len());
+        for &f in &faces {
+            let surface = moves.surface_of(m, f)?;
+            if let Surface::EllipticCylinder { .. } | Surface::Nurbs(_) = surface {
+                let near = m.surface(m.face(beside)?.surface())?;
+                let kind = GeomKind::Surface(surface.kind());
+                return Err(OpError::Unsupported {
+                    a: (kind, forward(f)),
+                    b: (GeomKind::Surface(near.kind()), forward(beside)),
+                });
+            }
+            constraints.push(Constraint { surface, face: f });
+        }
         let vertex = m.vertex(v)?;
+        let old = vertex.point();
         let tolerance = vertex.tolerance().max(m.precision().default_tolerance);
-        let point = nearest_on(vertex.point(), &planes, tol)
-            .filter(|p| {
+        let planes: Option<Vec<PlaneEq>> =
+            constraints.iter().map(|c| plane_eq(&c.surface)).collect();
+        let point = match planes {
+            Some(planes) => nearest_on(old, &planes, tol).filter(|p| {
                 planes
                     .iter()
                     .all(|q| (q.normal.dot(&p.coords) - q.offset).abs() <= tolerance)
-            })
-            .ok_or_else(|| OpError::Degenerate {
-                entities: vec![forward(v)],
-                reason: Reason::Offset(OffsetReason::VertexSplits),
-            })?;
+            }),
+            None => {
+                seams_at(m, view, v, old, tol, &mut constraints)?;
+                meet_near(old, &constraints, tol, tolerance)?
+            }
+        }
+        .ok_or_else(|| OpError::Degenerate {
+            entities: vec![forward(v)],
+            reason: Reason::Offset(OffsetReason::VertexSplits),
+        })?;
         points.insert(v, point);
     }
     Ok(points)
+}
+
+/// The plane of every seam edge at `v`, added to `constraints`: a face
+/// that meets itself along the edge ties the vertex to the seam's plane,
+/// which no face's own surface says. An edge with no curve, or one in no
+/// such plane, is [`OpError::Unsupported`] on its face.
+fn seams_at(
+    m: &Model,
+    view: &BodyView,
+    v: VertexId,
+    old: Point3,
+    tol: Tolerance,
+    constraints: &mut Vec<Constraint>,
+) -> Result<(), OpError> {
+    for e in view.vertex_edges.get(&v).into_iter().flatten() {
+        let uses = view.uses.get(e).map(Vec::as_slice).unwrap_or_default();
+        let [a, b] = uses else { continue };
+        if a.face != b.face {
+            continue;
+        }
+        let surface = m.surface(m.face(a.face)?.surface())?;
+        let kind = GeomKind::Surface(surface.kind());
+        let unsupported = || OpError::Unsupported {
+            a: (kind, forward(a.face)),
+            b: (kind, forward(*e)),
+        };
+        let (curve, _) = m.edge(*e)?.curve().ok_or_else(unsupported)?;
+        let plane = seam_plane(surface, m.curve(curve)?, old, tol).ok_or_else(unsupported)?;
+        constraints.push(Constraint {
+            surface: plane,
+            face: a.face,
+        });
+    }
+    Ok(())
 }
 
 /// The point nearest `old` on the first independent planes of `planes`

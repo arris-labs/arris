@@ -138,7 +138,7 @@ bound has to be established here.
   Open CASCADE returns the pocket's result as a bare closed shell; the
   driver makes it the solid it bounds (ADR-0048 §4). A `Full` failure is
   `OpError::Internal` with the report until step 6 names it.
-- [ ] Step 4 **[2]** — Quadric faces: cylinders, cones, spheres and tori
+- [x] Step 4 **[2]** — Quadric faces: cylinders, cones, spheres and tori
   moving or fixed, edges from the existing intersectors with the branch
   nearest the old edge, seams carried, `NoExactOffset` and
   `SurfaceCollapses`. Fixtures: step 1's cylinder and hole ones moved and
@@ -146,6 +146,19 @@ bound has to be established here.
   Arris, so it names no face: move it off the seam and re-run the oracle; a cone frustum's side, a sphere-capped boss, a revolved torus
   ring, the whole cylinder out and in; a hole shrunk past its radius and
   an elliptic-extrusion face (refused).
+  *Done:* vertices are the point nearest the old one on the surfaces around
+  it (Gauss–Newton on signed distances; a seam adds the plane it lies in),
+  edges the intersector's branch through both new ends, a pole's degenerate
+  edge kept, pcurves placed by whole periods (ADR-0048 §5). `NoExactOffset`
+  and `SurfaceCollapses` join `OffsetReason`; an edge tangent along a moved
+  face is `Unsupported` until step 5. Findings: a hemisphere on a cylinder
+  is tangent, so the sphere-capped boss is a 0.5-high cap meeting the wall
+  at an angle (the tangent one is step 5's fixture); Open CASCADE crashes on
+  a hole wall moved by exactly its radius and builds an inverted cylinder
+  past it, so the collapse fixture moves it by 3.5. Fixtures in `offset/`:
+  `cylinder-top-pushed`, `hole-wall-pushed` (both with a pulled variant),
+  `cylinder-whole`, `frustum-side`, `boss-dome`, `torus-ring`,
+  `hole-wall-collapses`, `ellipse-wall-pushed`.
 - [ ] Step 5 **[3]** — The dragged chain: the move set closed over
   tangent edges (`BodyView::tangent_at`), an edge between two tangent
   moved faces carried along their normal (a line shifted, a parallel

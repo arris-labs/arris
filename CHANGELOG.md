@@ -44,7 +44,8 @@ into its version (ADR-0027).
   | `BlendTooLarge` | `Reason::Blend(BlendReason::TooLarge)` |
   | `NotProjectable`, `DegenerateEdge`, `ProjectionCollapses`, `NotPlanar`, `OutOfDomain`, `Singular` | `Reason::Query(QueryReason::…)`, the same names |
 - `arris_ops::Reason` gains the group `Reason::Offset(OffsetReason)` —
-  `NoFaces`, `RepeatedFace`, `FaceNotInBody`, `Vanishes`, `VertexSplits` —
+  `NoFaces`, `RepeatedFace`, `FaceNotInBody`, `Vanishes`, `VertexSplits`,
+  `NoExactOffset`, `SurfaceCollapses` —
   the refusals of `offset_faces`. An exhaustive `match` on `Reason` adds
   its arm.
 

@@ -1,5 +1,5 @@
 {
-  "description": "a 20 \u00d7 20 \u00d7 10 plate with a through hole of radius 3 whose wall is offset by 1 along its outward normal, which points into the hole: material is added, the hole narrows to radius 2, and the wall stays a coaxial cylinder met by the two planes",
+  "description": "a 20 \u00d7 20 \u00d7 10 plate with a through hole of radius 3 whose wall is offset by d along its outward normal, which points into the hole: pushed, material is added and the hole narrows to radius 2; pulled, it widens to 4. The wall stays a coaxial cylinder met by the two planes, its seam kept in the seam's plane",
   "params": {
     "d": 1
   },
@@ -85,8 +85,8 @@
       "of": "plate",
       "faces": [
         [
-          13,
           10,
+          13,
           5
         ]
       ],
@@ -114,9 +114,9 @@
       "expect": "out"
     },
     {
-      "label": "in_the_added_ring",
+      "label": "in_the_material",
       "point": [
-        7.5,
+        "10 - (3 - d) - 0.5",
         10,
         5
       ],
@@ -125,7 +125,7 @@
     {
       "label": "on_new_wall",
       "point": [
-        8,
+        "10 - (3 - d)",
         10,
         5
       ],
@@ -134,7 +134,7 @@
     {
       "label": "on_top_rim",
       "point": [
-        8,
+        "10 - (3 - d)",
         10,
         10
       ],
@@ -157,5 +157,10 @@
       "shells": 1
     },
     "genus": 1
+  },
+  "variants": {
+    "pulled": {
+      "d": -1
+    }
   }
 }

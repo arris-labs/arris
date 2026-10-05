@@ -1,0 +1,190 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d27dbc01c5f6413c91fde876382ac2f5b1f277aca72ea197cfde49113ca228c1",
+  "results": {
+    "default": {
+      "area": 1700.5309649148733,
+      "centroid": [
+        10.000000000000002,
+        10.000000000000002,
+        5.0
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          165493.8054093265,
+          1.1641532182693481e-10,
+          -2.9103830456733704e-11
+        ],
+        [
+          1.1641532182693481e-10,
+          165493.8054093265,
+          -2.9103830456733704e-11
+        ],
+        [
+          -2.9103830456733704e-11,
+          -2.9103830456733704e-11,
+          266415.3392543793
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            2.0,
+            2.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            10.0,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_the_material",
+          "point": [
+            7.5,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_new_wall",
+          "point": [
+            8.0,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_rim",
+          "point": [
+            8.0,
+            10.0,
+            10.0
+          ]
+        }
+      ],
+      "volume": 3874.336293856407
+    },
+    "pulled": {
+      "area": 1750.7964473723098,
+      "centroid": [
+        10.000000000000002,
+        10.000000000000002,
+        5.0
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          160467.25716358266,
+          1.7462298274040222e-10,
+          2.9103830456733704e-11
+        ],
+        [
+          1.7462298274040222e-10,
+          160467.25716358266,
+          0.0
+        ],
+        [
+          2.9103830456733704e-11,
+          0.0,
+          262645.42807007115
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            2.0,
+            2.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            10.0,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_the_material",
+          "point": [
+            5.5,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_new_wall",
+          "point": [
+            6.0,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_rim",
+          "point": [
+            6.0,
+            10.0,
+            10.0
+          ]
+        }
+      ],
+      "volume": 3497.345175425632
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "description": "an elliptic cylinder, semi-axes 3 and 2 and height 4, its wall moved by 0.5: the parallel curve of an ellipse is no ellipse, so the wall has no exact offset of its own kind \u2014 refused as NoExactOffset, the NURBS cycle's (ADR-0047 \u00a71)",
+  "params": {
+    "d": 0.5
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "ellipse": {
+          "center": [
+            0,
+            0
+          ],
+          "major": [
+            3,
+            0
+          ],
+          "minor_radius": 2
+        }
+      }
+    },
+    {
+      "name": "slug",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 4
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "slug",
+      "faces": [
+        [
+          0,
+          2,
+          2
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        2
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "no-exact-offset",
+    "genus": 0
+  }
+}

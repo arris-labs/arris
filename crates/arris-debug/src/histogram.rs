@@ -347,6 +347,8 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             Reason::Offset(OffsetReason::FaceNotInBody) => Cycle::Itself("FaceNotInBody"),
             Reason::Offset(OffsetReason::Vanishes) => Cycle::Itself("Vanishes"),
             Reason::Offset(OffsetReason::VertexSplits) => Cycle::Itself("VertexSplits"),
+            Reason::Offset(OffsetReason::NoExactOffset) => Cycle::Itself("NoExactOffset"),
+            Reason::Offset(OffsetReason::SurfaceCollapses) => Cycle::Itself("SurfaceCollapses"),
             Reason::Query(QueryReason::NotProjectable) => Cycle::Itself("NotProjectable"),
             Reason::Query(QueryReason::DegenerateEdge) => Cycle::Itself("DegenerateEdge"),
             Reason::Query(QueryReason::ProjectionCollapses) => Cycle::Itself("ProjectionCollapses"),

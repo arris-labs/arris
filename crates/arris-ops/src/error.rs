@@ -352,6 +352,15 @@ pub enum OffsetReason {
     /// pushed — so the vertex would split into an edge. The error's
     /// entity is the vertex.
     VertexSplits,
+    /// A face the offset moves, or must move with it, lies on a surface
+    /// with no exact offset of its own kind: an elliptic cylinder (the
+    /// parallel curve of an ellipse is no ellipse) or a free-form surface.
+    /// The error's entity is the face.
+    NoExactOffset,
+    /// The offset drives a moved face's surface through zero — a
+    /// cylinder, a sphere or a torus tube whose radius is gone, a cone
+    /// whose move reaches its axis. The error's entity is the face.
+    SurfaceCollapses,
 }
 
 impl OffsetReason {
@@ -363,6 +372,8 @@ impl OffsetReason {
             OffsetReason::FaceNotInBody => "FaceNotInBody",
             OffsetReason::Vanishes => "Vanishes",
             OffsetReason::VertexSplits => "VertexSplits",
+            OffsetReason::NoExactOffset => "NoExactOffset",
+            OffsetReason::SurfaceCollapses => "SurfaceCollapses",
         }
     }
 }
@@ -378,6 +389,12 @@ impl core::fmt::Display for OffsetReason {
             }
             OffsetReason::VertexSplits => {
                 f.write_str("the faces around the vertex no longer meet in one point once moved")
+            }
+            OffsetReason::NoExactOffset => {
+                f.write_str("the face's surface has no exact offset of its own kind")
+            }
+            OffsetReason::SurfaceCollapses => {
+                f.write_str("the offset drives the face's surface through zero")
             }
         }
     }

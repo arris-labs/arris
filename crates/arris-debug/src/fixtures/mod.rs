@@ -683,6 +683,14 @@ pub enum ExpectError {
     /// whose faces around a vertex no longer meet in one point (ADR-0048
     /// §3).
     VertexSplits,
+    /// `OpError::Degenerate` with `OffsetReason::NoExactOffset`: an offset
+    /// of a face on an elliptic cylinder or a free-form surface (ADR-0048
+    /// §3).
+    NoExactOffset,
+    /// `OpError::Degenerate` with `OffsetReason::SurfaceCollapses`: an
+    /// offset that drives a moved face's surface through zero (ADR-0048
+    /// §3).
+    SurfaceCollapses,
     /// `OpError::Unsupported` with a NURBS surface or curve in the pair:
     /// an operation on a free-form face the kernel has no closed form
     /// for, the NURBS cycle's (ADR-0026 §5).

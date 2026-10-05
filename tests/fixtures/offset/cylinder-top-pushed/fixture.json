@@ -1,0 +1,107 @@
+{
+  "description": "a cylinder of radius 4 and height 12 whose top cap is moved by d: pushed, the plane moves, the wall is extended to it along its own rulings and the cap's circle is the wall's section; pulled, the wall is trimmed",
+  "params": {
+    "d": 3
+  },
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 12
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "cyl",
+      "faces": [
+        [
+          1,
+          1,
+          12
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        1,
+        1,
+        "12 + d - 1"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above",
+      "point": [
+        1,
+        1,
+        "12 + d + 0.5"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_new_cap",
+      "point": [
+        1,
+        1,
+        "12 + d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        0,
+        4,
+        "12 + d - 1.5"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_new_rim",
+      "point": [
+        0,
+        4,
+        "12 + d"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * 16 * (12 + d)",
+    "area": "2 * pi * 16 + 2 * pi * 4 * (12 + d)",
+    "centroid": [
+      0,
+      0,
+      "(12 + d) / 2"
+    ],
+    "counts": {
+      "vertices": 2,
+      "edges": 3,
+      "faces": 3,
+      "loops": 3,
+      "shells": 1
+    },
+    "genus": 0
+  },
+  "variants": {
+    "pulled": {
+      "d": -3
+    }
+  }
+}

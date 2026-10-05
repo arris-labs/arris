@@ -48,6 +48,25 @@ pocket's closed forms exactly, pushed and pulled. The
 `offset` recipe op names each face by a point on it (the only face within the
 fixture's `probe`), as a `fillet`'s edges are.
 
+**5. Quadric faces (step 4).** A moved face keeps its kind (§ Surface::offset).
+Each vertex of a moved face is the point nearest its old one on every surface
+around it once moved — Gauss–Newton on signed distances, the first three
+independent normals, so three planes meet exactly as before and a vertex on two
+slides square to their section; a face that meets itself (a seam) adds the plane
+the seam lies in — through the axis for a ruling or a meridian, square to it for
+a parallel — so the seam is found as any other edge, the section of the new
+surface with that plane. Each edge is the branch of the intersector's section of
+its two new surfaces that passes through both new ends, running the old edge's
+way, and a degenerate edge at a pole stays at the pole with its pcurve; a
+pcurve is placed by whole periods to the old use's `(u, v)` at the edge's
+midpoint, which an offset keeps to the period. A cone whose move carries a
+vertex to the axis, and a radius driven to zero, are `SurfaceCollapses`; an
+elliptic cylinder or a free-form face `NoExactOffset`. An edge between faces
+tangent along it, one of which moves, is `Unsupported` until the dragged chain
+(step 5): the new surfaces there are tangent or apart. Where Open CASCADE
+builds an inverted cylinder for a radius driven past zero, or crashes on exactly
+zero, the fixture holds Arris to the refusal.
+
 ## Consequences
 
 - `recipe.py` and `arris_debug::fixtures` carry the `offset` op; the six

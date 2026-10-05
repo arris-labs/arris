@@ -1,0 +1,123 @@
+{
+  "description": "a ring torus of major radius 5 and minor radius 1 revolved whole about z, its one face offset by d: a torus of the same major radius and minor radius 1 + d, volume 2\u03c0\u00b2\u00b75\u00b7(1 + d)\u00b2, area 4\u03c0\u00b2\u00b75\u00b7(1 + d)",
+  "params": {
+    "d": 0.5
+  },
+  "variants": {
+    "in": {
+      "d": -0.4
+    }
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            5,
+            0
+          ],
+          "radius": 1
+        }
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "part",
+      "faces": [
+        [
+          0,
+          5,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        0,
+        0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_tube",
+      "point": [
+        0,
+        "5 + 1 + d",
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        5,
+        0,
+        "1 + d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        "5 + 1 + d + 0.3",
+        0
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "2 * pi^2 * 5 * (1 + d)^2",
+    "area": "4 * pi^2 * 5 * (1 + d)",
+    "centroid": [
+      0,
+      0,
+      0
+    ],
+    "genus": 1
+  }
+}

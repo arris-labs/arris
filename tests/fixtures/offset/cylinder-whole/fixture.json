@@ -1,7 +1,12 @@
 {
-  "description": "a cylinder of radius 4 and height 12 whose top cap is pushed out by 3: the plane moves, the wall is extended to it along its own rulings, and the cap's circle is the wall's section at z = 15",
+  "description": "a cylinder of radius 4 and height 12 with all three faces moved by d: out, a cylinder of radius 4 + d and height 12 + 2d with sharp rims; in, the same shrunk. The rims are where the offset cap meets the offset wall",
   "params": {
-    "d": 3
+    "d": 1
+  },
+  "variants": {
+    "in": {
+      "d": -1
+    }
   },
   "steps": [
     {
@@ -29,6 +34,16 @@
           1,
           1,
           12
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          4,
+          6
         ]
       ],
       "distance": "d"
@@ -41,54 +56,54 @@
       "point": [
         1,
         1,
-        13
+        6
       ],
       "expect": "in"
     },
     {
-      "label": "above",
+      "label": "on_wall",
+      "point": [
+        0,
+        "4 + d",
+        6
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
       "point": [
         1,
         1,
-        15.5
+        "12 + d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bottom",
+      "point": [
+        1,
+        1,
+        "-d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        "4 + d + 0.5",
+        6
       ],
       "expect": "out"
-    },
-    {
-      "label": "on_new_cap",
-      "point": [
-        1,
-        1,
-        15
-      ],
-      "expect": "on"
-    },
-    {
-      "label": "on_wall_extended",
-      "point": [
-        4,
-        0,
-        13.5
-      ],
-      "expect": "on"
-    },
-    {
-      "label": "on_new_rim",
-      "point": [
-        0,
-        4,
-        15
-      ],
-      "expect": "on"
     }
   ],
   "analytic": {
-    "volume": "pi * 16 * (12 + d)",
-    "area": "2 * pi * 16 + 2 * pi * 4 * (12 + d)",
+    "volume": "pi * (4 + d)^2 * (12 + 2 * d)",
+    "area": "2 * pi * (4 + d)^2 + 2 * pi * (4 + d) * (12 + 2 * d)",
     "centroid": [
       0,
       0,
-      "(12 + d) / 2"
+      6
     ],
     "counts": {
       "vertices": 2,

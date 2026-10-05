@@ -4,8 +4,8 @@
 
 use std::collections::BTreeMap;
 
-use arris_geom::{Surface, pcurve_on};
-use arris_math::{Frame, Meter, Point2, Point3, Tolerance};
+use arris_geom::{Curve, Surface, pcurve_on};
+use arris_math::{Frame, Meter, Point2, Point3, Tolerance, Vec2, shift_nearest_uv};
 use arris_topo::builder::EdgeSpec;
 use arris_topo::builder::{EdgeKey, VertexKey, VertexSpec};
 use arris_topo::entity::EdgeGeometry;
@@ -45,12 +45,15 @@ pub(super) fn rewrite_of(
         ekey.insert(e, EdgeKey::New(rw.edges.len()));
         rw.edges.push((
             EdgeSpec::New {
-                geometry: EdgeGeometry::Curve {
-                    curve: new.curve,
-                    range: new.range,
+                geometry: match new.curve {
+                    Some(curve) => EdgeGeometry::Curve {
+                        curve,
+                        range: new.range,
+                    },
+                    None => EdgeGeometry::Degenerate { range: new.range },
                 },
-                start: key(edge.start()),
-                end: key(edge.end()),
+                start: key(new.start),
+                end: key(new.end),
                 tolerance: edge.tolerance(),
             },
             Some(e),
@@ -74,21 +77,22 @@ pub(super) fn rewrite_of(
         meter.tick()?;
         let old_surface = m.surface(entity.surface())?.clone();
         let surface = moves.surfaces.get(&f).unwrap_or(&old_surface).clone();
-        let frame = match &old_surface {
-            Surface::Plane { frame } => *frame,
-            _ => {
-                return Err(OpError::Internal(Fault::Invariant {
-                    what: "a plane under a rewritten face",
-                }));
-            }
-        };
         let mut loops = Vec::with_capacity(entity.loops().len());
         for l in entity.loops() {
             let mut before = Vec::with_capacity(l.coedges().len());
             let mut after = Vec::with_capacity(l.coedges().len());
             let mut uses = Vec::with_capacity(l.coedges().len());
+            let mut straight = true;
             for c in l.coedges() {
                 let edge = m.edge(c.edge())?;
+                let shape = match edges.get(&c.edge()) {
+                    Some(new) => new.curve,
+                    None => edge.curve().map(|(id, _)| id),
+                };
+                straight &= match shape {
+                    Some(id) => matches!(m.curve(id)?, Curve::Line { .. }),
+                    None => false,
+                };
                 let first = match c.orientation() {
                     Orientation::Forward => edge.start(),
                     Orientation::Reversed => edge.end(),
@@ -97,13 +101,43 @@ pub(super) fn rewrite_of(
                 before.push(old);
                 after.push(points.get(&first).copied().unwrap_or(old));
                 let use_ = match edges.get(&c.edge()) {
+                    // A degenerate edge stays at its pole, its pcurve the
+                    // same line across it.
+                    Some(new) if new.curve.is_none() => StoredUse {
+                        edge: ekey[&c.edge()],
+                        orientation: c.orientation(),
+                        pcurve: c.pcurve(),
+                    },
                     Some(new) => {
-                        let curve = m.curve(new.curve)?.clone();
+                        let curve_id = new.curve.ok_or(OpError::Internal(Fault::Invariant {
+                            what: "a curve on a recomputed edge",
+                        }))?;
+                        let curve = m.curve(curve_id)?.clone();
                         let pcurve =
                             pcurve_on(&curve, new.range, &surface, tol, meter).map_err(fault_of)?;
+                        // The new pcurve beside the old one, on the same
+                        // sheet of a periodic surface: shifted by whole
+                        // periods to the old use's `(u, v)` at the edge's
+                        // midpoint, which the offset keeps to the period.
+                        let old_mid = match m.edge(c.edge())?.curve() {
+                            Some((_, range)) => range.midpoint(),
+                            None => new.mid,
+                        };
+                        let target = m.curve2(c.pcurve())?.point(old_mid);
+                        let by = shift_nearest_uv(target - pcurve.point(new.mid), surface.period());
+                        let pcurve = if by == Vec2::zeros() {
+                            pcurve
+                        } else {
+                            pcurve.translated(by)
+                        };
+                        let orientation = if new.reversed {
+                            c.orientation().flipped()
+                        } else {
+                            c.orientation()
+                        };
                         StoredUse {
                             edge: ekey[&c.edge()],
-                            orientation: c.orientation(),
+                            orientation,
                             pcurve: m.add_curve2(pcurve),
                         }
                     }
@@ -115,13 +149,18 @@ pub(super) fn rewrite_of(
                 };
                 uses.push(use_);
             }
-            let (old_area, _) = signed_area(&frame, &before);
-            let (new_area, perimeter) = signed_area(&frame, &after);
-            if new_area * old_area.signum() <= tol.linear * perimeter {
-                return Err(OpError::Degenerate {
-                    entities: vec![forward(f)],
-                    reason: Reason::Offset(OffsetReason::Vanishes),
-                });
+            // A polygon of straight edges on a plane turns inside out or to
+            // nothing when its face vanishes; a curved loop is left to the
+            // checker.
+            if let (Surface::Plane { frame }, true) = (&old_surface, straight && after.len() >= 3) {
+                let (old_area, _) = signed_area(frame, &before);
+                let (new_area, perimeter) = signed_area(frame, &after);
+                if new_area * old_area.signum() <= tol.linear * perimeter {
+                    return Err(OpError::Degenerate {
+                        entities: vec![forward(f)],
+                        reason: Reason::Offset(OffsetReason::Vanishes),
+                    });
+                }
             }
             loops.push(uses);
         }

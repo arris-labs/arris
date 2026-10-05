@@ -300,12 +300,6 @@ corpus_tests! {
     /// read-back of Open CASCADE's own STEP of it.
     #[ignore = "read-back: #773 on face #769: the pcurve fit still deviates by 2.4 with 3673 spans, the most it may use, on a strip of Open CASCADE's STEP of the blend (the seam edge of #139 reads since the 2026-10-04 reader fix; the differential's counts disagreement on this recipe is Open CASCADE's convention, not Arris's)"]
     regression_turned_dome_three_rim_fillet => run "regression/turned-dome-three-rim-fillet";
-    /// A cylinder's top cap pushed out by 3: the wall extended along its rulings.
-    #[ignore = "OpError::Unsupported, a cylinder against a plane: the planar core moves planes alone (plans/offset-faces step 4)"]
-    regression_offset_cylinder_top_pushed => run "regression/offset-cylinder-top-pushed";
-    /// A plate's through-hole wall offset by 1 along its outward normal: the hole narrows to radius 2.
-    #[ignore = "the face point (13, 10, 5) lies on the hole's seam edge, so it names no face in Arris; and the planar core moves planes alone (plans/offset-faces step 4)"]
-    regression_offset_hole_wall_pushed => run "regression/offset-hole-wall-pushed";
     /// A ball sliced by a face 3.7e-7 from its pole: not through the singular
     /// point and nearer than the sphere's (u, v) polygons resolve, refused by
     /// name rather than built.
@@ -1149,6 +1143,32 @@ corpus_tests! {
     /// at the apex, refused as `VertexSplits` where Open CASCADE splits it
     /// into an edge.
     offset_pyramid_side_pushed => run "offset/pyramid-side-pushed";
+    /// A cylinder's top cap pushed out by 3 and pulled in by 3: the wall
+    /// extended along its rulings or trimmed, the cap's circle its section.
+    offset_cylinder_top_pushed => run "offset/cylinder-top-pushed";
+    /// A plate's through-hole wall pushed (the hole narrows to radius 2)
+    /// and pulled (it widens to 4): the wall a coaxial cylinder, its seam
+    /// kept in the seam's plane.
+    offset_hole_wall_pushed => run "offset/hole-wall-pushed";
+    /// A cylinder with all three faces moved out and in: sharp rims where
+    /// the offset cap meets the offset wall.
+    offset_cylinder_whole => run "offset/cylinder-whole";
+    /// A frustum's cone side pushed and pulled: the coaxial cone d·√2
+    /// wider, the rims its sections at the fixed planes.
+    offset_frustum_side => run "offset/frustum-side";
+    /// A boss capped by a hemisphere with the dome moved: the concentric
+    /// sphere, the pole kept on the axis.
+    offset_boss_dome => run "offset/boss-dome";
+    /// A ring torus offset whole, out and in: the same major radius, the
+    /// tube radius moved.
+    offset_torus_ring => run "offset/torus-ring";
+    /// A hole's wall moved past its own radius: the cylinder collapses,
+    /// refused as `SurfaceCollapses` where Open CASCADE builds an
+    /// inverted one.
+    offset_hole_wall_collapses => run "offset/hole-wall-collapses";
+    /// An elliptic cylinder's wall moved: the parallel curve of an ellipse
+    /// is no ellipse, refused as `NoExactOffset`.
+    offset_ellipse_wall_pushed => run "offset/ellipse-wall-pushed";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'

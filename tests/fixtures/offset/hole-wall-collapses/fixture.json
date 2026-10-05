@@ -1,0 +1,112 @@
+{
+  "description": "the plate of hole-wall-pushed with its hole's wall moved by 3.5, past its own radius 3: the cylinder's radius would be \u22120.5, so the surface collapses \u2014 refused as SurfaceCollapses, the model untouched (ADR-0048 \u00a73). Open CASCADE builds a body with an inverted cylinder where it does not crash (a distance of exactly 3 kills the process), so the oracle's numbers are the record of a wrong answer and the recipe says what Arris must do",
+  "params": {
+    "d": 3.5
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              20,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              20,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      "holes": [
+        {
+          "circle": {
+            "center": [
+              10,
+              10
+            ],
+            "radius": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "plate",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 10
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "plate",
+      "faces": [
+        [
+          10,
+          13,
+          5
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        2,
+        5
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "surface-collapses",
+    "genus": 1
+  }
+}
