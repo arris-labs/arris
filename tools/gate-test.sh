@@ -39,6 +39,12 @@ has "mirror" "$f" "rdeps(arris-ops)"
 has "mirror" "$f" "^(transform|"
 lacks "mirror" "$f" "boolean"
 
+# An ops offset change: the offset area alone.
+f=$(key filter "$(plan crates/arris-ops/src/offset/vertices.rs)")
+has "offset" "$f" "rdeps(arris-ops)"
+has "offset" "$f" "^(offset|"
+lacks "offset" "$f" "boolean"
+
 # An ops file with no area of its own: the whole corpus.
 f=$(key filter "$(plan crates/arris-ops/src/primitive.rs)")
 has "ops other" "$f" "rdeps(arris-ops) | binary_id(arris::corpus)"

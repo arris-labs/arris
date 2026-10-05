@@ -675,6 +675,14 @@ pub enum ExpectError {
     /// a profile with an elliptic segment, whose swept surface has no
     /// variant (ADR-0014).
     EllipticRevolve,
+    /// `OpError::Degenerate` with `OffsetReason::Vanishes`: an offset that
+    /// would make an edge or a face vanish or turn inside out (ADR-0048
+    /// §3).
+    Vanishes,
+    /// `OpError::Degenerate` with `OffsetReason::VertexSplits`: an offset
+    /// whose faces around a vertex no longer meet in one point (ADR-0048
+    /// §3).
+    VertexSplits,
     /// `OpError::Unsupported` with a NURBS surface or curve in the pair:
     /// an operation on a free-form face the kernel has no closed form
     /// for, the NURBS cycle's (ADR-0026 §5).
@@ -1084,7 +1092,7 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
 /// fixture there has passed and been blessed, and none is `#[ignore]`d.
 /// `real/` holds parts, whose lint holds their dumps the same way
 /// (`crate::part::lint`).
-pub const DUMPED_AREAS: [&str; 7] = [
+pub const DUMPED_AREAS: [&str; 8] = [
     "primitive",
     "build",
     "transform",
@@ -1092,6 +1100,7 @@ pub const DUMPED_AREAS: [&str; 7] = [
     "sweep",
     "provenance",
     "blend",
+    "offset",
 ];
 
 /// The area a failure shrunk to a fixture waits in until it passes

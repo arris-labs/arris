@@ -59,7 +59,8 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
   the only edge within the fixture's `probe`; `offset` is
   `BRepOffset_MakeOffset` with offset 0 and the intersection join, each
   moved face given its distance by `SetOffsetOnFace` and named by a point
-  the same way, ADR-0048), and `step` (a solid of a
+  the same way, and the bare closed shell it returns beside concave
+  neighbours made the solid it bounds, ADR-0048 §4), and `step` (a solid of a
   STEP file beside the recipe, by `step.solids`, its SHA-256 checked),
   chained by step name; `params`
   with string expressions and `variants` overriding them. The grammar is

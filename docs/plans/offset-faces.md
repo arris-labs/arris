@@ -118,7 +118,7 @@ bound has to be established here.
   `None` for the rest and for every collapse; geometry tests per kind
   (a point of the offset at exactly `|d|` from the original along its
   normal, at sampled (u, v)), and DATA-MODEL §Surfaces.
-- [ ] Step 3 **[3]** — The planar core: `offset_faces` for bodies of
+- [x] Step 3 **[3]** — The planar core: `offset_faces` for bodies of
   planes, any subset moving. The move set, each edge recomputed (two
   moved: their offsets' line; moved and fixed: the line on the fixed
   plane; two fixed: re-ranged), each vertex the meeting of its new edges,
@@ -130,11 +130,20 @@ bound has to be established here.
   blessed; new: an L-bracket's inner face pushed, a wedge's face pushed
   until a face vanishes (refused), a pyramid apex (refused), a pocket's
   floor pushed and pulled.
+  *Done:* the pocket is one fixture with a `pulled` variant, as is the L;
+  `rewrite` gained `surfaces` (a replaced face's new surface) and
+  `vertex_parents` (a moved vertex `Modified`, not `Deleted`), so a moved
+  face is a new face `Modified` from its old one — the builder gives every
+  face spec a new id, so "same id" in §Provenance reads as "its new self".
+  Open CASCADE returns the pocket's result as a bare closed shell; the
+  driver makes it the solid it bounds (ADR-0048 §4). A `Full` failure is
+  `OpError::Internal` with the report until step 6 names it.
 - [ ] Step 4 **[2]** — Quadric faces: cylinders, cones, spheres and tori
   moving or fixed, edges from the existing intersectors with the branch
   nearest the old edge, seams carried, `NoExactOffset` and
   `SurfaceCollapses`. Fixtures: step 1's cylinder and hole ones moved and
-  blessed; a cone frustum's side, a sphere-capped boss, a revolved torus
+  blessed — the hole's face point (13, 10, 5) is on the bore's seam edge in
+  Arris, so it names no face: move it off the seam and re-run the oracle; a cone frustum's side, a sphere-capped boss, a revolved torus
   ring, the whole cylinder out and in; a hole shrunk past its radius and
   an elliptic-extrusion face (refused).
 - [ ] Step 5 **[3]** — The dragged chain: the move set closed over

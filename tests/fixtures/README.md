@@ -21,7 +21,7 @@ directory: both files present and parseable, `expected.json` not stale, the
 Euler line zero, every `analytic` value matching the oracle to 1e-6
 relative, counts and probe expectations exactly — and every solid under
 `primitive/`, `build/`, `transform/`, `boolean/`, `sweep/`,
-`provenance/` or `blend/` that the
+`provenance/`, `blend/` or `offset/` that the
 runner compares (the oracle built a solid, the recipe expects no refusal)
 carrying its committed dump per variant, which a fixture only has once it
 passed and was blessed. An `#[ignore]`d fixture in those areas therefore
@@ -141,7 +141,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `cut` | `target`, `tool` |
 | `fillet` | `of`, `edges` (a list of points, one on each edge to blend), `radius` |
 | `chamfer` | `of`, `edges` (as a `fillet`'s), `distance` (one, measured on both faces from the edge) |
-| `offset` | `of`, `faces` (a point on each face to move, within `probe` of that face alone), `distance` (signed along the outward normal, positive adds material; ADR-0048) |
+| `offset` | `of`, `faces` (a point on each face to move, within `probe` of that face alone — Arris takes the face the point classifies `On`, so a point on an edge or a seam names none), `distance` (signed along the outward normal, positive adds material; ADR-0048) |
 | `polyhedron` | `points` (a list of `[x, y, z]`), `faces` (each a list of loops, each a list of indices into `points`: the outer loop counter-clockwise seen from outside the solid, a hole's clockwise), `namespace` (Arris's key space) |
 | `step` | `file` (beside `fixture.json`), `sha256` (of the file), `id` (the `#id` of its `MANIFOLD_SOLID_BREP` or `BREP_WITH_VOIDS`), `near` (a point; only where the file places that solid more than once) |
 
@@ -230,7 +230,8 @@ of the step that made the fixture pass, and a later change to it is a
   `boolean/swallow-cut`, `boolean/disjoint-common`), and then nothing
   else is compared.
   `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
-  "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "unsupported"` says Open CASCADE
+  "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
+  "vertex-splits" | "unsupported"` says Open CASCADE
   builds a result Arris refuses by design (the tangent cases,
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
@@ -242,7 +243,10 @@ of the step that made the fixture pass, and a later change to it is a
   refuses as `BlendReason::TooLarge`, `TangentChain` or `VertexBlend` —
   ADR-0007; a revolve of an elliptic profile segment, which it sweeps
   into a surface of revolution with an elliptic meridian and Arris
-  refuses as `SweepReason::EllipticRevolve` — ADR-0014; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
+  refuses as `SweepReason::EllipticRevolve` — ADR-0014; an offset whose
+  move it carries through a change of topology, dropping a face or
+  splitting a vertex into an edge, which Arris refuses as
+  `OffsetReason::Vanishes` or `VertexSplits` — ADR-0048 §3; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
   recorded and the lint still
   cross-checks them against the other `analytic` values, but the runner asserts the typed error and compares
   nothing — and the oracle's self-test records the result without

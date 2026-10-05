@@ -23,6 +23,9 @@ pub enum Reason {
     Boolean(BooleanReason),
     /// A fillet or a chamfer refused an edge, a chain or a corner.
     Blend(BlendReason),
+    /// An offset of faces refused its faces, or a move that would change
+    /// the body's topology.
+    Offset(OffsetReason),
     /// A query refused the shape or the point it was handed.
     Query(QueryReason),
 }
@@ -43,6 +46,7 @@ impl Reason {
             Reason::Sweep(reason) => reason.name(),
             Reason::Boolean(reason) => reason.name(),
             Reason::Blend(reason) => reason.name(),
+            Reason::Offset(reason) => reason.name(),
             Reason::Query(reason) => reason.name(),
         }
     }
@@ -55,6 +59,7 @@ impl core::fmt::Display for Reason {
             Reason::Sweep(reason) => reason.fmt(f),
             Reason::Boolean(reason) => reason.fmt(f),
             Reason::Blend(reason) => reason.fmt(f),
+            Reason::Offset(reason) => reason.fmt(f),
             Reason::Query(reason) => reason.fmt(f),
         }
     }
@@ -319,6 +324,61 @@ impl core::fmt::Display for BlendReason {
             BlendReason::VertexBlend => f.write_str(
                 "the corner at the edge's end is one the blend's closed forms do not cover",
             ),
+        }
+    }
+}
+
+/// An offset of faces refused its faces, or a move that would change the
+/// body's topology (ADR-0048 §3): the result keeps every vertex, edge and
+/// face of the body, or the offset is not made.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum OffsetReason {
+    /// An offset was asked for no faces at all; the error's entity is the
+    /// body.
+    NoFaces,
+    /// A face is listed twice in one offset call; the error's entity is
+    /// the face.
+    RepeatedFace,
+    /// A face id resolves in the model but is not a face of the body the
+    /// offset was asked to move; the error's entities are the face and
+    /// the body.
+    FaceNotInBody,
+    /// The move would make an edge or a face vanish or reverse: an edge
+    /// whose ends meet or cross, a face whose loop turns inside out. The
+    /// error's entity is that edge or face.
+    Vanishes,
+    /// The faces around a vertex no longer meet in one point once moved —
+    /// a vertex of four or more faces, a pyramid's apex with one side
+    /// pushed — so the vertex would split into an edge. The error's
+    /// entity is the vertex.
+    VertexSplits,
+}
+
+impl OffsetReason {
+    /// The variant's name, as [`Reason::name`] gives it.
+    pub fn name(&self) -> &'static str {
+        match self {
+            OffsetReason::NoFaces => "NoFaces",
+            OffsetReason::RepeatedFace => "RepeatedFace",
+            OffsetReason::FaceNotInBody => "FaceNotInBody",
+            OffsetReason::Vanishes => "Vanishes",
+            OffsetReason::VertexSplits => "VertexSplits",
+        }
+    }
+}
+
+impl core::fmt::Display for OffsetReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            OffsetReason::NoFaces => f.write_str("no faces were given to offset"),
+            OffsetReason::RepeatedFace => f.write_str("a face is listed twice"),
+            OffsetReason::FaceNotInBody => f.write_str("the face is not a face of the body"),
+            OffsetReason::Vanishes => {
+                f.write_str("the offset would make the edge or face vanish or turn inside out")
+            }
+            OffsetReason::VertexSplits => {
+                f.write_str("the faces around the vertex no longer meet in one point once moved")
+            }
         }
     }
 }

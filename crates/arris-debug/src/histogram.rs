@@ -21,7 +21,8 @@ use std::fmt::Write as _;
 use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::step::{ReadError, Refusal};
 use arris_ops::{
-    BlendReason, BooleanReason, InputReason, OpError, QueryReason, Reason, SweepReason,
+    BlendReason, BooleanReason, InputReason, OffsetReason, OpError, QueryReason, Reason,
+    SweepReason,
 };
 use arris_topo::{EntityId, Model};
 
@@ -340,6 +341,12 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             Reason::Blend(BlendReason::NoEdges) => Cycle::Itself("NoEdges"),
             Reason::Blend(BlendReason::RepeatedEdge) => Cycle::Itself("RepeatedEdge"),
             Reason::Blend(BlendReason::EdgeNotInBody) => Cycle::Itself("EdgeNotInBody"),
+            // The battery runs no offset: a count here is a battery bug too.
+            Reason::Offset(OffsetReason::NoFaces) => Cycle::Itself("NoFaces"),
+            Reason::Offset(OffsetReason::RepeatedFace) => Cycle::Itself("RepeatedFace"),
+            Reason::Offset(OffsetReason::FaceNotInBody) => Cycle::Itself("FaceNotInBody"),
+            Reason::Offset(OffsetReason::Vanishes) => Cycle::Itself("Vanishes"),
+            Reason::Offset(OffsetReason::VertexSplits) => Cycle::Itself("VertexSplits"),
             Reason::Query(QueryReason::NotProjectable) => Cycle::Itself("NotProjectable"),
             Reason::Query(QueryReason::DegenerateEdge) => Cycle::Itself("DegenerateEdge"),
             Reason::Query(QueryReason::ProjectionCollapses) => Cycle::Itself("ProjectionCollapses"),

@@ -50,12 +50,13 @@ use arris_math::{
 };
 use arris_mesh::{MeshRequest, TriMesh};
 use arris_ops::{
-    BlendReason, BooleanReason, InputReason, OpError, Reason, SweepReason, common, cut, fuse,
+    BlendReason, BooleanReason, InputReason, OffsetReason, OpError, Reason, SweepReason, common,
+    cut, fuse,
 };
 use arris_topo::FaceId;
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
 use arris_topo::entity::BodyKind;
-use arris_topo::{Body, Edge, EntityId, Model, Orientation, Provenance, TopoError};
+use arris_topo::{Body, Edge, EntityId, Face, Model, Orientation, Provenance, Shape, TopoError};
 use sha2::{Digest, Sha256};
 
 /// The environment variable that makes [`run`] write `dump.txt` instead
@@ -120,16 +121,18 @@ pub enum CorpusError {
         /// What it names instead of one edge.
         what: String,
     },
-    /// A step names an operation Arris does not run yet: the recipe is
-    /// the oracle's and the fixture waits (`regression/`) for the plan
-    /// that adds the operation.
-    #[error("{fixture}: step {step:?}: {what}")]
-    Unsupported {
+    /// An `offset` step's face point does not name one face of its
+    /// body: it classifies to an edge, a vertex, the inside or the
+    /// outside.
+    #[error("{fixture}: step {step:?}: the face point {point:?} {what}")]
+    FacePoint {
         /// The fixture.
         fixture: String,
         /// The step's name.
         step: String,
-        /// What is not run yet.
+        /// The point.
+        point: [f64; 3],
+        /// What it names instead of one face.
         what: String,
     },
     /// The recipe's `precision` is not a consistent
@@ -409,6 +412,12 @@ impl Refusal {
             Refusal::Error(ExpectError::EllipticRevolve) => {
                 "OpError::Degenerate with Reason::EllipticRevolve".into()
             }
+            Refusal::Error(ExpectError::Vanishes) => {
+                "OpError::Degenerate with Reason::Vanishes".into()
+            }
+            Refusal::Error(ExpectError::VertexSplits) => {
+                "OpError::Degenerate with Reason::VertexSplits".into()
+            }
             Refusal::Error(ExpectError::Nurbs) => {
                 "OpError::Unsupported with a NURBS surface or curve in the pair".into()
             }
@@ -448,6 +457,12 @@ impl Refusal {
                     }
                     Refusal::Error(ExpectError::EllipticRevolve) => {
                         matches!(reason, Reason::Sweep(SweepReason::EllipticRevolve { .. }))
+                    }
+                    Refusal::Error(ExpectError::Vanishes) => {
+                        reason == Reason::Offset(OffsetReason::Vanishes)
+                    }
+                    Refusal::Error(ExpectError::VertexSplits) => {
+                        reason == Reason::Offset(OffsetReason::VertexSplits)
                     }
                     Refusal::Error(ExpectError::Nurbs | ExpectError::Unsupported) => false,
                 };
@@ -731,7 +746,7 @@ impl CorpusError {
             | CorpusError::Expression { .. }
             | CorpusError::Profile { .. }
             | CorpusError::EdgePoint { .. }
-            | CorpusError::Unsupported { .. }
+            | CorpusError::FacePoint { .. }
             | CorpusError::Precision { .. }
             | CorpusError::Axis { .. }
             | CorpusError::Plane { .. }
@@ -1969,11 +1984,30 @@ fn build_step(
             };
             body(blended.map_err(op)?, vec![of_body])
         }
-        Step::Offset { .. } => Err(CorpusError::Unsupported {
-            fixture: name.clone(),
-            step: step.name().to_string(),
-            what: "offset is not run by Arris yet (plans/offset-faces step 3)".into(),
-        }),
+        Step::Offset {
+            of,
+            faces,
+            distance,
+            ..
+        } => {
+            let of_body = reference(fixture, step, of, made)?.body;
+            let mut selected = Vec::with_capacity(faces.len());
+            for p in faces {
+                let point = point(fixture, step, p, params)?;
+                let face = face_at(m, of_body, point).map_err(|what| CorpusError::FacePoint {
+                    fixture: name.clone(),
+                    step: step.name().to_string(),
+                    point: [point.x, point.y, point.z],
+                    what,
+                })?;
+                selected.push(face);
+            }
+            let distance = number(fixture, step, distance, params)?;
+            body(
+                arris_ops::offset_faces(m, of_body, &selected, distance, control).map_err(op)?,
+                vec![of_body],
+            )
+        }
         Step::Polyhedron {
             points,
             faces,
@@ -2107,6 +2141,21 @@ fn read_solid(
 /// body passes within `probe` of the point — the rule the oracle's
 /// nearest-edge search keeps too (`tests/fixtures/README.md`). Errors:
 /// what the point names instead.
+/// The face of `body` that `point` classifies `On`: a point inside or
+/// outside the body, or on an edge or a vertex, names no one face.
+fn face_at(m: &Model, body: Body, point: Point3) -> Result<Face, String> {
+    match classify_point(m, body, point) {
+        Ok(Classification::On(Shape {
+            id: EntityId::Face(id),
+            ..
+        })) => Ok(Face::forward(id)),
+        Ok(Classification::On(shape)) => Err(format!("is on {shape}, not inside a face")),
+        Ok(Classification::Inside) => Err("is inside the body, on no face".into()),
+        Ok(Classification::Outside) => Err("is outside the body, on no face".into()),
+        Err(e) => Err(format!("could not be classified: {e}")),
+    }
+}
+
 fn edge_at(m: &Model, body: Body, point: Point3, probe: f64) -> Result<Edge, String> {
     let on = match classify_point(m, body, point) {
         Ok(Classification::On(shape)) => shape,

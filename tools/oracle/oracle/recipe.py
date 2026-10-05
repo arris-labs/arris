@@ -55,7 +55,8 @@ Operations, by `op`:
                that lies on that face alone, within the fixture's `probe`;
                Open CASCADE's `BRepOffset_MakeOffset` with offset 0 on the
                fixed faces and `SetOffsetOnFace` on the moved ones, the
-               intersection join — ADR-0048)
+               intersection join, a closed shell it returns made the
+               solid it bounds — ADR-0048)
     polyhedron points [[x,y,z], ...], faces [[[i, j, k, ...], <hole>...], ...],
                namespace <u32>
                (each face its loops of point indices, the outer one
@@ -92,6 +93,7 @@ from OCP.BRepBuilderAPI import (
     BRepBuilderAPI_MakeWire,
     BRepBuilderAPI_Transform,
 )
+from OCP.BRep import BRep_Tool
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer, BRepFilletAPI_MakeFillet
 from OCP.BRepGProp import BRepGProp
@@ -516,7 +518,15 @@ def _offset_faces(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: floa
     mo.MakeOffsetShape()
     if not mo.IsDone():
         raise OracleError(f"offset: Open CASCADE refuses (error {mo.Error()})")
-    return mo.Shape()
+    result = mo.Shape()
+    # Skin mode hands back the bare shell where the moved face sits among
+    # concave neighbours (a pocket's floor): closed, it bounds the solid.
+    if result.ShapeType() == TopAbs_SHELL:
+        shell = TopoDS.Shell(result)
+        if not BRep_Tool.IsClosed_s(shell):
+            raise OracleError("offset: Open CASCADE's result is an open shell")
+        result = _checked(BRepBuilderAPI_MakeSolid(shell), "offset solid")
+    return result
 
 
 def _read_solid(step: dict, params: dict[str, float], probe: float, base: str | None) -> TopoDS_Shape:

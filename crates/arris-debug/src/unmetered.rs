@@ -9,7 +9,7 @@ use arris_ops::boolean::Interferences;
 use arris_ops::measure::MassProperties;
 use arris_ops::{self, BuildKeys, OpError};
 use arris_topo::builder::Builder;
-use arris_topo::{Body, Edge, Model, Provenance};
+use arris_topo::{Body, Edge, Face, Model, Provenance};
 /// [`arris_ops::cut`] to its end.
 pub fn cut(m: &mut Model, target: Body, tool: Body) -> Result<(Body, Provenance), OpError> {
     arris_ops::cut(m, target, tool, &Control::NONE)
@@ -87,6 +87,16 @@ pub fn chamfer(
     distance: f64,
 ) -> Result<(Body, Provenance), OpError> {
     arris_ops::chamfer(m, body, edges, distance, &Control::NONE)
+}
+
+/// [`arris_ops::offset_faces`] to its end.
+pub fn offset_faces(
+    m: &mut Model,
+    body: Body,
+    faces: &[Face],
+    distance: f64,
+) -> Result<(Body, Provenance), OpError> {
+    arris_ops::offset_faces(m, body, faces, distance, &Control::NONE)
 }
 
 /// [`arris_ops::transform`] to its end.

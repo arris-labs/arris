@@ -1,0 +1,18 @@
+{
+  "description": "a trapezoid (0,0)–(10,0)–(6,10)–(4,10) extruded 10 along z, its top face at y = 10 pushed out by 3: the sloped sides meet at y = 12.5, so the top face's edges along x would end before they start — refused as Vanishes, the topology kept or nothing (ADR-0048 §3)",
+  "params": {"d": 3},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [10, 0]}, {"line_to": [6, 10]}, {"line_to": [4, 10]}, {"line_to": [0, 0]}]}},
+    {"name": "wedge", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 10},
+    {"name": "result", "op": "offset", "of": "wedge", "faces": [[5, 10, 5]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 5], "expect": "in"}
+  ],
+  "analytic": {
+    "expect_error": "vanishes",
+    "genus": 0
+  }
+}

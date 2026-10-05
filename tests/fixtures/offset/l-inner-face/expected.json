@@ -1,0 +1,226 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "8e35eaa137fa93a2ff025116f54bc2af3180f9f783da37bc4db6de66eceb360e",
+  "results": {
+    "default": {
+      "area": 1460.0,
+      "centroid": [
+        8.621212121212121,
+        8.93939393939394,
+        5.0
+      ],
+      "counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          133787.87878787873,
+          27575.75757575757,
+          2.9103830456733704e-11
+        ],
+        [
+          27575.75757575757,
+          122126.51515151514,
+          0.0
+        ],
+        [
+          2.9103830456733704e-11,
+          0.0,
+          200914.39393939392
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "notch",
+          "point": [
+            16.0,
+            16.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_moved_face",
+          "point": [
+            13.0,
+            15.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_trimmed_face",
+          "point": [
+            16.5,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_extended_top",
+          "point": [
+            6.5,
+            20.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_concave_edge",
+          "point": [
+            13.0,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_moved_face",
+          "point": [
+            13.5,
+            15.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 3299.9999999999995
+    },
+    "pulled": {
+      "area": 1339.9999999999998,
+      "centroid": [
+        8.314814814814815,
+        7.59259259259259,
+        4.999999999999998
+      ],
+      "counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          96851.85185185194,
+          33703.70370370368,
+          -1.4551915228366852e-11
+        ],
+        [
+          33703.70370370368,
+          113932.40740740745,
+          -5.820766091346741e-11
+        ],
+        [
+          -1.4551915228366852e-11,
+          -5.820766091346741e-11,
+          165784.25925925933
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 18,
+        "faces": 8,
+        "loops": 8,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "notch",
+          "point": [
+            16.0,
+            16.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_moved_face",
+          "point": [
+            7.0,
+            15.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_trimmed_face",
+          "point": [
+            13.5,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_extended_top",
+          "point": [
+            3.5,
+            20.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_concave_edge",
+          "point": [
+            7.0,
+            10.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_moved_face",
+          "point": [
+            7.5,
+            15.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 2700.0
+    }
+  }
+}

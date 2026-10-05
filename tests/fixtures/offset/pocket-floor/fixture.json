@@ -1,0 +1,27 @@
+{
+  "description": "a 40 × 30 × 10 block with a blind 20 × 10 pocket 5 deep cut into its top, the pocket's floor moved by d along its outward normal (+z): pushed, the pocket is shallower and its four walls trimmed; pulled, deeper and the walls extended. The floor's four edges and its four corners recomputed on the fixed walls",
+  "params": {"d": 2},
+  "variants": {"pulled": {"d": -2}},
+  "steps": [
+    {"name": "block", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]},
+    {"name": "pocket", "op": "box", "min": [10, 10, 5], "max": [30, 20, 11]},
+    {"name": "cut", "op": "cut", "target": "block", "tool": "pocket"},
+    {"name": "result", "op": "offset", "of": "cut", "faces": [[20, 15, 5]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 5], "expect": "in"},
+    {"label": "below_floor", "point": [20, 15, "5 + d - 0.5"], "expect": "in"},
+    {"label": "on_floor", "point": [20, 15, "5 + d"], "expect": "on"},
+    {"label": "above_floor", "point": [20, 15, "5 + d + 0.5"], "expect": "out"},
+    {"label": "on_wall", "point": [10, 15, "(15 + d) / 2"], "expect": "on"},
+    {"label": "on_floor_edge", "point": [20, 10, "5 + d"], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "12000 - 200 * (5 - d)",
+    "area": "3800 + 60 * (5 - d)",
+    "centroid": [20, 15, "(60000 - 200 * (5 - d) * (10 - (5 - d) / 2)) / (12000 - 200 * (5 - d))"],
+    "counts": {"vertices": 16, "edges": 24, "faces": 11, "loops": 12, "shells": 1},
+    "genus": 0
+  }
+}

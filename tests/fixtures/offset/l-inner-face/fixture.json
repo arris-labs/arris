@@ -1,0 +1,28 @@
+{
+  "description": "an extruded L (0,0)–(20,0)–(20,10)–(10,10)–(10,20)–(0,20), height 10, the inner face at x = 10 moved by d along its outward normal (+x): pushed, the short arm's top at y = 10 is trimmed and the long arm's top at y = 20 extended; pulled, the other way. Every face beside it is a plane met in a line, its two concave and two convex edges recomputed",
+  "params": {"d": 3},
+  "variants": {"pulled": {"d": -3}},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [20, 0]}, {"line_to": [20, 10]}, {"line_to": [10, 10]}, {"line_to": [10, 20]}, {"line_to": [0, 20]}, {"line_to": [0, 0]}]}},
+    {"name": "ell", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 10},
+    {"name": "result", "op": "offset", "of": "ell", "faces": [[10, 15, 5]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 5], "expect": "in"},
+    {"label": "notch", "point": [16, 16, 5], "expect": "out"},
+    {"label": "on_moved_face", "point": ["10 + d", 15, 5], "expect": "on"},
+    {"label": "on_trimmed_face", "point": ["15 + d / 2", 10, 5], "expect": "on"},
+    {"label": "on_extended_top", "point": ["(10 + d) / 2", 20, 5], "expect": "on"},
+    {"label": "on_concave_edge", "point": ["10 + d", 10, 5], "expect": "on"},
+    {"label": "past_moved_face", "point": ["10 + d + 0.5", 15, 5], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "(300 + 10 * d) * 10",
+    "area": "1400 + 20 * d",
+    "centroid": ["(2000 + 5 * (10 + d)^2) / (300 + 10 * d)", "(1000 + 150 * (10 + d)) / (300 + 10 * d)", 5],
+    "counts": {"vertices": 12, "edges": 18, "faces": 8, "loops": 8, "shells": 1},
+    "genus": 0
+  }
+}

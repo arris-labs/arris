@@ -39,14 +39,19 @@ a through-hole's wall pushed — the whole-body case with the sharp corner of §
 So no fixture is held to its closed forms instead (no
 `analytic.measure_differs`), and no fallback is needed for these. Where a later
 fixture finds Open CASCADE wrong or refusing, that fixture is held to its
-closed forms with ADR-0015's evidence and the fallback is recorded here. The
+closed forms with ADR-0015's evidence and the fallback is recorded here. One
+fallback is in the driver itself (step 3): where the moved face sits among
+concave neighbours — a pocket's floor — Open CASCADE hands back the bare shell
+rather than the solid; the driver takes a closed shell as the solid it bounds
+(`BRepBuilderAPI_MakeSolid`) and refuses an open one, and that solid gives the
+pocket's closed forms exactly, pushed and pulled. The
 `offset` recipe op names each face by a point on it (the only face within the
 fixture's `probe`), as a `fillet`'s edges are.
 
 ## Consequences
 
-- `recipe.py` and `arris_debug::fixtures` carry the `offset` op; Arris's runner
-  refuses it as `CorpusError::Unsupported` until `offset_faces` lands (step 3),
-  and the six fixtures wait under `regression/`.
+- `recipe.py` and `arris_debug::fixtures` carry the `offset` op; the six
+  fixtures waited under `regression/` until `offset_faces` landed (step 3), and
+  each moves to `offset/` with the step that builds it.
 - The open question of a filleted pocket wall pulled from its floor (`Gap` or a
   rebuilt fillet) stays with step 5.

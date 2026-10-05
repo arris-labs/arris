@@ -1,0 +1,208 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "efa9f140d91cabcd8d91f69f1751a523d48932c3a667a62668636b89815333f3",
+  "results": {
+    "default": {
+      "area": 3979.999999999999,
+      "centroid": [
+        20.0,
+        15.000000000000002,
+        4.815789473684211
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          986813.1578947366,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1671813.157894738,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          2475000.000000001
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "below_floor",
+          "point": [
+            20.0,
+            15.0,
+            6.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor",
+          "point": [
+            20.0,
+            15.0,
+            7.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_floor",
+          "point": [
+            20.0,
+            15.0,
+            7.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            10.0,
+            15.0,
+            8.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor_edge",
+          "point": [
+            20.0,
+            10.0,
+            7.0
+          ]
+        }
+      ],
+      "volume": 11399.999999999998
+    },
+    "pulled": {
+      "area": 4219.999999999999,
+      "centroid": [
+        20.000000000000007,
+        15.000000000000005,
+        4.801886792452834
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          979050.6289308164,
+          1.3969838619232178e-09,
+          4.656612873077393e-10
+        ],
+        [
+          1.3969838619232178e-09,
+          1644050.6289308164,
+          5.820766091346741e-10
+        ],
+        [
+          4.656612873077393e-10,
+          5.820766091346741e-10,
+          2441666.666666665
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "below_floor",
+          "point": [
+            20.0,
+            15.0,
+            2.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor",
+          "point": [
+            20.0,
+            15.0,
+            3.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_floor",
+          "point": [
+            20.0,
+            15.0,
+            3.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            10.0,
+            15.0,
+            6.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_floor_edge",
+          "point": [
+            20.0,
+            10.0,
+            3.0
+          ]
+        }
+      ],
+      "volume": 10599.999999999996
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "description": "a square pyramid, base 10 × 10 and apex (5, 5, 10), one side pushed out by 1: the four sides no longer meet in one point, so the apex would split into an edge — refused as VertexSplits, the topology kept or nothing (ADR-0048 §3)",
+  "params": {"d": 1},
+  "steps": [
+    {"name": "pyramid", "op": "polyhedron", "namespace": 1,
+     "points": [[0, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0], [5, 5, 10]],
+     "faces": [[[0, 3, 2, 1]], [[0, 1, 4]], [[1, 2, 4]], [[2, 3, 4]], [[3, 0, 4]]]},
+    {"name": "result", "op": "offset", "of": "pyramid", "faces": [[5, "5 / 3", "10 / 3"]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 5, 2], "expect": "in"}
+  ],
+  "analytic": {
+    "expect_error": "vertex-splits",
+    "genus": 0
+  }
+}

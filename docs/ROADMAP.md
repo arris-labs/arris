@@ -67,8 +67,8 @@ A fixture whose result is no solid does not reach those stages: one the
 oracle recorded none for (`degenerate`) must fail with
 `OpError::Degenerate`, and one whose recipe says `analytic.expect_error`
 must fail with that typed refusal — `tangent-contact`, `non-manifold`,
-`blend-too-large`, `tangent-chain`, `vertex-blend` or
-`elliptic-revolve`, the oracle's
+`blend-too-large`, `tangent-chain`, `vertex-blend`,
+`elliptic-revolve`, `vanishes` or `vertex-splits`, the oracle's
 numbers kept as the record of what Open CASCADE builds instead. A recipe may also say `analytic.counts_differ: "why"` and carry
 its own counts, for the one place Arris's convention is deliberately not
 Open CASCADE's (a tangent ruling left unimprinted); every other fixture

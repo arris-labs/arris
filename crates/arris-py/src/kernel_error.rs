@@ -433,8 +433,8 @@ mod tests {
     use arris::math::{Point2, Point3, Precision, Tolerance};
     use arris::mesh::cdt::CdtError;
     use arris::ops::{
-        BlendReason, BooleanReason, BuildSlot, Fault, InputReason, QueryReason, Reason, Rejection,
-        SweepReason,
+        BlendReason, BooleanReason, BuildSlot, Fault, InputReason, OffsetReason, QueryReason,
+        Reason, Rejection, SweepReason,
     };
     use arris::topo::entity::BodyKind;
     use arris::topo::{BodyId, EntityId, FaceId, NotFound};
@@ -495,6 +495,10 @@ mod tests {
             op_error(&OpError::Degenerate {
                 entities: vec![shape()],
                 reason: Reason::Blend(BlendReason::TooLarge),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
+                reason: Reason::Offset(OffsetReason::VertexSplits),
             }),
             op_error(&OpError::Degenerate {
                 entities: vec![shape()],

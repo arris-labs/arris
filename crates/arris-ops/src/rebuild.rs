@@ -468,8 +468,17 @@ pub(crate) struct Rewrite {
     /// by a trim — and `None` for an edge the operation makes.
     pub edges: Vec<(EdgeSpec, Option<EdgeId>)>,
     /// The operand faces replaced, each by its new loops in stored order;
-    /// the surface, the shell's use and the tolerance stay the face's.
+    /// the shell's use and the tolerance stay the face's, and the surface
+    /// too unless [`Rewrite::surfaces`] names another.
     pub faces: BTreeMap<FaceId, Vec<Vec<StoredUse>>>,
+    /// The surface a replaced face moves to, where it is not its own — an
+    /// offset's moved face. A face named here and not in
+    /// [`Rewrite::faces`] is not replaced.
+    pub surfaces: BTreeMap<FaceId, SurfaceId>,
+    /// The operand vertex a new vertex stands for, by its index in
+    /// [`Rewrite::vertices`] — a vertex an offset moves: the operand
+    /// vertex is `Modified` into it rather than `Deleted`.
+    pub vertex_parents: BTreeMap<usize, VertexId>,
     /// The faces added, each appended to its shell after the operand's
     /// own, in this order.
     pub added: Vec<AddedFace>,
@@ -499,7 +508,8 @@ pub(crate) struct Rewritten {
 /// it as a solid, and writes the generic provenance (ADR-0004's keep-by-
 /// id rule, ADR-0007): an operand vertex, edge or face still in the
 /// result is kept and unrecorded; an edge with pieces among the new
-/// edges is `Modified` into them, a replaced face into its replacement;
+/// edges is `Modified` into them, a vertex into the new vertices that
+/// name it their parent, a replaced face into its replacement;
 /// anything else of the operand that is gone is `Deleted`; each shell is
 /// `Modified` into the shell built from it and the body into the result.
 /// The output is verified as every operation's is. Errors: the builder's
@@ -545,7 +555,11 @@ pub(crate) fn rewrite(m: &mut Model, body: Body, rewrite: Rewrite) -> Result<Rew
                     let old = m.face(face.id)?;
                     replaced_at.insert(face.id, (s, faces.len()));
                     faces.push(FaceSpec::New {
-                        surface: old.surface(),
+                        surface: rewrite
+                            .surfaces
+                            .get(&face.id)
+                            .copied()
+                            .unwrap_or(old.surface()),
                         orientation: face.orientation,
                         loops: stored_to_spec(face.orientation, loops),
                         tolerance: old.tolerance(),
@@ -603,9 +617,26 @@ pub(crate) fn rewrite(m: &mut Model, body: Body, rewrite: Rewrite) -> Result<Rew
     // replacement is `Modified`, the rest of what is gone is `Deleted`.
     let out = m.closure(built.body)?;
     let mut p = Provenance::new();
+    let mut images_of: BTreeMap<VertexId, Vec<VertexId>> = BTreeMap::new();
+    for (&k, &parent) in &rewrite.vertex_parents {
+        let Some(&id) = vertices.get(k) else {
+            return Err(OpError::Internal(Fault::Invariant {
+                what: "the new vertex a parent names",
+            }));
+        };
+        images_of.entry(parent).or_default().push(id);
+    }
     for &v in &closure.vertices {
-        if out.vertices.binary_search(&v).is_err() {
-            p.add_deleted(forward(v));
+        if out.vertices.binary_search(&v).is_ok() {
+            continue;
+        }
+        match images_of.get(&v) {
+            Some(images) => {
+                for &image in images {
+                    p.add_modified(forward(v), forward(image));
+                }
+            }
+            None => p.add_deleted(forward(v)),
         }
     }
     let mut pieces_of: BTreeMap<EdgeId, Vec<EdgeId>> = BTreeMap::new();

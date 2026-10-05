@@ -300,23 +300,11 @@ corpus_tests! {
     /// read-back of Open CASCADE's own STEP of it.
     #[ignore = "read-back: #773 on face #769: the pcurve fit still deviates by 2.4 with 3673 spans, the most it may use, on a strip of Open CASCADE's STEP of the blend (the seam edge of #139 reads since the 2026-10-04 reader fix; the differential's counts disagreement on this recipe is Open CASCADE's convention, not Arris's)"]
     regression_turned_dome_three_rim_fillet => run "regression/turned-dome-three-rim-fillet";
-    /// A 10-cube's top face pushed out by 2: a 10 × 10 × 12 block.
-    #[ignore = "OpError: Arris runs no `offset` yet (plans/offset-faces step 3)"]
-    regression_offset_box_top_pushed => run "regression/offset-box-top-pushed";
-    /// A 10-cube's top face pulled in by 2: a 10 × 10 × 8 block.
-    #[ignore = "OpError: Arris runs no `offset` yet (plans/offset-faces step 3)"]
-    regression_offset_box_top_pulled => run "regression/offset-box-top-pulled";
-    /// A 10-cube with every face pushed out by 1: a 12-cube, sharp joins.
-    #[ignore = "OpError: Arris runs no `offset` yet (plans/offset-faces step 3)"]
-    regression_offset_box_whole_out => run "regression/offset-box-whole-out";
-    /// A 10-cube with every face pulled in by 1: an 8-cube.
-    #[ignore = "OpError: Arris runs no `offset` yet (plans/offset-faces step 3)"]
-    regression_offset_box_whole_in => run "regression/offset-box-whole-in";
     /// A cylinder's top cap pushed out by 3: the wall extended along its rulings.
-    #[ignore = "OpError: Arris runs no `offset` yet (plans/offset-faces step 3)"]
+    #[ignore = "OpError::Unsupported, a cylinder against a plane: the planar core moves planes alone (plans/offset-faces step 4)"]
     regression_offset_cylinder_top_pushed => run "regression/offset-cylinder-top-pushed";
     /// A plate's through-hole wall offset by 1 along its outward normal: the hole narrows to radius 2.
-    #[ignore = "OpError: Arris runs no `offset` yet (plans/offset-faces step 3)"]
+    #[ignore = "the face point (13, 10, 5) lies on the hole's seam edge, so it names no face in Arris; and the planar core moves planes alone (plans/offset-faces step 4)"]
     regression_offset_hole_wall_pushed => run "regression/offset-hole-wall-pushed";
     /// A ball sliced by a face 3.7e-7 from its pole: not through the singular
     /// point and nearer than the sphere's (u, v) polygons resolve, refused by
@@ -1137,6 +1125,30 @@ corpus_tests! {
     blend_roof_fan_three_fillet => run "blend/roof-fan-three-fillet";
     /// The chamfer twin of `blend_roof_fan_three_fillet`.
     blend_roof_fan_three_chamfer => run "blend/roof-fan-three-chamfer";
+    /// A 10-cube's top face pushed out by 2: a 10 × 10 × 12 block.
+    offset_box_top_pushed => run "offset/box-top-pushed";
+    /// A 10-cube's top face pulled in by 2: a 10 × 10 × 8 block.
+    offset_box_top_pulled => run "offset/box-top-pulled";
+    /// A 10-cube with every face pushed out by 1: a 12-cube, sharp joins.
+    offset_box_whole_out => run "offset/box-whole-out";
+    /// A 10-cube with every face pulled in by 1: an 8-cube.
+    offset_box_whole_in => run "offset/box-whole-in";
+    /// An extruded L's inner face pushed and pulled: the short arm's top
+    /// trimmed or extended to meet it, two concave edges among the four
+    /// recomputed.
+    offset_l_inner_face => run "offset/l-inner-face";
+    /// A blind pocket's floor pushed (shallower) and pulled (deeper): the
+    /// four walls trimmed or extended. Open CASCADE returns the bare closed
+    /// shell, made the solid it bounds (ADR-0048 §4).
+    offset_pocket_floor => run "offset/pocket-floor";
+    /// A trapezoid prism's top pushed past where its sloped sides meet: the
+    /// top's edges would end before they start, refused as `Vanishes`
+    /// where Open CASCADE drops the face.
+    offset_wedge_top_past_ridge => run "offset/wedge-top-past-ridge";
+    /// A square pyramid with one side pushed: the four sides no longer meet
+    /// at the apex, refused as `VertexSplits` where Open CASCADE splits it
+    /// into an edge.
+    offset_pyramid_side_pushed => run "offset/pyramid-side-pushed";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'
