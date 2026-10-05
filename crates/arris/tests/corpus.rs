@@ -1169,6 +1169,26 @@ corpus_tests! {
     /// An elliptic cylinder's wall moved: the parallel curve of an ellipse
     /// is no ellipse, refused as `NoExactOffset`.
     offset_ellipse_wall_pushed => run "offset/ellipse-wall-pushed";
+    /// A rounded cube's top face moved out and in: every face tangent to
+    /// the next, the whole body dragged — planes moved, blend cylinders and
+    /// corner spheres re-radiused, each tangent edge carried.
+    offset_rounded_box_whole => run "offset/rounded-box-whole";
+    /// The rounded cube moved in past its blends' radius: the dragged
+    /// cylinders and spheres collapse, refused as `SurfaceCollapses`.
+    offset_rounded_box_in_past_radius => run "offset/rounded-box-in-past-radius";
+    /// A block's top face pushed and pulled with its filleted edge: the
+    /// blend and the front face beyond it dragged along the tangent chain.
+    offset_fillet_dragged => run "offset/fillet-dragged";
+    /// A pocket's wall pushed and pulled with its floor fillet: the
+    /// concave blend and the floor beyond it dragged, the blend tightened
+    /// or widened about its own axis.
+    offset_pocket_wall_dragged => run "offset/pocket-wall-dragged";
+    /// A fillet sliced by an oblique flat, the top pulled: the dragged
+    /// strip of blend shrinks clear of the fixed flat, refused as `Gap`.
+    offset_fillet_cut_gap => run "offset/fillet-cut-gap";
+    /// The same sliced block's top pushed: the dragged strip meets the
+    /// fixed flat further up it, their section a new line.
+    offset_fillet_cut_pushed => run "offset/fillet-cut-pushed";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'

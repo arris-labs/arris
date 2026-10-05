@@ -691,6 +691,10 @@ pub enum ExpectError {
     /// offset that drives a moved face's surface through zero (ADR-0048
     /// §3).
     SurfaceCollapses,
+    /// `OpError::Degenerate` with `OffsetReason::Gap`: an offset whose
+    /// face dragged by a tangent neighbour no longer meets a face that
+    /// stays (ADR-0048 §6).
+    Gap,
     /// `OpError::Unsupported` with a NURBS surface or curve in the pair:
     /// an operation on a free-form face the kernel has no closed form
     /// for, the NURBS cycle's (ADR-0026 §5).
@@ -1236,7 +1240,11 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 ));
             }
         }
-        if a.degenerate != m.degenerate {
+        // A refusal Arris owes where Open CASCADE makes nothing — no
+        // solid, or a crash recorded as the empty result (ADR-0048 §6) — is
+        // asserted, and the oracle's degenerate record is all there is.
+        let nothing_to_refuse = a.expect_error.is_some() && m.degenerate;
+        if a.degenerate != m.degenerate && !nothing_to_refuse {
             problem(format!(
                 "[{variant}] analytic.degenerate {} but the oracle says {}",
                 a.degenerate, m.degenerate

@@ -1,0 +1,132 @@
+{
+  "description": "a 6 x 4 x 4 block whose top-front edge is filleted at r 1, its top face moved by d: the blend cylinder is tangent to the top and to the front, so both are dragged along \u2014 the top to z = 4 + d, the front to y = -d, the blend re-radiused to 1 + d about its own axis, the two tangent lines carried along their normals and the end walls, bottom and back extended or trimmed to meet them",
+  "params": {
+    "d": 0.5,
+    "r": 1
+  },
+  "variants": {
+    "pulled": {
+      "d": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        6,
+        4,
+        4
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "block",
+      "edges": [
+        [
+          3,
+          0,
+          4
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "rounded",
+      "faces": [
+        [
+          3,
+          2,
+          4
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        3,
+        2,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        3,
+        2.5,
+        "4 + d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "above_top",
+      "point": [
+        3,
+        2.5,
+        "4 + d + 0.25"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_front",
+      "point": [
+        3,
+        "-d",
+        1.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        3,
+        "r - (r + d) / sqrt(2)",
+        "4 - r + (r + d) / sqrt(2)"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "beyond_blend",
+      "point": [
+        3,
+        "r - (r + d + 0.2) / sqrt(2)",
+        "4 - r + (r + d + 0.2) / sqrt(2)"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_end_wall",
+      "point": [
+        0,
+        2,
+        "2 + d / 2"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "6 * (4 + d)^2 - 6 * (1 - pi / 4) * (r + d)^2",
+    "area": "12 * (4 + d) + 12 * (4 + d - (r + d)) + 6 * (pi / 2) * (r + d) + 2 * ((4 + d)^2 - (1 - pi / 4) * (r + d)^2)",
+    "counts": {
+      "vertices": 10,
+      "edges": 15,
+      "faces": 7,
+      "loops": 7,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

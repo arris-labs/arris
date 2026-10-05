@@ -1,0 +1,103 @@
+{
+  "description": "a 6 x 4 x 4 block whose top-front edge is filleted at r 2 (axis y = 2, z = 2), then cut by the half-space 1.9 or more from the axis along (0, -1, 1)/sqrt(2), which slices the blend into two strips with a flat between them; the top face pulled in by 0.5: the upper strip is tangent to the top and dragged along, its radius to 1.5, and no longer reaches the fixed flat it met along a line \u2014 refused as Gap naming that edge, the model untouched (ADR-0048 \u00a76)",
+  "params": {
+    "d": -0.5,
+    "r": 2
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        6,
+        4,
+        4
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "block",
+      "edges": [
+        [
+          3,
+          0,
+          4
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "slab",
+      "op": "box",
+      "min": [
+        -1,
+        -3,
+        3.9
+      ],
+      "max": [
+        7,
+        7,
+        12
+      ]
+    },
+    {
+      "name": "tool",
+      "op": "transform",
+      "of": "slab",
+      "rotate": {
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "origin": [
+          0,
+          2,
+          2
+        ],
+        "angle_deg": 45
+      }
+    },
+    {
+      "name": "sliced",
+      "op": "cut",
+      "target": "rounded",
+      "tool": "tool"
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "sliced",
+      "faces": [
+        [
+          3,
+          3,
+          4
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        3,
+        2,
+        2
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "gap",
+    "genus": 0
+  }
+}

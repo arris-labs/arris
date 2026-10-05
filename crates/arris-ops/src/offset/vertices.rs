@@ -1,13 +1,14 @@
-//! The vertices an offset moves, each the meeting of the planes of the
+//! The vertices an offset moves, each the meeting of the surfaces of the
 //! faces around it once the moved ones are offset.
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_geom::{GeomKind, Surface};
+use arris_geom::{Curve, GeomKind, Surface};
 use arris_math::{Meter, Point3, Tolerance, Vec3};
-use arris_topo::{FaceId, Model, VertexId};
+use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
 use super::Moves;
+use super::chain::constraints_of;
 use super::meet::{Constraint, meet_near, seam_plane};
 use crate::body_view::BodyView;
 use crate::error::{OffsetReason, OpError, Reason};
@@ -56,15 +57,18 @@ pub(super) fn faces_at(view: &BodyView, v: VertexId) -> Vec<FaceId> {
 /// old one on every surface around it once the move is made (three
 /// independent planes meet in one point; a vertex between two, on a
 /// straight run, slides square to their line; a vertex on a seam also
-/// lies on the plane the seam is in). A vertex whose surfaces do not all
-/// pass through that point within its tolerance is
-/// [`OffsetReason::VertexSplits`]; a face on an elliptic cylinder or a
+/// lies on the plane the seam is in; a vertex on a carried tangent edge
+/// lies on its curve). A vertex whose surfaces do not all pass through that
+/// point within its tolerance is [`OffsetReason::VertexSplits`], or
+/// [`OffsetReason::Gap`] naming the edge where a dragged face and one that
+/// stays no longer meet there; a face on an elliptic cylinder or a
 /// free-form surface, or a surface with no distance there, is
 /// [`OpError::Unsupported`] against the moved face that reaches it.
 pub(super) fn moved_vertices(
     m: &Model,
     view: &BodyView,
     moves: &Moves,
+    carried: &BTreeMap<EdgeId, Curve>,
     tol: Tolerance,
     meter: &mut Meter<'_>,
 ) -> Result<BTreeMap<VertexId, Point3>, OpError> {
@@ -89,7 +93,20 @@ pub(super) fn moved_vertices(
             .ok_or(OpError::Internal(crate::error::Fault::Invariant {
                 what: "a moved face at a moved vertex",
             }))?;
-        let mut constraints = Vec::with_capacity(faces.len());
+        // A carried edge's curve first: the vertex is on it exactly, where
+        // its two tangent faces alone pin no direction across it.
+        let mut constraints = Vec::with_capacity(faces.len() + 2);
+        for e in view.vertex_edges.get(&v).into_iter().flatten() {
+            if let Some(curve) = carried.get(e) {
+                let [a, b] = constraints_of(curve, beside).ok_or(OpError::Internal(
+                    crate::error::Fault::Invariant {
+                        what: "a carried edge on a line or a circle",
+                    },
+                ))?;
+                constraints.push(a);
+                constraints.push(b);
+            }
+        }
         for &f in &faces {
             let surface = moves.surface_of(m, f)?;
             if let Surface::EllipticCylinder { .. } | Surface::Nurbs(_) = surface {
@@ -117,14 +134,52 @@ pub(super) fn moved_vertices(
                 seams_at(m, view, v, old, tol, &mut constraints)?;
                 meet_near(old, &constraints, tol, tolerance)?
             }
-        }
-        .ok_or_else(|| OpError::Degenerate {
-            entities: vec![forward(v)],
-            reason: Reason::Offset(OffsetReason::VertexSplits),
-        })?;
+        };
+        let Some(point) = point else {
+            return Err(split_or_gap(m, view, moves, v, old, tol, tolerance)?);
+        };
         points.insert(v, point);
     }
     Ok(points)
+}
+
+/// Why the faces at `v` no longer meet: a [`OffsetReason::Gap`] naming
+/// the edge at `v` between a dragged face and one that stays where those
+/// two alone no longer meet near the vertex, [`OffsetReason::VertexSplits`]
+/// naming the vertex otherwise.
+fn split_or_gap(
+    m: &Model,
+    view: &BodyView,
+    moves: &Moves,
+    v: VertexId,
+    old: Point3,
+    tol: Tolerance,
+    tolerance: f64,
+) -> Result<OpError, OpError> {
+    for e in view.vertex_edges.get(&v).into_iter().flatten() {
+        let Some(&[a, b]) = view.uses.get(e).map(Vec::as_slice) else {
+            continue;
+        };
+        if !moves.gap_between(a.face, b.face) {
+            continue;
+        }
+        let on = |face: FaceId| -> Result<Constraint, OpError> {
+            Ok(Constraint {
+                surface: moves.surface_of(m, face)?,
+                face,
+            })
+        };
+        if meet_near(old, &[on(a.face)?, on(b.face)?], tol, tolerance)?.is_none() {
+            return Ok(OpError::Degenerate {
+                entities: vec![forward(*e)],
+                reason: Reason::Offset(OffsetReason::Gap),
+            });
+        }
+    }
+    Ok(OpError::Degenerate {
+        entities: vec![forward(v)],
+        reason: Reason::Offset(OffsetReason::VertexSplits),
+    })
 }
 
 /// The plane of every seam edge at `v`, added to `constraints`: a face

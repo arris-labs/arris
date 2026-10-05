@@ -1,11 +1,14 @@
 //! Offset faces (ADR-0048): the chosen faces of a solid moved along their
 //! outward normals by a signed distance, the rest extended or trimmed to
-//! meet them, topology kept. By phase over `body_view`: the moves (each
-//! moved face's offset surface), the vertices (each the point nearest its
-//! old one on the surfaces around it — `vertices`, `meet`), the edges (each
-//! on the section of its two new surfaces nearest the old edge, a seam on
-//! its plane's), the faces (their loops re-used over the new edges), then
-//! `rebuild::rewrite` and the checker at `Level::Full` in every profile.
+//! meet them, topology kept. By phase over `body_view`: the chain (the
+//! chosen faces closed over tangent edges, each tangent edge carried along
+//! the faces' shared normal — `chain`), the moves (each moved face's offset
+//! surface), the vertices (each the point nearest its old one on the
+//! surfaces around it — `vertices`, `meet`), the edges (each on the section
+//! of its two new surfaces nearest the old edge, a seam on its plane's, a
+//! tangent edge its carried curve), the faces (their loops re-used over the
+//! new edges), then `rebuild::rewrite` and the checker at `Level::Full` in
+//! every profile.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -17,7 +20,9 @@ use arris_topo::{Body, Face, FaceId, Model, Provenance};
 use crate::body_view::BodyView;
 use crate::error::{Fault, InputReason, OffsetReason, OpError, Reason};
 use crate::rebuild::{self, forward};
+use chain::Chain;
 
+mod chain;
 mod edges;
 mod faces;
 mod meet;
@@ -26,6 +31,8 @@ mod vertices;
 /// The moved faces' new surfaces, by face, and the distance they moved.
 pub(crate) struct Moves {
     pub(crate) surfaces: BTreeMap<FaceId, Surface>,
+    /// The moved faces no one chose, dragged by a tangent neighbour.
+    pub(crate) dragged: BTreeSet<FaceId>,
     pub(crate) distance: f64,
 }
 
@@ -37,6 +44,13 @@ impl Moves {
             Some(s) => Ok(s.clone()),
             None => Ok(m.surface(m.face(face)?.surface())?.clone()),
         }
+    }
+
+    /// Whether one of `a` and `b` is dragged and the other stays: an edge
+    /// between them that the offset cannot hold is a [`OffsetReason::Gap`].
+    pub(crate) fn gap_between(&self, a: FaceId, b: FaceId) -> bool {
+        let stays = |f: &FaceId| !self.surfaces.contains_key(f);
+        (self.dragged.contains(&a) && stays(&b)) || (self.dragged.contains(&b) && stays(&a))
     }
 }
 
@@ -58,9 +72,11 @@ impl Moves {
 /// concentric sphere and a torus's a torus of the same major radius; the
 /// edge between two offsets is the intersector's section on the branch
 /// nearest the old edge, and a seam is carried as the section with the
-/// plane it lies in. A face tangent to a moved one is not dragged along
-/// yet. The result passes the checker at `Level::Full` in every build
-/// profile.
+/// plane it lies in. A face tangent to a moved one moves with it, and so
+/// on along the chain — a fillet and the face beyond it are dragged — and
+/// the edge between two tangent faces is carried along their shared
+/// normal: a line shifted, a circle re-radiused and moved along its axis.
+/// The result passes the checker at `Level::Full` in every build profile.
 ///
 /// Provenance: each moved face, each face whose loop changed, each
 /// recomputed edge and each moved vertex `Modified` into its new self;
@@ -79,14 +95,18 @@ impl Moves {
 /// [`OffsetReason::VertexSplits`] naming a vertex whose faces no longer
 /// meet in one point — a pyramid's apex with one side pushed,
 /// [`OffsetReason::NoExactOffset`] naming a moved face on an elliptic
-/// cylinder or a free-form surface, and [`OffsetReason::SurfaceCollapses`]
-/// naming a moved face whose radius the move drives through zero or whose
-/// cone it carries to the axis; [`OpError::Unsupported`] naming a face on
-/// an elliptic cylinder or a free-form surface beside a moved one, two
-/// faces tangent along an edge one of which moves, and a pole or apex the
-/// move cannot place; [`OpError::NotFound`] for a face id that does not
-/// resolve; [`OpError::Internal`] with the report where the result fails
-/// the checker.
+/// cylinder or a free-form surface, or a tangent edge that is no line or
+/// circle, or along which the faces' normal turns,
+/// [`OffsetReason::SurfaceCollapses`] naming a moved face whose radius the
+/// move drives through zero or whose cone it carries to the axis — a
+/// dragged fillet moved in past its radius — and [`OffsetReason::Gap`]
+/// naming the edge where a dragged face no longer meets a face beside it
+/// that stays; [`OpError::Unsupported`] naming a face on an elliptic
+/// cylinder or a free-form surface beside a moved one, two faces whose new
+/// surfaces only touch, and a pole or apex the move cannot place;
+/// [`OpError::NotFound`] for a face id that does not resolve;
+/// [`OpError::Internal`] with the report where the result fails the
+/// checker.
 ///
 /// ```
 /// use arris_ops::measure::mass_properties;
@@ -156,20 +176,21 @@ pub fn offset_faces(
     m.transaction(|m| build(m, body, &selected, distance, &mut meter))
 }
 
-/// The offset of `moved` by `distance`, built and checked.
+/// The offset of `chosen` by `distance`, built and checked.
 fn build(
     m: &mut Model,
     body: Body,
-    moved: &BTreeSet<FaceId>,
+    chosen: &BTreeSet<FaceId>,
     distance: f64,
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
     let tol = m.precision().tolerance();
     let view = BodyView::of(m, body)?;
-    let moves = moves(m, &view, moved, distance, tol)?;
-    refuse_tangent(m, &view, &moves, tol)?;
-    let points = vertices::moved_vertices(m, &view, &moves, tol, meter)?;
-    let edges = edges::moved_edges(m, &view, &moves, &points, tol, meter)?;
+    let chain = chain::chain(m, &view, chosen, distance, tol)?;
+    let moves = moves(m, &view, &chain, distance, tol)?;
+    let carried = chain::carried(m, &view, &chain, distance, tol)?;
+    let points = vertices::moved_vertices(m, &view, &moves, &carried, tol, meter)?;
+    let edges = edges::moved_edges(m, &view, &moves, &carried, &points, tol, meter)?;
     let rw = faces::rewrite_of(m, &view.faces, &moves, &points, &edges, tol, meter)?;
     let out = rebuild::rewrite(m, body, rw)?;
     let report = arris_check::check(m, out.body, Level::Full);
@@ -189,7 +210,7 @@ fn build(
 fn moves(
     m: &Model,
     view: &BodyView,
-    moved: &BTreeSet<FaceId>,
+    chain: &Chain,
     distance: f64,
     tol: Tolerance,
 ) -> Result<Moves, OpError> {
@@ -198,7 +219,7 @@ fn moves(
         reason: Reason::Offset(reason),
     };
     let mut surfaces = BTreeMap::new();
-    for &f in moved {
+    for &f in &chain.moved {
         let surface = m.surface(m.face(f)?.surface())?;
         let by = distance * view.orientation[&f].sign();
         let offset = match surface {
@@ -234,45 +255,9 @@ fn moves(
         }
         surfaces.insert(f, offset);
     }
-    Ok(Moves { surfaces, distance })
-}
-
-/// An edge between two faces tangent along it, one of which moves, has no
-/// section of the new surfaces to hold it — they are tangent or apart —
-/// and so is outside this release, [`OpError::Unsupported`] naming the
-/// two faces: the move set closed over tangent edges is the dragged
-/// chain's (ADR-0048). Read at the edge's midpoint, as the blend reads a
-/// tangent edge.
-fn refuse_tangent(
-    m: &Model,
-    view: &BodyView,
-    moves: &Moves,
-    tol: Tolerance,
-) -> Result<(), OpError> {
-    for (&e, uses) in &view.uses {
-        let [a, b] = uses.as_slice() else { continue };
-        if a.face == b.face
-            || !(moves.surfaces.contains_key(&a.face) || moves.surfaces.contains_key(&b.face))
-        {
-            continue;
-        }
-        let Some((_, range)) = m.edge(e)?.curve() else {
-            continue;
-        };
-        let t = range.midpoint();
-        let n1 = view.outward(m, a.face, m.curve2(a.pcurve)?.point(t))?;
-        let n2 = view.outward(m, b.face, m.curve2(b.pcurve)?.point(t))?;
-        if n1.cross(&n2).norm() <= tol.angular {
-            let kind = |f: FaceId| -> Result<arris_geom::GeomKind, OpError> {
-                Ok(arris_geom::GeomKind::Surface(
-                    m.surface(m.face(f)?.surface())?.kind(),
-                ))
-            };
-            return Err(OpError::Unsupported {
-                a: (kind(a.face)?, forward(a.face)),
-                b: (kind(b.face)?, forward(b.face)),
-            });
-        }
-    }
-    Ok(())
+    Ok(Moves {
+        surfaces,
+        dragged: chain.dragged.clone(),
+        distance,
+    })
 }

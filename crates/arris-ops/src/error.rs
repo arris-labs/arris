@@ -361,6 +361,10 @@ pub enum OffsetReason {
     /// cylinder, a sphere or a torus tube whose radius is gone, a cone
     /// whose move reaches its axis. The error's entity is the face.
     SurfaceCollapses,
+    /// A face dragged along by a tangent neighbour no longer meets a face
+    /// beside it that stays: its offset has pulled clear of the other's
+    /// surface where their edge was. The error's entity is that edge.
+    Gap,
 }
 
 impl OffsetReason {
@@ -374,6 +378,7 @@ impl OffsetReason {
             OffsetReason::VertexSplits => "VertexSplits",
             OffsetReason::NoExactOffset => "NoExactOffset",
             OffsetReason::SurfaceCollapses => "SurfaceCollapses",
+            OffsetReason::Gap => "Gap",
         }
     }
 }
@@ -396,6 +401,9 @@ impl core::fmt::Display for OffsetReason {
             OffsetReason::SurfaceCollapses => {
                 f.write_str("the offset drives the face's surface through zero")
             }
+            OffsetReason::Gap => f.write_str(
+                "a face dragged by a tangent neighbour no longer meets the face beside it that stays",
+            ),
         }
     }
 }

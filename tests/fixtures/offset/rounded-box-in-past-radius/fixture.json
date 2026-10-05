@@ -1,0 +1,120 @@
+{
+  "description": "the rounded 4-cube of rounded-box-whole with its top face moved in by 1.5, past the blends' radius 1: the dragged cylinders and corner spheres would have radius -0.5, so their surfaces collapse \u2014 refused as SurfaceCollapses, the model untouched (ADR-0048 \u00a73, \u00a76)",
+  "params": {
+    "d": -1.5,
+    "r": 1
+  },
+  "steps": [
+    {
+      "name": "cube",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        4,
+        4,
+        4
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "cube",
+      "edges": [
+        [
+          2,
+          0,
+          0
+        ],
+        [
+          2,
+          4,
+          0
+        ],
+        [
+          2,
+          0,
+          4
+        ],
+        [
+          2,
+          4,
+          4
+        ],
+        [
+          0,
+          2,
+          0
+        ],
+        [
+          4,
+          2,
+          0
+        ],
+        [
+          0,
+          2,
+          4
+        ],
+        [
+          4,
+          2,
+          4
+        ],
+        [
+          0,
+          0,
+          2
+        ],
+        [
+          4,
+          0,
+          2
+        ],
+        [
+          0,
+          4,
+          2
+        ],
+        [
+          4,
+          4,
+          2
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "rounded",
+      "faces": [
+        [
+          2,
+          2,
+          4
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "centre",
+      "point": [
+        2,
+        2,
+        2
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "surface-collapses",
+    "genus": 0
+  }
+}

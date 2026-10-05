@@ -42,16 +42,19 @@ pub(super) struct NewEdge {
 /// its direction: between two fixed faces the line itself, re-ranged to
 /// its moved ends; where a face moved, the line through its new start
 /// along that direction. Any other edge lies on its own curve between two
-/// fixed faces, re-ranged, and otherwise on the branch of its two new
-/// surfaces' section the intersector gives that passes through both new
-/// ends — a seam edge's second surface the plane it lies in. An edge whose
-/// new ends meet or cross within its tolerance, or that no branch passes
-/// through, is [`OffsetReason::Vanishes`]; a section that is only tangent
-/// is outside this release, [`OpError::Unsupported`].
+/// fixed faces, re-ranged; on its `carried` curve between two tangent
+/// moved faces; and otherwise on the branch of its two new surfaces'
+/// section the intersector gives that passes through both new ends — a
+/// seam edge's second surface the plane it lies in. An edge whose new ends
+/// meet or cross within its tolerance, or that no branch passes through,
+/// is [`OffsetReason::Vanishes`] — [`OffsetReason::Gap`] where it lies
+/// between a dragged face and one that stays; a section that is only
+/// tangent is outside this release, [`OpError::Unsupported`].
 pub(super) fn moved_edges(
     m: &mut Model,
     view: &BodyView,
     moves: &Moves,
+    carried: &BTreeMap<EdgeId, Curve>,
     points: &BTreeMap<VertexId, Point3>,
     tol: Tolerance,
     meter: &mut Meter<'_>,
@@ -129,10 +132,18 @@ pub(super) fn moved_edges(
                 }
             }
             _ => {
-                let candidates = if moved {
-                    section(m, moves, e, uses, [ps, pe], &old, old_range, tol, meter)?
-                } else {
-                    vec![old.clone()]
+                let candidates = match carried.get(&e) {
+                    Some(curve) => vec![curve.clone()],
+                    None if moved => {
+                        section(m, moves, e, uses, [ps, pe], &old, old_range, tol, meter)?
+                    }
+                    None => vec![old.clone()],
+                };
+                // No branch through the ends where a dragged face meets one
+                // that stays is the chain pulled off its neighbour.
+                let missing = match uses.as_slice() {
+                    [a, b] if moves.gap_between(a.face, b.face) => OffsetReason::Gap,
+                    _ => OffsetReason::Vanishes,
                 };
                 let (curve, reversed, range, mid) = along(
                     &old,
@@ -142,6 +153,7 @@ pub(super) fn moved_edges(
                     start == end,
                     tolerance,
                     e,
+                    missing,
                 )?;
                 let (start, end) = if reversed && start != end {
                     (end, start)
@@ -253,8 +265,9 @@ fn section(
 /// runs against the old edge, and a parameter near the old edge's
 /// midpoint. The range starts at the first end the curve reaches going
 /// the old edge's way and, on a periodic curve, goes forward a whole turn
-/// for a closed edge and to the other end otherwise. [`OffsetReason::Vanishes`]
-/// where no candidate passes through both ends or the ends meet.
+/// for a closed edge and to the other end otherwise. `missing` where no
+/// candidate passes through both ends, [`OffsetReason::Vanishes`] where
+/// the ends meet.
 #[allow(clippy::too_many_arguments)]
 fn along(
     old: &Curve,
@@ -264,6 +277,7 @@ fn along(
     closed: bool,
     tolerance: f64,
     e: EdgeId,
+    missing: OffsetReason,
 ) -> Result<(Curve, bool, Interval, f64), OpError> {
     let reach = |c: &Curve| -> Option<f64> {
         let (a, b) = (c.project(ps).ok()?, c.project(pe).ok()?);
@@ -275,7 +289,10 @@ fn along(
         .filter(|&(r, _)| r <= tolerance)
         .min_by(|x, y| x.0.total_cmp(&y.0))
         .map(|(_, c)| c)
-        .ok_or_else(|| vanishes(e))?;
+        .ok_or(OpError::Degenerate {
+            entities: vec![forward(e)],
+            reason: Reason::Offset(missing),
+        })?;
     let old_mid = old_range.midpoint();
     let near = best.project(old.point(old_mid)).map_err(fault_of)?;
     let reversed = best.eval(near.t).d1.dot(&old.eval(old_mid).d1) < 0.0;

@@ -62,10 +62,39 @@ pcurve is placed by whole periods to the old use's `(u, v)` at the edge's
 midpoint, which an offset keeps to the period. A cone whose move carries a
 vertex to the axis, and a radius driven to zero, are `SurfaceCollapses`; an
 elliptic cylinder or a free-form face `NoExactOffset`. An edge between faces
-tangent along it, one of which moves, is `Unsupported` until the dragged chain
-(step 5): the new surfaces there are tangent or apart. Where Open CASCADE
+tangent along it, one of which moves, was `Unsupported` until the dragged
+chain (§6): the new surfaces there are tangent or apart. Where Open CASCADE
 builds an inverted cylinder for a radius driven past zero, or crashes on exactly
 zero, the fixture holds Arris to the refusal.
+
+**6. The dragged chain (step 5).** The chosen faces are closed over tangent
+edges: a face meeting a moved face tangentially along an edge moves with it,
+and so on along the chain, transitively, at the same distance — tangency read
+at the edge's midpoint as the blend reads it, for a ball of the offset's
+distance. So a filleted edge's blend and the face beyond it are dragged, and a
+rounded box moves whole from any one face; a consumer's press-pull selects its
+tangent chain the same way. The edge between two tangent moved faces has no
+crossing section — the offsets are tangent there — so it is carried: each
+point moves by the distance along the normal both faces share, which keeps a
+line a line (shifted, where the normal is the same along it) and a circle a
+circle (re-radiused and moved along its axis, where the normal keeps one angle
+to its plane — every circle of a surface of revolution about its axis); any
+other tangent edge is `NoExactOffset` naming it, a circle driven through zero
+`Vanishes`. A vertex on a carried edge lies on its curve — the curve's two
+surfaces (a line's two planes, a circle's plane and cylinder) lead its
+constraints, where its tangent faces alone pin no direction across it. A
+dragged fillet moved in past its radius collapses (`SurfaceCollapses`), as a
+chosen one does. Where a dragged face no longer meets a face beside it that
+stays — a strip of blend, sliced by an oblique flat, pulled clear of the flat
+— the offset is `Gap` naming their edge, read where the vertex's faces fail to
+meet and those two alone do not, or where no branch of their section passes
+through the edge's ends. The oracle's driver closes the named faces over
+tangent edges the same way before `SetOffsetOnFace` (normals at each edge's
+midpoint within a sine of 1e-6). Open CASCADE's intersection join has nothing
+to meet at a gap and kills the process, so the driver tries the offset in a
+forked child first and records an offset it refuses or crashes on as the
+empty compound — no solid — which only a fixture expecting Arris's refusal
+accepts.
 
 ## Consequences
 
@@ -73,4 +102,8 @@ zero, the fixture holds Arris to the refusal.
   fixtures waited under `regression/` until `offset_faces` landed (step 3), and
   each moves to `offset/` with the step that builds it.
 - The open question of a filleted pocket wall pulled from its floor (`Gap` or a
-  rebuilt fillet) stays with step 5.
+  rebuilt fillet) is answered by §6: the closure is transitive, so the floor,
+  tangent to the blend, is dragged too and the pocket deepens with the wall
+  moved — neither direction gaps, and nothing is rebuilt. A press-pull that
+  keeps the floor and re-blends at the old radius would be the blend's, a
+  backlog line if a consumer asks.

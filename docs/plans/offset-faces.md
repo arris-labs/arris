@@ -159,7 +159,7 @@ bound has to be established here.
   `cylinder-top-pushed`, `hole-wall-pushed` (both with a pulled variant),
   `cylinder-whole`, `frustum-side`, `boss-dome`, `torus-ring`,
   `hole-wall-collapses`, `ellipse-wall-pushed`.
-- [ ] Step 5 **[3]** — The dragged chain: the move set closed over
+- [x] Step 5 **[3]** — The dragged chain: the move set closed over
   tangent edges (`BodyView::tangent_at`), an edge between two tangent
   moved faces carried along their normal (a line shifted, a parallel
   circle re-radiused and moved along its axis; any other curve
@@ -170,6 +170,21 @@ bound has to be established here.
   fillets dragged; a filleted pocket wall pushed (the direction that
   meets the floor) and pulled (`Gap`, unless step 1's oracle shows a
   sharp answer for it — see Open questions).
+  *Done:* the closure is transitive (`offset/chain.rs`), tangency read for a
+  ball of the distance; a vertex on a carried edge takes the curve's two
+  surfaces as its leading constraints (ADR-0048 §6). Finding: the floor of a
+  filleted pocket wall is tangent to the blend, so it is dragged too and
+  neither direction gaps — the open question below is answered by that.
+  `Gap` is reached instead by a blend sliced by an oblique flat, the strip
+  tangent to the top pulled clear of the flat; Open CASCADE segfaults on
+  every gap, so the oracle's driver tries the offset in a forked child and
+  records a refusal or a crash as the empty compound, and closes the named
+  faces over tangent edges as Arris does. Fixtures in `offset/`:
+  `rounded-box-whole` (with `in`), `rounded-box-in-past-radius`
+  (`SurfaceCollapses`), `fillet-dragged` and `pocket-wall-dragged` (each
+  with `pulled`), `fillet-cut-pushed`, `fillet-cut-gap` (`Gap`). A step-4
+  drift fixed on the way: `tests/fixtures/README.md`'s `expect_error` list
+  lacked `no-exact-offset` and `surface-collapses`.
 - [ ] Step 6 **[2]** — Global refusal: a push that runs into a distant
   face (a thin wall pushed through a parallel one, a boss pushed into the
   body's other side) refused as `SelfIntersects` from the `Full` report,
@@ -223,8 +238,9 @@ and `mypy.stubtest` green.
   give the press-pull answer, or only the whole-shape offset? Agent
   decides at step 1 from its runs; the fallback is closed forms, recorded
   in ADR-0048.
-- ⚠ OPEN: A filleted pocket wall pulled away from the floor: refuse as
-  `Gap` (the default here) or rebuild the fillet at its radius between
-  the moved wall and the floor? Agent decides by step 5 from what Open
-  CASCADE and the consumer's press-pull do; a rebuild that needs the
-  blend is a backlog line, not this plan.
+- Answered (step 5, ADR-0048 §6): a filleted pocket wall pulled away from
+  the floor neither gaps nor rebuilds — the closure is transitive, so the
+  floor, tangent to the blend, is dragged with the wall, as a consumer's
+  press-pull selects its tangent chain. A press-pull that keeps the floor
+  and re-blends at the old radius is a backlog line at retirement if a
+  consumer asks.

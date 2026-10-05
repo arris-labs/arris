@@ -1,0 +1,152 @@
+{
+  "description": "a block [0,0,0]-[20,10,6] with a pocket [5,3,2]-[15,7,8] cut through its top, the pocket's floor-to-wall edge at y = 3 filleted at r 0.5, the wall moved by d: the concave blend is tangent to the wall and to the floor, so both are dragged along \u2014 the wall to y = 3 + d, the floor to z = 2 + d, the blend re-radiused to 0.5 - d about its own axis \u2014 and the pocket's end walls, far wall and the block's top extended or trimmed to meet them. Pushed (d > 0) the pocket narrows and the blend tightens, pulled it widens and deepens",
+  "params": {
+    "d": 0.25,
+    "r": 0.5
+  },
+  "variants": {
+    "pulled": {
+      "d": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        10,
+        6
+      ]
+    },
+    {
+      "name": "tool",
+      "op": "box",
+      "min": [
+        5,
+        3,
+        2
+      ],
+      "max": [
+        15,
+        7,
+        8
+      ]
+    },
+    {
+      "name": "pocketed",
+      "op": "cut",
+      "target": "block",
+      "tool": "tool"
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "pocketed",
+      "edges": [
+        [
+          10,
+          3,
+          2
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "rounded",
+      "faces": [
+        [
+          10,
+          3,
+          4
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        10,
+        "1.5 + d / 2",
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        10,
+        "3 + d",
+        4.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "in_pocket",
+      "point": [
+        10,
+        "3 + d + 0.2",
+        4.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_floor",
+      "point": [
+        10,
+        5.5,
+        "2 + d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "below_floor",
+      "point": [
+        10,
+        5.5,
+        "2 + d - 0.2"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        10,
+        "3 + r - (r - d) / sqrt(2)",
+        "2 + r - (r - d) / sqrt(2)"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_end_wall",
+      "point": [
+        5,
+        5,
+        "4 + d / 2"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "1200 - 10 * (4 - d)^2 + 10 * (1 - pi / 4) * (r - d)^2",
+    "area": "760 + 20 * (4 - d - (r - d)) + 2 * ((4 - d)^2 - (1 - pi / 4) * (r - d)^2) + 5 * pi * (r - d)",
+    "counts": {
+      "vertices": 18,
+      "edges": 27,
+      "faces": 12,
+      "loops": 13,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

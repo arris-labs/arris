@@ -1,0 +1,226 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "c72c0e79da926887a9ac76bfb7333d8b03386864348765ad35798a4ab8f4ac54",
+  "results": {
+    "default": {
+      "area": 143.67145867644257,
+      "centroid": [
+        3.0000000000000004,
+        1.796776636620075,
+        2.203223363379925
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 7,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          387.83745028540466,
+          2.2737367544323206e-13,
+          1.1368683772161603e-13
+        ],
+        [
+          2.2737367544323206e-13,
+          549.7273507602986,
+          -10.748517160597032
+        ],
+        [
+          1.1368683772161603e-13,
+          -10.748517160597032,
+          549.7273507602981
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 7,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            3.0,
+            2.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            3.0,
+            2.5,
+            4.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_top",
+          "point": [
+            3.0,
+            2.5,
+            4.75
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front",
+          "point": [
+            3.0,
+            -0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            3.0,
+            -0.06066017177982119,
+            4.060660171779821
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beyond_blend",
+          "point": [
+            3.0,
+            -0.20208152801713064,
+            4.20208152801713
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end_wall",
+          "point": [
+            0.0,
+            2.0,
+            2.25
+          ]
+        }
+      ],
+      "volume": 118.60287520586554
+    },
+    "pulled": {
+      "area": 107.10508806208341,
+      "centroid": [
+        3.0,
+        2.257206779944871,
+        1.742793220055129
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 7,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          148.32121464578086,
+          0.0,
+          5.684341886080802e-14
+        ],
+        [
+          0.0,
+          293.69489905817863,
+          -0.8661487549280764
+        ],
+        [
+          5.684341886080802e-14,
+          -0.8661487549280764,
+          293.69489905817886
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 7,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            3.0,
+            2.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            3.0,
+            2.5,
+            3.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_top",
+          "point": [
+            3.0,
+            2.5,
+            3.75
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front",
+          "point": [
+            3.0,
+            0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            3.0,
+            0.6464466094067263,
+            3.353553390593274
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beyond_blend",
+          "point": [
+            3.0,
+            0.5050252531694168,
+            3.494974746830583
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end_wall",
+          "point": [
+            0.0,
+            2.0,
+            1.75
+          ]
+        }
+      ],
+      "volume": 73.17809724509617
+    }
+  }
+}

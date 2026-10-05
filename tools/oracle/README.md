@@ -59,8 +59,13 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
   the only edge within the fixture's `probe`; `offset` is
   `BRepOffset_MakeOffset` with offset 0 and the intersection join, each
   moved face given its distance by `SetOffsetOnFace` and named by a point
-  the same way, and the bare closed shell it returns beside concave
-  neighbours made the solid it bounds, ADR-0048 §4), and `step` (a solid of a
+  the same way, the named faces first closed over tangent edges as Arris
+  drags the chain (ADR-0048 §6), and the bare closed shell it returns beside
+  concave neighbours made the solid it bounds, ADR-0048 §4; the offset is
+  tried in a forked child first, and one Open CASCADE refuses or crashes on
+  — a dragged face pulled clear of a fixed one kills the process — is
+  recorded as the empty compound, no solid, for a fixture that expects
+  Arris's refusal, §6), and `step` (a solid of a
   STEP file beside the recipe, by `step.solids`, its SHA-256 checked),
   chained by step name; `params`
   with string expressions and `variants` overriding them. The grammar is

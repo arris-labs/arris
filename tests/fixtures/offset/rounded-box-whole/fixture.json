@@ -1,0 +1,183 @@
+{
+  "description": "a 4-cube with all twelve edges filleted at r 1, its top face moved by d: every face is tangent to the next, so the whole body is dragged along \u2014 the six planes moved by d, the twelve blend cylinders and the eight corner spheres re-radiused to 1 + d about the same axes and centres, each tangent edge carried along the faces' shared normal. The result is the (4 + 2d)-cube rounded at 1 + d",
+  "params": {
+    "d": 0.5,
+    "r": 1
+  },
+  "variants": {
+    "in": {
+      "d": -0.5
+    }
+  },
+  "steps": [
+    {
+      "name": "cube",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        4,
+        4,
+        4
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "cube",
+      "edges": [
+        [
+          2,
+          0,
+          0
+        ],
+        [
+          2,
+          4,
+          0
+        ],
+        [
+          2,
+          0,
+          4
+        ],
+        [
+          2,
+          4,
+          4
+        ],
+        [
+          0,
+          2,
+          0
+        ],
+        [
+          4,
+          2,
+          0
+        ],
+        [
+          0,
+          2,
+          4
+        ],
+        [
+          4,
+          2,
+          4
+        ],
+        [
+          0,
+          0,
+          2
+        ],
+        [
+          4,
+          0,
+          2
+        ],
+        [
+          0,
+          4,
+          2
+        ],
+        [
+          4,
+          4,
+          2
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "rounded",
+      "faces": [
+        [
+          2,
+          2,
+          4
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "centre",
+      "point": [
+        2,
+        2,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        2,
+        2,
+        "4 + d"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "above_top",
+      "point": [
+        2,
+        2,
+        "4 + d + 0.25"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_side",
+      "point": [
+        "-d",
+        2,
+        2
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_corner_sphere",
+      "point": [
+        "1 - (1 + d) / sqrt(3)",
+        "1 - (1 + d) / sqrt(3)",
+        "1 - (1 + d) / sqrt(3)"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "beyond_corner",
+      "point": [
+        "1 - (1 + d) / sqrt(3) - 0.1",
+        "1 - (1 + d) / sqrt(3) - 0.1",
+        "1 - (1 + d) / sqrt(3) - 0.1"
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "(4 + 2 * d)^3 - 12 * (1 - pi / 4) * (r + d)^2 * (4 + 2 * d - 2 * (r + d)) - 8 * (1 - pi / 6) * (r + d)^3",
+    "area": "6 * (4 + 2 * d - 2 * (r + d))^2 + 12 * (pi / 2) * (r + d) * (4 + 2 * d - 2 * (r + d)) + 4 * pi * (r + d)^2",
+    "counts": {
+      "vertices": 24,
+      "edges": 48,
+      "faces": 26,
+      "loops": 26,
+      "shells": 1
+    },
+    "genus": 0,
+    "centroid": [
+      2,
+      2,
+      2
+    ]
+  }
+}

@@ -56,7 +56,11 @@ Operations, by `op`:
                Open CASCADE's `BRepOffset_MakeOffset` with offset 0 on the
                fixed faces and `SetOffsetOnFace` on the moved ones, the
                intersection join, a closed shell it returns made the
-               solid it bounds — ADR-0048)
+               solid it bounds; the named faces closed over tangent
+               edges first, each face tangent to a moved one moved with
+               it, as Arris drags the chain; an offset Open CASCADE
+               refuses or crashes on, tried in a forked child, is the
+               empty compound — ADR-0048)
     polyhedron points [[x,y,z], ...], faces [[[i, j, k, ...], <hole>...], ...],
                namespace <u32>
                (each face its loops of point indices, the outer one
@@ -79,9 +83,11 @@ import ast
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 from typing import Any
 
+from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Curve2d, BRepAdaptor_Surface
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Cut, BRepAlgoAPI_Fuse
 from OCP.BRepBuilderAPI import (
     BRepBuilderAPI_MakeEdge,
@@ -93,12 +99,13 @@ from OCP.BRepBuilderAPI import (
     BRepBuilderAPI_MakeWire,
     BRepBuilderAPI_Transform,
 )
-from OCP.BRep import BRep_Tool
+from OCP.BRep import BRep_Builder, BRep_Tool
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer, BRepFilletAPI_MakeFillet
 from OCP.BRepGProp import BRepGProp
 from OCP.BRepOffset import BRepOffset_MakeOffset, BRepOffset_Skin
 from OCP.BRepLib import BRepLib
+from OCP.BRepLProp import BRepLProp_SLProps
 from OCP.BRepPrimAPI import (
     BRepPrimAPI_MakeBox,
     BRepPrimAPI_MakeCylinder,
@@ -110,9 +117,10 @@ from OCP.GC import GC_MakeArcOfCircle, GC_MakeArcOfEllipse
 from OCP.GProp import GProp_GProps
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Ax3, gp_Circ, gp_Dir, gp_Elips, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCP.ShapeFix import ShapeFix_Face
-from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_SHELL
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED, TopAbs_SHELL
 from OCP.TopExp import TopExp
-from OCP.TopoDS import TopoDS, TopoDS_Shape
+from OCP.TopoDS import TopoDS, TopoDS_Compound, TopoDS_Shape
+from OCP.collections import IndexedDataMap_TopoDS_Shape_List_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedDataMapOfShapeListOfShape
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
 
 from . import OracleError, step as step_file
@@ -508,16 +516,88 @@ def _face_at(shape: TopoDS_Shape, point: list[float], probe: float):
     return near[0]
 
 
-def _offset_faces(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float) -> TopoDS_Shape:
-    """`shape` with `faces` moved by `distance` along their outward
-    normals and every other face held (offset 0), joined by intersection."""
+# Two faces whose outward normals at their edge's midpoint are within this
+# sine of parallel are tangent there: a fillet's contact is exact to the
+# fitting tolerance, a sharp edge is degrees away.
+_TANGENT_SINE = 1e-6
+
+
+def _outward(face: TopoDS_Shape, edge: TopoDS_Shape, t: float) -> gp_Vec:
+    """The outward unit normal of `face` at parameter `t` of its `edge`."""
+    uv = BRepAdaptor_Curve2d(edge, face).Value(t)
+    props = BRepLProp_SLProps(BRepAdaptor_Surface(face), uv.X(), uv.Y(), 1, 1e-9)
+    n = gp_Vec(props.Normal())
+    return n.Reversed() if face.Orientation() == TopAbs_REVERSED else n
+
+
+def _tangent_chain(shape: TopoDS_Shape, faces: list[TopoDS_Shape]) -> list[TopoDS_Shape]:
+    """`faces` closed over tangent edges: every face that meets a listed
+    one tangentially along an edge, and so on along the chain (ADR-0048
+    §6)."""
+    ancestors = IndexedDataMapOfShapeListOfShape()
+    TopExp.MapShapesAndAncestors_s(shape, TopAbs_EDGE, TopAbs_FACE, ancestors)
+    across: list[tuple[TopoDS_Shape, TopoDS_Shape]] = []
+    for i in range(1, ancestors.Extent() + 1):
+        edge = TopoDS.Edge(ancestors.FindKey(i))
+        pair = list(ancestors.FindFromIndex(i))
+        if len(pair) != 2 or pair[0].IsSame(pair[1]) or BRep_Tool.Degenerated_s(edge):
+            continue
+        curve = BRepAdaptor_Curve(edge)
+        t = 0.5 * (curve.FirstParameter() + curve.LastParameter())
+        a, b = (TopoDS.Face(f) for f in pair)
+        if _outward(a, edge, t).Crossed(_outward(b, edge, t)).Magnitude() <= _TANGENT_SINE:
+            across.append((a, b))
+    chain = list(faces)
+    grown = True
+    while grown:
+        grown = False
+        for a, b in across:
+            has_a = any(a.IsSame(f) for f in chain)
+            has_b = any(b.IsSame(f) for f in chain)
+            if has_a != has_b:
+                chain.append(b if has_a else a)
+                grown = True
+    return chain
+
+
+def _make_offset(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float) -> BRepOffset_MakeOffset:
     mo = BRepOffset_MakeOffset()
     mo.Initialize(shape, 0.0, 1e-7, BRepOffset_Skin, True, False, GeomAbs_Intersection, False)
     for f in faces:
         mo.SetOffsetOnFace(f, distance)
     mo.MakeOffsetShape()
-    if not mo.IsDone():
-        raise OracleError(f"offset: Open CASCADE refuses (error {mo.Error()})")
+    return mo
+
+
+def _offset_survives(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float) -> bool:
+    """Whether Open CASCADE's offset finishes with a shape, tried in a
+    forked child first: where a moved chain pulls clear of a fixed face
+    its intersection join has nothing to meet and the process dies
+    (ADR-0048 §6), which would take the whole batch with it."""
+    pid = os.fork()
+    if pid == 0:
+        try:
+            mo = _make_offset(shape, faces, distance)
+            os._exit(0 if mo.IsDone() and not mo.Shape().IsNull() else 1)
+        except BaseException:
+            os._exit(1)
+    _, status = os.waitpid(pid, 0)
+    return os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
+
+
+def _offset_faces(shape: TopoDS_Shape, faces: list[TopoDS_Shape], distance: float) -> TopoDS_Shape:
+    """`shape` with `faces` moved by `distance` along their outward
+    normals, with every face tangent to a moved one, and every other face
+    held (offset 0), joined by intersection. Where Open CASCADE refuses or
+    crashes it makes nothing, recorded as the empty compound: a result
+    with no solid, which only a fixture that expects Arris's refusal
+    accepts."""
+    chain = _tangent_chain(shape, faces)
+    if not _offset_survives(shape, chain, distance):
+        empty = TopoDS_Compound()
+        BRep_Builder().MakeCompound(empty)
+        return empty
+    mo = _make_offset(shape, chain, distance)
     result = mo.Shape()
     # Skin mode hands back the bare shell where the moved face sits among
     # concave neighbours (a pocket's floor): closed, it bounds the solid.
