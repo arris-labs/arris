@@ -299,7 +299,11 @@ cone's apex — where the surface has no normal (`QueryReason::Singular`).
 
 `ops::boolean::interferences(&Model, a, b) -> Result<Interferences,
 OpError>` is another query: the boolean decomposition of ADR-0004 as
-a value, computed without building anything. **No guard stands before
+a value, computed without building anything. It is the two-operand case
+of `interferences_many(&Model, &[Body])`: the decomposition is indexed by
+operand (`Interferences::operands`, `FacePair::operands`,
+`EdgeImage::operand` and `on`), one build over every pair of operands
+(ADR-0050). **No guard stands before
 the intersector**: every face pair, and every edge against a face, whose
 boxes overlap is asked about, whatever analytic surface either lies on,
 and `OpError::Unsupported` names a pair only where the intersector

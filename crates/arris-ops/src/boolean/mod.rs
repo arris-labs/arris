@@ -43,10 +43,14 @@ pub(super) fn meet_curves(
 /// have in common: the pair a boolean has to decide.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FacePair {
-    /// The face of the first operand.
+    /// The face of the pair's first operand, `operands[0]`.
     pub a: FaceId,
-    /// The face of the second.
+    /// The face of the second, `operands[1]`.
     pub b: FaceId,
+    /// The operands the two faces belong to, indices into
+    /// [`Interferences::operands`], the lower first: a pair is always of
+    /// two different operands.
+    pub operands: [usize; 2],
     /// Their surfaces' intersection. The crossing curves of a `Meets`
     /// pair are the section curves; a `Coincident` pair is decided by the
     /// arrangement of the two faces on one surface — its
@@ -333,9 +337,12 @@ pub struct EdgeEdgeHit {
 pub struct EdgeImage {
     /// The pair, an index into [`Interferences::pairs`].
     pub pair: usize,
-    /// Which face of the pair the edge belongs to: `0` for `a`'s, placed
-    /// on `b`'s face; `1` for `b`'s, placed on `a`'s.
-    pub side: usize,
+    /// The operand the edge belongs to, an index into
+    /// [`Interferences::operands`]: one of the pair's two.
+    pub operand: usize,
+    /// The operand whose face of the pair the edge is placed on: the
+    /// pair's other one.
+    pub on: usize,
     /// The edge.
     pub edge: EdgeId,
     /// Which piece of the edge between consecutive paves, ascending along
@@ -384,14 +391,15 @@ pub struct CommonBlock {
 /// the same `Display`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Interferences {
-    /// The first operand.
-    pub a: Body,
-    /// The second.
-    pub b: Body,
-    /// Every face pair whose boxes overlap, `a`'s faces outer.
+    /// The operands, in the caller's order: [`FacePair::operands`] and
+    /// [`EdgeImage::operand`] index into this.
+    pub operands: Vec<Body>,
+    /// Every face pair of two operands whose boxes overlap and whose
+    /// faces' boxes overlap, the lower operand's faces outer, operand
+    /// pairs in ascending order.
     pub pairs: Vec<FacePair>,
-    /// Every edge-on-face hit: `a`'s edges against `b`'s faces and `b`'s
-    /// against `a`'s, ascending by `(edge id, t)`.
+    /// Every edge-on-face hit: an operand's edges against the faces of
+    /// every other, ascending by `(edge id, t)`.
     pub hits: Vec<EdgeFaceHit>,
     /// Every crossing of two section curves of one crossing pair on
     /// both faces, ascending by `(pair, curves, t on the first)`.
@@ -499,9 +507,45 @@ pub fn interferences(
     b: Body,
     control: &Control<'_>,
 ) -> Result<Interferences, OpError> {
-    crate::verify_input(m, a)?;
-    crate::verify_input(m, b)?;
-    pave::build(m, a, b, &mut Meter::new(control))
+    interferences_many(m, &[a, b], control)
+}
+
+/// The pave model of any number of operands: [`interferences`]'s
+/// decomposition over every pair of them, one build — every face pair of
+/// two different operands whose boxes overlap intersected once, every
+/// section vertex made once and shared, whichever operands' entities it
+/// lies on (ADR-0050 §1). [`FacePair::operands`] and
+/// [`EdgeImage::operand`] index into `operands`, in the caller's order,
+/// and the pairs are in ascending operand pairs, `(0, 1)`, `(0, 2)`, …,
+/// `(1, 2)`, … With two operands the value is [`interferences`]'s.
+///
+/// Errors: as [`interferences`], for every operand.
+///
+/// ```
+/// use arris_ops::boolean::interferences_many;
+/// use arris_ops::primitive_box;
+/// use arris_topo::Model;
+/// use arris_math::{Control, Point3};
+///
+/// let mut m = Model::default();
+/// let none = arris_ops::Control::NONE;
+/// let (a, _) = primitive_box(&mut m, Point3::origin(), Point3::new(4.0, 4.0, 4.0), &none)?;
+/// let (b, _) = primitive_box(&mut m, Point3::new(1.0, 1.0, 1.0), Point3::new(5.0, 5.0, 5.0), &none)?;
+/// let (c, _) = primitive_box(&mut m, Point3::new(20.0, 0.0, 0.0), Point3::new(24.0, 4.0, 4.0), &none)?;
+/// let i = interferences_many(&m, &[a, b, c], &Control::NONE)?;
+/// // `c` is far from both: every pair is of `a` and `b`.
+/// assert!(i.pairs.iter().all(|p| p.operands == [0, 1]));
+/// # Ok::<(), arris_ops::OpError>(())
+/// ```
+pub fn interferences_many(
+    m: &Model,
+    operands: &[Body],
+    control: &Control<'_>,
+) -> Result<Interferences, OpError> {
+    for &body in operands {
+        crate::verify_input(m, body)?;
+    }
+    pave::build(m, operands, &mut Meter::new(control))
 }
 
 /// `target` minus `tool`: the boolean difference of two solids whose
@@ -607,7 +651,7 @@ pub fn cut(
     crate::verify_input(m, target)?;
     crate::verify_input(m, tool)?;
     let mut meter = Meter::new(control);
-    let i = pave::build(m, target, tool, &mut meter)?;
+    let i = pave::build(m, &[target, tool], &mut meter)?;
     result::boolean(m, &i, result::Op::Cut, &mut meter)
 }
 
@@ -672,7 +716,7 @@ pub fn fuse(
     crate::verify_input(m, a)?;
     crate::verify_input(m, b)?;
     let mut meter = Meter::new(control);
-    let i = pave::build(m, a, b, &mut meter)?;
+    let i = pave::build(m, &[a, b], &mut meter)?;
     result::boolean(m, &i, result::Op::Fuse, &mut meter)
 }
 
@@ -716,7 +760,7 @@ pub fn common(
     crate::verify_input(m, a)?;
     crate::verify_input(m, b)?;
     let mut meter = Meter::new(control);
-    let i = pave::build(m, a, b, &mut meter)?;
+    let i = pave::build(m, &[a, b], &mut meter)?;
     result::boolean(m, &i, result::Op::Common, &mut meter)
 }
 
@@ -817,7 +861,8 @@ impl fmt::Display for Interferences {
     /// coincident pairs. Deterministic, so two runs are compared by their
     /// text.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "interferences {} vs {}", self.a, self.b)?;
+        let names: Vec<String> = self.operands.iter().map(|b| b.to_string()).collect();
+        writeln!(f, "interferences {}", names.join(" vs "))?;
         writeln!(f, "pairs {}", self.pairs.len())?;
         for (i, p) in self.pairs.iter().enumerate() {
             match &p.intersection {
@@ -990,10 +1035,11 @@ impl fmt::Display for Interferences {
         }
         writeln!(f, "images {}", self.images.len())?;
         for (i, im) in self.images.iter().enumerate() {
-            let on = if im.side == 0 {
-                self.pairs[im.pair].b
+            let pair = &self.pairs[im.pair];
+            let on = if im.on == pair.operands[1] {
+                pair.b
             } else {
-                self.pairs[im.pair].a
+                pair.a
             };
             writeln!(
                 f,

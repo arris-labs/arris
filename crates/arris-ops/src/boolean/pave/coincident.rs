@@ -38,15 +38,18 @@ impl<'m, 'c> Build<'m, 'c> {
             if pair.intersection != SurfaceIntersection::Coincident {
                 continue;
             }
-            let (ia, ib) = self.pair_faces[pi];
-            edges.extend(self.faces[0][ia].edges().iter().map(|&e| (0, e)));
-            edges.extend(self.faces[1][ib].edges().iter().map(|&e| (1, e)));
+            let (fa, fb) = self.pair_infos(pi);
+            let [oa, ob] = pair.operands;
+            edges.extend(fa.edges().iter().map(|&e| (oa, e)));
+            edges.extend(fb.edges().iter().map(|&e| (ob, e)));
         }
         // An edge lying in a face of the other operand is paved the same
         // way, whether or not a face of its own is coincident with it: its
         // pieces inside that face are images there.
         for &(e, _) in &self.coincident {
-            edges.insert((usize::from(self.edge_info(0, e).is_none()), e));
+            if let Some(operand) = self.operand_of_edge(e) {
+                edges.insert((operand, e));
+            }
         }
         let mut wanted: Vec<(EdgeId, f64, usize)> = Vec::new();
         for (side, id) in edges {
@@ -108,8 +111,11 @@ impl<'m, 'c> Build<'m, 'c> {
             })
         };
         let mid = e.curve.point(block.range.midpoint());
+        let Some(other_side) = self.operand_of_face(other.id) else {
+            return Ok(None);
+        };
         for &gid in other.edges() {
-            let same = if side == 0 {
+            let same = if side < other_side {
                 self.same_curve.contains(&(e.id, gid))
             } else {
                 self.same_curve.contains(&(gid, e.id))
@@ -117,7 +123,7 @@ impl<'m, 'c> Build<'m, 'c> {
             if !same {
                 continue;
             }
-            let Some(g) = self.edge_info(1 - side, gid) else {
+            let Some(g) = self.edge_info(other_side, gid) else {
                 continue;
             };
             let Ok(on_g) = g.curve.project(mid) else {
@@ -197,9 +203,15 @@ impl<'m, 'c> Build<'m, 'c> {
                 wanted: tolerance,
             });
         }
+        let on = self
+            .operand_of_face(other.id)
+            .ok_or(OpError::Internal(Fault::Invariant {
+                what: "the operand of an image's face",
+            }))?;
         Ok(Some(EdgeImage {
             pair: pi,
-            side,
+            operand: side,
+            on,
             edge: e.id,
             index: block.index,
             range: block.range,
@@ -222,13 +234,9 @@ impl<'m, 'c> Build<'m, 'c> {
             if self.pairs[pi].intersection != SurfaceIntersection::Coincident {
                 continue;
             }
-            let (ia, ib) = self.pair_faces[pi];
-            for side in 0..2 {
-                let (f, other) = if side == 0 {
-                    (&self.faces[0][ia], &self.faces[1][ib])
-                } else {
-                    (&self.faces[1][ib], &self.faces[0][ia])
-                };
+            let (fa, fb) = self.pair_infos(pi);
+            let [oa, ob] = self.pairs[pi].operands;
+            for (side, f, other) in [(oa, fa, fb), (ob, fb, fa)] {
                 for &eid in f.edges() {
                     let Some(e) = self.edge_info(side, eid) else {
                         continue;
@@ -243,7 +251,7 @@ impl<'m, 'c> Build<'m, 'c> {
                             let seen = blocks
                                 .iter()
                                 .any(|x: &CommonBlock| x.b == (e.id, block.index));
-                            if side == 1 && !seen {
+                            if side == ob && !seen {
                                 let (b, raised) =
                                     self.common_block(pi, e, &block, gid, &gb, reversed)?;
                                 floors.extend(
@@ -271,16 +279,21 @@ impl<'m, 'c> Build<'m, 'c> {
         // that face, so its pieces inside it are placed here, under the
         // pair of the first face that uses it.
         for &(eid, gid) in &self.coincident {
-            let side = usize::from(self.edge_info(0, eid).is_none());
-            let (Some(e), Some(other)) = (
-                self.edge_info(side, eid),
-                self.faces[1 - side].iter().find(|g| g.id == gid),
-            ) else {
+            let Some(side) = self.operand_of_edge(eid) else {
+                continue;
+            };
+            let Some((other_side, other)) = (0..self.operands.len())
+                .filter(|&o| o != side)
+                .find_map(|o| Some((o, self.faces[o].iter().find(|g| g.id == gid)?)))
+            else {
+                continue;
+            };
+            let Some(e) = self.edge_info(side, eid) else {
                 continue;
             };
             let pair_with = |f: FaceId| {
                 self.pairs.iter().position(|p| {
-                    if side == 0 {
+                    if side < other_side {
                         p.a == f && p.b == gid
                     } else {
                         p.a == gid && p.b == f
@@ -329,20 +342,25 @@ impl<'m, 'c> Build<'m, 'c> {
         // ([`Self::along_block`]) is that block on the pair's other face:
         // its image there, where the section edge would have been.
         for along in &self.along {
-            let (ia, ib) = self.pair_faces[along.pair];
-            let (f, other) = if along.side == 0 {
-                (&self.faces[0][ia], &self.faces[1][ib])
+            let (fa, fb) = self.pair_infos(along.pair);
+            let [oa, _] = self.pairs[along.pair].operands;
+            let (f, other) = if along.operand == oa {
+                (fa, fb)
             } else {
-                (&self.faces[1][ib], &self.faces[0][ia])
+                (fb, fa)
             };
-            let Some(e) = self.edge_info(along.side, along.edge) else {
+            let Some(e) = self.edge_info(along.operand, along.edge) else {
                 continue;
             };
             // The piece is placed once on a face, whichever pair placed it
             // first: an edge lying in the face is imaged there already.
             let on = |x: &EdgeImage| {
                 let pair = &self.pairs[x.pair];
-                if x.side == 0 { pair.b } else { pair.a }
+                if x.on == pair.operands[1] {
+                    pair.b
+                } else {
+                    pair.a
+                }
             };
             let held = images.iter().any(|x: &EdgeImage| {
                 (x.edge, x.index, on(x)) == (along.edge, along.block.index, other.id)
@@ -351,7 +369,8 @@ impl<'m, 'c> Build<'m, 'c> {
                 continue;
             }
             // Outside the other face, the block bounds nothing there.
-            let Some(image) = self.image(along.pair, along.side, e, f, other, &along.block)? else {
+            let Some(image) = self.image(along.pair, along.operand, e, f, other, &along.block)?
+            else {
                 continue;
             };
             floors.push((along.block.start, image.tolerance));
@@ -383,8 +402,9 @@ impl<'m, 'c> Build<'m, 'c> {
         reversed: bool,
     ) -> Result<(CommonBlock, f64), OpError> {
         let m = self.m;
+        let [oa, ob] = self.pairs[pi].operands;
         let g = self
-            .edge_info(0, gid)
+            .edge_info(oa, gid)
             .ok_or(OpError::Internal(Fault::Invariant {
                 what: "a's edge info for a common block",
             }))?;
@@ -398,7 +418,7 @@ impl<'m, 'c> Build<'m, 'c> {
         let t_e = e.in_range(on_e.t).unwrap_or(block.range.midpoint());
         let mut tolerance = g.tolerance.max(e.tolerance);
         let mut pcurves = Vec::new();
-        for fb in &self.faces[1] {
+        for fb in &self.faces[ob] {
             if !fb.edges().contains(&e.id) {
                 continue;
             }
@@ -412,7 +432,7 @@ impl<'m, 'c> Build<'m, 'c> {
                 let fit = g.tolerance.max(e.tolerance) + fb.tolerance;
                 let (pc, residual) = self.pcurve_of(
                     fb,
-                    g_face_of(self, gid),
+                    g_face_of(self, oa, gid),
                     g.curve,
                     gb.range,
                     uv_mid,

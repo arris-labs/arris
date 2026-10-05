@@ -492,7 +492,11 @@ fn a_seam_on_a_ruling_is_an_image_on_the_other_wall() {
     );
     assert_eq!(i.images.len(), 1, "{i}");
     let image = &i.images[0];
-    assert_eq!((image.edge, image.side, image.index), (edge, 0, 0), "{i}");
+    assert_eq!(
+        (image.edge, image.operand, image.index),
+        (edge, 0, 0),
+        "{i}"
+    );
     assert_eq!(i.pairs[image.pair].b, wall, "{i}");
     assert!(matches!(image.pcurve, Curve2::Line { .. }), "{i}");
     assert_eq!(i.sections.len(), 3, "{i}");
@@ -841,7 +845,7 @@ fn a_section_block_along_an_operand_edge_is_that_edges_piece() {
         panic!("{i}");
     };
     assert_eq!(
-        (image.edge, image.side, image.index),
+        (image.edge, image.operand, image.index),
         (seam[0], 0, 1),
         "{i}"
     );

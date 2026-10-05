@@ -170,7 +170,8 @@ struct Block {
 /// other operand as an image instead of a section edge on both.
 struct Along {
     pair: usize,
-    side: usize,
+    /// The operand the edge belongs to.
+    operand: usize,
     edge: EdgeId,
     block: Block,
 }
@@ -184,15 +185,23 @@ struct Build<'m, 'c> {
     /// split of it and never locks it from a thread.
     meter: Mutex<Meter<'c>>,
     precision: Precision,
-    a: Body,
-    b: Body,
-    faces: [Vec<FaceInfo<'m>>; 2],
-    edges: [Vec<EdgeInfo<'m>>; 2],
-    /// The one region every face pair's traced section is clipped to
-    /// ([`region`]).
-    within: Aabb,
+    /// The operands, at least two, in the caller's order; the index into
+    /// this is the operand's everywhere below.
+    operands: Vec<Body>,
+    /// Per operand, its faces.
+    faces: Vec<Vec<FaceInfo<'m>>>,
+    /// Per operand, its edges that have a curve.
+    edges: Vec<Vec<EdgeInfo<'m>>>,
+    /// The operand every edge of every operand belongs to.
+    edge_operand: BTreeMap<EdgeId, usize>,
+    /// The operand every face belongs to.
+    face_operand: BTreeMap<FaceId, usize>,
+    /// Per operand pair `[i, j]`, `i < j`, the region its traced sections
+    /// are clipped to ([`region`]).
+    within: BTreeMap<[usize; 2], Aabb>,
     pairs: Vec<FacePair>,
-    /// Per pair, the indices of its faces in `faces`.
+    /// Per pair, the indices of its faces in `faces[operands[0]]` and
+    /// `faces[operands[1]]`.
     pair_faces: Vec<(usize, usize)>,
     hits: Vec<EdgeFaceHit>,
     /// Per hit, the tolerance of the entities that made it.
@@ -203,7 +212,7 @@ struct Build<'m, 'c> {
     /// Per section crossing, the tolerance of the pair that made it.
     section_crossing_tolerance: Vec<f64>,
     /// Edge pairs of the coincident face pairs whose curves are the same
-    /// curve, `a`'s edge first.
+    /// curve, the lower operand's edge first.
     same_curve: BTreeSet<(EdgeId, EdgeId)>,
     vertices: Vec<VertexBuild>,
     paves: BTreeMap<EdgeId, Vec<Pave>>,
@@ -220,21 +229,62 @@ struct Build<'m, 'c> {
 
 pub(super) fn build<'c>(
     m: &Model,
-    a: Body,
-    b: Body,
+    operands: &[Body],
     meter: &mut Meter<'c>,
 ) -> Result<Interferences, OpError> {
-    let faces = [FaceInfo::of_body(m, a)?, FaceInfo::of_body(m, b)?];
-    let edges = [EdgeInfo::of_body(m, a)?, EdgeInfo::of_body(m, b)?];
-    let within = region(&faces);
+    let faces = operands
+        .iter()
+        .map(|&b| FaceInfo::of_body(m, b))
+        .collect::<Result<Vec<_>, _>>()?;
+    let edges = operands
+        .iter()
+        .map(|&b| EdgeInfo::of_body(m, b))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut within = BTreeMap::new();
+    for i in 0..operands.len() {
+        for j in i + 1..operands.len() {
+            within.insert([i, j], region(&faces[i], &faces[j]));
+        }
+    }
+    let mut edge_operand = BTreeMap::new();
+    for (i, es) in edges.iter().enumerate() {
+        for e in es {
+            edge_operand.insert(e.id, i);
+        }
+    }
+    let mut face_operand = BTreeMap::new();
+    for (i, fs) in faces.iter().enumerate() {
+        for f in fs {
+            face_operand.insert(f.id, i);
+        }
+    }
+    if operands.len() < 2 {
+        // Nothing to decompose: an operand against none.
+        return Ok(Interferences {
+            operands: operands.to_vec(),
+            pairs: Vec::new(),
+            hits: Vec::new(),
+            section_crossings: Vec::new(),
+            vertices: Vec::new(),
+            paves: BTreeMap::new(),
+            curves: Vec::new(),
+            sections: Vec::new(),
+            contacts: Vec::new(),
+            coincident: Vec::new(),
+            crossings: Vec::new(),
+            images: Vec::new(),
+            blocks: Vec::new(),
+        });
+    }
     let mut build = Build {
         m,
         meter: Mutex::new(*meter),
         precision: m.precision(),
-        a,
-        b,
+        operands: operands.to_vec(),
         faces,
         edges,
+        edge_operand,
+        face_operand,
         within,
         pairs: Vec::new(),
         pair_faces: Vec::new(),
@@ -270,17 +320,18 @@ pub(super) fn build<'c>(
     Ok(build.finish())
 }
 
-/// The region every face pair of the boolean is intersected in: the
+/// The region every face pair of two operands is intersected in: the
 /// overlap of the two operands' boxes, grown on every side by its own
 /// diagonal. A section interior to both faces of a pair is inside both
 /// operands' boxes, so the overlap bounds everything the boolean keeps;
 /// the growth keeps the clip of a traced section well away from any
 /// face, since it only has to bound what runs to infinity. One region
-/// for the whole boolean, so every face pair on the same two surfaces
-/// gets the same curve bit for bit (ADR-0018). Operands whose boxes are
-/// apart have no candidate pair, and their region is never read.
-fn region(faces: &[Vec<FaceInfo<'_>>; 2]) -> Aabb {
-    let [a, b] = faces.each_ref().map(|side| {
+/// per operand pair, so every face pair of the same two operands on the
+/// same two surfaces gets the same curve bit for bit (ADR-0018, ADR-0050
+/// §6). Operands whose boxes are apart have no candidate pair, and their
+/// region is never read.
+fn region(first: &[FaceInfo<'_>], second: &[FaceInfo<'_>]) -> Aabb {
+    let [a, b] = [first, second].map(|side| {
         side.iter()
             .map(|f| f.bounds)
             .reduce(Aabb::union)
@@ -432,9 +483,31 @@ impl<'m, 'c> Build<'m, 'c> {
         self.metered(Meter::tick).map_err(OpError::Interrupted)
     }
 
-    /// The edge of operand `side` with this id, when it has a curve.
-    fn edge_info(&self, side: usize, id: EdgeId) -> Option<&EdgeInfo<'m>> {
-        self.edges[side].iter().find(|e| e.id == id)
+    /// The edge of operand `operand` with this id, when it has a curve.
+    fn edge_info(&self, operand: usize, id: EdgeId) -> Option<&EdgeInfo<'m>> {
+        self.edges[operand].iter().find(|e| e.id == id)
+    }
+
+    /// The operand the edge belongs to, when it has a curve.
+    fn operand_of_edge(&self, id: EdgeId) -> Option<usize> {
+        self.edge_operand.get(&id).copied()
+    }
+
+    /// The operand the face belongs to.
+    fn operand_of_face(&self, id: FaceId) -> Option<usize> {
+        self.face_operand.get(&id).copied()
+    }
+
+    /// The two faces of pair `pi`, the lower operand's first.
+    fn pair_infos(&self, pi: usize) -> (&FaceInfo<'m>, &FaceInfo<'m>) {
+        let [oa, ob] = self.pairs[pi].operands;
+        let (ia, ib) = self.pair_faces[pi];
+        (&self.faces[oa][ia], &self.faces[ob][ib])
+    }
+
+    /// The orientation errors name entities in: the first operand's.
+    fn orientation(&self) -> arris_topo::Orientation {
+        self.operands[0].orientation
     }
 
     /// `point` on face `f`: its (u, v) in the translate the face's loops
@@ -529,8 +602,7 @@ impl<'m, 'c> Build<'m, 'c> {
         let m = self.m;
         let vertices = self.vertices.iter().map(|v| v.finish(m)).collect();
         Interferences {
-            a: self.a,
-            b: self.b,
+            operands: self.operands,
             pairs: self.pairs,
             hits: self.hits,
             section_crossings: self.section_crossings,
@@ -547,13 +619,13 @@ impl<'m, 'c> Build<'m, 'c> {
     }
 }
 
-/// A face of `a` that uses edge `gid`, for naming in an error; the first
-/// face of `a` when none does.
-fn g_face_of<'b, 'm>(build: &'b Build<'m, '_>, gid: EdgeId) -> &'b FaceInfo<'m> {
-    build.faces[0]
+/// A face of operand `operand` that uses edge `gid`, for naming in an
+/// error; the operand's first face when none does.
+fn g_face_of<'b, 'm>(build: &'b Build<'m, '_>, operand: usize, gid: EdgeId) -> &'b FaceInfo<'m> {
+    build.faces[operand]
         .iter()
         .find(|f| f.edges().contains(&gid))
-        .unwrap_or(&build.faces[0][0])
+        .unwrap_or(&build.faces[operand][0])
 }
 
 #[cfg(test)]

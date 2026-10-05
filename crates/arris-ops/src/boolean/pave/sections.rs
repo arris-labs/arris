@@ -68,8 +68,9 @@ impl<'m, 'c> Build<'m, 'c> {
         ci: usize,
         curve: &Curve,
     ) -> Result<(), OpError> {
+        let [oa, ob] = self.pairs[pi].operands;
         let (ia, ib) = self.pair_faces[pi];
-        let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
+        let (fa, fb) = (&self.faces[oa][ia], &self.faces[ob][ib]);
         let mut paves: Vec<f64> = Vec::new();
         for (k, h) in self.hits.iter().enumerate() {
             let on_pair = (h.face == fb.id && fa.edges().contains(&h.edge))
@@ -130,8 +131,9 @@ impl<'m, 'c> Build<'m, 'c> {
         curve: &Curve,
     ) -> Result<(), OpError> {
         let m = self.m;
+        let [oa, ob] = self.pairs[pi].operands;
         let (ia, ib) = self.pair_faces[pi];
-        let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
+        let (fa, fb) = (&self.faces[oa][ia], &self.faces[ob][ib]);
         let periodic = curve.period().is_some();
         // An open curve that ends on a section vertex is paved at that end
         // — at both, for a traced branch that leaves a singular point and
@@ -239,7 +241,7 @@ impl<'m, 'c> Build<'m, 'c> {
         // split of the other face, where one is needed, is the edge's
         // image through the coincident neighbour (ADR-0004).
         let mut along: Vec<&EdgeInfo<'m>> = Vec::new();
-        for (side, f, other) in [(0, fa, fb), (1, fb, fa)] {
+        for (side, f, other) in [(oa, fa, fb), (ob, fb, fa)] {
             for &eid in f.edges() {
                 let Some(e) = self.edge_info(side, eid) else {
                     continue;
@@ -293,8 +295,7 @@ impl<'m, 'c> Build<'m, 'c> {
             // Along an edge of one face, the block is on that face's
             // boundary and its polygons cannot say it is inside: the
             // verdict comes first, and the other face decides the image.
-            let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
-            let along = [(0, fa), (1, fb)].into_iter().find_map(|(side, f)| {
+            let along = [(oa, fa), (ob, fb)].into_iter().find_map(|(side, f)| {
                 self.along_block(side, f, fa, fb, curve, range, start, end)
                     .map(|(edge, block)| (side, edge, block))
             });
@@ -303,11 +304,11 @@ impl<'m, 'c> Build<'m, 'c> {
                 // edge is paved, it is both faces' boundary: each edge's
                 // own piece there, neither a section edge nor an image of
                 // one on the other face.
-                let other = if side == 0 { (1, fb) } else { (0, fa) };
+                let other = if side == oa { (ob, fb) } else { (oa, fa) };
                 if !self.along_boundary(other.0, other.1, fa, fb, curve, range) {
                     self.along.push(Along {
                         pair: pi,
-                        side,
+                        operand: side,
                         edge,
                         block,
                     });
@@ -317,7 +318,16 @@ impl<'m, 'c> Build<'m, 'c> {
             let Some(uv) = Self::inside_both(fa, fb, curve.point(range.midpoint())) else {
                 continue;
             };
-            let section = self.section_edge(fa, fb, curve, range, uv, curve_index, start, end)?;
+            let section = self.section_edge(
+                [oa, ob],
+                (fa, fb),
+                curve,
+                range,
+                uv,
+                curve_index,
+                start,
+                end,
+            )?;
             // Every vertex ≥ its edges: the ends carry at least the
             // section edge's tolerance.
             for k in [start, end] {
@@ -341,11 +351,14 @@ impl<'m, 'c> Build<'m, 'c> {
     /// on a surface `Coincident` with `other`'s, a face of the other
     /// operand, by the face pair's own verdict.
     pub(super) fn beside_on(&self, side: usize, e: EdgeId, f: FaceId, other: FaceId) -> bool {
+        let Some(other_side) = self.operand_of_face(other) else {
+            return false;
+        };
         self.faces[side]
             .iter()
             .filter(|g| g.id != f && g.edges().contains(&e))
             .any(|g| {
-                let (a, b) = if side == 0 {
+                let (a, b) = if side < other_side {
                     (g.id, other)
                 } else {
                     (other, g.id)
@@ -396,10 +409,14 @@ impl<'m, 'c> Build<'m, 'c> {
         fb: &FaceInfo<'m>,
         tol: Tolerance,
     ) -> bool {
-        let beside = self.faces[1]
+        let (Some(oa), Some(ob)) = (self.operand_of_face(fa.id), self.operand_of_face(fb.id))
+        else {
+            return false;
+        };
+        let beside = self.faces[ob]
             .iter()
             .filter(|g| g.id != fb.id && g.edges().contains(&eb.id))
-            .any(|g| self.beside_on(0, ea.id, fa.id, g.id));
+            .any(|g| self.beside_on(oa, ea.id, fa.id, g.id));
         beside
             && eb
                 .curve
@@ -518,8 +535,8 @@ impl<'m, 'c> Build<'m, 'c> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn section_edge(
         &self,
-        fa: &FaceInfo<'m>,
-        fb: &FaceInfo<'m>,
+        operands: [usize; 2],
+        (fa, fb): (&FaceInfo<'m>, &FaceInfo<'m>),
         curve: &Curve,
         range: Interval,
         uv_mid: [Point2; 2],
@@ -535,8 +552,26 @@ impl<'m, 'c> Build<'m, 'c> {
         });
         let (pa, ra) = self.pcurve_of(fa, fb, curve, range, uv_mid[0], base, &ends)?;
         let (pb, rb) = self.pcurve_of(fb, fa, curve, range, uv_mid[1], base, &ends)?;
-        let (pa, ra) = self.ended(0, fa, fb, curve, range, base, [start, end], (pa, ra))?;
-        let (pb, rb) = self.ended(1, fb, fa, curve, range, base, [start, end], (pb, rb))?;
+        let (pa, ra) = self.ended(
+            operands[0],
+            fa,
+            fb,
+            curve,
+            range,
+            base,
+            [start, end],
+            (pa, ra),
+        )?;
+        let (pb, rb) = self.ended(
+            operands[1],
+            fb,
+            fa,
+            curve,
+            range,
+            base,
+            [start, end],
+            (pb, rb),
+        )?;
         let tolerance = base.max(ra).max(rb);
         if tolerance > self.precision.max_tolerance {
             return Err(OpError::Tolerance {

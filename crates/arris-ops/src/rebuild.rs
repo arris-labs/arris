@@ -40,7 +40,7 @@ pub(crate) enum Policy {
 
 /// A surviving piece, before assembly.
 pub(crate) struct Kept {
-    /// Which operand it came from.
+    /// Which operand it came from, an index into the operands.
     pub side: usize,
     /// The input face, with the operand's use of it.
     pub face: FaceHandle,
@@ -80,9 +80,9 @@ pub(crate) struct Plan {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn assembly(
     m: &Model,
-    policy: [Policy; 2],
-    vertices: &[Vec<VertexId>; 2],
-    edges: &[Vec<EdgeId>; 2],
+    policy: &[Policy],
+    vertices: &[Vec<VertexId>],
+    edges: &[Vec<EdgeId>],
     sub_edges: &BTreeMap<EdgeId, Vec<SubEdge>>,
     touched: &BTreeSet<EdgeId>,
     retolerated: &BTreeMap<VertexId, f64>,
@@ -93,7 +93,14 @@ pub(crate) fn assembly(
     pieces: &[Kept],
     shells: &[Vec<usize>],
 ) -> Result<Plan, OpError> {
-    let side_of_vertex = |v: VertexId| usize::from(vertices[0].binary_search(&v).is_err());
+    // The operand a vertex belongs to; the last one for none, as the
+    // two-operand form had it.
+    let side_of_vertex = |v: VertexId| {
+        vertices
+            .iter()
+            .position(|own| own.binary_search(&v).is_ok())
+            .unwrap_or(vertices.len() - 1)
+    };
     let vertex_new = |v: VRef| match v {
         VRef::Section(_) => true,
         VRef::Existing(id) => {
@@ -298,7 +305,7 @@ pub(crate) struct OperandWrite<'a> {
 /// on top of the one this returns.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn write_provenance(
-    operands: [OperandWrite<'_>; 2],
+    operands: &[OperandWrite<'_>],
     built_body: Body,
     sub_edges: &BTreeMap<EdgeId, Vec<SubEdge>>,
     merged_into: &BTreeMap<VertexId, usize>,
@@ -312,7 +319,7 @@ pub(crate) fn write_provenance(
     built_shells: &[ShellId],
 ) -> Provenance {
     let mut p = Provenance::new();
-    for operand in &operands {
+    for operand in operands {
         let policy = operand.policy;
         let body = operand.body;
         let record = |p: &mut Provenance, input: Shape, images: Vec<Shape>| match policy {
@@ -384,13 +391,13 @@ pub(crate) fn write_provenance(
     // kept-by-id operand no result shell came from is gone.
     let mut reached: BTreeSet<ShellId> = BTreeSet::new();
     for (pieces, &out) in shells.iter().zip(built_shells) {
-        let mut from: [BTreeSet<ShellId>; 2] = [BTreeSet::new(), BTreeSet::new()];
+        let mut from: Vec<BTreeSet<ShellId>> = vec![BTreeSet::new(); operands.len()];
         for piece in pieces.iter().filter_map(|&k| kept.get(k)) {
             if let Some(&s) = operands[piece.side].shell_of.get(&piece.face.id) {
                 from[piece.side].insert(s);
             }
         }
-        let reused: Vec<ShellId> = (0..2)
+        let reused: Vec<ShellId> = (0..operands.len())
             .filter(|&side| operands[side].policy == Policy::Reuse)
             .flat_map(|side| from[side].iter().copied())
             .collect();
@@ -404,7 +411,7 @@ pub(crate) fn write_provenance(
             reached.insert(s);
         }
     }
-    for side in (0..2).filter(|&side| operands[side].policy == Policy::Reuse) {
+    for side in (0..operands.len()).filter(|&side| operands[side].policy == Policy::Reuse) {
         for &s in operands[side]
             .shells
             .iter()

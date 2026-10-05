@@ -23,28 +23,44 @@ use crate::boolean::{
 use crate::error::{BooleanReason, Fault, OpError, Reason};
 use crate::pass::pass;
 
+/// A candidate face pair: face `ia` of operand `oa` and face `ib` of
+/// operand `ob`, `oa < ob`.
+#[derive(Clone, Copy)]
+pub(super) struct Candidate2 {
+    oa: usize,
+    ia: usize,
+    ob: usize,
+    ib: usize,
+}
+
 impl<'m, 'c> Build<'m, 'c> {
-    /// Every face pair whose boxes overlap, intersected.
+    /// Every face pair of two operands whose boxes overlap, intersected:
+    /// operand pairs in ascending order, the lower operand's faces outer.
     pub(super) fn face_pairs(&mut self) -> Result<(), OpError> {
-        let mut candidates: Vec<(usize, usize)> = Vec::new();
-        for (ia, fa) in self.faces[0].iter().enumerate() {
-            for (ib, fb) in self.faces[1].iter().enumerate() {
-                if fa.bounds.intersects(&fb.bounds) {
-                    candidates.push((ia, ib));
+        let mut candidates: Vec<Candidate2> = Vec::new();
+        for oa in 0..self.operands.len() {
+            for ob in oa + 1..self.operands.len() {
+                for (ia, fa) in self.faces[oa].iter().enumerate() {
+                    for (ib, fb) in self.faces[ob].iter().enumerate() {
+                        if fa.bounds.intersects(&fb.bounds) {
+                            candidates.push(Candidate2 { oa, ia, ob, ib });
+                        }
+                    }
                 }
             }
         }
-        for ((ia, ib), intersection) in candidates
+        for (c, intersection) in candidates
             .iter()
             .copied()
             .zip(self.intersect_pairs(&candidates)?)
         {
             self.pairs.push(FacePair {
-                a: self.faces[0][ia].id,
-                b: self.faces[1][ib].id,
+                a: self.faces[c.oa][c.ia].id,
+                b: self.faces[c.ob][c.ib].id,
+                operands: [c.oa, c.ob],
                 intersection,
             });
-            self.pair_faces.push((ia, ib));
+            self.pair_faces.push((c.ia, c.ib));
         }
         Ok(())
     }
@@ -57,34 +73,39 @@ impl<'m, 'c> Build<'m, 'c> {
     /// step (ADR-0004, `docs/ARCHITECTURE.md` §Threading).
     pub(super) fn intersect_pairs(
         &mut self,
-        candidates: &[(usize, usize)],
+        candidates: &[Candidate2],
     ) -> Result<Vec<SurfaceIntersection>, OpError> {
         let mut meter = *self.meter.get_mut().unwrap_or_else(PoisonError::into_inner);
-        let found = pass(candidates, &mut meter, |&(ia, ib), mt| {
-            let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
-            let tol = tolerance_of(&self.precision, fa.tolerance, fb.tolerance);
-            mt.tick()?;
-            intersect_surfaces(fa.surface, fb.surface, &self.within, tol, mt)
-                .map_err(|e| geometry(e, fa.shape(), fb.shape()))
-        });
+        let found = pass(
+            candidates,
+            &mut meter,
+            |&Candidate2 { oa, ia, ob, ib }, mt| {
+                let (fa, fb) = (&self.faces[oa][ia], &self.faces[ob][ib]);
+                let tol = tolerance_of(&self.precision, fa.tolerance, fb.tolerance);
+                mt.tick()?;
+                intersect_surfaces(fa.surface, fb.surface, &self.within[&[oa, ob]], tol, mt)
+                    .map_err(|e| geometry(e, fa.shape(), fb.shape()))
+            },
+        );
         *self.meter.get_mut().unwrap_or_else(PoisonError::into_inner) = meter;
         found
     }
 
-    /// Every edge of each operand against every face of the other whose
-    /// box it reaches; the hits sorted by `(edge id, t)`, the coincident
-    /// edge–face pairs recorded.
+    /// Every edge of each operand against every face of every other
+    /// whose box it reaches; the hits sorted by `(edge id, t)`, the
+    /// coincident edge–face pairs recorded.
     pub(super) fn hits(&mut self) -> Result<(), OpError> {
         let mut found: Vec<(EdgeFaceHit, f64)> = Vec::new();
         let mut coincident = Vec::new();
-        for side in 0..2 {
-            let other = 1 - side;
-            for e in &self.edges[side] {
-                for f in &self.faces[other] {
-                    if !e.bounds.intersects(&f.bounds) {
-                        continue;
+        for side in 0..self.operands.len() {
+            for other in (0..self.operands.len()).filter(|&o| o != side) {
+                for e in &self.edges[side] {
+                    for f in &self.faces[other] {
+                        if !e.bounds.intersects(&f.bounds) {
+                            continue;
+                        }
+                        self.hit_edge_face(e, f, &mut found, &mut coincident)?;
                     }
-                    self.hit_edge_face(e, f, &mut found, &mut coincident)?;
                 }
             }
         }
@@ -186,20 +207,32 @@ impl<'m, 'c> Build<'m, 'c> {
     /// among the hits of the edge on the face is not made twice.
     pub(super) fn resolve_touch(&self, touch: usize) -> Result<Vec<EdgeFaceHit>, OpError> {
         let (edge, face) = (self.hits[touch].edge, self.hits[touch].face);
-        let side = usize::from(self.edge_info(0, edge).is_none());
-        let (Some(e), Some(f)) = (
-            self.edge_info(side, edge),
-            self.faces[1 - side].iter().find(|f| f.id == face),
-        ) else {
+        let Some(side) = self.operand_of_edge(edge) else {
+            return Ok(Vec::new());
+        };
+        let Some((other, f)) = (0..self.operands.len())
+            .filter(|&o| o != side)
+            .find_map(|o| Some((o, self.faces[o].iter().find(|f| f.id == face)?)))
+        else {
+            return Ok(Vec::new());
+        };
+        let Some(e) = self.edge_info(side, edge) else {
             return Ok(Vec::new());
         };
         let tol = tolerance_of(&self.precision, e.tolerance, f.tolerance);
         let mut found: Vec<EdgeFaceHit> = Vec::new();
         for (pi, pair) in self.pairs.iter().enumerate() {
+            if !(pair.operands == [side, other] || pair.operands == [other, side]) {
+                continue;
+            }
             let (ia, ib) = self.pair_faces[pi];
-            let (own, other) = if side == 0 { (ia, ib) } else { (ib, ia) };
+            let (own, theirs) = if pair.operands[0] == side {
+                (ia, ib)
+            } else {
+                (ib, ia)
+            };
             let g = &self.faces[side][own];
-            if self.faces[1 - side][other].id != face || !g.edges().contains(&edge) {
+            if self.faces[other][theirs].id != face || !g.edges().contains(&edge) {
                 continue;
             }
             for (_, curve) in meet_curves(&pair.intersection, MeetKind::Crossing) {
@@ -268,14 +301,14 @@ impl<'m, 'c> Build<'m, 'c> {
             if pair.intersection != SurfaceIntersection::Coincident {
                 continue;
             }
-            let (ia, ib) = self.pair_faces[pi];
-            let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
+            let [oa, ob] = pair.operands;
+            let (fa, fb) = self.pair_infos(pi);
             for &ea in fa.edges() {
-                let Some(ea) = self.edge_info(0, ea) else {
+                let Some(ea) = self.edge_info(oa, ea) else {
                     continue;
                 };
                 for &eb in fb.edges() {
-                    let Some(eb) = self.edge_info(1, eb) else {
+                    let Some(eb) = self.edge_info(ob, eb) else {
                         continue;
                     };
                     if !ea.bounds.intersects(&eb.bounds) {
@@ -355,8 +388,7 @@ impl<'m, 'c> Build<'m, 'c> {
     pub(super) fn section_crossings(&mut self) -> Result<(), OpError> {
         let mut found: Vec<(SectionCrossing, f64)> = Vec::new();
         for (pi, pair) in self.pairs.iter().enumerate() {
-            let (ia, ib) = self.pair_faces[pi];
-            let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
+            let (fa, fb) = self.pair_infos(pi);
             let tol = tolerance_of(&self.precision, fa.tolerance, fb.tolerance);
             let curves: Vec<(usize, &Curve)> =
                 meet_curves(&pair.intersection, MeetKind::Crossing).collect();
@@ -437,8 +469,7 @@ impl<'m, 'c> Build<'m, 'c> {
         curves: &[(usize, &Curve)],
         tolerance: f64,
     ) -> Result<Vec<SectionCrossing>, OpError> {
-        let (ia, ib) = self.pair_faces[pi];
-        let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
+        let (fa, fb) = self.pair_infos(pi);
         let mut out = Vec::new();
         for p in self.pairs[pi].intersection.points() {
             if p.kind != MeetKind::Crossing {
@@ -524,7 +555,8 @@ impl<'m, 'c> Build<'m, 'c> {
                 continue;
             }
             let mut existing: Vec<VertexId> = Vec::new();
-            for (side, id) in [(0, x.a), (1, x.b)] {
+            let operands = self.pairs[x.pair].operands;
+            for (side, id) in [(operands[0], x.a), (operands[1], x.b)] {
                 if let Some(v) = self.edge_info(side, id).and_then(|e| e.vertex_at(x.point)) {
                     if !existing.contains(&v) {
                         existing.push(v);
@@ -687,21 +719,21 @@ impl<'m, 'c> Build<'m, 'c> {
                 let entity = v
                     .hits
                     .first()
-                    .map(|&h| Shape::new(self.hits[h].edge, self.a.orientation))
+                    .map(|&h| Shape::new(self.hits[h].edge, self.orientation()))
                     .or_else(|| {
                         v.crossings
                             .first()
-                            .map(|&x| Shape::new(self.crossings[x].a, self.a.orientation))
+                            .map(|&x| Shape::new(self.crossings[x].a, self.orientation()))
                     })
                     .or_else(|| {
                         v.section_crossings.first().map(|&x| {
                             Shape::new(
                                 self.pairs[self.section_crossings[x].pair].a,
-                                self.a.orientation,
+                                self.orientation(),
                             )
                         })
                     })
-                    .unwrap_or_else(|| shape_of(self.a));
+                    .unwrap_or_else(|| shape_of(self.operands[0]));
                 return Err(OpError::Tolerance { entity, wanted });
             }
         }
@@ -744,17 +776,20 @@ impl<'m, 'c> Build<'m, 'c> {
     /// `OpError::Tolerance` with the tolerance the vertex would need.
     pub(super) fn one_per_operand(&self) -> Result<(), OpError> {
         let m = self.m;
-        let own = [self.a, self.b].map(|body| {
-            m.vertices(body)
-                .map(|vs| vs.into_iter().map(|v| v.id).collect::<BTreeSet<_>>())
-        });
-        let own = [own[0].clone()?, own[1].clone()?];
+        let own = self
+            .operands
+            .iter()
+            .map(|&body| {
+                m.vertices(body)
+                    .map(|vs| vs.into_iter().map(|v| v.id).collect::<BTreeSet<_>>())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         for v in &self.vertices {
             for side in &own {
                 let mut of_side = v.existing.iter().filter(|x| side.contains(x));
                 if let (Some(_), Some(&second)) = (of_side.next(), of_side.next()) {
                     return Err(OpError::Tolerance {
-                        entity: Shape::new(second, self.a.orientation),
+                        entity: Shape::new(second, self.orientation()),
                         wanted: v.tolerance(m),
                     });
                 }
@@ -780,8 +815,7 @@ impl<'m, 'c> Build<'m, 'c> {
     pub(super) fn singular_vertices(&self) -> Result<Vec<(Point3, f64, VertexId)>, OpError> {
         let mut wanted: Vec<(Point3, f64, VertexId)> = Vec::new();
         for (pi, pair) in self.pairs.iter().enumerate() {
-            let (ia, ib) = self.pair_faces[pi];
-            let (fa, fb) = (&self.faces[0][ia], &self.faces[1][ib]);
+            let (fa, fb) = self.pair_infos(pi);
             let tol = tolerance_of(&self.precision, fa.tolerance, fb.tolerance);
             let band = PCURVE_SINGULAR_BAND * tol.linear;
             for (f, other) in [(fa, fb), (fb, fa)] {
@@ -826,7 +860,7 @@ impl<'m, 'c> Build<'m, 'c> {
                             entities: vec![
                                 f.shape(),
                                 other.shape(),
-                                Shape::new(s.vertex, self.a.orientation),
+                                Shape::new(s.vertex, self.orientation()),
                             ],
                             reason: Reason::Boolean(BooleanReason::BesideSingularity),
                         });
@@ -850,8 +884,8 @@ impl<'m, 'c> Build<'m, 'c> {
         let mut wanted: Vec<(EdgeId, f64, usize, f64)> = Vec::new();
         for section in &self.sections {
             let pair = self.curves[section.curve].pair;
-            let (ia, ib) = self.pair_faces[pair];
-            for (side, f) in [(0, &self.faces[0][ia]), (1, &self.faces[1][ib])] {
+            let (fa, fb) = self.pair_infos(pair);
+            for (side, f) in [(0, fa), (1, fb)] {
                 let ends = [
                     (section.start, section.range.lo()),
                     (section.end, section.range.hi()),
@@ -928,12 +962,14 @@ impl<'m, 'c> Build<'m, 'c> {
             // Merged into the section vertex that holds the edge's own end,
             // as a crossing's is below: a hit a hair past that end's
             // tolerance would pave the end's vertex beside it.
-            let side = usize::from(self.edge_info(0, h.edge).is_none());
-            let at_end = self.edge_info(side, h.edge).is_some_and(|e| {
-                e.ends
-                    .iter()
-                    .any(|end| self.vertices[vertex].existing.contains(&end.0))
-            });
+            let at_end = self
+                .operand_of_edge(h.edge)
+                .and_then(|side| self.edge_info(side, h.edge))
+                .is_some_and(|e| {
+                    e.ends
+                        .iter()
+                        .any(|end| self.vertices[vertex].existing.contains(&end.0))
+                });
             if !at_end {
                 wanted.push((h.edge, h.t, vertex));
             }
@@ -942,7 +978,8 @@ impl<'m, 'c> Build<'m, 'c> {
             let Some(vertex) = x.vertex else {
                 continue;
             };
-            for (side, id, t) in [(0, x.a, x.ta), (1, x.b, x.tb)] {
+            let operands = self.pairs[x.pair].operands;
+            for (side, id, t) in [(operands[0], x.a, x.ta), (operands[1], x.b, x.tb)] {
                 // At the edge's own end: within that vertex's tolerance,
                 // or merged into the section vertex that holds it — a
                 // crossing a hair past the end's tolerance would otherwise

@@ -8,6 +8,11 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_ops::boolean::interferences_many(model, operands, control)` is the
+  boolean's decomposition over any number of operands in one build: every
+  face pair of two different operands whose boxes overlap, the section
+  vertices shared among all of them, with each pair and edge image naming
+  the operands it belongs to. With two operands it is `interferences`.
 - `arris_math` gains the periodic-parameter toolkit beside `wrap_angle`:
   `wrap_into` (into `[lo, lo + period)`), `wrap_signed`, `wrap_offset`,
   `shift_nearest`, `shift_nearest_uv` and `shift_into_range`, each taking
@@ -86,6 +91,16 @@ into its version (ADR-0027).
   `NoWalls`, `RepeatedOpening`, `OpeningNotInBody`, `OpeningDragged` —
   the refusals of `shell` that are not its walls' offset's. An exhaustive
   `match` on `Reason` adds its arm.
+- The boolean decomposition is indexed by operand, not by `a` and `b`:
+  `arris_ops::boolean::Interferences { a, b, .. }` becomes
+  `Interferences { operands: Vec<Body>, .. }`, `FacePair` gains
+  `operands: [usize; 2]` (the two operands its faces belong to, indices into
+  `Interferences::operands`), and `EdgeImage::side: usize` becomes
+  `operand: usize` with `on: usize`, the operand whose face the edge is
+  placed on. Fix: read `interferences.operands[0]` and `[1]` for `a` and `b`,
+  `pair.operands` for a pair's sides, and `image.operand == 0` for
+  `image.side == 0`. `interferences(model, a, b, control)` keeps its
+  signature.
 
 ## 0.5.0 — 2026-10-05
 

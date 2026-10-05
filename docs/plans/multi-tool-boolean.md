@@ -127,7 +127,7 @@ bound has to be established here.
   of disjoint holes, a plate with bosses fused in one call, a slot of three
   overlapping holes in a row, two crossing rectangular pockets, three holes
   through one common point. ADR-0050 written here.
-- [ ] Step 2 **[2]** — Operand-indexed decomposition, no behaviour change:
+- [x] Step 2 **[2]** — Operand-indexed decomposition, no behaviour change:
   `[_; 2]` and `side: usize` to `Vec` by operand and operand indices in
   `Build`, `Interferences`, `FacePair`, `EdgeImage` and `result`; `enum
   Selection`; the per-pair traced region; `interferences_many`. Every
@@ -219,11 +219,10 @@ benchmark showing `cut_many` faster than the chain on the 10×10 grid; the
   does it differ (fused coplanar faces, a refusal)? Agent decides at step 1
   from its runs; where it differs the fixture is held to the chained result
   or its closed forms, recorded in ADR-0050.
-- ⚠ OPEN: Can the per-pair traced region of step 2 keep every two-operand
-  dump bit for bit, or does some existing fixture's traced curve change?
-  Agent decides at step 2; a change is a `fixtures:` commit naming why, and
-  if any oracle comparison moves, the region stays whole-build instead and
-  ADR-0050 says so.
+- Resolved at step 2: the per-pair traced region keeps every two-operand
+  dump bit for bit (the corpus, provenance and boolean tests ran unchanged
+  with the region computed per operand pair), so ADR-0050 §6 stands as
+  written.
 - ⚠ OPEN: Does a triple point at a tool's edge (three holes through one
   point where the point is also on a cap's rim) need a case beyond the
   tolerance components the section vertices already merge by? Agent decides

@@ -38,15 +38,39 @@ pub(super) enum Op {
     Cut,
 }
 
+/// What the selection table does with a piece (ADR-0050 §3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Selection {
+    /// The piece is not in the result.
+    Drop,
+    /// The piece is kept in its operand's own orientation.
+    Keep,
+    /// The piece is kept with its orientation reversed: a tool's wall
+    /// facing into the cavity.
+    KeepReversed,
+}
+
+impl Selection {
+    /// `Some(reversed)` for a kept piece, `None` for a dropped one.
+    fn flip(self) -> Option<bool> {
+        match self {
+            Selection::Drop => None,
+            Selection::Keep => Some(false),
+            Selection::KeepReversed => Some(true),
+        }
+    }
+}
+
 impl Op {
-    /// Whether a piece of operand `side` that is inside (`true`) or
-    /// outside the other survives, and whether reversed
-    /// (`docs/ARCHITECTURE.md` §Operations, the selection table).
-    fn select(self, side: usize, inside: bool) -> Option<bool> {
+    /// What happens to a piece of operand `side` that is inside
+    /// (`true`) or outside the other (`docs/ARCHITECTURE.md`
+    /// §Operations, the selection table): operand 0 is a cut's target,
+    /// every other a tool.
+    fn select(self, side: usize, inside: bool) -> Selection {
         match (self, side, inside) {
-            (Op::Fuse, _, false) | (Op::Common, _, true) | (Op::Cut, 0, false) => Some(false),
-            (Op::Cut, 1, true) => Some(true),
-            _ => None,
+            (Op::Fuse, _, false) | (Op::Common, _, true) | (Op::Cut, 0, false) => Selection::Keep,
+            (Op::Cut, 1.., true) => Selection::KeepReversed,
+            _ => Selection::Drop,
         }
     }
 
@@ -65,7 +89,7 @@ impl Op {
 
     fn policy(self, side: usize) -> Policy {
         match (self, side) {
-            (Op::Cut, 1) => Policy::Regenerate,
+            (Op::Cut, 1..) => Policy::Regenerate,
             _ => Policy::Reuse,
         }
     }
@@ -129,13 +153,13 @@ struct Build<'m> {
     precision: Precision,
     i: &'m Interferences,
     op: Op,
-    bodies: [Body; 2],
+    bodies: Vec<Body>,
     /// Each operand's vertices, ascending.
-    vertices: [Vec<VertexId>; 2],
+    vertices: Vec<Vec<VertexId>>,
     /// Each operand's edges, in iteration order.
-    edges: [Vec<EdgeId>; 2],
+    edges: Vec<Vec<EdgeId>>,
     /// Each operand's faces with their uses, in iteration order.
-    faces: [Vec<FaceHandle>; 2],
+    faces: Vec<Vec<FaceHandle>>,
     curve_ids: Vec<CurveId>,
     section_pcurves: Vec<[Curve2Id; 2]>,
     /// Per image, its pcurve on the face it lies in.
@@ -171,7 +195,10 @@ struct Build<'m> {
 
 impl<'m> Build<'m> {
     fn side_of_vertex(&self, v: VertexId) -> usize {
-        usize::from(self.vertices[0].binary_search(&v).is_err())
+        self.vertices
+            .iter()
+            .position(|own| own.binary_search(&v).is_ok())
+            .unwrap_or(self.vertices.len() - 1)
     }
 
     /// The vertex an operand vertex is realised as: itself, or the one
@@ -228,7 +255,7 @@ impl<'m> Build<'m> {
     /// interval across the seam — and `index` is that order, which
     /// [`rebuild::write_provenance`] lists the images in.
     fn sub_edges(&mut self) -> Result<(), OpError> {
-        for side in 0..2 {
+        for side in 0..self.edges.len() {
             for &e in &self.edges[side] {
                 let edge = *self.m.edge(e)?;
                 let ends = [edge.start(), edge.end()].map(|v| self.vref_of_operand(v));
@@ -377,7 +404,7 @@ impl<'m> Build<'m> {
         }
         for (k, im) in self.i.images.iter().enumerate() {
             let pair = &self.i.pairs[im.pair];
-            let (face, other) = if im.side == 0 {
+            let (face, other) = if im.on == pair.operands[1] {
                 (pair.b, pair.a)
             } else {
                 (pair.a, pair.b)
@@ -400,8 +427,9 @@ impl<'m> Build<'m> {
         on
     }
 
-    /// The face of the other operand that `on` names, when face `f` of
-    /// operand `side` makes a pair with it whose intersection `is` accepts.
+    /// The face of another operand that `on` names, when face `f` of
+    /// operand `side` makes a pair with it whose intersection `is`
+    /// accepts.
     fn partner(
         &self,
         side: usize,
@@ -412,18 +440,17 @@ impl<'m> Build<'m> {
         let EntityId::Face(g) = on.id else {
             return None;
         };
-        let paired = self.i.pairs.iter().any(|p| {
-            is(&p.intersection)
-                && if side == 0 {
-                    p.a == f && p.b == g
-                } else {
-                    p.a == g && p.b == f
-                }
-        });
+        let paired = self
+            .i
+            .pairs
+            .iter()
+            .any(|p| is(&p.intersection) && ((p.a == f && p.b == g) || (p.a == g && p.b == f)));
         if !paired {
             return None;
         }
-        self.faces[1 - side].iter().copied().find(|h| h.id == g)
+        (0..self.faces.len())
+            .filter(|&o| o != side)
+            .find_map(|o| self.faces[o].iter().copied().find(|h| h.id == g))
     }
 
     /// The face of the other operand that `on` names, when face `f` of
@@ -582,8 +609,12 @@ impl<'m> Build<'m> {
             if !crossing {
                 continue;
             }
-            let g = if side == 0 { pair.b } else { pair.a };
-            let Some(g) = self.faces[1 - side].iter().copied().find(|h| h.id == g) else {
+            let (g, other) = if pair.operands[0] == side {
+                (pair.b, pair.operands[1])
+            } else {
+                (pair.a, pair.operands[0])
+            };
+            let Some(g) = self.faces[other].iter().copied().find(|h| h.id == g) else {
                 continue;
             };
             let e = curve.curve.eval(s.range.midpoint());
@@ -616,16 +647,14 @@ impl<'m> Build<'m> {
         Ok(best.map(|(_, inside)| inside))
     }
 
-    /// The tangent at `point` of the curve face `f` of operand `side`
-    /// touches face `g` along: the nearest of their pair's touching curves.
-    fn contact_tangent(&self, side: usize, f: FaceId, g: FaceId, point: Point3) -> Option<Vec3> {
-        let pair = self.i.pairs.iter().find(|p| {
-            if side == 0 {
-                p.a == f && p.b == g
-            } else {
-                p.a == g && p.b == f
-            }
-        })?;
+    /// The tangent at `point` of the curve face `f` touches face `g`
+    /// along: the nearest of their pair's touching curves.
+    fn contact_tangent(&self, f: FaceId, g: FaceId, point: Point3) -> Option<Vec3> {
+        let pair = self
+            .i
+            .pairs
+            .iter()
+            .find(|p| (p.a == f && p.b == g) || (p.a == g && p.b == f))?;
         meet_curves(&pair.intersection, MeetKind::Touch)
             .filter_map(|(_, c)| {
                 let on = c.project(point).ok()?;
@@ -658,7 +687,8 @@ impl<'m> Build<'m> {
                         what: "a contact's face among its operand",
                     }))
             };
-            let (fa, fb) = (find(0, pair.a)?, find(1, pair.b)?);
+            let [oa, ob] = pair.operands;
+            let (fa, fb) = (find(oa, pair.a)?, find(ob, pair.b)?);
             let along = pair
                 .intersection
                 .curves()
@@ -680,7 +710,9 @@ impl<'m> Build<'m> {
                     Shape::new(fb.id, fb.orientation),
                 ));
             };
-            if self.op.select(0, inside_a).is_some() && self.op.select(1, inside_b).is_some() {
+            if self.op.select(oa, inside_a) != Selection::Drop
+                && self.op.select(ob, inside_b) != Selection::Drop
+            {
                 return Err(OpError::Degenerate {
                     entities: vec![
                         Shape::new(fa.id, fa.orientation),
@@ -699,20 +731,22 @@ impl<'m> Build<'m> {
         let on = self.edges_by_face();
         // Every face split first — the step that runs in parallel —
         // then the pieces classified and selected in one order.
-        let work: Vec<FaceHandle> = (0..2).flat_map(|side| self.faces[side].clone()).collect();
-        let splits = self.split_faces(&work, &on, meter)?;
+        let work: Vec<(usize, FaceHandle)> = (0..self.faces.len())
+            .flat_map(|side| self.faces[side].iter().map(move |&f| (side, f)))
+            .collect();
+        let handles: Vec<FaceHandle> = work.iter().map(|&(_, f)| f).collect();
+        let splits = self.split_faces(&handles, &on, meter)?;
         // One classifier per operand, its faces read once for every piece
         // of the other operand's faces.
         let m = self.m;
         let fault = |e| OpError::Internal(Fault::Classify(e));
-        let bodies = self.bodies;
-        let classifiers = [
-            Classifier::of_body(m, self.bodies[0]).map_err(fault)?,
-            Classifier::of_body(m, self.bodies[1]).map_err(fault)?,
-        ];
-        let first = self.faces[0].len();
-        for (k, (f, split)) in work.into_iter().zip(splits).enumerate() {
-            let side = usize::from(k >= first);
+        let bodies = self.bodies.clone();
+        let classifiers = self
+            .bodies
+            .iter()
+            .map(|&body| Classifier::of_body(m, body).map_err(fault))
+            .collect::<Result<Vec<_>, _>>()?;
+        for ((side, f), split) in work.into_iter().zip(splits) {
             let other = &classifiers[1 - side];
             let policy = self.op.policy(side);
             let mut pieces = Vec::new();
@@ -724,7 +758,7 @@ impl<'m> Build<'m> {
                 let (flip, stands_for) = match class {
                     Classification::Inside | Classification::Outside => {
                         let inside = class == Classification::Inside;
-                        let Some(flip) = self.op.select(side, inside) else {
+                        let Some(flip) = self.op.select(side, inside).flip() else {
                             continue;
                         };
                         (flip, None)
@@ -741,17 +775,14 @@ impl<'m> Build<'m> {
                             // The interior point lies on the curve the
                             // two faces touch along; the piece lies to one
                             // side of the other operand everywhere else.
-                            let inside =
-                                match self.contact_tangent(side, f.id, g.id, piece.interior) {
-                                    Some(along) => {
-                                        self.tangent_side(f, piece.interior, g, along)?
-                                    }
-                                    None => None,
-                                };
+                            let inside = match self.contact_tangent(f.id, g.id, piece.interior) {
+                                Some(along) => self.tangent_side(f, piece.interior, g, along)?,
+                                None => None,
+                            };
                             let Some(inside) = inside else {
                                 return Err(unsupported(self.m, f.id, shape));
                             };
-                            let Some(flip) = self.op.select(side, inside) else {
+                            let Some(flip) = self.op.select(side, inside).flip() else {
                                 continue;
                             };
                             (flip, None)
@@ -762,7 +793,7 @@ impl<'m> Build<'m> {
                             let Some(inside) = self.transversal_side(side, f, &piece.loops)? else {
                                 return Err(unsupported(self.m, f.id, shape));
                             };
-                            let Some(flip) = self.op.select(side, inside) else {
+                            let Some(flip) = self.op.select(side, inside).flip() else {
                                 continue;
                             };
                             (flip, None)
@@ -875,10 +906,10 @@ impl<'m> Build<'m> {
     /// typed refusal of a result with no material.
     fn shells(&self) -> Result<Vec<Vec<usize>>, OpError> {
         let entities = || {
-            vec![
-                Shape::new(self.bodies[0].id, self.bodies[0].orientation),
-                Shape::new(self.bodies[1].id, self.bodies[1].orientation),
-            ]
+            self.bodies
+                .iter()
+                .map(|b| Shape::new(b.id, b.orientation))
+                .collect::<Vec<_>>()
         };
         if self.kept.is_empty() {
             return Err(OpError::Degenerate {
@@ -1109,19 +1140,27 @@ pub(super) fn boolean(
     op: Op,
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    let bodies = [i.a, i.b];
-    let closures = [m.closure(i.a)?, m.closure(i.b)?];
-    let vertices = [closures[0].vertices.clone(), closures[1].vertices.clone()];
-    let mut edges: [Vec<EdgeId>; 2] = [Vec::new(), Vec::new()];
-    let mut faces: [Vec<FaceHandle>; 2] = [Vec::new(), Vec::new()];
-    for side in 0..2 {
-        edges[side] = m.edges(bodies[side])?.into_iter().map(|e| e.id).collect();
-        faces[side] = m.faces(bodies[side])?;
+    if i.operands.len() != 2 {
+        return Err(OpError::Internal(Fault::Invariant {
+            what: "a boolean's selection over other than two operands",
+        }));
+    }
+    let bodies = i.operands.clone();
+    let closures = bodies
+        .iter()
+        .map(|&b| m.closure(b))
+        .collect::<Result<Vec<_>, _>>()?;
+    let vertices: Vec<Vec<VertexId>> = closures.iter().map(|c| c.vertices.clone()).collect();
+    let mut edges: Vec<Vec<EdgeId>> = Vec::new();
+    let mut faces: Vec<Vec<FaceHandle>> = Vec::new();
+    for &body in &bodies {
+        edges.push(m.edges(body)?.into_iter().map(|e| e.id).collect());
+        faces.push(m.faces(body)?);
     }
     // The shell of each operand face: what a result shell's provenance is
     // written against.
-    let mut shell_of: [BTreeMap<FaceId, ShellId>; 2] = [BTreeMap::new(), BTreeMap::new()];
-    for side in 0..2 {
+    let mut shell_of: Vec<BTreeMap<FaceId, ShellId>> = vec![BTreeMap::new(); bodies.len()];
+    for side in 0..bodies.len() {
         for shell in m.shells(bodies[side])? {
             let entity = m.shell(shell.id)?;
             for face in entity.faces() {
@@ -1169,7 +1208,7 @@ pub(super) fn boolean(
             precision,
             i,
             op,
-            bodies,
+            bodies: bodies.clone(),
             vertices: vertices.clone(),
             edges: edges.clone(),
             faces: faces.clone(),
@@ -1253,8 +1292,10 @@ pub(super) fn boolean(
             shells: &closures[side].shells,
             shell_of: &shell_of[side],
         };
+        let operand_writes: Vec<rebuild::OperandWrite<'_>> =
+            (0..bodies.len()).map(operand).collect();
         let mut p = rebuild::write_provenance(
-            [operand(0), operand(1)],
+            &operand_writes,
             built.body,
             &sub_edges,
             &merged_into,
@@ -1353,9 +1394,12 @@ impl Build<'_> {
     /// order. `rebuild::assembly` does the work; this is the boolean's
     /// `Build` handed to it as explicit pieces and a per-operand policy.
     fn assembly(&self, shells: &[Vec<usize>]) -> Result<Plan, OpError> {
+        let policy: Vec<Policy> = (0..self.bodies.len())
+            .map(|side| self.op.policy(side))
+            .collect();
         rebuild::assembly(
             self.m,
-            [self.op.policy(0), self.op.policy(1)],
+            &policy,
             &self.vertices,
             &self.edges,
             &self.sub_edges,
