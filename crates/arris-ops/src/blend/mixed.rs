@@ -16,8 +16,8 @@ use arris_topo::{EdgeId, FaceId, Model, VertexId};
 use super::ends::{Trim, cut_corner};
 use super::ring::placed_uv;
 use super::stripe::on_side_of_face;
-use super::view::{View, convex_edge};
 use super::{degenerate, invariant};
+use crate::body_view::BodyView;
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -57,7 +57,7 @@ pub(super) struct CornerTrims {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn corner_trims(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     edge: EdgeId,
     faces: [FaceId; 2],
     corner_edges: [EdgeId; 2],
@@ -68,8 +68,10 @@ pub(super) fn corner_trims(
     samples: usize,
     meter: &mut Meter<'_>,
 ) -> Result<CornerTrims, OpError> {
-    let convexity =
-        |c: EdgeId| convex_edge(m, view, c)?.ok_or(invariant("a corner edge's convexity"));
+    let convexity = |c: EdgeId| {
+        view.convex(m, c)?
+            .ok_or(invariant("a corner edge's convexity"))
+    };
     let corners_convex = [convexity(corner_edges[0])?, convexity(corner_edges[1])?];
     let mixed = corners_convex[0] != corners_convex[1];
     let side = if corners_convex == [convex; 2] {
@@ -285,7 +287,7 @@ mod tests {
         Result<CornerTrims, OpError>,
     ) {
         let tol = m.precision().tolerance();
-        let view = View::of(m, body).unwrap();
+        let view = BodyView::of(m, body).unwrap();
         let edge = edge_at(m, body, pose.to_world(Point3::new(1.0, 0.0, 1.0)));
         let s = stripe(m, &view, edge, kind, tol).unwrap();
         let at = pose.to_world(at);

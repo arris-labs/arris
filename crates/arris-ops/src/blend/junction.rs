@@ -11,8 +11,8 @@ use super::ends::cut_corner;
 use super::miter::Miter;
 use super::ring::{Ring, placed_uv};
 use super::stripe::{Section, Stripe, chord, line_origin};
-use super::view::View;
 use super::{degenerate, invariant};
+use crate::body_view::BodyView;
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -115,7 +115,7 @@ impl<'a> Run<'a> {
 /// faces, `q` being the one from `a`'s contact at `u = 0`.
 pub(super) fn junction(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     a: Run<'_>,
     b: Run<'_>,
     vertex: VertexId,

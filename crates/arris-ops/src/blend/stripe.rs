@@ -13,11 +13,11 @@ use arris_math::{
 };
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
-use super::chain::tangent_normals;
 use super::ends::stretch_between;
 use super::traced;
-use super::view::{UseAt, View, faces_tolerance};
 use super::{Kind, degenerate, invariant};
+use crate::body_view::tangent_normals;
+use crate::body_view::{BodyView, UseAt, faces_tolerance};
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -246,7 +246,7 @@ pub(super) fn ruling_ball(
 /// not yet.
 pub(super) fn stripe(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     edge: EdgeId,
     kind: Kind,
     tol: Tolerance,

@@ -185,7 +185,7 @@ and ignored tests.
   changes, so `git diff -M --stat` shows moves, and `git log --follow`
   works on the largest file. Test: the gate's blend area and
   `blend_prop` at the fast case count.
-- [ ] Step 5 **[2]** — **`BodyView` lifted to `arris-ops/src/body_view.rs`
+- [x] Step 5 **[2]** — **`BodyView` lifted to `arris-ops/src/body_view.rs`
   (crate-private).**
   - Moves: `View::of`, `outward`, the edge uses and vertex edges,
     `convex_edge` (as `BodyView::convex`), `tangent_at` and

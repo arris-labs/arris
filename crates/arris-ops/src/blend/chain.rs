@@ -5,24 +5,8 @@ use std::collections::BTreeSet;
 use arris_math::{Meter, Tolerance, UnitVec3, Vec3};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
-use super::view::{View, convex_edge, tangent_at};
+use crate::body_view::BodyView;
 use crate::error::OpError;
-
-/// Whether two faces with outward normals `n1` and `n2` at a point of
-/// their edge meet tangentially for a blend of `size` (ADR-0040): the
-/// normals parallel within `tol.angular`, or the ball — a chamfer's
-/// contacts — that touches one face moved by no more than `tolerance`, the
-/// faces' own, to touch the other, `size` times the sine between them.
-pub(super) fn tangent_normals(
-    n1: Vec3,
-    n2: Vec3,
-    size: f64,
-    tolerance: f64,
-    tol: Tolerance,
-) -> bool {
-    let sine = n1.cross(&n2).norm();
-    sine <= tol.angular || size * sine <= tolerance
-}
 
 /// The parameter of `edge` at its end `vertex`, its start's on a closed
 /// edge; `None` for an edge with no curve.
@@ -69,7 +53,7 @@ pub(super) fn leaving_vertex(
 /// the outline doubling back. `None` at any other vertex.
 pub(super) fn cusp_at(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     edge: EdgeId,
     vertex: VertexId,
     size: f64,
@@ -120,8 +104,8 @@ pub(super) fn cusp_at(
         };
         if !bridges
             || next_entity.start() == next_entity.end()
-            || tangent_at(m, view, spine, t_spine, size, tol)? != Some(true)
-            || tangent_at(m, view, next, t_next, size, tol)? != Some(false)
+            || view.tangent_at(m, spine, t_spine, size, tol)? != Some(true)
+            || view.tangent_at(m, next, t_next, size, tol)? != Some(false)
         {
             continue;
         }
@@ -150,7 +134,7 @@ pub(super) fn cusp_at(
 /// than one of the vertex's other edges would qualify.
 pub(super) fn tangent_vertex(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     edge: EdgeId,
     vertex: VertexId,
     size: f64,
@@ -201,9 +185,9 @@ pub(super) fn tangent_vertex(
         };
         let theirs = faces_of(next);
         if next_entity.start() == next_entity.end()
-            || tangent_at(m, view, next, next_range.midpoint(), size, tol)? != Some(false)
+            || view.tangent_at(m, next, next_range.midpoint(), size, tol)? != Some(false)
             || own.intersection(&theirs).count() != shared
-            || convex_edge(m, view, next)? != convex_edge(m, view, edge)?
+            || view.convex(m, next)? != view.convex(m, edge)?
         {
             continue;
         }
@@ -218,7 +202,7 @@ pub(super) fn tangent_vertex(
             let Some(t_w) = parameter_at(m, w, vertex)? else {
                 continue 'next;
             };
-            if tangent_at(m, view, w, t_w, size, tol)? != Some(true) || (shared == 2 && !is_seam(w))
+            if view.tangent_at(m, w, t_w, size, tol)? != Some(true) || (shared == 2 && !is_seam(w))
             {
                 continue 'next;
             }
@@ -247,7 +231,7 @@ pub(super) fn tangent_vertex(
 /// from each end until a vertex that is not one.
 pub(super) fn chain(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     named: &[EdgeId],
     size: f64,
     tol: Tolerance,

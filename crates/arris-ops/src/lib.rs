@@ -29,6 +29,7 @@
 #![warn(missing_docs)]
 
 mod blend;
+mod body_view;
 pub mod boolean;
 mod build;
 mod error;

@@ -20,8 +20,8 @@ use super::stripe::{
     Section, Stripe, arc_between, band_u, chord, in_band, line_origin, lines_cross,
     on_side_of_face, section_between,
 };
-use super::view::{UseAt, View, convex_edge, tangent_at};
 use super::{degenerate, invariant};
+use crate::body_view::{BodyView, UseAt};
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -203,7 +203,7 @@ pub(super) type Fan = (Vec<FaceId>, Vec<EdgeId>);
 #[allow(clippy::too_many_arguments)]
 pub(super) fn fan_at(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     faces: [FaceId; 2],
     corners: [EdgeId; 2],
     extras_at: &BTreeSet<EdgeId>,
@@ -223,8 +223,8 @@ pub(super) fn fan_at(
             return Ok(None);
         };
         if two_faces(x).is_none()
-            || tangent_at(m, view, x, t, size, tol)? != Some(false)
-            || convex_edge(m, view, x)? != convex
+            || view.tangent_at(m, x, t, size, tol)? != Some(false)
+            || view.convex(m, x)? != convex
         {
             return Ok(None);
         }
@@ -275,7 +275,7 @@ pub(super) fn fan_at(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn twice_at(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     faces: [FaceId; 2],
     corners: [EdgeId; 2],
     extras_at: &BTreeSet<EdgeId>,
@@ -302,7 +302,7 @@ pub(super) fn twice_at(
         let Some(t) = parameter_at(m, x, vertex)? else {
             return Ok(None);
         };
-        if two_faces(x).is_none() || tangent_at(m, view, x, t, size, tol)? != Some(false) {
+        if two_faces(x).is_none() || view.tangent_at(m, x, t, size, tol)? != Some(false) {
             return Ok(None);
         }
     }
@@ -346,7 +346,7 @@ pub(super) fn twice_at(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn corner_of(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     edge: EdgeId,
     uses: &[UseAt; 2],
     vertex: VertexId,
@@ -384,7 +384,7 @@ pub(super) fn corner_of(
     let faces = uses.map(|u| u.face);
     if at_vertex.len() > 3 {
         let extras_at: BTreeSet<EdgeId> = at_vertex.difference(&three).copied().collect();
-        let convex = convex_edge(m, view, edge)?;
+        let convex = view.convex(m, edge)?;
         let fan = fan_at(
             m,
             view,
@@ -420,7 +420,8 @@ pub(super) fn corner_of(
         let Some(t) = parameter_at(m, corner, vertex)? else {
             return Err(vertex_blend());
         };
-        if !tangent_at(m, view, corner, t, size, tol)?
+        if !view
+            .tangent_at(m, corner, t, size, tol)?
             .ok_or(invariant("two uses of the corner edge"))?
         {
             continue;
@@ -428,8 +429,8 @@ pub(super) fn corner_of(
         // A cusp whose edges are of one sense is cut by the next wall
         // (ADR-0042 §1); an overhang tip, of opposite senses, is not.
         let next = corner_edges[1 - k];
-        let one_sense = convex_edge(m, view, next)?.is_some()
-            && convex_edge(m, view, next)? == convex_edge(m, view, edge)?;
+        let one_sense =
+            view.convex(m, next)?.is_some() && view.convex(m, next)? == view.convex(m, edge)?;
         if spine.is_some()
             || !one_sense
             || cusp_at(m, view, edge, vertex, size, tol)? != Some((next, corner))
@@ -545,7 +546,7 @@ pub(super) fn cusp_trims(
 /// on a curved face across is placed in.
 pub(super) fn at_cut_corner(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     across: FaceId,
     corner: EdgeId,
     t: f64,
@@ -706,7 +707,7 @@ pub(super) fn stretch_between(
 /// decide the end is `Unsupported` naming the blend and the face across.
 pub(super) fn face_end(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     s: &Stripe,
     at_lo: bool,
     tol: Tolerance,
@@ -1004,7 +1005,7 @@ pub(super) fn face_end(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn fan_end(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     s: &Stripe,
     vertex: VertexId,
     corner: &CornerAt,

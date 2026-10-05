@@ -650,6 +650,12 @@ piece or a replacement `Modified`, the rest of what is gone `Deleted`,
 each shell and the body `Modified` — over which the blend adds its
 `Generated` records.
 
+A body is read for such an edit through `body_view::BodyView` (crate-private
+in `arris-ops`, the seam shell and offset share with the blend): each face's
+effective orientation and shell, every edge's uses and every vertex's edges
+in the body's own order, with `outward`, `convex` and `tangent_at` asked
+of them.
+
 `ops::fillet(m, body, edges: &[Edge], radius)` blends the listed edges
 with a rolling ball, one stripe per edge built in closed form from the
 edge's two faces (ADR-0007). The table: two planes blend to a cylinder

@@ -10,12 +10,12 @@ use arris_math::{
 };
 use arris_topo::{EdgeId, FaceId, Model, Orientation, VertexId};
 
-use super::chain::tangent_normals;
 use super::ends::{EndKind, LoneCorner, Trim, arc_end, at_cut_corner, corner_of, cusp_trims};
 use super::stripe::{chord, on_side_of_face, placed};
-use super::view::{View, faces_tolerance};
 use super::{Kind, degenerate, invariant};
 use super::{mixed, traced};
+use crate::body_view::tangent_normals;
+use crate::body_view::{BodyView, faces_tolerance};
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -421,7 +421,7 @@ impl Across {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn ring(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     edge: EdgeId,
     kind: Kind,
     junctions: &BTreeSet<VertexId>,

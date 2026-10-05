@@ -15,8 +15,8 @@ use super::junction::{Run, junction};
 use super::miter::{Miter, miter};
 use super::ring::{Ring, RingEnd, RingEnds, placed_uv, ring, vertex_tolerance_of};
 use super::stripe::{Stripe, contacts, stripe};
-use super::view::View;
 use super::{Blend, Kind, degenerate, invariant};
+use crate::body_view::BodyView;
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild;
 use crate::rebuild::{AddedFace, Rewrite, StoredUse, forward};
@@ -154,7 +154,7 @@ pub(super) fn build(
     let precision = m.precision();
     let tol = precision.tolerance();
     let samples = precision.check_samples;
-    let view = View::of(m, body)?;
+    let view = BodyView::of(m, body)?;
     // The named edges and every edge their chains run on into, in the
     // body's order.
     let reached = chain(m, &view, edges, kind.size(), tol, meter)?;

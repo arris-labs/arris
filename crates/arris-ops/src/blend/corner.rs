@@ -10,8 +10,8 @@ use arris_math::{
 use arris_topo::{EdgeId, FaceId, Model, Orientation, VertexId};
 
 use super::stripe::{Section, Stripe, chord, line_origin, lines_cross, placed};
-use super::view::View;
 use super::{degenerate, invariant};
+use crate::body_view::BodyView;
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -83,7 +83,7 @@ pub(super) struct Corner {
 /// line C6 left).
 pub(super) fn corner(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     stripes: [&Stripe; 3],
     vertex: VertexId,
     tol: Tolerance,

@@ -15,8 +15,8 @@ use super::stripe::{
     Section, Stripe, arc_between, band_u, chord, line_origin, lines_cross, on_side_of_face,
     section_between,
 };
-use super::view::{View, convex_edge};
 use super::{degenerate, invariant};
+use crate::body_view::BodyView;
 use crate::error::{OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -136,7 +136,7 @@ impl Miter {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn miter(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     a: &Stripe,
     b: &Stripe,
     vertex: VertexId,
@@ -495,7 +495,7 @@ pub(super) fn miter(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn trim_arc(
     m: &Model,
-    view: &View,
+    view: &BodyView,
     stripes: [&Stripe; 2],
     wide: usize,
     face: FaceId,
@@ -508,7 +508,7 @@ pub(super) fn trim_arc(
     meter: &mut Meter<'_>,
 ) -> Result<TrimArc, OpError> {
     let [ws, ns] = stripes;
-    let side = match convex_edge(m, view, e3)? {
+    let side = match view.convex(m, e3)? {
         Some(convex) if convex == ws.convex => Side::Inside,
         Some(_) | None => {
             return Err(degenerate(
