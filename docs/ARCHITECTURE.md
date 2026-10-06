@@ -1407,8 +1407,10 @@ depends on `check`. The mesh guarantees (ADR-0003):
   run, so a mesh of a `Solid` is closed by construction. Every edge is
   discretised once, at `n` uniform parameters — the largest of its
   curve's `chord_segments` at the chord and, per coedge, the count that
-  keeps each step's (u, v) travel under the face's surface's
-  `chord_steps` — and its `EdgeRange` is the polyline from its start
+  keeps each step's (u, v) travel under its surface's
+  `chord_steps_along` the pcurve's own (u, v) box, so the count is a
+  function of the edge and the chord and never of how far a
+  neighbouring face's region reaches (ADR-0052) — and its `EdgeRange` is the polyline from its start
   vertex to its end vertex along its curve's parameter.
 - A face's loops are the *same* parameters through each coedge's
   pcurve, triangulated in (u, v) by the constrained Delaunay

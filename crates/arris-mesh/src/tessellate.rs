@@ -76,9 +76,11 @@ struct EdgeSamples {
 /// sampled once, at `n` uniform parameters over its range — `n` the
 /// largest of its curve's [`arris_geom::Curve::chord_segments`]
 /// at `chord` and, per coedge, the count that keeps each step's `u`- and
-/// `v`-travel under the face's surface's
-/// [`arris_geom::Surface::chord_steps`], so a triangle
-/// standing on the edge is within `chord` of the surface — and its
+/// `v`-travel under its surface's
+/// [`arris_geom::Surface::chord_steps_along`] the pcurve's own (u, v)
+/// box, so a triangle standing on the edge is within `chord` of the
+/// surface and the count is a function of the edge and the chord alone
+/// (ADR-0052) — and its
 /// samples are one run of positions, its [`crate::EdgeRange`] the
 /// polyline from its start vertex to its end vertex along its curve's
 /// parameter; a degenerate edge's range is one index. Every face's loops
@@ -203,36 +205,18 @@ pub fn tessellate_with(
     request: &MeshRequest,
     control: &Control<'_>,
 ) -> Result<TriMesh, MeshError> {
-    tessellate_under(m, body, request, control, Rules::KERNEL)
+    tessellate_under(m, body, request, control, true)
 }
 
-/// Which of the per-face rules a tessellation runs under: the kernel's
-/// always, and in this module's tests the variants that show what each
-/// rule buys.
-#[derive(Debug, Clone, Copy)]
-struct Rules {
-    /// A coedge's requirement read over its own pcurve's `v` extent
-    /// rather than over its face's whole (u, v) box.
-    own_box: bool,
-    /// A cone face's rings ([`cone_rings`]).
-    rings: bool,
-}
-
-impl Rules {
-    /// The rules [`tessellate_with`] runs under.
-    const KERNEL: Rules = Rules {
-        own_box: false,
-        rings: true,
-    };
-}
-
-/// [`tessellate_with`] under `rules`.
+/// [`tessellate_with`], with a cone face's rings ([`cone_rings`]) switched
+/// by `with_rings`: always on in the kernel, off in this module's tests that
+/// show what they buy.
 fn tessellate_under(
     m: &Model,
     body: Body,
     request: &MeshRequest,
     control: &Control<'_>,
-    rules: Rules,
+    with_rings: bool,
 ) -> Result<TriMesh, MeshError> {
     let mut meter = Meter::new(control);
     let chord = request.chord;
@@ -278,21 +262,25 @@ fn tessellate_under(
             let pcurve = m.curve2(coedge.pcurve())?;
             let speed = pcurve.speed_bounds(range);
             let steps = match edge.geometry() {
-                EdgeGeometry::Curve { .. } if rules.own_box => {
-                    let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+                EdgeGeometry::Curve { .. } => {
+                    let mut band = [(f64::INFINITY, f64::NEG_INFINITY); 2];
                     for i in 0..=OWN_BOX_SAMPLES {
-                        let v = pcurve
-                            .point(range.lerp(i as f64 / OWN_BOX_SAMPLES as f64))
-                            .y;
-                        lo = lo.min(v);
-                        hi = hi.max(v);
+                        let p = pcurve.point(range.lerp(i as f64 / OWN_BOX_SAMPLES as f64));
+                        for (b, c) in band.iter_mut().zip([p.x, p.y]) {
+                            *b = (b.0.min(c), b.1.max(c));
+                        }
                     }
-                    match Interval::new(lo, hi) {
-                        Ok(v) => surface.chord_steps(chord, [bounds[0], v]),
-                        Err(_) => steps,
+                    match (
+                        Interval::new(band[0].0, band[0].1),
+                        Interval::new(band[1].0, band[1].1),
+                    ) {
+                        (Ok(u), Ok(v)) => surface.chord_steps_along(chord, [u, v]),
+                        _ => steps,
                     }
                 }
-                _ => steps,
+                // A degenerate edge's range is one index: its count
+                // never reaches a neighbour (ADR-0052 §1).
+                EdgeGeometry::Degenerate { .. } => steps,
             };
             let mut n = 0usize;
             for dir in 0..2 {
@@ -425,7 +413,7 @@ fn tessellate_under(
             .collect::<Result<Vec<bool>, _>>()?
             .into_iter()
             .any(|d| d);
-        if rules.rings && !collapsed {
+        if with_rings && !collapsed {
             let rings = cone_rings(f.id, surface, &polygons, bounds, chord, interior.len())?;
             interior.extend(rings);
         }
@@ -1010,7 +998,7 @@ fn interior_grid(
     Ok(points)
 }
 
-/// How many samples of a pcurve [`Rules::own_box`] reads its `v`
+/// How many samples of a pcurve reads its (u, v)
 /// extent from.
 const OWN_BOX_SAMPLES: usize = 64;
 
@@ -1219,9 +1207,7 @@ mod tests {
     /// found by a random sweep: with every edge sampled at its own
     /// radius's step and no rings, the narrow circle's coarse samples
     /// leave room for a triangle that cuts across the hole's rim at half
-    /// a chord again; the rings bring it back within the chord, and the
-    /// kernel's rules (edges at the face's widest radius) are within it
-    /// too.
+    /// a chord again; the rings bring it back within the chord.
     #[test]
     fn rings_remove_the_excess_of_edges_sampled_at_their_own_radius() {
         use arris_math::{Axis, Point3};
@@ -1238,30 +1224,19 @@ mod tests {
         let (tool, _) =
             arris_debug::unmetered::primitive_cylinder(&mut m, axis, 0.3, length).unwrap();
         let (body, _) = arris_debug::unmetered::cut(&mut m, solid, tool).unwrap();
-        let excess = |rules: Rules| {
-            let mesh = tessellate_under(&m, body, &MeshRequest::new(chord), &Control::NONE, rules)
+        let excess = |rings: bool| {
+            let mesh = tessellate_under(&m, body, &MeshRequest::new(chord), &Control::NONE, rings)
                 .unwrap();
             assert!(mesh.is_closed());
             cone_excess(&m, &mesh, chord)
         };
-        let bare = excess(Rules {
-            own_box: true,
-            rings: false,
-        });
+        let bare = excess(false);
         assert!(
             bare > 1.2,
             "without rings the drilled frustum is {bare} chords off"
         );
-        let ringed = excess(Rules {
-            own_box: true,
-            rings: true,
-        });
+        let ringed = excess(true);
         assert!(ringed <= 1.0, "with rings it is {ringed} chords off");
-        let kernel = excess(Rules::KERNEL);
-        assert!(
-            kernel <= 1.0,
-            "under the kernel's rules it is {kernel} chords off"
-        );
     }
 
     /// Rings stand between the region's radii at most [`RING_RATIO`]

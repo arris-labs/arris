@@ -842,6 +842,37 @@ impl Surface {
         }
     }
 
+    /// The parameter steps `[hu, hv]` a triangle standing on a curve whose
+    /// (u, v) points all lie inside `band` needs, a function of the
+    /// surface and the band alone: the same as [`Surface::chord_steps`]
+    /// over `band` for every kind but a NURBS surface, which is read
+    /// over its whole domain instead, never finer than any sub-box's
+    /// steps. A cone's `u` step is therefore the one at the radii the
+    /// band reaches, so an edge's samples do not depend on how far its
+    /// face's region extends beyond it (ADR-0052).
+    ///
+    /// ```
+    /// use arris_geom::Surface;
+    /// use arris_math::{Frame, Interval};
+    ///
+    /// let cone = Surface::Cone {
+    ///     frame: Frame::world(),
+    ///     radius: 1.0,
+    ///     half_angle: 0.5,
+    /// };
+    /// let near = Interval::new(0.0, 1.0).unwrap();
+    /// let far = Interval::new(0.0, 10.0).unwrap();
+    /// let u = Interval::new(0.0, 1.0).unwrap();
+    /// // The wider the band's radii, the finer the step.
+    /// assert!(cone.chord_steps_along(1e-3, [u, far])[0] < cone.chord_steps_along(1e-3, [u, near])[0]);
+    /// ```
+    pub fn chord_steps_along(&self, chord: f64, band: [Interval; 2]) -> [f64; 2] {
+        match self {
+            Surface::Nurbs(s) => self.chord_steps(chord, s.domain()),
+            _ => self.chord_steps(chord, band),
+        }
+    }
+
     /// The same surface with its frame moved by `motion`: the
     /// parametrisation is carried along, so `moved.eval(u, v).point ==
     /// motion.apply(self.eval(u, v).point)` to rounding.

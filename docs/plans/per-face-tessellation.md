@@ -183,7 +183,7 @@ bound has to be established here.
   `a_frustum_of_any_ratio_meshes_within_its_chord`, probed on a
   barycentric grid: a segment between two radii is farthest from the
   cone at `1 / (1 + √k)` of the way, which the midpoint probes miss.
-- [ ] Step 3 **[2]** — **An edge's samples a pure function of the edge.**
+- [x] Step 3 **[2]** — **An edge's samples a pure function of the edge.**
   Add `Surface::chord_steps_along` in `arris-geom`, with rustdoc and an
   example. Pass one reads each coedge's requirement from its pcurve's
   (u, v) box over the edge's range; a degenerate coedge keeps its face's
@@ -197,6 +197,21 @@ bound has to be established here.
   `cancel_counts.txt` is regenerated and the commit body says why. Before
   committing, measure the real-part tier's total positions and wall time
   against `main`; see the open question below.
+
+  Landed. Pass one reads each `Curve` coedge's (u, v) box from 65 samples
+  of its pcurve over the edge's range and asks `chord_steps_along`; a
+  degenerate coedge keeps its face's steps; `Rules` is gone, leaving a
+  private `with_rings` flag for the one test that shows what rings buy.
+  `cancel_counts.txt` is unchanged (no cone or NURBS in its cases). The
+  real-part tier at 1e-3 holds 977,217 positions in 3.74 s against
+  `main`'s 977,451 in 3.60 s, so the first open question is answered: the
+  whole-domain NURBS rule stays. The fixture moved to `boolean/`, not a
+  new `mesh/` area: a cut is its area, and a new area would need the lint,
+  `DUMPED_AREAS` and the gate's table for one fixture. There is one
+  fixture, not two (step 1: the NURBS one is not buildable); the NURBS
+  rule is held by a property in `arris-geom/tests/chord_steps_along.rs`
+  (every band gives the whole domain's steps) instead of a unit test of
+  pass one.
 - [ ] Step 4 **[2]** — **`tessellate_faces`.** The public function and
   `MeshError::NotInBody`. `tessellate_with` is rewritten as the full-set
   case; its output is unchanged, held by the existing tests and a
@@ -272,7 +287,8 @@ bound has to be established here.
 
 ## Open questions
 
-- ⚠ OPEN: does reading a NURBS coedge's requirement over the surface's
+- Answered at step 3 (977,217 positions in 3.74 s against 977,451 in
+  3.60 s, no growth): does reading a NURBS coedge's requirement over the surface's
   whole domain over-sample faces trimmed out of large B-spline surfaces
   enough to matter? Decided by the agent at step 3, from the real-part
   tier's positions and time against `main`. If either grows more than 2×,

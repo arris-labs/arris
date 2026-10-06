@@ -138,6 +138,11 @@ corpus_tests! {
     /// A slab through the plate: two boxes, two lumps of one solid — Open
     /// CASCADE's two solids (ADR-0006).
     boolean_split_cut => run "boolean/split-cut";
+    /// A conical boss with its wide end cut away: the cone face's largest
+    /// radius drops, so its edges' chord steps change, and the base circle the
+    /// cut keeps by id is meshed differently before and after. The desired
+    /// polyline is the same one.
+    boolean_cone_boss_cut_kept_edge_mesh => run "boolean/cone-boss-cut-kept-edge-mesh";
     /// The consumer's hollow box in its own units: one lump, its cavity a
     /// void shell made of the tool's faces turned inward.
     boolean_enclosed_cavity => run "boolean/enclosed-cavity";
@@ -957,12 +962,6 @@ corpus_tests! {
     /// valid face. The desired mesh is closed and within the inscribed bound.
     #[ignore = "MeshError::Face: at the fewest segments per turn the polygons of the hole's two tangent arcs cross near the cusp (docs/BACKLOG.md, a loop with a cusp at a coarse chord)"]
     regression_crescent_hole_coarse_mesh => run "regression/crescent-hole-coarse-mesh";
-    /// A conical boss with its wide end cut away: the cone face's largest
-    /// radius drops, so its edges' chord steps change, and the base circle the
-    /// cut keeps by id is meshed differently before and after. The desired
-    /// polyline is the same one.
-    #[ignore = "kept edge's polyline differs: an edge's samples follow its faces' whole (u, v) boxes, not the edge (plans/per-face-tessellation step 3)"]
-    regression_cone_boss_cut_kept_edge_mesh => run "regression/cone-boss-cut-kept-edge-mesh";
     /// A crescent profile whose small radius is not half the big one: its
     /// minimal polygon's chords from the cusp cross, and the profile is refused
     /// as self-intersecting. The desired body is Open CASCADE's prism.

@@ -19,7 +19,7 @@ cylinder, an elliptic cylinder, a sphere and a torus the steps ignore the
 box. For a cone (the radius at the box's far `v` end) and a NURBS surface
 (curvature sampled over the box) they do not, so trimming such a face
 changes the samples of every edge it has, including edges a boolean keeps
-by id beside an untouched face. `regression/cone-boss-cut-kept-edge-mesh`
+by id beside an untouched face. `boolean/cone-boss-cut-kept-edge-mesh`
 is that failure: the base circle of a conical boss, kept by a cut of its
 top, goes from 28 points to 24. The operations themselves keep a kept
 edge's pcurves bit for bit (`kept_pcurve_prop.rs`), so the sampling is the
@@ -131,5 +131,7 @@ positions are exact evaluations, and a snap would make one).
   of the edge, and it is what A9 cannot cache across.
 - **Reading a NURBS requirement over the knot-span cells the pcurve
   crosses** rather than the whole domain. Also pure, and cheaper on a
-  face trimmed from a large surface. Decided at the step that applies
-  §1, from the real-part tier's positions and time.
+  face trimmed from a large surface. Measured at the step that applied
+  §1 (`Surface::chord_steps_along`): the real-part tier at a chord of 1e-3
+  came to 977,217 positions in 3.74 s against 977,451 in 3.60 s before,
+  so nothing needed the cheaper read.

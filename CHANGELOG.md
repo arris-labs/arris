@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A meshed edge's samples now depend only on the edge and the chord: a
+  cone face's edges are sampled for the radii they reach, and a NURBS
+  face's for its surface's whole domain, not for how far the face's region
+  extends. Trimming a face no longer changes the polyline of an edge a
+  boolean keeps beside an untouched face, and a cone's narrow circle gets
+  fewer points. `arris_geom::Surface::chord_steps_along` is the step rule.
 - `arris_ops::split(model, body, plane, control)` cuts a solid by a plane
   and keeps both sides: `Split { positive, negative, provenance }`, the
   positive body on the side the plane frame's `z` points to, either side
