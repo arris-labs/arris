@@ -929,6 +929,14 @@ pub struct Recipe {
     /// Closed forms.
     #[serde(default)]
     pub analytic: Analytic,
+    /// Steps whose bodies the result keeps edges of by id. At `mesh_chord`
+    /// every edge in both a named step's body and the result has the same
+    /// polyline in the mesh of each, bit for bit: an edge's discretisation
+    /// is a function of the edge, not of how much of its neighbours is
+    /// left, so a face kept by an operation keeps its cached mesh
+    /// (ADR-0010).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mesh_keeps: Vec<String>,
 }
 
 impl Recipe {

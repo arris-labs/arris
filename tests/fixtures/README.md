@@ -329,6 +329,14 @@ of the step that made the fixture pass, and a later change to it is a
   prism, `4δ / (3r)` at that chord on the corpus's smallest radius
   (ADR-0003); and `inertia_rel` (default `1e-9`), read by the runner for
   the `measure` stage's inertia tensor.
+- **`mesh_keeps`** is a list of step names, Arris's alone and outside the
+  recipe hash like `tolerances`: after the mesh stage the runner meshes
+  each named step's body at `mesh_chord` too, and every edge that body
+  shares by id with the result must have the same polyline — the same
+  count, the same positions bit for bit — in both meshes
+  (`CorpusError::Mesh`). An edge's discretisation is a function of the
+  edge, so a face an operation keeps keeps its mesh (ADR-0010; the
+  per-face tessellation plan).
 - **`precision`** is the `arris_math::Precision` the model is created
   with: every field the recipe names, the rest `Precision::DEFAULT`
   (`{"precision": {"default_tolerance": 1e-6}}`). Arris carries no unit,

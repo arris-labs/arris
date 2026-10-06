@@ -202,6 +202,7 @@ fn boxes_recipe(
         precision: Default::default(),
         tolerances: Default::default(),
         analytic: Default::default(),
+        mesh_keeps: Vec::new(),
     }
 }
 

@@ -1480,7 +1480,67 @@ pub fn mesh_stage(fixture: &Fixture, chain: &Chain, target: &Target) -> Result<(
         body,
         &fixture.recipe.tolerances,
         target,
-    )
+    )?;
+    mesh_keeps_stage(fixture, chain, body)
+}
+
+/// Every edge the result shares by id with a step of the recipe's
+/// `mesh_keeps` has the same polyline, bit for bit, in the mesh of each at
+/// `mesh_chord`. Errors: [`CorpusError::Mesh`], naming the edge and the
+/// two counts; [`CorpusError::Reference`] for a step that is no body.
+fn mesh_keeps_stage(fixture: &Fixture, chain: &Chain, result: Body) -> Result<(), CorpusError> {
+    if fixture.recipe.mesh_keeps.is_empty() {
+        return Ok(());
+    }
+    let chord = fixture.recipe.tolerances.mesh_chord;
+    let mesh_failure = |what: String| CorpusError::Mesh {
+        fixture: fixture.name.clone(),
+        chord,
+        what,
+    };
+    let request = MeshRequest::new(chord);
+    let mesh_of = |body: Body| {
+        arris_mesh::tessellate_with(&chain.model, body, &request, &Control::NONE)
+            .map_err(|e| mesh_failure(e.to_string()))
+    };
+    let after = mesh_of(result)?;
+    let polyline = |mesh: &arris_mesh::TriMesh, e: arris_topo::EdgeId| -> Vec<[f64; 3]> {
+        mesh.edge_polyline(e)
+            .unwrap_or(&[])
+            .iter()
+            .filter_map(|&i| mesh.positions().get(i as usize).copied())
+            .collect()
+    };
+    for name in &fixture.recipe.mesh_keeps {
+        let made = chain
+            .steps
+            .get(name)
+            .ok_or_else(|| CorpusError::Reference {
+                fixture: fixture.name.clone(),
+                step: "mesh_keeps".into(),
+                name: name.clone(),
+            })?;
+        let before = mesh_of(made.body)?;
+        let kept = chain
+            .model
+            .closure(made.body)
+            .map_err(|e| mesh_failure(e.to_string()))?
+            .edges;
+        for e in kept {
+            let (then, now) = (polyline(&before, e), polyline(&after, e));
+            if now.is_empty() {
+                continue;
+            }
+            if then != now {
+                return Err(mesh_failure(format!(
+                    "edge {e} is kept from {name:?} and meshed as {} points there, {} in the result",
+                    then.len(),
+                    now.len()
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// [`mesh_stage`] of `body` in `m`, at `tolerances`; `name` is what the

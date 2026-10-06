@@ -853,6 +853,7 @@ fn revolved_recipe(
             area: Some(Num::Expr(area.into())),
             ..Default::default()
         },
+        mesh_keeps: Vec::new(),
     }
 }
 

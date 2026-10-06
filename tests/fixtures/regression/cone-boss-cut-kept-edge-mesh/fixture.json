@@ -1,0 +1,63 @@
+{
+  "description": "a disc of radius 3 and height 1 with a conical boss on it, radius 1 at its base and 2 a height 1 above (so wider at the top), revolved whole about z, then its top cut away by the box above z = 1.5: the cone face loses its wide end, so its largest radius, which sets the chord steps of its u direction, drops from 2 to 1.5. The base circle between the cone and the untouched plane keeps its id through the cut, and must keep its polyline: it is meshed at the larger radius's step before the cut and at the smaller one's after, so the cone's neighbour and a face meshed earlier no longer meet (mesh_keeps; plans/per-face-tessellation step 1). The desired mesh of the kept edge is the same one before and after",
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [0, 0, 0],
+        "x": [1, 0, 0],
+        "y": [0, 0, 1]
+      },
+      "outer": {
+        "start": [0, 0],
+        "segments": [
+          {"line_to": [3, 0]},
+          {"line_to": [3, 1]},
+          {"line_to": [1, 1]},
+          {"line_to": [2, 2]},
+          {"line_to": [0, 2]},
+          {"line_to": [0, 0]}
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]},
+      "angle_deg": 360
+    },
+    {
+      "name": "top",
+      "op": "box",
+      "min": [-3, -3, 1.5],
+      "max": [3, 3, 3]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "part",
+      "tool": "top"
+    }
+  ],
+  "result": "result",
+  "mesh_keeps": ["part"],
+  "probes": [
+    {"label": "in_the_disc", "point": [2.5, 0, 0.5], "expect": "in"},
+    {"label": "in_the_boss", "point": [0, 0, 1.25], "expect": "in"},
+    {"label": "above_the_cut", "point": [0, 0, 1.75], "expect": "out"}
+  ],
+  "tolerances": {
+    "volume_rel": 1e-9,
+    "area_rel": 1e-9,
+    "centroid_abs": 1e-7,
+    "probe": 1e-7,
+    "mesh_chord": 0.01,
+    "mesh_volume_rel": 0.01
+  },
+  "analytic": {
+    "volume": "9 * pi + 0.5 * pi * (1 + 1.5 + 2.25) / 3",
+    "genus": 0
+  }
+}

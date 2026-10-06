@@ -1044,6 +1044,7 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
         precision: PrecisionSpec::default(),
         tolerances: Tolerances::default(),
         analytic: Analytic::default(),
+        mesh_keeps: Vec::new(),
     }
 }
 

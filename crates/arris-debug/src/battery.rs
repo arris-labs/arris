@@ -556,6 +556,7 @@ pub fn recipe(fixture: &PartFixture, case: &Case) -> Recipe {
         precision: fixture.part.precision,
         tolerances: fixture.part.tolerances,
         analytic: Analytic::default(),
+        mesh_keeps: Vec::new(),
     }
 }
 
