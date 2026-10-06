@@ -557,10 +557,10 @@ fn tools_touching_inside_the_target_are_a_tangent_contact() {
 }
 
 #[test]
-fn tools_touching_along_a_seam_are_refused_as_non_manifold() {
-    // The touch is the first hole's seam: an image of the seam on the
-    // second wall, not a contact, and the two plate quadrants beside it
-    // meet in an edge of four faces.
+fn tools_touching_along_a_seam_are_refused_as_tangent_contact() {
+    // The touch is the first hole's seam: a contact as one off the seam
+    // is, both walls surviving along it, the slit refused as the bores
+    // above are.
     let mut m = Model::default();
     let (plate, _) = plate_and_holes(&mut m, 0);
     let holes: Vec<Body> = [40.0, 50.0]
@@ -570,17 +570,8 @@ fn tools_touching_along_a_seam_are_refused_as_non_manifold() {
             primitive_cylinder(&mut m, axis, 5.0, 12.0).unwrap().0
         })
         .collect();
-    let e = cut_many(&mut m, plate, &holes).unwrap_err();
-    assert!(
-        matches!(
-            e,
-            OpError::Degenerate {
-                reason: Reason::Input(arris_ops::InputReason::NonManifold),
-                ..
-            }
-        ),
-        "{e}"
-    );
+    let (_, reason) = refused(cut_many(&mut m, plate, &holes).unwrap_err());
+    assert_eq!(reason, BooleanReason::TangentContact);
 }
 
 #[test]

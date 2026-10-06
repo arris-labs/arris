@@ -582,10 +582,30 @@ impl<'m> Build<'m> {
 
     /// The face of the other operand that `on` names, when face `f` of
     /// operand `side` is tangent to it.
+    /// `on` may also be a seam of that face, which the face lies on both
+    /// sides of: a cylinder lying on a plane by its seam.
     fn tangent_partner(&self, side: usize, f: FaceId, on: Shape) -> Option<FaceHandle> {
-        self.partner(side, f, on, |i| {
-            meet_curves(i, MeetKind::Touch).next().is_some()
-        })
+        let touches = |i: &SurfaceIntersection| meet_curves(i, MeetKind::Touch).next().is_some();
+        let EntityId::Edge(e) = on.id else {
+            return self.partner(side, f, on, touches);
+        };
+        (0..self.faces.len())
+            .filter(|&o| o != side)
+            .flat_map(|o| self.faces[o].iter().copied())
+            .find(|h| {
+                let uses = self.m.face(h.id).map_or(0, |g| {
+                    g.loops()
+                        .iter()
+                        .flat_map(|l| l.coedges())
+                        .filter(|c| c.edge() == e)
+                        .count()
+                });
+                uses == 2
+                    && self.i.pairs.iter().any(|p| {
+                        touches(&p.intersection)
+                            && ((p.a == f && p.b == h.id) || (p.a == h.id && p.b == f))
+                    })
+            })
     }
 
     fn surface_of(&self, h: FaceHandle) -> Result<&'m Surface, OpError> {

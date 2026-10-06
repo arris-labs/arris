@@ -109,10 +109,17 @@ impl<'m, 'c> Build<'m, 'c> {
             if range.length() <= 0.0 {
                 continue;
             }
+            // A touch along a seam of either face — a cylinder lying on a
+            // plane by its seam — is interior to that face in 3D, and a
+            // contact as one off the seam is.
             let point = curve.point(range.midpoint());
-            let Some(uv) = Self::inside_both(fa, fb, point) else {
+            let (Some(ua), Some(ub)) = (
+                self.interior_or_seam(oa, fa, point),
+                self.interior_or_seam(ob, fb, point),
+            ) else {
                 continue;
             };
+            let uv = [ua, ub];
             self.contacts.push(Contact {
                 pair: pi,
                 curve: ci,

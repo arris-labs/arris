@@ -1,0 +1,95 @@
+{
+  "description": "a sphere of radius R and the plane z = R tangent to it at its pole: the body lies wholly on the negative side, the positive side is empty, and Arris refuses as a plane that only touches it",
+  "params": {
+    "R": 5,
+    "side": 1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          "-R"
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              "R"
+            ],
+            "via": [
+              "R",
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              "-R"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "ball",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          "R"
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "no-crossing"
+  }
+}

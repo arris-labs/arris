@@ -1,0 +1,92 @@
+{
+  "description": "a 10-cube split by the plane x + 2y + 3z = 10 through its vertex (10, 0, 0) alone: a corner tetrahedron of legs 10, 5 and 10/3 at the origin on the negative side, the cube less it on the positive, the cap a triangle with a corner on the cube's vertex",
+  "params": {
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "box",
+      "plane": {
+        "origin": [
+          10,
+          0,
+          0
+        ],
+        "normal": [
+          1,
+          2,
+          3
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        "10 / 3",
+        "5 / 3",
+        "10 / 9"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "near_origin",
+      "point": [
+        1,
+        1,
+        0.5
+      ]
+    },
+    {
+      "label": "far",
+      "point": [
+        8,
+        8,
+        8
+      ]
+    },
+    {
+      "label": "on_vertex",
+      "point": [
+        10,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (1000 - (250 / 9)) + (1 - side) / 2 * ((250 / 9))",
+    "area": "(1 + side) / 2 * (550 + (sqrt(8750) / 3)) + (1 - side) / 2 * (50 + (sqrt(8750) / 3))",
+    "centroid": [
+      "(1 + side) / 2 * ((5000 - (250 / 9) * 10 / 4) / (1000 - (250 / 9))) + (1 - side) / 2 * (10 / 4)",
+      "(1 + side) / 2 * ((5000 - (250 / 9) * 5 / 4) / (1000 - (250 / 9))) + (1 - side) / 2 * (5 / 4)",
+      "(1 + side) / 2 * ((5000 - (250 / 9) * 10 / 12) / (1000 - (250 / 9))) + (1 - side) / 2 * (10 / 12)"
+    ],
+    "genus": 0
+  }
+}

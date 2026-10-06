@@ -1002,7 +1002,7 @@ PipeElbow Tilt fuse +2: INTERNAL Geometry(the section of the torus surface and t
 PipeElbow Tilt fuse -4: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt fuse +4: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt fuse -16: generic
-PipeElbow Tilt fuse +16: UNSUPPORTED(CYLINDER SURFACE AGAINST CIRCLE CURVE)
+PipeElbow Tilt fuse +16: generic
 PipeElbow Tilt common +0: refused ZeroThickness
 PipeElbow Tilt common -0.25: UNSUPPORTED(TORUS SURFACE AGAINST CIRCLE CURVE)
 PipeElbow Tilt common +0.25: INTERNAL Split(Turn)
@@ -1017,7 +1017,7 @@ PipeElbow Tilt common +2: INTERNAL Geometry(the section of the torus surface and
 PipeElbow Tilt common -4: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt common +4: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt common -16: generic
-PipeElbow Tilt common +16: UNSUPPORTED(CYLINDER SURFACE AGAINST CIRCLE CURVE)
+PipeElbow Tilt common +16: generic
 PipeElbow Tilt cut +0: body
 PipeElbow Tilt cut -0.25: UNSUPPORTED(TORUS SURFACE AGAINST CIRCLE CURVE)
 PipeElbow Tilt cut +0.25: INTERNAL Split(Turn)
@@ -1032,11 +1032,11 @@ PipeElbow Tilt cut +2: INTERNAL Geometry(the section of the torus surface and th
 PipeElbow Tilt cut -4: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt cut +4: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt cut -16: refused NonManifold
-PipeElbow Tilt cut +16: UNSUPPORTED(CYLINDER SURFACE AGAINST CIRCLE CURVE)
+PipeElbow Tilt cut +16: generic
 PipeElbow Radius fuse +0: body
 PipeElbow Radius fuse -0.25: flush
 PipeElbow Radius fuse +0.25: flush
-PipeElbow Radius fuse -0.5: INTERNAL CommonBlock
+PipeElbow Radius fuse -0.5: flush
 PipeElbow Radius fuse +0.5: INTERNAL CommonBlock
 PipeElbow Radius fuse -1: INTERNAL Geometry(the section of the torus surface and the cylinde)
 PipeElbow Radius fuse +1: INTERNAL Geometry(the section of the torus surface and the cylinde)
@@ -1051,7 +1051,7 @@ PipeElbow Radius fuse +16: generic
 PipeElbow Radius common +0: refused ZeroThickness
 PipeElbow Radius common -0.25: flush
 PipeElbow Radius common +0.25: flush
-PipeElbow Radius common -0.5: INTERNAL CommonBlock
+PipeElbow Radius common -0.5: flush
 PipeElbow Radius common +0.5: INTERNAL CommonBlock
 PipeElbow Radius common -1: INTERNAL Geometry(the section of the torus surface and the cylinde)
 PipeElbow Radius common +1: INTERNAL Geometry(the section of the torus surface and the cylinde)
@@ -1066,7 +1066,7 @@ PipeElbow Radius common +16: flush
 PipeElbow Radius cut +0: body
 PipeElbow Radius cut -0.25: flush
 PipeElbow Radius cut +0.25: flush
-PipeElbow Radius cut -0.5: INTERNAL CommonBlock
+PipeElbow Radius cut -0.5: flush
 PipeElbow Radius cut +0.5: INTERNAL CommonBlock
 PipeElbow Radius cut -1: INTERNAL Geometry(the section of the torus surface and the cylinde)
 PipeElbow Radius cut +1: INTERNAL Geometry(the section of the torus surface and the cylinde)

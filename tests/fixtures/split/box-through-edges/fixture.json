@@ -1,0 +1,92 @@
+{
+  "description": "a 10-cube split diagonally by the plane x = y through its two opposite vertical edges at (0, 0) and (10, 10): a triangular prism on either side, each keeping one of the two edges as a cap edge, the cap a 10 sqrt(2) by 10 rectangle",
+  "params": {
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "box",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "normal": [
+          1,
+          -1,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "pos",
+      "point": [
+        7,
+        3,
+        5
+      ]
+    },
+    {
+      "label": "neg",
+      "point": [
+        3,
+        7,
+        5
+      ]
+    },
+    {
+      "label": "on_edge",
+      "point": [
+        0,
+        0,
+        5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "500",
+    "area": "300 + 100 * sqrt(2)",
+    "centroid": [
+      "(1 + side) / 2 * (20 / 3) + (1 - side) / 2 * (10 / 3)",
+      "(1 + side) / 2 * (10 / 3) + (1 - side) / 2 * (20 / 3)",
+      5
+    ],
+    "genus": 0
+  }
+}

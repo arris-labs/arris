@@ -572,6 +572,32 @@ impl<'m, 'c> Build<'m, 'c> {
         Some(out)
     }
 
+    /// `point` on face `f` of operand `side` with the face on every side
+    /// of it in 3D: inside its loops, or on a seam the face uses twice,
+    /// inside that edge's range, which the (u, v) cut puts on the
+    /// boundary. The (u, v) is in the translate the face's loops use.
+    fn interior_or_seam(&self, side: usize, f: &FaceInfo<'m>, point: Point3) -> Option<Point2> {
+        let projection = f.surface.project(point).ok()?;
+        let (s, shift) = f.domain.side(projection.uv);
+        let uv = projection.uv + shift;
+        match s {
+            Side::Inside => return Some(uv),
+            Side::Outside => return None,
+            Side::Boundary => {}
+        }
+        let on_seam = f.uses.iter().enumerate().any(|(i, (e, _))| {
+            f.uses[i + 1..].iter().any(|(x, _)| x == e)
+                && self.edge_info(side, *e).is_some_and(|info| {
+                    info.curve.project(point).is_ok_and(|p| {
+                        p.distance <= info.tolerance
+                            && info.vertex_at(point).is_none()
+                            && info.in_range(p.t).is_some()
+                    })
+                })
+        });
+        on_seam.then_some(uv)
+    }
+
     // -- the coincident pairs ------------------------------------------
 
     /// The pieces of an edge between consecutive paves, as the result

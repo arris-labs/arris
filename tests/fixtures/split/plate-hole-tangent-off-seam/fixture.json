@@ -1,0 +1,72 @@
+{
+  "description": "the plate with a through hole r 3 at (10, 10) of split/plate-hole-tangent, split by the plane x = 7 tangent to the hole's wall along its ruling at (7, 10), off the hole's seam: the wall touches the positive side's cap from inside along a ruling interior to both, the slit no manifold solid carries, refused as TangentContact as at the seam",
+  "params": {
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        20,
+        5
+      ]
+    },
+    {
+      "name": "hole",
+      "op": "cylinder",
+      "base": [
+        10,
+        10,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 7
+    },
+    {
+      "name": "holed",
+      "op": "cut",
+      "target": "plate",
+      "tool": "hole"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "holed",
+      "plane": {
+        "origin": [
+          7,
+          0,
+          0
+        ],
+        "normal": [
+          1,
+          0,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "tangent-contact"
+  }
+}

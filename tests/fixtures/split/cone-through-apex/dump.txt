@@ -1,0 +1,36 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b2 solid
+  shell +s2
+    face -f8 S0 tol 0.0000001
+      surface plane origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge +e17 p29 line origin (0, 0) direction (-0.707106781187, -0.707106781187)
+        coedge -e15 p0 circle origin (0, 0) x (1, 0) y (0, 1) radius 4
+    face +f9 S1 tol 0.0000001
+      surface cone origin (0, 0, 0) x (1, 0, 0) y (0, -1, 0) z (0, 0, -1) radius 4 half_angle 0.588002603548
+      loop 0
+        coedge +e15 p1 line origin (0, 0) direction (-1, 0)
+        coedge -e19 p33 line origin (-3.926990816987, -7.211102550928) direction (0, 1)
+        coedge -e16 p3 line origin (0, -7.211102550928) direction (-1, 0)
+        coedge +e18 p31 line origin (-0.785398163397, -7.211102550928) direction (0, 1)
+    face -f10 S2 tol 0.0000001
+      surface plane origin (0, 0, 0) x (0.707106781187, 0.707106781187, 0) y (0, 0, -1) z (-0.707106781187, 0.707106781187, 0)
+      loop 0
+        coedge +e19 p34 line origin (0, -6) direction (-0.554700196225, 0.832050294338)
+        coedge -e18 p32 line origin (0, -6) direction (0.554700196225, 0.832050294338)
+        coedge -e17 p30 line origin (0, 0) direction (-1, 0)
+edges
+  +e17 v10 -> v11 c14 [-4, 4] tol 0.0000001
+    curve line origin (0, 0, 0) direction (-0.707106781187, -0.707106781187, 0)
+  -e15 v10 -> v11 c1 [0.785398163397, 3.926990816987] tol 0.0000001
+    curve circle origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 4
+  -e19 v1 -> v11 c17 [0, 7.211102550928] tol 0.0000001
+    curve line origin (0, 0, 6) direction (-0.392232270276, -0.392232270276, -0.832050294338)
+  -e16 v1 -> v1 degenerate [0.785398163397, 3.926990816987] tol 0.0000001
+  +e18 v1 -> v10 c16 [0, 7.211102550928] tol 0.0000001
+    curve line origin (0, 0, 6) direction (0.392232270276, 0.392232270276, -0.832050294338)
+vertices
+  v10 (2.828427124746, 2.828427124746, 0) tol 0.0000001
+  v11 (-2.828427124746, -2.828427124746, 0) tol 0.0000001
+  v1 (0, 0, 6) tol 0.0000001
+euler 3/4/3/3/1 g0 = 0

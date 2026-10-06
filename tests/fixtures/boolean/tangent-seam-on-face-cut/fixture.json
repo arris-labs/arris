@@ -1,0 +1,14 @@
+{
+  "description": "a cylinder r 0.5, h 1 along x lying on a 10 × 10 × 1 plate's bottom face, cut from the plate: the touch is the cylinder's seam, since an axis along +x puts the seam at +z, on the side against the face. The cut is the plate, untouched (the touch shares no material): the touch along the seam is a contact as one off it is, and the seam no image on the face. Turned by 1e-9 of a radian about z, off the seam, it builds the same. Found by boolean_prop's a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing at 5000 cases on the fixed seed, which draws the angle 0 exactly (plans/measuring-harness step 6; fixed by plans/split-by-plane step 4)",
+  "steps": [
+    {"name": "a", "op": "box", "min": [-5, -5, -0.5], "max": [5, 5, 0.5]},
+    {"name": "b", "op": "cylinder", "base": [-3, 2, -1], "axis": [1, 0, 0], "radius": 0.5, "height": 1},
+    {"name": "result", "op": "cut", "target": "a", "tool": "b"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "plate-centre", "point": [0, 0, 0]},
+    {"label": "cylinder-centre", "point": [-2.5, 2, -1]},
+    {"label": "on-the-touch", "point": [-2.5, 2, -0.5]}
+  ]
+}

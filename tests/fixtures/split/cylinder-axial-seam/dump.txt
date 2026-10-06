@@ -1,0 +1,46 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b2 solid
+  shell +s2
+    face -f9 S1 tol 0.0000001
+      surface plane origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge +e17 p30 line origin (0, 0) direction (-1, 0)
+        coedge -e15 p1 circle origin (0, 0) x (1, 0) y (0, 1) radius 3
+    face +f10 S0 tol 0.0000001
+      surface cylinder origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3
+      loop 0
+        coedge +e15 p0 line origin (0, 0) direction (1, 0)
+        coedge +e18 p32 line origin (3.14159265359, 0) direction (0, 1)
+        coedge -e16 p4 line origin (0, 10) direction (1, 0)
+        coedge -e1 p3 line origin (0, 0) direction (0, 1)
+    face +f11 S2 tol 0.0000001
+      surface plane origin (0, 0, 10) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge +e16 p5 circle origin (0, 0) x (1, 0) y (0, 1) radius 3
+        coedge -e19 p34 line origin (0, 0) direction (-1, 0)
+    face -f12 S3 tol 0.0000001
+      surface plane origin (0, 0, 0) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e18 p33 line origin (0, -3) direction (1, 0)
+        coedge +e19 p35 line origin (10, 0) direction (0, -1)
+        coedge +e1 p36 line origin (0, 3) direction (1, 0)
+        coedge -e17 p31 line origin (0, 0) direction (0, -1)
+edges
+  +e17 v0 -> v10 c15 [-3, 3] tol 0.0000001
+    curve line origin (0, 0, 0) direction (-1, 0, 0)
+  -e15 v0 -> v10 c0 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3
+  +e18 v10 -> v11 c16 [0, 10] tol 0.0000001
+    curve line origin (-3, 0, 0) direction (0, 0, 1)
+  -e16 v1 -> v11 c2 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (0, 0, 10) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 3
+  -e1 v0 -> v1 c1 [0, 10] tol 0.0000001
+    curve line origin (3, 0, 0) direction (0, 0, 1)
+  -e19 v1 -> v11 c18 [-3, 3] tol 0.0000001
+    curve line origin (0, 0, 10) direction (-1, 0, 0)
+vertices
+  v0 (3, 0, 0) tol 0.0000001
+  v10 (-3, 0, 0) tol 0.0000001
+  v11 (-3, 0, 10) tol 0.0000001
+  v1 (3, 0, 10) tol 0.0000001
+euler 4/6/4/4/1 g0 = 0

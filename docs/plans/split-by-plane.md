@@ -138,7 +138,7 @@ bound has to be established here.
   `split/` and are blessed: the box, oblique box, cylinder across, tube,
   sphere, plate with holes, U-bracket, filleted box and shelled box. The
   missed plane becomes a refusal fixture.
-- [ ] Step 4 **[3]**: The plane through the body's own entities. Cases:
+- [x] Step 4 **[3]**: The plane through the body's own entities. Cases:
   - coincident with a face (an L-block split at its step: no cap on that
     stretch, and the face goes to the side its normal says)
   - containing an edge (a box split diagonally through two opposite edges)
@@ -240,6 +240,38 @@ The plan closes when all of the following pass:
   counts included: step 4 decides whether that stays the convention and
   moves them. The tangent plane fails with `Fault::Split` (a section edge
   ends at a node nothing else reaches), step 4's.
-- ⚠ OPEN: whether a side whose pieces are only a sliver within tolerance of
-  the plane counts as a crossing or as `NoCrossing`. Agent decides at step
-  4, matching what Open CASCADE's splitter builds on the touch fixtures.
+- Found in step 4: the step's cases are `split/l-block-at-step`,
+  `box-through-edges`, `box-through-vertex`, `cylinder-axial-seam`,
+  `cylinder-axial-off-seam`, `cone-through-apex`, `sphere-through-poles`,
+  and the refusals `cylinder-plane-tangent` and `sphere-tangent-at-pole`
+  (`NoCrossing`) and `plate-hole-tangent` and `plate-hole-tangent-off-seam`
+  (`TangentContact`). Every built
+  side matches Open CASCADE's counts, so the axial cylinder keeps the
+  oracle's convention: the seam the plane misses stays a body edge on its
+  side, no `counts_differ`. No `BesideSingularity`: the apex and the poles
+  are built. Boolean faults sat under them, at the seam or at a symmetric
+  midpoint, and the seam's are fixed in the decomposition: a touch
+  along a seam is a contact (it was imaged on the plane and dangled), a
+  piece whose interior point lands on that seam is decided by the
+  curvature rule (an edge with a face crossing the other face there stays
+  that crossing's image: `blend_prop`'s crescent bite), and a touch at its
+  edge's own end vertex makes a section vertex that paves the section
+  through it. Two holes touching along one's seam are now `TangentContact`
+  as off it, where they were `NonManifold`, and `tolerance_band` holds six
+  more poses. The off-seam hole-tangent split refuses by name too
+  (`split/plate-hole-tangent-off-seam`), but the boolean that keeps the
+  side away from the hole drops a section block whose midpoint touches the
+  rim: `regression/tangent-hole-rim-midpoint-common`, a backlog line, since
+  deciding such blocks at their check points flips 31 held band outcomes.
+  That also fixes `regression/tangent-seam-on-face-cut` (moved to
+  `boolean/`; `boolean_prop` no longer excludes the seam on the touch, 5000
+  cases green). The scratch box now runs twice its margin on the `x` and
+  `y` sides, so its untouched near face's interior point is past the
+  body's box and never on a pole or a seam the plane only touches; that
+  moved `split/box-corner`'s dump in curve ids only.
+- Settled in step 4 (was ⚠ OPEN): a plane within the tolerance of a face
+  is flush with it, as the booleans hold two faces that close, so a side
+  that would only be a sliver within tolerance is `NoCrossing`; past the
+  tolerance the slab is built (`a_sliver_within_tolerance_is_no_crossing`).
+  Open CASCADE, with no fuzzy value, builds any sliver; no fixture holds
+  that pose to it.

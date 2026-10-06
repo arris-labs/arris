@@ -55,7 +55,9 @@ pub struct Split {
 /// Errors, the model untouched on each: [`OpError::InvalidInput`] and
 /// [`OpError::NotFound`] as every operation; [`OpError::Degenerate`] with
 /// [`SplitReason::NoCrossing`] naming the body when the plane misses it
-/// or only touches it, so one side would be empty; the booleans' refusals
+/// or only touches it, so one side would be empty — a plane within the
+/// tolerance of a face is flush with it, as two faces that close are to
+/// the booleans, so the sliver between them is no side; the booleans' refusals
 /// where the plane meets the body as they refuse — `Unsupported` for a
 /// pair with no closed form or a NURBS face,
 /// [`BooleanReason::TangentContact`] for a plane tangent to a face along
@@ -115,12 +117,15 @@ pub fn split(
     }
     // The box beyond the plane: its near face on the plane, its other five
     // past the body's box by the box's own diagonal, so none of them
-    // pairs with a face of the body.
+    // pairs with a face of the body. It runs twice as far on the `x` and
+    // `y` sides, which puts the middle of its near face — where an
+    // untouched face is classified — past the body's box, never on a pole,
+    // a seam or a vertex the plane only touches.
     let margin = local.diagonal();
     let lo = Point3::new(local.min[0] - margin, local.min[1] - margin, 0.0);
     let hi = Point3::new(
-        local.max[0] + margin,
-        local.max[1] + margin,
+        local.max[0] + 2.0 * margin,
+        local.max[1] + 2.0 * margin,
         local.max[2] + margin,
     );
     let mut meter = Meter::new(control);
@@ -241,6 +246,36 @@ mod tests {
         }
         arris_topo::provenance::audit_many(&m, &[block], &[s.positive, s.negative], &s.provenance)
             .unwrap();
+    }
+
+    /// A plane within the tolerance of a face is flush with it, as the
+    /// booleans hold two faces that close: the side between them is no
+    /// material, and the split is refused. A plane past the tolerance cuts
+    /// a thin slab, built.
+    #[test]
+    fn a_sliver_within_tolerance_is_no_crossing() {
+        let n = &Control::NONE;
+        for (dz, crosses) in [(-5e-8, false), (5e-8, false), (-1e-6, true)] {
+            let mut m = Model::default();
+            let (block, _) =
+                primitive_box(&mut m, Point3::origin(), Point3::new(10.0, 10.0, 10.0), n).unwrap();
+            let plane = Frame::from_z(Point3::new(0.0, 0.0, 10.0 + dz), Vec3::z()).unwrap();
+            match split(&mut m, block, &plane, n) {
+                Ok(s) => {
+                    assert!(crosses, "{dz}: built");
+                    let thin = crate::measure::mass_properties(&m, s.positive, n).unwrap();
+                    assert!(
+                        (thin.volume - 100.0 * -dz).abs() < 1e-9,
+                        "{dz}: {}",
+                        thin.volume
+                    );
+                }
+                Err(e) => {
+                    assert!(!crosses, "{dz}: {e}");
+                    refused_naming(e, block);
+                }
+            }
+        }
     }
 
     /// A plane past the body's box, and one through the corner of a

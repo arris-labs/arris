@@ -211,6 +211,11 @@ corpus_tests! {
     /// the plate with every id kept. Open CASCADE imprints the ruling; the
     /// fixture states that convention in `analytic.counts_differ`.
     boolean_tangent_outside_cut => run "boolean/tangent-outside-cut";
+    /// A cylinder along x lying on a plate by its seam, cut from the plate:
+    /// the touch along the seam a contact as one off it is, and the cut the
+    /// plate with every id kept (boolean_prop's tangent pair at 5000 cases,
+    /// shrunk; ADR-0024).
+    boolean_tangent_seam_on_face_cut => run "boolean/tangent-seam-on-face-cut";
     /// A blind hole whose wall touches a side face from inside along a
     /// ruling interior to both: the slit no manifold `Solid` can carry,
     /// `BooleanReason::TangentContact` through the runner's expected-error path
@@ -435,6 +440,9 @@ corpus_tests! {
     /// 5b).
     #[ignore = "the second fuse returns OpError::Internal(Split) (docs/BACKLOG.md, the differential's findings)"]
     regression_three_cylinders_fuse_split_fault => run "regression/three-cylinders-fuse-split-fault";
+    /// A plate with a through hole intersected with a box whose face is tangent to the hole's wall off its seam, the box away from the hole.
+    #[ignore = "Fault::Split Dangling, the section line tangent to the hole's rim at its block's midpoint dropped, where the desired common is the 7 by 20 by 5 block (docs/BACKLOG.md, a section block touching a face's boundary at its midpoint)"]
+    regression_tangent_hole_rim_midpoint_common => run "regression/tangent-hole-rim-midpoint-common";
     /// A mirrored revolve and a mirrored extrusion intersected with a posed cylinder in turn (the differential's draw, shrunk; CI run 36786571173).
     #[ignore = "the second common returns OpError::Internal(Seam) (docs/BACKLOG.md, the differential's findings)"]
     regression_mirrored_revolve_common_seam_fault => run "regression/mirrored-revolve-common-seam-fault";
@@ -450,11 +458,6 @@ corpus_tests! {
     /// 5b).
     #[ignore = "a boolean returns OpError::Internal(Builder) (docs/BACKLOG.md, the differential's findings)"]
     regression_box_revolve_cylinder_common_fuse_builder_fault => run "regression/box-revolve-cylinder-common-fuse-builder-fault";
-    /// A cylinder along x lying on a plate, its seam on the touch, cut from
-    /// the plate (boolean_prop's tangent pair at 5000 cases, shrunk;
-    /// ADR-0024).
-    #[ignore = "Fault::Split, a section edge ending at a node nothing else reaches, where the desired cut is the plate (docs/BACKLOG.md, the seam on a touch)"]
-    regression_tangent_seam_on_face_cut => run "regression/tangent-seam-on-face-cut";
     /// Three revolves and extrusions fused in one call (the multi-tool
     /// differential's case 46, shrunk): Arris's result has three shells
     /// and 46 faces where Open CASCADE's has two and 55.
@@ -1326,6 +1329,28 @@ corpus_tests! {
     split_rim_filleted_cylinder_through_torus => run "split/rim-filleted-cylinder-through-torus";
     /// A shelled box split across its walls: the cap is a ring.
     split_shelled_box_across_walls => run "split/shelled-box-across-walls";
+    /// A cylinder split by a plane through its axis and its seam: the seam a cap edge.
+    split_cylinder_axial_seam => run "split/cylinder-axial-seam";
+    /// A cylinder split by a plane through its axis off its seam: the seam kept on one side, as Open CASCADE keeps it.
+    split_cylinder_axial_off_seam => run "split/cylinder-axial-off-seam";
+    /// A plane tangent to a cylinder along its seam: nothing crosses, refused as `NoCrossing`.
+    split_cylinder_plane_tangent => run "split/cylinder-plane-tangent";
+    /// An L-block split in the plane of its step face: no cap over the step, which goes to the side its normal bounds.
+    split_l_block_at_step => run "split/l-block-at-step";
+    /// A cube split diagonally through two opposite edges: each side keeps one of them.
+    split_box_through_edges => run "split/box-through-edges";
+    /// A cube split by a plane through one vertex: a corner tetrahedron and the cube less it.
+    split_box_through_vertex => run "split/box-through-vertex";
+    /// A plate's hole wall tangent to the plane that crosses the plate: the slit, refused as `TangentContact`.
+    split_plate_hole_tangent => run "split/plate-hole-tangent";
+    /// A cone split through its apex and axis: a half cone on either side.
+    split_cone_through_apex => run "split/cone-through-apex";
+    /// A sphere split through both poles: a hemisphere on either side.
+    split_sphere_through_poles => run "split/sphere-through-poles";
+    /// A plane tangent to a sphere at its pole: refused as `NoCrossing`.
+    split_sphere_tangent_at_pole => run "split/sphere-tangent-at-pole";
+    /// The same plate split off the hole's seam: refused as `TangentContact` as at it.
+    split_plate_hole_tangent_off_seam => run "split/plate-hole-tangent-off-seam";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'
@@ -1440,15 +1465,6 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
-    /// A cylinder split by a plane through its axis, off its seam.
-    #[ignore = "the plane through the body's own entities is not built yet (plans/split-by-plane step 4)"]
-    regression_cylinder_split_axial_off_seam => run "regression/cylinder-split-axial-off-seam";
-    /// A cylinder split by a plane through its axis and its seam.
-    #[ignore = "the plane through the body's own entities is not built yet (plans/split-by-plane step 4)"]
-    regression_cylinder_split_axial_seam => run "regression/cylinder-split-axial-seam";
-    /// A plane tangent to a cylinder along a ruling: nothing crosses, refused.
-    #[ignore = "the plane through the body's own entities is not built yet (plans/split-by-plane step 4)"]
-    regression_cylinder_split_plane_tangent => run "regression/cylinder-split-plane-tangent";
 }
 
 /// A variant the recipe does not have fails naming it.

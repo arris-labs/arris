@@ -1,0 +1,92 @@
+{
+  "description": "a 20 by 20 by 5 plate with a through hole r 3 at (10, 10), intersected with a box whose face x = 7 is tangent to the hole's wall along its ruling at (7, 10), off the hole's seam, the box on the side away from the hole: the desired common is the 7 by 20 by 5 block, the wall and the face sharing nothing. Arris fails with Fault::Split, Dangling: the section line across the plate's bottom and top is tangent to the hole's rim at the middle of its one block, so the block's midpoint lies on the rim, the block is dropped, and the section edges on the box face dangle. At the seam (x = 13) the rim's vertex paves the line and it builds (split-by-plane step 4 finding)",
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        20,
+        5
+      ]
+    },
+    {
+      "name": "hole",
+      "op": "cylinder",
+      "base": [
+        10,
+        10,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 7
+    },
+    {
+      "name": "holed",
+      "op": "cut",
+      "target": "plate",
+      "tool": "hole"
+    },
+    {
+      "name": "half",
+      "op": "box",
+      "min": [
+        -20,
+        -5,
+        -5
+      ],
+      "max": [
+        7,
+        25,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "common",
+      "a": "holed",
+      "b": "half"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "block",
+      "point": [
+        3,
+        10,
+        2.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "touch",
+      "point": [
+        7,
+        10,
+        2.5
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "700",
+    "area": "550",
+    "centroid": [
+      3.5,
+      10,
+      2.5
+    ],
+    "genus": 0
+  }
+}

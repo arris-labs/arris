@@ -1,0 +1,154 @@
+{
+  "description": "an extruded L (20 by 20, legs 10 wide), thickness 10, split by the plane y = 10 its step face lies in: the positive side the upper leg, a 10-cube, the negative the 20 by 10 by 10 foot. The step face has no cap over it, and goes to the negative side, which its normal +y bounds; the negative side's top is the step face beside the cap",
+  "params": {
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              20,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              20,
+              10
+            ]
+          },
+          {
+            "line_to": [
+              10,
+              10
+            ]
+          },
+          {
+            "line_to": [
+              10,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              20
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "l",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 10
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "l",
+      "plane": {
+        "origin": [
+          0,
+          10,
+          0
+        ],
+        "normal": [
+          0,
+          1,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        5,
+        10,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_step",
+      "point": [
+        15,
+        10,
+        5
+      ],
+      "expect": null
+    },
+    {
+      "label": "leg",
+      "point": [
+        5,
+        15,
+        5
+      ]
+    },
+    {
+      "label": "foot",
+      "point": [
+        15,
+        5,
+        5
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (1000) + (1 - side) / 2 * (2000)",
+    "area": "(1 + side) / 2 * (600) + (1 - side) / 2 * (1000)",
+    "centroid": [
+      "(1 + side) / 2 * (5) + (1 - side) / 2 * (10)",
+      "(1 + side) / 2 * (15) + (1 - side) / 2 * (5)",
+      5
+    ],
+    "genus": 0
+  }
+}

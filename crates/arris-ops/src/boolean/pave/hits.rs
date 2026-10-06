@@ -687,7 +687,11 @@ impl<'m, 'c> Build<'m, 'c> {
         // A touch makes no vertex of its own, but one landing on a vertex
         // made above passes through it: a ruling or a rim circle through
         // the crossing of two ellipses, where the walls are tangent to
-        // each other. It joins that vertex, which then paves its edge.
+        // each other. It joins that vertex, which then paves its edge. A
+        // touch at its edge's own end vertex is a node of the loops there
+        // already — a hole's rim touching a plane at its seam, the
+        // plane's section across the plate running through it — and is a
+        // vertex like a hit at a vertex, which paves that section.
         let made = members.len();
         let touches: Vec<(Member, Candidate)> = self
             .hits
@@ -711,7 +715,7 @@ impl<'m, 'c> Build<'m, 'c> {
             let label = self.labels(&all)?;
             let reached: BTreeSet<usize> = label[..made].iter().copied().collect();
             for (k, (member, candidate)) in touches.into_iter().enumerate() {
-                if reached.contains(&label[made + k]) {
+                if reached.contains(&label[made + k]) || !candidate.existing.is_empty() {
                     members.push((member, candidate));
                 } else if let Member::Hit(i) = member {
                     off_every_vertex.push(i);

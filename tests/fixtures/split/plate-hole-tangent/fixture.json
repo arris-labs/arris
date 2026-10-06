@@ -1,0 +1,72 @@
+{
+  "description": "a 20 by 20 by 5 plate with a through hole r 3 at (10, 10), split by the plane x = 13 tangent to the hole's wall along its ruling at (13, 10): the plane crosses the plate, and the wall touches the negative side's cap from inside along a ruling interior to both, the slit no manifold solid carries. Arris refuses with TangentContact as the booleans rule it (ADR-0004); Open CASCADE builds the sides with the ruling as an edge on the cap",
+  "params": {
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        20,
+        5
+      ]
+    },
+    {
+      "name": "hole",
+      "op": "cylinder",
+      "base": [
+        10,
+        10,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 7
+    },
+    {
+      "name": "holed",
+      "op": "cut",
+      "target": "plate",
+      "tool": "hole"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "holed",
+      "plane": {
+        "origin": [
+          13,
+          0,
+          0
+        ],
+        "normal": [
+          1,
+          0,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "tangent-contact"
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "description": "a cylinder of radius r on the z axis and the plane x = r tangent to it along a ruling: the body lies wholly on the negative side, the positive side is empty, and Arris refuses as a plane that only touches it",
+  "description": "a cylinder of radius r on the z axis and the plane x = r tangent to it along a ruling, its seam: the body lies wholly on the negative side, the positive side is empty, and Arris refuses as a plane that only touches it",
   "params": {
     "r": 3,
     "side": 1

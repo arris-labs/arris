@@ -1,0 +1,142 @@
+{
+  "description": "a sphere of radius R split by the plane through its axis with normal (-1, 1, 0), off its seam: a hemisphere on either side, the cap a disc of radius R through both poles, the singular points the plane runs through (ADR-0021)",
+  "params": {
+    "R": 5,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          "-R"
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              "R"
+            ],
+            "via": [
+              "R",
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              "-R"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "ball",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "normal": [
+          -1,
+          1,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        0,
+        0,
+        "R / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "pos",
+      "point": [
+        "-R / 2 * (1 / sqrt(2))",
+        "R / 2 * (1 / sqrt(2))",
+        0
+      ]
+    },
+    {
+      "label": "neg",
+      "point": [
+        "R / 2 * (1 / sqrt(2))",
+        "-R / 2 * (1 / sqrt(2))",
+        0
+      ]
+    },
+    {
+      "label": "pole",
+      "point": [
+        0,
+        0,
+        "R"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "2 * pi * R^3 / 3",
+    "area": "3 * pi * R^2",
+    "centroid": [
+      "(1 + side) / 2 * (-3 * R / 8 * (1 / sqrt(2))) + (1 - side) / 2 * (3 * R / 8 * (1 / sqrt(2)))",
+      "(1 + side) / 2 * (3 * R / 8 * (1 / sqrt(2))) + (1 - side) / 2 * (-3 * R / 8 * (1 / sqrt(2)))",
+      0
+    ],
+    "genus": 0
+  }
+}

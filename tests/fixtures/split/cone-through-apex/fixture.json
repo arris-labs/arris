@@ -1,0 +1,145 @@
+{
+  "description": "a cone of radius R and height H on the z axis, apex up, split by the plane through its axis with normal (-1, 1, 0), off its seam: a half cone on either side, the cap the triangle of base 2R and height H with a corner on the apex, the singular point the plane runs through (ADR-0021)",
+  "params": {
+    "R": 4,
+    "H": 6,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              "R",
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              "H"
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "cone",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "cone",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "normal": [
+          -1,
+          1,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        0,
+        0,
+        "H / 3"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "pos",
+      "point": [
+        "-R / 4 * (1 / sqrt(2))",
+        "R / 4 * (1 / sqrt(2))",
+        "H / 4"
+      ]
+    },
+    {
+      "label": "neg",
+      "point": [
+        "R / 4 * (1 / sqrt(2))",
+        "-R / 4 * (1 / sqrt(2))",
+        "H / 4"
+      ]
+    },
+    {
+      "label": "apex",
+      "point": [
+        0,
+        0,
+        "H"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * R^2 * H / 6",
+    "area": "pi * R * sqrt(R^2 + H^2) / 2 + pi * R^2 / 2 + R * H",
+    "centroid": [
+      "(1 + side) / 2 * (-R / pi * (1 / sqrt(2))) + (1 - side) / 2 * (R / pi * (1 / sqrt(2)))",
+      "(1 + side) / 2 * (R / pi * (1 / sqrt(2))) + (1 - side) / 2 * (-R / pi * (1 / sqrt(2)))",
+      "H / 4"
+    ],
+    "genus": 0
+  }
+}

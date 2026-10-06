@@ -370,7 +370,10 @@ without crossing it — makes no vertex of its own, but one whose
 component holds a vertex made by the hits and crossings joins it, since the edge passes
 through that vertex (a seam ruling or a rim circle through the crossing
 of two ellipses, tangent to the other wall there because the walls are),
-and one that lands on none is *resolved through the section curves*
+one at an end vertex of its own edge is a vertex as a hit at a vertex
+is, since that vertex is a node of the face's loops the section runs
+through (a hole's rim touching a plane at its seam vertex, the plane's
+section across the plate paved there), and one that lands on none is *resolved through the section curves*
 (ADR-0016): the edge is intersected with every section curve of the
 touched face and a face of its own, and each crossing on the face is a
 hit like any other, with its vertex and its pave — because the
@@ -488,7 +491,9 @@ edge that lies in a face of the other operand
 (`Interferences::coincident`) is paved and placed the same way whether
 or not a face of its own is coincident with that face: a seam on the
 ruling two parallel walls cross along splits the other wall as an image,
-since no coincident neighbour is there to place it — unless the piece
+since no coincident neighbour is there to place it — unless its own face
+only touches that face along it, a cylinder lying on a plane by its
+seam, where the seam is a contact and bounds nothing there; or unless the piece
 runs along that face's own boundary, a pipe's cap circle on the bend it
 joins: then it is the face's edge, and the coincident caps beside it
 hold the common block. A section vertex nothing ends at — two traced
@@ -500,8 +505,10 @@ operand edge: it is paved by the *touches*, the hits of either face's
 edges on the other face that lie on it (every curve in a face tangent to
 the other surface is tangent to it there, so these are where the curve
 leaves one face inside the other), and each block between consecutive
-touches whose midpoint is inside both faces is a *contact*, the segment
-the two faces share; on a closed curve the last block wraps round to the
+touches whose midpoint is inside both faces — on a seam of either
+counting as inside, the face lying on both sides of it — is a *contact*,
+the segment the two faces share, and a piece whose interior point lands
+on that seam is decided by the curvature rule as one on the contact is; on a closed curve the last block wraps round to the
 first touch, and a closed curve no edge reaches is one block
 (`boolean/ball-in-bore-cut`, refused as `BooleanReason::TangentContact`). Every list is in a deterministic order and `Display` prints the
 whole model, which is what the `inspect` skill reads when a boolean is

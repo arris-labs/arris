@@ -1,0 +1,108 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3c9954a009d28b758c75f55fb27e4bd5298bcc12896484fe211464987dd2e966",
+  "results": {
+    "default": {
+      "area": 887.6991118430774,
+      "centroid": [
+        13.927057434966303,
+        10.0,
+        2.4999999999999996
+      ],
+      "counts": {
+        "edges": 20,
+        "faces": 9,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": -1,
+      "genus": null,
+      "half_space": {
+        "area": 887.6991118430774,
+        "counts": {
+          "edges": 20,
+          "faces": 9,
+          "loops": 11,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 12
+        },
+        "degenerate": false,
+        "volume": 1158.6283305884592
+      },
+      "inertia": [
+        [
+          45429.05609921667,
+          8.731149137020111e-11,
+          2.1827872842550278e-11
+        ],
+        [
+          8.731149137020111e-11,
+          18460.94477011988,
+          -3.637978807091713e-12
+        ],
+        [
+          2.1827872842550278e-11,
+          -3.637978807091713e-12,
+          59062.38282521797
+        ]
+      ],
+      "probes": [],
+      "volume": 1158.6283305884592
+    },
+    "negative": {
+      "area": 549.9999999999999,
+      "centroid": [
+        3.5000000000000004,
+        10.000000000000002,
+        2.5
+      ],
+      "counts": {
+        "edges": 15,
+        "faces": 7,
+        "loops": 7,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 10
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 549.9999999999999,
+        "counts": {
+          "edges": 15,
+          "faces": 7,
+          "loops": 7,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 10
+        },
+        "degenerate": false,
+        "volume": 699.9999999999999
+      },
+      "inertia": [
+        [
+          24791.666666666642,
+          7.275957614183426e-12,
+          0.0
+        ],
+        [
+          7.275957614183426e-12,
+          4316.666666666668,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          26191.666666666642
+        ]
+      ],
+      "probes": [],
+      "volume": 699.9999999999999
+    }
+  }
+}

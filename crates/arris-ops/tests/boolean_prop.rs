@@ -222,7 +222,6 @@ prop_shards! {
 fn a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing() {
     prop::check(prop::body::tangent_pair(), |pair: TangentPair| {
         prop_assume!(!touch_at_the_face_rim(&pair));
-        prop_assume!(!seam_on_the_touch(&pair));
         a_tangent_cylinder_leaves_the_box(&pair)
     });
 }
@@ -303,21 +302,6 @@ fn a_rim_grazing_the_face_edge_keeps_its_ids() {
     if let Err(e) = a_tangent_cylinder_leaves_the_box(&pair) {
         panic!("{e}");
     }
-}
-
-/// The second named exclusion: the touch along the cylinder's seam,
-/// within the two bodies' tolerances — an axis along a box edge, whose
-/// seam `Frame::from_z` puts on the side against the face. The cut fails
-/// with `Fault::Split`, a section edge ending at a node nothing else
-/// reaches (`regression/tangent-seam-on-face-cut`, ADR-0024); the fix lifts it.
-fn seam_on_the_touch(pair: &TangentPair) -> bool {
-    let tol = arris_math::Precision::DEFAULT.tolerance().linear;
-    let axis = &pair.cylinder.axis;
-    let Ok(frame) = Frame::from_z(axis.origin, axis.direction.into_inner()) else {
-        return false;
-    };
-    let toward_face = -pair.normal();
-    pair.cylinder.radius * (1.0 - frame.x().dot(&toward_face)) <= 2.0 * tol
 }
 
 fn a_tangent_cylinder_leaves_the_box(pair: &TangentPair) -> Result<(), TestCaseError> {

@@ -2,13 +2,13 @@
 
 use std::collections::BTreeSet;
 
-use arris_geom::SurfaceIntersection;
 use arris_geom::region2::Side;
+use arris_geom::{MeetKind, SurfaceIntersection};
 use arris_topo::{EdgeId, FaceId};
 
 use super::{Block, Build, End, g_face_of, geometry};
 use crate::boolean::faces::{EdgeInfo, FaceInfo};
-use crate::boolean::{CommonBlock, EdgeImage, Pave};
+use crate::boolean::{CommonBlock, EdgeImage, Pave, meet_curves};
 use crate::error::{Fault, OpError};
 
 impl<'m, 'c> Build<'m, 'c> {
@@ -312,6 +312,19 @@ impl<'m, 'c> Build<'m, 'c> {
                 continue;
             };
             if placed {
+                continue;
+            }
+            // An edge every face of its own only touches the other face
+            // along — a seam, a cylinder lying on a plane by it — is a
+            // contact there ([`Self::contacts`]), bounding nothing on that
+            // face. One with a face crossing it there, a half disc's edge
+            // on the rim of a bite tangent to it, is that crossing's image.
+            let mid = e.curve.point(e.range.midpoint());
+            let touches_along = |pi: usize| {
+                meet_curves(&self.pairs[pi].intersection, MeetKind::Touch)
+                    .any(|(_, c)| c.project(mid).is_ok_and(|p| p.distance <= e.tolerance))
+            };
+            if owners.iter().all(|&(_, pi)| pi.is_some_and(touches_along)) {
                 continue;
             }
             for block in self.blocks_of(e) {

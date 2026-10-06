@@ -1,0 +1,37 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b3 solid
+  shell +s3
+    face +f9 S0 tol 0.0000001
+      surface sphere origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5
+      loop 0
+        coedge +e19 p1 line origin (6.28318530718, -1.570796326795) direction (0, 1)
+        coedge -e21 p2 line origin (0, 1.570796326795) direction (1, 0)
+        coedge -e24 p32 line origin (3.926990816987, -3.14159265359) direction (0, 1)
+        coedge +e23 p0 line origin (0, -1.570796326795) direction (1, 0)
+    face +f10 S0 tol 0.0000001
+      surface sphere origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 5
+      loop 0
+        coedge -e19 p3 line origin (0, -1.570796326795) direction (0, 1)
+        coedge +e22 p0 line origin (0, -1.570796326795) direction (1, 0)
+        coedge -e25 p34 line origin (0.785398163397, 6.28318530718) direction (0, -1)
+        coedge -e20 p2 line origin (0, 1.570796326795) direction (1, 0)
+    face +f11 S1 tol 0.0000001
+      surface plane origin (0, 0, 0) x (0.707106781187, 0.707106781187, 0) y (0, 0, -1) z (-0.707106781187, 0.707106781187, 0)
+      loop 0
+        coedge +e24 p33 circle origin (0, 0) x (1, 0) y (0, 1) radius 5
+        coedge +e25 p35 circle origin (0, 0) x (1, 0) y (0, 1) radius 5
+edges
+  +e19 v0 -> v11 c0 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (0, 0, 0) x (0, 0, -1) y (1, 0, 0) z (0, -1, 0) radius 5
+  -e21 v11 -> v11 degenerate [3.926990816987, 6.28318530718] tol 0.0000001
+  -e24 v0 -> v11 c14 [1.570796326795, 4.712388980385] tol 0.0000001
+    curve circle origin (0, 0, 0) x (0.707106781187, 0.707106781187, 0) y (0, 0, -1) z (-0.707106781187, 0.707106781187, 0) radius 5
+  +e23 v0 -> v0 degenerate [3.926990816987, 6.28318530718] tol 0.0000001
+  +e22 v0 -> v0 degenerate [0, 0.785398163397] tol 0.0000001
+  -e25 v11 -> v0 c14 [4.712388980385, 7.853981633974] tol 0.0000001
+    curve circle origin (0, 0, 0) x (0.707106781187, 0.707106781187, 0) y (0, 0, -1) z (-0.707106781187, 0.707106781187, 0) radius 5
+  -e20 v11 -> v11 degenerate [0, 0.785398163397] tol 0.0000001
+vertices
+  v0 (0, 0, -5) tol 0.0000001
+  v11 (0, 0, 5) tol 0.0000001
+euler 2/3/3/3/1 g0 = 0

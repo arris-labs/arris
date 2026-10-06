@@ -8,6 +8,13 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A cylinder lying on a face by its seam — a cylinder along x on a plate,
+  whose seam faces down — is cut from, fused with and intersected with the
+  plate as one touching off its seam is, where it was an internal fault,
+  and so is a box face tangent to a through hole's wall at the hole's seam.
+  Two holes touching
+  along one's seam are refused as `TangentContact`, as they are touching
+  off it, where they were `InputReason::NonManifold`.
 - `arris_ops::cut_many(model, target, tools, control)` and
   `arris_ops::fuse_many(model, bodies, control)` cut or fuse any number of
   bodies in one call: a plate with a pattern of holes or bosses is one
