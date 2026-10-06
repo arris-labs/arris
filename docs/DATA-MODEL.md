@@ -1697,7 +1697,7 @@ nothing — so that every chain has a root (ADR-0002):
 ```rust
 pub enum Relation { Generated, Modified, Deleted }
 pub enum Origin   { Entity(Shape), Role(Role) }
-pub enum Role     { Box(BoxPart), Cylinder(CylinderPart), Extrude(SweepPart), Revolve(SweepPart), File(FileEntity), Consumer(ConsumerKey) }   // exhaustive
+pub enum Role     { Box(BoxPart), Cylinder(CylinderPart), Extrude(SweepPart), Revolve(SweepPart), File(FileEntity), Consumer(ConsumerKey), Split(SplitPart) }   // exhaustive; SplitPart::Cap(PlaneSide { Positive, Negative })
 pub struct FileEntity { id: u64, instance: u32 }   // a file's #id, and which placement of it
 pub struct ConsumerKey { namespace: u32, key: u64 }   // the consumer's own name, opaque (ADR-0028)
 
@@ -1857,6 +1857,18 @@ kept or modified, so the records composed with `then` name each blend
 face from the role its edge came from (`blend/second-fillet`: both blend
 faces from the extrude's `Rise`s, the side face both trimmed still from
 its `Side`).
+
+A split writes one record for both sides (ADR-0051), audited against the
+body as the input and `positive` and `negative` as the outputs
+(`audit_many`). The plane is no entity, so a cap face is `Generated` from
+`Role::Split(SplitPart::Cap(side))` of its side, a section edge from the
+body face it lies on and from that role, a section vertex from the edge it
+splits and that role. The body's faces, edges, shell and body are
+`Modified` into their pieces on each side, in split order (ADR-0009)
+positive side first, and the input body is `Modified` into both bodies. The
+sides share no entity: each owns its section edges and vertices and its
+cap, so `retain` or a boolean on one never reaches the other, and an entity
+the plane does not touch keeps its id on the side it lies on.
 
 A shell writes its record beside the offset's, since it adds what the
 offset never does (ADR-0049): a wall face is kept and `Modified` into

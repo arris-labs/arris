@@ -8,6 +8,26 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_ops::split(model, body, plane, control)` cuts a solid by a plane
+  and keeps both sides: `Split { positive, negative, provenance }`, the
+  positive body on the side the plane frame's `z` points to, either side
+  possibly several solids (a U-bracket split across both arms). The sides
+  come from one decomposition and are self-contained, each with its own cut
+  face, section edges and vertices; every entity the plane does not touch
+  keeps its id on its side. The plane may pass through the body's own faces,
+  edges, vertices, seams, a cone's apex or a sphere's poles. The cut faces
+  are generated from `Role::Split(SplitPart::Cap(side))`, so a consumer can
+  name "the cut face of the lid". A plane that misses the body, or only
+  touches it, is refused as `SplitReason::NoCrossing`; a plane tangent to a
+  hole's wall with crossing elsewhere is `BooleanReason::TangentContact`.
+  The frame's `x` fixes the cut faces' (u, v), so a sketch plane gives
+  caps in the sketch's parameters.
+- Python: `Model.split(body, origin, normal, x=None)` returns the positive
+  and negative bodies and the provenance, with `cancel` and `budget`;
+  `NoCrossing` raises `OpDegenerateError`, and `Role` has the split variant.
+- `arris_topo::Model::discard(body, keep)` frees the entities of `body`
+  that no body of `keep` reaches, and `arris_topo::audit_many` audits one
+  record against several inputs and outputs.
 - A cylinder lying on a face by its seam — a cylinder along x on a plate,
   whose seam faces down — is cut from, fused with and intersected with the
   plate as one touching off its seam is, where it was an internal fault,

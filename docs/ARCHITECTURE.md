@@ -167,7 +167,9 @@ pub fn cut(m: &mut Model, target: Body, tool: Body, control: &Control) -> Result
 ```
 
 - Inputs are handles into `m`. The operation reads them, appends, and
-  returns a new handle plus the provenance record (data-model
+  returns a new handle plus the provenance record (`split` is the one
+  exception: it returns `Split { positive, negative, provenance }`, two
+  bodies and one account of them, below) (data-model
   §Provenance) that says which output entity came from which input entity
   and how. An operation without a provenance record is unfinished.
 - The operation never mutates its inputs, never panics on geometry, never
@@ -531,6 +533,27 @@ each through the other, some with a seam through a crossing vertex, its
 with a second set of slabs and a resized, re-posed box, so the same
 recipe is built twice under a parameter edit that never changes which
 entities bound which piece.
+
+`ops::split(m, body, plane: &Frame, control)` cuts a solid by a plane and
+keeps both sides (ADR-0051): `Split { positive, negative, provenance }`,
+`positive` on the side the frame's `z` points to, either side possibly
+several lumps. It is one decomposition with two selections, not a `cut` and
+a `common` run apart: the plane enters as a scratch box in the plane's
+frame, its near face the plane `Frame` itself, its other faces past the
+body's box so they pair with nothing, and runs through the booleans'
+decomposition unchanged, so every plane-against-body case the booleans
+settle (flush with a face, through an edge or a vertex, along a seam,
+through an apex or a pole) is the split's and so are their refusals
+(`TangentContact`, `BesideSingularity`). The common's pieces make the
+positive body and the cut's the negative, each self-contained: its own
+section edges, section vertices and cap faces, one copy per side with
+opposite orientation, while every entity the plane does not touch keeps
+its id on its side. `Model::discard(body, keep)` frees the scratch box
+afterwards, so no entity of the plane is left in the model and its ids
+appear in no record: a cap is `Generated` from `Role::Split(SplitPart::Cap(
+PlaneSide))`. A plane that misses the body, or only touches it along a face,
+an edge or a vertex (or lies within the tolerance of a face, so that a side
+would be a sliver), is `SplitReason::NoCrossing`.
 
 `ops::fuse(m, a, b)`, `ops::common(m, a, b)` and `ops::cut(m, target,
 tool)` are three selections over that decomposition (ADR-0004), one
@@ -1120,6 +1143,7 @@ involved, so the message a consumer shows — or the agent reads — says
 | `Unsupported` | the exhaustive dispatch reached a surface or curve pair the kernel has no formula for yet — a boolean's face pair with a NURBS face in it, a piece whose classifying ray reaches a NURBS face, a tangent contact or an `On` piece that neither the curvature rule nor the transversal rule decides, a blend's face pair outside its table or the face across a blend's end | the two `GeomKind`s with their entities |
 | `Degenerate` | the requested result has no valid representation: a parameter that makes no geometry (`InputReason::NonFinite`, `InputReason::NotPositive` naming it — a zero radius, a box whose `min` is not below its `max`, a revolve angle at or below zero, a zero extrude direction; `SweepReason::AngleAboveTurn` past `2π`), a zero-thickness intersection or an extrude of zero length (`InputReason::ZeroThickness`), a revolve whose axis is off the profile's plane (`SweepReason::AxisNotInProfilePlane`), whose profile crosses its axis (`SweepReason::ProfileCrossesAxis`) or lies within the tolerance of it everywhere (`InputReason::ZeroThickness`), or whose arc's circle crosses it (`SweepReason::SpindleTorus`), or whose profile has an elliptic segment (`SweepReason::EllipticRevolve` naming the loop and segment, ADR-0014); an extrude off its plane's normal (`SweepReason::DirectionNotNormal`); a boolean that selects no material (`BooleanReason::Empty`: a target inside its tool, a `common` of disjoint operands); a `cut_many` with no tool or a `fuse_many` of fewer than two bodies (`BooleanReason::NoTools`) and a body twice among a boolean's operands (`BooleanReason::RepeatedOperand`, naming it, ADR-0050 §8); result shells that would touch along an edge or at a vertex, a shell that would touch itself at a vertex whose faces close into more than one fan — a wall pinched at a singular point of a section — or a full revolve touching its axis at a vertex with no segment along it (`InputReason::NonManifold`, naming the shared edges or vertices, none for a sweep); faces touching along a curve interior to both result faces (`BooleanReason::TangentContact`); a section passing a face's apex or pole without running through it, nearer than the face's (u, v) polygons resolve (`BooleanReason::BesideSingularity`, naming the two faces and the vertex, ADR-0021); a blend asked for no edges (`BlendReason::NoEdges`), for an edge twice (`BlendReason::RepeatedEdge`) or for an edge of another body (`BlendReason::EdgeNotInBody`), one that leaves its face, outruns a corner edge or a seam, or around a closed edge would need a torus that is not a ring torus or a contact reaching the axis (`BlendReason::TooLarge`), one at a tangent dihedral or ending on a tangent corner edge (`BlendReason::TangentChain`), or one at a corner the closed forms do not cover (`BlendReason::VertexBlend`, ADR-0007); an offset of no faces, of a face twice or of another body's face (`OffsetReason::NoFaces`, `RepeatedFace`, `FaceNotInBody`), one that makes an edge or face vanish or turn inside out (`Vanishes`) or splits a vertex into an edge (`VertexSplits`), moves a face with no exact offset of its kind (`NoExactOffset`) or drives a surface through zero (`SurfaceCollapses`), pulls a dragged face clear of a fixed neighbour (`Gap`), or builds a body whose faces run into each other (`SelfIntersects`, found by the checker's global level), ADR-0048 §3, §6, §7; a query on a body that is not a `Solid` (`InputReason::NotSolid`); a projection handed a face, shell or body (`QueryReason::NotProjectable`), a degenerate edge (`QueryReason::DegenerateEdge`), or a curve that projects to a point or a segment (`QueryReason::ProjectionCollapses`); `face_frame` on a curved face (`QueryReason::NotPlanar`); `frame_at` at a `(u, v)` outside the face's domain (`QueryReason::OutOfDomain`) or at a singular one with no normal (`QueryReason::Singular`) | the entities (none for a primitive or a sweep) and a `Reason`, grouped by the operation that raises it: `Input` (`NonFinite`, `NotPositive`, `ZeroThickness`, `NonManifold`, `NotSolid`), `Sweep`, `Boolean`, `Blend`, `Offset` and `Query`, each its own enum. `Reason::name()` is the leaf's stable name (`BlendTooLarge`), which the refusal histograms key on; `Display` is the leaf's own message |
 | `Profile` | a sweep's sketch is not a valid profile: `Profile::edges` refused it (data-model §Profiles). An invalid profile has no entities to name, so it is neither `InvalidInput` nor `Degenerate` | the `ProfileError`, naming the loop and segment |
+| `Degenerate` (`SplitReason::NoCrossing`) | a split's plane misses the body or only touches it along a face, an edge or a vertex, so one side would be empty; the body is named | the body |
 | `Tolerance` | the result would need an entity tolerance above `Precision::max_tolerance` | the entity, the tolerance it wanted |
 | `NotFound` | an id does not resolve in this model (wrong model, or compacted away) | the `AnyId` that failed to resolve itself, never an entity that merely holds it |
 | `Unkeyed` | `build` was handed a live slot of its builder that its `BuildKeys` gives no key: the record would have an output with no origin | the `BuildSlot` (a vertex, edge or face slot, or a shell index) |
@@ -1994,6 +2018,7 @@ refusal histogram, what picks the cycle after the reader's.
 | Fillet / chamfer of named edges, one call for all edges | `ops::fillet`, `ops::chamfer` (ADR-0007) |
 | Press-pull: chosen faces moved along their normals, neighbours extended or trimmed | `ops::offset_faces` (ADR-0048) — each moved face `Modified` from itself, the whole body's offset when every face moves |
 | Hollow a solid to a wall of constant thickness, inward or outward, faces opened or none (a closed void) | `ops::shell` (ADR-0049) — each wall face `Modified` from itself with its inner copy `Generated` from it, each opening `Modified` into its rim face, a void's second shell `Generated` from the body |
+| Split a body by a plane, both sides kept | `ops::split` (ADR-0051) — a `Split` of two bodies from one decomposition, the cut faces `Generated` from `Role::Split(SplitPart::Cap(PlaneSide))`, every untouched entity keeping its id on its side |
 | Tessellation into a render mesh with per-face and per-edge ranges | `arris_mesh::tessellate` → `TriMesh` with `FaceRange`/`EdgeRange` keyed by `FaceId`/`EdgeId`; `arris_mesh::tessellate_with` of a `MeshRequest::with_corners` adds the render buffer beside it — face-local vertices with outward normals and the surface's own (u, v), which a renderer uploads as they stand (ADR-0012) |
 | A face's outward-oriented frame | `ops::query::face_frame(&model, face)` for a plane (stable across re-evaluation, since a primitive's frame or a sweep's profile plane is), `ops::query::frame_at(&model, face, uv)` for any face at a `(u, v)` its domain contains |
 | Mass properties (volume, area, centroid, inertia) | `ops::measure::mass_properties` → `MassProperties` (exact over the B-Rep, the tensor about the centroid); or the consumer's own integrator over `TriMesh` |
