@@ -124,7 +124,7 @@ bound has to be established here.
     cylinder
 
   ADR-0051 is written here and settles the operand question below.
-- [ ] Step 2 **[2]**: Two selections from one decomposition, with no public
+- [x] Step 2 **[2]**: Two selections from one decomposition, with no public
   change. `result` assembles a cut and a common of the same `Build` into
   two bodies in one pass, with self-contained topology per side. Tested
   against `cut` and `common` run separately on the existing two-operand

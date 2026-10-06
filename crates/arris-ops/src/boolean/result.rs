@@ -1387,6 +1387,25 @@ pub(super) fn boolean(
     op: Op,
     meter: &mut Meter<'_>,
 ) -> Result<(Body, Provenance), OpError> {
+    let mut made = boolean_each(m, i, &[op], meter)?;
+    made.pop().ok_or(OpError::Internal(Fault::Invariant {
+        what: "one result for one selection",
+    }))
+}
+
+/// One result per selection of `ops` over the one decomposition `i`, in
+/// order: each a body of its own, assembled from its own copy of the
+/// section geometry, its own section vertices and edges and its own cap
+/// pieces, so no two results share an entity the operation made. The
+/// operands' untouched entities keep their ids in every result that holds
+/// them, as in a lone boolean. The model is untouched when any of them
+/// fails. `boolean` is the one-selection case, its ids and dump unchanged.
+pub(super) fn boolean_each(
+    m: &mut Model,
+    i: &Interferences,
+    ops: &[Op],
+    meter: &mut Meter<'_>,
+) -> Result<Vec<(Body, Provenance)>, OpError> {
     let bodies = i.operands.clone();
     let closures = bodies
         .iter()
@@ -1413,208 +1432,215 @@ pub(super) fn boolean(
     let precision = m.precision();
 
     m.transaction(|m| {
-        // The section geometry, once.
-        let curve_ids: Vec<CurveId> = i
-            .curves
-            .iter()
-            .map(|c| m.add_curve(c.curve.clone()))
-            .collect();
-        let section_pcurves: Vec<[Curve2Id; 2]> = i
-            .sections
-            .iter()
-            .map(|s| {
-                [
-                    m.add_curve2(s.pcurves[0].clone()),
-                    m.add_curve2(s.pcurves[1].clone()),
-                ]
-            })
-            .collect();
-        let shared_pcurves: Vec<Vec<Curve2Id>> = i
-            .sections
-            .iter()
-            .map(|s| {
-                s.shared
-                    .iter()
-                    .map(|u| m.add_curve2(u.pcurve.clone()))
-                    .collect()
-            })
-            .collect();
-        let image_pcurves: Vec<Curve2Id> = i
-            .images
-            .iter()
-            .map(|im| m.add_curve2(im.pcurve.clone()))
-            .collect();
-        let block_pcurves: Vec<Vec<(Curve2Id, Curve2Id)>> = i
-            .blocks
-            .iter()
-            .map(|b| {
-                b.pcurves
-                    .iter()
-                    .map(|(own, pc)| (*own, m.add_curve2(pc.clone())))
-                    .collect()
-            })
-            .collect();
+        let mut results = Vec::with_capacity(ops.len());
+        for &op in ops {
+            // The section geometry, once per selection.
+            let curve_ids: Vec<CurveId> = i
+                .curves
+                .iter()
+                .map(|c| m.add_curve(c.curve.clone()))
+                .collect();
+            let section_pcurves: Vec<[Curve2Id; 2]> = i
+                .sections
+                .iter()
+                .map(|s| {
+                    [
+                        m.add_curve2(s.pcurves[0].clone()),
+                        m.add_curve2(s.pcurves[1].clone()),
+                    ]
+                })
+                .collect();
+            let shared_pcurves: Vec<Vec<Curve2Id>> = i
+                .sections
+                .iter()
+                .map(|s| {
+                    s.shared
+                        .iter()
+                        .map(|u| m.add_curve2(u.pcurve.clone()))
+                        .collect()
+                })
+                .collect();
+            let image_pcurves: Vec<Curve2Id> = i
+                .images
+                .iter()
+                .map(|im| m.add_curve2(im.pcurve.clone()))
+                .collect();
+            let block_pcurves: Vec<Vec<(Curve2Id, Curve2Id)>> = i
+                .blocks
+                .iter()
+                .map(|b| {
+                    b.pcurves
+                        .iter()
+                        .map(|(own, pc)| (*own, m.add_curve2(pc.clone())))
+                        .collect()
+                })
+                .collect();
 
-        let mut b = Build {
-            m: &*m,
-            precision,
-            i,
-            op,
-            bodies: bodies.clone(),
-            vertices: vertices.clone(),
-            edges: edges.clone(),
-            faces: faces.clone(),
-            curve_ids,
-            section_pcurves,
-            shared_pcurves,
-            image_pcurves,
-            block_pcurves,
-            vref_of: Vec::new(),
-            retolerated: BTreeMap::new(),
-            merged_into: BTreeMap::new(),
-            sub_edges: BTreeMap::new(),
-            touched: BTreeSet::new(),
-            alias_uses: BTreeMap::new(),
-            alias_of: BTreeMap::new(),
-            edge_tolerance: BTreeMap::new(),
-            kept: Vec::new(),
-            face_pieces: BTreeMap::new(),
-            dropped_on: false,
-        };
-        b.realise_vertices()?;
-        b.sub_edges()?;
-        b.aliases();
-        b.raise_tolerances()?;
-        b.contacts()?;
-        b.select(meter)?;
-        let mut shells = b.shells()?;
-        if shells.len() > 1 {
-            shells = b.lump_order(shells)?;
-        }
-        let plan = b.assembly(&shells)?;
-        let Build {
-            face_pieces,
-            vref_of,
-            merged_into,
-            sub_edges,
-            alias_of,
-            kept,
-            ..
-        } = b;
-
-        let (builder, slots) = Builder::assemble(m, precision.default_tolerance, plan.assembly)?;
-        let built = builder.finish(m, BodyKind::Solid)?;
-
-        // The output ids behind every reference.
-        let mut out_vertex: BTreeMap<VRef, VertexId> = BTreeMap::new();
-        for (v, &slot) in plan.new_vertices.iter().zip(&slots.vertices) {
-            out_vertex.insert(*v, built.vertices[&slot]);
-        }
-        let mut out_edge: BTreeMap<ERef, EdgeId> = BTreeMap::new();
-        for (e, &slot) in plan.new_edges.iter().zip(&slots.edges) {
-            out_edge.insert(*e, built.edges[&slot]);
-        }
-        // Face slots follow the assembly's shells; `plan.faces` is the kept
-        // piece behind each.
-        let out_faces: BTreeMap<usize, FaceId> = plan
-            .faces
-            .iter()
-            .copied()
-            .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
-            .collect();
-        let vertex_id = |v: VRef| -> Option<VertexId> {
-            match v {
-                VRef::Existing(id) if plan.kept_vertices.contains(&id) => Some(id),
-                other => out_vertex.get(&other).copied(),
-            }
-        };
-        let edge_id = |e: ERef| -> Option<EdgeId> {
-            let e = alias_of.get(&e).copied().unwrap_or(e);
-            match e {
-                ERef::Sub { edge, index: 0 } if plan.kept_edges.contains(&edge) => Some(edge),
-                other => out_edge.get(&other).copied(),
-            }
-        };
-
-        let operand = |side: usize| rebuild::OperandWrite {
-            body: bodies[side],
-            policy: op.policy(side),
-            vertices: &vertices[side],
-            edges: &edges[side],
-            faces: &faces[side],
-            shells: &closures[side].shells,
-            shell_of: &shell_of[side],
-        };
-        let operand_writes: Vec<rebuild::OperandWrite<'_>> =
-            (0..bodies.len()).map(operand).collect();
-        let mut p = rebuild::write_provenance(
-            &operand_writes,
-            built.body,
-            &sub_edges,
-            &merged_into,
-            &vref_of,
-            vertex_id,
-            edge_id,
-            &face_pieces,
-            &out_faces,
-            &kept,
-            &shells,
-            &built.shells,
-        );
-        for (k, v) in i.vertices.iter().enumerate() {
-            let VRef::Section(_) = vref_of[k] else {
-                continue;
+            let mut b = Build {
+                m: &*m,
+                precision,
+                i,
+                op,
+                bodies: bodies.clone(),
+                vertices: vertices.clone(),
+                edges: edges.clone(),
+                faces: faces.clone(),
+                curve_ids,
+                section_pcurves,
+                shared_pcurves,
+                image_pcurves,
+                block_pcurves,
+                vref_of: Vec::new(),
+                retolerated: BTreeMap::new(),
+                merged_into: BTreeMap::new(),
+                sub_edges: BTreeMap::new(),
+                touched: BTreeSet::new(),
+                alias_uses: BTreeMap::new(),
+                alias_of: BTreeMap::new(),
+                edge_tolerance: BTreeMap::new(),
+                kept: Vec::new(),
+                face_pieces: BTreeMap::new(),
+                dropped_on: false,
             };
-            let Some(id) = out_vertex.get(&vref_of[k]) else {
-                continue;
-            };
-            match v.source {
-                VertexSource::Hits | VertexSource::SectionCrossing | VertexSource::TriplePoint => {
-                    for &h in &v.hits {
-                        p.add_generated(forward(i.hits[h].edge), forward(*id));
-                        p.add_generated(forward(i.hits[h].face), forward(*id));
-                    }
-                    for &x in &v.crossings {
-                        p.add_generated(forward(i.crossings[x].a), forward(*id));
-                        p.add_generated(forward(i.crossings[x].b), forward(*id));
-                    }
-                    for &x in &v.section_crossings {
-                        let pair = &i.pairs[i.section_crossings[x].pair];
-                        p.add_generated(forward(pair.a), forward(*id));
-                        p.add_generated(forward(pair.b), forward(*id));
-                    }
-                    for &x in &v.triple_points {
-                        let q = &i.triple_points[x];
-                        let pair = &i.pairs[q.pair];
-                        p.add_generated(forward(pair.a), forward(*id));
-                        p.add_generated(forward(pair.b), forward(*id));
-                        p.add_generated(forward(q.face), forward(*id));
-                    }
+            b.realise_vertices()?;
+            b.sub_edges()?;
+            b.aliases();
+            b.raise_tolerances()?;
+            b.contacts()?;
+            b.select(meter)?;
+            let mut shells = b.shells()?;
+            if shells.len() > 1 {
+                shells = b.lump_order(shells)?;
+            }
+            let plan = b.assembly(&shells)?;
+            let Build {
+                face_pieces,
+                vref_of,
+                merged_into,
+                sub_edges,
+                alias_of,
+                kept,
+                ..
+            } = b;
+
+            let (builder, slots) =
+                Builder::assemble(m, precision.default_tolerance, plan.assembly)?;
+            let built = builder.finish(m, BodyKind::Solid)?;
+
+            // The output ids behind every reference.
+            let mut out_vertex: BTreeMap<VRef, VertexId> = BTreeMap::new();
+            for (v, &slot) in plan.new_vertices.iter().zip(&slots.vertices) {
+                out_vertex.insert(*v, built.vertices[&slot]);
+            }
+            let mut out_edge: BTreeMap<ERef, EdgeId> = BTreeMap::new();
+            for (e, &slot) in plan.new_edges.iter().zip(&slots.edges) {
+                out_edge.insert(*e, built.edges[&slot]);
+            }
+            // Face slots follow the assembly's shells; `plan.faces` is the kept
+            // piece behind each.
+            let out_faces: BTreeMap<usize, FaceId> = plan
+                .faces
+                .iter()
+                .copied()
+                .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
+                .collect();
+            let vertex_id = |v: VRef| -> Option<VertexId> {
+                match v {
+                    VRef::Existing(id) if plan.kept_vertices.contains(&id) => Some(id),
+                    other => out_vertex.get(&other).copied(),
                 }
-                VertexSource::CurveStart { pair, .. } => {
-                    p.add_generated(forward(i.pairs[pair].a), forward(*id));
-                    p.add_generated(forward(i.pairs[pair].b), forward(*id));
-                }
-                // Always an operand's vertex, never a new one.
-                VertexSource::Singular => {}
-            }
-        }
-        // `i.sections` is curve order and then along each curve, so the
-        // section edges one pair generates reach the record in split
-        // order: along their own curve (ADR-0009).
-        for (k, s) in i.sections.iter().enumerate() {
-            let Some(&id) = out_edge.get(&ERef::Section(k)) else {
-                continue;
             };
-            let pair = &i.pairs[i.curves[s.curve].pair];
-            p.add_generated(forward(pair.a), forward(id));
-            p.add_generated(forward(pair.b), forward(id));
-            for u in &s.shared {
-                p.add_generated(forward(u.face), forward(id));
+            let edge_id = |e: ERef| -> Option<EdgeId> {
+                let e = alias_of.get(&e).copied().unwrap_or(e);
+                match e {
+                    ERef::Sub { edge, index: 0 } if plan.kept_edges.contains(&edge) => Some(edge),
+                    other => out_edge.get(&other).copied(),
+                }
+            };
+
+            let operand = |side: usize| rebuild::OperandWrite {
+                body: bodies[side],
+                policy: op.policy(side),
+                vertices: &vertices[side],
+                edges: &edges[side],
+                faces: &faces[side],
+                shells: &closures[side].shells,
+                shell_of: &shell_of[side],
+            };
+            let operand_writes: Vec<rebuild::OperandWrite<'_>> =
+                (0..bodies.len()).map(operand).collect();
+            let mut p = rebuild::write_provenance(
+                &operand_writes,
+                built.body,
+                &sub_edges,
+                &merged_into,
+                &vref_of,
+                vertex_id,
+                edge_id,
+                &face_pieces,
+                &out_faces,
+                &kept,
+                &shells,
+                &built.shells,
+            );
+            for (k, v) in i.vertices.iter().enumerate() {
+                let VRef::Section(_) = vref_of[k] else {
+                    continue;
+                };
+                let Some(id) = out_vertex.get(&vref_of[k]) else {
+                    continue;
+                };
+                match v.source {
+                    VertexSource::Hits
+                    | VertexSource::SectionCrossing
+                    | VertexSource::TriplePoint => {
+                        for &h in &v.hits {
+                            p.add_generated(forward(i.hits[h].edge), forward(*id));
+                            p.add_generated(forward(i.hits[h].face), forward(*id));
+                        }
+                        for &x in &v.crossings {
+                            p.add_generated(forward(i.crossings[x].a), forward(*id));
+                            p.add_generated(forward(i.crossings[x].b), forward(*id));
+                        }
+                        for &x in &v.section_crossings {
+                            let pair = &i.pairs[i.section_crossings[x].pair];
+                            p.add_generated(forward(pair.a), forward(*id));
+                            p.add_generated(forward(pair.b), forward(*id));
+                        }
+                        for &x in &v.triple_points {
+                            let q = &i.triple_points[x];
+                            let pair = &i.pairs[q.pair];
+                            p.add_generated(forward(pair.a), forward(*id));
+                            p.add_generated(forward(pair.b), forward(*id));
+                            p.add_generated(forward(q.face), forward(*id));
+                        }
+                    }
+                    VertexSource::CurveStart { pair, .. } => {
+                        p.add_generated(forward(i.pairs[pair].a), forward(*id));
+                        p.add_generated(forward(i.pairs[pair].b), forward(*id));
+                    }
+                    // Always an operand's vertex, never a new one.
+                    VertexSource::Singular => {}
+                }
             }
+            // `i.sections` is curve order and then along each curve, so the
+            // section edges one pair generates reach the record in split
+            // order: along their own curve (ADR-0009).
+            for (k, s) in i.sections.iter().enumerate() {
+                let Some(&id) = out_edge.get(&ERef::Section(k)) else {
+                    continue;
+                };
+                let pair = &i.pairs[i.curves[s.curve].pair];
+                p.add_generated(forward(pair.a), forward(id));
+                p.add_generated(forward(pair.b), forward(id));
+                for u in &s.shared {
+                    p.add_generated(forward(u.face), forward(id));
+                }
+            }
+            crate::verify(m, built.body)?;
+            results.push((built.body, p));
         }
-        crate::verify(m, built.body)?;
-        Ok((built.body, p))
+        Ok(results)
     })
 }
 
@@ -1675,5 +1701,123 @@ impl Build<'_> {
             &self.kept,
             shells,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use arris_math::{Axis, Control, Meter, Point3};
+    use arris_topo::{Body, Model};
+
+    use super::{Op, boolean_each};
+    use crate::boolean::{common, cut, pave};
+    use crate::measure::mass_properties;
+    use crate::{primitive_box, primitive_cylinder};
+
+    /// A target and a tool, built the same way in whatever model is given.
+    type Scene = fn(&mut Model) -> (Body, Body);
+
+    fn boxes(m: &mut Model) -> (Body, Body) {
+        let n = &Control::NONE;
+        let a = primitive_box(m, Point3::origin(), Point3::new(4.0, 4.0, 4.0), n).unwrap();
+        let b = primitive_box(m, Point3::new(1.0, 1.0, 1.0), Point3::new(5.0, 5.0, 5.0), n);
+        (a.0, b.unwrap().0)
+    }
+
+    fn plate_and_through_hole(m: &mut Model) -> (Body, Body) {
+        let n = &Control::NONE;
+        let plate = primitive_box(m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), n);
+        let tool = primitive_cylinder(m, Axis::z_at(Point3::new(20.0, 15.0, -1.0)), 4.0, 12.0, n);
+        (plate.unwrap().0, tool.unwrap().0)
+    }
+
+    fn plate_and_blind_pocket(m: &mut Model) -> (Body, Body) {
+        let n = &Control::NONE;
+        let plate = primitive_box(m, Point3::origin(), Point3::new(40.0, 30.0, 10.0), n);
+        let tool = primitive_cylinder(m, Axis::z_at(Point3::new(20.0, 15.0, 4.0)), 4.0, 12.0, n);
+        (plate.unwrap().0, tool.unwrap().0)
+    }
+
+    fn crossing_cylinders(m: &mut Model) -> (Body, Body) {
+        let n = &Control::NONE;
+        let a = primitive_cylinder(m, Axis::z_at(Point3::new(0.0, 0.0, -5.0)), 3.0, 10.0, n);
+        let axis = Axis::new(Point3::new(-5.0, 0.0, 0.0), arris_math::Vec3::x());
+        let b = primitive_cylinder(m, axis.unwrap(), 2.0, 10.0, n);
+        (a.unwrap().0, b.unwrap().0)
+    }
+
+    /// `boolean_each` over `[Cut, Common]` is the cut and the common run
+    /// apart: the same volume, area and counts, both checker-green, and
+    /// the two results share no face, edge or vertex the operation made.
+    #[test]
+    fn a_cut_and_a_common_from_one_decomposition_are_the_two_run_apart() {
+        let scenes: [(&str, Scene); 4] = [
+            ("overlapping boxes", boxes),
+            ("a plate and a through hole", plate_and_through_hole),
+            ("a plate and a blind pocket", plate_and_blind_pocket),
+            ("crossing cylinders", crossing_cylinders),
+        ];
+        for (name, scene) in scenes {
+            let n = &Control::NONE;
+            let mut m = Model::default();
+            let (a, b) = scene(&mut m);
+            let i = pave::build(&m, &[a, b], &mut Meter::new(n)).unwrap();
+            let made =
+                boolean_each(&mut m, &i, &[Op::Cut, Op::Common], &mut Meter::new(n)).unwrap();
+
+            let mut apart = Model::default();
+            let (a, b) = scene(&mut apart);
+            let separate = [
+                cut(&mut apart, a, b, n).unwrap().0,
+                common(&mut apart, a, b, n).unwrap().0,
+            ];
+            for (k, ((body, _), alone)) in made.iter().zip(separate).enumerate() {
+                let (got, want) = (
+                    mass_properties(&m, *body, n).unwrap(),
+                    mass_properties(&apart, alone, n).unwrap(),
+                );
+                assert!(
+                    (got.volume - want.volume).abs() <= 1e-9 * want.volume.abs(),
+                    "{name} [{k}]: volume {} vs {}",
+                    got.volume,
+                    want.volume
+                );
+                assert!(
+                    (got.area - want.area).abs() <= 1e-9 * want.area,
+                    "{name} [{k}]: area {} vs {}",
+                    got.area,
+                    want.area
+                );
+                assert_eq!(
+                    m.faces(*body).unwrap().len(),
+                    apart.faces(alone).unwrap().len(),
+                    "{name} [{k}]: faces"
+                );
+                assert_eq!(
+                    m.edges(*body).unwrap().len(),
+                    apart.edges(alone).unwrap().len(),
+                    "{name} [{k}]: edges"
+                );
+                assert!(
+                    arris_check::check(&m, *body, arris_check::Level::Full).is_ok(),
+                    "{name} [{k}]"
+                );
+            }
+            // Self-contained: an edge both results hold is an operand's,
+            // kept by id; everything the operation made is one result's.
+            let (first, second) = (m.edges(made[0].0).unwrap(), m.edges(made[1].0).unwrap());
+            let operand_edges: Vec<_> = [a, b]
+                .iter()
+                .flat_map(|&x| m.edges(x).unwrap())
+                .map(|e| e.id)
+                .collect();
+            for e in first.iter().filter(|e| second.iter().any(|o| o.id == e.id)) {
+                assert!(
+                    operand_edges.contains(&e.id),
+                    "{name}: a made edge {:?} is in both results",
+                    e.id
+                );
+            }
+        }
     }
 }
