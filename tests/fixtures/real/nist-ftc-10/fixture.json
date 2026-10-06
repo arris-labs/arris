@@ -15,13 +15,13 @@
           "arris-refuses": "Unsupported(plane surface × NURBS surface)"
         },
         "drill_x": {
-          "arris-refuses": "Unsupported(plane surface × NURBS surface)"
+          "arris-refuses": "Unsupported(cylinder surface × NURBS surface)"
         },
         "drill_y": {
-          "arris-refuses": "Unsupported(plane surface × NURBS surface)"
+          "arris-refuses": "Unsupported(cylinder surface × NURBS surface)"
         },
         "drill_z": {
-          "arris-refuses": "Unsupported(plane surface × NURBS surface)"
+          "arris-refuses": "Unsupported(cylinder surface × NURBS surface)"
         },
         "fillet": {
           "arris-refuses": "Unsupported(NURBS curve × cylinder surface)"

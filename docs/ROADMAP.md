@@ -115,9 +115,9 @@ fixtures:
 | unsupported entity | read | 3 | healing |
 | gap past the cap | read | 2 | healing |
 | Unsupported(plane surface × NURBS surface) | box_cut | 2 | NURBS |
-| Unsupported(plane surface × NURBS surface) | drill_x | 2 | NURBS |
-| Unsupported(plane surface × NURBS surface) | drill_y | 2 | NURBS |
-| Unsupported(plane surface × NURBS surface) | drill_z | 2 | NURBS |
+| Unsupported(cylinder surface × NURBS surface) | drill_x | 2 | NURBS |
+| Unsupported(cylinder surface × NURBS surface) | drill_y | 2 | NURBS |
+| Unsupported(cylinder surface × NURBS surface) | drill_z | 2 | NURBS |
 | unsupported entity | read | 2 | itself: supplemental geometry |
 | Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
 <!-- /histogram -->
