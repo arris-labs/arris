@@ -1778,16 +1778,15 @@ B-Rep).
   timed apart (the 10×10 grid: 0.94 s against 21.5 s, 23×). Time is never a gate. `tools/bench-compare.sh`
   runs it against `target/bench/baseline.json` (`--bless` sets it) or a
   report named, and the nightly runs the same script against the last
-  night's report. On the reference machine it is 316 cases: 282 from 141
-  fixtures (build 4.56 s, mesh 3.25 s), and 34 from 17 parts' files (read
-  21.63 s).
+  night's report. On the reference machine it is 514 cases (build 8.40 s, mesh
+  6.90 s, read 25.68 s; measured 2026-10-07).
 - **The reader's cost** in a release build (the benchmark's read cases,
   ADR-0025 §Consequences). The committed tier's files read in
   0.3 ms to 0.29 s each, 14 of 16 solid instances read. Two files are
-  slower: CTC-05 in 0.95 s, the fits of a solid refused for a gap, and
-  FTC-07 in 19.8 s, its fitted pcurves on B-spline faces. The checker at
-  `Fast` is 2.7% (FTC-07) to 83% of a read, 36% to 83% on every other
-  part it checks: 0.96 s of the 21.63 s, where it was 0.074 s of 20.99 s
+  slower: CTC-05 in 2.08 s, the fits of a solid refused for a gap, and
+  FTC-07 in 22.6 s, its fitted pcurves on B-spline faces. The checker at
+  `Fast` is 2.4% (FTC-07) to 83% of a read, 36% to 83% on every other
+  part it checks: 0.98 s of the 25.68 s, where it was 0.074 s of 20.99 s
   when this was first measured; the rise is not yet attributed.
 - **The real-part corpus** (ADR-0026). Its committed tier is the
   `part` fixtures under `real/`, run by `cargo test`

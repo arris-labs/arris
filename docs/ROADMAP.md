@@ -14,7 +14,7 @@ plugin-based CAD cannot start without, ADR-0020's amendment; done
 2026-10-02), then **C6** (the blend network: fillets and chamfers on the
 face pairs real parts ask for; done 2026-10-05), then **C7** (prismatic
 features: shell, offset faces, the multi-tool boolean, split by a plane;
-opened 2026-10-05, ADR-0047). An unopened cycle carries
+done 2026-10-07, ADR-0047). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -633,7 +633,15 @@ shell and offset (A7) and the multi-tool boolean (A8) of
 `docs/ideas/plugin-cad-consumer-asks.md`. ADR-0047 split the sweep cycle to
 take shell and offset without sweep and loft.*
 
-**Status: opened 2026-10-05; scope set by the human the same day. The preparatory refactor landed the same day: the blend in `blend/` by phase over a crate-private `body_view`, the pave model in `pave/`, one periodic-parameter toolkit, direct crate dependencies, `Reason` grouped by operation, and the corpus as one table with a coverage lint. Offset faces landed 2026-10-05: `ops::offset_faces`, the sharp join with the tangent chain dragged, topology kept, `Full` in every profile, bound in Python, 24 fixtures in `offset/` matched to Open CASCADE or their closed forms. Shell landed 2026-10-05: `ops::shell`, inward or outward, openings or a closed void, adjacent openings merged into one rim loop, quadric walls and the dragged blend chain, the offset's refusals and the shell's own, `Full` in every profile, bound in Python, 31 fixtures in `shell/` matched to Open CASCADE, five sharded properties and the recipe draw. The multi-tool boolean landed 2026-10-06: `ops::cut_many` and `ops::fuse_many` over one decomposition indexed by operand, the N-ary selection, tools that overlap or lie flush and the triple point, provenance per tool, `cut` and `fuse` its one-tool case, bound in Python, benchmarked 23× the chain of cuts on a 10×10 grid, the fixtures matched to Open CASCADE's multi-tool boolean, sharded properties against the chains. Split by a plane landed 2026-10-06: `ops::split` returns both sides from one decomposition with the plane as a scratch box freed by `Model::discard`, self-contained sides with their cap faces named by `Role::Split`, the plane through the body's own faces, edges, vertices, seams, apexes and poles, `NoCrossing` and the booleans' refusals, bound in Python, 22 fixtures in `split/` matched to Open CASCADE's splitter, sharded properties and the differential's split draw. Per-face tessellation landed 2026-10-06 (the side plan, A9): an edge's samples a pure function of the edge and the chord (ADR-0052), rings on a wide cone face, `tessellate_faces` over a subset, `TriMesh::weld` by edge id bit for bit, bound in Python, the corpus meshed face by face and welded to the one-call mesh, a kept face's mesh surviving every edit. C7 is ready to close.**
+**Status: done 2026-10-07, tag `c7`, released as `v0.6.0`.** Retired the
+absence of every edit a prismatic part needs: `ops::offset_faces` (sharp
+join, tangent chain dragged, ADR-0048), `ops::shell` (ADR-0049),
+`ops::cut_many` and `fuse_many` over one decomposition (ADR-0050, 23× the
+chain of cuts on a 10×10 grid), `ops::split` by a plane (ADR-0051) and
+per-face tessellation whose edge samples are a pure function of the edge
+(ADR-0052); all bound in Python, with 24, 31 and 22 fixtures in `offset/`,
+`shell/` and `split/` matched to Open CASCADE or their closed forms, and
+sharded properties. ADR-0047 to 0052.
 
 - Shell: a solid hollowed to a thickness, inward or outward, with the
   chosen faces removed as openings, or none for a closed void; the offset
@@ -696,9 +704,8 @@ wall clock per recipe. The hook runs 32 cases over what a commit reaches (ADR-00
 depth comes from `nightly.yml`, which runs every property at 5000 cases
 on a seed drawn from the date, 99,600 CPU-seconds split over six jobs,
 plus the differential at 1000 recipes on the same seed. The corpus
-benchmark times 316 cases on the reference machine: 282 from 141
-fixtures, build 4.56 s and mesh 3.25 s, and 34 from 17 real parts' files,
-read 21.63 s (docs/ARCHITECTURE.md §Formats and tools). Each night compares against the
+benchmark times 514 cases on the reference machine: build 8.40 s, mesh
+6.90 s and read 25.68 s, measured 2026-10-07 (docs/ARCHITECTURE.md §Formats and tools). Each night compares against the
 last, flagging a case past 3×. Three fuzz targets over the intersectors
 (`fuzz/`, outside the workspace) are seeded from every geometry pair.
 Their first hour, on 24 cores after the three faults a triage run
