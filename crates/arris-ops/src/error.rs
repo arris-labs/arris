@@ -31,6 +31,8 @@ pub enum Reason {
     Shell(ShellReason),
     /// A query refused the shape or the point it was handed.
     Query(QueryReason),
+    /// A split by a plane refused its body and plane.
+    Split(SplitReason),
 }
 
 impl Reason {
@@ -52,6 +54,7 @@ impl Reason {
             Reason::Offset(reason) => reason.name(),
             Reason::Shell(reason) => reason.name(),
             Reason::Query(reason) => reason.name(),
+            Reason::Split(reason) => reason.name(),
         }
     }
 }
@@ -66,6 +69,7 @@ impl core::fmt::Display for Reason {
             Reason::Offset(reason) => reason.fmt(f),
             Reason::Shell(reason) => reason.fmt(f),
             Reason::Query(reason) => reason.fmt(f),
+            Reason::Split(reason) => reason.fmt(f),
         }
     }
 }
@@ -551,6 +555,34 @@ impl core::fmt::Display for QueryReason {
     }
 }
 
+/// A split by a plane refused its body and plane (ADR-0051 §7).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SplitReason {
+    /// The plane does not cross the body: it misses it, or only touches
+    /// it along a face, an edge or a vertex, so one side would be empty.
+    /// The error's entity is the body.
+    NoCrossing,
+}
+
+impl SplitReason {
+    /// The variant's name, as [`Reason::name`] gives it.
+    pub fn name(&self) -> &'static str {
+        match self {
+            SplitReason::NoCrossing => "NoCrossing",
+        }
+    }
+}
+
+impl core::fmt::Display for SplitReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SplitReason::NoCrossing => {
+                f.write_str("the plane does not cross the body, so one side would be empty")
+            }
+        }
+    }
+}
+
 /// A kernel bug an operation caught in its own output or its own
 /// sequence, rather than a fault of the input. `Checker` is returned only
 /// in release builds with the `paranoid` feature on, a debug build
@@ -1001,8 +1033,13 @@ mod tests {
                 "Singular",
                 "the surface's parametrisation is singular there: it has no normal",
             ),
+            (
+                Reason::Split(SplitReason::NoCrossing),
+                "NoCrossing",
+                "the plane does not cross the body, so one side would be empty",
+            ),
         ];
-        assert_eq!(leaves.len(), 28);
+        assert_eq!(leaves.len(), 29);
         for (reason, name, message) in leaves {
             assert_eq!(reason.name(), name);
             assert_eq!(reason.to_string(), message, "{name}");

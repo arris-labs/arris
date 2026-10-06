@@ -47,11 +47,11 @@ mod transform;
 pub use arris_math::{Control, Interrupted, Stop};
 
 pub use blend::{chamfer, fillet};
-pub use boolean::{common, cut, cut_many, fuse, fuse_many};
+pub use boolean::{Split, common, cut, cut_many, fuse, fuse_many, split};
 pub use build::{BuildKeys, BuildSlot, Rejection, build};
 pub use error::{
     BlendReason, BooleanReason, Fault, InputReason, OffsetReason, OpError, QueryReason, Reason,
-    ShellReason, SplitFault, SweepReason,
+    ShellReason, SplitFault, SplitReason, SweepReason,
 };
 pub use mirror::mirror;
 pub use offset::offset_faces;

@@ -434,7 +434,7 @@ mod tests {
     use arris::mesh::cdt::CdtError;
     use arris::ops::{
         BlendReason, BooleanReason, BuildSlot, Fault, InputReason, OffsetReason, QueryReason,
-        Reason, Rejection, ShellReason, SweepReason,
+        Reason, Rejection, ShellReason, SplitReason, SweepReason,
     };
     use arris::topo::entity::BodyKind;
     use arris::topo::{BodyId, EntityId, FaceId, NotFound};
@@ -507,6 +507,10 @@ mod tests {
             op_error(&OpError::Degenerate {
                 entities: vec![shape()],
                 reason: Reason::Query(QueryReason::Singular),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
+                reason: Reason::Split(SplitReason::NoCrossing),
             }),
             op_error(&OpError::Profile(ProfileError::TooFewSegments {
                 loop_index: 0,

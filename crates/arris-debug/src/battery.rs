@@ -605,6 +605,7 @@ pub fn judge(
                 body: back.body,
                 provenance: back.provenance.clone(),
                 inputs: Vec::new(),
+                outputs: vec![back.body],
             };
             (
                 m.clone(),

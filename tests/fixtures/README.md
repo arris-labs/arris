@@ -21,7 +21,7 @@ directory: both files present and parseable, `expected.json` not stale, the
 Euler line zero, every `analytic` value matching the oracle to 1e-6
 relative, counts and probe expectations exactly — and every solid under
 `primitive/`, `build/`, `transform/`, `boolean/`, `sweep/`,
-`provenance/`, `blend/`, `offset/` or `shell/` that the
+`provenance/`, `blend/`, `offset/`, `shell/` or `split/` that the
 runner compares (the oracle built a solid, the recipe expects no refusal)
 carrying its committed dump per variant, which a fixture only has once it
 passed and was blessed. An `#[ignore]`d fixture in those areas therefore
@@ -235,7 +235,7 @@ of the step that made the fixture pass, and a later change to it is a
   `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
   "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
   "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" | "self-intersects" |
-  "opening-dragged" | "unsupported"` says Open CASCADE
+  "opening-dragged" | "no-crossing" | "unsupported"` says Open CASCADE
   builds a result Arris refuses by design (the tangent cases,
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
@@ -262,7 +262,7 @@ of the step that made the fixture pass, and a later change to it is a
   built result has faces running into each other away from their shared
   edges, `SelfIntersects`, from the checker's global level — ADR-0048 §7; a
   shell opening tangent to a wall, which Open CASCADE answers with the body
-  unhollowed and Arris refuses as `ShellReason::OpeningDragged` — ADR-0049; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
+  unhollowed and Arris refuses as `ShellReason::OpeningDragged` — ADR-0049; a split whose plane misses the body or only touches it, where Open CASCADE makes one side empty and Arris refuses as `SplitReason::NoCrossing` — ADR-0051 §7; a blend through a face pair or an end with no closed form yet, `OpError::Unsupported` whatever the pair, ADR-0035 §6): the oracle's numbers are
   recorded and the lint still
   cross-checks them against the other `analytic` values, but the runner asserts the typed error and compares
   nothing — and the oracle's self-test records the result without

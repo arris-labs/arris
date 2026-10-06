@@ -27,6 +27,13 @@ def test_a_consumer_role_carries_its_namespace_and_key():
     assert arris.Role("box", "Body").namespace is None
 
 
+def test_a_split_cap_role_names_its_side():
+    cap = arris.Role("split", "Cap", "Negative")
+    assert (cap.kind, cap.part, cap.fields) == ("split", "Cap", ("Negative",))
+    assert str(cap) == "split:Cap(Negative)"
+    assert cap != arris.Role("split", "Cap", "Positive")
+
+
 @pytest.mark.parametrize(
     "request_",
     [
@@ -38,6 +45,8 @@ def test_a_consumer_role_carries_its_namespace_and_key():
         ("box", "Body", "Z"),
         ("extrude", "Side", 0),
         ("consumer", "Key", 2**40, 1),
+        ("split", "Cap", "Max"),
+        ("split", "Cap"),
     ],
 )
 def test_a_request_that_is_no_role_is_a_value_error(request_):

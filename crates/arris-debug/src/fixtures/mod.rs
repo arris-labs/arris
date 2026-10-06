@@ -777,6 +777,10 @@ pub enum ExpectError {
     /// opening tangent to a wall, which the wall's move would drag
     /// (ADR-0049).
     OpeningDragged,
+    /// `OpError::Degenerate` with `SplitReason::NoCrossing`: a split whose
+    /// plane misses the body or only touches it, so one side would be
+    /// empty (ADR-0051 §7).
+    NoCrossing,
     /// `OpError::Unsupported` with a NURBS surface or curve in the pair:
     /// an operation on a free-form face the kernel has no closed form
     /// for, the NURBS cycle's (ADR-0026 §5).
@@ -1337,7 +1341,7 @@ pub fn expand_patterns(raw: &mut serde_json::Value) -> Result<(), (String, Strin
 /// fixture there has passed and been blessed, and none is `#[ignore]`d.
 /// `real/` holds parts, whose lint holds their dumps the same way
 /// (`crate::part::lint`).
-pub const DUMPED_AREAS: [&str; 9] = [
+pub const DUMPED_AREAS: [&str; 10] = [
     "primitive",
     "build",
     "transform",
@@ -1347,6 +1351,7 @@ pub const DUMPED_AREAS: [&str; 9] = [
     "blend",
     "offset",
     "shell",
+    "split",
 ];
 
 /// The area a failure shrunk to a fixture waits in until it passes

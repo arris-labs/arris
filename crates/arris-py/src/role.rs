@@ -10,7 +10,8 @@
 //! compiling until Python can read it.
 
 use arris::topo::provenance::{
-    BoxPart, ConsumerKey, Coord, CylinderPart, FileEntity, Role as Kernel, Side, SweepPart,
+    BoxPart, ConsumerKey, Coord, CylinderPart, FileEntity, PlaneSide, Role as Kernel, Side,
+    SplitPart, SweepPart,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -30,6 +31,10 @@ pub type View = (&'static str, &'static str, Vec<Field>);
 
 const COORDS: [(&str, Coord); 3] = [("X", Coord::X), ("Y", Coord::Y), ("Z", Coord::Z)];
 const SIDES: [(&str, Side); 2] = [("Min", Side::Min), ("Max", Side::Max)];
+const PLANE_SIDES: [(&str, PlaneSide); 2] = [
+    ("Positive", PlaneSide::Positive),
+    ("Negative", PlaneSide::Negative),
+];
 
 fn coord(c: Coord) -> Field {
     Field::Name(match c {
@@ -43,6 +48,13 @@ fn side(s: Side) -> Field {
     Field::Name(match s {
         Side::Min => "Min",
         Side::Max => "Max",
+    })
+}
+
+fn plane_side(s: PlaneSide) -> Field {
+    Field::Name(match s {
+        PlaneSide::Positive => "Positive",
+        PlaneSide::Negative => "Negative",
     })
 }
 
@@ -99,6 +111,7 @@ pub fn view(role: Kernel) -> View {
             "Key",
             vec![Field::Uint(u64::from(namespace)), Field::Uint(key)],
         ),
+        Kernel::Split(SplitPart::Cap(s)) => ("split", "Cap", vec![plane_side(s)]),
     }
 }
 
@@ -237,9 +250,13 @@ pub fn from_parts(kind: &str, part: &str, fields: &[Field]) -> Result<Kernel, St
             }),
             _ => return Err(format!("{part} is not a part of a consumer role")),
         },
+        "split" => Kernel::Split(match part {
+            "Cap" => SplitPart::Cap(f.pick(&PLANE_SIDES, "plane side")?),
+            _ => return Err(format!("{part} is not a part of a split")),
+        }),
         _ => {
             return Err(format!(
-                "{kind} is not a kind of role (box, cylinder, extrude, revolve, file, consumer)"
+                "{kind} is not a kind of role (box, cylinder, extrude, revolve, file, consumer, split)"
             ));
         }
     };
@@ -301,11 +318,11 @@ fn sweep_from(part: &str, f: &mut Fields<'_>) -> Result<SweepPart, String> {
 }
 
 /// What an entity is to the operation that made it from nothing: a box's
-/// face, a cylinder's wall, a sweep's side, an entity of a file, or a key
-/// of the consumer's own.
+/// face, a cylinder's wall, a sweep's side, an entity of a file, a key
+/// of the consumer's own, or a split's cap.
 ///
 /// Frozen and hashable. `kind` is the operation (`"box"`, `"cylinder"`,
-/// `"extrude"`, `"revolve"`, `"file"`, `"consumer"`), `part` the kernel's
+/// `"extrude"`, `"revolve"`, `"file"`, `"consumer"`, `"split"`), `part` the kernel's
 /// own name for the variant and `fields` its payload, in declaration order;
 /// `str(role)` is the kernel's text form (`box:Face(Z, Max)`). `Role(kind, part, *fields)` is the
 /// inverse and raises `ValueError` naming what is not a role.
@@ -358,6 +375,7 @@ impl Role {
                         .iter()
                         .map(|(n, _)| *n)
                         .chain(SIDES.iter().map(|(n, _)| *n))
+                        .chain(PLANE_SIDES.iter().map(|(n, _)| *n))
                         .find(|n| *n == name)
                         .map(Field::Name)
                         .ok_or_else(|| PyValueError::new_err(format!("{name} is not a name")))
@@ -377,7 +395,7 @@ impl Role {
     }
 
     /// The operation: `"box"`, `"cylinder"`, `"extrude"`, `"revolve"`,
-    /// `"file"` or `"consumer"`.
+    /// `"file"`, `"consumer"` or `"split"`.
     #[getter]
     fn kind(&self) -> &'static str {
         view(self.kernel).0
@@ -389,8 +407,8 @@ impl Role {
         view(self.kernel).1
     }
 
-    /// The variant's payload, in declaration order: coordinates and sides as
-    /// names, indices, ids and keys as ints.
+    /// The variant's payload, in declaration order: coordinates and sides —
+    /// a box's and a split plane's — as names, indices, ids and keys as ints.
     #[getter]
     fn fields<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTuple>> {
         let items = view(self.kernel)
@@ -451,6 +469,8 @@ mod tests {
                 namespace: 7,
                 key: u64::MAX,
             }),
+            Kernel::Split(SplitPart::Cap(PlaneSide::Positive)),
+            Kernel::Split(SplitPart::Cap(PlaneSide::Negative)),
         ];
         roles.extend(
             [

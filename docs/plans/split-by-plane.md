@@ -130,7 +130,7 @@ bound has to be established here.
   against `cut` and `common` run separately on the existing two-operand
   `boolean/` fixtures: equal volume, area and counts, both checker-green,
   and every existing dump unchanged bit for bit.
-- [ ] Step 3 **[3]**: `ops::split` in general position, where the plane
+- [x] Step 3 **[3]**: `ops::split` in general position, where the plane
   meets no vertex, edge or face of the body within tolerance. This step adds
   the plane operand as ADR-0051 decides it, `Split`, `Role::Split`,
   `SplitReason::NoCrossing`, the provenance above, and the binding's arms
@@ -222,6 +222,24 @@ The plan closes when all of the following pass:
   by `(1 + side) / 2`. No recipe key is added, so no hash moves. Open
   CASCADE's splitter equals its half-space common and cut on all 24 sides
   of the twelve non-refusal fixtures (counts equal, measures to 3e-15).
+- Found in step 3: `NoCrossing` is a unit variant, the body in
+  `OpError::Degenerate`'s `entities` as every other reason names its
+  entities, not a `{ body }` field. `audit` gains `audit_many(model, inputs,
+  outputs, provenance)` in `arris-topo` (public, additive) for one record
+  of two bodies, and the corpus runner's `Made` gains `outputs`, so the
+  provenance stage audits a split against both sides; a later step's
+  `<name>.positive` and `.negative` resolve through it. The scratch box is
+  `primitive_box`'s Euler sequence (`euler_box`) over the plane's frame, its
+  near face the plane `Frame` itself used `Reversed`, its far faces past the
+  body's box by the box's own diagonal. A plane past the body's box is
+  refused before the box is built; one inside the box that misses the body
+  (a cylinder's box corner) reaches the booleans, whose `Empty` and
+  `ZeroThickness` become `NoCrossing`. The fixtures moved to `split/`
+  without the `-split` in their slugs. All eleven passed on the first run,
+  and so did both axial cylinder fixtures in every variant, off-seam
+  counts included: step 4 decides whether that stays the convention and
+  moves them. The tangent plane fails with `Fault::Split` (a section edge
+  ends at a node nothing else reaches), step 4's.
 - ⚠ OPEN: whether a side whose pieces are only a sliver within tolerance of
   the plane counts as a crossing or as `NoCrossing`. Agent decides at step
   4, matching what Open CASCADE's splitter builds on the touch fixtures.

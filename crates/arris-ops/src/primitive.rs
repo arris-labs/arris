@@ -181,60 +181,7 @@ pub fn primitive_box(
         frames.push(Frame::new(b[i], side_normals[i], b[(i + 1) % 4] - b[i])?);
     }
     m.transaction(|m| {
-        let surfaces: Vec<_> = frames
-            .iter()
-            .map(|&frame| m.add_surface(Surface::Plane { frame }))
-            .collect();
-        let mut bd = Builder::new(tol);
-        let mut face_of = Vec::new();
-        let (v0, f_bottom) = bd.mvfs(Seed {
-            point: b[0],
-            surface: surfaces[0],
-            orientation: Orientation::Forward,
-        })?;
-        face_of.push((f_bottom, 0));
-        let mut corners = vec![v0];
-        for i in 1..4 {
-            let at = bd.find_position(f_bottom, 0, corners[i - 1])?;
-            let strut = Strut {
-                point: b[i],
-                geometry: line(m, b[i - 1], b[i])?,
-                pcurves: [None, None],
-            };
-            corners.push(bd.mev(at, strut)?.0);
-        }
-        let from = bd.find_position(f_bottom, 0, corners[3])?;
-        let to = bd.find_position(f_bottom, 0, corners[0])?;
-        let split = Split {
-            geometry: line(m, b[3], b[0])?,
-            surface: surfaces[1],
-            orientation: Orientation::Forward,
-            pcurves: [None, None],
-        };
-        let (_, f_top) = bd.mef(from, to, split)?;
-        face_of.push((f_top, 1));
-        let mut tops = Vec::with_capacity(4);
-        for i in 0..4 {
-            let at = bd.find_position(f_top, 0, corners[i])?;
-            let strut = Strut {
-                point: t[i],
-                geometry: line(m, b[i], t[i])?,
-                pcurves: [None, None],
-            };
-            tops.push(bd.mev(at, strut)?.0);
-        }
-        for i in 0..4 {
-            let from = bd.find_position(f_top, 0, tops[(i + 1) % 4])?;
-            let to = bd.find_position(f_top, 0, tops[i])?;
-            let split = Split {
-                geometry: line(m, t[(i + 1) % 4], t[i])?,
-                surface: surfaces[2 + i],
-                orientation: Orientation::Forward,
-                pcurves: [None, None],
-            };
-            let (_, f) = bd.mef(from, to, split)?;
-            face_of.push((f, 2 + i));
-        }
+        let (mut bd, face_of) = euler_box(m, tol, &b, &t, &frames, Orientation::Forward)?;
         let invariant = |what: &'static str| OpError::Internal(Fault::Invariant { what });
         let which = |f: FaceRef| -> Result<usize, OpError> {
             face_of
@@ -273,6 +220,131 @@ pub fn primitive_box(
         )?;
         Ok((built.body, provenance))
     })
+}
+
+/// The six faces of a box through the Euler operators, over its bottom
+/// corners `b` (counter-clockwise about the outward normal of the top) and
+/// the top corners `t` over them: a rectangle of struts closed by `mef`,
+/// four struts up, four `mef`s for the sides. `frames` are the planes of
+/// the bottom, the top and the four sides in that order, each added as a
+/// surface here, and `bottom` is how the bottom face uses its plane — a
+/// plane whose `Z` is the outward normal is used `Forward`. Returns the
+/// builder, its faces' pcurves still unset, and each face with the index
+/// of its frame.
+fn euler_box(
+    m: &mut Model,
+    tol: f64,
+    b: &[Point3; 4],
+    t: &[Point3; 4],
+    frames: &[Frame],
+    bottom: Orientation,
+) -> Result<(Builder, Vec<(FaceRef, usize)>), OpError> {
+    let surfaces: Vec<_> = frames
+        .iter()
+        .map(|&frame| m.add_surface(Surface::Plane { frame }))
+        .collect();
+    let mut bd = Builder::new(tol);
+    let mut face_of = Vec::new();
+    let (v0, f_bottom) = bd.mvfs(Seed {
+        point: b[0],
+        surface: surfaces[0],
+        orientation: bottom,
+    })?;
+    face_of.push((f_bottom, 0));
+    let mut corners = vec![v0];
+    for i in 1..4 {
+        let at = bd.find_position(f_bottom, 0, corners[i - 1])?;
+        let strut = Strut {
+            point: b[i],
+            geometry: line(m, b[i - 1], b[i])?,
+            pcurves: [None, None],
+        };
+        corners.push(bd.mev(at, strut)?.0);
+    }
+    let from = bd.find_position(f_bottom, 0, corners[3])?;
+    let to = bd.find_position(f_bottom, 0, corners[0])?;
+    let split = Split {
+        geometry: line(m, b[3], b[0])?,
+        surface: surfaces[1],
+        orientation: Orientation::Forward,
+        pcurves: [None, None],
+    };
+    let (_, f_top) = bd.mef(from, to, split)?;
+    face_of.push((f_top, 1));
+    let mut tops = Vec::with_capacity(4);
+    for i in 0..4 {
+        let at = bd.find_position(f_top, 0, corners[i])?;
+        let strut = Strut {
+            point: t[i],
+            geometry: line(m, b[i], t[i])?,
+            pcurves: [None, None],
+        };
+        tops.push(bd.mev(at, strut)?.0);
+    }
+    for i in 0..4 {
+        let from = bd.find_position(f_top, 0, tops[(i + 1) % 4])?;
+        let to = bd.find_position(f_top, 0, tops[i])?;
+        let split = Split {
+            geometry: line(m, t[(i + 1) % 4], t[i])?,
+            surface: surfaces[2 + i],
+            orientation: Orientation::Forward,
+            pcurves: [None, None],
+        };
+        let (_, f) = bd.mef(from, to, split)?;
+        face_of.push((f, 2 + i));
+    }
+    Ok((bd, face_of))
+}
+
+/// A scratch box in `plane`'s frame, from `lo` to `hi` in its local
+/// coordinates with `lo.z == 0`: its bottom face on the plane itself, the
+/// plane's own surface used `Reversed`, so its outward normal is against
+/// the frame's `z` and its (u, v) are the frame's; its five other faces
+/// on planes through its corners. What `split` runs through the
+/// decomposition as the half-space beyond the plane (ADR-0051 §3), with no
+/// roles: the caller frees it. Every tolerance is the model's default.
+pub(crate) fn plane_box(
+    m: &mut Model,
+    plane: &Frame,
+    lo: Point3,
+    hi: Point3,
+) -> Result<Body, OpError> {
+    let tol = m.precision().default_tolerance;
+    let local = [
+        Point2::new(lo.x, lo.y),
+        Point2::new(hi.x, lo.y),
+        Point2::new(hi.x, hi.y),
+        Point2::new(lo.x, hi.y),
+    ];
+    let b: [Point3; 4] =
+        core::array::from_fn(|i| plane.to_world(Point3::new(local[i].x, local[i].y, lo.z)));
+    let t: [Point3; 4] =
+        core::array::from_fn(|i| plane.to_world(Point3::new(local[i].x, local[i].y, hi.z)));
+    let (x, y, z) = (
+        plane.x().into_inner(),
+        plane.y().into_inner(),
+        plane.z().into_inner(),
+    );
+    let side_normals = [-y, x, y, -x];
+    let mut frames = Vec::with_capacity(6);
+    frames.push(*plane);
+    frames.push(Frame::new(t[0], z, x)?);
+    for i in 0..4 {
+        frames.push(Frame::new(b[i], side_normals[i], b[(i + 1) % 4] - b[i])?);
+    }
+    let (mut bd, face_of) = euler_box(m, tol, &b, &t, &frames, Orientation::Reversed)?;
+    plane_pcurves(m, &mut bd, |f| {
+        face_of
+            .iter()
+            .find(|(r, _)| *r == f)
+            .map(|(_, i)| frames[*i])
+            .ok_or(OpError::Internal(Fault::Invariant {
+                what: "a scratch box face's frame",
+            }))
+    })?;
+    let built = bd.finish(m, BodyKind::Solid)?;
+    verify(m, built.body)?;
+    Ok(built.body)
 }
 
 /// A cylinder of `radius` and `height` along `axis` with its bottom cap

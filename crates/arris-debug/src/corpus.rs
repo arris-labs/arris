@@ -46,12 +46,12 @@ use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::step::{self, StepError};
 use arris_math::nalgebra::UnitQuaternion;
 use arris_math::{
-    Axis, Control, FrameError, Isometry, Point3, Reflection, ReflectionError, UnitVec3, Vec3,
+    Axis, Control, Frame, FrameError, Isometry, Point3, Reflection, ReflectionError, UnitVec3, Vec3,
 };
 use arris_mesh::{MeshRequest, TriMesh};
 use arris_ops::{
     BlendReason, BooleanReason, InputReason, OffsetReason, OpError, Reason, ShellReason,
-    SweepReason, common,
+    SplitReason, SweepReason, common,
 };
 use arris_topo::FaceId;
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
@@ -155,7 +155,7 @@ pub enum CorpusError {
         /// The cause.
         source: TopoError,
     },
-    /// A recipe axis is not one.
+    /// A recipe axis, or a `split` step's plane frame, is not one.
     #[error("{fixture}: step {step:?}: axis: {source}")]
     Axis {
         /// The fixture.
@@ -442,6 +442,9 @@ impl Refusal {
             Refusal::Error(ExpectError::OpeningDragged) => {
                 "OpError::Degenerate with Reason::OpeningDragged".into()
             }
+            Refusal::Error(ExpectError::NoCrossing) => {
+                "OpError::Degenerate with Reason::NoCrossing".into()
+            }
             Refusal::Error(ExpectError::Nurbs) => {
                 "OpError::Unsupported with a NURBS surface or curve in the pair".into()
             }
@@ -501,6 +504,9 @@ impl Refusal {
                     Refusal::Error(ExpectError::OpeningDragged) => {
                         reason == Reason::Shell(ShellReason::OpeningDragged)
                     }
+                    Refusal::Error(ExpectError::NoCrossing) => {
+                        reason == Reason::Split(SplitReason::NoCrossing)
+                    }
                     Refusal::Error(ExpectError::Nurbs | ExpectError::Unsupported) => false,
                 };
                 if matches {
@@ -549,6 +555,9 @@ pub struct Made {
     pub provenance: Provenance,
     /// The bodies the step consumed, in the operation's argument order.
     pub inputs: Vec<Body>,
+    /// Every body the step made, which `provenance` accounts for: `body`
+    /// alone, or both sides of a split, positive first.
+    pub outputs: Vec<Body>,
 }
 
 /// A recipe built whole: the model every step was built in, each body
@@ -1126,6 +1135,7 @@ fn read_back(
                 body,
                 provenance: Provenance::new(),
                 inputs: Vec::new(),
+                outputs: vec![body],
             },
         )]),
         profiles: BTreeMap::new(),
@@ -1559,12 +1569,17 @@ pub fn provenance_stage(fixture: &Fixture, chain: &Chain) -> Result<(), CorpusEr
         let Some(out) = chain.steps.get(step.name()) else {
             continue;
         };
-        arris_topo::provenance::audit(&chain.model, &out.inputs, out.body, &out.provenance)
-            .map_err(|e| CorpusError::Provenance {
-                fixture: fixture.name.clone(),
-                step: step.name().to_string(),
-                what: e.to_string(),
-            })?;
+        arris_topo::provenance::audit_many(
+            &chain.model,
+            &out.inputs,
+            &out.outputs,
+            &out.provenance,
+        )
+        .map_err(|e| CorpusError::Provenance {
+            fixture: fixture.name.clone(),
+            step: step.name().to_string(),
+            what: e.to_string(),
+        })?;
     }
     Ok(())
 }
@@ -1899,6 +1914,7 @@ fn build_step(
             body,
             provenance,
             inputs,
+            outputs: vec![body],
         }))
     };
     match step {
@@ -1991,7 +2007,7 @@ fn build_step(
             rotate,
             ..
         } => {
-            let of_body = reference(fixture, step, of, made)?.body;
+            let of_body = reference(fixture, step, of, made)?;
             let motion = motion(fixture, step, rotate, translate, params)?;
             body(
                 arris_ops::transform(m, of_body, &motion, control).map_err(op)?,
@@ -1999,7 +2015,7 @@ fn build_step(
             )
         }
         Step::Mirror { of, plane, .. } => {
-            let of_body = reference(fixture, step, of, made)?.body;
+            let of_body = reference(fixture, step, of, made)?;
             let reflection = Reflection::new(
                 point(fixture, step, &plane.origin, params)?,
                 vector(fixture, step, &plane.normal, params)?,
@@ -2014,16 +2030,42 @@ fn build_step(
                 vec![of_body],
             )
         }
-        Step::Split { .. } => Err(CorpusError::Operands {
-            fixture: fixture.name.clone(),
-            step: step.name().to_string(),
-            what: "`split` is not built by the runner yet".into(),
-        }),
+        Step::Split {
+            of, plane, side, ..
+        } => {
+            let of_body = reference(fixture, step, of, made)?;
+            let origin = point(fixture, step, &plane.origin, params)?;
+            let normal = vector(fixture, step, &plane.normal, params)?;
+            let frame = match &plane.x {
+                Some(x) => Frame::new(origin, normal, vector(fixture, step, x, params)?),
+                None => Frame::from_z(origin, normal),
+            }
+            .map_err(|source| CorpusError::Axis {
+                fixture: fixture.name.clone(),
+                step: step.name().to_string(),
+                source,
+            })?;
+            let positive = match side {
+                Some(side) => number(fixture, step, side, params)? > 0.0,
+                None => true,
+            };
+            let made = arris_ops::split(m, of_body, &frame, control).map_err(op)?;
+            Ok(Some(Made {
+                body: if positive {
+                    made.positive
+                } else {
+                    made.negative
+                },
+                provenance: made.provenance,
+                inputs: vec![of_body],
+                outputs: vec![made.positive, made.negative],
+            }))
+        }
         Step::Fuse { a, b, bodies, .. } => {
             let names = operand_names(fixture, step, [a, b], bodies, "fuse")?;
             let operands = names
                 .into_iter()
-                .map(|n| Ok(reference(fixture, step, n, made)?.body))
+                .map(|n| reference(fixture, step, n, made))
                 .collect::<Result<Vec<Body>, CorpusError>>()?;
             body(
                 arris_ops::fuse_many(m, &operands, control).map_err(op)?,
@@ -2031,8 +2073,8 @@ fn build_step(
             )
         }
         Step::Common { a, b, .. } => {
-            let a = reference(fixture, step, a, made)?.body;
-            let b = reference(fixture, step, b, made)?.body;
+            let a = reference(fixture, step, a, made)?;
+            let b = reference(fixture, step, b, made)?;
             body(common(m, a, b, control).map_err(op)?, vec![a, b])
         }
         Step::Cut {
@@ -2042,10 +2084,10 @@ fn build_step(
             ..
         } => {
             let names = operand_names(fixture, step, [tool, &None], tools, "cut")?;
-            let target = reference(fixture, step, target, made)?.body;
+            let target = reference(fixture, step, target, made)?;
             let tools = names
                 .into_iter()
-                .map(|n| Ok(reference(fixture, step, n, made)?.body))
+                .map(|n| reference(fixture, step, n, made))
                 .collect::<Result<Vec<Body>, CorpusError>>()?;
             let operands: Vec<Body> = core::iter::once(target)
                 .chain(tools.iter().copied())
@@ -2067,7 +2109,7 @@ fn build_step(
             distance: size,
             ..
         } => {
-            let of_body = reference(fixture, step, of, made)?.body;
+            let of_body = reference(fixture, step, of, made)?;
             let probe = fixture.recipe.tolerances.probe;
             let mut selected = Vec::with_capacity(edges.len());
             for p in edges {
@@ -2095,7 +2137,7 @@ fn build_step(
             distance,
             ..
         } => {
-            let of_body = reference(fixture, step, of, made)?.body;
+            let of_body = reference(fixture, step, of, made)?;
             let mut selected = Vec::with_capacity(faces.len());
             for p in faces {
                 let point = point(fixture, step, p, params)?;
@@ -2120,7 +2162,7 @@ fn build_step(
             side,
             ..
         } => {
-            let of_body = reference(fixture, step, of, made)?.body;
+            let of_body = reference(fixture, step, of, made)?;
             let mut selected = Vec::with_capacity(openings.len());
             for p in openings {
                 let point = point(fixture, step, p, params)?;
@@ -2359,17 +2401,28 @@ fn operand_names<'a>(
     }
 }
 
-fn reference<'a>(
+fn reference(
     fixture: &Fixture,
     step: &Step,
     name: &str,
-    made: &'a BTreeMap<String, Made>,
-) -> Result<&'a Made, CorpusError> {
-    made.get(name).ok_or_else(|| CorpusError::Reference {
+    made: &BTreeMap<String, Made>,
+) -> Result<Body, CorpusError> {
+    let missing = || CorpusError::Reference {
         fixture: fixture.name.clone(),
         step: step.name().to_string(),
         name: name.to_string(),
-    })
+    };
+    if let Some(m) = made.get(name) {
+        return Ok(m.body);
+    }
+    // `<split>.positive` and `<split>.negative`: a side of a split step.
+    let (base, side) = name.rsplit_once('.').ok_or_else(missing)?;
+    let sides = made.get(base).map(|m| m.outputs.as_slice());
+    match (side, sides) {
+        ("positive", Some([positive, _])) => Ok(*positive),
+        ("negative", Some([_, negative])) => Ok(*negative),
+        _ => Err(missing()),
+    }
 }
 
 /// ADR-0012's invariants on every face-local vertex of the mesh: the

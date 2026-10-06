@@ -616,6 +616,81 @@ impl Model {
         Ok(freed)
     }
 
+    /// Frees the entities and geometry values of `body`'s closure, the
+    /// body itself included, that no body of `keep` reaches, as
+    /// [`Model::retain`] frees what no kept body reaches: each freed
+    /// slot's generation is bumped, so a handle to it stops resolving, and
+    /// a later append refills it lowest index first (ADR-0010). Nothing
+    /// outside `body`'s closure is touched, so every other body keeps its
+    /// ids. How an operation drops a scratch body it built to run through
+    /// another one — `ops::split`'s box beyond the plane (ADR-0051) — once
+    /// its results, appended after the scratch, hold what they share with
+    /// it. Returns how many slots were freed. Not undone by an enclosing
+    /// transaction that fails. Errors: `body` or a body of `keep` does not
+    /// resolve, and then nothing is freed.
+    ///
+    /// ```
+    /// use arris_debug::sample;
+    /// use arris_topo::Model;
+    ///
+    /// let mut m = Model::default();
+    /// let cube = sample::unit_box(&mut m).unwrap();
+    /// let cylinder = sample::cylinder(&mut m, 4.0, 12.0).unwrap();
+    /// let freed = m.discard(cylinder, &[]).unwrap();
+    /// assert!(freed > 0);
+    /// assert!(m.body(cylinder.id).is_err() && m.body(cube.id).is_ok());
+    /// ```
+    pub fn discard(
+        &mut self,
+        body: handle::Body,
+        keep: &[handle::Body],
+    ) -> Result<usize, NotFound> {
+        let gone = self.closure(body)?;
+        let mut live = crate::walk::Closure::default();
+        for &b in keep {
+            let c = self.closure(b)?;
+            live.vertices.extend(c.vertices);
+            live.edges.extend(c.edges);
+            live.faces.extend(c.faces);
+            live.shells.extend(c.shells);
+            live.curves.extend(c.curves);
+            live.surfaces.extend(c.surfaces);
+            live.curve2s.extend(c.curve2s);
+        }
+        fn free<T: Clone, I: Copy + Ord>(
+            arena: &mut Arena<T>,
+            gone: &[I],
+            live: &[I],
+            index_of: impl Fn(&I) -> u32,
+        ) -> usize {
+            let live: std::collections::BTreeSet<I> = live.iter().copied().collect();
+            let gone: std::collections::BTreeSet<I> = gone.iter().copied().collect();
+            gone.iter()
+                .filter(|i| !live.contains(i))
+                .filter(|i| arena.free_slot(index_of(i)))
+                .count()
+        }
+        let mut freed = 0;
+        freed += free(&mut self.vertices, &gone.vertices, &live.vertices, |v| {
+            v.index()
+        });
+        freed += free(&mut self.edges, &gone.edges, &live.edges, |e| e.index());
+        freed += free(&mut self.faces, &gone.faces, &live.faces, |f| f.index());
+        freed += free(&mut self.shells, &gone.shells, &live.shells, |s| s.index());
+        if !keep.iter().any(|b| b.id == body.id) && self.bodies.free_slot(body.id.index()) {
+            freed += 1;
+        }
+        freed += free(&mut self.curves, &gone.curves, &live.curves, |c| c.index());
+        freed += free(&mut self.surfaces, &gone.surfaces, &live.surfaces, |s| {
+            s.index()
+        });
+        freed += free(&mut self.curve2s, &gone.curve2s, &live.curve2s, |p| {
+            p.index()
+        });
+        self.rebuild_indices();
+        Ok(freed)
+    }
+
     pub(crate) fn push_vertex(&mut self, vertex: Vertex) -> VertexId {
         let (i, g) = self.vertices.push(vertex);
         Arc::make_mut(&mut self.indices)

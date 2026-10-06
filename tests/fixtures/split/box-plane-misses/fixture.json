@@ -50,6 +50,6 @@
     }
   ],
   "analytic": {
-    "degenerate": true
+    "expect_error": "no-crossing"
   }
 }

@@ -19,10 +19,11 @@ equals() { [ "$2" = "$3" ] || { echo "FAIL $1: expected '$3', got '$2'" >&2; fai
 
 plan() { "$gate" plan "$@"; }
 
-# A geom-only change: geom's dependents, the boolean and provenance areas.
+# A geom-only change: geom's dependents, the boolean, provenance and split
+# areas.
 out=$(plan crates/arris-geom/src/curve.rs); f=$(key filter "$out")
 has "geom" "$f" "rdeps(arris-geom)"
-has "geom" "$f" "boolean|provenance"
+has "geom" "$f" "boolean|provenance|split"
 lacks "geom" "$f" "sweep"
 lacks "geom" "$f" "all()"
 equals "geom cases" "$(key cases "$out")" 32
@@ -30,7 +31,7 @@ equals "geom cases" "$(key cases "$out")" 32
 # An ops boolean change.
 f=$(key filter "$(plan crates/arris-ops/src/boolean/pave.rs)")
 has "boolean" "$f" "rdeps(arris-ops)"
-has "boolean" "$f" "boolean|provenance"
+has "boolean" "$f" "boolean|provenance|split"
 lacks "boolean" "$f" "transform"
 
 # An ops mirror change: the transform area, not boolean.
@@ -82,6 +83,8 @@ has "fixture" "$f" "^(transform|"
 lacks "fixture" "$f" "boolean"
 # A fixture directory with no area rule: everything.
 equals "fixture geom" "$(key filter "$(plan tests/fixtures/geom/x.json)")" "all()"
+f=$(key filter "$(plan tests/fixtures/split/box-mid/fixture.json)")
+has "split fixture" "$f" "^(split|"
 
 # Anything the table cannot place: the whole profile.
 for p in .config/nextest.toml Cargo.toml Cargo.lock tools/gate.sh fuzz/a.rs \

@@ -140,6 +140,13 @@ into its version (ADR-0027).
   Vec<SharedSection>` (the other pairs' blocks that are this edge, each on
   its own face with the edge's pcurve there), and `SharedSection` is added.
   Fix: a struct literal names the new field.
+- `arris_ops::Reason` gains the group `Reason::Split(SplitReason)` —
+  `NoCrossing`, a split whose plane misses the body or only touches it.
+  An exhaustive `match` on `Reason` adds its arm.
+- `arris_topo::Role` gains `Role::Split(SplitPart)`, with
+  `SplitPart::Cap(PlaneSide)` and `PlaneSide { Positive, Negative }`: what
+  a split's cap faces and the section edges and vertices on them are
+  generated from. An exhaustive `match` on `Role` adds its arm.
 
 ## 0.5.0 — 2026-10-05
 

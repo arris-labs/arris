@@ -211,6 +211,27 @@ pub enum SweepPart {
     },
 }
 
+/// Which side of a split's plane: the side the plane frame's `z` points
+/// to, or the other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PlaneSide {
+    /// The side the plane frame's `z` points to.
+    Positive,
+    /// The other side.
+    Negative,
+}
+
+/// What an entity of `split` is when it comes from the plane, which is no
+/// entity: the cap face of each side, one copy per side, and through it
+/// the section edges and vertices made on the plane.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum SplitPart {
+    /// The face a side has on the plane, where the body was cut.
+    Cap(PlaneSide),
+}
+
 /// An instance of an exchange file an entity was read from: the file's
 /// `#id`, and which placement of it, since an assembly places one solid
 /// several times and each placement is a body of its own. Instances are
@@ -271,6 +292,11 @@ pub enum Role {
     /// role. Appended last so the serialised index of every earlier
     /// variant stays where it was.
     Consumer(ConsumerKey),
+    /// What `split` made from its plane: a cap face, `Generated` from its
+    /// side's cap, and the section edges and vertices `Generated` from it
+    /// beside the body entity they lie on. Appended after `Consumer` for
+    /// the same reason.
+    Split(SplitPart),
 }
 
 impl fmt::Display for Role {
@@ -282,6 +308,7 @@ impl fmt::Display for Role {
             Role::Revolve(part) => write!(f, "revolve:{part:?}"),
             Role::File(e) => write!(f, "file:#{}/{}", e.id, e.instance),
             Role::Consumer(k) => write!(f, "consumer:{}/{}", k.namespace, k.key),
+            Role::Split(part) => write!(f, "split:{part:?}"),
         }
     }
 }
@@ -765,6 +792,31 @@ pub fn audit(
     output: Body,
     provenance: &Provenance,
 ) -> Result<(), AuditError> {
+    audit_many(model, inputs, &[output], provenance)
+}
+
+/// [`audit`] of an operation with several output bodies and one record of
+/// them — `split`'s two sides: every input entity is kept by id in one of
+/// `outputs` or recorded, and every entity of every output is a kept
+/// input or has an origin. With one output it is [`audit`].
+///
+/// ```
+/// use arris_topo::provenance::{audit_many, AuditError, Provenance};
+/// use arris_topo::{Body, BodyId, Model};
+///
+/// let m = Model::default();
+/// let missing = Body::forward(BodyId::new(0, 0));
+/// assert!(matches!(
+///     audit_many(&m, &[], &[missing, missing], &Provenance::new()),
+///     Err(AuditError::NotFound(_))
+/// ));
+/// ```
+pub fn audit_many(
+    model: &Model,
+    inputs: &[Body],
+    outputs: &[Body],
+    provenance: &Provenance,
+) -> Result<(), AuditError> {
     let entities = |body: Body| -> Result<BTreeSet<Shape>, AuditError> {
         let c = model.closure(body)?;
         let mut set: BTreeSet<Shape> = BTreeSet::new();
@@ -783,7 +835,10 @@ pub fn audit(
         set.insert(Shape::new(body.id, Orientation::Forward));
         Ok(set)
     };
-    let output = entities(output)?;
+    let mut output: BTreeSet<Shape> = BTreeSet::new();
+    for &b in outputs {
+        output.extend(entities(b)?);
+    }
     let mut ins: BTreeSet<Shape> = BTreeSet::new();
     for &b in inputs {
         ins.extend(entities(b)?);

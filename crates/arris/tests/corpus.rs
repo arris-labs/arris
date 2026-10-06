@@ -1304,6 +1304,28 @@ corpus_tests! {
     /// A pocket whose floor is thinner than two walls, hollowed: the floor's
     /// skin runs through the bottom's, `SelfIntersects` from the `Full` report.
     shell_pocket_floor_thin => run "shell/pocket-floor-thin";
+    /// A cube split mid-height: a box on either side.
+    split_box_mid => run "split/box-mid";
+    /// A cube split obliquely across a corner: a tetrahedron and the cube less it.
+    split_box_corner => run "split/box-corner";
+    /// A plane above the body: the positive side is empty and the split is refused naming the body.
+    split_box_plane_misses => run "split/box-plane-misses";
+    /// A cylinder split across its axis.
+    split_cylinder_across => run "split/cylinder-across";
+    /// A tube split across its axis: annulus caps.
+    split_tube_across => run "split/tube-across";
+    /// A sphere split off-centre.
+    split_sphere_off_centre => run "split/sphere-off-centre";
+    /// A plate with a row of three holes split by a plane through the row, off the holes' axes.
+    split_plate_holes_through_row => run "split/plate-holes-through-row";
+    /// A U-bracket split across both arms: the positive side is two lumps.
+    split_u_bracket_across_arms => run "split/u-bracket-across-arms";
+    /// A box with filleted verticals split across the fillets.
+    split_rounded_box_through_fillets => run "split/rounded-box-through-fillets";
+    /// A cylinder with its rim filleted split through the torus band.
+    split_rim_filleted_cylinder_through_torus => run "split/rim-filleted-cylinder-through-torus";
+    /// A shelled box split across its walls: the cap is a ring.
+    split_shelled_box_across_walls => run "split/shelled-box-across-walls";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'
@@ -1418,48 +1440,15 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
-    /// A cube split obliquely across a corner: a tetrahedron and the cube less it.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_box_split_corner => run "regression/box-split-corner";
-    /// A cube split mid-height: a box on either side.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_box_split_mid => run "regression/box-split-mid";
-    /// A plane above the body: the positive side is empty and the split is refused naming the body.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_box_split_plane_misses => run "regression/box-split-plane-misses";
-    /// A cylinder split across its axis.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_cylinder_split_across => run "regression/cylinder-split-across";
     /// A cylinder split by a plane through its axis, off its seam.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    #[ignore = "the plane through the body's own entities is not built yet (plans/split-by-plane step 4)"]
     regression_cylinder_split_axial_off_seam => run "regression/cylinder-split-axial-off-seam";
     /// A cylinder split by a plane through its axis and its seam.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    #[ignore = "the plane through the body's own entities is not built yet (plans/split-by-plane step 4)"]
     regression_cylinder_split_axial_seam => run "regression/cylinder-split-axial-seam";
     /// A plane tangent to a cylinder along a ruling: nothing crosses, refused.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    #[ignore = "the plane through the body's own entities is not built yet (plans/split-by-plane step 4)"]
     regression_cylinder_split_plane_tangent => run "regression/cylinder-split-plane-tangent";
-    /// A plate with a row of three holes split by a plane through the row, off the holes' axes.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_plate_holes_split_through_row => run "regression/plate-holes-split-through-row";
-    /// A cylinder with its rim filleted split through the torus band.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_rim_filleted_cylinder_split_through_torus => run "regression/rim-filleted-cylinder-split-through-torus";
-    /// A box with filleted verticals split across the fillets.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_rounded_box_split_through_fillets => run "regression/rounded-box-split-through-fillets";
-    /// A shelled box split across its walls: the cap is a ring.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_shelled_box_split_across_walls => run "regression/shelled-box-split-across-walls";
-    /// A sphere split off-centre.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_sphere_split_off_centre => run "regression/sphere-split-off-centre";
-    /// A tube split across its axis: annulus caps.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_tube_split_across => run "regression/tube-split-across";
-    /// A U-bracket split across both arms: the positive side is two lumps.
-    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
-    regression_u_bracket_split_across_arms => run "regression/u-bracket-split-across-arms";
 }
 
 /// A variant the recipe does not have fails naming it.

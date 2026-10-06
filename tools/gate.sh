@@ -21,7 +21,8 @@
 #                                     (`rdeps`), and the corpus areas below
 #   crates/<c>/{tests,benches,examples}   <c> alone
 #   crates/arris-{math,geom,topo,check,io}, arris-ops/src/boolean
-#                                     corpus `boolean_*` and `provenance_*`
+#                                     corpus `boolean_*`, `provenance_*` and
+#                                     `split_*` (split is built over the boolean)
 #   arris-ops/src/{sweep,blend,offset,shell,transform,mirror}   that area's corpus tests
 #                                     (offset/ reaches shell/ too: shell is built over it)
 #   any other crate source (mesh, debug, the rest of ops)   the whole corpus
@@ -89,10 +90,10 @@ while IFS= read -r p; do
       add_term "rdeps($c)"
       case "$c" in
         arris-math|arris-geom|arris-topo|arris-check|arris-io)
-          need_corpus part; add_area boolean; add_area provenance ;;
+          need_corpus part; add_area boolean; add_area provenance; add_area split ;;
         arris-ops)
           case "$rest" in
-            src/boolean/*) need_corpus part; add_area boolean; add_area provenance ;;
+            src/boolean/*) need_corpus part; add_area boolean; add_area provenance; add_area split ;;
             src/sweep.rs) need_corpus part; add_area sweep ;;
             src/blend.rs) need_corpus part; add_area blend ;;
             src/offset/*) need_corpus part; add_area offset; add_area shell ;;
@@ -107,7 +108,7 @@ while IFS= read -r p; do
     tests/fixtures/*/*)
       a=${p#tests/fixtures/}; a=${a%%/*}
       case "$a" in
-        blend|boolean|build|offset|primitive|provenance|shell|sweep|transform|real)
+        blend|boolean|build|offset|primitive|provenance|shell|split|sweep|transform|real)
           add_term "package(arris)"; need_corpus part; add_area "$a" ;;
         *) whole=yes ;;
       esac ;;

@@ -97,6 +97,7 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
                 body,
                 provenance: bodies[0].provenance.clone(),
                 inputs: Vec::new(),
+                outputs: vec![body],
             },
         )]),
         profiles: BTreeMap::new(),
@@ -213,7 +214,8 @@ fn every_area_is_known() {
                 "provenance",
                 "blend",
                 "offset",
-                "shell"
+                "shell",
+                "split"
             ]
             .contains(&a),
             "{a} has no read-back test"
@@ -264,6 +266,11 @@ fn offset_fixtures_read_back() {
 #[test]
 fn shell_fixtures_read_back() {
     area("shell");
+}
+
+#[test]
+fn split_fixtures_read_back() {
+    area("split");
 }
 
 /// A cylinder's STEP, as Arris writes it.

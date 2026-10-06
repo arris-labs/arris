@@ -22,7 +22,7 @@ use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_io::step::{ReadError, Refusal};
 use arris_ops::{
     BlendReason, BooleanReason, InputReason, OffsetReason, OpError, QueryReason, Reason,
-    ShellReason, SweepReason,
+    ShellReason, SplitReason, SweepReason,
 };
 use arris_topo::{EntityId, Model};
 
@@ -372,6 +372,8 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             }
             Reason::Sweep(SweepReason::AngleAboveTurn) => Cycle::Itself("AngleAboveTurn"),
             Reason::Sweep(SweepReason::SpindleTorus) => Cycle::Itself("SpindleTorus"),
+            // Nor any split.
+            Reason::Split(SplitReason::NoCrossing) => Cycle::Itself("NoCrossing"),
         },
         OpError::InvalidInput { .. } => Cycle::Itself("InvalidInput"),
         OpError::Profile(_) => Cycle::Itself("Profile"),

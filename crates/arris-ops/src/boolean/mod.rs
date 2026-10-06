@@ -14,6 +14,7 @@ mod faces;
 mod pave;
 pub(crate) mod pieces;
 mod result;
+mod split;
 
 use core::fmt;
 use std::collections::BTreeMap;
@@ -23,6 +24,8 @@ use arris_math::{Aabb, Control, Interval, Meter, Point2, Point3};
 use arris_topo::{Body, Curve2Id, EdgeId, FaceId, Model, Provenance, Shape, VertexId};
 
 use crate::error::{BooleanReason, OpError, Reason};
+
+pub use split::{Split, split};
 
 /// The curves of `intersection` that meet as `kind`, each with its
 /// index among the `Meets` curves: what a section curve's or a contact's
