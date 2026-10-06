@@ -1,0 +1,234 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "bda02637c1ff04ec714be87e631af3c8878a3d5382c4b102765bba4756f004ea",
+  "results": {
+    "default": {
+      "area": 402.1238596594936,
+      "centroid": [
+        4.711932861427433e-16,
+        -1.6620649499008425e-17,
+        6.999999999999999
+      ],
+      "counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "half_space": {
+        "area": 402.1238596594936,
+        "counts": {
+          "edges": 6,
+          "faces": 4,
+          "loops": 6,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 4
+        },
+        "degenerate": false,
+        "volume": 301.59289474462014
+      },
+      "inertia": [
+        [
+          3468.31828956318,
+          3.923852060261425e-16,
+          -8.526512829121222e-14
+        ],
+        [
+          3.923852060261425e-16,
+          3468.3182895631217,
+          2.7074579215791885e-14
+        ],
+        [
+          -8.526512829121222e-14,
+          2.7074579215791885e-14,
+          5127.079210658572
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            4.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_bore",
+          "point": [
+            1.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "low",
+          "point": [
+            4.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "high",
+          "point": [
+            4.0,
+            0.0,
+            7.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_bore_low",
+          "point": [
+            3.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_outer_high",
+          "point": [
+            0.0,
+            5.0,
+            7.0
+          ]
+        }
+      ],
+      "volume": 301.5928947446201
+    },
+    "negative": {
+      "area": 301.59289474462014,
+      "centroid": [
+        -6.361109362927035e-16,
+        -6.2123086431473964e-18,
+        2.0
+      ],
+      "counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "half_space": {
+        "area": 301.59289474462025,
+        "counts": {
+          "edges": 6,
+          "faces": 4,
+          "loops": 6,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 4
+        },
+        "degenerate": false,
+        "volume": 201.06192982974676
+      },
+      "inertia": [
+        [
+          1977.1089766592033,
+          -5.763702692959295e-14,
+          -8.526512829121202e-14
+        ],
+        [
+          -5.763702692959295e-14,
+          1977.1089766591679,
+          -4.163643019497781e-15
+        ],
+        [
+          -8.526512829121202e-14,
+          -4.163643019497781e-15,
+          3418.052807105713
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            4.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_bore",
+          "point": [
+            1.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "low",
+          "point": [
+            4.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "high",
+          "point": [
+            4.0,
+            0.0,
+            7.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bore_low",
+          "point": [
+            3.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_outer_high",
+          "point": [
+            0.0,
+            5.0,
+            7.0
+          ]
+        }
+      ],
+      "volume": 201.0619298297467
+    }
+  }
+}

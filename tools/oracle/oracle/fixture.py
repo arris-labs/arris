@@ -70,8 +70,14 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
     manifold = fixture.get("analytic", {}).get("expect_error") not in ("non-manifold", "tangent-contact")
     results = {}
     for variant in variant_names(fixture):
-        shape, _ = build(fixture, variant)
+        shape, shapes = build(fixture, variant)
         results[variant] = measure(shape, probes(fixture, variant), tol["probe"], manifold)
+        if (half := shapes.get(f"{fixture['result']}.half_space")) is not None:
+            # A split's result: what the same side is as the common (or
+            # cut) of the body with a half-space box, so a disagreement of
+            # Open CASCADE's splitter with its own booleans is on record.
+            kept = measure(half, [], tol["probe"], manifold)
+            results[variant]["half_space"] = {k: kept[k] for k in ("degenerate", "counts", "volume", "area") if k in kept}
         if not results[variant]["degenerate"] and manifold:
             # The counts of the result converted to B-splines, which may
             # gain seams: what Arris's reader of Open CASCADE's STEP of it

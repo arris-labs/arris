@@ -1,0 +1,140 @@
+{
+  "description": "a 20 by 10 plate of thickness t with three holes of radius r on the line y = 5, split by the plane y = 5 + e through the row, off the holes' axes (so no seam or axis lies in it)",
+  "params": {
+    "r": 1.5,
+    "t": 2,
+    "e": 0.3,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        10,
+        "t"
+      ]
+    },
+    {
+      "name": "h",
+      "op": "cylinder",
+      "base": [
+        4,
+        5,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": "t + 2"
+    },
+    {
+      "name": "holes",
+      "op": "pattern",
+      "of": "h",
+      "step": [
+        6,
+        0,
+        0
+      ],
+      "count": 3
+    },
+    {
+      "name": "slab",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "holes"
+      ]
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "slab",
+      "plane": {
+        "origin": [
+          0,
+          "5 + e",
+          0
+        ],
+        "normal": [
+          0,
+          1,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        1,
+        "5 + e",
+        "t / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "in_hole_cap_side",
+      "point": [
+        4,
+        "5 + e + 0.5",
+        "t / 2"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "pos",
+      "point": [
+        1,
+        8,
+        "t / 2"
+      ]
+    },
+    {
+      "label": "neg",
+      "point": [
+        1,
+        2,
+        "t / 2"
+      ]
+    },
+    {
+      "label": "on_top_pos",
+      "point": [
+        1,
+        8,
+        "t"
+      ]
+    },
+    {
+      "label": "on_hole_wall",
+      "point": [
+        4,
+        "5 + r",
+        "t / 2"
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (t * (20 * (5 - e) - 3 * (r^2 * atan(sqrt(1 - (e / r)^2) / (e / r)) - e * sqrt(r^2 - e^2)))) + (1 - side) / 2 * (t * (20 * (5 + e) - 3 * (pi * r^2 - (r^2 * atan(sqrt(1 - (e / r)^2) / (e / r)) - e * sqrt(r^2 - e^2)))))",
+    "area": "(1 + side) / 2 * (2 * (20 * (5 - e) - 3 * (r^2 * atan(sqrt(1 - (e / r)^2) / (e / r)) - e * sqrt(r^2 - e^2))) + 2 * (5 - e) * t + 20 * t + t * (20 - 6 * sqrt(r^2 - e^2)) + 3 * t * (2 * r * atan(sqrt(1 - (e / r)^2) / (e / r)))) + (1 - side) / 2 * (2 * (20 * (5 + e) - 3 * (pi * r^2 - (r^2 * atan(sqrt(1 - (e / r)^2) / (e / r)) - e * sqrt(r^2 - e^2)))) + 2 * (5 + e) * t + 20 * t + t * (20 - 6 * sqrt(r^2 - e^2)) + 3 * t * (2 * pi * r - (2 * r * atan(sqrt(1 - (e / r)^2) / (e / r)))))"
+  }
+}

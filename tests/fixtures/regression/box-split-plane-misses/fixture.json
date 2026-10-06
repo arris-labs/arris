@@ -1,0 +1,55 @@
+{
+  "description": "a 10-cube and the plane z = 20 above it: the body lies wholly on the negative side, the positive side is empty, and Arris refuses with the body named",
+  "params": {
+    "side": 1
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "box",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          20
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "degenerate": true
+  }
+}

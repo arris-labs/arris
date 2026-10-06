@@ -1,0 +1,114 @@
+{
+  "description": "a 10-cube hollowed inward to a wall of t, open on top, split by the plane z = 5 across the walls: the cap is a square ring, a face with a hole; the positive side is a ring of wall, the negative the floor and the walls' lower part",
+  "params": {
+    "t": 2,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "cup",
+      "op": "shell",
+      "of": "box",
+      "openings": [
+        [
+          5,
+          5,
+          10
+        ]
+      ],
+      "thickness": "t",
+      "side": "inward"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "cup",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          5
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        "t / 2",
+        5,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "in_cavity",
+      "point": [
+        5,
+        5,
+        6
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "wall_high",
+      "point": [
+        "t / 2",
+        5,
+        7
+      ]
+    },
+    {
+      "label": "floor",
+      "point": [
+        5,
+        5,
+        "t / 2"
+      ]
+    },
+    {
+      "label": "on_rim",
+      "point": [
+        "t / 2",
+        5,
+        10
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * ((100 - (10 - 2 * t)^2) * 5) + (1 - side) / 2 * ((100 - (10 - 2 * t)^2) * (5 - t) + 100 * t)",
+    "area": "(1 + side) / 2 * (200 + 20 * (10 - 2 * t) + 2 * (100 - (10 - 2 * t)^2)) + (1 - side) / 2 * (300 + 4 * (10 - 2 * t) * (5 - t) + (10 - 2 * t)^2 + (100 - (10 - 2 * t)^2))",
+    "centroid": [
+      5,
+      5,
+      "(1 + side) / 2 * (7.5) + (1 - side) / 2 * (((100 - (10 - 2 * t)^2) * (5 - t) * (5 + t) / 2 + 100 * t^2 / 2) / ((100 - (10 - 2 * t)^2) * (5 - t) + 100 * t))"
+    ]
+  }
+}

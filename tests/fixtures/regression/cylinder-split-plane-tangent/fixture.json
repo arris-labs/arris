@@ -1,0 +1,58 @@
+{
+  "description": "a cylinder of radius r on the z axis and the plane x = r tangent to it along a ruling: the body lies wholly on the negative side, the positive side is empty, and Arris refuses as a plane that only touches it",
+  "params": {
+    "r": 3,
+    "side": 1
+  },
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": 10
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "cyl",
+      "plane": {
+        "origin": [
+          "r",
+          0,
+          0
+        ],
+        "normal": [
+          1,
+          0,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "degenerate": true
+  }
+}

@@ -755,6 +755,7 @@ pub fn write_read(name: &str, m: &Model, body: Body, tolerances: &Tolerances) ->
             probes: Vec::new(),
             nurbs_counts: None,
             nurbs_fails: None,
+            half_space: None,
             own: None,
         };
         compare_mass(&back, read.body, &written, "the body written", &own)

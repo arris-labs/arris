@@ -1,0 +1,234 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "77bd4575a7ddbe9803cc1e37628824d7a5fbcbfc054598c1f8c09d086d40eda4",
+  "results": {
+    "default": {
+      "area": 277.9715956011875,
+      "centroid": [
+        9.999999999999998,
+        7.820094095694193,
+        1.0000000000000002
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 277.9715956011876,
+        "counts": {
+          "edges": 30,
+          "faces": 12,
+          "loops": 12,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 20
+        },
+        "degenerate": false,
+        "volume": 172.1580304411442
+      },
+      "inertia": [
+        [
+          342.76359707870324,
+          -3.637978807091713e-12,
+          2.2737367544323206e-13
+        ],
+        [
+          -3.637978807091713e-12,
+          5935.8866611363155,
+          0.0
+        ],
+        [
+          2.2737367544323206e-13,
+          0.0,
+          6163.878237920922
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            1.0,
+            5.3,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_hole_cap_side",
+          "point": [
+            4.0,
+            5.8,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "pos",
+          "point": [
+            1.0,
+            8.0,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "neg",
+          "point": [
+            1.0,
+            2.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_pos",
+          "point": [
+            1.0,
+            8.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_hole_wall",
+          "point": [
+            4.0,
+            6.5,
+            1.0
+          ]
+        }
+      ],
+      "volume": 172.1580304411442
+    },
+    "negative": {
+      "area": 300.8929190438888,
+      "centroid": [
+        10.0,
+        2.381757979233631,
+        1.0
+      ],
+      "counts": {
+        "edges": 39,
+        "faces": 15,
+        "loops": 15,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 26
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 300.8929190438888,
+        "counts": {
+          "edges": 39,
+          "faces": 15,
+          "loops": 15,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 26
+        },
+        "degenerate": false,
+        "volume": 185.43046873539365
+      },
+      "inertia": [
+        [
+          445.5872142188034,
+          1.8189894035458565e-12,
+          4.547473508864641e-13
+        ],
+        [
+          1.8189894035458565e-12,
+          6474.910349612906,
+          5.684341886080802e-14
+        ],
+        [
+          4.547473508864641e-13,
+          5.684341886080802e-14,
+          6796.8772513414515
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 39,
+        "faces": 15,
+        "loops": 15,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 26
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            1.0,
+            5.3,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_hole_cap_side",
+          "point": [
+            4.0,
+            5.8,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "pos",
+          "point": [
+            1.0,
+            8.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "neg",
+          "point": [
+            1.0,
+            2.0,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_top_pos",
+          "point": [
+            1.0,
+            8.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_hole_wall",
+          "point": [
+            4.0,
+            6.5,
+            1.0
+          ]
+        }
+      ],
+      "volume": 185.43046873539362
+    }
+  }
+}

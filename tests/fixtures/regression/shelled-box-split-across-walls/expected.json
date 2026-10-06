@@ -1,0 +1,216 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "5fc7316bb79c767b1a1f65268f71b071bd6d080359360b3986164468af154ebd",
+  "results": {
+    "default": {
+      "area": 447.99999999999994,
+      "centroid": [
+        5.000000000000002,
+        5.0,
+        7.500000000000001
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "half_space": {
+        "area": 447.99999999999994,
+        "counts": {
+          "edges": 24,
+          "faces": 10,
+          "loops": 12,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 16
+        },
+        "degenerate": false,
+        "volume": 319.9999999999999
+      },
+      "inertia": [
+        [
+          4293.333333333332,
+          2.7284841053187847e-12,
+          5.4569682106375694e-12
+        ],
+        [
+          2.7284841053187847e-12,
+          4293.3333333333285,
+          1.8189894035458565e-12
+        ],
+        [
+          5.4569682106375694e-12,
+          1.8189894035458565e-12,
+          7253.33333333333
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            1.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_cavity",
+          "point": [
+            5.0,
+            5.0,
+            6.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "wall_high",
+          "point": [
+            1.0,
+            5.0,
+            7.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "floor",
+          "point": [
+            5.0,
+            5.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_rim",
+          "point": [
+            1.0,
+            5.0,
+            10.0
+          ]
+        }
+      ],
+      "volume": 319.9999999999999
+    },
+    "negative": {
+      "area": 471.99999999999994,
+      "centroid": [
+        4.999999999999998,
+        5.0,
+        2.224489795918367
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 471.99999999999994,
+        "counts": {
+          "edges": 24,
+          "faces": 11,
+          "loops": 12,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 16
+        },
+        "degenerate": false,
+        "volume": 391.99999999999994
+      },
+      "inertia": [
+        [
+          4665.5782312925185,
+          0.0,
+          -2.7284841053187847e-12
+        ],
+        [
+          0.0,
+          4665.578231292522,
+          -9.094947017729282e-13
+        ],
+        [
+          -2.7284841053187847e-12,
+          -9.094947017729282e-13,
+          7685.333333333343
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            1.0,
+            5.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_cavity",
+          "point": [
+            5.0,
+            5.0,
+            6.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "wall_high",
+          "point": [
+            1.0,
+            5.0,
+            7.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "floor",
+          "point": [
+            5.0,
+            5.0,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_rim",
+          "point": [
+            1.0,
+            5.0,
+            10.0
+          ]
+        }
+      ],
+      "volume": 391.99999999999994
+    }
+  }
+}

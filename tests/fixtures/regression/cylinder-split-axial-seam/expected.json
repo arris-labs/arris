@@ -1,0 +1,198 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d93c87e91223a0fd0e4ce1b4c1861ab38bf341176015eaff6c4bfc1ec4819971",
+  "results": {
+    "default": {
+      "area": 182.5221134900019,
+      "centroid": [
+        -2.178041697615324e-17,
+        1.2732395447351625,
+        5.000000000000001
+      ],
+      "counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 182.5221134900019,
+        "counts": {
+          "edges": 6,
+          "faces": 4,
+          "loops": 4,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 4
+        },
+        "degenerate": false,
+        "volume": 141.3716694115407
+      },
+      "inertia": [
+        [
+          1267.000383219808,
+          1.8628049804465403e-14,
+          9.264650697835393e-16
+        ],
+        [
+          1.8628049804465403e-14,
+          1496.1835012721385,
+          1.1368683772161603e-13
+        ],
+        [
+          9.264650697835393e-16,
+          1.1368683772161603e-13,
+          406.9893942996038
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            0.0,
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "pos",
+          "point": [
+            0.0,
+            1.5,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "neg",
+          "point": [
+            -0.0,
+            -1.5,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_edge",
+          "point": [
+            3.0,
+            0.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 141.3716694115407
+    },
+    "negative": {
+      "area": 182.5221134900019,
+      "centroid": [
+        -1.2727087902083174e-16,
+        -1.273239544735163,
+        5.000000000000001
+      ],
+      "counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 182.5221134900019,
+        "counts": {
+          "edges": 6,
+          "faces": 4,
+          "loops": 4,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 4
+        },
+        "degenerate": false,
+        "volume": 141.3716694115407
+      },
+      "inertia": [
+        [
+          1267.000383219809,
+          2.1069452570502973e-14,
+          -1.1989547961904797e-15
+        ],
+        [
+          2.1069452570502973e-14,
+          1496.1835012721385,
+          -1.1368683772161603e-13
+        ],
+        [
+          -1.1989547961904797e-15,
+          -1.1368683772161603e-13,
+          406.98939429960376
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            0.0,
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "pos",
+          "point": [
+            0.0,
+            1.5,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "neg",
+          "point": [
+            -0.0,
+            -1.5,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_edge",
+          "point": [
+            3.0,
+            0.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 141.3716694115407
+    }
+  }
+}

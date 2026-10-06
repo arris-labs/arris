@@ -1,0 +1,103 @@
+{
+  "description": "a cylinder of radius r and height 10 split by the plane z = h: a cylinder on either side, the cap a disc",
+  "params": {
+    "r": 3,
+    "h": 4,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "r",
+      "height": 10
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "cyl",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          "h"
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        1,
+        1,
+        "h"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "low",
+      "point": [
+        1,
+        1,
+        "h / 2"
+      ]
+    },
+    {
+      "label": "high",
+      "point": [
+        1,
+        1,
+        "(10 + h) / 2"
+      ]
+    },
+    {
+      "label": "on_wall_low",
+      "point": [
+        "r",
+        0,
+        "h / 2"
+      ]
+    },
+    {
+      "label": "on_wall_high",
+      "point": [
+        0,
+        "r",
+        "(10 + h) / 2"
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (pi * r^2 * (10 - h)) + (1 - side) / 2 * (pi * r^2 * h)",
+    "area": "(1 + side) / 2 * (2 * pi * r * (10 - h) + 2 * pi * r^2) + (1 - side) / 2 * (2 * pi * r * h + 2 * pi * r^2)",
+    "centroid": [
+      0,
+      0,
+      "(1 + side) / 2 * ((10 + h) / 2) + (1 - side) / 2 * (h / 2)"
+    ],
+    "genus": 0
+  }
+}

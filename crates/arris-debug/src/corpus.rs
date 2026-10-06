@@ -1680,6 +1680,7 @@ impl Inputs {
             | Step::Revolve { .. }
             | Step::Transform { .. }
             | Step::Mirror { .. }
+            | Step::Split { .. }
             | Step::Fillet { .. }
             | Step::Chamfer { .. }
             | Step::Offset { .. }
@@ -2013,6 +2014,11 @@ fn build_step(
                 vec![of_body],
             )
         }
+        Step::Split { .. } => Err(CorpusError::Operands {
+            fixture: fixture.name.clone(),
+            step: step.name().to_string(),
+            what: "`split` is not built by the runner yet".into(),
+        }),
         Step::Fuse { a, b, bodies, .. } => {
             let names = operand_names(fixture, step, [a, b], bodies, "fuse")?;
             let operands = names

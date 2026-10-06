@@ -41,6 +41,20 @@ MEASUREMENTS = ("volume", "area", "centroid", "inertia")
 # the real ones; these run even on a checkout with no corpus yet.
 SMOKES = [
     {
+        "name": "box split by a plane, a side per variant, agreeing with its half-space box",
+        "recipe": {
+            "params": {"h": 4, "side": 1},
+            "variants": {"negative": {"side": -1}},
+            "steps": [
+                {"name": "box", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+                {"name": "result", "op": "split", "of": "box", "plane": {"origin": [0, 0, "h"], "normal": [0, 0, 1]}, "side": "side"},
+            ],
+            "result": "result",
+            "probes": [{"label": "low", "point": [5, 5, 1]}, {"label": "high", "point": [5, 5, 8]}],
+        },
+        "analytic": {"default": {"volume": 600.0, "counts": (8, 12, 6, 6), "genus": 0}, "negative": {"volume": 400.0, "counts": (8, 12, 6, 6), "genus": 0}},
+    },
+    {
         "name": "box − a pattern of three cylinders, one cut",
         "recipe": {
             "params": {"r": 3, "d": 20},

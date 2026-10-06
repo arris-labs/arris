@@ -1,0 +1,150 @@
+{
+  "description": "a sphere of radius R split by the plane z = h above its centre: a cap of height R - h on the positive side, the rest on the negative, the cap face a disc of radius sqrt(R^2 - h^2)",
+  "params": {
+    "R": 5,
+    "h": 2,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          "-R"
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              "R"
+            ],
+            "via": [
+              "R",
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              "-R"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "section",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "ball",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          "h"
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        1,
+        1,
+        "h"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "in_cap",
+      "point": [
+        0,
+        0,
+        "(R + h) / 2"
+      ]
+    },
+    {
+      "label": "in_rest",
+      "point": [
+        0,
+        0,
+        "-R / 2"
+      ]
+    },
+    {
+      "label": "on_pole_cap",
+      "point": [
+        0,
+        0,
+        "R"
+      ]
+    },
+    {
+      "label": "on_rest",
+      "point": [
+        "R",
+        0,
+        0
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (pi * (R - h)^2 * (3 * R - (R - h)) / 3) + (1 - side) / 2 * (4 * pi * R^3 / 3 - pi * (R - h)^2 * (3 * R - (R - h)) / 3)",
+    "area": "(1 + side) / 2 * (2 * pi * R * (R - h) + pi * (R^2 - h^2)) + (1 - side) / 2 * (4 * pi * R^2 - 2 * pi * R * (R - h) + pi * (R^2 - h^2))",
+    "centroid": [
+      0,
+      0,
+      "(1 + side) / 2 * (3 * (2 * R - (R - h))^2 / (4 * (3 * R - (R - h)))) + (1 - side) / 2 * (-(pi * (R - h)^2 * (3 * R - (R - h)) / 3) * 3 * (2 * R - (R - h))^2 / (4 * (3 * R - (R - h))) / (4 * pi * R^3 / 3 - (pi * (R - h)^2 * (3 * R - (R - h)) / 3)))"
+    ],
+    "genus": 0
+  }
+}

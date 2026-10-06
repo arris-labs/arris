@@ -1,0 +1,137 @@
+{
+  "description": "a 10 by 10 by 10 box with its four vertical edges filleted to radius r, split by the plane z = h: the section is the rounded square, so the cap meets four cylinder faces",
+  "params": {
+    "r": 2,
+    "h": 4,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "cube",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "cube",
+      "edges": [
+        [
+          0,
+          0,
+          5
+        ],
+        [
+          10,
+          0,
+          5
+        ],
+        [
+          10,
+          10,
+          5
+        ],
+        [
+          0,
+          10,
+          5
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "rounded",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          "h"
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        5,
+        5,
+        "h"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "low",
+      "point": [
+        5,
+        5,
+        "h / 2"
+      ]
+    },
+    {
+      "label": "high",
+      "point": [
+        5,
+        5,
+        "(10 + h) / 2"
+      ]
+    },
+    {
+      "label": "corner_gap",
+      "point": [
+        0.2,
+        0.2,
+        "h / 2"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_fillet_low",
+      "point": [
+        "r - r / sqrt(2)",
+        "r - r / sqrt(2)",
+        "h / 2"
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * ((100 - (4 - pi) * r^2) * (10 - h)) + (1 - side) / 2 * ((100 - (4 - pi) * r^2) * h)",
+    "area": "(1 + side) / 2 * (2 * (100 - (4 - pi) * r^2) + (40 - 8 * r + 2 * pi * r) * (10 - h)) + (1 - side) / 2 * (2 * (100 - (4 - pi) * r^2) + (40 - 8 * r + 2 * pi * r) * h)",
+    "centroid": [
+      5,
+      5,
+      "(1 + side) / 2 * ((10 + h) / 2) + (1 - side) / 2 * (h / 2)"
+    ],
+    "counts": {
+      "vertices": 16,
+      "edges": 24,
+      "faces": 10,
+      "loops": 10,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

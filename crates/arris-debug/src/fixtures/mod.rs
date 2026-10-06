@@ -238,6 +238,20 @@ pub struct MirrorPlane {
     pub normal: [Num; 3],
 }
 
+/// The plane of a split step: through `origin`, its normal along `normal`
+/// (any length), and the frame's `x` axis (`ops::split`'s plane is a
+/// `Frame`), absent where the interpreter may pick any axis in the plane.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SplitPlane {
+    /// A point of the plane.
+    pub origin: [Num; 3],
+    /// The plane's normal: the positive side is where it points.
+    pub normal: [Num; 3],
+    /// The frame's x axis, which fixes the caps' parameterisation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x: Option<[Num; 3]>,
+}
+
 /// One step of a recipe. The `name` is what later steps refer to.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "lowercase")]
@@ -319,6 +333,22 @@ pub enum Step {
         of: String,
         /// The plane it is reflected in.
         plane: MirrorPlane,
+    },
+    /// A step's body cut by a plane into the solids on either side
+    /// (`arris_ops::split`). The step's own name is the side `side`
+    /// picks (positive where the expression is above zero, the default),
+    /// and `<name>.positive` and `<name>.negative` are both, for a later
+    /// step. A `side` over a param is how a variant names the other side.
+    Split {
+        /// Step name.
+        name: String,
+        /// The body split.
+        of: String,
+        /// The plane.
+        plane: SplitPlane,
+        /// Which side the step's own name is: positive above zero.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        side: Option<Num>,
     },
     /// Boolean union: of the two operands `a` and `b`, or of the
     /// `bodies` list (two or more, `arris_ops::fuse_many`), never both.
@@ -483,6 +513,7 @@ impl Step {
             | Step::Revolve { name, .. }
             | Step::Transform { name, .. }
             | Step::Mirror { name, .. }
+            | Step::Split { name, .. }
             | Step::Fuse { name, .. }
             | Step::Common { name, .. }
             | Step::Cut { name, .. }
@@ -626,6 +657,7 @@ impl Tolerances {
     ///     probes: Vec::new(),
     ///     nurbs_counts: None,
     ///     nurbs_fails: None,
+    ///     half_space: None,
     ///     own: Some(Own { tolerance: 1e-7, edge_length: 12.0, reach: 0.87, removable_vertices: 0 }),
     /// };
     /// let held = Tolerances::default().within(&measured, 1e-7);
@@ -971,6 +1003,12 @@ pub struct Measured {
     /// reads no converted file back.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nurbs_fails: Option<String>,
+    /// For the result of a `split` step: the same side as Open CASCADE
+    /// builds it by a half-space box (the common of the body with it for the
+    /// positive side, the cut for the negative), what its splitter is held
+    /// to agree with.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub half_space: Option<HalfSpace>,
     /// The oracle shape's own tolerance and the sizes a boundary moved
     /// within it is measured over: written by `expected.py --own`, which
     /// only the differential runs, and for a part's battery, which is held
@@ -978,6 +1016,22 @@ pub struct Measured {
     /// every solid fixture of the corpus.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub own: Option<Own>,
+}
+
+/// A split's side as Open CASCADE's boolean with a half-space box makes it
+/// (`oracle.fixture.compute_expected`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HalfSpace {
+    /// No solid on that side.
+    pub degenerate: bool,
+    /// Entity counts.
+    pub counts: Counts,
+    /// Volume; absent when degenerate.
+    #[serde(default)]
+    pub volume: Option<f64>,
+    /// Area.
+    #[serde(default)]
+    pub area: Option<f64>,
 }
 
 /// What the oracle's shape declares of itself (`oracle.measure.own_measures`):
@@ -1698,6 +1752,29 @@ mod tests {
         let without: serde_json::Value =
             serde_json::from_str(r#"{"steps": [], "result": "x"}"#).unwrap();
         assert_eq!(recipe_hash(&with).unwrap(), recipe_hash(&without).unwrap());
+    }
+
+    #[test]
+    fn a_split_step_reads_its_plane_and_side() {
+        let text = r#"{"steps": [
+            {"op": "box", "name": "b", "min": [0, 0, 0], "max": [1, 1, 1]},
+            {"op": "split", "name": "s", "of": "b", "side": "side",
+             "plane": {"origin": [0, 0, 0.5], "normal": [0, 0, 1]}}
+        ], "result": "s", "params": {"side": 1}, "variants": {"negative": {"side": -1}}}"#;
+        let r: Recipe = serde_json::from_str(text).unwrap();
+        assert_eq!(r.variant_names(), ["default", "negative"]);
+        let Step::Split {
+            name,
+            of,
+            plane,
+            side,
+        } = &r.steps[1]
+        else {
+            panic!("not a split: {:?}", r.steps[1]);
+        };
+        assert_eq!((name.as_str(), of.as_str()), ("s", "b"));
+        assert!(plane.x.is_none() && side.is_some());
+        assert_eq!(r.steps[1].name(), "s");
     }
 
     #[test]

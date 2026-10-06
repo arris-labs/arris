@@ -18,6 +18,13 @@ Every number in a step may be a string expression over the params
 Operations, by `op`:
 
     box        min [x,y,z], max [x,y,z]
+    split      of <step>, plane {origin, normal, x?}, side? (an expression:
+               positive picks the body on the normal's side, negative the
+               other; default positive). The step's own name is that side;
+               `<name>.positive` and `<name>.negative` are both, and
+               `<name>.half_space` is the same side as Open CASCADE's common
+               (or cut) of the body with a half-space box, which
+               `compute_expected` records beside the splitter's answer
     cylinder   base [x,y,z], axis [x,y,z], radius, height
     profile    plane {origin, x, y}, outer <loop>, holes [<loop>, ...]
                <loop> = {"circle": {"center": [u,v], "radius": r}}
@@ -113,7 +120,9 @@ from pathlib import Path
 from typing import Any
 
 from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Curve2d, BRepAdaptor_Surface
-from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Cut, BRepAlgoAPI_Fuse
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Cut, BRepAlgoAPI_Fuse, BRepAlgoAPI_Splitter
+from OCP.BRepBndLib import BRepBndLib
+from OCP.Bnd import Bnd_Box
 from OCP.BRepBuilderAPI import (
     BRepBuilderAPI_MakeEdge,
     BRepBuilderAPI_MakeFace,
@@ -143,8 +152,8 @@ from OCP.GC import GC_MakeArcOfCircle, GC_MakeArcOfEllipse
 from OCP.GProp import GProp_GProps
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Ax3, gp_Circ, gp_Dir, gp_Elips, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCP.ShapeFix import ShapeFix_Face
-from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED, TopAbs_SHELL
-from OCP.TopExp import TopExp
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED, TopAbs_SHELL, TopAbs_SOLID
+from OCP.TopExp import TopExp, TopExp_Explorer
 from OCP.TopoDS import TopoDS, TopoDS_Compound, TopoDS_Shape
 from OCP.collections import IndexedDataMap_TopoDS_Shape_List_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedDataMapOfShapeListOfShape
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
@@ -574,13 +583,74 @@ def build(fixture: dict, variant: str = "default") -> tuple[TopoDS_Shape, dict[s
         if name in shapes:
             raise OracleError(f"step {i}: name {name!r} is already used")
         try:
-            shapes[name] = _build_step(step, op, params, ref, probe, base)
+            if op == "split":
+                sides = _split(ref(step["of"]), step["plane"], params)
+                side = "positive" if number(step.get("side", 1), params) > 0.0 else "negative"
+                shapes[name] = sides[side]
+                shapes[f"{name}.positive"] = sides["positive"]
+                shapes[f"{name}.negative"] = sides["negative"]
+                shapes[f"{name}.half_space"] = sides[f"{side}_box"]
+            else:
+                shapes[name] = _build_step(step, op, params, ref, probe, base)
         except KeyError as e:
             raise OracleError(f"step {name!r} ({op}): missing field {e}") from e
     result = fixture.get("result")
     if result not in shapes:
         raise OracleError(f"result {result!r} is not a step")
     return shapes[result], shapes
+
+
+def _split(shape: TopoDS_Shape, spec: dict, params: dict[str, float]) -> dict[str, TopoDS_Shape]:
+    """The two sides of `shape` cut by the plane `spec` (`origin`, `normal`
+    and, optionally, `x`, the frame's axes as `ops::split` takes them), as
+    `BRepAlgoAPI_Splitter` builds them: the solids it returns sorted to a
+    side by the signed distance of their centroid, each side the one solid
+    or a compound of them, the empty compound where none lies there. The
+    same sides by a half-space box — the common of the body with it for
+    the positive one, the cut for the negative — under `positive_box` and
+    `negative_box`, so that a disagreement on Open CASCADE's own side
+    shows up in the recorded `half_space`."""
+    origin = vector(spec["origin"], params)
+    normal = vector(spec["normal"], params)
+    frame = gp_Ax3(_pnt(origin), _dir(normal), _dir(vector(spec["x"], params))) if "x" in spec else gp_Ax3(_pnt(origin), _dir(normal))
+    box = Bnd_Box()
+    BRepBndLib.Add_s(shape, box)
+    far = 4.0 * (math.dist(box.CornerMin().Coord(), box.CornerMax().Coord()) + math.dist(box.CornerMin().Coord(), origin) + 1.0)
+    face = _checked(BRepBuilderAPI_MakeFace(gp_Pln(frame), -far, far, -far, far), "split plane")
+    splitter = _boolean(BRepAlgoAPI_Splitter(), [shape], [face])
+    pieces = []
+    explorer = TopExp_Explorer(_checked(splitter, "split"), TopAbs_SOLID)
+    while explorer.More():
+        pieces.append(TopoDS.Solid(explorer.Current()))
+        explorer.Next()
+    z = frame.Direction()
+    on_side: dict[str, list[TopoDS_Shape]] = {"positive": [], "negative": []}
+    for piece in pieces:
+        props = GProp_GProps()
+        BRepGProp.VolumeProperties_s(piece, props)
+        c = props.CentreOfMass()
+        d = (c.X() - origin[0]) * z.X() + (c.Y() - origin[1]) * z.Y() + (c.Z() - origin[2]) * z.Z()
+        on_side["positive" if d > 0.0 else "negative"].append(piece)
+
+    def gather(parts: list[TopoDS_Shape]) -> TopoDS_Shape:
+        if len(parts) == 1:
+            return parts[0]
+        compound = TopoDS_Compound()
+        builder = BRep_Builder()
+        builder.MakeCompound(compound)
+        for part in parts:
+            builder.Add(compound, part)
+        return compound
+
+    # The half-space box: 2 far by 2 far, `far` deep on the normal's side.
+    corner = [origin[i] - far * (frame.XDirection().Coord()[i] + frame.YDirection().Coord()[i]) for i in range(3)]
+    half = _checked(BRepPrimAPI_MakeBox(gp_Ax2(_pnt(corner), z, frame.XDirection()), 2.0 * far, 2.0 * far, far), "half space")
+    return {
+        "positive": gather(on_side["positive"]),
+        "negative": gather(on_side["negative"]),
+        "positive_box": _checked(BRepAlgoAPI_Common(shape, half), "half-space common"),
+        "negative_box": _checked(BRepAlgoAPI_Cut(shape, half), "half-space cut"),
+    }
 
 
 def _edge_at(shape: TopoDS_Shape, point: list[float], probe: float):

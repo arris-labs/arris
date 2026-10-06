@@ -1418,6 +1418,48 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
+    /// A cube split obliquely across a corner: a tetrahedron and the cube less it.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_box_split_corner => run "regression/box-split-corner";
+    /// A cube split mid-height: a box on either side.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_box_split_mid => run "regression/box-split-mid";
+    /// A plane above the body: the positive side is empty and the split is refused naming the body.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_box_split_plane_misses => run "regression/box-split-plane-misses";
+    /// A cylinder split across its axis.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_cylinder_split_across => run "regression/cylinder-split-across";
+    /// A cylinder split by a plane through its axis, off its seam.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_cylinder_split_axial_off_seam => run "regression/cylinder-split-axial-off-seam";
+    /// A cylinder split by a plane through its axis and its seam.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_cylinder_split_axial_seam => run "regression/cylinder-split-axial-seam";
+    /// A plane tangent to a cylinder along a ruling: nothing crosses, refused.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_cylinder_split_plane_tangent => run "regression/cylinder-split-plane-tangent";
+    /// A plate with a row of three holes split by a plane through the row, off the holes' axes.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_plate_holes_split_through_row => run "regression/plate-holes-split-through-row";
+    /// A cylinder with its rim filleted split through the torus band.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_rim_filleted_cylinder_split_through_torus => run "regression/rim-filleted-cylinder-split-through-torus";
+    /// A box with filleted verticals split across the fillets.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_rounded_box_split_through_fillets => run "regression/rounded-box-split-through-fillets";
+    /// A shelled box split across its walls: the cap is a ring.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_shelled_box_split_across_walls => run "regression/shelled-box-split-across-walls";
+    /// A sphere split off-centre.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_sphere_split_off_centre => run "regression/sphere-split-off-centre";
+    /// A tube split across its axis: annulus caps.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_tube_split_across => run "regression/tube-split-across";
+    /// A U-bracket split across both arms: the positive side is two lumps.
+    #[ignore = "split by a plane is not built yet (plans/split-by-plane step 3)"]
+    regression_u_bracket_split_across_arms => run "regression/u-bracket-split-across-arms";
 }
 
 /// A variant the recipe does not have fails naming it.

@@ -1,0 +1,135 @@
+{
+  "description": "a tube of outer radius ro, bore ri and height 10 split by the plane z = h: a tube on either side, the cap an annulus",
+  "params": {
+    "ro": 5,
+    "ri": 3,
+    "h": 4,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "outer",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "ro",
+      "height": 10
+    },
+    {
+      "name": "bore",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": "ri",
+      "height": 12
+    },
+    {
+      "name": "tube",
+      "op": "cut",
+      "target": "outer",
+      "tool": "bore"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "tube",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          "h"
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        4,
+        0,
+        "h"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "in_bore",
+      "point": [
+        1,
+        0,
+        "h"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "low",
+      "point": [
+        4,
+        0,
+        "h / 2"
+      ]
+    },
+    {
+      "label": "high",
+      "point": [
+        4,
+        0,
+        "(10 + h) / 2"
+      ]
+    },
+    {
+      "label": "on_bore_low",
+      "point": [
+        "ri",
+        0,
+        "h / 2"
+      ]
+    },
+    {
+      "label": "on_outer_high",
+      "point": [
+        0,
+        "ro",
+        "(10 + h) / 2"
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (pi * (ro^2 - ri^2) * (10 - h)) + (1 - side) / 2 * (pi * (ro^2 - ri^2) * h)",
+    "area": "(1 + side) / 2 * (2 * pi * (ro + ri) * (10 - h) + 2 * pi * (ro^2 - ri^2)) + (1 - side) / 2 * (2 * pi * (ro + ri) * h + 2 * pi * (ro^2 - ri^2))",
+    "centroid": [
+      0,
+      0,
+      "(1 + side) / 2 * ((10 + h) / 2) + (1 - side) / 2 * (h / 2)"
+    ],
+    "genus": 1
+  }
+}

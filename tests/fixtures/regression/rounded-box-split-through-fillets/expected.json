@@ -1,0 +1,216 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "54348777c251a9f1588e3f032b0ff04d5cd19b15342f1078260652d5e5f77635",
+  "results": {
+    "default": {
+      "area": 412.5309649148733,
+      "centroid": [
+        5.0,
+        5.0,
+        7.000000000000001
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 412.5309649148733,
+        "counts": {
+          "edges": 24,
+          "faces": 10,
+          "loops": 10,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 16
+        },
+        "degenerate": false,
+        "volume": 579.398223686155
+      },
+      "inertia": [
+        [
+          6308.176907920002,
+          1.8189894035458565e-12,
+          7.275957614183426e-12
+        ],
+        [
+          1.8189894035458565e-12,
+          6308.176907920002,
+          3.637978807091713e-12
+        ],
+        [
+          7.275957614183426e-12,
+          3.637978807091713e-12,
+          9139.964473723103
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            5.0,
+            5.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "low",
+          "point": [
+            5.0,
+            5.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "high",
+          "point": [
+            5.0,
+            5.0,
+            7.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gap",
+          "point": [
+            0.2,
+            0.2,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_fillet_low",
+          "point": [
+            0.5857864376269051,
+            0.5857864376269051,
+            2.0
+          ]
+        }
+      ],
+      "volume": 579.398223686155
+    },
+    "negative": {
+      "area": 339.398223686155,
+      "centroid": [
+        4.999999999999999,
+        5.0,
+        1.9999999999999998
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 339.398223686155,
+        "counts": {
+          "edges": 24,
+          "faces": 10,
+          "loops": 10,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 16
+        },
+        "degenerate": false,
+        "volume": 386.26548245743663
+      },
+      "inertia": [
+        [
+          3561.6754678509496,
+          0.0,
+          -9.094947017729282e-13
+        ],
+        [
+          0.0,
+          3561.6754678509533,
+          -4.547473508864641e-13
+        ],
+        [
+          -9.094947017729282e-13,
+          -4.547473508864641e-13,
+          6093.309649148738
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            5.0,
+            5.0,
+            4.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "low",
+          "point": [
+            5.0,
+            5.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "high",
+          "point": [
+            5.0,
+            5.0,
+            7.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gap",
+          "point": [
+            0.2,
+            0.2,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_fillet_low",
+          "point": [
+            0.5857864376269051,
+            0.5857864376269051,
+            2.0
+          ]
+        }
+      ],
+      "volume": 386.2654824574367
+    }
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "908e85a877cfec46228700db301d8ff1e329ae6c27b0bab05da1c1f8a10afc7f",
+  "results": {
+    "default": {
+      "area": 608.0,
+      "centroid": [
+        15.0,
+        16.0,
+        2.0000000000000004
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 12,
+        "loops": 12,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 4,
+      "genus": 0,
+      "half_space": {
+        "area": 608.0,
+        "counts": {
+          "edges": 24,
+          "faces": 12,
+          "loops": 12,
+          "shells": 2,
+          "solids": 2,
+          "vertices": 16
+        },
+        "degenerate": false,
+        "volume": 640.0
+      },
+      "inertia": [
+        [
+          4266.666666666686,
+          0.0,
+          3.637978807091713e-12
+        ],
+        [
+          0.0,
+          70186.66666666663,
+          3.637978807091713e-12
+        ],
+        [
+          3.637978807091713e-12,
+          3.637978807091713e-12,
+          72746.66666666669
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 12,
+        "loops": 12,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            5.0,
+            12.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cap_other_arm",
+          "point": [
+            25.0,
+            12.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "arm_top",
+          "point": [
+            5.0,
+            16.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_slot",
+          "point": [
+            15.0,
+            16.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "base",
+          "point": [
+            15.0,
+            2.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "arm_foot",
+          "point": [
+            25.0,
+            8.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_arm_top_face",
+          "point": [
+            5.0,
+            20.0,
+            2.0
+          ]
+        }
+      ],
+      "volume": 640.0
+    },
+    "negative": {
+      "area": 972.0,
+      "centroid": [
+        15.000000000000005,
+        5.396551724137933,
+        2.0
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 972.0,
+        "counts": {
+          "edges": 24,
+          "faces": 10,
+          "loops": 10,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 16
+        },
+        "degenerate": false,
+        "volume": 1159.9999999999998
+      },
+      "inertia": [
+        [
+          15510.919540229872,
+          1.4551915228366852e-11,
+          0.0
+        ],
+        [
+          1.4551915228366852e-11,
+          107213.33333333326,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          119630.91954022972
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            5.0,
+            12.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cap_other_arm",
+          "point": [
+            25.0,
+            12.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "arm_top",
+          "point": [
+            5.0,
+            16.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_slot",
+          "point": [
+            15.0,
+            16.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "base",
+          "point": [
+            15.0,
+            2.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "arm_foot",
+          "point": [
+            25.0,
+            8.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_arm_top_face",
+          "point": [
+            5.0,
+            20.0,
+            2.0
+          ]
+        }
+      ],
+      "volume": 1159.9999999999995
+    }
+  }
+}

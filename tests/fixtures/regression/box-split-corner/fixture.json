@@ -1,0 +1,99 @@
+{
+  "description": "a 10-cube split by the plane x + y + z = d across the corner at the origin: a tetrahedron of legs d on the negative side, the cube less it, with a triangular cap, on the positive",
+  "params": {
+    "d": 6,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "box",
+      "plane": {
+        "origin": [
+          "d / 3",
+          "d / 3",
+          "d / 3"
+        ],
+        "normal": [
+          1,
+          1,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        "d / 3",
+        "d / 3",
+        "d / 3"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "near_corner",
+      "point": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "label": "far_corner",
+      "point": [
+        9,
+        9,
+        9
+      ]
+    },
+    {
+      "label": "on_face_tet",
+      "point": [
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "label": "on_face_far",
+      "point": [
+        9,
+        9,
+        10
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (1000 - d^3 / 6) + (1 - side) / 2 * (d^3 / 6)",
+    "area": "(1 + side) / 2 * (600 - 3 * d^2 / 2 + sqrt(3) / 2 * d^2) + (1 - side) / 2 * (3 * d^2 / 2 + sqrt(3) / 2 * d^2)",
+    "centroid": [
+      "(1 + side) / 2 * ((5000 - d^3 / 6 * d / 4) / (1000 - d^3 / 6)) + (1 - side) / 2 * (d / 4)",
+      "(1 + side) / 2 * ((5000 - d^3 / 6 * d / 4) / (1000 - d^3 / 6)) + (1 - side) / 2 * (d / 4)",
+      "(1 + side) / 2 * ((5000 - d^3 / 6 * d / 4) / (1000 - d^3 / 6)) + (1 - side) / 2 * (d / 4)"
+    ]
+  }
+}

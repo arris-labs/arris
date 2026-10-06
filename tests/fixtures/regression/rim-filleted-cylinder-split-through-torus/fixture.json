@@ -1,0 +1,110 @@
+{
+  "description": "a cylinder of radius 5 and height 10 with its top rim filleted to radius r, split by the plane z = h inside the fillet band (10 - r < h < 10): the cap is a circle, the positive side a cap of the torus",
+  "params": {
+    "r": 2,
+    "h": 9,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 5,
+      "height": 10
+    },
+    {
+      "name": "dome",
+      "op": "fillet",
+      "of": "cyl",
+      "edges": [
+        [
+          0,
+          5,
+          10
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "dome",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          "h"
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        1,
+        1,
+        "h"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "low",
+      "point": [
+        1,
+        1,
+        4
+      ]
+    },
+    {
+      "label": "high",
+      "point": [
+        1,
+        1,
+        9.5
+      ]
+    },
+    {
+      "label": "corner_outside",
+      "point": [
+        0,
+        4.99,
+        9.99
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        5,
+        0,
+        4
+      ]
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

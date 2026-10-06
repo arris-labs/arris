@@ -1,0 +1,107 @@
+{
+  "description": "a 10-cube split by the plane z = h: a box on either side, the cap a 10-square on the plane",
+  "params": {
+    "h": 4,
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "box",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          "h"
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        5,
+        5,
+        "h"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "low",
+      "point": [
+        5,
+        5,
+        "h / 2"
+      ]
+    },
+    {
+      "label": "high",
+      "point": [
+        5,
+        5,
+        "(10 + h) / 2"
+      ]
+    },
+    {
+      "label": "on_wall_low",
+      "point": [
+        0,
+        5,
+        "h / 2"
+      ]
+    },
+    {
+      "label": "on_wall_high",
+      "point": [
+        10,
+        5,
+        "(10 + h) / 2"
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "(1 + side) / 2 * (100 * (10 - h)) + (1 - side) / 2 * (100 * h)",
+    "area": "(1 + side) / 2 * (200 + 40 * (10 - h)) + (1 - side) / 2 * (200 + 40 * h)",
+    "centroid": [
+      5,
+      5,
+      "(1 + side) / 2 * ((10 + h) / 2) + (1 - side) / 2 * (h / 2)"
+    ],
+    "counts": {
+      "vertices": 8,
+      "edges": 12,
+      "faces": 6,
+      "loops": 6,
+      "shells": 1
+    },
+    "genus": 0
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "c44cf13cc81d3ff3d0d8892703c0999ec2e41d95805dcc6921fef7d1839b8f9e",
+  "results": {
+    "default": {
+      "area": 150.66662250031817,
+      "centroid": [
+        3.761837686359656e-16,
+        -1.4865897025968026e-17,
+        9.449380258884094
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 150.66662250031814,
+        "counts": {
+          "edges": 3,
+          "faces": 3,
+          "loops": 3,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 2
+        },
+        "degenerate": false,
+        "volume": 56.66454496454058
+      },
+      "inertia": [
+        [
+          268.182583909138,
+          4.653513110026284e-14,
+          3.08953984291256e-14
+        ],
+        [
+          4.653513110026284e-14,
+          268.18258390913434,
+          1.662137720902327e-15
+        ],
+        [
+          3.08953984291256e-14,
+          1.662137720902327e-15,
+          527.5207074011032
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            1.0,
+            1.0,
+            9.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "low",
+          "point": [
+            1.0,
+            1.0,
+            4.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "high",
+          "point": [
+            1.0,
+            1.0,
+            9.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_outside",
+          "point": [
+            0.0,
+            4.99,
+            9.99
+          ]
+        },
+        {
+          "class": "out",
+          "label": "on_wall",
+          "point": [
+            5.0,
+            0.0,
+            4.0
+          ]
+        }
+      ],
+      "volume": 56.66454496454058
+    },
+    "negative": {
+      "area": 432.52030844275964,
+      "centroid": [
+        -2.2198928395191555e-16,
+        -1.3439853571885235e-16,
+        4.483799445958208
+      ],
+      "counts": {
+        "edges": 5,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 3
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 432.5203084427596,
+        "counts": {
+          "edges": 5,
+          "faces": 4,
+          "loops": 4,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 3
+        },
+        "degenerate": false,
+        "volume": 704.175440743716
+      },
+      "inertia": [
+        [
+          9107.870348991832,
+          6.134785515477442e-13,
+          6.633372051746237e-13
+        ],
+        [
+          6.134785515477442e-13,
+          9107.87034899174,
+          5.220307807965772e-14
+        ],
+        [
+          6.633372051746237e-13,
+          5.220307807965772e-14,
+          8770.7390478202
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 5,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 3
+      },
+      "probes": [
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            1.0,
+            1.0,
+            9.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "low",
+          "point": [
+            1.0,
+            1.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "high",
+          "point": [
+            1.0,
+            1.0,
+            9.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_outside",
+          "point": [
+            0.0,
+            4.99,
+            9.99
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall",
+          "point": [
+            5.0,
+            0.0,
+            4.0
+          ]
+        }
+      ],
+      "volume": 704.175440743716
+    }
+  }
+}
