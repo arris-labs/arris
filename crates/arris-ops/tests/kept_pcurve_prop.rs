@@ -1,5 +1,5 @@
-//! **A kept edge keeps its pcurves** (plans/per-face-tessellation step 1;
-//! ADR-0010's stable ids): an edge an operation keeps by id, seen from a
+//! **A kept edge keeps its pcurves** (ADR-0010's stable ids,
+//! ADR-0052): an edge an operation keeps by id, seen from a
 //! face whose surface the operation leaves as it was, is parameterised on
 //! that surface by the same pcurve — the same `Curve2Id`, or a value equal
 //! bit for bit. A face meshed before an edit and a neighbour meshed after

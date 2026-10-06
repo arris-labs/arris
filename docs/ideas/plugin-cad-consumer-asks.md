@@ -1,6 +1,6 @@
 # Idea: plugin-cad-consumer-asks
 
-- Status: Accepted 2026-09-26 — A1–A4 and A11 are C5 (docs/ROADMAP.md, ADR-0020's amendment); A5 is a backlog line; A8, A7's shell and offset, and A9 (beside it) are C7 since 2026-10-05 (ADR-0047), A7's draft and thicken a backlog line, its sweep and loft the NURBS cycle's; A6 is recorded as ranking input; A10 stays with `python-binding`. A1 landed (ADR-0028); A2 landed (ADR-0029); A3 (ADR-0030), A11 (ADR-0031) and A4 (ADR-0033) landed 2026-10-01. Kept for A6 and A10, which no cycle has taken; deleted when they are decided
+- Status: Accepted 2026-09-26 — A1–A4 and A11 are C5 (docs/ROADMAP.md, ADR-0020's amendment); A5 is a backlog line; A8, A7's shell and offset, and A9 (beside it) are C7 since 2026-10-05 (ADR-0047), A7's draft and thicken a backlog line, its sweep and loft the NURBS cycle's; A6 is recorded as ranking input; A10 stays with `python-binding`. A1 landed (ADR-0028); A2 landed (ADR-0029); A3 (ADR-0030), A11 (ADR-0031) and A4 (ADR-0033) landed 2026-10-01; A9 landed 2026-10-06 (ADR-0052). Kept for A6 and A10, which no cycle has taken; deleted when they are decided
 - Raised: 2026-09-26
 - Prompt (verbatim from the human): "during formulating SEED.md, you can suggest feature/architecture change requests for arris to implement in future to better fit our goal of plugin-based FOSS CAD system" — and: "Write requests to arris as new idea file using its idea skill."
 

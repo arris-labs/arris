@@ -23,6 +23,7 @@ boolean/coaxial-fuse-band-ends: 52
 boolean/coaxial-fuse-four-off: 57
 boolean/coaxial-fuse-four-off-back: 55
 boolean/cone-apex-slice-cut: 25
+boolean/cone-boss-cut-kept-edge-mesh: 26
 boolean/corner-common: 42
 boolean/corner-cut: 42
 boolean/corner-union: 42

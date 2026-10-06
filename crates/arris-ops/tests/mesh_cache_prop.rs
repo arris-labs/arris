@@ -1,5 +1,4 @@
-//! **A face's mesh survives an edit** (plans/per-face-tessellation step 6;
-//! ADR-0010's stable ids, ADR-0052): mesh every face of a body apart,
+//! **A face's mesh survives an edit** (ADR-0010's stable ids, ADR-0052): mesh every face of a body apart,
 //! apply an operation, keep the old mesh of each face the provenance says
 //! survived, mesh only the others, and weld. The weld succeeds, the result
 //! is the one-call mesh of the new body (closed exactly when that is), and
