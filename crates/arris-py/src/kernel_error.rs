@@ -390,6 +390,12 @@ pub fn mesh_error(error: &MeshError) -> Mapped {
                 .with("index", Attr::Uint(*index as u64))
         }
         MeshError::NotFound(not_found) => stale(not_found.id, message),
+        MeshError::NotInBody { face, body } => Mapped::new(Class::MeshNotInBodyError, message)
+            .with(
+                "face",
+                Attr::Shape(arris::topo::Face::forward(*face).shape()),
+            )
+            .with("body", Attr::Shape(body.shape())),
         MeshError::InvalidInput { body, report } => {
             Mapped::new(Class::MeshInvalidInputError, message)
                 .with("body", Attr::Shape(body.shape()))
@@ -626,6 +632,10 @@ mod tests {
             }),
             mesh_error(&MeshError::NonFinitePosition { index: 0 }),
             mesh_error(&MeshError::NotFound(NotFound::new(body().id))),
+            mesh_error(&MeshError::NotInBody {
+                face: face(),
+                body: body(),
+            }),
             mesh_error(&MeshError::InvalidInput {
                 body: body(),
                 report: report(),

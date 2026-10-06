@@ -15,7 +15,10 @@
 //! counter-clockwise seen from outside, by the face use's effective
 //! orientation against the surface normal; `FaceRange`s and `EdgeRange`s
 //! are in the body's iteration order; same body, same chord, same mesh
-//! on every platform, with the `parallel` feature on or off. The
+//! on every platform, with the `parallel` feature on or off; an edge's
+//! samples are a function of the edge and the chord, so a subset of a body's
+//! faces ([`tessellate_faces`]) meshes to the whole's edges and triangles
+//! bit for bit (ADR-0052). The
 //! `parallel` feature reserves `rayon` over faces. Depends on
 //! `arris-check` and below; never on `arris-ops` or `arris-io`.
 #![forbid(unsafe_code)]
@@ -32,5 +35,7 @@ mod trimesh;
 pub use arris_math::{Aabb, Interval};
 pub use corners::{CornerFace, Corners, NORMAL_UNIT_SLACK};
 pub use polyline::Polyline;
-pub use tessellate::{MAX_INTERIOR_POINTS, MeshRequest, RING_RATIO, tessellate, tessellate_with};
+pub use tessellate::{
+    MAX_INTERIOR_POINTS, MeshRequest, RING_RATIO, tessellate, tessellate_faces, tessellate_with,
+};
 pub use trimesh::{EdgeRange, FaceRange, MeshError, TriMesh};

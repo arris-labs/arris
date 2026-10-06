@@ -64,6 +64,15 @@ pub enum MeshError {
     /// resolve in the model.
     #[error(transparent)]
     NotFound(#[from] NotFound),
+    /// A face asked for by [`crate::tessellate_faces`] is not a face of
+    /// the body.
+    #[error("{face} is not a face of {body}")]
+    NotInBody {
+        /// The face.
+        face: FaceId,
+        /// The body.
+        body: Body,
+    },
     /// The body fails the checker at `Level::Fast` (checked in debug
     /// builds before tessellation starts, as every operation checks its
     /// input).

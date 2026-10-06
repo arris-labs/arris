@@ -212,7 +212,7 @@ bound has to be established here.
   rule is held by a property in `arris-geom/tests/chord_steps_along.rs`
   (every band gives the whole domain's steps) instead of a unit test of
   pass one.
-- [ ] Step 4 **[2]** — **`tessellate_faces`.** The public function and
+- [x] Step 4 **[2]** — **`tessellate_faces`.** The public function and
   `MeshError::NotInBody`. `tessellate_with` is rewritten as the full-set
   case; its output is unchanged, held by the existing tests and a
   bit-for-bit comparison against a mesh dumped before the change.
@@ -223,6 +223,18 @@ bound has to be established here.
   count and bit-identical positions. Each face's triangles, read as
   position triples, must be identical. The binding's error class and stub
   are added in this commit (the `Breaking` bullet as well).
+
+  Landed. Pass one reads the coedges of *every* face of the body that use
+  an edge of the subset, so an edge's count does not depend on which faces
+  are meshed; a face outside the subset costs its pcurve samples and
+  nothing else. The vertices are the used edges' endpoints; the full set
+  keeps every vertex of the body. The property is in
+  `arris-mesh/tests/faces.rs` (the recipe draw in eight shards, every
+  single face and random subsets of the sample bodies); a hash of the
+  whole-body meshes of the four sample bodies at three chords is the same
+  before and after. The binding's `MeshNotInBodyError` is in. The
+  property compares positions and triples through the one-call mesh,
+  which is what the step asked for.
 - [ ] Step 5 **[2]** — **`TriMesh::weld`, and the corpus meshes face by
   face.** `weld` and `MeshError::WeldMismatch`, with rustdoc and an
   example. Properties: a random partition of a body's faces, meshed part

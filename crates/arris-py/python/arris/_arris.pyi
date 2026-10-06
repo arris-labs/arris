@@ -706,6 +706,10 @@ class MeshRangeOutOfBoundsError(MeshError):
 class MeshNonFinitePositionError(MeshError):
     index: int
 
+class MeshNotInBodyError(MeshError):
+    face: _Entity
+    body: _Entity
+
 class MeshInvalidInputError(MeshError):
     body: _Entity
     report: Report

@@ -181,6 +181,7 @@ classes! {
     MeshIndexOutOfRangeError(MeshError) = "A triangle or edge index names no position.";
     MeshRangeOutOfBoundsError(MeshError) = "A range does not fit the list it indexes.";
     MeshNonFinitePositionError(MeshError) = "A position has a non-finite coordinate.";
+    MeshNotInBodyError(MeshError) = "A face to mesh is not a face of the body.";
     MeshInvalidInputError(MeshError) = "The body fails the checker before tessellation.";
     MeshChordError(MeshError) = "The chord tolerance is not finite and positive.";
     MeshFaceError(MeshError) = "A face's domain could not be triangulated.";

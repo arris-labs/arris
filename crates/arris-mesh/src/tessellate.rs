@@ -2,7 +2,7 @@
 //! their own (u, v) through the same-parameter pcurves (ADR-0003,
 //! `docs/ARCHITECTURE.md` §Tessellation).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::domain::FaceDomain;
 use arris_geom::Surface;
@@ -205,7 +205,61 @@ pub fn tessellate_with(
     request: &MeshRequest,
     control: &Control<'_>,
 ) -> Result<TriMesh, MeshError> {
-    tessellate_under(m, body, request, control, true)
+    tessellate_under(m, body, None, request, control, true)
+}
+
+/// The triangle mesh of `faces` alone, a subset of `body`'s faces: the
+/// same positions, indices' order and triangles [`tessellate_with`] gives
+/// those faces, so faces meshed at different times meet bit for bit.
+///
+/// An edge's samples are a pure function of the edge and the chord
+/// (ADR-0052): the count is read from every coedge of the edge in the
+/// *body*, those of faces outside the subset included, so an edge shared
+/// by a face in the subset and one outside it is sampled the same either
+/// way. [`TriMesh::faces`] holds the subset in the body's iteration order,
+/// duplicates collapsed, and [`TriMesh::edges`] every edge the subset's
+/// loops use in the body's order. The positions are the vertices of those
+/// edges, the edges' samples and the faces' interior points: nothing
+/// else. The mesh is not a closed surface unless the subset is.
+///
+/// Errors: those of [`tessellate_with`], and [`MeshError::NotInBody`]
+/// naming the first of `faces` the body does not have. The corner block,
+/// asked for, covers the subset's faces.
+///
+/// ```
+/// use arris_debug::sample;
+/// use arris_math::Control;
+/// use arris_mesh::{MeshRequest, tessellate_faces, tessellate};
+/// use arris_topo::Model;
+///
+/// let mut m = Model::default();
+/// let cylinder = sample::cylinder(&mut m, 4.0, 12.0).unwrap();
+/// let faces = m.faces(cylinder).unwrap();
+/// let ids: Vec<_> = faces.iter().map(|f| f.id).collect();
+/// let request = MeshRequest::new(1e-3);
+/// let whole = tessellate(&m, cylinder, 1e-3, &Control::NONE).unwrap();
+///
+/// // The wall alone, then the caps: each edge is the same polyline in
+/// // both and in the whole.
+/// let a = tessellate_faces(&m, cylinder, &ids[..1], &request, &Control::NONE).unwrap();
+/// let b = tessellate_faces(&m, cylinder, &ids[1..], &request, &Control::NONE).unwrap();
+/// assert_eq!(a.faces().len() + b.faces().len(), whole.faces().len());
+/// let polyline = |mesh: &arris_mesh::TriMesh, edge| -> Vec<[f64; 3]> {
+///     let indices = mesh.edge_polyline(edge).unwrap();
+///     indices.iter().map(|&k| mesh.positions()[k as usize]).collect()
+/// };
+/// for range in a.edges().iter().chain(b.edges()) {
+///     assert_eq!(polyline(&whole, range.edge), polyline(if a.edges().contains(range) { &a } else { &b }, range.edge));
+/// }
+/// ```
+pub fn tessellate_faces(
+    m: &Model,
+    body: Body,
+    faces: &[FaceId],
+    request: &MeshRequest,
+    control: &Control<'_>,
+) -> Result<TriMesh, MeshError> {
+    tessellate_under(m, body, Some(faces), request, control, true)
 }
 
 /// [`tessellate_with`], with a cone face's rings ([`cone_rings`]) switched
@@ -214,6 +268,7 @@ pub fn tessellate_with(
 fn tessellate_under(
     m: &Model,
     body: Body,
+    subset: Option<&[FaceId]>,
     request: &MeshRequest,
     control: &Control<'_>,
     with_rings: bool,
@@ -236,27 +291,88 @@ fn tessellate_under(
             });
         }
     }
-    let faces = m.faces(body)?;
-    let edges = m.edges(body)?;
-    let vertices = m.vertices(body)?;
+    let all_faces = m.faces(body)?;
+    let wanted: Option<BTreeSet<FaceId>> = match subset {
+        None => None,
+        Some(ids) => {
+            let known: BTreeSet<FaceId> = all_faces.iter().map(|f| f.id).collect();
+            if let Some(&face) = ids.iter().find(|id| !known.contains(id)) {
+                return Err(MeshError::NotInBody { face, body });
+            }
+            Some(ids.iter().copied().collect())
+        }
+    };
+    let faces: Vec<_> = all_faces
+        .iter()
+        .filter(|f| wanted.as_ref().is_none_or(|w| w.contains(&f.id)))
+        .collect();
+    // The edges the subset's loops use, and so the vertices they end at;
+    // the whole body's for the whole body.
+    let mut used: BTreeSet<EdgeId> = BTreeSet::new();
+    for f in &faces {
+        for coedge in m.face(f.id)?.loops().iter().flat_map(|l| l.coedges()) {
+            used.insert(coedge.edge());
+        }
+    }
+    let edges: Vec<_> = m
+        .edges(body)?
+        .into_iter()
+        .filter(|e| wanted.is_none() || used.contains(&e.id))
+        .collect();
+    let vertices: Vec<_> = if wanted.is_none() {
+        m.vertices(body)?
+    } else {
+        let mut ends: BTreeSet<VertexId> = BTreeSet::new();
+        for e in &edges {
+            let edge = m.edge(e.id)?;
+            ends.insert(edge.start());
+            ends.insert(edge.end());
+        }
+        m.vertices(body)?
+            .into_iter()
+            .filter(|v| ends.contains(&v.id))
+            .collect()
+    };
 
     // Pass one: what each face asks of the edges it uses, so a step along
     // an edge never travels farther in (u, v) than the surface allows,
     // and the (u, v) box and step each face's interior grid stands on.
+    // Every face of the body is read for the edges the subset uses, the
+    // faces outside it included, so an edge's count is the same whichever
+    // faces are meshed (ADR-0052).
     let mut required: BTreeMap<EdgeId, usize> = BTreeMap::new();
     let mut domains: Vec<([Interval; 2], [f64; 2])> = Vec::with_capacity(faces.len());
-    for f in &faces {
+    for f in &all_faces {
         meter.tick()?;
+        let mine = wanted.as_ref().is_none_or(|w| w.contains(&f.id));
         let face = m.face(f.id)?;
         let surface = m.surface(face.surface())?;
-        // The (u, v) box holding the loops' true boundary, read at the
-        // requested chord; the whole plane for a face with no loop.
-        let bounds = FaceDomain::of(m, f.id, chord)?
-            .uv_box()
-            .unwrap_or([Interval::REAL; 2]);
-        let steps = surface.chord_steps(chord, bounds);
-        domains.push((bounds, steps));
+        // The face's whole (u, v) box and its steps: the interior grid's,
+        // and the fallback of a coedge whose own box is not an interval.
+        // Read once, and only for a face of the subset or a coedge that
+        // needs it.
+        let mut whole: Option<([Interval; 2], [f64; 2])> = None;
+        let whole_of = |whole: &mut Option<([Interval; 2], [f64; 2])>| {
+            if let Some(w) = *whole {
+                return Ok::<_, MeshError>(w);
+            }
+            // The (u, v) box holding the loops' true boundary, read at
+            // the requested chord; the whole plane for a face with no
+            // loop.
+            let bounds = FaceDomain::of(m, f.id, chord)?
+                .uv_box()
+                .unwrap_or([Interval::REAL; 2]);
+            let w = (bounds, surface.chord_steps(chord, bounds));
+            *whole = Some(w);
+            Ok(w)
+        };
+        if mine {
+            domains.push(whole_of(&mut whole)?);
+        }
         for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
+            if !used.contains(&coedge.edge()) {
+                continue;
+            }
             let edge = m.edge(coedge.edge())?;
             let range = edge.range();
             let pcurve = m.curve2(coedge.pcurve())?;
@@ -275,12 +391,12 @@ fn tessellate_under(
                         Interval::new(band[1].0, band[1].1),
                     ) {
                         (Ok(u), Ok(v)) => surface.chord_steps_along(chord, [u, v]),
-                        _ => steps,
+                        _ => whole_of(&mut whole)?.1,
                     }
                 }
                 // A degenerate edge's range is one index: its count
                 // never reaches a neighbour (ADR-0052 §1).
-                EdgeGeometry::Degenerate { .. } => steps,
+                EdgeGeometry::Degenerate { .. } => whole_of(&mut whole)?.1,
             };
             let mut n = 0usize;
             for dir in 0..2 {
@@ -288,9 +404,9 @@ fn tessellate_under(
                 if travel <= 0.0 {
                     continue;
                 }
-                let wanted = (travel / steps[dir]).ceil();
-                n = n.max(if wanted.is_finite() {
-                    wanted as usize
+                let count = (travel / steps[dir]).ceil();
+                n = n.max(if count.is_finite() {
+                    count as usize
                 } else {
                     MAX_SEGMENTS_PER_PIECE
                 });
@@ -1225,8 +1341,15 @@ mod tests {
             arris_debug::unmetered::primitive_cylinder(&mut m, axis, 0.3, length).unwrap();
         let (body, _) = arris_debug::unmetered::cut(&mut m, solid, tool).unwrap();
         let excess = |rings: bool| {
-            let mesh = tessellate_under(&m, body, &MeshRequest::new(chord), &Control::NONE, rings)
-                .unwrap();
+            let mesh = tessellate_under(
+                &m,
+                body,
+                None,
+                &MeshRequest::new(chord),
+                &Control::NONE,
+                rings,
+            )
+            .unwrap();
             assert!(mesh.is_closed());
             cone_excess(&m, &mesh, chord)
         };

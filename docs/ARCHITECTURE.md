@@ -1423,6 +1423,12 @@ depends on `check`. The mesh guarantees (ADR-0003):
   effective orientation against the surface normal.
 - Same body, same chord, same mesh on every platform, with the
   `parallel` feature on or off.
+- `tessellate_faces` meshes a subset of a body's faces. An edge's count
+  is read from every coedge of the edge in the body, outside the subset
+  as well, so each edge's polyline and each face's triangles are those of
+  the whole body's mesh, bit for bit, and a face kept by an operation
+  keeps its mesh (ADR-0052). A face the body lacks is
+  `MeshError::NotInBody`.
 - A face whose surface curves in both directions — a sphere, a torus, a
   NURBS surface — carries interior points on a uniform (u, v) lattice at
   its `chord_steps` spacing, those its loops wind around; a ruled

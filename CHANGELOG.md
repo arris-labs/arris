@@ -8,6 +8,13 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_mesh::tessellate_faces(model, body, faces, request, control)`
+  meshes a subset of a body's faces. Each edge's polyline and each face's
+  triangles come out exactly as in the whole body's mesh, position for
+  position, so faces meshed at different times meet. The mesh holds the
+  subset's faces and the edges and vertices they use, in the body's order;
+  a face the body does not have is `MeshError::NotInBody`. In Python,
+  `MeshNotInBodyError` carries it.
 - A meshed edge's samples now depend only on the edge and the chord: a
   cone face's edges are sampled for the radii they reach, and a NURBS
   face's for its surface's whole domain, not for how far the face's region
@@ -115,6 +122,8 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- `arris_mesh::MeshError` gains `NotInBody { face, body }`: add the arm to
+  an exhaustive `match`.
 - A lower crate no longer re-exports the crates beneath it:
   `arris_topo::{arris_geom, arris_math}`, `arris_check::arris_topo`,
   `arris_io::{arris_check, arris_mesh}` and `arris_ops::arris_check` are
