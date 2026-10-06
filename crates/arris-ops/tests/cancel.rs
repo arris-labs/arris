@@ -50,7 +50,7 @@ fn record_path() -> std::path::PathBuf {
 
 /// The areas whose fixtures end in an operation on a model, each
 /// fixture's result step run under a budget.
-const AREAS: [&str; 7] = [
+const AREAS: [&str; 8] = [
     "boolean",
     "sweep",
     "blend",
@@ -58,6 +58,7 @@ const AREAS: [&str; 7] = [
     "provenance",
     "transform",
     "primitive",
+    "split",
 ];
 
 #[test]
@@ -83,7 +84,13 @@ fn a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_wa
             let (whole, n) = steps_of(|c| inputs.run_result(&mut m, c));
             // A refusal by design is a fixture of its own.
             let Ok(whole) = whole else { continue };
-            let expected = dump::dump_text(&m, whole.body).unwrap();
+            let dumped = |m: &arris_topo::Model, made: &corpus::Made| -> Vec<String> {
+                made.outputs
+                    .iter()
+                    .map(|&b| dump::dump_text(m, b).unwrap())
+                    .collect()
+            };
+            let expected = dumped(&m, &whole);
             counts.push_str(&format!("{name}: {n}\n"));
             in_area += 1;
 
@@ -111,7 +118,7 @@ fn a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_wa
                 .run_result(&mut m, &Control::budget(n))
                 .unwrap_or_else(|e| panic!("{name}: a budget of {n} steps, all it takes: {e}"));
             assert_eq!(
-                dump::dump_text(&m, made.body).unwrap(),
+                dumped(&m, &made),
                 expected,
                 "{name}: a budget of {n} changed the result"
             );

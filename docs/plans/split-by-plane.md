@@ -150,7 +150,7 @@ bound has to be established here.
     booleans refuse it, otherwise built)
 
   Each case gets a fixture with its oracle, and the refusals are named.
-- [ ] Step 5 **[1]**: The facade and the binding: `Model.split` with cancel
+- [x] Step 5 **[1]**: The facade and the binding: `Model.split` with cancel
   and budget, the stub, the docstring example, a pytest per refusal, and
   the `Role.split` accessor. Add the rustdoc example on `split` and record
   the split fixtures' cancel step counts.

@@ -460,3 +460,70 @@ def test_a_multi_tool_boolean_honours_cancel_and_budget():
         other.cut_many(b, tools)
     with pytest.raises(arris.ForeignHandleError):
         other.fuse_many([b, tools[0]])
+
+
+def test_split_cuts_a_body_into_the_solids_either_side_of_the_plane():
+    model = arris.Model()
+    block, _ = box(model)
+    above, below, record = model.split(block, (0, 0, 4), (0, 0, 1))
+    assert abs(model.mass_properties(above).volume - 600) < 1e-9
+    assert abs(model.mass_properties(below).volume - 400) < 1e-9
+    assert len(model.faces(above)) == len(model.faces(below)) == 6
+    for side, body in (("Positive", above), ("Negative", below)):
+        caps = faces(record.generated_from(arris.Role("split", "Cap", side)))
+        assert len(caps) == 1 and caps[0] in model.faces(body)
+    assert model.check(above).ok and model.check(below).ok
+    flipped, _, _ = model.split(block, (0, 0, 4), (0, 0, -1))
+    assert abs(model.mass_properties(flipped).volume - 400) < 1e-9
+
+
+def test_split_takes_the_caps_parameterisation_from_x():
+    model = arris.Model()
+    block, _ = box(model)
+    one, _, _ = model.split(block, (0, 0, 4), (0, 0, 1))
+    other, _, _ = model.split(block, (0, 0, 4), (0, 0, 1), (0, 1, 0))
+    assert abs(model.mass_properties(one).volume - model.mass_properties(other).volume) < 1e-9
+
+
+def test_split_refuses_a_plane_that_does_not_cross_and_one_with_no_direction():
+    model = arris.Model()
+    block, _ = box(model)
+    for origin in ((0, 0, 20), (0, 0, 10)):
+        with pytest.raises(arris.OpDegenerateError) as raised:
+            model.split(block, origin, (0, 0, 1))
+        assert "does not cross" in str(raised.value) and block in raised.value.entities
+    with pytest.raises(arris.OpDegenerateError):
+        model.split(block, (0, 0, 4), (0, 0, 0))
+    with pytest.raises(arris.OpDegenerateError):
+        model.split(block, (0, 0, 4), (0, 0, math.nan))
+    with pytest.raises(arris.OpDegenerateError):
+        model.split(block, (0, 0, 4), (0, 0, 1), (0, 0, 1))
+    cylinder, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 5)
+    with pytest.raises(arris.OpDegenerateError) as raised:
+        model.split(cylinder, (2, 0, 0), (1, 0, 0))
+    assert "does not cross" in str(raised.value)
+
+
+def test_split_names_a_plane_tangent_to_a_wall_where_it_crosses_elsewhere():
+    model = arris.Model()
+    plate, _ = box(model, (0, 0, 0), (20, 20, 5))
+    drill, _ = model.primitive_cylinder((10, 10, -1), (0, 0, 1), 3, 7)
+    holed, _ = model.cut(plate, drill)
+    with pytest.raises(arris.OpDegenerateError) as raised:
+        model.split(holed, (13, 0, 0), (1, 0, 0))
+    assert "touch along a curve" in str(raised.value)
+    assert model.contains(holed)
+
+
+def test_split_honours_cancel_and_budget_and_foreign_handles():
+    model = arris.Model()
+    block, _ = box(model)
+    token = arris.Cancel()
+    token.set()
+    with pytest.raises(arris.Interrupted):
+        model.split(block, (0, 0, 4), (0, 0, 1), cancel=token)
+    with pytest.raises(arris.Interrupted) as raised:
+        model.split(block, (0, 0, 4), (0, 0, 1), budget=0)
+    assert raised.value.by == "budget"
+    with pytest.raises(arris.ForeignHandleError):
+        arris.Model().split(block, (0, 0, 4), (0, 0, 1))

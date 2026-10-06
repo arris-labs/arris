@@ -343,6 +343,7 @@ class Imported:
     def translated(self) -> Provenance: ...
 
 _Made: TypeAlias = tuple[Body, Provenance]
+_Split: TypeAlias = tuple[Body, Body, Provenance]
 
 @final
 class Model:
@@ -381,6 +382,16 @@ class Model:
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> _Made: ...
+    def split(
+        self,
+        body: Body,
+        origin: _Point3,
+        normal: _Point3,
+        x: _Point3 | None = None,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> _Split: ...
     def cut(
         self, target: Body, tool: Body, *, cancel: Cancel | None = None, budget: int | None = None
     ) -> _Made: ...

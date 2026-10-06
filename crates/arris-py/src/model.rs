@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use arris::math::nalgebra::UnitQuaternion;
-use arris::math::{Axis, Isometry, Point3, Reflection, UnitVec3, Vec3};
+use arris::math::{Axis, Frame as KernelFrame, Isometry, Point3, Reflection, UnitVec3, Vec3};
 use arris::ops::{InputReason, OpError, Reason, ShellSide};
 use arris::topo;
 use arris::{Control, Interrupted, Stop};
@@ -621,6 +621,73 @@ impl Model {
         self.operate(py, &limits, move |m, control| {
             arris::ops::common(m, a, b, control)
         })
+    }
+
+    /// `body` cut by the plane through `origin` with the given `normal` into
+    /// the solid on each side: `(positive, negative, record)`, `positive`
+    /// the one the normal points to. Either may have several lumps. The cut
+    /// faces are generated from `Role("split", "Cap", "Positive")` and
+    /// `Role("split", "Cap", "Negative")`; their (u, v) are the plane's `x`
+    /// direction (any perpendicular of the normal when `x` is `None`) and its
+    /// cross product with the normal. Every entity the plane does not touch
+    /// keeps its id on its side.
+    ///
+    /// Raises `OpDegenerateError` for a coordinate that is not finite, a
+    /// normal of zero length or an `x` with no part across it, and for a plane that
+    /// misses the body or only touches it; `OpUnsupportedError` and
+    /// `OpDegenerateError` as for `cut` where the plane meets the body as a
+    /// boolean would refuse; `Interrupted` when `cancel` or `budget` stops it.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// block, _ = model.primitive_box((0, 0, 0), (10, 10, 10))
+    /// above, below, record = model.split(block, (0, 0, 4), (0, 0, 1))
+    /// assert abs(model.mass_properties(above).volume - 600) < 1e-9
+    /// assert abs(model.mass_properties(below).volume - 400) < 1e-9
+    /// assert record.generated_from(arris.Role("split", "Cap", "Positive"))
+    /// ```
+    #[pyo3(signature = (body, origin, normal, x=None, *, cancel=None, budget=None))]
+    #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
+    fn split(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        origin: [f64; 3],
+        normal: [f64; 3],
+        x: Option<[f64; 3]>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<(Body, Body, Provenance)> {
+        let body = body.resolve(&self.shared)?;
+        let plane = finite("split origin", origin)
+            .and_then(|()| direction_of("split normal", normal))
+            .and_then(|n| match x {
+                None => KernelFrame::from_z(Point3::from(origin), n).map_err(|_| {
+                    refused(Reason::Input(InputReason::NonFinite {
+                        what: "split plane",
+                    }))
+                }),
+                Some(x) => finite("split x", x).and_then(|()| {
+                    KernelFrame::new(Point3::from(origin), n, Vec3::from(x)).map_err(|_| {
+                        refused(Reason::Input(InputReason::NotPositive {
+                            what: "split x's part across the normal",
+                            value: 0.0,
+                        }))
+                    })
+                }),
+            })
+            .map_err(|e| self.refuse(py, e))?;
+        let limits = Limits::new(cancel, budget);
+        let halves = self.run(py, &limits, move |m, control| {
+            arris::ops::split(m, body, &plane, control)
+        })?;
+        Ok((
+            Body::minted_by(self, halves.positive),
+            Body::minted_by(self, halves.negative),
+            Provenance::minted_by(self, halves.provenance),
+        ))
     }
 
     /// The solid `profile` sweeps along `direction` for `length`: caps from
