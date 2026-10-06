@@ -92,11 +92,12 @@ struct EdgeSamples {
 /// surface — also carries interior points on a uniform (u, v) lattice at
 /// its `chord_steps`, those the loops wind around, so a triangle in the
 /// middle of the face is within `chord` of the surface as one standing
-/// on an edge is; a plane, a cylinder and a cone are ruled and take
-/// none, and on a cylinder or a cone the ruled direction is flattened
-/// before the triangulation so no triangle travels more than one chord
-/// step in the curved one, however oblique to the ruling the face's
-/// region runs (ADR-0005). Ranges are in the body's iteration order (`Model::faces`,
+/// on an edge is; a plane and a cylinder are ruled and take none, a cone
+/// whose region spans radii more than [`RING_RATIO`] apart takes rings
+/// of constant `v` between them (ADR-0052), and on a cylinder or a cone
+/// the ruled direction is flattened before the triangulation so no
+/// triangle travels more than one chord step in the curved one, however
+/// oblique to the ruling the face's region runs (ADR-0005). Ranges are in the body's iteration order (`Model::faces`,
 /// `Model::edges`). The output is the same on every platform for the
 /// same body and chord.
 ///
@@ -112,7 +113,8 @@ struct EdgeSamples {
 /// [`MAX_INTERIOR_POINTS`] points; [`MeshError::NonFinitePosition`] when
 /// the geometry evaluates to a non-finite point; [`MeshError::Interrupted`]
 /// when `control`'s poll or budget stops it (a step is an edge, a face, an
-/// interior point or a CDT insertion; ADR-0030). The model is only read,
+/// interior point — a lattice or a ring point — or a CDT insertion;
+/// ADR-0030). The model is only read,
 /// so an interrupt leaves nothing to undo.
 ///
 /// ```
@@ -201,6 +203,37 @@ pub fn tessellate_with(
     request: &MeshRequest,
     control: &Control<'_>,
 ) -> Result<TriMesh, MeshError> {
+    tessellate_under(m, body, request, control, Rules::KERNEL)
+}
+
+/// Which of the per-face rules a tessellation runs under: the kernel's
+/// always, and in this module's tests the variants that show what each
+/// rule buys.
+#[derive(Debug, Clone, Copy)]
+struct Rules {
+    /// A coedge's requirement read over its own pcurve's `v` extent
+    /// rather than over its face's whole (u, v) box.
+    own_box: bool,
+    /// A cone face's rings ([`cone_rings`]).
+    rings: bool,
+}
+
+impl Rules {
+    /// The rules [`tessellate_with`] runs under.
+    const KERNEL: Rules = Rules {
+        own_box: false,
+        rings: true,
+    };
+}
+
+/// [`tessellate_with`] under `rules`.
+fn tessellate_under(
+    m: &Model,
+    body: Body,
+    request: &MeshRequest,
+    control: &Control<'_>,
+    rules: Rules,
+) -> Result<TriMesh, MeshError> {
     let mut meter = Meter::new(control);
     let chord = request.chord;
     if !(chord.is_finite() && chord > 0.0) {
@@ -240,8 +273,27 @@ pub fn tessellate_with(
         let steps = surface.chord_steps(chord, bounds);
         domains.push((bounds, steps));
         for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
-            let range = m.edge(coedge.edge())?.range();
-            let speed = m.curve2(coedge.pcurve())?.speed_bounds(range);
+            let edge = m.edge(coedge.edge())?;
+            let range = edge.range();
+            let pcurve = m.curve2(coedge.pcurve())?;
+            let speed = pcurve.speed_bounds(range);
+            let steps = match edge.geometry() {
+                EdgeGeometry::Curve { .. } if rules.own_box => {
+                    let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+                    for i in 0..=OWN_BOX_SAMPLES {
+                        let v = pcurve
+                            .point(range.lerp(i as f64 / OWN_BOX_SAMPLES as f64))
+                            .y;
+                        lo = lo.min(v);
+                        hi = hi.max(v);
+                    }
+                    match Interval::new(lo, hi) {
+                        Ok(v) => surface.chord_steps(chord, [bounds[0], v]),
+                        Err(_) => steps,
+                    }
+                }
+                _ => steps,
+            };
             let mut n = 0usize;
             for dir in 0..2 {
                 let travel = range.length() * speed[dir];
@@ -362,7 +414,21 @@ pub fn tessellate_with(
         // position of its own on the surface.
         let (bounds, steps) = domains.get(k).copied().ok_or(NotFound::new(f.id))?;
         let surface = m.surface(face.surface())?;
-        let interior = interior_grid(f.id, &polygons, bounds, steps)?;
+        let mut interior = interior_grid(f.id, &polygons, bounds, steps)?;
+        // A face with a degenerate edge — a cone reaching its apex —
+        // takes no ring: see [`cone_rings`].
+        let collapsed = face
+            .loops()
+            .iter()
+            .flat_map(|l| l.coedges())
+            .map(|c| m.edge(c.edge()).map(|e| e.is_degenerate()))
+            .collect::<Result<Vec<bool>, _>>()?
+            .into_iter()
+            .any(|d| d);
+        if rules.rings && !collapsed {
+            let rings = cone_rings(f.id, surface, &polygons, bounds, chord, interior.len())?;
+            interior.extend(rings);
+        }
         let mut interior_indices: Vec<u32> = Vec::with_capacity(interior.len());
         for uv in &interior {
             meter.tick()?;
@@ -897,8 +963,9 @@ fn scaled_point(p: Point2, scale: [f64; 2]) -> Point2 {
 /// A direction the surface is flat or ruled along has an infinite step
 /// and so no interior line, which leaves the grid empty on a plane, a
 /// cylinder and a cone: there the loops' own samples already bound the
-/// chord (ADR-0003). A sphere, a torus and a NURBS surface curve in both
-/// directions and get a lattice sized by
+/// chord (ADR-0003), with a cone's [`cone_rings`] beside them. A sphere,
+/// a torus and a NURBS surface curve in both directions and get a lattice
+/// sized by
 /// [`arris_geom::Surface::chord_steps`], never by a
 /// per-triangle error estimate.
 fn interior_grid(
@@ -939,6 +1006,105 @@ fn interior_grid(
                 points.push(p);
             }
         }
+    }
+    Ok(points)
+}
+
+/// How many samples of a pcurve [`Rules::own_box`] reads its `v`
+/// extent from.
+const OWN_BOX_SAMPLES: usize = 64;
+
+/// The largest ratio between the radii of two consecutive rings of a cone
+/// face, and the ratio a face's region must span before it takes any
+/// (ADR-0052).
+///
+/// Two chains of constant `v`, each sampled at its own radius's `u`
+/// step, need no point between them at any ratio: a Delaunay triangle
+/// standing on one meets the other within half that one's step of its
+/// base's middle, and a segment between samples of radii `ρ₁`, `ρ₂`
+/// offset by `(h₁ + h₂) / 2` deviates by exactly the chord. A chain
+/// running oblique to the ruling breaks that structure: a narrow chain
+/// sampled at its own, coarser step leaves room between its samples for
+/// a circumcircle whose triangle cuts across a wider chain's bulge, and
+/// that measured 1.49 chords on a drilled frustum of ratio 22. Rings at a
+/// ratio of 3 left 1.02 chords over a thousand random split and drilled
+/// frusta — the ribbon's `√(1 + 4/64)` (ADR-0005) on the offset — and at
+/// 2 none over two thousand.
+pub const RING_RATIO: f64 = 2.0;
+
+/// The ring points of a cone face: lines of constant `v` at the radii
+/// `ρ_max / RING_RATIO^i` strictly above the region's smaller radius,
+/// each sampled uniformly across the face's `u` box at the step its own
+/// radius asks for ([`arris_geom::Surface::chord_steps`] over that one
+/// line), keeping the points the loops wind around that lie on no loop
+/// segment; a ring that would take fewer than two steps across the box
+/// ends the run, since it has no sample strictly inside the box. Steiner
+/// points like the lattice's: face-local, so the edges
+/// and every neighbouring face are untouched.
+///
+/// A face reaching its apex is not passed here. Its degenerate edge is
+/// a row of (u, v) samples that all map to one position, and in the
+/// flattened ribbon (ADR-0005) a ring sparser than that row is no wall:
+/// a sample beyond it meets the row on both sides of a ring point, the
+/// apex's fan stops being one cycle and the mesh is open — 113 of 144
+/// drilled cones did. Such a face needs none: its narrow end is the
+/// apex, every segment from which is a ruling and so on the surface
+/// (ADR-0052).
+///
+/// Every other surface kind takes none. The total with the lattice's
+/// `already` points is held to [`MAX_INTERIOR_POINTS`].
+fn cone_rings(
+    face: FaceId,
+    surface: &Surface,
+    polygons: &[Polygon2],
+    bounds: [Interval; 2],
+    chord: f64,
+    already: usize,
+) -> Result<Vec<Point2>, MeshError> {
+    let &Surface::Cone {
+        radius, half_angle, ..
+    } = surface
+    else {
+        return Ok(Vec::new());
+    };
+    let [u, v] = bounds;
+    if !(u.is_bounded() && v.is_bounded()) {
+        return Ok(Vec::new());
+    }
+    let sa = half_angle.sin();
+    // The signed radius at each `v` end; a valid face lies on one nappe,
+    // so its middle's sign is the region's.
+    let (a, b) = (radius + v.lo() * sa, radius + v.hi() * sa);
+    let sign = if a + b >= 0.0 { 1.0 } else { -1.0 };
+    let (a, b) = ((a * sign).max(0.0), (b * sign).max(0.0));
+    let (narrow, wide) = (a.min(b), a.max(b));
+    let mut points = Vec::new();
+    let mut rho = wide / RING_RATIO;
+    while rho > narrow {
+        let at = (sign * rho - radius) / sa;
+        let Ok(line) = Interval::new(at, at) else {
+            break;
+        };
+        let wanted = (u.length() / surface.chord_steps(chord, [u, line])[0]).ceil();
+        if !(wanted.is_finite() && wanted >= 2.0) {
+            break;
+        }
+        let n = wanted as usize;
+        let total = already.saturating_add(points.len()).saturating_add(n - 1);
+        if total > MAX_INTERIOR_POINTS {
+            return Err(MeshError::GridTooLarge {
+                face,
+                points: total,
+            });
+        }
+        for i in 1..n {
+            let p = Point2::new(u.lerp(i as f64 / n as f64), at);
+            let winding: i32 = polygons.iter().map(|q| q.winding_number(p)).sum();
+            if winding != 0 && !polygons.iter().any(|q| q.contains(p)) {
+                points.push(p);
+            }
+        }
+        rho /= RING_RATIO;
     }
     Ok(points)
 }
@@ -990,5 +1156,151 @@ mod tests {
             uv_scale(&plane, bounds, plane.chord_steps(chord, bounds)),
             [1.0; 2]
         );
+    }
+
+    /// A frustum tube about `z`: radius `r0` at `z = 0` to `r1` at
+    /// `z = h`, its bore a thin cylinder, so its cone face spans the
+    /// ratio `r1 / r0` between two circles.
+    fn frustum(m: &mut Model, r0: f64, r1: f64, h: f64) -> Body {
+        use arris_geom::profile::{Profile, ProfileLoop, ProfileSegment};
+        use arris_math::{Axis, Point3, Vec3};
+        let plane = Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap();
+        let p = Point2::new;
+        let bore = 0.05;
+        let profile = Profile {
+            plane,
+            outer: ProfileLoop::Path {
+                start: p(bore, 0.0),
+                segments: vec![
+                    ProfileSegment::LineTo(p(r0, 0.0)),
+                    ProfileSegment::LineTo(p(r1, h)),
+                    ProfileSegment::LineTo(p(bore, h)),
+                    ProfileSegment::LineTo(p(bore, 0.0)),
+                ],
+            },
+            holes: Vec::new(),
+        };
+        let axis = Axis::z_at(Point3::origin());
+        arris_debug::unmetered::revolve(m, &profile, axis, core::f64::consts::TAU)
+            .unwrap()
+            .0
+    }
+
+    /// How far the mesh's triangles on `body`'s cone faces leave the
+    /// cone, as a share of `chord`: each triangle probed on a barycentric
+    /// grid, since a segment between samples of two radii is farthest
+    /// from the cone at `1 / (1 + √(ρ₂/ρ₁))` of the way, not at its
+    /// middle.
+    fn cone_excess(m: &Model, mesh: &TriMesh, chord: f64) -> f64 {
+        let mut worst: f64 = 0.0;
+        for range in mesh.faces() {
+            let surface = m.surface(m.face(range.face).unwrap().surface()).unwrap();
+            if !matches!(surface, Surface::Cone { .. }) {
+                continue;
+            }
+            for i in range.triangles.clone() {
+                let t = mesh.triangle_positions(i).unwrap();
+                let corner = |k: usize| Vec3::new(t[k][0], t[k][1], t[k][2]);
+                let n = 12;
+                for a in 0..=n {
+                    for b in 0..=(n - a) {
+                        let (x, y) = (a as f64 / n as f64, b as f64 / n as f64);
+                        let q = corner(0) * (1.0 - x - y) + corner(1) * x + corner(2) * y;
+                        let distance = surface.project(q.into()).unwrap().distance;
+                        worst = worst.max(distance / chord);
+                    }
+                }
+            }
+        }
+        worst
+    }
+
+    /// A frustum of ratio 22 drilled across its wall at a slight tilt,
+    /// found by a random sweep: with every edge sampled at its own
+    /// radius's step and no rings, the narrow circle's coarse samples
+    /// leave room for a triangle that cuts across the hole's rim at half
+    /// a chord again; the rings bring it back within the chord, and the
+    /// kernel's rules (edges at the face's widest radius) are within it
+    /// too.
+    #[test]
+    fn rings_remove_the_excess_of_edges_sampled_at_their_own_radius() {
+        use arris_math::{Axis, Point3};
+        let chord = 8.9e-4;
+        let mut m = Model::default();
+        let solid = frustum(&mut m, 0.15, 3.3, 2.0);
+        let tilt = 0.058;
+        let axis = Axis::new(
+            Point3::new(-50.0, -0.02, 1.32 - 50.0 * tilt),
+            Vec3::new(1.0, 0.0, tilt),
+        )
+        .unwrap();
+        let length = 100.0 * (1.0 + tilt * tilt).sqrt();
+        let (tool, _) =
+            arris_debug::unmetered::primitive_cylinder(&mut m, axis, 0.3, length).unwrap();
+        let (body, _) = arris_debug::unmetered::cut(&mut m, solid, tool).unwrap();
+        let excess = |rules: Rules| {
+            let mesh = tessellate_under(&m, body, &MeshRequest::new(chord), &Control::NONE, rules)
+                .unwrap();
+            assert!(mesh.is_closed());
+            cone_excess(&m, &mesh, chord)
+        };
+        let bare = excess(Rules {
+            own_box: true,
+            rings: false,
+        });
+        assert!(
+            bare > 1.2,
+            "without rings the drilled frustum is {bare} chords off"
+        );
+        let ringed = excess(Rules {
+            own_box: true,
+            rings: true,
+        });
+        assert!(ringed <= 1.0, "with rings it is {ringed} chords off");
+        let kernel = excess(Rules::KERNEL);
+        assert!(
+            kernel <= 1.0,
+            "under the kernel's rules it is {kernel} chords off"
+        );
+    }
+
+    /// Rings stand between the region's radii at most [`RING_RATIO`]
+    /// apart, and none where the region spans no more than the ratio.
+    #[test]
+    fn rings_step_down_from_the_wide_radius_at_the_ratio() {
+        let (radius, half_angle) = (1.0, 0.6f64);
+        let cone = Surface::Cone {
+            frame: Frame::world(),
+            radius,
+            half_angle,
+        };
+        let v_at = |rho: f64| (rho - radius) / half_angle.sin();
+        let u = Interval::new(0.0, 5.0).unwrap();
+        let rings = |narrow: f64, wide: f64| -> Vec<f64> {
+            let v = Interval::new(v_at(narrow), v_at(wide)).unwrap();
+            let corners = [
+                (u.lo(), v.lo()),
+                (u.hi(), v.lo()),
+                (u.hi(), v.hi()),
+                (u.lo(), v.hi()),
+            ];
+            let square = Polygon2::from_points(corners.map(|(x, y)| Point2::new(x, y)));
+            let points = cone_rings(FaceId::new(0, 0), &cone, &[square], [u, v], 1e-3, 0).unwrap();
+            let mut radii: Vec<f64> = points
+                .iter()
+                .map(|p| radius + p.y * half_angle.sin())
+                .collect();
+            radii.dedup();
+            radii
+        };
+        assert!(rings(1.0, 2.0).is_empty(), "a ratio of 2 takes no ring");
+        let radii = rings(0.1, 10.0);
+        let mut chain = vec![10.0];
+        chain.extend(radii.iter());
+        chain.push(0.1);
+        assert_eq!(radii.len(), 6, "{radii:?}");
+        for pair in chain.windows(2) {
+            assert!(pair[0] / pair[1] <= RING_RATIO * (1.0 + 1e-12), "{chain:?}");
+        }
     }
 }

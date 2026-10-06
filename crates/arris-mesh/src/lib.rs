@@ -32,5 +32,5 @@ mod trimesh;
 pub use arris_math::{Aabb, Interval};
 pub use corners::{CornerFace, Corners, NORMAL_UNIT_SLACK};
 pub use polyline::Polyline;
-pub use tessellate::{MAX_INTERIOR_POINTS, MeshRequest, tessellate, tessellate_with};
+pub use tessellate::{MAX_INTERIOR_POINTS, MeshRequest, RING_RATIO, tessellate, tessellate_with};
 pub use trimesh::{EdgeRange, FaceRange, MeshError, TriMesh};

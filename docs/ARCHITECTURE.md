@@ -1424,8 +1424,14 @@ depends on `check`. The mesh guarantees (ADR-0003):
 - A face whose surface curves in both directions — a sphere, a torus, a
   NURBS surface — carries interior points on a uniform (u, v) lattice at
   its `chord_steps` spacing, those its loops wind around; a ruled
-  direction has an infinite step, so a plane, a cylinder and a cone take
-  none and their loops' own samples bound the chord. The rings and the
+  direction has an infinite step, so a plane and a cylinder take none
+  and their loops' own samples bound the chord. A cone face whose radii
+  span more than `RING_RATIO` (2) takes rings: lines of constant `v` at
+  radii halving down from its widest, each sampled at its own radius's
+  `u` step, so a chain sampled for a narrow radius never leaves a
+  Delaunay circle room to cut across a wider one (ADR-0052); a cone
+  reaching its apex takes none, since a ring sparser than the apex's row
+  of samples would open its fan. The rings and the
   lattice are scaled by the surface's mean speeds before the
   triangulation, so Delaunay's criterion measures distance on the
   surface and not in the parameters (ADR-0003), and a ruled direction is
@@ -1451,7 +1457,7 @@ depends on `check`. The mesh guarantees (ADR-0003):
   fault, so never a `MeshError::Face`.
 - `MeshError::Interrupted` is the caller's poll or budget (ADR-0030). A
   step is an edge, a face (in the domain pass and in the loop pass), an
-  interior lattice point, and a CDT insertion or recovered segment
+  interior lattice or ring point, and a CDT insertion or recovered segment
   (`cdt::triangulate_metered`). The parallel face pass splits a meter per
   face and charges them in face order, so a budget stops at the same step
   with `parallel` on or off. The model is only read, so nothing is undone.

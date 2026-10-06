@@ -5,7 +5,9 @@
 //! poses do the same; bad chords and bodies are typed errors; two runs
 //! are identical. A patch of every surface kind in a random pose stays
 //! within its chord, the sphere and the torus mesh closed through their
-//! interior grids, and a ruled surface takes no grid at all. The wall of
+//! interior grids, and a ruled surface takes no grid at all — a frustum
+//! of any radius ratio up to 100 and a cone down to its apex stay within
+//! their chord, a frustum with rings where its radii are far apart. The wall of
 //! a hole drilled at an angle (ADR-0005) — a strip oblique to the ruling
 //! — meshes column by column, at the fixture's tilt and at random ones.
 
@@ -20,7 +22,7 @@ use arris_debug::unmetered::tessellate;
 use arris_geom::region2::MIN_SEGMENTS_PER_TURN;
 use arris_geom::{CurveKind, NurbsSurface, Surface, SurfaceKind};
 use arris_math::{Axis, Interval, Point2, Point3, Vec3};
-use arris_mesh::{MeshError, TriMesh};
+use arris_mesh::{MeshError, RING_RATIO, TriMesh};
 use arris_topo::entity::{Body as BodyEntity, EdgeGeometry};
 use arris_topo::{Body, Model, Shell as ShellHandle, ShellId};
 use proptest::prelude::*;
@@ -491,14 +493,19 @@ fn a_patch_of_every_surface_kind_meshes_onto_its_surface() {
             prop_assert!(!mesh.triangles().is_empty());
             assert_within_chord(&mesh, &surface, chord)?;
             // A ruled direction needs no interior point; a plane and a
-            // cylinder are ruled in one, so their grids are empty.
+            // cylinder are ruled in one, so their grids are empty, and a
+            // cone takes rings only where its radii are far apart.
             let interior = mesh.positions().len() - boundary_indices(&mesh).len();
             match surface {
                 Surface::Plane { .. }
                 | Surface::Cylinder { .. }
-                | Surface::EllipticCylinder { .. }
-                | Surface::Cone { .. } => {
+                | Surface::EllipticCylinder { .. } => {
                     prop_assert_eq!(interior, 0, "a ruled surface takes no interior point");
+                }
+                Surface::Cone { .. } => {
+                    if radius_ratio(&surface, region[1]) <= RING_RATIO {
+                        prop_assert_eq!(interior, 0, "a narrow frustum takes no ring");
+                    }
                 }
                 Surface::Sphere { .. } | Surface::Torus { .. } => {
                     // A region narrower than one step in a direction has
@@ -513,6 +520,173 @@ fn a_patch_of_every_surface_kind_meshes_onto_its_surface() {
                 Surface::Nurbs(_) => prop_assert!(false, "no NURBS in this strategy"),
             }
             prop_assert_eq!(&mesh, &tessellate(&m, body, chord).map_err(fail)?);
+            Ok(())
+        },
+    );
+}
+
+/// The ratio of a cone's radii at the two ends of `v`.
+fn radius_ratio(cone: &Surface, v: Interval) -> f64 {
+    let Surface::Cone {
+        radius, half_angle, ..
+    } = *cone
+    else {
+        panic!("not a cone: {cone:?}");
+    };
+    let (a, b) = (
+        (radius + v.lo() * half_angle.sin()).abs(),
+        (radius + v.hi() * half_angle.sin()).abs(),
+    );
+    a.max(b) / a.min(b)
+}
+
+/// [`assert_within_chord`] probed on a barycentric grid over each
+/// triangle: on a cone, a segment between samples of two radii is
+/// farthest from the surface `1 / (1 + √(ρ₂/ρ₁))` of the way from the
+/// narrow end, not at its middle (ADR-0052).
+fn assert_within_chord_densely(
+    mesh: &TriMesh,
+    surface: &Surface,
+    chord: f64,
+) -> Result<(), TestCaseError> {
+    const N: usize = 12;
+    for i in 0..mesh.triangles().len() {
+        let t = mesh.triangle_positions(i).expect("a triangle of the mesh");
+        let [a, b, c] = [p3(t[0]), p3(t[1]), p3(t[2])];
+        for j in 0..=N {
+            for k in 0..=(N - j) {
+                // A corner is a sample on the surface by construction,
+                // and at an apex has no one nearest point to project to.
+                if [(0, 0), (N, 0), (0, N)].contains(&(j, k)) {
+                    continue;
+                }
+                let (x, y) = (j as f64 / N as f64, k as f64 / N as f64);
+                let p = Point3::from(a.coords * (1.0 - x - y) + b.coords * x + c.coords * y);
+                let projection = surface.project(p).map_err(fail)?;
+                prop_assert!(
+                    projection.distance <= chord,
+                    "{p} is {} off the surface, above the chord {chord}",
+                    projection.distance
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+/// A frustum patch of `cone` whose radii run from `narrow` to
+/// `narrow · ratio`, a little over a radian of the turn wide.
+fn frustum_patch(m: &mut Model, cone: &Surface, ratio: f64, narrow: f64) -> (Body, Interval) {
+    let Surface::Cone {
+        radius, half_angle, ..
+    } = *cone
+    else {
+        panic!("not a cone: {cone:?}");
+    };
+    let v_at = |rho: f64| (rho - radius) / half_angle.sin();
+    let v = Interval::new(v_at(narrow), v_at(narrow * ratio)).unwrap();
+    let body = sample::patch(m, cone.clone(), Interval::new(0.0, 1.2).unwrap(), v).unwrap();
+    (body, v)
+}
+
+/// Frusta of radius ratio 2, 3, 10 and 100 mesh within the chord, probed
+/// densely; one of ratio 2 takes no ring and every wider one does
+/// (ADR-0052).
+#[test]
+fn a_frustum_meshes_within_its_chord_at_every_radius_ratio() {
+    let cone = Surface::Cone {
+        frame: arris_math::Frame::world(),
+        radius: 1.0,
+        half_angle: 0.6,
+    };
+    for ratio in [2.0, 3.0, 10.0, 100.0] {
+        for chord in [1e-2, 1e-3] {
+            let mut m = Model::default();
+            let (body, v) = frustum_patch(&mut m, &cone, ratio, 0.05);
+            assert!((radius_ratio(&cone, v) - ratio).abs() <= 1e-9 * ratio);
+            let mesh = tessellate(&m, body, chord).unwrap();
+            assert_within_chord_densely(&mesh, &cone, chord).unwrap();
+            let interior = mesh.positions().len() - boundary_indices(&mesh).len();
+            if ratio <= RING_RATIO {
+                assert_eq!(interior, 0, "ratio {ratio} takes no ring");
+            } else {
+                assert!(interior > 0, "ratio {ratio} takes rings");
+            }
+        }
+    }
+}
+
+/// A solid cone, its apex a degenerate edge: within the chord at every
+/// probe, closed, its apex one index, and no ring — a face reaching its
+/// apex takes none, since a ring would open the apex's fan (ADR-0052).
+/// (`assert_structure` projects every corner, and the apex has no one
+/// nearest point on the cone.)
+#[test]
+fn a_cone_with_its_apex_meshes_within_its_chord() {
+    use arris_debug::unmetered::revolve;
+    use arris_geom::{Profile, ProfileLoop, ProfileSegment};
+    let plane = arris_math::Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap();
+    let at = Point2::new;
+    let profile = Profile {
+        plane,
+        outer: ProfileLoop::Path {
+            start: at(0.0, 0.0),
+            segments: vec![
+                ProfileSegment::LineTo(at(4.0, 0.0)),
+                ProfileSegment::LineTo(at(0.0, 3.0)),
+                ProfileSegment::LineTo(at(0.0, 0.0)),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let mut m = Model::default();
+    let (body, _) = revolve(&mut m, &profile, Axis::z_at(Point3::origin()), TAU).unwrap();
+    for chord in [1e-2, 1e-3] {
+        let mesh = tessellate(&m, body, chord).unwrap();
+        assert!(mesh.is_closed());
+        let interior = mesh.positions().len() - boundary_indices(&mesh).len();
+        assert_eq!(interior, 0, "a cone reaching its apex takes no ring");
+        for e in m.edges(body).unwrap() {
+            if m.edge(e.id).unwrap().is_degenerate() {
+                assert_eq!(mesh.edge_polyline(e.id).unwrap().len(), 1, "the apex");
+            }
+        }
+        for range in mesh.faces() {
+            let surface = m.surface(m.face(range.face).unwrap().surface()).unwrap();
+            if !matches!(surface, Surface::Cone { .. }) {
+                continue;
+            }
+            let mut part = TriMesh::new();
+            for i in range.triangles.clone() {
+                let t = mesh.triangle_positions(i).unwrap();
+                let a = part.push_position(t[0]).unwrap();
+                let b = part.push_position(t[1]).unwrap();
+                let c = part.push_position(t[2]).unwrap();
+                part.push_triangle([a, b, c]).unwrap();
+            }
+            assert_within_chord_densely(&part, surface, chord).unwrap();
+        }
+    }
+}
+
+/// Random cones in random poses, cut to frusta of radius ratio up to
+/// 100 at a random narrow radius, mesh within the chord probed densely.
+#[test]
+fn a_frustum_of_any_ratio_meshes_within_its_chord() {
+    check(
+        (
+            arris_debug::prop::geom::cone(),
+            finite_f64(0.0..=2.0),
+            finite_f64(0.1..=2.0),
+        ),
+        |(cone, log_ratio, narrow)| {
+            let ratio = 10f64.powf(log_ratio).max(1.01);
+            let mut m = Model::default();
+            let (body, v) = frustum_patch(&mut m, &cone, ratio, narrow);
+            let chord = chord_for(&cone, [Interval::new(0.0, 1.2).unwrap(), v]);
+            let mesh = tessellate(&m, body, chord).map_err(fail)?;
+            prop_assert!(!mesh.triangles().is_empty());
+            assert_within_chord_densely(&mesh, &cone, chord)?;
             Ok(())
         },
     );
