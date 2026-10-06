@@ -257,7 +257,7 @@ bound has to be established here.
   face by face, welds in reverse order and holds edges, per-face
   triangles and corner normals and (u, v)s to the one-call mesh. The
   binding's `MeshWeldMismatchError` is in.
-- [ ] Step 6 **[2]** — **Across an edit.** A sharded property in
+- [x] Step 6 **[2]** — **Across an edit.** A sharded property in
   `crates/arris-ops/tests/mesh_cache_prop.rs`. Draw an operand in a random
   pose and mesh every face separately. Apply one of `cut`, `fuse`,
   `cut_many`, `split` (each side), `fillet`, `chamfer`, `offset_faces` or
@@ -266,6 +266,17 @@ bound has to be established here.
   closed, and equal the one-call mesh of the result. Each kept face's old
   mesh must equal its new one bit for bit. Cone and NURBS operands are
   among the draws: the revolve and the NURBS box.
+
+  Landed (`kept_faces_mesh_survives_the_edit`, eight shards). The
+  operands are `multi_cut`'s, `quadric_pair`'s (the frustum, ball, ring
+  and elliptic prism, with their tools) and a NURBS box, which only the
+  operations that need no tool, and that refuse it by name, reach. Every
+  case that returns a result held: each kept face's old mesh equals its
+  new one, and the weld of the kept faces' old meshes with one mesh of the
+  rest equals the one-call mesh. No operation or mesher change was
+  needed, so the cone's per-edge rule (step 3) is what makes the cache
+  sound. The property compares closedness to the one-call mesh's, as
+  step 5's does.
 - [ ] Step 7 **[1]** — **Python.** Bind `Model.tessellate_faces` and
   `arris.weld`, with docstring examples and stub lines in
   `python/arris/_arris.pyi`. A pytest meshes a box's faces one by one,
