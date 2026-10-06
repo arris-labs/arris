@@ -1978,6 +1978,17 @@ piece `k` of every split origin to the same neighbours, by role, in
 every variant of their recipes — a face's by the faces it shares an edge
 with, an edge's by its two end vertices.
 
+**A boolean of N operands** (`cut_many`, `fuse_many`) records one origin per
+operand, in the caller's order: the target's (or each fuse operand's) pieces
+`Modified`, each tool's entities `Deleted` and its surviving walls
+`Generated` from that tool's faces; a section edge `Generated` from both
+faces of its pair, and a triple point's vertex — where a section of two
+operands crosses a face of a third — from the three faces. Split order runs
+operands in the caller's order and then as above, so the ids are a function
+of the tool order while the geometry (volume, area, counts) is not; an
+entity no tool touched keeps its id (`is_kept`). A tool that misses the
+target is `Deleted` whole.
+
 ## Native format
 
 `arris-io::native` is `serde` of the `Model` under a version header
