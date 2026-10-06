@@ -11,14 +11,52 @@ use std::sync::Arc;
 
 use arris::mesh::TriMesh;
 use arris::topo::{self, EdgeId, FaceId};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
 use crate::handle::{Edge, Face};
+use crate::kernel_error::mesh_error;
 use crate::model::{Model, Shared};
 
 /// A point as Python reads it.
 type Point = (f64, f64, f64);
+
+/// The meshes of different faces of one body, made at one chord, joined
+/// into the mesh of their union: the samples of an edge in two meshes
+/// become one position index, so the result is closed when the faces close
+/// a body. Faces, edges and positions keep the order they are first seen
+/// in. Nothing is snapped: positions are compared exactly.
+///
+/// Raises `MeshWeldMismatchError` naming an edge the meshes discretise
+/// differently (another chord, or another state of the model), and
+/// `ValueError` for no meshes or meshes of different models.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, _ = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// parts = [model.tessellate_faces(body, [f], 1e-3) for f in model.faces(body)]
+/// whole = arris.weld(parts)
+/// assert whole.is_closed() and whole.n_triangles == 12
+/// ```
+#[pyfunction]
+pub fn weld(py: Python<'_>, meshes: Vec<PyRef<'_, Mesh>>) -> PyResult<Mesh> {
+    let Some(first) = meshes.first() else {
+        return Err(PyValueError::new_err("weld needs at least one mesh"));
+    };
+    if meshes
+        .iter()
+        .any(|m| m.model.serial() != first.model.serial())
+    {
+        return Err(PyValueError::new_err("the meshes are of different models"));
+    }
+    let model = Model::sharing(&first.model);
+    let parts: Vec<TriMesh> = meshes.iter().map(|m| m.kernel.clone()).collect();
+    let kernel = TriMesh::weld(&parts).map_err(|e| mesh_error(&e).raise(py, Some(&model)))?;
+    Ok(Mesh::minted_by(&model, kernel))
+}
 
 /// The triangle mesh of a body.
 ///

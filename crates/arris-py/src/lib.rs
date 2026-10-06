@@ -72,6 +72,7 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Occurrence>()?;
     module.add_class::<StepRead>()?;
     module.add_class::<Imported>()?;
+    module.add_function(wrap_pyfunction!(mesh::weld, module)?)?;
     module.add_function(wrap_pyfunction!(io::stl_binary, module)?)?;
     module.add_function(wrap_pyfunction!(io::stl_ascii, module)?)?;
     module.add_function(wrap_pyfunction!(io::obj, module)?)?;

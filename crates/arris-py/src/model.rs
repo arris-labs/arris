@@ -1076,6 +1076,66 @@ impl Model {
         Ok(Mesh::minted_by(self, kernel))
     }
 
+    /// The triangle mesh of some of `body`'s faces, `faces` in any order:
+    /// each edge's polyline and each face's triangles are exactly those
+    /// `tessellate` gives, so meshes of different faces made at different
+    /// times meet bit for bit and `arris.weld` joins them. The mesh holds
+    /// the faces asked for, in the body's order, and the edges and vertices
+    /// they use.
+    ///
+    /// Raises `MeshNotInBodyError` for a face the body does not have,
+    /// `ForeignHandleError` for a face of another model, and what
+    /// `tessellate` raises.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// faces = model.faces(body)
+    /// mesh = model.tessellate_faces(body, faces[:2], 1e-3)
+    /// assert mesh.n_triangles == 4 and not mesh.is_closed()
+    /// ```
+    #[pyo3(signature = (body, faces, chord, *, cancel=None, budget=None))]
+    fn tessellate_faces(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        faces: Vec<PyRef<'_, Face>>,
+        chord: f64,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Mesh> {
+        let body = body.resolve(&self.shared)?;
+        let faces = faces
+            .iter()
+            .map(|f| f.resolve(&self.shared).map(|f| f.id))
+            .collect::<Result<Vec<_>, BindError>>()?;
+        let limits = Limits::new(cancel, budget);
+        let kernel = self.run_with(
+            py,
+            &limits,
+            move |m, control| {
+                arris::mesh::tessellate_faces(
+                    m,
+                    body,
+                    &faces,
+                    &arris::mesh::MeshRequest::new(chord),
+                    control,
+                )
+            },
+            mesh_error,
+            true,
+            |error| {
+                matches!(
+                    error,
+                    arris::mesh::MeshError::Interrupted(Interrupted { by: Stop::Poll, .. })
+                )
+            },
+        )?;
+        Ok(Mesh::minted_by(self, kernel))
+    }
+
     /// The shells of `body`, in stored order.
     ///
     /// ```python

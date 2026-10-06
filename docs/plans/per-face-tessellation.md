@@ -277,11 +277,18 @@ bound has to be established here.
   needed, so the cone's per-edge rule (step 3) is what makes the cache
   sound. The property compares closedness to the one-call mesh's, as
   step 5's does.
-- [ ] Step 7 **[1]** — **Python.** Bind `Model.tessellate_faces` and
+- [x] Step 7 **[1]** — **Python.** Bind `Model.tessellate_faces` and
   `arris.weld`, with docstring examples and stub lines in
   `python/arris/_arris.pyi`. A pytest meshes a box's faces one by one,
   welds them and compares the result to `Model.tessellate`. `mypy.stubtest`
   must stay green.
+
+  Landed. `Model.tessellate_faces(body, faces, chord, *, cancel, budget)`
+  and `arris.weld(meshes)`, with docstring examples, stub lines and three
+  pytests; `weld` raises `ValueError` for no meshes or meshes of two
+  models (a mesh's handles belong to its model), the rest by the kernel's
+  error classes. The package's pytest suite, the docstring examples and
+  `mypy.stubtest` pass locally (417 tests).
 
 ## Acceptance
 

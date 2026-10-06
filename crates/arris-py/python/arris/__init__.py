@@ -89,6 +89,7 @@ from ._arris import (
     obj,
     stl_ascii,
     stl_binary,
+    weld,
     __version__,
 )
 
@@ -181,5 +182,6 @@ __all__ = [
     "obj",
     "stl_ascii",
     "stl_binary",
+    "weld",
     "__version__",
 ]

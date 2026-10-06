@@ -122,3 +122,44 @@ def test_to_numpy_without_numpy_is_a_clear_import_error(monkeypatch):
         mesh.to_numpy()
     # The bytes need nothing.
     assert unpack(mesh)[1]
+
+
+def test_a_boxs_faces_meshed_one_by_one_weld_to_its_mesh():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (1, 2, 3))
+    whole = model.tessellate(body, 1e-3)
+    faces = model.faces(body)
+    parts = [model.tessellate_faces(body, [f], 1e-3) for f in faces]
+    assert all(not p.is_closed() for p in parts)
+    welded = arris.weld(parts[::-1])
+    assert welded.is_closed()
+    assert welded.n_triangles == whole.n_triangles
+    assert abs(welded.signed_volume() - whole.signed_volume()) < 1e-12
+    # A subset, in any order, has the faces asked for once, in the body's order.
+    subset = model.tessellate_faces(body, [faces[3], faces[1], faces[3]], 1e-3)
+    assert [f for f, _, _ in subset.faces] == [faces[1], faces[3]]
+
+
+def test_a_face_of_another_body_is_named_and_an_edge_at_two_chords_is_refused():
+    model = arris.Model()
+    box, _ = model.primitive_box((0, 0, 0), (1, 2, 3))
+    other, _ = model.primitive_box((5, 5, 5), (6, 6, 6))
+    with pytest.raises(arris.MeshNotInBodyError):
+        model.tessellate_faces(box, [model.faces(other)[0]], 1e-3)
+    cyl = cylinder(model)
+    a, b = model.faces(cyl)[:2]
+    fine = model.tessellate_faces(cyl, [a], 1e-3)
+    coarse = model.tessellate_faces(cyl, [b], 1e-1)
+    with pytest.raises(arris.MeshWeldMismatchError) as caught:
+        arris.weld([fine, coarse])
+    assert caught.value.edge is not None
+
+
+def test_weld_needs_meshes_of_one_model():
+    with pytest.raises(ValueError):
+        arris.weld([])
+    one, two = arris.Model(), arris.Model()
+    a, _ = one.primitive_box((0, 0, 0), (1, 1, 1))
+    b, _ = two.primitive_box((0, 0, 0), (1, 1, 1))
+    with pytest.raises(ValueError):
+        arris.weld([one.tessellate(a, 1e-2), two.tessellate(b, 1e-2)])

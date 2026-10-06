@@ -23,6 +23,10 @@ into its version (ADR-0027).
   parts is `MeshError::WeldMismatch`, and nothing is snapped. Corner
   blocks are carried when every part has one. In Python,
   `MeshWeldMismatchError` carries it.
+- Python: `Model.tessellate_faces(body, faces, chord)` and
+  `arris.weld(meshes)` mesh a subset of a body's faces and join such
+  meshes; `weld` raises `ValueError` for no meshes or for meshes of
+  different models.
 - A meshed edge's samples now depend only on the edge and the chord: a
   cone face's edges are sampled for the radii they reach, and a NURBS
   face's for its surface's whole domain, not for how far the face's region
