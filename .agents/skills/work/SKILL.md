@@ -35,8 +35,14 @@ argument-hint: <plan slug> [step number or range]
    (`inspect` skill, "From a failure to a fixture") and commit the fixture
    under `tests/fixtures/regression/`, `#[ignore]`d, in the same step; the
    fix is a backlog line.
-6. Reply: what landed, what the commit is, what the next step is, anything
-   surprising. Then stop unless a range was requested.
+6. Reply: what landed, what the commit is, anything surprising. Then
+   **list every remaining unchecked step** of the plan, one line each: its
+   number, its `[weight]` marker from the plan, a short title, and a
+   one-clause note on what it depends on or may rewrite (for example a
+   probe step). Mark the next one. End with the invocation shape
+   (`/work <slug> step N` or `step N-M`) so the human can pick a range, and
+   a model, without opening the plan file. Then stop unless a range was
+   requested.
 
 ## Don't
 
