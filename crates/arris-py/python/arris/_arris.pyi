@@ -710,6 +710,9 @@ class MeshNotInBodyError(MeshError):
     face: _Entity
     body: _Entity
 
+class MeshWeldMismatchError(MeshError):
+    edge: _Entity
+
 class MeshInvalidInputError(MeshError):
     body: _Entity
     report: Report

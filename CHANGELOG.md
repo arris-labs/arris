@@ -15,6 +15,14 @@ into its version (ADR-0027).
   subset's faces and the edges and vertices they use, in the body's order;
   a face the body does not have is `MeshError::NotInBody`. In Python,
   `MeshNotInBodyError` carries it.
+- `TriMesh::weld(parts)` joins meshes of different faces of one body into
+  the mesh of their union: the samples of an edge in two parts become one
+  index run, and the result's triangles and edge polylines are those of
+  the one-call mesh, position for position, closed when the faces close.
+  The parts must be made at one chord; an edge meshed differently in two
+  parts is `MeshError::WeldMismatch`, and nothing is snapped. Corner
+  blocks are carried when every part has one. In Python,
+  `MeshWeldMismatchError` carries it.
 - A meshed edge's samples now depend only on the edge and the chord: a
   cone face's edges are sampled for the radii they reach, and a NURBS
   face's for its surface's whole domain, not for how far the face's region
@@ -122,8 +130,8 @@ into its version (ADR-0027).
 
 ### Breaking
 
-- `arris_mesh::MeshError` gains `NotInBody { face, body }`: add the arm to
-  an exhaustive `match`.
+- `arris_mesh::MeshError` gains `NotInBody { face, body }` and
+  `WeldMismatch { edge }`: add the arms to an exhaustive `match`.
 - A lower crate no longer re-exports the crates beneath it:
   `arris_topo::{arris_geom, arris_math}`, `arris_check::arris_topo`,
   `arris_io::{arris_check, arris_mesh}` and `arris_ops::arris_check` are

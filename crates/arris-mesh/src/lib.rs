@@ -18,7 +18,8 @@
 //! on every platform, with the `parallel` feature on or off; an edge's
 //! samples are a function of the edge and the chord, so a subset of a body's
 //! faces ([`tessellate_faces`]) meshes to the whole's edges and triangles
-//! bit for bit (ADR-0052). The
+//! bit for bit, and [`TriMesh::weld`] joins them by their shared edges
+//! (ADR-0052). The
 //! `parallel` feature reserves `rayon` over faces. Depends on
 //! `arris-check` and below; never on `arris-ops` or `arris-io`.
 #![forbid(unsafe_code)]

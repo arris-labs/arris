@@ -235,7 +235,7 @@ bound has to be established here.
   before and after. The binding's `MeshNotInBodyError` is in. The
   property compares positions and triples through the one-call mesh,
   which is what the step asked for.
-- [ ] Step 5 **[2]** — **`TriMesh::weld`, and the corpus meshes face by
+- [x] Step 5 **[2]** — **`TriMesh::weld`, and the corpus meshes face by
   face.** `weld` and `MeshError::WeldMismatch`, with rustdoc and an
   example. Properties: a random partition of a body's faces, meshed part
   by part and welded in a random order, gives a closed mesh whose
@@ -245,6 +245,18 @@ bound has to be established here.
   (`arris-debug::corpus`) also meshes every fixture face by face, welds
   the result and holds it to the one-call mesh. This is the roadmap's
   side-plan acceptance, run on every fixture.
+
+  Landed. `weld` merges by union-find over the samples of each `EdgeId`,
+  the lowest member the root, so positions are numbered where first seen;
+  faces and edges keep first-seen order, an edge in several parts once.
+  The partition property (`arris-mesh/tests/weld.rs`, eight shards plus
+  the four sample bodies, with and without corners) compares closedness
+  to the one-call mesh's, not to `true`: a drawn body's whole mesh is
+  itself open now and then, and the weld must not change that. The
+  corpus runner's `weld_stage` (in `mesh_check`) meshes every fixture
+  face by face, welds in reverse order and holds edges, per-face
+  triangles and corner normals and (u, v)s to the one-call mesh. The
+  binding's `MeshWeldMismatchError` is in.
 - [ ] Step 6 **[2]** — **Across an edit.** A sharded property in
   `crates/arris-ops/tests/mesh_cache_prop.rs`. Draw an operand in a random
   pose and mesh every face separately. Apply one of `cut`, `fuse`,

@@ -396,6 +396,11 @@ pub fn mesh_error(error: &MeshError) -> Mapped {
                 Attr::Shape(arris::topo::Face::forward(*face).shape()),
             )
             .with("body", Attr::Shape(body.shape())),
+        MeshError::WeldMismatch { edge } => Mapped::new(Class::MeshWeldMismatchError, message)
+            .with(
+                "edge",
+                Attr::Shape(arris::topo::Edge::forward(*edge).shape()),
+            ),
         MeshError::InvalidInput { body, report } => {
             Mapped::new(Class::MeshInvalidInputError, message)
                 .with("body", Attr::Shape(body.shape()))
@@ -635,6 +640,9 @@ mod tests {
             mesh_error(&MeshError::NotInBody {
                 face: face(),
                 body: body(),
+            }),
+            mesh_error(&MeshError::WeldMismatch {
+                edge: arris::topo::EdgeId::new(0, 0),
             }),
             mesh_error(&MeshError::InvalidInput {
                 body: body(),

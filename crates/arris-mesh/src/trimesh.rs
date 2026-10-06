@@ -9,7 +9,7 @@ use arris_topo::{Body, EdgeId, FaceId, NotFound};
 
 use crate::Aabb;
 use crate::cdt::CdtError;
-use crate::corners::Corners;
+use crate::corners::{CornerFace, Corners};
 
 /// The triangles of one B-Rep face: a contiguous run of a
 /// [`TriMesh`]'s triangle list, in the body's face iteration order.
@@ -72,6 +72,15 @@ pub enum MeshError {
         face: FaceId,
         /// The body.
         body: Body,
+    },
+    /// Two meshes offered to [`TriMesh::weld`] discretise `edge`
+    /// differently: not the same number of samples, or a sample at
+    /// another position. They were meshed at different chords, or of
+    /// different states of the model. Nothing is snapped (ADR-0003).
+    #[error("{edge} is meshed differently in the parts to weld")]
+    WeldMismatch {
+        /// The edge.
+        edge: EdgeId,
     },
     /// The body fails the checker at `Level::Fast` (checked in debug
     /// builds before tessellation starts, as every operation checks its
@@ -383,6 +392,163 @@ impl TriMesh {
         Ok(self)
     }
 
+    /// Joins meshes of disjoint faces of one body, made at one chord, into
+    /// the one mesh whose edges they share: the mesh the one-call
+    /// [`crate::tessellate`] would give those faces.
+    ///
+    /// Positions are merged along the edges the parts have in common: the
+    /// samples of an [`EdgeId`] in two parts are one position index in the
+    /// result, index for index. Faces, edges and positions keep the order
+    /// they are first seen in, parts in the order given, so the result
+    /// depends on the order of `parts` only through that. A part's
+    /// triangles are unchanged but for their indices. A [`Corners`] block
+    /// is carried when every part has one, and none otherwise; its
+    /// face-local vertices are never shared, so they are re-indexed and
+    /// concatenated.
+    ///
+    /// The parts must hold different faces: a face in two parts is in the
+    /// result twice, and the result is then not closed.
+    ///
+    /// Errors: [`MeshError::WeldMismatch`] naming the first edge, in the
+    /// order of the parts, whose samples differ bit for bit between two
+    /// parts. Nothing is snapped or averaged: positions are compared
+    /// exactly, because an edge's samples are a function of the edge and
+    /// the chord alone (ADR-0052), so a difference is a mesh of another
+    /// chord or another model, never rounding.
+    ///
+    /// ```
+    /// # use arris_debug::sample;
+    /// # use arris_math::Control;
+    /// # use arris_mesh::{MeshRequest, TriMesh, tessellate_faces};
+    /// # use arris_topo::Model;
+    /// let mut m = Model::default();
+    /// let body = sample::cylinder(&mut m, 4.0, 12.0).unwrap();
+    /// let request = MeshRequest::new(1e-2);
+    /// let parts: Vec<TriMesh> = m
+    ///     .faces(body)
+    ///     .unwrap()
+    ///     .iter()
+    ///     .map(|f| tessellate_faces(&m, body, &[f.id], &request, &Control::NONE).unwrap())
+    ///     .collect();
+    /// assert!(parts.iter().all(|p| !p.is_closed()));
+    /// let whole = TriMesh::weld(&parts).unwrap();
+    /// assert!(whole.is_closed());
+    ///
+    /// // The same edge at another chord does not fit.
+    /// let coarse = tessellate_faces(
+    ///     &m, body, &[m.faces(body).unwrap()[0].id], &MeshRequest::new(1.0), &Control::NONE,
+    /// ).unwrap();
+    /// assert!(TriMesh::weld(&[parts[1].clone(), coarse]).is_err());
+    /// ```
+    pub fn weld(parts: &[TriMesh]) -> Result<TriMesh, MeshError> {
+        let mut base = Vec::with_capacity(parts.len());
+        let mut total = 0usize;
+        for part in parts {
+            base.push(total);
+            total += part.positions.len();
+        }
+        let mut sets = Classes::new(total);
+        // The first occurrence of each edge: (part, its run).
+        let mut first: BTreeMap<EdgeId, (usize, Range<usize>)> = BTreeMap::new();
+        for (p, part) in parts.iter().enumerate() {
+            for range in &part.edges {
+                let Some((q, seen)) = first.get(&range.edge).cloned() else {
+                    first.insert(range.edge, (p, range.indices.clone()));
+                    continue;
+                };
+                let (a, b) = (
+                    &parts[q].edge_indices[seen],
+                    &part.edge_indices[range.indices.clone()],
+                );
+                if a.len() != b.len() {
+                    return Err(MeshError::WeldMismatch { edge: range.edge });
+                }
+                for (&i, &j) in a.iter().zip(b) {
+                    let same = parts[q].positions[i as usize]
+                        .iter()
+                        .zip(&part.positions[j as usize])
+                        .all(|(x, y)| x.to_bits() == y.to_bits());
+                    if !same {
+                        return Err(MeshError::WeldMismatch { edge: range.edge });
+                    }
+                    sets.join(base[q] + i as usize, base[p] + j as usize);
+                }
+            }
+        }
+        // Positions in first-seen order: a class is numbered where its
+        // lowest member stands.
+        let mut number = vec![u32::MAX; total];
+        let mut positions = Vec::new();
+        let mut index = vec![0u32; total];
+        for (p, part) in parts.iter().enumerate() {
+            for (i, &position) in part.positions.iter().enumerate() {
+                let root = sets.find(base[p] + i);
+                if number[root] == u32::MAX {
+                    number[root] = positions.len() as u32;
+                    positions.push(position);
+                }
+                index[base[p] + i] = number[root];
+            }
+        }
+        let mut triangles = Vec::new();
+        let mut faces = Vec::new();
+        let mut edge_indices = Vec::new();
+        let mut edges = Vec::new();
+        let mut done: BTreeMap<EdgeId, ()> = BTreeMap::new();
+        for (p, part) in parts.iter().enumerate() {
+            let at = triangles.len();
+            triangles.extend(
+                part.triangles
+                    .iter()
+                    .map(|t| t.map(|i| index[base[p] + i as usize])),
+            );
+            faces.extend(part.faces.iter().map(|f| FaceRange {
+                face: f.face,
+                triangles: f.triangles.start + at..f.triangles.end + at,
+            }));
+            for range in &part.edges {
+                if done.insert(range.edge, ()).is_some() {
+                    continue;
+                }
+                let start = edge_indices.len();
+                edge_indices.extend(
+                    part.edge_indices[range.indices.clone()]
+                        .iter()
+                        .map(|&i| index[base[p] + i as usize]),
+                );
+                edges.push(EdgeRange {
+                    edge: range.edge,
+                    indices: start..edge_indices.len(),
+                });
+            }
+        }
+        let mesh = TriMesh::from_parts(positions, triangles, faces, edge_indices, edges)?;
+        if parts.is_empty() || parts.iter().any(|p| p.corners.is_none()) {
+            return Ok(mesh);
+        }
+        let mut shared = Vec::new();
+        let mut normals = Vec::new();
+        let mut uvs = Vec::new();
+        let mut local = Vec::new();
+        let mut runs = Vec::new();
+        for (p, part) in parts.iter().enumerate() {
+            let Some(c) = part.corners.as_ref() else {
+                continue;
+            };
+            let at = shared.len();
+            shared.extend(c.positions().iter().map(|&i| index[base[p] + i as usize]));
+            normals.extend_from_slice(c.normals());
+            uvs.extend_from_slice(c.uvs());
+            local.extend(c.triangles().iter().map(|t| t.map(|i| i + at as u32)));
+            runs.extend(c.faces().iter().map(|f| CornerFace {
+                face: f.face,
+                vertices: f.vertices.start + at..f.vertices.end + at,
+                uv_box: f.uv_box,
+            }));
+        }
+        mesh.with_corners(Corners::from_parts(shared, normals, uvs, local, runs)?)
+    }
+
     /// The triangles of `face`, or `None` if the mesh has no range for it.
     pub fn face_triangles(&self, face: FaceId) -> Option<&[[u32; 3]]> {
         let r = self.faces.iter().find(|f| f.face == face)?;
@@ -471,6 +637,31 @@ impl TriMesh {
     /// The bounding box of the positions, or `None` for no positions.
     pub fn aabb(&self) -> Option<Aabb> {
         Aabb::of_points(&self.positions)
+    }
+}
+
+/// Disjoint sets over `0..n` with the lowest member as the root, so the
+/// numbering a weld derives from them is deterministic.
+struct Classes(Vec<usize>);
+
+impl Classes {
+    fn new(n: usize) -> Self {
+        Classes((0..n).collect())
+    }
+
+    fn find(&mut self, mut i: usize) -> usize {
+        while self.0[i] != i {
+            self.0[i] = self.0[self.0[i]];
+            i = self.0[i];
+        }
+        i
+    }
+
+    fn join(&mut self, a: usize, b: usize) {
+        let (a, b) = (self.find(a), self.find(b));
+        if a != b {
+            self.0[a.max(b)] = a.min(b);
+        }
     }
 }
 

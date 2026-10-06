@@ -1543,6 +1543,83 @@ fn mesh_keeps_stage(fixture: &Fixture, chain: &Chain, result: Body) -> Result<()
     Ok(())
 }
 
+/// Every face of `body` meshed alone by [`arris_mesh::tessellate_faces`]
+/// and the parts welded, in reverse order, equals `whole`: the same edge
+/// polylines and the same triangles per face, as positions, bit for bit,
+/// the same face-local normals and (u, v)s, and a closed mesh.
+fn weld_stage(
+    m: &Model,
+    body: Body,
+    request: &MeshRequest,
+    whole: &arris_mesh::TriMesh,
+) -> Result<(), String> {
+    let faces = m.faces(body).map_err(|e| e.to_string())?;
+    let mut parts = Vec::with_capacity(faces.len());
+    for f in &faces {
+        parts.push(
+            arris_mesh::tessellate_faces(m, body, &[f.id], request, &Control::NONE)
+                .map_err(|e| format!("{} meshed alone: {e}", f.id))?,
+        );
+    }
+    parts.reverse();
+    let welded = arris_mesh::TriMesh::weld(&parts).map_err(|e| format!("weld: {e}"))?;
+    if !welded.is_closed() {
+        return Err("the faces meshed one by one and welded are not closed".into());
+    }
+    let triples = |mesh: &arris_mesh::TriMesh, face| -> Option<Vec<[[f64; 3]; 3]>> {
+        let range = mesh.faces().iter().find(|r| r.face == face)?;
+        Some(
+            mesh.triangles()[range.triangles.clone()]
+                .iter()
+                .map(|t| t.map(|i| mesh.positions()[i as usize]))
+                .collect(),
+        )
+    };
+    let polyline = |mesh: &arris_mesh::TriMesh, e| -> Option<Vec<[f64; 3]>> {
+        Some(
+            mesh.edge_polyline(e)?
+                .iter()
+                .map(|&i| mesh.positions()[i as usize])
+                .collect(),
+        )
+    };
+    for f in &faces {
+        if triples(&welded, f.id) != triples(whole, f.id) {
+            return Err(format!("{}'s triangles differ face by face", f.id));
+        }
+        let (a, b) = (
+            welded.corners().and_then(|c| c.face(f.id)),
+            whole.corners().and_then(|c| c.face(f.id)),
+        );
+        if let (Some(a), Some(b)) = (a, b) {
+            let (wc, oc) = (welded.corners().ok_or("")?, whole.corners().ok_or("")?);
+            if wc.normals()[a.vertices.clone()] != oc.normals()[b.vertices.clone()]
+                || wc.uvs()[a.vertices.clone()] != oc.uvs()[b.vertices.clone()]
+            {
+                return Err(format!(
+                    "{}'s corner normals or (u, v)s differ face by face",
+                    f.id
+                ));
+            }
+        } else if a.is_some() != b.is_some() {
+            return Err(format!("{}'s corner block differs face by face", f.id));
+        }
+    }
+    if welded.edges().len() != whole.edges().len() {
+        return Err(format!(
+            "{} edges face by face, {} in one call",
+            welded.edges().len(),
+            whole.edges().len()
+        ));
+    }
+    for range in whole.edges() {
+        if polyline(&welded, range.edge) != polyline(whole, range.edge) {
+            return Err(format!("{}'s polyline differs face by face", range.edge));
+        }
+    }
+    Ok(())
+}
+
 /// [`mesh_stage`] of `body` in `m`, at `tolerances`; `name` is what the
 /// error calls it.
 pub(crate) fn mesh_check(
@@ -1569,6 +1646,7 @@ pub(crate) fn mesh_check(
             "the mesh's signed volume is {mesh_volume}, not positive"
         )));
     }
+    weld_stage(m, body, &request, &mesh).map_err(mesh_failure)?;
     if let Some(volume) = target.measured.volume {
         let relative = (mesh_volume - volume).abs() / volume.abs();
         if relative.is_nan() || relative > tolerances.mesh_volume_rel {
