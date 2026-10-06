@@ -1358,6 +1358,14 @@ corpus_tests! {
     /// built.
     #[ignore = "kernel bug: the blend's output fails the checker at L2, two loops' pcurves jump 3.1e-7 and 2.4e-6 in (u, v) (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
     regression_nist_ftc_08_fillet_pcurve_jump_checker_fault => run "regression/nist-ftc-08-fillet-pcurve-jump-checker-fault";
+    /// A rounded bar turned 45° about y and moved to z = 100, split by an
+    /// oblique plane through its centre, the cut face pressed out by 0.05: the
+    /// section is a traced curve on each fillet cylinder and `offset_faces`
+    /// returns a body that fails the checker (vertices 2.6e-7 off their edges'
+    /// curves, pcurves jumping 1.5e-2 in (u, v)); the same body made as the
+    /// common with a half-space box offsets clean.
+    #[ignore = "kernel bug: offset_faces of a split side's cut face fails the checker at V2, V3 and L2, 2.6e-7 and 1.5e-2 (docs/BACKLOG.md, a split side's cap offset)"]
+    regression_split_cap_offset_checker_fault => run "regression/split-cap-offset-checker-fault";
     /// Open CASCADE's own STEP of `blend/bead-root-fillet`, read as a part: its
     /// walked blend of degree 2 by 14, on which the reader fits a contact's
     /// pcurve for minutes and then refuses it.

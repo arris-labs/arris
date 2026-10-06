@@ -154,7 +154,7 @@ bound has to be established here.
   and budget, the stub, the docstring example, a pytest per refusal, and
   the `Role.split` accessor. Add the rustdoc example on `split` and record
   the split fixtures' cancel step counts.
-- [ ] Step 6 **[2]**: Properties, sharded and seeded, over random planes
+- [x] Step 6 **[2]**: Properties, sharded and seeded, over random planes
   through random bodies (boxes, cylinders, rounded boxes, multi-tool cuts,
   shelled and filleted bodies):
   - the two sides' volumes sum to the body's
@@ -275,3 +275,20 @@ The plan closes when all of the following pass:
   tolerance the slab is built (`a_sliver_within_tolerance_is_no_crossing`).
   Open CASCADE, with no fuzzy value, builds any sliver; no fixture holds
   that pose to it.
+- Found in step 6: `tests/split_prop.rs` holds the properties at 256 cases
+  over a drawn body (box, cylinder or rounded box, plain, drilled by one to
+  four tools or hollowed into a cup) in a random pose, the plane through a
+  point near its centre in a random frame. The cap area is the Green
+  integral of the cap's boundary, so the area property is independent of
+  `mass_properties`. The operand property found `offset_faces` through the
+  cap failing the checker on a side far from the origin where the same body
+  made as a `common` offsets clean: shrunk to
+  `regression/split-cap-offset-checker-fault`, a backlog line, and the
+  property tolerates a named fault from `offset_faces` and `shell` through
+  the cap as it does one from a blend. The differential's `split_recipe`
+  draws boxes and cylinders only (Open CASCADE's splitter does not return
+  on an elliptic extrusion cut obliquely, and splits a cup beside another
+  lump to a half whose volume is not its pieces', in 3 of 1000 draws; both
+  kept out by name in the strategy and a backlog line): 829 of 1000 agree,
+  66 are `NoCrossing` where the oracle makes one side empty, 105 both
+  refuse, none disagree.

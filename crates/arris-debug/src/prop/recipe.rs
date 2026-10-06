@@ -474,6 +474,66 @@ pub fn multi_tool_recipe() -> impl Strategy<Value = Recipe> {
         })
 }
 
+/// Recipes of one operand, or two joined by one boolean, split by a plane
+/// (ADR-0051): the plane goes through a point near the first operand's
+/// centre, in a random direction, under the recipe's shared motion, and the
+/// result is the positive side or, in half the draws, the negative. The
+/// differential holds `ops::split` to Open CASCADE's splitter on it. A
+/// separate draw, so [`recipe`]'s seeded stream is unchanged. The recipe
+/// has no probes: they classify points against the whole operand, not its
+/// side of the plane.
+pub fn split_recipe() -> impl Strategy<Value = Recipe> {
+    // A box or a cylinder, blended, pushed or hollowed as the general draw
+    // has it, but for two things Open CASCADE's splitter gets wrong. An
+    // extruded or revolved profile is the sweep cycle's, and the splitter
+    // does not return on an elliptic extrusion cut obliquely. A cup — a
+    // body thickened outward and open on a face — beside another lump is
+    // split into a half whose volume is not its pieces' (a 1 by 1 by 1 box
+    // thickened by 0.05, open on x = -0.5, beside a unit box 1.9 away,
+    // split by x = 0: 0.3345 where the cup's half, 0.1655, and the box's,
+    // 0.5, make 0.6655, which is Arris's, and the splitter's own answer for
+    // the cup alone), three of the 1000 recipes of the default seed.
+    let solid = || {
+        operand().prop_filter("a box or a cylinder, no outward cup", |o| {
+            matches!(o.shape, Shape::Box { .. } | Shape::Cylinder { .. })
+                && !o.hollow.is_some_and(|h| h.outward && h.opening.is_some())
+        })
+    };
+    (
+        solid(),
+        proptest::option::weighted(0.5, (solid(), op())),
+        prop_oneof![Just(Isometry::identity()), pose()],
+        point_in_box(1.0),
+        unit_vec3(),
+        any::<bool>(),
+    )
+        .prop_map(|(first, second, shared, near, normal, negative)| {
+            let centre = first.local.translation();
+            let mut operands = vec![first];
+            let mut ops = Vec::new();
+            if let Some((operand, op)) = second {
+                operands.push(operand);
+                ops.push(op);
+            }
+            let mut recipe = write(&operands, &ops, &shared);
+            let origin = shared.apply(Point3::from(centre + near.coords));
+            let normal = shared.apply_vec(normal.into_inner());
+            recipe.steps.push(Step::Split {
+                name: "side".into(),
+                of: recipe.result.clone(),
+                plane: fixtures::SplitPlane {
+                    origin: point3(origin),
+                    normal: vec3(normal),
+                    x: None,
+                },
+                side: negative.then(|| (-1.0).into()),
+            });
+            recipe.result = "side".into();
+            recipe.probes.clear();
+            recipe
+        })
+}
+
 /// `recipe` with its trailing chain of one kind of boolean — each step
 /// taking the one before it as `a` or `target` — written as one multi-tool
 /// step named as the last, and the steps it replaces dropped. A recipe

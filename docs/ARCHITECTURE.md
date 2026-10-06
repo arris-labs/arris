@@ -1927,7 +1927,10 @@ B-Rep).
   histogram; `prop::recipe::multi_tool_recipe` draws one multi-tool `cut`
   or `fuse` of two to four tools in one call, a separate draw so the
   general one's seeded stream is unchanged, and the differential runs it
-  against Open CASCADE's multi-tool boolean as well). `prop` runs a
+  against Open CASCADE's multi-tool boolean as well; `prop::recipe::split_recipe`
+  draws one or two operands cut by a plane through a point near the first,
+  either side kept, a third separate draw the differential holds to Open
+  CASCADE's splitter). `prop` runs a
   property whole through `check`, or split across `k` shards through
   `prop_shards!`, which writes one `#[test]` per shard over a body given
   once so libtest's pool runs them at once instead of one property holding

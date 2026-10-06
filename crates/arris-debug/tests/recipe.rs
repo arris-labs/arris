@@ -123,3 +123,29 @@ arris_debug::prop_shards! {
         Ok(())
     }
 }
+
+arris_debug::prop_shards! {
+    /// The split draw (ADR-0051): one or two operands cut by a plane, a
+    /// fixture both kernels read, built by Arris to a body or a typed
+    /// refusal, never to a malformed recipe's error.
+    every_split_recipe_is_a_fixture_arris_builds_or_refuses
+        [s0 s1 s2 s3] (r) = arris_debug::prop::recipe::split_recipe() => {
+        let text = serde_json::to_string_pretty(&r).map_err(fail)?;
+        let back: Recipe = serde_json::from_str(&text).map_err(fail)?;
+        prop_assert_eq!(&back, &r);
+        prop_assert!(
+            matches!(r.steps.last(), Some(fixtures::Step::Split { .. })),
+            "not a split\n{}",
+            text
+        );
+        let Ok(built) = std::panic::catch_unwind(|| corpus::build("generated/split", &r)) else {
+            return Ok(());
+        };
+        match built {
+            Ok(chain) => prop_assert!(chain.result().is_some()),
+            Err(CorpusError::Op { .. }) => {}
+            Err(e) => return Err(fail(format!("a malformed recipe: {e}\n{text}"))),
+        }
+        Ok(())
+    }
+}

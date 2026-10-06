@@ -88,6 +88,29 @@ fn arris_and_the_oracle_agree_on_multi_tool_booleans() {
     );
 }
 
+/// The split by a plane (ADR-0051): one or two operands cut by a plane
+/// through a random point near the first, either side kept, against Open
+/// CASCADE's `BRepAlgoAPI_Splitter`. Judged as the general draw is: an
+/// agreement, a named exclusion or a refusal, never a disagreement.
+#[test]
+fn arris_and_the_oracle_agree_on_splits() {
+    let run = differential::run_over(
+        "split",
+        arris_debug::prop::recipe::split_recipe(),
+        &prop::seed(),
+        differential::cases(),
+    )
+    .unwrap_or_else(|e| panic!("the differential could not run: {e}"));
+    println!("{}", run.report());
+    assert!(
+        run.failures.is_empty(),
+        "{}\n{} failing recipes:\n\n{}",
+        run.report(),
+        run.failures.len(),
+        run.failures_text()
+    );
+}
+
 /// Where Open CASCADE's boolean records no solid of operands it built, or
 /// a volume they cannot bound (a fuse smaller than one operand), and
 /// Arris's result is a valid body that adds up (`V(A ∪ B) + V(A ∩ B) =

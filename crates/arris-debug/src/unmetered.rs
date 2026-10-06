@@ -34,6 +34,15 @@ pub fn fuse_many(m: &mut Model, bodies: &[Body]) -> Result<(Body, Provenance), O
     arris_ops::fuse_many(m, bodies, &Control::NONE)
 }
 
+/// [`arris_ops::split`] to its end.
+pub fn split(
+    m: &mut Model,
+    body: Body,
+    plane: &arris_math::Frame,
+) -> Result<arris_ops::Split, OpError> {
+    arris_ops::split(m, body, plane, &Control::NONE)
+}
+
 /// [`arris_ops::common`] to its end.
 pub fn common(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpError> {
     arris_ops::common(m, a, b, &Control::NONE)

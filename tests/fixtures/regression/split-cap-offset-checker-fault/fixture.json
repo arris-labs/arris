@@ -1,0 +1,11 @@
+{
+  "description": "a 1 by 1 by 9 bar with its four long edges filleted to 0.15, turned 45 degrees about y, moved to z = 100, split through its centre by an oblique plane, then the cut face pressed out by 0.05: the section is a traced curve on each fillet cylinder, and offset_faces returns a body that fails the checker (vertices 2.6e-7 from their edges' curves, pcurves jumping 1.5e-2 in (u, v)); the same body made as the common with a half-space box offsets clean, and so does this one at z = 10 (property split_prop, a_side_is_an_operand_of_every_operation)",
+  "steps": [
+    {"name": "bar", "op": "box", "min": [-0.5, -0.5, -4.5], "max": [0.5, 0.5, 4.5]},
+    {"name": "rounded", "op": "fillet", "of": "bar", "edges": [[-0.5, -0.5, 0], [0.5, -0.5, 0], [0.5, 0.5, 0], [-0.5, 0.5, 0]], "radius": 0.15},
+    {"name": "posed", "op": "transform", "of": "rounded", "rotate": {"axis": [0, 1, 0], "origin": [0, 0, 0], "angle_deg": 45}, "translate": [0, 0, 100]},
+    {"name": "halves", "op": "split", "of": "posed", "plane": {"origin": [0, 0, 100], "normal": [0.3, 0.2, 1]}},
+    {"name": "result", "op": "offset", "of": "halves", "faces": [[0, 0, 100]], "distance": 0.05}
+  ],
+  "result": "result"
+}
