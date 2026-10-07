@@ -474,11 +474,13 @@ corpus_tests! {
     /// CASCADE's has 84.
     #[ignore = "counts differ from Open CASCADE's multi-tool fuse: 54 faces against 84, the shells agreeing (docs/BACKLOG.md, a multi-tool fuse with fewer faces than Open CASCADE's)"]
     regression_multi_tool_fuse_fewer_faces => run "regression/multi-tool-fuse-fewer-faces";
-    /// A rounded shell cut by two tools in one call (the multi-tool
-    /// differential's case 428 of the fixed seed at 1000 recipes, shrunk):
-    /// the cut returns `OpError::Internal(Builder)`.
-    #[ignore = "a multi-tool cut of a filleted shell returns OpError::Internal(Builder) (docs/BACKLOG.md, a multi-tool cut of a filleted shell)"]
-    regression_shell_fillet_cut_many_builder_fault => run "regression/shell-fillet-cut-many-builder-fault";
+    /// A pentagonal prism cut in one call by a cylinder through it that
+    /// crosses a side face and a box overlapping the cylinder (the multi-tool
+    /// differential's case 428 of the fixed seed at 1000 recipes, shrunk): the
+    /// cut returns `OpError::Internal(Builder)`, where the chain of the two
+    /// cuts builds.
+    #[ignore = "a multi-tool cut of a prism by an overlapping cylinder and box returns OpError::Internal(Builder), an edge with one coedge; the chain of the two cuts builds (docs/BACKLOG.md, a multi-tool cut of a prism by an overlapping cylinder and box)"]
+    regression_cut_many_prism_cylinder_box_builder_fault => run "regression/cut-many-prism-cylinder-box-builder-fault";
     /// A square less a quarter disc, extruded and cut by a box inside it:
     /// the arc is tangent to both lines it meets, so each cap's loop has two
     /// cusps, each a turn of +π round its spike (ADR-0026 §4, the battery's

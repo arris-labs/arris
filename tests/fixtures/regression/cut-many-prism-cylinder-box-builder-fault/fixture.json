@@ -1,5 +1,5 @@
 {
-  "description": "Drawn by the differential (cut_many of a filleted shell by two tools, case 428 of the fixed seed 61727269732d70726f70657274792d74657374732d736565642d763100000000 at 1000 recipes, CI run 37537615402), shrunk: Arris refuses it as OpError::Internal(Builder). The desired result is a solid matching the oracle's.",
+  "description": "Drawn by the differential (case 428 of the fixed seed 61727269732d70726f70657274792d74657374732d736565642d763100000000 at 1000 recipes, CI run 37537615402), shrunk by hand from a hollow cylinder and a filleted box to a plain cylinder and box: one cut_many of a pentagonal prism by a cylinder and an overlapping box returns OpError::Internal(Builder), an edge with one coedge, where the chain of the two cuts builds. The desired result is a solid matching the oracle's.",
   "params": {},
   "variants": {},
   "steps": [
@@ -109,17 +109,9 @@
       "height": 17.01756337164403
     },
     {
-      "op": "shell",
-      "name": "h1",
-      "of": "b1",
-      "openings": [],
-      "thickness": 0.6584064965291206,
-      "side": "inward"
-    },
-    {
       "op": "transform",
       "name": "o1",
-      "of": "h1",
+      "of": "b1",
       "translate": [
         -32.85336526192446,
         -36.10111258401116,
@@ -149,22 +141,9 @@
       ]
     },
     {
-      "op": "fillet",
-      "name": "f2",
-      "of": "b2",
-      "edges": [
-        [
-          5.690820957765442,
-          4.396627491082005,
-          0.0
-        ]
-      ],
-      "radius": 0.8401329303676031
-    },
-    {
       "op": "transform",
       "name": "o2",
-      "of": "f2",
+      "of": "b2",
       "translate": [
         -35.66099337329893,
         -40.04368940030771,

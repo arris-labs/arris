@@ -332,7 +332,7 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         name: "builder-fault",
         fixtures: &[
             "box-revolve-cylinder-common-fuse-builder-fault",
-            "shell-fillet-cut-many-builder-fault",
+            "cut-many-prism-cylinder-box-builder-fault",
         ],
         symptom: "OpError::Internal(Builder)",
         covers: |o| internal_is(o, "Internal(Builder)"),
