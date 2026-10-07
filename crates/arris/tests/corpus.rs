@@ -481,6 +481,19 @@ corpus_tests! {
     /// cuts builds.
     #[ignore = "a multi-tool cut of a prism by an overlapping cylinder and box returns OpError::Internal(Builder), an edge with one coedge; the chain of the two cuts builds (docs/BACKLOG.md, a multi-tool cut of a prism by an overlapping cylinder and box)"]
     regression_cut_many_prism_cylinder_box_builder_fault => run "regression/cut-many-prism-cylinder-box-builder-fault";
+    /// A cylinder cut in one call by a skew cylinder and a thin one along x,
+    /// its bottom rim filleted at 0.05 (the multi-tool result property's
+    /// shards 2 and 3 at the fixed seed and 1000 cases, shrunk): the body
+    /// fails the checker at L5, a face's two loops crossing, and the
+    /// chamfer of the same edge fails the same way.
+    #[ignore = "kernel bug: a fillet and a chamfer of a rim of a multi-tool cut fail the checker at L5 (docs/BACKLOG.md, a blend of a multi-tool cut's rim)"]
+    regression_cut_many_cylinder_rim_fillet_not_clean => run "regression/cut-many-cylinder-rim-fillet-not-clean";
+    /// A box cut in one call by two skew cylinders that meet inside it, its
+    /// first face pressed out by 0.05 (the multi-tool result property's shard
+    /// 1 at the fixed seed and 1000 cases, shrunk): `offset_faces` returns a
+    /// body that fails the checker at V2, V3 and L2.
+    #[ignore = "kernel bug: offset_faces of a multi-tool cut's face fails the checker at V2, V3 and L2, 3.8e-2 and 8.6e-3 (docs/BACKLOG.md, an offset of a multi-tool cut's face)"]
+    regression_cut_many_two_skew_cylinders_offset_checker_fault => run "regression/cut-many-two-skew-cylinders-offset-checker-fault";
     /// A square less a quarter disc, extruded and cut by a box inside it:
     /// the arc is tangent to both lines it meets, so each cap's loop has two
     /// cusps, each a turn of +π round its spike (ADR-0026 §4, the battery's

@@ -1,0 +1,78 @@
+{
+  "description": "A cylinder (radius 2.5086586239298923, height 9.117565161132084) cut in one call by two thin cylinders, one skew through the body and one along x, then the circle rim at the bottom cap filleted at 0.05 (the multi-tool property a_multi_tool_result_is_an_operand_of_every_operation at the fixed seed 61727269732d70726f70657274792d74657374732d736565642d763100000000 and 1000 cases, CI run 37582971995, shard 2, shrunk; shard 3 is a second draw of it): the fillet returns a body that fails the checker at L5, a face's loops 0 and 1 intersecting, and the chamfer of the same edge likewise. The desired result is a checker-green body that matches Open CASCADE's.",
+  "params": {},
+  "variants": {},
+  "steps": [
+    {
+      "name": "target",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -4.558782580566042
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 2.5086586239298923,
+      "height": 9.117565161132084
+    },
+    {
+      "name": "tool0",
+      "op": "cylinder",
+      "base": [
+        4.182878652865798,
+        -13.393520465622867,
+        10.688585768852896
+      ],
+      "axis": [
+        -0.2717275937329559,
+        0.7150595702525387,
+        -0.6440915507863401
+      ],
+      "radius": 1.0986310938835464,
+      "height": 34.65966608017868
+    },
+    {
+      "name": "tool1",
+      "op": "cylinder",
+      "base": [
+        -18.607033497846658,
+        -1.2772004577573168,
+        -3.647026064452834
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "radius": 0.3193001144393292,
+      "height": 34.65966608017868
+    },
+    {
+      "name": "cut",
+      "op": "cut",
+      "target": "target",
+      "tools": [
+        "tool0",
+        "tool1"
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "cut",
+      "edges": [
+        [
+          -2.5086586239298923,
+          0.0,
+          -4.558782580566042
+        ]
+      ],
+      "radius": 0.05
+    }
+  ],
+  "result": "result"
+}

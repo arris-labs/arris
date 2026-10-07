@@ -1,0 +1,76 @@
+{
+  "description": "A box (19.406349006155267 by 12.037736798070128 by 18.558311874909336) cut in one call by two skew cylinders that meet inside it, then the first face pressed out by 0.05 (the multi-tool property a_multi_tool_result_is_an_operand_of_every_operation at the fixed seed 61727269732d70726f70657274792d74657374732d736565642d763100000000 and 1000 cases, CI run 37582971995, shard 1, shrunk): offset_faces returns a body that fails the checker (a vertex 3.8e-2 off its edge's curve, pcurves jumping 8.6e-3 in (u, v)), where the chain of the two cuts offsets clean. The desired result is a checker-green body that matches Open CASCADE's.",
+  "params": {},
+  "variants": {},
+  "steps": [
+    {
+      "name": "target",
+      "op": "box",
+      "min": [
+        -9.703174503077634,
+        -6.018868399035064,
+        -9.279155937454668
+      ],
+      "max": [
+        9.703174503077634,
+        6.018868399035064,
+        9.279155937454668
+      ]
+    },
+    {
+      "name": "tool0",
+      "op": "cylinder",
+      "base": [
+        23.907712728868763,
+        30.493089746059226,
+        -23.202817495266938
+      ],
+      "axis": [
+        -0.3818915692564601,
+        -0.7999155363584312,
+        0.4629189605354718
+      ],
+      "radius": 4.426859131753072,
+      "height": 88.27978170301762
+    },
+    {
+      "name": "tool1",
+      "op": "cylinder",
+      "base": [
+        28.6757106368888,
+        10.63419049564772,
+        37.79903752721663
+      ],
+      "axis": [
+        -0.6165474398673682,
+        -0.1469090022470888,
+        -0.7734901417935195
+      ],
+      "radius": 4.385712294854365,
+      "height": 88.27978170301762
+    },
+    {
+      "name": "cut",
+      "op": "cut",
+      "target": "target",
+      "tools": [
+        "tool0",
+        "tool1"
+      ]
+    },
+    {
+      "name": "result",
+      "op": "offset",
+      "of": "cut",
+      "faces": [
+        [
+          -2.0017113770152193,
+          6.004077624090691,
+          -9.279155937454668
+        ]
+      ],
+      "distance": 0.05
+    }
+  ],
+  "result": "result"
+}
