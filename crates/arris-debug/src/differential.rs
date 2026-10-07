@@ -319,6 +319,25 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         covers: |o| counts_of(o, "faces").is_some_and(|(arris, oracle)| arris > oracle),
     },
     Exclusion {
+        name: "fewer-faces",
+        fixtures: &["multi-tool-fuse-fewer-faces"],
+        symptom: "a multi-tool recipe with fewer faces than Open CASCADE and the shells agreeing",
+        covers: |o| {
+            matches!(o, Outcome::Disagree { what, .. } if what.contains("multi-tool/"))
+                && counts_of(o, "faces").is_some_and(|(arris, oracle)| arris < oracle)
+                && counts_of(o, "shells").is_some_and(|(arris, oracle)| arris == oracle)
+        },
+    },
+    Exclusion {
+        name: "builder-fault",
+        fixtures: &[
+            "box-revolve-cylinder-common-fuse-builder-fault",
+            "shell-fillet-cut-many-builder-fault",
+        ],
+        symptom: "OpError::Internal(Builder)",
+        covers: |o| internal_is(o, "Internal(Builder)"),
+    },
+    Exclusion {
         name: "oracle-subdivides-faces",
         fixtures: &["turned-dome-three-rim-fillet"],
         symptom: "Open CASCADE's faces are Arris's cut in pieces: k more faces, loops and vertices, 2k more edges",
@@ -1271,6 +1290,17 @@ mod tests {
             excluded(hole, EXCLUSIONS).fails(),
             "an edge short of 2k is a change of genus, not a subdivision"
         );
+        let multi = Outcome::Disagree {
+            stage: Stage::Counts,
+            what: "multi-tool/0046: counts Counts { vertices: 96, edges: 145, faces: 58, loops: 61, shells: 3, solids: 1 } but the oracle says Counts { vertices: 110, edges: 184, faces: 84, loops: 88, shells: 3, solids: 1 }".into(),
+        };
+        assert!(matches!(
+            excluded(multi, EXCLUSIONS),
+            Outcome::Excluded {
+                name: "fewer-faces",
+                ..
+            }
+        ));
         assert!(internal_is(
             &Outcome::Internal("Internal(Split)".into()),
             "Internal(Split)"

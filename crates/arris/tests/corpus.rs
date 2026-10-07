@@ -468,6 +468,17 @@ corpus_tests! {
     /// and 46 faces where Open CASCADE's has two and 55.
     #[ignore = "counts differ from Open CASCADE's multi-tool fuse: 3 shells and 46 faces against 2 and 55 (docs/BACKLOG.md, multi-tool-boolean step 8)"]
     regression_multi_tool_fuse_counts_differ => run "regression/multi-tool-fuse-counts-differ";
+    /// A cylinder, a box and three revolves fused in one call (the multi-tool
+    /// differential's case 46 of the fixed seed at 1000 recipes, shrunk):
+    /// the shells agree at three and Arris's result has 54 faces where Open
+    /// CASCADE's has 84.
+    #[ignore = "counts differ from Open CASCADE's multi-tool fuse: 54 faces against 84, the shells agreeing (docs/BACKLOG.md, a multi-tool fuse with fewer faces than Open CASCADE's)"]
+    regression_multi_tool_fuse_fewer_faces => run "regression/multi-tool-fuse-fewer-faces";
+    /// A rounded shell cut by two tools in one call (the multi-tool
+    /// differential's case 428 of the fixed seed at 1000 recipes, shrunk):
+    /// the cut returns `OpError::Internal(Builder)`.
+    #[ignore = "a multi-tool cut of a filleted shell returns OpError::Internal(Builder) (docs/BACKLOG.md, a multi-tool cut of a filleted shell)"]
+    regression_shell_fillet_cut_many_builder_fault => run "regression/shell-fillet-cut-many-builder-fault";
     /// A square less a quarter disc, extruded and cut by a box inside it:
     /// the arc is tangent to both lines it meets, so each cap's loop has two
     /// cusps, each a turn of +π round its spike (ADR-0026 §4, the battery's
