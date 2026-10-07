@@ -73,8 +73,17 @@ jobs:
   # CI red meanwhile (.agents/rules/kernel.md §Testing). Every other corpus
   # area holds no ignored fixture — the corpus lint fails one without its
   # blessed dump — so that run finds nothing to skip there.
+  # The workspace at 1000 cases is more than one runner's 6 h job limit
+  # (the multi-tool properties alone are about two CPU-hours), so nextest
+  # splits it by a hash of each test's name into three jobs: stable when
+  # tests are added, and every property shard is its own test. The corpus's
+  # ignored fixtures and the doctests run once, in the first.
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3]
     env:
       ARRIS_PROPTEST_CASES: "1000"
       # The differential at CI's count too (ADR-0024 §2); the hook runs
@@ -91,9 +100,11 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --project tools/oracle
-      - run: cargo nextest run --workspace
-      - run: cargo nextest run -p arris --test corpus --run-ignored only --no-tests pass -E 'not test(/^regression_/)'
-      - run: cargo test --workspace --doc
+      - run: cargo nextest run --workspace --partition hash:${{ matrix.partition }}/3
+      - if: matrix.partition == 1
+        run: cargo nextest run -p arris --test corpus --run-ignored only --no-tests pass -E 'not test(/^regression_/)'
+      - if: matrix.partition == 1
+        run: cargo test --workspace --doc
 
   # The `parallel` features prove determinism, not coverage: the same tests
   # give byte-identical results with the work split across threads. So they
