@@ -194,6 +194,16 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: resolve a section beside a pole in the (u, v) polygons, which moves `ball-beside-pole-slice-cut` out of `regression/`. The round trip rejects the refusal by name meanwhile (done), so a night no longer fails on it; the case is still a refusal a consumer meets.
 
+### mass-properties-of-a-many-faced-prism
+
+- What: `measure::mass_properties` costs about 0.2 ms per face even on planar faces, so a prism of a 20-tooth spur gear (240 side faces, 200 of them cylinders) takes 90 ms, against 38 ms for fusing it with a plate. The plugin CAD measures every feature's body, so a width edit of its acceptance part spends 190 of its 315 ms here (asked by ArriX, its C1 benchmark: the 150 ms budget for the first coarse mesh after an edit is missed at 324 ms).
+- Where: ArriX's `crates/arrix-cli/tests/c1_benchmark.rs`, the evaluation of its bracket; replayed here through `arris_debug::corpus::build` and `measure::mass_properties` with `Control::NONE`.
+- Seen: ArriX commit `9fba374` on `arris` 0.5.0; replayed 2026-10-08 on `v0.5.0` and on `a83751b` (0.7.0-dev), release build, Ryzen 9 7950X, median of 9.
+- Reproduce: from Arris alone, a regular n-gon of radius 10 mm extruded 5 mm (`profile` of n `line_to`, `extrude`), measured; or ArriX's recipe `crates/arrix-kernel/tests/recipes/bracket-mass-properties/fixture.json` (the bracket's last body, the gear joined and an edge filleted) built and its result measured.
+- Evidence: n-gon prisms, all faces planar: 30 sides 7.9 ms, 60 15.6, 120 31.2, 240 53.9, 480 107.6 (linear, about 0.22 ms a face). The gear's prism 90.8 ms on `a83751b`, 53.8 with its 200 arcs made lines; ArriX's recipe 103.0 ms on `a83751b`, 90.2 on `v0.5.0`, where its fuse takes 31 ms and its fillet 7. A 40 × 30 × 5 box measures in about 1 ms.
+- State: measured.
+- The fix is: profile `integrate_faces` on the 240-gon first; a planar face's integrals have a closed form over its boundary (and a cylinder's over its rulings), so the per-face cost should not be a quadrature's. A `regression/` fixture wants a time budget the corpus runner does not yet assert.
+
 - S5 of a cone against a cylinder in a fuse result: the differential's case
   found a twice-fused elliptic cylinder, revolved cone and extrusion whose
   result leaves two cone × cylinder pairs undecided at `Full`
