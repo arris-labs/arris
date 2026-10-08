@@ -1,5 +1,5 @@
 {
-  "description": "Open CASCADE's own STEP of primitive/box converted to B-splines (occt_step.py --nurbs), every face a NURBS surface, cut by the box [19,14,4]\u2013[21,16,6] inside it: the boolean classifies the tool's faces against the part by a ray, which has no closed form against a NURBS face, and refuses with OpError::Unsupported naming the tool's face and the part's first NURBS face, the NURBS cycle's count. Shrunk from the battery of real/nist-ftc-07 and real/nist-ftc-10, whose every cut and drill meets it (ADR-0026 \u00a75: a boolean on a NURBS face is the NURBS cycle's)",
+  "description": "Open CASCADE's own STEP of primitive/box converted to B-splines (occt_step.py --nurbs), every face a NURBS surface, cut by the box [19,14,4]\u2013[21,16,6] inside it: the boolean classifies the tool's faces against the part by a ray, which crosses the part's NURBS faces through their B\u00e9zier patches (plan ray-fire step 1), and the cavity is cut \u2014 a solid of two shells, held to Open CASCADE's. Shrunk from the battery of real/nist-ftc-07 and real/nist-ftc-10, whose every cut and drill met the ray's old refusal on a NURBS face",
   "steps": [
     {
       "name": "part",
@@ -29,8 +29,5 @@
       "tool": "cavity"
     }
   ],
-  "result": "result",
-  "analytic": {
-    "expect_error": "nurbs"
-  }
+  "result": "result"
 }

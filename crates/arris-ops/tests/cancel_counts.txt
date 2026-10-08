@@ -65,6 +65,7 @@ boolean/mirror-cylinders-oblique-common: 5866
 boolean/mirror-cylinders-oblique-fuse: 5866
 boolean/nist-ctc-04-face-arrangement-turn: 1046
 boolean/nist-ftc-06-face-arrangement-turn: 300
+boolean/nurbs-box-cavity-cut: 24
 boolean/oblique-cross-common: 6272
 boolean/oblique-hole: 4362
 boolean/overlapping-bosses-fuse-many: 166

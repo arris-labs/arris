@@ -500,9 +500,13 @@ fn check_curve_pair(c: &Curve, s: &Surface, res: &PairResult, errors: &mut Vec<S
         (CurveSurfaceIntersection::Coincident, "coincident") => return,
         // A ruling of a cone in a general pose: the oracle's quadratic has
         // rounding for its coefficients where they vanish, and it reports
-        // points of the ruling rather than a line in the quadric. Each of
-        // them is held to the line, which Arris says lies on the cone.
-        (CurveSurfaceIntersection::Coincident, "points") if s.kind() == SurfaceKind::Cone => {
+        // points of the ruling rather than a line in the quadric; and a
+        // ruling of a NURBS surface, which the general intersector reports
+        // as a cloud of points along it. Each of them is held to the line,
+        // which Arris says lies on the surface.
+        (CurveSurfaceIntersection::Coincident, "points")
+            if matches!(s.kind(), SurfaceKind::Cone | SurfaceKind::Nurbs) =>
+        {
             for h in &res.hits {
                 let p = p3(&h.point);
                 let off = c.project(p).map_or(f64::INFINITY, |proj| proj.distance);
@@ -631,8 +635,8 @@ fn turn_diff(a: f64, b: f64, c: &Curve) -> f64 {
 fn every_geometry_fixture_matches_the_oracle() {
     let fixtures = geometry_fixtures();
     assert!(
-        fixtures.len() >= 12,
-        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections and geom/c4-closed-curve-hits"
+        fixtures.len() >= 13,
+        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits and geom/c8-line-nurbs-hits"
     );
     let mut errors = Vec::new();
     for f in &fixtures {
@@ -1186,6 +1190,59 @@ fn a_closed_curve_meets_a_surface_at_its_join_once() {
             *at_join,
             "loop vs {b}: {hits:?}"
         );
+    }
+}
+
+/// What Arris says about every pair of `geom/c8-line-nurbs-hits`, by name:
+/// the hits each line was drawn with — the crossings on and off the
+/// knot lines, the pole, the graze — the ruling `Coincident` and the line
+/// two tolerances off the crest clear. The oracle comparison is one-sided
+/// at a touch, so the graze is pinned here.
+#[test]
+fn the_c8_line_nurbs_hits_classify_as_built() {
+    let f = geometry_fixtures()
+        .into_iter()
+        .find(|f| f.name == "geom/c8-line-nurbs-hits")
+        .expect("geom/c8-line-nurbs-hits");
+    let built = build(&f);
+    // (hits, of them tangent); `None` for `Coincident`.
+    type Answer = Option<(usize, usize)>;
+    let cases: &[(&str, &str, Answer)] = &[
+        ("hills_inside", "hills", Some((1, 0))),
+        ("hills_on_u_knot", "hills", Some((1, 0))),
+        ("hills_on_v_knot", "hills", Some((1, 0))),
+        ("hills_on_both_knots", "hills", Some((1, 0))),
+        ("octant_inside", "octant", Some((1, 0))),
+        ("octant_pole", "octant", Some((1, 0))),
+        ("octant_graze", "octant", Some((1, 1))),
+        ("trough_ruling", "trough", None),
+        ("trough_clear", "trough", Some((0, 0))),
+    ];
+    assert_eq!(
+        cases.len(),
+        f.recipe.pairs.len(),
+        "every pair of the fixture is pinned here"
+    );
+    for (a, b, expect) in cases {
+        let r = intersect_curve_surface(
+            &built.curves[*a],
+            &built.surfaces[*b],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        match (expect, &r) {
+            (None, CurveSurfaceIntersection::Coincident) => {}
+            (Some((count, touches)), CurveSurfaceIntersection::Points(hits)) => {
+                assert_eq!(hits.len(), *count, "{a} vs {b}: {hits:?}");
+                assert_eq!(
+                    hits.iter().filter(|h| h.tangent).count(),
+                    *touches,
+                    "{a} vs {b}: {hits:?}"
+                );
+            }
+            _ => panic!("{a} vs {b}: {r:?}, expected {expect:?}"),
+        }
     }
 }
 

@@ -451,9 +451,10 @@ conic–cylinder, *conic* being a circle or an ellipse, a line against a
 cone, a sphere or a torus, and a conic in a plane across an elliptic
 cylinder's axis — for a conic against a cone, a sphere or an elliptic
 cylinder in any other plane and against a torus (below), for a `Nurbs` curve against every
-analytic surface (below), and `GeomError::Unsupported` naming the pair
-for the one arm left without a form: any curve against a `Nurbs`
-surface. A hit is
+analytic surface (below), for a line against a `Nurbs` surface (below),
+and `GeomError::Unsupported` naming the pair for the one arm left
+without a form: a conic or a `Nurbs` curve against a `Nurbs` surface. A
+hit is
 `CurveSurfaceHit { t, uv, point, tangent }`: `point` is the curve's point
 at `t`, `uv` the surface's own projection of it — except at a cone's
 apex, whose projection is `Ambiguous`, where it is `u = 0` and the apex's
@@ -575,6 +576,57 @@ start, read past it by wrapping, so a surface met at the join is one hit
 there, at the start parameter, not one at each end. A span of degree 25
 against a torus is a polynomial of degree 100, and is held to the line
 arm's hits by the property tests.
+
+**A line against a `Nurbs` surface** is the ray a classifier or a ray
+fire casts at a free-form face. The line is two planes through it, with
+unit normals `n₁, n₂` across its direction `d`; a surface point is on
+it where both offsets `Φₖ = nₖ·(S − o)` vanish, and `|Φ|` is its
+distance from it. On each Bézier patch of the surface (the blossom of
+its knots, as for a curve's span) `Hₖ = nₖ·(X − W·o)` over the
+homogeneous net are two polynomials of the patch's own degrees in
+Bernstein form, `Φ = H / W` with `W > 0`, so the line's meetings with
+the patch are the two polynomials' common zeros: isolated by subdivision
+and certified one by one by the Krawczyk test, which proves a single
+simple zero in a box that Newton's step converges in (the isolation the
+torus tracer uses). A patch whose control points lie beyond the tube of
+radius `tol.linear` round the line, on one side of either plane, is not
+looked at. What is decided is decided on the distance along the line, as
+for every arm above: where the line meets the surface at the angle `θ` to
+its tangent plane, with the second fundamental form `II` along the line's
+direction in that plane, the distance along the line is
+`s sin θ − II s² / 2` to second order, its extremum `sin θ / II` along it
+at the depth `sin² θ / (2 |II|)`. A meeting whose extremum is within
+`tol.linear` is one `tangent` hit at that extremum — located by Newton's
+iteration on the gradient of `|Φ|²`, confirmed a critical point on the
+surface that the line runs to from the meeting within the tolerance —
+and absorbs the meetings on either side of it, as the two crossings an
+analytic extremum would split into are one touch. A line that passes the
+surface within `tol.linear` without meeting it touches it at a critical
+point of `|Φ|²` off the surface: the common zeros of the gradient's two
+polynomials, gated to the fold where `d·(Sᵤ × Sᵥ)` vanishes and to the
+tube. Touches whose stretches of the line within the tolerance overlap
+are one, at the nearest to the line. A **pole** — a row of the net
+collapsed to a point, a sphere's or a cone's — that the line passes
+within `tol.linear` is, as the tolerance reads it, one it goes through:
+the offsets and the gradient are divided by the row's linear factor, the
+pole is a hit at the crossing beside it — at its own parameters, `u` at
+the start of its knots as a projection reports it, where the line goes
+through it — and a touch where the quotient vanishes on the row, the line
+along a meridian's tangent there. **Coincident** is a touch from which
+the line, parallel within `tol.angular` to a direction the surface does
+not curve along there, stays within `tol.linear` across the extent of the
+control net — a ruling of an extrusion, a line in a plane. Zeros that are
+not isolated — a ruling, or the sliver of near-zeros along a tangency —
+make the isolation give up on a region; it is quartered twice to keep
+the isolated points beside it, and then every box it still had alive is
+searched by a descent on the surface itself. A meeting is reported at the
+surface's parameters with a closed direction's in `[lo, hi)` and an open
+one's past its end by no more than rounding held at it: a meeting on a
+knot line or a seam, found by both patches, is one hit. What the arm does
+not look at is a graze of the domain's boundary or of a crease between
+patches that is no critical point of either: the line's nearest approach
+to a face's edge is the topology's to decide. A conic or a `Nurbs` curve
+against a `Nurbs` surface stays `Unsupported`.
 
 `intersect_curves(a, b, tol)` returns `CurveIntersection::{
 Points(Vec<CurveCurveHit>), Coincident}`, a hit being `CurveCurveHit {
@@ -1663,7 +1715,7 @@ reference tree) mapped onto this representation.
 | S3 | A shell is connected through its edges | Fast |
 | S4 | A shell of a `Solid` is closed: no non-degenerate edge with one coedge (S2's exemption) | Fast |
 | S5 | The faces of a shell intersect only along their shared edges and vertices: their surfaces' intersection is empty, or every point of it that is interior to both faces is within the tolerance of an edge or vertex they share; two coincident surfaces must not carry faces whose interiors overlap. Surfaces meeting in isolated points (the points of a `Meets`: a touch, or a crossing through an apex) are held to the same rule point by point, and every curve is held to it whether it crosses or touches — a point inside both faces that is not within tolerance of a vertex both faces reach, or of an edge they share, is a violation; the vertex clause covers two cones closing on one apex, or a blend sphere touching a plane at the corner of its contact lines, which share a vertex but no edge. A pair whose boxes — each face's edges' curve boxes and its surface's box over its loops, grown by the tolerances — are apart shares no point and is decided without an intersector; every pair of analytic surfaces is decided in every pose, over its exact conics, over the curves a ruled pair's tracer fits in the overlap of the two faces' boxes (ADR-0018) — two blend cylinders on skew axes, a corner's sphere against a blend cylinder off its centre, two cylinders a boolean left meeting in a loop — or over the section a torus's tracer walks in its own parameter plane and fits whole, that overlap ignored (ADR-0019): a pin through the tube of a ring, a bend of pipe tangent to the straight one it runs into along a tube circle, a torus and a torus interlocked. What the intersector does not decide — a `Nurbs` in the pair, and the two tracers' refusals, poses of measure zero (`SectionFault`) — is **unchecked**: listed by `Report::unchecked`, never passed and never a violation | Full |
-| B1 | A `Solid` body has at least one shell, and its shells nest into lumps (ADR-0006): every shell enclosing positive volume is an outer shell and every one enclosing negative volume — its effective normals turned into the void — a void, a shell enclosing none being neither; no face of one shell meets a face of another, by S5's test with nothing shared; and, one shell lying inside another when a vertex of it does by the parity of a ray cast against the other's faces alone, each void's innermost container is an outer shell and each outer shell's is none or a void. `arris_check::lumps` returns the lumps this proves — each outer shell with the voids whose innermost container it is. A face pair of two shells S5's test leaves undecided — a `Nurbs` in the pair, a tracer's refusal — or a shell no ray could be classified against, is **unchecked**; every pair of analytic surfaces is decided as S5 decides it, a ruled pair's traced section over the overlap of the two faces' boxes and a torus's over the whole torus. A ray meets every analytic surface by closed form, and one whose hit lands at a cone's apex or a sphere's pole lands on that face's degenerate edge, a boundary, and is abandoned for the next direction — so a solid of analytic faces — plane, circular or elliptic cylinder, cone, sphere and torus — is decided in every pose (ADR-0008, ADR-0019) | Full |
+| B1 | A `Solid` body has at least one shell, and its shells nest into lumps (ADR-0006): every shell enclosing positive volume is an outer shell and every one enclosing negative volume — its effective normals turned into the void — a void, a shell enclosing none being neither; no face of one shell meets a face of another, by S5's test with nothing shared; and, one shell lying inside another when a vertex of it does by the parity of a ray cast against the other's faces alone, each void's innermost container is an outer shell and each outer shell's is none or a void. `arris_check::lumps` returns the lumps this proves — each outer shell with the voids whose innermost container it is. A face pair of two shells S5's test leaves undecided — a `Nurbs` in the pair, a tracer's refusal — or a shell no ray could be classified against, is **unchecked**; every pair of analytic surfaces is decided as S5 decides it, a ruled pair's traced section over the overlap of the two faces' boxes and a torus's over the whole torus. A ray meets every analytic surface by closed form and a `Nurbs` one through its Bézier patches, and one whose hit lands at a cone's apex or a sphere's pole lands on that face's degenerate edge, a boundary, and is abandoned for the next direction — so a solid of analytic faces — plane, circular or elliptic cylinder, cone, sphere and torus — is decided in every pose (ADR-0008, ADR-0019), and a shell with `Nurbs` faces is placed by its rays, its face pairs with a `Nurbs` in them being S5's to leave unchecked | Full |
 | B2 | A `Solid` body encloses positive volume: `∬ p · (r_u × r_v) / 3` over each face's region in (u, v), summed with the sign of each face use. The value is reported with the violation | Full |
 | B3 | A `Wire` body has no shells; `free_edges` form chains (each vertex used by at most two free edges) — `General` bodies exempt | Fast |
 

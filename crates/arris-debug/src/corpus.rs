@@ -1189,12 +1189,12 @@ fn read_back(
     Ok(())
 }
 
-/// The checker at `Full` on a body read from a file, with nothing
-/// violated and nothing left undecided but what the checker cannot decide
-/// on a NURBS face: S5's and B1's face pairs with one in them, and B1's
-/// nesting of a shell no ray is cast from, which a NURBS face never
-/// answers (ADR-0025). `name` is what the error calls the body. Errors:
-/// [`CorpusError::Check`].
+/// The checker at `Full` on a body, with nothing violated and nothing
+/// left undecided but what the checker cannot decide on a NURBS face:
+/// S5's and B1's face pairs with one in them, which the surface
+/// intersector has no form for, and B1's nesting of a shell of a body
+/// with one, whose rays may all be abandoned on it (ADR-0025). `name` is
+/// what the error calls the body. Errors: [`CorpusError::Check`].
 pub(crate) fn check_leaving_nurbs(
     name: &str,
     m: &Model,
@@ -1261,18 +1261,15 @@ fn result_of(fixture: &Fixture, chain: &Chain) -> Result<Body, CorpusError> {
     })
 }
 
-/// The checker at `Full` on the result, with nothing left undecided.
-/// Returns the result body and the report. Errors:
-/// [`CorpusError::Check`].
+/// The checker at `Full` on the result, with nothing left undecided but
+/// what the checker cannot decide on a NURBS face ([`check_leaving_nurbs`]):
+/// a result with no NURBS face is held to every row, and one with them —
+/// an operand read from a file of B-splines — leaves their face pairs to
+/// the NURBS cycle, as the read-back and the battery do. Returns the
+/// result body and the report. Errors: [`CorpusError::Check`].
 pub fn check_stage(fixture: &Fixture, chain: &Chain) -> Result<(Body, Report), CorpusError> {
     let body = result_of(fixture, chain)?;
-    let report = check(&chain.model, body, Level::Full);
-    if !report.is_ok() || !report.unchecked().is_empty() {
-        return Err(CorpusError::Check {
-            fixture: fixture.name.clone(),
-            report: Box::new(report),
-        });
-    }
+    let report = check_leaving_nurbs(&fixture.name, &chain.model, body)?;
     Ok((body, report))
 }
 

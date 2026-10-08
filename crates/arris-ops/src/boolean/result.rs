@@ -201,12 +201,13 @@ fn unsupported(m: &Model, face: FaceId, on: Shape) -> OpError {
 }
 
 /// A piece of `face` that `body`'s classifier could not classify. A ray
-/// has no closed form against a NURBS face (`arris_check::classify_point`),
-/// and meets the first one of `body`'s faces in the classifier's order
-/// on every direction it does not abandon, so that face is the one the
-/// error is about: the pair is named as the unsupported one it is, the
-/// NURBS cycle's (ADR-0026 §5), never an internal fault. Anything else
-/// the classifier reports is one.
+/// meets every surface the kernel has, a NURBS one included
+/// (`arris_check::classify_point`); were it to reach a pair without a
+/// form, the first NURBS face of `body` in the classifier's order is the
+/// one it met on every direction it does not abandon, so that face is the
+/// one the error is about: the pair is named as the unsupported one it
+/// is, the NURBS cycle's (ADR-0026 §5), never an internal fault. Anything
+/// else the classifier reports is one.
 fn classify_fault(m: &Model, face: FaceId, body: Body, e: ClassifyError) -> OpError {
     if let ClassifyError::Geometry(GeomError::Unsupported { .. }) = e {
         let nurbs = m.closure(body).ok().and_then(|c| {

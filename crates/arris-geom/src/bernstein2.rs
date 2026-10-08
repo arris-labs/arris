@@ -82,6 +82,14 @@ pub(crate) struct Poly2 {
 }
 
 impl Poly2 {
+    /// The polynomial of degrees `[m, n]` with the coefficients `c`,
+    /// row-major with `s` the row: `c[i · (n + 1) + j]`, `(m + 1)(n + 1)`
+    /// of them.
+    pub(crate) fn new(degree: [usize; 2], c: Vec<f64>) -> Self {
+        debug_assert_eq!(c.len(), (degree[0] + 1) * (degree[1] + 1));
+        Poly2 { degree, c }
+    }
+
     /// `a(s) · b(t)` from two polynomials in one variable.
     pub(crate) fn outer(a: &[f64], b: &[f64]) -> Self {
         let degree = [a.len().saturating_sub(1), b.len().saturating_sub(1)];
@@ -270,7 +278,7 @@ impl Poly2 {
     }
 
     /// The same polynomial with `s` and `t` exchanged.
-    fn transposed(&self) -> Poly2 {
+    pub(crate) fn transposed(&self) -> Poly2 {
         let [m, n] = self.degree;
         let mut c = Vec::with_capacity(self.c.len());
         for j in 0..=n {
@@ -503,31 +511,74 @@ pub(crate) struct Isolation {
 /// The common zeros are not isolated: more than [`MAX_FRONT`] boxes that
 /// can neither be excluded nor certified at one depth, which a curve of
 /// common zeros makes and a finite set does not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Continuum {
     /// The depth the front outgrew the bound at.
     pub(crate) depth: usize,
+    /// The zeros and boxes found before the front outgrew the bound.
+    pub(crate) found: Vec<Zero2>,
+    /// The boxes alive at that depth, uncertified: every common zero in
+    /// the unit square that the gates keep and that is not in `found` is
+    /// in one of them.
+    pub(crate) front: Vec<Zero2>,
 }
 
 /// A polynomial that only excludes: a box where its coefficients keep
 /// one sign beyond `floor` is dropped, and so is a certified zero where
 /// its value is beyond `floor`; it takes no other part. With a `floor`
 /// above the rounding it keeps the zeros of the system where it is
-/// merely small.
+/// merely small. A `one_sided` gate excludes only above: it keeps the
+/// zeros where the polynomial is at most `floor`, however far below.
 pub(crate) struct Gate<'a> {
     /// The polynomial.
     pub(crate) poly: &'a Poly2,
     /// What its coefficients have to clear to exclude a box.
     pub(crate) floor: f64,
+    /// Whether only values above `floor` exclude.
+    pub(crate) one_sided: bool,
+}
+
+impl Gate<'_> {
+    /// Whether the gate drops a box whose part of the polynomial is `p`.
+    fn excludes(&self, p: &Poly2) -> bool {
+        if self.one_sided {
+            p.range().lo > self.floor
+        } else {
+            p.keeps_sign(self.floor)
+        }
+    }
+
+    /// Whether the gate drops a zero where the polynomial is `value`.
+    fn drops(&self, value: f64) -> bool {
+        if self.one_sided {
+            value > self.floor
+        } else {
+            value.abs() > self.floor
+        }
+    }
 }
 
 struct Cell {
     system: [Poly2; 2],
-    gate: Option<Poly2>,
+    gates: Vec<Poly2>,
     lo: [f64; 2],
     width: [f64; 2],
     /// How many times the box was halved along `s` and along `t`.
     halved: [usize; 2],
+    /// Whether a box within reach of the certificate is halved along the
+    /// direction whose halves come nearer it ([`Halving::LookAhead`]).
+    look_ahead: bool,
+}
+
+/// How a box the certificate is within reach of is halved.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Halving {
+    /// By the second derivatives along each direction weighted by `|Y|`
+    /// alone: what the torus tracer's isolations were measured with.
+    Scored,
+    /// Along the direction whose worse half has the smaller spread, the
+    /// score breaking a tie ([`Cell::direction`]).
+    LookAhead,
 }
 
 impl Cell {
@@ -551,8 +602,42 @@ impl Cell {
     /// the box, so each direction is scored by the second derivatives
     /// along it weighted by `|Y|`. The first rule alone settles at the
     /// shape where a polynomial varies as much either way, which for a
-    /// zero at a box's corner is a shape the test never passes.
+    /// zero at a box's corner is a shape the test never passes. With
+    /// [`Halving::LookAhead`], where both directions are open, the halving
+    /// whose worse half has the smaller spread is taken first, and the
+    /// score only breaks a tie:
+    /// a range of `[J]` is also as wide as the *cross* derivative makes
+    /// it across the other direction, which halving along the one the
+    /// score prefers leaves as it was — a system linear in `t`, a
+    /// cone's offset from a line, would be halved along `s` to the
+    /// bottom with its `t` never pinned.
     fn direction(&self, within_reach: bool) -> Option<usize> {
+        if within_reach && self.look_ahead && self.halved.iter().all(|&h| h < MAX_DEPTH) {
+            let worst = |along: usize| {
+                let split = |p: &Poly2| {
+                    if along == 0 {
+                        p.split_u(0.5)
+                    } else {
+                        p.split_v(0.5)
+                    }
+                };
+                let (a, b) = (split(&self.system[0]), split(&self.system[1]));
+                [[a.0, b.0], [a.1, b.1]]
+                    .iter()
+                    .map(|half| {
+                        preconditioned(&jacobian(half, [0.0; 2]))
+                            .map_or(f64::INFINITY, |(_, spread)| spread[0].max(spread[1]))
+                    })
+                    .fold(0.0, f64::max)
+            };
+            let (s, t) = (worst(0), worst(1));
+            if s < t {
+                return Some(0);
+            }
+            if t < s {
+                return Some(1);
+            }
+        }
         let size = |p: &Poly2| p.range().magnitude();
         let first = self.system.each_ref().map(|p| [p.du(), p.dv()]);
         let mut score = [0.0f64; 2];
@@ -593,11 +678,7 @@ impl Cell {
             }
         };
         let (a, b) = (split(&self.system[0]), split(&self.system[1]));
-        let gate = self.gate.as_ref().map(split);
-        let (gate_lo, gate_hi) = match gate {
-            Some((lo, hi)) => (Some(lo), Some(hi)),
-            None => (None, None),
-        };
+        let (gates_lo, gates_hi) = self.gates.iter().map(split).unzip();
         let mut width = self.width;
         width[along] *= 0.5;
         let mut halved = self.halved;
@@ -607,17 +688,19 @@ impl Cell {
         [
             Cell {
                 system: [a.0, b.0],
-                gate: gate_lo,
+                gates: gates_lo,
                 lo: self.lo,
                 width,
                 halved,
+                look_ahead: self.look_ahead,
             },
             Cell {
                 system: [a.1, b.1],
-                gate: gate_hi,
+                gates: gates_hi,
                 lo: upper,
                 width,
                 halved,
+                look_ahead: self.look_ahead,
             },
         ]
     }
@@ -633,7 +716,19 @@ impl Cell {
 pub(crate) fn common_zeros(
     system: [&Poly2; 2],
     floors: [f64; 2],
-    gate: Option<Gate<'_>>,
+    gates: &[Gate<'_>],
+    meter: &mut Meter,
+) -> Result<Isolation, Halt<Continuum>> {
+    common_zeros_with(system, floors, gates, Halving::Scored, meter)
+}
+
+/// [`common_zeros`] with the halving of a box within reach of the
+/// certificate chosen by `halving`.
+pub(crate) fn common_zeros_with(
+    system: [&Poly2; 2],
+    floors: [f64; 2],
+    gates: &[Gate<'_>],
+    halving: Halving,
     meter: &mut Meter,
 ) -> Result<Isolation, Halt<Continuum>> {
     let partials = [
@@ -644,10 +739,11 @@ pub(crate) fn common_zeros(
     let mut boxes = 0;
     let mut front = vec![Cell {
         system: [system[0].clone(), system[1].clone()],
-        gate: gate.as_ref().map(|g| g.poly.clone()),
+        gates: gates.iter().map(|g| g.poly.clone()).collect(),
         lo: [0.0, 0.0],
         width: [1.0, 1.0],
         halved: [0, 0],
+        look_ahead: halving == Halving::LookAhead,
     }];
     let mut depth = 0;
     loop {
@@ -656,11 +752,7 @@ pub(crate) fn common_zeros(
             meter.tick()?;
             boxes += 1;
             let excluded = cell.system.iter().zip(floors).any(|(p, f)| p.keeps_sign(f))
-                || cell
-                    .gate
-                    .as_ref()
-                    .zip(gate.as_ref())
-                    .is_some_and(|(p, g)| p.keeps_sign(g.floor));
+                || cell.gates.iter().zip(gates).any(|(p, g)| g.excludes(p));
             if excluded {
                 continue;
             }
@@ -690,11 +782,9 @@ pub(crate) fn common_zeros(
                         to_square(inside.lo),
                         to_square(inside.hi),
                     );
-                    // The one zero of the grown box: where the gate is
-                    // clear of zero there is none on its zero set.
-                    let gated = gate
-                        .as_ref()
-                        .is_some_and(|g| g.poly.eval(at[0], at[1]).abs() > g.floor);
+                    // The one zero of the grown box: where a gate is
+                    // clear of what it keeps there is none to keep.
+                    let gated = gates.iter().any(|g| g.drops(g.poly.eval(at[0], at[1])));
                     if !gated {
                         zeros.push(Zero2 {
                             at,
@@ -716,7 +806,20 @@ pub(crate) fn common_zeros(
         }
         depth += 1;
         if next.len() > MAX_FRONT {
-            return Err(Halt::Fault(Continuum { depth }));
+            let front = next
+                .iter()
+                .map(|cell| Zero2 {
+                    at: [0, 1].map(|k| cell.lo[k] + 0.5 * cell.width[k]),
+                    lo: cell.lo,
+                    hi: [0, 1].map(|k| cell.lo[k] + cell.width[k]),
+                    certified: false,
+                })
+                .collect();
+            return Err(Halt::Fault(Continuum {
+                depth,
+                found: zeros,
+                front,
+            }));
         }
         front = next;
     }
@@ -1096,13 +1199,13 @@ mod tests {
     fn the_turning_points_of_a_circle_and_its_crossings_with_a_line() {
         let b = Binomials::new(8);
         let f = circle(0.4, 0.55, 0.3, &b);
-        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(&certified(&turning), &[[0.1, 0.55], [0.7, 0.55]]);
         assert_eq!(turning.zeros.len(), 2);
         // s + t = 0.95 through the centre: (0.4 ∓ 0.3/√2, 0.55 ± 0.3/√2).
         let line = linear(-0.95, 1.0, 1.0);
         let d = 0.3 * core::f64::consts::FRAC_1_SQRT_2;
-        let crossings = common_zeros([&f, &line], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let crossings = common_zeros([&f, &line], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(
             &certified(&crossings),
             &[[0.4 - d, 0.55 + d], [0.4 + d, 0.55 - d]],
@@ -1110,7 +1213,7 @@ mod tests {
         // A product of known factors: the zeros of each against the line.
         let g = f.mul(&circle(0.4, 0.55, 0.1, &b), &b);
         let e = 0.1 * core::f64::consts::FRAC_1_SQRT_2;
-        let crossings = common_zeros([&g, &line], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let crossings = common_zeros([&g, &line], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(
             &certified(&crossings),
             &[
@@ -1129,21 +1232,21 @@ mod tests {
         // Turning points on s = ¼ and s = ¾, both on t = ½: corners of
         // boxes at every depth from the second.
         let f = circle(0.5, 0.5, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(&certified(&found), &[[0.25, 0.5], [0.75, 0.5]]);
         assert_eq!(found.zeros.len(), 2);
         assert!(found.depth < 16, "{}", found.depth);
         // On the square's own edge and corner, and one just outside it,
         // which the margin holds.
         let f = circle(0.25, 0.0, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(&certified(&found), &[[0.0, 0.0], [0.5, 0.0]]);
         // A zero outside the square is the neighbouring square's: found
         // from here where a margin happens to certify it, and no fault
         // where none does.
         let f = circle(0.249, 0.3, 0.25, &b);
         let found = certified(
-            &common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap(),
+            &common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap(),
         );
         let inside = found.iter().filter(|z| z[0] > 0.0).copied();
         assert_near(&inside.collect::<Vec<_>>(), &[[0.499, 0.3]]);
@@ -1152,7 +1255,7 @@ mod tests {
         assert!(outside.is_empty() || outside.len() == 1);
         assert_near(&outside, &vec![[-0.001, 0.3]; outside.len()]);
         let f = circle(-0.26, 0.3, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert!(found.zeros.is_empty());
     }
 
@@ -1165,17 +1268,18 @@ mod tests {
         let critical = common_zeros(
             [&f.du(), &f.dv()],
             [1e-15; 2],
-            Some(Gate {
+            &[Gate {
                 poly: &f,
                 floor: 1e-15,
-            }),
+                one_sided: false,
+            }],
             &mut Meter::default(),
         )
         .unwrap();
         assert_near(&certified(&critical), &[[0.3, 0.6]]);
         // As a zero of (f, f_t) it is not simple: a box, not a zero, and
         // the point is in it.
-        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert!(certified(&turning).is_empty());
         assert_eq!(turning.zeros.len(), 1, "{:?}", turning.zeros);
         assert!(turning.zeros[0].holds([0.3, 0.6], [0.0, 0.0]));
@@ -1187,10 +1291,11 @@ mod tests {
             common_zeros(
                 [&lifted.du(), &lifted.dv()],
                 [1e-15; 2],
-                Some(Gate {
+                &[Gate {
                     poly: &lifted,
                     floor,
-                }),
+                    one_sided: false,
+                }],
                 &mut Meter::default(),
             )
             .unwrap()
@@ -1207,14 +1312,14 @@ mod tests {
         let one = Poly2::outer(&[1.0; 3], &[1.0; 3]);
         let bowl = Poly2::combine(&[(1.0, &one), (1.0, &t.mul(&t, &b))]);
         let f = linear(-0.3, 1.0, 0.0).mul(&bowl, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], None, &mut Meter::default());
+        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default());
         assert!(
             matches!(found, Err(Halt::Fault(Continuum { .. }))),
             "{found:?}"
         );
         // The zero polynomial is flat at once: one box, the square.
         let zero = Poly2::outer(&[0.0; 3], &[0.0; 3]);
-        let found = common_zeros([&zero, &f], [1e-15; 2], None, &mut Meter::default()).unwrap();
+        let found = common_zeros([&zero, &f], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_eq!(found.zeros.len(), 1);
         assert!(!found.zeros[0].certified);
         assert_eq!(found.boxes, 1);

@@ -15,6 +15,7 @@ use crate::conic2::{Conic2, ConicMeet, conic_pair, trig2_roots};
 use crate::implicit::{BERNSTEIN_ROUNDING, Implicit};
 use crate::intersect::line_angle;
 use crate::intersect_spline::spline_surface;
+use crate::nurbs::line_nurbs;
 use crate::project::ellipse_distance;
 use crate::{Curve, CurveKind, GeomError, GeomKind, Surface};
 
@@ -59,9 +60,10 @@ pub enum CurveSurfaceIntersection {
 /// The intersection of a curve and a surface, by the case table: every
 /// pair with a closed form is computed exactly, a conic against a torus
 /// and a NURBS curve against every analytic surface go through the
-/// surface's implicit polynomial (ADR-0018), and a NURBS surface is the
-/// one explicit [`GeomError::Unsupported`] arm — no wildcard, no
-/// marcher.
+/// surface's implicit polynomial (ADR-0018), a line against a NURBS
+/// surface goes through the surface's Bézier patches, and a conic or a
+/// NURBS curve against a NURBS surface is the one explicit
+/// [`GeomError::Unsupported`] arm — no wildcard, no marcher.
 ///
 /// Guarantees: hits are sorted by `t`, each `t` is in the curve's domain,
 /// each hit's `uv` is the surface's own projection of the point — but at
@@ -160,8 +162,23 @@ pub enum CurveSurfaceIntersection {
 /// and not `tangent`: a section edge ending on a face, not a graze. A
 /// closed curve that is not periodic reads its two ends as one parameter,
 /// the start, so a hit at the join is one hit there.
-/// Any curve against a **NURBS surface** is `Unsupported`, the one arm
-/// of the table without a form.
+/// A **line against a NURBS surface** is two planes through the line:
+/// on each Bézier patch of the surface the line's two offsets from them,
+/// over the homogeneous net, are two polynomials in Bernstein form whose
+/// common zeros — isolated by subdivision and certified one by one by the
+/// Krawczyk test — are where the line meets the patch. What is decided is
+/// decided on the distance along the line, as above: a meeting whose
+/// extremum of the distance beside it is within `tol.linear` is one
+/// `tangent` hit at that extremum, absorbing the meetings either side of
+/// it; a line that passes the surface within `tol.linear` without meeting
+/// it touches it at a critical point of its distance from the surface;
+/// a pole of the net the line passes within `tol.linear` is a hit at the
+/// pole's own parameters, `u` at the start of its knots, where the line
+/// goes through it; a meeting on a knot line or a seam is one hit; and
+/// `Coincident` is a line parallel within `tol.angular` to a direction
+/// the surface does not curve along, within `tol.linear` of it across the
+/// whole control net — a ruling. A conic or a NURBS curve against a NURBS
+/// surface is `Unsupported`, the one arm of the table without a form.
 ///
 /// ```
 /// use arris_geom::{Curve, CurveSurfaceIntersection, Surface, intersect_curve_surface};
@@ -359,11 +376,15 @@ pub fn intersect_curve_surface(
             | Surface::Sphere { .. }
             | Surface::Torus { .. },
         ) => spline_surface(curve, spline, surface, tol, meter),
-        (Curve::Line { .. } | Curve::Circle { .. } | Curve::Ellipse { .. }, Surface::Nurbs(_))
-        | (Curve::Nurbs(_), Surface::Nurbs(_)) => Err(GeomError::Unsupported {
-            a: GeomKind::Curve(curve.kind()),
-            b: GeomKind::Surface(surface.kind()),
-        }),
+        (Curve::Line { origin, direction }, Surface::Nurbs(nurbs)) => {
+            line_nurbs(curve, *origin, direction.into_inner(), nurbs, tol, meter)
+        }
+        (Curve::Circle { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_), Surface::Nurbs(_)) => {
+            Err(GeomError::Unsupported {
+                a: GeomKind::Curve(curve.kind()),
+                b: GeomKind::Surface(surface.kind()),
+            })
+        }
     }
 }
 

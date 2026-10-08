@@ -61,7 +61,12 @@ knots (flat, as a curve's: each written as often as it repeats),
 control net (a row per control point of `u`) and weights, so both
 parameters are the recipe's. It is evaluated at parameters and points are
 projected onto it, by `GeomAPI_ProjectPointOnSurf`, whose lowest distance
-is the nearest point; it is not paired.
+is the nearest point; it is paired with a line only, through
+`GeomAPI_IntCS` below — `points` as for a NURBS curve, or `coincident`
+where the intersector reports a segment of the line on the surface. A
+line along a ruling comes back as a cloud of points along it rather
+than a segment, which the oracle test holds to the line Arris calls
+`Coincident`.
 
 A `nurbs` curve is a `Geom_BSplineCurve` of the recipe's degree, knots
 (flat: each written as often as it repeats), Cartesian control points and
@@ -528,12 +533,23 @@ def intersect_curve_surface(name_c: str, kind_c: str, curve, name_s: str, kind_s
     # reports a curve *lying on* the surface as a cloud of points rather
     # than a segment, so a fixture asks it only where the two cross or
     # touch — a conic on one of those two is pinned in the Rust tests.
-    general = kind_c == "nurbs" or kind_s == "elliptic_cylinder" or (kind_c != "line" and kind_s == "torus")
+    general = (
+        kind_c == "nurbs"
+        or kind_s in ("elliptic_cylinder", "nurbs")
+        or (kind_c != "line" and kind_s == "torus")
+    )
     if general:
+        if kind_s == "nurbs" and kind_c != "line":
+            raise OracleError(f"{name_c} vs {name_s}: a nurbs surface is paired with a line only")
         r = GeomAPI_IntCS(curve, surface)
         if not r.IsDone():
             raise OracleError(f"{name_c} vs {name_s}: GeomAPI_IntCS not done")
         if r.NbSegments() != 0:
+            # A line along a ruling of a NURBS surface: the intersector
+            # reports the stretch on it as a segment.
+            if kind_s == "nurbs":
+                out["type"] = "coincident"
+                return out
             raise OracleError(f"{name_c} vs {name_s}: a segment of the curve on the surface")
         out["type"] = "points"
         found = []

@@ -605,10 +605,12 @@ by ±π as the node's order decided it by curvature: `+π` round a spike when
 the leaving curve bends right of the arriving one walked back, never by
 rounding. Each piece is classified at `region2::interior_point`
 carried to 3D by `classify_point` against the other operand, and the
-table decides. A ray has no closed form against a NURBS face, so a piece
-whose ray reaches one is `OpError::Unsupported` naming the piece's face
-and the first NURBS face of the other operand — the face the ray met —
-the NURBS cycle's refusal, never an internal fault (ADR-0026 §5):
+table decides. A ray crosses a NURBS face as it crosses an analytic one
+(data-model §Curves, a line against a `Nurbs` surface); were a piece's
+ray to reach a pair the table has no form for, it would be
+`OpError::Unsupported` naming the piece's face and the first NURBS face
+of the other operand, the NURBS cycle's refusal, never an internal fault
+(ADR-0026 §5):
 
 | Piece of | `fuse` | `common` | `cut` |
 |---|---|---|---|
@@ -1140,7 +1142,7 @@ involved, so the message a consumer shows — or the agent reads — says
 | Variant | When | Carries |
 |---|---|---|
 | `InvalidInput` | an input body fails the checker (checked in debug builds before the operation starts, and in release when the `paranoid` feature is on) | `Body`, the `Report` |
-| `Unsupported` | the exhaustive dispatch reached a surface or curve pair the kernel has no formula for yet — a boolean's face pair with a NURBS face in it, a piece whose classifying ray reaches a NURBS face, a tangent contact or an `On` piece that neither the curvature rule nor the transversal rule decides, a blend's face pair outside its table or the face across a blend's end | the two `GeomKind`s with their entities |
+| `Unsupported` | the exhaustive dispatch reached a surface or curve pair the kernel has no formula for yet — a boolean's face pair with a NURBS face in it, a tangent contact or an `On` piece that neither the curvature rule nor the transversal rule decides, a blend's face pair outside its table or the face across a blend's end | the two `GeomKind`s with their entities |
 | `Degenerate` | the requested result has no valid representation: a parameter that makes no geometry (`InputReason::NonFinite`, `InputReason::NotPositive` naming it — a zero radius, a box whose `min` is not below its `max`, a revolve angle at or below zero, a zero extrude direction; `SweepReason::AngleAboveTurn` past `2π`), a zero-thickness intersection or an extrude of zero length (`InputReason::ZeroThickness`), a revolve whose axis is off the profile's plane (`SweepReason::AxisNotInProfilePlane`), whose profile crosses its axis (`SweepReason::ProfileCrossesAxis`) or lies within the tolerance of it everywhere (`InputReason::ZeroThickness`), or whose arc's circle crosses it (`SweepReason::SpindleTorus`), or whose profile has an elliptic segment (`SweepReason::EllipticRevolve` naming the loop and segment, ADR-0014); an extrude off its plane's normal (`SweepReason::DirectionNotNormal`); a boolean that selects no material (`BooleanReason::Empty`: a target inside its tool, a `common` of disjoint operands); a `cut_many` with no tool or a `fuse_many` of fewer than two bodies (`BooleanReason::NoTools`) and a body twice among a boolean's operands (`BooleanReason::RepeatedOperand`, naming it, ADR-0050 §8); result shells that would touch along an edge or at a vertex, a shell that would touch itself at a vertex whose faces close into more than one fan — a wall pinched at a singular point of a section — or a full revolve touching its axis at a vertex with no segment along it (`InputReason::NonManifold`, naming the shared edges or vertices, none for a sweep); faces touching along a curve interior to both result faces (`BooleanReason::TangentContact`); a section passing a face's apex or pole without running through it, nearer than the face's (u, v) polygons resolve (`BooleanReason::BesideSingularity`, naming the two faces and the vertex, ADR-0021); a blend asked for no edges (`BlendReason::NoEdges`), for an edge twice (`BlendReason::RepeatedEdge`) or for an edge of another body (`BlendReason::EdgeNotInBody`), one that leaves its face, outruns a corner edge or a seam, or around a closed edge would need a torus that is not a ring torus or a contact reaching the axis (`BlendReason::TooLarge`), one at a tangent dihedral or ending on a tangent corner edge (`BlendReason::TangentChain`), or one at a corner the closed forms do not cover (`BlendReason::VertexBlend`, ADR-0007); an offset of no faces, of a face twice or of another body's face (`OffsetReason::NoFaces`, `RepeatedFace`, `FaceNotInBody`), one that makes an edge or face vanish or turn inside out (`Vanishes`) or splits a vertex into an edge (`VertexSplits`), moves a face with no exact offset of its kind (`NoExactOffset`) or drives a surface through zero (`SurfaceCollapses`), pulls a dragged face clear of a fixed neighbour (`Gap`), or builds a body whose faces run into each other (`SelfIntersects`, found by the checker's global level), ADR-0048 §3, §6, §7; a query on a body that is not a `Solid` (`InputReason::NotSolid`); a projection handed a face, shell or body (`QueryReason::NotProjectable`), a degenerate edge (`QueryReason::DegenerateEdge`), or a curve that projects to a point or a segment (`QueryReason::ProjectionCollapses`); `face_frame` on a curved face (`QueryReason::NotPlanar`); `frame_at` at a `(u, v)` outside the face's domain (`QueryReason::OutOfDomain`) or at a singular one with no normal (`QueryReason::Singular`) | the entities (none for a primitive or a sweep) and a `Reason`, grouped by the operation that raises it: `Input` (`NonFinite`, `NotPositive`, `ZeroThickness`, `NonManifold`, `NotSolid`), `Sweep`, `Boolean`, `Blend`, `Offset` and `Query`, each its own enum. `Reason::name()` is the leaf's stable name (`BlendTooLarge`), which the refusal histograms key on; `Display` is the leaf's own message |
 | `Profile` | a sweep's sketch is not a valid profile: `Profile::edges` refused it (data-model §Profiles). An invalid profile has no entities to name, so it is neither `InvalidInput` nor `Degenerate` | the `ProfileError`, naming the loop and segment |
 | `Degenerate` (`SplitReason::NoCrossing`) | a split's plane misses the body or only touches it along a face, an edge or a vertex, so one side would be empty; the body is named | the body |
@@ -1240,8 +1242,9 @@ tolerances; only a point that is on nothing is cast for, and then the
 eight fixed directions are tried in order, a direction abandoned on a
 boundary, tangent or coincident hit, with all eight abandoned reported as
 `ClassifyError::Undecided` naming the body and the point. A ray meets
-every analytic surface by closed form (ADR-0008), so only a NURBS face is
-`ClassifyError::Geometry`; a hit at a cone's apex or a sphere's pole lands
+every analytic surface by closed form (ADR-0008) and a NURBS one through
+its Bézier patches (data-model §Curves), so `ClassifyError::Geometry` is
+only a stop or a degenerate operand; a hit at a cone's apex or a sphere's pole lands
 on that face's degenerate edge, a boundary like any other, and abandons
 its direction. B1 is the same
 code over one shell's faces — `Checker::shell_classifier` and `nesting`

@@ -16,9 +16,12 @@ has no exact section of, and coplanar conic pairs with an ellipse among
 them, in that pose),
 `c3-nurbs-hits` (NURBS curves against every analytic surface the grammar
 has, in that pose), `c3-nurbs-crossings` (the same curves against
-lines, circles and ellipses, in that pose) and `c4-nurbs-projections`
+lines, circles and ellipses, in that pose), `c4-nurbs-projections`
 (points projected onto free-form NURBS surfaces with no closed form, in
-that pose). Plain Python, no Open CASCADE: the coordinates
+that pose), `c4-closed-curve-hits` (a closed B-spline met at its join)
+and `c8-line-nurbs-hits` (lines against NURBS surfaces: crossings on and
+off knot lines, a pole, a graze, a ruling and a miss, in that pose).
+Plain Python, no Open CASCADE: the coordinates
 are the closed forms of `docs/DATA-MODEL.md` §Geometry written out in
 world space at full precision, so both sides read identical numbers.
 Rerun after editing, then `tools/oracle/expected.py` on each directory.
@@ -1148,6 +1151,130 @@ def c4_closed_curve_hits():
     }
 
 
+# --- c8-line-nurbs-hits ----------------------------------------------------------------
+
+
+def nurbs_surface_point(spec, u, v):
+    """A `nurbs` surface spec's point at `(u, v)`: de Boor on the
+    homogeneous net along `v` in every row of control points, then along
+    `u` (*The NURBS Book* A4.3)."""
+    p, q = spec["degree"]
+    ku, kv = spec["knots"]
+
+    def boor(degree, knots, points, t):
+        n = len(points)
+        k = max(i for i in range(degree, n) if knots[i] <= t)
+        d = [list(x) for x in points[k - degree : k + 1]]
+        for r in range(1, degree + 1):
+            for j in range(degree, r - 1, -1):
+                i = k - degree + j
+                alpha = (t - knots[i]) / (knots[i + degree + 1 - r] - knots[i])
+                d[j] = [(1.0 - alpha) * x + alpha * y for x, y in zip(d[j - 1], d[j])]
+        return d[degree]
+
+    rows = [
+        boor(q, kv, [mul(w, pt) + [w] for pt, w in zip(row, weights)], v)
+        for row, weights in zip(spec["control_points"], spec["weights"])
+    ]
+    h = boor(p, ku, rows, u)
+    return mul(1.0 / h[3], h[:3])
+
+
+def c8_line_nurbs_hits():
+    """Lines against free-form and rational NURBS surfaces (plan ray-fire
+    step 1): transversal crossings of a bicubic of four spans, one of them
+    on a knot line, one on the other and one where the two meet; an
+    octant of a sphere as a rational biquadratic, crossed inside, through
+    its pole along the axis, and grazed; a quadratic profile extruded,
+    with a line along one of its rulings; and a line one tolerance clear
+    of the bicubic's crest, which misses it. Every line is drawn through
+    a point of the surface it is paired with, at parameters committed
+    here, so the hits are where they were put."""
+    f = POSES["tilt"]
+
+    def net(rows):
+        return [[f.to_world(p) for p in row] for row in rows]
+
+    # A bicubic over two spans each way: z a saddle with a tilt, on a 5 x 5
+    # grid, so the knot lines u = 1 and v = 1 run through its middle.
+    grid = [0.0, 1.0, 2.0, 3.0, 4.0]
+    knots = [0.0] * 4 + [1.0] + [2.0] * 4
+    hills = {
+        "type": "nurbs",
+        "degree": [3, 3],
+        "knots": [knots, knots],
+        "control_points": net([[[x, y, 0.3 * (x - 2.0) * (y - 2.0) + 0.1 * x] for y in grid] for x in grid]),
+        "weights": [[1.0] * 5 for _ in grid],
+    }
+    # An octant of a sphere of radius 2 about the pose's origin: a quarter
+    # circle in u times a quarter meridian in v, the row v = 1 the pole.
+    r = 2.0
+    s2 = math.sqrt(0.5)
+    arc = [(1.0, 0.0, 1.0), (1.0, 1.0, s2), (0.0, 1.0, 1.0)]
+    octant = {
+        "type": "nurbs",
+        "degree": [2, 2],
+        "knots": [[0.0] * 3 + [1.0] * 3, [0.0] * 3 + [1.0] * 3],
+        "control_points": net([[[r * x * a, r * y * a, r * b] for a, b, _ in arc] for x, y, _ in arc]),
+        "weights": [[wu * wv for _, _, wv in arc] for _, _, wu in arc],
+    }
+    # A quadratic profile in (x, z) swept straight along y: a ruled surface,
+    # each of its rulings a line along y.
+    profile = [[-2.0, 0.0], [0.0, 2.0], [2.0, 0.5]]
+    trough = {
+        "type": "nurbs",
+        "degree": [2, 1],
+        "knots": [[0.0] * 3 + [1.0] * 3, [0.0, 0.0, 1.0, 1.0]],
+        "control_points": net([[[x, y, z] for y in (-3.0, 3.0)] for x, z in profile]),
+        "weights": [[1.0, 1.0] for _ in profile],
+    }
+    surfaces = {"hills": hills, "octant": octant, "trough": trough}
+    curves = {}
+
+    def through(name, spec, uv, direction, back=4.0):
+        p = nurbs_surface_point(spec, *uv)
+        d = unit(f.vec(direction))
+        curves[name] = {"type": "line", "origin": sub(p, mul(back, d)), "direction": d}
+
+    # The bicubic's normal at (u, v) is about (−∂z/∂x, −∂z/∂y, 1) in the
+    # pose's frame; each line leans off it so it crosses at an angle.
+    through("hills_inside", hills, (0.6, 1.4), [0.2, -0.1, 1.0])
+    through("hills_on_u_knot", hills, (1.0, 0.4), [0.3, 0.2, 1.0])
+    through("hills_on_v_knot", hills, (1.6, 1.0), [-0.2, 0.3, 1.0])
+    through("hills_on_both_knots", hills, (1.0, 1.0), [0.25, -0.15, 1.0])
+    through("octant_inside", octant, (0.4, 0.3), [-0.6, -0.5, -0.4])
+    # Along the axis through the pole, from outside.
+    curves["octant_pole"] = {"type": "line", "origin": f.to_world([0.0, 0.0, 4.0]), "direction": unit(f.vec([0.0, 0.0, -1.0]))}
+    # Tangent at the point at (0.5, 0.5): along its parallel, which is
+    # perpendicular to the radius there.
+    graze_at = nurbs_surface_point(octant, 0.5, 0.5)
+    radial = unit(sub(graze_at, f.origin))
+    along = unit(cross(f.z, radial))
+    curves["octant_graze"] = {"type": "line", "origin": sub(graze_at, mul(3.0, along)), "direction": along}
+    # Along the trough's ruling at u = 0.3.
+    ruling = nurbs_surface_point(trough, 0.3, 0.0)
+    curves["trough_ruling"] = {"type": "line", "origin": sub(ruling, mul(2.0, f.vec([0.0, 1.0, 0.0]))), "direction": unit(f.vec([0.0, 1.0, 0.0]))}
+    # Along the ruling on the trough's crest, two default tolerances (1e-7
+    # each) above it along the normal there: a miss. The profile's height
+    # is z(u) = 4u − 3.5u², greatest at u = 4/7, where its normal is z.
+    crest = nurbs_surface_point(trough, 4.0 / 7.0, 0.0)
+    curves["trough_clear"] = {"type": "line", "origin": add(sub(crest, mul(2.0, f.vec([0.0, 1.0, 0.0]))), mul(2e-7, f.vec([0.0, 0.0, 1.0]))), "direction": unit(f.vec([0.0, 1.0, 0.0]))}
+    pairs = [{"a": c, "b": c.split("_")[0]} for c in curves]
+    samples = [
+        {"of": "hills", "params": [[0.6, 1.4], [1.0, 1.0], [2.0, 2.0]], "points": []},
+        {"of": "octant", "params": [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]], "points": []},
+        {"of": "trough", "params": [[0.3, 0.0], [0.5, 1.0]], "points": []},
+    ]
+    return {
+        "kind": "geometry",
+        "description": "Lines against NURBS surfaces in the tilt pose (plan ray-fire step 1): a bicubic of two spans each way crossed inside, on its knot line u = 1, on v = 1 and where the two meet; an octant of a sphere as a rational biquadratic crossed inside, along its axis through its pole and grazed along a parallel; a quadratic profile extruded along y, met along one of its rulings, and passed by a line two tolerances above its crest — through Open CASCADE's general curve-surface intersector, GeomAPI_IntCS; written by generate.py",
+        "surfaces": surfaces,
+        "curves": curves,
+        "samples": samples,
+        "pairs": pairs,
+    }
+
+
 def write(name, recipe):
     directory = HERE / name
     directory.mkdir(exist_ok=True)
@@ -1168,3 +1295,4 @@ if __name__ == "__main__":
     write("c3-nurbs-crossings", c3_nurbs_crossings())
     write("c4-nurbs-projections", c4_nurbs_projections())
     write("c4-closed-curve-hits", c4_closed_curve_hits())
+    write("c8-line-nurbs-hits", c8_line_nurbs_hits())

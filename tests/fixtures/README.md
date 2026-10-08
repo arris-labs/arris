@@ -36,7 +36,9 @@ committed `expected.json` and round-trips each result through STEP.
 The corpus **runner** (`arris_debug::corpus::run(dir, variant)`, one
 `#[test]` per fixture in `crates/arris/tests/corpus.rs`) is the fixture
 test itself: it builds the recipe in Arris, runs the checker at `Full`
-(nothing violated, nothing undecided), compares counts — `solids` as the
+(nothing violated, nothing undecided but the face pairs with a NURBS
+face in them, which the surface intersector has no form for — an
+operand read from a file of B-splines), compares counts — `solids` as the
 result's lumps, `arris_check::lumps` — and genus against
 `expected.json`, writes STEP under `target/inspect/`, parses it back as
 Part 21 (`arris_io::step::part21`, every instance the writer defined kept
@@ -398,7 +400,7 @@ oracle's sampled points on Arris's curves to 1e-9.
 | `circle` | `origin`, `z`, `x`, `radius` |
 | `ellipse` | `origin`, `z`, `x` (the major axis), `major_radius`, `minor_radius` |
 | `nurbs` (curve) | `degree`, `knots` (flat: each as often as it repeats), `control_points` (Cartesian), `weights` |
-| `nurbs` (surface) | `degree` (`[p, q]`), `knots` (`[u, v]`, flat), `control_points` (a row per control point of `u`, each row a point per control point of `v`, Cartesian), `weights` (the same shape). Evaluated and projected onto (`GeomAPI_ProjectPointOnSurf`); never paired |
+| `nurbs` (surface) | `degree` (`[p, q]`), `knots` (`[u, v]`, flat), `control_points` (a row per control point of `u`, each row a point per control point of `v`, Cartesian), `weights` (the same shape). Evaluated and projected onto (`GeomAPI_ProjectPointOnSurf`); paired with a line only (`GeomAPI_IntCS`) |
 
 - A frame is `origin`, `z`, `x` as `Frame::new` and `gp_Ax3` build it: `x`
   made perpendicular to `z`, both normalised, `y = z × x`. Numbers may be
@@ -458,6 +460,16 @@ oracle's sampled points on Arris's curves to 1e-9.
   stops short of: its distance was above the true minimum by up to 2.4e-4
   off the saddle's edge, the bump's corner and the fold's edge, and those
   are held to a grid instead.
+  `c8-line-nurbs-hits` (lines against NURBS surfaces: a bicubic of two
+  spans each way crossed inside, on its knot line `u = 1`, on `v = 1`
+  and where the two meet; an octant of a sphere as a rational
+  biquadratic crossed inside, along its axis through its pole and grazed
+  along a parallel; a quadratic profile extruded, met along a ruling, and
+  passed by a line two tolerances above its crest) is answered by
+  `GeomAPI_IntCS` too, which reports the line along the ruling as a cloud
+  of points on it and no segment: the oracle test holds each to the line
+  Arris calls `Coincident`, as it holds a cone's ruling, and pins every
+  pair's count, touches and `Coincident` by name.
   `c4-closed-curve-hits` is a clamped closed cubic B-spline, its ends one
   point, against a plane and a cylinder through that join and a plane
   clear of it: the join is one hit, at the start parameter, as Open

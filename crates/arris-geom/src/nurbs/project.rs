@@ -30,7 +30,7 @@ use crate::{AmbiguousLocus, GeomError, GeomKind, SurfaceKind, SurfaceProjection}
 /// How many times the rounding of the coordinates a minimum is located to:
 /// a Newton iteration on noisy evaluations stops a few units of it short of
 /// an end of the domain or a pole, more the farther the query is.
-const LOCATION: f64 = 8.0;
+pub(super) const LOCATION: f64 = 8.0;
 
 /// A patch is a leaf, handed to Newton's iteration, once the diagonal of
 /// its control net's box is at most this fraction of the whole surface's.
@@ -75,16 +75,16 @@ const MAX_BACKTRACKS: usize = 40;
 /// One Bézier patch, in homogeneous coordinates `(w·P, w)`, over a box of
 /// the surface's parameters.
 #[derive(Clone)]
-struct Patch {
-    u: [f64; 2],
-    v: [f64; 2],
+pub(super) struct Patch {
+    pub(super) u: [f64; 2],
+    pub(super) v: [f64; 2],
     /// The knot span's box the patch is inside: the polynomial piece of the
     /// surface it belongs to.
     span: [[f64; 2]; 2],
     /// `[p, q]`.
-    degree: [usize; 2],
+    pub(super) degree: [usize; 2],
     /// Row-major over `u`: `(a, b)` is `net[a * (q + 1) + b]`.
-    net: Vec<Vector4<f64>>,
+    pub(super) net: Vec<Vector4<f64>>,
     depth: usize,
 }
 
@@ -318,7 +318,7 @@ impl NurbsSurface {
     /// spans, in row-major order over `u`. Unclamped knots are read as they
     /// are — a periodic direction's patches are the ones inside its
     /// domain.
-    fn patches(&self) -> Vec<Patch> {
+    pub(super) fn patches(&self) -> Vec<Patch> {
         let [p, q] = self.degree();
         let [n, m] = self.counts();
         let [ku, kv] = self.knots();

@@ -8,6 +8,19 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_geom::intersect_curve_surface` answers a line against a NURBS
+  surface: the crossings on the surface to rounding, one `tangent` hit
+  where the line grazes it within the linear tolerance, a hit at a pole
+  the line goes through, one hit for a crossing on a knot line or a seam,
+  and `Coincident` for a line along a ruling. A circle, an ellipse or a
+  NURBS curve against a NURBS surface is still `GeomError::Unsupported`.
+  So `arris_check::classify` and the checker's shell nesting now decide
+  points and voids in bodies with NURBS faces, where they used to refuse,
+  and a boolean whose operand has NURBS faces no longer refuses unless a
+  NURBS face meets a face of the other operand: a cavity cut into a body
+  read from a file of B-splines, or a box cut and drills through NIST
+  FTC-07 and FTC-10, now build.
+
 ## 0.6.0 — 2026-10-08
 
 - `arris_mesh::tessellate_faces(model, body, faces, request, control)`

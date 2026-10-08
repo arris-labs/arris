@@ -573,11 +573,13 @@ fn implicit_signed(s: &Surface, p: Point3) -> f64 {
 
 // --- the rest of the table --------------------------------------------------
 
-/// A NURBS surface is the only arm left without a form: every analytic
-/// pair answers, a conic against a torus among them, and every curve
-/// against a `Surface::Nurbs` is `Unsupported` naming both operands.
+/// A NURBS surface is the only arm left without a form for every curve
+/// but a line: every analytic pair answers, a conic against a torus among
+/// them, a line answers against a `Surface::Nurbs` (`tests/line_nurbs.rs`
+/// holds what it answers), and every other curve against one is
+/// `Unsupported` naming both operands.
 #[test]
-fn only_a_nurbs_surface_is_unsupported() {
+fn only_a_curve_but_a_line_against_a_nurbs_surface_is_unsupported() {
     check(
         (curve(), surface(), nurbs_curve(), nurbs_surface()),
         |(c, s, nc, ns)| {
@@ -588,13 +590,19 @@ fn only_a_nurbs_surface_is_unsupported() {
                     Ok(_) => {}
                     other => return fail(format!("{curve:?} vs {s:?}: {other:?}")),
                 }
-                match intersect_curve_surface(curve, &ns, tol(), &mut arris_math::Meter::default())
-                {
-                    Err(GeomError::Unsupported { a, b }) => {
+                match (
+                    curve,
+                    intersect_curve_surface(curve, &ns, tol(), &mut arris_math::Meter::default()),
+                ) {
+                    (Curve::Line { .. }, Ok(_)) => {}
+                    (
+                        Curve::Circle { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_),
+                        Err(GeomError::Unsupported { a, b }),
+                    ) => {
                         prop_assert_eq!(a, GeomKind::Curve(curve.kind()));
                         prop_assert_eq!(b, GeomKind::Surface(SurfaceKind::Nurbs));
                     }
-                    other => return fail(format!("{curve:?} vs a NURBS surface: {other:?}")),
+                    (_, other) => return fail(format!("{curve:?} vs a NURBS surface: {other:?}")),
                 }
             }
             Ok(())

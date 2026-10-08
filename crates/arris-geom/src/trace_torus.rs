@@ -371,7 +371,7 @@ impl<'a> PatchedSection<'a> {
             // A derivative's coefficient is the degree times a difference
             // of two of `f`'s.
             let floors = [self.floor, 2.0 * n as f64 * self.floor];
-            common_zeros([&patch.f, &f_t], floors, None, meter)
+            common_zeros([&patch.f, &f_t], floors, &[], meter)
         })
     }
 
@@ -405,8 +405,9 @@ impl<'a> PatchedSection<'a> {
             let gate = Gate {
                 poly: f,
                 floor: self.near,
+                one_sided: false,
             };
-            common_zeros([&g_s, &g_t], floors, Some(gate), meter)
+            common_zeros([&g_s, &g_t], floors, &[gate], meter)
         })
     }
 

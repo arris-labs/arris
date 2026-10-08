@@ -205,7 +205,10 @@ curves: `IntAna_NoGeometricSolution`), with every result curve sampled
 (five points along a line, eight around a closed curve); a curve–surface
 pair's is `coincident` or `points`, hits ascending by the conic
 parameter, plus `dropped` when the intersector reported a point that
-lies on neither operand; a curve–curve pair's is `points`, each hit
+lies on neither operand — a line against a `nurbs` surface goes through
+`GeomAPI_IntCS`, and is `coincident` where it reports a segment of the
+line on the surface, though a ruling comes back as points along it; a
+curve–curve pair's is `points`, each hit
 carrying the second curve's parameter as `tb` beside the first's `t`. `IntAna_QuadQuadGeo` has one overload per
 unordered kind pair, in its own operand order and with its own tolerance
 signature (an angle and a distance, a distance, or none);

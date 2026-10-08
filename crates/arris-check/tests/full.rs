@@ -1100,12 +1100,13 @@ fn b1_an_outer_shell_inside_another() {
     );
 }
 
-/// B1: a void inside the B-spline probe box. No ray has a closed form
-/// against its NURBS face, so where the void lies is not known: an
-/// unchecked row, never a pass and never a violation, and `lumps` says
-/// the same.
+/// B1: a void inside the B-spline probe box. A ray crosses its NURBS
+/// face as it crosses a plane, so the void is placed inside the probe:
+/// no B1 row is left unchecked, and `lumps` is the one lump. The NURBS
+/// face against the probe's planes is still S5's to leave unchecked: the
+/// surface intersector has no form for the pair.
 #[test]
-fn b1_a_shell_no_ray_classifies_is_unchecked() {
+fn b1_a_void_in_a_nurbs_probe_is_placed_by_its_rays() {
     let mut m = Model::default();
     let probe =
         sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap();
@@ -1115,10 +1116,16 @@ fn b1_a_shell_no_ray_classifies_is_unchecked() {
     let report = check(&m, body, Level::Full);
     assert!(report.is_ok(), "{report}");
     assert!(
-        report.unchecked().iter().any(|u| u.code() == "B1"),
+        report.unchecked().iter().all(|u| u.code() == "S5"),
         "{report}"
     );
-    assert!(matches!(lumps(&m, body), Err(LumpError::Undecided { .. })));
+    let found = lumps(&m, body).unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].outer.id, outer);
+    assert_eq!(
+        found[0].voids.iter().map(|s| s.id).collect::<Vec<_>>(),
+        vec![void]
+    );
 }
 
 /// `lumps` of what is not a solid, and of a solid B1 faults, is the

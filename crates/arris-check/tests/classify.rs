@@ -5,7 +5,7 @@
 use arris_check::classify::{Classification, Classifier, ClassifyError, classify_point};
 use arris_debug::prop::{DEFAULT_SCALE, check as prop_check, point_in_box, radius};
 use arris_debug::sample;
-use arris_geom::{GeomError, Surface};
+use arris_geom::Surface;
 use arris_math::{Frame, Point2, Point3};
 use arris_topo::{Body, EntityKind, Model};
 use proptest::prelude::*;
@@ -195,14 +195,19 @@ fn a_point_in_a_hole_of_the_frame_is_outside() {
 }
 
 #[test]
-fn a_surface_a_ray_has_no_closed_form_against_is_a_typed_error() {
-    // A NURBS face: far from the box, so the boundary test says nothing
-    // and the ray cast is reached.
+fn a_ray_is_cast_at_a_nurbs_face_as_at_an_analytic_one() {
+    // The box whose bottom face is a bilinear NURBS: far from it, so the
+    // boundary test says nothing and the ray cast is reached; inside it;
+    // and below it, where only the ray up its `z` axis is not abandoned
+    // and it crosses the NURBS bottom and the top.
     let mut n = Model::default();
     let nurbs = sample::cuboid_nurbs(&mut n, Point3::origin(), Point3::new(2.0, 3.0, 4.0)).unwrap();
-    match classify(&n, nurbs, Point3::new(50.0, 1.0, 2.0)) {
-        Err(ClassifyError::Geometry(GeomError::Unsupported { .. })) => {}
-        other => panic!("expected an unsupported ray–NURBS pair, got {other:?}"),
+    for (point, expected) in [
+        (Point3::new(50.0, 1.0, 2.0), Classification::Outside),
+        (Point3::new(1.0, 1.5, 2.0), Classification::Inside),
+        (Point3::new(1.0, 1.5, -1.0), Classification::Outside),
+    ] {
+        assert_eq!(classify(&n, nurbs, point).unwrap(), expected, "{point}");
     }
     // A sphere has a closed form against a ray: its inside and outside
     // are cast for.
