@@ -149,13 +149,21 @@ bound has to be established here.
   from `prop::body` checks that `along` and `near` return exactly the
   faces a brute-force box test finds, in the stated order, the same on
   every run.
-- [ ] Step 4 **[2]** — `Classifier` casts through `FaceTree` (a NURBS
+- [x] Step 4 **[2]** — `Classifier` casts through `FaceTree` (a NURBS
   face is already crossed by step 1's arm, which the classifier
   dispatches through). A property test
   checks the old linear cast and the tree cast agree point for point.
   Fixture: a real-part `classify` probe on a NURBS face of a committed
   NIST part, which used to be `ClassifyError::Geometry` and now has
-  Open CASCADE's class. *The backlog's "NURBS operands in booleans"
+  Open CASCADE's class. *As built, a test (`arris-io/tests/
+  classify_nurbs.rs`, `real_*`) rather than a `build/` fixture: the whole
+  part as a recipe costs 219 s of corpus stages and misses the oracle's
+  mass properties by 3e-7 (a tolerance the recipe would have to widen),
+  while the probes are what the step is about. The classes are
+  `BRepClass3d_SolidClassifier`'s, recorded in the test. The tree cast
+  is held to the linear one by `Classifier::classify_linear`
+  (`#[doc(hidden)]`), where the linear cast decides; the tree also stops
+  a ray that lies in a plane far from its face abandoning a direction.* *The backlog's "NURBS operands in booleans"
   line was narrowed to the face–face half in step 1, with the behaviour.*
 - [ ] Step 5 **[2]** — The `query` fixture kind: `kind_of`, the recipe
   loader, `expected.py`'s ray answers through

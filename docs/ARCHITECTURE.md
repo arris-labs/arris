@@ -1246,7 +1246,10 @@ every analytic surface by closed form (ADR-0008) and a NURBS one through
 its Bézier patches (data-model §Curves), so `ClassifyError::Geometry` is
 only a stop or a degenerate operand; a hit at a cone's apex or a sphere's pole lands
 on that face's degenerate edge, a boundary like any other, and abandons
-its direction. B1 is the same
+its direction. The ray is tried only against the faces whose boxes it
+enters, through `arris_check::tree::FaceTree` (ADR-0053), so a face the ray
+cannot reach neither costs a surface intersection nor abandons a direction
+by lying in a plane it is far from. B1 is the same
 code over one shell's faces — `Checker::shell_classifier` and `nesting`
 build one `Classifier` per shell rather than one per ray, and a boolean's
 piece selection builds one per operand rather than one per piece it

@@ -16,6 +16,7 @@ use arris_math::{Point3, Precision, Tolerance, UnitVec3, Vec3};
 use arris_topo::{Body, FaceId, Model, NotFound, Orientation, Shape};
 
 use crate::domain::{FaceDomain, boundary_entity};
+use crate::tree::FaceTree;
 
 /// The directions a containment ray is tried in, in order: the axes
 /// first, then directions no two faces of an axis-aligned body share a
@@ -147,6 +148,11 @@ pub struct Classifier<'m> {
     body: Body,
     faces: Vec<FaceId>,
     domains: BTreeMap<FaceId, FaceDomain<'m>>,
+    /// The faces' boxes, which a containment ray is cast through.
+    tree: FaceTree,
+    /// The largest face tolerance: how far behind its origin a ray still
+    /// starts on a face.
+    reach: f64,
 }
 
 impl<'m> Classifier<'m> {
@@ -199,16 +205,28 @@ impl<'m> Classifier<'m> {
     pub(crate) fn over(model: &'m Model, body: Body, faces: Vec<FaceId>) -> Self {
         let precision = model.precision();
         let tolerance = precision.parametric_tolerance;
-        let domains = faces
+        let domains: BTreeMap<FaceId, FaceDomain<'m>> = faces
             .iter()
             .filter_map(|&id| Some((id, FaceDomain::of(model, id, tolerance).ok()?)))
             .collect();
+        let tree = FaceTree::of_boxes(
+            faces
+                .iter()
+                .map(|&id| (id, domains.get(&id).and_then(|d| d.bounds())))
+                .collect(),
+        );
+        let reach = faces
+            .iter()
+            .filter_map(|&id| Some(model.face(id).ok()?.tolerance()))
+            .fold(0.0, f64::max);
         Classifier {
             model,
             precision,
             body,
             faces,
             domains,
+            tree,
+            reach,
         }
     }
 
@@ -256,6 +274,32 @@ impl<'m> Classifier<'m> {
     /// an id that does not resolve, or a ray against a surface with no
     /// closed form.
     pub(crate) fn contains(&self, point: Point3) -> Result<Option<bool>, ClassifyError> {
+        self.cast(point, true)
+    }
+
+    /// [`Classifier::classify`] with the ray tried against every face
+    /// rather than the faces its boxes admit: the answer the hierarchy
+    /// must reproduce wherever both decide. Exists so a property test can
+    /// hold the two together.
+    #[doc(hidden)]
+    pub fn classify_linear(&self, point: Point3) -> Result<Classification, ClassifyError> {
+        if let Some(shape) = self.on(point)? {
+            return Ok(Classification::On(shape));
+        }
+        match self.cast(point, false)? {
+            Some(true) => Ok(Classification::Inside),
+            Some(false) => Ok(Classification::Outside),
+            None => Err(ClassifyError::Undecided {
+                body: self.body,
+                point,
+            }),
+        }
+    }
+
+    /// The parity of the crossings of the first of [`RAY_DIRECTIONS`] that
+    /// is not abandoned; the ray is tried against the faces whose boxes it
+    /// enters when `through_tree`, else against every face.
+    fn cast(&self, point: Point3, through_tree: bool) -> Result<Option<bool>, ClassifyError> {
         let model = self.model;
         let angular = self.precision.angular_tolerance;
         'direction: for d in RAY_DIRECTIONS {
@@ -264,7 +308,19 @@ impl<'m> Classifier<'m> {
                 direction: UnitVec3::new_normalize(Vec3::new(d[0], d[1], d[2])),
             };
             let mut crossings = 0usize;
-            for &id in &self.faces {
+            // A face's hits are counted in `FaceId` order either way, so
+            // the first error or abandoned direction is the same.
+            let mut candidates = if through_tree {
+                self.tree.along(
+                    point,
+                    Vec3::new(d[0], d[1], d[2]),
+                    (-self.reach, f64::INFINITY),
+                )
+            } else {
+                self.faces.clone()
+            };
+            candidates.sort_unstable();
+            for id in candidates {
                 let face = model.face(id)?;
                 let surface = model.surface(face.surface())?;
                 // The ray meets, grazes or lies in the surface by the
