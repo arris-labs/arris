@@ -139,7 +139,7 @@ bound has to be established here.
   lines, seams, rulings and grazes are pinned in `tests/line_nurbs.rs`.
   The classifier's two tests that pinned the NURBS refusal now pin the
   answer.*
-- [ ] Step 2 **[1]** — ADR-0053 (above), with the `⚠ OPEN` answers below
+- [x] Step 2 **[1]** — ADR-0053 (above), with the `⚠ OPEN` answers below
   settled in it.
 - [ ] Step 3 **[2]** — `arris_check::tree::FaceTree`: build, `along`,
   `near`, rustdoc with an example. A property test over random bodies
@@ -222,7 +222,7 @@ bound has to be established here.
 - `AGENTS.md` current state — C8's first slice landed.
 
 ## Open questions
-- ⚠ OPEN: a ray lying in a face (in a plane face, or along a cylinder's
+- ~~⚠ OPEN: a ray lying in a face (in a plane face, or along a cylinder's
   ruling) — refuse it as `QueryReason::RayInFace` naming the face, or
   report the face's entry and exit on its boundary as two hits? *Agent
   decides in ADR-0053 (step 2) after reading what Open CASCADE returns for
@@ -230,11 +230,11 @@ bound has to be established here.
   a NURBS ruling as 83 scattered points of it and no segment, which is
   no answer to build on.) The recommendation is to refuse: a pick ray
   in a face is measure zero, and a silent pair of boundary hits would be
-  a guess about what the consumer meant.*
-- ⚠ OPEN: an edge hit's `normal` — the lowest-id face's, as drafted, or
+  a guess about what the consumer meant.* *Settled in ADR-0053 §4: refuse.*~~
+- ~~⚠ OPEN: an edge hit's `normal` — the lowest-id face's, as drafted, or
   `None` with both faces' normals on request? *Agent decides in ADR-0053
   (step 2). Snapping wants one normal and a section view wants neither,
-  so the draft stands unless the plugin CAD's facade says otherwise.*
+  so the draft stands unless the plugin CAD's facade says otherwise.* *Settled in ADR-0053 §2: the lowest-id face's.*~~
 - ~~⚠ OPEN: whether step 1's subdivision bound holds for a degree-high,
   highly rational surface within the corpus's time budget.~~ *Settled in
   step 1: it holds, and no bound is needed. One release-build Bézier patch
