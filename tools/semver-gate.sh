@@ -54,12 +54,17 @@ last_release() {
 
 base="${1:-$(last_release)}"
 
-# Whether `## Unreleased` lists anything under `### Breaking`.
+# Whether `## Unreleased` lists anything under `### Breaking`. On the tagged
+# release commit itself `/release` has already turned `Unreleased` into the
+# tag's `## X.Y.Z` section, so that section is read too: the same bullets,
+# one commit later.
 announced() {
     [ -f CHANGELOG.md ] || return 1
-    awk '
-        /^## /  { unreleased = ($0 ~ /^## Unreleased/); breaking = 0; next }
-        /^### / { breaking = unreleased && ($0 ~ /^### Breaking/); next }
+    local head_tag
+    head_tag="$(git tag --points-at HEAD --list 'v[0-9]*' | head -n1)"
+    awk -v rel="${head_tag#v}" '
+        /^## /  { open = ($0 ~ /^## Unreleased/) || (rel != "" && index($0, "## " rel " ") == 1); breaking = 0; next }
+        /^### / { breaking = open && ($0 ~ /^### Breaking/); next }
         breaking && /^- / { found = 1 }
         END { exit !found }
     ' CHANGELOG.md
