@@ -164,6 +164,16 @@ but no fixture yet, `fixture` and `excluded` are pinned somewhere that
 fails when the bug moves. Any of these three becomes a fixture and a line
 above when it wants a fix; the block moves or is deleted then.
 
+### curve-surface-hit-off-the-surface-on-a-degenerate-knot-vector
+
+- What: a cubic NURBS curve whose knots collapse into a span about 1e-132 wide, against an analytic surface, reports a hit at `t = 1.61e-132` that lies 4.7e-4 off the surface where the fuzz target allows 1.0e-7.
+- Where: fuzz target `intersect_curve_surface`, the "every hit on both" assertion (`fuzz/src/lib.rs:521`).
+- Seen: Nightly [37595088004](https://github.com/arris-labs/arris/actions/runs/37595088004), commit `b3f3b97`, libFuzzer seed 3482908513 in fork job; the input is `crash-f57f9e6382e9c1e75dfa905d17f7be61c50513e8` in the run's `fuzz-intersect_curve_surface` artifact.
+- Reproduce: `gh run download 37595088004 -n fuzz-intersect_curve_surface -D <dir>`, then `cd fuzz && cargo run --example show -- intersect_curve_surface <dir>/crash-f57f9e63…` (replayed 2026-10-08 on `6b54d09`: two hits at `t` 1.50e-132 and 1.61e-132, `uv` v about 541 and 586, points hundreds of units from the origin).
+- Evidence: knots `[-1.39e-220, 0, 0, 0, 0, 1.6101036930534e-132, …, 1.6101036932584e-132, 392]`, control points of size 1e-44 to 136; every parameter the hits carry is below the knot vector's first real span.
+- State: measured.
+- The fix is: decide whether a knot vector whose interior spans sit below the model's parameter resolution is refused as a degenerate curve (typed error) or normalised before the marcher; then the crash input joins `fuzz/corpus/` and a `regression/` fixture.
+
 ### strip-pcurve-fit-deviates-in-occts-step-of-a-blend
 
 - What: the reader refuses Open CASCADE's STEP of the turned dome's three-rim fillet: `#773 on face #769: fit: the fit still deviates by 2.4383 with 3673 spans, the most it may use`.

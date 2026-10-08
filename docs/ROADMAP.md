@@ -14,7 +14,8 @@ plugin-based CAD cannot start without, ADR-0020's amendment; done
 2026-10-02), then **C6** (the blend network: fillets and chamfers on the
 face pairs real parts ask for; done 2026-10-05), then **C7** (prismatic
 features: shell, offset faces, the multi-tool boolean, split by a plane;
-done 2026-10-07, ADR-0047). An unopened cycle carries
+done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
+ray fire, interference, planar section). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -679,6 +680,45 @@ edge polylines bit for bit as one call, and their union is closed.
 
 ---
 
+## C8 — the query cycle
+
+*Goal: a consumer can ask a body questions without editing it: how far two
+shapes are apart, where a ray first hits, whether two bodies interfere, and
+what a plane cuts out of a body. Chosen by ADR-0020's amendment: the
+plugin-based CAD's recorded ask A6 (measure, precise snapping, clash
+checks, section views) ranks over the histogram, and the real-part
+histogram at C7's close does not outrank it: healing 14 of 38 parts at
+`read`, the NURBS cycle 3 at `box_cut`, `fillet` 2 of 27 fetched. No DIY
+part corpus exists yet to rank by; it is an `/idea` that follows this
+cycle's opening, and its histogram picks the cycle after this one.*
+
+**In:**
+
+- Minimum distance between two entities (point, edge, face, body) with the
+  closest points and the entities they lie on.
+- Ray fire: the first or every hit of a ray on a body, with the face, the
+  parameters and the surface normal.
+- Interference of two bodies: the verdict, and the intersection volume where
+  the operands are solids.
+- Planar section: the wires and faces a plane cuts out of a body, with
+  provenance naming the face each came from.
+- A hierarchy over face boxes, since nothing in the kernel holds one, shared
+  by all four.
+
+**Out:** NURBS–NURBS distance beyond what the existing projection takes
+(the NURBS cycle's); sectioning by a surface other than a plane; drawings,
+dimensions and views (the section returns wires and faces, not a drawing);
+selection UI; healing; the DIY part corpus.
+
+**Accept:** each query a corpus of fixtures with Open CASCADE's answer
+(`BRepExtrema`, `IntCurvesFace`, `BRepAlgoAPI_Section`) within the fixture's
+tolerance, checker green on every returned shape; properties over random
+poses: distance symmetric and zero exactly when the operands touch, a ray's
+hit on both its face and the ray, interference agreeing with the boolean's
+common, a section's wires lying on the plane and the body's surface.
+
+---
+
 ## Beside the cycles
 
 Two lines of work that are not cycles. Neither changes a public type or a
@@ -759,10 +799,6 @@ opens it.
   from shell and offset, which are C7's).
 - **The healing cycle** — healing; sheet and wire bodies in every
   operation.
-- **The query cycle** — distance, clash, ray fire, selection; none of
-  them has its machinery yet, since nothing in the kernel holds a
-  hierarchy over face boxes or fires a ray at a surface outside
-  `classify_point`.
 - **The attribute cycle** — attributes a consumer attaches to entities,
   carried through every operation by declared rules over the split order
   ADR-0009 fixes, for a consumer with no naming scheme of its own
