@@ -1262,7 +1262,7 @@ fn result_of(fixture: &Fixture, chain: &Chain) -> Result<Body, CorpusError> {
 }
 
 /// The checker at `Full` on the result, with nothing left undecided but
-/// what the checker cannot decide on a NURBS face ([`check_leaving_nurbs`]):
+/// what the checker cannot decide on a NURBS face (`check_leaving_nurbs`):
 /// a result with no NURBS face is held to every row, and one with them —
 /// an operand read from a file of B-splines — leaves their face pairs to
 /// the NURBS cycle, as the read-back and the battery do. Returns the

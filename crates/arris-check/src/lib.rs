@@ -20,6 +20,7 @@ mod full;
 mod lumps;
 mod report;
 mod topology;
+pub mod tree;
 mod unchecked;
 mod violation;
 

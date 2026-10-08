@@ -74,7 +74,10 @@ classifier's NURBS refusal too.
   longest axis, with ties broken by `FaceId`. It offers
   `FaceTree::of_body(&Model, Body)`, `along(ray, range)` (the faces whose
   boxes a ray segment enters, in ascending entry order) and `near(&Aabb)`
-  (the faces whose boxes overlap a box, in `FaceId` order). The tree
+  (the faces whose boxes overlap a box, in `FaceId` order). *As built,
+  `along` takes `(origin, direction, range)` since `Ray` is `arris-ops`'s,
+  a face with no box is in every answer, and `of_boxes` builds a tree from
+  boxes a caller already holds.* The tree
   lives beside `classify` because `Classifier` uses it and `check` is
   below `ops` (ADR-0013). `Classifier::contains` casts through the
   tree, and its answers are unchanged.
@@ -141,7 +144,7 @@ bound has to be established here.
   answer.*
 - [x] Step 2 **[1]** — ADR-0053 (above), with the `⚠ OPEN` answers below
   settled in it.
-- [ ] Step 3 **[2]** — `arris_check::tree::FaceTree`: build, `along`,
+- [x] Step 3 **[2]** — `arris_check::tree::FaceTree`: build, `along`,
   `near`, rustdoc with an example. A property test over random bodies
   from `prop::body` checks that `along` and `near` return exactly the
   faces a brute-force box test finds, in the stated order, the same on
