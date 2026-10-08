@@ -8,7 +8,7 @@ members = ["crates/*"]
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.6.0-dev"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
@@ -36,13 +36,13 @@ readme = "README.md"
 # and the dev edges run in every direction (arris-geom tests against
 # arris-topo, arris-ops against arris-io), so no publish order could
 # satisfy them.
-arris-math = { path = "crates/arris-math", version = "=0.6.0-dev", default-features = false }
-arris-geom = { path = "crates/arris-geom", version = "=0.6.0-dev", default-features = false }
-arris-topo = { path = "crates/arris-topo", version = "=0.6.0-dev", default-features = false }
-arris-check = { path = "crates/arris-check", version = "=0.6.0-dev", default-features = false }
-arris-ops = { path = "crates/arris-ops", version = "=0.6.0-dev", default-features = false }
-arris-mesh = { path = "crates/arris-mesh", version = "=0.6.0-dev", default-features = false }
-arris-io = { path = "crates/arris-io", version = "=0.6.0-dev", default-features = false }
+arris-math = { path = "crates/arris-math", version = "=0.6.0", default-features = false }
+arris-geom = { path = "crates/arris-geom", version = "=0.6.0", default-features = false }
+arris-topo = { path = "crates/arris-topo", version = "=0.6.0", default-features = false }
+arris-check = { path = "crates/arris-check", version = "=0.6.0", default-features = false }
+arris-ops = { path = "crates/arris-ops", version = "=0.6.0", default-features = false }
+arris-mesh = { path = "crates/arris-mesh", version = "=0.6.0", default-features = false }
+arris-io = { path = "crates/arris-io", version = "=0.6.0", default-features = false }
 # `arris-debug` is only ever a dev-dependency, so its path-only form lives
 # here rather than at eight use sites. It is also the one crate that stays
 # unpublished (`publish = false`): dev-facing tooling — dump, rasteriser,

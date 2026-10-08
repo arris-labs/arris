@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.6.0 — 2026-10-08
+
 - `arris_mesh::tessellate_faces(model, body, faces, request, control)`
   meshes a subset of a body's faces. Each edge's polyline and each face's
   triangles come out exactly as in the whole body's mesh, position for
