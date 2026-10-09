@@ -165,7 +165,7 @@ bound has to be established here.
   (`#[doc(hidden)]`), where the linear cast decides; the tree also stops
   a ray that lies in a plane far from its face abandoning a direction.* *The backlog's "NURBS operands in booleans"
   line was narrowed to the face–face half in step 1, with the behaviour.*
-- [ ] Step 5 **[2]** — The `query` fixture kind: `kind_of`, the recipe
+- [x] Step 5 **[2]** — The `query` fixture kind: `kind_of`, the recipe
   loader, `expected.py`'s ray answers through
   `IntCurvesFace_ShapeIntersector`, `selftest.py`'s smoke case, the
   corpus lint, and `tests/fixtures/README.md` §Query fixtures. One

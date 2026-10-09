@@ -1859,7 +1859,10 @@ B-Rep).
   has no solid: named analytic surfaces and curves that the oracle
   evaluates, projects onto and intersects, and that
   `crates/arris-geom/tests/oracle.rs` compares Arris against — the
-  parametrisation's ground truth. It is run, never linked; no crate
+  parametrisation's ground truth. A third, `query` (`tests/fixtures/query/`,
+  ADR-0053), is a solid recipe and the questions asked of its result
+  (`arris_debug::query`), answered by the oracle, one kind for every query
+  of the query cycle. It is run, never linked; no crate
   depends on it. The fixture format is `tests/fixtures/README.md`; its
   role is roadmap §Fixtures.
 - **`arris-debug`** is dev-facing: the text dump (`dump_text`), the

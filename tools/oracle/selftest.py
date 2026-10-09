@@ -500,8 +500,50 @@ def check_expr_cases() -> bool:
     return ok
 
 
+# A query recipe against closed forms: a ray through the middle of a box
+# 40 × 30 × 10 enters at the bottom face and leaves at the top one; a ray
+# from inside leaves by the top face only; and a miss has no hits.
+QUERY_SMOKE = {
+    "name": "query: rays at a box, through it, from inside it and past it",
+    "recipe": {
+        "kind": "query",
+        "steps": [{"name": "box", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]}],
+        "result": "box",
+        "queries": [
+            {"label": "through", "ray": {"origin": [20, 15, -5], "direction": [0, 0, 2]}, "hits": "all"},
+            {"label": "inside", "ray": {"origin": [20, 15, 5], "direction": [0, 0, 1]}, "hits": "first"},
+            {"label": "past", "ray": {"origin": [50, 15, -5], "direction": [0, 0, 1]}, "hits": "all"},
+        ],
+    },
+    # (t, point z, face centroid z, outward normal z) per hit, by query.
+    "hits": {
+        "through": [(5.0, 0.0, 0.0, -1.0), (15.0, 10.0, 10.0, 1.0)],
+        "inside": [(5.0, 10.0, 10.0, 1.0)],
+        "past": [],
+    },
+}
+
+
+def check_query_smoke() -> bool:
+    smoke = QUERY_SMOKE
+    print(f"smoke: {smoke['name']}")
+    expected = compute_expected(smoke["recipe"])
+    ok = expected.get("kind") == "query"
+    for q in expected["results"]["default"]["queries"]:
+        want = smoke["hits"][q["label"]]
+        got = [(h["t"], h["point"][2], h["face_centroid"][2], h["normal"][2]) for h in q["hits"]]
+        if len(got) != len(want) or not all(_close(g, w) for g, w in zip(got, want)):
+            print(f"  {q['label']}: hits {got} differ from {want}")
+            ok = False
+        if any(h["state"] != "in" for h in q["hits"]):
+            print(f"  {q['label']}: a hit in a face's middle is not `in`")
+            ok = False
+    return ok
+
+
 def run_smokes(tmp: Path) -> bool:
     ok = check_geometry_smoke()
+    ok &= check_query_smoke()
     ok &= check_expr_cases()
     ok &= check_degenerate_edge_smoke(tmp)
     ok &= check_step_solids_smoke(tmp)
@@ -618,6 +660,8 @@ def main(argv: list[str]) -> int:
                     print(f"  {name}: geometry, no STEP round trip")
                 elif fixture_kind(fixture) == "part":
                     print(f"  {name}: a part, read from its own STEP file; no round trip")
+                elif fixture_kind(fixture) == "query":
+                    print(f"  {name}: queries, answered by the intersector; no STEP round trip")
                 else:
                     ok &= round_trip(name, fixture, fresh, tmp)
             except OracleError as e:

@@ -261,6 +261,7 @@ def probes(fixture: dict, variant: str = "default") -> list[dict]:
 
 SOLID_KEYS = ("params", "variants", "steps", "result", "probes")
 PART_KEYS = ("kind", "file", "sha256", "battery")
+QUERY_KEYS = ("kind", "params", "variants", "steps", "result", "queries")
 
 # Where `fixture.load_fixture` records a recipe's directory, which a `step`
 # operand's file is relative to: no recipe writes it, and no hash reads it.
@@ -269,10 +270,10 @@ GEOMETRY_KEYS = ("kind", "params", "surfaces", "curves", "samples", "pairs")
 
 
 def fixture_kind(fixture: dict) -> str:
-    """`solid` (the default), `geometry` or `part`; anything else is an
-    error."""
+    """`solid` (the default), `geometry`, `part` or `query`; anything else
+    is an error."""
     kind = fixture.get("kind", "solid")
-    if kind not in ("solid", "geometry", "part"):
+    if kind not in ("solid", "geometry", "part", "query"):
         raise OracleError(f"unknown fixture kind {kind!r}")
     return kind
 
@@ -282,7 +283,7 @@ def recipe_hash(fixture: dict) -> str:
     encoded, so an edit to `analytic` or `description` does not stale the
     expected.json and an edit to a step does. The keys depend on the kind
     (`fixture_kind`); the Rust side hashes the same ones."""
-    keys = {"geometry": GEOMETRY_KEYS, "part": PART_KEYS}.get(fixture_kind(fixture), SOLID_KEYS)
+    keys = {"geometry": GEOMETRY_KEYS, "part": PART_KEYS, "query": QUERY_KEYS}.get(fixture_kind(fixture), SOLID_KEYS)
     evaluated = {k: fixture.get(k) for k in keys}
     return hashlib.sha256(canonical_json(evaluated).encode()).hexdigest()
 

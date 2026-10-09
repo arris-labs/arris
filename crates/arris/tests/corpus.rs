@@ -26,6 +26,15 @@ fn run_part(name: &str) {
     }
 }
 
+/// A query fixture (ADR-0053): the recipe's result built and checked, its
+/// questions held to the oracle's answers.
+fn run_query(name: &str) {
+    let dir = fixtures::corpus_root().join(name);
+    if let Err(e) = arris_debug::query::run(&dir) {
+        panic!("{name}: {e}");
+    }
+}
+
 /// One variant of a fixture, for a recipe whose variants are worth
 /// failing apart.
 fn run_variant(name: &str, variant: &str) {
@@ -37,7 +46,7 @@ fn run_variant(name: &str, variant: &str) {
 
 /// The corpus as a table: one row per test, `name => how "area/dir"`.
 /// `run` runs every variant of the recipe, `variant` one of them, `part`
-/// a part fixture. Doc comments and `#[ignore = …]` on a row carry to its
+/// a part fixture, `query` a query fixture. Doc comments and `#[ignore = …]` on a row carry to its
 /// test, whose name stays the row's (`tools/gate.sh` and the nextest
 /// profiles select by name prefix). `TABLE` lists every row's directory
 /// for `every_fixture_directory_has_a_corpus_test`.
@@ -56,10 +65,14 @@ macro_rules! corpus_tests {
     };
     (@call run $dir:literal) => { run($dir) };
     (@call part $dir:literal) => { run_part($dir) };
+    (@call query $dir:literal) => { run_query($dir) };
     (@call variant $dir:literal, $variant:literal) => { run_variant($dir, $variant) };
 }
 
 corpus_tests! {
+    /// A ray through two faces of a box, from inside it, away from it and
+    /// beside it (ADR-0053).
+    query_ray_box_through => query "query/ray-box-through";
     primitive_box => run "primitive/box";
     primitive_cylinder => run "primitive/cylinder";
     /// A consumer's own topology through `ops::build` (ADR-0028): a

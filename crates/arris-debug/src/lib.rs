@@ -30,6 +30,7 @@ pub mod part;
 pub mod polyhedron;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod prop;
+pub mod query;
 pub mod render;
 #[cfg(feature = "rerun")]
 pub mod rerun;

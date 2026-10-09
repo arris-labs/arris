@@ -17,9 +17,10 @@ pub mod geom;
 
 pub use expr::{ExprError, eval};
 
-/// The three fixture kinds: a solid built by a recipe and measured,
-/// analytic geometry evaluated, projected onto and intersected, or a part
-/// read from a STEP file Arris did not write (`tests/fixtures/README.md`).
+/// The four fixture kinds: a solid built by a recipe and measured,
+/// analytic geometry evaluated, projected onto and intersected, a part
+/// read from a STEP file Arris did not write, or questions asked of a
+/// solid (`tests/fixtures/README.md`).
 /// `fixture.json` names it in `"kind"`; absent means solid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -33,6 +34,9 @@ pub enum Kind {
     /// the oracle's reading or to its recorded refusal
     /// (`crate::part`, ADR-0026).
     Part,
+    /// A solid recipe and the questions asked of its result, each held to
+    /// Open CASCADE's answer (`crate::query`, ADR-0053).
+    Query,
 }
 
 /// The kind of the fixture in `dir`, from its `fixture.json`.
@@ -45,13 +49,15 @@ pub fn kind_of(dir: &Path) -> Result<Kind, FixtureError> {
 }
 
 /// `"kind"` absent or `"solid"` is [`Kind::Solid`], `"geometry"` is
-/// [`Kind::Geometry`], `"part"` is [`Kind::Part`]; anything else is `Err`
+/// [`Kind::Geometry`], `"part"` is [`Kind::Part`], `"query"` is
+/// [`Kind::Query`]; anything else is `Err`
 /// with the string found, as the oracle's `fixture_kind` also refuses it.
 fn kind_of_raw(raw: &serde_json::Value) -> Result<Kind, String> {
     match raw.get("kind").and_then(|k| k.as_str()) {
         None | Some("solid") => Ok(Kind::Solid),
         Some("geometry") => Ok(Kind::Geometry),
         Some("part") => Ok(Kind::Part),
+        Some("query") => Ok(Kind::Query),
         Some(other) => Err(other.to_string()),
     }
 }
@@ -1178,9 +1184,12 @@ pub const GEOMETRY_KEYS: [&str; 6] = ["kind", "params", "surfaces", "curves", "s
 /// solids' outcomes and the battery's recorded classes are Arris's, not
 /// the oracle's.
 pub const PART_KEYS: [&str; 4] = ["kind", "file", "sha256", "battery"];
+/// The keys of a query fixture the oracle evaluates and hashes: the solid
+/// recipe's and the questions asked of its result.
+pub const QUERY_KEYS: [&str; 6] = ["kind", "params", "variants", "steps", "result", "queries"];
 
 /// The SHA-256 the oracle records: over the recipe's evaluated keys as
-/// parsed — [`SOLID_KEYS`], [`GEOMETRY_KEYS`] or [`PART_KEYS`] by
+/// parsed — [`SOLID_KEYS`], [`GEOMETRY_KEYS`], [`PART_KEYS`] or [`QUERY_KEYS`] by
 /// [`Kind`] — encoded
 /// with sorted keys and no whitespace (serde_json's float formatting; the
 /// oracle matches it). Editing `analytic` or `description` does not
@@ -1190,6 +1199,7 @@ pub fn recipe_hash(raw: &serde_json::Value) -> Result<String, String> {
         Kind::Solid => &SOLID_KEYS,
         Kind::Geometry => &GEOMETRY_KEYS,
         Kind::Part => &PART_KEYS,
+        Kind::Query => &QUERY_KEYS,
     };
     let mut evaluated = serde_json::Map::new();
     for key in keys {
@@ -1396,6 +1406,7 @@ pub fn lint(dir: &Path) -> Vec<String> {
     match kind_of(dir) {
         Ok(Kind::Geometry) => return geom::lint(dir),
         Ok(Kind::Part) => return crate::part::lint(dir),
+        Ok(Kind::Query) => return crate::query::lint(dir),
         Ok(Kind::Solid) => {}
         Err(e) => return vec![format!("{}: {e}", dir.display())],
     }

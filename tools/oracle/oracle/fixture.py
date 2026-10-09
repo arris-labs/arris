@@ -9,6 +9,7 @@ from OCP.BRepCheck import BRepCheck_Analyzer
 from . import OracleError, occt_version, step
 from .measure import DEFAULT_TOLERANCES, measure, own_measures
 from .geometry import compute_geometry
+from .query import compute_query
 from .recipe import DIR_KEY, build, fixture_kind, probes, recipe_hash, variant_names
 
 FIXTURE = "fixture.json"
@@ -57,6 +58,8 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
     fixture."""
     if fixture_kind(fixture) == "geometry":
         return {"occt": occt_version(), "recipe_sha256": recipe_hash(fixture), "kind": "geometry", **compute_geometry(fixture)}
+    if fixture_kind(fixture) == "query":
+        return {"occt": occt_version(), "recipe_sha256": recipe_hash(fixture), "kind": "query", **compute_query(fixture)}
     if fixture_kind(fixture) == "part":
         expected = {"occt": occt_version(), "recipe_sha256": recipe_hash(fixture), "kind": "part", "solids": compute_part(fixture)}
         if fixture.get("battery"):
@@ -180,6 +183,13 @@ def summary_lines(name: str, expected: dict) -> list[str]:
             f"{name}{key} {stage}: refused: {result['refused']}" if "refused" in result else summary_line(f"{name}{key} {stage}", result)
             for key, cases in expected.get("battery", {}).items()
             for stage, result in cases.items()
+        ]
+    if expected.get("kind") == "query":
+        return [
+            f"{name}[{variant}] {q['label']}: {len(q['hits'])} hits"
+            + "".join(f" t={h['t']:.10g}" for h in q["hits"])
+            for variant, result in expected["results"].items()
+            for q in result["queries"]
         ]
     if expected.get("kind") == "geometry":
         evals = sum(len(s["evaluations"]) for s in expected["samples"])

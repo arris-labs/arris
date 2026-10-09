@@ -1,12 +1,13 @@
 # The fixture corpus
 
 The unit of acceptance (`docs/ROADMAP.md` §Fixtures). One directory per
-fixture, `<area>/<slug>/`, of one of three kinds — a **solid** (the
+fixture, `<area>/<slug>/`, of one of four kinds — a **solid** (the
 default: a recipe built and measured), **geometry** (`"kind": "geometry"`,
 under `geom/`: analytic surfaces and curves evaluated, projected onto and
 intersected; §Geometry fixtures below) or a **part** (`"kind": "part"`,
 under `real/`: a STEP file Arris did not write, read; §Part fixtures
-below) — holding:
+below) or a **query** (`"kind": "query"`, under `query/`: questions asked
+of a solid; §Query fixtures below) — holding:
 
 | File | Written by | Holds |
 |---|---|---|
@@ -706,6 +707,53 @@ sorted into the differential's classes (ADR-0024 §2):
 - A part shrunk from another carries no battery: its battery is its
   source's.
 
+## Query fixtures (`"kind": "query"`)
+
+A solid recipe and the questions a consumer asks of its result, each held
+to Open CASCADE's answer (ADR-0053 §8). One kind for every query of the
+query cycle: ray fire is the first form, and the distance, interference
+and section plans add theirs to the same `queries` list. They sit under
+`query/`.
+
+```json
+{
+  "kind": "query",
+  "params": {}, "variants": {}, "steps": [ … ], "result": "<step>",
+  "queries": [
+    {"label": "up through the middle",
+     "ray": {"origin": [20, 15, -5], "direction": [0, 0, 1]},
+     "hits": "all", "expect_hits": 2}
+  ]
+}
+```
+
+- The recipe is the solid kind's, interpreted unchanged (`params`,
+  `variants`, `steps`, `result`, `precision`, `tolerances`); every number
+  of a ray may be an expression over the params.
+- A **ray query** is a half-line from `origin` along `direction` (any
+  length but zero; both sides normalise it), so `t` is the distance along
+  it and a hit at a negative `t` is never reported. `hits` is `"first"`
+  (the smallest `t`) or `"all"`. Labels are unique within a fixture.
+- `expect_hits` is the count the author works out by hand for what
+  `hits` asks. The lint holds it to the oracle's, as `analytic` is held;
+  it is optional.
+- `expected.json` records, per variant and query, every hit of
+  `IntCurvesFace_ShapeIntersector` on the half-line by ascending `t`
+  whatever `hits` asks (`first` takes the first): `t`, `point`, the
+  face's `uv`, its outward `normal` there (zero at a pole), the
+  `face_centroid`, the line's `transition` (`in`, `out`, `tangent`) and
+  the point's `state` on its face (`in`, or `on` its boundary).
+- The runner builds the result under every variant, holds it to the
+  checker at `Full`, and compares each query's hits to the oracle's: the
+  count, `t`, the point and the normal within the fixture's tolerances,
+  and the face a hit lands on **by its centroid, never by id**, since ids
+  differ between kernels. Open CASCADE reports a ray through an edge once
+  per face; Arris reports one hit naming the edge (ADR-0053 §1), which
+  the fixture records with `analytic.query_differs` and its evidence.
+- The hash covers `kind`, `params`, `variants`, `steps`, `result` and
+  `queries`.
+- No `dump.txt`: the result's own dump is the solid kinds'.
+
 ## `expected.json`
 
 Layout in `tools/oracle/README.md`. Regenerate with
@@ -717,7 +765,8 @@ uv run --project tools/oracle tools/oracle/expected.py tests/fixtures/<area>/<sl
 and commit the change as `fixtures: …` saying why the numbers moved
 (`.agents/rules/git.md`). The hash covers `params`, `variants`, `steps`,
 `result` and `probes` of a solid, and `kind`, `params`, `surfaces`,
-`curves`, `samples` and `pairs` of a geometry fixture; a change to any of
+`curves`, `samples` and `pairs` of a geometry fixture, and `kind`, `params`,
+`variants`, `steps`, `result` and `queries` of a query fixture; a change to any of
 them makes the old `expected.json` stale and the lint says so. Both sides
 parse a coordinate to the same `f64` (serde_json's `float_roundtrip`), so
 a full-precision number hashes and evaluates identically.

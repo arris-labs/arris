@@ -1,0 +1,154 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3bef29a16f010d57ce952b35d41f502a094332020e729ac7a40c598ec99a2342",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "hits": [
+            {
+              "face_centroid": [
+                20.0,
+                14.999999999999996,
+                0.0
+              ],
+              "normal": [
+                -0.0,
+                -0.0,
+                -1.0
+              ],
+              "point": [
+                20.0,
+                15.0,
+                0.0
+              ],
+              "state": "in",
+              "t": 5.0,
+              "transition": "in",
+              "uv": [
+                20.0,
+                15.0
+              ]
+            },
+            {
+              "face_centroid": [
+                20.0,
+                14.999999999999996,
+                10.0
+              ],
+              "normal": [
+                0.0,
+                0.0,
+                1.0
+              ],
+              "point": [
+                20.0,
+                15.0,
+                10.0
+              ],
+              "state": "in",
+              "t": 15.0,
+              "transition": "out",
+              "uv": [
+                20.0,
+                15.0
+              ]
+            }
+          ],
+          "label": "up through the middle"
+        },
+        {
+          "hits": [
+            {
+              "face_centroid": [
+                20.0,
+                14.999999999999996,
+                0.0
+              ],
+              "normal": [
+                -0.0,
+                -0.0,
+                -1.0
+              ],
+              "point": [
+                20.0,
+                15.0,
+                0.0
+              ],
+              "state": "in",
+              "t": 5.0,
+              "transition": "in",
+              "uv": [
+                20.0,
+                15.0
+              ]
+            },
+            {
+              "face_centroid": [
+                20.0,
+                14.999999999999996,
+                10.0
+              ],
+              "normal": [
+                0.0,
+                0.0,
+                1.0
+              ],
+              "point": [
+                20.0,
+                15.0,
+                10.0
+              ],
+              "state": "in",
+              "t": 15.0,
+              "transition": "out",
+              "uv": [
+                20.0,
+                15.0
+              ]
+            }
+          ],
+          "label": "first of the two"
+        },
+        {
+          "hits": [
+            {
+              "face_centroid": [
+                20.0,
+                14.999999999999996,
+                10.0
+              ],
+              "normal": [
+                0.0,
+                0.0,
+                1.0
+              ],
+              "point": [
+                20.0,
+                15.0,
+                10.0
+              ],
+              "state": "in",
+              "t": 5.0,
+              "transition": "out",
+              "uv": [
+                20.0,
+                15.0
+              ]
+            }
+          ],
+          "label": "out of the box"
+        },
+        {
+          "hits": [],
+          "label": "away from the box"
+        },
+        {
+          "hits": [],
+          "label": "beside the box"
+        }
+      ]
+    }
+  }
+}
