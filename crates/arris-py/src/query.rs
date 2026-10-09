@@ -5,6 +5,7 @@ use std::sync::Arc;
 use arris::check::{self, EulerLine as KernelEuler, Level, Report as KernelReport, Unchecked};
 use arris::math::{Frame as KernelFrame, Matrix3, Point3};
 use arris::ops::measure::MassProperties as KernelMass;
+use arris::ops::query::RayHit as KernelHit;
 use arris::topo::EntityId;
 use pyo3::IntoPyObjectExt;
 use pyo3::exceptions::PyValueError;
@@ -447,5 +448,90 @@ pub(crate) fn level_of(text: &str) -> PyResult<Level> {
         other => Err(PyValueError::new_err(format!(
             "{other:?} is not a check level (\"fast\" or \"full\")"
         ))),
+    }
+}
+
+/// One place a ray meets a body, from `Model.ray_fire`.
+///
+/// `entity` is the most specific entity the hit lands on within its
+/// tolerance: a `Vertex`, else an `Edge`, else a `Face`. `t` is the distance
+/// along the ray's unit direction, `uv` the parameters on the face (the
+/// lowest-id face's, for an edge or a vertex), `point` the place, `normal` the
+/// face's outward unit normal (the lowest-id face's, for an edge or a vertex)
+/// and `tangent` whether the ray only touches the surface.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+/// [hit] = model.ray_fire(body, (2, 1.5, -1), (0, 0, 1))[:1]
+/// assert isinstance(hit.entity, arris.Face) and hit.normal == (0.0, 0.0, -1.0)
+/// assert abs(hit.t - 1.0) < 1e-12 and not hit.tangent
+/// ```
+#[pyclass(frozen, module = "arris")]
+#[derive(Clone, Debug)]
+pub struct RayHit {
+    model: Arc<Shared>,
+    kernel: KernelHit,
+}
+
+impl RayHit {
+    /// The Python value of `kernel`, a hit on a body of `model`.
+    pub fn new(model: &Model, kernel: KernelHit) -> RayHit {
+        RayHit {
+            model: Arc::clone(&model.shared),
+            kernel,
+        }
+    }
+}
+
+#[pymethods]
+impl RayHit {
+    /// The vertex, edge or face the ray lands on.
+    #[getter]
+    fn entity<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        entity(py, Some(&Model::sharing(&self.model)), self.kernel.shape)
+    }
+
+    /// The distance along the ray's unit direction; never negative.
+    #[getter]
+    fn t(&self) -> f64 {
+        self.kernel.t
+    }
+
+    /// The `(u, v)` of the hit on its face.
+    #[getter]
+    fn uv(&self) -> (f64, f64) {
+        (self.kernel.uv.x, self.kernel.uv.y)
+    }
+
+    /// The place the ray lands.
+    #[getter]
+    fn point(&self) -> (f64, f64, f64) {
+        let p = self.kernel.point;
+        triple(p.x, p.y, p.z)
+    }
+
+    /// The face's outward unit normal.
+    #[getter]
+    fn normal(&self) -> (f64, f64, f64) {
+        let n = self.kernel.normal;
+        triple(n.x, n.y, n.z)
+    }
+
+    /// `True` when the ray touches the surface without crossing it.
+    #[getter]
+    fn tangent(&self) -> bool {
+        self.kernel.tangent
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "RayHit(t={}, point={:?}, tangent={})",
+            self.kernel.t,
+            self.point(),
+            self.kernel.tangent
+        )
     }
 }

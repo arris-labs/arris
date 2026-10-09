@@ -216,9 +216,14 @@ bound has to be established here.
   interior point, from outside and from that point. Parity is counted
   only when every hit is a plain face crossing, so a ray clipping an edge
   is not held to it; a `RayInFace` or `Singular` refusal is skipped.*
-- [ ] Step 9 **[1]** — Python binding: `Body.ray_fire`, a `RayHit` class,
+- [x] Step 9 **[1]** — Python binding: `Body.ray_fire`, a `RayHit` class,
   the new error leaves, the stub and a docstring example.
   `CHANGELOG.md` gets the binding's bullet.
+  *As built: `Model.ray_fire(body, origin, direction, all=False)`, not
+  `Body.ray_fire`, as every other query (`frame_at`, `check`) is a `Model`
+  method. The error leaves need no class: `OpDegenerateError` carries the
+  reason by name, so the leaves are rows of the mapping's every-variant
+  test.*
 
 ## Acceptance
 - `cargo nextest run --workspace` at 256 cases: geometry fixtures

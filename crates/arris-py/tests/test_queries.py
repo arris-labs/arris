@@ -187,3 +187,26 @@ def test_the_checker_reports_at_both_levels_and_refuses_a_bad_level():
         model.check(body, "paranoid")
     with pytest.raises(arris.ForeignHandleError):
         arris.Model().check(body)
+
+
+def test_a_ray_fired_at_a_box_names_its_faces_and_an_edge():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+    hits = model.ray_fire(body, (2, 1.5, -1), (0, 0, 2), all=True)
+    assert [h.t for h in hits] == pytest.approx([1.0, 3.0], abs=1e-12)
+    assert all(isinstance(h.entity, arris.Face) and not h.tangent for h in hits)
+    assert hits[0].normal == pytest.approx((0, 0, -1), abs=1e-12)
+    assert hits[1].point == pytest.approx((2, 1.5, 2), abs=1e-12)
+    assert model.ray_fire(body, (2, 1.5, -1), (0, 0, 2))[0].t == hits[0].t
+    [edge] = model.ray_fire(body, (5, 4, 1), (-1, -1, 0))[:1]
+    assert isinstance(edge.entity, arris.Edge)
+    assert model.ray_fire(body, (9, 9, 9), (1, 0, 0)) == []
+
+
+def test_a_ray_fire_refusal_names_the_entity():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+    with pytest.raises(arris.OpDegenerateError):
+        model.ray_fire(body, (2, 1.5, -1), (0, 0, 0))
+    with pytest.raises(arris.OpDegenerateError):  # lies in the bottom face
+        model.ray_fire(body, (-1, 1.5, 0), (1, 0, 0))

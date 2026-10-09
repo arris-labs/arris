@@ -21,7 +21,7 @@ use crate::kernel_error::{
 use crate::mesh::Mesh;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
-use crate::query::{Frame, MassProperties, Report, level_of};
+use crate::query::{Frame, MassProperties, RayHit, Report, level_of};
 
 /// Serial numbers for models, in creation order within the process: what a
 /// handle compares and hashes by, and what an error names.
@@ -1005,6 +1005,56 @@ impl Model {
         let kernel = arris::ops::query::frame_at(&*self.shared.lock()?, face, uv)
             .map_err(|e| self.refuse(py, e))?;
         Ok(Frame::new(kernel))
+    }
+
+    /// Where a ray meets `body`: the hits by ascending `t`, or only the first
+    /// when `all` is false. The ray runs from `origin` along `direction`
+    /// (any length but zero), and a hit behind `origin` is never reported.
+    ///
+    /// A hit names the most specific entity it lands on within its
+    /// tolerance; see `RayHit`. Raises `OpDegenerateError` for a zero
+    /// direction, for a ray lying in a face (`RayInFace`) and for a hit at a
+    /// pole or an apex (`Singular`), each naming the entity, and
+    /// `OpInvalidInputError` for a body that fails the checker (debug
+    /// builds).
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+    /// hits = model.ray_fire(body, (2, 1.5, -1), (0, 0, 2), all=True)
+    /// assert [round(h.t, 9) for h in hits] == [1.0, 3.0]
+    /// assert hits[1].normal == (0.0, 0.0, 1.0)
+    /// first = model.ray_fire(body, (2, 1.5, -1), (0, 0, 2))
+    /// assert len(first) == 1 and first[0].t == hits[0].t
+    /// ```
+    #[pyo3(signature = (body, origin, direction, all=false))]
+    fn ray_fire(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        origin: [f64; 3],
+        direction: [f64; 3],
+        all: bool,
+    ) -> PyResult<Vec<RayHit>> {
+        let body = body.resolve(&self.shared)?;
+        let ray = arris::ops::query::Ray {
+            origin: Point3::from(origin),
+            direction: Vec3::from(direction),
+        };
+        let which = if all {
+            arris::ops::query::RayHits::All
+        } else {
+            arris::ops::query::RayHits::First
+        };
+        let hits = py
+            .detach(|| {
+                let kernel = self.shared.lock()?;
+                Ok::<_, BindError>(arris::ops::query::ray_fire(&kernel, body, &ray, which))
+            })?
+            .map_err(|e| self.refuse(py, e))?;
+        Ok(hits.into_iter().map(|h| RayHit::new(self, h)).collect())
     }
 
     /// The checker's report on `body`: `level` is `"fast"` (linear in the

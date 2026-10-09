@@ -30,6 +30,10 @@ into its version (ADR-0027).
   on every face kind, NURBS included. A ray lying in a face is refused as
   `QueryReason::RayInFace`, naming the face, and a zero direction as
   `QueryReason::ZeroDirection`.
+- Python: `Model.ray_fire(body, origin, direction, all=False)` returns a
+  list of `RayHit` (`entity`, `t`, `uv`, `point`, `normal`, `tangent`): the
+  first hit, or every hit with `all=True`. The refusals are
+  `OpDegenerateError`, naming the entity.
 - `arris_check::tree::FaceTree::entries` is `along` with the distance each
   face's box is entered at.
 
