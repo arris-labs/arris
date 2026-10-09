@@ -1,0 +1,120 @@
+{
+  "kind": "query",
+  "description": "primitive cylinder r 5, h 10 as Open CASCADE's own STEP converted to B-splines (occt_step.py --nurbs), every face a NURBS surface: a ray meets each through its B\u00e9zier patches (plan ray-fire step 1) all the way up the stack, across the wall, down the axis, obliquely, grazing it and from inside. The face a hit lands on is matched by its centroid at 2e-2: Open CASCADE's quadrature puts the B-spline wall's centroid 6.8e-3 off the axis (the closed form, and Arris's, is on it to 1e-15), and the three faces' centroids are 5 apart",
+  "tolerances": {
+    "centroid_abs": 0.02
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "nurbs-cylinder.step",
+      "sha256": "7a14cfcc3f0a6eb882ad08e4d6e1a547005b3ff9fd77c2cde0977176727815d1",
+      "id": 15
+    }
+  ],
+  "result": "part",
+  "queries": [
+    {
+      "label": "across the wall",
+      "ray": {
+        "origin": [
+          -10,
+          1,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "down the axis",
+      "ray": {
+        "origin": [
+          0.3,
+          0.2,
+          20
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "oblique through caps and wall",
+      "ray": {
+        "origin": [
+          -8,
+          -3,
+          -4
+        ],
+        "direction": [
+          1.2,
+          0.5,
+          1.1
+        ]
+      },
+      "hits": "all"
+    },
+    {
+      "label": "grazing the wall",
+      "ray": {
+        "origin": [
+          -10,
+          5,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "from inside",
+      "ray": {
+        "origin": [
+          1,
+          1,
+          5
+        ],
+        "direction": [
+          1,
+          2,
+          0.3
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "beside the wall",
+      "ray": {
+        "origin": [
+          -10,
+          6,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    }
+  ]
+}

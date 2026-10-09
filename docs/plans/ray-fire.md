@@ -186,7 +186,7 @@ bound has to be established here.
   the face. The runner compares an edge or vertex hit by `t`, point and
   normal only: Open CASCADE reports it once per face, which step 7's
   `analytic.query_differs` records.*
-- [ ] Step 7 **[2]** — The ray corpus under `tests/fixtures/query/`:
+- [x] Step 7 **[2]** — The ray corpus under `tests/fixtures/query/`:
   primitives (box, cylinder, sphere, cone, torus) hit transversally,
   through an edge, through a vertex, grazing a cylinder, from inside, and
   missing. Also boolean results (a drilled plate, a pocket seen through
@@ -195,6 +195,16 @@ bound has to be established here.
   origin. Each one has Open CASCADE's answer. Where Open CASCADE reports
   an edge hit twice (once per face), `analytic.query_differs` records why
   and holds Arris to one hit.
+  *As built: ten `query/ray-*` fixtures besides step 5's — box (edge and
+  vertex), cylinder, sphere, cone, torus, drilled plate, pocket and hole,
+  filleted block, far from the origin and a STEP-read B-spline cylinder
+  (`ray-nurbs-cylinder`; Open CASCADE's id scan of the converted ball
+  fails, so no ball). `query_differs` is a field of `Analytic`; the
+  runner merges the oracle's hits of one `t` and holds an edge or vertex
+  hit's normal to any of the merged faces'. The B-spline cylinder widens
+  `centroid_abs` to 2e-2, the oracle's quadrature being 7e-3 off the
+  wall's centroid. A hit at a pole or an apex is refused (`Singular`), so
+  no ray goes through one: a backlog line.*
 - [ ] Step 8 **[2]** — Property tests over random poses (`prop_shards!`):
   each hit lies on its face and on the ray within tolerance; `First` is
   the minimum `t` of `All`; for a ray starting `Outside` a closed solid,

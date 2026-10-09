@@ -1,0 +1,147 @@
+{
+  "kind": "query",
+  "description": "box [0,0,0]\u2013[100,60,10] with a hole r 8 through it at (50, 30): down the hole, through the plate beside it, through the hole's wall at a slant, and across the plate and the hole",
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        100,
+        60,
+        10
+      ]
+    },
+    {
+      "name": "hole",
+      "op": "cylinder",
+      "base": [
+        50,
+        30,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 8,
+      "height": 12
+    },
+    {
+      "name": "drilled",
+      "op": "cut",
+      "target": "plate",
+      "tool": "hole"
+    }
+  ],
+  "result": "drilled",
+  "queries": [
+    {
+      "label": "down the hole",
+      "ray": {
+        "origin": [
+          50,
+          30,
+          20
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    },
+    {
+      "label": "beside the hole",
+      "ray": {
+        "origin": [
+          30,
+          30,
+          20
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "slanting through the hole wall",
+      "ray": {
+        "origin": [
+          44,
+          30,
+          20
+        ],
+        "direction": [
+          0.9,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "across the plate and the hole",
+      "ray": {
+        "origin": [
+          -5,
+          31,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 4
+    },
+    {
+      "label": "first across",
+      "ray": {
+        "origin": [
+          -5,
+          31,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "first",
+      "expect_hits": 1
+    },
+    {
+      "label": "off the plate",
+      "ray": {
+        "origin": [
+          120,
+          31,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    }
+  ]
+}

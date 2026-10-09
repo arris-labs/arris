@@ -863,6 +863,15 @@ pub struct Analytic {
     /// it to `expected.json`, so nothing Arris is held to changes.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub step_differs: Option<String>,
+    /// Why a query fixture's ray hits differ from Open CASCADE's: it
+    /// reports a ray through an edge or a vertex once per face there, and
+    /// Arris reports one hit naming the edge or the vertex (ADR-0053 §1,
+    /// §8). The runner then merges the oracle's hits that share a `t`
+    /// into one before comparing; the lint requires that at least one
+    /// query's answer has such a pair, so the entry is lifted with the
+    /// oracle's change.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query_differs: Option<String>,
     /// Why Arris's STEP reader refuses Open CASCADE's own STEP of this
     /// result, and with which refusal (ADR-0025): a file that describes no
     /// solid by the standard — Open CASCADE's writer turning a face's

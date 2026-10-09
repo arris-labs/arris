@@ -1,0 +1,111 @@
+{
+  "kind": "query",
+  "description": "box [0,0,0]\u2013[40,30,10]: rays through an edge, through a corner, from inside through an edge, and one that passes an edge by a unit and enters by the face beside it",
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        40,
+        30,
+        10
+      ]
+    }
+  ],
+  "result": "box",
+  "queries": [
+    {
+      "label": "diagonally through an edge",
+      "ray": {
+        "origin": [
+          50,
+          40,
+          5
+        ],
+        "direction": [
+          -1,
+          -1,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "through a corner",
+      "ray": {
+        "origin": [
+          50,
+          40,
+          20
+        ],
+        "direction": [
+          -1,
+          -1,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "from inside to an edge",
+      "ray": {
+        "origin": [
+          20,
+          15,
+          5
+        ],
+        "direction": [
+          20,
+          15,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "past an edge into the face beside it",
+      "ray": {
+        "origin": [
+          50,
+          41,
+          5
+        ],
+        "direction": [
+          -1,
+          -1,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "first through a corner",
+      "ray": {
+        "origin": [
+          50,
+          40,
+          20
+        ],
+        "direction": [
+          -1,
+          -1,
+          -1
+        ]
+      },
+      "hits": "first",
+      "expect_hits": 1
+    }
+  ],
+  "analytic": {
+    "query_differs": "Open CASCADE's IntCurvesFace_ShapeIntersector reports a ray through an edge once per face that meets there and one through a vertex once per face at it; Arris reports one hit naming the edge or the vertex (ADR-0053 \u00a71), so the oracle's hits of one t are merged before the comparison"
+  }
+}

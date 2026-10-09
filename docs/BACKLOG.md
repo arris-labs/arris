@@ -8,6 +8,7 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 [Findings](#findings) below, in the fixed shape, with the number that
 reproduces it.
 
+- A ray through a sphere's pole or a cone's apex is refused by `ray_fire` as `QueryReason::Singular`, since the surface has no normal there; the hit could carry the limit normal (the cone's axis side, the sphere's radial direction) — add it when a consumer's pick lands on one (C8 ray-fire step 7 finding; no `query/` fixture ray goes through one)
 - Split by a surface other than a plane, by a face of the body, or by another body, and a split's pieces kept as one compound (the roadmap's C7 out-of-scope, split-by-plane)
 - Split of a sheet: a face split by a curve, a surface trimmed by a plane (the healing cycle's sheet bodies; split-by-plane non-goal)
 - The round (arc) join at an outward convex edge of `offset_faces`, and at a concave edge of an inward `shell` (a convex one of an outward), which meet sharp today (ADR-0048 §2, ADR-0049): add it when a fixture or a consumer asks.

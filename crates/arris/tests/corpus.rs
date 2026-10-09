@@ -73,6 +73,28 @@ corpus_tests! {
     /// A ray through two faces of a box, from inside it, away from it and
     /// beside it (ADR-0053).
     query_ray_box_through => query "query/ray-box-through";
+    /// A ray through an edge and through a corner is one hit naming it,
+    /// where Open CASCADE reports one per face (ADR-0053 §1).
+    query_ray_box_edge_vertex => query "query/ray-box-edge-vertex";
+    /// A ray at a cylinder: across, down its axis, through a rim, grazing.
+    query_ray_cylinder => query "query/ray-cylinder";
+    /// A ray at a ball, across it and grazing its equator.
+    query_ray_sphere => query "query/ray-sphere";
+    /// A ray at a frustum: across the cone, down the axis, from inside.
+    query_ray_cone => query "query/ray-cone";
+    /// A ray at a torus: through the tube four times and through the hole.
+    query_ray_torus => query "query/ray-torus";
+    /// A ray at a plate with a hole through it.
+    query_ray_drilled_plate => query "query/ray-drilled-plate";
+    /// A ray at a pocket with a hole through its floor.
+    query_ray_pocket_and_hole => query "query/ray-pocket-and-hole";
+    /// A ray at a block whose vertical edge is filleted, onto the blend.
+    query_ray_filleted_block => query "query/ray-filleted-block";
+    /// A ray at a cylinder read from a STEP file of B-splines: every face
+    /// a NURBS surface, crossed through its Bézier patches.
+    query_ray_nurbs_cylinder => query "query/ray-nurbs-cylinder";
+    /// A ray at a body a long way from the origin.
+    query_ray_far_from_origin => query "query/ray-far-from-origin";
     primitive_box => run "primitive/box";
     primitive_cylinder => run "primitive/cylinder";
     /// A consumer's own topology through `ops::build` (ADR-0028): a

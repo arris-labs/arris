@@ -99,13 +99,48 @@ pub struct Answer {
     pub hits: Vec<OracleHit>,
 }
 
+/// What the oracle reports for one place a ray meets the body: the first
+/// of its hits there, and the normal of each face it reports there.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OracleGroup {
+    /// The first hit of the place.
+    pub hit: OracleHit,
+    /// The normals of all the hits at the place, the first's included.
+    pub normals: Vec<[f64; 3]>,
+}
+
 impl Answer {
-    /// The hits the query `wanted` asks for: all of them, or the first.
-    pub fn wanted(&self, wanted: HitsWanted) -> &[OracleHit] {
-        match wanted {
-            HitsWanted::All => &self.hits,
-            HitsWanted::First => &self.hits[..self.hits.len().min(1)],
+    /// The places the query `wanted` asks for, as groups: with `merge`,
+    /// hits within it of one `t` are one place (a ray through an edge or a
+    /// vertex, which Open CASCADE reports once per face and Arris once —
+    /// `analytic.query_differs`); without, each hit is its own. `First`
+    /// is the first place.
+    pub fn groups(&self, wanted: HitsWanted, merge: Option<f64>) -> Vec<OracleGroup> {
+        let mut groups: Vec<(f64, OracleGroup)> = Vec::new();
+        for hit in &self.hits {
+            match groups.last_mut() {
+                Some((t, group)) if merge.is_some_and(|within| hit.t - *t <= within) => {
+                    group.normals.push(hit.normal);
+                }
+                _ => groups.push((
+                    hit.t,
+                    OracleGroup {
+                        hit: hit.clone(),
+                        normals: vec![hit.normal],
+                    },
+                )),
+            }
         }
+        let groups = groups.into_iter().map(|(_, g)| g);
+        match wanted {
+            HitsWanted::All => groups.collect(),
+            HitsWanted::First => groups.take(1).collect(),
+        }
+    }
+
+    /// Whether two hits share a `t` within `within`.
+    pub fn has_shared_hits(&self, within: f64) -> bool {
+        self.hits.windows(2).any(|w| w[1].t - w[0].t <= within)
     }
 }
 
@@ -309,6 +344,13 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                     label: query.label.clone(),
                 });
             };
+            let merge = fixture
+                .recipe
+                .analytic
+                .query_differs
+                .is_some()
+                .then_some(fixture.recipe.tolerances.probe);
+            let groups = answer.groups(query.hits, merge);
             let ray = ray_of(&fixture.name, query, &params)?;
             let which = match query.hits {
                 HitsWanted::First => RayHits::First,
@@ -328,13 +370,7 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                     hits.len()
                 )));
             }
-            compare(
-                &chain.model,
-                &hits,
-                answer.wanted(query.hits),
-                &fixture.recipe.tolerances,
-            )
-            .map_err(mismatch)?;
+            compare(&chain.model, &hits, &groups, &fixture.recipe.tolerances).map_err(mismatch)?;
         }
     }
     Ok(())
@@ -366,7 +402,7 @@ fn ray_of(fixture: &str, query: &Query, params: &BTreeMap<String, f64>) -> Resul
 fn compare(
     model: &Model,
     hits: &[RayHit],
-    oracle: &[OracleHit],
+    oracle: &[OracleGroup],
     tolerances: &fixtures::Tolerances,
 ) -> Result<(), String> {
     if hits.len() != oracle.len() {
@@ -377,7 +413,8 @@ fn compare(
         ));
     }
     let probe = tolerances.probe;
-    for (i, (hit, o)) in hits.iter().zip(oracle).enumerate() {
+    for (i, (hit, group)) in hits.iter().zip(oracle).enumerate() {
+        let o = &group.hit;
         if (hit.t - o.t).abs() > probe {
             return Err(format!("hit {i}: t {} but the oracle's is {}", hit.t, o.t));
         }
@@ -389,12 +426,22 @@ fn compare(
                 o.point
             ));
         }
-        let normal = Vec3::from(o.normal);
-        if normal.norm() > 0.5 && (hit.normal.into_inner() - normal).norm() > probe {
+        // A normal the oracle leaves zero (a pole) is not compared; one
+        // of a place on an edge or a vertex is any of its faces'.
+        let agrees = |n: &[f64; 3]| {
+            let n = Vec3::from(*n);
+            n.norm() < 0.5 || (hit.normal.into_inner() - n).norm() <= probe
+        };
+        if !group.normals.iter().any(agrees) {
             return Err(format!(
-                "hit {i}: normal {:?} but the oracle's is {:?}",
+                "hit {i}: normal {:?} but the oracle's {} {:?}",
                 hit.normal.as_slice(),
-                o.normal
+                if group.normals.len() == 1 {
+                    "is"
+                } else {
+                    "are"
+                },
+                group.normals
             ));
         }
         if let EntityId::Face(face) = hit.shape.id {
@@ -488,13 +535,41 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 ));
                 continue;
             };
-            let count = answer.wanted(q.hits).len();
+            let merge = r
+                .analytic
+                .query_differs
+                .is_some()
+                .then_some(r.tolerances.probe);
+            let count = answer.groups(q.hits, merge).len();
             if let Some(expect) = q.expect_hits.filter(|&n| n != count) {
                 problem(format!(
                     "[{variant}] query {:?}: expect_hits {expect} but the oracle says {count}",
                     q.label
                 ));
             }
+        }
+        if let Some(why) = &r.analytic.query_differs {
+            if why.trim().is_empty() {
+                problem("analytic.query_differs needs its evidence".into());
+            }
+            if !answers
+                .queries
+                .iter()
+                .any(|a| a.has_shared_hits(r.tolerances.probe))
+            {
+                problem(format!(
+                    "[{variant}] analytic.query_differs is set but no answer of the oracle reports a hit twice"
+                ));
+            }
+        } else if let Some(a) = answers
+            .queries
+            .iter()
+            .find(|a| a.has_shared_hits(r.tolerances.probe))
+        {
+            problem(format!(
+                "[{variant}] query {:?}: the oracle reports a hit twice, which needs analytic.query_differs",
+                a.label
+            ));
         }
         if answers.queries.len() != fixture.queries.len() {
             problem(format!(

@@ -1,0 +1,123 @@
+{
+  "kind": "query",
+  "description": "box [0,0,0]\u2013[20,20,20] with its vertical edge at (20, 20) filleted at r 4: onto the blend, along it from inside, across a flat face and past the corner the blend took away",
+  "steps": [
+    {
+      "name": "cube",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        20,
+        20
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "cube",
+      "edges": [
+        [
+          20,
+          20,
+          10
+        ]
+      ],
+      "radius": 4
+    }
+  ],
+  "result": "result",
+  "queries": [
+    {
+      "label": "onto the blend",
+      "ray": {
+        "origin": [
+          30,
+          30,
+          10
+        ],
+        "direction": [
+          -1,
+          -1,
+          0.1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "from inside to the blend",
+      "ray": {
+        "origin": [
+          15,
+          15,
+          10
+        ],
+        "direction": [
+          1,
+          1,
+          0.3
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "past the removed corner",
+      "ray": {
+        "origin": [
+          19.5,
+          19.5,
+          30
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    },
+    {
+      "label": "across the flat faces",
+      "ray": {
+        "origin": [
+          -5,
+          7,
+          8
+        ],
+        "direction": [
+          1,
+          0.1,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "grazing the blend's end",
+      "ray": {
+        "origin": [
+          30,
+          16,
+          10
+        ],
+        "direction": [
+          -1,
+          0,
+          0.1
+        ]
+      },
+      "hits": "all"
+    }
+  ],
+  "analytic": {
+    "query_differs": "Open CASCADE's IntCurvesFace_ShapeIntersector reports a ray through an edge once per face that meets there and one through a vertex once per face at it; Arris reports one hit naming the edge or the vertex (ADR-0053 \u00a71), so the oracle's hits of one t are merged before the comparison"
+  }
+}

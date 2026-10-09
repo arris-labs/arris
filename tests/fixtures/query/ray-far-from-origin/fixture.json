@@ -1,0 +1,100 @@
+{
+  "kind": "query",
+  "description": "box [0,0,0]\u2013[40,30,10] moved by (1e5, \u22122e5, 3e5): the precision of a hit a long way from the origin",
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        40,
+        30,
+        10
+      ]
+    },
+    {
+      "name": "moved",
+      "op": "transform",
+      "of": "box",
+      "translate": [
+        100000,
+        -200000,
+        300000
+      ]
+    }
+  ],
+  "result": "moved",
+  "queries": [
+    {
+      "label": "through the middle",
+      "ray": {
+        "origin": [
+          100020,
+          -199985,
+          299990
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "slanting across",
+      "ray": {
+        "origin": [
+          99990,
+          -200010,
+          300002
+        ],
+        "direction": [
+          1,
+          0.5,
+          0.05
+        ]
+      },
+      "hits": "all"
+    },
+    {
+      "label": "from inside",
+      "ray": {
+        "origin": [
+          100020,
+          -199985,
+          300005
+        ],
+        "direction": [
+          0.3,
+          0.2,
+          1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "beside",
+      "ray": {
+        "origin": [
+          100050,
+          -199985,
+          299990
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    }
+  ]
+}

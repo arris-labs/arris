@@ -1,0 +1,164 @@
+{
+  "kind": "query",
+  "description": "frustum r 4 at z = \u22122 to r 2 at z = 2 on the z axis: across the cone wall, down the axis through both caps, obliquely, from inside, and a miss",
+  "steps": [
+    {
+      "name": "trapezoid",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -2
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              2,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "frustum",
+      "op": "revolve",
+      "profile": "trapezoid",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    }
+  ],
+  "result": "frustum",
+  "queries": [
+    {
+      "label": "across the wall",
+      "ray": {
+        "origin": [
+          -10,
+          1,
+          0
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "down the axis",
+      "ray": {
+        "origin": [
+          0,
+          0,
+          9
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "oblique",
+      "ray": {
+        "origin": [
+          -7,
+          -2,
+          -5
+        ],
+        "direction": [
+          1.1,
+          0.4,
+          1.2
+        ]
+      },
+      "hits": "all"
+    },
+    {
+      "label": "from inside",
+      "ray": {
+        "origin": [
+          0.5,
+          0.5,
+          0
+        ],
+        "direction": [
+          1,
+          1,
+          0.2
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "above the top",
+      "ray": {
+        "origin": [
+          -10,
+          3,
+          3
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    }
+  ]
+}

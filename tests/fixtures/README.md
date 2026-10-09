@@ -749,7 +749,14 @@ and section plans add theirs to the same `queries` list. They sit under
   and the face a hit lands on **by its centroid, never by id**, since ids
   differ between kernels. Open CASCADE reports a ray through an edge once
   per face; Arris reports one hit naming the edge (ADR-0053 §1), which
-  the fixture records with `analytic.query_differs` and its evidence.
+  the fixture records with `analytic.query_differs` and its evidence: the
+  runner then merges the oracle's hits of one `t` before comparing, holds
+  the hit's normal to any of the merged faces' (it is the lowest-id
+  face's), and the lint requires that some answer has such a pair, and
+  refuses a pair without the entry. Matching faces by centroid trusts the
+  oracle's quadrature, which is 7e-3 off on a B-spline cylinder wall; a
+  fixture whose faces' centroids are far apart widens `centroid_abs` and
+  says why.
 - The hash covers `kind`, `params`, `variants`, `steps`, `result` and
   `queries`.
 - No `dump.txt`: the result's own dump is the solid kinds'.

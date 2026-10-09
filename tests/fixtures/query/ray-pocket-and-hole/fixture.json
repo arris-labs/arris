@@ -1,0 +1,165 @@
+{
+  "kind": "query",
+  "description": "box [0,0,0]\u2013[60,40,20] with a pocket [10,10,12]\u2013[50,30,20] cut from the top and a hole r 4 through its floor: down the hole, down the pocket, into the pocket from a slant, and across it",
+  "steps": [
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        60,
+        40,
+        20
+      ]
+    },
+    {
+      "name": "pocket_tool",
+      "op": "box",
+      "min": [
+        10,
+        10,
+        12
+      ],
+      "max": [
+        50,
+        30,
+        21
+      ]
+    },
+    {
+      "name": "hole_tool",
+      "op": "cylinder",
+      "base": [
+        30,
+        20,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 22
+    },
+    {
+      "name": "pocketed",
+      "op": "cut",
+      "target": "block",
+      "tool": "pocket_tool"
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "pocketed",
+      "tool": "hole_tool"
+    }
+  ],
+  "result": "result",
+  "queries": [
+    {
+      "label": "down the hole",
+      "ray": {
+        "origin": [
+          30,
+          20,
+          30
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    },
+    {
+      "label": "down the pocket",
+      "ray": {
+        "origin": [
+          20,
+          15,
+          30
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "slanting into the pocket",
+      "ray": {
+        "origin": [
+          5,
+          15,
+          30
+        ],
+        "direction": [
+          1,
+          0.1,
+          -1
+        ]
+      },
+      "hits": "all"
+    },
+    {
+      "label": "across the pocket wall to wall",
+      "ray": {
+        "origin": [
+          0,
+          15.5,
+          16
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 4
+    },
+    {
+      "label": "down through the hole's wall",
+      "ray": {
+        "origin": [
+          28,
+          18,
+          30
+        ],
+        "direction": [
+          0.2,
+          0.2,
+          -1
+        ]
+      },
+      "hits": "all"
+    },
+    {
+      "label": "first down the pocket",
+      "ray": {
+        "origin": [
+          20,
+          15,
+          30
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "first",
+      "expect_hits": 1
+    }
+  ]
+}

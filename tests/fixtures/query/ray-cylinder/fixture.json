@@ -1,0 +1,163 @@
+{
+  "kind": "query",
+  "description": "cylinder r 5, h 10 on the z axis: across the wall, down the axis through both caps, through the top rim circle, grazing the wall, from inside, an oblique one, and a miss",
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 5,
+      "height": 10
+    }
+  ],
+  "result": "cyl",
+  "queries": [
+    {
+      "label": "across the wall",
+      "ray": {
+        "origin": [
+          -10,
+          1,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "down the axis",
+      "ray": {
+        "origin": [
+          0,
+          0,
+          20
+        ],
+        "direction": [
+          0,
+          0,
+          -1
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "through the top rim and out by the wall",
+      "ray": {
+        "origin": [
+          10,
+          2,
+          15
+        ],
+        "direction": [
+          "sqrt(21) - 10",
+          0,
+          -5
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 2
+    },
+    {
+      "label": "grazing the wall",
+      "ray": {
+        "origin": [
+          -10,
+          5,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "from inside",
+      "ray": {
+        "origin": [
+          1,
+          1,
+          5
+        ],
+        "direction": [
+          1,
+          2,
+          0.3
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 1
+    },
+    {
+      "label": "oblique through caps and wall",
+      "ray": {
+        "origin": [
+          -8,
+          -3,
+          -4
+        ],
+        "direction": [
+          1.2,
+          0.5,
+          1.1
+        ]
+      },
+      "hits": "all"
+    },
+    {
+      "label": "first of an oblique",
+      "ray": {
+        "origin": [
+          -8,
+          -3,
+          -4
+        ],
+        "direction": [
+          1.2,
+          0.5,
+          1.1
+        ]
+      },
+      "hits": "first",
+      "expect_hits": 1
+    },
+    {
+      "label": "beside the wall",
+      "ray": {
+        "origin": [
+          -10,
+          6,
+          5
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ]
+      },
+      "hits": "all",
+      "expect_hits": 0
+    }
+  ],
+  "analytic": {
+    "query_differs": "Open CASCADE's IntCurvesFace_ShapeIntersector reports a ray through an edge once per face that meets there and one through a vertex once per face at it; Arris reports one hit naming the edge or the vertex (ADR-0053 \u00a71), so the oracle's hits of one t are merged before the comparison"
+  }
+}
