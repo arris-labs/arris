@@ -171,7 +171,7 @@ bound has to be established here.
   corpus lint, and `tests/fixtures/README.md` §Query fixtures. One
   fixture, `query/ray-box-through`, runs end to end with the comparison
   stubbed to the hit count, so the infrastructure lands before the API.
-- [ ] Step 6 **[2]** — `ops::query::ray_fire` with `Ray`, `RayHits`,
+- [x] Step 6 **[2]** — `ops::query::ray_fire` with `Ray`, `RayHits`,
   `RayHit` and the new `QueryReason` leaves. The query walks
   `FaceTree::along`, filters hits by `FaceDomain::side`, dedupes hits that
   land on a shared edge or vertex into one hit naming it, and stops early
@@ -179,6 +179,13 @@ bound has to be established here.
   centroid) replaces step 5's stub. Rustdoc with an example;
   `docs/ARCHITECTURE.md` §Operations is extended in this commit.
   `CHANGELOG.md` gets the bullet and the `Breaking` line.
+  *As built: `FaceTree::entries` (public) is `along` with each box's entry
+  `t`, which `First` stops by. A ray in a face is decided between its
+  crossings of the face's edges (`intersect_curves`), each stretch's
+  midpoint tested against the face's domain; a ray along an edge is in
+  the face. The runner compares an edge or vertex hit by `t`, point and
+  normal only: Open CASCADE reports it once per face, which step 7's
+  `analytic.query_differs` records.*
 - [ ] Step 7 **[2]** — The ray corpus under `tests/fixtures/query/`:
   primitives (box, cylinder, sphere, cone, torus) hit transversally,
   through an edge, through a vertex, grazing a cylinder, from inside, and

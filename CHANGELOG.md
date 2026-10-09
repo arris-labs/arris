@@ -20,6 +20,23 @@ into its version (ADR-0027).
   NURBS face meets a face of the other operand: a cavity cut into a body
   read from a file of B-splines, or a box cut and drills through NIST
   FTC-07 and FTC-10, now build.
+- `arris_ops::query::ray_fire(&model, body, &Ray { origin, direction },
+  RayHits::First | RayHits::All)` fires a ray at a body and returns its
+  hits by ascending distance. Each says what it landed on — the face, or
+  the edge or vertex when it lands within that entity's tolerance, so a
+  ray through an edge is one hit — with the distance along the ray, the
+  face's `(u, v)`, the point, the outward normal (of the lowest-numbered
+  face for an edge or a vertex) and whether the ray only grazes. It works
+  on every face kind, NURBS included. A ray lying in a face is refused as
+  `QueryReason::RayInFace`, naming the face, and a zero direction as
+  `QueryReason::ZeroDirection`.
+- `arris_check::tree::FaceTree::entries` is `along` with the distance each
+  face's box is entered at.
+
+### Breaking
+
+- `arris_ops::QueryReason` gains `RayInFace` and `ZeroDirection`: add the
+  arms to an exhaustive `match`.
 
 ## 0.6.0 — 2026-10-08
 

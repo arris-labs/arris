@@ -11,13 +11,22 @@
 //! is Open CASCADE's answer, per variant and query: every hit of
 //! `IntCurvesFace_ShapeIntersector` on the half-line, sorted by `t`.
 //!
-//! The runner builds the result under each variant and holds it to the
-//! checker at `Full`; `expect_hits`, the closed-form count the author
-//! states, is what the lint holds to the oracle's count.
+//! The runner builds the result under each variant, holds it to the
+//! checker at `Full`, fires every ray with `arris_ops::query::ray_fire`
+//! and compares the hits to the oracle's: the count, then for each hit `t`
+//! and the point within the fixture's `probe` tolerance, the normal, and
+//! the face a hit on a face lands on by the face's centroid within
+//! `centroid_abs` (ids differ between kernels, ADR-0053 §8).
+//! `expect_hits`, the closed-form count the author states, is what the
+//! lint holds to the oracle's count and the runner to Arris's.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use arris_check::flux::face_flux;
+use arris_math::{Point3, Vec3};
+use arris_ops::query::{Ray, RayHit, RayHits, ray_fire};
+use arris_topo::{EntityId, FaceId, Model};
 use serde::{Deserialize, Serialize};
 
 use crate::corpus::{self, CorpusError};
@@ -184,6 +193,18 @@ pub enum QueryError {
         /// The cause.
         source: fixtures::ExprError,
     },
+    /// A ray's fire was refused.
+    #[error("{fixture}: [{variant}] query {label:?}: {source}")]
+    Refused {
+        /// The fixture.
+        fixture: String,
+        /// The variant.
+        variant: String,
+        /// The query's label.
+        label: String,
+        /// The refusal.
+        source: Box<arris_ops::OpError>,
+    },
     /// The hits do not match.
     #[error("{fixture}: [{variant}] query {label:?}: {what}")]
     Mismatch {
@@ -252,9 +273,9 @@ fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, FixtureEr
 }
 
 /// Runs a query fixture: for every variant, builds the result, holds it
-/// to the checker at `Full`, and holds each query's answer to the
-/// closed-form `expect_hits`. Errors: [`QueryError`], naming the variant
-/// and the query.
+/// to the checker at `Full`, fires each query's ray at it and holds the
+/// hits to the oracle's, and to the closed-form `expect_hits`. Errors:
+/// [`QueryError`], naming the variant and the query.
 ///
 /// ```no_run
 /// use arris_debug::{fixtures, query};
@@ -271,9 +292,16 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                 variant,
             }));
         };
+        let params = fixture.recipe.params_of(&variant).unwrap_or_default();
         let chain = corpus::chain_of(&solid, &variant)?;
-        corpus::check_stage(&solid, &chain)?;
+        let (body, _) = corpus::check_stage(&solid, &chain)?;
         for query in &fixture.queries {
+            let mismatch = |what: String| QueryError::Mismatch {
+                fixture: fixture.name.clone(),
+                variant: variant.clone(),
+                label: query.label.clone(),
+                what,
+            };
             let Some(answer) = answers.queries.iter().find(|a| a.label == query.label) else {
                 return Err(QueryError::NoAnswer {
                     fixture: fixture.name.clone(),
@@ -281,18 +309,117 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                     label: query.label.clone(),
                 });
             };
-            let count = answer.wanted(query.hits).len();
-            if let Some(expect) = query.expect_hits.filter(|&n| n != count) {
-                return Err(QueryError::Mismatch {
+            let ray = ray_of(&fixture.name, query, &params)?;
+            let which = match query.hits {
+                HitsWanted::First => RayHits::First,
+                HitsWanted::All => RayHits::All,
+            };
+            let hits = ray_fire(&chain.model, body, &ray, which).map_err(|source| {
+                QueryError::Refused {
                     fixture: fixture.name.clone(),
-                    variant,
+                    variant: variant.clone(),
                     label: query.label.clone(),
-                    what: format!("{count} hits, the recipe expects {expect}"),
-                });
+                    source: Box::new(source),
+                }
+            })?;
+            if let Some(expect) = query.expect_hits.filter(|&n| n != hits.len()) {
+                return Err(mismatch(format!(
+                    "{} hits, the recipe expects {expect}",
+                    hits.len()
+                )));
+            }
+            compare(
+                &chain.model,
+                &hits,
+                answer.wanted(query.hits),
+                &fixture.recipe.tolerances,
+            )
+            .map_err(mismatch)?;
+        }
+    }
+    Ok(())
+}
+
+/// The query's ray under `params`.
+fn ray_of(fixture: &str, query: &Query, params: &BTreeMap<String, f64>) -> Result<Ray, QueryError> {
+    let vector = |v: &[Num; 3]| -> Result<Vec3, QueryError> {
+        let n = |i: usize| {
+            v[i].eval(params).map_err(|source| QueryError::Expression {
+                fixture: fixture.to_string(),
+                label: query.label.clone(),
+                source,
+            })
+        };
+        Ok(Vec3::new(n(0)?, n(1)?, n(2)?))
+    };
+    Ok(Ray {
+        origin: Point3::from(vector(&query.ray.origin)?),
+        direction: vector(&query.ray.direction)?,
+    })
+}
+
+/// Arris's `hits` against the oracle's, hit for hit: `t`, the point and
+/// the normal within `tolerances.probe`, and a hit on a face by that
+/// face's centroid within `tolerances.centroid_abs`. A hit that names an
+/// edge or a vertex has no one face to match: the oracle reports it once
+/// per face. `Err` is what differs, first difference only.
+fn compare(
+    model: &Model,
+    hits: &[RayHit],
+    oracle: &[OracleHit],
+    tolerances: &fixtures::Tolerances,
+) -> Result<(), String> {
+    if hits.len() != oracle.len() {
+        return Err(format!(
+            "{} hits, the oracle has {}",
+            hits.len(),
+            oracle.len()
+        ));
+    }
+    let probe = tolerances.probe;
+    for (i, (hit, o)) in hits.iter().zip(oracle).enumerate() {
+        if (hit.t - o.t).abs() > probe {
+            return Err(format!("hit {i}: t {} but the oracle's is {}", hit.t, o.t));
+        }
+        let at = Vec3::from(o.point);
+        if (hit.point.coords - at).norm() > probe {
+            return Err(format!(
+                "hit {i}: point {:?} but the oracle's is {:?}",
+                hit.point.coords.as_slice(),
+                o.point
+            ));
+        }
+        let normal = Vec3::from(o.normal);
+        if normal.norm() > 0.5 && (hit.normal.into_inner() - normal).norm() > probe {
+            return Err(format!(
+                "hit {i}: normal {:?} but the oracle's is {:?}",
+                hit.normal.as_slice(),
+                o.normal
+            ));
+        }
+        if let EntityId::Face(face) = hit.shape.id {
+            let centroid = face_centroid(model, face)
+                .map_err(|e| format!("hit {i}: the centroid of {face}: {e}"))?;
+            if (centroid - Vec3::from(o.face_centroid)).norm() > tolerances.centroid_abs {
+                return Err(format!(
+                    "hit {i}: lands on the face centred {:?} but the oracle's is centred {:?}",
+                    centroid.as_slice(),
+                    o.face_centroid
+                ));
             }
         }
     }
     Ok(())
+}
+
+/// The area centroid of `face`: `∬ P dA / ∬ dA` over its region.
+fn face_centroid(model: &Model, face: FaceId) -> Result<Vec3, arris_check::flux::FluxError> {
+    let area = face_flux(model, face, |_, n| n.norm())?;
+    let mut moment = [0.0; 3];
+    for (k, m) in moment.iter_mut().enumerate() {
+        *m = face_flux(model, face, |p, n| p[k] * n.norm())?;
+    }
+    Ok(Vec3::new(moment[0], moment[1], moment[2]) / area)
 }
 
 /// The corpus lint of a query fixture: presence, the recipe's hash, the

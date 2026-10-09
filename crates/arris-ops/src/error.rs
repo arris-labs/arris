@@ -517,6 +517,14 @@ pub enum QueryReason {
     /// so `Surface::normal` has none to give; the error's entity is the
     /// face.
     Singular,
+    /// `ray_fire` was handed a ray that lies in a face — in a plane face,
+    /// or along a cylinder's ruling: every point of it within the face is
+    /// a hit, and a pair of boundary hits would be a guess about what the
+    /// caller meant (ADR-0053 §4). The error's entity is the face.
+    RayInFace,
+    /// `ray_fire` was handed a ray whose direction has no length; the
+    /// error's entity is the body.
+    ZeroDirection,
 }
 
 impl QueryReason {
@@ -530,6 +538,8 @@ impl QueryReason {
             QueryReason::NotPlanar => "NotPlanar",
             QueryReason::OutOfDomain => "OutOfDomain",
             QueryReason::Singular => "Singular",
+            QueryReason::RayInFace => "RayInFace",
+            QueryReason::ZeroDirection => "ZeroDirection",
         }
     }
 }
@@ -551,6 +561,8 @@ impl core::fmt::Display for QueryReason {
             QueryReason::Singular => {
                 f.write_str("the surface's parametrisation is singular there: it has no normal")
             }
+            QueryReason::RayInFace => f.write_str("the ray lies in the face"),
+            QueryReason::ZeroDirection => f.write_str("the ray's direction has no length"),
         }
     }
 }
@@ -1034,12 +1046,22 @@ mod tests {
                 "the surface's parametrisation is singular there: it has no normal",
             ),
             (
+                Reason::Query(QueryReason::RayInFace),
+                "RayInFace",
+                "the ray lies in the face",
+            ),
+            (
+                Reason::Query(QueryReason::ZeroDirection),
+                "ZeroDirection",
+                "the ray's direction has no length",
+            ),
+            (
                 Reason::Split(SplitReason::NoCrossing),
                 "NoCrossing",
                 "the plane does not cross the body, so one side would be empty",
             ),
         ];
-        assert_eq!(leaves.len(), 29);
+        assert_eq!(leaves.len(), 31);
         for (reason, name, message) in leaves {
             assert_eq!(reason.name(), name);
             assert_eq!(reason.to_string(), message, "{name}");

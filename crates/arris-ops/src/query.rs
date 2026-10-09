@@ -3,13 +3,21 @@
 //! [`crate::measure`], of the same shape: it takes `&Model`, makes no
 //! body, records no provenance and opens no transaction.
 
-use arris_check::domain::FaceDomain;
-use arris_geom::region2::Side;
-use arris_geom::{Curve, Curve2, GeomError, Surface, project_to_plane as project};
-use arris_math::{Frame, Interval, Point2, Vec2, wrap_angle};
-use arris_topo::{EdgeId, EntityId, Face, Model, Orientation, Shape, VertexId};
+use std::collections::BTreeMap;
 
-use crate::error::{Fault, OpError, QueryReason, Reason};
+use arris_check::domain::FaceDomain;
+use arris_check::tree::FaceTree;
+use arris_geom::region2::Side;
+use arris_geom::{
+    Curve, Curve2, CurveIntersection, CurveSurfaceIntersection, GeomError, Surface,
+    intersect_curve_surface, intersect_curves, project_to_plane as project,
+};
+use arris_math::{
+    Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, wrap_angle,
+};
+use arris_topo::{Body, EdgeId, EntityId, Face, FaceId, Model, Orientation, Shape, VertexId};
+
+use crate::error::{Fault, InputReason, OpError, QueryReason, Reason};
 
 /// One entity of a [`project_to_plane`] call, projected: what the
 /// consumer draws on its sketch plane. Coordinates are the plane frame's
@@ -320,4 +328,330 @@ pub fn frame_at(m: &Model, face: Face, uv: Point2) -> Result<Frame, OpError> {
     };
     let e = surface.eval(uv.x, uv.y);
     Ok(Frame::new(e.point, normal, e.du)?)
+}
+
+/// A half-line to fire at a body: the points `origin + t · direction`,
+/// `t >= 0`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Ray {
+    /// Where it starts.
+    pub origin: Point3,
+    /// Which way it runs. Any length but zero; a hit's `t` is measured
+    /// along its normalisation, so it is a distance.
+    pub direction: Vec3,
+}
+
+/// How many of a ray's hits [`ray_fire`] returns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RayHits {
+    /// The hit with the smallest `t`, if there is one.
+    First,
+    /// Every hit, by ascending `t`.
+    All,
+}
+
+/// One place a ray meets a body.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RayHit {
+    /// The most specific entity the hit is within the tolerance of: a
+    /// vertex, else an edge, else a face (ADR-0053 §1), as
+    /// [`arris_check::classify::Classification::On`] names it. A face
+    /// carries its use's orientation in the body.
+    pub shape: Shape,
+    /// The distance along the ray's unit direction; never negative.
+    pub t: f64,
+    /// The `(u, v)` of the hit on its face: on the face with the lowest
+    /// id, for a hit that names an edge or a vertex.
+    pub uv: Point2,
+    /// `origin + t · direction`, normalised.
+    pub point: Point3,
+    /// The outward normal of the hit face, composed with its use as
+    /// [`frame_at`]'s `Z` is: of the face with the lowest id, for a hit
+    /// that names an edge or a vertex.
+    pub normal: UnitVec3,
+    /// `true` when the ray touches the surface without crossing it
+    /// (ADR-0053 §3): a graze counts as a hit, and never as a crossing.
+    pub tangent: bool,
+}
+
+/// A hit before the faces that share it are merged.
+struct Candidate {
+    face: FaceId,
+    hit: RayHit,
+}
+
+/// Where `ray` meets `body`: every hit, or the first, each with the
+/// entity it lands on, the ray parameter, the face's `(u, v)`, the point
+/// and the face's outward normal (ADR-0053).
+///
+/// The ray is a half-line: a hit behind its origin is never reported, and
+/// an origin on the boundary (within the entity's own tolerance) is a hit
+/// at `t = 0`. A ray from inside a solid reports what it leaves through.
+/// A hit names the most specific entity: a ray through a box's edge is one
+/// hit naming the edge, not two on its faces, and its `uv` and `normal`
+/// are the lowest-id face's of the two. A ray that only touches a surface
+/// is a hit with `tangent` set. Hits come by ascending `t`, ties by the
+/// entity's id. `First` stops at the nearest face box that cannot beat the
+/// hit found.
+///
+/// The faces are reached through a [`FaceTree`] over their boxes, and a
+/// line meets a NURBS face through `arris_geom::intersect_curve_surface`,
+/// so every face kind is answered.
+///
+/// Errors: [`OpError::InvalidInput`] when the body fails the checker
+/// (debug builds, and release with the `paranoid` feature);
+/// [`OpError::NotFound`] when the body or an entity it refers to does not
+/// resolve; [`OpError::Degenerate`] with [`QueryReason::ZeroDirection`],
+/// naming the body, for a direction of no length, and with
+/// [`InputReason::NonFinite`] for a non-finite origin or direction;
+/// [`QueryReason::RayInFace`], naming the face, for a ray lying in a face
+/// — a plane face, or a ruling of a cylinder, a cone or a ruled NURBS
+/// surface — which has no single hit to give (ADR-0053 §4);
+/// [`QueryReason::Singular`], naming the face, for a hit at a pole or an
+/// apex, where the surface has no normal. [`OpError::Internal`] when the
+/// intersector fails on validated input.
+///
+/// ```
+/// use arris_ops::primitive_box;
+/// use arris_ops::query::{Ray, RayHits, ray_fire};
+/// use arris_math::{Point3, Vec3};
+/// use arris_topo::{EntityId, Model};
+///
+/// let mut m = Model::default();
+/// let (body, _) = primitive_box(&mut m, Point3::new(0.0, 0.0, 0.0), Point3::new(4.0, 3.0, 2.0), &arris_ops::Control::NONE).unwrap();
+///
+/// // Up through the middle of the box: in at the bottom, out at the top.
+/// let up = Ray { origin: Point3::new(2.0, 1.5, -1.0), direction: Vec3::new(0.0, 0.0, 2.0) };
+/// let hits = ray_fire(&m, body, &up, RayHits::All).unwrap();
+/// assert_eq!(hits.len(), 2);
+/// assert!((hits[0].t - 1.0).abs() < 1e-12 && (hits[1].t - 3.0).abs() < 1e-12);
+/// assert!(hits.iter().all(|h| matches!(h.shape.id, EntityId::Face(_))));
+/// assert!((hits[0].normal.z + 1.0).abs() < 1e-12 && (hits[1].normal.z - 1.0).abs() < 1e-12);
+///
+/// // Diagonally through an edge, it is one hit naming the edge.
+/// let edge = Ray { origin: Point3::new(5.0, 4.0, 1.0), direction: Vec3::new(-1.0, -1.0, 0.0) };
+/// let hits = ray_fire(&m, body, &edge, RayHits::First).unwrap();
+/// assert!(matches!(hits[0].shape.id, EntityId::Edge(_)));
+/// ```
+pub fn ray_fire(m: &Model, body: Body, ray: &Ray, which: RayHits) -> Result<Vec<RayHit>, OpError> {
+    crate::verify_input(m, body)?;
+    let whole = Shape::new(body.id, body.orientation);
+    if !ray.origin.coords.iter().all(|c| c.is_finite()) {
+        return Err(non_finite(whole, "the ray's origin"));
+    }
+    if !ray.direction.iter().all(|c| c.is_finite()) {
+        return Err(non_finite(whole, "the ray's direction"));
+    }
+    if ray.direction.norm() == 0.0 {
+        return Err(degenerate(whole, Reason::Query(QueryReason::ZeroDirection)));
+    }
+    let direction = UnitVec3::new_normalize(ray.direction);
+    let line = Curve::Line {
+        origin: ray.origin,
+        direction,
+    };
+
+    let uses = face_uses(m, body)?;
+    let mut reach = 0.0f64;
+    for &id in uses.keys() {
+        reach = reach.max(m.face(id)?.tolerance());
+    }
+    let tree = FaceTree::of_body(m, body)?;
+    let entries = tree.entries(ray.origin, direction.into_inner(), (-reach, f64::INFINITY));
+
+    let mut found: Vec<Candidate> = Vec::new();
+    for (entry, id) in entries {
+        // Entries ascend, and a face is hit no nearer than its box is
+        // entered, so once the nearest hit beats an entry it beats every
+        // later one.
+        if which == RayHits::First
+            && let Some(nearest) = found.iter().map(|c| c.hit.t).reduce(f64::min)
+            && entry > nearest + reach
+        {
+            break;
+        }
+        let Some(&orientation) = uses.get(&id) else {
+            continue;
+        };
+        face_hits(m, id, orientation, &line, ray.origin, direction, &mut found)?;
+    }
+
+    let merged = merge(found, reach);
+    Ok(match which {
+        RayHits::All => merged,
+        RayHits::First => merged.into_iter().take(1).collect(),
+    })
+}
+
+fn non_finite(shape: Shape, what: &'static str) -> OpError {
+    degenerate(shape, Reason::Input(InputReason::NonFinite { what }))
+}
+
+/// Each face of `body` with its use's orientation in the body, composed
+/// through the shell and body handles; the first use of a face used twice.
+fn face_uses(m: &Model, body: Body) -> Result<BTreeMap<FaceId, Orientation>, OpError> {
+    let mut uses = BTreeMap::new();
+    for shell_use in m.body(body.id)?.shells() {
+        let orientation = body.orientation.compose(shell_use.orientation);
+        for face_use in m.shell(shell_use.id)?.faces() {
+            uses.entry(face_use.id)
+                .or_insert_with(|| orientation.compose(face_use.orientation));
+        }
+    }
+    Ok(uses)
+}
+
+/// The hits of `line`, from `origin`, on `face`, appended to `found`:
+/// each a point of the surface at `t >= 0` that is in the face's domain,
+/// named by the most specific entity the point is within the tolerance of.
+fn face_hits(
+    m: &Model,
+    id: FaceId,
+    orientation: Orientation,
+    line: &Curve,
+    origin: Point3,
+    direction: UnitVec3,
+    found: &mut Vec<Candidate>,
+) -> Result<(), OpError> {
+    let face = m.face(id)?;
+    let surface = m.surface(face.surface())?;
+    let shape = Shape::new(id, orientation);
+    let precision = m.precision();
+    let tolerance = Tolerance::new(face.tolerance(), precision.angular_tolerance);
+    let domain = FaceDomain::of(m, id, precision.parametric_tolerance)?;
+    let hits = match intersect_curve_surface(line, surface, tolerance, &mut Meter::default())
+        .map_err(|e| OpError::Internal(Fault::Geometry(e)))?
+    {
+        CurveSurfaceIntersection::Points(hits) => hits,
+        CurveSurfaceIntersection::Coincident => {
+            // The ray lies in the face's surface: it is in the face when it
+            // runs through the face's domain, and otherwise it misses it.
+            if lies_in_face(m, id, &domain, line, origin, direction, tolerance)? {
+                return Err(degenerate(shape, Reason::Query(QueryReason::RayInFace)));
+            }
+            return Ok(());
+        }
+    };
+    for hit in hits {
+        if hit.t < -face.tolerance() {
+            continue;
+        }
+        let (side, _) = domain.side(hit.uv);
+        if side == Side::Outside {
+            continue;
+        }
+        let entity = match domain.boundary_entity(m, hit.point)? {
+            Some(entity) => entity,
+            None if side == Side::Inside || domain.winds_around(hit.uv) => shape,
+            // Within the band of the boundary but on none of its edges
+            // and not inside it: beside the face.
+            None => continue,
+        };
+        let Some(normal) = surface.normal(hit.uv.x, hit.uv.y) else {
+            return Err(degenerate(shape, Reason::Query(QueryReason::Singular)));
+        };
+        let normal = if orientation == Orientation::Reversed {
+            -normal.into_inner()
+        } else {
+            normal.into_inner()
+        };
+        found.push(Candidate {
+            face: id,
+            hit: RayHit {
+                shape: entity,
+                t: hit.t.max(0.0),
+                uv: hit.uv,
+                point: hit.point,
+                normal: UnitVec3::new_normalize(normal),
+                tangent: hit.tangent,
+            },
+        });
+    }
+    Ok(())
+}
+
+/// Whether the ray, which lies in `face`'s surface, runs through the
+/// face: along one of its edges, or through a stretch between two of its
+/// crossings of the boundary (or its origin and the first) that is in the
+/// face's domain. Beyond the last crossing a ray has left a bounded face.
+fn lies_in_face(
+    m: &Model,
+    id: FaceId,
+    domain: &FaceDomain<'_>,
+    line: &Curve,
+    origin: Point3,
+    direction: UnitVec3,
+    tolerance: Tolerance,
+) -> Result<bool, OpError> {
+    let face = m.face(id)?;
+    let surface = m.surface(face.surface())?;
+    let mut edges: Vec<EdgeId> = face
+        .loops()
+        .iter()
+        .flat_map(|l| l.coedges())
+        .map(|c| c.edge())
+        .collect();
+    edges.sort_unstable();
+    edges.dedup();
+    let mut crossings = vec![0.0];
+    for e in edges {
+        let Some((curve, _)) = m.edge(e)?.curve() else {
+            continue;
+        };
+        match intersect_curves(line, m.curve(curve)?, tolerance, &mut Meter::default())
+            .map_err(|e| OpError::Internal(Fault::Geometry(e)))?
+        {
+            CurveIntersection::Coincident => return Ok(true),
+            CurveIntersection::Points(hits) => {
+                crossings.extend(hits.iter().map(|h| h.ta).filter(|&t| t > 0.0));
+            }
+        }
+    }
+    crossings.sort_unstable_by(f64::total_cmp);
+    let at = |t: f64| origin + direction.into_inner() * t;
+    let mut stretches: Vec<f64> = crossings.windows(2).map(|w| 0.5 * (w[0] + w[1])).collect();
+    if crossings.len() == 1 {
+        stretches.push(0.0);
+    }
+    for t in stretches {
+        let Ok(projection) = surface.project(at(t)) else {
+            continue;
+        };
+        if domain.side(projection.uv).0 != Side::Outside {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// The candidates by ascending `t`, ties by the entity, with those that
+/// name one edge or vertex at the same place (within `reach`, the largest
+/// face tolerance) merged into one: the lowest-id face's.
+fn merge(mut found: Vec<Candidate>, reach: f64) -> Vec<RayHit> {
+    found.sort_by(|a, b| {
+        a.hit
+            .t
+            .total_cmp(&b.hit.t)
+            .then(a.hit.shape.id.cmp(&b.hit.shape.id))
+            .then(a.face.cmp(&b.face))
+    });
+    let mut merged: Vec<Candidate> = Vec::new();
+    for c in found {
+        let shared = !matches!(c.hit.shape.id, EntityId::Face(_));
+        let same = merged.iter_mut().find(|k| {
+            shared && k.hit.shape.id == c.hit.shape.id && (k.hit.t - c.hit.t).abs() <= reach
+        });
+        match same {
+            Some(k) if c.face < k.face => *k = c,
+            Some(_) => {}
+            None => merged.push(c),
+        }
+    }
+    merged.sort_by(|a, b| {
+        a.hit
+            .t
+            .total_cmp(&b.hit.t)
+            .then(a.hit.shape.id.cmp(&b.hit.shape.id))
+    });
+    merged.into_iter().map(|c| c.hit).collect()
 }

@@ -130,6 +130,36 @@ impl FaceTree {
     /// order. A zero or non-finite `direction` yields the faces whose box
     /// holds `origin`.
     pub fn along(&self, origin: Point3, direction: Vec3, range: (f64, f64)) -> Vec<FaceId> {
+        self.entries(origin, direction, range)
+            .into_iter()
+            .map(|(_, id)| id)
+            .collect()
+    }
+
+    /// [`FaceTree::along`] with the `t` each face's box is entered at,
+    /// which a query that wants only the nearest hit stops by: no face
+    /// further down the list can be hit before its own entry. A face no
+    /// box rejects is entered at `range.0`.
+    ///
+    /// ```
+    /// use arris_check::tree::FaceTree;
+    /// use arris_debug::sample;
+    /// use arris_math::{Point3, Vec3};
+    /// use arris_topo::Model;
+    ///
+    /// let mut m = Model::default();
+    /// let body = sample::unit_box(&mut m)?;
+    /// let tree = FaceTree::of_body(&m, body)?;
+    /// let entries = tree.entries(Point3::new(0.5, 0.5, 5.0), Vec3::new(0.0, 0.0, -1.0), (0.0, 10.0));
+    /// assert!(entries.windows(2).all(|w| w[0].0 <= w[1].0));
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn entries(
+        &self,
+        origin: Point3,
+        direction: Vec3,
+        range: (f64, f64),
+    ) -> Vec<(f64, FaceId)> {
         let mut found: Vec<(f64, FaceId)> = Vec::new();
         let mut stack: Vec<usize> = if self.nodes.is_empty() {
             vec![]
@@ -156,8 +186,8 @@ impl FaceTree {
             }
         }
         found.sort_unstable_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
-        let mut out = self.unbounded.clone();
-        out.extend(found.into_iter().map(|(_, id)| id));
+        let mut out: Vec<(f64, FaceId)> = self.unbounded.iter().map(|&id| (range.0, id)).collect();
+        out.extend(found);
         out
     }
 
