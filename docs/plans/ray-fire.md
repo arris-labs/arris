@@ -205,12 +205,17 @@ bound has to be established here.
   `centroid_abs` to 2e-2, the oracle's quadrature being 7e-3 off the
   wall's centroid. A hit at a pole or an apex is refused (`Singular`), so
   no ray goes through one: a backlog line.*
-- [ ] Step 8 **[2]** — Property tests over random poses (`prop_shards!`):
+- [x] Step 8 **[2]** — Property tests over random poses (`prop_shards!`):
   each hit lies on its face and on the ray within tolerance; `First` is
   the minimum `t` of `All`; for a ray starting `Outside` a closed solid,
   the number of crossings past the last tangent-free hit is even; from
   `Inside` it is odd and agrees with `classify_point`; and a ray fired
   back from past the last hit returns the same hits reversed.
+  *As built: `crates/arris-ops/tests/ray_prop.rs` over a box, a cylinder
+  and the four quadric solids in random poses, aimed through a random
+  interior point, from outside and from that point. Parity is counted
+  only when every hit is a plain face crossing, so a ray clipping an edge
+  is not held to it; a `RayInFace` or `Singular` refusal is skipped.*
 - [ ] Step 9 **[1]** — Python binding: `Body.ray_fire`, a `RayHit` class,
   the new error leaves, the stub and a docstring example.
   `CHANGELOG.md` gets the binding's bullet.

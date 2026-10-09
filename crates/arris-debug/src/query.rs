@@ -156,7 +156,7 @@ pub struct VariantAnswers {
 pub struct QueryExpected {
     /// The `cadquery-ocp` version that wrote it.
     pub occt: String,
-    /// The hash of the recipe's [`QUERY_KEYS`].
+    /// The hash of the recipe's [`crate::fixtures::QUERY_KEYS`].
     pub recipe_sha256: String,
     /// `"query"`.
     pub kind: String,
