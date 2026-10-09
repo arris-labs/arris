@@ -688,6 +688,13 @@ histogram at C7's close does not outrank it: healing 14 of 38 parts at
 part corpus exists yet to rank by; it is an `/idea` that follows this
 cycle's opening, and its histogram picks the cycle after this one.*
 
+**Status: in progress.** Ray fire landed 2026-10-09 (ADR-0053): the face
+hierarchy (`arris_check::tree::FaceTree`, which the classifier casts
+through too), `ops::query::ray_fire`, the line × NURBS surface arm of
+`intersect_curve_surface`, the `query` fixture kind with ten ray fixtures
+held to `IntCurvesFace_ShapeIntersector`, and the Python binding. Distance,
+interference and the planar section remain.
+
 **In:**
 
 - Minimum distance between two entities (point, edge, face, body) with the

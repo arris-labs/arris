@@ -39,8 +39,9 @@ the residue is on the backlog. ADR-0035 to 0046.
 **C7 done (2026-10-07): prismatic features.** Offset faces, shell, the
 multi-tool boolean, split by a plane and per-face tessellation; sweep and
 loft went to the NURBS cycle (ADR-0047 to 0052).
-**Next: C8, the query cycle** (opened 2026-10-08): distance, ray fire,
-interference, planar section. The DIY part corpus (an `/idea`) picks the
+**C8, the query cycle** (opened 2026-10-08): ray fire and the face-box
+hierarchy landed 2026-10-09 (ADR-0053); distance, interference and planar
+section remain. The DIY part corpus (an `/idea`) picks the
 cycle after it.
 
 ## Rules that are not derivable from the code

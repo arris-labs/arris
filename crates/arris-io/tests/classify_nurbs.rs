@@ -1,4 +1,4 @@
-//! A real part's B-spline faces classified (`plans/ray-fire` step 4):
+//! A real part's B-spline faces classified (ADR-0053):
 //! NIST FTC-07's solid #7820, whose faces include B-spline surfaces a ray
 //! from a probe has to cross. Before the line-against-NURBS arm,
 //! `classify_point` refused such a body; now it gives Open CASCADE's class,
