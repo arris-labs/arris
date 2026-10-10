@@ -4,11 +4,13 @@
 //! `query/distance-*` corpus; these are the closed forms.
 
 use arris_debug::sample;
-use arris_debug::unmetered::primitive_box;
-use arris_math::{Control, Point3};
+use arris_debug::unmetered::{primitive_box, revolve};
+use arris_geom::{Profile, ProfileLoop, ProfileSegment};
+use arris_math::{Axis, Control, Frame, Point2, Point3, Vec3};
 use arris_ops::query::{Distance, FootParam, Operand, distance};
 use arris_ops::{OpError, QueryReason, Reason};
 use arris_topo::{Body, EntityId, Model, Orientation, Shape};
+use core::f64::consts::TAU;
 
 const EXACT: f64 = 1e-12;
 
@@ -358,4 +360,249 @@ fn a_ball_above_a_plate_is_a_ball_radius_closer_than_its_centre() {
     let d = between(&m, surface, top);
     assert!((d.distance - 3.0).abs() < 1e-9);
     assert!(d.unique);
+}
+
+fn solids(m: &Model, a: Body, b: Body) -> Distance {
+    between(
+        m,
+        Shape::new(a.id, a.orientation),
+        Shape::new(b.id, b.orientation),
+    )
+}
+
+#[test]
+fn two_boxes_apart_are_at_their_gap_and_touching_ones_at_zero() {
+    // Apart in x and z: the nearest are the facing edges, √(3² + 4²).
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        ([7.0, 0.0, 6.0], [9.0, 3.0, 8.0]),
+    );
+    let d = solids(&m, a, b);
+    assert!((d.distance - 5.0).abs() < EXACT);
+    assert!(!d.contained);
+    assert!((d.a.point - Point3::new(4.0, d.a.point.y, 2.0)).norm() < EXACT);
+    assert!((d.b.point - Point3::new(7.0, d.b.point.y, 6.0)).norm() < EXACT);
+    assert!(
+        !d.unique,
+        "a whole edge faces an edge: a continuum of nearest pairs"
+    );
+    // The same answer with the operands swapped, feet swapped with them.
+    let e = solids(&m, b, a);
+    assert!((e.distance - d.distance).abs() < EXACT);
+    assert!((e.a.point - d.b.point).norm() < EXACT && (e.b.point - d.a.point).norm() < EXACT);
+
+    // Apart along one axis only: a face over a face.
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        ([1.0, 1.0, 5.0], [3.0, 2.0, 8.0]),
+    );
+    let d = solids(&m, a, b);
+    assert!((d.distance - 3.0).abs() < EXACT);
+    assert!(matches!(d.a.shape.unwrap().id, EntityId::Face(_)));
+
+    // Face against face, touching.
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        ([4.0, 0.0, 0.0], [6.0, 3.0, 2.0]),
+    );
+    let d = solids(&m, a, b);
+    assert!(d.distance < 1e-9 && !d.contained);
+}
+
+#[test]
+fn crossing_boxes_are_at_zero_and_one_inside_another_is_contained() {
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        ([3.0, 1.0, 1.0], [7.0, 2.0, 5.0]),
+    );
+    // A vertex of one inside the other: at zero, and contained (Open
+    // Cascade's `InnerSolution`).
+    let d = solids(&m, a, b);
+    assert!(d.distance == 0.0 && d.contained);
+
+    // Crossing like a plus with no vertex inside either: at zero by
+    // contact, not contained.
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [10.0, 2.0, 2.0]),
+        ([4.0, -3.0, -3.0], [6.0, 5.0, 5.0]),
+    );
+    let d = solids(&m, a, b);
+    assert!(d.distance < 1e-9 && !d.contained);
+
+    // Wholly inside: the same, in either order, and the inner operand's
+    // point is the foot.
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [10.0, 10.0, 10.0]),
+        ([2.0, 3.0, 4.0], [5.0, 6.0, 7.0]),
+    );
+    for (x, y) in [(a, b), (b, a)] {
+        let d = solids(&m, x, y);
+        assert!(d.contained && d.distance == 0.0);
+        assert!((d.a.point - d.b.point).norm() < EXACT);
+    }
+    let d = solids(&m, a, b);
+    assert!(d.a.shape.is_none() && d.b.shape.is_some());
+}
+
+#[test]
+fn a_solid_against_an_edge_or_a_face_of_another() {
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        ([7.0, 1.0, 1.0], [9.0, 2.0, 5.0]),
+    );
+    let face = nearest_entity(&m, b, [7.0, 1.5, 3.0], "face");
+    let d = distance(
+        &m,
+        Operand::Shape(Shape::new(a.id, a.orientation)),
+        Operand::Shape(face),
+        &Control::NONE,
+    )
+    .unwrap();
+    assert!((d.distance - 3.0).abs() < EXACT);
+    // Facing faces are a continuum, answered on the most specific entity
+    // of the one that is smaller.
+    assert!(d.b.shape.is_some() && !d.unique);
+    // And the other way round.
+    let e = distance(
+        &m,
+        Operand::Shape(face),
+        Operand::Shape(Shape::new(a.id, a.orientation)),
+        &Control::NONE,
+    )
+    .unwrap();
+    assert!((e.distance - 3.0).abs() < EXACT);
+    assert!(e.a.shape.is_some() && !e.unique);
+
+    // A face of the second box inside the first is contained.
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [10.0, 10.0, 10.0]),
+        ([2.0, 3.0, 4.0], [5.0, 6.0, 7.0]),
+    );
+    let inner = nearest_entity(&m, b, [3.0, 4.0, 7.0], "edge");
+    let d = distance(
+        &m,
+        Operand::Shape(Shape::new(a.id, a.orientation)),
+        Operand::Shape(inner),
+        &Control::NONE,
+    )
+    .unwrap();
+    assert!(d.contained && d.distance == 0.0);
+}
+
+#[test]
+fn a_ball_against_a_cylinder_and_a_box() {
+    let mut m = Model::default();
+    let ball = sample::sphere(&mut m, Point3::new(10.0, 0.0, 3.0), 1.5).unwrap();
+    let pin = sample::cylinder(&mut m, 2.0, 6.0).unwrap();
+    let d = solids(&m, ball, pin);
+    // The pin's wall is 2 from its axis, the ball's centre 10 from it.
+    assert!((d.distance - (10.0 - 2.0 - 1.5)).abs() < 1e-9);
+    assert!(!d.contained);
+}
+
+#[test]
+fn a_body_far_from_the_other_is_walked_in_a_handful_of_pairs() {
+    // Offset on every axis, only the three faces at each nearest corner
+    // can reach the answer: 9 of the 36 face pairs, about 1900 ticks, where
+    // all of them cost about 6300. The budget runs out on the full set.
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        ([40.0, 30.0, 20.0], [44.0, 33.0, 22.0]),
+    );
+    let d = distance(
+        &m,
+        Operand::Shape(Shape::new(a.id, a.orientation)),
+        Operand::Shape(Shape::new(b.id, b.orientation)),
+        &Control::budget(3000),
+    )
+    .unwrap();
+    let corner = (Point3::new(4.0, 3.0, 2.0) - Point3::new(40.0, 30.0, 20.0)).norm();
+    assert!((d.distance - corner).abs() < EXACT);
+    assert!(d.unique && matches!(d.a.shape.unwrap().id, EntityId::Vertex(_)));
+}
+
+#[test]
+fn a_stopped_control_interrupts_a_body_pair() {
+    let (m, a, b) = two_boxes(
+        ([0.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        ([7.0, 0.0, 6.0], [9.0, 3.0, 8.0]),
+    );
+    let e = distance(
+        &m,
+        Operand::Shape(Shape::new(a.id, a.orientation)),
+        Operand::Shape(Shape::new(b.id, b.orientation)),
+        &Control::budget(0),
+    )
+    .unwrap_err();
+    assert!(matches!(e, OpError::Interrupted(_)));
+}
+
+/// The frustum of `sweep/revolve-frustum`, about the axis through `at`.
+fn frustum(m: &mut Model, at: Point3) -> Body {
+    let p = |u, v| Point2::new(u, v);
+    let profile = Profile {
+        plane: Frame::new(at, -Vec3::y(), Vec3::x()).unwrap(),
+        outer: ProfileLoop::Path {
+            start: p(1.0, -1.0),
+            segments: vec![
+                ProfileSegment::LineTo(p(4.0, -1.0)),
+                ProfileSegment::LineTo(p(2.0, 1.0)),
+                ProfileSegment::LineTo(p(1.0, 1.0)),
+                ProfileSegment::LineTo(p(1.0, -1.0)),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    revolve(m, &profile, Axis::z_at(at), TAU).unwrap().0
+}
+
+#[test]
+fn two_cones_off_their_common_axis_are_refused_naming_both_faces() {
+    let mut m = Model::default();
+    let a = frustum(&mut m, Point3::origin());
+    let b = frustum(&mut m, Point3::new(20.0, 0.0, 0.0));
+    let e = distance(
+        &m,
+        Operand::Shape(Shape::new(a.id, a.orientation)),
+        Operand::Shape(Shape::new(b.id, b.orientation)),
+        &Control::NONE,
+    )
+    .unwrap_err();
+    let OpError::Unsupported {
+        a: (_, x),
+        b: (_, y),
+    } = e
+    else {
+        panic!("expected Unsupported, got {e:?}");
+    };
+    assert!(matches!(x.id, EntityId::Face(_)) && matches!(y.id, EntityId::Face(_)));
+    // Against a box the same frustum answers: cone against plane.
+    let (cube, _) = primitive_box(
+        &mut m,
+        Point3::new(10.0, -5.0, -1.0),
+        Point3::new(12.0, 5.0, 1.0),
+    )
+    .unwrap();
+    let d = solids(&m, a, cube);
+    assert!((d.distance - 6.0).abs() < 1e-9, "{}", d.distance);
+}
+
+#[test]
+fn a_ball_wholly_inside_a_block_is_contained_and_one_beside_it_is_not() {
+    let mut m = Model::default();
+    let (block, _) = primitive_box(
+        &mut m,
+        Point3::new(-5.0, -5.0, -5.0),
+        Point3::new(5.0, 5.0, 5.0),
+    )
+    .unwrap();
+    let inner = sample::sphere(&mut m, Point3::origin(), 2.0).unwrap();
+    let outer = sample::sphere(&mut m, Point3::new(10.0, 0.0, 0.0), 2.0).unwrap();
+    // No vertex of the ball to classify: its closest point does.
+    for (x, y) in [(block, inner), (inner, block)] {
+        let d = solids(&m, x, y);
+        assert!(d.contained && d.distance == 0.0);
+    }
+    let d = solids(&m, block, outer);
+    assert!(!d.contained && (d.distance - 3.0).abs() < 1e-9);
 }

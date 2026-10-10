@@ -360,7 +360,7 @@ bound has to be established here.
     is the one thing unseen. The fixture needs `analytic.query_differs`
     for the stand wall over a plate, where Open CASCADE lists one pair of
     a ring.
-- [ ] Step 8 **[2]** — Body against anything:
+- [x] Step 8 **[2]** — Body against anything:
   - the nearest-first walk with the shrinking bound;
   - contact by the boolean's face–face section;
   - containment of a body;
@@ -370,6 +370,26 @@ bound has to be established here.
   A body far from the other ends after visiting a handful of pairs (an
   assertion on the meter). Fixture `query/distance-bodies` covers two
   boxes apart, touching on a face, crossing, and one inside the other.
+  - *As built:* `body_vs` in `ops::query::distance`. Each part of the
+    other operand (its faces, or the one entity) takes `FaceTree::nearest`
+    of its box at the bound `best + tol.linear`, nearest first, and each
+    pair is `entity_vs`, whose face × face already holds the contact test
+    (step 7), so no separate section pass. The pruning bound carries the
+    tolerance so that an equal candidate still reaches `unique`. A pair
+    that returns `Unsupported` is held with its box distance and refuses
+    only if that is within the final bound (a cone against a cone whose
+    boxes tie the answer refuses, as designed). `contained` is as the plan
+    said (a vertex of the other operand `Inside`, so a crossing that puts
+    a vertex in the other is `contained`, as `InnerSolution` is), plus a
+    post-walk fallback the plan lacked: where no vertex is inside and the
+    answer is positive, the closest point of an operand is classified,
+    which catches a ball wholly inside a body. No `Control` argument beyond
+    a tick per face pair was needed. The far-body assertion is a budget
+    (about 1900 ticks against about 6300 unpruned), since ticks inside the
+    extrema dominate the pair count. The cone–cone refusal is tested on two
+    off-axis frusta; a configuration pruning skips (whose cone boxes lie
+    beyond the answer) is step 9's fixture, since two frusta's cone boxes
+    always contain their caps' and cannot be skipped by them.
 - [ ] Step 9 **[2]** — The distance corpus under `tests/fixtures/query/`:
   - primitive pairs in oblique poses: sphere–cylinder, cone–torus,
     cylinder–cylinder skew, plane–torus;

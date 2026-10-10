@@ -73,7 +73,8 @@ pub struct Distance {
     /// several apart. The pair returned is then the lowest by entity id and
     /// parameter, so the answer is deterministic.
     pub unique: bool,
-    /// `true` when one operand lies in the interior of a solid operand.
+    /// `true` when a point or a vertex of one operand lies in the interior
+    /// of the other's solid, or an operand lies wholly in it.
     pub contained: bool,
 }
 
@@ -159,7 +160,7 @@ enum Entity {
 enum Resolved {
     /// A bare point, or a vertex (a point with its shape).
     Point(Point3, Option<Shape>),
-    Entity(Entity, Shape),
+    Entity(Entity),
     Body(Body),
 }
 
@@ -191,11 +192,11 @@ fn resolve(m: &Model, operand: Operand) -> Result<Resolved, OpError> {
                         reason: Reason::Query(QueryReason::DegenerateEdge),
                     });
                 }
-                Ok(Resolved::Entity(Entity::Edge(e), shape))
+                Ok(Resolved::Entity(Entity::Edge(e)))
             }
             EntityId::Face(f) => {
                 m.face(f)?;
-                Ok(Resolved::Entity(Entity::Face(f, shape.orientation), shape))
+                Ok(Resolved::Entity(Entity::Face(f, shape.orientation)))
             }
             EntityId::Shell(_) => Err(not_measurable([shape])),
             EntityId::Body(b) => {
@@ -205,14 +206,6 @@ fn resolve(m: &Model, operand: Operand) -> Result<Resolved, OpError> {
                 Ok(Resolved::Body(Body::new(b, shape.orientation)))
             }
         },
-    }
-}
-
-fn shape_of(r: &Resolved) -> Option<Shape> {
-    match r {
-        Resolved::Point(_, shape) => *shape,
-        Resolved::Entity(_, s) => Some(*s),
-        Resolved::Body(body) => Some(Shape::new(body.id, body.orientation)),
     }
 }
 
@@ -235,8 +228,13 @@ fn shape_of(r: &Resolved) -> Option<Shape> {
 /// walk of its [`FaceTree`]. Two entities (edges and faces) are the
 /// recursion on boundaries: the carriers' stationary pairs inside both
 /// trims, each operand's boundary against the other, and for two faces the
-/// places their surfaces touch inside both. The `control` is polled once
-/// per entity.
+/// places their surfaces touch inside both. A solid against an edge, a face
+/// or another solid is that recursion over the pairs of its faces and the
+/// other's parts, nearest boxes first, skipping every pair whose boxes are
+/// farther apart than the best answer so far. A solid with a vertex of the
+/// other operand inside it is `contained`, at distance `0.0`, as is one
+/// holding the other wholly where no vertex says so. The `control` is
+/// polled once per entity and once per face pair.
 ///
 /// Errors: [`OpError::InvalidInput`] when a body fails the checker (debug
 /// builds, and release with `paranoid`); [`OpError::NotFound`] for an id
@@ -274,6 +272,12 @@ fn shape_of(r: &Resolved) -> Option<Shape> {
 /// // Inside the solid it is zero.
 /// let d = distance(&m, Operand::Point(Point3::new(1.0, 1.0, 1.0)), whole, &arris_ops::Control::NONE).unwrap();
 /// assert!(d.contained && d.distance == 0.0);
+///
+/// // Two solids: the gap between facing faces.
+/// let (other, _) = primitive_box(&mut m, Point3::new(1.0, 1.0, 5.0), Point3::new(3.0, 2.0, 8.0), &arris_ops::Control::NONE).unwrap();
+/// let apart = Operand::Shape(Shape::new(other.id, other.orientation));
+/// let d = distance(&m, whole, apart, &arris_ops::Control::NONE).unwrap();
+/// assert!((d.distance - 3.0).abs() < 1e-12);
 /// ```
 pub fn distance(
     m: &Model,
@@ -282,9 +286,45 @@ pub fn distance(
     control: &Control<'_>,
 ) -> Result<Distance, OpError> {
     let (ra, rb) = (resolve(m, a)?, resolve(m, b)?);
+    let body_of = |r: &Resolved| match r {
+        Resolved::Body(body) => Some(*body),
+        _ => None,
+    };
+    let (ra_body, rb_body) = (body_of(&ra), body_of(&rb));
     for r in [&ra, &rb] {
         if let Resolved::Body(body) = r {
             crate::verify_input(m, *body)?;
+        }
+    }
+    // A vertex of one operand inside the other's solid: contained, and at
+    // zero, whatever the boundaries do (ADR-0054 §2).
+    for (solid, probe, solid_is_a) in [(&ra, &rb, true), (&rb, &ra, false)] {
+        let (Resolved::Body(body), Resolved::Entity(_) | Resolved::Body(_)) = (solid, probe) else {
+            continue;
+        };
+        let vertices = vertices_of(m, probe)?;
+        let classifier = Classifier::of_body(m, *body).map_err(fault_classify)?;
+        for v in vertices {
+            let at = vertex_end(m, v)?;
+            if classifier.classify(at.point).map_err(fault_classify)? == Classification::Inside {
+                let within = End {
+                    point: at.point,
+                    shape: None,
+                    param: FootParam::None,
+                };
+                let (a, b) = if solid_is_a {
+                    (within, at)
+                } else {
+                    (at, within)
+                };
+                return Ok(Distance {
+                    distance: 0.0,
+                    a: a.foot(),
+                    b: b.foot(),
+                    unique: true,
+                    contained: true,
+                });
+            }
         }
     }
     let mut meter = Meter::new(control);
@@ -330,18 +370,53 @@ pub fn distance(
             }
             found.extend(swapped.into_iter().map(Candidate::swapped));
         }
-        (Resolved::Entity(x, _), Resolved::Entity(y, _)) => {
+        (Resolved::Entity(x), Resolved::Entity(y)) => {
             entity_vs(m, &mut meter, x, y, &mut found)?;
         }
-        (ra @ Resolved::Body(_), rb) | (ra, rb @ Resolved::Body(_)) => {
-            return Err(not_measurable([&ra, &rb].into_iter().filter_map(shape_of)));
+        (Resolved::Body(x), other) => {
+            body_vs(m, x, &other, &mut meter, tol, &mut found)?;
+        }
+        (other, Resolved::Body(y)) => {
+            let mut swapped = Vec::new();
+            body_vs(m, y, &other, &mut meter, tol, &mut swapped)?;
+            swapped_into(swapped, &mut found);
         }
     }
     let shapes = [a, b].map(|o| match o {
         Operand::Shape(s) => Some(s),
         Operand::Point(_) => None,
     });
-    choose(&found, tol).ok_or_else(|| not_measurable(shapes.into_iter().flatten()))
+    let mut answer =
+        choose(&found, tol).ok_or_else(|| not_measurable(shapes.into_iter().flatten()))?;
+    if answer.distance > tol.linear {
+        // Apart, so neither operand crosses the other's boundary: an
+        // operand lies wholly in a solid or wholly outside it, and its
+        // closest point says which.
+        for (solid, other) in [(ra_body, false), (rb_body, true)] {
+            let Some(body) = solid else { continue };
+            // The operand `solid` is `a` unless `other`; the foot tested is
+            // the other operand's.
+            let foot = if other { answer.a } else { answer.b };
+            if inside(m, body, foot.point)? {
+                // The solid's side of the pair is the same point, inside it.
+                let at = End {
+                    point: foot.point,
+                    shape: None,
+                    param: FootParam::None,
+                }
+                .foot();
+                answer.distance = 0.0;
+                answer.contained = true;
+                if other {
+                    answer.b = at;
+                } else {
+                    answer.a = at;
+                }
+                break;
+            }
+        }
+    }
+    Ok(answer)
 }
 
 /// `src` against one resolved operand that is not a point: appends the
@@ -355,7 +430,7 @@ fn point_against(
 ) -> Result<Option<Distance>, OpError> {
     match other {
         Resolved::Point(..) => unreachable!("two points are measured directly"),
-        Resolved::Entity(e, _) => point_vs(m, meter, src, e, found)?,
+        Resolved::Entity(e) => point_vs(m, meter, src, e, found)?,
         Resolved::Body(body) => {
             let classified = Classifier::of_body(m, body)
                 .and_then(|c| c.classify(src.point))
@@ -793,6 +868,37 @@ fn face_face(
     Ok(())
 }
 
+fn fault_classify(e: arris_check::classify::ClassifyError) -> OpError {
+    OpError::Internal(Fault::Classify(e))
+}
+
+/// Whether `p` is strictly inside the solid `body`.
+fn inside(m: &Model, body: Body, p: Point3) -> Result<bool, OpError> {
+    let classified = Classifier::of_body(m, body)
+        .and_then(|c| c.classify(p))
+        .map_err(fault_classify)?;
+    Ok(classified == Classification::Inside)
+}
+
+/// The vertices of an edge, a face or a solid, in id order, once each.
+fn vertices_of(m: &Model, r: &Resolved) -> Result<Vec<VertexId>, OpError> {
+    let mut edges: Vec<EdgeId> = Vec::new();
+    match r {
+        Resolved::Point(..) => {}
+        Resolved::Entity(Entity::Edge(e)) => edges.push(*e),
+        Resolved::Entity(Entity::Face(f, _)) => edges = face_edges(m, *f)?,
+        Resolved::Body(body) => edges = m.closure(*body)?.edges,
+    }
+    let mut vertices: Vec<VertexId> = Vec::new();
+    for e in edges {
+        let edge = m.edge(e)?;
+        vertices.extend([edge.start(), edge.end()]);
+    }
+    vertices.sort_unstable();
+    vertices.dedup();
+    Ok(vertices)
+}
+
 /// A solid against `src`: the faces nearest first, stopping at the first
 /// whose box is farther than the best so far.
 fn body_candidates(
@@ -820,4 +926,84 @@ fn body_candidates(
         }
     }
     Ok(())
+}
+
+/// The parts a solid is measured against: its faces, or the one entity,
+/// each with its box (`None` when no box bounds it).
+fn parts_of(m: &Model, other: &Resolved) -> Result<Vec<(Entity, Option<Aabb>)>, OpError> {
+    let ptol = m.precision().parametric_tolerance;
+    let face_box = |f: FaceId| FaceDomain::of(m, f, ptol).ok().and_then(|d| d.bounds());
+    match other {
+        Resolved::Entity(e @ Entity::Face(f, _)) => Ok(vec![(*e, face_box(*f))]),
+        Resolved::Entity(e @ Entity::Edge(id)) => {
+            let bounds = match m.edge(*id)?.curve() {
+                Some((curve, range)) => m.curve(curve)?.bounds(range),
+                None => None,
+            };
+            Ok(vec![(*e, bounds)])
+        }
+        Resolved::Body(body) => Ok(super::face_uses(m, *body)?
+            .into_iter()
+            .map(|(f, o)| (Entity::Face(f, o), face_box(f)))
+            .collect()),
+        Resolved::Point(..) => Ok(Vec::new()),
+    }
+}
+
+/// A solid against an edge, a face or another solid (ADR-0054): the pairs
+/// of one face of the solid and one part of the other, nearest first by box
+/// distance, each by the boundary recursion, which includes their contact.
+/// A pair whose boxes are farther apart than the best answer so far plus
+/// the linear tolerance cannot matter and is skipped. A pair no formula
+/// covers is held back and refuses only if it was not skipped in the end.
+fn body_vs(
+    m: &Model,
+    body: Body,
+    other: &Resolved,
+    meter: &mut Meter,
+    tol: Tolerance,
+    out: &mut Vec<Candidate>,
+) -> Result<(), OpError> {
+    let uses = super::face_uses(m, body)?;
+    let tree = FaceTree::of_body(m, body)?;
+    let mut best = f64::INFINITY;
+    let mut held: Vec<(f64, OpError)> = Vec::new();
+    for (part, bounds) in parts_of(m, other)? {
+        // A part no box bounds is within reach of every face.
+        let reach = match bounds {
+            Some(b) => tree.nearest(&b, best + tol.linear),
+            None => tree
+                .nearest(&Aabb::of_point(Point3::origin()), f64::INFINITY)
+                .into_iter()
+                .map(|(_, f)| (0.0, f))
+                .collect(),
+        };
+        for (box_distance, f) in reach {
+            if box_distance > best + tol.linear {
+                break;
+            }
+            let Some(&orientation) = uses.get(&f) else {
+                continue;
+            };
+            meter.tick()?;
+            let mut pair = Vec::new();
+            match entity_vs(m, meter, Entity::Face(f, orientation), part, &mut pair) {
+                Ok(()) => {}
+                Err(e @ OpError::Unsupported { .. }) => {
+                    held.push((box_distance, e));
+                    continue;
+                }
+                Err(e) => return Err(e),
+            }
+            for c in &pair {
+                best = best.min(c.distance);
+            }
+            out.append(&mut pair);
+        }
+    }
+    held.sort_by(|x, y| x.0.total_cmp(&y.0));
+    match held.into_iter().find(|(d, _)| *d <= best + tol.linear) {
+        Some((_, e)) => Err(e),
+        None => Ok(()),
+    }
 }

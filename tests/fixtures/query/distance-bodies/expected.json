@@ -1,0 +1,317 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "0d0c4ab0916912e93cb4f8673c73e4f4301b21a7c4a6bc08203c85c38ed55f9d",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "distance": {
+            "contained": false,
+            "distance": 50.0,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  0.0,
+                  20.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  70.0,
+                  0.0,
+                  60.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  40.0,
+                  30.0,
+                  20.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  70.0,
+                  30.0,
+                  60.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "apart across x and z"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 50.0,
+            "solutions": [
+              {
+                "a": [
+                  70.0,
+                  0.0,
+                  60.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  0.0,
+                  20.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  70.0,
+                  30.0,
+                  60.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  30.0,
+                  20.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "apart, swapped"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 0.0,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  0.0,
+                  20.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  0.0,
+                  20.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  40.0,
+                  0.0,
+                  0.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  0.0,
+                  0.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  40.0,
+                  30.0,
+                  20.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  30.0,
+                  20.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  40.0,
+                  30.0,
+                  0.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  30.0,
+                  0.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "touching on a face"
+        },
+        {
+          "distance": {
+            "contained": true,
+            "distance": 0.0,
+            "solutions": [
+              {
+                "a": [
+                  30.0,
+                  10.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  30.0,
+                  10.0,
+                  10.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "crossing"
+        },
+        {
+          "distance": {
+            "contained": true,
+            "distance": 0.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  8.0,
+                  15.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  8.0,
+                  15.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "one inside the other"
+        },
+        {
+          "distance": {
+            "contained": true,
+            "distance": 0.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  8.0,
+                  15.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  8.0,
+                  15.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "the inner one first"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 25.0,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  15.0,
+                  20.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  65.0,
+                  15.0,
+                  20.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  40.0,
+                  15.0,
+                  0.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  65.0,
+                  15.0,
+                  0.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  40.0,
+                  15.000000076504053,
+                  0.005
+                ],
+                "a_face_centroid": [
+                  40.0,
+                  15.0,
+                  10.0
+                ],
+                "a_support": "face",
+                "b": [
+                  65.0,
+                  15.000000052814132,
+                  0.005
+                ],
+                "b_face_centroid": [
+                  70.0,
+                  14.999999999999998,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "block against a pin beside it"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 50.0,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  0.0,
+                  20.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  70.0,
+                  0.0,
+                  60.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  40.0,
+                  30.0,
+                  20.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  70.0,
+                  30.0,
+                  60.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "block against a face of another"
+        }
+      ]
+    }
+  }
+}

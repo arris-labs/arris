@@ -1,0 +1,39 @@
+{
+  "kind": "query",
+  "description": "two boxes apart across a gap in x and z, touching on a face, crossing, one inside the other; a box against a cylinder, a ball, and one face of another box",
+  "steps": [
+    {"name": "block", "op": "box", "min": [0, 0, 0], "max": [40, 30, 20]},
+    {"name": "apart", "op": "box", "min": [70, 0, 60], "max": [90, 30, 80]},
+    {"name": "touching", "op": "box", "min": [40, 0, 0], "max": [60, 30, 20]},
+    {"name": "crossing", "op": "box", "min": [30, 10, 10], "max": [70, 20, 50]},
+    {"name": "inner", "op": "box", "min": [10, 8, 5], "max": [20, 18, 15]},
+    {"name": "pin", "op": "cylinder", "base": [70, 15, 0], "axis": [0, 0, 1], "radius": 5, "height": 20}
+  ],
+  "result": "block",
+  "queries": [
+    {"label": "apart across x and z",
+     "distance": {"a": {"step": "block"}, "b": {"step": "apart"}},
+     "expect_distance": 50},
+    {"label": "apart, swapped",
+     "distance": {"a": {"step": "apart"}, "b": {"step": "block"}},
+     "expect_distance": 50},
+    {"label": "touching on a face",
+     "distance": {"a": {"step": "block"}, "b": {"step": "touching"}},
+     "expect_distance": 0},
+    {"label": "crossing",
+     "distance": {"a": {"step": "block"}, "b": {"step": "crossing"}},
+     "expect_distance": 0},
+    {"label": "one inside the other",
+     "distance": {"a": {"step": "block"}, "b": {"step": "inner"}},
+     "expect_distance": 0},
+    {"label": "the inner one first",
+     "distance": {"a": {"step": "inner"}, "b": {"step": "block"}},
+     "expect_distance": 0},
+    {"label": "block against a pin beside it",
+     "distance": {"a": {"step": "block"}, "b": {"step": "pin"}},
+     "expect_distance": 25},
+    {"label": "block against a face of another",
+     "distance": {"a": {"step": "block"}, "b": {"step": "apart", "face": {"near": [70, 15, 70]}}},
+     "expect_distance": 50}
+  ]
+}

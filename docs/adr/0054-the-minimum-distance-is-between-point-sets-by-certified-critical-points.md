@@ -29,7 +29,11 @@ own geometry, whose kinds are closed under the reductions below.
 point inside it, or an operand with a vertex `classify_point` finds
 `Inside`, is at distance 0 with `contained: true`. A shell is not a point
 set and is refused as `QueryReason::NotMeasurable`, as is a body that is
-not a solid.
+not a solid. Open CASCADE's `InnerSolution` is the same test on vertices,
+so a crossing that puts a vertex of one inside the other is `contained`;
+the walk adds one more, for an operand with no vertex inside that lies
+wholly in the other (a ball in a block): at a positive distance the two
+cannot cross, so its closest point classifies it.
 
 **2. One pair per answer.** The pair returned is the least by `(a's entity
 id, b's entity id, a's parameters, b's parameters)`, so the answer is

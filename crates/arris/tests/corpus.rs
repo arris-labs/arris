@@ -102,6 +102,9 @@ corpus_tests! {
     /// Faces and edges against each other: plates offset in two axes, a
     /// cylinder wall over a plate, a plate edge against a torus.
     query_distance_faces => query "query/distance-faces";
+    /// Whole bodies: apart, touching, crossing, one inside the other, and a
+    /// body against one face of another.
+    query_distance_bodies => query "query/distance-bodies";
     primitive_box => run "primitive/box";
     primitive_cylinder => run "primitive/cylinder";
     /// A consumer's own topology through `ops::build` (ADR-0028): a

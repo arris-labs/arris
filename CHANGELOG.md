@@ -9,20 +9,20 @@ into its version (ADR-0027).
 ## Unreleased
 
 - `arris_ops::query::distance(&model, a, b, &control)` returns the minimum
-  distance between two of a point, a vertex, an edge and a face, and
-  between a point or a vertex and a solid. The answer has the distance, the closest point on each
-  operand with the vertex, edge or face it lies on and its parameter,
-  whether that pair is the only one (`unique` is false for a point on a
-  cylinder's axis against its wall) and whether the point is inside the
-  solid, which is distance 0. It is exact to the entities' tolerances, not
-  sampled. A shell, or a body that is not a solid, is
-  `QueryReason::NotMeasurable`; a solid against anything but a point is
-  refused the same way for now. Two faces or an edge and a face of a kind
-  the kernel has no formula for (a cone against a cone off their common
-  axis, a NURBS surface's interior against a curve) are `Unsupported`,
-  naming both. `arris_math::Aabb::distance` and
-  `arris_check::tree::FaceTree::nearest` give the gap between two boxes
-  and the faces of a body by ascending box distance.
+  distance between two of a point, a vertex, an edge, a face and a solid.
+  The answer has the distance, the closest point on each operand with the
+  vertex, edge or face it lies on and its parameter, whether that pair is
+  the only one (`unique` is false for a point on a cylinder's axis against
+  its wall, or two facing edges) and whether one operand is inside the
+  other's solid (a point or a vertex of it is), which is distance 0. It is
+  exact to the entities' tolerances, not sampled, and a solid far from the
+  other is measured by its nearest faces only. A shell, or a body that is
+  not a solid, is `QueryReason::NotMeasurable`. Two faces of a kind the
+  kernel has no formula for (a cone against a cone off their common axis,
+  a NURBS surface's interior against a curve) are `Unsupported` naming
+  both, and only when they could hold the answer. `arris_math::Aabb::distance`
+  and `arris_check::tree::FaceTree::nearest` give the gap between two
+  boxes and the faces of a body by ascending box distance.
 - `arris_geom::extrema_curve_surface(&curve, &surface, tol, &mut meter)`
   returns every stationary pair of the distance between a curve and a
   plane, cylinder, elliptic cylinder, cone, sphere or torus, with

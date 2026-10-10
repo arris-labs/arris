@@ -324,7 +324,8 @@ normal and is `QueryReason::Singular`.
 OpError>` is the minimum distance (ADR-0054). An `Operand` is a point or a
 `Shape` (a vertex, an edge, a face or a solid body; a shell or a non-solid
 body is `QueryReason::NotMeasurable`). The operands are point sets: a
-point inside a solid is at distance 0 with `contained` set. `Distance`
+point inside a solid, or an operand with a vertex inside one, is at
+distance 0 with `contained` set. `Distance`
 carries `distance`, a `Foot` on each operand (`point`, the most specific
 entity it lies on, as a ray hit names it, and its `FootParam`: an edge's `t`
 or a face's `(u, v)`), `unique` and `contained`. A point or vertex against an
@@ -333,7 +334,16 @@ entity is the critical feet of the point on the carrier (`Curve::feet`,
 of the entity's boundary, face to edges and edge to end vertices; a
 continuum adds a candidate only through its representative. A body is
 walked through `FaceTree::nearest`, nearest box first, stopping at the first
-box farther than the best distance. Two entities (an edge or a face each)
+box farther than the best distance. A body against an edge, a face or
+another body is the same walk over pairs: each part of the second operand
+(its faces, or the one entity) against the faces of the first within the
+best distance plus the linear tolerance, each pair by the recursion below. A
+pair no formula covers is held back and refuses (`Unsupported`, naming both
+faces) only if its box distance is still within that bound when the walk
+ends. A vertex of one operand that `classify_point` finds inside the other
+solid gives `contained`; where no vertex does (a ball wholly inside), the
+closest point of an operand at a positive distance is classified instead.
+Two entities (an edge or a face each)
 are the same recursion on boundaries: the stationary pairs of their
 carriers (`extrema_curve_curve`, `extrema_curve_surface`,
 `extrema_surface_surface`) that lie inside both trims, an edge's ends
