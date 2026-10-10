@@ -316,7 +316,7 @@ bound has to be established here.
   rustdoc and an example each. A property over `prop::body` bodies checks
   that `nearest` returns exactly the faces brute force finds within the
   bound, in the stated order.
-- [ ] Step 6 **[2]** — `ops::query::distance` for a point operand, with
+- [x] Step 6 **[2]** — `ops::query::distance` for a point operand, with
   the public types and `NotMeasurable`:
   - a point against a vertex, an edge (feet in range, else the ends), a
     face (feet in the domain, else its edges), and a body (`nearest` walk
@@ -329,6 +329,15 @@ bound has to be established here.
   corner, and from inside. The step also adds the rustdoc example, the
   ARCHITECTURE §Operations entry, and the CHANGELOG bullet with its
   `Breaking` line.
+  - *As built:* a vertex operand is a point, so vertex × anything is in
+    this step too; two non-point operands are refused with `NotMeasurable`
+    naming both until step 7. The query form's `Query` gains `distance` and
+    `expect_distance` and `ray`/`hits` become optional (exactly one form
+    per query); the runner picks an entity by the nearest of
+    `distance(point, entity)`. A continuum among the candidates within the
+    linear tolerance of the least makes `unique` false even when the pick is
+    an isolated foot at the same place (a point on a cylinder's axis against
+    its wall: the seam's foot and the ring coincide).
 - [ ] Step 7 **[2]** — Entity × entity, i.e. vertex, edge and face pairs,
   by the boundary recursion over steps 1–4. It includes the continuum
   rule, the uniqueness flag and the deterministic pick. Fixture

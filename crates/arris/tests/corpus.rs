@@ -95,6 +95,10 @@ corpus_tests! {
     query_ray_nurbs_cylinder => query "query/ray-nurbs-cylinder";
     /// A ray at a body a long way from the origin.
     query_ray_far_from_origin => query "query/ray-far-from-origin";
+    /// A point against a box: over a face, beside an edge, past a corner,
+    /// inside it, and against one narrowed face, edge and vertex
+    /// (ADR-0054).
+    query_distance_point_box => query "query/distance-point-box";
     primitive_box => run "primitive/box";
     primitive_cylinder => run "primitive/cylinder";
     /// A consumer's own topology through `ops::build` (ADR-0028): a

@@ -186,8 +186,14 @@ def summary_lines(name: str, expected: dict) -> list[str]:
         ]
     if expected.get("kind") == "query":
         return [
-            f"{name}[{variant}] {q['label']}: {len(q['hits'])} hits"
-            + "".join(f" t={h['t']:.10g}" for h in q["hits"])
+            (
+                f"{name}[{variant}] {q['label']}: distance {q['distance']['distance']:.10g}, "
+                f"{len(q['distance']['solutions'])} solution(s)"
+                + (", contained" if q["distance"]["contained"] else "")
+                if "distance" in q
+                else f"{name}[{variant}] {q['label']}: {len(q['hits'])} hits"
+                + "".join(f" t={h['t']:.10g}" for h in q["hits"])
+            )
             for variant, result in expected["results"].items()
             for q in result["queries"]
         ]

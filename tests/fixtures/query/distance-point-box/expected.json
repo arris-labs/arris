@@ -1,0 +1,284 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "39804db051ea2f4da6b5f3ba2d6e8e49a969bc62844381f503deed0ffab16442",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  10.0,
+                  15.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  10.0,
+                  10.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "over the top face"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 12.649110640673518,
+            "solutions": [
+              {
+                "a": [
+                  20.0,
+                  34.0,
+                  22.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  20.0,
+                  30.0,
+                  10.0
+                ],
+                "b_support": "edge"
+              }
+            ]
+          },
+          "label": "beside an edge"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 13.0,
+            "solutions": [
+              {
+                "a": [
+                  43.0,
+                  34.0,
+                  22.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  30.0,
+                  10.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "past a corner"
+        },
+        {
+          "distance": {
+            "contained": true,
+            "distance": 0.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  10.0,
+                  5.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  10.0,
+                  5.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "from inside"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 0.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  10.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  10.0,
+                  10.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "from a point on the wall"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  10.0,
+                  10.0
+                ],
+                "a_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  10.0
+                ],
+                "a_support": "face",
+                "b": [
+                  10.0,
+                  10.0,
+                  15.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "the other way round"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 15.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  10.0,
+                  15.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  10.0,
+                  0.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  0.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "to the floor face alone"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 10.44030650891055,
+            "solutions": [
+              {
+                "a": [
+                  50.0,
+                  15.0,
+                  -3.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  15.0,
+                  0.0
+                ],
+                "b_support": "edge"
+              }
+            ]
+          },
+          "label": "to a face from beside it"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 15.524174696260024,
+            "solutions": [
+              {
+                "a": [
+                  20.0,
+                  15.0,
+                  14.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  20.0,
+                  0.0,
+                  10.0
+                ],
+                "b_support": "edge"
+              }
+            ]
+          },
+          "label": "to a top edge"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  -3.0,
+                  -4.0,
+                  0.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "to a corner vertex"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 10.0,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  30.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  40.0,
+                  30.0,
+                  20.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "a vertex to a point"
+        }
+      ]
+    }
+  }
+}

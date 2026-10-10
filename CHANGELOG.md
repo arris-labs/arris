@@ -8,6 +8,18 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_ops::query::distance(&model, a, b, &control)` returns the minimum
+  distance between a point or a vertex and a point, a vertex, an edge, a
+  face or a solid. The answer has the distance, the closest point on each
+  operand with the vertex, edge or face it lies on and its parameter,
+  whether that pair is the only one (`unique` is false for a point on a
+  cylinder's axis against its wall) and whether the point is inside the
+  solid, which is distance 0. It is exact to the entities' tolerances, not
+  sampled. A shell, or a body that is not a solid, is
+  `QueryReason::NotMeasurable`; a pair of two entities is refused the same
+  way for now. `arris_math::Aabb::distance` and
+  `arris_check::tree::FaceTree::nearest` give the gap between two boxes
+  and the faces of a body by ascending box distance.
 - `arris_geom::extrema_curve_surface(&curve, &surface, tol, &mut meter)`
   returns every stationary pair of the distance between a curve and a
   plane, cylinder, elliptic cylinder, cone, sphere or torus, with
@@ -71,8 +83,8 @@ into its version (ADR-0027).
 
 ### Breaking
 
-- `arris_ops::QueryReason` gains `RayInFace` and `ZeroDirection`: add the
-  arms to an exhaustive `match`.
+- `arris_ops::QueryReason` gains `RayInFace`, `ZeroDirection` and
+  `NotMeasurable`: add the arms to an exhaustive `match`.
 
 ## 0.6.0 — 2026-10-08
 

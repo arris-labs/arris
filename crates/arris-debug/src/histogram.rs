@@ -368,6 +368,7 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             Reason::Query(QueryReason::Singular) => Cycle::Itself("Singular"),
             Reason::Query(QueryReason::RayInFace) => Cycle::Itself("RayInFace"),
             Reason::Query(QueryReason::ZeroDirection) => Cycle::Itself("ZeroDirection"),
+            Reason::Query(QueryReason::NotMeasurable) => Cycle::Itself("NotMeasurable"),
             Reason::Sweep(SweepReason::ProfileCrossesAxis) => Cycle::Itself("ProfileCrossesAxis"),
             Reason::Sweep(SweepReason::AxisNotInProfilePlane) => {
                 Cycle::Itself("AxisNotInProfilePlane")

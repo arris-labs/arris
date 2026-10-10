@@ -525,6 +525,10 @@ pub enum QueryReason {
     /// `ray_fire` was handed a ray whose direction has no length; the
     /// error's entity is the body.
     ZeroDirection,
+    /// `distance` was handed a shell, or a body that is not a solid, or an
+    /// operand with no point to measure to (ADR-0054); the error's
+    /// entities are the operands it refused.
+    NotMeasurable,
 }
 
 impl QueryReason {
@@ -540,6 +544,7 @@ impl QueryReason {
             QueryReason::Singular => "Singular",
             QueryReason::RayInFace => "RayInFace",
             QueryReason::ZeroDirection => "ZeroDirection",
+            QueryReason::NotMeasurable => "NotMeasurable",
         }
     }
 }
@@ -563,6 +568,9 @@ impl core::fmt::Display for QueryReason {
             }
             QueryReason::RayInFace => f.write_str("the ray lies in the face"),
             QueryReason::ZeroDirection => f.write_str("the ray's direction has no length"),
+            QueryReason::NotMeasurable => {
+                f.write_str("only a point, a vertex, an edge, a face or a solid has a distance")
+            }
         }
     }
 }

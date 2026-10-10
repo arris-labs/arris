@@ -1,0 +1,21 @@
+{
+  "kind": "query",
+  "description": "box [0,0,0]–[40,30,10]: a point over a face, beside an edge, past a corner, inside, and the same points against one narrowed face, edge and vertex",
+  "steps": [
+    {"name": "box", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]}
+  ],
+  "result": "box",
+  "queries": [
+    {"label": "over the top face", "distance": {"a": {"point": [10, 10, 15]}, "b": {"step": "box"}}, "expect_distance": 5},
+    {"label": "beside an edge", "distance": {"a": {"point": [20, 34, 22]}, "b": {"step": "box"}}, "expect_distance": 12.649110640673518},
+    {"label": "past a corner", "distance": {"a": {"point": [43, 34, 22]}, "b": {"step": "box"}}, "expect_distance": 13},
+    {"label": "from inside", "distance": {"a": {"point": [10, 10, 5]}, "b": {"step": "box"}}, "expect_distance": 0},
+    {"label": "from a point on the wall", "distance": {"a": {"point": [10, 10, 10]}, "b": {"step": "box"}}, "expect_distance": 0},
+    {"label": "the other way round", "distance": {"a": {"step": "box"}, "b": {"point": [10, 10, 15]}}, "expect_distance": 5},
+    {"label": "to the floor face alone", "distance": {"a": {"point": [10, 10, 15]}, "b": {"step": "box", "face": {"near": [20, 15, 0]}}}, "expect_distance": 15},
+    {"label": "to a face from beside it", "distance": {"a": {"point": [50, 15, -3]}, "b": {"step": "box", "face": {"near": [20, 15, 0]}}}, "expect_distance": 10.44030650891055},
+    {"label": "to a top edge", "distance": {"a": {"point": [20, 15, 14]}, "b": {"step": "box", "edge": {"near": [20, 0, 10]}}}, "expect_distance": 15.524174696260024},
+    {"label": "to a corner vertex", "distance": {"a": {"point": [-3, -4, 0]}, "b": {"step": "box", "vertex": {"near": [0, 0, 0]}}}, "expect_distance": 5},
+    {"label": "a vertex to a point", "distance": {"a": {"step": "box", "vertex": {"near": [40, 30, 10]}}, "b": {"point": [40, 30, 20]}}, "expect_distance": 10}
+  ]
+}

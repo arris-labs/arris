@@ -783,7 +783,10 @@ and section plans add theirs to the same `queries` list. They sit under
   "queries": [
     {"label": "up through the middle",
      "ray": {"origin": [20, 15, -5], "direction": [0, 0, 1]},
-     "hits": "all", "expect_hits": 2}
+     "hits": "all", "expect_hits": 2},
+    {"label": "over the top face",
+     "distance": {"a": {"point": [10, 10, 15]}, "b": {"step": "box"}},
+     "expect_distance": 5}
   ]
 }
 ```
@@ -795,6 +798,13 @@ and section plans add theirs to the same `queries` list. They sit under
   length but zero; both sides normalise it), so `t` is the distance along
   it and a hit at a negative `t` is never reported. `hits` is `"first"`
   (the smallest `t`) or `"all"`. Labels are unique within a fixture.
+- A **distance query** (ADR-0054) is `"distance": {"a": <operand>, "b":
+  <operand>}`. An operand is `{"point": [x, y, z]}`, `{"step": "<step>"}`
+  (the body that recipe step built) or a step narrowed to its `face`,
+  `edge` or `vertex` nearest a point, `{"step": …, "face": {"near": [x, y,
+  z]}}`: ids differ between kernels, so an entity is picked by place.
+  `expect_distance` is the distance the author works out by hand, held to
+  the oracle's by the lint. Exactly one of `ray` and `distance` per query.
 - `expect_hits` is the count the author works out by hand for what
   `hits` asks. The lint holds it to the oracle's, as `analytic` is held;
   it is optional.
@@ -818,6 +828,18 @@ and section plans add theirs to the same `queries` list. They sit under
   oracle's quadrature, which is 7e-3 off on a B-spline cylinder wall; a
   fixture whose faces' centroids are far apart widens `centroid_abs` and
   says why.
+- A distance query's `expected.json` answer is
+  `BRepExtrema_DistShapeShape`'s: the `distance`, every solution it lists
+  (both points, the kind each lies on — `vertex`, `edge` or `face` — and a
+  face's centroid) and `contained` from `InnerSolution`. The runner
+  compares the distance within `probe`, `contained` exactly, and the two
+  feet to *any* listed solution (a family of equal solutions is listed by
+  its sampled ends only). A foot's support kind is compared exactly and a
+  face by its centroid within `centroid_abs`, except on a `point` operand,
+  which Open CASCADE sees as a vertex, and when `contained`. `unique` must
+  equal "the oracle lists one solution" unless `analytic.query_differs`
+  records why, which then also lets a foot match none of the listed
+  solutions.
 - The hash covers `kind`, `params`, `variants`, `steps`, `result` and
   `queries`.
 - No `dump.txt`: the result's own dump is the solid kinds'.

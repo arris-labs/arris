@@ -5,6 +5,10 @@
 
 use std::collections::BTreeMap;
 
+mod distance;
+
+pub use distance::{Distance, Foot, FootParam, Operand, distance};
+
 use arris_check::domain::FaceDomain;
 use arris_check::tree::FaceTree;
 use arris_geom::region2::Side;

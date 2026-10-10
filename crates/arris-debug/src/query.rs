@@ -29,6 +29,8 @@ use arris_ops::query::{Ray, RayHit, RayHits, ray_fire};
 use arris_topo::{EntityId, FaceId, Model};
 use serde::{Deserialize, Serialize};
 
+mod distance;
+
 use crate::corpus::{self, CorpusError};
 use crate::fixtures::{
     self, Expected, Fixture, FixtureError, Num, Recipe, expand_patterns, name_of, recipe_hash,
@@ -53,20 +55,70 @@ pub struct RaySpec {
     pub direction: [Num; 3],
 }
 
-/// One ray question of a fixture.
+/// One question of a fixture: a ray or a distance.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Query {
     /// A name for the report; unique within the fixture.
     pub label: String,
-    /// The ray.
-    pub ray: RaySpec,
-    /// How many hits are asked for.
-    pub hits: HitsWanted,
+    /// The ray, for a ray query.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ray: Option<RaySpec>,
+    /// How many hits the ray query asks for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hits: Option<HitsWanted>,
     /// The number of hits the author works out by hand, for the answer
     /// to `hits`: what the lint holds the oracle's count to. `None`
     /// leaves the count to the oracle.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect_hits: Option<usize>,
+    /// The two operands, for a distance query.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub distance: Option<DistanceSpec>,
+    /// The distance the author works out by hand: what the lint holds the
+    /// oracle's to and the runner Arris's. `None` leaves it to the oracle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_distance: Option<Num>,
+}
+
+/// The two operands of a distance query.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DistanceSpec {
+    /// The first operand.
+    pub a: OperandSpec,
+    /// The second.
+    pub b: OperandSpec,
+}
+
+/// A point of the pick: the entity nearest it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Near {
+    /// The point.
+    pub near: [Num; 3],
+}
+
+/// One operand of a distance query: a `point`, or a recipe `step`'s body
+/// whole or narrowed to its `face`, `edge` or `vertex` nearest a point
+/// (ids differ between kernels, so an entity is picked by place).
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OperandSpec {
+    /// A bare point.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub point: Option<[Num; 3]>,
+    /// The name of a recipe step: its body.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step: Option<String>,
+    /// The face of the step's body nearest the point.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub face: Option<Near>,
+    /// The edge of the step's body nearest the point.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edge: Option<Near>,
+    /// The vertex of the step's body nearest the point.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vertex: Option<Near>,
 }
 
 /// A hit as Open CASCADE reports it.
@@ -95,8 +147,43 @@ pub struct OracleHit {
 pub struct Answer {
     /// The query's label.
     pub label: String,
-    /// Every hit on the half-line, by ascending `t`.
+    /// Every hit on the half-line, by ascending `t`; none for a distance
+    /// query.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hits: Vec<OracleHit>,
+    /// The oracle's distance, for a distance query.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub distance: Option<OracleDistance>,
+}
+
+/// One closest pair as `BRepExtrema_DistShapeShape` reports it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OracleSolution {
+    /// The point on the first operand.
+    pub a: [f64; 3],
+    /// The point on the second.
+    pub b: [f64; 3],
+    /// What the first point lies on: `vertex`, `edge` or `face`.
+    pub a_support: String,
+    /// What the second point lies on.
+    pub b_support: String,
+    /// The centroid of the face the first point lies on, for a face.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub a_face_centroid: Option<[f64; 3]>,
+    /// The centroid of the face the second point lies on, for a face.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub b_face_centroid: Option<[f64; 3]>,
+}
+
+/// The oracle's answer to a distance query.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OracleDistance {
+    /// The minimum distance.
+    pub distance: f64,
+    /// Every closest pair it lists.
+    pub solutions: Vec<OracleSolution>,
+    /// `InnerSolution`: one operand lies in the other solid.
+    pub contained: bool,
 }
 
 /// What the oracle reports for one place a ray meets the body: the first
@@ -344,15 +431,25 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                     label: query.label.clone(),
                 });
             };
+            if let Some(spec) = &query.distance {
+                if query.ray.is_some() {
+                    return Err(mismatch("both a ray and a distance".into()));
+                }
+                distance::run(&fixture, &variant, &chain, query, spec, answer)?;
+                continue;
+            }
+            let (Some(_), Some(wanted)) = (&query.ray, query.hits) else {
+                return Err(mismatch("neither a distance nor a ray with `hits`".into()));
+            };
             let merge = fixture
                 .recipe
                 .analytic
                 .query_differs
                 .is_some()
                 .then_some(fixture.recipe.tolerances.probe);
-            let groups = answer.groups(query.hits, merge);
+            let groups = answer.groups(wanted, merge);
             let ray = ray_of(&fixture.name, query, &params)?;
-            let which = match query.hits {
+            let which = match wanted {
                 HitsWanted::First => RayHits::First,
                 HitsWanted::All => RayHits::All,
             };
@@ -378,6 +475,7 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
 
 /// The query's ray under `params`.
 fn ray_of(fixture: &str, query: &Query, params: &BTreeMap<String, f64>) -> Result<Ray, QueryError> {
+    let ray = query.ray.as_ref().expect("a ray query");
     let vector = |v: &[Num; 3]| -> Result<Vec3, QueryError> {
         let n = |i: usize| {
             v[i].eval(params).map_err(|source| QueryError::Expression {
@@ -389,8 +487,8 @@ fn ray_of(fixture: &str, query: &Query, params: &BTreeMap<String, f64>) -> Resul
         Ok(Vec3::new(n(0)?, n(1)?, n(2)?))
     };
     Ok(Ray {
-        origin: Point3::from(vector(&query.ray.origin)?),
-        direction: vector(&query.ray.direction)?,
+        origin: Point3::from(vector(&ray.origin)?),
+        direction: vector(&ray.direction)?,
     })
 }
 
@@ -512,21 +610,40 @@ pub fn lint(dir: &Path) -> Vec<String> {
             continue;
         };
         for q in &fixture.queries {
-            let ray = [&q.ray.origin, &q.ray.direction].map(|v| {
-                let n = |i: usize| v[i].eval(&params);
-                Ok::<_, fixtures::ExprError>([n(0)?, n(1)?, n(2)?])
-            });
-            match &ray {
-                [Ok(_), Ok(d)] if d.iter().all(|c| *c == 0.0) => {
-                    problem(format!(
-                        "[{variant}] query {:?}: the direction is zero",
-                        q.label
-                    ));
+            match (&q.ray, &q.distance) {
+                (Some(ray), None) => {
+                    let ray = [&ray.origin, &ray.direction].map(|v| {
+                        let n = |i: usize| v[i].eval(&params);
+                        Ok::<_, fixtures::ExprError>([n(0)?, n(1)?, n(2)?])
+                    });
+                    match &ray {
+                        [Ok(_), Ok(d)] if d.iter().all(|c| *c == 0.0) => {
+                            problem(format!(
+                                "[{variant}] query {:?}: the direction is zero",
+                                q.label
+                            ));
+                        }
+                        [Ok(_), Ok(_)] => {}
+                        [Err(e), _] | [_, Err(e)] => {
+                            problem(format!("[{variant}] query {:?}: {e}", q.label));
+                        }
+                    }
+                    if q.hits.is_none() {
+                        problem(format!(
+                            "[{variant}] query {:?}: a ray needs `hits`",
+                            q.label
+                        ));
+                    }
                 }
-                [Ok(_), Ok(_)] => {}
-                [Err(e), _] | [_, Err(e)] => {
-                    problem(format!("[{variant}] query {:?}: {e}", q.label));
+                (None, Some(spec)) => {
+                    for text in distance::lint_spec(r, &params, spec) {
+                        problem(format!("[{variant}] query {:?}: {text}", q.label));
+                    }
                 }
+                _ => problem(format!(
+                    "[{variant}] query {:?}: needs exactly one of `ray` and `distance`",
+                    q.label
+                )),
             }
             let Some(answer) = answers.queries.iter().find(|a| a.label == q.label) else {
                 problem(format!(
@@ -540,25 +657,45 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 .query_differs
                 .is_some()
                 .then_some(r.tolerances.probe);
-            let count = answer.groups(q.hits, merge).len();
-            if let Some(expect) = q.expect_hits.filter(|&n| n != count) {
-                problem(format!(
-                    "[{variant}] query {:?}: expect_hits {expect} but the oracle says {count}",
-                    q.label
-                ));
+            if let Some(wanted) = q.hits {
+                let count = answer.groups(wanted, merge).len();
+                if let Some(expect) = q.expect_hits.filter(|&n| n != count) {
+                    problem(format!(
+                        "[{variant}] query {:?}: expect_hits {expect} but the oracle says {count}",
+                        q.label
+                    ));
+                }
+            }
+            if q.distance.is_some() {
+                match &answer.distance {
+                    None => problem(format!(
+                        "[{variant}] query {:?}: the oracle has no distance",
+                        q.label
+                    )),
+                    Some(d) => {
+                        if let Some(expect) = &q.expect_distance
+                            && let Ok(expect) = expect.eval(&params)
+                            && (expect - d.distance).abs() > r.tolerances.probe
+                        {
+                            problem(format!(
+                                "[{variant}] query {:?}: expect_distance {expect} but the oracle says {}",
+                                q.label, d.distance
+                            ));
+                        }
+                    }
+                }
             }
         }
         if let Some(why) = &r.analytic.query_differs {
             if why.trim().is_empty() {
                 problem("analytic.query_differs needs its evidence".into());
             }
-            if !answers
-                .queries
-                .iter()
-                .any(|a| a.has_shared_hits(r.tolerances.probe))
-            {
+            if !answers.queries.iter().any(|a| {
+                a.has_shared_hits(r.tolerances.probe)
+                    || a.distance.as_ref().is_some_and(|d| d.solutions.len() > 1)
+            }) {
                 problem(format!(
-                    "[{variant}] analytic.query_differs is set but no answer of the oracle reports a hit twice"
+                    "[{variant}] analytic.query_differs is set but no answer of the oracle reports a hit twice or lists several solutions"
                 ));
             }
         } else if let Some(a) = answers

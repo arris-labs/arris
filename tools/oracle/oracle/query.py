@@ -14,6 +14,15 @@ solid kind's (params, variants, steps, result) plus the questions (also in
       ]
     }
 
+A distance query is `{"label", "distance": {"a": <operand>, "b": <operand>}}`
+(ADR-0054); an operand is `{"point": [x, y, z]}`, `{"step": "<step>"}`
+(the body that step built) or a step narrowed to the face, edge or vertex
+nearest a point, `{"step": …, "face": {"near": [x, y, z]}}` (ids differ
+between kernels). The answer is `BRepExtrema_DistShapeShape`'s: the
+`distance`, every solution's two points with the kind each lies on
+(`vertex`, `edge`, `face`) and a face's `_face_centroid`, and `contained`
+from `InnerSolution`. A point operand is a vertex to Open CASCADE.
+
 A ray is a half-line from `origin` along `direction` (normalised), so `t`
 is the distance along it and a hit at a negative `t` is never reported
 (ADR-0053 §5). The answer per variant and query is every hit of
@@ -31,13 +40,22 @@ at it; the runner holds Arris to one (`analytic.query_differs`, ADR-0053
 from typing import Any
 
 from OCP.BRepAdaptor import BRepAdaptor_Surface
+from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeVertex
+from OCP.BRepExtrema import (
+    BRepExtrema_DistShapeShape,
+    BRepExtrema_IsInFace,
+    BRepExtrema_IsOnEdge,
+    BRepExtrema_IsVertex,
+)
 from OCP.BRepGProp import BRepGProp
 from OCP.GProp import GProp_GProps
 from OCP.IntCurvesFace import IntCurvesFace_ShapeIntersector
 from OCP.IntCurveSurface import IntCurveSurface_In, IntCurveSurface_Out
 from OCP.Precision import Precision
-from OCP.TopAbs import TopAbs_IN, TopAbs_REVERSED
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_IN, TopAbs_REVERSED, TopAbs_VERTEX
+from OCP.TopExp import TopExp
 from OCP.TopoDS import TopoDS_Shape
+from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
 from OCP.gp import gp_Dir, gp_Lin, gp_Pnt, gp_Vec
 
 from . import OracleError
@@ -52,14 +70,20 @@ def compute_query(fixture: dict) -> dict:
     tolerance = float(fixture.get("tolerances", {}).get("probe", 1e-7))
     results: dict[str, Any] = {}
     for variant in variant_names(fixture):
-        shape, _ = build(fixture, variant)
+        shape, shapes = build(fixture, variant)
         params = resolve_params(fixture, variant)
-        results[variant] = {"queries": [_answer(shape, query, params, tolerance) for query in queries]}
+        results[variant] = {"queries": [_answer(shape, shapes, query, params, tolerance) for query in queries]}
     return {"results": results}
 
 
-def _answer(shape: TopoDS_Shape, query: dict, params: dict[str, float], tolerance: float) -> dict:
+def _answer(
+    shape: TopoDS_Shape, shapes: dict[str, TopoDS_Shape], query: dict, params: dict[str, float], tolerance: float
+) -> dict:
     label = query.get("label", "?")
+    if "distance" in query:
+        if "ray" in query:
+            raise OracleError(f"query {label!r}: a ray or a distance, not both")
+        return {"label": label, "distance": _distance(shapes, query["distance"], params, label)}
     if query.get("hits") not in ("first", "all"):
         raise OracleError(f"query {label!r}: `hits` is `first` or `all`")
     ray = query.get("ray")
@@ -91,6 +115,68 @@ def _answer(shape: TopoDS_Shape, query: dict, params: dict[str, float], toleranc
             }
         )
     return {"label": label, "hits": hits}
+
+
+def _operand(shapes: dict[str, TopoDS_Shape], spec: dict, params: dict[str, float], label: str) -> TopoDS_Shape:
+    """A distance operand: `{"point": [x, y, z]}`, or `{"step": name}`
+    whole or narrowed by `"face"`, `"edge"` or `"vertex"` to the entity
+    nearest `{"near": [x, y, z]}`."""
+    if "point" in spec:
+        return BRepBuilderAPI_MakeVertex(gp_Pnt(*vector(spec["point"], params))).Vertex()
+    step = spec.get("step")
+    if step not in shapes:
+        raise OracleError(f"query {label!r}: no step {step!r}")
+    whole = shapes[step]
+    narrowed = [(kind, spec[kind]) for kind in ("face", "edge", "vertex") if kind in spec]
+    if not narrowed:
+        return whole
+    if len(narrowed) > 1:
+        raise OracleError(f"query {label!r}: narrow to one of face, edge, vertex")
+    kind, where = narrowed[0]
+    near = BRepBuilderAPI_MakeVertex(gp_Pnt(*vector(where["near"], params))).Vertex()
+    best, best_distance = None, float("inf")
+    for entity in _entities(whole, {"face": TopAbs_FACE, "edge": TopAbs_EDGE, "vertex": TopAbs_VERTEX}[kind]):
+        d = BRepExtrema_DistShapeShape(near, entity)
+        if d.IsDone() and d.Value() < best_distance:
+            best, best_distance = entity, d.Value()
+    if best is None:
+        raise OracleError(f"query {label!r}: the step {step!r} has no {kind}")
+    return best
+
+
+def _entities(shape: TopoDS_Shape, kind) -> list[TopoDS_Shape]:
+    """The distinct sub-shapes of `kind`, in the explorer's order."""
+    found = IndexedMapOfShape()
+    TopExp.MapShapes_s(shape, kind, found)
+    return [found.FindKey(i) for i in range(1, found.Extent() + 1)]
+
+
+_SUPPORT = {BRepExtrema_IsVertex: "vertex", BRepExtrema_IsOnEdge: "edge", BRepExtrema_IsInFace: "face"}
+
+
+def _distance(shapes: dict[str, TopoDS_Shape], spec: dict, params: dict[str, float], label: str) -> dict:
+    """`BRepExtrema_DistShapeShape` between the two operands: the distance,
+    every solution it lists with the kind each point lies on and the
+    centroid of a face, and whether it found one operand inside the other's
+    solid (`InnerSolution`)."""
+    a = _operand(shapes, spec["a"], params, label)
+    b = _operand(shapes, spec["b"], params, label)
+    extrema = BRepExtrema_DistShapeShape(a, b)
+    if not extrema.IsDone():
+        raise OracleError(f"query {label!r}: BRepExtrema_DistShapeShape failed")
+    solutions = []
+    for i in range(1, extrema.NbSolution() + 1):
+        solution: dict[str, Any] = {}
+        for side, point, kind, on in (
+            ("a", extrema.PointOnShape1(i), extrema.SupportTypeShape1(i), extrema.SupportOnShape1(i)),
+            ("b", extrema.PointOnShape2(i), extrema.SupportTypeShape2(i), extrema.SupportOnShape2(i)),
+        ):
+            solution[side] = [point.X(), point.Y(), point.Z()]
+            solution[f"{side}_support"] = _SUPPORT[kind]
+            if kind == BRepExtrema_IsInFace:
+                solution[f"{side}_face_centroid"] = _centroid(on)
+        solutions.append(solution)
+    return {"distance": extrema.Value(), "solutions": solutions, "contained": bool(extrema.InnerSolution())}
 
 
 def _transition(transition) -> str:

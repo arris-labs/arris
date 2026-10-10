@@ -541,9 +541,58 @@ def check_query_smoke() -> bool:
     return ok
 
 
+# A distance query against closed forms on the same box: a point over a
+# face lands in the face, past a corner on the vertex, beside an edge on
+# the edge, and inside the solid is `InnerSolution`.
+DISTANCE_SMOKE = {
+    "name": "query: distances from a point to a box, past a corner, over a face and inside",
+    "recipe": {
+        "kind": "query",
+        "steps": [{"name": "box", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]}],
+        "result": "box",
+        "queries": [
+            {"label": "face", "distance": {"a": {"point": [10, 10, 15]}, "b": {"step": "box"}}},
+            {"label": "corner", "distance": {"a": {"point": [43, 34, 22]}, "b": {"step": "box"}}},
+            {"label": "edge", "distance": {"a": {"point": [20, 34, 22]}, "b": {"step": "box"}}},
+            {"label": "inside", "distance": {"a": {"point": [10, 10, 5]}, "b": {"step": "box"}}},
+            {
+                "label": "narrowed",
+                "distance": {"a": {"point": [10, 10, 15]}, "b": {"step": "box", "face": {"near": [20, 15, 0]}}},
+            },
+        ],
+    },
+    # (distance, b support, contained) per query.
+    "answers": {
+        "face": (5.0, "face", False),
+        "corner": (13.0, "vertex", False),
+        "edge": (160.0**0.5, "edge", False),
+        "inside": (0.0, None, True),
+        "narrowed": (15.0, "face", False),
+    },
+}
+
+
+def check_distance_smoke() -> bool:
+    smoke = DISTANCE_SMOKE
+    print(f"smoke: {smoke['name']}")
+    expected = compute_expected(smoke["recipe"])
+    ok = True
+    for q in expected["results"]["default"]["queries"]:
+        distance, support, contained = smoke["answers"][q["label"]]
+        d = q["distance"]
+        if abs(d["distance"] - distance) > 1e-9 or d["contained"] != contained:
+            print(f"  {q['label']}: {d['distance']} / contained {d['contained']} differ from {distance} / {contained}")
+            ok = False
+        if support and d["solutions"][0]["b_support"] != support:
+            print(f"  {q['label']}: supports {d['solutions'][0]['b_support']} differ from {support}")
+            ok = False
+    return ok
+
+
 def run_smokes(tmp: Path) -> bool:
     ok = check_geometry_smoke()
     ok &= check_query_smoke()
+    ok &= check_distance_smoke()
     ok &= check_expr_cases()
     ok &= check_degenerate_edge_smoke(tmp)
     ok &= check_step_solids_smoke(tmp)
