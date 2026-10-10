@@ -220,7 +220,7 @@ distance of `p` from the axis), it is a continuum with one foot on it.
 | elliptic cylinder | those of the section ellipse (`Curve::feet`), at the height of `p` |
 | cone | two, the projection of `p` onto each of the two lines the meridian plane cuts the cone in, `d = (±sin α, cos α)` from the apex; a continuum on the axis |
 | torus | four, the near and the far foot on the centre circle, each lifted to the tube's two sides `B ± r·n̂`; a continuum on the axis, and the tube's meridian circle when `p` is on the centre circle |
-| NURBS | the one foot `project` gives: the nearest point, not every critical point |
+| NURBS | the critical points of its Bézier patches, certified (below), nearest and farthest and saddles alike |
 
 `extrema_curve_surface(curve, surface, tol, meter)` returns every
 stationary pair of the distance between a whole curve and a whole surface:
@@ -246,6 +246,56 @@ or a cone, through a sphere's centre, or across a torus's centre circle,
 where the distance to the surface has a concave kink — are not, unless the
 curve runs along the axis or the circle within the tolerance, which makes
 the family a continuum.
+
+A NURBS surface's critical points of a field — the squared distance from
+`p`, or the height above a plane — are found patch by patch. On a Bézier
+patch `S = X / W` the gradient of the field is `W²` or `W³` times a pair of
+polynomials in Bernstein form (`A_u = H_u W − H W_u` for the height
+`H = n·X − (o·n) W`; `A_u = Σ R_k (X_k,u W − X_k W_u)` for the distance,
+`R = X − p·W`, and their `v` twins), whose common zeros
+`bernstein2::common_zeros_with` isolates and certifies as the line against a
+NURBS surface does. A box it cannot certify (a zero that is not simple, one
+on a pole's collapsed row) is descended by Newton on the surface itself and
+kept where the offset has no component along either tangent beyond
+`tol.linear`. Where the isolation gives up (a patch parallel to the plane, a
+surface of revolution about the point's axis) each box of the front is
+descended the same way, and three or more points of one value are one
+continuum. The rounding floors are a multiple of the largest magnitudes
+that enter each polynomial. Cost, dev profile (`opt-level = 1`): a point's
+feet on a bicubic surface of nine patches 0.7 ms, of twenty-five 1 ms; the
+height's critical points 5 and 8 ms; one degree-7 patch 9 ms. A minimum at
+a knot where the surface is only C⁰ is a kink of the field, no critical
+point: the topology's.
+
+`extrema_surface_surface(a, b, tol, meter)` returns every stationary pair
+of the distance between two whole surfaces, away from where they meet:
+`SurfaceExtrema { isolated, continua }` of `SurfacePair { uv_a, uv_b,
+point_a, point_b, distance }`, with `nearest()`. The meeting, along which
+the distance is zero, is `intersect_surfaces`'; two surfaces that meet have
+no pair at distance 0, and what is stationary away from it is reported.
+A pair is solved in one canonical order (a sphere before a cylinder before
+a torus before the rest) and swapped back:
+
+| Pair | Reduction |
+|---|---|
+| sphere–X | the feet of the centre on X (`Surface::feet`), each lifted to `c ± R·n̂`; a ball on a pipe's axis is the pipe's continuum of feet |
+| cylinder–X | the curve–surface pairs of the axis against X, each lifted to `B ± R·n̂` |
+| torus–X | the curve–surface pairs of the centre circle against X, each lifted to `B ± r·n̂` |
+| plane–plane | parallel within `tol.angular`: a continuum at the gap; otherwise they meet |
+| plane–elliptic cylinder | the axis along the plane: the two rulings where the section's normal `(cos u / a, sin u / b)` is the plane's horizontal part, each a family |
+| plane–cone | the plane's normal at the cone's half-angle to the axis (`|n_z| = sin α`): the one ruling whose tangent plane is parallel to it, a family; a plane always meets the double cone, and the family is stationary away from the meeting |
+| plane–NURBS | the critical heights of the patches (above) |
+| cone–cone | coaxial: in each meridian plane the rulings are lines, parallel only when the angles are equal, then a family at `|Δζ| sin α`; off a common axis `Unsupported` |
+| elliptic cylinder–elliptic cylinder | parallel axes: the section ellipses' pairs, each a family along the axis; otherwise `Unsupported` |
+| cone–elliptic cylinder, NURBS–NURBS, NURBS–any but a plane or a sphere | `Unsupported` |
+
+Where the base meets the other surface (`d = 0`) the offset has no
+direction `n̂`: if the base lies along the surface (a line in a plane, a
+ruling) the offset surface is tangent to it there and the pairs are
+`Q ± r·n(Q)` at distance `r`; a base crossing the surface gives none, and a
+base through another surface's axis has stationary pairs on its circle of
+feet that are saddles or maxima, left out as for a curve. Every local
+minimum away from the meeting is reported.
 
 `SurfaceKind` is the fieldless twin of the enum, used in errors and
 dispatch tables. `Surface::frame()` is the placing frame of an analytic

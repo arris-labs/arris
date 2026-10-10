@@ -154,9 +154,10 @@ impl Surface {
     /// ellipse (two to four rulings), a cone two (the feet on its two lines
     /// in the meridian plane) and a torus four (the near and the far foot on
     /// the centre circle, each lifted to the tube's two sides). A NURBS
-    /// surface has the one foot [`Surface::project`] gives: its nearest
-    /// point, never a guarantee against another local minimum, and
-    /// `Ambiguous` where two points are as near as each other.
+    /// surface has the critical points of its Bézier patches, certified
+    /// (`docs/DATA-MODEL.md` §Surfaces, §Extrema): every one a point
+    /// where the offset has no component along either tangent beyond
+    /// `tol.linear`.
     ///
     /// Errors: [`GeomError::InvalidTolerance`] and, for a NURBS surface,
     /// those of [`Surface::project`]. The meter is ticked once per foot
@@ -324,10 +325,22 @@ impl Surface {
                 }
                 Ok(sorted(isolated, continua))
             }
-            Surface::Nurbs(_) => Ok(Feet {
-                isolated: vec![self.project(p)?],
-                continua: vec![],
-            }),
+            Surface::Nurbs(n) => {
+                let field = crate::nurbs::Field::Distance { point: p };
+                let critical = n.critical_points(&field, tol, meter)?;
+                Ok(sorted(
+                    critical
+                        .isolated
+                        .iter()
+                        .map(|uv| foot(uv.x, uv.y))
+                        .collect(),
+                    critical
+                        .continua
+                        .iter()
+                        .map(|uv| foot(uv.x, uv.y))
+                        .collect(),
+                ))
+            }
         }
     }
 }
@@ -340,7 +353,7 @@ fn rho_along(q: Point3, cos: f64, sin: f64) -> f64 {
 
 /// `(u, v)` of a sphere's point in the direction `d`, a unit vector in the
 /// sphere's frame: a pole takes `u = 0`.
-fn sphere_uv(d: Vec3) -> (f64, f64) {
+pub(super) fn sphere_uv(d: Vec3) -> (f64, f64) {
     let rho = d.x.hypot(d.y);
     let u = if rho <= AXIS_NOISE {
         0.0

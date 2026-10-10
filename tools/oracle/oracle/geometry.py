@@ -21,7 +21,8 @@ intersections of named analytic surfaces and curves, for
       "samples":  [{"of": "<name>", "params": [[u, v], ...] | [t, ...], "points": [[x, y, z], ...]}],
       "pairs":    [{"a": "<name>", "b": "<name>"},
                    {"a": "<curve>", "b": "<curve>", "extrema": true},
-                   {"a": "<curve>", "b": "<surface>", "extrema": true}]
+                   {"a": "<curve>", "b": "<surface>", "extrema": true},
+                   {"a": "<surface>", "b": "<surface>", "extrema": true}]
     }
 
 Frames are `gp_Ax3(origin, z, x)`: `x` is projected perpendicular to `z`
@@ -98,7 +99,13 @@ curve and the whole surface (the elliptic cylinder trimmed to
 `EXTRUSION_REACH`), `parallel` with the distance it gives where it sees a
 curve along the surface, else `curve_surface` with each pair's curve
 parameter `t`, surface `(u, v)`, both points and distance. A NURBS surface
-has no form.
+has no form. Two surfaces with `"extrema": true` ask for the stationary
+pairs of their distance (`extrema_surfaces`): `GeomAPI_ExtremaSurfaceSurface`
+over each surface's whole parameter range (an unbounded direction within
+`EXTRUSION_REACH`), `parallel` with the distance where it sees a family,
+else `surface_surface` with each pair's `(ua, va)` and `(ub, vb)`, both
+points and distance. It reports pairs that are not stationary (a grid
+point at a range end), which are dropped and counted.
 """
 
 import math
@@ -126,6 +133,7 @@ from OCP.collections import Array1_double, Array1_gp_Pnt, Array1_int, Array2_dou
 from OCP.GeomAPI import (
     GeomAPI_ExtremaCurveCurve,
     GeomAPI_ExtremaCurveSurface,
+    GeomAPI_ExtremaSurfaceSurface,
     GeomAPI_IntCS,
     GeomAPI_IntSS,
     GeomAPI_ProjectPointOnCurve,
@@ -722,6 +730,72 @@ def extrema_curve_surface(name_a: str, kind_a: str, a, name_b: str, kind_b: str,
     return out
 
 
+def _surface_range(kind: str) -> tuple[float, float, float, float]:
+    """The `(u0, u1, v0, v1)` a surface of this kind is searched over."""
+    turn = 2.0 * math.pi
+    reach = EXTRUSION_REACH
+    return {
+        "plane": (-reach, reach, -reach, reach),
+        "cylinder": (0.0, turn, -reach, reach),
+        "elliptic_cylinder": (0.0, turn, -reach, reach),
+        "cone": (0.0, turn, -reach, reach),
+        "sphere": (0.0, turn, -math.pi / 2, math.pi / 2),
+        "torus": (0.0, turn, 0.0, turn),
+    }[kind]
+
+
+def _normal_stationary(surface, u: float, v: float, other: gp_Pnt) -> bool:
+    """The offset from `other` to the surface's point at `(u, v)` has no
+    component along either tangent beyond `Precision::Confusion`: a pair
+    of a grid search's that is not along the normals is no extremum."""
+    p, du, dv = gp_Pnt(), gp_Vec(), gp_Vec()
+    surface.D1(u, v, p, du, dv)
+    r = gp_Vec(other, p)
+    for d in (du, dv):
+        n = d.Magnitude()
+        if n > 0.0 and abs(r.Dot(d)) / n > Precision.Confusion_s():
+            return False
+    return True
+
+
+def extrema_surfaces(name_a: str, kind_a: str, a, name_b: str, kind_b: str, b) -> dict:
+    """`GeomAPI_ExtremaSurfaceSurface` of two surfaces, an `"extrema": true`
+    pair: `parallel` with the distance where it reports them parallel, else
+    `extrema` with every stationary pair it finds as `surface_surface` — the
+    first surface's `(ua, va)`, the second's `(ub, vb)`, both points and
+    the distance, duplicates within `Precision::Confusion` once, ascending
+    by `(ua, va, ub, vb)`. A pair that is not along both surfaces' normals
+    is dropped and counted under `dropped`. Like the others it is not
+    complete."""
+    out: dict[str, Any] = {"a": name_a, "b": name_b}
+    if "nurbs" in (kind_a, kind_b):
+        raise OracleError(f"{name_a} vs {name_b}: no surface extrema against a NURBS surface")
+    r = GeomAPI_ExtremaSurfaceSurface(a, b, *_surface_range(kind_a), *_surface_range(kind_b))
+    if r.IsParallel():
+        out["type"] = "parallel"
+        out["distance"] = r.LowerDistance()
+        return out
+    kept: list[dict] = []
+    dropped = 0
+    for i in range(r.NbExtrema()):
+        ua, va, ub, vb = r.Parameters(i + 1)
+        pa, pb = gp_Pnt(), gp_Pnt()
+        r.Points(i + 1, pa, pb)
+        if not (_normal_stationary(a, ua, va, pb) and _normal_stationary(b, ub, vb, pa)):
+            dropped += 1
+            continue
+        e = {"ua": ua, "va": va, "ub": ub, "vb": vb, "a": _xyz(pa), "b": _xyz(pb), "distance": r.Distance(i + 1)}
+        if any(math.dist(e["a"], k["a"]) <= Precision.Confusion_s() and math.dist(e["b"], k["b"]) <= Precision.Confusion_s() for k in kept):
+            continue
+        kept.append(e)
+    kept.sort(key=lambda e: (e["ua"], e["va"], e["ub"], e["vb"]))
+    out["type"] = "extrema"
+    out["surface_surface"] = kept
+    if dropped:
+        out["dropped"] = dropped
+    return out
+
+
 def _stationary(curve, t: float, other: gp_Pnt) -> bool:
     """The offset from `other` to the curve's point at `t` has no component
     along the curve's tangent there beyond `Precision::Confusion`: what a
@@ -806,8 +880,12 @@ def compute_geometry(fixture: dict) -> dict:
                 (ka, ca), (kb, sb) = built_c[a], built_s[b]
                 pairs.append(extrema_curve_surface(a, ka, ca, b, kb, sb))
                 continue
+            if a in built_s and b in built_s:
+                (ka, sa), (kb, sb) = built_s[a], built_s[b]
+                pairs.append(extrema_surfaces(a, ka, sa, b, kb, sb))
+                continue
             if not (a in built_c and b in built_c):
-                raise OracleError(f"pair {i}: an extrema pair is two curves, or a curve and a surface")
+                raise OracleError(f"pair {i}: an extrema pair is two curves, a curve and a surface, or two surfaces")
             (ka, ca), (kb, cb) = built_c[a], built_c[b]
             pairs.append(extrema_curves(a, ka, ca, b, kb, cb))
             continue

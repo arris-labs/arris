@@ -482,7 +482,11 @@ oracle's sampled points on Arris's curves to 1e-9.
   along and skew to a cylinder, an elliptic cylinder, a plane and a sphere,
   circles coaxial with a torus and a cone, linked with a torus's tube and
   tipped round an elliptic cylinder, an ellipse clear of a cone, and a
-  NURBS curve against a plane and an elliptic cylinder.
+  NURBS curve against a plane and an elliptic cylinder; and
+  `c8-surface-extrema` asks two surfaces: a bead on a pipe's axis, two pipes
+  skew at their common normal, a pin off a hole's axis, a ring over a floor,
+  a pearl above a ring, parallel planes, a wall along an elliptic cylinder,
+  a pipe through a ring and two elliptic cylinders with parallel axes.
   `c4-closed-curve-hits` is a clamped closed cubic B-spline, its ends one
   point, against a plane and a cylinder through that join and a plane
   clear of it: the join is one hit, at the start parameter, as Open
@@ -541,6 +545,22 @@ oracle's sampled points on Arris's curves to 1e-9.
   is the property tests' (`tests/extrema_surface.rs`): every local minimum
   of a dense sample of the curve, the surface eliminated by its
   projection, is a pair of the answer.
+- A pair with `"extrema": true` of two surfaces asks for their distance's
+  stationary pairs: `GeomAPI_ExtremaSurfaceSurface` over each surface's
+  whole range (an unbounded direction within `EXTRUSION_REACH`). It answers
+  `"type": "parallel"` with the `distance`, or `"type": "extrema"` with each
+  pair's `ua`, `va`, `ub`, `vb`, points and `distance` under
+  `surface_surface`. It reports pairs that are not along both surfaces'
+  normals (a grid point at a range end), which are dropped and counted
+  under `dropped`; what is left is incomplete. `oracle.rs` holds every pair
+  of the oracle farther than REL from zero to one of Arris's or to a
+  continuum at its distance, and Arris's nearest to at most the oracle's:
+  a meeting is `intersect_surfaces`'s, and the oracle finds the nearest
+  only sometimes. Completeness is the property tests'
+  (`tests/extrema_surfaces.rs`): every local minimum of a dense sample of
+  one surface, the other eliminated by its projection, is a pair of the
+  answer, and every grid extreme of a NURBS surface's height or distance is
+  a critical point.
 - A surface pair Open CASCADE finds no conic for is `"type": "unsolved"`
   (`IntAna_NoGeometricSolution`), with the lines `GeomAPI_IntSS` walks
   for it as curves of type `section`: 17 samples each, every one polished

@@ -13,6 +13,7 @@
 //! weights separate and evaluates the basis derivatives in place.
 
 mod basis;
+mod critical;
 mod curve;
 mod exact;
 mod fit;
@@ -22,6 +23,7 @@ mod spline;
 mod surface;
 
 pub use basis::MAX_DEGREE;
+pub(crate) use critical::Field;
 pub use curve::{NurbsCurve, NurbsCurve2};
 pub use fit::{FitError, MAX_FIT_SPANS, fit_curve, fit_curve_periodic, fit_curve2};
 pub(crate) use line::line_nurbs;

@@ -15,7 +15,7 @@ use arris_debug::testing::{REL, close, close_param};
 use arris_geom::{
     Curve, CurveIntersection, CurveSurfaceIntersection, GeomError, MeetKind, SECTION_FIT_FRACTION,
     Surface, SurfaceIntersection, SurfaceKind, extrema_curve_curve, extrema_curve_surface,
-    intersect_curve_surface, intersect_curves, intersect_surfaces,
+    extrema_surface_surface, intersect_curve_surface, intersect_curves, intersect_surfaces,
 };
 use arris_math::{Point3, Precision, Tolerance, Vec3};
 
@@ -771,6 +771,89 @@ fn check_extrema_curve_surface_pair(
     }
 }
 
+/// Two surfaces against `GeomAPI_ExtremaSurfaceSurface`'s stationary pairs,
+/// which are neither all of them nor, once the ones off the normals are
+/// dropped, any at their meeting: every pair of the oracle's farther than
+/// REL from zero (a meeting is `intersect_surfaces`') is one of ours to
+/// `TOUCH` in both points — or `VALLEY` where the distances agree to REL —
+/// or at the distance of one of our continua; our nearest is at most the
+/// oracle's nearest to REL, which it would not be if the oracle found a
+/// pair we missed; and `parallel` is a continuum of ours at its distance.
+fn check_extrema_surface_pair(
+    a: &Surface,
+    b: &Surface,
+    res: &PairResult,
+    errors: &mut Vec<String>,
+) {
+    let label = format!("{} vs {} (extrema)", res.a, res.b);
+    let e = match extrema_surface_surface(a, b, tol(), &mut arris_math::Meter::default()) {
+        Ok(e) => e,
+        Err(err) => {
+            errors.push(format!("{label}: {err}"));
+            return;
+        }
+    };
+    let Some(ours) = e.nearest() else {
+        errors.push(format!("{label}: no stationary pair"));
+        return;
+    };
+    let scale = ours.point_a.coords.norm().max(1.0);
+    let on_continuum = |d: f64| {
+        e.continua
+            .iter()
+            .any(|x| (x.distance - d).abs() <= REL * scale)
+    };
+    match res.kind.as_str() {
+        "parallel" => {
+            let Some(d) = res.distance else {
+                errors.push(format!("{label}: parallel with no distance"));
+                return;
+            };
+            if !on_continuum(d) {
+                errors.push(format!(
+                    "{label}: the oracle's family at {d} is not among our continua {:?}",
+                    e.continua
+                ));
+            }
+        }
+        "extrema" => {
+            let apart: Vec<_> = res
+                .surface_surface
+                .iter()
+                .filter(|x| x.distance > REL * scale)
+                .collect();
+            for x in &apart {
+                let (pa, pb) = (p3(&x.a), p3(&x.b));
+                let isolated = e.isolated.iter().any(|y| {
+                    let near = if (y.distance - x.distance).abs() <= REL * scale {
+                        VALLEY
+                    } else {
+                        TOUCH
+                    };
+                    (y.point_a - pa).norm() <= near && (y.point_b - pb).norm() <= near
+                });
+                if !(isolated || on_continuum(x.distance)) {
+                    errors.push(format!(
+                        "{label}: the oracle's pair at {} ({:?}, {:?}) is not among ours {e:?}",
+                        x.distance, x.a, x.b
+                    ));
+                }
+            }
+            let nearest = apart
+                .iter()
+                .map(|x| x.distance)
+                .fold(f64::INFINITY, f64::min);
+            if ours.distance > nearest + REL * scale {
+                errors.push(format!(
+                    "{label}: our nearest {} is above the oracle's {nearest}",
+                    ours.distance
+                ));
+            }
+        }
+        other => errors.push(format!("{label}: oracle answered {other}")),
+    }
+}
+
 /// `|a − b|` modulo the curve's period — or its domain's length for a
 /// closed curve that is not periodic, whose two ends are one point — or
 /// infinity for an open curve so the plain difference wins.
@@ -792,8 +875,8 @@ fn turn_diff(a: f64, b: f64, c: &Curve) -> f64 {
 fn every_geometry_fixture_matches_the_oracle() {
     let fixtures = geometry_fixtures();
     assert!(
-        fixtures.len() >= 15,
-        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c8-curve-extrema and geom/c8-curve-surface-extrema"
+        fixtures.len() >= 16,
+        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c8-curve-extrema, geom/c8-curve-surface-extrema and geom/c8-surface-extrema"
     );
     let mut errors = Vec::new();
     for f in &fixtures {
@@ -830,7 +913,11 @@ fn every_geometry_fixture_matches_the_oracle() {
                 continue;
             };
             if let Some(a) = built.surfaces.get(&result.a) {
-                check_surface_pair(a, b, result, &mut errors);
+                if pair.extrema {
+                    check_extrema_surface_pair(a, b, result, &mut errors);
+                } else {
+                    check_surface_pair(a, b, result, &mut errors);
+                }
             } else if let Some(c) = built.curves.get(&result.a) {
                 if pair.extrema {
                     check_extrema_curve_surface_pair(c, b, result, &mut errors);

@@ -77,8 +77,10 @@ use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveProjection, GeomError, NurbsCurve};
 
 mod surface;
+mod surfaces;
 
 pub use surface::{CurveSurfaceExtrema, CurveSurfacePair, extrema_curve_surface};
+pub use surfaces::{SurfaceExtrema, SurfacePair, extrema_surface_surface};
 
 /// A region of uncertified boxes no wider than this, in a piece's own
 /// parameters, holds one point: a zero that is not simple, which the

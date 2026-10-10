@@ -270,7 +270,7 @@ bound has to be established here.
     - A NURBS curve's minimum at a knot where it is only C⁰ is a kink of
       the distance, not a stationary pair: the topology's recursion has to
       treat such a knot as a vertex (step 7).
-- [ ] Step 4 **[2]** — `extrema_surface_surface` by the reductions:
+- [x] Step 4 **[2]** — `extrema_surface_surface` by the reductions:
   - plane–X by height (a NURBS surface by its Bernstein gradient);
   - sphere–X → point–X, cylinder–X → line–X, torus–X → circle–X;
   - parallel planes, coaxial pairs and concentric pairs as continua;
@@ -278,6 +278,40 @@ bound has to be established here.
 
   Fixtures: `geom/c8-surface-extrema` (`GeomAPI_ExtremaSurfaceSurface`).
   Property as above.
+  - *As built:*
+    - `geom::extrema::surfaces`. Sphere, cylinder and torus are reduced
+      first (in that order, so a ball on a pipe's axis is a point against
+      the pipe), each by the base's pairs against the other surface lifted
+      to `B ± r·n̂`. The closed forms: two planes, a plane against an
+      elliptic cylinder or a cone (the rulings whose normal is the
+      plane's), two coaxial cones (lines in the meridian plane), two
+      elliptic cylinders with parallel axes (the sections' pairs, each a
+      family along the axis). A NURBS surface against a plane is the
+      critical heights of its patches, and `Surface::feet` of a NURBS
+      surface now returns every critical foot (`nurbs::critical`, the
+      Krawczyk system of the gradient on each Bézier patch), so a NURBS
+      surface against a sphere is its centre's feet lifted. Step 3 had said
+      the nearest only.
+    - *Reversed from the plan's text:* the surfaces' meeting is not an
+      entry of the answer. A representative point of an intersection curve
+      is `intersect_surfaces`', and the face recursion needs the whole
+      curve against both trims, which the section (step 8's contact) gives;
+      the answer is "stationary away from the meeting", and the property
+      holds minima farther than a floor from it. `nearest()` is then not
+      zero for surfaces that meet.
+    - The property is a dense sample of one surface (90 × 90) with the
+      other eliminated by its closed-form projection, a local minimum held
+      to a pattern-search refinement and to a ring two steps round it (a
+      slope too shallow for the sample is not a minimum); and for NURBS
+      surfaces the grid's every interior minimum and maximum of the
+      distance or the height against the critical points. Costs: module
+      DATA-MODEL §Surfaces.
+    - The oracle is incomplete and reports non-stationary grid pairs: the
+      script drops those, the comparator holds each kept pair to one of
+      ours or to a continuum, and ours to at most its nearest. The fixture
+      has no ball beside a pipe, a tipped ring over a floor, or a plane
+      tangent-parallel to a cone, which it finds only as non-stationary
+      or meeting pairs; the unit tests hold them by closed form.
 - [ ] Step 5 **[1]** — `Aabb::distance` and `FaceTree::nearest`, with
   rustdoc and an example each. A property over `prop::body` bodies checks
   that `nearest` returns exactly the faces brute force finds within the

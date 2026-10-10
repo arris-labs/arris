@@ -18,7 +18,18 @@ into its version (ADR-0027).
   surface is `GeomError::Unsupported`. `Surface::feet(p, tol, &mut meter)`
   returns every foot of a point on a surface, and answers a point on the
   axis of a cylinder, a cone or a torus, or at a sphere's centre, with a
-  continuum where `Surface::project` refuses it as ambiguous.
+  continuum where `Surface::project` refuses it as ambiguous; on a NURBS
+  surface it returns every critical foot, not the nearest alone.
+- `arris_geom::extrema_surface_surface(&a, &b, tol, &mut meter)` returns
+  every stationary pair of the distance between two surfaces, away from
+  where they meet (that is `intersect_surfaces`'): a sphere, cylinder or
+  torus against anything but a NURBS surface, a NURBS surface against a
+  plane or a sphere, two planes, a plane against an elliptic cylinder or a
+  cone, two coaxial cones, and two elliptic cylinders with parallel axes. A
+  family at one distance (parallel planes, a pin in a hole, a ball on a
+  pipe's axis) is one continuum entry. A cone against a cone off a common
+  axis, a cone against an elliptic cylinder, and an elliptic cylinder
+  against one not parallel to it are `GeomError::Unsupported`.
 - `arris_geom::extrema_curve_curve(&a, &b, tol, &mut meter)` returns every
   stationary pair of the distance between two curves (lines, circles,
   ellipses, NURBS), with `nearest()` for the closest. Each pair has both

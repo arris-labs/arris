@@ -1433,6 +1433,64 @@ def c8_curve_surface_extrema():
     }
 
 
+# --- c8-surface-extrema --------------------------------------------------------
+
+
+def c8_surface_extrema():
+    """Surfaces asked for the stationary pairs of their distance (plan
+    minimum-distance step 4), in the tilt pose: each reduction of the plan
+    with a pair that has a closed form."""
+    f = POSES["tilt"]
+    z = f.z
+    a, across = f.around(0.6)
+    local = lambda x, y, h: f.to_world([x, y, h])
+    surfaces = {}
+    pairs = []
+
+    def surface(name, kind, centre, zz, xx, **dims):
+        surfaces[name] = {"type": kind, **Frame(centre, zz, xx).spec(**dims)}
+
+    def ask(first, second):
+        pairs.append({"a": first, "b": second, "extrema": True})
+
+    # A bead on a pipe's axis; the pipe and a thinner one
+    # skew to it at their common normal, and a pin in a hole off its axis.
+    surface("pipe", "cylinder", local(0, 0, 0), z, a, radius=1.0)
+    surface("bead", "sphere", local(0.0, 0.0, 5.0), z, a, radius=0.6)
+    surface("tube", "cylinder", local(5.0, 0.0, 2.0), across, a, radius=0.5)
+    surface("hole", "cylinder", local(0, 0, 0), z, a, radius=1.2)
+    surface("pin", "cylinder", local(0.1, 0.0, 1.0), z, a, radius=1.0)
+    ask("bead", "pipe")
+    ask("pipe", "tube")
+    ask("pin", "hole")
+    # A ring over a floor; a pearl above the ring.
+    surface("floor", "plane", local(0, 0, -4.0), z, a)
+    surface("ring", "torus", local(0, 0, 0), z, a, major_radius=5.0, minor_radius=1.0)
+    surface("pearl", "sphere", local(0, 0, 3.0), z, a, radius=1.5)
+    ask("ring", "floor")
+    ask("pearl", "ring")
+    # Parallel planes, and a wall along an elliptic cylinder.
+    surface("roof", "plane", local(1.0, 1.0, 3.0), mul(-1.0, z), a)
+    surface("ground", "plane", local(0, 0, 0), z, a)
+    ask("ground", "roof")
+    surface("oval", "elliptic_cylinder", local(0, 0, 0), z, a, major_radius=3.0, minor_radius=1.0)
+    surface("wall", "plane", add(f.origin, mul(5.0, a)), a, across)
+    ask("wall", "oval")
+    # A pipe against a ring, and two ovals side by side.
+    surface("shaft", "cylinder", local(0, 0, 0), z, a, radius=2.0)
+    ask("shaft", "ring")
+    surface("lobe", "elliptic_cylinder", add(local(0, 0, 4.0), mul(9.0, a)), z, a, major_radius=3.0, minor_radius=2.0)
+    ask("oval", "lobe")
+    return {
+        "kind": "geometry",
+        "description": "Surfaces asked for every stationary pair of their distance (plan minimum-distance step 4), in the tilt pose: a bead on a pipe's axis, two pipes skew at their common normal and a pin off a hole's axis; a ring level over a floor and a pearl above it; parallel planes, a wall along an elliptic cylinder; a pipe through a ring, and two elliptic cylinders with parallel axes \u2014 held to Open CASCADE's GeomAPI_ExtremaSurfaceSurface, which reports pairs that are not stationary (dropped) and is not complete elsewhere; written by generate.py",
+        "surfaces": surfaces,
+        "curves": {},
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 def write(name, recipe):
     directory = HERE / name
     directory.mkdir(exist_ok=True)
@@ -1456,3 +1514,4 @@ if __name__ == "__main__":
     write("c8-line-nurbs-hits", c8_line_nurbs_hits())
     write("c8-curve-extrema", c8_curve_extrema())
     write("c8-curve-surface-extrema", c8_curve_surface_extrema())
+    write("c8-surface-extrema", c8_surface_extrema())

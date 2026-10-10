@@ -51,8 +51,8 @@ pub use curve::{Curve, CurveEval, CurveKind};
 pub use curve2::{Curve2, Curve2Eval, Curve2Kind, Curve2Projection};
 pub use error::{AmbiguousLocus, GeomError, GeomKind};
 pub use extrema::{
-    CurveSurfaceExtrema, CurveSurfacePair, Extrema, ExtremumPair, Feet, extrema_curve_curve,
-    extrema_curve_surface,
+    CurveSurfaceExtrema, CurveSurfacePair, Extrema, ExtremumPair, Feet, SurfaceExtrema,
+    SurfacePair, extrema_curve_curve, extrema_curve_surface, extrema_surface_surface,
 };
 pub use intersect::{MeetCurve, MeetKind, MeetPoint, SurfaceIntersection, intersect_surfaces};
 pub use intersect_curve::{CurveSurfaceHit, CurveSurfaceIntersection, intersect_curve_surface};

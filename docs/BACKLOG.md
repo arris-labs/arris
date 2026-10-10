@@ -9,6 +9,8 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 reproduces it.
 
 - A ray through a sphere's pole or a cone's apex is refused by `ray_fire` as `QueryReason::Singular`, since the surface has no normal there; the hit could carry the limit normal (the cone's axis side, the sphere's radial direction) — add it when a consumer's pick lands on one (C8 ray-fire step 7 finding; no `query/` fixture ray goes through one)
+- Cone–cone off a common axis, cone–elliptic cylinder, elliptic cylinder–elliptic cylinder not parallel, and a NURBS surface against any analytic surface but a plane or a sphere are refused by `extrema_surface_surface` (and a curve against a NURBS surface's interior by `extrema_curve_surface`): none reduces below three unknowns, so the pairs need a certified solver in three or four unknowns; add it when a corpus shows the refusal (minimum-distance steps 3 and 4, ADR-0054 §4)
+- A minimum of the distance at a knot where a NURBS edge or surface is only C⁰ is a kink, no stationary pair, so `extrema_*` do not report it; the distance recursion has to treat such a knot as a vertex (minimum-distance step 7)
 - Split by a surface other than a plane, by a face of the body, or by another body, and a split's pieces kept as one compound (the roadmap's C7 out-of-scope, split-by-plane)
 - Split of a sheet: a face split by a curve, a surface trimmed by a plane (the healing cycle's sheet bodies; split-by-plane non-goal)
 - The round (arc) join at an outward convex edge of `offset_faces`, and at a concave edge of an inward `shell` (a convex one of an outward), which meet sharp today (ADR-0048 §2, ADR-0049): add it when a fixture or a consumer asks.
