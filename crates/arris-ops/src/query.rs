@@ -6,8 +6,10 @@
 use std::collections::BTreeMap;
 
 mod distance;
+mod interference;
 
 pub use distance::{Distance, Foot, FootParam, Operand, distance};
+pub use interference::{Contact, Interference, interference};
 
 use arris_check::domain::FaceDomain;
 use arris_check::tree::FaceTree;

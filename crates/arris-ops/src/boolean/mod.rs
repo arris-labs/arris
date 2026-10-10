@@ -993,6 +993,55 @@ pub fn common(
     result::boolean(m, &i, result::Op::Common, &mut meter)
 }
 
+/// What [`common_probe`] found: the pave model, and the common built from
+/// it.
+pub(crate) struct Probe {
+    /// The decomposition the common was selected over.
+    #[expect(
+        dead_code,
+        reason = "read by the contact dimension (plans/interference step 3)"
+    )]
+    pub(crate) interferences: Interferences,
+    /// The common and, per operand, whether it lies wholly inside the other
+    /// (`[a in b, b in a]`), or why there is none: `Empty` and
+    /// `ZeroThickness` are the touching cases.
+    pub(crate) common: Result<(Body, [bool; 2]), OpError>,
+}
+
+/// `a` ∩ `b` on `m` for the interference query (ADR-0055): [`common`]'s
+/// build, with the pave model kept and each operand's containment read
+/// from the selection (no piece of its boundary outside the other). The
+/// caller passes a scratch copy of the model; the result body is left in
+/// it. An error of the decomposition is returned as `Err`; a
+/// `Degenerate` refusal of the selection is in [`Probe::common`], beside the model it was built on.
+pub(crate) fn common_probe(
+    m: &mut Model,
+    a: Body,
+    b: Body,
+    control: &Control<'_>,
+) -> Result<Probe, OpError> {
+    crate::verify_input(m, a)?;
+    crate::verify_input(m, b)?;
+    let mut meter = Meter::new(control);
+    let i = pave::build(m, &[a, b], &mut meter)?;
+    let common = match result::boolean_each_witnessed(m, &i, &[result::Op::Common], &mut meter) {
+        Ok(mut made) => {
+            let (body, _, outside) =
+                made.pop()
+                    .ok_or(OpError::Internal(crate::Fault::Invariant {
+                        what: "one result for one selection",
+                    }))?;
+            Ok((body, [!outside[0], !outside[1]]))
+        }
+        Err(e @ OpError::Degenerate { .. }) => Err(e),
+        Err(e) => return Err(e),
+    };
+    Ok(Probe {
+        interferences: i,
+        common,
+    })
+}
+
 /// A number as the dump writes it: the shortest decimal that round-trips.
 fn num(x: f64) -> String {
     format!("{x}")

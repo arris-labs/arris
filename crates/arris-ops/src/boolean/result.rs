@@ -271,6 +271,10 @@ struct Build<'m> {
     /// distinguishes a result with no thickness from one with no
     /// material.
     dropped_on: bool,
+    /// Per operand, whether a piece of its boundary lies outside the
+    /// others (not inside, not flush with agreeing normals): what tells an
+    /// operand wholly inside the rest from one that is not.
+    outside: Vec<bool>,
 }
 
 impl<'m> Build<'m> {
@@ -981,6 +985,9 @@ impl<'m> Build<'m> {
                 }
                 let (flip, stands_for) = match on[..] {
                     [] => {
+                        if (0..operands).any(|o| o != side && !inside[o]) {
+                            self.outside[side] = true;
+                        }
                         let Some(flip) = self.op.select(side, &inside).flip() else {
                             continue;
                         };
@@ -989,6 +996,9 @@ impl<'m> Build<'m> {
                     [(other, shape)] => {
                         if let Some(g) = self.coincident_partner(side, f.id, shape) {
                             let agree = self.normals_agree(f, piece.uv, piece.interior, g)?;
+                            if !self.op.inside_when_kept_on(side, other, agree) {
+                                self.outside[side] = true;
+                            }
                             if !self.op.select_on(side, other, agree) {
                                 self.dropped_on = true;
                                 continue;
@@ -1015,6 +1025,9 @@ impl<'m> Build<'m> {
                                 return Err(unsupported(self.m, f.id, shape));
                             };
                             inside[other] = tangent;
+                            if !tangent {
+                                self.outside[side] = true;
+                            }
                             let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
@@ -1028,6 +1041,9 @@ impl<'m> Build<'m> {
                                 return Err(unsupported(self.m, f.id, shape));
                             };
                             inside[other] = transversal;
+                            if !transversal {
+                                self.outside[side] = true;
+                            }
                             let Some(flip) = self.op.select(side, &inside).flip() else {
                                 continue;
                             };
@@ -1427,6 +1443,21 @@ pub(super) fn boolean_each(
     ops: &[Op],
     meter: &mut Meter<'_>,
 ) -> Result<Vec<(Body, Provenance)>, OpError> {
+    Ok(boolean_each_witnessed(m, i, ops, meter)?
+        .into_iter()
+        .map(|(body, p, _)| (body, p))
+        .collect())
+}
+
+/// [`boolean_each`] with, per result, which operands have a piece of
+/// their boundary outside the others (`outside[side]`): an operand with
+/// none lies wholly inside the rest.
+pub(super) fn boolean_each_witnessed(
+    m: &mut Model,
+    i: &Interferences,
+    ops: &[Op],
+    meter: &mut Meter<'_>,
+) -> Result<Vec<(Body, Provenance, Vec<bool>)>, OpError> {
     let bodies = i.operands.clone();
     let closures = bodies
         .iter()
@@ -1522,6 +1553,7 @@ pub(super) fn boolean_each(
                 kept: Vec::new(),
                 face_pieces: BTreeMap::new(),
                 dropped_on: false,
+                outside: vec![false; bodies.len()],
             };
             b.realise_vertices()?;
             b.sub_edges()?;
@@ -1535,6 +1567,7 @@ pub(super) fn boolean_each(
             }
             let plan = b.assembly(&shells)?;
             let Build {
+                outside,
                 face_pieces,
                 vref_of,
                 merged_into,
@@ -1659,7 +1692,7 @@ pub(super) fn boolean_each(
                 }
             }
             crate::verify(m, built.body)?;
-            results.push((built.body, p));
+            results.push((built.body, p, outside));
         }
         Ok(results)
     })
