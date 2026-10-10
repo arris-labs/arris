@@ -692,8 +692,13 @@ cycle's opening, and its histogram picks the cycle after this one.*
 hierarchy (`arris_check::tree::FaceTree`, which the classifier casts
 through too), `ops::query::ray_fire`, the line × NURBS surface arm of
 `intersect_curve_surface`, the `query` fixture kind with ten ray fixtures
-held to `IntCurvesFace_ShapeIntersector`, and the Python binding. Distance,
-interference and the planar section remain.
+held to `IntCurvesFace_ShapeIntersector`, and the Python binding. Minimum
+distance landed 2026-10-10 (ADR-0054): `arris_geom::extrema` (the critical
+feet and pairs of curves and surfaces, certified), `ops::query::distance`
+between points, vertices, edges, faces and solids by a boundary recursion
+and the nearest-first `FaceTree::nearest` walk, the `distance` query form
+held to `BRepExtrema_DistShapeShape`, and `Model.distance`. Interference
+and the planar section remain.
 
 **In:**
 

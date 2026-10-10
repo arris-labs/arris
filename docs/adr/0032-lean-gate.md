@@ -84,7 +84,7 @@ touches one crate.
 
 32-core machine, 2026-09-30. Default profile, 256 cases: 315 s wall,
 9,235 CPU-s, 1511 tests; the slowest singles `real_nist_ctc_04` 170 s,
-`real_nist_ftc_07` 163 s, `guard::coverage` 90 s. `fast` at 32 cases:
+`real_nist_ftc_07` 163 s (about 960 s by 2026-10-10, before and after minimum-distance alike), `guard::coverage` 90 s. `fast` at 32 cases:
 1489 tests, 110 s wall, 2,538 CPU-s, its slowest single tests
 (corpus `boolean_*`, the part battery, `tolerance_band`) 37–53 s under
 contention. The hook on the whole `fast` profile: 106 s nextest plus about
