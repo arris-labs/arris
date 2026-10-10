@@ -250,6 +250,50 @@ derivative jumps, and a bracket across it is left to its halves: the
 nearest *local* minimum from that sample, never `Ambiguous` and never a
 guarantee against a nearer point the sampling missed.
 
+**Extrema.** `Curve::feet(p, tol, meter)` returns every foot of
+`p`, not only the nearest: `Feet { isolated, continua }` of
+`CurveProjection`s, each a parameter where the distance from `p` is
+stationary. A line has one; a circle two, at `t` and `t + π`, or, where
+the distance round the circle varies by at most `tol.linear` (a point on
+its axis), one continuum at `t = 0`. An ellipse and a NURBS curve go
+through their Bézier pieces (an ellipse's exact rational quadratic arcs)
+in homogeneous form, with `Q = X − W·p` and `N = X′W − XW′`. The feet are
+the sign changes of `h = Q · N` in Bernstein form, each polished on the
+curve and kept where the offset has no component along the tangent beyond
+`tol.linear`. A zero of even order changes no sign and is no extremum. A
+piece's two ends are candidates too, since a symmetric pose puts a foot on
+an arc's end. Feet never answer `Ambiguous`.
+
+`extrema_curve_curve(a, b, tol, meter)` returns every stationary pair of
+the distance between two whole curves: `Extrema { isolated, continua }` of
+`ExtremumPair { ta, tb, a, b, distance }`. Isolated pairs (minima,
+maxima and saddles) are sorted by `ta`, then `tb`. A curve of pairs along
+which the distance stays within `tol.linear` (it does: a gradient that
+vanishes along a curve leaves the function no way to change) is one
+continuum entry with one deterministic pair. `nearest()` is the least of
+either kind. The pair is solved in one canonical order of the two curves
+(kind, then their defining numbers compared exactly) and swapped back, so
+the answer swaps exactly with its operands. The table:
+
+| Pair | How |
+|---|---|
+| line–line | closed form; parallel within `tol.angular` is a continuum at `ta = 0` |
+| line–bounded curve | the line's parameter eliminated, `s = d·(C − o)`; `h = Q⊥ · N` with `Q⊥` the part of `Q = X − W·o` across `d`, as for a point. A line within the tolerance of a circle's axis (`2(δ + R sin θ) ≤ tol.linear`) is a continuum |
+| any bounded curve–circle | the circle's own projection eliminates its parameter. With `P′ = A − c`, `Q` its part across the axis and `ρ = |Q|`, the distance to the circle at the near and far foot is stationary where `ρ (P′·A′) = ± R (Q·Q′)`. The square, multiplied out on a piece by `W⁸`, is a polynomial of degree `8n − 2`. Its sign changes, and its derivative's (a zero of both feet's factors at once is of even order), are the candidates, each paired with the foot it is stationary at and polished on both curves. A point of `a` on the circle's axis is paired with the points where `(A − B)·A′ = 0`, or with the whole circle, a continuum, where its tangent runs along the axis. Two circles about one axis within the tolerance are a continuum near and one far |
+| ellipse–ellipse, ellipse–NURBS, NURBS–NURBS | the common zeros of `R·N_A` and `R·N_B`, `R = W_B X_A − W_A X_B`, per pair of pieces, by `bernstein2::common_zeros_with` (Krawczyk). A zero in the isolation's margin outside the piece's square is the neighbouring piece's. Where the isolation gives up on a curve of zeros, or leaves a box uncertified, the region is searched in one variable along its longer side, the other curve's parameter moved to its foot at each sample. A continuum is a region along which the distance stays within `tol.linear` and the tangential offset within `tol.linear` of zero at every sample; otherwise the derivative's sign changes are bisected into isolated pairs |
+
+Where a piece's polynomial is below its own rounding everywhere (a
+near-continuum), it is a continuum by the same test on the exact distance,
+or its stationary points are bracketed on the exact residual at 64
+samples. Every polynomial's rounding floor is `BERNSTEIN_ROUNDING` times the
+largest coefficient of the same polynomial built from the inputs' absolute
+values, after both curves are translated to the middle of their control
+points. Release-build cost, per pair: about 2 ms for two cubic NURBS of
+four spans, 6 ms at degree 5 and 6 spans, 38 ms at degree 15 and 128 ms
+at degree 25 (`MAX_DEGREE`), and under 5 ms for any of them against a
+circle. Two conics or arcs within a thousandth of a radian of a family of
+pairs cost up to 20 ms.
+
 `Curve::chord_segments(range, chord)` is the 3D twin of
 `Piece::segment_count` (§Pcurves): how many straight segments approximate
 the curve over the range within the chord, by the same `|d2| h² / 8`

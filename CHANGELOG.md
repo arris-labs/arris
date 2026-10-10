@@ -8,6 +8,16 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_geom::extrema_curve_curve(&a, &b, tol, &mut meter)` returns every
+  stationary pair of the distance between two curves (lines, circles,
+  ellipses, NURBS), with `nearest()` for the closest. Each pair has both
+  parameters, both points and the distance. Where a whole family of pairs
+  sits at one distance (parallel lines, coaxial circles, a line along a
+  circle's axis), the answer is one continuum entry with one pair on it,
+  not an error. `Curve::feet(p, tol, &mut meter)` returns every foot of a
+  point on a curve, nearest and farthest alike, and answers a point on a
+  circle's axis with a continuum where `Curve::project` refuses it as
+  ambiguous.
 - `arris_geom::intersect_curve_surface` answers a line against a NURBS
   surface: the crossings on the surface to rounding, one `tangent` hit
   where the line grazes it within the linear tolerance, a hit at a pole

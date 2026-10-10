@@ -19,7 +19,8 @@ intersections of named analytic surfaces and curves, for
                    "<name>": {"type": "ellipse",  "origin", "z", "x", "major_radius", "minor_radius"},
                    "<name>": {"type": "nurbs",    "degree", "knots", "control_points", "weights"}},
       "samples":  [{"of": "<name>", "params": [[u, v], ...] | [t, ...], "points": [[x, y, z], ...]}],
-      "pairs":    [{"a": "<name>", "b": "<name>"}]
+      "pairs":    [{"a": "<name>", "b": "<name>"},
+                   {"a": "<curve>", "b": "<curve>", "extrema": true}]
     }
 
 Frames are `gp_Ax3(origin, z, x)`: `x` is projected perpendicular to `z`
@@ -86,6 +87,10 @@ misses crossings — stands in, every extremum within `Precision::Confusion` a h
 the first curve and `tb` on the second, deduplicated as above. It has no
 `coincident`: extrema say nothing of two curves that are one, and no
 fixture means one.
+
+A pair with `"extrema": true` asks for the stationary pairs of the distance
+between two curves instead (`extrema_curves`): `Extrema_ExtCC` over the
+same ranges.
 """
 
 import math
@@ -107,6 +112,8 @@ from OCP.Geom import (
     Geom_SurfaceOfLinearExtrusion,
     Geom_ToroidalSurface,
 )
+from OCP.Extrema import Extrema_ExtCC, Extrema_POnCurv
+from OCP.GeomAdaptor import GeomAdaptor_Curve
 from OCP.collections import Array1_double, Array1_gp_Pnt, Array1_int, Array2_double, Array2_gp_Pnt
 from OCP.GeomAPI import (
     GeomAPI_ExtremaCurveCurve,
@@ -624,6 +631,70 @@ def intersect_curves(name_a: str, kind_a: str, a, name_b: str, kind_b: str, b) -
     return out
 
 
+def extrema_curves(name_a: str, kind_a: str, a, name_b: str, kind_b: str, b) -> dict:
+    """`Extrema_ExtCC` of two curves, an `"extrema": true` pair: `parallel`
+    with the distance where it reports the curves parallel (two lines,
+    two coaxial circles, a line along a circle's axis), else `extrema`
+    with every stationary pair it finds — each one's distance, both
+    parameters and both points — searched over each curve's `_ranges`,
+    duplicates within `Precision::Confusion` on both curves reported once,
+    ascending by `ta` then `tb`. It is not complete: for two circles it
+    may report one pair of the four or more there are, and for a family
+    of pairs at one distance that is no common axis it reports points
+    sampled along it, so the oracle test holds every pair it reports to
+    one of Arris's and Arris's nearest to its, never the count."""
+    out: dict[str, Any] = {"a": name_a, "b": name_b}
+    found = []
+    whole = lambda kind, c: [(-LINE_REACH, LINE_REACH)] if kind == "line" else [(c.FirstParameter(), c.LastParameter())]
+    dropped = 0
+    for a_lo, a_hi in whole(kind_a, a):
+        for b_lo, b_hi in whole(kind_b, b):
+            ext = Extrema_ExtCC(GeomAdaptor_Curve(a, a_lo, a_hi), GeomAdaptor_Curve(b, b_lo, b_hi))
+            if not ext.IsDone():
+                raise OracleError(f"{name_a} vs {name_b}: Extrema_ExtCC did not finish")
+            if ext.IsParallel():
+                out["type"] = "parallel"
+                out["distance"] = math.sqrt(ext.SquareDistance(1))
+                return out
+            for i in range(ext.NbExt()):
+                pa, pb = Extrema_POnCurv(), Extrema_POnCurv()
+                ext.Points(i + 1, pa, pb)
+                if not (_stationary(a, pa.Parameter(), pb.Value()) and _stationary(b, pb.Parameter(), pa.Value())):
+                    dropped += 1
+                    continue
+                found.append({
+                    "ta": pa.Parameter(),
+                    "tb": pb.Parameter(),
+                    "a": _xyz(pa.Value()),
+                    "b": _xyz(pb.Value()),
+                    "distance": math.sqrt(ext.SquareDistance(i + 1)),
+                })
+    kept: list[dict] = []
+    for e in found:
+        if any(math.dist(e["a"], k["a"]) <= Precision.Confusion_s() and math.dist(e["b"], k["b"]) <= Precision.Confusion_s() for k in kept):
+            continue
+        kept.append(e)
+    kept.sort(key=lambda e: (e["ta"], e["tb"]))
+    out["type"] = "extrema"
+    out["extrema"] = kept
+    if dropped:
+        out["dropped"] = dropped
+    return out
+
+
+def _stationary(curve, t: float, other: gp_Pnt) -> bool:
+    """The offset from `other` to the curve's point at `t` has no component
+    along the curve's tangent there beyond `Precision::Confusion`: what a
+    range end the search reports as an extremum is not, unless it is one."""
+    p, d1 = gp_Pnt(), gp_Vec()
+    curve.D1(t, p, d1)
+    n = d1.Magnitude()
+    if n == 0.0:
+        return True
+    r = gp_Vec(other, p)
+    return abs(r.Dot(d1)) / n <= Precision.Confusion_s()
+
+
 def _hits(out: dict, curve, surface, found: list) -> dict:
     """`found` as the pair's `hits`: each `(point, t)` on both operands
     within `Precision::Confusion` and not a duplicate of one already kept,
@@ -690,6 +761,12 @@ def compute_geometry(fixture: dict) -> dict:
     pairs = []
     for i, pair in enumerate(fixture.get("pairs", [])):
         a, b = pair.get("a"), pair.get("b")
+        if pair.get("extrema"):
+            if not (a in built_c and b in built_c):
+                raise OracleError(f"pair {i}: an extrema pair is two curves")
+            (ka, ca), (kb, cb) = built_c[a], built_c[b]
+            pairs.append(extrema_curves(a, ka, ca, b, kb, cb))
+            continue
         if a in built_c and b in built_c:
             (ka, ca), (kb, cb) = built_c[a], built_c[b]
             pairs.append(intersect_curves(a, ka, ca, b, kb, cb))

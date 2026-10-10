@@ -19,8 +19,11 @@ has, in that pose), `c3-nurbs-crossings` (the same curves against
 lines, circles and ellipses, in that pose), `c4-nurbs-projections`
 (points projected onto free-form NURBS surfaces with no closed form, in
 that pose), `c4-closed-curve-hits` (a closed B-spline met at its join)
-and `c8-line-nurbs-hits` (lines against NURBS surfaces: crossings on and
-off knot lines, a pole, a graze, a ruling and a miss, in that pose).
+`c8-line-nurbs-hits` (lines against NURBS surfaces: crossings on and
+off knot lines, a pole, a graze, a ruling and a miss, in that pose) and
+`c8-curve-extrema` (curve pairs asked for the stationary pairs of their
+distance: lines, circles about one axis and on one tube, ellipses and
+NURBS curves, in that pose).
 Plain Python, no Open CASCADE: the coordinates
 are the closed forms of `docs/DATA-MODEL.md` §Geometry written out in
 world space at full precision, so both sides read identical numbers.
@@ -80,6 +83,10 @@ class Frame:
         x = sub(x, mul(dot(x, self.z), self.z))
         self.x = unit(x)
         self.y = cross(self.z, self.x)
+
+    def to_local_point(self, p):
+        d = sub(p, self.origin)
+        return [dot(d, self.x), dot(d, self.y), dot(d, self.z)]
 
     def to_world(self, p):
         return add(self.origin, add(mul(p[0], self.x), add(mul(p[1], self.y), mul(p[2], self.z))))
@@ -1275,6 +1282,75 @@ def c8_line_nurbs_hits():
     }
 
 
+# --- c8-curve-extrema ----------------------------------------------------------
+
+
+def c8_curve_extrema():
+    """Curve pairs asked for the stationary pairs of their distance (plan
+    minimum-distance step 1), in the tilt pose."""
+    f = POSES["tilt"]
+    hits = c3_nurbs_hits()
+    curves = {"wave": hits["curves"]["wave"], "skein": hits["curves"]["skein"]}
+    pairs = []
+
+    def line(name, through, direction):
+        curves[name] = {"type": "line", "origin": f.to_world(through), "direction": unit(f.vec(direction))}
+
+    def circle(name, centre, z, x, radius):
+        frame = Frame(f.to_world(centre), f.vec(z), f.vec(x))
+        curves[name] = frame.spec(type="circle", radius=radius)
+
+    def ellipse(name, centre, z, x, a, b):
+        frame = Frame(f.to_world(centre), f.vec(z), f.vec(x))
+        curves[name] = frame.spec(type="ellipse", major_radius=a, minor_radius=b)
+
+    # Lines: skew, with one pair at their common normal; parallel, which
+    # are one family at their gap.
+    line("rod", [0, 0, 0], [1, 0, 0])
+    line("bar", [3, 2, 5], [0, 1, 0])
+    line("rail", [0, 0, 0], [1, 1, 0])
+    line("rail_far", [0, 0, 4], [-1, -1, 0])
+    # A circle against: its axis (a family at its radius), a circle linked
+    # through it, a circle of its radius on the tube about it (every point
+    # 2 from it, with no common axis), a coaxial circle (a family near and
+    # one far) and one tilted a thousandth of a radian off that (four
+    # isolated pairs).
+    circle("loop", [0, 0, 0], [0, 0, 1], [1, 0, 0], 2.0)
+    line("loop_axis", [0, 0, -5], [0, 0, 1])
+    circle("link", [2, 0, 0], [0, 1, 0], [1, 0, 0], 1.5)
+    circle("tube", [2, 0, 0], [0, 1, 0], [1, 0, 0], 2.0)
+    circle("coax", [0, 0, 1], [0, 0, 1], [1, 0, 0], 3.0)
+    circle("tilted", [0, 0, 1], [0, 1e-3, 1], [1, 0, 0], 3.0)
+    for other in ["loop_axis", "link", "tube", "coax", "tilted"]:
+        pairs.append({"a": "loop", "b": other, "extrema": True})
+    # An ellipse against a circle standing over its centre (its pairs at
+    # the four vertices), a second ellipse, and a line.
+    ellipse("oval", [0, 0, 0], [0, 0, 1], [1, 0, 0], 3.0, 1.0)
+    circle("hoop", [0, 0, 2], [0, 1, 0], [1, 0, 0], 1.0)
+    ellipse("oval_skew", [1, 1, 1], [0.3, 1, 0.2], [1, 0, 0], 2.0, 0.5)
+    line("slant", [4, -1, 2], [-1, 0.5, -0.3])
+    for other in ["hoop", "oval_skew", "slant"]:
+        pairs.append({"a": "oval", "b": other, "extrema": True})
+    # The quintic and the rational cubic of c3-nurbs-hits against a
+    # circle and a line beside them, and against each other.
+    circle("wave_ring", add(f.to_local_point(nurbs_point(curves["wave"], 1.0)), [0.0, 0.0, 1.5]), [0.2, 1, 0.4], [1, 0, 0], 1.2)
+    line("wave_rod", add(f.to_local_point(nurbs_point(curves["wave"], 2.0)), [0.5, 0.5, 0.0]), [0.3, -1, 0.6])
+    for a, b in [("wave", "wave_ring"), ("wave", "wave_rod"), ("wave", "skein")]:
+        pairs.append({"a": a, "b": b, "extrema": True})
+    # Lines last, and one pair the other way round.
+    pairs.append({"a": "rod", "b": "bar", "extrema": True})
+    pairs.append({"a": "rail", "b": "rail_far", "extrema": True})
+    pairs.append({"a": "hoop", "b": "oval", "extrema": True})
+    return {
+        "kind": "geometry",
+        "description": "Curve pairs asked for every stationary pair of their distance (plan minimum-distance step 1), in the tilt pose: two skew lines and two parallel ones; a circle against its axis, a circle linked through it, a circle of its radius on the tube about it (every point 2 from it, with no common axis), a coaxial circle and one tilted a thousandth of a radian off it; an ellipse against a circle standing over its centre, a second ellipse and a line; the quintic and the rational cubic of c3-nurbs-hits against a circle and a line beside them and against each other; one pair swapped — held to Open CASCADE's Extrema_ExtCC, which reports parallel where it sees a family and is not complete elsewhere; written by generate.py",
+        "surfaces": {},
+        "curves": curves,
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 def write(name, recipe):
     directory = HERE / name
     directory.mkdir(exist_ok=True)
@@ -1296,3 +1372,4 @@ if __name__ == "__main__":
     write("c4-nurbs-projections", c4_nurbs_projections())
     write("c4-closed-curve-hits", c4_closed_curve_hits())
     write("c8-line-nurbs-hits", c8_line_nurbs_hits())
+    write("c8-curve-extrema", c8_curve_extrema())

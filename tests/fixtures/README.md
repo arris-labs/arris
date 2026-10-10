@@ -471,6 +471,13 @@ oracle's sampled points on Arris's curves to 1e-9.
   of points on it and no segment: the oracle test holds each to the line
   Arris calls `Coincident`, as it holds a cone's ruling, and pins every
   pair's count, touches and `Coincident` by name.
+  `c8-curve-extrema` asks its pairs for the stationary pairs of the
+  distance instead: two skew lines and two parallel ones, a circle
+  against its axis, a circle linked through it, a circle of its radius on
+  the tube about it (one family at distance 2 with no common axis), a
+  coaxial circle and one a thousandth of a radian off it, an ellipse
+  against a circle standing over its centre, a second ellipse and a line,
+  and two NURBS curves against a circle, a line and each other.
   `c4-closed-curve-hits` is a clamped closed cubic B-spline, its ends one
   point, against a plane and a cylinder through that join and a plane
   clear of it: the join is one hit, at the start parameter, as Open
@@ -500,6 +507,22 @@ oracle's sampled points on Arris's curves to 1e-9.
   `Precision::Confusion` is a hit with both parameters, `t` and `tb`,
   and the oracle test holds Arris's hits to them as it holds a curve
   against a surface, a touch to 1e-6.
+- A pair with `"extrema": true` is two curves asked for the stationary
+  pairs of their distance, not their intersection. The oracle is
+  `Extrema_ExtCC` over each curve's whole domain (a line's `LINE_REACH`
+  either side of its origin). It answers `"type": "parallel"` with the
+  `distance` where it sees a family, or `"type": "extrema"` with each pair's
+  `ta`, `tb`, points `a` and `b` and `distance`. A pair it reports at a
+  range end that is not stationary there is dropped and counted under
+  `dropped`. Its answer is not complete: two circles may come back with one
+  pair of four, and a family at one distance with no common axis as points
+  sampled along it. So `oracle.rs` holds every oracle pair to one of
+  Arris's isolated pairs (to 1e-6 in both points, or to 1e-4 where the
+  distances agree to 1e-9, since in a valley nearly flat along a family
+  Open CASCADE places the pair only to about 4e-6), or to the distance of
+  one of Arris's continua; it holds Arris's nearest to the oracle's nearest
+  to 1e-9, and `parallel` to a continuum at its distance. Completeness is
+  the property tests' (`tests/extrema.rs`), against a dense grid.
 - A surface pair Open CASCADE finds no conic for is `"type": "unsolved"`
   (`IntAna_NoGeometricSolution`), with the lines `GeomAPI_IntSS` walks
   for it as curves of type `section`: 17 samples each, every one polished
