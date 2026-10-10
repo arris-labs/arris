@@ -20,7 +20,8 @@ intersections of named analytic surfaces and curves, for
                    "<name>": {"type": "nurbs",    "degree", "knots", "control_points", "weights"}},
       "samples":  [{"of": "<name>", "params": [[u, v], ...] | [t, ...], "points": [[x, y, z], ...]}],
       "pairs":    [{"a": "<name>", "b": "<name>"},
-                   {"a": "<curve>", "b": "<curve>", "extrema": true}]
+                   {"a": "<curve>", "b": "<curve>", "extrema": true},
+                   {"a": "<curve>", "b": "<surface>", "extrema": true}]
     }
 
 Frames are `gp_Ax3(origin, z, x)`: `x` is projected perpendicular to `z`
@@ -90,7 +91,14 @@ fixture means one.
 
 A pair with `"extrema": true` asks for the stationary pairs of the distance
 between two curves instead (`extrema_curves`): `Extrema_ExtCC` over the
-same ranges.
+same ranges. A curve `a` against a surface `b` with `"extrema": true` asks
+for the stationary pairs of the distance between them
+(`extrema_curve_surface`): `GeomAPI_ExtremaCurveSurface` over the whole
+curve and the whole surface (the elliptic cylinder trimmed to
+`EXTRUSION_REACH`), `parallel` with the distance it gives where it sees a
+curve along the surface, else `curve_surface` with each pair's curve
+parameter `t`, surface `(u, v)`, both points and distance. A NURBS surface
+has no form.
 """
 
 import math
@@ -117,6 +125,7 @@ from OCP.GeomAdaptor import GeomAdaptor_Curve
 from OCP.collections import Array1_double, Array1_gp_Pnt, Array1_int, Array2_double, Array2_gp_Pnt
 from OCP.GeomAPI import (
     GeomAPI_ExtremaCurveCurve,
+    GeomAPI_ExtremaCurveSurface,
     GeomAPI_IntCS,
     GeomAPI_IntSS,
     GeomAPI_ProjectPointOnCurve,
@@ -682,6 +691,37 @@ def extrema_curves(name_a: str, kind_a: str, a, name_b: str, kind_b: str, b) -> 
     return out
 
 
+def extrema_curve_surface(name_a: str, kind_a: str, a, name_b: str, kind_b: str, b) -> dict:
+    """`GeomAPI_ExtremaCurveSurface` of a curve and a surface, an
+    `"extrema": true` pair: `parallel` with the distance where it reports
+    the curve along the surface (it gives the nearer family only), else
+    `extrema` with every stationary pair it finds, `curve_surface` — the
+    curve's `t`, the surface's `u` and `v`, both points and the distance,
+    duplicates within `Precision::Confusion` once, ascending by `t`. Like
+    the curve pairs' it is not complete."""
+    out: dict[str, Any] = {"a": name_a, "b": name_b}
+    if kind_b == "nurbs":
+        raise OracleError(f"{name_a} vs {name_b}: no extrema against a NURBS surface")
+    r = GeomAPI_ExtremaCurveSurface(a, b)
+    if r.IsParallel():
+        out["type"] = "parallel"
+        out["distance"] = r.LowerDistance()
+        return out
+    kept: list[dict] = []
+    for i in range(r.NbExtrema()):
+        t, u, v = r.Parameters(i + 1)
+        pa, pb = gp_Pnt(), gp_Pnt()
+        r.Points(i + 1, pa, pb)
+        e = {"t": t, "u": u, "v": v, "a": _xyz(pa), "b": _xyz(pb), "distance": r.Distance(i + 1)}
+        if any(math.dist(e["a"], k["a"]) <= Precision.Confusion_s() and math.dist(e["b"], k["b"]) <= Precision.Confusion_s() for k in kept):
+            continue
+        kept.append(e)
+    kept.sort(key=lambda e: (e["t"], e["u"], e["v"]))
+    out["type"] = "extrema"
+    out["curve_surface"] = kept
+    return out
+
+
 def _stationary(curve, t: float, other: gp_Pnt) -> bool:
     """The offset from `other` to the curve's point at `t` has no component
     along the curve's tangent there beyond `Precision::Confusion`: what a
@@ -762,8 +802,12 @@ def compute_geometry(fixture: dict) -> dict:
     for i, pair in enumerate(fixture.get("pairs", [])):
         a, b = pair.get("a"), pair.get("b")
         if pair.get("extrema"):
+            if a in built_c and b in built_s:
+                (ka, ca), (kb, sb) = built_c[a], built_s[b]
+                pairs.append(extrema_curve_surface(a, ka, ca, b, kb, sb))
+                continue
             if not (a in built_c and b in built_c):
-                raise OracleError(f"pair {i}: an extrema pair is two curves")
+                raise OracleError(f"pair {i}: an extrema pair is two curves, or a curve and a surface")
             (ka, ca), (kb, cb) = built_c[a], built_c[b]
             pairs.append(extrema_curves(a, ka, ca, b, kb, cb))
             continue

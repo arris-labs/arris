@@ -1351,6 +1351,88 @@ def c8_curve_extrema():
     }
 
 
+# --- c8-curve-surface-extrema --------------------------------------------------
+
+
+def c8_curve_surface_extrema():
+    """Curves asked for the stationary pairs of their distance from a surface
+    (plan minimum-distance step 3), in the tilt pose: each analytic surface
+    with a curve that has a closed form to the pair."""
+    f = POSES["tilt"]
+    z = f.z
+    a, across = f.around(0.6)
+    on_axis = lambda h: f.to_world([0.0, 0.0, h])
+    local = lambda x, y, h: f.to_world([x, y, h])
+    surfaces = {
+        "floor": {"type": "plane", **Frame(on_axis(0.0), z, a).spec()},
+        "pipe": {"type": "cylinder", **Frame(on_axis(0.0), z, a).spec(radius=2.0)},
+        "ring": {"type": "torus", **Frame(on_axis(0.0), z, a).spec(major_radius=5.0, minor_radius=1.0)},
+        "funnel": {"type": "cone", **Frame(on_axis(0.0), z, a).spec(radius=1.0, half_angle_deg=30.0)},
+        "ball": {"type": "sphere", **Frame(on_axis(0.0), z, a).spec(radius=2.0)},
+        "oval": {"type": "elliptic_cylinder", **Frame(on_axis(0.0), z, a).spec(major_radius=3.0, minor_radius=1.0)},
+    }
+    curves = {}
+    pairs = []
+
+    def line(name, through, direction):
+        curves[name] = {"type": "line", "origin": through, "direction": unit(direction)}
+
+    def circle(name, centre, zz, xx, radius):
+        curves[name] = Frame(centre, zz, xx).spec(type="circle", radius=radius)
+
+    def ellipse(name, centre, zz, xx, major, minor):
+        curves[name] = Frame(centre, zz, xx).spec(type="ellipse", major_radius=major, minor_radius=minor)
+
+    def ask(curve, *names):
+        for n in names:
+            pairs.append({"a": curve, "b": n, "extrema": True})
+
+    # Lines: parallel to the cylinder and the elliptic cylinder's axis (a
+    # family), skew to the cylinder at its common normal, past the sphere,
+    # slanted to the plane.
+    line("rod", local(5.0, 0.0, 0.0), z)
+    line("skew", local(5.0, 0.0, 1.0), across)
+    line("slant", local(1.0, 2.0, -2.0), f.vec([1.0, 0.0, 1.0]))
+    line("beside", local(0.0, 6.0, 3.0), f.vec([0.0, 0.0, 1.0]))
+    line("shaft", local(0.0, 0.0, -3.0), z)
+    ask("rod", "pipe", "oval")
+    ask("skew", "pipe")
+    ask("slant", "floor", "ball")
+    ask("beside", "ball")
+    ask("shaft", "pipe")
+    # Circles: coaxial with the torus and the funnel above them (families),
+    # tilted over the plane, round the sphere's axis, and linked with the
+    # torus's tube, off its axis.
+    circle("halo", local(0.0, 0.0, 3.0), z, a, 5.0)
+    circle("collar", local(0.0, 0.0, 2.0), z, a, 4.0)
+    circle("lean", local(1.0, 2.0, 5.0), f.vec([0.0, 0.5, math.sqrt(3.0) / 2.0]), a, 2.0)
+    circle("girdle", local(0.0, 0.0, 3.0), z, a, 4.0)
+    circle("link", local(5.0, 0.0, 0.0), f.vec([0.0, 1.0, 0.0]), a, 1.8)
+    circle("tipped", local(0.5, 0.2, 4.0), f.vec([0.3, 0.2, 1.0]), a, 6.0)
+    ask("halo", "ring")
+    ask("collar", "funnel")
+    ask("lean", "floor")
+    ask("girdle", "ball")
+    ask("link", "ring")
+    ask("tipped", "oval")
+    # Ellipses against the funnel (clear of it) and the plane.
+    ellipse("lens", local(7.0, 1.0, 3.0), f.vec([0.2, 0.3, 1.0]), a, 3.0, 1.5)
+    ask("lens", "funnel", "floor")
+    # The quintic of c3-nurbs-hits against the plane and the elliptic
+    # cylinder.
+    hits = c3_nurbs_hits()
+    curves["wave"] = hits["curves"]["wave"]
+    ask("wave", "floor", "oval")
+    return {
+        "kind": "geometry",
+        "description": "Curves asked for every stationary pair of their distance from a surface (plan minimum-distance step 3), in the tilt pose: a line along the cylinder, along the elliptic cylinder and skew to the cylinder at its common normal, one slanted over the plane and one past the sphere, one down the cylinder's axis; circles coaxial with the torus and the cone, tilted over the plane, round the sphere's axis, linked with the torus's tube and tipped round the elliptic cylinder; an ellipse clear of the cone and over the plane; the quintic of c3-nurbs-hits against the plane and the elliptic cylinder — held to Open CASCADE's GeomAPI_ExtremaCurveSurface, which reports parallel where it sees a curve along the surface and is not complete elsewhere; written by generate.py",
+        "surfaces": surfaces,
+        "curves": curves,
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 def write(name, recipe):
     directory = HERE / name
     directory.mkdir(exist_ok=True)
@@ -1373,3 +1455,4 @@ if __name__ == "__main__":
     write("c4-closed-curve-hits", c4_closed_curve_hits())
     write("c8-line-nurbs-hits", c8_line_nurbs_hits())
     write("c8-curve-extrema", c8_curve_extrema())
+    write("c8-curve-surface-extrema", c8_curve_surface_extrema())

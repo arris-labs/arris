@@ -229,7 +229,7 @@ bound has to be established here.
       - a near-continuum on the two-unknown route: up to 20 ms.
 - [x] Step 2 **[1]** — ADR-0054 (above), with step 1's costs and the
   continuum rule.
-- [ ] Step 3 **[2]** — Point × surface and curve × surface:
+- [x] Step 3 **[2]** — Point × surface and curve × surface:
   `Surface::feet` for every kind (closed forms, NURBS through its
   projection), and `extrema_curve_surface` by the reduction table. A curve
   against a NURBS surface is `Unsupported`.
@@ -238,6 +238,38 @@ bound has to be established here.
     against a cone, a NURBS curve against a plane and an elliptic
     cylinder, and a point on each axis.
   - **Property:** as in step 1, against a dense `(t, u, v)` sample.
+  - *As built:*
+    - `Surface::feet` and `extrema_curve_surface` are in
+      `geom::extrema::surface`, a child of the extrema module that shares
+      its pieces. Sphere, cylinder and torus are offsets of their base
+      (a point, the axis, the centre circle): the curve's pairs against the
+      base, lifted to `B ± R·n̂`. The plane is the roots of `N · n`. The
+      cone is the squared meridian condition, a polynomial of degree
+      `6n − 2`. The elliptic cylinder is the curve flattened against its
+      section ellipse. Crossings come from `intersect_curve_surface` as
+      distance 0.
+    - *Reversed from the plan:* the sampled property is the surface
+      eliminated by `Surface::project` over a dense sample of the curve,
+      not a `(t, u, v)` grid: its sampled local minima must be a pair of
+      the answer. It is cheaper and exact on the surface side. Stationary
+      pairs on a whole circle of feet that are saddles (a curve through an
+      axis) are not reported; the module docs say so.
+    - *A step 1 fault found here and fixed:* two circles with the second
+      centred on the first's point and standing in a plane through the
+      first's axis (the tube) were five isolated pairs in the tilt pose,
+      because the double zero at the axis is placed only to the
+      subdivision's depth. `against_circle` now bisects the zeros of the
+      components across the axis, and drops isolated pairs at the distance
+      of such a family. It is a named test in `tests/extrema.rs`.
+    - Fixture `geom/c8-curve-surface-extrema` is held to
+      `GeomAPI_ExtremaCurveSurface`, which reports `parallel` with the
+      nearer family only and is incomplete elsewhere (the curve pairs'
+      comparison). A point's feet are tested by name and by property
+      (`tests/extrema_surface.rs`), not by a fixture: the oracle has no
+      all-feet query for a point.
+    - A NURBS curve's minimum at a knot where it is only C⁰ is a kink of
+      the distance, not a stationary pair: the topology's recursion has to
+      treat such a knot as a vertex (step 7).
 - [ ] Step 4 **[2]** — `extrema_surface_surface` by the reductions:
   - plane–X by height (a NURBS surface by its Bernstein gradient);
   - sphere–X → point–X, cylinder–X → line–X, torus–X → circle–X;

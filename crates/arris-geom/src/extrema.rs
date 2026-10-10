@@ -27,7 +27,10 @@
 //!   pairs at its near and far feet are the roots of one polynomial
 //!   ([`against_circle`]). Pins in holes are circles nearly coaxial with
 //!   others, which this route takes in microseconds where two unknowns
-//!   stall.
+//!   stall. A point of the curve on the circle's axis is a double zero of
+//!   that polynomial, which the subdivision places only to its depth: the
+//!   zeros of the curve's components across the axis, and of their
+//!   derivatives, are bisected as candidates too.
 //! - Two other bounded curves are two unknowns. With
 //!   `R = W_B·X_A − W_A·X_B = W_A W_B (A − B)`, the critical points are the
 //!   common zeros of `R · N_A` and `R · N_B`, which
@@ -72,6 +75,10 @@ use crate::bernstein2::{Halving, Poly2, Zero2, common_zeros_with};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveProjection, GeomError, NurbsCurve};
+
+mod surface;
+
+pub use surface::{CurveSurfaceExtrema, CurveSurfacePair, extrema_curve_surface};
 
 /// A region of uncertified boxes no wider than this, in a piece's own
 /// parameters, holds one point: a zero that is not simple, which the
@@ -507,14 +514,23 @@ fn coaxial(a: &Curve, b: &Curve, tol: Tolerance) -> Option<Extrema> {
 /// What a bounded curve's piece is measured against in one unknown.
 enum Target {
     Point(Point3),
-    Line { origin: Point3, direction: Vec3 },
+    Line {
+        origin: Point3,
+        direction: Vec3,
+    },
+    /// A plane, measured by the height above it: its critical points are
+    /// those of the height, and a curve's crossings are not among them.
+    Plane {
+        origin: Point3,
+        normal: Vec3,
+    },
 }
 
 impl Target {
     fn anchor(&self) -> Option<Point3> {
         match self {
             Target::Point(p) => Some(*p),
-            Target::Line { .. } => None,
+            Target::Line { .. } | Target::Plane { .. } => None,
         }
     }
 
@@ -523,6 +539,7 @@ impl Target {
         match *self {
             Target::Point(p) => p,
             Target::Line { origin, direction } => origin + (c - origin).dot(&direction) * direction,
+            Target::Plane { origin, normal } => c - (c - origin).dot(&normal) * normal,
         }
     }
 
@@ -541,6 +558,7 @@ impl Target {
                 let d1 = across(e.d1);
                 (r.dot(&e.d1), d1.norm_squared() + r.dot(&e.d2))
             }
+            Target::Plane { normal, .. } => (e.d1.dot(&normal), e.d2.dot(&normal)),
         }
     }
 }
@@ -763,6 +781,10 @@ impl Piece<'_> {
         let (o, d) = match *target {
             Target::Point(p) => (p, None),
             Target::Line { origin, direction } => (origin, Some(direction)),
+            Target::Plane { normal, .. } => {
+                // The height's derivative is `N · n`; there is no `Q`.
+                return self.against_height(target, normal, &n, tol, found);
+            }
         };
         let o = o - self.centre;
         let q: [T1; 3] = [0, 1, 2].map(|k| T1::sum(&[(1.0, &self.x[k]), (-o[k], &self.w)]));
@@ -808,6 +830,46 @@ impl Piece<'_> {
     }
 }
 
+impl Piece<'_> {
+    /// The critical points of the height above a plane of normal `normal`,
+    /// in one unknown: the sign changes of `N · n`, the numerator of the
+    /// height's derivative, `n` unit.
+    fn against_height(
+        &self,
+        target: &Target,
+        normal: Vec3,
+        n: &[T1; 3],
+        tol: Tolerance,
+        found: &mut Found,
+    ) {
+        let h = T1::sum(&[(normal.x, &n[0]), (normal.y, &n[1]), (normal.z, &n[2])]);
+        let floor = h.floor();
+        let starts = if h.v.iter().all(|c| c.abs() <= floor) {
+            // Constant height as far as rounding says: a continuum where
+            // the exact height varies by at most the tolerance, else the
+            // exact derivative's sign changes.
+            let measure = |s: f64| {
+                let e = self.curve.eval(self.param(s));
+                let r = e.point - target.nearest(e.point);
+                (r.norm(), slope(r, e.d1))
+            };
+            if continuum_within(measure, tol) {
+                found.continua.push((self.param(0.0), 0.0));
+                return;
+            }
+            sampled_roots(|s| target.residual(self.curve, self.param(s)).0)
+        } else {
+            with_ends(sign_change_candidates(&h.v, floor))
+        };
+        for s in starts {
+            let t = polish1(self.curve, target, self.param(s), self.range);
+            if is_critical1(self.curve, target, t, tol) {
+                found.isolated.push((t, 0.0));
+            }
+        }
+    }
+}
+
 fn eval(c: &[f64], s: f64) -> f64 {
     let mut row = c.to_vec();
     for level in 1..row.len() {
@@ -822,15 +884,26 @@ fn eval(c: &[f64], s: f64) -> f64 {
 /// lowers the residual and stays within `range` widened by its width (a
 /// periodic curve's anywhere).
 fn polish1(curve: &Curve, target: &Target, start: f64, range: [f64; 2]) -> f64 {
+    newton1(curve, start, range, |t| target.residual(curve, t))
+}
+
+/// [`polish1`] on any residual and its derivative in the curve's own
+/// parameter.
+fn newton1(
+    curve: &Curve,
+    start: f64,
+    range: [f64; 2],
+    residual: impl Fn(f64) -> (f64, f64),
+) -> f64 {
     let width = (range[1] - range[0]).abs();
     let (lo, hi) = (
         range[0].min(range[1]) - width,
         range[0].max(range[1]) + width,
     );
     let mut t = start;
-    let mut best = target.residual(curve, t).0.abs();
+    let mut best = residual(t).0.abs();
     for _ in 0..POLISH_STEPS {
-        let (f, df) = target.residual(curve, t);
+        let (f, df) = residual(t);
         if f == 0.0 || df == 0.0 || !df.is_finite() {
             break;
         }
@@ -839,7 +912,7 @@ fn polish1(curve: &Curve, target: &Target, start: f64, range: [f64; 2]) -> f64 {
         if !(next.is_finite() && (periodic || (lo..=hi).contains(&next))) {
             break;
         }
-        let r = target.residual(curve, next).0.abs();
+        let r = residual(next).0.abs();
         if r >= best {
             break;
         }
@@ -956,6 +1029,8 @@ fn against_circle(
     let centre = frame.origin();
     let n = frame.z().into_inner();
     let mut found = Found::default();
+    // The distances of the continua of points of `a` on the axis.
+    let mut on_axis: Vec<f64> = Vec::new();
     for piece in pieces(a, Some(centre))? {
         meter.tick().map_err(GeomError::Interrupted)?;
         let bin = Binomials::new(8 * piece.degree + 1);
@@ -1020,10 +1095,35 @@ fn against_circle(
             starts.extend(sign_change_candidates(&ds.v, ds.floor()));
             with_ends(starts)
         };
-        for st in starts {
-            let ta = piece.param(st);
+        // Where the curve touches the circle's axis, the squared condition
+        // has a double zero that the subdivision places only to its depth,
+        // and a start that far off the axis finds the circle's feet, not
+        // the whole circle. The axis crossings are the zeros of the curve's
+        // two components across the axis, a simple one where it crosses and
+        // a double one, the zero of the component's derivative, where it
+        // only touches (tangent to the axis, which the whole circle is a
+        // foot of): each bracketed on samples and bisected to rounding.
+        let mut starts: Vec<f64> = starts.into_iter().map(|st| piece.param(st)).collect();
+        for k in 0..2 {
+            let axis = if k == 0 { frame.x() } else { frame.y() }.into_inner();
+            let component = |s: f64| axis.dot(&(a.point(piece.param(s)) - centre));
+            let slope = |s: f64| axis.dot(&a.eval(piece.param(s)).d1);
+            for s in sampled_roots(component)
+                .into_iter()
+                .chain(sampled_roots(slope))
+            {
+                let t = piece.param(s);
+                if across_axis(a.point(t) - centre, n).norm() <= 0.5 * tol.linear {
+                    starts.push(t);
+                }
+            }
+        }
+        for ta in starts {
             match circle_partners(a, b, ta, tol, meter)? {
-                Partners::All => found.continua.push((wrap(a, ta), 0.0)),
+                Partners::All => {
+                    found.continua.push((wrap(a, ta), 0.0));
+                    on_axis.push(pair(a, b, wrap(a, ta), 0.0).distance);
+                }
                 Partners::Some(partners) => {
                     for tb in partners {
                         let (x, y) = polish2(a, b, ta, tb);
@@ -1035,17 +1135,25 @@ fn against_circle(
             }
         }
     }
-    let isolated = found
-        .isolated
-        .into_iter()
-        .map(|(ta, tb)| pair(a, b, ta, tb))
-        .collect();
-    let continua = found
+    let continua: Vec<ExtremumPair> = found
         .continua
         .into_iter()
         .map(|(ta, tb)| pair(a, b, ta, tb))
         .collect();
+    // An isolated pair at the distance of a point on the axis is a point of
+    // that family, which the search left where it settled in the valley.
+    let isolated = found
+        .isolated
+        .into_iter()
+        .map(|(ta, tb)| pair(a, b, ta, tb))
+        .filter(|x| !on_axis.iter().any(|d| (d - x.distance).abs() <= tol.linear))
+        .collect();
     Ok(finish(Extrema { isolated, continua }, tol))
+}
+
+/// The part of `v` across the unit axis `n`.
+fn across_axis(v: Vec3, n: Vec3) -> Vec3 {
+    v - v.dot(&n) * n
 }
 
 /// The distance from `p` to the circle of `frame` and `radius` at its

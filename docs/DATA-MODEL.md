@@ -204,6 +204,49 @@ the two directions, a NURBS the form's three coefficients sampled over
 `bounds` and one step for both. What tessellation sizes an edge's samples
 and a face's interior grid by.
 
+**Extrema.** `Surface::feet(p, tol, meter)` returns every foot of `p`, not
+only the nearest: `Feet { isolated, continua }` of `SurfaceProjection`s,
+each a `(u, v)` where the distance from `p` is stationary on the whole
+parametric surface (both nappes of a cone, the full plane). It never
+answers `Ambiguous`: where a family of feet is at one distance within
+`tol.linear` (the distance varies round it by `2ρ`, with `ρ` the
+distance of `p` from the axis), it is a continuum with one foot on it.
+
+| Surface | Feet |
+|---|---|
+| plane | one, the projection |
+| sphere | two, the near and the far on the line from the centre; a continuum at the centre |
+| cylinder | two rulings in the meridian plane of `p`; a continuum on the axis |
+| elliptic cylinder | those of the section ellipse (`Curve::feet`), at the height of `p` |
+| cone | two, the projection of `p` onto each of the two lines the meridian plane cuts the cone in, `d = (±sin α, cos α)` from the apex; a continuum on the axis |
+| torus | four, the near and the far foot on the centre circle, each lifted to the tube's two sides `B ± r·n̂`; a continuum on the axis, and the tube's meridian circle when `p` is on the centre circle |
+| NURBS | the one foot `project` gives: the nearest point, not every critical point |
+
+`extrema_curve_surface(curve, surface, tol, meter)` returns every
+stationary pair of the distance between a whole curve and a whole surface:
+`CurveSurfaceExtrema { isolated, continua }` of `CurveSurfacePair { t, uv,
+curve_point, surface_point, distance }`, with `nearest()`. Each surface is
+reduced so that the unknowns left are the curve's alone, which the solver
+of §Curves takes:
+
+| Surface | Reduction |
+|---|---|
+| sphere, cylinder, torus | an offset of its base (a point, the axis, the centre circle) at `R`: the pairs are those of the curve against the base (`Curve::feet`, `extrema_curve_curve`), each lifted to the two surface points `B ± R·n̂`, at the distances `|d − R|` and `d + R` |
+| plane | the critical points of the height above it, the roots of `N · n`, with the curve parallel to it a continuum |
+| cone | in the meridian plane of the curve's point the distance to either line is `s = ±ρ cos α − (z − z_apex) sin α`; it is stationary where `±ρ′ cos α = z′ sin α`. The square, `(x x′ + y y′)² cos² α = (x² + y²) z′² sin² α`, is a polynomial of degree `6n − 2` on a Bézier piece (a quadratic on a line); its sign changes and its derivative's are the candidates, each polished on the unsquared equation of the line it satisfies |
+| elliptic cylinder | the curve flattened onto the section's plane against the section ellipse; a line along the axis is a family of feet of the point |
+| NURBS | `Unsupported` |
+
+Where the curve meets the surface the distance is zero and stationary:
+`intersect_curve_surface` supplies those pairs, and a curve on the surface
+(`Coincident`) is a continuum at distance 0. Every local minimum of the
+squared distance is reported. The stationary pairs that are saddles or
+maxima on a whole circle of feet — a curve through the axis of a cylinder
+or a cone, through a sphere's centre, or across a torus's centre circle,
+where the distance to the surface has a concave kink — are not, unless the
+curve runs along the axis or the circle within the tolerance, which makes
+the family a continuum.
+
 `SurfaceKind` is the fieldless twin of the enum, used in errors and
 dispatch tables. `Surface::frame()` is the placing frame of an analytic
 variant and `None` for `Nurbs`, which is placed by its control points;
@@ -279,7 +322,7 @@ the answer swaps exactly with its operands. The table:
 |---|---|
 | line–line | closed form; parallel within `tol.angular` is a continuum at `ta = 0` |
 | line–bounded curve | the line's parameter eliminated, `s = d·(C − o)`; `h = Q⊥ · N` with `Q⊥` the part of `Q = X − W·o` across `d`, as for a point. A line within the tolerance of a circle's axis (`2(δ + R sin θ) ≤ tol.linear`) is a continuum |
-| any bounded curve–circle | the circle's own projection eliminates its parameter. With `P′ = A − c`, `Q` its part across the axis and `ρ = |Q|`, the distance to the circle at the near and far foot is stationary where `ρ (P′·A′) = ± R (Q·Q′)`. The square, multiplied out on a piece by `W⁸`, is a polynomial of degree `8n − 2`. Its sign changes, and its derivative's (a zero of both feet's factors at once is of even order), are the candidates, each paired with the foot it is stationary at and polished on both curves. A point of `a` on the circle's axis is paired with the points where `(A − B)·A′ = 0`, or with the whole circle, a continuum, where its tangent runs along the axis. Two circles about one axis within the tolerance are a continuum near and one far |
+| any bounded curve–circle | the circle's own projection eliminates its parameter. With `P′ = A − c`, `Q` its part across the axis and `ρ = |Q|`, the distance to the circle at the near and far foot is stationary where `ρ (P′·A′) = ± R (Q·Q′)`. The square, multiplied out on a piece by `W⁸`, is a polynomial of degree `8n − 2`. Its sign changes, and its derivative's (a zero of both feet's factors at once is of even order), are the candidates, each paired with the foot it is stationary at and polished on both curves. A point of `a` on the circle's axis is paired with the points where `(A − B)·A′ = 0`, or with the whole circle, a continuum, where its tangent runs along the axis. Where `a` crosses or touches the axis, the zeros of its two components across the axis (and of their derivatives, for a touch), bracketed on samples and bisected, are candidates too, since the squared condition has only a double zero there that the subdivision places no closer than its depth. Two circles about one axis within the tolerance are a continuum near and one far |
 | ellipse–ellipse, ellipse–NURBS, NURBS–NURBS | the common zeros of `R·N_A` and `R·N_B`, `R = W_B X_A − W_A X_B`, per pair of pieces, by `bernstein2::common_zeros_with` (Krawczyk). A zero in the isolation's margin outside the piece's square is the neighbouring piece's. Where the isolation gives up on a curve of zeros, or leaves a box uncertified, the region is searched in one variable along its longer side, the other curve's parameter moved to its foot at each sample. A continuum is a region along which the distance stays within `tol.linear` and the tangential offset within `tol.linear` of zero at every sample; otherwise the derivative's sign changes are bisected into isolated pairs |
 
 Where a piece's polynomial is below its own rounding everywhere (a

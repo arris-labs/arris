@@ -188,16 +188,16 @@ pub struct Sample {
 }
 
 /// Two names to intersect: two surfaces, a curve `a` against a surface
-/// `b`, or two curves; or, with `extrema`, two curves whose distance's
-/// stationary pairs are asked for instead.
+/// `b`, or two curves; or, with `extrema`, two curves, or a curve and a
+/// surface, whose distance's stationary pairs are asked for instead.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Pair {
     /// A surface or a curve.
     pub a: String,
     /// A surface, or a curve when `a` is one.
     pub b: String,
-    /// The stationary pairs of the distance between two curves, not
-    /// their intersection.
+    /// The stationary pairs of the distance between two curves, or a curve
+    /// and a surface, not their intersection.
     #[serde(default, skip_serializing_if = "core::ops::Not::not")]
     pub extrema: bool,
 }
@@ -676,6 +676,24 @@ pub struct ExtremumResult {
     pub distance: f64,
 }
 
+/// One stationary pair of the distance between a curve and a surface, as
+/// `GeomAPI_ExtremaCurveSurface` reports it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CurveSurfaceResult {
+    /// The curve's parameter.
+    pub t: f64,
+    /// The surface's `u`.
+    pub u: f64,
+    /// The surface's `v`.
+    pub v: f64,
+    /// The curve's point.
+    pub a: [f64; 3],
+    /// The surface's point.
+    pub b: [f64; 3],
+    /// The distance between them.
+    pub distance: f64,
+}
+
 /// The oracle's answer for one pair: `IntAna_QuadQuadGeo` for two
 /// surfaces (`empty`, `coincident`, or the result curves' kind with the
 /// curves sampled), `IntAna_IntConicQuad` for a conic against a plane or
@@ -686,7 +704,8 @@ pub struct ExtremumResult {
 /// `GeomAPI_ExtremaCurveCurve` for two curves (`points`, the extrema
 /// within `Precision::Confusion`); for an extrema pair `Extrema_ExtCC`
 /// (`parallel` with the distance, or `extrema` with the stationary pairs
-/// it found, which need not be all of them).
+/// it found, which need not be all of them); for a curve against a surface
+/// `GeomAPI_ExtremaCurveSurface` in the same two forms.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PairResult {
     /// The first name.
@@ -717,6 +736,9 @@ pub struct PairResult {
     /// The stationary pairs of an `extrema` result.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extrema: Vec<ExtremumResult>,
+    /// The stationary pairs of a curve against a surface.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub curve_surface: Vec<CurveSurfaceResult>,
     /// The distance of a `parallel` result, the same along the family.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub distance: Option<f64>,
@@ -853,9 +875,10 @@ pub fn lint(dir: &Path) -> Vec<String> {
     }
     for (i, p) in r.pairs.iter().enumerate() {
         let two_curves = r.curves.contains_key(&p.a) && r.curves.contains_key(&p.b);
-        if p.extrema && !two_curves {
+        let curve_surface = r.curves.contains_key(&p.a) && r.surfaces.contains_key(&p.b);
+        if p.extrema && !(two_curves || curve_surface) {
             problem(format!(
-                "pair {i} ({:?}, {:?}) asks for extrema, which are of two curves",
+                "pair {i} ({:?}, {:?}) asks for extrema, which are of two curves or a curve and a surface",
                 p.a, p.b
             ));
         }

@@ -190,6 +190,48 @@ fn a_circle_on_the_torus_about_another_is_a_continuum_with_no_common_axis() {
 }
 
 #[test]
+fn a_circle_about_a_point_of_another_in_its_normal_plane_is_a_continuum_in_a_tilted_pose() {
+    // The second circle is centred on the first and lies in a plane
+    // through the first's axis, so every point of it is as far from the
+    // first's point at its centre; the first is tangent to the second's
+    // axis there. The start the subdivision gives is off the axis by far
+    // more than the tolerance and, taken as it is, finds the circle's feet
+    // and a handful of pairs settled in the valley.
+    let ring = circle(
+        [-2.5, 1.75, 0.5],
+        [2.0 / 7.0, 3.0 / 7.0, 6.0 / 7.0],
+        [
+            0.8376945264427496,
+            -0.5461041060954285,
+            -0.00617945576653564,
+        ],
+        5.0,
+    );
+    let link = circle(
+        [
+            -0.35714285714285676,
+            -2.5357142857142865,
+            1.9285714285714288,
+        ],
+        [6.0 / 7.0, 2.0 / 7.0, -3.0 / 7.0],
+        [3.0 / 7.0, -6.0 / 7.0, 2.0 / 7.0],
+        1.8,
+    );
+    for (a, b) in [(&link, &ring), (&ring, &link)] {
+        let e = extrema(a, b);
+        assert!(
+            e.continua.iter().any(|x| (x.distance - 1.8).abs() < 1e-9),
+            "{e:?}"
+        );
+        assert!(
+            e.isolated.iter().all(|x| (x.distance - 1.8).abs() > 1e-6),
+            "{e:?}"
+        );
+        well_formed(a, b, &e).unwrap();
+    }
+}
+
+#[test]
 fn an_ellipse_and_a_circle_in_a_symmetric_pose_have_their_pairs_at_the_vertices() {
     // The circle stands in the plane y = 0 over the ellipse's centre: the
     // stationary pairs are at the ellipse's four vertices, where both of

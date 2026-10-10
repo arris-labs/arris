@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_geom::extrema_curve_surface(&curve, &surface, tol, &mut meter)`
+  returns every stationary pair of the distance between a curve and a
+  plane, cylinder, elliptic cylinder, cone, sphere or torus, with
+  `nearest()`: each pair has the curve's parameter, the surface's `(u, v)`,
+  both points and the distance, and a curve meeting the surface has its
+  meetings at distance 0. A family of pairs at one distance (a line along a
+  cylinder, a circle coaxial with a cone) is one continuum entry. A NURBS
+  surface is `GeomError::Unsupported`. `Surface::feet(p, tol, &mut meter)`
+  returns every foot of a point on a surface, and answers a point on the
+  axis of a cylinder, a cone or a torus, or at a sphere's centre, with a
+  continuum where `Surface::project` refuses it as ambiguous.
 - `arris_geom::extrema_curve_curve(&a, &b, tol, &mut meter)` returns every
   stationary pair of the distance between two curves (lines, circles,
   ellipses, NURBS), with `nearest()` for the closest. Each pair has both

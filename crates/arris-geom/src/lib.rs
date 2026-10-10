@@ -50,7 +50,10 @@ pub use cone_section::HYPERBOLA_HALF_SPAN;
 pub use curve::{Curve, CurveEval, CurveKind};
 pub use curve2::{Curve2, Curve2Eval, Curve2Kind, Curve2Projection};
 pub use error::{AmbiguousLocus, GeomError, GeomKind};
-pub use extrema::{Extrema, ExtremumPair, Feet, extrema_curve_curve};
+pub use extrema::{
+    CurveSurfaceExtrema, CurveSurfacePair, Extrema, ExtremumPair, Feet, extrema_curve_curve,
+    extrema_curve_surface,
+};
 pub use intersect::{MeetCurve, MeetKind, MeetPoint, SurfaceIntersection, intersect_surfaces};
 pub use intersect_curve::{CurveSurfaceHit, CurveSurfaceIntersection, intersect_curve_surface};
 pub use intersect_curves::{

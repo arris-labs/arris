@@ -477,7 +477,12 @@ oracle's sampled points on Arris's curves to 1e-9.
   the tube about it (one family at distance 2 with no common axis), a
   coaxial circle and one a thousandth of a radian off it, an ellipse
   against a circle standing over its centre, a second ellipse and a line,
-  and two NURBS curves against a circle, a line and each other.
+  and two NURBS curves against a circle, a line and each other;
+  `c8-curve-surface-extrema` asks a curve and a surface instead: lines
+  along and skew to a cylinder, an elliptic cylinder, a plane and a sphere,
+  circles coaxial with a torus and a cone, linked with a torus's tube and
+  tipped round an elliptic cylinder, an ellipse clear of a cone, and a
+  NURBS curve against a plane and an elliptic cylinder.
   `c4-closed-curve-hits` is a clamped closed cubic B-spline, its ends one
   point, against a plane and a cylinder through that join and a plane
   clear of it: the join is one hit, at the start parameter, as Open
@@ -523,6 +528,19 @@ oracle's sampled points on Arris's curves to 1e-9.
   one of Arris's continua; it holds Arris's nearest to the oracle's nearest
   to 1e-9, and `parallel` to a continuum at its distance. Completeness is
   the property tests' (`tests/extrema.rs`), against a dense grid.
+- A pair with `"extrema": true` of a curve `a` and a surface `b` is asked
+  for the stationary pairs of their distance. The oracle is
+  `GeomAPI_ExtremaCurveSurface` over the whole curve and surface (the
+  elliptic cylinder trimmed to `EXTRUSION_REACH`; a NURBS surface has no
+  form). It answers `"type": "parallel"` with the `distance` of the nearer
+  family where it sees the curve along the surface, or `"type": "extrema"`
+  with each pair's `t`, `u`, `v`, points and `distance` under
+  `curve_surface`. It is not complete, so `oracle.rs` holds it as it holds
+  the curve pairs: each pair of the oracle to one of Arris's or to a
+  continuum at its distance, Arris's nearest to its nearest. Completeness
+  is the property tests' (`tests/extrema_surface.rs`): every local minimum
+  of a dense sample of the curve, the surface eliminated by its
+  projection, is a pair of the answer.
 - A surface pair Open CASCADE finds no conic for is `"type": "unsolved"`
   (`IntAna_NoGeometricSolution`), with the lines `GeomAPI_IntSS` walks
   for it as curves of type `section`: 17 samples each, every one polished
