@@ -1,0 +1,141 @@
+{
+  "kind": "query",
+  "description": "the cone faces of two off-axis frusta (one tilted about y, one about x), 9.43 apart: the pair cannot be pruned, so Arris refuses it as Unsupported naming both faces (extrema_surface_surface of two off-axis cones, a backlog line). The desired value is Open CASCADE's",
+  "steps": [
+    {
+      "name": "trapezoid",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -2
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              2,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "frustum",
+      "op": "revolve",
+      "profile": "trapezoid",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "a",
+      "op": "transform",
+      "of": "frustum",
+      "rotate": {
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "angle_deg": 30
+      }
+    },
+    {
+      "name": "b0",
+      "op": "transform",
+      "of": "frustum",
+      "rotate": {
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "angle_deg": 25
+      }
+    },
+    {
+      "name": "b",
+      "op": "transform",
+      "of": "b0",
+      "translate": [
+        16,
+        0,
+        0
+      ]
+    }
+  ],
+  "result": "a",
+  "queries": [
+    {
+      "label": "cone against cone",
+      "distance": {
+        "a": {
+          "step": "a",
+          "face": {
+            "near": [
+              3,
+              0,
+              0
+            ]
+          }
+        },
+        "b": {
+          "step": "b",
+          "face": {
+            "near": [
+              13,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

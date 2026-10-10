@@ -105,6 +105,14 @@ corpus_tests! {
     /// Whole bodies: apart, touching, crossing, one inside the other, and a
     /// body against one face of another.
     query_distance_bodies => query "query/distance-bodies";
+    /// Sphere–cylinder, skew cylinders, cone–torus and plane–torus, each
+    /// in an axis-aligned and a turned pose.
+    query_distance_primitives => query "query/distance-primitives";
+    /// A pin in a drilled hole, a ball on a blend, a countersink against a
+    /// tilted plane, a B-spline cylinder from STEP, a pair far from the origin.
+    query_distance_parts => query "query/distance-parts";
+    /// Two bodies with off-axis cones that pruning skips: the bars' distance.
+    query_distance_cones_pruned => query "query/distance-cones-pruned";
     primitive_box => run "primitive/box";
     primitive_cylinder => run "primitive/cylinder";
     /// A consumer's own topology through `ops::build` (ADR-0028): a
@@ -1549,6 +1557,11 @@ corpus_tests! {
     /// itself, so the mesh is refused. The desired mesh is closed and valid.
     #[ignore = "MeshError::Face: the polygon of a cap's loop of an ellipse and two fitted section edges crosses itself at chord 0.001 (docs/BACKLOG.md, findings of the differential)"]
     regression_prism_mirror_revolve_fuse_mesh_crossing => run "regression/prism-mirror-revolve-fuse-mesh-crossing";
+    /// The cone faces of two off-axis frusta, 9.43 apart: no other pair is
+    /// nearer to prune it, and `extrema_surface_surface` of two off-axis cones
+    /// is `Unsupported`. The desired answer is Open CASCADE's distance.
+    #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
+    regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
 }
 
 /// A variant the recipe does not have fails naming it.

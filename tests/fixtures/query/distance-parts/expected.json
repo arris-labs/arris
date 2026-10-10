@@ -1,0 +1,473 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "1aa565c4f1c89ee37525e5ce9ee259d1dcca10b664e33955255197bfff4769ab",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.999999999999994,
+            "solutions": [
+              {
+                "a": [
+                  58.0,
+                  29.999999999999996,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  55.0,
+                  29.999999999999996,
+                  10.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  58.0,
+                  29.999999999999996,
+                  0.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  55.0,
+                  29.999999999999996,
+                  0.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  42.10900073887022,
+                  31.316104350288857,
+                  1.0546052631578946
+                ],
+                "a_face_centroid": [
+                  50.0,
+                  30.0,
+                  5.0
+                ],
+                "a_support": "face",
+                "b": [
+                  45.06812546179388,
+                  30.822565218930535,
+                  1.0546052631578942
+                ],
+                "b_face_centroid": [
+                  50.00000000000001,
+                  30.0,
+                  5.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "pin coaxial in the hole"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.0,
+            "solutions": [
+              {
+                "a": [
+                  58.0,
+                  29.999999999999996,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  56.0,
+                  30.0,
+                  10.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  58.0,
+                  29.999999999999996,
+                  0.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  56.0,
+                  30.0,
+                  0.0
+                ],
+                "b_support": "edge"
+              }
+            ]
+          },
+          "label": "pin off-centre in the hole"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.0,
+            "solutions": [
+              {
+                "a": [
+                  58.0,
+                  29.999999999999996,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  56.0,
+                  30.0,
+                  10.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  58.0,
+                  29.999999999999996,
+                  0.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  56.0,
+                  30.0,
+                  0.0
+                ],
+                "b_support": "edge"
+              }
+            ]
+          },
+          "label": "pin off-centre against the hole wall alone"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.9999999999856564,
+            "solutions": [
+              {
+                "a": [
+                  100058.0,
+                  -199970.0,
+                  300010.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  100055.0,
+                  -199970.0,
+                  300010.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  100058.0,
+                  -199970.0,
+                  300000.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  100055.0,
+                  -199970.0,
+                  300000.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  100044.57931458659,
+                  -199975.88355076878,
+                  300001.05460526317
+                ],
+                "a_face_centroid": [
+                  100050.0,
+                  -199970.0,
+                  300005.0
+                ],
+                "a_support": "face",
+                "b": [
+                  100046.61207193027,
+                  -199973.67721951948,
+                  300001.05460526317
+                ],
+                "b_face_centroid": [
+                  100050.0,
+                  -199970.0,
+                  300005.00000000006
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "pin coaxial in the hole, a long way from the origin"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.9999999999999964,
+            "solutions": [
+              {
+                "a": [
+                  18.82842711897515,
+                  18.828427130517234,
+                  10.000000012118678
+                ],
+                "a_face_centroid": [
+                  18.546479089470324,
+                  18.546479089470324,
+                  10.0
+                ],
+                "a_support": "face",
+                "b": [
+                  20.949747474344687,
+                  20.949747462266977,
+                  10.00000001309032
+                ],
+                "b_face_centroid": [
+                  23.071067811865476,
+                  23.071067811865476,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "ball on the blend"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.9999999999999964,
+            "solutions": [
+              {
+                "a": [
+                  18.82842711897515,
+                  18.828427130517234,
+                  10.000000012118678
+                ],
+                "a_face_centroid": [
+                  18.546479089470324,
+                  18.546479089470324,
+                  10.0
+                ],
+                "a_support": "face",
+                "b": [
+                  20.949747474344687,
+                  20.949747462266977,
+                  10.00000001309032
+                ],
+                "b_face_centroid": [
+                  23.071067811865476,
+                  23.071067811865476,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "ball on the blend, the blend face alone"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  10.0,
+                  20.0
+                ],
+                "a_face_centroid": [
+                  9.921152056004974,
+                  9.921152056004974,
+                  20.0
+                ],
+                "a_support": "face",
+                "b": [
+                  10.0,
+                  10.0,
+                  25.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "ball over the flat top"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 17.76779198574116,
+            "solutions": [
+              {
+                "a": [
+                  27.0,
+                  30.0,
+                  5.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  20.923057238456146,
+                  30.0,
+                  -11.696263016659971
+                ],
+                "b_face_centroid": [
+                  30.0,
+                  30.0,
+                  -14.999999999999998
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "countersink cone against a tilted slab"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 4.739395700229938,
+            "solutions": [
+              {
+                "a": [
+                  1.8092213764227498,
+                  0.0,
+                  0.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  1.8092213764227498,
+                  0.0,
+                  -4.739395700229938
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  1.8092213764227498,
+                  60.0,
+                  0.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  1.8092213764227498,
+                  60.0,
+                  -4.739395700229938
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "countersunk plate against a tilted slab"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.615773105863943,
+            "solutions": [
+              {
+                "a": [
+                  7.0,
+                  3.0,
+                  4.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  4.59572515009028,
+                  1.9695964928957737,
+                  4.0
+                ],
+                "b_face_centroid": [
+                  -0.006764923334177553,
+                  -2.567891620079121e-15,
+                  5.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "a point beside the B-spline cylinder"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.615773105863943,
+            "solutions": [
+              {
+                "a": [
+                  7.0,
+                  3.0,
+                  4.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  4.59572515009028,
+                  1.9695964928957737,
+                  4.0
+                ],
+                "b_face_centroid": [
+                  -0.006764923334177553,
+                  -2.567891620079121e-15,
+                  5.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "a point to the B-spline wall alone"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 4.0,
+            "solutions": [
+              {
+                "a": [
+                  1.0,
+                  2.0,
+                  14.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  1.0,
+                  2.0,
+                  10.0
+                ],
+                "b_face_centroid": [
+                  0.006099400981962155,
+                  4.037376629798995e-15,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "a point above the B-spline cap"
+        },
+        {
+          "distance": {
+            "contained": true,
+            "distance": 0.0,
+            "solutions": [
+              {
+                "a": [
+                  1.0,
+                  1.0,
+                  4.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  1.0,
+                  1.0,
+                  4.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "a point inside the B-spline cylinder"
+        }
+      ]
+    }
+  }
+}

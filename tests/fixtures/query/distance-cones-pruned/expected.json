@@ -1,0 +1,141 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "aefed7e9f883018bcc31284f15650d748e2d1a24fc7da864b43783e95485c6e0",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "distance": {
+            "contained": false,
+            "distance": 40.0,
+            "solutions": [
+              {
+                "a": [
+                  10.0,
+                  1.0,
+                  -1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  50.0,
+                  1.0,
+                  -1.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  10.0,
+                  -1.0,
+                  -1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  50.0,
+                  -1.0,
+                  -1.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  10.0,
+                  1.0,
+                  1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  50.0,
+                  1.0,
+                  1.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  10.0,
+                  -1.0,
+                  1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  50.0,
+                  -1.0,
+                  1.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "bars across the gap"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 40.0,
+            "solutions": [
+              {
+                "a": [
+                  50.0,
+                  1.0,
+                  1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  1.0,
+                  1.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  50.0,
+                  -1.0,
+                  1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  -1.0,
+                  1.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  50.0,
+                  1.0,
+                  -1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  1.0,
+                  -1.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  50.0,
+                  -1.0,
+                  -1.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  10.0,
+                  -1.0,
+                  -1.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "bars across the gap, swapped"
+        }
+      ]
+    }
+  }
+}

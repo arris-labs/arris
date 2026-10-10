@@ -1,0 +1,180 @@
+{
+  "kind": "query",
+  "description": "two bodies that each carry a tilted frustum's cone and a bar reaching toward the other: the bars are 40 apart and the cones' boxes 52, so every cone-cone pair is pruned and the answer is the bars'. Without the bound the pair would be refused (distance-cone-cone-refused)",
+  "steps": [
+    {
+      "name": "trapezoid",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -2
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              2,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "frustum",
+      "op": "revolve",
+      "profile": "trapezoid",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "a_cone",
+      "op": "transform",
+      "of": "frustum",
+      "rotate": {
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "angle_deg": 30
+      }
+    },
+    {
+      "name": "a_bar",
+      "op": "box",
+      "min": [
+        0,
+        -1,
+        -1
+      ],
+      "max": [
+        10,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "a",
+      "op": "fuse",
+      "a": "a_cone",
+      "b": "a_bar"
+    },
+    {
+      "name": "b_cone0",
+      "op": "transform",
+      "of": "frustum",
+      "rotate": {
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "angle_deg": 25
+      }
+    },
+    {
+      "name": "b_cone",
+      "op": "transform",
+      "of": "b_cone0",
+      "translate": [
+        60,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "b_bar",
+      "op": "box",
+      "min": [
+        50,
+        -1,
+        -1
+      ],
+      "max": [
+        60,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "b",
+      "op": "fuse",
+      "a": "b_cone",
+      "b": "b_bar"
+    }
+  ],
+  "result": "a",
+  "queries": [
+    {
+      "label": "bars across the gap",
+      "distance": {
+        "a": {
+          "step": "a"
+        },
+        "b": {
+          "step": "b"
+        }
+      },
+      "expect_distance": 40
+    },
+    {
+      "label": "bars across the gap, swapped",
+      "distance": {
+        "a": {
+          "step": "b"
+        },
+        "b": {
+          "step": "a"
+        }
+      },
+      "expect_distance": 40
+    }
+  ]
+}

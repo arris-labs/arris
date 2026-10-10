@@ -1,0 +1,376 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "1a5387af0e6156d9df98b9b17130349fb74f931da34f7659dc1bfa761bba7d5f",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "distance": {
+            "contained": false,
+            "distance": 11.0,
+            "solutions": [
+              {
+                "a": [
+                  5.0,
+                  0.0,
+                  1.379275100632243e-16
+                ],
+                "a_support": "edge",
+                "b": [
+                  16.0,
+                  0.0,
+                  3.678066935019315e-17
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  -2.19258035536549e-16,
+                  5.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "ball beside a pipe"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 11.000000000000002,
+            "solutions": [
+              {
+                "a": [
+                  4.065093439505288,
+                  2.5564592358752107,
+                  -1.3926706370852362
+                ],
+                "a_support": "edge",
+                "b": [
+                  13.008299006416923,
+                  8.180669554800675,
+                  -4.456546038672759
+                ],
+                "b_face_centroid": [
+                  18.084539730719335,
+                  9.853123126667933,
+                  -0.9302619946850657
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "ball beside a pipe, turned"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 11.0,
+            "solutions": [
+              {
+                "a": [
+                  5.0,
+                  0.0,
+                  1.379275100632243e-16
+                ],
+                "a_support": "edge",
+                "b": [
+                  16.0,
+                  0.0,
+                  3.678066935019315e-17
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  -2.19258035536549e-16,
+                  5.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "ball against the pipe wall alone"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  20.0,
+                  7.347880794884119e-16,
+                  3.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  20.0,
+                  0.0,
+                  8.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  1.219212627894348e-15,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "skew rods"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  17.354873341640058,
+                  10.002208653401096,
+                  -2.7864302161474166
+                ],
+                "a_support": "edge",
+                "b": [
+                  19.17903931433824,
+                  9.629494836568185,
+                  1.8539903375084625
+                ],
+                "b_face_centroid": [
+                  19.908705703417514,
+                  9.480409309835022,
+                  3.7101585589708144
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "skew rods, turned"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  20.0,
+                  7.347880794884119e-16,
+                  3.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  20.0,
+                  0.0,
+                  8.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  1.219212627894348e-15,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "skew rod walls"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 14.124515496597098,
+            "solutions": [
+              {
+                "a": [
+                  4.0,
+                  0.0,
+                  -2.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  18.015444246572663,
+                  0.0,
+                  -0.2480694691784179
+                ],
+                "b_face_centroid": [
+                  24.999999999999996,
+                  -7.840950111415167e-17,
+                  -3.887344610677631e-17
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "frustum cone beside a torus"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 14.124515496597098,
+            "solutions": [
+              {
+                "a": [
+                  4.0,
+                  0.0,
+                  -2.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  18.015444246572663,
+                  0.0,
+                  -0.2480694691784179
+                ],
+                "b_face_centroid": [
+                  24.999999999999996,
+                  -7.840950111415167e-17,
+                  -3.887344610677631e-17
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "frustum beside a torus"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 15.943980025031944,
+            "solutions": [
+              {
+                "a": [
+                  4.0,
+                  0.0,
+                  -2.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  19.256068812320525,
+                  0.0,
+                  2.632802977934487
+                ],
+                "b_face_centroid": [
+                  24.999999999999996,
+                  -9.124645483638004e-17,
+                  0.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "frustum cone beside a tilted torus"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 6.0,
+            "solutions": [
+              {
+                "a": [
+                  30.0,
+                  0.0,
+                  -8.0
+                ],
+                "a_face_centroid": [
+                  20.0,
+                  2.664535259100376e-16,
+                  -8.0
+                ],
+                "a_support": "face",
+                "b": [
+                  30.0,
+                  0.0,
+                  -2.0
+                ],
+                "b_support": "edge"
+              },
+              {
+                "a": [
+                  21.61921165461272,
+                  -3.6837847651837627,
+                  -8.0
+                ],
+                "a_face_centroid": [
+                  20.0,
+                  2.664535259100376e-16,
+                  -8.0
+                ],
+                "a_support": "face",
+                "b": [
+                  21.61921165988688,
+                  -3.6837848047528587,
+                  -1.9999999999999998
+                ],
+                "b_face_centroid": [
+                  24.999999999999996,
+                  -7.840950111415167e-17,
+                  -3.887344610677631e-17
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "plate top under a torus"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 2.786061951567305,
+            "solutions": [
+              {
+                "a": [
+                  28.830222215594887,
+                  0.0,
+                  -8.0
+                ],
+                "a_face_centroid": [
+                  20.0,
+                  2.664535259100376e-16,
+                  -8.0
+                ],
+                "a_support": "face",
+                "b": [
+                  28.830222215594887,
+                  0.0,
+                  -5.213938048432695
+                ],
+                "b_support": "edge"
+              }
+            ]
+          },
+          "label": "plate under a tilted torus"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 4.433311384800367,
+            "solutions": [
+              {
+                "a": [
+                  24.99999719397465,
+                  6.665063275875685,
+                  -6.214101677726777
+                ],
+                "a_face_centroid": [
+                  20.0,
+                  1.2434497875801754e-15,
+                  -8.0
+                ],
+                "a_support": "face",
+                "b": [
+                  24.999999074055985,
+                  5.517637951772132,
+                  -1.9318516896710967
+                ],
+                "b_face_centroid": [
+                  24.999999999999996,
+                  -7.840950111415167e-17,
+                  -3.887344610677631e-17
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "tilted plate top under a torus"
+        }
+      ]
+    }
+  }
+}

@@ -390,7 +390,7 @@ bound has to be established here.
     off-axis frusta; a configuration pruning skips (whose cone boxes lie
     beyond the answer) is step 9's fixture, since two frusta's cone boxes
     always contain their caps' and cannot be skipped by them.
-- [ ] Step 9 **[2]** — The distance corpus under `tests/fixtures/query/`:
+- [x] Step 9 **[2]** — The distance corpus under `tests/fixtures/query/`:
   - primitive pairs in oblique poses: sphere–cylinder, cone–torus,
     cylinder–cylinder skew, plane–torus;
   - a drilled plate against a pin through the hole (clearance), a filleted
@@ -403,6 +403,25 @@ bound has to be established here.
 
   Each fixture has Open CASCADE's answer. Where Open CASCADE lists several
   solutions or splits a continuum, `analytic.query_differs` records it.
+  - *As built:* four fixtures under `query/` and one under `regression/`.
+    - `distance-primitives`: sphere–pipe, skew rods, frustum–torus and
+      plate–torus, each aligned and turned (both bodies rotated together, so
+      the hand value holds), and a tilted torus. Open CASCADE leaves the feet
+      on the tilted torus 3e-6 off the stationary point though its distance
+      is exact, so the fixture holds feet and distance to `probe` 1e-5.
+    - `distance-parts`: pin coaxial (a ring, so `query_differs`) and off
+      centre in a drilled hole, a ball on the blend and over the flat, a
+      countersink cone and plate against a tilted slab, points against the
+      STEP B-spline cylinder (own copy of the file), and the pin far from the
+      origin.
+    - `distance-cones-pruned`: two fused frustum-and-bar bodies, bars 40
+      apart and cones' boxes 52, answered without refusal.
+    - `regression/distance-cone-cone-refused`: the cone faces of two
+      off-axis frusta, refused as `Unsupported`, `#[ignore]`d against the
+      backlog line for the three-unknown solver.
+    - *A ball against the B-spline cylinder is also refused*: the ball's
+      circle against the NURBS wall is a curve against a NURBS interior, a
+      Non-goal (the same backlog line). It is not committed as a fixture.
 - [ ] Step 10 **[2]** — Property tests over random poses of `prop::body`
   operands:
   - distance is symmetric;
