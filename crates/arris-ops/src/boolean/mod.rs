@@ -997,10 +997,6 @@ pub fn common(
 /// it.
 pub(crate) struct Probe {
     /// The decomposition the common was selected over.
-    #[expect(
-        dead_code,
-        reason = "read by the contact dimension (plans/interference step 3)"
-    )]
     pub(crate) interferences: Interferences,
     /// The common and, per operand, whether it lies wholly inside the other
     /// (`[a in b, b in a]`), or why there is none: `Empty` and

@@ -5,7 +5,7 @@
 use arris_debug::sample;
 use arris_debug::unmetered::{primitive_box, primitive_cylinder};
 use arris_math::{Axis, Control, Point3};
-use arris_ops::query::{Interference, interference};
+use arris_ops::query::{Contact, Interference, interference};
 use arris_topo::{Body, Model};
 use core::f64::consts::PI;
 
@@ -148,4 +148,53 @@ fn a_pin_in_a_hole_is_apart_with_clearance_and_overlapping_pressed() {
     // The ring between radii 4 and 4.5, through the plate's 10.
     assert!((volume - PI * (4.5 * 4.5 - 16.0) * 10.0).abs() < EXACT * 10.0);
     assert!(!a_in_b && !b_in_a);
+}
+
+fn contact(i: Interference) -> Contact {
+    let Interference::Touching { contact, .. } = i else {
+        panic!("expected touching, got {i:?}")
+    };
+    contact
+}
+
+fn both_ways(m: &Model, a: Body, b: Body) -> Contact {
+    let c = contact(of(m, a, b));
+    assert_eq!(c, contact(of(m, b, a)));
+    c
+}
+
+#[test]
+fn boxes_meeting_on_a_face_an_edge_or_a_corner_name_the_dimension() {
+    let mut m = Model::default();
+    let a = cube(&mut m, [0.0; 3], [1.0; 3]);
+    let face = cube(&mut m, [1.0, 0.0, 0.0], [2.0, 1.0, 1.0]);
+    let part_face = cube(&mut m, [1.0, 0.5, 0.5], [2.0, 2.0, 2.0]);
+    let edge = cube(&mut m, [1.0, 1.0, 0.0], [2.0, 2.0, 1.0]);
+    let corner = cube(&mut m, [1.0; 3], [2.0; 3]);
+    assert_eq!(both_ways(&m, a, face), Contact::Face);
+    assert_eq!(both_ways(&m, a, part_face), Contact::Face);
+    assert_eq!(both_ways(&m, a, edge), Contact::Curve);
+    assert_eq!(both_ways(&m, a, corner), Contact::Point);
+}
+
+#[test]
+fn two_balls_meet_at_a_point() {
+    let mut m = Model::default();
+    let one = sample::sphere(&mut m, Point3::origin(), 1.0).unwrap();
+    let two = sample::sphere(&mut m, Point3::new(0.0, 2.0, 0.0), 1.0).unwrap();
+    assert_eq!(both_ways(&m, one, two), Contact::Point);
+}
+
+#[test]
+fn cylinders_side_by_side_and_a_box_on_a_ruling_meet_along_a_curve() {
+    let mut m = Model::default();
+    let one = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 1.0, 4.0)
+        .unwrap()
+        .0;
+    let two = primitive_cylinder(&mut m, Axis::z_at(Point3::new(2.0, 0.0, 0.0)), 1.0, 4.0)
+        .unwrap()
+        .0;
+    assert_eq!(both_ways(&m, one, two), Contact::Curve);
+    let slab = cube(&mut m, [1.0, -3.0, 0.0], [3.0, 3.0, 4.0]);
+    assert_eq!(both_ways(&m, one, slab), Contact::Curve);
 }

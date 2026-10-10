@@ -114,12 +114,16 @@ bound has to be established here.
     clearance (apart) and press-fit (overlapping). Rustdoc with an example.
 - [x] Step 2 **[1]** — ADR-0055 (above), with step 1's measured cost and
   the containment rule.
-- [ ] Step 3 **[2]** — The contact dimension from the pave model: `Face`
+- [x] Step 3 **[2]** — The contact dimension from the pave model: `Face`
   for a flush pair whose overlap has area, `Curve` for a section curve or
   common block of positive length (two cylinders side by side, a box on a
-  cylinder's ruling), `Point` otherwise (two balls, a ball on a plane, a
-  cone's apex on a face), and `at` a deterministic point of it (the least
-  by entity id and parameter). Unit tests for each, both operand orders.
+  cylinder's ruling), `Point` otherwise (two balls), and `at` a deterministic point of it:
+  `distance`'s own closest point, already the least by entity id and
+  parameter (ADR-0054 §2). Tests for each, both operand orders. *Step 3
+  found that `common` refuses a ball on a plane and a cone's apex on a face
+  (a point tangency), so those poses became a backlog line and stay out of
+  the tests; the face contact is the `ZeroThickness` of step 1, which
+  needs no pave-model reading.*
 - [ ] Step 4 **[2]** — The `interference` query form in `arris-debug` and
   `tools/oracle` (`expected.py`, `query.py`, `selftest.py`), the runner's
   comparison (verdict exact, volume within the fixture's tolerance scaled

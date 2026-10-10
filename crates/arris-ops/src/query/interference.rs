@@ -62,6 +62,11 @@ pub enum Interference {
 /// pose: not apart exactly when the distance is within the linear
 /// tolerance.
 ///
+/// A touching pair's [`Contact`] is a face when the common has no thickness,
+/// a curve when the pave model holds a section edge, a tangent contact, a
+/// common edge or an edge lying in a face, and a point otherwise; `at` is
+/// the closest point [`distance`] chose, on both solids.
+///
 /// Errors: [`distance`]'s for the pair, and `common`'s when the solids
 /// are not apart — [`OpError::Unsupported`] naming the faces for a pair
 /// with no closed form (a NURBS face meeting the other solid),
@@ -107,10 +112,23 @@ pub fn interference(
         Err(OpError::Degenerate {
             reason: Reason::Boolean(BooleanReason::Empty),
             ..
-        }) => Ok(Interference::Touching {
-            contact: Contact::Point,
-            at: d.a.point,
-        }),
+        }) => {
+            // Nothing was dropped on the other operand, so there is no
+            // area: a curve where the pave model holds one, else a point.
+            let i = &probe.interferences;
+            let curve = !i.sections.is_empty()
+                || !i.contacts.is_empty()
+                || !i.blocks.is_empty()
+                || i.images.iter().any(|image| image.range.length() > 0.0);
+            Ok(Interference::Touching {
+                contact: if curve {
+                    Contact::Curve
+                } else {
+                    Contact::Point
+                },
+                at: d.a.point,
+            })
+        }
         Err(OpError::Degenerate {
             reason: Reason::Input(InputReason::ZeroThickness),
             ..

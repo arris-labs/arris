@@ -227,3 +227,4 @@ above when it wants a fix; the block moves or is deleted then.
 ## Rejected
 
 None yet.
+- `common` refuses solids that touch at one point where a surface is tangent to another's: a ball resting on a plane is `Unsupported` (sphere face against plane face), a ball whose touch lies on the other ball's seam is `Unsupported` (sphere against the seam circle), and a pole touching a plane is `Unsupported` (plane against the vertex); so `interference` refuses them too although `distance` answers them (zero, a point). The ball-on-a-plate and cone-apex-on-a-face poses of the interference tests wait on it (plans/interference step 3 finding)
