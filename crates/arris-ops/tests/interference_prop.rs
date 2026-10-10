@@ -23,7 +23,7 @@ use arris_debug::unmetered::{common, cut, mass_properties, transform};
 use arris_debug::{prop, prop_shards};
 use arris_math::{Control, Isometry, Vec3};
 use arris_ops::OpError;
-use arris_ops::query::{Contact, Interference, Operand, distance, interference};
+use arris_ops::query::{Contact, Interference, Operand, distance, interference, interference_many};
 use arris_topo::{Body, Model, Shape};
 use proptest::prelude::*;
 
@@ -245,6 +245,36 @@ prop_shards! {
             let _ = judge(&m, a, b)?;
             let after = (dump_text(&m, a).map_err(fail)?, dump_text(&m, b).map_err(fail)?);
             prop_assert!(before == after, "the dumps changed");
+            Ok(())
+        }
+}
+
+prop_shards! {
+    /// The screen of an assembly is the brute-force loop over every pair:
+    /// the same verdicts, the same ascending pairs, apart ones left out.
+    the_screen_is_the_brute_force_loop
+        [shard_0 shard_1 shard_2 shard_3]
+        (case) = proptest::collection::vec(solid_at(25.0), 2..=5) => {
+            let mut m = Model::default();
+            let mut bodies = Vec::new();
+            for s in &case {
+                bodies.push(s.build(&mut m).map_err(fail)?);
+            }
+            let mut brute = Vec::new();
+            for i in 0..bodies.len() {
+                for j in i + 1..bodies.len() {
+                    match judge(&m, bodies[i], bodies[j])? {
+                        Some(Interference::Apart(_)) => {}
+                        Some(verdict) => brute.push(([i, j], verdict)),
+                        // A refused pair: the screen may refuse too.
+                        None => return Ok(()),
+                    }
+                }
+            }
+            let screen = interference_many(&m, &bodies, &Control::NONE).map_err(fail)?;
+            let found: Vec<([usize; 2], Interference)> =
+                screen.iter().map(|c| (c.operands, c.verdict)).collect();
+            prop_assert_eq!(found, brute);
             Ok(())
         }
 }

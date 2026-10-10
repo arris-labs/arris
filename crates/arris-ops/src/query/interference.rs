@@ -5,7 +5,8 @@
 //! clone of the model so the model is never written, decides touching or
 //! overlapping and measures the shared volume.
 
-use arris_math::{Control, Point3};
+use arris_check::domain::FaceDomain;
+use arris_math::{Aabb, Control, Meter, Point3};
 use arris_topo::{Body, Model, Shape};
 
 use super::distance::{Distance, Operand, distance};
@@ -67,6 +68,9 @@ pub enum Interference {
 /// common edge or an edge lying in a face, and a point otherwise; `at` is
 /// the closest point [`distance`] chose, on both solids.
 ///
+/// A body given as both operands is a solid with itself: it lies inside
+/// itself, and the shared volume is its own.
+///
 /// Errors: [`distance`]'s for the pair, and `common`'s when the solids
 /// are not apart — [`OpError::Unsupported`] naming the faces for a pair
 /// with no closed form (a NURBS face meeting the other solid),
@@ -96,6 +100,16 @@ pub fn interference(
     b: Body,
     control: &Control<'_>,
 ) -> Result<Interference, OpError> {
+    if a.id == b.id {
+        // The pave model of a body with itself has no meaning; the answer
+        // does not need one.
+        let volume = mass_properties(m, a, control)?.volume;
+        return Ok(Interference::Overlapping {
+            volume,
+            a_in_b: true,
+            b_in_a: true,
+        });
+    }
     let shape = |body: Body| Operand::Shape(Shape::new(body.id, body.orientation));
     let d = distance(m, shape(a), shape(b), control)?;
     if d.distance > m.precision().tolerance().linear {
@@ -138,4 +152,99 @@ pub fn interference(
         }),
         Err(e) => Err(e),
     }
+}
+
+/// One pair of a screened assembly that is not apart.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Clash {
+    /// The indices, into the list given to [`interference_many`], of the
+    /// first and the second body: `operands[0] < operands[1]`.
+    pub operands: [usize; 2],
+    /// How they interfere: [`Interference::Touching`] or
+    /// [`Interference::Overlapping`], never [`Interference::Apart`], read
+    /// with the first body as `a`.
+    pub verdict: Interference,
+}
+
+/// The box of `body`: the union of its faces' boxes, `None` when any face
+/// has none (it then comes within reach of every body).
+fn body_bounds(m: &Model, body: Body) -> Result<Option<Aabb>, OpError> {
+    let tolerance = m.precision().parametric_tolerance;
+    let mut all: Option<Aabb> = None;
+    for face in m.closure(body)?.faces {
+        let Some(bounds) = FaceDomain::of(m, face, tolerance)
+            .ok()
+            .and_then(|d| d.bounds())
+        else {
+            return Ok(None);
+        };
+        all = Some(all.map_or(bounds, |a| a.union(bounds)));
+    }
+    Ok(all)
+}
+
+/// Screens an assembly: the [`Interference`] of every pair of `bodies`
+/// that is not [`Interference::Apart`], as [`Clash`]es in ascending pair
+/// order `(0, 1)`, `(0, 2)`, …, `(1, 2)`, …, each read with the lower
+/// index as `a`. A pair whose bodies' boxes, grown by the model's linear
+/// tolerance, are disjoint is apart and costs a box test; every other
+/// pair is [`interference`]'s question, so the result is that of calling
+/// it on every pair (the same list a brute-force loop gives).
+///
+/// The model is never written. The control is polled once per candidate
+/// pair, here and inside it; a budget limits the pairs examined here and
+/// each pair's own steps separately, as [`interference`] reads it.
+///
+/// Errors: [`interference`]'s for the first candidate pair that fails, in
+/// pair order — one NURBS face meeting another body stops the screen,
+/// naming it — and [`OpError::Interrupted`] when the control stops it.
+///
+/// ```
+/// use arris_math::{Control, Point3};
+/// use arris_ops::primitive_box;
+/// use arris_ops::query::{Interference, interference_many};
+/// use arris_topo::Model;
+///
+/// let mut m = Model::default();
+/// let none = Control::NONE;
+/// let mut cube = |x: f64| -> Result<_, arris_ops::OpError> {
+///     Ok(primitive_box(&mut m, Point3::new(x, 0.0, 0.0), Point3::new(x + 2.0, 2.0, 2.0), &none)?.0)
+/// };
+/// let (a, b, c) = (cube(0.0)?, cube(1.0)?, cube(10.0)?);
+/// let clashes = interference_many(&m, &[a, b, c], &none)?;
+/// assert_eq!(clashes.len(), 1);
+/// assert_eq!(clashes[0].operands, [0, 1]);
+/// assert!(matches!(clashes[0].verdict, Interference::Overlapping { .. }));
+/// # Ok::<(), arris_ops::OpError>(())
+/// ```
+pub fn interference_many(
+    m: &Model,
+    bodies: &[Body],
+    control: &Control<'_>,
+) -> Result<Vec<Clash>, OpError> {
+    let reach = m.precision().tolerance().linear;
+    let boxes = bodies
+        .iter()
+        .map(|&b| Ok(body_bounds(m, b)?.map(|bounds| bounds.inflated(reach))))
+        .collect::<Result<Vec<_>, OpError>>()?;
+    let mut meter = Meter::new(control);
+    let mut out = Vec::new();
+    for i in 0..bodies.len() {
+        for j in i + 1..bodies.len() {
+            if let (Some(bi), Some(bj)) = (&boxes[i], &boxes[j])
+                && !bi.intersects(bj)
+            {
+                continue;
+            }
+            meter.tick()?;
+            let verdict = interference(m, bodies[i], bodies[j], control)?;
+            if !matches!(verdict, Interference::Apart(_)) {
+                out.push(Clash {
+                    operands: [i, j],
+                    verdict,
+                });
+            }
+        }
+    }
+    Ok(out)
 }

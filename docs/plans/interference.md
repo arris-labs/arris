@@ -155,12 +155,15 @@ bound has to be established here.
   *The translation and swap properties compare volumes to 1e-6 relative,
   not bit for bit; only the `common` identity is exact. Pairs either query
   refuses are skipped as `distance_prop` does.*
-- [ ] Step 7 **[2]** — `interference_many` and `Clash`: body-box pruning,
+- [x] Step 7 **[2]** — `interference_many` and `Clash`: body-box pruning,
   ascending pairs, `Control` polled per pair. Tests: the result equals
   `interference` over every pair by brute force on a random assembly of
   `prop::body` bodies; a 20-body assembly's release cost measured and
   written into the ADR's consequences (whether the verdict-only screen
-  stays a backlog line).
+  stays a backlog line). *Measured: 2.6 s for 43 clashes, so it stays a
+  backlog line. The boxes are tested pair by pair, not through a tree
+  (ADR-0055 §7). `interference(a, a)` now answers instead of failing in the
+  builder: found by the step 5 fixture.*
 - [ ] Step 8 **[1]** — Python: `Model.interference`,
   `Model.interference_many`, the classes, `_arris.pyi`, docstring
   examples, pytest cases; `CHANGELOG.md` `Unreleased` bullet (new API,

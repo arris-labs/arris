@@ -5,7 +5,8 @@
 use arris_debug::sample;
 use arris_debug::unmetered::{primitive_box, primitive_cylinder};
 use arris_math::{Axis, Control, Point3};
-use arris_ops::query::{Contact, Interference, interference};
+use arris_ops::OpError;
+use arris_ops::query::{Contact, Interference, interference, interference_many};
 use arris_topo::{Body, Model};
 use core::f64::consts::PI;
 
@@ -197,4 +198,63 @@ fn cylinders_side_by_side_and_a_box_on_a_ruling_meet_along_a_curve() {
     assert_eq!(both_ways(&m, one, two), Contact::Curve);
     let slab = cube(&mut m, [1.0, -3.0, 0.0], [3.0, 3.0, 4.0]);
     assert_eq!(both_ways(&m, one, slab), Contact::Curve);
+}
+
+#[test]
+fn a_body_against_itself_is_inside_itself() {
+    let mut m = Model::default();
+    let a = cube(&mut m, [0.0; 3], [2.0; 3]);
+    let (volume, a_in_b, b_in_a) = overlap(of(&m, a, a));
+    assert!((volume - 8.0).abs() < EXACT && a_in_b && b_in_a);
+}
+
+#[test]
+fn an_assembly_reports_each_pair_that_is_not_apart_in_pair_order() {
+    let mut m = Model::default();
+    let base = cube(&mut m, [0.0; 3], [10.0; 3]);
+    let far = cube(&mut m, [40.0, 0.0, 0.0], [50.0, 10.0, 10.0]);
+    let crossing = cube(&mut m, [5.0; 3], [15.0; 3]);
+    let flush = cube(&mut m, [10.0, 0.0, 0.0], [20.0, 10.0, 10.0]);
+    let bodies = [crossing, far, base, flush];
+    let clashes = interference_many(&m, &bodies, &Control::NONE).unwrap();
+    let pairs: Vec<[usize; 2]> = clashes.iter().map(|c| c.operands).collect();
+    // crossing/base overlap, crossing/flush overlap (5..15 meets 10..20),
+    // base/flush touch; `far` meets nobody.
+    assert_eq!(pairs, [[0, 2], [0, 3], [2, 3]]);
+    for c in &clashes {
+        let [i, j] = c.operands;
+        assert_eq!(c.verdict, of(&m, bodies[i], bodies[j]));
+    }
+    assert!(matches!(
+        clashes[2].verdict,
+        Interference::Touching {
+            contact: Contact::Face,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn an_assembly_with_nothing_in_it_has_no_clash() {
+    let m = Model::default();
+    assert!(
+        interference_many(&m, &[], &Control::NONE)
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn a_poll_stops_the_screen() {
+    let mut m = Model::default();
+    let a = cube(&mut m, [0.0; 3], [2.0; 3]);
+    let b = cube(&mut m, [1.0; 3], [3.0; 3]);
+    let stop = || true;
+    let r = interference_many(&m, &[a, b], &Control::poll(&stop));
+    assert!(matches!(r, Err(OpError::Interrupted(_))), "{r:?}");
+    // A budget of no steps stops at the first candidate pair too, and
+    // a pair of boxes that are apart is not a candidate.
+    let far = cube(&mut m, [40.0; 3], [41.0; 3]);
+    let r = interference_many(&m, &[a, far], &Control::NONE.with_budget(0));
+    assert!(r.unwrap().is_empty());
 }

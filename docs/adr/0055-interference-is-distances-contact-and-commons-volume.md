@@ -62,17 +62,29 @@ of them is a point. `at` is the closest point `distance` returned, which
 `distance` already chooses deterministically (ADR-0054 §2) and which lies
 on both solids within the tolerance.
 
-**7. Many bodies.** `interference_many` boxes every body, runs
-`interference` on every pair whose boxes overlap, and returns the pairs
+**7. Many bodies.** `interference_many` boxes every body (the union of its
+faces' boxes, grown by the linear tolerance), runs `interference` on every
+pair whose boxes overlap, and returns the pairs
 that are not apart in ascending pair order. No verdict-only screen that
 skips the common: telling touching from overlapping without it needs a
 transversality test on the section, a backlog line until a measured clash
-loop asks for it.
+loop asks for it. The boxes are tested pair by pair, not through a
+hierarchy: a box test is nanoseconds against tens of milliseconds for the
+cheapest candidate pair, so a tree would save nothing until an assembly has
+thousands of bodies. A body given twice is a solid with itself: inside
+itself, its own volume (the pave model of a body with itself is
+meaningless, so `interference` answers it without one).
 
 **8. The query form.** `query` fixtures gain `{"interference": {"a", "b"},
 "expect": "apart" | "touching" | "overlapping"}`, held to Open CASCADE.
 
 ## Consequences
+
+- Measured in release on a 20-body assembly (ten cubes and ten cylinders in
+  a 5 × 4 grid, neighbours and diagonals overlapping): 43 clashes in 2.6 s,
+  about 60 ms per overlapping pair, the apart pairs free. A clash loop over
+  an assembly of that size is interactive-slow but usable, so the
+  verdict-only screen stays a backlog line.
 
 - No new error variant: the refusals are `distance`'s and `common`'s.
 - The cost of a clash is a distance plus a full pave and common; the

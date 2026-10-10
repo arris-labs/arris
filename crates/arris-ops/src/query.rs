@@ -9,7 +9,7 @@ mod distance;
 mod interference;
 
 pub use distance::{Distance, Foot, FootParam, Operand, distance};
-pub use interference::{Contact, Interference, interference};
+pub use interference::{Clash, Contact, Interference, interference, interference_many};
 
 use arris_check::domain::FaceDomain;
 use arris_check::tree::FaceTree;
