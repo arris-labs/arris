@@ -208,3 +208,28 @@ impl AnyHandle<'_> {
         })
     }
 }
+
+/// What `Model.distance` measures from or to: a point or a handle.
+#[derive(FromPyObject)]
+pub(crate) enum DistanceOperand<'py> {
+    Point([f64; 3]),
+    Handle(AnyHandle<'py>),
+}
+
+impl DistanceOperand<'_> {
+    /// The kernel's operand, if `owner` minted the handle.
+    pub(crate) fn resolve(
+        &self,
+        owner: &Arc<Shared>,
+    ) -> Result<arris::ops::query::Operand, BindError> {
+        Ok(match self {
+            DistanceOperand::Point(p) => {
+                arris::ops::query::Operand::Point(arris::math::Point3::from(*p))
+            }
+            DistanceOperand::Handle(h) => {
+                let (id, orientation) = h.resolve_shape(owner)?;
+                arris::ops::query::Operand::Shape(arris::topo::Shape::new(id, orientation))
+            }
+        })
+    }
+}

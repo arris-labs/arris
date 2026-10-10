@@ -529,6 +529,10 @@ mod tests {
             }),
             op_error(&OpError::Degenerate {
                 entities: vec![shape()],
+                reason: Reason::Query(QueryReason::NotMeasurable),
+            }),
+            op_error(&OpError::Degenerate {
+                entities: vec![shape()],
                 reason: Reason::Split(SplitReason::NoCrossing),
             }),
             op_error(&OpError::Profile(ProfileError::TooFewSegments {

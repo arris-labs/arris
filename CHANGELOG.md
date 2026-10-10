@@ -23,6 +23,14 @@ into its version (ADR-0027).
   both, and only when they could hold the answer. `arris_math::Aabb::distance`
   and `arris_check::tree::FaceTree::nearest` give the gap between two
   boxes and the faces of a body by ascending box distance.
+- Python: `Model.distance(a, b)` returns the minimum distance between two
+  of a point `(x, y, z)`, a `Vertex`, an `Edge`, a `Face` and a `Body`, as a
+  `Distance` with `distance`, `unique`, `contained` and a `Foot` for each
+  operand (`point`, the `entity` it lies on, and its `param`: a `float` on an
+  edge, `(u, v)` on a face). A shell or a body that is not a solid raises
+  `OpDegenerateError`, and a pair of surfaces with no formula that no nearer
+  pair rules out raises `OpUnsupportedError`; `cancel` and `budget` stop it
+  as they do the other long calls.
 - `arris_geom::extrema_curve_surface(&curve, &surface, tol, &mut meter)`
   returns every stationary pair of the distance between a curve and a
   plane, cylinder, elliptic cylinder, cone, sphere or torus, with

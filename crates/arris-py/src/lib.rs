@@ -28,7 +28,9 @@ pub use mesh::Mesh;
 pub use model::Model;
 pub use profile::{Loop, Profile, Segment};
 pub use provenance::Provenance;
-pub use query::{EulerLine, Frame, MassProperties, RayHit, Report, UncheckedRow, Violation};
+pub use query::{
+    Distance, EulerLine, Foot, Frame, MassProperties, RayHit, Report, UncheckedRow, Violation,
+};
 pub use role::Role;
 
 use pyo3::prelude::*;
@@ -63,6 +65,8 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Mesh>()?;
     module.add_class::<Frame>()?;
     module.add_class::<RayHit>()?;
+    module.add_class::<Distance>()?;
+    module.add_class::<Foot>()?;
     module.add_class::<MassProperties>()?;
     module.add_class::<EulerLine>()?;
     module.add_class::<Violation>()?;

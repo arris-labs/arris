@@ -5,7 +5,9 @@ use std::sync::Arc;
 use arris::check::{self, EulerLine as KernelEuler, Level, Report as KernelReport, Unchecked};
 use arris::math::{Frame as KernelFrame, Matrix3, Point3};
 use arris::ops::measure::MassProperties as KernelMass;
-use arris::ops::query::RayHit as KernelHit;
+use arris::ops::query::{
+    Distance as KernelDistance, Foot as KernelFoot, FootParam, RayHit as KernelHit,
+};
 use arris::topo::EntityId;
 use pyo3::IntoPyObjectExt;
 use pyo3::exceptions::PyValueError;
@@ -532,6 +534,145 @@ impl RayHit {
             self.kernel.t,
             self.point(),
             self.kernel.tangent
+        )
+    }
+}
+
+/// One end of a `Distance`: a point on an operand.
+///
+/// `entity` is the most specific entity the point lies on: a `Vertex`, else
+/// an `Edge`, else a `Face` (`None` for a bare point and for a point inside
+/// a solid). `param` is the entity's parameter there: the curve's `t` on an
+/// edge, the face's `(u, v)` on a face, `None` otherwise.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+/// found = model.distance((1, 1, 5), body)
+/// assert isinstance(found.b.entity, arris.Face) and found.b.point == (1.0, 1.0, 2.0)
+/// assert found.a.entity is None and found.b.param is not None
+/// ```
+#[pyclass(frozen, module = "arris")]
+#[derive(Clone, Debug)]
+pub struct Foot {
+    model: Arc<Shared>,
+    kernel: KernelFoot,
+}
+
+#[pymethods]
+impl Foot {
+    /// The point.
+    #[getter]
+    fn point(&self) -> (f64, f64, f64) {
+        let p = self.kernel.point;
+        triple(p.x, p.y, p.z)
+    }
+
+    /// The vertex, edge or face the point lies on, or `None`.
+    #[getter]
+    fn entity<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        match self.kernel.shape {
+            Some(shape) => entity(py, Some(&Model::sharing(&self.model)), shape),
+            None => Ok(py.None().into_bound(py)),
+        }
+    }
+
+    /// The entity's parameter at the point: a `float` on an edge, a
+    /// `(u, v)` on a face, `None` otherwise.
+    #[getter]
+    fn param<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        match self.kernel.param {
+            FootParam::None => Ok(py.None().into_bound(py)),
+            FootParam::Edge(t) => t.into_bound_py_any(py),
+            FootParam::Face(uv) => (uv.x, uv.y).into_bound_py_any(py),
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Foot(point={:?})", self.point())
+    }
+}
+
+/// The minimum distance between two operands, from `Model.distance`.
+///
+/// `distance` is between the operands as point sets, so `0.0` where they
+/// meet or one lies inside the other (`contained`). `a` and `b` are the
+/// closest points on each. `unique` is `False` when the minimum is reached
+/// by a whole family of pairs (two parallel plates, a pin coaxial in a
+/// hole) or by several apart: the pair returned is then the lowest by entity
+/// and parameter, the same on every run.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// a, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+/// b, _ = model.primitive_box((10, 0, 0), (12, 3, 2))
+/// found = model.distance(a, b)
+/// assert abs(found.distance - 6) < 1e-12 and not found.contained
+/// assert abs(found.b.point[0] - 10) < 1e-12 and not found.unique
+/// ```
+#[pyclass(frozen, module = "arris")]
+#[derive(Clone, Debug)]
+pub struct Distance {
+    model: Arc<Shared>,
+    kernel: KernelDistance,
+}
+
+impl Distance {
+    /// The Python value of `kernel`, between operands of `model`.
+    pub fn new(model: &Model, kernel: KernelDistance) -> Distance {
+        Distance {
+            model: Arc::clone(&model.shared),
+            kernel,
+        }
+    }
+}
+
+#[pymethods]
+impl Distance {
+    /// The distance; `0.0` where the operands meet or one holds the other.
+    #[getter]
+    fn distance(&self) -> f64 {
+        self.kernel.distance
+    }
+
+    /// The closest point on the first operand.
+    #[getter]
+    fn a(&self) -> Foot {
+        Foot {
+            model: Arc::clone(&self.model),
+            kernel: self.kernel.a,
+        }
+    }
+
+    /// The closest point on the second operand.
+    #[getter]
+    fn b(&self) -> Foot {
+        Foot {
+            model: Arc::clone(&self.model),
+            kernel: self.kernel.b,
+        }
+    }
+
+    /// `True` when this pair is the only one at the minimum.
+    #[getter]
+    fn unique(&self) -> bool {
+        self.kernel.unique
+    }
+
+    /// `True` when one operand lies in the other's solid.
+    #[getter]
+    fn contained(&self) -> bool {
+        self.kernel.contained
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Distance(distance={}, unique={}, contained={})",
+            self.kernel.distance, self.kernel.unique, self.kernel.contained
         )
     }
 }

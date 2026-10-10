@@ -444,9 +444,16 @@ bound has to be established here.
       touch is `Empty` with distance 0, which neither side forbids; the
       corpus holds touching.
     - An `Unsupported` pair is skipped (3 of 250 draws).
-- [ ] Step 11 **[1]** — `Model.distance` in `arris-py`, with
+- [x] Step 11 **[1]** — `Model.distance` in `arris-py`, with
   `Distance`/`Foot`, the `NotMeasurable` class, the `_arris.pyi` lines
   and a docstring example. Pytest covers a point snap and two bodies.
+  - *As built:* `Model.distance(a, b, *, cancel=None, budget=None)`, an
+    operand a point triple or any handle (a shell reaches the kernel and
+    raises `OpDegenerateError`, reason `NotMeasurable`, so no new Python
+    class: the reason is already text on that error). `Distance` and `Foot`
+    in `query.rs`; `Foot.entity` is a handle or `None`, `Foot.param` a
+    `float`, a `(u, v)` or `None`. `NotMeasurable` joins the error-mapping
+    test's list. Pytest, the docstrings and `mypy.stubtest` pass (446).
 
 ## Acceptance
 - `cargo nextest run --workspace` (the full gate, `real_*` included) with

@@ -190,6 +190,28 @@ class Frame:
     __hash__: ClassVar[None]  # type: ignore[assignment]
 
 @final
+class Foot:
+    @property
+    def point(self) -> tuple[float, float, float]: ...
+    @property
+    def entity(self) -> _Entity | None: ...
+    @property
+    def param(self) -> float | tuple[float, float] | None: ...
+
+@final
+class Distance:
+    @property
+    def distance(self) -> float: ...
+    @property
+    def a(self) -> Foot: ...
+    @property
+    def b(self) -> Foot: ...
+    @property
+    def unique(self) -> bool: ...
+    @property
+    def contained(self) -> bool: ...
+
+@final
 class RayHit:
     @property
     def entity(self) -> _Entity: ...
@@ -495,6 +517,14 @@ class Model:
         direction: _Point3,
         all: bool = False,
     ) -> list[RayHit]: ...
+    def distance(
+        self,
+        a: _Point3 | _Handle,
+        b: _Point3 | _Handle,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> Distance: ...
     def check(self, body: Body, level: str = "fast") -> Report: ...
     def tessellate(
         self, body: Body, chord: float, *, cancel: Cancel | None = None, budget: int | None = None

@@ -210,3 +210,54 @@ def test_a_ray_fire_refusal_names_the_entity():
         model.ray_fire(body, (2, 1.5, -1), (0, 0, 0))
     with pytest.raises(arris.OpDegenerateError):  # lies in the bottom face
         model.ray_fire(body, (-1, 1.5, 0), (1, 0, 0))
+
+
+def test_a_point_snaps_to_the_nearest_face_edge_and_vertex_of_a_box():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+    over = model.distance((1, 1, 5), body)
+    assert over.distance == pytest.approx(3, abs=1e-12) and over.unique and not over.contained
+    assert over.a.entity is None and over.a.param is None
+    assert isinstance(over.b.entity, arris.Face)
+    assert over.b.point == pytest.approx((1, 1, 2), abs=1e-12)
+    assert over.b.param is not None and len(over.b.param) == 2
+    beside = model.distance((2, 4, 3), body)
+    assert beside.distance == pytest.approx(2**0.5, abs=1e-12)
+    assert isinstance(beside.b.entity, arris.Edge) and isinstance(beside.b.param, float)
+    past = model.distance(body, (5, 4, 3))
+    assert past.distance == pytest.approx(3**0.5, abs=1e-12)
+    assert isinstance(past.a.entity, arris.Vertex) and past.a.param is None
+    assert past.a.point == pytest.approx((4, 3, 2), abs=1e-12)
+    inside = model.distance((1, 1, 1), body)
+    assert inside.contained and inside.distance == 0.0
+
+
+def test_two_bodies_apart_touching_and_nested():
+    model = arris.Model()
+    a, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+    apart, _ = model.primitive_box((10, 0, 0), (12, 3, 2))
+    inner, _ = model.primitive_box((1, 1, 0.5), (2, 2, 1.5))
+    found = model.distance(a, apart)
+    assert found.distance == pytest.approx(6, abs=1e-12) and not found.contained
+    assert found.a.point[0] == pytest.approx(4, abs=1e-12)
+    assert found.b.point[0] == pytest.approx(10, abs=1e-12)
+    assert not found.unique  # a whole face of each is as near
+    swapped = model.distance(apart, a)
+    assert swapped.distance == found.distance and swapped.a.point[0] == found.b.point[0]
+    nested = model.distance(a, inner)
+    assert nested.contained and nested.distance == 0.0
+    face = model.faces(apart)[0]
+    assert model.distance(a, face).distance >= 6 - 1e-12
+
+
+def test_a_distance_refusal_and_a_foreign_handle():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+    with pytest.raises(arris.OpDegenerateError):
+        model.distance((float("nan"), 0, 0), body)
+    with pytest.raises(arris.OpDegenerateError):
+        model.distance((0, 0, 0), model.shells(body)[0])
+    with pytest.raises(arris.ForeignHandleError):
+        arris.Model().distance((0, 0, 0), body)
+    with pytest.raises(arris.Interrupted):
+        model.distance((1, 1, 5), body, budget=0)

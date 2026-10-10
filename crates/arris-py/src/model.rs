@@ -13,7 +13,7 @@ use pyo3::prelude::*;
 
 use crate::control::{Cancel, Limits};
 use crate::error::BindError;
-use crate::handle::{AnyHandle, Body, Edge, Face, Shell, Vertex};
+use crate::handle::{AnyHandle, Body, DistanceOperand, Edge, Face, Shell, Vertex};
 use crate::io::{Imported, StepRead, length_unit as length_unit_of};
 use crate::kernel_error::{
     Mapped, body_error, mesh_error, native_error, op_error, step_error, step_read_error,
@@ -21,7 +21,7 @@ use crate::kernel_error::{
 use crate::mesh::Mesh;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
-use crate::query::{Frame, MassProperties, RayHit, Report, level_of};
+use crate::query::{Distance, Frame, MassProperties, RayHit, Report, level_of};
 
 /// Serial numbers for models, in creation order within the process: what a
 /// handle compares and hashes by, and what an error names.
@@ -1055,6 +1055,50 @@ impl Model {
             })?
             .map_err(|e| self.refuse(py, e))?;
         Ok(hits.into_iter().map(|h| RayHit::new(self, h)).collect())
+    }
+
+    /// The minimum distance between `a` and `b`, each a point `(x, y, z)` or
+    /// a handle: a `Vertex`, `Edge`, `Face` or `Body`, in this model.
+    ///
+    /// A body is its solid, so a point inside it, or a body inside another,
+    /// is at distance `0.0` and the answer is `contained`. The answer names
+    /// the closest point on each operand and the vertex, edge or face it
+    /// lies on (see `Distance`). It comes from certified critical points,
+    /// never a mesh.
+    ///
+    /// Raises `OpDegenerateError` for a shell or a body that is not a solid
+    /// (reason `NotMeasurable`) and for a point that is not finite,
+    /// `OpUnsupportedError` for a pair of surfaces with no closed form
+    /// (two off-axis cones, say) that no nearer pair rules out,
+    /// `OpInvalidInputError` for a body that fails the checker (debug
+    /// builds) and `Interrupted` when `cancel` or `budget` stops it.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+    /// found = model.distance((1, 1, 5), body)
+    /// assert abs(found.distance - 3) < 1e-12 and found.unique
+    /// assert isinstance(found.b.entity, arris.Face)
+    /// assert model.distance((1, 1, 1), body).contained
+    /// ```
+    #[pyo3(signature = (a, b, *, cancel=None, budget=None))]
+    fn distance(
+        &self,
+        py: Python<'_>,
+        a: DistanceOperand<'_>,
+        b: DistanceOperand<'_>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Distance> {
+        let a = a.resolve(&self.shared)?;
+        let b = b.resolve(&self.shared)?;
+        let limits = Limits::new(cancel, budget);
+        let kernel = self.run(py, &limits, move |m, control| {
+            arris::ops::query::distance(m, a, b, control)
+        })?;
+        Ok(Distance::new(self, kernel))
     }
 
     /// The checker's report on `body`: `level` is `"fast"` (linear in the
