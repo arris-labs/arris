@@ -1,7 +1,7 @@
 {
   "kind": "query",
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "aeb09656711a70df6b5d402889fe3f5af9e5ef8a00f3864f4b217b4ca7251f31",
+  "recipe_sha256": "bf73717c6c955d7404b7dca1725c5224ff8deac625dc6872c3823a4c7670c6b4",
   "results": {
     "default": {
       "queries": [
@@ -132,6 +132,56 @@
             "verdict": "touching"
           },
           "label": "cylinders side by side, swapped"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 33.51032163829113
+          },
+          "label": "ball inside a block"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 33.51032163829113
+          },
+          "label": "ball inside a block, swapped"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 56.548667764616276
+          },
+          "label": "ball through a face"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 29.608813203268056
+          },
+          "label": "torus through a face"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 99.48376736367679
+          },
+          "label": "frustum through a face"
         }
       ]
     }

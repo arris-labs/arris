@@ -115,6 +115,13 @@ corpus_tests! {
     /// crossing and inside, both orders, and two cylinders along a ruling
     /// (ADR-0055).
     query_interference_primitives => query "query/interference-primitives";
+    /// A drilled plate against a pin with clearance, line to line and pressed
+    /// in; an L bracket against its bolt, the head resting on the foot
+    /// (ADR-0055).
+    query_interference_parts => query "query/interference-parts";
+    /// A B-spline cylinder from STEP: a box crossing its wall is refused as
+    /// unsupported, a box far from it is apart (ADR-0055).
+    query_interference_nurbs_refused => query "query/interference-nurbs-refused";
     /// Two bodies with off-axis cones that pruning skips: the bars' distance.
     query_distance_cones_pruned => query "query/distance-cones-pruned";
     primitive_box => run "primitive/box";

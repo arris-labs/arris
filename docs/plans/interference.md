@@ -33,8 +33,8 @@ binding exposes both.
   section; a backlog line unless step 7's measurement asks for it.
 - **NURBS operands' volume.** `common` refuses a NURBS face meeting the
   other operand (backlog, the NURBS cycle's); interference refuses the same
-  way, naming the face. Apart and touching-free poses still answer through
-  `distance`.
+  way, naming the face. Not even an apart pose answers: `distance` refuses a NURBS face
+  against an edge (step 5).
 - **Shells, sheets, penetration depth, minimum translation to separate.**
   A shell is `QueryReason::NotMeasurable`, as in `distance`.
 - **The planar section** — the next and last C8 plan.
@@ -133,12 +133,19 @@ bound has to be established here.
   `query/interference-primitives` (the cube poses and two cylinders along a
   ruling, both orders), which step 5 extends. The open question below is
   settled: the section alone cannot tell, the pairwise common of faces can.*
-- [ ] Step 5 **[1]** — The corpus: `query/interference-primitives` (the
+- [x] Step 5 **[1]** — The corpus: `query/interference-primitives` (the
   step 1 and step 3 poses, sphere, cylinder, cone and torus among them),
   `query/interference-parts` (a drilled real-tier plate against a pin at
   clearance, line-to-line and press fit; a bracket against its bolt),
   `query/interference-nurbs-refused` (a NURBS face crossing the other
   operand: `Unsupported` naming it; the same pair apart: answered).
+  *Step 5 found the plan wrong on the apart pose: `distance` itself
+  refuses a NURBS face against a box's edge (the backlog's NURBS extrema
+  line), so the apart pose is refused too and the fixture says so with the
+  new `expect_refused: "unsupported"` query field. The NURBS cylinder is
+  never answered but by a point query. The primitives fixture gained a ball
+  with no vertex inside the block, a ball, a torus and a frustum through a
+  face; two tangent balls stay out (step 3's backlog line).*
 - [ ] Step 6 **[2]** — Properties (`prop_shards!`, `prop::body` operands
   in random poses): not apart ⇔ `distance ≤ tolerance.linear`; the volume equals
   `common`'s `mass_properties` volume bit for bit; swapping operands swaps

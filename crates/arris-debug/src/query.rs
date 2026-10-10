@@ -87,6 +87,12 @@ pub struct Query {
     /// Arris's. `None` leaves it to the oracle.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect: Option<String>,
+    /// `unsupported`: the kernel refuses this interference query with
+    /// `OpError::Unsupported` where Open CASCADE answers (a NURBS face
+    /// meeting the other solid, which `common` has no closed form for); the
+    /// runner holds the refusal and skips the comparison.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_refused: Option<String>,
     /// The shared volume worked out by hand, for an overlapping pair.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect_volume: Option<Num>,

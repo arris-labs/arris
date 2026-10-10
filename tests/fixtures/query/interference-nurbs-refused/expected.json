@@ -1,0 +1,45 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "074d5a3591efe7ac304677793800b45d09299387269db81e0ffe5935f599798b",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 29.812290165397485
+          },
+          "label": "a box through the NURBS wall"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 29.812290165397485
+          },
+          "label": "a box through the NURBS wall, swapped"
+        },
+        {
+          "interference": {
+            "distance": 15.0,
+            "verdict": "apart"
+          },
+          "label": "a box far from the NURBS cylinder"
+        },
+        {
+          "interference": {
+            "distance": 15.0,
+            "verdict": "apart"
+          },
+          "label": "a box far from the NURBS cylinder, swapped"
+        }
+      ]
+    }
+  }
+}

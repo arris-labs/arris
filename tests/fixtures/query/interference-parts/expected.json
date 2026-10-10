@@ -1,0 +1,69 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "bfadece05aa7076fa5b65992719d9a95c9c013f6fa74c87388de4d4c3f3886c7",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "distance": 0.4999999999999967,
+            "verdict": "apart"
+          },
+          "label": "pin with clearance"
+        },
+        {
+          "interference": {
+            "distance": 0.4999999999999967,
+            "verdict": "apart"
+          },
+          "label": "pin with clearance, swapped"
+        },
+        {
+          "interference": {
+            "contact": "face",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "pin line to line"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 133.51768777756638
+          },
+          "label": "pin pressed in"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 133.51768777756638
+          },
+          "label": "pin pressed in, swapped"
+        },
+        {
+          "interference": {
+            "contact": "face",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "bolt in its bracket, head on the foot"
+        },
+        {
+          "interference": {
+            "contact": "face",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "bolt in its bracket, swapped"
+        }
+      ]
+    }
+  }
+}

@@ -9,6 +9,7 @@
 use std::collections::BTreeMap;
 
 use arris_math::Control;
+use arris_ops::OpError;
 use arris_ops::query::{Contact, Interference, interference};
 
 use super::{Answer, DistanceSpec, OperandSpec, Query, QueryError, QueryFixture, VariantAnswers};
@@ -74,13 +75,23 @@ pub(super) fn run(
     };
     let a = body_of(chain, &spec.a).map_err(wrong)?;
     let b = body_of(chain, &spec.b).map_err(wrong)?;
-    let ours =
-        interference(&chain.model, a, b, &Control::NONE).map_err(|source| QueryError::Refused {
-            fixture: fixture.name.clone(),
-            variant: variant.to_string(),
-            label: query.label.clone(),
-            source: Box::new(source),
-        })?;
+    let ours = interference(&chain.model, a, b, &Control::NONE);
+    if query.expect_refused.is_some() {
+        return match ours {
+            Err(OpError::Unsupported { .. }) => Ok(()),
+            Err(source) => Err(wrong(format!("refused with {source}, not as unsupported"))),
+            Ok(i) => Err(wrong(format!(
+                "answered {} where a refusal is expected",
+                verdict_of(&i)
+            ))),
+        };
+    }
+    let ours = ours.map_err(|source| QueryError::Refused {
+        fixture: fixture.name.clone(),
+        variant: variant.to_string(),
+        label: query.label.clone(),
+        source: Box::new(source),
+    })?;
     let tolerances = &fixture.recipe.tolerances;
     let verdict = verdict_of(&ours);
     if let Some(expect) = &query.expect
@@ -178,6 +189,11 @@ pub(super) fn lint(
             "the oracle's verdict {:?} is unknown",
             oracle.verdict
         ));
+    }
+    if let Some(expect) = &q.expect_refused
+        && expect != "unsupported"
+    {
+        out.push(format!("expect_refused {expect:?} is not unsupported"));
     }
     if let Some(expect) = &q.expect {
         if !VERDICTS.contains(&expect.as_str()) {

@@ -844,7 +844,11 @@ and section plans add theirs to the same `queries` list. They sit under
   …}, "b": {"step": …}}`, whole bodies only, with the hand-worked `expect`
   (`apart`, `touching` or `overlapping`), `expect_volume` (an overlapping
   pair) and `expect_contact` (`point`, `curve` or `face`, a touching pair),
-  each optional and held to the oracle's by the lint. The two operands
+  each optional and held to the oracle's by the lint, and
+  `expect_refused: "unsupported"` where the kernel refuses a pair (a NURBS
+  face meeting the other solid in `common`, a NURBS face against an edge
+  in `distance`) and Open CASCADE answers: the runner holds the refusal
+  and skips the comparison. The two operands
   must be different bodies: a step against itself is not a pair. The
   oracle's answer is `verdict`, the `distance` of
   `BRepExtrema_DistShapeShape` (apart when it exceeds `probe`), and for

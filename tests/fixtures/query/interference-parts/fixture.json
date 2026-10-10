@@ -1,0 +1,30 @@
+{
+  "kind": "query",
+  "description": "a plate drilled with a hole r 4 against a pin with clearance (r 3.5), line to line (r 4, the surfaces coincide) and pressed in (r 4.5: a ring of material); an L bracket with a hole r 3.5 against its bolt (shank r 3, head r 6 resting on the foot: a face contact)",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]},
+    {"name": "hole", "op": "cylinder", "base": [20, 15, -1], "axis": [0, 0, 1], "radius": 4, "height": 12},
+    {"name": "drilled", "op": "cut", "target": "plate", "tool": "hole"},
+    {"name": "pin_loose", "op": "cylinder", "base": [20, 15, 0], "axis": [0, 0, 1], "radius": 3.5, "height": 10},
+    {"name": "pin_snug", "op": "cylinder", "base": [20, 15, 0], "axis": [0, 0, 1], "radius": 4, "height": 10},
+    {"name": "pin_pressed", "op": "cylinder", "base": [20, 15, 0], "axis": [0, 0, 1], "radius": 4.5, "height": 10},
+    {"name": "foot", "op": "box", "min": [0, 0, 0], "max": [40, 30, 5]},
+    {"name": "wall", "op": "box", "min": [0, 0, 0], "max": [40, 5, 30]},
+    {"name": "bracket_raw", "op": "fuse", "a": "foot", "b": "wall"},
+    {"name": "bolt_hole", "op": "cylinder", "base": [20, 18, -1], "axis": [0, 0, 1], "radius": 3.5, "height": 7},
+    {"name": "bracket", "op": "cut", "target": "bracket_raw", "tool": "bolt_hole"},
+    {"name": "shank", "op": "cylinder", "base": [20, 18, -5], "axis": [0, 0, 1], "radius": 3, "height": 10},
+    {"name": "head", "op": "cylinder", "base": [20, 18, 5], "axis": [0, 0, 1], "radius": 6, "height": 3},
+    {"name": "bolt", "op": "fuse", "a": "shank", "b": "head"}
+  ],
+  "result": "drilled",
+  "queries": [
+    {"label": "pin with clearance", "interference": {"a": {"step": "drilled"}, "b": {"step": "pin_loose"}}, "expect": "apart"},
+    {"label": "pin with clearance, swapped", "interference": {"a": {"step": "pin_loose"}, "b": {"step": "drilled"}}, "expect": "apart"},
+    {"label": "pin line to line", "interference": {"a": {"step": "drilled"}, "b": {"step": "pin_snug"}}, "expect": "touching", "expect_contact": "face"},
+    {"label": "pin pressed in", "interference": {"a": {"step": "drilled"}, "b": {"step": "pin_pressed"}}, "expect": "overlapping", "expect_volume": 133.5176877775662},
+    {"label": "pin pressed in, swapped", "interference": {"a": {"step": "pin_pressed"}, "b": {"step": "drilled"}}, "expect": "overlapping", "expect_volume": 133.5176877775662},
+    {"label": "bolt in its bracket, head on the foot", "interference": {"a": {"step": "bracket"}, "b": {"step": "bolt"}}, "expect": "touching", "expect_contact": "face"},
+    {"label": "bolt in its bracket, swapped", "interference": {"a": {"step": "bolt"}, "b": {"step": "bracket"}}, "expect": "touching", "expect_contact": "face"}
+  ]
+}

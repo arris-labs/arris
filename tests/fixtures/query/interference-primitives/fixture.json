@@ -1,6 +1,6 @@
 {
   "kind": "query",
-  "description": "cubes of side 10 against a base cube: apart, on a face, on an edge, at a corner, crossing and inside, both operand orders; two cylinders side by side touch along a ruling",
+  "description": "cubes of side 10 against a base cube: apart, on a face, on an edge, at a corner, crossing and inside, both operand orders; two cylinders side by side touch along a ruling; a ball inside the cube with no vertex in it, a ball, a torus and a frustum through its faces",
   "steps": [
     {"name": "base", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
     {"name": "far", "op": "box", "min": [20, 0, 0], "max": [30, 10, 10]},
@@ -11,7 +11,15 @@
     {"name": "inside", "op": "box", "min": [2, 2, 2], "max": [4, 4, 4]},
     {"name": "twin", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
     {"name": "rod_a", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 3, "height": 10},
-    {"name": "rod_b", "op": "cylinder", "base": [6, 0, 0], "axis": [0, 0, 1], "radius": 3, "height": 10}
+    {"name": "rod_b", "op": "cylinder", "base": [6, 0, 0], "axis": [0, 0, 1], "radius": 3, "height": 10},
+    {"name": "in_profile", "op": "profile", "plane": {"origin": [5, 5, 5], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -2], "segments": [{"arc_to": [0, 2], "via": [2, 0]}, {"line_to": [0, -2]}]}},
+    {"name": "ball_inside", "op": "revolve", "profile": "in_profile", "axis": {"origin": [5, 5, 5], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "cross_profile", "op": "profile", "plane": {"origin": [10, 5, 5], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -3], "segments": [{"arc_to": [0, 3], "via": [3, 0]}, {"line_to": [0, -3]}]}},
+    {"name": "ball_crossing", "op": "revolve", "profile": "cross_profile", "axis": {"origin": [10, 5, 5], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "ring", "op": "profile", "plane": {"origin": [5, 5, 10], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"circle": {"center": [3, 0], "radius": 1}}},
+    {"name": "torus", "op": "revolve", "profile": "ring", "axis": {"origin": [5, 5, 10], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "taper", "op": "profile", "plane": {"origin": [5, 5, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, 5], "segments": [{"line_to": [3, 5]}, {"line_to": [1, 15]}, {"line_to": [0, 15]}, {"line_to": [0, 5]}]}},
+    {"name": "frustum", "op": "revolve", "profile": "taper", "axis": {"origin": [5, 5, 0], "direction": [0, 0, 1]}, "angle_deg": 360}
   ],
   "result": "base",
   "queries": [
@@ -29,6 +37,11 @@
     {"label": "one inside the other, swapped", "interference": {"a": {"step": "inside"}, "b": {"step": "base"}}, "expect": "overlapping", "expect_volume": 8},
     {"label": "equal", "interference": {"a": {"step": "base"}, "b": {"step": "twin"}}, "expect": "overlapping", "expect_volume": 1000},
     {"label": "cylinders side by side", "interference": {"a": {"step": "rod_a"}, "b": {"step": "rod_b"}}, "expect": "touching", "expect_contact": "curve"},
-    {"label": "cylinders side by side, swapped", "interference": {"a": {"step": "rod_b"}, "b": {"step": "rod_a"}}, "expect": "touching", "expect_contact": "curve"}
+    {"label": "cylinders side by side, swapped", "interference": {"a": {"step": "rod_b"}, "b": {"step": "rod_a"}}, "expect": "touching", "expect_contact": "curve"},
+    {"label": "ball inside a block", "interference": {"a": {"step": "base"}, "b": {"step": "ball_inside"}}, "expect": "overlapping", "expect_volume": 33.510321638291124},
+    {"label": "ball inside a block, swapped", "interference": {"a": {"step": "ball_inside"}, "b": {"step": "base"}}, "expect": "overlapping", "expect_volume": 33.510321638291124},
+    {"label": "ball through a face", "interference": {"a": {"step": "base"}, "b": {"step": "ball_crossing"}}, "expect": "overlapping", "expect_volume": 56.548667764616276},
+    {"label": "torus through a face", "interference": {"a": {"step": "base"}, "b": {"step": "torus"}}, "expect": "overlapping", "expect_volume": 29.608813203268074},
+    {"label": "frustum through a face", "interference": {"a": {"step": "base"}, "b": {"step": "frustum"}}, "expect": "overlapping", "expect_volume": 99.48376736367679}
   ]
 }
