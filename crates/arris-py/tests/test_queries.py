@@ -261,3 +261,54 @@ def test_a_distance_refusal_and_a_foreign_handle():
         arris.Model().distance((0, 0, 0), body)
     with pytest.raises(arris.Interrupted):
         model.distance((1, 1, 5), body, budget=0)
+
+
+def test_interference_of_two_boxes_in_every_pose():
+    model = arris.Model()
+    a, _ = model.primitive_box((0, 0, 0), (10, 10, 10))
+    poses = {
+        "apart": (20, 0, 0),
+        "face": (10, 0, 0),
+        "curve": (10, 10, 0),
+        "point": (10, 10, 10),
+    }
+    boxes = {k: model.primitive_box(o, (o[0] + 10, o[1] + 10, o[2] + 10))[0] for k, o in poses.items()}
+    far = model.interference(a, boxes["apart"])
+    assert far.kind == "apart" and far.distance.distance == pytest.approx(10, abs=1e-12)
+    assert far.contact is far.at is far.volume is far.a_in_b is far.b_in_a is None
+    for contact in ("face", "curve", "point"):
+        for first, second in ((a, boxes[contact]), (boxes[contact], a)):
+            touch = model.interference(first, second)
+            assert touch.kind == "touching" and touch.contact == contact
+            assert len(touch.at) == 3 and touch.distance is None and touch.volume is None
+    crossing, _ = model.primitive_box((5, 5, 5), (15, 15, 15))
+    over = model.interference(a, crossing)
+    assert over.kind == "overlapping" and over.volume == pytest.approx(125, abs=1e-9)
+    assert over.a_in_b is False and over.b_in_a is False and over.contact is None
+    inner, _ = model.primitive_box((2, 2, 2), (4, 4, 4))
+    nested = model.interference(a, inner)
+    assert nested.volume == pytest.approx(8, abs=1e-9) and nested.b_in_a and not nested.a_in_b
+    assert model.interference(a, a).a_in_b is True
+
+
+def test_interference_many_lists_the_pairs_that_are_not_apart_in_order():
+    model = arris.Model()
+    cubes = [
+        model.primitive_box((x, 0, 0), (x + 10, 10, 10))[0] for x in (0, 40, 5, 10)
+    ]
+    clashes = model.interference_many(cubes)
+    assert [c.operands for c in clashes] == [(0, 2), (0, 3), (2, 3)]
+    assert clashes[0].interference.kind == "overlapping"
+    assert clashes[1].interference.kind == "touching" and clashes[1].interference.contact == "face"
+    assert model.interference_many([]) == []
+
+
+def test_interference_takes_a_budget_and_refuses_a_foreign_body():
+    model, other = arris.Model(), arris.Model()
+    a, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    b, _ = model.primitive_box((1, 1, 1), (3, 3, 3))
+    foreign, _ = other.primitive_box((0, 0, 0), (2, 2, 2))
+    with pytest.raises(arris.ForeignHandleError):
+        model.interference(a, foreign)
+    with pytest.raises(arris.Interrupted):
+        model.interference(a, b, budget=0)

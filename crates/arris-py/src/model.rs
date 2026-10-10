@@ -21,7 +21,9 @@ use crate::kernel_error::{
 use crate::mesh::Mesh;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
-use crate::query::{Distance, Frame, MassProperties, RayHit, Report, level_of};
+use crate::query::{
+    Clash, Distance, Frame, Interference, MassProperties, RayHit, Report, level_of,
+};
 
 /// Serial numbers for models, in creation order within the process: what a
 /// handle compares and hashes by, and what an error names.
@@ -1099,6 +1101,80 @@ impl Model {
             arris::ops::query::distance(m, a, b, control)
         })?;
         Ok(Distance::new(self, kernel))
+    }
+
+    /// How solid `a` interferes with solid `b`: `"apart"` with their
+    /// `Distance`, `"touching"` with the dimension of their contact and a
+    /// point of it, or `"overlapping"` with the volume they share and
+    /// whether either lies wholly inside the other (see `Interference`). The
+    /// shared volume is what `common` returns, measured on a scratch copy:
+    /// the model is never written. A body against itself is inside itself.
+    ///
+    /// Raises what `distance` raises for the pair, and what `common` raises
+    /// for a pair that is not apart: `OpUnsupportedError` for a NURBS face
+    /// meeting the other solid, `OpDegenerateError` for a contact `common`
+    /// cannot read (a tangent contact), and `Interrupted` when `cancel` or
+    /// `budget` stops it.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// a, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    /// flush, _ = model.primitive_box((2, 0, 0), (4, 2, 2))
+    /// far, _ = model.primitive_box((9, 0, 0), (11, 2, 2))
+    /// assert model.interference(a, flush).contact == "face"
+    /// assert abs(model.interference(a, far).distance.distance - 7) < 1e-12
+    /// ```
+    #[pyo3(signature = (a, b, *, cancel=None, budget=None))]
+    fn interference(
+        &self,
+        py: Python<'_>,
+        a: &Body,
+        b: &Body,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Interference> {
+        let (a, b) = (a.resolve(&self.shared)?, b.resolve(&self.shared)?);
+        let limits = Limits::new(cancel, budget);
+        let kernel = self.run(py, &limits, move |m, control| {
+            arris::ops::query::interference(m, a, b, control)
+        })?;
+        Ok(Interference::new(self, kernel))
+    }
+
+    /// Screens an assembly: a `Clash` for every pair of `bodies` that is not
+    /// apart, in ascending pair order, each with the `Interference` of the
+    /// lower-indexed body against the other. Pairs whose bounding boxes are
+    /// apart cost a box test. Raises as `interference` does, for the first
+    /// candidate pair that fails.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// cubes = [model.primitive_box((x, 0, 0), (x + 2, 2, 2))[0] for x in (0, 1, 10)]
+    /// clashes = model.interference_many(cubes)
+    /// assert [c.operands for c in clashes] == [(0, 1)]
+    /// assert abs(clashes[0].interference.volume - 4) < 1e-12
+    /// ```
+    #[pyo3(signature = (bodies, *, cancel=None, budget=None))]
+    fn interference_many(
+        &self,
+        py: Python<'_>,
+        bodies: Vec<PyRef<'_, Body>>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Vec<Clash>> {
+        let bodies = bodies
+            .iter()
+            .map(|b| b.resolve(&self.shared))
+            .collect::<Result<Vec<_>, _>>()?;
+        let limits = Limits::new(cancel, budget);
+        let kernel = self.run(py, &limits, move |m, control| {
+            arris::ops::query::interference_many(m, &bodies, control)
+        })?;
+        Ok(kernel.into_iter().map(|c| Clash::new(self, c)).collect())
     }
 
     /// The checker's report on `body`: `level` is `"fast"` (linear in the

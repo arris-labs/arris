@@ -31,6 +31,25 @@ into its version (ADR-0027).
   `OpDegenerateError`, and a pair of surfaces with no formula that no nearer
   pair rules out raises `OpUnsupportedError`; `cancel` and `budget` stop it
   as they do the other long calls.
+- `arris_ops::query::interference(&model, a, b, &control)` says how two
+  solids meet: `Apart` with their distance (farther than the model's linear
+  tolerance), `Touching` with the contact's dimension (a point, a curve or
+  a face) and a point of it, or `Overlapping` with the volume they share and
+  whether either lies wholly inside the other. The volume is what `common`
+  returns, measured without writing the model, and the verdict agrees with
+  `distance` on every pose. A solid against itself is inside itself.
+  `interference_many(&model, &bodies, &control)` screens an assembly and
+  returns a `Clash` for every pair that is not apart, in ascending pair
+  order; pairs with disjoint boxes cost a box test. A NURBS face meeting
+  the other solid is `Unsupported` (not even an apart pair with a NURBS face
+  answers while `distance` refuses it); a tangent contact `common` cannot
+  read, such as a ball resting on a plane, is refused too.
+- Python: `Model.interference(a, b)` returns an `Interference` with `kind`
+  (`"apart"`, `"touching"` or `"overlapping"`) and, by kind, `distance` (a
+  `Distance`), `contact` (`"point"`, `"curve"` or `"face"`) and `at`, or
+  `volume`, `a_in_b` and `b_in_a`; the rest are `None`.
+  `Model.interference_many(bodies)` returns a list of `Clash` with
+  `operands` and `interference`. Both take `cancel` and `budget`.
 - `arris_geom::extrema_curve_surface(&curve, &surface, tol, &mut meter)`
   returns every stationary pair of the distance between a curve and a
   plane, cylinder, elliptic cylinder, cone, sphere or torus, with

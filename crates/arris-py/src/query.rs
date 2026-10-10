@@ -6,7 +6,8 @@ use arris::check::{self, EulerLine as KernelEuler, Level, Report as KernelReport
 use arris::math::{Frame as KernelFrame, Matrix3, Point3};
 use arris::ops::measure::MassProperties as KernelMass;
 use arris::ops::query::{
-    Distance as KernelDistance, Foot as KernelFoot, FootParam, RayHit as KernelHit,
+    Clash as KernelClash, Contact as KernelContact, Distance as KernelDistance, Foot as KernelFoot,
+    FootParam, Interference as KernelInterference, RayHit as KernelHit,
 };
 use arris::topo::EntityId;
 use pyo3::IntoPyObjectExt;
@@ -673,6 +674,201 @@ impl Distance {
         format!(
             "Distance(distance={}, unique={}, contained={})",
             self.kernel.distance, self.kernel.unique, self.kernel.contained
+        )
+    }
+}
+
+/// How two solids interfere, from `Model.interference`.
+///
+/// `kind` is `"apart"`, `"touching"` or `"overlapping"`, and the attributes
+/// that do not belong to it are `None`. An `"apart"` pair has `distance`, the
+/// `Distance` between them (farther than the model's linear tolerance). A
+/// `"touching"` pair shares no volume: `contact` is `"point"`, `"curve"` or
+/// `"face"`, the dimension of what they share, and `at` a point of it. An
+/// `"overlapping"` pair has `volume`, the volume they share (what `common`
+/// would return, measured without writing the model), and `a_in_b` /
+/// `b_in_a`, true when the first (second) solid lies wholly inside the other;
+/// two equal solids are each inside the other.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// a, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+/// b, _ = model.primitive_box((1, 1, 1), (3, 3, 3))
+/// found = model.interference(a, b)
+/// assert found.kind == "overlapping" and abs(found.volume - 1) < 1e-12
+/// assert not found.a_in_b and not found.b_in_a and found.contact is None
+/// ```
+#[pyclass(frozen, module = "arris")]
+#[derive(Clone, Debug)]
+pub struct Interference {
+    model: Arc<Shared>,
+    kernel: KernelInterference,
+}
+
+impl Interference {
+    /// The Python value of `kernel`, between bodies of `model`.
+    pub fn new(model: &Model, kernel: KernelInterference) -> Interference {
+        Interference {
+            model: Arc::clone(&model.shared),
+            kernel,
+        }
+    }
+}
+
+#[pymethods]
+impl Interference {
+    /// `"apart"`, `"touching"` or `"overlapping"`.
+    #[getter]
+    fn kind(&self) -> &'static str {
+        match self.kernel {
+            KernelInterference::Apart(_) => "apart",
+            KernelInterference::Touching { .. } => "touching",
+            KernelInterference::Overlapping { .. } => "overlapping",
+        }
+    }
+
+    /// The `Distance` between an apart pair; `None` otherwise.
+    #[getter]
+    fn distance(&self) -> Option<Distance> {
+        match self.kernel {
+            KernelInterference::Apart(d) => Some(Distance {
+                model: Arc::clone(&self.model),
+                kernel: d,
+            }),
+            _ => None,
+        }
+    }
+
+    /// The dimension of a touching pair's contact, `"point"`, `"curve"` or
+    /// `"face"`; `None` otherwise.
+    #[getter]
+    fn contact(&self) -> Option<&'static str> {
+        match self.kernel {
+            KernelInterference::Touching { contact, .. } => Some(match contact {
+                KernelContact::Point => "point",
+                KernelContact::Curve => "curve",
+                KernelContact::Face => "face",
+            }),
+            _ => None,
+        }
+    }
+
+    /// A point of a touching pair's contact; `None` otherwise.
+    #[getter]
+    fn at(&self) -> Option<(f64, f64, f64)> {
+        match self.kernel {
+            KernelInterference::Touching { at, .. } => Some(triple(at.x, at.y, at.z)),
+            _ => None,
+        }
+    }
+
+    /// The volume an overlapping pair shares; `None` otherwise.
+    #[getter]
+    fn volume(&self) -> Option<f64> {
+        match self.kernel {
+            KernelInterference::Overlapping { volume, .. } => Some(volume),
+            _ => None,
+        }
+    }
+
+    /// Whether the first solid lies wholly inside the second, for an
+    /// overlapping pair; `None` otherwise.
+    #[getter]
+    fn a_in_b(&self) -> Option<bool> {
+        match self.kernel {
+            KernelInterference::Overlapping { a_in_b, .. } => Some(a_in_b),
+            _ => None,
+        }
+    }
+
+    /// Whether the second solid lies wholly inside the first, for an
+    /// overlapping pair; `None` otherwise.
+    #[getter]
+    fn b_in_a(&self) -> Option<bool> {
+        match self.kernel {
+            KernelInterference::Overlapping { b_in_a, .. } => Some(b_in_a),
+            _ => None,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        match self.kernel {
+            KernelInterference::Apart(d) => format!("Interference(apart, distance={})", d.distance),
+            KernelInterference::Touching { at, .. } => format!(
+                "Interference(touching, contact={:?}, at={:?})",
+                self.contact().unwrap_or("?"),
+                triple(at.x, at.y, at.z)
+            ),
+            KernelInterference::Overlapping {
+                volume,
+                a_in_b,
+                b_in_a,
+            } => format!(
+                "Interference(overlapping, volume={volume}, a_in_b={a_in_b}, b_in_a={b_in_a})"
+            ),
+        }
+    }
+}
+
+/// One pair of bodies of an assembly that is not apart, from
+/// `Model.interference_many`.
+///
+/// `operands` are the indices `(i, j)`, `i < j`, of the two bodies in the list
+/// given, and `interference` is how the body at `i` (as the first) meets the
+/// body at `j`.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// a, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+/// b, _ = model.primitive_box((10, 0, 0), (12, 2, 2))
+/// c, _ = model.primitive_box((1, 1, 1), (3, 3, 3))
+/// [clash] = model.interference_many([a, b, c])
+/// assert clash.operands == (0, 2) and clash.interference.kind == "overlapping"
+/// ```
+#[pyclass(frozen, module = "arris")]
+#[derive(Clone, Debug)]
+pub struct Clash {
+    model: Arc<Shared>,
+    kernel: KernelClash,
+}
+
+impl Clash {
+    /// The Python value of `kernel`, between bodies of `model`.
+    pub fn new(model: &Model, kernel: KernelClash) -> Clash {
+        Clash {
+            model: Arc::clone(&model.shared),
+            kernel,
+        }
+    }
+}
+
+#[pymethods]
+impl Clash {
+    /// The indices of the two bodies in the list given, the lower first.
+    #[getter]
+    fn operands(&self) -> (usize, usize) {
+        let [i, j] = self.kernel.operands;
+        (i, j)
+    }
+
+    /// How they interfere: `"touching"` or `"overlapping"`.
+    #[getter]
+    fn interference(&self) -> Interference {
+        Interference {
+            model: Arc::clone(&self.model),
+            kernel: self.kernel.verdict,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Clash(operands={:?}, {})",
+            self.operands(),
+            self.interference().__repr__()
         )
     }
 }

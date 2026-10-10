@@ -5,7 +5,7 @@ module, and the docstrings live in the module, not here.
 """
 
 from collections.abc import Sequence
-from typing import Any, ClassVar, TypeAlias, final
+from typing import Any, ClassVar, Literal, TypeAlias, final
 
 __version__: str
 
@@ -210,6 +210,30 @@ class Distance:
     def unique(self) -> bool: ...
     @property
     def contained(self) -> bool: ...
+
+@final
+class Interference:
+    @property
+    def kind(self) -> Literal["apart", "touching", "overlapping"]: ...
+    @property
+    def distance(self) -> Distance | None: ...
+    @property
+    def contact(self) -> Literal["point", "curve", "face"] | None: ...
+    @property
+    def at(self) -> tuple[float, float, float] | None: ...
+    @property
+    def volume(self) -> float | None: ...
+    @property
+    def a_in_b(self) -> bool | None: ...
+    @property
+    def b_in_a(self) -> bool | None: ...
+
+@final
+class Clash:
+    @property
+    def operands(self) -> tuple[int, int]: ...
+    @property
+    def interference(self) -> Interference: ...
 
 @final
 class RayHit:
@@ -525,6 +549,21 @@ class Model:
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> Distance: ...
+    def interference(
+        self,
+        a: Body,
+        b: Body,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> Interference: ...
+    def interference_many(
+        self,
+        bodies: Sequence[Body],
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> list[Clash]: ...
     def check(self, body: Body, level: str = "fast") -> Report: ...
     def tessellate(
         self, body: Body, chord: float, *, cancel: Cancel | None = None, budget: int | None = None

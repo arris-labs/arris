@@ -164,10 +164,13 @@ bound has to be established here.
   backlog line. The boxes are tested pair by pair, not through a tree
   (ADR-0055 §7). `interference(a, a)` now answers instead of failing in the
   builder: found by the step 5 fixture.*
-- [ ] Step 8 **[1]** — Python: `Model.interference`,
+- [x] Step 8 **[1]** — Python: `Model.interference`,
   `Model.interference_many`, the classes, `_arris.pyi`, docstring
   examples, pytest cases; `CHANGELOG.md` `Unreleased` bullet (new API,
-  nothing under `Breaking`).
+  nothing under `Breaking`). *`Contact` is a string in Python
+  (`"point"`, `"curve"`, `"face"`), as the binding's other small
+  enumerations are, so there is no `Contact` class; `Interference.kind`
+  names the variant and the attributes of the others are `None`.*
 
 ## Acceptance
 `cargo nextest run --workspace` with the `query/interference-*` fixtures
