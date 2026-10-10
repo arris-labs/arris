@@ -227,7 +227,7 @@ bound has to be established here.
       - degree 25: 128 ms;
       - any of them against a circle: under 5 ms;
       - a near-continuum on the two-unknown route: up to 20 ms.
-- [ ] Step 2 **[1]** — ADR-0054 (above), with step 1's costs and the
+- [x] Step 2 **[1]** — ADR-0054 (above), with step 1's costs and the
   continuum rule.
 - [ ] Step 3 **[2]** — Point × surface and curve × surface:
   `Surface::feet` for every kind (closed forms, NURBS through its
