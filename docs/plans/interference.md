@@ -112,7 +112,7 @@ bound has to be established here.
     corner, crossing, one inside the other, equal; a ball inside a block
     with no vertex inside it (ADR-0054 §1's case); a pin in a hole with
     clearance (apart) and press-fit (overlapping). Rustdoc with an example.
-- [ ] Step 2 **[1]** — ADR-0055 (above), with step 1's measured cost and
+- [x] Step 2 **[1]** — ADR-0055 (above), with step 1's measured cost and
   the containment rule.
 - [ ] Step 3 **[2]** — The contact dimension from the pave model: `Face`
   for a flush pair whose overlap has area, `Curve` for a section curve or
