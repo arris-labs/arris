@@ -312,7 +312,7 @@ bound has to be established here.
       has no ball beside a pipe, a tipped ring over a floor, or a plane
       tangent-parallel to a cone, which it finds only as non-stationary
       or meeting pairs; the unit tests hold them by closed form.
-- [ ] Step 5 **[1]** — `Aabb::distance` and `FaceTree::nearest`, with
+- [x] Step 5 **[1]** — `Aabb::distance` and `FaceTree::nearest`, with
   rustdoc and an example each. A property over `prop::body` bodies checks
   that `nearest` returns exactly the faces brute force finds within the
   bound, in the stated order.

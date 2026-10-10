@@ -111,6 +111,30 @@ impl Aabb {
         (0..3).all(|i| self.min[i] <= other.max[i] && other.min[i] <= self.max[i])
     }
 
+    /// The distance between the two boxes: the length of the shortest
+    /// segment from a point of one to a point of the other, `0.0` when
+    /// they overlap or touch. It is a lower bound on the distance between
+    /// anything the boxes hold.
+    ///
+    /// ```
+    /// use arris_math::Aabb;
+    ///
+    /// let a = Aabb { min: [0.0; 3], max: [1.0; 3] };
+    /// let b = Aabb { min: [4.0, 5.0, 0.0], max: [5.0, 6.0, 1.0] };
+    /// assert_eq!(a.distance(&b), 5.0); // 3 along x, 4 along y
+    /// assert_eq!(a.distance(&a), 0.0);
+    /// ```
+    pub fn distance(&self, other: &Aabb) -> f64 {
+        let mut sq = 0.0;
+        for i in 0..3 {
+            let gap = (self.min[i] - other.max[i])
+                .max(other.min[i] - self.max[i])
+                .max(0.0);
+            sq += gap * gap;
+        }
+        sq.sqrt()
+    }
+
     /// The box grown by `by` on every side; a negative `by` shrinks it,
     /// and never past a point — the centre holds.
     ///

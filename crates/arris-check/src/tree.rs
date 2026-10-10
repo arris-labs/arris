@@ -223,6 +223,62 @@ impl FaceTree {
         out.sort_unstable();
         out
     }
+
+    /// The faces whose boxes lie within `bound` of `region`, each with
+    /// its [`Aabb::distance`] to it, by ascending distance, ties by
+    /// `FaceId`. The faces no box rejects come first at distance `0.0`.
+    /// A non-finite or negative `bound` yields no bounded face.
+    ///
+    /// ```
+    /// use arris_check::tree::FaceTree;
+    /// use arris_debug::sample;
+    /// use arris_math::Aabb;
+    /// use arris_topo::Model;
+    ///
+    /// let mut m = Model::default();
+    /// let body = sample::unit_box(&mut m)?;
+    /// let tree = FaceTree::of_body(&m, body)?;
+    /// let probe = Aabb { min: [0.4, 0.4, 3.0], max: [0.6, 0.6, 3.0] };
+    /// let near = tree.nearest(&probe, 5.0);
+    /// // The top face and the sides, 2 away to within the faces' tolerance.
+    /// assert!(near.windows(2).all(|w| w[0].0 <= w[1].0));
+    /// assert!((near[0].0 - 2.0).abs() < 1e-3);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn nearest(&self, region: &Aabb, bound: f64) -> Vec<(f64, FaceId)> {
+        let mut found: Vec<(f64, FaceId)> = Vec::new();
+        if bound >= 0.0 {
+            let mut stack: Vec<usize> = if self.nodes.is_empty() {
+                vec![]
+            } else {
+                vec![0]
+            };
+            while let Some(at) = stack.pop() {
+                let node = &self.nodes[at];
+                if node.bounds().distance(region) > bound {
+                    continue;
+                }
+                match *node {
+                    Node::Inner { left, right, .. } => {
+                        stack.push(right);
+                        stack.push(left);
+                    }
+                    Node::Leaf { first, count, .. } => {
+                        for (id, b) in &self.items[first..first + count] {
+                            let d = b.distance(region);
+                            if d <= bound {
+                                found.push((d, *id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        found.sort_unstable_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        let mut out: Vec<(f64, FaceId)> = self.unbounded.iter().map(|&id| (0.0, id)).collect();
+        out.extend(found);
+        out
+    }
 }
 
 /// Builds the node over `items[lo..hi]` and returns its index. Children

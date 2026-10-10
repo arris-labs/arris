@@ -118,6 +118,73 @@ fn along_and_near_agree_with_a_brute_force_box_test() {
 }
 
 #[test]
+fn nearest_agrees_with_a_brute_force_box_distance() {
+    prop_check(
+        (
+            prop::body::overlapping_pair(),
+            prop::point_in_box(2.0 * prop::DEFAULT_SCALE),
+            prop::radius(0.01..=30.0),
+            prop::radius(0.01..=30.0),
+            0usize..3,
+        ),
+        |(pair, at, half, bound, mode)| {
+            let mut m = Model::default();
+            let (a, b) = pair
+                .build(&mut m)
+                .map_err(|e| TestCaseError::fail(e.to_string()))?;
+            let body = match mode {
+                0 => a,
+                1 => b,
+                _ => {
+                    cut(&mut m, a, b)
+                        .map_err(|e| TestCaseError::fail(e.to_string()))?
+                        .0
+                }
+            };
+            let all = boxes(&m, body);
+            let tree =
+                FaceTree::of_body(&m, body).map_err(|e| TestCaseError::fail(e.to_string()))?;
+            let region = Aabb {
+                min: [at.x - half / 4.0, at.y - half / 4.0, at.z - half / 4.0],
+                max: [at.x + half / 4.0, at.y + half, at.z + half / 2.0],
+            };
+            // Unbounded faces first at 0, then ascending box distance,
+            // ties by id.
+            let mut want: Vec<(Option<f64>, FaceId)> = all
+                .iter()
+                .filter_map(|(id, b)| match b {
+                    None => Some((None, *id)),
+                    Some(b) => {
+                        let gap = |i: usize| {
+                            (b.min[i] - region.max[i])
+                                .max(region.min[i] - b.max[i])
+                                .max(0.0)
+                        };
+                        let d = (gap(0).powi(2) + gap(1).powi(2) + gap(2).powi(2)).sqrt();
+                        (d <= bound).then_some((Some(d), *id))
+                    }
+                })
+                .collect();
+            want.sort_by(|x, y| match (x.0, y.0) {
+                (None, None) => x.1.cmp(&y.1),
+                (None, Some(_)) => std::cmp::Ordering::Less,
+                (Some(_), None) => std::cmp::Ordering::Greater,
+                (Some(a), Some(b)) => a.total_cmp(&b).then(x.1.cmp(&y.1)),
+            });
+            let got = tree.nearest(&region, bound);
+            let ids: Vec<FaceId> = got.iter().map(|g| g.1).collect();
+            let want_ids: Vec<FaceId> = want.iter().map(|w| w.1).collect();
+            prop_assert_eq!(ids, want_ids);
+            for (g, w) in got.iter().zip(&want) {
+                prop_assert!((g.0 - w.0.unwrap_or(0.0)).abs() < 1e-12);
+            }
+            prop_assert_eq!(tree.nearest(&region, bound), got, "same on every run");
+            Ok(())
+        },
+    );
+}
+
+#[test]
 fn a_tree_over_no_boxes_answers_nothing_and_an_unbounded_face_always() {
     let empty = FaceTree::of_boxes(vec![]);
     assert!(empty.is_empty());
@@ -129,4 +196,6 @@ fn a_tree_over_no_boxes_answers_nothing_and_an_unbounded_face_always() {
     let tree = FaceTree::of_boxes(vec![(faces[0], None)]);
     assert_eq!(tree.along(o, Vec3::x(), (0.0, 1.0)), vec![faces[0]]);
     assert_eq!(tree.near(&Aabb::of_point(o)), vec![faces[0]]);
+    assert_eq!(tree.nearest(&Aabb::of_point(o), 0.0), vec![(0.0, faces[0])]);
+    assert!(empty.nearest(&Aabb::of_point(o), f64::INFINITY).is_empty());
 }
