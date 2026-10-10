@@ -146,12 +146,15 @@ bound has to be established here.
   never answered but by a point query. The primitives fixture gained a ball
   with no vertex inside the block, a ball, a torus and a frustum through a
   face; two tangent balls stay out (step 3's backlog line).*
-- [ ] Step 6 **[2]** — Properties (`prop_shards!`, `prop::body` operands
+- [x] Step 6 **[2]** — Properties (`prop_shards!`, `prop::body` operands
   in random poses): not apart ⇔ `distance ≤ tolerance.linear`; the volume equals
   `common`'s `mass_properties` volume bit for bit; swapping operands swaps
   the flags and keeps the rest; translating both keeps the verdict;
   `vol(a) = volume + vol(cut(a, b))` within the fixture tolerance where
   overlapping; the model unchanged (`dump` before and after equal).
+  *The translation and swap properties compare volumes to 1e-6 relative,
+  not bit for bit; only the `common` identity is exact. Pairs either query
+  refuses are skipped as `distance_prop` does.*
 - [ ] Step 7 **[2]** — `interference_many` and `Clash`: body-box pruning,
   ascending pairs, `Control` polled per pair. Tests: the result equals
   `interference` over every pair by brute force on a random assembly of
