@@ -1,0 +1,34 @@
+{
+  "kind": "query",
+  "description": "cubes of side 10 against a base cube: apart, on a face, on an edge, at a corner, crossing and inside, both operand orders; two cylinders side by side touch along a ruling",
+  "steps": [
+    {"name": "base", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+    {"name": "far", "op": "box", "min": [20, 0, 0], "max": [30, 10, 10]},
+    {"name": "flush", "op": "box", "min": [10, 0, 0], "max": [20, 10, 10]},
+    {"name": "edge", "op": "box", "min": [10, 10, 0], "max": [20, 20, 10]},
+    {"name": "corner", "op": "box", "min": [10, 10, 10], "max": [20, 20, 20]},
+    {"name": "crossing", "op": "box", "min": [5, 5, 5], "max": [15, 15, 15]},
+    {"name": "inside", "op": "box", "min": [2, 2, 2], "max": [4, 4, 4]},
+    {"name": "twin", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+    {"name": "rod_a", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 3, "height": 10},
+    {"name": "rod_b", "op": "cylinder", "base": [6, 0, 0], "axis": [0, 0, 1], "radius": 3, "height": 10}
+  ],
+  "result": "base",
+  "queries": [
+    {"label": "apart", "interference": {"a": {"step": "base"}, "b": {"step": "far"}}, "expect": "apart"},
+    {"label": "apart, swapped", "interference": {"a": {"step": "far"}, "b": {"step": "base"}}, "expect": "apart"},
+    {"label": "on a face", "interference": {"a": {"step": "base"}, "b": {"step": "flush"}}, "expect": "touching", "expect_contact": "face"},
+    {"label": "on a face, swapped", "interference": {"a": {"step": "flush"}, "b": {"step": "base"}}, "expect": "touching", "expect_contact": "face"},
+    {"label": "on an edge", "interference": {"a": {"step": "base"}, "b": {"step": "edge"}}, "expect": "touching", "expect_contact": "curve"},
+    {"label": "on an edge, swapped", "interference": {"a": {"step": "edge"}, "b": {"step": "base"}}, "expect": "touching", "expect_contact": "curve"},
+    {"label": "at a corner", "interference": {"a": {"step": "base"}, "b": {"step": "corner"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "at a corner, swapped", "interference": {"a": {"step": "corner"}, "b": {"step": "base"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "crossing", "interference": {"a": {"step": "base"}, "b": {"step": "crossing"}}, "expect": "overlapping", "expect_volume": 125},
+    {"label": "crossing, swapped", "interference": {"a": {"step": "crossing"}, "b": {"step": "base"}}, "expect": "overlapping", "expect_volume": 125},
+    {"label": "one inside the other", "interference": {"a": {"step": "base"}, "b": {"step": "inside"}}, "expect": "overlapping", "expect_volume": 8},
+    {"label": "one inside the other, swapped", "interference": {"a": {"step": "inside"}, "b": {"step": "base"}}, "expect": "overlapping", "expect_volume": 8},
+    {"label": "equal", "interference": {"a": {"step": "base"}, "b": {"step": "twin"}}, "expect": "overlapping", "expect_volume": 1000},
+    {"label": "cylinders side by side", "interference": {"a": {"step": "rod_a"}, "b": {"step": "rod_b"}}, "expect": "touching", "expect_contact": "curve"},
+    {"label": "cylinders side by side, swapped", "interference": {"a": {"step": "rod_b"}, "b": {"step": "rod_a"}}, "expect": "touching", "expect_contact": "curve"}
+  ]
+}

@@ -30,6 +30,7 @@ use arris_topo::{EntityId, FaceId, Model};
 use serde::{Deserialize, Serialize};
 
 mod distance;
+mod interference;
 
 use crate::corpus::{self, CorpusError};
 use crate::fixtures::{
@@ -78,6 +79,21 @@ pub struct Query {
     /// oracle's to and the runner Arris's. `None` leaves it to the oracle.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect_distance: Option<Num>,
+    /// The two whole-body operands, for an interference query (ADR-0055).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interference: Option<DistanceSpec>,
+    /// The verdict the author works out by hand — `apart`, `touching` or
+    /// `overlapping` — the lint holds to the oracle's and the runner to
+    /// Arris's. `None` leaves it to the oracle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect: Option<String>,
+    /// The shared volume worked out by hand, for an overlapping pair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_volume: Option<Num>,
+    /// The contact dimension worked out by hand — `point`, `curve` or
+    /// `face` — for a touching pair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_contact: Option<String>,
 }
 
 /// The two operands of a distance query.
@@ -154,6 +170,31 @@ pub struct Answer {
     /// The oracle's distance, for a distance query.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub distance: Option<OracleDistance>,
+    /// The oracle's verdict, for an interference query.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interference: Option<OracleInterference>,
+}
+
+/// The oracle's answer to an interference query: `BRepExtrema`'s distance,
+/// `BRepAlgoAPI_Common`'s volume, and the contact it found.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OracleInterference {
+    /// The minimum distance.
+    pub distance: f64,
+    /// `apart`, `touching` or `overlapping`.
+    pub verdict: String,
+    /// The common's volume, for an overlapping pair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub volume: Option<f64>,
+    /// The first operand lies in the second, for an overlapping pair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub a_in_b: Option<bool>,
+    /// The second operand lies in the first, for an overlapping pair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub b_in_a: Option<bool>,
+    /// `point`, `curve` or `face`, for a touching pair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contact: Option<String>,
 }
 
 /// One closest pair as `BRepExtrema_DistShapeShape` reports it.
@@ -431,6 +472,13 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                     label: query.label.clone(),
                 });
             };
+            if let Some(spec) = &query.interference {
+                if query.ray.is_some() || query.distance.is_some() {
+                    return Err(mismatch("more than one form".into()));
+                }
+                interference::run(&fixture, &variant, &chain, query, spec, answer)?;
+                continue;
+            }
             if let Some(spec) = &query.distance {
                 if query.ray.is_some() {
                     return Err(mismatch("both a ray and a distance".into()));
@@ -610,8 +658,8 @@ pub fn lint(dir: &Path) -> Vec<String> {
             continue;
         };
         for q in &fixture.queries {
-            match (&q.ray, &q.distance) {
-                (Some(ray), None) => {
+            match (&q.ray, &q.distance, &q.interference) {
+                (Some(ray), None, None) => {
                     let ray = [&ray.origin, &ray.direction].map(|v| {
                         let n = |i: usize| v[i].eval(&params);
                         Ok::<_, fixtures::ExprError>([n(0)?, n(1)?, n(2)?])
@@ -635,13 +683,21 @@ pub fn lint(dir: &Path) -> Vec<String> {
                         ));
                     }
                 }
-                (None, Some(spec)) => {
+                (None, Some(spec), None) => {
                     for text in distance::lint_spec(r, &params, spec) {
                         problem(format!("[{variant}] query {:?}: {text}", q.label));
                     }
                 }
+                (None, None, Some(spec)) => {
+                    for text in distance::lint_spec(r, &params, spec) {
+                        problem(format!("[{variant}] query {:?}: {text}", q.label));
+                    }
+                    for text in interference::lint(q, &params, answers) {
+                        problem(format!("[{variant}] query {:?}: {text}", q.label));
+                    }
+                }
                 _ => problem(format!(
-                    "[{variant}] query {:?}: needs exactly one of `ray` and `distance`",
+                    "[{variant}] query {:?}: needs exactly one of `ray`, `distance` and `interference`",
                     q.label
                 )),
             }
@@ -693,9 +749,12 @@ pub fn lint(dir: &Path) -> Vec<String> {
             if !answers.queries.iter().any(|a| {
                 a.has_shared_hits(r.tolerances.probe)
                     || a.distance.as_ref().is_some_and(|d| d.solutions.len() > 1)
+                    || a.interference
+                        .as_ref()
+                        .is_some_and(|i| i.verdict == "touching")
             }) {
                 problem(format!(
-                    "[{variant}] analytic.query_differs is set but no answer of the oracle reports a hit twice or lists several solutions"
+                    "[{variant}] analytic.query_differs is set but no answer of the oracle reports a hit twice, lists several solutions or a touching pair"
                 ));
             }
         } else if let Some(a) = answers

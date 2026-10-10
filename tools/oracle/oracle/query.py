@@ -23,6 +23,19 @@ between kernels). The answer is `BRepExtrema_DistShapeShape`'s: the
 (`vertex`, `edge`, `face`) and a face's `_face_centroid`, and `contained`
 from `InnerSolution`. A point operand is a vertex to Open CASCADE.
 
+An interference query is `{"label", "interference": {"a": <operand>, "b":
+<operand>}}` with whole `{"step": …}` operands (ADR-0055). The answer holds
+the `distance` (`BRepExtrema_DistShapeShape`), the `verdict` (`apart` when
+the distance exceeds the fixture's `probe`; else `overlapping` when
+`BRepAlgoAPI_Common` has a volume above 1e-9 of the smaller operand's;
+else `touching`), the common's
+`volume` and the containment flags `a_in_b` / `b_in_a` (the common's
+volume equals the operand's), and for a touching pair the `contact`
+dimension: `face` when some face pair's `BRepAlgoAPI_Common` has area,
+else `curve` when `BRepAlgoAPI_Section` holds an edge of positive length,
+else `point`. `BRepAlgoAPI_Section` alone reports only the boundary of a
+face contact, so the face test is the pairwise common.
+
 A ray is a half-line from `origin` along `direction` (normalised), so `t`
 is the distance along it and a hit at a negative `t` is never reported
 (ADR-0053 §5). The answer per variant and query is every hit of
@@ -40,6 +53,9 @@ at it; the runner holds Arris to one (`analytic.query_differs`, ADR-0053
 from typing import Any
 
 from OCP.BRepAdaptor import BRepAdaptor_Surface
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Section
+from OCP.BRepBndLib import BRepBndLib
+from OCP.Bnd import Bnd_Box
 from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeVertex
 from OCP.BRepExtrema import (
     BRepExtrema_DistShapeShape,
@@ -84,6 +100,10 @@ def _answer(
         if "ray" in query:
             raise OracleError(f"query {label!r}: a ray or a distance, not both")
         return {"label": label, "distance": _distance(shapes, query["distance"], params, label)}
+    if "interference" in query:
+        if "ray" in query:
+            raise OracleError(f"query {label!r}: a ray or an interference, not both")
+        return {"label": label, "interference": _interference(shapes, query["interference"], params, label, tolerance)}
     if query.get("hits") not in ("first", "all"):
         raise OracleError(f"query {label!r}: `hits` is `first` or `all`")
     ray = query.get("ray")
@@ -177,6 +197,79 @@ def _distance(shapes: dict[str, TopoDS_Shape], spec: dict, params: dict[str, flo
                 solution[f"{side}_face_centroid"] = _centroid(on)
         solutions.append(solution)
     return {"distance": extrema.Value(), "solutions": solutions, "contained": bool(extrema.InnerSolution())}
+
+
+def _volume(shape: TopoDS_Shape) -> float:
+    props = GProp_GProps()
+    BRepGProp.VolumeProperties_s(shape, props)
+    return props.Mass()
+
+
+def _area(shape: TopoDS_Shape) -> float:
+    props = GProp_GProps()
+    BRepGProp.SurfaceProperties_s(shape, props)
+    return props.Mass()
+
+
+def _interference(shapes: dict[str, TopoDS_Shape], spec: dict, params: dict[str, float], label: str, probe: float) -> dict:
+    """The verdict on two solids; see the module docstring."""
+    a = _operand(shapes, spec["a"], params, label)
+    b = _operand(shapes, spec["b"], params, label)
+    extrema = BRepExtrema_DistShapeShape(a, b)
+    if not extrema.IsDone():
+        raise OracleError(f"query {label!r}: BRepExtrema_DistShapeShape failed")
+    distance = extrema.Value()
+    out: dict[str, Any] = {"distance": distance}
+    if distance > probe:
+        out["verdict"] = "apart"
+        return out
+    common = BRepAlgoAPI_Common(a, b)
+    if not common.IsDone():
+        raise OracleError(f"query {label!r}: BRepAlgoAPI_Common failed")
+    volume = _volume(common.Shape())
+    va, vb = _volume(a), _volume(b)
+    if volume > 1e-9 * min(va, vb):
+        out.update(
+            {
+                "verdict": "overlapping",
+                "volume": volume,
+                "a_in_b": abs(volume - va) <= 1e-9 * va,
+                "b_in_a": abs(volume - vb) <= 1e-9 * vb,
+            }
+        )
+        return out
+    out["verdict"] = "touching"
+    out["contact"] = _contact(a, b, probe)
+    return out
+
+
+def _contact(a: TopoDS_Shape, b: TopoDS_Shape, probe: float) -> str:
+    """`face`, `curve` or `point`: the dimension of what two touching
+    solids share."""
+    boxes = []
+    for shape in (a, b):
+        boxes.append([(f, _box(f, probe)) for f in _entities(shape, TopAbs_FACE)])
+    for fa, ba in boxes[0]:
+        for fb, bb in boxes[1]:
+            if ba.IsOut(bb):
+                continue
+            common = BRepAlgoAPI_Common(fa, fb)
+            if common.IsDone() and _area(common.Shape()) > probe * probe:
+                return "face"
+    section = BRepAlgoAPI_Section(a, b)
+    for edge in _entities(section.Shape(), TopAbs_EDGE):
+        props = GProp_GProps()
+        BRepGProp.LinearProperties_s(edge, props)
+        if props.Mass() > probe:
+            return "curve"
+    return "point"
+
+
+def _box(shape: TopoDS_Shape, gap: float) -> Bnd_Box:
+    box = Bnd_Box()
+    BRepBndLib.Add_s(shape, box)
+    box.SetGap(gap)
+    return box
 
 
 def _transition(transition) -> str:

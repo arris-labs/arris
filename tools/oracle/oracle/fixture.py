@@ -191,6 +191,10 @@ def summary_lines(name: str, expected: dict) -> list[str]:
                 f"{len(q['distance']['solutions'])} solution(s)"
                 + (", contained" if q["distance"]["contained"] else "")
                 if "distance" in q
+                else f"{name}[{variant}] {q['label']}: {q['interference']['verdict']}"
+                + (f", {q['interference']['contact']} contact" if "contact" in q["interference"] else "")
+                + (f", volume {q['interference']['volume']:.10g}" if "volume" in q["interference"] else "")
+                if "interference" in q
                 else f"{name}[{variant}] {q['label']}: {len(q['hits'])} hits"
                 + "".join(f" t={h['t']:.10g}" for h in q["hits"])
             )

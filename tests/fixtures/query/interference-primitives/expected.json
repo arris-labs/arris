@@ -1,0 +1,139 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "aeb09656711a70df6b5d402889fe3f5af9e5ef8a00f3864f4b217b4ca7251f31",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "distance": 10.0,
+            "verdict": "apart"
+          },
+          "label": "apart"
+        },
+        {
+          "interference": {
+            "distance": 10.0,
+            "verdict": "apart"
+          },
+          "label": "apart, swapped"
+        },
+        {
+          "interference": {
+            "contact": "face",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "on a face"
+        },
+        {
+          "interference": {
+            "contact": "face",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "on a face, swapped"
+        },
+        {
+          "interference": {
+            "contact": "curve",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "on an edge"
+        },
+        {
+          "interference": {
+            "contact": "curve",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "on an edge, swapped"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "at a corner"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "at a corner, swapped"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 124.99999999999997
+          },
+          "label": "crossing"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 124.99999999999997
+          },
+          "label": "crossing, swapped"
+        },
+        {
+          "interference": {
+            "a_in_b": false,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 7.999999999999998
+          },
+          "label": "one inside the other"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": false,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 7.999999999999998
+          },
+          "label": "one inside the other, swapped"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 999.9999999999998
+          },
+          "label": "equal"
+        },
+        {
+          "interference": {
+            "contact": "curve",
+            "distance": 1.102182119232618e-15,
+            "verdict": "touching"
+          },
+          "label": "cylinders side by side"
+        },
+        {
+          "interference": {
+            "contact": "curve",
+            "distance": 1.102182119232618e-15,
+            "verdict": "touching"
+          },
+          "label": "cylinders side by side, swapped"
+        }
+      ]
+    }
+  }
+}

@@ -589,10 +589,60 @@ def check_distance_smoke() -> bool:
     return ok
 
 
+# An interference query against closed forms: a cube 10 on a side beside
+# a second cube apart, on a face, on an edge, at a corner, crossing it and
+# inside it.
+_CUBES = {
+    "apart": ([20, 0, 0], [30, 10, 10]),
+    "face": ([10, 0, 0], [20, 10, 10]),
+    "edge": ([10, 10, 0], [20, 20, 10]),
+    "corner": ([10, 10, 10], [20, 20, 20]),
+    "crossing": ([5, 5, 5], [15, 15, 15]),
+    "inside": ([2, 2, 2], [4, 4, 4]),
+}
+INTERFERENCE_SMOKE = {
+    "name": "query: interference of cubes, apart, on a face, an edge, a corner, crossing and inside",
+    "recipe": {
+        "kind": "query",
+        "steps": [{"name": "base", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]}]
+        + [{"name": n, "op": "box", "min": lo, "max": hi} for n, (lo, hi) in _CUBES.items()],
+        "result": "base",
+        "queries": [
+            {"label": n, "interference": {"a": {"step": "base"}, "b": {"step": n}}} for n in _CUBES
+        ],
+    },
+    # (verdict, contact, volume, a_in_b, b_in_a) per query.
+    "answers": {
+        "apart": ("apart", None, None, None, None),
+        "face": ("touching", "face", None, None, None),
+        "edge": ("touching", "curve", None, None, None),
+        "corner": ("touching", "point", None, None, None),
+        "crossing": ("overlapping", None, 125.0, False, False),
+        "inside": ("overlapping", None, 8.0, False, True),
+    },
+}
+
+
+def check_interference_smoke() -> bool:
+    smoke = INTERFERENCE_SMOKE
+    print(f"smoke: {smoke['name']}")
+    expected = compute_expected(smoke["recipe"])
+    ok = True
+    for q in expected["results"]["default"]["queries"]:
+        verdict, contact, volume, a_in_b, b_in_a = smoke["answers"][q["label"]]
+        i = q["interference"]
+        got = (i["verdict"], i.get("contact"), i.get("volume"), i.get("a_in_b"), i.get("b_in_a"))
+        if got[:2] != (verdict, contact) or got[3:] != (a_in_b, b_in_a) or (volume or 0) - (got[2] or 0) > 1e-9:
+            print(f"  {q['label']}: {got} differs from {(verdict, contact, volume, a_in_b, b_in_a)}")
+            ok = False
+    return ok
+
+
 def run_smokes(tmp: Path) -> bool:
     ok = check_geometry_smoke()
     ok &= check_query_smoke()
     ok &= check_distance_smoke()
+    ok &= check_interference_smoke()
     ok &= check_expr_cases()
     ok &= check_degenerate_edge_smoke(tmp)
     ok &= check_step_solids_smoke(tmp)

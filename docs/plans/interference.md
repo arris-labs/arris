@@ -124,12 +124,15 @@ bound has to be established here.
   (a point tangency), so those poses became a backlog line and stay out of
   the tests; the face contact is the `ZeroThickness` of step 1, which
   needs no pave-model reading.*
-- [ ] Step 4 **[2]** — The `interference` query form in `arris-debug` and
+- [x] Step 4 **[2]** — The `interference` query form in `arris-debug` and
   `tools/oracle` (`expected.py`, `query.py`, `selftest.py`), the runner's
   comparison (verdict exact, volume within the fixture's tolerance scaled
   to volume as `measure` fixtures are, containment flags, the contact
   dimension unless `query_differs`), `tests/fixtures/README.md`
-  §Query fixtures.
+  §Query fixtures. *Landed with one starter fixture,
+  `query/interference-primitives` (the cube poses and two cylinders along a
+  ruling, both orders), which step 5 extends. The open question below is
+  settled: the section alone cannot tell, the pairwise common of faces can.*
 - [ ] Step 5 **[1]** — The corpus: `query/interference-primitives` (the
   step 1 and step 3 poses, sphere, cylinder, cone and torus among them),
   `query/interference-parts` (a drilled real-tier plate against a pin at
@@ -177,6 +180,7 @@ identity.
 
 ## Open questions
 - Settled in step 1: scratch `Model::clone`, by its measured 630 ns.
-- ⚠ OPEN: whether Open CASCADE's `BRepAlgoAPI_Section` can tell face
-  contact from a curve contact for the oracle, or every face-contact
-  fixture needs `query_differs` — agent, at step 4.
+- Settled in step 4: `BRepAlgoAPI_Section` alone reports only a face
+  contact's boundary curves, so the oracle tells `face` by the
+  `BRepAlgoAPI_Common` of face pairs having area; `query_differs` is not
+  needed for contact.

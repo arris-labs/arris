@@ -840,6 +840,26 @@ and section plans add theirs to the same `queries` list. They sit under
   equal "the oracle lists one solution" unless `analytic.query_differs`
   records why, which then also lets a foot match none of the listed
   solutions.
+- An **interference query** (ADR-0055) is `"interference": {"a": {"step":
+  …}, "b": {"step": …}}`, whole bodies only, with the hand-worked `expect`
+  (`apart`, `touching` or `overlapping`), `expect_volume` (an overlapping
+  pair) and `expect_contact` (`point`, `curve` or `face`, a touching pair),
+  each optional and held to the oracle's by the lint. The two operands
+  must be different bodies: a step against itself is not a pair. The
+  oracle's answer is `verdict`, the `distance` of
+  `BRepExtrema_DistShapeShape` (apart when it exceeds `probe`), and for
+  an overlapping pair the volume of `BRepAlgoAPI_Common` (a pair is
+  overlapping when that is above 1e-9 of the smaller operand's) with
+  `a_in_b` / `b_in_a`, true when the common's volume equals that operand's;
+  for a touching pair the `contact`: `face` when some pair of faces has a
+  `BRepAlgoAPI_Common` with area, else `curve` when
+  `BRepAlgoAPI_Section` holds an edge of positive length, else `point`
+  (the section alone reports only the boundary of a face contact, so the
+  pairwise common tells face from curve). The runner compares the verdict
+  exactly, an apart pair's distance within `probe`, the volume relative
+  to `volume_rel`, the containment flags exactly and the contact exactly
+  unless `analytic.query_differs` records why it differs, which the lint
+  accepts when some answer is a touching pair.
 - The hash covers `kind`, `params`, `variants`, `steps`, `result` and
   `queries`.
 - No `dump.txt`: the result's own dump is the solid kinds'.

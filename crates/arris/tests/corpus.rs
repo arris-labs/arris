@@ -111,6 +111,10 @@ corpus_tests! {
     /// A pin in a drilled hole, a ball on a blend, a countersink against a
     /// tilted plane, a B-spline cylinder from STEP, a pair far from the origin.
     query_distance_parts => query "query/distance-parts";
+    /// Cubes against a cube: apart, on a face, on an edge, at a corner,
+    /// crossing and inside, both orders, and two cylinders along a ruling
+    /// (ADR-0055).
+    query_interference_primitives => query "query/interference-primitives";
     /// Two bodies with off-axis cones that pruning skips: the bars' distance.
     query_distance_cones_pruned => query "query/distance-cones-pruned";
     primitive_box => run "primitive/box";
