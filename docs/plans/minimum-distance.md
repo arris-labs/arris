@@ -338,12 +338,28 @@ bound has to be established here.
     linear tolerance of the least makes `unique` false even when the pick is
     an isolated foot at the same place (a point on a cylinder's axis against
     its wall: the seam's foot and the ring coincide).
-- [ ] Step 7 **[2]** — Entity × entity, i.e. vertex, edge and face pairs,
+- [x] Step 7 **[2]** — Entity × entity, i.e. vertex, edge and face pairs,
   by the boundary recursion over steps 1–4. It includes the continuum
   rule, the uniqueness flag and the deterministic pick. Fixture
   `query/distance-faces` covers two parallel plates offset so that the
   minimum is a continuum reached at an edge, a cylinder face against a
   plane face, and an edge against a torus face.
+  - *As built:* the recursion is `entity_vs` in `ops::query::distance`:
+    edge × edge (ends against the other edge, then `extrema_curve_curve`),
+    edge × face (ends against the face, the edge against each face edge,
+    then `extrema_curve_surface`) and face × face (each face's edges
+    against the other, then `extrema_surface_surface`). **Contact moved
+    here from step 8** for face × face: `intersect_surfaces` over the boxes'
+    overlap, and a point of each closed loop or touching point decides
+    whether it lies inside both trims (a ball resting on a plate has no
+    edge on its contact). Step 8 reuses it per face pair. The pick prefers
+    the most specific entity pair, so the facing edges of offset plates
+    answer with their end vertices and `unique` is false. The ⚠ OPEN
+    question is settled in ADR-0054 §6: seams, and the continuum's
+    representative as a candidate; a second component at the same distance
+    is the one thing unseen. The fixture needs `analytic.query_differs`
+    for the stand wall over a plate, where Open CASCADE lists one pair of
+    a ring.
 - [ ] Step 8 **[2]** — Body against anything:
   - the nearest-first walk with the shrinking bound;
   - contact by the boolean's face–face section;
@@ -430,9 +446,7 @@ delegation (2026-10-10) and recorded in ADR-0054 at step 2:
    solver, to be picked up when a corpus shows the refusal.
 4. **One ADR**, ADR-0054, in step 2.
 
-- ⚠ OPEN: does the continuum rule's argument hold for every trimmed face
-  the kernel can build? A closed level set inside both trims that crosses
-  no seam would be missed: a face whose domain is a disk around a pole,
-  with no seam inside it. The agent decides at step 7, by a fixture that
-  builds such a face if the kernel can, and by a representative point of
-  the continuum as a candidate if it can.
+- Settled at step 7 (ADR-0054 §6): the continuum rule holds because the
+  kernel's periodic faces carry their seams, and the representative is a
+  candidate where it lies inside both trims. A second component of a
+  level set at the same distance, wholly inside the trims, is unseen.

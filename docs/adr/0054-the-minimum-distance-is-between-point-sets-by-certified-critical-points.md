@@ -86,12 +86,23 @@ because every closed family of the analytic kinds crosses a periodic seam,
 which is an edge, so a boundary term attains the same distance. The
 argument fails for a closed level set that lies inside both trims and
 crosses no seam (a face whose domain is a disk around a pole); the plan's
-open question holds that, to be settled by a fixture in step 7. A
-continuum makes `unique` false.
+open question held that; step 7 settled it. A closed level set inside
+both trims that crosses no seam needs a face whose boundary is not a seam
+and lies off the level set, and the kernel's periodic faces carry their
+seams, so the level set of every family of the analytic kinds crosses one.
+The representative a continuum returns is also a candidate wherever it lies
+inside both trims, which covers a level set wholly inside them. What stays
+unseen is a second, separate component at the same distance, inside the
+trims and crossing no boundary, while the representative lies on another;
+the answer's `unique` is false for the continuum either way. A continuum
+makes `unique` false.
 
 **7. Contact is decided by the section.** Before the walk, the face pairs
-whose boxes overlap are intersected by the boolean's face–face section. A
-section point inside both domains gives distance 0 at that point. This is
+whose boxes overlap are intersected (`intersect_surfaces`, the section the
+boolean uses). A section that crosses a boundary of either face is already a
+meeting of an edge with the other face; one lying inside both is a closed
+loop or an isolated touching point, and a point of each decides it. That
+point inside both domains gives distance 0 there. This is
 also what interference will reuse.
 
 **8. The `distance` query form**: `{"distance": {"a": <operand>, "b":

@@ -1,0 +1,263 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "00c3e3d87f4d8eb928013279f2f1a921439996b6f46d1e06583d2c9dcfe4e58e",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "distance": {
+            "contained": false,
+            "distance": 28.284271247461902,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  30.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  60.0,
+                  30.0,
+                  30.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  40.0,
+                  0.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  60.0,
+                  0.0,
+                  30.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "plates offset in x and z"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 28.284271247461902,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  0.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  60.0,
+                  0.0,
+                  30.0
+                ],
+                "b_support": "vertex"
+              },
+              {
+                "a": [
+                  40.0,
+                  30.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  60.0,
+                  30.0,
+                  30.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "plates facing each other"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 10.0,
+            "solutions": [
+              {
+                "a": [
+                  25.0,
+                  15.0,
+                  20.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  25.0,
+                  15.0,
+                  10.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "stand wall over the plate"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 5.0,
+            "solutions": [
+              {
+                "a": [
+                  35.0,
+                  15.0,
+                  15.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  35.0,
+                  15.0,
+                  10.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  10.0
+                ],
+                "b_support": "face"
+              },
+              {
+                "a": [
+                  5.0,
+                  15.0,
+                  15.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  5.0,
+                  15.0,
+                  10.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  10.0
+                ],
+                "b_support": "face"
+              },
+              {
+                "a": [
+                  31.704671056835004,
+                  14.999999992330483,
+                  15.0
+                ],
+                "a_face_centroid": [
+                  20.0,
+                  15.0,
+                  20.000000000000004
+                ],
+                "a_support": "face",
+                "b": [
+                  31.70467104842815,
+                  14.999999978636717,
+                  10.0
+                ],
+                "b_face_centroid": [
+                  20.0,
+                  14.999999999999996,
+                  10.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "roller wall over the plate"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 29.6227766016838,
+            "solutions": [
+              {
+                "a": [
+                  70.0,
+                  0.0,
+                  40.0
+                ],
+                "a_support": "edge",
+                "b": [
+                  70.0,
+                  9.367544467966326,
+                  68.10263340389898
+                ],
+                "b_face_centroid": [
+                  70.0,
+                  15.0,
+                  70.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "plate edge against the torus"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 28.284271247461902,
+            "solutions": [
+              {
+                "a": [
+                  40.0,
+                  0.0,
+                  10.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  60.0,
+                  0.0,
+                  30.0
+                ],
+                "b_support": "vertex"
+              }
+            ]
+          },
+          "label": "edge against an edge of the other plate"
+        },
+        {
+          "distance": {
+            "contained": false,
+            "distance": 54.568542494923804,
+            "solutions": [
+              {
+                "a": [
+                  25.0,
+                  15.0,
+                  30.0
+                ],
+                "a_support": "vertex",
+                "b": [
+                  63.58578643762691,
+                  15.0,
+                  68.58578643762691
+                ],
+                "b_face_centroid": [
+                  70.0,
+                  15.0,
+                  70.0
+                ],
+                "b_support": "face"
+              }
+            ]
+          },
+          "label": "stand against the torus"
+        }
+      ]
+    }
+  }
+}

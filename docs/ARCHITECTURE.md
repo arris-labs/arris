@@ -333,7 +333,13 @@ entity is the critical feet of the point on the carrier (`Curve::feet`,
 of the entity's boundary, face to edges and edge to end vertices; a
 continuum adds a candidate only through its representative. A body is
 walked through `FaceTree::nearest`, nearest box first, stopping at the first
-box farther than the best distance. Of several closest pairs within the
+box farther than the best distance. Two entities (an edge or a face each)
+are the same recursion on boundaries: the stationary pairs of their
+carriers (`extrema_curve_curve`, `extrema_curve_surface`,
+`extrema_surface_surface`) that lie inside both trims, an edge's ends
+against the other entity and the boundary of each against the other; two
+faces add a contact test, one point of each section that lies inside both
+trims (a loop or a touching point). Of several closest pairs within the
 linear tolerance the lowest by (vertex, edge, face), entity id, parameter is
 returned, and `unique` says whether it was alone. The control is polled once
 per entity.

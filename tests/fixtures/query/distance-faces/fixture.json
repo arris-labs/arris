@@ -1,0 +1,39 @@
+{
+  "kind": "query",
+  "description": "plates offset in x and z (a continuum along their facing edges), a cylinder wall over a plate (a ring of nearest points), a horizontal cylinder over it (a ruling), a plate edge against a torus face, and two edges",
+  "steps": [
+    {"name": "plate_a", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]},
+    {"name": "plate_b", "op": "box", "min": [60, 0, 30], "max": [100, 30, 40]},
+    {"name": "stand", "op": "cylinder", "base": [20, 15, 20], "axis": [0, 0, 1], "radius": 5, "height": 10},
+    {"name": "roller", "op": "cylinder", "base": [5, 15, 20], "axis": [1, 0, 0], "radius": 5, "height": 30},
+    {
+      "name": "ring",
+      "op": "profile",
+      "plane": {"origin": [70, 15, 70], "x": [1, 0, 0], "y": [0, 0, 1]},
+      "outer": {"circle": {"center": [5, 0], "radius": 2}}
+    },
+    {"name": "torus", "op": "revolve", "profile": "ring", "axis": {"origin": [70, 15, 70], "direction": [0, 0, 1]}, "angle_deg": 360}
+  ],
+  "analytic": {"query_differs": "Open CASCADE lists one pair for a ring of equally near points (the stand wall over the plate) and the sampled ends of a family elsewhere; Arris returns one pair and says unique is false"},
+  "result": "plate_a",
+  "queries": [
+    {"label": "plates offset in x and z",
+     "distance": {"a": {"step": "plate_a", "face": {"near": [20, 15, 10]}}, "b": {"step": "plate_b", "face": {"near": [80, 15, 30]}}},
+     "expect_distance": 28.284271247461902},
+    {"label": "plates facing each other",
+     "distance": {"a": {"step": "plate_a", "face": {"near": [40, 15, 5]}}, "b": {"step": "plate_b", "face": {"near": [60, 15, 35]}}},
+     "expect_distance": 28.284271247461902},
+    {"label": "stand wall over the plate",
+     "distance": {"a": {"step": "stand", "face": {"near": [25, 15, 25]}}, "b": {"step": "plate_a", "face": {"near": [20, 15, 10]}}},
+     "expect_distance": 10},
+    {"label": "roller wall over the plate",
+     "distance": {"a": {"step": "roller", "face": {"near": [20, 15, 25]}}, "b": {"step": "plate_a", "face": {"near": [20, 15, 10]}}},
+     "expect_distance": 5},
+    {"label": "plate edge against the torus",
+     "distance": {"a": {"step": "plate_b", "edge": {"near": [80, 0, 40]}}, "b": {"step": "torus", "face": {"near": [75, 15, 70]}}}},
+    {"label": "edge against an edge of the other plate",
+     "distance": {"a": {"step": "plate_a", "edge": {"near": [40, 15, 10]}}, "b": {"step": "plate_b", "edge": {"near": [80, 0, 30]}}}},
+    {"label": "stand against the torus",
+     "distance": {"a": {"step": "stand", "face": {"near": [20, 15, 30]}}, "b": {"step": "torus", "face": {"near": [63, 15, 70]}}}}
+  ]
+}

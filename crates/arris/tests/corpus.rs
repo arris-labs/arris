@@ -99,6 +99,9 @@ corpus_tests! {
     /// inside it, and against one narrowed face, edge and vertex
     /// (ADR-0054).
     query_distance_point_box => query "query/distance-point-box";
+    /// Faces and edges against each other: plates offset in two axes, a
+    /// cylinder wall over a plate, a plate edge against a torus.
+    query_distance_faces => query "query/distance-faces";
     primitive_box => run "primitive/box";
     primitive_cylinder => run "primitive/cylinder";
     /// A consumer's own topology through `ops::build` (ADR-0028): a
