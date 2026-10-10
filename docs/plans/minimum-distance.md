@@ -422,7 +422,7 @@ bound has to be established here.
     - *A ball against the B-spline cylinder is also refused*: the ball's
       circle against the NURBS wall is a curve against a NURBS interior, a
       Non-goal (the same backlog line). It is not committed as a fixture.
-- [ ] Step 10 **[2]** — Property tests over random poses of `prop::body`
+- [x] Step 10 **[2]** — Property tests over random poses of `prop::body`
   operands:
   - distance is symmetric;
   - it is zero exactly when the boolean `common` is non-empty or the
@@ -431,6 +431,19 @@ bound has to be established here.
   - each foot lies on its entity and within the entity's tolerance;
   - translating `b` by `δ` along the feet's line moves the distance by
     `δ` while it stays positive.
+  - *As built:* `crates/arris-ops/tests/distance_prop.rs`, five properties in
+    four shards each over a box, a cylinder or a quadric solid in two random
+    poses (half within 10 of each other, so a quarter of the draws share
+    material). Run at 1500 cases on a second seed: green.
+    - *The translation is toward, not away:* moving `b` toward `a` by `δ < d`
+      along the feet's line gives exactly `d − δ` for any bodies (the moved
+      feet bound it above, and the distance is 1-Lipschitz in a translation,
+      below), where moving away is exact only for convex ones.
+    - Zero is checked both ways against `common`: material in common means
+      `d ≤ 10 tol`, a positive distance means `Empty` and not `contained`. A
+      touch is `Empty` with distance 0, which neither side forbids; the
+      corpus holds touching.
+    - An `Unsupported` pair is skipped (3 of 250 draws).
 - [ ] Step 11 **[1]** — `Model.distance` in `arris-py`, with
   `Distance`/`Foot`, the `NotMeasurable` class, the `_arris.pyi` lines
   and a docstring example. Pytest covers a point snap and two bodies.
