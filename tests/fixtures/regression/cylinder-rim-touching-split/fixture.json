@@ -1,0 +1,63 @@
+{
+  "description": "a cylinder of radius 3 and height 5 on the z axis and the plane x + z = 2 through (0, 0, 2): it crosses the body and touches the top circle at the single point (-3, 0, 5); the desired answer is the two solids Open CASCADE makes, but Arris's split faults (Internal: the face arrangement is not a subdivision, a section edge ending at a node nothing else reaches), and the planar section with it. Moved to z = 1.5 the plane crosses cleanly",
+  "params": {
+    "side": 1
+  },
+  "steps": [
+    {
+      "name": "post",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 5
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "post",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          2
+        ],
+        "normal": [
+          1,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "above",
+      "point": [
+        2,
+        0,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "below",
+      "point": [
+        -2,
+        0,
+        1
+      ],
+      "expect": "out"
+    }
+  ]
+}

@@ -22,7 +22,7 @@ use crate::mesh::Mesh;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
 use crate::query::{
-    Clash, Distance, Frame, Interference, MassProperties, RayHit, Report, level_of,
+    Clash, Distance, Frame, Interference, MassProperties, RayHit, Report, Section, level_of,
 };
 
 /// Serial numbers for models, in creation order within the process: what a
@@ -150,6 +150,39 @@ fn refused(reason: Reason) -> OpError {
     OpError::Degenerate {
         entities: Vec::new(),
         reason,
+    }
+}
+
+/// The plane through `origin` with `normal` and, if given, the `x` the
+/// sheet or caps are parameterised by; `what` names the operation in a
+/// refusal.
+fn plane_of(
+    what: &'static str,
+    origin: [f64; 3],
+    normal: [f64; 3],
+    x: Option<[f64; 3]>,
+) -> Result<KernelFrame, OpError> {
+    let refused_plane = || {
+        refused(Reason::Input(InputReason::NonFinite {
+            what: match what {
+                "section" => "section plane",
+                _ => "split plane",
+            },
+        }))
+    };
+    finite("plane origin", origin)?;
+    let n = direction_of("plane normal", normal)?;
+    match x {
+        None => KernelFrame::from_z(Point3::from(origin), n).map_err(|_| refused_plane()),
+        Some(x) => {
+            finite("plane x", x)?;
+            KernelFrame::new(Point3::from(origin), n, Vec3::from(x)).map_err(|_| {
+                refused(Reason::Input(InputReason::NotPositive {
+                    what: "the plane x's part across the normal",
+                    value: 0.0,
+                }))
+            })
+        }
     }
 }
 
@@ -663,24 +696,7 @@ impl Model {
         budget: Option<u64>,
     ) -> PyResult<(Body, Body, Provenance)> {
         let body = body.resolve(&self.shared)?;
-        let plane = finite("split origin", origin)
-            .and_then(|()| direction_of("split normal", normal))
-            .and_then(|n| match x {
-                None => KernelFrame::from_z(Point3::from(origin), n).map_err(|_| {
-                    refused(Reason::Input(InputReason::NonFinite {
-                        what: "split plane",
-                    }))
-                }),
-                Some(x) => finite("split x", x).and_then(|()| {
-                    KernelFrame::new(Point3::from(origin), n, Vec3::from(x)).map_err(|_| {
-                        refused(Reason::Input(InputReason::NotPositive {
-                            what: "split x's part across the normal",
-                            value: 0.0,
-                        }))
-                    })
-                }),
-            })
-            .map_err(|e| self.refuse(py, e))?;
+        let plane = plane_of("split", origin, normal, x).map_err(|e| self.refuse(py, e))?;
         let limits = Limits::new(cancel, budget);
         let halves = self.run(py, &limits, move |m, control| {
             arris::ops::split(m, body, &plane, control)
@@ -690,6 +706,55 @@ impl Model {
             Body::minted_by(self, halves.negative),
             Provenance::minted_by(self, halves.provenance),
         ))
+    }
+
+    /// What the plane through `origin` with the given `normal` cuts out of
+    /// the solid `body`, without changing it: a `Section`, or `None` when the
+    /// plane misses the body or only touches it (along a face, an edge or a
+    /// point). The section's sheet is a body of planar faces on the plane,
+    /// one per connected region, with the region's holes as inner loops; its
+    /// (u, v) are the plane's `x` direction (any perpendicular of the normal
+    /// when `x` is `None`) and its cross product with the normal, and the
+    /// faces face the normal. A region where a face of the body lies on the
+    /// plane is not section: the section is the plane's points with
+    /// material on both sides.
+    ///
+    /// Raises `OpDegenerateError` for a coordinate that is not finite, a
+    /// normal of zero length, an `x` with no part across it, and a body that
+    /// is not a solid; `OpUnsupportedError` and `OpDegenerateError` as for
+    /// `split` where the plane meets the body as a boolean would refuse;
+    /// `Interrupted` when `cancel` or `budget` stops it.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// block, _ = model.primitive_box((0, 0, 0), (10, 6, 4))
+    /// cut = model.section(block, (0, 0, 1.5), (0, 0, 1))
+    /// assert abs(cut.area - 60) < 1e-9
+    /// assert all(abs(c - h) < 1e-9 for c, h in zip(cut.centroid, (5, 3, 1.5)))
+    /// assert len(model.faces(cut.sheet)) == 1
+    /// assert model.section(block, (0, 0, 9), (0, 0, 1)) is None
+    /// ```
+    #[pyo3(signature = (body, origin, normal, x=None, *, cancel=None, budget=None))]
+    #[allow(clippy::too_many_arguments)] // the keywords are the Python signature
+    fn section(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        origin: [f64; 3],
+        normal: [f64; 3],
+        x: Option<[f64; 3]>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Option<Section>> {
+        let body = body.resolve(&self.shared)?;
+        let plane = plane_of("section", origin, normal, x).map_err(|e| self.refuse(py, e))?;
+        let limits = Limits::new(cancel, budget);
+        let made = self.run(py, &limits, move |m, control| {
+            arris::ops::section(m, body, &plane, control)
+        })?;
+        Ok(made.map(|s| Section::new(self, s)))
     }
 
     /// The solid `profile` sweeps along `direction` for `length`: caps from

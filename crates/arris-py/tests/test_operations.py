@@ -527,3 +527,62 @@ def test_split_honours_cancel_and_budget_and_foreign_handles():
     assert raised.value.by == "budget"
     with pytest.raises(arris.ForeignHandleError):
         arris.Model().split(block, (0, 0, 4), (0, 0, 1))
+
+
+def test_section_cuts_a_sheet_out_of_a_body_without_changing_it():
+    model = arris.Model()
+    block, _ = box(model, (0, 0, 0), (10, 6, 4))
+    before = len(model.faces(block))
+    cut = model.section(block, (0, 0, 1.5), (0, 0, 1))
+    assert isinstance(cut, arris.Section)
+    assert abs(cut.area - 60) < 1e-9
+    assert all(abs(c - h) < 1e-9 for c, h in zip(cut.centroid, (5, 3, 1.5)))
+    assert len(model.faces(cut.sheet)) == 1 and model.check(cut.sheet).ok
+    assert cut.provenance.generated_from(block)
+    assert len(model.faces(block)) == before and model.check(block).ok
+
+
+def test_section_of_a_tube_is_one_face_with_a_hole():
+    model = arris.Model()
+    post, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 3, 5)
+    bore, _ = model.primitive_cylinder((0, 0, -1), (0, 0, 1), 1, 7)
+    tube, _ = model.cut(post, bore)
+    cut = model.section(tube, (0, 0, 1.5), (1, 0, 1))
+    assert cut is not None and len(model.faces(cut.sheet)) == 1
+    flat = model.section(tube, (0, 0, 2), (0, 0, 1), (0, 1, 0))
+    assert abs(flat.area - 8 * math.pi) < 1e-9
+
+
+def test_section_is_none_when_the_plane_misses_or_only_touches():
+    model = arris.Model()
+    block, _ = box(model)
+    assert model.section(block, (0, 0, 20), (0, 0, 1)) is None
+    assert model.section(block, (0, 0, 10), (0, 0, 1)) is None
+
+
+def test_section_refuses_bad_planes_and_non_solids():
+    model = arris.Model()
+    block, _ = box(model)
+    with pytest.raises(arris.OpDegenerateError):
+        model.section(block, (0, 0, 4), (0, 0, 0))
+    with pytest.raises(arris.OpDegenerateError):
+        model.section(block, (0, 0, math.nan), (0, 0, 1))
+    with pytest.raises(arris.OpDegenerateError):
+        model.section(block, (0, 0, 4), (0, 0, 1), (0, 0, 1))
+    sheet = model.section(block, (0, 0, 4), (0, 0, 1)).sheet
+    with pytest.raises(arris.OpDegenerateError):
+        model.section(sheet, (0, 0, 4), (0, 0, 1))
+
+
+def test_section_honours_cancel_and_budget_and_foreign_handles():
+    model = arris.Model()
+    block, _ = box(model)
+    token = arris.Cancel()
+    token.set()
+    with pytest.raises(arris.Interrupted):
+        model.section(block, (0, 0, 4), (0, 0, 1), cancel=token)
+    with pytest.raises(arris.Interrupted) as raised:
+        model.section(block, (0, 0, 4), (0, 0, 1), budget=0)
+    assert raised.value.by == "budget"
+    with pytest.raises(arris.ForeignHandleError):
+        arris.Model().section(block, (0, 0, 4), (0, 0, 1))

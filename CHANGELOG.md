@@ -8,6 +8,18 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_ops::section(&mut model, body, &plane, &control)` cuts a solid by
+  a plane and returns what the plane cuts out of it, without changing the
+  solid: a sheet body of planar faces on the plane, one per connected
+  region with its holes as inner loops, facing the plane frame's `z`, with
+  the section's area and centroid and a record naming, for each section
+  edge, the faces of the solid it lies on. It is the positive cap of
+  `split` at the same plane, less any region where a face of the solid
+  lies on the plane (the section is the plane's points with material on
+  both sides). A plane that misses the solid or only touches it answers
+  `None`; the refusals are `split`'s. Python: `Model.section(body, origin,
+  normal, x=None)` returns a `Section` (`sheet`, `area`, `centroid`,
+  `provenance`) or `None`.
 - `arris_topo::builder::Builder::assemble_sheet` assembles open shells —
   faces whose boundary edges have a face on one side only — and
   `Builder::finish` stores them as a `BodyKind::Sheet` body, which it

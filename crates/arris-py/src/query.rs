@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use arris::check::{self, EulerLine as KernelEuler, Level, Report as KernelReport, Unchecked};
 use arris::math::{Frame as KernelFrame, Matrix3, Point3};
+use arris::ops::Section as KernelSection;
 use arris::ops::measure::MassProperties as KernelMass;
 use arris::ops::query::{
     Clash as KernelClash, Contact as KernelContact, Distance as KernelDistance, Foot as KernelFoot,
@@ -14,8 +15,10 @@ use pyo3::IntoPyObjectExt;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
+use crate::handle::Body;
 use crate::kernel_error::entity;
 use crate::model::{Model, Shared};
+use crate::provenance::Provenance;
 
 /// A right-handed orthonormal frame: a point and three unit axes.
 ///
@@ -870,5 +873,74 @@ impl Clash {
             self.operands(),
             self.interference().__repr__()
         )
+    }
+}
+
+/// What a plane cuts out of a solid, from `Model.section`.
+///
+/// `sheet` is a body of planar faces lying on the plane, one per connected
+/// region of the section, with its holes as inner loops; `area` and
+/// `centroid` are the faces' total area and area centroid; `provenance`
+/// names, for every section edge, the body faces it lies on and, for every
+/// vertex, the body vertex or edges. The solid is unchanged.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// block, _ = model.primitive_box((0, 0, 0), (4, 3, 2))
+/// cut = model.section(block, (0, 0, 1), (0, 0, 1))
+/// assert abs(cut.area - 12) < 1e-9
+/// assert cut.provenance.generated_from(block)
+/// ```
+#[pyclass(frozen, module = "arris")]
+#[derive(Clone, Debug)]
+pub struct Section {
+    sheet: Body,
+    area: f64,
+    centroid: Point3,
+    provenance: Provenance,
+}
+
+impl Section {
+    /// The Python value of `kernel`, a section of a solid of `model`.
+    pub fn new(model: &Model, kernel: KernelSection) -> Section {
+        Section {
+            sheet: Body::minted_by(model, kernel.sheet),
+            area: kernel.area,
+            centroid: kernel.centroid,
+            provenance: Provenance::minted_by(model, kernel.provenance),
+        }
+    }
+}
+
+#[pymethods]
+impl Section {
+    /// The sheet body of the section's faces.
+    #[getter]
+    fn sheet(&self) -> Body {
+        self.sheet.clone()
+    }
+
+    /// The total area of the sheet's faces.
+    #[getter]
+    fn area(&self) -> f64 {
+        self.area
+    }
+
+    /// The area centroid of the sheet's faces, on the plane.
+    #[getter]
+    fn centroid(&self) -> (f64, f64, f64) {
+        triple(self.centroid.x, self.centroid.y, self.centroid.z)
+    }
+
+    /// Where the sheet's entities lie on the solid.
+    #[getter]
+    fn provenance(&self) -> Provenance {
+        self.provenance.clone()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Section(area={})", self.area)
     }
 }

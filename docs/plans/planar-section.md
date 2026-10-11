@@ -196,7 +196,7 @@ bound has to be established here.
   the model is unchanged but for the sheet (`dump` of the body's closure
   before and after equal); `None` exactly when `split` refuses
   `NoCrossing`.
-- [ ] Step 7 **[1]** — Python: `Model.section`, the `Section` class,
+- [x] Step 7 **[1]** — Python: `Model.section`, the `Section` class,
   `_arris.pyi`, docstring example, pytest cases; `CHANGELOG.md`
   `Unreleased` bullet (new API, nothing under `Breaking`). Measure a
   20-section stack of the real tier's largest part in release for the

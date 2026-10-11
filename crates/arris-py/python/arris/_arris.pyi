@@ -212,6 +212,17 @@ class Distance:
     def contained(self) -> bool: ...
 
 @final
+class Section:
+    @property
+    def sheet(self) -> Body: ...
+    @property
+    def area(self) -> float: ...
+    @property
+    def centroid(self) -> tuple[float, float, float]: ...
+    @property
+    def provenance(self) -> Provenance: ...
+
+@final
 class Interference:
     @property
     def kind(self) -> Literal["apart", "touching", "overlapping"]: ...
@@ -453,6 +464,16 @@ class Model:
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> _Split: ...
+    def section(
+        self,
+        body: Body,
+        origin: _Point3,
+        normal: _Point3,
+        x: _Point3 | None = None,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> Section | None: ...
     def cut(
         self, target: Body, tool: Body, *, cancel: Cancel | None = None, budget: int | None = None
     ) -> _Made: ...

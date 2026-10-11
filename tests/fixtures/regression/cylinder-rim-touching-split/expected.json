@@ -1,0 +1,84 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "97221d6e3da72e98d1e0d4abb3e043b79519e8573635fba933aefb638d00d833",
+  "results": {
+    "default": {
+      "area": 120.20234515838914,
+      "centroid": [
+        0.7224929790798819,
+        -5.034689559895881e-10,
+        3.1764069749586397
+      ],
+      "counts": {
+        "edges": 8,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 5
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 120.202345158403,
+        "counts": {
+          "edges": 8,
+          "faces": 5,
+          "loops": 5,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 5
+        },
+        "degenerate": false,
+        "volume": 83.56440585371328
+      },
+      "inertia": [
+        [
+          322.0575704215654,
+          -2.7746879654587255e-08,
+          63.571654164312775
+        ],
+        [
+          -2.7746879654587255e-08,
+          270.9837161286838,
+          4.427360027814505e-08
+        ],
+        [
+          63.571654164312775,
+          4.427360027814505e-08,
+          328.6927520021536
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 8,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 5
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "above",
+          "point": [
+            2.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "below",
+          "point": [
+            -2.0,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 83.56440585370684
+    }
+  }
+}

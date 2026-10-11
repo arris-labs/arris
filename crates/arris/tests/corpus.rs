@@ -438,6 +438,10 @@ corpus_tests! {
     /// only: refused as no crossing, as a plane that misses is.
     #[ignore = "kernel bug: Fault::Split Dangling on the half-space's near face, the edge contact leaves a section edge nothing else reaches; the planar section faults with it (docs/BACKLOG.md, a plane touching a body along an edge)"]
     regression_box_edge_touching_split => run "regression/box-edge-touching-split";
+    /// A cylinder split by an oblique plane that crosses it and touches its
+    /// top circle at one point.
+    #[ignore = "kernel bug: Internal, the face arrangement is not a subdivision, a section edge ends at a node nothing else reaches where the plane touches the rim at a point; the planar section faults with it (docs/BACKLOG.md, a plane touching a body's rim at a point)"]
+    regression_cylinder_rim_touching_split => run "regression/cylinder-rim-touching-split";
     /// flush-union's second box a tolerance off the shared face: moved away, into the first, or turned about the face's middle line.
     #[ignore = "Fault::Split EmptySubEdge, Fault::CommonBlock, Fault::Split Turn, and plane against plane Unsupported a hair off parallel (docs/BACKLOG.md, ADR-0022)"]
     regression_flush_union_a_tolerance_off => run "regression/flush-union-a-tolerance-off";
