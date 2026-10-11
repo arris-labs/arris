@@ -16,8 +16,9 @@ centroid, and a provenance record naming, for every section edge, the
 body face it lies on and, for every section vertex, the body edge it lies
 on. The body and every entity of the model are untouched; the sheet is the
 only thing the call adds. The sheet is the cap `split` would make on its
-positive side (ADR-0051), turned to face the plane frame's `z`, so a
-section and a split at the same plane agree to the last digit, and every
+positive side (ADR-0051) less any region flush with a face of the body,
+turned to face the plane frame's `z`, so a section and a split at the
+same plane agree to the last digit where nothing is flush, and every
 plane-against-body case the booleans settle (through an edge, a vertex, a
 seam, an apex) is the section's too. A plane that misses the body or only
 touches it — along a face, an edge or a vertex — answers `None`, not an
@@ -82,11 +83,19 @@ exposes it.
   - **Flush regions** (a stepped block cut at the step's height, an
     overhang whose underside lies on the plane): the section is the plane's
     points *interior* to the solid — material on both sides — so a region
-    where a body face lies on the plane is not section. Whether the Common
-    selection's cap already excludes it (the coincident row keeps the
-    body's own face, the lower operand, not the box's) is what step 2
-    proves; if it does not, a fourth `Op`, `Section`, is the selection of
-    the box's near-face pieces strictly inside the body.
+    where a body face lies on the plane is not section. *Settled at step
+    2*: the Common's cap does not exclude it. Where the body's face and the
+    near face have opposite normals (the step seen from above, the
+    overhang from below) both pieces drop, but where they agree the
+    coincident row keeps the **near face's** copy — `Generated` from it,
+    beside the true cap `Modified` from it — not the body's as this plan
+    supposed. So the section selects, among the Common's faces made from
+    the near face, those whose interior point (`region2::interior_point`
+    of the face's `FaceDomain` polygons, as a piece's) classifies
+    `Inside` the body; `On` is flush and dropped, `Outside` a kernel fault.
+    No fourth `Op`: the selection table assembles closed shells, and this
+    selection is over the cap alone, after it. None left is `Ok(None)` (a
+    plane flush with a top, seen from inside).
   - **Provenance**: the sheet's faces `Generated` from the body
     (`Origin::Entity(body)`); a section edge `Generated` from the body face
     it lies on (two for a section edge along a body edge the plane runs
@@ -136,7 +145,7 @@ bound has to be established here.
   `finish(Solid)`. *Inserted at step 1, when the section's first line
   found the builder refusing every kind but `Solid`; the section moved to
   step 2 and every later step down one.*
-- [ ] Step 2 **[3]** — `ops::section` and `Section`: the plane box
+- [x] Step 2 **[3]** — `ops::section` and `Section`: the plane box
   factored out of `split`, the scratch clone, pave + `Common`, the cap
   faces gathered into a sheet, reversed to face `z`, imported, `None` on
   `Empty`/`ZeroThickness`, `area` and `centroid`, the provenance through
@@ -144,7 +153,11 @@ bound has to be established here.
   - **The step that settles the definition**: the stepped block cut at
     its step, an overhang on the plane, a box whose top the plane is
     flush with (`None`). If the Common cap holds a flush region, add
-    `Op::Section` (above) here and say so in the plan.
+    `Op::Section` (above) here and say so in the plan. *It does where the
+    normals agree; the selection is a classification of the cap pieces,
+    not an `Op` (design delta, flush regions).* A plane touching a box
+    along an edge only faults in `split` too (`Fault::Split` Dangling):
+    `regression/box-edge-touching-split`, ignored, a backlog line.
   - Unit tests, named poses with closed forms: a box mid-height and across
     a corner (a triangle), a cylinder across (a disc) and along its axis
     through the seam (a rectangle), a tube (a ring: one face, two loops),
@@ -153,7 +166,8 @@ bound has to be established here.
     unchanged but for the sheet's closure; two runs give the same ids.
     Rustdoc with an example.
 - [ ] Step 3 **[1]** — ADR-0056 (above), with step 1's builder change
-  and step 2's flush finding; ARCHITECTURE §Operations gains `section` beside `split` in the
+  and step 2's flush finding (the coincident row keeps the near face's
+  copy where normals agree; the cap pieces classified `Inside`); ARCHITECTURE §Operations gains `section` beside `split` in the
   same commit.
 - [ ] Step 4 **[2]** — The `section` query form in `arris-debug` and
   `tools/oracle` (`expected.py`, `query.py`, `selftest.py`), the runner's
@@ -175,6 +189,7 @@ bound has to be established here.
   poses, random planes through the body's box): every section edge lies on
   the plane and on each body face it names, within its tolerance; the
   section's area equals the area of `split`'s positive cap bit for bit
+  (a random plane is flush with no face)
   (and the negative cap's within tolerance) where the split answers; the
   plane's `z` reversed gives the same area and centroid and the opposite
   normal; translating body and plane together translates the centroid;
@@ -212,8 +227,9 @@ its "each query a corpus … `BRepAlgoAPI_Section`" for the section.
   cycle's "in" list done.
 
 ## Open questions
-- ⚠ OPEN: does the `Common` cap exclude flush regions, or does the section
-  need its own selection `Op::Section`? Agent, settled in step 2.
+- Settled in step 2: the `Common` cap keeps a flush region where the
+  normals agree; the section keeps the cap pieces whose interior point is
+  `Inside` the body, no `Op::Section`.
 - Settled in step 1: one open shell per face, as `assemble_sheet` holds
   shells to edge-connected components that share no vertex.
 - ⚠ OPEN: does Open CASCADE's `Common` of a solid and a face keep a flush

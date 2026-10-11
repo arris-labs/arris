@@ -92,42 +92,7 @@ pub fn split(
         entities: vec![Shape::new(body.id, body.orientation)],
         reason: Reason::Split(SplitReason::NoCrossing),
     };
-    let bounds = FaceInfo::of_body(m, body)?
-        .iter()
-        .map(|f| f.bounds)
-        .reduce(Aabb::union)
-        .ok_or_else(no_crossing)?;
-    // The body's box in the plane's frame: its eight corners there.
-    let corners: Vec<[f64; 3]> = (0..8)
-        .map(|k| {
-            let pick = |axis: usize| {
-                if k >> axis & 1 == 0 {
-                    bounds.min[axis]
-                } else {
-                    bounds.max[axis]
-                }
-            };
-            let local = plane.to_local(Point3::new(pick(0), pick(1), pick(2)));
-            [local.x, local.y, local.z]
-        })
-        .collect();
-    let local = Aabb::of_points(&corners).ok_or_else(no_crossing)?;
-    if !(local.min[2] < 0.0 && local.max[2] > 0.0) {
-        return Err(no_crossing());
-    }
-    // The box beyond the plane: its near face on the plane, its other five
-    // past the body's box by the box's own diagonal, so none of them
-    // pairs with a face of the body. It runs twice as far on the `x` and
-    // `y` sides, which puts the middle of its near face — where an
-    // untouched face is classified — past the body's box, never on a pole,
-    // a seam or a vertex the plane only touches.
-    let margin = local.diagonal();
-    let lo = Point3::new(local.min[0] - margin, local.min[1] - margin, 0.0);
-    let hi = Point3::new(
-        local.max[0] + 2.0 * margin,
-        local.max[1] + 2.0 * margin,
-        local.max[2] + margin,
-    );
+    let (lo, hi) = half_space(m, body, plane)?.ok_or_else(no_crossing)?;
     let mut meter = Meter::new(control);
     let (scratch, made) = m.transaction(|m| {
         let scratch = crate::primitive::plane_box(m, plane, lo, hi)?;
@@ -167,6 +132,62 @@ pub fn split(
         negative,
         provenance,
     })
+}
+
+/// The corners, in `plane`'s local coordinates, of the scratch box
+/// [`primitive::plane_box`](crate::primitive::plane_box) builds as the
+/// half-space beyond the plane against `body` (ADR-0051 §3): `lo.z` is
+/// zero, the near face on the plane. `None` when the body's box lies on
+/// one side of the plane, so the plane cannot cross the body. What
+/// [`split`] and [`section`](super::section) both run the decomposition
+/// against, so a section is the split's positive cap to the last digit
+/// where no face of the body is flush with the plane.
+pub(super) fn half_space(
+    m: &Model,
+    body: Body,
+    plane: &Frame,
+) -> Result<Option<(Point3, Point3)>, OpError> {
+    let Some(bounds) = FaceInfo::of_body(m, body)?
+        .iter()
+        .map(|f| f.bounds)
+        .reduce(Aabb::union)
+    else {
+        return Ok(None);
+    };
+    // The body's box in the plane's frame: its eight corners there.
+    let corners: Vec<[f64; 3]> = (0..8)
+        .map(|k| {
+            let pick = |axis: usize| {
+                if k >> axis & 1 == 0 {
+                    bounds.min[axis]
+                } else {
+                    bounds.max[axis]
+                }
+            };
+            let local = plane.to_local(Point3::new(pick(0), pick(1), pick(2)));
+            [local.x, local.y, local.z]
+        })
+        .collect();
+    let Some(local) = Aabb::of_points(&corners) else {
+        return Ok(None);
+    };
+    if !(local.min[2] < 0.0 && local.max[2] > 0.0) {
+        return Ok(None);
+    }
+    // The box beyond the plane: its near face on the plane, its other five
+    // past the body's box by the box's own diagonal, so none of them
+    // pairs with a face of the body. It runs twice as far on the `x` and
+    // `y` sides, which puts the middle of its near face — where an
+    // untouched face is classified — past the body's box, never on a pole,
+    // a seam or a vertex the plane only touches.
+    let margin = local.diagonal();
+    let lo = Point3::new(local.min[0] - margin, local.min[1] - margin, 0.0);
+    let hi = Point3::new(
+        local.max[0] + 2.0 * margin,
+        local.max[1] + 2.0 * margin,
+        local.max[2] + margin,
+    );
+    Ok(Some((lo, hi)))
 }
 
 /// One record of both sides' records, against the body alone: an origin

@@ -417,6 +417,10 @@ corpus_tests! {
     /// name rather than built.
     #[ignore = "Reason::BesideSingularity, a section passes the sphere's pole without running through it, nearer than the face's (u, v) resolves (docs/BACKLOG.md, polygons by span and chords in length)"]
     regression_ball_beside_pole_slice_cut => run "regression/ball-beside-pole-slice-cut";
+    /// A cube split by a plane that touches it along one vertical edge
+    /// only: refused as no crossing, as a plane that misses is.
+    #[ignore = "kernel bug: Fault::Split Dangling on the half-space's near face, the edge contact leaves a section edge nothing else reaches; the planar section faults with it (docs/BACKLOG.md, a plane touching a body along an edge)"]
+    regression_box_edge_touching_split => run "regression/box-edge-touching-split";
     /// flush-union's second box a tolerance off the shared face: moved away, into the first, or turned about the face's middle line.
     #[ignore = "Fault::Split EmptySubEdge, Fault::CommonBlock, Fault::Split Turn, and plane against plane Unsupported a hair off parallel (docs/BACKLOG.md, ADR-0022)"]
     regression_flush_union_a_tolerance_off => run "regression/flush-union-a-tolerance-off";

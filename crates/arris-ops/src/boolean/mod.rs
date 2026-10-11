@@ -14,6 +14,7 @@ mod faces;
 mod pave;
 pub(crate) mod pieces;
 mod result;
+mod section;
 mod split;
 
 use core::fmt;
@@ -25,6 +26,7 @@ use arris_topo::{Body, Curve2Id, EdgeId, FaceId, Model, Provenance, Shape, Verte
 
 use crate::error::{BooleanReason, OpError, Reason};
 
+pub use section::{Section, section};
 pub use split::{Split, split};
 
 /// The curves of `intersection` that meet as `kind`, each with its

@@ -1,0 +1,55 @@
+{
+  "description": "a 10-cube and the plane x - y = 10 through its vertical edge at (10, 0), touching the cube along that edge only: the body lies wholly on the negative side and the desired answer is the refusal naming it, as for a plane that misses; Arris's split faults instead, the half-space's near face left dangling by the arrangement (Internal Split Dangling), and the planar section with it. Through the corner (10, 10, 10) along (1, 1, 1) refuses as it should",
+  "params": {
+    "side": 1
+  },
+  "steps": [
+    {
+      "name": "box",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "box",
+      "plane": {
+        "origin": [
+          10,
+          0,
+          0
+        ],
+        "normal": [
+          1,
+          -1,
+          0
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "expect_error": "no-crossing"
+  }
+}

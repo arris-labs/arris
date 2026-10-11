@@ -208,7 +208,7 @@ fn unsupported(m: &Model, face: FaceId, on: Shape) -> OpError {
 /// one the error is about: the pair is named as the unsupported one it
 /// is, the NURBS cycle's (ADR-0026 §5), never an internal fault. Anything
 /// else the classifier reports is one.
-fn classify_fault(m: &Model, face: FaceId, body: Body, e: ClassifyError) -> OpError {
+pub(super) fn classify_fault(m: &Model, face: FaceId, body: Body, e: ClassifyError) -> OpError {
     if let ClassifyError::Geometry(GeomError::Unsupported { .. }) = e {
         let nurbs = m.closure(body).ok().and_then(|c| {
             c.faces.into_iter().find(|&g| {
