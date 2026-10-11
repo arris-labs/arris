@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_topo::builder::Builder::assemble_sheet` assembles open shells —
+  faces whose boundary edges have a face on one side only — and
+  `Builder::finish` stores them as a `BodyKind::Sheet` body, which it
+  refused before. `Wire` and `General` bodies are still `BuildError::Kind`.
 - `arris_ops::query::distance(&model, a, b, &control)` returns the minimum
   distance between two of a point, a vertex, an edge, a face and a solid.
   The answer has the distance, the closest point on each operand with the

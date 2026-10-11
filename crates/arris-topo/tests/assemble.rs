@@ -4,7 +4,9 @@
 //! same body — the same ids when every spec is `Keep`, the same dump up to
 //! ids when every spec is `New` — a body of several shells is several
 //! closed surfaces that share nothing, and every way of describing
-//! something that is not is a typed refusal.
+//! something that is not is a typed refusal. `assemble_sheet` takes open
+//! shells too, each closing at a whole genus once its boundary cycles are
+//! capped, and `finish` stores them as a `Sheet`.
 
 use core::f64::consts::{FRAC_1_SQRT_2, TAU};
 use std::collections::BTreeMap;
@@ -26,7 +28,7 @@ type Solid = (&'static str, fn(&mut Model) -> Body);
 
 /// The bodies every round trip is run over, each in its own model: every
 /// `sample` body an Euler operator sequence could have made, and the
-/// sphere. `patch` is a sheet and `finish` makes solids. `sphere`'s two
+/// sphere. `patch` is a sheet, assembled by `assemble_sheet` below. `sphere`'s two
 /// degenerate pole edges are used once each: singular points, which
 /// `assemble` and `finish` take since a revolve makes them at an apex or a
 /// pole (`sample::sphere` predates that and goes through the raw insert).
@@ -1148,4 +1150,142 @@ fn a_key_past_its_list_is_refused() {
             index: 99
         })
     );
+}
+
+fn assemble_sheet(m: &Model, shells: Vec<Vec<FaceSpec>>) -> Result<Builder, BuildError> {
+    let assembly = Assembly {
+        shells,
+        ..Assembly::default()
+    };
+    Ok(Builder::assemble_sheet(m, m.precision().default_tolerance, assembly)?.0)
+}
+
+/// Faces kept whole as open shells: a box less its top (one boundary
+/// cycle), a cylinder's wall alone (an annulus: its seam used twice, two
+/// boundary circles), a box's top and bottom as two shells of one sheet,
+/// and the closed cylinder, which is a sheet too. Each is stored as a
+/// `Sheet` with the same face ids and passes the checker at `Full`.
+#[test]
+fn open_shells_of_kept_faces_are_sheets() {
+    let mut m = Model::default();
+    let block = sample::unit_box(&mut m).unwrap();
+    let cylinder = sample::cylinder(&mut m, 4.0, 12.0).unwrap();
+    let box_faces = m.faces(block).unwrap();
+    let cylinder_faces = m.faces(cylinder).unwrap();
+    let wall = *cylinder_faces
+        .iter()
+        .find(|f| {
+            let surface = m.face(f.id).unwrap().surface();
+            matches!(m.surface(surface).unwrap(), Surface::Cylinder { .. })
+        })
+        .unwrap();
+    let opposite: Vec<_> = box_faces
+        .iter()
+        .copied()
+        .filter(|f| {
+            let surface = m.face(f.id).unwrap().surface();
+            let Surface::Plane { frame } = m.surface(surface).unwrap() else {
+                return false;
+            };
+            frame.z().into_inner().z.abs() > 0.5
+        })
+        .collect();
+    assert_eq!(opposite.len(), 2);
+    let cases: Vec<(&str, Vec<Vec<FaceSpec>>, &str)> = vec![
+        (
+            "open box",
+            vec![box_faces[1..].iter().copied().map(FaceSpec::Keep).collect()],
+            "8/12/5/5/1",
+        ),
+        ("annulus", vec![vec![FaceSpec::Keep(wall)]], "2/3/1/1/1"),
+        (
+            "two shells",
+            opposite.iter().map(|&f| vec![FaceSpec::Keep(f)]).collect(),
+            "8/8/2/2/2",
+        ),
+        (
+            "closed",
+            vec![cylinder_faces.iter().copied().map(FaceSpec::Keep).collect()],
+            "2/3/3/3/1",
+        ),
+    ];
+    for (name, shells, counts) in cases {
+        let faces: Vec<_> = shells.iter().flatten().cloned().collect();
+        let b = assemble_sheet(&m, shells).unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert!(
+            b.counts().to_string().starts_with(counts),
+            "{name}: {}",
+            b.counts()
+        );
+        let built = b.finish(&mut m, BodyKind::Sheet).unwrap();
+        let kept: Vec<_> = faces
+            .iter()
+            .map(|f| match f {
+                FaceSpec::Keep(f) => *f,
+                FaceSpec::New { .. } => unreachable!(),
+            })
+            .collect();
+        assert_eq!(m.faces(built.body).unwrap(), kept, "{name}");
+        assert_eq!(m.body(built.body.id).unwrap().kind(), BodyKind::Sheet);
+        let report = check(&m, built.body, Level::Full);
+        assert!(report.is_ok(), "{name}: {report}");
+    }
+}
+
+/// A sheet assembled with every entity `New` from the `patch` sample —
+/// a sheet the raw insert made — is the same sheet under new ids.
+#[test]
+fn a_patch_assembled_new_is_the_same_sheet() {
+    let mut m = Model::default();
+    let sphere = Surface::Sphere {
+        frame: Frame::world(),
+        radius: 2.0,
+    };
+    let u = Interval::new(0.2, 2.0).unwrap();
+    let v = Interval::new(-0.5, 0.9).unwrap();
+    let patch = sample::patch(&mut m, sphere, u, v).unwrap();
+    let before = dump_text(&m, patch).unwrap();
+    let assembly = describe(&m, patch, false);
+    let built = Builder::assemble_sheet(&m, m.precision().default_tolerance, assembly)
+        .unwrap()
+        .0
+        .finish(&mut m, BodyKind::Sheet)
+        .unwrap();
+    assert_ne!(built.body.id, patch.id);
+    let report = check(&m, built.body, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert_eq!(
+        up_to_ids(&before),
+        up_to_ids(&dump_text(&m, built.body).unwrap())
+    );
+}
+
+/// An open shell is no solid: `assemble` refuses its boundary edges, and
+/// so does `finish` as a `Solid` after `assemble_sheet` took them.
+#[test]
+fn an_open_shell_is_refused_as_a_solid() {
+    let mut m = Model::default();
+    let block = sample::unit_box(&mut m).unwrap();
+    let open = || -> Vec<Vec<FaceSpec>> {
+        vec![
+            m.faces(block).unwrap()[1..]
+                .iter()
+                .copied()
+                .map(FaceSpec::Keep)
+                .collect(),
+        ]
+    };
+    let assembly = Assembly {
+        shells: open(),
+        ..Assembly::default()
+    };
+    assert!(matches!(
+        assemble(&m, assembly),
+        Err(BuildError::EdgeUses { uses: 1, .. })
+    ));
+    let b = assemble_sheet(&m, open()).unwrap();
+    assert!(matches!(
+        b.finish(&mut m, BodyKind::Solid),
+        Err(BuildError::EdgeUses { uses: 1, .. })
+    ));
 }

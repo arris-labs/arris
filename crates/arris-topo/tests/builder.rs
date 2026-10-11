@@ -906,11 +906,13 @@ fn finish_refuses_a_degenerate_edge_used_twice() {
 fn finish_refuses_what_cannot_be_stored_and_the_transaction_leaves_nothing() {
     let mut m = Model::default();
     let probe = VertexId::new(0, 0);
-    assert_eq!(
-        Builder::new(1e-7).finish(&mut m, BodyKind::Solid),
-        Err(BuildError::Empty)
-    );
-    for kind in [BodyKind::Sheet, BodyKind::Wire, BodyKind::General] {
+    for kind in [BodyKind::Solid, BodyKind::Sheet] {
+        assert_eq!(
+            Builder::new(1e-7).finish(&mut m, kind),
+            Err(BuildError::Empty)
+        );
+    }
+    for kind in [BodyKind::Wire, BodyKind::General] {
         assert_eq!(
             Builder::new(1e-7).finish(&mut m, kind),
             Err(BuildError::Kind(kind))

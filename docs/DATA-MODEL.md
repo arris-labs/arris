@@ -1505,9 +1505,11 @@ test scaffolding that stores a dangling reference as given), the builder
   mix, including a face used by two shells (a face separating two regions
   of one body) and an edge used by more than two coedges.
   Non-manifold structure is thus representable from day one (`SEED.md`
-  §9); every operation today produces and accepts `Solid` only: the builder's
-  `finish` builds no other kind (`BuildError::Kind`), and `measure`
-  refuses one as `OpError::Degenerate` with `InputReason::NotSolid`.
+  §9); every operation today produces and accepts `Solid` only. The
+  builder's `finish` builds a `Solid` or a `Sheet` — the open shells
+  `assemble_sheet` proves, for an operation whose result has a boundary —
+  and no other kind (`BuildError::Kind`), and `measure` refuses a
+  non-solid as `OpError::Degenerate` with `InputReason::NotSolid`.
 
 ### Orientation
 
@@ -1612,9 +1614,10 @@ which use it is drawing; `mef` takes the curve, the range, the new face's
 moves to a face on another surface keeps a pcurve id that is no longer
 its own, and a strut in a face it will leave has none worth giving.
 `finish` refuses a coedge without a pcurve, a loop without coedges, an
-edge not used exactly twice (a degenerate edge: exactly once, since no
+edge not used exactly twice in a `Solid` or once or twice in a `Sheet`
+(a degenerate edge: exactly once, since no
 surface closes on one singular point twice) or twice the same way, a geometry id that
-does not resolve, and any kind but `Solid` — each a typed `BuildError`,
+does not resolve, and a `Wire` or `General` kind — each a typed `BuildError`,
 and the model exactly as it was — and never evaluates geometry: the
 checker, above this crate, is where the finished body is proven.
 
@@ -1676,7 +1679,13 @@ their sum becoming the builder's — each failure a typed `BuildError`
 (`LoopOpen`, `EdgeUses`, `SameDirection`, `Duplicate`, `Empty`,
 `EmptyShell`, `SharedEdge`, `SharedVertex`, `Disconnected`, `NotClosed`,
 `EmptyLoop`, `NoSpec`, `NotFound`), and the model is only read. How the shells nest is
-not the builder's to prove: it is B1's. `finish` appends one shell per
+not the builder's to prove: it is B1's. `assemble_sheet` takes the same
+`Assembly` as open shells, for a `Sheet`: an edge other than a degenerate
+one is used once (a boundary edge) or twice in opposite directions, and
+each shell's line closes at a whole genus once each of its `B` boundary
+cycles is capped by a face of one loop, `V − E + 2F − L + B = 2(1 − G)`;
+a boundary that touches itself at a vertex counts as one cycle there, so
+a shell pinched so does not close. `finish` appends one shell per
 shell of the assembly, in order, and `Built::shells` lists them; a face an
 operator makes out of another belongs to that face's shell, so a builder
 of operators makes one.

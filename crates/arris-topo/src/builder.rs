@@ -634,9 +634,9 @@ pub enum BuildError {
         /// The vertex at `to`.
         end: VertexRef,
     },
-    /// `finish` makes solids: Euler operators build closed surfaces, and
-    /// no operation returns another kind.
-    #[error("the builder makes a solid, not a {0} body")]
+    /// `finish` makes solids and sheets: no operation returns a wire or a
+    /// general body.
+    #[error("the builder makes a solid or a sheet, not a {0} body")]
     Kind(BodyKind),
     /// A loop without coedges cannot be stored.
     #[error("loop {loop_index} of {face} has no coedges")]
@@ -714,6 +714,8 @@ pub enum BuildError {
     /// [`Builder::assemble`]: the counts of a shell do not close the
     /// Euler–Poincaré line at a whole genus, so its faces are not a closed
     /// surface — or a vertex is on no shell's edge, so the body's do not.
+    /// [`Builder::assemble_sheet`] reports a shell's counts with each of its
+    /// boundary cycles capped by a face of one loop.
     #[error("{counts} is not a closed surface of whole genus")]
     NotClosed {
         /// The counts of the shell that does not close (`S` = 1), or of
@@ -2177,8 +2179,8 @@ impl Builder {
         out
     }
 
-    /// Freezes the body into `model` as a `Solid`: every live vertex,
-    /// edge and face appended in slot order — bar the slots
+    /// Freezes the body into `model` as a `Solid` or a `Sheet`: every live
+    /// vertex, edge and face appended in slot order — bar the slots
     /// [`Builder::assemble`] marked `Keep` and no operator has touched,
     /// which keep their arena id and append nothing — then one shell per
     /// shell index the faces carry, in index order and each over its faces
@@ -2188,21 +2190,26 @@ impl Builder {
     /// surface's normal. Returns the body, its shells and the slot → id
     /// maps.
     ///
+    /// A `Solid`'s edges are used exactly twice, a `Sheet`'s once (its
+    /// boundary) or twice — the open shells [`Builder::assemble_sheet`]
+    /// proves (`docs/DATA-MODEL.md` §Invariants, S2).
+    ///
     /// Errors, each leaving the model untouched: [`BuildError::Kind`] for
-    /// any kind but `Solid` (the operators build closed surfaces, and no
-    /// operation returns a sheet, wire or general body);
+    /// a `Wire` or `General` body, which no operation returns;
     /// [`BuildError::Empty`]; an [`BuildError::EmptyLoop`]; a
-    /// [`BuildError::MissingPcurve`]; an edge not used exactly twice, or
-    /// a degenerate one not exactly once ([`BuildError::EdgeUses`]), or used twice the same way
+    /// [`BuildError::MissingPcurve`]; an edge used a number of times its
+    /// kind does not allow, or a degenerate one not exactly once
+    /// ([`BuildError::EdgeUses`]), or used twice the same way
     /// ([`BuildError::SameDirection`]); a curve, surface, pcurve or kept
     /// entity id that does not resolve ([`BuildError::NotFound`]).
     pub fn finish(self, model: &mut Model, kind: BodyKind) -> Result<Built, BuildError> {
-        match kind {
-            BodyKind::Solid => {}
-            BodyKind::Sheet | BodyKind::Wire | BodyKind::General => {
+        let open = match kind {
+            BodyKind::Solid => false,
+            BodyKind::Sheet => true,
+            BodyKind::Wire | BodyKind::General => {
                 return Err(BuildError::Kind(kind));
             }
-        }
+        };
         if self.faces.len() == 0 {
             return Err(BuildError::Empty);
         }
@@ -2234,7 +2241,7 @@ impl Builder {
         for (ei, e) in self.edges.iter() {
             let edge = EdgeRef(ei);
             let list = uses.get(&edge).map_or(&[][..], Vec::as_slice);
-            if list.len() != uses_wanted(e) {
+            if !uses_allowed(e, list.len(), open) {
                 return Err(BuildError::EdgeUses {
                     edge,
                     uses: list.len(),
@@ -2405,6 +2412,57 @@ impl Builder {
         tolerance: f64,
         assembly: Assembly,
     ) -> Result<(Builder, AssemblySlots), BuildError> {
+        Builder::assemble_shells(model, tolerance, assembly, false)
+    }
+
+    /// [`Builder::assemble`] for a `Sheet`: each shell is an open surface,
+    /// what [`Builder::finish`] stores with [`BodyKind::Sheet`]. It proves
+    /// what `assemble` proves but that an edge other than a degenerate one
+    /// is used once — a boundary edge, with a face on one side only — or
+    /// twice in opposite directions, and that each shell's Euler–Poincaré
+    /// line closes at a whole genus once every boundary cycle is capped by
+    /// a face of one loop: `V − E + 2F − L + B = 2(1 − G)` over its `B`
+    /// cycles of boundary edges. A boundary that touches itself at a
+    /// vertex is one cycle there, so a shell pinched at a boundary vertex
+    /// does not close. A planar section's faces, and any face kept whole
+    /// on its own, are such shells.
+    ///
+    /// Errors: [`Builder::assemble`]'s, [`BuildError::NotClosed`]
+    /// reporting the capped counts.
+    ///
+    /// ```
+    /// use arris_topo::builder::{Assembly, Builder, FaceSpec};
+    /// use arris_topo::entity::BodyKind;
+    /// use arris_topo::Model;
+    /// use arris_debug::sample;
+    ///
+    /// // A cylinder's top cap, kept whole as a sheet of its own.
+    /// let mut m = Model::default();
+    /// let body = sample::cylinder(&mut m, 4.0, 12.0)?;
+    /// let cap = m.faces(body)?[0];
+    /// let assembly = Assembly { shells: vec![vec![FaceSpec::Keep(cap)]], ..Assembly::default() };
+    /// let (b, _slots) = Builder::assemble_sheet(&m, m.precision().default_tolerance, assembly)?;
+    /// let sheet = b.finish(&mut m, BodyKind::Sheet)?;
+    /// assert_eq!(m.faces(sheet.body)?, [cap]);
+    /// assert!(arris_check::check(&m, sheet.body, arris_check::Level::Full).is_ok());
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn assemble_sheet(
+        model: &Model,
+        tolerance: f64,
+        assembly: Assembly,
+    ) -> Result<(Builder, AssemblySlots), BuildError> {
+        Builder::assemble_shells(model, tolerance, assembly, true)
+    }
+
+    /// [`Builder::assemble`] of closed shells, or of `open` ones for
+    /// [`Builder::assemble_sheet`].
+    fn assemble_shells(
+        model: &Model,
+        tolerance: f64,
+        assembly: Assembly,
+        open: bool,
+    ) -> Result<(Builder, AssemblySlots), BuildError> {
         let mut b = Builder::new(tolerance);
         let mut at = Assembled::default();
         for spec in &assembly.vertices {
@@ -2487,7 +2545,7 @@ impl Builder {
             }
             face_slots.push(shell_slots);
         }
-        b.genus = b.assembled_genus()?;
+        b.genus = b.assembled_genus(open)?;
         let slots = AssemblySlots {
             vertices: at.vertex_of,
             edges: at.edge_of,
@@ -2652,10 +2710,11 @@ impl Builder {
         })
     }
 
-    /// Proves the assembled slots are closed surfaces of whole genus, one
-    /// per shell and sharing nothing, and returns the sum of their genera;
-    /// the errors are [`Builder::assemble`]'s.
-    fn assembled_genus(&self) -> Result<usize, BuildError> {
+    /// Proves the assembled slots are closed surfaces of whole genus — or,
+    /// `open`, surfaces that are once their boundary cycles are capped —
+    /// one per shell and sharing nothing, and returns the sum of their
+    /// genera; the errors are [`Builder::assemble`]'s.
+    fn assembled_genus(&self, open: bool) -> Result<usize, BuildError> {
         let mut uses: BTreeMap<EdgeRef, Vec<(Orientation, FaceRef)>> = BTreeMap::new();
         for (fi, face) in self.faces.iter() {
             let face_ref = FaceRef(fi);
@@ -2688,7 +2747,7 @@ impl Builder {
         for (ei, e) in self.edges.iter() {
             let edge = EdgeRef(ei);
             let list = uses.get(&edge).map_or(&[][..], Vec::as_slice);
-            if list.len() != uses_wanted(e) {
+            if !uses_allowed(e, list.len(), open) {
                 return Err(BuildError::EdgeUses {
                     edge,
                     uses: list.len(),
@@ -2768,6 +2827,13 @@ impl Builder {
             if let Some(&face) = faces.iter().find(|f| !reached.contains(f)) {
                 return Err(BuildError::Disconnected { face, from });
             }
+            // An open shell's boundary cycles, each capped below by a face
+            // of one loop.
+            let caps = if open {
+                self.boundary_cycles(&uses, &edge_shell, shell)
+            } else {
+                0
+            };
             let counts = Counts {
                 vertices: vertex_shell.values().filter(|&&s| s == shell).count(),
                 edges: edge_shell
@@ -2776,12 +2842,13 @@ impl Builder {
                         s == shell && !self.edges.get(e.0).is_some_and(is_degenerate)
                     })
                     .count(),
-                faces: faces.len(),
+                faces: faces.len() + caps,
                 loops: faces
                     .iter()
                     .filter_map(|f| self.faces.get(f.0))
                     .map(|f| f.loops.len())
-                    .sum(),
+                    .sum::<usize>()
+                    + caps,
                 shells: 1,
                 genus: 0,
             };
@@ -2804,6 +2871,52 @@ impl Builder {
     }
 }
 
+impl Builder {
+    /// The cycles of boundary edges of `shell` — the non-degenerate edges
+    /// one coedge uses — counted as the components of the graph they make
+    /// over their vertices: one per cycle where each boundary vertex ends
+    /// two of them, fewer where a boundary touches itself.
+    fn boundary_cycles(
+        &self,
+        uses: &BTreeMap<EdgeRef, Vec<(Orientation, FaceRef)>>,
+        edge_shell: &BTreeMap<EdgeRef, usize>,
+        shell: usize,
+    ) -> usize {
+        let mut parent: BTreeMap<VertexRef, VertexRef> = BTreeMap::new();
+        fn root(parent: &mut BTreeMap<VertexRef, VertexRef>, v: VertexRef) -> VertexRef {
+            let mut r = v;
+            while let Some(&p) = parent.get(&r) {
+                if p == r {
+                    break;
+                }
+                r = p;
+            }
+            parent.insert(v, r);
+            r
+        }
+        for (&edge, list) in uses {
+            let boundary = list.len() == 1
+                && edge_shell.get(&edge) == Some(&shell)
+                && self.edges.get(edge.0).is_some_and(|e| !is_degenerate(e));
+            let Some(e) = self.edges.get(edge.0).filter(|_| boundary) else {
+                continue;
+            };
+            for v in [e.start, e.end] {
+                parent.entry(v).or_insert(v);
+            }
+            let (a, b) = (root(&mut parent, e.start), root(&mut parent, e.end));
+            if a != b {
+                parent.insert(a.max(b), a.min(b));
+            }
+        }
+        let vertices: Vec<VertexRef> = parent.keys().copied().collect();
+        vertices
+            .into_iter()
+            .filter(|&v| root(&mut parent, v) == v)
+            .count()
+    }
+}
+
 /// Whether a staged edge is degenerate: the singular point of the one face
 /// that closes on it — a cone's apex, a sphere's pole — which is not a
 /// boundary between two faces (`docs/DATA-MODEL.md` §Invariants, S2) and
@@ -2812,10 +2925,18 @@ fn is_degenerate(edge: &StagedEdge) -> bool {
     matches!(edge.geometry, EdgeGeometry::Degenerate { .. })
 }
 
-/// The coedges a finished solid's edge is used by: two, and one for a
-/// degenerate edge, since no surface closes on one singular point twice.
-fn uses_wanted(edge: &StagedEdge) -> usize {
-    if is_degenerate(edge) { 1 } else { 2 }
+/// Whether `n` coedges may use `edge` in a finished body: one for a
+/// degenerate edge, since no surface closes on one singular point twice;
+/// two for any other edge of a closed shell, and one or two of an `open`
+/// one, whose boundary edges have a face on one side only.
+fn uses_allowed(edge: &StagedEdge, n: usize, open: bool) -> bool {
+    if is_degenerate(edge) {
+        n == 1
+    } else if open {
+        n == 1 || n == 2
+    } else {
+        n == 2
+    }
 }
 
 #[cfg(test)]
