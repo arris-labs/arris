@@ -165,7 +165,7 @@ bound has to be established here.
     arms (two faces), a plane missing the body (`None`); the model's dump
     unchanged but for the sheet's closure; two runs give the same ids.
     Rustdoc with an example.
-- [ ] Step 3 **[1]** — ADR-0056 (above), with step 1's builder change
+- [x] Step 3 **[1]** — ADR-0056 (above), with step 1's builder change
   and step 2's flush finding (the coincident row keeps the near face's
   copy where normals agree; the cap pieces classified `Inside`); ARCHITECTURE §Operations gains `section` beside `split` in the
   same commit.
