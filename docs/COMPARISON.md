@@ -15,7 +15,7 @@ not the latest.
 
 ## Where each one stands
 
-| Area | Open CASCADE | Arris (`Unreleased` and 0.6.0) |
+| Area | Open CASCADE | Arris (0.7.0) |
 |---|---|---|
 | Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS faces read and checked; not yet operands of booleans where they meet the other operand |
 | Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections and extrema) |
