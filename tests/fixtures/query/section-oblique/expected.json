@@ -1,0 +1,27 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "66791c4ab47fe111b8617f00de42e9aa5c2c2e2f679afa0a08e325e0cb7aa1da",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "cylinder aslant",
+          "section": {
+            "area": 39.98594644342529,
+            "centroid": [
+              -8.881784197001252e-16,
+              -2.5340209302390723e-16,
+              5.000000000000002
+            ],
+            "edge_length": 22.925014418370573,
+            "edges": 1,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        }
+      ]
+    }
+  }
+}

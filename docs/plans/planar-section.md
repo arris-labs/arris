@@ -176,7 +176,7 @@ bound has to be established here.
   fixtures are, the sheet checker-green at `Full`), `tests/fixtures/README.md`
   §Query fixtures; one starter fixture, `query/section-primitives` with
   the box poses.
-- [ ] Step 5 **[1]** — The corpus: `query/section-primitives` extended
+- [x] Step 5 **[1]** — The corpus: `query/section-primitives` extended
   (step 2's poses, a cone across and through its apex, a torus across its
   hole — two rings — and through its axis — two discs), `query/section-flush`
   (the stepped block, the overhang, the flush top, each against Open
@@ -236,6 +236,12 @@ its "each query a corpus … `BRepAlgoAPI_Section`" for the section.
   region flush with a face (a plane at a box's top answers one face of the
   top's area), so the runner holds a `query_differs` fixture to the recipe's
   closed forms (`expect`, `expect_area`, `expect_centroid`), not the oracle's
-  counts. ⚠ OPEN: does its `Section` split a closed section curve at a seam?
-  Agent, settled in step 5 by the cylinder poses; a difference is a
-  `query_differs` entry.
+  counts. Its `Section` does not split a closed section curve
+  at a seam (a cylinder, a ball or a cone cut across: one edge, as Arris),
+  settled in step 5. The one difference found there is a length: Open
+  CASCADE's `LinearProperties` of an elliptic edge is 1.7e-4 relative off
+  the exact, so the oblique cylinder is `query/section-oblique`, held to
+  closed forms under `query_differs`. A plane tangent to a ruling of a
+  fused post, outside the block, is not refused (the tangency is on the
+  boundary of the section, not interior to both caps); the refused fixture
+  uses the plate's hole, as `split/plate-hole-tangent-off-seam`.

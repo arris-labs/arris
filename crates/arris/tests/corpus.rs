@@ -122,9 +122,23 @@ corpus_tests! {
     /// A B-spline cylinder from STEP: a box crossing its wall is refused as
     /// unsupported, a box far from it is apart (ADR-0055).
     query_interference_nurbs_refused => query "query/interference-nurbs-refused";
-    /// A block cut by planes: mid-height, reversed, across a corner, tilted,
-    /// along its length, and above it (ADR-0056).
+    /// A block, cylinder, tube, ball, cone, torus and U-bracket cut by planes
+    /// across, along and through their seams and apex (ADR-0056).
     query_section_primitives => query "query/section-primitives";
+    /// A cylinder cut aslant, an ellipse whose length the oracle gets 1.7e-4
+    /// off: held to the closed form (ADR-0056).
+    query_section_oblique => query "query/section-oblique";
+    /// Planes flush with a face: the stepped block at the step, an overhang's
+    /// underside, a box's top and bottom — Open CASCADE keeps the flush
+    /// region, a section does not (ADR-0056).
+    query_section_flush => query "query/section-flush";
+    /// A drilled plate across and along its hole, a filleted block across the
+    /// blend, a shelled box across its walls (ADR-0056).
+    query_section_parts => query "query/section-parts";
+    /// A plane tangent to a post along a ruling where it crosses the block
+    /// it is fused to, and a NURBS cylinder: refused where Open CASCADE
+    /// answers (ADR-0056).
+    query_section_refused => query "query/section-refused";
     /// Two bodies with off-axis cones that pruning skips: the bars' distance.
     query_distance_cones_pruned => query "query/distance-cones-pruned";
     primitive_box => run "primitive/box";

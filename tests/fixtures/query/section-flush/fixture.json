@@ -1,0 +1,26 @@
+{
+  "kind": "query",
+  "description": "planes flush with a face of the solid: a stepped block cut at the step's height (the step's 5 x 10 interior, not the flush 5 x 10 of the base's top), an overhang whose underside lies on the plane (the column's 4 x 4), a plane at a box's top and bottom (none), and the step's top seen from above (none)",
+  "analytic": {"query_differs": "BRepAlgoAPI_Common of a solid and a planar face lying on one of its faces keeps the flush region (a plane at a box's top answers that face), but a section is the plane's points with material on both sides (ADR-0056 \u00a71), so the closed forms hold the verdict, area and centroid"},
+  "steps": [
+    {"name": "base", "op": "box", "min": [0, 0, 0], "max": [10, 10, 4]},
+    {"name": "riser", "op": "box", "min": [0, 0, 4], "max": [5, 10, 8]},
+    {"name": "stepped", "op": "fuse", "a": "base", "b": "riser"},
+    {"name": "column", "op": "box", "min": [3, 3, 0], "max": [7, 7, 4]},
+    {"name": "deck", "op": "box", "min": [0, 0, 4], "max": [10, 10, 8]},
+    {"name": "overhang", "op": "fuse", "a": "column", "b": "deck"},
+    {"name": "cube", "op": "box", "min": [0, 0, 0], "max": [10, 10, 4]}
+  ],
+  "result": "stepped",
+  "queries": [
+    {"label": "stepped block at the step", "section": {"body": {"step": "stepped"}, "plane": {"origin": [0, 0, 4], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 50, "expect_centroid": [2.5, 5, 4]},
+    {"label": "stepped block at the step, reversed", "section": {"body": {"step": "stepped"}, "plane": {"origin": [0, 0, 4], "z": [0, 0, -1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 50, "expect_centroid": [2.5, 5, 4]},
+    {"label": "stepped block at the top of the step", "section": {"body": {"step": "stepped"}, "plane": {"origin": [0, 0, 8], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "none"},
+    {"label": "stepped block at the bottom", "section": {"body": {"step": "stepped"}, "plane": {"origin": [0, 0, 0], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "none"},
+    {"label": "overhang at its underside", "section": {"body": {"step": "overhang"}, "plane": {"origin": [0, 0, 4], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 16, "expect_centroid": [5, 5, 4]},
+    {"label": "overhang at its underside, reversed", "section": {"body": {"step": "overhang"}, "plane": {"origin": [0, 0, 4], "z": [0, 0, -1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 16, "expect_centroid": [5, 5, 4]},
+    {"label": "box at its top", "section": {"body": {"step": "cube"}, "plane": {"origin": [0, 0, 4], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "none"},
+    {"label": "box at its top, reversed", "section": {"body": {"step": "cube"}, "plane": {"origin": [0, 0, 4], "z": [0, 0, -1], "x": [1, 0, 0]}}, "expect": "none"},
+    {"label": "box at its bottom", "section": {"body": {"step": "cube"}, "plane": {"origin": [0, 0, 0], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "none"}
+  ]
+}

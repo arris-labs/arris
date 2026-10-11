@@ -1,0 +1,22 @@
+{
+  "kind": "query",
+  "description": "a plate 40 x 30 x 10 drilled r 4 at (20, 15), cut across the hole (a ring) and along it through its axis (two faces); a block with a vertical edge filleted r 4, cut across the blend; a box shelled 2 inward with its top open, cut across its walls and through the middle",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [40, 30, 10]},
+    {"name": "hole", "op": "cylinder", "base": [20, 15, -1], "axis": [0, 0, 1], "radius": 4, "height": 12},
+    {"name": "drilled", "op": "cut", "target": "plate", "tool": "hole"},
+    {"name": "cube", "op": "box", "min": [100, 0, 0], "max": [120, 20, 20]},
+    {"name": "rounded", "op": "fillet", "of": "cube", "edges": [[120, 20, 10]], "radius": 4},
+    {"name": "crate", "op": "box", "min": [200, 0, 0], "max": [220, 20, 20]},
+    {"name": "shelled", "op": "shell", "of": "crate", "openings": [[210, 10, 20]], "thickness": 2, "side": "inward"}
+  ],
+  "result": "drilled",
+  "queries": [
+    {"label": "drilled plate across the hole", "section": {"body": {"step": "drilled"}, "plane": {"origin": [0, 0, 5], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 1149.7345175425633},
+    {"label": "drilled plate along the hole", "section": {"body": {"step": "drilled"}, "plane": {"origin": [0, 15, 0], "z": [0, 1, 0], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 2, "expect_area": 320},
+    {"label": "drilled plate through the hole slantwise", "section": {"body": {"step": "drilled"}, "plane": {"origin": [20, 15, 5], "z": [1, 1, 0]}}, "expect": "sheet", "expect_faces": 2},
+    {"label": "filleted block across the blend", "section": {"body": {"step": "rounded"}, "plane": {"origin": [100, 0, 10], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 396.5663706143592},
+    {"label": "shelled box across the walls", "section": {"body": {"step": "shelled"}, "plane": {"origin": [200, 0, 10], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 144},
+    {"label": "shelled box through the middle", "section": {"body": {"step": "shelled"}, "plane": {"origin": [200, 10, 0], "z": [0, 1, 0], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 112}
+  ]
+}

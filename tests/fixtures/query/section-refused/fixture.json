@@ -1,0 +1,15 @@
+{
+  "kind": "query",
+  "description": "a plate drilled r 3 at (10, 10), cut by the plane x = 7 tangent to the hole's wall along a ruling interior to the plane's cap: refused as a tangent contact (the slit no manifold sheet carries) where Open CASCADE answers; a cylinder read from STEP with every face a NURBS surface, cut across its wall: refused as unsupported where Open CASCADE answers",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [20, 20, 5]},
+    {"name": "hole", "op": "cylinder", "base": [10, 10, -1], "axis": [0, 0, 1], "radius": 3, "height": 7},
+    {"name": "holed", "op": "cut", "target": "plate", "tool": "hole"},
+    {"name": "part", "op": "step", "file": "nurbs-cylinder.step", "sha256": "7a14cfcc3f0a6eb882ad08e4d6e1a547005b3ff9fd77c2cde0977176727815d1", "id": 15}
+  ],
+  "result": "holed",
+  "queries": [
+    {"label": "tangent to the hole's wall", "section": {"body": {"step": "holed"}, "plane": {"origin": [7, 0, 0], "z": [1, 0, 0], "x": [0, 1, 0]}}, "expect": "sheet", "expect_refused": "tangent_contact"},
+    {"label": "across a NURBS cylinder", "section": {"body": {"step": "part"}, "plane": {"origin": [0, 0, 5], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_refused": "unsupported"}
+  ]
+}

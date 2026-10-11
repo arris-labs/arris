@@ -1,0 +1,56 @@
+{
+ "kind": "query",
+ "description": "a cylinder r 3 cut aslant (an ellipse, semi-axes 3 sqrt 2 and 3) and a ball cut through its centre: the closed forms hold the area, centroid; Open CASCADE's length of the ellipse is 1.7e-4 relative off the exact (quadrature 200000 points of the arc length integral), so the oracle's edge length is not compared",
+ "analytic": {
+  "query_differs": "BRepGProp.LinearProperties of an elliptic edge is 1.7e-4 relative off the arc length integral (22.925014 against 22.921187 for semi-axes 3 sqrt 2 and 3); the area and centroid agree to 1e-9"
+ },
+ "steps": [
+  {
+   "name": "rod",
+   "op": "cylinder",
+   "base": [
+    0,
+    0,
+    0
+   ],
+   "axis": [
+    0,
+    0,
+    1
+   ],
+   "radius": 3,
+   "height": 10
+  }
+ ],
+ "result": "rod",
+ "queries": [
+  {
+   "label": "cylinder aslant",
+   "section": {
+    "body": {
+     "step": "rod"
+    },
+    "plane": {
+     "origin": [
+      0,
+      0,
+      5
+     ],
+     "z": [
+      1,
+      0,
+      1
+     ]
+    }
+   },
+   "expect": "sheet",
+   "expect_faces": 1,
+   "expect_area": 39.9859464434253,
+   "expect_centroid": [
+    0,
+    0,
+    5
+   ]
+  }
+ ]
+}

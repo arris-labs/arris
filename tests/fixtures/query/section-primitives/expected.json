@@ -1,7 +1,7 @@
 {
   "kind": "query",
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "22e7cd65dea3d4e05f58476ab22e502a41dc1103e4c53d06c059a8544abee68b",
+  "recipe_sha256": "714ec3cfc9fd1151b735c42acf9d5eb90dac73aaf4a4c34c087411e9eb8448b2",
   "results": {
     "default": {
       "queries": [
@@ -89,6 +89,214 @@
           "label": "above the block",
           "section": {
             "none": true
+          }
+        },
+        {
+          "label": "cylinder across",
+          "section": {
+            "area": 28.274333882308145,
+            "centroid": [
+              30.0,
+              -2.5292044727263125e-16,
+              5.0
+            ],
+            "edge_length": 18.849555921538762,
+            "edges": 1,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "cylinder along its axis through the seam",
+          "section": {
+            "area": 60.0,
+            "centroid": [
+              30.0,
+              -2.465190328815662e-32,
+              5.0
+            ],
+            "edge_length": 32.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "cylinder along its axis off the seam",
+          "section": {
+            "area": 60.0,
+            "centroid": [
+              30.0,
+              -5.204170427930421e-18,
+              5.0
+            ],
+            "edge_length": 32.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "tube across",
+          "section": {
+            "area": 37.6991118430775,
+            "centroid": [
+              50.0,
+              -1.4729506229093288e-16,
+              5.0
+            ],
+            "edge_length": 37.69911184307752,
+            "edges": 2,
+            "faces": 1,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "tube along its axis",
+          "section": {
+            "area": 40.0,
+            "centroid": [
+              50.0,
+              -2.465190328815662e-32,
+              5.0
+            ],
+            "edge_length": 48.0,
+            "edges": 8,
+            "faces": 2,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "ball off-centre",
+          "section": {
+            "area": 50.26548245743667,
+            "centroid": [
+              70.0,
+              -3.972516759986889e-16,
+              3.0
+            ],
+            "edge_length": 25.132741228718345,
+            "edges": 1,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "ball through its centre",
+          "section": {
+            "area": 78.5398163397448,
+            "centroid": [
+              70.0,
+              -2.7140733281822017e-16,
+              3.044092755644102e-16
+            ],
+            "edge_length": 31.41592653589793,
+            "edges": 2,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "cone across",
+          "section": {
+            "area": 28.274333882308145,
+            "centroid": [
+              90.0,
+              -1.0639637319324414e-16,
+              2.0
+            ],
+            "edge_length": 18.849555921538762,
+            "edges": 1,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "cone through its apex along its axis",
+          "section": {
+            "area": 32.000000000000014,
+            "centroid": [
+              90.0,
+              2.465190328815662e-32,
+              2.666666666666667
+            ],
+            "edge_length": 25.88854381999832,
+            "edges": 3,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "torus across its hole",
+          "section": {
+            "area": 37.6991118430775,
+            "centroid": [
+              110.0,
+              -6.036837696399291e-16,
+              -1.232595164407831e-32
+            ],
+            "edge_length": 37.69911184307752,
+            "edges": 2,
+            "faces": 1,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "torus through its axis",
+          "section": {
+            "area": 6.2831853071795845,
+            "centroid": [
+              110.00000000000001,
+              1.0454230188017656e-47,
+              -1.1058862159352154e-17
+            ],
+            "edge_length": 12.566370614359172,
+            "edges": 2,
+            "faces": 2,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "bracket across both arms",
+          "section": {
+            "area": 72.0,
+            "centroid": [
+              140.0,
+              3.0,
+              6.0
+            ],
+            "edge_length": 48.0,
+            "edges": 8,
+            "faces": 2,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "bracket across the slot",
+          "section": {
+            "area": 144.0,
+            "centroid": [
+              140.0,
+              3.0,
+              4.416666666666667
+            ],
+            "edge_length": 74.0,
+            "edges": 8,
+            "faces": 1,
+            "loops": 1,
+            "none": false
           }
         }
       ]

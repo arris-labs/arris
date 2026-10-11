@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 use arris_check::{Level, check};
 use arris_geom::integrate::gauss_legendre;
 use arris_math::{Control, Frame, Point3, Vec3};
-use arris_ops::section;
+use arris_ops::{BooleanReason, OpError, Reason, section};
 use arris_topo::{Body, Model};
 
 use super::{Answer, PlaneSpec, Query, QueryError, QueryFixture, SectionSpec, VariantAnswers};
@@ -29,6 +29,8 @@ use crate::fixtures::{Num, Recipe};
 
 /// The values `expect` takes in a section query.
 const EXPECTS: [&str; 2] = ["none", "sheet"];
+/// The refusals `expect_refused` names: the booleans' (ADR-0056).
+const REFUSALS: [&str; 2] = ["unsupported", "tangent_contact"];
 /// Panels the quadrature of an edge's length is cut into: smooth curves
 /// to rounding, a section's NURBS curve to its fit.
 const LENGTH_PANELS: usize = 64;
@@ -103,13 +105,33 @@ pub(super) fn run(
     let frame = frame_of(&spec.plane, &chain.params).map_err(wrong)?;
     // The operation adds a body: it is made in a copy of the model.
     let mut m = chain.model.clone();
-    let ours =
-        section(&mut m, body, &frame, &Control::NONE).map_err(|source| QueryError::Refused {
-            fixture: fixture.name.clone(),
-            variant: variant.to_string(),
-            label: query.label.clone(),
-            source: Box::new(source),
-        })?;
+    let ours = section(&mut m, body, &frame, &Control::NONE);
+    if let Some(expect) = &query.expect_refused {
+        let named = match &ours {
+            Err(OpError::Unsupported { .. }) => "unsupported",
+            Err(OpError::Degenerate {
+                reason: Reason::Boolean(BooleanReason::TangentContact),
+                ..
+            }) => "tangent_contact",
+            Err(source) => return Err(wrong(format!("refused with {source}, not as {expect}"))),
+            Ok(_) => {
+                return Err(wrong(format!(
+                    "answered where a {expect} refusal is expected"
+                )));
+            }
+        };
+        return if named == expect {
+            Ok(())
+        } else {
+            Err(wrong(format!("refused as {named}, not as {expect}")))
+        };
+    }
+    let ours = ours.map_err(|source| QueryError::Refused {
+        fixture: fixture.name.clone(),
+        variant: variant.to_string(),
+        label: query.label.clone(),
+        source: Box::new(source),
+    })?;
     let tolerances = &fixture.recipe.tolerances;
     let verdict = if ours.is_some() { "sheet" } else { "none" };
     if let Some(expect) = &query.expect
@@ -180,6 +202,32 @@ pub(super) fn run(
                 source,
             })?;
         relative("area", ours.area, expect, tolerances.area_rel)?;
+    }
+    if differs {
+        // The closed forms govern: the oracle's sheet includes what is
+        // flush, or its measures are off the exact (ADR-0056 §1).
+        if query.expect_area.is_none() {
+            return Err(wrong("a query_differs sheet states `expect_area`".into()));
+        }
+        if let Some(at) = &query.expect_centroid {
+            let eval = |n: &Num| {
+                n.eval(&chain.params)
+                    .map_err(|source| QueryError::Expression {
+                        fixture: fixture.name.clone(),
+                        label: query.label.clone(),
+                        source,
+                    })
+            };
+            let at = Vec3::new(eval(&at[0])?, eval(&at[1])?, eval(&at[2])?);
+            if (ours.centroid.coords - at).norm() > tolerances.centroid_abs {
+                return Err(wrong(format!(
+                    "centroid {:?} but {:?} expected",
+                    ours.centroid.coords.as_slice(),
+                    at.as_slice()
+                )));
+            }
+        }
+        return Ok(());
     }
     for (name, got, want) in [
         ("faces", faces.len(), oracle.faces),
@@ -252,6 +300,13 @@ pub(super) fn lint(
         out.push("the oracle has no section".into());
         return out;
     };
+    if let Some(expect) = &q.expect_refused
+        && !REFUSALS.contains(&expect.as_str())
+    {
+        out.push(format!(
+            "expect_refused {expect:?} is not unsupported or tangent_contact"
+        ));
+    }
     if let Some(expect) = &q.expect {
         if !EXPECTS.contains(&expect.as_str()) {
             out.push(format!("expect {expect:?} is not none or sheet"));

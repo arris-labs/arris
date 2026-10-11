@@ -1,0 +1,107 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "c681477197bdbb9f758b98a48c0ff7c67d1ecd751e03d57e1696a34f2ce21e60",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "drilled plate across the hole",
+          "section": {
+            "area": 1149.7345175425633,
+            "centroid": [
+              20.0,
+              14.999999999999998,
+              5.0
+            ],
+            "edge_length": 165.13274122871834,
+            "edges": 5,
+            "faces": 1,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "drilled plate along the hole",
+          "section": {
+            "area": 320.0,
+            "centroid": [
+              20.0,
+              15.0,
+              5.0
+            ],
+            "edge_length": 104.0,
+            "edges": 8,
+            "faces": 2,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "drilled plate through the hole slantwise",
+          "section": {
+            "area": 344.26406871192836,
+            "centroid": [
+              19.999999999999996,
+              15.000000000000004,
+              5.000000000000001
+            ],
+            "edge_length": 108.8528137423857,
+            "edges": 8,
+            "faces": 2,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "filleted block across the blend",
+          "section": {
+            "area": 396.56637061435913,
+            "centroid": [
+              109.92115205600497,
+              9.921152056004974,
+              10.0
+            ],
+            "edge_length": 78.2831853071796,
+            "edges": 5,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "shelled box across the walls",
+          "section": {
+            "area": 143.99999999999994,
+            "centroid": [
+              210.0,
+              10.0,
+              10.0
+            ],
+            "edge_length": 144.0,
+            "edges": 8,
+            "faces": 1,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "shelled box through the middle",
+          "section": {
+            "area": 111.99999999999994,
+            "centroid": [
+              210.0,
+              10.000000000000002,
+              7.42857142857143
+            ],
+            "edge_length": 116.0,
+            "edges": 8,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        }
+      ]
+    }
+  }
+}

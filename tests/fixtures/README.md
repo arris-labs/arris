@@ -882,6 +882,11 @@ and section plans add theirs to the same `queries` list. They sit under
   `analytic.query_differs`, and the runner then holds the verdict to
   `expect` and a sheet to `expect_area` (required) and `expect_centroid`,
   the closed forms, instead of the oracle's counts and measures.
+  `expect_refused` (`unsupported` or `tangent_contact`) holds a section the
+  kernel refuses as the booleans do where Open CASCADE answers: the runner
+  holds the refusal and skips the comparison. Open CASCADE's length of an
+  elliptic edge is 1.7e-4 relative off the exact, so an oblique cut of a
+  cylinder is held to its closed form under `query_differs`.
 - The hash covers `kind`, `params`, `variants`, `steps`, `result` and
   `queries`.
 - No `dump.txt`: the result's own dump is the solid kinds'.

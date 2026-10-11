@@ -1,0 +1,155 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a99a0f44e3076b67a1c6873fa01ea61c733404fd27b41c2442d80ac72e853adb",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "stepped block at the step",
+          "section": {
+            "area": 99.99999999999999,
+            "centroid": [
+              5.0,
+              5.0,
+              4.0
+            ],
+            "edge_length": 50.0,
+            "edges": 7,
+            "faces": 2,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "stepped block at the step, reversed",
+          "section": {
+            "area": 99.99999999999999,
+            "centroid": [
+              5.0,
+              5.0,
+              4.0
+            ],
+            "edge_length": 50.0,
+            "edges": 7,
+            "faces": 2,
+            "loops": 2,
+            "none": false
+          }
+        },
+        {
+          "label": "stepped block at the top of the step",
+          "section": {
+            "area": 49.99999999999999,
+            "centroid": [
+              2.5,
+              5.0,
+              8.0
+            ],
+            "edge_length": 30.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "stepped block at the bottom",
+          "section": {
+            "area": 99.99999999999999,
+            "centroid": [
+              5.0,
+              5.0,
+              0.0
+            ],
+            "edge_length": 40.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "overhang at its underside",
+          "section": {
+            "area": 100.0,
+            "centroid": [
+              5.0,
+              5.0,
+              4.0
+            ],
+            "edge_length": 56.0,
+            "edges": 8,
+            "faces": 2,
+            "loops": 3,
+            "none": false
+          }
+        },
+        {
+          "label": "overhang at its underside, reversed",
+          "section": {
+            "area": 100.0,
+            "centroid": [
+              5.0,
+              5.0,
+              4.0
+            ],
+            "edge_length": 56.0,
+            "edges": 8,
+            "faces": 2,
+            "loops": 3,
+            "none": false
+          }
+        },
+        {
+          "label": "box at its top",
+          "section": {
+            "area": 99.99999999999999,
+            "centroid": [
+              5.0,
+              5.0,
+              4.0
+            ],
+            "edge_length": 40.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "box at its top, reversed",
+          "section": {
+            "area": 99.99999999999999,
+            "centroid": [
+              5.0,
+              5.0,
+              4.0
+            ],
+            "edge_length": 40.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "box at its bottom",
+          "section": {
+            "area": 99.99999999999999,
+            "centroid": [
+              5.0,
+              5.0,
+              0.0
+            ],
+            "edge_length": 40.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        }
+      ]
+    }
+  }
+}

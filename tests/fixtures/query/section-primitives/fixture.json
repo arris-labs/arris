@@ -1,8 +1,21 @@
 {
   "kind": "query",
-  "description": "a 10 x 6 x 4 block cut by planes: mid-height, reversed, across a corner (a triangle), tilted through the middle, along a side's direction, and above the block (none)",
+  "description": "a 10 x 6 x 4 block cut by planes (mid-height, reversed, across a corner, tilted, along its length, above it: none); a cylinder across, along its axis through the seam and off it; a tube across and along; a ball off-centre and through its centre; a cone across and through its apex; a torus across its hole and through its axis; a U-bracket across both arms and across the slot",
   "steps": [
-    {"name": "block", "op": "box", "min": [0, 0, 0], "max": [10, 6, 4]}
+    {"name": "block", "op": "box", "min": [0, 0, 0], "max": [10, 6, 4]},
+    {"name": "rod", "op": "cylinder", "base": [30, 0, 0], "axis": [0, 0, 1], "radius": 3, "height": 10},
+    {"name": "bore", "op": "cylinder", "base": [50, 0, -1], "axis": [0, 0, 1], "radius": 2, "height": 12},
+    {"name": "tube_outer", "op": "cylinder", "base": [50, 0, 0], "axis": [0, 0, 1], "radius": 4, "height": 10},
+    {"name": "tube", "op": "cut", "target": "tube_outer", "tool": "bore"},
+    {"name": "ball_p", "op": "profile", "plane": {"origin": [70, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -5], "segments": [{"arc_to": [0, 5], "via": [5, 0]}, {"line_to": [0, -5]}]}},
+    {"name": "ball", "op": "revolve", "profile": "ball_p", "axis": {"origin": [70, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "cone_p", "op": "profile", "plane": {"origin": [90, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, 0], "segments": [{"line_to": [4, 0]}, {"line_to": [0, 8]}, {"line_to": [0, 0]}]}},
+    {"name": "cone", "op": "revolve", "profile": "cone_p", "axis": {"origin": [90, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "ring_p", "op": "profile", "plane": {"origin": [110, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"circle": {"center": [3, 0], "radius": 1}}},
+    {"name": "torus", "op": "revolve", "profile": "ring_p", "axis": {"origin": [110, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "bar", "op": "box", "min": [130, 0, 0], "max": [150, 6, 10]},
+    {"name": "slot", "op": "box", "min": [136, -1, 3], "max": [144, 7, 11]},
+    {"name": "bracket", "op": "cut", "target": "bar", "tool": "slot"}
   ],
   "result": "block",
   "queries": [
@@ -11,6 +24,19 @@
     {"label": "across a corner", "section": {"body": {"step": "block"}, "plane": {"origin": [1, 0, 0], "z": [1, 1, 1]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 0.8660254037844386},
     {"label": "tilted through the middle", "section": {"body": {"step": "block"}, "plane": {"origin": [5, 3, 2], "z": [1, 0, 1]}}, "expect": "sheet", "expect_faces": 1},
     {"label": "across the length", "section": {"body": {"step": "block"}, "plane": {"origin": [5, 0, 0], "z": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 24},
-    {"label": "above the block", "section": {"body": {"step": "block"}, "plane": {"origin": [0, 0, 9], "z": [0, 0, 1]}}, "expect": "none"}
+    {"label": "above the block", "section": {"body": {"step": "block"}, "plane": {"origin": [0, 0, 9], "z": [0, 0, 1]}}, "expect": "none"},
+    {"label": "cylinder across", "section": {"body": {"step": "rod"}, "plane": {"origin": [30, 0, 5], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 28.274333882308138},
+    {"label": "cylinder along its axis through the seam", "section": {"body": {"step": "rod"}, "plane": {"origin": [30, 0, 0], "z": [0, 1, 0], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 60},
+    {"label": "cylinder along its axis off the seam", "section": {"body": {"step": "rod"}, "plane": {"origin": [30, 0, 0], "z": [1, 0, 0], "x": [0, 1, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 60},
+    {"label": "tube across", "section": {"body": {"step": "tube"}, "plane": {"origin": [50, 0, 5], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 37.69911184307752},
+    {"label": "tube along its axis", "section": {"body": {"step": "tube"}, "plane": {"origin": [50, 0, 0], "z": [0, 1, 0], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 2, "expect_area": 40},
+    {"label": "ball off-centre", "section": {"body": {"step": "ball"}, "plane": {"origin": [70, 0, 3], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 50.26548245743669},
+    {"label": "ball through its centre", "section": {"body": {"step": "ball"}, "plane": {"origin": [70, 0, 0], "z": [1, 1, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 78.53981633974483},
+    {"label": "cone across", "section": {"body": {"step": "cone"}, "plane": {"origin": [90, 0, 2], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 28.274333882308138},
+    {"label": "cone through its apex along its axis", "section": {"body": {"step": "cone"}, "plane": {"origin": [90, 0, 0], "z": [0, 1, 0], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 32},
+    {"label": "torus across its hole", "section": {"body": {"step": "torus"}, "plane": {"origin": [110, 0, 0], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 37.69911184307752},
+    {"label": "torus through its axis", "section": {"body": {"step": "torus"}, "plane": {"origin": [110, 0, 0], "z": [0, 1, 0], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 2, "expect_area": 6.283185307179586},
+    {"label": "bracket across both arms", "section": {"body": {"step": "bracket"}, "plane": {"origin": [130, 0, 6], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 2, "expect_area": 72},
+    {"label": "bracket across the slot", "section": {"body": {"step": "bracket"}, "plane": {"origin": [140, 3, 0], "z": [0, 1, 0], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 144}
   ]
 }
