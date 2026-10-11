@@ -179,6 +179,14 @@ pub fn mass_properties(m: &Model, body: Body) -> Result<MassProperties, OpError>
     arris_ops::measure::mass_properties(m, body, &Control::NONE)
 }
 
+/// [`arris_ops::measure::surface_properties`] to its end.
+pub fn surface_properties(
+    m: &Model,
+    body: Body,
+) -> Result<arris_ops::measure::SurfaceProperties, OpError> {
+    arris_ops::measure::surface_properties(m, body, &Control::NONE)
+}
+
 /// [`arris_mesh::tessellate`] to its end.
 pub fn tessellate(
     m: &Model,

@@ -22,7 +22,8 @@ use crate::mesh::Mesh;
 use crate::profile::Profile;
 use crate::provenance::Provenance;
 use crate::query::{
-    Clash, Distance, Frame, Interference, MassProperties, RayHit, Report, Section, level_of,
+    Clash, Distance, Frame, Interference, MassProperties, RayHit, Report, Section,
+    SurfaceProperties, level_of,
 };
 
 /// Serial numbers for models, in creation order within the process: what a
@@ -1027,6 +1028,37 @@ impl Model {
             arris::ops::measure::mass_properties(m, body, control)
         })?;
         Ok(MassProperties::new(kernel))
+    }
+
+    /// The area, centroid and inertia of the faces of `body` — a solid's
+    /// boundary or a sheet's faces — at unit area density.
+    ///
+    /// Raises `OpDegenerateError` for a body whose faces have no area and
+    /// `Interrupted` when `cancel` or `budget` stops it.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// props = model.surface_properties(body)
+    /// assert abs(props.area - 22) < 1e-12
+    /// assert props.centroid == (0.5, 1.0, 1.5)
+    /// ```
+    #[pyo3(signature = (body, *, cancel=None, budget=None))]
+    fn surface_properties(
+        &self,
+        py: Python<'_>,
+        body: &Body,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<SurfaceProperties> {
+        let body = body.resolve(&self.shared)?;
+        let limits = Limits::new(cancel, budget);
+        let kernel = self.run(py, &limits, move |m, control| {
+            arris::ops::measure::surface_properties(m, body, control)
+        })?;
+        Ok(SurfaceProperties::new(kernel))
     }
 
     /// The frame of a planar `face`: `z` is its outward normal, reversed

@@ -75,6 +75,69 @@ impl MassProperties {
     }
 }
 
+/// The surface properties of a body at unit area density
+/// (`docs/ARCHITECTURE.md` §Operations): what [`surface_properties`]
+/// returns, of a sheet's faces as of a solid's boundary.
+///
+/// The mass is the area. The inertia tensor is about the centroid, in
+/// the physical convention of [`MassProperties`] — `∫ (|r|² I − r rᵀ)
+/// dA` — and [`Self::inertia_about`] carries it to any other point by
+/// the parallel-axis theorem.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SurfaceProperties {
+    /// The total area of the body's faces.
+    pub area: f64,
+    /// The centre of mass of the faces' surface.
+    pub centroid: Point3,
+    /// The inertia tensor about the centroid, unit area density.
+    pub inertia: Matrix3,
+}
+
+impl SurfaceProperties {
+    /// The inertia tensor about `point` instead of the centroid, by the
+    /// parallel-axis theorem with the area as the mass.
+    /// `inertia_about(centroid)` is [`Self::inertia`] to rounding.
+    ///
+    /// ```
+    /// use arris_ops::{measure, primitive_box};
+    /// use arris_topo::Model;
+    /// use arris_math::Point3;
+    ///
+    /// let mut m = Model::default();
+    /// let (body, _) = primitive_box(
+    ///     &mut m,
+    ///     Point3::new(0.0, 0.0, 0.0),
+    ///     Point3::new(1.0, 1.0, 1.0), &arris_ops::Control::NONE,
+    /// )
+    /// .unwrap();
+    /// let p = measure::surface_properties(&m, body, &arris_ops::Control::NONE).unwrap();
+    /// let same = p.inertia_about(p.centroid);
+    /// assert!((same - p.inertia).norm() < 1e-12);
+    /// ```
+    pub fn inertia_about(&self, point: Point3) -> Matrix3 {
+        let r = point - self.centroid;
+        self.inertia + self.area * (r.dot(&r) * Matrix3::identity() - r * r.transpose())
+    }
+}
+
+/// A surface integrand: the point of the surface, already translated by
+/// the pass's offset; the area element weights it.
+type Density = fn(Vec3) -> f64;
+
+/// The first surface pass: the area and the three first moments.
+const SURFACE_FIRST: [Density; 4] = [|_| 1.0, |p| p.x, |p| p.y, |p| p.z];
+
+/// The second surface pass, about the centroid: `∫ x² dA`, `∫ y² dA`,
+/// `∫ z² dA`, `∫ x y dA`, `∫ y z dA`, `∫ z x dA`.
+const SURFACE_SECOND: [Density; 6] = [
+    |p| p.x * p.x,
+    |p| p.y * p.y,
+    |p| p.z * p.z,
+    |p| p.x * p.y,
+    |p| p.y * p.z,
+    |p| p.z * p.x,
+];
+
 /// A flux integrand: the point of the surface, already translated by the
 /// pass's offset, and `∂P/∂u × ∂P/∂v`, the unnormalised normal whose
 /// length is the area element.
@@ -195,6 +258,108 @@ pub fn mass_properties(
         centroid,
         inertia,
     })
+}
+
+/// The surface properties of `body` at unit area density: area, centroid
+/// and the inertia tensor about the centroid, of every face of any body —
+/// a solid's boundary, a sheet's faces — integrated over each face's
+/// region in its own (u, v) with the quadrature [`mass_properties`]
+/// takes its area by, so on a solid the area is that one's. A face used
+/// by two shells counts once per use, as there. The first moments are
+/// taken about the centre of the body's vertices and the second about
+/// the centroid, for [`mass_properties`]'s reasons.
+///
+/// A query: it takes `&Model`, returns no body and records no
+/// provenance.
+///
+/// Errors: [`OpError::InvalidInput`] when the body fails the checker
+/// (debug builds, and release with the `paranoid` feature);
+/// [`OpError::NotFound`] when the body or an entity it refers to does not
+/// resolve; [`OpError::Degenerate`] with [`InputReason::NotPositive`] for
+/// a body whose faces have no area.
+///
+/// ```
+/// use arris_ops::measure::surface_properties;
+/// use arris_ops::primitive_cylinder;
+/// use arris_topo::Model;
+/// use arris_math::{Axis, Point3};
+/// use core::f64::consts::PI;
+///
+/// let mut m = Model::default();
+/// let (body, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 2.0, 5.0, &arris_ops::Control::NONE).unwrap();
+/// let p = surface_properties(&m, body, &arris_ops::Control::NONE).unwrap();
+/// let area = 2.0 * PI * 2.0 * 5.0 + 2.0 * PI * 4.0;
+/// assert!((p.area - area).abs() < 1e-12 * area);
+/// assert!((p.centroid - Point3::new(0.0, 0.0, 2.5)).norm() < 1e-12);
+/// ```
+pub fn surface_properties(
+    m: &Model,
+    body: Body,
+    control: &Control<'_>,
+) -> Result<SurfaceProperties, OpError> {
+    crate::verify_input(m, body)?;
+    let mut meter = Meter::new(control);
+    let entity = m.body(body.id)?;
+    let faces = face_uses(m, body, entity)?;
+
+    let reference = reference_point(m, body)?;
+    let first = integrate_surface(m, &faces, reference, &SURFACE_FIRST, &mut meter)?;
+    let area = first[0];
+    if !(area.is_finite() && area > 0.0) {
+        return Err(OpError::Degenerate {
+            entities: vec![Shape::new(body.id, body.orientation)],
+            reason: Reason::Input(InputReason::NotPositive {
+                what: "the area",
+                value: area,
+            }),
+        });
+    }
+    let centroid = Point3::from(reference + Vec3::new(first[1], first[2], first[3]) / area);
+    let second = integrate_surface(m, &faces, centroid.coords, &SURFACE_SECOND, &mut meter)?;
+    let inertia = Matrix3::new(
+        second[1] + second[2],
+        -second[3],
+        -second[5],
+        -second[3],
+        second[0] + second[2],
+        -second[4],
+        -second[5],
+        -second[4],
+        second[0] + second[1],
+    );
+    Ok(SurfaceProperties {
+        area,
+        centroid,
+        inertia,
+    })
+}
+
+/// `∬ f(P − offset) |∂P/∂u × ∂P/∂v| du dv` for each of `densities` over
+/// every face. A surface integral, not a flux: no orientation enters it.
+fn integrate_surface<const N: usize>(
+    m: &Model,
+    faces: &[(FaceId, f64)],
+    offset: Vec3,
+    densities: &[Density; N],
+    meter: &mut Meter<'_>,
+) -> Result<[f64; N], OpError> {
+    let mut totals = [0.0; N];
+    for &(id, _) in faces {
+        meter.tick()?;
+        let face = m.face(id)?;
+        let surface = m.surface(face.surface())?;
+        let grid = surface_grid(surface);
+        for l in face.loops() {
+            let pieces = m.loop_pieces(l)?;
+            for (total, f) in totals.iter_mut().zip(densities) {
+                *total += region_integral(&pieces, &grid, |u, v| {
+                    let e = surface.eval(u, v);
+                    f(e.point.coords - offset) * e.du.cross(&e.dv).norm()
+                });
+            }
+        }
+    }
+    Ok(totals)
 }
 
 /// The point the first pass is taken about: the centre of the box

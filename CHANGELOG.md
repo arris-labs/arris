@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_ops::measure::surface_properties(&model, body, &control)` gives
+  the area, centroid and inertia tensor (about the centroid, unit area
+  density) of the faces of any body: a solid's boundary or a sheet's
+  faces, which `mass_properties` still refuses. Python:
+  `Model.surface_properties(body)` returns a `SurfaceProperties`.
+
 - `arris_io::step::write_with(&model, &bodies, &WriteOptions { length_unit })`
   and `write_products_with` write a STEP file that declares your unit —
   metres, inches, any `LengthUnit` — as its `LENGTH_UNIT`, converting no

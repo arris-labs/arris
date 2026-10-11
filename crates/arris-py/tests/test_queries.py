@@ -102,6 +102,20 @@ def test_the_inertia_is_about_the_centroid_and_moves_by_parallel_axes():
     assert corner[0][0] == pytest.approx(8 * 4 / 6 + 8 * 2, rel=1e-12)
 
 
+def test_the_surface_properties_of_a_solid_are_its_boundary_s():
+    model = arris.Model()
+    body, _ = model.primitive_box((-1, -1, -1), (1, 1, 1))
+    props = model.surface_properties(body)
+    assert props.area == pytest.approx(24, rel=1e-12)
+    assert props.centroid == pytest.approx((0, 0, 0), abs=1e-12)
+    # Two faces normal to x: 4 * 2/3 each; four others: 4 * 4/3 each.
+    assert props.inertia[0][0] == pytest.approx(80 / 3, rel=1e-12)
+    corner = props.inertia_about((1, 1, 1))
+    assert corner[0][0] == pytest.approx(80 / 3 + 24 * 2, rel=1e-12)
+    with pytest.raises(arris.ForeignHandleError):
+        arris.Model().surface_properties(body)
+
+
 def test_the_measures_stop_for_a_budget_and_refuse_a_foreign_body():
     model = arris.Model()
     body, _ = model.primitive_box((0, 0, 0), (1, 1, 1))

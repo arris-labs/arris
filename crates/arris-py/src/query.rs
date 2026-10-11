@@ -5,7 +5,7 @@ use std::sync::Arc;
 use arris::check::{self, EulerLine as KernelEuler, Level, Report as KernelReport, Unchecked};
 use arris::math::{Frame as KernelFrame, Matrix3, Point3};
 use arris::ops::Section as KernelSection;
-use arris::ops::measure::MassProperties as KernelMass;
+use arris::ops::measure::{MassProperties as KernelMass, SurfaceProperties as KernelSurface};
 use arris::ops::query::{
     Clash as KernelClash, Contact as KernelContact, Distance as KernelDistance, Foot as KernelFoot,
     FootParam, Interference as KernelInterference, RayHit as KernelHit,
@@ -167,6 +167,68 @@ impl MassProperties {
         format!(
             "MassProperties(volume={}, area={}, centroid={:?})",
             self.kernel.volume,
+            self.kernel.area,
+            self.centroid()
+        )
+    }
+}
+
+/// The surface properties of a body's faces at unit area density: what
+/// `Model.surface_properties` returns. Of a solid it is the boundary's, of
+/// a sheet its faces'.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, _ = model.primitive_box((0, 0, 0), (1, 2, 3))
+/// props = model.surface_properties(body)
+/// assert abs(props.area - 22) < 1e-12
+/// assert all(abs(c - h) < 1e-12 for c, h in zip(props.centroid, (0.5, 1, 1.5)))
+/// ```
+#[pyclass(frozen, eq, module = "arris")]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SurfaceProperties {
+    kernel: KernelSurface,
+}
+
+impl SurfaceProperties {
+    /// The Python value of `kernel`.
+    pub fn new(kernel: KernelSurface) -> SurfaceProperties {
+        SurfaceProperties { kernel }
+    }
+}
+
+#[pymethods]
+impl SurfaceProperties {
+    /// The total area of the body's faces.
+    #[getter]
+    fn area(&self) -> f64 {
+        self.kernel.area
+    }
+
+    /// The centre of mass of the surface.
+    #[getter]
+    fn centroid(&self) -> (f64, f64, f64) {
+        let c = self.kernel.centroid;
+        triple(c.x, c.y, c.z)
+    }
+
+    /// The inertia tensor about the centroid, as three rows.
+    #[getter]
+    fn inertia(&self) -> Rows {
+        rows(&self.kernel.inertia)
+    }
+
+    /// The inertia tensor about `point` instead, by the parallel-axis
+    /// theorem with the area as the mass.
+    fn inertia_about(&self, point: [f64; 3]) -> Rows {
+        rows(&self.kernel.inertia_about(Point3::from(point)))
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "SurfaceProperties(area={}, centroid={:?})",
             self.kernel.area,
             self.centroid()
         )

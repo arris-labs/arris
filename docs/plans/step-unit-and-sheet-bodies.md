@@ -107,7 +107,7 @@ measure to hold it to.
   coordinate (property over random bodies and poses); read back in
   millimetres it scales by the unit's factor; Open CASCADE reads the metre
   file of a corpus fixture to 10⁹ × its volume. `CHANGELOG.md` bullet.
-- [ ] Step 2 **[2]** — `measure::surface_properties`: area, centroid and
+- [x] Step 2 **[2]** — `measure::surface_properties`: area, centroid and
   inertia about the centroid at unit area density, over every face of any
   body, integrated as `mass_properties` integrates area (the same
   quadrature, the centroid taken about the vertices' centre for the same

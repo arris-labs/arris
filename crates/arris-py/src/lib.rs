@@ -30,7 +30,7 @@ pub use profile::{Loop, Profile, Segment};
 pub use provenance::Provenance;
 pub use query::{
     Clash, Distance, EulerLine, Foot, Frame, Interference, MassProperties, RayHit, Report, Section,
-    UncheckedRow, Violation,
+    SurfaceProperties, UncheckedRow, Violation,
 };
 pub use role::Role;
 
@@ -72,6 +72,7 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Clash>()?;
     module.add_class::<Foot>()?;
     module.add_class::<MassProperties>()?;
+    module.add_class::<SurfaceProperties>()?;
     module.add_class::<EulerLine>()?;
     module.add_class::<Violation>()?;
     module.add_class::<UncheckedRow>()?;

@@ -633,6 +633,57 @@ pub fn occt_read_assembly(step_text: &str, tag: &str) -> Result<ReadAssembly, Or
     Ok(read)
 }
 
+/// Open CASCADE's `BRepGProp::SurfaceProperties` of a fixture's result
+/// ([`occt_surface`]): area, centroid and the inertia tensor about it at
+/// unit area density, face by face.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct SurfaceMeasure {
+    /// The total area of the faces.
+    pub area: f64,
+    /// The centre of mass of the surface.
+    pub centroid: [f64; 3],
+    /// The inertia tensor about the centroid, as rows.
+    pub inertia: [[f64; 3]; 3],
+}
+
+/// Open CASCADE's surface properties of the result of the fixture in `dir`
+/// under `variant` (`default` when `None`), built from the recipe by the
+/// oracle (`tools/oracle/occt_surface.py`). Kept in [`cache`] under the
+/// directory's `fixture.json` and the variant.
+///
+/// Errors: [`OracleError::Environment`] when `uv` could not run, the
+/// environment is missing, or the oracle could not build the recipe.
+///
+/// ```no_run
+/// use arris_debug::{fixtures, oracle};
+///
+/// let dir = fixtures::corpus_root().join("primitive/box");
+/// let s = oracle::occt_surface(&dir, None).unwrap();
+/// assert!((s.area - 3800.0).abs() < 1e-9);
+/// ```
+pub fn occt_surface(dir: &Path, variant: Option<&str>) -> Result<SurfaceMeasure, OracleError> {
+    let spec = std::fs::read(dir.join("fixture.json")).ok();
+    let variant = variant.unwrap_or("default");
+    let slot = cache::slot("occt_surface.py", &[spec.as_deref()], Some(variant));
+    let parse = |bytes: &[u8]| {
+        serde_json::from_slice::<SurfaceMeasure>(bytes).map_err(|e| OracleError::Environment {
+            message: format!("occt_surface.py's output did not parse as JSON: {e}"),
+        })
+    };
+    if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
+        if let Ok(read) = parse(&bytes) {
+            return Ok(read);
+        }
+    }
+    let output = spawn(uv("occt_surface.py").arg(dir).args(["--variant", variant]))?;
+    if !output.status.success() {
+        return Err(environment(&output));
+    }
+    let read = parse(&output.stdout)?;
+    keep(slot, &output.stdout);
+    Ok(read)
+}
+
 /// Open CASCADE's verdict on one edge filleted alone (`occt_fillet_edges.py`).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct EdgeVerdict {

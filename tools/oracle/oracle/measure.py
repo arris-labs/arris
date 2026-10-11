@@ -393,6 +393,26 @@ def inertia(props: GProp_GProps) -> list[list[float]]:
     return [[m.Value(i, j) for j in range(1, 4)] for i in range(1, 4)]
 
 
+def surface_properties(shape: TopoDS_Shape) -> dict:
+    """The surface properties of every face of `shape` at unit area
+    density -- `area`, `centroid` and the `inertia` tensor about it, in the
+    physical convention -- as `BRepGProp::SurfaceProperties` gives them,
+    summed face by face (a face used twice counts twice, as it is in
+    Arris), what `arris_ops::measure::SurfaceProperties` is held to. The
+    area is `_area`'s, so an extrusion face keeps its exact integration."""
+    total = GProp_GProps()
+    for face in _faces(shape):
+        props = GProp_GProps()
+        BRepGProp.SurfaceProperties_s(face, props)
+        total.Add(props)
+    c = total.CentreOfMass()
+    return {
+        "area": total.Mass(),
+        "centroid": [c.X(), c.Y(), c.Z()],
+        "inertia": inertia(total),
+    }
+
+
 def measure(
     shape: TopoDS_Shape,
     probes: list[dict],
