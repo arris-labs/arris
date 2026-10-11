@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.7.0 — 2026-10-11
+
 - `arris_ops::section(&mut model, body, &plane, &control)` cuts a solid by
   a plane and returns what the plane cuts out of it, without changing the
   solid: a sheet body of planar faces on the plane, one per connected
