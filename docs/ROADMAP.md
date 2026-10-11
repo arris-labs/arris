@@ -688,7 +688,8 @@ histogram at C7's close does not outrank it: healing 14 of 38 parts at
 part corpus exists yet to rank by; it is an `/idea` that follows this
 cycle's opening, and its histogram picks the cycle after this one.*
 
-**Status: in progress.** Ray fire landed 2026-10-09 (ADR-0053): the face
+**Status: in progress, every "In" line landed; ready for `/close-cycle`.**
+Ray fire landed 2026-10-09 (ADR-0053): the face
 hierarchy (`arris_check::tree::FaceTree`, which the classifier casts
 through too), `ops::query::ray_fire`, the line × NURBS surface arm of
 `intersect_curve_surface`, the `query` fixture kind with ten ray fixtures
@@ -701,7 +702,12 @@ held to `BRepExtrema_DistShapeShape`, and `Model.distance`. Interference
 landed 2026-10-11 (ADR-0055): `ops::query::interference` and
 `interference_many` (apart / touching / overlapping with the common's volume
 and containment, on a scratch clone), the `interference` query form held to
-Open CASCADE, and `Model.interference`. The planar section remains.
+Open CASCADE, and `Model.interference`. The planar section landed
+2026-10-11 (ADR-0056): `ops::section` and `Section` (a solid cut by a plane
+as a sheet of planar faces, with its area, centroid and provenance, or
+`None`), the builder's sheets (`Builder::assemble_sheet`), the `section`
+query form held to `BRepAlgoAPI_Section` and `BRepAlgoAPI_Common`, the flush
+regions the cap drops, and `Model.section`.
 
 **In:**
 
