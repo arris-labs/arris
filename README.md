@@ -1,4 +1,16 @@
-# arris
+<p align="center">
+  <img src="https://raw.githubusercontent.com/arris-labs/arris/main/docs/assets/arris.svg" width="160" alt="arris logo">
+</p>
+
+<h1 align="center">arris</h1>
+
+<p align="center">
+  <a href="https://github.com/arris-labs/arris/actions/workflows/ci.yml"><img src="https://github.com/arris-labs/arris/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://crates.io/crates/arris"><img src="https://img.shields.io/crates/v/arris.svg" alt="crates.io"></a>
+  <a href="https://pypi.org/project/arris/"><img src="https://img.shields.io/pypi/v/arris.svg" alt="PyPI"></a>
+  <a href="#licence"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0"></a>
+  <img src="https://img.shields.io/badge/rustc-1.85%2B-orange.svg" alt="rustc 1.85+">
+</p>
 
 A B-Rep geometric kernel written from scratch in Rust.
 
