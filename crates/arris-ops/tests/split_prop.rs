@@ -11,6 +11,14 @@
 //! record of both sides audits against the body. Every result is clean at
 //! `Full` with nothing unchecked.
 //!
+//! `ops::section` at the same cases (ADR-0056): the plane's points
+//! interior to the body, as a sheet. Its area is the positive cap's and the
+//! negative cap's, it is `None` exactly where the split has no crossing, its
+//! edges lie on the plane and on each body face the record names, reversing
+//! the plane's `z` keeps the area and centroid and turns the sheet, moving
+//! body and plane together moves the centroid, and the body's closure is
+//! as it was.
+//!
 //! A refusal is allowed where the operation's own rules make one (a plane
 //! tangent to a wall, a blend with no closed form); a kernel fault, an
 //! invalid input and a result that fails the checker never are. A failure
@@ -20,19 +28,20 @@
 
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, check};
+use arris_debug::dump_text;
 use arris_debug::prop::body::{MultiCut, MultiTarget, multi_cut};
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{
     chamfer, common, cut, cut_many, fillet, fuse, mass_properties, offset_faces, primitive_box,
-    shell, split, transform,
+    section, shell, split, transform,
 };
 use arris_debug::{prop, prop_shards};
 use arris_geom::Surface;
 use arris_math::nalgebra::UnitQuaternion;
 use arris_math::{Frame, Isometry, Point3, Vec3};
-use arris_ops::{OpError, ShellSide, Split};
+use arris_ops::{OpError, Section, ShellSide, Split};
 use arris_topo::provenance::{PlaneSide, Role, SplitPart, audit, audit_many};
-use arris_topo::{Body, EntityId, Face, FaceId, Model, Orientation, Provenance};
+use arris_topo::{Body, EntityId, Face, FaceId, Model, Orientation, Origin, Provenance, Shape};
 use proptest::prelude::*;
 
 /// What the body is besides its target.
@@ -519,6 +528,191 @@ prop_shards! {
                     }
                 }
             }
+            Ok(())
+        }
+}
+
+/// What `section` returns.
+type Sectioned = Result<Option<Section>, OpError>;
+
+/// The body and the section by the case's plane, the sheet clean at `Full`
+/// and its record audited, the body's dump as it was; `None` where
+/// building the body is refused. The section is `Ok(None)` for no
+/// crossing.
+fn section_of(
+    m: &mut Model,
+    case: &Case,
+    plane: &Frame,
+) -> Result<Option<(Body, Sectioned)>, TestCaseError> {
+    let Some(body) = case.body(m)? else {
+        return Ok(None);
+    };
+    let before = dump_text(m, body).map_err(fail)?;
+    let made = section(m, body, plane);
+    prop_assert_eq!(
+        dump_text(m, body).map_err(fail)?,
+        before,
+        "the body is untouched"
+    );
+    match &made {
+        Ok(Some(s)) => {
+            assert_clean(m, "the sheet", s.sheet)?;
+            audit(m, &[], s.sheet, &s.provenance)
+                .map_err(|e| fail(format!("section provenance: {e}")))?;
+        }
+        Ok(None) => {}
+        Err(e) if is_refusal(e) => {}
+        Err(e) => return Err(fail(format!("section: {e}"))),
+    }
+    Ok(Some((body, made)))
+}
+
+/// Every edge of the section lies on the plane and, for each face of the
+/// body the record names for it, on that face's surface, within the
+/// tolerances of the entities involved.
+fn edges_lie_on_their_faces(
+    m: &Model,
+    body: Body,
+    plane: &Frame,
+    s: &Section,
+) -> Result<(), TestCaseError> {
+    const SAMPLES: usize = 5;
+    let slack = m.precision().default_tolerance;
+    let faces = m.closure(body).map_err(fail)?.faces;
+    let mut named = 0;
+    for f in faces {
+        let origin = Origin::Entity(Shape::new(EntityId::Face(f), Orientation::Forward));
+        let face = m.face(f).map_err(fail)?;
+        let surface = m.surface(face.surface()).map_err(fail)?;
+        for y in s.provenance.generated_from(origin) {
+            let EntityId::Edge(e) = y.id else { continue };
+            named += 1;
+            let edge = m.edge(e).map_err(fail)?;
+            let Some((curve, range)) = edge.curve() else {
+                continue;
+            };
+            let curve = m.curve(curve).map_err(fail)?;
+            let tol = edge.tolerance() + face.tolerance() + slack;
+            for k in 0..SAMPLES {
+                let t = range.lo() + (range.hi() - range.lo()) * k as f64 / (SAMPLES - 1) as f64;
+                let p = curve.eval(t).point;
+                let off = plane.to_local(p).z.abs();
+                prop_assert!(off <= tol, "edge {} is {} off the plane", e, off);
+                // An ambiguous projection (an axis, an apex) is no answer.
+                if let Ok(q) = surface.project(p) {
+                    prop_assert!(
+                        q.distance <= tol,
+                        "edge {} is {} off face {}",
+                        e,
+                        q.distance,
+                        f
+                    );
+                }
+            }
+        }
+    }
+    prop_assert!(
+        named > 0 || m.closure(s.sheet).map_err(fail)?.edges.is_empty(),
+        "no section edge names a body face"
+    );
+    Ok(())
+}
+
+prop_shards! {
+    /// The section is `None` exactly where the split has no crossing; its
+    /// area is each cap's; its edges lie on the plane and on the faces the
+    /// record names; the body is as it was.
+    a_section_is_the_splits_cap
+        [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7]
+        (case) = case() => {
+            let mut m = Model::default();
+            let plane = case.plane();
+            let Some((body, made)) = section_of(&mut m, &case, &plane)? else {
+                return Ok(());
+            };
+            let halves = split(&mut m, body, &plane);
+            let no_crossing = matches!(
+                &halves,
+                Err(OpError::Degenerate {
+                    reason: arris_ops::Reason::Split(arris_ops::SplitReason::NoCrossing),
+                    ..
+                })
+            );
+            let halves = match (halves, made) {
+                (Ok(h), Ok(Some(s))) => (h, s),
+                (Ok(_), Ok(None)) => return Err(fail("None where the split crosses")),
+                (Err(_), Ok(Some(_))) => return Err(fail("a section where the split refuses")),
+                (_, Ok(None)) => {
+                    prop_assert!(no_crossing, "None where the split does not say NoCrossing");
+                    return Ok(());
+                }
+                (_, Err(_)) => return Ok(()),
+            };
+            let (halves, s) = halves;
+            let whole = mass_properties(&m, body).map_err(fail)?;
+            let rel = fitted_rel(&m, &whole).max(REL);
+            for side in [PlaneSide::Positive, PlaneSide::Negative] {
+                same_measure("area against a cap", s.area, section_area(&m, &halves, &plane, side)?, rel)?;
+            }
+            edges_lie_on_their_faces(&m, body, &plane, &s)
+        }
+}
+
+prop_shards! {
+    /// The plane's `z` reversed gives the same area and centroid and the
+    /// opposite normal.
+    a_reversed_plane_turns_the_sheet
+        [shard_0 shard_1 shard_2 shard_3]
+        (case) = case() => {
+            let mut m = Model::default();
+            let plane = case.plane();
+            let Some((body, Ok(Some(s)))) = section_of(&mut m, &case, &plane)? else {
+                return Ok(());
+            };
+            let flipped = Frame::from_z(plane.origin(), -plane.z().into_inner()).map_err(fail)?;
+            let Ok(Some(t)) = section(&mut m, body, &flipped) else {
+                return Err(fail("no section by the reversed plane"));
+            };
+            assert_clean(&m, "the reversed sheet", t.sheet)?;
+            let whole = mass_properties(&m, body).map_err(fail)?;
+            let rel = fitted_rel(&m, &whole).max(REL);
+            same_measure("area", t.area, s.area, rel)?;
+            let scale = extents(&case.cut.target).norm();
+            prop_assert!((t.centroid - s.centroid).norm() <= rel * scale, "centroids {} vs {}", t.centroid, s.centroid);
+            for (sheet, z) in [(s.sheet, plane.z().into_inner()), (t.sheet, flipped.z().into_inner())] {
+                for f in m.faces(sheet).map_err(fail)? {
+                    let face = m.face(f.id).map_err(fail)?;
+                    let e = m.surface(face.surface()).map_err(fail)?.eval(0.0, 0.0);
+                    let n = e.du.cross(&e.dv).normalize() * f.orientation.sign();
+                    prop_assert!((n - z).norm() < REL, "a face does not face the frame's z");
+                }
+            }
+            Ok(())
+        }
+}
+
+prop_shards! {
+    /// Moving body and plane together moves the centroid and keeps the
+    /// area.
+    a_section_commutes_with_transform
+        [shard_0 shard_1 shard_2 shard_3]
+        ((case, motion)) = (case(), prop::pose()) => {
+            let mut m = Model::default();
+            let plane = case.plane();
+            let Some((body, Ok(Some(s)))) = section_of(&mut m, &case, &plane)? else {
+                return Ok(());
+            };
+            let moved = transform(&mut m, body, &motion).map_err(fail)?.0;
+            let Ok(Some(t)) = section(&mut m, moved, &motion.apply_frame(&plane)) else {
+                return Ok(());
+            };
+            assert_clean(&m, "the moved sheet", t.sheet)?;
+            let whole = mass_properties(&m, body).map_err(fail)?;
+            let rel = fitted_rel(&m, &whole).max(REL);
+            same_measure("area", t.area, s.area, rel)?;
+            let scale = extents(&case.cut.target).norm();
+            let want = motion.apply(s.centroid);
+            prop_assert!((t.centroid - want).norm() <= rel * scale, "centroid {} vs {}", t.centroid, want);
             Ok(())
         }
 }

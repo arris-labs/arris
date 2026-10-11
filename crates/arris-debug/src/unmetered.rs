@@ -43,6 +43,15 @@ pub fn split(
     arris_ops::split(m, body, plane, &Control::NONE)
 }
 
+/// [`arris_ops::section`] to its end.
+pub fn section(
+    m: &mut Model,
+    body: Body,
+    plane: &arris_math::Frame,
+) -> Result<Option<arris_ops::Section>, OpError> {
+    arris_ops::section(m, body, plane, &Control::NONE)
+}
+
 /// [`arris_ops::common`] to its end.
 pub fn common(m: &mut Model, a: Body, b: Body) -> Result<(Body, Provenance), OpError> {
     arris_ops::common(m, a, b, &Control::NONE)

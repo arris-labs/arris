@@ -185,7 +185,7 @@ bound has to be established here.
   along them; the filleted and the shelled box), `query/section-refused`
   (a plane tangent to a cylinder's ruling while crossing a box fused to
   it: `TangentContact`; across a NURBS face: `Unsupported`).
-- [ ] Step 6 **[2]** — Properties (`prop_shards!`, `prop::body` in random
+- [x] Step 6 **[2]** — Properties (`prop_shards!`, `prop::body` in random
   poses, random planes through the body's box): every section edge lies on
   the plane and on each body face it names, within its tolerance; the
   section's area equals the area of `split`'s positive cap bit for bit
