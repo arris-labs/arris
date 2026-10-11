@@ -8,6 +8,13 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_io::step::write_with(&model, &bodies, &WriteOptions { length_unit })`
+  and `write_products_with` write a STEP file that declares your unit —
+  metres, inches, any `LengthUnit` — as its `LENGTH_UNIT`, converting no
+  coordinate: a file read back with `ReadOptions` of the same unit returns
+  every coordinate bit-identical. `write` and `write_products` still write
+  millimetres. Python: `Model.write_step(bodies, length_unit="m")`.
+
 ## 0.7.0 — 2026-10-11
 
 - `arris_ops::section(&mut model, body, &plane, &control)` cuts a solid by

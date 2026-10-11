@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use arris_math::{Control, Frame, Isometry, Meter};
 use arris_topo::{Body, FaceId, Model};
 
-use super::{Occurrence, ProductTree, Rgb, StepError, Writer, real, refs, string};
+use super::{Occurrence, ProductTree, Rgb, StepError, WriteOptions, Writer, real, refs, string};
 
 /// Why a [`ProductTree`] cannot be written by [`write_products`]: what is
 /// wrong with the tree, named by the occurrence or the body.
@@ -136,6 +136,42 @@ pub fn write_products(
     tree: &ProductTree,
     control: &Control<'_>,
 ) -> Result<String, StepError> {
+    write_products_with(model, bodies, tree, &WriteOptions::default(), control)
+}
+
+/// [`write_products`] declaring the caller's unit, as
+/// [`write_with`](super::write_with) does for [`write`](super::write):
+/// placements and coordinates are written as given, the file's
+/// `LENGTH_UNIT` is `options`'. Errors are [`write_products`]'.
+///
+/// ```
+/// use arris_debug::sample;
+/// use arris_topo::Model;
+/// use arris_math::{Control, Isometry};
+/// use arris_io::step::{self, LengthUnit, Occurrence, ProductTree, WriteOptions};
+///
+/// let mut m = Model::default();
+/// let body = sample::cylinder(&mut m, 0.004, 0.012).unwrap();
+/// let part = Occurrence {
+///     product: None,
+///     name: "pin".into(),
+///     placement: Ok(Isometry::identity()),
+///     colour: None,
+///     solids: vec![0],
+///     children: vec![],
+/// };
+/// let tree = ProductTree { roots: vec![part], faces: vec![] };
+/// let options = WriteOptions { length_unit: LengthUnit::Metre };
+/// let text = step::write_products_with(&m, &[body], &tree, &options, &Control::NONE).unwrap();
+/// assert!(text.contains("SI_UNIT($,.METRE.)"));
+/// ```
+pub fn write_products_with(
+    model: &Model,
+    bodies: &[Body],
+    tree: &ProductTree,
+    options: &WriteOptions,
+    control: &Control<'_>,
+) -> Result<String, StepError> {
     let Some(first) = tree.roots.first() else {
         return Err(StepError::NoBodies);
     };
@@ -147,7 +183,13 @@ pub fn write_products(
     let owner = bodies
         .first()
         .map_or_else(|| arris_topo::AnyId::from(model_anchor()), |b| b.id.into());
-    let mut w = Writer::new(model, faces_written, owner, &first.name)?;
+    let mut w = Writer::new(
+        model,
+        faces_written,
+        owner,
+        &first.name,
+        options.length_unit,
+    )?;
     let mut emit = Emit {
         bodies,
         meter: Meter::new(control),

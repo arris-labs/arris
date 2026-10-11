@@ -1550,13 +1550,16 @@ impl Model {
     }
 
     /// The STEP text of `bodies`, in the order given, as one product with a
-    /// solid entity per lump of each body (AP214, lengths in millimetres).
-    /// Deterministic: the same bodies write the same text.
+    /// solid entity per lump of each body (AP214). The file declares
+    /// `length_unit` (`"mm"` by default; also `"um"`, `"cm"`, `"m"`, `"in"`,
+    /// `"ft"`) as its length unit and converts nothing: the coordinates are
+    /// written as the model holds them. Deterministic: the same bodies write
+    /// the same text.
     ///
     /// Raises `StepUnsupportedError` for a body that is not a solid or has a
     /// form STEP cannot hold, `StepLumpsError` for shells that do not nest,
-    /// `StepNoBodiesError` for an empty list and `ForeignHandleError` for a
-    /// body of another model.
+    /// `StepNoBodiesError` for an empty list, `ForeignHandleError` for a
+    /// body of another model and `ValueError` for an unknown unit.
     ///
     /// ```python
     /// import arris
@@ -1565,15 +1568,26 @@ impl Model {
     /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
     /// text = model.write_step([body])
     /// assert text.startswith("ISO-10303-21;") and "MANIFOLD_SOLID_BREP" in text
+    /// metres = model.write_step([body], length_unit="m")
+    /// assert "SI_UNIT($,.METRE.)" in metres
     /// ```
-    fn write_step(&self, py: Python<'_>, bodies: Vec<PyRef<'_, Body>>) -> PyResult<String> {
+    #[pyo3(signature = (bodies, *, length_unit="mm"))]
+    fn write_step(
+        &self,
+        py: Python<'_>,
+        bodies: Vec<PyRef<'_, Body>>,
+        length_unit: &str,
+    ) -> PyResult<String> {
+        let options = arris::io::step::WriteOptions {
+            length_unit: length_unit_of(length_unit)?,
+        };
         let bodies = bodies
             .iter()
             .map(|b| b.resolve(&self.shared))
             .collect::<Result<Vec<_>, _>>()?;
         py.detach(|| {
             let kernel = self.shared.lock()?;
-            Ok::<_, BindError>(arris::io::step::write(&kernel, &bodies))
+            Ok::<_, BindError>(arris::io::step::write_with(&kernel, &bodies, &options))
         })?
         .map_err(|e| step_error(&e).raise(py, Some(self)))
     }

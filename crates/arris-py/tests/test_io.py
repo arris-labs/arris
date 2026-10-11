@@ -61,6 +61,22 @@ def test_a_step_read_converts_to_the_unit_asked():
         inches.read_step(text, length_unit="furlong")
 
 
+def test_a_step_write_declares_the_unit_and_reads_back_in_it():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (0.1, 0.2, 0.3))
+    text = model.write_step([body], length_unit="m")
+    assert "SI_UNIT($,.METRE.)" in text
+    assert model.write_step([body]) == model.write_step([body], length_unit="mm")
+    metres = arris.Model()
+    [solid] = metres.read_step(text, length_unit="m").solids
+    assert metres.mass_properties(solid.body).volume == pytest.approx(0.006, rel=1e-12)
+    millimetres = arris.Model()
+    [solid] = millimetres.read_step(text).solids
+    assert millimetres.mass_properties(solid.body).volume == pytest.approx(6e6, rel=1e-12)
+    with pytest.raises(ValueError, match="unknown length unit"):
+        model.write_step([body], length_unit="furlong")
+
+
 def test_the_step_errors_are_typed():
     model = arris.Model()
     with pytest.raises(arris.StepNoBodiesError):

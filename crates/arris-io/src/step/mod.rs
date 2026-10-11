@@ -34,10 +34,11 @@
 //! elliptic cylinder (ADR-0014), and the `B_SPLINE_*` entities —
 //! as complex entities with `RATIONAL_B_SPLINE_*` when a weight is not
 //! one — so the writer is exhaustive over `Surface`, `Curve` and `Curve2`.
-//! Lengths are written as millimetres and angles as radians because the
-//! oracle's reader scales to millimetres by default and Arris carries no
-//! unit, so every number passes through unchanged; the context's
-//! uncertainty is the model's `default_tolerance`.
+//! Lengths are declared in the caller's unit ([`WriteOptions`],
+//! millimetres by default, which the oracle's reader keeps) and angles in
+//! radians; Arris carries no unit, so every number passes through
+//! unchanged; the context's uncertainty is the model's
+//! `default_tolerance`.
 //!
 //! Deterministic: entity numbers follow the bodies' iteration order, the
 //! header's time stamp is empty (the kernel never reads the clock), and
@@ -63,7 +64,7 @@ mod assembly;
 pub mod part21;
 mod reader;
 
-pub use assembly::{TreeError, write_products};
+pub use assembly::{TreeError, write_products, write_products_with};
 pub use reader::{
     FaceColour, LengthUnit, Occurrence, ProductTree, Read, ReadBody, ReadError, ReadOptions,
     ReadSolid, Refusal, RefusalKind, Rgb, read,
@@ -199,6 +200,50 @@ impl core::fmt::Display for Unsupported {
 /// assert_eq!(step::write(&m, &[body]).unwrap(), text, "deterministic");
 /// ```
 pub fn write(model: &Model, bodies: &[Body]) -> Result<String, StepError> {
+    write_with(model, bodies, &WriteOptions::default())
+}
+
+/// How the writer writes a file: the unit the caller's model is in.
+///
+/// ```
+/// use arris_io::step::{LengthUnit, WriteOptions};
+///
+/// assert_eq!(WriteOptions::default().length_unit, LengthUnit::Millimetre);
+/// let metres = WriteOptions { length_unit: LengthUnit::Metre };
+/// assert_ne!(metres, WriteOptions::default());
+/// ```
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct WriteOptions {
+    /// The unit the file declares as its `LENGTH_UNIT`. The writer
+    /// declares and never converts: every coordinate, radius and
+    /// placement is written as the model holds it, and the uncertainty is
+    /// the model's default tolerance in the same unit. Millimetres by
+    /// default, what [`write`] declares; a file read back with
+    /// [`ReadOptions`] of the same unit returns every coordinate
+    /// bit-identical.
+    pub length_unit: LengthUnit,
+}
+
+/// [`write`] declaring the caller's unit: the same file, with its
+/// `LENGTH_UNIT` (and the uncertainty's) the one `options` names and no
+/// number converted. Errors are [`write`]'s.
+///
+/// ```
+/// use arris_debug::sample;
+/// use arris_topo::Model;
+/// use arris_io::step::{self, LengthUnit, WriteOptions};
+///
+/// let mut m = Model::default();
+/// let body = sample::cylinder(&mut m, 0.004, 0.012).unwrap();
+/// let options = WriteOptions { length_unit: LengthUnit::Metre };
+/// let text = step::write_with(&m, &[body], &options).unwrap();
+/// assert!(text.contains("SI_UNIT($,.METRE.)"));
+/// ```
+pub fn write_with(
+    model: &Model,
+    bodies: &[Body],
+    options: &WriteOptions,
+) -> Result<String, StepError> {
     if bodies.is_empty() {
         return Err(StepError::NoBodies);
     }
@@ -206,7 +251,13 @@ pub fn write(model: &Model, bodies: &[Body]) -> Result<String, StepError> {
     for &body in bodies {
         faces_written.extend(model.closure(body)?.faces);
     }
-    let mut w = Writer::new(model, faces_written, bodies[0].id.into(), "arris")?;
+    let mut w = Writer::new(
+        model,
+        faces_written,
+        bodies[0].id.into(),
+        "arris",
+        options.length_unit,
+    )?;
     let mut solids = Vec::with_capacity(bodies.len());
     for &body in bodies {
         solids.extend(w.solids(body)?);
@@ -341,6 +392,7 @@ impl<'m> Writer<'m> {
         faces_written: BTreeSet<FaceId>,
         owner: AnyId,
         name: &str,
+        unit: LengthUnit,
     ) -> Result<Self, StepError> {
         let mut w = Writer {
             model,
@@ -383,7 +435,7 @@ impl<'m> Writer<'m> {
         w.push(format!(
             "PRODUCT_RELATED_PRODUCT_CATEGORY('part',$,(#{product}))"
         ));
-        let length = w.push("( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.) )".to_string());
+        let length = w.length_unit(unit);
         let angle = w.push("( NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.) )".to_string());
         let solid_angle =
             w.push("( NAMED_UNIT(*) SI_UNIT($,.STERADIAN.) SOLID_ANGLE_UNIT() )".to_string());
@@ -408,6 +460,33 @@ impl<'m> Writer<'m> {
         w.definition_context = definition_context;
         w.first_definition = definition;
         Ok(w)
+    }
+
+    /// The `LENGTH_UNIT` entity of `unit`: an `SI_UNIT` of `METRE` with its
+    /// prefix, or for the inch and the foot a `CONVERSION_BASED_UNIT` whose
+    /// factor is a length in millimetres, as the reader follows them.
+    fn length_unit(&mut self, unit: LengthUnit) -> usize {
+        let prefix = match unit {
+            LengthUnit::Micrometre => ".MICRO.",
+            LengthUnit::Millimetre | LengthUnit::Inch | LengthUnit::Foot => ".MILLI.",
+            LengthUnit::Centimetre => ".CENTI.",
+            LengthUnit::Metre => "$",
+        };
+        let si = self.push(format!(
+            "( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT({prefix},.METRE.) )"
+        ));
+        let (name, millimetres) = match unit {
+            LengthUnit::Inch => ("INCH", "25.4"),
+            LengthUnit::Foot => ("FOOT", "304.8"),
+            _ => return si,
+        };
+        let factor = self.push(format!(
+            "LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE({millimetres}),#{si})"
+        ));
+        let exponents = self.push("DIMENSIONAL_EXPONENTS(1.,0.,0.,0.,0.,0.,0.)".to_string());
+        self.push(format!(
+            "( CONVERSION_BASED_UNIT('{name}',#{factor}) LENGTH_UNIT() NAMED_UNIT(#{exponents}) )"
+        ))
     }
 
     /// Appends an entity and returns its number.
