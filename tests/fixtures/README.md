@@ -864,6 +864,24 @@ and section plans add theirs to the same `queries` list. They sit under
   to `volume_rel`, the containment flags exactly and the contact exactly
   unless `analytic.query_differs` records why it differs, which the lint
   accepts when some answer is a touching pair.
+- A **section query** (ADR-0056) is `"section": {"body": {"step": …},
+  "plane": {"origin": [x, y, z], "z": [x, y, z], "x": [x, y, z]}}`, the
+  plane's `x` optional, with the hand-worked `expect` (`none` or `sheet`),
+  `expect_faces`, `expect_area` and `expect_centroid`, each optional and
+  held to the oracle's by the lint. The oracle's answer is `none` when
+  `BRepAlgoAPI_Common` of the solid and a planar face past its box holds
+  no face; else that common's `faces`, `loops` (its wires), `area` and
+  `centroid`, and the distinct `edges` of `BRepAlgoAPI_Section(solid,
+  plane)` with their total `edge_length`. The runner makes the section on
+  a clone of the model, holds its sheet to the checker at `Full`, and
+  compares none-or-sheet exactly, then the face, loop and edge counts
+  exactly, the edge length and area relative to `area_rel`, the centroid
+  within `centroid_abs`. Open CASCADE keeps a region of the plane flush
+  with a face of the solid, which is no section (the plane's points with
+  material on both sides): a fixture with such a pose records it with
+  `analytic.query_differs`, and the runner then holds the verdict to
+  `expect` and a sheet to `expect_area` (required) and `expect_centroid`,
+  the closed forms, instead of the oracle's counts and measures.
 - The hash covers `kind`, `params`, `variants`, `steps`, `result` and
   `queries`.
 - No `dump.txt`: the result's own dump is the solid kinds'.

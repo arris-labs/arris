@@ -638,11 +638,53 @@ def check_interference_smoke() -> bool:
     return ok
 
 
+# A section against closed forms: a 10 x 6 x 4 block cut mid-height (60, a
+# rectangle: one face, one loop, four edges of 32), across a corner (a
+# triangle of side 3 sqrt(2) on the plane x + y + z = 3: area 9 sqrt(3) / 2), and
+# missed by a plane above it.
+SECTION_SMOKE = {
+    "name": "query: section of a block, mid-height, across a corner and missing",
+    "recipe": {
+        "kind": "query",
+        "steps": [{"name": "block", "op": "box", "min": [0, 0, 0], "max": [10, 6, 4]}],
+        "result": "block",
+        "queries": [
+            {"label": "mid", "section": {"body": {"step": "block"}, "plane": {"origin": [0, 0, 1.5], "z": [0, 0, 1], "x": [1, 0, 0]}}},
+            {"label": "corner", "section": {"body": {"step": "block"}, "plane": {"origin": [1, 1, 1], "z": [1, 1, 1]}}},
+            {"label": "above", "section": {"body": {"step": "block"}, "plane": {"origin": [0, 0, 9], "z": [0, 0, 1]}}},
+        ],
+    },
+    # (none, faces, loops, edges, edge_length, area) per query.
+    "answers": {
+        "mid": (False, 1, 1, 4, 32.0, 60.0),
+        "corner": (False, 1, 1, 3, 9 * 2 ** 0.5, 9 * 3 ** 0.5 / 2),
+        "above": (True, 0, 0, 0, 0.0, 0.0),
+    },
+}
+
+
+def check_section_smoke() -> bool:
+    smoke = SECTION_SMOKE
+    print(f"smoke: {smoke['name']}")
+    expected = compute_expected(smoke["recipe"])
+    ok = True
+    for q in expected["results"]["default"]["queries"]:
+        none, faces, loops, edges, length, area = smoke["answers"][q["label"]]
+        s = q["section"]
+        got = (s["none"], s.get("faces", 0), s.get("loops", 0), s.get("edges", 0))
+        close = abs(s.get("edge_length", 0.0) - length) < 1e-9 and abs(s.get("area", 0.0) - area) < 1e-9
+        if got != (none, faces, loops, edges) or not close:
+            print(f"  {q['label']}: {s} differs from {smoke['answers'][q['label']]}")
+            ok = False
+    return ok
+
+
 def run_smokes(tmp: Path) -> bool:
     ok = check_geometry_smoke()
     ok &= check_query_smoke()
     ok &= check_distance_smoke()
     ok &= check_interference_smoke()
+    ok &= check_section_smoke()
     ok &= check_expr_cases()
     ok &= check_degenerate_edge_smoke(tmp)
     ok &= check_step_solids_smoke(tmp)

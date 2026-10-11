@@ -122,6 +122,9 @@ corpus_tests! {
     /// A B-spline cylinder from STEP: a box crossing its wall is refused as
     /// unsupported, a box far from it is apart (ADR-0055).
     query_interference_nurbs_refused => query "query/interference-nurbs-refused";
+    /// A block cut by planes: mid-height, reversed, across a corner, tilted,
+    /// along its length, and above it (ADR-0056).
+    query_section_primitives => query "query/section-primitives";
     /// Two bodies with off-axis cones that pruning skips: the bars' distance.
     query_distance_cones_pruned => query "query/distance-cones-pruned";
     primitive_box => run "primitive/box";

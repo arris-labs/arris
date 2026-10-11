@@ -1,0 +1,97 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "22e7cd65dea3d4e05f58476ab22e502a41dc1103e4c53d06c059a8544abee68b",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "mid-height",
+          "section": {
+            "area": 59.999999999999986,
+            "centroid": [
+              5.0,
+              2.9999999999999996,
+              1.4999999999999998
+            ],
+            "edge_length": 32.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "mid-height, reversed",
+          "section": {
+            "area": 59.999999999999986,
+            "centroid": [
+              5.0,
+              2.9999999999999996,
+              1.4999999999999998
+            ],
+            "edge_length": 32.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "across a corner",
+          "section": {
+            "area": 0.8660254037844395,
+            "centroid": [
+              0.3333333333333332,
+              0.33333333333333326,
+              0.3333333333333336
+            ],
+            "edge_length": 4.2426406871192865,
+            "edges": 3,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "tilted through the middle",
+          "section": {
+            "area": 33.94112549695428,
+            "centroid": [
+              4.999999999999999,
+              3.0,
+              2.0000000000000004
+            ],
+            "edge_length": 23.31370849898476,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "across the length",
+          "section": {
+            "area": 24.0,
+            "centroid": [
+              5.0,
+              3.0,
+              2.0
+            ],
+            "edge_length": 20.0,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        },
+        {
+          "label": "above the block",
+          "section": {
+            "none": true
+          }
+        }
+      ]
+    }
+  }
+}

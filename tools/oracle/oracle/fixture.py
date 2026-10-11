@@ -176,6 +176,26 @@ def dump_expected(expected: dict, path: Path) -> None:
     path.write_text(json.dumps(expected, indent=2, sort_keys=True) + "\n")
 
 
+def _query_summary(q: dict) -> str:
+    """One query answer in a line."""
+    if "distance" in q:
+        d = q["distance"]
+        return f"distance {d['distance']:.10g}, {len(d['solutions'])} solution(s)" + (", contained" if d["contained"] else "")
+    if "interference" in q:
+        i = q["interference"]
+        return (
+            i["verdict"]
+            + (f", {i['contact']} contact" if "contact" in i else "")
+            + (f", volume {i['volume']:.10g}" if "volume" in i else "")
+        )
+    if "section" in q:
+        s = q["section"]
+        if s["none"]:
+            return "section none"
+        return f"section {s['faces']} face(s), {s['loops']} loop(s), {s['edges']} edge(s), area {s['area']:.10g}"
+    return f"{len(q['hits'])} hits" + "".join(f" t={h['t']:.10g}" for h in q["hits"])
+
+
 def summary_lines(name: str, expected: dict) -> list[str]:
     """One line per result: per variant for a solid, one for a geometry."""
     if expected.get("kind") == "part":
@@ -186,18 +206,7 @@ def summary_lines(name: str, expected: dict) -> list[str]:
         ]
     if expected.get("kind") == "query":
         return [
-            (
-                f"{name}[{variant}] {q['label']}: distance {q['distance']['distance']:.10g}, "
-                f"{len(q['distance']['solutions'])} solution(s)"
-                + (", contained" if q["distance"]["contained"] else "")
-                if "distance" in q
-                else f"{name}[{variant}] {q['label']}: {q['interference']['verdict']}"
-                + (f", {q['interference']['contact']} contact" if "contact" in q["interference"] else "")
-                + (f", volume {q['interference']['volume']:.10g}" if "volume" in q["interference"] else "")
-                if "interference" in q
-                else f"{name}[{variant}] {q['label']}: {len(q['hits'])} hits"
-                + "".join(f" t={h['t']:.10g}" for h in q["hits"])
-            )
+            f"{name}[{variant}] {q['label']}: " + _query_summary(q)
             for variant, result in expected["results"].items()
             for q in result["queries"]
         ]

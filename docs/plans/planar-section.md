@@ -169,7 +169,7 @@ bound has to be established here.
   and step 2's flush finding (the coincident row keeps the near face's
   copy where normals agree; the cap pieces classified `Inside`); ARCHITECTURE §Operations gains `section` beside `split` in the
   same commit.
-- [ ] Step 4 **[2]** — The `section` query form in `arris-debug` and
+- [x] Step 4 **[2]** — The `section` query form in `arris-debug` and
   `tools/oracle` (`expected.py`, `query.py`, `selftest.py`), the runner's
   comparison (`none` exact, counts exact unless `query_differs`, length,
   area and centroid within the fixture's tolerance scaled as `measure`
@@ -232,7 +232,10 @@ its "each query a corpus … `BRepAlgoAPI_Section`" for the section.
   `Inside` the body, no `Op::Section`.
 - Settled in step 1: one open shell per face, as `assemble_sheet` holds
   shells to edge-connected components that share no vertex.
-- ⚠ OPEN: does Open CASCADE's `Common` of a solid and a face keep a flush
-  region, and does its `Section` split a closed section curve at a seam?
-  Agent, settled in step 4 by the starter fixtures; each difference a
+- Settled in step 4: Open CASCADE's `Common` of a solid and a face keeps a
+  region flush with a face (a plane at a box's top answers one face of the
+  top's area), so the runner holds a `query_differs` fixture to the recipe's
+  closed forms (`expect`, `expect_area`, `expect_centroid`), not the oracle's
+  counts. ⚠ OPEN: does its `Section` split a closed section curve at a seam?
+  Agent, settled in step 5 by the cylinder poses; a difference is a
   `query_differs` entry.

@@ -31,6 +31,7 @@ use serde::{Deserialize, Serialize};
 
 mod distance;
 mod interference;
+mod section;
 
 use crate::corpus::{self, CorpusError};
 use crate::fixtures::{
@@ -100,6 +101,45 @@ pub struct Query {
     /// `face` — for a touching pair.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect_contact: Option<String>,
+    /// The body and plane of a section query (ADR-0056).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub section: Option<SectionSpec>,
+    /// The number of faces the author works out by hand, for a section
+    /// that answers a sheet (`expect` is `sheet`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_faces: Option<usize>,
+    /// The section's area worked out by hand.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_area: Option<Num>,
+    /// The section's centroid worked out by hand.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_centroid: Option<[Num; 3]>,
+}
+
+/// The body and plane of a section query: a whole recipe step, cut by the
+/// plane through `origin` whose normal is `z`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SectionSpec {
+    /// The solid cut: a whole `{"step": …}`.
+    pub body: OperandSpec,
+    /// The plane.
+    pub plane: PlaneSpec,
+}
+
+/// A plane as a frame: the point it passes through, its normal, and
+/// optionally the direction of the frame's `x` (the sheet's `u`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlaneSpec {
+    /// A point on the plane.
+    pub origin: [Num; 3],
+    /// The normal, the frame's `z`.
+    pub z: [Num; 3],
+    /// The frame's `x`; any direction not along `z` is projected onto the
+    /// plane. Absent leaves the frame to the library.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x: Option<[Num; 3]>,
 }
 
 /// The two operands of a distance query.
@@ -179,6 +219,35 @@ pub struct Answer {
     /// The oracle's verdict, for an interference query.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub interference: Option<OracleInterference>,
+    /// The oracle's section, for a section query.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub section: Option<OracleSection>,
+}
+
+/// The oracle's answer to a section query: `BRepAlgoAPI_Section`'s edges
+/// and `BRepAlgoAPI_Common` of the solid and a planar face past it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OracleSection {
+    /// The plane cuts nothing out of the solid's interior.
+    pub none: bool,
+    /// Faces of the common.
+    #[serde(default)]
+    pub faces: usize,
+    /// Wires of the common's faces: outer loops and holes.
+    #[serde(default)]
+    pub loops: usize,
+    /// Distinct edges of the section.
+    #[serde(default)]
+    pub edges: usize,
+    /// Their total length.
+    #[serde(default)]
+    pub edge_length: f64,
+    /// The common's area.
+    #[serde(default)]
+    pub area: f64,
+    /// The common's centroid.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub centroid: Option<[f64; 3]>,
 }
 
 /// The oracle's answer to an interference query: `BRepExtrema`'s distance,
@@ -478,6 +547,13 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                     label: query.label.clone(),
                 });
             };
+            if let Some(spec) = &query.section {
+                if query.ray.is_some() || query.distance.is_some() || query.interference.is_some() {
+                    return Err(mismatch("more than one form".into()));
+                }
+                section::run(&fixture, &variant, &chain, query, spec, answer)?;
+                continue;
+            }
             if let Some(spec) = &query.interference {
                 if query.ray.is_some() || query.distance.is_some() {
                     return Err(mismatch("more than one form".into()));
@@ -664,8 +740,8 @@ pub fn lint(dir: &Path) -> Vec<String> {
             continue;
         };
         for q in &fixture.queries {
-            match (&q.ray, &q.distance, &q.interference) {
-                (Some(ray), None, None) => {
+            match (&q.ray, &q.distance, &q.interference, &q.section) {
+                (Some(ray), None, None, None) => {
                     let ray = [&ray.origin, &ray.direction].map(|v| {
                         let n = |i: usize| v[i].eval(&params);
                         Ok::<_, fixtures::ExprError>([n(0)?, n(1)?, n(2)?])
@@ -689,12 +765,12 @@ pub fn lint(dir: &Path) -> Vec<String> {
                         ));
                     }
                 }
-                (None, Some(spec), None) => {
+                (None, Some(spec), None, None) => {
                     for text in distance::lint_spec(r, &params, spec) {
                         problem(format!("[{variant}] query {:?}: {text}", q.label));
                     }
                 }
-                (None, None, Some(spec)) => {
+                (None, None, Some(spec), None) => {
                     for text in distance::lint_spec(r, &params, spec) {
                         problem(format!("[{variant}] query {:?}: {text}", q.label));
                     }
@@ -702,8 +778,13 @@ pub fn lint(dir: &Path) -> Vec<String> {
                         problem(format!("[{variant}] query {:?}: {text}", q.label));
                     }
                 }
+                (None, None, None, Some(spec)) => {
+                    for text in section::lint(r, &params, q, spec, answers) {
+                        problem(format!("[{variant}] query {:?}: {text}", q.label));
+                    }
+                }
                 _ => problem(format!(
-                    "[{variant}] query {:?}: needs exactly one of `ray`, `distance` and `interference`",
+                    "[{variant}] query {:?}: needs exactly one of `ray`, `distance`, `interference` and `section`",
                     q.label
                 )),
             }
@@ -758,9 +839,10 @@ pub fn lint(dir: &Path) -> Vec<String> {
                     || a.interference
                         .as_ref()
                         .is_some_and(|i| i.verdict == "touching")
+                    || a.section.is_some()
             }) {
                 problem(format!(
-                    "[{variant}] analytic.query_differs is set but no answer of the oracle reports a hit twice, lists several solutions or a touching pair"
+                    "[{variant}] analytic.query_differs is set but no answer of the oracle reports a hit twice, lists several solutions, a touching pair or a section"
                 ));
             }
         } else if let Some(a) = answers

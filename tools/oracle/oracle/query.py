@@ -36,6 +36,14 @@ else `curve` when `BRepAlgoAPI_Section` holds an edge of positive length,
 else `point`. `BRepAlgoAPI_Section` alone reports only the boundary of a
 face contact, so the face test is the pairwise common.
 
+A section query is `{"label", "section": {"body": {"step": …}, "plane":
+{"origin": [x, y, z], "z": [x, y, z], "x": [x, y, z]}}}` (ADR-0056; `x` is
+optional). The answer: `none` when `BRepAlgoAPI_Common` of the solid and a
+planar face past its box holds no face; else the common's `faces`, `loops`
+(its wires), `area` and `centroid` (`BRepGProp`), and from
+`BRepAlgoAPI_Section(solid, plane)` the distinct `edges` and their total
+`edge_length`.
+
 A ray is a half-line from `origin` along `direction` (normalised), so `t`
 is the distance along it and a hit at a negative `t` is never reported
 (ADR-0053 §5). The answer per variant and query is every hit of
@@ -56,7 +64,7 @@ from OCP.BRepAdaptor import BRepAdaptor_Surface
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Section
 from OCP.BRepBndLib import BRepBndLib
 from OCP.Bnd import Bnd_Box
-from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeVertex
+from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeVertex
 from OCP.BRepExtrema import (
     BRepExtrema_DistShapeShape,
     BRepExtrema_IsInFace,
@@ -68,11 +76,11 @@ from OCP.GProp import GProp_GProps
 from OCP.IntCurvesFace import IntCurvesFace_ShapeIntersector
 from OCP.IntCurveSurface import IntCurveSurface_In, IntCurveSurface_Out
 from OCP.Precision import Precision
-from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_IN, TopAbs_REVERSED, TopAbs_VERTEX
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_IN, TopAbs_REVERSED, TopAbs_VERTEX, TopAbs_WIRE
 from OCP.TopExp import TopExp
 from OCP.TopoDS import TopoDS_Shape
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
-from OCP.gp import gp_Dir, gp_Lin, gp_Pnt, gp_Vec
+from OCP.gp import gp_Ax3, gp_Dir, gp_Lin, gp_Pln, gp_Pnt, gp_Vec
 
 from . import OracleError
 from .recipe import build, resolve_params, variant_names, vector
@@ -104,6 +112,10 @@ def _answer(
         if "ray" in query:
             raise OracleError(f"query {label!r}: a ray or an interference, not both")
         return {"label": label, "interference": _interference(shapes, query["interference"], params, label, tolerance)}
+    if "section" in query:
+        if "ray" in query:
+            raise OracleError(f"query {label!r}: a ray or a section, not both")
+        return {"label": label, "section": _section(shapes, query["section"], params, label)}
     if query.get("hits") not in ("first", "all"):
         raise OracleError(f"query {label!r}: `hits` is `first` or `all`")
     ray = query.get("ray")
@@ -241,6 +253,53 @@ def _interference(shapes: dict[str, TopoDS_Shape], spec: dict, params: dict[str,
     out["verdict"] = "touching"
     out["contact"] = _contact(a, b, probe)
     return out
+
+
+def _section(shapes: dict[str, TopoDS_Shape], spec: dict, params: dict[str, float], label: str) -> dict:
+    """The plane's section of a solid; see the module docstring."""
+    solid = _operand(shapes, spec["body"], params, label)
+    plane = spec["plane"]
+    origin = gp_Pnt(*vector(plane["origin"], params))
+    z = gp_Dir(*vector(plane["z"], params))
+    axes = gp_Ax3(origin, z, gp_Dir(*vector(plane["x"], params))) if "x" in plane else gp_Ax3(origin, z)
+    pln = gp_Pln(axes)
+    # A square of the plane that covers the solid's box from the origin.
+    box = Bnd_Box()
+    BRepBndLib.Add_s(solid, box)
+    lo, hi = box.CornerMin(), box.CornerMax()
+    x0, y0, z0, x1, y1, z1 = lo.X(), lo.Y(), lo.Z(), hi.X(), hi.Y(), hi.Z()
+    centre = gp_Pnt((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+    reach = 2.0 * (origin.Distance(centre) + ((x1 - x0) ** 2 + (y1 - y0) ** 2 + (z1 - z0) ** 2) ** 0.5) + 1.0
+    face = BRepBuilderAPI_MakeFace(pln, -reach, reach, -reach, reach).Face()
+    common = BRepAlgoAPI_Common(solid, face)
+    if not common.IsDone():
+        raise OracleError(f"query {label!r}: BRepAlgoAPI_Common failed")
+    region = common.Shape()
+    faces = _entities(region, TopAbs_FACE)
+    area = _area(region) if faces else 0.0
+    if not faces or area <= 0.0:
+        return {"none": True}
+    props = GProp_GProps()
+    BRepGProp.SurfaceProperties_s(region, props)
+    c = props.CentreOfMass()
+    section = BRepAlgoAPI_Section(solid, pln)
+    if not section.IsDone():
+        raise OracleError(f"query {label!r}: BRepAlgoAPI_Section failed")
+    edges = _entities(section.Shape(), TopAbs_EDGE)
+    length = 0.0
+    for edge in edges:
+        line = GProp_GProps()
+        BRepGProp.LinearProperties_s(edge, line)
+        length += line.Mass()
+    return {
+        "none": False,
+        "faces": len(faces),
+        "loops": len(_entities(region, TopAbs_WIRE)),
+        "edges": len(edges),
+        "edge_length": length,
+        "area": area,
+        "centroid": [c.X(), c.Y(), c.Z()],
+    }
 
 
 def _contact(a: TopoDS_Shape, b: TopoDS_Shape, probe: float) -> str:

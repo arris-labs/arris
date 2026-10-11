@@ -1,0 +1,16 @@
+{
+  "kind": "query",
+  "description": "a 10 x 6 x 4 block cut by planes: mid-height, reversed, across a corner (a triangle), tilted through the middle, along a side's direction, and above the block (none)",
+  "steps": [
+    {"name": "block", "op": "box", "min": [0, 0, 0], "max": [10, 6, 4]}
+  ],
+  "result": "block",
+  "queries": [
+    {"label": "mid-height", "section": {"body": {"step": "block"}, "plane": {"origin": [0, 0, 1.5], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 60},
+    {"label": "mid-height, reversed", "section": {"body": {"step": "block"}, "plane": {"origin": [0, 0, 1.5], "z": [0, 0, -1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 60},
+    {"label": "across a corner", "section": {"body": {"step": "block"}, "plane": {"origin": [1, 0, 0], "z": [1, 1, 1]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 0.8660254037844386},
+    {"label": "tilted through the middle", "section": {"body": {"step": "block"}, "plane": {"origin": [5, 3, 2], "z": [1, 0, 1]}}, "expect": "sheet", "expect_faces": 1},
+    {"label": "across the length", "section": {"body": {"step": "block"}, "plane": {"origin": [5, 0, 0], "z": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 24},
+    {"label": "above the block", "section": {"body": {"step": "block"}, "plane": {"origin": [0, 0, 9], "z": [0, 0, 1]}}, "expect": "none"}
+  ]
+}
