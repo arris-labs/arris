@@ -25,30 +25,43 @@ parametric application can name the faces an operation made. Same input,
 same output, same entity ids, on every platform. Pure Rust, no `unsafe`,
 builds for `wasm32`.
 
-## State
+## Features
 
 Pre-1.0 and under development. The public API breaks between minor versions,
-and each break is listed, with its fix, in `CHANGELOG.md`. What is in today:
+and each change, with each break and its fix, is listed in
+[CHANGELOG.md](CHANGELOG.md).
 
-- primitives, rigid transforms, and extrude and revolve of a profile of
-  lines, arcs and elliptic arcs;
-- booleans — cut, fuse, common — over every analytic face (plane,
-  cylinder, elliptic cylinder, cone, sphere, torus) in any pose, with
-  multi-shell results (cavities, split cuts, disjoint fuses); sections are
-  exact where they are conics and traced and fitted to NURBS elsewhere;
-- constant-radius fillet and chamfer on plane–plane and plane–cylinder
-  edges, with miters, corners and hole rims;
-- tessellation to a chord tolerance, mass properties (volume, centroid,
-  inertia), plane projection and face frames;
-- a STEP reader that returns a checked body, or a typed refusal naming
-  why, for every solid in a file; STEP AP214, STL and OBJ export; a
+- **Modelling:** primitives, rigid transforms, and extrude and revolve of a
+  profile of lines, arcs and elliptic arcs; prismatic features (offset
+  faces, shell to a wall, split by a plane).
+- **Booleans:** cut, fuse and common, single or multi-tool, over every
+  analytic face (plane, cylinder, elliptic cylinder, cone, sphere, torus)
+  in any pose, with multi-shell results (cavities, split cuts, disjoint
+  fuses). Sections are exact where they are conics and traced and fitted to
+  NURBS elsewhere.
+- **Blends:** constant-radius fillet and chamfer along chains of edges
+  between planes and cylinders, coaxial pairs included, with miters,
+  corners, steps, cusps and hole rims.
+- **Queries**, which leave the body unchanged: ray hits, minimum distance
+  between points, vertices, edges, faces and solids, interference between
+  solids with the shared volume, clash screening of an assembly, and the
+  planar section of a body.
+- **Output:** tessellation to a chord tolerance, per face or whole, with
+  faces meshed at different times welded together; mass properties (volume,
+  centroid, inertia); plane projection and face frames.
+- **Formats:** a STEP reader that returns a checked body, or a typed refusal
+  naming why, for every solid in a file; STEP AP214, STL and OBJ export; a
   deterministic native format in JSON and bytes; and one body, with its
   provenance, as bytes that any later release reads.
 
-Not in yet: booleans with a NURBS face as an operand, blends between faces
-outside the plane and cylinder pairs, variable-radius blends, sheet and
-non-manifold bodies, and healing of what a STEP file leaves open. Each of
-those is a typed refusal today, never a wrong answer.
+Not yet: sweeps and lofts, variable-radius blends, non-manifold bodies,
+healing of what a STEP file leaves open, and booleans where a NURBS face
+meets a face of the other operand. Each of those is a typed refusal today,
+never a wrong answer.
+
+Arris is narrower than Open CASCADE and is not aiming for feature parity.
+[docs/COMPARISON.md](docs/COMPARISON.md) sets out what each does today, where
+the two differ in approach, and what has been measured against it.
 
 ## From Python
 
@@ -92,6 +105,28 @@ published to PyPI rather than crates.io. A crate never depends on one above it; 
 enforces that in CI and in the pre-commit hook. The layout and the reasons
 are in `docs/ARCHITECTURE.md`; `tools/oracle/` is the Open CASCADE test
 oracle, run through Python and never linked.
+
+## Prior work
+
+Arris stands on four open projects, and it reads them, not copies them.
+Arris contains no code, comments or identifiers from any of them, and no
+line-by-line translation. Each one was read for its algorithms and for the
+mistakes it made, and the approach was reimplemented for Arris's own
+representation. [PROVENANCE.md](PROVENANCE.md) sets out the rule.
+
+- **[Open CASCADE](https://github.com/Open-Cascade-SAS/OCCT)** (LGPL 2.1, with
+  an exception). The mature C++ kernel, and the test oracle. Arris runs it
+  through Python to produce expected values; no crate links it, at build or
+  run time. See [docs/COMPARISON.md](docs/COMPARISON.md).
+- **[truck](https://github.com/ricosjp/truck)**. The original pure-Rust NURBS
+  B-Rep. Arris learns from its NURBS evaluation, its tessellation and its
+  marching intersections, and from why they fail at seams.
+- **[monstertruck](https://github.com/virtualritz/monstertruck)**. An active
+  fork of truck, with fillets, healing and more STEP. Arris learns from its
+  fillet and healing work.
+- **[Fornjot](https://github.com/hannobraun/fornjot)**. A validation-first
+  B-Rep kernel, which never reached booleans. Arris learns from its layered
+  validation and its per-object checks.
 
 ## Licence
 

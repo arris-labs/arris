@@ -1,0 +1,118 @@
+# Arris and Open CASCADE
+
+A comparison for someone choosing between the two. Open CASCADE (OCCT) is
+the mature kernel most open-source CAD builds on; Arris is a narrower one.
+Arris is not aiming at feature parity with OCCT, and this file does not
+claim it has any. It lists what each one does today, where they differ in
+approach, and what has and has not been measured.
+
+Maintained with the code: each row names the version of `CHANGELOG.md`
+that made its Arris column true, and `/close-cycle` reviews the whole
+file against the code. A row that is no longer true is fixed in the
+commit that makes it untrue. The Open CASCADE column describes the
+version the oracle pins (`cadquery-ocp` 8.0.1 in `tools/oracle/pyproject.toml`),
+not the latest.
+
+## Where each one stands
+
+| Area | Open CASCADE | Arris (`Unreleased` and 0.6.0) |
+|---|---|---|
+| Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS faces read and checked; not yet operands of booleans where they meet the other operand |
+| Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections and extrema) |
+| Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS faces only where no NURBS face meets the other operand |
+| Sections | Full general sections | Exact for conic pairs; traced and fitted to NURBS elsewhere; planar section of a body as a sheet |
+| Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius, on chains of edges between planes and cylinders (coaxial pairs included), plus cone, sphere and torus rims against coaxial faces; no variable radius, no NURBS faces |
+| Shell and offset | Yes, including on NURBS | Offset faces and shell, on analytic faces only |
+| Sweep, loft, pipe | Yes | Not yet |
+| Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
+| Ray fire | Yes | Yes, on every face kind including NURBS |
+| Healing | `ShapeFix`, on by default when reading | Not yet; a STEP file that needs it is refused, naming why |
+| Sheet and non-manifold bodies | Yes | Open shells as sheet bodies only; non-manifold is refused |
+| STEP | Read and write, IGES too | Read (every solid of a file is a checked body or a named refusal), write AP214; assemblies both ways |
+| Other formats | IGES, STL, glTF, and more | STL, OBJ, a deterministic native format in JSON and bytes |
+| Provenance | `BRepTools_History` (modified, generated, deleted) | Every operation returns generated, modified and deleted entities for every entity touched |
+| Tolerances | Per shape | Per vertex, edge and face; grown by operations and checked |
+| Errors on bad input | Often an exception or an invalid shape | A typed error naming the entities; the checker runs after every operation in debug builds |
+| Determinism | Not promised across platforms | Same input, same output and entity ids on every platform; no `HashMap` iteration reaches a decision |
+| Language and targets | C++; Python through bindings; WebAssembly builds exist but are not its focus | Pure Rust, `#![forbid(unsafe_code)]`, builds for `wasm32`; Python binding on PyPI |
+| Licence | LGPL 2.1 with an exception | MIT or Apache-2.0 |
+| Speed | Mature and tuned | The corpus is timed and a 3× regression against a saved run is flagged; no comparison with OCCT has been run |
+
+## Where the approach differs
+
+These are design choices, not claims about who is better at a task.
+
+- **Refusals instead of guesses.** A pair Arris cannot do returns
+  `OpError::Unsupported` naming both faces, or a `Reason` variant such as
+  `TangentContact` or `BlendTooLarge`. OCCT more often builds a shape that
+  the checker would reject, or fails without a named cause. The
+  refusal list is in `CHANGELOG.md`.
+- **Provenance by construction.** Every operation records what each output
+  entity came from, rather than reconstructing it from history afterwards.
+  OCCT's history records are a fair point of comparison, and Arris's
+  advantage is that the record is required, not optional.
+- **Tolerance per entity.** Both kernels carry per-shape tolerances. Arris
+  holds every section edge to its faces' tolerance, so a grazing contact
+  does not widen; `boolean/grazing-ball-bar-cut` shows the same case with
+  an edge at 2.8e-6 from Open CASCADE and at 1e-7 from Arris.
+- **Determinism.** Entity ids and iteration order are part of the contract,
+  so the same model rebuilt gives the same ids. No measurement of OCCT's
+  ordering has been run against this.
+
+## Measured against Open CASCADE
+
+Every fixture in `tests/fixtures/` has an expected value computed by
+Open CASCADE (`tools/oracle/`), and the corpus runner checks Arris against
+it within the fixture's tolerance. Where a closed form exists, the
+fixture holds both to it.
+
+Cases where Open CASCADE's own result was measurably off and Arris matched
+the closed form:
+
+- `boolean/elliptic-operand-cut`: OCCT's area is 1.5e-7 relative off the
+  closed form, and its inertia 9.3e-7; Arris matches both to better than
+  1e-10.
+- `boolean/pole-slice-beside-seam-cut`: OCCT loses a sliver at a sphere's
+  seam, 4.5e-6 relative in volume; Arris finds the second seam crossing.
+- `boolean/coaxial-fuse-four-off`: OCCT closes a 4e-7 crescent on one side
+  of a shape and not on its mirror image; Arris gives the same answer for
+  both.
+- `boolean/grazing-ball-bar-cut`: OCCT's section edge is at 2.8e-6, a
+  model tolerance of 1e-7 widened after the fact; Arris's is at 1e-7.
+- `regression/singular-bore-cut`: OCCT builds a shell pinched to a point;
+  Arris refuses with `Reason::NonManifold`, naming the vertex.
+
+These are specific cases, not a failure rate. The tolerance-band survey
+(`crates/arris-ops/tests/tolerance_band.rs`) perturbs contacts a quarter tolerance to
+sixteen tolerances off flush, coaxial or tangent. When last run (September
+2026) Arris failed about a third of the booleans it generated. Open CASCADE has not been run over the
+same band, so no comparison of rates exists. Do not read the cases above
+as "more robust than Open CASCADE".
+
+Cases Open CASCADE builds and Arris does not yet (each is a refusal today):
+NURBS faces meeting the other operand in a boolean, sweeps and lofts,
+variable-radius blends, healing of an open STEP file, and the cusp blends
+whose walls lie on either side of their shared face. The fixtures that
+hold these are in `tests/fixtures/` and `docs/ROADMAP.md`.
+
+## Reproducing the comparison
+
+```sh
+uv sync --project tools/oracle                     # once; downloads the OCCT wheel
+uv run --project tools/oracle tools/oracle/selftest.py
+cargo nextest run --workspace                      # the corpus runs Arris against the oracle
+```
+
+`tools/oracle/README.md` lists each script. Oracle values are cached under
+`target/oracle-cache/`; `ARRIS_ORACLE_CACHE=off` runs them afresh.
+
+## What is not claimed
+
+- No speed claim. The corpus is timed to catch regressions, not to rank
+  kernels, and neither kernel's speed has been measured against the other.
+- No breadth parity with OCCT, and none is a goal.
+- No robustness rate. The fixtures are a corpus, not a sample of the
+  shapes users model. "Checked against Open CASCADE on every shape it
+  ships" is the claim; "robust" is not.
+- No production-readiness claim. The API breaks between minor versions
+  until 1.0.
