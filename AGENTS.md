@@ -40,8 +40,8 @@ the residue is on the backlog. ADR-0035 to 0046.
 multi-tool boolean, split by a plane and per-face tessellation; sweep and
 loft went to the NURBS cycle (ADR-0047 to 0052).
 **C8, the query cycle** (opened 2026-10-08): ray fire and the face-box
-hierarchy landed 2026-10-09 (ADR-0053), minimum distance 2026-10-10 (ADR-0054);
-interference and planar section remain. The DIY part corpus (an `/idea`) picks the
+hierarchy landed 2026-10-09 (ADR-0053), minimum distance 2026-10-10 (ADR-0054), interference
+2026-10-11 (ADR-0055); the planar section remains. The DIY part corpus (an `/idea`) picks the
 cycle after it.
 
 ## Rules that are not derivable from the code

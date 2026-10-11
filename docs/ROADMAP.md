@@ -698,7 +698,10 @@ feet and pairs of curves and surfaces, certified), `ops::query::distance`
 between points, vertices, edges, faces and solids by a boundary recursion
 and the nearest-first `FaceTree::nearest` walk, the `distance` query form
 held to `BRepExtrema_DistShapeShape`, and `Model.distance`. Interference
-and the planar section remain.
+landed 2026-10-11 (ADR-0055): `ops::query::interference` and
+`interference_many` (apart / touching / overlapping with the common's volume
+and containment, on a scratch clone), the `interference` query form held to
+Open CASCADE, and `Model.interference`. The planar section remains.
 
 **In:**
 
