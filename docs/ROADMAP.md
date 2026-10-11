@@ -15,7 +15,9 @@ plugin-based CAD cannot start without, ADR-0020's amendment; done
 face pairs real parts ask for; done 2026-10-05), then **C7** (prismatic
 features: shell, offset faces, the multi-tool boolean, split by a plane;
 done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
-ray fire, interference, planar section). An unopened cycle carries
+ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
+ADR-0056), then **C9** (the healing cycle: sheet bodies, sewing,
+orientation, the writer's length unit). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -688,26 +690,17 @@ histogram at C7's close does not outrank it: healing 14 of 38 parts at
 part corpus exists yet to rank by; it is an `/idea` that follows this
 cycle's opening, and its histogram picks the cycle after this one.*
 
-**Status: in progress, every "In" line landed; ready for `/close-cycle`.**
-Ray fire landed 2026-10-09 (ADR-0053): the face
-hierarchy (`arris_check::tree::FaceTree`, which the classifier casts
-through too), `ops::query::ray_fire`, the line × NURBS surface arm of
-`intersect_curve_surface`, the `query` fixture kind with ten ray fixtures
-held to `IntCurvesFace_ShapeIntersector`, and the Python binding. Minimum
-distance landed 2026-10-10 (ADR-0054): `arris_geom::extrema` (the critical
-feet and pairs of curves and surfaces, certified), `ops::query::distance`
-between points, vertices, edges, faces and solids by a boundary recursion
-and the nearest-first `FaceTree::nearest` walk, the `distance` query form
-held to `BRepExtrema_DistShapeShape`, and `Model.distance`. Interference
-landed 2026-10-11 (ADR-0055): `ops::query::interference` and
-`interference_many` (apart / touching / overlapping with the common's volume
-and containment, on a scratch clone), the `interference` query form held to
-Open CASCADE, and `Model.interference`. The planar section landed
-2026-10-11 (ADR-0056): `ops::section` and `Section` (a solid cut by a plane
-as a sheet of planar faces, with its area, centroid and provenance, or
-`None`), the builder's sheets (`Builder::assemble_sheet`), the `section`
-query form held to `BRepAlgoAPI_Section` and `BRepAlgoAPI_Common`, the flush
-regions the cap drops, and `Model.section`.
+**Status: done 2026-10-11, tag `c8`, released as `v0.7.0`.** Retired the
+absence of every question a consumer asks of a body without editing it:
+`ops::query::ray_fire` over the face-box hierarchy
+`arris_check::tree::FaceTree` (ADR-0053), `ops::query::distance` by
+certified critical points (`arris_geom::extrema`, ADR-0054),
+`ops::query::interference` and `interference_many` (ADR-0055) and
+`ops::section`, a solid cut by a plane as a sheet (ADR-0056, with
+`Builder::assemble_sheet`); all bound in Python, with 25 fixtures in
+`query/` matched to Open CASCADE (`IntCurvesFace_ShapeIntersector`,
+`BRepExtrema_DistShapeShape`, `BRepAlgoAPI_Section` and `Common`) and
+properties over random poses. ADR-0053 to 0056.
 
 **In:**
 
@@ -733,6 +726,53 @@ tolerance, checker green on every returned shape; properties over random
 poses: distance symmetric and zero exactly when the operands touch, a ray's
 hit on both its face and the ray, interference agreeing with the boolean's
 common, a section's wires lying on the plane and the body's surface.
+
+---
+
+## C9 — the healing cycle
+
+*Goal: what a real part's STEP file holds but Arris refuses to read, it
+reads: surface models become sheet bodies, small gaps are closed by an
+operation that says what it changed, and a face the file orients the other
+way is turned back. Chosen by ADR-0020's amendment over the histogram's
+tie with the NURBS cycle, on the numbers at C8's close (no DIY part corpus
+exists to rank by): the real-part histogram has healing first, 14 of 38
+parts refused at `read` (surface models in 11 parts, 29 refusals; a gap
+past the cap in 7), against the NURBS cycle's 3 at `box_cut` and `fillet`
+2 of 27 fetched; the first consumer's one open blocking ask is A12 (the
+STEP writer's length unit), which opens the cycle. The plugin CAD's A7
+sheet bodies and the sweep and loft it also wants are ranked by this
+choice: sheets now, sweep and loft with the NURBS cycle.*
+
+**Status: opened 2026-10-11.**
+
+**In:**
+
+- A12: the STEP writer declares the caller's length unit and converts no
+  coordinate; millimetres stays the default; `write_with` beside `write`,
+  and the Python binding's `step.write` the same.
+- Sheet bodies: `ops::planar_face` (a `Profile` as a one-face sheet body),
+  surface models in STEP read as sheet bodies, and the operations a sheet
+  can be an operand of without a new geometric case (transform, mirror,
+  measure of area, tessellation, the checker), each named in the plan.
+- Healing as an operation: sewing the gaps `Refusal::Gap` refuses today
+  and orienting faces the file reverses, each returning provenance and
+  never silent (`ARCHITECTURE.md`: the checker never repairs).
+- The refusal histogram re-run over the real-part corpus; the cycle's
+  numbers are the `read` column's fall.
+
+**Out:** wire bodies and sheet operands of the boolean, the blends, shell
+and offset (a sheet's boolean is its own case); faceted solids; the NURBS
+cycle's intersections and sweep and loft; shape fixing beyond gaps and
+orientation (tolerance growth, face removal); IGES; the DIY part corpus.
+
+**Accept:** each healed part read to a checker-green body whose mass
+properties (sheets: area) match Open CASCADE's `ShapeFix` and
+`BRepBuilderAPI_Sewing` within the fixture's tolerance, a typed refusal
+where it cannot, no panic; the `read` column of the fetched tier's
+histogram lower than C8's 14 of 38, the number printed; a healed body's
+provenance names every face sewn or turned; the writer's unit round-trips
+bit-exact through `ReadOptions`.
 
 ---
 
@@ -770,9 +810,10 @@ found were fixed, reached 25, 42 and 28 executions per second with no
 crash, slowed by sections against very thin elliptic cylinders. Each night runs 30
 minutes per target from the corpus the nights before grew; the first
 night found a fourth, two planes a hair from parallel meeting in a line
-with a NaN origin. A night takes about 5 hours: its longest property
-job, `workspace-rest`, took 4 h 46 min on 2026-10-01 and 5 h 19 min on
-the three nights before, against the workflow's 350-minute timeout. A red night is a finding to triage, not a gate; CI's
+with a NaN origin. A night takes about 5 hours and has outgrown its
+limit: `ops-rest` and `workspace-rest` hit the workflow's 350-minute timeout
+on 2026-10-08, 10-09 and 10-10 (`workspace-rest` took 4 h 46 min on
+2026-10-01), and the backlog holds the line. A red night is a finding to triage, not a gate; CI's
 fixed seed is the gate (ADR-0024, amendment of 2026-09-25).
 A fourth, `step_read`, runs the STEP reader on Arris's and Open
 CASCADE's STEP of every solid fixture: over the parser alone its first
@@ -814,8 +855,6 @@ opens it.
   explicit seam handling); NURBS operands in booleans; the operations that
   build free-form faces, sweep along a path and loft (ADR-0047 split them
   from shell and offset, which are C7's).
-- **The healing cycle** — healing; sheet and wire bodies in every
-  operation.
 - **The attribute cycle** — attributes a consumer attaches to entities,
   carried through every operation by declared rules over the split order
   ADR-0009 fixes, for a consumer with no naming scheme of its own

@@ -39,11 +39,13 @@ the residue is on the backlog. ADR-0035 to 0046.
 **C7 done (2026-10-07): prismatic features.** Offset faces, shell, the
 multi-tool boolean, split by a plane and per-face tessellation; sweep and
 loft went to the NURBS cycle (ADR-0047 to 0052).
-**C8, the query cycle** (opened 2026-10-08): ray fire and the face-box
-hierarchy landed 2026-10-09 (ADR-0053), minimum distance 2026-10-10 (ADR-0054), interference
-2026-10-11 (ADR-0055), the planar section 2026-10-11 (ADR-0056); every line
-of the cycle has landed, ready for `/close-cycle`. The DIY part corpus (an `/idea`) picks the
-cycle after it.
+**C8 done (2026-10-11): the query cycle.** Ray fire and the face-box
+hierarchy, minimum distance, interference and the planar section, each held
+to Open CASCADE and bound in Python (ADR-0053 to 0056).
+**C9, the healing cycle** (opened 2026-10-11): sheet bodies, sewing,
+orientation healing and the STEP writer's length unit (A12, first). **Next:**
+`/idea` or `/plan` for A12; the DIY part corpus (an `/idea`) still ranks
+the cycle after C9.
 
 ## Rules that are not derivable from the code
 
