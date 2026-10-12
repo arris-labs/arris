@@ -741,7 +741,15 @@ STEP writer's length unit), which opens the cycle. The plugin CAD's A7
 sheet bodies and the sweep and loft it also wants are ranked by this
 choice: sheets now, sweep and loft with the NURBS cycle.*
 
-**Status: opened 2026-10-11.**
+**Status: opened 2026-10-11; first part landed 2026-10-12 (plan
+`step-unit-and-sheet-bodies`): A12, `planar_face`, surface models read and
+written as sheet bodies, and the sheet as an operand of transform, mirror,
+tessellation, the body bytes, the native format and the checker (the
+operations that need an inside refuse it as `NotSolid`). The histogram
+re-run over the 38 parts: healing blocks 7 (from 14), every one a `gap past
+the cap` at `read` (surface models in none, from 11 parts; on the fetched
+tier alone 5 parts, from 11); 60 of 70 solids read. Left: sewing and
+orientation, the second C9 plan.**
 
 **In:**
 

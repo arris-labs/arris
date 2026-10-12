@@ -23,8 +23,8 @@
 //! runs the round trip; `part::run` holds each to the class the fixture
 //! records.
 
-use crate::unmetered::mass_properties;
 use crate::unmetered::step_read;
+use crate::unmetered::{mass_properties, surface_properties};
 use std::collections::BTreeMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -32,6 +32,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use arris_io::step::{self, ReadOptions};
 use arris_math::nalgebra::SymmetricEigen;
 use arris_math::{Matrix3, Point3, Vec3};
+use arris_topo::entity::BodyKind;
 use arris_topo::{Body, EdgeId, FaceId, Model, Orientation};
 use serde::{Deserialize, Serialize};
 
@@ -735,9 +736,23 @@ pub fn write_read(name: &str, m: &Model, body: Body, tolerances: &Tolerances) ->
         }
         let own =
             corpus::within_own_tolerance(tolerances, m, body).map_err(fail(Stage::Measure))?;
-        let mass = mass_properties(m, body).map_err(|e| (Stage::Measure, e.to_string()))?;
+        // A sheet is measured by its surface properties (ADR-0057): no
+        // volume, the area, centroid and inertia of its faces.
+        let sheet = m
+            .body(body.id)
+            .map_err(|e| (Stage::Measure, e.to_string()))?
+            .kind()
+            == BodyKind::Sheet;
+        let (volume, mass) = if sheet {
+            let p = surface_properties(m, body).map_err(|e| (Stage::Measure, e.to_string()))?;
+            (None, (p.area, p.centroid, p.inertia))
+        } else {
+            let p = mass_properties(m, body).map_err(|e| (Stage::Measure, e.to_string()))?;
+            (Some(p.volume), (p.area, p.centroid, p.inertia))
+        };
+        let (area, centroid, inertia) = mass;
         let written = Measured {
-            sheet: false,
+            sheet,
             degenerate: false,
             counts: a.unwrap_or(Counts {
                 vertices: 0,
@@ -747,11 +762,11 @@ pub fn write_read(name: &str, m: &Model, body: Body, tolerances: &Tolerances) ->
                 shells: 0,
                 solids: 0,
             }),
-            volume: Some(mass.volume),
-            area: Some(mass.area),
-            centroid: Some([mass.centroid.x, mass.centroid.y, mass.centroid.z]),
+            volume,
+            area: Some(area),
+            centroid: Some([centroid.x, centroid.y, centroid.z]),
             inertia: Some(std::array::from_fn(|i| {
-                std::array::from_fn(|j| mass.inertia[(i, j)])
+                std::array::from_fn(|j| inertia[(i, j)])
             })),
             euler_characteristic: None,
             genus: None,
@@ -894,6 +909,14 @@ pub fn derive_from(
             .result
             .as_ref()
             .map_err(|r| format!("{key} is refused: {r}"))?;
+        // The battery's operations take solids (ADR-0057).
+        if m.body(back.body.id)
+            .map_err(|e| format!("{key}: {e}"))?
+            .kind()
+            == BodyKind::Sheet
+        {
+            continue;
+        }
         let mass = mass_properties(m, back.body).map_err(|e| format!("{key}: {e}"))?;
         let nearest = (oracle.iter().enumerate())
             .filter(|(k, s)| s.id == spec.id && !taken[*k])

@@ -25,6 +25,7 @@ use std::path::Path;
 
 use arris_io::step::ReadOptions;
 use arris_topo::Model;
+use arris_topo::entity::BodyKind;
 use serde::{Deserialize, Serialize};
 
 use crate::battery::{self, Class};
@@ -239,6 +240,7 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
     let mut taken = vec![false; oracle.len()];
     let mut refused: BTreeMap<u64, usize> = BTreeMap::new();
     let mut held = vec![false; read.solids.len()];
+    let mut sheets: Vec<usize> = Vec::new();
     for (k, (solid, spec)) in read.solids.iter().zip(&fixture.part.solids).enumerate() {
         let at = battery::key(spec.id, spec.instance);
         match &solid.result {
@@ -256,8 +258,26 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
                 if fixture.expected.solids.is_empty() {
                     continue;
                 }
+                // A surface model is held to the oracle's sheets by its
+                // surface properties (ADR-0057), a solid by its mass.
+                let sheet = m.body(back.body.id).map(|b| b.kind()) == Ok(BodyKind::Sheet);
+                if sheet {
+                    sheets.push(k);
+                }
                 let stages = catch_unwind(AssertUnwindSafe(|| {
-                    part::read_stages(&fixture, &m, back.body, spec, &mut taken, false)
+                    if sheet {
+                        let wide = Tolerances {
+                            area_rel: fixture.part.tolerances.area_rel.max(part::SHEET_OCCT_REL),
+                            inertia_rel: (fixture.part.tolerances.inertia_rel)
+                                .max(part::SHEET_OCCT_REL),
+                            ..fixture.part.tolerances
+                        };
+                        part::sheet_stages_within(
+                            &fixture, &wide, &m, back.body, spec, &mut taken, false,
+                        )
+                    } else {
+                        part::read_stages(&fixture, &m, back.body, spec, &mut taken, false)
+                    }
                 }));
                 match stages {
                     Ok(Ok(())) => held[k] = true,
@@ -285,10 +305,30 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
         }
     }
 
+    // A sheet runs `write_read` and no other stage: the battery's
+    // operations take solids (ADR-0057).
+    for &k in sheets.iter().filter(|&&k| held[k]) {
+        let (solid, s) = (&read.solids[k], &fixture.part.solids[k]);
+        let Ok(back) = &solid.result else { continue };
+        let key = battery::key(s.id, s.instance);
+        let judged = battery::write_read(
+            &format!("{name} {key} write_read"),
+            &m,
+            back.body,
+            &fixture.part.tolerances,
+        );
+        count_stage(&mut report, &m, &key, "write_read".to_string(), judged);
+    }
+
     // The battery, on the first placement of each solid held.
     let mut first: Vec<u64> = Vec::new();
-    for (s, (solid, h)) in spec.solids.iter_mut().zip(read.solids.iter().zip(&held)) {
-        let run = *h && !first.contains(&solid.entity.id);
+    for (k, (s, (solid, h))) in spec
+        .solids
+        .iter_mut()
+        .zip(read.solids.iter().zip(&held))
+        .enumerate()
+    {
+        let run = *h && !sheets.contains(&k) && !first.contains(&solid.entity.id);
         if run {
             first.push(solid.entity.id);
         } else if s.outcome == ReadOutcome::Read {
@@ -357,16 +397,10 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
             stages.push((stage.clone(), judged));
         }
         for (stage, judged) in stages {
-            let Some(class) = Class::of(&judged.outcome) else {
-                report
-                    .failures
-                    .push(format!("{key} {stage}: {}", judged.outcome));
-                continue;
-            };
-            report
-                .classes
-                .push((key.clone(), stage.clone(), class_name(&class).into()));
-            if stage == "fillet" && matches!(class, Class::ArrisRefuses(_)) {
+            let census = stage == "fillet"
+                && matches!(Class::of(&judged.outcome), Some(Class::ArrisRefuses(_)));
+            count_stage(&mut report, &m, &key, stage, judged);
+            if census {
                 match catch_unwind(AssertUnwindSafe(|| {
                     crate::census::blend_census(&m, back.body, &key)
                 })) {
@@ -377,23 +411,36 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
                         .push(format!("{key} census: {}", panicked(&*payload))),
                 }
             }
-            let (Outcome::ArrisRefuses(why), Some(refused)) = (&judged.outcome, &judged.refused)
-            else {
-                continue;
-            };
-            let Some(at) = Stage::of_name(&stage) else {
-                continue;
-            };
-            match refused.blocks_in(&m, at) {
-                Some(cycle) => report.refusals.push(Counted {
-                    at: key.clone(),
-                    stage,
-                    name: why.clone(),
-                    cycle: cycle.to_string(),
-                }),
-                None => report.failures.push(format!("{key} {stage}: {why}")),
-            }
         }
     }
     Ok(report)
+}
+
+/// One stage's judgement counted: its class, a kernel bug as a failure, an
+/// Arris refusal under the cycle it blocks.
+fn count_stage(report: &mut Report, m: &Model, key: &str, stage: String, judged: battery::Judged) {
+    let Some(class) = Class::of(&judged.outcome) else {
+        report
+            .failures
+            .push(format!("{key} {stage}: {}", judged.outcome));
+        return;
+    };
+    report
+        .classes
+        .push((key.to_string(), stage.clone(), class_name(&class).into()));
+    let (Outcome::ArrisRefuses(why), Some(refused)) = (&judged.outcome, &judged.refused) else {
+        return;
+    };
+    let Some(at) = Stage::of_name(&stage) else {
+        return;
+    };
+    match refused.blocks_in(m, at) {
+        Some(cycle) => report.refusals.push(Counted {
+            at: key.to_string(),
+            stage,
+            name: why.clone(),
+            cycle: cycle.to_string(),
+        }),
+        None => report.failures.push(format!("{key} {stage}: {why}")),
+    }
 }

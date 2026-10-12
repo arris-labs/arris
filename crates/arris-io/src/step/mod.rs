@@ -223,15 +223,15 @@ pub struct WriteOptions {
     /// declares and never converts: every coordinate, radius and
     /// placement is written as the model holds it, and the uncertainty is
     /// the model's default tolerance in the same unit. Millimetres by
-    /// default, what [`write`] declares; a file read back with
+    /// default, what [`write()`] declares; a file read back with
     /// [`ReadOptions`] of the same unit returns every coordinate
     /// bit-identical.
     pub length_unit: LengthUnit,
 }
 
-/// [`write`] declaring the caller's unit: the same file, with its
+/// [`write()`] declaring the caller's unit: the same file, with its
 /// `LENGTH_UNIT` (and the uncertainty's) the one `options` names and no
-/// number converted. Errors are [`write`]'s.
+/// number converted. Errors are [`write()`]'s.
 ///
 /// ```
 /// use arris_debug::sample;

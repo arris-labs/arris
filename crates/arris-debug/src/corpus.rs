@@ -1512,7 +1512,17 @@ pub fn within_own_tolerance(
             corners.push(Point3::new(b.max[0], b.max[1], b.max[2]));
         }
     }
-    let mass = mass_properties(m, body).map_err(|e| e.to_string())?;
+    // A sheet bounds no volume: its properties are the surface's, and
+    // moving its boundary by `t` changes the area by `L·t`, the centroid
+    // by `L·t·R / A` and each inertia component by `L·t·R²`.
+    let sheet = m.body(body.id).map_err(|e| e.to_string())?.kind() == BodyKind::Sheet;
+    let (volume, area, centroid, inertia) = if sheet {
+        let p = surface_properties(m, body).map_err(|e| e.to_string())?;
+        (None, p.area, p.centroid, p.inertia)
+    } else {
+        let p = mass_properties(m, body).map_err(|e| e.to_string())?;
+        (Some(p.volume.abs()), p.area, p.centroid, p.inertia)
+    };
     let (lo, hi) = corners.iter().fold(
         (Vec3::repeat(f64::INFINITY), Vec3::repeat(f64::NEG_INFINITY)),
         |(lo, hi), p| (lo.inf(&p.coords), hi.sup(&p.coords)),
@@ -1521,19 +1531,28 @@ pub fn within_own_tolerance(
     for x in [lo.x, hi.x] {
         for y in [lo.y, hi.y] {
             for z in [lo.z, hi.z] {
-                reach = reach.max((Point3::new(x, y, z) - mass.centroid).norm());
+                reach = reach.max((Point3::new(x, y, z) - centroid).norm());
             }
         }
     }
-    let (volume, area) = (mass.volume.abs(), mass.area);
-    let scale = mass.inertia.iter().fold(0.0, |a: f64, x| a.max(x.abs()));
+    let scale = inertia.iter().fold(0.0, |a: f64, x| a.max(x.abs()));
     let scale = if scale > 0.0 { scale } else { 1.0 };
-    Ok(Tolerances {
-        volume_rel: tolerances.volume_rel.max(area * t / volume),
-        area_rel: tolerances.area_rel.max(length * t / area),
-        centroid_abs: tolerances.centroid_abs.max(area * t * reach / volume),
-        inertia_rel: tolerances.inertia_rel.max(area * t * reach * reach / scale),
-        ..*tolerances
+    Ok(match volume {
+        Some(volume) => Tolerances {
+            volume_rel: tolerances.volume_rel.max(area * t / volume),
+            area_rel: tolerances.area_rel.max(length * t / area),
+            centroid_abs: tolerances.centroid_abs.max(area * t * reach / volume),
+            inertia_rel: tolerances.inertia_rel.max(area * t * reach * reach / scale),
+            ..*tolerances
+        },
+        None => Tolerances {
+            area_rel: tolerances.area_rel.max(length * t / area),
+            centroid_abs: tolerances.centroid_abs.max(length * t * reach / area),
+            inertia_rel: tolerances
+                .inertia_rel
+                .max(length * t * reach * reach / scale),
+            ..*tolerances
+        },
     })
 }
 

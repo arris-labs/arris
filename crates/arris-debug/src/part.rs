@@ -507,6 +507,12 @@ pub(crate) fn read_stages(
     corpus::check_dump(&name, &path, &dump, blessing())
 }
 
+/// How far Open CASCADE's healed face of a sheet may be from the exact one
+/// in area and inertia, relative: STC-07's `Fill.1` is 1.6e-7 off the
+/// triangle of its three vertices (ADR-0057), and the fixture of it widens
+/// its tolerances to this.
+pub const SHEET_OCCT_REL: f64 = 5e-7;
+
 /// The stages of one sheet read (ADR-0057): the checker at `Full`, then
 /// the oracle's sheet nearest by centroid among those of its face count,
 /// each taken once, in surface area, centroid and inertia within the
@@ -515,6 +521,30 @@ pub(crate) fn read_stages(
 /// battery take solids.
 pub(crate) fn sheet_stages(
     fixture: &PartFixture,
+    m: &Model,
+    body: Body,
+    spec: &PartSolid,
+    taken: &mut [bool],
+    dump: bool,
+) -> Result<(), CorpusError> {
+    sheet_stages_within(
+        fixture,
+        &fixture.part.tolerances,
+        m,
+        body,
+        spec,
+        taken,
+        dump,
+    )
+}
+
+/// [`sheet_stages`] holding the oracle's numbers to `tolerances` instead of
+/// the fixture's: the survey of a part nobody has looked at widens them to
+/// [`SHEET_OCCT_REL`], Open CASCADE's healing of a sheet's face being off
+/// by that much (ADR-0057).
+pub(crate) fn sheet_stages_within(
+    fixture: &PartFixture,
+    tolerances: &Tolerances,
     m: &Model,
     body: Body,
     spec: &PartSolid,
@@ -533,7 +563,10 @@ pub(crate) fn sheet_stages(
         return sheet_dump(fixture, m, body, spec, dump);
     }
     let faces = m.faces(body).map_err(|e| fail(e.to_string()))?.len();
-    let mut nearest: Option<(f64, usize)> = None;
+    // The nearest by centroid among those of the face count, those whose
+    // area is within a thousandth of the found one first: two sheets of a
+    // part can stand at nearly one centroid with different areas.
+    let mut nearest: Option<((bool, f64), usize)> = None;
     for (k, sheet) in fixture.expected.solids.iter().enumerate() {
         if !sheet.sheet || taken[k] || sheet.measured.counts.faces != faces {
             continue;
@@ -542,8 +575,13 @@ pub(crate) fn sheet_stages(
             continue;
         };
         let d = (Point3::new(c[0], c[1], c[2]) - found.centroid).norm();
-        if nearest.is_none_or(|(best, _)| d < best) {
-            nearest = Some((d, k));
+        let near_area = sheet
+            .measured
+            .area
+            .is_some_and(|a| (a - found.area).abs() <= 1e-3 * a.abs().max(found.area));
+        let key = (!near_area, d);
+        if nearest.is_none_or(|(best, _)| key < best) {
+            nearest = Some((key, k));
         }
     }
     let Some((_, k)) = nearest else {
@@ -554,7 +592,6 @@ pub(crate) fn sheet_stages(
     };
     taken[k] = true;
     let expected = &fixture.expected.solids[k].measured;
-    let tolerances = &fixture.part.tolerances;
     let measure = |what: String| CorpusError::Measure {
         fixture: name.clone(),
         what,

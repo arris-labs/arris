@@ -159,7 +159,7 @@ measure to hold it to.
   inertia; every `sheet/` and surface-model `real/` fixture round-trips; a
   wire body is still `StepError::Unsupported`. `CHANGELOG.md` (the writer
   accepts sheets) in `### Breaking` beside step 3's.
-- [ ] Step 7 **[2]** — The survey and the histogram: `arris_debug::survey`
+- [x] Step 7 **[2]** — The survey and the histogram: `arris_debug::survey`
   reads sheets, holds each to Open CASCADE's surface properties of its file
   entity, runs `measure` and `write_read` on it; `tools/real-parts.sh`
   re-run over the fetched tier and the committed one; the numbers written
