@@ -7,6 +7,7 @@ boolean/ball-on-apex-common: 11
 boolean/ball-polar-drill-cut: 40276
 boolean/ball-pole-drill-cut: 9748
 boolean/ball-pole-slice-cut: 4207
+boolean/ball-tilted-cylinder-common: 18536
 boolean/blind-hole: 22
 boolean/body-bytes-revolved-hole-loops-intersect: 79673
 boolean/bolt-pattern-8: 40

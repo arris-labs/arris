@@ -2767,18 +2767,22 @@ fn seam_crosses(
 /// for a point (`arris_check::domain::shifts`) — and every other so that
 /// its centre lies in the period starting at the widest loop's lower
 /// bound: a hole lands inside its outer loop, whose box spans at most a
-/// period. The boxes are of `samples` points along each use, the
-/// checker's own count: a closed circle on a sphere is one use whose ends
-/// and midpoint span a fraction of its (u, v) extent, and a hole boxed
-/// narrower than that can fall below its outer loop's lower bound and be
-/// moved a period away from it.
+/// period.
+///
+/// Those boxes are of each use's ends and midpoint, which for a closed
+/// circle on a sphere is a fraction of the loop's extent, so a hole can
+/// land below its outer loop's lower bound and be moved a period away
+/// from it. A second pass boxes every loop by `samples` points along its
+/// uses, the checker's own count, and moves a hole whose centre lies
+/// more than half a period from its outer loop's by the whole periods
+/// between them: a hole already inside is never touched.
 fn place_loops(
     loops: &mut [Vec<Use>],
     period: [Option<f64>; 2],
     domain: [Interval; 2],
     samples: usize,
 ) {
-    let boxes: Vec<[[f64; 2]; 2]> = loops.iter().map(|l| loop_box(l, samples)).collect();
+    let boxes: Vec<[[f64; 2]; 2]> = loops.iter().map(|l| loop_box(l)).collect();
     for k in 0..2 {
         let Some(p) = period[k] else { continue };
         let Some(widest) = (0..boxes.len()).max_by(|&a, &b| {
@@ -2806,15 +2810,55 @@ fn place_loops(
             }
         }
     }
+    if loops.len() < 2 {
+        return;
+    }
+    let dense: Vec<[[f64; 2]; 2]> = loops.iter().map(|l| dense_box(l, samples)).collect();
+    for k in 0..2 {
+        let Some(p) = period[k] else { continue };
+        let width = |i: usize| dense[i][1][k] - dense[i][0][k];
+        let Some(outer) =
+            (0..dense.len()).max_by(|&a, &b| width(a).total_cmp(&width(b)).then(b.cmp(&a)))
+        else {
+            continue;
+        };
+        let mid = 0.5 * (dense[outer][0][k] + dense[outer][1][k]);
+        for (i, l) in loops.iter_mut().enumerate() {
+            let turns = ((mid - 0.5 * (dense[i][0][k] + dense[i][1][k])) / p).round();
+            if i != outer && turns != 0.0 {
+                let mut by = Vec2::zeros();
+                by[k] = turns * p;
+                for u in l.iter_mut() {
+                    u.pcurve = u.pcurve.translated(by);
+                }
+            }
+        }
+    }
 }
 
 /// The box in (u, v) of `n` points along each of a loop's uses, ends
-/// included.
-fn loop_box(uses: &[Use], n: usize) -> [[f64; 2]; 2] {
+/// included, after the loops are placed.
+fn dense_box(uses: &[Use], n: usize) -> [[f64; 2]; 2] {
     let mut b = [[f64::INFINITY; 2], [f64::NEG_INFINITY; 2]];
     for u in uses {
         for t in samples(u.range, n) {
             let p = u.pcurve.point(t);
+            for k in 0..2 {
+                b[0][k] = b[0][k].min(p[k]);
+                b[1][k] = b[1][k].max(p[k]);
+            }
+        }
+    }
+    b
+}
+
+/// The box in (u, v) of a loop's uses' ends and midpoints.
+fn loop_box(uses: &[Use]) -> [[f64; 2]; 2] {
+    let mut b = [[f64::INFINITY; 2], [f64::NEG_INFINITY; 2]];
+    for u in uses {
+        let (s, e) = u.ends();
+        let m = u.pcurve.point(u.range.midpoint());
+        for p in [s, e, m] {
             for k in 0..2 {
                 b[0][k] = b[0][k].min(p[k]);
                 b[1][k] = b[1][k].max(p[k]);
