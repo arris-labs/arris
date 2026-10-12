@@ -5,6 +5,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_math::{Control, Frame, Isometry, Meter};
+use arris_topo::entity::BodyKind;
 use arris_topo::{Body, FaceId, Model};
 
 use super::{Occurrence, ProductTree, Rgb, StepError, WriteOptions, Writer, real, refs, string};
@@ -387,29 +388,27 @@ impl Writer<'_> {
             emit.done.insert(k, written);
         }
         let mut solids = Vec::new();
+        let mut sheets = Vec::new();
         for &i in &o.solids {
             emit.meter.tick()?;
-            let entities = self.solids(emit.bodies[i])?;
-            solids.extend(entities.iter().copied());
+            let body = emit.bodies[i];
+            let entities = self.solids(body)?;
+            if self.model.body(body.id)?.kind() == BodyKind::Sheet {
+                sheets.extend(entities.iter().copied());
+            } else {
+                solids.extend(entities.iter().copied());
+            }
             emit.solid_entities.insert(i, entities);
         }
         if let Some(colour) = o.colour {
-            let items = self.paint(emit, colour, &solids)?;
+            let items = self.paint(
+                emit,
+                colour,
+                &solids.iter().chain(&sheets).copied().collect::<Vec<_>>(),
+            )?;
             emit.styled.extend(items);
         }
-        let text = if solids.is_empty() {
-            format!(
-                "SHAPE_REPRESENTATION('',(#{}),#{})",
-                self.world_placement, self.context_3d
-            )
-        } else {
-            format!(
-                "ADVANCED_BREP_SHAPE_REPRESENTATION('',({}),#{})",
-                refs(std::iter::once(self.world_placement).chain(solids)),
-                self.context_3d
-            )
-        };
-        self.set(written.representation, text);
+        self.represent(written.representation, &solids, &sheets);
         for child in &o.children {
             let below = self.occurrence(emit, child, false)?;
             let placement = match &child.placement {

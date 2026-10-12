@@ -291,3 +291,16 @@ def test_a_surface_model_reads_as_a_sheet_with_its_surface_properties():
         model.mass_properties(sheet.body)
     solid, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
     assert model.body_kind(solid) == "solid"
+
+
+def test_a_sheet_is_written_as_a_surface_model_and_read_back_as_a_sheet():
+    model = arris.Model()
+    sketch = arris.Profile(arris.Loop.polygon([(0, 0), (4, 0), (4, 3), (0, 3)]))
+    sheet, _ = model.planar_face(sketch)
+    text = model.write_step([sheet])
+    assert "SHELL_BASED_SURFACE_MODEL" in text
+
+    back = arris.Model()
+    [solid] = back.read_step(text).solids
+    assert solid.ok and back.body_kind(solid.body) == "sheet"
+    assert back.surface_properties(solid.body).area == pytest.approx(12, abs=1e-9)

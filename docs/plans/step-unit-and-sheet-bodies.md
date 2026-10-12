@@ -152,7 +152,7 @@ measure to hold it to.
   once-used edges). Fix what refuses; the operations out of scope get a
   test naming their `NotSolid` refusal where none exists. Property: surface
   properties invariant under random rigid motions and mirrors.
-- [ ] Step 6 **[2]** — The STEP writer writes sheets, as ADR-0057 spells
+- [x] Step 6 **[2]** — The STEP writer writes sheets, as ADR-0057 spells
   them, beside solids in one file and in `write_products`. Tests: write →
   read through Arris is identical in counts and surface properties; Open
   CASCADE reads the written sheet to the fixture's area, centroid and

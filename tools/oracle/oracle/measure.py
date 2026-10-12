@@ -518,7 +518,13 @@ def compare(expected: dict, actual: dict, tolerances: dict) -> list[tuple[str, s
         row(f"counts.{k}", e, a, e == a)
     if expected["degenerate"] or actual["degenerate"]:
         return rows
-    for k, t in (("volume", tol["volume_rel"]), ("area", tol["area_rel"])):
+    if expected.get("sheet"):
+        # A sheet has no volume, genus or probes: its area, centroid and
+        # surface inertia are what it is held to.
+        keys = (("area", tol["area_rel"]),)
+    else:
+        keys = (("volume", tol["volume_rel"]), ("area", tol["area_rel"]))
+    for k, t in keys:
         e, a = expected[k], actual[k]
         row(k, repr(e), repr(a), abs(a - e) <= t * max(abs(e), abs(a), 1e-300))
     e, a = expected["centroid"], actual["centroid"]
@@ -537,6 +543,8 @@ def compare(expected: dict, actual: dict, tolerances: dict) -> list[tuple[str, s
                     repr(ai[i][j]),
                     abs(ai[i][j] - ei[i][j]) <= tol["inertia_rel"] * scale,
                 )
+    if expected.get("sheet"):
+        return rows
     row("genus", expected["genus"], actual["genus"], expected["genus"] == actual["genus"])
     ea = {p["label"]: p["class"] for p in expected.get("probes", [])}
     aa = {p["label"]: p["class"] for p in actual.get("probes", [])}

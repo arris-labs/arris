@@ -136,7 +136,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `box` | `min`, `max` |
 | `cylinder` | `base` (centre of the base cap), `axis`, `radius`, `height` |
 | `profile` | `plane` `{origin, x, y}`; `outer` and `holes` as loops: `{"circle": {"center": [u, v], "radius": r}}`, `{"ellipse": {"center": [u, v], "major": [du, dv], "minor_radius": b}}` or `{"start": [u, v], "segments": [{"line_to": [u, v]}, {"arc_to": [u, v], "via": [u, v]}, {"ellipse_to": [u, v], "center": [u, v], "major": [du, dv], "minor_radius": b, "ccw": true}, …]}` (the last segment ends at `start`; loop orientation is irrelevant) |
-| `planar_face` | `profile` — a one-face sheet; a result that is a sheet is measured by its surface properties (area, centroid, inertia at unit area density), recorded with `"sheet": true`, no volume, probes or Euler line, held to the `sheet/` area's dumps |
+| `planar_face` | `profile` — a one-face sheet; a result that is a sheet is measured by its surface properties (area, centroid, inertia at unit area density), recorded with `"sheet": true`, no volume, probes or Euler line, held to the `sheet/` area's dumps, written to STEP and read back by the oracle and by Arris |
 | `extrude` | `profile`, `direction`, `length` |
 | `revolve` | `profile`, `axis` `{origin, direction}`, `angle_deg` |
 | `transform` | `of`, optional `translate`, optional `rotate` `{axis, origin, angle_deg}`; rotation first |

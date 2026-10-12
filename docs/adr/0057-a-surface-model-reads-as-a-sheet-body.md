@@ -79,8 +79,8 @@ by the quadrature `mass_properties` takes its area by, over the faces of
 any body: a solid's boundary or a sheet's faces. `mass_properties` still
 refuses a sheet with `InputReason::NotSolid`.
 
-**6. The writer spells a sheet as a surface model.** (Step 6 implements
-it.) Each shell of a sheet body is an `OPEN_SHELL` of `ADVANCED_FACE`s —
+**6. The writer spells a sheet as a surface model.** (Implemented in
+step 6.) Each shell of a sheet body is an `OPEN_SHELL` of `ADVANCED_FACE`s —
 a `CLOSED_SHELL` where the shell is closed — in a
 `SHELL_BASED_SURFACE_MODEL`, listed in a `MANIFOLD_SURFACE_SHAPE_REPRESENTATION`
 over the same contexts, and tied to the product's `SHAPE_DEFINITION_REPRESENTATION`

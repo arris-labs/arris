@@ -16,6 +16,7 @@ require_ocp()
 from oracle import step  # noqa: E402
 from oracle.fixture import load_expected, load_fixture  # noqa: E402
 from oracle.measure import DEFAULT_TOLERANCES, compare, format_table, measure  # noqa: E402
+from oracle.measure import sheet as measure_sheet  # noqa: E402
 from oracle.recipe import fixture_kind, number, probes, recipe_hash, resolve_params  # noqa: E402
 
 
@@ -35,8 +36,11 @@ def compare_step(directory: Path, step_file: Path, variant: str = "default") -> 
         raise OracleError(f"{directory}: no variant {variant!r} in expected.json")
     tol = {**DEFAULT_TOLERANCES, **fixture.get("tolerances", {})}
     shape = step.read(step_file)
-    actual = measure(shape, probes(fixture, variant), tol["probe"])
     result = expected["results"][variant]
+    if result.get("sheet"):
+        actual = {"sheet": True, **measure_sheet(shape)}
+    else:
+        actual = measure(shape, probes(fixture, variant), tol["probe"])
     analytic = fixture.get("analytic", {})
     if analytic.get("counts_differ") and "counts" in analytic:
         # The recipe states a convention Arris does not follow and gives

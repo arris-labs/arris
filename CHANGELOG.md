@@ -33,6 +33,11 @@ into its version (ADR-0027).
   `offset_faces` refuse a sheet or any other non-solid operand as
   `InputReason::NotSolid` naming it, where some failed with an internal
   error before.
+- `arris_io::step::write` and `write_products` write sheet bodies — a
+  `planar_face`, a section, a surface model read from a file — as
+  `SHELL_BASED_SURFACE_MODEL`s that Open CASCADE and `read` give back as the
+  same sheet, beside solids in one file. A wire or general body is still
+  `StepError::Unsupported`.
 - `arris_ops::planar_face(&mut model, &profile, &control)` makes a sketch
   a one-face sheet body: the profile's loops, holes included, on its
   plane, its front along the plane's normal, every entity named by the part
@@ -45,6 +50,9 @@ into its version (ADR-0027).
   `Model::body(id)?.kind() == BodyKind::Solid`. A surface model is no
   longer a `Refusal::Unsupported`, and that refusal's name no longer ends
   `in a CONSTRUCTIVE_GEOMETRY_REPRESENTATION`.
+- `arris_io::step::write` accepts a `Sheet`: a caller that matched on
+  `StepError::Unsupported { what: Unsupported::Kind(BodyKind::Sheet) }`
+  no longer sees it; only a wire or general body is refused.
 - `arris_topo::provenance::Role` has a new variant, `PlanarFace(SweepPart)`,
   for `planar_face`'s entities; a `match` on it adds an arm (Python: the
   role's `kind` is `"planar_face"`).

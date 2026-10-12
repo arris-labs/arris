@@ -877,17 +877,6 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
     };
     let body = stages(&fixture, &chain, expected)?;
     let m = &chain.model;
-    if expected.sheet {
-        // The STEP writer takes a sheet in the plan's step 6; until then
-        // the dump is all that is left to compare.
-        let dump = dump_text(m, body).map_err(|e| CorpusError::Dump {
-            fixture: name.clone(),
-            path: dump_path(dir, variant),
-            what: e.to_string(),
-        })?;
-        return check_dump(&name, &dump_path(dir, variant), &dump, blessing());
-    }
-
     // STEP through the oracle.
     let text = step::write(m, &[body]).map_err(|source| CorpusError::Step {
         fixture: name.clone(),
@@ -917,7 +906,9 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
     // measures the reader on a walked blend, which a regression fixture
     // holds instead.
     let analytic = &fixture.recipe.analytic;
-    if analytic.step_differs.is_none() && analytic.occt_step_unread.is_none() {
+    if expected.sheet {
+        sheet_round_trip(&fixture, &chain, body, &text, expected)?;
+    } else if analytic.step_differs.is_none() && analytic.occt_step_unread.is_none() {
         let occt = oracle::occt_step(dir, Some(variant), false, &format!("occt-{tag}"))?;
         read_back_stage(&fixture, variant, &occt, expected)?;
         // And converted to B-splines first: free-form faces with seams
@@ -939,6 +930,70 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
         what: e.to_string(),
     })?;
     check_dump(&name, &dump_path(dir, variant), &dump, blessing())
+}
+
+/// A sheet result's STEP, read back by Arris: one `Sheet` body that passes
+/// the checker at `Full` with the written body's face count and surface
+/// properties within the fixture's tolerances (the oracle has read the
+/// file already, in `compare_dir`). Errors: [`CorpusError::ReadBack`].
+fn sheet_round_trip(
+    fixture: &Fixture,
+    chain: &Chain,
+    body: Body,
+    text: &str,
+    expected: &Measured,
+) -> Result<(), CorpusError> {
+    let fail = |what: String| CorpusError::ReadBack {
+        fixture: fixture.name.clone(),
+        file: "sheet",
+        what,
+    };
+    let mut model = model_for(fixture)?;
+    let read = step_read(&mut model, text, &step::ReadOptions::default())
+        .map_err(|e| fail(e.to_string()))?;
+    let [only] = &read.solids[..] else {
+        return Err(fail(format!("{} bodies read, not one", read.solids.len())));
+    };
+    let back = only
+        .result
+        .as_ref()
+        .map_err(|r| fail(format!("refused: {r}")))?
+        .body;
+    if model.body(back.id).map_err(|e| fail(e.to_string()))?.kind() != BodyKind::Sheet {
+        return Err(fail("not a sheet".into()));
+    }
+    let report = check_leaving_nurbs(&fixture.name, &model, back)?;
+    if !report.is_ok() {
+        return Err(fail(format!("fails the checker\n{report}")));
+    }
+    let faces = |m: &Model, b: Body| m.faces(b).map(|f| f.len()).map_err(|e| fail(e.to_string()));
+    let (written, read_faces) = (faces(&chain.model, body)?, faces(&model, back)?);
+    if written != read_faces {
+        return Err(fail(format!(
+            "{read_faces} faces read of {written} written"
+        )));
+    }
+    let target = Measured {
+        sheet: true,
+        ..expected.clone()
+    };
+    let found = surface_properties(&chain.model, body).map_err(|e| fail(e.to_string()))?;
+    let want = Measured {
+        area: Some(found.area),
+        centroid: Some([found.centroid.x, found.centroid.y, found.centroid.z]),
+        inertia: Some(core::array::from_fn(|i| {
+            core::array::from_fn(|j| found.inertia[(i, j)])
+        })),
+        ..target
+    };
+    compare_mass(
+        &model,
+        back,
+        &want,
+        "the written sheet's",
+        &fixture.recipe.tolerances,
+    )
+    .map_err(fail)
 }
 
 /// `dump` against the file committed at `path` — or, when `bless`,

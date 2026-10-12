@@ -177,10 +177,15 @@ impl core::fmt::Display for Unsupported {
 /// The STEP AP214 Part 21 text of `bodies` in the order given, as one
 /// product whose shape representation lists one solid entity per lump of
 /// each body, bodies in order and each body's lumps in `lumps`' order — a
-/// `MANIFOLD_SOLID_BREP`, or a `BREP_WITH_VOIDS` for a lump with voids
-/// (module docs for the entity subset and the conventions). Errors:
+/// `MANIFOLD_SOLID_BREP`, or a `BREP_WITH_VOIDS` for a lump with voids —
+/// and, for a sheet body, one `SHELL_BASED_SURFACE_MODEL` of `OPEN_SHELL`s
+/// (`CLOSED_SHELL`s where a shell has no boundary) in a
+/// `MANIFOLD_SURFACE_SHAPE_REPRESENTATION`, tied to the solids'
+/// representation by a `SHAPE_REPRESENTATION_RELATIONSHIP` when a file has
+/// both (module docs for the entity subset and the conventions; ADR-0057).
+/// Errors:
 /// [`StepError::NoBodies`] for an empty slice; [`StepError::Unsupported`]
-/// for a body that is not a solid, a loop of degenerate edges only, or an
+/// for a wire or general body, a loop of degenerate edges only, or an
 /// edge with more than two uses; [`StepError::Lumps`] for a solid whose
 /// shells do not nest into lumps; [`StepError::NotFound`] for a reference
 /// that does not resolve; [`StepError::NonFinite`] for a number Part 21
@@ -259,16 +264,17 @@ pub fn write_with(
         options.length_unit,
     )?;
     let mut solids = Vec::with_capacity(bodies.len());
+    let mut sheets = Vec::new();
     for &body in bodies {
-        solids.extend(w.solids(body)?);
+        let entities = w.solids(body)?;
+        if model.body(body.id)?.kind() == BodyKind::Sheet {
+            sheets.extend(entities);
+        } else {
+            solids.extend(entities);
+        }
     }
     let representation = w.shape_representation;
-    let text = format!(
-        "ADVANCED_BREP_SHAPE_REPRESENTATION('',({}),#{})",
-        refs(std::iter::once(w.world_placement).chain(solids)),
-        w.context_3d
-    );
-    w.set(representation, text);
+    w.represent(representation, &solids, &sheets);
     Ok(w.finish())
 }
 
@@ -520,15 +526,55 @@ impl<'m> Writer<'m> {
         out
     }
 
-    /// A solid body as one solid entity per lump: a `MANIFOLD_SOLID_BREP`
-    /// for a lump without voids, a `BREP_WITH_VOIDS` for one with them.
+    /// The shape representation `number` of a product holding `solids` and
+    /// `sheets` (the entities [`Writer::solids`] returned for each): an
+    /// `ADVANCED_BREP_SHAPE_REPRESENTATION` of the solids, a
+    /// `MANIFOLD_SURFACE_SHAPE_REPRESENTATION` of the surface models, both
+    /// — the second tied to the first by a `SHAPE_REPRESENTATION_RELATIONSHIP`
+    /// — where the product has both, and a bare `SHAPE_REPRESENTATION`
+    /// where it has neither (ADR-0057).
+    fn represent(&mut self, number: usize, solids: &[usize], sheets: &[usize]) {
+        let (placement, context) = (self.world_placement, self.context_3d);
+        let surface_items = refs(std::iter::once(placement).chain(sheets.iter().copied()));
+        let surface =
+            format!("MANIFOLD_SURFACE_SHAPE_REPRESENTATION('',({surface_items}),#{context})");
+        if solids.is_empty() && sheets.is_empty() {
+            self.set(
+                number,
+                format!("SHAPE_REPRESENTATION('',(#{placement}),#{context})"),
+            );
+        } else if solids.is_empty() {
+            self.set(number, surface);
+        } else {
+            let items = refs(std::iter::once(placement).chain(solids.iter().copied()));
+            self.set(
+                number,
+                format!("ADVANCED_BREP_SHAPE_REPRESENTATION('',({items}),#{context})"),
+            );
+            if !sheets.is_empty() {
+                let second = self.push(surface);
+                self.push(format!(
+                    "SHAPE_REPRESENTATION_RELATIONSHIP('','',#{number},#{second})"
+                ));
+            }
+        }
+    }
+
+    /// A body as its STEP entities: one solid entity per lump of a solid
+    /// (a `MANIFOLD_SOLID_BREP` for a lump without voids, a
+    /// `BREP_WITH_VOIDS` for one with them), or the one
+    /// `SHELL_BASED_SURFACE_MODEL` of a sheet.
     fn solids(&mut self, body: Body) -> Result<Vec<usize>, StepError> {
         let entity = self.model.body(body.id)?;
-        if entity.kind() != BodyKind::Solid {
-            return Err(StepError::Unsupported {
-                body,
-                what: Unsupported::Kind(entity.kind()),
-            });
+        match entity.kind() {
+            BodyKind::Solid => {}
+            BodyKind::Sheet => return Ok(vec![self.surface_model(body)?]),
+            kind @ (BodyKind::Wire | BodyKind::General) => {
+                return Err(StepError::Unsupported {
+                    body,
+                    what: Unsupported::Kind(kind),
+                });
+            }
         }
         let found = lumps(self.model, body).map_err(|source| match source {
             LumpError::NotFound(e) => StepError::NotFound(e),
@@ -565,8 +611,61 @@ impl<'m> Writer<'m> {
     /// every face turned when `turned`: a void's, which STEP holds
     /// reversed under an `ORIENTED_CLOSED_SHELL` of orientation false.
     fn closed_shell(&mut self, body: Body, shell: Shell, turned: bool) -> Result<usize, StepError> {
-        let model = self.model;
         let number = self.reserve();
+        let faces = self.shell_faces(body, shell, turned)?;
+        self.set(number, format!("CLOSED_SHELL('',({}))", refs(faces)));
+        Ok(number)
+    }
+
+    /// A sheet body as one `SHELL_BASED_SURFACE_MODEL` of its shells, each
+    /// an `OPEN_SHELL` of its face uses — a `CLOSED_SHELL` where every edge
+    /// of it is used twice, which a sheet may be.
+    fn surface_model(&mut self, body: Body) -> Result<usize, StepError> {
+        let number = self.reserve();
+        let mut shells = Vec::new();
+        for shell in self.model.shells(body)? {
+            let shell_number = self.reserve();
+            let closed = self.shell_is_closed(shell)?;
+            let faces = self.shell_faces(body, shell, false)?;
+            let kind = if closed { "CLOSED_SHELL" } else { "OPEN_SHELL" };
+            self.set(shell_number, format!("{kind}('',({}))", refs(faces)));
+            shells.push(shell_number);
+        }
+        self.set(
+            number,
+            format!("SHELL_BASED_SURFACE_MODEL('',({}))", refs(shells)),
+        );
+        Ok(number)
+    }
+
+    /// Whether every non-degenerate edge of `shell`'s faces is used twice
+    /// by them: a shell with no boundary.
+    fn shell_is_closed(&self, shell: Shell) -> Result<bool, StepError> {
+        let mut uses: BTreeMap<EdgeId, usize> = BTreeMap::new();
+        for face_use in self.model.shell(shell.id)?.faces() {
+            for l in self.model.face(face_use.id)?.loops() {
+                for coedge in l.coedges() {
+                    *uses.entry(coedge.edge()).or_default() += 1;
+                }
+            }
+        }
+        for (&edge, &n) in &uses {
+            if n != 2 && !self.model.edge(edge)?.is_degenerate() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// The `ADVANCED_FACE`s of a shell use seen through its orientation,
+    /// every face turned when `turned`.
+    fn shell_faces(
+        &mut self,
+        body: Body,
+        shell: Shell,
+        turned: bool,
+    ) -> Result<Vec<usize>, StepError> {
+        let model = self.model;
         let entity = model.shell(shell.id)?;
         let through = if turned {
             shell.orientation.flipped()
@@ -578,8 +677,7 @@ impl<'m> Writer<'m> {
             let face = face_use.oriented_by(through);
             faces.push(self.face(body, face.id, face.orientation)?);
         }
-        self.set(number, format!("CLOSED_SHELL('',({}))", refs(faces)));
-        Ok(number)
+        Ok(faces)
     }
 
     /// A face use as an `ADVANCED_FACE`.

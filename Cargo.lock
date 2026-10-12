@@ -82,6 +82,7 @@ dependencies = [
  "arris-mesh",
  "arris-ops",
  "arris-topo",
+ "proptest",
  "serde_json",
 ]
 
