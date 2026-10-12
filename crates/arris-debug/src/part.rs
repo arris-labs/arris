@@ -11,7 +11,8 @@
 //! default: one entry per solid it reads, with the `#id` behind it, and
 //! `occt_heals` where it had to heal it (ADR-0026 §3).
 //!
-//! A `read` solid is held to the checker at `Full` (what it cannot decide
+//! A `read` solid is held to what its read heals (`healed`, ADR-0058),
+//! to the checker at `Full` (what it cannot decide
 //! on a NURBS face left unchecked), to one of the oracle's solids of its
 //! `#id` — the nearest by centroid, each taken once — in counts and genus
 //! where healing changed no topology, in volume, area, centroid and
@@ -59,8 +60,41 @@ pub enum Outcome {
     Refused(ReadRefused),
 }
 
+/// What a read heals in one solid (ADR-0058), as a fixture records it:
+/// how many vertices and edges it grew past the read cap, and the largest
+/// gap among them.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Healed {
+    /// The count of `Healing::grown`.
+    pub grown: usize,
+    /// Its largest gap, in the fixture's unit.
+    pub largest: f64,
+}
+
+impl Healed {
+    /// The record of a read body, `None` where it healed nothing.
+    pub fn of(healing: &arris_io::step::Healing) -> Option<Healed> {
+        let largest = healing.grown.first()?.gap;
+        Some(Healed {
+            grown: healing.grown.len(),
+            largest,
+        })
+    }
+
+    /// `found` is this record: the same count, and the largest gap within
+    /// [`HEALED_REL`] of it.
+    pub fn holds(&self, found: &Healed) -> bool {
+        self.grown == found.grown
+            && (self.largest - found.largest).abs() <= HEALED_REL * self.largest.abs()
+    }
+}
+
+/// How near, relative, a read's largest healed gap must be to the one a
+/// fixture records: the record is written to six significant digits.
+pub const HEALED_REL: f64 = 1e-5;
+
 /// One solid instance of a part's file, as the reader numbers it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PartSolid {
     /// The `#id` of its `MANIFOLD_SOLID_BREP` or `BREP_WITH_VOIDS`, or
     /// of the entity that stands where one would.
@@ -88,6 +122,11 @@ pub struct PartSolid {
     /// holds it to ADR-0026 §5's table on every run.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub blocks: BTreeMap<String, String>,
+    /// What the read of a `read` solid heals (ADR-0058): absent where it
+    /// heals nothing. The runner holds the read's record to it either
+    /// way, so no solid of the corpus heals silently.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub healed: Option<Healed>,
 }
 
 /// A part fixture's `fixture.json`.
@@ -365,6 +404,18 @@ pub fn run(dir: &Path) -> Result<(), CorpusError> {
                 if spec.blocks.contains_key("read") {
                     return Err(fail(format!(
                         "{at} reads, but records the cycle its read refusal blocks"
+                    )));
+                }
+                let healed = Healed::of(&back.healing);
+                let held = match (&spec.healed, &healed) {
+                    (None, None) => true,
+                    (Some(expected), Some(found)) => expected.holds(found),
+                    _ => false,
+                };
+                if !held {
+                    return Err(fail(format!(
+                        "{at} heals {healed:?}, but records {:?}",
+                        spec.healed
                     )));
                 }
                 // A part waiting under `regression/` commits no dump.
@@ -976,14 +1027,32 @@ mod tests {
     #[test]
     fn a_refusal_is_held_to_the_cycle_it_blocks() {
         let scratch = edited(
-            "real/nist-ctc-02",
+            "real/nist-ftc-09-offset",
             "blocks",
-            r#""read": "healing""#,
+            r#""read": "sweep""#,
             r#""read": "NURBS""#,
         );
-        let e = run(&scratch).expect_err("a gap blocks healing");
+        let e = run(&scratch).expect_err("an offset blocks sweep");
         assert!(
-            matches!(&e, CorpusError::Part { what, .. } if what.contains("blocking healing")),
+            matches!(&e, CorpusError::Part { what, .. } if what.contains("blocking sweep")),
+            "{e}"
+        );
+        let _ = std::fs::remove_dir_all(&scratch);
+    }
+
+    /// A healed read is held to the record it records, and a read that
+    /// heals without one fails: nothing heals silently (ADR-0058).
+    #[test]
+    fn a_healed_read_is_held_to_its_record() {
+        let scratch = edited(
+            "real/healed-gap-on-an-engraved-plane",
+            "healed",
+            r#""grown": 3"#,
+            r#""grown": 4"#,
+        );
+        let e = run(&scratch).expect_err("three entities heal");
+        assert!(
+            matches!(&e, CorpusError::Part { what, .. } if what.contains("heals Some(Healed { grown: 3")),
             "{e}"
         );
         let _ = std::fs::remove_dir_all(&scratch);

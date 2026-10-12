@@ -62,6 +62,10 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
     for solid in &read.solids {
         let back = solid.result.as_ref().map_err(|r| format!("refused: {r}"))?;
         provenance_names_the_file(&model, back, solid.entity)?;
+        // Arris's own file needs no healing (ADR-0058).
+        if !back.healing.is_empty() {
+            return Err(format!("healed: {:?}", back.healing));
+        }
         bodies.push(back.clone());
     }
     // The lumps as the one body the fixture's result is, each read body's
@@ -380,7 +384,8 @@ fn a_parse_error_fails_the_file() {
 /// A bound whose edges end apart in 3D — the cylinder's seam line
 /// moved to the far side of the wall, so the circles reach their vertex
 /// at `u = 0` and the seam, 8 away, leaves from `u = π` — is a gap past
-/// the cap (ADR-0025 §4), named by the vertex where the walk finds it.
+/// the healing cap (ADR-0025 §4, ADR-0058), named by the vertex where the
+/// walk finds it.
 #[test]
 fn a_seam_moved_off_its_vertices_is_a_gap() {
     let text = cylinder_step();
@@ -395,7 +400,7 @@ fn a_seam_moved_off_its_vertices_is_a_gap() {
         &step::Refusal::Gap {
             entity: 32,
             gap: 8.0,
-            cap: cylinder_cap()
+            cap: heal_cap()
         },
         "{refusal}"
     );
@@ -554,10 +559,16 @@ fn cylinder_cap() -> f64 {
     arris_math::READ_GAP_FRACTION * diameter
 }
 
+/// The cylinder's healing cap: `HEAL_GAP_FRACTION` of the same diameter.
+fn heal_cap() -> f64 {
+    let diameter = (8.0f64 * 8.0 + 8.0 * 8.0 + 12.0 * 12.0).sqrt();
+    arris_math::HEAL_GAP_FRACTION * diameter
+}
+
 /// A vertex moved by δ off the curves that meet it (ADR-0025 §4): below
 /// the cap the solid reads to a body the checker passes at `Full`, the
-/// vertex and the edges it bounds carrying at least δ; above it, the gap
-/// is refused by name.
+/// vertex and the edges it bounds carrying at least δ; above it, and past
+/// what healing grows (ADR-0058), the gap is refused by name.
 #[test]
 fn a_vertex_moved_off_its_edges_carries_the_gap() {
     let from = "#60 = CARTESIAN_POINT('',(4.,0.,12.));";

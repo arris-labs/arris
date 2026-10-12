@@ -23,7 +23,7 @@ mod role;
 pub use control::Cancel;
 pub use error::{ArrisError, BindError, Class};
 pub use handle::{Body, Edge, Face, Shell, Vertex};
-pub use io::{Imported, Occurrence, Refusal, StepRead, StepSolid};
+pub use io::{Healing, Imported, Occurrence, Refusal, StepRead, StepSolid};
 pub use mesh::Mesh;
 pub use model::Model;
 pub use profile::{Loop, Profile, Segment};
@@ -79,6 +79,7 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Report>()?;
     module.add_class::<Refusal>()?;
     module.add_class::<StepSolid>()?;
+    module.add_class::<Healing>()?;
     module.add_class::<Occurrence>()?;
     module.add_class::<StepRead>()?;
     module.add_class::<Imported>()?;

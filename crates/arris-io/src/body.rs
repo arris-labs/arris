@@ -73,10 +73,12 @@ pub enum BodyError {
     /// (a reference the bytes hold to nothing).
     #[error(transparent)]
     Topo(#[from] TopoError),
-    /// An entity's tolerance lies outside the reading model's
-    /// `[min_tolerance, max_tolerance]`: the body was written under a
-    /// precision this model says cannot exist. Never rescaled (ADR-0029).
-    #[error("{entity} has tolerance {tolerance:e}, outside this model's [{min:e}, {max:e}]")]
+    /// An entity's tolerance lies below the reading model's
+    /// `min_tolerance`: the body was written under a precision finer
+    /// than this model can hold. Never rescaled (ADR-0029). A tolerance
+    /// above `max_tolerance` reads: that bounds what an operation grows,
+    /// not what a body holds (ADR-0060).
+    #[error("{entity} has tolerance {tolerance:e}, below this model's minimum {min:e}")]
     Precision {
         /// The entity, in the writer's ids.
         entity: EntityId,
@@ -84,8 +86,6 @@ pub enum BodyError {
         tolerance: f64,
         /// The reading model's `min_tolerance`.
         min: f64,
-        /// The reading model's `max_tolerance`.
-        max: f64,
     },
     /// The body decoded and copied, but the checker at `Level::Full`
     /// rejects it in the reading model: faces that cross, a body inside
@@ -284,7 +284,7 @@ pub fn to_json(model: &Model, body: Body, record: &Provenance) -> Result<String,
 /// [`BodyError::Decode`] for a truncated or malformed stream, a version no
 /// release wrote, or a map that is not a one-to-one map onto the body; [`BodyError::Topo`] for a body whose
 /// references do not resolve; [`BodyError::Precision`] for a tolerance
-/// `model` cannot hold; [`BodyError::Rejected`] for a body the checker
+/// below `model`'s floor; [`BodyError::Rejected`] for a body the checker
 /// rejects.
 ///
 /// ```
@@ -376,8 +376,8 @@ fn check_map(map: &IdMap, closure: &Closure, body: Body) -> Result<(), BodyError
 }
 
 /// Refuses the first vertex, edge or face of the body (in that order,
-/// each kind ascending) whose tolerance lies outside `model`'s range,
-/// naming it in the writer's ids through `back`.
+/// each kind ascending) whose tolerance lies below `model`'s
+/// `min_tolerance`, naming it in the writer's ids through `back`.
 fn check_tolerances(
     model: &Model,
     scratch: &Model,
@@ -387,14 +387,13 @@ fn check_tolerances(
 ) -> Result<(), BodyError> {
     let p = model.precision();
     let within = |entity: EntityId, tolerance: f64| {
-        if p.min_tolerance <= tolerance && tolerance <= p.max_tolerance {
+        if p.min_tolerance <= tolerance {
             Ok(())
         } else {
             Err(BodyError::Precision {
                 entity: back.map_entity(entity).unwrap_or(entity),
                 tolerance,
                 min: p.min_tolerance,
-                max: p.max_tolerance,
             })
         }
     };

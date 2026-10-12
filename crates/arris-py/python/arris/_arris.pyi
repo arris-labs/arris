@@ -387,9 +387,18 @@ class StepSolid:
     @property
     def provenance(self) -> Provenance | None: ...
     @property
+    def healing(self) -> Healing | None: ...
+    @property
     def refusal(self) -> Refusal | None: ...
     @property
     def ok(self) -> bool: ...
+
+@final
+class Healing:
+    @property
+    def grown(self) -> list[tuple[Vertex | Edge, int, float]]: ...
+    @property
+    def turned(self) -> list[Face]: ...
 
 @final
 class Occurrence:
@@ -635,6 +644,7 @@ class Model:
         text: str,
         *,
         length_unit: str = "mm",
+        heal: bool = True,
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> StepRead: ...
@@ -815,7 +825,6 @@ class BodyPrecisionError(BodyError):
     entity: str
     tolerance: float
     min: float
-    max: float
 
 class BodyRejectedError(BodyError):
     report: Report

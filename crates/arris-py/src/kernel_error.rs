@@ -358,12 +358,10 @@ pub fn body_error(error: &BodyError) -> Mapped {
             entity,
             tolerance,
             min,
-            max,
         } => Mapped::new(Class::BodyPrecisionError, message)
             .text("entity", entity)
             .with("tolerance", Attr::Float(*tolerance))
-            .with("min", Attr::Float(*min))
-            .with("max", Attr::Float(*max)),
+            .with("min", Attr::Float(*min)),
         BodyError::Rejected(report) => Mapped::new(Class::BodyRejectedError, message)
             .with("report", Attr::Report(report.clone())),
         BodyError::Interrupted(stop) => interrupted(stop),
@@ -633,8 +631,7 @@ mod tests {
             body_error(&BodyError::Precision {
                 entity: EntityId::Face(face()),
                 tolerance: 1.0,
-                min: 0.0,
-                max: 0.5,
+                min: 2.0,
             }),
             body_error(&BodyError::Rejected(report())),
             body_error(&BodyError::Interrupted(stop())),

@@ -102,19 +102,18 @@ The committed tier's refusal histogram (`cargo run -p arris-debug
 fixtures:
 
 <!-- histogram: committed -->
-11 parts, 16 solids: 14 read, 2 refused. 54 battery stages: 46 agree, 3 both refuse, 0 Open CASCADE refuses, 5 Arris refuses.
+11 parts, 16 solids: 16 read, 0 refused. 54 battery stages: 46 agree, 3 both refuse, 0 Open CASCADE refuses, 5 Arris refuses.
 
 | Cycle | Parts blocked | read | measure | write_read | box_cut | drill_x | drill_y | drill_z | fillet |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | blend network | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 |
-| healing | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | NURBS | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| healing | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 | Refusal | Stage | Count | Blocks |
 |---|---|---:|---|
 | Degenerate(TangentChain) | fillet | 4 | blend network |
-| gap past the cap | read | 2 | healing |
 | Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
 <!-- /histogram -->
 

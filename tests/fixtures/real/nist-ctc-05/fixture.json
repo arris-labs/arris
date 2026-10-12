@@ -9,14 +9,10 @@
     {
       "id": 6534,
       "instance": 0,
-      "outcome": {
-        "refused": {
-          "kind": "gap past the cap",
-          "why": "edge #4444 lies 0.0182 from a face it bounds, past the model's max_tolerance of 0.01: closing that is sewing, which is healing (ADR-0025 §4); Open CASCADE carries the part at tolerances of up to 0.086"
-        }
-      },
-      "blocks": {
-        "read": "healing"
+      "outcome": "read",
+      "healed": {
+        "grown": 3,
+        "largest": 0.0182347
       }
     },
     {

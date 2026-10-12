@@ -1789,11 +1789,18 @@ may carry different tolerances.
   a degenerate edge's image, each face the default; every value is
   floored at `default_tolerance` and raised to keep the ordering. A gap
   past `READ_GAP_FRACTION` of the part's size, or past `max_tolerance`,
-  is refused (`Refusal::Gap`): closing it is sewing.
+  is past the read cap. With `Heal::Off` it is refused (`Refusal::Gap`).
+  Healing, the default, grows the entity's tolerance to it up to
+  `HEAL_GAP_FRACTION` of the part's size, which `max_tolerance` does not
+  bound, and names every vertex and edge past the read cap in the
+  body's `ReadBody::healing` record; past that ceiling it is refused
+  (ADR-0058). Healing never moves geometry, and provenance is unchanged
+  by it.
 - **`Precision`** is the model-wide configuration set at `Model::new`:
   `default_tolerance` (what primitives get), `min_tolerance` (the floor no
   entity goes below), `max_tolerance` (an operation that would exceed it
-  returns `OpError::Tolerance`), `angular_tolerance` (radians, for
+  returns `OpError::Tolerance`; a body may hold more, which a healed read
+  does, ADR-0060), `angular_tolerance` (radians, for
   parallel/tangent decisions), `parametric_tolerance` (how far a pcurve
   may deviate in (u, v) at unit parametric speed; the checker scales it by
   the surface's parametric derivative, so on a cylinder of radius `r` the
@@ -1831,7 +1838,7 @@ reference tree) mapped onto this representation.
 
 | # | Invariant | Level |
 |---|---|---|
-| V1 | `Precision::min_tolerance ≤ tolerance ≤ max_tolerance` | Fast |
+| V1 | `Precision::min_tolerance ≤ tolerance` (`max_tolerance` bounds what an operation grows, not what a body holds: ADR-0060) | Fast |
 | V2 | For every incident edge, the edge's curve at the end of its range is within the vertex's tolerance of the vertex's point | Fast |
 | V3 | For every face the vertex lies on (through any coedge), the surface at the pcurve's end is within the vertex's tolerance of the point | Fast |
 
@@ -2238,8 +2245,8 @@ bytes and `BODY_VERSION`; `body::to_json` is the same body as one line of
 JSON, for diffs. Both are deterministic byte for byte. `body::read`
 decodes, migrates an earlier version to `BODY_VERSION` one version at a
 time through `body::compat`, refuses a newer one (`BodyError::Version`),
-refuses a tolerance outside the target's `[min_tolerance, max_tolerance]`
-rather than rescaling it (`BodyError::Precision`, naming the entity in
+refuses a tolerance below the target's `min_tolerance` (one above its
+`max_tolerance` reads, ADR-0060) rather than rescaling it (`BodyError::Precision`, naming the entity in
 the writer's ids), imports into the caller's model inside a transaction
 and runs the checker at `Level::Full` in every build profile. It returns
 the body, the record and the map from the writer's ids to the caller's,

@@ -8,6 +8,18 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A STEP part whose edges or vertices lie a little off its faces now
+  reads, where it was refused as `Refusal::Gap`: the reader grows each
+  such entity's tolerance to the gap it measured, up to 5e-4 of the
+  part's size, and names every one it grew in `ReadBody::healing`
+  (`Healing::grown`: the entity, its file `#id`, the gap). Nothing is
+  healed silently and no geometry moves. A gap past that is still
+  `Refusal::Gap`, and `ReadOptions { heal: Heal::Off, .. }` reads as
+  before. A healed body passes the checker and loads back from body
+  bytes, though its tolerances can be above the model's `max_tolerance`,
+  which now bounds only what an operation may grow. Python:
+  `read_step(text, heal=True)` and `StepSolid.healing`, whose `grown` is
+  a list of `(entity, file_id, gap)`.
 - A STEP part whose edge lies a little off one of its faces now reads with
   that edge's tolerance covering where its two faces actually meet, which
   can be slightly more than its distance from either face. Before, the
@@ -64,6 +76,14 @@ into its version (ADR-0027).
 - `arris_topo::provenance::Role` has a new variant, `PlanarFace(SweepPart)`,
   for `planar_face`'s entities; a `match` on it adds an arm (Python: the
   role's `kind` is `"planar_face"`).
+- `arris_io::step::ReadOptions` has a field `heal` and `ReadBody` a field
+  `healing`: a struct literal of `ReadOptions` adds `..Default::default()`.
+- `arris_check::ToleranceBound::AboveMaximum` is gone: the checker no
+  longer reports a tolerance above `Precision::max_tolerance`. A `match`
+  on `ToleranceBound` drops that arm.
+- `arris_io::body::BodyError::Precision` has no `max` field (Python:
+  `BodyPrecisionError.max`): body bytes are refused only for a tolerance
+  below the model's `min_tolerance`.
 
 ## 0.7.0 — 2026-10-11
 

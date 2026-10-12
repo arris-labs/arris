@@ -1,18 +1,19 @@
 {
   "kind": "part",
-  "description": "NIST's CTC-02 (rc), its base plane #9481 and one drafted boss cylinder #12501, tilted 2° off the plane's normal, as a two-face sheet. Their shared edge #9225 lies on the plane and 0.01495 off the cylinder; where the surfaces meet is 0.01496 from it, 1/sin 88° further, and the checker's S5 found them meeting there, outside the edge's tolerance. The edge's read tolerance now holds where its faces meet (ADR-0059). Read with max_tolerance raised past its gap until the read heals (plans/gap-and-orientation-healing step 3) Open CASCADE's healed cylinder face is not the file's: its pcurve of edge #9225 lies up to 0.0347 from the edge's curve (length 13.07), where Arris's lies within the edge's 0.01496, so its area may differ by up to that band, 0.454 mm² or 4.3e-6 relative; it differs by 2.5e-6. The area and inertia tolerances are that band; the centroid's is that band times the sheet's diagonal (990) over its area, 0.0043",
+  "description": "NIST's CTC-02 (rc), its base plane #9481 and one drafted boss cylinder #12501, tilted 2° off the plane's normal, as a two-face sheet. Their shared edge #9225 lies on the plane and 0.01495 off the cylinder; where the surfaces meet is 0.01496 from it, 1/sin 88° further, and the checker's S5 found them meeting there, outside the edge's tolerance. The edge's read tolerance now holds where its faces meet (ADR-0059). The read heals the gap by growing the edge's tolerance to it, and names it (ADR-0058). Open CASCADE's healed cylinder face is not the file's: its pcurve of edge #9225 lies up to 0.0347 from the edge's curve (length 13.07), where Arris's lies within the edge's 0.01496, so its area may differ by up to that band, 0.454 mm² or 4.3e-6 relative; it differs by 2.5e-6. The area and inertia tolerances are that band; the centroid's is that band times the sheet's diagonal (990) over its area, 0.0043",
   "file": "drafted-boss.stp",
   "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ctc_02_asme1_rc.stp (the file of real/nist-ctc-02): faces #9481 and #12501 of #20700, excerpted by tools/oracle/excerpt.py --faces",
   "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
   "sha256": "aabfcd18bbc0d96a4e66aae0f149c40c9527d68d97be32550a7864cc9f7c2274",
-  "precision": {
-    "max_tolerance": 0.2
-  },
   "solids": [
     {
       "id": 20824,
       "instance": 0,
-      "outcome": "read"
+      "outcome": "read",
+      "healed": {
+        "grown": 3,
+        "largest": 0.0149599
+      }
     }
   ],
   "tolerances": {

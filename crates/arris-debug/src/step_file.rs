@@ -1,13 +1,13 @@
 //! A STEP file seen as the `inspect` skill sees a shape: every solid of it
 //! read by `arris_io::step::read` — an assembly's at each placement —
-//! with its text dump, its checker report at `Full` and a rendered PNG,
-//! or the refusal naming the file entity where the reader stopped.
+//! with its text dump, its checker report at `Full`, a rendered PNG and
+//! what the read healed in it, or the refusal naming the file entity where the reader stopped.
 
 use crate::unmetered::step_read;
 use std::path::{Path, PathBuf};
 
 use arris_check::{Level, Report, check};
-use arris_io::step::{ReadError, ReadOptions, Refusal};
+use arris_io::step::{Healing, ReadError, ReadOptions, Refusal};
 use arris_topo::Model;
 use arris_topo::provenance::FileEntity;
 
@@ -32,6 +32,8 @@ pub struct Sight {
     /// Its isometric render, `target/inspect/<name>-<id>-<instance>.png`,
     /// or why there is none.
     pub png: Result<PathBuf, String>,
+    /// What the read healed in it (ADR-0058).
+    pub healing: Healing,
 }
 
 /// Why a file could not be seen at all.
@@ -88,6 +90,7 @@ pub fn inspect(model: &mut Model, path: &Path, name: &str) -> Result<Vec<Seen>, 
                     report: check(model, back.body, Level::Full),
                     png: render_body(model, back.body, View::Iso, None, tag)
                         .map_err(|e| e.to_string()),
+                    healing: back.healing,
                 }
             });
             Seen { entity, result }

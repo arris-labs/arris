@@ -486,21 +486,14 @@ impl Checker<'_> {
                 continue;
             };
             let tolerance = v.tolerance();
-            // V1
-            if tolerance.is_finite() {
-                if tolerance < precision.min_tolerance {
-                    self.push(Violation::VertexTolerance {
-                        vertex: id,
-                        tolerance,
-                        bound: ToleranceBound::BelowMinimum,
-                    });
-                } else if tolerance > precision.max_tolerance {
-                    self.push(Violation::VertexTolerance {
-                        vertex: id,
-                        tolerance,
-                        bound: ToleranceBound::AboveMaximum,
-                    });
-                }
+            // V1: the floor only. `max_tolerance` bounds what an
+            // operation grows, not what a body holds (ADR-0060).
+            if tolerance.is_finite() && tolerance < precision.min_tolerance {
+                self.push(Violation::VertexTolerance {
+                    vertex: id,
+                    tolerance,
+                    bound: ToleranceBound::BelowMinimum,
+                });
             }
             // V2: each incident edge of the body, at the end that names v.
             for edge_id in self.vertex_edges.get(&id).cloned().unwrap_or_default() {

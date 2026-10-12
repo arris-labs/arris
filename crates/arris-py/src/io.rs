@@ -12,15 +12,16 @@ use std::sync::Arc;
 
 use arris::io::body::Imported as KernelImported;
 use arris::io::step::{
-    LengthUnit, Occurrence as KernelOccurrence, Read, ReadSolid, Refusal as KernelRefusal, Rgb,
+    Healing as KernelHealing, LengthUnit, Occurrence as KernelOccurrence, Read, ReadSolid,
+    Refusal as KernelRefusal, Rgb,
 };
-use arris::topo;
+use arris::topo::{self, Orientation, Shape};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyString};
 
 use crate::handle::{Body, Face};
-use crate::kernel_error::mesh_write_error;
+use crate::kernel_error::{entity, mesh_write_error};
 use crate::mesh::Mesh;
 use crate::model::{Model, Shared};
 use crate::provenance::Provenance;
@@ -163,6 +164,16 @@ impl StepSolid {
             .map(|read| Provenance::minted_by(&model, read.provenance.clone()))
     }
 
+    /// What the read healed in the body, or `None` when the solid was
+    /// refused.
+    #[getter]
+    fn healing(&self) -> Option<Healing> {
+        self.kernel.result.as_ref().ok().map(|read| Healing {
+            model: Arc::clone(&self.model),
+            kernel: read.healing.clone(),
+        })
+    }
+
     /// Why there is no body, or `None` when there is one.
     #[getter]
     fn refusal(&self) -> Option<Refusal> {
@@ -188,6 +199,62 @@ impl StepSolid {
                 refusal.kind()
             ),
         }
+    }
+}
+
+/// What a STEP read healed in one body (ADR-0058): empty where the file
+/// needed nothing. Healing never moves geometry and is never silent.
+///
+/// `grown` is every vertex and edge whose tolerance the read grew past
+/// the read cap, as `(entity, file_id, gap)`, largest gap first: the
+/// `Vertex` or `Edge`, the `#id` of the file entity it was read from and
+/// the tolerance it was grown to. `turned` is every face the read turned.
+///
+/// ```python
+/// import arris
+///
+/// model = arris.Model()
+/// body, record = model.primitive_box((0, 0, 0), (100, 100, 100))
+/// [solid] = arris.Model().read_step(model.write_step([body])).solids
+/// assert solid.healing.grown == [] and solid.healing.turned == []
+/// ```
+#[pyclass(frozen, module = "arris")]
+#[derive(Clone, Debug)]
+pub struct Healing {
+    model: Arc<Shared>,
+    kernel: KernelHealing,
+}
+
+#[pymethods]
+impl Healing {
+    /// Each vertex and edge grown: `(entity, file_id, gap)`, largest gap
+    /// first.
+    #[getter]
+    fn grown<'py>(&self, py: Python<'py>) -> PyResult<Vec<(Bound<'py, PyAny>, u64, f64)>> {
+        let model = Model::sharing(&self.model);
+        (self.kernel.grown.iter())
+            .map(|g| {
+                let handle = entity(py, Some(&model), Shape::new(g.entity, Orientation::Forward))?;
+                Ok((handle, g.file, g.gap))
+            })
+            .collect()
+    }
+
+    /// Each face turned.
+    #[getter]
+    fn turned(&self) -> Vec<Face> {
+        let model = Model::sharing(&self.model);
+        (self.kernel.turned.iter())
+            .map(|&f| Face::minted_by(&model, topo::Face::forward(f)))
+            .collect()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Healing(grown={}, turned={})",
+            self.kernel.grown.len(),
+            self.kernel.turned.len()
+        )
     }
 }
 

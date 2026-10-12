@@ -1,26 +1,26 @@
 precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
-body +b0 sheet
-  shell +s0
-    face +f0 S0 tol 0.0000001
+body +b1 sheet
+  shell +s1
+    face +f663 S663 tol 0.0000001
       surface plane origin (0, 812, -140) x (1, 0, 0) y (0, 0, -1) z (0, 1, 0)
       loop 0
-        coedge -e0 p1 circle origin (0, 0) x (-1, 0) y (0, 1) radius 42.5
-        coedge -e1 p0 circle origin (0, 0) x (1, 0) y (0, -1) radius 42.5
+        coedge -e1642 p3137 circle origin (0, 0) x (-1, 0) y (0, 1) radius 42.5
+        coedge -e1643 p3136 circle origin (0, 0) x (1, 0) y (0, -1) radius 42.5
       loop 1
-        coedge -e2 p3 circle origin (0, 0) x (-1, 0) y (0, -1) radius 20
-        coedge -e3 p2 circle origin (0, 0) x (1, 0) y (0, 1) radius 20
+        coedge -e1644 p3139 circle origin (0, 0) x (-1, 0) y (0, -1) radius 20
+        coedge -e1645 p3138 circle origin (0, 0) x (1, 0) y (0, 1) radius 20
 edges
-  -e0 v0 -> v1 c0 [0, 3.14159265359] tol 0.0000001
+  -e1642 v928 -> v929 c1494 [0, 3.14159265359] tol 0.0000001
     curve circle origin (0, 812, -140) x (-1, 0, 0) y (0, 0, -1) z (0, -1, 0) radius 42.5
-  -e1 v1 -> v0 c1 [0, 3.14159265359] tol 0.0000001
+  -e1643 v929 -> v928 c1495 [0, 3.14159265359] tol 0.0000001
     curve circle origin (0, 812, -140) x (1, 0, 0) y (0, 0, 1) z (0, -1, 0) radius 42.5
-  -e2 v2 -> v3 c2 [0, 3.14159265359] tol 0.0000001
+  -e1644 v930 -> v931 c1496 [0, 3.14159265359] tol 0.0000001
     curve circle origin (0, 812, -140) x (-1, 0, 0) y (0, 0, 1) z (0, 1, 0) radius 20
-  -e3 v3 -> v2 c3 [0, 3.14159265359] tol 0.0000001
+  -e1645 v931 -> v930 c1497 [0, 3.14159265359] tol 0.0000001
     curve circle origin (0, 812, -140) x (1, 0, 0) y (0, 0, -1) z (0, 1, 0) radius 20
 vertices
-  v1 (42.5, 812, -140) tol 0.0000001
-  v0 (-42.5, 812, -140) tol 0.0000001
-  v3 (20, 812, -140) tol 0.0000001
-  v2 (-20, 812, -140) tol 0.0000001
+  v929 (42.5, 812, -140) tol 0.0000001
+  v928 (-42.5, 812, -140) tol 0.0000001
+  v931 (20, 812, -140) tol 0.0000001
+  v930 (-20, 812, -140) tol 0.0000001
 euler 4/4/1/2/1 g1 = 0

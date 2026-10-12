@@ -354,7 +354,7 @@ fn read_under(p: Precision) -> Result<Imported, BodyError> {
 }
 
 #[test]
-fn a_tolerance_outside_the_readers_range_is_refused_never_rescaled() {
+fn a_tolerance_below_the_readers_floor_is_refused_never_rescaled() {
     let default = Precision::DEFAULT;
     let finer = Precision {
         default_tolerance: default.min_tolerance / 10.0,
@@ -368,18 +368,16 @@ fn a_tolerance_outside_the_readers_range_is_refused_never_rescaled() {
             entity: EntityId::Vertex(VertexId::new(0, 0)),
             tolerance: finer.default_tolerance,
             min: default.min_tolerance,
-            max: default.max_tolerance,
         }
     );
+    // Above the reader's ceiling reads: `max_tolerance` bounds what an
+    // operation grows, not what a body holds (ADR-0060).
     let coarser = Precision {
         default_tolerance: default.max_tolerance * 10.0,
         max_tolerance: default.max_tolerance * 100.0,
         ..default
     };
-    assert!(matches!(
-        read_under(coarser),
-        Err(BodyError::Precision { tolerance, .. }) if tolerance == coarser.default_tolerance
-    ));
+    assert!(read_under(coarser).is_ok());
     // Another precision whose tolerances the reader can hold reads.
     let other = Precision {
         default_tolerance: 1e-5,

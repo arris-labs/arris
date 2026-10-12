@@ -77,6 +77,37 @@ def test_a_step_write_declares_the_unit_and_reads_back_in_it():
         model.write_step([body], length_unit="furlong")
 
 
+def test_a_vertex_a_little_off_its_edges_is_healed_and_named():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (100, 100, 100))
+    text = model.write_step([body])
+    # The first vertex's point moved 0.03 along z: past the read cap of
+    # 0.01, within the healing ceiling of 5e-4 of the part's size.
+    lines = text.splitlines()
+    point = next(
+        line.split("#")[2].rstrip(");")
+        for line in lines
+        if "VERTEX_POINT(" in line
+    )
+    i, line = next(
+        (i, line) for i, line in enumerate(lines) if line.startswith(f"#{point} = CARTESIAN_POINT(")
+    )
+    head, z = line.rstrip("));").rsplit(",", 1)
+    lines[i] = f"{head},{float(z) + 0.03}));"
+    moved = "\n".join(lines) + "\n"
+
+    healed = arris.Model()
+    [solid] = healed.read_step(moved).solids
+    assert solid.ok and solid.healing.turned == []
+    entity, file_id, gap = solid.healing.grown[0]
+    assert isinstance(entity, (arris.Vertex, arris.Edge)) and file_id > 0
+    assert 0.03 <= gap < 0.05
+    assert healed.check(solid.body).ok
+
+    [refused] = arris.Model().read_step(moved, heal=False).solids
+    assert refused.healing is None and refused.refusal.kind == "Gap"
+
+
 def test_the_step_errors_are_typed():
     model = arris.Model()
     with pytest.raises(arris.StepNoBodiesError):

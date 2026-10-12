@@ -1400,8 +1400,9 @@ public and cheap enough for a consumer to run after every feature; the
 `paranoid` feature turns the debug behaviour on in release, returning
 `OpError::Internal` instead of panicking.
 
-The checker never repairs. Healing is an operation — the healing cycle's
-— and it returns provenance like any other.
+The checker never repairs. Healing is a stage of the STEP read, recorded
+on what it returns (`ReadBody::healing`, ADR-0058), not an operation on a
+body already in the model.
 
 ## Geometry dispatch
 
@@ -1762,12 +1763,18 @@ B-Rep).
   on (`Surface::singularities`), a `VERTEX_LOOP` joined to its face's
   other bound by the exact iso-line, and each entity's tolerance measured
   from its own gaps and capped at `READ_GAP_FRACTION` of the part's size
-  (data-model §Tolerances). The body is checked at `Level::Fast` in
+  (data-model §Tolerances). Healing is a stage of the read
+  (`ReadOptions::heal`, `Heal::GapsAndOrientation` by default, ADR-0058):
+  a gap past that read cap is grown to, up to `HEAL_GAP_FRACTION` of the
+  part's size whatever the model's `max_tolerance`, and every vertex and
+  edge grown past the read cap is named in `ReadBody::healing`
+  (`Healing::grown`, each `Grown` the entity, its file `#id` and its
+  gap); `Heal::Off` is the read before healing, bit for bit. The body is checked at `Level::Fast` in
   every build, since a violation there is the file's and not the
   kernel's. Every solid comes back as a `ReadSolid` carrying its
-  `FileEntity` and either a `ReadBody` — the body and its provenance, each
+  `FileEntity` and either a `ReadBody` — the body, its provenance, each
   entity `Generated` from its file entity (`Role::File`, data-model
-  §Provenance) — or a `Refusal`; a refused solid leaves nothing in the
+  §Provenance), and its healing record — or a `Refusal`; a refused solid leaves nothing in the
   model and hides no other, and only a `Part21Error` fails the file
   (§Errors). Deterministic: the same text reads to the same ids. What
   it does not read: layers, PMI, materials, properties, and the
@@ -2149,7 +2156,7 @@ refusal histogram, what picks the cycle after the reader's.
 | A profile as a flat sheet (a face to fill, hatch or sweep from) | `ops::planar_face(&mut model, &profile, &control)` → a one-face `Sheet` (holes included, its front along the plane's normal), each entity `Generated` under `Role::PlanarFace`, naming the sketch's vertex or segment it came from |
 | A sheet body as an operand | `transform` and `mirror` take a sheet and return one of its kind (a mirror turns its fronts); tessellation, the body bytes, the native format and the checker take it at `Full`. `fuse`, `cut`, `common`, `split`, the blends, `shell`, `offset_faces`, `section` and `mass_properties` refuse it as `InputReason::NotSolid`, naming it (`crates/arris/tests/sheet_operands.rs`) |
 | STEP export of several bodies, or of an assembly | `io::step::write(&model, &[bodies])` (a sheet body as a `SHELL_BASED_SURFACE_MODEL`, ADR-0057 §6); `io::step::write_products(&model, &[bodies], &tree, &control)` for products, placements, names and colours (ADR-0033) |
-| STEP import | `io::step::read(&mut model, &text, &ReadOptions { length_unit })` → one `ReadSolid` per solid or surface model (`SHELL_BASED_SURFACE_MODEL`, `FACE_BASED_SURFACE_MODEL`: a `Sheet` body, ADR-0057) and placement, and `Read::products` the product tree over them (names, placements, colours): a checker-clean body with provenance naming its file entity (`Role::File`), or a typed `Refusal` whose `RefusalKind` a histogram counts (`RefusalKind::ALL`); only a parse error fails the file (ADR-0025) |
+| STEP import | `io::step::read(&mut model, &text, &ReadOptions { length_unit, heal })` → one `ReadSolid` per solid or surface model (`SHELL_BASED_SURFACE_MODEL`, `FACE_BASED_SURFACE_MODEL`: a `Sheet` body, ADR-0057) and placement, and `Read::products` the product tree over them (names, placements, colours): a checker-clean body with provenance naming its file entity (`Role::File`), or a typed `Refusal` whose `RefusalKind` a histogram counts (`RefusalKind::ALL`); only a parse error fails the file (ADR-0025) |
 | A render mesh as STL or OBJ of several bodies, beside STEP | `io::stl::write_ascii`/`write_binary(&meshes, name)`, `io::obj::write(&meshes)` — one `TriMesh` per body, `vt`/`vn` written when a mesh carries the corner block (ADR-0012, ADR-0013) |
 | Projecting an edge or vertex onto a sketch plane | `ops::query::project_to_plane(&model, &[shapes], &plane)` → a `Projection` per shape: a vertex's `Point2`, an edge's `Curve2` (a line stays a line, a circle becomes a circle or an ellipse, an ellipse stays an ellipse, a NURBS a `Curve2::Nurbs`) with the edge's range carried into that curve's own parameter, so the piece is the edge's and no more (data-model §Pcurves) |
 | Persistent topological names (origin-based) | Emitted by the consumer from `Provenance`: an output face is named after the input face it was `Modified` from, `Split(k)` when one input yields several outputs, and after the tool face when `Generated`; edges and vertices derive from their faces exactly as today. No centroid matching. Arris ships no name grammar (ADR-0009): the words are the application's. What the kernel guarantees is the **split order** — an origin's outputs in `generated_from` and `modified_from` are the pieces in an order that holds under every parameter edit keeping which entities bound which piece (a face's by the origins bounding each piece, an edge's along its curve; data-model §Provenance), so `Split(k)` means the same piece after the edit. A feature that builds topology itself roots its chains at its own keys through `ops::build`, and re-roots a primitive's, sweep's or file's record at them with `Provenance::rerooted` (`Role::Consumer`, ADR-0028) |

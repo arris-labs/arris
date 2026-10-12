@@ -1541,7 +1541,8 @@ corpus_tests! {
     real_pcurve_fit_reported_as_gap => part "real/pcurve-fit-reported-as-gap";
     /// NIST's CTC-05 whole, held to the time budget its read once broke:
     /// fits that climbed to their tolerance one costly miss at a time
-    /// (ADR-0026's amendment of step 5).
+    /// (ADR-0026's amendment of step 5). Its solid now reads healed
+    /// (ADR-0058).
     real_slow_gap_refusal => part "real/slow-gap-refusal";
     /// NIST's FTC-07 whole, whose torus is tangent to a plane on its seam:
     /// the checker's S5 decides the pair as one touch (ADR-0026's amendment
@@ -1557,6 +1558,14 @@ corpus_tests! {
     /// FTC-07 AP242's sphere face whose loop zigzags inside a vertex's
     /// tolerance: L5 holds it to no crossing.
     real_loop_crossing_inside_a_vertex => part "real/loop-crossing-inside-a-vertex";
+    /// CTC-04 AP242's cylinder and sphere as a sheet, their edge 0.0506
+    /// off one of them: healed by a grown tolerance and named (ADR-0058).
+    real_healed_gap_cylinder_meets_sphere => part "real/healed-gap-cylinder-meets-sphere";
+    /// CTC-05 AP242's B-spline band and cylinder, their edge 0.0207 off.
+    real_healed_gap_nurbs_meets_cylinder => part "real/healed-gap-nurbs-meets-cylinder";
+    /// FTC-11 AP242's engraved plane and a cylinder, their edge 0.0141
+    /// off: 1.5e-4 of the part, the largest gap of the corpus for its size.
+    real_healed_gap_on_an_engraved_plane => part "real/healed-gap-on-an-engraved-plane";
     /// NIST's FTC-09, AP203 geometry only: one solid of 158 faces, read whole.
     real_nist_ftc_09 => part "real/nist-ftc-09";
     /// `real/nist-ftc-09` with one plane wrapped in an `OFFSET_SURFACE` by
@@ -1564,13 +1573,13 @@ corpus_tests! {
     real_nist_ftc_09_offset => part "real/nist-ftc-09-offset";
     /// NIST's CTC-01: one solid read whole, an exporter's edge fitted past the cap.
     real_nist_ctc_01 => part "real/nist-ctc-01";
-    /// NIST's CTC-02: its solid refused for a real gap of 0.0112, its surface body as a surface.
+    /// NIST's CTC-02: its solid read healed, gaps up to 0.0392 grown (ADR-0058), its surface body as a surface.
     real_nist_ctc_02 => part "real/nist-ctc-02";
     /// NIST's CTC-03: one solid read whole, its seamless bands joined.
     real_nist_ctc_03 => part "real/nist-ctc-03";
     /// NIST's CTC-04: one solid read whole, its three surface bodies refused as surfaces.
     real_nist_ctc_04 => part "real/nist-ctc-04";
-    /// NIST's CTC-05: its solid refused for a real gap of 0.0182, its surface body as a surface.
+    /// NIST's CTC-05: its solid read healed, a gap of 0.0182 grown (ADR-0058), its surface body as a surface.
     real_nist_ctc_05 => part "real/nist-ctc-05";
     /// NIST's FTC-06: one solid read whole, its meridian edge split at the pole it passes.
     real_nist_ftc_06 => part "real/nist-ftc-06";

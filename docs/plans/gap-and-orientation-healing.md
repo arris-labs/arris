@@ -98,8 +98,16 @@ ADR-0058's, written at step 1.
      default. The default is on because Open CASCADE heals every read and
      a consumer's part file is expected to open. A write-then-read of a
      healed body must also read back under default options.
+- **ADR-0060** (step 3): *`max_tolerance` bounds what an operation grows,
+  not what a body holds.* The checker's V1 held a vertex's tolerance to
+  `max_tolerance`, so every healed body failed the reader's own check,
+  and body bytes refused the same range: V1 keeps its floor only,
+  `ToleranceBound::AboveMaximum` and `BodyError::Precision::max` go
+  (Breaking, Python's `BodyPrecisionError.max` with them). ADR-0058's
+  "the checker is not asked to change" was wrong; this step found it.
 - **`arris-io` public API (Breaking):** `ReadOptions` gains `heal` and
-  `ReadBody` gains `healing`. Neither struct is `#[non_exhaustive]`, so a
+  `ReadBody` gains `healing`. `Grown::entity` is an `EntityId`, ADR-0058
+  §3's `AnyId` narrowed: healing grows only vertices and edges. Neither struct is `#[non_exhaustive]`, so a
   struct literal breaks. The fix is `..Default::default()` for
   `ReadOptions`, and constructing `ReadBody` is not a consumer's business.
   The `CHANGELOG.md` bullet goes under `### Breaking` in step 3.
@@ -187,7 +195,7 @@ whether 4 or all 6 of the healable parts leave the row.
   until step 3 heals it). Open CASCADE's healing moves these faces'
   boundaries further than Arris's read does, so each fixture's
   tolerances are that band, derived in its description.
-- [ ] Step 3 **[2]** — **Gap healing in the reader.** `ReadOptions::heal`
+- [x] Step 3 **[2]** — **Gap healing in the reader.** `ReadOptions::heal`
   and `Heal`, `ReadBody::healing` and `Grown`. Every gap from the read cap
   up to `HEAL_GAP_FRACTION` of the part (and within the model's ceiling as
   ADR-0058 sets it) is grown and recorded; one past the ceiling is still
@@ -204,6 +212,18 @@ whether 4 or all 6 of the healable parts leave the row.
   `heal=` and `healing`. `CHANGELOG.md` gets a `### Breaking` bullet
   (`ReadOptions` and `ReadBody` gained a field) and a feature bullet ("a
   part whose edges lie a little off its faces now reads, and says which").
+  *Done:* the checker's V1 refused every healed body, so ADR-0060 drops
+  V1's ceiling and body bytes' with it. A pcurve is fitted under the
+  read cap first and under the healing cap only where that fails, so a
+  body that needs no healing reads bit for bit as with `Heal::Off`
+  (`real_heal_off_reads_every_committed_part_as_before`). The record
+  names every vertex and edge whose tolerance passes the read cap. The
+  committed tier's `real/nist-ctc-05` (CTC-05's file again) flipped with
+  the two named, and the parts' sheets' dumps moved by ids only, the
+  healed solid now standing first in the model. The excerpts are
+  `real/healed-gap-{cylinder-meets-sphere,nurbs-meets-cylinder,on-an-engraved-plane}`,
+  each held to the band its healed edges leave the sheet's area. The
+  committed histogram's `healing` row is 0. The fetched tier is step 5's.
 - [ ] Step 4 **[2]** — **Orientation healing.** The rule of ADR-0058 §2
   in the reader, for solids and sheets, recorded in `Healing::turned`.
   Fixtures: the three blend fixtures' Open CASCADE STEP reads back, so
@@ -269,7 +289,7 @@ whether 4 or all 6 of the healable parts leave the row.
 
 ## Open questions
 
-1. ⚠ OPEN: **The absolute ceiling.** Every gap in the table is above
+1. Closed at step 1 (ADR-0058 §2, option (b)), with ADR-0060 at step 3: **The absolute ceiling.** Every gap in the table is above
    `Precision::DEFAULT.max_tolerance` (1e-2). Option (a): raise the
    default ceiling to cover what healing grows (Open CASCADE has no
    ceiling, and 0.108 is what it carries here). That touches every
@@ -283,7 +303,7 @@ whether 4 or all 6 of the healable parts leave the row.
    body (a fillet next to a 0.05 edge) must be measured. Who: the agent,
    in ADR-0058 at step 1, on the census. Step 3 is blocked until it is
    decided.
-2. ⚠ OPEN: **Provenance for a healed entity.** Recommended: leave it
+2. Closed at step 1 (ADR-0058 §3, as recommended): **Provenance for a healed entity.** Recommended: leave it
    `Generated` from its file entity and carry healing on `ReadBody`
    only. The roadmap's accept line ("a healed body's provenance names
    every face sewn or turned") is then met by the record, not by a new

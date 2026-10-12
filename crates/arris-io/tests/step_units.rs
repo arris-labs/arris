@@ -50,7 +50,15 @@ fn vertices(m: &Model, body: Body) -> Result<Vec<[u64; 3]>, TestCaseError> {
 
 fn read_all(text: &str, unit: LengthUnit) -> Result<(Model, Vec<Body>), TestCaseError> {
     let mut back = Model::default();
-    let read = step_read(&mut back, text, &ReadOptions { length_unit: unit }).map_err(fail)?;
+    let read = step_read(
+        &mut back,
+        text,
+        &ReadOptions {
+            length_unit: unit,
+            ..ReadOptions::default()
+        },
+    )
+    .map_err(fail)?;
     let mut bodies = Vec::new();
     for solid in &read.solids {
         let r = solid.result.as_ref().map_err(|r| fail(format!("{r}")))?;

@@ -26,7 +26,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use arris_check::Report;
 use arris_math::{Control, Interrupted, Meter};
 use arris_topo::provenance::FileEntity;
-use arris_topo::{Body, Model, Provenance};
+use arris_topo::{Body, EntityId, FaceId, Model, Provenance};
 
 use super::part21::{self, Part21Error};
 use entities::Entities;
@@ -34,14 +34,16 @@ use geometry::Geometry;
 use topology::Halt;
 use units::Units;
 
-/// How the reader reads a file: the unit the caller's model is in.
+/// How the reader reads a file: the unit the caller's model is in, and
+/// whether it heals what it reads.
 ///
 /// ```
-/// use arris_io::step::{LengthUnit, ReadOptions};
+/// use arris_io::step::{Heal, LengthUnit, ReadOptions};
 ///
 /// let options = ReadOptions::default();
 /// assert_eq!(options.length_unit, LengthUnit::Millimetre);
-/// let inches = ReadOptions { length_unit: LengthUnit::Inch };
+/// assert_eq!(options.heal, Heal::GapsAndOrientation);
+/// let inches = ReadOptions { length_unit: LengthUnit::Inch, ..ReadOptions::default() };
 /// assert_ne!(inches, options);
 /// ```
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -50,6 +52,71 @@ pub struct ReadOptions {
     /// other converts to it (ADR-0025 §5). Millimetres by default, the
     /// unit [`write`](super::write) declares.
     pub length_unit: LengthUnit,
+    /// What the reader heals (ADR-0058): on by default, as Open
+    /// CASCADE's reader heals every read.
+    pub heal: Heal,
+}
+
+/// What the reader heals (ADR-0058). Healing never moves geometry and
+/// never heals silently: what it did is the [`ReadBody::healing`] record.
+///
+/// ```
+/// use arris_io::step::Heal;
+///
+/// assert_eq!(Heal::default(), Heal::GapsAndOrientation);
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Heal {
+    /// Nothing: a gap past the read cap — the part's size times
+    /// `arris_math::READ_GAP_FRACTION`, at most the model's
+    /// `max_tolerance` — is [`Refusal::Gap`], as before healing.
+    Off,
+    /// A vertex or an edge lying past the read cap off the entities it
+    /// meets has its tolerance grown to the gap, up to the healing
+    /// ceiling — the part's size times `arris_math::HEAL_GAP_FRACTION`,
+    /// which the model's `max_tolerance` does not bound — and is named in
+    /// [`Healing::grown`]. A gap past the ceiling is [`Refusal::Gap`].
+    #[default]
+    GapsAndOrientation,
+}
+
+/// What the reader healed in one body (ADR-0058 §3): empty where the file
+/// needed nothing. Provenance is unchanged by it — every entity is still
+/// generated from its file entity — since healing changes no topology.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Healing {
+    /// Every vertex and edge whose tolerance the read grew past the read
+    /// cap, largest gap first.
+    pub grown: Vec<Grown>,
+    /// Every face the read turned.
+    pub turned: Vec<FaceId>,
+}
+
+impl Healing {
+    /// The read healed nothing.
+    ///
+    /// ```
+    /// use arris_io::step::Healing;
+    ///
+    /// assert!(Healing::default().is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.grown.is_empty() && self.turned.is_empty()
+    }
+}
+
+/// One entity a read grew the tolerance of (ADR-0058 §3).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Grown {
+    /// The vertex or edge.
+    pub entity: EntityId,
+    /// The `#id` of the file entity it was read from, as its provenance
+    /// names it: its `VERTEX_POINT` or `EDGE_CURVE`, or the face of an
+    /// edge the file left out.
+    pub file: u64,
+    /// The tolerance it was grown to: the gap measured at it, in the
+    /// caller's unit.
+    pub gap: f64,
 }
 
 /// A unit of length a caller's model is in (ADR-0025 §5).
@@ -215,10 +282,12 @@ pub enum Refusal {
         vertex: u64,
     },
     /// A vertex or an edge is farther from where the entities it meets
-    /// put it than the gap a read closes by a tolerance: the part's size
-    /// times `arris_math::READ_GAP_FRACTION`, and never more than the
-    /// model's `max_tolerance` (ADR-0025 §4). Closing it would be sewing,
-    /// which is healing.
+    /// put it than the gap a read closes by a tolerance: with
+    /// [`Heal::Off`], the part's size times
+    /// `arris_math::READ_GAP_FRACTION`, and never more than the model's
+    /// `max_tolerance` (ADR-0025 §4); healing, the part's size times
+    /// `arris_math::HEAL_GAP_FRACTION` (ADR-0058). Closing it would mean
+    /// moving geometry, which healing does not.
     #[error("#{entity}: a gap of {gap} past the cap of {cap}")]
     Gap {
         /// The `VERTEX_POINT` or `EDGE_CURVE` — or, for an edge the file
@@ -468,6 +537,8 @@ pub struct ReadBody {
     /// `Generated` from the file entity it was read from
     /// (`Role::File`), at the solid's placement.
     pub provenance: Provenance,
+    /// What the read healed in it: empty unless the file needed it.
+    pub healing: Healing,
 }
 
 /// The entity names of the solids the reader reads.
@@ -599,11 +670,12 @@ fn read_solids(
                     entities,
                     units: units.placed(motion),
                 }
-                .solid(model, p.solid, p.instance, meter))
+                .solid(model, p.solid, p.instance, options.heal, meter))
                 {
                     Ok(s) => Ok(ReadBody {
                         body: s.body,
                         provenance: s.provenance,
+                        healing: s.healing,
                     }),
                     Err(Halt::Refused(refusal)) => Err(refusal),
                     Err(Halt::Interrupted(stop)) => return Err(stop.into()),

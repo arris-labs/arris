@@ -73,7 +73,14 @@
 //!   of a degenerate edge's image; each face the model's default. Every
 //!   value is floored at the default and raised to keep vertex ≥ edge ≥
 //!   face. A gap past the cap — [`READ_GAP_FRACTION`] of the part's size,
-//!   at most the model's `max_tolerance` — is [`Refusal::Gap`].
+//!   at most the model's `max_tolerance` — is [`Refusal::Gap`], unless
+//!   the read heals ([`Heal`], ADR-0058): then the cap is
+//!   [`HEAL_GAP_FRACTION`] of the part's size, which `max_tolerance` does
+//!   not bound, and every vertex and edge whose tolerance passes the read
+//!   cap is named in the body's [`Healing`] record. A pcurve is fitted
+//!   under the read cap first, and under the healing cap only where that
+//!   fails, so that a body that needs no healing reads as it would
+//!   without it.
 //!
 //! The body is checked at `Level::Fast` in every build (ADR-0025 §5), and
 //! a violation is the file's: [`Refusal::Invalid`].
@@ -88,9 +95,9 @@ use arris_geom::{
     Surface, pcurve_ending_on, pcurve_on,
 };
 use arris_math::{
-    Aabb, Frame, Interrupted, Interval, Meter, Point2, Point3, Precision, READ_GAP_FRACTION,
-    RELATIVE_ROUNDING, SECTION_GROWTH_LIMIT, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3,
-    is_negligible, shift_nearest_uv,
+    Aabb, Frame, HEAL_GAP_FRACTION, Interrupted, Interval, Meter, Point2, Point3, Precision,
+    READ_GAP_FRACTION, RELATIVE_ROUNDING, SECTION_GROWTH_LIMIT, Tolerance, UnitVec2, UnitVec3,
+    Vec2, Vec3, is_negligible, shift_nearest_uv,
 };
 use arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec,
@@ -99,15 +106,16 @@ use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::{FileEntity, Role};
 use arris_topo::{Body, CurveId, Model, Orientation, Provenance, Shape, SurfaceId};
 
-use super::Refusal;
 use super::entities::{Args, describe, malformed};
 use super::geometry::{Ball, Geometry, ReadCurve, ReadSurface};
+use super::{Grown, Heal, Healing, Refusal};
 
 /// A solid read: its body and the record naming the file entity each of
 /// its entities was generated from.
 pub(crate) struct Solid {
     pub(crate) body: Body,
     pub(crate) provenance: Provenance,
+    pub(crate) healing: Healing,
 }
 
 /// An `EDGE_CURVE` as the file gives it.
@@ -201,8 +209,9 @@ fn stopped_in(solid: u64) -> Refusal {
 }
 
 impl Geometry<'_> {
-    /// Reads the solid `solid`, placement `instance`, into `model`, a
-    /// step of `meter` at each file edge, face and pcurve it converts.
+    /// Reads the solid `solid`, placement `instance`, into `model`,
+    /// healing as `heal` says, a step of `meter` at each file edge, face
+    /// and pcurve it converts.
     /// Errors: a refusal naming the file entity, or the caller's stop —
     /// which wins over whatever the code that saw it went on to do, since
     /// an attempt that falls back on another may have swallowed it. The
@@ -212,11 +221,12 @@ impl Geometry<'_> {
         model: &mut Model,
         solid: u64,
         instance: u32,
+        heal: Heal,
         meter: &mut Meter<'_>,
     ) -> Result<Solid, Halt> {
         let file = self.file_solid(solid)?;
         model.transaction(|m| {
-            let built = self.build(m, solid, instance, &file, meter);
+            let built = self.build(m, solid, instance, heal, &file, meter);
             match meter.stopped() {
                 Some(stop) => Err(Halt::Interrupted(stop)),
                 None => built.map_err(Halt::Refused),
@@ -509,6 +519,7 @@ impl Geometry<'_> {
         model: &mut Model,
         solid: u64,
         instance: u32,
+        heal: Heal,
         file: &FileSolid,
         meter: &mut Meter<'_>,
     ) -> Result<Solid, Refusal> {
@@ -564,9 +575,15 @@ impl Geometry<'_> {
             points.iter().map(|&p| Aabb::of_point(p)).chain(boxes),
             tolerance,
         );
-        let cap = (READ_GAP_FRACTION * 2.0 * part.radius)
+        // The read cap; healing, the healing ceiling, which the model's
+        // `max_tolerance` does not bound (ADR-0058 §2).
+        let read_cap = (READ_GAP_FRACTION * 2.0 * part.radius)
             .min(precision.max_tolerance)
             .max(tolerance);
+        let cap = match heal {
+            Heal::Off => read_cap,
+            Heal::GapsAndOrientation => (HEAL_GAP_FRACTION * 2.0 * part.radius).max(read_cap),
+        };
 
         let mut surfaces: BTreeMap<u64, (Surface, SurfaceId)> = BTreeMap::new();
         // The edges the file left out, and the face each is rebuilt on.
@@ -707,14 +724,25 @@ impl Geometry<'_> {
                             Some(p) => p.clone(),
                             None => {
                                 let id = edge_ids[s.edge];
-                                let p = fitted(
-                                    &edge.geometry,
-                                    edge.range,
-                                    &surface,
-                                    precision,
-                                    cap,
-                                    meter,
-                                )
+                                let fit = |cap: f64, meter: &mut Meter<'_>| {
+                                    fitted(
+                                        &edge.geometry,
+                                        edge.range,
+                                        &surface,
+                                        precision,
+                                        cap,
+                                        meter,
+                                    )
+                                };
+                                // Under the read cap first, so a curve
+                                // that needs no healing is fitted as it
+                                // would be without it.
+                                let p = match fit(read_cap, meter) {
+                                    Err(fault) if cap > read_cap && fault.heals() => {
+                                        fit(cap, meter)
+                                    }
+                                    first => first,
+                                }
                                 .map_err(|fault| fault.refusal(id, face.id, cap))?;
                                 pcurves.insert(s.edge, p.clone());
                                 p
@@ -1009,6 +1037,35 @@ impl Geometry<'_> {
         .map_err(topology)?;
         let built = builder.finish(model, file.kind).map_err(topology)?;
 
+        // Every vertex and edge grown past the read cap, named (ADR-0058
+        // §3): only a healing read gets here with one.
+        let mut grown = Vec::new();
+        for ((&tolerance, slot), &v) in vertex_tolerances
+            .iter()
+            .zip(&slots.vertices)
+            .zip(&vertex_ids)
+        {
+            if let (true, Some(&id)) = (tolerance > read_cap, built.vertices.get(slot)) {
+                grown.push(Grown {
+                    entity: id.into(),
+                    file: v,
+                    gap: tolerance,
+                });
+            }
+        }
+        let edge_entities = edge_ids.iter().chain(&rebuilt_faces);
+        for ((&tolerance, slot), &e) in edge_tolerances.iter().zip(&slots.edges).zip(edge_entities)
+        {
+            if let (true, Some(&id)) = (tolerance > read_cap, built.edges.get(slot)) {
+                grown.push(Grown {
+                    entity: id.into(),
+                    file: e,
+                    gap: tolerance,
+                });
+            }
+        }
+        grown.sort_by(|a, b| b.gap.total_cmp(&a.gap));
+
         let report = check(model, built.body, Level::Fast);
         if !report.is_ok() {
             return Err(Refusal::Invalid {
@@ -1045,6 +1102,10 @@ impl Geometry<'_> {
         Ok(Solid {
             body: built.body,
             provenance,
+            healing: Healing {
+                grown,
+                turned: Vec::new(),
+            },
         })
     }
 }
@@ -1577,6 +1638,14 @@ enum PcurveFault {
 }
 
 impl PcurveFault {
+    /// A larger cap may answer it: a gap, or a fit that missed.
+    fn heals(&self) -> bool {
+        matches!(
+            self,
+            PcurveFault::Gap(_) | PcurveFault::Geom(GeomError::Fit(_))
+        )
+    }
+
     fn refusal(self, edge: u64, face: u64, cap: f64) -> Refusal {
         match self {
             PcurveFault::Gap(gap) => Refusal::Gap {

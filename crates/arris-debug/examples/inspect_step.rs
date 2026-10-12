@@ -1,7 +1,8 @@
 //! `cargo run -p arris-debug --example inspect_step -- [--max-tolerance T]
 //! <file.step> [name]`: every solid of a STEP file read, its checker
-//! report at `Full` and its text dump printed, its isometric render written
-//! under `target/inspect/` — or its refusal (`arris_debug::step_file`).
+//! report at `Full`, what the read healed in it and its text dump printed,
+//! its isometric render written under `target/inspect/` — or its refusal
+//! (`arris_debug::step_file`).
 //! `--max-tolerance` reads into a model of that ceiling, as the gap census
 //! does (ADR-0058).
 
@@ -30,6 +31,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match seen.result {
             Ok(sight) => {
                 println!("{}", sight.report);
+                for g in &sight.healing.grown {
+                    println!("healed: {} (#{}) grown to {}", g.entity, g.file, g.gap);
+                }
                 match sight.png {
                     Ok(png) => println!("render: {}", png.display()),
                     Err(e) => println!("render: {e}"),

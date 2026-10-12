@@ -160,6 +160,11 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
             oracle_skips: None,
             battery: BTreeMap::new(),
             blocks: BTreeMap::new(),
+            healed: s
+                .result
+                .as_ref()
+                .ok()
+                .and_then(|b| crate::part::Healed::of(&b.healing)),
         })
         .collect();
     let mut spec = Part {

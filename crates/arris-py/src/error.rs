@@ -168,7 +168,7 @@ classes! {
     BodyVersionError(BodyError) = "The data is of a newer version than this build reads.";
     BodyEncodeError(BodyError) = "The body could not be encoded.";
     BodyDecodeError(BodyError) = "The data is not a body of its version.";
-    BodyPrecisionError(BodyError) = "An entity's tolerance is outside the reading model's.";
+    BodyPrecisionError(BodyError) = "An entity's tolerance is below the reading model's minimum.";
     BodyRejectedError(BodyError) = "The body decoded but fails the checker in the reading model.";
 
     NativeError(ArrisError) = "Why a model could not be written to or read from the native format.";

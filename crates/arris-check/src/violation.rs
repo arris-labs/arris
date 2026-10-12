@@ -162,10 +162,10 @@ pub enum FaceFault {
 /// Which bound a tolerance broke.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum ToleranceBound {
-    /// Below `Precision::min_tolerance`.
+    /// Below `Precision::min_tolerance`. No tolerance is above a bound:
+    /// `Precision::max_tolerance` bounds what an operation grows, not
+    /// what a body holds (ADR-0060).
     BelowMinimum,
-    /// Above `Precision::max_tolerance`.
-    AboveMaximum,
     /// Out of order with a neighbouring entity's tolerance
     /// (`vertex ≥ edge ≥ face`).
     Neighbour {
@@ -283,8 +283,7 @@ pub enum Violation {
         /// Which kind of number.
         quantity: Quantity,
     },
-    /// **V1** — a vertex's tolerance is outside
-    /// `[Precision::min_tolerance, Precision::max_tolerance]`.
+    /// **V1** — a vertex's tolerance is below `Precision::min_tolerance`.
     VertexTolerance {
         /// The vertex.
         vertex: VertexId,
@@ -662,7 +661,6 @@ impl fmt::Display for ToleranceBound {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ToleranceBound::BelowMinimum => f.write_str("below Precision::min_tolerance"),
-            ToleranceBound::AboveMaximum => f.write_str("above Precision::max_tolerance"),
             ToleranceBound::Neighbour { entity, tolerance } => {
                 write!(f, "out of order with {entity} at {tolerance:e}")
             }

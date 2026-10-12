@@ -1689,7 +1689,10 @@ impl Model {
     ///
     /// A solid the reader cannot read is a `StepSolid` with a `refusal`
     /// naming the file entity where it stopped and leaves nothing in the
-    /// model; one refused solid never hides another. Raises `StepParseError`
+    /// model; one refused solid never hides another. With `heal` (the
+    /// default) a vertex or edge lying a little off the faces it meets is
+    /// read with its tolerance grown to the gap, and named in the solid's
+    /// `healing`; `heal=False` refuses it as a `"Gap"`. Raises `StepParseError`
     /// when the text is not Part 21 at all, `Interrupted` when `cancel` or
     /// `budget` stops it (the model is as it was) and `ValueError` for an
     /// unknown unit.
@@ -1703,17 +1706,23 @@ impl Model {
     /// [solid] = back.read_step(model.write_step([body])).solids
     /// assert solid.ok and abs(back.mass_properties(solid.body).volume - 6) < 1e-9
     /// ```
-    #[pyo3(signature = (text, *, length_unit="mm", cancel=None, budget=None))]
+    #[pyo3(signature = (text, *, length_unit="mm", heal=true, cancel=None, budget=None))]
     fn read_step(
         &self,
         py: Python<'_>,
         text: &str,
         length_unit: &str,
+        heal: bool,
         cancel: Option<&Cancel>,
         budget: Option<u64>,
     ) -> PyResult<StepRead> {
         let options = arris::io::step::ReadOptions {
             length_unit: length_unit_of(length_unit)?,
+            heal: if heal {
+                arris::io::step::Heal::GapsAndOrientation
+            } else {
+                arris::io::step::Heal::Off
+            },
         };
         let limits = Limits::new(cancel, budget);
         let read = self.run_with(

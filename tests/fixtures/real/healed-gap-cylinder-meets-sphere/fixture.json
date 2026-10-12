@@ -1,0 +1,24 @@
+{
+  "kind": "part",
+  "description": "NIST's CTC-04, its AP242 e1 edition's cylinder face #11285 and sphere face #13013 as a two-face sheet. Their shared edge #11276 lies 0.0506 off one of them, past the read cap of 0.01, so the read grows its tolerance and its two vertices' to the gap and names them (ADR-0058); Open CASCADE carries it at 0.0493. A healed boundary is only known to within its edge's tolerance, so the sheet's area is known to within the strip it sweeps, gap × length = 0.0506 × 7.85 = 0.398 mm², 3.8e-4 relative; Open CASCADE's area differs by 8.6e-8. The area tolerance is that band; the centroid's that band times the sheet's diagonal (135) over its area, 0.051; the inertia's that band times the diagonal squared over the tensor's largest component, 4.5e-3",
+  "file": "elbow.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ctc_04_asme1_ap242-e1.stp: faces #11285 and #13013 of #17366, excerpted by tools/oracle/excerpt.py --faces",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "d3d8fdbd04b7254e2d1460fb7e01a69b3245423e2bc98264fc5804257ce7ea81",
+  "solids": [
+    {
+      "id": 20523,
+      "instance": 0,
+      "outcome": "read",
+      "healed": {
+        "grown": 3,
+        "largest": 0.0506274
+      }
+    }
+  ],
+  "tolerances": {
+    "area_rel": 0.00038,
+    "inertia_rel": 0.0045,
+    "centroid_abs": 0.051
+  }
+}

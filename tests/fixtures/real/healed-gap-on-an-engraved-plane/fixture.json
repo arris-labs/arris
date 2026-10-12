@@ -1,0 +1,24 @@
+{
+  "kind": "part",
+  "description": "NIST's FTC-11, its AP242 e2 edition's engraved plane face #1192 and cylinder face #1227 as a two-face sheet. Their shared edge #865 lies 0.0141 off one of them, 1.5e-4 of the whole part and the largest gap of the corpus for its part's size, past the read cap of 0.01, so the read grows its tolerance and its two vertices' to the gap and names them (ADR-0058); Open CASCADE carries it at 0.0140. A healed boundary is only known to within its edge's tolerance, so the sheet's area is known to within the strip it sweeps, gap × length = 0.0141 × 2.86 = 0.040 mm², 2.9e-5 relative; Open CASCADE's area differs by 7.2e-6. The area tolerance is that band; the centroid's that band times the sheet's diagonal (80.6) over its area, 0.0024; the inertia's that band times the diagonal squared over the tensor's largest component, 3.2e-4",
+  "file": "engraved.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ftc_11_asme1_ap242-e2.stp: faces #1192 and #1227 of #1299, excerpted by tools/oracle/excerpt.py --faces",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "7a77fb9b766149190b1d2ee30be641d4da56c87c94a7ceae8a231fbbac5e6dd0",
+  "solids": [
+    {
+      "id": 2043,
+      "instance": 0,
+      "outcome": "read",
+      "healed": {
+        "grown": 3,
+        "largest": 0.0140513
+      }
+    }
+  ],
+  "tolerances": {
+    "area_rel": 2.9e-05,
+    "inertia_rel": 0.00032,
+    "centroid_abs": 0.0024
+  }
+}

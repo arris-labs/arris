@@ -394,7 +394,7 @@ fn m3_a_nan_coordinate_and_a_nan_tolerance() {
 }
 
 #[test]
-fn v1_a_vertex_tolerance_above_the_ceiling_and_below_the_floor() {
+fn v1_a_vertex_tolerance_below_the_floor_and_none_above_the_ceiling() {
     let p = Precision::DEFAULT;
     let mut m = Model::default();
     let b = box40(&mut m);
@@ -411,16 +411,10 @@ fn v1_a_vertex_tolerance_above_the_ceiling_and_below_the_floor() {
         &keep_edge,
         &keep_face,
     );
+    // Above the ceiling is no violation: `max_tolerance` bounds what an
+    // operation grows, and a healed read holds more (ADR-0060).
     let report = check(&m, r.body, Level::Fast);
-    assert_eq!(
-        report.violations(),
-        [Violation::VertexTolerance {
-            vertex: r.vertices[0],
-            tolerance: 10.0 * p.max_tolerance,
-            bound: ToleranceBound::AboveMaximum,
-        }],
-        "{report}"
-    );
+    assert!(report.is_ok(), "{report}");
     // Below the floor: every edge at the vertex is now above it too (E5).
     let b = box40(&mut m);
     let r = rebuild(

@@ -1,4 +1,4 @@
-precision default 0.0000001 min 0.000000000001 max 0.2 angular 0.000000000001 parametric 0.0000001 samples 23
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
 body +b0 sheet
   shell +s0
     face +f0 S0 tol 0.0000001

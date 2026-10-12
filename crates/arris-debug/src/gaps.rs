@@ -16,7 +16,7 @@
 use std::fmt::Write as _;
 use std::path::Path;
 
-use arris_io::step::{ReadOptions, Refusal};
+use arris_io::step::{Heal, ReadOptions, Refusal};
 use arris_math::{Point3, Precision};
 use arris_topo::provenance::Role;
 use arris_topo::{Model, Orientation, Origin, Shape};
@@ -103,7 +103,11 @@ pub fn census_file(file: &Path) -> Result<Vec<SolidGaps>, String> {
     let read = crate::unmetered::step_read(
         &mut m,
         &String::from_utf8_lossy(&bytes),
-        &ReadOptions::default(),
+        // Unhealed: the census measures what healing would have to grow.
+        &ReadOptions {
+            heal: Heal::Off,
+            ..ReadOptions::default()
+        },
     )
     .map_err(|e| format!("{}: {e}", file.display()))?;
     // A file Open CASCADE's tolerances cannot be read from is censused

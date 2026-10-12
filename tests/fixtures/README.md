@@ -646,6 +646,11 @@ and this is it: the parts under `real/nist-*` are NIST's.
   histogram (`cargo run -p arris-debug --example real_parts --
   --committed`) counts from it. The battery example's `--record` writes
   it.
+- **A solid's `healed`** is what its read heals (ADR-0058): `{"grown": N,
+  "largest": gap}`, the count of vertices and edges the read grew past
+  the read cap and the largest gap, to six significant digits. It is
+  absent where the read heals nothing, and the runner holds the read's
+  record to it either way, so no part of the corpus heals silently.
 - **A refusal's `why` says why the refusal is right**, not which it is: the
   file holds an entity outside the subset, or describes no solid. A
   refusal of something the reader should map is a reader bug. It is
@@ -662,6 +667,7 @@ and this is it: the parts under `real/nist-*` are NIST's.
   `crates/arris/tests/corpus.rs`) reads the file into a model of the
   fixture's `precision`, holds the list of instances and each refusal's
   kind exactly, and puts every `read` solid through these stages:
+  - its healing record, held to `healed`;
   - the checker at `Full`, what it cannot decide on a NURBS face left
     unchecked;
   - matched to the oracle's solid of its `#id` nearest by centroid, each
@@ -699,9 +705,8 @@ and this is it: the parts under `real/nist-*` are NIST's.
   assertion anywhere else (ADR-0026 §6).
 - **The committed tier** is NIST's eleven AP203 geometry-only files,
   `real/nist-ctc-01` to `-05` and `real/nist-ftc-06` to `-11`. All eleven
-  run, none waits: CTC-01, CTC-03, CTC-04 and FTC-06 to FTC-11 read, and
-  CTC-02's and CTC-05's solids are refused for real gaps (every surface
-  body refused as a surface).
+  run, none waits, and every solid reads: CTC-02's and CTC-05's healed,
+  their gaps grown and named (ADR-0058), every surface body as a sheet.
 - A bug fixed moves its part into `real/` beside the NIST parts:
   `real/axis-placement-along-x-without-reference`, a cylinder whose
   circles are placed on an axis along `-X` to rounding with no reference
@@ -712,13 +717,18 @@ and this is it: the parts under `real/nist-*` are NIST's.
   meridian circle through both poles; and
   `real/pcurve-fit-reported-as-gap`, CTC-01's file, whose edge #1864 lies
   0.0065 off its cylinders; `real/slow-gap-refusal`, CTC-05's file,
-  held to its time budget; and `real/torus-plane-section-undecided`,
+  held to its time budget, now read healed; and `real/torus-plane-section-undecided`,
   FTC-07's file, whose B-spline pcurves overshot their domain and whose
-  torus is tangent to a plane on its seam. Three are faces of a part
+  torus is tangent to a plane on its seam. Six are faces of a part
   excerpted as a sheet (`excerpt.py --faces`):
   `real/edge-off-a-drafted-cylinder`, CTC-02's base plane and a drafted
-  boss whose edge lies off the cylinder, read with `max_tolerance` raised
-  past its gap (ADR-0059); `real/edge-bending-within-its-tolerance`, an
+  boss whose edge lies off the cylinder, read healed (ADR-0059);
+  `real/healed-gap-cylinder-meets-sphere`,
+  `real/healed-gap-nurbs-meets-cylinder` and
+  `real/healed-gap-on-an-engraved-plane`, one gap each of CTC-04,
+  CTC-05 and FTC-11 AP242, grown and named (ADR-0058), each held to the
+  band its healed edges' tolerances leave the sheet's area;
+  `real/edge-bending-within-its-tolerance`, an
   FTC-07 AP242 edge turning within its tolerance's length (E8); and
   `real/loop-crossing-inside-a-vertex`, an FTC-07 AP242 sphere face whose
   loop zigzags inside a vertex's tolerance (L5). Open CASCADE's healing

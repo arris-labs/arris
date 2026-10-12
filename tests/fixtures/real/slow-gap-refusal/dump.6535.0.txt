@@ -1,25 +1,25 @@
 precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
-body +b0 sheet
-  shell +s0
-    face +f0 S0 tol 0.0000001
+body +b1 sheet
+  shell +s1
+    face +f208 S208 tol 0.0000001
       surface plane origin (263.525, 0, 0) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0)
       loop 0
-        coedge -e0 p3 line origin (-45.72, -25.4) direction (0, 1)
-        coedge -e3 p0 line origin (-13.97, -25.4) direction (-1, 0)
-        coedge -e2 p1 line origin (-13.97, 25.4) direction (0, -1)
-        coedge -e1 p2 line origin (-45.72, 25.4) direction (1, 0)
+        coedge -e530 p1043 line origin (-45.72, -25.4) direction (0, 1)
+        coedge -e533 p1040 line origin (-13.97, -25.4) direction (-1, 0)
+        coedge -e532 p1041 line origin (-13.97, 25.4) direction (0, -1)
+        coedge -e531 p1042 line origin (-45.72, 25.4) direction (1, 0)
 edges
-  -e0 v0 -> v1 c0 [0, 50.8] tol 0.0000001
+  -e530 v329 -> v330 c510 [0, 50.8] tol 0.0000001
     curve line origin (263.525, -25.4, 45.72) direction (0, 1, 0)
-  -e3 v3 -> v0 c3 [0, 31.75] tol 0.0000001
+  -e533 v332 -> v329 c513 [0, 31.75] tol 0.0000001
     curve line origin (263.525, -25.4, 13.97) direction (0, 0, 1)
-  -e2 v2 -> v3 c2 [0, 50.8] tol 0.0000001
+  -e532 v331 -> v332 c512 [0, 50.8] tol 0.0000001
     curve line origin (263.525, 25.4, 13.97) direction (0, -1, 0)
-  -e1 v1 -> v2 c1 [0, 31.75] tol 0.0000001
+  -e531 v330 -> v331 c511 [0, 31.75] tol 0.0000001
     curve line origin (263.525, 25.4, 45.72) direction (0, 0, -1)
 vertices
-  v1 (263.525, 25.4, 45.72) tol 0.0000001
-  v0 (263.525, -25.4, 45.72) tol 0.0000001
-  v3 (263.525, -25.4, 13.97) tol 0.0000001
-  v2 (263.525, 25.4, 13.97) tol 0.0000001
+  v330 (263.525, 25.4, 45.72) tol 0.0000001
+  v329 (263.525, -25.4, 45.72) tol 0.0000001
+  v332 (263.525, -25.4, 13.97) tol 0.0000001
+  v331 (263.525, 25.4, 13.97) tol 0.0000001
 euler 4/4/1/1/1 g1 = 1
