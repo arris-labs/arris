@@ -747,8 +747,17 @@ tessellation, the body bytes, the native format and the checker (the
 operations that need an inside refuse it as `NotSolid`). The histogram
 re-run over the 38 parts: healing blocks 7 (from 14), every one a `gap past
 the cap` at `read` (surface models in none, from 11 parts; on the fetched
-tier alone 5 parts, from 11); 60 of 70 solids read. Left: sewing and
-orientation, the second C9 plan.**
+tier alone 5 parts, from 11); 60 of 70 solids read.
+
+**Status: second part landed 2026-10-12 (plan `gap-and-orientation-healing`,
+ADR-0058 to ADR-0060): a read gap up to `HEAL_GAP_FRACTION` of the part is
+closed by a grown tolerance and recorded on `ReadBody::healing`; a face the
+file walks against all its neighbours is turned back and recorded in
+`Healing::turned`; `Heal::Off` keeps the old refusals. Healing's `read` row
+is 0 parts, from 7 (fetched 5 → 0, committed 2 → 0), and 7 solids read
+healed; the reader-subset row takes CTC-02 AP203's NURBS band. Free-edge
+sewing (faces that share no edge in the file) was a non-goal and is a
+backlog line, not in this cycle. The cycle is ready for `/close-cycle`.**
 
 **In:**
 

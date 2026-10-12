@@ -45,9 +45,11 @@ to Open CASCADE and bound in Python (ADR-0053 to 0056).
 **C9, the healing cycle** (opened 2026-10-11): its first part landed
 2026-10-12 — the STEP writer's length unit (A12), `planar_face`, surface
 models read and written as sheet bodies, and sheets as operands of
-transform, mirror and the checker (ADR-0057). Healing blocks 7 of 38 parts,
-from 14. **Next:** the second C9 plan, sewing and orientation (`/plan`);
-the DIY part corpus (an `/idea`) still ranks the cycle after C9.
+transform, mirror and the checker (ADR-0057). Its second part reads a gap
+by a grown tolerance and turns back a face walked against its neighbours,
+both recorded on the body (ADR-0058 to ADR-0060): healing now blocks 0
+parts at `read`, from 14. C9 is ready to close (`/close-cycle`); the DIY
+part corpus (an `/idea`) still ranks the cycle after C9.
 
 ## Rules that are not derivable from the code
 
