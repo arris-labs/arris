@@ -156,6 +156,7 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
                     why: r.to_string(),
                 }),
             },
+            oracle_skips: None,
             battery: BTreeMap::new(),
             blocks: BTreeMap::new(),
         })

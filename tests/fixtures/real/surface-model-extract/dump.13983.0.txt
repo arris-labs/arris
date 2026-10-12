@@ -1,0 +1,25 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b0 sheet
+  shell +s0
+    face +f0 S0 tol 0.0000001
+      surface cylinder origin (45, 15, -25) x (0, 0, -1) y (0, 1, 0) z (1, 0, 0) radius 2.75
+      loop 0
+        coedge -e0 p0 line origin (3.14159265359, 17.5) direction (0, 1)
+        coedge +e1 p1 line origin (3.14159265359, -17.5) direction (1, 0)
+        coedge -e2 p2 line origin (6.28318530718, -17.5) direction (0, -1)
+        coedge +e3 p3 line origin (6.28318530718, 17.5) direction (-1, 0)
+edges
+  -e0 v0 -> v1 c0 [-35, 0] tol 0.0000001
+    curve line origin (62.5, 15, -22.25) direction (1, 0, 0)
+  +e1 v0 -> v2 c1 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (27.5, 15, -25) x (0, 0, 1) y (0, -1, 0) z (1, 0, 0) radius 2.75
+  -e2 v3 -> v2 c2 [-35, 0] tol 0.0000001
+    curve line origin (27.5, 15, -27.75) direction (-1, 0, 0)
+  +e3 v3 -> v1 c3 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (62.5, 15, -25) x (0, 0, -1) y (0, -1, 0) z (-1, 0, 0) radius 2.75
+vertices
+  v1 (62.5, 15, -22.25) tol 0.0000001
+  v0 (27.5, 15, -22.25) tol 0.0000001
+  v2 (27.5, 15, -27.75) tol 0.0000001
+  v3 (62.5, 15, -27.75) tol 0.0000001
+euler 4/4/1/1/1 g1 = 1

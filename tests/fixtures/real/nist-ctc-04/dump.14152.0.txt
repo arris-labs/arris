@@ -1,0 +1,17 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b1 sheet
+  shell +s1
+    face -f517 S376 tol 0.0000001
+      surface plane origin (115, 330, -13.75) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e1271 p2475 circle origin (0, 0) x (1, 0) y (0, 1) radius 17.5
+        coedge -e1270 p2474 circle origin (0, 0) x (1, 0) y (0, 1) radius 17.5
+edges
+  -e1271 v726 -> v727 c1205 [6.170962332598, 9.312554986191] tol 0.0000001
+    curve circle origin (115, 330, -13.75) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 17.5
+  -e1270 v727 -> v726 c1204 [3.029369679011, 6.170962332598] tol 0.0000001
+    curve circle origin (115, 330, -13.75) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 17.5
+vertices
+  v727 (97.6100818616, 331.959782421, -13.75) tol 0.0000001
+  v726 (132.389918138, 328.040217579, -13.75) tol 0.0000001
+euler 2/2/1/1/1 g1 = 1

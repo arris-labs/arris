@@ -8,6 +8,7 @@ from OCP.BRepCheck import BRepCheck_Analyzer
 
 from . import OracleError, occt_version, step
 from .measure import DEFAULT_TOLERANCES, measure, own_measures
+from .measure import sheet as measure_sheet
 from .geometry import compute_geometry
 from .query import compute_query
 from .recipe import DIR_KEY, build, fixture_kind, probes, recipe_hash, variant_names
@@ -130,10 +131,17 @@ def compute_part(fixture: dict) -> list[dict]:
         # agree, else none.
         same = counts and all(c == counts[0] for c in counts)
         raw_counts[label] = counts[0] if same else None
-    return [
+    solids = [
         {"id": label, "occt_heals": heals[label], "unhealed_counts": raw_counts[label], **result}
         for label, result in healed
     ]
+    # The sheets of its surface models (ADR-0057), after the solids: no
+    # entity behind them, so `id` 0, and the surface properties.
+    sheets = [
+        {"id": 0, "sheet": True, "occt_heals": False, "unhealed_counts": None, **measure_sheet(shape)}
+        for shape in step.sheets(path)
+    ]
+    return solids + sheets
 
 
 def compute_battery(fixture: dict) -> dict:
@@ -199,7 +207,7 @@ def _query_summary(q: dict) -> str:
 def summary_lines(name: str, expected: dict) -> list[str]:
     """One line per result: per variant for a solid, one for a geometry."""
     if expected.get("kind") == "part":
-        return [summary_line(f"{name}[#{s['id']}{', healed' if s['occt_heals'] else ''}]", s) for s in expected["solids"]] + [
+        return [summary_line(f"{name}[{'sheet' if s.get('sheet') else '#' + str(s['id'])}{', healed' if s['occt_heals'] else ''}]", s) for s in expected["solids"]] + [
             f"{name}{key} {stage}: refused: {result['refused']}" if "refused" in result else summary_line(f"{name}{key} {stage}", result)
             for key, cases in expected.get("battery", {}).items()
             for stage, result in cases.items()
@@ -219,6 +227,8 @@ def summary_lines(name: str, expected: dict) -> list[str]:
 
 def summary_line(name: str, result: dict) -> str:
     c = result["counts"]
+    if "volume" not in result and not result["degenerate"]:
+        return f"{name}: sheet, area {result['area']:.10g}, V/E/F/L={c['vertices']}/{c['edges']}/{c['faces']}/{c['loops']}"
     if result["degenerate"]:
         return f"{name}: degenerate (no solid), counts V/E/F/L={c['vertices']}/{c['edges']}/{c['faces']}/{c['loops']}"
     return (

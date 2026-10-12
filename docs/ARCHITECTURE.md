@@ -1766,8 +1766,10 @@ B-Rep).
   model and hides no other, and only a `Part21Error` fails the file
   (§Errors). Deterministic: the same text reads to the same ids. What
   it does not read: layers, PMI, materials, properties, and the
-  edition-3 sections; a faceted B-rep or a shell-based surface model
-  stands where a solid would and is counted as refused.
+  edition-3 sections; a faceted B-rep stands where a solid would and is
+  counted as refused. A `SHELL_BASED_SURFACE_MODEL` or
+  `FACE_BASED_SURFACE_MODEL` reads into a `Sheet` body in the same list
+  (ADR-0057).
 - **Cancellation of the readers** (ADR-0030): `step::read` runs in one
   `Model::transaction`, ticking per solid placement and, inside a solid,
   per file edge, face and pcurve fitted; a stop is

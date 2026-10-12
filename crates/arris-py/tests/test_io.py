@@ -222,3 +222,72 @@ def test_the_mesh_writers_write_the_meshes_triangles():
         m.n_positions for m in meshes
     )
     assert sum(1 for line in text.splitlines() if line.startswith("f ")) == triangles
+
+
+FACE_BASED = """ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION((''),'2;1');
+FILE_NAME('','',(''),(''),'','','');
+FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));
+ENDSEC;
+DATA;
+#1=ADVANCED_BREP_SHAPE_REPRESENTATION('',(#2),#3);
+#2=FACE_BASED_SURFACE_MODEL('',(#4));
+#3=( GEOMETRIC_REPRESENTATION_CONTEXT(3) GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#30)) GLOBAL_UNIT_ASSIGNED_CONTEXT((#31,#32)) REPRESENTATION_CONTEXT('','') );
+#4=CONNECTED_FACE_SET('',(#5));
+#5=ADVANCED_FACE('',(#6),#20,.T.);
+#6=FACE_OUTER_BOUND('',#7,.T.);
+#7=EDGE_LOOP('',(#8,#9,#10,#11));
+#8=ORIENTED_EDGE('',*,*,#12,.T.);
+#9=ORIENTED_EDGE('',*,*,#13,.T.);
+#10=ORIENTED_EDGE('',*,*,#14,.T.);
+#11=ORIENTED_EDGE('',*,*,#15,.T.);
+#12=EDGE_CURVE('',#40,#41,#50,.T.);
+#13=EDGE_CURVE('',#41,#42,#51,.T.);
+#14=EDGE_CURVE('',#42,#43,#52,.T.);
+#15=EDGE_CURVE('',#43,#40,#53,.T.);
+#20=PLANE('',#21);
+#21=AXIS2_PLACEMENT_3D('',#22,#23,#24);
+#22=CARTESIAN_POINT('',(0.,0.,0.));
+#23=DIRECTION('',(0.,0.,1.));
+#24=DIRECTION('',(1.,0.,0.));
+#30=UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-05),#31,'distance_accuracy_value','');
+#31=( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.) );
+#32=( NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.) );
+#40=VERTEX_POINT('',#44);
+#41=VERTEX_POINT('',#45);
+#42=VERTEX_POINT('',#46);
+#43=VERTEX_POINT('',#47);
+#44=CARTESIAN_POINT('',(0.,0.,0.));
+#45=CARTESIAN_POINT('',(4.,0.,0.));
+#46=CARTESIAN_POINT('',(4.,3.,0.));
+#47=CARTESIAN_POINT('',(0.,3.,0.));
+#50=LINE('',#44,#60);
+#51=LINE('',#45,#61);
+#52=LINE('',#46,#62);
+#53=LINE('',#47,#63);
+#60=VECTOR('',#64,4.);
+#61=VECTOR('',#65,3.);
+#62=VECTOR('',#66,4.);
+#63=VECTOR('',#67,3.);
+#64=DIRECTION('',(1.,0.,0.));
+#65=DIRECTION('',(0.,1.,0.));
+#66=DIRECTION('',(-1.,0.,0.));
+#67=DIRECTION('',(0.,-1.,0.));
+ENDSEC;
+END-ISO-10303-21;
+"""
+
+
+def test_a_surface_model_reads_as_a_sheet_with_its_surface_properties():
+    model = arris.Model()
+    [sheet] = model.read_step(FACE_BASED).solids
+    assert sheet.ok and sheet.refusal is None
+    assert model.body_kind(sheet.body) == "sheet"
+    props = model.surface_properties(sheet.body)
+    assert props.area == pytest.approx(12, rel=1e-12)
+    assert props.centroid == pytest.approx((2, 1.5, 0), abs=1e-12)
+    with pytest.raises(arris.OpDegenerateError):
+        model.mass_properties(sheet.body)
+    solid, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    assert model.body_kind(solid) == "solid"

@@ -8,18 +8,33 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `arris_io::step::read` reads `SHELL_BASED_SURFACE_MODEL` and
+  `FACE_BASED_SURFACE_MODEL` — the surface bodies CATIA exports as `Fill`,
+  `Extract` and `Split` — as sheet bodies (`BodyKind::Sheet`) that pass the
+  checker, in the same list as the solids and at the same placements,
+  construction surfaces included. An open shell whose faces disagree on
+  orientation is still refused as `Refusal::Topology`. Python: a sheet read
+  comes back as a `StepSolid.body`, and `Model.body_kind(body)` says
+  `"solid"` or `"sheet"`.
 - `arris_ops::measure::surface_properties(&model, body, &control)` gives
   the area, centroid and inertia tensor (about the centroid, unit area
   density) of the faces of any body: a solid's boundary or a sheet's
   faces, which `mass_properties` still refuses. Python:
   `Model.surface_properties(body)` returns a `SurfaceProperties`.
-
 - `arris_io::step::write_with(&model, &bodies, &WriteOptions { length_unit })`
   and `write_products_with` write a STEP file that declares your unit —
   metres, inches, any `LengthUnit` — as its `LENGTH_UNIT`, converting no
   coordinate: a file read back with `ReadOptions` of the same unit returns
   every coordinate bit-identical. `write` and `write_products` still write
   millimetres. Python: `Model.write_step(bodies, length_unit="m")`.
+
+### Breaking
+
+- `arris_io::step::ReadBody::body` is a `Solid` or, for a surface model, a
+  `Sheet`; a caller that wants solids only filters on
+  `Model::body(id)?.kind() == BodyKind::Solid`. A surface model is no
+  longer a `Refusal::Unsupported`, and that refusal's name no longer ends
+  `in a CONSTRUCTIVE_GEOMETRY_REPRESENTATION`.
 
 ## 0.7.0 — 2026-10-11
 

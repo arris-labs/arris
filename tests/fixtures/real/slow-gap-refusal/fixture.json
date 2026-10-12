@@ -22,15 +22,7 @@
     {
       "id": 6535,
       "instance": 0,
-      "outcome": {
-        "refused": {
-          "kind": "unsupported entity",
-          "why": "a SHELL_BASED_SURFACE_MODEL of one OPEN_SHELL of one face, a surface and not a solid: sheet bodies are the healing cycle's (ADR-0025 §2)"
-        }
-      },
-      "blocks": {
-        "read": "healing"
-      }
+      "outcome": "read"
     }
   ],
   "read_seconds": 60.0

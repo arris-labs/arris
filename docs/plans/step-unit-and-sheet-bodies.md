@@ -116,7 +116,7 @@ measure to hold it to.
   `mass_properties`' to the fixture's `area_rel`; closed forms for a sphere's,
   a cylinder's lateral and a torus's surface; Open CASCADE's centroid and
   inertia on a battery of solid fixtures. Bound in Python.
-- [ ] Step 3 **[2]** — **ADR-0057**, and surface models read as sheets:
+- [x] Step 3 **[2]** — **ADR-0057**, and surface models read as sheets:
   `SHELL_BASED_SURFACE_MODEL` (its `OPEN_SHELL`s and `CLOSED_SHELL`s) and
   `FACE_BASED_SURFACE_MODEL` (its `CONNECTED_FACE_SET`s) through the solid
   reader's face, bound and pcurve path into `Builder::assemble_sheet`, with
@@ -128,6 +128,14 @@ measure to hold it to.
   each held to Open CASCADE's face count and surface properties of the same
   entity. Python: a read sheet is a `Body` of kind `"sheet"`. `CHANGELOG.md`
   under `### Breaking` (the guarantee).
+  *Landed with these changes to the plan:* the fixtures are part fixtures
+  (`real/surface-model-{extract,fill,split}`, `real/face-based-surface-model`)
+  and the part runner and `expected.py` learned sheets (matched by face
+  count and centroid, since Open CASCADE keeps no entity id; a sheet its
+  reader leaves out, CTC-04's construction surfaces, carries `oracle_skips`);
+  nist-ctc-02, -04, -05 and slow-gap-refusal now list their surface models
+  as `read`; Python says `Model.body_kind(body)`, not a `Body.kind`; open
+  questions 1 and 2 decided in ADR-0057 as recommended.
 - [ ] Step 4 **[1]** — `ops::planar_face`: the sweeps' `cap_face` lifted
   out, a `Profile` (holes included) to a one-face `Sheet` with provenance
   naming each profile edge's edge. Oracle: a `planar_face` recipe op ending
@@ -194,17 +202,17 @@ measure to hold it to.
 
 ## Open questions
 
-- ⚠ OPEN 1: **a read sheet's place in `step::Read`** — in `Read::solids`
+- Decided (1): **a read sheet's place in `step::Read`** — in `Read::solids`
   with a `Sheet` body (one index space for `ProductTree`, no type change,
   the guarantee change under Breaking), or a separate `Read::sheets`
   (a public type change and a second index space in every occurrence).
   Recommendation: the same list. Agent decides in ADR-0057, step 3.
-- ⚠ OPEN 2: **a surface model only a `CONSTRUCTIVE_GEOMETRY_REPRESENTATION`
+- Decided (2): **a surface model only a `CONSTRUCTIVE_GEOMETRY_REPRESENTATION`
   holds** — read it as a sheet like any other (the caller sees it in no
   occurrence of the product tree and may skip it), or keep refusing it as
   construction geometry. Recommendation: read it; the product tree already
   tells a body of the part from a construction surface, and a refusal hides
   geometry the file holds. Agent decides in ADR-0057, step 3.
-- ⚠ OPEN 3: **whether `surface_properties` carries the inertia** or only
+- Decided (3): **whether `surface_properties` carries the inertia** or only
   area and centroid. Recommendation: carry it — Open CASCADE and Parasolid
   both give it and the quadrature is the same pass. Agent, step 2.

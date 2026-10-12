@@ -274,6 +274,44 @@
         "vertices": 726
       },
       "volume": 17519087.918042514
+    },
+    {
+      "area": 962.1127501618743,
+      "centroid": [
+        115.0,
+        330.0,
+        -13.75
+      ],
+      "counts": {
+        "edges": 2,
+        "faces": 1,
+        "loops": 1,
+        "shells": 1,
+        "solids": 0,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "id": 0,
+      "inertia": [
+        [
+          73661.75743426383,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          73661.75743426941,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          147323.51486854255
+        ]
+      ],
+      "occt_heals": false,
+      "sheet": true,
+      "unhealed_counts": null
     }
   ]
 }

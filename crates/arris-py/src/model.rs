@@ -1421,6 +1421,33 @@ impl Model {
             .collect())
     }
 
+    /// The kind of `body`: `"solid"`, `"sheet"` (open shells, as a planar
+    /// section or a STEP surface model makes), `"wire"` or `"general"`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// assert model.body_kind(body) == "solid"
+    /// ```
+    fn body_kind(&self, body: &Body) -> PyResult<&'static str> {
+        use arris::topo::entity::BodyKind;
+        let body = body.resolve(&self.shared)?;
+        let kind = self
+            .shared
+            .lock()?
+            .body(body.id)
+            .map_err(BindError::from)?
+            .kind();
+        Ok(match kind {
+            BodyKind::Solid => "solid",
+            BodyKind::Sheet => "sheet",
+            BodyKind::Wire => "wire",
+            BodyKind::General => "general",
+        })
+    }
+
     /// The faces of `body`, each once, depth-first through its shells.
     ///
     /// ```python

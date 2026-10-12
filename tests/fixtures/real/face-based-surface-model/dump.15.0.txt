@@ -1,0 +1,52 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b0 sheet
+  shell +s0
+    face -f0 S0 tol 0.0000001
+      surface plane origin (0, 0, 0) x (0, 0, 1) y (0, -1, 0) z (1, 0, 0)
+      loop 0
+        coedge -e1 p2 line origin (0, 0) direction (0, -1)
+        coedge -e2 p1 line origin (0, -30) direction (1, 0)
+        coedge +e3 p0 line origin (10, 0) direction (0, -1)
+        coedge +e0 p3 line origin (0, 0) direction (1, 0)
+    face -f1 S1 tol 0.0000001
+      surface plane origin (0, 0, 0) x (0, 0, 1) y (1, 0, 0) z (0, 1, 0)
+      loop 0
+        coedge -e5 p5 line origin (10, 0) direction (0, 1)
+        coedge +e6 p4 line origin (0, 40) direction (1, 0)
+        coedge +e4 p7 line origin (0, 0) direction (0, 1)
+        coedge -e0 p6 line origin (0, 0) direction (1, 0)
+    face -f2 S2 tol 0.0000001
+      surface plane origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e4 p10 line origin (0, 0) direction (1, 0)
+        coedge -e7 p9 line origin (40, 0) direction (0, 1)
+        coedge +e8 p8 line origin (0, 30) direction (1, 0)
+        coedge +e1 p11 line origin (0, 0) direction (0, 1)
+edges
+  -e1 v0 -> v2 c1 [0, 30] tol 0.0000001
+    curve line origin (0, 0, 0) direction (0, 1, 0)
+  -e2 v2 -> v3 c2 [0, 10] tol 0.0000001
+    curve line origin (0, 30, 0) direction (0, 0, 1)
+  +e3 v1 -> v3 c3 [0, 30] tol 0.0000001
+    curve line origin (0, 0, 10) direction (0, 1, 0)
+  +e0 v0 -> v1 c0 [0, 10] tol 0.0000001
+    curve line origin (0, 0, 0) direction (0, 0, 1)
+  -e5 v1 -> v5 c5 [0, 40] tol 0.0000001
+    curve line origin (0, 0, 10) direction (1, 0, 0)
+  +e6 v4 -> v5 c6 [0, 10] tol 0.0000001
+    curve line origin (40, 0, 0) direction (0, 0, 1)
+  +e4 v0 -> v4 c4 [0, 40] tol 0.0000001
+    curve line origin (0, 0, 0) direction (1, 0, 0)
+  -e7 v4 -> v6 c7 [0, 30] tol 0.0000001
+    curve line origin (40, 0, 0) direction (0, 1, 0)
+  +e8 v2 -> v6 c8 [0, 40] tol 0.0000001
+    curve line origin (0, 30, 0) direction (1, 0, 0)
+vertices
+  v2 (0, 30, 0) tol 0.0000001
+  v0 (0, 0, 0) tol 0.0000001
+  v3 (0, 30, 10) tol 0.0000001
+  v1 (0, 0, 10) tol 0.0000001
+  v5 (40, 0, 10) tol 0.0000001
+  v4 (40, 0, 0) tol 0.0000001
+  v6 (40, 30, 0) tol 0.0000001
+euler 7/9/3/3/1 g1 = 1

@@ -1,0 +1,15 @@
+{
+  "kind": "part",
+  "description": "three faces of the 40 × 30 × 10 box at its origin corner as a FACE_BASED_SURFACE_MODEL of one CONNECTED_FACE_SET (the box written by Open CASCADE, its closed shell replaced): the face-based surface model no NIST part in the corpus writes, read as a three-face sheet whose boundary edges have a face on one side only (ADR-0057)",
+  "file": "corner.stp",
+  "source": "written by hand for this fixture from Open CASCADE's STEP of tests/fixtures/primitive/box",
+  "licence": "the project's own",
+  "sha256": "dc9a2da36b1a939087988e1315515c1f6bc8cee6ca911ee530ee1b50d4b06167",
+  "solids": [
+    {
+      "id": 15,
+      "instance": 0,
+      "outcome": "read"
+    }
+  ]
+}

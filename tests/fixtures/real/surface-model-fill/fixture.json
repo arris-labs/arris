@@ -1,0 +1,19 @@
+{
+  "kind": "part",
+  "description": "STC-07's Fill.1 (#118): a SHELL_BASED_SURFACE_MODEL of a one-face OPEN_SHELL — CATIA's Fill surface — in inches, read as a one-face sheet body (ADR-0057), held to Open CASCADE's surface properties of the same shell. Excerpted by tools/oracle/excerpt.py. Open CASCADE's healed face is 1.6e-7 (relative) off the planar triangle of its three vertices, whose area is 0.5·|(B−A)×(C−A)| = 7.7961613602 mm² and which Arris matches to 2e-12: the fixture's area and inertia tolerances are widened to 5e-7 for that reason (docs/adr/0057)",
+  "file": "fill.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_stc_07_asme1_ap242-e3.stp #118",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "2551530c00bcccd059c7658aeab78bfc9716ed066acda8554759e53522c61538",
+  "solids": [
+    {
+      "id": 118,
+      "instance": 0,
+      "outcome": "read"
+    }
+  ],
+  "tolerances": {
+    "area_rel": 5e-07,
+    "inertia_rel": 5e-07
+  }
+}

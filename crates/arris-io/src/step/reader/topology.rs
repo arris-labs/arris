@@ -1,5 +1,8 @@
 //! One solid's topology: a `MANIFOLD_SOLID_BREP` or a `BREP_WITH_VOIDS`
-//! read into a body through [`Builder::assemble`] (ADR-0025).
+//! read into a body through [`Builder::assemble`] (ADR-0025) — or a
+//! `SHELL_BASED_SURFACE_MODEL` or `FACE_BASED_SURFACE_MODEL`, whose open
+//! or closed shells and connected face sets read the same way into a
+//! `Sheet` through [`Builder::assemble_sheet`] (ADR-0057).
 //!
 //! - **Vertices** come from `VERTEX_POINT`, one per instance.
 //! - **Edges** come from `EDGE_CURVE`. An Arris edge runs along its
@@ -160,6 +163,8 @@ struct FileShell {
 
 /// What the file says about one solid, before any geometry is resolved.
 struct FileSolid {
+    /// A `Solid`, or a `Sheet` for a surface model.
+    kind: BodyKind,
     /// Every `VERTEX_POINT`, in first-use order.
     vertices: Vec<u64>,
     edges: Vec<FileEdge>,
@@ -221,6 +226,7 @@ impl Geometry<'_> {
     fn file_solid(&self, solid: u64) -> Result<FileSolid, Refusal> {
         let instance = self.entities.get(solid, solid)?;
         let mut shells = Vec::new();
+        let kind;
         if let Some(r) = instance.record("BREP_WITH_VOIDS") {
             let args = Args {
                 id: solid,
@@ -228,6 +234,7 @@ impl Geometry<'_> {
             };
             shells.push(args.reference(1)?);
             shells.extend(args.references(2)?);
+            kind = BodyKind::Solid;
         } else if let Some(r) = instance.record("MANIFOLD_SOLID_BREP") {
             shells.push(
                 Args {
@@ -236,6 +243,21 @@ impl Geometry<'_> {
                 }
                 .reference(1)?,
             );
+            kind = BodyKind::Solid;
+        } else if let Some(r) = instance
+            .record("SHELL_BASED_SURFACE_MODEL")
+            .or_else(|| instance.record("FACE_BASED_SURFACE_MODEL"))
+        {
+            // `sbsm_boundary` and `fbsm_faces` are sets of shells and of
+            // connected face sets: each a shell of the sheet.
+            shells.extend(
+                Args {
+                    id: solid,
+                    record: r,
+                }
+                .references(1)?,
+            );
+            kind = BodyKind::Sheet;
         } else {
             return Err(Refusal::Unsupported {
                 entity: solid,
@@ -243,6 +265,7 @@ impl Geometry<'_> {
             });
         }
         let mut read = FileSolid {
+            kind,
             vertices: Vec::new(),
             edges: Vec::new(),
             shells: Vec::new(),
@@ -250,10 +273,9 @@ impl Geometry<'_> {
         let mut vertex_of: BTreeMap<u64, usize> = BTreeMap::new();
         let mut edge_of: BTreeMap<u64, usize> = BTreeMap::new();
         for shell in shells {
-            let (closed, turned) = self.closed_shell(solid, shell)?;
-            let args = self.entities.record(shell, closed, "CLOSED_SHELL")?;
+            let (closed, turned, face_ids) = self.shell(solid, shell, kind == BodyKind::Sheet)?;
             let mut faces = Vec::new();
-            for face in args.references(1)? {
+            for face in face_ids {
                 faces.push(self.face(
                     closed,
                     face,
@@ -269,19 +291,44 @@ impl Geometry<'_> {
         Ok(read)
     }
 
-    /// The `CLOSED_SHELL` a solid's shell reference names, and whether an
-    /// `ORIENTED_CLOSED_SHELL` turns it.
-    fn closed_shell(&self, from: u64, id: u64) -> Result<(u64, bool), Refusal> {
+    /// The shell a solid's or a surface model's shell reference names: its
+    /// entity, whether an `ORIENTED_CLOSED_SHELL` (or an
+    /// `ORIENTED_OPEN_SHELL`) turns it, and its faces. A solid takes
+    /// `CLOSED_SHELL`s; a surface model (`sheet`) also `OPEN_SHELL`s and
+    /// `CONNECTED_FACE_SET`s, the faces of a `FACE_BASED_SURFACE_MODEL`.
+    fn shell(&self, from: u64, id: u64, sheet: bool) -> Result<(u64, bool, Vec<u64>), Refusal> {
         let instance = self.entities.get(from, id)?;
-        if instance.record("CLOSED_SHELL").is_some() {
-            return Ok((id, false));
+        let plain: &[&str] = if sheet {
+            &["CLOSED_SHELL", "OPEN_SHELL", "CONNECTED_FACE_SET"]
+        } else {
+            &["CLOSED_SHELL"]
+        };
+        if let Some(r) = plain.iter().find_map(|n| instance.record(n)) {
+            let faces = Args { id, record: r }.references(1)?;
+            return Ok((id, false, faces));
         }
-        if let Some(r) = instance.record("ORIENTED_CLOSED_SHELL") {
+        let oriented: &[&str] = if sheet {
+            &["ORIENTED_CLOSED_SHELL", "ORIENTED_OPEN_SHELL"]
+        } else {
+            &["ORIENTED_CLOSED_SHELL"]
+        };
+        if let Some(r) = oriented.iter().find_map(|n| instance.record(n)) {
             let args = Args { id, record: r };
             let element = args.reference(2)?;
             let orientation = logical(&args, 3)?;
-            self.entities.record(id, element, "CLOSED_SHELL")?;
-            return Ok((element, !orientation));
+            let inner = self.entities.get(id, element)?;
+            let Some(shell) = plain.iter().find_map(|n| inner.record(n)) else {
+                return Err(malformed(
+                    element,
+                    format!("is {}, where a shell belongs", describe(inner)),
+                ));
+            };
+            let faces = Args {
+                id: element,
+                record: shell,
+            }
+            .references(1)?;
+            return Ok((element, !orientation, faces));
         }
         Err(Refusal::Unsupported {
             entity: id,
@@ -935,8 +982,12 @@ impl Geometry<'_> {
             entity: solid,
             what: e.to_string(),
         };
-        let (builder, slots) = Builder::assemble(model, tolerance, assembly).map_err(topology)?;
-        let built = builder.finish(model, BodyKind::Solid).map_err(topology)?;
+        let (builder, slots) = match file.kind {
+            BodyKind::Sheet => Builder::assemble_sheet(model, tolerance, assembly),
+            _ => Builder::assemble(model, tolerance, assembly),
+        }
+        .map_err(topology)?;
+        let built = builder.finish(model, file.kind).map_err(topology)?;
 
         let report = check(model, built.body, Level::Fast);
         if !report.is_ok() {

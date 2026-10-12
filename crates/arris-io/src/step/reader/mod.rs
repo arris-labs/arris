@@ -161,10 +161,7 @@ pub enum Refusal {
     Unsupported {
         /// The entity.
         entity: u64,
-        /// Its type, or what about it is outside. A surface model that
-        /// only a `CONSTRUCTIVE_GEOMETRY_REPRESENTATION` holds — the exporter's
-        /// construction geometry, not a body of the part — is its type
-        /// followed by `in a CONSTRUCTIVE_GEOMETRY_REPRESENTATION`.
+        /// Its type, or what about it is outside.
         name: String,
     },
     /// Geometry of the subset whose values describe nothing Arris can
@@ -436,7 +433,7 @@ pub struct Read {
     /// Every solid of the file at every placement an assembly puts it —
     /// the product structure flattened, one body per instance (ADR-0025
     /// §5) — and every shape standing where a solid would that the reader
-    /// refuses — a faceted B-rep, a shell-based surface model — ascending
+    /// refuses — a faceted B-rep — ascending
     /// by the file entity, then by the placement (its paths from the
     /// root assembly in order, [`FileEntity::instance`]).
     pub solids: Vec<ReadSolid>,
@@ -460,10 +457,12 @@ pub struct ReadSolid {
     pub result: Result<ReadBody, Refusal>,
 }
 
-/// A solid read into the model.
+/// A solid or a surface model read into the model.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReadBody {
-    /// The body: a `Solid` that passes the checker at `Level::Fast`.
+    /// The body: a `Solid` — or a `Sheet` for a
+    /// `SHELL_BASED_SURFACE_MODEL` or `FACE_BASED_SURFACE_MODEL` — that
+    /// passes the checker at `Level::Fast`.
     pub body: Body,
     /// Its record: the body, each shell, face, edge and vertex
     /// `Generated` from the file entity it was read from
@@ -472,28 +471,24 @@ pub struct ReadBody {
 }
 
 /// The entity names of the solids the reader reads.
-const SOLIDS: [&str; 2] = ["MANIFOLD_SOLID_BREP", "BREP_WITH_VOIDS"];
-
-/// The entity names that stand where a solid would, which the reader
-/// counts and refuses (ADR-0025 §2): a faceted B-rep and its tessellated
-/// relatives of AP242, and the surface models.
-const REFUSED_SOLIDS: [&str; 5] = [
-    "FACETED_BREP",
-    "TESSELLATED_SOLID",
-    "TESSELLATED_SHELL",
+const SOLIDS: [&str; 4] = [
+    "MANIFOLD_SOLID_BREP",
+    "BREP_WITH_VOIDS",
     "SHELL_BASED_SURFACE_MODEL",
     "FACE_BASED_SURFACE_MODEL",
 ];
 
-/// The representation an exporter's construction geometry sits in: what
-/// it alone holds is no body of the part.
-const SUPPLEMENTAL: &str = "CONSTRUCTIVE_GEOMETRY_REPRESENTATION";
+/// The entity names that stand where a solid would, which the reader
+/// counts and refuses (ADR-0025 §2): a faceted B-rep and its tessellated
+/// relatives of AP242. The surface models read as sheets (ADR-0057).
+const REFUSED_SOLIDS: [&str; 3] = ["FACETED_BREP", "TESSELLATED_SOLID", "TESSELLATED_SHELL"];
 
 /// Reads every solid of the Part 21 file `text` into `model`, lengths in
 /// `options.length_unit` (ADR-0025).
 ///
-/// Guarantees: every `Ok` body is a `Solid` that passes the checker at
-/// `Level::Fast`, in every build, with provenance naming the file entity
+/// Guarantees: every `Ok` body is a `Solid`, or a `Sheet` where the file
+/// holds a surface model, that passes the checker at `Level::Fast`, in
+/// every build, with provenance naming the file entity
 /// each of its entities came from; a solid that cannot be read is a
 /// [`Refusal`] naming the file entity where it stopped, and leaves nothing
 /// in the model; one refused solid never hides another. Deterministic:
@@ -560,31 +555,6 @@ fn read_solids(
             refused.insert(id);
         }
     }
-    // What a `CONSTRUCTIVE_GEOMETRY_REPRESENTATION` alone holds is the
-    // exporter's construction geometry, not a body of the part: a
-    // refusal of it says so, and a histogram counts it apart (ADR-0026,
-    // amendment of step 8).
-    let mut constructive: BTreeSet<u64> = BTreeSet::new();
-    let mut represented: BTreeSet<u64> = BTreeSet::new();
-    for instance in exchange.instances.values() {
-        for record in instance.records() {
-            if !record.name.ends_with("REPRESENTATION") {
-                continue;
-            }
-            let Some(part21::Param::List(items)) = record.params.get(1) else {
-                continue;
-            };
-            let into = if record.name == SUPPLEMENTAL {
-                &mut constructive
-            } else {
-                &mut represented
-            };
-            into.extend(items.iter().filter_map(|i| match i {
-                part21::Param::Ref(r) => Some(*r),
-                _ => None,
-            }));
-        }
-    }
     let mut units: BTreeMap<u64, Result<Units, Refusal>> = BTreeMap::new();
     let mut units_of = |context: u64| {
         units
@@ -614,14 +584,9 @@ fn read_solids(
                 .instances
                 .get(&p.solid)
                 .map_or_else(String::new, entities::describe);
-            let supplemental = constructive.contains(&p.solid) && !represented.contains(&p.solid);
             Err(Refusal::Unsupported {
                 entity: p.solid,
-                name: if supplemental {
-                    format!("{name} in a {SUPPLEMENTAL}")
-                } else {
-                    name
-                },
+                name,
             })
         } else {
             match (context_units, p.motion.clone()) {

@@ -8,7 +8,7 @@ from OCP.IFSelect import IFSelect_RetDone
 from OCP.Interface import Interface_Static
 from OCP.Message import Message, Message_Gravity
 from OCP.STEPControl import STEPControl_AsIs, STEPControl_Reader, STEPControl_Writer
-from OCP.TopAbs import TopAbs_SOLID
+from OCP.TopAbs import TopAbs_SHELL, TopAbs_SOLID
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopLoc import TopLoc_Location
 from OCP.TCollection import TCollection_AsciiString
@@ -236,5 +236,30 @@ def solids(path: Path, heal: bool = True) -> list[tuple[int, TopoDS_Shape]]:
             if len(labels) != 1:
                 raise OracleError(f"{path}: a solid Open CASCADE read matches {len(labels)} solids of the file by its first vertex")
             out.append((labels[0], solid))
+            explorer.Next()
+    return out
+
+
+def sheets(path: Path) -> list[TopoDS_Shape]:
+    """Every shell Open CASCADE's reader transfers from `path` that no
+    solid holds -- a `SHELL_BASED_SURFACE_MODEL`'s open or closed shells, a
+    `FACE_BASED_SURFACE_MODEL`'s connected face sets -- placed where the
+    product structure puts them and healed as its reader heals by default
+    (ADR-0057), in the order the transfer gives them. Open CASCADE keeps no
+    `#id` of the entity behind a shape (`solids`), so a sheet is matched to
+    Arris's by its face count and centroid."""
+    if not path.exists():
+        raise OracleError(f"no such STEP file: {path}")
+    quiet()
+    r = STEPControl_Reader()
+    if r.ReadFile(str(path)) != IFSelect_RetDone:
+        raise OracleError(f"STEP read failed for {path}")
+    r.TransferRoots()
+    out = []
+    for k in range(1, r.NbShapes() + 1):
+        # Shells outside every solid, then faces outside every shell.
+        explorer = TopExp_Explorer(r.Shape(k), TopAbs_SHELL, TopAbs_SOLID)
+        while explorer.More():
+            out.append(explorer.Current())
             explorer.Next()
     return out

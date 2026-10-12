@@ -1,0 +1,45 @@
+{
+  "kind": "part",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "8845dbebe12b0b9939f13cb8e743c789db3aa9d7bfcb333a783fff472f3a94f8",
+  "solids": [
+    {
+      "area": 7.796162611067643,
+      "centroid": [
+        -115.53789653091687,
+        12.7,
+        144.13534428690167
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 1,
+        "loops": 1,
+        "shells": 1,
+        "solids": 0,
+        "vertices": 3
+      },
+      "degenerate": false,
+      "id": 0,
+      "inertia": [
+        [
+          6.207585554890102,
+          0.0,
+          6.4749517637101235
+        ],
+        [
+          0.0,
+          18.471742831228767,
+          0.0
+        ],
+        [
+          6.4749517637101235,
+          0.0,
+          12.264157276338665
+        ]
+      ],
+      "occt_heals": false,
+      "sheet": true,
+      "unhealed_counts": null
+    }
+  ]
+}

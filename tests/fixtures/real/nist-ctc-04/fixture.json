@@ -27,41 +27,19 @@
     {
       "id": 14152,
       "instance": 0,
-      "outcome": {
-        "refused": {
-          "kind": "unsupported entity",
-          "why": "a SHELL_BASED_SURFACE_MODEL of one OPEN_SHELL of one face, a surface and not a solid: sheet bodies are the healing cycle's (ADR-0025 §2)"
-        }
-      },
-      "blocks": {
-        "read": "healing"
-      }
+      "outcome": "read"
     },
     {
       "id": 14574,
       "instance": 0,
-      "outcome": {
-        "refused": {
-          "kind": "unsupported entity",
-          "why": "a SHELL_BASED_SURFACE_MODEL of one OPEN_SHELL of one face that only the file's CONSTRUCTIVE_GEOMETRY_REPRESENTATION 'supplemental geometry' holds: the exporter's construction geometry, no body of the part, counted as itself (ADR-0026, amendment of step 8)"
-        }
-      },
-      "blocks": {
-        "read": "itself: supplemental geometry"
-      }
+      "outcome": "read",
+      "oracle_skips": "a SHELL_BASED_SURFACE_MODEL of one OPEN_SHELL of one face that only the file's CONSTRUCTIVE_GEOMETRY_REPRESENTATION 'supplemental geometry' holds: the exporter's construction geometry, which Open CASCADE's STEP reader leaves out (it reads #14152 and no other sheet of the file); Arris reads it (ADR-0057)"
     },
     {
       "id": 14624,
       "instance": 0,
-      "outcome": {
-        "refused": {
-          "kind": "unsupported entity",
-          "why": "a SHELL_BASED_SURFACE_MODEL of one OPEN_SHELL of one face that only the file's CONSTRUCTIVE_GEOMETRY_REPRESENTATION 'supplemental geometry' holds: the exporter's construction geometry, no body of the part, counted as itself (ADR-0026, amendment of step 8)"
-        }
-      },
-      "blocks": {
-        "read": "itself: supplemental geometry"
-      }
+      "outcome": "read",
+      "oracle_skips": "a SHELL_BASED_SURFACE_MODEL of one OPEN_SHELL of one face that only the file's CONSTRUCTIVE_GEOMETRY_REPRESENTATION 'supplemental geometry' holds: the exporter's construction geometry, which Open CASCADE's STEP reader leaves out (it reads #14152 and no other sheet of the file); Arris reads it (ADR-0057)"
     }
   ],
   "battery": {
@@ -92,7 +70,7 @@
               "y": [
                 0.9999998432416912,
                 -0.0005594727466092596,
-                -0.00002251307802976859
+                -2.251307802976859e-05
               ]
             },
             "outer": {
@@ -134,7 +112,7 @@
             "name": "box",
             "profile": "square",
             "direction": [
-              -0.000022804968841817476,
+              -2.2804968841817476e-05,
               -0.0005217239066370261,
               -0.9999998636420401
             ],
@@ -203,7 +181,7 @@
             "axis": [
               0.9999998432416912,
               -0.0005594727466092596,
-              -0.00002251307802976859
+              -2.251307802976859e-05
             ],
             "radius": 11.850197176214941,
             "height": 1490.085615235523
@@ -235,7 +213,7 @@
               737.1642600143559
             ],
             "axis": [
-              -0.000022804968841817476,
+              -2.2804968841817476e-05,
               -0.0005217239066370261,
               -0.9999998636420401
             ],

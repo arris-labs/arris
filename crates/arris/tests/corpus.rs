@@ -1505,6 +1505,14 @@ corpus_tests! {
     /// as NIST's CTC-03, FTC-10 and FTC-11 write it: the reader joins the two
     /// loops by a seam along a ruling (ADR-0026's amendment of step 5).
     real_seamless_cylinder_band => part "real/seamless-cylinder-band";
+    /// A surface model of one open shell of one face (FTC-10's Extract.2), read as a sheet (ADR-0057).
+    real_surface_model_extract => part "real/surface-model-extract";
+    /// STC-07's Fill.1, in inches, read as a one-face sheet.
+    real_surface_model_fill => part "real/surface-model-fill";
+    /// CTC-02's Split.1, a one-face sheet with two loops.
+    real_surface_model_split => part "real/surface-model-split";
+    /// Three faces of a box as a `FACE_BASED_SURFACE_MODEL`, read as a sheet.
+    real_face_based_surface_model => part "real/face-based-surface-model";
     /// A cone bounded by its base circle alone, its apex implicit, as NIST's
     /// FTC-10 writes its drill points: the reader adds the apex and its seam
     /// (ADR-0026's amendment of step 5).

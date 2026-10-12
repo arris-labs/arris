@@ -1,0 +1,15 @@
+{
+  "kind": "part",
+  "description": "FTC-10's Extract.2 (#13983): a SHELL_BASED_SURFACE_MODEL of one OPEN_SHELL of one face — CATIA's Extract surface — read as a one-face sheet body (ADR-0057), held to Open CASCADE's face count and surface properties of the same shell. Excerpted by tools/oracle/excerpt.py",
+  "file": "extract.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ftc_10_asme1_ap242-e2.stp #13983",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "76aa53fd403c1e4e0631ec7388f4b99967a41cb59e37d2a76996179bea1b6134",
+  "solids": [
+    {
+      "id": 13983,
+      "instance": 0,
+      "outcome": "read"
+    }
+  ]
+}

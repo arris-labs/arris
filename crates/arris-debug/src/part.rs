@@ -19,15 +19,19 @@
 //! a closed mesh, and to its committed dump. A `refused` one is held to
 //! exactly its refusal kind. A solid of the oracle's that no read matches
 //! must be one Arris refuses; an Arris read that no oracle solid matches
-//! is a solid the file does not have.
+//! is a solid the file does not have. A surface model reads as a sheet
+//! (ADR-0057) and is held to the oracle's sheets instead: the shells that
+//! no solid holds, matched by face count and centroid, in surface area,
+//! centroid and inertia.
 
-use crate::unmetered::mass_properties;
 use crate::unmetered::step_read;
+use crate::unmetered::{mass_properties, surface_properties};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use arris_io::step::ReadOptions;
 use arris_math::Point3;
+use arris_topo::entity::BodyKind;
 use arris_topo::{Body, Model};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -70,6 +74,13 @@ pub struct PartSolid {
     /// solid the fixture has no battery for.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub battery: BTreeMap<String, Class>,
+    /// Why Open CASCADE's reader does not transfer this sheet — a surface
+    /// model only a `CONSTRUCTIVE_GEOMETRY_REPRESENTATION` holds, which
+    /// its STEP reader leaves out as it leaves out the exporter's other
+    /// construction geometry: set, the runner holds the sheet to the
+    /// checker and its dump alone, there being no oracle sheet to match.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub oracle_skips: Option<String>,
     /// The cycle each refusal of this solid blocks, as
     /// `crate::histogram::Cycle` prints it, by stage: `read` for a solid
     /// the reader refuses, and each battery stage recorded as
@@ -130,8 +141,13 @@ fn is_default<T: Default + PartialEq>(value: &T) -> bool {
 /// One solid of the oracle's reading of a part's file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OracleSolid {
-    /// The `#id` of the solid entity it came from.
+    /// The `#id` of the solid entity it came from; `0` for a sheet, whose
+    /// entity Open CASCADE does not keep (`tools/oracle/oracle/step.py`).
     pub id: u64,
+    /// A sheet: a shell of a surface model that no solid holds, whose
+    /// `measured` is its face count and surface properties (ADR-0057).
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub sheet: bool,
     /// Open CASCADE had to heal it to make it a solid: unhealed, a solid
     /// of this `#id` fails `BRepCheck_Analyzer`, has other counts, or is
     /// not read at all.
@@ -353,9 +369,18 @@ pub fn run(dir: &Path) -> Result<(), CorpusError> {
                 }
                 // A part waiting under `regression/` commits no dump.
                 let dump = !name.starts_with(&format!("{REGRESSION_AREA}/"));
-                read_stages(&fixture, &model, back.body, spec, &mut taken, dump)?;
-                #[cfg(not(target_arch = "wasm32"))]
-                battery_stages(&fixture, &model, back, spec)?;
+                let sheet = model
+                    .body(back.body.id)
+                    .map_err(|e| fail(format!("{at} {e}")))?
+                    .kind()
+                    == BodyKind::Sheet;
+                if sheet {
+                    sheet_stages(&fixture, &model, back.body, spec, &mut taken, dump)?;
+                } else {
+                    read_stages(&fixture, &model, back.body, spec, &mut taken, dump)?;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    battery_stages(&fixture, &model, back, spec)?;
+                }
             }
         }
     }
@@ -363,6 +388,12 @@ pub fn run(dir: &Path) -> Result<(), CorpusError> {
     // entity it refuses.
     let mut left: BTreeMap<u64, usize> = BTreeMap::new();
     for (solid, _) in oracle.iter().zip(&taken).filter(|(_, t)| !**t) {
+        if solid.sheet {
+            return Err(fail(format!(
+                "Open CASCADE reads a sheet of {} face(s) at {:?} that Arris does not",
+                solid.measured.counts.faces, solid.measured.centroid
+            )));
+        }
         *left.entry(solid.id).or_default() += 1;
     }
     for (id, n) in left {
@@ -399,7 +430,7 @@ pub(crate) fn read_stages(
     let oracle = &fixture.expected.solids;
     let mut nearest: Option<(f64, usize)> = None;
     for (k, solid) in oracle.iter().enumerate() {
-        if solid.id != spec.id || taken[k] {
+        if solid.id != spec.id || solid.sheet || taken[k] {
             continue;
         }
         let Some(c) = solid.measured.centroid else {
@@ -467,6 +498,117 @@ pub(crate) fn read_stages(
     }
 
     // The dump.
+    let path = dump_path(&fixture.dir, spec.id, spec.instance);
+    let dump = dump_text(m, body).map_err(|e| CorpusError::Dump {
+        fixture: name.clone(),
+        path: path.clone(),
+        what: e.to_string(),
+    })?;
+    corpus::check_dump(&name, &path, &dump, blessing())
+}
+
+/// The stages of one sheet read (ADR-0057): the checker at `Full`, then
+/// the oracle's sheet nearest by centroid among those of its face count,
+/// each taken once, in surface area, centroid and inertia within the
+/// fixture's tolerances, and the committed dump. A sheet has no volume, no
+/// Euler line the oracle holds and no battery: the operations of the
+/// battery take solids.
+pub(crate) fn sheet_stages(
+    fixture: &PartFixture,
+    m: &Model,
+    body: Body,
+    spec: &PartSolid,
+    taken: &mut [bool],
+    dump: bool,
+) -> Result<(), CorpusError> {
+    let name = format!("{} #{}[{}]", fixture.name, spec.id, spec.instance);
+    let fail = |what: String| CorpusError::Part {
+        fixture: fixture.name.clone(),
+        what: format!("#{}[{}] {what}", spec.id, spec.instance),
+    };
+    check_leaving_nurbs(&name, m, body)?;
+    let found =
+        surface_properties(m, body).map_err(|e| fail(format!("has no surface properties: {e}")))?;
+    if spec.oracle_skips.is_some() {
+        return sheet_dump(fixture, m, body, spec, dump);
+    }
+    let faces = m.faces(body).map_err(|e| fail(e.to_string()))?.len();
+    let mut nearest: Option<(f64, usize)> = None;
+    for (k, sheet) in fixture.expected.solids.iter().enumerate() {
+        if !sheet.sheet || taken[k] || sheet.measured.counts.faces != faces {
+            continue;
+        }
+        let Some(c) = sheet.measured.centroid else {
+            continue;
+        };
+        let d = (Point3::new(c[0], c[1], c[2]) - found.centroid).norm();
+        if nearest.is_none_or(|(best, _)| d < best) {
+            nearest = Some((d, k));
+        }
+    }
+    let Some((_, k)) = nearest else {
+        return Err(fail(format!(
+            "reads to a sheet of {faces} face(s) at {} that Open CASCADE's reading of the file does not have",
+            found.centroid
+        )));
+    };
+    taken[k] = true;
+    let expected = &fixture.expected.solids[k].measured;
+    let tolerances = &fixture.part.tolerances;
+    let measure = |what: String| CorpusError::Measure {
+        fixture: name.clone(),
+        what,
+    };
+    if let Some(area) = expected.area {
+        let difference = (found.area - area).abs() / area.abs().max(found.area.abs());
+        if difference.is_nan() || difference > tolerances.area_rel {
+            return Err(measure(format!(
+                "area {} vs the oracle's {area}: {difference:e} relative, above {:e}",
+                found.area, tolerances.area_rel
+            )));
+        }
+    }
+    if let Some(c) = expected.centroid {
+        let distance = (found.centroid - Point3::new(c[0], c[1], c[2])).norm();
+        if distance.is_nan() || distance > tolerances.centroid_abs {
+            return Err(measure(format!(
+                "centroid {} vs the oracle's {c:?}: {distance:e} apart, above centroid_abs {:e}",
+                found.centroid, tolerances.centroid_abs
+            )));
+        }
+    }
+    if let Some(inertia) = expected.inertia {
+        let scale = (inertia.iter().flatten())
+            .fold(0.0f64, |m, x| m.max(x.abs()))
+            .max(f64::MIN_POSITIVE);
+        for (i, row) in inertia.iter().enumerate() {
+            for (j, &e) in row.iter().enumerate() {
+                let difference = (found.inertia[(i, j)] - e).abs() / scale;
+                if difference.is_nan() || difference > tolerances.inertia_rel {
+                    return Err(measure(format!(
+                        "inertia[{i}][{j}] {} vs the oracle's {e}: {difference:e} of the tensor, above {:e}",
+                        found.inertia[(i, j)],
+                        tolerances.inertia_rel
+                    )));
+                }
+            }
+        }
+    }
+    sheet_dump(fixture, m, body, spec, dump)
+}
+
+/// A sheet's dump held to the committed one, where `dump`.
+fn sheet_dump(
+    fixture: &PartFixture,
+    m: &Model,
+    body: Body,
+    spec: &PartSolid,
+    dump: bool,
+) -> Result<(), CorpusError> {
+    if !dump {
+        return Ok(());
+    }
+    let name = format!("{} #{}[{}]", fixture.name, spec.id, spec.instance);
     let path = dump_path(&fixture.dir, spec.id, spec.instance);
     let dump = dump_text(m, body).map_err(|e| CorpusError::Dump {
         fixture: name.clone(),
@@ -688,6 +830,16 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 ))
             }
             Outcome::Read => {}
+        }
+        if solid
+            .oracle_skips
+            .as_deref()
+            .is_some_and(|r| r.trim().is_empty())
+        {
+            problem(format!(
+                "#{}[{}] skips the oracle with no reason why",
+                solid.id, solid.instance
+            ));
         }
     }
     problems

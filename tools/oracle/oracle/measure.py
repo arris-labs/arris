@@ -413,6 +413,23 @@ def surface_properties(shape: TopoDS_Shape) -> dict:
     }
 
 
+def sheet(shape: TopoDS_Shape) -> dict:
+    """What expected.json records of one sheet -- a shell of a surface
+    model, not in a solid: its counts (no solid) and its surface properties
+    (`surface_properties`). The area, centroid and inertia are the ones
+    `arris_ops::measure::surface_properties` is held to."""
+    vertices, edges, loops = _count_boundary(shape)
+    counts = {
+        "vertices": vertices,
+        "edges": edges,
+        "faces": _count(shape, TopAbs_FACE),
+        "loops": loops,
+        "shells": 1,
+        "solids": 0,
+    }
+    return {"degenerate": False, "counts": counts, **surface_properties(shape)}
+
+
 def measure(
     shape: TopoDS_Shape,
     probes: list[dict],
