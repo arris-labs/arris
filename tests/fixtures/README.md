@@ -714,7 +714,17 @@ and this is it: the parts under `real/nist-*` are NIST's.
   0.0065 off its cylinders; `real/slow-gap-refusal`, CTC-05's file,
   held to its time budget; and `real/torus-plane-section-undecided`,
   FTC-07's file, whose B-spline pcurves overshot their domain and whose
-  torus is tangent to a plane on its seam.
+  torus is tangent to a plane on its seam. Three are faces of a part
+  excerpted as a sheet (`excerpt.py --faces`):
+  `real/edge-off-a-drafted-cylinder`, CTC-02's base plane and a drafted
+  boss whose edge lies off the cylinder, read with `max_tolerance` raised
+  past its gap (ADR-0059); `real/edge-bending-within-its-tolerance`, an
+  FTC-07 AP242 edge turning within its tolerance's length (E8); and
+  `real/loop-crossing-inside-a-vertex`, an FTC-07 AP242 sphere face whose
+  loop zigzags inside a vertex's tolerance (L5). Open CASCADE's healing
+  moves those faces' boundaries further from the file's curves than
+  Arris's read does, and each fixture's tolerances are the band that
+  moves, derived in its description.
 - `real/nist-ftc-09-offset` is `real/nist-ftc-09` with one plane wrapped
   in an `OFFSET_SURFACE` by hand: the refusal path under test.
 

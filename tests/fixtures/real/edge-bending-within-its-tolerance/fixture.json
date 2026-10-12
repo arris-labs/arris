@@ -1,0 +1,20 @@
+{
+  "kind": "part",
+  "description": "NIST's FTC-07, its AP242 e2 edition's faces #3915 and #9945 on either side of a B-spline edge whose read tolerance is 7.8e-4 and which turns 45° within its first 1e-3 of length. The checker's E8 found it crossing itself at t = 4.8e-4 and 1.9e-3: two segments 7.77e-4 apart with 7.82e-4 of curve between, a bend whose chord is shorter than its arc. A crossing now needs the curve to leave the tolerance ball between them Open CASCADE's healed faces are not the file's: on the sphere its pcurves of the two B-spline edges lie up to 0.1 and 0.036 from their 3D curves (lengths 1.21 and 1.19), where Arris's lie within 7.8e-4, so its area may differ by up to that band, 0.163 mm² or 2.04e-3 relative; it differs by 1.3e-3. The area tolerance is that band; the inertia's that band times the diagonal squared over the tensor's largest component, 0.027; the centroid's is that band times the sheet's diagonal (34.9) over its area, 0.072",
+  "file": "bend.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ftc_07_asme1_ap242-e2.stp: faces #3915 and #9945 of #13272, excerpted by tools/oracle/excerpt.py --faces",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "40c88007d3de3fe001d974eb81054c2f23b0bf74a9d126f5776189ab7e6f86f2",
+  "solids": [
+    {
+      "id": 17117,
+      "instance": 0,
+      "outcome": "read"
+    }
+  ],
+  "tolerances": {
+    "area_rel": 0.0021,
+    "inertia_rel": 0.027,
+    "centroid_abs": 0.072
+  }
+}

@@ -111,10 +111,11 @@ ADR-0058's, written at step 1.
   measuring past the first gap, so that every gap is known and recorded
   rather than only the first refused. The orientation pass runs after the
   shell's faces are bound and before the checker.
-- **`arris-check`** (step 2, only if the cause is the checker's): E8, L5
-  and S5 judged at the entity's own grown tolerance where they use a
-  fixed one today. A checker change is held to every existing fixture
-  staying green.
+- **`arris-check`** (step 2): E8 counts a crossing only where the curve
+  between leaves the tolerance ball; L5 lets a loop cross itself inside
+  a vertex's tolerance. Held to every existing fixture staying green.
+- **ADR-0059** (step 2): a read edge's tolerance holds where its two
+  faces meet, `d / sin θ`, up to `arris_math::SECTION_GROWTH_LIMIT`.
 - **`arris` facade and `arris-py`:** `Heal` re-exported. Python's
   `read_step(..., heal=True)` returns each read body's healing record as
   `healing.grown` (a list of `(entity, file_id, gap)`) and
@@ -157,7 +158,7 @@ whether 4 or all 6 of the healable parts leave the row.
   free-edge sewing line, and line 61 is rewritten to point at this plan.
   Test: a docs test holds the census table in the ADR to the committed
   tier's two parts.
-- [ ] Step 2 **[3]** — **The two healed parts the checker rejects.** Read
+- [x] Step 2 **[3]** — **The two healed parts the checker rejects.** Read
   `nist-ctc-02` (S5) and FTC-07 AP242 (E8, L5) in a model whose
   `max_tolerance` covers their gaps, as the probe did. Shrink each to a
   `regression/` excerpt fixture: the S5 face pair with its neighbours, and
@@ -172,6 +173,20 @@ whether 4 or all 6 of the healable parts leave the row.
   line, and the fixture holds the refusal. Either way both fixtures leave
   `regression/` with an answer. Existing fixtures stay green under any
   checker change.
+  *Done:* none was a file defect, and each was fixed in the step, so the
+  excerpts went straight to `real/` (sheets of the faces involved,
+  `excerpt.py --faces`). FTC-07's E8 and L5 were the checker's and occur
+  without healing: an edge bending through its tolerance's length, whose
+  chord is shorter than its arc, and a loop zigzagging inside a vertex's
+  tolerance (`real/edge-bending-within-its-tolerance`,
+  `real/loop-crossing-inside-a-vertex`). CTC-02's S5 was the reader's:
+  an edge on the plane and `d` off a drafted cylinder is `d / sin θ` from
+  where they meet, and the read measured only `d`. ADR-0059 raises a
+  read edge's tolerance to that, between faces crossing at `30°` or more
+  (`real/edge-off-a-drafted-cylinder`, read with `max_tolerance` raised
+  until step 3 heals it). Open CASCADE's healing moves these faces'
+  boundaries further than Arris's read does, so each fixture's
+  tolerances are that band, derived in its description.
 - [ ] Step 3 **[2]** — **Gap healing in the reader.** `ReadOptions::heal`
   and `Heal`, `ReadBody::healing` and `Grown`. Every gap from the read cap
   up to `HEAL_GAP_FRACTION` of the part (and within the model's ceiling as
@@ -276,7 +291,9 @@ whether 4 or all 6 of the healable parts leave the row.
    never existed in the model. Who: the agent, ADR-0058, step 1. If it
    goes the other way, step 3 gains a `Role::Healed` and a provenance
    change under `### Breaking`.
-3. ⚠ OPEN: **FTC-07 and CTC-02's checker failures** may be file defects
+3. Closed at step 2: **FTC-07 and CTC-02's checker failures** may be file defects
    no tolerance covers. If so, the healing row ends at 2 parts, not 0,
    and the acceptance line is rewritten in the step 2 commit with the
-   classification. Who: the agent, step 2.
+   classification. Who: the agent, step 2. *Answer:* none is; two were
+   the checker's (E8, L5) and one the read's measure (ADR-0059), all
+   fixed, so the acceptance line stands at 0.

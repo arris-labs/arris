@@ -66,7 +66,9 @@
 //!   images from its curve — at the checker's samples and at the
 //!   [`PCURVE_SAMPLES`] a fit is held to, each peak climbed to its top
 //!   between them — a closed edge also
-//!   its curve's own gap; each vertex the largest distance from its point
+//!   its curve's own gap, and an edge between two faces crossing at
+//!   [`SECTION_GROWTH_LIMIT`]'s angle or more its distance from where
+//!   they meet (ADR-0059); each vertex the largest distance from its point
 //!   to each edge curve's end and each pcurve's image there, and the span
 //!   of a degenerate edge's image; each face the model's default. Every
 //!   value is floored at the default and raised to keep vertex ≥ edge ≥
@@ -87,7 +89,8 @@ use arris_geom::{
 };
 use arris_math::{
     Aabb, Frame, Interrupted, Interval, Meter, Point2, Point3, Precision, READ_GAP_FRACTION,
-    RELATIVE_ROUNDING, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3, is_negligible, shift_nearest_uv,
+    RELATIVE_ROUNDING, SECTION_GROWTH_LIMIT, Tolerance, UnitVec2, UnitVec3, Vec2, Vec3,
+    is_negligible, shift_nearest_uv,
 };
 use arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec,
@@ -900,6 +903,10 @@ impl Geometry<'_> {
 
         let mut gaps = Gaps::new(points.len());
         let mut shells = Vec::with_capacity(walked.len());
+        // Each face's surface, and each edge's uses on them, for where
+        // the faces an edge bounds meet.
+        let mut face_surfaces: Vec<Surface> = Vec::new();
+        let mut uses_of: BTreeMap<usize, Vec<(usize, Curve2, Interval)>> = BTreeMap::new();
         for faces in walked {
             let mut specs = Vec::with_capacity(faces.len());
             for (surface, surface_id, flipped, mut loops) in faces {
@@ -910,6 +917,18 @@ impl Geometry<'_> {
                 for uses in &loops {
                     gaps.measure_uses(&surface, uses, &points, &edges, &rebuilt, model, precision);
                 }
+                for u in loops.iter().flatten() {
+                    let key = match u.edge {
+                        EdgeRef::File(i) => i,
+                        EdgeRef::Rebuilt(i) => edges.len() + i,
+                    };
+                    uses_of.entry(key).or_default().push((
+                        face_surfaces.len(),
+                        u.pcurve.clone(),
+                        u.range,
+                    ));
+                }
+                face_surfaces.push(surface);
                 let loops = loops
                     .into_iter()
                     .map(|uses| {
@@ -940,6 +959,7 @@ impl Geometry<'_> {
         }
 
         gaps.measure_edges(&points, &edges, &rebuilt, model);
+        gaps.measure_sections(&face_surfaces, &uses_of, &edges, &rebuilt, model, precision);
         let (vertex_tolerances, edge_tolerances) = gaps
             .tolerances(&edges, &rebuilt, tolerance, cap)
             .map_err(|(entity, gap)| Refusal::Gap {
@@ -1814,6 +1834,67 @@ impl Gaps {
                     self.raise_vertex(first, extent);
                 }
             }
+        }
+    }
+
+    /// The gaps each edge between two faces leaves from where they meet
+    /// (ADR-0059): at each of its samples, the distance from its curve to
+    /// the line the two surfaces' tangent planes at its pcurves' images
+    /// meet in — `d / sin θ` for a curve `d` off one surface and on the
+    /// other — where the faces cross at an angle whose `1 / sin θ` is at
+    /// most [`SECTION_GROWTH_LIMIT`]. Nearer tangent, and at a point
+    /// where a surface has no normal, the gap from each surface stands.
+    fn measure_sections(
+        &mut self,
+        surfaces: &[Surface],
+        uses_of: &BTreeMap<usize, Vec<(usize, Curve2, Interval)>>,
+        edges: &[Edge],
+        rebuilt: &[Rebuilt],
+        model: &Model,
+        precision: Precision,
+    ) {
+        for (&key, uses) in uses_of {
+            let [(fa, pa, range), (fb, pb, _)] = uses.as_slice() else {
+                continue;
+            };
+            let curve = match key.checked_sub(edges.len()) {
+                None => edges.get(key).map(|e| &e.geometry),
+                Some(i) => match rebuilt.get(i).map(|r| r.geometry) {
+                    Some(EdgeGeometry::Curve { curve, .. }) => model.curve(curve).ok(),
+                    _ => None,
+                },
+            };
+            let (Some(c), Some(sa), Some(sb)) = (curve, surfaces.get(*fa), surfaces.get(*fb))
+            else {
+                continue;
+            };
+            let foot = |s: &Surface, p: &Curve2, t: f64| {
+                let q = p.point(t);
+                let e = s.eval(q.x, q.y);
+                let n = e.du.cross(&e.dv);
+                let length = n.norm();
+                (length > 0.0).then(|| (e.point, n / length))
+            };
+            let section = |t: f64| {
+                let at = c.point(t);
+                let (Some((a, na)), Some((b, nb))) = (foot(sa, pa, t), foot(sb, pb, t)) else {
+                    return 0.0;
+                };
+                let cos = na.dot(&nb);
+                let sin2 = 1.0 - cos * cos;
+                if sin2 * SECTION_GROWTH_LIMIT * SECTION_GROWTH_LIMIT < 1.0 {
+                    return 0.0;
+                }
+                let (da, db) = (na.dot(&(a - at)), nb.dot(&(b - at)));
+                let (l, m) = ((da - cos * db) / sin2, (db - cos * da) / sin2);
+                distance(at, at + na * l + nb * m)
+            };
+            let mut ts = samples(*range, precision.check_samples);
+            ts.extend(samples(*range, PCURVE_SAMPLES + 1));
+            ts.sort_by(f64::total_cmp);
+            ts.dedup();
+            let worst = worst_gap(&ts, precision.default_tolerance, section);
+            self.raise_edge(key, worst);
         }
     }
 

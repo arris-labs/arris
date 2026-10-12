@@ -61,10 +61,14 @@ impl<'m> Checker<'m> {
     /// itself, so only a NURBS is tested — as a polyline sampled
     /// `Precision::check_samples` times per knot span, two non-adjacent
     /// segments closer than the edge's tolerance being the crossing when
-    /// more than that tolerance of polyline runs between them. Nearer
-    /// along the curve they are one stretch of it, however many samples
-    /// a short span — a periodic section edge running a few units in the
-    /// last place past its knots' end — put between them.
+    /// the polyline between them leaves the tolerance ball round the
+    /// nearer point — both ways round on a closed edge. A stretch that
+    /// stays inside it is one stretch of the curve, however many samples
+    /// a short span put on it: a periodic section edge running a few
+    /// units in the last place past its knots' end, or a read edge
+    /// bending through its first tolerance's worth of length (FTC-07's,
+    /// `real/edge-bending-within-its-tolerance`), whose chord across the
+    /// bend is a hair shorter than the arc.
     fn e8_self_intersections(&mut self) {
         let model = self.model;
         let mut found = Vec::new();
@@ -126,7 +130,14 @@ impl<'m> Checker<'m> {
                     }
                     let (sa, sb) = ((points[i], points[i + 1]), (points[j], points[j + 1]));
                     let (distance, u, v) = segment_distance(sa, sb);
-                    if distance <= edge.tolerance() {
+                    if distance > edge.tolerance() {
+                        continue;
+                    }
+                    let at = sa.0 + (sa.1 - sa.0) * u;
+                    let leaves = |k: usize| (points[k] - at).norm() > edge.tolerance();
+                    let ahead = (i + 1..=j).any(leaves);
+                    let behind = !closed || (j + 1..=n).chain(0..=i).any(leaves);
+                    if ahead && behind {
                         found.push(Violation::EdgeSelfIntersects {
                             edge: edge_id,
                             t0: parameters[i] + u * (parameters[i + 1] - parameters[i]),
@@ -141,13 +152,46 @@ impl<'m> Checker<'m> {
         }
     }
 
-    /// L5: no loop of a face crosses itself or another of its loops.
+    /// L5: no loop of a face crosses itself or another of its loops. A
+    /// loop crossing itself inside the tolerance ball of one of the
+    /// face's vertices does not: its pieces meet at that vertex only to
+    /// its tolerance, and a pcurve ending a little past the next one's
+    /// start — FTC-07's sphere faces, `1e-6` past at a vertex of
+    /// `2.7e-5`, `real/loop-crossing-inside-a-vertex` — zigzags there.
     fn l5_loops_intersect(&mut self) {
+        let model = self.model;
         let mut found = Vec::new();
         for (&face_id, domain) in &self.domains {
             let polygons = domain.polygons();
+            let vertices: BTreeSet<VertexId> = model.face(face_id).map_or_else(
+                |_| BTreeSet::new(),
+                |f| {
+                    coedges(f)
+                        .filter_map(|(_, _, c)| model.edge(c.edge()).ok())
+                        .flat_map(|e| [e.start(), e.end()])
+                        .collect()
+                },
+            );
+            let at_a_vertex = |polygon: &arris_geom::region2::Polygon2, (i, j): (usize, usize)| {
+                let points = polygon.points();
+                let n = points.len();
+                let lift = |k: usize| Point3::new(points[k % n].x, points[k % n].y, 0.0);
+                let (sa, sb) = ((lift(i), lift(i + 1)), (lift(j), lift(j + 1)));
+                let (_, u, _) = segment_distance(sa, sb);
+                let uv = sa.0 + (sa.1 - sa.0) * u;
+                let point = domain.surface().point(uv.x, uv.y);
+                vertices.iter().any(|&v| {
+                    model
+                        .vertex(v)
+                        .is_ok_and(|vx| (vx.point() - point).norm() <= vx.tolerance())
+                })
+            };
             for (i, a) in polygons.iter().enumerate() {
-                if !a.self_intersections().is_empty() {
+                if !a
+                    .self_intersections()
+                    .into_iter()
+                    .all(|pair| at_a_vertex(a, pair))
+                {
                     found.push(Violation::LoopsIntersect {
                         face: face_id,
                         loop_a: i,

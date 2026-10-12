@@ -1,0 +1,20 @@
+{
+  "kind": "part",
+  "description": "NIST's FTC-07, its AP242 e2 edition's sphere face #1113, near its pole, as a one-face sheet. A B-spline pcurve of its loop ends 1e-6 past the meridian line that starts at the same vertex, whose tolerance is 2.7e-5, and the checker's L5 found the loop crossing itself there. A loop crossing itself inside the tolerance of a vertex of its face now meets at that vertex Open CASCADE's healed face is not the file's: its pcurves of the two B-spline edges lie up to 0.0043 and 0.031 from their 3D curves (lengths 2.39 and 2.35), where Arris's lie within 4.6e-5, so its area may differ by up to that band, 0.083 mm² or 5.8e-3 relative; it differs by 3.7e-4. The area and inertia tolerances are that band; the centroid's is that band times the sheet's diagonal (5.25) over its area, 0.031",
+  "file": "sphere-corner.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ftc_07_asme1_ap242-e2.stp: face #1113 of #13272, excerpted by tools/oracle/excerpt.py --faces",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "8d014af503841dd794ce6acfc3ac67effd78ee4dbce44ee7dc5cebfecc9afd44",
+  "solids": [
+    {
+      "id": 17117,
+      "instance": 0,
+      "outcome": "read"
+    }
+  ],
+  "tolerances": {
+    "area_rel": 0.006,
+    "inertia_rel": 0.006,
+    "centroid_abs": 0.031
+  }
+}

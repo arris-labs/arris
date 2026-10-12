@@ -100,6 +100,20 @@ pub const READ_GAP_FRACTION: f64 = 2e-4;
 /// rounding slack.
 pub const HEAL_GAP_FRACTION: f64 = 5e-4;
 
+/// The most a read edge's gap is raised for the angle its two faces cross
+/// at (ADR-0059): an edge lying `d` off one face and on the other is
+/// `d / sin θ` from where faces crossing at `θ` meet, and its tolerance
+/// is raised to that where `1 / sin θ` is at most this — faces crossing at
+/// `30°` or more. Under it the faces are near tangent, where they meet is
+/// ill-conditioned (a G1 blend's faces meet anywhere along a band), and
+/// the edge keeps its gap from each surface.
+///
+/// Evidence: CTC-02's drafted bosses, a cylinder `2°` off the normal of
+/// the plane it stands on, `1 / sin θ = 1.0006`
+/// (`real/edge-off-a-drafted-cylinder`). A geometric bound, not a
+/// rounding slack.
+pub const SECTION_GROWTH_LIMIT: f64 = 2.0;
+
 /// `|x| ≤ RELATIVE_ROUNDING · |scale|`: `x` is zero to rounding at
 /// `scale`. A zero `scale` makes only an exact zero negligible.
 ///

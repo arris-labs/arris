@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""excerpt.py <file.stp> <solid-id> <out.stp> [description]  — one solid
-of a STEP file, alone: the entity `#<solid-id>` and everything it refers
+"""excerpt.py <file.stp> <solid-id> <out.stp> [description] [--faces ID,ID,...]
+— one solid of a STEP file, alone: the entity `#<solid-id>` and everything it refers
 to, in a new ADVANCED_BREP_SHAPE_REPRESENTATION over the representation
 context of the first representation that lists it, that context's
 closure, and a new product the representation is the shape of. The file's
 product structure, placements, presentation and PMI are left out, so the
-solid stands where its representation puts it. What a
+solid stands where its representation puts it. With `--faces`, the
+named `ADVANCED_FACE`s of the solid instead, as one `OPEN_SHELL` of a
+`SHELL_BASED_SURFACE_MODEL` (a sheet, ADR-0057): a failure between faces
+shrunk to them and their shared edges. What a
 fetched part's failure is committed as, where its licence allows
 (ADR-0026 §2). Run as
 `uv run --project tools/oracle tools/oracle/excerpt.py`.
@@ -39,6 +42,14 @@ def closure(bodies: dict[int, str], roots: list[int]) -> set[int]:
 
 
 def main(argv: list[str]) -> int:
+    faces: list[int] = []
+    if "--faces" in argv:
+        at = argv.index("--faces")
+        if at + 1 >= len(argv):
+            print(__doc__)
+            return 2
+        faces = [int(f.lstrip("#")) for f in argv[at + 1].split(",")]
+        argv = argv[:at] + argv[at + 2 :]
     if len(argv) < 3:
         print(__doc__)
         return 2
@@ -59,7 +70,11 @@ def main(argv: list[str]) -> int:
     if context is None:
         print(f"{source}: no representation lists #{solid}", file=sys.stderr)
         return 1
-    keep = closure(bodies, [solid, context])
+    missing = [f for f in faces if f not in bodies or not bodies[f].startswith("ADVANCED_FACE")]
+    if missing:
+        print(f"{source}: no ADVANCED_FACE #{missing[0]}", file=sys.stderr)
+        return 1
+    keep = closure(bodies, (faces or [solid]) + [context])
     rep = max(bodies) + 1
     schema = re.search(r"FILE_SCHEMA\s*\(.*?\)\s*;", text, re.S)
     lines = [
@@ -72,7 +87,16 @@ def main(argv: list[str]) -> int:
         "DATA;",
     ]
     lines += [f"#{id}={bodies[id].strip()};" for id in sorted(keep)]
-    lines.append(f"#{rep}=ADVANCED_BREP_SHAPE_REPRESENTATION('',(#{solid}),#{context});")
+    if faces:
+        listed = ",".join(f"#{f}" for f in faces)
+        lines.append(f"#{rep}=OPEN_SHELL('',({listed}));")
+        lines.append(f"#{rep + 1}=SHELL_BASED_SURFACE_MODEL('',(#{rep}));")
+        lines.append(
+            f"#{rep + 2}=MANIFOLD_SURFACE_SHAPE_REPRESENTATION('',(#{rep + 1}),#{context});"
+        )
+        rep += 2
+    else:
+        lines.append(f"#{rep}=ADVANCED_BREP_SHAPE_REPRESENTATION('',(#{solid}),#{context});")
     # A product for the representation to be the shape of: what Open
     # CASCADE's reader transfers from, as a part's own file has it.
     n = rep + 1
@@ -89,7 +113,7 @@ def main(argv: list[str]) -> int:
     ]
     lines += ["ENDSEC;", "END-ISO-10303-21;", ""]
     out.write_text("\n".join(lines))
-    print(f"{out}: {len(keep) + 10} of {len(bodies)} instances, {out.stat().st_size} bytes")
+    print(f"{out}: {len(keep) + 10 + 2 * bool(faces)} of {len(bodies)} instances, {out.stat().st_size} bytes")
     return 0
 
 

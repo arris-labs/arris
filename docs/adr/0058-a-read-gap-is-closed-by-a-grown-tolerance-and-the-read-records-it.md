@@ -33,8 +33,8 @@ fixtures by `crates/arris/tests/docs_refs.rs`; Open CASCADE's column is
 
 | gap | of size | vertices | edges | surfaces | file entities | Open CASCADE |
 |---:|---:|---:|---:|---|---|---:|
-| 0.0386 | 3.31e-5 | 16 | 8 | cylinder × plane | #8910, #8911, #8914, … | 0.0385 |
-| 0.0332 | 2.84e-5 | 16 | 8 | cylinder × plane | #8715, #8718, #8722, … | 0.0330 |
+| 0.0392 | 3.36e-5 | 16 | 8 | cylinder × plane | #8910, #8911, #8914, … | 0.0385 |
+| 0.0332 | 2.85e-5 | 16 | 8 | cylinder × plane | #8715, #8718, #8722, … | 0.0330 |
 | 0.0330 | 2.83e-5 | 32 | 16 | cylinder × plane | #8660, #8661, #8666, … | 0.0328 |
 | 0.0286 | 2.45e-5 | 4 | 4 | NURBS × plane | #8046, #8047, #8048, … | 0.0283 |
 | 0.0267 | 2.29e-5 | 16 | 8 | cylinder × plane | #8432, #8436, #8440, … | 0.0265 |
@@ -51,6 +51,11 @@ fixtures by `crates/arris/tests/docs_refs.rs`; Open CASCADE's column is
 | 0.0182 | 2.01e-5 | 2 | 1 | NURBS × NURBS | #2781, #2783, #4444 | 0.0199 – 0.0261 |
 
 <!-- /gaps -->
+
+The table is re-measured as the reader changes. Since ADR-0059 an edge
+between two crossing faces also covers where they meet, which raised
+the first row from `0.0386` (`3.31e-5`) to `0.0392` and the second's
+fraction from `2.84e-5`; the prose below quotes the first measure.
 
 The fetched tier's other healable parts, same census (run 2026-10-12, not
 held by a test):

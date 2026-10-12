@@ -1780,7 +1780,11 @@ may carry different tolerances.
   at the `PCURVE_SAMPLES` a fit is held to, each peak past the default
   climbed to its top between them, since a fitted pcurve strays furthest
   between samples and a finer look, the mesh's, finds it there (and a
-  closed edge its curve's own gap), each vertex the largest distance from its
+  closed edge its curve's own gap), and, where its two faces cross at an
+  angle whose `1 / sin θ` is at most `SECTION_GROWTH_LIMIT`, its distance
+  from the line their tangent planes meet in — the tube holds where the
+  faces meet, `d / sin θ` from a curve `d` off one of them (ADR-0059);
+  each vertex the largest distance from its
   point to the curves' ends and the pcurves' images there and the span of
   a degenerate edge's image, each face the default; every value is
   floored at `default_tolerance` and raised to keep the ordering. A gap
@@ -1842,7 +1846,7 @@ reference tree) mapped onto this representation.
 | E5 | `edge.tolerance ≥ face.tolerance` for every face it bounds; `≤ vertex.tolerance` of both vertices | Fast |
 | E6 | A degenerate edge has `start == end` and lies on faces whose surface is singular along its pcurve over its range (the image at `check_samples` parameters spans at most the vertex's tolerance) | Fast |
 | E7 | A seam edge (used twice by one loop) has its two coedges in opposite orientation and pcurves that differ by exactly the surface's period in the periodic parameter | Fast |
-| E8 | The edge does not self-intersect within its range. An analytic curve over a range E1 accepted cannot; a NURBS is tested as a polyline of `check_samples` points per knot span, two non-adjacent segments closer than the edge's tolerance being the crossing when more than that tolerance of polyline runs between them (around a closed edge, either way) — nearer, they are one stretch of the curve, as a periodic section edge's few units in the last place past its knots' end are | Full |
+| E8 | The edge does not self-intersect within its range. An analytic curve over a range E1 accepted cannot; a NURBS is tested as a polyline of `check_samples` points per knot span, two non-adjacent segments closer than the edge's tolerance being the crossing when more than that tolerance of polyline runs between them and the polyline between them leaves the tolerance ball round the nearer point (around a closed edge, either way) — otherwise they are one stretch of the curve, as a periodic section edge's few units in the last place past its knots' end are, or a read edge bending through its first tolerance's length, whose chord across the bend is shorter than the arc | Full |
 
 **Loop and face**
 
@@ -1852,7 +1856,7 @@ reference tree) mapped onto this representation.
 | L2 | The pcurves are continuous in (u, v) at every coedge junction within `parametric_tolerance` scaled to the surface's speed, or jump by exactly one period in a periodic parameter — across a seam edge, and where a closed edge's pcurve wraps the parameter once. Every junction that is neither is reported | Fast |
 | L3 | No edge is used twice in one loop except as a seam (E7); no edge is used by two loops of the same face except as a seam | Fast |
 | L4 | Each loop's signed area in (u, v) is non-zero — its mean width, the area over half its perimeter, is above `parametric_tolerance` — and the loops of a face have exactly one outer loop (positive winding) per connected component of the domain, holes with negative winding inside one of them. Two outer loops are one component exactly when one contains the other; disjoint ones are two | Fast |
-| L5 | The loops of a face do not intersect each other or themselves in (u, v), as polygons within `parametric_tolerance` of the pcurves | Full |
+| L5 | The loops of a face do not intersect each other or themselves in (u, v), as polygons within `parametric_tolerance` of the pcurves; a loop crossing itself at a point within the tolerance of a vertex of the face meets there, its pieces joining at the vertex only to that tolerance | Full |
 | F1 | The face has a surface and at least one loop; every pcurve lies within the surface's non-periodic domain bounds, to `parametric_tolerance`. Reported once per face, at the first coedge that leaves them | Fast |
 | F2 | `face.tolerance ≥ Precision::min_tolerance` and ≤ every incident edge's | Fast |
 

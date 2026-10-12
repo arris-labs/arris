@@ -8,6 +8,14 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A STEP part whose edge lies a little off one of its faces now reads with
+  that edge's tolerance covering where its two faces actually meet, which
+  can be slightly more than its distance from either face. Before, the
+  checker could find such faces meeting outside the edge. The checker
+  (`arris_check::check` at `Level::Full`) also no longer reports a B-spline
+  edge that only bends within its tolerance as crossing itself, or a loop
+  whose curves meet at a corner only to that corner's tolerance as
+  crossing itself.
 - `arris_io::step::read` reads `SHELL_BASED_SURFACE_MODEL` and
   `FACE_BASED_SURFACE_MODEL` — the surface bodies CATIA exports as `Fill`,
   `Extract` and `Split` — as sheet bodies (`BodyKind::Sheet`) that pass the

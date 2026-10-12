@@ -1547,6 +1547,16 @@ corpus_tests! {
     /// the checker's S5 decides the pair as one touch (ADR-0026's amendment
     /// of step 5).
     real_torus_plane_section_undecided => part "real/torus-plane-section-undecided";
+    /// CTC-02's base plane and a drafted boss cylinder as a sheet: their
+    /// edge's read tolerance holds where the two surfaces meet, `1 / sin θ`
+    /// past its gap from the cylinder (ADR-0059).
+    real_edge_off_a_drafted_cylinder => part "real/edge-off-a-drafted-cylinder";
+    /// FTC-07 AP242's B-spline edge bending 45° within its tolerance: E8
+    /// holds it to no crossing, the curve never leaving the tolerance ball.
+    real_edge_bending_within_its_tolerance => part "real/edge-bending-within-its-tolerance";
+    /// FTC-07 AP242's sphere face whose loop zigzags inside a vertex's
+    /// tolerance: L5 holds it to no crossing.
+    real_loop_crossing_inside_a_vertex => part "real/loop-crossing-inside-a-vertex";
     /// NIST's FTC-09, AP203 geometry only: one solid of 158 faces, read whole.
     real_nist_ftc_09 => part "real/nist-ftc-09";
     /// `real/nist-ftc-09` with one plane wrapped in an `OFFSET_SURFACE` by
