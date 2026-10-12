@@ -75,7 +75,14 @@ pub enum Heal {
     /// meets has its tolerance grown to the gap, up to the healing
     /// ceiling — the part's size times `arris_math::HEAL_GAP_FRACTION`,
     /// which the model's `max_tolerance` does not bound — and is named in
-    /// [`Healing::grown`]. A gap past the ceiling is [`Refusal::Gap`].
+    /// [`Healing::grown`]. A gap past the ceiling is [`Refusal::Gap`]. A
+    /// face that walks every edge it shares with others (two at least)
+    /// the way the face across it does, beside faces that agree, has its
+    /// walk turned back — what Open CASCADE's writer does to a face
+    /// reversed on a left-handed surface frame — and is named in
+    /// [`Healing::turned`]; a face that disagrees on some shared edges
+    /// and not all, or one of two faces each against the other, is still
+    /// [`Refusal::Topology`].
     #[default]
     GapsAndOrientation,
 }
@@ -243,9 +250,11 @@ pub enum Refusal {
     },
     /// The solid's faces, bounds and edges do not make closed shells a
     /// solid can have: a loop that does not close, an edge not used
-    /// twice and in opposite directions, a shell in two pieces, two
-    /// shells sharing an edge — what the builder refuses
-    /// (`arris_topo::builder::BuildError`), said in its words.
+    /// twice and in opposite directions — that orientation healing does
+    /// not turn back ([`Heal`]), or a face it turned back that then fails
+    /// the checker — a shell in two pieces, two shells sharing an edge:
+    /// what the builder refuses (`arris_topo::builder::BuildError`), said
+    /// in its words.
     #[error("#{entity}: {what}")]
     Topology {
         /// The solid.

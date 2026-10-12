@@ -305,8 +305,9 @@ of the step that made the fixture pass, and a later change to it is a
   `occt_step_refused: {"kind": …, "why": …}` says Arris's reader refuses
   Open CASCADE's own STEP of the result with that refusal kind (as
   `RefusalKind` prints it): a file that describes no solid by ISO
-  10303-42 — Open CASCADE's writer turning a face's bounds, its boolean
-  leaving a face whose walk does not close. The read-back stage asserts
+  10303-42 — its boolean leaving a face whose walk does not close. (Its
+  writer turning a face's bounds is turned back by the read's
+  orientation healing, ADR-0058 §4.) The read-back stage asserts
   that refusal and fails once the file reads, so the entry is lifted with
   the change that reads it. `occt_nurbs_refused: {"kind": …, "why": …}`
   does the same for the converted file alone, where the plain one reads
@@ -647,8 +648,9 @@ and this is it: the parts under `real/nist-*` are NIST's.
   --committed`) counts from it. The battery example's `--record` writes
   it.
 - **A solid's `healed`** is what its read heals (ADR-0058): `{"grown": N,
-  "largest": gap}`, the count of vertices and edges the read grew past
-  the read cap and the largest gap, to six significant digits. It is
+  "largest": gap, "turned": M}`, the count of vertices and edges the
+  read grew past the read cap, the largest gap to six significant
+  digits, and the count of faces it turned; a zero is left out. It is
   absent where the read heals nothing, and the runner holds the read's
   record to it either way, so no part of the corpus heals silently.
 - **A refusal's `why` says why the refusal is right**, not which it is: the
@@ -735,6 +737,10 @@ and this is it: the parts under `real/nist-*` are NIST's.
   moves those faces' boundaries further from the file's curves than
   Arris's read does, and each fixture's tolerances are the band that
   moves, derived in its description.
+  `real/turned-face-in-an-open-shell` is written by hand:
+  `real/face-based-surface-model`'s corner with one face's bounds turned
+  as Open CASCADE's writer turns them, read with the face turned back
+  (ADR-0058 §4) to the corner's own dump.
 - `real/nist-ftc-09-offset` is `real/nist-ftc-09` with one plane wrapped
   in an `OFFSET_SURFACE` by hand: the refusal path under test.
 

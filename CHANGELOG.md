@@ -20,6 +20,13 @@ into its version (ADR-0027).
   which now bounds only what an operation may grow. Python:
   `read_step(text, heal=True)` and `StepSolid.healing`, whose `grown` is
   a list of `(entity, file_id, gap)`.
+- The STEP reader also turns back a face whose bounds are written walking
+  its edges the way its neighbours do — as every Open CASCADE–based
+  exporter writes a face reversed on a left-handed surface, a fillet's
+  torus among them — and names it in `Healing::turned`, where the solid
+  was refused as `Refusal::Topology`. A face that disagrees with its
+  neighbours on some edges and not all, or one of two faces each against
+  the other, is still refused. Python: `StepSolid.healing.turned`.
 - A STEP part whose edge lies a little off one of its faces now reads with
   that edge's tolerance covering where its two faces actually meet, which
   can be slightly more than its distance from either face. Before, the

@@ -21,7 +21,6 @@
     {"label": "outside", "point": [2, 0, 1.5], "expect": "out"}
   ],
   "analytic": {
-    "occt_step_refused": {"kind": "not a closed shell", "why": "Open CASCADE's writer turns the bounds of the fillet's torus face, as in blend/hole-rim-fillet: a face reversed on a left-handed torus frame is written right-handed with same_sense .T. and its bounds' sense kept, so the file's face walks an edge the same way its neighbour does. Turning it back is orientation healing (ADR-0025 §2)"},
     "volume": "3 * pi * 3 + pi + 2 * pi * (1 + r * (10 - 3 * pi) / (12 - 3 * pi)) * (1 - pi / 4) * r^2",
     "area": "9 * pi + (9 * pi - pi * (1 + r)^2) + 6 * pi + 2 * pi * (1 - r) + pi + pi^2 * r * (1 + r) - 2 * pi * r^2",
     "genus": 0

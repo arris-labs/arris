@@ -188,8 +188,9 @@ fn a_healed_body_reads_back_from_its_own_step() {
 
 /// Every committed part read with `Heal::Off` and healing: a solid whose
 /// healing record is empty reads alike either way — the whole file's
-/// dumps equal where no solid of it heals — a healed one is `Gap` with
-/// healing off, and a refusal is the same refusal. `Heal::Off` is the
+/// dumps equal where no solid of it heals — a healed one is `Gap` (a
+/// grown gap) or `Topology` (a turned face) with healing off, and a
+/// refusal is the same refusal. `Heal::Off` is the
 /// reader before healing, bit for bit.
 #[test]
 fn real_heal_off_reads_every_committed_part_as_before() {
@@ -243,7 +244,15 @@ fn real_heal_off_reads_every_committed_part_as_before() {
                         !y.healing.is_empty(),
                         "{at}: refused unhealed ({r}) with nothing healed"
                     );
-                    assert_eq!(r.kind(), step::RefusalKind::Gap, "{at}: {r}");
+                    // A grown gap is `Gap` unhealed, a turned face
+                    // `Topology`; with both, whichever the read meets first.
+                    let kinds: &[step::RefusalKind] =
+                        match (y.healing.grown.is_empty(), y.healing.turned.is_empty()) {
+                            (false, true) => &[step::RefusalKind::Gap],
+                            (true, false) => &[step::RefusalKind::Topology],
+                            _ => &[step::RefusalKind::Gap, step::RefusalKind::Topology],
+                        };
+                    assert!(kinds.contains(&r.kind()), "{at}: {r}");
                 }
                 (Err(r), Err(s)) => assert_eq!(r.kind(), s.kind(), "{at}: {r} vs {s}"),
                 (Ok(_), Err(s)) => panic!("{at} reads unhealed and is refused healing: {s}"),

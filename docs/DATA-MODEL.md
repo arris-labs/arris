@@ -1795,7 +1795,9 @@ may carry different tolerances.
   bound, and names every vertex and edge past the read cap in the
   body's `ReadBody::healing` record; past that ceiling it is refused
   (ADR-0058). Healing never moves geometry, and provenance is unchanged
-  by it.
+  by it. Its other half turns back the walk of a face that disagrees
+  with every neighbour on its shared edges, named in
+  `ReadBody::healing.turned` (ADR-0058 §4).
 - **`Precision`** is the model-wide configuration set at `Model::new`:
   `default_tolerance` (what primitives get), `min_tolerance` (the floor no
   entity goes below), `max_tolerance` (an operation that would exceed it

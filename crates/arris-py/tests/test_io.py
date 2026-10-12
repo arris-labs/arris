@@ -108,6 +108,27 @@ def test_a_vertex_a_little_off_its_edges_is_healed_and_named():
     assert refused.healing is None and refused.refusal.kind == "Gap"
 
 
+def test_a_face_whose_bounds_are_turned_is_turned_back_and_named():
+    model = arris.Model()
+    body, _ = model.primitive_box((0, 0, 0), (40, 30, 10))
+    text = model.write_step([body])
+    # The first face's outer bound written with its sense turned: the face
+    # walks every edge it shares the way its neighbour does.
+    i = text.index("FACE_OUTER_BOUND(")
+    j = text.index(".T.", i)
+    turned = text[:j] + ".F." + text[j + 3 :]
+
+    healed = arris.Model()
+    [solid] = healed.read_step(turned).solids
+    assert solid.ok and solid.healing.grown == []
+    [face] = solid.healing.turned
+    assert isinstance(face, arris.Face) and face in healed.faces(solid.body)
+    assert healed.mass_properties(solid.body).volume == pytest.approx(12000, rel=1e-12)
+
+    [refused] = arris.Model().read_step(turned, heal=False).solids
+    assert refused.refusal.kind == "Topology"
+
+
 def test_the_step_errors_are_typed():
     model = arris.Model()
     with pytest.raises(arris.StepNoBodiesError):

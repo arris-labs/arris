@@ -21,7 +21,6 @@
     {"label": "on_top", "point": [0.5, 0.5, 1], "expect": "on"}
   ],
   "analytic": {
-    "occt_step_refused": {"kind": "not a closed shell", "why": "Open CASCADE's writer turns the bounds of the fillet's torus face: in memory the face is reversed on a left-handed torus frame, and the file writes the torus right-handed with same_sense .T. — the right normal — but keeps the bounds' sense, so by ISO 10303-42 the face walks its edge with the bore's wall the same way the wall does. Open CASCADE reads its own file into the same inconsistency and does not check a band's side on a torus; turning a face's loops to agree with its neighbours is orientation healing (ADR-0025 §2)"},
     "volume": "16 - pi - 2 * pi * (1 + r * (10 - 3 * pi) / (12 - 3 * pi)) * (1 - pi / 4) * r^2",
     "area": "2 * (16 - pi) - pi * ((1 + r)^2 - 1) + 16 + 2 * pi * (1 - r) + pi^2 * r * (1 + r) - 2 * pi * r^2",
     "counts": {"vertices": 11, "edges": 17, "faces": 8, "loops": 10, "shells": 1},

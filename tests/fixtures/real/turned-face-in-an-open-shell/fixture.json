@@ -1,0 +1,18 @@
+{
+  "kind": "part",
+  "description": "real/face-based-surface-model's three faces at the origin corner of the 40 × 30 × 10 box, with face #237's bound #238 written with its sense turned (.T. for .F.) and its surface and same_sense kept: the face walks both edges it shares with its neighbours the way they do, as Open CASCADE's writer writes a face reversed on a left-handed surface frame. The read turns its walk back and names it in its healing record (ADR-0058 §4); Open CASCADE reads it through ShapeFix_Shell, and the sheet is held to its surface properties",
+  "file": "corner.stp",
+  "source": "written by hand for this fixture from tests/fixtures/real/face-based-surface-model/corner.stp, Open CASCADE's STEP of tests/fixtures/primitive/box",
+  "licence": "the project's own",
+  "sha256": "505066dccd9ed84156413e61d9134c300019079685cf28fc6d1eaee1e30d9f79",
+  "solids": [
+    {
+      "id": 15,
+      "instance": 0,
+      "outcome": "read",
+      "healed": {
+        "turned": 1
+      }
+    }
+  ]
+}

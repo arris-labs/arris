@@ -61,30 +61,36 @@ pub enum Outcome {
 }
 
 /// What a read heals in one solid (ADR-0058), as a fixture records it:
-/// how many vertices and edges it grew past the read cap, and the largest
-/// gap among them.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+/// how many vertices and edges it grew past the read cap and the largest
+/// gap among them, and how many faces it turned. A zero is left out.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct Healed {
     /// The count of `Healing::grown`.
+    #[serde(default, skip_serializing_if = "is_default")]
     pub grown: usize,
     /// Its largest gap, in the fixture's unit.
+    #[serde(default, skip_serializing_if = "is_default")]
     pub largest: f64,
+    /// The count of `Healing::turned`.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub turned: usize,
 }
 
 impl Healed {
     /// The record of a read body, `None` where it healed nothing.
     pub fn of(healing: &arris_io::step::Healing) -> Option<Healed> {
-        let largest = healing.grown.first()?.gap;
-        Some(Healed {
+        (!healing.is_empty()).then(|| Healed {
             grown: healing.grown.len(),
-            largest,
+            largest: healing.grown.first().map_or(0.0, |g| g.gap),
+            turned: healing.turned.len(),
         })
     }
 
-    /// `found` is this record: the same count, and the largest gap within
+    /// `found` is this record: the same counts, and the largest gap within
     /// [`HEALED_REL`] of it.
     pub fn holds(&self, found: &Healed) -> bool {
         self.grown == found.grown
+            && self.turned == found.turned
             && (self.largest - found.largest).abs() <= HEALED_REL * self.largest.abs()
     }
 }

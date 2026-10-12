@@ -529,6 +529,50 @@ END-ISO-10303-21;
     assert!((props.centroid.z - 1.5).abs() < 1e-9, "{props:?}");
 }
 
+/// The dome of `a_vertex_loop_at_a_pole_is_a_degenerate_edge` with the
+/// sense of its disc's bound (`#107`) turned: a closed shell of two faces,
+/// each disagreeing with the only neighbour it has. Which one the file
+/// turned is not to be known, and with no agreeing majority the read
+/// refuses rather than guesses (ADR-0058 §4).
+#[test]
+fn two_faces_each_against_the_other_are_refused_not_guessed() {
+    let body = circle_and_context();
+    let dome = |dome_bound: &str, disc_bound: &str| {
+        format!(
+            "{body}#22 = MANIFOLD_SOLID_BREP('',#23);
+#23 = CLOSED_SHELL('',(#24,#106));
+#24 = ADVANCED_FACE('',(#30,#200),#25,.T.);
+#25 = SPHERICAL_SURFACE('',#26,4.);
+#30 = FACE_OUTER_BOUND('',#105,{dome_bound});
+#57 = ORIENTED_EDGE('',*,*,#31,.T.);
+#105 = EDGE_LOOP('',(#57));
+#200 = FACE_BOUND('',#201,.T.);
+#201 = VERTEX_LOOP('',#202);
+#202 = VERTEX_POINT('',#203);
+#203 = CARTESIAN_POINT('',(0.,0.,4.));
+#106 = ADVANCED_FACE('',(#107),#45,.F.);
+#107 = FACE_OUTER_BOUND('',#109,{disc_bound});
+#108 = ORIENTED_EDGE('',*,*,#31,.T.);
+#109 = EDGE_LOOP('',(#108));
+ENDSEC;
+END-ISO-10303-21;
+"
+        )
+    };
+    let read = |text: &str| {
+        let mut m = Model::default();
+        let read = step_read(&mut m, text, &ReadOptions::default()).unwrap();
+        (m, read.solids[0].result.clone())
+    };
+    let (m, as_written) = read(&dome(".T.", ".F."));
+    let as_written = as_written.unwrap_or_else(|r| panic!("{r}"));
+    assert!(check(&m, as_written.body, Level::Full).is_ok());
+    assert!(as_written.healing.is_empty());
+    let (_, one) = read(&dome(".T.", ".T."));
+    let refusal = one.unwrap_err();
+    assert_eq!(refusal.kind(), step::RefusalKind::Topology, "{refusal}");
+}
+
 /// The cylinder's file with `from` replaced by `to`, read: the solid's
 /// result and the model.
 fn perturbed(from: &str, to: &str) -> (Model, Result<ReadBody, step::Refusal>) {

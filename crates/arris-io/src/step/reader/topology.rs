@@ -81,11 +81,17 @@
 //!   under the read cap first, and under the healing cap only where that
 //!   fails, so that a body that needs no healing reads as it would
 //!   without it.
+//! - **Orientation** is healed before any face is walked (ADR-0058 §4): a
+//!   face whose bounds walk every edge it shares — two at least — the way
+//!   the face across it does, beside neighbours that do not, has its walk
+//!   turned back, its surface and normal kept, in a solid whose every
+//!   loop chains; it is named in the [`Healing`] record. One turned back
+//!   that the checker then rejects is [`Refusal::Topology`].
 //!
 //! The body is checked at `Level::Fast` in every build (ADR-0025 §5), and
 //! a violation is the file's: [`Refusal::Invalid`].
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::f64::consts::TAU;
 
 use arris_check::domain::bands;
@@ -653,10 +659,16 @@ impl Geometry<'_> {
             }
         }
 
+        // The faces whose walk the file turned against every neighbour,
+        // turned back (ADR-0058 §4).
+        let turn_back = match heal {
+            Heal::Off => BTreeSet::new(),
+            Heal::GapsAndOrientation => turned_against_neighbours(file),
+        };
         let mut walked = Vec::with_capacity(file.shells.len());
-        for shell in &file.shells {
+        for (si, shell) in file.shells.iter().enumerate() {
             let mut faces = Vec::with_capacity(shell.faces.len());
-            for face in &shell.faces {
+            for (fi, face) in shell.faces.iter().enumerate() {
                 meter.tick().map_err(|_| stopped_in(solid))?;
                 let (surface, surface_id) = match surfaces.get(&face.surface.id) {
                     Some(s) => s.clone(),
@@ -700,7 +712,7 @@ impl Geometry<'_> {
                         continue;
                     };
                     let mut walk = walk.clone();
-                    if face.turned {
+                    if face.turned != turn_back.contains(&(si, fi)) {
                         turn(&mut walk);
                     }
                     // Each file edge's pieces, in the walk's direction.
@@ -1067,6 +1079,24 @@ impl Geometry<'_> {
         grown.sort_by(|a, b| b.gap.total_cmp(&a.gap));
 
         let report = check(model, built.body, Level::Fast);
+        if !report.is_ok() && !turn_back.is_empty() {
+            // A face turned back that the checker then rejects was not
+            // the file's face reversed but some other inconsistency —
+            // a face whose front and bounds are both turned, which the
+            // walk turned back leaves bounding no region: the file's
+            // orientation, refused as such.
+            let names: Vec<String> = (turn_back.iter())
+                .filter_map(|&(si, fi)| file.shells.get(si)?.faces.get(fi))
+                .map(|f| format!("#{}", f.id))
+                .collect();
+            return Err(Refusal::Topology {
+                entity: solid,
+                what: format!(
+                    "{} walk every shared edge the way the neighbour across it does, and turned back fail the checker:\n{report}",
+                    names.join(", ")
+                ),
+            });
+        }
         if !report.is_ok() {
             return Err(Refusal::Invalid {
                 entity: solid,
@@ -1104,7 +1134,12 @@ impl Geometry<'_> {
             provenance,
             healing: Healing {
                 grown,
-                turned: Vec::new(),
+                turned: (turn_back.iter())
+                    .filter_map(|&(si, fi)| {
+                        let slot = slots.faces.get(si)?.get(fi)?;
+                        built.faces.get(slot).copied()
+                    })
+                    .collect(),
             },
         })
     }
@@ -1182,6 +1217,84 @@ impl Use {
             Orientation::Reversed => (b, a),
         }
     }
+}
+
+/// A face of a file solid: its shell's index and its own in the shell.
+type FaceAt = (usize, usize);
+
+/// The faces, as `(shell, face)` indices, whose walk the file turned
+/// against their neighbours (ADR-0058 §4): every edge a face shares with
+/// another face is walked the same way by both — once each, by two faces
+/// — and no face across those edges disagrees with all its own
+/// neighbours, so the neighbours agree. A face that shares fewer than
+/// two edges is no evidence of which use the file turned and is not
+/// turned. A face that disagrees on some
+/// shared edges and not all, or two faces that each disagree only with
+/// the other, are left for the builder to refuse. So is every face of a
+/// solid one of whose loops does not chain, each edge starting where the
+/// one before it ends: that file is inconsistent, not reversed, and a
+/// face beside the broken loop would look turned.
+fn turned_against_neighbours(file: &FileSolid) -> BTreeSet<FaceAt> {
+    let ends = |step: &Step| {
+        let e = &file.edges[step.edge];
+        if step.forward {
+            (e.start, e.end)
+        } else {
+            (e.end, e.start)
+        }
+    };
+    let chains = (file.shells.iter())
+        .flat_map(|shell| &shell.faces)
+        .flat_map(|face| &face.bounds)
+        .all(|bound| match &bound.walk {
+            Walk::Edges(walk) => {
+                (0..walk.len()).all(|i| ends(&walk[i]).1 == ends(&walk[(i + 1) % walk.len()]).0)
+            }
+            Walk::Vertex(_) => true,
+        });
+    if !chains {
+        return BTreeSet::new();
+    }
+    // Each file edge's uses: the face and whether its walk, as read,
+    // runs the edge from its file start.
+    let mut uses: BTreeMap<usize, Vec<(FaceAt, bool)>> = BTreeMap::new();
+    for (si, shell) in file.shells.iter().enumerate() {
+        for (fi, face) in shell.faces.iter().enumerate() {
+            for bound in &face.bounds {
+                let Walk::Edges(ref walk) = bound.walk else {
+                    continue;
+                };
+                for step in walk {
+                    let forward = step.forward != face.turned;
+                    uses.entry(step.edge).or_default().push(((si, fi), forward));
+                }
+            }
+        }
+    }
+    // Per face: its neighbours across shared edges, and whether it
+    // disagrees with each.
+    let mut across: BTreeMap<FaceAt, Vec<(FaceAt, bool)>> = BTreeMap::new();
+    for list in uses.values() {
+        let [(a, fa), (b, fb)] = list[..] else {
+            continue;
+        };
+        if a == b {
+            continue;
+        }
+        across.entry(a).or_default().push((b, fa == fb));
+        across.entry(b).or_default().push((a, fa == fb));
+    }
+    // A face with one shared edge is no evidence: the edge's other use
+    // may as well be the one turned.
+    let against_all = |f: &FaceAt| {
+        across
+            .get(f)
+            .is_some_and(|n| n.len() >= 2 && n.iter().all(|&(_, disagrees)| disagrees))
+    };
+    (across.iter())
+        .filter(|(f, n)| against_all(f) && n.iter().all(|(g, _)| !against_all(g)))
+        .map(|(&f, _)| f)
+        .collect()
 }
 
 /// A walk turned: the other way round, each use the other way.

@@ -1769,7 +1769,11 @@ B-Rep).
   part's size whatever the model's `max_tolerance`, and every vertex and
   edge grown past the read cap is named in `ReadBody::healing`
   (`Healing::grown`, each `Grown` the entity, its file `#id` and its
-  gap); `Heal::Off` is the read before healing, bit for bit. The body is checked at `Level::Fast` in
+  gap); a face whose bounds walk every edge it shares (two at least) the
+  way its neighbour does, beside neighbours that agree, has its walk
+  turned back before any pcurve is fitted and is named in
+  `Healing::turned`; `Heal::Off` is the read before healing, bit for
+  bit. The body is checked at `Level::Fast` in
   every build, since a violation there is the file's and not the
   kernel's. Every solid comes back as a `ReadSolid` carrying its
   `FileEntity` and either a `ReadBody` — the body, its provenance, each

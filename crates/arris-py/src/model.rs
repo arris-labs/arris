@@ -1691,8 +1691,10 @@ impl Model {
     /// naming the file entity where it stopped and leaves nothing in the
     /// model; one refused solid never hides another. With `heal` (the
     /// default) a vertex or edge lying a little off the faces it meets is
-    /// read with its tolerance grown to the gap, and named in the solid's
-    /// `healing`; `heal=False` refuses it as a `"Gap"`. Raises `StepParseError`
+    /// read with its tolerance grown to the gap, and a face written walking
+    /// its edges the way its neighbours do is turned back, each named in
+    /// the solid's `healing`; `heal=False` refuses them as a `"Gap"` and
+    /// a `"Topology"`. Raises `StepParseError`
     /// when the text is not Part 21 at all, `Interrupted` when `cancel` or
     /// `budget` stops it (the model is as it was) and `ValueError` for an
     /// unknown unit.

@@ -224,7 +224,7 @@ whether 4 or all 6 of the healable parts leave the row.
   `real/healed-gap-{cylinder-meets-sphere,nurbs-meets-cylinder,on-an-engraved-plane}`,
   each held to the band its healed edges leave the sheet's area. The
   committed histogram's `healing` row is 0. The fetched tier is step 5's.
-- [ ] Step 4 **[2]** — **Orientation healing.** The rule of ADR-0058 §2
+- [x] Step 4 **[2]** — **Orientation healing.** The rule of ADR-0058 §2
   in the reader, for solids and sheets, recorded in `Healing::turned`.
   Fixtures: the three blend fixtures' Open CASCADE STEP reads back, so
   their `occt_step_refused` is removed and the read-back stage matches
@@ -236,6 +236,22 @@ whether 4 or all 6 of the healable parts leave the row.
   with that face named. Partial disagreement stays `Topology`, with a
   test. Python: `healing.turned`. `CHANGELOG.md` bullet. BACKLOG line 98
   is removed.
+  *Done:* the rule turns a face's walk, its surface and normal kept,
+  before any pcurve is fitted; that is Open CASCADE's writer's defect,
+  and the three blends' files read back to the oracle. Three guards keep
+  it from guessing. A face sharing fewer than two edges is no evidence of
+  which use was turned: a cylinder whose side walks one circle backwards
+  would otherwise turn its cap. A solid with a loop that does not chain
+  is inconsistent, not reversed. A face turned back that the checker then
+  rejects (a face whose front *and* bounds the file turned, left bounding
+  no region) is `Topology`, not `Invalid`, as `step_sheets` holds. The
+  two-face case is a closed dome and its disc (`step_read`). Partial
+  disagreement is a through-hole face with only its hole's bound turned
+  (`step_orient`). The sheet excerpt is hand-written,
+  `real/turned-face-in-an-open-shell`, three faces so that one is
+  outvoted, and its dump is the untouched corner's. The part runner's
+  `healed` counts `turned`. The backlog's orientation line was 99, not
+  98.
 - [ ] Step 5 **[1]** — **The histogram re-run.** The survey records
   healing per solid and the summary prints the `healed` count. The fetched
   tier is re-run, and the committed tier's histogram block in

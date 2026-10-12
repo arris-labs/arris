@@ -1566,6 +1566,10 @@ corpus_tests! {
     /// FTC-11 AP242's engraved plane and a cylinder, their edge 0.0141
     /// off: 1.5e-4 of the part, the largest gap of the corpus for its size.
     real_healed_gap_on_an_engraved_plane => part "real/healed-gap-on-an-engraved-plane";
+    /// Three faces of a box corner as a sheet, one written with its bounds
+    /// turned as Open CASCADE's writer turns them: read with its walk
+    /// turned back and named (ADR-0058 §4).
+    real_turned_face_in_an_open_shell => part "real/turned-face-in-an-open-shell";
     /// NIST's FTC-09, AP203 geometry only: one solid of 158 faces, read whole.
     real_nist_ftc_09 => part "real/nist-ftc-09";
     /// `real/nist-ftc-09` with one plane wrapped in an `OFFSET_SURFACE` by

@@ -168,7 +168,6 @@
     }
   ],
   "analytic": {
-    "occt_step_refused": {"kind": "not a closed shell", "why": "Open CASCADE's writer turns the bounds of the fillet's torus face, as in blend/boss-base-fillet: the face is written reversed on a torus whose axis points down, its bounds' sense kept, so the file's face walks both its edges, the contact on the disc and the contact on the cone, the same way the disc and the cone do. Turning it back is orientation healing (ADR-0025 §2)"},
     "volume": "9 * pi + 7 * pi / 3 + 2 * pi * (r * r * (sqrt(2) - 1) * ((2 * 2 + (2 + r * (sqrt(2) - 1) * (1)) + (2 + r * (sqrt(2) - 1) * (-0.7071067811865475)) + 2 * (2 + (0.38268343236508984) * r / sin(radians(67.5)))) / 6) - pi / 8 * r^2 * ((2 + (0.38268343236508984) * r / sin(radians(67.5))) - (0.38268343236508984) * 16 * r * sin(radians(22.5)) / (3 * pi)))",
     "genus": 0
   }
