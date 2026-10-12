@@ -827,3 +827,71 @@ pub fn compare_stl(stl: &[u8], tag: &str) -> Result<StlReading, OracleError> {
     keep(slot, &output.stdout);
     Ok(reading)
 }
+
+/// One entity of Open CASCADE's reading that carries a tolerance past
+/// `tools/oracle/occt_tolerances.py`'s floor: a vertex by its point, an
+/// edge by the midpoint of its curve.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct CarriedTolerance {
+    /// The vertex's point, or `midpoint` for an edge.
+    #[serde(alias = "midpoint")]
+    pub point: [f64; 3],
+    /// The tolerance Open CASCADE carries there.
+    pub tolerance: f64,
+}
+
+/// A solid of Open CASCADE's healed reading, with the tolerances it
+/// carries ([`occt_tolerances`]).
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct SolidTolerances {
+    /// The `#id` of the solid's entity in the file.
+    pub id: u64,
+    /// The diagonal of the solid's bounding box.
+    pub size: f64,
+    /// Vertices carrying a tolerance past the floor.
+    pub vertices: Vec<CarriedTolerance>,
+    /// Edges carrying a tolerance past the floor.
+    pub edges: Vec<CarriedTolerance>,
+    /// The largest vertex tolerance, floor or not.
+    pub max_vertex: f64,
+    /// The largest edge tolerance, floor or not.
+    pub max_edge: f64,
+}
+
+/// The tolerances Open CASCADE carries each solid of `file` at after its
+/// reader heals it (`tools/oracle/occt_tolerances.py`): what the gap
+/// census sets Arris's healing beside (ADR-0058). Cached under the file's
+/// bytes (ADR-0024). Errors: [`OracleError::Environment`] when `uv` could
+/// not run or the file does not read.
+///
+/// ```no_run
+/// use arris_debug::oracle;
+///
+/// let solids = oracle::occt_tolerances(std::path::Path::new("part.stp")).unwrap();
+/// assert!(solids.iter().all(|s| s.max_edge >= 0.0));
+/// ```
+pub fn occt_tolerances(file: &Path) -> Result<Vec<SolidTolerances>, OracleError> {
+    let bytes = std::fs::read(file).map_err(|e| OracleError::Environment {
+        message: format!("{}: {e}", file.display()),
+    })?;
+    let slot = cache::slot("occt_tolerances.py", &[Some(&bytes)], None);
+    let parse = |bytes: &[u8]| {
+        serde_json::from_slice::<Vec<SolidTolerances>>(bytes).map_err(|e| {
+            OracleError::Environment {
+                message: format!("occt_tolerances.py's output did not parse as JSON: {e}"),
+            }
+        })
+    };
+    if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
+        if let Ok(read) = parse(&bytes) {
+            return Ok(read);
+        }
+    }
+    let output = spawn(uv("occt_tolerances.py").arg(file))?;
+    if !output.status.success() {
+        return Err(environment(&output));
+    }
+    let read = parse(&output.stdout)?;
+    keep(slot, &output.stdout);
+    Ok(read)
+}

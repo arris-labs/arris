@@ -160,6 +160,31 @@ fn the_roadmap_holds_the_committed_tier_histogram() {
     );
 }
 
+/// The gap census in ADR-0058 is the one the committed tier's two gap
+/// parts print today (`real_parts --gaps-committed`), Open CASCADE's
+/// tolerances included: a reader or an oracle that moves a gap fails here
+/// until the ADR's table is printed again, with the reason.
+#[test]
+fn the_gap_adr_holds_the_committed_census() {
+    let census = arris_debug::gaps::committed().unwrap_or_else(|e| panic!("{e}"));
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let adr = std::fs::read_to_string(root.join(
+        "docs/adr/0058-a-read-gap-is-closed-by-a-grown-tolerance-and-the-read-records-it.md",
+    ))
+    .unwrap();
+    let open = "<!-- gaps: committed -->\n";
+    let start = adr.find(open).expect("the census block") + open.len();
+    let end = start
+        + adr[start..]
+            .find("<!-- /gaps -->")
+            .expect("the block's end");
+    assert_eq!(
+        &adr[start..end],
+        arris_debug::gaps::markdown(&census),
+        "print it again: cargo run -p arris-debug --example real_parts -- --gaps-committed"
+    );
+}
+
 /// A released heading's `(major, minor, patch)` and date, from
 /// `## X.Y.Z — YYYY-MM-DD`.
 fn release_heading(heading: &str) -> Option<((u64, u64, u64), &str)> {

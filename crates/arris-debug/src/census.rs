@@ -279,7 +279,7 @@ pub fn blend_census(m: &Model, body: Body, solid: &str) -> Result<SolidCensus, S
 }
 
 /// The midpoint of `edge`'s curve; `None` for an edge with none.
-fn edge_midpoint(m: &Model, edge: EdgeId) -> Option<Point3> {
+pub(crate) fn edge_midpoint(m: &Model, edge: EdgeId) -> Option<Point3> {
     let (c, range) = m.edge(edge).ok()?.curve()?;
     Some(m.curve(c).ok()?.point(range.lerp(0.5)))
 }
@@ -292,7 +292,7 @@ fn face_kind(m: &Model, f: arris_topo::FaceId) -> Option<String> {
 
 /// The two surface kinds an edge separates, sorted: the pair a blend of it
 /// asks the construction for.
-fn pair_of(m: &Model, edge: EdgeId) -> Option<String> {
+pub(crate) fn pair_of(m: &Model, edge: EdgeId) -> Option<String> {
     let mut kinds: Vec<String> = m
         .edge_uses(edge)
         .ok()?

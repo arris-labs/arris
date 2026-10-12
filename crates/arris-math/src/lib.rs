@@ -83,6 +83,23 @@ pub const RELATIVE_ROUNDING: f64 = 8.0 * f64::EPSILON;
 /// (ADR-0026 §5, `docs/ROADMAP.md` §C4).
 pub const READ_GAP_FRACTION: f64 = 2e-4;
 
+/// The healing ceiling: the largest gap, as a fraction of the part's size
+/// (the same ball [`READ_GAP_FRACTION`] is of), that a STEP read heals by
+/// growing the tolerance of the entity it lies at (ADR-0058). A gap past
+/// it is still a refusal.
+///
+/// Measured on the real-part corpus by the gap census (`real_parts
+/// --gaps`): the seven parts the read refuses a gap of hold gaps of
+/// `8.6e-6` to `1.5e-4` of their size, the largest FTC-11's `0.0141` on a
+/// part `96.5` across, and Open CASCADE's reading of the same parts
+/// carries tolerances of up to `2.6e-4` of the part (FTC-07's `0.104` on
+/// `407`; CTC-02's `0.108` on `1167` is `9e-5`). `5e-4` is `3.4×` the
+/// largest gap Arris measured and `1.9×` the largest Open CASCADE carries: room for a part
+/// a little worse than any seen, and under every healing tool's usual
+/// sewing tolerance (`1e-3` of the size). A tolerance policy, not a
+/// rounding slack.
+pub const HEAL_GAP_FRACTION: f64 = 5e-4;
+
 /// `|x| ≤ RELATIVE_ROUNDING · |scale|`: `x` is zero to rounding at
 /// `scale`. A zero `scale` makes only an exact zero negligible.
 ///

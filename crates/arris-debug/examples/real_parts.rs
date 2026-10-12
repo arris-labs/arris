@@ -14,6 +14,9 @@
 //!   each blendable edge alone meets. `real_parts --census <file.stp>...`
 //!   counts every solid of a file, no oracle asked. The fetched tier's is
 //!   `fillet-by-part.md`, written by `--summary` from the survey.
+//! - `real_parts --gaps <file.stp>...` and `--gaps-committed` print every
+//!   gap a read grows past the default ceiling beside Open CASCADE's
+//!   tolerance there (`arris_debug::gaps`, ADR-0058).
 //! - `real_parts --run-over <file.stp>...` and `--run-over-committed` take
 //!   every `BlendTooLarge` edge of those solids apart by the site that
 //!   refused it and put a sample of each cause to Open CASCADE alone at
@@ -36,6 +39,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use arris_debug::census;
+use arris_debug::gaps;
 use arris_debug::histogram::{COMMITTED_TIER, Histogram};
 use arris_debug::survey::{self, Report};
 use arris_debug::{fixtures, part};
@@ -44,7 +48,7 @@ type Error = Box<dyn std::error::Error>;
 
 fn usage() -> ! {
     eprintln!(
-        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --tangent-chain <file.stp>...\n       real_parts --run-over <file.stp>...\n       real_parts --run-over-committed\n       real_parts --vertex-blend <file.stp>...\n       real_parts --vertex-blend-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
+        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --gaps <file.stp>...\n       real_parts --gaps-committed\n       real_parts --tangent-chain <file.stp>...\n       real_parts --run-over <file.stp>...\n       real_parts --run-over-committed\n       real_parts --vertex-blend <file.stp>...\n       real_parts --vertex-blend-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
     );
     std::process::exit(2);
 }
@@ -129,6 +133,20 @@ fn main() -> Result<(), Error> {
             for file in &args[1..] {
                 print!("{}", census::tangent_chain_file(Path::new(file))?);
             }
+            Ok(())
+        }
+        Some("--gaps") if args.len() >= 2 => {
+            let mut parts = Vec::new();
+            for file in &args[1..] {
+                let path = Path::new(file);
+                let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or(file);
+                parts.push((name.to_string(), gaps::census_file(path)?));
+            }
+            print!("{}", gaps::markdown(&parts));
+            Ok(())
+        }
+        Some("--gaps-committed") => {
+            print!("{}", gaps::markdown(&gaps::committed()?));
             Ok(())
         }
         Some("--census-committed") => {
