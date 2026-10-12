@@ -360,7 +360,7 @@ fn blend(
     kind: Kind,
     control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    crate::verify_input(m, body)?;
+    crate::verify_solid(m, body)?;
     let b = body.shape();
     let (what, size) = match kind {
         Kind::Fillet { radius } => ("radius", radius),

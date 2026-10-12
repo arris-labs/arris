@@ -143,7 +143,7 @@ measure to hold it to.
   disc, a slot with two holes, an arc-and-line profile) matched in area,
   centroid and inertia; property: area equals the profile's closed-form
   area in random poses. Bound in Python. Closes M5 `⚠ OPEN` 1.
-- [ ] Step 5 **[1]** — Sheet operands, each a test over a planar face and a
+- [x] Step 5 **[1]** — Sheet operands, each a test over a planar face and a
   read surface model: `transform` and `mirror` (kind kept, surface
   properties carried by the motion, a mirror's front turned as its faces
   are), tessellation (every triangle's normal on the sheet's front, mesh

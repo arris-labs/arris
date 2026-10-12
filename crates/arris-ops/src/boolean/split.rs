@@ -87,7 +87,7 @@ pub fn split(
     plane: &Frame,
     control: &Control<'_>,
 ) -> Result<Split, OpError> {
-    crate::verify_input(m, body)?;
+    crate::verify_solid(m, body)?;
     let no_crossing = || OpError::Degenerate {
         entities: vec![Shape::new(body.id, body.orientation)],
         reason: Reason::Split(SplitReason::NoCrossing),

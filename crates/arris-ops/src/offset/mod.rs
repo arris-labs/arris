@@ -136,7 +136,7 @@ pub fn offset_faces(
     distance: f64,
     control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    crate::verify_input(m, body)?;
+    crate::verify_solid(m, body)?;
     let b = body.shape();
     let refuse = |entities, reason| OpError::Degenerate { entities, reason };
     if !distance.is_finite() {

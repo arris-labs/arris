@@ -875,7 +875,7 @@ fn many(
         }
     }
     for &body in operands {
-        crate::verify_input(m, body)?;
+        crate::verify_solid(m, body)?;
     }
     let mut meter = Meter::new(control);
     let i = pave::build(m, operands, &mut meter)?;
@@ -988,8 +988,8 @@ pub fn common(
     b: Body,
     control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    crate::verify_input(m, a)?;
-    crate::verify_input(m, b)?;
+    crate::verify_solid(m, a)?;
+    crate::verify_solid(m, b)?;
     let mut meter = Meter::new(control);
     let i = pave::build(m, &[a, b], &mut meter)?;
     result::boolean(m, &i, result::Op::Common, &mut meter)
@@ -1018,8 +1018,8 @@ pub(crate) fn common_probe(
     b: Body,
     control: &Control<'_>,
 ) -> Result<Probe, OpError> {
-    crate::verify_input(m, a)?;
-    crate::verify_input(m, b)?;
+    crate::verify_solid(m, a)?;
+    crate::verify_solid(m, b)?;
     let mut meter = Meter::new(control);
     let i = pave::build(m, &[a, b], &mut meter)?;
     let common = match result::boolean_each_witnessed(m, &i, &[result::Op::Common], &mut meter) {

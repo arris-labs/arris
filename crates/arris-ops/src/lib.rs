@@ -82,6 +82,20 @@ fn verify_input(m: &Model, body: Body) -> Result<(), OpError> {
     Ok(())
 }
 
+/// [`verify_input`], then the body must be a solid: the operations that
+/// need an inside refuse a sheet, a wire or a general body as
+/// [`InputReason::NotSolid`] naming it.
+fn verify_solid(m: &Model, body: Body) -> Result<(), OpError> {
+    verify_input(m, body)?;
+    if m.body(body.id)?.kind() != arris_topo::entity::BodyKind::Solid {
+        return Err(OpError::Degenerate {
+            entities: vec![arris_topo::Shape::new(body.id, body.orientation)],
+            reason: Reason::Input(InputReason::NotSolid),
+        });
+    }
+    Ok(())
+}
+
 /// The debug-build guard every operation runs on its output before
 /// returning `Ok`: `Level::Fast`, a panic with the report on a failure.
 /// With the `paranoid` feature a release build runs it too and returns

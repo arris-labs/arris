@@ -27,6 +27,12 @@ into its version (ADR-0027).
   coordinate: a file read back with `ReadOptions` of the same unit returns
   every coordinate bit-identical. `write` and `write_products` still write
   millimetres. Python: `Model.write_step(bodies, length_unit="m")`.
+- `transform` and `mirror` take a sheet body and return a sheet (a mirror
+  turns its fronts as it turns its faces). `fuse`, `cut`, `common`, their
+  multi-tool forms, `split`, `fillet`, `chamfer`, `shell` and
+  `offset_faces` refuse a sheet or any other non-solid operand as
+  `InputReason::NotSolid` naming it, where some failed with an internal
+  error before.
 - `arris_ops::planar_face(&mut model, &profile, &control)` makes a sketch
   a one-face sheet body: the profile's loops, holes included, on its
   plane, its front along the plane's normal, every entity named by the part

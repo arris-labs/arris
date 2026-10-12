@@ -3,6 +3,7 @@
 
 use arris_math::{Control, Isometry, Meter, Point3};
 use arris_topo::builder::{Assembly, Builder, GeometryRemap};
+use arris_topo::entity::BodyKind;
 use arris_topo::{Body, CurveId, EntityId, Model, Orientation, Provenance, Shape, SurfaceId};
 
 use crate::error::OpError;
@@ -44,13 +45,11 @@ impl GeometryRemap for Move<'_> {
 /// recorded `Modified` one-to-one from the entity it moved. The body's
 /// kind is kept.
 ///
-/// Built over `assemble`, so it reaches exactly as far as that does: a
-/// body reduced entirely to shells of faces that share nothing (a
-/// `Solid`, the one kind [`Builder::finish`] builds and every operation
-/// produces today) moves whole, every shell of it carried to a shell of
-/// the result in the body's stored order; one that is not comes back as
-/// [`OpError::Internal`] naming the builder's refusal, the same as
-/// `assemble`'s own.
+/// Built over `assemble` (`assemble_sheet` for a `Sheet`), so it reaches
+/// exactly as far as those do: a solid or a sheet moves whole, every shell
+/// of it carried to a shell of the result in the body's stored order, a
+/// sheet's faces keeping their fronts; any other body comes back as
+/// [`OpError::Internal`] naming the builder's refusal.
 ///
 /// Errors: [`OpError::InvalidInput`] when `body` fails the checker (debug
 /// builds, and release with the `paranoid` feature); [`OpError::NotFound`]
@@ -96,7 +95,10 @@ pub(crate) fn copy_body(
 
     m.transaction(|m| {
         let (assembly, index) = Assembly::of_body(m, body, remap)?;
-        let (b, slots) = Builder::assemble(m, tolerance, assembly)?;
+        let (b, slots) = match entity.kind() {
+            BodyKind::Sheet => Builder::assemble_sheet(m, tolerance, assembly)?,
+            _ => Builder::assemble(m, tolerance, assembly)?,
+        };
         let built = b.finish(m, entity.kind())?;
 
         fn forward(id: impl Into<EntityId>) -> Shape {
