@@ -50,8 +50,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for dir in corpus() {
         let kind = kind_of(&dir)?;
         // A part's STEP file is a whole real part, not a seed a mutation
-        // gets far with; the corpus runner reads every one already.
-        if kind == Kind::Part {
+        // gets far with; the corpus runner reads every one already. A
+        // query's recipe holds no surface or curve pair to seed from.
+        if matches!(kind, Kind::Part | Kind::Query) {
             continue;
         }
         if kind == Kind::Solid {

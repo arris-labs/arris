@@ -25,15 +25,18 @@ checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 
 [[package]]
 name = "arris-check"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
+ "arris-geom",
+ "arris-math",
  "arris-topo",
 ]
 
 [[package]]
 name = "arris-debug"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
+ "arris-check",
  "arris-geom",
  "arris-io",
  "arris-math",
@@ -53,16 +56,18 @@ name = "arris-fuzz"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
+ "arris-check",
  "arris-debug",
  "arris-geom",
  "arris-io",
  "arris-math",
+ "arris-topo",
  "libfuzzer-sys",
 ]
 
 [[package]]
 name = "arris-geom"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
  "arris-math",
  "serde",
@@ -71,10 +76,13 @@ dependencies = [
 
 [[package]]
 name = "arris-io"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
  "arris-check",
+ "arris-geom",
+ "arris-math",
  "arris-mesh",
+ "arris-topo",
  "postcard",
  "serde",
  "serde_json",
@@ -83,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "arris-math"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
  "nalgebra",
  "robust",
@@ -92,24 +100,29 @@ dependencies = [
 
 [[package]]
 name = "arris-mesh"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
  "arris-check",
+ "arris-geom",
+ "arris-math",
  "arris-topo",
  "thiserror",
 ]
 
 [[package]]
 name = "arris-ops"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
  "arris-check",
+ "arris-geom",
+ "arris-math",
+ "arris-topo",
  "thiserror",
 ]
 
 [[package]]
 name = "arris-topo"
-version = "0.4.0-dev"
+version = "0.8.0-dev"
 dependencies = [
  "arris-geom",
  "arris-math",
