@@ -1505,11 +1505,15 @@ test scaffolding that stores a dangling reference as given), the builder
   mix, including a face used by two shells (a face separating two regions
   of one body) and an edge used by more than two coedges.
   Non-manifold structure is thus representable from day one (`SEED.md`
-  §9); every operation today produces and accepts `Solid` only. The
-  builder's `finish` builds a `Solid` or a `Sheet` — the open shells
+  §9); sheets are built by `ops::planar_face` (a profile), by the STEP reader
+  (a surface model) and by `ops::section` (a planar section), and measured
+  by `measure::surface_properties` (area, centroid, inertia, any body);
+  `transform` and `mirror` take one and return one of its kind; every other
+  operation that needs an inside accepts `Solid` only, and `mass_properties`
+  refuses a non-solid as `OpError::Degenerate` with `InputReason::NotSolid`.
+  The builder's `finish` builds a `Solid` or a `Sheet` — the open shells
   `assemble_sheet` proves, for an operation whose result has a boundary —
-  and no other kind (`BuildError::Kind`), and `measure` refuses a
-  non-solid as `OpError::Degenerate` with `InputReason::NotSolid`.
+  and no other kind (`BuildError::Kind`).
 
 ### Orientation
 

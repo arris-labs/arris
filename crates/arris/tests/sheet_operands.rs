@@ -1,4 +1,4 @@
-//! A sheet body as an operand (plans/step-unit-and-sheet-bodies step 5):
+//! A sheet body as an operand (C9, the healing cycle's sheet bodies):
 //! a planar face and two read surface models — a cylinder patch and the
 //! three faces of a box's corner — through `transform` and `mirror` (kind
 //! kept, surface properties carried by the motion, a mirror's front turned

@@ -27,7 +27,7 @@ not the latest.
 | Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
 | Ray fire | Yes | Yes, on every face kind including NURBS |
 | Healing | `ShapeFix`, on by default when reading | Not yet; a STEP file that needs it is refused, naming why |
-| Sheet and non-manifold bodies | Yes | Open shells as sheet bodies only; non-manifold is refused |
+| Sheet and non-manifold bodies | Yes | Sheet bodies (open shells): from a planar profile, a planar section and STEP surface models, which read and write; measured by area and surface inertia; moved, mirrored and tessellated; booleans, blends and shells refuse one. A surface model whose faces do not meet is refused until sewing lands. Non-manifold is refused |
 | STEP | Read and write, IGES too | Read (every solid of a file is a checked body or a named refusal), write AP214; assemblies both ways |
 | Other formats | IGES, STL, glTF, and more | STL, OBJ, a deterministic native format in JSON and bytes |
 | Provenance | `BRepTools_History` (modified, generated, deleted) | Every operation returns generated, modified and deleted entities for every entity touched |

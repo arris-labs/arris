@@ -42,10 +42,12 @@ loft went to the NURBS cycle (ADR-0047 to 0052).
 **C8 done (2026-10-11): the query cycle.** Ray fire and the face-box
 hierarchy, minimum distance, interference and the planar section, each held
 to Open CASCADE and bound in Python (ADR-0053 to 0056).
-**C9, the healing cycle** (opened 2026-10-11): sheet bodies, sewing,
-orientation healing and the STEP writer's length unit (A12, first). **Next:**
-`/idea` or `/plan` for A12; the DIY part corpus (an `/idea`) still ranks
-the cycle after C9.
+**C9, the healing cycle** (opened 2026-10-11): its first part landed
+2026-10-12 — the STEP writer's length unit (A12), `planar_face`, surface
+models read and written as sheet bodies, and sheets as operands of
+transform, mirror and the checker (ADR-0057). Healing blocks 7 of 38 parts,
+from 14. **Next:** the second C9 plan, sewing and orientation (`/plan`);
+the DIY part corpus (an `/idea`) still ranks the cycle after C9.
 
 ## Rules that are not derivable from the code
 
