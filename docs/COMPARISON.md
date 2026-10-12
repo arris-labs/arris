@@ -26,9 +26,9 @@ not the latest.
 | Sweep, loft, pipe | Yes | Not yet |
 | Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
 | Ray fire | Yes | Yes, on every face kind including NURBS |
-| Healing | `ShapeFix`, on by default when reading | Not yet; a STEP file that needs it is refused, naming why |
+| Healing | `ShapeFix` and sewing, on by default when reading | Two repairs, on by default when reading and each named on the body: a gap up to 5e-4 of the part's size closed by growing that entity's tolerance, and a face the file walks against all its neighbours turned back. Faces that share no edge are not sewn: refused, naming why |
 | Sheet and non-manifold bodies | Yes | Sheet bodies (open shells): from a planar profile, a planar section and STEP surface models, which read and write; measured by area and surface inertia; moved, mirrored and tessellated; booleans, blends and shells refuse one. A surface model whose faces do not meet is refused until sewing lands. Non-manifold is refused |
-| STEP | Read and write, IGES too | Read (every solid of a file is a checked body or a named refusal), write AP214; assemblies both ways |
+| STEP | Read and write, IGES too | Read (every solid or surface model of a file is a checked body or a named refusal), write AP214 in a chosen length unit; assemblies both ways |
 | Other formats | IGES, STL, glTF, and more | STL, OBJ, a deterministic native format in JSON and bytes |
 | Provenance | `BRepTools_History` (modified, generated, deleted) | Every operation returns generated, modified and deleted entities for every entity touched |
 | Tolerances | Per shape | Per vertex, edge and face; grown by operations and checked |
@@ -91,7 +91,7 @@ as "more robust than Open CASCADE".
 
 Cases Open CASCADE builds and Arris does not yet (each is a refusal today):
 NURBS faces meeting the other operand in a boolean, sweeps and lofts,
-variable-radius blends, healing of an open STEP file, and the cusp blends
+variable-radius blends, sewing the free faces of a STEP file, and the cusp blends
 whose walls lie on either side of their shared face. The fixtures that
 hold these are in `tests/fixtures/` and `docs/ROADMAP.md`.
 

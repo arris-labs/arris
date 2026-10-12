@@ -33,6 +33,9 @@
 //!   face's domain looks for a point — and every other so that its box's
 //!   centre lies in the period that starts at the widest loop's lower
 //!   bound, so a hole lies inside its outer loop.
+//!   Where the boxes, of each use's ends and midpoint, left a hole more
+//!   than half a period from its outer loop's centre, boxes of the
+//!   checker's sample count move it the whole periods between them.
 //! - **Degenerate edges** the writer left out are rebuilt where two uses
 //!   meet at a singular point of the surface — a sphere's pole, a cone's
 //!   apex, a NURBS surface's collapsed row ([`Surface::singularities`]):

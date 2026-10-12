@@ -33,7 +33,8 @@ and each change, with each break and its fix, is listed in
 
 - **Modelling:** primitives, rigid transforms, and extrude and revolve of a
   profile of lines, arcs and elliptic arcs; prismatic features (offset
-  faces, shell to a wall, split by a plane).
+  faces, shell to a wall, split by a plane); a profile as a one-face sheet
+  body, moved and mirrored like a solid and measured by area.
 - **Booleans:** cut, fuse and common, single or multi-tool, over every
   analytic face (plane, cylinder, elliptic cylinder, cone, sphere, torus)
   in any pose, with multi-shell results (cavities, split cuts, disjoint
@@ -50,12 +51,14 @@ and each change, with each break and its fix, is listed in
   faces meshed at different times welded together; mass properties (volume,
   centroid, inertia); plane projection and face frames.
 - **Formats:** a STEP reader that returns a checked body, or a typed refusal
-  naming why, for every solid in a file; STEP AP214, STL and OBJ export; a
-  deterministic native format in JSON and bytes; and one body, with its
-  provenance, as bytes that any later release reads.
+  naming why, for every solid or surface model in a file, closing small gaps
+  and turning back reversed faces and naming each repair; STEP AP214 export
+  in the unit you choose, STL and OBJ export; a deterministic native format
+  in JSON and bytes; and one body, with its provenance, as bytes that any
+  later release reads.
 
 Not yet: sweeps and lofts, variable-radius blends, non-manifold bodies,
-healing of what a STEP file leaves open, and booleans where a NURBS face
+sewing faces that a STEP file leaves unconnected, and booleans where a NURBS face
 meets a face of the other operand. Each of those is a typed refusal today,
 never a wrong answer.
 
