@@ -1,0 +1,146 @@
+{
+  "description": "A ball and a cylinder whose flat end lies inside it, tilted 20 degrees off the equator of a ball turned half a turn about y (the sphere's frame has z = -z): the common is a bullet of three faces, one of them the sphere between the end's circle and the wall's curve, a face of two loops of which the hole is listed first. Written to STEP and read back by Arris (`a_ball_in_a_tilted_cylinder_reads_back_as_itself` in `crates/arris-io/tests/step_round_trip.rs`; this fixture holds the oracle's values, whose own file the corpus reads), the hole's (u, v) box from the loop's ends and midpoint alone (1.76 to 1.86 of a loop spanning 1.26 to 2.34) fell below the outer loop's lower bound, the reader moved it a period away and the checker refused the solid read (L4, 'hole loop 0 lies outside every outer loop'). Found by the nightly's `a_written_body_reads_back_as_itself` at seed 71ff362c, 5000 cases",
+  "steps": [
+    {
+      "name": "half_disc",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -0.5
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0,
+              0.5
+            ],
+            "via": [
+              0.5,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -0.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball_upright",
+      "op": "revolve",
+      "profile": "half_disc",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "ball",
+      "op": "transform",
+      "of": "ball_upright",
+      "rotate": {
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 180
+      }
+    },
+    {
+      "name": "tool",
+      "op": "cylinder",
+      "base": [
+        0.13104685796,
+        0.392770463661,
+        -0.145289406158
+      ],
+      "axis": [
+        -0.216946394335,
+        -0.919759604653,
+        0.327072670263
+      ],
+      "radius": 0.341738961047,
+      "height": 1.5342710704462177
+    },
+    {
+      "name": "result",
+      "op": "common",
+      "a": "ball",
+      "b": "tool"
+    }
+  ],
+  "result": "result",
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 1e-06,
+    "inertia_rel": 1e-06
+  },
+  "probes": [
+    {
+      "label": "in_the_bullet",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "beside_the_wall",
+      "point": [
+        -0.4,
+        0,
+        0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

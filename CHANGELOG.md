@@ -8,6 +8,11 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A STEP file whose face has a hole beside a curved outer boundary on a
+  periodic surface (a sphere cut by a tilted cylinder, say) now reads back
+  as the body it was written from; the reader could place the hole a whole
+  turn away from its outer loop, and the solid was refused as failing the
+  checker.
 - A STEP part whose edges or vertices lie a little off its faces now
   reads, where it was refused as `Refusal::Gap`: the reader grows each
   such entity's tolerance to the gap it measured, up to 5e-4 of the

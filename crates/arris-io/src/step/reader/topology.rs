@@ -950,7 +950,12 @@ impl Geometry<'_> {
         for faces in walked {
             let mut specs = Vec::with_capacity(faces.len());
             for (surface, surface_id, flipped, mut loops) in faces {
-                place_loops(&mut loops, surface.period(), surface.domain());
+                place_loops(
+                    &mut loops,
+                    surface.period(),
+                    surface.domain(),
+                    precision.check_samples,
+                );
                 for u in loops.iter_mut().flatten() {
                     hold_in_domain(&mut u.pcurve, u.range, &surface, precision);
                 }
@@ -2762,9 +2767,18 @@ fn seam_crosses(
 /// for a point (`arris_check::domain::shifts`) — and every other so that
 /// its centre lies in the period starting at the widest loop's lower
 /// bound: a hole lands inside its outer loop, whose box spans at most a
-/// period.
-fn place_loops(loops: &mut [Vec<Use>], period: [Option<f64>; 2], domain: [Interval; 2]) {
-    let boxes: Vec<[[f64; 2]; 2]> = loops.iter().map(|l| loop_box(l)).collect();
+/// period. The boxes are of `samples` points along each use, the
+/// checker's own count: a closed circle on a sphere is one use whose ends
+/// and midpoint span a fraction of its (u, v) extent, and a hole boxed
+/// narrower than that can fall below its outer loop's lower bound and be
+/// moved a period away from it.
+fn place_loops(
+    loops: &mut [Vec<Use>],
+    period: [Option<f64>; 2],
+    domain: [Interval; 2],
+    samples: usize,
+) {
+    let boxes: Vec<[[f64; 2]; 2]> = loops.iter().map(|l| loop_box(l, samples)).collect();
     for k in 0..2 {
         let Some(p) = period[k] else { continue };
         let Some(widest) = (0..boxes.len()).max_by(|&a, &b| {
@@ -2794,13 +2808,13 @@ fn place_loops(loops: &mut [Vec<Use>], period: [Option<f64>; 2], domain: [Interv
     }
 }
 
-/// The box in (u, v) of a loop's uses' ends and midpoints.
-fn loop_box(uses: &[Use]) -> [[f64; 2]; 2] {
+/// The box in (u, v) of `n` points along each of a loop's uses, ends
+/// included.
+fn loop_box(uses: &[Use], n: usize) -> [[f64; 2]; 2] {
     let mut b = [[f64::INFINITY; 2], [f64::NEG_INFINITY; 2]];
     for u in uses {
-        let (s, e) = u.ends();
-        let m = u.pcurve.point(u.range.midpoint());
-        for p in [s, e, m] {
+        for t in samples(u.range, n) {
+            let p = u.pcurve.point(t);
             for k in 0..2 {
                 b[0][k] = b[0][k].min(p[k]);
                 b[1][k] = b[1][k].max(p[k]);

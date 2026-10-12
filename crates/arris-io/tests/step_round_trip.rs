@@ -299,3 +299,42 @@ fn a_frustum_cut_through_its_wide_cap_reads_back_as_itself() {
     };
     round_trip(&Shape::Boolean(2, pair), &[[0.5, 0.5, 0.5]]).unwrap();
 }
+
+/// The round trip at 5000 cases on seed `71ff362c…`, shard 0 of 8,
+/// shrunk: a ball of radius 0.5 and a cylinder of radius 0.34 whose flat
+/// end lies inside it, both turned half a turn about y. The common is a
+/// bullet whose sphere face between the end's circle and the wall's curve
+/// has two loops, the hole first. The reader boxed each loop by its use's
+/// ends and midpoint, the hole's box fell below the outer loop's lower
+/// bound and was moved a period away: `L4 f1: hole loop 0 lies outside
+/// every outer loop`.
+#[test]
+fn a_ball_in_a_tilted_cylinder_reads_back_as_itself() {
+    use arris_debug::prop::body::{Cylindrical, QuadricTool};
+    use arris_math::Axis;
+    use arris_math::nalgebra::{Quaternion, UnitQuaternion};
+
+    let half_turn = Isometry::new(
+        UnitQuaternion::new_unchecked(Quaternion::new(0.0, 0.0, 1.0, 0.0)),
+        Vec3::zeros(),
+    );
+    let pair = QuadricPair {
+        solid: QuadricSolid::Ball { radius: 0.5 },
+        tool: QuadricTool::Cylinder(Cylindrical {
+            axis: Axis::new(
+                Point3::new(-0.1310468579604249, 0.3927704636613413, 0.14528940615785807),
+                Vec3::new(
+                    0.21694639433480992,
+                    -0.9197596046533446,
+                    -0.32707267026312137,
+                ),
+            )
+            .unwrap(),
+            radius: 0.34173896104659085,
+            height: 1.5342710704462177,
+            pose: half_turn,
+        }),
+        pose: half_turn,
+    };
+    round_trip(&Shape::Boolean(1, pair), &[[0.5, 0.5, 0.5]]).unwrap();
+}

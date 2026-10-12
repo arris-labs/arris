@@ -735,6 +735,11 @@ corpus_tests! {
     /// A drill whose wall runs through both of a ball's poles: two traced
     /// loops, each through a singular vertex of the sphere.
     boolean_ball_pole_drill_cut => run "boolean/ball-pole-drill-cut";
+    /// A ball and a cylinder whose flat end lies inside it, tilted off the
+    /// ball's equator, the ball's frame turned half a turn: a bullet whose
+    /// sphere face has two loops, the hole listed first, which STEP written
+    /// and read back must keep inside its outer loop.
+    boolean_ball_tilted_cylinder_common => run "boolean/ball-tilted-cylinder-common";
     /// A quarter bend fused with the straight pipe it runs into: the torus
     /// and the wall touch along the tube circle and cross in a quartic
     /// beside it, one `Meets` of both kinds.
