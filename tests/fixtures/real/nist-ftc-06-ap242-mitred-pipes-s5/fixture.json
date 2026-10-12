@@ -1,6 +1,6 @@
 {
   "kind": "part",
-  "description": "NIST's FTC-06, its AP242 e2 edition's solid alone: it reads, but the checker at Full finds cylinders meeting at 45° (f110, f113, f114) intersecting away from their shared edges (S5), where Open CASCADE's reading is valid. A wrong solid until shown otherwise (ADR-0026 §4); shrunk from the fetched tier (ADR-0026, amendment of step 9)",
+  "description": "NIST's FTC-06, its AP242 e2 edition's solid alone: it reads, but the checker at Full finds cylinders meeting at 45° (f110, f113, f114) intersecting away from their shared edges (S5), where Open CASCADE's reading is valid. A wrong solid until shown otherwise (ADR-0026 §4); shrunk from the fetched tier (ADR-0026, amendment of step 9). It passes since the healing cycle's second part (a read edge's tolerance holding where its faces meet, ADR-0059, and the checker's E8 and L5): it waited under regression/ until then",
   "file": "nist_ftc_06_asme1_ap242-e2-7516.stp",
   "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ftc_06_asme1_ap242-e2.stp: the solid #7516 alone, excerpted by tools/oracle/excerpt.py",
   "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",

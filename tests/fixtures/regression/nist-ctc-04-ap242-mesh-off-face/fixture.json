@@ -1,0 +1,19 @@
+{
+  "kind": "part",
+  "description": "NIST's CTC-04, its AP242 e1 edition's solid alone, which reads healed (its gap of 0.0506 grown, ADR-0058): it reads checker-green, but its mesh at chord 0.001 puts a point of face f410 6.5e-4 from where its (u, v) evaluates, past the 1.5e-4 of the face and its boundary. Shrunk from the fetched tier (ADR-0026, amendment of step 9)",
+  "file": "nist_ctc_04_asme1_ap242-e1-17366.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_ctc_04_asme1_ap242-e1.stp: the solid #17366 alone, excerpted by tools/oracle/excerpt.py",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "f6123b275d5273d1d962da1fef60005735c4ba1655315e2897dbb5634115728b",
+  "solids": [
+    {
+      "id": 17366,
+      "instance": 0,
+      "outcome": "read",
+      "healed": {
+        "grown": 9,
+        "largest": 0.0506274
+      }
+    }
+  ]
+}

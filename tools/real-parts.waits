@@ -4,13 +4,15 @@
 # fails on a failure no line excludes, on a wait whose fixture has left
 # regression/, and on a part that passes yet still waits.
 
-# The checker at Full finds faces meeting away from their shared edges (S5)
-# on a solid the reader returns and Open CASCADE holds valid.
-nist_ctc_02_asme1_ap242-e2 regression/nist-ctc-02-ap242-mitred-pipes-s5
-nist_ftc_06_asme1_ap242-e2 regression/nist-ftc-06-ap242-mitred-pipes-s5
-nist_ctc_05_asme1_ap203 regression/nist-ctc-05-ap203-torus-elbow-s5
-nist_stc_10_asme1_ap242-e2 regression/nist-stc-10-ap242-holes-into-bore-s5
 # A mesh point off its face by more than the face's tolerance.
 nist_ftc_10_asme1_ap242-e2 regression/nist-ftc-10-ap242-mesh-off-face
 # A battery drill that returns Internal(Geometry).
 nist_ctc_04_asme1_ap203 regression/nist-ctc-04-ap203-drill-geometry-fault
+# Parts that read since the reader heals (ADR-0058), and what they meet.
+# A read past ADR-0026 §6's budget.
+nist_ctc_02_asme1_ap203 regression/nist-ctc-02-ap203-slow-band-fits
+# A mesh point off its face by more than the face's tolerance.
+nist_ctc_04_asme1_ap242-e1 regression/nist-ctc-04-ap242-mesh-off-face
+# A battery box cut or drill that returns Internal(Split).
+nist_ftc_07_asme1_ap242-e2 regression/nist-ftc-07-ap242-box-cut-split-fault
+nist_ftc_11_asme1_ap242-e2 regression/nist-ftc-11-ap242-box-cut-split-fault

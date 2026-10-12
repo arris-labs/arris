@@ -1,0 +1,15 @@
+{
+  "kind": "part",
+  "description": "NIST's STC-10, its AP242 e2 edition's solid alone: it reads, but the checker at Full finds three holes of radius 1.75 (f64, f86, f87) and the bore of radius 2.75 they meet (f58), their axes crossing, intersecting away from their shared edges (S5), as it does f60 and f61–f63, where Open CASCADE's reading is valid. A wrong solid until shown otherwise (ADR-0026 §4); shrunk from the fetched tier (ADR-0026, amendment of step 9). It passes since the healing cycle's second part (a read edge's tolerance holding where its faces meet, ADR-0059, and the checker's E8 and L5): it waited under regression/ until then",
+  "file": "nist_stc_10_asme1_ap242-e2-7490.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), nist_stc_10_asme1_ap242-e2.stp: the solid #7490 alone, excerpted by tools/oracle/excerpt.py",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "e50080b6ee834e05164458a7f7cd94a932d3b6ff2cf26317b7ebeea19801ba91",
+  "solids": [
+    {
+      "id": 7490,
+      "instance": 0,
+      "outcome": "read"
+    }
+  ]
+}

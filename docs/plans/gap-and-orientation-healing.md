@@ -252,7 +252,7 @@ whether 4 or all 6 of the healable parts leave the row.
   outvoted, and its dump is the untouched corner's. The part runner's
   `healed` counts `turned`. The backlog's orientation line was 99, not
   98.
-- [ ] Step 5 **[1]** — **The histogram re-run.** The survey records
+- [x] Step 5 **[1]** — **The histogram re-run.** The survey records
   healing per solid and the summary prints the `healed` count. The fetched
   tier is re-run, and the committed tier's histogram block in
   `docs/ROADMAP.md` is updated by its docs test. Every part that now reads
@@ -261,6 +261,22 @@ whether 4 or all 6 of the healable parts leave the row.
   fixture and a backlog line (light triage: no investigation). The
   `read` column's fall is printed in the commit body. BACKLOG line 61 is
   removed.
+  *Done:* the fetched tier went from 46 read and 8 refused to 50 read (5
+  healed) and 4 refused. Its `healing` row went from 5 parts to 0, and
+  with the committed tier's 2, the acceptance's 7 → 0 holds. CTC-02
+  AP203 now refuses at its NURBS band (`itself: outside the subset`).
+  Four S5 waits passed, fixed by step 2, and their fixtures moved to
+  `real/`. Of the parts that now read, four meet faults, each shrunk to
+  `regression/` with a wait and a backlog line, uninvestigated. CTC-02
+  AP203's read takes 176 s in two B-spline fits the unhealed read never
+  reached. Its oracle hung for two hours in Open CASCADE's Gauss–Kronrod
+  volume integration. A solid a fixture records only as refused now keeps
+  the plain adaptive one, since none of its measures are compared.
+  CTC-04 AP242 meshes a point off a face. FTC-07 and FTC-11
+  AP242's box cut (and FTC-07's drills) are `Internal(Split)`, the one
+  finding that may be healing's own (a grown tolerance above
+  `max_tolerance`, ADR-0060). The battery's Arris refusals went from 2 to
+  12 under the NURBS and blend-network rows.
 
 ## Acceptance
 

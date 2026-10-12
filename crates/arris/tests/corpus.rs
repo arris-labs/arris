@@ -1042,23 +1042,27 @@ corpus_tests! {
     /// NIST's CTC-02 AP242 solid alone, from the fetched tier: mitred
     /// cylinders of radius 10 that the checker at `Full` finds meeting away
     /// from their shared edges.
-    #[ignore = "S5: f366–f368, mitred cylinders of one radius, meet away from their shared edges on a read Open CASCADE holds valid (docs/BACKLOG.md, S5 on the fetched tier's reads)"]
-    regression_nist_ctc_02_ap242_mitred_pipes_s5 => part "regression/nist-ctc-02-ap242-mitred-pipes-s5";
+    /// Passes since a read edge's tolerance holds where its faces meet
+    /// (ADR-0059).
+    real_nist_ctc_02_ap242_mitred_pipes_s5 => part "real/nist-ctc-02-ap242-mitred-pipes-s5";
     /// NIST's FTC-06 AP242 solid alone, from the fetched tier: cylinders at
     /// 45° that the checker at `Full` finds meeting away from their shared
     /// edges.
-    #[ignore = "S5: f110, f113 and f114, cylinders mitred at 45°, meet away from their shared edges on a read Open CASCADE holds valid (docs/BACKLOG.md, S5 on the fetched tier's reads)"]
-    regression_nist_ftc_06_ap242_mitred_pipes_s5 => part "regression/nist-ftc-06-ap242-mitred-pipes-s5";
+    /// Passes since a read edge's tolerance holds where its faces meet
+    /// (ADR-0059).
+    real_nist_ftc_06_ap242_mitred_pipes_s5 => part "real/nist-ftc-06-ap242-mitred-pipes-s5";
     /// NIST's CTC-05 AP203-with-PMI solid alone, from the fetched tier: a
     /// torus elbow and the cylinders of its minor radius it joins, which the
     /// checker at `Full` finds meeting away from their shared edges.
-    #[ignore = "S5: the torus f116 and the cylinders f114 and f118 of its minor radius meet away from their shared edges on a read Open CASCADE holds valid (docs/BACKLOG.md, S5 on the fetched tier's reads)"]
-    regression_nist_ctc_05_ap203_torus_elbow_s5 => part "regression/nist-ctc-05-ap203-torus-elbow-s5";
+    /// Passes since a read edge's tolerance holds where its faces meet
+    /// (ADR-0059).
+    real_nist_ctc_05_ap203_torus_elbow_s5 => part "real/nist-ctc-05-ap203-torus-elbow-s5";
     /// NIST's STC-10 AP242 solid alone, from the fetched tier: three holes
     /// into a bore, their axes crossing, which the checker at `Full` finds
     /// meeting the bore away from their shared edges.
-    #[ignore = "S5: the holes f64, f86 and f87 meet the bore f58 away from their shared edges, as f61–f63 meet f60, on a read Open CASCADE holds valid (docs/BACKLOG.md, S5 on the fetched tier's reads)"]
-    regression_nist_stc_10_ap242_holes_into_bore_s5 => part "regression/nist-stc-10-ap242-holes-into-bore-s5";
+    /// Passes since a read edge's tolerance holds where its faces meet
+    /// (ADR-0059).
+    real_nist_stc_10_ap242_holes_into_bore_s5 => part "real/nist-stc-10-ap242-holes-into-bore-s5";
     /// NIST's FTC-10 AP242 solid alone, from the fetched tier: a mesh point of
     /// face f95 1.4e-4 from where its (u, v) evaluates.
     #[ignore = "mesh: a point of f95 stands 1.4e-4 from where its (u, v) evaluates, past the face's and its boundary's 4.6e-6 (docs/BACKLOG.md, a mesh point off its face on the fetched tier)"]
@@ -1067,6 +1071,22 @@ corpus_tests! {
     /// battery's drill along the second principal axis is a kernel fault.
     #[ignore = "drill_y: OpError::Internal(Fault::Geometry) where Open CASCADE builds the drilled part (docs/BACKLOG.md, a drill's geometry fault on the fetched tier)"]
     regression_nist_ctc_04_ap203_drill_geometry_fault => part "regression/nist-ctc-04-ap203-drill-geometry-fault";
+    /// NIST's CTC-02 AP203-with-PMI solid alone, from the fetched tier:
+    /// healed past its gap, its read reaches its subset refusal in 176 s.
+    #[ignore = "read: two pcurve fits on B-spline faces take 72 s and 84 s, past the 60 s budget (docs/BACKLOG.md, slow B-spline fits on CTC-02 AP203)"]
+    regression_nist_ctc_02_ap203_slow_band_fits => part "regression/nist-ctc-02-ap203-slow-band-fits";
+    /// NIST's CTC-04 AP242 solid alone, from the fetched tier, read healed:
+    /// a mesh point of face f410 6.5e-4 from where its (u, v) evaluates.
+    #[ignore = "mesh: a point of f410 stands 6.5e-4 from where its (u, v) evaluates, past the face's and its boundary's 1.5e-4 (docs/BACKLOG.md, a mesh point off its face on the fetched tier)"]
+    regression_nist_ctc_04_ap242_mesh_off_face => part "regression/nist-ctc-04-ap242-mesh-off-face";
+    /// NIST's FTC-07 AP242 solid alone, from the fetched tier, read healed:
+    /// its box cut and drills are a kernel fault.
+    #[ignore = "box_cut, drill_x, drill_y, drill_z: OpError::Internal(Fault::Split) where Open CASCADE builds each (docs/BACKLOG.md, a split fault on the healed parts' battery)"]
+    regression_nist_ftc_07_ap242_box_cut_split_fault => part "regression/nist-ftc-07-ap242-box-cut-split-fault";
+    /// NIST's FTC-11 AP242 solid alone, from the fetched tier, read healed:
+    /// its box cut is a kernel fault.
+    #[ignore = "box_cut: OpError::Internal(Fault::Split) where Open CASCADE builds it (docs/BACKLOG.md, a split fault on the healed parts' battery)"]
+    regression_nist_ftc_11_ap242_box_cut_split_fault => part "regression/nist-ftc-11-ap242-box-cut-split-fault";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring refuses. The desired body is Open CASCADE's.

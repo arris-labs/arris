@@ -66,6 +66,10 @@ pub struct Report {
     /// asserted beyond "the tree was built".
     #[serde(default)]
     pub occurrences: usize,
+    /// Each solid read healed (ADR-0058), `(solid, record)`: what the
+    /// read grew and turned in it.
+    #[serde(default)]
+    pub healed: Vec<(String, part::Healed)>,
     /// Every refusal, the reader's and the battery's Arris refusals.
     pub refusals: Vec<Counted>,
     /// Each battery stage's class, `(solid, stage, class)`: `agree`,
@@ -218,7 +222,14 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
         // refusal still counts.
         for (solid, spec) in read.solids.iter().zip(&spec.solids) {
             match &solid.result {
-                Ok(_) => report.read += 1,
+                Ok(back) => {
+                    report.read += 1;
+                    if let Some(h) = part::Healed::of(&back.healing) {
+                        report
+                            .healed
+                            .push((battery::key(spec.id, spec.instance), h));
+                    }
+                }
                 Err(r) => report.refusals.push(Counted {
                     at: battery::key(spec.id, spec.instance),
                     stage: Stage::Read.name().into(),
@@ -260,6 +271,9 @@ pub fn survey(file: &Path, name: &str, work: &Path, source: &str) -> Result<Repo
             }
             Ok(back) => {
                 report.read += 1;
+                if let Some(h) = part::Healed::of(&back.healing) {
+                    report.healed.push((at.clone(), h));
+                }
                 if fixture.expected.solids.is_empty() {
                     continue;
                 }

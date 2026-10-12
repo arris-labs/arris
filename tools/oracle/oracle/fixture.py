@@ -120,7 +120,14 @@ def compute_part(fixture: dict) -> list[dict]:
     if digest != fixture["sha256"]:
         raise OracleError(f"{path} hashes to {digest}, not the fixture's {fixture['sha256']}")
     tol = {**DEFAULT_TOLERANCES, **fixture.get("tolerances", {})}
-    healed = [(label, measure(shape, [], tol["probe"], read=True)) for label, shape in step.solids(path)]
+    # A solid the fixture records only as refused has no measure compared,
+    # so it skips the Gauss–Kronrod integration `read` asks for, which on
+    # CTC-02 AP203's #380 runs for hours where the adaptive one takes 1 s.
+    outcomes = [(s["id"], isinstance(s.get("outcome"), dict) and "refused" in s["outcome"]) for s in fixture.get("solids", [])]
+    refused = {i for i, r in outcomes if r} - {i for i, r in outcomes if not r}
+    healed = [
+        (label, measure(shape, [], tol["probe"], read=label not in refused)) for label, shape in step.solids(path)
+    ]
     try:
         unhealed = [(label, shape) for label, shape in step.solids(path, heal=False)]
     except Exception:  # OracleError, or Open CASCADE's own on a file it cannot take unhealed

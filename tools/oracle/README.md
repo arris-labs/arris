@@ -88,7 +88,9 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
   whose area is the Green integral of its basis arc length instead, and
   for a part's spline-bounded solid, over which the plain adaptive one is
   1e-6 off in the inertia tensor — NIST's FTC-11, a solid of revolution
-  whose symmetry it breaks),
+  whose symmetry it breaks; a solid the fixture records only as refused
+  keeps the plain adaptive one, since no measure of it is compared and
+  the Gauss–Kronrod one runs for hours on CTC-02 AP203's #380),
   counts by unique
   sub-shape (a seam edge once, an edge `BRep_Tool::Degenerated` names not
   at all), loops, shells, solids — of the boundary only: an edge oriented

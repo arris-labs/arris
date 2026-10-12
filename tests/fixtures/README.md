@@ -741,6 +741,12 @@ and this is it: the parts under `real/nist-*` are NIST's.
   `real/face-based-surface-model`'s corner with one face's bounds turned
   as Open CASCADE's writer turns them, read with the face turned back
   (ADR-0058 §4) to the corner's own dump.
+- Four fetched-tier excerpts waited under `regression/` on S5 until a
+  read edge's tolerance came to hold where its faces meet (ADR-0059):
+  `real/nist-ctc-02-ap242-mitred-pipes-s5`,
+  `real/nist-ftc-06-ap242-mitred-pipes-s5`,
+  `real/nist-ctc-05-ap203-torus-elbow-s5` (read healed) and
+  `real/nist-stc-10-ap242-holes-into-bore-s5`.
 - `real/nist-ftc-09-offset` is `real/nist-ftc-09` with one plane wrapped
   in an `OFFSET_SURFACE` by hand: the refusal path under test.
 

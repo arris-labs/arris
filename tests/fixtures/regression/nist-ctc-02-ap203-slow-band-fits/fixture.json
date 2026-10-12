@@ -1,0 +1,24 @@
+{
+  "kind": "part",
+  "description": "NIST's CTC-02, its AP203-with-PMI edition's solid alone: with healing on, the read passes the gap of 0.0105 it used to stop at and reaches the refusal of a NURBS band whose seam has no exact curve (#1473), as it should, but takes 176 s, past ADR-0026 §6's 60 s: the pcurve fits of edges #5818 and #5831 on the B-spline faces #1167 and #1169 take 72 s and 84 s under the read cap, and succeed. The desired outcome is that refusal within the budget. Shrunk from the fetched tier (ADR-0026, amendment of step 9)",
+  "file": "nist_ctc_02_asme1_ap203-380.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), AP203 with PMI/nist_ctc_02_asme1_ap203.stp: the solid #380 alone, excerpted by tools/oracle/excerpt.py",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "ed39c4dd1f11bd2658f74e1c138f0f0964d7fcdffcf88ecf45ca60cf9a8c0b44",
+  "solids": [
+    {
+      "id": 380,
+      "instance": 0,
+      "outcome": {
+        "refused": {
+          "kind": "unsupported entity",
+          "why": "a band on a NURBS surface whose seam has no exact curve is outside the subset the reader maps (ADR-0025 §1)"
+        }
+      },
+      "blocks": {
+        "read": "itself: outside the subset"
+      }
+    }
+  ],
+  "read_seconds": 60.0
+}

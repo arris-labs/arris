@@ -401,8 +401,10 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
 pub struct Histogram {
     /// Every part added.
     parts: BTreeSet<String>,
-    /// Solid instances read and refused.
+    /// Solid instances read and refused, and of those read, healed
+    /// (ADR-0058).
     read: usize,
+    healed: usize,
     refused: usize,
     /// Battery stages by class: `agree`, `both-refuse`, …
     classes: BTreeMap<String, usize>,
@@ -492,7 +494,12 @@ impl Histogram {
                 ReadOutcome::Refused(r) => {
                     self.add_refusal(part, Stage::Read, &r.kind, cycle("read")?);
                 }
-                ReadOutcome::Read => self.add_read(part),
+                ReadOutcome::Read => {
+                    self.add_read(part);
+                    if solid.healed.is_some() {
+                        self.healed += 1;
+                    }
+                }
             }
             for (name, class) in &solid.battery {
                 let stage = Stage::of_name(name)
@@ -522,6 +529,7 @@ impl Histogram {
         let part = report.part.as_str();
         self.add(part);
         self.read += report.read;
+        self.healed += report.healed.len();
         for (_, _, class) in &report.classes {
             *self.classes.entry(class.clone()).or_default() += 1;
         }
@@ -536,7 +544,8 @@ impl Histogram {
         self.blocked.get(cycle).map_or(0, BTreeMap::len)
     }
 
-    /// The histogram as markdown: a summary line; *cycle → parts blocked*,
+    /// The histogram as markdown: a summary line, the solids read healed
+    /// counted beside those read; *cycle → parts blocked*,
     /// each part under the first stage the cycle blocks it at, every named
     /// cycle with its row, most parts first; and every refusal by name,
     /// most frequent first.
@@ -557,10 +566,11 @@ impl Histogram {
         let stages: usize = self.classes.values().sum();
         let _ = writeln!(
             out,
-            "{} parts, {} solids: {} read, {} refused. {stages} battery stages: {} agree, {} both refuse, {} Open CASCADE refuses, {} Arris refuses.",
+            "{} parts, {} solids: {} read ({} healed), {} refused. {stages} battery stages: {} agree, {} both refuse, {} Open CASCADE refuses, {} Arris refuses.",
             self.parts.len(),
             self.read + self.refused,
             self.read,
+            self.healed,
             self.refused,
             class("agree"),
             class("both-refuse"),

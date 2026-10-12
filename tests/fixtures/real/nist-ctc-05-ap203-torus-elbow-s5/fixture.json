@@ -1,0 +1,19 @@
+{
+  "kind": "part",
+  "description": "NIST's CTC-05, its AP203-with-PMI edition's solid alone: it reads, but the checker at Full finds a torus elbow of minor radius 6.35 (f116) and the two cylinders of the same radius it joins (f114, f118) intersecting away from their shared edges (S5), where Open CASCADE's reading is valid. A wrong solid until shown otherwise (ADR-0026 §4); shrunk from the fetched tier (ADR-0026, amendment of step 9). It passes since the healing cycle's second part (a read edge's tolerance holding where its faces meet, ADR-0059, and the checker's E8 and L5): it waited under regression/ until then",
+  "file": "nist_ctc_05_asme1_ap203-249.stp",
+  "source": "https://www.nist.gov/document/nist-pmi-step-files — NIST-PMI-STEP-Files.zip (sha256 8fa78429e6d8d9b0d7681d223b6aa9ec98c3772185c55b1a0e3679b21c181911), AP203 with PMI/nist_ctc_05_asme1_ap203.stp: the solid #249 alone, excerpted by tools/oracle/excerpt.py",
+  "licence": "NIST: \"The test cases, CAD models, and STEP files can be used without any restrictions.\"",
+  "sha256": "a604bd2407c71a7a11f7decafd7277cf22fe07743a824c8147b666efe4d53060",
+  "solids": [
+    {
+      "id": 249,
+      "instance": 0,
+      "outcome": "read",
+      "healed": {
+        "grown": 6,
+        "largest": 0.0101398
+      }
+    }
+  ]
+}
