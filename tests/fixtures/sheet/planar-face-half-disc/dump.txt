@@ -1,0 +1,17 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b0 sheet
+  shell +s0
+    face +f0 S0 tol 0.0000001
+      surface plane origin (0, 0, 0) x (1, 0, 0) y (0, 0, 1) z (0, -1, 0)
+      loop 0
+        coedge +e0 p0 line origin (-4, 0) direction (1, 0)
+        coedge +e1 p1 circle origin (0, 0) x (1, 0) y (0, 1) radius 4
+edges
+  +e0 v0 -> v1 c0 [0, 8] tol 0.0000001
+    curve line origin (-4, 0, 0) direction (1, 0, 0)
+  +e1 v1 -> v0 c1 [0, 3.14159265359] tol 0.0000001
+    curve circle origin (0, 0, 0) x (1, 0, 0) y (0, 0, 1) z (0, -1, 0) radius 4
+vertices
+  v0 (-4, 0, 0) tol 0.0000001
+  v1 (4, 0, 0) tol 0.0000001
+euler 2/2/1/1/1 g1 = 1

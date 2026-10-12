@@ -26,8 +26,8 @@
 //! must fail with that typed refusal; either ends the run there, the
 //! oracle's numbers recorded but not compared.
 
-use crate::unmetered::mass_properties;
 use crate::unmetered::step_read;
+use crate::unmetered::{mass_properties, surface_properties};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -877,6 +877,16 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
     };
     let body = stages(&fixture, &chain, expected)?;
     let m = &chain.model;
+    if expected.sheet {
+        // The STEP writer takes a sheet in the plan's step 6; until then
+        // the dump is all that is left to compare.
+        let dump = dump_text(m, body).map_err(|e| CorpusError::Dump {
+            fixture: name.clone(),
+            path: dump_path(dir, variant),
+            what: e.to_string(),
+        })?;
+        return check_dump(&name, &dump_path(dir, variant), &dump, blessing());
+    }
 
     // STEP through the oracle.
     let text = step::write(m, &[body]).map_err(|source| CorpusError::Step {
@@ -1245,8 +1255,12 @@ pub fn stages(fixture: &Fixture, chain: &Chain, expected: &Measured) -> Result<B
     let (body, report) = check_stage(fixture, chain)?;
     counts_stage(fixture, chain, &report, expected)?;
     let target = measure_stage(fixture, chain, expected)?;
-    mesh_stage(fixture, chain, &target)?;
-    probe_stage(fixture, chain, expected)?;
+    // A sheet bounds no volume: no closed mesh to weigh and no inside to
+    // probe (the mesh of a sheet is `tests/sheet_operands.rs`'s).
+    if !expected.sheet {
+        mesh_stage(fixture, chain, &target)?;
+        probe_stage(fixture, chain, expected)?;
+    }
     provenance_stage(fixture, chain)?;
     Ok(body)
 }
@@ -1290,12 +1304,16 @@ pub fn counts_stage(
         fixture: name.clone(),
         report: Box::new(report.clone()),
     })?;
-    let solids = lumps(&chain.model, body)
-        .map_err(|source| CorpusError::Lumps {
-            fixture: name.clone(),
-            source,
-        })?
-        .len();
+    let solids = if expected.sheet {
+        0
+    } else {
+        lumps(&chain.model, body)
+            .map_err(|source| CorpusError::Lumps {
+                fixture: name.clone(),
+                source,
+            })?
+            .len()
+    };
     let found = Counts {
         vertices: line.vertices,
         edges: line.edges,
@@ -1826,6 +1844,7 @@ impl Inputs {
             Step::Box { .. }
             | Step::Cylinder { .. }
             | Step::Profile { .. }
+            | Step::PlanarFace { .. }
             | Step::Extrude { .. }
             | Step::Revolve { .. }
             | Step::Transform { .. }
@@ -2101,6 +2120,13 @@ fn build_step(
             })?;
             profiles.insert(name.clone(), profile);
             Ok(None)
+        }
+        Step::PlanarFace { profile, .. } => {
+            let profile = profile_reference(fixture, step, profile, profiles)?;
+            body(
+                arris_ops::planar_face(m, profile, control).map_err(op)?,
+                Vec::new(),
+            )
         }
         Step::Extrude {
             profile,
@@ -2718,7 +2744,20 @@ pub(crate) fn compare_mass(
     by: &str,
     tolerances: &Tolerances,
 ) -> Result<(), String> {
-    let found = mass_properties(m, body).map_err(|e| e.to_string())?;
+    // A sheet has no volume: its area, centroid and inertia are the
+    // surface properties at unit area density.
+    let (volume, area, found_centroid, tensor) = if expected.sheet {
+        let found = surface_properties(m, body).map_err(|e| e.to_string())?;
+        (None, found.area, found.centroid, found.inertia)
+    } else {
+        let found = mass_properties(m, body).map_err(|e| e.to_string())?;
+        (
+            Some(found.volume),
+            found.area,
+            found.centroid,
+            found.inertia,
+        )
+    };
     let relative = |name: &str, a: f64, e: f64, tolerance: f64| -> Result<(), String> {
         let difference = (a - e).abs() / e.abs().max(a.abs()).max(f64::MIN_POSITIVE);
         if difference.is_nan() || difference > tolerance {
@@ -2728,19 +2767,19 @@ pub(crate) fn compare_mass(
         }
         Ok(())
     };
-    if let Some(volume) = expected.volume {
-        relative("volume", found.volume, volume, tolerances.volume_rel)?;
+    if let (Some(found), Some(volume)) = (volume, expected.volume) {
+        relative("volume", found, volume, tolerances.volume_rel)?;
     }
-    if let Some(area) = expected.area {
-        relative("area", found.area, area, tolerances.area_rel)?;
+    if let Some(expected_area) = expected.area {
+        relative("area", area, expected_area, tolerances.area_rel)?;
     }
     if let Some(centroid) = expected.centroid {
         let oracle = Point3::new(centroid[0], centroid[1], centroid[2]);
-        let distance = (found.centroid - oracle).norm();
+        let distance = (found_centroid - oracle).norm();
         if distance.is_nan() || distance > tolerances.centroid_abs {
             return Err(format!(
                 "centroid {} vs {by} {oracle}: {distance:e} apart, above centroid_abs {:e}",
-                found.centroid, tolerances.centroid_abs
+                found_centroid, tolerances.centroid_abs
             ));
         }
     }
@@ -2752,7 +2791,7 @@ pub(crate) fn compare_mass(
             .max(f64::MIN_POSITIVE);
         for (i, row) in inertia.iter().enumerate() {
             for (j, &e) in row.iter().enumerate() {
-                let a = found.inertia[(i, j)];
+                let a = tensor[(i, j)];
                 let difference = (a - e).abs() / scale;
                 if difference.is_nan() || difference > tolerances.inertia_rel {
                     return Err(format!(

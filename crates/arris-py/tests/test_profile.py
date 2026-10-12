@@ -101,6 +101,24 @@ def test_revolve_names_its_sides_too():
         assert len(faces(record.generated_from(arris.Role("revolve", "Side", 0, segment)))) == 1
 
 
+def test_planar_face_is_a_one_face_sheet_named_by_the_sketch():
+    model = arris.Model()
+    profile = arris.Profile(square(10), holes=[arris.Loop.circle((5, 5), 1)])
+    sheet, record = model.planar_face(profile)
+    assert model.body_kind(sheet) == "sheet"
+    assert len(model.faces(sheet)) == 1
+    area = 100 - math.pi
+    assert model.surface_properties(sheet).area == pytest.approx(area, abs=1e-9)
+    face = arris.Role("planar_face", "StartCap")
+    assert len(faces(record.generated_from(face))) == 1
+    assert str(face) == "planar_face:StartCap"
+    for segment in range(4):
+        assert record.generated_from(arris.Role("planar_face", "StartEdge", 0, segment))
+    assert record.generated_from(arris.Role("planar_face", "StartEdge", 1, 0))
+    with pytest.raises(arris.OpProfileError):
+        model.planar_face(arris.Profile(arris.Loop.path((0, 0), [arris.Segment.line((1, 0))])))
+
+
 def test_an_invalid_sketch_is_a_profile_error_when_it_is_swept():
     model = arris.Model()
     open_path = arris.Profile(arris.Loop.path((0, 0), [arris.Segment.line((1, 0))]))

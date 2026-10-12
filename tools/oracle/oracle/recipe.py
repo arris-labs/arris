@@ -42,6 +42,10 @@ Operations, by `op`:
                a `minor_radius` longer than it swaps the axes as
                `gp_Elips` needs, and `ccw` is the turn about the plane's
                normal — ADR-0014)
+    planar_face  profile <name>
+               (the profile's face as a sheet: Open CASCADE's face is the
+               sheet, `compute_expected` records its surface properties
+               and no volume, `measure.sheet`)
     extrude    profile <name>, direction [x,y,z], length
     revolve    profile <name>, axis {origin, direction}, angle_deg
     transform  of <name>, translate [x,y,z] (optional),
@@ -881,6 +885,8 @@ def _build_step(
         return _checked(BRepPrimAPI_MakeCylinder(gp_Ax2(_pnt(base), _dir(axis)), r, h), "cylinder")
     if op == "profile":
         return _profile(step, params)
+    if op == "planar_face":
+        return ref(step["profile"])
     if op == "extrude":
         d = vector(step["direction"], params)
         length = number(step["length"], params)

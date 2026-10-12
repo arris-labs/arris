@@ -297,6 +297,11 @@ pub enum Role {
     /// beside the body entity they lie on. Appended after `Consumer` for
     /// the same reason.
     Split(SplitPart),
+    /// An entity of `planar_face`: a [`SweepPart`] naming the part of the
+    /// sketch it stands for — `StartVertex`, `StartEdge`, `StartCap` (the
+    /// face), `Shell` and `Body`. Appended after `Split` for the same
+    /// reason.
+    PlanarFace(SweepPart),
 }
 
 impl fmt::Display for Role {
@@ -309,6 +314,7 @@ impl fmt::Display for Role {
             Role::File(e) => write!(f, "file:#{}/{}", e.id, e.instance),
             Role::Consumer(k) => write!(f, "consumer:{}/{}", k.namespace, k.key),
             Role::Split(part) => write!(f, "split:{part:?}"),
+            Role::PlanarFace(part) => write!(f, "planar_face:{part:?}"),
         }
     }
 }

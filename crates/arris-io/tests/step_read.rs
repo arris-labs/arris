@@ -215,7 +215,10 @@ fn every_area_is_known() {
                 "blend",
                 "offset",
                 "shell",
-                "split"
+                "split",
+                // Sheets are written and read back by `step_sheets.rs`
+                // (plan step 6), not by this solid read-back.
+                "sheet"
             ]
             .contains(&a),
             "{a} has no read-back test"

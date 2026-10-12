@@ -1216,9 +1216,12 @@ face's loop is start edge, rise, end edge, rise — a circle loop's one
 rise its seam, used twice — walked that way when the sweep runs along the
 profile's normal and the other way otherwise, with the face use and the
 pcurves decided as for a revolve. Both sweeps share the cap, side-face
-and provenance construction. There is no `planar_face` operation — a
-sheet of one face is the healing cycle's sheet bodies, and the cap construction is the
-sweeps' private helper.
+and provenance construction. `planar_face` is that cap taken alone: a
+`Profile` becomes a one-face `Sheet` — the face `Forward` on the profile's
+plane, so its front is the plane's normal — assembled by
+`Builder::assemble_sheet`, every entity `Generated` from a
+`Role::PlanarFace(SweepPart)` (`StartVertex`, `StartEdge`, `StartCap` for
+the face, `Shell`, `Body`).
 
 ### Errors
 

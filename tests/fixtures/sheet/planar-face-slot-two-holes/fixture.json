@@ -1,0 +1,24 @@
+{
+  "description": "a slot (two lines, two end arcs) 30 long and 10 wide with two bores of radius 2: one outer loop and two holes on one face",
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 2], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, 0], "segments": [
+        {"line_to": [30, 0]},
+        {"arc_to": [30, 10], "via": [35, 5]},
+        {"line_to": [0, 10]},
+        {"arc_to": [0, 0], "via": [-5, 5]}
+      ]},
+      "holes": [{"circle": {"center": [10, 5], "radius": 2}}, {"circle": {"center": [20, 5], "radius": 2}}]
+    },
+    {"name": "result", "op": "planar_face", "profile": "sketch"}
+  ],
+  "result": "result",
+  "analytic": {
+    "area": "300 + 25 * pi - 8 * pi",
+    "centroid": [15, 5, 2],
+    "counts": {"vertices": 6, "edges": 6, "faces": 1, "loops": 3, "shells": 1, "solids": 0}
+  }
+}

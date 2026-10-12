@@ -737,6 +737,7 @@ pub fn write_read(name: &str, m: &Model, body: Body, tolerances: &Tolerances) ->
             corpus::within_own_tolerance(tolerances, m, body).map_err(fail(Stage::Measure))?;
         let mass = mass_properties(m, body).map_err(|e| (Stage::Measure, e.to_string()))?;
         let written = Measured {
+            sheet: false,
             degenerate: false,
             counts: a.unwrap_or(Counts {
                 vertices: 0,

@@ -738,6 +738,9 @@ def round_trip(name: str, fixture: dict, expected: dict, tmp: Path) -> bool:
         if expected["results"][variant]["degenerate"]:
             print(f"  {name}[{variant}]: degenerate, no STEP round trip")
             continue
+        if expected["results"][variant].get("sheet"):
+            print(f"  {name}[{variant}]: a sheet, no STEP round trip")
+            continue
         if refused:
             print(f"  {name}[{variant}]: {refused}, refused by Arris, no STEP round trip")
             continue

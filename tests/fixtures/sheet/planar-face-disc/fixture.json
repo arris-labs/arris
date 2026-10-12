@@ -1,0 +1,19 @@
+{
+  "description": "a disc of radius 5 centred at (2, 1) on a plane whose normal is the x axis: one face, one closed edge, one vertex",
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [4, 0, 0], "x": [0, 1, 0], "y": [0, 0, 1]},
+      "outer": {"circle": {"center": [2, 1], "radius": 5}}
+    },
+    {"name": "result", "op": "planar_face", "profile": "sketch"}
+  ],
+  "result": "result",
+  "analytic": {
+    "area": "pi * 25",
+    "centroid": [4, 2, 1],
+    "inertia": [["pi * 25 * 25 / 2", 0, 0], [0, "pi * 25 * 25 / 4", 0], [0, 0, "pi * 25 * 25 / 4"]],
+    "counts": {"vertices": 1, "edges": 1, "faces": 1, "loops": 1, "shells": 1, "solids": 0}
+  }
+}

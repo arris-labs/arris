@@ -136,7 +136,7 @@ measure to hold it to.
   nist-ctc-02, -04, -05 and slow-gap-refusal now list their surface models
   as `read`; Python says `Model.body_kind(body)`, not a `Body.kind`; open
   questions 1 and 2 decided in ADR-0057 as recommended.
-- [ ] Step 4 **[1]** — `ops::planar_face`: the sweeps' `cap_face` lifted
+- [x] Step 4 **[1]** — `ops::planar_face`: the sweeps' `cap_face` lifted
   out, a `Profile` (holes included) to a one-face `Sheet` with provenance
   naming each profile edge's edge. Oracle: a `planar_face` recipe op ending
   in the oracle's existing `profile`; `sheet/` fixtures (a rectangle, a

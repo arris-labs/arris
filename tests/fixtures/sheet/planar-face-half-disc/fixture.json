@@ -1,0 +1,18 @@
+{
+  "description": "a half disc of radius 4 (a line and an arc) on a plane whose normal is -y: the arc-and-line profile",
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+      "outer": {"start": [-4, 0], "segments": [{"line_to": [4, 0]}, {"arc_to": [-4, 0], "via": [0, 4]}]}
+    },
+    {"name": "result", "op": "planar_face", "profile": "sketch"}
+  ],
+  "result": "result",
+  "analytic": {
+    "area": "8 * pi",
+    "centroid": [0, 0, "16 / (3 * pi)"],
+    "counts": {"vertices": 2, "edges": 2, "faces": 1, "loops": 1, "shells": 1, "solids": 0}
+  }
+}

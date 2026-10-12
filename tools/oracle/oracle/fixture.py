@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from OCP.BRepCheck import BRepCheck_Analyzer
+from OCP.TopAbs import TopAbs_FACE
 
 from . import OracleError, occt_version, step
 from .measure import DEFAULT_TOLERANCES, measure, own_measures
@@ -75,6 +76,11 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
     results = {}
     for variant in variant_names(fixture):
         shape, shapes = build(fixture, variant)
+        if shape.ShapeType() == TopAbs_FACE:
+            # A sheet (`planar_face`): surface properties, no volume and
+            # no probes, no Euler line (a face is an open surface).
+            results[variant] = {"sheet": True, **measure_sheet(shape)}
+            continue
         results[variant] = measure(shape, probes(fixture, variant), tol["probe"], manifold)
         if (half := shapes.get(f"{fixture['result']}.half_space")) is not None:
             # A split's result: what the same side is as the common (or

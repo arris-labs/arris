@@ -96,6 +96,11 @@ pub fn extrude(
     arris_ops::extrude(m, profile, direction, length, &Control::NONE)
 }
 
+/// [`arris_ops::planar_face`] to its end.
+pub fn planar_face(m: &mut Model, profile: &Profile) -> Result<(Body, Provenance), OpError> {
+    arris_ops::planar_face(m, profile, &Control::NONE)
+}
+
 /// [`arris_ops::revolve`] to its end.
 pub fn revolve(
     m: &mut Model,

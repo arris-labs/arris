@@ -1895,7 +1895,7 @@ nothing — so that every chain has a root (ADR-0002):
 ```rust
 pub enum Relation { Generated, Modified, Deleted }
 pub enum Origin   { Entity(Shape), Role(Role) }
-pub enum Role     { Box(BoxPart), Cylinder(CylinderPart), Extrude(SweepPart), Revolve(SweepPart), File(FileEntity), Consumer(ConsumerKey), Split(SplitPart) }   // exhaustive; SplitPart::Cap(PlaneSide { Positive, Negative })
+pub enum Role     { Box(BoxPart), Cylinder(CylinderPart), Extrude(SweepPart), Revolve(SweepPart), File(FileEntity), Consumer(ConsumerKey), Split(SplitPart), PlanarFace(SweepPart) }   // exhaustive; SplitPart::Cap(PlaneSide { Positive, Negative })
 pub struct FileEntity { id: u64, instance: u32 }   // a file's #id, and which placement of it
 pub struct ConsumerKey { namespace: u32, key: u64 }   // the consumer's own name, opaque (ADR-0028)
 

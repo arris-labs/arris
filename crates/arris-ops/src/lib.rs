@@ -57,7 +57,7 @@ pub use mirror::mirror;
 pub use offset::offset_faces;
 pub use primitive::{primitive_box, primitive_cylinder};
 pub use shell::{ShellSide, shell};
-pub use sweep::{extrude, revolve};
+pub use sweep::{extrude, planar_face, revolve};
 pub use transform::transform;
 
 use arris_topo::{Body, Model};

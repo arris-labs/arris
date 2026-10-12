@@ -1471,6 +1471,14 @@ corpus_tests! {
     split_sphere_tangent_at_pole => run "split/sphere-tangent-at-pole";
     /// The same plate split off the hole's seam: refused as `TangentContact` as at it.
     split_plate_hole_tangent_off_seam => run "split/plate-hole-tangent-off-seam";
+    /// A 40×30 rectangle as a one-face sheet: the plate's surface properties.
+    sheet_planar_face_rectangle => run "sheet/planar-face-rectangle";
+    /// A disc on a plane normal to x: one face, one closed edge.
+    sheet_planar_face_disc => run "sheet/planar-face-disc";
+    /// A slot with two end arcs and two bores: three loops on one face.
+    sheet_planar_face_slot_two_holes => run "sheet/planar-face-slot-two-holes";
+    /// A half disc, a line and an arc.
+    sheet_planar_face_half_disc => run "sheet/planar-face-half-disc";
     /// NIST FTC-08's edge at (59.69, 30.48, 44.831) filleted alone at r 0.2721,
     /// a chain of three: the output fails the checker at L2 where Open CASCADE
     /// builds it, as it did before the blend's tangency took the faces'

@@ -296,6 +296,14 @@ pub enum Step {
         #[serde(default)]
         holes: Vec<Loop>,
     },
+    /// A profile as a one-face sheet body.
+    #[serde(rename = "planar_face")]
+    PlanarFace {
+        /// Step name.
+        name: String,
+        /// The profile step.
+        profile: String,
+    },
     /// A profile swept along a direction.
     Extrude {
         /// Step name.
@@ -515,6 +523,7 @@ impl Step {
             Step::Box { name, .. }
             | Step::Cylinder { name, .. }
             | Step::Profile { name, .. }
+            | Step::PlanarFace { name, .. }
             | Step::Extrude { name, .. }
             | Step::Revolve { name, .. }
             | Step::Transform { name, .. }
@@ -652,6 +661,7 @@ impl Tolerances {
     /// use arris_debug::fixtures::{Counts, Measured, Own, Tolerances};
     ///
     /// let measured = Measured {
+    ///     sheet: false,
     ///     degenerate: false,
     ///     counts: Counts { vertices: 8, edges: 12, faces: 6, loops: 6, shells: 1, solids: 1 },
     ///     volume: Some(1.0),
@@ -991,6 +1001,10 @@ pub struct ProbeResult {
 /// The oracle's measurements of one variant's result.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Measured {
+    /// The result is a sheet body (`planar_face`): no volume, no Euler
+    /// line, its area, centroid and inertia are the surface properties.
+    #[serde(default, skip_serializing_if = "core::ops::Not::not")]
+    pub sheet: bool,
     /// No solid in the result.
     pub degenerate: bool,
     /// Entity counts.
@@ -1368,8 +1382,9 @@ pub fn expand_patterns(raw: &mut serde_json::Value) -> Result<(), (String, Strin
 /// fixture there has passed and been blessed, and none is `#[ignore]`d.
 /// `real/` holds parts, whose lint holds their dumps the same way
 /// (`crate::part::lint`).
-pub const DUMPED_AREAS: [&str; 10] = [
+pub const DUMPED_AREAS: [&str; 11] = [
     "primitive",
+    "sheet",
     "build",
     "transform",
     "boolean",
@@ -1527,59 +1542,63 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 dump.file_name().unwrap_or_default().to_string_lossy()
             ));
         }
-        let Some(chi) = m.euler_characteristic else {
-            problem(format!(
-                "[{variant}] expected.json lacks euler_characteristic"
-            ));
-            continue;
-        };
+        // A sheet closes no Euler line: it is an open surface, and the
+        // builder's own line over its boundary cycles is the checker's.
         let c = m.counts;
-        let counted = EulerLine::new(c.vertices, c.edges, c.faces, c.loops, c.shells);
-        let chi_from_counts = counted.characteristic();
-        if chi != chi_from_counts {
-            problem(format!(
-                "[{variant}] euler_characteristic {chi} does not match the counts ({chi_from_counts})"
-            ));
-        }
-        let non_manifold = matches!(
-            a.expect_error,
-            Some(ExpectError::NonManifold | ExpectError::TangentContact)
-        );
-        let genus = match (m.genus, non_manifold) {
-            (Some(genus), _) => Some(genus),
-            // Solids sharing an edge or a vertex, or faces sharing a
-            // tangent contact as an edge of four, close no Euler line.
-            (None, true) => {
-                if a.genus.is_some() {
-                    problem(format!(
-                        "[{variant}] analytic.genus is set for a non-manifold result, which has none"
-                    ));
-                }
-                None
-            }
-            (None, false) => {
-                problem(format!("[{variant}] expected.json lacks genus"));
-                continue;
-            }
-        };
-        if let (Some(g), Some(genus)) = (a.genus, genus) {
-            // The Euler line: V − E + F − (L − F) − 2(S − G) = 0. Under
-            // `counts_differ` the analytic genus is Arris's, and the
-            // oracle's counts close at the oracle's own.
-            let at = if a.counts_differ.is_some() { genus } else { g };
-            let line = counted.at_genus(at);
-            if line != 0 {
+        if !m.sheet {
+            let Some(chi) = m.euler_characteristic else {
                 problem(format!(
-                    "[{variant}] Euler line is {line}, not 0: counts {c:?} with analytic genus {g} (oracle genus {genus})"
+                    "[{variant}] expected.json lacks euler_characteristic"
+                ));
+                continue;
+            };
+            let counted = EulerLine::new(c.vertices, c.edges, c.faces, c.loops, c.shells);
+            let chi_from_counts = counted.characteristic();
+            if chi != chi_from_counts {
+                problem(format!(
+                    "[{variant}] euler_characteristic {chi} does not match the counts ({chi_from_counts})"
                 ));
             }
-            if let (Some(_), Some(ac)) = (&a.counts_differ, a.counts) {
-                let line = EulerLine::new(ac.vertices, ac.edges, ac.faces, ac.loops, ac.shells)
-                    .at_genus(g);
+            let non_manifold = matches!(
+                a.expect_error,
+                Some(ExpectError::NonManifold | ExpectError::TangentContact)
+            );
+            let genus = match (m.genus, non_manifold) {
+                (Some(genus), _) => Some(genus),
+                // Solids sharing an edge or a vertex, or faces sharing a
+                // tangent contact as an edge of four, close no Euler line.
+                (None, true) => {
+                    if a.genus.is_some() {
+                        problem(format!(
+                            "[{variant}] analytic.genus is set for a non-manifold result, which has none"
+                        ));
+                    }
+                    None
+                }
+                (None, false) => {
+                    problem(format!("[{variant}] expected.json lacks genus"));
+                    continue;
+                }
+            };
+            if let (Some(g), Some(genus)) = (a.genus, genus) {
+                // The Euler line: V − E + F − (L − F) − 2(S − G) = 0. Under
+                // `counts_differ` the analytic genus is Arris's, and the
+                // oracle's counts close at the oracle's own.
+                let at = if a.counts_differ.is_some() { genus } else { g };
+                let line = counted.at_genus(at);
                 if line != 0 {
                     problem(format!(
-                        "[{variant}] Euler line of Arris's counts is {line}, not 0: {ac:?} with analytic genus {g}"
+                        "[{variant}] Euler line is {line}, not 0: counts {c:?} with analytic genus {g} (oracle genus {genus})"
                     ));
+                }
+                if let (Some(_), Some(ac)) = (&a.counts_differ, a.counts) {
+                    let line = EulerLine::new(ac.vertices, ac.edges, ac.faces, ac.loops, ac.shells)
+                        .at_genus(g);
+                    if line != 0 {
+                        problem(format!(
+                            "[{variant}] Euler line of Arris's counts is {line}, not 0: {ac:?} with analytic genus {g}"
+                        ));
+                    }
                 }
             }
         }

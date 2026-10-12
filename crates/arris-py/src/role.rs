@@ -112,6 +112,10 @@ pub fn view(role: Kernel) -> View {
             vec![Field::Uint(u64::from(namespace)), Field::Uint(key)],
         ),
         Kernel::Split(SplitPart::Cap(s)) => ("split", "Cap", vec![plane_side(s)]),
+        Kernel::PlanarFace(part) => {
+            let (name, fields) = sweep_view(part);
+            ("planar_face", name, fields)
+        }
     }
 }
 
@@ -236,6 +240,7 @@ pub fn from_parts(kind: &str, part: &str, fields: &[Field]) -> Result<Kernel, St
         }),
         "extrude" => Kernel::Extrude(sweep_from(part, &mut f)?),
         "revolve" => Kernel::Revolve(sweep_from(part, &mut f)?),
+        "planar_face" => Kernel::PlanarFace(sweep_from(part, &mut f)?),
         "file" => match part {
             "Entity" => Kernel::File(FileEntity {
                 id: f.uint("an id")?,
@@ -256,7 +261,7 @@ pub fn from_parts(kind: &str, part: &str, fields: &[Field]) -> Result<Kernel, St
         }),
         _ => {
             return Err(format!(
-                "{kind} is not a kind of role (box, cylinder, extrude, revolve, file, consumer, split)"
+                "{kind} is not a kind of role (box, cylinder, extrude, revolve, planar_face, file, consumer, split)"
             ));
         }
     };
@@ -322,7 +327,8 @@ fn sweep_from(part: &str, f: &mut Fields<'_>) -> Result<SweepPart, String> {
 /// of the consumer's own, or a split's cap.
 ///
 /// Frozen and hashable. `kind` is the operation (`"box"`, `"cylinder"`,
-/// `"extrude"`, `"revolve"`, `"file"`, `"consumer"`, `"split"`), `part` the kernel's
+/// `"extrude"`, `"revolve"`, `"planar_face"`, `"file"`, `"consumer"`,
+/// `"split"`), `part` the kernel's
 /// own name for the variant and `fields` its payload, in declaration order;
 /// `str(role)` is the kernel's text form (`box:Face(Z, Max)`). `Role(kind, part, *fields)` is the
 /// inverse and raises `ValueError` naming what is not a role.
@@ -395,7 +401,7 @@ impl Role {
     }
 
     /// The operation: `"box"`, `"cylinder"`, `"extrude"`, `"revolve"`,
-    /// `"file"`, `"consumer"` or `"split"`.
+    /// `"planar_face"`, `"file"`, `"consumer"` or `"split"`.
     #[getter]
     fn kind(&self) -> &'static str {
         view(self.kernel).0
@@ -524,6 +530,7 @@ mod tests {
         ];
         roles.extend(sweeps.map(Kernel::Extrude));
         roles.extend(sweeps.map(Kernel::Revolve));
+        roles.extend(sweeps.map(Kernel::PlanarFace));
         roles
     }
 

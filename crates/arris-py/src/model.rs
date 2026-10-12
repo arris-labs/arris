@@ -794,6 +794,38 @@ impl Model {
         })
     }
 
+    /// The sheet body of `profile`'s face: one planar face on the profile's
+    /// plane, its front along the plane's normal, every entity named by the
+    /// part of the sketch it came from
+    /// (`Role("planar_face", "StartEdge", loop, segment)`; the face is
+    /// `Role("planar_face", "StartCap")`).
+    ///
+    /// Raises `OpProfileError` for an invalid sketch.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// sketch = arris.Profile(arris.Loop.polygon([(0, 0), (4, 0), (4, 3), (0, 3)]))
+    /// sheet, record = model.planar_face(sketch)
+    /// assert model.body_kind(sheet) == "sheet"
+    /// assert abs(model.surface_properties(sheet).area - 12) < 1e-9
+    /// assert record.generated_from(arris.Role("planar_face", "StartCap"))
+    /// ```
+    #[pyo3(signature = (profile, *, cancel=None, budget=None))]
+    fn planar_face(
+        &self,
+        py: Python<'_>,
+        profile: &Profile,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let (profile, limits) = (profile.kernel.clone(), Limits::new(cancel, budget));
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::planar_face(m, &profile, control)
+        })
+    }
+
     /// The solid `profile` sweeps turning by `angle` radians (a full turn
     /// is `2π`) about the line through `origin` along `axis`; the axis must
     /// lie in the profile's plane.

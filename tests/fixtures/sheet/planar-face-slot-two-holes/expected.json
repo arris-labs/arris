@@ -1,0 +1,41 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "980baed495d500ce96ec61b8c23b5cedfeaa720aa7c94639b487afe76ad23151",
+  "results": {
+    "default": {
+      "area": 353.4070751110266,
+      "centroid": [
+        15.0,
+        5.0,
+        2.0
+      ],
+      "counts": {
+        "edges": 6,
+        "faces": 1,
+        "loops": 3,
+        "shells": 1,
+        "solids": 0,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "inertia": [
+        [
+          2965.7411108946853,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          45008.88125661934,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          47974.62236751402
+        ]
+      ],
+      "sheet": true
+    }
+  }
+}

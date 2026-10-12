@@ -27,6 +27,10 @@ into its version (ADR-0027).
   coordinate: a file read back with `ReadOptions` of the same unit returns
   every coordinate bit-identical. `write` and `write_products` still write
   millimetres. Python: `Model.write_step(bodies, length_unit="m")`.
+- `arris_ops::planar_face(&mut model, &profile, &control)` makes a sketch
+  a one-face sheet body: the profile's loops, holes included, on its
+  plane, its front along the plane's normal, every entity named by the part
+  of the sketch it came from. Python: `Model.planar_face(profile)`.
 
 ### Breaking
 
@@ -35,6 +39,9 @@ into its version (ADR-0027).
   `Model::body(id)?.kind() == BodyKind::Solid`. A surface model is no
   longer a `Refusal::Unsupported`, and that refusal's name no longer ends
   `in a CONSTRUCTIVE_GEOMETRY_REPRESENTATION`.
+- `arris_topo::provenance::Role` has a new variant, `PlanarFace(SweepPart)`,
+  for `planar_face`'s entities; a `match` on it adds an arm (Python: the
+  role's `kind` is `"planar_face"`).
 
 ## 0.7.0 — 2026-10-11
 

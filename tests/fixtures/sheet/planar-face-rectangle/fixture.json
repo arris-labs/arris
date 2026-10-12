@@ -1,0 +1,19 @@
+{
+  "description": "a 40×30 rectangle as a one-face sheet on a plane at height 3: area, centroid and the plate's inertia in closed form",
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 3], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, 0], "segments": [{"line_to": [40, 0]}, {"line_to": [40, 30]}, {"line_to": [0, 30]}, {"line_to": [0, 0]}]}
+    },
+    {"name": "result", "op": "planar_face", "profile": "sketch"}
+  ],
+  "result": "result",
+  "analytic": {
+    "area": "1200",
+    "centroid": [20, 15, 3],
+    "inertia": [["1200 * 30^2 / 12", 0, 0], [0, "1200 * 40^2 / 12", 0], [0, 0, "1200 * (40^2 + 30^2) / 12"]],
+    "counts": {"vertices": 4, "edges": 4, "faces": 1, "loops": 1, "shells": 1, "solids": 0}
+  }
+}

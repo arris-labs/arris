@@ -515,6 +515,13 @@ class Model:
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> _Made: ...
+    def planar_face(
+        self,
+        profile: Profile,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> _Made: ...
     def revolve(
         self,
         profile: Profile,

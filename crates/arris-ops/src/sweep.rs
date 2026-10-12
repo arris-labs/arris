@@ -1,5 +1,5 @@
 //! The sweeps: a planar [`Profile`] becomes a solid by `extrude` or
-//! `revolve`. A sweep's faces are known
+//! `revolve`, or a one-face sheet by `planar_face`. A sweep's faces are known
 //! outright, so both enter the builder through `Builder::assemble`
 //! (ADR-0004's entry, as `transform` uses it) and record every entity
 //! `Generated` from a [`SweepPart`] naming the part of the sketch it came
@@ -1591,6 +1591,130 @@ pub fn extrude(
             &vertex_roles,
             &edge_roles,
             &face_roles,
+            &[part(SweepPart::Shell)],
+            part,
+        );
+        Ok((built.body, provenance))
+    })
+}
+
+/// The sheet body of one planar face: `profile`'s loops on its plane, the
+/// face `Forward` on the plane's frame, so its front is the plane's
+/// normal. The outer loop runs counter-clockwise about the normal and each
+/// hole clockwise, as [`Profile::edges`] walks them, so the material is on
+/// the left of every walk. Entities are appended in one fixed order —
+/// vertices per loop in walking order, edges, the face — so the ids are a
+/// function of the profile alone; every tolerance is `default_tolerance`.
+/// Provenance is one `Generated` per entity from a [`Role::PlanarFace`]:
+/// `SweepPart::StartVertex`, `StartEdge` (named as the sketch's vertex and
+/// segment), `StartCap` for the face, `Shell` and `Body`.
+///
+/// This is the cap the sweeps close their solids with, taken alone
+/// (M5 `⚠ OPEN` 1): `extrude`'s profile-side cap is this face used
+/// `Reversed` when the sweep runs along the normal.
+///
+/// Errors, the model untouched: [`OpError::Profile`] when `Profile::edges`
+/// refuses the sketch.
+///
+/// ```
+/// use arris_ops::planar_face;
+/// use arris_topo::Model;
+/// use arris_topo::entity::BodyKind;
+/// use arris_geom::{Profile, ProfileLoop};
+/// use arris_math::{Frame, Point2};
+///
+/// // A disc of radius 3 on the xy plane: one face, one edge, one vertex.
+/// let profile = Profile {
+///     plane: Frame::world(),
+///     outer: ProfileLoop::Circle { center: Point2::new(0.0, 0.0), radius: 3.0 },
+///     holes: vec![],
+/// };
+/// let mut m = Model::default();
+/// let (sheet, _provenance) = planar_face(&mut m, &profile, &arris_ops::Control::NONE).unwrap();
+/// assert_eq!(m.body(sheet.id).unwrap().kind(), BodyKind::Sheet);
+/// assert_eq!(m.faces(sheet).unwrap().len(), 1);
+/// assert_eq!(m.edges(sheet).unwrap().len(), 1);
+/// ```
+pub fn planar_face(
+    m: &mut Model,
+    profile: &Profile,
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
+    let mut meter = Meter::new(control);
+    let meter = &mut meter;
+    let tol = m.precision().tolerance();
+    let loops = profile.edges(tol)?;
+    let tolerance = m.precision().default_tolerance;
+    let part = |p: SweepPart| Role::PlanarFace(p);
+
+    m.transaction(|m| {
+        let mut vertices: Vec<VertexSpec> = Vec::new();
+        let mut vertex_roles: Vec<Role> = Vec::new();
+        let mut edges: Vec<EdgeSpec> = Vec::new();
+        let mut edge_roles: Vec<Role> = Vec::new();
+        let mut ring_of: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
+        for edges_of in &loops {
+            let n = edges_of.len();
+            let mut ring = Vec::with_capacity(n);
+            for edge in edges_of {
+                meter.tick()?;
+                ring.push(vertices.len());
+                vertices.push(VertexSpec::New {
+                    point: edge.curve.point(edge.range.lo()),
+                    tolerance,
+                });
+                vertex_roles.push(part(SweepPart::StartVertex {
+                    loop_index: edge.loop_index,
+                    vertex: vertex_index(edge, n),
+                }));
+            }
+            ring_of.push(ring);
+        }
+        let mut slots: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
+        for (li, edges_of) in loops.iter().enumerate() {
+            let n = edges_of.len();
+            let mut row = Vec::with_capacity(n);
+            for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
+                row.push(Some(edges.len()));
+                edges.push(EdgeSpec::New {
+                    geometry: EdgeGeometry::Curve {
+                        curve: m.add_curve(edge.curve.clone()),
+                        range: edge.range,
+                    },
+                    start: VertexKey::New(ring_of[li][j]),
+                    end: VertexKey::New(ring_of[li][(j + 1) % n]),
+                    tolerance,
+                });
+                edge_roles.push(part(SweepPart::StartEdge {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                }));
+            }
+            slots.push(row);
+        }
+        let face = cap_face(
+            m,
+            &loops,
+            profile.plane,
+            Orientation::Forward,
+            &slots,
+            tolerance,
+        );
+        let assembly = Assembly {
+            vertices,
+            edges,
+            shells: vec![vec![face]],
+        };
+        let (b, assigned) = Builder::assemble_sheet(m, tolerance, assembly)?;
+        let built = b.finish(m, BodyKind::Sheet)?;
+        verify(m, built.body)?;
+        let provenance = record(
+            &built,
+            &assigned,
+            &vertex_roles,
+            &edge_roles,
+            &[part(SweepPart::StartCap)],
             &[part(SweepPart::Shell)],
             part,
         );
