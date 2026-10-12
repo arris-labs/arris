@@ -646,7 +646,10 @@ fn a_random_line_crosses_a_quadric_where_its_distance_changes_sign() {
             let r = common_properties(&l, &s)?;
             let hits = hits_of(&r);
             let f = |t: f64| signed_distance(&s, l.point(t));
-            for h in hits.iter().filter(|h| !h.tangent) {
+            // A line parallel to a generator to rounding meets the cone far
+            // beyond the sampled reach, where `ACROSS` is finer than the
+            // line's own coordinates: the sweep below is the check there.
+            for h in hits.iter().filter(|h| !h.tangent && h.t.abs() <= REACH) {
                 prop_assert!(
                     f(h.t - ACROSS) * f(h.t + ACROSS) < 0.0,
                     "{l:?} vs {s:?}: no sign change at the crossing t = {}",

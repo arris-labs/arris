@@ -26,17 +26,26 @@ fn params() -> impl Strategy<Value = (f64, f64)> {
     )
 }
 
-/// Whether `(u, v)` is on the nappe a cone's normal is outward on, and
-/// stays there once moved `d` along it (the move does not cross the axis).
-fn on_the_main_nappe(s: &Surface, v: f64, d: f64) -> bool {
+/// The cone's margin off its apex, in the parameter `v`, that a sample is
+/// moved to so its point and its offset's stay on one nappe.
+const APEX_MARGIN: f64 = 1e-3;
+
+/// `v` moved onto the nappe a cone's normal is outward on, and where it
+/// stays once moved `d` along it (the move does not cross the axis): the
+/// sampled range mapped into the part of `[-π/2, π/2]` on that nappe, so a
+/// small radius costs no draw. `None` where none of the range is on it; the
+/// other surfaces keep `v`.
+fn onto_the_main_nappe(s: &Surface, v: f64, d: f64) -> Option<f64> {
     match *s {
         Surface::Cone {
             radius, half_angle, ..
         } => {
-            radius + v * half_angle.sin() > 0.0
-                && radius + v * half_angle.sin() + d * half_angle.cos() > 0.0
+            let floor = -radius.min(radius + d * half_angle.cos()) / half_angle.sin();
+            let lo = floor + APEX_MARGIN;
+            (lo < FRAC_PI_2)
+                .then(|| lo + (v + FRAC_PI_2) / core::f64::consts::PI * (FRAC_PI_2 - lo))
         }
-        _ => true,
+        _ => Some(v),
     }
 }
 
@@ -49,7 +58,9 @@ fn moved_points_lie_on(
     uv: (f64, f64),
 ) -> Result<(), TestCaseError> {
     let (u, v) = uv;
-    prop_assume!(on_the_main_nappe(s, v, d));
+    let Some(v) = onto_the_main_nappe(s, v, d) else {
+        return Ok(());
+    };
     let Some(n) = s.normal(u, v) else {
         return Ok(());
     };
