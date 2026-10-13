@@ -351,12 +351,41 @@ bound has to be established here.
   named reject in the property, a backlog line. Deviation: the Python
   example is a pytest (`tests/test_nurbs_cut.py`, the corpus's NURBS plate
   read from its STEP and drilled), not a docstring, since the STEP is 19 kB.
-- [ ] Step 9 **[1]** — **The real parts.** Re-run the battery and the
+- [x] Step 9 **[1]** — **The real parts.** Re-run the battery and the
   histogram over both tiers. Move step 1's fixtures that now pass into
   their areas with their blessed dumps; keep the rest ignored, each
   refusal named. Re-bless the committed histogram block in
   `docs/ROADMAP.md` (`fixtures:` commit). Record the NURBS row before and
   after, and the stage timings, in this plan.
+  Landed (2026-10-13). `tools/real-parts.sh --jobs 4 --timeout 2400` over
+  the fetched tier (27 parts, 54 solids, 151 battery stages), and `real_parts
+  --committed` over the committed one.
+
+  | NURBS row | box_cut | drill_x | drill_y | drill_z | fillet |
+  |---|---:|---:|---:|---:|---:|
+  | before (step 1's census table, 10 stages) | 3 | 1 | 0 | 0 | 6 |
+  | after, fetched tier (5 parts) | 0 | 0 | 0 | 0 | 5 |
+  | after, committed tier (1 part) | 0 | 0 | 0 | 0 | 1 |
+
+  The committed tier's histogram block in `docs/ROADMAP.md` is unchanged
+  bit for bit (its one NURBS part is FTC-10's fillet), so there is no
+  `fixtures:` re-bless. The fetched tier's NURBS refusals are all fillets:
+  NURBS curve × plane (2), NURBS surface × torus (2), cylinder × cylinder
+  (1, a B-spline edge between two cylinders); none is a fault or a panic.
+  Every box cut and drill of the four parts now runs. The survey held
+  CTC-05's two box cuts (`boolean/`, step 7), FTC-07's and FTC-11's
+  unchanged; `nist_ctc_02_asme1_ap242-e2` `drill_x` disagrees with Open
+  CASCADE (643 faces to 649): the oracle is wrong there (step 7). The
+  survey exits 1 on it, since `tools/real-parts.waits` takes only part
+  fixtures under `regression/` (the corpus lint) and this one is a recipe
+  fixture; a backlog line names the part fixture it needs. Nothing moved out of `regression/`: CTC-02
+  `box_cut` stays ignored on the reader's refusal of Open CASCADE's own
+  STEP of the result, and `drill_x` on the oracle; each is named on its
+  fixture and in the backlog. Timings: the CTC-02 AP242 read 12 s (the
+  AP203 file's 180 s read is the existing band-fit fixture); stage times
+  are step 7's (CTC-02 `box_cut` 680 s, `drill_x` 140 s, CTC-05 50 to 80 s,
+  debug-optimised) and the twin boolean's: 0.7 to 4 s against 0.1 s
+  analytic, its `Full` check up to 10 s.
 
 ## Acceptance
 
@@ -367,9 +396,11 @@ bound has to be established here.
 - The torus's fixtures and blessed dumps are unchanged, bit for bit.
 - The twin property (step 8) and the trace properties (step 3) are green
   at 256 cases. CI's run at 1000 cases is green before retirement.
-- The real-part histogram's NURBS rows fall at `box_cut` and `drill_*`.
-  Every remaining NURBS refusal names a NURBS × NURBS pair or a blend; none
-  is a fault or a panic. The number is printed in the roadmap.
+- The real-part histogram's NURBS rows fall at `box_cut` and `drill_*`
+  (step 9: 0 at every boolean column). Every remaining NURBS refusal is a
+  blend; none is a fault or a panic. `drill_x` of CTC-02 disagrees with an
+  oracle that is wrong, and its box cut waits on the reader (both named
+  fixtures, both ignored). The number is printed in the roadmap.
 
 ## Docs to update on completion
 
