@@ -1,0 +1,81 @@
+{
+  "description": "the exact B-spline twin of a cylinder r 4, h 12 (Open CASCADE's STEP of primitive/cylinder converted by occt_step.py --nurbs) cut across its middle by a slab z in [5, 7]: two lumps, each with NURBS faces only. The result's two shells are not decided apart (B1: NURBS against NURBS), so the cut returns OpError::Internal(Lumps) where the desired body is two disks (plans/nurbs-analytic-section step 8, found by the twin property)",
+  "steps": [
+    {
+      "name": "tool0",
+      "op": "step",
+      "file": "cylinder.step",
+      "sha256": "d28356f90f7789bb708e6011098844627456142fbbec006a23ac67735e8af56e",
+      "id": 15
+    },
+    {
+      "name": "slab",
+      "op": "box",
+      "min": [
+        -10,
+        -10,
+        5
+      ],
+      "max": [
+        10,
+        10,
+        7
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "tool0",
+      "tool": "slab"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "lower",
+      "point": [
+        0,
+        0,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "upper",
+      "point": [
+        0,
+        0,
+        10
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "slab",
+      "point": [
+        0,
+        0,
+        6
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "outside",
+      "point": [
+        10,
+        0,
+        2
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * 16 * 10",
+    "area": "2 * pi * 16 * 2 + 2 * pi * 4 * 10",
+    "centroid": [
+      0,
+      0,
+      6.0
+    ],
+    "genus": 0
+  }
+}

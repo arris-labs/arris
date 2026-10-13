@@ -323,7 +323,7 @@ bound has to be established here.
   of the uncut part. Stage times in the debug-optimised test profile:
   CTC-02 `box_cut` 680 s, `drill_x` 140 s, CTC-05 50 to 80 s: step 9's
   timing line.
-- [ ] Step 8 **[2]** — **The twin property.** Add a recipe transform to
+- [x] Step 8 **[2]** — **The twin property.** Add a recipe transform to
   `prop::recipe`: replace one operand's faces by their exact `to_nurbs`
   twins (through `Builder`, keeping the topology). The property: for every
   boolean recipe over plane, cylinder, cone, sphere and torus operands,
@@ -331,6 +331,26 @@ bound has to be established here.
   volume, area and counts within the fixture tolerance, or both refuse.
   A disagreement is shrunk to a `regression/` fixture. Add the Python
   docstring example (a cut through a NURBS face, read from a STEP).
+  Landed (2026-10-13). `prop::twin::nurbs_twin` (a module beside
+  `prop::recipe`, whose grammar has no NURBS operand) copies a body through
+  `Assembly::of_body`, every analytic surface its `to_nurbs` twin over the
+  box its edges reach. `to_nurbs` reparametrises an angle, so the analytic
+  pcurves are not reused: every use is drawn again with `pcurve_on` on the
+  twin and placed on the seam side the analytic one had (a seam edge's two
+  uses differ by the period). The property is `tests/twin_prop.rs`: the
+  C3 operand pairs (frustum, ball, ring, elliptic prism against a box or a
+  cylinder; box against cylinder; two crossing cylinders), one boolean over
+  one twinned operand per case, volume and area to `fitted_rel`, counts
+  equal, a twin result clean at `Full` with only S5 pairs undecided. A case
+  costs a twin boolean (0.7 to 4 s against 0.1 s) and a `Full` check
+  (up to 10 s on a ball), so it draws one boolean and one side, 16 shards;
+  32 cases take 150 s, 256 cases 907 s. Green at 256 cases.
+  Found: a twin cut into several lumps is refused,
+  `Internal(Lumps)`, because the shells' nesting is undecided NURBS against
+  NURBS (B1): `regression/nurbs-cylinder-slab-cut-two-lumps`, ignored, a
+  named reject in the property, a backlog line. Deviation: the Python
+  example is a pytest (`tests/test_nurbs_cut.py`, the corpus's NURBS plate
+  read from its STEP and drilled), not a docstring, since the STEP is 19 kB.
 - [ ] Step 9 **[1]** — **The real parts.** Re-run the battery and the
   histogram over both tiers. Move step 1's fixtures that now pass into
   their areas with their blessed dumps; keep the rest ignored, each
