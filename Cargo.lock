@@ -72,7 +72,7 @@ checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
 
 [[package]]
 name = "arris"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
@@ -88,7 +88,7 @@ dependencies = [
 
 [[package]]
 name = "arris-check"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-debug",
  "arris-geom",
@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "arris-debug"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-check",
  "arris-geom",
@@ -119,7 +119,7 @@ dependencies = [
 
 [[package]]
 name = "arris-geom"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-debug",
  "arris-math",
@@ -131,7 +131,7 @@ dependencies = [
 
 [[package]]
 name = "arris-io"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "arris-math"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-debug",
  "nalgebra",
@@ -161,7 +161,7 @@ dependencies = [
 
 [[package]]
 name = "arris-mesh"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "arris-ops"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "arris-py"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris",
  "pyo3",
@@ -200,7 +200,7 @@ dependencies = [
 
 [[package]]
 name = "arris-topo"
-version = "0.8.0"
+version = "0.9.0-dev"
 dependencies = [
  "arris-check",
  "arris-debug",
