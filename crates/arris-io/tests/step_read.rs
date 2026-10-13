@@ -62,8 +62,19 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
     for solid in &read.solids {
         let back = solid.result.as_ref().map_err(|r| format!("refused: {r}"))?;
         provenance_names_the_file(&model, back, solid.entity)?;
-        // Arris's own file needs no healing (ADR-0058).
-        if !back.healing.is_empty() {
+        // Arris's own file needs no healing (ADR-0058), but for the
+        // tolerances a file cannot carry: a result an operation left with a
+        // vertex raised past the read cap (a cut through a part's B-spline
+        // faces) is read back grown, to no more than the tolerance it had.
+        let own = (chain
+            .model
+            .closure(original)
+            .map_err(|e| e.to_string())?
+            .vertices)
+            .iter()
+            .filter_map(|&v| chain.model.vertex(v).ok().map(|v| v.tolerance()))
+            .fold(0.0, f64::max);
+        if back.healing.grown.iter().any(|g| g.gap > own) || !back.healing.turned.is_empty() {
             return Err(format!("healed: {:?}", back.healing));
         }
         bodies.push(back.clone());
