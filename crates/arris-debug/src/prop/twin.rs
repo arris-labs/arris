@@ -79,7 +79,7 @@ impl GeometryRemap for Twins {
 /// `body` with every analytic surface replaced by its exact NURBS twin,
 /// as a new body of `m`: a sphere and a torus over their whole domain, a
 /// plane, a cylinder, an elliptic cylinder and a cone over the box the
-/// body's edges reach in `(u, v)`, widened by [`MARGIN`] (a cone's never
+/// body's edges reach in `(u, v)`, widened by `MARGIN` (a cone's never
 /// past its apex). A surface that is already NURBS is kept as it is.
 ///
 /// Errors: [`OpError::Internal`] naming the geometry refusal when a twin
