@@ -16,8 +16,9 @@ face pairs real parts ask for; done 2026-10-05), then **C7** (prismatic
 features: shell, offset faces, the multi-tool boolean, split by a plane;
 done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
-ADR-0056), then **C9** (the healing cycle: sheet bodies, sewing,
-orientation, the writer's length unit). An unopened cycle carries
+ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
+healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -740,24 +741,17 @@ STEP writer's length unit), which opens the cycle. The plugin CAD's A7
 sheet bodies and the sweep and loft it also wants are ranked by this
 choice: sheets now, sweep and loft with the NURBS cycle.*
 
-**Status: opened 2026-10-11; first part landed 2026-10-12 (plan
-`step-unit-and-sheet-bodies`): A12, `planar_face`, surface models read and
-written as sheet bodies, and the sheet as an operand of transform, mirror,
-tessellation, the body bytes, the native format and the checker (the
-operations that need an inside refuse it as `NotSolid`). The histogram
-re-run over the 38 parts: healing blocks 7 (from 14), every one a `gap past
-the cap` at `read` (surface models in none, from 11 parts; on the fetched
-tier alone 5 parts, from 11); 60 of 70 solids read.
-
-**Status: second part landed 2026-10-12 (plan `gap-and-orientation-healing`,
-ADR-0058 to ADR-0060): a read gap up to `HEAL_GAP_FRACTION` of the part is
-closed by a grown tolerance and recorded on `ReadBody::healing`; a face the
-file walks against all its neighbours is turned back and recorded in
-`Healing::turned`; `Heal::Off` keeps the old refusals. Healing's `read` row
-is 0 parts, from 7 (fetched 5 → 0, committed 2 → 0), and 7 solids read
-healed; the reader-subset row takes CTC-02 AP203's NURBS band. Free-edge
-sewing (faces that share no edge in the file) was a non-goal and is a
-backlog line, not in this cycle. The cycle is ready for `/close-cycle`.**
+**Status: done 2026-10-12, tag `c9`.** Retired
+the real parts a file holds and Arris refused to read: surface models read
+and written as sheet bodies with `ops::planar_face` and
+`measure::surface_properties` (ADR-0057), the STEP writer's length unit
+(A12), and the reader's two repairs, a gap up to `HEAL_GAP_FRACTION` of the
+part closed by a grown tolerance and a face walked against all its
+neighbours turned back, each recorded on `ReadBody::healing` and refused
+under `Heal::Off` (ADR-0058 to ADR-0060). The histogram re-run over the 38
+parts: healing blocks 0 at `read`, from 14; 66 of 70 solids read, 7 of them
+healed. Free-edge sewing (faces that share no edge in the file) was a
+non-goal and is a backlog line. ADR-0057 to 0060.
 
 **In:**
 
@@ -786,6 +780,63 @@ where it cannot, no panic; the `read` column of the fetched tier's
 histogram lower than C8's 14 of 38, the number printed; a healed body's
 provenance names every face sewn or turned; the writer's unit round-trips
 bit-exact through `ReadOptions`.
+
+---
+
+## C10 — the NURBS cycle
+
+*Goal: a free-form face is an operand. A profile swept along a path or
+lofted between sections makes a body, and a NURBS face meets the analytic
+kinds and other NURBS faces in a boolean and a blend. Chosen at C9's close
+by ADR-0020's amendment, not by the histogram: no consumer has reported a
+regression, and the plugin CAD's largest open recorded ask is A7's sweep
+and loft, which ADR-0047 gave to this cycle. Its other open asks (A5's
+`region2`, A7's draft and thicken) are a few analytic steps each, not a
+cycle, and run beside this one. The histogram alone would not pick it: at
+C9's close the 38 parts are blocked 6 by NURBS (`box_cut` 3, `fillet` 3,
+one also at `drill_x`) and 7 by the blend network's residue. But part of
+that residue waits on this cycle too: a cusp's cap, a corner where both
+edges of a cusp are blended, and the crease of two crossing cylinders each
+need a fitted NURBS face (docs/BACKLOG.md). The DIY part corpus, still
+unbuilt after three cycles that each said it would rank the next, is
+built in this one.*
+
+**In**, cheapest first, so that each part ships on its own:
+
+- A NURBS surface against each analytic kind: the section, and the
+  boolean and blend over it. This covers a sweep or loft cut by a plane or
+  a cylinder, an embossed outline, and the B-spline faces of an imported
+  part.
+- Sweep along a path and loft between sections, each with provenance and
+  each an operand of every boolean and blend that the first item allows.
+  The oblique extrude of an arc goes here too, as the exact
+  `EllipticCylinder` where that kind holds it.
+- NURBS against NURBS: a marcher with explicit seam handling,
+  `intersect_curves` for two NURBS curves, and the boolean and blends the
+  real parts ask of them.
+- The DIY part corpus: about 15 hobby parts modelled through the API the
+  way a desktop-CAD user builds them, with each refusal recorded (an
+  `/idea` first). Its histogram, beside the real-part one, ranks C11.
+- Beside the cycle, in the second plan slot: draft (a plane turned about a
+  line; a cone on a cylinder) and thicken (a sheet offset into a solid,
+  over C7's offset). These are the plugin CAD's A7 asks that need no
+  NURBS.
+
+**Out:** the attribute cycle; IGES and same-domain face merging; the
+blend residue that needs no NURBS face (tangent chains of analytic faces,
+`BlendTooLarge`'s horn and spindle tori, the parallel-cylinder row) and
+variable-radius blends; sheet operands of the boolean; free-edge sewing;
+faceted solids; text as glyphs (the consumer supplies the outline).
+
+**Accept:** each NURBS-blocked stage of the 6 parts gives either a
+checker-green body whose mass properties match Open CASCADE within the
+fixture's tolerance or a typed refusal naming the pair, never a panic.
+Sweep and loft fixtures match `BRepOffsetAPI_MakePipe` and
+`BRepOffsetAPI_ThruSections`. Properties hold over random free-form
+operands (volume additivity, cut-then-fuse). The histogram's NURBS rows
+are re-run and printed, below C9's 6 of 38, along with the blend
+residue's row. The DIY part corpus is committed, with its histogram
+printed.
 
 ---
 
@@ -864,10 +915,6 @@ swap, and the histogram after (ADR-0020). Each cycle earns its own
 section, with an acceptance corpus and a number, when `/close-cycle`
 opens it.
 
-- **The NURBS cycle** — NURBS–NURBS surface intersection (a marcher with
-  explicit seam handling); NURBS operands in booleans; the operations that
-  build free-form faces, sweep along a path and loft (ADR-0047 split them
-  from shell and offset, which are C7's).
 - **The attribute cycle** — attributes a consumer attaches to entities,
   carried through every operation by declared rules over the split order
   ADR-0009 fixes, for a consumer with no naming scheme of its own
