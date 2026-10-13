@@ -140,7 +140,7 @@ bound has to be established here.
   substituted bidegree the census asks is (6, 6), a bicubic patch against
   the drill's cylinder. No torus meets a NURBS face outside a fillet.
   Collapsed row: **in scope** (answered below).
-- [ ] Step 2 **[3]** — **ADR-0061, then isolation on a NURBS patch
+- [x] Step 2 **[3]** — **ADR-0061, then isolation on a NURBS patch
   grid.** Write the ADR (design delta above). Generalise `PatchedSection`
   over a patched parametrisation, using `Implicit::along` on each Bézier
   patch (`NurbsSurface`'s patch split, shared with `nurbs::project`).
@@ -150,6 +150,17 @@ bound has to be established here.
   quadric: the census has the turning and singular points the closed form
   predicts. A bicubic bump against a plane at its saddle's height gives a
   certified saddle. The torus's own census is unchanged.
+
+  **Landed (2026-10-13).** `PatchedSection::on_nurbs` behind a `Chart`
+  (the torus's quarters, or a NURBS surface's knot spans), merged per
+  direction by `bernstein2::merge_wrapped`. Every twin and the saddle
+  match the closed form (ADR-0061 §grounds). On CTC-02's two largest
+  faces (64 bicubic patches each, against their plane and drill and a
+  torus at bidegree (12, 12)), every turning point certifies within 292
+  boxes to depth 12, about 5 ms. One finding: the floor must charge the
+  move of the net into the other frame linearly. As the quartic of a
+  kilometre's reach it was 0.9, and the torus's turning points came back
+  uncertified.
 - [ ] Step 3 **[3]** — **The walk on a bounded domain.** `Walker` and
   `Tracer` run on the NURBS parametrisation. Branches end on the domain's
   edges at the roots of `f` along each edge line, and every such root
@@ -258,8 +269,7 @@ bound has to be established here.
   `pcurve_on`'s projection? The **agent** decides at step 7, on the
   checker's L2 and the fit's span count, and records the answer in
   ADR-0061.
-- ⚠ OPEN: degree blow-up. A bicubic patch against a torus is bidegree
-  (12, 12). The **agent** measures it at step 2 on the census's largest
-  face. If isolation exceeds the meter's budget there, the ADR adds a
-  per-patch box-test prefilter (control-point hull against the other
-  surface's distance) before the substitution.
+- Answered at step 2: degree blow-up needs **no prefilter**. On the
+  census's largest faces, against a torus at bidegree (12, 12), the
+  isolation takes 292 boxes at the most, inside the torus's own bound.
+  A patch the other surface misses is excluded at depth 0 (ADR-0061).

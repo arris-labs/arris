@@ -976,16 +976,50 @@ fn polish(system: [&Poly2; 2], partials: &[[Poly2; 2]; 2], lo: [f64; 2], hi: [f6
 /// with its box around it. `touch` is then the rounding of the map that
 /// made the angles, which two boxes sharing an edge may differ by.
 pub(crate) fn merge(zeros: Vec<Zero2>, wrap: Option<(f64, f64)>) -> Vec<Zero2> {
-    let (period, touch) = wrap.unwrap_or((0.0, 0.0));
-    let shifts: Vec<[f64; 2]> = if wrap.is_some() {
-        let turns = [-period, 0.0, period];
-        turns
-            .iter()
-            .flat_map(|&a| turns.iter().map(move |&b| [a, b]))
-            .collect()
-    } else {
-        vec![[0.0, 0.0]]
+    let wrap = match wrap {
+        Some((period, touch)) => Wrap {
+            period: [Some(period); 2],
+            origin: [0.0; 2],
+            touch,
+        },
+        None => Wrap {
+            period: [None; 2],
+            origin: [0.0; 2],
+            touch: 0.0,
+        },
     };
+    merge_wrapped(zeros, &wrap)
+}
+
+/// How [`merge_wrapped`] compares the boxes of a parameter plane that
+/// closes in either direction or both.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Wrap {
+    /// The length each direction closes over, `None` where it is open.
+    pub(crate) period: [Option<f64>; 2],
+    /// Where each closed direction's range starts: an `at` comes back in
+    /// `[origin, origin + period)`.
+    pub(crate) origin: [f64; 2],
+    /// The rounding of the map that made the coordinates, which two
+    /// boxes sharing an edge may differ by.
+    pub(crate) touch: f64,
+}
+
+/// [`merge`] over a parameter plane that closes per direction: boxes are
+/// compared a period either way along each closed direction, and each
+/// closed coordinate of an `at` comes back in its range with its box
+/// around it.
+pub(crate) fn merge_wrapped(zeros: Vec<Zero2>, wrap: &Wrap) -> Vec<Zero2> {
+    let touch = wrap.touch;
+    let turns = |k: usize| match wrap.period[k] {
+        Some(period) => vec![-period, 0.0, period],
+        None => vec![0.0],
+    };
+    let (across, along) = (turns(0), turns(1));
+    let shifts: Vec<[f64; 2]> = across
+        .iter()
+        .flat_map(|&a| along.iter().map(move |&b| [a, b]))
+        .collect();
     let order = |a: &Zero2, b: &Zero2| {
         (a.at[0].total_cmp(&b.at[0]))
             .then(a.at[1].total_cmp(&b.at[1]))
@@ -1052,19 +1086,21 @@ pub(crate) fn merge(zeros: Vec<Zero2>, wrap: Option<(f64, f64)>) -> Vec<Zero2> {
     });
 
     kept.extend(open);
-    if wrap.is_some() {
-        for z in &mut kept {
-            for k in 0..2 {
-                let mut turn = period * (z.at[k] / period).floor();
-                if z.at[k] - turn >= period {
-                    // Rounded up to the period from just below zero.
-                    turn += period;
-                    z.at[k] = turn;
-                }
-                z.at[k] -= turn;
-                z.lo[k] -= turn;
-                z.hi[k] -= turn;
+    for z in &mut kept {
+        for k in 0..2 {
+            let Some(period) = wrap.period[k] else {
+                continue;
+            };
+            let origin = wrap.origin[k];
+            let mut turn = period * ((z.at[k] - origin) / period).floor();
+            if z.at[k] - origin - turn >= period {
+                // Rounded up to the period from just below the origin.
+                turn += period;
+                z.at[k] = origin + turn;
             }
+            z.at[k] -= turn;
+            z.lo[k] -= turn;
+            z.hi[k] -= turn;
         }
     }
     kept.sort_by(order);

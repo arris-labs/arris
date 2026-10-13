@@ -1,7 +1,7 @@
-//! The section of a torus with an analytic surface, looked for in the
-//! torus's own `(u, v)`: the other surface's implicit polynomial over the
-//! torus's parametrisation, and the points of it that carry the
-//! section's topology.
+//! The section of a torus or a NURBS surface with an analytic surface,
+//! looked for in the walked surface's own `(u, v)`: the other surface's
+//! implicit polynomial over its parametrisation, and the points of it that
+//! carry the section's topology.
 //!
 //! A torus has no rulings to walk, so the other surface's `F` is put
 //! into the torus instead: `F(P(u, v)) = 0` is the section, a curve in
@@ -16,6 +16,14 @@
 //! (2, 2) against a plane, (4, 4) against a quadric, (8, 8) against
 //! another torus.
 //!
+//! A NURBS surface is cut into its Bézier patches instead, one per pair
+//! of knot spans (ADR-0061). Each is already a rational patch in
+//! homogeneous coordinates `(w·P, w)`, of the surface's bidegree `(p, q)`
+//! and linear in its span's parameters, so the same substitution gives
+//! `f` of bidegree `(d·p, d·q)` with the net's own weight `w`. A
+//! [`Chart`] says how a patch's `(s, t)` stand for the surface's `(u, v)`
+//! and which directions close.
+//!
 //! Two sets of points are isolated on every patch, and merged across
 //! the patches' shared edges and the two seams:
 //!
@@ -23,7 +31,8 @@
 //!   parallel to `v` and the number of `v` that solve `f(u, ·) = 0`
 //!   changes. On `f = 0` the weight drops out of `f_t`, so they are the
 //!   turning points of `F(P(u, v))` whatever the patch. Every component
-//!   of the section either has one or winds round `u`.
+//!   of the section either has one, winds round `u`, or ends on an edge
+//!   of a NURBS surface's domain.
 //! - the **critical points** of `F(P(u, v))` near the section: the zeros
 //!   of `w·f_s − d·w_s·f = w^(d+1)·∂F/∂s` and of the same in `t`, which
 //!   are free of the weight *off* the section as well, so that a near
@@ -42,14 +51,16 @@
 
 use core::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_4, TAU};
 
-use arris_math::{Meter, Tolerance};
+use arris_math::{Meter, Point3, Tolerance, Vec3};
 
-use crate::Surface;
 use crate::arc::{QUARTER_TAN, quarter_angle, quarter_arc, quarter_param, quarter_weight};
 use crate::bernstein::{self, Binomials, sign_change_candidates};
-use crate::bernstein2::{Continuum, Gate, Isolation, Poly2, Zero2, common_zeros, merge};
+use crate::bernstein2::{
+    Continuum, Gate, Isolation, Poly2, Wrap, Zero2, common_zeros, merge_wrapped,
+};
 use crate::halt::Halt;
 use crate::implicit::{BERNSTEIN_ROUNDING, Implicit};
+use crate::{NurbsSurface, Surface};
 
 /// What the angles of two patches' shared edge may differ by, each
 /// rounded on its own way through [`quarter_angle`]: a few `ε` of a turn.
@@ -95,6 +106,60 @@ fn quarters([lo, hi]: [f64; 2]) -> Vec<(usize, [f64; 2], bool)> {
         .collect()
 }
 
+/// What a knot of a NURBS surface may differ by from itself through a
+/// patch's chart and back, as a share of the largest knot's magnitude: a
+/// few `ε`. A statement about `f64`, never a tolerance.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the isolation only; the walk on a NURBS surface is not written yet"
+    )
+)]
+const KNOT_ROUNDING: f64 = 4.0 * f64::EPSILON;
+
+/// What a control point moved into the other surface's frame may be off
+/// by, as a share of its terms before they cancel: a rotation's three
+/// products and two sums, and the shift added. A statement about `f64`,
+/// never a tolerance.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the isolation only; the walk on a NURBS surface is not written yet"
+    )
+)]
+const MOVE_ROUNDING: f64 = 4.0 * f64::EPSILON;
+
+/// How the patches stand for the walked surface's parameters.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Chart {
+    /// A torus: sixteen quarter turns, patch `4·qu + qv`, each direction's
+    /// `s` an angle through [`quarter_angle`], both closing over `2π`.
+    Quarters,
+    /// A NURBS surface: a patch per pair of knot spans, row-major over
+    /// `u` with `columns` spans of `v` to a row, `s` linear over the
+    /// patch's span. Each direction closes over the surface's
+    /// [`NurbsSurface::closure`] from the start of its domain, or not.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "the isolation only; the walk on a NURBS surface is not written yet"
+        )
+    )]
+    Knots {
+        /// The spans of `v`, how many patches a row of `u` holds.
+        columns: usize,
+        /// Each direction's closure.
+        closure: [Option<f64>; 2],
+        /// Where each direction's domain starts.
+        origin: [f64; 2],
+        /// The rounding two patches' shared edge may differ by.
+        touch: f64,
+    },
+}
+
 /// What [`PatchedSection::sign_over`] looks at over a box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Probe {
@@ -113,16 +178,25 @@ pub(crate) enum Probe {
 
 /// One patch: the other surface's polynomial over it, and its weight.
 struct Patch {
-    quarter: [usize; 2],
+    /// The quarter turns of a torus's patch; the spans' indices, `u`'s and
+    /// `v`'s, of a NURBS surface's.
+    cell: [usize; 2],
+    /// The box of the walked surface's parameters the patch covers.
+    span: [[f64; 2]; 2],
     f: Poly2,
     weight: Poly2,
 }
 
-/// The other surface's polynomial over the sixteen patches of a torus.
+/// The other surface's polynomial over the patches of a torus or a NURBS
+/// surface.
 pub(crate) struct PatchedSection<'a> {
     /// The other surface.
     pub(crate) implicit: Implicit<'a>,
+    chart: Chart,
     patches: Vec<Patch>,
+    /// The degree the binomial tables the patches' products take reach
+    /// to.
+    binomial_degree: usize,
     /// The rounding of a coefficient of `f`.
     floor: f64,
     /// What `|f|` is no larger than within `tol.linear` of the other
@@ -137,11 +211,13 @@ pub(crate) struct PatchedSection<'a> {
     odd_turn: bool,
 }
 
-/// The points isolated over the whole torus, as angles.
+/// The points isolated over the whole walked surface, in its parameters.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Census {
-    /// `at` is `(u, v)` in `[0, 2π)²`, ascending; a box is in the same
-    /// angles, around its `at`, and may reach past either seam.
+    /// `at` is `(u, v)`, ascending: angles in `[0, 2π)²` on a torus, and on
+    /// a NURBS surface its own parameters, a closed direction's within
+    /// one closure from the start of its domain. A box is in the same
+    /// parameters, around its `at`, and may reach past a seam.
     pub(crate) zeros: Vec<Zero2>,
     /// The deepest level any patch was subdivided to.
     pub(crate) depth: usize,
@@ -194,8 +270,10 @@ impl<'a> PatchedSection<'a> {
                     ])
                 });
                 let f = implicit.along([&local[0], &local[1], &local[2], &weight], &binomials);
+                let quarter = |q: usize| [q as f64 * FRAC_PI_2, (q + 1) as f64 * FRAC_PI_2];
                 patches.push(Patch {
-                    quarter: [qu, qv],
+                    cell: [qu, qv],
+                    span: [quarter(qu), quarter(qv)],
                     f,
                     weight,
                 });
@@ -208,12 +286,177 @@ impl<'a> PatchedSection<'a> {
         let steep = implicit.steepness(reach + tol.linear) * tol.linear;
         Some(PatchedSection {
             implicit,
+            chart: Chart::Quarters,
             patches,
+            binomial_degree: 4 * degree + 4,
             floor,
             near: floor + steep,
             steep,
             odd_turn: false,
         })
+    }
+
+    /// The section of `nurbs` with `other` over the Bézier patches of
+    /// `nurbs` (ADR-0061); `None` where `other` has no implicit form,
+    /// which a NURBS surface has not.
+    ///
+    /// Each patch's homogeneous net is moved into the other surface's
+    /// frame and put into its polynomial. The rounding floor is the
+    /// polynomial's magnitude at the largest homogeneous coordinate and
+    /// weight of any patch, and what the move's own rounding — a few `ε`
+    /// of the terms before they cancelled — adds to that magnitude; what a distance of `tol.linear` makes of
+    /// `f` is the other surface's steepness at the farthest control point
+    /// times the largest weight to the degree: a patch lies inside its
+    /// control points' hull, and `f = wᵈ·F`.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "the isolation only; the walk on a NURBS surface is not written yet"
+        )
+    )]
+    pub(crate) fn on_nurbs(
+        nurbs: &NurbsSurface,
+        other: &'a Surface,
+        tol: Tolerance,
+    ) -> Option<Self> {
+        let implicit = Implicit::of(other)?;
+        let degree = implicit.degree();
+        let [p, q] = nurbs.degree();
+        let binomials = Binomials::new(degree * p.max(q));
+        // The other frame's origin seen from it: a homogeneous point
+        // `(X, w)` is `R·X + w·shift` there.
+        let shift = implicit.frame.to_local(Point3::origin()).coords;
+        let bezier = nurbs.patches();
+        let mut columns_seen: Vec<f64> = Vec::new();
+        let mut rows_seen: Vec<f64> = Vec::new();
+        let (mut reach, mut heaviest, mut farthest) = (0.0f64, 0.0f64, 0.0f64);
+        let mut before = 0.0f64;
+        let mut patches = Vec::with_capacity(bezier.len());
+        for patch in &bezier {
+            let [pu, pv] = patch.degree;
+            let mut coords: [Vec<f64>; 3] = [Vec::new(), Vec::new(), Vec::new()];
+            let mut weights = Vec::with_capacity(patch.net.len());
+            for h in &patch.net {
+                let turned = implicit.frame.vec_to_local(Vec3::new(h.x, h.y, h.z));
+                let moved = turned + h.w * shift;
+                for (k, c) in coords.iter_mut().enumerate() {
+                    c.push(moved[k]);
+                }
+                weights.push(h.w);
+                reach = reach.max(moved.norm());
+                // The terms before they cancel: a net a kilometre out,
+                // moved into a frame beside it, keeps a rounding of a
+                // kilometre's `ε` in every control point.
+                before = before.max(turned.norm() + h.w * shift.norm());
+                heaviest = heaviest.max(h.w);
+                farthest = farthest.max(moved.norm() / h.w);
+            }
+            let [x, y, z] = coords.map(|c| Poly2::new([pu, pv], c));
+            let weight = Poly2::new([pu, pv], weights);
+            let f = implicit.along([&x, &y, &z, &weight], &binomials);
+            let index = |seen: &mut Vec<f64>, lo: f64| match seen.iter().position(|&k| k == lo) {
+                Some(i) => i,
+                None => {
+                    seen.push(lo);
+                    seen.len() - 1
+                }
+            };
+            patches.push(Patch {
+                cell: [
+                    index(&mut rows_seen, patch.u[0]),
+                    index(&mut columns_seen, patch.v[0]),
+                ],
+                span: [patch.u, patch.v],
+                f,
+                weight,
+            });
+        }
+        let [du, dv] = nurbs.domain();
+        let largest_knot = [du.lo(), du.hi(), dv.lo(), dv.hi()]
+            .into_iter()
+            .fold(0.0f64, |m, k| m.max(k.abs()));
+        // Every coefficient is a sum of terms each bounded by a monomial
+        // of the coordinates' bound, so a coordinate off by `moved` moves
+        // it by no more than the magnitude grows by.
+        let moved = MOVE_ROUNDING * before;
+        let magnitude = implicit.magnitude(reach, heaviest);
+        let floor = BERNSTEIN_ROUNDING * magnitude
+            + (implicit.magnitude(reach + moved, heaviest) - magnitude);
+        let steep =
+            implicit.steepness(farthest + tol.linear) * tol.linear * heaviest.powi(degree as i32);
+        Some(PatchedSection {
+            implicit,
+            chart: Chart::Knots {
+                columns: columns_seen.len(),
+                closure: nurbs.closure(),
+                origin: [du.lo(), dv.lo()],
+                touch: KNOT_ROUNDING * largest_knot,
+            },
+            patches,
+            // `∂²F/∂v²`'s numerator, [`Probe::Fvv`], is the largest
+            // product: `f` times the weight twice.
+            binomial_degree: (degree + 2) * p.max(q) + 2,
+            floor,
+            near: floor + steep,
+            steep,
+            odd_turn: false,
+        })
+    }
+
+    /// The parameter of direction `k` at `s` of `patch`.
+    fn param(&self, patch: &Patch, k: usize, s: f64) -> f64 {
+        match self.chart {
+            Chart::Quarters => quarter_angle(patch.cell[k], s),
+            Chart::Knots { .. } => {
+                let [lo, hi] = patch.span[k];
+                lo * (1.0 - s) + hi * s
+            }
+        }
+    }
+
+    /// The patch at `cell`.
+    fn patch_at(&self, [cu, cv]: [usize; 2]) -> Option<&Patch> {
+        let columns = match self.chart {
+            Chart::Quarters => 4,
+            Chart::Knots { columns, .. } => columns,
+        };
+        self.patches.get(cu * columns + cv)
+    }
+
+    /// The cells of direction `k` a range of its parameter lies over, each
+    /// with the part of its `[0, 1]` the range covers and whether it is an
+    /// odd number of whole turns from the torus's `[0, 2π)`. On a NURBS
+    /// surface a closed direction's range is taken a closure either way as
+    /// well, and the part of a range outside the domain has no cell.
+    fn cells(&self, k: usize, range: [f64; 2]) -> Vec<(usize, [f64; 2], bool)> {
+        let Chart::Knots { closure, .. } = self.chart else {
+            return quarters(range);
+        };
+        let mut spans: Vec<[f64; 2]> = Vec::new();
+        for patch in &self.patches {
+            let cell = patch.cell[k];
+            if spans.len() <= cell {
+                spans.resize(cell + 1, [f64::NAN; 2]);
+            }
+            spans[cell] = patch.span[k];
+        }
+        let turns: Vec<f64> = match closure[k] {
+            Some(c) => vec![-c, 0.0, c],
+            None => vec![0.0],
+        };
+        let mut out = Vec::new();
+        for turn in turns {
+            let [lo, hi] = [range[0] - turn, range[1] - turn];
+            for (cell, &[a, b]) in spans.iter().enumerate() {
+                if hi < a || b < lo {
+                    continue;
+                }
+                let local = |x: f64| ((x - a) / (b - a)).clamp(0.0, 1.0);
+                out.push((cell, [local(lo), local(hi)], false));
+            }
+        }
+        out
     }
 
     /// Candidates for the `u` of a tube circle of the torus lying on the
@@ -224,15 +467,20 @@ impl<'a> PatchedSection<'a> {
     /// exactly at the end of a polynomial's `[0, 1]` is no variation of
     /// its coefficients. A candidate is a place to look and no more.
     pub(crate) fn tube_circle_candidates(&self) -> Vec<f64> {
+        // A NURBS surface's isolines on the other surface are not looked
+        // for here.
+        if self.chart != Chart::Quarters {
+            return Vec::new();
+        }
         let mut found: Vec<f64> = (0..4).map(|q| q as f64 * FRAC_PI_2).collect();
-        for patch in self.patches.iter().filter(|p| p.quarter[1] % 2 == 0) {
+        for patch in self.patches.iter().filter(|p| p.cell[1] % 2 == 0) {
             let line = patch.f.along(CIRCLE_ROW);
             let m = line.len().saturating_sub(1) as f64;
             let slope = bernstein::derivative(&line);
             let roots = sign_change_candidates(&line, self.floor)
                 .into_iter()
                 .chain(sign_change_candidates(&slope, 2.0 * m * self.floor));
-            found.extend(roots.map(|s| quarter_angle(patch.quarter[0], s).rem_euclid(TAU)));
+            found.extend(roots.map(|s| quarter_angle(patch.cell[0], s).rem_euclid(TAU)));
         }
         found.sort_by(f64::total_cmp);
         found
@@ -273,6 +521,9 @@ impl<'a> PatchedSection<'a> {
     /// [`DIVIDED_WITHIN`] of it; the others keep their polynomial, which
     /// the factor does not make small.
     pub(crate) fn deflate(&mut self, u0: f64, order: usize, corrected: bool) {
+        if self.chart != Chart::Quarters {
+            return;
+        }
         let d = self.implicit.degree();
         let binomials = Binomials::new(4 * d + 2);
         let home = ((u0 / FRAC_PI_2).floor().max(0.0) as usize).min(3);
@@ -330,7 +581,7 @@ impl<'a> PatchedSection<'a> {
         }
         let mut worst = rounding;
         for patch in &mut self.patches {
-            let (middle, _, root) = chart(patch.quarter[0]);
+            let (middle, _, root) = chart(patch.cell[0]);
             let odd = order % 2 == 1;
             let divided = (-DIVIDED_WITHIN..=1.0 + DIVIDED_WITHIN).contains(&root);
             let mut floor = rounding;
@@ -383,7 +634,7 @@ impl<'a> PatchedSection<'a> {
     /// branches or an isolated point, at the tolerance.
     pub(crate) fn critical_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
         let degree = self.implicit.degree();
-        let binomials = Binomials::new(4 * degree + 2);
+        let binomials = Binomials::new(self.binomial_degree);
         let d = degree as f64;
         self.census(meter, |patch, meter| {
             let [m, n] = patch.f.degree();
@@ -422,9 +673,9 @@ impl<'a> PatchedSection<'a> {
     pub(crate) fn sign_over(&self, probe: Probe, u: [f64; 2], v: [f64; 2]) -> Option<bool> {
         let d = self.implicit.degree() as f64;
         let mut sign = None;
-        for (qu, s, turned) in quarters(u) {
-            for (qv, t, _) in quarters(v) {
-                let patch = self.patches.get(4 * qu + qv)?;
+        for (cu, s, turned) in self.cells(0, u) {
+            for (cv, t, _) in self.cells(1, v) {
+                let patch = self.patch_at([cu, cv])?;
                 let [m, n] = patch.f.degree();
                 let (m, n) = (m as f64, n as f64);
                 let part = match probe {
@@ -432,7 +683,7 @@ impl<'a> PatchedSection<'a> {
                     Probe::Fs => patch.f.du().restricted(s, t).sign(2.0 * m * self.floor),
                     Probe::Ft => patch.f.dv().restricted(s, t).sign(2.0 * n * self.floor),
                     Probe::Fvv => {
-                        let binomials = Binomials::new(4 * self.implicit.degree() + 4);
+                        let binomials = Binomials::new(self.binomial_degree);
                         let (f, w) = (&patch.f, &patch.weight);
                         // `w·X_t − d·w_t·X`, twice: `w^(d+1)·F_t` and then
                         // a positive multiple of `∂²F/∂v²`, since a
@@ -459,27 +710,28 @@ impl<'a> PatchedSection<'a> {
         sign
     }
 
-    /// Candidates for the roots of `f(0, ·)`, as angles ascending: every
-    /// sign change of the section's polynomial along `u = 0` has one
-    /// within rounding of it, and a candidate need be no root
+    /// Candidates for the roots of `f` along the first row of `u` — `u =
+    /// 0` on a torus, the start of a NURBS surface's domain — as values of
+    /// `v` ascending: every sign change of the section's polynomial there
+    /// has one within rounding of it, and a candidate need be no root
     /// (`crate::bernstein::sign_change_candidates`).
     pub(crate) fn seam_candidates(&self) -> Vec<f64> {
         let mut found: Vec<f64> = Vec::new();
-        for patch in self.patches.iter().filter(|p| p.quarter[0] == 0) {
+        for patch in self.patches.iter().filter(|p| p.cell[0] == 0) {
             let stride = patch.f.degree()[1] + 1;
             let row = &patch.f.coefficients()[..stride];
             found.extend(
                 sign_change_candidates(row, self.floor)
                     .into_iter()
-                    .map(|t| quarter_angle(patch.quarter[1], t)),
+                    .map(|t| self.param(patch, 1, t)),
             );
         }
         found.sort_by(f64::total_cmp);
         found
     }
 
-    /// One isolation per patch, its zeros and boxes taken to angles and
-    /// those found from two patches made one.
+    /// One isolation per patch, its zeros and boxes taken to the walked
+    /// surface's parameters and those found from two patches made one.
     fn census(
         &self,
         meter: &mut Meter,
@@ -491,7 +743,7 @@ impl<'a> PatchedSection<'a> {
             let found = isolate(patch, meter)?;
             depth = depth.max(found.depth);
             boxes += found.boxes;
-            let angles = |p: [f64; 2]| [0, 1].map(|k| quarter_angle(patch.quarter[k], p[k]));
+            let angles = |p: [f64; 2]| [0, 1].map(|k| self.param(patch, k, p[k]));
             zeros.extend(found.zeros.iter().map(|z| Zero2 {
                 at: angles(z.at),
                 lo: angles(z.lo),
@@ -499,8 +751,25 @@ impl<'a> PatchedSection<'a> {
                 certified: z.certified,
             }));
         }
+        let wrap = match self.chart {
+            Chart::Quarters => Wrap {
+                period: [Some(TAU); 2],
+                origin: [0.0; 2],
+                touch: ANGLE_ROUNDING,
+            },
+            Chart::Knots {
+                closure,
+                origin,
+                touch,
+                ..
+            } => Wrap {
+                period: closure,
+                origin,
+                touch,
+            },
+        };
         Ok(Census {
-            zeros: merge(zeros, Some((TAU, ANGLE_ROUNDING))),
+            zeros: merge_wrapped(zeros, &wrap),
             depth,
             boxes,
         })
@@ -510,7 +779,7 @@ impl<'a> PatchedSection<'a> {
 #[cfg(test)]
 mod tests {
     use arris_math::nalgebra::UnitQuaternion;
-    use arris_math::{Frame, Isometry, Point3, Precision, Vec3};
+    use arris_math::{Frame, Interval, Isometry, Point3, Precision, Vec3};
 
     use core::f64::consts::PI;
 
@@ -770,7 +1039,7 @@ mod tests {
                 let section = PatchedSection::new(&torus, &other, TOL).unwrap();
                 for patch in &section.patches {
                     for (s, t) in [(0.0, 0.0), (0.3, 0.8), (1.0, 0.45), (0.5, 0.5), (1.0, 1.0)] {
-                        let [u, v] = [0, 1].map(|k| quarter_angle(patch.quarter[k], [s, t][k]));
+                        let [u, v] = [0, 1].map(|k| quarter_angle(patch.cell[k], [s, t][k]));
                         let p = section.implicit.frame.to_local(torus.point(u, v));
                         let w = patch.weight.eval(s, t);
                         let coords = [p.x, p.y, p.z, 1.0].map(|c| vec![c]);
@@ -781,7 +1050,7 @@ mod tests {
                         assert!(
                             (value - direct).abs() <= 4.0 * section.floor,
                             "{name} R={major} r={minor} {:?}: {value} vs {direct}, floor {}",
-                            patch.quarter,
+                            patch.cell,
                             section.floor
                         );
                     }
@@ -1119,11 +1388,11 @@ mod tests {
                 assert_eq!(rest.odd_turn, order == 1);
                 for (f, h) in whole.patches.iter().zip(&rest.patches) {
                     for (s, t) in [(0.03, 0.2), (0.41, 0.9), (0.77, 0.5), (0.98, 0.1)] {
-                        let u = quarter_angle(f.quarter[0], s);
+                        let u = quarter_angle(f.cell[0], s);
                         let factor = (0.5 * (u - u0)).sin().powi(order as i32);
                         let (was, is) = (f.f.eval(s, t), h.f.eval(s, t) * factor);
                         if was.abs() > 1e3 * whole.floor {
-                            assert_eq!(was > 0.0, is > 0.0, "{u0}, order {order}, {:?}", f.quarter);
+                            assert_eq!(was > 0.0, is > 0.0, "{u0}, order {order}, {:?}", f.cell);
                         }
                     }
                 }
@@ -1220,5 +1489,478 @@ mod tests {
         );
         let (turning, singular) = census(2.5 + 1e-3);
         assert!(turning.is_empty() && singular.is_empty());
+    }
+
+    /// The exact NURBS twin of `surface` over `bounds`.
+    fn twin(surface: &Surface, bounds: [Interval; 2]) -> NurbsSurface {
+        surface.to_nurbs(bounds).unwrap()
+    }
+
+    /// The bicubic saddle `z = u² − v²` over `[−1, 1]²` as a B-spline of
+    /// one interior knot each way, so that its saddle is the corner four
+    /// patches share. A cubic's polar form of `x²` is `(ab + bc + ca)/3`
+    /// and of `x` the mean, at each control point's three knots.
+    fn saddle() -> NurbsSurface {
+        let knots = vec![-1.0, -1.0, -1.0, -1.0, 0.0, 1.0, 1.0, 1.0, 1.0];
+        let triples = [
+            [-1.0, -1.0, -1.0],
+            [-1.0, -1.0, 0.0],
+            [-1.0, 0.0, 1.0],
+            [0.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0],
+        ];
+        let mean = |[a, b, c]: [f64; 3]| (a + b + c) / 3.0;
+        let square = |[a, b, c]: [f64; 3]| (a * b + b * c + c * a) / 3.0;
+        let mut points = Vec::new();
+        for i in triples {
+            for j in triples {
+                points.push(Point3::new(mean(i), mean(j), square(i) - square(j)));
+            }
+        }
+        NurbsSurface::new([3, 3], [knots.clone(), knots], points, vec![1.0; 25]).unwrap()
+    }
+
+    /// The point of `nurbs` at a census zero.
+    fn on(nurbs: &NurbsSurface, z: &Zero2) -> Point3 {
+        nurbs.eval(z.at[0], z.at[1]).point
+    }
+
+    /// The certified zeros of `census` match `expected` as points, one to
+    /// one, within `within`.
+    fn matches(nurbs: &NurbsSurface, census: &[&Zero2], expected: &[Point3], within: f64) {
+        assert_eq!(census.len(), expected.len(), "{census:?} vs {expected:?}");
+        for e in expected {
+            assert!(
+                census.iter().any(|z| (on(nurbs, z) - e).norm() <= within),
+                "{e:?} not among {:?}",
+                census.iter().map(|z| on(nurbs, z)).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    fn certified(census: &Census) -> Vec<&Zero2> {
+        census.zeros.iter().filter(|z| z.certified).collect()
+    }
+
+    /// The critical points within the tolerance of the other surface.
+    fn singular<'z>(
+        nurbs: &NurbsSurface,
+        section: &PatchedSection<'_>,
+        critical: &'z Census,
+    ) -> Vec<&'z Zero2> {
+        (critical.zeros.iter())
+            .filter(|z| z.certified && section.implicit.distance(on(nurbs, z)).abs() <= TOL.linear)
+            .collect()
+    }
+
+    /// Every patch of a NURBS surface's section is the other surface's
+    /// polynomial at the surface's point times the patch's weight to the
+    /// degree: the twins of a cylinder, a sphere and a torus, and the
+    /// saddle, against a plane, a quadric and a torus, turned and moved a
+    /// kilometre away.
+    #[test]
+    fn a_nurbs_patch_is_the_implicit_polynomial_over_it() {
+        let binomials = Binomials::new(0);
+        let pose = &poses()[2];
+        let surfaces = [
+            (
+                "cylinder",
+                twin(
+                    &Surface::Cylinder {
+                        frame: Frame::world(),
+                        radius: 1.0,
+                    },
+                    [Interval::TURN, Interval::new(-2.0, 2.0).unwrap()],
+                ),
+            ),
+            (
+                "sphere",
+                twin(
+                    &Surface::Sphere {
+                        frame: Frame::world(),
+                        radius: 2.0,
+                    },
+                    Surface::Sphere {
+                        frame: Frame::world(),
+                        radius: 2.0,
+                    }
+                    .domain(),
+                ),
+            ),
+            (
+                "torus",
+                twin(&torus(2.0, 0.5), [Interval::TURN, Interval::TURN]),
+            ),
+            ("saddle", saddle()),
+        ];
+        let others = [
+            Surface::Plane {
+                frame: frame(Point3::new(0.3, -0.2, 0.1), Vec3::new(0.4, -0.3, 0.85)),
+            },
+            Surface::Cone {
+                frame: frame(Point3::new(0.2, 0.1, -0.4), Vec3::new(0.2, 0.1, 0.97)),
+                radius: 0.6,
+                half_angle: 0.4,
+            },
+            Surface::Torus {
+                frame: frame(Point3::new(1.0, 0.1, 0.05), Vec3::new(0.05, 1.0, 0.1)),
+                major_radius: 1.5,
+                minor_radius: 0.4,
+            },
+        ];
+        for (name, nurbs) in surfaces {
+            let nurbs = nurbs.transformed(pose);
+            for other in &others {
+                let other = other.transformed(pose);
+                let section = PatchedSection::on_nurbs(&nurbs, &other, TOL).unwrap();
+                let d = section.implicit.degree() as i32;
+                for patch in &section.patches {
+                    for (s, t) in [(0.0, 0.0), (0.3, 0.8), (1.0, 0.45), (0.5, 0.5), (1.0, 1.0)] {
+                        let [u, v] = [0, 1].map(|k| section.param(patch, k, [s, t][k]));
+                        let p = section.implicit.frame.to_local(nurbs.eval(u, v).point);
+                        let w = patch.weight.eval(s, t);
+                        let coords = [p.x, p.y, p.z, 1.0].map(|c| vec![c]);
+                        let [x, y, z, one] = &coords;
+                        let direct =
+                            section.implicit.along([x, y, z, one], &binomials)[0] * w.powi(d);
+                        let value = patch.f.eval(s, t);
+                        assert!(
+                            (value - direct).abs() <= 4.0 * section.floor,
+                            "{name} {:?}: {value} vs {direct}, floor {}",
+                            patch.cell,
+                            section.floor
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The twin of a torus turns where the torus does: the spiric
+    /// sections' turning points and singular points are the closed form's
+    /// points, found across the twin's seams — the figure eight's crossing
+    /// and the touch on the outer equator are at `u = 0`, which a full
+    /// turn's twin closes over without being periodic.
+    #[test]
+    fn a_torus_twin_turns_where_the_torus_does() {
+        let (major, minor) = (2.0, 0.5);
+        let torus = torus(major, minor);
+        let nurbs = twin(&torus, [Interval::TURN, Interval::TURN]);
+        assert!(nurbs.closure().iter().all(Option::is_some));
+        let census = |d: f64| {
+            let plane = Surface::Plane {
+                frame: frame(Point3::new(d, 0.0, 0.0), Vec3::x()),
+            };
+            let section = PatchedSection::on_nurbs(&nurbs, &plane, TOL).unwrap();
+            let turning = section.turning_points(&mut Meter::default()).unwrap();
+            let critical = section.critical_points(&mut Meter::default()).unwrap();
+            let singular: Vec<Zero2> = singular(&nurbs, &section, &critical)
+                .into_iter()
+                .copied()
+                .collect();
+            (turning, singular)
+        };
+        let at = |u: f64, v: f64| torus.point(u, v);
+        let (turning, singular) = census(1.0);
+        let (outer, inner) = ((1.0f64 / 2.5).acos(), (1.0f64 / 1.5).acos());
+        matches(
+            &nurbs,
+            &certified(&turning),
+            &[
+                at(outer, 0.0),
+                at(-outer, 0.0),
+                at(inner, PI),
+                at(-inner, PI),
+            ],
+            1e-12,
+        );
+        assert_eq!(turning.zeros.len(), 4, "{:?}", turning.zeros);
+        assert!(singular.is_empty(), "{singular:?}");
+        // The figure eight: its crossing, on the seam, is one singular
+        // point, and one uncertified turning box.
+        let (turning, singular) = census(1.5);
+        let outer = (1.5f64 / 2.5).acos();
+        matches(
+            &nurbs,
+            &certified(&turning),
+            &[at(outer, 0.0), at(-outer, 0.0)],
+            1e-12,
+        );
+        matches(
+            &nurbs,
+            &singular.iter().collect::<Vec<_>>(),
+            &[at(0.0, PI)],
+            1e-12,
+        );
+        let open: Vec<&Zero2> = turning.zeros.iter().filter(|z| !z.certified).collect();
+        assert_eq!(open.len(), 1, "{:?}", turning.zeros);
+        assert!(
+            (on(&nurbs, open[0]) - at(0.0, PI)).norm() < 1e-5,
+            "{open:?}"
+        );
+        // The touch on the outer equator, also on the seam.
+        let (_, singular) = census(2.5);
+        matches(
+            &nurbs,
+            &singular.iter().collect::<Vec<_>>(),
+            &[at(0.0, 0.0)],
+            1e-12,
+        );
+        let (turning, singular) = census(2.5 + 1e-3);
+        assert!(turning.zeros.is_empty() && singular.is_empty());
+    }
+
+    /// The twins of a cylinder and a sphere against a quadric and a
+    /// plane, each turning point and singular point where the closed form
+    /// puts it.
+    #[test]
+    fn a_cylinder_and_a_sphere_twin_turn_where_the_closed_form_says() {
+        // A sphere centred `e` off the axis of a unit cylinder: `F` over
+        // `(θ, z)` is `1 + e² − 2e cos θ + z² − R²`, which turns at `z = 0`
+        // where `cos θ = (1 + e² − R²) / 2e`, and touches the wall from
+        // inside at `θ = π` where `R = 1 + e`.
+        let wall = Surface::Cylinder {
+            frame: Frame::world(),
+            radius: 1.0,
+        };
+        let nurbs = twin(&wall, [Interval::TURN, Interval::new(-2.0, 2.0).unwrap()]);
+        let e = 0.8;
+        for pose in poses() {
+            let nurbs = nurbs.transformed(&pose);
+            let ball = |radius: f64| {
+                Surface::Sphere {
+                    frame: frame(Point3::new(e, 0.0, 0.0), Vec3::new(0.1, 0.2, 0.9)),
+                    radius,
+                }
+                .transformed(&pose)
+            };
+            let moved = |p: Point3| pose.apply(p);
+            let cross = ball(1.2);
+            let section = PatchedSection::on_nurbs(&nurbs, &cross, TOL).unwrap();
+            let turning = section.turning_points(&mut Meter::default()).unwrap();
+            let critical = section.critical_points(&mut Meter::default()).unwrap();
+            let theta = ((1.0 + e * e - 1.44) / (2.0 * e)).acos();
+            let scale = 1e-12 * (1.0 + pose.translation().norm());
+            matches(
+                &nurbs,
+                &certified(&turning),
+                &[
+                    moved(Point3::new(theta.cos(), theta.sin(), 0.0)),
+                    moved(Point3::new(theta.cos(), -theta.sin(), 0.0)),
+                ],
+                scale,
+            );
+            assert_eq!(turning.zeros.len(), 2, "{:?}", turning.zeros);
+            assert!(singular(&nurbs, &section, &critical).is_empty());
+            let touch = ball(1.0 + e);
+            let section = PatchedSection::on_nurbs(&nurbs, &touch, TOL).unwrap();
+            let critical = section.critical_points(&mut Meter::default()).unwrap();
+            matches(
+                &nurbs,
+                &singular(&nurbs, &section, &critical),
+                &[moved(Point3::new(-1.0, 0.0, 0.0))],
+                1e-6 * (1.0 + pose.translation().norm()),
+            );
+        }
+
+        // A sphere of radius 2: the plane `x = d` turns on the equator at
+        // `(d, ±√(4 − d²), 0)`, and the cylinder of radius 1.5 about the
+        // vertical through `(1, 0, 0)` at the longitudes where
+        // `cos u = (4 + 1 − 2.25) / 4`. Neither passes a pole.
+        let globe = Surface::Sphere {
+            frame: Frame::world(),
+            radius: 2.0,
+        };
+        let nurbs = twin(&globe, globe.domain());
+        let d = 0.7;
+        let plane = Surface::Plane {
+            frame: frame(Point3::new(d, 0.0, 0.0), Vec3::x()),
+        };
+        let pipe = Surface::Cylinder {
+            frame: frame(Point3::new(1.0, 0.0, 0.0), Vec3::z()),
+            radius: 1.5,
+        };
+        let y = (4.0 - d * d).sqrt();
+        let u = (2.75f64 / 4.0).acos();
+        for (other, expected) in [
+            (plane, [Point3::new(d, y, 0.0), Point3::new(d, -y, 0.0)]),
+            (
+                pipe,
+                [
+                    Point3::new(2.0 * u.cos(), 2.0 * u.sin(), 0.0),
+                    Point3::new(2.0 * u.cos(), -2.0 * u.sin(), 0.0),
+                ],
+            ),
+        ] {
+            let section = PatchedSection::on_nurbs(&nurbs, &other, TOL).unwrap();
+            let turning = section.turning_points(&mut Meter::default()).unwrap();
+            let critical = section.critical_points(&mut Meter::default()).unwrap();
+            matches(&nurbs, &certified(&turning), &expected, 1e-12);
+            assert_eq!(turning.zeros.len(), 2, "{:?}", turning.zeros);
+            assert!(singular(&nurbs, &section, &critical).is_empty());
+        }
+    }
+
+    /// The bicubic saddle against the plane at its saddle's height: one
+    /// certified singular point at the corner four patches share, found
+    /// once, and the turning box there uncertified. Above the saddle the
+    /// hyperbola turns at `u = ±√h`.
+    #[test]
+    fn a_bicubic_saddle_is_one_certified_singular_point() {
+        let nurbs = saddle();
+        let level = |h: f64| Surface::Plane {
+            frame: frame(Point3::new(0.0, 0.0, h), Vec3::z()),
+        };
+        let flat = level(0.0);
+        let section = PatchedSection::on_nurbs(&nurbs, &flat, TOL).unwrap();
+        let critical = section.critical_points(&mut Meter::default()).unwrap();
+        let found = singular(&nurbs, &section, &critical);
+        matches(&nurbs, &found, &[Point3::origin()], 1e-14);
+        assert!(found[0].at.iter().all(|c| c.abs() < 1e-14), "{found:?}");
+        let turning = section.turning_points(&mut Meter::default()).unwrap();
+        assert!(certified(&turning).is_empty(), "{:?}", turning.zeros);
+        assert!(
+            turning
+                .zeros
+                .iter()
+                .all(|z| (0..2).all(|k| z.lo[k] <= 1e-6 && -1e-6 <= z.hi[k])),
+            "{:?}",
+            turning.zeros
+        );
+        let raised = level(0.25);
+        let section = PatchedSection::on_nurbs(&nurbs, &raised, TOL).unwrap();
+        let turning = section.turning_points(&mut Meter::default()).unwrap();
+        matches(
+            &nurbs,
+            &certified(&turning),
+            &[Point3::new(0.5, 0.0, 0.25), Point3::new(-0.5, 0.0, 0.25)],
+            1e-12,
+        );
+        assert_eq!(turning.zeros.len(), 2);
+        let critical = section.critical_points(&mut Meter::default()).unwrap();
+        assert!(singular(&nurbs, &section, &critical).is_empty());
+        // Far from the section the polynomial keeps its sign over a box,
+        // and the box is cut at the knot it straddles.
+        assert_eq!(
+            section.sign_over(Probe::F, [-1.0, -0.9], [-0.1, 0.1]),
+            Some(true)
+        );
+        assert_eq!(
+            section.sign_over(Probe::F, [-0.1, 0.1], [-0.6, -0.5]),
+            Some(false)
+        );
+        assert_eq!(section.sign_over(Probe::F, [0.3, 0.7], [-0.1, 0.1]), None);
+    }
+
+    /// The two bicubic faces of CTC-02 the census found reached, each with
+    /// its tool's surface (`testdata/ctc02-bicubic-faces.txt`).
+    fn ctc02_faces() -> Vec<(&'static str, NurbsSurface, Surface)> {
+        let text = include_str!("../testdata/ctc02-bicubic-faces.txt");
+        let mut lines = text.lines().filter(|l| !l.starts_with('#'));
+        let numbers = |l: &str| -> Vec<f64> {
+            l.split_whitespace()
+                .filter_map(|w| w.parse::<f64>().ok())
+                .collect()
+        };
+        let mut out = Vec::new();
+        for name in ["f544", "f520"] {
+            assert_eq!(lines.next(), Some(format!("face {name}").as_str()));
+            let head = numbers(lines.next().unwrap());
+            let [p, q, n, m] = [0, 1, 2, 3].map(|k| head[k] as usize);
+            let ku = numbers(lines.next().unwrap());
+            let kv = numbers(lines.next().unwrap());
+            let (mut points, mut weights) = (Vec::new(), Vec::new());
+            for _ in 0..n * m {
+                let row = numbers(lines.next().unwrap());
+                points.push(Point3::new(row[0], row[1], row[2]));
+                weights.push(row[3]);
+            }
+            let nurbs = NurbsSurface::new([p, q], [ku, kv], points, weights).unwrap();
+            let tool = numbers(lines.next().unwrap());
+            let origin = Point3::new(tool[0], tool[1], tool[2]);
+            let axis = Vec3::new(tool[3], tool[4], tool[5]);
+            let other = match tool.len() {
+                6 => Surface::Plane {
+                    frame: frame(origin, axis),
+                },
+                _ => Surface::Cylinder {
+                    frame: frame(origin, axis),
+                    radius: tool[6],
+                },
+            };
+            out.push((name, nurbs, other));
+        }
+        out
+    }
+
+    /// What the isolation costs on the largest faces the census reached
+    /// (ADR-0061): CTC-02's two bicubic faces of 16 × 4 spans, a part
+    /// a metre long, against the plane and the drill that meet them, and
+    /// against a torus through each, whose bidegree (12, 12) is the most
+    /// a bicubic patch is put to: 64 patches each. Every turning point is
+    /// certified and on the other surface, and the boxes stay within the
+    /// torus tracer's measured bound for its sixteen patches together —
+    /// 292 at the most, to a depth of 12, some 5 ms in a test build.
+    #[test]
+    fn the_census_largest_faces_isolate_within_the_torus_bound() {
+        // The plane crosses f544 in an arc that turns twice, the drill
+        // crosses f520 from edge to edge without turning, and the torus
+        // meets each in two loops that turn twice each.
+        let turns = [(2, 4), (0, 4)];
+        for ((name, nurbs, tool), (by_tool, by_torus)) in ctc02_faces().into_iter().zip(turns) {
+            let [du, dv] = nurbs.domain();
+            // A torus about the face's normal at its middle, its tube
+            // through the face in two loops: the ring a fifth of the
+            // face's narrower width across.
+            let at = |u: f64, v: f64| nurbs.eval(du.lerp(u), dv.lerp(v)).point;
+            let middle = nurbs.eval(du.lerp(0.5), dv.lerp(0.5));
+            let normal = middle.du.cross(&middle.dv).normalize();
+            let width = (at(0.0, 0.5) - at(1.0, 0.5))
+                .norm()
+                .min((at(0.5, 0.0) - at(0.5, 1.0)).norm());
+            let ring = Surface::Torus {
+                frame: frame(middle.point, normal),
+                major_radius: 0.2 * width,
+                minor_radius: 0.05 * width,
+            };
+            for (what, other, expected) in [("tool", tool, by_tool), ("torus", ring, by_torus)] {
+                let label = format!("{name} against its {what}");
+                let section = PatchedSection::on_nurbs(&nurbs, &other, TOL).unwrap();
+                let turning = section.turning_points(&mut Meter::default()).unwrap();
+                let critical = section.critical_points(&mut Meter::default()).unwrap();
+                assert_eq!(
+                    certified(&turning).len(),
+                    expected,
+                    "{label}: {:?}",
+                    turning.zeros
+                );
+                assert_eq!(
+                    turning.zeros.len(),
+                    expected,
+                    "{label}: {:?}",
+                    turning.zeros
+                );
+                for z in &turning.zeros {
+                    // The rounding of a point most of a metre out.
+                    let p = on(&nurbs, z);
+                    let d = section.implicit.distance(p);
+                    let scale = p.coords.norm();
+                    assert!(d.abs() <= 1e-12 * scale, "{label}: {d} at {:?}", z.at);
+                }
+                assert!(singular(&nurbs, &section, &critical).is_empty(), "{label}");
+                for census in [&turning, &critical] {
+                    assert!(
+                        census.depth <= MEASURED_DEPTH,
+                        "{label}: depth {}",
+                        census.depth
+                    );
+                    assert!(
+                        census.boxes <= MEASURED_BOXES,
+                        "{label}: {} boxes",
+                        census.boxes
+                    );
+                }
+            }
+        }
     }
 }

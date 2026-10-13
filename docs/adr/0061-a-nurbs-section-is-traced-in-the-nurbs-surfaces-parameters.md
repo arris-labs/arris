@@ -1,0 +1,176 @@
+# ADR-0061 — The section of a NURBS surface with an analytic one is traced in the NURBS surface's (u, v), patch by patch, as a torus's is
+
+- Status: accepted (2026-10-13)
+- Plan: `nurbs-analytic-section` step 2 (the decision and the isolation);
+  the walk, the isolines and the intersector's arms land in its steps 3
+  to 5, and step 7 adds the pcurve's source here as an amendment
+- Follows: ADR-0019 (the torus traced in its own (u, v): the isolation,
+  the cells, the singular-point bump, the tube circle divided out), whose
+  machinery this reuses unchanged
+- Closes, once step 5 lands: the `Unsupported` arms of
+  `docs/DATA-MODEL.md` §Curves for a NURBS surface against a plane, a
+  cylinder, an elliptic cylinder, a cone, a sphere and a torus
+- Reference trees read: none. Open CASCADE is run as the oracle
+  (`GeomAPI_IntSS`, through `tools/oracle/`), not read
+
+## Context
+
+Step 1's census (the plan's table) puts four of the real-part battery's
+refused stages within reach: CTC-02's box cut and drill and CTC-05's box
+cut in both editions. Each is a NURBS face against a plane or a cylinder.
+Every surface pair the stages ask is NURBS × analytic, and one curve pair
+is too, a circle against a NURBS face. The faces are bicubic B-splines of
+up to 16 × 4 spans and a rational degree-(3, 2) patch. One face the
+box reaches has a collapsed row.
+
+ADR-0019 traced a torus in its own (u, v): the other surface's implicit
+`F` is put into the torus's rational parametrisation, patch by patch, and
+the zero set `f(u, v) = 0` is walked between certified turning and
+critical points. Nothing in that machinery is particular to a torus
+except three things: the patches (sixteen quarter turns), the chart from
+a patch's `(s, t)` to the angles, and the closure (both directions close
+over `2π`). A NURBS surface is a set of rational Bézier patches already.
+
+## Decision
+
+**The section of a NURBS surface with an analytic surface is traced in
+the NURBS surface's own (u, v)**, by putting each of its Bézier patches
+into the other surface's implicit form: `Implicit::along` over the
+patch's homogeneous net moved into the other surface's frame. The result
+is a tensor Bernstein polynomial of bidegree `(d·p, d·q)`, with `d` the
+other surface's degree: (3, 3) to (12, 12) for a bicubic patch. The
+turning points, the critical points, the cells and the singular-point bump
+of ADR-0019 then run on it unchanged. `trace_torus::PatchedSection` holds
+the patches of either kind behind a `Chart`. A torus's chart is the
+quarter turns, `4·qu + qv`, its `s` an angle through the half-angle map.
+A NURBS surface's chart is its knot spans, row-major over `u`, its `s`
+linear over the span.
+
+Four things a torus never had to decide:
+
+1. **The domain's edge.** A NURBS surface is not extrapolated past its
+   domain. A branch that reaches an edge of a direction that does not
+   close ends there. Its end is the root of `f` along that edge line.
+   That is the same equation the edge's own curve meets the other surface
+   by, so the boolean's pave and the section agree on the vertex. Every
+   root on an edge line seeds a march, as `u = 0`'s roots seed a torus's
+   winding components. `seam_candidates` is the first row of `u` on
+   either chart. The walk takes the other three edges as well (step 3).
+2. **Closure per direction**, read from `NurbsSurface::closure`. A
+   periodic direction and a clamped one whose ends meet (a full turn of a
+   revolution) both close, over the closure's length from the start of
+   the domain. A torus has two seams; a NURBS surface has zero, one or
+   two. `bernstein2::merge_wrapped` merges two patches' finds across a
+   seam per direction, from the domain's start rather than from zero.
+   `merge` is that with both directions closing over the same period
+   from zero, the torus's case, bit for bit.
+3. **An isoline on the other surface**, the analogue of the tube circle:
+   a whole row `u = u₀` or column `v = v₀` on which `f` vanishes within
+   `near`. It is found first and returned as the exact isocurve (knot
+   insertion, no fit). Then it is divided out of the patches it crosses,
+   as `deflate` divides out a tube circle, and crossing branches end on
+   it. The candidates are the patch edges and the sign changes along a
+   row. A NURBS surface on which `f` vanishes over a whole patch is
+   coincident with the other surface over an area, and is refused as
+   `Unsupported` (step 4).
+4. **A collapsed row**, one point in space (a pole, an apex), is **in
+   scope** (step 1: CTC-02's box reaches one, and a loft to a point makes
+   one). On the row `P_s ≡ 0`, so the critical points' first numerator
+   `w^(d+1)·∂F/∂s` vanishes all along it. Where the point is off the
+   other surface, `f` stays clear of `near` there and the gate drops the
+   row. Where it is on it, the row is an isoline of `f`, divided out as
+   (3) divides one. It is not returned as a curve: it is one point, a
+   singular point of the section at which every branch that reaches the
+   row ends, as a sphere's pole is (step 5).
+
+**The rounding floor charges the move into the other frame.** A torus's
+patches are built from its frame in the other frame, one rigid offset, so
+its floor is `BERNSTEIN_ROUNDING` times the polynomial's magnitude at the
+patch's reach. A NURBS net is moved point by point, and each point keeps a
+rounding of `MOVE_ROUNDING` (4ε) times its terms before they cancelled:
+`|R·X| + w·|shift|`, the net's distance from the other frame's origin and
+back. Every coefficient of `f` is a sum of terms each bounded by a
+monomial of the coordinates' bound. So the floor adds what the magnitude
+grows by when the reach grows by that rounding: linear in it, not raised
+to the degree. `steep`, what `tol.linear` makes of `f`, is the other
+surface's steepness at the farthest control point times the heaviest
+weight to the degree, since `f = wᵈ·F`.
+
+### What step 2 measured, recorded as the decision's grounds
+
+- **The twins turn where their analytic surfaces do.** The exact
+  `to_nurbs` twin of a torus against the spiric planes gives the closed
+  form's four turning points to 1e-12. The figure eight's crossing and
+  the outer touch, both on the twin's seam `u = 0`, are one certified
+  singular point each, merged across the seam of a full turn that closes
+  without being periodic. A cylinder's twin against an off-axis sphere
+  turns at `z = 0`, `cos θ = (1 + e² − R²)/2e`, posed a kilometre away,
+  and its internal tangency is one singular point. A sphere's twin
+  against a plane and a cylinder turns on the equator where the closed
+  form says and nowhere near its poles. A bicubic saddle `z = u² − v²`,
+  its saddle the corner four patches share, against the plane at its
+  height is one certified singular point at the corner, merged from four
+  patches. Above it the hyperbola turns at `u = ±√h`. Every patch
+  of every twin, against a plane, a cone and a torus, equals `wᵈ·F` at
+  the surface's point within four floors.
+- **Degree blow-up does not need a prefilter.** CTC-02's two largest
+  faces the census reached, 64 bicubic patches each
+  (`crates/arris-geom/testdata/ctc02-bicubic-faces.txt`), against the
+  plane and the drill that meet them and against a torus whose tube cuts
+  each in two loops, bidegree (12, 12): every turning point is certified
+  and within 1e-14 of the other surface. The worst isolation is 292 boxes
+  to a depth of 12, about 5 ms in a test build. A patch the other surface
+  misses is excluded at depth 0 on its coefficients' signs, so a box
+  test on the control hull first would save only the substitution, which
+  is microseconds. That is within ADR-0019's measured bound for a
+  torus's sixteen patches, 740 boxes and 25 halvings, and the torus's
+  `MEASURED_BOXES` (2000) and `MEASURED_DEPTH` (32) hold it in the test.
+- **The floor is the finding.** With the move's rounding charged as the
+  coordinate's size instead — the quartic of a kilometre's reach — the
+  torus's turning points on CTC-02's faces came back as four uncertified
+  boxes off the section by up to 0.23 mm. The floor (0.9) was above
+  what `f_t` varies by near a turning point, so the isolation could
+  neither exclude nor certify there. Charged linearly it is 2.6e-4, and
+  all four certify.
+- **The torus is unchanged.** Its census and its tests pass as they
+  were, and so do the 27 corpus fixtures named for a torus, an elbow, a
+  bead, a dome or a ring, against their blessed dumps.
+
+## Consequences
+
+- `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its
+  turning and critical points are certified over the knot grid and
+  merged across shared patch edges and closed seams. `sign_over` cuts a
+  box at the knots it straddles and takes a closed direction a closure
+  either way.
+- `nurbs::project::Patch` and `NurbsSurface::patches` are crate-visible,
+  so the projection and the section share one Bézier split.
+- The tube-circle search and its division stay the torus's. A NURBS
+  surface's isolines are (3), step 4's.
+- No public type or signature changes until step 5, which removes the
+  `Unsupported` arms.
+- The floor of a NURBS section grows with the net's distance from the
+  other surface's frame. A part a kilometre from the origin isolates
+  less sharply than the same part at the origin, by a factor of that
+  distance over the part's size. That is a statement about `f64`.
+
+## Alternatives considered
+
+- **Marching on the NURBS surface from seed points** (Open CASCADE's
+  `IntPatch_ImpPrmIntersection` family, by its reputation and the
+  oracle's walked lines; not read). It makes "every part of the section
+  is on a branch" a sampling argument, which ADR-0018 and ADR-0019 refused
+  for the analytic pairs. A torus's machinery is already certified and
+  costs no more here.
+- **Putting the analytic surface into the NURBS surface's parameters
+  the other way round**, as a ruled pair is walked along its rulings.
+  A NURBS surface has no implicit form, so there is nothing to put the
+  analytic parametrisation into.
+- **One polynomial for the whole surface, by degree elevation across
+  knots.** A B-spline is only piecewise polynomial, so it has no single
+  Bernstein form. The patches are the polynomial pieces, and a zero on
+  their shared edge is merged, as the torus's quarter-turn edges are.
+- **A control-hull box test before the substitution** (the plan's open
+  question on degree blow-up). It is not needed at the census's largest
+  faces (above). If a corpus ever shows otherwise, it is a local
+  addition to `on_nurbs`.

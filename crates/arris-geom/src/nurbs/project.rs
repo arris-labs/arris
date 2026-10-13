@@ -75,16 +75,16 @@ const MAX_BACKTRACKS: usize = 40;
 /// One Bézier patch, in homogeneous coordinates `(w·P, w)`, over a box of
 /// the surface's parameters.
 #[derive(Clone)]
-pub(super) struct Patch {
-    pub(super) u: [f64; 2],
-    pub(super) v: [f64; 2],
+pub(crate) struct Patch {
+    pub(crate) u: [f64; 2],
+    pub(crate) v: [f64; 2],
     /// The knot span's box the patch is inside: the polynomial piece of the
     /// surface it belongs to.
     span: [[f64; 2]; 2],
     /// `[p, q]`.
-    pub(super) degree: [usize; 2],
+    pub(crate) degree: [usize; 2],
     /// Row-major over `u`: `(a, b)` is `net[a * (q + 1) + b]`.
-    pub(super) net: Vec<Vector4<f64>>,
+    pub(crate) net: Vec<Vector4<f64>>,
     depth: usize,
 }
 
@@ -318,7 +318,7 @@ impl NurbsSurface {
     /// spans, in row-major order over `u`. Unclamped knots are read as they
     /// are — a periodic direction's patches are the ones inside its
     /// domain.
-    pub(super) fn patches(&self) -> Vec<Patch> {
+    pub(crate) fn patches(&self) -> Vec<Patch> {
         let [p, q] = self.degree();
         let [n, m] = self.counts();
         let [ku, kv] = self.knots();
