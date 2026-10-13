@@ -1,5 +1,6 @@
 //! A traced section as a `Meets` result: every branch of
-//! [`crate::trace_quadrics`] or [`crate::trace_torus`] fitted to a
+//! [`crate::trace_quadrics`], [`crate::trace_torus`] or a NURBS
+//! surface's section (ADR-0061) fitted to a
 //! `Curve::Nurbs`, every tube circle of a torus section exact, every
 //! singular point a point of the result (ADR-0018, ADR-0019,
 //! `docs/DATA-MODEL.md` §Curves).
@@ -112,16 +113,21 @@ pub(crate) fn traced(
 }
 
 /// The section of two surfaces as the intersector traces it where it has
-/// no closed form: in the torus's own parameter plane when either is a
-/// torus ([`trace_torus`], which ignores `within`), along the rulings of
-/// one of two quadrics inside `within` otherwise ([`trace_quadrics`]) —
-/// the one dispatch the intersector's sections and a blend's traced end
-/// share, so the two are fits of the same branches (ADR-0019, ADR-0037).
+/// no closed form: in a NURBS surface's own parameters when either is one
+/// and the other is analytic, bounded by its domain
+/// (`crate::torus_walk::trace_nurbs`, ADR-0061); in the torus's own
+/// parameter plane when either is a torus ([`trace_torus`]); both of
+/// which ignore `within`; along the rulings of one of two quadrics inside
+/// `within` otherwise ([`trace_quadrics`]) — the one dispatch the
+/// intersector's sections and a blend's traced end share, so the two are
+/// fits of the same branches (ADR-0019, ADR-0037).
 ///
 /// Guarantees: those of the tracer the pair takes, its named refusals
-/// ([`GeomError::DegenerateSection`]) among them; a pair neither tracer
-/// takes — a plane against a plane, a `Nurbs` — is the tracer's
-/// [`GeomError::Unsupported`].
+/// ([`GeomError::DegenerateSection`]) among them; a pair no tracer takes
+/// — a plane against a plane, two `Nurbs` — is the tracer's
+/// [`GeomError::Unsupported`]. A branch of a NURBS section that reaches
+/// an edge of the surface's domain ends there,
+/// [`BranchEnd::Clipped`](crate::BranchEnd::Clipped).
 ///
 /// ```
 /// use arris_geom::{Surface, trace_section};
@@ -146,7 +152,10 @@ pub fn trace_section(
     meter: &mut Meter,
 ) -> Result<SectionTrace, GeomError> {
     let torus = |s: &Surface| matches!(s, Surface::Torus { .. });
-    if torus(a) || torus(b) {
+    let nurbs = |s: &Surface| matches!(s, Surface::Nurbs(_));
+    if nurbs(a) || nurbs(b) {
+        crate::torus_walk::trace_nurbs(a, b, tol, meter)
+    } else if torus(a) || torus(b) {
         trace_torus(a, b, tol, meter)
     } else {
         trace_quadrics(a, b, within, tol, meter)

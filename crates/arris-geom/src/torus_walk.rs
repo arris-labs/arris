@@ -1,6 +1,11 @@
 //! The section of a torus with an analytic surface, traced exactly in the
 //! torus's own `(u, v)`: every branch, its ends and the singular points
 //! where branches meet, before any fit (`docs/DATA-MODEL.md` §Curves).
+//! The section of a NURBS surface with an analytic one is traced the same
+//! way in the NURBS surface's own parameters (ADR-0061), mapped onto the
+//! torus's `[0, 2π]` each way (`crate::trace_torus::Rescale`); what a
+//! torus never has, the edges of a domain that does not close, is at the
+//! end of this note.
 //!
 //! `crate::trace_torus` isolates the points that carry the section's
 //! topology: the turning points, where the section is parallel to `v`,
@@ -76,6 +81,21 @@
 //! tangency its slope across it — is within what `tol.linear` makes of
 //! `F` anywhere on the torus, or the circle is not accepted, so the rest
 //! is within `tol.linear` of the other surface as the circle is.
+//!
+//! A NURBS surface's direction that does not close ends at the edges of
+//! its domain, and every point, cell and march stays inside it. A branch
+//! that reaches an edge ends there, at the root of the section along the
+//! edge line: each root is found on the edge's own polynomial, proven
+//! alone in a bracket and given an **edge cell** ([`EdgeCell`]), one arm
+//! from the root into the domain, which a march starts from or ends in
+//! as at a turning point's arm. A turning point near an edge of `v` has
+//! its cell cut there, and an arm that reaches the edge inside the cell
+//! ends on it; one on the edge is where the section crosses it square,
+//! and has one arm. The patches' polynomials go on past the edges, and a
+//! zero isolated beyond one is dropped. Refused by name: the section
+//! touching an edge, a turning point on an edge of `u`, a crossing at a
+//! corner, and a turn at a kink, a knot of `v` where the surface is only
+//! continuous and the section comes back with no turning point to find.
 
 use core::cell::Cell as Latest;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
@@ -91,8 +111,8 @@ use crate::trace::{
     Arc1, BranchEnd, REACH, SectionBranch, SectionCircle, SectionFault, SectionPoint, SectionTrace,
     Stretch,
 };
-use crate::trace_torus::{PatchedSection, Probe};
-use crate::{Curve, GeomError, GeomKind, Surface};
+use crate::trace_torus::{PatchedSection, Probe, Rescale};
+use crate::{Curve, GeomError, GeomKind, Surface, SurfaceEval, SurfaceKind};
 
 /// The half-width a turning point's or a singular point's cell is first
 /// tried at, and halved from until its certificate holds. A size in the
@@ -116,6 +136,13 @@ const HALF_MIN: f64 = CELL_START / (1u64 << CELL_HALVINGS) as f64;
 /// The longest step of a march in `u`, a sixteenth of a turn: a cell
 /// never lies over more than two patches either way.
 const STEP_MAX: f64 = PI / 8.0;
+
+/// How near an edge of a NURBS surface's domain that does not close a
+/// turning point is taken to be on it, in the walk's parameter: the
+/// least a turning point's cell may be tall ([`Tracer::turning_cell`]), so
+/// that one nearer has no cell inside the domain. A statement about
+/// `f64`, never a tolerance.
+const EDGE_TOUCH: f64 = 64.0 * ANGLE_SLACK;
 
 /// How many times a march halves its step before it gives up on a cell.
 /// A structural bound, as `crate::bernstein::MAX_DEPTH` is.
@@ -217,14 +244,23 @@ struct Bump {
     /// `[M_uu, M_uv, M_vv]`.
     metric: [f64; 3],
     reach: f64,
+    /// Whether each direction closes, so that an offset is taken the
+    /// short way round.
+    closed: [bool; 2],
+}
+
+/// The difference `x` of the walk's parameter in a direction, the short
+/// way round where the direction closes and as it is where it does not.
+fn offset(closed: bool, x: f64) -> f64 {
+    if closed { wrap_offset(x, TAU) } else { x }
 }
 
 impl Bump {
     /// `y` at `(u, v)`, and `M·x`.
     fn measure(&self, u: f64, v: f64) -> (f64, [f64; 2]) {
         let x = [
-            wrap_offset(u - self.at[0], TAU),
-            wrap_offset(v - self.at[1], TAU),
+            offset(self.closed[0], u - self.at[0]),
+            offset(self.closed[1], v - self.at[1]),
         ];
         let [muu, muv, mvv] = self.metric;
         let mx = [muu * x[0] + muv * x[1], muv * x[0] + mvv * x[1]];
@@ -265,25 +301,75 @@ struct TubeFactor {
     order: usize,
 }
 
-/// The torus and the other surface with the singular points' corrections:
-/// what a branch is evaluated on.
+/// The walked surface — a torus, or a NURBS surface — and the other
+/// surface with the singular points' corrections: what a branch is
+/// evaluated on, in the walk's parameters.
 #[derive(Debug)]
 pub(crate) struct Walker {
-    torus: Surface,
+    walked: Surface,
     other: Surface,
+    /// A NURBS surface's parameters as the walk takes them; `None` on a
+    /// torus, whose angles are walked as they are.
+    rescale: Option<Rescale>,
+    /// Whether each direction closes over `2π`; one that does not is
+    /// bounded by `[0, 2π]`, the walked surface's domain.
+    closed: [bool; 2],
+    /// What a point of the walked surface is summed from: a torus's
+    /// radii, a NURBS surface's farthest control point.
+    size: f64,
     factor: Option<TubeFactor>,
     bumps: Vec<Bump>,
     singular: Vec<SingularCell>,
 }
 
 impl Walker {
-    /// The other surface's signed distance at the torus's `(u, v)` and
+    /// The walked surface at the walk's `(u, v)`, its derivatives in the
+    /// walk's parameters.
+    fn eval(&self, u: f64, v: f64) -> SurfaceEval {
+        let Some(map) = &self.rescale else {
+            return self.walked.eval(u, v);
+        };
+        let e = self.walked.eval(map.to_surface(0, u), map.to_surface(1, v));
+        let [a, b] = [map.factor(0), map.factor(1)];
+        SurfaceEval {
+            point: e.point,
+            du: e.du * a,
+            dv: e.dv * b,
+            duu: e.duu * (a * a),
+            duv: e.duv * (a * b),
+            dvv: e.dvv * (b * b),
+        }
+    }
+
+    /// The walked surface's point at the walk's `(u, v)`.
+    fn point(&self, u: f64, v: f64) -> Point3 {
+        match &self.rescale {
+            None => self.walked.point(u, v),
+            Some(map) => (self.walked).point(map.to_surface(0, u), map.to_surface(1, v)),
+        }
+    }
+
+    /// The walked surface's own parameters at the walk's `at`.
+    fn surface_uv(&self, at: [f64; 2]) -> [f64; 2] {
+        match &self.rescale {
+            None => at,
+            Some(map) => [0, 1].map(|k| map.to_surface(k, at[k])),
+        }
+    }
+
+    /// The difference `x` of direction `k`'s parameter, the short way
+    /// round where it closes.
+    fn off(&self, k: usize, x: f64) -> f64 {
+        offset(self.closed[k], x)
+    }
+
+    /// The other surface's signed distance at the walk's `(u, v)` and
     /// its gradient in `(u, v)`, as they are.
     fn distance(&self, u: f64, v: f64) -> (f64, [f64; 2]) {
         let Some(implicit) = Implicit::of(&self.other) else {
             return (f64::NAN, [f64::NAN; 2]);
         };
-        let e = self.torus.eval(u, v);
+        let e = self.eval(u, v);
         let (value, normal) = implicit.level(e.point);
         let slope = [e.du, e.dv].map(|d| normal.dot(&implicit.frame.vec_to_local(d)));
         (value, slope)
@@ -313,7 +399,7 @@ impl Walker {
                 major_radius,
                 minor_radius,
             },
-        ) = (Implicit::of(&self.other), &self.torus)
+        ) = (Implicit::of(&self.other), &self.walked)
         else {
             return f64::NAN;
         };
@@ -324,8 +410,8 @@ impl Walker {
         let (sin_mid, cos_mid) = (factor.u0 + half).sin_cos();
         let outward = implicit.frame.vec_to_local(x * cos + y * sin);
         let tau = implicit.frame.vec_to_local(y * cos_mid - x * sin_mid);
-        let a = implicit.frame.to_local(self.torus.point(factor.u0, v));
-        let p = implicit.frame.to_local(self.torus.point(u, v));
+        let a = implicit.frame.to_local(self.walked.point(factor.u0, v));
+        let p = implicit.frame.to_local(self.walked.point(u, v));
         let gradient = implicit.slope(a);
         let [c2, c3, c4] = implicit.bend(a, tau);
         let lambda = 2.0 * rho * half.sin();
@@ -349,7 +435,7 @@ impl Walker {
     fn apart(&self, u: f64, v: f64) -> f64 {
         match (&self.factor, Implicit::of(&self.other)) {
             (Some(factor), _) => self.quotient(factor, u, v),
-            (None, Some(other)) => other.distance(self.torus.point(u, v)),
+            (None, Some(other)) => other.distance(self.point(u, v)),
             (None, None) => f64::NAN,
         }
     }
@@ -474,41 +560,54 @@ impl Walker {
     /// slope. The torus walk's counterpart of a ruling's stretch
     /// ([`SectionBranch::distance`]).
     fn stretch(&self, u: f64, v: f64, along_v: bool) -> Stretch {
-        let (
-            Some(implicit),
+        let Some(implicit) = Implicit::of(&self.other) else {
+            return Stretch::Point;
+        };
+        let e = self.eval(u, v);
+        let summed = e.point.coords.norm() + implicit.frame.to_local(e.point).coords.norm();
+        let magnitude = match self.walked {
             Surface::Torus {
                 major_radius,
                 minor_radius,
                 ..
-            },
-        ) = (Implicit::of(&self.other), &self.torus)
-        else {
-            return Stretch::Point;
+            } => summed + major_radius + minor_radius,
+            _ => summed + self.size,
         };
-        let e = self.torus.eval(u, v);
-        let magnitude = e.point.coords.norm()
-            + implicit.frame.to_local(e.point).coords.norm()
-            + major_radius
-            + minor_radius;
         let normal = implicit.frame.vec_to_world(implicit.gradient(e.point));
         let (tangent, bend, across, fixed) = if along_v {
             (e.dv, e.dvv, e.du, u)
         } else {
             (e.du, e.duu, e.dv, v)
         };
+        // The parameter the walk's is mapped from, and its last digit in
+        // the walk's.
+        let fixed = match &self.rescale {
+            None => fixed.abs(),
+            Some(map) => {
+                let k = usize::from(!along_v);
+                map.to_surface(k, fixed).abs() / map.factor(k)
+            }
+        };
         let slope = normal.dot(&tangent).abs();
         // The angle held fixed is itself a float: the root moves along the
         // circle by as much as the distance changes over its last digit.
-        let budget = POLYNOMIAL_ROUNDING * magnitude
-            + normal.dot(&across).abs() * fixed.abs() * f64::EPSILON;
-        let Some(axis) = tangent.cross(&bend).try_normalize(0.0) else {
-            return Stretch::Point;
+        let budget =
+            POLYNOMIAL_ROUNDING * magnitude + normal.dot(&across).abs() * fixed * f64::EPSILON;
+        // A tube circle's stretch is an arc of it about its centre; a NURBS
+        // surface's is a segment of the tangent to its isoparametric line,
+        // as short as a rounding is and so as straight.
+        let axis = match self.walked {
+            Surface::Torus { .. } => match tangent.cross(&bend).try_normalize(0.0) {
+                Some(axis) => Some(axis),
+                None => return Stretch::Point,
+            },
+            _ => None,
         };
         let at = |angle: f64| {
             let point = if along_v {
-                self.torus.point(u, v + angle)
+                self.point(u, v + angle)
             } else {
-                self.torus.point(u + angle, v)
+                self.point(u + angle, v)
             };
             implicit.distance(point)
         };
@@ -525,10 +624,13 @@ impl Walker {
                 return Stretch::Point;
             }
         }
-        Stretch::Arc {
-            centre: e.point + bend,
-            normal: axis,
-            half,
+        match axis {
+            Some(normal) => Stretch::Arc {
+                centre: e.point + bend,
+                normal,
+                half,
+            },
+            None => Stretch::Segment(tangent * half),
         }
     }
 
@@ -635,7 +737,8 @@ pub(crate) struct TorusWalk {
     walker: Arc<Walker>,
     arcs: Vec<TorusArc>,
     shifts: Vec<[f64; 2]>,
-    /// `(u, v)` of the singular points the branch's ends are.
+    /// `(u, v)` of the singular points or the domain's edge points the
+    /// branch's ends are.
     pins: [Option<[f64; 2]>; 2],
 }
 
@@ -680,21 +783,18 @@ impl TorusWalk {
             }
         };
         let [u, v] = uv;
-        (
-            self.walker.torus.point(u, v),
-            self.walker.stretch(u, v, along_v),
-        )
+        (self.walker.point(u, v), self.walker.stretch(u, v, along_v))
     }
 
     /// The point of arc `i` at `u`, measured from `anchor`.
     pub(crate) fn point(&self, i: usize, u: f64, anchor: Option<(f64, f64)>) -> Point3 {
         let [u, v] = self.local(i, u, anchor).unwrap_or([0.0; 2]);
-        self.walker.torus.point(u, v)
+        self.walker.point(u, v)
     }
 
     /// `(u, v)` of arc `i` at `u`, measured from `anchor`, in the
-    /// branch's angles; `at_end` says the parameter is the branch's start
-    /// or its end.
+    /// walked surface's own parameters, unwrapped along the branch;
+    /// `at_end` says the parameter is the branch's start or its end.
     pub(crate) fn uv(
         &self,
         i: usize,
@@ -703,14 +803,16 @@ impl TorusWalk {
         at_end: [bool; 2],
     ) -> Point2 {
         for (pin, at) in self.pins.iter().zip(at_end) {
-            if let (Some([u, v]), true) = (pin, at) {
-                return Point2::new(*u, *v);
+            if let (Some(pin), true) = (pin, at) {
+                let [u, v] = self.walker.surface_uv(*pin);
+                return Point2::new(u, v);
             }
         }
         let (Some([u, v]), Some(shift)) = (self.local(i, u, anchor), self.shifts.get(i)) else {
             return Point2::origin();
         };
-        Point2::new(u + shift[0], v + shift[1])
+        let [u, v] = self.walker.surface_uv([u + shift[0], v + shift[1]]);
+        Point2::new(u, v)
     }
 }
 
@@ -727,16 +829,52 @@ struct TurningCell {
     extent: [f64; 2],
     /// `c` of the fold `|u − u_T| ≈ c·(v − v_T)²`.
     fold: f64,
+    /// The arm — `0` below, `1` above — that lies outside a NURBS
+    /// surface's domain, the point being on an edge of `v` that does not
+    /// close: the section crosses the edge there square to it, and a
+    /// branch ends at the point.
+    open: Option<usize>,
+    /// The arms that reach an edge of a NURBS surface's domain inside the
+    /// cell, at their extent: a branch ends there, on the edge line.
+    exits: [bool; 2],
+}
+
+/// Where the section meets an edge of a NURBS surface's domain that does
+/// not close, and its cell: `at` is the root of the section along the
+/// edge line, and in the cell, `at ± half` clipped to the domain, the
+/// section is one arm from `at` to the cell's side `side` (ADR-0061).
+///
+/// On an edge of `u` the cell is a march's: `∂f/∂t` of one sign over it,
+/// `f` of one sign along its lower edge and of the other along its upper,
+/// so every line of constant `u` in it meets the section once. On an edge
+/// of `v` the cell lies to the domain's side of it: `∂f/∂t` and `∂f/∂s` of
+/// one sign over it, so that a line of constant `u` meets the section in
+/// it at most once and the edge line exactly once, at `at`; and `f` of one
+/// sign along its inner edge, so the arm leaves through a side, the one
+/// where `f` on the edge line has the other sign.
+#[derive(Debug, Clone, Copy)]
+struct EdgeCell {
+    at: [f64; 2],
+    half: [f64; 2],
+    /// `+1` where the arm lies at larger `u` than `at`, `−1` at smaller.
+    side: f64,
+    /// How far from `at` in `u` the arm is followed inside the cell.
+    extent: f64,
+    /// Where the arm's root is on every line of constant `u` in the cell.
+    bracket: [f64; 2],
 }
 
 /// What a march ended at: an arm of a turning point — `0` below it, `1`
-/// above — an arm of a singular point, `2·right + upper`, or the seed it
-/// started from, a turn or several later.
+/// above — an arm of a singular point, `2·right + upper`, the seed it
+/// started from, a turn or several later, the arm of an edge cell, or
+/// where an arm of a turning point leaves the domain inside its cell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ArcEnd {
     Turning(usize, usize),
     Singular(usize, usize),
     Home,
+    Edge(usize),
+    Exit(usize, usize),
 }
 
 /// A singular point as it is decided, before its cell.
@@ -769,6 +907,8 @@ struct Tracer<'a> {
     section: PatchedSection<'a>,
     walker: Walker,
     turning: Vec<TurningCell>,
+    /// Where the section meets the edges of a NURBS surface's domain.
+    edges: Vec<EdgeCell>,
     /// The tube circles of the torus on the other surface, ascending.
     circles: Vec<TubeFactor>,
     tol: Tolerance,
@@ -842,19 +982,96 @@ pub fn trace_torus(
     let tracer = Tracer {
         section,
         walker: Walker {
-            torus: torus.clone(),
+            walked: torus.clone(),
             other: other.clone(),
+            rescale: None,
+            closed: [true; 2],
+            size: 0.0,
             factor: None,
             bumps: Vec::new(),
             singular: Vec::new(),
         },
         turning: Vec::new(),
+        edges: Vec::new(),
         circles: Vec::new(),
         tol,
     };
     tracer.run(meter).map_err(|halt| match halt {
         Halt::Fault(fault) => GeomError::DegenerateSection {
             a: GeomKind::Surface(torus.kind()),
+            b: GeomKind::Surface(other.kind()),
+            fault,
+        },
+        Halt::Stopped(stop) => GeomError::Interrupted(stop),
+    })
+}
+
+/// The section of a NURBS surface with an analytic one, traced in the
+/// NURBS surface's own `(u, v)` as a torus's is in its own (ADR-0061):
+/// the other surface's polynomial over each of its Bézier patches, the
+/// turning, critical and singular points certified over them, and the
+/// branches marched between those points and the edges of the domain.
+///
+/// Operands: a `Surface::Nurbs` against a plane, a cylinder, an elliptic
+/// cylinder, a cone, a sphere or a torus, in either order and any pose;
+/// two NURBS surfaces are [`GeomError::Unsupported`]. The surface's domain
+/// bounds the section: a direction that does not close ends at its
+/// domain's edges, and a branch that reaches one ends there,
+/// [`BranchEnd::Clipped`](crate::BranchEnd::Clipped), at the root of the
+/// section along the edge line exactly, the point the edge's own curve
+/// meets the other surface at. A direction that closes
+/// ([`crate::NurbsSurface::closure`]) is walked across its seam.
+///
+/// Guarantees: those of [`trace_torus`], with the NURBS surface for the
+/// torus — every branch on the NURBS surface exactly, [`SectionBranch::uv`]
+/// its own parameters there, and on the other to rounding; every part of
+/// the section inside the domain on a branch. Refused by name as
+/// [`GeomError::DegenerateSection`]: the poses [`trace_torus`] refuses,
+/// and the section touching an edge of the domain, crossing it at a
+/// corner, or holding a whole isoparametric line of the surface.
+pub(crate) fn trace_nurbs(
+    a: &Surface,
+    b: &Surface,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<SectionTrace, GeomError> {
+    if !tol.is_consistent() {
+        return Err(GeomError::InvalidTolerance(tol));
+    }
+    let unsupported = || GeomError::Unsupported {
+        a: GeomKind::Surface(a.kind()),
+        b: GeomKind::Surface(b.kind()),
+    };
+    let (walked, other, nurbs) = match (a, b) {
+        (Surface::Nurbs(nurbs), other) | (other, Surface::Nurbs(nurbs)) => {
+            (Surface::Nurbs(nurbs.clone()), other, nurbs)
+        }
+        _ => return Err(unsupported()),
+    };
+    let section = PatchedSection::on_nurbs(nurbs, other, tol).ok_or_else(unsupported)?;
+    let size = (nurbs.control_points().iter())
+        .map(|p| p.coords.norm())
+        .fold(0.0, f64::max);
+    let tracer = Tracer {
+        section,
+        walker: Walker {
+            walked,
+            other: other.clone(),
+            rescale: Some(Rescale::of(nurbs)),
+            closed: nurbs.closure().map(|c| c.is_some()),
+            size,
+            factor: None,
+            bumps: Vec::new(),
+            singular: Vec::new(),
+        },
+        turning: Vec::new(),
+        edges: Vec::new(),
+        circles: Vec::new(),
+        tol,
+    };
+    tracer.run(meter).map_err(|halt| match halt {
+        Halt::Fault(fault) => GeomError::DegenerateSection {
+            a: GeomKind::Surface(SurfaceKind::Nurbs),
             b: GeomKind::Surface(other.kind()),
             fault,
         },
@@ -906,9 +1123,15 @@ fn walked_torus<'s>(a: &'s Surface, b: &'s Surface) -> Option<(&'s Surface, &'s 
     }
 }
 
-/// `p` inside `at ± half`, as angles.
-fn in_box(p: [f64; 2], at: [f64; 2], half: [f64; 2]) -> bool {
-    (0..2).all(|k| wrap_offset(p[k] - at[k], TAU).abs() <= half[k])
+/// `p` inside `at ± half`, the short way round in a direction that
+/// closes.
+fn in_box(closed: [bool; 2], p: [f64; 2], at: [f64; 2], half: [f64; 2]) -> bool {
+    (0..2).all(|k| offset(closed[k], p[k] - at[k]).abs() <= half[k])
+}
+
+/// `range` of a direction inside `[0, 2π]`, or the direction closes.
+fn fits(closed: bool, [lo, hi]: [f64; 2]) -> bool {
+    closed || (lo >= 0.0 && hi <= TAU)
 }
 
 impl Tracer<'_> {
@@ -935,24 +1158,34 @@ impl Tracer<'_> {
             }
             _ => return Err(SectionFault::TubeCircle.into()),
         }
+        // A turn at a kink of a NURBS surface has no turning point to
+        // seed a march from.
+        if self.section.turns_at_a_kink() {
+            return Err(SectionFault::UnresolvedTurning.into());
+        }
         let turning = (self.section.turning_points(meter))
             .map_err(|halt| halt.map_fault(|_| SectionFault::TangentAlongCurve))?
             .zeros;
         let critical = (self.section.critical_points(meter))
             .map_err(|halt| halt.map_fault(|_| SectionFault::TangentAlongCurve))?
             .zeros;
+        let (turning, critical) = (self.on_domain(turning), self.on_domain(critical));
         // A box of turning points a whole turn long in `v` is a tube
         // circle the other surface runs along, and not one held to the
         // tolerance, which would have been divided out; a whole turn both
-        // ways is the torus itself.
+        // ways is the torus itself. On a NURBS surface a box the whole
+        // domain both ways is the surface on the other; one the whole
+        // domain one way is an isoparametric line on it, which is not
+        // traced (ADR-0061 §3) and is refused below with the turning
+        // points it does not resolve.
         let turn = TAU - ANGLE_SLACK;
+        let torus = self.walker.rescale.is_none();
         for z in turning.iter().filter(|z| !z.certified) {
-            if z.hi[1] - z.lo[1] >= turn {
-                return Err(Halt::Fault(if z.hi[0] - z.lo[0] >= turn {
-                    SectionFault::TangentAlongCurve
-                } else {
-                    SectionFault::TubeCircle
-                }));
+            let long = [0, 1].map(|k| z.hi[k] - z.lo[k] >= turn);
+            match long {
+                [true, true] => return Err(SectionFault::TangentAlongCurve.into()),
+                [false, true] if torus => return Err(SectionFault::TubeCircle.into()),
+                _ => {}
             }
         }
 
@@ -969,7 +1202,8 @@ impl Tracer<'_> {
                 let held = !z.certified
                     && (0..2).all(|k| {
                         let half = 0.5 * (z.hi[k] - z.lo[k]);
-                        wrap_offset(s.at[k] - 0.5 * (z.lo[k] + z.hi[k]), TAU).abs() <= half
+                        let off = s.at[k] - 0.5 * (z.lo[k] + z.hi[k]);
+                        self.walker.off(k, off).abs() <= half
                     });
                 held || s.holds(z.at, 1.0)
             })
@@ -988,6 +1222,7 @@ impl Tracer<'_> {
             let cell = self.turning_cell(i, at, &turning)?;
             self.turning.push(cell);
         }
+        self.edges = self.edge_cells()?;
         // What is left of the section crosses the tube circle wherever it
         // reaches it, and a branch is cut there. Where it turns or is
         // singular within the tolerance of the circle there is no telling
@@ -999,7 +1234,7 @@ impl Tracer<'_> {
                 minor_radius,
                 ..
             },
-        ) = (self.walker.factor, &self.walker.torus)
+        ) = (self.walker.factor, &self.walker.walked)
         {
             let near = self.tol.linear / (major_radius + minor_radius);
             let off = |u: f64| wrap_offset(u - factor.u0, TAU).abs();
@@ -1010,6 +1245,38 @@ impl Tracer<'_> {
             }
         }
         self.assemble(meter)
+    }
+
+    /// The zeros of a census that are points of the walked surface. A
+    /// NURBS surface's patch polynomials go on past the edges of its
+    /// domain, and a zero certified there by a box that reaches past an
+    /// edge is no point of the surface: a certified zero counts where it
+    /// is inside the domain, or within [`EDGE_TOUCH`] of it and is put on
+    /// the edge; one that is not certified where its box reaches into the
+    /// domain, its box cut at the edge. On a torus every zero counts.
+    fn on_domain(&self, zeros: Vec<Zero2>) -> Vec<Zero2> {
+        let closed = self.walker.closed;
+        let range = -EDGE_TOUCH..=TAU + EDGE_TOUCH;
+        (zeros.into_iter())
+            .filter(|z| {
+                (0..2).all(|k| {
+                    closed[k]
+                        || if z.certified {
+                            range.contains(&z.at[k])
+                        } else {
+                            z.hi[k] >= 0.0 && z.lo[k] <= TAU
+                        }
+                })
+            })
+            .map(|mut z| {
+                for k in (0..2).filter(|&k| !closed[k]) {
+                    z.at[k] = z.at[k].clamp(0.0, TAU);
+                    z.lo[k] = z.lo[k].max(0.0);
+                    z.hi[k] = z.hi[k].min(TAU);
+                }
+                z
+            })
+            .collect()
     }
 
     /// The tube circles of the torus that lie on the other surface within
@@ -1031,6 +1298,11 @@ impl Tracer<'_> {
     /// that bound together: there both are dropped.
     fn tube_circles(&self) -> Vec<TubeFactor> {
         let walker = &self.walker;
+        // A NURBS surface's isolines on the other surface are its own
+        // (ADR-0061 §3).
+        if walker.rescale.is_some() {
+            return Vec::new();
+        }
         let Some(other) = Implicit::of(&walker.other) else {
             return Vec::new();
         };
@@ -1040,7 +1312,7 @@ impl Tracer<'_> {
         // other surface.
         let on = |u: f64, within: f64| {
             (0..CIRCLE_SAMPLES)
-                .all(|k| other.distance(walker.torus.point(u, round(k))).abs() <= within)
+                .all(|k| other.distance(walker.walked.point(u, round(k))).abs() <= within)
         };
         // What the other surface's polynomial may be along a circle for
         // the section traced without it to stay within the tolerance of
@@ -1050,7 +1322,7 @@ impl Tracer<'_> {
             // Whatever is traced is on the torus, and as far from a point
             // as the torus is.
             let clear_of = |p: Point3| {
-                (Implicit::of(&walker.torus))
+                (Implicit::of(&walker.walked))
                     .map_or(0.0, |torus| torus.distance(other.frame.to_world(p)).abs())
             };
             tol * other.firmness(clear_of) + self.section.floor()
@@ -1133,7 +1405,7 @@ impl Tracer<'_> {
                 let mut worst = [0.0f64; 2];
                 let mut away = 0.0f64;
                 for k in 0..CIRCLE_SAMPLES {
-                    let e = walker.torus.eval(u0, round(k));
+                    let e = walker.walked.eval(u0, round(k));
                     let a = other.frame.to_local(e.point);
                     let off = other.value(a).abs();
                     let slope = other.slope(a).dot(&other.frame.vec_to_local(e.du)).abs();
@@ -1177,11 +1449,14 @@ impl Tracer<'_> {
     /// The tube circles as curves: on the torus exactly, the parameter
     /// the torus's `v`.
     fn section_circles(&self) -> Result<Vec<SectionCircle>, SectionFault> {
+        if self.circles.is_empty() {
+            return Ok(Vec::new());
+        }
         let Surface::Torus {
             frame,
             major_radius,
             minor_radius,
-        } = &self.walker.torus
+        } = &self.walker.walked
         else {
             return Err(SectionFault::TubeCircle);
         };
@@ -1280,6 +1555,7 @@ impl Tracer<'_> {
                     value,
                     metric,
                     reach,
+                    closed: self.walker.closed,
                 },
                 crossing: det < 0.0,
             };
@@ -1349,16 +1625,18 @@ impl Tracer<'_> {
                 slope,
                 crossing: true,
             };
-            let crowded = (turning.iter().any(|&t| in_box(t, s.at, cell.half)))
+            let closed = walker.closed;
+            let crowded = (turning.iter().any(|&t| in_box(closed, t, s.at, cell.half)))
                 || all.iter().any(|o| {
                     let apart = (0..2).any(|k| o.at[k] != s.at[k]);
                     let [wide, tall] = o.extent();
-                    apart && in_box(o.at, s.at, [a + wide, b + tall])
+                    apart && in_box(closed, o.at, s.at, [a + wide, b + tall])
                 });
-            if crowded {
+            let (u, v) = ([s.at[0] - a, s.at[0] + a], [s.at[1] - b, s.at[1] + b]);
+            // On a NURBS surface the cell lies inside the domain.
+            if crowded || !(fits(closed[0], u) && fits(closed[1], v)) {
                 continue;
             }
-            let (u, v) = ([s.at[0] - a, s.at[0] + a], [s.at[1] - b, s.at[1] + b]);
             if self.section.sign_over(Probe::Fvv, u, v).is_none() {
                 continue;
             }
@@ -1385,6 +1663,15 @@ impl Tracer<'_> {
     }
 
     /// The cell of turning point `index`.
+    ///
+    /// On a NURBS surface the cell is cut at the edges of the domain that
+    /// do not close. An arm that reaches an edge inside the cell — through
+    /// the cut side in `u`, or the cut lower or upper edge in `v` — leaves
+    /// the surface there, and a branch ends on it. A turning point on an
+    /// edge of `v` is where the section crosses the edge square to it:
+    /// its arm beyond the edge is none, and a branch ends at the point.
+    /// One on an edge of `u` is where the section touches the edge, which
+    /// is not followed.
     fn turning_cell(
         &self,
         index: usize,
@@ -1392,6 +1679,32 @@ impl Tracer<'_> {
         turning: &[[f64; 2]],
     ) -> Result<TurningCell, SectionFault> {
         let walker = &self.walker;
+        let closed = walker.closed;
+        let on_edge = |k: usize| {
+            (!closed[k])
+                .then(|| {
+                    [0.0, TAU]
+                        .into_iter()
+                        .find(|e| (at[k] - e).abs() <= EDGE_TOUCH)
+                })
+                .flatten()
+        };
+        if on_edge(0).is_some() {
+            return Err(SectionFault::UnresolvedTurning);
+        }
+        // Below the point on `v = 0`, above it on `v = 2π`.
+        let open = on_edge(1).map(|edge| usize::from(edge > 0.0));
+        let at = match on_edge(1) {
+            Some(edge) => [at[0], edge],
+            None => at,
+        };
+        let clip = |k: usize, [lo, hi]: [f64; 2]| {
+            if closed[k] {
+                [lo, hi]
+            } else {
+                [lo.max(0.0), hi.min(TAU)]
+            }
+        };
         // The fold is `u − u_T = c·(v − v_T)²` to second order, and the
         // cell is as tall as the fold is at the cell's own width, so that
         // its arms are followed about as far in `u` as the cell reaches:
@@ -1415,26 +1728,36 @@ impl Tracer<'_> {
             // away and well apart in `v` — leaves the cell half the way
             // to it.
             for (j, t) in turning.iter().enumerate() {
-                let d = [0, 1].map(|c| wrap_offset(t[c] - at[c], TAU).abs());
+                let d = [0, 1].map(|c| walker.off(c, t[c] - at[c]).abs());
                 if j != index && d[0] <= a {
                     b = b.min(0.5 * d[1]);
                 }
             }
             let crowded = b <= 64.0 * ANGLE_SLACK
                 || (walker.singular.iter())
-                    .any(|s| in_box(s.at, at, [a + s.half[0], b + s.half[1]]));
+                    .any(|s| in_box(closed, s.at, at, [a + s.half[0], b + s.half[1]]));
             if crowded {
                 continue;
             }
-            let (u, v) = ([at[0] - a, at[0] + a], [at[1] - b, at[1] + b]);
+            let (u, v) = (
+                clip(0, [at[0] - a, at[0] + a]),
+                clip(1, [at[1] - b, at[1] + b]),
+            );
             if self.section.sign_over(Probe::Fs, u, v).is_none() {
                 continue;
             }
             // The tube circle through the point touches the section there
             // and nowhere else in the cell: the sign along it is the sign
-            // outside the fold.
-            let outside = walker.is_negative(at[0], v[1]);
-            if walker.is_negative(at[0], v[0]) != outside {
+            // outside the fold — along either edge of the cell but one the
+            // point is on.
+            let rows: Vec<bool> = (v.iter())
+                .filter(|&&row| row != at[1])
+                .map(|&row| walker.is_negative(at[0], row))
+                .collect();
+            let Some(&outside) = rows.first() else {
+                continue;
+            };
+            if rows.iter().any(|&r| r != outside) {
                 continue;
             }
             let inside = [u[0], u[1]].map(|u| walker.is_negative(u, at[1]) != outside);
@@ -1443,23 +1766,190 @@ impl Tracer<'_> {
                 [true, false] => -1.0,
                 _ => continue,
             };
-            let far = at[0] + side * a;
-            let extent = [v[0], v[1]].map(|edge| {
-                if walker.is_negative(far, edge) == outside {
+            // Where the arms are followed to on the side they lie: the
+            // cell's side, or the edge of the domain that cuts it.
+            let reach = at[0] + side * a;
+            let far = if closed[0] {
+                reach
+            } else {
+                reach.clamp(0.0, TAU)
+            };
+            let cut = [far != reach, v[0] != at[1] - b, v[1] != at[1] + b];
+            let extent = [0, 1].map(|arm| {
+                let edge = v[arm];
+                if open == Some(arm) {
+                    // Outside the domain: no arm.
+                    Some((0.0, true))
+                } else if walker.is_negative(far, edge) == outside {
                     // The arm leaves through the cell's side.
-                    Some(a)
+                    let to = if cut[0] { (far - at[0]).abs() } else { a };
+                    Some((to, cut[0]))
+                } else if cut[1 + arm] {
+                    // Through the edge of the domain in `v`.
+                    (walker.root_u(edge, at[0], far)).map(|u| ((u - at[0]).abs(), true))
                 } else {
-                    (walker.root_u(edge, at[0], far)).map(|u| EXIT_SHARE * (u - at[0]).abs())
+                    (walker.root_u(edge, at[0], far))
+                        .map(|u| (EXIT_SHARE * (u - at[0]).abs(), false))
                 }
             });
             if let [Some(below), Some(above)] = extent {
-                if below.min(above) > ANGLE_SLACK {
+                let held = [below, above]
+                    .iter()
+                    .enumerate()
+                    .all(|(arm, (e, _))| open == Some(arm) || *e > ANGLE_SLACK);
+                if held {
                     return Ok(TurningCell {
                         at,
                         half: [a, b],
                         side,
-                        extent: [below, above],
+                        extent: [below.0, above.0],
                         fold,
+                        open,
+                        exits: [below.1 && open != Some(0), above.1 && open != Some(1)],
+                    });
+                }
+            }
+        }
+        Err(SectionFault::UnresolvedTurning)
+    }
+
+    /// Where the section meets the edges of a NURBS surface's domain that
+    /// do not close, each with its cell, the edges of `u` first, each
+    /// from its start: every root of `f` along an edge line that no
+    /// turning point's or singular point's cell holds already. A
+    /// candidate that is no root is dropped; one that cannot be proven a
+    /// root alone and is within the tolerance of the other surface is the
+    /// section touching the edge, which is refused.
+    fn edge_cells(&self) -> Result<Vec<EdgeCell>, SectionFault> {
+        let closed = self.walker.closed;
+        let mut cells: Vec<EdgeCell> = Vec::new();
+        for k in 0..2 {
+            if closed[k] {
+                continue;
+            }
+            for high in [false, true] {
+                let edge = if high { TAU } else { 0.0 };
+                let on_line = |x: f64| if k == 0 { [edge, x] } else { [x, edge] };
+                for candidate in self.section.edge_candidates(k, high) {
+                    let held = |at: [f64; 2], cells: &[EdgeCell]| {
+                        (self.turning.iter()).any(|t| in_box(closed, at, t.at, t.half))
+                            || (self.walker.singular.iter())
+                                .any(|s| in_box(closed, at, s.at, s.half))
+                            || cells.iter().any(|c| in_box(closed, at, c.at, c.half))
+                    };
+                    if held(on_line(candidate), &cells) {
+                        continue;
+                    }
+                    let Some(root) = self.edge_root(k, edge, candidate)? else {
+                        continue;
+                    };
+                    let at = on_line(root);
+                    if held(at, &cells) {
+                        continue;
+                    }
+                    cells.push(self.edge_cell(k, high, at)?);
+                }
+            }
+        }
+        Ok(cells)
+    }
+
+    /// The root of `f` along the edge line where direction `k`'s parameter
+    /// is `edge` that `candidate` stands for, proven the only one in a
+    /// bracket about it: the slope along the line of one sign over the
+    /// bracket and `f` of opposite signs at its ends. `None` where the
+    /// candidate is no root.
+    fn edge_root(&self, k: usize, edge: f64, candidate: f64) -> Result<Option<f64>, SectionFault> {
+        let walker = &self.walker;
+        let on_line = |x: f64| if k == 0 { [edge, x] } else { [x, edge] };
+        let negative = |x: f64| {
+            let [u, v] = on_line(x);
+            walker.is_negative(u, v)
+        };
+        let mut half = CELL_START;
+        for _ in 0..=STEP_HALVINGS {
+            let range = [candidate - half, candidate + half];
+            half *= 0.5;
+            if !fits(walker.closed[1 - k], range) {
+                continue;
+            }
+            let (probe, u, v) = if k == 0 {
+                (Probe::Ft, [edge; 2], range)
+            } else {
+                (Probe::Fs, range, [edge; 2])
+            };
+            if self.section.sign_over(probe, u, v).is_some()
+                && negative(range[0]) != negative(range[1])
+            {
+                let root = if k == 0 {
+                    Some(walker.root_v(edge, range[0], range[1]))
+                } else {
+                    walker.root_u(edge, range[0], range[1])
+                };
+                return root.map(Some).ok_or(SectionFault::UnresolvedTurning);
+            }
+        }
+        let [u, v] = on_line(candidate);
+        if walker.value(u, v).0.abs() > self.tol.linear {
+            Ok(None)
+        } else {
+            Err(SectionFault::UnresolvedTurning)
+        }
+    }
+
+    /// The cell of the root `at` on the edge where direction `k`'s
+    /// parameter is `0`, or with `high` `2π`: the largest tried whose
+    /// certificate holds ([`EdgeCell`]), as tall as a march's cell for
+    /// the section's slope there.
+    fn edge_cell(&self, k: usize, high: bool, at: [f64; 2]) -> Result<EdgeCell, SectionFault> {
+        let walker = &self.walker;
+        let closed = walker.closed;
+        let slope = walker.value(at[0], at[1]).1;
+        let steep = (slope[0] / slope[1]).abs();
+        let inward = if high { -1.0 } else { 1.0 };
+        for i in 0..=STEP_HALVINGS {
+            let a = CELL_START / (1u64 << i) as f64;
+            let b = (2.0 * steep * a).max(0.5 * a).max(HALF_MIN);
+            if b.is_nan() || b > FRAC_PI_4 {
+                continue;
+            }
+            let sign = |u: [f64; 2], v: f64| self.section.sign_over(Probe::F, u, [v, v]);
+            if k == 0 {
+                let far = at[0] + inward * a;
+                let u = [at[0].min(far), at[0].max(far)];
+                let v = [at[1] - b, at[1] + b];
+                let proven = fits(closed[1], v)
+                    && self.section.sign_over(Probe::Ft, u, v).is_some()
+                    && (sign(u, v[0]).zip(sign(u, v[1]))).is_some_and(|(lo, hi)| lo != hi);
+                if proven {
+                    return Ok(EdgeCell {
+                        at,
+                        half: [a, b],
+                        side: inward,
+                        extent: a,
+                        bracket: v,
+                    });
+                }
+            } else {
+                let inner = at[1] + inward * b;
+                let u = [at[0] - a, at[0] + a];
+                let v = [at[1].min(inner), at[1].max(inner)];
+                let monotone = fits(closed[0], u)
+                    && self.section.sign_over(Probe::Ft, u, v).is_some()
+                    && self.section.sign_over(Probe::Fs, u, v).is_some();
+                let Some(positive) = sign(u, inner).filter(|_| monotone) else {
+                    continue;
+                };
+                // The arm is where the edge line's sign is not the inner
+                // edge's.
+                let ends = u.map(|u| walker.is_negative(u, at[1]));
+                if ends[0] != ends[1] {
+                    return Ok(EdgeCell {
+                        at,
+                        half: [a, b],
+                        side: if ends[1] == positive { 1.0 } else { -1.0 },
+                        extent: a,
+                        bracket: v,
                     });
                 }
             }
@@ -1473,13 +1963,17 @@ impl Tracer<'_> {
     /// but its point's arms. Two turning points of an S-bend may have
     /// cells that overlap, and a march between them starts captured.
     fn captured(&self, [u, v]: [f64; 2], dir: f64) -> Option<(ArcEnd, Cell, [f64; 2])> {
+        let walker = &self.walker;
         for (i, t) in self.turning.iter().enumerate() {
             if t.side == dir {
                 continue;
             }
             for arm in 0..2 {
-                let ahead = dir * wrap_offset(t.at[0] - u, TAU);
-                let dv = wrap_offset(v - t.at[1], TAU);
+                if t.open == Some(arm) || t.exits[arm] {
+                    continue;
+                }
+                let ahead = dir * walker.off(0, t.at[0] - u);
+                let dv = walker.off(1, v - t.at[1]);
                 let inside = if arm == 1 {
                     (0.0..=t.half[1]).contains(&dv)
                 } else {
@@ -1501,8 +1995,8 @@ impl Tracer<'_> {
             }
         }
         for (i, s) in self.walker.singular.iter().enumerate() {
-            let ahead = dir * wrap_offset(s.at[0] - u, TAU);
-            let dv = wrap_offset(v - s.at[1], TAU);
+            let ahead = dir * walker.off(0, s.at[0] - u);
+            let dv = walker.off(1, v - s.at[1]);
             let near = ahead > 0.0 && ahead <= s.half[0] + ANGLE_SLACK;
             if s.crossing && near && dv.abs() <= s.half[1] {
                 let centre = [u + dir * ahead, v - dv];
@@ -1523,22 +2017,56 @@ impl Tracer<'_> {
                 ));
             }
         }
+        for (i, e) in self.edges.iter().enumerate() {
+            if e.side == dir {
+                continue;
+            }
+            let ahead = dir * walker.off(0, e.at[0] - u);
+            let dv = walker.off(1, v - e.at[1]);
+            let within = (e.bracket[0] - e.at[1]..=e.bracket[1] - e.at[1]).contains(&dv);
+            if (-ANGLE_SLACK..=e.extent + ANGLE_SLACK).contains(&ahead) && within {
+                let centre = [u + dir * ahead, v - dv];
+                let bracket = e.bracket.map(|b| b - e.at[1] + centre[1]);
+                let cell = Cell {
+                    u: [u.min(centre[0]), u.max(centre[0])],
+                    bracket: Bracket::Fixed(bracket),
+                };
+                return Some((ArcEnd::Edge(i), cell, centre));
+            }
+        }
         None
     }
 
     /// How far a march at `u` may go in direction `dir` before the next
-    /// edge it could be captured at; a whole turn when there is none.
+    /// edge it could be captured at; a whole turn when there is none, and
+    /// on a NURBS surface whose `u` does not close no farther than the
+    /// domain's edge.
     fn next_edge(&self, u: f64, dir: f64, seeded: bool) -> f64 {
-        let turning = (self.turning.iter().filter(|t| t.side != dir))
-            .flat_map(|t| t.extent.map(|e| t.at[0] + t.side * e));
+        let turning = (self.turning.iter().filter(|t| t.side != dir)).flat_map(|t| {
+            (0..2)
+                .filter(|&arm| t.open != Some(arm) && !t.exits[arm])
+                .map(|arm| t.at[0] + t.side * t.extent[arm])
+        });
         let singular =
             (self.walker.singular.iter().filter(|s| s.crossing)).map(|s| s.at[0] - dir * s.half[0]);
+        let edges =
+            (self.edges.iter().filter(|e| e.side != dir)).map(|e| e.at[0] + e.side * e.extent);
+        let closed = self.walker.closed[0];
+        let limit = match (closed, dir > 0.0) {
+            (true, _) => TAU,
+            (false, true) => TAU - u,
+            (false, false) => u,
+        };
         turning
             .chain(singular)
+            .chain(edges)
             .chain(seeded.then_some(0.0))
-            .map(|edge| wrap_angle(dir * (edge - u)))
-            .map(|d| if d <= ANGLE_SLACK { TAU } else { d })
-            .fold(TAU, f64::min)
+            .map(|edge| {
+                let ahead = dir * (edge - u);
+                if closed { wrap_angle(ahead) } else { ahead }
+            })
+            .map(|d| if d <= ANGLE_SLACK { f64::INFINITY } else { d })
+            .fold(limit, f64::min)
     }
 
     /// Cells along the graph from `start`, a point of the section, in
@@ -1563,14 +2091,19 @@ impl Tracer<'_> {
                 cells.push(cell);
                 break (end, centre);
             }
-            let back = !cells.is_empty() && wrap_offset(u, TAU).abs() <= ANGLE_SLACK;
-            if seeded && back && wrap_offset(v - start[1], TAU).abs() <= home {
+            let back = !cells.is_empty() && walker.off(0, u).abs() <= ANGLE_SLACK;
+            if seeded && back && walker.off(1, v - start[1]).abs() <= home {
                 break (ArcEnd::Home, [u, v]);
             }
             if cells.len() >= MAX_CELLS {
                 return Err(SectionFault::UnresolvedTurning.into());
             }
             let edge = self.next_edge(u, dir, seeded);
+            // At the edge of the domain and no cell's: a root on the edge
+            // line no edge cell holds.
+            if edge <= ANGLE_SLACK {
+                return Err(SectionFault::UnresolvedTurning.into());
+            }
             let slope = walker.value(u, v).1;
             let steep = (slope[0] / slope[1]).abs();
             let mut du = step.min(edge);
@@ -1578,7 +2111,16 @@ impl Tracer<'_> {
             let (next, half) = loop {
                 let next = u + dir * du;
                 let half = (2.0 * steep * du).max(0.5 * du).max(HALF_MIN);
-                let (us, vs) = ([u.min(next), u.max(next)], [v - half, v + half]);
+                // On a NURBS surface the box stops at an edge of `v`: a
+                // graph that does not cross it there keeps `f` along it
+                // of the other sign from below.
+                let vs = [v - half, v + half];
+                let vs = if walker.closed[1] {
+                    vs
+                } else {
+                    [vs[0].max(0.0), vs[1].min(TAU)]
+                };
+                let us = [u.min(next), u.max(next)];
                 let proven = half <= FRAC_PI_4
                     && self.section.sign_over(Probe::Ft, us, vs).is_some()
                     && (self.section.sign_over(Probe::F, us, [vs[0], vs[0]]))
@@ -1596,11 +2138,17 @@ impl Tracer<'_> {
             if cells.is_empty() {
                 home = half;
             }
+            let vs = [v - half, v + half];
+            let vs = if walker.closed[1] {
+                vs
+            } else {
+                [vs[0].max(0.0), vs[1].min(TAU)]
+            };
             cells.push(Cell {
                 u: [u.min(next), u.max(next)],
-                bracket: Bracket::Fixed([v - half, v + half]),
+                bracket: Bracket::Fixed(vs),
             });
-            v = walker.root_v(next, v - half, v + half);
+            v = walker.root_v(next, vs[0], vs[1]);
             u = next;
             step = (2.0 * du).min(STEP_MAX);
         };
@@ -1628,7 +2176,11 @@ impl Tracer<'_> {
             |marched: &[Marched], end: ArcEnd| marched.iter().any(|m| m.ends.contains(&end));
         for (i, t) in self.turning.iter().enumerate() {
             for arm in 0..2 {
-                if taken(&marched, ArcEnd::Turning(i, arm)) {
+                if t.open == Some(arm) || taken(&marched, ArcEnd::Turning(i, arm)) {
+                    continue;
+                }
+                if t.exits[arm] {
+                    marched.push(self.exit(i, arm));
                     continue;
                 }
                 let edge = t.at[0] + t.side * t.extent[arm];
@@ -1683,7 +2235,27 @@ impl Tracer<'_> {
                 )?);
             }
         }
-        for seed in self.section.seam_candidates() {
+        for (i, e) in self.edges.iter().enumerate() {
+            if taken(&marched, ArcEnd::Edge(i)) {
+                continue;
+            }
+            let edge = e.at[0] + e.side * e.extent;
+            let first = Cell {
+                u: [edge.min(e.at[0]), edge.max(e.at[0])],
+                bracket: Bracket::Fixed(e.bracket),
+            };
+            let start = [edge, self.walker.root_v(edge, e.bracket[0], e.bracket[1])];
+            marched.push(self.arc_from(first, e.at, start, e.side, ArcEnd::Edge(i), meter)?);
+        }
+        // Components that wind round a `u` that closes cross `u = 0`; on a
+        // NURBS surface whose `u` does not close every component turns,
+        // or ends on an edge.
+        let seeds = if self.walker.closed[0] {
+            self.section.seam_candidates()
+        } else {
+            Vec::new()
+        };
+        for seed in seeds {
             if let Some(start) = self.seed(seed, &marched)? {
                 let (cells, end, last) = self.march(start, 1.0, true, meter)?;
                 // A component with a turning point or a singular one was
@@ -1703,6 +2275,41 @@ impl Tracer<'_> {
             }
         }
         Ok(self.chained(marched)?)
+    }
+
+    /// The arm `arm` of turning point `i`, which leaves the domain inside
+    /// the point's cell: from the point to the edge, through the side the
+    /// cell is cut at in `u` — the end the root along that edge line — or
+    /// the edge it is cut at in `v`, where the end is on the edge.
+    fn exit(&self, i: usize, arm: usize) -> Marched {
+        let t = &self.turning[i];
+        let end = t.at[0] + t.side * t.extent[arm];
+        let bracket = if arm == 1 {
+            [t.at[1], t.at[1] + t.half[1]]
+        } else {
+            [t.at[1] - t.half[1], t.at[1]]
+        };
+        let bracket = if self.walker.closed[1] {
+            bracket
+        } else {
+            [bracket[0].max(0.0), bracket[1].min(TAU)]
+        };
+        let v = if !self.walker.closed[0] && (end == 0.0 || end == TAU) {
+            self.walker.root_v(end, bracket[0], bracket[1])
+        } else {
+            bracket[arm]
+        };
+        Marched {
+            arc: TorusArc {
+                cells: vec![Cell {
+                    u: [t.at[0].min(end), t.at[0].max(end)],
+                    bracket: Bracket::Fixed(bracket),
+                }],
+                ends: [t.at, [end, v]],
+                folds: [None; 2],
+            },
+            ends: [ArcEnd::Turning(i, arm), ArcEnd::Exit(i, arm)],
+        }
     }
 
     /// The graph that starts with `first`, an arm's own cell, and is
@@ -1736,9 +2343,14 @@ impl Tracer<'_> {
     /// for, when it is one no cell and no marched graph accounts for.
     fn seed(&self, candidate: f64, marched: &[Marched]) -> Result<Option<[f64; 2]>, SectionFault> {
         let walker = &self.walker;
+        let closed = walker.closed;
         let at = [0.0, candidate];
-        let in_cell = (self.turning.iter().any(|t| in_box(at, t.at, t.half)))
-            || walker.singular.iter().any(|s| in_box(at, s.at, s.half));
+        let in_cell = (self
+            .turning
+            .iter()
+            .any(|t| in_box(closed, at, t.at, t.half)))
+            || (walker.singular.iter()).any(|s| in_box(closed, at, s.at, s.half))
+            || (self.edges.iter()).any(|e| in_box(closed, at, e.at, e.half));
         // A graph accounts for every root inside its cells' brackets at
         // each of its crossings of `u = 0`.
         let on_graph = marched.iter().any(|m| {
@@ -1747,7 +2359,12 @@ impl Tracer<'_> {
                 let Bracket::Fixed([lo, hi]) = cell.bracket else {
                     return false;
                 };
-                turn <= cell.u[1] && wrap_angle(candidate - lo) <= hi - lo
+                let above = if closed[1] {
+                    wrap_angle(candidate - lo)
+                } else {
+                    candidate - lo
+                };
+                turn <= cell.u[1] && (0.0..=hi - lo).contains(&above)
             })
         });
         if in_cell || on_graph {
@@ -1756,7 +2373,8 @@ impl Tracer<'_> {
         let mut half = CELL_START;
         for _ in 0..=STEP_HALVINGS {
             let v = [candidate - half, candidate + half];
-            let one = self.section.sign_over(Probe::Ft, [0.0, 0.0], v).is_some();
+            let one =
+                fits(closed[1], v) && self.section.sign_over(Probe::Ft, [0.0, 0.0], v).is_some();
             if one && walker.is_negative(0.0, v[0]) != walker.is_negative(0.0, v[1]) {
                 return Ok(Some([0.0, walker.root_v(0.0, v[0], v[1])]));
             }
@@ -1849,6 +2467,14 @@ impl Tracer<'_> {
             .map(|m| [0, 1].map(|side| self.fold(m, side)))
             .collect();
         let tol = self.tol;
+        // A turning point on an edge of the domain has one arm, and a
+        // branch ends there as at an edge cell.
+        let opens: Vec<bool> = self.turning.iter().map(|t| t.open.is_some()).collect();
+        let ends_open = |end: &ArcEnd| match *end {
+            ArcEnd::Singular(..) | ArcEnd::Edge(_) | ArcEnd::Exit(..) => true,
+            ArcEnd::Turning(i, _) => opens.get(i).copied().unwrap_or(false),
+            ArcEnd::Home => false,
+        };
         let walker = Arc::new(self.walker);
         // The graph that holds the other arm of a turning point.
         let across = |end: ArcEnd| -> Option<(usize, usize)> {
@@ -1872,7 +2498,9 @@ impl Tracer<'_> {
                 match across(marched[k].ends[1 - side]) {
                     Some((next, enter)) if !visited[next] => (k, side) = (next, enter),
                     Some(_) => break Ok(steps),
-                    None if matches!(marched[k].ends[1 - side], ArcEnd::Turning(..)) => {
+                    None if matches!(marched[k].ends[1 - side], ArcEnd::Turning(..))
+                        && !ends_open(&marched[k].ends[1 - side]) =>
+                    {
                         break Err(SectionFault::UnresolvedTurning);
                     }
                     None => break Ok(steps),
@@ -1882,7 +2510,7 @@ impl Tracer<'_> {
         let mut open: Vec<(ArcEnd, usize, usize)> = Vec::new();
         for (k, m) in marched.iter().enumerate() {
             for (side, end) in m.ends.iter().enumerate() {
-                if matches!(end, ArcEnd::Singular(..)) {
+                if ends_open(end) {
                     open.push((*end, k, side));
                 }
             }
@@ -1905,8 +2533,10 @@ impl Tracer<'_> {
         let mut ends_at: Vec<([f64; 2], bool)> = (walker.singular.iter())
             .map(|s| (s.at, !s.crossing))
             .collect();
-        let singular = |end: ArcEnd| match end {
-            ArcEnd::Singular(i, _) => Some(i),
+        let stop = |end: ArcEnd| match end {
+            ArcEnd::Singular(i, _) => Some(Stop::At(i)),
+            ArcEnd::Edge(_) | ArcEnd::Exit(..) => Some(Stop::Edge),
+            ArcEnd::Turning(..) if ends_open(&end) => Some(Stop::Edge),
             ArcEnd::Turning(..) | ArcEnd::Home => None,
         };
         let turns = |end: ArcEnd| matches!(end, ArcEnd::Turning(..));
@@ -1920,15 +2550,15 @@ impl Tracer<'_> {
                 // Where the graph crosses the circle, in the order it
                 // runs: a graph seeded on the circle starts and ends on
                 // it, at one point.
-                let mut stops: Vec<([f64; 2], Option<usize>)> = Vec::new();
+                let mut stops: Vec<([f64; 2], Option<Stop>)> = Vec::new();
                 let seeded = walker
                     .factor
                     .filter(|f| m.ends[from] == ArcEnd::Home && f.u0 == 0.0);
                 let home = seeded.map(|f| {
                     ends_at.push(([f.u0, wrap_angle(start[1])], false));
-                    ends_at.len() - 1
+                    Stop::At(ends_at.len() - 1)
                 });
-                stops.push((start, singular(m.ends[from]).or(home)));
+                stops.push((start, stop(m.ends[from]).or(home)));
                 if let Some(factor) = walker.factor {
                     let (lo, hi) = (start[0].min(finish[0]), start[0].max(finish[0]));
                     let first = ((lo - factor.u0) / TAU).floor() + 1.0;
@@ -1943,10 +2573,10 @@ impl Tracer<'_> {
                     for u in inside {
                         let v = walker.v_on(&m.arc, u);
                         ends_at.push(([factor.u0, wrap_angle(v)], false));
-                        stops.push(([u, v], Some(ends_at.len() - 1)));
+                        stops.push(([u, v], Some(Stop::At(ends_at.len() - 1))));
                     }
                 }
-                stops.push((finish, singular(m.ends[to]).or(home)));
+                stops.push((finish, stop(m.ends[to]).or(home)));
                 let last = stops.len() - 1;
                 for (i, w) in stops.windows(2).enumerate() {
                     pieces.push(Piece {
@@ -1997,7 +2627,7 @@ impl Tracer<'_> {
         }
         let points: Vec<SectionPoint> = (order.iter())
             .map(|&i| SectionPoint {
-                point: walker.torus.point(ends_at[i].0[0], ends_at[i].0[1]),
+                point: walker.point(ends_at[i].0[0], ends_at[i].0[1]),
                 isolated: ends_at[i].1,
             })
             .collect();
@@ -2028,8 +2658,10 @@ impl Tracer<'_> {
                     piece.turns[1],
                 ));
                 // Whole turns, so that this graph starts where the last
-                // one ended, and the first inside `[0, 2π)`.
+                // one ended, and the first inside `[0, 2π)`; none in a
+                // direction that does not close.
                 let shift = [0, 1].map(|c| match reached {
+                    _ if !walker.closed[c] => 0.0,
                     Some(at) => TAU * ((at[c] - piece.from[c]) / TAU).round(),
                     None => -TAU * (piece.from[c] / TAU).floor(),
                 });
@@ -2044,13 +2676,20 @@ impl Tracer<'_> {
             let (Some(first), Some(last)) = (group.first(), group.last()) else {
                 continue;
             };
-            let ends = (first.ends[0].zip(last.ends[1]))
-                .map(|(a, b)| [BranchEnd::Singular(index[a]), BranchEnd::Singular(index[b])]);
-            let pin = |i: Option<usize>| i.and_then(|i| points.get(index[i])).map(|p| p.point);
+            let end = |s: Stop| match s {
+                Stop::At(i) => BranchEnd::Singular(index[i]),
+                Stop::Edge => BranchEnd::Clipped,
+            };
+            let ends = (first.ends[0].zip(last.ends[1])).map(|(a, b)| [end(a), end(b)]);
+            // An edge's end is where the graph's end is, on the edge line.
+            let pin = |s: Option<Stop>, at: [f64; 2]| match s? {
+                Stop::At(i) => points.get(index[i]).map(|p| p.point),
+                Stop::Edge => Some(walker.point(at[0], at[1])),
+            };
             let uv_of = |at: [f64; 2], shift: &[f64; 2]| [0, 1].map(|c| at[c] + shift[c]);
             let (pins, pins_uv) = match (ends, shifts.first(), shifts.last()) {
                 (Some(_), Some(sa), Some(sb)) => (
-                    [pin(first.ends[0]), pin(last.ends[1])],
+                    [pin(first.ends[0], first.from), pin(last.ends[1], last.to)],
                     [Some(uv_of(first.from, sa)), Some(uv_of(last.to, sb))],
                 ),
                 _ => ([None; 2], [None; 2]),
@@ -2067,6 +2706,14 @@ impl Tracer<'_> {
     }
 }
 
+/// Where a branch ends: at a point of the section, an index into the
+/// points as they are found, or on an edge of a NURBS surface's domain.
+#[derive(Debug, Clone, Copy)]
+enum Stop {
+    At(usize),
+    Edge,
+}
+
 /// A stretch of one marched graph as a branch runs through it: all of it,
 /// or what lies between two crossings of a tube circle.
 struct Piece {
@@ -2076,9 +2723,8 @@ struct Piece {
     to: [f64; 2],
     /// The section turns back at that end of the stretch.
     turns: [bool; 2],
-    /// The point a branch ends at there, an index into the points as
-    /// they are found.
-    ends: [Option<usize>; 2],
+    /// Where a branch ends there.
+    ends: [Option<Stop>; 2],
     /// How the stretch is evaluated beside a turning point at that end.
     fold: [Option<Fold>; 2],
 }

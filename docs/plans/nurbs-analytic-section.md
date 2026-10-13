@@ -161,7 +161,7 @@ bound has to be established here.
   move of the net into the other frame linearly. As the quartic of a
   kilometre's reach it was 0.9, and the torus's turning points came back
   uncertified.
-- [ ] Step 3 **[3]** — **The walk on a bounded domain.** `Walker` and
+- [x] Step 3 **[3]** — **The walk on a bounded domain.** `Walker` and
   `Tracer` run on the NURBS parametrisation. Branches end on the domain's
   edges at the roots of `f` along each edge line, and every such root
   seeds a march. Periodicity is per direction. `trace_section` dispatches
@@ -171,6 +171,23 @@ bound has to be established here.
   against a plane traces what `plane_cylinder` gives in closed form,
   within the fit fraction. The torus fixtures, dumps and properties pass
   unchanged.
+
+  **Landed (2026-10-13).** `torus_walk::trace_nurbs`, behind
+  `trace_section`. The walk runs on the NURBS parameters mapped onto
+  `[0, 2π]` each way (`Rescale`), so the torus's constants carry over.
+  Every root on an edge line gets an edge cell with one arm, and a turning
+  point's cell is cut at an edge of `v` (ADR-0061, amended). Findings:
+  a patch's isolation certifies zeros past the patch, a span past it on
+  a random B-spline, which were phantom turning points: a zero now
+  counts only on its own patch. A B-spline only continuous across a knot
+  of `v` can turn there with no turning point, and is refused by name.
+  Over 10 000 random poses on two seeds every twin traced, and the random
+  B-splines were refused only at kinks but for 3 of 2 457, by name.
+  `Surface::project` misses a point of a kinked rational B-spline by
+  2.9e-6: an ignored test in `tests/nurbs_project.rs`, and a backlog line
+  at retirement. Step 2's note that the drill crosses CTC-02's f520 was
+  wrong: it passes it by 42 mm. The torus's tests, properties and its 27
+  corpus fixtures pass against their blessed dumps.
 - [ ] Step 4 **[3]** — **Isolines on the other surface, and coincidence.**
   Find a row or column of `f ≡ 0` within `near`. Return it as the exact
   isocurve and deflate it out, and end crossing branches on it as on a
@@ -250,7 +267,12 @@ bound has to be established here.
   step 9.
 - `docs/BACKLOG.md`: drop the "NURBS operands in booleans" line, or narrow
   it to NURBS × NURBS. Add the flush NURBS face line and any slow-part
-  timing line. Update the `extrema` line if this plan touched it.
+  timing line. Update the `extrema` line if this plan touched it. Add
+  step 3's refusals: a section turning at a kink of a B-spline (a knot
+  of `v` where it is only continuous), and one touching an edge of the
+  domain, turning on an edge of `u` or crossing at a corner. Add
+  `Surface::project` missing a point of a kinked rational B-spline
+  (`tests/nurbs_project.rs`, ignored).
 - `docs/adr/README.md`: ADR-0061's line.
 - `CHANGELOG.md` `Unreleased`: booleans, split and section now take bodies
   with NURBS faces against analytic ones, which covers most imported

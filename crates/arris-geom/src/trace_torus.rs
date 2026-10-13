@@ -21,8 +21,9 @@
 //! homogeneous coordinates `(w·P, w)`, of the surface's bidegree `(p, q)`
 //! and linear in its span's parameters, so the same substitution gives
 //! `f` of bidegree `(d·p, d·q)` with the net's own weight `w`. A
-//! [`Chart`] says how a patch's `(s, t)` stand for the surface's `(u, v)`
-//! and which directions close.
+//! [`Chart`] says how a patch's `(s, t)` stand for the walk's `(u, v)` and
+//! which directions close; a NURBS surface's parameters are mapped onto
+//! the walk's by a [`Rescale`], each direction's domain onto `[0, 2π]`.
 //!
 //! Two sets of points are isolated on every patch, and merged across
 //! the patches' shared edges and the two seams:
@@ -106,29 +107,18 @@ fn quarters([lo, hi]: [f64; 2]) -> Vec<(usize, [f64; 2], bool)> {
         .collect()
 }
 
-/// What a knot of a NURBS surface may differ by from itself through a
-/// patch's chart and back, as a share of the largest knot's magnitude: a
-/// few `ε`. A statement about `f64`, never a tolerance.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the isolation only; the walk on a NURBS surface is not written yet"
-    )
-)]
-const KNOT_ROUNDING: f64 = 4.0 * f64::EPSILON;
+/// How far outside a NURBS patch's `[0, 1]` a zero its isolation found
+/// may lie and still be the patch's, put on its edge: a zero on a knot
+/// line, polished from either side, lands a few `ε` past it, and the
+/// patch's polynomial a billionth of its span past a knot is the next
+/// patch's to a billionth of its slope's jump. A ratio of the span, not
+/// a tolerance.
+const PATCH_SLACK: f64 = 1e-9;
 
 /// What a control point moved into the other surface's frame may be off
 /// by, as a share of its terms before they cancel: a rotation's three
 /// products and two sums, and the shift added. A statement about `f64`,
 /// never a tolerance.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the isolation only; the walk on a NURBS surface is not written yet"
-    )
-)]
 const MOVE_ROUNDING: f64 = 4.0 * f64::EPSILON;
 
 /// How the patches stand for the walked surface's parameters.
@@ -139,25 +129,73 @@ pub(crate) enum Chart {
     Quarters,
     /// A NURBS surface: a patch per pair of knot spans, row-major over
     /// `u` with `columns` spans of `v` to a row, `s` linear over the
-    /// patch's span. Each direction closes over the surface's
-    /// [`NurbsSurface::closure`] from the start of its domain, or not.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the isolation only; the walk on a NURBS surface is not written yet"
-        )
-    )]
+    /// patch's span, in the walk's parameters ([`Rescale`]). A direction
+    /// closes over `2π` where the surface's [`NurbsSurface::closure`]
+    /// says it closes, and is bounded by `[0, 2π]` where it does not.
     Knots {
         /// The spans of `v`, how many patches a row of `u` holds.
         columns: usize,
-        /// Each direction's closure.
-        closure: [Option<f64>; 2],
-        /// Where each direction's domain starts.
-        origin: [f64; 2],
-        /// The rounding two patches' shared edge may differ by.
-        touch: f64,
+        /// Whether each direction closes.
+        closed: [bool; 2],
+        /// The map from the surface's parameters to the walk's.
+        rescale: Rescale,
     },
+}
+
+/// A NURBS surface's parameters as the walk takes them: each direction's
+/// domain mapped linearly onto `[0, 2π]`, so that a direction that closes
+/// closes over `2π` as a torus's angles do, and every size the torus walk
+/// measures in radians — a cell, a step, a slack — is the same share of
+/// any surface's domain whatever its knots' units. The torus's own angles
+/// are taken as they are.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Rescale {
+    /// Where each direction's domain starts and ends.
+    lo: [f64; 2],
+    hi: [f64; 2],
+    /// What `2π` of the walk stands for: the closure, or the domain's
+    /// length.
+    len: [f64; 2],
+}
+
+impl Rescale {
+    /// The map of `nurbs`'s domain.
+    pub(crate) fn of(nurbs: &NurbsSurface) -> Rescale {
+        let domain = nurbs.domain();
+        let closure = nurbs.closure();
+        Rescale {
+            lo: domain.map(|d| d.lo()),
+            hi: domain.map(|d| d.hi()),
+            len: [0, 1].map(|k| closure[k].unwrap_or(domain[k].length())),
+        }
+    }
+
+    /// The walk's parameter of direction `k` at the surface's `x`; the
+    /// domain's ends go to `0` and `2π` exactly.
+    pub(crate) fn to_walk(self, k: usize, x: f64) -> f64 {
+        if x == self.hi[k] && self.hi[k] - self.lo[k] == self.len[k] {
+            TAU
+        } else {
+            (x - self.lo[k]) / self.len[k] * TAU
+        }
+    }
+
+    /// The surface's parameter of direction `k` at the walk's `w`; `0` and
+    /// `2π` go to the domain's ends exactly, and a closed direction's `w`
+    /// past them to the surface's parameter as far past.
+    pub(crate) fn to_surface(self, k: usize, w: f64) -> f64 {
+        if w == TAU && self.hi[k] - self.lo[k] == self.len[k] {
+            self.hi[k]
+        } else {
+            self.lo[k] + w / TAU * self.len[k]
+        }
+    }
+
+    /// What a derivative in the surface's parameter of direction `k` is
+    /// multiplied by to be one in the walk's.
+    pub(crate) fn factor(self, k: usize) -> f64 {
+        self.len[k] / TAU
+    }
 }
 
 /// What [`PatchedSection::sign_over`] looks at over a box.
@@ -181,7 +219,8 @@ struct Patch {
     /// The quarter turns of a torus's patch; the spans' indices, `u`'s and
     /// `v`'s, of a NURBS surface's.
     cell: [usize; 2],
-    /// The box of the walked surface's parameters the patch covers.
+    /// The box of the walk's parameters the patch covers: a torus's
+    /// angles, a NURBS surface's through its [`Rescale`].
     span: [[f64; 2]; 2],
     f: Poly2,
     weight: Poly2,
@@ -214,10 +253,11 @@ pub(crate) struct PatchedSection<'a> {
 /// The points isolated over the whole walked surface, in its parameters.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Census {
-    /// `at` is `(u, v)`, ascending: angles in `[0, 2π)²` on a torus, and on
-    /// a NURBS surface its own parameters, a closed direction's within
-    /// one closure from the start of its domain. A box is in the same
-    /// parameters, around its `at`, and may reach past a seam.
+    /// `at` is `(u, v)` in the walk's parameters, ascending: angles in
+    /// `[0, 2π)²` on a torus, and on a NURBS surface its own through its
+    /// [`Rescale`], in `[0, 2π]` and a closed direction's in `[0, 2π)`. A
+    /// box is in the same parameters, around its `at`, and may reach past
+    /// a seam.
     pub(crate) zeros: Vec<Zero2>,
     /// The deepest level any patch was subdivided to.
     pub(crate) depth: usize,
@@ -304,17 +344,12 @@ impl<'a> PatchedSection<'a> {
     /// frame and put into its polynomial. The rounding floor is the
     /// polynomial's magnitude at the largest homogeneous coordinate and
     /// weight of any patch, and what the move's own rounding — a few `ε`
-    /// of the terms before they cancelled — adds to that magnitude; what a distance of `tol.linear` makes of
-    /// `f` is the other surface's steepness at the farthest control point
-    /// times the largest weight to the degree: a patch lies inside its
-    /// control points' hull, and `f = wᵈ·F`.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the isolation only; the walk on a NURBS surface is not written yet"
-        )
-    )]
+    /// of the terms before they cancelled — adds to that magnitude; what
+    /// a distance of `tol.linear` makes of `f` is the other surface's
+    /// steepness at the farthest control point times the largest weight
+    /// to the degree: a patch lies inside its control points' hull, and
+    /// `f = wᵈ·F`. The patches' spans are in the walk's parameters
+    /// ([`Rescale`]).
     pub(crate) fn on_nurbs(
         nurbs: &NurbsSurface,
         other: &'a Surface,
@@ -328,6 +363,7 @@ impl<'a> PatchedSection<'a> {
         // `(X, w)` is `R·X + w·shift` there.
         let shift = implicit.frame.to_local(Point3::origin()).coords;
         let bezier = nurbs.patches();
+        let rescale = Rescale::of(nurbs);
         let mut columns_seen: Vec<f64> = Vec::new();
         let mut rows_seen: Vec<f64> = Vec::new();
         let (mut reach, mut heaviest, mut farthest) = (0.0f64, 0.0f64, 0.0f64);
@@ -367,15 +403,14 @@ impl<'a> PatchedSection<'a> {
                     index(&mut rows_seen, patch.u[0]),
                     index(&mut columns_seen, patch.v[0]),
                 ],
-                span: [patch.u, patch.v],
+                span: [0, 1].map(|k| {
+                    let [a, b] = [patch.u, patch.v][k];
+                    [rescale.to_walk(k, a), rescale.to_walk(k, b)]
+                }),
                 f,
                 weight,
             });
         }
-        let [du, dv] = nurbs.domain();
-        let largest_knot = [du.lo(), du.hi(), dv.lo(), dv.hi()]
-            .into_iter()
-            .fold(0.0f64, |m, k| m.max(k.abs()));
         // Every coefficient is a sum of terms each bounded by a monomial
         // of the coordinates' bound, so a coordinate off by `moved` moves
         // it by no more than the magnitude grows by.
@@ -389,9 +424,8 @@ impl<'a> PatchedSection<'a> {
             implicit,
             chart: Chart::Knots {
                 columns: columns_seen.len(),
-                closure: nurbs.closure(),
-                origin: [du.lo(), dv.lo()],
-                touch: KNOT_ROUNDING * largest_knot,
+                closed: nurbs.closure().map(|c| c.is_some()),
+                rescale,
             },
             patches,
             // `∂²F/∂v²`'s numerator, [`Probe::Fvv`], is the largest
@@ -430,7 +464,7 @@ impl<'a> PatchedSection<'a> {
     /// surface a closed direction's range is taken a closure either way as
     /// well, and the part of a range outside the domain has no cell.
     fn cells(&self, k: usize, range: [f64; 2]) -> Vec<(usize, [f64; 2], bool)> {
-        let Chart::Knots { closure, .. } = self.chart else {
+        let Chart::Knots { closed, .. } = self.chart else {
             return quarters(range);
         };
         let mut spans: Vec<[f64; 2]> = Vec::new();
@@ -441,9 +475,10 @@ impl<'a> PatchedSection<'a> {
             }
             spans[cell] = patch.span[k];
         }
-        let turns: Vec<f64> = match closure[k] {
-            Some(c) => vec![-c, 0.0, c],
-            None => vec![0.0],
+        let turns: Vec<f64> = if closed[k] {
+            vec![-TAU, 0.0, TAU]
+        } else {
+            vec![0.0]
         };
         let mut out = Vec::new();
         for turn in turns {
@@ -711,23 +746,135 @@ impl<'a> PatchedSection<'a> {
     }
 
     /// Candidates for the roots of `f` along the first row of `u` — `u =
-    /// 0` on a torus, the start of a NURBS surface's domain — as values of
-    /// `v` ascending: every sign change of the section's polynomial there
-    /// has one within rounding of it, and a candidate need be no root
+    /// 0` on a torus and on a NURBS surface — as values of `v` ascending:
+    /// every sign change of the section's polynomial there has one within
+    /// rounding of it, and a candidate need be no root
     /// (`crate::bernstein::sign_change_candidates`).
     pub(crate) fn seam_candidates(&self) -> Vec<f64> {
+        self.edge_candidates(0, false)
+    }
+
+    /// The walked surface's own parameters at `at`, the walk's: a torus's
+    /// angles as they are, a NURBS surface's through its [`Rescale`].
+    #[cfg(test)]
+    pub(crate) fn surface_uv(&self, at: [f64; 2]) -> [f64; 2] {
+        match self.chart {
+            Chart::Quarters => at,
+            Chart::Knots { rescale, .. } => [0, 1].map(|k| rescale.to_surface(k, at[k])),
+        }
+    }
+
+    /// Whether the section turns back in `u` at a kink of a NURBS
+    /// surface: at a root of `f` on a knot line of `v` shared by two
+    /// patches — the seam too, where `v` closes — `∂f/∂t` beyond its
+    /// rounding of one sign on the patch below and of the other above.
+    /// Across a knot line where the surface is only continuous the
+    /// section's tangent jumps, and it may come back the way it came with
+    /// no turning point to find (ADR-0061). Never on a torus, whose
+    /// quarter turns join smoothly.
+    pub(crate) fn turns_at_a_kink(&self) -> bool {
+        let Chart::Knots {
+            columns, closed, ..
+        } = self.chart
+        else {
+            return false;
+        };
+        for below in &self.patches {
+            let [cu, cv] = below.cell;
+            let next = if cv + 1 < columns {
+                cv + 1
+            } else if closed[1] {
+                0
+            } else {
+                continue;
+            };
+            let Some(above) = self.patch_at([cu, next]) else {
+                continue;
+            };
+            let [_, n] = below.f.degree();
+            let [_, n_above] = above.f.degree();
+            let (slope_below, slope_above) = (below.f.dv(), above.f.dv());
+            let line = below.f.along(1.0);
+            for s in sign_change_candidates(&line, self.floor) {
+                let lo = slope_below.eval(s, 1.0);
+                let hi = slope_above.eval(s, 0.0);
+                let clear = lo.abs() > 2.0 * n as f64 * self.floor
+                    && hi.abs() > 2.0 * n_above as f64 * self.floor;
+                if clear && (lo > 0.0) != (hi > 0.0) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Whether each direction closes: both on a torus.
+    pub(crate) fn closed(&self) -> [bool; 2] {
+        match self.chart {
+            Chart::Quarters => [true; 2],
+            Chart::Knots { closed, .. } => closed,
+        }
+    }
+
+    /// Candidates for the roots of `f` along the line where direction
+    /// `k`'s parameter is at the start of its domain, `0`, or with `high`
+    /// at its end, `2π`: values of the other direction's parameter,
+    /// ascending, with the same guarantee as [`Self::seam_candidates`].
+    /// On a NURBS surface each direction that does not close is bounded
+    /// by two such lines, the edges of its domain (ADR-0061).
+    pub(crate) fn edge_candidates(&self, k: usize, high: bool) -> Vec<f64> {
+        let last = (self.patches.iter()).map(|p| p.cell[k]).max().unwrap_or(0);
+        let edge = if high { last } else { 0 };
         let mut found: Vec<f64> = Vec::new();
-        for patch in self.patches.iter().filter(|p| p.cell[0] == 0) {
-            let stride = patch.f.degree()[1] + 1;
-            let row = &patch.f.coefficients()[..stride];
+        for patch in self.patches.iter().filter(|p| p.cell[k] == edge) {
+            let [m, n] = patch.f.degree();
+            let stride = n + 1;
+            let all = patch.f.coefficients();
+            let line: Vec<f64> = match (k, high) {
+                (0, false) => all[..stride].to_vec(),
+                (0, true) => all[m * stride..].to_vec(),
+                (_, false) => (0..=m).map(|i| all[i * stride]).collect(),
+                (_, true) => (0..=m).map(|i| all[i * stride + n]).collect(),
+            };
             found.extend(
-                sign_change_candidates(row, self.floor)
+                sign_change_candidates(&line, self.floor)
                     .into_iter()
-                    .map(|t| self.param(patch, 1, t)),
+                    .map(|t| self.param(patch, 1 - k, t)),
             );
         }
         found.sort_by(f64::total_cmp);
         found
+    }
+
+    /// A zero a patch's isolation found, in the patch's `[0, 1]²`, if it
+    /// is the walked surface's. A NURBS patch's polynomial goes on past
+    /// the patch's edges, where the surface is the next patch's or none,
+    /// and its isolation certifies zeros there with boxes that reach
+    /// across: a certified zero counts within [`PATCH_SLACK`] of the
+    /// patch, put on it, and one that is not where its box reaches in,
+    /// each box cut to the patch and that slack; the next patch finds its
+    /// own. A
+    /// torus's quarter turns are one surface, and every zero counts.
+    fn own(&self, z: &Zero2) -> Option<Zero2> {
+        if self.chart == Chart::Quarters {
+            return Some(*z);
+        }
+        let inside = |x: f64| (-PATCH_SLACK..=1.0 + PATCH_SLACK).contains(&x);
+        let kept = if z.certified {
+            z.at.iter().all(|&x| inside(x))
+        } else {
+            (0..2).all(|k| z.lo[k] <= 1.0 && z.hi[k] >= 0.0)
+        };
+        // The box no farther past the patch than the slack: a zero on a
+        // knot line found from either side is one, its two boxes each
+        // holding the other's point, and a box a span past the patch
+        // would hold the next patch's own zeros.
+        kept.then(|| Zero2 {
+            at: z.at.map(|x| x.clamp(0.0, 1.0)),
+            lo: z.lo.map(|x| x.max(-PATCH_SLACK)),
+            hi: z.hi.map(|x| x.min(1.0 + PATCH_SLACK)),
+            certified: z.certified,
+        })
     }
 
     /// One isolation per patch, its zeros and boxes taken to the walked
@@ -744,29 +891,23 @@ impl<'a> PatchedSection<'a> {
             depth = depth.max(found.depth);
             boxes += found.boxes;
             let angles = |p: [f64; 2]| [0, 1].map(|k| self.param(patch, k, p[k]));
-            zeros.extend(found.zeros.iter().map(|z| Zero2 {
-                at: angles(z.at),
-                lo: angles(z.lo),
-                hi: angles(z.hi),
-                certified: z.certified,
-            }));
+            zeros.extend(
+                (found.zeros.iter())
+                    .filter_map(|z| self.own(z))
+                    .map(|z| Zero2 {
+                        at: angles(z.at),
+                        lo: angles(z.lo),
+                        hi: angles(z.hi),
+                        certified: z.certified,
+                    }),
+            );
         }
-        let wrap = match self.chart {
-            Chart::Quarters => Wrap {
-                period: [Some(TAU); 2],
-                origin: [0.0; 2],
-                touch: ANGLE_ROUNDING,
-            },
-            Chart::Knots {
-                closure,
-                origin,
-                touch,
-                ..
-            } => Wrap {
-                period: closure,
-                origin,
-                touch,
-            },
+        // A shared edge is one knot through one map on either side, the
+        // same to the bit; the rest is the isolation's own rounding.
+        let wrap = Wrap {
+            period: self.closed().map(|c| c.then_some(TAU)),
+            origin: [0.0; 2],
+            touch: ANGLE_ROUNDING,
         };
         Ok(Census {
             zeros: merge_wrapped(zeros, &wrap),
@@ -1522,7 +1663,8 @@ mod tests {
 
     /// The point of `nurbs` at a census zero.
     fn on(nurbs: &NurbsSurface, z: &Zero2) -> Point3 {
-        nurbs.eval(z.at[0], z.at[1]).point
+        let [u, v] = [0, 1].map(|k| Rescale::of(nurbs).to_surface(k, z.at[k]));
+        nurbs.eval(u, v).point
     }
 
     /// The certified zeros of `census` match `expected` as points, one to
@@ -1616,7 +1758,8 @@ mod tests {
                 let d = section.implicit.degree() as i32;
                 for patch in &section.patches {
                     for (s, t) in [(0.0, 0.0), (0.3, 0.8), (1.0, 0.45), (0.5, 0.5), (1.0, 1.0)] {
-                        let [u, v] = [0, 1].map(|k| section.param(patch, k, [s, t][k]));
+                        let at = [0, 1].map(|k| section.param(patch, k, [s, t][k]));
+                        let [u, v] = section.surface_uv(at);
                         let p = section.implicit.frame.to_local(nurbs.eval(u, v).point);
                         let w = patch.weight.eval(s, t);
                         let coords = [p.x, p.y, p.z, 1.0].map(|c| vec![c]);
@@ -1816,14 +1959,15 @@ mod tests {
         let critical = section.critical_points(&mut Meter::default()).unwrap();
         let found = singular(&nurbs, &section, &critical);
         matches(&nurbs, &found, &[Point3::origin()], 1e-14);
-        assert!(found[0].at.iter().all(|c| c.abs() < 1e-14), "{found:?}");
+        let at = section.surface_uv(found[0].at);
+        assert!(at.iter().all(|c| c.abs() < 1e-14), "{found:?}");
         let turning = section.turning_points(&mut Meter::default()).unwrap();
         assert!(certified(&turning).is_empty(), "{:?}", turning.zeros);
         assert!(
-            turning
-                .zeros
-                .iter()
-                .all(|z| (0..2).all(|k| z.lo[k] <= 1e-6 && -1e-6 <= z.hi[k])),
+            turning.zeros.iter().all(|z| {
+                let (lo, hi) = (section.surface_uv(z.lo), section.surface_uv(z.hi));
+                (0..2).all(|k| lo[k] <= 1e-6 && -1e-6 <= hi[k])
+            }),
             "{:?}",
             turning.zeros
         );
@@ -1840,16 +1984,13 @@ mod tests {
         let critical = section.critical_points(&mut Meter::default()).unwrap();
         assert!(singular(&nurbs, &section, &critical).is_empty());
         // Far from the section the polynomial keeps its sign over a box,
-        // and the box is cut at the knot it straddles.
-        assert_eq!(
-            section.sign_over(Probe::F, [-1.0, -0.9], [-0.1, 0.1]),
-            Some(true)
-        );
-        assert_eq!(
-            section.sign_over(Probe::F, [-0.1, 0.1], [-0.6, -0.5]),
-            Some(false)
-        );
-        assert_eq!(section.sign_over(Probe::F, [0.3, 0.7], [-0.1, 0.1]), None);
+        // and the box is cut at the knot it straddles. The saddle's
+        // `[−1, 1]` is the walk's `[0, 2π]`.
+        let walk = |[a, b]: [f64; 2]| [a, b].map(|x| (x + 1.0) * PI);
+        let sign = |u, v| section.sign_over(Probe::F, walk(u), walk(v));
+        assert_eq!(sign([-1.0, -0.9], [-0.1, 0.1]), Some(true));
+        assert_eq!(sign([-0.1, 0.1], [-0.6, -0.5]), Some(false));
+        assert_eq!(sign([0.3, 0.7], [-0.1, 0.1]), None);
     }
 
     /// The two bicubic faces of CTC-02 the census found reached, each with
@@ -1893,6 +2034,76 @@ mod tests {
         out
     }
 
+    /// The census's largest faces traced against the plane and the drill
+    /// that meet them (`crate::torus_walk::trace_nurbs`). The face is
+    /// mirror-symmetric, and the plane cuts f544 in two mirrored arcs
+    /// from its upper edge of `v` to its lower, each turning once just
+    /// short of the lower edge, the arm past the turn leaving the face
+    /// inside the turning point's cell. The drill passes f520 by, 42 mm
+    /// from it at the nearest. Each branch is on both surfaces, each end
+    /// on an edge of the face's domain, and a scan of the domain finds
+    /// every change of the plane's or the drill's side beside a branch.
+    #[test]
+    fn the_census_largest_faces_trace_from_edge_to_edge() {
+        use crate::BranchEnd;
+        for ((name, nurbs, tool), count) in ctc02_faces().into_iter().zip([2, 0]) {
+            let face = Surface::Nurbs(nurbs.clone());
+            let trace = crate::torus_walk::trace_nurbs(&face, &tool, TOL, &mut Meter::default())
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
+            let implicit = Implicit::of(&tool).unwrap();
+            assert_eq!(trace.branches().len(), count, "{name}");
+            let [du, dv] = nurbs.domain();
+            let mut samples = Vec::new();
+            for branch in trace.branches() {
+                assert_eq!(branch.ends(), Some([BranchEnd::Clipped; 2]), "{name}");
+                for k in 0..=1024 {
+                    let t = branch.domain().lerp(k as f64 / 1024.0);
+                    let p = branch.point(t);
+                    let uv = branch.uv(t).unwrap();
+                    assert!(
+                        (nurbs.eval(uv.x, uv.y).point - p).norm() <= 1e-12,
+                        "{name} at {t}"
+                    );
+                    assert!(implicit.distance(p).abs() <= 1e-11, "{name} at {t}");
+                    samples.push([du.clamp(uv.x), dv.clamp(uv.y)]);
+                }
+                for t in [branch.domain().lo(), branch.domain().hi()] {
+                    let uv = branch.uv(t).unwrap();
+                    let edge =
+                        [du.lo(), du.hi()].contains(&uv.x) || [dv.lo(), dv.hi()].contains(&uv.y);
+                    assert!(edge, "{name}: {uv:?} is on no edge of {du:?} × {dv:?}");
+                }
+            }
+            // The domain in cells 1/128 of it a side: a cell the other
+            // surface's side changes across holds a sample of a branch
+            // within a cell of it.
+            let scan = 128;
+            let at = |i: usize, j: usize| {
+                [
+                    du.lerp(i as f64 / scan as f64),
+                    dv.lerp(j as f64 / scan as f64),
+                ]
+            };
+            let side = |[u, v]: [f64; 2]| implicit.distance(nurbs.eval(u, v).point) > 0.0;
+            let cell = [du.length(), dv.length()].map(|l| l / scan as f64);
+            for i in 0..scan {
+                for j in 0..scan {
+                    let corners = [at(i, j), at(i + 1, j), at(i, j + 1), at(i + 1, j + 1)];
+                    if corners.iter().all(|&c| side(c) == side(corners[0])) {
+                        continue;
+                    }
+                    let near = samples
+                        .iter()
+                        .any(|s| (0..2).all(|k| (s[k] - corners[0][k]).abs() <= 2.0 * cell[k]));
+                    assert!(
+                        near,
+                        "{name}: the section through cell ({i}, {j}) is not traced"
+                    );
+                }
+            }
+        }
+    }
+
     /// What the isolation costs on the largest faces the census reached
     /// (ADR-0061): CTC-02's two bicubic faces of 16 × 4 spans, a part
     /// a metre long, against the plane and the drill that meet them, and
@@ -1903,9 +2114,9 @@ mod tests {
     /// 292 at the most, to a depth of 12, some 5 ms in a test build.
     #[test]
     fn the_census_largest_faces_isolate_within_the_torus_bound() {
-        // The plane crosses f544 in an arc that turns twice, the drill
-        // crosses f520 from edge to edge without turning, and the torus
-        // meets each in two loops that turn twice each.
+        // The plane crosses f544 in two arcs that turn once each, the
+        // drill passes f520 by, and the torus meets each in two loops
+        // that turn twice each.
         let turns = [(2, 4), (0, 4)];
         for ((name, nurbs, tool), (by_tool, by_torus)) in ctc02_faces().into_iter().zip(turns) {
             let [du, dv] = nurbs.domain();

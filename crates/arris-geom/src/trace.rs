@@ -93,7 +93,10 @@ pub enum SectionFault {
     /// Turning points of a torus section that `f64` does not tell apart,
     /// away from any singular point: a turning point that is an
     /// inflection as well, or a stretch of the section too close to
-    /// another to be followed alone.
+    /// another to be followed alone. Of a NURBS surface's section also:
+    /// the section touching an edge of the surface's domain or crossing
+    /// it at a corner, and the section turning back at a kink of the
+    /// surface, a knot where it is only continuous.
     UnresolvedTurning,
 }
 
@@ -675,13 +678,14 @@ pub enum BranchEnd {
     /// [`SectionTrace::points`]: the branch's end *is* that point.
     Singular(usize),
     /// Where the branch leaves the region's extent along the walked
-    /// rulings.
+    /// rulings, or the domain of a walked NURBS surface: there on the
+    /// edge line exactly.
     Clipped,
 }
 
 /// What a branch is walked on: the rulings of a quadric
-/// ([`trace_quadrics`]) or the parameter plane of a torus
-/// ([`crate::trace_torus`]).
+/// ([`trace_quadrics`]), or the parameter plane of a torus
+/// ([`crate::trace_torus`]) or of a NURBS surface (ADR-0061).
 #[derive(Debug, Clone)]
 enum Walk {
     /// Which root of its ruling's quadratic each arc follows.
@@ -818,12 +822,13 @@ impl SectionBranch {
         stretch.distance(p, q)
     }
 
-    /// The walked torus's own `(u, v)` of `point(t)`, exact as the point
-    /// is, for a branch of [`crate::trace_torus`]; `None` for a branch
-    /// walked on rulings. Unwrapped across both seams, so it is
-    /// continuous along the branch and may leave `[0, 2π)`; a closed
-    /// branch that winds round the torus comes back a whole number of
-    /// turns from where it started.
+    /// The walked surface's own `(u, v)` of `point(t)`, exact as the
+    /// point is, for a branch of [`crate::trace_torus`] or of a NURBS
+    /// surface's section (the NURBS surface's parameters); `None` for a
+    /// branch walked on rulings. Unwrapped across the seams of the
+    /// directions that close, so it is continuous along the branch and
+    /// may leave the domain there; a closed branch that winds round comes
+    /// back a whole number of closures from where it started.
     pub fn uv(&self, t: f64) -> Option<Point2> {
         let Walk::Torus(walk) = &self.walk else {
             return None;

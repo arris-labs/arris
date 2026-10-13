@@ -2,8 +2,9 @@
 
 - Status: accepted (2026-10-13)
 - Plan: `nurbs-analytic-section` step 2 (the decision and the isolation);
-  the walk, the isolines and the intersector's arms land in its steps 3
-  to 5, and step 7 adds the pcurve's source here as an amendment
+  the walk (step 3, amended below), the isolines and the intersector's
+  arms land in its steps 3 to 5, and step 7 adds the pcurve's source
+  here as an amendment
 - Follows: ADR-0019 (the torus traced in its own (u, v): the isolation,
   the cells, the singular-point bump, the tube circle divided out), whose
   machinery this reuses unchanged
@@ -136,6 +137,80 @@ weight to the degree, since `f = wᵈ·F`.
   were, and so do the 27 corpus fixtures named for a torus, an elbow, a
   bead, a dome or a ring, against their blessed dumps.
 
+### Step 3: the walk on a bounded domain (amendment, 2026-10-13)
+
+- **The walk's parameters.** Each direction of a NURBS surface's domain
+  (its closure where it closes) is mapped linearly onto `[0, 2π]`
+  (`trace_torus::Rescale`), so a closed direction closes over `2π` as a
+  torus's angles do, and every size the torus walk measures in radians —
+  its first cell, its longest step, its slacks — is the same share of any
+  surface's domain whatever its knots' units. The torus's own angles are
+  walked as they are, bit for bit.
+- **Edge cells** decide (1). Every root of `f` along an edge line of a
+  direction that does not close is proven alone in a bracket on the
+  edge's own polynomial and given a cell with one arm into the domain:
+  on an edge of `u` a march's cell (`∂f/∂t` of one sign, `f` of opposite
+  signs along its lower and upper edges); on an edge of `v` the half
+  inside, with `∂f/∂t` and `∂f/∂s` of one sign and `f` of one sign along
+  its inner edge, so the arm leaves through the side where `f` on the
+  edge has the other sign. A march starts from an edge cell's arm or
+  ends in one as at a turning point's arm, and stops at the domain's
+  edge otherwise only as a fault. The branch ends there as
+  `BranchEnd::Clipped`, pinned to the root on the edge line.
+- **A turning point near an edge of `v`** has its cell cut at the edge,
+  and an arm that reaches the edge inside the cell — through the cut
+  side, or the cut edge — is a short graph from the point to the edge,
+  where a branch ends. One within `64·ANGLE_SLACK` of the edge is on it:
+  the section crosses the edge square to it there, the arm beyond is
+  none, and a branch ends at the point. A hemisphere's twin cut by a
+  vertical plane ends its arc so, on the equator.
+- **A patch's zeros are its own.** A patch's polynomial goes on past the
+  patch, where the surface is the next patch's or none, and its
+  isolation certifies zeros there by boxes that reach across — a whole
+  span across, on a random B-spline. A torus's quarter turns are one
+  surface and never showed it. On a NURBS surface a certified zero counts
+  only within `PATCH_SLACK` (`1e-9` of the span) of its own patch, one
+  that is not certified only where its box reaches in, each box cut to
+  the patch and that slack: a zero on a knot line found from both sides
+  is still one, and a box no longer holds the next patch's zeros. The
+  walk drops what is left past the domain's edges.
+- **Refused by name** (`SectionFault::UnresolvedTurning`): the section
+  touching an edge, a turning point on an edge of `u`, a crossing at a
+  corner of the domain, and a **turn at a kink**. Across a knot of `v`
+  where the surface is only continuous the section's tangent jumps, and
+  it may turn back in `u` with `∂f/∂t` of one sign below the knot line
+  and of the other above, and no turning point to seed a march from: a
+  loop whose turns are all at kinks would be missed. So a root of `f` on
+  such a line where `∂f/∂t` changes sign across it, beyond its rounding,
+  is refused (`PatchedSection::turns_at_a_kink`). Following the turn
+  instead needs a cell at a corner of the section, which a fitted curve
+  would have to break at too; a C0 face is not in the census.
+- **What the step measured.** Five properties over random poses — the
+  exact twins of a cylinder, a cone, a sphere and a torus over random
+  parts of their domains and over whole turns, and random rational
+  B-splines of degree one to three, against a plane, a cylinder, a cone,
+  a sphere and a torus — at 1000 cases on two seeds, 10 000 poses: every
+  sample of every branch on the other surface to rounding and at `uv` on
+  the NURBS surface, every clipped end on its edge line, the arguments
+  in either order the same trace, and a dense scan of the domain finding
+  no change of side away from a branch. All 7 543 twins traced. Of the
+  2 457 random B-splines 221 were refused at a kink and 3 by name
+  elsewhere, a fold or a net two hundred across against a torus a few
+  across, where `f64` does not certify a turning point; none was
+  answered wrong. A B-spline's net is held to a hundred of the other
+  surface's sizes across, the torus tracer's `R/r` bound. The twin of a
+  cylinder against a plane is the closed form's ellipse within
+  `SECTION_FIT_FRACTION` once fitted; a torus's twin traces the torus's
+  spiric sections. On CTC-02, f544 is cut by its box's plane in two
+  mirrored arcs from edge to edge, each turning once short of the lower
+  edge of `v` with the arm past the turn leaving through it; the drill
+  the census paired with f520 passes it by, 42 mm off (step 2's note
+  that it crossed the face was wrong; its census of no turning point
+  stands). `Surface::project` onto a kinked rational B-spline missed a
+  point of the surface by 2.9e-6; that is the projection's, an ignored
+  test in `tests/nurbs_project.rs` and a backlog line, and the
+  properties hold a branch to the NURBS surface by its `uv`.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its
@@ -148,7 +223,10 @@ weight to the degree, since `f = wᵈ·F`.
 - The tube-circle search and its division stay the torus's. A NURBS
   surface's isolines are (3), step 4's.
 - No public type or signature changes until step 5, which removes the
-  `Unsupported` arms.
+  `Unsupported` arms. From step 3 `trace_section` traces a NURBS
+  surface against an analytic one; `BranchEnd::Clipped` is also a
+  branch's end on the edge of a NURBS surface's domain, and
+  `SectionFault::UnresolvedTurning` names the refusals above.
 - The floor of a NURBS section grows with the net's distance from the
   other surface's frame. A part a kilometre from the origin isolates
   less sharply than the same part at the origin, by a factor of that
