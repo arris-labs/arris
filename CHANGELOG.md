@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-13
+
 - A STEP file whose face has a hole beside a curved outer boundary on a
   periodic surface (a sphere cut by a tilted cylinder, say) now reads back
   as the body it was written from; the reader could place the hole a whole
