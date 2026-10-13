@@ -30,7 +30,7 @@ use crate::{NurbsCurve, NurbsCurve2};
 pub const MAX_FIT_SPANS: usize = 4096;
 
 /// Spans the first fit tries; refinement splits from here.
-const INITIAL_SPANS: usize = 4;
+pub(crate) const INITIAL_SPANS: usize = 4;
 
 /// The fit is accepted where the caller's deviation is at or below this
 /// fraction of the tolerance at every check parameter. The residual of a
@@ -355,7 +355,7 @@ pub(crate) fn sample_parameters(breaks: &[f64], degree: usize) -> Vec<f64> {
 }
 
 /// The clamped knot vector over `breaks`.
-fn clamped_knots(breaks: &[f64], degree: usize) -> Vec<f64> {
+pub(crate) fn clamped_knots(breaks: &[f64], degree: usize) -> Vec<f64> {
     let (lo, hi) = (breaks[0], breaks[breaks.len() - 1]);
     let mut knots = vec![lo; degree + 1];
     knots.extend_from_slice(&breaks[1..breaks.len() - 1]);
@@ -365,13 +365,13 @@ fn clamped_knots(breaks: &[f64], degree: usize) -> Vec<f64> {
 
 /// The least-squares B-spline of `degree` over the clamped `knots` nearest
 /// `data`, given at `samples` in order, its end samples interpolated.
-pub(crate) fn least_squares_samples(
+pub(crate) fn least_squares_samples<const D: usize>(
     degree: usize,
     knots: &[f64],
     samples: &[f64],
-    data: &[Point3],
+    data: &[OPoint<f64, Const<D>>],
     meter: &mut Meter,
-) -> Result<Spline<3>, FitError> {
+) -> Result<Spline<D>, FitError> {
     // The datum at sample `t`: `samples` holds `t` itself.
     let at = |t: f64| data[samples.partition_point(|&s| s < t)];
     least_squares(&at, degree, knots.to_vec(), samples, meter)

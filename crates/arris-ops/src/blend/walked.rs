@@ -9,15 +9,22 @@
 //! the faces, so the ball touches both true faces wherever it is asked:
 //! the offset fit and the section fit decide only which branch is walked
 //! and where a sample starts (ADR-0062 §1). Where the faces turn tangent
-//! at an end of the edge, the stripe vanishes there: its ball is pinned
-//! to the edge's point and the spine goes no farther.
+//! at an end of the edge within its tolerance, the spine stops at the
+//! ball the edge's point locates, the narrowest the exact faces allow
+//! there, and the edge's own ball is kept apart for the assembly. The
+//! stripe's
+//! surface is skinned through the ball's exact arcs along the spine
+//! (`fit_skin`), each arc two rational quadratic segments from the
+//! contact on the first face to the contact on the second, so its
+//! isocurves `u = 0` and `u = 1` are the contact curves.
 
 // The spine is built here and assembled into a blend by the walked stripe
 // that consumes it; until then only its tests call it.
 #![expect(dead_code, reason = "the walked stripe's assembly is its consumer")]
 
 use arris_geom::{
-    Curve, GeomError, NurbsSurface, SectionTrace, Surface, SurfaceKind, trace_section,
+    Curve, GeomError, NurbsCurve, NurbsSurface, SECTION_FIT_FRACTION, SectionTrace, Surface,
+    SurfaceKind, fit_skin, trace_section,
 };
 use arris_math::nalgebra::{Matrix2, Matrix3, Vector2, Vector3};
 use arris_math::{
@@ -72,6 +79,12 @@ const REACH_STEPS: usize = 512;
 /// below the rounding of any parameter in it.
 const REACH_BISECTIONS: usize = 60;
 
+/// The degree of a walked stripe's surface along its spine: a cubic, as
+/// the fitted offset is (`OFFSET_FIT_DEGREE`), so the surface follows the
+/// spine's curvature with a residual of fourth order per span. A
+/// structural choice, not a tolerance.
+const SURFACE_DEGREE: usize = 3;
+
 /// Why a walked stripe has no spine, for the caller to name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Refusal {
@@ -100,6 +113,14 @@ pub(super) enum Walked {
 impl From<OpError> for Walked {
     fn from(e: OpError) -> Self {
         Walked::Op(e)
+    }
+}
+
+/// A fit or a construction that failed where the spine said it could
+/// not: the operation's, a diverged surface fit among them (ADR-0062 §6).
+impl From<GeomError> for Walked {
+    fn from(e: GeomError) -> Self {
+        Walked::Op(fault_of(e))
     }
 }
 
@@ -345,9 +366,11 @@ pub(super) struct Spine {
     /// the piece.
     from: f64,
     to: f64,
-    /// The ball at `from` and at `to` where the faces turn tangent there:
-    /// the stripe narrows to the edge's point, the ball touching both
-    /// faces at it.
+    /// The ball at `from` and at `to` where the faces turn tangent there
+    /// within the edge's tolerance, on the faces' common normal at the
+    /// edge's point. It is no ball of the surface: the exact ball at
+    /// `from` or `to` may lie as far as `√(2r·tangency)` from it, its arc
+    /// as wide as the faces' angle there (ADR-0062 §5).
     pinned: [Option<Ball>; 2],
     /// The ball at each of the edge's samples, which seed a NURBS face's
     /// feet.
@@ -367,10 +390,17 @@ impl Spine {
         [self.from, self.to]
     }
 
-    /// Whether the stripe narrows to the edge's point at its start and at
-    /// its end, the faces tangent there.
+    /// Whether the faces turn tangent at the edge's start and at its end
+    /// within the edge's tolerance, the spine stopping there.
     pub(super) fn vanishing(&self) -> [bool; 2] {
         self.pinned.map(|b| b.is_some())
+    }
+
+    /// The ball on the faces' common normal at the edge's point, at each
+    /// vanishing end: where the edge says the stripe narrows to, which the
+    /// assembly joins to the exact ball there.
+    pub(super) fn pinned(&self) -> [Option<Ball>; 2] {
+        self.pinned
     }
 
     /// The piece's period where it is a loop.
@@ -385,14 +415,10 @@ impl Spine {
 
     /// The ball at `t` of the piece: its traced centre snapped onto the
     /// two exact distances from the faces, each contact the snapped
-    /// centre's foot on its face (ADR-0062 §1). The feet on a NURBS face
-    /// start from the nearest of the edge's balls.
+    /// centre's foot on its face (ADR-0062 §1), at a vanishing end too.
+    /// The feet on a NURBS face start from the nearest of the edge's
+    /// balls.
     pub(super) fn ball(&self, t: f64) -> Result<Ball, Walked> {
-        for (end, pinned) in [self.from, self.to].into_iter().zip(self.pinned) {
-            if let Some(ball) = pinned.filter(|_| t == end) {
-                return Ok(ball);
-            }
-        }
         let start = self.traced(t);
         let nearest = self.edge_balls.iter().min_by(|a, b| {
             (a.centre - start)
@@ -402,6 +428,96 @@ impl Spine {
         let seeds = [0, 1].map(|k| nearest.map(|ball| ball.uv[k]));
         self.faces.snap(start, seeds, None)
     }
+
+    /// The stripe's surface over the spine's whole range: skinned through
+    /// the ball's arcs ([`arc`]) along the piece's parameter, within
+    /// [`SECTION_FIT_FRACTION`] of `tol.linear` of every arc it is
+    /// checked against (ADR-0062 §1). `u` runs from the contact on the
+    /// first face (`u = 0`) to the one on the second (`u = 1`), `v` over
+    /// [`Spine::range`] upward. At a vanishing end the isocurve there is
+    /// the exact ball's arc, as narrow as the faces' angle there, not the
+    /// edge's point ([`Spine::pinned`]).
+    ///
+    /// Errors: a ball the spine cannot snap ([`Walked::Refused`]); the
+    /// fit diverging, a kernel finding ([`Walked::Op`]).
+    pub(super) fn surface(
+        &self,
+        tol: Tolerance,
+        meter: &mut Meter<'_>,
+    ) -> Result<NurbsSurface, Walked> {
+        fit_skin(
+            |t| arc(&self.ball(t)?),
+            self.range,
+            SURFACE_DEGREE,
+            SECTION_FIT_FRACTION * tol.linear,
+            meter,
+        )
+    }
+}
+
+/// The ball's arc from its contact on the first face to its contact on
+/// the second, about its centre, as two rational quadratic segments over
+/// `[0, ½]` and `[½, 1]` meeting at the arc's middle: exact, its weights
+/// `cos(θ/4)` for the arc's angle `θ`, the same knots for every ball. A
+/// ball whose contacts are one point (a vanishing end) gives the arc
+/// collapsed to it.
+///
+/// Errors: [`Refusal::NoSpine`] where the contacts lie opposite each
+/// other across the centre, the faces facing each other with the ball
+/// between, so no one arc joins them.
+pub(super) fn arc(ball: &Ball) -> Result<NurbsCurve, Walked> {
+    let c = ball.centre;
+    let [a, b] = ball.contacts;
+    let (ra, rb) = (a - c, b - c);
+    let (la, lb) = (ra.norm(), rb.norm());
+    let opposite = || {
+        Walked::Refused(Refusal::NoSpine {
+            why: "a ball's contacts lie opposite each other",
+        })
+    };
+    let (ua, ub) = (ra / la, rb / lb);
+    let middle = (ua + ub).try_normalize(0.0).ok_or_else(opposite)?;
+    // Each segment's angle is half the arc's, `φ`; its middle control
+    // point is where the tangents at its ends meet, `ρ / cos(φ/2)` out
+    // along the bisector, and its weight `cos(φ/2)`.
+    let rho = 0.5 * (la + lb);
+    let m = c + rho * middle;
+    let segment = |u: Vec3, r: f64| {
+        let cos = u.dot(&middle).clamp(-1.0, 1.0);
+        let corner = c + (u * r + middle * rho) / (1.0 + cos);
+        (corner, (0.5 * (1.0 + cos)).sqrt())
+    };
+    let (pa, wa) = segment(ua, la);
+    let (pb, wb) = segment(ub, lb);
+    if !(wa > 0.0 && wb > 0.0) {
+        return Err(opposite());
+    }
+    Ok(NurbsCurve::new(
+        2,
+        vec![0.0, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 1.0],
+        vec![a, pa, m, pb, b],
+        vec![1.0, wa, 1.0, wb, 1.0],
+    )?)
+}
+
+/// The stripe's two contact curves, the isocurves `u = 0` on the first
+/// face and `u = 1` on the second of a surface [`Spine::surface`] built:
+/// its first and last rows of control points along `v`, exact, since its
+/// `u` knots are clamped.
+pub(super) fn contacts(surface: &NurbsSurface) -> Result<[NurbsCurve; 2], Walked> {
+    let [n, m] = surface.counts();
+    let [_, q] = surface.degree();
+    let row = |i: usize| -> Result<NurbsCurve, Walked> {
+        let points = surface.control_points()[i * m..(i + 1) * m].to_vec();
+        let weights = surface.weights()[i * m..(i + 1) * m].to_vec();
+        Ok(NurbsCurve::new(
+            q,
+            surface.knots()[1].to_vec(),
+            points,
+            weights,
+        )?)
+    };
+    Ok([row(0)?, row(n - 1)?])
 }
 
 /// The spine of the stripe `rolling` asks for, its tolerance `tol.linear`.
@@ -415,10 +531,11 @@ impl Spine {
 /// two that holds the middle ball, carried on past each end by
 /// [`REACH_RADII`] where the piece goes on — never past a closed piece's
 /// period, never past an open one's ends. At an end where the faces are
-/// tangent within `rolling.tangency` (ADR-0045) the stripe vanishes: the
+/// tangent within `rolling.tangency` (ADR-0045) the spine stops: the
 /// ball there is pinned to the edge's point, on the faces' common normal,
-/// and held only to `√(2r·tangency)` of the piece, and the spine stops
-/// there.
+/// held only to `√(2r·tangency)` of the piece, and located on it; the
+/// exact ball at that place is the snap of the piece's point, which the
+/// pinned one may miss by as much ([`Spine::pinned`]).
 ///
 /// Errors: [`Walked::Refused`] with the [`Refusal`] the caller names;
 /// [`Walked::Op`] for an interruption or a fault, the fit of an offset
@@ -968,6 +1085,44 @@ mod tests {
         }
     }
 
+    /// What a test asks of a stripe's surface over a twin pair: on a grid
+    /// denser than the fit's checks, every point within the surface's
+    /// share of the tolerance of the closed form's ball, the cylinder or
+    /// torus the table builds (ADR-0062 §1), and each contact curve within
+    /// it of the closed form's contact. Returns the surface's spans along
+    /// the spine.
+    fn skinned(pair: &Pair, spine: &Spine, r: f64) -> usize {
+        let surface = spine
+            .surface(tol(), &mut Meter::default())
+            .unwrap_or_else(|e| panic!("{e:?}"));
+        let budget = SECTION_FIT_FRACTION * tol().linear;
+        let range = spine.range();
+        assert_eq!(surface.domain()[1], range);
+        let curves = contacts(&surface).unwrap();
+        let (us, vs) = (24, 211);
+        for j in 0..=vs {
+            let v = range.lerp(j as f64 / vs as f64);
+            for i in 0..=us {
+                let p = surface.eval(i as f64 / us as f64, v).point;
+                let [centre, _, _] = (pair.exact)(p);
+                let off = (p - centre).norm() - r;
+                assert!(off.abs() <= budget, "radial {off:e} at ({i}, {j})");
+            }
+            for (k, curve) in curves.iter().enumerate() {
+                let q = curve.eval(v).point;
+                let want = (pair.exact)(q)[1 + k];
+                let off = (q - want).norm();
+                assert!(off <= budget, "contact {k} off by {off:e} at {j}");
+                let on_surface = surface.eval(k as f64, v).point;
+                assert!((q - on_surface).norm() <= 1e-12 * (1.0 + q.coords.norm()));
+            }
+        }
+        surface.knots()[1]
+            .windows(2)
+            .filter(|w| w[1] > w[0])
+            .count()
+    }
+
     fn walk(pair: &Pair) -> Spine {
         let rolling = Rolling {
             surfaces: [&pair.surfaces[0], &pair.surfaces[1]],
@@ -982,9 +1137,9 @@ mod tests {
 
     /// The twin of a plane or a cylinder against the other along a ruling,
     /// concave and convex: the spine on the closed form's axis line, the
-    /// contacts on its contact lines.
+    /// contacts on its contact lines, the surface on its cylinder.
     #[test]
-    fn a_twin_against_a_cylinder_along_a_ruling_walks_the_closed_forms_axis() {
+    fn a_twin_against_a_cylinder_along_a_ruling_walks_and_skins_the_closed_forms_cylinder() {
         for pose in poses() {
             for (big, r) in [(2.0, 0.5), (1.0, 0.1), (5.0, 1.5)] {
                 for s in [1.0, -1.0] {
@@ -992,6 +1147,8 @@ mod tests {
                         let pair = ruling(pose, big, r, s, 3.0, twin);
                         let spine = walk(&pair);
                         holds(&pair, &spine, r);
+                        let spans = skinned(&pair, &spine, r);
+                        eprintln!("ruling R {big} r {r} s {s} {twin:?}: {spans} spans");
                     }
                 }
             }
@@ -1000,9 +1157,10 @@ mod tests {
 
     /// The twin of a plane or a cylinder against the other along a
     /// circle, a boss's foot and a hole's rim, the whole circle and an
-    /// arc of it: the spine on the closed form's circle.
+    /// arc of it: the spine on the closed form's circle, the surface on
+    /// its torus.
     #[test]
-    fn a_twin_against_a_cylinder_along_a_circle_walks_the_closed_forms_circle() {
+    fn a_twin_against_a_cylinder_along_a_circle_walks_and_skins_the_closed_forms_torus() {
         let whole = Interval::new(0.0, TAU).unwrap();
         let arc = Interval::new(0.3, 2.4).unwrap();
         for pose in poses() {
@@ -1013,6 +1171,10 @@ mod tests {
                             let pair = circle(pose, big, r, s, range, twin);
                             let spine = walk(&pair);
                             holds(&pair, &spine, r);
+                            let spans = skinned(&pair, &spine, r);
+                            eprintln!(
+                                "circle R {big} r {r} s {s} {twin:?} over {range:?}: {spans} spans"
+                            );
                         }
                     }
                 }
@@ -1020,9 +1182,112 @@ mod tests {
         }
     }
 
+    /// A box whose top is a bicubic graph `z = h(x, y)` waving along
+    /// `y`, its side `x = 0` meeting the top in an S-shaped edge, filleted
+    /// convex: the surface within its share of the tolerance of the ball
+    /// at every place of the spine, each contact curve on its face within
+    /// it. The spans along the spine are printed for the plan.
+    #[test]
+    fn an_s_shaped_spine_on_a_bicubic_bump_skins_within_the_budget() {
+        let r = 0.3;
+        let degree = 3;
+        // Clamped uniform cubic knots over `[a, b]` in `spans` spans, and
+        // their Greville abscissae, at which the net puts its `x` and `y`
+        // so that `x = u` and `y = v` exactly.
+        let knots = |a: f64, b: f64, spans: usize| {
+            let mut k = vec![a; degree];
+            k.extend((0..=spans).map(|i| a + (b - a) * i as f64 / spans as f64));
+            k.extend(vec![b; degree]);
+            let greville: Vec<f64> = (0..k.len() - degree - 1)
+                .map(|i| k[i + 1..=i + degree].iter().sum::<f64>() / degree as f64)
+                .collect();
+            (k, greville)
+        };
+        let (ku, xs) = knots(-3.0, 1.0, 6);
+        let (kv, ys) = knots(-4.0, 4.0, 12);
+        let h = |x: f64, y: f64| 0.5 * (0.8 * y).sin() + 0.1 * x;
+        let mut net = Vec::new();
+        for &x in &xs {
+            for &y in &ys {
+                net.push(Point3::new(x, y, h(x, y)));
+            }
+        }
+        let weights = vec![1.0; net.len()];
+        let top = NurbsSurface::new([degree, degree], [ku, kv], net, weights).unwrap();
+        let side = Surface::Plane {
+            frame: Frame::new(Point3::origin(), Vec3::x(), Vec3::y()).unwrap(),
+        };
+        let bump = Surface::Nurbs(top.clone());
+        let range = Interval::new(-2.0, 2.0).unwrap();
+        let iso = |t: f64| top.eval(0.0, t).point;
+        let edge = Curve::Nurbs(
+            arris_geom::fit_curve(
+                iso,
+                range,
+                3,
+                |t, q| (q - iso(t)).norm(),
+                1e-12,
+                &mut Meter::default(),
+            )
+            .unwrap(),
+        );
+        // The material is `x ≤ 0` below the top: both faces' normals point
+        // out of it, and the ball is inside.
+        let rolling = Rolling {
+            surfaces: [&side, &bump],
+            distances: [-r, -r],
+            edge: &edge,
+            range,
+            closed: false,
+            tangency: tol().linear,
+        };
+        let spine =
+            spine(&rolling, tol(), &mut Meter::default()).unwrap_or_else(|e| panic!("{e:?}"));
+        let started = std::time::Instant::now();
+        let surface = spine
+            .surface(tol(), &mut Meter::default())
+            .unwrap_or_else(|e| panic!("{e:?}"));
+        let fitted = started.elapsed();
+        let budget = SECTION_FIT_FRACTION * tol().linear;
+        let curves = contacts(&surface).unwrap();
+        let samples = 157;
+        let mut spine_z = Vec::new();
+        for j in 0..=samples {
+            let v = spine.range().lerp(j as f64 / samples as f64);
+            let ball = spine.ball(v).unwrap();
+            spine_z.push(ball.centre.z);
+            for i in 0..=16 {
+                let p = surface.eval(i as f64 / 16.0, v).point;
+                let off = (p - ball.centre).norm() - r;
+                assert!(off.abs() <= budget, "radial {off:e} at ({i}, {j})");
+            }
+            let on_side = curves[0].eval(v).point;
+            assert!(
+                on_side.x.abs() <= budget,
+                "side contact {:e} at {j}",
+                on_side.x
+            );
+            let on_top = curves[1].eval(v).point;
+            let off = top.project(on_top).unwrap().distance;
+            assert!(off <= budget, "top contact {off:e} at {j}");
+        }
+        // The spine bends both ways: its height rises and falls back in
+        // turn, an S.
+        let bends = spine_z
+            .windows(3)
+            .map(|w| (w[2] - 2.0 * w[1] + w[0]).signum())
+            .collect::<Vec<_>>();
+        assert!(bends.windows(2).any(|w| w[0] != w[1]), "no inflection");
+        let spans = surface.knots()[1]
+            .windows(2)
+            .filter(|w| w[1] > w[0])
+            .count();
+        eprintln!("S-shaped spine: {spans} spans along it, fitted in {fitted:?}");
+    }
+
     prop_shards! {
         /// Random poses and sizes of the twin pairs, along a ruling and
-        /// along an arc of a circle.
+        /// along an arc of a circle: spine and surface.
         twin_pairs [shard_0 shard_1 shard_2 shard_3] (
             (frame, big, ratio, convex, plane_twin, along_circle, arc)
         ) = (
@@ -1044,6 +1309,7 @@ mod tests {
             };
             let spine = walk(&pair);
             holds(&pair, &spine, r);
+            skinned(&pair, &spine, r);
             Ok(())
         }
     }
@@ -1051,10 +1317,14 @@ mod tests {
     /// NIST CTC-05's convex edge between its rational B-spline face f109
     /// and the torus f111 at the battery's radius (the plan's census): the
     /// spine traced over the NURBS face's offset in the ball's band, every
-    /// sample snapped onto both faces at the radius. The time is printed
-    /// for the plan.
+    /// sample snapped onto both faces at the radius, and the surface
+    /// skinned within its share of the tolerance of every ball, its contact
+    /// curves on their faces. At v84, where the faces are tangent within
+    /// the edge's tolerance, the surface ends on the exact ball's arc,
+    /// narrower than that tolerance and within `√(2r·τₑ)` of the edge's
+    /// point. The times, the spans and that arc are printed for the plan.
     #[test]
-    fn real_ctc_05s_nurbs_torus_edge_has_a_spine() {
+    fn real_ctc_05s_nurbs_torus_edge_has_a_spine_and_a_surface() {
         use arris_debug::unmetered::step_read;
         use arris_io::step::ReadOptions;
         use arris_topo::Model;
@@ -1105,30 +1375,67 @@ mod tests {
         let traced = started.elapsed();
         let samples = 64;
         // The edge's start is where the two faces turn tangent within the
-        // edge's tolerance (their normals 8e-6 apart): the stripe narrows to
-        // the edge's point there, its ball pinned to it.
+        // edge's tolerance (their normals 8e-6 apart): the spine stops there.
         assert_eq!(spine.vanishing(), [true, false]);
-        let pinned = spine.ends()[0];
         let mut drift = 0.0f64;
         for i in 0..=samples {
             let t = spine.range().lerp(i as f64 / samples as f64);
             let ball = spine
                 .ball(t)
                 .unwrap_or_else(|e| panic!("sample {i}: {e:?}"));
-            let allowed = if t == pinned { rolling.tangency } else { 1e-9 };
             for k in 0..2 {
                 let off = (ball.centre - ball.contacts[k]).norm() - RADIUS;
-                assert!(off.abs() <= allowed, "face {k} at {i}: {off:e}");
+                assert!(off.abs() <= 1e-9, "face {k} at {i}: {off:e}");
             }
-            if t != pinned {
-                drift = drift.max(across(&spine, t, &ball, RADIUS));
-            }
+            drift = drift.max(across(&spine, t, &ball, RADIUS));
         }
         assert!(drift <= 0.5 * tol.linear, "drift {drift:e}");
+        let started = std::time::Instant::now();
+        let surface = spine
+            .surface(tol, &mut Meter::default())
+            .unwrap_or_else(|e| panic!("{edge}: {e:?}"));
+        let fitted = started.elapsed();
+        let budget = SECTION_FIT_FRACTION * tol.linear;
+        let curves = contacts(&surface).unwrap();
+        for j in 0..=97 {
+            let v = spine.range().lerp(j as f64 / 97.0);
+            let ball = spine.ball(v).unwrap();
+            for i in 0..=16 {
+                let p = surface.eval(i as f64 / 16.0, v).point;
+                let off = (p - ball.centre).norm() - RADIUS;
+                assert!(off.abs() <= budget, "radial {off:e} at ({i}, {j})");
+            }
+            // The exact contact, the foot on the face carried past its
+            // domain where the reach runs past it (ADR-0062 §3).
+            for (k, curve) in curves.iter().enumerate() {
+                let q = curve.eval(v).point;
+                let off = (q - ball.contacts[k]).norm();
+                assert!(off <= budget, "contact {k} off by {off:e} at {j}");
+            }
+        }
+        // The vanishing end: the exact arc, not the edge's point.
+        let start = spine.ends()[0];
+        let ends = curves.each_ref().map(|c| c.eval(start).point);
+        let width = (ends[0] - ends[1]).norm();
+        assert!(width <= rolling.tangency, "end arc {width:e} wide");
+        let at_edge = spine.pinned()[0].unwrap().contacts[0];
+        let reach = (2.0 * RADIUS * rolling.tangency).sqrt();
+        let away = ends.map(|q| (q - at_edge).norm());
+        assert!(
+            away.iter().all(|&d| d <= reach),
+            "end arc {away:?} from the edge's point"
+        );
+        let spans = surface.knots()[1]
+            .windows(2)
+            .filter(|w| w[1] > w[0])
+            .count();
         eprintln!(
-            "CTC-05 {edge}: spine over {:?} (edge at {:?}) traced in {traced:?}, drift {drift:e}",
+            "CTC-05 {edge}: spine over {:?} (edge at {:?}) traced in {traced:?}, drift {drift:e}; \
+             surface of {spans} spans fitted in {fitted:?}, its end arc {width:e} wide, \
+             {:e} from the edge's point",
             spine.range(),
-            spine.ends()
+            spine.ends(),
+            away[0].max(away[1])
         );
     }
 }

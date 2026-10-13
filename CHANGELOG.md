@@ -31,6 +31,11 @@ into its version (ADR-0027).
   offset, reaching past the surface's edge where the box does. A distance
   past the surface's curvature on that side is refused as
   `GeomError::OffsetFolds`, and a pole inside the box as `Degenerate`.
+- `fit_skin` builds a NURBS surface through a family of NURBS sections
+  that share a degree and a knot vector (the arcs of a rolling ball, the
+  profiles of a loft), within your tolerance of each section at the same
+  parameter; a section that collapses to a point gives the surface a pole
+  there.
 
 ### Breaking
 

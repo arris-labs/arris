@@ -62,6 +62,7 @@ pub use intersect_curves::{
 pub use nurbs::{
     FitError, MAX_DEGREE, MAX_FIT_SPANS, MAX_OFFSET_PATCHES, MAX_OFFSET_SPANS, NurbsCurve,
     NurbsCurve2, NurbsSurface, OFFSET_FIT_DEGREE, fit_curve, fit_curve_periodic, fit_curve2,
+    fit_skin,
 };
 pub use pcurve::{
     PCURVE_FIT_DEGREE, PCURVE_SAMPLES, PCURVE_SINGULAR_BAND, pcurve_ending_on, pcurve_on,

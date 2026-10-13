@@ -74,7 +74,11 @@ another item's, by name.
     parameter box. A singular normal (a collapsed row) and a fold (the
     distance past a principal radius on its side) are refused by name.
   - A section skinning fit that the blend surface uses now and loft
-    uses next. Its name and signature are fixed in step 4.
+    uses next, fixed in step 4: `fit_skin(section: impl Fn(f64) ->
+    Result<NurbsCurve, E>, range: Interval, degree, tol, meter) ->
+    Result<NurbsSurface, E>` with `E: From<GeomError>`. The sections share
+    one degree, knot vector and count; each control point's `(w·P, w)` is
+    fitted along `v`.
   - `Surface::offset` is unchanged: exact or `None`, and its doc points
     to the fitted one.
   - `GeomError::OffsetFolds { kind, at, distance, radius }` (step 2: no
@@ -251,7 +255,7 @@ bound has to be established here.
     loop over clamped knots, so the shared `Piece` now treats it as one
     with its end points equal to rounding. Before, a closed isoline counted
     as open and an open one as a loop of `2π`.
-- [ ] Step 4 **[3]** — **The rolling-ball surface.** At each spine
+- [x] Step 4 **[3]** — **The rolling-ball surface.** At each spine
   sample, the ball's arc between the two contacts is an exact rational
   quadratic, always two segments, so the `u` structure is fixed. Skin the
   arcs' homogeneous nets along `v` with the section fit (design delta),
@@ -268,14 +272,53 @@ bound has to be established here.
     budget);
   - an S-shaped spine on a bicubic bump, with its span count recorded;
   - a property over random poses.
+
+  **Done (2026-10-14).** `fit_skin` in `arris-geom` (`nurbs/skin.rs`),
+  and `Spine::surface`, `arc` and `contacts` in `blend/walked.rs`. The
+  surface is held to `τ/4` of every exact arc at its checks, and so its
+  contact isocurves to the exact feet. Measured and found:
+  - **The vanishing end is no pole.** On CTC-05 the exact balls run
+    smoothly to the spine's end at v84 and stop 1.04e-2 from the pinned
+    ball. Their arc there is 1.98e-4 wide, its narrowest, with contacts
+    9.9e-3 from the edge's point. The faces cross at 2.2e-4 rad there, and
+    the edge runs off that crossing within its 7.7e-3. Skinning up to the
+    pinned ball left a jump of 1e-2 the fit could not close. So
+    `Spine::ball` now snaps at a vanishing end too, the surface ends on
+    that narrow arc, and the pinned ball is kept apart (`Spine::pinned`)
+    for step 5 (ADR-0062 §5 amendment).
+  - **Spans along the spine at `τ/4 = 2.5e-8`:**
+
+    | Stripe | Spans | Fitted in |
+    |---|---|---|
+    | Twins along a ruling (cylinder) | 4 | — |
+    | Plane twin about a circle, whole turn (R 1, r 0.1 / R 2, r 0.5) | 128 / 256 | — |
+    | Cylinder twin about the same circles | 454 / 502 | — |
+    | Arcs of 2.1 rad, either twin | 146 to 260 | — |
+    | S-shaped spine on the bicubic bump | 558 | 0.77 s |
+    | CTC-05's e256 | 755 | 1.05 s |
+
+    The skin itself converges at O(h⁴) on a smooth family (127 spans for
+    rings of radius `1 + sin(v)/2` at 1e-8 over 6). The balls converge at
+    O(h²): as a function of the traced piece's parameter they are only
+    C¹. The tracer's walked coordinate switches between arcs and rides the
+    fitted offset's knots, so a cylinder's twin takes twice its plane
+    twin's spans. A contact on a C² face kinks at its knots too. Skinning
+    by the edge's parameter in its normal planes took the S-bump to 213.
+    That is a backlog line, not this step: the counts stay inside
+    `MAX_FIT_SPANS`, and the cost lands on step 5's traced ends and step
+    6's checker.
+  - Each property shard of the twin pairs, spine and surface, takes about
+    23 s.
 - [ ] Step 5 **[2]** — **Assemble a walked fillet.**
   - `blend/walked.rs`; `Blend` holds either stripe.
   - The dispatch tries the table, then the walked stripe for a NURBS ×
     analytic pair, for an analytic pair outside the table, and for a
     table pair whose edge is not the table's curve.
   - Ends: a closed edge has none. A vanishing end (step 3, CTC-05's v84)
-    has no face across to trace: the stripe ends at the vertex, both
-    contacts meeting the edge there. An analytic face across gets
+    has no face across to trace. The surface ends on the exact balls'
+    narrowest arc (step 4), 1.98e-4 wide and 9.9e-3 from the edge's
+    point on CTC-05, and the stripe ends at the vertex across that gap
+    (open question). An analytic face across gets
     `traced_end` over the NURBS blend through ADR-0061. A NURBS face
     across is `Unsupported`, and a sharp vertex with another blend keeps
     its refusal.
@@ -403,5 +446,9 @@ bound has to be established here.
   plan beyond NURBS faces. It is in because CTC-01 and the B-spline edges
   are in the census and the stripe takes them for free. **Human**, before
   `/work` reaches step 9: keep it, or cut it to a follow-up plan.
+- ⚠ OPEN: how a vanishing end meets its vertex (step 4). The candidates
+  are growing the vertex's tolerance to the end arc's contacts (9.9e-3 on
+  CTC-05, past the edge's 7.7e-3) under ADR-0060's operation bound, or
+  refusing the end by name. **Agent**, at step 5.
 - The spine's trace on CTC-05 against the ADR-0026 §6 budget (60 s):
   **closed** at step 3, which traces it in 0.53 s.

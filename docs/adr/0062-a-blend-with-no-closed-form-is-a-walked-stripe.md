@@ -137,6 +137,17 @@ surface's own isocurve. No offset is involved.
   stops there, and the stripe narrows to the vertex. CTC-05's e256
   vanishes at v84, its normals 8e-6 rad apart against an edge tolerance
   of 7.7e-3. A face turning tangent inside the edge is refused.
+- *Amended 2026-10-14 (plan step 4):* the exact balls do not narrow to
+  the pinned one. On CTC-05 they run smoothly to the spine's end at v84
+  and stop there 1.04e-2 from the pinned ball, within the `√(2r·τₑ)` =
+  0.117 above. Their arc is 1.98e-4 wide there, its narrowest, and its
+  contacts are 9.9e-3 from the edge's point. The faces cross at 2.2e-4
+  rad there, never tangent: the edge runs off their crossing, within its
+  tolerance of each face. So the surface skins the exact balls to the
+  spine's end, and its end isocurve is that narrow arc, not a pole. The
+  pinned ball is kept apart (`Spine::pinned`). The assembly joins the end
+  arc to the vertex, whose tolerance has to grow to cover it, or refuses
+  the end by name (plan step 5).
 
 **6. The refusals, each by name:**
 

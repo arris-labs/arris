@@ -142,6 +142,16 @@ normal is outward on; whether a face reaches the axis or the apex the
 move carries is the operation's to decide per face, so the cone's
 surface-level offset never collapses.
 
+A surface through a family of sections is skinned: `fit_skin(section,
+range, degree, tol)` (ADR-0062 §1) takes compatible NURBS sections — one
+degree, one knot vector, one count of control points, their weights free —
+and fits each control point's homogeneous coordinates `(w·P, w)` along
+`v` by least squares, both ends interpolated, refining the knots along `v`
+until the surface is within `tol` of `section(v)` at the same `(u, v)` at
+every check. A walked blend's surface is the ball's exact arcs skinned
+along its spine, each arc two rational quadratic segments, so its
+isocurves `u = 0` and `u = 1` are the contact curves.
+
 A surface's parametric domain is unbounded where the table says ℝ; a face
 trims it with loops. Periodic directions are stored as a period, and a
 pcurve on a periodic surface may run outside `[0, 2π)` — a loop that crosses
