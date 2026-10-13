@@ -18,7 +18,7 @@ done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
 ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
-then **C10** (the NURBS cycle: NURBS operands, sweep and loft). An unopened cycle carries
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, done 2026-10-13, ADR-0061). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -806,7 +806,12 @@ built in this one.*
 - A NURBS surface against each analytic kind: the section, and the
   boolean and blend over it. This covers a sweep or loft cut by a plane or
   a cylinder, an embossed outline, and the B-spline faces of an imported
-  part.
+  part. *Done 2026-10-13 for the section, the
+  boolean, `split` and `section` (ADR-0061): the fetched tier's NURBS row
+  fell from 3 at `box_cut` and 1 at `drill_x` to 0 at every boolean column,
+  leaving 5 parts at `fillet` (2 NURBS curve × plane, 2 NURBS surface ×
+  torus, 1 cylinder × cylinder); the committed tier's one is FTC-10's
+  fillet. The blend on a NURBS face is the next plan.*
 - Sweep along a path and loft between sections, each with provenance and
   each an operand of every boolean and blend that the first item allows.
   The oblique extrude of an arc goes here too, as the exact

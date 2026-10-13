@@ -1,4 +1,4 @@
-//! The NURBS census (`plans/nurbs-analytic-section` step 1): every battery
+//! The NURBS census (`nurbs-analytic-section` step 1): every battery
 //! stage Arris refuses as the NURBS cycle's, taken apart by the pair the
 //! refusal names and by the NURBS faces the stage's tool reaches.
 //!

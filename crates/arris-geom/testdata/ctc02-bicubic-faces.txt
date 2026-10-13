@@ -3,7 +3,7 @@
 # NIST: "can be used without any restrictions"), each with the battery
 # tool's surface whose box reaches it: f544 and its box's plane, which
 # cuts it; f520 and its drill's cylinder, which passes it by
-# (plans/nurbs-analytic-section step 1's census).
+# (nurbs-analytic-section step 1's census).
 # `nurbs p q n m`, the knots of u, of v, then n·m rows `x y z w`,
 # row-major over u; `plane` origin normal; `cylinder` origin axis radius.
 face f544

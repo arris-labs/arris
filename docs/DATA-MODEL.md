@@ -405,10 +405,13 @@ arm of the third table (ADR-0008), and elsewhere a plane against a cone
 in an exact conic and a cylinder, a cone or a sphere against a cone or a
 sphere traced and fitted, and the elliptic cylinder's pairs by the second
 table (ADR-0014), and a torus against any of them in a section traced in
-the torus's own parameter plane (below the torus tracer, ADR-0019); every
-pair with a `Nurbs` operand is an explicit `Unsupported` arm, and no
+the torus's own parameter plane (below the torus tracer, ADR-0019), and a
+`Nurbs` surface against any of the six analytic kinds in a section traced
+in the `Nurbs` surface's own parameters (below the NURBS tracer,
+ADR-0061); `Nurbs`–`Nurbs` is an explicit `Unsupported` arm, and no
 other pair of kinds is (a partial coincidence on a shared axis, below, is
-refused by pose, not by kind). Every curve and every point
+refused by pose, not by kind; a `Nurbs` face flush with the other surface
+over an area is refused as `Unsupported`). Every curve and every point
 of a `Meets` carries its `MeetKind` (ADR-0018): a curve is a `Crossing`
 when the surfaces cross along it and a `Touch` when they are tangent all
 along it; a point is a `Touch` when the surfaces are tangent there and
@@ -457,7 +460,8 @@ section's parameter — up to four.
 | A cylinder or an elliptic cylinder with parallel axes | `Coincident`, `Empty`, or a ruling at each meeting of the sections, touching where they touch — both kinds in one `Meets` when the sections both touch and cross |
 | A cylinder or an elliptic cylinder with other axes; a cone, a sphere, in any pose | the fitted branches of the traced section |
 | A torus, in any pose | the fitted branches of the section traced in the torus's parameter plane (ADR-0019); the two share no axis, an elliptic cylinder being no surface of revolution |
-| A NURBS | `Unsupported` |
+| A NURBS surface against a plane, a cylinder, an elliptic cylinder, a cone, a sphere or a torus | the fitted branches of the section traced in the NURBS surface's parameters (ADR-0061); isolines of the NURBS surface on the other surface and a collapsed row's point come back exact |
+| A NURBS surface against a NURBS surface | `Unsupported` |
 
 **The meridian arm.** Two surfaces of revolution about one axis meet
 where their meridians meet in a plane through the axis. In that plane,
@@ -588,9 +592,10 @@ conic–cylinder, *conic* being a circle or an ellipse, a line against a
 cone, a sphere or a torus, and a conic in a plane across an elliptic
 cylinder's axis — for a conic against a cone, a sphere or an elliptic
 cylinder in any other plane and against a torus (below), for a `Nurbs` curve against every
-analytic surface (below), for a line against a `Nurbs` surface (below),
+analytic surface (below), for a line, a circle or an ellipse against a
+`Nurbs` surface (below),
 and `GeomError::Unsupported` naming the pair for the one arm left
-without a form: a conic or a `Nurbs` curve against a `Nurbs` surface. A
+without a form: a `Nurbs` curve against a `Nurbs` surface. A
 hit is
 `CurveSurfaceHit { t, uv, point, tangent }`: `point` is the curve's point
 at `t`, `uv` the surface's own projection of it — except at a cone's
@@ -765,6 +770,19 @@ patches that is no critical point of either: the line's nearest approach
 to a face's edge is the topology's to decide. A conic or a `Nurbs` curve
 against a `Nurbs` surface stays `Unsupported`.
 
+**A circle or an ellipse against a `Nurbs` surface** is the line's arm
+with a conic for the cut. The conic is the meet of its plane and its
+cylinder (an elliptic cylinder for the ellipse); on each patch the
+plane's offset and the cylinder's implicit form are two Bernstein
+polynomials whose common zeros `common_zeros_with` isolates and
+certifies, and the line's descents, poles and touch search are shared
+(`nurbs::line`'s `Cut`). A touch is decided in length on the distance,
+the second-order model adding the conic's bend `κ N·n` to the surface's
+sag, and each hit's `t` is the conic's angle at the surface point.
+`Coincident` is a conic that meets the surface and stays within the tube
+of it at 64 points round. Against the exact twin of every analytic
+surface it agrees with the analytic arms.
+
 `intersect_curves(a, b, tol)` returns `CurveIntersection::{
 Points(Vec<CurveCurveHit>), Coincident}`, a hit being `CurveCurveHit {
 ta, tb, point, tangent }` with `point` the *first* curve's point at `ta`
@@ -905,6 +923,28 @@ and of measure zero: two tube circles with more of the section besides,
 a circle not held to the tolerance wherever the rest is traced, turning
 points `f64` does not tell apart, a continuum of them, and a singular
 point crowded by another, by a turning point or by a tube circle.
+
+The same walk runs over a `Nurbs` surface (ADR-0061; crate-private, behind `trace_section`): each
+Bézier patch of the surface (its knot spans) goes into the other
+surface's implicit polynomial, a tensor Bernstein polynomial of bidegree
+`(d·p, d·q)` for the other surface's degree `d`, and the torus's
+isolation, cells and singular-point bump run on it unchanged
+(`PatchedSection` behind a `Chart`, the torus's quarters or the surface's
+spans). The domain is not extrapolated: each direction is mapped onto
+`[0, 2π]`, a direction that closes (`NurbsSurface::closure`, periodic or a
+clamped full turn) closes over it and merges its patches across the seam,
+and a branch that reaches an edge of a direction that does not close ends
+at the root of `f` along that edge line, the equation the edge's own curve
+meets the other surface by; every such root seeds a march. A whole row or
+column of the surface on which `f` vanishes (a ruling on a cylinder, a rim
+on a plane) is returned as the exact isocurve (knot insertion, no fit) and divided out of its patches, as a tube circle
+is; when its control points are one point (a collapsed row) it is a
+`MeetPoint`, not a curve. A patch on which `f` vanishes throughout is
+flush with the other surface and is `Unsupported`. A section turning at a
+knot of `v` where the surface is only continuous, one touching an edge of
+the domain, and isolines of both directions at once are refused by name
+(`SectionFault`). Against a twin (`Surface::to_nurbs`) of each analytic
+kind the section is the closed form's, within the fit fraction.
 
 **A section that is no conic is a fitted `Curve::Nurbs`** (ADR-0018);
 the exact form is never stored. Each branch of the trace is fitted at
@@ -1360,7 +1400,11 @@ non-decreasing knot vector of `n + p + 1` knots, `n` Cartesian control
 points with their positive weights stored separately, de Boor evaluation
 with derivatives to second order (the quotient rule over the homogeneous
 sums), and knot insertion as the primitive edit (degree elevation is in
-the backlog). The constructors validate and return
+the backlog). A surface's Bézier patches (its knot spans, by the blossom)
+are the unit the intersector works on: each patch's homogeneous net,
+moved into the other surface's frame and put into its implicit form, is a
+tensor Bernstein polynomial (`Implicit::along`), and a surface's
+isocurve at a parameter is the net summed there. The constructors validate and return
 `GeomError::Degenerate` naming the fault: a knot value's multiplicity is
 at most `p + 1`, and at most `p` strictly inside the domain
 `[knots[p], knots[n]]`, which is non-empty and whose last span is not,

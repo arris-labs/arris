@@ -1,4 +1,4 @@
-//! The twin property (plans/nurbs-analytic-section step 8, ADR-0061): a
+//! The twin property (nurbs-analytic-section step 8, ADR-0061): a
 //! boolean over a body whose faces are replaced by their exact
 //! `to_nurbs` twins ([`arris_debug::prop::twin::nurbs_twin`]) gives the
 //! analytic boolean's volume, area and counts, or both refuse. The

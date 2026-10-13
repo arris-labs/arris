@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `cut`, `fuse`, `common`, their multi-tool forms, `split` and `section`
+  now take a body with NURBS faces against analytic ones, which covers most
+  imported B-spline parts: the box cuts and drills of the real parts that
+  were refused as unsupported now run. Two NURBS faces against each other,
+  a NURBS face flush with another face, and fillets on NURBS faces are
+  still refused by name.
 - `intersect_surfaces` now meets a NURBS surface with a plane, a cylinder,
   an elliptic cylinder, a cone, a sphere or a torus, in either order: the
   section comes back as fitted curves (closed loops periodic), ending
