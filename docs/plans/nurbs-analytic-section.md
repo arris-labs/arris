@@ -285,7 +285,7 @@ bound has to be established here.
   surface (`tests/conic_nurbs.rs`); the oracle's tangent hit, which it
   reports twice a little way apart, is matched by ours where it lies
   within the tolerance of the surface beside it.
-- [ ] Step 7 **[2]** — **The boolean over NURBS × analytic.** Run the pave,
+- [x] Step 7 **[2]** — **The boolean over NURBS × analytic.** Run the pave,
   face splitting on the NURBS face's `(u, v)` domain, and classification
   end to end. Decide the pcurve source (traced `(u, v)` or `pcurve_on`) on
   the checker's L2 and record it in the ADR. Fixtures under
@@ -298,6 +298,31 @@ bound has to be established here.
 
   The NURBS operands are written by the oracle's `occt_step.py --nurbs`
   and read through Arris's reader, so both kernels see the same surfaces.
+
+  **Landed (2026-10-13).** The boolean, multi-tool cut, `split` and
+  `section` run end to end on NURBS × analytic with no change to `arris-ops`:
+  the pave's `pcurve_on` projection stays the pcurve source (ADR-0061,
+  step 7 amendment). New fixtures, each checker green and held to Open
+  CASCADE (or the closed form where it is the quadrature that is off):
+  `boolean/nurbs-cylinder-tool-through-hole-cut`, `nurbs-plate-drilled-cut`,
+  `nurbs-plate-three-bores-cut-many` (counts differ: Open CASCADE splits a
+  circle on a NURBS plane in two), `nurbs-bicubic-dome-fuse`,
+  `split/nurbs-cylinder-oblique` and `query/section-nurbs-bicubic-dome`
+  (closed form 27.25; Open CASCADE 2.9e-6 low). The dome is a free-form
+  bicubic solid from `tools/oracle/occt_bicubic_dome.py`: the plan's
+  sphere-cap dome is unreadable (backlog, ADR line 102). Step 1's
+  fixtures: CTC-05's two moved to `boolean/` and pass, with Open CASCADE's
+  healing counts as `counts_differ`. CTC-02's `box_cut` passes every
+  Arris stage and the oracle but stays ignored: the reader refuses Open
+  CASCADE's own STEP of the result (backlog). CTC-02's `drill_x` stays
+  ignored: Open CASCADE's cut is wrong by half the removed volume (its
+  own classifier, 40 000 samples; backlog), so step 9's acceptance for it
+  is Arris's `common` and `cut` agreeing, not the oracle. The CTC-02
+  and CTC-05 fixtures carry measured per-fixture tolerances: the oracle's
+  quadrature on the part's B-spline faces is 6e-6 off Arris's exact volume
+  of the uncut part. Stage times in the debug-optimised test profile:
+  CTC-02 `box_cut` 680 s, `drill_x` 140 s, CTC-05 50 to 80 s: step 9's
+  timing line.
 - [ ] Step 8 **[2]** — **The twin property.** Add a recipe transform to
   `prop::recipe`: replace one operand's faces by their exact `to_nurbs`
   twins (through `Builder`, keeping the topology). The property: for every

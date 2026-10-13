@@ -1,0 +1,86 @@
+{
+  "description": "the exact B-spline twin of a cylinder r 4, h 12 about z (occt_step.py --nurbs of primitive/cylinder; its caps are NURBS planes, its wall a rational B-spline) split by the plane x + z = 6, which crosses the wall in an ellipse and neither cap: the plane meets a NURBS face in the face's own (u, v) (plans/nurbs-analytic-section step 7)",
+  "params": {
+    "side": 1
+  },
+  "variants": {
+    "negative": {
+      "side": -1
+    }
+  },
+  "steps": [
+    {
+      "name": "cyl",
+      "op": "step",
+      "file": "cylinder.step",
+      "sha256": "d28356f90f7789bb708e6011098844627456142fbbec006a23ac67735e8af56e",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "cyl",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          6
+        ],
+        "normal": [
+          1,
+          0,
+          1
+        ]
+      },
+      "side": "side"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "on_cap",
+      "point": [
+        1,
+        1,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "below",
+      "point": [
+        -2,
+        0,
+        3
+      ]
+    },
+    {
+      "label": "above",
+      "point": [
+        2,
+        0,
+        9
+      ]
+    },
+    {
+      "label": "on_wall_low",
+      "point": [
+        -4,
+        0,
+        2
+      ]
+    },
+    {
+      "label": "on_wall_high",
+      "point": [
+        4,
+        0,
+        10
+      ]
+    }
+  ],
+  "analytic": {
+    "volume": "pi * 16 * 6",
+    "genus": 0
+  }
+}

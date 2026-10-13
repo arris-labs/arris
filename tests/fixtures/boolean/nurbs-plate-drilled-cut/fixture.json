@@ -1,0 +1,100 @@
+{
+  "description": "the exact B-spline twin of box [0,0,0]\u2013[40,30,10] (Open CASCADE's STEP of primitive/box converted by occt_step.py --nurbs, every face a rational B\u00e9zier patch) minus an analytic cylinder r 4 at (20,15) from z \u22121 to 11: boolean/through-hole with the plate's faces NURBS, so the top and bottom meet the drill where NURBS meets cylinder (plans/nurbs-analytic-section step 7). Genus 1",
+  "steps": [
+    {
+      "name": "plate",
+      "op": "step",
+      "file": "box.step",
+      "sha256": "2cffa57dd35578444e6bc56f23487d6c33609eb1724aad66325a3973cf3b2b34",
+      "id": 15
+    },
+    {
+      "name": "hole",
+      "op": "cylinder",
+      "base": [
+        20,
+        15,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 12
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tool": "hole"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        50,
+        15,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        5,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_edge",
+      "point": [
+        24,
+        15,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_axis",
+      "point": [
+        20,
+        15,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "12000 - pi * 16 * 10",
+    "area": "3800 - 2 * pi * 16 + 2 * pi * 4 * 10",
+    "centroid": [
+      20,
+      15,
+      5
+    ],
+    "genus": 1,
+    "counts": {
+      "vertices": 10,
+      "edges": 15,
+      "faces": 7,
+      "loops": 9,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE splits the circle each bore makes on a NURBS plane in two, one more vertex and one more edge on each rim; Arris keeps each rim one edge with its one vertex, as the analytic plate has it (the same count as boolean/through-hole)"
+  }
+}

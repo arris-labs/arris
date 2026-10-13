@@ -1,5 +1,5 @@
 {
-  "description": "NIST's CTC-05, its AP242 e1 edition's solid #1205 alone (excerpted by tools/oracle/excerpt.py), cut by its battery's box: the box's plane f156 crosses the rational B-spline face f109, degree (3, 2) over a single span each way \u2014 one rational B\u00e9zier patch, the AP203 edition's face written with fewer knots \u2014 open in both directions, no pole, the only NURBS face the box reaches. Arris refuses it Unsupported(NURBS surface \u00d7 plane surface), where Open CASCADE builds it (plans/nurbs-analytic-section step 1). The desired body is Open CASCADE's",
+  "description": "NIST's CTC-05, its AP242 e1 edition's solid #1205 alone (excerpted by tools/oracle/excerpt.py), cut by its battery's box: the box's plane f156 crosses the rational B-spline face f109, degree (3, 2) over a single span each way \u2014 one rational B\u00e9zier patch, the AP203 edition's face written with fewer knots \u2014 open in both directions, no pole, the only NURBS face the box reaches. Arris refuses it Unsupported(NURBS surface \u00d7 plane surface), where Open CASCADE builds it (plans/nurbs-analytic-section step 1). The desired body is Open CASCADE's; the tolerances are those of Open CASCADE's own quadrature on the part's B-spline faces, which reads the AP203 and AP242 editions of this one part 1e-6 apart in volume and Arris's exact integral of the uncut part the same distance from either (plans/nurbs-analytic-section step 7)",
   "steps": [
     {
       "op": "step",
@@ -80,5 +80,20 @@
       "tool": "box"
     }
   ],
-  "result": "result"
+  "result": "result",
+  "analytic": {
+    "counts_differ": "Open CASCADE heals the file before it cuts and its result carries 216 vertices and 324 edges to Arris's 209 and 317 on the same faces (129) and loops (170); the body, its measures and probes agree",
+    "counts": {
+      "vertices": 209,
+      "edges": 317,
+      "faces": 129,
+      "loops": 170
+    }
+  },
+  "tolerances": {
+    "volume_rel": 1e-05,
+    "area_rel": 5e-06,
+    "centroid_abs": 0.001,
+    "inertia_rel": 1e-05
+  }
 }

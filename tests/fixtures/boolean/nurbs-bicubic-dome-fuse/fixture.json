@@ -1,0 +1,80 @@
+{
+  "description": "a free-form solid, a bicubic B-spline dome (5 \u00d7 5 poles, two spans each way, rising to 4.78 over the square [0,10]\u00b2) on a plane base, written by tools/oracle/occt_bicubic_dome.py, fused with the box [4,\u22122,3.2]\u2013[7.5,12,8]: the box's bottom plane and its side x = 4 meet the dome in closed free-form curves traced in the dome's own (u, v) (plans/nurbs-analytic-section step 7)",
+  "steps": [
+    {
+      "name": "dome",
+      "op": "step",
+      "file": "dome.step",
+      "sha256": "2e76268aee7ae459ed2c9250328d9ec20b8a92288207469231f01039a87c0ce8",
+      "id": 15
+    },
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        4,
+        -2,
+        3.2
+      ],
+      "max": [
+        7.5,
+        12,
+        8
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "dome",
+      "b": "block"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_dome",
+      "point": [
+        2,
+        5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_block",
+      "point": [
+        6,
+        5,
+        6
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above_dome",
+      "point": [
+        2,
+        5,
+        5.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "beside",
+      "point": [
+        9,
+        5,
+        2.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        5.5,
+        5,
+        8
+      ],
+      "expect": "on"
+    }
+  ]
+}

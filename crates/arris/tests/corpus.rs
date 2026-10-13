@@ -142,6 +142,9 @@ corpus_tests! {
     /// A B-spline cylinder from STEP cut across its wall: the section of a
     /// NURBS face against a plane (ADR-0061).
     query_section_nurbs_cylinder => query "query/section-nurbs-cylinder";
+    /// The same through a free-form bicubic dome: a plane across a patch of
+    /// 2 × 2 spans (plans/nurbs-analytic-section).
+    query_section_nurbs_bicubic_dome => query "query/section-nurbs-bicubic-dome";
     /// Two bodies with off-axis cones that pruning skips: the bars' distance.
     query_distance_cones_pruned => query "query/distance-cones-pruned";
     primitive_box => run "primitive/box";
@@ -606,6 +609,23 @@ corpus_tests! {
     /// (ADR-0026 §5) — the battery's every cut and drill of FTC-07 and
     /// FTC-10.
     boolean_nurbs_box_cavity_cut => run "boolean/nurbs-box-cavity-cut";
+    /// NIST's CTC-05 AP203 solid cut by its battery's box: a plane across
+    /// a rational B-spline face of degree (3, 2), traced in the face's own
+    /// (u, v) (plans/nurbs-analytic-section).
+    boolean_nist_ctc_05_ap203_box_cut_nurbs_plane => run "boolean/nist-ctc-05-ap203-box-cut-nurbs-plane";
+    /// Its AP242 e1 edition: the same face as one rational Bézier patch.
+    boolean_nist_ctc_05_ap242_box_cut_nurbs_plane => run "boolean/nist-ctc-05-ap242-box-cut-nurbs-plane";
+    /// A box less the B-spline twin of a cylinder: the top and bottom
+    /// planes meet a NURBS wall (plans/nurbs-analytic-section).
+    boolean_nurbs_cylinder_tool_through_hole_cut => run "boolean/nurbs-cylinder-tool-through-hole-cut";
+    /// The B-spline twin of a box drilled by an analytic cylinder: NURBS
+    /// planes meet a cylinder.
+    boolean_nurbs_plate_drilled_cut => run "boolean/nurbs-plate-drilled-cut";
+    /// A free-form bicubic dome fused with a box: planes across a patch
+    /// of 2 × 2 spans.
+    boolean_nurbs_bicubic_dome_fuse => run "boolean/nurbs-bicubic-dome-fuse";
+    /// The B-spline twin of a plate bored by three cylinders in one call.
+    boolean_nurbs_plate_three_bores_cut_many => run "boolean/nurbs-plate-three-bores-cut-many";
     /// A tee of equal radii: the branch's rim circle touches the main wall
     /// exactly at the two crossing vertices, and each touch cuts the rim
     /// there.
@@ -1097,19 +1117,12 @@ corpus_tests! {
     regression_nist_ftc_11_ap242_box_cut_split_fault => part "regression/nist-ftc-11-ap242-box-cut-split-fault";
     /// NIST's CTC-02 AP242 e2 solid cut by its battery's box: a plane
     /// across a bicubic B-spline face (plans/nurbs-analytic-section).
-    #[ignore = "Unsupported(NURBS surface × plane surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
+    #[ignore = "read-back: Open CASCADE's own STEP of the result is refused by the reader, #17219: the edge's end is at 0.3598 on its curve, not past its start at 0.4185; Arris's result is checker green and matches the oracle (docs/BACKLOG.md, a reversed-parameter edge in Open CASCADE's STEP of a NURBS part; plans/nurbs-analytic-section step 7)"]
     regression_nist_ctc_02_ap242_box_cut_nurbs_plane => run "regression/nist-ctc-02-ap242-box-cut-nurbs-plane";
     /// The same solid drilled along its first principal axis: a cylinder
     /// across a bicubic B-spline face.
-    #[ignore = "Unsupported(NURBS surface × cylinder surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
+    #[ignore = "the oracle is wrong: Open CASCADE removes 69 676 of the drill's volume where its own solid classifier finds 145 600 ± 2 900 of the part inside the cylinder (40 000 samples) and Arris removes 143 792, so counts (643 faces to 649) and the measures differ; no closed form holds the real part (plans/nurbs-analytic-section step 7, docs/BACKLOG.md)"]
     regression_nist_ctc_02_ap242_drill_x_nurbs_cylinder => run "regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder";
-    /// NIST's CTC-05 AP203 solid cut by its battery's box: a plane across
-    /// a rational B-spline face of degree (3, 2).
-    #[ignore = "Unsupported(NURBS surface × plane surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
-    regression_nist_ctc_05_ap203_box_cut_nurbs_plane => run "regression/nist-ctc-05-ap203-box-cut-nurbs-plane";
-    /// Its AP242 e1 edition: the same face as one rational Bézier patch.
-    #[ignore = "Unsupported(NURBS surface × plane surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
-    regression_nist_ctc_05_ap242_box_cut_nurbs_plane => run "regression/nist-ctc-05-ap242-box-cut-nurbs-plane";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring refuses. The desired body is Open CASCADE's.
@@ -1478,6 +1491,9 @@ corpus_tests! {
     split_box_plane_misses => run "split/box-plane-misses";
     /// A cylinder split across its axis.
     split_cylinder_across => run "split/cylinder-across";
+    /// The B-spline twin of a cylinder split by an oblique plane across its
+    /// wall (plans/nurbs-analytic-section).
+    split_nurbs_cylinder_oblique => run "split/nurbs-cylinder-oblique";
     /// A tube split across its axis: annulus caps.
     split_tube_across => run "split/tube-across";
     /// A sphere split off-centre.

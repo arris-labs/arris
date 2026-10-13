@@ -1,5 +1,5 @@
 {
-  "description": "NIST's CTC-02, its AP242 e2 edition's solid #14911 (the committed excerpt real/nist-ctc-02-ap242-mitred-pipes-s5), cut by its battery's box: the box's plane f635 crosses the bicubic B-spline face f544 (16 \u00d7 4 spans, open in both directions, polynomial) and the box's box reaches three more bicubic faces, one of them with a collapsed row at u = 0. Arris refuses it Unsupported(NURBS surface \u00d7 plane surface), where Open CASCADE builds it (plans/nurbs-analytic-section step 1). The desired body is Open CASCADE's",
+  "description": "NIST's CTC-02, its AP242 e2 edition's solid #14911 (the committed excerpt real/nist-ctc-02-ap242-mitred-pipes-s5), cut by its battery's box: the box's plane f635 crosses the bicubic B-spline face f544 (16 \u00d7 4 spans, open in both directions, polynomial) and the box's box reaches three more bicubic faces, one of them with a collapsed row at u = 0. Arris refuses it Unsupported(NURBS surface \u00d7 plane surface), where Open CASCADE builds it (plans/nurbs-analytic-section step 1). The desired body is Open CASCADE's; the tolerances are those of Open CASCADE's quadrature on the part's B-spline faces: Arris's exact volume of the uncut part is 47106575.75 against its reading's 47106859.17, 6e-6 apart before any cut (plans/nurbs-analytic-section step 7)",
   "steps": [
     {
       "op": "step",
@@ -80,5 +80,11 @@
       "tool": "box"
     }
   ],
-  "result": "result"
+  "result": "result",
+  "tolerances": {
+    "volume_rel": 1e-05,
+    "area_rel": 1e-06,
+    "centroid_abs": 0.001,
+    "inertia_rel": 1e-05
+  }
 }

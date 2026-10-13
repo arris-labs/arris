@@ -287,6 +287,29 @@ weight to the degree, since `f = wᵈ·F`.
   1000 cases on two seeds, and the torus's tests and corpus against
   their blessed dumps.
 
+### Step 7: the boolean's pcurve on the NURBS face (amendment, 2026-10-13)
+
+The boolean's section edge carries, on a NURBS face, the pcurve
+`pcurve_on` projects (`Surface::project`, patch by patch), not the
+`(u, v)` the walk traced. The decision is the plan's open question, and
+the measure that decided it is the checker at `Full` on every result of
+step 7's fixtures, whose pcurve-to-curve deviation is the L2 row: the
+box cut of CTC-02 (bicubic faces of 64 patches), CTC-05's rational degree (3, 2) face, a plate drilled by a
+cylinder, a NURBS cylinder drilling a box, three bores in one call, a
+free-form bicubic dome fused with a box and a split of a NURBS cylinder,
+all checker green at `Full`. The fit's span count was not recorded;
+step 9's stage timings are where a slow fit would show.
+
+The traced `(u, v)` stays out for a reason that does not need the
+measure: `intersect_surfaces` returns the branches' 3D curves and
+`MeetPoint`s, and a pcurve on each surface for a branch would be a new
+field of `SurfaceIntersection`, a public change that every consumer of
+the intersector pays for to save a projection the fixtures show is not
+the weak part. If a corpus ever shows an L2 above the band on a NURBS
+face (a section edge a projection folds across a patch edge), the
+branch's traced `(u, v)` is the remedy and this amendment is the place
+to reopen.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its

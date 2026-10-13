@@ -1,0 +1,100 @@
+{
+  "description": "box [0,0,0]\u2013[40,30,10] minus the exact B-spline twin of a cylinder r 4, h 12 (Open CASCADE's STEP of primitive/cylinder converted by occt_step.py --nurbs, moved to (20,15,\u22121)): boolean/through-hole with its tool's wall a NURBS surface, so the box's top and bottom planes meet it where plane meets NURBS (plans/nurbs-analytic-section step 7). The wall's section is a circle in the NURBS surface's own (u, v), genus 1",
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        40,
+        30,
+        10
+      ]
+    },
+    {
+      "name": "tool0",
+      "op": "step",
+      "file": "cylinder.step",
+      "sha256": "d28356f90f7789bb708e6011098844627456142fbbec006a23ac67735e8af56e",
+      "id": 15
+    },
+    {
+      "name": "hole",
+      "op": "transform",
+      "of": "tool0",
+      "translate": [
+        20,
+        15,
+        -1
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tool": "hole"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        5,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        50,
+        15,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        5,
+        5,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_edge",
+      "point": [
+        24,
+        15,
+        10
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_axis",
+      "point": [
+        20,
+        15,
+        5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "12000 - pi * 16 * 10",
+    "area": "3800 - 2 * pi * 16 + 2 * pi * 4 * 10",
+    "centroid": [
+      20,
+      15,
+      5
+    ],
+    "genus": 1
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "description": "NIST's CTC-05, its AP203-with-PMI edition's solid #249 (the committed excerpt real/nist-ctc-05-ap203-torus-elbow-s5), cut by its battery's box: the box's plane f156 crosses the rational B-spline face f109, degree (3, 2) over 2 \u00d7 1 spans, open in both directions, no pole, the only NURBS face the box reaches. Arris refuses it Unsupported(NURBS surface \u00d7 plane surface), where Open CASCADE builds it (plans/nurbs-analytic-section step 1). The desired body is Open CASCADE's",
+  "description": "NIST's CTC-05, its AP203-with-PMI edition's solid #249 (the committed excerpt real/nist-ctc-05-ap203-torus-elbow-s5), cut by its battery's box: the box's plane f156 crosses the rational B-spline face f109, degree (3, 2) over 2 \u00d7 1 spans, open in both directions, no pole, the only NURBS face the box reaches. Arris refuses it Unsupported(NURBS surface \u00d7 plane surface), where Open CASCADE builds it (plans/nurbs-analytic-section step 1). The desired body is Open CASCADE's; the tolerances are those of Open CASCADE's own quadrature on the part's B-spline faces, which reads the AP203 and AP242 editions of this one part 1e-6 apart in volume and Arris's exact integral of the uncut part the same distance from either (plans/nurbs-analytic-section step 7)",
   "steps": [
     {
       "op": "step",
@@ -80,5 +80,20 @@
       "tool": "box"
     }
   ],
-  "result": "result"
+  "result": "result",
+  "analytic": {
+    "counts_differ": "Open CASCADE heals the file before it cuts, so its result carries 219 vertices and 327 edges to Arris's 209 and 317 on the same faces (129) and loops (170): the uncut part reads 261 vertices in its hands and 251 in Arris's (real/nist-ctc-05-ap203-torus-elbow-s5, occt_heals); the body, its measures and probes agree",
+    "counts": {
+      "vertices": 209,
+      "edges": 317,
+      "faces": 129,
+      "loops": 170
+    }
+  },
+  "tolerances": {
+    "volume_rel": 1e-05,
+    "area_rel": 1e-06,
+    "centroid_abs": 0.001,
+    "inertia_rel": 1e-05
+  }
 }

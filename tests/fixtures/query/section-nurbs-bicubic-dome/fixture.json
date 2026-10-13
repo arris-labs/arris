@@ -1,0 +1,47 @@
+{
+  "kind": "query",
+  "description": "the bicubic B-spline dome of boolean/nurbs-bicubic-dome-fuse (tools/oracle/occt_bicubic_dome.py) cut by the plane x = 5: the plane crosses the dome in a free-form curve traced in its own (u, v), and the section is the sheet under it (plans/nurbs-analytic-section step 7)",
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "dome.step",
+      "sha256": "2e76268aee7ae459ed2c9250328d9ec20b8a92288207469231f01039a87c0ce8",
+      "id": 15
+    }
+  ],
+  "result": "part",
+  "queries": [
+    {
+      "label": "across the bicubic dome",
+      "section": {
+        "body": {
+          "step": "part"
+        },
+        "plane": {
+          "origin": [
+            5,
+            0,
+            0
+          ],
+          "z": [
+            1,
+            0,
+            0
+          ],
+          "x": [
+            0,
+            1,
+            0
+          ]
+        }
+      },
+      "expect": "sheet",
+      "expect_faces": 1,
+      "expect_area": 27.25
+    }
+  ],
+  "analytic": {
+    "query_differs": "BRepGProp of the section of the bicubic dome, a free-form face, is 2.9e-6 relative below its area (27.249921 against 27.25); the area is the integral of z dy along the curve x = 5, 27.25 to 1e-9 by an independent quadrature of 100000 points of the surface's basis"
+  }
+}

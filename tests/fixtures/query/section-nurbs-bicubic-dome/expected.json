@@ -1,0 +1,27 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "731f3742ddca0084dd047e88dffaa3ed60d4fcdb7538a61a7fae0e4305e69758",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "across the bicubic dome",
+          "section": {
+            "area": 27.249921482191752,
+            "centroid": [
+              5.0,
+              5.000003788221937,
+              1.6756744976995734
+            ],
+            "edge_length": 23.57691609669949,
+            "edges": 2,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        }
+      ]
+    }
+  }
+}

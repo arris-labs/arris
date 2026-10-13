@@ -1,0 +1,127 @@
+{
+  "description": "the exact B-spline twin of box [0,0,0]\u2013[40,30,10] (occt_step.py --nurbs of primitive/box) minus three cylinders, r 3 at (10,8), r 4 at (20,15) and r 3 at (30,22), in one call: every top and bottom pair meets a bore where NURBS meets cylinder, genus 3 (plans/nurbs-analytic-section step 7)",
+  "steps": [
+    {
+      "name": "plate",
+      "op": "step",
+      "file": "box.step",
+      "sha256": "2cffa57dd35578444e6bc56f23487d6c33609eb1724aad66325a3973cf3b2b34",
+      "id": 15
+    },
+    {
+      "name": "h1",
+      "op": "cylinder",
+      "base": [
+        10,
+        8,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 12
+    },
+    {
+      "name": "h2",
+      "op": "cylinder",
+      "base": [
+        20,
+        15,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 12
+    },
+    {
+      "name": "h3",
+      "op": "cylinder",
+      "base": [
+        30,
+        22,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 12
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "plate",
+      "tools": [
+        "h1",
+        "h2",
+        "h3"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        25,
+        5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_bore",
+      "point": [
+        20,
+        15,
+        5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_wall",
+      "point": [
+        13,
+        8,
+        5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_face",
+      "point": [
+        2,
+        2,
+        10
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "12000 - 10 * pi * (9 + 16 + 9)",
+    "area": "3800 - 2 * pi * 34 + 2 * pi * 10 * (3 + 4 + 3)",
+    "centroid": [
+      "(40*30*10*20 - 10*pi*(9*10 + 16*20 + 9*30)) / (12000 - 10*pi*34)",
+      "(40*30*10*15 - 10*pi*(9*8 + 16*15 + 9*22)) / (12000 - 10*pi*34)",
+      5
+    ],
+    "genus": 3,
+    "counts": {
+      "vertices": 14,
+      "edges": 21,
+      "faces": 9,
+      "loops": 15,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE splits the circle each bore makes on a NURBS plane in two, one more vertex and one more edge on each rim; Arris keeps each rim one edge with its one vertex, as the analytic plate has it (the same count as boolean/through-hole)"
+  }
+}
