@@ -1,7 +1,8 @@
 //! A traced section as a `Meets` result: every branch of
 //! [`crate::trace_quadrics`], [`crate::trace_torus`] or a NURBS
 //! surface's section (ADR-0061) fitted to a
-//! `Curve::Nurbs`, every tube circle of a torus section exact, every
+//! `Curve::Nurbs`, every tube circle of a torus section and every
+//! isoline of a NURBS surface on the other surface exact, every
 //! singular point a point of the result (ADR-0018, ADR-0019,
 //! `docs/DATA-MODEL.md` §Curves).
 
@@ -52,8 +53,9 @@ pub const SECTION_FIT_DEGREE: usize = 5;
 /// in the torus's parameter plane with no region at all
 /// ([`trace_torus`], ADR-0019).
 ///
-/// Each tube circle of a torus section comes first, in the tracer's
-/// order, exact and never fitted — `Touch` where the surfaces do not
+/// Each tube circle of a torus section, or isoline of a NURBS surface on
+/// the other surface, comes first, in the tracer's order, exact and never
+/// fitted — `Touch` where the surfaces do not
 /// cross along it, `Crossing` where they do. Then each traced branch, a
 /// crossing curve in the tracer's order and orientation, fitted at the
 /// branch's own parameter — periodic when the branch is closed — until

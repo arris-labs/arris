@@ -88,7 +88,9 @@ pub enum SectionFault {
     /// family on a tube circle — and a circle the other surface runs
     /// along without holding it to the tolerance everywhere the rest is
     /// traced: a cone a fraction of the tolerance off the pose, its apex
-    /// by the torus.
+    /// by the torus. Of a NURBS surface the same for its isolines on the
+    /// other surface: two or more with more of the section besides, or
+    /// isolines of both its directions.
     TubeCircle,
     /// Turning points of a torus section that `f64` does not tell apart,
     /// away from any singular point: a turning point that is an
@@ -876,17 +878,23 @@ pub struct SectionPoint {
     pub isolated: bool,
 }
 
-/// A tube circle of the walked torus that lies on the other surface
-/// within the tolerance: a conic of the section, exact and never fitted.
+/// A tube circle of the walked torus, or an isoline of a walked NURBS
+/// surface, that lies on the other surface within the tolerance: a curve
+/// of the section in closed form, exact and never fitted.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SectionCircle {
-    /// A [`Curve::Circle`] on the torus exactly and within the trace's
-    /// tolerance of the other surface, its parameter the torus's `v` and
-    /// its frame's origin on the torus's centre circle.
+    /// Of a torus, a [`Curve::Circle`] on the torus exactly and within
+    /// the trace's tolerance of the other surface, its parameter the
+    /// torus's `v` and its frame's origin on the torus's centre circle.
+    /// Of a NURBS surface, the surface's own line of constant `u` or `v`
+    /// as a [`Curve::Nurbs`] — the net summed at that parameter, no fit —
+    /// its parameter the surface's other one, within the tolerance of
+    /// the other surface.
     pub circle: Curve,
     /// `true` where the surfaces are tangent along the circle and do not
     /// cross there — a pipe elbow against its straight pipe, a sphere of
-    /// the tube's radius inside it; `false` where they cross along it.
+    /// the tube's radius inside it, a plane along a cylinder's ruling;
+    /// `false` where they cross along it.
     pub tangent: bool,
 }
 
@@ -916,10 +924,11 @@ impl SectionTrace {
     }
 
     /// The tube circles of the walked torus that lie on the other
-    /// surface, ascending by the torus's `u`; none from
-    /// [`trace_quadrics`]. A branch that reaches one ends on it, at a
-    /// singular point of [`Self::points`] that is not isolated; the
-    /// circle itself runs through that point whole.
+    /// surface, ascending by the torus's `u`, or the isolines of a walked
+    /// NURBS surface, ascending by the parameter each is constant in;
+    /// none from [`trace_quadrics`]. A branch that reaches one ends on
+    /// it, at a singular point of [`Self::points`] that is not isolated;
+    /// the circle itself runs through that point whole.
     pub fn circles(&self) -> &[SectionCircle] {
         &self.circles
     }

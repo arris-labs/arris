@@ -211,6 +211,82 @@ weight to the degree, since `f = wᵈ·F`.
   test in `tests/nurbs_project.rs` and a backlog line, and the
   properties hold a branch to the NURBS surface by its `uv`.
 
+### Step 4: isolines and a flush surface (amendment, 2026-10-13)
+
+- **An isoline is a tube circle.** It is looked for as a torus's tube
+  circle is (`Tracer::tube_circles`, now either surface's): candidates on
+  the knot lines of `u`, the domain's edges among them, and at the sign
+  changes of `f` and of its slope along a line of constant `v` through
+  every patch; a candidate held to `2·tol.linear` from one edge of `v` to
+  the other is refined on the lines where the distance beside it is
+  largest, and accepted in length, every point within `tol.linear` of the
+  other surface and `F` along it within what `tol.linear` makes of `F`
+  (`Implicit::firmness`, the cone's apex measured by projecting it onto
+  the NURBS surface). It is a tangency, order two, where `F`'s slope
+  across it is within that bound too. One within `EDGE_SNAP` of a knot
+  line is put on it, and where `u` does not close one past an edge is
+  put on the edge: a face's boundary edge on the other surface.
+- **It is returned as the surface's own line**: each row of the net
+  across `u` summed at `u₀` in homogeneous coordinates
+  (`NurbsSurface::isocurve`), which is knot insertion to full
+  multiplicity, over the other direction's knots and degree. No fit; its
+  parameter is the surface's other one.
+- **It is divided out of the patches whose span holds it**, by `s − s₀`
+  — both patches where it is on a knot, and where `u` closes the one
+  holding it a closure on. The others keep their polynomial and take the
+  quotient's sign: what is left is `F / gᵐ`, `g = (u − u₀)/2π` where `u`
+  does not close and `sin((u − u₀)/2)` where it does, never larger than
+  one, so the quotient over `|∇F|` is never less than the distance, and
+  for an odd order it changes sign with a whole turn as a tube circle's
+  does. **No correction** is made, unlike the torus's first circle: that
+  subtracts `F` along the circle from every column as one polynomial,
+  and a B-spline's other pieces carried to `u₀` are not the surface
+  there. What the division is off by is dropped; the isoline was
+  accepted only with it within the tolerance's share of `F`.
+- **The walk evaluates the quotient on the patches** (`Quotient`, an
+  owned copy of them after the division): a divided patch's polynomial
+  times the smooth ratio `|s − s₀| / |g|`, and an undivided one's over
+  `|g|ᵐ`, over `wᵈ·|∇F|`. The torus's quotient is a closed form along the
+  chord; a NURBS surface has none, and the patches' own polynomial makes
+  the walk's zeros the isolation's to rounding by construction.
+- **A line of constant `v`** is one of `u` with the parameters swapped
+  (`NurbsSurface::transposed`): the walk runs on the swapped surface and
+  `SectionBranch::uv` swaps them back. Isolines of both directions are
+  refused (`SectionFault::TubeCircle`), and so are two or more of one
+  direction with more of the section besides, as two tube circles are;
+  with nothing besides they are all returned.
+- **A branch that crosses an isoline ends on it** at a `SectionPoint`
+  that is not isolated, as at a tube circle. One that reaches an isoline
+  on an edge of the domain ends there as `BranchEnd::Clipped`: it is the
+  edge's end.
+- **Flush over an area is refused before anything else** as
+  `GeomError::Unsupported`: a Bézier patch of the surface every point of
+  a nine-by-nine grid over which, corners and edges included, is within
+  `tol.linear` of the other surface. The boolean's coincident arm is the
+  analytic kinds' own; a NURBS face flush with another is a backlog line.
+- **A collapsed row on the other surface** is found as an isoline and
+  divided out, as §4 says, but is still returned as a line one point
+  long; step 5 returns it as the singular point it is.
+- **What the step measured.** A cylinder's twin flush with a plane at
+  its rim, and through its middle; a ruled patch whose boundary ruling
+  lies on a cylinder, with the arc beside it held to `u = 3 / (9/4 +
+  (3/2 − 2v)²)` to `1e-12`; a cubic patch `z = uv − u³` on the plane `z =
+  0`, its line `u = 0` returned and the parabola `v = u²` cut there into
+  two branches ending at the origin; a plane along a cylinder twin's
+  seam ruling (a tangency on a closed seam), a plane through its axis
+  (two rulings) and a sphere about it (two rims); and the torus's twin,
+  over a whole turn and over part of one, against the elbow, the bead,
+  the ball and the plane through the axis of `tests/trace_torus.rs`,
+  each tube circle at `u = 0` and `0.7` the twin's isoline, and over the
+  whole turn the same branches and points as the torus's to `1e-9`. A
+  property poses a cylinder's twin over a random part of it, anywhere,
+  against a plane across it or on its rim, through its axis or along a
+  ruling, and a sphere about it: at 1000 cases on two seeds every
+  isoline is the twin's line to `1e-12` and on the other surface, in
+  either argument order the same. Step 3's properties pass unchanged at
+  1000 cases on two seeds, and the torus's tests and corpus against
+  their blessed dumps.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its
@@ -220,8 +296,10 @@ weight to the degree, since `f = wᵈ·F`.
   either way.
 - `nurbs::project::Patch` and `NurbsSurface::patches` are crate-visible,
   so the projection and the section share one Bézier split.
-- The tube-circle search and its division stay the torus's. A NURBS
-  surface's isolines are (3), step 4's.
+- The tube-circle search serves both surfaces; its division is the
+  torus's closed-form correction on a torus and a plain division of the
+  patches that hold the line on a NURBS surface (step 4). A NURBS
+  surface's isolines are returned exact, as `SectionTrace::circles`.
 - No public type or signature changes until step 5, which removes the
   `Unsupported` arms. From step 3 `trace_section` traces a NURBS
   surface against an analytic one; `BranchEnd::Clipped` is also a

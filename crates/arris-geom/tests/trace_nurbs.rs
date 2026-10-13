@@ -296,6 +296,483 @@ fn two_nurbs_surfaces_are_unsupported() {
     assert!(matches!(trace(&a, &b), Err(GeomError::Unsupported { .. })));
 }
 
+/// The isolines of `trace` are `nurbs`'s own lines of constant `k`
+/// through `through`, one each and in that order, exactly — the curve's
+/// parameter the surface's other one — and on `other` to rounding;
+/// returns whether each is a tangency.
+fn isolines_are_exact(
+    trace: &SectionTrace,
+    nurbs: &NurbsSurface,
+    other: &Surface,
+    lines: &[(usize, Point3)],
+) -> Vec<bool> {
+    assert_eq!(trace.circles().len(), lines.len(), "{trace:?}");
+    for (circle, &(k, through)) in trace.circles().iter().zip(lines) {
+        let uv = nurbs.project(through).unwrap().uv;
+        let at = [uv.x, uv.y][k];
+        let curve = &circle.circle;
+        assert!(matches!(curve, Curve::Nurbs(_)), "{curve:?}");
+        assert_eq!(curve.domain(), nurbs.domain()[1 - k]);
+        for i in 0..=64 {
+            let t = curve.domain().lerp(i as f64 / 64.0);
+            let p = curve.point(t);
+            let [u, v] = if k == 0 { [at, t] } else { [t, at] };
+            let on = nurbs.eval(u, v).point;
+            assert!((p - on).norm() <= 1e-13, "{t}: {p} vs {on}");
+            assert!(distance(other, p) <= 1e-12, "{t}: {p} off the other");
+        }
+    }
+    trace.circles().iter().map(|c| c.tangent).collect()
+}
+
+/// A bicubic-in-`u` patch `z = u·v − u³` over `[−1, 1] × [−½, 3/2]`, in
+/// Bézier form from its blossoms: on the plane `z = 0` along `u = 0`, and
+/// along the parabola `v = u²`, which crosses that line at the origin.
+fn cubic_saddle() -> NurbsSurface {
+    let v = [-0.5, 1.5];
+    let net: Vec<Point3> = (0..4)
+        .flat_map(|i| {
+            let x = (2.0 * i as f64 - 3.0) / 3.0;
+            // `u³`'s blossom at `3 − i` arguments `−1` and `i` arguments `1`.
+            let cube = if (3 - i) % 2 == 0 { 1.0 } else { -1.0 };
+            v.map(|y| Point3::new(x, y, x * y - cube))
+        })
+        .collect();
+    NurbsSurface::new(
+        [3, 1],
+        [
+            vec![-1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0],
+            vec![-0.5, -0.5, 1.5, 1.5],
+        ],
+        net,
+        vec![1.0; 8],
+    )
+    .unwrap()
+}
+
+#[test]
+fn a_cylinder_twin_flush_with_a_plane_at_its_rim_meets_it_in_the_rim() {
+    let wall = unit_cylinder();
+    let floor = tilted(0.0, 0.0);
+    for v in [Interval::UNIT, Interval::new(-1.0, 1.0).unwrap()] {
+        let (nurbs, twin) = twin(&wall, [Interval::TURN, v]);
+        let trace = trace(&nurbs, &floor).unwrap();
+        assert!(trace.branches().is_empty(), "{v:?}: {trace:?}");
+        assert!(trace.points().is_empty(), "{v:?}: {trace:?}");
+        // The rim is the line `v = 0` of the twin, its parameter the
+        // twin's angle.
+        let rim = [(1, Point3::new(1.0, 0.0, 0.0))];
+        let tangent = isolines_are_exact(&trace, &twin, &floor, &rim);
+        assert_eq!(tangent, [false], "{v:?}");
+        let swapped = trace_section(&floor, &nurbs, &anywhere(), tol(), &mut Meter::default());
+        assert_eq!(swapped.unwrap().circles(), trace.circles(), "{v:?}");
+    }
+}
+
+#[test]
+fn a_ruled_twin_whose_boundary_ruling_lies_on_a_cylinder_is_traced_beside_it() {
+    // From the ruling `x = 1, y = 0` on the unit cylinder to a skew line
+    // across it: `F = u·(u·(9/4 + (3/2 − 2v)²) − 3)`, the ruling and an
+    // arc from the edge `v = 0` to the edge `u = 1`.
+    let ruled = NurbsSurface::new(
+        [1, 1],
+        [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
+        vec![
+            Point3::new(1.0, 0.0, 0.0),
+            Point3::new(1.0, 0.0, 1.0),
+            Point3::new(-0.5, 1.5, 0.0),
+            Point3::new(-0.5, -0.5, 1.0),
+        ],
+        vec![1.0; 4],
+    )
+    .unwrap();
+    let nurbs = Surface::Nurbs(ruled.clone());
+    let wall = unit_cylinder();
+    let trace = trace(&nurbs, &wall).unwrap();
+    let ruling = [(0, Point3::new(1.0, 0.0, 0.5))];
+    let tangent = isolines_are_exact(&trace, &ruled, &wall, &ruling);
+    assert_eq!(tangent, [false]);
+    assert_eq!(trace.branches().len(), 1, "{trace:?}");
+    assert_eq!(clipped_ends_on_edges(&trace, &ruled), 2);
+    assert!(worst_off(&trace, &nurbs, &wall) < 1e-12);
+    uv_is_the_surfaces(&trace, &ruled);
+    for branch in trace.branches() {
+        for k in 0..=16 {
+            let uv = branch.uv(branch.domain().lerp(k as f64 / 16.0)).unwrap();
+            let expected = 3.0 / (2.25 + (1.5 - 2.0 * uv.y).powi(2));
+            assert!((uv.x - expected).abs() < 1e-12, "{uv:?}");
+        }
+    }
+}
+
+#[test]
+fn a_branch_that_crosses_an_isoline_ends_on_it() {
+    let saddle = cubic_saddle();
+    let nurbs = Surface::Nurbs(saddle.clone());
+    let floor = tilted(0.0, 0.0);
+    let trace = trace(&nurbs, &floor).unwrap();
+    let line = [(0, Point3::new(0.0, 0.5, 0.0))];
+    let tangent = isolines_are_exact(&trace, &saddle, &floor, &line);
+    assert_eq!(tangent, [false]);
+    // The parabola, cut at the line into two branches, each from the
+    // crossing to an edge of `u`.
+    assert_eq!(trace.points().len(), 1, "{trace:?}");
+    assert!(!trace.points()[0].isolated);
+    assert!(trace.points()[0].point.coords.norm() < 1e-12);
+    assert_eq!(trace.branches().len(), 2, "{trace:?}");
+    for branch in trace.branches() {
+        let ends = branch.ends().unwrap();
+        assert!(ends.contains(&BranchEnd::Singular(0)), "{ends:?}");
+        assert!(ends.contains(&BranchEnd::Clipped), "{ends:?}");
+    }
+    assert_eq!(clipped_ends_on_edges(&trace, &saddle), 2);
+    assert!(worst_off(&trace, &nurbs, &floor) < 1e-12);
+    uv_is_the_surfaces(&trace, &saddle);
+}
+
+#[test]
+fn a_tangent_isoline_on_a_closed_seam_and_two_isolines_alone_are_exact() {
+    let wall = unit_cylinder();
+    let (nurbs, twin) = twin(&wall, [Interval::TURN, Interval::new(-1.0, 1.0).unwrap()]);
+    // The plane `x = 1` touches the wall along its seam's ruling.
+    let touching = Surface::Plane {
+        frame: frame([1.0, 0.0, 0.0], [1.0, 0.0, 0.0]),
+    };
+    let found = trace(&nurbs, &touching).unwrap();
+    assert!(found.branches().is_empty() && found.points().is_empty());
+    assert_eq!(
+        isolines_are_exact(&found, &twin, &touching, &[(0, Point3::new(1.0, 0.0, 0.3))]),
+        [true]
+    );
+    // A plane through the axis holds two rulings, and nothing else.
+    let through = Surface::Plane {
+        frame: frame([0.0, 0.0, 0.0], [-(0.4f64.sin()), 0.4f64.cos(), 0.0]),
+    };
+    let found = trace(&nurbs, &through).unwrap();
+    assert!(found.branches().is_empty() && found.points().is_empty());
+    let (sin, cos) = 0.4f64.sin_cos();
+    let lines = [
+        (0, Point3::new(cos, sin, 0.3)),
+        (0, Point3::new(-cos, -sin, 0.3)),
+    ];
+    assert_eq!(
+        isolines_are_exact(&found, &twin, &through, &lines),
+        [false, false]
+    );
+    // A sphere about the axis, larger than the wall: two rims of `v`.
+    let ball = Surface::Sphere {
+        frame: Frame::world(),
+        radius: 0.5f64.hypot(1.0),
+    };
+    let found = trace(&nurbs, &ball).unwrap();
+    assert!(found.branches().is_empty() && found.points().is_empty());
+    let lines = [
+        (1, Point3::new(0.0, 1.0, -0.5)),
+        (1, Point3::new(0.0, 1.0, 0.5)),
+    ];
+    assert_eq!(
+        isolines_are_exact(&found, &twin, &ball, &lines),
+        [false, false]
+    );
+}
+
+/// The surfaces that hold the tube circle at `u0` of the ring `R = 2, r =
+/// ½` about the world's `z`, with how many tube circles each holds and
+/// whether it is tangent along them: those of `tests/trace_torus.rs`
+/// that a twin of the ring meets in the same tube circles.
+fn holders(u0: f64) -> Vec<(&'static str, Surface, usize, bool)> {
+    let (big, r) = (2.0, 0.5);
+    let outward = Vec3::new(u0.cos(), u0.sin(), 0.0);
+    let tangent = Vec3::new(-u0.sin(), u0.cos(), 0.0);
+    let centre = Point3::from(outward * big);
+    let about = Frame::from_z(centre, tangent).unwrap();
+    vec![
+        (
+            "elbow",
+            Surface::Cylinder {
+                frame: about,
+                radius: r,
+            },
+            1,
+            true,
+        ),
+        (
+            "bead",
+            Surface::Sphere {
+                frame: Frame::from_z(centre, Vec3::z()).unwrap(),
+                radius: r,
+            },
+            1,
+            true,
+        ),
+        (
+            "ball",
+            Surface::Sphere {
+                frame: Frame::from_z(centre + tangent * (1.2 * r), Vec3::z()).unwrap(),
+                radius: r * 1.2f64.hypot(1.0),
+            },
+            2,
+            false,
+        ),
+        (
+            "plane through the axis",
+            Surface::Plane {
+                frame: Frame::from_z(Point3::origin(), tangent).unwrap(),
+            },
+            2,
+            false,
+        ),
+    ]
+}
+
+#[test]
+fn a_torus_twin_meets_what_holds_a_tube_circle_as_the_torus_does() {
+    let ring = Surface::Torus {
+        frame: Frame::world(),
+        major_radius: 2.0,
+        minor_radius: 0.5,
+    };
+    let domains = [
+        [Interval::TURN, Interval::TURN],
+        [Interval::new(-1.0, 1.5).unwrap(), Interval::TURN],
+    ];
+    for bounds in domains {
+        let (nurbs, twin) = twin(&ring, bounds);
+        for u0 in [0.0, 0.7] {
+            for (name, other, count, tangent) in holders(u0) {
+                let label = format!("{name} at {u0} over {:?}", bounds[0]);
+                let exact = trace_torus(&ring, &other, tol(), &mut Meter::default()).unwrap();
+                let traced = trace(&nurbs, &other).unwrap_or_else(|e| panic!("{label}: {e}"));
+                // The tube circles inside the twin's domain of `u`.
+                let lines: Vec<(usize, Point3)> = (exact.circles().iter())
+                    .filter(|c| {
+                        let Curve::Circle { frame, .. } = &c.circle else {
+                            panic!("{label}: no circle");
+                        };
+                        let u = frame.origin().y.atan2(frame.origin().x);
+                        let lo = bounds[0].lo();
+                        bounds[0].contains(lo + (u - lo).rem_euclid(TAU))
+                    })
+                    .map(|c| (0, c.circle.point(0.3)))
+                    .collect();
+                assert!(lines.len() <= count, "{label}");
+                let found = isolines_are_exact(&traced, &twin, &other, &lines);
+                assert!(found.iter().all(|&t| t == tangent), "{label}: {found:?}");
+                assert!(worst_off(&traced, &nurbs, &other) < 1e-11, "{label}");
+                uv_is_the_surfaces(&traced, &twin);
+                // Every branch that is not clipped ends on a tube circle.
+                for branch in traced.branches() {
+                    let Some(ends) = branch.ends() else {
+                        continue;
+                    };
+                    for end in ends {
+                        if let BranchEnd::Singular(i) = end {
+                            let p = traced.points()[i].point;
+                            let on = (traced.circles().iter())
+                                .map(|c| c.circle.project(p).unwrap().distance)
+                                .fold(f64::INFINITY, f64::min);
+                            assert!(on <= 1e-9, "{label}: an end {on} off the line");
+                        }
+                    }
+                }
+                if bounds[0] == Interval::TURN {
+                    assert_eq!(traced.branches().len(), exact.branches().len(), "{label}");
+                    assert_eq!(traced.points().len(), exact.points().len(), "{label}");
+                    for (p, q) in traced.points().iter().zip(exact.points()) {
+                        assert!((p.point - q.point).norm() < 1e-9, "{label}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A cylinder's twin over a random part of it, in a random pose, and a
+/// surface that holds isolines of it and meets it nowhere else: a plane
+/// across the axis — through the twin or on a rim — a plane through the
+/// axis, a plane along a ruling, or a sphere about the axis. With them
+/// the points the isolines go through, the direction each is constant
+/// in, and whether the surfaces are tangent along them.
+#[allow(clippy::type_complexity)]
+fn isolined() -> impl Strategy<Value = (NurbsSurface, Surface, Vec<(usize, Point3)>, bool)> {
+    (
+        prop::finite_f64(0.2..=3.0),
+        prop::finite_f64(0.0..=TAU),
+        prop::finite_f64(0.5..=TAU + 1.0),
+        prop::finite_f64(0.2..=2.0),
+        prop::finite_f64(0.2..=2.0),
+        0usize..5,
+        prop::finite_f64(0.05..=0.95),
+        prop::pose(),
+    )
+        .prop_filter_map(
+            "an isoline at an edge's rounding",
+            |(r, a, span, below, above, which, share, pose)| {
+                let u = if span >= TAU {
+                    Interval::TURN
+                } else {
+                    Interval::new(a, a + span).ok()?
+                };
+                let v = Interval::new(-below, above).ok()?;
+                let wall = Surface::Cylinder {
+                    frame: Frame::world(),
+                    radius: r,
+                };
+                let twin = wall.to_nurbs([u, v]).ok()?;
+                let theta = u.lerp(share);
+                let ruling = |t: f64| Point3::new(r * t.cos(), r * t.sin(), v.lerp(0.4));
+                let has = |t: f64| {
+                    let t = u.lo() + (t - u.lo()).rem_euclid(TAU);
+                    // Clear of either edge of a part of a turn.
+                    let clear = u == Interval::TURN || (t - u.lo()).min(u.hi() - t) > 1e-6;
+                    (clear && u.contains(t)).then_some(t)
+                };
+                let (other, lines, tangent) = match which {
+                    0 | 1 => {
+                        // Across the axis, at `v`'s share or on its lower
+                        // rim.
+                        let z = if which == 0 { v.lerp(share) } else { v.lo() };
+                        let plane = Surface::Plane {
+                            frame: Frame::from_z(Point3::new(0.0, 0.0, z), Vec3::z()).ok()?,
+                        };
+                        let at = Point3::new(r * u.lerp(0.5).cos(), r * u.lerp(0.5).sin(), z);
+                        (plane, vec![(1, at)], false)
+                    }
+                    2 => {
+                        let normal = Vec3::new(-theta.sin(), theta.cos(), 0.0);
+                        let plane = Surface::Plane {
+                            frame: Frame::from_z(Point3::origin(), normal).ok()?,
+                        };
+                        let mut lines: Vec<(f64, Point3)> = [theta, theta + PI]
+                            .into_iter()
+                            .map(|t| has(t).map(|t| (t, ruling(t))))
+                            .collect::<Option<Vec<_>>>()
+                            .or_else(|| {
+                                // The far ruling outside a part of a turn.
+                                let far = theta + PI;
+                                let t = u.lo() + (far - u.lo()).rem_euclid(TAU);
+                                let edge = (t - u.lo()).min((u.hi() - t).abs());
+                                (u != Interval::TURN && !u.contains(t) && edge > 1e-6)
+                                    .then(|| vec![(theta, ruling(theta))])
+                            })?;
+                        // In the order of the twin's `u`.
+                        lines.sort_by(|p, q| {
+                            let at = |t: f64| (t - u.lo()).rem_euclid(TAU);
+                            at(p.0).total_cmp(&at(q.0))
+                        });
+                        (
+                            plane,
+                            lines.into_iter().map(|(_, p)| (0, p)).collect(),
+                            false,
+                        )
+                    }
+                    3 => {
+                        let normal = Vec3::new(theta.cos(), theta.sin(), 0.0);
+                        let plane = Surface::Plane {
+                            frame: Frame::from_z(Point3::from(normal * r), normal).ok()?,
+                        };
+                        (plane, vec![(0, ruling(theta))], true)
+                    }
+                    _ => {
+                        // About the axis, through the rims at `±h` that the
+                        // twin holds; one at least.
+                        let h = v.lerp(share).abs().max(0.1);
+                        let ball = Surface::Sphere {
+                            frame: Frame::world(),
+                            radius: h.hypot(r),
+                        };
+                        let lines: Vec<(usize, Point3)> = [-h, h]
+                            .into_iter()
+                            .filter(|z| v.contains(*z))
+                            .map(|z| {
+                                (
+                                    1,
+                                    Point3::new(r * u.lerp(0.5).cos(), r * u.lerp(0.5).sin(), z),
+                                )
+                            })
+                            .collect();
+                        let clear = [-h, h]
+                            .iter()
+                            .all(|z| (z - v.lo()).abs().min((z - v.hi()).abs()) > 1e-6);
+                        (!lines.is_empty() && clear).then_some((ball, lines, false))?
+                    }
+                };
+                let lines = lines.into_iter().map(|(k, p)| (k, pose.apply(p))).collect();
+                Some((
+                    twin.transformed(&pose),
+                    other.transformed(&pose),
+                    lines,
+                    tangent,
+                ))
+            },
+        )
+}
+
+#[test]
+fn isolines_of_a_cylinder_twin_in_any_pose_are_exact() {
+    check(isolined(), |(nurbs, other, lines, tangent)| {
+        let walked = Surface::Nurbs(nurbs.clone());
+        let found = trace(&walked, &other).map_err(|e| TestCaseError::fail(e.to_string()))?;
+        prop_assert!(found.branches().is_empty(), "{found:?}");
+        prop_assert!(found.points().is_empty(), "{found:?}");
+        prop_assert_eq!(found.circles().len(), lines.len(), "{:?}", found);
+        let scale = 1.0 + nurbs.control_points()[0].coords.norm();
+        for (circle, &(k, through)) in found.circles().iter().zip(&lines) {
+            prop_assert_eq!(circle.tangent, tangent);
+            let curve = &circle.circle;
+            let uv = nurbs.project(through).unwrap().uv;
+            let at = [uv.x, uv.y][k];
+            for i in 0..=16 {
+                let t = curve.domain().lerp(i as f64 / 16.0);
+                let p = curve.point(t);
+                let [u, v] = if k == 0 { [at, t] } else { [t, at] };
+                let off = (nurbs.eval(u, v).point - p).norm();
+                prop_assert!(off <= 1e-12 * scale, "{p} is {off} off the line");
+                let away = distance(&other, p);
+                prop_assert!(away <= 1e-11 * scale * scale, "{p} is {away} off");
+            }
+        }
+        let swapped = trace(&other, &walked).map_err(|e| TestCaseError::fail(e.to_string()))?;
+        prop_assert_eq!(swapped.circles(), found.circles());
+        Ok(())
+    });
+}
+
+#[test]
+fn a_nurbs_surface_on_the_other_surface_is_unsupported() {
+    // A bilinear square on its own plane, and a cylinder's twin on its
+    // cylinder: flush over an area, which the boolean's coincident arm
+    // does not take for a NURBS face.
+    let square = NurbsSurface::new(
+        [1, 1],
+        [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
+        vec![
+            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(0.0, 1.0, 0.0),
+            Point3::new(1.0, 0.0, 0.0),
+            Point3::new(1.0, 1.0, 0.0),
+        ],
+        vec![1.0; 4],
+    )
+    .unwrap();
+    let (wall_twin, _) = twin(&unit_cylinder(), [Interval::TURN, Interval::UNIT]);
+    for (a, b) in [
+        (Surface::Nurbs(square), tilted(0.0, 0.0)),
+        (wall_twin, unit_cylinder()),
+    ] {
+        let refused = trace(&a, &b);
+        assert!(
+            matches!(refused, Err(GeomError::Unsupported { .. })),
+            "{refused:?}"
+        );
+        let swapped = trace(&b, &a);
+        assert!(
+            matches!(swapped, Err(GeomError::Unsupported { .. })),
+            "{swapped:?}"
+        );
+    }
+}
+
 /// A NURBS surface to walk, in a random pose, and whether it is a twin:
 /// the twin of an analytic surface over part of its domain — or over a
 /// whole turn of `u`, which closes, or of both of a torus's — or a random

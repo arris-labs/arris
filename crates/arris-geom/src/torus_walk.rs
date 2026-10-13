@@ -96,6 +96,17 @@
 //! touching an edge, a turning point on an edge of `u`, a crossing at a
 //! corner, and a turn at a kink, a knot of `v` where the surface is only
 //! continuous and the section comes back with no turning point to find.
+//!
+//! An **isoline of a NURBS surface on the other surface**, a whole line
+//! `u = u₀`, is its tube circle (ADR-0061 §3): found the same way, held to
+//! the tolerance from edge to edge, returned as the surface's own line
+//! and divided out of the patches that hold it
+//! (`PatchedSection::deflate`). The quotient the walk evaluates is the
+//! patches' own polynomial with it divided out
+//! (`crate::trace_torus::Quotient`), not a closed form. A line `v = v₀`
+//! is one of `u` with the surface's parameters swapped, and the walk runs
+//! on the swapped surface and swaps them back. A patch that lies on the
+//! other surface all over is refused before any of it.
 
 use core::cell::Cell as Latest;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
@@ -111,8 +122,8 @@ use crate::trace::{
     Arc1, BranchEnd, REACH, SectionBranch, SectionCircle, SectionFault, SectionPoint, SectionTrace,
     Stretch,
 };
-use crate::trace_torus::{PatchedSection, Probe, Rescale};
-use crate::{Curve, GeomError, GeomKind, Surface, SurfaceEval, SurfaceKind};
+use crate::trace_torus::{PatchedSection, Probe, Quotient, Rescale};
+use crate::{Curve, GeomError, GeomKind, NurbsSurface, Surface, SurfaceEval, SurfaceKind};
 
 /// The half-width a turning point's or a singular point's cell is first
 /// tried at, and halved from until its certificate holds. A size in the
@@ -198,6 +209,14 @@ const CIRCLE_REFINED: usize = 5;
 const SEAM_RUN_SAMPLES: usize = 16;
 
 const GOLDEN_STEPS: usize = 40;
+
+/// How many steps each way a NURBS patch is looked at on to tell whether
+/// it lies on the other surface ([`Tracer::flush`]): a patch is a
+/// polynomial of a few degrees each way, and one within the tolerance at
+/// nine points across in both directions and not between them is a
+/// surface that would have been refused anyway. A sampling count, not a
+/// tolerance.
+const FLUSH_SAMPLES: usize = 8;
 
 /// A tube circle this near a column's edge, in radians, is put on it: a
 /// billionth of a radian is a thousandth of any tolerance a model carries
@@ -318,6 +337,14 @@ pub(crate) struct Walker {
     /// radii, a NURBS surface's farthest control point.
     size: f64,
     factor: Option<TubeFactor>,
+    /// A NURBS surface's section with its isoline `factor` divided out,
+    /// which the quotient is evaluated on; `None` on a torus, whose
+    /// quotient is a closed form.
+    divided: Option<Quotient>,
+    /// The NURBS surface is walked with its parameters swapped, so that
+    /// an isoline of its `v` is one of the walk's `u`: its own `(u, v)`
+    /// are the walk's `(v, u)`.
+    transposed: bool,
     bumps: Vec<Bump>,
     singular: Vec<SingularCell>,
 }
@@ -349,12 +376,14 @@ impl Walker {
         }
     }
 
-    /// The walked surface's own parameters at the walk's `at`.
+    /// The walked surface's own parameters at the walk's `at`: a NURBS
+    /// surface walked transposed has them swapped back.
     fn surface_uv(&self, at: [f64; 2]) -> [f64; 2] {
-        match &self.rescale {
+        let uv = match &self.rescale {
             None => at,
             Some(map) => [0, 1].map(|k| map.to_surface(k, at[k])),
-        }
+        };
+        if self.transposed { [uv[1], uv[0]] } else { uv }
     }
 
     /// The difference `x` of direction `k`'s parameter, the short way
@@ -391,7 +420,25 @@ impl Walker {
     /// which is `cos(·)·∇F(A)·τ₀ − sin(·)·∇F(A)·e₀`, loses its first term
     /// the same way — the gradient is across the circle's tangent `τ₀` —
     /// and the second carries the other `sin`.
+    ///
+    /// On a NURBS surface the isoline's quotient is the polynomial the
+    /// isolation certified with the isoline divided out
+    /// ([`Quotient::at`]), over `|∇F|`.
     fn quotient(&self, factor: &TubeFactor, u: f64, v: f64) -> f64 {
+        if let Some(divided) = &self.divided {
+            let Some(implicit) = Implicit::of(&self.other) else {
+                return f64::NAN;
+            };
+            let quotient = divided.at(u, v);
+            let steep = implicit
+                .slope(implicit.frame.to_local(self.point(u, v)))
+                .norm();
+            return if steep > 0.0 {
+                quotient / steep
+            } else {
+                quotient
+            };
+        }
         let (
             Some(implicit),
             Surface::Torus {
@@ -988,6 +1035,8 @@ pub fn trace_torus(
             closed: [true; 2],
             size: 0.0,
             factor: None,
+            divided: None,
+            transposed: false,
             bumps: Vec::new(),
             singular: Vec::new(),
         },
@@ -1022,13 +1071,24 @@ pub fn trace_torus(
 /// meets the other surface at. A direction that closes
 /// ([`crate::NurbsSurface::closure`]) is walked across its seam.
 ///
+/// An isoline of the surface — a whole line of constant `u` or of
+/// constant `v`, its domain's edges among them — that lies on the other
+/// surface within `tol.linear` is one of [`SectionTrace::circles`]: the
+/// surface's own line, exact (`Curve::Nurbs`, never fitted), its
+/// parameter the surface's other one. What else the pair meets in is
+/// traced beside it, and a branch that crosses it ends on it at a
+/// [`SectionPoint`] that is not isolated, as at a tube circle. A NURBS
+/// surface on the other surface over a whole Bézier patch — flush with
+/// it over an area — is [`GeomError::Unsupported`].
+///
 /// Guarantees: those of [`trace_torus`], with the NURBS surface for the
 /// torus — every branch on the NURBS surface exactly, [`SectionBranch::uv`]
 /// its own parameters there, and on the other to rounding; every part of
-/// the section inside the domain on a branch. Refused by name as
-/// [`GeomError::DegenerateSection`]: the poses [`trace_torus`] refuses,
-/// and the section touching an edge of the domain, crossing it at a
-/// corner, or holding a whole isoparametric line of the surface.
+/// the section inside the domain on a branch or an isoline. Refused by
+/// name as [`GeomError::DegenerateSection`]: the poses [`trace_torus`]
+/// refuses, the section touching an edge of the domain or crossing it at
+/// a corner, isolines of both directions, and two isolines or more with
+/// more of the section besides ([`SectionFault::TubeCircle`]).
 pub(crate) fn trace_nurbs(
     a: &Surface,
     b: &Surface,
@@ -1042,34 +1102,52 @@ pub(crate) fn trace_nurbs(
         a: GeomKind::Surface(a.kind()),
         b: GeomKind::Surface(b.kind()),
     };
-    let (walked, other, nurbs) = match (a, b) {
-        (Surface::Nurbs(nurbs), other) | (other, Surface::Nurbs(nurbs)) => {
-            (Surface::Nurbs(nurbs.clone()), other, nurbs)
-        }
+    let (nurbs, other) = match (a, b) {
+        (Surface::Nurbs(nurbs), other) | (other, Surface::Nurbs(nurbs)) => (nurbs, other),
         _ => return Err(unsupported()),
     };
-    let section = PatchedSection::on_nurbs(nurbs, other, tol).ok_or_else(unsupported)?;
-    let size = (nurbs.control_points().iter())
-        .map(|p| p.coords.norm())
-        .fold(0.0, f64::max);
-    let tracer = Tracer {
-        section,
-        walker: Walker {
-            walked,
-            other: other.clone(),
-            rescale: Some(Rescale::of(nurbs)),
-            closed: nurbs.closure().map(|c| c.is_some()),
-            size,
-            factor: None,
-            bumps: Vec::new(),
-            singular: Vec::new(),
-        },
-        turning: Vec::new(),
-        edges: Vec::new(),
-        circles: Vec::new(),
-        tol,
+    let tracer = |nurbs: &NurbsSurface, transposed: bool| {
+        let section = PatchedSection::on_nurbs(nurbs, other, tol)?;
+        let size = (nurbs.control_points().iter())
+            .map(|p| p.coords.norm())
+            .fold(0.0, f64::max);
+        Some(Tracer {
+            section,
+            walker: Walker {
+                walked: Surface::Nurbs(nurbs.clone()),
+                other: other.clone(),
+                rescale: Some(Rescale::of(nurbs)),
+                closed: nurbs.closure().map(|c| c.is_some()),
+                size,
+                factor: None,
+                divided: None,
+                transposed,
+                bumps: Vec::new(),
+                singular: Vec::new(),
+            },
+            turning: Vec::new(),
+            edges: Vec::new(),
+            circles: Vec::new(),
+            tol,
+        })
     };
-    tracer.run(meter).map_err(|halt| match halt {
+    let along = tracer(nurbs, false).ok_or_else(unsupported)?;
+    // Flush over an area: the boolean's coincident arm is the analytic
+    // kinds' own.
+    if along.flush() {
+        return Err(unsupported());
+    }
+    // An isoline of `v` is one of `u` with the parameters swapped, and the
+    // walk divides out isolines of its `u` alone.
+    let flipped = nurbs.transposed();
+    let across = tracer(&flipped, true).ok_or_else(unsupported)?;
+    let (rows, columns) = (along.tube_circles(), across.tube_circles());
+    let traced = match (rows.is_empty(), columns.is_empty()) {
+        (_, true) => along.run_with(rows, meter),
+        (true, false) => across.run_with(columns, meter),
+        (false, false) => Err(SectionFault::TubeCircle.into()),
+    };
+    traced.map_err(|halt| match halt {
         Halt::Fault(fault) => GeomError::DegenerateSection {
             a: GeomKind::Surface(SurfaceKind::Nurbs),
             b: GeomKind::Surface(other.kind()),
@@ -1135,11 +1213,23 @@ fn fits(closed: bool, [lo, hi]: [f64; 2]) -> bool {
 }
 
 impl Tracer<'_> {
-    fn run(mut self, meter: &mut Meter) -> Result<SectionTrace, Halt<SectionFault>> {
-        self.circles = self.tube_circles();
+    fn run(self, meter: &mut Meter) -> Result<SectionTrace, Halt<SectionFault>> {
+        let circles = self.tube_circles();
+        self.run_with(circles, meter)
+    }
+
+    /// The trace with `circles` — the tube circles of a torus or the
+    /// isolines of a NURBS surface on the other surface — divided out.
+    fn run_with(
+        mut self,
+        circles: Vec<TubeFactor>,
+        meter: &mut Meter,
+    ) -> Result<SectionTrace, Halt<SectionFault>> {
+        self.circles = circles;
+        let torus = self.walker.rescale.is_none();
         // Two surfaces that are not the same share two tube circles at
         // the most: their centre lines touch the centre circle there.
-        if self.circles.len() > 2 {
+        if torus && self.circles.len() > 2 {
             return Err(SectionFault::TangentAlongCurve.into());
         }
         for (i, circle) in self.circles.clone().iter().enumerate() {
@@ -1147,7 +1237,10 @@ impl Tracer<'_> {
         }
         match self.circles[..] {
             [] => {}
-            [only] => self.walker.factor = Some(only),
+            [only] => {
+                self.walker.factor = Some(only);
+                self.walker.divided = self.section.quotient(only.u0, only.order);
+            }
             // Two circles and nothing else is a plane through the axis,
             // or a sphere centred on the tangent to the centre circle.
             // With more of the section besides there is no quotient in
@@ -1175,11 +1268,11 @@ impl Tracer<'_> {
         // tolerance, which would have been divided out; a whole turn both
         // ways is the torus itself. On a NURBS surface a box the whole
         // domain both ways is the surface on the other; one the whole
-        // domain one way is an isoparametric line on it, which is not
-        // traced (ADR-0061 §3) and is refused below with the turning
-        // points it does not resolve.
+        // domain one way is an isoline the other surface runs along
+        // without holding it to the tolerance, which would have been
+        // divided out (ADR-0061 §3), and is refused below with the
+        // turning points it does not resolve.
         let turn = TAU - ANGLE_SLACK;
-        let torus = self.walker.rescale.is_none();
         for z in turning.iter().filter(|z| !z.certified) {
             let long = [0, 1].map(|k| z.hi[k] - z.lo[k] >= turn);
             match long {
@@ -1227,17 +1320,24 @@ impl Tracer<'_> {
         // reaches it, and a branch is cut there. Where it turns or is
         // singular within the tolerance of the circle there is no telling
         // a crossing from a touch.
-        if let (
-            Some(factor),
-            Surface::Torus {
-                major_radius,
-                minor_radius,
-                ..
-            },
-        ) = (self.walker.factor, &self.walker.walked)
-        {
-            let near = self.tol.linear / (major_radius + minor_radius);
-            let off = |u: f64| wrap_offset(u - factor.u0, TAU).abs();
+        if let Some(factor) = self.walker.factor {
+            // How far `tol.linear` reaches across the circle or the
+            // isoline in `u`.
+            let speed = match &self.walker.walked {
+                Surface::Torus {
+                    major_radius,
+                    minor_radius,
+                    ..
+                } => major_radius + minor_radius,
+                _ => (0..CIRCLE_SAMPLES)
+                    .map(|k| {
+                        let v = TAU * k as f64 / (CIRCLE_SAMPLES - 1) as f64;
+                        self.walker.eval(factor.u0, v).du.norm()
+                    })
+                    .fold(0.0, f64::max),
+            };
+            let near = self.tol.linear / speed;
+            let off = |u: f64| self.walker.off(0, u - factor.u0).abs();
             let crowded = (self.turning.iter().any(|t| off(t.at[0]) <= near))
                 || (self.walker.singular.iter()).any(|s| off(s.at[0]) <= s.half[0] + near);
             if crowded {
@@ -1245,6 +1345,26 @@ impl Tracer<'_> {
             }
         }
         self.assemble(meter)
+    }
+
+    /// Whether the walked NURBS surface lies on the other surface over a
+    /// whole patch: every point of a grid over it, corners and edges
+    /// included, within `tol.linear` of it (ADR-0061 §3). The two
+    /// surfaces are then flush over an area, which no isoline or branch
+    /// stands for.
+    fn flush(&self) -> bool {
+        let Some(other) = Implicit::of(&self.walker.other) else {
+            return false;
+        };
+        let at = |[lo, hi]: [f64; 2], i: usize| lo + (hi - lo) * i as f64 / FLUSH_SAMPLES as f64;
+        (self.section.spans().into_iter()).any(|[u, v]| {
+            (0..=FLUSH_SAMPLES).all(|i| {
+                (0..=FLUSH_SAMPLES).all(|j| {
+                    let p = self.walker.point(at(u, i), at(v, j));
+                    other.distance(p).abs() <= self.tol.linear
+                })
+            })
+        })
     }
 
     /// The zeros of a census that are points of the walked surface. A
@@ -1296,23 +1416,33 @@ impl Tracer<'_> {
     /// the rest stays within `tol.linear` of the other surface too. It is
     /// a tangency when the polynomial and its slope in `u` are within
     /// that bound together: there both are dropped.
+    ///
+    /// On a NURBS surface the same finds its isolines `u = u₀` on the other
+    /// surface (ADR-0061 §3), held to the tolerance from one edge of `v`
+    /// to the other and put on a knot line within [`EDGE_SNAP`] of one;
+    /// where `u` does not close, one a rounding past an edge is put on
+    /// it, and its sides are looked at on the surface's polynomial pieces
+    /// carried past the edge.
     fn tube_circles(&self) -> Vec<TubeFactor> {
         let walker = &self.walker;
-        // A NURBS surface's isolines on the other surface are its own
-        // (ADR-0061 §3).
-        if walker.rescale.is_some() {
-            return Vec::new();
-        }
         let Some(other) = Implicit::of(&walker.other) else {
             return Vec::new();
         };
-        let round = |k: usize| TAU * (k as f64 + 0.5) / CIRCLE_SAMPLES as f64;
+        let closed = walker.closed;
+        // Round a tube circle; along a NURBS surface's `v` that does not
+        // close, from one edge to the other.
+        let round = |k: usize| {
+            if closed[1] {
+                TAU * (k as f64 + 0.5) / CIRCLE_SAMPLES as f64
+            } else {
+                TAU * k as f64 / (CIRCLE_SAMPLES - 1) as f64
+            }
+        };
         let tol = self.tol.linear;
         // Every point of the tube circle at `u` within `within` of the
         // other surface.
         let on = |u: f64, within: f64| {
-            (0..CIRCLE_SAMPLES)
-                .all(|k| other.distance(walker.walked.point(u, round(k))).abs() <= within)
+            (0..CIRCLE_SAMPLES).all(|k| other.distance(walker.point(u, round(k))).abs() <= within)
         };
         // What the other surface's polynomial may be along a circle for
         // the section traced without it to stay within the tolerance of
@@ -1321,9 +1451,12 @@ impl Tracer<'_> {
         let dropped = {
             // Whatever is traced is on the torus, and as far from a point
             // as the torus is.
-            let clear_of = |p: Point3| {
-                (Implicit::of(&walker.walked))
-                    .map_or(0.0, |torus| torus.distance(other.frame.to_world(p)).abs())
+            let clear_of = |p: Point3| match &walker.walked {
+                Surface::Nurbs(nurbs) => {
+                    (nurbs.project(other.frame.to_world(p))).map_or(0.0, |on| on.distance)
+                }
+                walked => (Implicit::of(walked))
+                    .map_or(0.0, |torus| torus.distance(other.frame.to_world(p)).abs()),
             };
             tol * other.firmness(clear_of) + self.section.floor()
         };
@@ -1335,14 +1468,14 @@ impl Tracer<'_> {
         let near: Vec<f64> = (self.section.tube_circle_candidates().into_iter())
             .filter(|&u| on(u, 2.0 * tol))
             .collect();
-        let joined = |a: f64, b: f64| on(a + 0.5 * wrap_offset(b - a, TAU), tol);
+        let joined = |a: f64, b: f64| on(a + 0.5 * walker.off(0, b - a), tol);
         // A group is its first candidate and how far the others reach
         // either side of it, the short way round.
         let mut groups: Vec<(f64, [f64; 2])> = Vec::new();
         for (i, &u) in near.iter().enumerate() {
             match groups.last_mut() {
                 Some((anchor, reach)) if i > 0 && joined(near[i - 1], u) => {
-                    let off = wrap_offset(u - *anchor, TAU);
+                    let off = walker.off(0, u - *anchor);
                     *reach = [reach[0].min(off), reach[1].max(off)];
                 }
                 _ => groups.push((u, [0.0; 2])),
@@ -1350,7 +1483,7 @@ impl Tracer<'_> {
         }
         // The group below `2π` and the group above zero may be one.
         if let (Some(&(anchor, reach)), Some(&last), true) =
-            (groups.first(), near.last(), groups.len() > 1)
+            (groups.first(), near.last(), groups.len() > 1 && closed[0])
         {
             if joined(last, anchor) {
                 groups.remove(0);
@@ -1361,6 +1494,8 @@ impl Tracer<'_> {
             }
         }
 
+        let torus = walker.rescale.is_none();
+        let knots = self.section.knot_lines();
         let mut found: Vec<TubeFactor> = Vec::new();
         for (anchor, reach) in groups {
             let lo = anchor + reach[0] - CIRCLE_BRACKET;
@@ -1396,16 +1531,26 @@ impl Tracer<'_> {
             // its largest, the same with its slope in `u` added, and how
             // far the circle is from the other surface.
             let measure = |u: f64| {
-                let edge = (u / FRAC_PI_2).round() * FRAC_PI_2;
-                let u0 = wrap_angle(if (u - edge).abs() <= EDGE_SNAP {
-                    edge
+                let u0 = if torus {
+                    let edge = (u / FRAC_PI_2).round() * FRAC_PI_2;
+                    wrap_angle(if (u - edge).abs() <= EDGE_SNAP {
+                        edge
+                    } else {
+                        u
+                    })
                 } else {
-                    u
-                });
+                    let knot = (knots.iter().copied()).find(|k| (u - k).abs() <= EDGE_SNAP);
+                    let u = knot.unwrap_or(u);
+                    if closed[0] {
+                        wrap_angle(u)
+                    } else {
+                        u.clamp(0.0, TAU)
+                    }
+                };
                 let mut worst = [0.0f64; 2];
                 let mut away = 0.0f64;
                 for k in 0..CIRCLE_SAMPLES {
-                    let e = walker.walked.eval(u0, round(k));
+                    let e = walker.eval(u0, round(k));
                     let a = other.frame.to_local(e.point);
                     let off = other.value(a).abs();
                     let slope = other.slope(a).dot(&other.frame.vec_to_local(e.du)).abs();
@@ -1443,6 +1588,10 @@ impl Tracer<'_> {
             }
         }
         found.sort_by(|a, b| a.u0.total_cmp(&b.u0));
+        if !torus {
+            // Two groups that settled on one isoline.
+            found.dedup_by(|a, b| a.u0 == b.u0);
+        }
         found
     }
 
@@ -1458,7 +1607,22 @@ impl Tracer<'_> {
             minor_radius,
         } = &self.walker.walked
         else {
-            return Err(SectionFault::TubeCircle);
+            // A NURBS surface's isolines, exact: its own line at `u₀`, as
+            // a curve in its other parameter.
+            let (Surface::Nurbs(nurbs), Some(map)) = (&self.walker.walked, &self.walker.rescale)
+            else {
+                return Err(SectionFault::TubeCircle);
+            };
+            return (self.circles.iter())
+                .map(|c| {
+                    let line = (nurbs.isocurve(0, map.to_surface(0, c.u0)))
+                        .map_err(|_| SectionFault::TubeCircle)?;
+                    Ok(SectionCircle {
+                        circle: Curve::Nurbs(line),
+                        tangent: c.order == 2,
+                    })
+                })
+                .collect();
         };
         (self.circles.iter())
             .map(|c| {
@@ -2540,6 +2704,8 @@ impl Tracer<'_> {
             ArcEnd::Turning(..) | ArcEnd::Home => None,
         };
         let turns = |end: ArcEnd| matches!(end, ArcEnd::Turning(..));
+        // A point's `v` in `[0, 2π)` where `v` closes, as it is where not.
+        let wrap_v = |v: f64| if walker.closed[1] { wrap_angle(v) } else { v };
         let mut cut: Vec<Vec<Piece>> = Vec::new();
         for chain in &chains {
             let mut pieces: Vec<Piece> = Vec::new();
@@ -2555,7 +2721,7 @@ impl Tracer<'_> {
                     .factor
                     .filter(|f| m.ends[from] == ArcEnd::Home && f.u0 == 0.0);
                 let home = seeded.map(|f| {
-                    ends_at.push(([f.u0, wrap_angle(start[1])], false));
+                    ends_at.push(([f.u0, wrap_v(start[1])], false));
                     Stop::At(ends_at.len() - 1)
                 });
                 stops.push((start, stop(m.ends[from]).or(home)));
@@ -2572,7 +2738,7 @@ impl Tracer<'_> {
                     }
                     for u in inside {
                         let v = walker.v_on(&m.arc, u);
-                        ends_at.push(([factor.u0, wrap_angle(v)], false));
+                        ends_at.push(([factor.u0, wrap_v(v)], false));
                         stops.push(([u, v], Some(Stop::At(ends_at.len() - 1))));
                     }
                 }

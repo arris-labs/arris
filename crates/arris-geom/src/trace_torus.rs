@@ -48,7 +48,10 @@
 //! `s = s₀` of a column on which `f` vanishes: neither set is isolated
 //! along it. It is looked for first ([`PatchedSection::tube_circle_candidates`])
 //! and divided out ([`PatchedSection::deflate`]), and both sets are then
-//! those of the quotient, the rest of the section.
+//! those of the quotient, the rest of the section. A NURBS surface's
+//! isoline `u = u₀` on the other surface is the same line of a patch's
+//! column, divided out of the patches whose span holds it, and the walk
+//! evaluates the quotient on those patches ([`Quotient`]).
 
 use core::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_4, TAU};
 
@@ -224,6 +227,10 @@ struct Patch {
     span: [[f64; 2]; 2],
     f: Poly2,
     weight: Poly2,
+    /// The `u₀` an isoline of a NURBS surface was divided out of the
+    /// patch at, a closure past the isoline's own where the patch holds
+    /// it there ([`PatchedSection::deflate`]).
+    divided: Option<f64>,
 }
 
 /// The other surface's polynomial over the patches of a torus or a NURBS
@@ -248,6 +255,85 @@ pub(crate) struct PatchedSection<'a> {
     /// circle it crossed along has been divided out of it
     /// ([`Self::deflate`]).
     odd_turn: bool,
+}
+
+/// The section's polynomial over a NURBS surface with one isoline `u = u₀`
+/// divided out of it ([`PatchedSection::deflate`]), owned by the walk: at a
+/// point of the walk's parameters, `F / gᵐ` in the sign the patches give
+/// it, `F` the other surface's polynomial and `g` the isoline's factor,
+/// no larger than one. Evaluated on the patches the isolation certified,
+/// a divided patch's quotient over `s − s₀` times the smooth ratio of
+/// that factor to `g` — never a small number over a small number — so
+/// that the walk and the isolation have the same zeros to rounding.
+#[derive(Debug, Clone)]
+pub(crate) struct Quotient {
+    u0: f64,
+    order: usize,
+    /// Whether each direction closes.
+    closed: [bool; 2],
+    /// The spans of `u` and of `v`, ascending.
+    rows: Vec<[f64; 2]>,
+    columns: Vec<[f64; 2]>,
+    /// The other surface's degree.
+    degree: i32,
+    /// Row-major over `u`: each patch's polynomial, weight, and where the
+    /// isoline was divided out of it.
+    patches: Vec<(Poly2, Poly2, Option<f64>)>,
+}
+
+impl Quotient {
+    /// `F / gᵐ` at the walk's `(u, v)`, `u` as it comes — unwrapped, so
+    /// that for an odd order the value changes sign with a whole turn
+    /// where `u` closes.
+    pub(crate) fn at(&self, u: f64, v: f64) -> f64 {
+        let (base, turns) = if self.closed[0] {
+            let k = (u / TAU).floor();
+            (u - k * TAU, k)
+        } else {
+            (u, 0.0)
+        };
+        let v = if self.closed[1] { v.rem_euclid(TAU) } else { v };
+        let find = |spans: &[[f64; 2]], x: f64| {
+            spans
+                .partition_point(|s| s[1] < x)
+                .min(spans.len().saturating_sub(1))
+        };
+        let (i, j) = (find(&self.rows, base), find(&self.columns, v));
+        let (Some((f, w, home)), Some(&[lo, hi]), Some(&[c, d])) = (
+            self.patches.get(i * self.columns.len() + j),
+            self.rows.get(i),
+            self.columns.get(j),
+        ) else {
+            return f64::NAN;
+        };
+        let (s, t) = ((base - lo) / (hi - lo), (v - c) / (d - c));
+        let m = self.order as i32;
+        let scale = match home {
+            // `|s − s₀| / |g|`, smooth through the isoline.
+            Some(r) => {
+                let half = 0.5 * (base - r);
+                let ratio = if !self.closed[0] {
+                    TAU
+                } else if half == 0.0 {
+                    2.0
+                } else {
+                    2.0 * half / half.sin()
+                };
+                (ratio.abs() / (hi - lo)).powi(m)
+            }
+            None => {
+                let g = if self.closed[0] {
+                    (0.5 * (base - self.u0)).sin()
+                } else {
+                    (base - self.u0) / TAU
+                };
+                g.abs().recip().powi(m)
+            }
+        };
+        let flips = self.order % 2 == 1 && turns.rem_euclid(2.0) == 1.0;
+        let sign = if flips { -1.0 } else { 1.0 };
+        sign * f.eval(s, t) * scale / w.eval(s, t).powi(self.degree)
+    }
 }
 
 /// The points isolated over the whole walked surface, in its parameters.
@@ -316,6 +402,7 @@ impl<'a> PatchedSection<'a> {
                     span: [quarter(qu), quarter(qv)],
                     f,
                     weight,
+                    divided: None,
                 });
             }
         }
@@ -409,6 +496,7 @@ impl<'a> PatchedSection<'a> {
                 }),
                 f,
                 weight,
+                divided: None,
             });
         }
         // Every coefficient is a sum of terms each bounded by a monomial
@@ -462,7 +550,8 @@ impl<'a> PatchedSection<'a> {
     /// with the part of its `[0, 1]` the range covers and whether it is an
     /// odd number of whole turns from the torus's `[0, 2π)`. On a NURBS
     /// surface a closed direction's range is taken a closure either way as
-    /// well, and the part of a range outside the domain has no cell.
+    /// well, a closure from `[0, 2π)` being one turn, and the part of a
+    /// range outside the domain has no cell.
     fn cells(&self, k: usize, range: [f64; 2]) -> Vec<(usize, [f64; 2], bool)> {
         let Chart::Knots { closed, .. } = self.chart else {
             return quarters(range);
@@ -488,7 +577,7 @@ impl<'a> PatchedSection<'a> {
                     continue;
                 }
                 let local = |x: f64| ((x - a) / (b - a)).clamp(0.0, 1.0);
-                out.push((cell, [local(lo), local(hi)], false));
+                out.push((cell, [local(lo), local(hi)], turn != 0.0));
             }
         }
         out
@@ -501,11 +590,26 @@ impl<'a> PatchedSection<'a> {
     /// columns' edges are candidates as they are, since a change of sign
     /// exactly at the end of a polynomial's `[0, 1]` is no variation of
     /// its coefficients. A candidate is a place to look and no more.
+    ///
+    /// On a NURBS surface the same for an isoline `u = u₀` on the other
+    /// surface (ADR-0061 §3): the knot lines of `u`, the domain's edges
+    /// among them, and the sign changes along a line of constant `v`
+    /// through every patch, ascending in the walk's `[0, 2π]`.
     pub(crate) fn tube_circle_candidates(&self) -> Vec<f64> {
-        // A NURBS surface's isolines on the other surface are not looked
-        // for here.
         if self.chart != Chart::Quarters {
-            return Vec::new();
+            let mut found = self.knot_lines();
+            for patch in &self.patches {
+                let line = patch.f.along(CIRCLE_ROW);
+                let m = line.len().saturating_sub(1) as f64;
+                let slope = bernstein::derivative(&line);
+                let roots = sign_change_candidates(&line, self.floor)
+                    .into_iter()
+                    .chain(sign_change_candidates(&slope, 2.0 * m * self.floor));
+                found.extend(roots.map(|s| self.param(patch, 0, s)));
+            }
+            found.sort_by(f64::total_cmp);
+            found.dedup();
+            return found;
         }
         let mut found: Vec<f64> = (0..4).map(|q| q as f64 * FRAC_PI_2).collect();
         for patch in self.patches.iter().filter(|p| p.cell[1] % 2 == 0) {
@@ -555,8 +659,12 @@ impl<'a> PatchedSection<'a> {
     /// function — when the circle lies in it or within
     /// [`DIVIDED_WITHIN`] of it; the others keep their polynomial, which
     /// the factor does not make small.
+    ///
+    /// On a NURBS surface `u0` is an isoline's, divided out as
+    /// [`Self::deflate_isoline`] says, and `corrected` is not looked at.
     pub(crate) fn deflate(&mut self, u0: f64, order: usize, corrected: bool) {
         if self.chart != Chart::Quarters {
+            self.deflate_isoline(u0, order);
             return;
         }
         let d = self.implicit.degree();
@@ -642,6 +750,111 @@ impl<'a> PatchedSection<'a> {
         self.floor = worst;
         self.near = worst + self.steep;
         self.odd_turn ^= order % 2 == 1;
+    }
+
+    /// The isoline `u = u₀` of a NURBS surface, which lies on the other
+    /// surface, divided out of the polynomial (ADR-0061 §3): `order` is
+    /// one where the surfaces cross along it and two where they are
+    /// tangent along it. What is left is `F / gᵐ` times a positive
+    /// function, `g` being `(u − u₀) / 2π` where `u` does not close and
+    /// `sin((u − u₀) / 2)` where it does — so that for an odd order it
+    /// changes sign with a whole turn, which [`Self::sign_over`] knows —
+    /// and never more than one in size, so the quotient over `|∇F|` is
+    /// never less than the distance ([`Quotient`]).
+    ///
+    /// A patch whose span of `u` holds the isoline — both patches, where
+    /// it is on a knot, and where `u` closes the patch that holds it a
+    /// closure on — is divided by its own linear factor `s − s₀`, the
+    /// chart being linear. The others keep their polynomial, which is a
+    /// patch's own piece of the surface and does not vanish on the line:
+    /// they are only given the sign the quotient has there. No correction
+    /// is made for an isoline only within the tolerance of the other
+    /// surface: what the division is off by is dropped, and it is within
+    /// what `tol.linear` makes of `f`, or the isoline is not accepted.
+    fn deflate_isoline(&mut self, u0: f64, order: usize) {
+        let Chart::Knots { closed, .. } = self.chart else {
+            return;
+        };
+        let binomials = Binomials::new(self.binomial_degree);
+        let odd = order % 2 == 1;
+        let homes: &[f64] = if closed[0] { &[u0, u0 + TAU] } else { &[u0] };
+        let mut worst = self.floor;
+        for patch in &mut self.patches {
+            let [lo, hi] = patch.span[0];
+            let width = hi - lo;
+            let slack = PATCH_SLACK * width;
+            let home = (homes.iter().copied()).find(|&r| r >= lo - slack && r <= hi + slack);
+            let mut floor = self.floor;
+            if let Some(r) = home {
+                let root = ((r - lo) / width).clamp(0.0, 1.0);
+                for _ in 0..order {
+                    let (quotient, carried) = patch.f.over_linear(root, floor, &binomials);
+                    patch.f = quotient;
+                    floor = carried;
+                }
+                patch.divided = Some(r);
+            }
+            // `s − s₀` has the sign of `u` less the isoline's place it
+            // was divided at, and the sign wanted is that of `g`.
+            let flipped = match home {
+                Some(r) => r != u0,
+                None => 0.5 * (lo + hi) < u0,
+            };
+            if odd && flipped {
+                patch.f = Poly2::combine(&[(-1.0, &patch.f)]);
+            }
+            worst = worst.max(floor);
+        }
+        self.floor = worst;
+        self.near = worst + self.steep;
+        self.odd_turn ^= odd;
+    }
+
+    /// The patches' polynomials as they are now, with the isoline `u =
+    /// u₀` of `order` divided out of them, owned: what the walk evaluates
+    /// the section on beside the isoline. `None` on a torus.
+    pub(crate) fn quotient(&self, u0: f64, order: usize) -> Option<Quotient> {
+        let Chart::Knots {
+            columns, closed, ..
+        } = self.chart
+        else {
+            return None;
+        };
+        Some(Quotient {
+            u0,
+            order,
+            closed,
+            rows: (self.patches.iter().step_by(columns.max(1)))
+                .map(|p| p.span[0])
+                .collect(),
+            columns: self
+                .patches
+                .iter()
+                .take(columns)
+                .map(|p| p.span[1])
+                .collect(),
+            degree: self.implicit.degree() as i32,
+            patches: (self.patches.iter())
+                .map(|p| (p.f.clone(), p.weight.clone(), p.divided))
+                .collect(),
+        })
+    }
+
+    /// The knot lines of `u` in the walk's parameter, ascending, the
+    /// domain's edges among them; none on a torus.
+    pub(crate) fn knot_lines(&self) -> Vec<f64> {
+        if self.chart == Chart::Quarters {
+            return Vec::new();
+        }
+        let mut lines: Vec<f64> = (self.patches.iter()).flat_map(|p| p.span[0]).collect();
+        lines.sort_by(f64::total_cmp);
+        lines.dedup();
+        lines
+    }
+
+    /// The box of the walk's parameters each patch covers.
+    pub(crate) fn spans(&self) -> Vec<[[f64; 2]; 2]> {
+        self.patches.iter().map(|p| p.span).collect()
     }
 
     /// The turning points of the section in `u`. A certified zero is a

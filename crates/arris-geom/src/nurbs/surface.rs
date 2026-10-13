@@ -336,6 +336,59 @@ impl NurbsSurface {
         out
     }
 
+    /// The line of the surface where direction `k`'s parameter is `at`, as
+    /// a curve in the other direction's parameter, exactly: each row of
+    /// the net across `k` summed at `at` in homogeneous coordinates — the
+    /// point the de Boor sum gives, which is knot insertion to full
+    /// multiplicity — over the other direction's own knots and degree.
+    /// No fit. A closed `k` takes `at` past its domain as `eval` does.
+    pub(crate) fn isocurve(&self, k: usize, at: f64) -> Result<crate::NurbsCurve, GeomError> {
+        let at = self.wrap(k, at);
+        let m = self.counts[1];
+        let (p, count) = (self.degree[k], self.counts[k]);
+        let span = basis::span(p, &self.knots[k], count, at);
+        let [basis, ..] = basis::derivatives(p, &self.knots[k], span, at);
+        let across = self.counts[1 - k];
+        let mut points = Vec::with_capacity(across);
+        let mut weights = Vec::with_capacity(across);
+        for j in 0..across {
+            let mut sum = Vector4::zeros();
+            for (i, b) in basis.iter().enumerate().take(p + 1) {
+                let row = span - p + i;
+                let idx = if k == 0 { row * m + j } else { j * m + row };
+                let w = self.weights[idx];
+                let x = self.points[idx];
+                sum += *b * Vector4::new(w * x.x, w * x.y, w * x.z, w);
+            }
+            points.push(Point3::new(sum.x / sum.w, sum.y / sum.w, sum.z / sum.w));
+            weights.push(sum.w);
+        }
+        crate::NurbsCurve::new(
+            self.degree[1 - k],
+            self.knots[1 - k].clone(),
+            points,
+            weights,
+        )
+    }
+
+    /// The same surface with its parameters swapped: `(u, v)` of the
+    /// result is `(v, u)` of `self`, the same point to rounding.
+    pub(crate) fn transposed(&self) -> NurbsSurface {
+        let [n, m] = self.counts;
+        let order: Vec<usize> = (0..m)
+            .flat_map(|j| (0..n).map(move |i| i * m + j))
+            .collect();
+        NurbsSurface {
+            degree: [self.degree[1], self.degree[0]],
+            knots: [self.knots[1].clone(), self.knots[0].clone()],
+            counts: [m, n],
+            points: order.iter().map(|&i| self.points[i]).collect(),
+            weights: order.iter().map(|&i| self.weights[i]).collect(),
+            period: [self.period[1], self.period[0]],
+            closed: [self.closed[1], self.closed[0]],
+        }
+    }
+
     /// The point and its derivatives to second order at `(u, v)`: the
     /// tensor-product de Boor sums on the homogeneous net, then the
     /// quotient rule (*The NURBS Book* A3.6 and §4.5).

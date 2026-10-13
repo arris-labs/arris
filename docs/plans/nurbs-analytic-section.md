@@ -188,13 +188,31 @@ bound has to be established here.
   at retirement. Step 2's note that the drill crosses CTC-02's f520 was
   wrong: it passes it by 42 mm. The torus's tests, properties and its 27
   corpus fixtures pass against their blessed dumps.
-- [ ] Step 4 **[3]** — **Isolines on the other surface, and coincidence.**
+- [x] Step 4 **[3]** — **Isolines on the other surface, and coincidence.**
   Find a row or column of `f ≡ 0` within `near`. Return it as the exact
   isocurve and deflate it out, and end crossing branches on it as on a
   tube circle. A surface coincident with the other over a patch is
   `Unsupported`. Fixtures: a cylinder twin whose rim row lies on a plane
   (the cut flush with the rim), a ruled NURBS whose boundary ruling lies
   on a cylinder, and a planar NURBS on its plane (refused).
+
+  **Landed (2026-10-13).** The torus's tube-circle search finds a NURBS
+  surface's isolines of `u`; a line of `v` is found and walked on the
+  surface transposed. Each is returned as `NurbsSurface::isocurve`, the
+  net summed at `u₀`, and divided out of the patches whose span holds
+  it, with no correction: a B-spline's other pieces carried to `u₀` are
+  not the surface there. The walk evaluates the quotient on the divided
+  patches themselves (`trace_torus::Quotient`), so it has the
+  isolation's zeros by construction. Isolines of both directions, and
+  two or more with more of the section, are refused as `TubeCircle`; a
+  patch flush with the other surface is `Unsupported` (ADR-0061,
+  amended). Beyond the three fixtures: a branch crossing an isoline (`z
+  = uv − u³` on its plane), a tangent isoline on a closed seam, two
+  rulings and two rims alone, the torus twin against the tube-circle
+  holders of `tests/trace_torus.rs`, and a property over a cylinder twin
+  in any pose (1000 cases, two seeds). A collapsed row on the other
+  surface is divided out but still returned as a line one point long:
+  step 5's.
 - [ ] Step 5 **[2]** — **`intersect_surfaces` over NURBS × analytic.**
   The six arms in both orders go through `section::traced`: fitted
   branches, exact isocurves and singular points as `MeetPoint`s. Update
@@ -202,7 +220,9 @@ bound has to be established here.
   `tests/fixtures/geom/`, each held to Open CASCADE's `GeomAPI_IntSS`
   through the oracle (curve length, endpoints, count) and to the closed
   form where the NURBS is a twin. Covers the collapsed-row case if step 1
-  kept it in scope.
+  kept it in scope: an isoline on a collapsed row (step 4 finds and
+  divides it out) is returned as the singular point it is, not as a
+  line one point long.
 - [ ] Step 6 **[2]** — **A circle and an ellipse against a NURBS
   surface.** The curve is the meet of its plane and its cylinder (an
   elliptic cylinder for the ellipse). On each patch, the plane's offset
@@ -272,7 +292,10 @@ bound has to be established here.
   of `v` where it is only continuous), and one touching an edge of the
   domain, turning on an edge of `u` or crossing at a corner. Add
   `Surface::project` missing a point of a kinked rational B-spline
-  (`tests/nurbs_project.rs`, ignored).
+  (`tests/nurbs_project.rs`, ignored). Add step 4's refusal of isolines
+  of both directions — a face with a boundary edge of `u` and one of `v`
+  on the other surface, `z = uv` on `z = 0` — which the walk does not
+  divide out together.
 - `docs/adr/README.md`: ADR-0061's line.
 - `CHANGELOG.md` `Unreleased`: booleans, split and section now take bodies
   with NURBS faces against analytic ones, which covers most imported
