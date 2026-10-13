@@ -239,6 +239,16 @@ pub fn geom_error(error: &GeomError) -> Mapped {
                 .text("b_kind", b)
                 .text("fault", fault)
         }
+        GeomError::OffsetFolds {
+            kind,
+            at,
+            distance,
+            radius,
+        } => Mapped::new(Class::GeomOffsetFoldsError, message)
+            .text("kind", kind)
+            .with("at", Attr::Floats(vec![at.x, at.y]))
+            .with("distance", Attr::Float(*distance))
+            .with("radius", Attr::Float(*radius)),
         GeomError::Fit(fit) => fit_error(fit),
         GeomError::Interrupted(stop) => interrupted(stop),
     }
@@ -578,6 +588,12 @@ mod tests {
                 a: kind,
                 b: kind,
                 fault: SectionFault::TangentAlongCurve,
+            }),
+            geom_error(&GeomError::OffsetFolds {
+                kind,
+                at: Point2::origin(),
+                distance: 2.0,
+                radius: 1.0,
             }),
             geom_error(&GeomError::Fit(FitError::Degenerate(String::new()))),
             geom_error(&GeomError::Interrupted(stop())),

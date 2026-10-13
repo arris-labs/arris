@@ -52,7 +52,9 @@ section of the blend's exact surface with the face across, traced and
 fitted — the one item at its end not exact, as the pcurves already are.
 A fitted *surface* stays ADR-0007's rejected alternative: the pairs with
 no closed form (crossing cylinders, a torus against a cylinder off its
-axis) stay `Unsupported` until the NURBS cycle.
+axis) stay `Unsupported` until the NURBS cycle. *(Amended by ADR-0062:
+the NURBS cycle fits them, as walked stripes, and traces their ends
+against the fitted surface as this decision traces the table's.)*
 
 **2. The intersector's tracers, through one dispatch.** The end is
 traced by `arris_geom::trace_section`, the dispatch the intersector's

@@ -183,6 +183,26 @@ pub enum GeomError {
         /// What is degenerate about it.
         fault: SectionFault,
     },
+    /// The offset of a surface by `distance` folds at `at`: the distance
+    /// reaches or passes the principal radius `radius` there on the side
+    /// it moves to, so the offset has a cusp or turns back on itself and
+    /// is no surface ([`crate::NurbsSurface::offset_fitted`]). A blend
+    /// whose radius does this is too large for the face.
+    #[error(
+        "the offset of the {kind} by {distance} folds at ({}, {}): a principal radius there is {radius}",
+        at.x,
+        at.y
+    )]
+    OffsetFolds {
+        /// The surface offset.
+        kind: GeomKind,
+        /// The `(u, v)` where it folds.
+        at: Point2,
+        /// The distance asked.
+        distance: f64,
+        /// The principal radius the distance reaches.
+        radius: f64,
+    },
     /// A NURBS fit ([`crate::fit_curve2`], [`crate::fit_curve`],
     /// [`crate::fit_curve_periodic`]) did not produce a curve.
     #[error("fit: {0}")]

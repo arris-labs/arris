@@ -77,8 +77,8 @@ another item's, by name.
     uses next. Its name and signature are fixed in step 4.
   - `Surface::offset` is unchanged: exact or `None`, and its doc points
     to the fitted one.
-  - A `GeomError` variant, only if step 2 shows that no existing one
-    names the fold. If it does, it is a break: binding and changelog in
+  - `GeomError::OffsetFolds { kind, at, distance, radius }` (step 2: no
+    existing variant names a fold). A break: binding and changelog in
     that commit.
 - **`arris-ops::blend`, crate-private:** a `walked.rs` module beside
   `stripe.rs` and `ring.rs`, and the `Blend` record holds either kind of
@@ -166,7 +166,7 @@ bound has to be established here.
   two exact offsets (FTC-10, CTC-01, CTC-02's ellipses) and on a table
   pair whose curve is a B-spline (FTC-11), the chain junction (CTC-05,
   FTC-11, CTC-02) and a fan end (CTC-01).
-- [ ] Step 2 **[3]** — **ADR-0062, then the fitted offset of a NURBS
+- [x] Step 2 **[3]** — **ADR-0062, then the fitted offset of a NURBS
   surface.** Write the ADR (design delta above). Then
   `NurbsSurface::offset_fitted`: sample `S + d·N` on each knot span's
   grid, fit a tensor-product B-spline, and refine the spans until no
@@ -183,6 +183,24 @@ bound has to be established here.
     and time recorded.
 
   Properties over random poses of the twins.
+
+  **Done (2026-10-13).** ADR-0062 fixes the budget (§1), the fit (§2),
+  the extension (§3: the end span carried on, which `eval` already
+  evaluates), the chord rule (§4), the ends (§5) and the refusals (§6).
+  The fold needed its own variant, `GeomError::OffsetFolds`: the blend
+  answers it with `BlendTooLarge`, and `Degenerate` could not tell it from
+  a pole. It is a break, with its Python class and changelog line.
+  Measured:
+  - The twins (plane, cylinder, sphere and torus patches) offset both ways
+    to `1e-6` within it of `Surface::offset`. In random poses each shard
+    takes about 25 s.
+  - Refining per direction matters. Charging a miss to both directions
+    took the cylinder's twin to 32 × 32 spans; each direction's own
+    residual takes it to 32 × 2.
+  - CTC-05's f109, over its domain plus a sixth each side to `τ/4 =
+    2.5e-8`, takes 64 × 128 bicubic spans and 4.4 s each way in the test
+    profile. Step 3 offsets only the ball's band, since 8192 patches
+    would be the tracer's cost otherwise.
 - [ ] Step 3 **[3]** — **The spine and the contacts.**
   1. Trace the section of the two offsets with `trace_section`: the
      NURBS offset against an analytic one through ADR-0061, or two exact
@@ -192,8 +210,11 @@ bound has to be established here.
      from the edge point and located on the branch by ADR-0037 §2's
      search. The stretch runs past each end by the ball's reach, so that
      a face across can cut it.
-  3. Each contact is the spine's foot on its face: exact on an analytic
-     face, `Surface::project` on a NURBS one.
+  3. Each spine sample is snapped by Newton onto the two exact distances
+     from the faces (ADR-0062 §1), and each contact is the snapped
+     centre's foot on its face: exact on an analytic face,
+     `Surface::project` on a NURBS one. The offsets are fitted over the
+     band the ball sweeps, not the whole face (step 2's timing).
 
   Tests:
   - the twin of a plane against a cylinder along a ruling and along a
@@ -308,11 +329,11 @@ bound has to be established here.
 - `docs/ARCHITECTURE.md` §Operations, blends: the walked stripe beside
   the table and what it takes.
 - `docs/DATA-MODEL.md`: §Surfaces (the fitted offset beside
-  `Surface::offset`), §Invariants S5 (step 6, if not already done in its
+  `Surface::offset`, done in step 2), §Invariants S5 (step 6, if not already done in its
   commit), and §Provenance if a walked end adds a record.
 - `docs/ROADMAP.md` §C10: the first item's blend half done, with the
   fillet column's numbers.
-- ADR-0007 and ADR-0037: amendment lines pointing to ADR-0062 (written in
+- ADR-0007 and ADR-0037: amendment lines pointing to ADR-0062 (done in
   step 2).
 - `docs/BACKLOG.md`: lines 47, 50 and 70 updated or removed. New lines
   for the vertex cases a walked stripe refuses, the NURBS face across,
@@ -320,20 +341,20 @@ bound has to be established here.
 - `CHANGELOG.md` `Unreleased`: fillet and chamfer on a free-form face,
   and on the analytic pairs with no closed form, plus the refusals a user
   will hit.
-- `crates/arris-py`: `fillet`/`chamfer` docstrings (what they take). No
-  stub change unless step 2 adds an error variant.
+- `crates/arris-py`: `fillet`/`chamfer` docstrings (what they take).
+  Step 2's `GeomOffsetFoldsError` is bound and stubbed in its commit.
 - `AGENTS.md` current state: C10's first item done.
 
 ## Open questions
 
-- ⚠ OPEN: the error budget, meaning the fractions of the stripe's
-  tolerance given to the offset fit, the spine's section fit and the
-  surface fit, and whether each contact edge's tolerance holds without
-  growth. **Agent**, at step 2 (ADR-0062), measured at steps 3 and 4.
-- ⚠ OPEN: how a NURBS face's offset is extended past its domain (end-span
-  extrapolation, or a ruled extension along the boundary tangents).
-  Step 1 answered whether: CTC-05's ball reaches past both ends by r, a
-  tenth of the domain's width. **Agent**, fixed in ADR-0062 at step 2.
+- The error budget: **decided** in ADR-0062 §1. A quarter of the stripe's
+  tolerance goes to the offset fit and the section's own quarter to the
+  spine, with each sample snapped onto the exact distances. A quarter
+  goes to the surface, so a contact edge holds the stripe's tolerance
+  without growth. Steps 3 and 4 measure it.
+- The extension past the domain: **decided** in ADR-0062 §3, the end
+  span carried on. Step 1 found it needed: CTC-05's ball reaches past
+  both ends by r, a tenth of the domain's width.
 - ⚠ OPEN: what holds CTC-05's two fixtures, since Open CASCADE builds an
   invalid body in both editions (step 1). The candidates are the two
   editions agreeing with each other and the part's own volume less a

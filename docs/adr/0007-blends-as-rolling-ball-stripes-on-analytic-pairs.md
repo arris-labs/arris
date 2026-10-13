@@ -60,6 +60,9 @@ pcurve on the plane and a ruling at fixed `u` on the blend. The blend's
 frame is the known part's: `X` at one contact so the contacts sit at
 `u = 0` and `u = π − φ`, `Z` along the edge so `v` is the edge's own
 parameter. Every surface is exact; nothing is fitted but a pcurve.
+*(Amended by ADR-0062: a pair the table has no closed form for is a
+walked stripe, its spine the section of the two faces' offsets and its
+surface fitted through the ball's exact arcs.)*
 
 **Each end is trimmed by the face across the corner.** At a vertex of
 three edges the stripe ends where the blend surface meets the third

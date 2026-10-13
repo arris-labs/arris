@@ -60,8 +60,8 @@ pub use intersect_curves::{
     CurveCurveHit, CurveIntersection, conic_crossings, curves_coincide, intersect_curves,
 };
 pub use nurbs::{
-    FitError, MAX_DEGREE, MAX_FIT_SPANS, NurbsCurve, NurbsCurve2, NurbsSurface, fit_curve,
-    fit_curve_periodic, fit_curve2,
+    FitError, MAX_DEGREE, MAX_FIT_SPANS, MAX_OFFSET_SPANS, NurbsCurve, NurbsCurve2, NurbsSurface,
+    OFFSET_FIT_DEGREE, fit_curve, fit_curve_periodic, fit_curve2,
 };
 pub use pcurve::{
     PCURVE_FIT_DEGREE, PCURVE_SAMPLES, PCURVE_SINGULAR_BAND, pcurve_ending_on, pcurve_on,

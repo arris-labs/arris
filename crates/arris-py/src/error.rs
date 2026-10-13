@@ -145,6 +145,7 @@ classes! {
     GeomNotOnSurfaceError(GeomError) = "The curve does not lie on the surface within the tolerance.";
     GeomThroughSingularityError(GeomError) = "The curve runs through a singular point of the surface.";
     GeomDegenerateSectionError(GeomError) = "The section of two quadrics is degenerate.";
+    GeomOffsetFoldsError(GeomError) = "The offset of a surface folds: the distance reaches a principal radius.";
 
     FitError(ArrisError) = "Why a NURBS fit did not produce a curve.";
     FitDegenerateError(FitError) = "The fit request cannot be fitted.";

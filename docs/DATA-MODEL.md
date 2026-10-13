@@ -124,9 +124,20 @@ frame so that `u` and every seam stay put: a plane's origin moves `d` along
 radius `R + d / cos α` at `v = 0` (its `v` moves by `−d tan α`); a sphere's
 radius is `R + d`; a torus keeps `R` and has `r + d`. It is `None` for an
 elliptic cylinder (an ellipse's parallel curve is no ellipse), a NURBS
-surface (the NURBS cycle's), a non-finite `d`, and a radius driven to or
-through zero (a cylinder or sphere with `R + d` not positive, a torus with
-`r + d` not positive or reaching `R`). A cone is offset on the nappe its
+surface, a non-finite `d`, and a radius driven to or through zero (a
+cylinder or sphere with `R + d` not positive, a torus with `r + d` not
+positive or reaching `R`).
+
+A NURBS surface's offset has no closed form and is fitted:
+`NurbsSurface::offset_fitted(d, over, tol)` (ADR-0062). The result is a
+non-rational B-spline of degree at least 3 each way over the parameter
+box `over`, within `tol` of `S + d·N` at the same `(u, v)`. The surface's
+interior knots are its knots one continuity order lower. Past the
+surface's domain the offset is of the end span carried on, which is what
+`eval` evaluates there. A distance reaching a principal radius on its side
+is refused as `GeomError::OffsetFolds`, a collapsed row in the box as
+`Degenerate`, and a fit past `MAX_OFFSET_SPANS` a direction as
+`Fit(Diverged)`. A cone is offset on the nappe its
 normal is outward on; whether a face reaches the axis or the apex the
 move carries is the operation's to decide per face, so the cone's
 surface-level offset never collapses.

@@ -40,7 +40,7 @@ const INITIAL_SPANS: usize = 4;
 /// margin for what the samples miss, so the result meets the tolerance
 /// between them too. A ratio between sampling density and the residual's
 /// shape, not a tolerance.
-const FIT_MARGIN: f64 = 0.5;
+pub(crate) const FIT_MARGIN: f64 = 0.5;
 
 /// Why a fit did not produce a curve.
 #[derive(Debug, Clone, PartialEq)]
@@ -260,7 +260,9 @@ fn fit<const D: usize>(
     loop {
         let samples = sample_parameters(&breaks, degree);
         let curve = match ends {
-            Ends::Clamped => least_squares(f, degree, &breaks, &samples, meter)?,
+            Ends::Clamped => {
+                least_squares(f, degree, clamped_knots(&breaks, degree), &samples, meter)?
+            }
             // The last sample is the first one a period on.
             Ends::Periodic => {
                 least_squares_periodic(f, degree, &breaks, &samples[..samples.len() - 1], meter)?
@@ -339,7 +341,7 @@ fn fit<const D: usize>(
 
 /// The fit's sample parameters: every break, and `2p + 1` parameters
 /// evenly inside each span, ascending.
-fn sample_parameters(breaks: &[f64], degree: usize) -> Vec<f64> {
+pub(crate) fn sample_parameters(breaks: &[f64], degree: usize) -> Vec<f64> {
     let inside = 2 * degree + 1;
     let mut out = Vec::with_capacity(breaks.len() + (breaks.len() - 1) * inside);
     for w in breaks.windows(2) {
@@ -359,6 +361,52 @@ fn clamped_knots(breaks: &[f64], degree: usize) -> Vec<f64> {
     knots.extend_from_slice(&breaks[1..breaks.len() - 1]);
     knots.extend(core::iter::repeat_n(hi, degree + 1));
     knots
+}
+
+/// The least-squares B-spline of `degree` over the clamped `knots` nearest
+/// `data`, given at `samples` in order, its end samples interpolated.
+pub(crate) fn least_squares_samples(
+    degree: usize,
+    knots: &[f64],
+    samples: &[f64],
+    data: &[Point3],
+    meter: &mut Meter,
+) -> Result<Spline<3>, FitError> {
+    // The datum at sample `t`: `samples` holds `t` itself.
+    let at = |t: f64| data[samples.partition_point(|&s| s < t)];
+    least_squares(&at, degree, knots.to_vec(), samples, meter)
+}
+
+/// The least-squares tensor-product B-spline net over the clamped `knots`
+/// of `u` and of `v` nearest `data`, given on the grid of `samples[0] ×
+/// samples[1]` row-major over `u` (`data[i * samples[1].len() + j]` at
+/// `(samples[0][i], samples[1][j])`), each direction's end samples
+/// interpolated. On a grid the tensor product of the two directions'
+/// least-squares operators is the least-squares fit of the whole, so
+/// every row is fitted along `u` and then every column of the result
+/// along `v`. The net comes back row-major over `u`, non-rational.
+pub(crate) fn least_squares_grid(
+    degree: [usize; 2],
+    knots: [&[f64]; 2],
+    samples: [&[f64]; 2],
+    data: &[Point3],
+    meter: &mut Meter,
+) -> Result<Vec<Point3>, FitError> {
+    let [su, sv] = samples;
+    let mut rows: Vec<Vec<Point3>> = Vec::with_capacity(sv.len());
+    for j in 0..sv.len() {
+        let line: Vec<Point3> = (0..su.len()).map(|i| data[i * sv.len() + j]).collect();
+        let fit = least_squares_samples(degree[0], knots[0], su, &line, meter)?;
+        rows.push(fit.points().to_vec());
+    }
+    let n = rows.first().map_or(0, Vec::len);
+    let mut net = Vec::new();
+    for a in 0..n {
+        let along_v: Vec<Point3> = rows.iter().map(|r| r[a]).collect();
+        let fit = least_squares_samples(degree[1], knots[1], sv, &along_v, meter)?;
+        net.extend_from_slice(fit.points());
+    }
+    Ok(net)
 }
 
 /// The periodic knot vector over `breaks`: the `m` spans between them,
@@ -402,19 +450,20 @@ fn sample_data<const D: usize>(
     }
 }
 
-/// The least-squares B-spline through the end samples and nearest the
-/// rest (A9.7's normal equations, solved by a banded Cholesky
-/// factorisation since `NᵀN` has bandwidth `p`).
+/// The least-squares B-spline over the clamped `knots` through the end
+/// samples and nearest the rest (A9.7's normal equations, solved by a
+/// banded Cholesky factorisation since `NᵀN` has bandwidth `p`). An
+/// interior knot may repeat, down to a `C0` joint, as long as every span
+/// holds samples enough for the functions over it.
 #[allow(clippy::needless_range_loop)] // `j`, `l` index the basis row and the net together
 fn least_squares<const D: usize>(
     f: &dyn Fn(f64) -> OPoint<f64, Const<D>>,
     degree: usize,
-    breaks: &[f64],
+    knots: Vec<f64>,
     samples: &[f64],
     meter: &mut Meter,
 ) -> Result<Spline<D>, FitError> {
     let p = degree;
-    let knots = clamped_knots(breaks, p);
     let n = knots.len() - p - 1;
     let m = samples.len() - 1;
     let data = sample_data(f, samples, meter)?;

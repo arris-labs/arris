@@ -757,6 +757,12 @@ class GeomDegenerateSectionError(GeomError):
     b_kind: str
     fault: str
 
+class GeomOffsetFoldsError(GeomError):
+    kind: str
+    at: tuple[float, ...]
+    distance: float
+    radius: float
+
 class FitError(ArrisError):
     ...
 

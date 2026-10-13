@@ -939,7 +939,9 @@ impl Surface {
     ///
     /// `None` where no surface of the kind is the offset: a non-finite
     /// `distance`, an elliptic cylinder (the parallel curve of an ellipse
-    /// is no ellipse), a NURBS surface (no closed form; the NURBS cycle's),
+    /// is no ellipse), a NURBS surface (no closed form:
+    /// [`crate::NurbsSurface::offset_fitted`] fits one over a parameter
+    /// box, ADR-0062),
     /// and a radius driven to or through zero — a cylinder or a sphere
     /// whose new radius is not positive beyond rounding
     /// ([`arris_math::is_negligible`]), a torus whose new minor radius is

@@ -26,6 +26,17 @@ into its version (ADR-0027).
   surface, as it already did a line: crossings, touches within the
   tolerance, a pole, and `Coincident` for a conic lying on the surface.
   A NURBS curve against a NURBS surface is still refused as unsupported.
+- `NurbsSurface::offset_fitted` gives the offset of a NURBS surface over a
+  parameter box you name, as a B-spline within your tolerance of the true
+  offset, reaching past the surface's edge where the box does. A distance
+  past the surface's curvature on that side is refused as
+  `GeomError::OffsetFolds`, and a pole inside the box as `Degenerate`.
+
+### Breaking
+
+- `arris_geom::GeomError` gains `OffsetFolds { kind, at, distance,
+  radius }` (in Python, `GeomOffsetFoldsError`): add the arm to an
+  exhaustive `match`.
 
 ## 0.8.0 — 2026-10-13
 
