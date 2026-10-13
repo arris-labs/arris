@@ -1127,6 +1127,38 @@ corpus_tests! {
     /// across a bicubic B-spline face.
     #[ignore = "the oracle is wrong: Open CASCADE removes 69 676 of the drill's volume where its own solid classifier finds 145 600 ± 2 900 of the part inside the cylinder (40 000 samples) and Arris removes 143 792, so counts (643 faces to 649) and the measures differ; no closed form holds the real part (nurbs-analytic-section step 7, docs/BACKLOG.md)"]
     regression_nist_ctc_02_ap242_drill_x_nurbs_cylinder => run "regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder";
+    /// NIST CTC-05's AP203 solid #249, the convex edge between its rational
+    /// B-spline face and a torus filleted alone at the battery's radius: a
+    /// blend on a NURBS face, both ends on the B-spline's domain boundary
+    /// with a cylinder across.
+    #[ignore = "Unsupported(NURBS surface × torus surface): no walked stripe yet (plans/nurbs-face-blend); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, of negative volume and area"]
+    regression_nist_ctc_05_ap203_nurbs_torus_fillet => run "regression/nist-ctc-05-ap203-nurbs-torus-fillet";
+    /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
+    /// face one rational Bézier patch.
+    #[ignore = "Unsupported(NURBS surface × torus surface): no walked stripe yet (plans/nurbs-face-blend); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, 29 mm³ larger than the unfilleted part where a convex fillet removes about 2"]
+    regression_nist_ctc_05_ap242_nurbs_torus_fillet => run "regression/nist-ctc-05-ap242-nurbs-torus-fillet";
+    /// NIST FTC-10's solid #6434, the closed edge where two cylinders whose
+    /// axes cross off each other meet in a quartic, written as a B-spline,
+    /// filleted alone.
+    #[ignore = "Unsupported(NURBS curve × cylinder surface): the table holds no such pair and no walked stripe exists yet (plans/nurbs-face-blend)"]
+    regression_nist_ftc_10_cylinder_pair_bspline_fillet => run "regression/nist-ftc-10-cylinder-pair-bspline-fillet";
+    /// NIST FTC-11's AP242 edition 2 solid #1299, a plane-against-cylinder
+    /// edge written as a B-spline that hides a circle, filleted alone.
+    #[ignore = "Unsupported(NURBS curve × plane surface): the ring takes a circle and no walked stripe exists yet (plans/nurbs-face-blend)"]
+    regression_nist_ftc_11_ap242_bspline_circle_fillet => run "regression/nist-ftc-11-ap242-bspline-circle-fillet";
+    /// NIST CTC-01's solid #101, the elliptic crease where two equal
+    /// cylinders whose axes meet cross, filleted alone.
+    #[ignore = "Unsupported(cylinder surface × cylinder surface): the ball's centre runs on an ellipse and no walked stripe exists yet (plans/nurbs-face-blend, docs/BACKLOG.md)"]
+    regression_nist_ctc_01_crossing_cylinders_crease_fillet => run "regression/nist-ctc-01-crossing-cylinders-crease-fillet";
+    /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
+    /// B-spline edge that hides a circle, and a line, around a slot's end.
+    #[ignore = "Unsupported(NURBS curve × plane surface) at the chain's B-spline edge: no walked stripe, and no chain junction with one, yet (plans/nurbs-face-blend)"]
+    regression_nist_ftc_11_ap242_slot_chain_fillet => run "regression/nist-ftc-11-ap242-slot-chain-fillet";
+    /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
+    /// lines alternating with B-spline edges that hide the ellipses where a
+    /// plane meets oblique cylinders.
+    #[ignore = "Unsupported(NURBS curve × plane surface) at the chain's first B-spline edge: the plane against an oblique cylinder has no closed form, and no walked stripe or chain junction with one exists yet (plans/nurbs-face-blend)"]
+    regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring refuses. The desired body is Open CASCADE's.

@@ -1,0 +1,26 @@
+{
+  "description": "NIST's FTC-11, its AP242 edition 2's solid #1299 alone (excerpted with tools/oracle/excerpt.py): the convex edge between the plane f0 and the cylinder f39, written as a cubic B-spline of one span that hides a circle (r 0.2151, within 9.7e-5 of the faces' own section, the edge's tolerance 2.5e-3), its ends each a vertex of three edges with a plane across (f38, f40). Filleted alone at the battery's radius. Arris refuses it Unsupported(NURBS curve \u00d7 plane surface); Open CASCADE builds it (plans/nurbs-face-blend step 1). The desired result matches Open CASCADE's",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "nist_ftc_11_asme1_ap242-e2-1299.stp",
+      "sha256": "e4ed6568a8c397811140527681031c947c5c5a1f2491e6de58b78f085a5f5443",
+      "id": 1299
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          -22.759378515181545,
+          -0.9423761992111426,
+          0.43
+        ]
+      ],
+      "radius": 0.010499999999999999
+    }
+  ],
+  "result": "result"
+}

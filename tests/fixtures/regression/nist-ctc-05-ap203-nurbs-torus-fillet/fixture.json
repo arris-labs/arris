@@ -1,0 +1,26 @@
+{
+  "description": "NIST's CTC-05, its AP203-with-PMI edition's solid #249 (the committed excerpt real/nist-ctc-05-ap203-torus-elbow-s5): the convex edge between the rational B-spline face f109, degree (3, 2) over 2 \u00d7 1 spans, and the torus f111, filleted alone at the battery's radius. The edge's curve is a cubic B-spline that is no circle (off the best by 9.3e-3), the face's least principal radius on the ball's side over the stripe is 127 against r 0.889, and both ends lie on the face's domain boundary with a cylinder across (f10, f19), each a vertex of three edges, so the ball's reach past either end leaves the B-spline's domain by r (a tenth of its width there). Arris refuses it Unsupported(NURBS surface \u00d7 torus surface); Open CASCADE builds a body BRepCheck_Analyzer finds invalid, whose measures are the oracle's (plans/nurbs-face-blend step 1). The desired result is a walked stripe matching them",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ctc-05-ap203-torus-elbow-s5/nist_ctc_05_asme1_ap203-249.stp",
+      "sha256": "a604bd2407c71a7a11f7decafd7277cf22fe07743a824c8147b666efe4d53060",
+      "id": 249
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          150.98396231882393,
+          31.26068001247087,
+          56.54476386520281
+        ]
+      ],
+      "radius": 0.8889999999999987
+    }
+  ],
+  "result": "result"
+}

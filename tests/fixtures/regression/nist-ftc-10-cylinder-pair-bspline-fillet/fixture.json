@@ -1,0 +1,26 @@
+{
+  "description": "NIST's FTC-10 (the committed real/nist-ftc-10), solid #6434: the closed convex edge between the cylinders f0 and f146, whose axes cross off each other, written as a cubic B-spline of 16 spans. The two cylinders meet in a quartic (the edge lies within 4e-4 of their traced section, its tolerance 6e-4), so no conic hides in it, and the closed edge has no ends. Filleted alone at r 0.5, the battery's radius from its sample today. Arris refuses it Unsupported(NURBS curve \u00d7 cylinder surface); Open CASCADE builds it (plans/nurbs-face-blend step 1). The desired result is a walked stripe over the two cylinders' exact offsets",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ftc-10/nist_ftc_10_asme1_rb.stp",
+      "sha256": "2bd726f9fe86aeb96ab517ce876e5696e7951310df5c4fbca36276d65879067b",
+      "id": 6434
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          -9.25,
+          19.730825792344497,
+          15.5
+        ]
+      ],
+      "radius": 0.5
+    }
+  ],
+  "result": "result"
+}

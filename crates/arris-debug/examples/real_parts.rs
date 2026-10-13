@@ -21,7 +21,10 @@
 //!   fixtures — committed, or the scratch ones `tools/real-parts.sh` leaves
 //!   under `target/real-parts/work/` — that Arris refuses as the NURBS
 //!   cycle's, with the pair it names and the NURBS faces the tool reaches
-//!   (`arris_debug::nurbs_census`).
+//!   (`arris_debug::nurbs_census`). `real_parts --nurbs-fillet
+//!   <fixture-dir>...` takes the fillet stages the NURBS cycle blocks apart
+//!   edge by edge, each filleted alone in both kernels
+//!   (`nurbs_census::fillet_census_dir`).
 //! - `real_parts --run-over <file.stp>...` and `--run-over-committed` take
 //!   every `BlendTooLarge` edge of those solids apart by the site that
 //!   refused it and put a sample of each cause to Open CASCADE alone at
@@ -54,7 +57,7 @@ type Error = Box<dyn std::error::Error>;
 
 fn usage() -> ! {
     eprintln!(
-        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --gaps <file.stp>...\n       real_parts --gaps-committed\n       real_parts --nurbs <fixture-dir>...\n       real_parts --tangent-chain <file.stp>...\n       real_parts --run-over <file.stp>...\n       real_parts --run-over-committed\n       real_parts --vertex-blend <file.stp>...\n       real_parts --vertex-blend-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
+        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --gaps <file.stp>...\n       real_parts --gaps-committed\n       real_parts --nurbs <fixture-dir>...\n       real_parts --nurbs-fillet <fixture-dir>...\n       real_parts --tangent-chain <file.stp>...\n       real_parts --run-over <file.stp>...\n       real_parts --run-over-committed\n       real_parts --vertex-blend <file.stp>...\n       real_parts --vertex-blend-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
     );
     std::process::exit(2);
 }
@@ -163,6 +166,16 @@ fn main() -> Result<(), Error> {
                 parts.push((name.to_string(), nurbs_census::census_dir(path)?));
             }
             print!("{}", nurbs_census::markdown(&parts));
+            Ok(())
+        }
+        Some("--nurbs-fillet") if args.len() >= 2 => {
+            let mut parts = Vec::new();
+            for dir in &args[1..] {
+                let path = Path::new(dir);
+                let name = path.file_name().and_then(|s| s.to_str()).unwrap_or(dir);
+                parts.push((name.to_string(), nurbs_census::fillet_census_dir(path)?));
+            }
+            print!("{}", nurbs_census::fillet_markdown(&parts));
             Ok(())
         }
         Some("--census-committed") => {
