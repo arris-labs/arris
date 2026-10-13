@@ -201,7 +201,7 @@ bound has to be established here.
     2.5e-8`, takes 64 × 128 bicubic spans and 4.4 s each way in the test
     profile. Step 3 offsets only the ball's band, since 8192 patches
     would be the tracer's cost otherwise.
-- [ ] Step 3 **[3]** — **The spine and the contacts.**
+- [x] Step 3 **[3]** — **The spine and the contacts.**
   1. Trace the section of the two offsets with `trace_section`: the
      NURBS offset against an analytic one through ADR-0061, or two exact
      offsets through the quadric and torus tracers.
@@ -222,6 +222,35 @@ bound has to be established here.
     and circle, and the contacts within it of the closed form's;
   - CTC-05's NURBS × torus edge: its spine traced, with timing;
   - a property over random poses of the twin pairs.
+
+  **Done (2026-10-14).** `blend/walked.rs`: `spine` finds the ball in
+  the edge's normal plane at 17 samples, offsets each NURBS face over the
+  band their contacts span widened by the reach (two radii past each
+  end) plus a radius, traces the offsets' section and takes the one piece
+  within the tolerance of both end balls. `Spine::ball` snaps a traced
+  centre by the least Newton step, halved until it shortens the residual.
+  Measured and found:
+  - **CTC-05's e256 vanishes at v84.** Its faces' normals are 8e-6 rad
+    apart there, tangent within the edge's tolerance (7.7e-3, ADR-0045's
+    test), and the dihedral grows to about 9° at v115. No ball touches
+    both faces exactly in the normal plane at v84, and the offsets' section
+    crosses itself there. So an end where the faces are tangent is a
+    **vanishing end**: its ball is pinned to the edge's point on the
+    common normal and located on the piece within `√(2r·tangency)`, and the
+    spine stops there. Steps 4 and 5 take it (below). The spine is traced
+    in 0.53 s, so the 60 s question is closed.
+  - The snap moves a traced centre by at most `0.02 τ / sin(θ/2)` on
+    CTC-05 and the twins, against the bound `τ/2 / sin(θ/2)` the tests
+    hold, with `θ` the dihedral there.
+  - **The offset's span bound was too low.** A rational twin of a cylinder
+    of radius 3 to 10 takes 512 bicubic spans round a whole turn at
+    `2.5e-8`. `MAX_OFFSET_SPANS` is now 2048 a direction, with
+    `MAX_OFFSET_PATCHES` (65536) on the product: an ADR-0062 §2
+    amendment. Each property shard of the twin pairs takes about 13 s.
+  - A NURBS isoline the tracer returns exact over a closed direction is a
+    loop over clamped knots, so the shared `Piece` now treats it as one
+    with its end points equal to rounding. Before, a closed isoline counted
+    as open and an open one as a loop of `2π`.
 - [ ] Step 4 **[3]** — **The rolling-ball surface.** At each spine
   sample, the ball's arc between the two contacts is an exact rational
   quadratic, always two segments, so the `u` structure is fixed. Skin the
@@ -230,6 +259,9 @@ bound has to be established here.
   of the ball's sphere and both boundary isocurves are within it of their
   faces. The contact edges are the isocurves `u = 0` and `u = 1`: their
   pcurve on the blend is a `Line`, and on each face it is `pcurve_on`.
+  At a vanishing end (step 3) the arc collapses to the edge's point, so
+  the surface's end isocurve is a pole of it: the arcs are fitted up to it
+  and the net's last row is collapsed onto it.
   Tests:
   - the twin pairs of step 3 against the closed form's cylinder and
     torus (radial deviation, and both contacts' tolerance under the
@@ -241,7 +273,9 @@ bound has to be established here.
   - The dispatch tries the table, then the walked stripe for a NURBS ×
     analytic pair, for an analytic pair outside the table, and for a
     table pair whose edge is not the table's curve.
-  - Ends: a closed edge has none. An analytic face across gets
+  - Ends: a closed edge has none. A vanishing end (step 3, CTC-05's v84)
+    has no face across to trace: the stripe ends at the vertex, both
+    contacts meeting the edge there. An analytic face across gets
     `traced_end` over the NURBS blend through ADR-0061. A NURBS face
     across is `Unsupported`, and a sharp vertex with another blend keeps
     its refusal.
@@ -369,7 +403,5 @@ bound has to be established here.
   plan beyond NURBS faces. It is in because CTC-01 and the B-spline edges
   are in the census and the stripe takes them for free. **Human**, before
   `/work` reaches step 9: keep it, or cut it to a follow-up plan.
-- ⚠ OPEN: if the spine's trace on CTC-05 runs past the ADR-0026 §6
-  budget (60 s), profile first or record and continue. **Agent**, at
-  step 3. The default is to record it and add a backlog line beside
-  ADR-0061's.
+- The spine's trace on CTC-05 against the ADR-0026 §6 budget (60 s):
+  **closed** at step 3, which traces it in 0.53 s.

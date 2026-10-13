@@ -6,10 +6,10 @@
 //! (`fit_branch`) — the surface stays exact, the end curve is the one
 //! fitted item, held to the section as every traced section is.
 
-use core::f64::consts::{PI, TAU};
+use core::f64::consts::PI;
 
 use arris_geom::{Curve, FitError, GeomError, SectionBranch, Surface, fit_branch, trace_section};
-use arris_math::{Aabb, Interval, Meter, Point3, Tolerance};
+use arris_math::{Aabb, Interval, Meter, Point3, Tolerance, is_negligible};
 
 use crate::error::{OpError, fault_of};
 
@@ -42,27 +42,52 @@ pub(super) struct TracedEnd {
     pub(super) gaps: [f64; 2],
 }
 
-/// What a trim point can lie on in a trace: a branch, or a tube circle
-/// the tracer returns exact.
+/// What a trim point, or a walked stripe's ball centre, can lie on in a
+/// trace: a branch, or a tube circle or a NURBS isoline the tracer returns
+/// exact.
 #[derive(Clone, Copy)]
-enum Piece<'a> {
+pub(super) enum Piece<'a> {
     Branch(&'a SectionBranch),
     Circle(&'a Curve),
 }
 
 impl Piece<'_> {
-    fn point(&self, t: f64) -> Point3 {
+    /// The point at `t`, wrapped round a loop.
+    pub(super) fn point(&self, t: f64) -> Point3 {
         match self {
             Piece::Branch(b) => b.point(t),
-            Piece::Circle(c) => c.point(t),
+            Piece::Circle(c) => match (c.period(), self.period()) {
+                (None, Some(period)) => {
+                    let lo = c.domain().lo();
+                    c.point(lo + (t - lo).rem_euclid(period))
+                }
+                _ => c.point(t),
+            },
         }
     }
 
-    /// The period of a loop, `None` for an open branch.
-    fn period(&self) -> Option<f64> {
+    /// The period of a loop, `None` for an open branch or an open
+    /// isoline. An isoline of a NURBS surface closed in the other
+    /// direction is a loop over its clamped knots, its two ends one point
+    /// to rounding.
+    pub(super) fn period(&self) -> Option<f64> {
         match self {
             Piece::Branch(b) => b.is_closed().then(|| b.domain().hi()),
-            Piece::Circle(_) => Some(TAU),
+            Piece::Circle(c) => c.period().or_else(|| {
+                let domain = c.domain();
+                let (a, b) = (c.point(domain.lo()), c.point(domain.hi()));
+                (domain.is_bounded() && is_negligible((a - b).norm(), a.coords.norm()))
+                    .then(|| domain.length())
+            }),
+        }
+    }
+
+    /// The parameters the piece is defined over: a branch's domain, a
+    /// circle's turn or an isoline's knot range.
+    pub(super) fn domain(&self) -> Interval {
+        match self {
+            Piece::Branch(b) => b.domain(),
+            Piece::Circle(c) => c.domain(),
         }
     }
 
@@ -85,7 +110,7 @@ impl Piece<'_> {
     /// The parameter of the point of the piece nearest `q`, and how far
     /// it is. On a branch the nearest of samples [`LOCATE_STEP`] apart,
     /// narrowed by a golden-section search over the two steps beside it.
-    fn locate(&self, q: Point3) -> Result<(f64, f64), OpError> {
+    pub(super) fn locate(&self, q: Point3) -> Result<(f64, f64), OpError> {
         match self {
             Piece::Circle(c) => {
                 let p = c.project(q).map_err(fault_of)?;

@@ -19,13 +19,21 @@ use crate::{GeomError, GeomKind, SurfaceKind};
 pub const OFFSET_FIT_DEGREE: usize = 3;
 
 /// The most spans a fitted offset may refine to in either direction before
-/// it gives up with [`FitError::Diverged`]: a structural bound that makes
-/// every fit terminate, as [`crate::MAX_FIT_SPANS`] does for a curve. The
-/// grid it samples grows with the product of the two directions' spans,
-/// so the bound is the square root of the curve's: 256 bicubic spans each
-/// way are two thousand samples a side. A surface folded so tightly that it
-/// needs more is one the offset would cusp on anyway.
-pub const MAX_OFFSET_SPANS: usize = 256;
+/// it gives up with [`FitError::Diverged`]: with [`MAX_OFFSET_PATCHES`], a
+/// structural bound that makes every fit terminate, as
+/// [`crate::MAX_FIT_SPANS`] does for a curve. One direction may run long
+/// where the other stays short: a rational twin of a cylinder of radius 3
+/// to 10 takes 512 bicubic spans round a whole turn at `2.5·10⁻⁸`, and 2
+/// along its axis, where a radius of 2 takes 256 (ADR-0062 §2).
+pub const MAX_OFFSET_SPANS: usize = 2048;
+
+/// The most patches, the product of the two directions' spans, a fitted
+/// offset may refine to before it gives up with [`FitError::Diverged`]:
+/// the grid it samples and the tracer that walks it grow with the product,
+/// so the bound is the square of 256 bicubic spans, two thousand samples a
+/// side. A surface folded so tightly that it needs more is one the offset
+/// would cusp on anyway.
+pub const MAX_OFFSET_PATCHES: usize = 65536;
 
 /// The fewest spans each direction's first fit takes; refinement splits
 /// from there.
@@ -116,7 +124,8 @@ impl NurbsSurface {
     /// one's.
     ///
     /// Guarantees: deterministic; terminates, refining no direction past
-    /// [`MAX_OFFSET_SPANS`]; `meter` is ticked once per sample of the
+    /// [`MAX_OFFSET_SPANS`] and the two past [`MAX_OFFSET_PATCHES`];
+    /// `meter` is ticked once per sample of the
     /// surface and once per check.
     ///
     /// Errors:
@@ -129,7 +138,8 @@ impl NurbsSurface {
     ///   not bounded or has an empty side.
     /// - [`GeomError::Fit`]: the tolerance is not finite and positive
     ///   ([`FitError::InvalidTolerance`]), or the fit still misses with
-    ///   [`MAX_OFFSET_SPANS`] spans ([`FitError::Diverged`]) — a crease of
+    ///   [`MAX_OFFSET_SPANS`] spans in a direction or
+    ///   [`MAX_OFFSET_PATCHES`] patches ([`FitError::Diverged`]) — a crease of
     ///   the surface, whose offset tears, ends here.
     /// - [`GeomError::Interrupted`]: the caller stopped it.
     ///
@@ -308,9 +318,9 @@ impl NurbsSurface {
                     return Ok(fitted);
                 }
             }
+            let spans = [0, 1].map(|k| breaks[k].spans() + split[k].iter().filter(|&&x| x).count());
             for k in 0..2 {
-                let spans = breaks[k].spans() + split[k].iter().filter(|&&x| x).count();
-                if spans > MAX_OFFSET_SPANS {
+                if spans[k] > MAX_OFFSET_SPANS || spans[0] * spans[1] > MAX_OFFSET_PATCHES {
                     return Err(FitError::Diverged {
                         spans: breaks[k].spans(),
                         deviation: worst,

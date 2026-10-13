@@ -95,6 +95,12 @@ non-rational, with degree `max(3, p)` by `max(3, q)`.
   `1e-6`, where charging both directions gave 32 × 32).
 - No direction refines past `MAX_OFFSET_SPANS` (256), a structural
   bound like the curve fit's.
+  *Amended 2026-10-14 (plan step 3):* the bound is 2048 spans a
+  direction and 65536 patches in all (`MAX_OFFSET_PATCHES`, the old
+  bound's square). A rational twin of a cylinder of radius 3 to 10
+  takes 512 spans round a whole turn at `2.5e-8` and 2 along its axis,
+  which 256 a direction refused; the product is what the grid and the
+  tracer pay for.
 
 **3. Past the domain, the end span carried on.** Where the ball reaches
 past the face's domain, the offset is of the end span's own polynomial
@@ -121,6 +127,16 @@ surface's own isocurve. No offset is involved.
   walked stripe ends on the ball's arc in the vertex's normal plane,
   exact, with the spine's end pinned to that ball's centre. The chain's
   next stripe, from the table or walked, shares that arc.
+- *Amended 2026-10-14 (plan step 3):* an end where the edge's two faces
+  are tangent within ADR-0045's test is a **vanishing end**. No ball
+  touches both faces exactly there, and the offsets' section crosses
+  itself, so the ball is pinned to the edge's point on the faces' common
+  normal. It is located on the traced piece within `√(2r·τₑ)`, with
+  `τₑ` the tolerance the faces were found tangent within: surfaces a gap
+  `τₑ` apart that curve away by `1/r` meet that far along. The spine
+  stops there, and the stripe narrows to the vertex. CTC-05's e256
+  vanishes at v84, its normals 8e-6 rad apart against an edge tolerance
+  of 7.7e-3. A face turning tangent inside the edge is refused.
 
 **6. The refusals, each by name:**
 

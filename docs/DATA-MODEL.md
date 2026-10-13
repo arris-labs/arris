@@ -136,8 +136,8 @@ interior knots are its knots one continuity order lower. Past the
 surface's domain the offset is of the end span carried on, which is what
 `eval` evaluates there. A distance reaching a principal radius on its side
 is refused as `GeomError::OffsetFolds`, a collapsed row in the box as
-`Degenerate`, and a fit past `MAX_OFFSET_SPANS` a direction as
-`Fit(Diverged)`. A cone is offset on the nappe its
+`Degenerate`, and a fit past `MAX_OFFSET_SPANS` a direction or
+`MAX_OFFSET_PATCHES` in all as `Fit(Diverged)`. A cone is offset on the nappe its
 normal is outward on; whether a face reaches the axis or the apex the
 move carries is the operation's to decide per face, so the cone's
 surface-level offset never collapses.

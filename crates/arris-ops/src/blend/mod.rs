@@ -36,6 +36,7 @@ mod mixed;
 mod ring;
 mod stripe;
 mod traced;
+mod walked;
 
 fn degenerate(entities: Vec<Shape>, reason: Reason) -> OpError {
     OpError::Degenerate { entities, reason }
