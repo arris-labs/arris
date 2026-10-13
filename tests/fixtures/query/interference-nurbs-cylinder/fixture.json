@@ -1,6 +1,6 @@
 {
   "kind": "query",
-  "description": "a cylinder r 5, h 10 read from STEP with every face a NURBS surface: a box crossing its wall is refused as unsupported (common has no closed form for a NURBS face meeting the other solid, ADR-0055) where Open CASCADE answers overlapping; a box far from it is apart, answered through distance",
+  "description": "a cylinder r 5, h 10 read from STEP with every face a NURBS surface: a box crossing its wall is overlapping, its NURBS face met by the box's planes in an exact section (ADR-0061) and the common measured, as Open CASCADE answers; a box far from it is apart in Open CASCADE's answer, which Arris refuses as unsupported: the distance of a NURBS face from the box has no closed form yet",
   "steps": [
     {"name": "part", "op": "step", "file": "nurbs-cylinder.step", "sha256": "7a14cfcc3f0a6eb882ad08e4d6e1a547005b3ff9fd77c2cde0977176727815d1", "id": 15},
     {"name": "crossing", "op": "box", "min": [3, -2, 3], "max": [8, 2, 7]},
@@ -8,8 +8,8 @@
   ],
   "result": "part",
   "queries": [
-    {"label": "a box through the NURBS wall", "interference": {"a": {"step": "part"}, "b": {"step": "crossing"}}, "expect": "overlapping", "expect_refused": "unsupported"},
-    {"label": "a box through the NURBS wall, swapped", "interference": {"a": {"step": "crossing"}, "b": {"step": "part"}}, "expect": "overlapping", "expect_refused": "unsupported"},
+    {"label": "a box through the NURBS wall", "interference": {"a": {"step": "part"}, "b": {"step": "crossing"}}, "expect": "overlapping"},
+    {"label": "a box through the NURBS wall, swapped", "interference": {"a": {"step": "crossing"}, "b": {"step": "part"}}, "expect": "overlapping"},
     {"label": "a box far from the NURBS cylinder", "interference": {"a": {"step": "part"}, "b": {"step": "far"}}, "expect": "apart", "expect_refused": "unsupported"},
     {"label": "a box far from the NURBS cylinder, swapped", "interference": {"a": {"step": "far"}, "b": {"step": "part"}}, "expect": "apart", "expect_refused": "unsupported"}
   ]

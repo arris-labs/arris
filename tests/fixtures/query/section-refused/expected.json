@@ -1,7 +1,7 @@
 {
   "kind": "query",
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "2646bdb615e6873a2b031c9e3171f077621b2916ff4a4ff3b1f277e38b9c825b",
+  "recipe_sha256": "beb79f20c931fbe93ac37df8e990610897a52e821a19b00d620079d1fdadfe62",
   "results": {
     "default": {
       "queries": [
@@ -18,22 +18,6 @@
             "edges": 7,
             "faces": 2,
             "loops": 2,
-            "none": false
-          }
-        },
-        {
-          "label": "across a NURBS cylinder",
-          "section": {
-            "area": 78.53629811476206,
-            "centroid": [
-              0.00016585319369433194,
-              -0.00031260400392368344,
-              5.0
-            ],
-            "edge_length": 31.41587374566254,
-            "edges": 1,
-            "faces": 1,
-            "loops": 1,
             "none": false
           }
         }

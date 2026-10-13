@@ -119,9 +119,10 @@ corpus_tests! {
     /// in; an L bracket against its bolt, the head resting on the foot
     /// (ADR-0055).
     query_interference_parts => query "query/interference-parts";
-    /// A B-spline cylinder from STEP: a box crossing its wall is refused as
-    /// unsupported, a box far from it is apart (ADR-0055).
-    query_interference_nurbs_refused => query "query/interference-nurbs-refused";
+    /// A B-spline cylinder from STEP: a box crossing its wall overlaps it
+    /// (ADR-0061), a box far from it is apart in Open CASCADE's answer and
+    /// refused here (ADR-0055).
+    query_interference_nurbs_cylinder => query "query/interference-nurbs-cylinder";
     /// A block, cylinder, tube, ball, cone, torus and U-bracket cut by planes
     /// across, along and through their seams and apex (ADR-0056).
     query_section_primitives => query "query/section-primitives";
@@ -136,9 +137,11 @@ corpus_tests! {
     /// blend, a shelled box across its walls (ADR-0056).
     query_section_parts => query "query/section-parts";
     /// A plane tangent to a post along a ruling where it crosses the block
-    /// it is fused to, and a NURBS cylinder: refused where Open CASCADE
-    /// answers (ADR-0056).
+    /// it is fused to: refused where Open CASCADE answers (ADR-0056).
     query_section_refused => query "query/section-refused";
+    /// A B-spline cylinder from STEP cut across its wall: the section of a
+    /// NURBS face against a plane (ADR-0061).
+    query_section_nurbs_cylinder => query "query/section-nurbs-cylinder";
     /// Two bodies with off-axis cones that pruning skips: the bars' distance.
     query_distance_cones_pruned => query "query/distance-cones-pruned";
     primitive_box => run "primitive/box";

@@ -7,11 +7,9 @@
 use core::f64::consts::{PI, TAU};
 
 use arris_check::classify::{Classification, classify_point};
-use arris_check::{
-    Level, Lump, LumpError, Report, ShellNestingFault, Unchecked, Violation, check, lumps,
-};
+use arris_check::{Level, Lump, LumpError, Report, ShellNestingFault, Violation, check, lumps};
 use arris_debug::sample;
-use arris_geom::{Curve, Curve2, NurbsCurve, Surface, SurfaceKind};
+use arris_geom::{Curve, Curve2, NurbsCurve, Surface};
 use arris_math::{
     Frame, Frame2, Handedness, Interval, Point2, Point3, Precision, UnitVec2, UnitVec3, Vec2, Vec3,
 };
@@ -177,31 +175,20 @@ fn the_sample_bodies_are_clean_at_full_and_decide_every_row() {
     }
 }
 
-/// The B-spline probe box: the intersector has no closed form for a plane
-/// against a NURBS surface, so the four pairs its NURBS face shares an
-/// edge with are listed as undecided — not passed, and not a violation.
-/// The fifth pair, with the opposite face, is decided by the boxes: they
-/// are apart, so the faces share no point and no intersector is asked.
+/// The B-spline probe box: its NURBS face against the four planes it
+/// shares an edge with is decided, the plane meeting the face in a traced
+/// section (ADR-0061) that S5 reads as it reads a plane's; the fifth
+/// pair, with the opposite face, is decided by the boxes. Only a pair of
+/// two NURBS faces is listed undecided, and the probe has one. `Fast`
+/// neither runs the row nor claims it decided anything.
 #[test]
-fn a_nurbs_face_pair_is_unchecked_and_not_a_violation() {
+fn a_nurbs_face_against_planes_is_decided_and_not_a_violation() {
     let mut m = Model::default();
     let body =
         sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap();
     let report = check(&m, body, Level::Full);
     assert!(report.is_ok(), "{report}");
-    assert_eq!(report.unchecked().len(), 4, "{report}");
-    for u in report.unchecked() {
-        assert_eq!(u.code(), "S5");
-        let Unchecked::FacePair { kinds, .. } = *u else {
-            panic!("{u}")
-        };
-        assert!(
-            kinds.0 == SurfaceKind::Nurbs || kinds.1 == SurfaceKind::Nurbs,
-            "{u}"
-        );
-    }
-    assert!(report.to_string().contains("S5? "), "{report}");
-    // `Fast` neither runs the row nor claims it decided anything.
+    assert!(report.unchecked().is_empty(), "{report}");
     assert!(check(&m, body, Level::Fast).unchecked().is_empty());
 }
 
@@ -1102,9 +1089,7 @@ fn b1_an_outer_shell_inside_another() {
 
 /// B1: a void inside the B-spline probe box. A ray crosses its NURBS
 /// face as it crosses a plane, so the void is placed inside the probe:
-/// no B1 row is left unchecked, and `lumps` is the one lump. The NURBS
-/// face against the probe's planes is still S5's to leave unchecked: the
-/// surface intersector has no form for the pair.
+/// no B1 row is left unchecked, and `lumps` is the one lump.
 #[test]
 fn b1_a_void_in_a_nurbs_probe_is_placed_by_its_rays() {
     let mut m = Model::default();

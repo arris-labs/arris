@@ -11,8 +11,7 @@
 //! meet in fitted curves on both surfaces, bit for bit under a swap
 //! (ADR-0018), and every fitted section is held to the exact branch it
 //! was traced from, two fits of it in two regions within half a
-//! tolerance of each other (ADR-0022). Every other surface pair — a plane oblique to a cone's
-//! axis, two tori on different axes — is `Unsupported`.
+//! tolerance of each other (ADR-0022). Every other surface pair — two NURBS patches — is `Unsupported`.
 
 use core::f64::consts::{FRAC_PI_2, TAU};
 
@@ -789,16 +788,23 @@ fn every_other_pair_is_unsupported() {
     check((any_surface(), any_surface()), |(a, b)| {
         // Every pair of analytic surfaces is decided in every pose — by a
         // closed form, an exact conic, the ruled tracer (ADR-0018) or the
-        // torus's (ADR-0019) — so `Unsupported` is left the pairs with a
-        // `Surface::Nurbs` in them, which are the NURBS cycle's.
+        // torus's (ADR-0019) — and a NURBS patch against an analytic
+        // surface is traced in its own parameters (ADR-0061): a section
+        // the walk resolves, or one it refuses by name as degenerate, or a
+        // patch flush with the other surface, `Unsupported`. Two NURBS
+        // patches are the NURBS cycle's third item: always `Unsupported`.
         let nurbs = |k| k == SurfaceKind::Nurbs;
-        let supported = !nurbs(a.kind()) && !nurbs(b.kind());
+        let both = nurbs(a.kind()) && nurbs(b.kind());
+        let either = nurbs(a.kind()) || nurbs(b.kind());
         match intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default()) {
-            Ok(_) => prop_assert!(supported, "{a:?} vs {b:?} should be unsupported"),
+            Ok(_) => prop_assert!(!both, "{a:?} vs {b:?} should be unsupported"),
             Err(GeomError::Unsupported { a: ka, b: kb }) => {
-                prop_assert!(!supported, "{a:?} vs {b:?} has a closed form");
+                prop_assert!(either, "{a:?} vs {b:?} has a closed form");
                 prop_assert_eq!(ka, GeomKind::Surface(a.kind()));
                 prop_assert_eq!(kb, GeomKind::Surface(b.kind()));
+            }
+            Err(GeomError::DegenerateSection { .. }) => {
+                prop_assert!(either && !both, "{a:?} vs {b:?} is decided in closed form");
             }
             Err(e) => prop_assert!(false, "{e}"),
         }

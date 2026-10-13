@@ -77,7 +77,13 @@ pub(crate) fn traced(
     meter: &mut Meter,
 ) -> Result<SurfaceIntersection, GeomError> {
     let trace = trace_section(a, b, within, tol, meter)?;
-    let circles = trace.circles().iter().map(|c| {
+    // An isoline on a collapsed row (a pole, an apex) is one point long:
+    // the singular point it is, and not a curve.
+    let (poles, lines): (Vec<_>, Vec<_>) = trace
+        .circles()
+        .iter()
+        .partition(|c| collapsed(&c.circle, tol));
+    let circles = lines.into_iter().map(|c| {
         Ok(MeetCurve {
             curve: c.circle.clone(),
             kind: if c.tangent {
@@ -95,7 +101,7 @@ pub(crate) fn traced(
             })
         }))
         .collect::<Result<Vec<_>, _>>()?;
-    let points: Vec<MeetPoint> = trace
+    let mut points: Vec<MeetPoint> = trace
         .points()
         .iter()
         .map(|p| MeetPoint {
@@ -107,11 +113,44 @@ pub(crate) fn traced(
             },
         })
         .collect();
+    for pole in poles {
+        let Curve::Nurbs(line) = &pole.circle else {
+            continue;
+        };
+        let Some(&point) = line.control_points().first() else {
+            continue;
+        };
+        if points
+            .iter()
+            .all(|p| (p.point - point).norm() > 2.0 * tol.linear)
+        {
+            points.push(MeetPoint {
+                point,
+                kind: if pole.tangent {
+                    MeetKind::Touch
+                } else {
+                    MeetKind::Crossing
+                },
+            });
+        }
+    }
     Ok(if curves.is_empty() && points.is_empty() {
         SurfaceIntersection::Empty
     } else {
         SurfaceIntersection::Meets { curves, points }
     })
+}
+
+/// Whether an exact isoline is one point to the tolerance: a NURBS line
+/// whose control points all lie within `tol.linear` of the first.
+fn collapsed(line: &Curve, tol: Tolerance) -> bool {
+    let Curve::Nurbs(line) = line else {
+        return false;
+    };
+    let [first, rest @ ..] = line.control_points() else {
+        return false;
+    };
+    rest.iter().all(|p| (p - first).norm() <= tol.linear)
 }
 
 /// The section of two surfaces as the intersector traces it where it has

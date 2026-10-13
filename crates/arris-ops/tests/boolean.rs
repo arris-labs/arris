@@ -512,33 +512,34 @@ fn two_runs_are_identical() {
     assert!(i.to_string().starts_with("interferences "));
 }
 
-/// The one surface kind the intersector has no arm for is a NURBS patch
-/// (the NURBS cycle's): the refusal names the pair, the first operand's
-/// face first.
+/// The one surface pair the intersector has no arm for is two NURBS
+/// patches (the NURBS cycle's third item): the refusal names the pair, the
+/// first operand's face first. A plane against a NURBS patch is an
+/// ordinary pair (ADR-0061).
 #[test]
 fn an_unsupported_surface_pair_names_the_faces() {
     let mut m = Model::default();
-    let (cube, _) = primitive_box(
-        &mut m,
-        Point3::new(-1.0, -1.0, -1.0),
-        Point3::new(1.0, 1.0, 1.0),
-    )
-    .unwrap();
     let patchwork =
         sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
-    let err = interferences(&m, cube, patchwork).unwrap_err();
+    let shifted = sample::cuboid_nurbs(
+        &mut m,
+        Point3::new(1.0, 1.0, 0.0),
+        Point3::new(3.0, 3.0, 2.0),
+    )
+    .unwrap();
+    let err = interferences(&m, patchwork, shifted).unwrap_err();
     match err {
         OpError::Unsupported { a, b } => {
-            assert_eq!(a.0, GeomKind::Surface(SurfaceKind::Plane));
+            assert_eq!(a.0, GeomKind::Surface(SurfaceKind::Nurbs));
             assert_eq!(b.0, GeomKind::Surface(SurfaceKind::Nurbs));
             assert!(
-                m.faces(cube)
+                m.faces(patchwork)
                     .unwrap()
                     .iter()
                     .any(|f| f.shape().id == a.1.id)
             );
             assert!(
-                m.faces(patchwork)
+                m.faces(shifted)
                     .unwrap()
                     .iter()
                     .any(|f| f.shape().id == b.1.id)

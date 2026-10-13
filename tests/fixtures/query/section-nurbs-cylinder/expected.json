@@ -1,0 +1,27 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "28475d4323c1bc590579a91599169a16e55fd7b8469b5250a837eafdfa44f7ff",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "across the NURBS cylinder",
+          "section": {
+            "area": 78.53629811476206,
+            "centroid": [
+              0.00016585319369433194,
+              -0.00031260400392368344,
+              5.0
+            ],
+            "edge_length": 31.41587374566254,
+            "edges": 1,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        }
+      ]
+    }
+  }
+}

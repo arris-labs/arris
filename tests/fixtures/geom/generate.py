@@ -1282,6 +1282,84 @@ def c8_line_nurbs_hits():
     }
 
 
+# --- c10-nurbs-analytic-pairs ------------------------------------------------------
+
+
+def c10_nurbs_analytic_pairs():
+    """NURBS surfaces against the analytic kinds (plan nurbs-analytic-section
+    step 5), in the tilt pose: a bicubic of two spans each way against a
+    plane, a cylinder that leaves it as a loop inside and one that clips it
+    at its edges, a sphere, a cone and a torus; an octant of a sphere (a
+    rational biquadratic with a pole) against a plane and a cylinder; an
+    extruded quadratic against a plane along two of its rulings, and
+    against a sphere. One pair the other way round."""
+    f = POSES["tilt"]
+
+    def net(rows):
+        return [[f.to_world(p) for p in row] for row in rows]
+
+    def local_frame(origin, z, x):
+        return Frame(f.to_world(origin), f.vec(z), f.vec(x))
+
+    grid = [0.0, 1.0, 2.0, 3.0, 4.0]
+    knots = [0.0] * 4 + [1.0] + [2.0] * 4
+    surfaces = {
+        "hills": {
+            "type": "nurbs",
+            "degree": [3, 3],
+            "knots": [knots, knots],
+            "control_points": net([[[x, y, 0.3 * (x - 2.0) * (y - 2.0) + 0.1 * x] for y in grid] for x in grid]),
+            "weights": [[1.0] * 5 for _ in grid],
+        }
+    }
+    r = 2.0
+    s2 = math.sqrt(0.5)
+    arc = [(1.0, 0.0, 1.0), (1.0, 1.0, s2), (0.0, 1.0, 1.0)]
+    surfaces["octant"] = {
+        "type": "nurbs",
+        "degree": [2, 2],
+        "knots": [[0.0] * 3 + [1.0] * 3, [0.0] * 3 + [1.0] * 3],
+        "control_points": net([[[r * x * a, r * y * a, r * b] for a, b, _ in arc] for x, y, _ in arc]),
+        "weights": [[wu * wv for _, _, wv in arc] for _, _, wu in arc],
+    }
+    profile = [[-2.0, 0.0], [0.0, 2.0], [2.0, 0.5]]
+    surfaces["trough"] = {
+        "type": "nurbs",
+        "degree": [2, 1],
+        "knots": [[0.0] * 3 + [1.0] * 3, [0.0, 0.0, 1.0, 1.0]],
+        "control_points": net([[[x, y, z] for y in (-3.0, 3.0)] for x, z in profile]),
+        "weights": [[1.0, 1.0] for _ in profile],
+    }
+    pairs = []
+
+    def other(name, spec, with_, swapped=False):
+        surfaces[name] = spec
+        pairs.append({"a": name, "b": with_} if swapped else {"a": with_, "b": name})
+
+    plane = lambda origin, z, x: {"type": "plane", **local_frame(origin, z, x).spec()}
+    # The bicubic's centre is (2, 2, 0.2).
+    other("tilted", plane([2.0, 2.0, 0.4], [0.1, 0.2, 1.0], [1.0, 0.0, 0.0]), "hills")
+    other("pipe", {"type": "cylinder", **local_frame([2.0, 2.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]).spec(radius=1.0)}, "hills")
+    other("wide_pipe", {"type": "cylinder", **local_frame([2.0, 2.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]).spec(radius=2.6)}, "hills")
+    other("ball", {"type": "sphere", **local_frame([2.0, 2.0, 0.2], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]).spec(radius=1.3)}, "hills")
+    other("funnel", {"type": "cone", **local_frame([2.0, 2.0, -0.4], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]).spec(radius=0.5, half_angle_deg=30.0)}, "hills")
+    other("ring", {"type": "torus", **local_frame([2.0, 2.0, 0.2], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]).spec(major_radius=1.2, minor_radius=0.4)}, "hills")
+    other("parallel", plane([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]), "octant")
+    other("barrel", {"type": "cylinder", **local_frame([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]).spec(radius=1.2)}, "octant")
+    other("crest", plane([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]), "trough")
+    other("bowl", {"type": "sphere", **local_frame([0.0, 0.0, 0.5], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]).spec(radius=1.5)}, "trough")
+    # The same pipe, the other way round.
+    pairs.append({"a": "pipe", "b": "hills"})
+    return {
+        "kind": "geometry",
+        "description": "NURBS surfaces against the analytic kinds in the tilt pose (plan nurbs-analytic-section step 5), which Arris traces in the NURBS surface's parameters and fits (ADR-0061) and Open CASCADE walks in GeomAPI_IntSS: a bicubic of two spans each way against an oblique plane, a cylinder leaving it as a loop and one clipping it at its edges, a sphere, a cone and a torus; an octant of a sphere with a pole against a plane parallel to its base and a cylinder; an extruded quadratic against a plane along two of its rulings, exact isolines, and against a sphere; one pair the other way round; written by generate.py",
+        "surfaces": surfaces,
+        "curves": {},
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 # --- c8-curve-extrema ----------------------------------------------------------
 
 
@@ -1512,6 +1590,7 @@ if __name__ == "__main__":
     write("c4-nurbs-projections", c4_nurbs_projections())
     write("c4-closed-curve-hits", c4_closed_curve_hits())
     write("c8-line-nurbs-hits", c8_line_nurbs_hits())
+    write("c10-nurbs-analytic-pairs", c10_nurbs_analytic_pairs())
     write("c8-curve-extrema", c8_curve_extrema())
     write("c8-curve-surface-extrema", c8_curve_surface_extrema())
     write("c8-surface-extrema", c8_surface_extrema())

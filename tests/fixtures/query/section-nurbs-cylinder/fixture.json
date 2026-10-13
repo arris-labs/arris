@@ -1,0 +1,14 @@
+{
+  "kind": "query",
+  "description": "a cylinder r 5, h 10 read from STEP with every face a NURBS surface, cut across its wall by the plane z = 5: the wall's section is traced in its own parameters (ADR-0061) and the section is the sheet Open CASCADE answers",
+  "analytic": {
+    "query_differs": "BRepGProp of the section of the STEP cylinder, whose faces are exact rational B-splines, is 4.5e-5 relative below the area of its circle (78.536298 against 25 pi = 78.539816); the area is held to the closed form"
+  },
+  "steps": [
+    {"name": "part", "op": "step", "file": "nurbs-cylinder.step", "sha256": "7a14cfcc3f0a6eb882ad08e4d6e1a547005b3ff9fd77c2cde0977176727815d1", "id": 15}
+  ],
+  "result": "part",
+  "queries": [
+    {"label": "across the NURBS cylinder", "section": {"body": {"step": "part"}, "plane": {"origin": [0, 0, 5], "z": [0, 0, 1], "x": [1, 0, 0]}}, "expect": "sheet", "expect_faces": 1, "expect_area": 78.53981633974483, "expect_centroid": [0, 0, 5]}
+  ]
+}

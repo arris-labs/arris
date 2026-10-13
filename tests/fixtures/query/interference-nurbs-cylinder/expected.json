@@ -1,7 +1,7 @@
 {
   "kind": "query",
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "074d5a3591efe7ac304677793800b45d09299387269db81e0ffe5935f599798b",
+  "recipe_sha256": "d020cf4eef304cb2878269fd00986ca2042a260b00a091a0e8798fba9b55f4b6",
   "results": {
     "default": {
       "queries": [

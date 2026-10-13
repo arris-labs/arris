@@ -8,6 +8,15 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `intersect_surfaces` now meets a NURBS surface with a plane, a cylinder,
+  an elliptic cylinder, a cone, a sphere or a torus, in either order: the
+  section comes back as fitted curves (closed loops periodic), ending
+  where they reach an edge of the surface's domain, with a line of the
+  surface that lies on the other one returned exact and a pole the other
+  surface touches returned as a point. Two NURBS surfaces, and a NURBS
+  surface flush with another over an area, are still refused as
+  unsupported.
+
 ## 0.8.0 — 2026-10-13
 
 - A STEP file whose face has a hole beside a curved outer boundary on a

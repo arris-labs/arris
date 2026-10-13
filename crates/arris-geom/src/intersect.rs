@@ -155,6 +155,16 @@ impl SurfaceIntersection {
 /// a closed form is computed exactly, a quadric pair that meets in no
 /// conic is traced and fitted (ADR-0018), and every other pair is an
 /// explicit [`GeomError::Unsupported`] arm — no wildcard, no marcher.
+/// A `Surface::Nurbs` against a plane, a cylinder, an elliptic cylinder,
+/// a cone, a sphere or a torus, in either order, is traced in the NURBS
+/// surface's own `(u, v)`, bounded by its domain, and fitted
+/// (ADR-0061): a loop is a periodic `Curve::Nurbs`, a branch that reaches
+/// an edge of the domain ends there, an isoline of the surface lying on
+/// the other one is exact, and a pole the other surface passes through
+/// or touches is a point of the result. A NURBS surface flush with the
+/// other over an area, and two NURBS surfaces, are
+/// [`GeomError::Unsupported`]; a section the walk cannot resolve is a
+/// [`GeomError::DegenerateSection`].
 ///
 /// Guarantees: the result is symmetric under swapping `a` and `b` up to
 /// a line's orientation, deterministic bit for bit, and each returned
@@ -203,7 +213,8 @@ impl SurfaceIntersection {
 /// first operand's section parameter — up to four of them, touches and
 /// crossings together (ADR-0018); crossing axes, and the elliptic
 /// cylinder against a cone, a sphere or a torus in any pose, meet in a
-/// traced and fitted section, and against a NURBS it is `Unsupported`.
+/// traced and fitted section, and against a NURBS it is traced like any
+/// other NURBS pair.
 /// Every pair with a cone, a sphere or a torus in it is
 /// decided when the two share an axis — a plane perpendicular to it, a
 /// cylinder, cone or torus on it, a sphere centred on it, and every
@@ -246,6 +257,15 @@ impl SurfaceIntersection {
 /// let hit = intersect_surfaces(&wall, &branch, &within, Precision::DEFAULT.tolerance(), &mut Meter::default()).unwrap();
 /// assert_eq!(hit.curves().len(), 2);
 /// assert!(hit.curves().iter().all(|m| matches!(&m.curve, Curve::Nurbs(c) if c.period().is_some())));
+///
+/// // The exact B-spline twin of that wall, cut by the cap's plane tilted
+/// // across it: one closed loop in the twin's own parameters.
+/// use arris_math::Interval;
+/// let twin = Surface::Nurbs(wall.to_nurbs([Interval::TURN, Interval::new(-6.0, 6.0).unwrap()]).unwrap());
+/// let tilted = Surface::Plane { frame: Frame::from_z(Point3::origin(), Vec3::new(0.1, 0.0, 1.0)).unwrap() };
+/// let hit = intersect_surfaces(&twin, &tilted, &within, Precision::DEFAULT.tolerance(), &mut Meter::default()).unwrap();
+/// assert_eq!(hit.curves().len(), 1);
+/// assert!(matches!(&hit.curves()[0].curve, Curve::Nurbs(c) if c.period().is_some()));
 /// ```
 pub fn intersect_surfaces(
     a: &Surface,
@@ -350,10 +370,9 @@ pub fn intersect_surfaces(
             Surface::EllipticCylinder { .. },
         ) => crate::section::traced(a, b, within, tol, meter),
         (Surface::EllipticCylinder { .. }, Surface::Nurbs(_))
-        | (Surface::Nurbs(_), Surface::EllipticCylinder { .. }) => Err(GeomError::Unsupported {
-            a: GeomKind::Surface(a.kind()),
-            b: GeomKind::Surface(b.kind()),
-        }),
+        | (Surface::Nurbs(_), Surface::EllipticCylinder { .. }) => {
+            crate::section::traced(a, b, within, tol, meter)
+        }
         (
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
@@ -372,8 +391,7 @@ pub fn intersect_surfaces(
             | Surface::Cylinder { .. }
             | Surface::Cone { .. }
             | Surface::Sphere { .. }
-            | Surface::Torus { .. }
-            | Surface::Nurbs(_),
+            | Surface::Torus { .. },
         )
         | (
             Surface::Plane { .. }
@@ -382,7 +400,8 @@ pub fn intersect_surfaces(
             | Surface::Sphere { .. }
             | Surface::Torus { .. },
             Surface::Nurbs(_),
-        ) => Err(GeomError::Unsupported {
+        ) => crate::section::traced(a, b, within, tol, meter),
+        (Surface::Nurbs(_), Surface::Nurbs(_)) => Err(GeomError::Unsupported {
             a: GeomKind::Surface(a.kind()),
             b: GeomKind::Surface(b.kind()),
         }),

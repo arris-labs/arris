@@ -428,6 +428,18 @@ _OVERLOADS = {
 def intersect_surfaces(name_a: str, kind_a: str, a, name_b: str, kind_b: str, b) -> dict:
     """`IntAna_QuadQuadGeo` on the two `gp` quadrics, and `GeomAPI_IntSS` on
     the two surfaces where it finds no conic."""
+    if "nurbs" in (kind_a, kind_b):
+        # `IntAna` has no form for a NURBS surface: the general intersector
+        # walks it, as it walks a quadric pair with no conic.
+        if kind_a == kind_b:
+            raise OracleError(f"{name_a} vs {name_b}: NURBS against NURBS is not asked")
+        sections, dropped = _walked_sections(name_a, a, name_b, b)
+        out = {"a": name_a, "b": name_b, "type": "unsolved"}
+        if sections:
+            out["curves"] = sections
+        if dropped:
+            out["dropped"] = dropped
+        return out
     if kind_a not in _QUADRIC_OF or kind_b not in _QUADRIC_OF:
         raise OracleError(f"{name_a} vs {name_b}: no gp quadric for {kind_a}–{kind_b}")
     qa, qb = _QUADRIC_OF[kind_a](a), _QUADRIC_OF[kind_b](b)

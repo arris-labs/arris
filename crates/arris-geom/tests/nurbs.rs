@@ -464,38 +464,27 @@ fn a_moved_nurbs_curve_is_the_curve_moved() {
 }
 
 #[test]
-fn every_cycle_one_query_on_a_nurbs_is_unsupported_by_name() {
+fn queries_on_a_nurbs_are_answered_or_refused_by_name() {
     check((nurbs_curve(), nurbs_surface(), plane()), |(c, s, p)| {
         let tol = Precision::DEFAULT.tolerance();
         let (curve, surface) = (Curve::Nurbs(c), Surface::Nurbs(s));
         prop_assert_eq!(surface.kind(), SurfaceKind::Nurbs);
         prop_assert!(surface.frame().is_none());
+        // Two NURBS surfaces are the NURBS cycle's third item; a NURBS
+        // surface against an analytic one is traced in its own
+        // parameters (ADR-0061, `tests/trace_nurbs.rs`).
         prop_assert_eq!(
             intersect_surfaces(
                 &surface,
-                &p,
+                &surface,
                 &within(),
                 tol,
                 &mut arris_math::Meter::default()
             ),
             Err(GeomError::Unsupported {
                 a: GeomKind::Surface(SurfaceKind::Nurbs),
-                b: GeomKind::Surface(SurfaceKind::Plane),
-            })
-        );
-        prop_assert_eq!(
-            intersect_surfaces(
-                &p,
-                &surface,
-                &within(),
-                tol,
-                &mut arris_math::Meter::default()
-            )
-            .unwrap_err(),
-            GeomError::Unsupported {
-                a: GeomKind::Surface(SurfaceKind::Plane),
                 b: GeomKind::Surface(SurfaceKind::Nurbs),
-            }
+            })
         );
         // A NURBS curve meets every analytic surface (ADR-0018); it is
         // the NURBS surface that no curve but a line meets yet.

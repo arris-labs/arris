@@ -213,7 +213,7 @@ bound has to be established here.
   in any pose (1000 cases, two seeds). A collapsed row on the other
   surface is divided out but still returned as a line one point long:
   step 5's.
-- [ ] Step 5 **[2]** — **`intersect_surfaces` over NURBS × analytic.**
+- [x] Step 5 **[2]** — **`intersect_surfaces` over NURBS × analytic.**
   The six arms in both orders go through `section::traced`: fitted
   branches, exact isocurves and singular points as `MeetPoint`s. Update
   the doc comment and add an example. Fixtures under
@@ -223,6 +223,38 @@ bound has to be established here.
   kept it in scope: an isoline on a collapsed row (step 4 finds and
   divides it out) is returned as the singular point it is, not as a
   line one point long.
+
+  **Landed (2026-10-13).** The six arms in both orders, the elliptic
+  cylinder's included, go through `section::traced`; two NURBS surfaces
+  stay `Unsupported`. An exact isoline whose control points are one point
+  (a collapsed row) is a `MeetPoint` instead of a curve, `Touch` or
+  `Crossing` as the isoline was, and dropped if the tracer's own singular
+  point is within `2·tol.linear` of it. The oracle script walks a NURBS
+  pair in `GeomAPI_IntSS` (no `IntAna` form), and
+  `geom/c10-nurbs-analytic-pairs` holds the bicubic against a plane, two
+  cylinders (a loop and four clipped arms), a sphere, a cone and a torus,
+  the octant against a plane and a cylinder, and the extruded quadratic
+  against a plane (two exact rulings) and a sphere, to it; the twins and
+  the pole are held to closed forms in `tests/intersect_nurbs.rs`.
+  `every_other_pair_is_unsupported` now holds only NURBS × NURBS to
+  `Unsupported`; a NURBS × analytic pair is `Ok`, a named
+  `DegenerateSection`, or a flush `Unsupported`. Random NURBS patches
+  traced against a plane take minutes at 256 cases, so the property
+  `tests/nurbs.rs` held to the old refusal no longer traces one: that
+  is step 9's timing line.
+
+  Three corpus refusals fell with the arm, all NURBS × plane on the STEP
+  cylinder whose faces are all B-splines: the interference of a box
+  through its wall now answers `overlapping` as Open CASCADE does
+  (`query/interference-nurbs-cylinder`, renamed from `-refused`; the
+  distance of a far box stays refused, its line against a NURBS face
+  being the `extrema` backlog line), its section by a plane answers
+  (`query/section-nurbs-cylinder`, new, held to the circle's closed
+  form: Open CASCADE's area is 4.5e-5 below it, `analytic.query_differs`),
+  and the checker decides a NURBS face against the planes it meets
+  (`a_nurbs_face_against_planes_is_decided_and_not_a_violation`; the S5
+  row stays unchecked for two NURBS faces only). The boolean's own pave
+  is step 7's.
 - [ ] Step 6 **[2]** — **A circle and an ellipse against a NURBS
   surface.** The curve is the meet of its plane and its cylinder (an
   elliptic cylinder for the ellipse). On each patch, the plane's offset
