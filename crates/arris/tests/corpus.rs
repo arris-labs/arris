@@ -1092,6 +1092,21 @@ corpus_tests! {
     /// its box cut is a kernel fault.
     #[ignore = "box_cut: OpError::Internal(Fault::Split) where Open CASCADE builds it (docs/BACKLOG.md, a split fault on the healed parts' battery)"]
     regression_nist_ftc_11_ap242_box_cut_split_fault => part "regression/nist-ftc-11-ap242-box-cut-split-fault";
+    /// NIST's CTC-02 AP242 e2 solid cut by its battery's box: a plane
+    /// across a bicubic B-spline face (plans/nurbs-analytic-section).
+    #[ignore = "Unsupported(NURBS surface × plane surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
+    regression_nist_ctc_02_ap242_box_cut_nurbs_plane => run "regression/nist-ctc-02-ap242-box-cut-nurbs-plane";
+    /// The same solid drilled along its first principal axis: a cylinder
+    /// across a bicubic B-spline face.
+    #[ignore = "Unsupported(NURBS surface × cylinder surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
+    regression_nist_ctc_02_ap242_drill_x_nurbs_cylinder => run "regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder";
+    /// NIST's CTC-05 AP203 solid cut by its battery's box: a plane across
+    /// a rational B-spline face of degree (3, 2).
+    #[ignore = "Unsupported(NURBS surface × plane surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
+    regression_nist_ctc_05_ap203_box_cut_nurbs_plane => run "regression/nist-ctc-05-ap203-box-cut-nurbs-plane";
+    /// Its AP242 e1 edition: the same face as one rational Bézier patch.
+    #[ignore = "Unsupported(NURBS surface × plane surface): the section of a NURBS face against an analytic one (plans/nurbs-analytic-section)"]
+    regression_nist_ctc_05_ap242_box_cut_nurbs_plane => run "regression/nist-ctc-05-ap242-box-cut-nurbs-plane";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring refuses. The desired body is Open CASCADE's.

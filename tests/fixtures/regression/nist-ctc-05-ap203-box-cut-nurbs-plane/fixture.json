@@ -1,0 +1,84 @@
+{
+  "description": "NIST's CTC-05, its AP203-with-PMI edition's solid #249 (the committed excerpt real/nist-ctc-05-ap203-torus-elbow-s5), cut by its battery's box: the box's plane f156 crosses the rational B-spline face f109, degree (3, 2) over 2 \u00d7 1 spans, open in both directions, no pole, the only NURBS face the box reaches. Arris refuses it Unsupported(NURBS surface \u00d7 plane surface), where Open CASCADE builds it (plans/nurbs-analytic-section step 1). The desired body is Open CASCADE's",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ctc-05-ap203-torus-elbow-s5/nist_ctc_05_asme1_ap203-249.stp",
+      "sha256": "a604bd2407c71a7a11f7decafd7277cf22fe07743a824c8147b666efe4d53060",
+      "id": 249
+    },
+    {
+      "op": "profile",
+      "name": "square",
+      "plane": {
+        "origin": [
+          -0.004454425647245855,
+          -1.0106146639981681,
+          99.72358438376486
+        ],
+        "x": [
+          0.9999999796891684,
+          -7.583220548756308e-05,
+          -0.00018673815702513762
+        ],
+        "y": [
+          6.724535677339647e-05,
+          0.9989615261194599,
+          -0.04556165944235931
+        ]
+      },
+      "outer": {
+        "start": [
+          0.0,
+          0.0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1628.5116279017811,
+              0.0
+            ]
+          },
+          {
+            "line_to": [
+              1628.5116279017811,
+              1628.5116279017811
+            ]
+          },
+          {
+            "line_to": [
+              0.0,
+              1628.5116279017811
+            ]
+          },
+          {
+            "line_to": [
+              0.0,
+              0.0
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "op": "extrude",
+      "name": "box",
+      "profile": "square",
+      "direction": [
+        0.00018999927544775417,
+        0.04556164595969014,
+        0.9989615109290844
+      ],
+      "length": 1628.5116279017811
+    },
+    {
+      "op": "cut",
+      "name": "result",
+      "target": "part",
+      "tool": "box"
+    }
+  ],
+  "result": "result"
+}
