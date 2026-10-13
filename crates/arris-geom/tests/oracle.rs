@@ -530,10 +530,15 @@ fn check_curve_pair(c: &Curve, s: &Surface, res: &PairResult, errors: &mut Vec<S
     for h in &res.hits {
         let p = p3(&h.point);
         let scale = p.coords.norm().max(1.0);
+        // A touch absorbs the points of the curve within the tolerance of
+        // the surface beside it (the oracle, tolerant too, reports a
+        // second hit a little way along from a tangency).
+        let near = s.project(p).map_or(f64::INFINITY, |on| on.distance) <= tol().linear;
         let matched = hits.iter().any(|ours| {
             let bound = if ours.tangent { TOUCH } else { REL * scale };
-            (ours.point - p).norm() <= bound
-                && (ours.t - h.t).abs().min(turn_diff(ours.t, h.t, c)) <= bound
+            ((ours.point - p).norm() <= bound
+                && (ours.t - h.t).abs().min(turn_diff(ours.t, h.t, c)) <= bound)
+                || (ours.tangent && near && (ours.point - p).norm() <= 1e-3 * scale)
         });
         if !matched {
             errors.push(format!(
@@ -875,8 +880,8 @@ fn turn_diff(a: f64, b: f64, c: &Curve) -> f64 {
 fn every_geometry_fixture_matches_the_oracle() {
     let fixtures = geometry_fixtures();
     assert!(
-        fixtures.len() >= 17,
-        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c10-nurbs-analytic-pairs, geom/c8-curve-extrema, geom/c8-curve-surface-extrema and geom/c8-surface-extrema"
+        fixtures.len() >= 18,
+        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c10-nurbs-analytic-pairs, geom/c10-conic-nurbs-hits, geom/c8-curve-extrema, geom/c8-curve-surface-extrema and geom/c8-surface-extrema"
     );
     let mut errors = Vec::new();
     for f in &fixtures {
@@ -1675,5 +1680,52 @@ fn the_c10_nurbs_analytic_pairs_classify_as_built() {
             }
         }
         assert_eq!(got, (*loops, *arms, *lines, *points), "{a} vs {b}: {r:?}");
+    }
+}
+
+/// What Arris says about every pair of `geom/c10-conic-nurbs-hits`, by
+/// name: the crossings and touches each was built with. The oracle's
+/// general intersector reports a touch as one hit, two or none, so the
+/// counts are pinned here, where a tangent case cannot pass vacuously.
+#[test]
+fn the_c10_conic_nurbs_hits_classify_as_built() {
+    let f = geometry_fixtures()
+        .into_iter()
+        .find(|f| f.name == "geom/c10-conic-nurbs-hits")
+        .expect("geom/c10-conic-nurbs-hits");
+    let built = build(&f);
+    // (circle, surface, crossings, touches)
+    let cases: &[(&str, &str, usize, usize)] = &[
+        ("hills_level", "hills", 2, 0),
+        ("hills_tilted", "hills", 2, 0),
+        ("hills_ellipse", "hills", 3, 0),
+        ("hills_standing", "hills", 2, 0),
+        ("octant_pole", "octant", 2, 0),
+        ("octant_tangent", "octant", 0, 1),
+        ("octant_clear", "octant", 0, 0),
+        ("octant_pole_touch", "octant", 0, 1),
+        ("trough_across", "trough", 2, 0),
+    ];
+    assert_eq!(
+        cases.len(),
+        f.recipe.pairs.len(),
+        "every pair of the fixture is pinned here"
+    );
+    for (c, s, crossings, touches) in cases {
+        let r = intersect_curve_surface(
+            &built.curves[*c],
+            &built.surfaces[*s],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{c} vs {s}: {e}"));
+        let CurveSurfaceIntersection::Points(hits) = &r else {
+            panic!("{c} vs {s}: {r:?}")
+        };
+        let got = (
+            hits.iter().filter(|h| !h.tangent).count(),
+            hits.iter().filter(|h| h.tangent).count(),
+        );
+        assert_eq!(got, (*crossings, *touches), "{c} vs {s}: {r:?}");
     }
 }

@@ -1360,6 +1360,102 @@ def c10_nurbs_analytic_pairs():
     }
 
 
+def c10_conic_nurbs_hits():
+    """Circles and ellipses against NURBS surfaces (plan
+    nurbs-analytic-section step 6), in the tilt pose: a horizontal and a
+    tilted circle through the bicubic of c8-line-nurbs-hits, an ellipse
+    through it; the rational octant of a sphere crossed by a circle through
+    its pole, by one in its tangent plane through the tangent point (a
+    touch), by the same lifted two tolerances off (a miss) and by one
+    touching at the pole; and the extruded quadratic crossed by a circle
+    standing across its crest. Every circle is drawn from a point of the
+    surface it is paired with, at parameters committed here."""
+    f = POSES["tilt"]
+
+    def net(rows):
+        return [[f.to_world(p) for p in row] for row in rows]
+
+    def local_frame(origin, z, x):
+        return Frame(f.to_world(origin), f.vec(z), f.vec(x))
+
+    grid = [0.0, 1.0, 2.0, 3.0, 4.0]
+    knots = [0.0] * 4 + [1.0] + [2.0] * 4
+    hills = {
+        "type": "nurbs",
+        "degree": [3, 3],
+        "knots": [knots, knots],
+        "control_points": net([[[x, y, 0.3 * (x - 2.0) * (y - 2.0) + 0.1 * x] for y in grid] for x in grid]),
+        "weights": [[1.0] * 5 for _ in grid],
+    }
+    r = 2.0
+    s2 = math.sqrt(0.5)
+    arc = [(1.0, 0.0, 1.0), (1.0, 1.0, s2), (0.0, 1.0, 1.0)]
+    octant = {
+        "type": "nurbs",
+        "degree": [2, 2],
+        "knots": [[0.0] * 3 + [1.0] * 3, [0.0] * 3 + [1.0] * 3],
+        "control_points": net([[[r * x * a, r * y * a, r * b] for a, b, _ in arc] for x, y, _ in arc]),
+        "weights": [[wu * wv for _, _, wv in arc] for _, _, wu in arc],
+    }
+    profile = [[-2.0, 0.0], [0.0, 2.0], [2.0, 0.5]]
+    trough = {
+        "type": "nurbs",
+        "degree": [2, 1],
+        "knots": [[0.0] * 3 + [1.0] * 3, [0.0, 0.0, 1.0, 1.0]],
+        "control_points": net([[[x, y, z] for y in (-3.0, 3.0)] for x, z in profile]),
+        "weights": [[1.0, 1.0] for _ in profile],
+    }
+    surfaces = {"hills": hills, "octant": octant, "trough": trough}
+    curves = {}
+    circle = lambda origin, z, x, radius: {"type": "circle", **local_frame(origin, z, x).spec(radius=radius)}
+    ellipse = lambda origin, z, x, major, minor: {"type": "ellipse", **local_frame(origin, z, x).spec(major_radius=major, minor_radius=minor)}
+    # Level with the saddle's plane, off its centre, and tilted across it.
+    curves["hills_level"] = circle([2.0, 2.0, 0.5], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0], 1.6)
+    curves["hills_tilted"] = circle([2.0, 2.0, 0.3], [0.2, 0.1, 1.0], [1.0, 0.0, 0.0], 1.9)
+    curves["hills_ellipse"] = ellipse([2.0, 2.0, 0.4], [0.1, -0.1, 1.0], [1.0, 0.2, 0.0], 2.4, 1.3)
+    # Standing on the surface: vertical, through the bicubic's middle.
+    curves["hills_standing"] = circle([2.0, 2.0, 0.2], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0], 1.2)
+    # A circle through the octant's pole, in the vertical plane x = y, and
+    # across the octant elsewhere.
+    h = math.sqrt(0.5)
+    curves["octant_pole"] = circle([h, h, 1.0], [h, -h, 0.0], [0.0, 0.0, 1.0], math.sqrt(2.0))
+    # In the tangent plane at the point (u, v) = (0.5, 0.5), through it.
+    at = nurbs_surface_point(octant, 0.5, 0.5)
+    normal = unit(sub(at, f.origin))
+    along = unit(cross(f.z, normal))
+    radius = 0.6
+    centre = add(at, mul(radius, along))
+    curves["octant_tangent"] = {
+        "type": "circle",
+        "origin": centre,
+        "z": normal,
+        "x": along,
+        "radius": radius,
+    }
+    # The same two tolerances (1e-7 each) off the surface along its normal.
+    curves["octant_clear"] = {
+        "type": "circle",
+        "origin": add(centre, mul(2e-7, normal)),
+        "z": normal,
+        "x": along,
+        "radius": radius,
+    }
+    # In the plane tangent at the pole, through it.
+    curves["octant_pole_touch"] = circle([0.0, 0.5, 2.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], 0.5)
+    # Across the trough's crest (x = 4/7, z = 8/7 at its top) in the plane
+    # y = 0.
+    curves["trough_across"] = circle([0.5, 0.0, 0.5], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0], 1.0)
+    pairs = [{"a": c, "b": c.split("_")[0]} for c in curves]
+    return {
+        "kind": "geometry",
+        "description": "Circles and ellipses against NURBS surfaces in the tilt pose (plan nurbs-analytic-section step 6): a level circle, a tilted one, an ellipse and a standing circle through the bicubic of two spans each way; a circle through the pole of a rational octant of a sphere, one in its tangent plane through the tangent point (a touch), the same two tolerances clear of it (a miss) and one touching at the pole; a circle across the crest of an extruded quadratic — through Open CASCADE's general curve-surface intersector, GeomAPI_IntCS; written by generate.py",
+        "surfaces": surfaces,
+        "curves": curves,
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 # --- c8-curve-extrema ----------------------------------------------------------
 
 
@@ -1591,6 +1687,7 @@ if __name__ == "__main__":
     write("c4-closed-curve-hits", c4_closed_curve_hits())
     write("c8-line-nurbs-hits", c8_line_nurbs_hits())
     write("c10-nurbs-analytic-pairs", c10_nurbs_analytic_pairs())
+    write("c10-conic-nurbs-hits", c10_conic_nurbs_hits())
     write("c8-curve-extrema", c8_curve_extrema())
     write("c8-curve-surface-extrema", c8_curve_surface_extrema())
     write("c8-surface-extrema", c8_surface_extrema())

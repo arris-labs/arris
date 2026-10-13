@@ -579,7 +579,7 @@ fn implicit_signed(s: &Surface, p: Point3) -> f64 {
 /// holds what it answers), and every other curve against one is
 /// `Unsupported` naming both operands.
 #[test]
-fn only_a_curve_but_a_line_against_a_nurbs_surface_is_unsupported() {
+fn only_a_nurbs_curve_against_a_nurbs_surface_is_unsupported() {
     check(
         (curve(), surface(), nurbs_curve(), nurbs_surface()),
         |(c, s, nc, ns)| {
@@ -594,11 +594,10 @@ fn only_a_curve_but_a_line_against_a_nurbs_surface_is_unsupported() {
                     curve,
                     intersect_curve_surface(curve, &ns, tol(), &mut arris_math::Meter::default()),
                 ) {
-                    (Curve::Line { .. }, Ok(_)) => {}
-                    (
-                        Curve::Circle { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_),
-                        Err(GeomError::Unsupported { a, b }),
-                    ) => {
+                    // A line, a circle and an ellipse meet a NURBS surface
+                    // (`tests/line_nurbs.rs`, `tests/conic_nurbs.rs`).
+                    (Curve::Line { .. } | Curve::Circle { .. } | Curve::Ellipse { .. }, Ok(_)) => {}
+                    (Curve::Nurbs(_), Err(GeomError::Unsupported { a, b })) => {
                         prop_assert_eq!(a, GeomKind::Curve(curve.kind()));
                         prop_assert_eq!(b, GeomKind::Surface(SurfaceKind::Nurbs));
                     }

@@ -16,6 +16,10 @@ into its version (ADR-0027).
   surface touches returned as a point. Two NURBS surfaces, and a NURBS
   surface flush with another over an area, are still refused as
   unsupported.
+- `intersect_curve_surface` now meets a circle or an ellipse with a NURBS
+  surface, as it already did a line: crossings, touches within the
+  tolerance, a pole, and `Coincident` for a conic lying on the surface.
+  A NURBS curve against a NURBS surface is still refused as unsupported.
 
 ## 0.8.0 — 2026-10-13
 

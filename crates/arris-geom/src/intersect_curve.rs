@@ -15,7 +15,7 @@ use crate::conic2::{Conic2, ConicMeet, conic_pair, trig2_roots};
 use crate::implicit::{BERNSTEIN_ROUNDING, Implicit};
 use crate::intersect::line_angle;
 use crate::intersect_spline::spline_surface;
-use crate::nurbs::line_nurbs;
+use crate::nurbs::{conic_nurbs, line_nurbs};
 use crate::project::ellipse_distance;
 use crate::{Curve, CurveKind, GeomError, GeomKind, Surface};
 
@@ -60,9 +60,9 @@ pub enum CurveSurfaceIntersection {
 /// The intersection of a curve and a surface, by the case table: every
 /// pair with a closed form is computed exactly, a conic against a torus
 /// and a NURBS curve against every analytic surface go through the
-/// surface's implicit polynomial (ADR-0018), a line against a NURBS
-/// surface goes through the surface's Bézier patches, and a conic or a
-/// NURBS curve against a NURBS surface is the one explicit
+/// surface's implicit polynomial (ADR-0018), a line, a circle or an
+/// ellipse against a NURBS surface goes through the surface's Bézier
+/// patches, and a NURBS curve against a NURBS surface is the one explicit
 /// [`GeomError::Unsupported`] arm — no wildcard, no marcher.
 ///
 /// Guarantees: hits are sorted by `t`, each `t` is in the curve's domain,
@@ -177,8 +177,15 @@ pub enum CurveSurfaceIntersection {
 /// goes through it; a meeting on a knot line or a seam is one hit; and
 /// `Coincident` is a line parallel within `tol.angular` to a direction
 /// the surface does not curve along, within `tol.linear` of it across the
-/// whole control net — a ruling. A conic or a NURBS curve against a NURBS
-/// surface is `Unsupported`, the one arm of the table without a form.
+/// whole control net — a ruling. A **circle or an ellipse against a NURBS
+/// surface** is the meet of the conic's plane and its cylinder: on each
+/// Bézier patch the plane's offset and the cylinder's implicit form
+/// (normalised, to first order, by the distance in the plane from the
+/// conic) are two polynomials, isolated and decided as the line's are,
+/// with the curve's own bend in the second-order model of a touch. A
+/// conic that lies on the surface all round is `Coincident`. A NURBS curve
+/// against a NURBS surface is `Unsupported`, the one arm of the table
+/// without a form.
 ///
 /// ```
 /// use arris_geom::{Curve, CurveSurfaceIntersection, Surface, intersect_curve_surface};
@@ -192,6 +199,15 @@ pub enum CurveSurfaceIntersection {
 /// assert!((hits[0].t + 2.0).abs() < 1e-15 && (hits[1].t - 2.0).abs() < 1e-15);
 /// assert!(!hits[0].tangent);
 /// assert_eq!(hits[1].uv.y, 1.0);
+///
+/// // A circle round the x axis through the B-spline twin of that wall,
+/// // over a stretch of its axis: it crosses the wall four times.
+/// use arris_math::Interval;
+/// let twin = Surface::Nurbs(wall.to_nurbs([Interval::TURN, Interval::new(-5.0, 5.0).unwrap()]).unwrap());
+/// let ring = Curve::Circle { frame: Frame::from_z(Point3::origin(), Vec3::x()).unwrap(), radius: 3.0 };
+/// let hit = intersect_curve_surface(&ring, &twin, Precision::DEFAULT.tolerance(), &mut Meter::default()).unwrap();
+/// let CurveSurfaceIntersection::Points(hits) = hit else { panic!() };
+/// assert_eq!(hits.len(), 4);
 /// ```
 pub fn intersect_curve_surface(
     curve: &Curve,
@@ -379,12 +395,28 @@ pub fn intersect_curve_surface(
         (Curve::Line { origin, direction }, Surface::Nurbs(nurbs)) => {
             line_nurbs(curve, *origin, direction.into_inner(), nurbs, tol, meter)
         }
-        (Curve::Circle { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_), Surface::Nurbs(_)) => {
-            Err(GeomError::Unsupported {
-                a: GeomKind::Curve(curve.kind()),
-                b: GeomKind::Surface(surface.kind()),
-            })
+        (Curve::Circle { frame, radius }, Surface::Nurbs(nurbs)) => {
+            conic_nurbs(curve, frame, [*radius, *radius], nurbs, tol, meter)
         }
+        (
+            Curve::Ellipse {
+                frame,
+                major_radius,
+                minor_radius,
+            },
+            Surface::Nurbs(nurbs),
+        ) => conic_nurbs(
+            curve,
+            frame,
+            [*major_radius, *minor_radius],
+            nurbs,
+            tol,
+            meter,
+        ),
+        (Curve::Nurbs(_), Surface::Nurbs(_)) => Err(GeomError::Unsupported {
+            a: GeomKind::Curve(curve.kind()),
+            b: GeomKind::Surface(surface.kind()),
+        }),
     }
 }
 

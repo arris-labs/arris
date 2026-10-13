@@ -1,5 +1,6 @@
-//! A line against a NURBS surface: the one curve the table pairs with a
-//! free-form surface (`docs/DATA-MODEL.md` §Curve–surface intersection).
+//! A line, a circle or an ellipse against a NURBS surface
+//! (`docs/DATA-MODEL.md` §Curve–surface intersection); the text below is
+//! the line's, and the conic's differences are at its end.
 //!
 //! The line is the meet of two planes through it, with unit normals
 //! `n₁`, `n₂` perpendicular to its direction `d`. A point of the surface
@@ -66,6 +67,19 @@
 //! surface's domain, or of a crease between two patches, that is no
 //! critical point of either patch — the line's nearest approach to a
 //! face's edge is the topology's to decide, not the surface's.
+//!
+//! **A circle or an ellipse** is the meet of its plane and its cylinder:
+//! `Φ₁ = z` in the conic's frame, linear, and `Φ₂ = E / |∇E|` with
+//! `E = (x/a)² + (y/b)² − 1`, the distance in the plane from the conic to
+//! first order ([`Conic`]). On a patch `Φ₁ = h₁ / W` and, with `E`
+//! scaled by a constant for the polynomials, `Φ₂ = h₂ / W²`, of twice the
+//! patch's degrees; the isolation, the poles and the tube are the line's.
+//! The critical points of `|Φ|²` are the common zeros of
+//! `W² h₁ D₁,ₓ + h₂ D₂,ₓ` with `Dₖ,ₓ = hₖ,ₓ W − eₖ hₖ Wₓ`, and the
+//! Jacobian's determinant gates them as the fold does. A touch is
+//! decided by the second-order model of the line with the conic's own
+//! bend added to the surface's sag. A conic that lies on the surface all
+//! round is `Coincident`, decided on [`CONIC_SAMPLES`] points.
 
 use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, Vec3};
 
@@ -83,6 +97,13 @@ use crate::{Curve, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, GeomKin
 /// the quarters that do not hold it, and two levels leave the curve in at
 /// most `2²` of the `4²` quarters along its length.
 const CONTINUUM_SPLITS: usize = 2;
+
+/// How many points of a conic are looked at for it lying on the surface
+/// all round. A structural count: a circle of a surface's own curvature
+/// that leaves it by the tolerance does so over an arc of its length, and
+/// a sample every `2π / 64` is within that arc for anything the surface's
+/// patches are fine enough to tell from it.
+const CONIC_SAMPLES: usize = 64;
 
 /// How many points strictly between a crossing and the extremum beside
 /// it are measured for the line staying within the tube between them.
@@ -135,6 +156,196 @@ impl Line {
     }
 }
 
+/// A circle or an ellipse as two functions of a point whose common zeros
+/// are its points. `Φ₁` is the offset from its plane, linear. `Φ₂` is its
+/// cylinder's implicit form `E = (x/a)² + (y/b)² − 1` in the conic's
+/// frame over `|∇E|`, which is the distance in the plane from the conic to
+/// first order; it is the plain `E` over the constant [`Conic::scale`]
+/// in the polynomials the isolation reads, where it has to be one.
+struct Conic {
+    frame: Frame,
+    radii: [f64; 2],
+    /// `|∇E|` on the conic at the least, `2 / max(a, b)`: inside it the
+    /// normalised form is held to this, so it is smooth through the
+    /// centre.
+    steepness: f64,
+}
+
+impl Conic {
+    /// `E` and its gradient `(∂E/∂x, ∂E/∂y)` at the local point `l`.
+    fn implicit(&self, l: Point3) -> (f64, [f64; 2]) {
+        let [a, b] = self.radii;
+        (
+            l.x * l.x / (a * a) + l.y * l.y / (b * b) - 1.0,
+            [2.0 * l.x / (a * a), 2.0 * l.y / (b * b)],
+        )
+    }
+
+    /// The factor of `E` that makes `Φ₂` a distance in the polynomials:
+    /// `1 / |∇E|` at the largest, `min(a, b) / 2`. A point within `δ` of
+    /// the conic in the plane then has `|Φ₂| ≤ δ (1 + δ / min(a, b))`
+    /// or less, so a tube of `τ` in the distance is a tube of
+    /// `τ (1 + τ / min(a, b))` in the polynomial.
+    fn scale(&self) -> f64 {
+        0.5 * self.radii[0].min(self.radii[1])
+    }
+
+    fn offset(&self, p: Point3) -> [f64; 2] {
+        let l = self.frame.to_local(p);
+        let (e, g) = self.implicit(l);
+        [l.z, e / g[0].hypot(g[1]).max(self.steepness)]
+    }
+
+    /// `∇Φ₁` and `∇Φ₂` at `p`, in world axes.
+    fn gradients(&self, p: Point3) -> [Vec3; 2] {
+        let l = self.frame.to_local(p);
+        let [a, b] = self.radii;
+        let (e, g) = self.implicit(l);
+        let size = g[0].hypot(g[1]);
+        let grad = if size > self.steepness {
+            // `g = E / G` with `G = |∇E|`, `G ∂G/∂x = Eₓ · 2 / a²`.
+            let dg = [g[0] * 2.0 / (a * a) / size, g[1] * 2.0 / (b * b) / size];
+            [0, 1].map(|k| g[k] / size - e * dg[k] / (size * size))
+        } else {
+            g.map(|x| x / self.steepness)
+        };
+        [
+            self.frame.z().into_inner(),
+            self.frame.x().into_inner() * grad[0] + self.frame.y().into_inner() * grad[1],
+        ]
+    }
+
+    /// The curve itself, as the conic's parameter `t` evaluates it.
+    fn curve(&self) -> Curve {
+        if self.radii[0] == self.radii[1] {
+            Curve::Circle {
+                frame: self.frame,
+                radius: self.radii[0],
+            }
+        } else {
+            Curve::Ellipse {
+                frame: self.frame,
+                major_radius: self.radii[0],
+                minor_radius: self.radii[1],
+            }
+        }
+    }
+
+    /// The parameter of the conic's point nearest `p`; zero at the centre,
+    /// where every one is.
+    fn position(&self, p: Point3) -> f64 {
+        let l = self.frame.to_local(p);
+        let t = (l.y / self.radii[1]).atan2(l.x / self.radii[0]);
+        if t < 0.0 {
+            t + core::f64::consts::TAU
+        } else {
+            t
+        }
+    }
+}
+
+/// What the surface is cut by: a line, or a circle or an ellipse. Every
+/// question the search asks of the curve — its two offsets and their
+/// gradients, where along it a point lies, its direction and bend there —
+/// has one answer for each.
+enum Cut {
+    Line(Line),
+    Conic(Conic),
+}
+
+impl Cut {
+    /// `Φ`, the offsets of `p`.
+    fn offset(&self, p: Point3) -> [f64; 2] {
+        match self {
+            Cut::Line(line) => line.offset(p),
+            Cut::Conic(conic) => conic.offset(p),
+        }
+    }
+
+    /// `∇Φ₁` and `∇Φ₂` at `p`.
+    fn gradients(&self, p: Point3) -> [Vec3; 2] {
+        match self {
+            Cut::Line(line) => line.normals,
+            Cut::Conic(conic) => conic.gradients(p),
+        }
+    }
+
+    /// The curve's parameter nearest `p`.
+    fn position(&self, p: Point3) -> f64 {
+        match self {
+            Cut::Line(line) => line.t(p),
+            Cut::Conic(conic) => conic.position(p),
+        }
+    }
+
+    /// The curve's point at the parameter `t`.
+    fn point_at(&self, t: f64) -> Point3 {
+        match self {
+            Cut::Line(line) => line.origin + line.direction * t,
+            Cut::Conic(conic) => conic.curve().point(t),
+        }
+    }
+
+    /// The unit tangent at the point of the curve nearest `p`.
+    fn direction(&self, p: Point3) -> Option<Vec3> {
+        match self {
+            Cut::Line(line) => Some(line.direction),
+            Cut::Conic(conic) => {
+                let t = conic.position(p);
+                conic.curve().eval(t).d1.try_normalize(0.0)
+            }
+        }
+    }
+
+    /// The curvature vector `κN` at the point of the curve nearest `p`:
+    /// zero on a line.
+    fn bend(&self, p: Point3) -> Vec3 {
+        match self {
+            Cut::Line(_) => Vec3::zeros(),
+            Cut::Conic(conic) => {
+                let e = conic.curve().eval(conic.position(p));
+                let speed2 = e.d1.norm_squared();
+                if speed2 == 0.0 {
+                    return Vec3::zeros();
+                }
+                (e.d2 - e.d1 * (e.d1.dot(&e.d2) / speed2)) / speed2
+            }
+        }
+    }
+
+    /// The speed of the parameter at `t`: length per unit.
+    fn speed(&self, t: f64) -> f64 {
+        match self {
+            Cut::Line(_) => 1.0,
+            Cut::Conic(conic) => conic.curve().eval(t).d1.norm(),
+        }
+    }
+
+    /// The parameter a length `s` along the curve from `t`.
+    fn shifted(&self, t: f64, s: f64) -> f64 {
+        let speed = self.speed(t);
+        if speed > 0.0 { t + s / speed } else { t }
+    }
+
+    /// `to − from` as a signed step along the curve: the short way round
+    /// a conic.
+    fn step(&self, from: f64, to: f64) -> f64 {
+        match self {
+            Cut::Line(_) => to - from,
+            Cut::Conic(_) => {
+                let turn = core::f64::consts::TAU;
+                let d = (to - from).rem_euclid(turn);
+                if d > 0.5 * turn { d - turn } else { d }
+            }
+        }
+    }
+
+    /// The length of curve between two parameters, the short way.
+    fn gap(&self, a: f64, b: f64) -> f64 {
+        self.step(a, b).abs() * self.speed(a)
+    }
+}
+
 /// Something found on a patch, at `uv` in its box, in the surface's own
 /// parameters.
 #[derive(Clone, Copy, Debug)]
@@ -167,8 +378,8 @@ struct Piece {
     /// `nₖ·(X − W·o)`.
     h: [Poly2; 2],
     w: Poly2,
-    /// The rounding of `h`'s coefficients.
-    floor: f64,
+    /// The rounding of each of `h`'s coefficients.
+    floors: [f64; 2],
     /// Bounds on `|h|`'s and `w`'s coefficients.
     magnitude: [f64; 2],
     /// The rows of the net collapsed to one point within the tube: the
@@ -177,25 +388,62 @@ struct Piece {
     poles: Vec<(usize, f64)>,
     /// The Cartesian offsets of the control points.
     offsets: Vec<[f64; 2]>,
+    /// How many of the offsets are linear, so that their control points
+    /// bound the patch: both of a line's, a conic's plane alone.
+    planes: usize,
 }
 
 impl Piece {
-    fn of(patch: &Patch, line: &Line, reach: f64, tau: f64) -> Piece {
+    fn of(patch: &Patch, cut: &Cut, reach: f64, tau: f64, binomials: &Binomials) -> Piece {
         let [p, q] = patch.degree;
         let mut h = [Vec::new(), Vec::new()];
         let mut w = Vec::new();
         let mut offsets = Vec::new();
         let (mut mh, mut mw) = (0.0f64, 0.0f64);
-        let o = line.origin.coords;
-        for x in &patch.net {
-            let xyz = Vec3::new(x.x, x.y, x.z);
-            for (hk, n) in h.iter_mut().zip(line.normals) {
-                hk.push(n.dot(&xyz) - x.w * n.dot(&o));
+        match cut {
+            Cut::Line(line) => {
+                let o = line.origin.coords;
+                for x in &patch.net {
+                    let xyz = Vec3::new(x.x, x.y, x.z);
+                    for (hk, n) in h.iter_mut().zip(line.normals) {
+                        hk.push(n.dot(&xyz) - x.w * n.dot(&o));
+                    }
+                    w.push(x.w);
+                    offsets.push(cut.offset(Point3::from(xyz / x.w)));
+                    mh = mh.max(xyz.norm() + x.w * o.norm());
+                    mw = mw.max(x.w);
+                }
             }
-            w.push(x.w);
-            offsets.push(line.offset(Point3::from(xyz / x.w)));
-            mh = mh.max(xyz.norm() + x.w * o.norm());
-            mw = mw.max(x.w);
+            Cut::Conic(conic) => {
+                // The three local coordinates of `X − W·c`, and `W`.
+                let o = conic.frame.origin().coords;
+                let [a, b] = conic.radii;
+                let (ex, ey, ez) = (
+                    conic.frame.x().into_inner(),
+                    conic.frame.y().into_inner(),
+                    conic.frame.z().into_inner(),
+                );
+                let (mut lx, mut ly) = (Vec::new(), Vec::new());
+                for x in &patch.net {
+                    let xyz = Vec3::new(x.x, x.y, x.z);
+                    let r = xyz - o * x.w;
+                    lx.push(ex.dot(&r) / a);
+                    ly.push(ey.dot(&r) / b);
+                    h[0].push(ez.dot(&r));
+                    w.push(x.w);
+                    offsets.push([cut.offset(Point3::from(xyz / x.w))[0], 0.0]);
+                    mh = mh.max(xyz.norm() + x.w * o.norm());
+                    mw = mw.max(x.w);
+                }
+                let square = |c: Vec<f64>| {
+                    let poly = Poly2::new([p, q], c);
+                    poly.mul(&poly, binomials)
+                };
+                let (lx2, ly2) = (square(lx), square(ly));
+                let w2 = square(w.clone());
+                let e = Poly2::combine(&[(1.0, &lx2), (1.0, &ly2), (-1.0, &w2)]);
+                h[1] = e.coefficients().iter().map(|c| c * conic.scale()).collect();
+            }
         }
         let cartesian = |a: usize, b: usize| {
             let x = patch.net[a * (q + 1) + b];
@@ -212,18 +460,38 @@ impl Piece {
             .filter(|(_, _, row)| {
                 row.iter()
                     .all(|x| arris_math::is_negligible((x - row[0]).norm(), reach))
-                    && norm(line.offset(row[0])) <= tau
+                    && norm(cut.offset(row[0])) <= tau
             })
             .map(|(k, r, _)| (*k, *r))
             .collect();
+        let (degrees, floors, planes) = match cut {
+            Cut::Line(_) => ([p, q], [BERNSTEIN_ROUNDING * mh; 2], 2),
+            Cut::Conic(conic) => {
+                // `h₂` is a sum of three squares of polynomials of the
+                // patch's degrees, scaled.
+                let [a, b] = conic.radii;
+                let size = conic.scale() * (mh * mh / (a * a) + mh * mh / (b * b) + mw * mw);
+                let factor = 2.0 * (2 * p + 2 * q + 2) as f64;
+                (
+                    [2 * p, 2 * q],
+                    [BERNSTEIN_ROUNDING * mh, BERNSTEIN_ROUNDING * factor * size],
+                    1,
+                )
+            }
+        };
+        let [d0, d1] = match cut {
+            Cut::Line(_) => [[p, q], [p, q]],
+            Cut::Conic(_) => [[p, q], degrees],
+        };
         Piece {
             span: [patch.u, patch.v],
-            h: h.map(|c| Poly2::new([p, q], c)),
+            h: [Poly2::new(d0, h[0].clone()), Poly2::new(d1, h[1].clone())],
             w: Poly2::new([p, q], w),
-            floor: BERNSTEIN_ROUNDING * mh,
+            floors,
             magnitude: [mh, mw],
             poles,
             offsets,
+            planes,
         }
     }
 
@@ -244,7 +512,7 @@ impl Piece {
     /// of one of its planes: the patch, inside the hull of its control
     /// points, is too.
     fn clear_of(&self, reach: f64) -> bool {
-        (0..2).any(|k| {
+        (0..self.planes).any(|k| {
             self.offsets.iter().all(|c| c[k] > reach) || self.offsets.iter().all(|c| c[k] < -reach)
         })
     }
@@ -286,12 +554,43 @@ pub(crate) fn line_nurbs(
         direction: frame.z().into_inner(),
         normals: [frame.x().into_inner(), frame.y().into_inner()],
     };
+    query(surface, Cut::Line(line), origin, tol).run(curve, meter)
+}
+
+/// The intersection of a circle or an ellipse and a NURBS surface: the
+/// module docs, with the conic's plane and cylinder in the line's two
+/// planes' place. `frame` is the conic's, `radii` its semi-axes.
+pub(crate) fn conic_nurbs(
+    curve: &Curve,
+    frame: &Frame,
+    radii: [f64; 2],
+    surface: &NurbsSurface,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<CurveSurfaceIntersection, GeomError> {
+    if !(radii.iter().all(|r| r.is_finite() && *r > 0.0)) {
+        return Err(GeomError::Degenerate {
+            kind: GeomKind::Curve(curve.kind()),
+            reason: "the conic's radii are not positive".to_owned(),
+        });
+    }
+    let conic = Conic {
+        frame: *frame,
+        radii,
+        steepness: 2.0 / radii[0].max(radii[1]),
+    };
+    query(surface, Cut::Conic(conic), frame.origin(), tol).run(curve, meter)
+}
+
+/// The search of `surface` for `cut`, the curve's `anchor` a point of it
+/// that enters the offsets.
+fn query(surface: &NurbsSurface, cut: Cut, anchor: Point3, tol: Tolerance) -> Query<'_> {
     let reach = surface
         .control_points()
         .iter()
         .map(|p| p.coords.norm())
         .fold(0.0, f64::max)
-        + origin.coords.norm();
+        + anchor.coords.norm();
     let (lo, hi) = surface.control_points().iter().fold(
         ([f64::INFINITY; 3], [f64::NEG_INFINITY; 3]),
         |(lo, hi), p| {
@@ -302,22 +601,21 @@ pub(crate) fn line_nurbs(
         },
     );
     let extent = (0..3).map(|k| (hi[k] - lo[k]).powi(2)).sum::<f64>().sqrt();
-    let query = Query {
+    Query {
         surface,
         extent,
-        line,
+        cut,
         tau: tol.linear,
         angular: tol.angular,
         reach,
         domain: surface.domain(),
         closure: surface.closure(),
-    };
-    query.run(curve, meter)
+    }
 }
 
 struct Query<'a> {
     surface: &'a NurbsSurface,
-    line: Line,
+    cut: Cut,
     tau: f64,
     angular: f64,
     /// The diagonal of the control net's box.
@@ -335,6 +633,18 @@ struct Collected {
     /// Critical points of the distance off the surface, within the tube.
     folds: Vec<Touch>,
     poles: Vec<Pole>,
+}
+
+/// The critical points of `|Φ|²` on a patch as a system: the two
+/// polynomials whose common zeros they are, the roundings of their
+/// coefficients, the fold gate and the tube gate with theirs.
+struct FoldSystem {
+    a: [Poly2; 2],
+    floors: [f64; 2],
+    fold: Poly2,
+    floor_fold: f64,
+    tube: Poly2,
+    floor_tube: f64,
 }
 
 /// A polynomial that only excludes, as [`Gate`] takes it.
@@ -357,14 +667,17 @@ struct Isolated {
 impl Query<'_> {
     fn run(&self, curve: &Curve, meter: &mut Meter) -> Result<CurveSurfaceIntersection, GeomError> {
         let [p, q] = self.surface.degree();
-        let binomials = Binomials::new(3 * p.max(q) + 1);
+        let binomials = Binomials::new(match self.cut {
+            Cut::Line(_) => 3 * p.max(q) + 1,
+            Cut::Conic(_) => 6 * p.max(q) + 2,
+        });
         let slack = BERNSTEIN_ROUNDING * self.reach;
         let mut all = Collected::default();
         let pieces: Vec<Piece> = self
             .surface
             .patches()
             .iter()
-            .map(|patch| Piece::of(patch, &self.line, self.reach, self.tau))
+            .map(|patch| Piece::of(patch, &self.cut, self.reach, self.tau, &binomials))
             .filter(|piece| !piece.clear_of(self.tau + slack))
             .collect();
         for piece in &pieces {
@@ -464,7 +777,7 @@ impl Query<'_> {
         meter: &mut Meter,
     ) -> Result<(), GeomError> {
         let mut h = piece.h.clone();
-        let mut floors = [piece.floor; 2];
+        let mut floors = piece.floors;
         for &row in &piece.poles {
             for k in 0..2 {
                 (h[k], floors[k]) = over_row(&h[k], row, floors[k], binomials);
@@ -624,11 +937,11 @@ impl Query<'_> {
 
     /// The distance of the surface's point at `uv` from the line.
     fn distance(&self, uv: [f64; 2]) -> f64 {
-        norm(self.line.offset(self.surface.eval(uv[0], uv[1]).point))
+        norm(self.cut.offset(self.surface.eval(uv[0], uv[1]).point))
     }
 
     /// The patch's critical points of the distance within the tube, off
-    /// the surface: the extrema of a line that does not reach it.
+    /// the surface: the extrema of a curve that does not reach it.
     fn folds(
         &self,
         piece: &Piece,
@@ -636,43 +949,20 @@ impl Query<'_> {
         all: &mut Collected,
         meter: &mut Meter,
     ) -> Result<(), GeomError> {
-        let [h1, h2] = &piece.h;
-        let w = &piece.w;
-        let [m, n] = h1.degree().map(|d| d as f64);
-        let [mh, mw] = piece.magnitude;
-        let mul = |a: &Poly2, b: &Poly2| a.mul(b, binomials);
-        // `W⁴ d·(Sᵤ × Sᵥ)`, over `W`: zero on the fold.
-        let fold = Poly2::combine(&[
-            (1.0, &mul(w, &mul(&h1.du(), &h2.dv()))),
-            (-1.0, &mul(w, &mul(&h2.du(), &h1.dv()))),
-            (1.0, &mul(&w.dv(), &mul(h1, &h2.du()))),
-            (-1.0, &mul(&w.dv(), &mul(h2, &h1.du()))),
-            (1.0, &mul(&w.du(), &mul(&h1.dv(), h2))),
-            (-1.0, &mul(&w.du(), &mul(&h2.dv(), h1))),
-        ]);
-        let floor_fold = BERNSTEIN_ROUNDING * 24.0 * m * n * mw * mh * mh;
-        if fold.sign(floor_fold).is_some() {
+        let Some(FoldSystem {
+            mut a,
+            mut floors,
+            fold,
+            floor_fold,
+            tube,
+            floor_tube,
+        }) = (match &self.cut {
+            Cut::Line(_) => self.line_folds(piece, binomials),
+            Cut::Conic(conic) => self.conic_folds(piece, conic, binomials),
+        })
+        else {
             return Ok(());
-        }
-        // `W³` times half the gradient of `|Φ|²`.
-        let gradient = |dh: [Poly2; 2], dw: Poly2| {
-            let terms: Vec<Poly2> = (0..2)
-                .map(|k| {
-                    let inner =
-                        Poly2::combine(&[(1.0, &mul(&dh[k], w)), (-1.0, &mul(&piece.h[k], &dw))]);
-                    mul(&piece.h[k], &inner)
-                })
-                .collect();
-            Poly2::combine(&[(1.0, &terms[0]), (1.0, &terms[1])])
         };
-        let mut a = [
-            gradient([h1.du(), h2.du()], w.du()),
-            gradient([h1.dv(), h2.dv()], w.dv()),
-        ];
-        let mut floors = [
-            BERNSTEIN_ROUNDING * 8.0 * m * mh * mh * mw,
-            BERNSTEIN_ROUNDING * 8.0 * n * mh * mh * mw,
-        ];
         // Through a pole the gradient vanishes along its row, across it
         // once and along it twice.
         for &(k, r) in &piece.poles {
@@ -683,12 +973,6 @@ impl Query<'_> {
                 }
             }
         }
-        let tube = Poly2::combine(&[
-            (1.0, &mul(h1, h1)),
-            (1.0, &mul(h2, h2)),
-            (-self.tau * self.tau, &mul(w, w)),
-        ]);
-        let floor_tube = BERNSTEIN_ROUNDING * (2.0 * mh * mh + self.tau * self.tau * mw * mw);
         let gates = [
             GateSpec {
                 poly: &fold,
@@ -731,11 +1015,141 @@ impl Query<'_> {
         Ok(())
     }
 
+    /// The critical-point system of a line on a patch: `W³` times half the
+    /// gradient of `|Φ|²`, the fold gate `W⁴ d·(Sᵤ × Sᵥ)` over `W` and the
+    /// tube `|H|² ≤ τ² W²`; `None` where the fold keeps one sign over the
+    /// patch, so that no point of it is critical but on the line.
+    fn line_folds(&self, piece: &Piece, binomials: &Binomials) -> Option<FoldSystem> {
+        let [h1, h2] = &piece.h;
+        let w = &piece.w;
+        let [m, n] = h1.degree().map(|d| d as f64);
+        let [mh, mw] = piece.magnitude;
+        let mul = |a: &Poly2, b: &Poly2| a.mul(b, binomials);
+        let fold = Poly2::combine(&[
+            (1.0, &mul(w, &mul(&h1.du(), &h2.dv()))),
+            (-1.0, &mul(w, &mul(&h2.du(), &h1.dv()))),
+            (1.0, &mul(&w.dv(), &mul(h1, &h2.du()))),
+            (-1.0, &mul(&w.dv(), &mul(h2, &h1.du()))),
+            (1.0, &mul(&w.du(), &mul(&h1.dv(), h2))),
+            (-1.0, &mul(&w.du(), &mul(&h2.dv(), h1))),
+        ]);
+        let floor_fold = BERNSTEIN_ROUNDING * 24.0 * m * n * mw * mh * mh;
+        if fold.sign(floor_fold).is_some() {
+            return None;
+        }
+        let gradient = |dh: [Poly2; 2], dw: Poly2| {
+            let terms: Vec<Poly2> = (0..2)
+                .map(|k| {
+                    let inner =
+                        Poly2::combine(&[(1.0, &mul(&dh[k], w)), (-1.0, &mul(&piece.h[k], &dw))]);
+                    mul(&piece.h[k], &inner)
+                })
+                .collect();
+            Poly2::combine(&[(1.0, &terms[0]), (1.0, &terms[1])])
+        };
+        let a = [
+            gradient([h1.du(), h2.du()], w.du()),
+            gradient([h1.dv(), h2.dv()], w.dv()),
+        ];
+        let floors = [
+            BERNSTEIN_ROUNDING * 8.0 * m * mh * mh * mw,
+            BERNSTEIN_ROUNDING * 8.0 * n * mh * mh * mw,
+        ];
+        let tube = Poly2::combine(&[
+            (1.0, &mul(h1, h1)),
+            (1.0, &mul(h2, h2)),
+            (-self.tau * self.tau, &mul(w, w)),
+        ]);
+        let floor_tube = BERNSTEIN_ROUNDING * (2.0 * mh * mh + self.tau * self.tau * mw * mw);
+        Some(FoldSystem {
+            a,
+            floors,
+            fold,
+            floor_fold,
+            tube,
+            floor_tube,
+        })
+    }
+
+    /// The same for a conic, whose `Φ₁ = h₁ / W` and `Φ₂ = h₂ / W²` are
+    /// homogeneous of different degrees. With `Dₖ,ₓ = hₖ,ₓ W − eₖ hₖ Wₓ`
+    /// (`e = (1, 2)`), `∂ₓΦₖ = Dₖ,ₓ / W^{eₖ+1}`: half the gradient of
+    /// `|Φ|²` times `W⁵` is `W² h₁ D₁,ₓ + h₂ D₂,ₓ`, the Jacobian's
+    /// determinant times `W⁵` is `D₁,ᵤ D₂,ᵥ − D₁,ᵥ D₂,ᵤ`, and the tube
+    /// `|Φ|² ≤ τ²` times `W⁴` is `W² h₁² + h₂² − τ² W⁴`, with `τ` grown by
+    /// what [`Conic::scale`] says the polynomial `Φ₂` may exceed the
+    /// distance by.
+    fn conic_folds(
+        &self,
+        piece: &Piece,
+        conic: &Conic,
+        binomials: &Binomials,
+    ) -> Option<FoldSystem> {
+        let [h1, h2] = &piece.h;
+        let w = &piece.w;
+        let mul = |a: &Poly2, b: &Poly2| a.mul(b, binomials);
+        let magnitude = |p: &Poly2| p.coefficients().iter().fold(0.0f64, |m, c| m.max(c.abs()));
+        let d = |h: &Poly2, e: f64, partial: &dyn Fn(&Poly2) -> Poly2| {
+            Poly2::combine(&[(1.0, &mul(&partial(h), w)), (-e, &mul(h, &partial(w)))])
+        };
+        let du = |p: &Poly2| p.du();
+        let dv = |p: &Poly2| p.dv();
+        let (d1u, d1v) = (d(h1, 1.0, &du), d(h1, 1.0, &dv));
+        let (d2u, d2v) = (d(h2, 2.0, &du), d(h2, 2.0, &dv));
+        let fold = Poly2::combine(&[(1.0, &mul(&d1u, &d2v)), (-1.0, &mul(&d1v, &d2u))]);
+        let [m, n] = fold.degree().map(|x| x as f64);
+        let growth = 2.0 * (m + n + 2.0);
+        let floor_fold = BERNSTEIN_ROUNDING
+            * growth
+            * (magnitude(&d1u) * magnitude(&d2v) + magnitude(&d1v) * magnitude(&d2u));
+        if fold.sign(floor_fold).is_some() {
+            return None;
+        }
+        let w2 = mul(w, w);
+        let gradient = |d1: &Poly2, d2: &Poly2| {
+            Poly2::combine(&[(1.0, &mul(&mul(&w2, h1), d1)), (1.0, &mul(h2, d2))])
+        };
+        let a = [gradient(&d1u, &d2u), gradient(&d1v, &d2v)];
+        let floors = [0, 1].map(|k| {
+            let (d1, d2) = if k == 0 { (&d1u, &d2u) } else { (&d1v, &d2v) };
+            let [m, n] = a[k].degree().map(|x| x as f64);
+            BERNSTEIN_ROUNDING
+                * 2.0
+                * (m + n + 2.0)
+                * (magnitude(&w2) * magnitude(h1) * magnitude(d1) + magnitude(h2) * magnitude(d2))
+        });
+        let [lo, hi] = [0, 1].map(|k| conic.radii[k]);
+        let reach = self.tau * (1.0 + self.tau / lo.min(hi));
+        let w4 = mul(&w2, &w2);
+        let tube = Poly2::combine(&[
+            (1.0, &mul(&w2, &mul(h1, h1))),
+            (1.0, &mul(h2, h2)),
+            (-reach * reach, &w4),
+        ]);
+        let floor_tube = BERNSTEIN_ROUNDING
+            * 2.0
+            * (tube.degree()[0] + tube.degree()[1] + 2) as f64
+            * (magnitude(&w2) * magnitude(h1) * magnitude(h1)
+                + magnitude(h2) * magnitude(h2)
+                + reach * reach * magnitude(&w4));
+        Some(FoldSystem {
+            a,
+            floors,
+            fold,
+            floor_fold,
+            tube,
+            floor_tube,
+        })
+    }
+
     /// `Φ`, its Jacobian and the surface's evaluation at `uv`.
     fn offset(&self, uv: [f64; 2]) -> ([f64; 2], [[f64; 2]; 2], SurfaceEval) {
         let e = self.surface.eval(uv[0], uv[1]);
-        let f = self.line.offset(e.point);
-        let j = self.line.normals.map(|n| [n.dot(&e.du), n.dot(&e.dv)]);
+        let f = self.cut.offset(e.point);
+        let j = self
+            .cut
+            .gradients(e.point)
+            .map(|n| [n.dot(&e.du), n.dot(&e.dv)]);
         (f, j, e)
     }
 
@@ -800,7 +1214,8 @@ impl Query<'_> {
             j[0][0] * f[0] + j[1][0] * f[1],
             j[0][1] * f[0] + j[1][1] * f[1],
         ];
-        let second = |v: Vec3| self.line.normals.map(|n| n.dot(&v));
+        let grads = self.cut.gradients(e.point);
+        let second = |v: Vec3| grads.map(|n| n.dot(&v));
         let (fuu, fuv, fvv) = (second(e.duu), second(e.duv), second(e.dvv));
         let jtj = gram(j);
         let h = [
@@ -905,9 +1320,10 @@ impl Query<'_> {
     fn extremum(&self, uv: [f64; 2]) -> Option<([f64; 2], f64, f64)> {
         let e = self.surface.eval(uv[0], uv[1]);
         let n = e.du.cross(&e.dv).try_normalize(0.0)?;
-        let sin = self.line.direction.dot(&n);
-        // The line's direction in the tangent plane, in `(u, v)`.
-        let along = self.line.direction - n * sin;
+        let direction = self.cut.direction(e.point)?;
+        let sin = direction.dot(&n);
+        // The curve's direction in the tangent plane, in `(u, v)`.
+        let along = direction - n * sin;
         let g = [e.du.dot(&e.du), e.du.dot(&e.dv), e.dv.dot(&e.dv)];
         let rhs = [e.du.dot(&along), e.dv.dot(&along)];
         let det = g[0] * g[2] - g[1] * g[1];
@@ -918,9 +1334,11 @@ impl Query<'_> {
             (g[2] * rhs[0] - g[1] * rhs[1]) / det,
             (g[0] * rhs[1] - g[1] * rhs[0]) / det,
         ];
+        // The sag of the surface along the curve less the curve's own
+        // bend towards it.
         let second = n.dot(
             &(e.duu * (ab[0] * ab[0]) + e.duv * (2.0 * ab[0] * ab[1]) + e.dvv * (ab[1] * ab[1])),
-        );
+        ) - self.cut.bend(e.point).dot(&n);
         // A surface not curved along the line, to the rounding of its
         // sag across the control net, has no extremum beside a crossing:
         // the line lies on it, parallel within `tol.angular`, or crosses
@@ -948,7 +1366,10 @@ impl Query<'_> {
         let Some(n) = e.du.cross(&e.dv).try_normalize(0.0) else {
             return false;
         };
-        let sin = self.line.direction.dot(&n);
+        let Some(direction) = self.cut.direction(e.point) else {
+            return false;
+        };
+        let sin = direction.dot(&n);
         let Some([l, m, k]) = self.form(uv) else {
             return sin.abs() <= self.angular;
         };
@@ -970,10 +1391,11 @@ impl Query<'_> {
     /// between by the surface's own projection: a point it does not
     /// decide is not within.
     fn joined(&self, from: f64, to: f64) -> bool {
+        let span = self.cut.step(from, to);
         (1..=JOIN_SAMPLES).all(|i| {
-            let t = from + (to - from) * i as f64 / (JOIN_SAMPLES + 1) as f64;
+            let t = from + span * i as f64 / (JOIN_SAMPLES + 1) as f64;
             self.surface
-                .project(self.line.origin + self.line.direction * t)
+                .project(self.cut.point_at(t))
                 .is_ok_and(|p| p.distance <= self.tau)
         })
     }
@@ -991,8 +1413,8 @@ impl Query<'_> {
     /// the line itself decides: within the tube from the meeting to the
     /// model's extremum, the touch is the surface's nearest point there.
     fn extremum_beside(&self, uv: [f64; 2], guess: [f64; 2], along: f64) -> Option<Touch> {
-        let at = self.line.t(self.surface.eval(uv[0], uv[1]).point);
-        let there = self.line.origin + self.line.direction * (at + along);
+        let at = self.cut.position(self.surface.eval(uv[0], uv[1]).point);
+        let there = self.cut.point_at(self.cut.shifted(at, along));
         let nearest = self.surface.project(there).ok();
         let start = nearest.map_or(guess, |p| [p.uv.x, p.uv.y]);
         let found = self.critical(start, self.surface_bounds());
@@ -1005,7 +1427,9 @@ impl Query<'_> {
                 });
             }
             if distance <= self.tau {
-                let to = self.line.t(self.surface.eval(found[0], found[1]).point);
+                let to = self
+                    .cut
+                    .position(self.surface.eval(found[0], found[1]).point);
                 return self.joined(at, to).then_some(Touch {
                     uv: found,
                     distance,
@@ -1015,11 +1439,13 @@ impl Query<'_> {
         }
         let p = nearest?;
         let uv = [p.uv.x, p.uv.y];
-        (p.distance <= self.tau && self.settle(uv).is_some() && self.joined(at, at + along))
-            .then_some(Touch {
-                uv,
-                distance: p.distance,
-            })
+        (p.distance <= self.tau
+            && self.settle(uv).is_some()
+            && self.joined(at, self.cut.shifted(at, along)))
+        .then_some(Touch {
+            uv,
+            distance: p.distance,
+        })
     }
 
     /// The surface's second fundamental form at `uv` in the orthonormal
@@ -1030,7 +1456,8 @@ impl Query<'_> {
     fn form(&self, uv: [f64; 2]) -> Option<[f64; 3]> {
         let e = self.surface.eval(uv[0], uv[1]);
         let n = e.du.cross(&e.dv).try_normalize(0.0)?;
-        let along = (self.line.direction - n * self.line.direction.dot(&n)).try_normalize(0.0)?;
+        let direction = self.cut.direction(e.point)?;
+        let along = (direction - n * direction.dot(&n)).try_normalize(0.0)?;
         let across = n.cross(&along);
         let g = [e.du.dot(&e.du), e.du.dot(&e.dv), e.dv.dot(&e.dv)];
         let det = g[0] * g[2] - g[1] * g[1];
@@ -1053,7 +1480,11 @@ impl Query<'_> {
             )
         };
         let (t, c) = (coords(along), coords(across));
-        Some([form(t, t), form(t, c), form(c, c)])
+        Some([
+            form(t, t) - self.cut.bend(e.point).dot(&n),
+            form(t, c),
+            form(c, c),
+        ])
     }
 
     /// The angle from the line's direction to the nearest direction of
@@ -1111,6 +1542,10 @@ impl Query<'_> {
     /// direction the surface does not curve along there, and within the
     /// tube across the extent of the control net along the line.
     fn lies_along(&self, touch: &Touch) -> bool {
+        // A conic lies on the surface or it does not: [`Self::on_surface`].
+        let Cut::Line(line) = &self.cut else {
+            return false;
+        };
         let form = self.form(touch.uv);
         if form
             .and_then(|f| self.flat_angle(f))
@@ -1122,7 +1557,7 @@ impl Query<'_> {
             .surface
             .control_points()
             .iter()
-            .map(|p| self.line.t(*p))
+            .map(|p| line.t(*p))
             .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), t| {
                 (lo.min(t), hi.max(t))
             });
@@ -1167,10 +1602,35 @@ impl Query<'_> {
         Some(out)
     }
 
+    /// Whether a conic that meets the surface lies on it all round: every
+    /// one of [`CONIC_SAMPLES`] points of it, evenly spread in its
+    /// parameter, within the tube by the surface's own projection. A
+    /// line lying on a surface is decided by the touches along it
+    /// ([`Self::lies_along`]); a conic's curvature makes a sample the
+    /// simpler test, and the isolation has met the surface somewhere on it.
+    fn on_surface(&self, all: &Collected) -> bool {
+        let Cut::Conic(conic) = &self.cut else {
+            return false;
+        };
+        if all.meets.is_empty() && all.folds.is_empty() && all.poles.is_empty() {
+            return false;
+        }
+        let curve = conic.curve();
+        (0..CONIC_SAMPLES).all(|i| {
+            let t = core::f64::consts::TAU * (i as f64 + 0.5) / CONIC_SAMPLES as f64;
+            self.surface
+                .project(curve.point(t))
+                .is_ok_and(|p| p.distance <= self.tau)
+        })
+    }
+
     /// The crossings, the touches and the poles, as hits ascending by
     /// `t`; or `Coincident`.
     fn hits(&self, curve: &Curve, all: Collected) -> Result<CurveSurfaceIntersection, GeomError> {
         let point = |uv: [f64; 2]| self.surface.eval(uv[0], uv[1]).point;
+        if self.on_surface(&all) {
+            return Ok(CurveSurfaceIntersection::Coincident);
+        }
         let same =
             |a: Point3, b: Point3| arris_math::is_negligible((a - b).norm(), LOCATION * self.reach);
         let mut poles: Vec<Pole> = Vec::new();
@@ -1248,11 +1708,11 @@ impl Query<'_> {
         });
         let mut one: Vec<(Touch, f64, f64)> = Vec::new();
         for t in touches {
-            let at = self.line.t(point(t.uv));
+            let at = self.cut.position(point(t.uv));
             let half = self.reach_within(&t, self.form(t.uv));
             if !one
                 .iter()
-                .any(|(_, other, reach)| (at - other).abs() <= half + reach)
+                .any(|(_, other, reach)| self.cut.gap(at, *other) <= half + reach)
             {
                 one.push((t, at, half));
             }
@@ -1263,7 +1723,7 @@ impl Query<'_> {
         }
         let mut out = Vec::new();
         let mut push = |uv: [f64; 2], tangent: bool| {
-            let t = self.line.t(point(uv));
+            let t = self.cut.position(point(uv));
             out.push(CurveSurfaceHit {
                 t,
                 uv: Point2::new(uv[0], uv[1]),

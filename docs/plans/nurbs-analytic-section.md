@@ -255,7 +255,7 @@ bound has to be established here.
   (`a_nurbs_face_against_planes_is_decided_and_not_a_violation`; the S5
   row stays unchecked for two NURBS faces only). The boolean's own pave
   is step 7's.
-- [ ] Step 6 **[2]** — **A circle and an ellipse against a NURBS
+- [x] Step 6 **[2]** — **A circle and an ellipse against a NURBS
   surface.** The curve is the meet of its plane and its cylinder (an
   elliptic cylinder for the ellipse). On each patch, the plane's offset
   and the cylinder's implicit form are two Bernstein polynomials whose
@@ -264,6 +264,27 @@ bound has to be established here.
   the circle's angle at the surface point. Fixtures: a circle through a
   twin cylinder (four hits, closed form), a circle tangent to a bump (a
   touch), and a circle missing by `2·tol.linear`.
+
+  **Landed (2026-10-13).** `nurbs::line`'s `Line` became a `Cut`, a line
+  or a conic, and the isolation, the descents, the poles and the touch
+  search are shared; the line's tests, its fixtures and its blessed
+  hits are unchanged. A conic's two offsets are its plane's and its
+  cylinder's `E / |∇E|` (the distance in the plane to first order), the
+  polynomials `h₁` and `h₂ = (min(a, b) / 2)·E` of the patch's degrees
+  and twice them; the critical-point system is `W² h₁ D₁ + h₂ D₂` with
+  `Dₖ = hₖ,ₓ W − eₖ hₖ Wₓ`, `e = (1, 2)`. The second-order model of a touch
+  adds the conic's bend, `κ N·n`, to the surface's sag. `Coincident` is a
+  conic that meets the surface and lies within the tube of it at 64
+  points round (`CONIC_SAMPLES`), the line's test of touches along it
+  being a straight line's. Held to `GeomAPI_IntCS`
+  (`geom/c10-conic-nurbs-hits`: three circles and an ellipse through the
+  bicubic, a circle across the pole, a tangent circle, the same two
+  tolerances clear, one touching at the pole, one across the crest) and,
+  at 3000 cases, to the analytic arms through the exact twin of every
+  surface kind, an ellipse and a circle centred on a point of the
+  surface (`tests/conic_nurbs.rs`); the oracle's tangent hit, which it
+  reports twice a little way apart, is matched by ours where it lies
+  within the tolerance of the surface beside it.
 - [ ] Step 7 **[2]** — **The boolean over NURBS × analytic.** Run the pave,
   face splitting on the NURBS face's `(u, v)` domain, and classification
   end to end. Decide the pcurve source (traced `(u, v)` or `pcurve_on`) on
