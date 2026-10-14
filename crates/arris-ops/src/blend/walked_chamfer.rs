@@ -48,6 +48,8 @@ pub(super) struct Chord {
     /// The contacts' `(u, v)` on each face at the range's samples, which
     /// seed a NURBS face's Newton iteration.
     seeds: Vec<(f64, [Point2; 2])>,
+    /// `true` for a closed edge, whose two ends are one chord.
+    closed: bool,
 }
 
 fn unsettled(why: &'static str) -> Walked {
@@ -89,6 +91,7 @@ impl Chord {
             edge_range: c.range,
             range,
             seeds: Vec::with_capacity(EDGE_SAMPLES + 1),
+            closed: c.closed,
         };
         let mut previous: [Option<Point2>; 2] = [None, None];
         for i in 0..=EDGE_SAMPLES {
@@ -206,6 +209,13 @@ impl Chord {
     /// The segment from the first contact to the second at `t`, as a
     /// curve of degree one over `[0, 1]`.
     fn section(&self, t: f64) -> Result<NurbsCurve, Walked> {
+        // A closed edge's two ends are one chord, found once, so that the
+        // surface closes to the last bit.
+        let t = if self.closed && t >= self.range.hi() {
+            self.range.lo()
+        } else {
+            t
+        };
         let [a, b] = self.contacts(t)?;
         Ok(NurbsCurve::new(
             1,

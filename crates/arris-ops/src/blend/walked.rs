@@ -383,6 +383,8 @@ pub(super) struct Spine {
     /// The ball at each of the edge's samples, which seed a NURBS face's
     /// feet.
     edge_balls: Vec<Ball>,
+    /// `true` for a closed edge's spine, a loop of one period.
+    closed: bool,
 }
 
 impl Spine {
@@ -518,8 +520,19 @@ impl Spine {
                 v
             }
         };
+        // A loop's two ends are one ball: found once, so that the
+        // surface's first and last rows of control points are the same to
+        // the last bit and the face is closed, not only fitted to be.
+        let section = |v: f64| {
+            let v = if self.closed && v >= range.hi() {
+                range.lo()
+            } else {
+                v
+            };
+            arc(&self.ball(at(v))?)
+        };
         let surface = fit_skin(
-            |v| arc(&self.ball(at(v))?),
+            section,
             range,
             SURFACE_DEGREE,
             SECTION_FIT_FRACTION * tol.linear,
@@ -869,6 +882,7 @@ pub(super) fn spine(
         to,
         pinned: [pinned[0], pinned[1]],
         edge_balls,
+        closed: rolling.closed,
     })
 }
 

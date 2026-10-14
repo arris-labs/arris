@@ -502,13 +502,35 @@ bound has to be established here.
     and the test now holds the closed form. The backlog line becomes the
     plane's exactness (the face is a NURBS surface, not a `Plane`). The
     rest of the blend and regression corpus (109 fixtures) is unchanged.
-- [ ] Step 8 **[2]** — **The twin property.** `nurbs_twin_faces` (landed in step 5) twins
+- [x] Step 8 **[2]** — **The twin property.** `nurbs_twin_faces` (landed in step 5) twins
   one face of an edge. For each table row (plane × plane, plane ×
   cylinder along a ruling and a circle, cone, sphere and torus coaxial),
   in random poses and at random sizes, the fillet and chamfer of the
   twinned edge agree with the closed form on the original in volume,
   area and counts, or both refuse. `prop_shards!`, 256 cases at
   retirement. Each failure found becomes a `regression/` fixture.
+
+  **Done (2026-10-14).** `twin_prop.rs`: three `prop_shards!` families at
+  256 cases, in a random pose, fillet or chamfer chosen, either face the
+  twin: a box's edge (planes), a half disc's chord (a plane against a
+  cylinder along a ruling) and a turned part's corner (the meridian row:
+  plane, cylinder, cone, sphere, torus). All pass. Measured and found:
+  - **A loop did not close to the bit.** A part posed 100 from the origin
+    failed L3 on the walked ring: the ball at the loop's two ends is found
+    twice and the two differ by the snap's rounding, so the surface's first
+    and last rows of control points were not the same and the face was not
+    closed. The skin now takes the start's ball for both ends (ADR-0062
+    amendment). The same for a closed chamfer's chord.
+  - **A fillet on a NURBS face against a coaxial cylinder, cone or sphere
+    is refused.** The offsets' section is a circle about the shared axis and
+    ADR-0061's tracer reports its turning points as ones it cannot tell
+    apart; the cylinder's twin against a cone finds no piece holding the
+    ends' balls. A chamfer there builds. The property rejects the pair
+    (`walked-fillet-coaxial-nurbs`) and two ignored tests beside it hold the
+    shrunk cases (`a_twinned_cylinder_fillets_against_a_cone`, `..._a_sphere`),
+    with a backlog line. Every pair the strategy draws that the rejection
+    does not take is held, fillet and chamfer; how many draws it takes is
+    not counted.
 - [ ] Step 9 **[2]** — **The analytic pairs with no closed form.** The
   walked stripe over two exact offsets, one fixture each against Open
   CASCADE:

@@ -255,6 +255,16 @@ with its Python class, `GeomOffsetFoldsError`.
   the median, `5.5e-6` at most; the step-5b allowance for a walked
   fixture covers it.
 
+- **Step 8 (a loop closes to the bit).** A closed edge's ring surface is
+  closed for the checker only if its first and last rows of control
+  points are the same to rounding (`NurbsSurface::closure`), and a ring
+  edge is used twice by its face, which L3 allows on a closed surface and
+  nowhere else. The ball at the loop's two ends is found twice, by Newton
+  from two starts, and the two differ by the snap's rounding, which
+  grows with the coordinates: a part posed 100 from the origin failed L3.
+  The skin now asks for the ball at the loop's start for both ends
+  (`Spine::skin`, `Chord::section`), so the rows are equal to the bit.
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**
