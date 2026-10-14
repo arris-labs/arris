@@ -1,0 +1,29 @@
+{
+  "description": "NIST's CTC-05, its AP242 edition 1's solid #1205: the same edge as blend/nist-ctc-05-ap203-nurbs-torus-fillet, the B-spline face f109 written as one rational B\u00e9zier patch (1 \u00d7 1 spans) and the edge's curve as a cubic B-spline of 11 spans (no circle, off the best by 1.6e-3), against the torus f111, filleted alone at the battery's radius 0.889. The edge's tolerance is 2.4e-4 and its vertices' 2.1e-2. At v80 (AP203's v84) the faces turn tangent, a vanishing end; the offsets' section passes 2.6e-2 from the ball pinned there, which the vertex's tolerance admits and the edge's alone did not (ADR-0062, step 10a). The exact ball's arc there is 5.5e-4 wide and 2.5e-2 from the vertex, past its tolerance: no pole, so Arris refuses it TangentChain naming e256 and v80, as it does the AP203 edition. Open CASCADE builds a body BRepCheck_Analyzer finds invalid, 29 mm\u00b3 larger than the unfilleted part where a convex fillet removes about 2; its measures stay as the record and hold nothing (plans/nurbs-face-blend steps 1, 10a)",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../boolean/nist-ctc-05-ap242-box-cut-nurbs-plane/nist_ctc_05_asme1_ap242-e1-1205.stp",
+      "sha256": "e47c85bd667405aa4918f6dd17f9d70db4ecdd6509dd1e856c228ed793d7fa70",
+      "id": 1205
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          150.98396231882407,
+          31.260680012470875,
+          56.54476386520291
+        ]
+      ],
+      "radius": 0.8889999999999993
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "expect_error": "tangent-chain"
+  }
+}

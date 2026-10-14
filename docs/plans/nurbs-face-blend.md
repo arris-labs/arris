@@ -617,7 +617,7 @@ bound has to be established here.
     fixture's tolerances are `1e-8`. Its counts are Arris' own: Open
     CASCADE's healed reading of the part has two vertices and two edges
     more (`counts_differ`).
-- [ ] Step 10a **[3]** — **CTC-05 AP242's spine.** Step 10's run (2026-10-14)
+- [x] Step 10a **[3]** — **CTC-05 AP242's spine.** Step 10's run (2026-10-14)
   found `regression/nist-ctc-05-ap242-nurbs-torus-fillet` refused
   `Unsupported(NURBS × torus)` from `Refusal::NoSpine { why: "no piece holds
   the ends' balls" }`: the offsets' section is traced, but none of its pieces
@@ -631,6 +631,23 @@ bound has to be established here.
   also stops at `v84` (`TangentChain`, step 9b), so the pair of fixtures is
   held by the two editions agreeing and an independent spine integral, or
   one is re-scoped to the edge up to the vanishing end. ADR-0062 amendment.
+
+  **Done (2026-10-14).** Measured: the AP242 edge's end at `v80` (AP203's
+  `v84`) is a vanishing end, and of the two pieces traced the one through
+  the far end's ball passed `2.6e-2` from the pinned ball, against an
+  allowance `√(2r·τ)` of `2.1e-2` with `τ` the edge's `2.4e-4`. Of the three
+  causes, it was the third:
+  - the piece is not cut short: the end sits at `t = 1.80` of `[0, 3.24]`;
+  - the edge's samples are on both faces, to `8.7e-6` at `v80`, the faces
+    tangent there to `r·sin = 5.5e-5`;
+  - the match tolerance was the edge's alone, while the file gives the
+    vertices `2.1e-2` (AP203's edge and vertices share `7.7e-3`).
+  A vanishing end is now held to `√(2r·τ)` with `τ` the wider of the
+  tangency and the end vertex's tolerance (`Rolling::ends`), as step 9b's
+  pole already reads the vertex's. AP242 then stops where AP203 does,
+  `TangentChain`: the exact ball's arc is `5.5e-4` wide and `2.5e-2` from
+  the vertex, past its tolerance. Both fixtures move to `blend/` as
+  `tangent-chain` refusals, which settles the open question below.
 - [ ] Step 10b **[3]** — **Chain junctions on a walked member.** Three
   fixtures refuse at a tangent vertex where the chain goes on:
   - FTC-11 `bspline-circle`: "the blend leaves its face through an edge that
@@ -706,8 +723,12 @@ bound has to be established here.
 - The extension past the domain: **decided** in ADR-0062 §3, the end
   span carried on. Step 1 found it needed: CTC-05's ball reaches past
   both ends by r, a tenth of the domain's width.
-- ⚠ OPEN: what holds CTC-05's two fixtures, since Open CASCADE builds an
-  invalid body in both editions (step 1). A walked fixture whose oracle is
+- What holds CTC-05's two fixtures, since Open CASCADE builds an
+  invalid body in both editions (step 1): **decided** at step 10a. Both
+  editions are refused `TangentChain` at the same vanishing end, so each
+  fixture holds that refusal in `blend/`, and the invalid bodies'
+  measures stay as the record. The candidates below pass to the backlog
+  line that joins such an end. The question as first posed: A walked fixture whose oracle is
   only inaccurate is settled by ADR-0062's step 5b amendment; an invalid
   body is not. The candidates are the two
   editions agreeing with each other and the part's own volume less a

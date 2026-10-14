@@ -155,6 +155,10 @@ pub(super) struct Rolling<'a> {
     /// What the faces are tangent within at an end (ADR-0045): the faces'
     /// tolerance, or the edge's where that is wider.
     pub(super) tangency: f64,
+    /// The tolerance of the vertex at each end of the edge, `range.lo()`'s
+    /// first: how far from its point the faces may meet there, so how far
+    /// a vanishing end's tangency may lie from it.
+    pub(super) ends: [f64; 2],
 }
 
 /// The ball at one place of the spine: its centre, and its contact with
@@ -377,7 +381,7 @@ pub(super) struct Spine {
     /// The ball at `from` and at `to` where the faces turn tangent there
     /// within the edge's tolerance, on the faces' common normal at the
     /// edge's point. It is no ball of the surface: the exact ball at
-    /// `from` or `to` may lie as far as `√(2r·tangency)` from it, its arc
+    /// `from` or `to` may lie as far as `√(2r·τ)` from it ([`spine`]), its arc
     /// as wide as the faces' angle there (ADR-0062 §5).
     pinned: [Option<Ball>; 2],
     /// The ball at each of the edge's samples, which seed a NURBS face's
@@ -651,7 +655,9 @@ pub(super) fn contacts(surface: &NurbsSurface) -> Result<[NurbsCurve; 2], Walked
 /// period, never past an open one's ends. At an end where the faces are
 /// tangent within `rolling.tangency` (ADR-0045) the spine stops: the
 /// ball there is pinned to the edge's point, on the faces' common normal,
-/// held only to `√(2r·tangency)` of the piece, and located on it; the
+/// held only to `√(2r·τ)` of the piece, `τ` the wider of the tangency
+/// and the end vertex's tolerance (ADR-0062, step 10a), and located on
+/// it; the
 /// exact ball at that place is the snap of the piece's point, which the
 /// pinned one may miss by as much ([`Spine::pinned`]).
 ///
@@ -791,11 +797,13 @@ pub(super) fn spine(
     // surfaces cross, if they do, wherever a gap of rounding or of the
     // fits closes: surfaces a gap `δ` apart that curve away from each
     // other by `1/r` meet `√(2rδ)` along from where they would touch. So
-    // a vanishing end's ball is held to that reach of the tangency the
-    // faces were found tangent within.
-    let near = vanishing.map(|v| {
-        if v {
-            (2.0 * radius * rolling.tangency).sqrt()
+    // a vanishing end's ball is held to that reach of the gap the faces
+    // may have there: the tangency they were found tangent within, or the
+    // vertex's tolerance where the file wrote it wider than the edge's
+    // (CTC-05's AP242 v84, 2.1e-2 against 2.4e-4).
+    let near = [0, 1].map(|k| {
+        if vanishing[k] {
+            (2.0 * radius * rolling.tangency.max(rolling.ends[k])).sqrt()
         } else {
             tol.linear
         }
@@ -1274,6 +1282,7 @@ mod tests {
             range: pair.range,
             closed: pair.closed,
             tangency: tol().linear,
+            ends: [tol().linear; 2],
         };
         spine(&rolling, tol(), &mut Meter::default()).unwrap_or_else(|e| panic!("{e:?}"))
     }
@@ -1383,6 +1392,7 @@ mod tests {
             range,
             closed: false,
             tangency: tol().linear,
+            ends: [tol().linear; 2],
         };
         let spine =
             spine(&rolling, tol(), &mut Meter::default()).unwrap_or_else(|e| panic!("{e:?}"));
@@ -1511,6 +1521,7 @@ mod tests {
             range,
             closed: entity.start() == entity.end(),
             tangency: linear.max(entity.tolerance()),
+            ends: [entity.start(), entity.end()].map(|v| m.vertex(v).unwrap().tolerance()),
         };
         let started = std::time::Instant::now();
         let spine =

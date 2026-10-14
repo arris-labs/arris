@@ -167,6 +167,10 @@ fn roll<'a>(env: &Env<'a>, meter: &mut Meter<'_>, edge: EdgeId) -> Result<Rolled
                 range,
                 closed,
                 tangency: tolerance.max(entity.tolerance()),
+                ends: [
+                    m.vertex(entity.start())?.tolerance(),
+                    m.vertex(entity.end())?.tolerance(),
+                ],
             };
             Path::Ball(Box::new(
                 spine(&rolling, fit, meter).map_err(|w| named(w, edge, faces, surfaces))?,

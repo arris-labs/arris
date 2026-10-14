@@ -1151,16 +1151,6 @@ corpus_tests! {
     /// across a bicubic B-spline face.
     #[ignore = "the oracle is wrong: Open CASCADE removes 69 676 of the drill's volume where its own solid classifier finds 145 600 ± 2 900 of the part inside the cylinder (40 000 samples) and Arris removes 143 792, so counts (643 faces to 649) and the measures differ; no closed form holds the real part (nurbs-analytic-section step 7, docs/BACKLOG.md)"]
     regression_nist_ctc_02_ap242_drill_x_nurbs_cylinder => run "regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder";
-    /// NIST CTC-05's AP203 solid #249, the convex edge between its rational
-    /// B-spline face and a torus filleted alone at the battery's radius: a
-    /// blend on a NURBS face, both ends on the B-spline's domain boundary
-    /// with a cylinder across.
-    #[ignore = "TangentChain at v84: the faces turn tangent there only within the edge's tolerance, and the exact ball's arc stays 9.9e-3 from the vertex, a vanishing end with no pole, which ADR-0062's step 9b amendment refuses (docs/BACKLOG.md); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, of negative volume and area"]
-    regression_nist_ctc_05_ap203_nurbs_torus_fillet => run "regression/nist-ctc-05-ap203-nurbs-torus-fillet";
-    /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
-    /// face one rational Bézier patch.
-    #[ignore = "Unsupported(f109 NURBS × f111 torus): a spine or an end the walked stripe does not decide, not yet looked at (plans/nurbs-face-blend steps 9 and 10); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, 29 mm³ larger than the unfilleted part where a convex fillet removes about 2"]
-    regression_nist_ctc_05_ap242_nurbs_torus_fillet => run "regression/nist-ctc-05-ap242-nurbs-torus-fillet";
     /// NIST FTC-10's solid #6434, the closed edge where two cylinders whose
     /// axes cross off each other meet in a quartic, written as a B-spline,
     /// filleted alone.
@@ -1287,6 +1277,15 @@ corpus_tests! {
     /// pole at the vertex where the cylinders turn tangent, and runs on down
     /// the tangent corner at its other end (ADR-0062 §5).
     blend_nist_ctc_01_crossing_cylinders_crease_fillet => run "blend/nist-ctc-01-crossing-cylinders-crease-fillet";
+    /// NIST CTC-05's AP203 solid #249, the convex edge between its rational
+    /// B-spline face and a torus filleted alone: a vanishing end at v84
+    /// whose ball misses the vertex, refused as `TangentChain`; Open
+    /// CASCADE builds an invalid body (ADR-0062, steps 9b and 10a).
+    blend_nist_ctc_05_ap203_nurbs_torus_fillet => run "blend/nist-ctc-05-ap203-nurbs-torus-fillet";
+    /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
+    /// face one rational Bézier patch and its vertices' tolerance wider
+    /// than the edge's: refused at the same end as the AP203 edition.
+    blend_nist_ctc_05_ap242_nurbs_torus_fillet => run "blend/nist-ctc-05-ap242-nurbs-torus-fillet";
     /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
     /// a closed chain through four tangent vertices.
     blend_stadium_outline_fillet => run "blend/stadium-outline-fillet";

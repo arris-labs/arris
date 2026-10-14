@@ -309,6 +309,27 @@ with its Python class, `GeomOffsetFoldsError`.
   the pole and on that junction needed two tracer changes (ADR-0061,
   amendment of 2026-10-14).
 
+- **Step 10a (a vanishing end is held to its vertex).** §5's vanishing
+  end held the pinned ball to `√(2r·τₑ)` of the traced piece, `τₑ` the
+  faces' and the edge's tolerance. The faces only meet within the
+  vertex's tolerance, so the gap the offsets may cross across is the
+  wider of `τₑ` and the end vertex's own; the step-9b pole already
+  reads the vertex's. CTC-05's AP242 edition is the case: the edge's
+  tolerance is `2.4e-4`, its vertices' `2.1e-2`, and the section passed
+  `2.6e-2` from the pinned ball against an allowance of `2.1e-2`, so no
+  piece held the ends (`NoSpine`, read as NURBS × torus `Unsupported`).
+  The pieces were not cut short (the end lies inside the piece's
+  domain), and the edge's samples lie on both faces to `8.7e-6`. Under
+  the vertex's tolerance the allowance is `0.19`, and the AP242 edition
+  reaches the end as AP203 does, whose edge and vertices share `7.7e-3`.
+  There the exact ball's arc is `5.5e-4` wide and `2.5e-2` from the
+  vertex, past its tolerance, so the end is `TangentChain` like AP203's.
+  Both editions' fixtures are refusals in `blend/`. Open CASCADE's
+  invalid bodies stay as the record and hold nothing. The two candidate
+  oracles, the editions agreeing and a deficit integrated along the
+  spine, wait for the backlog item that joins such an end; until then
+  no measure is compared.
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**
