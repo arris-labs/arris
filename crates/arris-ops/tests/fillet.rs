@@ -438,9 +438,10 @@ fn faces_are_tangent_within_the_blends_tolerance() {
 }
 
 /// A revolve's cone ruling on its end cap — a plane through the cone's
-/// apex, along a ruling — is outside the table and is named as such.
+/// apex, along a ruling — is outside the table, and is walked (ADR-0062):
+/// a body clean at `Full` that has lost the corner's sliver.
 #[test]
-fn a_pair_outside_the_table_is_unsupported() {
+fn a_pair_outside_the_table_is_walked() {
     let mut m = Model::default();
     let p = |u, v| Point2::new(u, v);
     let plane = Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap();
@@ -467,8 +468,13 @@ fn a_pair_outside_the_table_is_unsupported() {
     // The cone's ruling on the start cap, the plane `y = 0` through the
     // axis.
     let ruling = edge_at(&m, ring, Point3::new(1.5, 0.0, 1.0));
-    let err = fillet(&mut m, ring, &[ruling], 0.1).unwrap_err();
-    assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
+    let before = mass_properties(&m, ring).unwrap().volume;
+    let (blended, _) = fillet(&mut m, ring, &[ruling], 0.1).unwrap();
+    let report = check(&m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    let removed = before - mass_properties(&m, blended).unwrap().volume;
+    // A quarter-round sliver along a ruling 2.24 long, near r² (1 − π/4).
+    assert!(removed > 0.0 && removed < 0.01 * 2.3, "removed {removed}");
 }
 
 /// A loop of lines and three-point arcs from `start` in the world's XY

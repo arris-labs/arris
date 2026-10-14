@@ -42,6 +42,21 @@ pub(super) enum Section {
     /// A chamfer's plane, its frame's origin on the contact at `u = 0`
     /// and its `X` across to the other.
     Flat,
+    /// A walked stripe's NURBS surface (ADR-0062), `u` across from the
+    /// contact at `0` to the one at `1` and `v` along the edge's own
+    /// direction; the stripe's `lines` are its two contact isocurves, with
+    /// the surface's `v` as their parameter. It has no closed form to
+    /// decide an end from, so only a face across (`walked::walked_end`)
+    /// ends it.
+    Walked {
+        /// The surface's `v` at the ball of the edge's start, then of its
+        /// end.
+        ends: [f64; 2],
+        /// `true` when the surface's normal `∂u × ∂v` points toward the
+        /// ball's centre where it points away from it on the table's
+        /// cylinder: the blend's face is then the other way round.
+        flipped: bool,
+    },
 }
 
 /// One edge's stripe: the blend surface with its two contact lines and
@@ -126,7 +141,7 @@ impl Stripe {
     pub(super) fn place(&self, pcurve: Curve2, t: f64, target: f64) -> Curve2 {
         match self.section {
             Section::Round { .. } => placed(pcurve, t, target, self.surface.period()[0]),
-            Section::Flat => pcurve,
+            Section::Flat | Section::Walked { .. } => pcurve,
         }
     }
 }
@@ -471,6 +486,14 @@ pub(super) fn in_band(s: &Stripe, p: Point3, tolerance: f64) -> Result<bool, OpE
             let u = s.frame.to_local(p).x;
             u >= -tolerance && u <= s.u1 + tolerance
         }
+        Section::Walked { .. } => {
+            // `u` across the surface is the ball's arc, parametrised by
+            // the fraction of it, so the tolerance is read as a fraction
+            // of the arc's chord there.
+            let projection = s.surface.project(p).map_err(fault_of)?;
+            let u = projection.uv.x;
+            u >= -tolerance && u <= 1.0 + tolerance
+        }
     })
 }
 
@@ -483,6 +506,7 @@ pub(super) fn band_u(s: &Stripe, p: Point3) -> Result<f64, OpError> {
             if u > (s.u1 + TAU) / 2.0 { u - TAU } else { u }
         }
         Section::Flat => s.frame.to_local(p).x,
+        Section::Walked { .. } => s.surface.project(p).map_err(fault_of)?.uv.x,
     })
 }
 
@@ -506,6 +530,7 @@ pub(super) fn section_between(
     let reach = match s.section {
         Section::Round { radius, .. } => 2.0 * radius,
         Section::Flat => s.u1,
+        Section::Walked { .. } => return Err(invariant("closed-form stripes in a section")),
     };
     let within = Aabb::of_point(points[0])
         .union(Aabb::of_point(points[1]))
@@ -567,6 +592,7 @@ pub(super) fn section_between(
             | Surface::Nurbs(_),
             Section::Round { .. } | Section::Flat,
         ) => Err(refuse()),
+        (_, Section::Walked { .. }) => Err(invariant("closed-form stripes in a section")),
     }
 }
 

@@ -18,13 +18,9 @@
 //! contact on the first face to the contact on the second, so its
 //! isocurves `u = 0` and `u = 1` are the contact curves.
 
-// The spine is built here and assembled into a blend by the walked stripe
-// that consumes it; until then only its tests call it.
-#![expect(dead_code, reason = "the walked stripe's assembly is its consumer")]
-
 use arris_geom::{
-    Curve, GeomError, NurbsCurve, NurbsSurface, SECTION_FIT_FRACTION, SectionTrace, Surface,
-    SurfaceKind, fit_skin, trace_section,
+    Curve, GeomError, NurbsCurve, NurbsSurface, SECTION_FIT_FRACTION, Surface, SurfaceIntersection,
+    SurfaceKind, fit_skin, intersect_surfaces, trace_section,
 };
 use arris_math::nalgebra::{Matrix2, Matrix3, Vector2, Vector3};
 use arris_math::{
@@ -380,12 +376,14 @@ pub(super) struct Spine {
 impl Spine {
     /// The piece's parameters the spine covers, the reach past each end
     /// included.
+    #[cfg(test)]
     pub(super) fn range(&self) -> Interval {
         self.range
     }
 
     /// The piece's parameters of the ball at the edge's start and at its
     /// end.
+    #[cfg(test)]
     pub(super) fn ends(&self) -> [f64; 2] {
         [self.from, self.to]
     }
@@ -399,11 +397,13 @@ impl Spine {
     /// The ball on the faces' common normal at the edge's point, at each
     /// vanishing end: where the edge says the stripe narrows to, which the
     /// assembly joins to the exact ball there.
+    #[cfg(test)]
     pub(super) fn pinned(&self) -> [Option<Ball>; 2] {
         self.pinned
     }
 
     /// The piece's period where it is a loop.
+    #[cfg(test)]
     pub(super) fn period(&self) -> Option<f64> {
         self.piece.piece().period()
     }
@@ -440,6 +440,7 @@ impl Spine {
     ///
     /// Errors: a ball the spine cannot snap ([`Walked::Refused`]); the
     /// fit diverging, a kernel finding ([`Walked::Op`]).
+    #[cfg(test)]
     pub(super) fn surface(
         &self,
         tol: Tolerance,
@@ -452,6 +453,60 @@ impl Spine {
             SECTION_FIT_FRACTION * tol.linear,
             meter,
         )
+    }
+}
+
+/// A stripe's surface skinned so that its `v` runs the way the edge does
+/// (ADR-0062): the spine's own parameter, or its mirror in the spine's
+/// range where the spine runs against the edge.
+pub(super) struct Skin {
+    pub(super) surface: NurbsSurface,
+    /// The surface's `v` at the ball of the edge's start, then of its end:
+    /// the first is below the second.
+    pub(super) ends: [f64; 2],
+    /// `true` when the surface's `v` is the spine's mirrored parameter.
+    reflected: bool,
+    range: Interval,
+}
+
+impl Skin {
+    /// The spine's parameter that the surface's `v` stands for.
+    pub(super) fn spine_t(&self, v: f64) -> f64 {
+        if self.reflected {
+            self.range.lo() + self.range.hi() - v
+        } else {
+            v
+        }
+    }
+}
+
+impl Spine {
+    /// The stripe's surface as [`Spine::surface`] fits it, with `v` running
+    /// along the edge: its contact isocurves then have the edge's direction,
+    /// the way a contact edge's curve must.
+    pub(super) fn skin(&self, tol: Tolerance, meter: &mut Meter<'_>) -> Result<Skin, Walked> {
+        let range = self.range;
+        let reflected = self.from > self.to;
+        let at = |v: f64| {
+            if reflected {
+                range.lo() + range.hi() - v
+            } else {
+                v
+            }
+        };
+        let surface = fit_skin(
+            |v| arc(&self.ball(at(v))?),
+            range,
+            SURFACE_DEGREE,
+            SECTION_FIT_FRACTION * tol.linear,
+            meter,
+        )?;
+        Ok(Skin {
+            surface,
+            ends: [at(self.from), at(self.to)],
+            reflected,
+            range,
+        })
     }
 }
 
@@ -642,8 +697,30 @@ pub(super) fn spine(
             b.union(Aabb::of_point(ball.centre))
         })
         .inflated(reach + radius);
-    let trace =
-        trace_section(&offsets[0], &offsets[1], &within, tol, meter).map_err(no_spine_or_fault)?;
+    // The pieces the offsets' section is made of: the tracers' where the
+    // pair has no closed form, the intersector's exact curves where it has
+    // (ADR-0062 §1: two analytic faces).
+    let pieces: Vec<Owned> = match trace_section(&offsets[0], &offsets[1], &within, tol, meter) {
+        Ok(trace) => (trace.circles().iter())
+            .map(|c| Owned::Circle(c.circle.clone()))
+            .chain(trace.branches().iter().cloned().map(Owned::Branch))
+            .collect(),
+        Err(GeomError::Unsupported { .. }) => {
+            match intersect_surfaces(&offsets[0], &offsets[1], &within, tol, meter)
+                .map_err(no_spine_or_fault)?
+            {
+                SurfaceIntersection::Meets { curves, .. } => {
+                    curves.into_iter().map(|c| Owned::Circle(c.curve)).collect()
+                }
+                SurfaceIntersection::Empty | SurfaceIntersection::Coincident => {
+                    return Err(Walked::Refused(Refusal::NoSpine {
+                        why: "the offsets do not meet",
+                    }));
+                }
+            }
+        }
+        Err(other) => return Err(no_spine_or_fault(other)),
+    };
     let first = edge_balls[0].centre;
     let last = edge_balls[EDGE_SAMPLES].centre;
     let middle = edge_balls[EDGE_SAMPLES / 2].centre;
@@ -660,7 +737,7 @@ pub(super) fn spine(
             tol.linear
         }
     });
-    let piece = holding(&trace, [first, last], near)?;
+    let piece = holding(pieces, [first, last], near)?;
     let p = piece.piece();
     let (t0, _) = p.locate(first)?;
     let (from, to) = if rolling.closed {
@@ -729,7 +806,12 @@ pub(super) fn spine(
                 let rest = 0.5 * (period - (hi - lo)).max(0.0);
                 (lo - rest, hi + rest)
             }
-            None => (p.domain().lo(), p.domain().hi()),
+            None => {
+                // A line or an unbounded curve runs on without end: as far
+                // as the reach needs.
+                let d = p.domain();
+                (d.lo().max(lo - 4.0 * reach), d.hi().min(hi + 4.0 * reach))
+            }
         };
         let lo = if stop_lo {
             lo
@@ -801,12 +883,9 @@ fn band(s: &NurbsSurface, k: usize, balls: &[Ball], pad: f64) -> Option<[Interva
     Some(over)
 }
 
-/// The one piece of `trace` within `near` of both `points`, the ball's
+/// The one of `pieces` within `near` of both `points`, the ball's
 /// centres at the edge's ends: refused where none is, or more than one.
-fn holding(trace: &SectionTrace, points: [Point3; 2], near: [f64; 2]) -> Result<Owned, Walked> {
-    let pieces = (trace.circles().iter())
-        .map(|c| Owned::Circle(c.circle.clone()))
-        .chain(trace.branches().iter().cloned().map(Owned::Branch));
+fn holding(pieces: Vec<Owned>, points: [Point3; 2], near: [f64; 2]) -> Result<Owned, Walked> {
     let mut found = None;
     for piece in pieces {
         let p = piece.piece();

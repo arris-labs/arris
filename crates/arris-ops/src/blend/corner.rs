@@ -93,6 +93,7 @@ pub(super) fn corner(
     let (surface, orientation, sides, pole) = match stripes[0].section {
         Section::Round { radius, .. } => corner_sphere(env, meter, &rd, radius)?,
         Section::Flat => corner_triangle(env, meter, &rd)?,
+        Section::Walked { .. } => return Err(invariant("closed-form stripes at a corner")),
     };
     let CornerRead {
         edges,
@@ -352,7 +353,7 @@ fn corner_sphere(
     };
     let axis = |s: &Stripe| match s.section {
         Section::Round { axis_origin, .. } => Ok(axis_origin),
-        Section::Flat => Err(invariant("one kind of blend in one call")),
+        Section::Flat | Section::Walked { .. } => Err(invariant("one kind of blend in one call")),
     };
     let [a, b, c] = stripes;
     let (centre, _, _) = crossing(

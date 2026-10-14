@@ -1263,7 +1263,7 @@ their use orientation is Gauss's volume (B2, `measure`). The *inner*
 integral is split at every break of a `Grid`'s `inner` it crosses — the
 surface's own quarter turns or knots, repeated by its period, so a
 feature of the integrand there is an interval's end and never its
-middle — at most `MAX_INNER_INTERVALS` intervals, beyond which it falls
+middle — at most `MAX_INNER_INTERVALS` (4096, a fitted surface's most spans) intervals, beyond which it falls
 back to that many equal ones: a strip that crosses a whole turn of
 `cos u` is not one interval's work, so a caller passes
 `integrate::surface_grid(surface)` — quarter turns on the quadrics,

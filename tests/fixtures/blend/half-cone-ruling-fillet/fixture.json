@@ -1,5 +1,5 @@
 {
-  "description": "the half frustum of blend/half-frustum-rim-fillet, the edge along its ruling in the end plane y = 0 (a plane through the cone's axis, so through its apex) filleted at r 0.1: a line where a plane meets a cone along a ruling, the blend a stripe whose section changes with the cone's radius, no closed form in ADR-0007's table. Arris refuses it as Unsupported naming the plane and the cone (ADR-0036 \u00a74); Open CASCADE builds it",
+  "description": "the half frustum of blend/half-frustum-rim-fillet, the edge along its ruling in the end plane y = 0 (a plane through the cone's axis, so through its apex) filleted at r 0.1: a line where a plane meets a cone along a ruling, the blend a stripe whose section changes with the cone's radius, no closed form in ADR-0007's table, so a walked stripe (ADR-0062): the ball's centre on the section of the plane's offset and the cone's, the surface a fitted NURBS through its arcs, each end cut by the plane across. Open CASCADE builds it too, as a B-spline walked along the edge, as Arris'; the two walks agree to 5e-8 in volume, which the measure tolerances are widened to cover, under the 1e-6 ADR-0015 asks of a claimed difference (no closed form holds the cone's blend)",
   "params": {
     "r": 0.1
   },
@@ -102,7 +102,12 @@
     }
   ],
   "analytic": {
-    "expect_error": "unsupported",
-    "genus": 0
+        "genus": 0
+  },
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 2e-07,
+    "centroid_abs": 3e-07,
+    "inertia_rel": 5e-07
   }
 }

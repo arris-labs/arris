@@ -37,6 +37,7 @@ mod ring;
 mod stripe;
 mod traced;
 mod walked;
+mod walked_blend;
 
 fn degenerate(entities: Vec<Shape>, reason: Reason) -> OpError {
     OpError::Degenerate { entities, reason }
@@ -196,6 +197,19 @@ struct Blend {
 /// where both faces turn), and at a vertex of two edges none — `Modified` and the vertex `Deleted`.
 /// `arris_topo::provenance::audit` holds on every result
 /// (`docs/DATA-MODEL.md` §Provenance).
+///
+/// A [`fillet`]'s edge that no closed form holds is walked (ADR-0062): an
+/// edge with a NURBS face and an analytic one, or between two analytic faces
+/// meeting in a curve the table does not have — cylinders on skew axes, a
+/// B-spline edge — blends to a NURBS surface fitted through the ball's arcs
+/// along the path it rolls, within the faces' tolerance. A closed edge or an
+/// open one whose ends meet a plane, a cylinder or a cone across blends;
+/// a radius past the NURBS face's curvature on the ball's side is
+/// [`BlendReason::TooLarge`]; two NURBS faces, a NURBS face across, or a
+/// pair the offsets' section does not decide is [`OpError::Unsupported`]; a
+/// walked edge that meets another blended edge at a vertex, or ends where its
+/// faces turn tangent, is [`BlendReason::VertexBlend`] or
+/// [`BlendReason::TangentChain`].
 ///
 /// Errors, the model untouched: [`OpError::Degenerate`] with
 /// [`InputReason::NonFinite`] or [`InputReason::NotPositive`] on the radius,

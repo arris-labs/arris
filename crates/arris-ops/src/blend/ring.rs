@@ -135,6 +135,12 @@ pub(super) struct Ring {
     pub(super) contacts: [RingContact; 2],
     pub(super) ends: RingEnds,
     pub(super) tolerance: f64,
+    /// `true` for a walked ring (ADR-0062), whose surface runs `u` across
+    /// from the first contact to the second and `v` along the edge: the
+    /// transpose of a torus's, kept so that the integrals' inner direction
+    /// has two spans and not hundreds. The seam is then the isocurve at
+    /// `v`'s two ends, and each contact is a line at constant `u`.
+    pub(super) across: bool,
 }
 
 /// A face of revolution's meridian in the half-plane bounded by the axis,
@@ -460,7 +466,20 @@ pub(super) fn ring(
         contacts: placed.contacts,
         ends,
         tolerance: rd.tolerance,
+        across: false,
     })
+}
+
+/// Whether the closed-form ring takes `edge`: its faces are in the
+/// meridian row and its curve is a circle about their axis. `false` for a
+/// pair or a curve the row does not hold, which a walked blend may take
+/// (ADR-0062); any other error is the ring's own.
+pub(super) fn in_row(env: &Env<'_>, edge: EdgeId) -> Result<bool, OpError> {
+    match read_ring(env, edge) {
+        Ok(_) => Ok(true),
+        Err(OpError::Unsupported { .. }) => Ok(false),
+        Err(other) => Err(other),
+    }
 }
 
 /// What a ring's phases read off its edge, its two faces and their axis.
@@ -1170,60 +1189,52 @@ fn place_contacts(
     })
 }
 
-/// A closed edge's blend: its seam, and each curved face's seam cut to its
-/// contact.
-fn seam_end(
+/// Where a closed edge's vertex has the seams of its faces cut to the
+/// contacts' vertices.
+pub(super) struct SeamCut {
+    pub(super) edge: EdgeId,
+    pub(super) vertex: VertexId,
+    pub(super) faces: [FaceId; 2],
+    /// Which of the faces may have a seam here.
+    pub(super) seamed: [bool; 2],
+    /// Where each face's contact starts, the point its seam is cut at.
+    pub(super) cut_at: [Point3; 2],
+    /// The contact each face's is, by face.
+    pub(super) slots: [usize; 2],
+    pub(super) tolerance: f64,
+}
+
+/// Each of `others` — the edges at the closed edge's vertex but the edge
+/// itself — as the seam of one of the faces, used twice by it, shortened
+/// to that face's contact: the cut and the contact it is made at, and the
+/// vertex's tolerance, widened by the seams'. An edge that is no seam of a
+/// seamed face, or a second seam of one, is `BlendReason::VertexBlend`; a
+/// cut past the seam's far end, `BlendReason::TooLarge`.
+pub(super) fn cut_seams(
     env: &Env<'_>,
-    meter: &mut Meter<'_>,
-    rd: &RingRead<'_>,
-    bl: &Blended,
-    placed: &Placed,
-) -> Result<RingEnds, OpError> {
+    at: &SeamCut,
+    others: Vec<EdgeId>,
+) -> Result<(Vec<(Trim, usize)>, f64), OpError> {
     let (m, view) = (env.m, env.view);
-    let tol = env.tol;
-    let RingRead {
-        faces,
+    let SeamCut {
         edge,
-        e,
         vertex,
+        faces,
+        seamed,
+        cut_at,
+        slots,
         tolerance,
-        curved: [fa, fb],
-        ..
-    } = *rd;
-    let (v0, x) = (bl.v0, bl.x);
-    let surface = &bl.surface;
-    let contacts = &placed.contacts;
-    let too_large =
-        |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
+    } = *at;
+    let e = forward(edge);
     let vertex_blend = || {
         degenerate(
             vec![e, forward(vertex)],
             Reason::Blend(BlendReason::VertexBlend),
         )
     };
-    let swapped = placed.swapped;
-    let slot_of = |i: usize| if swapped { 1 - i } else { i };
-    let line_tol = Tolerance::new(tolerance, tol.angular);
+    let too_large =
+        |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
     let geometry = fault_of;
-    let section = |w: Vec3, ends: [Point3; 2]| bl.section(rd, tol, w, ends);
-    // The vertex's other edges: each curved face's seam, used twice by
-    // it, one seam to a curved face.
-    let at_vertex = view
-        .vertex_edges
-        .get(&vertex)
-        .ok_or(invariant("the closed edge's vertex's edges"))?;
-    let others: Vec<EdgeId> = at_vertex.iter().copied().filter(|&x| x != edge).collect();
-    if others.len() != [fa, fb].iter().flatten().count() {
-        return Err(vertex_blend());
-    }
-    // The blend's seam: the section at `u = 0`, in the plane of `X`
-    // and `Z`.
-    let (seam_curve_new, seam_range) = section(x, [contacts[0].points[0], contacts[1].points[0]])?;
-    let seam_on =
-        pcurve_on(&seam_curve_new, seam_range, surface, line_tol, meter).map_err(geometry)?;
-    let seam_on_blend =
-        [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
-    // Each curved face's seam shortened to its contact.
     let mut cuts: Vec<(Trim, usize)> = Vec::with_capacity(2);
     let mut vertex_tolerance = tolerance;
     let mut seen = [false; 2];
@@ -1232,7 +1243,7 @@ fn seam_end(
         let [su, sv] = seam_uses[..] else {
             return Err(vertex_blend());
         };
-        let Some(i) = (0..2).find(|&i| [fa, fb][i].is_some() && su.face == faces[i]) else {
+        let Some(i) = (0..2).find(|&i| seamed[i] && su.face == faces[i]) else {
             return Err(vertex_blend());
         };
         if su.face != sv.face || std::mem::replace(&mut seen[i], true) {
@@ -1243,8 +1254,8 @@ fn seam_end(
             return Err(vertex_blend());
         };
         let seam_curve = m.curve(seam_curve_id)?;
-        let slot = slot_of(i);
-        let cut_at = contacts[slot].points[0];
+        let slot = slots[i];
+        let cut_at = cut_at[i];
         let projection = seam_curve.project(cut_at).map_err(geometry)?;
         if projection.distance > seam_entity.tolerance().max(tolerance) {
             return Err(invariant(
@@ -1281,6 +1292,74 @@ fn seam_end(
             slot,
         ));
     }
+    Ok((cuts, vertex_tolerance))
+}
+
+/// A closed edge's blend: its seam, and each curved face's seam cut to its
+/// contact.
+fn seam_end(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    rd: &RingRead<'_>,
+    bl: &Blended,
+    placed: &Placed,
+) -> Result<RingEnds, OpError> {
+    let view = env.view;
+    let tol = env.tol;
+    let RingRead {
+        faces,
+        edge,
+        e,
+        vertex,
+        tolerance,
+        curved: [fa, fb],
+        ..
+    } = *rd;
+    let (v0, x) = (bl.v0, bl.x);
+    let surface = &bl.surface;
+    let contacts = &placed.contacts;
+    let vertex_blend = || {
+        degenerate(
+            vec![e, forward(vertex)],
+            Reason::Blend(BlendReason::VertexBlend),
+        )
+    };
+    let swapped = placed.swapped;
+    let slot_of = |i: usize| if swapped { 1 - i } else { i };
+    let line_tol = Tolerance::new(tolerance, tol.angular);
+    let geometry = fault_of;
+    let section = |w: Vec3, ends: [Point3; 2]| bl.section(rd, tol, w, ends);
+    // The vertex's other edges: each curved face's seam, used twice by
+    // it, one seam to a curved face.
+    let at_vertex = view
+        .vertex_edges
+        .get(&vertex)
+        .ok_or(invariant("the closed edge's vertex's edges"))?;
+    let others: Vec<EdgeId> = at_vertex.iter().copied().filter(|&x| x != edge).collect();
+    if others.len() != [fa, fb].iter().flatten().count() {
+        return Err(vertex_blend());
+    }
+    // The blend's seam: the section at `u = 0`, in the plane of `X`
+    // and `Z`.
+    let (seam_curve_new, seam_range) = section(x, [contacts[0].points[0], contacts[1].points[0]])?;
+    let seam_on =
+        pcurve_on(&seam_curve_new, seam_range, surface, line_tol, meter).map_err(geometry)?;
+    let seam_on_blend =
+        [0.0, TAU].map(|u| placed_uv(seam_on.clone(), seam_range.lo(), Point2::new(u, v0)));
+    // Each curved face's seam shortened to its contact.
+    let (cuts, vertex_tolerance) = cut_seams(
+        env,
+        &SeamCut {
+            edge,
+            vertex,
+            faces,
+            seamed: [fa.is_some(), fb.is_some()],
+            cut_at: [0, 1].map(|i| contacts[slot_of(i)].points[0]),
+            slots: [slot_of(0), slot_of(1)],
+            tolerance,
+        },
+        others,
+    )?;
     Ok(RingEnds::Seam(Box::new(RingSeam {
         curve: seam_curve_new,
         range: seam_range,

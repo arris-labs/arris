@@ -472,7 +472,7 @@ pub struct FilletEdge {
     pub ends: Vec<EdgeEnd>,
     /// The tangent chain through the edge, as a fillet propagates it: each
     /// sharp edge that continues the last through a vertex within
-    /// [`CHAIN_TURN`] and shares a face with it, in walk order from the
+    /// `CHAIN_TURN` and shares a face with it, in walk order from the
     /// edge out of its start and then out of its end, each described.
     pub chain: Vec<String>,
 }

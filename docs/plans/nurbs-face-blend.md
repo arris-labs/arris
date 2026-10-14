@@ -309,41 +309,77 @@ bound has to be established here.
     6's checker.
   - Each property shard of the twin pairs, spine and surface, takes about
     23 s.
-- [ ] Step 5 **[2]** — **Assemble a walked fillet.**
-  - `blend/walked.rs`; `Blend` holds either stripe.
-  - The dispatch tries the table, then the walked stripe for a NURBS ×
-    analytic pair, for an analytic pair outside the table, and for a
-    table pair whose edge is not the table's curve.
-  - Ends: a closed edge has none. A vanishing end (step 3, CTC-05's v84)
-    has no face across to trace. The surface ends on the exact balls'
-    narrowest arc (step 4), 1.98e-4 wide and 9.9e-3 from the edge's
-    point on CTC-05, and the stripe ends at the vertex across that gap
-    (open question). An analytic face across gets
-    `traced_end` over the NURBS blend through ADR-0061. A NURBS face
-    across is `Unsupported`, and a sharp vertex with another blend keeps
-    its refusal.
-  - Chains (step 1's census): a tangent vertex where the chain goes on is
-    a junction. There the walked stripe ends on the ball's arc in the
-    vertex's normal plane, exact, the spine's end pinned to that ball's
-    centre. The chain's next stripe, from the table or walked, shares the
-    arc, and `blend/chain.rs` takes walked members beside the table's.
-  - `BlendTooLarge` comes from `FaceDomain::side` on both contacts and
-    the end arcs, as now.
-  - Provenance is ADR-0007's.
+- [x] Step 5 **[2]** — **Assemble a walked fillet.** *(Split by this
+  commit: the open edge's face-across ends and the closed edge's ring are
+  here; the chain junction, the vanishing end and the OCCT-oracled
+  synthetic fixtures are step 5b.)*
+  - `blend/walked_blend.rs`: `walked_stripe` (a `Stripe` whose section is
+    `Section::Walked`, its surface and contact isocurves the skin's),
+    `walked_end`, `walked_contacts` and `walked_ring`. `Blend` is
+    unchanged: it holds the `Stripe`, and the walked section tells the
+    assembly apart.
+  - The dispatch tries the table, then the walked stripe, for a fillet
+    only: `make_stripes` on the table's `Unsupported`, `classify` for a
+    closed edge or a circle `ring::in_row` does not take.
+  - Ends: a closed edge has none (its seam is the ball's arc at the
+    vertex, the faces' own seams cut to the contacts: `ring::cut_seams`,
+    shared with the table's ring). An analytic face across gets
+    `traced_end` over the NURBS blend through ADR-0061, then
+    `ends::finish_end`, the tail of `face_end` extracted. A NURBS face
+    across is `Unsupported`; a fan, a cusp, a vanishing end and any
+    vertex shared with another blend are refused by name.
+  - `BlendTooLarge` from the spine's `OffsetFolds` and from
+    `FaceDomain::side` on the contacts and the end arcs, as now.
+  - Provenance is ADR-0007's: a walked ring and stripe are recorded by the
+    table's own `record`.
 
-  Fixtures in `blend/`, each with Open CASCADE's fillet as oracle and the
-  checker at `Full`, with the pairs `check_leaving_nurbs` allows left
-  unchecked:
-  - the rim of `nurbs-bicubic-dome-fuse`'s dome on its plane (closed
-    edge);
-  - a box whose top is a bicubic patch, one top edge filleted (a NURBS ×
-    plane edge with two plane faces across);
-  - a NURBS cap on a cylinder (a NURBS × cylinder ring);
-  - a plate with a slot whose round end is the NURBS twin of its
-    cylinder, the slot's rim filleted: a chain of a table stripe, a walked
-    stripe and a table stripe meeting at two tangent vertices;
-  - a radius past the dome's least radius, refused `BlendTooLarge`;
-  - two NURBS faces, refused `Unsupported`.
+  **Done (2026-10-14).** Tests in `crates/arris-ops/tests/walked_fillet.rs`
+  hold the twin property in miniature against the closed form on the
+  original: a cylinder's wall or cap as its NURBS twin, either rim, convex
+  and concave, agree in volume, area and centroid to `1e-8` with the
+  checker clean at `Full` and nothing unchecked but face pairs; a box's
+  twinned top face with one top edge filleted (a walked open edge, planes
+  across); a radius past the wall's curvature is `BlendTooLarge`; two
+  NURBS faces are `Unsupported`. `nurbs_twin_faces` (step 8's primitive)
+  landed with them. Measured and found:
+  - **The integrator's split cap.** `MAX_INNER_INTERVALS` was 256; a ring
+    of the cylinder's twin has 538 knots round it, so its blend face
+    integrated to `1e-5` of the part's volume (`0.0098` of `601`). The cap
+    is 4096 now (ADR-0062 amendment, `CHANGELOG.md`). Keeping the skin's
+    `u` across, two spans, also keeps the inner integral cheap.
+  - **Two exact offsets** whose pair has a closed intersection are not
+    `trace_section`'s: the spine takes `intersect_surfaces`' curves (FTC-11's
+    plane against a cylinder, CTC-02's).
+  - **The orientation of a closed edge's face** is read at the ball it is
+    measured against, the start's.
+  - **The real parts** (`regression/`, still ignored): FTC-10's closed
+    cylinder pair builds with the oracle's counts and its volume `3e-9`
+    and area `2e-9` relative off, past the fixture's tolerance and under
+    1e-6 (the oracle's blend is itself walked, ADR-0015); FTC-11's two and
+    CTC-02's now find their spines and stop at the chain junction
+    (`VertexBlend`); CTC-01 and CTC-05 stop at a vanishing end
+    (`TangentChain`); CTC-05's NURBS × torus offset trace is the first
+    edge past the vertex. Three `blend/` fixtures that expected
+    `Unsupported` (`chain-through-torus-unsupported`, `tee-cylinders-fillet`,
+    `drilled-torus-fillet`) now refuse at the vertex, `vertex-blend`.
+- [ ] Step 5b **[3]** — **Chain junctions, the vanishing end and the
+  synthetic fixtures.**
+  - A tangent vertex where the chain goes on: the walked stripe ends on
+    the ball's arc in the vertex's normal plane, exact, the spine's end
+    pinned to that ball's centre; the chain's next stripe, table or
+    walked, shares the arc; `blend/chain.rs` and `junction.rs` take
+    `Section::Walked` members (the guard in `join_blends` goes).
+  - The vanishing end (open question below): CTC-05's v84 and CTC-01's
+    tangent end.
+  - Fixtures in `blend/` with Open CASCADE's fillet as oracle and the
+    checker at `Full`, built by oracle scripts beside
+    `occt_bicubic_dome.py`: a box whose top is a bicubic patch with one
+    top edge filleted; a NURBS cap on a cylinder; a plate with a slot
+    whose round end is the NURBS twin of its cylinder, the slot's rim
+    filleted (a chain of a table stripe, a walked stripe and a table
+    stripe at two tangent vertices); a radius past the dome's least
+    radius, `BlendTooLarge`; two NURBS faces, `Unsupported`. The Rust
+    tests of step 5 stay as the closed-form twin checks.
 - [ ] Step 6 **[3]** — **S5 on a walked blend's tangent neighbours.** A
   NURBS blend against the analytic face it touches along a contact has a
   double zero along the isoline `u = 0` (or `u = 1`) to within the fit.
@@ -364,7 +400,7 @@ bound has to be established here.
   contact is the surface's own isocurve. Ends and refusals are step 5's.
   Fixtures: step 5's three geometries chamfered, with Open CASCADE's
   chamfer as oracle.
-- [ ] Step 8 **[2]** — **The twin property.** `nurbs_twin_faces` twins
+- [ ] Step 8 **[2]** — **The twin property.** `nurbs_twin_faces` (landed in step 5) twins
   one face of an edge. For each table row (plane × plane, plane ×
   cylinder along a ruling and a circle, cone, sphere and torus coaxial),
   in random poses and at random sizes, the fillet and chamfer of the
@@ -449,6 +485,7 @@ bound has to be established here.
 - ⚠ OPEN: how a vanishing end meets its vertex (step 4). The candidates
   are growing the vertex's tolerance to the end arc's contacts (9.9e-3 on
   CTC-05, past the edge's 7.7e-3) under ADR-0060's operation bound, or
-  refusing the end by name. **Agent**, at step 5.
+  refusing the end by name. Step 5 refuses it (`TangentChain`).
+  **Agent**, at step 5b.
 - The spine's trace on CTC-05 against the ADR-0026 §6 budget (60 s):
   **closed** at step 3, which traces it in 0.53 s.

@@ -99,6 +99,49 @@ impl GeometryRemap for Twins {
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn nurbs_twin(m: &mut Model, body: Body) -> Result<Body, OpError> {
+    twin_of(m, body, None)
+}
+
+/// [`nurbs_twin`] of the chosen faces only: each of `faces` has its surface
+/// replaced by the exact NURBS twin, every other face keeps its own. A
+/// surface two faces share is twinned for both.
+///
+/// Errors: as [`nurbs_twin`]; [`OpError::NotFound`] for a face that is not
+/// the model's.
+///
+/// ```
+/// use arris_check::{Level, check};
+/// use arris_debug::prop::twin::nurbs_twin_faces;
+/// use arris_debug::sample;
+/// use arris_topo::Model;
+///
+/// let mut m = Model::default();
+/// let cylinder = sample::cylinder(&mut m, 4.0, 12.0)?;
+/// let wall = m.faces(cylinder)?[0];
+/// let twin = nurbs_twin_faces(&mut m, cylinder, &[wall.id])?;
+/// assert!(check(&m, twin, Level::Full).is_ok());
+/// assert_eq!(m.faces(twin)?.len(), m.faces(cylinder)?.len());
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn nurbs_twin_faces(
+    m: &mut Model,
+    body: Body,
+    faces: &[arris_topo::FaceId],
+) -> Result<Body, OpError> {
+    let mut only = std::collections::BTreeSet::new();
+    for &f in faces {
+        only.insert(m.face(f)?.surface());
+    }
+    twin_of(m, body, Some(&only))
+}
+
+/// The twin of `body` over the surfaces in `only`, or over every analytic
+/// one.
+fn twin_of(
+    m: &mut Model,
+    body: Body,
+    only: Option<&std::collections::BTreeSet<SurfaceId>>,
+) -> Result<Body, OpError> {
     let kind = m.body(body.id)?.kind();
     let closure = m.closure(body)?;
 
@@ -115,6 +158,9 @@ pub fn nurbs_twin(m: &mut Model, body: Body) -> Result<Body, OpError> {
 
     let mut twins = BTreeMap::new();
     for &s in &closure.surfaces {
+        if only.is_some_and(|only| !only.contains(&s)) {
+            continue;
+        }
         let surface = m.surface(s)?.clone();
         let bounds = match &surface {
             Surface::Nurbs(_) => continue,

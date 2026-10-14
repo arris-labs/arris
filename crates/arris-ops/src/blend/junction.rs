@@ -55,6 +55,9 @@ impl<'a> Run<'a> {
                     centre: match s.section {
                         Section::Round { axis_origin, .. } => Some(axis_origin + t * s.d),
                         Section::Flat => None,
+                        Section::Walked { .. } => {
+                            return Err(invariant("closed-form stripes at a junction"));
+                        }
                     },
                     convex: s.convex,
                     tolerance: s.tolerance,

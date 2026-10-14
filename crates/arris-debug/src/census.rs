@@ -1391,10 +1391,12 @@ mod tests {
         let (b, _) = primitive_cylinder(&mut m, along_x, 0.6, 4.0).unwrap();
         let (cross, _) = fuse(&mut m, a, b).unwrap();
         let c = blend_census(&m, cross, "cross").unwrap();
-        let pair = "Unsupported pair: cylinder surface × cylinder surface";
+        // The quartic loop is two walked stripes (ADR-0062) that meet at a
+        // vertex, which no walked stripe does yet (plan step 5b).
+        let refused = "Degenerate: VertexBlend";
         assert!(
-            c.alone.get(pair).copied().unwrap_or(0) >= 1,
-            "the quartic edge is the pair's: {:?}",
+            c.alone.get(refused).copied().unwrap_or(0) >= 1,
+            "the quartic edge meets its neighbour at a vertex: {:?}",
             c.alone
         );
         assert!(!c.alone.contains_key(PANICKED), "{:?}", c.alone);
@@ -1407,10 +1409,11 @@ mod tests {
     }
 
     /// The committed CTC-01's sample is refused at the crease of two
-    /// cylinders whose axes cross: the census names the pair by its axes
-    /// and the survey puts it with the NURBS cycle, whose blend has no
-    /// exact surface, where a pair of parallel axes
-    /// stays the blend network's.
+    /// cylinders whose axes cross, where the walked stripe's faces turn
+    /// tangent (a vanishing end, `TangentChain`); the census names a pair
+    /// of cylinders by its axes for an `Unsupported`, and the survey puts
+    /// a pair of crossing axes with the NURBS cycle where a pair of
+    /// parallel axes stays the blend network's.
     #[test]
     fn ctc_01s_crossing_cylinders_are_the_nurbs_cycles() {
         let fixture = part::load(&corpus_root().join("real/nist-ctc-01")).unwrap();
@@ -1428,19 +1431,22 @@ mod tests {
         let Err(Refused::Op(e)) = blend(&mut scratch, body, &chosen, fillet_radius(&sample)) else {
             panic!("the sample is refused");
         };
-        assert_eq!(
-            cylinder_pair(&m, &e).map(|p| p.to_string()).as_deref(),
-            Some("crossing axes, equal radii")
-        );
-        assert_eq!(
-            blocks_reason_in(&m, Stage::Fillet, &e),
-            Some(crate::histogram::Cycle::Nurbs)
-        );
-        assert_eq!(
-            crate::histogram::blocks_reason(Stage::Fillet, &e),
-            Some(crate::histogram::Cycle::BlendNetwork)
+        // The crease is a walked stripe now (ADR-0062), which the table's
+        // `Unsupported` no longer names: it is refused where its faces turn
+        // tangent at the end, a vanishing end.
+        assert!(
+            matches!(
+                e,
+                OpError::Degenerate {
+                    reason: arris_ops::Reason::Blend(arris_ops::BlendReason::TangentChain),
+                    ..
+                }
+            ),
+            "{e}"
         );
 
+        // The pair's census name stays for the `Unsupported` that other
+        // pairs raise: two parallel cylinders, built by hand.
         let mut m = Model::default();
         let (a, _) =
             primitive_cylinder(&mut m, Axis::z_at(Point3::new(0.0, 0.0, -2.0)), 1.0, 4.0).unwrap();
@@ -1899,13 +1905,24 @@ mod tests {
         let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
         let solids = census_file(&file, &|_| true).unwrap();
         let edges: Vec<&RunOverEdge> = solids.iter().flat_map(|s| &s.vertex_blend).collect();
-        assert_eq!(edges.len(), 3, "{edges:?}");
-        for e in edges {
-            assert_eq!(
-                e.cause,
-                "a dihedral jump on a collinear run; edge plane × plane"
-            );
+        // Three edges are refused at the jump. Four more edges, chained to a walked stripe's neighbour, meet it at a vertex
+        // of three, which no walked stripe takes yet (plan step 5b): they
+        // were `Unsupported` before the walked stripe stood where the
+        // table's refusal did.
+        const JUMP: &str = "a dihedral jump on a collinear run; edge plane × plane";
+        let (jumps, meets): (Vec<_>, Vec<_>) = edges.into_iter().partition(|e| e.cause == JUMP);
+        assert_eq!(jumps.len(), 3, "{jumps:?}");
+        assert_eq!(meets.len(), 4, "{meets:?}");
+        for e in jumps {
             assert_eq!(vertex_blend_cycle(&e.cause), crate::histogram::Cycle::Nurbs);
+        }
+        for e in meets {
+            assert!(
+                e.cause
+                    .starts_with("2 edges of the run meet at a vertex of 3 edges;"),
+                "{}",
+                e.cause
+            );
         }
     }
 

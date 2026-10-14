@@ -704,8 +704,8 @@ pub(super) fn face_end(
     s: &Stripe,
     at_lo: bool,
 ) -> Result<End, OpError> {
-    let (m, view) = (env.m, env.view);
-    let (tol, samples) = (env.tol, env.samples);
+    let m = env.m;
+    let tol = env.tol;
     meter.tick()?;
     let (edge, d) = (s.edge, s.d);
     let e = forward(edge);
@@ -837,6 +837,9 @@ pub(super) fn face_end(
                     };
                     (arc_curve, arc_range, lo_first)
                 }
+                Section::Walked { .. } => {
+                    return Err(invariant("closed-form stripes in a closed-form end"));
+                }
             }
         }
         Surface::Cylinder { .. } | Surface::Cone { .. } => {
@@ -893,6 +896,83 @@ pub(super) fn face_end(
             });
         }
     };
+    finish_end(
+        env,
+        meter,
+        s,
+        Arced {
+            vertex,
+            corner_edges,
+            face3,
+            surface3,
+            spine,
+            stays,
+            points,
+            t,
+            gaps,
+            arc_curve,
+            arc_range,
+            lo_first,
+            arc_tolerance,
+        },
+    )
+}
+
+/// An end's arc between its two trim points, the face across and the
+/// corner it lies in, before the corner edges are cut: what
+/// [`finish_end`] completes into an [`End`].
+pub(super) struct Arced<'a> {
+    pub(super) vertex: VertexId,
+    pub(super) corner_edges: [EdgeId; 2],
+    pub(super) face3: FaceId,
+    pub(super) surface3: &'a Surface,
+    /// The cusp's spine, as [`CornerAt::lone`] reads it.
+    pub(super) spine: Option<usize>,
+    /// The edges that stay at the vertex ([`CornerAt::stays`]).
+    pub(super) stays: Vec<EdgeId>,
+    /// Where each contact pierces the face across, by contact.
+    pub(super) points: [Point3; 2],
+    /// The contacts' parameters there.
+    pub(super) t: [f64; 2],
+    /// How far each trim point is from the arc's end it stands for.
+    pub(super) gaps: [f64; 2],
+    pub(super) arc_curve: Curve,
+    pub(super) arc_range: Interval,
+    pub(super) lo_first: bool,
+    /// The tolerance of the arc: the stripe's or the face across's, the
+    /// wider.
+    pub(super) arc_tolerance: f64,
+}
+
+/// The end of `s` whose arc is decided: the corner edges cut or
+/// lengthened to the trim points, the arc's pcurves on the face across and
+/// on the blend, and every one checked against the body.
+pub(super) fn finish_end(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    s: &Stripe,
+    arced: Arced<'_>,
+) -> Result<End, OpError> {
+    let (m, view) = (env.m, env.view);
+    let (tol, samples) = (env.tol, env.samples);
+    let (edge, e) = (s.edge, forward(s.edge));
+    let Arced {
+        vertex,
+        corner_edges,
+        face3,
+        surface3,
+        spine,
+        stays,
+        points,
+        t,
+        gaps,
+        arc_curve,
+        arc_range,
+        lo_first,
+        arc_tolerance,
+    } = arced;
+    let arc_tol = Tolerance::new(arc_tolerance, tol.angular);
+    let face3_tolerance = m.face(face3)?.tolerance();
     // The corner edges cut or lengthened to the trim points, and the side
     // of the face across the arc lies on (ADR-0038).
     let corner = match spine {

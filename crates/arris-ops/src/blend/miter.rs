@@ -393,6 +393,9 @@ fn read_miter(
         (Section::Round { .. } | Section::Flat, true) => Some(usize::from(
             (pb - corner_point).norm() > (pa - corner_point).norm(),
         )),
+        (Section::Walked { .. }, true) => {
+            return Err(invariant("closed-form stripes at a miter"));
+        }
     };
     let (p3, t3) = match wide {
         Some(1) => (pb, t3b),
@@ -497,7 +500,10 @@ fn miter_curve(
             let (curve, range) = chord(q, end, tol)?;
             (curve, range, true, end, t_m)
         }
-        (Section::Round { .. }, Section::Flat) | (Section::Flat, Section::Round { .. }) => {
+        (Section::Round { .. }, Section::Flat)
+        | (Section::Flat, Section::Round { .. })
+        | (Section::Walked { .. }, _)
+        | (_, Section::Walked { .. }) => {
             return Err(invariant("one kind of blend in one call"));
         }
         (

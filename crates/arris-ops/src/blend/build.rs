@@ -13,8 +13,10 @@ use super::corner::{Corner, corner};
 use super::ends::{EndKind, Trim, face_end};
 use super::junction::{Run, junction};
 use super::miter::{Miter, miter};
-use super::ring::{Ring, RingEnd, RingEnds, placed_uv, ring, vertex_tolerance_of};
+use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
+use super::stripe::Section;
 use super::stripe::{Stripe, contacts, stripe};
+use super::walked_blend::{walked_contacts, walked_end, walked_ring, walked_stripe};
 use super::{Blend, Kind, degenerate, invariant};
 use crate::body_view::BodyView;
 use crate::error::{BlendReason, OpError, Reason, fault_of};
@@ -303,7 +305,7 @@ pub(super) fn build(
     rewrite_faces(&mut ctx, &mut draft, &shortened, &rederived)?;
     add_blend_faces(&mut ctx, &mut draft, &blends, &joins, &mut made)?;
     add_corner_faces(&mut ctx, &mut draft, &joins, &mut made);
-    add_ring_faces(&mut ctx, &mut draft, &rings, &joins, &mut made);
+    add_ring_faces(&mut ctx, &mut draft, &rings, &joins, &mut made)?;
     let out = rebuild::rewrite(ctx.m, body, draft.rw)?;
     Ok(record(out, &blends, &rings, &joins, &made))
 }
@@ -336,11 +338,24 @@ fn classify(
     let mut rings: Vec<Ring> = Vec::new();
     for &e in &chained {
         let entity = *m.edge(e)?;
+        // A fillet whose faces or curve the closed forms do not hold is
+        // walked (ADR-0062).
+        let round = match entity.curve() {
+            Some((curve, _)) => {
+                entity.start() == entity.end() || matches!(m.curve(curve)?, Curve::Circle { .. })
+            }
+            None => false,
+        };
+        let walk = round && matches!(kind, Kind::Fillet { .. }) && !in_row(&env, e)?;
         match entity.curve() {
             Some(_) if entity.start() == entity.end() => {
-                rings.push(ring(&env, meter, e, &no_junctions)?);
+                rings.push(if walk {
+                    walked_ring(&env, meter, e)?
+                } else {
+                    ring(&env, meter, e, &no_junctions)?
+                });
             }
-            Some((curve, _)) if matches!(m.curve(curve)?, Curve::Circle { .. }) => {
+            Some((curve, _)) if !walk && matches!(m.curve(curve)?, Curve::Circle { .. }) => {
                 arcs.push(e);
             }
             Some(_) | None => open.push(e),
@@ -408,12 +423,22 @@ fn vertex_joins(
 
 /// One stripe per open edge.
 fn make_stripes(ctx: &mut BlendCtx<'_, '_>, open: &[EdgeId]) -> Result<Vec<Stripe>, OpError> {
-    let (m, view, kind, tol, _, meter) = ctx.parts();
+    let (env, meter) = ctx.split();
+    let Env {
+        m, view, kind, tol, ..
+    } = env;
     let edges = open;
     let mut stripes: Vec<Stripe> = Vec::with_capacity(edges.len());
     for &e in edges {
         meter.tick()?;
-        stripes.push(stripe(m, view, e, kind, tol)?);
+        stripes.push(match stripe(m, view, e, kind, tol) {
+            // The closed forms hold neither faces nor curve: a fillet is
+            // walked (ADR-0062).
+            Err(OpError::Unsupported { .. }) if matches!(kind, Kind::Fillet { .. }) => {
+                walked_stripe(&env, meter, e)?
+            }
+            other => other?,
+        });
     }
     Ok(stripes)
 }
@@ -445,6 +470,21 @@ fn join_blends(
     let mut corners: Vec<Corner> = Vec::new();
     let mut corner_at: BTreeMap<VertexId, usize> = BTreeMap::new();
     for (&v, es) in at_vertex {
+        // A walked stripe meets no other blend at a vertex yet: its end is
+        // cut by the face across only.
+        if es.len() > 1
+            && es.iter().any(|e| {
+                index_of
+                    .get(e)
+                    .is_some_and(|&i| matches!(stripes[i].section, Section::Walked { .. }))
+            })
+        {
+            let entities = es.iter().map(|&e| forward(e)).chain([forward(v)]).collect();
+            return Err(degenerate(
+                entities,
+                Reason::Blend(BlendReason::VertexBlend),
+            ));
+        }
         match es[..] {
             [ea, eb] if junctions.contains(&v) => {
                 miter_at.insert(v, miters.len());
@@ -518,14 +558,20 @@ fn make_blends(
                         .position(|&e| e == s.edge)
                         .ok_or(invariant("a corner's own blend"))?,
                 },
-                (None, None) => EndKind::Face(Box::new(face_end(&env, meter, &s, at_lo)?)),
+                (None, None) => EndKind::Face(Box::new(match s.section {
+                    Section::Walked { .. } => walked_end(&env, meter, &s, at_lo)?,
+                    Section::Round { .. } | Section::Flat => face_end(&env, meter, &s, at_lo)?,
+                })),
             });
         }
         let ends: [EndKind; 2] = ends
             .try_into()
             .map_err(|_| invariant("two ends of the blend"))?;
         let t = [0, 1].map(|end| [0, 1].map(|k| ends[end].t(miters, corners, k)));
-        let contacts = contacts(m, &s, t, tol, samples, meter)?;
+        let contacts = match s.section {
+            Section::Walked { .. } => walked_contacts(&env, meter, &s, t)?,
+            Section::Round { .. } | Section::Flat => contacts(m, &s, t, tol, samples, meter)?,
+        };
         blends.push(Blend {
             stripe: s,
             contacts,
@@ -1231,7 +1277,9 @@ fn add_blend_faces(
         rw.added.push(AddedFace {
             shell: view.shell_of[&lo.face],
             surface,
-            orientation: if blend.stripe.convex {
+            orientation: if blend.stripe.convex
+                != matches!(blend.stripe.section, Section::Walked { flipped: true, .. })
+            {
                 Orientation::Forward
             } else {
                 Orientation::Reversed
@@ -1296,7 +1344,7 @@ fn add_ring_faces(
     rings: &[Ring],
     joins: &Joins,
     made: &mut Drafted,
-) {
+) -> Result<(), OpError> {
     let (m, view, ..) = ctx.parts();
     let rw = &mut draft.rw;
     let Joins {
@@ -1313,6 +1361,45 @@ fn add_ring_faces(
                 Orientation::Reversed
             }
         };
+        if r.across {
+            // A walked ring: `u` across, `v` along the edge, the seam at
+            // `v`'s two ends — the loop of an open stripe whose two ends
+            // are one arc.
+            let RingEnds::Seam(seam) = &r.ends else {
+                return Err(invariant("a walked ring's seam"));
+            };
+            let loop_uses = vec![
+                StoredUse {
+                    edge: EdgeKey::New(made.arcs[0]),
+                    orientation: Orientation::Forward,
+                    pcurve: m.add_curve2(seam.on_blend[0].clone()),
+                },
+                StoredUse {
+                    edge: EdgeKey::New(made.contacts[1]),
+                    orientation: Orientation::Forward,
+                    pcurve: m.add_curve2(upper.on_blend.clone()),
+                },
+                StoredUse {
+                    edge: EdgeKey::New(made.arcs[0]),
+                    orientation: Orientation::Reversed,
+                    pcurve: m.add_curve2(seam.on_blend[1].clone()),
+                },
+                StoredUse {
+                    edge: EdgeKey::New(made.contacts[0]),
+                    orientation: Orientation::Reversed,
+                    pcurve: m.add_curve2(lower.on_blend.clone()),
+                },
+            ];
+            made.added = rw.added.len();
+            rw.added.push(AddedFace {
+                shell: view.shell_of[&lower.face],
+                surface,
+                orientation: r.orientation,
+                loops: vec![loop_uses],
+                tolerance: r.tolerance,
+            });
+            continue;
+        }
         // Each end's edge, its pcurve, and whether it runs up from the
         // lower contact: a seam's and a face end's do, a junction's when
         // its `q` is on the lower contact.
@@ -1371,6 +1458,7 @@ fn add_ring_faces(
             tolerance: r.tolerance,
         });
     }
+    Ok(())
 }
 
 /// The provenance of the rewrite: every record against the blended edge.

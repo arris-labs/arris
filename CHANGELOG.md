@@ -8,12 +8,24 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` now rolls on a free-form face, and on two analytic faces whose
+  edge no closed form holds (cylinders on skew axes, a B-spline edge
+  between a plane and a cylinder): the blend is a NURBS surface within your
+  tolerance of the ball's exact path, its contacts on both faces. A closed
+  edge, or an open one whose ends meet a plane, cylinder or cone, blends;
+  a radius past the free-form face's curvature is refused as too large,
+  two free-form faces and a blend that meets another blend at a vertex,
+  or whose faces turn tangent at an end, are still refused by name. It
+  does not take `chamfer` yet.
+- `mass_properties`, `surface_properties` and the checker's volume row
+  integrate a NURBS face at every one of its knots up to 4096 a direction
+  (256 before): a face with more spans, such as a blend along a long curved
+  edge, was off by about one part in 10⁵.
 - `cut`, `fuse`, `common`, their multi-tool forms, `split` and `section`
   now take a body with NURBS faces against analytic ones, which covers most
   imported B-spline parts: the box cuts and drills of the real parts that
   were refused as unsupported now run. Two NURBS faces against each other,
-  a NURBS face flush with another face, and fillets on NURBS faces are
-  still refused by name.
+  and a NURBS face flush with another face are still refused by name.
 - `intersect_surfaces` now meets a NURBS surface with a plane, a cylinder,
   an elliptic cylinder, a cone, a sphere or a torus, in either order: the
   section comes back as fitted curves (closed loops periodic), ending

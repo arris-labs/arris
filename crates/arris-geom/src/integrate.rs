@@ -28,8 +28,12 @@ const ORIGIN_SAMPLES: usize = 8;
 /// The most sub-intervals the inner integral is ever split into,
 /// whatever step the caller asks for. A quarter-period step over a whole
 /// period is four; the cap is there so a step of zero, or one far below
-/// the region's own scale, costs bounded time instead of hanging.
-pub const MAX_INNER_INTERVALS: usize = 256;
+/// the region's own scale, costs bounded time instead of hanging. It is
+/// also the most knots of a NURBS surface a direction is split at, so it
+/// is as many as a fitted surface has spans along its longest direction
+/// ([`crate::MAX_FIT_SPANS`]): a walked blend's surface runs to hundreds
+/// (ADR-0062), and one split short of its knots integrates to `1e-5`.
+pub const MAX_INNER_INTERVALS: usize = 4096;
 
 /// Values of one parameter where an integral is split: each of `breaks`,
 /// repeated by whole periods where there is one, so that a feature of the

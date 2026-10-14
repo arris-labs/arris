@@ -1,5 +1,5 @@
 {
-  "description": "a vertical cylinder of radius 1 and a horizontal one of radius 0.6 from its axis out along +x, fused, the edge where the branch meets the trunk filleted at r 0.1 at (0.8, 0, 0.6): two cylinders with crossing axes meet along a quartic, and the blend between them has no closed form. Arris refuses it as Unsupported naming the two cylinders (ADR-0036 \u00a74); Open CASCADE builds it",
+  "description": "a vertical cylinder of radius 1 and a horizontal one of radius 0.6 from its axis out along +x, fused, the edge where the branch meets the trunk filleted at r 0.1 at (0.8, 0, 0.6): two cylinders with crossing axes meet along a quartic, and the blend between them has no closed form. Open CASCADE builds it. The loop is two edges at a vertex, each a walked stripe (ADR-0062), and a walked stripe meets another blend only once the chain junction takes walked members (plans/nurbs-face-blend step 5b): until then Arris refuses the vertex as VertexBlend, naming both edges and the vertex.",
   "params": {
     "r": 0.1
   },
@@ -69,7 +69,7 @@
     }
   ],
   "analytic": {
-    "expect_error": "unsupported",
+    "expect_error": "vertex-blend",
     "genus": 0
   }
 }

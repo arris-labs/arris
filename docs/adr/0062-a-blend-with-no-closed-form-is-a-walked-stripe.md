@@ -189,6 +189,23 @@ with its Python class, `GeomOffsetFoldsError`.
   radius-2 cylinder's twin, two rational spans, take 32 at `1e-6`. Exactness was never on offer for a free-form face, and
   the tracer's patch count is the cost to watch, not the error.
 
+## Amendments
+
+- **Step 5 (the assembly).** Two analytic faces whose pair has a closed
+  intersection (a plane against a cylinder, whose offsets meet in a
+  circle) are not the tracers' pairs: `trace_section` answers
+  `Unsupported`, and the spine takes the intersector's exact curves as
+  its pieces instead. A closed edge's ring keeps the surface as the
+  skin makes it, `u` across and `v` once round the edge, and its loop
+  is the open stripe's with the two ends one seam, so that the
+  integrals' inner direction (the surface's `u`, split at every knot)
+  stays two spans: the integrator's cap on the splits was 256 and a ring
+  of the cylinder's twin has over 450, which integrated to `1e-5`;
+  `MAX_INNER_INTERVALS` is now 4096, as many as a fitted curve has
+  spans (`MAX_FIT_SPANS`). Walking is tried for a fillet only, after
+  the table's `Unsupported`; a walked stripe meets no other blend yet
+  (plan step 5b), and a vanishing end is `TangentChain`.
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**

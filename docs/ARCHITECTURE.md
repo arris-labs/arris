@@ -1071,6 +1071,32 @@ its contacts stay inside their faces is not detected by the operation:
 S5 catches it in the corpus. Provenance is rooted at the edge with no new
 `Role` (data-model §Provenance).
 
+A **walked stripe** (ADR-0062, `blend/walked.rs` and `walked_blend.rs`)
+blends a fillet's edge the table does not hold: a NURBS face against an
+analytic one, or two analytic faces whose edge is no closed form — cylinders
+on skew axes, a B-spline edge. `stripe` and `ring` refuse such an edge as
+`Unsupported`; the dispatch (`build::classify`, `make_stripes`) then walks
+it. The ball's centre runs on the section of the two faces' offsets by the
+radius (a NURBS face's fitted over the band the ball sweeps, an analytic
+one's exact), traced by `trace_section` or, where the pair has a closed
+form, the intersector's own curve; every sample is snapped by Newton onto
+the two exact distances, so the contacts are the exact feet. The surface is
+`fit_skin` of the ball's arcs along the spine, `u` across from the contact on
+the edge's first face to the one on the second, `v` along the edge's own
+direction; the contacts are its isocurves `u = 0` and `u = 1`, whose
+pcurves on the blend are exact lines. An open edge's `Stripe` has
+`Section::Walked`, and each end the face across cuts is the section of the
+surface with that face traced and fitted (`walked_end`, then the
+closed-form ends' own `finish_end`): a plane, cylinder or cone across. A
+closed edge is a `Ring` with `across` set: the loop is the stripe's with the
+two ends one seam, the ball's arc at the edge's vertex, and the faces' own
+seams cut to the contacts as the table's ring does. A walked stripe that
+meets another blend at a vertex, a face across that is NURBS, a cusp or a
+fan, and an end where the faces turn tangent are refused by name
+(`VertexBlend`, `Unsupported`, `TangentChain`); two NURBS faces are
+`Unsupported`. A radius past a principal radius is `BlendTooLarge`. Chamfers
+are not walked yet.
+
 `ops::offset_faces(m, body, faces: &[Face], distance, control)` moves the
 chosen faces of a solid along their outward normals by a signed distance —
 positive adds material — and returns the result with its provenance

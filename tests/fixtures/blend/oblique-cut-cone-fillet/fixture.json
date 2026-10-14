@@ -1,5 +1,5 @@
 {
-  "description": "a cone revolved whole about z, radius 3 at the base and 1 at the top a height 2 above (its apex at z = 3), cut by a plane through (0, 0, 1.2) tilted 20\u00b0 from the horizontal: the edge between the plane and the cone is an ellipse, and the fillet at r 0.1 of its point (0, 1.8, 1.2) a blend whose centre locus is a quartic, not a circle coaxial with the cone. Arris refuses it as Unsupported naming the curve and the cone (ADR-0036 \u00a74); Open CASCADE builds it",
+  "description": "a cone revolved whole about z, radius 3 at the base and 1 at the top a height 2 above (its apex at z = 3), cut by a plane through (0, 0, 1.2) tilted 20\u00b0 from the horizontal: the edge between the plane and the cone is an ellipse, and the fillet at r 0.1 of its point (0, 1.8, 1.2) a blend whose centre locus is a quartic, not a circle coaxial with the cone. so a walked stripe (ADR-0062) over the plane's offset and the cone's, closed, with no ends. Open CASCADE builds it too, as a B-spline walked along the edge, as Arris'; the two walks agree to 2e-8 in volume, which the measure tolerances are widened to cover, under the 1e-6 ADR-0015 asks of a claimed difference (no closed form holds the cone's blend)",
   "params": {
     "r": 0.1
   },
@@ -140,7 +140,12 @@
     }
   ],
   "analytic": {
-    "expect_error": "unsupported",
     "genus": 0
+  },
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 2e-07,
+    "centroid_abs": 3e-07,
+    "inertia_rel": 5e-07
   }
 }
