@@ -330,6 +330,11 @@ struct SingularCell {
     /// close, whose cell is cut there and whose arms beyond the edge are
     /// none.
     sides: [bool; 2],
+    /// Whether the cell reaches below its point in `v` and above it: both,
+    /// but for a saddle on an edge of `v` that does not close, which at a
+    /// corner of the domain is cut in `u` as well and keeps the one arm
+    /// inside the quadrant.
+    rows: [bool; 2],
 }
 
 /// A tube circle of the walked torus that lies on the other surface, to
@@ -592,7 +597,16 @@ impl Walker {
     /// caller's unwrapped angles.
     fn separator(&self, cell: &SingularCell, centre: [f64; 2], u: f64) -> f64 {
         let model = centre[1] + cell.slope * (u - centre[0]);
-        let (lo, hi) = (centre[1] - cell.half[1], centre[1] + cell.half[1]);
+        let lo = if cell.rows[0] {
+            centre[1] - cell.half[1]
+        } else {
+            centre[1]
+        };
+        let hi = if cell.rows[1] {
+            centre[1] + cell.half[1]
+        } else {
+            centre[1]
+        };
         let Ok(bracket) = Interval::new(lo, hi) else {
             return model;
         };
@@ -1204,8 +1218,8 @@ pub(crate) fn trace_nurbs(
     let across = tracer(&flipped, true).ok_or_else(unsupported)?;
     let (rows, columns) = (along.tube_circles(), across.tube_circles());
     let traced = match (rows.is_empty(), columns.is_empty()) {
-        // A saddle on an edge of `v` has no cell; swapped, it is on an
-        // edge of `u`, where its cell is cut at the edge.
+        // A saddle whose cell does not fit on the one parameterisation
+        // is tried on the other.
         (true, true) => match along.run_with(rows, meter) {
             Err(Halt::Fault(SectionFault::CrowdedSingularity)) => across.run_with(columns, meter),
             traced => traced,
@@ -1380,7 +1394,9 @@ impl Tracer<'_> {
                     && (0..2).all(|k| {
                         let half = 0.5 * (z.hi[k] - z.lo[k]);
                         let off = s.at[k] - 0.5 * (z.lo[k] + z.hi[k]);
-                        self.walker.off(k, off).abs() <= half
+                        // A singular point on an edge of the domain is
+                        // on the box's own edge, when the box reaches it.
+                        self.walker.off(k, off).abs() <= half + EDGE_TOUCH
                     });
                 held || s.holds(z.at, 1.0)
             })
@@ -1991,6 +2007,7 @@ impl Tracer<'_> {
                 slope: 0.0,
                 crossing: false,
                 sides: [true; 2],
+                rows: [true; 2],
             });
         }
         let [huu, huv, hvv] = s.hessian;
@@ -2022,8 +2039,23 @@ impl Tracer<'_> {
                     .find(|e| (s.at[0] - e).abs() <= EDGE_TOUCH)
             })
             .flatten();
-        let at = [edge.unwrap_or(s.at[0]), s.at[1]];
+        // The same on an edge of `v`: at a corner of the domain the cell
+        // is cut both ways, and of the four arms the one inside the
+        // quadrant is left.
+        let ridge = (!closed[1])
+            .then(|| {
+                [0.0, TAU]
+                    .into_iter()
+                    .find(|e| (s.at[1] - e).abs() <= EDGE_TOUCH)
+            })
+            .flatten();
+        let at = [edge.unwrap_or(s.at[0]), ridge.unwrap_or(s.at[1])];
         let sides = match edge {
+            Some(0.0) => [false, true],
+            Some(_) => [true, false],
+            None => [true; 2],
+        };
+        let rows = match ridge {
             Some(0.0) => [false, true],
             Some(_) => [true, false],
             None => [true; 2],
@@ -2046,6 +2078,7 @@ impl Tracer<'_> {
                 slope,
                 crossing: true,
                 sides,
+                rows,
             };
             let crowded = (turning.iter().any(|&t| in_box(closed, t, at, cell.half)))
                 || all.iter().any(|o| {
@@ -2057,7 +2090,10 @@ impl Tracer<'_> {
                 if sides[0] { at[0] - a } else { at[0] },
                 if sides[1] { at[0] + a } else { at[0] },
             ];
-            let v = [at[1] - b, at[1] + b];
+            let v = [
+                if rows[0] { at[1] - b } else { at[1] },
+                if rows[1] { at[1] + b } else { at[1] },
+            ];
             // On a NURBS surface the cell lies inside the domain.
             if crowded || !(fits(closed[0], u) && fits(closed[1], v)) {
                 continue;
@@ -2065,11 +2101,19 @@ impl Tracer<'_> {
             if self.section.sign_over(Probe::Fvv, u, v).is_none() {
                 continue;
             }
-            let below = self.section.sign_over(Probe::F, u, [v[0], v[0]]);
-            let above = self.section.sign_over(Probe::F, u, [v[1], v[1]]);
-            let (Some(outside), true) = (below, below == above) else {
+            // Outside the arms, on every row the cell reaches; a corner's
+            // one row is the side of the arm that is left.
+            let reached: Vec<Option<bool>> = [(0, rows[0]), (1, rows[1])]
+                .iter()
+                .filter(|(_, reached)| *reached)
+                .map(|&(k, _)| self.section.sign_over(Probe::F, u, [v[k], v[k]]))
+                .collect();
+            let Some(&Some(outside)) = reached.first() else {
                 continue;
             };
+            if reached.iter().any(|r| *r != Some(outside)) {
+                continue;
+            }
             // Between the arms the distance has the other sign — negative
             // where `f` is positive outside them — all the way out to the
             // cell's sides.
@@ -2766,7 +2810,7 @@ impl Tracer<'_> {
         }
         for (i, s) in self.walker.singular.iter().enumerate() {
             for arm in 0..4 {
-                let beyond = !s.sides[usize::from(arm >= 2)];
+                let beyond = !s.sides[usize::from(arm >= 2)] || !s.rows[arm % 2];
                 if !s.crossing || beyond || taken(&marched, ArcEnd::Singular(i, arm)) {
                     continue;
                 }

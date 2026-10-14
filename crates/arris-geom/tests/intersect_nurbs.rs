@@ -235,6 +235,52 @@ fn a_saddle_a_hair_past_the_domains_edge_is_the_sections_singular_point_on_it() 
     }
 }
 
+/// `z = 4v² − u²` over `[0, 1]²`, a quadratic Bézier patch, against the
+/// plane `z = 0`: the section's saddle is the patch's corner at the origin,
+/// on an edge of `u` and of `v` at once, and of its four arms the one
+/// inside the quadrant, `v = u/2`, runs out across `u = 1`. The saddle's
+/// cell is cut at both edges, in either order of the surfaces (plans/
+/// nurbs-face-blend step 10c, where a walked blend's patch met cylinders
+/// at its corners).
+#[test]
+fn a_saddle_at_a_corner_of_the_domain_keeps_the_one_arm_inside_it() {
+    let (u, v) = ([0.0, 1.0], [0.0, 1.0]);
+    let ends = |x: [f64; 2], k: usize| [[x[0], x[0]], [x[0], x[1]], [x[1], x[1]]][k];
+    let mut points = Vec::with_capacity(9);
+    for i in 0..3 {
+        for j in 0..3 {
+            let ([u1, u2], [v1, v2]) = (ends(u, i), ends(v, j));
+            let (um, vm) = (0.5 * (u1 + u2), 0.5 * (v1 + v2));
+            points.push(Point3::new(um, vm, 4.0 * v1 * v2 - u1 * u2));
+        }
+    }
+    let knots = |x: [f64; 2]| vec![x[0], x[0], x[0], x[1], x[1], x[1]];
+    let patch = NurbsSurface::new([2, 2], [knots(u), knots(v)], points, vec![1.0; 9]).unwrap();
+    let saddle = Surface::Nurbs(patch);
+    let flat = Surface::Plane {
+        frame: Frame::world(),
+    };
+    for (a, b) in [(&saddle, &flat), (&flat, &saddle)] {
+        let hit = meet(a, b).unwrap();
+        let [arm] = hit.curves() else {
+            panic!("{hit:?}")
+        };
+        let d = arm.curve.domain();
+        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+        for k in 0..=200 {
+            let p = arm.curve.eval(d.lerp(k as f64 / 200.0)).point;
+            assert!(p.z.abs() <= tol().linear, "off the plane: {p:?}");
+            assert!(
+                (p.y - 0.5 * p.x).abs() <= tol().linear,
+                "off the arm: {p:?}"
+            );
+            lo = f64::min(lo, p.x);
+            hi = f64::max(hi, p.x);
+        }
+        assert!(lo <= tol().linear && hi >= 1.0 - tol().linear, "{lo} {hi}");
+    }
+}
+
 #[test]
 fn two_nurbs_surfaces_are_still_unsupported() {
     let a = wall();

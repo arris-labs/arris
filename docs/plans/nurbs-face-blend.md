@@ -685,7 +685,7 @@ bound has to be established here.
 
   ADR-0062 amendment. The match tolerance was not shared with 10a.
 
-- [ ] Step 10c **[3]** — **A saddle at a corner of the walked blend's
+- [x] Step 10c **[3]** — **A saddle at a corner of the walked blend's
   domain.** *(Split from the old 10c by its 2026-10-14 measurement.)*
   `regression/nist-ftc-10-cylinder-pair-bspline-fillet` builds but the
   checker leaves eight pairs undecided (`f93`–`f96`, `f105`, `f106`,
@@ -706,6 +706,17 @@ bound has to be established here.
   refusal, `UnresolvedTurning`, not measured. Acceptance: the eight pairs
   decided or each refused by the name of the corner it is, and the fixture
   at `Full` with only NURBS × NURBS left.
+
+  **Done (2026-10-14).** The cell is cut at both edges (`SingularCell::rows`
+  beside `sides`), and the one arm inside the quadrant is followed; seven
+  pairs decide. `f94` was the same corner: an uncertified box of turning
+  points with the saddle on its edge, which the absorption test decided by
+  rounding and sent to the edge touch (`UnresolvedTurning`); it is now the
+  saddle's within `EDGE_TOUCH`. The checker passes at `Full`; the fixture
+  stays ignored on its oracle row (volume 3e-9, area 2e-9 relative), for
+  step 10. ADR-0061 amendment; the test
+  `a_saddle_at_a_corner_of_the_domain_keeps_the_one_arm_inside_it` fails
+  with the change taken out.
 - [ ] Step 10d **[3]** — **A convex junction's branch against the
   tracer's resolution.** `regression/nist-ftc-11-ap242-bspline-circle-fillet`
   leaves `f48` against `f49` (`UnresolvedTurning`) and `f50`

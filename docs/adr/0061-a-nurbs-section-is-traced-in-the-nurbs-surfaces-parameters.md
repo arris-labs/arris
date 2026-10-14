@@ -417,6 +417,34 @@ cut there (before: one arm, no point). Each test fails with its change
 taken out. The crate's tests, the corpus and every walked fixture pass
 unchanged at 32 cases.
 
+### A saddle at a corner of the domain (amendment, 2026-10-14)
+
+`plans/nurbs-face-blend` step 10c. FTC-10's walked blend is an open
+5 × 12 patch whose four corners are real, and eight cylinders and spheres
+beside it are tangent to it there within the tolerance: the section's
+saddle is at a corner, on an edge of `u` and an edge of `v` at once, and
+`F ≈ A·dv² − B·du²` has one of its four arms inside the quadrant. The
+cell was cut at an edge of `u` only, and every cell the corner needs
+reaches past an edge of `v` too, so none fitted at any halving, whichever
+way the parameters were swapped.
+
+- **The cell is cut at both edges.** A saddle within `EDGE_TOUCH` of an
+  edge of `v` that does not close is put on it, as one on an edge of `u`
+  is, and the cell reaches only above it (or below, on `v = 2π`). The
+  certificate holds on the rows the cell reaches: `f` of one sign on each,
+  and the separator searched between the edge and the cell's top. Of the
+  four arms the cut leaves the one inside the quadrant; the march and the
+  assembly already take a saddle's arms singly.
+- **A box of turning points is the saddle's when its edge is the saddle.**
+  An uncertified box whose edge the saddle sits on, to `EDGE_TOUCH`, is
+  absorbed by it. The boundary case was decided by rounding, and sent the
+  box to the touch of an edge, which it is not.
+
+The patch `z = 4v² − u²` over `[0, 1]²` against its plane returns the one
+arm `v = u/2` from the corner to `u = 1`, in either order of the surfaces
+(before: refused). FTC-10 then decides all eight pairs and the checker
+passes at `Full`.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its
