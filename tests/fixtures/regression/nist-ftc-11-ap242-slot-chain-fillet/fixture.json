@@ -1,10 +1,10 @@
 {
-  "description": "NIST's FTC-11, its AP242 edition 2's solid #1299 alone (the excerpt beside regression/nist-ftc-11-ap242-bspline-circle-fillet): the convex plane-against-plane edge e24 filleted alone at the battery's radius. It is the first of a tangent chain of three on the plane f0: the line e24, the edge e25 between f0 and the cylinder f19 written as a cubic B-spline that hides a circle (r 0.1063, within 4.4e-4 of the faces' own section, its tolerance 2.5e-3), and the line e26. Arris refuses it Unsupported(NURBS curve \u00d7 plane surface) at e25; Open CASCADE builds it (plans/nurbs-face-blend step 1). The desired result is the chain's blend: a table stripe, a walked stripe and a table stripe meeting at two tangent vertices",
+  "description": "NIST's FTC-11, its AP242 edition 2's solid #1299 alone (the excerpt beside blend/nist-ftc-11-ap242-bspline-circle-fillet): the convex plane-against-plane edge e24 filleted alone at the battery's radius. It is the first of a tangent chain of three on the plane f0: the line e24, the edge e25 between f0 and the cylinder f19 written as a cubic B-spline that hides a circle (r 0.1063, within 4.4e-4 of the faces' own section, its tolerance 2.5e-3), and the line e26. Arris refuses it Unsupported(NURBS curve \u00d7 plane surface) at e25; Open CASCADE builds it (plans/nurbs-face-blend step 1). The desired result is the chain's blend: a table stripe, a walked stripe and a table stripe meeting at two tangent vertices",
   "steps": [
     {
       "op": "step",
       "name": "part",
-      "file": "../nist-ftc-11-ap242-bspline-circle-fillet/nist_ftc_11_asme1_ap242-e2-1299.stp",
+      "file": "../../blend/nist-ftc-11-ap242-bspline-circle-fillet/nist_ftc_11_asme1_ap242-e2-1299.stp",
       "sha256": "e4ed6568a8c397811140527681031c947c5c5a1f2491e6de58b78f085a5f5443",
       "id": 1299
     },

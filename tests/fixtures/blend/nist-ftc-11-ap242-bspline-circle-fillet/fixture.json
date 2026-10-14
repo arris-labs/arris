@@ -1,0 +1,43 @@
+{
+  "description": "NIST's FTC-11, its AP242 edition 2's solid #1299 alone (excerpted with tools/oracle/excerpt.py): the convex edge between the plane f0 and the cylinder f39, written as a cubic B-spline of one span that hides a circle (r 0.2151, within 9.7e-5 of the faces' own section, the edge's tolerance 2.5e-3), filleted alone at the battery's radius. Its chain runs on at both tangent vertices: along the line e1 to v2, a convex kink of 7.3° where the plane f38 stands 2.3e-3 off tangent to the boss f37, its end arc across f37 at a grazing angle, inside the band the file's pcurves of f37's rim stand off its curve by (3.75e-3, the rim's tolerance); and along the line e19 to v19, a step whose corner edge e18 is lengthened to the trim. Arris builds it as Open CASCADE does, within its volume, area and centroid (plans/nurbs-face-blend step 10b); the checker at Full decides every pair (steps 10c and 10d). Open CASCADE reading Arris's STEP finds the plane f0 larger by 1.19e-2 than in its own blend (area 2.2e-6 relative, volume 6.4e-8), and the whole of that is the one B-spline edge of the boss's rim on f0: Open CASCADE's own wire is open there, the edge ending 2.0e-3 from the next edge's start, Arris' 2.4e-4 (both within the vertex's tolerance 3.7e-3), and the area of an open wire in a plane's frame depends on the gap and on its distance from the frame's origin, here 51 away: 0.5 x 51 x 2.0e-3 is 5e-2 for a gap, 1e-2 for the part of it the two wires differ by. Every other edge of f0 agrees to 1e-6 in its contribution to the area and the circles to 5e-5 in 1414. So the measure tolerances are widened to the oracle's own uncertainty (volume 2e-7, area 5e-6, centroid 5e-6, inertia 3e-7), still three orders under what a wrong radius, junction or end moves (ADR-0062's step 10e amendment)",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "nist_ftc_11_asme1_ap242-e2-1299.stp",
+      "sha256": "e4ed6568a8c397811140527681031c947c5c5a1f2491e6de58b78f085a5f5443",
+      "id": 1299
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          -22.759378515181545,
+          -0.9423761992111426,
+          0.43
+        ]
+      ],
+      "radius": 0.010499999999999999
+    }
+  ],
+  "result": "result",
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 5e-06,
+    "centroid_abs": 5e-06,
+    "inertia_rel": 3e-07
+  },
+  "analytic": {
+    "counts": {
+      "vertices": 78,
+      "edges": 119,
+      "faces": 45,
+      "loops": 49,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE keeps the consumed corner vertex v19 on the lengthened corner edge e18, two edges of one line between the same two faces; Arris lengthens the one edge to the trim (ADR-0038)",
+    "genus": 1
+  }
+}

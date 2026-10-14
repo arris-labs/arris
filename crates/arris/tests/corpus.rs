@@ -1154,13 +1154,11 @@ corpus_tests! {
     /// NIST FTC-10's solid #6434, the closed edge where two cylinders whose
     /// axes cross off each other meet in a quartic, written as a B-spline,
     /// filleted alone.
-    #[ignore = "oracle: the checker decides every pair at Full (plans/nurbs-face-blend step 10c) and the ring builds with the oracle's counts, its volume 3e-9 and area 2e-9 relative off Open CASCADE's walked blend, which ADR-0062's step 5b amendment lets the tolerances cover once its miss of the ball is measured (plans/nurbs-face-blend step 10)"]
-    regression_nist_ftc_10_cylinder_pair_bspline_fillet => run "regression/nist-ftc-10-cylinder-pair-bspline-fillet";
+    blend_nist_ftc_10_cylinder_pair_bspline_fillet => run "blend/nist-ftc-10-cylinder-pair-bspline-fillet";
     /// NIST FTC-11's AP242 edition 2 solid #1299, a plane-against-cylinder
     /// edge written as a B-spline that hides a circle, filleted alone: its
     /// chain's end arc runs inside the band the file's pcurves stand off by.
-    #[ignore = "oracle: the checker decides every pair at Full (plans/nurbs-face-blend step 10d) and the body holds to Open CASCADE's measures in process, but Open CASCADE reading Arris's STEP finds area 1.2e-2 (2e-6 relative) and volume 6e-8 relative more than its own fillet (plans/nurbs-face-blend step 10e)"]
-    regression_nist_ftc_11_ap242_bspline_circle_fillet => run "regression/nist-ftc-11-ap242-bspline-circle-fillet";
+    blend_nist_ftc_11_ap242_bspline_circle_fillet => run "blend/nist-ftc-11-ap242-bspline-circle-fillet";
     /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
     /// cylinder's axis off the plane of the ball's seam, so the loop crosses
     /// the seam at a slant.

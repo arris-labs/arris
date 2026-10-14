@@ -1722,7 +1722,7 @@ fn the_face_across_met_twice_keeps_the_vertex() {
 /// contact edge (ADR-0061, step 10d), and leaves only NURBS × NURBS pairs.
 #[test]
 fn a_read_rims_pcurves_standing_off_hold_an_end_arc() {
-    let dir = fixtures::corpus_root().join("regression/nist-ftc-11-ap242-bspline-circle-fillet");
+    let dir = fixtures::corpus_root().join("blend/nist-ftc-11-ap242-bspline-circle-fillet");
     let fixture = fixtures::load(&dir).unwrap();
     let chain = corpus::chain(&dir, "default").unwrap();
     let (m, blended) = (&chain.model, chain.result().unwrap());

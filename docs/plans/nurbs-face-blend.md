@@ -134,8 +134,8 @@ bound has to be established here.
   |---|---|---|---|---|---|---|
   | CTC-05 AP203 #249, r 0.889 | e256 | NURBS (3, 2) 2×1 rational × torus; cubic B-spline, no conic | v84: cylinder across, degree 3; v115: cylinder across, degree 3, a junction | 3: e256 → e133 (cylinder × torus off its axis, a quartic as a B-spline 1.6e-6 off the traced section) → e32 (plane × cylinder, line) | builds **invalid**: volume −1.2e8 | `regression/nist-ctc-05-ap203-nurbs-torus-fillet` |
   | CTC-05 AP242 e1 #1205, r 0.889 | e256 | the same face as one Bézier patch; B-spline of 11 spans | as AP203 | as AP203 (e131 for e133) | builds **invalid**: volume +29 mm³ over the part's where the fillet removes ≈ 2; its area −4.6 fits | `regression/nist-ctc-05-ap242-nurbs-torus-fillet` |
-  | FTC-10 #6434, r 0.5 | e0 | cylinder × cylinder, axes skew; closed B-spline of 16 spans, a quartic (4.0e-4 off the traced section, tolerance 6e-4) | none, closed | none | builds | `regression/nist-ftc-10-cylinder-pair-bspline-fillet` |
-  | FTC-11 AP242 e2 #1299, r 0.0105 | e0 | plane × cylinder; one-span B-spline hiding a circle (9.3e-5, tolerance 2.5e-3) | planes across, degree 3, both junctions | 3: line, e0, line (a slot's end) | builds | `regression/nist-ftc-11-ap242-bspline-circle-fillet` (excerpt of #1299) |
+  | FTC-10 #6434, r 0.5 | e0 | cylinder × cylinder, axes skew; closed B-spline of 16 spans, a quartic (4.0e-4 off the traced section, tolerance 6e-4) | none, closed | none | builds | `blend/nist-ftc-10-cylinder-pair-bspline-fillet` |
+  | FTC-11 AP242 e2 #1299, r 0.0105 | e0 | plane × cylinder; one-span B-spline hiding a circle (9.3e-5, tolerance 2.5e-3) | planes across, degree 3, both junctions | 3: line, e0, line (a slot's end) | builds | `blend/nist-ftc-11-ap242-bspline-circle-fillet` (excerpt of #1299) |
   | FTC-11 AP242 e2 #1299, r 0.0105 | e24 | plane × plane, line; refused at e25, plane × cylinder, a B-spline hiding a circle (4.4e-4) | — | 3: e24, e25, e26 | builds | `regression/nist-ftc-11-ap242-slot-chain-fillet` |
   | CTC-02 AP242 e2 #14911, r 1.316 | e283 | plane × plane, line; refused at the chain's B-spline edges | — | 13: lines alternating with six plane × oblique-cylinder edges, B-splines 8.4e-4 off the ellipses (tolerance 8.5e-4) | builds | `regression/nist-ctc-02-ap242-ellipse-chain-fillet` |
   | CTC-01 AP203 #335 = committed #101, r 1.910 | e290 | cylinder × cylinder, equal radii, axes meeting; ellipse | v211: plane across, degree 3; v113: a fan of two planes, degree 4 | none | builds | `regression/nist-ctc-01-crossing-cylinders-crease-fillet` (committed file) |
@@ -687,7 +687,7 @@ bound has to be established here.
 
 - [x] Step 10c **[3]** — **A saddle at a corner of the walked blend's
   domain.** *(Split from the old 10c by its 2026-10-14 measurement.)*
-  `regression/nist-ftc-10-cylinder-pair-bspline-fillet` builds but the
+  `blend/nist-ftc-10-cylinder-pair-bspline-fillet` builds but the
   checker leaves eight pairs undecided (`f93`–`f96`, `f105`, `f106`,
   `f181`, `f182`, each against the NURBS blend face `f183`). `f183` is an
   open 5 × 12 cubic patch, not closed, so its four corners are real. In
@@ -718,7 +718,7 @@ bound has to be established here.
   `a_saddle_at_a_corner_of_the_domain_keeps_the_one_arm_inside_it` fails
   with the change taken out.
 - [x] Step 10d **[3]** — **A convex junction's branch against the
-  tracer's resolution.** `regression/nist-ftc-11-ap242-bspline-circle-fillet`
+  tracer's resolution.** `blend/nist-ftc-11-ap242-bspline-circle-fillet`
   leaves `f48` against `f49` (`UnresolvedTurning`) and `f50`
   (`CrowdedSingularity`), the two table stripes' cylinders at the chain's
   ends. This is the convex junction step 6 left open (a 7.3° kink), not
@@ -782,19 +782,25 @@ bound has to be established here.
 
   ADR-0061 amendment. The fixture test fails with any of the four taken
   out. Past the checker the fixture meets its oracle row (step 10e).
-- [ ] Step 10e **[2]** — **The FTC-10 and FTC-11 fixtures leave
-  `regression/`.** 10c and 10d decided their pairs; both now stop at the
-  oracle row. FTC-10 is `3e-9` volume and `2e-9` area relative off Open
-  CASCADE's walked blend, for ADR-0062's step 5b amendment to cover once
-  its miss of the ball is measured. FTC-11 holds to Open CASCADE's
-  measures in process, but Open CASCADE reading Arris's STEP finds area
-  `1.2e-2` more (`2e-6` relative, about the walked face's own area) and
-  volume `6e-8` relative: find which face it reads differently, and fix the
-  writer or fence it by name. Then move both fixtures into `blend/` with
-  blessed dumps, drop the `#[ignore]`s in `corpus.rs` and tick the S5 rows
-  in step 10b's note. The test
-  `a_read_rims_pcurves_standing_off_hold_an_end_arc` (`arris-ops/tests/fillet.rs`)
-  reads the FTC-11 fixture by its path and follows it out of `regression/`.
+- [x] Step 10e **[2]** — **The FTC-10 and FTC-11 fixtures leave
+  `regression/`.** 10c and 10d decided their pairs; both stopped at the
+  oracle row.
+
+  **Done (2026-10-15).** Both are in `blend/` with blessed dumps, their
+  `#[ignore]`s gone and tests renamed `blend_*`. ADR-0062 amendment:
+  - **FTC-10** is the walked-blend allowance. Open CASCADE's blend misses
+    the ball by a median `2.4e-4` at 441 samples, Arris' by `6.1e-10`.
+    Volume is `3.0e-9` off, area `1.9e-8` (not the `2e-9` this step
+    carried): tolerances `1e-8` / `5e-8` / `1e-8` (inertia).
+  - **FTC-11 needed no writer fix.** The `1.19e-2` of plane area is one
+    B-spline rim edge of `f0` that Open CASCADE's own wire leaves open by
+    `2.0e-3` (Arris' by `2.4e-4`), read in a frame 51 from the plane's
+    origin; every other edge's contribution agrees and `ShapeFix` moves
+    neither. Tolerances `2e-7` / `5e-6` / `3e-7`, the oracle's own
+    uncertainty. Not explained, left: Arris' written lines `e24` and its
+    neighbour sit `2.5e-3` under the plane (`z` 0.4275) where Open
+    CASCADE's are on it; they are parallel to it and move no area.
+  - The S5 rows of 10b's note were decided at 10c and 10d.
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
   on the fetched tier and `--census-committed`. Move every step 1
   fixture that now agrees out of `regression/` into `blend/` with its

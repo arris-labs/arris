@@ -374,6 +374,29 @@ with its Python class, `GeomOffsetFoldsError`.
   face's offset. The refusal stays `VertexBlend`, joined to the backlog
   line of the chain through a torus, which is the same kind of vertex.
 
+- **Step 10e (what holds FTC-10 and FTC-11).** Both leave `regression/` for
+  `blend/` with tolerances widened under the step-5b allowance, each
+  stating the evidence in its description.
+  - FTC-10's closed edge between two skew cylinders is walked by Open
+    CASCADE too, and its blend misses the ball of radius `r` at 441
+    samples by a median of `2.4e-4` (`7.5e-4` at most) against Arris'
+    `6.1e-10` (`2.1e-9`). The bodies differ by `3.0e-9` in volume and
+    `1.9e-8` in area; the tolerances are `1e-8` (volume, inertia) and
+    `5e-8` (area).
+  - FTC-11's gap is in the *oracle's plane*, not the blend. Open CASCADE
+    reading Arris's STEP finds the plane `f0` larger by `1.19e-2`
+    (`2.2e-6` of the area; the volume `6.4e-8`), all of it from the one
+    B-spline edge of the boss's rim: Open CASCADE's own wire is open
+    there by `2.0e-3` where Arris' is by `2.4e-4`, both inside the
+    vertex's tolerance. The area of an open wire in a plane's frame moves
+    by the gap times the distance of the gap from the frame's origin
+    (51 here), which is that `1e-2`. Every other edge of `f0` contributes
+    the same area in both files, and a `ShapeFix` pass does not change
+    either value. The tolerances are `2e-7` (volume), `5e-6` (area, and
+    centroid in length) and `3e-7` (inertia), the oracle's own
+    uncertainty, still three orders under what a wrong radius, junction or
+    end moves.
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**

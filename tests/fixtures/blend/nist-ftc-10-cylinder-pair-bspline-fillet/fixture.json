@@ -1,0 +1,31 @@
+{
+  "description": "NIST's FTC-10 (the committed real/nist-ftc-10), solid #6434: the closed convex edge between the cylinders f0 and f146, whose axes cross off each other, written as a cubic B-spline of 16 spans. The two cylinders meet in a quartic (the edge lies within 4e-4 of their traced section, its tolerance 6e-4), so no conic hides in it, and the closed edge has no ends. Filleted alone at r 0.5, the battery's radius from its sample today. Arris builds a walked stripe over the two cylinders' exact offsets (plans/nurbs-face-blend steps 5 to 10c). Open CASCADE's blend is walked too and misses the ball of radius r at 441 samples of the blend face by a median of 2.4e-4 (7.5e-4 at most), where Arris' misses it by 6.1e-10 (2.1e-9 at most); over the blend's area that is the whole of the gap, 3.0e-9 relative in volume and 1.9e-8 in area, so the measure tolerances are widened (volume and inertia 1e-8, area 5e-8) under ADR-0062's step-5b allowance",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ftc-10/nist_ftc_10_asme1_rb.stp",
+      "sha256": "2bd726f9fe86aeb96ab517ce876e5696e7951310df5c4fbca36276d65879067b",
+      "id": 6434
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          -9.25,
+          19.730825792344497,
+          15.5
+        ]
+      ],
+      "radius": 0.5
+    }
+  ],
+  "result": "result",
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 5e-08,
+    "inertia_rel": 1e-08
+  }
+}
