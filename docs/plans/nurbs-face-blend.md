@@ -617,10 +617,47 @@ bound has to be established here.
     fixture's tolerances are `1e-8`. Its counts are Arris' own: Open
     CASCADE's healed reading of the part has two vertices and two edges
     more (`counts_differ`).
+- [ ] Step 10a **[3]** — **CTC-05 AP242's spine.** Step 10's run (2026-10-14)
+  found `regression/nist-ctc-05-ap242-nurbs-torus-fillet` refused
+  `Unsupported(NURBS × torus)` from `Refusal::NoSpine { why: "no piece holds
+  the ends' balls" }`: the offsets' section is traced, but none of its pieces
+  passes the end balls (the edge is an 11-span B-spline `1.6e-3` off the best
+  curve, on one Bézier patch). The AP203 edition gets past this point.
+  First measure: print the pieces' distances to each end ball against the
+  budget (ADR-0062 §1) and say whether the pieces are cut short at the
+  domain boundary, the edge's samples are off the exact offsets, or the
+  match tolerance is the edge's alone. Then fix it in the walk, never by
+  widening a tolerance. Settle the CTC-05 oracle's open question here: AP203
+  also stops at `v84` (`TangentChain`, step 9b), so the pair of fixtures is
+  held by the two editions agreeing and an independent spine integral, or
+  one is re-scoped to the edge up to the vanishing end. ADR-0062 amendment.
+- [ ] Step 10b **[3]** — **Chain junctions on a walked member.** Three
+  fixtures refuse at a tangent vertex where the chain goes on:
+  - FTC-11 `bspline-circle`: "the blend leaves its face through an edge that
+    is not the corner's own" (`e1`, `f37`);
+  - FTC-11 `slot-chain`: "no closed form for `e24` against `f17`", a
+    cylinder × cylinder end;
+  - CTC-02 `ellipse-chain`: "the corner at the edge's end is one the closed
+    forms do not cover" (`e184`, `e274`, `v167`).
+  Reduce each to its smallest failing junction (walked beside a table
+  stripe, table beside walked), then fix step 5b's junction for it or name
+  the kind of vertex it is as another item's. Depends on 10a only if the
+  match tolerance there is shared. ADR-0062 amendment.
+- [ ] Step 10c **[2]** — **S5 on a walked blend against a cylinder or a
+  sphere.** `regression/nist-ftc-10-cylinder-pair-bspline-fillet` builds but
+  the checker leaves eight pairs undecided (`f93`–`f96`, `f105`, `f106`,
+  `f181`, `f182`, each against the NURBS blend face `f183`). Step 6 decided S5
+  on a walked blend's tangent neighbours; these meet it along the contact,
+  a cylinder or sphere against the rational NURBS. Decide them from the
+  contact the same way, or show why the checker may not. Acceptance holds
+  "nothing unchecked but NURBS × NURBS pairs" as written.
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
   on the fetched tier and `--census-committed`. Move every step 1
   fixture that now agrees out of `regression/` into `blend/` with its
-  blessed dump. Name each that still refuses by its other item. Print the
+  blessed dump. Name each that still refuses by its other item. Also first: CTC-02 AP242 `drill_x`'s counts disagree with the oracle (643 faces
+  against 649, edges 1446 against 1452) in the 2026-10-14 fetched run and
+  are on no waits line; find whether a step of this plan caused it, and
+  fix it or fence it as the nightly rule says. Print the
   fillet column's NURBS row before and after, with timings, into this
   plan.
 
