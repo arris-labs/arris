@@ -239,6 +239,9 @@ struct Patch {
     /// patch at, a closure past the isoline's own where the patch holds
     /// it there ([`PatchedSection::deflate`]).
     divided: Option<f64>,
+    /// The rounding of a coefficient of `f`: the section's, until a
+    /// division raises it on the patches it divides.
+    floor: f64,
 }
 
 /// The other surface's polynomial over the patches of a torus or a NURBS
@@ -251,7 +254,8 @@ pub(crate) struct PatchedSection<'a> {
     /// The degree the binomial tables the patches' products take reach
     /// to.
     binomial_degree: usize,
-    /// The rounding of a coefficient of `f`.
+    /// The rounding of a coefficient of `f`, the largest of the patches'
+    /// (`Patch::floor`).
     floor: f64,
     /// What `|f|` is no larger than within `tol.linear` of the other
     /// surface, rounding included.
@@ -411,6 +415,7 @@ impl<'a> PatchedSection<'a> {
                     f,
                     weight,
                     divided: None,
+                    floor: 0.0,
                 });
             }
         }
@@ -419,6 +424,9 @@ impl<'a> PatchedSection<'a> {
         let reach = major + minor + origin.norm();
         let floor = BERNSTEIN_ROUNDING * implicit.magnitude(reach, 1.0);
         let steep = implicit.steepness(reach + tol.linear) * tol.linear;
+        for patch in &mut patches {
+            patch.floor = floor;
+        }
         Some(PatchedSection {
             implicit,
             chart: Chart::Quarters,
@@ -505,6 +513,7 @@ impl<'a> PatchedSection<'a> {
                 f,
                 weight,
                 divided: None,
+                floor: 0.0,
             });
         }
         // Every coefficient is a sum of terms each bounded by a monomial
@@ -516,6 +525,9 @@ impl<'a> PatchedSection<'a> {
             + (implicit.magnitude(reach + moved, heaviest) - magnitude);
         let steep =
             implicit.steepness(farthest + tol.linear) * tol.linear * heaviest.powi(degree as i32);
+        for patch in &mut patches {
+            patch.floor = floor;
+        }
         Some(PatchedSection {
             implicit,
             chart: Chart::Knots {
@@ -582,13 +594,14 @@ impl<'a> PatchedSection<'a> {
         for (i, root) in along {
             let patch = &mut self.patches[i];
             let mut f = patch.f.transposed();
-            let mut floor = self.floor;
+            let mut floor = patch.floor;
             for _ in 0..order {
                 let (quotient, carried) = f.over_linear(root, floor, &binomials);
                 f = quotient;
                 floor = carried;
             }
             patch.f = f.transposed();
+            patch.floor = floor;
             worst = worst.max(floor);
         }
         self.floor = worst;
@@ -672,9 +685,9 @@ impl<'a> PatchedSection<'a> {
                 let line = patch.f.along(CIRCLE_ROW);
                 let m = line.len().saturating_sub(1) as f64;
                 let slope = bernstein::derivative(&line);
-                let roots = sign_change_candidates(&line, self.floor)
+                let roots = sign_change_candidates(&line, patch.floor)
                     .into_iter()
-                    .chain(sign_change_candidates(&slope, 2.0 * m * self.floor));
+                    .chain(sign_change_candidates(&slope, 2.0 * m * patch.floor));
                 found.extend(roots.map(|s| self.param(patch, 0, s)));
             }
             found.sort_by(f64::total_cmp);
@@ -686,9 +699,9 @@ impl<'a> PatchedSection<'a> {
             let line = patch.f.along(CIRCLE_ROW);
             let m = line.len().saturating_sub(1) as f64;
             let slope = bernstein::derivative(&line);
-            let roots = sign_change_candidates(&line, self.floor)
+            let roots = sign_change_candidates(&line, patch.floor)
                 .into_iter()
-                .chain(sign_change_candidates(&slope, 2.0 * m * self.floor));
+                .chain(sign_change_candidates(&slope, 2.0 * m * patch.floor));
             found.extend(roots.map(|s| quarter_angle(patch.cell[0], s).rem_euclid(TAU)));
         }
         found.sort_by(f64::total_cmp);
@@ -704,7 +717,7 @@ impl<'a> PatchedSection<'a> {
     /// No zero of the polynomial anywhere on the torus: every patch's
     /// coefficients keep one sign beyond their rounding.
     pub(crate) fn is_empty(&self) -> bool {
-        (self.patches.iter()).all(|patch| patch.f.sign(self.floor).is_some())
+        (self.patches.iter()).all(|patch| patch.f.sign(patch.floor).is_some())
     }
 
     /// The tube circle at `u0`, which lies on the other surface, divided
@@ -815,6 +828,7 @@ impl<'a> PatchedSection<'a> {
             if odd && flipped {
                 patch.f = Poly2::combine(&[(-1.0, &patch.f)]);
             }
+            patch.floor = floor;
             worst = worst.max(floor);
         }
         self.floor = worst;
@@ -854,7 +868,7 @@ impl<'a> PatchedSection<'a> {
             let width = hi - lo;
             let slack = PATCH_SLACK * width;
             let home = (homes.iter().copied()).find(|&r| r >= lo - slack && r <= hi + slack);
-            let mut floor = self.floor;
+            let mut floor = patch.floor;
             if let Some(r) = home {
                 let root = ((r - lo) / width).clamp(0.0, 1.0);
                 for _ in 0..order {
@@ -873,6 +887,7 @@ impl<'a> PatchedSection<'a> {
             if odd && flipped {
                 patch.f = Poly2::combine(&[(-1.0, &patch.f)]);
             }
+            patch.floor = floor;
             worst = worst.max(floor);
         }
         self.floor = worst;
@@ -939,7 +954,7 @@ impl<'a> PatchedSection<'a> {
             let f_t = patch.f.dv();
             // A derivative's coefficient is the degree times a difference
             // of two of `f`'s.
-            let floors = [self.floor, 2.0 * n as f64 * self.floor];
+            let floors = [patch.floor, 2.0 * n as f64 * patch.floor];
             common_zeros([&patch.f, &f_t], floors, &[], meter)
         })
     }
@@ -952,17 +967,18 @@ impl<'a> PatchedSection<'a> {
     /// branches or an isolated point, at the tolerance.
     pub(crate) fn critical_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
         self.census(meter, |patch, meter| {
-            self.critical_isolation(&patch.f, &patch.weight, meter)
+            self.critical_isolation(&patch.f, &patch.weight, patch.floor, meter)
         })
     }
 
     /// The common zeros of the gradient of `F = f / wᵈ` over the unit
     /// square of the polynomial `f` and the weight `w`, where `|f|` is
-    /// within `near`.
+    /// within `near`; `floor` is the rounding of a coefficient of `f`.
     fn critical_isolation(
         &self,
         f: &Poly2,
         w: &Poly2,
+        floor: f64,
         meter: &mut Meter,
     ) -> Result<Isolation, Halt<Continuum>> {
         let degree = self.implicit.degree();
@@ -979,10 +995,7 @@ impl<'a> PatchedSection<'a> {
         ]);
         // `w ≤ 1` times a derivative's rounding, and `|w_s| < 1`
         // times `d` of `f`'s own.
-        let floors = [
-            (2.0 * m as f64 + d) * self.floor,
-            (2.0 * n as f64 + d) * self.floor,
-        ];
+        let floors = [(2.0 * m as f64 + d) * floor, (2.0 * n as f64 + d) * floor];
         let gate = Gate {
             poly: f,
             floor: self.near,
@@ -1037,7 +1050,8 @@ impl<'a> PatchedSection<'a> {
                 }
             };
             let own = |x: f64| if past_start { -d * x } else { 1.0 + d * x };
-            let found = self.critical_isolation(&slab(&patch.f), &slab(&patch.weight), meter)?;
+            let found =
+                self.critical_isolation(&slab(&patch.f), &slab(&patch.weight), patch.floor, meter)?;
             let angles = |p: [f64; 2]| {
                 [0, 1].map(|j| {
                     let s = if j == k { own(p[j]) } else { p[j] };
@@ -1074,9 +1088,9 @@ impl<'a> PatchedSection<'a> {
                 let [m, n] = patch.f.degree();
                 let (m, n) = (m as f64, n as f64);
                 let part = match probe {
-                    Probe::F => patch.f.restricted(s, t).sign(self.floor),
-                    Probe::Fs => patch.f.du().restricted(s, t).sign(2.0 * m * self.floor),
-                    Probe::Ft => patch.f.dv().restricted(s, t).sign(2.0 * n * self.floor),
+                    Probe::F => patch.f.restricted(s, t).sign(patch.floor),
+                    Probe::Fs => patch.f.du().restricted(s, t).sign(2.0 * m * patch.floor),
+                    Probe::Ft => patch.f.dv().restricted(s, t).sign(2.0 * n * patch.floor),
                     Probe::Fvv => {
                         let binomials = Binomials::new(self.binomial_degree);
                         let (f, w) = (&patch.f, &patch.weight);
@@ -1090,7 +1104,7 @@ impl<'a> PatchedSection<'a> {
                             ])
                         };
                         let g = weighed(f);
-                        let floor_g = (2.0 * n + d) * self.floor;
+                        let floor_g = (2.0 * n + d) * patch.floor;
                         let floor_h = (2.0 * (n + 1.0) + d) * floor_g;
                         weighed(&g).restricted(s, t).sign(floor_h)
                     }
@@ -1155,11 +1169,11 @@ impl<'a> PatchedSection<'a> {
             let [_, n_above] = above.f.degree();
             let (slope_below, slope_above) = (below.f.dv(), above.f.dv());
             let line = below.f.along(1.0);
-            for s in sign_change_candidates(&line, self.floor) {
+            for s in sign_change_candidates(&line, below.floor) {
                 let lo = slope_below.eval(s, 1.0);
                 let hi = slope_above.eval(s, 0.0);
-                let clear = lo.abs() > 2.0 * n as f64 * self.floor
-                    && hi.abs() > 2.0 * n_above as f64 * self.floor;
+                let clear = lo.abs() > 2.0 * n as f64 * below.floor
+                    && hi.abs() > 2.0 * n_above as f64 * above.floor;
                 if clear && (lo > 0.0) != (hi > 0.0) {
                     return true;
                 }
@@ -1197,7 +1211,7 @@ impl<'a> PatchedSection<'a> {
                 (_, true) => (0..=m).map(|i| all[i * stride + n]).collect(),
             };
             found.extend(
-                sign_change_candidates(&line, self.floor)
+                sign_change_candidates(&line, patch.floor)
                     .into_iter()
                     .map(|t| self.param(patch, 1 - k, t)),
             );

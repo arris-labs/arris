@@ -1159,7 +1159,7 @@ corpus_tests! {
     /// NIST FTC-11's AP242 edition 2 solid #1299, a plane-against-cylinder
     /// edge written as a B-spline that hides a circle, filleted alone: its
     /// chain's end arc runs inside the band the file's pcurves stand off by.
-    #[ignore = "S5 undecided at Full: the walked face f48 against its chain neighbours f49 and f50, cylinders (plans/nurbs-face-blend step 10d); it builds clean at Fast and holds to Open CASCADE's measures"]
+    #[ignore = "oracle: the checker decides every pair at Full (plans/nurbs-face-blend step 10d) and the body holds to Open CASCADE's measures in process, but Open CASCADE reading Arris's STEP finds area 1.2e-2 (2e-6 relative) and volume 6e-8 relative more than its own fillet (plans/nurbs-face-blend step 10e)"]
     regression_nist_ftc_11_ap242_bspline_circle_fillet => run "regression/nist-ftc-11-ap242-bspline-circle-fillet";
     /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
     /// cylinder's axis off the plane of the ball's seam, so the loop crosses

@@ -981,8 +981,9 @@ enum EdgeRoot {
 
 /// What a march ended at: an arm of a turning point — `0` below it, `1`
 /// above — an arm of a singular point, `2·right + upper`, the seed it
-/// started from, a turn or several later, the arm of an edge cell, or
-/// where an arm of a turning point leaves the domain inside its cell.
+/// started from, a turn or several later, the arm of an edge cell, where
+/// an arm of a turning point leaves the domain inside its cell, or an
+/// edge of `v` it ran aground on ([`Tracer::aground`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ArcEnd {
     Turning(usize, usize),
@@ -990,6 +991,7 @@ enum ArcEnd {
     Home,
     Edge(usize),
     Exit(usize, usize),
+    Aground,
 }
 
 /// A singular point as it is decided, before its cell.
@@ -1801,9 +1803,38 @@ impl Tracer<'_> {
                 }
                 best = measure(0.5 * (a + b));
             }
+            let tangent = |&(_, worst, _): &(f64, [f64; 2], f64)| worst[1] <= dropped;
+            // A crossing whose next crossing beside it is past the
+            // bracket, the polynomial within the tolerance between the
+            // two, is one side of a tangency at that tolerance, as two
+            // candidates of one group are: the line the slope across
+            // vanishes on, a Newton step on the slope from the crossing,
+            // is tried as the isoline of order two. A walked blend's end
+            // arc against the table stripe's cylinder it runs on into is
+            // such a pair of crossings, the fit `8.4e-4` of `u` apart and
+            // within `1.5e-9` between (plans/nurbs-face-blend step 10d).
+            if accepted(&best) && !tangent(&best) {
+                let mut steps: Vec<f64> = (0..CIRCLE_SAMPLES)
+                    .filter_map(|k| {
+                        let v = round(k);
+                        let slope = |u: f64| walker.distance(u, v).1[0];
+                        let bend = (slope(best.0 + HESSIAN_STEP) - slope(best.0 - HESSIAN_STEP))
+                            / (2.0 * HESSIAN_STEP);
+                        let step = -slope(best.0) / bend;
+                        step.is_finite().then_some(step)
+                    })
+                    .collect();
+                steps.sort_by(f64::total_cmp);
+                if let Some(&step) = steps.get(steps.len() / 2) {
+                    let touch = measure(best.0 + step);
+                    if accepted(&touch) && tangent(&touch) {
+                        best = touch;
+                    }
+                }
+            }
             if accepted(&best) {
-                let (u0, worst, _) = best;
-                let order = if worst[1] <= dropped { 2 } else { 1 };
+                let (u0, _, _) = best;
+                let order = if tangent(&best) { 2 } else { 1 };
                 found.push(TubeFactor { u0, order });
             }
         }
@@ -2152,12 +2183,27 @@ impl Tracer<'_> {
     ) -> Result<TurningCell, SectionFault> {
         let walker = &self.walker;
         let closed = walker.closed;
+        // The fold is `u − u_T = c·(v − v_T)²` to second order.
+        let h = HESSIAN_STEP;
+        let fold_at = |[u, v]: [f64; 2]| {
+            let bend = (walker.value(u, v + h).1[1] - walker.value(u, v - h).1[1]) / (2.0 * h);
+            (0.5 * bend / walker.value(u, v).1[0]).abs()
+        };
+        // A point is on an edge within `EDGE_TOUCH` of it, and on an edge
+        // of `v` also where the fold between them moves `u` by less than
+        // an angle's rounding: there the sign along the edge row is
+        // rounding's, and the arm beyond the edge is none to `f64`. A
+        // walked blend's contact edge has `∂f/∂v` vanish along it where
+        // the face across shares the tangent plane, and the section
+        // crosses it at a turning point the isolation puts `1.6e-11` in.
+        let c = fold_at(at);
         let on_edge = |k: usize| {
             (!closed[k])
                 .then(|| {
-                    [0.0, TAU]
-                        .into_iter()
-                        .find(|e| (at[k] - e).abs() <= EDGE_TOUCH)
+                    [0.0, TAU].into_iter().find(|e| {
+                        let d = (at[k] - e).abs();
+                        d <= EDGE_TOUCH || (k == 1 && c * d * d <= ANGLE_SLACK)
+                    })
                 })
                 .flatten()
         };
@@ -2183,10 +2229,7 @@ impl Tracer<'_> {
         // on a ring a hundred tubes across a square cell's arms would
         // leave through its upper and lower edges a few nanoradians of
         // `u` from the point, where `f` over a march's box is rounding.
-        let h = HESSIAN_STEP;
-        let bend =
-            (walker.value(at[0], at[1] + h).1[1] - walker.value(at[0], at[1] - h).1[1]) / (2.0 * h);
-        let fold = (0.5 * bend / walker.value(at[0], at[1]).1[0]).abs();
+        let fold = fold_at(at);
         for k in 0..=CELL_HALVINGS {
             let a = CELL_START / (1u64 << k) as f64;
             let tall = (a / fold).sqrt();
@@ -2641,6 +2684,83 @@ impl Tracer<'_> {
         None
     }
 
+    /// Where a march stuck at `(u, v)` in direction `dir` ends, on the
+    /// edge of a NURBS surface's `v` it has come to within the
+    /// tolerance, and no farther along it than `room`: no step from
+    /// `(u, v)` is proven because the section there is nearer the edge
+    /// than its polynomial's floor can sign. That is where a branch runs
+    /// into its foot on the edge alongside it, the edge being within the
+    /// tolerance of the other surface over a stretch: two faces tangent
+    /// to one face across, the walked blend's contact edge on it and a
+    /// table stripe's cylinder beside it (plans/nurbs-face-blend step
+    /// 10d). The branch is not the tracer's to resolve there, as a point
+    /// within the tolerance of an edge is put on it (ADR-0061 §3).
+    ///
+    /// The march runs aground where the line of constant `u` from
+    /// `(u, v)` to the edge is within `tol.linear` of the other surface
+    /// all the way, and follows the edge line while that holds of it, in
+    /// steps doubling from [`HALF_MIN`], to the first of: an edge cell
+    /// whose arm points back at it, which captures it as a march is
+    /// captured; the foot of the isoline divided out, where the branch
+    /// meets it; a root of `f` along the line, found by bisection, where
+    /// the branch leaves the domain. Short of all three it ends on the
+    /// edge at `u`. `None` where the march is not within the tolerance
+    /// of an edge so, or `v` closes.
+    fn aground(&self, [u, v]: [f64; 2], dir: f64, room: f64) -> Option<(ArcEnd, [f64; 2])> {
+        let walker = &self.walker;
+        if walker.closed[1] {
+            return None;
+        }
+        let other = Implicit::of(&walker.other)?;
+        let edge = if v < PI { 0.0 } else { TAU };
+        let held = |x: f64, y: f64| other.distance(walker.point(x, y)).abs() <= self.tol.linear;
+        let down = (0..=CIRCLE_SAMPLES).all(|n| {
+            let y = v + (edge - v) * n as f64 / CIRCLE_SAMPLES as f64;
+            held(u, y)
+        });
+        if !down {
+            return None;
+        }
+        let negative = |x: f64| walker.is_negative(x, edge);
+        let start = negative(u);
+        let mut last = u;
+        let mut step = HALF_MIN;
+        loop {
+            let reach = step.min(room);
+            let x = u + dir * reach;
+            if !held(x, edge) {
+                break;
+            }
+            if let Some((end @ ArcEnd::Edge(_), _, centre)) = self.captured([x, edge], dir) {
+                return Some((end, centre));
+            }
+            let foot = (walker.factor)
+                .map(|f| f.u0)
+                .filter(|&u0| dir * (u0 - last) > 0.0 && dir * (x - u0) >= 0.0);
+            if let Some(u0) = foot {
+                return Some((ArcEnd::Aground, [u0, edge]));
+            }
+            if negative(x) != start {
+                let (mut a, mut b) = (last, x);
+                for _ in 0..STRETCH_HALVINGS {
+                    let mid = 0.5 * (a + b);
+                    if negative(mid) == start {
+                        a = mid;
+                    } else {
+                        b = mid;
+                    }
+                }
+                return Some((ArcEnd::Aground, [0.5 * (a + b), edge]));
+            }
+            if reach >= room {
+                break;
+            }
+            last = x;
+            step *= 2.0;
+        }
+        Some((ArcEnd::Aground, [u, edge]))
+    }
+
     /// How far a march at `u` may go in direction `dir` before the next
     /// edge it could be captured at; a whole turn when there is none, and
     /// on a NURBS surface whose `u` does not close no farther than the
@@ -2689,7 +2809,7 @@ impl Tracer<'_> {
         let [mut u, mut v] = start;
         let mut step = STEP_MAX;
         let mut home = 0.0;
-        let (end, last) = loop {
+        let (end, last) = 'march: loop {
             meter.tick()?;
             if let Some((end, cell, centre)) = self.captured([u, v], dir) {
                 cells.push(cell);
@@ -2735,6 +2855,13 @@ impl Tracer<'_> {
                 }
                 tries += 1;
                 if tries > STEP_HALVINGS {
+                    if let Some((end, at)) = self.aground([u, v], dir, edge) {
+                        cells.push(Cell {
+                            u: [u.min(at[0]), u.max(at[0])],
+                            bracket: Bracket::Fixed([v.min(at[1]), v.max(at[1])]),
+                        });
+                        break 'march (end, at);
+                    }
                     return Err(SectionFault::UnresolvedTurning.into());
                 }
                 du *= 0.5;
@@ -3078,7 +3205,7 @@ impl Tracer<'_> {
         // branch ends there as at an edge cell.
         let opens: Vec<bool> = self.turning.iter().map(|t| t.open.is_some()).collect();
         let ends_open = |end: &ArcEnd| match *end {
-            ArcEnd::Singular(..) | ArcEnd::Edge(_) | ArcEnd::Exit(..) => true,
+            ArcEnd::Singular(..) | ArcEnd::Edge(_) | ArcEnd::Exit(..) | ArcEnd::Aground => true,
             ArcEnd::Turning(i, _) => opens.get(i).copied().unwrap_or(false),
             ArcEnd::Home => false,
         };
@@ -3142,7 +3269,7 @@ impl Tracer<'_> {
             .collect();
         let stop = |end: ArcEnd| match end {
             ArcEnd::Singular(i, _) => Some(Stop::At(i)),
-            ArcEnd::Edge(_) | ArcEnd::Exit(..) => Some(Stop::Edge),
+            ArcEnd::Edge(_) | ArcEnd::Exit(..) | ArcEnd::Aground => Some(Stop::Edge),
             ArcEnd::Turning(..) if ends_open(&end) => Some(Stop::Edge),
             ArcEnd::Turning(..) | ArcEnd::Home => None,
         };

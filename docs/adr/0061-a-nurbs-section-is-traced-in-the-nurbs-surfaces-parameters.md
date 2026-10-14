@@ -445,6 +445,61 @@ arm `v = u/2` from the corner to `u = 1`, in either order of the surfaces
 (before: refused). FTC-10 then decides all eight pairs and the checker
 passes at `Full`.
 
+### A branch at the foot of a junction's arc (amendment, 2026-10-14)
+
+`plans/nurbs-face-blend` step 10d. FTC-11's walked blend meets the two
+table stripes' cylinders at the chain's ends along its end arcs: an
+isoline of the blend on the cylinder, whose foot is on the blend's contact
+edge with the face both roll on. The section's other branch runs down to
+that foot along the contact edge, nearer it than the polynomial's floor
+signs, and the junction is a 7.3° kink, so the branch is tangent to the
+edge there to second order. Four things kept the pairs undecided:
+
+- **A turning point within its fold's rounding of an edge of `v` is on
+  it.** Along the contact edge the blend and the cylinder share the face's
+  tangent plane, so `∂f/∂v` vanishes on the whole edge and the section
+  crosses it at a turning point; the isolation put it `1.6e-11` inside,
+  past `EDGE_TOUCH`, and the cell's sign test on the edge row was
+  rounding's. A point is on the edge also where `c·d²`, the fold's move in
+  `u` over the way `d` to the edge, is under `ANGLE_SLACK`.
+- **A crossing that is one side of a tangency is the tangency.** At the
+  other end the fit crosses the cylinder twice along the end arc, `8.4e-4`
+  of `u` apart and within `1.5e-9` between: one candidate's bracket saw
+  one crossing, and the isoline was divided out at order one, leaving the
+  second in the quotient, a line of turning points beside it. An isoline
+  accepted as a crossing whose slope-zero line beside it, a Newton step on
+  the slope away, is held to the tolerance and tangent there is divided
+  out there at order two, as two candidates of one group already were.
+- **Each patch keeps its own rounding floor.** Dividing a tangency out of
+  the patch that holds it raises that patch's floor; the section's floor
+  was the largest, and the patch beside, whose polynomial falls with the
+  square of the way to the line, kept no sign above it. A patch's floor is
+  now its own, raised only where it is divided, and the sign tests,
+  candidates and isolations each take the patch's. Dividing the patch
+  beside as well, as a torus's column within `DIVIDED_WITHIN` is, was
+  tried and rejected: a patch's polynomial past its span is not the
+  surface, does not vanish on the line, and the division put the torus
+  twin's branches `0.14` off.
+- **A march that cannot step within the tolerance of an edge of `v` runs
+  aground on it.** Where no step from the march's point is proven and the
+  line of constant `u` from it to the edge is within `tol.linear` of the
+  other surface all the way, the branch is not the tracer's to resolve
+  there, as a point within the tolerance of an edge is put on it. It
+  follows the edge line while that is within the tolerance, to the first
+  of an edge cell whose arm points back at it (captured as a march is), the
+  isoline's foot, or a root along the line by bisection, and ends there
+  (`BranchEnd::Clipped`); short of all three it ends on the edge where it
+  stuck. A branch clipped so ends on the edge within the tolerance of the
+  other surface, at its root to rounding where it found one. At FTC-11's
+  start arc the two arms end at the edge's two roots, `0.36270` (an edge
+  cell) and `0.36389` (a root the candidate for both did not split), and
+  at its end arc both meet at the foot.
+
+The checker then decides both pairs at `Full`; FTC-11's body holds to
+Open CASCADE's measures as before, and its fixture test fails with any
+of the four taken out.
+
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its

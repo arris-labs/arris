@@ -956,7 +956,12 @@ spans). The domain is not extrapolated: each direction is mapped onto
 clamped full turn) closes over it and merges its patches across the seam,
 and a branch that reaches an edge of a direction that does not close ends
 at the root of `f` along that edge line, the equation the edge's own curve
-meets the other surface by; every such root seeds a march. A whole row or
+meets the other surface by; every such root seeds a march. A branch that
+comes nearer such an edge than its polynomial's rounding can sign, the
+line down to the edge within the tolerance of the other surface, runs
+aground: it follows the edge line while that is within the tolerance, to
+an edge root's arm, an isoline's foot or a root along the line, and ends
+there, on the edge within the tolerance (ADR-0061, step 10d's amendment). A whole row or
 column of the surface on which `f` vanishes (a ruling on a cylinder, a rim
 on a plane) is returned as the exact isocurve (knot insertion, no fit) and divided out of its patches, as a tube circle
 is; when its control points are one point (a collapsed row) it is a

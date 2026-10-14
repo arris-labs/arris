@@ -12,7 +12,7 @@ use arris_debug::fixtures::Class;
 use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, revolve};
 use arris_debug::unmetered::{cut, fuse, transform};
 use arris_debug::{corpus, dump_text, fixtures};
-use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment, Surface};
+use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment, Surface, SurfaceKind};
 
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, check};
@@ -1715,10 +1715,11 @@ fn the_face_across_met_twice_keeps_the_vertex() {
 /// f37's rim stand off its curve by up to 3.75e-3, the edge's tolerance:
 /// the arc runs inside that band, and the rim is cut where the arc meets
 /// it, its pcurves ended there (ADR-0062, step 10b). The result is clean
-/// at `Fast` and holds to Open CASCADE's volume, area and centroid; its
-/// counts are Arris' own (ADR-0038's lengthened corner edge), and its
-/// only unchecked rows are S5's, the walked face against its chain
-/// neighbours, which step 10c decides.
+/// at `Full` and holds to Open CASCADE's volume, area and centroid; its
+/// counts are Arris' own (ADR-0038's lengthened corner edge). S5 decides
+/// the walked face against its chain neighbours, the table stripes'
+/// cylinders, whose sections run into the feet of the end arcs along the
+/// contact edge (ADR-0061, step 10d), and leaves only NURBS × NURBS pairs.
 #[test]
 fn a_read_rims_pcurves_standing_off_hold_an_end_arc() {
     let dir = fixtures::corpus_root().join("regression/nist-ftc-11-ap242-bspline-circle-fillet");
@@ -1728,10 +1729,13 @@ fn a_read_rims_pcurves_standing_off_hold_an_end_arc() {
     let report = check(m, blended, Level::Full);
     assert!(report.is_ok(), "{report}");
     assert!(
-        report
-            .unchecked()
-            .iter()
-            .all(|u| matches!(u, arris_check::Unchecked::FacePair { .. })),
+        report.unchecked().iter().all(|u| matches!(
+            u,
+            arris_check::Unchecked::FacePair {
+                kinds: (SurfaceKind::Nurbs, SurfaceKind::Nurbs),
+                ..
+            }
+        )),
         "{report}"
     );
     let counts = fixture.recipe.analytic.counts.unwrap();

@@ -717,7 +717,7 @@ bound has to be established here.
   step 10. ADR-0061 amendment; the test
   `a_saddle_at_a_corner_of_the_domain_keeps_the_one_arm_inside_it` fails
   with the change taken out.
-- [ ] Step 10d **[3]** — **A convex junction's branch against the
+- [x] Step 10d **[3]** — **A convex junction's branch against the
   tracer's resolution.** `regression/nist-ftc-11-ap242-bspline-circle-fillet`
   leaves `f48` against `f49` (`UnresolvedTurning`) and `f50`
   (`CrowdedSingularity`), the two table stripes' cylinders at the chain's
@@ -751,10 +751,48 @@ bound has to be established here.
   same junction: an uncertified critical box `0.0019 × 0.098` against the
   `v = 0` edge, `1e-4` from the order-1 isoline, refused as a point too
   flat to decide (`singular_points`). Decide it with the same rule.
-- [ ] Step 10e **[1]** — **The FTC-10 and FTC-11 fixtures leave
-  `regression/`.** Once 10c and 10d decide their pairs, move both fixtures
-  into `blend/` with blessed dumps, drop the `#[ignore]`s in `corpus.rs`
-  and tick the S5 rows in step 10b's note. The test
+
+  **Done (2026-10-14).** Both pairs decide; four changes, each needed:
+  - **f49's turning point is on the contact edge.** `∂f/∂v` vanishes along
+    the whole edge, where the blend and the cylinder share the face's
+    tangent plane. A point is on an edge of `v` also where the fold's move
+    `c·d²` is under `ANGLE_SLACK` (`c = 0.023`, so `d ≤ 1e-6`).
+  - **The march runs aground** (the decision asked for). Where no step is
+    proven and the line of constant `u` down to the edge is within
+    `tol.linear` of the cylinder all the way, the branch follows the edge
+    line, held to the tolerance, to an edge cell whose arm points back,
+    the isoline's foot, or a root by bisection, and is clipped there. f49's
+    two arms end at the edge's two roots, `0.36270` (captured by its edge
+    cell) and `0.36389` (the root the one candidate did not split).
+  - **f50 is a tangency, not a flat point.** The fit crosses the cylinder
+    twice along the end arc, `8.4e-4` of `u` apart, within `1.5e-9`
+    between. The bracket saw one crossing, so the isoline was divided at
+    order one and left the second as a line of turning points the whole
+    height of the domain; past the flat box that was the refusal. A
+    crossing whose slope-zero line a Newton step away is held to the
+    tolerance and tangent is divided out there at order two, and both
+    arms then meet at the foot.
+  - **Each patch keeps its own floor.** The order-2 division raised the
+    section's floor 400 times (`3.7e-9`), and the undivided patch beside,
+    where `f` falls with the square of the way to the line, could not sign
+    a step `0.09` of `u` away. Dividing that patch too, as a torus's column
+    within `DIVIDED_WITHIN` is, was tried and rejected: a patch's
+    polynomial past its span does not vanish on the line, and the torus
+    twin's branches went `0.14` off.
+
+  ADR-0061 amendment. The fixture test fails with any of the four taken
+  out. Past the checker the fixture meets its oracle row (step 10e).
+- [ ] Step 10e **[2]** — **The FTC-10 and FTC-11 fixtures leave
+  `regression/`.** 10c and 10d decided their pairs; both now stop at the
+  oracle row. FTC-10 is `3e-9` volume and `2e-9` area relative off Open
+  CASCADE's walked blend, for ADR-0062's step 5b amendment to cover once
+  its miss of the ball is measured. FTC-11 holds to Open CASCADE's
+  measures in process, but Open CASCADE reading Arris's STEP finds area
+  `1.2e-2` more (`2e-6` relative, about the walked face's own area) and
+  volume `6e-8` relative: find which face it reads differently, and fix the
+  writer or fence it by name. Then move both fixtures into `blend/` with
+  blessed dumps, drop the `#[ignore]`s in `corpus.rs` and tick the S5 rows
+  in step 10b's note. The test
   `a_read_rims_pcurves_standing_off_hold_an_end_arc` (`arris-ops/tests/fillet.rs`)
   reads the FTC-11 fixture by its path and follows it out of `regression/`.
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
@@ -763,7 +801,10 @@ bound has to be established here.
   blessed dump. Name each that still refuses by its other item. Also first: CTC-02 AP242 `drill_x`'s counts disagree with the oracle (643 faces
   against 649, edges 1446 against 1452) in the 2026-10-14 fetched run and
   are on no waits line; find whether a step of this plan caused it, and
-  fix it or fence it as the nightly rule says. Print the
+  fix it or fence it as the nightly rule says. `real_nist_ftc_10` fails
+  at `main` since this plan's blends: #6434's committed fillet record is
+  still `Unsupported(NURBS curve × cylinder surface)`, blocks `NURBS`,
+  where the run now finds a blend network's; re-record it. Print the
   fillet column's NURBS row before and after, with timings, into this
   plan.
 
