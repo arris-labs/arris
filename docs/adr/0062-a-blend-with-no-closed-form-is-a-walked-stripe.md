@@ -265,6 +265,19 @@ with its Python class, `GeomOffsetFoldsError`.
   The skin now asks for the ball at the loop's start for both ends
   (`Spine::skin`, `Chord::section`), so the rows are equal to the bit.
 
+- **Step 9 (a slanted seam).** A walked junction ends on the ball's arc in
+  the vertex's normal plane, and a curved face's seam through the vertex is
+  cut there only if the contact is on it, which holds where the loop
+  crosses the seam square (a cylinder off a sphere's centre in the plane of
+  the sphere's seam does). At a slant the contact is off the seam by
+  `r·cot` of the angle, and the seam is cut where the contact crosses it, a
+  point of the contact edge beside the junction. That cut is not built: the
+  junction is refused `VertexBlend` (`ends::on_corner_edge`), where it was a
+  `kernel bug` from `cut_corner`. A B-spline that hides a circle exactly
+  (rational quadratic) walks as any table pair whose edge is not the
+  table's curve, and meets the torus's closed form to rounding; Open
+  CASCADE's walked blend of the same edge lies `6.9e-8` below it.
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**

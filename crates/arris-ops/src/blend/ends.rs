@@ -458,6 +458,19 @@ pub(super) fn corner_of(
     })
 }
 
+/// `true` when `point` lies on the corner edge `corner` within its
+/// tolerance: the contact a junction's arc ends on is on a seam only where
+/// the loop crosses the seam square, and a walked junction is refused by
+/// name where it is not.
+pub(super) fn on_corner_edge(m: &Model, corner: EdgeId, point: Point3) -> Result<bool, OpError> {
+    let ce = *m.edge(corner)?;
+    let Some((cid, _)) = ce.curve() else {
+        return Ok(false);
+    };
+    let projection = m.curve(cid)?.project(point).map_err(fault_of)?;
+    Ok(projection.distance <= ce.tolerance())
+}
+
 /// The corner edge `corner` cut at `point`, its end at `vertex` moving
 /// there: its parameter and which end it cuts, checked to leave the edge a
 /// positive length clear of its far vertex — `BlendReason::TooLarge`

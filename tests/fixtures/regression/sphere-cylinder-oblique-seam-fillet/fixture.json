@@ -1,0 +1,139 @@
+{
+  "description": "the ball and cylinder of blend/sphere-cylinder-fillet with the cylinder's axis moved to (0, 0.5, 0), off the plane y = 0 of the ball's seam, so the loop crosses the seam at a slant, filleted at r 0.1 (a point 60\u00b0 round from the top). Open CASCADE builds it. Arris refuses it as VertexBlend (it was a kernel bug, \"the corner edge through the trim point was not found\", until step 9): the junction of the two walked stripes at a vertex on the seam ends on the ball's arc in the vertex's normal plane, and the contact on the sphere is not on the seam there unless the loop crosses it square; the seam wants cutting where the contact crosses it, a point of the contact edge beside the junction (plans/nurbs-face-blend step 9 finding)",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "half",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1.5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.3228756555322954,
+              -1.5
+            ]
+          },
+          {
+            "arc_to": [
+              1.3228756555322954,
+              1.5
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1.5
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "pin",
+      "op": "cylinder",
+      "base": [
+        0,
+        0.5,
+        0
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 0.6,
+      "height": 3
+    },
+    {
+      "name": "fused",
+      "op": "fuse",
+      "a": "ball",
+      "b": "pin"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "fused",
+      "edges": [
+        [
+          1.7578395831246945,
+          0.8,
+          0.5196152422706631
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "in"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 5e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 1e-06
+  },
+  "analytic": {
+    "genus": 0
+  }
+}

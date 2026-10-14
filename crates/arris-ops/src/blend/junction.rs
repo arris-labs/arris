@@ -7,7 +7,7 @@ use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
 use super::chain::parameter_at;
-use super::ends::cut_corner;
+use super::ends::{cut_corner, on_corner_edge};
 use super::miter::Miter;
 use super::ring::{Ring, placed_uv};
 use super::stripe::{Section, Stripe, chord, line_origin};
@@ -294,6 +294,17 @@ pub(super) fn junction(
         rb.points[1 - kb],
         "the other contacts through one point of the third edge",
     )?;
+    // A walked run's contact is on a seam of the curved face only where the
+    // loop crosses it square; at a slant the seam would be cut where the
+    // contact crosses it, beside the junction, which is not built.
+    for (edge, at) in [(wq, q), (w, p)] {
+        if let Some(edge) = edge
+            && walked
+            && !on_corner_edge(m, edge, at)?
+        {
+            return Err(vertex_blend());
+        }
+    }
     let q_trim = wq
         .map(|wq| cut_corner(m, ra.edge, wq, vertex, q))
         .transpose()?;

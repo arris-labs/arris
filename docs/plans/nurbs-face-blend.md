@@ -159,13 +159,13 @@ bound has to be established here.
     chain goes on, with a walked member beside a table stripe or another
     walked one. The chain junction is moved in (non-goals, step 5).
     CTC-01's crease is no chain, but its end at v113 is a fan of two
-    planes, which step 9 takes or names.
+    planes, which step 9b takes or names.
   - **The oracle.** Open CASCADE's CTC-05 body is invalid in both
     editions and its measures cannot hold the fixture (open question).
     The other five agree with a fillet in dV/dA ≈ r/2 or are within the
     quadrature's noise (FTC-11, a 5135 mm³ part).
 
-  Step 10's acceptance list is these seven fixtures. Steps 5 and 9 build
+  Step 10's acceptance list is these seven fixtures. Steps 5, 9 and 9b build
   each piece they need: the walked stripe on a NURBS face (CTC-05), over
   two exact offsets (FTC-10, CTC-01, CTC-02's ellipses) and on a table
   pair whose curve is a B-spline (FTC-11), the chain junction (CTC-05,
@@ -364,7 +364,7 @@ bound has to be established here.
     `drilled-torus-fillet`) now refuse at the vertex, `vertex-blend`.
 - [x] Step 5b **[3]** — **Chain junctions and the synthetic fixtures.**
   *(The vanishing end moved to step 9 by this commit: it unblocks no
-  fixture before CTC-01's fan end, which is step 9's, and CTC-05's oracle,
+  fixture before CTC-01's fan end, which is step 9b's, and CTC-05's oracle,
   which is step 10's.)*
   - A tangent vertex where the chain goes on: the walked stripe ends on
     the ball's arc in the vertex's normal plane, its surface's isocurve at
@@ -531,20 +531,62 @@ bound has to be established here.
     with a backlog line. Every pair the strategy draws that the rejection
     does not take is held, fillet and chamfer; how many draws it takes is
     not counted.
-- [ ] Step 9 **[2]** — **The analytic pairs with no closed form.** The
+- [x] Step 9 **[2]** — **The analytic pairs with no closed form.** The
   walked stripe over two exact offsets, one fixture each against Open
   CASCADE:
-  - CTC-01's crease (two equal cylinders crossing), fillet only;
-  - a torus against a cylinder off its axis;
-  - a cylinder against a sphere;
-  - the B-spline edge between a plane and a cylinder that step 1 shrank.
+  - a torus against a cylinder off its axis (`blend/drilled-torus-fillet`,
+    landed in step 5b);
+  - two cylinders crossing (`blend/tee-cylinders-fillet`, step 5b);
+  - a cylinder against a sphere (`blend/sphere-cylinder-fillet`);
+  - the B-spline edge between a plane and a cylinder
+    (`blend/bspline-rim-fillet`).
 
-  CTC-01 needs its two ends: a fan of two planes at v113, and at v211 a
-  **vanishing end** (moved here from step 5b, open question below), where
-  the faces turn tangent within the edge's tolerance. CTC-05's v84 is the
-  same end.
+  *(CTC-01's crease, with its two ends, moved to step 9b by this commit;
+  see below.)* The backlog's lines 47 and 50 are updated in this commit.
 
-  The backlog's lines 47 and 50 are updated or removed in this commit.
+  **Done (2026-10-14).** Decided at the start (the human's open question,
+  delegated): step 9 stays in the plan. The first two fixtures already
+  stood from step 5b. Measured and found:
+  - **The sphere against a cylinder off its axis builds** when the loop
+    crosses the sphere's seam square: the half disc of a ball cut flat at
+    `z = ±1.5` (no pole, whose edge counts Open CASCADE writes otherwise)
+    and a cylinder along `+x` with its axis at `(0, 0, 0.5)`, in the plane
+    of the seam. Open CASCADE's walked blend misses the ball by 8.6e-6 at
+    the median of 3042 samples, 4.1e-5 at most; its volume lies 5.3e-8
+    relative and its area 2.7e-7 from Arris'.
+  - **A slanted crossing of the seam was a `kernel bug`.** With the axis at
+    `(0, 0.5, 0)` the loop meets the seam at a slant, and the junction's
+    arc, in the vertex's normal plane, ends on a contact that is not on the
+    seam; `cut_corner` found no corner edge through it. A walked junction
+    now refuses that case `VertexBlend` (`ends::on_corner_edge`), and
+    `regression/sphere-cylinder-oblique-seam-fillet` holds the build, with
+    a backlog line: the seam wants cutting where the contact crosses it.
+  - **The B-spline edge needs no new code.** A rim written as the exact
+    rational quadratic B-spline of the half circle
+    (`tools/oracle/occt_nurbs_blend.py bspline-rim-plate`) falls to the
+    walked stripe as "a table pair whose edge is not the table's curve",
+    ends on the chord's plane, and agrees with the torus's closed form to
+    2.6e-14 relative in volume. Open CASCADE walks it too, 6.9e-8 below
+    the closed form in volume and 4.8e-8 in area.
+  - **FTC-11's excerpt is not this fixture.** Its slot has a 2.3e-3 gap
+    between a plane and the cylinder it should be tangent to, a 7° kink at
+    the chain's far vertex; the lone line there is a table stripe whose
+    end arc, across a cylinder at that kink, leaves the face. It is step
+    10's real part, not a pair without a closed form.
+- [ ] Step 9b **[3]** — **CTC-01's crease and its two ends.** Two equal
+  cylinders crossing, fillet only, against Open CASCADE (`real/nist-ctc-01`
+  as the fixture's file). The spine is found (an ellipse); both ends are
+  refused today:
+  - v211, a **vanishing end** (moved here from step 5b, open question
+    below), where the faces turn tangent within the edge's tolerance;
+    CTC-05's v84 is the same end;
+  - v113, a **fan** of two planes across, which the walked stripe's end
+    refuses by name.
+
+  Split out of step 9 by that commit's finding that each end is a design of
+  its own (a vanishing end pins the ball to the edge's point; a fan cuts
+  the end curve at the fan edge), which is not a fixture on a pair. May
+  rewrite the backlog's CTC-01 line and CTC-05's expectations in step 10.
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
   on the fetched tier and `--census-committed`. Move every step 1
   fixture that now agrees out of `regression/` into `blend/` with its
@@ -609,14 +651,14 @@ bound has to be established here.
   not by an offset. This matches the ring's chamfer and Open CASCADE's
   symmetric one. **Agent**, at step 7, unless the human meant a chamfer
   defined by the offsets.
-- ⚠ OPEN: step 9 (the analytic pairs with no closed form) widens the
-  plan beyond NURBS faces. It is in because CTC-01 and the B-spline edges
-  are in the census and the stripe takes them for free. **Human**, before
-  `/work` reaches step 9: keep it, or cut it to a follow-up plan.
+- **Decided** (2026-10-14, delegated to the agent): step 9 (the analytic
+  pairs with no closed form) stays, though it widens the plan beyond NURBS
+  faces: the stripe takes them for free, and CTC-01 and the B-spline edges
+  are in the census.
 - ⚠ OPEN: how a vanishing end meets its vertex (step 4). The candidates
   are growing the vertex's tolerance to the end arc's contacts (9.9e-3 on
   CTC-05, past the edge's 7.7e-3) under ADR-0060's operation bound, or
   refusing the end by name. Step 5 refuses it (`TangentChain`).
-  **Agent**, at step 9 (moved from 5b, where it unblocked nothing).
+  **Agent**, at step 9b (moved from 5b, where it unblocked nothing).
 - The spine's trace on CTC-05 against the ADR-0026 §6 budget (60 s):
   **closed** at step 3, which traces it in 0.53 s.

@@ -19,11 +19,19 @@ that commit the file. `<operand>` is one of:
   at two vertices.
 - `nurbs-box`: the box [0, 3] × [0, 2] × [0, 2] with every face converted
   to its B-spline: each edge between two NURBS faces.
+- `bspline-rim-plate`: the half disc of radius 1.5 about the origin, chord
+  on y = 0, extruded to height 2, its top rim written in the file as the
+  exact rational quadratic B-spline of the half circle (five poles,
+  weights 1, √½, 1, √½, 1) where Open CASCADE writes a circle: an edge
+  between a plane and a cylinder whose curve is a B-spline, as the real
+  parts write them (plans/nurbs-face-blend step 9). Open CASCADE reads it
+  as the same solid.
 
 Run as `uv run --project tools/oracle tools/oracle/occt_nurbs_blend.py`.
 """
 
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -189,7 +197,42 @@ def nurbs_box() -> object:
     return step.nurbs(box)
 
 
+def bspline_rim_plate() -> object:
+    return BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0)), 1.5, 2.0, math.pi).Shape()
+
+
+def _bspline_rim(text: str) -> str:
+    """`text` with the top rim's circle (the 3D curve at z = 2) rewritten as
+    the half circle from (1.5, 0, 2) to (-1.5, 0, 2) over y > 0."""
+    for found in re.finditer(r"#(\d+) = CIRCLE\('',#(\d+),1\.5\);", text):
+        place = re.search(rf"#{found.group(2)} = AXIS2_PLACEMENT_3D\('',#(\d+),", text)
+        if place is None:
+            continue
+        at = re.search(rf"#{place.group(1)} = CARTESIAN_POINT\('',\(([^)]*)\)\);", text)
+        if at is not None and float(at.group(1).split(",")[2]) == 2.0:
+            circle = found
+            break
+    else:
+        raise OracleError("no circle at the top rim")
+    top = max(int(n) for n in re.findall(r"^#(\d+) =", text, re.M))
+    h, r, w = 2.0, 1.5, math.sqrt(0.5)
+    poles = [(r, 0.0, h), (r, r, h), (0.0, r, h), (-r, r, h), (-r, 0.0, h)]
+    ids = [top + 1 + k for k in range(5)]
+    out = [
+        f"#{i} = CARTESIAN_POINT('',({x!r},{y!r},{z!r}));" for i, (x, y, z) in zip(ids, poles)
+    ]
+    curve = (
+        f"#{circle.group(1)} = ( BOUNDED_CURVE() B_SPLINE_CURVE(2,({','.join(f'#{i}' for i in ids)}),"
+        ".UNSPECIFIED.,.F.,.F.) B_SPLINE_CURVE_WITH_KNOTS((3,2,3),(0.,0.5,1.),.UNSPECIFIED.) "
+        f"CURVE() GEOMETRIC_REPRESENTATION_ITEM() RATIONAL_B_SPLINE_CURVE((1.,{w!r},1.,{w!r},1.)) "
+        "REPRESENTATION_ITEM('') );"
+    )
+    text = text.replace(circle.group(0), curve, 1)
+    return text.replace("ENDSEC;\nEND-ISO", "\n".join(out) + "\nENDSEC;\nEND-ISO", 1)
+
+
 OPERANDS = {
+    "bspline-rim-plate": bspline_rim_plate,
     "bicubic-top-box": bicubic_top_box,
     "nurbs-cap-cylinder": nurbs_cap_cylinder,
     "nurbs-slot-plate": nurbs_slot_plate,
@@ -203,6 +246,9 @@ def main(argv: list[str]) -> int:
         return 2
     try:
         step.write(OPERANDS[argv[0]](), Path(argv[1]))
+        if argv[0] == "bspline-rim-plate":
+            path = Path(argv[1])
+            path.write_text(_bspline_rim(path.read_text()))
     except Exception as e:
         print(f"occt_nurbs_blend: ERROR {' '.join(str(e).split())}", file=sys.stderr)
         return 2

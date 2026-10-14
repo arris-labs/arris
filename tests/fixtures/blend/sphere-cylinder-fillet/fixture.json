@@ -1,0 +1,139 @@
+{
+  "description": "a ball of radius 2 cut flat at z = \u00b11.5 (a revolved arc, so no pole) and a cylinder of radius 0.6 along +x with its axis at (0, 0, 0.5), fused, the edge where the cylinder leaves the ball filleted at r 0.1 at a point 60\u00b0 round from the cylinder's top: a sphere against a cylinder off its axis, a quartic meeting no closed form of the table (ADR-0036's sphere rows are coaxial). The loop is two arcs at two vertices, on the ball's seam in the plane y = 0 where the loop crosses it square, each a walked stripe (ADR-0062) meeting the other on the ball's arc there (plans/nurbs-face-blend step 9). Open CASCADE builds it as a walked B-spline too, whose ball misses the cylinder and the sphere by 8.6e-6 at the median of 3042 samples of its blend and 4.1e-5 at worst; over the blend's area that is the 5.3e-8 relative its volume lies from Arris' and the 2.7e-7 its area does. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a walked fixture (no closed form holds the blend). A crossing of the ball's seam that is not square is refused (docs/BACKLOG.md)",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "half",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1.5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.3228756555322954,
+              -1.5
+            ]
+          },
+          {
+            "arc_to": [
+              1.3228756555322954,
+              1.5
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1.5
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "pin",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0.5
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 0.6,
+      "height": 3
+    },
+    {
+      "name": "fused",
+      "op": "fuse",
+      "a": "ball",
+      "b": "pin"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "fused",
+      "edges": [
+        [
+          1.7578395831246945,
+          0.5196152422706631,
+          0.8
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "in"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 5e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 1e-06
+  },
+  "analytic": {
+    "genus": 0
+  }
+}

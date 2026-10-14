@@ -1,0 +1,58 @@
+{
+  "description": "a half disc of radius 1.5, chord on y = 0, extruded to height 2 (tools/oracle/occt_nurbs_blend.py bspline-rim-plate), its top rim written in the STEP file as the exact rational quadratic B-spline of the half circle where Open CASCADE writes a circle, the way the real parts write theirs (FTC-11's slot, CTC-02's ellipses): the rim, a plane against a cylinder, filleted at r 0.2. The curve is a B-spline, so the closed forms' row for a circle does not take it and the edge is a walked stripe (ADR-0062) over the two exact offsets, its ends cut by the chord's plane across (plans/nurbs-face-blend step 9). The body has a closed form, the torus's half turn: V = \u03c0R\u00b2h/2 \u2212 \u03c0(r\u00b2(R \u2212 r/2) \u2212 (\u03c0r\u00b2/4)(R \u2212 r) \u2212 r\u00b3/3) = 7.0293367195997, which Arris' walked stripe meets to 2.6e-14 relative; Open CASCADE walks this fillet too and lies 6.9e-8 below it in volume and 4.8e-8 in area. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a walked fixture",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "bspline-rim-plate.step",
+      "sha256": "954139ade7897afdb598639e0f2d05094d7b6f08dbd335c5ba7ec2617c457950",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          1.5,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0.5,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "rim_gone",
+      "point": [
+        0,
+        1.49,
+        1.99
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 2e-07,
+    "centroid_abs": 1e-07,
+    "inertia_rel": 5e-07
+  },
+  "analytic": {
+    "genus": 0
+  }
+}

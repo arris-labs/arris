@@ -9,8 +9,8 @@ into its version (ADR-0027).
 ## Unreleased
 
 - `fillet` now rolls on a free-form face, and on two analytic faces whose
-  edge no closed form holds (cylinders on skew axes, a B-spline edge
-  between a plane and a cylinder): the blend is a NURBS surface within your
+  edge no closed form holds (cylinders on skew axes, a cylinder off a
+  sphere's centre, a B-spline edge between a plane and a cylinder): the blend is a NURBS surface within your
   tolerance of the ball's exact path, its contacts on both faces. A closed
   edge, or an open one whose ends meet a plane, cylinder or cone, blends;
   a tangent chain runs on through such an edge into its neighbours (a

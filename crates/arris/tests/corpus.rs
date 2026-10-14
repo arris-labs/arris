@@ -944,6 +944,8 @@ corpus_tests! {
     /// the quartic they meet in: two walked stripes meeting at two
     /// junctions.
     blend_tee_cylinders_fillet => run "blend/tee-cylinders-fillet";
+    blend_sphere_cylinder_fillet => run "blend/sphere-cylinder-fillet";
+    blend_bspline_rim_fillet => run "blend/bspline-rim-fillet";
     /// A torus drilled parallel to its axis and off it, the bore's edge
     /// filleted: a torus against a cylinder off its axis, two walked stripes
     /// meeting at two junctions.
@@ -1168,6 +1170,11 @@ corpus_tests! {
     /// edge written as a B-spline that hides a circle, filleted alone.
     #[ignore = "TooLarge(e1, f37): the walked arc meets its two lines at the slot's tangent vertices, and a line's contact is found leaving its face, not yet looked at (plans/nurbs-face-blend step 10)"]
     regression_nist_ftc_11_ap242_bspline_circle_fillet => run "regression/nist-ftc-11-ap242-bspline-circle-fillet";
+    /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
+    /// cylinder's axis off the plane of the ball's seam, so the loop crosses
+    /// the seam at a slant.
+    #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md; plans/nurbs-face-blend step 9 finding)"]
+    regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
     /// NIST CTC-01's solid #101, the elliptic crease where two equal
     /// cylinders whose axes meet cross, filleted alone.
     #[ignore = "TangentChain at v211: the cylinders turn tangent there, a vanishing end, and v113 is a fan of two planes, which a walked stripe does not end on yet (plans/nurbs-face-blend step 9)"]
