@@ -670,7 +670,7 @@ bound has to be established here.
     tolerance of it as on it, and a cut read edge's pcurves are ended on
     the blend's exact curves there (L2). Fast clean, Open CASCADE's
     volume, area and centroid. The counts are ADR-0038's lengthened corner
-    edge. The S5 rows go to step 10c.
+    edge. The S5 rows go to steps 10c and 10d.
   - **slot-chain's v24 is a near-tangent vertex.** A convex 3.9° kink
     where the hole f17 runs on from f18, tangent within the vertex's
     `3.6e-3` but not the faces'. The hole curves away, so the contact
@@ -685,17 +685,65 @@ bound has to be established here.
 
   ADR-0062 amendment. The match tolerance was not shared with 10a.
 
-- [ ] Step 10c **[2]** — **S5 on a walked blend against a cylinder or a
-  sphere.** `regression/nist-ftc-10-cylinder-pair-bspline-fillet` builds but
-  the checker leaves eight pairs undecided (`f93`–`f96`, `f105`, `f106`,
-  `f181`, `f182`, each against the NURBS blend face `f183`), and
-  `regression/nist-ftc-11-ap242-bspline-circle-fillet` (step 10b) two:
-  its walked face `f48` against its chain neighbours `f49` and `f50`,
-  the table stripes' cylinders, which meet it along the junction arcs. Step 6 decided S5
-  on a walked blend's tangent neighbours; these meet it along the contact,
-  a cylinder or sphere against the rational NURBS. Decide them from the
-  contact the same way, or show why the checker may not. Acceptance holds
-  "nothing unchecked but NURBS × NURBS pairs" as written. The test
+- [ ] Step 10c **[3]** — **A saddle at a corner of the walked blend's
+  domain.** *(Split from the old 10c by its 2026-10-14 measurement.)*
+  `regression/nist-ftc-10-cylinder-pair-bspline-fillet` builds but the
+  checker leaves eight pairs undecided (`f93`–`f96`, `f105`, `f106`,
+  `f181`, `f182`, each against the NURBS blend face `f183`). `f183` is an
+  open 5 × 12 cubic patch, not closed, so its four corners are real. In
+  seven of the eight (the cylinders of radius 1 and 8, the two spheres)
+  the refusal is `CrowdedSingularity` from `Tracer::singular_cell`, with no
+  isoline divided out. The singular point is a corner of the domain, `u` at
+  an edge and `v` at one within `1e-12`: `F ≈ A·dv² − B·du²` there
+  (`A = 4.8`, `B = 31`), a saddle whose one arm runs into the quadrant at
+  `dv = 2.5·du`. Step 6 cut the cell at an edge of `u` (`sides`); every
+  cell the corner needs reaches past an edge of `v` too, and `fits` fails
+  at all sixteen halvings, in either orientation, so swapping the
+  parameters cannot help. The cell is cut at both edges (its arm that
+  survives is the one inside the quadrant, and the march and the assembly
+  take one arm of a crossing, not a pair), or the corner is shown to be
+  an isolated touch where it is. `f94` (a cylinder of radius 6) is another
+  refusal, `UnresolvedTurning`, not measured. Acceptance: the eight pairs
+  decided or each refused by the name of the corner it is, and the fixture
+  at `Full` with only NURBS × NURBS left.
+- [ ] Step 10d **[3]** — **A convex junction's branch against the
+  tracer's resolution.** `regression/nist-ftc-11-ap242-bspline-circle-fillet`
+  leaves `f48` against `f49` (`UnresolvedTurning`) and `f50`
+  (`CrowdedSingularity`), the two table stripes' cylinders at the chain's
+  ends. This is the convex junction step 6 left open (a 7.3° kink), not
+  a fault of its S5 rule. Measured on `f49`, the quotient section after
+  the arc (an order-2 isoline at `v = 0.363`, swapped) is one branch,
+  a parabola `v ≈ c·s²` (`s` the distance from the arc, `c ≈ 1.5`) from
+  the start of the blend's domain to its contact edge `u = 1` at 38% of the
+  way along, tangent to the edge `v = 0` at the arc's foot. Past
+  the arc the table cylinder lies inside the blend face's carried-on
+  surface, so it is outside `f49`'s domain and the checker would excuse
+  the branch; the tracer must still return it. Two causes, in order:
+  - the branch's turning point on the contact edge `u = 1` is `1.6e-11`
+    inside the edge, past `EDGE_TOUCH` (`1.4e-12`), so `turning_cell`
+    cuts a cell at a row `1.6e-11` from the point and the sign test on
+    that row is rounding's. A point is on the edge when `c·d²` is under
+    `ANGLE_SLACK` (`d ≤ 1e-6` here): tried in `turning_cell` and it moved
+    the failure on, it did not fix it, so it was not kept;
+  - past that, the march toward the arc's foot stops at `v = 5e-6`,
+    `s = 1.9e-3` (a length of about `4e-4`) because the sign of `F` on the rows `v ± 1.5e-6` is
+    `±1.2e-7`, under the coefficients' floor; the edge row's two roots
+    (`0.36270` and `0.36389`, the dip between them `−4e-8`) are one
+    candidate to `edge_candidates`, and only the left one becomes an edge
+    cell, which a march from the right (`dir = −1`) cannot be captured by.
+
+  The branch within a tolerance of the foot of the arc is not the tracer's
+  to resolve, and a march that gets there with no cell to be captured by
+  should end at the foot: how far that is allowed to go is the decision
+  (ADR-0061's "put on the edge when within `tol.linear`" is the
+  precedent for critical points). `f50` is a different refusal on the
+  same junction: an uncertified critical box `0.0019 × 0.098` against the
+  `v = 0` edge, `1e-4` from the order-1 isoline, refused as a point too
+  flat to decide (`singular_points`). Decide it with the same rule.
+- [ ] Step 10e **[1]** — **The FTC-10 and FTC-11 fixtures leave
+  `regression/`.** Once 10c and 10d decide their pairs, move both fixtures
+  into `blend/` with blessed dumps, drop the `#[ignore]`s in `corpus.rs`
+  and tick the S5 rows in step 10b's note. The test
   `a_read_rims_pcurves_standing_off_hold_an_end_arc` (`arris-ops/tests/fillet.rs`)
   reads the FTC-11 fixture by its path and follows it out of `regression/`.
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`

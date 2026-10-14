@@ -1154,12 +1154,12 @@ corpus_tests! {
     /// NIST FTC-10's solid #6434, the closed edge where two cylinders whose
     /// axes cross off each other meet in a quartic, written as a B-spline,
     /// filleted alone.
-    #[ignore = "checker: S5 leaves the walked ring undecided against seven faces beside it (six cylinders and a sphere), which the corpus no longer allows a blend since plans/nurbs-face-blend step 6; past that, the ring builds with the oracle's counts, its volume 3e-9 and area 2e-9 relative off Open CASCADE's walked blend, which ADR-0062's step 5b amendment lets the tolerances cover once its miss of the ball is measured (plans/nurbs-face-blend step 10)"]
+    #[ignore = "checker: S5 leaves the walked patch undecided against eight faces beside it (six cylinders and two spheres), a saddle at its corners (plans/nurbs-face-blend step 10c), which the corpus no longer allows a blend since step 6; past that, the ring builds with the oracle's counts, its volume 3e-9 and area 2e-9 relative off Open CASCADE's walked blend, which ADR-0062's step 5b amendment lets the tolerances cover once its miss of the ball is measured (plans/nurbs-face-blend step 10)"]
     regression_nist_ftc_10_cylinder_pair_bspline_fillet => run "regression/nist-ftc-10-cylinder-pair-bspline-fillet";
     /// NIST FTC-11's AP242 edition 2 solid #1299, a plane-against-cylinder
     /// edge written as a B-spline that hides a circle, filleted alone: its
     /// chain's end arc runs inside the band the file's pcurves stand off by.
-    #[ignore = "S5 undecided at Full: the walked face f48 against its chain neighbours f49 and f50, cylinders (plans/nurbs-face-blend step 10c); it builds clean at Fast and holds to Open CASCADE's measures"]
+    #[ignore = "S5 undecided at Full: the walked face f48 against its chain neighbours f49 and f50, cylinders (plans/nurbs-face-blend step 10d); it builds clean at Fast and holds to Open CASCADE's measures"]
     regression_nist_ftc_11_ap242_bspline_circle_fillet => run "regression/nist-ftc-11-ap242-bspline-circle-fillet";
     /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
     /// cylinder's axis off the plane of the ball's seam, so the loop crosses
