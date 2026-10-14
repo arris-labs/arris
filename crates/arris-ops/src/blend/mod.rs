@@ -38,6 +38,7 @@ mod stripe;
 mod traced;
 mod walked;
 mod walked_blend;
+mod walked_chamfer;
 
 fn degenerate(entities: Vec<Shape>, reason: Reason) -> OpError {
     OpError::Degenerate { entities, reason }
@@ -328,10 +329,14 @@ pub fn fillet(
 ///
 /// Errors, the model untouched: a [`fillet`]'s, with
 /// [`InputReason::NonFinite`] or [`InputReason::NotPositive`] naming the distance,
-/// [`BlendReason::VertexBlend`] for two chamfers at a corner of mixed
-/// convexity, and [`OpError::Unsupported`]
-/// for a plane and a cylinder along a ruling, which fillets but has no
-/// chamfer in the table.
+/// and [`BlendReason::VertexBlend`] for two chamfers at a corner of mixed
+/// convexity.
+///
+/// A [`fillet`]'s edge that no closed form holds is walked here too
+/// (ADR-0062): each contact lies on its face in the edge's normal plane at
+/// distance `distance` from the edge's point, and the chamfer is the ruled
+/// NURBS surface between the two contact curves, within the faces'
+/// tolerance. The refusals are the fillet's.
 ///
 /// ```
 /// use arris_ops::measure::mass_properties;

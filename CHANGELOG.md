@@ -19,7 +19,15 @@ into its version (ADR-0027).
   large; two free-form faces, a blend that meets another blend at a sharp
   vertex, a chain that turns tangent along a curve across the vertex (a
   flat running into a torus), and an edge whose faces turn tangent at an
-  end are still refused by name. It does not take `chamfer` yet.
+  end are still refused by name.
+- `chamfer` takes the same edges: each contact is the point of its face in
+  the edge's normal plane at distance `d` from the edge's point, and the
+  chamfer is the ruled surface between the two contact curves, within your
+  tolerance. A closed edge, an open one whose ends meet a plane, cylinder
+  or cone, and a tangent chain through a table chamfer all build, as the
+  fillet's do; the refusals are the fillet's. A plane against a cylinder
+  along a ruling (a half disc's chord edge), which had a fillet and no
+  chamfer, now chamfers the same way.
 - `intersect_surfaces` of a NURBS surface with an analytic one, and so
   booleans and the checker, now also take the poses where the other
   surface crosses itself on an edge of the NURBS surface, or touches an

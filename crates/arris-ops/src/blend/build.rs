@@ -346,7 +346,7 @@ fn classify(
             }
             None => false,
         };
-        let walk = round && matches!(kind, Kind::Fillet { .. }) && !in_row(&env, e)?;
+        let walk = round && !in_row(&env, e)?;
         match entity.curve() {
             Some(_) if entity.start() == entity.end() => {
                 rings.push(if walk {
@@ -434,9 +434,7 @@ fn make_stripes(ctx: &mut BlendCtx<'_, '_>, open: &[EdgeId]) -> Result<Vec<Strip
         stripes.push(match stripe(m, view, e, kind, tol) {
             // The closed forms hold neither faces nor curve: a fillet is
             // walked (ADR-0062).
-            Err(OpError::Unsupported { .. }) if matches!(kind, Kind::Fillet { .. }) => {
-                walked_stripe(&env, meter, e)?
-            }
+            Err(OpError::Unsupported { .. }) => walked_stripe(&env, meter, e)?,
             other => other?,
         });
     }

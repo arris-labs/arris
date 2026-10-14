@@ -4,12 +4,13 @@
 //! twinned edge must agree with the closed form on the original: volume
 //! and area, the checker clean at `Full`: a walked blend against the
 //! analytic faces it touches is decided (step 6), and only a pair of NURBS
-//! faces, which the checker has no form for, is left unchecked.
+//! faces, which the checker has no form for, is left unchecked. The walked
+//! chamfer (step 7) is held to the same twin property.
 
 use arris_check::{Level, Unchecked, check};
 use arris_debug::prop::twin::nurbs_twin_faces;
 use arris_debug::sample;
-use arris_debug::unmetered::{fillet, mass_properties, primitive_box};
+use arris_debug::unmetered::{chamfer, fillet, mass_properties, primitive_box};
 use arris_geom::{Curve, Surface, SurfaceKind};
 use arris_math::Point3;
 use arris_ops::{BlendReason, OpError, Reason};
@@ -139,6 +140,61 @@ fn a_boxs_twinned_top_edge_fillets_as_the_closed_forms_cylinder() {
         let twin = nurbs_twin_faces(&mut m, cube, &[top.id]).unwrap();
         let edge = edge_at(&m, twin, Point3::new(1.5, 0.0, 2.0));
         let (walked, _) = fillet(&mut m, twin, &[edge], r).unwrap_or_else(|e| panic!("r {r}: {e}"));
+        agrees(&m, exact, walked, &[]);
+    }
+}
+
+/// A cylinder's wall or its cap as a NURBS twin, its rims chamfered: the
+/// walked ring against the closed form's cone on the original, concave
+/// and convex, whichever face is the twin.
+#[test]
+fn a_cylinders_twinned_rim_chamfers_as_the_closed_forms_cone() {
+    let (radius, height) = (4.0, 12.0);
+    for d in [0.5, 1.5] {
+        for z in [0.0, height] {
+            for twin_wall in [true, false] {
+                let mut m = Model::default();
+                let cylinder = sample::cylinder(&mut m, radius, height).unwrap();
+                let rim = circle_at(&m, cylinder, z);
+                let (exact, _) = chamfer(&mut m, cylinder, &[rim], d).unwrap();
+                let face = if twin_wall {
+                    face_where(&m, cylinder, |s| matches!(s, Surface::Cylinder { .. }))
+                } else {
+                    face_where(
+                        &m,
+                        cylinder,
+                        |s| matches!(s, Surface::Plane { frame } if (frame.origin().z - z).abs() < 1e-9),
+                    )
+                };
+                let twin = nurbs_twin_faces(&mut m, cylinder, &[face.id]).unwrap();
+                let rim = circle_at(&m, twin, z);
+                let (walked, _) = chamfer(&mut m, twin, &[rim], d)
+                    .unwrap_or_else(|e| panic!("d {d} z {z} wall {twin_wall}: {e}"));
+                agrees(&m, exact, walked, &[]);
+            }
+        }
+    }
+}
+
+/// A box's top face as a NURBS twin, one top edge chamfered: a walked
+/// stripe of a NURBS and a plane face, two planes across its ends, the
+/// closed form's plane on the original.
+#[test]
+fn a_boxs_twinned_top_edge_chamfers_as_the_closed_forms_plane() {
+    for d in [0.2, 0.5] {
+        let mut m = Model::default();
+        let (cube, _) =
+            primitive_box(&mut m, Point3::origin(), Point3::new(3.0, 2.0, 2.0)).unwrap();
+        let edge = edge_at(&m, cube, Point3::new(1.5, 0.0, 2.0));
+        let (exact, _) = chamfer(&mut m, cube, &[edge], d).unwrap();
+        let top = face_where(&m, cube, |s| {
+            matches!(s, Surface::Plane { frame } if (frame.origin().z - 2.0).abs() < 1e-9
+                && frame.z().z.abs() > 0.5)
+        });
+        let twin = nurbs_twin_faces(&mut m, cube, &[top.id]).unwrap();
+        let edge = edge_at(&m, twin, Point3::new(1.5, 0.0, 2.0));
+        let (walked, _) =
+            chamfer(&mut m, twin, &[edge], d).unwrap_or_else(|e| panic!("d {d}: {e}"));
         agrees(&m, exact, walked, &[]);
     }
 }

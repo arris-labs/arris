@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "58939ebc307d88ad07928bfbdcbc499bf69b38a652d4a559ce63d9ff0f32908d",
+  "results": {
+    "default": {
+      "area": 181.1952158216106,
+      "centroid": [
+        4.488028010554574,
+        2.9999999999999996,
+        0.9960169664323687
+      ],
+      "counts": {
+        "edges": 31,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          384.04801572737085,
+          -4.547473508864641e-13,
+          0.845129631747568
+        ],
+        [
+          -4.547473508864641e-13,
+          836.5334039474808,
+          -5.684341886080802e-14
+        ],
+        [
+          0.845129631747568,
+          -5.684341886080802e-14,
+          1156.7196414589953
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 31,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 20
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            2.0,
+            3.0,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "line_corner_gone",
+          "point": [
+            7.5,
+            1.97,
+            1.97
+          ]
+        },
+        {
+          "class": "out",
+          "label": "round_corner_gone",
+          "point": [
+            3.97,
+            3.0,
+            1.97
+          ]
+        }
+      ],
+      "volume": 96.4395510982164
+    }
+  }
+}

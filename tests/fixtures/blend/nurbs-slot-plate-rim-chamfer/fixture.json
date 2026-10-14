@@ -1,0 +1,67 @@
+{
+  "description": "the plate of nurbs-slot-plate-rim-fillet, written by tools/oracle/occt_nurbs_blend.py: the slot's top rim chamfered at d 0.25 from its line on y = 2. The chain runs on at two tangent vertices, (5, 2, 2) and (5, 4, 2), through the half circle on the NURBS face into the line on y = 4: a table stripe, a walked stripe (ADR-0062) and a table stripe, meeting on the chords in the planes x = 5 (ADR-0035 \u00a73), each line's far end cut by the plate's face x = 10 (plans/nurbs-face-blend step 7). Open CASCADE's contact on the NURBS round end misses the chord d by 2.9e-7 at the median, so its measures lie 2.5e-9 relative from Arris'. The measure tolerances cover that miss (ADR-0062, a walked fixture)",
+  "params": {
+    "d": 0.25
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "nurbs-slot-plate.step",
+      "sha256": "536cb43af989cb55dcb40d02b7759c6a6f297e4baeb8ed6692b68a8a4133c81d",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          7.5,
+          2,
+          2
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        3,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "line_corner_gone",
+      "point": [
+        7.5,
+        1.97,
+        1.97
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "round_corner_gone",
+      "point": [
+        3.97,
+        3,
+        1.97
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 1e-08,
+    "centroid_abs": 1e-07,
+    "inertia_rel": 1e-08
+  },
+  "analytic": {
+    "genus": 0
+  }
+}

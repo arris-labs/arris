@@ -1099,8 +1099,17 @@ plane crosses, the vertex is `VertexBlend`. A walked stripe at a miter or a
 corner, a face across that is NURBS, a cusp or a fan, and an end where the
 faces turn tangent are refused by name
 (`VertexBlend`, `Unsupported`, `TangentChain`); two NURBS faces are
-`Unsupported`. A radius past a principal radius is `BlendTooLarge`. Chamfers
-are not walked yet.
+`Unsupported`. A radius past a principal radius is `BlendTooLarge`.
+
+A **walked chamfer** (`blend/walked_chamfer.rs`) is the same assembly with no
+ball: the stripe's `Path` is a `Chord`, whose contact on each face is the root
+of the edge's normal plane and the sphere of radius `d` about the edge's
+point on that face (Newton from the face's foot of the point), carried past
+the edge's ends as the edge's curve goes on. The surface is `fit_skin` of
+the chords, degree one across, so it is the ruled surface between the two
+contact curves and `u = 0`, `u = 1` are the contacts. `Section::Walked` has no
+`centres` for it, and its junction with the next stripe of a chain is the
+chord from `q` to `p`, as the table's chamfers.
 
 `ops::offset_faces(m, body, faces: &[Face], distance, control)` moves the
 chosen faces of a solid along their outward normals by a signed distance —

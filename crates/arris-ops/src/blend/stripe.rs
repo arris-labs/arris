@@ -59,8 +59,9 @@ pub(super) enum Section {
         flipped: bool,
         /// The centre of the ball whose arc is the surface's isocurve at
         /// each of `ends`: where a chain's next stripe shares that arc at a
-        /// tangent vertex (ADR-0035 §3).
-        centres: [Point3; 2],
+        /// tangent vertex (ADR-0035 §3). `None` for a chamfer, whose
+        /// isocurve there is a chord.
+        centres: Option<[Point3; 2]>,
     },
 }
 

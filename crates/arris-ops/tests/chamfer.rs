@@ -138,28 +138,45 @@ fn a_rim_chamfers_to_a_cone() {
 }
 
 /// A plane against a cylinder along a ruling — a half disc's chord edge —
-/// has a fillet in the table and no chamfer, and is named as such.
+/// has no chamfer in the table, so it is walked (ADR-0062): the contacts
+/// lie at chord `d` from the edge in its normal plane, the plane's at
+/// `R - d` and the cylinder's at the angle `2 asin(d / 2R)`, and the volume
+/// is the half disc's less the prism of the triangle of the edge and the
+/// two contacts and the circular segment under its arc.
 #[test]
-fn a_ruling_edge_has_no_chamfer() {
+fn a_ruling_edge_chamfers_at_the_chord() {
+    let (radius, d, length) = (1.5, 0.2, 2.0);
     let mut m = Model::default();
     let profile = Profile {
         plane: Frame::world(),
         outer: ProfileLoop::Path {
-            start: Point2::new(-1.5, 0.0),
+            start: Point2::new(-radius, 0.0),
             segments: vec![
-                ProfileSegment::LineTo(Point2::new(1.5, 0.0)),
+                ProfileSegment::LineTo(Point2::new(radius, 0.0)),
                 ProfileSegment::ArcTo {
-                    to: Point2::new(-1.5, 0.0),
-                    via: Point2::new(0.0, 1.5),
+                    to: Point2::new(-radius, 0.0),
+                    via: Point2::new(0.0, radius),
                 },
             ],
         },
         holes: Vec::new(),
     };
-    let d = extrude(&mut m, &profile, Vec3::z(), 2.0).unwrap().0;
-    let edge = edge_at(&m, d, Point3::new(1.5, 0.0, 1.0));
-    let err = chamfer(&mut m, d, &[edge], 0.2).unwrap_err();
-    assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
+    let body = extrude(&mut m, &profile, Vec3::z(), length).unwrap().0;
+    let edge = edge_at(&m, body, Point3::new(radius, 0.0, 1.0));
+    let (chamfered, provenance) = chamfer(&mut m, body, &[edge], d).unwrap();
+    let report = check(&m, chamfered, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    audit(&m, &[body], chamfered, &provenance).unwrap();
+    let theta = 2.0 * (d / (2.0 * radius)).asin();
+    let triangle = 0.5 * d * radius * theta.sin();
+    let segment = 0.5 * radius * radius * (theta - theta.sin());
+    let volume =
+        0.5 * core::f64::consts::PI * radius * radius * length - length * (triangle + segment);
+    let got = mass_properties(&m, chamfered).unwrap().volume;
+    assert!(
+        (got - volume).abs() <= 1e-8 * volume,
+        "{got} against {volume}"
+    );
 }
 
 /// The polygon `points` in the world's XY plane extruded 2 along +Z.

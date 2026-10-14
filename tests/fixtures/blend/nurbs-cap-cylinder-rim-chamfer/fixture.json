@@ -1,0 +1,59 @@
+{
+  "description": "the cylinder of radius 4 capped at height 6 by the sphere of radius 8 through its rim, the cap converted to its exact B-spline, written by tools/oracle/occt_nurbs_blend.py: the rim, a circle between the NURBS cap and the cylinder meeting at 60\u00b0, chamfered at d 0.5. A NURBS face against a cylinder has no closed form, so the chamfer is a walked ring (ADR-0062): its contacts at chord d from the rim in the rim's normal planes, the surface ruled between them, closed, its seam the chord at the rim's vertex (plans/nurbs-face-blend step 7). Open CASCADE's contact on the cylinder holds the chord to rounding and its contact on the NURBS cap misses it by 1.9e-7 at the median and 1.8e-6 at most, so its measures lie 4e-9 relative from Arris'. The measure tolerances cover that miss (ADR-0062, a walked fixture)",
+  "params": {
+    "d": 0.5
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "nurbs-cap-cylinder.step",
+      "sha256": "552b4db7bbb1b258ddde0f72f586fa9c8aa0f0cba31af971c8e0f32c88a05af3",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          4,
+          6
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        0,
+        3.97,
+        5.99
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 1e-08,
+    "centroid_abs": 1e-07,
+    "inertia_rel": 3e-08
+  },
+  "analytic": {
+    "genus": 0,
+    "occt_step_unread": "Open CASCADE's chamfer of the NURBS cap against the cylinder is a B-spline surface walked round the rim, like its fillet's; Arris's reader does not finish its file in minutes, which measures the reader on the walked surface, not the chamfer: regression/nurbs-cap-cylinder-rim-fillet-occt-step holds that reading"
+  }
+}

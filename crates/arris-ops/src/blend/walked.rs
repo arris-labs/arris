@@ -43,28 +43,28 @@ const OFFSET_FIT_FRACTION: f64 = 0.25;
 /// radius of the end's centre for a face across square to the edge and
 /// within `r·(1 + tan α)` for one turned by `α` from square — two radii
 /// take a face across turned by up to 45°. A reach, not a tolerance.
-const REACH_RADII: f64 = 2.0;
+pub(super) const REACH_RADII: f64 = 2.0;
 
 /// The edge's samples at which the ball is found in its normal plane:
 /// the two ends, the middle that decides which way round a loop the
 /// stretch runs, and the samples between, whose contacts bound the band a
 /// NURBS face's offset is fitted over. A sampling density, not a
 /// tolerance.
-const EDGE_SAMPLES: usize = 16;
+pub(super) const EDGE_SAMPLES: usize = 16;
 
 /// The most Newton steps a snap or a foot takes before it is given up, and
 /// the most halvings of one step: the iteration starts within the fits'
 /// quarter of the tolerance of its root and converges quadratically, so a
 /// handful are taken where it converges at all. A structural bound that
 /// makes the iteration terminate.
-const NEWTON_STEPS: usize = 32;
+pub(super) const NEWTON_STEPS: usize = 32;
 
 /// The multiple of [`arris_math::RELATIVE_ROUNDING`] of the coordinates'
 /// magnitude at which a Newton step has stopped moving the point: a
 /// projection onto a NURBS face carries the rounding of its own Newton
 /// iteration into the step, a few ulps of the coordinates. A rounding
 /// slack, not a tolerance.
-const STEP_ROUNDING: f64 = 16.0;
+pub(super) const STEP_ROUNDING: f64 = 16.0;
 
 /// The marching steps across a piece's domain that carry the spine past
 /// an end of the edge, before a bisection finds where the chord reaches
@@ -79,7 +79,7 @@ const REACH_BISECTIONS: usize = 60;
 /// the fitted offset is (`OFFSET_FIT_DEGREE`), so the surface follows the
 /// spine's curvature with a residual of fourth order per span. A
 /// structural choice, not a tolerance.
-const SURFACE_DEGREE: usize = 3;
+pub(super) const SURFACE_DEGREE: usize = 3;
 
 /// Why a walked stripe has no spine, for the caller to name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -129,7 +129,7 @@ impl From<Interrupted> for Walked {
 /// A geometric error of the tracer or a projection: the caller's
 /// [`Refusal::NoSpine`] where the pose is one the trace does not decide,
 /// the operation's own otherwise.
-fn no_spine_or_fault(e: GeomError) -> Walked {
+pub(super) fn no_spine_or_fault(e: GeomError) -> Walked {
     match e {
         GeomError::DegenerateSection { .. }
         | GeomError::Unsupported { .. }
@@ -190,16 +190,7 @@ impl Faces {
     /// nearest point where there is no seed.
     fn foot(&self, k: usize, c: Point3, seed: Option<Point2>) -> Result<Foot, Walked> {
         let surface = &self.surfaces[k];
-        let (uv, point) = if let Surface::Nurbs(s) = surface {
-            let seed = match seed {
-                Some(seed) => seed,
-                None => s.project(c).map_err(no_spine_or_fault)?.uv,
-            };
-            nurbs_foot(s, c, seed)
-        } else {
-            let p = surface.project(c).map_err(no_spine_or_fault)?;
-            (p.uv, p.point)
-        };
+        let (uv, point) = foot_on(surface, c, seed)?;
         let n = surface
             .normal(uv.x, uv.y)
             .ok_or(Walked::Refused(Refusal::NoSpine {
@@ -295,6 +286,27 @@ impl Faces {
             contacts: feet.map(|f| f.point),
             uv: feet.map(|f| f.uv),
         })
+    }
+}
+
+/// The foot of `c` on `surface`: by the closed form on an analytic
+/// surface, by Newton from `seed` on a NURBS one — continued past its
+/// domain as its end spans carry on (ADR-0062 §3) — or from the global
+/// nearest point where there is no seed.
+pub(super) fn foot_on(
+    surface: &Surface,
+    c: Point3,
+    seed: Option<Point2>,
+) -> Result<(Point2, Point3), Walked> {
+    if let Surface::Nurbs(s) = surface {
+        let seed = match seed {
+            Some(seed) => seed,
+            None => s.project(c).map_err(no_spine_or_fault)?.uv,
+        };
+        Ok(nurbs_foot(s, c, seed))
+    } else {
+        let p = surface.project(c).map_err(no_spine_or_fault)?;
+        Ok((p.uv, p.point))
     }
 }
 
@@ -470,6 +482,18 @@ pub(super) struct Skin {
 }
 
 impl Skin {
+    /// A surface already running along the edge's own direction over
+    /// `range`, `ends` the `v` of the edge's start and of its end: a
+    /// walked chamfer's, which is no spine's mirror.
+    pub(super) fn along_edge(surface: NurbsSurface, range: Interval, ends: [f64; 2]) -> Skin {
+        Skin {
+            surface,
+            ends,
+            reflected: false,
+            range,
+        }
+    }
+
     /// The spine's parameter that the surface's `v` stands for.
     pub(super) fn spine_t(&self, v: f64) -> f64 {
         if self.reflected {

@@ -1,0 +1,58 @@
+{
+  "description": "the box of bicubic-top-box-edge-fillet, written by tools/oracle/occt_nurbs_blend.py: the top edge on the wall y = 0, the B-spline isocurve v = 0, chamfered at d 0.5. A NURBS face against a plane has no closed form, so the chamfer is a walked stripe (ADR-0062): each contact lies in the edge's normal plane at chord d from the edge's point on its face, the surface is the ruled surface between the two contact curves fitted to the tolerance, each end cut by the wall across, x = 0 and x = 10, both planes (plans/nurbs-face-blend step 7). Open CASCADE's contact on the B-spline top misses the chord d by 2.8e-7 at the median and 2.5e-6 at the 90th percentile (5.5e-6 at most); Arris' holds it to rounding, so Open CASCADE's volume lies 1.4e-7 relative from Arris'. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a walked fixture (no closed form holds the blend)",
+  "params": {
+    "d": 0.5
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "bicubic-top-box.step",
+      "sha256": "97083dfec12174c19c005e12f4ea16fdb9a056b054d057f0310e95d5972ac380",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          5,
+          0,
+          3.15
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        3,
+        1.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        5,
+        0.05,
+        3.118
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 5e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 5e-06,
+    "inertia_rel": 2e-06
+  },
+  "analytic": {
+    "genus": 0
+  }
+}

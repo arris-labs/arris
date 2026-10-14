@@ -956,6 +956,17 @@ corpus_tests! {
     /// A plate's U slot whose round end is NURBS, its rim filleted: a table
     /// stripe, a walked stripe and a table stripe meeting at two junctions.
     blend_nurbs_slot_plate_rim_fillet => run "blend/nurbs-slot-plate-rim-fillet";
+    /// The same box, the same edge, chamfered: a walked chamfer's ruled
+    /// surface between its contact curves (plans/nurbs-face-blend step 7).
+    blend_bicubic_top_box_edge_chamfer => run "blend/bicubic-top-box-edge-chamfer";
+    /// The same cylinder and cap, the rim chamfered: a walked ring.
+    blend_nurbs_cap_cylinder_rim_chamfer => run "blend/nurbs-cap-cylinder-rim-chamfer";
+    /// The same plate, the slot's rim chamfered: a table stripe, a walked
+    /// stripe and a table stripe meeting at two junctions.
+    blend_nurbs_slot_plate_rim_chamfer => run "blend/nurbs-slot-plate-rim-chamfer";
+    /// A half disc's chord edge chamfered: a plane against a cylinder along a
+    /// ruling, which the table holds for a fillet only: a walked chamfer.
+    blend_d_chord_edge_chamfer => run "blend/d-chord-edge-chamfer";
     /// An edge between two NURBS faces: `Unsupported`, NURBS against NURBS.
     blend_nurbs_box_edge_fillet_unsupported => run "blend/nurbs-box-edge-fillet-unsupported";
     /// The D-notch with its circle's centre off the side face's plane: the open

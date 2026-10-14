@@ -236,6 +236,25 @@ with its Python class, `GeomOffsetFoldsError`.
   `1e-5` still catches. The cap is the price of a second oracle that
   ADR-0015 left open for a band with no closed form.
 
+- **Step 7 (the walked chamfer).** The contact on a face is the root of
+  two equations on its `(u, v)`: the edge's normal plane, and the sphere
+  of radius `d` about the edge's point, by Newton from the face's foot of
+  that point moved by `d` along the face on the side the face lies. The
+  side is the face's outward normal against the edge's direction along
+  the face's use, as the table reads a dihedral. The edge's curve is
+  carried past its ends by two chords for a face across to cut (a NURBS
+  edge on its end spans' polynomials, as its faces are carried on in §3;
+  a circle not past its period), and the surface is `fit_skin` of the
+  segment between the two contacts, degree one across, so each contact is
+  its own isocurve. There is no vanishing end: the chord is defined where
+  the faces turn tangent. The face's orientation looks at the edge the
+  chamfer cuts as a fillet's looks away from its ball; at a tangent vertex
+  the junction is the chord (`centres` is `None`), so a walked and a
+  table chamfer share it. Open CASCADE's contact on a B-spline face
+  misses the chord by `2.8e-7` (the bicubic top) and `1.9e-7` (the cap) at
+  the median, `5.5e-6` at most; the step-5b allowance for a walked
+  fixture covers it.
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**

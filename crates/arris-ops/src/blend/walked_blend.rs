@@ -22,12 +22,14 @@ use arris_math::{Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVe
 use arris_topo::entity::Edge;
 use arris_topo::{EdgeId, FaceId, Orientation};
 
+use super::Kind;
 use super::build::Env;
 use super::ends::{Arced, End, corner_of, finish_end};
 use super::ring::{Ring, RingContact, RingEnds, RingSeam, SeamCut, cut_seams, placed_uv};
 use super::stripe::{Contact, Section, Stripe, in_band, on_side_of_face, placed};
 use super::traced::traced_end;
-use super::walked::{Refusal, Rolling, Spine, Walked, arc, contacts as contact_rows, spine};
+use super::walked::{Refusal, Rolling, Skin, Spine, Walked, arc, contacts as contact_rows, spine};
+use super::walked_chamfer::{Chord, Chording};
 use super::{degenerate, invariant};
 use crate::body_view::{UseAt, faces_tolerance, tangent_normals};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
@@ -47,7 +49,32 @@ struct Rolled<'a> {
     tolerance: f64,
     /// The tolerance the spine and the surface are fitted to.
     fit: Tolerance,
-    spine: Spine,
+    path: Path,
+}
+
+/// What the stripe's surface is skinned through: the ball's arcs along a
+/// fillet's spine, a chamfer's chords along its contact curves.
+enum Path {
+    Ball(Box<Spine>),
+    Chord(Box<Chord>),
+}
+
+impl Path {
+    /// Whether the faces turn tangent at the edge's start and end: only a
+    /// fillet's ball narrows to nothing there.
+    fn vanishing(&self) -> [bool; 2] {
+        match self {
+            Path::Ball(spine) => spine.vanishing(),
+            Path::Chord(_) => [false; 2],
+        }
+    }
+
+    fn skin(&self, fit: Tolerance, meter: &mut Meter<'_>) -> Result<Skin, Walked> {
+        match self {
+            Path::Ball(spine) => spine.skin(fit, meter),
+            Path::Chord(chord) => chord.skin(fit, meter),
+        }
+    }
 }
 
 /// The refusal the table's closed forms make for a pair, named for a
@@ -76,9 +103,9 @@ fn named(walked: Walked, edge: EdgeId, faces: [FaceId; 2], surfaces: [&Surface; 
     }
 }
 
-/// Reads `edge` and walks the ball along it: its two faces by the edge's
-/// uses, the dihedral's convexity, and the spine at the blend's radius.
-/// A fillet only.
+/// Reads `edge` and walks the blend along it: its two faces by the edge's
+/// uses, the dihedral's convexity, and a fillet's spine at the blend's
+/// radius or a chamfer's contact curves at its distance.
 ///
 /// Errors: `BlendReason::VertexBlend` for an edge with no curve,
 /// `BlendReason::TangentChain` where the faces are tangent along it,
@@ -123,19 +150,54 @@ fn roll<'a>(env: &Env<'a>, meter: &mut Meter<'_>, edge: EdgeId) -> Result<Rolled
     let convex = view
         .convex(m, edge)?
         .ok_or(invariant("a blended edge with a dihedral"))?;
-    let side = if convex { -1.0 } else { 1.0 };
     let radius = kind.size();
-    let distances = faces.map(|f| side * radius * view.orientation[&f].sign());
     let fit = Tolerance::new(tolerance, tol.angular);
-    let rolling = Rolling {
-        surfaces,
-        distances,
-        edge: m.curve(curve_id)?,
-        range,
-        closed: entity.start() == entity.end(),
-        tangency: tolerance.max(entity.tolerance()),
+    let closed = entity.start() == entity.end();
+    let path = match kind {
+        Kind::Fillet { .. } => {
+            let side = if convex { -1.0 } else { 1.0 };
+            let distances = faces.map(|f| side * radius * view.orientation[&f].sign());
+            let rolling = Rolling {
+                surfaces,
+                distances,
+                edge: m.curve(curve_id)?,
+                range,
+                closed,
+                tangency: tolerance.max(entity.tolerance()),
+            };
+            Path::Ball(Box::new(
+                spine(&rolling, fit, meter).map_err(|w| named(w, edge, faces, surfaces))?,
+            ))
+        }
+        Kind::Chamfer { .. } => {
+            // Into each face from the edge: its outward normal against the
+            // edge's direction along the face's own use of it.
+            let curve = m.curve(curve_id)?;
+            let mut inward = [0.0; 2];
+            for k in 0..2 {
+                let uv = pcurves[k].point(mid);
+                let n = surfaces[k]
+                    .normal(uv.x, uv.y)
+                    .ok_or(invariant("a normal at the edge of a chamfered face"))?;
+                let outward = if k == 0 { n1 } else { n2 };
+                let along = view.orientation[&faces[k]]
+                    .compose(uses[k].orientation)
+                    .sign();
+                inward[k] = n.dot(&outward).signum() * along;
+            }
+            let chording = Chording {
+                surfaces,
+                inward,
+                distance: radius,
+                edge: curve,
+                range,
+                closed,
+            };
+            Path::Chord(Box::new(
+                Chord::new(&chording, meter).map_err(|w| named(w, edge, faces, surfaces))?,
+            ))
+        }
     };
-    let spine = spine(&rolling, fit, meter).map_err(|w| named(w, edge, faces, surfaces))?;
     Ok(Rolled {
         entity,
         faces,
@@ -144,7 +206,7 @@ fn roll<'a>(env: &Env<'a>, meter: &mut Meter<'_>, edge: EdgeId) -> Result<Rolled
         convex,
         tolerance,
         fit,
-        spine,
+        path,
     })
 }
 
@@ -158,9 +220,21 @@ fn faces_away(surface: &NurbsSurface, uv: Point2, centre: Point3) -> Result<bool
     Ok(n.dot(&(p - centre)) > 0.0)
 }
 
+/// Whether the surface's normal `∂u × ∂v` at `(u, v)` points toward the
+/// point `p`: a walked chamfer's face looks at the edge it cuts as a
+/// fillet's, away from its ball, looks out of the material.
+fn faces_toward(surface: &NurbsSurface, uv: Point2, p: Point3) -> Result<bool, OpError> {
+    let at = surface.eval(uv.x, uv.y).point;
+    let n = surface
+        .normal(uv.x, uv.y)
+        .ok_or(invariant("a regular blend surface"))?;
+    Ok(n.dot(&(p - at)) > 0.0)
+}
+
 /// The open edge `edge`'s walked stripe: the spine, the surface skinned
 /// through the ball's arcs along it and its two contact curves, no end
-/// decided yet. A fillet's only.
+/// decided yet; a chamfer's, the contact curves and the ruled surface
+/// between them.
 ///
 /// Errors: as [`roll`]; `BlendReason::TangentChain` naming the vertex
 /// where the faces turn tangent within the edge's tolerance, a vanishing
@@ -181,7 +255,7 @@ pub(super) fn walked_stripe(
         convex,
         tolerance,
         fit,
-        ref spine,
+        ref path,
         ..
     } = rolled;
     if entity.start() == entity.end() {
@@ -190,7 +264,7 @@ pub(super) fn walked_stripe(
     let e = forward(edge);
     for (vertex, vanishes) in [entity.start(), entity.end()]
         .into_iter()
-        .zip(spine.vanishing())
+        .zip(path.vanishing())
     {
         if vanishes {
             return Err(degenerate(
@@ -199,20 +273,33 @@ pub(super) fn walked_stripe(
             ));
         }
     }
-    let skin = spine
+    let skin = path
         .skin(fit, meter)
         .map_err(|w| named(w, edge, faces, surfaces))?;
     let rows = contact_rows(&skin.surface).map_err(|w| named(w, edge, faces, surfaces))?;
     let [v0, v1] = skin.ends;
     let v_mid = 0.5 * (v0 + v1);
-    let ball_at = |v: f64| {
-        spine
-            .ball(skin.spine_t(v))
-            .map_err(|w| named(w, edge, faces, surfaces))
+    let (flipped, centres) = match path {
+        Path::Ball(spine) => {
+            let ball_at = |v: f64| {
+                spine
+                    .ball(skin.spine_t(v))
+                    .map_err(|w| named(w, edge, faces, surfaces))
+            };
+            let ball = ball_at(v_mid)?;
+            let centres = [ball_at(v0)?.centre, ball_at(v1)?.centre];
+            let flipped = !faces_away(&skin.surface, Point2::new(0.5, v_mid), ball.centre)?;
+            (flipped, Some(centres))
+        }
+        Path::Chord(chord) => {
+            let flipped = !faces_toward(
+                &skin.surface,
+                Point2::new(0.5, v_mid),
+                chord.edge_point(v_mid),
+            )?;
+            (flipped, None)
+        }
     };
-    let ball = ball_at(v_mid)?;
-    let centres = [ball_at(v0)?.centre, ball_at(v1)?.centre];
-    let flipped = !faces_away(&skin.surface, Point2::new(0.5, v_mid), ball.centre)?;
     let (curve_id, range) = entity
         .curve()
         .ok_or(invariant("the blended edge's curve"))?;
@@ -467,7 +554,7 @@ pub(super) fn walked_ring(
         convex,
         tolerance,
         fit,
-        ref spine,
+        ref path,
         ..
     } = rolled;
     let e = forward(edge);
@@ -481,28 +568,35 @@ pub(super) fn walked_ring(
     let too_large =
         |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
     let named = |w: Walked| named(w, edge, faces, surfaces);
-    let skin = spine.skin(fit, meter).map_err(named)?;
+    let skin = path.skin(fit, meter).map_err(named)?;
     let rows = contact_rows(&skin.surface).map_err(named)?;
     let [lo, hi] = skin.ends;
     let range = Interval::new(lo, hi).map_err(|_| invariant("a closed edge's period"))?;
-    let ball = spine.ball(skin.spine_t(lo)).map_err(named)?;
     let seam_curve = first_column(&skin.surface).map_err(fault_of)?;
     let seam_range = Interval::new(0.0, 1.0).map_err(|_| invariant("an arc's range"))?;
-    // The arc at the vertex, exact, against the surface's own isocurve
-    // there: they agree within the fit.
-    debug_assert!({
-        let exact = arc(&ball).map_err(named)?;
-        (exact.eval(0.5).point - seam_curve.eval(0.5).point).norm() <= tolerance
-    });
     // The blend faces out of the material: its normal against the ball's
-    // radial direction.
-    let orientation = {
-        let outward = faces_away(&skin.surface, Point2::new(0.5, range.lo()), ball.centre)?;
-        if outward == convex {
-            Orientation::Forward
-        } else {
-            Orientation::Reversed
+    // radial direction, or a chamfer's toward the edge it cuts.
+    let outward = match path {
+        Path::Ball(spine) => {
+            let ball = spine.ball(skin.spine_t(lo)).map_err(named)?;
+            // The arc at the vertex, exact, against the surface's own
+            // isocurve there: they agree within the fit.
+            debug_assert!({
+                let exact = arc(&ball).map_err(named)?;
+                (exact.eval(0.5).point - seam_curve.eval(0.5).point).norm() <= tolerance
+            });
+            faces_away(&skin.surface, Point2::new(0.5, range.lo()), ball.centre)?
         }
+        Path::Chord(chord) => faces_toward(
+            &skin.surface,
+            Point2::new(0.5, range.lo()),
+            chord.edge_point(range.lo()),
+        )?,
+    };
+    let orientation = if outward == convex {
+        Orientation::Forward
+    } else {
+        Orientation::Reversed
     };
     let line_tol = Tolerance::new(tolerance, tol.angular);
     let mut contacts: Vec<RingContact> = Vec::with_capacity(2);

@@ -58,7 +58,7 @@ impl<'a> Run<'a> {
                         edge: s.edge,
                         faces: s.faces,
                         points: s.lines.each_ref().map(|line| line.point(t)),
-                        centre: Some(centres[j]),
+                        centre: centres.map(|c| c[j]),
                         convex: s.convex,
                         tolerance: s.tolerance,
                         surface: &s.surface,

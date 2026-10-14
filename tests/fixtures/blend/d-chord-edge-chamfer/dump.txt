@@ -1,0 +1,63 @@
+precision default 0.0000001 min 0.000000000001 max 0.01 angular 0.000000000001 parametric 0.0000001 samples 23
+body +b1 solid
+  shell +s1
+    face -f4 S0 tol 0.0000001
+      surface plane origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge -e11 p1 circle origin (0, 0) x (1, 0) y (0, 1) radius 1.5
+        coedge -e10 p0 line origin (-1.5, 0) direction (1, 0)
+        coedge -e8 p12 nurbs degree 1 knots [0 0 1 1] points [(1.3, 0) (1.486666666667, 0.199555060628)] weights [1 1]
+    face +f5 S1 tol 0.0000001
+      surface plane origin (0, 0, 2) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1)
+      loop 0
+        coedge +e9 p13 nurbs degree 1 knots [0 0 1 1] points [(1.3, 0) (1.486666666667, 0.199555060628)] weights [1 1]
+        coedge +e13 p3 circle origin (0, 0) x (1, 0) y (0, 1) radius 1.5
+        coedge +e12 p2 line origin (-1.5, 0) direction (1, 0)
+    face +f6 S2 tol 0.0000001
+      surface plane origin (-1.5, 0, 0) x (1, 0, 0) y (0, 0, 1) z (0, -1, 0)
+      loop 0
+        coedge +e6 p14 nurbs degree 3 knots [-0.4 -0.4 -0.4 -0.4 0.3 1 1.7 2.4 2.4 2.4 2.4] points [(2.8, -0.4) (2.8, -0.166666666667) (2.8, 0.3) (2.8, 1) (2.8, 1.7) (2.8, 2.166666666667) (2.8, 2.4)] weights [1 1 1 1 1 1 1]
+        coedge -e12 p6 line origin (0, 2) direction (1, 0)
+        coedge -e4 p7 line origin (0, 0) direction (0, 1)
+        coedge +e10 p4 line origin (0, 0) direction (1, 0)
+    face +f7 S3 tol 0.0000001
+      surface cylinder origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 1.5
+      loop 0
+        coedge -e7 p15 nurbs degree 5 knots [0 0 0 0 0 0 0.5 1 1.5 2 2 2 2 2 2] points [(0.13343229682, 0) (0.13343229682, 0.1) (0.13343229682, 0.3) (0.13343229682, 0.6) (0.13343229682, 1) (0.13343229682, 1.4) (0.13343229682, 1.7) (0.13343229682, 1.9) (0.13343229682, 2)] weights [1 1 1 1 1 1 1 1 1]
+        coedge +e11 p8 line origin (0, 0) direction (1, 0)
+        coedge +e4 p9 line origin (3.14159265359, 0) direction (0, 1)
+        coedge -e13 p10 line origin (0, 2) direction (1, 0)
+    face +f8 S4 tol 0.0000001
+      surface nurbs degree 1x3 counts 2x7 knots_u [0 0 1 1] knots_v [-0.4 -0.4 -0.4 -0.4 0.3 1 1.7 2.4 2.4 2.4 2.4] points [(1.3, 0, -0.4) (1.3, 0, -0.166666666667) (1.3, 0, 0.3) (1.3, 0, 1) (1.3, 0, 1.7) (1.3, 0, 2.166666666667) (1.3, 0, 2.4) (1.486666666667, 0.199555060628, -0.4) (1.486666666667, 0.199555060628, -0.166666666667) (1.486666666667, 0.199555060628, 0.3) (1.486666666667, 0.199555060628, 1) (1.486666666667, 0.199555060628, 1.7) (1.486666666667, 0.199555060628, 2.166666666667) (1.486666666667, 0.199555060628, 2.4)] weights [1 1 1 1 1 1 1 1 1 1 1 1 1 1]
+      loop 0
+        coedge -e6 p19 line origin (0, 0) direction (0, 1)
+        coedge +e8 p16 nurbs degree 5 knots [0 0 0 0 0 0 0.25 0.5 0.75 1 1 1 1 1 1] points [(0, 0) (0.05, 0) (0.15, 0) (0.3, 0) (0.5, 0) (0.7, 0) (0.85, 0) (0.95, 0) (1, 0)] weights [1 1 1 1 1 1 1 1 1]
+        coedge +e7 p18 line origin (1, 0) direction (0, 1)
+        coedge -e9 p17 nurbs degree 5 knots [0 0 0 0 0 0 0.25 0.5 0.75 1 1 1 1 1 1] points [(0, 2) (0.05, 2) (0.15, 2) (0.3, 2) (0.5, 2) (0.7, 2) (0.85, 2) (0.95, 2) (1, 2)] weights [1 1 1 1 1 1 1 1 1]
+edges
+  -e11 v5 -> v0 c1 [0.13343229682, 3.14159265359] tol 0.0000001
+    curve circle origin (0, 0, 0) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 1.5
+  -e10 v0 -> v4 c0 [0, 2.8] tol 0.0000001
+    curve line origin (-1.5, 0, 0) direction (1, 0, 0)
+  -e8 v4 -> v5 c8 [0, 1] tol 0.0000001
+    curve nurbs degree 1 knots [0 0 1 1] points [(1.3, 0, 0) (1.486666666667, 0.199555060628, 0)] weights [1 1]
+  +e9 v6 -> v7 c9 [0, 1] tol 0.0000001
+    curve nurbs degree 1 knots [0 0 1 1] points [(1.3, 0, 2) (1.486666666667, 0.199555060628, 2)] weights [1 1]
+  +e13 v7 -> v2 c3 [0.13343229682, 3.14159265359] tol 0.0000001
+    curve circle origin (0, 0, 2) x (1, 0, 0) y (0, 1, 0) z (0, 0, 1) radius 1.5
+  +e12 v2 -> v6 c2 [0, 2.8] tol 0.0000001
+    curve line origin (-1.5, 0, 2) direction (1, 0, 0)
+  +e6 v4 -> v6 c6 [0, 2] tol 0.0000001
+    curve nurbs degree 3 knots [-0.4 -0.4 -0.4 -0.4 0.3 1 1.7 2.4 2.4 2.4 2.4] points [(1.3, 0, -0.4) (1.3, 0, -0.166666666667) (1.3, 0, 0.3) (1.3, 0, 1) (1.3, 0, 1.7) (1.3, 0, 2.166666666667) (1.3, 0, 2.4)] weights [1 1 1 1 1 1 1]
+  -e4 v0 -> v2 c4 [0, 2] tol 0.0000001
+    curve line origin (-1.5, 0, 0) direction (0, 0, 1)
+  -e7 v5 -> v7 c7 [0, 2] tol 0.0000001
+    curve nurbs degree 3 knots [-0.4 -0.4 -0.4 -0.4 0.3 1 1.7 2.4 2.4 2.4 2.4] points [(1.486666666667, 0.199555060628, -0.4) (1.486666666667, 0.199555060628, -0.166666666667) (1.486666666667, 0.199555060628, 0.3) (1.486666666667, 0.199555060628, 1) (1.486666666667, 0.199555060628, 1.7) (1.486666666667, 0.199555060628, 2.166666666667) (1.486666666667, 0.199555060628, 2.4)] weights [1 1 1 1 1 1 1]
+vertices
+  v0 (-1.5, 0, 0) tol 0.0000001
+  v5 (1.486666666667, 0.199555060628, 0) tol 0.0000001
+  v4 (1.3, 0, 0) tol 0.0000001
+  v6 (1.3, 0, 2) tol 0.0000001
+  v7 (1.486666666667, 0.199555060628, 2) tol 0.0000001
+  v2 (-1.5, 0, 2) tol 0.0000001
+euler 6/9/5/5/1 g0 = 0

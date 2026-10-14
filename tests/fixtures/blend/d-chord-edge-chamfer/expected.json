@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "8af7e03760066d80cac54a95efffceac8a1a899a0151d574ac22e203e95ab76b",
+  "results": {
+    "default": {
+      "area": 22.198767492706555,
+      "centroid": [
+        -0.00830400909889388,
+        0.6399253778979577,
+        1.0
+      ],
+      "counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          3.4404883538842004,
+          -0.03338073374771253,
+          0.0
+        ],
+        [
+          -0.03338073374771253,
+          6.234628833315706,
+          -8.881784197001252e-16
+        ],
+        [
+          0.0,
+          -8.881784197001252e-16,
+          4.989928932835012
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.0,
+            0.5,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "corner_gone",
+          "point": [
+            1.499,
+            0.001,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "other_chord_edge",
+          "point": [
+            -1.5,
+            0.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 7.027782381547348
+    }
+  }
+}

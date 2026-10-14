@@ -463,7 +463,7 @@ bound has to be established here.
   faces keep any pair with a NURBS face: the bicubic dome's section and
   fuse and CTC-05's box cuts each leave a plane or a cylinder against a
   read B-spline face that the tracer refuses.
-- [ ] Step 7 **[2]** — **The walked chamfer.** Each contact lies in the
+- [x] Step 7 **[2]** — **The walked chamfer.** Each contact lies in the
   edge's normal plane at each sample, at chord `d` from the edge point on
   its face (the ring's rule, ADR-0036 §2, and Open CASCADE's symmetric
   chamfer). It is solved per sample along the face's section with that
@@ -472,6 +472,36 @@ bound has to be established here.
   contact is the surface's own isocurve. Ends and refusals are step 5's.
   Fixtures: step 5's three geometries chamfered, with Open CASCADE's
   chamfer as oracle.
+
+  **Done (2026-10-14).** `blend/walked_chamfer.rs`: `Chord` finds each
+  contact by Newton on the face's `(u, v)` (the edge's normal plane and
+  the sphere of `d` about the edge's point) and `fit_skin`s the segments
+  between them, so no spine and no ball. `walked_blend.rs` reads an edge
+  once for both kinds (`Path::Ball` or `Path::Chord`), and the dispatch
+  walks a chamfer's `Unsupported` as a fillet's; `Section::Walked`'s
+  `centres` is `None` for a chamfer, whose junction with a chain's next
+  stripe is the chord. The twin tests (`walked_fillet.rs`) hold a
+  cylinder's twinned rim at both ends and both faces, and a box's twinned
+  edge, to the table's cone and plane to `1e-8`. The three fixtures
+  (`blend/bicubic-top-box-edge-chamfer`, `nurbs-cap-cylinder-rim-chamfer`,
+  `nurbs-slot-plate-rim-chamfer`) agree with Open CASCADE's chamfer to
+  `1.4e-7`, `4e-9` and `2.5e-9` relative in volume. Measured and found:
+  - **Open CASCADE's contact misses the chord** on a B-spline face by a
+    median of `2.8e-7` (the bicubic top; `5.5e-6` at most) and `1.9e-7`
+    (the cap); on a plane or a cylinder it holds it to rounding.
+  - **A NURBS edge is carried on past its ends** on its end spans'
+    polynomials: the bicubic top's wall edges are not square to the walls
+    across, so a contact stopping at the edge's end never reaches them.
+  - **Open CASCADE's own STEP of the cap's chamfer** is a walked B-spline
+    face that Arris' reader does not finish in minutes, like its fillet's
+    (`analytic.occt_step_unread`).
+  - **The table's `Unsupported` chamfers are walked now.** The plane
+    against a cylinder along a ruling, which `chamfer.rs` pinned as
+    `Unsupported`, builds at the chord: `blend/d-chord-edge-chamfer` agrees
+    with Open CASCADE to 9 digits (the arc rule would differ by `3e-5`),
+    and the test now holds the closed form. The backlog line becomes the
+    plane's exactness (the face is a NURBS surface, not a `Plane`). The
+    rest of the blend and regression corpus (109 fixtures) is unchanged.
 - [ ] Step 8 **[2]** — **The twin property.** `nurbs_twin_faces` (landed in step 5) twins
   one face of an edge. For each table row (plane × plane, plane ×
   cylinder along a ruling and a circle, cone, sphere and torus coaxial),
