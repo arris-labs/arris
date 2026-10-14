@@ -46,8 +46,9 @@ pub(super) enum Section {
     /// contact at `0` to the one at `1` and `v` along the edge's own
     /// direction; the stripe's `lines` are its two contact isocurves, with
     /// the surface's `v` as their parameter. It has no closed form to
-    /// decide an end from, so only a face across (`walked::walked_end`)
-    /// ends it.
+    /// decide an end from, so a face across (`walked::walked_end`) ends
+    /// it, or the next stripe of its chain at a tangent vertex, on the
+    /// ball's arc there (`junction`).
     Walked {
         /// The surface's `v` at the ball of the edge's start, then of its
         /// end.
@@ -56,6 +57,10 @@ pub(super) enum Section {
         /// ball's centre where it points away from it on the table's
         /// cylinder: the blend's face is then the other way round.
         flipped: bool,
+        /// The centre of the ball whose arc is the surface's isocurve at
+        /// each of `ends`: where a chain's next stripe shares that arc at a
+        /// tangent vertex (ADR-0035 §3).
+        centres: [Point3; 2],
     },
 }
 

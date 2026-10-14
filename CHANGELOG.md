@@ -13,10 +13,13 @@ into its version (ADR-0027).
   between a plane and a cylinder): the blend is a NURBS surface within your
   tolerance of the ball's exact path, its contacts on both faces. A closed
   edge, or an open one whose ends meet a plane, cylinder or cone, blends;
-  a radius past the free-form face's curvature is refused as too large,
-  two free-form faces and a blend that meets another blend at a vertex,
-  or whose faces turn tangent at an end, are still refused by name. It
-  does not take `chamfer` yet.
+  a tangent chain runs on through such an edge into its neighbours (a
+  slot whose round end is free-form, cylinders crossing in a loop of two
+  edges). A radius past the free-form face's curvature is refused as too
+  large; two free-form faces, a blend that meets another blend at a sharp
+  vertex, a chain that turns tangent along a curve across the vertex (a
+  flat running into a torus), and an edge whose faces turn tangent at an
+  end are still refused by name. It does not take `chamfer` yet.
 - `mass_properties`, `surface_properties` and the checker's volume row
   integrate a NURBS face at every one of its knots up to 4096 a direction
   (256 before): a face with more spans, such as a blend along a long curved

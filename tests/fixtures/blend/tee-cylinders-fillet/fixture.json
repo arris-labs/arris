@@ -1,5 +1,5 @@
 {
-  "description": "a vertical cylinder of radius 1 and a horizontal one of radius 0.6 from its axis out along +x, fused, the edge where the branch meets the trunk filleted at r 0.1 at (0.8, 0, 0.6): two cylinders with crossing axes meet along a quartic, and the blend between them has no closed form. Open CASCADE builds it. The loop is two edges at a vertex, each a walked stripe (ADR-0062), and a walked stripe meets another blend only once the chain junction takes walked members (plans/nurbs-face-blend step 5b): until then Arris refuses the vertex as VertexBlend, naming both edges and the vertex.",
+  "description": "a vertical cylinder of radius 1 and a horizontal one of radius 0.6 from its axis out along +x, fused, the edge where the branch meets the trunk filleted at r 0.1 at (0.8, 0, 0.6): two cylinders with crossing axes meet along a quartic, and the blend between them has no closed form. The loop is two edges at two vertices, each a walked stripe (ADR-0062), and the two meet at each vertex on the ball's arc there, the chain junction of two walked members (plans/nurbs-face-blend step 5b). Open CASCADE builds it as a walked B-spline too, whose ball misses the two cylinders by 1.5e-5 at the median of its samples and 5.4e-5 at worst, where Arris' holds them to 3e-9; over the blend's area that is the 3.6e-6 (1.7e-7 relative) its volume lies below Arris' and the 6.5e-7 its area does. The measure tolerances are widened to cover it, under the 1e-6 ADR-0015 asks of a claimed difference (no closed form holds the blend)",
   "params": {
     "r": 0.1
   },
@@ -68,8 +68,8 @@
       "expect": "in"
     }
   ],
+  "tolerances": {"volume_rel": 5e-7, "area_rel": 1e-6, "centroid_abs": 1e-6, "inertia_rel": 1e-6},
   "analytic": {
-    "expect_error": "vertex-blend",
     "genus": 0
   }
 }

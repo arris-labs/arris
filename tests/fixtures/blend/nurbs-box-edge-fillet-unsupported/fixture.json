@@ -1,0 +1,44 @@
+{
+  "description": "the box [0, 3] × [0, 2] × [0, 2] with every face converted to its B-spline, written by tools/oracle/occt_nurbs_blend.py: one top edge filleted at r 0.2. Its two faces are both NURBS, so the ball's spine is the section of two fitted offsets, NURBS against NURBS, which the cycle's third item takes: Arris refuses it as Unsupported naming both faces, where Open CASCADE builds it (plans/nurbs-face-blend step 5b)",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "nurbs-box.step",
+      "sha256": "6f8dfe4a177ab769bd94a73a47fc63ef4914a1df054aba61c0b02e8ed2f50a5c",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          1.5,
+          0,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        1.5,
+        1,
+        1
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "unsupported",
+    "genus": 0
+  }
+}

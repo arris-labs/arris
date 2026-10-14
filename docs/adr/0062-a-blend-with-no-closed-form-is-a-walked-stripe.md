@@ -205,6 +205,36 @@ with its Python class, `GeomOffsetFoldsError`.
   spans (`MAX_FIT_SPANS`). Walking is tried for a fillet only, after
   the table's `Unsupported`; a walked stripe meets no other blend yet
   (plan step 5b), and a vanishing end is `TangentChain`.
+- **Step 5b (the chain junction).** A walked stripe meets the next
+  stripe of its chain at a tangent vertex as a table stripe does
+  (ADR-0035 §3): on the ball's arc in the vertex's normal plane, its
+  surface's isocurve at the end `v`, the junction's circle given a pcurve
+  on it by projection. A miter or a corner against a walked stripe stays
+  `VertexBlend`. The two balls are one only where the face that turns
+  is tangent to its predecessor along a curve the normal plane holds, a
+  ruling of a cylinder. Where it turns tangent along a curve the plane
+  crosses (an annulus running into a torus along a circle), the ball
+  touching the true faces rides off the table's by the second order of
+  the contact's offset from that curve. A walked run whose points or
+  ball miss by more than the tolerance is then `VertexBlend`, not the
+  fault it is between two table runs.
+- **Step 5b (what holds a walked fixture).** Open CASCADE's blend with no
+  closed form is walked too, and it misses the exact ball by more than
+  its tolerance claims. At 451 samples of each blend surface, Arris'
+  holds the ball at `r` from both faces to `1e-8`. Open CASCADE's misses
+  it by a median of `1.5e-5` (the tee), `2.1e-5` (a bicubic top, at its
+  default approximation and at `1e-8` alike) and `1.4e-4` (the drilled
+  torus). Over the blend's area, that is the whole of the gap between
+  the two bodies' measures, `1e-7` to `3e-6` relative. ADR-0015's
+  `measure_differs` needs a closed form, and none holds such a blend.
+  So a walked fixture may widen its measure tolerances to cover the
+  oracle's measured miss, up to `1e-5` relative. Its description states
+  both kernels' miss of the ball at the same samples. Counts, genus,
+  probes and the read-back stay the oracle's. A miss of the ball wider
+  than that, or one Arris shares, is a finding, not a tolerance. A wrong
+  radius, junction or end moves the measures by `1e-3` and more, which
+  `1e-5` still catches. The cap is the price of a second oracle that
+  ADR-0015 left open for a band with no closed form.
 
 ## Alternatives considered
 

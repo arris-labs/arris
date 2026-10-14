@@ -470,9 +470,11 @@ fn join_blends(
     let mut corners: Vec<Corner> = Vec::new();
     let mut corner_at: BTreeMap<VertexId, usize> = BTreeMap::new();
     for (&v, es) in at_vertex {
-        // A walked stripe meets no other blend at a vertex yet: its end is
-        // cut by the face across only.
+        // A walked stripe meets another blend only at a tangent vertex of
+        // its chain, on the ball's arc there; a miter or a corner patch
+        // has no closed form against it.
         if es.len() > 1
+            && !junctions.contains(&v)
             && es.iter().any(|e| {
                 index_of
                     .get(e)

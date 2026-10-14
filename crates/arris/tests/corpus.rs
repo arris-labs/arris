@@ -937,16 +937,27 @@ corpus_tests! {
     /// centre locus that is no circle, `Unsupported` where Open CASCADE builds
     /// it (ADR-0036 §4).
     blend_oblique_cut_cone_fillet => run "blend/oblique-cut-cone-fillet";
-    /// A half cone's ruling on the end plane through its apex, filleted:
-    /// `Unsupported`, the pair outside the table, where Open CASCADE builds it.
+    /// A half cone's ruling on the end plane through its apex, filleted: the
+    /// pair outside the table, a walked stripe.
     blend_half_cone_ruling_fillet => run "blend/half-cone-ruling-fillet";
     /// The branch of a tee of two cylinders with crossing axes filleted along
-    /// the quartic they meet in: `Unsupported`, where Open CASCADE builds it.
+    /// the quartic they meet in: two walked stripes meeting at two
+    /// junctions.
     blend_tee_cylinders_fillet => run "blend/tee-cylinders-fillet";
     /// A torus drilled parallel to its axis and off it, the bore's edge
-    /// filleted: a torus against a cylinder off its axis, `Unsupported`, where
-    /// Open CASCADE builds it.
+    /// filleted: a torus against a cylinder off its axis, two walked stripes
+    /// meeting at two junctions.
     blend_drilled_torus_fillet => run "blend/drilled-torus-fillet";
+    /// A box whose top is a bicubic B-spline, one top edge filleted: a
+    /// walked stripe on a NURBS face, a plane across each end.
+    blend_bicubic_top_box_edge_fillet => run "blend/bicubic-top-box-edge-fillet";
+    /// A cylinder capped by a NURBS sphere, its rim filleted: a walked ring.
+    blend_nurbs_cap_cylinder_rim_fillet => run "blend/nurbs-cap-cylinder-rim-fillet";
+    /// A plate's U slot whose round end is NURBS, its rim filleted: a table
+    /// stripe, a walked stripe and a table stripe meeting at two junctions.
+    blend_nurbs_slot_plate_rim_fillet => run "blend/nurbs-slot-plate-rim-fillet";
+    /// An edge between two NURBS faces: `Unsupported`, NURBS against NURBS.
+    blend_nurbs_box_edge_fillet_unsupported => run "blend/nurbs-box-edge-fillet-unsupported";
     /// The D-notch with its circle's centre off the side face's plane: the open
     /// arc ends on a plane parallel to the cylinder's axis and off it, which
     /// cuts the torus in a spiric section, traced and fitted between the two
@@ -1131,33 +1142,33 @@ corpus_tests! {
     /// B-spline face and a torus filleted alone at the battery's radius: a
     /// blend on a NURBS face, both ends on the B-spline's domain boundary
     /// with a cylinder across.
-    #[ignore = "Unsupported(NURBS surface × torus surface): no walked stripe yet (plans/nurbs-face-blend); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, of negative volume and area"]
+    #[ignore = "TangentChain at v84: the faces turn tangent there within the edge's tolerance, a vanishing end the walked stripe does not end on yet (plans/nurbs-face-blend step 9); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, of negative volume and area"]
     regression_nist_ctc_05_ap203_nurbs_torus_fillet => run "regression/nist-ctc-05-ap203-nurbs-torus-fillet";
     /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
     /// face one rational Bézier patch.
-    #[ignore = "Unsupported(NURBS surface × torus surface): no walked stripe yet (plans/nurbs-face-blend); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, 29 mm³ larger than the unfilleted part where a convex fillet removes about 2"]
+    #[ignore = "Unsupported(f109 NURBS × f111 torus): a spine or an end the walked stripe does not decide, not yet looked at (plans/nurbs-face-blend steps 9 and 10); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, 29 mm³ larger than the unfilleted part where a convex fillet removes about 2"]
     regression_nist_ctc_05_ap242_nurbs_torus_fillet => run "regression/nist-ctc-05-ap242-nurbs-torus-fillet";
     /// NIST FTC-10's solid #6434, the closed edge where two cylinders whose
     /// axes cross off each other meet in a quartic, written as a B-spline,
     /// filleted alone.
-    #[ignore = "Unsupported(NURBS curve × cylinder surface): the table holds no such pair and no walked stripe exists yet (plans/nurbs-face-blend)"]
+    #[ignore = "read-back: the walked ring builds with the oracle's counts, its volume 3e-9 and area 2e-9 relative off Open CASCADE's, past the fixture's 1e-9 (the oracle's blend is walked too), which ADR-0062's step 5b amendment lets the fixture's tolerances cover once its miss of the ball is measured (plans/nurbs-face-blend step 10)"]
     regression_nist_ftc_10_cylinder_pair_bspline_fillet => run "regression/nist-ftc-10-cylinder-pair-bspline-fillet";
     /// NIST FTC-11's AP242 edition 2 solid #1299, a plane-against-cylinder
     /// edge written as a B-spline that hides a circle, filleted alone.
-    #[ignore = "Unsupported(NURBS curve × plane surface): the ring takes a circle and no walked stripe exists yet (plans/nurbs-face-blend)"]
+    #[ignore = "TooLarge(e1, f37): the walked arc meets its two lines at the slot's tangent vertices, and a line's contact is found leaving its face, not yet looked at (plans/nurbs-face-blend step 10)"]
     regression_nist_ftc_11_ap242_bspline_circle_fillet => run "regression/nist-ftc-11-ap242-bspline-circle-fillet";
     /// NIST CTC-01's solid #101, the elliptic crease where two equal
     /// cylinders whose axes meet cross, filleted alone.
-    #[ignore = "Unsupported(cylinder surface × cylinder surface): the ball's centre runs on an ellipse and no walked stripe exists yet (plans/nurbs-face-blend, docs/BACKLOG.md)"]
+    #[ignore = "TangentChain at v211: the cylinders turn tangent there, a vanishing end, and v113 is a fan of two planes, which a walked stripe does not end on yet (plans/nurbs-face-blend step 9)"]
     regression_nist_ctc_01_crossing_cylinders_crease_fillet => run "regression/nist-ctc-01-crossing-cylinders-crease-fillet";
     /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
     /// B-spline edge that hides a circle, and a line, around a slot's end.
-    #[ignore = "Unsupported(NURBS curve × plane surface) at the chain's B-spline edge: no walked stripe, and no chain junction with one, yet (plans/nurbs-face-blend)"]
+    #[ignore = "Unsupported(e24 cylinder × f17 cylinder): the chain's junctions hold, and the line's end on a cylinder across is a pair the table's ends do not take (plans/nurbs-face-blend step 10)"]
     regression_nist_ftc_11_ap242_slot_chain_fillet => run "regression/nist-ftc-11-ap242-slot-chain-fillet";
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
     /// plane meets oblique cylinders.
-    #[ignore = "Unsupported(NURBS curve × plane surface) at the chain's first B-spline edge: the plane against an oblique cylinder has no closed form, and no walked stripe or chain junction with one exists yet (plans/nurbs-face-blend)"]
+    #[ignore = "VertexBlend(e184, e274, v167): the chain's junctions hold, and a sharp corner where it meets another blended edge is one the walked stripe does not take (plans/nurbs-face-blend non-goals)"]
     regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
@@ -1594,6 +1605,10 @@ corpus_tests! {
     /// pcurve for minutes and then refuses it.
     #[ignore = "reader: no pcurve, #21 on face #149, the fit's normal equations singular on Open CASCADE's walked blend surface after minutes of fitting (docs/BACKLOG.md, a walked blend's file)"]
     regression_bead_root_fillet_occt_step => run "regression/bead-root-fillet-occt-step";
+    /// Open CASCADE's own STEP of `blend/nurbs-cap-cylinder-rim-fillet`, read
+    /// as a part: its blend walked round the rim as a B-spline surface.
+    #[ignore = "reader: not finished after 11 minutes on Open CASCADE's walked blend surface (docs/BACKLOG.md, a walked blend's file)"]
+    regression_nurbs_cap_cylinder_rim_fillet_occt_step => run "regression/nurbs-cap-cylinder-rim-fillet-occt-step";
     /// Open CASCADE's STEP of a cylinder capped by a spherical dome, converted
     /// to B-splines: the cap's pole a vertex the reader finds no singular row
     /// for.

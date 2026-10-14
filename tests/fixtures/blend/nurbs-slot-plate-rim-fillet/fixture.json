@@ -1,0 +1,67 @@
+{
+  "description": "the plate [0, 10] × [0, 6] × [0, 2] with a U slot 2 wide cut in from x = 10, its round end the half cylinder of radius 1 about (5, 3) converted to its exact rational B-spline and sewn back, written by tools/oracle/occt_nurbs_blend.py: the slot's top rim filleted at r 0.25 from its line on y = 2. The chain runs on at two tangent vertices, (5, 2, 2) and (5, 4, 2), through the half circle on the NURBS face into the line on y = 4: a table stripe, a walked stripe (ADR-0062) and a table stripe, meeting on the ball's arcs in the planes x = 5 (ADR-0035 §3), each line's far end cut by the plate's face x = 10 (plans/nurbs-face-blend step 5b). Arris' blend holds the ball at r from both faces to 3e-9 at the median of 451 samples; Open CASCADE's misses it by 2.5e-7 at the median and 6.5e-7 at the 90th percentile, so its measures lie 2.3e-9 relative from Arris' STEP read back, and agree with it to 4e-11 when it is asked to approximate to 1e-8. The measure tolerances cover that miss (ADR-0062, a walked fixture)",
+  "params": {
+    "r": 0.25
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "nurbs-slot-plate.step",
+      "sha256": "536cb43af989cb55dcb40d02b7759c6a6f297e4baeb8ed6692b68a8a4133c81d",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          7.5,
+          2,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        3,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "line_corner_gone",
+      "point": [
+        7.5,
+        1.97,
+        1.97
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "round_corner_gone",
+      "point": [
+        3.97,
+        3,
+        1.97
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 1e-08,
+    "centroid_abs": 1e-07,
+    "inertia_rel": 1e-08
+  },
+  "analytic": {
+    "genus": 0
+  }
+}

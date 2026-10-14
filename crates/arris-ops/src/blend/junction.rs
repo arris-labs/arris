@@ -35,14 +35,37 @@ pub(super) struct RunAt<'a> {
     pub(super) convex: bool,
     pub(super) tolerance: f64,
     pub(super) surface: &'a Surface,
-    /// The edge's parameter there, which the contacts share.
+    /// The edge's parameter there, which the contacts share; a walked
+    /// stripe's surface `v`.
     pub(super) t: f64,
+    /// `true` for a walked stripe (ADR-0062), whose ball at the vertex is
+    /// the one touching its own faces there, not the closed forms' shared
+    /// one: a face that turns tangent along a curve the vertex's normal
+    /// plane does not hold puts the two balls apart.
+    pub(super) walked: bool,
 }
 
 impl<'a> Run<'a> {
     pub(super) fn at(self, m: &Model, vertex: VertexId) -> Result<RunAt<'a>, OpError> {
         match self {
             Run::Line(s) => {
+                // A walked stripe's contacts run on the surface's `v`: there,
+                // the surface's isocurve is the ball's arc (ADR-0062).
+                if let Section::Walked { ends, centres, .. } = s.section {
+                    let j = usize::from(s.start != vertex);
+                    let t = ends[j];
+                    return Ok(RunAt {
+                        edge: s.edge,
+                        faces: s.faces,
+                        points: s.lines.each_ref().map(|line| line.point(t)),
+                        centre: Some(centres[j]),
+                        convex: s.convex,
+                        tolerance: s.tolerance,
+                        surface: &s.surface,
+                        t,
+                        walked: true,
+                    });
+                }
                 let t = parameter_at(m, s.edge, vertex)?.ok_or(invariant("a line edge's curve"))?;
                 let mut points = [Point3::origin(); 2];
                 for (p, line) in points.iter_mut().zip(&s.lines) {
@@ -56,13 +79,14 @@ impl<'a> Run<'a> {
                         Section::Round { axis_origin, .. } => Some(axis_origin + t * s.d),
                         Section::Flat => None,
                         Section::Walked { .. } => {
-                            return Err(invariant("closed-form stripes at a junction"));
+                            return Err(invariant("a walked stripe read at its `v`"));
                         }
                     },
                     convex: s.convex,
                     tolerance: s.tolerance,
                     surface: &s.surface,
                     t,
+                    walked: false,
                 })
             }
             Run::Arc(r) => {
@@ -81,6 +105,7 @@ impl<'a> Run<'a> {
                     tolerance: r.tolerance,
                     surface: &r.surface,
                     t,
+                    walked: false,
                 })
             }
         }
@@ -108,9 +133,13 @@ impl<'a> Run<'a> {
 /// vertex's third edge `w`, which is shortened there. The arc between them
 /// is the ball's great circle through `q` and `p` for fillets, square to
 /// the edges' common direction, or the chord from `q` to `p` for chamfers;
-/// every pcurve of it exact. Two runs whose points or ball centres differ
-/// by more than their tolerance, or one convex and one concave, is an
-/// internal fault the tangent-vertex test makes unreachable; a `w` shorter
+/// every pcurve of it exact but on a walked stripe, where it is fitted
+/// near the surface's isocurve there (ADR-0062). Two closed-form runs whose
+/// points or ball centres differ by more than their tolerance, or one
+/// convex and one concave, is an internal fault the tangent-vertex test
+/// makes unreachable; with a walked run among them the points or centres
+/// apart are `BlendReason::VertexBlend`, the balls touching their own
+/// faces at the vertex being two (`RunAt::walked`); a `w` shorter
 /// than the cut is `BlendReason::TooLarge`. Runs that share no face, met at
 /// a vertex of four edges where both faces turn (ADR-0039 §2), meet the
 /// same way with `q` on a second tangent edge, cut there too: each contact
@@ -241,9 +270,17 @@ pub(super) fn junction(
     if ra.convex != rb.convex {
         return Err(invariant("both runs of a junction convex or both concave"));
     }
+    // The closed forms' runs meet within their tolerance wherever the
+    // tangent-vertex test holds; a walked run's ball may not (the field's
+    // doc), which is a junction no shared arc makes: refused by name.
+    let walked = ra.walked || rb.walked;
     let meet = |pa: Point3, pb: Point3, what: &'static str| {
         if (pa - pb).norm() > tolerance {
-            return Err(invariant(what));
+            return Err(if walked {
+                vertex_blend()
+            } else {
+                invariant(what)
+            });
         }
         Ok(pa + (pb - pa) * 0.5)
     };
@@ -270,7 +307,11 @@ pub(super) fn junction(
             let (x, y) = (q - centre, p - centre);
             let radius = x.norm();
             if (y.norm() - radius).abs() > tolerance {
-                return Err(invariant("the ball touching both faces across"));
+                return Err(if walked {
+                    vertex_blend()
+                } else {
+                    invariant("the ball touching both faces across")
+                });
             }
             let Some(normal) = UnitVec3::try_new(x.cross(&y), tol.linear) else {
                 return Err(invariant("a junction arc of positive angle"));

@@ -36,6 +36,7 @@ arris-debug.workspace = true
 arris-io = { path = "../arris-io" }
 arris-mesh = { path = "../arris-mesh" }
 proptest.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

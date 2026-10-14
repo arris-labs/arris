@@ -1090,9 +1090,14 @@ surface with that face traced and fitted (`walked_end`, then the
 closed-form ends' own `finish_end`): a plane, cylinder or cone across. A
 closed edge is a `Ring` with `across` set: the loop is the stripe's with the
 two ends one seam, the ball's arc at the edge's vertex, and the faces' own
-seams cut to the contacts as the table's ring does. A walked stripe that
-meets another blend at a vertex, a face across that is NURBS, a cusp or a
-fan, and an end where the faces turn tangent are refused by name
+seams cut to the contacts as the table's ring does. At a tangent vertex
+of its chain a walked stripe meets the next stripe, table or walked, as the
+table's do (`junction`): on the ball's arc in the vertex's normal plane,
+its surface's isocurve at the end `v`. Where the two runs' balls there are
+not one within the tolerance, a face turning tangent along a curve that
+plane crosses, the vertex is `VertexBlend`. A walked stripe at a miter or a
+corner, a face across that is NURBS, a cusp or a fan, and an end where the
+faces turn tangent are refused by name
 (`VertexBlend`, `Unsupported`, `TangentChain`); two NURBS faces are
 `Unsupported`. A radius past a principal radius is `BlendTooLarge`. Chamfers
 are not walked yet.

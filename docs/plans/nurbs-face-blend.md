@@ -362,24 +362,59 @@ bound has to be established here.
     edge past the vertex. Three `blend/` fixtures that expected
     `Unsupported` (`chain-through-torus-unsupported`, `tee-cylinders-fillet`,
     `drilled-torus-fillet`) now refuse at the vertex, `vertex-blend`.
-- [ ] Step 5b **[3]** — **Chain junctions, the vanishing end and the
-  synthetic fixtures.**
+- [x] Step 5b **[3]** — **Chain junctions and the synthetic fixtures.**
+  *(The vanishing end moved to step 9 by this commit: it unblocks no
+  fixture before CTC-01's fan end, which is step 9's, and CTC-05's oracle,
+  which is step 10's.)*
   - A tangent vertex where the chain goes on: the walked stripe ends on
-    the ball's arc in the vertex's normal plane, exact, the spine's end
-    pinned to that ball's centre; the chain's next stripe, table or
-    walked, shares the arc; `blend/chain.rs` and `junction.rs` take
-    `Section::Walked` members (the guard in `join_blends` goes).
-  - The vanishing end (open question below): CTC-05's v84 and CTC-01's
-    tangent end.
+    the ball's arc in the vertex's normal plane, its surface's isocurve at
+    the end `v`; the chain's next stripe, table or walked, shares the arc;
+    `junction.rs` takes `Section::Walked` members (the guard in
+    `join_blends` keeps only miters and corners).
   - Fixtures in `blend/` with Open CASCADE's fillet as oracle and the
-    checker at `Full`, built by oracle scripts beside
-    `occt_bicubic_dome.py`: a box whose top is a bicubic patch with one
-    top edge filleted; a NURBS cap on a cylinder; a plate with a slot
-    whose round end is the NURBS twin of its cylinder, the slot's rim
-    filleted (a chain of a table stripe, a walked stripe and a table
-    stripe at two tangent vertices); a radius past the dome's least
-    radius, `BlendTooLarge`; two NURBS faces, `Unsupported`. The Rust
-    tests of step 5 stay as the closed-form twin checks.
+    checker at `Full`, their operands written by
+    `tools/oracle/occt_nurbs_blend.py`: a box whose top is a bicubic patch
+    with one top edge filleted; a NURBS cap on a cylinder; a plate with a
+    slot whose round end is NURBS, the slot's rim filleted (a chain of a
+    table stripe, a walked stripe and a table stripe at two tangent
+    vertices); two NURBS faces, `Unsupported`. The Rust tests of step 5
+    stay as the closed-form twin checks.
+
+  **Done (2026-10-14).** `Section::Walked` carries its end balls'
+  centres, and `Run::at` reads a walked stripe at its `v` end. A Rust twin
+  check, the bar whose wall runs into a quarter cylinder with that
+  cylinder twinned, agrees with the table's cylinder-into-torus to `1e-8`.
+  Measured and found:
+  - **The balls are two where a face turns tangent along a curve the
+    normal plane crosses.** `chain-through-torus`'s annulus runs into its
+    torus along a circle, and the walked ball rides 1.5e-6 off the
+    table's at the vertex. A walked run whose points or ball miss is
+    `VertexBlend` (ADR-0062 amendment), not the junction's internal fault.
+    The fixture stays a refusal; walking the chain as one is a backlog
+    line.
+  - **A contact on a periodic NURBS face was placed at the wrong turn.**
+    `walked_contacts` read the edge's pcurve at the contact's `v`, not at
+    the edge's own parameter. On a twinned cylinder that put the contact
+    six turns away and refused it as `BlendTooLarge`.
+  - **Open CASCADE's walked blend misses the ball.** At 451 samples, Arris'
+    blend holds `r` to `1e-8`. Open CASCADE's misses by a median of
+    `1.2e-7` (the cap), `2.5e-7` (the slot), `1.5e-5` (the tee), `2.1e-5`
+    (the bicubic top, at `1e-8` approximation too) and `1.4e-4` (the
+    drilled torus). That is the whole gap in measures, `2e-9` to `3e-6`
+    relative. ADR-0062's amendment lets a walked fixture widen its
+    tolerances to the oracle's measured miss, up to `1e-5`, with both
+    misses in its description. `tee-cylinders-fillet` and
+    `drilled-torus-fillet` now build and hold to it; they were refusals at
+    the vertex.
+  - **A radius past a face's reach** is not an oracle fixture. Open
+    CASCADE refuses it too: the cap at r 4.5 and 9, the bicubic box at
+    r 4. So no `expected.json` can be written, and step 5's twinned-wall
+    test holds `BlendTooLarge`.
+  - The census's chains now pass their junctions. FTC-11's `e0` stops at
+    `BlendTooLarge(e1, f37)` on a line's contact. Its `e24` stops at a
+    line's end on a cylinder across, which the table's ends do not take.
+    CTC-02 stops at a sharp corner (`VertexBlend`). Each ignore reason
+    says so, for step 10.
 - [ ] Step 6 **[3]** — **S5 on a walked blend's tangent neighbours.** A
   NURBS blend against the analytic face it touches along a contact has a
   double zero along the isoline `u = 0` (or `u = 1`) to within the fit.
@@ -414,6 +449,11 @@ bound has to be established here.
   - a torus against a cylinder off its axis;
   - a cylinder against a sphere;
   - the B-spline edge between a plane and a cylinder that step 1 shrank.
+
+  CTC-01 needs its two ends: a fan of two planes at v113, and at v211 a
+  **vanishing end** (moved here from step 5b, open question below), where
+  the faces turn tangent within the edge's tolerance. CTC-05's v84 is the
+  same end.
 
   The backlog's lines 47 and 50 are updated or removed in this commit.
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
@@ -469,7 +509,9 @@ bound has to be established here.
   span carried on. Step 1 found it needed: CTC-05's ball reaches past
   both ends by r, a tenth of the domain's width.
 - ⚠ OPEN: what holds CTC-05's two fixtures, since Open CASCADE builds an
-  invalid body in both editions (step 1). The candidates are the two
+  invalid body in both editions (step 1). A walked fixture whose oracle is
+  only inaccurate is settled by ADR-0062's step 5b amendment; an invalid
+  body is not. The candidates are the two
   editions agreeing with each other and the part's own volume less a
   fillet deficit integrated independently along the spine; there is no
   closed form. **Agent**, at step 10, with ADR-0015's evidence where the
@@ -486,6 +528,6 @@ bound has to be established here.
   are growing the vertex's tolerance to the end arc's contacts (9.9e-3 on
   CTC-05, past the edge's 7.7e-3) under ADR-0060's operation bound, or
   refusing the end by name. Step 5 refuses it (`TangentChain`).
-  **Agent**, at step 5b.
+  **Agent**, at step 9 (moved from 5b, where it unblocked nothing).
 - The spine's trace on CTC-05 against the ADR-0026 §6 budget (60 s):
   **closed** at step 3, which traces it in 0.53 s.

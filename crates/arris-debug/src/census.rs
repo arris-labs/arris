@@ -1383,7 +1383,7 @@ mod tests {
     }
 
     #[test]
-    fn crossing_cylinders_are_refused_by_their_pair() {
+    fn crossing_cylinders_blend_as_walked_stripes() {
         let mut m = Model::default();
         let (a, _) =
             primitive_cylinder(&mut m, Axis::z_at(Point3::new(0.0, 0.0, -2.0)), 1.0, 4.0).unwrap();
@@ -1391,21 +1391,11 @@ mod tests {
         let (b, _) = primitive_cylinder(&mut m, along_x, 0.6, 4.0).unwrap();
         let (cross, _) = fuse(&mut m, a, b).unwrap();
         let c = blend_census(&m, cross, "cross").unwrap();
-        // The quartic loop is two walked stripes (ADR-0062) that meet at a
-        // vertex, which no walked stripe does yet (plan step 5b).
-        let refused = "Degenerate: VertexBlend";
-        assert!(
-            c.alone.get(refused).copied().unwrap_or(0) >= 1,
-            "the quartic edge meets its neighbour at a vertex: {:?}",
-            c.alone
-        );
-        assert!(!c.alone.contains_key(PANICKED), "{:?}", c.alone);
-        let table = markdown(&[("cross".to_string(), vec![c.clone()])]);
-        if let Some(first) = &c.sample {
-            if first != BUILT {
-                assert!(table.contains(first), "{table}");
-            }
-        }
+        // The quartic loop is two walked stripes (ADR-0062) that meet at
+        // their two vertices on the ball's arcs (plan step 5b): every
+        // sampled edge builds.
+        assert_eq!(c.sample.as_deref(), Some(BUILT));
+        assert_eq!(c.alone, BTreeMap::from([(BUILT.to_string(), 3)]));
     }
 
     /// The committed CTC-01's sample is refused at the crease of two
@@ -1905,10 +1895,11 @@ mod tests {
         let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
         let solids = census_file(&file, &|_| true).unwrap();
         let edges: Vec<&RunOverEdge> = solids.iter().flat_map(|s| &s.vertex_blend).collect();
-        // Three edges are refused at the jump. Four more edges, chained to a walked stripe's neighbour, meet it at a vertex
-        // of three, which no walked stripe takes yet (plan step 5b): they
-        // were `Unsupported` before the walked stripe stood where the
-        // table's refusal did.
+        // Three edges are refused at the jump. Four more edges, chained to
+        // a walked stripe's neighbour, meet it at a sharp vertex of three,
+        // a miter, which a walked stripe does not take (ADR-0062, step 5b
+        // amendment): they were `Unsupported` before the walked stripe
+        // stood where the table's refusal did.
         const JUMP: &str = "a dihedral jump on a collinear run; edge plane × plane";
         let (jumps, meets): (Vec<_>, Vec<_>) = edges.into_iter().partition(|e| e.cause == JUMP);
         assert_eq!(jumps.len(), 3, "{jumps:?}");

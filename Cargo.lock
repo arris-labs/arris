@@ -187,6 +187,7 @@ dependencies = [
  "arris-topo",
  "proptest",
  "rayon",
+ "serde_json",
  "thiserror",
 ]
 

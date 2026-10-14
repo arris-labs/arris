@@ -1,0 +1,27 @@
+{
+  "description": "Open CASCADE's own STEP of blend/nurbs-cap-cylinder-rim-fillet (a cylinder capped by a NURBS sphere, its rim filleted at r 0.5), read as a part: its blend is a B-spline surface walked round the rim. Arris's reader had not finished it after 11 minutes in the test profile (plans/nurbs-face-blend step 5b, found by the read-back stage). The desired assertion: it reads, quickly, and matches Open CASCADE's reading.",
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "operand.step",
+      "sha256": "f7fc3313ab4e997e399bd99bea9d747dce40fa1c85b385233f8e0f9629d189a4",
+      "id": 15
+    }
+  ],
+  "result": "part",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

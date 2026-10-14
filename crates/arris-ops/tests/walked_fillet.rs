@@ -167,3 +167,32 @@ fn two_nurbs_faces_are_unsupported() {
     let err = fillet(&mut m, twin, &[edge], 0.2).unwrap_err();
     assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
 }
+
+/// A bar whose wall runs tangentially into a quarter cylinder, that
+/// cylinder as its NURBS twin, the wall's top edge filleted: the chain
+/// runs on from the table's cylinder into a walked stripe on the twin and
+/// the two meet on the ball's arc at the tangent vertex (ADR-0035 §3), as
+/// the table's cylinder meets its torus on the original.
+#[test]
+fn a_chain_into_a_twinned_arc_meets_on_the_balls_arc() {
+    let recipe: arris_debug::fixtures::Recipe = serde_json::from_str(
+        r#"{"steps": [
+            {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+             "outer": {"start": [0, 0], "segments": [{"line_to": [3, 0]}, {"arc_to": [4, 1], "via": [3.7071067811865475, 0.2928932188134524]}, {"line_to": [0, 1]}, {"line_to": [0, 0]}]}},
+            {"name": "bar", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 1}
+        ], "result": "bar"}"#,
+    )
+    .unwrap();
+    for r in [0.1, 0.25] {
+        let chain = arris_debug::corpus::build("walked/line-into-arc", &recipe).unwrap();
+        let mut m = chain.model;
+        let bar = chain.steps["bar"].body;
+        let edge = edge_at(&m, bar, Point3::new(1.5, 0.0, 1.0));
+        let (exact, _) = fillet(&mut m, bar, &[edge], r).unwrap();
+        let wall = face_where(&m, bar, |s| matches!(s, Surface::Cylinder { .. }));
+        let twin = nurbs_twin_faces(&mut m, bar, &[wall.id]).unwrap();
+        let edge = edge_at(&m, twin, Point3::new(1.5, 0.0, 1.0));
+        let (walked, _) = fillet(&mut m, twin, &[edge], r).unwrap_or_else(|e| panic!("r {r}: {e}"));
+        agrees(&m, exact, walked);
+    }
+}

@@ -1,0 +1,59 @@
+{
+  "description": "a cylinder of radius 4 capped at height 6 by the sphere of radius 8 through its rim, the cap converted to its exact rational B-spline and sewn back, written by tools/oracle/occt_nurbs_blend.py: the rim, a circle between the NURBS cap and the cylinder meeting at 60°, filleted at r 0.5. A NURBS face against a cylinder has no closed form, so the blend is a walked ring (ADR-0062): closed, its seam the ball's arc at the rim's vertex (plans/nurbs-face-blend step 5b). Arris' blend holds the ball at r from both faces to 9e-9 at 451 samples; Open CASCADE's misses it by 1.2e-7 at the median and 9.9e-7 at the 90th percentile, so its measures lie 2.5e-9 relative from Arris' STEP read back, and agree with it to 3e-12 when it is asked to approximate to 1e-8. The measure tolerances cover that miss (ADR-0062, a walked fixture)",
+  "params": {
+    "r": 0.5
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "nurbs-cap-cylinder.step",
+      "sha256": "552b4db7bbb1b258ddde0f72f586fa9c8aa0f0cba31af971c8e0f32c88a05af3",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          4,
+          6
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        0,
+        3.97,
+        5.99
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 1e-08,
+    "centroid_abs": 1e-07,
+    "inertia_rel": 3e-08
+  },
+  "analytic": {
+    "genus": 0,
+    "occt_step_unread": "Open CASCADE's blend of the NURBS cap against the cylinder is a B-spline surface walked round the rim; Arris's reader had not finished its file after 11 minutes, which measures the reader on the walked surface, not the blend: regression/nurbs-cap-cylinder-rim-fillet-occt-step holds that reading"
+  }
+}

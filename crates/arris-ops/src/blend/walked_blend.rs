@@ -205,9 +205,13 @@ pub(super) fn walked_stripe(
     let rows = contact_rows(&skin.surface).map_err(|w| named(w, edge, faces, surfaces))?;
     let [v0, v1] = skin.ends;
     let v_mid = 0.5 * (v0 + v1);
-    let ball = spine
-        .ball(skin.spine_t(v_mid))
-        .map_err(|w| named(w, edge, faces, surfaces))?;
+    let ball_at = |v: f64| {
+        spine
+            .ball(skin.spine_t(v))
+            .map_err(|w| named(w, edge, faces, surfaces))
+    };
+    let ball = ball_at(v_mid)?;
+    let centres = [ball_at(v0)?.centre, ball_at(v1)?.centre];
     let flipped = !faces_away(&skin.surface, Point2::new(0.5, v_mid), ball.centre)?;
     let (curve_id, range) = entity
         .curve()
@@ -227,6 +231,7 @@ pub(super) fn walked_stripe(
         section: Section::Walked {
             ends: skin.ends,
             flipped,
+            centres,
         },
         frame,
         surface: Surface::Nurbs(skin.surface),
@@ -381,6 +386,12 @@ pub(super) fn walked_contacts(
     let (m, tol, samples) = (env.m, env.tol, env.samples);
     meter.tick()?;
     let e = forward(s.edge);
+    let edge_mid = m
+        .edge(s.edge)?
+        .curve()
+        .ok_or(invariant("the blended edge's curve"))?
+        .1
+        .midpoint();
     let mut contacts: Vec<Contact> = Vec::with_capacity(2);
     for (k, (&face, line)) in s.faces.iter().zip(&s.lines).enumerate() {
         let too_large = || degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
@@ -393,11 +404,12 @@ pub(super) fn walked_contacts(
         let line_tol = Tolerance::new(s.tolerance, tol.angular);
         let on_face = pcurve_on(line, range, surface, line_tol, meter).map_err(fault_of)?;
         // On a periodic face, in the translate of the face's own loop: by
-        // whole turns to the `u` of the blended edge's pcurve there.
+        // whole turns to the `u` of the blended edge's pcurve at its middle,
+        // read at the edge's own parameter, which the contact's `v` is not.
         let on_face = match surface.period()[0] {
             Some(period) => {
-                let edge_u = m.curve2(s.uses[k].pcurve)?.point(range.midpoint()).x;
-                placed(on_face, range.lo(), edge_u, Some(period))
+                let edge_u = m.curve2(s.uses[k].pcurve)?.point(edge_mid).x;
+                placed(on_face, range.midpoint(), edge_u, Some(period))
             }
             None => on_face,
         };

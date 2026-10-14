@@ -1,0 +1,58 @@
+{
+  "description": "a box over [0, 10] × [0, 6] whose top is a bicubic B-spline (5 × 5 poles, two spans each way, heights 3 to 4.2), its boundary poles in the four wall planes, written by tools/oracle/occt_nurbs_blend.py: the top edge on the wall y = 0, the B-spline isocurve v = 0, filleted at r 0.5. A NURBS face against a plane has no closed form, so the blend is a walked stripe (ADR-0062): the ball's centre on the section of the top's fitted offset and the wall's exact one, the surface fitted through its arcs, each end cut by the wall across, x = 0 and x = 10, both planes (plans/nurbs-face-blend step 5b). Arris' blend holds the ball at r from both faces to 8e-9 at 451 samples over the face; Open CASCADE's misses it by 2.1e-5 at the median and 1.1e-4 at the 90th percentile, at its default approximation and at 1e-8 alike, so its volume lies 9.8e-5 (4.8e-7 relative) and its area 2.6e-4 (1.2e-6) above Arris'. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a walked fixture (no closed form holds the blend)",
+  "params": {
+    "r": 0.5
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "bicubic-top-box.step",
+      "sha256": "97083dfec12174c19c005e12f4ea16fdb9a056b054d057f0310e95d5972ac380",
+      "id": 15
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          5,
+          0,
+          3.15
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        5,
+        3,
+        1.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        5,
+        0.05,
+        3.118
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 2e-06,
+    "centroid_abs": 1e-05,
+    "inertia_rel": 5e-06
+  },
+  "analytic": {
+    "genus": 0
+  }
+}
