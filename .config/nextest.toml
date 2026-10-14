@@ -5,6 +5,14 @@
 # "the full profile". Case counts are not a profile feature; `tools/gate.sh`
 # prints them and the hook exports them.
 
+[profile.default]
+# Nextest runs one test per process on every CPU unless told otherwise, and
+# ignores RUST_TEST_THREADS. Measured on the `fast` profile at 32 cases,
+# 2513 tests (32 CPUs, 61 GiB, peak memory <= 2.2 GiB at every count):
+# 4 threads 1285 s, 8 675 s, 16 402 s, 32 372 s. Sixteen leaves half the
+# machine to the other terminal for 8% more time than all of it.
+test-threads = 16
+
 [profile.fast]
 #
 # The slow set, from the 32-case measurement in ADR-0032: a
