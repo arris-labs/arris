@@ -9,7 +9,7 @@ use arris_geom::{
     intersect_surfaces, pcurve_on,
 };
 use arris_math::{Aabb, Interval, Meter, Point2, Point3, Tolerance, Vec3, shift_into_range};
-use arris_topo::{EdgeId, FaceId, Model, Orientation, VertexId};
+use arris_topo::{EdgeId, FaceId, Model, Orientation, Shape, VertexId};
 
 use super::build::Env;
 use super::chain::{cusp_at, parameter_at};
@@ -727,7 +727,10 @@ pub(super) fn stretch_between(
 /// that wall is trimmed where it crosses the spine and the other where it
 /// pierces the next wall on the edge's side, and both corner edges are
 /// cut (`cusp_trims`, ADR-0042). A pierce or a section that does not
-/// decide the end is `Unsupported` naming the blend and the face across.
+/// decide the end is `Unsupported` naming the blend and the face across,
+/// but a contact that misses a face across that a corner edge runs on
+/// from within the vertex's tolerance is `BlendReason::TangentChain`
+/// ([`near_tangent_corner`]).
 pub(super) fn face_end(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -907,8 +910,15 @@ pub(super) fn face_end(
                         }
                         tq
                     }
-                    Some(_) | None => pierce(q, d, surface3, (at - q).dot(&d), arc_tolerance)
-                        .ok_or_else(refuse)?,
+                    Some(_) | None => {
+                        match pierce(q, d, surface3, (at - q).dot(&d), arc_tolerance) {
+                            Some(t) => t,
+                            None => {
+                                near_tangent_corner(env, s, e, corner_edges, vertex)?;
+                                return Err(refuse());
+                            }
+                        }
+                    }
                 };
                 points[k] = q + t[k] * d;
             }
@@ -946,6 +956,50 @@ pub(super) fn face_end(
             arc_tolerance,
         },
     )
+}
+
+/// Why a contact of `s` misses the curved face across its end at
+/// `vertex`, where a corner edge of the blend's own sense has its faces
+/// tangent there within the vertex's tolerance by ADR-0040's measure,
+/// though not within their own: the face across runs on from the
+/// stripe's face, curving away from the ball, and the blend would run on
+/// round it, a chain the walk does not take — `BlendReason::TangentChain`
+/// naming `e`, the corner edge and the vertex (ADR-0062, step 10b). `Ok`
+/// where no corner edge is such, for the caller's `Unsupported`. A face
+/// across that curves back into the contact's path is pierced, and its end
+/// built, however near tangent its corner edge.
+fn near_tangent_corner(
+    env: &Env<'_>,
+    s: &Stripe,
+    e: Shape,
+    corner_edges: [EdgeId; 2],
+    vertex: VertexId,
+) -> Result<(), OpError> {
+    let m = env.m;
+    let vertex_tolerance = m.vertex(vertex)?.tolerance();
+    for w in corner_edges {
+        let entity = m.edge(w)?;
+        let Some((_, range)) = entity.curve() else {
+            continue;
+        };
+        let t = if entity.start() == vertex {
+            range.lo()
+        } else {
+            range.hi()
+        };
+        if env.view.convex(m, w)? == Some(s.convex)
+            && env
+                .view
+                .tangent_within(m, w, t, env.kind.size(), vertex_tolerance, env.tol)?
+                == Some(true)
+        {
+            return Err(degenerate(
+                vec![e, forward(w), forward(vertex)],
+                Reason::Blend(BlendReason::TangentChain),
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// An end's arc between its two trim points, the face across and the

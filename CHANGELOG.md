@@ -31,6 +31,14 @@ into its version (ADR-0027).
   fillet's do; the refusals are the fillet's. A plane against a cylinder
   along a ruling (a half disc's chord edge), which had a fillet and no
   chamfer, now chamfers the same way.
+- `fillet` and `chamfer` of an imported part whose stored (u, v) curves
+  stand off their edges within the edges' tolerance, as exporters write
+  them, now end against those edges and cut them cleanly. Before, an end
+  meeting such an edge at a grazing angle was refused as too large, or its
+  result failed the checker. An end whose face across runs on from the
+  blended edge's face within the vertex's tolerance, curving away from the
+  ball (a slot wall drawn a hair off tangent to its round end), is refused
+  as a tangent chain. It was refused as unsupported.
 - `intersect_surfaces` of a NURBS surface with an analytic one, and so
   booleans and the checker, now also take the poses where the other
   surface crosses itself on an edge of the NURBS surface, or touches an

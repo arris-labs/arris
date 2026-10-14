@@ -1157,8 +1157,9 @@ corpus_tests! {
     #[ignore = "checker: S5 leaves the walked ring undecided against seven faces beside it (six cylinders and a sphere), which the corpus no longer allows a blend since plans/nurbs-face-blend step 6; past that, the ring builds with the oracle's counts, its volume 3e-9 and area 2e-9 relative off Open CASCADE's walked blend, which ADR-0062's step 5b amendment lets the tolerances cover once its miss of the ball is measured (plans/nurbs-face-blend step 10)"]
     regression_nist_ftc_10_cylinder_pair_bspline_fillet => run "regression/nist-ftc-10-cylinder-pair-bspline-fillet";
     /// NIST FTC-11's AP242 edition 2 solid #1299, a plane-against-cylinder
-    /// edge written as a B-spline that hides a circle, filleted alone.
-    #[ignore = "TooLarge(e1, f37): the walked arc meets its two lines at the slot's tangent vertices, and a line's contact is found leaving its face, not yet looked at (plans/nurbs-face-blend step 10)"]
+    /// edge written as a B-spline that hides a circle, filleted alone: its
+    /// chain's end arc runs inside the band the file's pcurves stand off by.
+    #[ignore = "S5 undecided at Full: the walked face f48 against its chain neighbours f49 and f50, cylinders (plans/nurbs-face-blend step 10c); it builds clean at Fast and holds to Open CASCADE's measures"]
     regression_nist_ftc_11_ap242_bspline_circle_fillet => run "regression/nist-ftc-11-ap242-bspline-circle-fillet";
     /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
     /// cylinder's axis off the plane of the ball's seam, so the loop crosses
@@ -1167,12 +1168,12 @@ corpus_tests! {
     regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
     /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
     /// B-spline edge that hides a circle, and a line, around a slot's end.
-    #[ignore = "Unsupported(e24 cylinder × f17 cylinder): the chain's junctions hold, and the line's end on a cylinder across is a pair the table's ends do not take (plans/nurbs-face-blend step 10)"]
+    #[ignore = "TangentChain(e24, e60, v24): at v24 the hole f17 runs on from f18 at a convex kink of 3.9°, tangent within the vertex's tolerance, not the faces'; Open CASCADE chains through it (docs/BACKLOG.md, a chain through a vertex tangent within its tolerance)"]
     regression_nist_ftc_11_ap242_slot_chain_fillet => run "regression/nist-ftc-11-ap242-slot-chain-fillet";
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
     /// plane meets oblique cylinders.
-    #[ignore = "VertexBlend(e184, e274, v167): the chain's junctions hold, and a sharp corner where it meets another blended edge is one the walked stripe does not take (plans/nurbs-face-blend non-goals)"]
+    #[ignore = "VertexBlend(e184, e274, v167): a skew junction, the side faces f15 and f40 tangent along the ruling e183, which leaves the ball's normal plane at the vertex, so the runs' side contacts miss it and each other by 9.1e-3 (docs/BACKLOG.md, a skew tangent junction)"]
     regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which

@@ -648,7 +648,7 @@ bound has to be established here.
   `TangentChain`: the exact ball's arc is `5.5e-4` wide and `2.5e-2` from
   the vertex, past its tolerance. Both fixtures move to `blend/` as
   `tangent-chain` refusals, which settles the open question below.
-- [ ] Step 10b **[3]** — **Chain junctions on a walked member.** Three
+- [x] Step 10b **[3]** — **Chain junctions on a walked member.** Three
   fixtures refuse at a tangent vertex where the chain goes on:
   - FTC-11 `bspline-circle`: "the blend leaves its face through an edge that
     is not the corner's own" (`e1`, `f37`);
@@ -660,14 +660,44 @@ bound has to be established here.
   stripe, table beside walked), then fix step 5b's junction for it or name
   the kind of vertex it is as another item's. Depends on 10a only if the
   match tolerance there is shared. ADR-0062 amendment.
+
+  **Done (2026-10-14).** None of the three is a step 5b junction fault:
+  - **bspline-circle builds.** Its chain runs along the line e1 to v2, a
+    convex 7.3° kink where f38 stands `2.3e-3` off tangent to the boss
+    f37. The end arc across f37 meets the rim at a grazing angle inside
+    the band its read pcurves stand off by (`3.75e-3`, the rim's
+    tolerance). The side test now takes a sample within a boundary edge's
+    tolerance of it as on it, and a cut read edge's pcurves are ended on
+    the blend's exact curves there (L2). Fast clean, Open CASCADE's
+    volume, area and centroid. The counts are ADR-0038's lengthened corner
+    edge. The S5 rows go to step 10c.
+  - **slot-chain's v24 is a near-tangent vertex.** A convex 3.9° kink
+    where the hole f17 runs on from f18, tangent within the vertex's
+    `3.6e-3` but not the faces'. The hole curves away, so the contact
+    misses it. It is refused `TangentChain(e24, e60, v24)`, where it was
+    `Unsupported(cylinder × cylinder)`. Open CASCADE chains through by its
+    0.1 rad literal. Backlog line.
+  - **ellipse-chain's v167 is a skew junction.** f15 and f40 are tangent
+    along the ruling e183, which leans out of the ball's normal plane.
+    The runs' balls agree to `2.1e-4`, but their side contacts lie 0.06
+    off e183 and `9.1e-3` apart. It stays `VertexBlend`, joined to the
+    backlog's chain through a torus.
+
+  ADR-0062 amendment. The match tolerance was not shared with 10a.
+
 - [ ] Step 10c **[2]** — **S5 on a walked blend against a cylinder or a
   sphere.** `regression/nist-ftc-10-cylinder-pair-bspline-fillet` builds but
   the checker leaves eight pairs undecided (`f93`–`f96`, `f105`, `f106`,
-  `f181`, `f182`, each against the NURBS blend face `f183`). Step 6 decided S5
+  `f181`, `f182`, each against the NURBS blend face `f183`), and
+  `regression/nist-ftc-11-ap242-bspline-circle-fillet` (step 10b) two:
+  its walked face `f48` against its chain neighbours `f49` and `f50`,
+  the table stripes' cylinders, which meet it along the junction arcs. Step 6 decided S5
   on a walked blend's tangent neighbours; these meet it along the contact,
   a cylinder or sphere against the rational NURBS. Decide them from the
   contact the same way, or show why the checker may not. Acceptance holds
-  "nothing unchecked but NURBS × NURBS pairs" as written.
+  "nothing unchecked but NURBS × NURBS pairs" as written. The test
+  `a_read_rims_pcurves_standing_off_hold_an_end_arc` (`arris-ops/tests/fillet.rs`)
+  reads the FTC-11 fixture by its path and follows it out of `regression/`.
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
   on the fetched tier and `--census-committed`. Move every step 1
   fixture that now agrees out of `regression/` into `blend/` with its

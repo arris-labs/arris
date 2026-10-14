@@ -1,5 +1,5 @@
 {
-  "description": "NIST's FTC-11, its AP242 edition 2's solid #1299 alone (excerpted with tools/oracle/excerpt.py): the convex edge between the plane f0 and the cylinder f39, written as a cubic B-spline of one span that hides a circle (r 0.2151, within 9.7e-5 of the faces' own section, the edge's tolerance 2.5e-3), its ends each a vertex of three edges with a plane across (f38, f40). Filleted alone at the battery's radius. Arris refuses it Unsupported(NURBS curve \u00d7 plane surface); Open CASCADE builds it (plans/nurbs-face-blend step 1). The desired result matches Open CASCADE's",
+  "description": "NIST's FTC-11, its AP242 edition 2's solid #1299 alone (excerpted with tools/oracle/excerpt.py): the convex edge between the plane f0 and the cylinder f39, written as a cubic B-spline of one span that hides a circle (r 0.2151, within 9.7e-5 of the faces' own section, the edge's tolerance 2.5e-3), filleted alone at the battery's radius. Its chain runs on at both tangent vertices: along the line e1 to v2, a convex kink of 7.3\u00b0 where the plane f38 stands 2.3e-3 off tangent to the boss f37, its end arc across f37 at a grazing angle, inside the band the file's pcurves of f37's rim stand off its curve by (3.75e-3, the rim's tolerance); and along the line e19 to v19, a step whose corner edge e18 is lengthened to the trim. Arris builds it as Open CASCADE does, within its volume, area and centroid (plans/nurbs-face-blend step 10b); the checker at Full leaves S5 undecided for the walked face against its chain neighbours, step 10c's",
   "steps": [
     {
       "op": "step",
@@ -22,5 +22,16 @@
       "radius": 0.010499999999999999
     }
   ],
-  "result": "result"
+  "result": "result",
+  "analytic": {
+    "counts": {
+      "vertices": 78,
+      "edges": 119,
+      "faces": 45,
+      "loops": 49,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE keeps the consumed corner vertex v19 on the lengthened corner edge e18, two edges of one line between the same two faces; Arris lengthens the one edge to the trim (ADR-0038)",
+    "genus": 1
+  }
 }

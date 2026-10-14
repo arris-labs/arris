@@ -329,6 +329,50 @@ with its Python class, `GeomOffsetFoldsError`.
   oracles, the editions agreeing and a deficit integrated along the
   spine, wait for the backlog item that joins such an end; until then
   no measure is compared.
+- **Step 10b (a read edge's pcurves standing off its curve, and two
+  chain junctions named).** A read edge's pcurves may stand off its 3D
+  curve by as much as its tolerance: FTC-11's rim of the boss f37 dips
+  `3.75e-3` below the curve at its ends. A table end arc meeting that
+  rim at a grazing angle, at a 7.3° kink, runs inside the band, and the
+  side test read it as leaving the face. Two rules follow, both from the
+  model's tolerances:
+  - An end arc's or a contact's sample off its side of a face, but
+    within a boundary edge's own tolerance of that edge's curve in 3D,
+    is on that edge (`on_side_of_face`).
+  - A corner edge cut by the blend keeps its stored pcurves, so at the
+    cut they meet the blend's exact curves only within the edge's
+    tolerance, and L2 holds a junction to the parametric tolerance. The
+    shortened edge's pcurve on each face is ended on the new edge's
+    (u, v) there, by its end control point (`pcurve_ending_on`). The
+    shortened edge is already a new edge, the move is checked against its
+    tolerance at the model's samples, and its cut vertex already holds
+    that tolerance. The blend's own edges stay exact and keep theirs.
+    The boolean moves the section edge onto the operand's pave instead,
+    raising the section edge's tolerance. Here that would raise the far
+    vertex of an exact contact (E5), where the read edge already carries
+    the band.
+
+  The fillet then builds as Open CASCADE does, within its volume, area
+  and centroid. The counts differ by ADR-0038's lengthened corner edge.
+  S5 between the walked face and its chain neighbours is step 10c's.
+  Open CASCADE's chain walk allows a fixed 0.1 rad between faces it
+  calls tangent. Arris keeps ADR-0040's faces' tolerance. So FTC-11's
+  other slot vertex v24 is no chain vertex for Arris: a convex 3.9° kink
+  where the hole f17 runs on from the plane f18, tangent within the
+  vertex's `3.6e-3`, not the faces'. The hole curves away from the ball,
+  so the contact on the top never meets it. That end is now
+  `TangentChain` naming the edge, the corner edge and the vertex, where
+  it was `Unsupported` for a pair the table has.
+  Reading the vertex's tolerance in the chain walk would take v2 as
+  well. It would part from Open CASCADE there, where the boss curves back
+  into the contact and the end is built, and its junction would meet
+  balls apart by the kink. That is a backlog item, not this step's.
+  CTC-02's v167 is not a junction this design places. Its side faces
+  are tangent along a ruling that leans out of the ball's normal plane,
+  so the runs' side contacts miss the ruling, and each other by
+  `9.1e-3`. The shared ball is where the ruling's offset meets the top
+  face's offset. The refusal stays `VertexBlend`, joined to the backlog
+  line of the chain through a torus, which is the same kind of vertex.
 
 ## Alternatives considered
 

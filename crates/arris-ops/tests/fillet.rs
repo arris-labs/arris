@@ -1708,3 +1708,70 @@ fn the_face_across_met_twice_keeps_the_vertex() {
         "{err}"
     );
 }
+
+/// NIST FTC-11's B-spline edge that hides a circle, filleted alone: its
+/// chain runs on along a line to a 7.3° kink at `v2`, where the line's
+/// end arc meets the boss f37 at a grazing angle. The file's pcurves of
+/// f37's rim stand off its curve by up to 3.75e-3, the edge's tolerance:
+/// the arc runs inside that band, and the rim is cut where the arc meets
+/// it, its pcurves ended there (ADR-0062, step 10b). The result is clean
+/// at `Fast` and holds to Open CASCADE's volume, area and centroid; its
+/// counts are Arris' own (ADR-0038's lengthened corner edge), and its
+/// only unchecked rows are S5's, the walked face against its chain
+/// neighbours, which step 10c decides.
+#[test]
+fn a_read_rims_pcurves_standing_off_hold_an_end_arc() {
+    let dir = fixtures::corpus_root().join("regression/nist-ftc-11-ap242-bspline-circle-fillet");
+    let fixture = fixtures::load(&dir).unwrap();
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let (m, blended) = (&chain.model, chain.result().unwrap());
+    let report = check(m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(
+        report
+            .unchecked()
+            .iter()
+            .all(|u| matches!(u, arris_check::Unchecked::FacePair { .. })),
+        "{report}"
+    );
+    let counts = fixture.recipe.analytic.counts.unwrap();
+    let line = report.euler().unwrap();
+    assert_eq!(
+        (
+            line.vertices,
+            line.edges,
+            line.faces,
+            line.loops,
+            line.shells
+        ),
+        (
+            counts.vertices,
+            counts.edges,
+            counts.faces,
+            counts.loops,
+            counts.shells
+        )
+    );
+    corpus::measure_stage(&fixture, &chain, &fixture.expected.results["default"]).unwrap();
+}
+
+/// FTC-11's slot: the line `e24` meets the hole f17 at `v24`, a convex
+/// kink of 3.9° between f18 and f17 whose faces are tangent within the
+/// vertex's tolerance though not their own. The hole curves away from the
+/// ball, so the contact on the top never meets it: the blend would run on
+/// round the hole, a chain the walk does not take, and is refused by that
+/// name rather than as a pair with no closed form (ADR-0062, step 10b).
+#[test]
+fn a_contact_missing_a_near_tangent_face_across_is_a_tangent_chain() {
+    let dir = fixtures::corpus_root().join("regression/nist-ftc-11-ap242-slot-chain-fillet");
+    let err = match corpus::chain(&dir, "default") {
+        Err(corpus::CorpusError::Op { source, .. }) => source,
+        Err(e) => panic!("{e}"),
+        Ok(_) => panic!("the slot's line filleted alone builds"),
+    };
+    let OpError::Degenerate { entities, reason } = &err else {
+        panic!("{err}");
+    };
+    assert_eq!(*reason, Reason::Blend(BlendReason::TangentChain), "{err}");
+    assert_eq!(entities.len(), 3, "{err}");
+}

@@ -9,7 +9,8 @@ use arris_geom::{
     intersect_surfaces, pcurve_on,
 };
 use arris_math::{
-    Aabb, Frame, Interval, Meter, Point3, Tolerance, UnitVec3, Vec2, Vec3, shift_nearest,
+    Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3,
+    shift_into_range, shift_nearest,
 };
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
@@ -181,7 +182,10 @@ pub(super) fn chord(a: Point3, b: Point3, tol: Tolerance) -> Result<(Curve, Inte
 /// its face; an end arc inside the face across when the blend removes
 /// material and outside it when a concave blend adds the corner to it —
 /// either way, a curve that changes side crosses an edge of the face
-/// that is not the corner's own.
+/// that is not the corner's own. A sample off `side` within a boundary
+/// edge's own tolerance of that edge's curve, in 3D, is on that edge: a
+/// read edge's pcurve may stand off its curve by as much (ADR-0062, step
+/// 10b), and an arc ending on the edge at a grazing angle runs inside it.
 pub(super) fn on_side_of_face(
     m: &Model,
     face: FaceId,
@@ -195,11 +199,46 @@ pub(super) fn on_side_of_face(
     let n = samples.max(1);
     for i in 1..=n {
         let t = range.lerp(i as f64 / (n + 1) as f64);
-        if domain.side(pcurve.point(t)).0 != side {
+        let uv = pcurve.point(t);
+        if domain.side(uv).0 != side && !near_wide_edge(m, &domain, uv)? {
             return Ok(false);
         }
     }
     Ok(true)
+}
+
+/// `true` when the point of the domain's surface at `uv` lies within one
+/// of its boundary edges' tolerance of that edge's curve over its range,
+/// an edge as tight as the face itself never counting: the boundary band
+/// [`FaceDomain::side`] already reads.
+fn near_wide_edge(m: &Model, domain: &FaceDomain<'_>, uv: Point2) -> Result<bool, OpError> {
+    let face_tolerance = domain.tolerance();
+    let p = domain.surface().point(uv.x, uv.y);
+    for &x in domain.edges() {
+        let edge = m.edge(x)?;
+        if edge.tolerance() <= face_tolerance {
+            continue;
+        }
+        let Some((curve_id, edge_range)) = edge.curve() else {
+            continue;
+        };
+        let curve = m.curve(curve_id)?;
+        let Ok(q) = curve.project(p) else {
+            continue;
+        };
+        // Off the range, the nearer end stands for the edge: never nearer
+        // than the edge's own nearest point.
+        let nearest = match shift_into_range(edge_range, q.t, curve.period()) {
+            Some(_) => q.distance,
+            None => (curve.point(edge_range.lo()) - p)
+                .norm()
+                .min((curve.point(edge_range.hi()) - p).norm()),
+        };
+        if nearest <= edge.tolerance() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// The range of the end curve between `t_a` and `t_b` that holds

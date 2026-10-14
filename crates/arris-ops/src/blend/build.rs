@@ -2,11 +2,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_geom::{Curve, Curve2, pcurve_on};
-use arris_math::{Interval, Meter, Tolerance};
+use arris_check::domain::bands;
+use arris_geom::{Curve, Curve2, pcurve_ending_on, pcurve_on};
+use arris_math::{Interval, Meter, Point2, RELATIVE_ROUNDING, Tolerance};
 use arris_topo::builder::{EdgeKey, EdgeSpec, VertexKey, VertexSpec};
 use arris_topo::entity::EdgeGeometry;
-use arris_topo::{Body, Curve2Id, EdgeId, FaceId, Model, Orientation, Provenance, VertexId};
+use arris_topo::{
+    Body, Curve2Id, CurveId, EdgeId, FaceId, Model, Orientation, Provenance, VertexId,
+};
 
 use super::chain::{chain, cusp_at, tangent_vertex};
 use super::corner::{Corner, corner};
@@ -1120,7 +1123,7 @@ fn rewrite_faces(
     shortened: &Shortened,
     rederived: &Rederived,
 ) -> Result<(), OpError> {
-    let (m, view, ..) = ctx.parts();
+    let (m, view, _, tol, samples, meter) = ctx.parts();
     let Draft { rw, edits, .. } = draft;
     for &face in &view.faces {
         let entity = m.face(face)?;
@@ -1236,7 +1239,134 @@ fn rewrite_faces(
             loops.push(uses);
             loops.extend(inner);
         }
+        end_on_kept_pcurves(m, rw, face, &mut loops, tol, samples, meter)?;
         rw.faces.insert(face, loops);
+    }
+    Ok(())
+}
+
+/// The edge a stored use is over, its curve, range and tolerance, and
+/// whether it is an operand edge the blend shortened (`Some`, its index in
+/// the rewrite) or one it made or kept whole (`None`). `None` overall for
+/// an edge with no curve.
+type UseEdge = (CurveId, Interval, f64, Option<usize>);
+
+fn use_edge(m: &Model, rw: &Rewrite, key: EdgeKey) -> Result<Option<UseEdge>, OpError> {
+    Ok(match key {
+        EdgeKey::Kept(id) => {
+            let edge = m.edge(id)?;
+            edge.curve().map(|(c, r)| (c, r, edge.tolerance(), None))
+        }
+        EdgeKey::New(k) => match rw.edges.get(k) {
+            Some((
+                EdgeSpec::New {
+                    geometry: EdgeGeometry::Curve { curve, range },
+                    tolerance,
+                    ..
+                },
+                parent,
+            )) => Some((*curve, *range, *tolerance, parent.map(|_| k))),
+            Some(_) => None,
+            None => return Err(invariant("a stored use's edge in the rewrite")),
+        },
+    })
+}
+
+/// The loops of `face` with every shortened operand edge's stored pcurve
+/// ended where the blend's new edge meets it at the cut: a read edge's
+/// pcurve may stand off its curve by as much as the edge's tolerance,
+/// while the blend's contacts and arcs are exact, so at the cut the two
+/// would jump (L2). The shortened edge is a new edge already and keeps its
+/// tolerance, which its cut vertex holds; the move is checked against it
+/// at the model's samples (ADR-0062, step 10b). A junction within half the
+/// L2 band is left as it is, and so is one whose two points are further
+/// apart in 3D than the edge's tolerance, or a move the tolerance does not
+/// hold, for the checker to report.
+fn end_on_kept_pcurves(
+    m: &mut Model,
+    rw: &Rewrite,
+    face: FaceId,
+    loops: &mut [Vec<StoredUse>],
+    tol: Tolerance,
+    samples: usize,
+    meter: &mut Meter<'_>,
+) -> Result<(), OpError> {
+    let parametric = m.precision().parametric_tolerance;
+    let surface = m.surface(m.face(face)?.surface())?.clone();
+    let end_param = |range: Interval, o: Orientation, at_end: bool| {
+        if (o == Orientation::Forward) == at_end {
+            range.hi()
+        } else {
+            range.lo()
+        }
+    };
+    for uses in loops.iter_mut() {
+        let n = uses.len();
+        // The moved ends of each shortened use, by its place in the loop:
+        // `[range.lo(), range.hi()]`.
+        let mut moves: BTreeMap<usize, [Option<Point2>; 2]> = BTreeMap::new();
+        for i in 0..n {
+            let j = (i + 1) % n;
+            let (Some(a), Some(b)) = (
+                use_edge(m, rw, uses[i].edge)?,
+                use_edge(m, rw, uses[j].edge)?,
+            ) else {
+                continue;
+            };
+            let made = |key: EdgeKey| matches!(key, EdgeKey::New(k) if rw.edges[k].1.is_none());
+            // The shortened use and the new one, each with the parameter
+            // it meets the junction at: the end of `i`, the start of `j`.
+            let ((cut, cut_t, cut_range), (new, new_t)) = match (a.3, b.3) {
+                (Some(_), None) if made(uses[j].edge) => (
+                    (i, end_param(a.1, uses[i].orientation, true), a.1),
+                    (j, end_param(b.1, uses[j].orientation, false)),
+                ),
+                (None, Some(_)) if made(uses[i].edge) => (
+                    (j, end_param(b.1, uses[j].orientation, false), b.1),
+                    (i, end_param(a.1, uses[i].orientation, true)),
+                ),
+                _ => continue,
+            };
+            let target = m.curve2(uses[new].pcurve)?.point(new_t);
+            let at = m.curve2(uses[cut].pcurve)?.point(cut_t);
+            let bound = bands(&surface, target, parametric);
+            let d = target - at;
+            if d.x.abs() <= 0.5 * bound[0] && d.y.abs() <= 0.5 * bound[1] {
+                continue;
+            }
+            // Further apart in 3D than the shortened edge's tolerance —
+            // a whole period across a seam, which L2 takes — no move
+            // within it explains.
+            let apart = (surface.point(target.x, target.y) - surface.point(at.x, at.y)).norm();
+            let cut_tolerance = if cut == i { a.2 } else { b.2 };
+            if apart > cut_tolerance {
+                continue;
+            }
+            let slot = usize::from(cut_t != cut_range.lo());
+            moves.entry(cut).or_default()[slot] = Some(target);
+        }
+        for (cut, ends) in moves {
+            let Some((curve, range, tolerance, _)) = use_edge(m, rw, uses[cut].edge)? else {
+                return Err(invariant("a shortened use's edge has a curve"));
+            };
+            let pc = m.curve2(uses[cut].pcurve)?.clone();
+            let moved = pcurve_ending_on(&pc, range, ends, &surface, tol.linear, meter)
+                .map_err(fault_of)?;
+            let curve = m.curve(curve)?;
+            let n = samples.max(2);
+            let residual = (0..n)
+                .map(|i| range.lerp(i as f64 / (n - 1) as f64))
+                .map(|t| {
+                    let q = moved.point(t);
+                    let (on_surface, on_curve) = (surface.point(q.x, q.y), curve.point(t));
+                    (on_surface - on_curve).norm()
+                        + RELATIVE_ROUNDING * on_surface.coords.norm().max(on_curve.coords.norm())
+                })
+                .fold(0.0, f64::max);
+            if residual <= tolerance {
+                uses[cut].pcurve = m.add_curve2(moved);
+            }
+        }
     }
     Ok(())
 }

@@ -119,9 +119,27 @@ impl BodyView {
         let Some(&[ua, ub]) = self.uses.get(&edge).map(Vec::as_slice) else {
             return Ok(None);
         };
+        let tolerance = faces_tolerance(m, ua.face, ub.face)?;
+        self.tangent_within(m, edge, t, size, tolerance, tol)
+    }
+
+    /// [`BodyView::tangent_at`] with the ball moved by `tolerance` rather
+    /// than the faces' own: where a vertex's tolerance, wider than its
+    /// faces', decides what the file says meets there (ADR-0062, step 10b).
+    pub(crate) fn tangent_within(
+        &self,
+        m: &Model,
+        edge: EdgeId,
+        t: f64,
+        size: f64,
+        tolerance: f64,
+        tol: Tolerance,
+    ) -> Result<Option<bool>, OpError> {
+        let Some(&[ua, ub]) = self.uses.get(&edge).map(Vec::as_slice) else {
+            return Ok(None);
+        };
         let n1 = self.outward(m, ua.face, m.curve2(ua.pcurve)?.point(t))?;
         let n2 = self.outward(m, ub.face, m.curve2(ub.pcurve)?.point(t))?;
-        let tolerance = faces_tolerance(m, ua.face, ub.face)?;
         Ok(Some(tangent_normals(n1, n2, size, tolerance, tol)))
     }
 }
