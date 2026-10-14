@@ -30,3 +30,14 @@ not (
 """
 
 [profile.full]
+
+# `arris-debug`'s oracle_cache tests share the process-wide cache setting and
+# the oracle's scratch files, and take turns on a `Mutex` that nextest's
+# process per test does not share; at sixteen threads they raced on the
+# same STEP file ("the file ends before END-ISO-10303-21"). One at a time.
+[test-groups]
+oracle-cache = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = "binary(oracle_cache)"
+test-group = "oracle-cache"
