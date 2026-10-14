@@ -20,6 +20,17 @@ into its version (ADR-0027).
   vertex, a chain that turns tangent along a curve across the vertex (a
   flat running into a torus), and an edge whose faces turn tangent at an
   end are still refused by name. It does not take `chamfer` yet.
+- `intersect_surfaces` of a NURBS surface with an analytic one, and so
+  booleans and the checker, now also take the poses where the other
+  surface crosses itself on an edge of the NURBS surface, or touches an
+  edge without crossing into it: the first is traced from that point, the
+  second comes back as a point, or as the edge's own stretch that lies
+  within your tolerance of the other surface. Before, both were refused
+  as degenerate. The checker at `Full` now decides a free-form fillet
+  against the analytic faces beside it, but where a chain turns convex
+  from a straight stripe into a free-form one; two free-form faces
+  against each other are left undecided too. A touch that dips into the surface
+  there, and a crossing at a corner of it, are still refused by name.
 - `mass_properties`, `surface_properties` and the checker's volume row
   integrate a NURBS face at every one of its knots up to 4096 a direction
   (256 before): a face with more spans, such as a blend along a long curved

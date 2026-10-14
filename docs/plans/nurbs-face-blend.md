@@ -415,7 +415,7 @@ bound has to be established here.
     line's end on a cylinder across, which the table's ends do not take.
     CTC-02 stops at a sharp corner (`VertexBlend`). Each ignore reason
     says so, for step 10.
-- [ ] Step 6 **[3]** — **S5 on a walked blend's tangent neighbours.** A
+- [x] Step 6 **[3]** — **S5 on a walked blend's tangent neighbours.** A
   NURBS blend against the analytic face it touches along a contact has a
   double zero along the isoline `u = 0` (or `u = 1`) to within the fit.
   ADR-0061's isoline search finds it with `near` set to the contact edge's
@@ -426,6 +426,43 @@ bound has to be established here.
   crosses its analytic neighbour away from the contact (a radius past a
   concave neighbour's reach), reported as an S5 violation. The S5 row in
   `docs/DATA-MODEL.md` changes in this commit.
+
+  **Done (2026-10-14).** The plan's case was decided already: a walked
+  blend against the face it touches along a contact is ADR-0061's isoline,
+  found and divided out at the face's tolerance (the cap, the bicubic box,
+  the tee and the drilled torus left only their NURBS × NURBS pair). What
+  was refused were the slot's four **junction** pairs, where the walked
+  stripe meets the table's on the ball's arc and its surface runs on past
+  the arc by the spine's reach:
+  - the slot's walls, tangent to the blend at the arc's contact on the
+    round end: a saddle on the blend's domain edge, now traced from a
+    cell cut at the edge (and, with no isoline, with the parameters
+    swapped where the edge is one of `v`);
+  - the table's cylinders, tangent to the blend along the arc and agreeing
+    with its top contact to fourth order at the vertex: after the arc is
+    divided out, a touch of the contact edge that does not enter the
+    domain, now an `EdgeTouch`, returned as the `4.1e-4` stretch of the
+    edge rounding cannot sign, a tangent isoline piece within the
+    tolerance.
+
+  Both are ADR-0061 amendments (2026-10-14). A **convex** junction is not
+  decided: on a bar whose wall runs into a twinned quarter cylinder the
+  table's cylinder, carried on, enters the walked blend beside the
+  corner, a branch hugging the contact edge within rounding that the
+  tracer refuses. That pair stays unchecked by name
+  (`walked_fillet.rs`'s `the_convex_junction_is_decided`, ignored) with a
+  backlog line; step 10's chains (CTC-05, FTC-11, CTC-02) will show which
+  kind they meet. The violation fixture is a
+  checker test rather than an `ops` result, since the operation refuses a
+  radius past a neighbour's reach: a cubic NURBS face tangent to a plane
+  along their shared edge and back through it inside the plane's face
+  (`arris-check` `full.rs`), with its passing twin cut short. The corpus
+  now holds a blend's result to unchecked pairs of two NURBS faces only.
+  Open CASCADE's walked blends read back, which miss the ball by up to
+  `1.4e-4`, the real parts, and the other results with read B-spline
+  faces keep any pair with a NURBS face: the bicubic dome's section and
+  fuse and CTC-05's box cuts each leave a plane or a cylinder against a
+  read B-spline face that the tracer refuses.
 - [ ] Step 7 **[2]** — **The walked chamfer.** Each contact lies in the
   edge's normal plane at each sample, at chord `d` from the edge point on
   its face (the ring's rule, ADR-0036 §2, and Open CASCADE's symmetric

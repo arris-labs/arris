@@ -17,11 +17,13 @@ use arris_topo::{BodyId, EntityId, FaceId, ShellId};
 #[non_exhaustive]
 pub enum Unchecked {
     /// **S5** — the intersector does not decide this pair of surfaces —
-    /// a [`SurfaceKind::Nurbs`] in it, or a pose one of the two tracers
-    /// refuses (ADR-0018, ADR-0019) — so whether the two faces meet away
+    /// two [`SurfaceKind::Nurbs`], or a pose one of the tracers refuses
+    /// (ADR-0018, ADR-0019, ADR-0061) — so whether the two faces meet away
     /// from their shared edges is not known. Every pair of analytic
     /// surfaces is decided in every pose, a torus against anything among
-    /// them.
+    /// them, and a NURBS surface against any of them in every pose its
+    /// tracer does not refuse: a walked blend against the faces it is
+    /// tangent to among them.
     FacePair {
         /// The shell holding both faces.
         shell: ShellId,

@@ -1216,11 +1216,11 @@ fn read_back(
     held.recipe.analytic.measure_differs = None;
     held.recipe.tolerances =
         within_own_tolerance(&fixture.recipe.tolerances, &chain.model, body).map_err(fail)?;
-    let report = if nurbs || fixture.recipe.analytic.occt_walked.is_some() {
-        check_leaving_nurbs(&held.name, &chain.model, body)?
-    } else {
-        check_stage(&held, &chain)?.1
-    };
+    // Open CASCADE built it: its walked blends miss their ball by more
+    // than the tolerance, so a pair of one against an analytic face may be
+    // a tracer's refusal (`check_leaving_nurbs`), where an Arris blend's is
+    // decided.
+    let report = check_leaving_nurbs(&held.name, &chain.model, body)?;
     // Counts as the oracle's, a solid per solid read — each is one of
     // the file's, as Open CASCADE counts them, and no lump query is asked
     // of shells no ray may be cast against (a NURBS face's).
@@ -1254,17 +1254,38 @@ fn read_back(
     Ok(())
 }
 
-/// The checker at `Full` on a body, with nothing violated and nothing
-/// left undecided but what the checker cannot decide on a NURBS face:
-/// S5's and B1's face pairs with one in them, which the surface
-/// intersector has no form for, and B1's nesting of a shell of a body
-/// with one, whose rays may all be abandoned on it (ADR-0025). `name` is
-/// what the error calls the body. Errors: [`CorpusError::Check`].
+/// The checker at `Full` on a body another kernel built — Open CASCADE's
+/// file read back, a real part — with nothing violated and nothing left
+/// undecided but what the checker cannot decide on a NURBS face: S5's and
+/// B1's face pairs with one in them, and B1's nesting of a shell of a
+/// body with one, whose rays may all be abandoned on it (ADR-0025). A
+/// NURBS face of its own may be a tracer's refusal against an analytic
+/// one: a kink, or a walked blend that misses its ball by more than the
+/// tolerance. `name` is what the error calls the body. Errors:
+/// [`CorpusError::Check`].
 pub(crate) fn check_leaving_nurbs(
     name: &str,
     m: &Model,
     body: Body,
 ) -> Result<Report, CorpusError> {
+    check_leaving(name, m, body, false)
+}
+
+/// [`check_leaving_nurbs`] on a body Arris built: a pair of a NURBS face
+/// and an analytic one is decided (ADR-0061), a walked blend against its
+/// neighbours among them, so only pairs of two NURBS faces are left
+/// undecided. Errors: [`CorpusError::Check`].
+pub(crate) fn check_leaving_nurbs_pairs(
+    name: &str,
+    m: &Model,
+    body: Body,
+) -> Result<Report, CorpusError> {
+    check_leaving(name, m, body, true)
+}
+
+/// The checker at `Full` with S5's and B1's face pairs left undecided
+/// where both faces are NURBS, or with `pairs` false either is.
+fn check_leaving(name: &str, m: &Model, body: Body, pairs: bool) -> Result<Report, CorpusError> {
     let report = check(m, body, Level::Full);
     let has_nurbs = |f: FaceId| {
         (m.face(f))
@@ -1276,7 +1297,12 @@ pub(crate) fn check_leaving_nurbs(
         .is_ok_and(|closure| closure.faces.into_iter().any(has_nurbs));
     let undecidable = |u: &Unchecked| match u {
         Unchecked::FacePair { kinds, .. } | Unchecked::ShellFacePair { kinds, .. } => {
-            kinds.0 == SurfaceKind::Nurbs || kinds.1 == SurfaceKind::Nurbs
+            let nurbs = [kinds.0, kinds.1].map(|k| k == SurfaceKind::Nurbs);
+            if pairs {
+                nurbs[0] && nurbs[1]
+            } else {
+                nurbs[0] || nurbs[1]
+            }
         }
         Unchecked::ShellNesting { .. } => any_nurbs,
         // A row added later is not known to be a NURBS limit.
@@ -1331,14 +1357,25 @@ fn result_of(fixture: &Fixture, chain: &Chain) -> Result<Body, CorpusError> {
 }
 
 /// The checker at `Full` on the result, with nothing left undecided but
-/// what the checker cannot decide on a NURBS face (`check_leaving_nurbs`):
-/// a result with no NURBS face is held to every row, and one with them —
-/// an operand read from a file of B-splines — leaves their face pairs to
-/// the NURBS cycle, as the read-back and the battery do. Returns the
-/// result body and the report. Errors: [`CorpusError::Check`].
+/// what the checker cannot decide on NURBS faces: a result with no NURBS
+/// face is held to every row. A blend's leaves only its pairs of two NURBS
+/// faces (`check_leaving_nurbs_pairs`): a walked blend against the
+/// analytic faces beside it is decided. Any other result with them — an
+/// operand read from a file of B-splines — leaves its pairs with one in
+/// them that a tracer refuses (`check_leaving_nurbs`), as the read-back
+/// and the battery do. Returns the result body and the report. Errors:
+/// [`CorpusError::Check`].
 pub fn check_stage(fixture: &Fixture, chain: &Chain) -> Result<(Body, Report), CorpusError> {
     let body = result_of(fixture, chain)?;
-    let report = check_leaving_nurbs(&fixture.name, &chain.model, body)?;
+    let blended = (fixture.recipe.steps.iter()).any(|step| {
+        step.name() == fixture.recipe.result
+            && matches!(step, Step::Fillet { .. } | Step::Chamfer { .. })
+    });
+    let report = if blended {
+        check_leaving_nurbs_pairs(&fixture.name, &chain.model, body)?
+    } else {
+        check_leaving_nurbs(&fixture.name, &chain.model, body)?
+    };
     Ok((body, report))
 }
 

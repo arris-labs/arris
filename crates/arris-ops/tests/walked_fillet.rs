@@ -2,14 +2,15 @@
 //! with a NURBS face, or a pair with no closed form, blends to a NURBS
 //! stripe. The twin of a face is its exact NURBS form, so a fillet of the
 //! twinned edge must agree with the closed form on the original: volume
-//! and area, the checker clean at `Full` (a pair of NURBS faces the
-//! checker has no form for left unchecked).
+//! and area, the checker clean at `Full`: a walked blend against the
+//! analytic faces it touches is decided (step 6), and only a pair of NURBS
+//! faces, which the checker has no form for, is left unchecked.
 
 use arris_check::{Level, Unchecked, check};
 use arris_debug::prop::twin::nurbs_twin_faces;
 use arris_debug::sample;
 use arris_debug::unmetered::{fillet, mass_properties, primitive_box};
-use arris_geom::{Curve, Surface};
+use arris_geom::{Curve, Surface, SurfaceKind};
 use arris_math::Point3;
 use arris_ops::{BlendReason, OpError, Reason};
 use arris_topo::{Body, Edge, Face, Model};
@@ -50,15 +51,23 @@ fn face_where(m: &Model, body: Body, want: impl Fn(&Surface) -> bool) -> Face {
 }
 
 /// `walked` agrees with `exact`: clean at `Full` with nothing unchecked
-/// but NURBS face pairs, the same volume and area to the fit.
-fn agrees(m: &Model, exact: Body, walked: Body) {
+/// but pairs of NURBS faces, and of a NURBS face with a face of one of the
+/// kinds `left` names, the same volume and area to the fit.
+fn agrees(m: &Model, exact: Body, walked: Body, left: &[SurfaceKind]) {
     let report = check(m, walked, Level::Full);
     assert!(report.is_ok(), "{report}");
+    let undecided = |kinds: &(SurfaceKind, SurfaceKind)| {
+        let other = match *kinds {
+            (SurfaceKind::Nurbs, other) | (other, SurfaceKind::Nurbs) => other,
+            _ => return false,
+        };
+        other == SurfaceKind::Nurbs || left.contains(&other)
+    };
     assert!(
         report
             .unchecked()
             .iter()
-            .all(|u| matches!(u, Unchecked::FacePair { .. })),
+            .all(|u| matches!(u, Unchecked::FacePair { kinds, .. } if undecided(kinds))),
         "{report}"
     );
     let (a, b) = (
@@ -107,7 +116,7 @@ fn a_cylinders_twinned_rim_fillets_as_the_closed_forms_torus() {
                 let rim = circle_at(&m, twin, z);
                 let (walked, _) = fillet(&mut m, twin, &[rim], r)
                     .unwrap_or_else(|e| panic!("r {r} z {z} wall {twin_wall}: {e}"));
-                agrees(&m, exact, walked);
+                agrees(&m, exact, walked, &[]);
             }
         }
     }
@@ -130,7 +139,7 @@ fn a_boxs_twinned_top_edge_fillets_as_the_closed_forms_cylinder() {
         let twin = nurbs_twin_faces(&mut m, cube, &[top.id]).unwrap();
         let edge = edge_at(&m, twin, Point3::new(1.5, 0.0, 2.0));
         let (walked, _) = fillet(&mut m, twin, &[edge], r).unwrap_or_else(|e| panic!("r {r}: {e}"));
-        agrees(&m, exact, walked);
+        agrees(&m, exact, walked, &[]);
     }
 }
 
@@ -193,6 +202,41 @@ fn a_chain_into_a_twinned_arc_meets_on_the_balls_arc() {
         let twin = nurbs_twin_faces(&mut m, bar, &[wall.id]).unwrap();
         let edge = edge_at(&m, twin, Point3::new(1.5, 0.0, 1.0));
         let (walked, _) = fillet(&mut m, twin, &[edge], r).unwrap_or_else(|e| panic!("r {r}: {e}"));
-        agrees(&m, exact, walked);
+        // The table's cylinder against the walked blend at their junction
+        // is left by name: `the_convex_junction_is_decided` below.
+        agrees(&m, exact, walked, &[SurfaceKind::Cylinder]);
+    }
+}
+
+/// The chain above checked with nothing unchecked but its pair of two
+/// NURBS faces: the bar's wall and the quarter cylinder are convex, and the
+/// table's cylinder, carried on past the junction, passes inside the walked
+/// blend beside its wall contact. That branch enters the blend's domain
+/// beside the corner where the arc meets the contact on the top face, and
+/// runs within rounding of the contact edge, which ADR-0061 refuses (its
+/// 2026-10-14 amendment takes a touch that does not enter). The slot's
+/// concave junction is decided (`blend/nurbs-slot-plate-rim-fillet`).
+#[test]
+#[ignore = "S5 leaves a walked blend against the table's cylinder at a convex junction undecided: a branch entering the domain at the corner, refused (backlog)"]
+fn the_convex_junction_is_decided() {
+    let recipe: arris_debug::fixtures::Recipe = serde_json::from_str(
+        r#"{"steps": [
+            {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+             "outer": {"start": [0, 0], "segments": [{"line_to": [3, 0]}, {"arc_to": [4, 1], "via": [3.7071067811865475, 0.2928932188134524]}, {"line_to": [0, 1]}, {"line_to": [0, 0]}]}},
+            {"name": "bar", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 1}
+        ], "result": "bar"}"#,
+    )
+    .unwrap();
+    for r in [0.1, 0.25] {
+        let chain = arris_debug::corpus::build("walked/line-into-arc", &recipe).unwrap();
+        let mut m = chain.model;
+        let bar = chain.steps["bar"].body;
+        let edge = edge_at(&m, bar, Point3::new(1.5, 0.0, 1.0));
+        let (exact, _) = fillet(&mut m, bar, &[edge], r).unwrap();
+        let wall = face_where(&m, bar, |s| matches!(s, Surface::Cylinder { .. }));
+        let twin = nurbs_twin_faces(&mut m, bar, &[wall.id]).unwrap();
+        let edge = edge_at(&m, twin, Point3::new(1.5, 0.0, 1.0));
+        let (walked, _) = fillet(&mut m, twin, &[edge], r).unwrap_or_else(|e| panic!("r {r}: {e}"));
+        agrees(&m, exact, walked, &[]);
     }
 }

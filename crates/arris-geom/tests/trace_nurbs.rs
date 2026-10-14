@@ -430,6 +430,134 @@ fn a_branch_that_crosses_an_isoline_ends_on_it() {
     uv_is_the_surfaces(&trace, &saddle);
 }
 
+/// A Bézier patch over `[x0, x1] × [y0, y1]` from `z`'s Bernstein
+/// coefficients in `x` (rows) and in `y`, `z = row + column`, with
+/// `transposed` its parameters swapped: `u` along `y`.
+fn sum_patch(
+    xs: [f64; 2],
+    rows: &[f64],
+    ys: [f64; 2],
+    columns: &[f64],
+    transposed: bool,
+) -> NurbsSurface {
+    let (m, n) = (rows.len() - 1, columns.len() - 1);
+    let at = |i: usize, j: usize| {
+        let x = xs[0] + (xs[1] - xs[0]) * i as f64 / m as f64;
+        let y = ys[0] + (ys[1] - ys[0]) * j as f64 / n as f64;
+        Point3::new(x, y, rows[i] + columns[j])
+    };
+    let clamped = |d: usize, [lo, hi]: [f64; 2]| {
+        let mut k = vec![lo; d + 1];
+        k.extend(vec![hi; d + 1]);
+        k
+    };
+    let (net, degree, knots): (Vec<Point3>, _, _) = if transposed {
+        (
+            (0..=n)
+                .flat_map(|j| (0..=m).map(move |i| at(i, j)))
+                .collect(),
+            [n, m],
+            [clamped(n, ys), clamped(m, xs)],
+        )
+    } else {
+        (
+            (0..=m)
+                .flat_map(|i| (0..=n).map(move |j| at(i, j)))
+                .collect(),
+            [m, n],
+            [clamped(m, xs), clamped(n, ys)],
+        )
+    };
+    let count = net.len();
+    NurbsSurface::new(degree, knots, net, vec![1.0; count]).unwrap()
+}
+
+#[test]
+fn a_saddle_on_an_edge_is_traced_from_its_cell_cut_there() {
+    // `z = x² − y²` over `[0, 1] × [−3/2, 3/2]` against `z = 0`: the
+    // lines `y = ±x`, crossing at the origin on the edge `x = 0`. Its cell is
+    // cut at the edge and only the arms into the domain are traced, with
+    // either parameter along `x` (a plane tangent to a walked blend at
+    // the end of its contact, on the extended surface's edge).
+    let floor = tilted(0.0, 0.0);
+    for transposed in [false, true] {
+        let patch = sum_patch(
+            [0.0, 1.0],
+            &[0.0, 0.0, 1.0],
+            [-1.5, 1.5],
+            &[-2.25, 2.25, -2.25],
+            transposed,
+        );
+        let nurbs = Surface::Nurbs(patch.clone());
+        let traced = trace(&nurbs, &floor).unwrap();
+        assert!(traced.circles().is_empty(), "{transposed}: {traced:?}");
+        assert_eq!(traced.points().len(), 1, "{transposed}: {traced:?}");
+        assert!(!traced.points()[0].isolated);
+        assert!(traced.points()[0].point.coords.norm() < 1e-12);
+        assert_eq!(traced.branches().len(), 2, "{transposed}: {traced:?}");
+        for branch in traced.branches() {
+            let ends = branch.ends().unwrap();
+            assert!(ends.contains(&BranchEnd::Singular(0)), "{ends:?}");
+            assert!(ends.contains(&BranchEnd::Clipped), "{ends:?}");
+            for p in samples(branch, 17) {
+                assert!((p.y.abs() - p.x).abs() < 1e-9, "{transposed}: {p}");
+            }
+        }
+        assert_eq!(clipped_ends_on_edges(&traced, &patch), 2);
+        assert!(worst_off(&traced, &nurbs, &floor) < 1e-12);
+        uv_is_the_surfaces(&traced, &patch);
+    }
+}
+
+/// Where `traced` touches the edge `y = 0` of a patch and does not enter
+/// it: its one isolated point, or the samples of its one tangent stretch
+/// of the edge, each on the edge and within the tolerance of `z = 0`.
+fn touch(traced: &SectionTrace) -> Vec<Point3> {
+    assert!(traced.branches().is_empty(), "{traced:?}");
+    let found: Vec<Point3> = match (traced.points(), traced.circles()) {
+        ([point], []) => {
+            assert!(point.isolated, "{traced:?}");
+            vec![point.point]
+        }
+        ([], [run]) => {
+            assert!(run.tangent, "{traced:?}");
+            let domain = run.circle.domain();
+            (0..=16)
+                .map(|k| run.circle.point(domain.lerp(k as f64 / 16.0)))
+                .collect()
+        }
+        _ => panic!("one point or one stretch: {traced:?}"),
+    };
+    for p in &found {
+        assert!(p.y.abs() < 1e-15 && p.z.abs() <= tol().linear, "{p}");
+    }
+    found
+}
+
+#[test]
+fn a_touch_of_an_edge_is_an_isolated_point_or_the_edge_within_the_tolerance() {
+    // `z = x² + y` over `[−1, 1] × [0, 1]` against `z = 0` touches the
+    // edge `y = 0` at the origin and rises into the domain. `z = x⁴ + y`
+    // is flatter along the edge, as a table stripe's cylinder is along a
+    // walked blend's contact at their junction. Each is the stretch of
+    // the edge `f` cannot be signed on beside the touch: one point where
+    // it is shorter than the tolerance, otherwise the edge's own line
+    // over it, tangent. Its reach is what rounding leaves of `x²` and of
+    // `x⁴`.
+    let floor = tilted(0.0, 0.0);
+    let square = [1.0, -1.0, 1.0];
+    let fourth = [1.0, -1.0, 1.0, -1.0, 1.0];
+    for transposed in [false, true] {
+        for (rows, reach) in [(&square[..], 1e-6), (&fourth[..], 1e-3)] {
+            let patch = sum_patch([-1.0, 1.0], rows, [0.0, 1.0], &[0.0, 1.0], transposed);
+            let traced = trace(&Surface::Nurbs(patch), &floor).unwrap();
+            let found = touch(&traced);
+            let far = found.iter().map(|p| p.x.abs()).fold(0.0, f64::max);
+            assert!(far <= reach, "{transposed}: {far:e}");
+        }
+    }
+}
+
 #[test]
 fn a_tangent_isoline_on_a_closed_seam_and_two_isolines_alone_are_exact() {
     let wall = unit_cylinder();

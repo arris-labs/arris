@@ -310,6 +310,63 @@ face (a section edge a projection folds across a patch edge), the
 branch's traced `(u, v)` is the remedy and this amendment is the place
 to reopen.
 
+### A walked blend's junctions: a saddle and a touch on an edge (amendment, 2026-10-14)
+
+`plans/nurbs-face-blend` step 6 put the checker's S5 on a walked blend
+(ADR-0062) and its neighbours. Against the face it is tangent to along a
+contact the pair was decided already: the contact is an isoline of the
+blend, divided out as §3 divides one. The slot plate's chain
+(`blend/nurbs-slot-plate-rim-fillet`) left four pairs refused, all at the
+junctions where the walked stripe meets the table's stripes on the ball's
+arc. The blend's surface runs past the junction by the spine's reach, so
+the arc is an interior isoline, and the refusals were two this ADR named:
+
+- **A crossing on an edge of `u`.** The slot's flat wall is tangent to the
+  blend at the arc's contact on the round end, which lies on the blend's
+  domain edge `u = 1`. That is a saddle of the section on the edge, two
+  arms into the domain, and its cell could not fit inside. The cell is
+  now cut at the edge. Below it the certificate is a whole cell's, line
+  by line of constant `u` (`Fvv` of one sign, `f` of one sign above and
+  below, the separator), and the arms beyond the edge are none. Where no
+  isoline fixes the orientation, a saddle on an edge of `v` is traced with
+  the parameters swapped, so it is on an edge of `u` there.
+- **A touch of an edge that does not enter the domain.** The table
+  stripe's cylinder shares the arc with the blend and is tangent to it
+  along it. With that isoline divided out, the quotient is positive all
+  round the junction's vertex but at the vertex, on the blend's contact
+  edge `u = 0`, where the contact on the top face is tangent to the
+  cylinder's straight contact and curves away: the cylinder and the
+  contact agree to fourth order there. This is now an `EdgeTouch`. Its
+  cell is certified on the section's polynomial: `f` moves one way into
+  the domain all over it, and has the sign it moves to along a line half
+  the tolerance in. Along the edge it has that sign beyond a stretch about
+  the touch, halved to the stretch's own size where the coefficients do
+  not say. Every zero in the cell is then within half the tolerance of
+  the stretch, and every point of the stretch is within the tolerance of
+  the other surface. A stretch shorter than the tolerance is an isolated
+  `MeetPoint`; a longer one is the edge's own line over it, a tangent
+  `SectionCircle`. A turning point on an edge of `u`, or a box of them
+  reaching it, is taken the same way, so the touch is found in either
+  orientation. One that enters the domain, tangent to the edge from
+  inside, is still refused. A convex junction has one: a bar's wall into
+  a twinned quarter cylinder, where the table's cylinder carried on past
+  the arc passes inside the walked blend beside its wall contact, and the
+  branch runs within rounding of the contact edge near the corner. That
+  pair stays unchecked (`walked_fillet.rs`, ignored, and a backlog line).
+
+What it measured. The stretch is what rounding leaves unsigned, not the
+tolerance's reach: `2.1e-7` either side for `z = x² + y` on `z = 0`,
+`8.3e-4` for `z = x⁴ + y`, and `4.1e-4` along the slot's contact at each
+junction, where the edge is within `5e-9` of the cylinder `1e-2` away.
+All four junction pairs decide in 4 to 11 ms. The slot's check at `Full`
+takes 2.7 s against 0.4 s when the pairs were refused. Every walked
+fixture (the slot, the cap, the bicubic box, the tee and the drilled
+torus) leaves only its pair of two NURBS faces unchecked, and the corpus
+holds a blend's result to that. Other results with read B-spline faces
+still leave pairs the tracer refuses (the bicubic dome's section and fuse,
+CTC-05's box cuts), and so do Open CASCADE's walked blends read back. The step 3 and 4 properties pass at 64
+cases.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its

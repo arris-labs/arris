@@ -92,10 +92,15 @@
 //! its cell cut there, and an arm that reaches the edge inside the cell
 //! ends on it; one on the edge is where the section crosses it square,
 //! and has one arm. The patches' polynomials go on past the edges, and a
-//! zero isolated beyond one is dropped. Refused by name: the section
-//! touching an edge, a turning point on an edge of `u`, a crossing at a
-//! corner, and a turn at a kink, a knot of `v` where the surface is only
-//! continuous and the section comes back with no turning point to find.
+//! zero isolated beyond one is dropped. A singular point on an edge of
+//! `u` has its cell cut there and only its arms into the domain; with no
+//! isoline, one on an edge of `v` is traced with the parameters swapped.
+//! The section touching an edge without entering the domain is an
+//! [`EdgeTouch`]: a point, or the stretch of the edge rounding cannot
+//! sign, within the tolerance. Refused by name: the section touching an
+//! edge and entering the domain there, a crossing at a corner, and a turn
+//! at a kink, a knot of `v` where the surface is only continuous and the
+//! section comes back with no turning point to find.
 //!
 //! An **isoline of a NURBS surface on the other surface**, a whole line
 //! `u = u₀`, is its tube circle (ADR-0061 §3): found the same way, held to
@@ -210,6 +215,17 @@ const SEAM_RUN_SAMPLES: usize = 16;
 
 const GOLDEN_STEPS: usize = 40;
 
+/// How far either side of a candidate along an edge line the least
+/// distance is looked for as a touch of the edge: a candidate is within
+/// rounding of a sign change of the line's polynomial, or of where it
+/// comes nearest zero.
+const TOUCH_BRACKET: f64 = 1e-4;
+
+/// How many times a stretch of an edge line is halved to read the sign
+/// of `f` along it beside a touch: from a cell's width down to a
+/// tolerance's, with room to spare.
+const TOUCH_HALVINGS: usize = 48;
+
 /// How many steps each way a NURBS patch is looked at on to tell whether
 /// it lies on the other surface ([`Tracer::flush`]): a patch is a
 /// polynomial of a few degrees each way, and one within the tolerance at
@@ -307,6 +323,11 @@ struct SingularCell {
     /// A saddle, which four arms end at; otherwise an extremum, an
     /// isolated point.
     crossing: bool,
+    /// Whether the cell reaches below its point in `u` and above it. Both,
+    /// but for a saddle on an edge of a NURBS surface's `u` that does not
+    /// close, whose cell is cut there and whose arms beyond the edge are
+    /// none.
+    sides: [bool; 2],
 }
 
 /// A tube circle of the walked torus that lies on the other surface, to
@@ -911,6 +932,37 @@ struct EdgeCell {
     bracket: [f64; 2],
 }
 
+/// Where the section touches an edge of a NURBS surface's domain and
+/// does not enter it: `f` moves away from zero into the domain all over
+/// the cell `at ± half`, and is of the sign it moves to along the edge
+/// line but for the stretch `run` of it, and along a line half the
+/// tolerance in. Every zero in the cell is then within half the tolerance
+/// of the stretch, which lies within the tolerance of the other surface.
+/// A table stripe's cylinder against the walked blend it runs into,
+/// beside the isoline they share, touches the blend's contact edge so at
+/// the junction's vertex, to fourth order. The stretch is an isolated
+/// point where it is shorter than the tolerance, and otherwise the edge's
+/// own line over it, tangent ([`SectionCircle`]).
+#[derive(Debug, Clone, Copy)]
+struct EdgeTouch {
+    at: [f64; 2],
+    half: [f64; 2],
+    /// The edge's direction, `0` for an edge of `u`.
+    k: usize,
+    /// The stretch of the edge line, in the other direction's parameter.
+    run: [f64; 2],
+}
+
+/// What a candidate root on an edge line of a NURBS surface's domain is.
+enum EdgeRoot {
+    /// No root.
+    None,
+    /// A root proven alone on the line, where the section crosses it.
+    Crossing(f64),
+    /// A touch ([`EdgeTouch`]).
+    Touch(EdgeTouch),
+}
+
 /// What a march ended at: an arm of a turning point — `0` below it, `1`
 /// above — an arm of a singular point, `2·right + upper`, the seed it
 /// started from, a turn or several later, the arm of an edge cell, or
@@ -956,6 +1008,8 @@ struct Tracer<'a> {
     turning: Vec<TurningCell>,
     /// Where the section meets the edges of a NURBS surface's domain.
     edges: Vec<EdgeCell>,
+    /// Where it touches them without entering the domain.
+    touches: Vec<EdgeTouch>,
     /// The tube circles of the torus on the other surface, ascending.
     circles: Vec<TubeFactor>,
     tol: Tolerance,
@@ -1042,6 +1096,7 @@ pub fn trace_torus(
         },
         turning: Vec::new(),
         edges: Vec::new(),
+        touches: Vec::new(),
         circles: Vec::new(),
         tol,
     };
@@ -1086,9 +1141,12 @@ pub fn trace_torus(
 /// its own parameters there, and on the other to rounding; every part of
 /// the section inside the domain on a branch or an isoline. Refused by
 /// name as [`GeomError::DegenerateSection`]: the poses [`trace_torus`]
-/// refuses, the section touching an edge of the domain or crossing it at
-/// a corner, isolines of both directions, and two isolines or more with
-/// more of the section besides ([`SectionFault::TubeCircle`]).
+/// refuses, the section touching an edge of the domain and entering it
+/// there or crossing it at a corner, isolines of both directions, and two
+/// isolines or more with more of the section besides
+/// ([`SectionFault::TubeCircle`]). A touch of an edge that does not enter
+/// the domain is an isolated point, or the edge's own line over the
+/// stretch rounding cannot sign, among the isolines.
 pub(crate) fn trace_nurbs(
     a: &Surface,
     b: &Surface,
@@ -1127,6 +1185,7 @@ pub(crate) fn trace_nurbs(
             },
             turning: Vec::new(),
             edges: Vec::new(),
+            touches: Vec::new(),
             circles: Vec::new(),
             tol,
         })
@@ -1143,6 +1202,12 @@ pub(crate) fn trace_nurbs(
     let across = tracer(&flipped, true).ok_or_else(unsupported)?;
     let (rows, columns) = (along.tube_circles(), across.tube_circles());
     let traced = match (rows.is_empty(), columns.is_empty()) {
+        // A saddle on an edge of `v` has no cell; swapped, it is on an
+        // edge of `u`, where its cell is cut at the edge.
+        (true, true) => match along.run_with(rows, meter) {
+            Err(Halt::Fault(SectionFault::CrowdedSingularity)) => across.run_with(columns, meter),
+            traced => traced,
+        },
         (_, true) => along.run_with(rows, meter),
         (true, false) => across.run_with(columns, meter),
         (false, false) => Err(SectionFault::TubeCircle.into()),
@@ -1302,6 +1367,31 @@ impl Tracer<'_> {
             })
         };
         let turning: Vec<Zero2> = turning.into_iter().filter(|z| !absorbed(z)).collect();
+        // A turning point on an edge of `u`, or an uncertified box of them
+        // that reaches it, is the section touching the edge: where it does not enter
+        // the domain there it is a touch, and otherwise it is refused.
+        let mut inside = Vec::with_capacity(turning.len());
+        for z in turning {
+            let edge = (!self.walker.closed[0])
+                .then(|| {
+                    // A certified point is on the edge where its cell would
+                    // be (`turning_cell`); a box of them, wherever it reaches.
+                    [0.0, TAU].into_iter().find(|e| {
+                        (z.at[0] - e).abs() <= EDGE_TOUCH
+                            || (!z.certified
+                                && (z.lo[0] - EDGE_TOUCH..=z.hi[0] + EDGE_TOUCH).contains(e))
+                    })
+                })
+                .flatten();
+            match edge {
+                None => inside.push(z),
+                Some(edge) => {
+                    let touch = self.edge_touch(0, edge, z.at[1]);
+                    (self.touches).push(touch.ok_or(SectionFault::UnresolvedTurning)?);
+                }
+            }
+        }
+        let turning = inside;
         if turning.iter().any(|z| !z.certified) {
             return Err(SectionFault::UnresolvedTurning.into());
         }
@@ -1315,7 +1405,7 @@ impl Tracer<'_> {
             let cell = self.turning_cell(i, at, &turning)?;
             self.turning.push(cell);
         }
-        self.edges = self.edge_cells()?;
+        (self.edges, self.touches) = self.edge_cells()?;
         // What is left of the section crosses the tube circle wherever it
         // reaches it, and a branch is cut there. Where it turns or is
         // singular within the tolerance of the circle there is no telling
@@ -1643,6 +1733,39 @@ impl Tracer<'_> {
             .collect()
     }
 
+    /// The touches of the domain's edges ([`EdgeTouch`]): those whose
+    /// stretch is shorter than the tolerance as points, in the walk's
+    /// `(u, v)`, and the others as the edge's own line over their
+    /// stretch, tangent.
+    fn touch_runs(&self) -> Result<(Vec<[f64; 2]>, Vec<SectionCircle>), SectionFault> {
+        let (Surface::Nurbs(nurbs), Some(map)) = (&self.walker.walked, &self.walker.rescale) else {
+            return Ok((Vec::new(), Vec::new()));
+        };
+        let mut points = Vec::new();
+        let mut runs = Vec::new();
+        for t in &self.touches {
+            let (k, j) = (t.k, 1 - t.k);
+            let ends = t.run.map(|x| {
+                let at = if k == 0 { [t.at[0], x] } else { [x, t.at[1]] };
+                self.walker.point(at[0], at[1])
+            });
+            if (ends[1] - ends[0]).norm() <= self.tol.linear {
+                points.push(t.at);
+                continue;
+            }
+            let line = (nurbs.isocurve(k, map.to_surface(k, t.at[k])))
+                .map_err(|_| SectionFault::TubeCircle)?;
+            let range = Interval::new(map.to_surface(j, t.run[0]), map.to_surface(j, t.run[1]))
+                .map_err(|_| SectionFault::TubeCircle)?;
+            let run = line.segment(range).map_err(|_| SectionFault::TubeCircle)?;
+            runs.push(SectionCircle {
+                circle: Curve::Nurbs(run),
+                tangent: true,
+            });
+        }
+        Ok((points, runs))
+    }
+
     /// The critical points within the tolerance of the other surface,
     /// each with its reach.
     fn singular_points(&self, critical: &[Zero2]) -> Result<Vec<Singular>, SectionFault> {
@@ -1753,6 +1876,7 @@ impl Tracer<'_> {
                 half: s.extent(),
                 slope: 0.0,
                 crossing: false,
+                sides: [true; 2],
             });
         }
         let [huu, huv, hvv] = s.hessian;
@@ -1771,6 +1895,25 @@ impl Tracer<'_> {
         let slope = -lifted[1] / lifted[2];
         let [wide, tall] = s.extent();
         let walker = &self.walker;
+        let closed = walker.closed;
+        // A saddle on an edge of `u` that does not close — a plane tangent
+        // to a walked blend at the end of its contact, on the extended
+        // surface's edge — has its cell cut there: below the edge the
+        // certificate holds as in a whole cell, line by line of constant
+        // `u`, and beyond it there is no surface and no arm.
+        let edge = (!closed[0])
+            .then(|| {
+                [0.0, TAU]
+                    .into_iter()
+                    .find(|e| (s.at[0] - e).abs() <= EDGE_TOUCH)
+            })
+            .flatten();
+        let at = [edge.unwrap_or(s.at[0]), s.at[1]];
+        let sides = match edge {
+            Some(0.0) => [false, true],
+            Some(_) => [true, false],
+            None => [true; 2],
+        };
         for k in 0..=CELL_HALVINGS {
             let a = CELL_START / (1u64 << k) as f64;
             if a < 2.0 * wide {
@@ -1784,19 +1927,23 @@ impl Tracer<'_> {
                 continue;
             }
             let cell = SingularCell {
-                at: s.at,
+                at,
                 half: [a, b],
                 slope,
                 crossing: true,
+                sides,
             };
-            let closed = walker.closed;
-            let crowded = (turning.iter().any(|&t| in_box(closed, t, s.at, cell.half)))
+            let crowded = (turning.iter().any(|&t| in_box(closed, t, at, cell.half)))
                 || all.iter().any(|o| {
                     let apart = (0..2).any(|k| o.at[k] != s.at[k]);
                     let [wide, tall] = o.extent();
-                    apart && in_box(closed, o.at, s.at, [a + wide, b + tall])
+                    apart && in_box(closed, o.at, at, [a + wide, b + tall])
                 });
-            let (u, v) = ([s.at[0] - a, s.at[0] + a], [s.at[1] - b, s.at[1] + b]);
+            let u = [
+                if sides[0] { at[0] - a } else { at[0] },
+                if sides[1] { at[0] + a } else { at[0] },
+            ];
+            let v = [at[1] - b, at[1] + b];
             // On a NURBS surface the cell lies inside the domain.
             if crowded || !(fits(closed[0], u) && fits(closed[1], v)) {
                 continue;
@@ -1813,11 +1960,14 @@ impl Tracer<'_> {
             // where `f` is positive outside them — all the way out to the
             // cell's sides.
             let parted = [0.25, 0.5, 1.0].iter().all(|share| {
-                [-1.0, 1.0].iter().all(|side| {
-                    let at = s.at[0] + side * share * a;
-                    let between = walker.separator(&cell, s.at, at);
-                    walker.is_negative(at, between) == outside
-                })
+                [(-1.0, sides[0]), (1.0, sides[1])]
+                    .iter()
+                    .filter(|(_, reached)| *reached)
+                    .all(|(side, _)| {
+                        let u = at[0] + side * share * a;
+                        let between = walker.separator(&cell, at, u);
+                        walker.is_negative(u, between) == outside
+                    })
             });
             if parted {
                 return Ok(cell);
@@ -1980,13 +2130,14 @@ impl Tracer<'_> {
     /// Where the section meets the edges of a NURBS surface's domain that
     /// do not close, each with its cell, the edges of `u` first, each
     /// from its start: every root of `f` along an edge line that no
-    /// turning point's or singular point's cell holds already. A
-    /// candidate that is no root is dropped; one that cannot be proven a
-    /// root alone and is within the tolerance of the other surface is the
-    /// section touching the edge, which is refused.
-    fn edge_cells(&self) -> Result<Vec<EdgeCell>, SectionFault> {
+    /// turning point's or singular point's cell holds already, and after
+    /// them the touches ([`EdgeTouch`]). A candidate that is no root is
+    /// dropped; one that cannot be proven a root alone or a touch, and is
+    /// within the tolerance of the other surface, is refused.
+    fn edge_cells(&self) -> Result<(Vec<EdgeCell>, Vec<EdgeTouch>), SectionFault> {
         let closed = self.walker.closed;
         let mut cells: Vec<EdgeCell> = Vec::new();
+        let mut touches: Vec<EdgeTouch> = self.touches.clone();
         for k in 0..2 {
             if closed[k] {
                 continue;
@@ -1995,35 +2146,43 @@ impl Tracer<'_> {
                 let edge = if high { TAU } else { 0.0 };
                 let on_line = |x: f64| if k == 0 { [edge, x] } else { [x, edge] };
                 for candidate in self.section.edge_candidates(k, high) {
-                    let held = |at: [f64; 2], cells: &[EdgeCell]| {
+                    let held = |at: [f64; 2], cells: &[EdgeCell], touches: &[EdgeTouch]| {
                         (self.turning.iter()).any(|t| in_box(closed, at, t.at, t.half))
                             || (self.walker.singular.iter())
                                 .any(|s| in_box(closed, at, s.at, s.half))
                             || cells.iter().any(|c| in_box(closed, at, c.at, c.half))
+                            || touches.iter().any(|t| in_box(closed, at, t.at, t.half))
                     };
-                    if held(on_line(candidate), &cells) {
+                    if held(on_line(candidate), &cells, &touches) {
                         continue;
                     }
-                    let Some(root) = self.edge_root(k, edge, candidate)? else {
-                        continue;
-                    };
-                    let at = on_line(root);
-                    if held(at, &cells) {
-                        continue;
+                    match self.edge_root(k, edge, candidate)? {
+                        EdgeRoot::None => {}
+                        EdgeRoot::Crossing(root) => {
+                            let at = on_line(root);
+                            if !held(at, &cells, &touches) {
+                                cells.push(self.edge_cell(k, high, at)?);
+                            }
+                        }
+                        EdgeRoot::Touch(touch) => {
+                            if !held(touch.at, &cells, &touches) {
+                                touches.push(touch);
+                            }
+                        }
                     }
-                    cells.push(self.edge_cell(k, high, at)?);
                 }
             }
         }
-        Ok(cells)
+        Ok((cells, touches))
     }
 
     /// The root of `f` along the edge line where direction `k`'s parameter
     /// is `edge` that `candidate` stands for, proven the only one in a
     /// bracket about it: the slope along the line of one sign over the
-    /// bracket and `f` of opposite signs at its ends. `None` where the
-    /// candidate is no root.
-    fn edge_root(&self, k: usize, edge: f64, candidate: f64) -> Result<Option<f64>, SectionFault> {
+    /// bracket and `f` of opposite signs at its ends. A double root the
+    /// section only touches the edge at is [`EdgeRoot::Touch`]
+    /// ([`Tracer::edge_touch`]).
+    fn edge_root(&self, k: usize, edge: f64, candidate: f64) -> Result<EdgeRoot, SectionFault> {
         let walker = &self.walker;
         let on_line = |x: f64| if k == 0 { [edge, x] } else { [x, edge] };
         let negative = |x: f64| {
@@ -2050,15 +2209,136 @@ impl Tracer<'_> {
                 } else {
                     walker.root_u(edge, range[0], range[1])
                 };
-                return root.map(Some).ok_or(SectionFault::UnresolvedTurning);
+                return root
+                    .map(EdgeRoot::Crossing)
+                    .ok_or(SectionFault::UnresolvedTurning);
             }
         }
         let [u, v] = on_line(candidate);
         if walker.value(u, v).0.abs() > self.tol.linear {
-            Ok(None)
+            Ok(EdgeRoot::None)
         } else {
-            Err(SectionFault::UnresolvedTurning)
+            (self.edge_touch(k, edge, candidate))
+                .map(EdgeRoot::Touch)
+                .ok_or(SectionFault::UnresolvedTurning)
         }
+    }
+
+    /// The touch ([`EdgeTouch`]) `candidate` stands for on the edge line
+    /// where direction `k`'s parameter is `edge`, if it is one: about the
+    /// least distance along the line near the candidate, the largest cell
+    /// whose certificate holds on the section's polynomial, reaching as
+    /// far into the domain as along the line. Its stretch is grown from
+    /// a tolerance's length until `f` is signed along the edge beyond it,
+    /// and every point of it is within the tolerance of the other surface.
+    fn edge_touch(&self, k: usize, edge: f64, candidate: f64) -> Option<EdgeTouch> {
+        let walker = &self.walker;
+        let j = 1 - k;
+        let on_line = |x: f64| if k == 0 { [edge, x] } else { [x, edge] };
+        let along = |x: f64| {
+            let [u, v] = on_line(x);
+            walker.value(u, v).0.abs()
+        };
+        let (mut a, mut b) = (candidate - TOUCH_BRACKET, candidate + TOUCH_BRACKET);
+        if !walker.closed[j] {
+            (a, b) = (a.max(0.0), b.min(TAU));
+        }
+        let ratio = 0.5 * (5f64.sqrt() - 1.0);
+        for _ in 0..GOLDEN_STEPS {
+            let (c, d) = (b - ratio * (b - a), a + ratio * (b - a));
+            if along(c) < along(d) {
+                b = d;
+            } else {
+                a = c;
+            }
+        }
+        let x0 = 0.5 * (a + b);
+        let at = on_line(x0);
+        if along(x0) > self.tol.linear {
+            return None;
+        }
+        let e = walker.eval(at[0], at[1]);
+        let speed = [e.du.norm(), e.dv.norm()];
+        // The least stretch along the line, and how far in the line is
+        // that `f` must be signed along all the cell's width.
+        let middle = 0.5 * self.tol.linear / speed[j];
+        let depth = 0.5 * self.tol.linear / speed[k];
+        let inward = if edge == 0.0 { 1.0 } else { -1.0 };
+        let inner = edge + inward * depth;
+        let sign = |probe: Probe, x: [f64; 2], y: [f64; 2]| {
+            let y = [y[0].min(y[1]), y[0].max(y[1])];
+            let (u, v) = if k == 0 { (y, x) } else { (x, y) };
+            self.section.sign_over(probe, u, v)
+        };
+        // `f` along a stretch of a line of the edge's direction, halved
+        // where its coefficients do not say: beside the touch it is as
+        // small as the miss, and a cell's coefficients are not all of its
+        // sign there.
+        let sign_along = |x: [f64; 2], y: f64| {
+            let mut pending = vec![(x, 0)];
+            let mut found = None;
+            while let Some((x, depth)) = pending.pop() {
+                match sign(Probe::F, x, [y, y]) {
+                    Some(s) if found.is_none_or(|f| f == s) => found = Some(s),
+                    Some(_) => return None,
+                    None if depth < TOUCH_HALVINGS => {
+                        let mid = 0.5 * (x[0] + x[1]);
+                        pending.extend([([x[0], mid], depth + 1), ([mid, x[1]], depth + 1)]);
+                    }
+                    None => return None,
+                }
+            }
+            found
+        };
+        let across = if k == 0 { Probe::Fs } else { Probe::Ft };
+        for i in 0..=STEP_HALVINGS {
+            let a = CELL_START / (1u64 << i) as f64;
+            if a <= 2.0 * middle.max(depth) {
+                break;
+            }
+            let line = [x0 - a, x0 + a];
+            if !fits(walker.closed[j], line) {
+                continue;
+            }
+            let Some(slope) = sign(across, line, [edge, edge + inward * a]) else {
+                continue;
+            };
+            // `f` rises into the domain where its slope across the edge
+            // is positive inward, and is then positive along the edge.
+            let rising = slope == (inward > 0.0);
+            if sign_along(line, inner) != Some(rising) {
+                continue;
+            }
+            // How far the stretch reaches from `x0` that way.
+            let reach = |way: f64| {
+                let mut m = middle;
+                while m < a {
+                    let beyond = [x0 + way * m, x0 + way * a];
+                    let beyond = [beyond[0].min(beyond[1]), beyond[0].max(beyond[1])];
+                    if sign_along(beyond, edge) == Some(rising) {
+                        return Some(m);
+                    }
+                    m *= 2.0;
+                }
+                None
+            };
+            let (Some(below), Some(above)) = (reach(-1.0), reach(1.0)) else {
+                continue;
+            };
+            let run = [x0 - below, x0 + above];
+            let held = (0..=CIRCLE_SAMPLES).all(|n| {
+                let x = run[0] + (run[1] - run[0]) * n as f64 / CIRCLE_SAMPLES as f64;
+                let [u, v] = on_line(x);
+                walker.distance(u, v).0.abs() <= self.tol.linear
+            });
+            return held.then_some(EdgeTouch {
+                at,
+                half: [a; 2],
+                k,
+                run,
+            });
+        }
+        None
     }
 
     /// The cell of the root `at` on the edge where direction `k`'s
@@ -2162,7 +2442,9 @@ impl Tracer<'_> {
             let ahead = dir * walker.off(0, s.at[0] - u);
             let dv = walker.off(1, v - s.at[1]);
             let near = ahead > 0.0 && ahead <= s.half[0] + ANGLE_SLACK;
-            if s.crossing && near && dv.abs() <= s.half[1] {
+            // A march comes to the side of the cell it is on.
+            let reached = s.sides[usize::from(dir < 0.0)];
+            if s.crossing && near && reached && dv.abs() <= s.half[1] {
                 let centre = [u + dir * ahead, v - dv];
                 let upper = v > self.walker.separator(s, centre, u);
                 let cell = Cell {
@@ -2370,7 +2652,8 @@ impl Tracer<'_> {
         }
         for (i, s) in self.walker.singular.iter().enumerate() {
             for arm in 0..4 {
-                if !s.crossing || taken(&marched, ArcEnd::Singular(i, arm)) {
+                let beyond = !s.sides[usize::from(arm >= 2)];
+                if !s.crossing || beyond || taken(&marched, ArcEnd::Singular(i, arm)) {
                     continue;
                 }
                 let (dir, upper) = (if arm >= 2 { 1.0 } else { -1.0 }, arm % 2 == 1);
@@ -2626,7 +2909,9 @@ impl Tracer<'_> {
     }
 
     fn chained(self, marched: Vec<Marched>) -> Result<SectionTrace, SectionFault> {
-        let circles = self.section_circles()?;
+        let mut circles = self.section_circles()?;
+        let (touched, runs) = self.touch_runs()?;
+        circles.extend(runs);
         let folds: Vec<[Option<Fold>; 2]> = (marched.iter())
             .map(|m| [0, 1].map(|side| self.fold(m, side)))
             .collect();
@@ -2780,6 +3065,9 @@ impl Tracer<'_> {
             }
         }
 
+        // The touches of an edge, isolated, after the crossings.
+        let crossings_end = ends_at.len();
+        ends_at.extend(touched.into_iter().map(|at| (at, true)));
         // The points in their documented order, ascending by `u` and
         // then `v`, and where each went.
         let mut order: Vec<usize> = (0..ends_at.len()).collect();
@@ -2802,7 +3090,8 @@ impl Tracer<'_> {
         let crossings = &order[..];
         for (i, &a) in crossings.iter().enumerate() {
             for &b in &crossings[i + 1..] {
-                let both = a >= walker.singular.len() && b >= walker.singular.len();
+                let crossing = |i: usize| (walker.singular.len()..crossings_end).contains(&i);
+                let both = crossing(a) && crossing(b);
                 let apart = points[index[a]].point - points[index[b]].point;
                 if both && apart.norm() <= 2.0 * tol.linear {
                     return Err(SectionFault::CrowdedSingularity);

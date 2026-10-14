@@ -9,7 +9,7 @@ use core::f64::consts::{PI, TAU};
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, Lump, LumpError, Report, ShellNestingFault, Violation, check, lumps};
 use arris_debug::sample;
-use arris_geom::{Curve, Curve2, NurbsCurve, Surface};
+use arris_geom::{Curve, Curve2, NurbsCurve, NurbsSurface, Surface};
 use arris_math::{
     Frame, Frame2, Handedness, Interval, Point2, Point3, Precision, UnitVec2, UnitVec3, Vec2, Vec3,
 };
@@ -1195,4 +1195,146 @@ fn the_report_is_the_same_on_two_builds_at_full() {
     let text = build(&mut a);
     assert_eq!(text, build(&mut b));
     assert!(text.lines().count() >= 2, "{text}");
+}
+
+/// The plane `z = 0` and a cubic NURBS face standing in for a walked
+/// blend (`plans/nurbs-face-blend` step 6): `z = y²(1 − y)` over `[0, 2] ×
+/// [0, 3/2]`, tangent to the plane along their shared edge `y = 0` as a
+/// blend is to its neighbour along a contact, and back through the plane
+/// along `y = 1`, as a blend whose radius is past a concave neighbour's
+/// reach crosses it. The plane's face is `[0, 2] × [0, reach]` on the
+/// cubic's side of the edge, which it walks reversed. Returns the body,
+/// its shell and the two faces, the plane's first.
+fn tangent_cubic_on_a_plane(m: &mut Model, reach: f64) -> (Body, ShellId, FaceId, FaceId) {
+    let tol = m.precision().default_tolerance;
+    let p = Point3::new;
+    let (lo, hi) = (-1.125, 1.5);
+    let ys = [0.0, 0.5, 1.0, hi];
+    let zs = [0.0, 0.0, 0.75, lo];
+    let cubic = NurbsSurface::new(
+        [1, 3],
+        [
+            vec![0.0, 0.0, 2.0, 2.0],
+            vec![0.0, 0.0, 0.0, 0.0, hi, hi, hi, hi],
+        ],
+        [0.0, 2.0]
+            .iter()
+            .flat_map(|&x| (0..4).map(move |j| p(x, ys[j], zs[j])))
+            .collect(),
+        vec![1.0; 8],
+    )
+    .unwrap();
+    let side = |x: f64| {
+        NurbsCurve::new(
+            3,
+            vec![0.0, 0.0, 0.0, 0.0, hi, hi, hi, hi],
+            (0..4).map(|j| p(x, ys[j], zs[j])).collect(),
+            vec![1.0; 4],
+        )
+        .unwrap()
+    };
+    let vertex = |m: &mut Model, at: Point3| m.raw().add_vertex(Vertex::new(at, tol));
+    let [v0, v1, v2, v3] = [
+        p(0.0, 0.0, 0.0),
+        p(2.0, 0.0, 0.0),
+        p(2.0, hi, lo),
+        p(0.0, hi, lo),
+    ]
+    .map(|at| vertex(m, at));
+    let [w2, w3] = [p(2.0, reach, 0.0), p(0.0, reach, 0.0)].map(|at| vertex(m, at));
+    let edge = |m: &mut Model, curve: Curve, length: f64, from: VertexId, to: VertexId| {
+        let curve = m.add_curve(curve);
+        let range = Interval::new(0.0, length).unwrap();
+        m.raw().add_edge(Edge::new(
+            EdgeGeometry::Curve { curve, range },
+            from,
+            to,
+            tol,
+        ))
+    };
+    let line = |from: Point3, to: Point3| Curve::Line {
+        origin: from,
+        direction: UnitVec3::new_normalize(to - from),
+    };
+    let shared = edge(m, line(p(0.0, 0.0, 0.0), p(2.0, 0.0, 0.0)), 2.0, v0, v1);
+    let far = edge(m, Curve::Nurbs(side(2.0)), hi, v1, v2);
+    let top = edge(m, line(p(2.0, hi, lo), p(0.0, hi, lo)), 2.0, v2, v3);
+    let near = edge(m, Curve::Nurbs(side(0.0)), hi, v0, v3);
+    let open = edge(m, line(p(0.0, 0.0, 0.0), p(0.0, reach, 0.0)), reach, v0, w3);
+    let across = edge(m, line(p(0.0, reach, 0.0), p(2.0, reach, 0.0)), 2.0, w3, w2);
+    let back = edge(m, line(p(2.0, reach, 0.0), p(2.0, 0.0, 0.0)), reach, w2, v1);
+    let pcurve = |m: &mut Model, origin: Point2, direction: Vec2| {
+        m.add_curve2(Curve2::Line {
+            origin,
+            direction: UnitVec2::new_normalize(direction),
+        })
+    };
+    let use_ = |m: &mut Model, e: EdgeId, o: Orientation, origin: Point2, direction: Vec2| {
+        let c = pcurve(m, origin, direction);
+        Coedge::new(e, o, c)
+    };
+    let (fw, rv) = (Orientation::Forward, Orientation::Reversed);
+    let blend_loop = vec![
+        use_(m, shared, fw, p2(0.0, 0.0), Vec2::x()),
+        use_(m, far, fw, p2(2.0, 0.0), Vec2::y()),
+        use_(m, top, fw, p2(2.0, hi), -Vec2::x()),
+        use_(m, near, rv, p2(0.0, 0.0), Vec2::y()),
+    ];
+    let blend_surface = m.add_surface(Surface::Nurbs(cubic));
+    let blend = m
+        .raw()
+        .add_face(Face::new(blend_surface, vec![Loop::new(blend_loop)], tol));
+    // The plane seen from below, its (u, v) `(x, −y)`, so that its loop
+    // walks the shared edge the other way.
+    let below = m.add_surface(Surface::Plane {
+        frame: Frame::new(Point3::origin(), -Vec3::z(), Vec3::x()).unwrap(),
+    });
+    let plane_loop = vec![
+        use_(m, shared, rv, p2(0.0, 0.0), Vec2::x()),
+        use_(m, open, fw, p2(0.0, 0.0), -Vec2::y()),
+        use_(m, across, fw, p2(0.0, -reach), Vec2::x()),
+        use_(m, back, fw, p2(2.0, -reach), Vec2::y()),
+    ];
+    let plane = m
+        .raw()
+        .add_face(Face::new(below, vec![Loop::new(plane_loop)], tol));
+    let (body, shell) = body_of(
+        m,
+        vec![FaceHandle::forward(plane), FaceHandle::forward(blend)],
+        BodyKind::Sheet,
+    );
+    (body, shell, plane, blend)
+}
+
+/// S5 on a NURBS face against the analytic face it is tangent to along
+/// their shared edge: the double zero along the edge is the isoline
+/// ADR-0061 divides out, and the line where the cubic comes back through
+/// the plane is interior to both faces — a violation, with nothing left
+/// unchecked.
+#[test]
+fn s5_a_nurbs_face_back_through_its_tangent_neighbour_is_a_violation() {
+    let mut m = Model::default();
+    let (body, shell, plane, blend) = tangent_cubic_on_a_plane(&mut m, 2.0);
+    let report = check(&m, body, Level::Full);
+    assert_lines(&report, &[("S5", shell.to_string())]);
+    assert_eq!(
+        report.violations()[0],
+        Violation::FacesIntersect {
+            shell,
+            face_a: plane.min(blend),
+            face_b: plane.max(blend),
+        }
+    );
+    assert!(report.unchecked().is_empty(), "{report}");
+}
+
+/// The same pair with the plane's face short of `y = 1`: they meet only
+/// along the edge they share, and S5 decides so.
+#[test]
+fn s5_a_nurbs_face_tangent_to_its_neighbour_along_their_edge_passes() {
+    let mut m = Model::default();
+    let (body, _, _, _) = tangent_cubic_on_a_plane(&mut m, 0.5);
+    let report = check(&m, body, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
 }

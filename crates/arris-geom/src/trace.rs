@@ -96,9 +96,10 @@ pub enum SectionFault {
     /// away from any singular point: a turning point that is an
     /// inflection as well, or a stretch of the section too close to
     /// another to be followed alone. Of a NURBS surface's section also:
-    /// the section touching an edge of the surface's domain or crossing
-    /// it at a corner, and the section turning back at a kink of the
-    /// surface, a knot where it is only continuous.
+    /// the section touching an edge of the surface's domain and entering
+    /// the domain there, or crossing the edge at a corner, and the section
+    /// turning back at a kink of the surface, a knot where it is only
+    /// continuous.
     UnresolvedTurning,
 }
 
@@ -889,7 +890,10 @@ pub struct SectionCircle {
     /// Of a NURBS surface, the surface's own line of constant `u` or `v`
     /// as a [`Curve::Nurbs`] — the net summed at that parameter, no fit —
     /// its parameter the surface's other one, within the tolerance of
-    /// the other surface.
+    /// the other surface: the whole line, or, where the other surface
+    /// touches an edge of the domain without entering it and rounding
+    /// cannot sign the section along a stretch of that edge, the edge's
+    /// line over the stretch, `tangent`.
     pub circle: Curve,
     /// `true` where the surfaces are tangent along the circle and do not
     /// cross there — a pipe elbow against its straight pipe, a sphere of
