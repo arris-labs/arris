@@ -9,6 +9,9 @@
 //! direction, and its two contact isocurves are the stripe's lines. A face
 //! across an end cuts it where each contact pierces that face, on the
 //! section traced and fitted between the two ([`walked_end`], ADR-0037).
+//! Where the faces turn tangent at an end and the ball there touches both
+//! at the vertex, the stripe narrows to it instead, a pole of its surface
+//! ([`walked_pole`], ADR-0062 §5).
 //! A closed edge's ring ([`walked_ring`]) keeps the surface as it is, `u`
 //! across and `v` once round the edge, and runs round to its own seam, the
 //! ball's arc at the edge's vertex, as the table's ring does.
@@ -24,7 +27,7 @@ use arris_topo::{EdgeId, FaceId, Orientation};
 
 use super::Kind;
 use super::build::Env;
-use super::ends::{Arced, End, corner_of, finish_end};
+use super::ends::{Arced, End, Pole, corner_of, finish_end};
 use super::ring::{Ring, RingContact, RingEnds, RingSeam, SeamCut, cut_seams, placed_uv};
 use super::stripe::{Contact, Section, Stripe, in_band, on_side_of_face, placed};
 use super::traced::traced_end;
@@ -238,7 +241,9 @@ fn faces_toward(surface: &NurbsSurface, uv: Point2, p: Point3) -> Result<bool, O
 ///
 /// Errors: as [`roll`]; `BlendReason::TangentChain` naming the vertex
 /// where the faces turn tangent within the edge's tolerance, a vanishing
-/// end, which the assembly does not take yet.
+/// end, and the ball there does not close on that vertex: its arc is
+/// wider than the surface's share of the tolerance, or its point is
+/// farther from the vertex than the vertex's tolerance.
 pub(super) fn walked_stripe(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -262,20 +267,39 @@ pub(super) fn walked_stripe(
         return Err(invariant("an open edge, a closed one being a ring"));
     }
     let e = forward(edge);
-    for (vertex, vanishes) in [entity.start(), entity.end()]
+    let skin = path
+        .skin(fit, meter)
+        .map_err(|w| named(w, edge, faces, surfaces))?;
+    // A vanishing end is a pole where the ball there touches both faces at
+    // one point, the vertex within its tolerance: the surface's row there
+    // is collapsed to it, and the stripe narrows to the vertex, which it
+    // keeps (ADR-0062 §5). Where the faces only run within the edge's
+    // tolerance of tangent, the ball's arc there stays apart from the
+    // vertex, which the stripe does not join to it.
+    let singular = Surface::Nurbs(skin.surface.clone()).singularities();
+    let mut poles = [false; 2];
+    for (end, (vertex, vanishes)) in [entity.start(), entity.end()]
         .into_iter()
         .zip(path.vanishing())
+        .enumerate()
     {
-        if vanishes {
+        if !vanishes {
+            continue;
+        }
+        let at = m.vertex(vertex)?;
+        let closes = singular.iter().any(|row| {
+            row.fixed == 1
+                && row.value == skin.ends[end]
+                && (row.point - at.point()).norm() <= at.tolerance()
+        });
+        if !closes {
             return Err(degenerate(
                 vec![e, forward(vertex)],
                 Reason::Blend(BlendReason::TangentChain),
             ));
         }
+        poles[end] = true;
     }
-    let skin = path
-        .skin(fit, meter)
-        .map_err(|w| named(w, edge, faces, surfaces))?;
     let rows = contact_rows(&skin.surface).map_err(|w| named(w, edge, faces, surfaces))?;
     let [v0, v1] = skin.ends;
     let v_mid = 0.5 * (v0 + v1);
@@ -319,6 +343,7 @@ pub(super) fn walked_stripe(
             ends: skin.ends,
             flipped,
             centres,
+            poles,
         },
         frame,
         surface: Surface::Nurbs(skin.surface),
@@ -437,6 +462,23 @@ pub(super) fn walked_end(
             arc_tolerance,
         },
     )
+}
+
+/// The pole the walked stripe `s` narrows to at its start (`at_lo`) or its
+/// end vertex, where [`walked_stripe`] found one (ADR-0062 §5).
+pub(super) fn walked_pole(s: &Stripe, at_lo: bool) -> Result<Pole, OpError> {
+    let Section::Walked { ends, poles, .. } = s.section else {
+        return Err(invariant("a walked stripe's pole"));
+    };
+    let end = usize::from(!at_lo);
+    if !poles[end] {
+        return Err(invariant("a pole at the walked stripe's end"));
+    }
+    Ok(Pole {
+        vertex: if at_lo { s.start } else { s.end },
+        t: ends[end],
+        on_blend: along_u(ends[end]),
+    })
 }
 
 /// The pcurve of an isocurve of a walked stripe's surface: `u` constant

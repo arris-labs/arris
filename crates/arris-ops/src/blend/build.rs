@@ -16,7 +16,7 @@ use super::miter::{Miter, miter};
 use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
 use super::stripe::Section;
 use super::stripe::{Stripe, contacts, stripe};
-use super::walked_blend::{walked_contacts, walked_end, walked_ring, walked_stripe};
+use super::walked_blend::{walked_contacts, walked_end, walked_pole, walked_ring, walked_stripe};
 use super::{Blend, Kind, degenerate, invariant};
 use crate::body_view::BodyView;
 use crate::error::{BlendReason, OpError, Reason, fault_of};
@@ -545,6 +545,18 @@ fn make_blends(
     for s in stripes {
         let mut ends: Vec<EndKind> = Vec::with_capacity(2);
         for (at_lo, vertex) in [(true, s.start), (false, s.end)] {
+            // A walked stripe narrowed to its vertex meets no other blend
+            // there: the vertex is kept, with nothing to share.
+            if matches!(s.section, Section::Walked { poles, .. } if poles[usize::from(!at_lo)]) {
+                if miter_at.contains_key(&vertex) || corner_at.contains_key(&vertex) {
+                    return Err(degenerate(
+                        vec![forward(s.edge), forward(vertex)],
+                        Reason::Blend(BlendReason::VertexBlend),
+                    ));
+                }
+                ends.push(EndKind::Pole(walked_pole(&s, at_lo)?));
+                continue;
+            }
             ends.push(match (miter_at.get(&vertex), corner_at.get(&vertex)) {
                 (Some(&at), _) => EndKind::Miter {
                     at,
@@ -727,7 +739,7 @@ fn add_corners(
     corner_made
 }
 
-/// The stripes: four trim vertices, two contact edges and each end's arcs.
+/// The stripes: four trim vertices, two contact edges and each end's arcs; at a pole, its vertex kept for both contacts and a degenerate edge for the arc.
 fn add_stripes(
     ctx: &mut BlendCtx<'_, '_>,
     draft: &mut Draft,
@@ -758,6 +770,11 @@ fn add_stripes(
                             tolerance: vertex_tolerance_of(&blend.ends, k),
                         });
                     }
+                }
+                EndKind::Pole(pole) => {
+                    let at = rw.vertices.len();
+                    rw.vertices.push(VertexSpec::Keep(pole.vertex));
+                    vertices[end_index] = [at; 2];
                 }
                 EndKind::Miter { at, side } => {
                     let shared = miters[*at].shared[*side];
@@ -791,6 +808,24 @@ fn add_stripes(
         for (end_index, end) in blend.ends.iter().enumerate() {
             let face_end = match end {
                 EndKind::Face(face_end) => face_end,
+                EndKind::Pole(_) => {
+                    // The collapsed row, across from one contact to the
+                    // other at the kept vertex.
+                    let at = VertexKey::New(vertices[end_index][0]);
+                    arcs[end_index].push(rw.edges.len());
+                    rw.edges.push((
+                        EdgeSpec::New {
+                            geometry: EdgeGeometry::Degenerate {
+                                range: Interval::UNIT,
+                            },
+                            start: at,
+                            end: at,
+                            tolerance: blend.stripe.tolerance,
+                        },
+                        None,
+                    ));
+                    continue;
+                }
                 EndKind::Miter { at, side } => {
                     arcs[end_index] = miter_made[*at].arcs(&miters[*at], *side);
                     continue;
@@ -1232,6 +1267,7 @@ fn add_blend_faces(
                     .iter()
                     .map(|p| (p.arc.lo_first, &p.arc.on_blend))
                     .collect(),
+                EndKind::Pole(pole) => vec![(true, &pole.on_blend)],
                 EndKind::Miter { at, side } => miters[*at].arcs(*side),
                 EndKind::Corner { at, side } => {
                     let arc = &corners[*at].arcs[*side];
@@ -1486,7 +1522,11 @@ fn record(
         for &k in made.contacts.iter().chain(made.arcs.iter().flatten()) {
             p.add_generated(origin, forward(out.edges[k]));
         }
-        for &v in made.vertices.iter().flatten().chain(&made.crossings) {
+        // A pole's vertex is the operand's, kept.
+        let made_here = (made.vertices.iter().zip(&blend.ends))
+            .filter(|(_, end)| !matches!(end, EndKind::Pole(_)))
+            .flat_map(|(vertices, _)| vertices);
+        for &v in made_here.chain(&made.crossings) {
             p.add_generated(origin, forward(out.vertices[v]));
         }
     }

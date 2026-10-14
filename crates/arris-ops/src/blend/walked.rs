@@ -520,27 +520,40 @@ impl Spine {
                 v
             }
         };
+        let budget = SECTION_FIT_FRACTION * tol.linear;
+        // The surface's `v` runs along the edge, so its lower end is the
+        // edge's start and its upper end the edge's end.
+        let [stop_lo, stop_hi] = self.vanishing();
         // A loop's two ends are one ball: found once, so that the
         // surface's first and last rows of control points are the same to
-        // the last bit and the face is closed, not only fitted to be.
+        // the last bit and the face is closed, not only fitted to be. At a
+        // vanishing end whose ball touches both faces at one point within
+        // the surface's share of the tolerance, the arc is that point, and
+        // the surface's row there is collapsed: a pole (ADR-0062 §5).
         let section = |v: f64| {
             let v = if self.closed && v >= range.hi() {
                 range.lo()
             } else {
                 v
             };
-            arc(&self.ball(at(v))?)
+            let ball = self.ball(at(v))?;
+            let vanishes = (stop_lo && v == range.lo()) || (stop_hi && v == range.hi());
+            if vanishes && (ball.contacts[0] - ball.contacts[1]).norm() <= budget {
+                point_arc(ball.contacts[0])
+            } else {
+                arc(&ball)
+            }
         };
-        let surface = fit_skin(
-            section,
-            range,
-            SURFACE_DEGREE,
-            SECTION_FIT_FRACTION * tol.linear,
-            meter,
-        )?;
+        let surface = fit_skin(section, range, SURFACE_DEGREE, budget, meter)?;
+        // A vanishing end is where the spine stops, the range's own end:
+        // named exactly, so that its isocurve is the surface's end row.
+        let ends = [
+            if stop_lo { range.lo() } else { at(self.from) },
+            if stop_hi { range.hi() } else { at(self.to) },
+        ];
         Ok(Skin {
             surface,
-            ends: [at(self.from), at(self.to)],
+            ends,
             reflected,
             range,
         })
@@ -589,6 +602,19 @@ pub(super) fn arc(ball: &Ball) -> Result<NurbsCurve, Walked> {
         vec![0.0, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 1.0],
         vec![a, pa, m, pb, b],
         vec![1.0, wa, 1.0, wb, 1.0],
+    )?)
+}
+
+/// The ball's arc at a vanishing end whose contacts are one point `p`:
+/// [`arc`]'s knots, weights and count, every control point `p`, so that it
+/// skins compatibly with the arcs beside it and the surface's row there is
+/// collapsed to `p`.
+fn point_arc(p: Point3) -> Result<NurbsCurve, Walked> {
+    Ok(NurbsCurve::new(
+        2,
+        vec![0.0, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 1.0],
+        vec![p; 5],
+        vec![1.0; 5],
     )?)
 }
 

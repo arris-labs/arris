@@ -18,8 +18,11 @@ into its version (ADR-0027).
   edges). A radius past the free-form face's curvature is refused as too
   large; two free-form faces, a blend that meets another blend at a sharp
   vertex, a chain that turns tangent along a curve across the vertex (a
-  flat running into a torus), and an edge whose faces turn tangent at an
-  end are still refused by name.
+  flat running into a torus), and an edge whose faces are tangent at an
+  end only within the edge's tolerance are still refused by name. Where
+  the faces are tangent at an end exactly (two cylinders of one radius
+  whose axes meet, at the top of their crossing), the blend narrows to a
+  point at that vertex, which it keeps.
 - `chamfer` takes the same edges: each contact is the point of its face in
   the edge's normal plane at distance `d` from the edge's point, and the
   chamfer is the ruled surface between the two contact curves, within your
@@ -38,7 +41,11 @@ into its version (ADR-0027).
   against the analytic faces beside it, but where a chain turns convex
   from a straight stripe into a free-form one; two free-form faces
   against each other are left undecided too. A touch that dips into the surface
-  there, and a crossing at a corner of it, are still refused by name.
+  there, and a crossing at a corner of it, are still refused by name. It
+  also takes a NURBS surface whose collapsed edge (a pole) and one of its
+  lines both lie on the other surface, returning the line and the pole as
+  a point, and a crossing a hair past the NURBS surface's edge, within your
+  tolerance, as the point on the edge it stands for.
 - `mass_properties`, `surface_properties` and the checker's volume row
   integrate a NURBS face at every one of its knots up to 4096 a direction
   (256 before): a face with more spans, such as a blend along a long curved

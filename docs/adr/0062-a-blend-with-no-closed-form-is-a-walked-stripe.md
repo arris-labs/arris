@@ -278,6 +278,37 @@ with its Python class, `GeomOffsetFoldsError`.
   table's curve, and meets the torus's closed form to rounding; Open
   CASCADE's walked blend of the same edge lies `6.9e-8` below it.
 
+- **Step 9b (the pole).** A vanishing end (§5) is a **pole** where the
+  ball there touches both faces at one point within the surface's share
+  of the tolerance (`τ/4`), and that point is within the vertex's
+  tolerance of the vertex. The arc there is that point. The skin's row at
+  the end is collapsed onto it (`point_arc`), the stripe's two contacts
+  end at the vertex, which is kept (`VertexSpec::Keep`), and the blend's
+  loop crosses the row on a degenerate edge (`EndKind::Pole`). No corner
+  edge is cut, no face across is met, and provenance records no vertex.
+  A pole at a vertex another blend meets is `VertexBlend`. CTC-01's crease
+  is the case: two equal cylinders whose axes meet are tangent at the top
+  of their crossing, and the end ball there touches both at `v211` to
+  `4.3e-14`, its arc of width zero. Open CASCADE ends its blend on the
+  same pole, a degenerate edge at the vertex kept. Where the faces only
+  run within the edge's tolerance of tangent, the exact ball's arc stays
+  apart from the vertex: CTC-05's at `v84` is `1.98e-4` wide, its
+  contacts `9.9e-3` from the vertex. That end stays `TangentChain`. To
+  join it, the vertex's tolerance would have to grow past the edge's own
+  `7.7e-3`, and the surface would have to leave the exact balls by `1e-2`
+  to reach it, which the budget of §1 has no room for. The plan's other
+  candidate, a vertex grown under ADR-0060's operation bound, is rejected
+  for that reason. CTC-01's other end, `v113`, was named a fan in step 1;
+  it is a tangent vertex of four edges (ADR-0039 §1), where the crease runs
+  on into the vertical corner between two planes, each tangent to one
+  cylinder, and the chain's junction takes it as any other. Open CASCADE's
+  contacts there miss the ball by `5.3e-4` at the median and `2.2e-3` at
+  worst, against Arris' `5.0e-10` and `7.8e-10`. The blend faces differ by
+  `8.6e-4` of their area, the part by `5.5e-9`, and the fixture's
+  tolerances cover that under the step-5b allowance. The checker's S5 on
+  the pole and on that junction needed two tracer changes (ADR-0061,
+  amendment of 2026-10-14).
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**

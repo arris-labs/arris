@@ -118,7 +118,9 @@ use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 use std::sync::Arc;
 
 use arris_math::roots::{POLYNOMIAL_ROUNDING, newton_in_interval};
-use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, wrap_angle, wrap_offset};
+use arris_math::{
+    Frame, Interval, Meter, Point2, Point3, Tolerance, is_negligible, wrap_angle, wrap_offset,
+};
 
 use crate::bernstein2::Zero2;
 use crate::halt::Halt;
@@ -1210,7 +1212,20 @@ pub(crate) fn trace_nurbs(
         },
         (_, true) => along.run_with(rows, meter),
         (true, false) => across.run_with(columns, meter),
-        (false, false) => Err(SectionFault::TubeCircle.into()),
+        // Isolines both ways, where one way's are all poles of the surface
+        // — a collapsed row at an edge of the domain, one point of the
+        // section, as where a walked blend narrows to its vertex — are
+        // traced beside the poles: each is divided out of the other way's
+        // section and comes back as its own point (ADR-0061 §3, amended).
+        (false, false) => {
+            if columns.iter().all(|c| across.is_pole(c.u0)) {
+                along.run_beside_poles(rows, &columns, meter)
+            } else if rows.iter().all(|c| along.is_pole(c.u0)) {
+                across.run_beside_poles(columns, &rows, meter)
+            } else {
+                Err(SectionFault::TubeCircle.into())
+            }
+        }
     };
     traced.map_err(|halt| match halt {
         Halt::Fault(fault) => GeomError::DegenerateSection {
@@ -1327,7 +1342,11 @@ impl Tracer<'_> {
         let critical = (self.section.critical_points(meter))
             .map_err(|halt| halt.map_fault(|_| SectionFault::TangentAlongCurve))?
             .zeros;
-        let (turning, critical) = (self.on_domain(turning), self.on_domain(critical));
+        let (turning, mut critical) = (self.on_domain(turning), self.on_domain(critical));
+        if !torus {
+            let past = self.critical_past_edges(&critical, meter)?;
+            critical.extend(past);
+        }
         // A box of turning points a whole turn long in `v` is a tube
         // circle the other surface runs along, and not one held to the
         // tolerance, which would have been divided out; a whole turn both
@@ -1435,6 +1454,101 @@ impl Tracer<'_> {
             }
         }
         self.assemble(meter)
+    }
+
+    /// Whether the walked NURBS surface's isoline at `u0` is a pole: one
+    /// point to rounding all along it, a collapsed row.
+    fn is_pole(&self, u0: f64) -> bool {
+        let walker = &self.walker;
+        let at = |k: usize| {
+            let v = TAU * k as f64 / (CIRCLE_SAMPLES - 1) as f64;
+            walker.eval(u0, v).point
+        };
+        let first = at(0);
+        walker.rescale.is_some()
+            && (1..CIRCLE_SAMPLES).all(|k| is_negligible((at(k) - first).norm(), walker.size))
+    }
+
+    /// [`Self::run_with`] with the isolines `circles` divided out, beside
+    /// `poles`: each an isoline of the other direction that is a pole, an
+    /// edge of the domain in this one's `v`, divided out of the section
+    /// first at the order its patches show ([`PatchedSection::deflate_pole`])
+    /// and returned as its own isoline, one point, tangent where that is
+    /// two. A pole whose patches do not vanish there within the tolerance
+    /// is refused, as the isolines of both directions were.
+    fn run_beside_poles(
+        mut self,
+        circles: Vec<TubeFactor>,
+        poles: &[TubeFactor],
+        meter: &mut Meter,
+    ) -> Result<SectionTrace, Halt<SectionFault>> {
+        let (Surface::Nurbs(nurbs), Some(map)) = (&self.walker.walked, &self.walker.rescale) else {
+            return Err(SectionFault::TubeCircle.into());
+        };
+        let rows = (poles.iter())
+            .map(|p| {
+                (nurbs.isocurve(1, map.to_surface(1, p.u0))).map_err(|_| SectionFault::TubeCircle)
+            })
+            .collect::<Result<Vec<_>, SectionFault>>()?;
+        let mut points = Vec::with_capacity(poles.len());
+        for (p, row) in poles.iter().zip(rows) {
+            let order = self.section.deflate_pole(p.u0);
+            if order == 0 {
+                return Err(SectionFault::TubeCircle.into());
+            }
+            points.push(SectionCircle {
+                circle: Curve::Nurbs(row),
+                tangent: order == 2,
+            });
+        }
+        Ok(self.run_with(circles, meter)?.with_more_circles(points))
+    }
+
+    /// The critical points of a NURBS surface's section past an open edge
+    /// of its domain whose point is within the tolerance of the edge's
+    /// beside it, each put on the edge, its box cut there
+    /// ([`PatchedSection::critical_points_past`]): the edge's place is not
+    /// resolved within the tolerance, and a saddle the fit puts a hair
+    /// outside it is the section's singular point there, whose near miss
+    /// inside the domain its turning points are. A box of them is put on
+    /// the edge where its point nearest the edge is within the tolerance
+    /// of it, for [`Self::singular_points`] to refuse where it is near the
+    /// other surface. One the census inside the domain has found already,
+    /// on the edge, is not found twice.
+    fn critical_past_edges(
+        &self,
+        inside: &[Zero2],
+        meter: &mut Meter,
+    ) -> Result<Vec<Zero2>, Halt<SectionFault>> {
+        let mut out = Vec::new();
+        for k in (0..2).filter(|&k| !self.walker.closed[k]) {
+            for edge in [0.0, TAU] {
+                let found = (self.section)
+                    .critical_points_past(k, edge, meter)
+                    .map_err(|halt| halt.map_fault(|_| SectionFault::TangentAlongCurve))?;
+                for mut z in found {
+                    let mut nearest = z.at;
+                    nearest[k] = edge.clamp(z.lo[k], z.hi[k]);
+                    let mut on_edge = nearest;
+                    on_edge[k] = edge;
+                    let apart = (self.walker.point(nearest[0], nearest[1]))
+                        - self.walker.point(on_edge[0], on_edge[1]);
+                    if apart.norm() > self.tol.linear {
+                        continue;
+                    }
+                    (z.at[k], z.lo[k], z.hi[k]) = (edge, edge, edge);
+                    let known = inside.iter().any(|c| {
+                        (0..2).all(|j| {
+                            (c.lo[j] - EDGE_TOUCH..=c.hi[j] + EDGE_TOUCH).contains(&z.at[j])
+                        })
+                    });
+                    if !known {
+                        out.push(z);
+                    }
+                }
+            }
+        }
+        Ok(out)
     }
 
     /// Whether the walked NURBS surface lies on the other surface over a

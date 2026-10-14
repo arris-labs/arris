@@ -1155,7 +1155,7 @@ corpus_tests! {
     /// B-spline face and a torus filleted alone at the battery's radius: a
     /// blend on a NURBS face, both ends on the B-spline's domain boundary
     /// with a cylinder across.
-    #[ignore = "TangentChain at v84: the faces turn tangent there within the edge's tolerance, a vanishing end the walked stripe does not end on yet (plans/nurbs-face-blend step 9); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, of negative volume and area"]
+    #[ignore = "TangentChain at v84: the faces turn tangent there only within the edge's tolerance, and the exact ball's arc stays 9.9e-3 from the vertex, a vanishing end with no pole, which ADR-0062's step 9b amendment refuses (docs/BACKLOG.md); and the oracle is wrong: Open CASCADE builds a body BRepCheck_Analyzer finds invalid, of negative volume and area"]
     regression_nist_ctc_05_ap203_nurbs_torus_fillet => run "regression/nist-ctc-05-ap203-nurbs-torus-fillet";
     /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
     /// face one rational Bézier patch.
@@ -1164,7 +1164,7 @@ corpus_tests! {
     /// NIST FTC-10's solid #6434, the closed edge where two cylinders whose
     /// axes cross off each other meet in a quartic, written as a B-spline,
     /// filleted alone.
-    #[ignore = "read-back: the walked ring builds with the oracle's counts, its volume 3e-9 and area 2e-9 relative off Open CASCADE's, past the fixture's 1e-9 (the oracle's blend is walked too), which ADR-0062's step 5b amendment lets the fixture's tolerances cover once its miss of the ball is measured (plans/nurbs-face-blend step 10)"]
+    #[ignore = "checker: S5 leaves the walked ring undecided against seven faces beside it (six cylinders and a sphere), which the corpus no longer allows a blend since plans/nurbs-face-blend step 6; past that, the ring builds with the oracle's counts, its volume 3e-9 and area 2e-9 relative off Open CASCADE's walked blend, which ADR-0062's step 5b amendment lets the tolerances cover once its miss of the ball is measured (plans/nurbs-face-blend step 10)"]
     regression_nist_ftc_10_cylinder_pair_bspline_fillet => run "regression/nist-ftc-10-cylinder-pair-bspline-fillet";
     /// NIST FTC-11's AP242 edition 2 solid #1299, a plane-against-cylinder
     /// edge written as a B-spline that hides a circle, filleted alone.
@@ -1175,10 +1175,6 @@ corpus_tests! {
     /// the seam at a slant.
     #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md; plans/nurbs-face-blend step 9 finding)"]
     regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
-    /// NIST CTC-01's solid #101, the elliptic crease where two equal
-    /// cylinders whose axes meet cross, filleted alone.
-    #[ignore = "TangentChain at v211: the cylinders turn tangent there, a vanishing end, and v113 is a fan of two planes, which a walked stripe does not end on yet (plans/nurbs-face-blend step 9)"]
-    regression_nist_ctc_01_crossing_cylinders_crease_fillet => run "regression/nist-ctc-01-crossing-cylinders-crease-fillet";
     /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
     /// B-spline edge that hides a circle, and a line, around a slot's end.
     #[ignore = "Unsupported(e24 cylinder × f17 cylinder): the chain's junctions hold, and the line's end on a cylinder across is a pair the table's ends do not take (plans/nurbs-face-blend step 10)"]
@@ -1286,6 +1282,11 @@ corpus_tests! {
     /// turn round their rounded corners at faces tangent only to 9e-10 as
     /// read, which the blend's own tolerance takes as tangent (ADR-0040).
     blend_nist_ctc_04_chamfered_wall_fillet => run "blend/nist-ctc-04-chamfered-wall-fillet";
+    /// CTC-01's elliptic crease where two equal cylinders whose axes meet
+    /// cross, read from STEP and filleted: a walked stripe that narrows to a
+    /// pole at the vertex where the cylinders turn tangent, and runs on down
+    /// the tangent corner at its other end (ADR-0062 §5).
+    blend_nist_ctc_01_crossing_cylinders_crease_fillet => run "blend/nist-ctc-01-crossing-cylinders-crease-fillet";
     /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
     /// a closed chain through four tangent vertices.
     blend_stadium_outline_fillet => run "blend/stadium-outline-fillet";

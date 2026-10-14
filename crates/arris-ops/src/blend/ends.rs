@@ -89,10 +89,26 @@ pub(super) struct End {
     pub(super) stays: Vec<EdgeId>,
 }
 
+/// A walked stripe's end at a pole (ADR-0062 §5): the faces turn tangent
+/// at the vertex and the ball there touches both at it, so the stripe
+/// narrows to the vertex, which it keeps. Its two contacts end there, and
+/// the blend's loop crosses the surface's collapsed row on a degenerate
+/// edge; no corner edge is cut and no face across is met.
+pub(super) struct Pole {
+    pub(super) vertex: VertexId,
+    /// The contacts' parameter there: the surface's `v` at that end.
+    pub(super) t: f64,
+    /// The degenerate edge's pcurve on the blend: the collapsed row, `u`
+    /// from the contact at `0` to the one at `1` over `[0, 1]`.
+    pub(super) on_blend: Curve2,
+}
+
 /// One end of a blend: trimmed by the face across the corner, met by the
-/// other blend of a miter, or met by the corner face of three blends.
+/// other blend of a miter, met by the corner face of three blends, or
+/// narrowed to its vertex at a pole.
 pub(super) enum EndKind {
     Face(Box<End>),
+    Pole(Pole),
     /// The miter at `miters[at]`, this stripe being its `side`.
     Miter {
         at: usize,
@@ -110,17 +126,18 @@ impl EndKind {
     pub(super) fn t(&self, miters: &[Miter], corners: &[Corner], k: usize) -> f64 {
         match self {
             EndKind::Face(end) => end.t[k],
+            EndKind::Pole(pole) => pole.t,
             EndKind::Miter { at, side } => miters[*at].t[*side][k],
             EndKind::Corner { at, side } => corners[*at].t[*side][k],
         }
     }
 
-    /// The tolerance a face end's trim vertex carries, `None` at a miter
-    /// or a corner.
+    /// The tolerance a face end's trim vertex carries, `None` at a miter,
+    /// a corner or a pole.
     pub(super) fn vertex_tolerance(&self, k: usize) -> Option<f64> {
         match self {
             EndKind::Face(end) => Some(end.vertex_tolerance[k]),
-            EndKind::Miter { .. } | EndKind::Corner { .. } => None,
+            EndKind::Pole(_) | EndKind::Miter { .. } | EndKind::Corner { .. } => None,
         }
     }
 }

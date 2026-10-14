@@ -62,6 +62,11 @@ pub(super) enum Section {
         /// tangent vertex (ADR-0035 §3). `None` for a chamfer, whose
         /// isocurve there is a chord.
         centres: Option<[Point3; 2]>,
+        /// `true` at an end where the stripe narrows to its vertex, a
+        /// vanishing end whose ball touches both faces there (ADR-0062
+        /// §5): the surface's row at that end is collapsed to the vertex,
+        /// a pole, and the end is no arc.
+        poles: [bool; 2],
     },
 }
 

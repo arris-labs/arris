@@ -573,7 +573,7 @@ bound has to be established here.
     the chain's far vertex; the lone line there is a table stripe whose
     end arc, across a cylinder at that kink, leaves the face. It is step
     10's real part, not a pair without a closed form.
-- [ ] Step 9b **[3]** — **CTC-01's crease and its two ends.** Two equal
+- [x] Step 9b **[3]** — **CTC-01's crease and its two ends.** Two equal
   cylinders crossing, fillet only, against Open CASCADE (`real/nist-ctc-01`
   as the fixture's file). The spine is found (an ellipse); both ends are
   refused today:
@@ -587,6 +587,36 @@ bound has to be established here.
   its own (a vanishing end pins the ball to the edge's point; a fan cuts
   the end curve at the fan edge), which is not a fixture on a pair. May
   rewrite the backlog's CTC-01 line and CTC-05's expectations in step 10.
+
+  **Done (2026-10-14).** `blend/nist-ctc-01-crossing-cylinders-crease-fillet`
+  builds and holds to Open CASCADE, checker clean at `Full` with nothing
+  unchecked. Measured and found:
+  - **v113 is no fan.** The ellipse's tangent there is vertical, as is
+    `e130`, the corner between the two planes, and each plane is tangent to
+    one cylinder: a tangent vertex of four edges (ADR-0039 §1). Filleting
+    `e130` alone walks the chain back up the crease. Step 5b's junction
+    takes it, and Open CASCADE runs the fillet on down `e130` as a
+    cylinder too. Step 1's census read the vertex's degree, not its
+    tangency.
+  - **v211 is a pole** (ADR-0062 amendment). The cylinders are tangent there
+    exactly, and the end ball touches both at the vertex to `4.3e-14`. The
+    skin's row there collapses onto it, the contacts end at the kept vertex,
+    and the loop crosses the row on a degenerate edge (`EndKind::Pole`), as
+    Open CASCADE's blend does. CTC-05's `v84` stays `TangentChain`: its
+    end arc is `1.98e-4` wide and `9.9e-3` from the vertex (the open
+    question below, decided).
+  - **S5 needed two tracer changes** (ADR-0061 amendment). Against each
+    cylinder the contact and the pole are isolines both ways; the pole is
+    now divided out beside the contact and returned as a point. Against the
+    wall plane at the junction, the fit put the saddle on the contact edge
+    `5e-9` past the domain; critical points in a slab past an open edge
+    within the tolerance of it are now put on it.
+  - **Open CASCADE's contacts miss the ball** by `5.3e-4` at the median and
+    `2.2e-3` at worst (Arris': `5.0e-10`, `7.8e-10`), so the blend faces'
+    areas differ by `8.6e-4` relative and the part's by `5.5e-9`; the
+    fixture's tolerances are `1e-8`. Its counts are Arris' own: Open
+    CASCADE's healed reading of the part has two vertices and two edges
+    more (`counts_differ`).
 - [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
   on the fetched tier and `--census-committed`. Move every step 1
   fixture that now agrees out of `regression/` into `blend/` with its
@@ -655,10 +685,11 @@ bound has to be established here.
   pairs with no closed form) stays, though it widens the plan beyond NURBS
   faces: the stripe takes them for free, and CTC-01 and the B-spline edges
   are in the census.
-- ⚠ OPEN: how a vanishing end meets its vertex (step 4). The candidates
-  are growing the vertex's tolerance to the end arc's contacts (9.9e-3 on
-  CTC-05, past the edge's 7.7e-3) under ADR-0060's operation bound, or
-  refusing the end by name. Step 5 refuses it (`TangentChain`).
-  **Agent**, at step 9b (moved from 5b, where it unblocked nothing).
+- How a vanishing end meets its vertex: **decided** at step 9b (ADR-0062
+  amendment). Where the end ball touches both faces at the vertex, the
+  stripe ends on a pole there; where its arc stays apart (CTC-05's, `9.9e-3`
+  from the vertex past the edge's `7.7e-3`), the end is refused
+  `TangentChain`, since joining it would take the surface off the exact
+  balls by more than the budget.
 - The spine's trace on CTC-05 against the ADR-0026 §6 budget (60 s):
   **closed** at step 3, which traces it in 0.53 s.

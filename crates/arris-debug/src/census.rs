@@ -1398,12 +1398,13 @@ mod tests {
         assert_eq!(c.alone, BTreeMap::from([(BUILT.to_string(), 3)]));
     }
 
-    /// The committed CTC-01's sample is refused at the crease of two
-    /// cylinders whose axes cross, where the walked stripe's faces turn
-    /// tangent (a vanishing end, `TangentChain`); the census names a pair
-    /// of cylinders by its axes for an `Unsupported`, and the survey puts
-    /// a pair of crossing axes with the NURBS cycle where a pair of
-    /// parallel axes stays the blend network's.
+    /// The committed CTC-01's sample builds: its crease of two cylinders
+    /// whose axes cross is a walked stripe that narrows to a pole where the
+    /// faces turn tangent (ADR-0062 §5), where it was refused
+    /// `TangentChain`. The census names a pair of cylinders by its axes for
+    /// an `Unsupported`, and the survey puts a pair of crossing axes with
+    /// the NURBS cycle where a pair of parallel axes stays the blend
+    /// network's.
     #[test]
     fn ctc_01s_crossing_cylinders_are_the_nurbs_cycles() {
         let fixture = part::load(&corpus_root().join("real/nist-ctc-01")).unwrap();
@@ -1418,22 +1419,14 @@ mod tests {
             .filter_map(|s| handles.iter().find(|h| h.id == s.0).copied())
             .collect();
         let mut scratch = m.clone();
-        let Err(Refused::Op(e)) = blend(&mut scratch, body, &chosen, fillet_radius(&sample)) else {
-            panic!("the sample is refused");
-        };
-        // The crease is a walked stripe now (ADR-0062), which the table's
-        // `Unsupported` no longer names: it is refused where its faces turn
-        // tangent at the end, a vanishing end.
-        assert!(
-            matches!(
-                e,
-                OpError::Degenerate {
-                    reason: arris_ops::Reason::Blend(arris_ops::BlendReason::TangentChain),
-                    ..
-                }
-            ),
-            "{e}"
-        );
+        // The crease ends on a pole at the vertex where the cylinders turn
+        // tangent, and on the corner its chain runs on into at the other
+        // (plans/nurbs-face-blend step 9b).
+        match blend(&mut scratch, body, &chosen, fillet_radius(&sample)) {
+            Ok(_) => {}
+            Err(Refused::Op(e)) => panic!("the sample is refused: {e}"),
+            Err(Refused::Panic(what)) => panic!("the sample panics: {what}"),
+        }
 
         // The pair's census name stays for the `Unsupported` that other
         // pairs raise: two parallel cylinders, built by hand.

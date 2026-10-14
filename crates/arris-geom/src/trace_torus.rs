@@ -118,6 +118,14 @@ fn quarters([lo, hi]: [f64; 2]) -> Vec<(usize, [f64; 2], bool)> {
 /// a tolerance.
 const PATCH_SLACK: f64 = 1e-9;
 
+/// How deep a NURBS patch is looked at past an edge of the domain for a
+/// critical point the tolerance may not tell from one on the edge
+/// ([`PatchedSection::critical_points_past`]), as a fraction of its span:
+/// the margin [`crate::bernstein2`] grows a box by to certify a zero,
+/// within which a polynomial's extrapolated rounding grows by no more than
+/// a few times. A ratio, not a tolerance.
+const EDGE_SLAB: f64 = 0.125;
+
 /// What a control point moved into the other surface's frame may be off
 /// by, as a share of its terms before they cancel: a rotation's three
 /// products and two sums, and the shift added. A statement about `f64`,
@@ -526,6 +534,68 @@ impl<'a> PatchedSection<'a> {
         })
     }
 
+    /// The pole of a NURBS surface at `v0` — an edge of its domain in `v`,
+    /// where the row is collapsed onto one point that the other surface
+    /// holds — divided out of the polynomial (ADR-0061 §3, amended for a
+    /// walked blend's pole), and the order it was divided out at: one where
+    /// the other surface crosses the point and two where it is tangent
+    /// there. Along the row the polynomial is the point's value times a
+    /// positive weight, so it vanishes on the whole edge, though the
+    /// section has one point there and no curve. The order is how many of
+    /// the leading rows of coefficients at the edge are within what
+    /// `tol.linear` makes of `f` on every patch along it, at most two: what
+    /// the division drops is within that over the patch, as for an isoline
+    /// ([`Self::deflate`]). The patches along the edge are divided by their
+    /// own linear factor at it, `t` or `1 − t`; the others keep their
+    /// polynomial, which the factor, positive inside the domain, does not
+    /// change the sign of.
+    pub(crate) fn deflate_pole(&mut self, v0: f64) -> usize {
+        let binomials = Binomials::new(self.binomial_degree);
+        // The patches along the edge, each transposed so that `v` runs
+        // first, with the end of its `[0, 1]` the edge is at.
+        let along: Vec<(usize, f64)> = (self.patches.iter().enumerate())
+            .filter_map(|(i, patch)| {
+                let [lo, hi] = patch.span[1];
+                if lo == v0 {
+                    Some((i, 0.0))
+                } else if hi == v0 {
+                    Some((i, 1.0))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let near = self.near;
+        let vanishing = |f: &Poly2, root: f64| {
+            let [m, n] = f.degree();
+            let row = |i: usize| {
+                let i = if root == 0.0 { i } else { m - i };
+                (0..=n).all(|j| f.coefficients()[i * (n + 1) + j].abs() <= near)
+            };
+            (0..m.min(2)).take_while(|&i| row(i)).count()
+        };
+        let order = (along.iter())
+            .map(|&(i, root)| vanishing(&self.patches[i].f.transposed(), root))
+            .min()
+            .unwrap_or(0);
+        let mut worst = self.floor;
+        for (i, root) in along {
+            let patch = &mut self.patches[i];
+            let mut f = patch.f.transposed();
+            let mut floor = self.floor;
+            for _ in 0..order {
+                let (quotient, carried) = f.over_linear(root, floor, &binomials);
+                f = quotient;
+                floor = carried;
+            }
+            patch.f = f.transposed();
+            worst = worst.max(floor);
+        }
+        self.floor = worst;
+        self.near = worst + self.steep;
+        order
+    }
+
     /// The parameter of direction `k` at `s` of `patch`.
     fn param(&self, patch: &Patch, k: usize, s: f64) -> f64 {
         match self.chart {
@@ -881,33 +951,110 @@ impl<'a> PatchedSection<'a> {
     /// critical point with a regular Hessian — a crossing of two
     /// branches or an isolated point, at the tolerance.
     pub(crate) fn critical_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
+        self.census(meter, |patch, meter| {
+            self.critical_isolation(&patch.f, &patch.weight, meter)
+        })
+    }
+
+    /// The common zeros of the gradient of `F = f / wᵈ` over the unit
+    /// square of the polynomial `f` and the weight `w`, where `|f|` is
+    /// within `near`.
+    fn critical_isolation(
+        &self,
+        f: &Poly2,
+        w: &Poly2,
+        meter: &mut Meter,
+    ) -> Result<Isolation, Halt<Continuum>> {
         let degree = self.implicit.degree();
         let binomials = Binomials::new(self.binomial_degree);
         let d = degree as f64;
-        self.census(meter, |patch, meter| {
-            let [m, n] = patch.f.degree();
-            let (f, w) = (&patch.f, &patch.weight);
-            let g_s = Poly2::combine(&[
-                (1.0, &w.mul(&f.du(), &binomials)),
-                (-d, &w.du().mul(f, &binomials)),
-            ]);
-            let g_t = Poly2::combine(&[
-                (1.0, &w.mul(&f.dv(), &binomials)),
-                (-d, &w.dv().mul(f, &binomials)),
-            ]);
-            // `w ≤ 1` times a derivative's rounding, and `|w_s| < 1`
-            // times `d` of `f`'s own.
-            let floors = [
-                (2.0 * m as f64 + d) * self.floor,
-                (2.0 * n as f64 + d) * self.floor,
-            ];
-            let gate = Gate {
-                poly: f,
-                floor: self.near,
-                one_sided: false,
+        let [m, n] = f.degree();
+        let g_s = Poly2::combine(&[
+            (1.0, &w.mul(&f.du(), &binomials)),
+            (-d, &w.du().mul(f, &binomials)),
+        ]);
+        let g_t = Poly2::combine(&[
+            (1.0, &w.mul(&f.dv(), &binomials)),
+            (-d, &w.dv().mul(f, &binomials)),
+        ]);
+        // `w ≤ 1` times a derivative's rounding, and `|w_s| < 1`
+        // times `d` of `f`'s own.
+        let floors = [
+            (2.0 * m as f64 + d) * self.floor,
+            (2.0 * n as f64 + d) * self.floor,
+        ];
+        let gate = Gate {
+            poly: f,
+            floor: self.near,
+            one_sided: false,
+        };
+        common_zeros([&g_s, &g_t], floors, &[gate], meter)
+    }
+
+    /// The critical points of a NURBS surface's section in the slab past
+    /// the edge of its domain where direction `k`'s parameter is `edge`,
+    /// [`EDGE_SLAB`] of each patch's span along the edge deep, in the
+    /// walk's parameters where they are, past the edge (ADR-0061 §3,
+    /// amended for a walked blend's junction). The patches' polynomials go
+    /// on past the domain, carried on by de Casteljau, and the walk decides
+    /// which zeros are close enough to the edge to be put on it. None on a
+    /// torus.
+    pub(crate) fn critical_points_past(
+        &self,
+        k: usize,
+        edge: f64,
+        meter: &mut Meter,
+    ) -> Result<Vec<Zero2>, Halt<Continuum>> {
+        if self.chart == Chart::Quarters {
+            return Ok(Vec::new());
+        }
+        let d = EDGE_SLAB;
+        let mut zeros = Vec::new();
+        for patch in &self.patches {
+            let [lo, hi] = patch.span[k];
+            // The slab on its own `[0, 1]` in direction `k`, and the
+            // patch's own parameter at `x` of it: `−d·x` past its start,
+            // `1 + d·x` past its end.
+            let past_start = if lo == edge {
+                true
+            } else if hi == edge {
+                false
+            } else {
+                continue;
             };
-            common_zeros([&g_s, &g_t], floors, &[gate], meter)
-        })
+            let cut = |p: &Poly2| {
+                if past_start {
+                    p.split_u(-d).0
+                } else {
+                    p.split_u(1.0 + d).0.split_u(1.0 / (1.0 + d)).1
+                }
+            };
+            let slab = |p: &Poly2| {
+                if k == 0 {
+                    cut(p)
+                } else {
+                    cut(&p.transposed()).transposed()
+                }
+            };
+            let own = |x: f64| if past_start { -d * x } else { 1.0 + d * x };
+            let found = self.critical_isolation(&slab(&patch.f), &slab(&patch.weight), meter)?;
+            let angles = |p: [f64; 2]| {
+                [0, 1].map(|j| {
+                    let s = if j == k { own(p[j]) } else { p[j] };
+                    self.param(patch, j, s)
+                })
+            };
+            for z in found.zeros {
+                let (a, b) = (angles(z.lo), angles(z.hi));
+                zeros.push(Zero2 {
+                    at: angles(z.at),
+                    lo: [0, 1].map(|j| a[j].min(b[j])),
+                    hi: [0, 1].map(|j| a[j].max(b[j])),
+                    certified: z.certified,
+                });
+            }
+        }
+        Ok(zeros)
     }
 
     /// The sign `probe` keeps over the box `u × v` of angles — unwrapped,

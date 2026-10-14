@@ -367,6 +367,56 @@ still leave pairs the tracer refuses (the bicubic dome's section and fuse,
 CTC-05's box cuts), and so do Open CASCADE's walked blends read back. The step 3 and 4 properties pass at 64
 cases.
 
+### A walked blend's pole, and a saddle past an edge (amendment, 2026-10-14)
+
+`plans/nurbs-face-blend` step 9b ended a walked stripe on a pole (ADR-0062
+§5): where CTC-01's two equal cylinders turn tangent, the blend's row at
+that end is collapsed onto the vertex. The checker's S5 left three of the
+blend's pairs undecided, two refusals this ADR named:
+
+- **Isolines both ways, one way's poles.** Against each cylinder the
+  contact is an isoline of `u` and the pole an isoline of `v` the same
+  face holds, and isolines both ways were refused as tube circles. A pole
+  is no line. The polynomial vanishes all along its edge, but the section
+  has one point there. Where one direction's isolines are all poles (one
+  point to rounding all along, `Tracer::is_pole`), the other direction is
+  traced with its own isolines divided out, beside the poles. Each pole is
+  divided out of the patches along its edge (`PatchedSection::deflate_pole`)
+  and returned as its own isoline, which the intersector makes a point.
+  Its order is local: how many of the leading rows of coefficients at the
+  edge are within what `tol.linear` makes of `f` on every patch along it,
+  at most two. The isoline search's slope test, over a whole unit of the
+  walk's parameter, called the blend's tangent pole a crossing: the fit's
+  derivative error over that reach is past the tolerance, and over the
+  patch it is not. A pole alone (a hemisphere's tangent plane at its pole)
+  is divided out as before. Dividing every pole out unconditionally lost
+  that point and was not kept.
+- **A saddle a hair past an edge.** At the crease's junction the wall
+  plane is tangent to the blend where the arc's contact meets the
+  cylinder's tangent edge, on the blend's domain edge `u = 0`: the
+  slot's saddle on an edge again. But the fit put this one `1.1e-8` of
+  the walk's parameter past the edge (`5e-9` in length), outside every
+  patch's square. The census never saw it. Its near miss, `5.4e-10` off
+  the plane, turned `4.7e-5` inside, and those turning points stood alone,
+  uncertified. The critical points are now looked for in a slab past each
+  open edge, an eighth of each patch's span deep (`EDGE_SLAB`, the margin
+  the isolation extrapolates by to certify), the polynomial carried on by
+  de Casteljau (`PatchedSection::critical_points_past`). One whose point
+  lies within `tol.linear` of the edge's beside it is put on the edge,
+  since the edge's place is not resolved within the tolerance. It is then
+  the section's singular point there, and its bump holds the near miss,
+  as for a saddle inside. One the census inside found already is not
+  found twice.
+
+What it measured. The crease's three pairs decide, and the walked blend
+leaves nothing unchecked. The half dome's twin against the plane through
+its pole and a meridian (refused before) returns the meridian and the
+pole. The patch `z = (u − v)(u + 2v) − 5e-10` over `u ∈ [1e-8, 1]`, its
+saddle past the edge, returns the singular point on the edge and the arm
+cut there (before: one arm, no point). Each test fails with its change
+taken out. The crate's tests, the corpus and every walked fixture pass
+unchanged at 32 cases.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its

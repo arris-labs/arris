@@ -1,0 +1,41 @@
+{
+  "description": "NIST's CTC-01 (the committed real/nist-ctc-01), solid #101: the crease e290 where two equal cylinders f85 and f86 whose axes meet cross, an ellipse, filleted at r 1.910, the battery's radius from its sample. At v211 the two cylinders are tangent to each other and to the plane f68 across: the ball there touches both at the vertex, and the walked stripe (ADR-0062) narrows to it, a pole of its surface, the vertex kept. At v113 the crease runs on tangent into the vertical corner e130 between two planes each tangent to one cylinder, a vertex of four edges (ADR-0039 \u00a71), and the fillet goes on down it as a cylinder. Open CASCADE builds the same faces with the same pole, its contacts missing the ball by 5.3e-4 at the median of 200 samples a contact and 2.2e-3 at worst, where Arris' miss it by 5.0e-10 and 7.8e-10: the 8.6e-4 its blend face's area lies from Arris' and each cylinder's 1.7e-2 mm\u00b2 the other way. Over the part that is 5.5e-9 of its area and 9e-10 of its volume, which the measure tolerances cover under ADR-0062's 1e-5 for a walked fixture (no closed form holds the blend). The counts differ by the part as read (plans/nurbs-face-blend steps 1 and 9b)",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ctc-01/nist_ctc_01_asme1_rd.stp",
+      "sha256": "e081d518484d5c708c6729353237f94a7d97da2b74a10d60d4c0d146d67a5855",
+      "id": 101
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          247.07106781186545,
+          -122.07106781186545,
+          -52.928932188134524
+        ]
+      ],
+      "radius": 1.9100509519619135
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "counts": {
+      "vertices": 256,
+      "edges": 390,
+      "faces": 141,
+      "loops": 166,
+      "shells": 1
+    },
+    "counts_differ": "the part as read: Open CASCADE's healed reading of solid #101 splits two edges at (\u00b130, -80, -35), two vertices and two edges more than Arris reads (real/nist-ctc-01, occt_heals); the fillet adds the same to both, two vertices, four edges and two faces",
+    "genus": 10
+  },
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 1e-08
+  }
+}

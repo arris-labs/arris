@@ -292,7 +292,7 @@ impl Poly2 {
     /// The two parts either side of `t = at`, each on its own `[0, 1]`:
     /// the halves of the unit square for `at = ½`, and for `at` outside
     /// `[0, 1]` the extrapolation to `[0, at]` and what is left.
-    fn split_v(&self, at: f64) -> (Poly2, Poly2) {
+    pub(crate) fn split_v(&self, at: f64) -> (Poly2, Poly2) {
         let mut lower = Vec::with_capacity(self.c.len());
         let mut upper = Vec::with_capacity(self.c.len());
         for row in self.rows() {
@@ -308,7 +308,7 @@ impl Poly2 {
     }
 
     /// [`Self::split_v`] along `s`.
-    fn split_u(&self, at: f64) -> (Poly2, Poly2) {
+    pub(crate) fn split_u(&self, at: f64) -> (Poly2, Poly2) {
         let (lower, upper) = self.transposed().split_v(at);
         (lower.transposed(), upper.transposed())
     }

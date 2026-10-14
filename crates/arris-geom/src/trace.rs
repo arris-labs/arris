@@ -927,6 +927,14 @@ impl SectionTrace {
         self
     }
 
+    /// The trace with `more` isolines of a walked NURBS surface after its
+    /// own: poles of the other direction, each one point
+    /// (`torus_walk::Tracer::run_beside_poles`).
+    pub(crate) fn with_more_circles(mut self, more: Vec<SectionCircle>) -> SectionTrace {
+        self.circles.extend(more);
+        self
+    }
+
     /// The tube circles of the walked torus that lie on the other
     /// surface, ascending by the torus's `u`, or the isolines of a walked
     /// NURBS surface, ascending by the parameter each is constant in;
