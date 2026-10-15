@@ -2,6 +2,8 @@
 
 - Status: accepted (2026-10-05)
 - Plan: none — taken at `/close-cycle` of C6, by the human
+- Amended by: ADR-0063 (a sweep span whose frame is a translation or a
+  rotation about the arc's axis is analytic; the oblique extrude is built)
 - Amends: `docs/ROADMAP.md` §Named cycles ("the sweep cycle — sweep along
   a path, loft, shell, offset"); applies ADR-0020's amendment of
   2026-09-26 (a consumer blocked on missing API ranks first)

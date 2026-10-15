@@ -36,6 +36,7 @@ mod intersect_curves;
 mod intersect_spline;
 mod meridian;
 mod nurbs;
+mod path;
 mod pcurve;
 pub mod profile;
 mod project;
@@ -63,6 +64,10 @@ pub use nurbs::{
     FitError, MAX_DEGREE, MAX_FIT_SPANS, MAX_OFFSET_PATCHES, MAX_OFFSET_SPANS, NurbsCurve,
     NurbsCurve2, NurbsSurface, OFFSET_FIT_DEGREE, fit_curve, fit_curve_periodic, fit_curve2,
     fit_skin,
+};
+pub use path::{
+    FRAME_ERROR_FLOOR, FRAME_MAX_TURN, FRAME_MIN_STEP, FrameField, FrameLaw, Path, PathDegeneracy,
+    PathError, PathFrame, PathSegment,
 };
 pub use pcurve::{
     PCURVE_FIT_DEGREE, PCURVE_SAMPLES, PCURVE_SINGULAR_BAND, pcurve_ending_on, pcurve_on,

@@ -1422,6 +1422,25 @@ arc's ends are the ellipse's nearest points to the consumer's, within
 by `integrate::region_integral` over those oriented edges, so the holes
 subtract themselves.
 
+`Path { start: Point3, segments: Vec<PathSegment> }` is the other half of
+a sweep (ADR-0063): a G1 chain of `LineTo`, `ArcTo { via, to }`,
+`Helix { axis, pitch, angle }` (from the current point; its radius is that
+point's distance from the axis, the sign of `angle` its sense) and
+`Nurbs`. `Path::frames(law, tol, meter)` validates it — `Gap` and
+`Degenerate` per segment, `Corner { segment, at, angle }` at any joint or
+inner C0 knot whose tangents differ by more than the angular tolerance,
+and a path that ends within the linear tolerance of its start is closed
+and G1 at the closing joint too — and returns a `FrameField`: a
+right-handed `(tangent, normal, binormal)` at every arc length, on every
+kind of segment. `FrameLaw::RotationMinimizing` (the default) is closed
+form on a line, an arc and a helix and double reflection with step
+doubling on a NURBS segment, its error under the angular tolerance;
+`FrameLaw::FixedBinormal(d)` is `d` projected off the tangent, pointwise,
+and refused as `BinormalAlongTangent` where it runs along it.
+`FrameField::motion_at(s)` is the rigid motion from the first frame to the
+frame at `s`, the profile's motion; `holonomy()` is a closed path's
+return rotation about the tangent.
+
 ### NURBS
 
 `NurbsCurve`, `NurbsCurve2` and `NurbsSurface` follow *The NURBS Book*:

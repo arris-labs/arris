@@ -153,7 +153,7 @@ bound has to be established here.
   is within 4e-8 of `2π·turns·πr²·R`, the thread's within 6e-7, and
   `sweep-spline-3d`'s volume and area within 6e-7 and 3e-7 of the round
   tube's `A·L` and `2πrL + 2A` over the cubic's numeric length.
-- [ ] Step 2 **[2]** — **ADR-0063, the path and the frame laws.** Write
+- [x] Step 2 **[2]** — **ADR-0063, the path and the frame laws.** Write
   the ADR. Add `Path`, `PathSegment`, `FrameLaw`, `FrameField` and
   `PathError` to `arris-geom`, with validation: the gap and the G1 test
   at every joint against the model's tolerances, and closure. Each segment
@@ -319,7 +319,9 @@ bound has to be established here.
   (the profile is centred on the path, so the volume does not depend on
   twist). Record the area through `analytic.measure_differs` with
   ADR-0015's evidence, or switch the fixture to the binormal law.
-- ⚠ OPEN 2 (agent, by step 2): does the frame field carry the arc-length
+- ✔ OPEN 2 (answered by step 2, ADR-0063 §3: the field carries the arc-length
+  map, a table inverted by Newton, so a fitted span's `v` is the path's arc
+  length). Asked as: does the frame field carry the arc-length
   map of a NURBS path segment, or the curve's own parameter with a speed?
   This decides what a fitted span's `v` is. ADR-0063 records the choice.
 - ⚠ OPEN 3 (agent, by step 3): one skin per span, or one per run of
