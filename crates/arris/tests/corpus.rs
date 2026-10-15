@@ -959,7 +959,7 @@ corpus_tests! {
     /// stripe, a walked stripe and a table stripe meeting at two junctions.
     blend_nurbs_slot_plate_rim_fillet => run "blend/nurbs-slot-plate-rim-fillet";
     /// The same box, the same edge, chamfered: a walked chamfer's ruled
-    /// surface between its contact curves (plans/nurbs-face-blend step 7).
+    /// surface between its contact curves (nurbs-face-blend step 7).
     blend_bicubic_top_box_edge_chamfer => run "blend/bicubic-top-box-edge-chamfer";
     /// The same cylinder and cap, the rim chamfered: a walked ring.
     blend_nurbs_cap_cylinder_rim_chamfer => run "blend/nurbs-cap-cylinder-rim-chamfer";
@@ -1162,7 +1162,7 @@ corpus_tests! {
     /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
     /// cylinder's axis off the plane of the ball's seam, so the loop crosses
     /// the seam at a slant.
-    #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md; plans/nurbs-face-blend step 9 finding)"]
+    #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md; nurbs-face-blend step 9 finding)"]
     regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
     /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
     /// B-spline edge that hides a circle, and a line, around a slot's end.

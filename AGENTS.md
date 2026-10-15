@@ -47,9 +47,10 @@ written as sheet bodies, the STEP writer's length unit, and the reader's
 gap and orientation repairs, each named on the body: healing blocks 0 of 38
 parts at `read`, from 14 (ADR-0057 to ADR-0060).
 **C10, the NURBS cycle** (opened 2026-10-12): NURBS against the analytic
-kinds landed 2026-10-13 (the section, booleans, split and section; the
-real parts' NURBS row is fillets only; ADR-0061). Next: blends on a NURBS
-face, sweep and loft, then NURBS against NURBS. Draft and thicken run
+kinds landed 2026-10-13 (the section, booleans, split and section;
+ADR-0061), and the blend on a NURBS face 2026-10-15 (fillet and chamfer as
+a walked stripe over the faces' offsets; the real parts' NURBS row is
+empty; ADR-0062). Next: sweep and loft, then NURBS against NURBS. Draft and thicken run
 beside it, and the DIY part corpus is built in it to rank C11.
 
 ## Rules that are not derivable from the code

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """occt_nurbs_blend.py <operand> <out.step>  —  write one operand of the
-walked-blend fixtures (plans/nurbs-face-blend step 5b) as Open CASCADE's
+walked-blend fixtures (nurbs-face-blend step 5b) as Open CASCADE's
 STEP, a solid with free-form faces for the fillet and chamfer fixtures
 that commit the file. `<operand>` is one of:
 
@@ -24,7 +24,7 @@ that commit the file. `<operand>` is one of:
   exact rational quadratic B-spline of the half circle (five poles,
   weights 1, √½, 1, √½, 1) where Open CASCADE writes a circle: an edge
   between a plane and a cylinder whose curve is a B-spline, as the real
-  parts write them (plans/nurbs-face-blend step 9). Open CASCADE reads it
+  parts write them (nurbs-face-blend step 9). Open CASCADE reads it
   as the same solid.
 
 Run as `uv run --project tools/oracle tools/oracle/occt_nurbs_blend.py`.

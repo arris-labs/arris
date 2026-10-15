@@ -1421,7 +1421,7 @@ mod tests {
         let mut scratch = m.clone();
         // The crease ends on a pole at the vertex where the cylinders turn
         // tangent, and on the corner its chain runs on into at the other
-        // (plans/nurbs-face-blend step 9b).
+        // (nurbs-face-blend step 9b).
         match blend(&mut scratch, body, &chosen, fillet_radius(&sample)) {
             Ok(_) => {}
             Err(Refused::Op(e)) => panic!("the sample is refused: {e}"),

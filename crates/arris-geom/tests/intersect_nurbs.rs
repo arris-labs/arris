@@ -142,7 +142,7 @@ fn a_hemisphere_twin_meets_the_plane_tangent_at_its_pole_in_the_pole() {
 /// meridian: the section is the meridian, an isoline of `u`, and the pole,
 /// a collapsed row of `v` the plane crosses, so isolines run both ways.
 /// The pole is divided out beside the meridian and comes back as a point
-/// (ADR-0061 §3, amended at plans/nurbs-face-blend step 9b; it was
+/// (ADR-0061 §3, amended at nurbs-face-blend step 9b; it was
 /// refused as tube circles both ways), as a walked blend's pole meets the
 /// faces it narrows between.
 #[test]
@@ -186,7 +186,7 @@ fn a_half_dome_twin_meets_the_plane_through_its_pole_in_a_meridian_and_the_pole(
 /// miss turns inside the domain beside it, and leaves it across `u = 1`
 /// clear of the corners. Within the tolerance the edge does not
 /// tell the saddle from one on it, and the section is traced with the
-/// saddle put on the edge (ADR-0061 §3, amended at plans/nurbs-face-blend
+/// saddle put on the edge (ADR-0061 §3, amended at nurbs-face-blend
 /// step 9b, where a walked blend's contact edge met the face across a
 /// junction so: its turning points were refused as not told apart).
 #[test]

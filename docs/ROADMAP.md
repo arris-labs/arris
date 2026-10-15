@@ -18,7 +18,7 @@ done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
 ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
-then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, done 2026-10-13, ADR-0061). An unopened cycle carries
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -810,7 +810,13 @@ built in this one.*
   fell from 3 at `box_cut` and 1 at `drill_x` to 0 at every boolean column,
   leaving 5 parts at `fillet` (2 NURBS curve × plane, 2 NURBS surface ×
   torus, 1 cylinder × cylinder); the committed tier's one is FTC-10's
-  fillet. The blend on a NURBS face is the next plan.*
+  fillet. The blend on a NURBS face, a walked stripe over the faces' offsets
+  (fillet and chamfer; ADR-0062), was done 2026-10-15: the fetched tier's
+  NURBS row at `fillet` is 0 of 38 parts, from 1 (CTC-05, now refused
+  `TangentChain` at a vanishing end), and the fillets that remain block on
+  the blend network (`TangentChain` 5, `BlendTooLarge` 1, `VertexBlend` 1).
+  CTC-01's crossing-cylinder crease and FTC-10's skew cylinders build
+  against Open CASCADE. The next items are sweep and loft.*
 - Sweep along a path and loft between sections, each with provenance and
   each an operand of every boolean and blend that the first item allows.
   The oblique extrude of an arc goes here too, as the exact

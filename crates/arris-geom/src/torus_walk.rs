@@ -1812,7 +1812,7 @@ impl Tracer<'_> {
             // is tried as the isoline of order two. A walked blend's end
             // arc against the table stripe's cylinder it runs on into is
             // such a pair of crossings, the fit `8.4e-4` of `u` apart and
-            // within `1.5e-9` between (plans/nurbs-face-blend step 10d).
+            // within `1.5e-9` between (nurbs-face-blend step 10d).
             if accepted(&best) && !tangent(&best) {
                 let mut steps: Vec<f64> = (0..CIRCLE_SAMPLES)
                     .filter_map(|k| {
@@ -2692,7 +2692,7 @@ impl Tracer<'_> {
     /// into its foot on the edge alongside it, the edge being within the
     /// tolerance of the other surface over a stretch: two faces tangent
     /// to one face across, the walked blend's contact edge on it and a
-    /// table stripe's cylinder beside it (plans/nurbs-face-blend step
+    /// table stripe's cylinder beside it (nurbs-face-blend step
     /// 10d). The branch is not the tracer's to resolve there, as a point
     /// within the tolerance of an edge is put on it (ADR-0061 §3).
     ///

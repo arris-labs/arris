@@ -1,4 +1,4 @@
-//! The walked fillet (ADR-0062, plans/nurbs-face-blend step 5): an edge
+//! The walked fillet (ADR-0062, nurbs-face-blend step 5): an edge
 //! with a NURBS face, or a pair with no closed form, blends to a NURBS
 //! stripe. The twin of a face is its exact NURBS form, so a fillet of the
 //! twinned edge must agree with the closed form on the original: volume

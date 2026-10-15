@@ -868,6 +868,10 @@ impl Model {
 
     /// `body` with the given `edges` rounded to `radius`.
     ///
+    /// An edge on a free-form face, or between analytic faces that no closed
+    /// form holds, rolls the ball along a path found from the faces' offsets;
+    /// two free-form faces are refused.
+    ///
     /// Raises `OpDegenerateError`, `OpUnsupportedError` or `OpToleranceError`
     /// for an edge set the blend network cannot build, and
     /// `ForeignHandleError` for an edge of another model.
@@ -902,8 +906,9 @@ impl Model {
         })
     }
 
-    /// `body` with the given `edges` cut back by `distance` on each side.
-    /// Errors as for `fillet`.
+    /// `body` with the given `edges` cut back by `distance` on each side,
+    /// measured in the edge's normal plane. Takes the edges `fillet` takes;
+    /// errors as for `fillet`.
     ///
     /// ```python
     /// import arris
