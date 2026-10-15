@@ -1,0 +1,120 @@
+{
+  "description": "a circle of radius 0.95 centred 1 from the path's start toward the centre of a quarter arc of radius 2: it reaches 1.95, 0.05 inside the radius of curvature, so the sweep builds, a quarter turn of the disc about the arc's axis: volume pi r^2 (R - c) pi/2 by Pappus (ADR-0063)",
+  "params": {
+    "R": 2,
+    "c": 1,
+    "r": 0.95
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            "c",
+            0
+          ],
+          "radius": "r"
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              "R",
+              0,
+              "R"
+            ],
+            "via": [
+              "R - R * cos(radians(45))",
+              0,
+              "R * sin(radians(45))"
+            ]
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "mid_disc_centre",
+      "point": [
+        "R - 1 * cos(radians(45))",
+        0,
+        "1 * sin(radians(45))"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_the_outer_side",
+      "point": [
+        "R - 1.9 * cos(radians(45))",
+        0,
+        "1.9 * sin(radians(45))"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "past_the_outer_side",
+      "point": [
+        "R - 1.97 * cos(radians(45))",
+        0,
+        "1.97 * sin(radians(45))"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_the_hole_by_the_axis",
+      "point": [
+        "R - 0.03 * cos(radians(45))",
+        0,
+        "0.03 * sin(radians(45))"
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_start_cap",
+      "point": [
+        1,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * r^2 * (R - c) * pi / 2",
+    "genus": 0
+  }
+}

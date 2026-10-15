@@ -375,6 +375,12 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             }
             Reason::Sweep(SweepReason::AngleAboveTurn) => Cycle::Itself("AngleAboveTurn"),
             Reason::Sweep(SweepReason::SpindleTorus) => Cycle::Itself("SpindleTorus"),
+            // Nor does it sweep along a path.
+            Reason::Sweep(SweepReason::ProfileAlongPath) => Cycle::Itself("ProfileAlongPath"),
+            Reason::Sweep(SweepReason::SweepFolds { .. }) => Cycle::Itself("SweepFolds"),
+            Reason::Sweep(SweepReason::FrameDoesNotClose { .. }) => {
+                Cycle::Itself("FrameDoesNotClose")
+            }
             // Nor any split.
             Reason::Split(SplitReason::NoCrossing) => Cycle::Itself("NoCrossing"),
         },

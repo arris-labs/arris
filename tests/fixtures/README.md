@@ -240,7 +240,8 @@ of the step that made the fixture pass, and a later change to it is a
   `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
   "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
   "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" | "self-intersects" |
-  "opening-dragged" | "no-crossing" | "unsupported"` says Open CASCADE
+  "opening-dragged" | "no-crossing" | "path-corner" | "profile-along-path" |
+  "sweep-folds" | "frame-does-not-close" | "unsupported"` says Open CASCADE
   builds a result Arris refuses by design (the tangent cases,
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
@@ -252,7 +253,12 @@ of the step that made the fixture pass, and a later change to it is a
   refuses as `BlendReason::TooLarge`, `TangentChain` or `VertexBlend` —
   ADR-0007; a revolve of an elliptic profile segment, which it sweeps
   into a surface of revolution with an elliptic meridian and Arris
-  refuses as `SweepReason::EllipticRevolve` — ADR-0014; an offset whose
+  refuses as `SweepReason::EllipticRevolve` — ADR-0014; a sweep whose
+  path has a corner (`path-corner`, `OpError::Path`), whose profile lies
+  along the path (`ProfileAlongPath`), folds past a curved span's radius
+  of curvature (`SweepFolds`) or whose closed path's frame comes back
+  turned (`FrameDoesNotClose`, where the pipe's closing face is not a
+  closed surface and the oracle records no genus) — ADR-0063; an offset whose
   move it carries through a change of topology, dropping a face or
   splitting a vertex into an edge, which Arris refuses as
   `OffsetReason::Vanishes` or `VertexSplits`, a distance that drives a surface's

@@ -859,6 +859,21 @@ pub enum ExpectError {
     /// a profile with an elliptic segment, whose swept surface has no
     /// variant (ADR-0014).
     EllipticRevolve,
+    /// `OpError::Path` with `PathError::Corner`: a sweep along a path
+    /// whose joint turns by more than the angular tolerance, which Open
+    /// CASCADE's pipe carries through under a transition mode (ADR-0063).
+    PathCorner,
+    /// `OpError::Degenerate` with `SweepReason::ProfileAlongPath`: a sweep
+    /// whose profile's plane holds the path's start tangent (ADR-0063).
+    ProfileAlongPath,
+    /// `OpError::Degenerate` with `SweepReason::SweepFolds`: a sweep whose
+    /// profile reaches the radius of curvature of a curved span, where
+    /// Open CASCADE's pipe builds a face that folds (ADR-0063).
+    SweepFolds,
+    /// `OpError::Degenerate` with `SweepReason::FrameDoesNotClose`: a
+    /// closed path whose rotation-minimising frame comes back turned
+    /// (ADR-0063).
+    FrameDoesNotClose,
     /// `OpError::Degenerate` with `OffsetReason::Vanishes`: an offset that
     /// would make an edge or a face vanish or turn inside out (ADR-0048
     /// §3).
@@ -1655,7 +1670,11 @@ pub fn lint(dir: &Path) -> Vec<String> {
             }
             let non_manifold = matches!(
                 a.expect_error,
-                Some(ExpectError::NonManifold | ExpectError::TangentContact)
+                Some(
+                    ExpectError::NonManifold
+                        | ExpectError::TangentContact
+                        | ExpectError::FrameDoesNotClose
+                )
             );
             let genus = match (m.genus, non_manifold) {
                 (Some(genus), _) => Some(genus),

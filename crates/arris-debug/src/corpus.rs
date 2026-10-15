@@ -42,7 +42,9 @@ use crate::polyhedron::{PolyhedronError, polyhedron};
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, LumpError, Report, Unchecked, check, lumps};
 use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
-use arris_geom::{FrameLaw, NurbsCurve, Path as GeomPath, PathSegment as GeomSegment, Profile};
+use arris_geom::{
+    FrameLaw, NurbsCurve, Path as GeomPath, PathError, PathSegment as GeomSegment, Profile,
+};
 use arris_io::step::{self, StepError};
 use arris_math::nalgebra::UnitQuaternion;
 use arris_math::{
@@ -446,6 +448,18 @@ impl Refusal {
             Refusal::Error(ExpectError::EllipticRevolve) => {
                 "OpError::Degenerate with Reason::EllipticRevolve".into()
             }
+            Refusal::Error(ExpectError::PathCorner) => {
+                "OpError::Path with PathError::Corner".into()
+            }
+            Refusal::Error(ExpectError::ProfileAlongPath) => {
+                "OpError::Degenerate with Reason::ProfileAlongPath".into()
+            }
+            Refusal::Error(ExpectError::SweepFolds) => {
+                "OpError::Degenerate with Reason::SweepFolds".into()
+            }
+            Refusal::Error(ExpectError::FrameDoesNotClose) => {
+                "OpError::Degenerate with Reason::FrameDoesNotClose".into()
+            }
             Refusal::Error(ExpectError::Vanishes) => {
                 "OpError::Degenerate with Reason::Vanishes".into()
             }
@@ -508,6 +522,15 @@ impl Refusal {
                     Refusal::Error(ExpectError::EllipticRevolve) => {
                         matches!(reason, Reason::Sweep(SweepReason::EllipticRevolve { .. }))
                     }
+                    Refusal::Error(ExpectError::ProfileAlongPath) => {
+                        reason == Reason::Sweep(SweepReason::ProfileAlongPath)
+                    }
+                    Refusal::Error(ExpectError::SweepFolds) => {
+                        matches!(reason, Reason::Sweep(SweepReason::SweepFolds { .. }))
+                    }
+                    Refusal::Error(ExpectError::FrameDoesNotClose) => {
+                        matches!(reason, Reason::Sweep(SweepReason::FrameDoesNotClose { .. }))
+                    }
                     Refusal::Error(ExpectError::Vanishes) => {
                         reason == Reason::Offset(OffsetReason::Vanishes)
                     }
@@ -530,7 +553,9 @@ impl Refusal {
                     Refusal::Error(ExpectError::NoCrossing) => {
                         reason == Reason::Split(SplitReason::NoCrossing)
                     }
-                    Refusal::Error(ExpectError::Nurbs | ExpectError::Unsupported) => false,
+                    Refusal::Error(
+                        ExpectError::Nurbs | ExpectError::Unsupported | ExpectError::PathCorner,
+                    ) => false,
                 };
                 if matches {
                     return Ok(());
@@ -558,6 +583,10 @@ impl Refusal {
                     a.1, a.0, b.1, b.0
                 )
             }
+            Err(CorpusError::Op {
+                source: OpError::Path(PathError::Corner { .. }),
+                ..
+            }) if self == Refusal::Error(ExpectError::PathCorner) => return Ok(()),
             Err(e) => e.to_string(),
         };
         Err(CorpusError::Expectation {

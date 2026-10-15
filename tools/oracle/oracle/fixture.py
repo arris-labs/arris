@@ -71,8 +71,10 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
     # A result Arris refuses as non-manifold is Open CASCADE's compound of
     # solids sharing an edge or a vertex, and one it refuses as a tangent
     # contact carries the contact as an edge of four faces; either may have
-    # an odd Euler characteristic.
-    manifold = fixture.get("analytic", {}).get("expect_error") not in ("non-manifold", "tangent-contact")
+    # an odd Euler characteristic. So may a sweep Arris refuses as a frame
+    # that does not close: Open CASCADE's pipe joins the last section to the
+    # first turned, and the closing face is not a closed surface.
+    manifold = fixture.get("analytic", {}).get("expect_error") not in ("non-manifold", "tangent-contact", "frame-does-not-close")
     results = {}
     for variant in variant_names(fixture):
         shape, shapes = build(fixture, variant)

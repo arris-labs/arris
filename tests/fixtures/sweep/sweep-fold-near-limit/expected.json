@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "b36bda31bec6bef291f826f77b55dbef0565734ace79b9ed04c36e26ffd45c08",
+  "results": {
+    "default": {
+      "area": 15.046698920764468,
+      "centroid": [
+        1.2197428914919826,
+        3.4277009543764177e-17,
+        0.7802571085080169
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2.0275787784535417,
+          1.018388047327814e-16,
+          -0.3341814821571214
+        ],
+        [
+          1.018388047327814e-16,
+          2.0454439394783552,
+          -3.660375969120097e-17
+        ],
+        [
+          -0.3341814821571214,
+          -3.660375969120097e-17,
+          2.027578778453541
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "mid_disc_centre",
+          "point": [
+            1.2928932188134525,
+            0.0,
+            0.7071067811865475
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_the_outer_side",
+          "point": [
+            0.6564971157455597,
+            0.0,
+            1.34350288425444
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_the_outer_side",
+          "point": [
+            0.6069996410625014,
+            0.0,
+            1.3930003589374984
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole_by_the_axis",
+          "point": [
+            1.9787867965644035,
+            0.0,
+            0.021213203435596423
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_start_cap",
+          "point": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 4.453658985991573
+    }
+  }
+}

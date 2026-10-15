@@ -1,0 +1,45 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "4419bb100000a91e2d13c3c9b682094a08368d6db6e18c3f96639612cda7daeb",
+  "results": {
+    "default": {
+      "area": 22.0,
+      "centroid": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "nurbs_fails": "Geom_RectangularTrimmedSurface::V1==V2",
+      "probes": [],
+      "volume": 0.0
+    }
+  }
+}

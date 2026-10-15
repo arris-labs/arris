@@ -1,0 +1,73 @@
+{
+  "description": "a circle of radius 1.2 centred 1 from the path's start toward the centre of a quarter arc of radius 2: it reaches 2.2 along the curvature normal, past the radius of curvature, so the swept face folds through the arc's axis. Open CASCADE's pipe builds the self-crossing body; Arris refuses it as SweepReason::SweepFolds (ADR-0063); the oracle's numbers are the record, not compared",
+  "params": {
+    "R": 2,
+    "c": 1,
+    "r": 1.2
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            "c",
+            0
+          ],
+          "radius": "r"
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              "R",
+              0,
+              "R"
+            ],
+            "via": [
+              "R - R * cos(radians(45))",
+              0,
+              "R * sin(radians(45))"
+            ]
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "sweep-folds"
+  }
+}

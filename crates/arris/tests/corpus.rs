@@ -844,6 +844,25 @@ corpus_tests! {
     /// A circle centred on a non-planar cubic under the rotation-minimising
     /// law: the volume and area to the closed forms whatever the twist.
     sweep_sweep_spline_3d => run "sweep/sweep-spline-3d";
+    /// A circle along a line then a line at a right angle: the path is not
+    /// G1, so `OpError::Path` names the corner where Open CASCADE's pipe
+    /// carries the profile through it (ADR-0063).
+    sweep_sweep_path_corner => run "sweep/sweep-path-corner";
+    /// A rectangle in a plane that holds the path's tangent:
+    /// `SweepReason::ProfileAlongPath`, where Open CASCADE sweeps a flat
+    /// body of no volume.
+    sweep_sweep_profile_along_path => run "sweep/sweep-profile-along-path";
+    /// A circle that reaches past a quarter arc's radius of curvature:
+    /// `SweepReason::SweepFolds`, where Open CASCADE builds the self-crossing
+    /// body.
+    sweep_sweep_fold => run "sweep/sweep-fold";
+    /// The same circle 0.05 inside the radius of curvature: it builds, a
+    /// quarter turn of the disc about the arc's axis, to Pappus.
+    sweep_sweep_fold_near_limit => run "sweep/sweep-fold-near-limit";
+    /// A closed path of five tangent arcs whose frame comes back turned by
+    /// its holonomy under the rotation-minimising law:
+    /// `SweepReason::FrameDoesNotClose`.
+    sweep_sweep_frame_does_not_close => run "sweep/sweep-frame-does-not-close";
     /// The consumer's 2-cube with one vertical edge filleted: a plane–plane
     /// blend, a cylinder between two circle ends (ADR-0007), at `r = 0.2`
     /// and at `r = 0.5`.

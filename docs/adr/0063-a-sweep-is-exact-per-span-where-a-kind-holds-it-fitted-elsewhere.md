@@ -223,3 +223,29 @@ step 3, see the amendment.
   5.6% high (90π, the circle's perimeter times the length, against the
   projected ellipse's 267.86322590949, which Arris matches to 1e-15); step
   5 holds that fixture to the closed forms through `measure_differs`.
+
+## Amendment (2026-10-15, plan `sweep` step 4)
+
+- **The fold test is the reach along the curvature normal.** A point
+  carried at offset `d` from the path moves along the tangent at speed
+  `1 − κ (d · n)`, whatever the frame's twist, so the sweep folds where
+  `κ · reach ≥ 1` and `reach` is the outer loop's farthest extent along
+  the curvature normal, pulled back to the start by the motion. The
+  reach is exact on a loop (the support function of its lines, circles
+  and ellipses). The curvature is a central difference of the field's
+  tangent; each span is cut into sixteen and an interval whose ends sit
+  over half the limit is halved while the ratio still moves, ten times at
+  most. The margin is `κ` times the linear tolerance: a profile within
+  `tolerance.linear` of the radius of curvature is refused, as revolve
+  refuses a profile within it of the axis. Between samples the test is
+  sampled, not bounded; a fold narrower than the last interval is left
+  to the checker.
+- **A hole is not tested**: it lies inside the outer loop.
+- **`ProfileAlongPath`** is the start tangent within the angular
+  tolerance of the profile's plane. **`FrameDoesNotClose { angle }`** is
+  the holonomy's absolute value, for a closed path under the
+  rotation-minimising law only.
+- **No Python class is added.** The binding carries a `Degenerate`
+  refusal's reason as text, so the three variants reach Python through
+  `Display` with no new class or stub line.
+

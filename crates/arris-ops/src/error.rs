@@ -17,7 +17,8 @@ use crate::build::{BuildSlot, Rejection};
 pub enum Reason {
     /// An operand or a parameter no operation can use: the reasons more than one operation raises.
     Input(InputReason),
-    /// A revolve or an extrude refused its profile, axis, angle or direction.
+    /// A revolve, an extrude or a sweep refused its profile, axis, angle,
+    /// direction or path.
     Sweep(SweepReason),
     /// A fuse, cut or common whose result a manifold solid cannot hold.
     Boolean(BooleanReason),
@@ -175,6 +176,30 @@ pub enum SweepReason {
     /// the angular tolerance; an oblique extrusion is not built yet
     /// (ADR-0047).
     DirectionNotNormal,
+    /// A sweep profile's plane holds the path's start tangent within the
+    /// angular tolerance: the profile would be carried along its own
+    /// plane and sweep no volume.
+    ProfileAlongPath,
+    /// A sweep profile folds on a curved span: its outer loop's farthest
+    /// reach along the path's curvature normal is within the linear
+    /// tolerance of the radius of curvature, so the face it sweeps has a
+    /// vanishing speed along the path there. `span` is the path segment
+    /// and `at` the arc length from the path's start where the test found
+    /// it.
+    SweepFolds {
+        /// The path segment, as the consumer wrote it.
+        span: usize,
+        /// The arc length from the path's start.
+        at: f64,
+    },
+    /// A closed path's rotation-minimising frame comes back turned by
+    /// `angle` radians, above the angular tolerance: the sweep's last
+    /// section would not meet its first. A fixed binormal law closes by
+    /// construction.
+    FrameDoesNotClose {
+        /// The holonomy's absolute value, in radians.
+        angle: f64,
+    },
 }
 
 impl SweepReason {
@@ -188,6 +213,9 @@ impl SweepReason {
             SweepReason::SpindleTorus => "SpindleTorus",
             SweepReason::EllipticRevolve { .. } => "EllipticRevolve",
             SweepReason::DirectionNotNormal => "DirectionNotNormal",
+            SweepReason::ProfileAlongPath => "ProfileAlongPath",
+            SweepReason::SweepFolds { .. } => "SweepFolds",
+            SweepReason::FrameDoesNotClose { .. } => "FrameDoesNotClose",
         }
     }
 }
@@ -213,6 +241,17 @@ impl core::fmt::Display for SweepReason {
             SweepReason::DirectionNotNormal => {
                 f.write_str("the extrude direction is not the profile plane's normal")
             }
+            SweepReason::ProfileAlongPath => {
+                f.write_str("the profile's plane holds the path's start tangent")
+            }
+            SweepReason::SweepFolds { span, at } => write!(
+                f,
+                "the profile folds on span {span}, at arc length {at}: it reaches the radius of curvature"
+            ),
+            SweepReason::FrameDoesNotClose { angle } => write!(
+                f,
+                "the closed path's frame comes back turned by {angle} radians"
+            ),
         }
     }
 }

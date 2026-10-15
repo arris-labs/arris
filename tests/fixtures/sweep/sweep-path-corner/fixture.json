@@ -1,0 +1,70 @@
+{
+  "description": "a circle of radius 1 normal to a line along z, then a line along x: a 90 degree corner in the path. Open CASCADE's pipe carries the profile through the corner under its default transition and builds a body; Arris refuses it as OpError::Path with PathError::Corner naming segment 1, since the path is not G1 and a corner is the consumer's to round (ADR-0063). The oracle's numbers are the record, not compared",
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              0,
+              0,
+              10
+            ]
+          },
+          {
+            "line_to": [
+              10,
+              0,
+              10
+            ]
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "path-corner"
+  }
+}

@@ -217,8 +217,9 @@ bound has to be established here.
   measure tolerances over that miss, and `tests/sweep.rs` holds Arris to
   the closed forms. The spring meshes at a chord of 1e-2: 620 000
   triangles at the default take half a minute a mesh.
-- [ ] Step 4 **[2]** — **The refusals.** Add the new `SweepReason`
-  variants, each with its Python class and stub line in the same commit.
+- [x] Step 4 **[2]** — **The refusals.** Add the new `SweepReason`
+  variants. The binding carries a reason as text, so no Python class or
+  stub line follows (ADR-0063's amendment).
   A corner is already `OpError::Path(PathError::Corner { segment, at,
   angle })` from step 3; its fixture is added here with the others.
   - `ProfileAlongPath`: the profile's plane holds the start tangent
@@ -234,6 +235,16 @@ bound has to be established here.
   For each, a fixture under `sweep/` asserting the refusal, its fields
   and no panic, plus `sweep-fold-near-limit` just inside the bound,
   which builds and is checker-green.
+
+  **Built (step 4).** `ops/src/sweep/refuse.rs`; fixtures
+  `sweep-path-corner`, `-profile-along-path`, `-fold`,
+  `-fold-near-limit`, `-frame-does-not-close`, each with its
+  `expect_error` (four new `ExpectError` kinds; the fields are held in
+  `tests/sweep.rs`). The oracle records no genus for the closing case,
+  whose pipe has an odd Euler characteristic, so `fixture.py` relaxes the
+  manifold check for it as it does for `non-manifold`. The skew loop's
+  fixture numbers are full f64: rounded to 12 digits a joint's tangent
+  was 6.6e-12 off, above the angular tolerance of 1e-12.
 - [ ] Step 5 **[2]** — **The exact spans.** Two cases leave the fitted
   path:
   - **A line span** builds extrude's faces through the shared skeleton.

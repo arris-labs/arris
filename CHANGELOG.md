@@ -98,6 +98,10 @@ into its version (ADR-0027).
 - `arris_ops::OpError` gains `Path(PathError)`, a sweep's path that is
   not a G1 chain of usable segments (in Python, `OpPathError` with
   `detail`): add the arm to an exhaustive `match`.
+- `arris_ops::SweepReason` gains `ProfileAlongPath`, `SweepFolds { span,
+  at }` and `FrameDoesNotClose { angle }`, the refusals of a sweep along
+  a path: add the arms to an exhaustive `match`. Python reads a refusal's
+  reason as text, so it needs no change.
 
 ## 0.8.0 — 2026-10-13
 

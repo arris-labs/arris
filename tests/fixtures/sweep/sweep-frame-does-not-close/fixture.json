@@ -1,0 +1,116 @@
+{
+  "description": "a circle of radius 0.05 normal to a closed path of five circular arcs, tangent at every joint, whose tangent indicatrix (five great-circle arcs of the unit sphere) encloses a solid angle 3.1287 short of a half turn modulo 2 pi: the rotation-minimising frame comes back turned by that holonomy, 3.1287 radians, so the swept body's last section would not meet its first. Open CASCADE's pipe closes it by its own correction and builds a body; Arris refuses it as SweepReason::FrameDoesNotClose (ADR-0063), the fixed binormal law being the way to a closed non-planar path. The oracle's numbers are the record, not compared",
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          -0.9706720660307708,
+          0.24040744628142227,
+          0.0
+        ],
+        "y": [
+          -0.06308172056531246,
+          -0.2546995318865019,
+          -0.9649605406374484
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 0.05
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0.16146790659143345,
+              -0.2709305646864745,
+              -0.21779913293172504
+            ],
+            "via": [
+              0.025631717343445243,
+              -0.22255515917092028,
+              -0.04141506080308428
+            ]
+          },
+          {
+            "arc_to": [
+              1.2793867563833885,
+              -0.5589088300802914,
+              -1.7091770693833546
+            ],
+            "via": [
+              0.7530928383404543,
+              -0.1717464891315823,
+              -0.9859580680482324
+            ]
+          },
+          {
+            "arc_to": [
+              1.562805755088113,
+              -0.9627345026429596,
+              -1.5674464912184247
+            ],
+            "via": [
+              1.4450262211229823,
+              -0.7902576293868131,
+              -1.7700349739616041
+            ]
+          },
+          {
+            "arc_to": [
+              0.8089029694006776,
+              0.12606559920359686,
+              -0.0752603668857903
+            ],
+            "via": [
+              1.4201306620364025,
+              -0.7732777471431375,
+              -0.44399845834268314
+            ]
+          },
+          {
+            "arc_to": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "via": [
+              0.3580550449872174,
+              0.32097910047823924,
+              -0.1042264954012142
+            ]
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "frame-does-not-close"
+  }
+}

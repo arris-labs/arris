@@ -15,7 +15,7 @@ use arris_geom::{
     FrameLaw, NurbsCurve, Path, PathError, PathSegment, Profile, ProfileLoop, ProfileSegment,
 };
 use arris_math::{Axis, Frame, Interval, Point2, Point3, Vec3};
-use arris_ops::{Control, OpError, extrude, revolve, sweep};
+use arris_ops::{Control, OpError, Reason, SweepReason, extrude, revolve, sweep};
 use arris_topo::provenance::{Origin, PathPart, Relation, SweepPart};
 use arris_topo::{Body, Model, Provenance, Role};
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
@@ -436,4 +436,240 @@ fn an_invalid_path_is_refused_by_name_with_the_model_untouched() {
     )
     .unwrap_err();
     assert_eq!(err, OpError::Path(PathError::Empty));
+}
+
+/// A circle of radius `r` centred `c` along x of the xy plane at the
+/// origin: normal to a path that starts along z.
+fn disc_beside(c: f64, r: f64) -> Profile {
+    Profile {
+        plane: Frame::world(),
+        outer: ProfileLoop::Circle {
+            center: p(c, 0.0),
+            radius: r,
+        },
+        holes: Vec::new(),
+    }
+}
+
+/// A quarter arc of radius `big_r` from `from`, leaving along z and
+/// turning toward +x: its centre is `from + (R, 0, 0)`.
+fn quarter_arc(from: Point3, big_r: f64) -> PathSegment {
+    let h = big_r * 0.5f64.sqrt();
+    PathSegment::ArcTo {
+        via: from + Vec3::new(big_r - h, 0.0, h),
+        to: from + Vec3::new(big_r, 0.0, big_r),
+    }
+}
+
+fn refusal(
+    profile: &Profile,
+    path: &Path,
+    law: FrameLaw,
+) -> (arris_ops::Reason, Vec<arris_topo::Shape>) {
+    let mut m = Model::default();
+    let before = arris_io::native::to_bytes(&m).unwrap();
+    let err = sweep(&mut m, profile, path, law, &Control::NONE).unwrap_err();
+    assert_eq!(arris_io::native::to_bytes(&m).unwrap(), before, "{err}");
+    match err {
+        OpError::Degenerate { reason, entities } => (reason, entities),
+        other => panic!("not a degenerate refusal: {other}"),
+    }
+}
+
+#[test]
+fn a_profile_whose_plane_holds_the_path_is_refused() {
+    // The plate lies in the xy plane; the path runs along x.
+    let along = Path {
+        start: Point3::origin(),
+        segments: vec![PathSegment::LineTo(Point3::new(10.0, 0.0, 0.0))],
+    };
+    let (reason, entities) = refusal(&plate(), &along, FrameLaw::RotationMinimizing);
+    assert_eq!(reason, Reason::Sweep(SweepReason::ProfileAlongPath));
+    assert!(entities.is_empty());
+    // Backwards along x is the same plane.
+    let back = Path {
+        start: Point3::origin(),
+        segments: vec![PathSegment::LineTo(Point3::new(-10.0, 0.0, 0.0))],
+    };
+    let (reason, _) = refusal(&plate(), &back, FrameLaw::RotationMinimizing);
+    assert_eq!(reason, Reason::Sweep(SweepReason::ProfileAlongPath));
+}
+
+#[test]
+fn a_profile_that_reaches_the_radius_of_curvature_folds() {
+    let start = Point3::origin();
+    let path = Path {
+        start,
+        segments: vec![quarter_arc(start, 2.0)],
+    };
+    let length = PI;
+    for r in [1.2, 1.0] {
+        let (reason, _) = refusal(&disc_beside(1.0, r), &path, FrameLaw::RotationMinimizing);
+        let Reason::Sweep(SweepReason::SweepFolds { span, at }) = reason else {
+            panic!("radius {r}: {reason}");
+        };
+        assert_eq!(span, 0);
+        assert!((0.0..=length).contains(&at), "at {at}");
+    }
+    // The fold is on the later span: a line, then the arc.
+    let from = Point3::new(0.0, 0.0, 5.0);
+    let later = Path {
+        start,
+        segments: vec![PathSegment::LineTo(from), quarter_arc(from, 2.0)],
+    };
+    let (reason, _) = refusal(&disc_beside(1.0, 1.2), &later, FrameLaw::RotationMinimizing);
+    let Reason::Sweep(SweepReason::SweepFolds { span, at }) = reason else {
+        panic!("{reason}");
+    };
+    assert_eq!(span, 1);
+    assert!((5.0..=5.0 + length).contains(&at), "at {at}");
+    // On the helix of a spring the radius of curvature is 10.09, and a
+    // circle reaching 10.5 toward the axis folds under either law.
+    let spring = Path {
+        start: Point3::new(10.0, 0.0, 0.0),
+        segments: vec![PathSegment::Helix {
+            axis: Axis::z_at(Point3::origin()),
+            pitch: 6.0,
+            angle: TAU,
+        }],
+    };
+    let wide = Profile {
+        plane: Frame::new(Point3::new(10.0, 0.0, 0.0), Vec3::y(), Vec3::x()).unwrap(),
+        outer: ProfileLoop::Circle {
+            center: p(-5.2, 0.0),
+            radius: 5.3,
+        },
+        holes: Vec::new(),
+    };
+    for law in [
+        FrameLaw::FixedBinormal(Vec3::z_axis()),
+        FrameLaw::RotationMinimizing,
+    ] {
+        let (reason, _) = refusal(&wide, &spring, law);
+        assert!(
+            matches!(
+                reason,
+                Reason::Sweep(SweepReason::SweepFolds { span: 0, .. })
+            ),
+            "{reason}"
+        );
+    }
+}
+
+#[test]
+fn a_profile_just_inside_the_radius_of_curvature_builds_to_pappus() {
+    let start = Point3::origin();
+    let path = Path {
+        start,
+        segments: vec![quarter_arc(start, 2.0)],
+    };
+    let mut m = Model::default();
+    let (body, _) = sweep(
+        &mut m,
+        &disc_beside(1.0, 0.95),
+        &path,
+        FrameLaw::RotationMinimizing,
+        &Control::NONE,
+    )
+    .unwrap();
+    let (volume, ..) = measures(&m, body);
+    let pappus = PI * 0.95 * 0.95 * 1.0 * FRAC_PI_2;
+    assert!(
+        (volume - pappus).abs() <= 1e-8 * pappus,
+        "{volume} vs {pappus}"
+    );
+}
+
+/// Five circular arcs, tangent at every joint, whose tangents' great-circle
+/// polygon on the unit sphere encloses the solid angle that is the
+/// rotation-minimising frame's holonomy: 3.128748398822758 radians. Each
+/// is `(via, to)`; the path starts at the origin.
+const SKEW_LOOP: [([f64; 3], [f64; 3]); 5] = [
+    (
+        [
+            0.025631717343445243,
+            -0.22255515917092028,
+            -0.04141506080308428,
+        ],
+        [
+            0.16146790659143345,
+            -0.2709305646864745,
+            -0.21779913293172504,
+        ],
+    ),
+    (
+        [0.7530928383404543, -0.1717464891315823, -0.9859580680482324],
+        [1.2793867563833885, -0.5589088300802914, -1.7091770693833546],
+    ),
+    (
+        [1.4450262211229823, -0.7902576293868131, -1.7700349739616041],
+        [1.562805755088113, -0.9627345026429596, -1.5674464912184247],
+    ),
+    (
+        [
+            1.4201306620364025,
+            -0.7732777471431375,
+            -0.44399845834268314,
+        ],
+        [0.8089029694006776, 0.12606559920359686, -0.0752603668857903],
+    ),
+    (
+        [0.3580550449872174, 0.32097910047823924, -0.1042264954012142],
+        [0.0, 0.0, 0.0],
+    ),
+];
+
+#[test]
+fn a_closed_path_whose_frame_does_not_close_is_refused() {
+    let path = Path {
+        start: Point3::origin(),
+        segments: SKEW_LOOP
+            .iter()
+            .map(|&(via, to)| PathSegment::ArcTo {
+                via: Point3::from(via),
+                to: Point3::from(to),
+            })
+            .collect(),
+    };
+    // Normal to the path's start tangent, the first arc's chord's
+    // direction near enough.
+    let plane = Frame::new(
+        Point3::origin(),
+        Vec3::new(-0.23198369933698954, -0.9366602416187215, 0.262395036181486),
+        Vec3::new(-0.9706720660307708, 0.24040744628142227, 0.0),
+    )
+    .unwrap();
+    let profile = Profile {
+        plane,
+        outer: ProfileLoop::Circle {
+            center: p(0.0, 0.0),
+            radius: 0.05,
+        },
+        holes: Vec::new(),
+    };
+    let (reason, _) = refusal(&profile, &path, FrameLaw::RotationMinimizing);
+    let Reason::Sweep(SweepReason::FrameDoesNotClose { angle }) = reason else {
+        panic!("{reason}");
+    };
+    assert!((angle - 3.128748398822758).abs() < 1e-4, "angle {angle}");
+    // A fixed binormal closes by construction: whatever it does here, it
+    // is not this refusal.
+    let mut m = Model::default();
+    let fixed = sweep(
+        &mut m,
+        &profile,
+        &path,
+        FrameLaw::FixedBinormal(Vec3::z_axis()),
+        &Control::NONE,
+    );
+    assert!(
+        !matches!(
+            fixed,
+            Err(OpError::Degenerate {
+                reason: Reason::Sweep(SweepReason::FrameDoesNotClose { .. }),
+                ..
+            })
+        ),
+        "{fixed:?}"
+    );
 }

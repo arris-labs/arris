@@ -29,7 +29,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 use crate::verify;
 
-use super::{SideUse, cap_face, profile_curve_fault, record, side_face, vertex_index};
+use super::{SideUse, cap_face, profile_curve_fault, record, refuse, side_face, vertex_index};
 
 /// The degree of a fitted span's surface along the path: a quintic, as a
 /// fitted section is (`SECTION_FIT_DEGREE`). Every column of the skin
@@ -329,6 +329,9 @@ pub fn sweep(
     let field = path.frames(law, tol, meter)?;
     let plane = &profile.plane;
     let normal = plane.z().into_inner();
+    refuse::along_path(&field, &normal, tol)?;
+    refuse::frame_closes(&field, tol)?;
+    refuse::folds(&field, &loops[0], tol)?;
     // The material is carried along the profile's normal when the path
     // leaves it that way; the caps' and the sides' walks follow from it,
     // and a rigid motion keeps it along the whole path.
