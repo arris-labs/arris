@@ -11,6 +11,7 @@
 //! loop's uses and the provenance record.
 
 mod along;
+mod exact;
 mod extrude;
 mod refuse;
 mod revolve;
@@ -19,7 +20,7 @@ pub use along::sweep;
 pub use extrude::{extrude, planar_face};
 pub use revolve::revolve;
 
-use arris_geom::{Curve2, GeomError, GeomKind, ProfileEdge, Surface};
+use arris_geom::{Curve, Curve2, GeomError, GeomKind, ProfileEdge, Surface};
 use arris_math::{Frame, Interval, Point2, Vec2, Vec3};
 use arris_topo::builder::{AssemblySlots, Built, EdgeKey, FaceSpec, UseSpec};
 use arris_topo::provenance::SweepPart;
@@ -93,17 +94,20 @@ fn place_in_domain(surface: &Surface, uses: &mut [SideUse]) {
 }
 
 /// Whether the swept face's surface normal is the outward one, read at
-/// the segment's midpoint: outward is the segment's in-plane normal on
+/// the middle of `range` on `curve`, the segment as it stands on the
+/// plane with unit `normal`: outward is the segment's in-plane normal on
 /// the right of the walk (the material is on the loop's left), and the
 /// face is `Forward` when the surface normal there agrees with it.
+/// `pcurve` is the segment's on `surface`, at the curve's own parameter.
 fn side_orientation(
-    edge: &ProfileEdge,
+    curve: &Curve,
+    range: Interval,
     normal: Vec3,
     surface: &Surface,
     pcurve: &Curve2,
 ) -> Result<Orientation, OpError> {
-    let t = edge.range.midpoint();
-    let tangent = edge.curve.eval(t).d1;
+    let t = range.midpoint();
+    let tangent = curve.eval(t).d1;
     let outward = tangent.cross(&normal);
     let uv = pcurve.point(t);
     let surface_normal = surface

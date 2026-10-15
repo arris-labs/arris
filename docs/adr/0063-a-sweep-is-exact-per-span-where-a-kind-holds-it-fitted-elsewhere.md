@@ -249,3 +249,46 @@ step 3, see the amendment.
   refusal's reason as text, so the three variants reach Python through
   `Display` with no new class or stub line.
 
+
+## Amendment (2026-10-15, plan `sweep` step 5)
+
+- **A span is exact where its motion is one of the table's two and the
+  faces then need no fit; otherwise it is fitted whole.** A span is
+  classified by its segment (`LineTo`, `ArcTo`; a helix or a NURBS segment
+  is always fitted, so a NURBS twin of a line or an arc is the fitted
+  control) and by a check, not an assumption: the field's motion from the
+  carried start to the carried end must be the translation along the
+  tangent, or the rotation about the arc's circumcircle axis by its
+  length over its radius, within the angular tolerance and the linear
+  tolerance at the profile's origin. Under a fixed binormal that is not an
+  arc's axis the check fails and the arc is fitted.
+- **A line span** is `extrude`'s faces on the carried profile: a plane per
+  line, a `Cylinder` for a circle normal to the path, an
+  `EllipticCylinder` for an ellipse normal to it. A circle or ellipse
+  *oblique* to the path gives an `EllipticCylinder` of the section across
+  the path: the conic projected along the tangent is an ellipse whose axes
+  are the singular directions of the 2 × 2 projection, and the cylinder's
+  `X` is its major axis. Its seam is wherever the vertex's rise stands, not
+  necessarily at `u = 0`, the ring edge's pcurve on it a fitted NURBS
+  (`pcurve_on`'s oblique section), so the exact kind holds for any tilt.
+- **An arc span** is `revolve`'s faces on the carried profile when the
+  carried plane holds the arc's axis and every point of every loop is off
+  it by more than the linear tolerance, and no segment is elliptic
+  (`EllipticRevolve`): planes, cylinders, cones, spheres and tori by
+  `revolve`'s own surface selection, a vertex running a circle about the
+  axis. Otherwise — a tilted profile, a profile touching the axis, an
+  elliptic segment — the span is fitted.
+- **A joint (ring) is the profile's own segment carried, an analytic
+  curve, only when every span it joins is exact** (and for an open path's
+  end ring, its one span). Beside a fitted span it is the segment's exact
+  NURBS, the isoline the fitted faces end on; the exact span's faces then
+  take a fitted pcurve for it. The analytic ring with fitted pcurves
+  stays rejected (step 3's 19 s).
+- **`sweep-oblique-circle` is held to the closed forms** through
+  `measure_differs`: Open CASCADE's pipe takes the lateral area as the
+  circle's perimeter times the length. Arris' own reading of Open
+  CASCADE's STEP of it, the oblique cylinder, measures the closed form to
+  4e-14, so it is the *measurement* of its own shape that is wrong, not
+  the shape; the new `analytic.occt_file_measure_differs` holds the
+  read-back stages to the closed forms where every other
+  `measure_differs` blames a shape its file carries.

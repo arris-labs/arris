@@ -325,8 +325,12 @@ of the step that made the fixture pass, and a later change to it is a
   the operation — minutes of fitting, then a refusal — and names the
   regression fixture that holds that reading instead; Arris's own STEP is
   still read back by Open CASCADE and compared. The runner holds a `measure_differs` fixture's
-  read-back to the oracle's own measurements: all of them blame Open
-  CASCADE's boolean, whose shape its file carries. Every other round trip in
+  read-back to the oracle's own measurements: all but one blame Open
+  CASCADE's boolean, whose shape its file carries. `occt_file_measure_differs:
+  "why"` (needs `measure_differs`) is that one: Open CASCADE's measurement
+  of its own, right, shape is the wrong one (`sweep/sweep-oblique-circle`),
+  and the read-back stages hold Arris's reading of its file to the closed
+  forms. Every other round trip in
   the self-test is held to the result's own tolerance where that is wider
   than the fixture's: a reader may move the boundary by its largest vertex
   tolerance. `genus` is what the

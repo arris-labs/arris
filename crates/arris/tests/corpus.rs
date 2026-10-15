@@ -844,6 +844,18 @@ corpus_tests! {
     /// A circle centred on a non-planar cubic under the rotation-minimising
     /// law: the volume and area to the closed forms whatever the twist.
     sweep_sweep_spline_3d => run "sweep/sweep-spline-3d";
+    /// A circle along line, quarter arc, line in one plane: cylinder, torus, cylinder.
+    sweep_sweep_pipe_l_bend => run "sweep/sweep-pipe-l-bend";
+    /// A rectangle with a hole along line, arc, arc, line: planes, cylinders, tori.
+    sweep_sweep_rect_s_bend => run "sweep/sweep-rect-s-bend";
+    /// A circle tilted 30 degrees off the path's normal along a line: the elliptic cylinder.
+    /// Open CASCADE's area, 90 pi, is the circle's perimeter times the
+    /// length; the oblique cylinder's is its projected ellipse's,
+    /// 267.86322590949, which the exact build matches to 1e-15
+    /// (`analytic.measure_differs`).
+    sweep_sweep_oblique_circle => run "sweep/sweep-oblique-circle";
+    /// A circle along a closed path of four arcs: a torus with no caps.
+    sweep_sweep_ring => run "sweep/sweep-ring";
     /// A circle along a line then a line at a right angle: the path is not
     /// G1, so `OpError::Path` names the corner where Open CASCADE's pipe
     /// carries the profile through it (ADR-0063).
@@ -1797,21 +1809,6 @@ corpus_tests! {
     /// is `Unsupported`. The desired answer is Open CASCADE's distance.
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
-    /// A circle along line, quarter arc, line in one plane: cylinder, torus, cylinder.
-    #[ignore = "builds fitted and matches Open CASCADE; the exact kinds are plans/sweep step 5, which blesses the dump"]
-    regression_sweep_pipe_l_bend => run "regression/sweep-pipe-l-bend";
-    /// A rectangle with a hole along line, arc, arc, line: planes, cylinders, tori.
-    #[ignore = "builds fitted and matches Open CASCADE; the exact kinds are plans/sweep step 5, which blesses the dump"]
-    regression_sweep_rect_s_bend => run "regression/sweep-rect-s-bend";
-    /// A circle tilted 30 degrees off the path's normal along a line: the elliptic cylinder.
-    /// Open CASCADE's area, 90 pi, is the circle's perimeter times the
-    /// length; the oblique cylinder's is its projected ellipse's,
-    /// 267.86322590949, which the fitted build matches to 1e-15.
-    #[ignore = "Open CASCADE's area is 5.6% high: the exact EllipticCylinder and measure_differs are plans/sweep step 5"]
-    regression_sweep_oblique_circle => run "regression/sweep-oblique-circle";
-    /// A circle along a closed path of four arcs: a torus with no caps.
-    #[ignore = "builds fitted and matches Open CASCADE; the exact kinds are plans/sweep step 5, which blesses the dump"]
-    regression_sweep_ring => run "regression/sweep-ring";
 }
 
 /// A variant the recipe does not have fails naming it.

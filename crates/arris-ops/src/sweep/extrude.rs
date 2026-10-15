@@ -344,7 +344,8 @@ pub fn extrude(
                     pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
                 };
                 let start_pcurve = on(&edge.curve, edge.range)?;
-                let orientation = side_orientation(edge, normal, surface, &start_pcurve)?;
+                let orientation =
+                    side_orientation(&edge.curve, edge.range, normal, surface, &start_pcurve)?;
                 let mut cycle = vec![
                     SideUse {
                         edge: start_edge[li][j],

@@ -29,7 +29,11 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 use crate::verify;
 
-use super::{SideUse, cap_face, profile_curve_fault, record, refuse, side_face, vertex_index};
+use super::exact::{ExactSpan, exact_span};
+use super::{
+    SideUse, cap_face, profile_curve_fault, profile_pcurves, record, refuse, side_face,
+    side_orientation, vertex_index,
+};
 
 /// The degree of a fitted span's surface along the path: a quintic, as a
 /// fitted section is (`SECTION_FIT_DEGREE`). Every column of the skin
@@ -188,6 +192,13 @@ fn piece_surface(skin: &NurbsSurface, piece: &Piece) -> Result<NurbsSurface, Geo
         points,
         weights,
     )
+}
+
+/// A fitted span with no skin: a kernel bug, never a property of the sweep.
+fn unskinned() -> OpError {
+    OpError::Internal(Fault::Invariant {
+        what: "a skin for every fitted span",
+    })
 }
 
 /// The skin's isoline at the `u` of control row `i`, along the path: the
@@ -365,14 +376,46 @@ pub fn sweep(
         .iter()
         .map(|edges| composite(edges))
         .collect::<Result<Vec<_>, _>>()?;
-    let mut skins: Vec<Vec<NurbsSurface>> = Vec::with_capacity(spans);
-    for k in 0..spans {
+    // A span the exact faces hold is built from them; the rest are
+    // skinned, and a ring is exact only where every span it joins is.
+    let mut exacts: Vec<Option<ExactSpan>> = Vec::with_capacity(spans);
+    for (k, segment) in path.segments.iter().enumerate() {
+        meter.tick()?;
+        let end = field.motion_at(field.span_range(k).1);
+        exacts.push(exact_span(
+            &field,
+            k,
+            segment,
+            &loops,
+            plane,
+            (&motions[k], &end),
+            tol,
+        )?);
+    }
+    let exact_ring = |r: usize| -> bool {
+        let before = if r == 0 {
+            closed.then_some(spans - 1)
+        } else {
+            Some(r - 1)
+        };
+        let after = (r < spans).then_some(r);
+        [before, after]
+            .into_iter()
+            .flatten()
+            .all(|k| exacts[k].is_some())
+    };
+    let mut skins: Vec<Option<Vec<NurbsSurface>>> = Vec::with_capacity(spans);
+    for (k, exact) in exacts.iter().enumerate() {
+        if exact.is_some() {
+            skins.push(None);
+            continue;
+        }
         let range = span_range(k)?;
         let mut row = Vec::with_capacity(composites.len());
         for c in &composites {
             row.push(skin_span(&c.curve, &field, range, tolerance, meter)?);
         }
-        skins.push(row);
+        skins.push(Some(row));
     }
 
     let part = |span: usize, part: SweepPart| Role::Sweep(PathPart { span, part });
@@ -417,18 +460,29 @@ pub fn sweep(
         // the ring.
         let mut ring_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
         let mut ring_range: Vec<Vec<Vec<Interval>>> = Vec::with_capacity(rings);
+        let mut ring_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(rings);
         for (r, motion) in motions.iter().enumerate() {
+            let analytic = exact_ring(r);
             let mut slots = Vec::with_capacity(loops.len());
             let mut ranges = Vec::with_capacity(loops.len());
+            let mut curves = Vec::with_capacity(loops.len());
             for (li, edges_of) in loops.iter().enumerate() {
                 let n = edges_of.len();
                 let mut row = Vec::with_capacity(n);
                 let mut row_ranges = Vec::with_capacity(n);
+                let mut row_curves = Vec::with_capacity(n);
                 for (j, edge) in edges_of.iter().enumerate() {
                     meter.tick()?;
-                    let segment = composites[li].segments[j].transformed(motion);
-                    let range = segment.domain();
-                    let curve = Curve::Nurbs(segment);
+                    // Between exact spans the ring is the profile's own
+                    // segment carried; beside a fitted span it is that
+                    // segment's NURBS, the isoline the fitted faces end on.
+                    let (curve, range) = if analytic {
+                        (edge.curve.transformed(motion), edge.range)
+                    } else {
+                        let segment = composites[li].segments[j].transformed(motion);
+                        let range = segment.domain();
+                        (Curve::Nurbs(segment), range)
+                    };
                     row.push(edges.len());
                     edges.push(EdgeSpec::New {
                         geometry: EdgeGeometry::Curve {
@@ -458,30 +512,43 @@ pub fn sweep(
                         )
                     });
                     row_ranges.push(range);
+                    row_curves.push(curve);
                 }
                 slots.push(row);
                 ranges.push(row_ranges);
+                curves.push(row_curves);
             }
             ring_edge.push(slots);
             ring_range.push(ranges);
+            ring_curve.push(curves);
         }
 
-        // Each span's rails: the skin's column at each vertex.
+        // Each span's rails: a vertex's straight rise or circle about the
+        // axis on an exact span, the skin's column at it on a fitted one.
         let mut rail: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
-        for (k, skins_of) in skins.iter().enumerate() {
-            let range = span_range(k)?;
+        let mut rail_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(spans);
+        for k in 0..spans {
             let mut per_loop = Vec::with_capacity(loops.len());
+            let mut per_curve = Vec::with_capacity(loops.len());
             for (li, edges_of) in loops.iter().enumerate() {
                 let n = edges_of.len();
                 let mut row = Vec::with_capacity(n);
+                let mut row_curves = Vec::with_capacity(n);
                 for (j, edge) in edges_of.iter().enumerate() {
                     meter.tick()?;
-                    let first = composites[li].pieces[j].first;
-                    let curve = column(&skins_of[li], first).map_err(fault_of)?;
+                    let (curve, range) = match (&exacts[k], &skins[k]) {
+                        (Some(exact), _) => (exact.rails[li][j].clone(), exact.rail_range),
+                        (None, Some(skins_of)) => {
+                            let first = composites[li].pieces[j].first;
+                            let column = column(&skins_of[li], first).map_err(fault_of)?;
+                            (Curve::Nurbs(column), span_range(k)?)
+                        }
+                        (None, None) => return Err(unskinned()),
+                    };
                     row.push(edges.len());
                     edges.push(EdgeSpec::New {
                         geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(Curve::Nurbs(curve)),
+                            curve: m.add_curve(curve.clone()),
                             range,
                         },
                         start: VertexKey::New(ring_vertex[k][li][j]),
@@ -495,10 +562,13 @@ pub fn sweep(
                             vertex: vertex_index(edge, n),
                         },
                     ));
+                    row_curves.push(curve);
                 }
                 per_loop.push(row);
+                per_curve.push(row_curves);
             }
             rail.push(per_loop);
+            rail_curve.push(per_curve);
         }
 
         // The caps of an open path: the profile face, its outward normal
@@ -515,24 +585,38 @@ pub fn sweep(
             } else {
                 (Orientation::Forward, Orientation::Reversed)
             };
-            // Each segment's NURBS in the plane: its control points in the
-            // plane's (u, v), exact, and carried with the plane to the end.
+            // An exact ring's cap has the profile's own pcurves; a fitted
+            // one's has each segment's NURBS in the plane's (u, v), exact,
+            // and carried with the plane to the end.
             let on_plane = Surface::Plane { frame: *plane };
-            let mut pcurves: Vec<Vec<Curve2>> = Vec::with_capacity(loops.len());
-            for c in &composites {
-                let mut row = Vec::with_capacity(c.segments.len());
-                for segment in &c.segments {
-                    let curve = Curve::Nurbs(segment.clone());
-                    row.push(
-                        pcurve_on(&curve, segment.domain(), &on_plane, tol, meter)
-                            .map_err(fault_of)?,
-                    );
+            let mut nurbs: Option<Vec<Vec<Curve2>>> = None;
+            let mut pcurves_of = |analytic: bool| -> Result<Vec<Vec<Curve2>>, OpError> {
+                if analytic {
+                    return Ok(profile_pcurves(&loops));
                 }
-                pcurves.push(row);
-            }
+                if let Some(done) = &nurbs {
+                    return Ok(done.clone());
+                }
+                let mut all: Vec<Vec<Curve2>> = Vec::with_capacity(loops.len());
+                for c in &composites {
+                    let mut row = Vec::with_capacity(c.segments.len());
+                    for segment in &c.segments {
+                        let curve = Curve::Nurbs(segment.clone());
+                        row.push(
+                            pcurve_on(&curve, segment.domain(), &on_plane, tol, meter)
+                                .map_err(fault_of)?,
+                        );
+                    }
+                    all.push(row);
+                }
+                nurbs = Some(all.clone());
+                Ok(all)
+            };
+            let (start_pcurves, end_pcurves) =
+                (pcurves_of(exact_ring(0))?, pcurves_of(exact_ring(spans))?);
             faces.push(cap_face(
                 m,
-                &pcurves,
+                &start_pcurves,
                 *plane,
                 start_use,
                 &slots(0),
@@ -541,7 +625,7 @@ pub fn sweep(
             face_roles.push(part(0, SweepPart::StartCap));
             faces.push(cap_face(
                 m,
-                &pcurves,
+                &end_pcurves,
                 plane.transformed(&motions[spans]),
                 end_use,
                 &slots(spans),
@@ -557,7 +641,7 @@ pub fn sweep(
         // outside. Every edge of a side is an isoline of its skin, so every
         // pcurve is a line in (u, v).
         let mut side_loop: Vec<usize> = Vec::new();
-        for (k, skins_of) in skins.iter().enumerate() {
+        for k in 0..spans {
             let range = span_range(k)?;
             let motion = &motions[k];
             let carried_normal = motion.apply_vec(normal);
@@ -565,6 +649,71 @@ pub fn sweep(
                 let n = edges_of.len();
                 for (j, edge) in edges_of.iter().enumerate() {
                     meter.tick()?;
+                    if let Some(exact) = &exacts[k] {
+                        let surface = &exact.surfaces[li][j];
+                        let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
+                            pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
+                        };
+                        let start = (&ring_curve[k][li][j], ring_range[k][li][j]);
+                        let end = (
+                            &ring_curve[end_ring(k)][li][j],
+                            ring_range[end_ring(k)][li][j],
+                        );
+                        let start_pcurve = on(start.0, start.1)?;
+                        let orientation = side_orientation(
+                            start.0,
+                            start.1,
+                            carried_normal,
+                            surface,
+                            &start_pcurve,
+                        )?;
+                        let next = (j + 1) % n;
+                        let mut cycle = vec![
+                            SideUse {
+                                edge: ring_edge[k][li][j],
+                                orientation: Orientation::Forward,
+                                pcurve: start_pcurve,
+                                range: start.1,
+                            },
+                            SideUse {
+                                edge: rail[k][li][next],
+                                orientation: Orientation::Forward,
+                                pcurve: on(&rail_curve[k][li][next], exact.rail_range)?,
+                                range: exact.rail_range,
+                            },
+                            SideUse {
+                                edge: ring_edge[end_ring(k)][li][j],
+                                orientation: Orientation::Reversed,
+                                pcurve: on(end.0, end.1)?,
+                                range: end.1,
+                            },
+                            SideUse {
+                                edge: rail[k][li][j],
+                                orientation: Orientation::Reversed,
+                                pcurve: on(&rail_curve[k][li][j], exact.rail_range)?,
+                                range: exact.rail_range,
+                            },
+                        ];
+                        if !along_normal {
+                            cycle.reverse();
+                            for u in &mut cycle {
+                                u.orientation = u.orientation.flipped();
+                            }
+                        }
+                        faces.push(side_face(m, surface, orientation, cycle, false, tolerance));
+                        face_roles.push(part(
+                            k,
+                            SweepPart::Side {
+                                loop_index: edge.loop_index,
+                                segment: edge.segment,
+                            },
+                        ));
+                        side_loop.push(li);
+                        continue;
+                    }
+                    let Some(skins_of) = &skins[k] else {
+                        return Err(unskinned());
+                    };
                     let sub = piece_surface(&skins_of[li], &composites[li].pieces[j])
                         .map_err(fault_of)?;
                     let surface = Surface::Nurbs(sub.clone());

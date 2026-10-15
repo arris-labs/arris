@@ -245,7 +245,7 @@ bound has to be established here.
   manifold check for it as it does for `non-manifold`. The skew loop's
   fixture numbers are full f64: rounded to 12 digits a joint's tangent
   was 6.6e-12 off, above the angular tolerance of 1e-12.
-- [ ] Step 5 **[2]** — **The exact spans.** Two cases leave the fitted
+- [x] Step 5 **[2]** — **The exact spans.** Two cases leave the fitted
   path:
   - **A line span** builds extrude's faces through the shared skeleton.
     The skeleton's oblique case is new: a circle or ellipse gives
@@ -263,6 +263,27 @@ bound has to be established here.
   becomes a property here: the same path with each line and arc given as
   its exact NURBS sweeps fitted faces that agree with the exact build in
   volume, area and centroid.
+
+  **Built (step 5).** `ops/src/sweep/exact.rs` classifies each span by its
+  segment and checks the field's motion against the translation or the
+  rotation it must be (ADR-0063's amendment); `along.rs` builds an exact
+  span's sides from its surfaces and rails and a fitted one's as before. A
+  ring is the profile's analytic segment only where every span it joins is
+  exact, else the segment's NURBS. Arc spans reuse `revolve`'s surface
+  selection (its helpers are `pub(super)` now) and are fitted when the
+  carried plane misses the axis, a point lies on it, or a segment is
+  elliptic. An oblique circle or ellipse gives an `EllipticCylinder` for
+  every tilt: its seam is the vertex's rise wherever that stands, and the
+  ring edge's pcurve on it is `pcurve_on`'s fitted NURBS, so no tilt falls
+  back. The first `measure_differs` fixture whose *measure*, not its
+  shape, Open CASCADE gets wrong needed `analytic.occt_file_measure_differs`
+  to hold the read-back stages to the closed forms (the plan did not
+  foresee it). `sweep-fold-near-limit` now builds a torus of minor radius
+  0.95 on major 1, and `mass_properties` integrates its inertia 4.3e-9
+  off the closed form (a `revolve` of the same disc does too), so that
+  fixture's `inertia_rel` is 1e-8 (docs/BACKLOG.md). The twin property is
+  `tests/sweep_prop.rs`, planar paths of lines and arcs with a rectangle
+  or a disc; step 8 extends it.
 - [ ] Step 6 **[1]** — **The oblique extrude.** `extrude` builds any
   direction off the profile's plane through the line span. A direction
   whose normal component times the length is under the linear tolerance

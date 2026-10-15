@@ -1264,9 +1264,9 @@ fn read_back(
     let mut held = fixture.clone();
     held.name = format!("{} [{which} OCCT STEP]", fixture.name);
     held.recipe.analytic.counts_differ = None;
-    // Every `measure_differs` blames Open CASCADE's boolean, not its
-    // measure: its file carries its own shape, which its own measurements
-    // are of.
+    // Every `measure_differs` but one with `occt_file_measure_differs`
+    // blames Open CASCADE's boolean, not its measure: its file carries its
+    // own shape, which its own measurements are of.
     held.recipe.analytic.measure_differs = None;
     held.recipe.tolerances =
         within_own_tolerance(&fixture.recipe.tolerances, &chain.model, body).map_err(fail)?;
@@ -1304,7 +1304,14 @@ fn read_back(
             found: line.genus,
         });
     }
-    measure_stage(&held, &chain, expected)?;
+    // The closed forms hold Open CASCADE's file where the fixture blames
+    // its measurement of its own shape, not the shape.
+    if fixture.recipe.analytic.occt_file_measure_differs.is_some() {
+        let (target, _) = measure_target(fixture, &chain.params, expected)?;
+        measure_stage(&held, &chain, &target)?;
+    } else {
+        measure_stage(&held, &chain, expected)?;
+    }
     Ok(())
 }
 

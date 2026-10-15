@@ -1,5 +1,6 @@
 {
-  "description": "a circle of radius 0.95 centred 1 from the path's start toward the centre of a quarter arc of radius 2: it reaches 1.95, 0.05 inside the radius of curvature, so the sweep builds, a quarter turn of the disc about the arc's axis: volume pi r^2 (R - c) pi/2 by Pappus (ADR-0063)",
+  "description": "a circle of radius 0.95 centred 1 from the path's start toward the centre of a quarter arc of radius 2: it reaches 1.95, 0.05 inside the radius of curvature, so the sweep builds, a quarter turn of the disc about the arc's axis: volume pi r^2 (R - c) pi/2 by Pappus (ADR-0063). Built exactly, as a torus of minor radius 0.95 on major radius 1: the tensor `mass_properties` integrates on it is 4.3e-9 of itself below the oracle's, which is the closed form's to 1e-14 (a `revolve` of the same disc measures the same), so the inertia is held to 1e-8, not the 1e-9 default",
+  "tolerances": {"inertia_rel": 1e-8},
   "params": {
     "R": 2,
     "c": 1,

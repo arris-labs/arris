@@ -1,6 +1,8 @@
-//! `ops::sweep` along a path (ADR-0063), every span fitted: a degree-one
-//! NURBS line agrees with `extrude` and an exact NURBS arc with
-//! `revolve` in volume, area and centroid; a spring's volume is the
+//! `ops::sweep` along a path (ADR-0063): a line span and an arc span about
+//! an axis in the profile's plane are exact (a pipe of lines and arcs has
+//! cylinders and tori, an oblique circle an elliptic cylinder), and every
+//! other span is fitted — a degree-one NURBS line agrees with `extrude` and
+//! an exact NURBS arc with `revolve` in volume, area and centroid; a spring's volume is the
 //! screw's closed form; two spans meet at the profile carried to their
 //! joint, named as the second span's start; a closed path builds no caps,
 //! and a hole in its profile closes into a void; and an invalid path is
@@ -13,6 +15,7 @@ use arris_debug::testing::entities_of;
 use arris_debug::unmetered::mass_properties;
 use arris_geom::{
     FrameLaw, NurbsCurve, Path, PathError, PathSegment, Profile, ProfileLoop, ProfileSegment,
+    SurfaceKind,
 };
 use arris_math::{Axis, Frame, Interval, Point2, Point3, Vec3};
 use arris_ops::{Control, OpError, Reason, SweepReason, extrude, revolve, sweep};
@@ -672,4 +675,269 @@ fn a_closed_path_whose_frame_does_not_close_is_refused() {
         ),
         "{fixed:?}"
     );
+}
+
+/// How many faces of `body` lie on a surface of `kind`.
+fn faces_on(m: &Model, body: Body, kind: SurfaceKind) -> usize {
+    m.faces(body)
+        .unwrap()
+        .into_iter()
+        .filter(|f| m.surface(m.face(f.id).unwrap().surface()).unwrap().kind() == kind)
+        .count()
+}
+
+/// The perimeter of the ellipse of semi-axes `a` and `b`: the trapezoid
+/// rule on a periodic integrand converges faster than any power of the
+/// step, so 4096 points are exact to rounding.
+fn ellipse_perimeter(a: f64, b: f64) -> f64 {
+    let n = 4096;
+    let step = TAU / n as f64;
+    (0..n)
+        .map(|i| {
+            let (s, c) = (i as f64 * step).sin_cos();
+            (a * a * s * s + b * b * c * c).sqrt()
+        })
+        .sum::<f64>()
+        * step
+}
+
+#[test]
+fn a_pipe_of_lines_and_arcs_is_cylinders_and_tori() {
+    // A circle of radius 2 along 20 up z, a quarter turn of radius 10
+    // toward +x, then 20 along +x: the profile's plane holds each arc's
+    // axis, so every span is exact.
+    let r = 2.0;
+    let big_r = 10.0;
+    let h = big_r * 0.5f64.sqrt();
+    let corner = Point3::new(0.0, 0.0, 20.0);
+    let path = Path {
+        start: Point3::origin(),
+        segments: vec![
+            PathSegment::LineTo(corner),
+            PathSegment::ArcTo {
+                via: corner + Vec3::new(big_r - h, 0.0, h),
+                to: corner + Vec3::new(big_r, 0.0, big_r),
+            },
+            PathSegment::LineTo(corner + Vec3::new(big_r + 20.0, 0.0, big_r)),
+        ],
+    };
+    let profile = disc_beside(0.0, r);
+    let mut m = Model::default();
+    let (body, _) = sweep(
+        &mut m,
+        &profile,
+        &path,
+        FrameLaw::RotationMinimizing,
+        &Control::NONE,
+    )
+    .unwrap();
+    assert_eq!(faces_on(&m, body, SurfaceKind::Cylinder), 2);
+    assert_eq!(faces_on(&m, body, SurfaceKind::Torus), 1);
+    assert_eq!(faces_on(&m, body, SurfaceKind::Plane), 2, "the two caps");
+    assert_eq!(faces_on(&m, body, SurfaceKind::Nurbs), 0);
+    // Guldin: the disc's area times the length of the path.
+    let length = 20.0 + 20.0 + big_r * FRAC_PI_2;
+    let (volume, area, _) = measures(&m, body);
+    let exact = PI * r * r * length;
+    assert!(
+        (volume - exact).abs() <= 1e-9 * exact,
+        "{volume} vs {exact}"
+    );
+    let lateral = TAU * r * length + 2.0 * PI * r * r;
+    assert!(
+        (area - lateral).abs() <= 1e-9 * lateral,
+        "{area} vs {lateral}"
+    );
+}
+
+#[test]
+fn an_oblique_circle_or_ellipse_is_the_elliptic_cylinder_whatever_the_tilt() {
+    // A circle of radius 3 in planes tilted 30° about axes in the plane at
+    // several angles, carried 12 along z: the section across the path is
+    // an ellipse of semi-axes 3 and 3 cos 30°, whose major axis is the tilt
+    // axis, so the circle's own start is on it only for some of them.
+    let (r, length, tilt) = (3.0f64, 12.0, 30.0f64.to_radians());
+    for about in [0.0, 0.4, FRAC_PI_2, 2.0, 3.5] {
+        let axis = Vec3::new(about.cos(), about.sin(), 0.0);
+        let across = Vec3::z().cross(&axis);
+        let plane = Frame::new(
+            Point3::origin(),
+            across * (-tilt.sin()) + Vec3::z() * tilt.cos(),
+            axis,
+        )
+        .unwrap();
+        let profile = Profile {
+            plane,
+            outer: ProfileLoop::Circle {
+                center: p(0.0, 0.0),
+                radius: r,
+            },
+            holes: Vec::new(),
+        };
+        let path = Path {
+            start: Point3::origin(),
+            segments: vec![PathSegment::LineTo(Point3::new(0.0, 0.0, length))],
+        };
+        let mut m = Model::default();
+        let (body, _) = sweep(
+            &mut m,
+            &profile,
+            &path,
+            FrameLaw::RotationMinimizing,
+            &Control::NONE,
+        )
+        .unwrap();
+        assert_eq!(
+            faces_on(&m, body, SurfaceKind::EllipticCylinder),
+            1,
+            "tilt about {about}"
+        );
+        assert_eq!(
+            faces_on(&m, body, SurfaceKind::Nurbs),
+            0,
+            "tilt about {about}"
+        );
+        let (volume, area, centre) = measures(&m, body);
+        let exact = PI * r * r * tilt.cos() * length;
+        assert!(
+            (volume - exact).abs() <= 1e-9 * exact,
+            "{about}: {volume} vs {exact}"
+        );
+        let lateral = ellipse_perimeter(r, r * tilt.cos()) * length + 2.0 * PI * r * r;
+        assert!(
+            (area - lateral).abs() <= 1e-9 * lateral,
+            "{about}: {area} vs {lateral}"
+        );
+        assert!(
+            (centre - Point3::new(0.0, 0.0, 0.5 * length)).norm() <= 1e-9,
+            "{about}: {centre:?}"
+        );
+    }
+}
+
+#[test]
+fn an_oblique_ellipse_sweeps_the_elliptic_cylinder_too() {
+    // An ellipse of semi-axes 4 and 2 tilted 40° about its minor axis (so
+    // its major shortens) and about its major (so its minor does).
+    let (length, tilt) = (9.0f64, 40.0f64.to_radians());
+    for about_major in [true, false] {
+        let axis = if about_major { Vec3::x() } else { Vec3::y() };
+        let across = Vec3::z().cross(&axis);
+        let plane = Frame::new(
+            Point3::origin(),
+            across * (-tilt.sin()) + Vec3::z() * tilt.cos(),
+            axis,
+        )
+        .unwrap();
+        // The ellipse's major axis along the plane's x.
+        let profile = Profile {
+            plane,
+            outer: ProfileLoop::Ellipse {
+                center: p(0.0, 0.0),
+                major: arris_math::Vec2::new(4.0, 0.0),
+                minor_radius: 2.0,
+            },
+            holes: Vec::new(),
+        };
+        let path = Path {
+            start: Point3::origin(),
+            segments: vec![PathSegment::LineTo(Point3::new(0.0, 0.0, length))],
+        };
+        let mut m = Model::default();
+        let Ok((body, _)) = sweep(
+            &mut m,
+            &profile,
+            &path,
+            FrameLaw::RotationMinimizing,
+            &Control::NONE,
+        ) else {
+            panic!("tilt about the major: {about_major}");
+        };
+        assert_eq!(faces_on(&m, body, SurfaceKind::EllipticCylinder), 1);
+        let (volume, _, _) = measures(&m, body);
+        let exact = PI * 4.0 * 2.0 * tilt.cos() * length;
+        assert!(
+            (volume - exact).abs() <= 1e-9 * exact,
+            "{volume} vs {exact}"
+        );
+    }
+}
+
+#[test]
+fn an_exact_span_joins_a_fitted_one_at_the_carried_profile() {
+    // A line, then the same quarter arc given as its exact NURBS: the line
+    // is a cylinder and the arc is fitted, and they share the ring that is
+    // the circle's NURBS.
+    let (r, big_r) = (1.5, 8.0);
+    let arc = NurbsCurve::circle(
+        &Frame::new(Point3::new(big_r, 0.0, 6.0), Vec3::y(), -Vec3::x()).unwrap(),
+        big_r,
+        Interval::new(0.0, FRAC_PI_2).unwrap(),
+    )
+    .unwrap();
+    let path = Path {
+        start: Point3::origin(),
+        segments: vec![
+            PathSegment::LineTo(Point3::new(0.0, 0.0, 6.0)),
+            PathSegment::Nurbs(arc),
+        ],
+    };
+    let mut m = Model::default();
+    let (body, provenance) = sweep(
+        &mut m,
+        &disc_beside(0.0, r),
+        &path,
+        FrameLaw::RotationMinimizing,
+        &Control::NONE,
+    )
+    .unwrap();
+    assert_eq!(faces_on(&m, body, SurfaceKind::Cylinder), 1);
+    assert_eq!(faces_on(&m, body, SurfaceKind::Nurbs), 1);
+    let (volume, _, _) = measures(&m, body);
+    let exact = PI * r * r * (6.0 + big_r * FRAC_PI_2);
+    assert!(
+        (volume - exact).abs() <= FITTED_REL * exact,
+        "{volume} vs {exact}"
+    );
+    assert!(parts(&m, body, &provenance).contains(&PathPart {
+        span: 1,
+        part: SweepPart::StartEdge {
+            loop_index: 0,
+            segment: 0
+        },
+    }));
+}
+
+#[test]
+fn a_binormal_that_is_not_the_arcs_axis_fits_it() {
+    // A quarter arc about y: the binormal y keeps the profile's motion a
+    // rotation about the arc's axis, any other does not.
+    let big_r = 10.0;
+    let arc = quarter_arc(Point3::origin(), big_r);
+    let path = Path {
+        start: Point3::origin(),
+        segments: vec![arc],
+    };
+    let tube = disc_beside(0.0, 1.0);
+    let mut m = Model::default();
+    let (about, _) = sweep(
+        &mut m,
+        &tube,
+        &path,
+        FrameLaw::FixedBinormal(Vec3::y_axis()),
+        &Control::NONE,
+    )
+    .unwrap();
+    assert_eq!(faces_on(&m, about, SurfaceKind::Torus), 1);
+    let slant = arris_math::UnitVec3::new_normalize(Vec3::new(0.0, 1.0, 0.3));
+    let (off, _) = sweep(
+        &mut m,
+        &tube,
+        &path,
+        FrameLaw::FixedBinormal(slant),
+        &Control::NONE,
+    )
+    .unwrap();
+    assert_eq!(faces_on(&m, off, SurfaceKind::Torus), 0);
+    assert_eq!(faces_on(&m, off, SurfaceKind::Nurbs), 1);
 }

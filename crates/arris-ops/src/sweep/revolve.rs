@@ -27,21 +27,21 @@ use super::{
 /// unit in-plane direction from the axis towards the material — the side
 /// of the axis the whole profile lies on.
 #[derive(Debug, Clone, Copy)]
-struct AxisInPlane {
-    origin: Point2,
-    along: Vec2,
-    radial: Vec2,
+pub(super) struct AxisInPlane {
+    pub(super) origin: Point2,
+    pub(super) along: Vec2,
+    pub(super) radial: Vec2,
 }
 
 impl AxisInPlane {
     /// The position along the axis of a (u, v) point.
-    fn t(&self, p: Point2) -> f64 {
+    pub(super) fn t(&self, p: Point2) -> f64 {
         (p - self.origin).dot(&self.along)
     }
 
     /// The signed distance of a (u, v) point from the axis, positive on
     /// the material side.
-    fn rho(&self, p: Point2) -> f64 {
+    pub(super) fn rho(&self, p: Point2) -> f64 {
         (p - self.origin).dot(&self.radial)
     }
 }
@@ -55,7 +55,7 @@ fn turn_contains(range: Interval, t: f64) -> bool {
 /// The least and the greatest signed distance from the axis over one
 /// edge: its ends for a line; its ends and, where the arc passes them,
 /// the two points of its circle nearest to and farthest from the axis.
-fn rho_range(edge: &ProfileEdge, axis: &AxisInPlane) -> (f64, f64) {
+pub(super) fn rho_range(edge: &ProfileEdge, axis: &AxisInPlane) -> (f64, f64) {
     let mut candidates = vec![edge.range.lo(), edge.range.hi()];
     if let Curve2::Circle { frame, .. } = &edge.pcurve {
         // `ρ(θ) = ρ(c) + r (a cos θ + b sin θ)`: extreme at `atan2(b, a)`
@@ -84,8 +84,8 @@ fn rho_range(edge: &ProfileEdge, axis: &AxisInPlane) -> (f64, f64) {
 /// projected axis and its (u, v) view with `radial` the *left* normal of
 /// its direction; which side the material is on is decided by
 /// [`orient`].
-fn axis_in_plane(
-    profile: &Profile,
+pub(super) fn axis_in_plane(
+    plane: &Frame,
     axis: Axis,
     tol: Tolerance,
 ) -> Result<(Axis, AxisInPlane), OpError> {
@@ -94,7 +94,6 @@ fn axis_in_plane(
             what: "axis origin",
         })));
     }
-    let plane = &profile.plane;
     let n = plane.z().into_inner();
     let d = axis.direction.into_inner();
     let dn = d.dot(&n);
@@ -147,7 +146,7 @@ fn elliptic(loops: &[Vec<ProfileEdge>]) -> Option<&ProfileEdge> {
 /// both sides, [`InputReason::ZeroThickness`] for a profile within it
 /// everywhere), and no arc's circle crossing the axis off its centre
 /// ([`SweepReason::SpindleTorus`]).
-fn orient(
+pub(super) fn orient(
     loops: &[Vec<ProfileEdge>],
     mut axis: AxisInPlane,
     tol: Tolerance,
@@ -194,7 +193,7 @@ fn orient(
 /// annulus, `annulus` set), oblique a cone with its apex on the axis; an
 /// arc centred on the axis a sphere, elsewhere a torus of `R` its centre's
 /// distance and `r` its radius.
-fn swept_surface(
+pub(super) fn swept_surface(
     edge: &ProfileEdge,
     axis: &AxisInPlane,
     base: &Frame,
@@ -432,7 +431,7 @@ pub fn revolve(
     }
     let full = (angle - TAU).abs() <= tol.angular;
     let angle = if full { TAU } else { angle };
-    let (axis, in_plane) = axis_in_plane(profile, axis, tol)?;
+    let (axis, in_plane) = axis_in_plane(&profile.plane, axis, tol)?;
     let loops = profile.edges(tol)?;
     if let Some(edge) = elliptic(&loops) {
         return Err(degenerate(Reason::Sweep(SweepReason::EllipticRevolve {
@@ -844,7 +843,8 @@ pub fn revolve(
                     pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
                 };
                 let start_pcurve = on(&edge.curve, edge.range)?;
-                let orientation = side_orientation(edge, normal, surface, &start_pcurve)?;
+                let orientation =
+                    side_orientation(&edge.curve, edge.range, normal, surface, &start_pcurve)?;
                 // Where the side's own start edge meets the axis, if it
                 // does: the singular `v` of a degenerate edge there.
                 let (v_start, v_end) = (

@@ -974,6 +974,17 @@ pub struct Analytic {
     /// least one of them to differ from its closed form in every variant.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub measure_differs: Option<String>,
+    /// Why Open CASCADE's measurement of its *own* shape is wrong where the
+    /// shape is right (`sweep/sweep-oblique-circle`: its pipe's lateral
+    /// area is the circle's perimeter times the length, 5.6% high, while
+    /// the surface in its file is the oblique cylinder's). Needs
+    /// `measure_differs`, which holds Arris's result to the closed forms;
+    /// the read-back stages of Open CASCADE's own file are then held to
+    /// them too, where they are otherwise held to the oracle's
+    /// measurements because every other `measure_differs` blames a shape
+    /// the file carries.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occt_file_measure_differs: Option<String>,
     /// Why Open CASCADE's own STEP of this result does not read back as
     /// the result (ADR-0023: its reader hands back other counts or
     /// another solid for its own file). Only the oracle's self-test reads
@@ -1616,6 +1627,9 @@ pub fn lint(dir: &Path) -> Vec<String> {
             if a.degenerate || a.expect_error.is_some() {
                 problem("analytic.measure_differs needs a result Arris builds".into());
             }
+        }
+        if a.occt_file_measure_differs.is_some() && a.measure_differs.is_none() {
+            problem("analytic.occt_file_measure_differs needs analytic.measure_differs".into());
         }
         if a.step_differs.is_some() && (a.degenerate || a.expect_error.is_some()) {
             problem("analytic.step_differs needs a result Arris builds".into());

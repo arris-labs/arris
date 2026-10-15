@@ -1,0 +1,40 @@
+{
+  "description": "a circle of radius 3 in a plane tilted 30 degrees off the path's normal, carried 12 along a line: the exact elliptic cylinder, volume pi * 3^2 * cos(30 degrees) * 12 (the projected area times the length; ADR-0063)",
+  "params": {"r": 3, "L": 12, "t": 30},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, "cos(radians(t))", "sin(radians(t))"]},
+      "outer": {"circle": {"center": [0, 0], "radius": "r"}},
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {"start": [0, 0, 0], "segments": [{"line_to": [0, 0, "L"]}]},
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [0, 0, 6], "expect": "in"},
+    {"label": "outside", "point": [0, 5, 6], "expect": "out"},
+    {"label": "on_side", "point": [0, "r * cos(radians(t))", 6], "expect": "on"},
+    {"label": "on_start_cap", "point": [0, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "pi * r^2 * cos(radians(t)) * L",
+    "area": "17.6095465120731258655 * L + 2 * pi * r^2",
+    "centroid": [0, 0, "L / 2"],
+    "inertia": [
+      ["cos(radians(t))^3 * L * pi * r^4 / 4 + cos(radians(t)) * (sin(radians(t))^2 * L * pi * r^4 / 4 + pi * r^2 * L^3 / 12)", 0, 0],
+      [0, "cos(radians(t)) * L * pi * r^4 / 4 + cos(radians(t)) * (sin(radians(t))^2 * L * pi * r^4 / 4 + pi * r^2 * L^3 / 12)", "-(cos(radians(t))^2 * sin(radians(t)) * L * pi * r^4 / 4)"],
+      [0, "-(cos(radians(t))^2 * sin(radians(t)) * L * pi * r^4 / 4)", "cos(radians(t)) * L * pi * r^4 / 4 + cos(radians(t))^3 * L * pi * r^4 / 4"]
+    ],
+    "measure_differs": "Open CASCADE's pipe takes the lateral area as the circle's perimeter times the length, 2 pi r L, which is the area of a right cylinder; the oblique cylinder's is the perimeter of its section perpendicular to the path, the ellipse of semi-axes r and r cos(t), times L, 4 r E(sin(t)) L with E the complete elliptic integral of the second kind (17.6095465120731258655 L here, mpmath to 20 digits), plus the two tilted discs, pi r^2 each. Open CASCADE's area is 282.743 against 267.863, 5.6% high; its volume, centroid and inertia are the closed forms'. The body is the right cylinder of the disc sheared along z, so every moment is the disc's: with X = x, Y = s cos(t), Z = s sin(t) + z about the centre, over the disc x^2 + s^2 <= r^2 and z in [-L/2, L/2], a density cos(t), the second moments are cos(t) L pi r^4 / 4 for X, cos(t)^3 L pi r^4 / 4 for Y and cos(t) (sin(t)^2 L pi r^4 / 4 + pi r^2 L^3 / 12) for Z, and the only product is YZ = cos(t)^2 sin(t) L pi r^4 / 4",
+    "occt_file_measure_differs": "Open CASCADE's own STEP of the pipe carries the oblique cylinder (Arris reads it and measures 267.863225909482, the closed form to 4e-14), but its own area of it is 282.743, the right cylinder's: the fault is in its measurement, not its shape",
+    "genus": 0
+  }
+}

@@ -230,6 +230,16 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: profile `integrate_faces` on the 240-gon first; a planar face's integrals have a closed form over its boundary (and a cylinder's over its rulings), so the per-face cost should not be a quadrature's. A `regression/` fixture wants a time budget the corpus runner does not yet assert.
 
+### mass-properties-of-a-thick-torus-inertia
+
+- What: `measure::mass_properties` gives the inertia tensor of a quarter turn of a disc of radius 0.95 about an axis 1 from its centre 4.3e-9 of itself off the closed form, above the corpus's `inertia_rel` default of 1e-9; volume, area and centroid agree to 1e-12.
+- Where: `sweep/sweep-fold-near-limit`, whose exact build is that torus, and `revolve` of the same disc; found by `/work sweep` step 5, which gave the fixture `inertia_rel` 1e-8.
+- Seen: `/work` on 2026-10-15, commit after `8b8f07bf`, no seed (a fixture).
+- Reproduce: `cargo nextest run -p arris --test corpus -E 'test(sweep_sweep_fold_near_limit)'` with the fixture's `tolerances` removed; or `revolve` of `Profile` circle `(1, 0)` radius 0.95 in the xy plane about y through `(2, 0, 0)` by π/2, `mass_properties`, `inertia[0][0]`.
+- Evidence: Arris 2.0275787696491587, the oracle 2.0275787784535417, a Gauss–Legendre quadrature of the torus wedge 2.0275787784535177 (minor/major 0.95, so the tube's `(R + r cos v)` factor is nearly singular).
+- State: measured.
+- The fix is: refine the torus's grid in `v` (`surface_grid` splits `u` only) where `minor/major` is near 1, then `sweep-fold-near-limit` returns to the default tolerance.
+
 - S5 of a cone against a cylinder in a fuse result: the differential's case
   found a twice-fused elliptic cylinder, revolved cone and extrusion whose
   result leaves two cone × cylinder pairs undecided at `Full`
