@@ -211,6 +211,8 @@ blend/miter-unequal-dihedrals-chamfer: 9
 blend/miter-unequal-dihedrals-fillet: 447
 blend/nist-ctc-01-crossing-cylinders-crease-fillet: 95722
 blend/nist-ctc-04-chamfered-wall-fillet: 1210
+blend/nist-ftc-10-cylinder-pair-bspline-fillet: 156167
+blend/nist-ftc-11-ap242-bspline-circle-fillet: 32586
 blend/nurbs-cap-cylinder-rim-chamfer: 136766
 blend/nurbs-cap-cylinder-rim-fillet: 20090731
 blend/nurbs-slot-plate-rim-chamfer: 61380
