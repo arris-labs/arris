@@ -1,0 +1,55 @@
+{
+  "description": "the five-turn round spring of sweep/sweep-spring (NURBS faces) cut by a box at the top (z in [22, 35]) and split by the plane z = 10: NURBS x plane intersections in both boolean cut and plane split, leaving two contiguous turns (plans/sweep step 7)",
+  "tolerances": {"volume_rel": 1e-06, "area_rel": 1e-06, "inertia_rel": 3e-06, "centroid_abs": 1e-06},
+  "params": {"r": 1, "R": 10, "p": 6, "turns": 5},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": ["R", 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+      "outer": {"circle": {"center": [0, 0], "radius": "r"}},
+      "holes": []
+    },
+    {
+      "name": "spring",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": ["R", 0, 0],
+        "segments": [{"helix": {"axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "pitch": "p", "angle_deg": "360 * turns"}}]
+      },
+      "law": {"binormal": [0, 0, 1]}
+    },
+    {
+      "name": "cutter",
+      "op": "box",
+      "min": [-15, -15, 22],
+      "max": [15, 15, 35]
+    },
+    {
+      "name": "cut_spring",
+      "op": "cut",
+      "target": "spring",
+      "tool": "cutter"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "cut_spring",
+      "plane": {
+        "origin": [0, 0, 10],
+        "normal": [0, 0, 1]
+      },
+      "side": 1
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "middle_coil", "point": [0, "R", "p * 2.25"], "expect": "in"},
+    {"label": "top_coil_cut_away", "point": [0, "R", 28], "expect": "out"},
+    {"label": "bottom_coil_split_away", "point": [0, "R", 4], "expect": "out"}
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

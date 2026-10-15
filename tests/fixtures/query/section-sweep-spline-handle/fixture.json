@@ -1,0 +1,55 @@
+{
+  "kind": "query",
+  "description": "the rounded slot of sweep/sweep-spline-handle (fitted NURBS faces) sectioned by the plane z = 20: the plane cuts across the curved handle, yielding a sheet face bounded by curves on the NURBS surfaces (plans/sweep step 7)",
+  "tolerances": {"area_rel": 1e-05, "centroid_abs": 1e-05},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {
+        "start": [-2, -1],
+        "segments": [
+          {"line_to": [2, -1]},
+          {"arc_to": [2, 1], "via": [3, 0]},
+          {"line_to": [-2, 1]},
+          {"arc_to": [-2, -1], "via": [-3, 0]}
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "handle",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [{"nurbs": {
+          "degree": 3,
+          "knots": [0, 0, 0, 0, 1, 1, 1, 1],
+          "control_points": [[0, 0, 0], [0, 0, 15], [15, 0, 25], [30, 0, 25]],
+          "weights": [1, 1, 1, 1]
+        }}]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "handle",
+  "queries": [
+    {
+      "label": "across the handle",
+      "section": {
+        "body": {
+          "step": "handle"
+        },
+        "plane": {
+          "origin": [0, 0, 20],
+          "z": [0, 0, 1],
+          "x": [1, 0, 0]
+        }
+      },
+      "expect": "sheet",
+      "expect_faces": 1
+    }
+  ]
+}

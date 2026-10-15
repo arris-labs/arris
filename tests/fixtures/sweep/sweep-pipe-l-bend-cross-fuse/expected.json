@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "6846e25a70a40c55907cc67d6dfd34eab18a07ffdf1f60a7dbbc90091e2a6023",
+  "results": {
+    "default": {
+      "area": 1386.3593076486295,
+      "centroid": [
+        8.44430680190877,
+        -6.092166718545323,
+        16.09216671854609
+      ],
+      "counts": {
+        "edges": 22,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          229446.3091666645,
+          43966.84061948329,
+          -43966.840619476076
+        ],
+        [
+          43966.84061948329,
+          245257.3003467674,
+          -50380.22393119175
+        ],
+        [
+          -43966.840619476076,
+          -50380.22393119175,
+          245257.3003467789
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 22,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 12
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "at_crossing",
+          "point": [
+            0.0,
+            0.0,
+            10.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "pipe1_bend",
+          "point": [
+            2.9289321881345245,
+            0.0,
+            27.071067811865476
+          ]
+        },
+        {
+          "class": "in",
+          "label": "pipe1_far",
+          "point": [
+            20.0,
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "pipe2_far",
+          "point": [
+            20.0,
+            -20.0,
+            10.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            0.0,
+            5.0,
+            5.0
+          ]
+        }
+      ],
+      "volume": 1357.4271585242966
+    }
+  }
+}

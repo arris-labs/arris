@@ -1,0 +1,64 @@
+{
+  "description": "two identical L-bend pipes (cylinder r 2 along line 20, quarter torus R 10, line 20) crossing perpendicularly: pipe 1 along z then x, pipe 2 rotated 90 degrees about the x-axis through (0,0,10) so its first leg runs along y through (0,0,10). The two pipes cross at (0,0,10) in an exact cylinder x cylinder quartic, while their elbows and far legs remain separated by dz = 10 (plans/sweep step 7)",
+  "params": {"r": 2, "R": 10},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"circle": {"center": [0, 0], "radius": "r"}},
+      "holes": []
+    },
+    {
+      "name": "pipe1",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [
+          {"line_to": [0, 0, 20]},
+          {"arc_to": [10, 0, 30], "via": ["R - R * cos(radians(45))", 0, "20 + R * sin(radians(45))"]},
+          {"line_to": [30, 0, 30]}
+        ]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "pipe2",
+      "op": "transform",
+      "of": "pipe1",
+      "rotate": {
+        "axis": [1, 0, 0],
+        "origin": [0, 0, 10],
+        "angle_deg": 90
+      }
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "pipe1",
+      "b": "pipe2"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "at_crossing", "point": [0, 0, 10], "expect": "in"},
+    {"label": "pipe1_bend", "point": ["R - R * cos(radians(45))", 0, "20 + R * sin(radians(45))"], "expect": "in"},
+    {"label": "pipe1_far", "point": [20, 0, 30], "expect": "in"},
+    {"label": "pipe2_far", "point": [20, -20, 10], "expect": "in"},
+    {"label": "outside", "point": [0, 5, 5], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "2 * pi * r^2 * (20 + R * pi / 2 + 20) - 16 * r^3 / 3",
+    "genus": 0,
+    "counts": {
+      "vertices": 10,
+      "edges": 20,
+      "faces": 12,
+      "loops": 12,
+      "shells": 1,
+      "solids": 1
+    },
+    "counts_differ": "Open CASCADE splits the two crossing intersection ellipses at the cylinders' seam rulings, four vertices and six edges along the intersection (12/22/12/12/1); Arris keeps the two planar ellipses meeting at the two crossing vertices (x = ±r), two vertices and four edges (10/20/12/12/1)"
+  }
+}

@@ -298,7 +298,7 @@ bound has to be established here.
   `SweepReason::DirectionNotNormal` removed; `sweep/extrude-oblique-slot` fixture
   committed with oracle values, closed-form area and `measure_differs`. Backlog line
   and M5 ⚠ OPEN 3 retired.
-- [ ] Step 7 **[2]** — **The swept body as an operand.** Fixtures with
+- [x] Step 7 **[2]** — **The swept body as an operand.** Fixtures with
   Open CASCADE values, each a chain from a sweep:
   - fillet the rail edges of `sweep-rect-s-bend` (all analytic);
   - fuse two L-bend pipes that cross;
@@ -311,6 +311,17 @@ bound has to be established here.
   Each builds and matches, or is refused by name. A failure found here
   becomes a `regression/` fixture and a backlog line, not a fix in this
   step, unless the sweep built the faulty input.
+
+  **Built (step 7).** Five operand fixtures chained from sweep:
+  `sweep-rect-s-bend-fillet` (four outer rail edges filleted on an analytic
+  sweep of line-arc-arc-line); `sweep-pipe-l-bend-cross-fuse` (two crossing
+  L-pipes fused via cylinder × cylinder quartic, V/E/F/L/S 10/20/12/12/1
+  with exact closed-form volume, counting net of OCCT's seam splits);
+  `sweep-spring-cut-split` (five-turn helical NURBS spring cut by a box and
+  split by a plane at z = 10, leaving two contiguous turns);
+  `section-sweep-spline-handle` (query fixture sectioning the fitted NURBS
+  handle by a plane); `sweep-thread-chamfer-unsupported` (chamfering the
+  crest rail between two NURBS faces refused with `Unsupported`).
 - [ ] Step 8 **[2]** — **Properties.** `sweep_prop` with `prop_shards!`
   over random G1 paths (lines and arcs, planar and not, random helix
   spans) and random profiles from the existing strategy:

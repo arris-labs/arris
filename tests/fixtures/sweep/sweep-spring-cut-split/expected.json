@@ -1,0 +1,93 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "314a64ae442d6178f8a588371e6479eec4e49466765e63e0513812f33b56d07b",
+  "results": {
+    "default": {
+      "area": 857.1671206411982,
+      "centroid": [
+        -1.1756199913638002e-07,
+        -1.4146239459045664e-08,
+        16.000000039073313
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "half_space": {
+        "area": 857.1671206411977,
+        "counts": {
+          "edges": 3,
+          "faces": 3,
+          "loops": 3,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 2
+        },
+        "degenerate": false,
+        "volume": 394.78416190700005
+      },
+      "inertia": [
+        [
+          24624.66159447517,
+          -0.0004709104157683358,
+          2844.731235937402
+        ],
+        [
+          -0.0004709104157683358,
+          24624.661172731445,
+          -1642.4060424499369
+        ],
+        [
+          2844.731235937402,
+          -1642.4060424499369,
+          39774.502795203894
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "middle_coil",
+          "point": [
+            0.0,
+            10.0,
+            13.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "top_coil_cut_away",
+          "point": [
+            0.0,
+            10.0,
+            28.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "bottom_coil_split_away",
+          "point": [
+            0.0,
+            10.0,
+            4.0
+          ]
+        }
+      ],
+      "volume": 394.78416190700074
+    }
+  }
+}

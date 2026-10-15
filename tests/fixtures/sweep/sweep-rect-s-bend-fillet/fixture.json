@@ -1,0 +1,59 @@
+{
+  "description": "the 6 x 4 hollow pipe of sweep/sweep-rect-s-bend with its four outer rail edges filleted at radius 0.5: all analytic faces (planes, cylinders, tori) filleted to cylinders and tori (plans/sweep step 7)",
+  "params": {"R": 20, "a": 30, "r": 0.5},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {
+        "start": [-3, -2],
+        "segments": [
+          {"line_to": [3, -2]},
+          {"line_to": [3, 2]},
+          {"line_to": [-3, 2]},
+          {"line_to": [-3, -2]}
+        ]
+      },
+      "holes": [{"circle": {"center": [0, 0], "radius": 1}}]
+    },
+    {
+      "name": "pipe",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [
+          {"line_to": [0, 0, 15]},
+          {"arc_to": ["R * (1 - cos(radians(a)))", 0, "15 + R * sin(radians(a))"], "via": ["R * (1 - cos(radians(a / 2)))", 0, "15 + R * sin(radians(a / 2))"]},
+          {"arc_to": ["2 * R * (1 - cos(radians(a)))", 0, "15 + 2 * R * sin(radians(a))"], "via": ["R - 2 * R * cos(radians(a)) + R * cos(radians(a / 2))", 0, "15 + 2 * R * sin(radians(a)) - R * sin(radians(a / 2))"]},
+          {"line_to": ["2 * R * (1 - cos(radians(a)))", 0, "30 + 2 * R * sin(radians(a))"]}
+        ]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "pipe",
+      "edges": [
+        [3, 2, 5],
+        [-3, 2, 5],
+        [-3, -2, 5],
+        [3, -2, 5]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "wall_start", "point": [2, 0, 5], "expect": "in"},
+    {"label": "in_the_hole", "point": [0, 0, 5], "expect": "out"},
+    {"label": "outside_corner", "point": [3, 2, 5], "expect": "out"},
+    {"label": "on_start_cap", "point": [2, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "((24 - pi) - (4 - pi) * r^2) * (30 + 2 * R * pi * a / 180)",
+    "genus": 1
+  }
+}

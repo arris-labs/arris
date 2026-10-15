@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "0779a2f2ef7f2c35e5c8094bc6bba0b36559b7bdf650f3d0a13067bbc69bb77b",
+  "results": {
+    "default": {
+      "area": 1336.5262542473947,
+      "centroid": [
+        2.679491924311225,
+        7.134245234860129e-17,
+        25.000000000000007
+      ],
+      "counts": {
+        "edges": 81,
+        "faces": 38,
+        "loops": 40,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 45
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          216778.1957331826,
+          1.2155108698563991e-14,
+          -33738.8686190162
+        ],
+        [
+          1.2155108698563991e-14,
+          224980.68795337505,
+          3.5900792674331133e-13
+        ],
+        [
+          -33738.8686190162,
+          3.5900792674331133e-13,
+          11304.724296722685
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 81,
+        "faces": 38,
+        "loops": 40,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 45
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "wall_start",
+          "point": [
+            2.0,
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            0.0,
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_corner",
+          "point": [
+            3.0,
+            2.0,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_start_cap",
+          "point": [
+            2.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 1051.6770168392175
+    }
+  }
+}

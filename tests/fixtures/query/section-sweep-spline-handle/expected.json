@@ -1,0 +1,27 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "996d73a87ebf0e390c2302c183e2b8b62320176b01cbb71672b197cf45805557",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "across the handle",
+          "section": {
+            "area": 22.146905124007443,
+            "centroid": [
+              12.804899633827592,
+              -4.377045888686383e-06,
+              20.0
+            ],
+            "edge_length": 25.660204390458006,
+            "edges": 4,
+            "faces": 1,
+            "loops": 1,
+            "none": false
+          }
+        }
+      ]
+    }
+  }
+}
