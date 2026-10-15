@@ -2006,7 +2006,8 @@ nothing — so that every chain has a root (ADR-0002):
 ```rust
 pub enum Relation { Generated, Modified, Deleted }
 pub enum Origin   { Entity(Shape), Role(Role) }
-pub enum Role     { Box(BoxPart), Cylinder(CylinderPart), Extrude(SweepPart), Revolve(SweepPart), File(FileEntity), Consumer(ConsumerKey), Split(SplitPart), PlanarFace(SweepPart) }   // exhaustive; SplitPart::Cap(PlaneSide { Positive, Negative })
+pub enum Role     { Box(BoxPart), Cylinder(CylinderPart), Extrude(SweepPart), Revolve(SweepPart), File(FileEntity), Consumer(ConsumerKey), Split(SplitPart), PlanarFace(SweepPart), Sweep(PathPart) }   // exhaustive; SplitPart::Cap(PlaneSide { Positive, Negative })
+pub struct PathPart { span: usize, part: SweepPart }   // a sweep along a path: the span (the path's segment) and the part of the sketch
 pub struct FileEntity { id: u64, instance: u32 }   // a file's #id, and which placement of it
 pub struct ConsumerKey { namespace: u32, key: u64 }   // the consumer's own name, opaque (ADR-0028)
 
@@ -2047,7 +2048,15 @@ pub struct Provenance {
   it has a `StartVertex` only where such a face keeps it; a line
   segment along the axis sweeps no `Side` and has no `EndEdge`, its
   `StartEdge` being in a partial turn the edge both flat ends share and
-  nothing in a full turn. A solid a reader reads (ADR-0025) has every
+  nothing in a full turn. A sweep along a path names each entity by its
+  span as well, `Role::Sweep(PathPart { span, part })` with span `k` the
+  path's segment `k` (ADR-0063 §8): a joint edge between spans `k − 1`
+  and `k`, and its vertices, are span `k`'s `StartEdge` and
+  `StartVertex`; `EndEdge`, `EndVertex` and `EndCap` are the last
+  span's; a `Rise` is the rail one profile vertex runs along over its
+  span; and `Body`, `Shell` and a hole's `Cavity` are span `0`'s. A path
+  that closes has no caps and no ends, and each hole of its profile
+  closes into a `Cavity`. A solid a reader reads (ADR-0025) has every
   entity `Generated` from its own file entity, `Role::File(FileEntity {
   id, instance })` — the `#id` and which placement of it an assembly
   makes: the body from its `MANIFOLD_SOLID_BREP` or `BREP_WITH_VOIDS`,

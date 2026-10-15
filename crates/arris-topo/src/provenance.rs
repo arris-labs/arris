@@ -130,7 +130,8 @@ pub enum CylinderPart {
     TopVertex,
 }
 
-/// What an entity of a sweep — `extrude` or `revolve` — is, named by the
+/// What an entity of a sweep — `extrude`, `revolve` or a span of `sweep`
+/// ([`PathPart`]) — is, named by the
 /// part of the consumer's sketch it came from: the caps from the profile
 /// face, a side face and its start and end edges from one segment, a rise
 /// and its two vertices from one vertex of the profile. The indices are
@@ -209,6 +210,23 @@ pub enum SweepPart {
         /// The vertex.
         vertex: usize,
     },
+}
+
+/// What an entity of `sweep` along a path is: the span of the path it
+/// was made on — span `k` is the path's segment `k` — and the part of
+/// the sketch it came from (ADR-0063 §8). A joint edge between spans
+/// `k − 1` and `k` is span `k`'s `StartEdge`, and its vertices span `k`'s
+/// `StartVertex`; `EndEdge`, `EndVertex` and `EndCap` belong to the last
+/// span only, and a path that closes has no caps and no ends. A `Rise` is
+/// the rail one profile vertex runs along over its span. `Body`, `Shell`
+/// and `Cavity` are span `0`'s.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct PathPart {
+    /// The span: the index of the path's segment.
+    pub span: usize,
+    /// The part of the sketch.
+    pub part: SweepPart,
 }
 
 /// Which side of a split's plane: the side the plane frame's `z` points
@@ -302,6 +320,10 @@ pub enum Role {
     /// face), `Shell` and `Body`. Appended after `Split` for the same
     /// reason.
     PlanarFace(SweepPart),
+    /// An entity of `sweep` along a path: the span it was made on and the
+    /// part of the sketch it came from. Appended after `PlanarFace` for
+    /// the same reason.
+    Sweep(PathPart),
 }
 
 impl fmt::Display for Role {
@@ -315,6 +337,7 @@ impl fmt::Display for Role {
             Role::Consumer(k) => write!(f, "consumer:{}/{}", k.namespace, k.key),
             Role::Split(part) => write!(f, "split:{part:?}"),
             Role::PlanarFace(part) => write!(f, "planar_face:{part:?}"),
+            Role::Sweep(PathPart { span, part }) => write!(f, "sweep:{span}/{part:?}"),
         }
     }
 }

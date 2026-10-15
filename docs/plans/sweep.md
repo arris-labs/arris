@@ -87,10 +87,13 @@ exact spans' bodies.
   - `sweep(m, profile: &Profile, path: &Path, law: FrameLaw, control) ->
     Result<(Body, Provenance), OpError>`, re-exported by the `arris`
     facade.
-  - `SweepReason` gains `PathCorner { span }`, `SweepFolds { span, at }`,
-    `ProfileAlongPath` and `FrameDoesNotClose { angle }`, and loses
-    `DirectionNotNormal` (step 6). Each is a break: binding and
-    `### Breaking` in that commit.
+  - `SweepReason` gains `SweepFolds { span, at }`, `ProfileAlongPath`
+    and `FrameDoesNotClose { angle }`, and loses `DirectionNotNormal`
+    (step 6). Each is a break: binding and `### Breaking` in that commit.
+  - `OpError::Path(PathError)` (step 3, a break): an invalid path,
+    beside `OpError::Profile`; Python `OpPathError` with `detail`. It is
+    the corner's refusal too, so no `SweepReason::PathCorner`
+    (ADR-0063's amendment).
   - `extrude`'s signature is unchanged; it takes an oblique direction.
 - **`arris-ops::sweep` internals:** the file is split on the way in, as
   the backlog's kernel-seams line asks: one skeleton for extrude, revolve
@@ -171,7 +174,7 @@ bound has to be established here.
     sphere.
 
   Rustdoc examples on every public item.
-- [ ] Step 3 **[3]** — **The fitted span, for every span.** Add
+- [x] Step 3 **[3]** — **The fitted span, for every span.** Add
   `ops::sweep` and `Role::Sweep(PathPart)`. The role change is a break,
   so `role.rs`, the stub and `### Breaking` go in this commit. In this
   step every span is fitted; step 5 specialises. For each span:
@@ -199,9 +202,25 @@ bound has to be established here.
   The unknowns established here: a fit that converges over five turns,
   and rails that the two faces' isolines agree with inside the edge
   tolerance.
+
+  **Built (step 3).** Each loop is one rational quadratic NURBS, skinned
+  once per span (quintic along `v`) and split at its vertex knots, so a
+  rail is the shared column of both faces' nets and a joint's edge is the
+  segment's NURBS carried there: every pcurve on a fitted span is an
+  isoline, exact (ADR-0063's amendment). The analytic joint edge with
+  fitted pcurves was tried first and dropped: a four-arc ring's mass
+  properties took 19 s against 0.09 s. A five-turn spring is one face of
+  256 spans, its volume within 1e-12 of the closed form; no quarter-turn
+  cut. An invalid path is `OpError::Path`. `sweep-spline-3d` left
+  `regression/` here too, being all-fitted. Open CASCADE's pipe misses the
+  closed forms by 4e-8 to 6.3e-7 on these fixtures, so each carries
+  measure tolerances over that miss, and `tests/sweep.rs` holds Arris to
+  the closed forms. The spring meshes at a chord of 1e-2: 620 000
+  triangles at the default take half a minute a mesh.
 - [ ] Step 4 **[2]** — **The refusals.** Add the new `SweepReason`
-  variants, each with its Python class and stub line in the same commit:
-  - `PathCorner { span }`, from `PathError::Corner`;
+  variants, each with its Python class and stub line in the same commit.
+  A corner is already `OpError::Path(PathError::Corner { segment, at,
+  angle })` from step 3; its fixture is added here with the others.
   - `ProfileAlongPath`: the profile's plane holds the start tangent
     within the angular tolerance;
   - `SweepFolds { span, at }`: along a curved span, the profile's
@@ -225,8 +244,11 @@ bound has to be established here.
     axis.
 
   Joints between an exact span and a fitted one share the exact carried
-  curve. `sweep-pipe-l-bend`, `sweep-rect-s-bend`, `sweep-oblique-circle`,
-  `sweep-ring` and `sweep-spline-3d` leave `regression/`. The twin test
+  curve. `sweep-pipe-l-bend`, `sweep-rect-s-bend`, `sweep-oblique-circle`
+  and `sweep-ring` leave `regression/` (all but the oblique circle already
+  build fitted and match; their dumps are blessed here). Open CASCADE's
+  area for `sweep-oblique-circle` is 5.6% high, so that fixture moves with
+  `analytic.measure_differs` and the closed forms (ADR-0063's amendment). The twin test
   becomes a property here: the same path with each line and arc given as
   its exact NURBS sweeps fitted faces that agree with the exact build in
   volume, area and centroid.
@@ -324,7 +346,9 @@ bound has to be established here.
   length). Asked as: does the frame field carry the arc-length
   map of a NURBS path segment, or the curve's own parameter with a speed?
   This decides what a fitted span's `v` is. ADR-0063 records the choice.
-- ⚠ OPEN 3 (agent, by step 3): one skin per span, or one per run of
+- ✔ OPEN 3 (answered by step 3, ADR-0063's amendment: one skin per
+  span, as `MakePipeShell` builds a face per spine edge). Asked as: one
+  skin per span, or one per run of
   consecutive fitted spans. One per run means fewer faces and no joint
   edges inside a spline. It also makes span-level roles coarser, so
   `PathPart` would name the run's first span.

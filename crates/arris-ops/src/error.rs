@@ -2,7 +2,7 @@
 //! every variant names the entities involved.
 
 use arris_check::{ClassifyError, LumpError, Report};
-use arris_geom::{GeomError, GeomKind, ProfileError};
+use arris_geom::{GeomError, GeomKind, PathError, ProfileError};
 use arris_math::{FrameError, Interrupted};
 use arris_topo::builder::BuildError;
 use arris_topo::{AnyId, Body, EdgeId, FaceId, NotFound, Shape};
@@ -813,6 +813,12 @@ pub enum OpError {
     /// entities to name, so it is neither `InvalidInput` nor `Degenerate`.
     #[error("the profile is not valid: {0}")]
     Profile(ProfileError),
+    /// The path of a sweep is not one: `Path::frames` refused it, naming
+    /// the segment — a gap, a corner, a degenerate segment, a fixed
+    /// binormal along the tangent. Like an invalid profile it has no
+    /// entities to name.
+    #[error("the path is not valid: {0}")]
+    Path(PathError),
     /// The result would need an entity tolerance above
     /// `Precision::max_tolerance`.
     #[error("{entity} would need tolerance {wanted}, above the model's maximum")]
@@ -876,6 +882,17 @@ fn entities_suffix(entities: &[Shape]) -> String {
 impl From<ProfileError> for OpError {
     fn from(e: ProfileError) -> Self {
         OpError::Profile(e)
+    }
+}
+
+/// A path the caller stopped while its frames were being built is
+/// [`OpError::Interrupted`]; any other refusal names the path.
+impl From<PathError> for OpError {
+    fn from(e: PathError) -> Self {
+        match e {
+            PathError::Interrupted(stop) => OpError::Interrupted(stop),
+            e => OpError::Path(e),
+        }
     }
 }
 

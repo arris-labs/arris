@@ -1,5 +1,6 @@
 {
-  "description": "a circle of radius 1.5 centred on a non-planar cubic (0,0,0), (0,0,10), (10,8,18), (20,12,20), rotation-minimising: the faces are fitted; the volume and the area do not depend on the frame's twist because the profile is round and centred (ADR-0063)",
+  "description": "a circle of radius 1.5 centred on a non-planar cubic (0,0,0), (0,0,10), (10,8,18), (20,12,20), rotation-minimising: the faces are fitted; the volume and the area do not depend on the frame's twist because the profile is round and centred (ADR-0063). The volume is A L and the area 2 pi r L + 2 A with L = 32.981006143506576 the cubic's numeric length: Arris' lie within 3e-11 and 2e-11 of them, Open CASCADE's (its pipe approximates to SetTolerance 1e-4) 6.3e-7 and 3.0e-7 off; its centroid 4.1e-6 and its inertia 9.7e-7 from Arris'. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a fitted fixture.",
+  "tolerances": {"volume_rel": 1e-6, "area_rel": 1e-6, "centroid_abs": 1e-5, "inertia_rel": 2e-6},
   "steps": [
     {
       "name": "sketch",

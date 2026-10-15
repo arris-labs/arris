@@ -380,6 +380,7 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
         },
         OpError::InvalidInput { .. } => Cycle::Itself("InvalidInput"),
         OpError::Profile(_) => Cycle::Itself("Profile"),
+        OpError::Path(_) => Cycle::Itself("Path"),
         OpError::Tolerance { .. } => Cycle::Itself("Tolerance"),
         OpError::NotFound(_) => Cycle::Itself("NotFound"),
         // `build`'s refusals: the battery never builds a consumer's

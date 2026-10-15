@@ -149,6 +149,11 @@ sweep/revolve-onto-axis: 20
 sweep/revolve-quarter: 24
 sweep/revolve-ring: 5
 sweep/revolve-tube: 20
+sweep/sweep-arc-tilted-profile: 23323
+sweep/sweep-spline-3d: 112135
+sweep/sweep-spline-handle: 100953
+sweep/sweep-spring: 420897
+sweep/sweep-thread: 160465
 blend/barrel-ridge-fan-chamfer: 154
 blend/barrel-ridge-fan-fillet: 596
 blend/bead-root-chamfer: 4

@@ -1,5 +1,6 @@
 {
-  "description": "a triangle (base 2.4 on the helix, apex 1.5 outward) in the axial plane at (10, 0, 0), carried three turns along a right-handed helix of radius 10 and pitch 4 about z under the fixed binormal z: volume the angle times the profile's first moment about the axis, 2 pi * 3 * (10 * 1.8 + 0.9); faces are fitted (ADR-0063)",
+  "description": "a triangle (base 2.4 on the helix, apex 1.5 outward) in the axial plane at (10, 0, 0), carried three turns along a right-handed helix of radius 10 and pitch 4 about z under the fixed binormal z: volume the angle times the profile's first moment about the axis, 2 pi * 3 * (10 * 1.8 + 0.9); faces are fitted (ADR-0063). Open CASCADE's pipe approximates the swept surface to its own SetTolerance (1e-4): its volume lies 6.2e-7 relative from the closed form 113.4 pi, Arris' within 1e-12 of it; its area 4.3e-7 and its inertia 1.25e-6 from Arris'. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a fitted fixture.",
+  "tolerances": {"volume_rel": 1e-06, "area_rel": 1e-06, "inertia_rel": 3e-06},
   "params": {"R": 10, "p": 4, "turns": 3},
   "steps": [
     {

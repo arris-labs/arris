@@ -167,6 +167,7 @@ pub fn class_of(e: &OpError) -> String {
         OpError::Internal(_) => "Internal".to_string(),
         OpError::InvalidInput { .. } => "InvalidInput".to_string(),
         OpError::Profile(_) => "Profile".to_string(),
+        OpError::Path(_) => "Path".to_string(),
         OpError::Tolerance { .. } => "Tolerance".to_string(),
         OpError::NotFound(_) => "NotFound".to_string(),
         OpError::Unkeyed { .. } => "Unkeyed".to_string(),

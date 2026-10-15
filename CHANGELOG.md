@@ -91,6 +91,13 @@ into its version (ADR-0027).
 - `arris_geom::GeomError` gains `OffsetFolds { kind, at, distance,
   radius }` (in Python, `GeomOffsetFoldsError`): add the arm to an
   exhaustive `match`.
+- `arris_topo::provenance::Role` has a new variant, `Sweep(PathPart)`,
+  for the entities of a sweep along a path: the span of the path each
+  came from and its `SweepPart`. A `match` on it adds an arm (Python: the
+  role's `kind` is `"sweep"`, its first field the span).
+- `arris_ops::OpError` gains `Path(PathError)`, a sweep's path that is
+  not a G1 chain of usable segments (in Python, `OpPathError` with
+  `detail`): add the arm to an exhaustive `match`.
 
 ## 0.8.0 — 2026-10-13
 

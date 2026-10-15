@@ -442,6 +442,7 @@ pub fn refusal(e: &OpError) -> String {
         OpError::Internal(fault) => format!("Internal({})", head(format!("{fault:?}"))),
         OpError::InvalidInput { .. } => "InvalidInput".into(),
         OpError::Profile(_) => "Profile".into(),
+        OpError::Path(_) => "Path".into(),
         OpError::Tolerance { .. } => "Tolerance".into(),
         OpError::NotFound(_) => "NotFound".into(),
         OpError::Unkeyed { .. } => "Unkeyed".into(),

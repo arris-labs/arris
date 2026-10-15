@@ -175,6 +175,7 @@ pub fn op_error(error: &OpError) -> Mapped {
         OpError::Profile(detail) => {
             Mapped::new(Class::OpProfileError, message).text("detail", detail)
         }
+        OpError::Path(detail) => Mapped::new(Class::OpPathError, message).text("detail", detail),
         OpError::Tolerance { entity, wanted } => Mapped::new(Class::OpToleranceError, message)
             .with("entity", Attr::Shape(*entity))
             .with("wanted", Attr::Float(*wanted)),
@@ -446,7 +447,9 @@ mod tests {
     use std::collections::BTreeSet;
 
     use arris::check::Report;
-    use arris::geom::{AmbiguousLocus, GeomKind, ProfileError, SectionFault, SurfaceKind};
+    use arris::geom::{
+        AmbiguousLocus, GeomKind, PathError, ProfileError, SectionFault, SurfaceKind,
+    };
     use arris::io::step::part21::{Part21Error, Part21ErrorKind};
     use arris::io::step::{TreeError, Unsupported};
     use arris::math::{Point2, Point3, Precision, Tolerance};
@@ -546,6 +549,7 @@ mod tests {
             op_error(&OpError::Profile(ProfileError::TooFewSegments {
                 loop_index: 0,
             })),
+            op_error(&OpError::Path(PathError::Empty)),
             op_error(&OpError::Tolerance {
                 entity: shape(),
                 wanted: 1.0,

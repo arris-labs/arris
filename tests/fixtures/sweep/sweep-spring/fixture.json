@@ -1,5 +1,6 @@
 {
-  "description": "a circle of radius 1 in the axial plane at (10, 0, 0), carried five turns along a right-handed helix of radius 10 and pitch 6 about z under the fixed binormal z: a screw motion, so the volume is the angle times the profile's first moment about the axis, 2 pi * 5 * pi r^2 * 10; faces are fitted (ADR-0063)",
+  "description": "a circle of radius 1 in the axial plane at (10, 0, 0), carried five turns along a right-handed helix of radius 10 and pitch 6 about z under the fixed binormal z: a screw motion, so the volume is the angle times the profile's first moment about the axis, 2 pi * 5 * pi r^2 * 10; faces are fitted (ADR-0063). Open CASCADE's pipe approximates the swept surface to its own SetTolerance (1e-4): its volume lies 4.0e-8 relative from the closed form 100 pi^2, Arris' within 1e-12 of it; its area 3.0e-8 and its inertia 6.5e-8 from Arris'. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a fitted fixture. mesh_chord 1e-2 keeps the five turns' tessellation near 70 000 triangles, where the default's 620 000 take half a minute a mesh; mesh_volume_rel is this body's own inscribed-chord bound, area × chord over volume, 1985 · 1e-2 / 987 ≈ 2.0e-2.",
+  "tolerances": {"volume_rel": 1e-07, "area_rel": 1e-07, "inertia_rel": 2e-07, "mesh_chord": 1e-2, "mesh_volume_rel": 2e-2},
   "params": {"r": 1, "R": 10, "p": 6, "turns": 5},
   "steps": [
     {

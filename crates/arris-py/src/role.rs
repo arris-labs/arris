@@ -10,8 +10,8 @@
 //! compiling until Python can read it.
 
 use arris::topo::provenance::{
-    BoxPart, ConsumerKey, Coord, CylinderPart, FileEntity, PlaneSide, Role as Kernel, Side,
-    SplitPart, SweepPart,
+    BoxPart, ConsumerKey, Coord, CylinderPart, FileEntity, PathPart, PlaneSide, Role as Kernel,
+    Side, SplitPart, SweepPart,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -115,6 +115,12 @@ pub fn view(role: Kernel) -> View {
         Kernel::PlanarFace(part) => {
             let (name, fields) = sweep_view(part);
             ("planar_face", name, fields)
+        }
+        Kernel::Sweep(PathPart { span, part }) => {
+            let (name, fields) = sweep_view(part);
+            let mut all = vec![index(span)];
+            all.extend(fields);
+            ("sweep", name, all)
         }
     }
 }
@@ -241,6 +247,13 @@ pub fn from_parts(kind: &str, part: &str, fields: &[Field]) -> Result<Kernel, St
         "extrude" => Kernel::Extrude(sweep_from(part, &mut f)?),
         "revolve" => Kernel::Revolve(sweep_from(part, &mut f)?),
         "planar_face" => Kernel::PlanarFace(sweep_from(part, &mut f)?),
+        "sweep" => {
+            let span = narrow(f.uint("a span")?, "span")?;
+            Kernel::Sweep(PathPart {
+                span,
+                part: sweep_from(part, &mut f)?,
+            })
+        }
         "file" => match part {
             "Entity" => Kernel::File(FileEntity {
                 id: f.uint("an id")?,
@@ -261,7 +274,7 @@ pub fn from_parts(kind: &str, part: &str, fields: &[Field]) -> Result<Kernel, St
         }),
         _ => {
             return Err(format!(
-                "{kind} is not a kind of role (box, cylinder, extrude, revolve, planar_face, file, consumer, split)"
+                "{kind} is not a kind of role (box, cylinder, extrude, revolve, planar_face, sweep, file, consumer, split)"
             ));
         }
     };
@@ -327,9 +340,10 @@ fn sweep_from(part: &str, f: &mut Fields<'_>) -> Result<SweepPart, String> {
 /// of the consumer's own, or a split's cap.
 ///
 /// Frozen and hashable. `kind` is the operation (`"box"`, `"cylinder"`,
-/// `"extrude"`, `"revolve"`, `"planar_face"`, `"file"`, `"consumer"`,
-/// `"split"`), `part` the kernel's
-/// own name for the variant and `fields` its payload, in declaration order;
+/// `"extrude"`, `"revolve"`, `"planar_face"`, `"sweep"`, `"file"`,
+/// `"consumer"`, `"split"`), `part` the kernel's
+/// own name for the variant and `fields` its payload, in declaration order
+/// (a `"sweep"` role's first field is the span of the path);
 /// `str(role)` is the kernel's text form (`box:Face(Z, Max)`). `Role(kind, part, *fields)` is the
 /// inverse and raises `ValueError` naming what is not a role.
 ///
@@ -401,7 +415,7 @@ impl Role {
     }
 
     /// The operation: `"box"`, `"cylinder"`, `"extrude"`, `"revolve"`,
-    /// `"planar_face"`, `"file"`, `"consumer"` or `"split"`.
+    /// `"planar_face"`, `"sweep"`, `"file"`, `"consumer"` or `"split"`.
     #[getter]
     fn kind(&self) -> &'static str {
         view(self.kernel).0
@@ -531,6 +545,7 @@ mod tests {
         roles.extend(sweeps.map(Kernel::Extrude));
         roles.extend(sweeps.map(Kernel::Revolve));
         roles.extend(sweeps.map(Kernel::PlanarFace));
+        roles.extend(sweeps.map(|part| Kernel::Sweep(PathPart { span: 3, part })));
         roles
     }
 
@@ -575,6 +590,7 @@ mod tests {
             ("box", "Body", vec![name("Z")], "fewer fields"),
             ("extrude", "Side", vec![Field::Uint(0)], "needs a segment"),
             ("extrude", "Side", vec![name("Z"), Field::Uint(0)], "a loop"),
+            ("sweep", "Side", vec![], "needs a span"),
             (
                 "consumer",
                 "Key",

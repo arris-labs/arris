@@ -1,5 +1,6 @@
 {
-  "description": "a rounded slot (6 long, 2 wide, ends of radius 1) with its long axis in the xz plane, carried along a planar cubic (0,0,0), (0,0,15), (15,0,25), (30,0,25) turning a quarter under the rotation-minimising law: faces are fitted, the profile is centred on the path so the volume is area times arc length; the cubic's radius of curvature stays over the slot's reach of 3 (ADR-0063)",
+  "description": "a rounded slot (6 long, 2 wide, ends of radius 1) with its long axis in the xz plane, carried along a planar cubic (0,0,0), (0,0,15), (15,0,25), (30,0,25) turning a quarter under the rotation-minimising law: faces are fitted, the profile is centred on the path so the volume is area times arc length; the cubic's radius of curvature stays over the slot's reach of 3 (ADR-0063). The slot is symmetric about the path in its plane, so the volume is A L and the area (8 + 2 pi) L + 2 A with L = 43.28342903460178 the cubic's numeric length: Arris' volume and area lie within 2e-9 and 8e-10 of them, Open CASCADE's (its pipe approximates to SetTolerance 1e-4) 1.7e-7 and 1.1e-7 off; its centroid 2.3e-6 and its inertia 5.5e-7 from Arris'. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a fitted fixture.",
+  "tolerances": {"volume_rel": 5e-07, "area_rel": 5e-07, "centroid_abs": 5e-06, "inertia_rel": 2e-06},
   "steps": [
     {
       "name": "sketch",

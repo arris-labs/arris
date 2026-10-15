@@ -35,14 +35,14 @@ use crate::dump::dump_text;
 use crate::fixtures::geom::{self as geom_spec, build_profile};
 use crate::fixtures::{
     self, Class, Counts, ExpectError, Expected, ExprError, Fixture, FixtureError, Measured, Num,
-    Recipe, Rotate, ShellSide, Step, Tolerances,
+    PathSegment as RecipeSegment, Recipe, Rotate, ShellSide, Step, SweepLaw, SweepPath, Tolerances,
 };
 use crate::oracle::{self, OracleError};
 use crate::polyhedron::{PolyhedronError, polyhedron};
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, LumpError, Report, Unchecked, check, lumps};
-use arris_geom::Profile;
 use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
+use arris_geom::{FrameLaw, NurbsCurve, Path as GeomPath, PathSegment as GeomSegment, Profile};
 use arris_io::step::{self, StepError};
 use arris_math::nalgebra::UnitQuaternion;
 use arris_math::{
@@ -117,6 +117,18 @@ pub enum CorpusError {
         step: String,
         /// The cause, boxed to keep the error small.
         source: Box<geom_spec::BuildError>,
+    },
+    /// A `sweep` step's NURBS path segment does not build.
+    #[error("{fixture}: step {step:?}: path segment {segment}: {source}")]
+    Path {
+        /// The fixture.
+        fixture: String,
+        /// The step's name.
+        step: String,
+        /// The segment.
+        segment: usize,
+        /// The cause.
+        source: arris_geom::GeomError,
     },
     /// A point naming an edge to blend is not on exactly one edge of the
     /// body: it classifies to a vertex, a face, the inside or the
@@ -807,6 +819,7 @@ impl CorpusError {
             | CorpusError::FacePoint { .. }
             | CorpusError::Precision { .. }
             | CorpusError::Axis { .. }
+            | CorpusError::Path { .. }
             | CorpusError::Plane { .. }
             | CorpusError::Polyhedron { .. }
             | CorpusError::Expectation { .. }
@@ -2109,6 +2122,71 @@ fn point(
     ))
 }
 
+/// The kernel's path from a recipe's: each number evaluated, a helix's
+/// angle from degrees, a NURBS segment validated.
+fn sweep_path(
+    fixture: &Fixture,
+    step: &Step,
+    path: &SweepPath,
+    params: &BTreeMap<String, f64>,
+) -> Result<GeomPath, CorpusError> {
+    let mut segments = Vec::with_capacity(path.segments.len());
+    for (k, segment) in path.segments.iter().enumerate() {
+        segments.push(match segment {
+            RecipeSegment::Line { line_to } => {
+                GeomSegment::LineTo(point(fixture, step, line_to, params)?)
+            }
+            RecipeSegment::Arc { arc_to, via } => GeomSegment::ArcTo {
+                via: point(fixture, step, via, params)?,
+                to: point(fixture, step, arc_to, params)?,
+            },
+            RecipeSegment::Helix { helix } => {
+                let origin = point(fixture, step, &helix.axis.origin, params)?;
+                let direction = vector(fixture, step, &helix.axis.direction, params)?;
+                let axis = Axis::new(origin, direction).map_err(|source| CorpusError::Axis {
+                    fixture: fixture.name.clone(),
+                    step: step.name().to_string(),
+                    source,
+                })?;
+                GeomSegment::Helix {
+                    axis,
+                    pitch: number(fixture, step, &helix.pitch, params)?,
+                    angle: number(fixture, step, &helix.angle_deg, params)?.to_radians(),
+                }
+            }
+            RecipeSegment::Nurbs { nurbs } => {
+                let numbers = |of: &[Num]| {
+                    of.iter()
+                        .map(|n| number(fixture, step, n, params))
+                        .collect::<Result<Vec<f64>, _>>()
+                };
+                let points = nurbs
+                    .control_points
+                    .iter()
+                    .map(|p| point(fixture, step, p, params))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let curve = NurbsCurve::new(
+                    nurbs.degree,
+                    numbers(&nurbs.knots)?,
+                    points,
+                    numbers(&nurbs.weights)?,
+                )
+                .map_err(|source| CorpusError::Path {
+                    fixture: fixture.name.clone(),
+                    step: step.name().to_string(),
+                    segment: k,
+                    source,
+                })?;
+                GeomSegment::Nurbs(curve)
+            }
+        });
+    }
+    Ok(GeomPath {
+        start: point(fixture, step, &path.start, params)?,
+        segments,
+    })
+}
+
 fn vector(
     fixture: &Fixture,
     step: &Step,
@@ -2286,11 +2364,31 @@ fn build_step(
                 Vec::new(),
             )
         }
-        Step::Sweep { .. } => Err(CorpusError::Unsupported {
-            fixture: name.clone(),
-            step: step.name().to_string(),
-            what: "sweep is not built yet".to_string(),
-        })?,
+        Step::Sweep {
+            profile, path, law, ..
+        } => {
+            let profile = profile_reference(fixture, step, profile, profiles)?;
+            let path = sweep_path(fixture, step, path, params)?;
+            let law = match law {
+                SweepLaw::RotationMinimizing => FrameLaw::RotationMinimizing,
+                SweepLaw::Binormal(b) => {
+                    // Validated as an axis's direction is: a recipe with a
+                    // zero binormal is the recipe's error.
+                    let b = vector(fixture, step, b, params)?;
+                    let axis =
+                        Axis::new(Point3::origin(), b).map_err(|source| CorpusError::Axis {
+                            fixture: name.clone(),
+                            step: step.name().to_string(),
+                            source,
+                        })?;
+                    FrameLaw::FixedBinormal(axis.direction)
+                }
+            };
+            body(
+                arris_ops::sweep(m, profile, &path, law, control).map_err(op)?,
+                Vec::new(),
+            )
+        }
         Step::Transform {
             of,
             translate,

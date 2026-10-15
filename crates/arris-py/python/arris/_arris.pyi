@@ -703,6 +703,9 @@ class OpDegenerateError(OpError):
 class OpProfileError(OpError):
     detail: str
 
+class OpPathError(OpError):
+    detail: str
+
 class OpToleranceError(OpError):
     entity: _Entity
     wanted: float

@@ -140,9 +140,8 @@ part }` with the existing `SweepPart`. A joint edge between spans `k − 1`
 and `k` is span `k`'s `StartEdge`; the end cap belongs to the last span,
 and a closed path has neither cap.
 
-⚠ OPEN: a skin per span, or per run of consecutive fitted spans (fewer
-faces, no joint edges inside a spline, a coarser `PathPart`). Step 3
-decides it and amends this ADR.
+A skin per span, not per run of consecutive fitted spans: decided in
+step 3, see the amendment.
 
 ## Consequences
 
@@ -174,3 +173,53 @@ decides it and amends this ADR.
   inversion cost, but the fitted face's `v` would differ between a
   segment and its NURBS twin, and joints between spans of different kinds
   would reparametrise.
+
+## Amendment (2026-10-15, plan `sweep` step 3)
+
+- **A skin per span** (the ⚠ OPEN of §8). One face per span and profile
+  segment keeps `PathPart` exact, and is what `MakePipeShell` builds: it
+  too makes a face per spine edge, so the counts match the oracle's. A
+  run of NURBS segments would save its inner joints only, and a spline
+  path is one segment in every fixture.
+- **One skin per loop, split at the vertices.** Each loop of the profile
+  is one rational quadratic NURBS: a line raised from degree one, an arc
+  or an ellipse its exact arcs, consecutive segments sharing the control
+  point at their vertex with a knot of multiplicity two there. The loop is
+  carried and skinned once per span (`fit_skin`, quintic along `v`,
+  within `SECTION_FIT_FRACTION` of the tolerance), and the net splits at
+  those knots exactly into one surface per segment. Two neighbouring side
+  faces end on one column of control points, and that column is their
+  rail: the isoline of both, with nothing to measure. §7's "the rail's
+  tolerance is the measured deviation" is zero by construction, and the
+  rail has the edge's default tolerance.
+- **A joint's edge is the segment's NURBS carried to it.** The skin
+  interpolates its end sections, so the segment's NURBS carried to a
+  joint is the isoline there of the faces on both sides. On a cap it is
+  planar, so its pcurve is its control points in the cap's (u, v). Every
+  pcurve of a fitted span is exact. The analytic curve (§6's "the profile
+  carried exactly") would put a fitted pcurve on every side face: a
+  rational arc's parameter is not the circle's angle, so `pcurve_on` fits
+  `u(θ)` with a hundred spans per quarter turn. That made a four-arc
+  ring's mass properties take 19 s, against 0.09 s with the isolines.
+  Where an exact span meets a fitted one (step 5), one side of the joint
+  has a fitted pcurve either way.
+- **A helix span is one face.** §7's cut at quarter turns is not made:
+  the quintic skin refines its own knots, and a five-turn spring of
+  radius 10 fits in 256 spans, within 1e-12 of the screw's closed-form
+  volume.
+- **An invalid path is `OpError::Path(PathError)`**, beside
+  `OpError::Profile`: like a sketch, a path has no entities to name, and
+  `PathError` already names the segment and, for a corner, the arc length
+  and the angle. A stop while the frames are built is
+  `OpError::Interrupted`. Step 4's `SweepReason::PathCorner` is therefore
+  not added: `PathError::Corner` is that refusal.
+- **Open CASCADE is the less exact side on a fitted sweep.**
+  `MakePipeShell` approximates to its own `SetTolerance` (1e-4), so on the
+  spring, the thread and the two splines its volume lies 4e-8 to 6.3e-7
+  from the closed forms, where Arris' lies within 1e-11 to 2e-9. Those
+  fixtures carry measure tolerances over that miss, under ADR-0062's 1e-5
+  for a fitted fixture, and `crates/arris-ops/tests/sweep.rs` holds Arris
+  to the closed forms. On `sweep-oblique-circle` Open CASCADE's area is
+  5.6% high (90π, the circle's perimeter times the length, against the
+  projected ellipse's 267.86322590949, which Arris matches to 1e-15); step
+  5 holds that fixture to the closed forms through `measure_differs`.

@@ -830,6 +830,20 @@ corpus_tests! {
     /// and Arris refuses it, `SweepReason::EllipticRevolve` naming the segment,
     /// since the surface it would sweep has no variant (ADR-0014).
     sweep_revolve_ellipse => run "sweep/revolve-ellipse";
+    /// A square whose plane misses the arc's axis, along a quarter arc: no
+    /// kind holds the faces, so they are fitted (ADR-0063).
+    sweep_sweep_arc_tilted_profile => run "sweep/sweep-arc-tilted-profile";
+    /// A circle along five helix turns under the axis as binormal: one
+    /// fitted face, the screw's volume to the closed form.
+    sweep_sweep_spring => run "sweep/sweep-spring";
+    /// A triangle along three helix turns under the axis as binormal.
+    sweep_sweep_thread => run "sweep/sweep-thread";
+    /// A rounded slot along a planar cubic under the rotation-minimising
+    /// law: a NURBS span's frames by arc length.
+    sweep_sweep_spline_handle => run "sweep/sweep-spline-handle";
+    /// A circle centred on a non-planar cubic under the rotation-minimising
+    /// law: the volume and area to the closed forms whatever the twist.
+    sweep_sweep_spline_3d => run "sweep/sweep-spline-3d";
     /// The consumer's 2-cube with one vertical edge filleted: a plane–plane
     /// blend, a cylinder between two circle ends (ADR-0007), at `r = 0.2`
     /// and at `r = 0.5`.
@@ -1765,31 +1779,19 @@ corpus_tests! {
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
     /// A circle along line, quarter arc, line in one plane: cylinder, torus, cylinder.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    #[ignore = "builds fitted and matches Open CASCADE; the exact kinds are plans/sweep step 5, which blesses the dump"]
     regression_sweep_pipe_l_bend => run "regression/sweep-pipe-l-bend";
     /// A rectangle with a hole along line, arc, arc, line: planes, cylinders, tori.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    #[ignore = "builds fitted and matches Open CASCADE; the exact kinds are plans/sweep step 5, which blesses the dump"]
     regression_sweep_rect_s_bend => run "regression/sweep-rect-s-bend";
     /// A circle tilted 30 degrees off the path's normal along a line: the elliptic cylinder.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    /// Open CASCADE's area, 90 pi, is the circle's perimeter times the
+    /// length; the oblique cylinder's is its projected ellipse's,
+    /// 267.86322590949, which the fitted build matches to 1e-15.
+    #[ignore = "Open CASCADE's area is 5.6% high: the exact EllipticCylinder and measure_differs are plans/sweep step 5"]
     regression_sweep_oblique_circle => run "regression/sweep-oblique-circle";
-    /// A square whose plane misses the arc's axis, along a quarter arc: fitted faces.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
-    regression_sweep_arc_tilted_profile => run "regression/sweep-arc-tilted-profile";
-    /// A circle along five helix turns under the axis as binormal: fitted faces.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
-    regression_sweep_spring => run "regression/sweep-spring";
-    /// A triangle along three helix turns under the axis as binormal: fitted faces.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
-    regression_sweep_thread => run "regression/sweep-thread";
-    /// A rounded slot along a planar cubic: fitted faces.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
-    regression_sweep_spline_handle => run "regression/sweep-spline-handle";
-    /// A circle centred on a non-planar cubic: fitted faces.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
-    regression_sweep_spline_3d => run "regression/sweep-spline-3d";
     /// A circle along a closed path of four arcs: a torus with no caps.
-    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    #[ignore = "builds fitted and matches Open CASCADE; the exact kinds are plans/sweep step 5, which blesses the dump"]
     regression_sweep_ring => run "regression/sweep-ring";
 }
 
