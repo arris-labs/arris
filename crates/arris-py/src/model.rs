@@ -19,6 +19,7 @@ use crate::kernel_error::{
     Mapped, body_error, mesh_error, native_error, op_error, step_error, step_read_error,
 };
 use crate::mesh::Mesh;
+use crate::path::{FrameLaw, Path};
 use crate::profile::Profile;
 use crate::provenance::Provenance;
 use crate::query::{
@@ -147,7 +148,7 @@ impl<E> From<BindError> for Failure<E> {
 }
 
 /// An argument no kernel call could take, as the kernel's own refusal.
-fn refused(reason: Reason) -> OpError {
+pub(crate) fn refused(reason: Reason) -> OpError {
     OpError::Degenerate {
         entities: Vec::new(),
         reason,
@@ -187,7 +188,7 @@ fn plane_of(
     }
 }
 
-fn finite(what: &'static str, v: [f64; 3]) -> Result<(), OpError> {
+pub(crate) fn finite(what: &'static str, v: [f64; 3]) -> Result<(), OpError> {
     if v.iter().all(|c| c.is_finite()) {
         Ok(())
     } else {
@@ -196,7 +197,7 @@ fn finite(what: &'static str, v: [f64; 3]) -> Result<(), OpError> {
 }
 
 /// A direction from three numbers: finite, and not zero.
-fn direction_of(what: &'static str, v: [f64; 3]) -> Result<Vec3, OpError> {
+pub(crate) fn direction_of(what: &'static str, v: [f64; 3]) -> Result<Vec3, OpError> {
     finite(what, v)?;
     let v = Vec3::from(v);
     if v.norm() > 0.0 {
@@ -863,6 +864,51 @@ impl Model {
         let (profile, limits) = (profile.kernel.clone(), Limits::new(cancel, budget));
         self.operate(py, &limits, move |m, control| {
             arris::ops::revolve(m, &profile, axis, angle, control)
+        })
+    }
+
+    /// The solid `profile` sweeps along `path`: the profile is taken where
+    /// it is placed (it need not touch the path or be normal to it), turned
+    /// by `law` (`FrameLaw.rotation_minimizing()` when omitted). A line
+    /// span gives `extrude`'s faces, an arc span about an axis in the
+    /// profile's plane gives `revolve`'s, and any other span a fitted NURBS
+    /// face. Every entity is named by the span and the part of the sketch it
+    /// came from (`Role("sweep", "Side", span, loop, segment)`); a closed
+    /// path whose frame closes gives a body with no caps.
+    ///
+    /// Raises `OpProfileError` for an invalid sketch, `OpPathError` for a
+    /// path with a gap, a corner or a degenerate segment, and
+    /// `OpUnsupportedError` or `OpDegenerateError` for a profile along its
+    /// path, a path bent tighter than the profile is wide, or a frame that
+    /// does not close.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// sketch = arris.Profile(
+    ///     arris.Loop.circle((0, 0), 1), origin=(0, 0, 0), normal=(0, 0, 1)
+    /// )
+    /// spine = arris.Path((0, 0, 0), [arris.PathSegment.line((0, 0, 10))])
+    /// body, record = model.sweep(sketch, spine)
+    /// assert abs(model.mass_properties(body).volume - 10 * 3.141592653589793) < 1e-9
+    /// assert record.generated_from(arris.Role("sweep", "Side", 0, 0, 0))
+    /// ```
+    #[pyo3(signature = (profile, path, law=None, *, cancel=None, budget=None))]
+    fn sweep(
+        &self,
+        py: Python<'_>,
+        profile: &Profile,
+        path: &Path,
+        law: Option<&FrameLaw>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let law = law.map(|l| l.kernel).unwrap_or_default();
+        let (profile, path) = (profile.kernel.clone(), path.kernel.clone());
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::sweep(m, &profile, &path, law, control)
         })
     }
 

@@ -343,7 +343,7 @@ bound has to be established here.
   `extrude` agreement on lines, exact vs NURBS twin agreement, and STEP round
   trip volume & counts preservation. `arris-debug`'s `Shape::Sweep` added to
   `prop::recipe` with random sweep generation and differential draw verification.
-- [ ] Step 9 **[1]** — **The binding and the facade.**
+- [x] Step 9 **[1]** — **The binding and the facade.**
   - `arris.sweep(profile, path, law=...)`, with `Path`, `PathSegment` and
     `FrameLaw` classes, `PathError` mapped, stubs and docstring examples;
     pytest for a pipe and a spring.

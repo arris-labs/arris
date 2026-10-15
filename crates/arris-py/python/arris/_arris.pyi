@@ -160,6 +160,45 @@ class Profile:
     __hash__: ClassVar[None]  # type: ignore[assignment]
 
 @final
+class PathSegment:
+    @staticmethod
+    def line(to: _Point3) -> PathSegment: ...
+    @staticmethod
+    def arc(to: _Point3, via: _Point3) -> PathSegment: ...
+    @staticmethod
+    def helix(
+        origin: _Point3, direction: _Point3, pitch: float, angle: float
+    ) -> PathSegment: ...
+    @staticmethod
+    def nurbs(
+        degree: int,
+        knots: Sequence[float],
+        control_points: Sequence[_Point3],
+        weights: Sequence[float] | None = None,
+    ) -> PathSegment: ...
+    def __eq__(self, value: object, /) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
+
+@final
+class Path:
+    def __new__(cls, start: _Point3, segments: Sequence[PathSegment]) -> Path: ...
+    @property
+    def start(self) -> tuple[float, float, float]: ...
+    @property
+    def segments(self) -> list[PathSegment]: ...
+    def __eq__(self, value: object, /) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
+
+@final
+class FrameLaw:
+    @staticmethod
+    def rotation_minimizing() -> FrameLaw: ...
+    @staticmethod
+    def fixed_binormal(direction: _Point3) -> FrameLaw: ...
+    def __eq__(self, value: object, /) -> bool: ...
+    __hash__: ClassVar[None]  # type: ignore[assignment]
+
+@final
 class Provenance:
     @property
     def generated(self) -> list[tuple[_Handle | Role, list[_Handle]]]: ...
@@ -537,6 +576,15 @@ class Model:
         origin: _Point3,
         axis: _Point3,
         angle: float,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> _Made: ...
+    def sweep(
+        self,
+        profile: Profile,
+        path: Path,
+        law: FrameLaw | None = None,
         *,
         cancel: Cancel | None = None,
         budget: int | None = None,

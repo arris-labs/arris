@@ -27,6 +27,34 @@
 //! assert!(check(&back, body, Level::Full).is_ok());
 //! ```
 //!
+//! A profile carried along a path is `sweep`: a path of lines, arcs,
+//! helices or NURBS curves, each span exact where a quadric holds it and
+//! fitted where none does.
+//!
+//! ```
+//! use arris::Control;
+//! use arris::geom::profile::{Profile, ProfileLoop};
+//! use arris::geom::{FrameLaw, Path, PathSegment};
+//! use arris::math::{Frame, Point2, Point3, Vec3};
+//! use arris::ops::sweep;
+//! use arris::topo::Model;
+//!
+//! let profile = Profile {
+//!     plane: Frame::new(Point3::origin(), Vec3::z(), Vec3::x()).unwrap(),
+//!     outer: ProfileLoop::Circle { center: Point2::origin(), radius: 1.0 },
+//!     holes: vec![],
+//! };
+//! let path = Path {
+//!     start: Point3::origin(),
+//!     segments: vec![PathSegment::LineTo(Point3::new(0.0, 0.0, 10.0))],
+//! };
+//! let mut m = Model::default();
+//! let (pipe, provenance) =
+//!     sweep(&mut m, &profile, &path, FrameLaw::default(), &Control::NONE).unwrap();
+//! assert_eq!(m.faces(pipe).unwrap().len(), 3, "two caps and the wall");
+//! assert_eq!(provenance.outputs().len(), 10);
+//! ```
+//!
 //! Every operation on a model takes a [`Control`] last, so its caller can
 //! stop it: a poll it answers from whatever its platform has (here an
 //! `AtomicBool` another thread sets), a budget of steps, both or neither.

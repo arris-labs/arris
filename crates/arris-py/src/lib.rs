@@ -15,6 +15,7 @@ mod io;
 pub mod kernel_error;
 mod mesh;
 mod model;
+mod path;
 mod profile;
 mod provenance;
 mod query;
@@ -26,6 +27,7 @@ pub use handle::{Body, Edge, Face, Shell, Vertex};
 pub use io::{Healing, Imported, Occurrence, Refusal, StepRead, StepSolid};
 pub use mesh::Mesh;
 pub use model::Model;
+pub use path::{FrameLaw, Path, PathSegment};
 pub use profile::{Loop, Profile, Segment};
 pub use provenance::Provenance;
 pub use query::{
@@ -62,6 +64,9 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Segment>()?;
     module.add_class::<Loop>()?;
     module.add_class::<Profile>()?;
+    module.add_class::<PathSegment>()?;
+    module.add_class::<Path>()?;
+    module.add_class::<FrameLaw>()?;
     module.add_class::<Provenance>()?;
     module.add_class::<Mesh>()?;
     module.add_class::<Frame>()?;
