@@ -1,32 +1,29 @@
 //! `extrude` along the profile's normal, and `planar_face`, its cap
 //! taken alone.
 
-use arris_geom::{Curve, Curve2, Profile, Surface, pcurve_on};
-use arris_math::{Control, Frame, Interval, Isometry, Meter, UnitVec3, Vec3};
+use arris_geom::{Curve, Curve2, Profile, pcurve_on};
+use arris_math::{Control, Interval, Isometry, Meter, UnitVec3, Vec3};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
-use crate::error::{InputReason, OpError, Reason, SweepReason, fault_of};
+use crate::error::{InputReason, OpError, Reason, fault_of};
 use crate::verify;
 
 use super::{
-    SideUse, cap_face, degenerate, profile_curve_fault, profile_pcurves, record, side_face,
-    side_orientation, vertex_index,
+    SideUse, cap_face, degenerate, profile_pcurves, record, side_face, side_orientation,
+    vertex_index,
 };
 
-/// Extrudes `profile` along its plane's normal by `length` into a solid:
-/// `direction` says which way, and must be the normal or its opposite
-/// within `angular_tolerance`. Every segment of the profile sweeps one side
-/// face — a line a plane whose `X` is the segment and `Y` the sweep, an arc
-/// a cylinder whose frame is the arc's centre, `Z` the sweep and `X` the
-/// profile plane's, so a circle loop's seam stands at its vertex's rise,
-/// an elliptic arc an elliptic cylinder whose `X` is the arc's major
-/// axis, so an ellipse loop's seam stands at its vertex's rise too
-/// (ADR-0014) —
-/// and every vertex a straight *rise* along the sweep; every pcurve is
-/// exact through `pcurve_on`. The profile face keeps its plane's frame
+/// Extrudes `profile` along `direction` by `length` into a solid:
+/// every segment of the profile sweeps one side face — a line a plane
+/// whose `X` is the segment and `Y` the sweep, an arc a cylinder when
+/// normal to the profile and an elliptic cylinder when oblique (ADR-0014,
+/// ADR-0063), and an ellipse an elliptic cylinder — and every vertex a
+/// straight *rise* along the sweep; every pcurve is exact through
+/// `pcurve_on`. The sweep snaps to the plane's exact normal when within
+/// `angular_tolerance`. The profile face keeps its plane's frame
 /// whichever way the sweep goes and is the cap whose outward normal opposes
 /// it; the other cap is its copy translated by the sweep. Entities are
 /// appended in one fixed order — vertices per loop in walking order (the
@@ -40,10 +37,9 @@ use super::{
 /// `Profile::edges` refuses the sketch; [`OpError::Degenerate`] with
 /// [`InputReason::NonFinite`] for a non-finite length or direction,
 /// [`InputReason::NotPositive`] for a length at or below zero or a zero
-/// direction, [`InputReason::ZeroThickness`] for a length within
-/// `default_tolerance` of zero, and [`SweepReason::DirectionNotNormal`] for a
-/// direction off the plane's normal — an oblique extrusion of an arc is a
-/// cylinder of elliptical section, which no sweep builds yet (ADR-0047).
+/// direction, and [`InputReason::ZeroThickness`] for a length within
+/// `default_tolerance` of zero or a direction whose normal component
+/// times `length` is within the linear tolerance.
 ///
 /// ```
 /// use arris_ops::extrude;
@@ -113,60 +109,33 @@ pub fn extrude(
     let plane = &profile.plane;
     let normal = plane.z().into_inner();
     let dn = d.dot(&normal);
-    let off_normal = d.cross(&normal).norm().atan2(dn.abs());
-    if off_normal > tol.angular {
-        return Err(degenerate(Reason::Sweep(SweepReason::DirectionNotNormal)));
+    let thickness = dn.abs() * length;
+    if thickness <= tol.linear {
+        return Err(degenerate(Reason::Input(InputReason::ZeroThickness)));
     }
     let loops = profile.edges(tol)?;
-    // The sweep is the exact normal, never the caller's rounding of it.
     let along_normal = dn > 0.0;
-    let sweep = if along_normal { plane.z() } else { -plane.z() };
+    let off_normal = d.cross(&normal).norm().atan2(dn.abs());
+    let sweep = if off_normal <= tol.angular {
+        if along_normal { plane.z() } else { -plane.z() }
+    } else {
+        d
+    };
     let shift = Isometry::from_translation(sweep.into_inner() * length);
 
-    // Every segment's surface, before anything is written.
-    let mut surfaces: Vec<Vec<Surface>> = Vec::with_capacity(loops.len());
-    for edges in &loops {
-        let mut row = Vec::with_capacity(edges.len());
-        for edge in edges {
-            row.push(match &edge.curve {
-                Curve::Line { direction, .. } => Surface::Plane {
-                    frame: Frame::new(
-                        edge.curve.point(edge.range.lo()),
-                        direction.cross(&sweep),
-                        direction.into_inner(),
-                    )?,
-                },
-                &Curve::Circle { ref frame, radius } => Surface::Cylinder {
-                    frame: Frame::new(frame.origin(), sweep.into_inner(), plane.x().into_inner())?,
-                    radius,
-                },
-                // An elliptic cylinder placed as a cylinder is, but with
-                // `X` the edge's own major axis, so the cap ellipse is
-                // the section at constant `v` (ADR-0014).
-                &Curve::Ellipse {
-                    ref frame,
-                    major_radius,
-                    minor_radius,
-                } => Surface::EllipticCylinder {
-                    frame: Frame::new(frame.origin(), sweep.into_inner(), frame.x().into_inner())?,
-                    major_radius,
-                    minor_radius,
-                },
-                // `Profile::edges` makes lines, circles and ellipses and
-                // nothing else.
-                Curve::Nurbs(_) => return Err(profile_curve_fault(edge)),
-            });
-        }
-        surfaces.push(row);
-    }
-
-    let tolerance = precision.default_tolerance;
     let rise_range = Interval::new(0.0, length).map_err(|_| {
         degenerate(Reason::Input(InputReason::NotPositive {
             what: "length",
             value: length,
         }))
     })?;
+
+    let exact =
+        super::exact::line_span(&loops, plane, &Isometry::identity(), sweep, rise_range, tol)?
+            .ok_or_else(|| degenerate(Reason::Input(InputReason::ZeroThickness)))?;
+    let surfaces = exact.surfaces;
+
+    let tolerance = precision.default_tolerance;
     let part = |p: SweepPart| Role::Extrude(p);
 
     m.transaction(|m| {

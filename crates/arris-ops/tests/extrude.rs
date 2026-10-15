@@ -23,7 +23,7 @@ use arris_geom::{Profile, ProfileError, ProfileLoop, ProfileSegment, Surface};
 
 use arris_check::{Level, check};
 use arris_math::{Axis, Frame, Point2, Tolerance, Vec2, Vec3};
-use arris_ops::{InputReason, OpError, Reason, SweepReason};
+use arris_ops::{InputReason, OpError, Reason};
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, EntityId, Model, Orientation, Provenance, Role};
 use core::f64::consts::TAU;
@@ -417,16 +417,12 @@ fn every_refusal_is_typed_and_leaves_the_model_untouched() {
     let one_degree = 1f64.to_radians();
     let tilted = Vec3::new(0.0, one_degree.sin(), one_degree.cos());
     assert_eq!(
-        reason(&mut m, &plate(), tilted, 1.0),
-        Reason::Sweep(SweepReason::DirectionNotNormal)
-    );
-    assert_eq!(
-        reason(&mut m, &plate(), -tilted, 1.0),
-        Reason::Sweep(SweepReason::DirectionNotNormal)
-    );
-    assert_eq!(
         reason(&mut m, &plate(), Vec3::x(), 1.0),
-        Reason::Sweep(SweepReason::DirectionNotNormal)
+        Reason::Input(InputReason::ZeroThickness)
+    );
+    assert_eq!(
+        reason(&mut m, &plate(), tilted, tol.linear / 2.0),
+        Reason::Input(InputReason::ZeroThickness)
     );
     assert!(matches!(
         reason(&mut m, &plate(), z, 0.0),
@@ -591,4 +587,24 @@ fn an_extrude_either_way_has_the_same_numbers() {
     assert!((a.centroid.z - 1.5).abs() <= REL && (b.centroid.z + 1.5).abs() <= REL);
     assert_eq!(counts(&m, up), counts(&m, down));
     assert_eq!(counts(&m, up), (10, 15, 7));
+}
+
+/// An extrude off the profile's normal builds an exact oblique solid:
+/// an arc or circle sweeps an elliptic cylinder (ADR-0063).
+#[test]
+fn oblique_extrude_builds() {
+    let mut m = Model::default();
+    let one_degree = 1f64.to_radians();
+    let tilted = Vec3::new(0.0, one_degree.sin(), one_degree.cos());
+    let (up, _) = extrude(&mut m, &plate(), tilted, 1.0).unwrap();
+    let (down, _) = extrude(&mut m, &plate(), -tilted, 1.0).unwrap();
+    assert_eq!(counts(&m, up), (10, 15, 7));
+    assert_eq!(counts(&m, down), (10, 15, 7));
+    let (a, b) = (
+        mass_properties(&m, up).unwrap(),
+        mass_properties(&m, down).unwrap(),
+    );
+    assert!(close(a.volume, b.volume));
+    assert!(check(&m, up, Level::Full).is_ok());
+    assert!(check(&m, down, Level::Full).is_ok());
 }

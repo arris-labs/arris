@@ -85,6 +85,10 @@ into its version (ADR-0027).
   profiles of a loft), within your tolerance of each section at the same
   parameter; a section that collapses to a point gives the surface a pole
   there.
+- `extrude` builds in any direction off the profile's plane: an arc sweeps an
+  `EllipticCylinder`, its section perpendicular to the direction an ellipse
+  (ADR-0014, ADR-0063). A direction whose normal component times the length is
+  under the linear tolerance is refused as `InputReason::ZeroThickness`.
 
 ### Breaking
 
@@ -100,8 +104,9 @@ into its version (ADR-0027).
   `detail`): add the arm to an exhaustive `match`.
 - `arris_ops::SweepReason` gains `ProfileAlongPath`, `SweepFolds { span,
   at }` and `FrameDoesNotClose { angle }`, the refusals of a sweep along
-  a path: add the arms to an exhaustive `match`. Python reads a refusal's
-  reason as text, so it needs no change.
+  a path, and loses `DirectionNotNormal`: add or remove the arms in an
+  exhaustive `match`. Python reads a refusal's reason as text, so it needs
+  no change.
 
 ## 0.8.0 — 2026-10-13
 

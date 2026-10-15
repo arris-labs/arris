@@ -284,13 +284,20 @@ bound has to be established here.
   fixture's `inertia_rel` is 1e-8 (docs/BACKLOG.md). The twin property is
   `tests/sweep_prop.rs`, planar paths of lines and arcs with a rectangle
   or a disc; step 8 extends it.
-- [ ] Step 6 **[1]** — **The oblique extrude.** `extrude` builds any
+- [x] Step 6 **[1]** — **The oblique extrude.** `extrude` builds any
   direction off the profile's plane through the line span. A direction
   whose normal component times the length is under the linear tolerance
   is `InputReason::ZeroThickness`. `SweepReason::DirectionNotNormal` is
   removed: binding, stub and `### Breaking` in this commit. The existing
   extrude fixtures are unchanged. Add `sweep/extrude-oblique-slot` with
   its oracle values, then retire the backlog line and M5's ⚠ OPEN 3.
+
+  **Built (step 6).** `extrude` routes side surfaces through `exact::line_span`:
+  an oblique extrude of an arc or ellipse sweeps an exact `EllipticCylinder`,
+  and in-plane or near-zero-thickness directions return `InputReason::ZeroThickness`.
+  `SweepReason::DirectionNotNormal` removed; `sweep/extrude-oblique-slot` fixture
+  committed with oracle values, closed-form area and `measure_differs`. Backlog line
+  and M5 ⚠ OPEN 3 retired.
 - [ ] Step 7 **[2]** — **The swept body as an operand.** Fixtures with
   Open CASCADE values, each a chain from a sweep:
   - fillet the rail edges of `sweep-rect-s-bend` (all analytic);

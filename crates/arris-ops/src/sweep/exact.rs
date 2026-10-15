@@ -118,7 +118,7 @@ fn circumcircle(a: &Point3, b: &Point3, c: &Point3) -> Option<(Point3, f64)> {
 
 /// A line span of tangent `t`: extrude's faces on the profile carried by
 /// `motion`.
-fn line_span(
+pub(super) fn line_span(
     loops: &[Vec<ProfileEdge>],
     plane: &Frame,
     motion: &Isometry,

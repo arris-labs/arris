@@ -791,6 +791,8 @@ corpus_tests! {
     /// A rectangle with an elliptic hole: the seamed elliptic bore inside
     /// four walls, `boolean/through-hole`'s counts.
     sweep_extrude_plate_elliptic_hole => run "sweep/extrude-plate-elliptic-hole";
+    /// A slot with a hole extruded obliquely: elliptic-cylinder faces and bore.
+    sweep_extrude_oblique_slot => run "sweep/extrude-oblique-slot";
     /// A rectangle revolved a full turn about z: two seamed walls and two
     /// annuli of two closed rises each — `boolean/coaxial-cut`'s solid by the
     /// other path.

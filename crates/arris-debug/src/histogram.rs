@@ -323,8 +323,7 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
             Reason::Blend(BlendReason::TooLarge)
             | Reason::Blend(BlendReason::TangentChain)
             | Reason::Blend(BlendReason::VertexBlend) => Cycle::BlendNetwork,
-            Reason::Sweep(SweepReason::DirectionNotNormal)
-            | Reason::Sweep(SweepReason::EllipticRevolve { .. }) => Cycle::Sweep,
+            Reason::Sweep(SweepReason::EllipticRevolve { .. }) => Cycle::Sweep,
             Reason::Input(InputReason::NotSolid) => Cycle::Healing,
             Reason::Boolean(BooleanReason::TangentContact)
             | Reason::Input(InputReason::NonManifold) => Cycle::Itself("non-manifold"),

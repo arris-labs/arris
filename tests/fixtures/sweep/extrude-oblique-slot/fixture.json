@@ -1,0 +1,43 @@
+{
+  "description": "a stadium of two lines and two semicircular arcs, straight length 20 and radius 5, with a hole r 2 at its centre, extruded obliquely 10 along [0, 3, 4]: elliptic-cylinder faces and bore, volume (200 + 21 * pi) * 8 (ADR-0063)",
+  "steps": [
+    {
+      "name": "slot",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {
+        "start": [-10, -5],
+        "segments": [
+          {"line_to": [10, -5]},
+          {"arc_to": [10, 5], "via": [15, 0]},
+          {"line_to": [-10, 5]},
+          {"arc_to": [-10, -5], "via": [-15, 0]}
+        ]
+      },
+      "holes": [{"circle": {"center": [0, 0], "radius": 2}}]
+    },
+    {"name": "result", "op": "extrude", "profile": "slot", "direction": [0, 3, 4], "length": 10}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [5, 3, 4], "expect": "in"},
+    {"label": "outside", "point": [0, 15, 4], "expect": "out"},
+    {"label": "on_face", "point": [15, 3, 4], "expect": "on"},
+    {"label": "on_edge", "point": [0, 11, 8], "expect": "on"},
+    {"label": "on_axis", "point": [0, 3, 4], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "(200 + 21 * pi) * 8",
+    "area": "400 + 280 * 1.4180833944487243 + 2 * (200 + 21 * pi)",
+    "centroid": [0, 3, 4],
+    "inertia": [
+      [34891.35623376469, 0, 0],
+      [0, 158006.51327481767, -8511.150263212323],
+      [0, -8511.150263212323, 170201.4688066828]
+    ],
+    "counts": {"vertices": 10, "edges": 15, "faces": 7, "loops": 9, "shells": 1},
+    "measure_differs": "Open CASCADE's prism takes the lateral area of an arc as its 2D perimeter times length (140 pi * 10 here), the area of a right cylinder; the oblique cylinder's is the perimeter of its section perpendicular to the direction, an ellipse of eccentricity 0.6, times the length, 280 E(0.6). Open CASCADE's area is 1371.770 against 1329.010, 3.2% high; volume, centroid and counts agree. The fault is in its measurement, not its shape",
+    "occt_file_measure_differs": "Open CASCADE's own STEP of the prism carries the oblique elliptic cylinders, which Arris reads and measures 1329.0102418964143, the closed form to 2e-13; but Open CASCADE's own area measurement of it is 1371.77, the right cylinder's",
+    "genus": 1
+  }
+}

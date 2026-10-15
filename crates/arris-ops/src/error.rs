@@ -172,10 +172,6 @@ pub enum SweepReason {
         /// The segment of that loop, as the consumer wrote it.
         segment: usize,
     },
-    /// An extrude direction is off the profile plane's normal by more than
-    /// the angular tolerance; an oblique extrusion is not built yet
-    /// (ADR-0047).
-    DirectionNotNormal,
     /// A sweep profile's plane holds the path's start tangent within the
     /// angular tolerance: the profile would be carried along its own
     /// plane and sweep no volume.
@@ -212,7 +208,6 @@ impl SweepReason {
             SweepReason::AngleAboveTurn => "AngleAboveTurn",
             SweepReason::SpindleTorus => "SpindleTorus",
             SweepReason::EllipticRevolve { .. } => "EllipticRevolve",
-            SweepReason::DirectionNotNormal => "DirectionNotNormal",
             SweepReason::ProfileAlongPath => "ProfileAlongPath",
             SweepReason::SweepFolds { .. } => "SweepFolds",
             SweepReason::FrameDoesNotClose { .. } => "FrameDoesNotClose",
@@ -238,9 +233,6 @@ impl core::fmt::Display for SweepReason {
                 f,
                 "loop {loop_index}, segment {segment} is elliptic, which a revolve does not sweep"
             ),
-            SweepReason::DirectionNotNormal => {
-                f.write_str("the extrude direction is not the profile plane's normal")
-            }
             SweepReason::ProfileAlongPath => {
                 f.write_str("the profile's plane holds the path's start tangent")
             }
@@ -1020,11 +1012,6 @@ mod tests {
                 "an arc's circle crosses the revolve axis: a spindle torus",
             ),
             (
-                Reason::Sweep(SweepReason::DirectionNotNormal),
-                "DirectionNotNormal",
-                "the extrude direction is not the profile plane's normal",
-            ),
-            (
                 Reason::Boolean(BooleanReason::Empty),
                 "Empty",
                 "the result has no material",
@@ -1125,7 +1112,7 @@ mod tests {
                 "the plane does not cross the body, so one side would be empty",
             ),
         ];
-        assert_eq!(leaves.len(), 31);
+        assert_eq!(leaves.len(), 30);
         for (reason, name, message) in leaves {
             assert_eq!(reason.name(), name);
             assert_eq!(reason.to_string(), message, "{name}");
