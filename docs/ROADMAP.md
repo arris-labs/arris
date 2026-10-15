@@ -107,15 +107,14 @@ fixtures:
 
 | Cycle | Parts blocked | read | measure | write_read | box_cut | drill_x | drill_y | drill_z | fillet |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| blend network | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 |
-| NURBS | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| blend network | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
 | healing | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| NURBS | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | sweep | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 | Refusal | Stage | Count | Blocks |
 |---|---|---:|---|
-| Degenerate(TangentChain) | fillet | 4 | blend network |
-| Unsupported(NURBS curve × cylinder surface) | fillet | 1 | NURBS |
+| Degenerate(TangentChain) | fillet | 5 | blend network |
 <!-- /histogram -->
 
 ---

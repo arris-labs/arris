@@ -801,7 +801,7 @@ bound has to be established here.
     neighbour sit `2.5e-3` under the plane (`z` 0.4275) where Open
     CASCADE's are on it; they are parallel to it and move no area.
   - The S5 rows of 10b's note were decided at 10c and 10d.
-- [ ] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
+- [x] Step 10 **[2]** — **The real parts.** Re-run `tools/real-parts.sh`
   on the fetched tier and `--census-committed`. Move every step 1
   fixture that now agrees out of `regression/` into `blend/` with its
   blessed dump. Name each that still refuses by its other item. Also first: CTC-02 AP242 `drill_x`'s counts disagree with the oracle (643 faces
@@ -813,6 +813,34 @@ bound has to be established here.
   where the run now finds a blend network's; re-record it. Print the
   fillet column's NURBS row before and after, with timings, into this
   plan.
+
+  **Done (2026-10-15).** `tools/real-parts.sh` re-run over both tiers
+  (38 parts, 70 solids: 66 read, 4 refused; 185 battery stages agree, 8
+  both refuse, 12 Arris refuses). The fillet column's **NURBS row is empty**:
+  the histogram's NURBS cycle blocks 0 parts, from 1 (CTC-05 AP242 e1,
+  `Unsupported pair: NURBS surface × torus surface`) before this plan's
+  steps. Every fillet refusal left blocks the blend network: `TangentChain`
+  5 parts (CTC-05 in both editions at the vanishing end of v84/v80, FTC-07,
+  FTC-11, STC-07), `BlendTooLarge` 1 (FTC-06), `VertexBlend` 1. Per part:
+  - CTC-05 AP242 e1: `Unsupported(NURBS × torus)` → `TangentChain`;
+  - FTC-11 AP242 e2: `BlendTooLarge` → `TangentChain` (the near-tangent
+    vertex of step 10b); its sampled edges build 50 of 79, from 47;
+  - the committed FTC-10 record was stale: its battery fillet (4 edges,
+    r 0.294) is `Degenerate(TangentChain)` now, with no `blocks` NURBS entry;
+    re-recorded. The sampled edge at r 0.5 builds.
+  The other parts' columns are unchanged. The fixtures that still refuse
+  are named by their other item: `regression/nist-ftc-11-ap242-slot-chain-fillet`
+  (`TangentChain`, a chain through a vertex tangent within its tolerance) and
+  `regression/nist-ctc-02-ap242-ellipse-chain-fillet` (`VertexBlend`, a skew
+  tangent junction), each a backlog line. The re-run census over the
+  committed excerpts takes 14 s for its fillets.
+
+  **CTC-02 AP242 `drill_x`'s counts** (643 faces against 649) are not this
+  plan's: the same survey at 07502e34, before this plan's first code step,
+  fails identically. It is the drill of backlog line 77, where Open
+  CASCADE's boolean misses a wall (the oracle is wrong, the part has no
+  closed form), so the fetched tier's exit 1 on that stage stands until a
+  part fixture exists to wait on.
 
 ## Acceptance
 

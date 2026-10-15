@@ -16,12 +16,12 @@
         "drill_y": "agree",
         "drill_z": "agree",
         "fillet": {
-          "arris-refuses": "Unsupported(NURBS curve × cylinder surface)"
+          "arris-refuses": "Degenerate(TangentChain)"
         },
         "write_read": "agree"
       },
       "blocks": {
-        "fillet": "NURBS"
+        "fillet": "blend network"
       }
     }
   ],
