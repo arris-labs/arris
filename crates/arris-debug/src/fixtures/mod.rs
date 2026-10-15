@@ -222,6 +222,86 @@ pub struct Axis {
     pub direction: [Num; 3],
 }
 
+/// A helix arc of a [`SweepPath`], from the current point: its radius is
+/// that point's distance from `axis`, `angle_deg` turns about the axis (its
+/// sign is the sense) and the point advances `pitch * angle_deg / 360`
+/// along it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Helix {
+    /// The axis the helix winds about.
+    pub axis: Axis,
+    /// The advance along the axis per full turn.
+    pub pitch: Num,
+    /// The angle turned, in degrees.
+    pub angle_deg: Num,
+}
+
+/// A NURBS curve of a [`SweepPath`], as [`geom::CurveSpec::Nurbs`] takes
+/// it: flat knots, Cartesian control points and weights.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PathNurbs {
+    /// `p`.
+    pub degree: usize,
+    /// The `n + p + 1` knots, each written as often as it repeats.
+    pub knots: Vec<Num>,
+    /// The `n` control points.
+    pub control_points: Vec<[Num; 3]>,
+    /// The `n` weights.
+    pub weights: Vec<Num>,
+}
+
+/// One segment of a [`SweepPath`], from the previous point.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PathSegment {
+    /// A straight segment to a point.
+    Line {
+        /// The end point.
+        line_to: [Num; 3],
+    },
+    /// A circular arc through `via` to a point.
+    Arc {
+        /// The end point.
+        arc_to: [Num; 3],
+        /// A point on the arc between the ends.
+        via: [Num; 3],
+    },
+    /// A helix arc.
+    Helix {
+        /// The helix.
+        helix: Helix,
+    },
+    /// A NURBS curve starting at the current point.
+    Nurbs {
+        /// The curve.
+        nurbs: PathNurbs,
+    },
+}
+
+/// The G1 chain a [`Step::Sweep`] carries its profile along.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SweepPath {
+    /// Where the chain starts.
+    pub start: [Num; 3],
+    /// The segments, each from the end of the one before.
+    pub segments: Vec<PathSegment>,
+}
+
+/// The frame law of a [`Step::Sweep`]: how the profile turns along the
+/// path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SweepLaw {
+    /// The frame that turns no more than the tangent makes it
+    /// (double reflection); Open CASCADE's corrected Frenet.
+    RotationMinimizing,
+    /// The binormal stays this direction (a thread, a spring).
+    Binormal(
+        /// The fixed direction.
+        [Num; 3],
+    ),
+}
+
 /// The rotation part of a transform.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Rotate {
@@ -325,6 +405,19 @@ pub enum Step {
         axis: Axis,
         /// Angle in degrees, 360 for a full turn.
         angle_deg: Num,
+    },
+    /// A profile carried along a path (`tools/oracle/oracle/sweep.py` is the
+    /// oracle's side: `BRepOffsetAPI_MakePipeShell`). Arris has no
+    /// `sweep` yet: the interpreter refuses the step as unsupported.
+    Sweep {
+        /// Step name.
+        name: String,
+        /// The profile step, taken where it stands.
+        profile: String,
+        /// The path.
+        path: SweepPath,
+        /// The frame law.
+        law: SweepLaw,
     },
     /// A rigid transform of a step's shape: rotate, then translate.
     Transform {
@@ -526,6 +619,7 @@ impl Step {
             | Step::PlanarFace { name, .. }
             | Step::Extrude { name, .. }
             | Step::Revolve { name, .. }
+            | Step::Sweep { name, .. }
             | Step::Transform { name, .. }
             | Step::Mirror { name, .. }
             | Step::Split { name, .. }

@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "25ebbbcf2f946827874e9caba4b07a01fe9d08c5e0fbbdd19120156f640f7daf",
+  "results": {
+    "default": {
+      "area": 725.1796538248723,
+      "centroid": [
+        8.18697374531175,
+        8.356588538821598e-17,
+        21.813026254688246
+      ],
+      "counts": {
+        "edges": 7,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          67459.03058016725,
+          -7.056285347760504e-13,
+          -46094.900735889314
+        ],
+        [
+          -7.056285347760504e-13,
+          133517.96733514225,
+          -2.0385225036054944e-13
+        ],
+        [
+          -46094.900735889314,
+          -2.0385225036054944e-13,
+          67459.03058016731
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 7,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "on_axis_first_leg",
+          "point": [
+            0.0,
+            0.0,
+            10.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "on_axis_bend",
+          "point": [
+            2.9289321881345245,
+            0.0,
+            27.071067811865476
+          ]
+        },
+        {
+          "class": "in",
+          "label": "on_axis_last_leg",
+          "point": [
+            20.0,
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_first_leg",
+          "point": [
+            0.0,
+            3.0,
+            10.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inside_the_elbow",
+          "point": [
+            10.0,
+            0.0,
+            20.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_start_cap",
+          "point": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end_cap",
+          "point": [
+            30.0,
+            1.0,
+            30.0
+          ]
+        }
+      ],
+      "volume": 700.0469125961541
+    }
+  }
+}

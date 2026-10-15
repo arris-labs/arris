@@ -185,6 +185,17 @@ pub enum CorpusError {
         /// The cause.
         source: PolyhedronError,
     },
+    /// A step names an operation Arris does not have yet: the oracle builds
+    /// it and the recipe parses, the interpreter refuses.
+    #[error("{fixture}: step {step:?}: {what}")]
+    Unsupported {
+        /// The fixture.
+        fixture: String,
+        /// The step's name.
+        step: String,
+        /// What is not supported.
+        what: String,
+    },
     /// The result step was expected to fail with a typed error —
     /// `expected.degenerate`, or the recipe's `analytic.expect_error` —
     /// and built a body, or failed with another error.
@@ -799,6 +810,7 @@ impl CorpusError {
             | CorpusError::Plane { .. }
             | CorpusError::Polyhedron { .. }
             | CorpusError::Expectation { .. }
+            | CorpusError::Unsupported { .. }
             | CorpusError::Op { .. }
             | CorpusError::StepFile { .. }
             | CorpusError::Refused { .. }
@@ -1958,6 +1970,7 @@ impl Inputs {
             | Step::PlanarFace { .. }
             | Step::Extrude { .. }
             | Step::Revolve { .. }
+            | Step::Sweep { .. }
             | Step::Transform { .. }
             | Step::Mirror { .. }
             | Step::Split { .. }
@@ -2273,6 +2286,11 @@ fn build_step(
                 Vec::new(),
             )
         }
+        Step::Sweep { .. } => Err(CorpusError::Unsupported {
+            fixture: name.clone(),
+            step: step.name().to_string(),
+            what: "sweep is not built yet".to_string(),
+        })?,
         Step::Transform {
             of,
             translate,

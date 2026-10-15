@@ -55,6 +55,7 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
 
 - `oracle/recipe.py` — the recipe interpreter: `box`, `cylinder`, `profile`
   (lines, three-point arcs, circles, holes), `extrude`, `revolve`,
+  `sweep` (`oracle/sweep.py`: `BRepOffsetAPI_MakePipeShell` along a spine of lines, arcs, helix arcs and B-splines, `SetMode(False)` for the rotation-minimising law and `SetMode(gp_Dir)` for a fixed binormal, the profile added where it stands; a face is swept as its wires and sewn with the caps),
   `transform`, `mirror`, `split` (`BRepAlgoAPI_Splitter` of the body with a planar face past its bounding box; the solids go to the side their centroid lies on, and each side is also built as the common or cut of the body with a half-space box, recorded as `half_space` in `expected.json`), `pattern` (expanded to `transform`s before any step is built), `fuse`, `common`, `cut` (a `tools` or `bodies` list is one `BRepAlgoAPI_Cut` or `Fuse` with `SetArguments` and `SetTools`, one General Fuse, not a chain), `fillet`, `chamfer`, `offset`, `shell`
   (`BRepFilletAPI_MakeFillet`, `MakeChamfer` with one distance, each edge
   the nearest to a recipe point by `BRepExtrema`, which must be

@@ -1,0 +1,49 @@
+{
+  "description": "a rounded slot (6 long, 2 wide, ends of radius 1) with its long axis in the xz plane, carried along a planar cubic (0,0,0), (0,0,15), (15,0,25), (30,0,25) turning a quarter under the rotation-minimising law: faces are fitted, the profile is centred on the path so the volume is area times arc length; the cubic's radius of curvature stays over the slot's reach of 3 (ADR-0063)",
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {
+        "start": [-2, -1],
+        "segments": [
+          {"line_to": [2, -1]},
+          {"arc_to": [2, 1], "via": [3, 0]},
+          {"line_to": [-2, 1]},
+          {"arc_to": [-2, -1], "via": [-3, 0]}
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [{"nurbs": {
+          "degree": 3,
+          "knots": [0, 0, 0, 0, 1, 1, 1, 1],
+          "control_points": [[0, 0, 0], [0, 0, 15], [15, 0, 25], [30, 0, 25]],
+          "weights": [1, 1, 1, 1]
+        }}]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_start", "point": [0, 0, 1], "expect": "in"},
+    {"label": "outside_start", "point": [0, 1.5, 1], "expect": "out"},
+    {"label": "inside_middle", "point": [9.375, 0, 18.125], "expect": "in"},
+    {"label": "outside_middle", "point": [9.375, 1.5, 18.125], "expect": "out"},
+    {"label": "inside_end", "point": [29, 0, 25], "expect": "in"},
+    {"label": "outside_end", "point": [29, 0, 29], "expect": "out"},
+    {"label": "on_start_cap", "point": [1, 0, 0], "expect": "on"},
+    {"label": "on_end_cap", "point": [30, 0, 26], "expect": "on"}
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "description": "a circle of radius 2 in the xz plane at (10, 0, 0), carried along four quarter arcs of radius 10 closing on themselves in the xy plane: a closed path with no caps, a torus, volume 2 pi^2 R r^2 and area 4 pi^2 R r (ADR-0063)",
+  "params": {"R": 10, "r": 2},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": ["R", 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+      "outer": {"circle": {"center": [0, 0], "radius": "r"}},
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": ["R", 0, 0],
+        "segments": [
+          {"arc_to": [0, "R", 0], "via": ["R * cos(radians(45))", "R * sin(radians(45))", 0]},
+          {"arc_to": ["-R", 0, 0], "via": ["-R * cos(radians(45))", "R * sin(radians(45))", 0]},
+          {"arc_to": [0, "-R", 0], "via": ["-R * cos(radians(45))", "-R * sin(radians(45))", 0]},
+          {"arc_to": ["R", 0, 0], "via": ["R * cos(radians(45))", "-R * sin(radians(45))", 0]}
+        ]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "on_the_ring", "point": ["R", 0, 0], "expect": "in"},
+    {"label": "in_the_hole", "point": [0, 0, 0], "expect": "out"},
+    {"label": "on_outer_equator", "point": ["R + r", 0, 0], "expect": "on"},
+    {"label": "on_top", "point": [0, "R", "r"], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "2 * pi^2 * R * r^2",
+    "area": "4 * pi^2 * R * r",
+    "genus": 1
+  }
+}

@@ -139,6 +139,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `planar_face` | `profile` — a one-face sheet; a result that is a sheet is measured by its surface properties (area, centroid, inertia at unit area density), recorded with `"sheet": true`, no volume, probes or Euler line, held to the `sheet/` area's dumps, written to STEP and read back by the oracle and by Arris |
 | `extrude` | `profile`, `direction`, `length` |
 | `revolve` | `profile`, `axis` `{origin, direction}`, `angle_deg` |
+| `sweep` | `profile`, `path` `{start, segments}` (each segment `{line_to}`, `{arc_to, via}`, `{helix: {axis, pitch, angle_deg}}` from the current point, or `{nurbs: {degree, knots, control_points, weights}}`), `law`: `"rotation_minimizing"` or `{"binormal": [x, y, z]}`. The oracle is `BRepOffsetAPI_MakePipeShell` (corrected Frenet, or the fixed binormal), the profile added where it stands; it takes wires, so a face's outer wire and its holes' are swept apart and sewn with the two caps, and a helix is a 2D line on a cylinder built to 3D. Arris refuses it as unsupported until `ops::sweep` (docs/plans/sweep.md) |
 | `transform` | `of`, optional `translate`, optional `rotate` `{axis, origin, angle_deg}`; rotation first |
 | `mirror` | `of`, `plane` `{origin, normal}`: the reflection in it (`ops::mirror`; `gp_Trsf::SetMirror` in the oracle) |
 | `fuse`, `common` | `a`, `b`; a `fuse` may instead take `bodies`, a list of two or more step names (one General Fuse, `arris_ops::fuse_many`; ADR-0050) |

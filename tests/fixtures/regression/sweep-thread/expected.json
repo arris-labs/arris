@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "86597c9ee40039c09a6220b05fe29d6280551d28004271a186baeceee9547cd3",
+  "results": {
+    "default": {
+      "area": 1235.311608578549,
+      "centroid": [
+        3.2815083559051784e-14,
+        1.0051680337974047e-13,
+        5.999999999999961
+      ],
+      "counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          24064.792686013192,
+          9.220743495993238e-12,
+          1.2486519478273667e-10
+        ],
+        [
+          9.220743495993238e-12,
+          24064.792686013083,
+          2384.1043001093767
+        ],
+        [
+          1.2486519478273667e-10,
+          2384.1043001093767,
+          39411.68616758469
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "tooth_root",
+          "point": [
+            0.0,
+            10.5,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_the_tooth",
+          "point": [
+            0.0,
+            10.5,
+            2.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_the_apex",
+          "point": [
+            0.0,
+            12.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "just_inside_the_apex",
+          "point": [
+            0.0,
+            11.4,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_start_cap",
+          "point": [
+            10.5,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 356.25638453634986
+    }
+  }
+}

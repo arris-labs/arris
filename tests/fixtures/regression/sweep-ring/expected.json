@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d45195f321f444dae5034bbcfec33e8ebf0e53beabaaadbf983fba1a9340278a",
+  "results": {
+    "default": {
+      "area": 789.5683520871487,
+      "centroid": [
+        0.0,
+        -2.8797212406271293e-16,
+        -7.774689221355267e-17
+      ],
+      "counts": {
+        "edges": 8,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          41452.3384845753,
+          0.0,
+          -1.1161179193627622e-14
+        ],
+        [
+          0.0,
+          41452.33848457532,
+          1.4509532951715917e-13
+        ],
+        [
+          -1.1161179193627622e-14,
+          1.4509532951715917e-13,
+          81325.5402649763
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 8,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "on_the_ring",
+          "point": [
+            10.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_outer_equator",
+          "point": [
+            12.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            0.0,
+            10.0,
+            2.0
+          ]
+        }
+      ],
+      "volume": 789.5683520871482
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "description": "a circle of radius 1 in the axial plane at (10, 0, 0), carried five turns along a right-handed helix of radius 10 and pitch 6 about z under the fixed binormal z: a screw motion, so the volume is the angle times the profile's first moment about the axis, 2 pi * 5 * pi r^2 * 10; faces are fitted (ADR-0063)",
+  "params": {"r": 1, "R": 10, "p": 6, "turns": 5},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": ["R", 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+      "outer": {"circle": {"center": [0, 0], "radius": "r"}},
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": ["R", 0, 0],
+        "segments": [{"helix": {"axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "pitch": "p", "angle_deg": "360 * turns"}}]
+      },
+      "law": {"binormal": [0, 0, 1]}
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "on_the_wire_quarter_turn", "point": [0, "R", "p / 4"], "expect": "in"},
+    {"label": "beside_the_wire", "point": [0, "R", "p / 4 + 1.5"], "expect": "out"},
+    {"label": "just_inside_the_side", "point": [0, "R + r - 0.1", "p / 4"], "expect": "in"},
+    {"label": "just_outside_the_side", "point": [0, "R + r + 0.1", "p / 4"], "expect": "out"},
+    {"label": "in_the_core", "point": [0, 0, 7], "expect": "out"},
+    {"label": "on_start_cap", "point": ["R", 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "2 * pi * turns * pi * r^2 * R",
+    "genus": 0
+  }
+}

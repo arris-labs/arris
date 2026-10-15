@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "521cb71b2785f8982e87b2f9da9d9b8a1a2f32a51d466cc1abab0571c8f0c7a8",
+  "results": {
+    "default": {
+      "area": 1984.7075699439113,
+      "centroid": [
+        8.140048795512957e-15,
+        -1.037701973407695e-14,
+        14.999999999999938
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          123986.89851514902,
+          -4.234834705127356e-12,
+          1.3576854675239667e-10
+        ],
+        [
+          -4.234834705127356e-12,
+          123986.89851514908,
+          9448.340163592127
+        ],
+        [
+          1.3576854675239667e-10,
+          9448.340163592127,
+          99436.25629655231
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "on_the_wire_quarter_turn",
+          "point": [
+            0.0,
+            10.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beside_the_wire",
+          "point": [
+            0.0,
+            10.0,
+            3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "just_inside_the_side",
+          "point": [
+            0.0,
+            10.9,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "just_outside_the_side",
+          "point": [
+            0.0,
+            11.1,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_core",
+          "point": [
+            0.0,
+            0.0,
+            7.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_start_cap",
+          "point": [
+            10.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 986.9604001845532
+    }
+  }
+}

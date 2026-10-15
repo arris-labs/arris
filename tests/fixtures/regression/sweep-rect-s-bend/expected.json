@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "efa2a6ca295f33cc4b36fe5bae2063394e208ff20d7c819b046cef30854cfd55",
+  "results": {
+    "default": {
+      "area": 1380.6861197347048,
+      "centroid": [
+        2.6794919243112245,
+        1.3084504851526946e-16,
+        25.0
+      ],
+      "counts": {
+        "edges": 45,
+        "faces": 22,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 25
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          219054.7407051921,
+          -4.612947831415166e-13,
+          -34089.21535825891
+        ],
+        [
+          -4.612947831415166e-13,
+          227376.02179329353,
+          -1.5004608739373734e-12
+        ],
+        [
+          -34089.21535825891,
+          -1.5004608739373734e-12,
+          11501.671382492543
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 45,
+        "faces": 22,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 25
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "wall_start",
+          "point": [
+            2.0,
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            0.0,
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "wall_above_hole",
+          "point": [
+            0.0,
+            1.5,
+            5.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            0.0,
+            2.5,
+            5.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_start_cap",
+          "point": [
+            2.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "wall_end",
+          "point": [
+            7.358983848622452,
+            0.0,
+            45.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end_cap",
+          "point": [
+            7.358983848622452,
+            0.0,
+            50.0
+          ]
+        }
+      ],
+      "volume": 1062.6096822927439
+    }
+  }
+}

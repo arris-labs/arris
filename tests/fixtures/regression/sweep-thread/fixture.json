@@ -1,0 +1,42 @@
+{
+  "description": "a triangle (base 2.4 on the helix, apex 1.5 outward) in the axial plane at (10, 0, 0), carried three turns along a right-handed helix of radius 10 and pitch 4 about z under the fixed binormal z: volume the angle times the profile's first moment about the axis, 2 pi * 3 * (10 * 1.8 + 0.9); faces are fitted (ADR-0063)",
+  "params": {"R": 10, "p": 4, "turns": 3},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": ["R", 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+      "outer": {
+        "start": [0, -1.2],
+        "segments": [
+          {"line_to": [1.5, 0]},
+          {"line_to": [0, 1.2]},
+          {"line_to": [0, -1.2]}
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": ["R", 0, 0],
+        "segments": [{"helix": {"axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "pitch": "p", "angle_deg": "360 * turns"}}]
+      },
+      "law": {"binormal": [0, 0, 1]}
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "tooth_root", "point": [0, "R + 0.5", "p / 4"], "expect": "in"},
+    {"label": "above_the_tooth", "point": [0, "R + 0.5", "p / 4 + 1.5"], "expect": "out"},
+    {"label": "outside_the_apex", "point": [0, "R + 2", "p / 4"], "expect": "out"},
+    {"label": "just_inside_the_apex", "point": [0, "R + 1.4", "p / 4"], "expect": "in"},
+    {"label": "on_start_cap", "point": ["R + 0.5", 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "2 * pi * turns * (R * 1.8 + 0.9)",
+    "genus": 0
+  }
+}

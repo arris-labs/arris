@@ -1,0 +1,41 @@
+{
+  "description": "a 4 x 4 square in a plane tilted 20 degrees out of the path's normal about x, carried along a quarter arc of radius 15 in the xz plane: the plane misses the arc's axis (the line along y through (15, 0, 0)), so no kind holds the faces and they are fitted. The volume is the rotation's flux, angle * cos(20 degrees) * R * area (ADR-0063)",
+  "params": {"R": 15, "t": 20},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, "cos(radians(t))", "sin(radians(t))"]},
+      "outer": {
+        "start": [-2, -2],
+        "segments": [
+          {"line_to": [2, -2]},
+          {"line_to": [2, 2]},
+          {"line_to": [-2, 2]},
+          {"line_to": [-2, -2]}
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [{"arc_to": ["R", 0, "R"], "via": ["R * (1 - cos(radians(45)))", 0, "R * sin(radians(45))"]}]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": ["R * (1 - cos(radians(45)))", 0, "R * sin(radians(45))"], "expect": "in"},
+    {"label": "outside", "point": ["R * (1 - cos(radians(45))) + 4", 0, "R * sin(radians(45))"], "expect": "out"},
+    {"label": "on_start_cap", "point": [1, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "pi / 2 * cos(radians(t)) * R * 16",
+    "genus": 0
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "description": "a circle of radius 2 placed normal to the path at its start, carried along a line, a quarter arc of radius 10 and a line, all in the xz plane: the pipe of an L-bend, all analytic (cylinder, torus, cylinder), volume pi*4*(20 + 10*pi/2 + 20) by Pappus (ADR-0063)",
+  "params": {"r": 2, "R": 10},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"circle": {"center": [0, 0], "radius": "r"}},
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [
+          {"line_to": [0, 0, 20]},
+          {"arc_to": [10, 0, 30], "via": ["R - R * cos(radians(45))", 0, "20 + R * sin(radians(45))"]},
+          {"line_to": [30, 0, 30]}
+        ]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "on_axis_first_leg", "point": [0, 0, 10], "expect": "in"},
+    {"label": "on_axis_bend", "point": ["R - R * cos(radians(45))", 0, "20 + R * sin(radians(45))"], "expect": "in"},
+    {"label": "on_axis_last_leg", "point": [20, 0, 30], "expect": "in"},
+    {"label": "outside_first_leg", "point": [0, 3, 10], "expect": "out"},
+    {"label": "inside_the_elbow", "point": [10, 0, 20], "expect": "out"},
+    {"label": "on_start_cap", "point": [0, 1, 0], "expect": "on"},
+    {"label": "on_end_cap", "point": [30, 1, 30], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "pi * r^2 * (20 + R * pi / 2 + 20)",
+    "genus": 0
+  }
+}

@@ -48,6 +48,23 @@ Operations, by `op`:
                and no volume, `measure.sheet`)
     extrude    profile <name>, direction [x,y,z], length
     revolve    profile <name>, axis {origin, direction}, angle_deg
+    sweep      profile <name>, path <path>, law <law>
+               <path> = {"start": [x,y,z], "segments": [
+                            {"line_to": [x,y,z]},
+                            {"arc_to": [x,y,z], "via": [x,y,z]},
+                            {"helix": {"axis": {origin, direction},
+                                       "pitch": p, "angle_deg": a}},
+                            {"nurbs": {"degree": d, "knots": [...],
+                                       "control_points": [[x,y,z], ...],
+                                       "weights": [...]}}]}
+               <law>  = "rotation_minimizing" | {"binormal": [x,y,z]}
+               (the profile carried along a G1 chain, where it stands, as
+               `BRepOffsetAPI_MakePipeShell` takes it: corrected Frenet for
+               the first law, the fixed binormal for the second, no contact
+               and no correction; a helix arc starts at the current point,
+               its radius that point's distance from the axis, `angle_deg`
+               turning about the axis with its sign as the sense, the point
+               advancing `pitch * angle / 360` along it. `sweep.py`)
     transform  of <name>, translate [x,y,z] (optional),
                rotate {axis [x,y,z], origin [x,y,z], angle_deg} (optional)
     mirror     of <name>, plane {origin [x,y,z], normal [x,y,z]}
@@ -163,7 +180,7 @@ from OCP.collections import IndexedDataMap_TopoDS_Shape_List_TopoDS_Shape_TopToo
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
 from OCP.collections import List_TopoDS_Shape
 
-from . import OracleError, step as step_file
+from . import OracleError, step as step_file, sweep
 
 # --- parameters and expressions -------------------------------------------
 
@@ -238,6 +255,18 @@ def vector(value: Any, params: dict[str, float], n: int = 3) -> list[float]:
     if not isinstance(value, list) or len(value) != n:
         raise OracleError(f"expected a {n}-vector, got {value!r}")
     return [number(v, params) for v in value]
+
+
+def _number_tree(value: Any, params: dict[str, float]) -> Any:
+    """`value` with every number or expression string in it evaluated: a
+    string that names a law (`rotation_minimizing`) or a key stays as is."""
+    if isinstance(value, dict):
+        return {k: _number_tree(v, params) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_number_tree(v, params) for v in value]
+    if isinstance(value, str) and value != "rotation_minimizing":
+        return number(value, params)
+    return value
 
 
 def resolve_params(fixture: dict, variant: str) -> dict[str, float]:
@@ -902,6 +931,8 @@ def _build_step(
         if angle <= 0.0:
             raise OracleError("revolve angle must be positive")
         return _checked(BRepPrimAPI_MakeRevol(ref(step["profile"]), axis, angle), "revolve")
+    if op == "sweep":
+        return sweep.pipe(ref(step["profile"]), _number_tree(step["path"], params), _number_tree(step["law"], params))
     if op == "transform":
         trsf = gp_Trsf()
         if "rotate" in step:

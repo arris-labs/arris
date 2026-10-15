@@ -1764,6 +1764,33 @@ corpus_tests! {
     /// is `Unsupported`. The desired answer is Open CASCADE's distance.
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
+    /// A circle along line, quarter arc, line in one plane: cylinder, torus, cylinder.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_pipe_l_bend => run "regression/sweep-pipe-l-bend";
+    /// A rectangle with a hole along line, arc, arc, line: planes, cylinders, tori.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_rect_s_bend => run "regression/sweep-rect-s-bend";
+    /// A circle tilted 30 degrees off the path's normal along a line: the elliptic cylinder.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_oblique_circle => run "regression/sweep-oblique-circle";
+    /// A square whose plane misses the arc's axis, along a quarter arc: fitted faces.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_arc_tilted_profile => run "regression/sweep-arc-tilted-profile";
+    /// A circle along five helix turns under the axis as binormal: fitted faces.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_spring => run "regression/sweep-spring";
+    /// A triangle along three helix turns under the axis as binormal: fitted faces.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_thread => run "regression/sweep-thread";
+    /// A rounded slot along a planar cubic: fitted faces.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_spline_handle => run "regression/sweep-spline-handle";
+    /// A circle centred on a non-planar cubic: fitted faces.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_spline_3d => run "regression/sweep-spline-3d";
+    /// A circle along a closed path of four arcs: a torus with no caps.
+    #[ignore = "Unsupported, the sweep op is not built yet (docs/plans/sweep.md step 3 and 5)"]
+    regression_sweep_ring => run "regression/sweep-ring";
 }
 
 /// A variant the recipe does not have fails naming it.

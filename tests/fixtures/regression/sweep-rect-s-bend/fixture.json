@@ -1,0 +1,50 @@
+{
+  "description": "a 6 x 4 rectangle with a round hole of radius 1 along line 15, an arc of 30 degrees and radius 20 to the right, the mirror arc back, and line 15: planar, all analytic (planes, cylinders, tori), the profile centred on the path so the volume is area times length, (24 - pi) * (30 + 2 * 20 * pi / 6) (ADR-0063)",
+  "params": {"R": 20, "a": 30},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {
+        "start": [-3, -2],
+        "segments": [
+          {"line_to": [3, -2]},
+          {"line_to": [3, 2]},
+          {"line_to": [-3, 2]},
+          {"line_to": [-3, -2]}
+        ]
+      },
+      "holes": [{"circle": {"center": [0, 0], "radius": 1}}]
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [
+          {"line_to": [0, 0, 15]},
+          {"arc_to": ["R * (1 - cos(radians(a)))", 0, "15 + R * sin(radians(a))"], "via": ["R * (1 - cos(radians(a / 2)))", 0, "15 + R * sin(radians(a / 2))"]},
+          {"arc_to": ["2 * R * (1 - cos(radians(a)))", 0, "15 + 2 * R * sin(radians(a))"], "via": ["R - 2 * R * cos(radians(a)) + R * cos(radians(a / 2))", 0, "15 + 2 * R * sin(radians(a)) - R * sin(radians(a / 2))"]},
+          {"line_to": ["2 * R * (1 - cos(radians(a)))", 0, "30 + 2 * R * sin(radians(a))"]}
+        ]
+      },
+      "law": "rotation_minimizing"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "wall_start", "point": [2, 0, 5], "expect": "in"},
+    {"label": "in_the_hole", "point": [0, 0, 5], "expect": "out"},
+    {"label": "wall_above_hole", "point": [0, 1.5, 5], "expect": "in"},
+    {"label": "outside", "point": [0, 2.5, 5], "expect": "out"},
+    {"label": "on_start_cap", "point": [2, 0, 0], "expect": "on"},
+    {"label": "wall_end", "point": ["2 * R * (1 - cos(radians(a))) + 2", 0, "20 + 2 * R * sin(radians(a)) + 5"], "expect": "in"},
+    {"label": "on_end_cap", "point": ["2 * R * (1 - cos(radians(a))) + 2", 0, "30 + 2 * R * sin(radians(a))"], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "(24 - pi) * (30 + 2 * R * pi * a / 180)",
+    "genus": 1
+  }
+}
