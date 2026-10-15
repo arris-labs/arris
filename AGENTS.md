@@ -10,9 +10,11 @@ Read in this order: `SEED.md` (charter, competition, stack, the decisions
 taken at kickoff), `docs/ARCHITECTURE.md`, `docs/DATA-MODEL.md`,
 `docs/ROADMAP.md`, `docs/adr/`, then the rules in `.agents/rules/*.md`
 (git, docs lifecycle, kernel) — Claude Code loads them automatically via
-`.claude/rules`; any other agent reads them here. Skills for the idea →
-plan → work → retire → close-cycle → release pipeline, and `inspect` for
-seeing geometry, live in `.agents/skills/` (same symlink arrangement).
+`.claude/rules`; any other agent reads them here. `GLOSSARY.md` holds the
+project's words, one meaning each: use them as written. Skills live in
+`.agents/skills/` (same symlink arrangement): the idea → plan → work →
+retire → close-cycle → release pipeline, `inspect` for seeing geometry,
+and for the human `/next`, `/handoff`, `/retro` and `/wait-what`.
 
 ## Setup (once per clone)
 
@@ -27,31 +29,17 @@ cargo install cargo-fuzz --locked
 
 ## Current state
 
-**C1–C5 done (2026-09-12 to 10-02):** the vertical slice, the application
-gate, every quadric pair, the STEP reader with its real-part corpus
-(healing then blocks 14 of 38 parts), the consumer's API (roles, body
-bytes, cancellation, mirror, products). ADR-0001 to 0033. Beside them the
-Python binding, PyPI `arris` from the `v*` tag (ADR-0034).
-**C6 done (2026-10-05): the blend network.** Chains, the coaxial pairs, traced
-ends, steps, tangent vertices, cusps, fans and unequal miters blend; the
-fetched tier's `fillet` column is 2 parts of 27, both the NURBS cycle's;
-the residue is on the backlog. ADR-0035 to 0046.
-**C7 done (2026-10-07): prismatic features.** Offset faces, shell, the
-multi-tool boolean, split by a plane and per-face tessellation; sweep and
-loft went to the NURBS cycle (ADR-0047 to 0052).
-**C8 done (2026-10-11): the query cycle.** Ray fire and the face-box
-hierarchy, minimum distance, interference and the planar section, each held
-to Open CASCADE and bound in Python (ADR-0053 to 0056).
-**C9 done (2026-10-12): the healing cycle.** Surface models read and
-written as sheet bodies, the STEP writer's length unit, and the reader's
-gap and orientation repairs, each named on the body: healing blocks 0 of 38
-parts at `read`, from 14 (ADR-0057 to ADR-0060).
+**C1–C9 done (2026-09-12 to 10-12)**, each compressed to its status line in
+`docs/ROADMAP.md`: the vertical slice, the application gate, every quadric
+pair, the STEP reader and real-part corpus, the consumer's API, the blend
+network, prismatic features, the query cycle, the healing cycle (healing
+blocks 0 of 38 parts at `read`). ADR-0001 to ADR-0060; PyPI `arris` beside
+them (ADR-0034).
 **C10, the NURBS cycle** (opened 2026-10-12): NURBS against the analytic
-kinds landed 2026-10-13 (the section, booleans, split and section;
-ADR-0061), and the blend on a NURBS face 2026-10-15 (fillet and chamfer as
-a walked stripe over the faces' offsets; the real parts' NURBS row is
-empty; ADR-0062). Next: sweep and loft, then NURBS against NURBS. Draft and thicken run
-beside it, and the DIY part corpus is built in it to rank C11.
+kinds (ADR-0061) and the blend on a NURBS face as a walked stripe
+(ADR-0062) landed; sweep is in progress (`docs/plans/sweep.md`,
+ADR-0063). Next: loft, then NURBS against NURBS; draft and thicken beside
+it, and the DIY part corpus built in it to rank C11.
 
 ## Rules that are not derivable from the code
 
@@ -62,8 +50,8 @@ beside it, and the DIY part corpus is built in it to rank C11.
   provenance. Deterministic ids and iteration. Details:
   `.agents/rules/kernel.md`.
 - Every failure becomes a fixture with an oracle value; acceptance is a
-  corpus run, never a picture. The agent looks at geometry itself —
-  `inspect` skill. Never ask the human to describe a shape.
+  corpus run, never a picture. The agent looks at geometry itself with
+  the `inspect` skill; the human has no better view of a shape.
 - Decisions go in `docs/adr/`; `⚠ OPEN:` in a doc marks a deferred one.
   Kickoff decisions are in `SEED.md` §9 and are not re-litigated.
 - Closure before breadth: a cycle keeps its own output operable before the
@@ -74,9 +62,9 @@ beside it, and the DIY part corpus is built in it to rank C11.
 - Update this file's "Current state" when a milestone lands; keep it under
   ~15 lines — the roadmap holds the detail.
 - Backlog line → `/idea` (brainstorm, `docs/ideas/`) → `/plan` (todo,
-  `docs/plans/`) → `/work` (one step, one commit) → `/retire-plan` (docs
-  updated, plan deleted); `/close-cycle` at a roadmap boundary, ending in
-  `/release`. Not every idea becomes a plan. Details:
+  `docs/plans/`) → `/work` (one step, one commit) → `/retire-plan` (the
+  diff reviewed against the plan, docs updated, plan deleted);
+  `/close-cycle` at a roadmap boundary, then `/release`. Not every idea becomes a plan. Details:
   `.agents/rules/docs-lifecycle.md`.
 - Trunk-based git, `main` always green, commit per plan step, never push
   or publish unasked: `.agents/rules/git.md`. `main` carries the next

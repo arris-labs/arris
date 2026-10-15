@@ -1,6 +1,7 @@
 ---
 name: close-cycle
-description: Close a finished release cycle or milestone — verify nothing is still open, run the mandated drift review of every design doc against the code, compress the finished section of docs/ROADMAP.md to its status line, open the next cycle's section, update the spine and AGENTS.md, and hand the tag to the human. Use when the human says "close the cycle", "v0.2 is done", "milestone is done", "what's next after this release", or when the last line of a roadmap cycle has been retired. Never tags and never pushes.
+description: Close a finished cycle: verify, reconcile findings, drift-review the docs and glossary, compress its roadmap section, open the next, then hand over to /release.
+disable-model-invocation: true
 argument-hint: <cycle or milestone, e.g. v0.2 — and optionally the next cycle's theme>
 ---
 
@@ -26,8 +27,9 @@ second roadmap file, never an `ARCHIVE.md` — git holds the history.
    its `regression/<slug>`), `Reproduce` still replays, fixed blocks
    deleted with their fixture lifted, stale ones rewritten or deleted.
 3. **Drift review** — the only place it happens (`docs/README.md`): read
-   `ARCHITECTURE.md`, `DATA-MODEL.md` and `ROADMAP.md` against the code and
-   fix every sentence no longer true. List the fixes in the reply, or say
+   `ARCHITECTURE.md`, `DATA-MODEL.md`, `ROADMAP.md` and `GLOSSARY.md`
+   against the code and fix every sentence no longer true; a term the docs
+   now use and the glossary lacks gets its entry. List the fixes in the reply, or say
    why nothing drifted.
 4. **Public docs** — `README.md` and `docs/COMPARISON.md` are read against
    the code and `CHANGELOG.md`, not the roadmap, and fixed where they
@@ -61,14 +63,15 @@ second roadmap file, never an `ARCHIVE.md` — git holds the history.
    `**Next:**`, still under ~15 lines.
 9. Commit `docs: close <cycle>`, the body listing the docs updated and the
    drift fixed.
-10. **Run `/release`** — a closed cycle bumps the minor. Tags and pushes
-   stay the human's.
+10. **Hand over to `/release`**: tell the human to run it next — a closed
+   cycle bumps the minor. Tags and pushes stay the human's.
 
-## Don't
+## Keep to
 
-- Don't keep the finished section long "because it is useful".
-- Don't invent the next cycle's scope, or open plans for it here — `/idea`
-  and `/plan` come after.
-- Don't bump the version by hand or skip `/release`.
+- The finished section shrinks to its five parts, however useful the rest
+  reads; its facts move to the doc that owns them.
+- The next cycle's scope is the human's: propose it, and leave its plans to
+  `/idea` and `/plan`.
+- The version moves only through `/release`.
 
 `$ARGUMENTS`

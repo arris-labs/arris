@@ -13,6 +13,8 @@ kickoff.
 | [data-model](DATA-MODEL.md) | Geometry enums and parametrisations, topology entities, pcurves, tolerances, the invariant list, provenance, native format |
 | [roadmap](ROADMAP.md) | Cycles and milestones with acceptance corpora; the work that stands beside them, and the named cycles not yet opened |
 | [adr/](adr/README.md) | Architecture decision records |
+| [glossary](../GLOSSARY.md) | The project's words, one meaning each, and the synonyms they replace |
+| [review](../.agents/review.md) | What the review of a plan's diff checks, read by the reviewer at `/retire-plan` |
 
 Conventions used in these docs: `⚠ OPEN:` marks a question deliberately left
 for implementation time; a decision that closes it gets an ADR.
@@ -26,10 +28,10 @@ how long it should stay true.
 |---|---|---|---|
 | Charter + decisions | `SEED.md`, `adr/` | Append-only | `SEED.md` is frozen at kickoff. A change of mind is a new ADR that supersedes an old one; the old one is never edited. |
 | Design | `ARCHITECTURE.md`, `DATA-MODEL.md`, `ROADMAP.md` | Living | Present tense; describes the system as it is *now*. The commit that changes behaviour updates the doc. No "as of M2" prose — git blame is the history. Milestone progress is one status line per milestone in `ROADMAP.md`, nothing more. |
-| Ideas | `ideas/<slug>.md` | Until decided | A **brainstorm**, not a todo: problem, options with trade-offs, cost, conflicts, recommendation, the decision for the human. From `ideas/TEMPLATE.md`. Accepted → absorbed by its plan and deleted; rejected → one line under "Rejected" in `BACKLOG.md` with the reason, file deleted; parked → kept with `Status: Parked`. |
+| Ideas | `ideas/<slug>.md` | Until decided | A **brainstorm**, not a todo: problem, options with trade-offs, cost, conflicts, recommendation, the decision for the human. From `ideas/TEMPLATE.md`. Accepted → absorbed by its plan and deleted (a plan covering only part of it cuts the file down to the rest); rejected → one line under "Rejected" in `BACKLOG.md` with the reason, file deleted; parked → kept with `Status: Parked`. |
 | Finding | `BACKLOG.md` §Findings | Until fixed | A defect a nightly, a fuzz target or the differential **measured**, in the fixed shape there: what, where, the run and commit and seed it was seen on, how to replay it, the measured numbers, and its state. Written down the moment it is seen — `Seen` and `Reproduce` are what keep it replayable after the run's artifacts age out. Shrinking it to a `regression/` fixture changes its state, not its home. Reconciled at every `/close-cycle` (step 2). |
 | Changelog | `../CHANGELOG.md` | Append-only per release | What a consumer can now do, the refusals they will hit, and each break with its fix. The commit that makes a change a consumer would notice writes its bullet under `Unreleased` (a plan's, at `/retire-plan`); `/release` alone turns `Unreleased` into a version (ADR-0027). |
-| Plans | `plans/<slug>.md` | Ephemeral | Created from `plans/TEMPLATE.md` when an idea is picked up; edited together; executed with checkboxes ticked and commits referencing it; on completion the durable parts move to tier 1/2 and **the plan is deleted**. Deletion is the "done" signal; git keeps it. At most two plans active. |
+| Plans | `plans/<slug>.md` | Ephemeral | Created from `plans/TEMPLATE.md` when an idea is picked up; edited together; executed with checkboxes ticked and commits referencing it; on completion its commits are reviewed against it, the durable parts move to tier 1/2 and **the plan is deleted**. Deletion is the "done" signal; git keeps it. At most two plans active, each under ~150 lines and ~10 steps; larger work is milestone plans. |
 
 Raw ideas go in `BACKLOG.md`, one line each. A line that needs thinking
 becomes an idea; one that is obvious goes straight to a plan; not every idea
@@ -41,7 +43,10 @@ before a cycle closes. The pipeline is walked by the shared skills `/idea`,
 `/plan`, `/work`, `/retire-plan` and, at a cycle boundary, `/close-cycle`
 (`.agents/skills/`, symlinked into `.claude/skills/`), under the rules in
 `.agents/rules/`. `inspect`, beside them, is how the agent sees a shape it is
-changing without a GUI.
+changing without a GUI. For the human: `/next` says where things stand and
+what to run, `/handoff` writes a note a fresh session continues from,
+`/retro` mines a plan's sessions for improvements to this environment, and
+`/wait-what` asks for the last reply again in plain words.
 
 `AGENTS.md`'s "Current state" is capped at ~15 lines and speaks at milestone
 granularity only; progress narrative goes into the roadmap's status lines

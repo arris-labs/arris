@@ -37,24 +37,18 @@ reasons are in `SEED.md` §9.
   form is exact, `analytic.measure_differs` holds the fixture to the closed
   form instead, with ADR-0015's evidence; the oracle's values stay as the
   record.
-- **Acceptance is a corpus run, not a demo**: checker green, oracle
-  matched, property tests green.
 - **Property tests over hand-picked cases**: random operands in random
-  poses, algebraic identities (volume additivity, cut-then-fuse,
-  commutativity, STEP round-trip). A hand-picked case is a regression
-  fixture, not coverage. `prop_shards!` shards are seeded from the base seed
-  and their index and together run at least the configured case count.
+  poses held to algebraic identities; a hand-picked case is a regression
+  fixture, not coverage.
 
 ## API
 
-- `#![warn(missing_docs)]` and `#![forbid(unsafe_code)]` on every crate.
-  Doc comments say what an item guarantees; every operation has an example.
-  A performance case for `unsafe` is an idea, not a step.
-- **Layers**: `math` ← `geom` ← `topo` ← `check` ← `ops`/`mesh` ← `io` ←
-  `debug` ← `arris` (ADR-0013). CI checks `cargo tree` for it.
+- Doc comments say what an item guarantees; every operation has an
+  example. Every crate forbids `unsafe`; a performance case for it is an
+  idea, not a step.
 - **Geometry enums are exhaustive on purpose**: a new kind is a breaking
-  change that fails every `match` to compile. Never add a wildcard arm to an
-  intersection or classification dispatch.
+  change that fails every `match` to compile, so an intersection or
+  classification dispatch names every arm (no `_ =>`).
 - **A break updates the binding in the same commit.** `crates/arris-py`
   maps every error enum exhaustively, so a new variant needs its Python
   class, attributes and `python/arris/_arris.pyi` line; a changed bound

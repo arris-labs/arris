@@ -1,6 +1,7 @@
 ---
 name: retire-plan
-description: Close a completed plan — verify every step is ticked and the acceptance test passes, execute its docs-to-update list, run a drift check on the design docs it touched, update the roadmap status line and AGENTS.md current state, delete the plan file, commit. Use when the human says "retire", "close the plan", "plan is done", or after the acceptance test of a plan's last step passed and the human confirmed.
+description: Close a completed plan: verify, review its commits against the plan, update the docs, delete the plan, sweep the build cache.
+disable-model-invocation: true
 argument-hint: <plan slug>
 ---
 
@@ -17,23 +18,32 @@ Deletion is the "done" signal; anything worth keeping moves first.
    and `cargo nextest run -p <crate> --features parallel` for each of
    `arris-mesh`, `arris-ops`, `arris` whose source changed. Anything red:
    stop and report.
-2. Execute *Docs to update* line by line, present tense, no "as of this
+2. **Review the commits against the plan**, in a subagent so it reads with
+   fresh eyes. Give it the plan file, `.agents/review.md` (its brief and
+   standards), `.agents/rules/kernel.md`, `GLOSSARY.md`, and the plan's
+   commits: `git log --format='%h %s' --grep='plans/<slug>'` (another
+   plan's commits may sit between them, so it reads each with `git show`,
+   not one range diff). Report its findings by axis, unmerged. Fix a hard
+   finding in its own commit (`fix(scope): … (plans/<slug> review)`)
+   before going on; a judgement finding the human decides, and one left
+   for later is a backlog line.
+3. Execute *Docs to update* line by line, present tense, no "as of this
    plan". A closed `⚠ OPEN:` gets its ADR now, listed in
    `docs/adr/README.md`.
-3. **Drift check** every design doc the plan touched against the code; list
+4. **Drift check** every design doc the plan touched against the code; list
    the fixes in the reply.
-4. `docs/ROADMAP.md`: update the status line; if the plan completes a
+5. `docs/ROADMAP.md`: update the status line; if the plan completes a
    milestone, say so and remind the human to tag it.
-5. `AGENTS.md` "Current state": one milestone-level sentence, under ~15
+6. `AGENTS.md` "Current state": one milestone-level sentence, under ~15
    lines.
-6. `CHANGELOG.md` `## Unreleased`: the plan's bullets if a consumer would
+7. `CHANGELOG.md` `## Unreleased`: the plan's bullets if a consumer would
    notice (`.agents/rules/git.md` §The changelog). Every public type or
    signature the commit bodies name goes under `### Breaking` with its fix;
    merge with bullets commits already added. Never the plan's history.
-7. Deferred work: one line each in `docs/BACKLOG.md`.
-8. `git rm docs/plans/<slug>.md`; commit all as `docs: retire plan <slug>`,
+8. Deferred work: one line each in `docs/BACKLOG.md`.
+9. `git rm docs/plans/<slug>.md`; commit all as `docs: retire plan <slug>`,
    the body listing the docs updated.
-9. **Sweep the build cache** (`target/` grows past 100 GB otherwise; build
+10. **Sweep the build cache** (`target/` grows past 100 GB otherwise; build
    output only, never `target/oracle-cache`):
 
    ```sh
@@ -44,13 +54,13 @@ Deletion is the "done" signal; anything worth keeping moves first.
    ```
 
    Report how much it freed.
-10. End with **one recommended next step** from the roadmap's open lines,
+11. End with **one recommended next step** from the roadmap's open lines,
     the other plan and the backlog: the skill and its argument, and one
-    sentence on why it beats the alternatives.
+    sentence on why it beats the alternatives. Suggest `/retro <slug>`
+    first if the plan's sessions had friction worth mining (long stalls,
+    repeated corrections, the human asking where things stand).
 
-## Don't
-
-- Don't summarise the plan into a design doc or keep the file "for
-  reference" — git has it.
+Durable facts move to the design docs and ADRs; the plan itself is
+deleted, not summarised or kept for reference — git has it.
 
 `$ARGUMENTS`

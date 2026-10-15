@@ -1,6 +1,7 @@
 ---
 name: work
-description: Execute the next unchecked step(s) of an active plan in docs/plans/ — implement, test, run the pre-commit checks, commit with the plan-step suffix, tick the box. Use when the human says "work on <plan>", "next step", "continue the plan", or "do steps 3-5". Stops at the step boundary or when a step's open question blocks it.
+description: Execute the next unchecked step(s) of an active plan, a commit per step, then list what is left.
+disable-model-invocation: true
 argument-hint: <plan slug> [step number or range]
 ---
 
@@ -22,7 +23,8 @@ argument-hint: <plan slug> [step number or range]
    in the same commit; the body says why, cites docs/ADRs, names any public
    type or signature changed.
 5. A step that shows the plan is wrong edits the plan in that commit and
-   says so. A geometry failure outside the step's scope becomes an ignored
+   says so. A failure that resists a first fix gets the `inspect` skill's
+   diagnosis loop (a red loop, then ranked hypotheses) before any theory. A geometry failure outside the step's scope becomes an ignored
    `regression/` fixture in the same step (`inspect` skill); its fix is a
    backlog line.
 6. Reply: what landed, the commit, anything surprising. Then list every
@@ -30,12 +32,14 @@ argument-hint: <plan slug> [step number or range]
    title, what it depends on or may rewrite — mark the next, and end with
    `/work <slug> step N` (or `N-M`). Stop unless a range was requested.
 
-## Don't
+## Keep to
 
-- Don't fold two steps into one commit, or tick a box whose test didn't run.
-- Don't bypass the hook; fix the failure or stop and report.
-- Don't widen a tolerance, add a wildcard `match` arm or a fallback path to
-  make a case pass — that is a design change for the plan's open questions.
-- Don't retire the plan; the human triggers `/retire-plan`.
+- One step per commit, its box ticked only when its test ran.
+- A failing hook is fixed, or the step stops and says why; `--no-verify`
+  is never the way past it.
+- A case that will not pass with the design as written is an open question
+  in the plan, never a widened tolerance, a wildcard `match` arm or a
+  fallback path.
+- The last ticked box leaves the plan open: the human runs `/retire-plan`.
 
 `$ARGUMENTS`

@@ -15,9 +15,22 @@ Full rules in `docs/README.md` ("Document lifecycle"). The short version:
   or contested one gets an idea first.
 - At most **two active plans**. `docs/plans/` holding a third means retire
   one first.
-- An idea never contains implementation steps; a plan never re-argues the
-  decision its idea already made — it links the ADR if one was needed.
-- Skills: `/idea`, `/plan`, `/work`, `/retire-plan` walk this pipeline;
+- **A plan is read in two minutes**: under ~150 lines and ~10 steps, each
+  step a few lines (its detail lives in *Design deltas* or an ADR). Larger
+  work is split into milestone plans, each with its own acceptance,
+  planned one after the other.
+- **An idea one plan covers only in part** is cut down when that plan
+  absorbs its part: the file keeps only what is still unplanned, with
+  `Status: Accepted (<option>); <part> absorbed by plans/<slug>`, and the
+  next plan absorbs the rest and deletes it.
+- **`GLOSSARY.md` holds the project's words.** A new or sharpened term is
+  written there in the commit that first uses it in a design doc, ADR or
+  public API; a word the glossary lists under _Avoid_ is replaced by its
+  term.
+- An idea holds options and a decision, its steps left to the plan; a plan
+  links its idea's decision (and the ADR if one was needed) as settled.
+- Skills: `/idea`, `/plan`, `/work`, `/retire-plan` (which reviews the
+  plan's diff against it and `.agents/review.md`) walk this pipeline;
   `/close-cycle` closes a roadmap cycle once its last plan is retired —
   drift review, the finished section compressed to its status line, the
   next section opened. One roadmap file, always; never a second one.

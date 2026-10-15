@@ -9,29 +9,45 @@ argument-hint: <idea in one sentence, or a backlog line>
 An idea is where thinking happens so a plan doesn't have to. Not every idea
 becomes a plan; a clear "no, because…" is a successful outcome.
 
-## Do
-
 1. Pick a slug (`kebab-case`, noun phrase). If `docs/ideas/<slug>.md` exists,
    extend it rather than duplicating.
 2. Read what constrains the idea before forming an opinion: `SEED.md`
-   (non-goals, differentiators), the design doc(s) it touches, every ADR
-   whose decision it might bend, `docs/ROADMAP.md` for which milestone it
-   would belong to, and the code if it exists. Cite paths and ADR numbers.
-3. Write `docs/ideas/<slug>.md` from `docs/ideas/TEMPLATE.md`. Options are
-   real alternatives with honest trade-offs, including "do nothing". Cost is
-   sized in plan steps, not hours. Name what the idea *conflicts* with — a
-   non-goal in `SEED.md`, an ADR, a layer rule — explicitly.
-4. End with one recommendation and the concrete decision(s) the human must
-   make, phrased as questions with your preferred answer first.
+   (non-goals, differentiators), `GLOSSARY.md`, the design doc(s) it
+   touches, every ADR whose decision it might bend, `docs/ROADMAP.md` for
+   which cycle it would belong to, and the code if it exists. Cite paths
+   and ADR numbers.
+3. Write `docs/ideas/<slug>.md` from `docs/ideas/TEMPLATE.md`:
+   - options are real alternatives with honest trade-offs, "do nothing"
+     among them;
+   - cost in plan steps, not hours; past ~10 steps, the milestone plans it
+     would split into;
+   - what it *conflicts* with, by name: a non-goal in `SEED.md`, an ADR, a
+     layer rule, the consumer's API;
+   - **the words**: a term the human used that `GLOSSARY.md` defines
+     differently, or a new concept it needs, with the entry you propose.
+     Say it in the reply too: "the glossary's *refusal* is X; you seem to
+     mean Y".
+   Two pages is long; write what the decision needs.
+4. End with one recommendation and the decisions, in rounds. A round holds
+   every question whose prerequisites are already settled; a question that
+   hangs on another's answer waits for the next round, listed under
+   *Later*. Number them and word each so "yes" accepts your preferred
+   answer:
+
+   ```
+   ❓ **Q1 — <title>**: <the question, the options by letter>
+   ➡️ <preferred answer, one line on why>
+   ```
+
 5. If the idea came from `docs/BACKLOG.md`, remove that line.
-6. Tell the human the recommendation and the decisions in the reply; the file
-   is the record, the reply is the conversation.
+6. Reply with the recommendation and the round; the human answers "yes",
+   or per question (`Q2: B`). Write the answers into the file's *Decision*
+   section, add the agreed glossary entries to `GLOSSARY.md`, and ask the
+   next round until *Later* is empty. The file is the record, the reply is
+   the conversation.
 
-## Don't
-
-- No implementation steps, no checkboxes, no file lists — that is `/plan`.
-- Don't create an ADR; an idea *proposes* that one may be needed.
-- Don't touch code or design docs.
-- Don't write more than the decision needs. Two pages is long.
+The idea stays analysis: steps, checkboxes and file lists belong to
+`/plan`; an ADR is proposed here and written by the plan; code and design
+docs stay as they are.
 
 `$ARGUMENTS`

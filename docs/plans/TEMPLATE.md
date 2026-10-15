@@ -2,7 +2,9 @@
 
 - Started: YYYY-MM-DD
 - Milestone: M? (cycle C?, docs/ROADMAP.md)
-- Idea (verbatim from the human): "…"
+- Idea: docs/ideas/<slug>.md (absorbed, or its <part> absorbed), or verbatim from the human: "…"
+
+Under ~150 lines and ~10 steps; larger work is milestone plans.
 
 ## Goal
 One paragraph: what is true when this plan is done.
@@ -31,6 +33,7 @@ The executable check (test, corpus run, oracle comparison) that closes the plan.
 ## Docs to update on completion
 - `docs/0x-….md` §… — …
 - `AGENTS.md` current state — …
+- `GLOSSARY.md` — a term this plan introduces or sharpens
 Written at planning time; executed before the plan is deleted.
 
 ## Open questions

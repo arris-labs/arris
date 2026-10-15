@@ -1,6 +1,7 @@
 ---
 name: release
-description: Cut a release of the workspace to crates.io and its Python package to PyPI — pick the version from CHANGELOG.md's Unreleased section, cross-checked against the log and the semver gate, turn that section into the version's notes, bump the version and its pins, prove the workspace still packages, and hand the human the exact tag command. Use when the human says "release", "cut a version", "publish", "ship 0.2", or at the end of /close-cycle. Never tags, never pushes, never runs cargo publish.
+description: Prepare a release of the crates and the Python package: version from the changelog, notes, bump, packaging proof, and the tag command for the human.
+disable-model-invocation: true
 argument-hint: <nothing, or a version to force, e.g. 0.2.0>
 ---
 
@@ -79,14 +80,15 @@ skipped. Each re-run asks the reviewer again. The workflow that runs is the
 one **at the tag**: a broken workflow is fixed on `main` and released as a
 new version, never by moving the tag.
 
-## Don't
+## Keep to
 
-- Don't tag, push, `cargo publish` or `twine upload`.
-- Don't state the version anywhere but `Cargo.toml` and the changelog.
-- Don't write `Unreleased` from the log now — the log only cross-checks it.
-- Don't bump the minor "to be safe": pre-1.0 it is the consumer's only
-  breakage signal.
-- Don't release with a red suite, a dirty tree or an unreviewed fixture
-  expectation.
+- Tagging, pushing, `cargo publish` and `twine upload` are the human's;
+  this skill ends at the command it hands over.
+- The version is stated only in `Cargo.toml` and the changelog.
+- `Unreleased` is the source of the notes; the log only cross-checks it.
+- The minor moves only by the rule in step 2: pre-1.0 it is the consumer's
+  only breakage signal.
+- A red suite, a dirty tree or an unreviewed fixture expectation stops the
+  release.
 
 `$ARGUMENTS`

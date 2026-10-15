@@ -127,6 +127,21 @@ A picture says something is off; a number says what.
 A shape the tessellator cannot mesh renders as edges only — a finding, not
 a rendering bug.
 
+## When a failure resists a first fix
+
+1. **A red loop first.** One command, run once already, that goes red on
+   *this* failure in seconds: the fixture's corpus test, an `#[ignore]`d
+   test with the operands, `inspect_step`, a shrunk property seed. Shrink
+   it (below) until removing anything turns it green. No theory before it.
+2. **3–5 ranked hypotheses**, each with the prediction that refutes it
+   ("if the pave on e3 is missing, the pave model lists no hit on f2"),
+   said in the reply before probing; the human may re-rank them.
+3. **Probe one variable at a time**, reading the checker, the dump, the
+   pave model or the picture first. Every debug print is tagged
+   `[DBG-<4 hex>]`, so a grep removes them all before the commit.
+4. The fixing commit's body names the hypothesis that held, so the next
+   debugger learns it.
+
 ## From a failure to a fixture
 
 1. **Reproduce** in a test, operands from primitives or STEP.

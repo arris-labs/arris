@@ -1,6 +1,6 @@
 # Idea: <slug>
 
-- Status: Open | Parked | Accepted → plans/<slug> | Rejected (reason in BACKLOG.md)
+- Status: Open | Parked | Accepted → plans/<slug> | Accepted (<option>); <part> absorbed by plans/<slug> | Rejected (reason in BACKLOG.md)
 - Raised: YYYY-MM-DD
 - Prompt (verbatim from the human): "…"
 
@@ -22,4 +22,13 @@ What it costs to keep the status quo.
 One option, and why the others lose. What would change your mind.
 
 ## Decision for the human
-Concrete questions, preferred answer first. Whether an ADR is needed.
+Round 1: every question whose prerequisites are settled, numbered, each
+worded so "yes" accepts the preferred answer:
+
+❓ **Q1 — <title>**: <the question, the options by letter>
+➡️ <preferred answer>
+
+Whether an ADR is needed. *Later*: questions that wait on an answer above.
+
+## Decision
+The human's answers, by question, as given; empty until then.
