@@ -105,6 +105,13 @@ enum Shape {
         angle: f64,
         centre: Point2,
     },
+    /// A profile swept along a path; `centre` is a point inside the material.
+    Sweep {
+        profile: Profile,
+        path: fixtures::SweepPath,
+        law: fixtures::SweepLaw,
+        centre: Point3,
+    },
 }
 
 /// A fillet or chamfer of one edge of a box or a cylinder.
@@ -252,7 +259,84 @@ fn shape() -> impl Strategy<Value = Shape> {
                 centre: Point2::origin(),
             })
         }),
+        1 => sweep_shape(),
     ]
+}
+
+/// A profile swept along a path.
+fn sweep_shape() -> impl Strategy<Value = Shape> {
+    let r = || finite_f64(0.8..=2.0);
+    let disc_profile = r().prop_map(|radius| Profile {
+        plane: Frame::world(),
+        outer: ProfileLoop::Circle {
+            center: Point2::origin(),
+            radius,
+        },
+        holes: Vec::new(),
+    });
+    let rect_profile = (r(), r()).prop_map(|(hx, hy)| {
+        let p = |u: f64, v: f64| Point2::new(u * hx, v * hy);
+        Profile {
+            plane: Frame::world(),
+            outer: ProfileLoop::Path {
+                start: p(-1.0, -1.0),
+                segments: vec![
+                    ProfileSegment::LineTo(p(1.0, -1.0)),
+                    ProfileSegment::LineTo(p(1.0, 1.0)),
+                    ProfileSegment::LineTo(p(-1.0, 1.0)),
+                    ProfileSegment::LineTo(p(-1.0, -1.0)),
+                ],
+            },
+            holes: Vec::new(),
+        }
+    });
+    (
+        prop_oneof![disc_profile, rect_profile],
+        prop_oneof![
+            // Straight line along z
+            finite_f64(3.0..=8.0).prop_map(|len| {
+                let path = fixtures::SweepPath {
+                    start: num3([0.0, 0.0, 0.0]),
+                    segments: vec![fixtures::PathSegment::Line {
+                        line_to: num3([0.0, 0.0, len]),
+                    }],
+                };
+                let law = fixtures::SweepLaw::RotationMinimizing;
+                let centre = Point3::new(0.0, 0.0, len / 2.0);
+                (path, law, centre)
+            }),
+            // L-bend in xz plane: line, arc of radius 6, line
+            (finite_f64(2.0..=5.0), finite_f64(2.0..=5.0)).prop_map(|(l1, l2)| {
+                let r = 6.0;
+                let h = r * (1.0 - 0.5f64.sqrt());
+                let h2 = r * 0.5f64.sqrt();
+                let path = fixtures::SweepPath {
+                    start: num3([0.0, 0.0, 0.0]),
+                    segments: vec![
+                        fixtures::PathSegment::Line {
+                            line_to: num3([0.0, 0.0, l1]),
+                        },
+                        fixtures::PathSegment::Arc {
+                            via: num3([h, 0.0, l1 + h2]),
+                            arc_to: num3([r, 0.0, l1 + r]),
+                        },
+                        fixtures::PathSegment::Line {
+                            line_to: num3([r + l2, 0.0, l1 + r]),
+                        },
+                    ],
+                };
+                let law = fixtures::SweepLaw::RotationMinimizing;
+                let centre = Point3::new(h, 0.0, l1 + h2);
+                (path, law, centre)
+            }),
+        ],
+    )
+        .prop_map(|(profile, (path, law, centre))| Shape::Sweep {
+            profile,
+            path,
+            law,
+            centre,
+        })
 }
 
 /// A stadium of two lines `l` long and two half circles of radius `r`, or a
@@ -872,6 +956,22 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                 let half = UnitQuaternion::from_axis_angle(&axis.direction, angle / 2.0);
                 let c = Point3::new(centre.x, centre.y, 0.0);
                 axis.origin + half * (c - axis.origin)
+            }
+            Shape::Sweep {
+                profile,
+                path,
+                law,
+                centre,
+            } => {
+                let sketch = format!("sk{i}");
+                steps.push(profile_step(&sketch, profile));
+                steps.push(Step::Sweep {
+                    name: base.clone(),
+                    profile: sketch,
+                    path: path.clone(),
+                    law: law.clone(),
+                });
+                *centre
             }
         };
         let mut body = rim_body.unwrap_or(base);

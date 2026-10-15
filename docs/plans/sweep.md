@@ -322,7 +322,7 @@ bound has to be established here.
   `section-sweep-spline-handle` (query fixture sectioning the fitted NURBS
   handle by a plane); `sweep-thread-chamfer-unsupported` (chamfering the
   crest rail between two NURBS faces refused with `Unsupported`).
-- [ ] Step 8 **[2]** — **Properties.** `sweep_prop` with `prop_shards!`
+- [x] Step 8 **[2]** — **Properties.** `sweep_prop` with `prop_shards!`
   over random G1 paths (lines and arcs, planar and not, random helix
   spans) and random profiles from the existing strategy:
   - the checker is green, or the sweep is a named refusal;
@@ -335,6 +335,14 @@ bound has to be established here.
 
   `prop::recipe` and the differential draw `sweep`; record the 1000-draw
   tally in the roadmap's harness paragraph at retirement.
+
+  **Built (step 8).** `crates/arris-ops/tests/sweep_prop.rs` extended with
+  `g1_piece()` (lines, 3D arcs with roll, helices with roll) and
+  `safe_section()`. Six `prop_shards!` properties covering checker greenness /
+  named refusal, rigid motion commutation, path split volume additivity,
+  `extrude` agreement on lines, exact vs NURBS twin agreement, and STEP round
+  trip volume & counts preservation. `arris-debug`'s `Shape::Sweep` added to
+  `prop::recipe` with random sweep generation and differential draw verification.
 - [ ] Step 9 **[1]** — **The binding and the facade.**
   - `arris.sweep(profile, path, law=...)`, with `Path`, `PathSegment` and
     `FrameLaw` classes, `PathError` mapped, stubs and docstring examples;
