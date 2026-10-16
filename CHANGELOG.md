@@ -101,6 +101,12 @@ into its version (ADR-0027).
   `EllipticCylinder`, its section perpendicular to the direction an ellipse
   (ADR-0014, ADR-0063). A direction whose normal component times the length is
   under the linear tolerance is refused as `InputReason::ZeroThickness`.
+- A body built on `wasm32` is now byte-identical to the same body built
+  natively: sines, arctangents and the other transcendentals run one pure
+  Rust `libm` on every target, so a profile of three-point arcs no longer
+  gets a last-bit different sweep (and different ids and measures) in the
+  browser. `arris_math::real` holds the functions, for a consumer that
+  wants its own inputs computed the same way.
 
 ### Breaking
 

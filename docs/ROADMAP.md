@@ -18,7 +18,7 @@ done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
 ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
-then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063). An unopened cycle carries
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 

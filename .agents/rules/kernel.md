@@ -16,7 +16,8 @@ reasons are in `SEED.md` §9.
 - **Deterministic**: same input, same output and ids on every platform. No
   `HashMap`/`HashSet` iteration where order reaches a geometric decision or
   an id (`BTreeMap`, a `Vec`, or sort). No randomness outside seeded
-  property tests.
+  property tests. Transcendentals go through `arris_math::real`; clippy
+  holds it (ADR-0064).
 - **f64 inside**, the tessellation boundary included (ADR-0011); f32 only
   where a consumer or a format demands it, cast at that boundary.
 - **Tolerances are the model's, never a literal.** A `1e-6` in an algorithm

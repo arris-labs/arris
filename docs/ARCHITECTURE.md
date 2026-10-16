@@ -1714,6 +1714,18 @@ B-Rep).
   its dependency is gated, so the job is unchanged. No kernel crate touches the filesystem, the clock, threads or
   randomness; `arris-debug` is the only crate that writes files, and the
   oracle is not a crate at all.
+- Every transcendental (`sin`, `atan2`, `exp`, `powf`, …) goes through
+  `arris_math::real`, free functions over the pure Rust `libm` crate, pinned
+  exactly, and `nalgebra` runs on its `libm-force` feature; `clippy.toml`
+  bans the `std` methods in every crate, tests, benches and fuzz targets
+  included (ADR-0064). `std`'s own math is the platform's (glibc natively,
+  wasi-libc or Rust's `libm` port on wasm) and differs in the last place,
+  which changes a body's bytes and so its ids. The **determinism corpus**
+  (`crates/arris/tests/determinism.rs`) builds a gear outline of 40 lines
+  and 200 arcs extruded and one recipe per operation family, and holds each
+  body's SHA-256 over its native-format bytes to `digests.json`; CI's
+  `wasm` job runs it on `wasm32-wasip1` under Node, and native and wasm
+  match byte for byte.
 - `f64` everywhere inside, the tessellation boundary included (ADR-0011):
   `TriMesh` positions are `f64` and there is no `f32` accessor, because
   the mesh is measured against the oracle as well as drawn, and a

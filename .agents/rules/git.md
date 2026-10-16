@@ -12,7 +12,8 @@
   --doc`, `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`,
   `tools/check-layers.sh`. It runs once per plan (`/retire-plan`), at
   `/close-cycle` and `/release`. CI runs it at 1000 cases plus the
-  `oracle`, `wasm`, `parallel` and `python` jobs no local gate runs; the
+  `oracle`, `wasm` (which runs the determinism corpus on `wasm32-wasip1`),
+  `parallel` and `python` jobs no local gate runs; the
   human reads CI before a push that matters.
 - Commit **directly to `main`**, one plan step per commit. Branch
   (`plan/<slug>`, rebased, `merge --ff-only`, deleted after) only when a

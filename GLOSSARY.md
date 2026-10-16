@@ -159,6 +159,11 @@ STEP files Arris did not write: the **committed tier** under `real/`, run by
 `cargo test`, and the **fetched tier**, NIST's archives surveyed by
 `tools/real-parts.sh` (ADR-0026).
 
+**Determinism corpus**:
+The recipes whose body dump digests are held equal on every target: native
+and `wasm32-wasip1` match `digests.json` byte for byte
+(`crates/arris/tests/determinism.rs`, ADR-0064).
+
 **Refusal histogram**:
 Every typed refusal over the real-part corpus, counted by kind; with the
 first consumer's regressions it picks the next cycle (ADR-0020).
