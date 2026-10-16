@@ -82,8 +82,10 @@ dependencies = [
  "arris-mesh",
  "arris-ops",
  "arris-topo",
+ "libm",
  "proptest",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

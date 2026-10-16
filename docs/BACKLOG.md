@@ -242,6 +242,17 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: refine the torus's grid in `v` (`surface_grid` splits `u` only) where `minor/major` is near 1, then `sweep-fold-near-limit` returns to the default tolerance.
 
+### arc-sweep-differs-on-wasm32
+
+- What: the same `extrude` of a profile with three-point arcs builds a different body on `wasm32-unknown-unknown` than on x86_64 Linux. This breaks "same input, same output, same ids, on every platform" (`.agents/rules/kernel.md`, README). The cause is `arc_about` in `crates/arris-geom/src/profile.rs`, whose `f64::atan2` gives the arc's sweep. That sweep is the circle's parameter interval in the body, and `f64::atan2` is the platform's libm natively (glibc) and Rust's `libm` port on wasm32, which disagree in the last place for some inputs. The interval differs by 1 ulp, so the body's bytes differ, and so does everything measured from it.
+- Where: ArriX's `crates/arrix-plugin-host/tests/wasm_determinism.rs`, which evaluates its test documents on wasm32 under Node and compares them with its native goldens. Every document with a spur gear differs; the others match to the bit, holes, fillets, booleans, STEP imports and mass properties included.
+- Seen: ArriX commit `921e634` on `arris` 0.8.0, rustc 1.99.0, glibc 2.39, Ryzen 9 7950X, against wasm32 under Node 22; the arc code is unchanged on `8b8f07bf` (0.9.0-dev).
+- Reproduce: ArriX's recipe `crates/arrix-kernel/tests/recipes/gear-extrude-on-wasm32/fixture.json` (a 20-tooth gear's outline, 40 `line_to` and 200 `arc_to`, extruded 8 mm), built natively and on wasm32 and its native bytes compared. Or the one call: `1.9422128270990565e-6_f64.atan2(1.271166962267458e-5)` is `1.516171868280155e-1` natively and `1.5161718682801548e-1` on wasm32, where it equals `libm::atan2`. This is the sweep of the outline's third arc.
+- Evidence: the extrude's input is the same bits on both targets (the consumer computes it with `libm`). The body's BLAKE3 over ArriX's encoding is `9e7347d2…` natively and `87b72b8d…` on wasm32; its volume is `2.452232294324476e-6` m³ against `2.4522322943244763e-6`, and its area `0.0016661823164655486` m² against `…484`. Recomputing `arc_about`'s sweep for the 200 arcs natively, `std`'s `atan2` and `libm::atan2` disagree on 44 of them. The arithmetic before it (the circumcentre, `sqrt`) is exact under IEEE 754 and agrees.
+- State: measured. No `regression/` fixture yet, because the corpus runs on one target; a fixture needs a wasm32 run of the dump-twice determinism check, or a golden dump compared on both.
+- The fix is: call one implementation everywhere. Transcendental functions go through `libm`, compiled into the kernel as pure Rust (an `arris_math` wrapper, with `f64::sin` and its kin in `clippy.toml`'s `disallowed-methods`). There are about 390 such calls in the kernel crates, most in `arris-geom`; ArriX did this for its plugins (its ADR-0036). Then the dump-twice determinism tests run on wasm32 in CI, so the next one is caught here.
+
+
 - S5 of a cone against a cylinder in a fuse result: the differential's case
   found a twice-fused elliptic cylinder, revolved cone and extrusion whose
   result leaves two cone × cylinder pairs undecided at `Full`

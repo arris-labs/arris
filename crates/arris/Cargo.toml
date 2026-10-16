@@ -31,6 +31,8 @@ arris-io.workspace = true
 serde_json.workspace = true
 arris-debug.workspace = true
 proptest.workspace = true
+sha2.workspace = true
+libm.workspace = true
 
 # The corpus benchmark (ADR-0024 §4): an in-house timer, so its own
 # `main`, not libtest's bench harness.

@@ -66,6 +66,10 @@ serde_json = { version = "1.0", features = ["float_roundtrip"] }
 # pure Rust, deterministic, builds for wasm32.
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 sha2 = "0.10"
+# One implementation of the transcendental functions on every target, the
+# same bits natively and on wasm32: pinned exactly, since a release that
+# moves a last bit moves every determinism digest.
+libm = "=0.2.16"
 proptest = { version = "1.11", default-features = false, features = ["std"] }
 # PNG only: the rasteriser writes one format, and the default codec set
 # pulls in dependencies that do not build for wasm32.
