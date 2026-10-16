@@ -55,7 +55,8 @@ arris-debug = { path = "crates/arris-debug" }
 arris = { path = "crates/arris" }
 
 # External crates, pinned here and used with `workspace = true` (SEED.md §4).
-nalgebra = { version = "0.35", default-features = false, features = ["std"] }
+# `libm-force`: its rotations (`from_axis_angle`, `angle`, `rotation_between`) call libm, not std (ADR-0064).
+nalgebra = { version = "0.35", default-features = false, features = ["std", "libm-force"] }
 robust = "1.2"
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }

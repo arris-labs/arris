@@ -109,7 +109,7 @@ dump digest to a committed golden. It runs natively in the gate and on
   `libm` pin, ADR-0064, `clippy.toml`, and the temporary workspace allow. Add the
   backlog's single call as a unit test: `real::atan2(1.9422128270990565e-6,
   1.271166962267458e-5)` has the same bits on every target.
-- [ ] Step 3 **[2]** — `nalgebra` `libm-force`; migrate `arris-math` (6)
+- [x] Step 3 **[2]** — `nalgebra` `libm-force`; migrate `arris-math` (6)
   and `arris-mesh` (5) and pass the per-crate clippy check; re-bless what moves.
 - [ ] Step 4 **[2]** — `arris-geom`, the curves (`profile.rs` first, where
   the report's `arc_about` is) and the 2-D code: about half of its 402

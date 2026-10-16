@@ -1,5 +1,6 @@
 //! Right-handed 3D frames, and 2D frames of either handedness.
 
+use crate::real;
 use core::fmt;
 
 use nalgebra::UnitQuaternion;
@@ -323,8 +324,8 @@ pub(crate) fn rescaled(v: Vec3) -> Option<Vec3> {
     }
     // In [-1023, 1074]: applied in two halves, since `2^1074` is not an
     // `f64` and neither half overflows or underflows on the way.
-    let k = -(largest.log2().floor() as i32);
-    Some(v * 2f64.powi(k / 2) * 2f64.powi(k - k / 2))
+    let k = -(real::log2(largest).floor() as i32);
+    Some(v * real::powi(2f64, k / 2) * real::powi(2f64, k - k / 2))
 }
 
 /// Which way a [`Frame2`]'s `y` turns from its `x`.

@@ -2,6 +2,7 @@
 //! their own (u, v) through the same-parameter pcurves (ADR-0003,
 //! `docs/ARCHITECTURE.md` §Tessellation).
 
+use arris_math::real;
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::domain::FaceDomain;
@@ -778,7 +779,7 @@ fn fill_missing_normals(
         }
         let mut best: Option<(f64, [f64; 3])> = None;
         for (at, n) in &known {
-            let d = (at[0] - uv[0]).powi(2) + (at[1] - uv[1]).powi(2);
+            let d = real::powi(at[0] - uv[0], 2) + real::powi(at[1] - uv[1], 2);
             if best.is_none_or(|(so_far, _)| d < so_far) {
                 best = Some((d, *n));
             }
@@ -1175,7 +1176,7 @@ fn cone_rings(
     if !(u.is_bounded() && v.is_bounded()) {
         return Ok(Vec::new());
     }
-    let sa = half_angle.sin();
+    let sa = real::sin(half_angle);
     // The signed radius at each `v` end; a valid face lies on one nappe,
     // so its middle's sign is the region's.
     let (a, b) = (radius + v.lo() * sa, radius + v.hi() * sa);
@@ -1372,7 +1373,7 @@ mod tests {
             radius,
             half_angle,
         };
-        let v_at = |rho: f64| (rho - radius) / half_angle.sin();
+        let v_at = |rho: f64| (rho - radius) / real::sin(half_angle);
         let u = Interval::new(0.0, 5.0).unwrap();
         let rings = |narrow: f64, wide: f64| -> Vec<f64> {
             let v = Interval::new(v_at(narrow), v_at(wide)).unwrap();
@@ -1386,7 +1387,7 @@ mod tests {
             let points = cone_rings(FaceId::new(0, 0), &cone, &[square], [u, v], 1e-3, 0).unwrap();
             let mut radii: Vec<f64> = points
                 .iter()
-                .map(|p| radius + p.y * half_angle.sin())
+                .map(|p| radius + p.y * real::sin(half_angle))
                 .collect();
             radii.dedup();
             radii

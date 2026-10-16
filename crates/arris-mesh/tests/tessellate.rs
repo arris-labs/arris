@@ -12,6 +12,7 @@
 //! — meshes column by column, at the fixture's tilt and at random ones.
 
 use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder};
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -232,9 +233,9 @@ fn assert_cylinder(m: &Model, body: Body, mesh: &TriMesh, r: f64, h: f64, chord:
     let volume = mesh.signed_volume().unwrap();
     let ratio = volume / exact;
     assert!(
-        (ratio - theta.sin() / theta).abs() <= 1e-9,
+        (ratio - real::sin(theta) / theta).abs() <= 1e-9,
         "ratio {ratio} vs sin θ / θ {}",
-        theta.sin() / theta
+        real::sin(theta) / theta
     );
     let error = 1.0 - ratio;
     assert!(error >= 0.0, "inscribed");
@@ -244,7 +245,7 @@ fn assert_cylinder(m: &Model, body: Body, mesh: &TriMesh, r: f64, h: f64, chord:
         prism_bound(chord, r)
     );
     // The sagitta the mesh achieved is within the chord asked for.
-    assert!(r * (1.0 - (theta / 2.0).cos()) <= chord * (1.0 + 1e-12));
+    assert!(r * (1.0 - real::cos(theta / 2.0)) <= chord * (1.0 + 1e-12));
 }
 
 #[test]
@@ -295,9 +296,9 @@ fn a_small_cylinder_far_out_keeps_its_mesh_volume() {
     let theta = TAU / n as f64;
     let ratio = mesh.signed_volume().unwrap() / (PI * r * r * h);
     assert!(
-        (ratio - theta.sin() / theta).abs() <= 1e-12,
+        (ratio - real::sin(theta) / theta).abs() <= 1e-12,
         "ratio {ratio} vs sin θ / θ {}",
-        theta.sin() / theta
+        real::sin(theta) / theta
     );
 }
 
@@ -312,7 +313,7 @@ fn random_cylinders_in_random_poses_mesh_within_the_bound() {
             finite_f64(-5.0..=-1.0),
         ),
         |(r, h, origin, direction, log_chord)| {
-            let chord = 10f64.powf(log_chord) * r;
+            let chord = real::powf(10f64, log_chord) * r;
             let mut m = Model::default();
             let axis = Axis::new(origin, direction.into_inner()).unwrap();
             let (body, _) = primitive_cylinder(&mut m, axis, r, h).unwrap();
@@ -328,9 +329,9 @@ fn random_cylinders_in_random_poses_mesh_within_the_bound() {
             let volume = mesh.signed_volume().unwrap();
             let ratio = volume / exact;
             prop_assert!(
-                (ratio - theta.sin() / theta).abs() <= 1e-9,
+                (ratio - real::sin(theta) / theta).abs() <= 1e-9,
                 "ratio {ratio} vs {}",
-                theta.sin() / theta
+                real::sin(theta) / theta
             );
             prop_assert!(1.0 - ratio <= prism_bound(chord, r), "above the bound");
             prop_assert!(1.0 - ratio >= -1e-12, "not inscribed");
@@ -427,7 +428,7 @@ fn chord_for(surface: &Surface, region: [Interval; 2]) -> f64 {
     let mut chord: f64 = 1e-2;
     for dir in 0..2 {
         if unit[dir].is_finite() && unit[dir] > 0.0 {
-            chord = chord.max((region[dir].length() / (6.0 * unit[dir])).powi(2));
+            chord = chord.max(real::powi(region[dir].length() / (6.0 * unit[dir]), 2));
         }
     }
     chord
@@ -534,8 +535,8 @@ fn radius_ratio(cone: &Surface, v: Interval) -> f64 {
         panic!("not a cone: {cone:?}");
     };
     let (a, b) = (
-        (radius + v.lo() * half_angle.sin()).abs(),
-        (radius + v.hi() * half_angle.sin()).abs(),
+        (radius + v.lo() * real::sin(half_angle)).abs(),
+        (radius + v.hi() * real::sin(half_angle)).abs(),
     );
     a.max(b) / a.min(b)
 }
@@ -583,7 +584,7 @@ fn frustum_patch(m: &mut Model, cone: &Surface, ratio: f64, narrow: f64) -> (Bod
     else {
         panic!("not a cone: {cone:?}");
     };
-    let v_at = |rho: f64| (rho - radius) / half_angle.sin();
+    let v_at = |rho: f64| (rho - radius) / real::sin(half_angle);
     let v = Interval::new(v_at(narrow), v_at(narrow * ratio)).unwrap();
     let body = sample::patch(m, cone.clone(), Interval::new(0.0, 1.2).unwrap(), v).unwrap();
     (body, v)
@@ -680,7 +681,7 @@ fn a_frustum_of_any_ratio_meshes_within_its_chord() {
             finite_f64(0.1..=2.0),
         ),
         |(cone, log_ratio, narrow)| {
-            let ratio = 10f64.powf(log_ratio).max(1.01);
+            let ratio = real::powf(10f64, log_ratio).max(1.01);
             let mut m = Model::default();
             let (body, v) = frustum_patch(&mut m, &cone, ratio, narrow);
             let chord = chord_for(&cone, [Interval::new(0.0, 1.2).unwrap(), v]);
@@ -716,9 +717,9 @@ fn the_sample_sphere_meshes_within_the_inscribed_bound() {
         // Inscribed: every triangle plane is at least `radius − chord`
         // from the centre, so the mesh holds that ball and is held by the
         // sphere.
-        let exact = 4.0 / 3.0 * PI * radius.powi(3);
+        let exact = 4.0 / 3.0 * PI * real::powi(radius, 3);
         let volume = mesh.signed_volume().unwrap();
-        let inner = 4.0 / 3.0 * PI * (radius - chord).powi(3);
+        let inner = 4.0 / 3.0 * PI * real::powi(radius - chord, 3);
         assert!(
             volume <= exact * (1.0 + EXACT) && volume >= inner,
             "{volume} outside [{inner}, {exact}] at chord {chord}"
@@ -863,7 +864,7 @@ fn an_oblique_hole_meshes_within_the_inscribed_bound() {
     let chord = 1e-3;
     let mesh = tessellate(&m, body, chord).unwrap();
     assert_structure(&m, body, &mesh);
-    let exact = 12000.0 - PI * r * r * 10.0 / tilt.cos();
+    let exact = 12000.0 - PI * r * r * 10.0 / real::cos(tilt);
     let volume = mesh.signed_volume().unwrap();
     assert!(
         (volume - exact).abs() <= exact * prism_bound(chord, r),
@@ -896,11 +897,11 @@ fn an_oblique_hole_meshes_column_by_column_at_random_tilts() {
             finite_f64(-4.0..=-2.0),
         ),
         |(r, tilt, log_chord)| {
-            let chord = 10f64.powf(log_chord) * r;
+            let chord = real::powf(10f64, log_chord) * r;
             let mut m = Model::default();
-            let half = (6.0 + r * tilt.sin()) / tilt.cos();
+            let half = (6.0 + r * real::sin(tilt)) / real::cos(tilt);
             let body = oblique_hole(&mut m, r, tilt, half);
-            let exact = 12000.0 - PI * r * r * 10.0 / tilt.cos();
+            let exact = 12000.0 - PI * r * r * 10.0 / real::cos(tilt);
             let measured = mass_properties(&m, body).map_err(fail)?.volume;
             prop_assert!(
                 (measured - exact).abs() <= 1e-9 * exact,
@@ -930,8 +931,12 @@ fn an_oblique_hole_meshes_column_by_column_at_random_tilts() {
 fn oblique_hole(m: &mut Model, r: f64, tilt: f64, half: f64) -> Body {
     let (plate, _) = primitive_box(m, Point3::origin(), Point3::new(40.0, 30.0, 10.0)).unwrap();
     let axis = Axis::new(
-        Point3::new(20.0, 15.0 - half * tilt.sin(), 5.0 - half * tilt.cos()),
-        Vec3::new(0.0, tilt.sin(), tilt.cos()),
+        Point3::new(
+            20.0,
+            15.0 - half * real::sin(tilt),
+            5.0 - half * real::cos(tilt),
+        ),
+        Vec3::new(0.0, real::sin(tilt), real::cos(tilt)),
     )
     .unwrap();
     let (tool, _) = primitive_cylinder(m, axis, r, 2.0 * half).unwrap();
@@ -952,7 +957,7 @@ fn wall_travel(m: &Model, body: Body, mesh: &TriMesh) -> f64 {
         let u_of = |i: u32| {
             let p = mesh.positions()[i as usize];
             let local = frame.to_local(p3([p[0], p[1], p[2]]));
-            local.y.atan2(local.x)
+            real::atan2(local.y, local.x)
         };
         for t in &mesh.triangles()[range.triangles.clone()] {
             let base = u_of(t[0]);

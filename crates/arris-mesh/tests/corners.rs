@@ -8,6 +8,7 @@
 //! fit its mesh is a typed refusal.
 
 use arris_debug::unmetered::{fillet, primitive_box, revolve};
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
 use arris_debug::sample;
@@ -361,7 +362,7 @@ fn a_cones_apex_corners_carry_its_ring() {
         else {
             continue;
         };
-        let apex_v = -r / half_angle.sin();
+        let apex_v = -r / real::sin(half_angle);
         for i in cf.vertices.clone() {
             let [u, v] = corners.uvs()[i];
             if (v - apex_v).abs() > EXACT {
@@ -370,9 +371,9 @@ fn a_cones_apex_corners_carry_its_ring() {
             seen += 1;
             // The cone's normal does not depend on `v`, so the limit at
             // the apex is the cone's own at this corner's `u`.
-            let want = frame.x().into_inner() * (half_angle.cos() * u.cos())
-                + frame.y().into_inner() * (half_angle.cos() * u.sin())
-                - frame.z().into_inner() * half_angle.sin();
+            let want = frame.x().into_inner() * (real::cos(half_angle) * real::cos(u))
+                + frame.y().into_inner() * (real::cos(half_angle) * real::sin(u))
+                - frame.z().into_inner() * real::sin(half_angle);
             let n = Vec3::from(corners.normals()[i]);
             assert!(
                 (n - want).norm() <= EXACT,
@@ -396,9 +397,9 @@ fn a_cones_apex_corners_carry_its_ring() {
 /// Two normals a half turn apart on a cone of this shape differ by
 /// `2 cos α`; anything above `cos α` is a ring rather than a point.
 fn half_angle_spread(radius: f64, height: f64) -> f64 {
-    (radius / (radius * radius + height * height).sqrt())
-        .atan()
-        .cos()
+    real::cos(real::atan(
+        radius / (radius * radius + height * height).sqrt(),
+    ))
 }
 
 /// A corner block that does not fit is a typed refusal, never a panic

@@ -5,6 +5,7 @@
 //! every other edge is shared by two triangles and is locally Delaunay,
 //! and no triangle lies outside the region; plus hand-picked shapes.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 use std::collections::BTreeMap;
 
@@ -38,7 +39,7 @@ fn star(centre: Point2, angles: &[f64], radii: &[f64], ccw: bool) -> Vec<Point2>
     let mut ring: Vec<Point2> = angles
         .iter()
         .zip(radii)
-        .map(|(a, r)| p(centre.x + r * a.cos(), centre.y + r * a.sin()))
+        .map(|(a, r)| p(centre.x + r * real::cos(*a), centre.y + r * real::sin(*a)))
         .collect();
     if !ccw {
         ring.reverse();
@@ -220,7 +221,7 @@ fn a_regular_polygon_at_every_count_has_n_minus_two_triangles() {
         let ring: Vec<Point2> = (0..n)
             .map(|i| {
                 let a = TAU * i as f64 / n as f64;
-                p(3.0 * a.cos(), 3.0 * a.sin())
+                p(3.0 * real::cos(a), 3.0 * real::sin(a))
             })
             .collect();
         let t = triangulate(&[Polygon2::from_points(ring.iter().copied())], &[]).unwrap();
