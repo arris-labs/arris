@@ -14,7 +14,7 @@ use std::collections::BTreeSet;
 use arris_debug::dump_text;
 use arris_debug::testing::entities_of;
 use arris_debug::unmetered::mass_properties;
-use arris_geom::{LoftError, Profile, ProfileLoop, ProfileSegment, SurfaceKind};
+use arris_geom::{LoftError, Profile, ProfileError, ProfileLoop, ProfileSegment, SurfaceKind};
 use arris_math::{Frame, Point2, Point3, Vec3, real};
 use arris_ops::{Control, LoftKind, OpError, loft};
 use arris_topo::provenance::{Origin, PathPart, Relation, SweepPart};
@@ -230,6 +230,86 @@ fn too_few_sections_are_refused_and_the_model_is_untouched() {
         dump_text(&m, body).unwrap(),
         dump_text(&fresh, same).unwrap()
     );
+}
+
+#[test]
+fn a_closed_loft_of_two_sections_is_refused() {
+    let mut m = Model::default();
+    let err = ruled(&mut m, &[square(0.0, 2.0), square(3.0, 1.0)], true).unwrap_err();
+    assert!(matches!(
+        err,
+        OpError::Loft(LoftError::TooFewSections {
+            given: 2,
+            needed: 3
+        })
+    ));
+}
+
+#[test]
+fn sections_with_unequal_loop_counts_are_refused_naming_the_section() {
+    let mut m = Model::default();
+    let mut holed = square(3.0, 2.0);
+    holed.holes.push(ProfileLoop::Circle {
+        center: Point2::origin(),
+        radius: 0.5,
+    });
+    let err = ruled(&mut m, &[square(0.0, 2.0), holed], false).unwrap_err();
+    assert!(matches!(
+        err,
+        OpError::Loft(LoftError::LoopCount {
+            section: 1,
+            expected: 1,
+            found: 2
+        })
+    ));
+}
+
+#[test]
+fn consecutive_sections_the_same_are_refused_naming_both() {
+    let mut m = Model::default();
+    let sections = [square(0.0, 2.0), square(3.0, 1.0), square(3.0, 1.0)];
+    let err = ruled(&mut m, &sections, false).unwrap_err();
+    assert!(matches!(
+        err,
+        OpError::Loft(LoftError::Coincident {
+            section: 2,
+            previous: 1
+        })
+    ));
+}
+
+#[test]
+fn a_loop_that_collapses_is_refused_as_the_profile_naming_the_section() {
+    let mut m = Model::default();
+    let collapsed = Profile {
+        plane: at(3.0),
+        outer: ProfileLoop::Path {
+            start: Point2::new(1.0, 1.0),
+            segments: vec![
+                ProfileSegment::LineTo(Point2::new(1.0, 1.0)),
+                ProfileSegment::LineTo(Point2::new(1.0, 1.0)),
+                ProfileSegment::LineTo(Point2::new(1.0, 1.0)),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let err = ruled(&mut m, &[square(0.0, 2.0), collapsed], false).unwrap_err();
+    let OpError::Loft(LoftError::Profile { section: 1, source }) = err else {
+        panic!("expected the profile's refusal naming section 1, found {err:?}");
+    };
+    assert!(
+        matches!(
+            source,
+            ProfileError::ShortSegment { .. } | ProfileError::TooFewSegments { .. }
+        ),
+        "{source:?}"
+    );
+    // A circle of no radius is the same refusal.
+    let err = ruled(&mut m, &[square(0.0, 2.0), circle(3.0, 0.0)], false).unwrap_err();
+    assert!(matches!(
+        err,
+        OpError::Loft(LoftError::Profile { section: 1, .. })
+    ));
 }
 
 #[test]

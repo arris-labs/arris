@@ -900,6 +900,17 @@ pub enum ExpectError {
     /// closed path whose rotation-minimising frame comes back turned
     /// (ADR-0063).
     FrameDoesNotClose,
+    /// `OpError::Loft` with `LoftError::TooFewSections`: one section, or
+    /// two when closed. Open CASCADE is not asked, and the oracle records
+    /// the empty result (ADR-0065).
+    LoftTooFewSections,
+    /// `OpError::Loft` with `LoftError::LoopCount`: sections with unequal
+    /// loop counts, which Open CASCADE cannot loft either (ADR-0065).
+    LoftLoopCount,
+    /// `OpError::Loft` with `LoftError::Coincident`: two consecutive
+    /// sections the same, loop for loop, so the span has no extent
+    /// (ADR-0065).
+    LoftCoincident,
     /// `OpError::Degenerate` with `OffsetReason::Vanishes`: an offset that
     /// would make an edge or a face vanish or turn inside out (ADR-0048
     /// §3).

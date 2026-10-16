@@ -885,6 +885,14 @@ corpus_tests! {
     loft_loft_duct => run "loft/loft-duct";
     /// Four circles round an axis lofted smooth and closed: a ring with no caps.
     loft_loft_closed_torus_like => run "loft/loft-closed-torus-like";
+    /// One section: a loft needs two, refused as `LoftError::TooFewSections`.
+    loft_loft_one_section => run "loft/loft-one-section";
+    /// Two sections closed: a closed loft needs three, `TooFewSections`.
+    loft_loft_closed_two_sections => run "loft/loft-closed-two-sections";
+    /// A section with a hole against one without: `LoftError::LoopCount`.
+    loft_loft_loop_count => run "loft/loft-loop-count";
+    /// Two consecutive sections the same: `LoftError::Coincident`.
+    loft_loft_coincident => run "loft/loft-coincident";
     /// A circle along a line then a line at a right angle: the path is not
     /// G1, so `OpError::Path` names the corner where Open CASCADE's pipe
     /// carries the profile through it (ADR-0063).

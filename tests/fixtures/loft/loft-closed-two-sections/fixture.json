@@ -1,0 +1,128 @@
+{
+  "description": "two squares lofted closed: a closed loft needs three sections, refused as TooFewSections (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          4,
+          -4
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              -4
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              -4
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          6
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          3,
+          -3
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              -3
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              -3
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled",
+      "closed": true
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "loft-too-few-sections"
+  }
+}

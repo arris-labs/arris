@@ -18,27 +18,38 @@ vertices project onto it (plans/loft step 1, ADR-0064), so fixtures place
 their start points where that pass keeps them.
 """
 
+from OCP.BRep import BRep_Builder
 from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeSolid, BRepBuilderAPI_Sewing
 from OCP.BRepOffsetAPI import BRepOffsetAPI_ThruSections
 from OCP.ShapeFix import ShapeFix_Solid
 from OCP.TopAbs import TopAbs_SHELL
 from OCP.TopExp import TopExp_Explorer
-from OCP.TopoDS import TopoDS, TopoDS_Shape
+from OCP.TopoDS import TopoDS, TopoDS_Compound, TopoDS_Shape
 
 from . import OracleError
 from .sweep import _wires
 
 
-def _shell_of_loop(wires: list, ruled: bool) -> TopoDS_Shape:
-    """One loop's lofted shell: the wires added in order, built."""
+def _shell_of_loop(wires: list, ruled: bool) -> TopoDS_Shape | None:
+    """One loop's lofted shell: the wires added in order, built; `None` where
+    Open CASCADE reports it not done (two coincident sections)."""
     mk = BRepOffsetAPI_ThruSections(False, ruled, 1e-6)
     mk.CheckCompatibility(True)
     for wire in wires:
         mk.AddWire(TopoDS.Wire(wire))
     mk.Build()
     if not mk.IsDone():
-        raise OracleError("loft: Open CASCADE reports not done")
+        return None
     return mk.Shape()
+
+
+def _nothing() -> TopoDS_Shape:
+    """A loft with too few sections or unequal loop counts is one Open CASCADE
+    cannot be asked for: the result is the empty compound, no solid, which
+    is what a refusal fixture records, as is a loft it reports not done (`analytic.expect_error`)."""
+    empty = TopoDS_Compound()
+    BRep_Builder().MakeCompound(empty)
+    return empty
 
 
 def through(sections: list[TopoDS_Shape], kind: str, closed: bool) -> TopoDS_Shape:
@@ -47,13 +58,13 @@ def through(sections: list[TopoDS_Shape], kind: str, closed: bool) -> TopoDS_Sha
     if kind not in ("ruled", "smooth"):
         raise OracleError(f"loft kind must be \"ruled\" or \"smooth\", not {kind!r}")
     if len(sections) < (3 if closed else 2):
-        raise OracleError("loft needs two sections, a closed one three")
+        return _nothing()
     loops = []
     for face in sections:
         outer, holes = _wires(face)
         loops.append([outer] + holes)
     if any(len(l) != len(loops[0]) for l in loops):
-        raise OracleError("loft: the sections do not have the same number of loops")
+        return _nothing()
     ruled = kind == "ruled"
     count = len(loops[0])
     shells = []
@@ -61,7 +72,10 @@ def through(sections: list[TopoDS_Shape], kind: str, closed: bool) -> TopoDS_Sha
         wires = [l[k] for l in loops]
         if closed:
             wires.append(wires[0])
-        shells.append(_shell_of_loop(wires, ruled))
+        shell = _shell_of_loop(wires, ruled)
+        if shell is None:
+            return _nothing()
+        shells.append(shell)
     if closed:
         if count != 1:
             raise OracleError("loft: a closed loft with a holed section is not a fixture the oracle builds")

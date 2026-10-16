@@ -43,7 +43,8 @@ use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, LumpError, Report, Unchecked, check, lumps};
 use arris_geom::{CurveKind, GeomKind, Surface, SurfaceKind};
 use arris_geom::{
-    FrameLaw, NurbsCurve, Path as GeomPath, PathError, PathSegment as GeomSegment, Profile,
+    FrameLaw, LoftError, NurbsCurve, Path as GeomPath, PathError, PathSegment as GeomSegment,
+    Profile,
 };
 use arris_io::step::{self, StepError};
 use arris_math::nalgebra::UnitQuaternion;
@@ -460,6 +461,15 @@ impl Refusal {
             Refusal::Error(ExpectError::FrameDoesNotClose) => {
                 "OpError::Degenerate with Reason::FrameDoesNotClose".into()
             }
+            Refusal::Error(ExpectError::LoftTooFewSections) => {
+                "OpError::Loft with LoftError::TooFewSections".into()
+            }
+            Refusal::Error(ExpectError::LoftLoopCount) => {
+                "OpError::Loft with LoftError::LoopCount".into()
+            }
+            Refusal::Error(ExpectError::LoftCoincident) => {
+                "OpError::Loft with LoftError::Coincident".into()
+            }
             Refusal::Error(ExpectError::Vanishes) => {
                 "OpError::Degenerate with Reason::Vanishes".into()
             }
@@ -554,7 +564,12 @@ impl Refusal {
                         reason == Reason::Split(SplitReason::NoCrossing)
                     }
                     Refusal::Error(
-                        ExpectError::Nurbs | ExpectError::Unsupported | ExpectError::PathCorner,
+                        ExpectError::Nurbs
+                        | ExpectError::Unsupported
+                        | ExpectError::PathCorner
+                        | ExpectError::LoftTooFewSections
+                        | ExpectError::LoftLoopCount
+                        | ExpectError::LoftCoincident,
                     ) => false,
                 };
                 if matches {
@@ -582,6 +597,25 @@ impl Refusal {
                     "OpError::Unsupported: no closed form for {} ({}) against {} ({})",
                     a.1, a.0, b.1, b.0
                 )
+            }
+            Err(CorpusError::Op {
+                source: OpError::Loft(e),
+                ..
+            }) if matches!(
+                (self, &e),
+                (
+                    Refusal::Error(ExpectError::LoftTooFewSections),
+                    LoftError::TooFewSections { .. },
+                ) | (
+                    Refusal::Error(ExpectError::LoftLoopCount),
+                    LoftError::LoopCount { .. }
+                ) | (
+                    Refusal::Error(ExpectError::LoftCoincident),
+                    LoftError::Coincident { .. }
+                )
+            ) =>
+            {
+                return Ok(());
             }
             Err(CorpusError::Op {
                 source: OpError::Path(PathError::Corner { .. }),

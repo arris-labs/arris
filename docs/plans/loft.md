@@ -120,9 +120,15 @@ bound has to be established here.
   weight function per column first), the chord of the control nets; the
   duct differs by §2's pairing (8.5e-5) and carries it, the ring holds
   1e-8 (ADR-0065 §7).
-- [ ] Step 6 **[2]** — **Refusals.** Too few sections (two, three closed),
+- [x] Step 6 **[2]** — **Refusals.** Too few sections (two, three closed),
   unequal loop counts, two consecutive sections coincident, a loop that
   collapses; each a `regression/` refusal fixture moved to `loft/` passing.
+  *Done as:* the first three are `loft/` fixtures (`ExpectError::
+  LoftTooFewSections | LoftLoopCount | LoftCoincident`; the oracle records
+  the empty result where it is not asked or reports not done), passing at
+  once, so none passed through `regression/`; a collapsed loop is
+  `ProfileError` before it reaches matching (`LoftError::Loop` guards the
+  rest), so it is an `arris-ops` test, not a fixture.
 - [ ] Step 7 **[2]** — **Operands and properties.** Operand fixtures: a
   cone frustum drilled by a cylinder, a duct cut by a plane, a fillet on an
   exact ruled edge, a ruled loft fused with a box. `loft_prop`: translation

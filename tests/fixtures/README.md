@@ -140,7 +140,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `extrude` | `profile`, `direction`, `length` |
 | `revolve` | `profile`, `axis` `{origin, direction}`, `angle_deg` |
 | `sweep` | `profile`, `path` `{start, segments}` (each segment `{line_to}`, `{arc_to, via}`, `{helix: {axis, pitch, angle_deg}}` from the current point, or `{nurbs: {degree, knots, control_points, weights}}`), `law`: `"rotation_minimizing"` or `{"binormal": [x, y, z]}`. The oracle is `BRepOffsetAPI_MakePipeShell` (corrected Frenet, or the fixed binormal), the profile added where it stands; it takes wires, so a face's outer wire and its holes' are swept apart and sewn with the two caps, and a helix is a 2D line on a cylinder built to 3D. Arris builds it with `ops::sweep` (ADR-0063) |
-| `loft` | `sections` (profile step names, two or more, the same number of loops), `kind`: `"ruled"` or `"smooth"`, optional `closed` (the last section joins the first, no caps). The oracle is `BRepOffsetAPI_ThruSections` per loop (outer wire, then each hole's), compatibility checking on (off, it lofts only the first edge of a section with fewer edges), sewn with the first and last profile's faces as caps; a closed loft repeats the first section. Open CASCADE re-starts each wire at the vertex nearest the previous section's start, so a fixture's sections start where it keeps them. Arris builds the ruled kind with `ops::loft` (ADR-0065) and refuses `smooth` as unsupported until the smooth loft lands (plans/loft) |
+| `loft` | `sections` (profile step names, two or more, the same number of loops), `kind`: `"ruled"` or `"smooth"`, optional `closed` (the last section joins the first, no caps). The oracle is `BRepOffsetAPI_ThruSections` per loop (outer wire, then each hole's), compatibility checking on (off, it lofts only the first edge of a section with fewer edges), sewn with the first and last profile's faces as caps; a closed loft repeats the first section. Open CASCADE re-starts each wire at the vertex nearest the previous section's start, so a fixture's sections start where it keeps them. Arris builds both kinds with `ops::loft` (ADR-0065) |
 | `transform` | `of`, optional `translate`, optional `rotate` `{axis, origin, angle_deg}`; rotation first |
 | `mirror` | `of`, `plane` `{origin, normal}`: the reflection in it (`ops::mirror`; `gp_Trsf::SetMirror` in the oracle) |
 | `fuse`, `common` | `a`, `b`; a `fuse` may instead take `bodies`, a list of two or more step names (one General Fuse, `arris_ops::fuse_many`; ADR-0050) |
@@ -242,7 +242,8 @@ of the step that made the fixture pass, and a later change to it is a
   "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
   "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" | "self-intersects" |
   "opening-dragged" | "no-crossing" | "path-corner" | "profile-along-path" |
-  "sweep-folds" | "frame-does-not-close" | "unsupported"` says Open CASCADE
+  "sweep-folds" | "frame-does-not-close" | "loft-too-few-sections" |
+  "loft-loop-count" | "loft-coincident" | "unsupported"` says Open CASCADE
   builds a result Arris refuses by design (the tangent cases,
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
@@ -259,7 +260,7 @@ of the step that made the fixture pass, and a later change to it is a
   along the path (`ProfileAlongPath`), folds past a curved span's radius
   of curvature (`SweepFolds`) or whose closed path's frame comes back
   turned (`FrameDoesNotClose`, where the pipe's closing face is not a
-  closed surface and the oracle records no genus) — ADR-0063; an offset whose
+  closed surface and the oracle records no genus) — ADR-0063; a loft with too few sections or unequal loop counts (`OpError::Loft` with `TooFewSections` or `LoopCount`), where the oracle is not asked and records the empty result, and two coincident consecutive sections (`Coincident`), where `ThruSections` reports not done — ADR-0065; an offset whose
   move it carries through a change of topology, dropping a face or
   splitting a vertex into an edge, which Arris refuses as
   `OffsetReason::Vanishes` or `VertexSplits`, a distance that drives a surface's

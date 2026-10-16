@@ -1,0 +1,137 @@
+{
+  "description": "a square lofted to a square with a hole: the loop counts differ, refused as LoopCount naming section 1 (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          4,
+          -4
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              -4
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              -4
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          6
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          3,
+          -3
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              -3
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              -3
+            ]
+          }
+        ]
+      },
+      "holes": [
+        {
+          "circle": {
+            "center": [
+              0,
+              0
+            ],
+            "radius": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "loft-loop-count"
+  }
+}

@@ -73,7 +73,8 @@ Operations, by `op`:
                checking off, so each loop's start point is the consumer's;
                an open loft is sewn with the first and last profile's faces
                as caps, a closed one repeats the first section and has
-               none. `loft.py`)
+               none. Fewer sections than a loft needs, or unequal loop counts,
+               make the empty compound: a refusal fixture's oracle. `loft.py`)
     transform  of <name>, translate [x,y,z] (optional),
                rotate {axis [x,y,z], origin [x,y,z], angle_deg} (optional)
     mirror     of <name>, plane {origin [x,y,z], normal [x,y,z]}
