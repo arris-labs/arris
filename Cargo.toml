@@ -91,6 +91,13 @@ pyo3 = { version = "0.26", default-features = false, features = ["macros", "abi3
 unsafe_code = "forbid"
 missing_docs = "warn"
 
+# Temporary (plans/libm-everywhere): clippy.toml bans the std
+# transcendentals (ADR-0064) and the migration steps move the crates off
+# them one by one, each checked with `cargo clippy -p <crate> --all-targets
+# -- -D clippy::disallowed_methods`. The last step deletes this table.
+[workspace.lints.clippy]
+disallowed_methods = "allow"
+
 # The dev profile — every `cargo test`, the pre-commit hook, the `inspect`
 # tooling — runs with light optimisation and debug assertions on, so the
 # checker still runs after every operation (`.agents/rules/kernel.md`) while

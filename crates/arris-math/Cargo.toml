@@ -13,6 +13,7 @@ readme.workspace = true
 serde = ["dep:serde", "nalgebra/serde-serialize"]
 
 [dependencies]
+libm.workspace = true
 nalgebra.workspace = true
 robust.workspace = true
 serde = { workspace = true, optional = true }

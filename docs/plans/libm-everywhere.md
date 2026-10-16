@@ -15,7 +15,7 @@ Under ~150 lines and ~10 steps; larger work is milestone plans.
 Every transcendental `f64` function the workspace calls (`sin`, `cos`,
 `sin_cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `exp`,
 `ln`, `log2`, `cbrt`, `hypot`, `powf`, `powi`, and their kin) runs one pure
-Rust implementation, the `libm` crate, through `arris_math::det`, on every
+Rust implementation, the `libm` crate, through `arris_math::real`, on every
 target. Nalgebra's own rotations are routed there too (`libm-force`).
 Clippy bans the `std` methods workspace-wide, so a new call cannot slip back.
 A determinism corpus, a gear outline of 40 lines and 200 three-point arcs
@@ -38,10 +38,10 @@ dump digest to a committed golden. It runs natively in the gate and on
 
 ## Design deltas
 
-- **`arris_math::det`** (new public module): free functions mirroring
-  `libm`'s signatures, `det::atan2(y, x)`, `det::sin_cos(x) -> (sin, cos)`,
-  `det::hypot(x, y)`, …, each `#[inline]` over `libm`. One exception is
-  `det::powi(x, n)`, which is repeated squaring in a fixed order, so
+- **`arris_math::real`** (new public module): free functions mirroring
+  `libm`'s signatures, `real::atan2(y, x)`, `real::sin_cos(x) -> (sin, cos)`,
+  `real::hypot(x, y)`, …, each `#[inline]` over `libm`. One exception is
+  `real::powi(x, n)`, which is repeated squaring in a fixed order, so
   `powi(x, 2)` stays `x * x` bit for bit. Rustdoc states the guarantee
   (same bits on every target) and why it exists. `libm` joins
   `[workspace.dependencies]`, pinned with `=`, because a `libm` release
@@ -52,10 +52,13 @@ dump digest to a committed golden. It runs natively in the gate and on
   parse and format.
 - **`clippy.toml`** (new, at the root): `disallowed-methods` lists each
   `f64::` and `f32::` transcendental with the reason "use
-  `arris_math::det` (ADR-0064)". It covers tests, benches and fuzz targets
+  `arris_math::real` (ADR-0064)". It covers tests, benches and fuzz targets
   too: a test input computed with glibc's `sin` would break the wasm
-  golden. While the migration runs, each crate carries a temporary
-  `#![allow(clippy::disallowed_methods)]` that its own step removes.
+  golden. While the migration runs, `[workspace.lints.clippy]
+  disallowed_methods = "allow"` in the root manifest stands in (a
+  crate-level allow would not cover a crate's `tests/` and `benches/`); each
+  step checks its crates with `cargo clippy -p <crate> --all-targets -- -D
+  clippy::disallowed_methods`, and step 7 deletes the table.
 - **`nalgebra`** in `[workspace.dependencies]` gains `features =
   ["libm-force"]`: `Rotation3::from_axis_angle`, `.angle()`,
   `from_euler_angles` and `rotation_between` go through simba's `libm`
@@ -83,7 +86,7 @@ dump digest to a committed golden. It runs natively in the gate and on
   tolerance compare instead of bit equality, which breaks the id
   contract), and sets the rule for new calls. It amends ADR-0011's
   "f64 inside" with "and one libm".
-- **No public signature changes.** `det` is additive. Every blessed dump
+- **No public signature changes.** `real` is additive. Every blessed dump
   whose last digits move is re-blessed in its migration step, with
   `fixtures:` in the message saying it is a last-ulp move from the libm
   switch; oracle values do not change.
@@ -102,21 +105,21 @@ dump digest to a committed golden. It runs natively in the gate and on
   `arris-debug` build for wasip1, and does Node's WASI run libtest?
   Answered: both work. On wasip1, std's math is wasi-libc's (musl), not
   Rust's `libm` port, and it still differs from glibc.
-- [ ] Step 2 **[1]** — `arris_math::det` with rustdoc and an example, the
-  `libm` pin, ADR-0064, `clippy.toml`, and the temporary allows. Add the
-  backlog's single call as a unit test: `det::atan2(1.9422128270990565e-6,
+- [x] Step 2 **[1]** — `arris_math::real` with rustdoc and an example, the
+  `libm` pin, ADR-0064, `clippy.toml`, and the temporary workspace allow. Add the
+  backlog's single call as a unit test: `real::atan2(1.9422128270990565e-6,
   1.271166962267458e-5)` has the same bits on every target.
 - [ ] Step 3 **[2]** — `nalgebra` `libm-force`; migrate `arris-math` (6)
-  and `arris-mesh` (5) and remove their allows; re-bless what moves.
+  and `arris-mesh` (5) and pass the per-crate clippy check; re-bless what moves.
 - [ ] Step 4 **[2]** — `arris-geom`, the curves (`profile.rs` first, where
   the report's `arc_about` is) and the 2-D code: about half of its 402
   calls. Re-bless.
 - [ ] Step 5 **[2]** — `arris-geom`, the surfaces and intersections, the
-  rest of the 402; remove its allow. Re-bless.
-- [ ] Step 6 **[1]** — `arris-ops` (32) and `arris-io` (25); remove allows;
+  rest of the 402; pass its clippy check. Re-bless.
+- [ ] Step 6 **[1]** — `arris-ops` (32) and `arris-io` (25); pass the clippy check;
   re-bless.
 - [ ] Step 7 **[1]** — `arris-debug` (75), `arris-py` (2), and the ~550
-  calls in tests, benches and fuzz targets; delete the last allows. Clippy
+  calls in tests, benches and fuzz targets; delete the workspace allow table. Clippy
   is now the guard.
 - [ ] Step 8 **[2]** — Grow the determinism corpus to the full recipe list
   and bless it natively. Un-ignore the wasm case: it passes on wasip1
@@ -130,16 +133,16 @@ dump digest to a committed golden. It runs natively in the gate and on
 `cargo test --target wasm32-wasip1 -p arris --test determinism`, with
 the Node runner, matches `digests.json` byte for byte, including the
 backlog's gear. The full gate passes with the `clippy.toml` ban and no
-`disallowed_methods` allow left (`grep -r disallowed_methods crates`
+`disallowed_methods` allow left (`grep -r disallowed_methods Cargo.toml crates`
 finds only `clippy.toml`). Oracle values are unchanged; every re-blessed
 dump differs only in last digits.
 
 ## Docs to update on completion
 
 - `docs/ARCHITECTURE.md` §Threading and wasm and the f64 bullet (ADR-0011
-  line): one `libm`, `arris_math::det`, the determinism corpus.
+  line): one `libm`, `arris_math::real`, the determinism corpus.
 - `.agents/rules/kernel.md` §Correctness, the Deterministic bullet:
-  "transcendentals through `arris_math::det`; clippy holds it".
+  "transcendentals through `arris_math::real`; clippy holds it".
 - `.agents/rules/git.md` full-gate paragraph: CI's `wasm` job now runs
   the determinism corpus.
 - `docs/BACKLOG.md`: delete the `arc-sweep-differs-on-wasm32` block, and
@@ -151,7 +154,5 @@ dump differs only in last digits.
 
 ## Open questions
 
-- ⚠ OPEN: the module name `det`. Agent, by step 2. Alternatives:
-  `arris_math::libm`, which shadows the crate, and `arris_math::real`.
-  `det` reads as "determinant" next to the matrix code, so `real` is
-  better if that collision bites.
+- Settled in step 2: the module is `real`. `det` collides with the local
+  `det` of `arris-ops`' offset code, as feared (ADR-0064).

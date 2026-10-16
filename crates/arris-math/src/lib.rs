@@ -25,6 +25,7 @@ mod isometry;
 mod periodic;
 mod precision;
 pub mod predicates;
+pub mod real;
 mod reflection;
 pub mod roots;
 pub mod sweep_steps;
