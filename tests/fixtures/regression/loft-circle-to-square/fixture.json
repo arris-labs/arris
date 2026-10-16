@@ -1,0 +1,141 @@
+{
+  "description": "a circle of radius 4 (its start turned 45 degrees to the square's start corner) lofted ruled to a square of side 8, 6 above it: the circle's one segment against four, every span a degree-1 NURBS (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          0.7071067811865476,
+          0.7071067811865476,
+          0
+        ],
+        "y": [
+          -0.7071067811865476,
+          0.7071067811865476,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 4
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          6
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          4,
+          4
+        ],
+        "segments": [
+          {
+            "line_to": [
+              -4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              -4
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              -4
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              4
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above",
+      "point": [
+        0,
+        0,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bottom",
+      "point": [
+        1,
+        1,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        1,
+        1,
+        6
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

@@ -302,6 +302,16 @@ pub enum SweepLaw {
     ),
 }
 
+/// How a [`Step::Loft`] joins consecutive sections.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LoftKind {
+    /// Each span between consecutive sections is straight.
+    Ruled,
+    /// One surface through all the sections.
+    Smooth,
+}
+
 /// The rotation part of a transform.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Rotate {
@@ -418,6 +428,20 @@ pub enum Step {
         path: SweepPath,
         /// The frame law.
         law: SweepLaw,
+    },
+    /// Profiles lofted through, in order (`tools/oracle/oracle/loft.py` is the
+    /// oracle's side: `BRepOffsetAPI_ThruSections`). Arris has no `loft`
+    /// yet: the interpreter refuses the step as unsupported.
+    Loft {
+        /// Step name.
+        name: String,
+        /// The profile steps, taken where they stand: the loft sections.
+        sections: Vec<String>,
+        /// Ruled spans or one smooth surface.
+        kind: LoftKind,
+        /// Whether the last section joins the first, with no caps.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        closed: bool,
     },
     /// A rigid transform of a step's shape: rotate, then translate.
     Transform {
@@ -620,6 +644,7 @@ impl Step {
             | Step::Extrude { name, .. }
             | Step::Revolve { name, .. }
             | Step::Sweep { name, .. }
+            | Step::Loft { name, .. }
             | Step::Transform { name, .. }
             | Step::Mirror { name, .. }
             | Step::Split { name, .. }

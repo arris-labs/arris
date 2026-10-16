@@ -1824,6 +1824,27 @@ corpus_tests! {
     /// is `Unsupported`. The desired answer is Open CASCADE's distance.
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
+    /// A square lofted ruled to a smaller one: four planes.
+    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    regression_loft_square_frustum => run "regression/loft-square-frustum";
+    /// Coaxial circles lofted ruled: a cone.
+    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    regression_loft_cone_frustum => run "regression/loft-cone-frustum";
+    /// A circle against a square lofted ruled: the circle split, degree-1 NURBS spans.
+    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    regression_loft_circle_to_square => run "regression/loft-circle-to-square";
+    /// A square lofted ruled to one turned 30 degrees: four twisted quads.
+    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    regression_loft_twisted_square => run "regression/loft-twisted-square";
+    /// A hole in every section lofted ruled: planes outside, a cone in the bore.
+    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    regression_loft_ring_to_ring => run "regression/loft-ring-to-ring";
+    /// A circle, a rounded rectangle and a circle lofted smooth: one surface through three sections.
+    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    regression_loft_duct => run "regression/loft-duct";
+    /// Four circles round an axis lofted smooth and closed: a ring with no caps.
+    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    regression_loft_closed_torus_like => run "regression/loft-closed-torus-like";
 }
 
 /// A variant the recipe does not have fails naming it.

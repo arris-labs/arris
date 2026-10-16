@@ -1,0 +1,174 @@
+{
+  "description": "four circles of radius 1.5 in the planes through the z axis at 0, 90, 180 and 270 degrees, centred 8 from it, lofted smooth and closed: a torus-like ring, no caps (plans/loft)",
+  "steps": [
+    {
+      "name": "c0",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          8.0,
+          0.0,
+          0
+        ],
+        "x": [
+          1.0,
+          0.0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1.5
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "c1",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0.0,
+          8.0,
+          0
+        ],
+        "x": [
+          0.0,
+          1.0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1.5
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "c2",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          -8.0,
+          0.0,
+          0
+        ],
+        "x": [
+          -1.0,
+          0.0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1.5
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "c3",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          -0.0,
+          -8.0,
+          0
+        ],
+        "x": [
+          -0.0,
+          -1.0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1.5
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "c0",
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "kind": "smooth",
+      "closed": true
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_ring",
+      "point": [
+        8,
+        0,
+        0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_hole",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_ring_far",
+      "point": [
+        0,
+        -8,
+        0
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "genus": 1
+  }
+}

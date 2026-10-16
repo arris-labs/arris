@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "e6c5cf79fb0570abad2d71d7fceec837fbb171bb0a2725159e104c70d6419879",
+  "results": {
+    "default": {
+      "area": 314.064043716696,
+      "centroid": [
+        -1.3501130076416564e-15,
+        -2.380006904496509e-16,
+        3.346938775510204
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          3860.825028914186,
+          -2.557953848736359e-13,
+          1.1009062142634043e-12
+        ],
+        [
+          -2.557953848736359e-13,
+          3860.825028794793,
+          2.0502420622914542e-13
+        ],
+        [
+          1.1009062142634043e-12,
+          2.0502420622914542e-13,
+          3621.6280110583075
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            4.5,
+            0.0,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_slant",
+          "point": [
+            4.0,
+            0.0,
+            4.0
+          ]
+        }
+      ],
+      "volume": 410.50144006906623
+    }
+  }
+}

@@ -65,6 +65,15 @@ Operations, by `op`:
                its radius that point's distance from the axis, `angle_deg`
                turning about the axis with its sign as the sense, the point
                advancing `pitch * angle / 360` along it. `sweep.py`)
+    loft       sections [<name>, ...], kind "ruled" | "smooth",
+               closed true | false (optional, false)
+               (the profiles where they stand, two or more, lofted through
+               in order with the same number of loops: loop k of every
+               section is one `BRepOffsetAPI_ThruSections` with compatibility
+               checking off, so each loop's start point is the consumer's;
+               an open loft is sewn with the first and last profile's faces
+               as caps, a closed one repeats the first section and has
+               none. `loft.py`)
     transform  of <name>, translate [x,y,z] (optional),
                rotate {axis [x,y,z], origin [x,y,z], angle_deg} (optional)
     mirror     of <name>, plane {origin [x,y,z], normal [x,y,z]}
@@ -180,7 +189,7 @@ from OCP.collections import IndexedDataMap_TopoDS_Shape_List_TopoDS_Shape_TopToo
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as IndexedMapOfShape
 from OCP.collections import List_TopoDS_Shape
 
-from . import OracleError, step as step_file, sweep
+from . import OracleError, loft, step as step_file, sweep
 
 # --- parameters and expressions -------------------------------------------
 
@@ -933,6 +942,11 @@ def _build_step(
         return _checked(BRepPrimAPI_MakeRevol(ref(step["profile"]), axis, angle), "revolve")
     if op == "sweep":
         return sweep.pipe(ref(step["profile"]), _number_tree(step["path"], params), _number_tree(step["law"], params))
+    if op == "loft":
+        names = step["sections"]
+        if not isinstance(names, list):
+            raise OracleError("loft needs a list of section profiles")
+        return loft.through([ref(n) for n in names], step["kind"], bool(step.get("closed", False)))
     if op == "transform":
         trsf = gp_Trsf()
         if "rotate" in step:

@@ -1,0 +1,164 @@
+{
+  "description": "a square of side 8 lofted ruled to the same square turned 30 degrees, 6 above it, its start corner turned with it: four twisted quads (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          4,
+          -4
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              -4
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              -4
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          6
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          5.464101615137755,
+          -1.4641016151377546
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.4641016151377546,
+              5.464101615137755
+            ]
+          },
+          {
+            "line_to": [
+              -5.464101615137754,
+              1.4641016151377562
+            ]
+          },
+          {
+            "line_to": [
+              -1.464101615137754,
+              -5.464101615137755
+            ]
+          },
+          {
+            "line_to": [
+              5.464101615137755,
+              -1.4641016151377546
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above",
+      "point": [
+        0,
+        0,
+        7
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bottom",
+      "point": [
+        1,
+        1,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top",
+      "point": [
+        1,
+        1,
+        6
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "description": "a circle of radius 5 lofted ruled to one of radius 3, 8 above it, coaxial: a cone frustum, volume pi h/3 (R^2 + R r + r^2) (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 5
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          8
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 3
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        4.5,
+        0,
+        6
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_slant",
+      "point": [
+        4,
+        0,
+        4
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * 8 / 3 * (25 + 15 + 9)",
+    "area": "pi * (5 + 3) * sqrt(64 + 4) + pi * (25 + 9)",
+    "genus": 0
+  }
+}

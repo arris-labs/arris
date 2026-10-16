@@ -2020,6 +2020,7 @@ impl Inputs {
             | Step::Extrude { .. }
             | Step::Revolve { .. }
             | Step::Sweep { .. }
+            | Step::Loft { .. }
             | Step::Transform { .. }
             | Step::Mirror { .. }
             | Step::Split { .. }
@@ -2425,6 +2426,11 @@ fn build_step(
                 Vec::new(),
             )
         }
+        Step::Loft { .. } => Err(CorpusError::Unsupported {
+            fixture: name.clone(),
+            step: step.name().to_string(),
+            what: "loft is not built yet".to_string(),
+        })?,
         Step::Transform {
             of,
             translate,

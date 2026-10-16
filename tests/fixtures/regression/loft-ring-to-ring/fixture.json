@@ -1,0 +1,185 @@
+{
+  "description": "a square of side 10 with a round hole of radius 2 lofted ruled to a square of side 6 with a hole of radius 1, 8 above it: planes outside, a cone in the bore (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          5,
+          -5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              -5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              -5
+            ]
+          }
+        ]
+      },
+      "holes": [
+        {
+          "circle": {
+            "center": [
+              0,
+              0
+            ],
+            "radius": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          8
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          3,
+          -3
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              -3
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              -3
+            ]
+          }
+        ]
+      },
+      "holes": [
+        {
+          "circle": {
+            "center": [
+              0,
+              0
+            ],
+            "radius": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        3.5,
+        0,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_bore",
+      "point": [
+        0,
+        0,
+        4
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bore",
+      "point": [
+        1.5,
+        0,
+        4
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bottom",
+      "point": [
+        3,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "8 / 3 * (100 + 36 + sqrt(100 * 36)) - pi * 8 / 3 * (4 + 2 + 1)",
+    "genus": 1
+  }
+}

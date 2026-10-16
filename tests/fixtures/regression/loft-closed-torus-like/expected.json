@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "df18cb7e64090439f65abeab6ac2798ab0823c2fcf662f0c726ac7fc336715c9",
+  "results": {
+    "default": {
+      "area": 504.31819114265625,
+      "centroid": [
+        1.1102793554949137,
+        -3.5993277248222236e-15,
+        1.715636971891402e-16
+      ],
+      "counts": {
+        "edges": 2,
+        "faces": 1,
+        "loops": 1,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 1
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          13826.221771270537,
+          1.65670556742298e-11,
+          -1.3174748003439484e-12
+        ],
+        [
+          1.65670556742298e-11,
+          13919.673461376075,
+          1.7720768683186686e-12
+        ],
+        [
+          -1.3174748003439484e-12,
+          1.7720768683186686e-12,
+          27315.04824019811
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 2,
+        "faces": 1,
+        "loops": 1,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 1
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_ring",
+          "point": [
+            8.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_hole",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_ring_far",
+          "point": [
+            0.0,
+            -8.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 382.97510334174376
+    }
+  }
+}

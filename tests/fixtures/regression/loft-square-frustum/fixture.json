@@ -1,0 +1,166 @@
+{
+  "description": "a square of side 10 lofted ruled to one of side 6, 8 above it: a pyramid frustum of four planes, volume h/3 (A1 + A2 + sqrt(A1 A2)) (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          5,
+          -5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              -5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              -5
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          8
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          3,
+          -3
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              -3
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              -3
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above",
+      "point": [
+        0,
+        0,
+        9
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bottom",
+      "point": [
+        1,
+        1,
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_slant",
+      "point": [
+        4,
+        0,
+        4
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "8 / 3 * (100 + 36 + sqrt(100 * 36))",
+    "area": "100 + 36 + 4 * (10 + 6) / 2 * sqrt(64 + 4)",
+    "genus": 0
+  }
+}
