@@ -912,6 +912,64 @@ impl Model {
         })
     }
 
+    /// The solid through two or more placed `sections` (profiles with the
+    /// same number of loops), in order. `kind="ruled"` makes each span
+    /// between consecutive sections straight: planes, cylinders and cones
+    /// where the sections allow, a degree-1 NURBS face otherwise;
+    /// `kind="smooth"` makes one surface through every section (at most
+    /// nine). A section with fewer segments is cut by arc length to match
+    /// the other, each loop's start point fixing the correspondence. Open,
+    /// the first and last sections are planar caps; `closed=True` joins the
+    /// last section to the first and builds no caps. Every entity is named
+    /// by its span and the part of the sketch it came from
+    /// (`Role("loft", ...)`).
+    ///
+    /// Raises `ValueError` for a `kind` other than `"ruled"` or `"smooth"`;
+    /// `OpLoftError` (its `detail` names the section) for too few sections,
+    /// unequal loop counts, two coincident consecutive sections or too many
+    /// for a smooth loft. A section that is not a valid profile is
+    /// an `OpLoftError` too.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// def square(z, half):
+    ///     corners = [(half, half), (-half, half), (-half, -half), (half, -half)]
+    ///     return arris.Profile(
+    ///         arris.Loop.polygon(corners), origin=(0, 0, z), normal=(0, 0, 1)
+    ///     )
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.loft([square(0, 2), square(3, 1)])
+    /// # A frustum: h/3 (A1 + A2 + sqrt(A1 A2)) with areas 16 and 4.
+    /// assert abs(model.mass_properties(body).volume - 28) < 1e-9
+    /// ```
+    #[pyo3(signature = (sections, kind="ruled", closed=false, *, cancel=None, budget=None))]
+    fn loft(
+        &self,
+        py: Python<'_>,
+        sections: Vec<PyRef<'_, Profile>>,
+        kind: &str,
+        closed: bool,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Made> {
+        let kind = match kind {
+            "ruled" => arris::ops::LoftKind::Ruled,
+            "smooth" => arris::ops::LoftKind::Smooth,
+            other => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "{other:?} is not a loft kind (\"ruled\" or \"smooth\")"
+                )));
+            }
+        };
+        let sections: Vec<_> = sections.iter().map(|p| p.kernel.clone()).collect();
+        let limits = Limits::new(cancel, budget);
+        self.operate(py, &limits, move |m, control| {
+            arris::ops::loft(m, &sections, kind, closed, control)
+        })
+    }
+
     /// `body` with the given `edges` rounded to `radius`.
     ///
     /// An edge on a free-form face, or between analytic faces that no closed

@@ -135,9 +135,12 @@ bound has to be established here.
   commutes; reversed order keeps volume and area; two equal parallel
   sections are their extrude; similar coaxial sections meet the frustum
   formula. `prop::recipe` draws `loft`.
-- [ ] Step 8 **[1]** — **The Python binding.** `loft`, `LoftKind` and
+- [x] Step 8 **[1]** — **The Python binding.** `loft`, `LoftKind` and
   `OpLoftError` in `arris-py`, the stub and a docstring example; the facade's
   doc example.
+  *Done as:* `Model.loft(sections, kind="ruled", closed=False)`, `kind` a
+  string as `shell`'s `side` is, so no `LoftKind` class; `OpLoftError` had
+  landed in step 3.
 
 ## Acceptance
 

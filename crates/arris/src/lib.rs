@@ -55,6 +55,27 @@
 //! assert_eq!(provenance.outputs().len(), 10);
 //! ```
 //!
+//! Profiles placed at different heights are lofted: `loft` goes through
+//! two or more of them, ruled (each span straight) or smooth (one surface).
+//!
+//! ```
+//! use arris::Control;
+//! use arris::geom::profile::{Profile, ProfileLoop};
+//! use arris::math::{Frame, Point2, Point3, Vec3};
+//! use arris::ops::{LoftKind, loft};
+//! use arris::topo::Model;
+//!
+//! let disc = |z: f64, radius: f64| Profile {
+//!     plane: Frame::new(Point3::new(0.0, 0.0, z), Vec3::z(), Vec3::x()).unwrap(),
+//!     outer: ProfileLoop::Circle { center: Point2::origin(), radius },
+//!     holes: vec![],
+//! };
+//! let mut m = Model::default();
+//! let sections = [disc(0.0, 2.0), disc(3.0, 1.0)];
+//! let (cone, _) = loft(&mut m, &sections, LoftKind::Ruled, false, &Control::NONE).unwrap();
+//! assert_eq!(m.faces(cone).unwrap().len(), 3, "two caps and the cone");
+//! ```
+//!
 //! Every operation on a model takes a [`Control`] last, so its caller can
 //! stop it: a poll it answers from whatever its platform has (here an
 //! `AtomicBool` another thread sets), a budget of steps, both or neither.

@@ -126,3 +126,30 @@ def test_a_budget_stops_the_sweep():
     model = arris.Model()
     with pytest.raises(arris.Interrupted):
         model.sweep(disc(), spine, budget=0)
+
+
+def square(z, half):
+    corners = [(half, half), (-half, half), (-half, -half), (half, -half)]
+    return arris.Profile(arris.Loop.polygon(corners), origin=(0, 0, z), normal=(0, 0, 1))
+
+
+def test_a_ruled_loft_is_the_frustum():
+    model = arris.Model()
+    body, _ = model.loft([square(0, 2), square(3, 1)])
+    assert model.mass_properties(body).volume == pytest.approx(28, abs=1e-9)
+
+
+def test_a_smooth_loft_through_three_sections_builds_a_body():
+    model = arris.Model()
+    body, _ = model.loft([square(0, 2), square(3, 1), square(6, 2)], kind="smooth")
+    assert model.mass_properties(body).volume > 0
+
+
+def test_a_loft_refusal_is_named():
+    model = arris.Model()
+    with pytest.raises(arris.OpLoftError):
+        model.loft([square(0, 2)])
+    with pytest.raises(arris.OpLoftError):
+        model.loft([square(0, 2), square(3, 1)], closed=True)
+    with pytest.raises(ValueError):
+        model.loft([square(0, 2), square(3, 1)], kind="cubic")

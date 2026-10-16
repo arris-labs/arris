@@ -589,6 +589,15 @@ class Model:
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> _Made: ...
+    def loft(
+        self,
+        sections: Sequence[Profile],
+        kind: str = "ruled",
+        closed: bool = False,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> _Made: ...
     def fillet(
         self,
         body: Body,
