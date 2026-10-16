@@ -7,6 +7,7 @@
 //! shape.
 
 use arris_debug::unmetered::primitive_box;
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_3, TAU};
 
 use arris_debug::prop::geom::{circle, ellipse, line, nurbs_curve};
@@ -143,7 +144,7 @@ prop_shards! {
             let expected_length = match curve {
                 Curve::Line { direction, .. } => {
                     let d = plane.vec_to_local(direction.into_inner());
-                    range.length() * d.x.hypot(d.y)
+                    range.length() * real::hypot(d.x, d.y)
                 }
                 Curve::Circle { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_) => range.length(),
             };

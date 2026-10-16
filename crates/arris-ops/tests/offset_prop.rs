@@ -13,6 +13,7 @@
 //! under `tests/fixtures/regression/` (`tests/fixtures/README.md`
 //! §Property-test failures).
 
+use arris_math::real;
 use core::f64::consts::PI;
 
 use arris_check::classify::{Classification, classify_point};
@@ -103,7 +104,9 @@ impl Solid {
     fn volume(&self, d: f64) -> f64 {
         match *self {
             Solid::Box { x, y, z } => (x + 2.0 * d) * (y + 2.0 * d) * (z + 2.0 * d),
-            Solid::Cylinder { radius, height } => PI * (radius + d).powi(2) * (height + 2.0 * d),
+            Solid::Cylinder { radius, height } => {
+                PI * real::powi(radius + d, 2) * (height + 2.0 * d)
+            }
             Solid::Rounded { x, y, z, radius } => {
                 let (r, x, y, z) = (
                     radius + d,
@@ -114,7 +117,7 @@ impl Solid {
                 x * y * z
                     + 2.0 * r * (x * y + y * z + z * x)
                     + PI * r * r * (x + y + z)
-                    + 4.0 / 3.0 * PI * r.powi(3)
+                    + 4.0 / 3.0 * PI * real::powi(r, 3)
             }
         }
     }
@@ -648,7 +651,7 @@ impl WallCase {
     fn volume(&self) -> f64 {
         let [x, y, z] = self.size;
         match self.wall {
-            Wall::Cylinder => PI * (x.min(y) / 2.0).powi(2) * z,
+            Wall::Cylinder => PI * real::powi(x.min(y) / 2.0, 2) * z,
             Wall::Box | Wall::Ell { .. } => polygon_area(&self.polygon()) * z,
         }
     }
@@ -782,12 +785,12 @@ prop_shards! {
                 .map_err(|e| fail(format!("fillet of the pushed box: {e}")))?;
             assert_checked(&check(&m, rounded, Level::Full))?;
             let got = mass_properties(&m, rounded).map_err(fail)?.volume;
-            same_measure("fillet volume", got, volume - (1.0 - PI / 4.0) * case.blend.powi(2) * x, REL)?;
+            same_measure("fillet volume", got, volume - (1.0 - PI / 4.0) * real::powi(case.blend, 2) * x, REL)?;
             let (cut_edge, _) = chamfer(&mut m, tall, &[rim], case.blend)
                 .map_err(|e| fail(format!("chamfer of the pushed box: {e}")))?;
             assert_checked(&check(&m, cut_edge, Level::Full))?;
             let got = mass_properties(&m, cut_edge).map_err(fail)?.volume;
-            same_measure("chamfer volume", got, volume - 0.5 * case.blend.powi(2) * x, REL)?;
+            same_measure("chamfer volume", got, volume - 0.5 * real::powi(case.blend, 2) * x, REL)?;
             // A bore through the whole height, in the middle.
             let axis = Axis::z_at(Point3::new(x / 2.0, y / 2.0, -1.0));
             let (tool, _) = primitive_cylinder(&mut m, axis, case.bore, height + 2.0).map_err(fail)?;
@@ -796,7 +799,7 @@ prop_shards! {
                 .map_err(|e: OpError| fail(format!("cut of the pushed box: {e}")))?;
             assert_checked(&check(&m, bored, Level::Full))?;
             let got = mass_properties(&m, bored).map_err(fail)?.volume;
-            same_measure("cut volume", got, volume - PI * case.bore.powi(2) * height, REL)?;
+            same_measure("cut volume", got, volume - PI * real::powi(case.bore, 2) * height, REL)?;
             Ok(())
         }
 }

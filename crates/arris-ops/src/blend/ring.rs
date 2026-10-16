@@ -1,5 +1,6 @@
 //! A blend of a closed edge: a ring, its seam and its ends, on a torus or a cylinder.
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 use std::collections::BTreeSet;
 
@@ -690,7 +691,9 @@ fn read_ring<'a>(env: &Env<'a>, edge: EdgeId) -> Result<RingRead<'a>, OpError> {
             continue;
         };
         let centre = frame.to_local(rim.origin());
-        if rim.z().cross(&frame.z()).norm() > tol.angular || centre.x.hypot(centre.y) > tolerance {
+        if rim.z().cross(&frame.z()).norm() > tol.angular
+            || real::hypot(centre.x, centre.y) > tolerance
+        {
             // A circle on a cylinder or a cone is one of its parallels; on
             // a sphere or a torus it may be a circle about another axis —
             // a sphere's tilted to its frame, a torus's meridian — which
@@ -798,7 +801,7 @@ fn read_section(env: &Env<'_>, rd: &RingRead<'_>) -> Result<Section, OpError> {
                 // The ruling at `u`: `(R + v sin α, h₀ ± v cos α)`, the sign
                 // of the cone's `Z` against the axis, its normal read off
                 // the face's outward one.
-                let (sa, ca) = half_angle.sin_cos();
+                let (sa, ca) = real::sin_cos(half_angle);
                 let up = frame.z().dot(&axis.z()).signum();
                 let normal = Vec2::new(up * ca, -sa);
                 Meridian {
@@ -936,7 +939,7 @@ fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blen
             // Each contact's angle about the tube's centre, the two taken
             // the short way round.
             let angle = |p: Vec2| {
-                let v = (p.y - c.y).atan2(p.x - c.x);
+                let v = real::atan2(p.y - c.y, p.x - c.x);
                 if v < 0.0 { v + TAU } else { v }
             };
             let (mut v_a, mut v_b) = (angle(on_a), angle(on_b));
@@ -1003,7 +1006,7 @@ fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blen
                         x,
                     )?,
                     radius: narrow.x,
-                    half_angle: chord.x.abs().atan2(chord.y.abs()),
+                    half_angle: real::atan2(chord.x.abs(), chord.y.abs()),
                 },
                 on_a,
                 on_b,

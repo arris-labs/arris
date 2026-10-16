@@ -11,6 +11,7 @@
 //! at two hundred poses; and every refusal with the model untouched.
 
 use arris_debug::unmetered::{extrude, mass_properties, primitive_cylinder};
+use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_debug::prop::profile::{PROFILE_RADIUS, Sweep};
@@ -282,15 +283,16 @@ fn polygon_with_hole() -> impl Strategy<Value = (Profile, Point2, f64, f64)> {
                     .map(|(k, &(jitter, fraction))| {
                         let a = (k as f64 + jitter) * share;
                         Point2::new(
-                            fraction * PROFILE_RADIUS * a.cos(),
-                            fraction * PROFILE_RADIUS * a.sin(),
+                            fraction * PROFILE_RADIUS * real::cos(a),
+                            fraction * PROFILE_RADIUS * real::sin(a),
                         )
                     })
                     .collect();
                 let free = (0..n)
                     .map(|k| distance_to_segment(points[k], points[(k + 1) % n]))
                     .fold(f64::INFINITY, f64::min);
-                let center = Point2::from(offset * free * Vec2::new(phase.cos(), phase.sin()));
+                let center =
+                    Point2::from(offset * free * Vec2::new(real::cos(phase), real::sin(phase)));
                 if backwards {
                     points.reverse();
                 }
@@ -415,7 +417,7 @@ fn every_refusal_is_typed_and_leaves_the_model_untouched() {
         other => panic!("{other:?}"),
     };
     let one_degree = 1f64.to_radians();
-    let tilted = Vec3::new(0.0, one_degree.sin(), one_degree.cos());
+    let tilted = Vec3::new(0.0, real::sin(one_degree), real::cos(one_degree));
     assert_eq!(
         reason(&mut m, &plate(), Vec3::x(), 1.0),
         Reason::Input(InputReason::ZeroThickness)
@@ -595,7 +597,7 @@ fn an_extrude_either_way_has_the_same_numbers() {
 fn oblique_extrude_builds() {
     let mut m = Model::default();
     let one_degree = 1f64.to_radians();
-    let tilted = Vec3::new(0.0, one_degree.sin(), one_degree.cos());
+    let tilted = Vec3::new(0.0, real::sin(one_degree), real::cos(one_degree));
     let (up, _) = extrude(&mut m, &plate(), tilted, 1.0).unwrap();
     let (down, _) = extrude(&mut m, &plate(), -tilted, 1.0).unwrap();
     assert_eq!(counts(&m, up), (10, 15, 7));

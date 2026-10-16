@@ -4,6 +4,7 @@
 //! a line, fully checked; a concave edge; and the refusals a chamfer
 //! words differently from a fillet.
 
+use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_check::{Level, check};
@@ -167,9 +168,9 @@ fn a_ruling_edge_chamfers_at_the_chord() {
     let report = check(&m, chamfered, Level::Full);
     assert!(report.is_ok(), "{report}");
     audit(&m, &[body], chamfered, &provenance).unwrap();
-    let theta = 2.0 * (d / (2.0 * radius)).asin();
-    let triangle = 0.5 * d * radius * theta.sin();
-    let segment = 0.5 * radius * radius * (theta - theta.sin());
+    let theta = 2.0 * real::asin(d / (2.0 * radius));
+    let triangle = 0.5 * d * radius * real::sin(theta);
+    let segment = 0.5 * radius * radius * (theta - real::sin(theta));
     let volume =
         0.5 * core::f64::consts::PI * radius * radius * length - length * (triangle + segment);
     let got = mass_properties(&m, chamfered).unwrap().volume;
@@ -490,7 +491,7 @@ fn three_chamfers_at_a_box_corner_meet_in_a_triangle() {
     audit(&m, &[body], chamfered, &provenance).unwrap();
 
     let props = mass_properties(&m, chamfered).unwrap();
-    let volume = 8.0 - 3.0 * D * D + 2.0 * D.powi(3) / 3.0;
+    let volume = 8.0 - 3.0 * D * D + 2.0 * real::powi(D, 3) / 3.0;
     assert!(
         (props.volume - volume).abs() <= 1e-9 * volume,
         "{}",

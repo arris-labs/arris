@@ -9,6 +9,7 @@
 //! and each edge piece placed on the other face as an image or matched
 //! to a piece of its boundary as a common block.
 
+use arris_math::real;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Mutex, PoisonError};
 
@@ -418,7 +419,7 @@ fn straight_through(surface: &Surface, curve: &Curve, t: f64) -> bool {
         .eval(t)
         .d1
         .try_normalize(0.0)
-        .is_some_and(|d| d.dot(&frame.z()).abs() > 0.5 * half_angle.cos())
+        .is_some_and(|d| d.dot(&frame.z()).abs() > 0.5 * real::cos(*half_angle))
 }
 
 /// The points [`at_shared_end`] samples along the stretch from a

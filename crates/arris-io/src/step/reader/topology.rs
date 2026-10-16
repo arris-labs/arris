@@ -94,6 +94,7 @@
 //! The body is checked at `Level::Fast` in every build (ADR-0025 §5), and
 //! a violation is the file's: [`Refusal::Invalid`].
 
+use arris_math::real;
 use std::collections::{BTreeMap, BTreeSet};
 use std::f64::consts::TAU;
 
@@ -2253,7 +2254,7 @@ fn seam_to(
             let (x, pole) = (start - frame.origin(), row.point - frame.origin());
             let circle = Frame::new(frame.origin(), x.cross(&pole), x)
                 .map_err(|_| "a VERTEX_LOOP whose face's bound reaches its pole")?;
-            let angle = pole.dot(&circle.y()).atan2(pole.dot(&circle.x()));
+            let angle = real::atan2(pole.dot(&circle.y()), pole.dot(&circle.x()));
             (
                 Curve::Circle {
                     frame: circle,
@@ -2676,7 +2677,7 @@ fn isocurves(
                 continue;
             };
             let d = b - centre;
-            let angle = d.dot(&frame.y()).atan2(d.dot(&frame.x()));
+            let angle = real::atan2(d.dot(&frame.y()), d.dot(&frame.x()));
             let angle = if angle > 0.0 { angle } else { angle + TAU };
             if let Ok(range) = Interval::new(0.0, angle) {
                 out.push((Curve::Circle { frame, radius }, range));
@@ -2699,12 +2700,13 @@ fn isocurves(
             minor_radius,
         } => {
             let (u, v) = (pa.uv.x, pa.uv.y);
-            let radial = u.cos() * frame.x().into_inner() + u.sin() * frame.y().into_inner();
+            let radial =
+                real::cos(u) * frame.x().into_inner() + real::sin(u) * frame.y().into_inner();
             let axis = frame.z().into_inner();
             if k == 0 {
                 arcs(frame.origin() + major_radius * radial, axis.cross(&radial))
             } else {
-                arcs(frame.origin() + minor_radius * v.sin() * axis, axis)
+                arcs(frame.origin() + minor_radius * real::sin(v) * axis, axis)
             }
         }
         Surface::Nurbs(_) => {
@@ -2920,7 +2922,7 @@ mod tests {
     fn a_gap_peaking_between_samples_is_measured_at_its_top() {
         // A bump of height 3 centred between the samples at 0.5 and 0.75,
         // which see it at a fraction of its top.
-        let bump = |t: f64| 3.0 * (-((t - 0.6) / 0.08).powi(2)).exp();
+        let bump = |t: f64| 3.0 * real::exp(-real::powi((t - 0.6) / 0.08, 2));
         let ts = samples(Interval::new(0.0, 1.0).unwrap(), 5);
         assert!(ts.iter().all(|&t| bump(t) < 1.0));
         assert!((worst_gap(&ts, 1e-7, bump) - 3.0).abs() < 1e-12);

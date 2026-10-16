@@ -31,6 +31,7 @@
 //! can be within the part is kept, found from closed-form bounds, so the
 //! NURBS form is exact over any face or edge the part can have on it.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_geom::{Curve, MAX_DEGREE, NurbsCurve, NurbsSurface, Surface};
@@ -384,7 +385,7 @@ impl Geometry<'_> {
                 let (start, end) = if sense { (t1, t2) } else { (t2, t1) };
                 let middle = start + 0.5 * (end - start).rem_euclid(TAU);
                 // The file's own formula, whichever semi-axis is longer.
-                let (s, c) = middle.sin_cos();
+                let (s, c) = real::sin_cos(middle);
                 Ok(Some(
                     frame.origin()
                         + first * c * frame.x().into_inner()
@@ -592,7 +593,7 @@ fn trim_parameter(list: &[Param]) -> Option<f64> {
 
 /// `frame` turned by `angle` about its `Z`.
 fn turned(frame: &Frame, angle: f64) -> Frame {
-    let (s, c) = angle.sin_cos();
+    let (s, c) = real::sin_cos(angle);
     let x = c * frame.x().into_inner() + s * frame.y().into_inner();
     let y = frame.z().into_inner().cross(&x);
     // Orthonormal by construction, so the only failure is non-finite
@@ -705,8 +706,8 @@ fn section(
     }
     // The parameter of the major axis: `|p cos t + q sin t|` is largest
     // at `tan 2t = 2 p·q / (|p|² − |q|²)`.
-    let t = 0.5 * (2.0 * p.dot(&q)).atan2(p.norm_squared() - q.norm_squared());
-    let (s, c) = t.sin_cos();
+    let t = 0.5 * real::atan2(2.0 * p.dot(&q), p.norm_squared() - q.norm_squared());
+    let (s, c) = real::sin_cos(t);
     let major = c * p + s * q;
     let minor = -s * p + c * q;
     let (major_radius, minor_radius) = (major.norm(), minor.norm());
@@ -827,10 +828,10 @@ fn revolution(
             let z = if cos > 0.0 { a } else { -a };
             let out = v - v.dot(&z) * z;
             let x = out / out.norm();
-            let half_angle = v.dot(&x).atan2(v.dot(&z));
+            let half_angle = real::atan2(v.dot(&x), v.dot(&z));
             let sample = meet + reach * v;
             let base = meet + reach * v.dot(&z) * z;
-            let radius = reach * half_angle.sin();
+            let radius = reach * real::sin(half_angle);
             let frame = Frame::new(base, z, x).map_err(|e| degenerate(id, e.to_string()))?;
             exact(
                 Surface::Cone {
@@ -989,8 +990,8 @@ impl ReadCurve {
                 if is_negligible(p, scale) || is_negligible(q, scale) {
                     return Err(unbounded());
                 }
-                let hi = ((rho + c + q) / p).ln().max(0.0);
-                let lo = -((rho + c + p) / q).ln().max(0.0);
+                let hi = real::ln((rho + c + q) / p).max(0.0);
+                let lo = -real::ln((rho + c + p) / q).max(0.0);
                 // The range always holds `t = 0`, so it is never empty.
                 let (lo, hi) = if hi > lo { (lo, hi) } else { (lo, lo + 1.0) };
                 NurbsCurve::hyperbola(frame, *semi_axis, *semi_imaginary, range(lo, hi)?)
@@ -1436,7 +1437,7 @@ mod tests {
 
     /// `v` turned by `angle` about the unit `axis` (Rodrigues).
     fn rotate(v: Vec3, axis: Vec3, angle: f64) -> Vec3 {
-        let (s, c) = angle.sin_cos();
+        let (s, c) = real::sin_cos(angle);
         v * c + axis.cross(&v) * s + axis * axis.dot(&v) * (1.0 - c)
     }
 
@@ -1466,7 +1467,7 @@ mod tests {
     /// The ellipse `O + a cos t·X + b sin t·Y` of the frame `(o, x, y)`.
     fn conic(o: Point3, x: Vec3, y: Vec3, a: f64, b: f64) -> impl Fn(f64) -> (Point3, Vec3) {
         move |t| {
-            let (s, c) = t.sin_cos();
+            let (s, c) = real::sin_cos(t);
             (o + a * c * x + b * s * y, -a * s * x + b * c * y)
         }
     }
@@ -1550,8 +1551,8 @@ mod tests {
         let hyperbola = x.curve(33).unwrap();
         curve_holds(&hyperbola, range(-1.5, 1.5), |t| {
             (
-                o + 2.0 * t.cosh() * xa + 1.5 * t.sinh() * ya,
-                2.0 * t.sinh() * xa + 1.5 * t.cosh() * ya,
+                o + 2.0 * real::cosh(t) * xa + 1.5 * real::sinh(t) * ya,
+                2.0 * real::sinh(t) * xa + 1.5 * real::cosh(t) * ya,
             )
         });
         // The repeated point is dropped: three points, two spans.
@@ -2002,7 +2003,7 @@ mod tests {
         // The circle's `Y` is `Z × X = −(world Z)` here: its frame's `Z`
         // is world `Y`.
         let torus_circle = |t: f64| {
-            let (s, c) = t.sin_cos();
+            let (s, c) = real::sin_cos(t);
             let p = Point3::new(2.0, 0.0, 0.0) + 0.5 * c * Vec3::x() - 0.5 * s * Vec3::z();
             (p, -0.5 * s * Vec3::x() - 0.5 * c * Vec3::z())
         };
@@ -2063,7 +2064,7 @@ mod tests {
             turn,
             revolved(
                 |t: f64| {
-                    let (s, c) = t.sin_cos();
+                    let (s, c) = real::sin_cos(t);
                     (
                         Point3::new(2.0 + 0.75 * c, 0.0, -0.5 * s),
                         Vec3::new(-0.75 * s, 0.0, -0.5 * c),

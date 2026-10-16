@@ -15,6 +15,7 @@
 
 use arris_geom::{Curve, FrameField, PathSegment, ProfileEdge, Surface};
 use arris_math::nalgebra::UnitQuaternion;
+use arris_math::real;
 use arris_math::{Axis, Frame, Interval, Isometry, Point3, Tolerance, UnitVec3, Vec3};
 
 use crate::error::OpError;
@@ -128,7 +129,7 @@ pub(super) fn line_span(
 ) -> Result<Option<ExactSpan>, OpError> {
     let carried_plane = plane.transformed(motion);
     let normal = carried_plane.z().into_inner();
-    let oblique = t.cross(&normal).norm().atan2(t.dot(&normal).abs()) > tol.angular;
+    let oblique = real::atan2(t.cross(&normal).norm(), t.dot(&normal).abs()) > tol.angular;
     let mut surfaces = Vec::with_capacity(loops.len());
     let mut rails = Vec::with_capacity(loops.len());
     for edges in loops {
@@ -230,8 +231,8 @@ fn projected(frame: &Frame, a: f64, b: f64, t: &UnitVec3) -> Option<Surface> {
     if small.is_nan() || small <= 0.0 {
         return None;
     }
-    let angle = 0.5 * (2.0 * s12).atan2(s11 - s22);
-    let (s, c) = angle.sin_cos();
+    let angle = 0.5 * real::atan2(2.0 * s12, s11 - s22);
+    let (s, c) = real::sin_cos(angle);
     let major: Vec3 = e1 * c + e2 * s;
     let frame = Frame::new(frame.origin(), t.into_inner(), major).ok()?;
     Some(Surface::EllipticCylinder {

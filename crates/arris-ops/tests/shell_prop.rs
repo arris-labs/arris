@@ -13,6 +13,7 @@
 //! `tests/fixtures/regression/` (`tests/fixtures/README.md` §Property-test
 //! failures).
 
+use arris_math::real;
 use core::f64::consts::PI;
 
 use arris_check::classify::{Classification, classify_point};
@@ -122,7 +123,7 @@ impl Solid {
         };
         match *self {
             Solid::Box { x, y, z } => along(0, x) * along(1, y) * along(2, z),
-            Solid::Cylinder { radius, height } => PI * (radius + s).powi(2) * along(2, height),
+            Solid::Cylinder { radius, height } => PI * real::powi(radius + s, 2) * along(2, height),
             Solid::Rounded { x, y, z, radius } => {
                 let (x, y, r) = (x + 2.0 * s, y + 2.0 * s, radius + s);
                 (x * y - (4.0 - PI) * r * r) * along(2, z)

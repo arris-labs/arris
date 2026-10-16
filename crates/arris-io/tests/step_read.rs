@@ -4,6 +4,7 @@
 //! its tolerances, its provenance naming the file entity of every entity.
 
 use arris_debug::unmetered::step_read;
+use arris_math::real;
 use std::collections::BTreeMap;
 
 use arris_check::{Level, check};
@@ -469,7 +470,7 @@ fn a_vertex_loop_at_an_apex_is_a_degenerate_edge() {
 ENDSEC;
 END-ISO-10303-21;
 ",
-        (1.0f64 / 3.0).atan()
+        real::atan(1.0f64 / 3.0)
     );
     let mut m = Model::default();
     let read = step_read(&mut m, &cone, &ReadOptions::default()).unwrap();

@@ -1,5 +1,6 @@
 //! The stripe of one blended edge: its section, contact lines and the ball between them.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 
 use arris_check::domain::FaceDomain;
@@ -416,7 +417,7 @@ pub(super) fn stripe(
     // the other, which a ball reaches turning by `β` about the edge's
     // direction — `π − φ` between two planes. `x` is the direction from
     // the ball's centre to each contact.
-    let turn = |from: Vec3, to: Vec3| to.dot(&d.cross(&from)).atan2(to.dot(&from));
+    let turn = |from: Vec3, to: Vec3| real::atan2(to.dot(&d.cross(&from)), to.dot(&from));
     let order = |x: [Vec3; 2]| {
         if turn(x[0], x[1]) > 0.0 {
             (0, turn(x[0], x[1]))

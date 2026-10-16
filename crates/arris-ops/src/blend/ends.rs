@@ -1,5 +1,6 @@
 //! The ends of a stripe: trimmed by the face across the corner, by a fan of faces, at a corner or a cut.
 
+use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_geom::region2::Side;
@@ -621,7 +622,7 @@ pub(super) fn pierce(
             half_angle,
         } => {
             let (p, v) = (frame.to_local(q), frame.vec_to_local(d));
-            let k = half_angle.tan();
+            let k = real::tan(half_angle);
             let at = radius + k * p.z;
             (
                 v.x * v.x + v.y * v.y - k * k * v.z * v.z,
@@ -856,8 +857,8 @@ pub(super) fn face_end(
                             let half = s.u1 / 2.0;
                             let ruling = axis_origin
                                 + radius
-                                    * (half.cos() * s.frame.x().into_inner()
-                                        + half.sin() * s.frame.y().into_inner());
+                                    * (real::cos(half) * s.frame.x().into_inner()
+                                        + real::sin(half) * s.frame.y().into_inner());
                             let mid = ruling + ((plane3.origin() - ruling).dot(&n3) / dn) * d;
                             let param = |p: Point3| -> Result<f64, OpError> {
                                 arc_curve.project(p).map(|q| q.t).map_err(fault_of)

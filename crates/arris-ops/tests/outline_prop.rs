@@ -16,6 +16,7 @@ use arris_debug::testing::{REL, close_to, fail};
 use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, transform};
 use arris_debug::{dump_text, prop, prop_shards};
 use arris_geom::{Profile, ProfileLoop, ProfileSegment, SurfaceKind};
+use arris_math::real;
 use arris_math::{Frame, Isometry, Point2, Point3, Vec3};
 use arris_ops::OpError;
 use arris_topo::provenance::audit;
@@ -82,7 +83,7 @@ fn section(kind: Blend, size: f64) -> (f64, f64) {
 
 impl Outline {
     fn start_and_segments(&self) -> (Point2, Vec<ProfileSegment>) {
-        let s = FRAC_PI_4.sin();
+        let s = real::sin(FRAC_PI_4);
         match *self {
             Outline::Stadium {
                 length: l,
@@ -138,7 +139,7 @@ impl Outline {
     /// The midpoints of the top edges a blend can be named by.
     fn top_midpoints(&self, height: f64) -> Vec<Point3> {
         let p = |u: f64, v: f64| Point3::new(u, v, height);
-        let s = FRAC_PI_4.sin();
+        let s = real::sin(FRAC_PI_4);
         match *self {
             Outline::Stadium {
                 length: l,

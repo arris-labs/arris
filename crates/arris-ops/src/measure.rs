@@ -17,6 +17,7 @@
 use arris_check::flux::{FluxError, face_flux};
 use arris_check::{Level, check};
 use arris_geom::integrate::{region_integral, surface_grid};
+use arris_math::real;
 use arris_math::{Aabb, Control, Matrix3, Meter, Point3, Vec3};
 use arris_topo::entity::{Body as BodyEntity, BodyKind};
 use arris_topo::{Body, FaceId, Model, Shape};
@@ -156,9 +157,9 @@ const FIRST: [Integrand; 4] = [
 /// The second pass, taken about the centroid: `∫ x² dV` from `x³ / 3`
 /// and `∫ x y dV` from `x² y / 2`, along each axis and each pair.
 const SECOND: [Integrand; 6] = [
-    |p, n| p.x.powi(3) / 3.0 * n.x,
-    |p, n| p.y.powi(3) / 3.0 * n.y,
-    |p, n| p.z.powi(3) / 3.0 * n.z,
+    |p, n| real::powi(p.x, 3) / 3.0 * n.x,
+    |p, n| real::powi(p.y, 3) / 3.0 * n.y,
+    |p, n| real::powi(p.z, 3) / 3.0 * n.z,
     |p, n| p.x * p.x * p.y / 2.0 * n.x,
     |p, n| p.y * p.y * p.z / 2.0 * n.y,
     |p, n| p.z * p.z * p.x / 2.0 * n.z,

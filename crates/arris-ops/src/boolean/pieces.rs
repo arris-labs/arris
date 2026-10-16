@@ -15,6 +15,7 @@
 //! and one turning clockwise is a hole, assigned to the innermost
 //! counter-clockwise cycle that winds around it.
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -185,7 +186,7 @@ fn leaving(c: &Curve2, t: f64, reversed: bool) -> Option<Dir> {
         return None;
     }
     Some(Dir {
-        angle: wrap_angle(d1.y.atan2(d1.x)),
+        angle: wrap_angle(real::atan2(d1.y, d1.x)),
         curvature: (d1.x * e.d2.y - d1.y * e.d2.x) / (speed * speed * speed),
     })
 }

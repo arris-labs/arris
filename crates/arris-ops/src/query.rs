@@ -3,6 +3,7 @@
 //! [`crate::measure`], of the same shape: it takes `&Model`, makes no
 //! body, records no provenance and opens no transaction.
 
+use arris_math::real;
 use std::collections::BTreeMap;
 
 mod distance;
@@ -203,7 +204,7 @@ fn carried_range(
             let w = plane.vec_to_local(at_zero.d1);
             let q = frame.to_local(Point2::new(p.x, p.y));
             let w = frame.vec_to_local(Vec2::new(w.x, w.y));
-            let lo = wrap_angle(range.lo() + (-w.x).atan2(q.x));
+            let lo = wrap_angle(range.lo() + real::atan2(-w.x, q.x));
             (lo, lo + range.length())
         }
         (Curve::Nurbs(_), Curve2::Nurbs(_)) => return Ok(range),

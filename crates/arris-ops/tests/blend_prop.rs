@@ -46,6 +46,7 @@ use arris_debug::{dump_text, prop, prop_shards};
 use arris_geom::SurfaceKind;
 use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
 use arris_io::step::{self, ReadOptions};
+use arris_math::real;
 use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec2, Vec3};
 use arris_ops::OpError;
 use arris_topo::provenance::audit;
@@ -588,7 +589,7 @@ impl Ray {
                 Ray::Circle {
                     centre,
                     radius,
-                    from: (v.y - centre.y).atan2(v.x - centre.x),
+                    from: real::atan2(v.y - centre.y, v.x - centre.x),
                     way: if (swept > 0.0) == forward { 1.0 } else { -1.0 },
                     ccw: swept > 0.0,
                 }
@@ -604,14 +605,14 @@ impl Ray {
                 radius,
                 from,
                 ..
-            } => centre + Vec2::new(from.cos(), from.sin()) * radius,
+            } => centre + Vec2::new(real::cos(from), real::sin(from)) * radius,
         }
     }
 
     fn direction(&self) -> Vec2 {
         match *self {
             Ray::Line { out, .. } => out,
-            Ray::Circle { from, way, .. } => Vec2::new(-from.sin(), from.cos()) * way,
+            Ray::Circle { from, way, .. } => Vec2::new(-real::sin(from), real::cos(from)) * way,
         }
     }
 
@@ -623,7 +624,7 @@ impl Ray {
                 radius, from, way, ..
             } => {
                 let a = from + way * s / radius;
-                Vec2::new(-a.sin(), a.cos()) * way
+                Vec2::new(-real::sin(a), real::cos(a)) * way
             }
         }
     }
@@ -639,7 +640,7 @@ impl Ray {
                 ..
             } => {
                 let a = from + way * s / radius;
-                centre + Vec2::new(a.cos(), a.sin()) * radius
+                centre + Vec2::new(real::cos(a), real::sin(a)) * radius
             }
         }
     }
@@ -656,7 +657,7 @@ impl Ray {
                 way,
                 ..
             } => {
-                let a = (p.y - centre.y).atan2(p.x - centre.x);
+                let a = real::atan2(p.y - centre.y, p.x - centre.x);
                 radius * (way * (a - from)).rem_euclid(2.0 * PI)
             }
         }
@@ -667,7 +668,7 @@ impl Ray {
     fn at_distance(&self, d: f64) -> f64 {
         match *self {
             Ray::Line { .. } => d,
-            Ray::Circle { radius, .. } => radius * 2.0 * (d / (2.0 * radius)).asin(),
+            Ray::Circle { radius, .. } => radius * 2.0 * real::asin(d / (2.0 * radius)),
         }
     }
 }
@@ -759,12 +760,12 @@ fn turned_volume(t: &Turned) -> f64 {
                 ..
             } => {
                 let sw = sweep(from, via, to, centre);
-                let a0 = (from.y - centre.y).atan2(from.x - centre.x);
+                let a0 = real::atan2(from.y - centre.y, from.x - centre.x);
                 swept(&|s| {
                     let a = a0 + sw * s;
                     (
-                        centre + Vec2::new(a.cos(), a.sin()) * radius,
-                        Vec2::new(-a.sin(), a.cos()) * (radius * sw),
+                        centre + Vec2::new(real::cos(a), real::sin(a)) * radius,
+                        Vec2::new(-real::sin(a), real::cos(a)) * (radius * sw),
                     )
                 })
             }
@@ -793,7 +794,7 @@ fn corner_volume(t: &Turned, k: usize) -> (f64, bool) {
         let c = ball_centre(&a, &b, side, r);
         let (sa, sb) = (a.foot(c), b.foot(c));
         let (pa, pb) = (a.at(sa), b.at(sb));
-        let angle = |p: Point2| (p.y - c.y).atan2(p.x - c.x);
+        let angle = |p: Point2| real::atan2(p.y - c.y, p.x - c.x);
         let mut turn = angle(pb) - angle(pa);
         while turn > PI {
             turn -= 2.0 * PI;
@@ -808,8 +809,8 @@ fn corner_volume(t: &Turned, k: usize) -> (f64, bool) {
             Box::new(move |s| {
                 let q = a0 + turn * s;
                 (
-                    c + Vec2::new(q.cos(), q.sin()) * r,
-                    Vec2::new(-q.sin(), q.cos()) * (r * turn),
+                    c + Vec2::new(real::cos(q), real::sin(q)) * r,
+                    Vec2::new(-real::sin(q), real::cos(q)) * (r * turn),
                 )
             }),
         )
@@ -975,7 +976,7 @@ impl Ends {
         let Ends::Rib { w, h, lead, .. } = *self else {
             return 0.0;
         };
-        (self.rib_radius(h).powi(2) - w * w).sqrt() + lead
+        (real::powi(self.rib_radius(h), 2) - w * w).sqrt() + lead
     }
 
     fn build(&self, m: &mut Model) -> Result<Body, OpError> {
@@ -1073,15 +1074,15 @@ impl Ends {
                 // `x = cx − √(ρ(z)² − y²)`.
                 // `u = r sin α` keeps a ball's `√(r² − u²)` smooth.
                 let sliver = simpson(0.0, FRAC_PI_2, N, &|a| {
-                    let u = r * a.sin();
+                    let u = r * real::sin(a);
                     let lo = match kind {
-                        Blend::Fillet => r * a.cos(),
+                        Blend::Fillet => r * real::cos(a),
                         Blend::Chamfer => r - u,
                     };
-                    r * a.cos()
+                    r * real::cos(a)
                         * simpson(lo, r, N, &|v| {
                             let (y, z) = (w - r + u, h - r + v);
-                            cx - (self.rib_radius(z).powi(2) - y * y).max(0.0).sqrt()
+                            cx - (real::powi(self.rib_radius(z), 2) - y * y).max(0.0).sqrt()
                         })
                 });
                 -sliver
@@ -1092,14 +1093,14 @@ impl Ends {
                 // between the plate, the wall and the ball or the chamfer.
                 let outside = |rho: f64| {
                     let c = (rho * rho + d * d - rb * rb) / (2.0 * rho * d);
-                    rho * (2.0 * PI - 2.0 * c.clamp(-1.0, 1.0).acos())
+                    rho * (2.0 * PI - 2.0 * real::acos(c.clamp(-1.0, 1.0)))
                 };
                 match kind {
                     Blend::Fillet => {
                         // ρ = ra + r − r cos α, the gap r − r sin α.
                         simpson(0.0, FRAC_PI_2, N, &|a| {
-                            let rho = ra + r - r * a.cos();
-                            outside(rho) * (r - r * a.sin()) * r * a.sin()
+                            let rho = ra + r - r * real::cos(a);
+                            outside(rho) * (r - r * real::sin(a)) * r * real::sin(a)
                         })
                     }
                     Blend::Chamfer => simpson(ra, ra + r, N, &|rho| outside(rho) * (ra + r - rho)),
@@ -1656,11 +1657,11 @@ fn foot_corner(kind: Blend, r: f64) -> (f64, f64) {
         Blend::Chamfer => (r * r * SQRT_2 / 4.0, r / (3.0 * SQRT_2)),
         Blend::Fillet => {
             let theta = FRAC_PI_4;
-            let t = r * (theta / 2.0).tan();
+            let t = r * real::tan(theta / 2.0);
             let kite = r * t / 2.0;
             let sector = r * r * theta / 2.0;
             let moment = kite * r / 3.0 + kite * (t / SQRT_2 + r) / 3.0
-                - sector * (r - 2.0 * r * theta.sin() / (3.0 * theta));
+                - sector * (r - 2.0 * r * real::sin(theta) / (3.0 * theta));
             let area = 2.0 * kite - sector;
             (area, moment / area)
         }
@@ -1993,7 +1994,7 @@ fn split_ring(text: &str, z: f64, cuts: &[f64]) -> Result<String, TestCaseError>
     }
     let (edge, start, at, curve) =
         found.ok_or_else(|| fail(format!("no closed edge at z = {z}")))?;
-    let (radius, theta0) = (at[0].hypot(at[1]), at[1].atan2(at[0]));
+    let (radius, theta0) = (real::hypot(at[0], at[1]), real::atan2(at[1], at[0]));
     let mut next = top;
     let mut fresh = || {
         next += 1;
@@ -2006,8 +2007,8 @@ fn split_ring(text: &str, z: f64, cuts: &[f64]) -> Result<String, TestCaseError>
         let t = theta0 + cut;
         add.push(format!(
             "{point} = CARTESIAN_POINT('',({:?},{:?},{:?}));",
-            radius * t.cos(),
-            radius * t.sin(),
+            radius * real::cos(t),
+            radius * real::sin(t),
             at[2]
         ));
         add.push(format!("{vertex} = VERTEX_POINT('',{point});"));
@@ -2156,7 +2157,10 @@ impl RimCase {
         *m = back;
         let end = starts.get(self.arc + 1).copied().unwrap_or(2.0 * PI);
         let mid = (starts[self.arc] + end) / 2.0;
-        Ok((body, Point3::new(r * mid.cos(), r * mid.sin(), plate_h)))
+        Ok((
+            body,
+            Point3::new(r * real::cos(mid), r * real::sin(mid), plate_h),
+        ))
     }
 
     /// The volume after blending the ring: the plate's, less (a hole) or
@@ -2371,7 +2375,7 @@ impl Cusped {
                             ProfileSegment::LineTo(Point2::new(a, a)),
                             ProfileSegment::ArcTo {
                                 to: Point2::origin(),
-                                via: Point2::new(a * t.cos(), a - a * t.sin()),
+                                via: Point2::new(a * real::cos(t), a - a * real::sin(t)),
                             },
                         ],
                     },
@@ -2454,13 +2458,13 @@ impl Cusped {
                     // centre, below the axis and inside the big circle.
                     let rho = small + u;
                     let k = (c * c + rho * rho - big * big) / (2.0 * c * rho);
-                    rho * k.clamp(-1.0, 1.0).acos()
+                    rho * real::acos(k.clamp(-1.0, 1.0))
                 } else {
                     // A circle of radius `big − u` about the origin, below
                     // the axis and outside the small circle.
                     let rho = big - u;
                     let k = (small * small - rho * rho - c * c) / (2.0 * rho * c);
-                    rho * k.clamp(-1.0, 1.0).acos()
+                    rho * real::acos(k.clamp(-1.0, 1.0))
                 }
             }
             Cusped::Spandrel { a, .. } => a - (2.0 * a * u - u * u).max(0.0).sqrt(),
@@ -2821,9 +2825,9 @@ impl Roof {
         // smooth in `w` where the arc's square root is not in `x`.
         let section = |w: f64| match kind {
             Blend::Fillet => (
-                size * (1.0 - w.cos()),
-                size * (1.0 - w.sin()),
-                size * w.sin(),
+                size * (1.0 - real::cos(w)),
+                size * (1.0 - real::sin(w)),
+                size * real::sin(w),
             ),
             Blend::Chamfer => (size * w, size * (1.0 - w), size),
         };
@@ -3054,7 +3058,7 @@ struct SlantCase {
 
 impl SlantCase {
     fn polygon(&self) -> [Point2; 4] {
-        let (c, s) = (self.theta.cos(), self.theta.sin());
+        let (c, s) = (real::cos(self.theta), real::sin(self.theta));
         [
             Point2::new(0.0, 0.0),
             Point2::new(self.a, 0.0),
@@ -3132,14 +3136,16 @@ impl SlantCase {
         let t = self.angle();
         let s = self.size();
         let (_, length) = self.top();
-        let base = self.a * self.b * self.theta.sin();
+        let base = self.a * self.b * real::sin(self.theta);
         let (corner, edge, overlap) = match kind {
             Blend::Fillet => {
-                let kappa = 1.0 / (t / 2.0).tan();
+                let kappa = 1.0 / real::tan(t / 2.0);
                 let phi = (PI - t).min(FRAC_PI_2);
-                let overlap = s.powi(3)
+                let overlap = real::powi(s, 3)
                     * simpson(0.0, phi, 2000, &|p: f64| {
-                        (kappa - p.sin() - (1.0 - p.cos()) / t.tan()) * (1.0 - p.sin()) * p.sin()
+                        (kappa - real::sin(p) - (1.0 - real::cos(p)) / real::tan(t))
+                            * (1.0 - real::sin(p))
+                            * real::sin(p)
                     });
                 (
                     s * s * (kappa - (PI - t) / 2.0),
@@ -3148,11 +3154,11 @@ impl SlantCase {
                 )
             }
             Blend::Chamfer => {
-                let k = (t / 2.0).tan() + 1.0 / t.tan();
-                let n = s * t.sin();
+                let k = real::tan(t / 2.0) + 1.0 / real::tan(t);
+                let n = s * real::sin(t);
                 // ∫₀ⁿ (d − k x)(d − x) dx
-                let overlap = s * s * n - (1.0 + k) * s * n * n / 2.0 + k * n.powi(3) / 3.0;
-                (s * s * t.sin() / 2.0, s * s / 2.0, overlap)
+                let overlap = s * s * n - (1.0 + k) * s * n * n / 2.0 + k * real::powi(n, 3) / 3.0;
+                (s * s * real::sin(t) / 2.0, s * s / 2.0, overlap)
             }
         };
         base * self.height - corner * self.height - edge * length + overlap
@@ -3270,7 +3276,7 @@ fn the_slanted_closed_form_is_the_fixtures() {
     let case = SlantCase {
         a: 2.0,
         b: 5.0_f64.sqrt(),
-        theta: 2.0_f64.atan(),
+        theta: real::atan(2.0_f64),
         height: 2.0,
         vertex: 2,
         leaving: true,
@@ -3282,10 +3288,10 @@ fn the_slanted_closed_form_is_the_fixtures() {
     let r: f64 = 0.2;
     let golden = (1.0 + 5.0_f64.sqrt()) / 2.0;
     let fixture = 8.0
-        - 2.0 * r * r * (golden - (PI - 2.0_f64.atan()) / 2.0)
+        - 2.0 * r * r * (golden - (PI - real::atan(2.0_f64)) / 2.0)
         - 2.0 * r * r * (1.0 - FRAC_PI_4)
-        + r.powi(3) * (golden - 0.5) * (1.0 - FRAC_PI_4)
-        + r.powi(3) * (3.0 - PI) / 4.0;
+        + real::powi(r, 3) * (golden - 0.5) * (1.0 - FRAC_PI_4)
+        + real::powi(r, 3) * (3.0 - PI) / 4.0;
     let got = case.volume(Blend::Fillet);
     assert!((got - fixture).abs() < 1e-12, "{got} against {fixture}");
 }

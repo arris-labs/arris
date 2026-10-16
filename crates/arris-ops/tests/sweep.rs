@@ -9,6 +9,7 @@
 //! refused by name with the model untouched. The checker runs after
 //! every build (debug builds), so each `Ok` here is checker-green.
 
+use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_debug::testing::entities_of;
@@ -42,7 +43,7 @@ fn measures(m: &Model, body: Body) -> (f64, f64, Point3) {
 /// `a` and `b` agree within `rel` of `b`'s size in volume, area and
 /// centroid.
 fn assert_agree(a: (f64, f64, Point3), b: (f64, f64, Point3), rel: f64, what: &str) {
-    let size = b.0.cbrt();
+    let size = real::cbrt(b.0);
     assert!(
         (a.0 - b.0).abs() <= rel * b.0,
         "{what}: volume {} vs {}",
@@ -694,7 +695,7 @@ fn ellipse_perimeter(a: f64, b: f64) -> f64 {
     let step = TAU / n as f64;
     (0..n)
         .map(|i| {
-            let (s, c) = (i as f64 * step).sin_cos();
+            let (s, c) = real::sin_cos(i as f64 * step);
             (a * a * s * s + b * b * c * c).sqrt()
         })
         .sum::<f64>()
@@ -758,11 +759,11 @@ fn an_oblique_circle_or_ellipse_is_the_elliptic_cylinder_whatever_the_tilt() {
     // axis, so the circle's own start is on it only for some of them.
     let (r, length, tilt) = (3.0f64, 12.0, 30.0f64.to_radians());
     for about in [0.0, 0.4, FRAC_PI_2, 2.0, 3.5] {
-        let axis = Vec3::new(about.cos(), about.sin(), 0.0);
+        let axis = Vec3::new(real::cos(about), real::sin(about), 0.0);
         let across = Vec3::z().cross(&axis);
         let plane = Frame::new(
             Point3::origin(),
-            across * (-tilt.sin()) + Vec3::z() * tilt.cos(),
+            across * (-real::sin(tilt)) + Vec3::z() * real::cos(tilt),
             axis,
         )
         .unwrap();
@@ -798,12 +799,12 @@ fn an_oblique_circle_or_ellipse_is_the_elliptic_cylinder_whatever_the_tilt() {
             "tilt about {about}"
         );
         let (volume, area, centre) = measures(&m, body);
-        let exact = PI * r * r * tilt.cos() * length;
+        let exact = PI * r * r * real::cos(tilt) * length;
         assert!(
             (volume - exact).abs() <= 1e-9 * exact,
             "{about}: {volume} vs {exact}"
         );
-        let lateral = ellipse_perimeter(r, r * tilt.cos()) * length + 2.0 * PI * r * r;
+        let lateral = ellipse_perimeter(r, r * real::cos(tilt)) * length + 2.0 * PI * r * r;
         assert!(
             (area - lateral).abs() <= 1e-9 * lateral,
             "{about}: {area} vs {lateral}"
@@ -825,7 +826,7 @@ fn an_oblique_ellipse_sweeps_the_elliptic_cylinder_too() {
         let across = Vec3::z().cross(&axis);
         let plane = Frame::new(
             Point3::origin(),
-            across * (-tilt.sin()) + Vec3::z() * tilt.cos(),
+            across * (-real::sin(tilt)) + Vec3::z() * real::cos(tilt),
             axis,
         )
         .unwrap();
@@ -855,7 +856,7 @@ fn an_oblique_ellipse_sweeps_the_elliptic_cylinder_too() {
         };
         assert_eq!(faces_on(&m, body, SurfaceKind::EllipticCylinder), 1);
         let (volume, _, _) = measures(&m, body);
-        let exact = PI * 4.0 * 2.0 * tilt.cos() * length;
+        let exact = PI * 4.0 * 2.0 * real::cos(tilt) * length;
         assert!(
             (volume - exact).abs() <= 1e-9 * exact,
             "{volume} vs {exact}"

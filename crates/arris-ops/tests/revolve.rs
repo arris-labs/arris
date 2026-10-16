@@ -13,6 +13,7 @@
 //! typed refusal with the model untouched.
 
 use arris_debug::unmetered::{mass_properties, revolve};
+use arris_math::real;
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 
@@ -1124,7 +1125,7 @@ fn a_cone_a_ball_and_a_pinch_close_on_degenerate_edges_at_the_axis() {
                 let v = match surface {
                     Surface::Cone {
                         radius, half_angle, ..
-                    } => -radius / half_angle.sin(),
+                    } => -radius / real::sin(*half_angle),
                     other => other.project(at).unwrap().uv.y,
                 };
                 let domain =

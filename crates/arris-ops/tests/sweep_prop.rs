@@ -5,6 +5,7 @@
 //! two bodies agree in volume, area and centroid to what a fit may miss,
 //! and the exact one is clean at `Full` with no NURBS face.
 
+use arris_math::real;
 use std::f64::consts::{PI, TAU};
 
 use arris_check::{Level, Unchecked, check};
@@ -129,8 +130,9 @@ fn paths(pieces: &[Piece]) -> Result<(Path, Path), TestCaseError> {
                 let left_normal = Vec3::y().cross(&heading);
                 let centre = at + left_normal * (side * radius);
                 let out = -left_normal * side;
-                let position =
-                    |theta: f64| centre + (out * theta.cos() + heading * theta.sin()) * radius;
+                let position = |theta: f64| {
+                    centre + (out * real::cos(theta) + heading * real::sin(theta)) * radius
+                };
                 exact.push(PathSegment::ArcTo {
                     via: position(0.5 * turn),
                     to: position(turn),
@@ -142,7 +144,7 @@ fn paths(pieces: &[Piece]) -> Result<(Path, Path), TestCaseError> {
                         .map_err(fail)?,
                 ));
                 at = position(turn);
-                heading = left_normal * (side * turn.sin()) + heading * turn.cos();
+                heading = left_normal * (side * real::sin(turn)) + heading * real::cos(turn);
             }
         }
     }
@@ -191,7 +193,7 @@ prop_shards! {
                 mass_properties(&m, b).map_err(fail)?,
             );
             prop_assert!(ma.volume > 0.0 && mb.volume > 0.0, "{} {}", ma.volume, mb.volume);
-            let size = ma.volume.cbrt();
+            let size = real::cbrt(ma.volume);
             prop_assert!(
                 (ma.volume - mb.volume).abs() <= TWIN_REL * ma.volume,
                 "volume {} vs {}", ma.volume, mb.volume
@@ -279,7 +281,7 @@ prop_shards! {
                 "area {} vs {}", m_orig.area, m_moved.area
             );
             prop_assert!(
-                (m_orig.centroid - m_moved.centroid).norm() <= 1e-6 * m_orig.volume.cbrt().max(1.0),
+                (m_orig.centroid - m_moved.centroid).norm() <= 1e-6 * real::cbrt(m_orig.volume).max(1.0),
                 "centroid {:?} vs {:?}", m_orig.centroid, m_moved.centroid
             );
             Ok(())
@@ -357,9 +359,9 @@ prop_shards! {
             let normal = profile.plane.z().into_inner();
             let x = profile.plane.x().into_inner();
             let y = profile.plane.y().into_inner();
-            let (sn, cn) = angle.sin_cos();
+            let (sn, cn) = real::sin_cos(angle);
             let side = x * cn + y * sn;
-            let dir = (normal * tilt.cos() + side * tilt.sin()).normalize();
+            let dir = (normal * real::cos(tilt) + side * real::sin(tilt)).normalize();
             let path = Path {
                 start: profile.plane.origin(),
                 segments: vec![PathSegment::LineTo(profile.plane.origin() + dir * length)],
@@ -387,7 +389,7 @@ prop_shards! {
                 "area {} vs {}", m_sw.area, m_ex.area
             );
             prop_assert!(
-                (m_sw.centroid - m_ex.centroid).norm() <= 1e-7 * m_ex.volume.cbrt(),
+                (m_sw.centroid - m_ex.centroid).norm() <= 1e-7 * real::cbrt(m_ex.volume),
                 "centroid {:?} vs {:?}", m_sw.centroid, m_ex.centroid
             );
             prop_assert_eq!(counts(&m1, &[b_sw])?, counts(&m2, &[b_ex])?);
@@ -503,21 +505,21 @@ fn build_g1_path(pieces: &[G1Piece]) -> Path {
             }
             G1Piece::Arc { radius, turn, roll } => {
                 let b = t.cross(&n);
-                let (s_roll, c_roll) = roll.sin_cos();
+                let (s_roll, c_roll) = real::sin_cos(roll);
                 let n_arc = n * c_roll + b * s_roll;
                 let center = here + n_arc * radius;
                 let point = |theta: f64| {
-                    center - n_arc * (radius * theta.cos()) + t * (radius * theta.sin())
+                    center - n_arc * (radius * real::cos(theta)) + t * (radius * real::sin(theta))
                 };
                 let via = point(turn * 0.5);
                 let to = point(turn);
                 segments.push(PathSegment::ArcTo { via, to });
                 here = to;
-                let next_t = (n_arc * turn.sin() + t * turn.cos()).normalize();
+                let next_t = (n_arc * real::sin(turn) + t * real::cos(turn)).normalize();
                 let rot_axis = t.cross(&n_arc);
                 let next_n = if rot_axis.norm_squared() > 1e-12 {
                     let k = rot_axis.normalize();
-                    let (sn, c) = turn.sin_cos();
+                    let (sn, c) = real::sin_cos(turn);
                     n * c + k.cross(&n) * sn + k * (k.dot(&n) * (1.0 - c))
                 } else {
                     n
@@ -532,11 +534,11 @@ fn build_g1_path(pieces: &[G1Piece]) -> Path {
                 roll,
             } => {
                 let b = t.cross(&n);
-                let (s_roll, c_roll) = roll.sin_cos();
+                let (s_roll, c_roll) = real::sin_cos(roll);
                 let u = n * c_roll + b * s_roll;
                 let rise = pitch / TAU;
-                let alpha = (rise / radius).atan();
-                let axis_dir = (t * alpha.sin() + u * alpha.cos()).normalize();
+                let alpha = real::atan(rise / radius);
+                let axis_dir = (t * real::sin(alpha) + u * real::cos(alpha)).normalize();
                 let radial = t.cross(&u).normalize();
                 let axis_origin = here - radial * radius;
                 let axis = Axis::new(axis_origin, axis_dir).unwrap();

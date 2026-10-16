@@ -1,5 +1,6 @@
 //! Blends meeting at a vertex along a run of edges: the junction.
 
+use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_geom::{Curve, Curve2, Surface, pcurve_on};
@@ -328,7 +329,7 @@ pub(super) fn junction(
                 return Err(invariant("a junction arc of positive angle"));
             };
             let frame = Frame::new(centre, normal.into_inner(), x)?;
-            let angle = x.cross(&y).norm().atan2(x.dot(&y));
+            let angle = real::atan2(x.cross(&y).norm(), x.dot(&y));
             (
                 Curve::Circle { frame, radius },
                 Interval::new(0.0, angle)

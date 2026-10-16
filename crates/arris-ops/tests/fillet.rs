@@ -6,6 +6,7 @@
 //! on a filleted body, its records composed back to the extrude; and
 //! every typed refusal.
 
+use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_debug::fixtures::Class;
@@ -511,7 +512,7 @@ fn segment_area(a: Point2, b: Point2) -> f64 {
 /// to `b`.
 fn arc_area(c: Point2, a: Point2, b: Point2) -> f64 {
     let (u, v) = (a - c, b - c);
-    let sweep = (u.x * v.y - u.y * v.x).atan2(u.dot(&v));
+    let sweep = real::atan2(u.x * v.y - u.y * v.x, u.dot(&v));
     let w = b - a;
     (u.norm_squared() * sweep + c.x * w.y - c.y * w.x) / 2.0
 }
@@ -571,7 +572,10 @@ fn a_plane_against_a_cylinder_along_a_ruling_blends_to_a_cylinder() {
             vec![line_to(xe, k), arc_to(-xe, k, (0.0, big))],
             big,
             p(xe, k),
-            p(((big - r).powi(2) - (k + r).powi(2)).sqrt(), k + r),
+            p(
+                (real::powi(big - r, 2) - real::powi(k + r, 2)).sqrt(),
+                k + r,
+            ),
             true,
         ));
     }
@@ -589,7 +593,7 @@ fn a_plane_against_a_cylinder_along_a_ruling_blends_to_a_cylinder() {
         ],
         notch,
         p(notch, 0.0),
-        p(((notch + r).powi(2) - r * r).sqrt(), -r),
+        p((real::powi(notch + r, 2) - r * r).sqrt(), -r),
         true,
     ));
     let rib = 0.7;
@@ -606,7 +610,7 @@ fn a_plane_against_a_cylinder_along_a_ruling_blends_to_a_cylinder() {
         ],
         rib,
         p(rib, 0.0),
-        p(((rib + r).powi(2) - r * r).sqrt(), r),
+        p((real::powi(rib + r, 2) - r * r).sqrt(), r),
         false,
     ));
     for (name, start, segments, big, e, centre, removes) in cases {
@@ -1189,10 +1193,10 @@ fn a_miter_of_unequal_dihedrals_is_two_pieces_and_a_trim_arc() {
     // overlap at the corner; `cot(atan(2)/2)` is the golden ratio.
     let golden = (1.0 + 5.0_f64.sqrt()) / 2.0;
     let volume = 8.0
-        - 2.0 * r * r * (golden - (PI - 2.0_f64.atan()) / 2.0)
+        - 2.0 * r * r * (golden - (PI - real::atan(2.0_f64)) / 2.0)
         - 2.0 * r * r * (1.0 - FRAC_PI_4)
-        + r.powi(3) * (golden - 0.5) * (1.0 - FRAC_PI_4)
-        + r.powi(3) * (3.0 - PI) / 4.0;
+        + real::powi(r, 3) * (golden - 0.5) * (1.0 - FRAC_PI_4)
+        + real::powi(r, 3) * (3.0 - PI) / 4.0;
     let props = mass_properties(&m, blended).unwrap();
     assert!(
         (props.volume - volume).abs() <= 1e-9 * volume,
@@ -1304,12 +1308,12 @@ fn a_chain_runs_on_where_both_faces_turn() {
     // the chamfer's, the chamfered stadium less the triangle of two legs
     // `r` at 135°, its centroid a third of `r/√2` in.
     let (pi, s2) = (PI, SQRT_2);
-    let filleted = pi * d.powi(3) / 3.0
+    let filleted = pi * real::powi(d, 3) / 3.0
         - pi * d * d
         - 2.0 * d * d
-        - 4.0 * pi * r.powi(3) / 3.0
-        - pi * pi * r.powi(3) / 4.0
-        + 3.0 * s2 * pi * r.powi(3) / 2.0
+        - 4.0 * pi * real::powi(r, 3) / 3.0
+        - pi * pi * real::powi(r, 3) / 4.0
+        + 3.0 * s2 * pi * real::powi(r, 3) / 2.0
         - 2.0 * s2 * pi * r * r
         - 4.0 * s2 * r * r
         + pi * pi * r * r / 4.0
@@ -1461,7 +1465,7 @@ fn three_edges_at_a_box_corner_meet_in_a_sphere() {
     let props = mass_properties(&m, blended).unwrap();
     let volume = 8.0
         - 3.0 * (1.0 - core::f64::consts::FRAC_PI_4) * r * r * (2.0 - r)
-        - (1.0 - core::f64::consts::PI / 6.0) * r.powi(3);
+        - (1.0 - core::f64::consts::PI / 6.0) * real::powi(r, 3);
     assert!(
         (props.volume - volume).abs() <= 1e-9 * volume,
         "{}",

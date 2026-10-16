@@ -10,6 +10,7 @@
 //! new edges), then `rebuild::rewrite` and the checker at `Level::Full` in
 //! every profile.
 
+use arris_math::real;
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::{Level, Violation};
@@ -314,7 +315,7 @@ fn moves(
                     let e = m.edge(c.edge())?;
                     for v in [e.start(), e.end()] {
                         let q = frame.to_local(m.vertex(v)?.point());
-                        if q.x.hypot(q.y) + by * half_angle.cos() <= tol.linear {
+                        if real::hypot(q.x, q.y) + by * real::cos(*half_angle) <= tol.linear {
                             return Err(refuse(f, OffsetReason::SurfaceCollapses));
                         }
                     }

@@ -2,6 +2,7 @@
 //! taken alone.
 
 use arris_geom::{Curve, Curve2, Profile, pcurve_on};
+use arris_math::real;
 use arris_math::{Control, Interval, Isometry, Meter, UnitVec3, Vec3};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
@@ -115,7 +116,7 @@ pub fn extrude(
     }
     let loops = profile.edges(tol)?;
     let along_normal = dn > 0.0;
-    let off_normal = d.cross(&normal).norm().atan2(dn.abs());
+    let off_normal = real::atan2(d.cross(&normal).norm(), dn.abs());
     let sweep = if off_normal <= tol.angular {
         if along_normal { plane.z() } else { -plane.z() }
     } else {

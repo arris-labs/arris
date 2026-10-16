@@ -15,6 +15,7 @@
 //! result in the caller's unit; it is never an entity's tolerance
 //! (ADR-0025 §4).
 
+use arris_math::real;
 use arris_math::{Frame, FrameError, Isometry, Point3, Vec3};
 
 use super::entities::{Args, Entities, describe, malformed, number};
@@ -48,9 +49,9 @@ impl Scale {
         // `10^k` is exact for `|k| ≤ 22`; dividing by it, rather than
         // multiplying by its inexact reciprocal, rounds once.
         if e >= 0 {
-            r * 10f64.powi(e)
+            r * real::powi(10f64, e)
         } else {
-            r / 10f64.powi(-e)
+            r / real::powi(10f64, -e)
         }
     }
 }

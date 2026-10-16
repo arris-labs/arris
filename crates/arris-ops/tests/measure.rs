@@ -5,6 +5,7 @@
 //! for a body that is not a solid and one that fails the checker.
 
 use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder};
+use arris_math::real;
 use core::f64::consts::PI;
 
 use arris_debug::testing::close_to;
@@ -44,12 +45,14 @@ fn box_inertia_about_origin(min: Point3, max: Point3) -> Matrix3 {
     let d = max - min;
     let volume = d.x * d.y * d.z;
     let second = Vec3::from_iterator(
-        (0..3).map(|i| volume / d[i] * (max[i].powi(3) - min[i].powi(3)) / 3.0),
+        (0..3).map(|i| volume / d[i] * (real::powi(max[i], 3) - real::powi(min[i], 3)) / 3.0),
     );
     let product = Vec3::from_iterator((0..3).map(|i| {
         let j = (i + 1) % 3;
         let k = (i + 2) % 3;
-        d[k] * (max[i].powi(2) - min[i].powi(2)) * (max[j].powi(2) - min[j].powi(2)) / 4.0
+        d[k] * (real::powi(max[i], 2) - real::powi(min[i], 2))
+            * (real::powi(max[j], 2) - real::powi(min[j], 2))
+            / 4.0
     }));
     Matrix3::new(
         second.y + second.z,
@@ -189,7 +192,7 @@ fn the_sphere_measures_its_closed_forms() {
     let (centre, radius) = (Point3::new(3.0, -2.0, 1.0), 2.5);
     let body = sample::sphere(&mut m, centre, radius).unwrap();
     let p = mass_properties(&m, body).unwrap();
-    let volume = 4.0 * PI * radius.powi(3) / 3.0;
+    let volume = 4.0 * PI * real::powi(radius, 3) / 3.0;
     let expected = MassProperties {
         volume,
         area: 4.0 * PI * radius * radius,

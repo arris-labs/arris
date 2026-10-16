@@ -1,5 +1,6 @@
 //! `revolve`: a profile turned about an axis in its plane.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 use std::collections::BTreeMap;
 
@@ -62,7 +63,7 @@ pub(super) fn rho_range(edge: &ProfileEdge, axis: &AxisInPlane) -> (f64, f64) {
         // and half a turn on.
         let a = axis.radial.dot(&frame.x());
         let b = axis.radial.dot(&frame.y());
-        let extreme = b.atan2(a);
+        let extreme = real::atan2(b, a);
         for t in [extreme, extreme + core::f64::consts::PI] {
             if turn_contains(edge.range, t) {
                 candidates.push(edge.range.lo() + wrap_angle(t - edge.range.lo()));
@@ -99,7 +100,7 @@ pub(super) fn axis_in_plane(
     let dn = d.dot(&n);
     // The angle between the direction and the plane, and the origin's
     // height above it.
-    let off_plane = dn.abs().atan2((1.0 - dn * dn).max(0.0).sqrt());
+    let off_plane = real::atan2(dn.abs(), (1.0 - dn * dn).max(0.0).sqrt());
     let height = (axis.origin - plane.origin()).dot(&n);
     if !(off_plane <= tol.angular && height.abs() <= tol.linear) {
         return Err(degenerate(Reason::Sweep(
@@ -245,7 +246,7 @@ pub(super) fn swept_surface(
                         } else {
                             rho_s
                         },
-                        half_angle: d_rho.abs().atan2(d_t.abs()),
+                        half_angle: real::atan2(d_rho.abs(), d_t.abs()),
                     },
                     false,
                 ))

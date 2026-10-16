@@ -116,7 +116,7 @@ dump digest to a committed golden. It runs natively in the gate and on
   calls. Re-bless.
 - [x] Step 5 **[2]** — `arris-geom`, the surfaces and intersections, the
   rest of the 402; pass its clippy check. Re-bless.
-- [ ] Step 6 **[1]** — `arris-ops` (32) and `arris-io` (25); pass the clippy check;
+- [x] Step 6 **[1]** — `arris-ops` (32) and `arris-io` (25); pass the clippy check;
   re-bless.
 - [ ] Step 7 **[1]** — `arris-debug` (75), `arris-py` (2), and the ~550
   calls in tests, benches and fuzz targets; delete the workspace allow table. Clippy

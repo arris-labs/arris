@@ -273,6 +273,7 @@ pub(super) fn traced_end(
 mod tests {
     use arris_geom::SECTION_FIT_FRACTION;
     use arris_math::nalgebra::{Unit, UnitQuaternion};
+    use arris_math::real;
     use arris_math::{Frame, Precision, Vec3};
 
     use super::*;
@@ -374,7 +375,7 @@ mod tests {
                     let inside = |p: Point3| -> Result<bool, OpError> {
                         let q = pose.to_local(p);
                         let slack = tol().linear;
-                        Ok(q.x.hypot(q.y) <= ring + slack && q.z <= r + slack)
+                        Ok(real::hypot(q.x, q.y) <= ring + slack && q.z <= r + slack)
                     };
                     let within = Aabb::of_point(points[0])
                         .union(Aabb::of_point(points[1]))
@@ -437,7 +438,7 @@ mod tests {
                 let inside = |p: Point3| -> Result<bool, OpError> {
                     let q = pose.to_local(p);
                     let slack = tol().linear;
-                    Ok(q.x.hypot(q.y) <= ring + slack && q.z <= r + slack)
+                    Ok(real::hypot(q.x, q.y) <= ring + slack && q.z <= r + slack)
                 };
                 let within = Aabb::of_point(points[0])
                     .union(Aabb::of_point(points[1]))

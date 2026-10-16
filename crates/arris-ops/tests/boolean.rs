@@ -12,6 +12,7 @@ use arris_geom::{
     Curve, Curve2, GeomKind, MeetKind, Profile, ProfileLoop, ProfileSegment, Surface,
     SurfaceIntersection, SurfaceKind,
 };
+use arris_math::real;
 use arris_ops::OpError;
 
 use arris_math::nalgebra::UnitQuaternion;
@@ -429,14 +430,14 @@ fn a_touch_beside_a_crossing_vertex_is_resolved_through_the_section_curves() {
             .filter(|h| !h.tangent && h.edge == touch.edge && h.face == touch.face)
             .collect();
         assert_eq!(resolved.len(), 2, "turn {turn}\n{i}");
-        let lateral = (turn.abs() - 90.0).to_radians().sin().abs();
+        let lateral = real::sin((turn.abs() - 90.0).to_radians()).abs();
         for hit in &resolved {
             assert!(
                 ((hit.t - touch.t).abs() - lateral).abs() < 1e-12,
                 "turn {turn}\n{i}"
             );
             assert!(
-                (hit.point.x.hypot(hit.point.y) - 1.0).abs() < 1e-14,
+                (real::hypot(hit.point.x, hit.point.y) - 1.0).abs() < 1e-14,
                 "turn {turn}\n{i}"
             );
             let v = hit.vertex.expect("a crossing has a vertex");
@@ -877,7 +878,7 @@ fn a_section_block_along_an_operand_edge_is_that_edges_piece() {
         assert_eq!(i.sections.len(), 1, "the line across the cap\n{i}");
         assert_sections_consistent(&m, &i).unwrap();
 
-        let wedge = 8.0 * 2f64.sqrt() / 15.0 * tilt * inside.powf(2.5);
+        let wedge = 8.0 * 2f64.sqrt() / 15.0 * tilt * real::powf(inside, 2.5);
         for (name, op, exact, counts) in [
             ("cut", cut as Boolean, TAU - wedge, "euler 4/6/4/4/1 g0 = 0"),
             (

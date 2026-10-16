@@ -22,6 +22,7 @@ use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::unmetered::{mass_properties, transform};
 use arris_debug::{dump_text, prop, prop_shards};
 use arris_math::nalgebra::{Quaternion, UnitQuaternion};
+use arris_math::real;
 use arris_math::{Axis, Frame, Isometry, Point3, UnitVec3, Vec3};
 
 use arris_check::{Level, check};
@@ -810,7 +811,7 @@ fn turned(pair: &CrossingPair, theta: f64) -> Result<CrossingPair, TestCaseError
         .x()
         .into_inner();
     // The seam's angle about `d` from `y`, both perpendicular to `d`.
-    let to_y = seam.cross(&Vec3::y()).dot(&d).atan2(seam.dot(&Vec3::y()));
+    let to_y = real::atan2(seam.cross(&Vec3::y()).dot(&d), seam.dot(&Vec3::y()));
     let about = UnitQuaternion::from_axis_angle(&UnitVec3::new_normalize(d), to_y + theta);
     Ok(CrossingPair {
         b: Cylindrical {
@@ -876,10 +877,10 @@ prop_shards! {
             let r = pair.a.radius;
             // Log-uniform bounds on `sin δ`: the touch joined to the
             // crossing vertex, then clear of it.
-            let joined = pair.psi.sin() * tol / r;
+            let joined = real::sin(pair.psi) * tol / r;
             let windows = [
-                ((0.1 * joined).log10(), (1.9 * joined).log10()),
-                ((10.0 * tol / r).log10(), 0.03_f64.log10()),
+                (real::log10(0.1 * joined), real::log10(1.9 * joined)),
+                (real::log10(10.0 * tol / r), real::log10(0.03_f64)),
             ];
             let pi = core::f64::consts::PI;
             // A quadrant: the side of the crossing vertex, and which one.
@@ -891,8 +892,8 @@ prop_shards! {
             // generic one, `Some(true)` for the through one's.
             let mut turns = vec![(at(through, generic), None), (at(through, 0.0), None)];
             for (w, (&(x, quadrant), (lo, hi))) in beside.iter().zip(windows).enumerate() {
-                let sin = 10f64.powf(lo + x * (hi - lo));
-                turns.push((at(quadrant, sin.asin()), Some(w == 0)));
+                let sin = real::powf(10f64, lo + x * (hi - lo));
+                turns.push((at(quadrant, real::asin(sin)), Some(w == 0)));
             }
             let mut first: Option<(String, MassProperties, f64)> = None;
             let mut through_counts: Option<String> = None;
@@ -1281,7 +1282,7 @@ fn printed_pair(
             height: hb,
             pose: pose(qb, tb),
         },
-        psi: d.z.acos(),
+        psi: real::acos(d.z),
         offset: origin[1],
     }
 }

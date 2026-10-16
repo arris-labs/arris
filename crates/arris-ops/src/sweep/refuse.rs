@@ -3,6 +3,7 @@
 //! does not close with a closed path, and a fold, where the carried
 //! profile reaches past a curved span's radius of curvature.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 
 use arris_geom::{Curve, FrameField, FrameLaw, ProfileEdge};
@@ -26,7 +27,7 @@ const FOLD_DEPTH: usize = 10;
 /// would be carried along its own plane and sweep no volume.
 pub(super) fn along_path(field: &FrameField, normal: &Vec3, tol: Tolerance) -> Result<(), OpError> {
     let t = field.at(0.0).tangent;
-    if t.dot(normal).abs().asin() <= tol.angular {
+    if real::asin(t.dot(normal).abs()) <= tol.angular {
         return Err(degenerate(Reason::Sweep(SweepReason::ProfileAlongPath)));
     }
     Ok(())
@@ -80,10 +81,10 @@ fn support(edges: &[ProfileEdge], origin: &Point3, w: &Vec3) -> Result<f64, OpEr
         // `c + a cos θ x + b sin θ y` along `w`: `A cos θ + B sin θ` has
         // its maximum `hypot(A, B)` at `atan2(B, A)` and its translates.
         let (big_a, big_b) = (a * x.dot(w), b * y.dot(w));
-        let peak = big_b.atan2(big_a);
+        let peak = real::atan2(big_b, big_a);
         let k = ((lo - peak) / TAU).ceil();
         if peak + k * TAU <= hi {
-            reach = reach.max((centre - origin).dot(w) + big_a.hypot(big_b));
+            reach = reach.max((centre - origin).dot(w) + real::hypot(big_a, big_b));
         }
     }
     Ok(reach)

@@ -1004,6 +1004,7 @@ fn reach_past(piece: &Piece<'_>, end: f64, room: f64, reach: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use arris_math::real;
     use core::f64::consts::TAU;
 
     use arris_debug::prop::{finite_f64, frame_in};
@@ -1357,7 +1358,7 @@ mod tests {
         };
         let (ku, xs) = knots(-3.0, 1.0, 6);
         let (kv, ys) = knots(-4.0, 4.0, 12);
-        let h = |x: f64, y: f64| 0.5 * (0.8 * y).sin() + 0.1 * x;
+        let h = |x: f64, y: f64| 0.5 * real::sin(0.8 * y) + 0.1 * x;
         let mut net = Vec::new();
         for &x in &xs {
             for &y in &ys {

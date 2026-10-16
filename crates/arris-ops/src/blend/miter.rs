@@ -1,5 +1,6 @@
 //! Two blends meeting at a vertex: the miter and its trim arc.
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 use std::collections::BTreeSet;
 
@@ -585,7 +586,7 @@ fn miter_curve(
             let inside = |t: f64| {
                 [a, b].iter().all(|s| {
                     let l = s.frame.to_local(curve.point(t));
-                    let u = wrap_angle(l.y.atan2(l.x));
+                    let u = wrap_angle(real::atan2(l.y, l.x));
                     u > 0.0 && u < s.beta
                 })
             };

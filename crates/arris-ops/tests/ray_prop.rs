@@ -25,6 +25,7 @@ use arris_debug::prop::body::{
 use arris_debug::testing::fail;
 use arris_debug::unmetered::transform;
 use arris_debug::{prop, prop_shards};
+use arris_math::real;
 use arris_math::{Isometry, Point3, UnitVec3, Vec3};
 use arris_ops::query::{Ray, RayHit, RayHits, ray_fire};
 use arris_ops::{OpError, QueryReason, Reason};
@@ -66,11 +67,11 @@ impl Solid {
             Solid::Cylinder(c) => {
                 let r = 0.8 * s * c.radius;
                 let local = Point3::new(
-                    r * turn.cos(),
-                    r * turn.sin(),
+                    r * real::cos(turn),
+                    r * real::sin(turn),
                     c.axis.origin.z + (0.1 + 0.8 * w) * c.height,
                 );
-                (c.pose.apply(local), c.radius.hypot(c.height) * 2.0)
+                (c.pose.apply(local), real::hypot(c.radius, c.height) * 2.0)
             }
             Solid::Quadric(q, pose) => (pose.apply(q.interior(s, t, w)), q.reach() * 2.0),
         }

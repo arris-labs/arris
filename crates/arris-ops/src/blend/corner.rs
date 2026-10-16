@@ -1,5 +1,6 @@
 //! Three blends meeting at a vertex: the sphere or triangle corner.
 
+use arris_math::real;
 use core::f64::consts::FRAC_PI_2;
 use std::collections::BTreeSet;
 
@@ -418,9 +419,10 @@ fn corner_sphere(
         (i1, i0)
     };
     let frame = Frame::new(centre, w[p], w[i])?;
-    let gamma = w[j]
-        .dot(&frame.y().into_inner())
-        .atan2(w[j].dot(&frame.x().into_inner()));
+    let gamma = real::atan2(
+        w[j].dot(&frame.y().into_inner()),
+        w[j].dot(&frame.x().into_inner()),
+    );
     let equator_range =
         Interval::new(0.0, gamma).map_err(|_| invariant("a corner of positive angle"))?;
     let quarter = Interval::new(0.0, FRAC_PI_2).map_err(|_| invariant("a quarter of a turn"))?;

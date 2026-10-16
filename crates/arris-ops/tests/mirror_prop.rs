@@ -10,6 +10,7 @@ use arris_check::{Level, check};
 use arris_debug::testing::{REL, close_to, fail};
 use arris_debug::unmetered::{common, cut, fuse, mass_properties, mirror};
 use arris_debug::{prop, prop_shards};
+use arris_math::real;
 use arris_math::{Point3, Reflection, UnitVec3};
 use arris_ops::OpError;
 use arris_ops::measure::MassProperties;
@@ -45,7 +46,7 @@ fn same(
     let centre = r.map_or(a.centroid, |r| r.apply(a.centroid));
     let ok = close_to(a.volume, b.volume, floor, REL)
         && close_to(a.area, b.area, floor, REL)
-        && (centre - b.centroid).norm() <= 1e-9 * (centre.coords.abs().max() + floor.cbrt());
+        && (centre - b.centroid).norm() <= 1e-9 * (centre.coords.abs().max() + real::cbrt(floor));
     if ok {
         Ok(())
     } else {
