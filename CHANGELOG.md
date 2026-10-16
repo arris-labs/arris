@@ -85,6 +85,18 @@ into its version (ADR-0027).
   profiles of a loft), within your tolerance of each section at the same
   parameter; a section that collapses to a point gives the surface a pole
   there.
+- `sweep` carries a profile along a path of lines, arcs, helix arcs and
+  NURBS curves (`Path`, `PathSegment`; Python `arris.sweep`), under a
+  rotation-minimising frame or a fixed binormal (`FrameLaw`), for pipes,
+  springs, threads and spline handles. The profile need not touch the path
+  or stand normal to it. A pipe of lines and arcs is all-analytic and
+  works in every boolean and blend a revolve or extrude does; a span with
+  no closed form is a NURBS face. A closed path sweeps a body with no
+  caps. A corner in the path, a profile lying along the path, a fold
+  where the profile reaches past the path's radius of curvature, and a
+  closed path whose frame does not close are refused by name; two NURBS
+  faces of a sweep against each other (a blend on a rail of a thread, say)
+  are still refused as unsupported.
 - `extrude` builds in any direction off the profile's plane: an arc sweeps an
   `EllipticCylinder`, its section perpendicular to the direction an ellipse
   (ADR-0014, ADR-0063). A direction whose normal component times the length is

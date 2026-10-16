@@ -18,7 +18,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 | Crate | Owns | External deps | Layer |
 |---|---|---|---|
 | `arris-math` | `Point3`/`Vec3`/`UnitVec3` (over `nalgebra`, ADR-0001), `Frame`, `Frame2`, `Axis`, `Isometry`, `Interval`, `Aabb` (with `distance`, the gap between two boxes), the periodic-parameter toolkit (`wrap_angle`, `wrap_into`, `shift_nearest`, …), exact orientation predicates (over `robust`), polynomial and interval-guarded Newton root finding, `Precision` and `Tolerance`, `Control` (a poll and a budget of steps), the `Meter` that counts against it, `Stop` and `Interrupted` (ADR-0030) | `nalgebra`, `robust`, `serde` (feature) | 0 — representation |
-| `arris-geom` | `Surface`, `Curve`, `Curve2` (analytic + NURBS): evaluation, derivatives, point projection, curve/curve, curve/surface and surface/surface intersection (`trace_quadrics`, the exact section of two quadrics by the rulings of one, and `trace_torus`, the exact section of a torus in its own parameter plane, and its walk over a NURBS surface's Bézier patches against an analytic surface — all fitted by the intersector), bounding boxes over a parameter range, the critical feet and pairs of the distance (`Curve::feet`, `Surface::feet`, `extrema_curve_curve`, `extrema_curve_surface`, `extrema_surface_surface`), pcurves and the NURBS fit behind them; the (u, v) toolkit `region2` and `integrate` shared by the checker, tessellation, mass properties and classification; `Profile`, the planar sketch of lines, arcs and elliptic arcs a sweep takes, validated and oriented by `Profile::edges`; `GeomError` | `arris-math`, `thiserror`, `serde` (feature) | 0 — representation |
+| `arris-geom` | `Surface`, `Curve`, `Curve2` (analytic + NURBS): evaluation, derivatives, point projection, curve/curve, curve/surface and surface/surface intersection (`trace_quadrics`, the exact section of two quadrics by the rulings of one, and `trace_torus`, the exact section of a torus in its own parameter plane, and its walk over a NURBS surface's Bézier patches against an analytic surface — all fitted by the intersector), bounding boxes over a parameter range, the critical feet and pairs of the distance (`Curve::feet`, `Surface::feet`, `extrema_curve_curve`, `extrema_curve_surface`, `extrema_surface_surface`), pcurves and the NURBS fit behind them; the (u, v) toolkit `region2` and `integrate` shared by the checker, tessellation, mass properties and classification; `Profile`, the planar sketch of lines, arcs and elliptic arcs a sweep takes, validated and oriented by `Profile::edges`; `Path`, `FrameLaw` and `FrameField`, the G1 chain a sweep follows and the frames along it; `GeomError` | `arris-math`, `thiserror`, `serde` (feature) | 0 — representation |
 | `arris-topo` | `Model` (the arena), typed ids, `Shape`/`Body`/`Face`/… handles, orientation, entities, pcurves, per-entity tolerances, Euler operators including the assembly seam (`Assembly::of_body`, `effective_uses`, `AssemblySlots`), the Euler line (`euler::EulerLine`), adjacency and iteration, `Provenance` and its audit | `arris-geom`, `arris-math`, `thiserror`, `serde` (feature) | 0 — representation |
 | `arris-check` | The invariant checker: `check(&Model, Body, Level) -> Report` and the `Violation` list of data-model §Invariants; the shared face domain (`domain::FaceDomain`), point classifier (`classify::Classifier`, `classify_point`), face-box hierarchy (`tree::FaceTree`: `near`, `nearest`) and region flux (`flux::face_flux`) every `Full` row, the boolean and tessellation read a face through | `arris-math`, `arris-geom`, `arris-topo`, `serde` (feature, forwarded to `arris-topo`) | 1 |
 | `arris-ops` | Primitives, extrude and revolve of a `Profile`, `planar_face` (a `Profile` as a one-face sheet), transform, mirror, booleans, the blends, each returning `Provenance`; the queries `measure` (mass and surface properties) and `query` (projection onto a plane, a face's outward frame, `ray_fire`, `distance`, `interference`, `interference_many`), `section` (a solid's planar section as a sheet) | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
@@ -1261,6 +1261,31 @@ plane, so its front is the plane's normal — assembled by
 `Builder::assemble_sheet`, every entity `Generated` from a
 `Role::PlanarFace(SweepPart)` (`StartVertex`, `StartEdge`, `StartCap` for
 the face, `Shell`, `Body`).
+
+`ops::sweep(m, &profile, &path, law, control)` carries a placed `Profile`
+along a `geom::Path` under a `FrameLaw` (ADR-0063). The profile is taken
+where the consumer put it: it need not touch the path or stand normal to
+it. Each span of the path builds its own faces, by the first row that
+holds:
+
+| Span | Frame motion | Faces |
+|---|---|---|
+| line | a translation | extrude's kinds; an oblique circle or ellipse gives the exact `EllipticCylinder` |
+| arc | a rotation about the arc's axis, the axis in the profile's plane | revolve's kinds |
+| anything else (helix, NURBS, an arc the profile's plane misses) | any | NURBS, one skin per span by `fit_skin` through the carried profile, ADR-0062's budget |
+
+A bent pipe of lines and arcs is therefore all-analytic and an operand of
+every quadric boolean and blend; a spring, a thread or a spline path
+carries NURBS faces and is refused only against another NURBS face. Each
+profile vertex's rail is built once and shared by its two faces; on a
+fitted span every pcurve is an isoline. A closed path whose frame closes
+sweeps a body with no caps. A path corner (`OpError::Path`), a profile
+whose plane holds the start tangent (`SweepReason::ProfileAlongPath`), a
+fold where the profile reaches past a span's radius of curvature
+(`SweepReason::SweepFolds`) and a closed path whose frame comes back
+turned (`SweepReason::FrameDoesNotClose`) are refused by name.
+`extrude` takes any direction off the profile's plane through the line
+span. Global self-intersection of the swept tube is not detected.
 
 ### Errors
 

@@ -146,7 +146,7 @@ corpus_tests! {
     /// 2 × 2 spans (nurbs-analytic-section).
     query_section_nurbs_bicubic_dome => query "query/section-nurbs-bicubic-dome";
     /// The rounded slot of `sweep-spline-handle` (fitted NURBS faces)
-    /// sectioned by a plane across the handle (plans/sweep step 7).
+    /// sectioned by a plane across the handle.
     query_section_sweep_spline_handle => query "query/section-sweep-spline-handle";
     /// Two bodies with off-axis cones that pruning skips: the bars' distance.
     query_distance_cones_pruned => query "query/distance-cones-pruned";
@@ -841,13 +841,13 @@ corpus_tests! {
     /// A circle along five helix turns under the axis as binormal: one
     /// fitted face, the screw's volume to the closed form.
     sweep_sweep_spring => run "sweep/sweep-spring";
-    /// The helical spring cut by a box and split by a plane: NURBS × plane in cut and split (plans/sweep step 7).
+    /// The helical spring cut by a box and split by a plane: NURBS × plane in cut and split.
     sweep_sweep_spring_cut_split => run "sweep/sweep-spring-cut-split";
     /// A triangle along three helix turns under the axis as binormal.
     sweep_sweep_thread => run "sweep/sweep-thread";
     /// The triangular thread of `sweep-thread` with its crest rail chamfered:
     /// an edge between two NURBS faces, refused `Unsupported` naming both
-    /// faces (plans/sweep step 7).
+    /// faces.
     sweep_sweep_thread_chamfer_unsupported => run "sweep/sweep-thread-chamfer-unsupported";
     /// A rounded slot along a planar cubic under the rotation-minimising
     /// law: a NURBS span's frames by arc length.
@@ -857,11 +857,11 @@ corpus_tests! {
     sweep_sweep_spline_3d => run "sweep/sweep-spline-3d";
     /// A circle along line, quarter arc, line in one plane: cylinder, torus, cylinder.
     sweep_sweep_pipe_l_bend => run "sweep/sweep-pipe-l-bend";
-    /// Two perpendicular crossing L-bend pipes fused: cylinder × cylinder quartic (plans/sweep step 7).
+    /// Two perpendicular crossing L-bend pipes fused: cylinder × cylinder quartic.
     sweep_sweep_pipe_l_bend_cross_fuse => run "sweep/sweep-pipe-l-bend-cross-fuse";
     /// A rectangle with a hole along line, arc, arc, line: planes, cylinders, tori.
     sweep_sweep_rect_s_bend => run "sweep/sweep-rect-s-bend";
-    /// The same with its four outer rail edges filleted: all analytic faces (plans/sweep step 7).
+    /// The same with its four outer rail edges filleted: all analytic faces.
     sweep_sweep_rect_s_bend_fillet => run "sweep/sweep-rect-s-bend-fillet";
     /// A circle tilted 30 degrees off the path's normal along a line: the elliptic cylinder.
     /// Open CASCADE's area, 90 pi, is the circle's perimeter times the

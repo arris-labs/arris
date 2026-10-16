@@ -50,6 +50,26 @@ a blend face), so a consumer can name it.
 The guarantee that the `k` of `Split(k)` means the same piece after an edit
 that keeps which entities bound which piece (ADR-0009).
 
+**Path**:
+A G1 chain of lines, arcs, helix arcs and NURBS curves that a profile is
+carried along by `sweep` (ADR-0063); a corner is refused, never rounded.
+_Avoid_: spine, rail (a rail is the edge a sweep builds, below)
+
+**Frame law**:
+The rule that turns a path into a frame at every arc length:
+rotation-minimising (the default) or fixed binormal. The `FrameField` is
+its result, and the profile's motion is read from it.
+_Avoid_: orientation mode, Frenet (a different law, not offered)
+
+**Rail**:
+The edge a profile vertex sweeps along a span, shared by the two side
+faces that meet there.
+
+**Holonomy**:
+The rotation about the tangent by which a rotation-minimising frame comes
+back after a closed path; a sweep along a closed path has no caps only
+when it is zero within the angular tolerance.
+
 **Checker**:
 `arris-check`: the invariant list a valid body satisfies, run after every
 operation in debug builds, at `Fast` or `Full`.

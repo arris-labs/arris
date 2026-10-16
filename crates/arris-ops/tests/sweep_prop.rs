@@ -1,5 +1,4 @@
-//! The sweep's properties (ADR-0063): the twin property (plans/sweep
-//! step 5). A planar path of lines and arcs in the xz plane, swept by a
+//! The sweep's properties (ADR-0063): the twin property. A planar path of lines and arcs in the xz plane, swept by a
 //! profile on the xy plane, builds exact faces — planes, cylinders, tori —
 //! and the same path given as its exact NURBS twin (each line a degree-one
 //! NURBS, each arc its rational quadratic circle) builds fitted ones; the

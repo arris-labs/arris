@@ -37,8 +37,8 @@ blocks 0 of 38 parts at `read`). ADR-0001 to ADR-0060; PyPI `arris` beside
 them (ADR-0034).
 **C10, the NURBS cycle** (opened 2026-10-12): NURBS against the analytic
 kinds (ADR-0061) and the blend on a NURBS face as a walked stripe
-(ADR-0062) landed; sweep is in progress (`docs/plans/sweep.md`,
-ADR-0063). Next: loft, then NURBS against NURBS; draft and thicken beside
+(ADR-0062) landed; sweep along a path landed 2026-10-16 (ADR-0063). Next: loft,
+then NURBS against NURBS; draft and thicken beside
 it, and the DIY part corpus built in it to rank C11.
 
 ## Rules that are not derivable from the code

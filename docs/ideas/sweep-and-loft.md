@@ -1,7 +1,7 @@
 # Idea: sweep-and-loft
 
 - Status: Accepted 2026-10-15 (option A, every preferred answer); the sweep
-  half absorbed by `docs/plans/sweep.md` (its decisions are ADR-0063).
+  half landed (2026-10-16, ADR-0063).
   This file keeps only the loft half, which its own plan absorbs and
   deletes.
 - Raised: 2026-10-15
