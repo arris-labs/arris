@@ -81,6 +81,7 @@
 //! bend added to the surface's sag. A conic that lies on the surface all
 //! round is `Coincident`, decided on [`CONIC_SAMPLES`] points.
 
+use arris_math::real;
 use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, Vec3};
 
 use super::NurbsSurface;
@@ -193,7 +194,7 @@ impl Conic {
     fn offset(&self, p: Point3) -> [f64; 2] {
         let l = self.frame.to_local(p);
         let (e, g) = self.implicit(l);
-        [l.z, e / g[0].hypot(g[1]).max(self.steepness)]
+        [l.z, e / real::hypot(g[0], g[1]).max(self.steepness)]
     }
 
     /// `∇Φ₁` and `∇Φ₂` at `p`, in world axes.
@@ -201,7 +202,7 @@ impl Conic {
         let l = self.frame.to_local(p);
         let [a, b] = self.radii;
         let (e, g) = self.implicit(l);
-        let size = g[0].hypot(g[1]);
+        let size = real::hypot(g[0], g[1]);
         let grad = if size > self.steepness {
             // `g = E / G` with `G = |∇E|`, `G ∂G/∂x = Eₓ · 2 / a²`.
             let dg = [g[0] * 2.0 / (a * a) / size, g[1] * 2.0 / (b * b) / size];
@@ -235,7 +236,7 @@ impl Conic {
     /// where every one is.
     fn position(&self, p: Point3) -> f64 {
         let l = self.frame.to_local(p);
-        let t = (l.y / self.radii[1]).atan2(l.x / self.radii[0]);
+        let t = real::atan2(l.y / self.radii[1], l.x / self.radii[0]);
         if t < 0.0 {
             t + core::f64::consts::TAU
         } else {
@@ -600,7 +601,10 @@ fn query(surface: &NurbsSurface, cut: Cut, anchor: Point3, tol: Tolerance) -> Qu
             )
         },
     );
-    let extent = (0..3).map(|k| (hi[k] - lo[k]).powi(2)).sum::<f64>().sqrt();
+    let extent = (0..3)
+        .map(|k| real::powi(hi[k] - lo[k], 2))
+        .sum::<f64>()
+        .sqrt();
     Query {
         surface,
         extent,
@@ -1177,7 +1181,7 @@ impl Query<'_> {
                 let mu = if k == 0 {
                     0.0
                 } else {
-                    trace * DAMPING * DAMPING_GROWTH.powi(k as i32 - 1)
+                    trace * DAMPING * real::powi(DAMPING_GROWTH, k as i32 - 1)
                 };
                 let (a, b, c) = (jtj[0] + mu, jtj[1], jtj[2] + mu);
                 let det = a * c - b * b;
@@ -1298,7 +1302,7 @@ impl Query<'_> {
             j[0][0] * f[0] + j[1][0] * f[1],
             j[0][1] * f[0] + j[1][1] * f[1],
         ];
-        let size = (j[0][0].hypot(j[0][1])).hypot(j[1][0].hypot(j[1][1]));
+        let size = real::hypot(real::hypot(j[0][0], j[0][1]), real::hypot(j[1][0], j[1][1]));
         norm(g) <= self.rounding() * size
     }
 
@@ -1504,7 +1508,11 @@ impl Query<'_> {
             (mean - radius, mean + radius)
         };
         let axis = |lambda: f64| eigenvector([l, m, n], lambda).unwrap_or([1.0, 0.0]);
-        let from_line = |v: [f64; 2]| v[1].atan2(v[0]).abs().min((-v[1]).atan2(-v[0]).abs());
+        let from_line = |v: [f64; 2]| {
+            real::atan2(v[1], v[0])
+                .abs()
+                .min(real::atan2(-v[1], -v[0]).abs())
+        };
         let flat = self.flat_curvature();
         if big.abs() <= flat {
             return Some(0.0);
@@ -1516,13 +1524,13 @@ impl Query<'_> {
             return None;
         }
         let [x, y] = axis(big);
-        let spread = (-small / big).sqrt().atan();
-        let base = y.atan2(x);
+        let spread = real::atan((-small / big).sqrt());
+        let base = real::atan2(y, x);
         let angles = [base + spread, base - spread];
         Some(
             angles
                 .iter()
-                .map(|a| from_line([a.cos(), a.sin()]))
+                .map(|a| from_line([real::cos(*a), real::sin(*a)]))
                 .fold(f64::INFINITY, f64::min),
         )
     }
@@ -1812,7 +1820,7 @@ fn pseudo_newton([a, b, c]: [f64; 3], g: [f64; 2]) -> [f64; 2] {
 }
 
 fn norm(x: [f64; 2]) -> f64 {
-    x[0].hypot(x[1])
+    real::hypot(x[0], x[1])
 }
 
 fn area(f: &Found) -> f64 {

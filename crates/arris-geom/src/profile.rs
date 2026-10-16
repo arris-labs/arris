@@ -12,6 +12,7 @@
 //! so an operation can name the part of the sketch each entity it makes
 //! came from.
 
+use arris_math::real;
 use arris_math::{
     Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, is_negligible,
     wrap_angle,
@@ -610,7 +611,7 @@ impl Profile {
     ) -> Option<(Curve, Interval)> {
         let (vs, ve) = (from - centre, to - centre);
         let sense = if counter_clockwise { 1.0 } else { -1.0 };
-        let sweep = wrap_angle(sense * (vs.x * ve.y - vs.y * ve.x).atan2(vs.dot(&ve)));
+        let sweep = wrap_angle(sense * real::atan2(vs.x * ve.y - vs.y * ve.x, vs.dot(&ve)));
         if sweep.is_nan() || sweep <= 0.0 {
             return None;
         }
@@ -716,7 +717,7 @@ impl Profile {
                     let (nearest, distance) = match ellipse_nearest(a, b, lx, ly, noise) {
                         Ok(found) => found,
                         Err(_) => (
-                            (ly / b).atan2(lx / a),
+                            real::atan2(ly / b, lx / a),
                             ellipse_distance(a, b, lx, ly, noise),
                         ),
                     };

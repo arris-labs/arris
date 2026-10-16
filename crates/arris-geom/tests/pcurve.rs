@@ -11,6 +11,7 @@
 //! band outwards. No surface is `Unsupported`; a NURBS one's arm is
 //! `tests/nurbs_pcurve.rs`'s.
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
 use arris_debug::prop::geom::{cylinder, nurbs_curve, plane};
@@ -60,7 +61,7 @@ fn flat() -> impl Strategy<Value = Flat> {
 /// axes turned by `angle`, `Z` along or against the plane's normal.
 fn curve_in(plane: &Frame, which: Flat, u0: f64, v0: f64, angle: f64, r: f64, extra: f64) -> Curve {
     let origin = plane.to_world(Point3::new(u0, v0, 0.0));
-    let x = plane.vec_to_world(Vec3::new(angle.cos(), angle.sin(), 0.0));
+    let x = plane.vec_to_world(Vec3::new(real::cos(angle), real::sin(angle), 0.0));
     let z = |flipped: bool| {
         if flipped {
             -plane.z().into_inner()
@@ -342,7 +343,7 @@ fn circle_projects_to_the_expected_ellipse(
     // the ellipse (its implicit form in the ellipse's own frame).
     let p = target.to_local(circle.point(t));
     let q = f2.to_local(arris_math::Point2::new(p.x, p.y));
-    let implicit = (q.x / major_radius).powi(2) + (q.y / minor_radius).powi(2);
+    let implicit = real::powi(q.x / major_radius, 2) + real::powi(q.y / minor_radius, 2);
     // A rounding of the coordinates moves the implicit form by twice
     // its size over the minor radius, which a circle nearly
     // perpendicular to the plane makes small.
@@ -384,7 +385,7 @@ fn a_circle_projected_to_an_oblique_plane_is_the_expected_ellipse() {
 
 /// The direction `(cos θ, sin θ, 0)` of a frame, in the world.
 fn radial(frame: &Frame, theta: f64) -> Vec3 {
-    frame.vec_to_world(Vec3::new(theta.cos(), theta.sin(), 0.0))
+    frame.vec_to_world(Vec3::new(real::cos(theta), real::sin(theta), 0.0))
 }
 
 /// `a` and `b` are the same angle modulo a turn, to rounding.
@@ -452,7 +453,7 @@ fn a_ruling_and_a_parallel_of_a_cone_are_lines_in_uv() {
             else {
                 unreachable!("the cone strategy yields cones")
             };
-            let (sin, cos) = (half_angle.sin(), half_angle.cos());
+            let (sin, cos) = (real::sin(*half_angle), real::cos(*half_angle));
             let axis = cone.z().into_inner();
             // A ruling: the line through the apex in the half-plane u0.
             let sense = if up { 1.0 } else { -1.0 };
@@ -537,12 +538,12 @@ fn a_parallel_and_a_meridian_of_a_sphere_are_lines_in_uv() {
             let z = if flip { -axis } else { axis };
             let parallel = Curve::Circle {
                 frame: Frame::new(
-                    sphere.to_world(Point3::new(0.0, 0.0, radius * v0.sin())),
+                    sphere.to_world(Point3::new(0.0, 0.0, radius * real::sin(v0))),
                     z,
                     radial(sphere, beta),
                 )
                 .unwrap(),
-                radius: radius * v0.cos(),
+                radius: radius * real::cos(v0),
             };
             let pc = pcurve_on(
                 &parallel,
@@ -564,7 +565,7 @@ fn a_parallel_and_a_meridian_of_a_sphere_are_lines_in_uv() {
             // its own X at the latitude phi of the half-plane psi + π/2.
             let u = psi + PI / 2.0;
             let cz = radial(sphere, psi);
-            let cx = phi.cos() * radial(sphere, u) + phi.sin() * axis;
+            let cx = real::cos(phi) * radial(sphere, u) + real::sin(phi) * axis;
             let meridian = Curve::Circle {
                 frame: Frame::new(sphere.origin(), if flip { -cz } else { cz }, cx).unwrap(),
                 radius: *radius,
@@ -635,12 +636,12 @@ fn a_parallel_and_a_tube_circle_of_a_torus_are_lines_in_uv() {
             let z = if flip { -axis } else { axis };
             let parallel = Curve::Circle {
                 frame: Frame::new(
-                    torus.to_world(Point3::new(0.0, 0.0, minor_radius * v0.sin())),
+                    torus.to_world(Point3::new(0.0, 0.0, minor_radius * real::sin(v0))),
                     z,
                     radial(torus, beta),
                 )
                 .unwrap(),
-                radius: major_radius + minor_radius * v0.cos(),
+                radius: major_radius + minor_radius * real::cos(v0),
             };
             let pc = pcurve_on(
                 &parallel,
@@ -661,7 +662,7 @@ fn a_parallel_and_a_tube_circle_of_a_torus_are_lines_in_uv() {
             // A circle of the tube at u0, its own X at the tube angle phi.
             let r = radial(torus, u0);
             let cz = r.cross(&axis);
-            let cx = phi.cos() * r + phi.sin() * axis;
+            let cx = real::cos(phi) * r + real::sin(phi) * axis;
             let tube = Curve::Circle {
                 frame: Frame::new(
                     torus.origin() + *major_radius * r,
@@ -1029,9 +1030,9 @@ fn against_the_branch(torus: &Surface, cutter: &Surface) -> Result<f64, TestCase
             let [ku, kv] = whole.unwrap_or([0.0; 2]);
             let apart = |s: f64| {
                 let q = branch.uv(s).unwrap_or(q);
-                let du = (p.x - q.x - ku * TAU) * (major_radius + minor_radius * q.y.cos());
+                let du = (p.x - q.x - ku * TAU) * (major_radius + minor_radius * real::cos(q.y));
                 let dv = (p.y - q.y - kv * TAU) * minor_radius;
-                du.hypot(dv)
+                real::hypot(du, dv)
             };
             // The nearest of the branch about the same parameter, by
             // golden section over a window that holds it: of its own
@@ -1089,10 +1090,10 @@ fn beside_the_pole(miss: f64) -> (Surface, Curve) {
         radius: 1.0,
     };
     let (across, tilt) = (0.4f64, 0.4 + miss);
-    let axis = Vec3::new(tilt.sin(), 0.0, tilt.cos());
+    let axis = Vec3::new(real::sin(tilt), 0.0, real::cos(tilt));
     let circle = Curve::Circle {
-        frame: Frame::new(Point3::origin() + across.cos() * axis, axis, Vec3::y()).unwrap(),
-        radius: across.sin(),
+        frame: Frame::new(Point3::origin() + real::cos(across) * axis, axis, Vec3::y()).unwrap(),
+        radius: real::sin(across),
     };
     (sphere, circle)
 }
@@ -1247,7 +1248,11 @@ fn a_circle_beside_a_pole_fits_from_the_band_to_a_hundredth_of_the_radius() {
 fn cone_on_its_apex() -> Surface {
     let (radius, half_angle) = (2.0, 0.5f64);
     Surface::Cone {
-        frame: Frame::from_z(Point3::new(0.0, 0.0, radius / half_angle.tan()), Vec3::z()).unwrap(),
+        frame: Frame::from_z(
+            Point3::new(0.0, 0.0, radius / real::tan(half_angle)),
+            Vec3::z(),
+        )
+        .unwrap(),
         radius,
         half_angle,
     }
@@ -1286,7 +1291,7 @@ fn a_cone_carries_what_runs_through_its_apex_and_what_passes_beside_it() {
     // The same ruling as a spline has no exact arm: it is through the
     // apex, and either side of it fits at the ruling's own u.
     let tilt = 0.5f64;
-    let ruling = |s: f64| Point3::new(s * tilt.sin(), 0.0, s * tilt.cos());
+    let ruling = |s: f64| Point3::new(s * real::sin(tilt), 0.0, s * real::cos(tilt));
     let spline = Curve::Nurbs(
         NurbsCurve::new(
             1,
@@ -1375,8 +1380,8 @@ fn a_villarceau_circle_and_a_spiric_oval_are_unwrapped_across_both_seams() {
     // A Villarceau circle: in the bitangent plane, of the major radius,
     // its centre the minor radius off the axis. Once round the axis and
     // once round the tube.
-    let tilt = (minor_radius / major_radius).asin();
-    let normal = Vec3::new(-tilt.sin(), 0.0, tilt.cos());
+    let tilt = real::asin(minor_radius / major_radius);
+    let normal = Vec3::new(-real::sin(tilt), 0.0, real::cos(tilt));
     let villarceau = Curve::Circle {
         frame: Frame::new(Point3::new(0.0, minor_radius, 0.0), normal, Vec3::y()).unwrap(),
         radius: major_radius,

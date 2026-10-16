@@ -4,6 +4,7 @@
 //! Newton to is among the answer, every pair of the answer is stationary
 //! and on both curves, and swapping the operands swaps the answer.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI};
 
 use arris_debug::prop::DEFAULT_SCALE;
@@ -496,7 +497,7 @@ fn near_twin() -> impl Strategy<Value = (Curve, Curve)> {
                 ),
             };
             let (x, y, z) = (f.x().into_inner(), f.y().into_inner(), f.z().into_inner());
-            let about = axis.cos() * x + axis.sin() * y;
+            let about = real::cos(axis) * x + real::sin(axis) * y;
             let turned = arris_math::nalgebra::UnitQuaternion::from_axis_angle(
                 &UnitVec3::new_normalize(about),
                 tilt,

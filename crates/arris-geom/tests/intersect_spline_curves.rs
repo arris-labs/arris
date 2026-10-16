@@ -7,6 +7,7 @@
 //! `Coincident`, and `curves_coincide` says so; two NURBS curves are the
 //! same spline, apart, or `Unsupported`.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_1_SQRT_2, TAU};
 
 use arris_debug::prop::geom::{circle, ellipse, nurbs_curve};
@@ -60,7 +61,7 @@ fn hits_of(r: &CurveIntersection) -> &[CurveCurveHit] {
 /// lies on the other curve (`intersect_curve_surface`) — is off the
 /// vertices the tests touch at.
 fn rational_ellipse(frame: &Frame, a: f64, b: f64) -> NurbsCurve {
-    let (sin, cos) = SEAM.sin_cos();
+    let (sin, cos) = real::sin_cos(SEAM);
     let at = |x: f64, y: f64| {
         frame.to_world(Point3::new(
             a * (x * cos - y * sin),
@@ -243,7 +244,7 @@ fn an_ellipse_as_a_nurbs_meets_a_line_where_the_ellipse_does() {
             };
             as_the_ellipse_does(&conic, &across, true)?;
             // In the plane, turned off the tangent: a chord, two crossings.
-            let chord = normal.cross(&tangent) * turn.sin() + tangent * turn.cos();
+            let chord = normal.cross(&tangent) * real::sin(turn) + tangent * real::cos(turn);
             let chord = Curve::Line {
                 origin: on + 0.7 * chord,
                 direction: arris_math::UnitVec3::new_normalize(chord),

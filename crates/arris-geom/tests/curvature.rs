@@ -4,6 +4,7 @@
 //! tangent pair never has equal curvatures across its ruling
 //! (docs/ARCHITECTURE.md §Operations, the curvature rule).
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 use arris_geom::{Curve, MeetKind, NurbsSurface, Surface, SurfaceIntersection, intersect_surfaces};
@@ -59,10 +60,10 @@ fn a_cylinder_bends_away_from_its_normal_across_its_rulings() {
         close(wall.normal_curvature(u, 0.4, across, tol()), -1.0 / r);
         close(wall.normal_curvature(u, 0.4, along, tol()), 0.0);
         for theta in [FRAC_PI_4, 1.2] {
-            let w = theta.cos() * across + theta.sin() * along;
+            let w = real::cos(theta) * across + real::sin(theta) * along;
             close(
                 wall.normal_curvature(u, 0.4, 3.0 * w, tol()),
-                -theta.cos().powi(2) / r,
+                -real::powi(real::cos(theta), 2) / r,
             );
         }
         // A bore is the same surface: the sign follows the normal, not
@@ -105,9 +106,12 @@ fn a_cone_is_flat_along_its_rulings() {
     };
     for (u, v) in [(0.0, 0.0), (1.5, 1.0), (3.0, -2.0)] {
         let e = cone.eval(u, v);
-        let rho = r + v * alpha.sin();
+        let rho = r + v * real::sin(alpha);
         close(cone.normal_curvature(u, v, e.dv, tol()), 0.0);
-        close(cone.normal_curvature(u, v, e.du, tol()), -alpha.cos() / rho);
+        close(
+            cone.normal_curvature(u, v, e.du, tol()),
+            -real::cos(alpha) / rho,
+        );
     }
 }
 
@@ -126,7 +130,7 @@ fn a_torus_is_elliptic_outside_and_hyperbolic_inside() {
         close(torus.normal_curvature(u, v, e.dv, tol()), -1.0 / small);
         close(
             torus.normal_curvature(u, v, e.du, tol()),
-            -v.cos() / (big + small * v.cos()),
+            -real::cos(v) / (big + small * real::cos(v)),
         );
     }
 }

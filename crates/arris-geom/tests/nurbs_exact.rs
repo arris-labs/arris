@@ -18,6 +18,7 @@
 //! Together 1–3 are an onto map of the range: a continuous monotone
 //! parameter whose ends are the range's ends, on the surface.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 mod common;
@@ -114,7 +115,7 @@ fn assert_twin(surface: &Surface, bounds: [Interval; 2]) -> Result<(), TestCaseE
             Surface::Cone {
                 radius, half_angle, ..
             } => {
-                let reach = |v: f64| (radius + v * half_angle.sin()).abs();
+                let reach = |v: f64| (radius + v * real::sin(half_angle)).abs();
                 if reach(bounds[1].lo()) > reach(bounds[1].hi()) {
                     bounds[1].lo()
                 } else {
@@ -252,7 +253,7 @@ fn a_cone_through_its_apex_has_a_collapsed_row() {
                 radius: r,
                 half_angle: alpha,
             };
-            let apex = -r / alpha.sin();
+            let apex = -r / real::sin(alpha);
             let v = Interval::new(apex, apex + 5.0 * r).unwrap();
             let twin = cone.to_nurbs([u, v]).unwrap();
             let [n, _] = twin.counts();
@@ -349,8 +350,8 @@ fn the_circle_and_the_ellipse_are_their_curves() {
                 // At the ends, exactly the conic's points.
                 for (t, angle) in [(d.lo(), range.lo()), (d.hi(), range.hi())] {
                     let want = f.origin()
-                        + a * angle.cos() * f.x().into_inner()
-                        + b * angle.sin() * f.y().into_inner();
+                        + a * real::cos(angle) * f.x().into_inner()
+                        + b * real::sin(angle) * f.y().into_inner();
                     let gap = (arc.eval(t).point - want).norm();
                     prop_assert!(gap <= EXACT, "an end is {gap} off");
                 }
@@ -358,9 +359,9 @@ fn the_circle_and_the_ellipse_are_their_curves() {
                 let mut angles = Vec::new();
                 for i in 0..SAMPLES {
                     let q = f.to_local(arc.eval(d.lerp(i as f64 / (SAMPLES - 1) as f64)).point);
-                    let r = ((q.x / a).hypot(q.y / b) - 1.0).abs() * b;
+                    let r = (real::hypot(q.x / a, q.y / b) - 1.0).abs() * b;
                     prop_assert!(r <= EXACT && q.z.abs() <= EXACT, "off the conic by {r}");
-                    angles.push((q.y / b).atan2(q.x / a));
+                    angles.push(real::atan2(q.y / b, q.x / a));
                 }
                 assert_monotone_over(&angles, range.lo(), range.length(), "t")?;
             }
@@ -411,17 +412,20 @@ fn the_hyperbola_is_on_its_branch_from_end_to_end() {
             let d = arc.domain();
             for (t, param) in [(d.lo(), range.lo()), (d.hi(), range.hi())] {
                 let want = f.origin()
-                    + (a * param.cosh()) * f.x().into_inner()
-                    + (b * param.sinh()) * f.y().into_inner();
+                    + (a * real::cosh(param)) * f.x().into_inner()
+                    + (b * real::sinh(param)) * f.y().into_inner();
                 let gap = (arc.eval(t).point - want).norm();
-                prop_assert!(gap <= EXACT * (1.0 + param.cosh()), "an end is {gap} off");
+                prop_assert!(
+                    gap <= EXACT * (1.0 + real::cosh(param)),
+                    "an end is {gap} off"
+                );
             }
             let mut last = f64::NEG_INFINITY;
             for i in 0..SAMPLES {
                 let q = f.to_local(arc.eval(d.lerp(i as f64 / (SAMPLES - 1) as f64)).point);
-                let r = ((q.x / a).powi(2) - (q.y / b).powi(2) - 1.0).abs();
+                let r = (real::powi(q.x / a, 2) - real::powi(q.y / b, 2) - 1.0).abs();
                 prop_assert!(
-                    r <= 1e-9 * (1.0 + (q.x / a).powi(2)),
+                    r <= 1e-9 * (1.0 + real::powi(q.x / a, 2)),
                     "off the branch by {r}"
                 );
                 prop_assert!(q.z.abs() <= EXACT * 10.0);
@@ -489,7 +493,7 @@ fn a_revolution_turns_the_curve_about_the_axis() {
                 );
                 // At an arc end the turn is exactly Rodrigues' rotation by `u`.
                 if i == 0 || i == 12 {
-                    let (su, cu) = u.sin_cos();
+                    let (su, cu) = real::sin_cos(u);
                     let turned = o + axial * a + cu * want_spoke + su * a.cross(&want_spoke);
                     let gap = (s.eval(u, v).point - turned).norm();
                     prop_assert!(gap <= EXACT, "({u}, {v}) is {gap} from the turn");

@@ -11,6 +11,7 @@
 //! the quartic implicit form of a torus leaves no trigonometric
 //! polynomial of degree two to solve.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_4, SQRT_2};
 
 /// `tan(π/8)`: the half-angle parameter at the end of a quarter turn
@@ -37,13 +38,13 @@ pub(crate) fn quarter_arc(quarter: usize) -> [[f64; 3]; 3] {
 /// The angle at parameter `s` of quarter turn `quarter`; `s` a little
 /// outside `[0, 1]` is the angle a little outside the quarter.
 pub(crate) fn quarter_angle(quarter: usize, s: f64) -> f64 {
-    quarter as f64 * FRAC_PI_2 + FRAC_PI_4 + 2.0 * (QUARTER_TAN * (2.0 * s - 1.0)).atan()
+    quarter as f64 * FRAC_PI_2 + FRAC_PI_4 + 2.0 * real::atan(QUARTER_TAN * (2.0 * s - 1.0))
 }
 
 /// The parameter of a quarter turn at `angle` from its start, the
 /// inverse of [`quarter_angle`], kept inside `[0, 1]`.
 pub(crate) fn quarter_param(angle: f64) -> f64 {
-    (0.5 * (1.0 + (0.5 * (angle - FRAC_PI_4)).tan() / QUARTER_TAN)).clamp(0.0, 1.0)
+    (0.5 * (1.0 + real::tan(0.5 * (angle - FRAC_PI_4)) / QUARTER_TAN)).clamp(0.0, 1.0)
 }
 
 /// The weight of a quarter turn at its parameter `s`, the quadratic with
@@ -73,8 +74,8 @@ mod tests {
                 let s = k as f64 / 8.0;
                 let angle = quarter_angle(quarter, s);
                 assert!((eval(w, s) - quarter_weight(s)).abs() < 1e-15);
-                assert!((eval(cos, s) / eval(w, s) - angle.cos()).abs() < 1e-15);
-                assert!((eval(sin, s) / eval(w, s) - angle.sin()).abs() < 1e-15);
+                assert!((eval(cos, s) / eval(w, s) - real::cos(angle)).abs() < 1e-15);
+                assert!((eval(sin, s) / eval(w, s) - real::sin(angle)).abs() < 1e-15);
                 let back = quarter_param(angle - quarter as f64 * FRAC_PI_2);
                 assert!((back - s).abs() < 1e-14, "{quarter} at {s}: {back}");
             }
@@ -116,8 +117,8 @@ mod tests {
             for k in 0..=8 {
                 let s = k as f64 / 8.0;
                 let angle = quarter_angle(quarter, s);
-                let point = centre + angle.cos() * u + angle.sin() * v;
-                let direct = implicit.value(point) * quarter_weight(s).powi(4);
+                let point = centre + real::cos(angle) * u + real::sin(angle) * v;
+                let direct = implicit.value(point) * real::powi(quarter_weight(s), 4);
                 let bernstein = {
                     let mut row = g.clone();
                     for level in 1..row.len() {

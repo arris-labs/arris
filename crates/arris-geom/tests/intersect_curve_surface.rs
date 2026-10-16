@@ -9,6 +9,7 @@
 //! section edge needs (ADR-0004), and the quadric arms what an operand
 //! face's circle needs of the face it is cut by (ADR-0020).
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_debug::prop::geom::{
@@ -47,7 +48,7 @@ fn within() -> arris_math::Aabb {
 /// sphere or a torus's tube.
 fn signed_distance(s: &Surface, p: Point3) -> f64 {
     let q = s.frame().unwrap().to_local(p);
-    let rho = q.x.hypot(q.y);
+    let rho = real::hypot(q.x, q.y);
     match *s {
         Surface::Plane { .. } => q.z,
         Surface::Cylinder { radius, .. } => rho - radius,
@@ -58,13 +59,13 @@ fn signed_distance(s: &Surface, p: Point3) -> f64 {
         } => {
             // Exact through the projection, signed by the implicit form;
             // a point the projection finds ambiguous is deep inside.
-            let sign = ((q.x / a).powi(2) + (q.y / b).powi(2) - 1.0).signum();
+            let sign = (real::powi(q.x / a, 2) + real::powi(q.y / b, 2) - 1.0).signum();
             sign * s.project(p).map_or(f64::INFINITY, |pr| pr.distance)
         }
         Surface::Cone {
             radius, half_angle, ..
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             rho * ca - (q.z + radius * ca / sa).abs() * sa
         }
         Surface::Sphere { radius, .. } => q.coords.norm() - radius,
@@ -72,7 +73,7 @@ fn signed_distance(s: &Surface, p: Point3) -> f64 {
             major_radius,
             minor_radius,
             ..
-        } => (rho - major_radius).hypot(q.z) - minor_radius,
+        } => real::hypot(rho - major_radius, q.z) - minor_radius,
         Surface::Nurbs(_) => unreachable!("no NURBS pair has a closed form"),
     }
 }
@@ -192,7 +193,7 @@ fn expect_coincident(r: &CurveSurfaceIntersection) -> Result<(), TestCaseError> 
 /// The world-space direction at `phase` around a frame's `z`, and the one
 /// a quarter turn on.
 fn around(f: &Frame, phase: f64) -> (Vec3, Vec3) {
-    let around = phase.cos() * f.x().into_inner() + phase.sin() * f.y().into_inner();
+    let around = real::cos(phase) * f.x().into_inner() + real::sin(phase) * f.y().into_inner();
     (around, f.z().cross(&around))
 }
 
@@ -212,7 +213,7 @@ fn a_line_crossing_a_plane_hits_once_at_the_built_parameter() {
         |(p, u, v, phase, tilt, s)| {
             let point = p.point(u, v);
             let (a, _) = around(p.frame().unwrap(), phase);
-            let d = tilt.cos() * a + tilt.sin() * p.frame().unwrap().z().into_inner();
+            let d = real::cos(tilt) * a + real::sin(tilt) * p.frame().unwrap().z().into_inner();
             let c = Curve::Line {
                 origin: point - s * d,
                 direction: arris_math::UnitVec3::new_normalize(d),
@@ -302,7 +303,7 @@ fn line_cylinder_follows_the_case_table() {
             let foot = frame.origin() + height * z + dist * a;
             let d = match case {
                 LineCase::Ruling | LineCase::ParallelOff => z,
-                _ => tilt.cos() * across + tilt.sin() * z,
+                _ => real::cos(tilt) * across + real::sin(tilt) * z,
             };
             let c = Curve::Line {
                 origin: foot - s * d,
@@ -311,7 +312,7 @@ fn line_cylinder_follows_the_case_table() {
             let r = common_properties(&c, &cyl)?;
             match case {
                 LineCase::Two => {
-                    let half = (radius * radius - dist * dist).sqrt() / tilt.cos();
+                    let half = (radius * radius - dist * dist).sqrt() / real::cos(tilt);
                     expect_hits(&c, &r, &[s - half, s + half], false)
                 }
                 LineCase::Tangent => expect_hits(&c, &r, &[s], true),
@@ -366,9 +367,9 @@ fn circle_plane_follows_the_case_table() {
             // circle reaches `M = R sin(tilt)` out of any plane with it.
             let n = match case {
                 CircleCase::Coincident | CircleCase::ParallelOff => z,
-                _ => tilt.cos() * z + tilt.sin() * a,
+                _ => real::cos(tilt) * z + real::sin(tilt) * a,
             };
-            let reach = radius * tilt.sin();
+            let reach = radius * real::sin(tilt);
             // The signed height of the centre above the plane.
             let h = match case {
                 CircleCase::Two => fraction * reach,
@@ -393,7 +394,7 @@ fn circle_plane_follows_the_case_table() {
             match case {
                 CircleCase::Two => {
                     // d(t) = h + M cos(t − phase) vanishes at phase ± half.
-                    let half = (-h / reach).acos();
+                    let half = real::acos(-h / reach);
                     expect_hits(&c, &r, &[phase - half, phase + half], false)
                 }
                 CircleCase::Tangent => {
@@ -470,7 +471,7 @@ fn circle_cylinder_follows_the_case_table() {
                     // than the cylinder: X = around, Y = −z.
                     let r = big * (1.1 + 2.0 * fraction);
                     let f = Frame::new(on_axis, across, a).unwrap();
-                    let half = (big / r).acos();
+                    let half = real::acos(big / r);
                     (
                         Curve::Circle {
                             frame: f,
@@ -504,7 +505,7 @@ fn circle_cylinder_follows_the_case_table() {
                         RingCase::Two => {
                             let x = (delta * delta + big * big - small * small) / (2.0 * delta);
                             let y = (big * big - x * x).sqrt();
-                            let t = y.atan2(x - delta);
+                            let t = real::atan2(y, x - delta);
                             Ok(vec![t, -t])
                         }
                         RingCase::TangentOutside => Ok(vec![PI]),
@@ -568,7 +569,7 @@ fn implicit_signed(s: &Surface, p: Point3) -> f64 {
         unreachable!()
     };
     let q = frame.to_local(p);
-    q.x.hypot(q.y) - radius
+    real::hypot(q.x, q.y) - radius
 }
 
 // --- the rest of the table --------------------------------------------------
@@ -760,7 +761,7 @@ fn a_line_against_a_quadric_follows_the_case_table() {
                 major_radius: big,
                 minor_radius: small,
             };
-            let (sa, ca) = angle.sin_cos();
+            let (sa, ca) = real::sin_cos(angle);
             let apex = frame.origin() - (big * ca / sa) * z;
             let ruling = sa * a + ca * z;
             let o = frame.origin();
@@ -771,7 +772,8 @@ fn a_line_against_a_quadric_follows_the_case_table() {
                         QuadricLine::SphereTangent => big,
                         _ => big * (1.1 + fraction),
                     };
-                    let (c, at) = through(o + dist * a, tilt.cos() * across + tilt.sin() * z);
+                    let (c, at) =
+                        through(o + dist * a, real::cos(tilt) * across + real::sin(tilt) * z);
                     let r = common_properties(&c, &sphere)?;
                     match case {
                         QuadricLine::SphereChord => {
@@ -804,7 +806,7 @@ fn a_line_against_a_quadric_follows_the_case_table() {
                     } else {
                         0.5 * (angle + FRAC_PI_2)
                     };
-                    let (c, at) = through(apex, off.cos() * z + off.sin() * a);
+                    let (c, at) = through(apex, real::cos(off) * z + real::sin(off) * a);
                     let r = common_properties(&c, &cone)?;
                     expect_hits(&c, &r, &[at], true)?;
                     let [h] = hits_of(&r) else { unreachable!() };
@@ -815,7 +817,7 @@ fn a_line_against_a_quadric_follows_the_case_table() {
                     // A point of the ruling beyond the apex, the line in
                     // the plane of the ruling and the parallel there.
                     let at = apex + (0.5 + fraction) * big * ruling;
-                    let (c, t) = through(at, tilt.cos() * ruling + tilt.sin() * across);
+                    let (c, t) = through(at, real::cos(tilt) * ruling + real::sin(tilt) * across);
                     expect_hits(&c, &common_properties(&c, &cone)?, &[t], true)
                 }
                 QuadricLine::ConeParallel => {
@@ -847,7 +849,7 @@ fn a_line_against_a_quadric_follows_the_case_table() {
                     let r = common_properties(&c, &torus)?;
                     let hits = hits_of(&r);
                     prop_assert_eq!(hits.len(), 3, "{:?}", r);
-                    let half = ((big + small).powi(2) - (big - small).powi(2)).sqrt();
+                    let half = (real::powi(big + small, 2) - real::powi(big - small, 2)).sqrt();
                     prop_assert!((hits[1].t - at).abs() <= EXACT && hits[1].tangent);
                     prop_assert!(!hits[0].tangent && !hits[2].tangent);
                     prop_assert!(((hits[2].t - hits[0].t) - 2.0 * half).abs() <= EXACT);
@@ -879,7 +881,7 @@ fn oblique_section() -> impl Strategy<Value = (Surface, Curve)> {
             |(cyl, tilt, phase, along)| {
                 let frame = cyl.frame().unwrap();
                 let (across, _) = around(frame, phase);
-                let normal = tilt.cos() * frame.z().into_inner() + tilt.sin() * across;
+                let normal = real::cos(tilt) * frame.z().into_inner() + real::sin(tilt) * across;
                 let origin = frame.origin() + along * frame.z().into_inner();
                 let plane = Surface::Plane {
                     frame: Frame::from_z(origin, normal).ok()?,
@@ -993,7 +995,7 @@ fn a_meridional_ellipse_crosses_four_times_when_it_reaches_past_the_wall() {
         for h in hits {
             prop_assert!(!h.tangent);
             let local = cyl.frame().unwrap().to_local(h.point);
-            prop_assert!((local.x.hypot(local.y) - radius).abs() <= EXACT);
+            prop_assert!((real::hypot(local.x, local.y) - radius).abs() <= EXACT);
         }
         Ok(())
     });
@@ -1225,7 +1227,7 @@ fn a_conic_against_a_quadric_follows_the_case_table() {
             let (a, across) = around(&frame, phase);
             let o = frame.origin();
             let small = fraction * big;
-            let (sa, ca) = angle.sin_cos();
+            let (sa, ca) = real::sin_cos(angle);
             let sphere = Surface::Sphere { frame, radius: big };
             let cone = Surface::Cone {
                 frame,
@@ -1266,7 +1268,7 @@ fn a_conic_against_a_quadric_follows_the_case_table() {
                         radius: small,
                     };
                     let r = common_properties(&c, &sphere)?;
-                    expect_hits(&c, &r, &[0.0, TAU - 2.0 * (big / small).atan()], false)?;
+                    expect_hits(&c, &r, &[0.0, TAU - 2.0 * real::atan(big / small)], false)?;
                     let pole = o + big * z;
                     let at_pole = hits_of(&r)
                         .iter()
@@ -1346,14 +1348,14 @@ fn a_conic_against_a_quadric_follows_the_case_table() {
                     }
                     let x = (delta * delta + parallel * parallel - radius * radius) / (2.0 * delta);
                     let y = (parallel - x).sqrt() * (parallel + x).sqrt();
-                    let t = y.atan2(x - delta);
+                    let t = real::atan2(y, x - delta);
                     expect_hits(&c, &r, &[t, -t], false)
                 }
                 ConicCase::EllipticOblique | ConicCase::EllipticScaled => {
                     // The plane `z = m·y` in the surface's frame, with
                     // the tilt short of where the section's minor axis
                     // would outgrow its major one.
-                    let m = 0.5 * ((big / small).powi(2) - 1.0).sqrt();
+                    let m = 0.5 * (real::powi(big / small, 2) - 1.0).sqrt();
                     let minor = small * (1.0 + m * m).sqrt();
                     let scale = if case == ConicCase::EllipticOblique {
                         1.0
@@ -1380,7 +1382,8 @@ fn a_conic_against_a_quadric_follows_the_case_table() {
                 ConicCase::EllipticMeridian | ConicCase::EllipticMeridianTangent => {
                     // In the plane of the axis and `a`, the wall is the
                     // two rulings the section reaches `M` along `a` at.
-                    let reach = 1.0 / ((phase.cos() / big).hypot(phase.sin() / small));
+                    let reach =
+                        1.0 / (real::hypot(real::cos(phase) / big, real::sin(phase) / small));
                     let radius = match case {
                         ConicCase::EllipticMeridian => reach * (1.2 + fraction),
                         _ => reach,
@@ -1393,13 +1396,13 @@ fn a_conic_against_a_quadric_follows_the_case_table() {
                     if case == ConicCase::EllipticMeridianTangent {
                         return expect_hits(&c, &r, &[0.0, PI], true);
                     }
-                    let half = (reach / radius).acos();
+                    let half = real::acos(reach / radius);
                     expect_hits(&c, &r, &[half, PI - half, PI + half, TAU - half], false)
                 }
                 ConicCase::TorusParallel => {
                     // The circle of the torus at `v = angle`: radius
                     // `R + r cos v` about the axis at the height `r sin v`.
-                    let (sv, cv) = angle.sin_cos();
+                    let (sv, cv) = real::sin_cos(angle);
                     let c = Curve::Circle {
                         frame: plane_of(z, a, o + (small * sv) * z)?,
                         radius: big + small * cv,
@@ -1441,9 +1444,9 @@ fn a_conic_against_a_quadric_follows_the_case_table() {
                     let r = common_properties(&c, &ring)?;
                     // `a² cos² t + b² sin² t = ρ²` at both equators.
                     let across_at = |rho: f64| {
-                        let cos = ((rho * rho - minor * minor) / (major * major - minor * minor))
-                            .sqrt()
-                            .acos();
+                        let cos = real::acos(
+                            ((rho * rho - minor * minor) / (major * major - minor * minor)).sqrt(),
+                        );
                         [cos, PI - cos, PI + cos, TAU - cos]
                     };
                     let expected: Vec<f64> = across_at(big + small)

@@ -1,6 +1,7 @@
 //! Curve–surface intersection: the closed-form table, and the arm that
 //! sends a NURBS curve to `crate::intersect_spline`.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_math::roots::{self, RootError};
@@ -436,7 +437,7 @@ pub(crate) fn hit(
         Err(e @ GeomError::Ambiguous { .. }) => match *surface {
             Surface::Cone {
                 radius, half_angle, ..
-            } => Point2::new(0.0, -radius / half_angle.sin()),
+            } => Point2::new(0.0, -radius / real::sin(half_angle)),
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
             | Surface::EllipticCylinder { .. }
@@ -474,7 +475,7 @@ fn line_plane(
     let along = n.dot(&direction);
     let across = n.cross(&direction).norm();
     let height = n.dot(&(origin - plane.origin()));
-    if along.abs().atan2(across) <= tol.angular {
+    if real::atan2(along.abs(), across) <= tol.angular {
         return Ok(if height.abs() <= tol.linear {
             CurveSurfaceIntersection::Coincident
         } else {
@@ -498,7 +499,7 @@ fn line_cylinder(
     let d = cyl.vec_to_local(direction);
     let (q2, d2) = (Vec2::new(q.x, q.y), Vec2::new(d.x, d.y));
     let across = d2.norm();
-    if across.atan2(d.z.abs()) <= tol.angular {
+    if real::atan2(across, d.z.abs()) <= tol.angular {
         // Along the axis: a ruling of the cylinder, or clear of it.
         return Ok(if (q2.norm() - radius).abs() <= tol.linear {
             CurveSurfaceIntersection::Coincident
@@ -547,7 +548,7 @@ fn line_elliptic_cylinder(
     let d = cyl.vec_to_local(direction);
     let (q2, d2) = (Vec2::new(q.x, q.y), Vec2::new(d.x, d.y));
     let across = d2.norm();
-    if across.atan2(d.z.abs()) <= tol.angular {
+    if real::atan2(across, d.z.abs()) <= tol.angular {
         let noise = origin.coords.norm() + cyl.origin().coords.norm();
         return Ok(if ellipse_distance(a, b, q.x, q.y, noise) <= tol.linear {
             CurveSurfaceIntersection::Coincident
@@ -558,11 +559,11 @@ fn line_elliptic_cylinder(
     let e = d2 / across;
     let n = Vec2::new(-e.y, e.x);
     let h = n.dot(&q2);
-    let reach = (a * n.x).hypot(b * n.y);
-    let phase = (b * n.y).atan2(a * n.x);
+    let reach = real::hypot(a * n.x, b * n.y);
+    let phase = real::atan2(b * n.y, a * n.x);
     if (h.abs() - reach).abs() <= tol.linear {
         let s = if h >= 0.0 { phase } else { phase + PI };
-        let (ss, cs) = s.sin_cos();
+        let (ss, cs) = real::sin_cos(s);
         let touch = Vec2::new(a * cs, b * ss);
         let t = (touch - q2).dot(&e) / across;
         return Ok(points(vec![hit(curve, surface, t, true)?]));
@@ -707,18 +708,18 @@ fn line_cone(
     [radius, half_angle]: [f64; 2],
     tol: Tolerance,
 ) -> Result<CurveSurfaceIntersection, GeomError> {
-    let (sa, ca) = half_angle.sin_cos();
+    let (sa, ca) = real::sin_cos(half_angle);
     let q = frame.to_local(origin);
     let p = Vec3::new(q.x, q.y, q.z + radius * ca / sa);
     let d = frame.vec_to_local(direction);
     let a = d.x * d.x + d.y * d.y;
-    let to_axis = a.sqrt().atan2(d.z.abs());
+    let to_axis = real::atan2(a.sqrt(), d.z.abs());
     let off_apex = (p - p.dot(&d) * d).norm();
     let parallel = (to_axis - half_angle).abs() <= tol.angular;
     if parallel && off_apex <= tol.linear {
         return Ok(CurveSurfaceIntersection::Coincident);
     }
-    let rho = |t: f64| (p.x + t * d.x).hypot(p.y + t * d.y);
+    let rho = |t: f64| real::hypot(p.x + t * d.x, p.y + t * d.y);
     let g = |t: f64| ca * rho(t) - sa * (p.z + t * d.z).abs();
     let dg = |t: f64| {
         let r = rho(t);
@@ -819,12 +820,12 @@ fn line_torus(
             });
         }
     };
-    let rho = |t: f64| (p.x + (t - shift) * d.x).hypot(p.y + (t - shift) * d.y);
+    let rho = |t: f64| real::hypot(p.x + (t - shift) * d.x, p.y + (t - shift) * d.y);
     let z = |t: f64| p.z + (t - shift) * d.z;
-    let g = |t: f64| (rho(t) - major).hypot(z(t)) - minor;
+    let g = |t: f64| real::hypot(rho(t) - major, z(t)) - minor;
     let dg = |t: f64| {
         let r = rho(t);
-        let tube = (r - major).hypot(z(t));
+        let tube = real::hypot(r - major, z(t));
         if tube == 0.0 {
             return 0.0;
         }
@@ -993,8 +994,8 @@ fn conic_plane(
     let h = n.dot(&(circle.origin() - plane.origin()));
     let a = radii[0] * n.dot(&circle.x());
     let b = radii[1] * n.dot(&circle.y());
-    let reach = a.hypot(b);
-    let phase = b.atan2(a);
+    let reach = real::hypot(a, b);
+    let phase = real::atan2(b, a);
     // The extrema: `h + M` at `φ`, `h − M` at `φ + π`. Both within the
     // tolerance is coincident; one is a touch.
     let far_touch = (h + reach).abs() <= tol.linear;
@@ -1019,7 +1020,7 @@ fn conic_plane(
     // `cos(t − φ) = −h / M`, with the sine from the difference of squares
     // so a root near the touch keeps its digits.
     let sine = (reach - h).sqrt() * (reach + h).sqrt();
-    let half = sine.atan2(-h);
+    let half = real::atan2(sine, -h);
     Ok(points(vec![
         hit(curve, surface, wrap_turn(phase - half), false)?,
         hit(curve, surface, wrap_turn(phase + half), false)?,
@@ -1045,13 +1046,13 @@ impl Radial {
     /// `ρ(t) − R`, the signed distance from the cylinder along the circle
     /// (negative inside), whose sign changes are the crossings.
     fn distance(&self, t: f64) -> f64 {
-        let (st, ct) = t.sin_cos();
+        let (st, ct) = real::sin_cos(t);
         (self.p + ct * self.x + st * self.y).norm() - self.radius
     }
 
     /// `d(ρ − R)/dt = (P · P′) / ρ`.
     fn slope(&self, t: f64) -> f64 {
-        let (st, ct) = t.sin_cos();
+        let (st, ct) = real::sin_cos(t);
         let point = self.p + ct * self.x + st * self.y;
         let rho = point.norm();
         if rho == 0.0 {
@@ -1306,7 +1307,7 @@ fn conic_quadric(
         radius, half_angle, ..
     } = *surface
     {
-        let above = q.z + radius * half_angle.cos() / half_angle.sin();
+        let above = q.z + radius * real::cos(half_angle) / real::sin(half_angle);
         if let Some(crossings) = trig2_roots(lu.z, lv.z, 0.0, 0.0, above)
             .map_err(|e| degenerate("the crossings of the apex plane", e))?
         {
@@ -1395,7 +1396,7 @@ mod tests {
         };
         assert_eq!(hits.len(), 4);
         for h in &hits {
-            assert!((h.point.x.hypot(h.point.y) - 1.0).abs() < 1e-14);
+            assert!((real::hypot(h.point.x, h.point.y) - 1.0).abs() < 1e-14);
             assert!(!h.tangent);
         }
         assert!(hits.windows(2).all(|w| w[0].t < w[1].t));
@@ -1431,7 +1432,8 @@ mod tests {
         let wall = Surface::Cylinder { frame, radius: big };
         let delta = big - small;
         let phase: f64 = 3.7394069057115535;
-        let spin_a = phase.cos() * frame.x().into_inner() + phase.sin() * frame.y().into_inner();
+        let spin_a =
+            real::cos(phase) * frame.x().into_inner() + real::sin(phase) * frame.y().into_inner();
         let circle_frame = Frame::new(
             frame.origin() + delta * spin_a,
             frame.z().into_inner(),
@@ -1521,7 +1523,7 @@ mod tests {
         for h in &hits {
             let p = h.point;
             assert!(
-                ((p.x / 3.0).powi(2) + (p.y / 2.0).powi(2) - 1.0).abs() < 1e-12,
+                (real::powi(p.x / 3.0, 2) + real::powi(p.y / 2.0, 2) - 1.0).abs() < 1e-12,
                 "{h:?}"
             );
         }
@@ -1578,7 +1580,7 @@ mod tests {
             assert!(!h.tangent);
             let p = h.point;
             assert!(
-                ((p.x / 3.0).powi(2) + (p.y / 2.0).powi(2) - 1.0).abs() < 1e-12,
+                (real::powi(p.x / 3.0, 2) + real::powi(p.y / 2.0, 2) - 1.0).abs() < 1e-12,
                 "{h:?}"
             );
         }

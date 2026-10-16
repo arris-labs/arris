@@ -3,6 +3,7 @@
 //! lands within a bounded time on the section the backlog calls six
 //! minutes long, and a budget at the query's own count changes nothing.
 
+use arris_math::real;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -32,7 +33,11 @@ fn slow_pair() -> (Surface, Surface, Aabb) {
     };
     let tilt = 0.1f64;
     let cylinder = Surface::EllipticCylinder {
-        frame: Frame::from_z(Point3::origin(), Vec3::new(tilt.cos(), 0.0, tilt.sin())).unwrap(),
+        frame: Frame::from_z(
+            Point3::origin(),
+            Vec3::new(real::cos(tilt), 0.0, real::sin(tilt)),
+        )
+        .unwrap(),
         major_radius: 990.0,
         minor_radius: 0.5,
     };
@@ -149,7 +154,7 @@ fn the_slow_section_stops_within_the_latency_bound() {
 
 #[test]
 fn a_fit_budget_of_its_count_changes_nothing_and_one_less_stops_it() {
-    let f = |t: f64| Point3::new(t.cos(), t.sin(), 0.2 * t);
+    let f = |t: f64| Point3::new(real::cos(t), real::sin(t), 0.2 * t);
     let range = Interval::new(0.0, 4.0).unwrap();
     let fit = |meter: &mut Meter| fit_curve(f, range, 3, |t, q| (q - f(t)).norm(), 1e-9, meter);
     let n = steps_of(fit);

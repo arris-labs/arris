@@ -3,6 +3,7 @@
 //! its periods are periods and its singular loci are reported
 //! (`docs/DATA-MODEL.md` §Geometry).
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::{cone, curve, sphere, surface};
@@ -32,8 +33,8 @@ fn params() -> impl Strategy<Value = (f64, f64)> {
 /// The closed forms of `docs/DATA-MODEL.md` §Surfaces written out in
 /// the world frame, independently of `Surface::eval`.
 fn local_surface(s: &Surface, u: f64, v: f64) -> Point3 {
-    let (su, cu) = u.sin_cos();
-    let (sv, cv) = v.sin_cos();
+    let (su, cu) = real::sin_cos(u);
+    let (sv, cv) = real::sin_cos(v);
     match s {
         Surface::Plane { .. } => Point3::new(u, v, 0.0),
         &Surface::Cylinder { radius: r, .. } => Point3::new(r * cu, r * su, v),
@@ -47,8 +48,8 @@ fn local_surface(s: &Surface, u: f64, v: f64) -> Point3 {
             half_angle: a,
             ..
         } => {
-            let rho = r + v * a.sin();
-            Point3::new(rho * cu, rho * su, v * a.cos())
+            let rho = r + v * real::sin(a);
+            Point3::new(rho * cu, rho * su, v * real::cos(a))
         }
         &Surface::Sphere { radius: r, .. } => Point3::new(r * cv * cu, r * cv * su, r * sv),
         &Surface::Torus {
@@ -64,7 +65,7 @@ fn local_surface(s: &Surface, u: f64, v: f64) -> Point3 {
 }
 
 fn local_curve(c: &Curve, t: f64) -> Point3 {
-    let (st, ct) = t.sin_cos();
+    let (st, ct) = real::sin_cos(t);
     match c {
         Curve::Line { .. } => Point3::new(0.0, 0.0, t),
         &Curve::Circle { radius: r, .. } => Point3::new(r * ct, r * st, 0.0),
@@ -278,7 +279,7 @@ fn the_singular_loci_have_no_normal_and_their_neighbours_do() {
         else {
             unreachable!("the cone strategy yields cones")
         };
-        let apex = -radius / half_angle.sin();
+        let apex = -radius / real::sin(half_angle);
         prop_assert!(k.normal(u, apex).is_none(), "{k:?} apex at v = {apex}");
         prop_assert!(k.normal(u, apex + 1e-6).is_some() && k.normal(u, 0.0).is_some());
         // The apex is one point whatever `u` is.

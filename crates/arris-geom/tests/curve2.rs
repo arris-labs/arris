@@ -2,6 +2,7 @@
 //! and `fit_curve2` approximates the ellipse-on-cylinder sinusoid at the
 //! caller's parameter within the tolerance, or says it cannot.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, radius};
@@ -32,7 +33,7 @@ fn frame2() -> impl Strategy<Value = Frame2> {
             };
             Frame2::new(
                 Point2::new(u, v),
-                Vec2::new(angle.cos(), angle.sin()),
+                Vec2::new(real::cos(angle), real::sin(angle)),
                 handedness,
             )
             .unwrap()
@@ -56,8 +57,8 @@ fn circles_of_both_handedness_evaluate_and_project() {
             };
             let e = c.eval(t);
             // The closed form in the frame's own axes.
-            let expected =
-                f.origin() + r * (t.cos() * f.x().into_inner() + t.sin() * f.y().into_inner());
+            let expected = f.origin()
+                + r * (real::cos(t) * f.x().into_inner() + real::sin(t) * f.y().into_inner());
             prop_assert!((e.point - expected).norm() <= EXACT);
             // Traversal: the tangent turns from the radial by +90° in a
             // right-handed frame and −90° in a left-handed one.
@@ -98,7 +99,7 @@ fn circles_of_both_handedness_evaluate_and_project() {
 /// `u = t`, `v = A + B cos t + C sin t`: the pcurve of an oblique plane
 /// section on a cylinder, in the cylinder's own `u`.
 fn sinusoid(a: f64, b: f64, c: f64) -> impl Fn(f64) -> Point2 + Copy {
-    move |t: f64| Point2::new(t, a + b * t.cos() + c * t.sin())
+    move |t: f64| Point2::new(t, a + b * real::cos(t) + c * real::sin(t))
 }
 
 #[test]
@@ -156,7 +157,7 @@ fn a_tolerance_below_the_sampling_noise_diverges() {
     let f = sinusoid(1.0, 2.0, 0.5);
     let range = Interval::new(0.0, TAU).unwrap();
     let noise = 1e-6;
-    let deviation = |t: f64, q: Point2| (q - f(t)).norm() + noise * (1000.0 * t).sin().abs();
+    let deviation = |t: f64, q: Point2| (q - f(t)).norm() + noise * real::sin(1000.0 * t).abs();
     let err = fit_curve2(
         f,
         range,

@@ -4,6 +4,7 @@
 //! (`docs/DATA-MODEL.md` §Pcurves), and the projection of a curve onto a
 //! plane for a consumer's sketch.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_math::{
@@ -218,7 +219,7 @@ pub fn pcurve_on(
         &Surface::Cylinder { ref frame, radius } => {
             check_on(curve, range, surface, tol, |p| {
                 let q = frame.to_local(p);
-                (q.x.hypot(q.y) - radius).abs()
+                (real::hypot(q.x, q.y) - radius).abs()
             })?;
             on_cylinder(curve, range, frame, radius, surface, tol, meter)
         }
@@ -265,7 +266,7 @@ pub fn pcurve_on(
         } => {
             check_on(curve, range, surface, tol, |p| {
                 let q = frame.to_local(p);
-                ((q.x.hypot(q.y) - major_radius).hypot(q.z) - minor_radius).abs()
+                (real::hypot(real::hypot(q.x, q.y) - major_radius, q.z) - minor_radius).abs()
             })?;
             on_torus(
                 curve,
@@ -408,7 +409,7 @@ fn nurbs_in_plane(c: &NurbsCurve, plane: &Frame) -> Result<NurbsCurve2, GeomErro
 
 /// The angle in `[0, π/2]` between the lines carried by two vectors.
 fn line_angle(a: &Vec3, b: &Vec3) -> f64 {
-    a.cross(b).norm().atan2(a.dot(b).abs())
+    real::atan2(a.cross(b).norm(), a.dot(b).abs())
 }
 
 fn on_cylinder(
@@ -423,11 +424,11 @@ fn on_cylinder(
     match curve {
         &Curve::Line { origin, direction } => {
             let d = cyl.vec_to_local(direction.into_inner());
-            if d.x.hypot(d.y).atan2(d.z.abs()) <= tol.angular {
+            if real::atan2(real::hypot(d.x, d.y), d.z.abs()) <= tol.angular {
                 // A ruling: constant `u`, `v` running with `t` along ±Z.
                 let q = cyl.to_local(origin);
                 return Ok(Curve2::Line {
-                    origin: Point2::new(wrap_turn(q.y.atan2(q.x)), q.z),
+                    origin: Point2::new(wrap_turn(real::atan2(q.y, q.x)), q.z),
                     direction: UnitVec2::new_unchecked(Vec2::new(0.0, d.z.signum())),
                 });
             }
@@ -439,14 +440,14 @@ fn on_cylinder(
         } => {
             let centre = cyl.to_local(frame.origin());
             let parallel = line_angle(&frame.z(), &cyl.z()) <= tol.angular
-                && centre.x.hypot(centre.y) <= tol.linear
+                && real::hypot(centre.x, centre.y) <= tol.linear
                 && (r - radius).abs() <= tol.linear;
             if parallel {
                 // Constant `v`; `u` starts where the circle's `X` sits
                 // against the cylinder's and runs with `t` in the sense of
                 // the circle's `Z` against the cylinder's.
                 let x = cyl.vec_to_local(frame.x().into_inner());
-                let u0 = wrap_turn(x.y.atan2(x.x));
+                let u0 = wrap_turn(real::atan2(x.y, x.x));
                 let sense = frame.z().dot(&cyl.z()).signum();
                 return Ok(Curve2::Line {
                     origin: Point2::new(u0, centre.z),
@@ -475,7 +476,7 @@ fn on_elliptic_cylinder(
     match curve {
         &Curve::Line { origin, direction } => {
             let d = cyl.vec_to_local(direction.into_inner());
-            if d.x.hypot(d.y).atan2(d.z.abs()) > tol.angular {
+            if real::atan2(real::hypot(d.x, d.y), d.z.abs()) > tol.angular {
                 return fitted_on(curve, range, surface, tol, meter);
             }
             // A ruling: constant `u` at its section point, which is on
@@ -500,7 +501,7 @@ fn on_elliptic_cylinder(
             minor_radius,
         } => {
             let centre = cyl.to_local(frame.origin());
-            let section = centre.x.hypot(centre.y) <= tol.linear
+            let section = real::hypot(centre.x, centre.y) <= tol.linear
                 && parallel_axes(&frame.z(), &cyl.z(), tol)
                 && parallel_axes(&frame.x(), &cyl.x(), tol)
                 && (major_radius - a).abs() <= tol.linear
@@ -519,8 +520,8 @@ fn on_elliptic_cylinder(
 /// second nappe, which `ρ ≥ 0` folds onto the same half-plane.
 fn cone_distance(cone: &Frame, radius: f64, half_angle: f64, p: arris_math::Point3) -> f64 {
     let q = cone.to_local(p);
-    let (rho, z) = (q.x.hypot(q.y), q.z);
-    let (sin, cos) = (half_angle.sin(), half_angle.cos());
+    let (rho, z) = (real::hypot(q.x, q.y), q.z);
+    let (sin, cos) = (real::sin(half_angle), real::cos(half_angle));
     let near = ((rho - radius) * cos - z * sin).abs();
     let far = ((rho + radius) * cos + z * sin).abs();
     near.min(far)
@@ -545,7 +546,7 @@ fn perpendicular_axes(a: &Vec3, b: &Vec3, tol: Tolerance) -> bool {
 fn parallel_pcurve(surface: &Frame, circle: &Frame, v: f64, flipped: bool) -> Curve2 {
     let x = surface.vec_to_local(circle.x().into_inner());
     let half_turn = if flipped { TAU / 2.0 } else { 0.0 };
-    let u0 = wrap_turn(x.y.atan2(x.x) + half_turn);
+    let u0 = wrap_turn(real::atan2(x.y, x.x) + half_turn);
     let sense = if circle.z().dot(&surface.z()) >= 0.0 {
         1.0
     } else {
@@ -579,12 +580,12 @@ fn meridian_pcurve(
     radial: Vec3,
     within: Option<Interval>,
 ) -> Curve2 {
-    let u = wrap_turn(radial.y.atan2(radial.x));
+    let u = wrap_turn(real::atan2(radial.y, radial.x));
     let x = surface.vec_to_local(circle.x().into_inner());
     let y = surface.vec_to_local(circle.y().into_inner());
     let (a, b) = (x.dot(&radial), x.z);
     let (c, d) = (y.dot(&radial), y.z);
-    let phi = b.atan2(a);
+    let phi = real::atan2(b, a);
     let sense = if a * d - c * b >= 0.0 { 1.0 } else { -1.0 };
     let phi = match within {
         None => wrap_turn(phi),
@@ -634,7 +635,7 @@ fn on_cone(
     meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
     let kind = GeomKind::Curve(curve.kind());
-    let (sin, cos) = (half_angle.sin(), half_angle.cos());
+    let (sin, cos) = (real::sin(half_angle), real::cos(half_angle));
     if is_negligible(sin, 1.0) || cos <= 0.0 {
         return Err(degenerate(
             GeomKind::Surface(surface.kind()),
@@ -649,13 +650,13 @@ fn on_cone(
             let d = cone.vec_to_local(direction.into_inner());
             let sense = if d.z >= 0.0 { 1.0 } else { -1.0 };
             let equatorial = Vec2::new(sense * d.x, sense * d.y);
-            if (equatorial.norm().atan2(d.z.abs()) - half_angle).abs() > tol.angular {
+            if (real::atan2(equatorial.norm(), d.z.abs()) - half_angle).abs() > tol.angular {
                 return fitted_on(curve, range, surface, tol, meter);
             }
             if is_negligible(equatorial.norm(), 1.0) {
                 return Err(degenerate(kind, "the ruling has no radial direction"));
             }
-            let u = wrap_turn(equatorial.y.atan2(equatorial.x));
+            let u = wrap_turn(real::atan2(equatorial.y, equatorial.x));
             let v0 = cone.to_local(origin).z / cos;
             Ok(Curve2::Line {
                 origin: Point2::new(u, v0),
@@ -664,8 +665,8 @@ fn on_cone(
         }
         Curve::Circle { frame, .. } => {
             let centre = cone.to_local(frame.origin());
-            let about_axis =
-                centre.x.hypot(centre.y) <= tol.linear && parallel_axes(&frame.z(), &cone.z(), tol);
+            let about_axis = real::hypot(centre.x, centre.y) <= tol.linear
+                && parallel_axes(&frame.z(), &cone.z(), tol);
             if !about_axis {
                 return fitted_on(curve, range, surface, tol, meter);
             }
@@ -693,10 +694,16 @@ fn on_sphere(
             radius: rho,
         } => {
             let centre = sphere.to_local(frame.origin());
-            if centre.x.hypot(centre.y) <= tol.linear && parallel_axes(&frame.z(), &sphere.z(), tol)
+            if real::hypot(centre.x, centre.y) <= tol.linear
+                && parallel_axes(&frame.z(), &sphere.z(), tol)
             {
                 // A parallel: `v` is the latitude of its plane.
-                return Ok(parallel_pcurve(sphere, frame, centre.z.atan2(rho), false));
+                return Ok(parallel_pcurve(
+                    sphere,
+                    frame,
+                    real::atan2(centre.z, rho),
+                    false,
+                ));
             }
             // A meridian: the great circle whose plane holds the axis.
             let through_axis = centre.coords.norm() <= tol.linear
@@ -742,7 +749,7 @@ fn on_torus(
             if equatorial.norm() <= tol.linear && parallel_axes(&frame.z(), &torus.z(), tol) {
                 // About the axis: `v` is where the tube's own angle puts
                 // this radius and height.
-                let v = wrap_turn(centre.z.atan2(rho - major_radius));
+                let v = wrap_turn(real::atan2(centre.z, rho - major_radius));
                 return Ok(parallel_pcurve(torus, frame, v, false));
             }
             let Some(radial) = Vec3::new(centre.x, centre.y, 0.0).try_normalize(0.0) else {
@@ -983,7 +990,7 @@ fn fitted_on(
         Ok(match surface {
             Surface::Cylinder { frame, .. } => {
                 let q = frame.to_local(p);
-                Point2::new(q.y.atan2(q.x), uv.y)
+                Point2::new(real::atan2(q.y, q.x), uv.y)
             }
             Surface::Plane { .. }
             | Surface::EllipticCylinder { .. }
@@ -1198,7 +1205,7 @@ fn projected_conic(
     };
     let frame2 = Frame2::new(
         in_plane(plane, frame.origin()),
-        Vec2::new(phi.cos(), phi.sin()),
+        Vec2::new(real::cos(phi), real::sin(phi)),
         handedness,
     )
     .map_err(|e| degenerate(kind, format!("projected axes: {e:?}")))?;
@@ -1220,8 +1227,8 @@ pub(crate) fn principal_axes(col1: Vec2, col2: Vec2) -> (f64, f64, f64) {
     // M = [[p, q], [r, s]] by rows.
     let (p, q, r, s) = (col1.x, col2.x, col1.y, col2.y);
     let (e, f, g, h) = (0.5 * (p + s), 0.5 * (p - s), 0.5 * (r + q), 0.5 * (r - q));
-    let (big, small) = (e.hypot(h), f.hypot(g));
-    let phi = 0.5 * (h.atan2(e) + g.atan2(f));
+    let (big, small) = (real::hypot(e, h), real::hypot(f, g));
+    let phi = 0.5 * (real::atan2(h, e) + real::atan2(g, f));
     (big + small, big - small, phi)
 }
 

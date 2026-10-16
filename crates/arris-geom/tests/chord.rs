@@ -4,6 +4,7 @@
 //! or ruled directions unbounded, the cone read at its far bound, the
 //! doubly curved kinds sharing the chord between their directions.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::{cone, cylinder, plane, sphere, torus};
@@ -31,7 +32,7 @@ fn a_line_is_one_segment_and_a_circle_matches_its_pcurve_twin() {
             finite_f64(0.1..=TAU),
         ),
         |(r, log_chord, length)| {
-            let chord = 10f64.powf(log_chord) * r;
+            let chord = real::powf(10f64, log_chord) * r;
             let range = Interval::new(0.0, length).unwrap();
             let circle = Curve::Circle {
                 frame: Frame::world(),
@@ -46,7 +47,7 @@ fn a_line_is_one_segment_and_a_circle_matches_its_pcurve_twin() {
             // The sagitta of one segment is within the chord, and one
             // fewer segment would not be (unless the floor applies).
             let theta = length / n as f64;
-            prop_assert!(r * (1.0 - (theta / 2.0).cos()) <= chord * (1.0 + 1e-12));
+            prop_assert!(r * (1.0 - real::cos(theta / 2.0)) <= chord * (1.0 + 1e-12));
             if n > MIN_SEGMENTS_PER_TURN {
                 let coarser = length / (n - 1) as f64;
                 prop_assert!(r * coarser * coarser / 8.0 > chord);
@@ -77,7 +78,7 @@ fn a_plane_and_the_ruled_directions_are_unbounded() {
     check(
         (plane(), cylinder(), cone(), finite_f64(-6.0..=-1.0)),
         |(p, cyl, cn, log_chord)| {
-            let chord = 10f64.powf(log_chord);
+            let chord = real::powf(10f64, log_chord);
             prop_assert_eq!(p.chord_steps(chord, p.domain()), [f64::INFINITY; 2]);
             let Surface::Cylinder { radius, .. } = cyl else {
                 unreachable!()
@@ -94,8 +95,8 @@ fn a_plane_and_the_ruled_directions_are_unbounded() {
             };
             let v = Interval::new(0.0, 5.0).unwrap();
             let [hu, hv] = cn.chord_steps(chord, [Interval::TURN, v]);
-            let rho = (radius + 5.0 * half_angle.sin()).max(radius);
-            let k = rho * half_angle.cos();
+            let rho = (radius + 5.0 * real::sin(half_angle)).max(radius);
+            let k = rho * real::cos(half_angle);
             prop_assert!((hu - (8.0 * chord / k).sqrt()).abs() <= 1e-15 * hu);
             prop_assert_eq!(hv, f64::INFINITY);
             // An unbounded v leaves no step at all.
@@ -110,7 +111,7 @@ fn the_doubly_curved_kinds_share_the_chord() {
     check(
         (sphere(), torus(), finite_f64(-6.0..=-1.0)),
         |(s, t, log_chord)| {
-            let chord = 10f64.powf(log_chord);
+            let chord = real::powf(10f64, log_chord);
             let Surface::Sphere { radius, .. } = s else {
                 unreachable!()
             };

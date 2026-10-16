@@ -1110,6 +1110,7 @@ pub(crate) fn merge_wrapped(zeros: Vec<Zero2>, wrap: &Wrap) -> Vec<Zero2> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arris_math::real;
 
     /// `a₀ + aₛ·s + aₜ·t`.
     fn linear(a0: f64, a_s: f64, a_t: f64) -> Poly2 {
@@ -1161,7 +1162,7 @@ mod tests {
         for i in 0..=10 {
             for j in 0..=10 {
                 let (s, t) = (i as f64 / 10.0, j as f64 / 10.0);
-                let value = (s - 0.3).powi(2) + (t - 0.6).powi(2) - 0.0625;
+                let value = real::powi(s - 0.3, 2) + real::powi(t - 0.6, 2) - 0.0625;
                 assert!((p.eval(s, t) - value).abs() < 1e-15);
                 assert!((pq.eval(s, t) - value * q.eval(s, t)).abs() < 1e-14);
                 assert!((ps.eval(s, t) - 2.0 * (s - 0.3)).abs() < 1e-14);

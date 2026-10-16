@@ -2,6 +2,7 @@
 //! parameter within the tolerance, `fit_curve_periodic` a closed one with
 //! a wrapping knot vector, and both say why when they cannot.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, pose, radius};
@@ -36,7 +37,7 @@ fn spans(fit: &NurbsCurve) -> usize {
 /// Viviani's curve, the section of a sphere of radius 2 and a cylinder
 /// of radius 1 through its centre: closed over `[0, 4π]`.
 fn viviani(t: f64) -> Point3 {
-    Point3::new(1.0 + t.cos(), t.sin(), 2.0 * (0.5 * t).sin())
+    Point3::new(1.0 + real::cos(t), real::sin(t), 2.0 * real::sin(0.5 * t))
 }
 
 #[test]
@@ -51,7 +52,9 @@ fn a_helix_in_any_pose_is_fitted_within_tolerance() {
             3..=5usize,
         ),
         |(motion, r, pitch, start, length, degree)| {
-            let f = move |t: f64| motion.apply(Point3::new(r * t.cos(), r * t.sin(), pitch * t));
+            let f = move |t: f64| {
+                motion.apply(Point3::new(r * real::cos(t), r * real::sin(t), pitch * t))
+            };
             let range = Interval::new(start, start + length).unwrap();
             let deviation = |t: f64, q: Point3| (q - f(t)).norm();
             let fit = fit_curve(
@@ -99,9 +102,9 @@ fn a_closed_curve_in_any_pose_is_fitted_periodically() {
         |(motion, a, b, c, start, degree)| {
             let f = move |t: f64| {
                 motion.apply(Point3::new(
-                    a * t.cos(),
-                    b * t.sin(),
-                    c * (2.0 * t).sin() + 0.3 * c * (3.0 * t).cos(),
+                    a * real::cos(t),
+                    b * real::sin(t),
+                    c * real::sin(2.0 * t) + 0.3 * c * real::cos(3.0 * t),
                 ))
             };
             let range = Interval::new(start, start + TAU).unwrap();
@@ -191,7 +194,7 @@ fn vivianis_curve_is_one_periodic_fit_within_tolerance() {
 /// on one free control point, and the fit still closes.
 #[test]
 fn a_periodic_fit_with_fewer_spans_than_its_degree_wraps() {
-    let circle = |t: f64| Point3::new(t.cos(), t.sin(), 0.0);
+    let circle = |t: f64| Point3::new(real::cos(t), real::sin(t), 0.0);
     let range = Interval::new(0.0, TAU).unwrap();
     let deviation = |t: f64, q: Point3| (q - circle(t)).norm();
     let fit = fit_curve_periodic(
@@ -257,7 +260,7 @@ fn fits_are_deterministic() {
 #[test]
 fn bad_requests_are_named() {
     let f = |t: f64| Point3::new(t, 0.0, 0.0);
-    let loop_ = |t: f64| Point3::new(t.cos(), t.sin(), 0.0);
+    let loop_ = |t: f64| Point3::new(real::cos(t), real::sin(t), 0.0);
     let range = Interval::new(0.0, TAU).unwrap();
     let exact = |t: f64, q: Point3| (q - loop_(t)).norm();
     type Fit = fn(

@@ -2,6 +2,7 @@
 //! where a point is on an analytic surface, in closed form.
 #![allow(dead_code)] // each test crate uses some of it
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_debug::prop::finite_f64;
@@ -58,7 +59,7 @@ pub struct Located {
 pub fn locate(surface: &Surface, p: Point3) -> Located {
     let frame = surface.frame().expect("an analytic surface");
     let q = frame.to_local(p);
-    let rho = q.x.hypot(q.y);
+    let rho = real::hypot(q.x, q.y);
     match *surface {
         Surface::Plane { .. } => Located {
             residual: q.z.abs(),
@@ -67,7 +68,7 @@ pub fn locate(surface: &Surface, p: Point3) -> Located {
         },
         Surface::Cylinder { radius, .. } => Located {
             residual: (rho - radius).abs(),
-            angle: q.y.atan2(q.x),
+            angle: real::atan2(q.y, q.x),
             v: q.z,
         },
         Surface::EllipticCylinder {
@@ -75,25 +76,25 @@ pub fn locate(surface: &Surface, p: Point3) -> Located {
             minor_radius: b,
             ..
         } => Located {
-            residual: ((q.x / a).hypot(q.y / b) - 1.0).abs() * b,
-            angle: (q.y / b).atan2(q.x / a),
+            residual: (real::hypot(q.x / a, q.y / b) - 1.0).abs() * b,
+            angle: real::atan2(q.y / b, q.x / a),
             v: q.z,
         },
         Surface::Cone {
             radius, half_angle, ..
         } => {
-            let signed = radius + q.z * half_angle.tan();
+            let signed = radius + q.z * real::tan(half_angle);
             let side = signed.signum();
             Located {
-                residual: (rho - signed.abs()).abs() * half_angle.cos(),
-                angle: (side * q.y).atan2(side * q.x),
-                v: q.z / half_angle.cos(),
+                residual: (rho - signed.abs()).abs() * real::cos(half_angle),
+                angle: real::atan2(side * q.y, side * q.x),
+                v: q.z / real::cos(half_angle),
             }
         }
         Surface::Sphere { radius, .. } => Located {
             residual: (q.coords.norm() - radius).abs(),
-            angle: q.y.atan2(q.x),
-            v: q.z.atan2(rho),
+            angle: real::atan2(q.y, q.x),
+            v: real::atan2(q.z, rho),
         },
         Surface::Torus {
             major_radius,
@@ -102,9 +103,9 @@ pub fn locate(surface: &Surface, p: Point3) -> Located {
         } => {
             let across = rho - major_radius;
             Located {
-                residual: (across.hypot(q.z) - minor_radius).abs(),
-                angle: q.y.atan2(q.x),
-                v: q.z.atan2(across),
+                residual: (real::hypot(across, q.z) - minor_radius).abs(),
+                angle: real::atan2(q.y, q.x),
+                v: real::atan2(q.z, across),
             }
         }
         Surface::Nurbs(_) => unreachable!("the twins of analytic surfaces only"),

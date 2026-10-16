@@ -4,6 +4,7 @@
 //! right-handed, and a pcurve reflected by the map lands on the mirror
 //! image of the original's 3D point.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::{curve, nurbs_curve, nurbs_surface, surface};
@@ -169,7 +170,7 @@ fn pcurve() -> impl Strategy<Value = Curve2> {
             .prop_map(|(u, v, a, left)| {
                 Frame2::new(
                     Point2::new(u, v),
-                    Vec2::new(a.cos(), a.sin()),
+                    Vec2::new(real::cos(a), real::sin(a)),
                     if left {
                         Handedness::Left
                     } else {
@@ -196,7 +197,10 @@ fn pcurve() -> impl Strategy<Value = Curve2> {
             .prop_map(|(u, v, a)| {
                 Curve2::Line {
                     origin: Point2::new(u, v),
-                    direction: arris_math::UnitVec2::new_normalize(Vec2::new(a.cos(), a.sin())),
+                    direction: arris_math::UnitVec2::new_normalize(Vec2::new(
+                        real::cos(a),
+                        real::sin(a),
+                    )),
                 }
             }),
     ]

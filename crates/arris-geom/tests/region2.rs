@@ -4,6 +4,7 @@
 //! `point_side` and `interior_point` answer for a region what a
 //! boolean's piece classification asks (ADR-0004).
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, radius};
@@ -71,13 +72,13 @@ fn a_discretised_circle_of_either_handedness_has_its_signed_area_within_the_chor
             let circle = Curve2::Circle {
                 frame: Frame2::new(
                     Point2::new(u, v),
-                    Vec2::new(angle.cos(), angle.sin()),
+                    Vec2::new(real::cos(angle), real::sin(angle)),
                     handedness,
                 )
                 .unwrap(),
                 radius: r,
             };
-            let tol = 10f64.powf(log_tol) * r;
+            let tol = real::powf(10f64, log_tol) * r;
             let polygon = discretise(&[Piece::along(&circle, Interval::TURN)], tol);
             prop_assert!(polygon.chord_deviation() <= tol);
             let area = polygon.signed_area();
@@ -110,7 +111,7 @@ fn the_winding_number_of_a_point_against_a_convex_polygon_is_the_half_plane_test
             // Points on a circle in angular order: convex, counter-clockwise.
             let corners: Vec<Point2> = angles
                 .iter()
-                .map(|a| Point2::new(r * a.cos(), r * a.sin()))
+                .map(|a| Point2::new(r * real::cos(*a), r * real::sin(*a)))
                 .collect();
             let polygon = polygon_of(&corners, f64::INFINITY);
             let p = Point2::new(px, py);
@@ -314,7 +315,7 @@ fn star(centre: Point2, angles: &[f64], radii: &[f64], ccw: bool) -> Vec<Point2>
     let mut ring: Vec<Point2> = angles
         .iter()
         .zip(radii)
-        .map(|(a, r)| Point2::new(centre.x + r * a.cos(), centre.y + r * a.sin()))
+        .map(|(a, r)| Point2::new(centre.x + r * real::cos(*a), centre.y + r * real::sin(*a)))
         .collect();
     if !ccw {
         ring.reverse();
@@ -502,7 +503,7 @@ fn the_side_index_answers_as_the_walk() {
                 });
             let centre = lo + 0.5 * (hi - lo);
             let half = 0.5 * (hi - lo);
-            let tolerance = 10f64.powf(log_tolerance) * (hi - lo).norm();
+            let tolerance = real::powf(10f64, log_tolerance) * (hi - lo).norm();
             let mut points: Vec<Point2> = spots
                 .iter()
                 .map(|&(s, t)| centre + Vec2::new(s * half.x, t * half.y))

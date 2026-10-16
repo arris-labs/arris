@@ -1,3 +1,4 @@
+use arris_math::real;
 use std::f64::consts::{PI, TAU};
 
 use arris_math::{
@@ -41,7 +42,7 @@ fn quarter_arc(r: f64) -> Path {
 }
 
 fn angle_about(from: &Vec3, to: &Vec3, axis: &Vec3) -> f64 {
-    to.dot(&axis.cross(from)).atan2(to.dot(from))
+    real::atan2(to.dot(&axis.cross(from)), to.dot(from))
 }
 
 /// Parallel transport of `u` along a dense polyline of `f`, by the minimal
@@ -64,9 +65,9 @@ fn transport(
         let axis = tprev.cross(&t);
         let s = axis.norm();
         if s > 0.0 {
-            let angle = s.atan2(tprev.dot(&t));
+            let angle = real::atan2(s, tprev.dot(&t));
             let k = axis / s;
-            let (sn, c) = angle.sin_cos();
+            let (sn, c) = real::sin_cos(angle);
             u = u * c + k.cross(&u) * sn + k * (k.dot(&u) * (1.0 - c));
         }
         tprev = t;
@@ -117,7 +118,7 @@ fn on_a_circle_the_rotation_minimising_frame_is_the_rotation_about_its_axis() {
             let v = q - center;
             // Rotation about +y by −θ takes the start tangent +z to the end's:
             // the arc turns from +z toward +x.
-            let (st, ct) = theta.sin_cos();
+            let (st, ct) = real::sin_cos(theta);
             let want = center + Vec3::new(v.x * ct + v.z * st, v.y, -v.x * st + v.z * ct);
             assert!(
                 (m.apply(q) - want).norm() < 1e-12,
@@ -134,11 +135,11 @@ fn on_a_helix_the_rotation_minimising_normal_turns_against_frenet_by_tau_s() {
     let (r, pitch, turns) = (10.0, 6.0, 2.5);
     let field = frames(&helix(r, pitch, turns), FrameLaw::RotationMinimizing).unwrap();
     let rise = pitch / TAU;
-    let rho = f64::hypot(r, rise);
+    let rho = real::hypot(r, rise);
     let tau = rise / (rho * rho);
     let frenet_n = |s: f64| {
         let phi = s / rho;
-        -Vec3::new(phi.cos(), phi.sin(), 0.0)
+        -Vec3::new(real::cos(phi), real::sin(phi), 0.0)
     };
     let angle = |s: f64| {
         let f = field.at(s);
@@ -163,7 +164,13 @@ fn the_helix_closed_form_matches_an_independent_parallel_transport() {
     let (r, pitch, turns) = (10.0, 6.0, 2.0);
     let field = frames(&helix(r, pitch, turns), FrameLaw::RotationMinimizing).unwrap();
     let rise = pitch / TAU;
-    let f = |t: f64| Point3::new(r * (TAU * t).cos(), r * (TAU * t).sin(), rise * TAU * t);
+    let f = |t: f64| {
+        Point3::new(
+            r * real::cos(TAU * t),
+            r * real::sin(TAU * t),
+            rise * TAU * t,
+        )
+    };
     let start = field.at(0.0);
     let (u, t_end) = transport(
         f,
@@ -194,7 +201,7 @@ fn a_fixed_binormal_on_a_helix_about_it_is_a_screw_motion() {
     )
     .unwrap();
     let rise = pitch / TAU;
-    let rho = f64::hypot(r, rise);
+    let rho = real::hypot(r, rise);
     for k in 1..=9 {
         let s = field.length() * f64::from(k) / 9.0;
         let theta = s / rho;
@@ -204,7 +211,7 @@ fn a_fixed_binormal_on_a_helix_about_it_is_a_screw_motion() {
             Point3::new(11.0, 0.5, -0.4),
             Point3::new(-2.0, 3.0, 5.0),
         ] {
-            let (st, ct) = theta.sin_cos();
+            let (st, ct) = real::sin_cos(theta);
             let want = Point3::new(q.x * ct - q.y * st, q.x * st + q.y * ct, q.z + rise * theta);
             assert!((m.apply(q) - want).norm() < 1e-12, "s {s}");
         }
@@ -215,7 +222,7 @@ fn a_fixed_binormal_on_a_helix_about_it_is_a_screw_motion() {
 fn a_nurbs_twin_of_a_helix_has_the_closed_form_frames() {
     let (r, pitch, turns) = (10.0, 6.0, 1.5);
     let rise = pitch / TAU;
-    let f = |t: f64| Point3::new(r * t.cos(), r * t.sin(), rise * t);
+    let f = |t: f64| Point3::new(r * real::cos(t), r * real::sin(t), rise * t);
     let range = Interval::new(0.0, TAU * turns).unwrap();
     let fit = fit_curve(
         f,
@@ -255,7 +262,7 @@ fn a_nurbs_twin_of_a_helix_has_the_closed_form_frames() {
 fn the_first_frames_motion_is_the_identity_and_every_motion_is_rigid() {
     let (r, pitch, turns) = (10.0, 6.0, 1.0);
     let rise = pitch / TAU;
-    let f = |t: f64| Point3::new(r * t.cos(), r * t.sin(), rise * t);
+    let f = |t: f64| Point3::new(r * real::cos(t), r * real::sin(t), rise * t);
     let fit = fit_curve(
         f,
         Interval::new(0.0, TAU).unwrap(),
@@ -485,7 +492,7 @@ fn enclosed_solid_angle(t: impl Fn(f64) -> Vec3, n: usize, r: Vec3) -> f64 {
         let b = t((i + 1) as f64 / n as f64);
         let num = r.dot(&a.cross(&b));
         let den = 1.0 + r.dot(&a) + a.dot(&b) + b.dot(&r);
-        sum += 2.0 * num.atan2(den);
+        sum += 2.0 * real::atan2(num, den);
     }
     sum
 }
@@ -496,8 +503,12 @@ fn a_closed_non_planar_path_has_the_solid_angle_of_its_tangents_as_holonomy() {
     // bisect the sphere (Jacobi's theorem is for simple indicatrices) and
     // the writhe, hence the holonomy, is not a whole turn.
     let f = |t: f64| {
-        let r = 2.0 + (3.0 * t).cos();
-        Point3::new(r * (2.0 * t).cos(), r * (2.0 * t).sin(), (3.0 * t).sin())
+        let r = 2.0 + real::cos(3.0 * t);
+        Point3::new(
+            r * real::cos(2.0 * t),
+            r * real::sin(2.0 * t),
+            real::sin(3.0 * t),
+        )
     };
     let fit = fit_curve_periodic(
         f,
@@ -516,11 +527,11 @@ fn a_closed_non_planar_path_has_the_solid_angle_of_its_tangents_as_holonomy() {
     assert!(field.is_closed());
     let tangent = |u: f64| {
         let t = TAU * u;
-        let r = 2.0 + (3.0 * t).cos();
+        let r = 2.0 + real::cos(3.0 * t);
         Vec3::new(
-            -3.0 * (3.0 * t).sin() * (2.0 * t).cos() - 2.0 * r * (2.0 * t).sin(),
-            -3.0 * (3.0 * t).sin() * (2.0 * t).sin() + 2.0 * r * (2.0 * t).cos(),
-            3.0 * (3.0 * t).cos(),
+            -3.0 * real::sin(3.0 * t) * real::cos(2.0 * t) - 2.0 * r * real::sin(2.0 * t),
+            -3.0 * real::sin(3.0 * t) * real::sin(2.0 * t) + 2.0 * r * real::cos(2.0 * t),
+            3.0 * real::cos(3.0 * t),
         )
         .normalize()
     };
@@ -540,7 +551,7 @@ fn a_closed_non_planar_path_has_the_solid_angle_of_its_tangents_as_holonomy() {
 
 #[test]
 fn a_stopped_meter_stops_the_frame_table() {
-    let f = |t: f64| Point3::new(t.cos(), t.sin(), 0.2 * t);
+    let f = |t: f64| Point3::new(real::cos(t), real::sin(t), 0.2 * t);
     let fit = fit_curve(
         f,
         Interval::new(0.0, 3.0).unwrap(),

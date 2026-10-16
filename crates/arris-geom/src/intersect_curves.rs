@@ -7,6 +7,7 @@
 //! has a closed form of its own, and the coplanar cases, where the plane
 //! says nothing, have theirs.
 
+use arris_math::real;
 use arris_math::{Frame, Meter, Point2, Point3, Tolerance, Vec2, Vec3, roots, wrap_angle};
 
 use crate::conic2::{Conic2, ConicMeet, conic_pair};
@@ -337,7 +338,7 @@ pub fn conic_crossings(
     };
     let (na, nb) = (fa.z().into_inner(), fb.z().into_inner());
     let along = na.cross(&nb);
-    if along.norm().atan2(na.dot(&nb).abs()) <= tol.angular {
+    if real::atan2(along.norm(), na.dot(&nb).abs()) <= tol.angular {
         return Ok(None);
     }
     // The line in `a`'s plane, in its frame: square to `b`'s normal
@@ -368,7 +369,7 @@ pub fn conic_crossings(
             continue;
         }
         out.push(CurveCurveHit {
-            ta: wrap_angle((at.y / rb).atan2(at.x / ra)),
+            ta: wrap_angle(real::atan2(at.y / rb, at.x / ra)),
             tb: projection.t,
             point,
             tangent: root.multiplicity > 1,
@@ -420,7 +421,7 @@ fn conic_frame(c: &Curve) -> Option<(&Frame, [f64; 2])> {
 fn line_line(oa: Point3, da: Vec3, ob: Point3, db: Vec3, tol: Tolerance) -> CurveIntersection {
     let cross = da.cross(&db);
     let offset = ob - oa;
-    if cross.norm().atan2(da.dot(&db).abs()) <= tol.angular {
+    if real::atan2(cross.norm(), da.dot(&db).abs()) <= tol.angular {
         // Parallel: the same line, or never meeting.
         let across = offset - offset.dot(&da) * da;
         return if across.norm() <= tol.linear {

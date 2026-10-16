@@ -228,13 +228,13 @@ pub fn fit_skin<E: From<GeomError>>(
 
 #[cfg(test)]
 mod tests {
-    use arris_math::{Frame, Point3, Vec3};
+    use arris_math::{Frame, Point3, Vec3, real};
 
     use super::*;
 
     fn ring(v: f64) -> Result<NurbsCurve, GeomError> {
         let frame = Frame::new(Point3::new(0.0, 0.0, v), Vec3::z(), Vec3::x()).unwrap();
-        NurbsCurve::circle(&frame, 1.0 + 0.5 * v.sin(), Interval::TURN)
+        NurbsCurve::circle(&frame, 1.0 + 0.5 * real::sin(v), Interval::TURN)
     }
 
     /// Circles of a radius that swells and shrinks along their axis: the
@@ -253,7 +253,7 @@ mod tests {
                     range.lerp(j as f64 / 101.0),
                 );
                 let p = s.eval(u, v).point;
-                let off = p.coords.xy().norm() - (1.0 + 0.5 * v.sin());
+                let off = p.coords.xy().norm() - (1.0 + 0.5 * real::sin(v));
                 assert!(
                     off.abs() <= tol && (p.z - v).abs() <= tol,
                     "{u} {v}: {off:e}"
@@ -272,10 +272,11 @@ mod tests {
     #[test]
     fn a_section_collapsed_to_a_point_is_a_collapsed_row() {
         let cap = |v: f64| -> Result<NurbsCurve, GeomError> {
-            let frame = Frame::new(Point3::new(0.0, 0.0, v.sin()), Vec3::z(), Vec3::x()).unwrap();
+            let frame =
+                Frame::new(Point3::new(0.0, 0.0, real::sin(v)), Vec3::z(), Vec3::x()).unwrap();
             let c = NurbsCurve::circle(&frame, 1.0, Interval::TURN)?;
             // Scaled toward the axis: a circle of radius cos(v).
-            let k = v.cos().max(0.0);
+            let k = real::cos(v).max(0.0);
             let points = (c.control_points().iter())
                 .map(|q| Point3::new(k * q.x, k * q.y, q.z))
                 .collect();

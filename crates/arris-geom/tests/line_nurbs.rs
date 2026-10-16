@@ -6,6 +6,7 @@
 //! nothing past it; a line along a ruling is `Coincident`; a crossing on
 //! a knot line or a seam is one hit; and every hit lies on both.
 
+use arris_math::real;
 use core::f64::consts::PI;
 
 use arris_debug::prop::geom::{
@@ -85,7 +86,7 @@ fn bounds(s: &Surface) -> [Interval; 2] {
             radius, half_angle, ..
         } => [
             Interval::TURN,
-            Interval::new(-0.9 * radius / half_angle.sin(), 10.0).unwrap(),
+            Interval::new(-0.9 * radius / real::sin(*half_angle), 10.0).unwrap(),
         ],
         Surface::Sphere { .. } | Surface::Torus { .. } => s.domain(),
         Surface::Nurbs(_) => unreachable!("the strategy draws analytic surfaces"),
@@ -269,7 +270,7 @@ arris_debug::prop_shards! {
             };
             let x = e.du.normalize();
             let y = n.cross(&x);
-            let d = x * angle.cos() + y * angle.sin();
+            let d = x * real::cos(angle) + y * real::sin(angle);
             let p = e.point + n * (off * tol().linear);
             let c = Curve::Line { origin: p - d * 5.0, direction: UnitVec3::new_normalize(d) };
             let (ours, theirs) = match (meet(&c, &nurbs(&twin)), meet(&c, &s)) {
@@ -305,7 +306,7 @@ arris_debug::prop_shards! {
             let largest = (0..32)
                 .map(|i| {
                     let phi = core::f64::consts::PI * i as f64 / 32.0;
-                    let w = coords(x * phi.cos() + y * phi.sin());
+                    let w = coords(x * real::cos(phi) + y * real::sin(phi));
                     form(w.0, w.1).abs()
                 })
                 .fold(0.0, f64::max);
@@ -465,7 +466,7 @@ fn newton(s: &NurbsSurface, c: &Curve, start: [f64; 2]) -> Option<Point3> {
     for _ in 0..48 {
         let e = s.eval(x[0], x[1]);
         let f = n.map(|n| n.dot(&(e.point - origin)));
-        if f[0].hypot(f[1]) <= EXACT {
+        if real::hypot(f[0], f[1]) <= EXACT {
             return Some(e.point);
         }
         let j = n.map(|n| [n.dot(&e.du), n.dot(&e.dv)]);
@@ -581,7 +582,7 @@ fn a_line_along_a_ruling_is_coincident() {
         .unwrap();
     // On a seam of the twin's patches, and inside one.
     for angle in [0.0, 0.4] {
-        let (sin, cos) = f64::sin_cos(angle);
+        let (sin, cos) = real::sin_cos(angle);
         for (off, coincident) in [(0.0, true), (0.5, true), (-0.5, true), (2.0, false)] {
             let r = 2.0 + off * tau;
             let c = line([r * cos, r * sin, -5.0], [0.0, 0.0, 1.0]);

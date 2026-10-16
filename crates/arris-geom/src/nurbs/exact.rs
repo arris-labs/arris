@@ -17,6 +17,7 @@
 //! knots a period repeats are doubled at each arc end, and a domain that
 //! starts on a doubled knot ends on one, which the constructor refuses.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_math::{Frame, Interval, Point3, RELATIVE_ROUNDING, UnitVec3, Vec3, is_negligible};
@@ -53,7 +54,7 @@ fn sin_cos_exact(t: f64) -> (f64, f64) {
             _ => (-1.0, 0.0),
         };
     }
-    t.sin_cos()
+    real::sin_cos(t)
 }
 
 /// The arcs a range of angle is cut into, and the ring of control points,
@@ -105,7 +106,7 @@ impl Ring {
             }
         };
         let half = sweep / arcs as f64 / 2.0;
-        let (mid_weight, push) = (half.cos(), 1.0 / half.cos());
+        let (mid_weight, push) = (real::cos(half), 1.0 / real::cos(half));
         let mut unit = Vec::new();
         let mut weights = Vec::new();
         for k in 0..=arcs {
@@ -295,7 +296,7 @@ impl NurbsCurve {
         let a = positive("semi-axis", semi_axis)?;
         let b = positive("semi-imaginary axis", semi_imaginary_axis)?;
         let (t0, t1) = open_range(range)?;
-        let (q0, q1) = (t0.exp(), t1.exp());
+        let (q0, q1) = (real::exp(t0), real::exp(t1));
         if !(q0.is_finite() && q1.is_finite() && q0 > 0.0) {
             return Err(curve_fault(format!(
                 "the range [{t0}, {t1}] is too long for a hyperbola's rational form"
@@ -501,9 +502,9 @@ mod tests {
         // 3.4 rad is three arcs of a little over a radian: seven control points.
         assert_eq!(start.control_points().len(), 7);
         let e = start.eval(0.3).point;
-        assert!((e - Point3::new(0.3f64.cos(), 0.3f64.sin(), 0.0)).norm() < 1e-15);
+        assert!((e - Point3::new(real::cos(0.3f64), real::sin(0.3f64), 0.0)).norm() < 1e-15);
         let e = start.eval(3.7).point;
-        assert!((e - Point3::new(3.7f64.cos(), 3.7f64.sin(), 0.0)).norm() < 1e-15);
+        assert!((e - Point3::new(real::cos(3.7f64), real::sin(3.7f64), 0.0)).norm() < 1e-15);
     }
 
     #[test]

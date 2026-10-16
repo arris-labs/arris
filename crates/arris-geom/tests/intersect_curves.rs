@@ -7,6 +7,7 @@
 //! one pair without a form — two NURBS curves — is `Unsupported` naming
 //! both operands (ADR-0004).
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
 use arris_debug::prop::geom::{circle, curve, ellipse, line, nurbs_curve};
@@ -76,7 +77,7 @@ fn crossing_lines() -> impl Strategy<Value = (Curve, Curve, Point3)> {
     (point_in_box(DEFAULT_SCALE), unit_vec3(), unit_vec3()).prop_filter_map(
         "two lines that are not parallel",
         |(meet, da, db)| {
-            if da.cross(&db).norm().atan2(da.dot(&db).abs()) <= 1e-3 {
+            if real::atan2(da.cross(&db).norm(), da.dot(&db).abs()) <= 1e-3 {
                 return None;
             }
             Some((
@@ -389,7 +390,7 @@ fn two_circles_in_crossing_planes_meet_where_they_were_built_to() {
             // tilted about the tangent there.
             let radial = (on - frame.origin()).normalize();
             let tangent = frame.z().cross(&radial);
-            let normal = tilt.cos() * frame.z().into_inner() + tilt.sin() * tangent;
+            let normal = real::cos(tilt) * frame.z().into_inner() + real::sin(tilt) * tangent;
             prop_assume!(hint.cross(&normal).norm() > 0.1);
             let b_frame = Frame::from_z(on + radius * radial, normal)
                 .map_err(|e| TestCaseError::fail(e.to_string()))?;
@@ -447,15 +448,16 @@ fn coplanar_conic_through_an_ellipse() -> impl Strategy<Value = (Curve, Curve, P
                 let b = if round { a } else { squash * a };
                 // The centre that puts `on` at the second conic's own
                 // angle `phase`.
-                let centre = on - (a * phase.cos()) * x - (b * phase.sin()) * y;
+                let centre = on - (a * real::cos(phase)) * x - (b * real::sin(phase)) * y;
                 // Both tangents there, in the plane's own axes: the two
                 // must cross, not graze.
-                let first_d = -(major_radius * t.sin()) * x + (minor_radius * t.cos()) * y;
-                let second_d = -(a * phase.sin()) * x + (b * phase.cos()) * y;
-                let angle = first_d
-                    .cross(&second_d)
-                    .norm()
-                    .atan2(first_d.dot(&second_d).abs());
+                let first_d =
+                    -(major_radius * real::sin(t)) * x + (minor_radius * real::cos(t)) * y;
+                let second_d = -(a * real::sin(phase)) * x + (b * real::cos(phase)) * y;
+                let angle = real::atan2(
+                    first_d.cross(&second_d).norm(),
+                    first_d.dot(&second_d).abs(),
+                );
                 if angle <= 1e-2 {
                     return None;
                 }

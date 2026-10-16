@@ -1,6 +1,7 @@
 //! Curves in a surface's (u, v) plane: the pcurves of
 //! `docs/DATA-MODEL.md` §Pcurves.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 use core::fmt;
 
@@ -141,7 +142,7 @@ impl Curve2 {
                 d2: Vec2::zeros(),
             },
             &Curve2::Circle { frame, radius } => {
-                let (st, ct) = t.sin_cos();
+                let (st, ct) = real::sin_cos(t);
                 let (x, y) = (frame.x().into_inner(), frame.y().into_inner());
                 let radial = ct * x + st * y;
                 Curve2Eval {
@@ -155,7 +156,7 @@ impl Curve2 {
                 major_radius,
                 minor_radius,
             } => {
-                let (st, ct) = t.sin_cos();
+                let (st, ct) = real::sin_cos(t);
                 let (x, y) = (frame.x().into_inner(), frame.y().into_inner());
                 let radial = (major_radius * ct) * x + (minor_radius * st) * y;
                 Curve2Eval {
@@ -345,7 +346,7 @@ impl Curve2 {
                 if is_negligible(rho, local_noise_scale(&frame, p)) {
                     return Err(ambiguous(AmbiguousLocus::Centre));
                 }
-                let t = wrap_turn(q.y.atan2(q.x));
+                let t = wrap_turn(real::atan2(q.y, q.x));
                 Ok(Curve2Projection {
                     t,
                     point: self.point(t),

@@ -18,6 +18,7 @@
 //! iteration and returns whichever local minimum the grid finds, which is
 //! the behaviour this replaces.
 
+use arris_math::real;
 use core::cmp::Ordering;
 use std::collections::BinaryHeap;
 
@@ -125,7 +126,7 @@ impl Patch {
             .collect();
         let [lo, hi] = self.hull_box();
         let mut bound = (0..3)
-            .map(|k| (lo[k] - p[k]).max(p[k] - hi[k]).max(0.0).powi(2))
+            .map(|k| real::powi((lo[k] - p[k]).max(p[k] - hi[k]).max(0.0), 2))
             .sum::<f64>()
             .sqrt();
         let centre = points.iter().sum::<Vec3>() / points.len() as f64;
@@ -152,7 +153,10 @@ impl Patch {
 
     fn diagonal(&self) -> f64 {
         let [lo, hi] = self.hull_box();
-        (0..3).map(|k| (hi[k] - lo[k]).powi(2)).sum::<f64>().sqrt()
+        (0..3)
+            .map(|k| real::powi(hi[k] - lo[k], 2))
+            .sum::<f64>()
+            .sqrt()
     }
 
     fn middle(&self) -> [f64; 2] {
@@ -430,7 +434,10 @@ impl NurbsSurface {
                 reach = reach.max(x.coords.norm());
             }
             (
-                (0..3).map(|k| (hi[k] - lo[k]).powi(2)).sum::<f64>().sqrt(),
+                (0..3)
+                    .map(|k| real::powi(hi[k] - lo[k], 2))
+                    .sum::<f64>()
+                    .sqrt(),
                 reach,
             )
         };

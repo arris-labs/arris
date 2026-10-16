@@ -111,7 +111,7 @@ dump digest to a committed golden. It runs natively in the gate and on
   1.271166962267458e-5)` has the same bits on every target.
 - [x] Step 3 **[2]** — `nalgebra` `libm-force`; migrate `arris-math` (6)
   and `arris-mesh` (5) and pass the per-crate clippy check; re-bless what moves.
-- [ ] Step 4 **[2]** — `arris-geom`, the curves (`profile.rs` first, where
+- [x] Step 4 **[2]** — `arris-geom`, the curves (`profile.rs` first, where
   the report's `arc_about` is) and the 2-D code: about half of its 402
   calls. Re-bless.
 - [ ] Step 5 **[2]** — `arris-geom`, the surfaces and intersections, the

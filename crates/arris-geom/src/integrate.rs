@@ -6,6 +6,7 @@
 //! supplies `f` — `|∂P/∂u × ∂P/∂v|` for an area, `P · (∂P/∂u × ∂P/∂v) / 3`
 //! for a volume — over the surface's own parametrisation.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI};
 
 use crate::Surface;
@@ -227,7 +228,7 @@ pub fn gauss_legendre() -> [(f64, f64); GAUSS_ORDER] {
     for (i, slot) in table.iter_mut().enumerate() {
         // The i-th root counted from the top; the guess interleaves them.
         let k = n - i;
-        let mut x = (PI * (k as f64 - 0.25) / (n as f64 + 0.5)).cos();
+        let mut x = real::cos(PI * (k as f64 - 0.25) / (n as f64 + 0.5));
         let mut derivative = 1.0;
         // Newton on P_n(x) with the three-term recurrence; the iteration
         // count bounds the loop, the fixed point ends it.
@@ -467,8 +468,8 @@ mod tests {
         let ring: Vec<Point2> = (0..n)
             .map(|i| {
                 let a = TAU * i as f64 / n as f64;
-                let r = 2.0 + 0.7 * (3.0 * a).cos();
-                Point2::new(r * a.cos(), r * a.sin())
+                let r = 2.0 + 0.7 * real::cos(3.0 * a);
+                Point2::new(r * real::cos(a), r * real::sin(a))
             })
             .collect();
         let degree = 3;
@@ -515,7 +516,7 @@ mod tests {
         assert!(table.windows(2).all(|p| p[0].0 < p[1].0));
         // Exact for x^30 over [-1, 1]: 2 / 31.
         let table = gauss_legendre();
-        let v = gauss(-1.0, 1.0, &table, |x| x.powi(30));
+        let v = gauss(-1.0, 1.0, &table, |x| real::powi(x, 30));
         assert!((v - 2.0 / 31.0).abs() < 1e-15, "{v}");
     }
 
@@ -540,7 +541,10 @@ mod tests {
             .collect();
         // ∬ u² v du dv = w³/3 · h²/2.
         let v = region_integral(&pieces, &Grid::NONE, |u, v| u * u * v);
-        assert!((v - w.powi(3) / 3.0 * h * h / 2.0).abs() < 1e-12, "{v}");
+        assert!(
+            (v - real::powi(w, 3) / 3.0 * h * h / 2.0).abs() < 1e-12,
+            "{v}"
+        );
         let reversed: Vec<Piece<'_>> = sides
             .iter()
             .zip(ranges)
@@ -576,7 +580,7 @@ mod tests {
             .map(|(c, r)| Piece::along(c, r))
             .collect();
         let exact = TAU * 3.0 / 8.0;
-        let f = |u: f64, _: f64| u.cos().powi(4);
+        let f = |u: f64, _: f64| real::powi(real::cos(u), 4);
         let coarse = region_integral(&pieces, &Grid::NONE, f);
         let fine = region_integral(&pieces, &turn(4), f);
         assert!((coarse - exact).abs() > 1e-12, "{coarse}");
@@ -592,7 +596,9 @@ mod tests {
         // the grid — what a span a rounding past `2π` used to get — does
         // not.
         let (a, b) = (9.0, 0.5);
-        let g = |u: f64| (a * a * u.sin().powi(2) + b * b * u.cos().powi(2)).sqrt();
+        let g = |u: f64| {
+            (a * a * real::powi(real::sin(u), 2) + b * b * real::powi(real::cos(u), 2)).sqrt()
+        };
         let n = 400_000;
         let h = TAU / n as f64;
         let reference = (1..n)
@@ -626,7 +632,7 @@ mod tests {
         );
         // The grid also leaves the trigonometric cases exact.
         let exact = TAU * 3.0 / 8.0;
-        let fine = region_integral(&pieces, &turn(4), |u, _| u.cos().powi(4));
+        let fine = region_integral(&pieces, &turn(4), |u, _| real::powi(real::cos(u), 4));
         assert!((fine - exact).abs() < 1e-13, "{fine}");
     }
 

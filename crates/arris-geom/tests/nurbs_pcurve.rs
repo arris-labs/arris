@@ -9,6 +9,7 @@
 
 mod common;
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_debug::prop::finite_f64;
@@ -58,7 +59,7 @@ fn sweep() -> impl Strategy<Value = Interval> {
 /// The circle about `frame`'s axis at height `z` and radius `rho`, its own
 /// `X` turned by `phase` from the frame's and its `Z` along or against it.
 fn about_axis(frame: &Frame, z: f64, rho: f64, phase: f64, along: bool) -> Curve {
-    let x = phase.cos() * frame.x().into_inner() + phase.sin() * frame.y().into_inner();
+    let x = real::cos(phase) * frame.x().into_inner() + real::sin(phase) * frame.y().into_inner();
     let axis = if along { frame.z() } else { -frame.z() };
     Curve::Circle {
         frame: Frame::new(
@@ -73,7 +74,7 @@ fn about_axis(frame: &Frame, z: f64, rho: f64, phase: f64, along: bool) -> Curve
 
 /// The unit direction at angle `u` about `frame`'s axis.
 fn radial(frame: &Frame, u: f64) -> Vec3 {
-    u.cos() * frame.x().into_inner() + u.sin() * frame.y().into_inner()
+    real::cos(u) * frame.x().into_inner() + real::sin(u) * frame.y().into_inner()
 }
 
 arris_debug::prop_shards! {
@@ -98,8 +99,8 @@ arris_debug::prop_shards! {
             );
             let parallel = about_axis(
                 &frame,
-                radius * latitude.sin(),
-                radius * latitude.cos(),
+                radius * real::sin(latitude),
+                radius * real::cos(latitude),
                 phase,
                 along,
             );
@@ -198,7 +199,7 @@ arris_debug::prop_shards! {
                     frame: Frame::new(
                         frame.origin() + major_radius * out,
                         sense * out.cross(&frame.z().into_inner()),
-                        phase.cos() * out + phase.sin() * frame.z().into_inner(),
+                        real::cos(phase) * out + real::sin(phase) * frame.z().into_inner(),
                     )
                     .unwrap(),
                     radius: minor_radius,
@@ -207,8 +208,8 @@ arris_debug::prop_shards! {
                 // The circle about the axis at the tube's angle `at`.
                 about_axis(
                     &frame,
-                    minor_radius * at.sin(),
-                    major_radius + minor_radius * at.cos(),
+                    minor_radius * real::sin(at),
+                    major_radius + minor_radius * real::cos(at),
                     phase,
                     along,
                 )
@@ -240,9 +241,9 @@ arris_debug::prop_shards! {
             // radius is the cylinder's, its major axis rises along
             // `heading`.
             let along = radial(&frame, heading);
-            let normal = tilt.cos() * frame.z().into_inner() - tilt.sin() * along;
-            let major = tilt.cos() * along + tilt.sin() * frame.z().into_inner();
-            let reach = radius * tilt.tan() + 1.0;
+            let normal = real::cos(tilt) * frame.z().into_inner() - real::sin(tilt) * along;
+            let major = real::cos(tilt) * along + real::sin(tilt) * frame.z().into_inner();
+            let reach = radius * real::tan(tilt) + 1.0;
             let twin = Surface::Nurbs(
                 surface
                     .to_nurbs([
@@ -258,7 +259,7 @@ arris_debug::prop_shards! {
                     major,
                 )
                 .unwrap(),
-                major_radius: radius / tilt.cos(),
+                major_radius: radius / real::cos(tilt),
                 minor_radius: radius,
             };
             let (_, worst) = deviation(&ellipse, range, &twin)

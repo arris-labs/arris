@@ -6,6 +6,7 @@
 use arris_debug::prop::geom::{curve, nurbs_curve, nurbs_surface, surface};
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64};
 use arris_geom::{Curve, Surface};
+use arris_math::real;
 use arris_math::{Aabb, Frame, Interval, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
 
@@ -235,7 +236,7 @@ fn a_periodic_nurbs_over_a_range_past_its_domain_is_bounded_by_the_whole_curve()
     use arris_math::Meter;
     use core::f64::consts::{PI, TAU};
 
-    let f = |t: f64| Point3::new(2.0 * t.cos(), t.sin(), 0.5 * t.sin());
+    let f = |t: f64| Point3::new(2.0 * real::cos(t), real::sin(t), 0.5 * real::sin(t));
     let fit = fit_curve_periodic(
         f,
         Interval::new(0.0, TAU).unwrap(),

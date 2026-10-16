@@ -18,6 +18,7 @@
 //!   motion where the path is a helix about that direction.
 
 use arris_math::nalgebra::UnitQuaternion;
+use arris_math::real;
 use arris_math::sweep_steps::{FRAME_ERROR_FLOOR, FRAME_MAX_TURN, FRAME_MIN_STEP};
 use arris_math::{
     Axis, Frame, Interrupted, Interval, Isometry, Meter, Point3, Tolerance, UnitVec3, Vec3,
@@ -335,7 +336,7 @@ struct Knot {
 }
 
 fn angle_between(a: &Vec3, b: &Vec3) -> f64 {
-    a.cross(b).norm().atan2(a.dot(b))
+    real::atan2(a.cross(b).norm(), a.dot(b))
 }
 
 fn unit(v: Vec3) -> Vec3 {
@@ -364,7 +365,7 @@ fn any_perpendicular(t: &Vec3) -> Vec3 {
 
 /// `v` rotated about the unit `axis` by `angle` (Rodrigues).
 fn rotate(v: &Vec3, axis: &Vec3, angle: f64) -> Vec3 {
-    let (s, c) = angle.sin_cos();
+    let (s, c) = real::sin_cos(angle);
     v * c + axis.cross(v) * s + axis * (axis.dot(v) * (1.0 - c))
 }
 
@@ -401,7 +402,7 @@ impl Shape {
             } => {
                 let y = axis.cross(x);
                 let th = l / radius;
-                let (s, c) = th.sin_cos();
+                let (s, c) = real::sin_cos(th);
                 (center + (x * c + y * s) * *radius, -x * s + y * c)
             }
             Shape::Helix {
@@ -413,9 +414,9 @@ impl Shape {
                 sense,
             } => {
                 let y = axis.cross(x);
-                let rho = radius.hypot(*rise);
+                let rho = real::hypot(*radius, *rise);
                 let phi = sense * l / rho;
-                let (s, c) = phi.sin_cos();
+                let (s, c) = real::sin_cos(phi);
                 let p = origin + (x * c + y * s) * *radius + axis * (rise * phi);
                 let t = ((-x * s + y * c) * *radius + axis * *rise) * (sense / rho);
                 (p, t)
@@ -460,11 +461,11 @@ impl Shape {
                 ..
             } => {
                 let (p, t) = self.point_tangent(l, quad, len);
-                let rho = radius.hypot(*rise);
+                let rho = real::hypot(*radius, *rise);
                 let tau = rise / (rho * rho);
                 let y = axis.cross(x);
                 let frenet_n = |phi: f64| {
-                    let (s, c) = phi.sin_cos();
+                    let (s, c) = real::sin_cos(phi);
                     -(x * c + y * s)
                 };
                 let start_t = {
@@ -473,11 +474,11 @@ impl Shape {
                 };
                 let n0 = frenet_n(0.0);
                 let b0 = start_t.cross(&n0);
-                let psi0 = u0.dot(&b0).atan2(u0.dot(&n0));
+                let psi0 = real::atan2(u0.dot(&b0), u0.dot(&n0));
                 let psi = psi0 - tau * l;
                 let n = frenet_n(sense * l / rho);
                 let b = t.cross(&n);
-                let (s, c) = psi.sin_cos();
+                let (s, c) = real::sin_cos(psi);
                 (p, t, unit(n * c + b * s))
             }
             Shape::Nurbs { curve, table } => {
@@ -693,7 +694,7 @@ impl Path {
                     let u_end = perpendicular(u_end, &t0);
                     let u_start = first.u0;
                     let side = t0.cross(&u_start);
-                    holonomy = u_end.dot(&side).atan2(u_end.dot(&u_start));
+                    holonomy = real::atan2(u_end.dot(&side), u_end.dot(&u_start));
                 }
             }
         }
@@ -775,7 +776,7 @@ fn build_shape(
             let y = axis.cross(&x);
             let to_c = to - center;
             let tau = std::f64::consts::TAU;
-            let angle = to_c.dot(&y).atan2(to_c.dot(&x)).rem_euclid(tau);
+            let angle = real::atan2(to_c.dot(&y), to_c.dot(&x)).rem_euclid(tau);
             Ok((
                 Shape::Arc {
                     center,
@@ -803,7 +804,7 @@ fn build_shape(
                 return Err(degenerate(PathDegeneracy::StartOnAxis));
             }
             let rise = pitch / std::f64::consts::TAU;
-            let rho = radius.hypot(rise);
+            let rho = real::hypot(radius, rise);
             let len = angle.abs() * rho;
             if len <= tol.linear {
                 return Err(degenerate(PathDegeneracy::Short));
@@ -957,7 +958,7 @@ fn build_table(
                     t = end;
                     // Fourth-order step control, grown at most twofold.
                     let grow = if err > 0.0 {
-                        (0.9 * (step_tol / err).powf(0.2)).clamp(0.5, 2.0)
+                        (0.9 * real::powf(step_tol / err, 0.2)).clamp(0.5, 2.0)
                     } else {
                         2.0
                     };
@@ -1036,7 +1037,7 @@ fn check_binormal(
             let y = axis.cross(x);
             // b·T = −bx sin θ + by cos θ, extreme where its slope vanishes.
             let (bx, by) = (b.dot(x), b.dot(&y));
-            let th1 = bx.atan2(by); // by cos θ − bx sin θ = R cos(θ + th1)
+            let th1 = real::atan2(bx, by); // by cos θ − bx sin θ = R cos(θ + th1)
             sinusoid_extremes(-th1, 0.0, len / radius, &mut |th| {
                 candidates.push(th * radius)
             });
@@ -1051,8 +1052,8 @@ fn check_binormal(
         } => {
             let y = axis.cross(x);
             let (bx, by) = (b.dot(x), b.dot(&y));
-            let th1 = bx.atan2(by);
-            let rho = radius.hypot(*rise);
+            let th1 = real::atan2(bx, by);
+            let rho = real::hypot(*radius, *rise);
             let phi_end = sense * len / rho;
             sinusoid_extremes(-th1, phi_end.min(0.0), phi_end.max(0.0), &mut |phi| {
                 candidates.push((phi * sense) * rho)
@@ -1069,10 +1070,12 @@ fn check_binormal(
         }
     }
     match worst {
-        Some((c, l)) if c.min(1.0).asin() <= tol.angular => Err(PathError::BinormalAlongTangent {
-            segment,
-            at: base + l,
-        }),
+        Some((c, l)) if real::asin(c.min(1.0)) <= tol.angular => {
+            Err(PathError::BinormalAlongTangent {
+                segment,
+                at: base + l,
+            })
+        }
         _ => Ok(()),
     }
 }

@@ -23,6 +23,7 @@
 //! cone–torus and sphere–torus pairs) are one closed form per pair; here
 //! the sections replace the table.
 
+use arris_math::real;
 use core::f64::consts::FRAC_PI_2;
 
 use arris_math::{Aabb, Frame, Meter, Point3, Tolerance, UnitVec3, Vec3};
@@ -329,7 +330,7 @@ fn through_the_axis(carrier: &Surface, n: UnitVec3) -> Option<SurfaceIntersectio
             half_angle,
         } => {
             let w = side(frame)?.into_inner();
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let z = frame.z().into_inner();
             let apex = frame.origin() - (radius * ca / sa) * z;
             let ruling = |w: Vec3| Curve::Line {
@@ -384,7 +385,7 @@ impl Section {
         match *self {
             Section::Line { n, c } => (n[0] * p[0] + n[1] * p[1] - c).abs(),
             Section::Circle { centre, radius } => {
-                ((p[0] - centre[0]).hypot(p[1] - centre[1]) - radius).abs()
+                (real::hypot(p[0] - centre[0], p[1] - centre[1]) - radius).abs()
             }
         }
     }
@@ -418,7 +419,7 @@ fn sections(s: &Surface, axis: &Frame) -> Vec<Section> {
             // The apex is at `v = −R / sin α`, `R cot α` behind the origin
             // along the cone's own `Z`; the two lines through it at the
             // half-angle are `ρ cos α ∓ z sin α = ∓ z_apex sin α`.
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let apex = frame.origin() - (radius * ca / sa) * frame.z().into_inner();
             let za = height(apex);
             vec![
@@ -488,7 +489,7 @@ fn meet(a: Section, b: Section, tol: Tolerance) -> Meeting {
         (Section::Line { n: n1, c: c1 }, Section::Line { n: n2, c: c2 }) => {
             let cross = n1[0] * n2[1] - n1[1] * n2[0];
             let dot = n1[0] * n2[0] + n1[1] * n2[1];
-            if cross.abs().atan2(dot.abs()) <= tol.angular {
+            if real::atan2(cross.abs(), dot.abs()) <= tol.angular {
                 let same_side = if dot >= 0.0 { c2 } else { -c2 };
                 return if (c1 - same_side).abs() <= tol.linear {
                     Meeting::Coincident
@@ -531,7 +532,7 @@ fn meet(a: Section, b: Section, tol: Tolerance) -> Meeting {
             },
         ) => {
             let (dr, dz) = (c2[0] - c1[0], c2[1] - c1[1]);
-            let d = dr.hypot(dz);
+            let d = real::hypot(dr, dz);
             if d <= tol.linear {
                 return if (r1 - r2).abs() <= tol.linear {
                     Meeting::Coincident

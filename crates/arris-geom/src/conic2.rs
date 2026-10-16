@@ -13,6 +13,7 @@
 //! tolerance of the second is a touch, exactly as
 //! `intersect_curve::conic_cylinder` decides a conic against a cylinder.
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
 use arris_math::roots::{self, RootError};
@@ -73,18 +74,18 @@ pub(crate) fn trig2_roots(
         Err(e) => return Err(e),
     };
     let f = |t: f64| {
-        let (st, ct) = t.sin_cos();
-        let (s2, c2) = (2.0 * t).sin_cos();
+        let (st, ct) = real::sin_cos(t);
+        let (s2, c2) = real::sin_cos(2.0 * t);
         a1 * ct + b1 * st + a2 * c2 + b2 * s2 + c0
     };
     let df = |t: f64| {
-        let (st, ct) = t.sin_cos();
-        let (s2, c2) = (2.0 * t).sin_cos();
+        let (st, ct) = real::sin_cos(t);
+        let (s2, c2) = real::sin_cos(2.0 * t);
         -a1 * st + b1 * ct - 2.0 * a2 * s2 + 2.0 * b2 * c2
     };
     let mut out: Vec<f64> = found
         .iter()
-        .map(|r| 2.0 * r.value.atan())
+        .map(|r| 2.0 * real::atan(r.value))
         .chain(at_pi.then_some(PI))
         .map(|t0| {
             let mut t = t0;
@@ -153,7 +154,7 @@ impl Conic2 {
 
     /// The point at `t`.
     pub(crate) fn point(&self, t: f64) -> Point2 {
-        let (st, ct) = t.sin_cos();
+        let (st, ct) = real::sin_cos(t);
         self.centre + (self.a * ct) * self.x + (self.b * st) * self.y
     }
 
@@ -224,13 +225,13 @@ pub(crate) fn conic_pair(
     let (a2, b2) = (0.5 * (alpha - beta), 0.5 * gamma);
     let c0 = 0.5 * (alpha + beta) + zeta;
     let f = |t: f64| {
-        let (st, ct) = t.sin_cos();
-        let (s2, c2) = (2.0 * t).sin_cos();
+        let (st, ct) = real::sin_cos(t);
+        let (s2, c2) = real::sin_cos(2.0 * t);
         a1 * ct + b1 * st + a2 * c2 + b2 * s2 + c0
     };
     let df = |t: f64| {
-        let (st, ct) = t.sin_cos();
-        let (s2, c2) = (2.0 * t).sin_cos();
+        let (st, ct) = real::sin_cos(t);
+        let (s2, c2) = real::sin_cos(2.0 * t);
         -a1 * st + b1 * ct - 2.0 * a2 * s2 + 2.0 * b2 * c2
     };
     let within = |t: f64| second.distance(first.point(t)) <= tol.linear;

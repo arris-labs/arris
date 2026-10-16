@@ -1,5 +1,6 @@
 //! Curves and their evaluation.
 
+use arris_math::real;
 use core::fmt;
 
 use arris_math::{Aabb, Frame, Interval, Isometry, Point3, Reflection, UnitVec3, Vec3};
@@ -112,7 +113,7 @@ impl Curve {
                 d2: Vec3::zeros(),
             },
             &Curve::Circle { frame, radius } => {
-                let (st, ct) = t.sin_cos();
+                let (st, ct) = real::sin_cos(t);
                 let (x, y) = (frame.x().into_inner(), frame.y().into_inner());
                 let radial = ct * x + st * y;
                 CurveEval {
@@ -126,7 +127,7 @@ impl Curve {
                 major_radius,
                 minor_radius,
             } => {
-                let (st, ct) = t.sin_cos();
+                let (st, ct) = real::sin_cos(t);
                 let (x, y) = (frame.x().into_inner(), frame.y().into_inner());
                 let radial = (major_radius * ct) * x + (minor_radius * st) * y;
                 CurveEval {
@@ -370,13 +371,13 @@ pub(crate) fn coords(p: Point3) -> [f64; 3] {
 /// The interval of `a cos t + b sin t = M cos(t − φ)` over `range`: the
 /// two ends, plus `±M` for each extremum the range reaches. Exact.
 pub(crate) fn sinusoid_range(a: f64, b: f64, range: Interval) -> [f64; 2] {
-    let at = |t: f64| a * t.cos() + b * t.sin();
+    let at = |t: f64| a * real::cos(t) + b * real::sin(t);
     let (mut lo, mut hi) = (
         at(range.lo()).min(at(range.hi())),
         at(range.lo()).max(at(range.hi())),
     );
-    let magnitude = a.hypot(b);
-    let phase = b.atan2(a);
+    let magnitude = real::hypot(a, b);
+    let phase = real::atan2(b, a);
     for (base, value) in [
         (phase, magnitude),
         (phase + core::f64::consts::PI, -magnitude),
