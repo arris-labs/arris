@@ -212,9 +212,12 @@ pub enum SweepPart {
     },
 }
 
-/// What an entity of `sweep` along a path is: the span of the path it
-/// was made on — span `k` is the path's segment `k` — and the part of
-/// the sketch it came from (ADR-0063 §8). A joint edge between spans
+/// What an entity of `sweep` along a path or of `loft` is: the span it
+/// was made on — span `k` is a path's segment `k`, or the span from loft
+/// section `k` to `k + 1` (a closed loft's last span runs back to section
+/// `0`) — and the part of the sketch it came from (ADR-0063 §8, ADR-0065
+/// §4). A loft's `segment` and `vertex` index the matched segments in the
+/// loop's walk. A joint edge between spans
 /// `k − 1` and `k` is span `k`'s `StartEdge`, and its vertices span `k`'s
 /// `StartVertex`; `EndEdge`, `EndVertex` and `EndCap` belong to the last
 /// span only, and a path that closes has no caps and no ends. A `Rise` is
@@ -324,6 +327,10 @@ pub enum Role {
     /// part of the sketch it came from. Appended after `PlanarFace` for
     /// the same reason.
     Sweep(PathPart),
+    /// An entity of `loft`: the span between two loft sections it was made
+    /// on and the part of the sketch it came from. Appended after `Sweep`
+    /// for the same reason.
+    Loft(PathPart),
 }
 
 impl fmt::Display for Role {
@@ -338,6 +345,7 @@ impl fmt::Display for Role {
             Role::Split(part) => write!(f, "split:{part:?}"),
             Role::PlanarFace(part) => write!(f, "planar_face:{part:?}"),
             Role::Sweep(PathPart { span, part }) => write!(f, "sweep:{span}/{part:?}"),
+            Role::Loft(PathPart { span, part }) => write!(f, "loft:{span}/{part:?}"),
         }
     }
 }

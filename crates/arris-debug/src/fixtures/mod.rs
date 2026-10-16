@@ -430,8 +430,9 @@ pub enum Step {
         law: SweepLaw,
     },
     /// Profiles lofted through, in order (`tools/oracle/oracle/loft.py` is the
-    /// oracle's side: `BRepOffsetAPI_ThruSections`). Arris has no `loft`
-    /// yet: the interpreter refuses the step as unsupported.
+    /// oracle's side: `BRepOffsetAPI_ThruSections`). Arris builds the ruled kind
+    /// with `ops::loft`; the interpreter refuses the smooth one as
+    /// unsupported.
     Loft {
         /// Step name.
         name: String,
@@ -1527,13 +1528,14 @@ pub fn expand_patterns(raw: &mut serde_json::Value) -> Result<(), (String, Strin
 /// fixture there has passed and been blessed, and none is `#[ignore]`d.
 /// `real/` holds parts, whose lint holds their dumps the same way
 /// (`crate::part::lint`).
-pub const DUMPED_AREAS: [&str; 11] = [
+pub const DUMPED_AREAS: [&str; 12] = [
     "primitive",
     "sheet",
     "build",
     "transform",
     "boolean",
     "sweep",
+    "loft",
     "provenance",
     "blend",
     "offset",

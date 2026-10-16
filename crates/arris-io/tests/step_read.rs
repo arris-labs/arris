@@ -227,6 +227,7 @@ fn every_area_is_known() {
                 "transform",
                 "boolean",
                 "sweep",
+                "loft",
                 "provenance",
                 "blend",
                 "offset",
@@ -260,6 +261,11 @@ fn transform_fixtures_read_back() {
 #[test]
 fn boolean_fixtures_read_back() {
     area("boolean");
+}
+
+#[test]
+fn loft_fixtures_read_back() {
+    area("loft");
 }
 
 #[test]

@@ -1,5 +1,11 @@
 {
-  "description": "a circle of radius 4 (its start turned 45 degrees to the square's start corner) lofted ruled to a square of side 8, 6 above it: the circle's one segment against four, every span a degree-1 NURBS (plans/loft)",
+  "description": "a circle of radius 4 (its start turned 45 degrees to the square's start corner) lofted ruled to a square of side 8, 6 above it: the circle's one segment against four, every span a degree-1 NURBS (plans/loft). Arris pairs a circle's arc with a square's side at equal parameter of their rational quadratics (ADR-0065 §2); Open CASCADE pairs them by arc length, which no NURBS holds, so the measures differ by the pairing: volume 1.2e-3, area and inertia (2.5e-3 of the tensor's z-z entry) below the tolerances here, which are that difference and not an error budget",
+  "tolerances": {
+    "volume_rel": 0.002,
+    "area_rel": 0.002,
+    "centroid_abs": 0.01,
+    "inertia_rel": 0.003
+  },
   "steps": [
     {
       "name": "a",

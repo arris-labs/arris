@@ -1,0 +1,495 @@
+//! `loft`: a solid through two or more placed profiles, its loft sections
+//! (ADR-0065). The sections are matched into one compatible NURBS per loop
+//! (`match_sections`); a **ruled** loft joins consecutive sections by a
+//! degree-one surface in the direction between them, one face per matched
+//! segment per span.
+//!
+//! Two neighbouring faces of a span end on the same *rail*, the straight
+//! column of control points at their shared vertex, and two spans meet on
+//! the section's own matched segment, the isoline both faces are built
+//! from: nothing in a loft is fitted, so every pcurve of a side face is an
+//! exact line in `(u, v)`, `u` the matched segment's own parameter and `v`
+//! the span's, `[0, 1]`.
+
+use arris_geom::{
+    Curve, Curve2, GeomError, NurbsCurve, NurbsSurface, Profile, Surface, match_sections, pcurve_on,
+};
+use arris_math::{Control, Interval, Meter, Point2, UnitVec2, Vec2};
+use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::provenance::{PathPart, SweepPart};
+use arris_topo::{Body, Model, Orientation, Provenance, Role};
+
+use crate::error::{Fault, OpError, fault_of};
+use crate::verify;
+
+use super::{SideUse, cap_face, record, side_face};
+
+/// How a loft joins consecutive sections.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoftKind {
+    /// Each span between consecutive sections is straight: a face of the
+    /// span is ruled between the two sections' matched segments.
+    Ruled,
+}
+
+/// The ruled surface between two compatible segments, `u` the segments'
+/// own parameter and `v` from `a` (`0`) to `b` (`1`).
+fn ruled(a: &NurbsCurve, b: &NurbsCurve) -> Result<NurbsSurface, GeomError> {
+    let points = a
+        .control_points()
+        .iter()
+        .zip(b.control_points())
+        .flat_map(|(p, q)| [*p, *q])
+        .collect();
+    let weights = a
+        .weights()
+        .iter()
+        .zip(b.weights())
+        .flat_map(|(w, x)| [*w, *x])
+        .collect();
+    NurbsSurface::new(
+        [a.degree(), 1],
+        [a.knots().to_vec(), vec![0.0, 0.0, 1.0, 1.0]],
+        points,
+        weights,
+    )
+}
+
+/// The rail between control point `i` of the two segments: the degree-one
+/// isoline of their ruled surface there, over `v` in `[0, 1]`.
+fn rail(a: &NurbsCurve, b: &NurbsCurve, i: usize) -> Result<NurbsCurve, GeomError> {
+    NurbsCurve::new(
+        1,
+        vec![0.0, 0.0, 1.0, 1.0],
+        vec![a.control_points()[i], b.control_points()[i]],
+        vec![a.weights()[i], b.weights()[i]],
+    )
+}
+
+/// The pcurve of a ring edge on a side face: the isoline at `v`, its
+/// parameter the segment's own `u`.
+fn across(v: f64) -> Curve2 {
+    Curve2::Line {
+        origin: Point2::new(0.0, v),
+        direction: UnitVec2::new_unchecked(Vec2::x()),
+    }
+}
+
+/// The pcurve of a rail on a side face: the isoline at `u`, its parameter
+/// the span's `v`.
+fn along(u: f64) -> Curve2 {
+    Curve2::Line {
+        origin: Point2::new(u, 0.0),
+        direction: UnitVec2::new_unchecked(Vec2::y()),
+    }
+}
+
+/// How far the loft moves the points of loop 0 between sections `from`
+/// and `to`, on average, along `normal`: positive when the loft leaves
+/// the section along its normal.
+fn flow(a: &[NurbsCurve], b: &[NurbsCurve], normal: &arris_math::Vec3) -> f64 {
+    let (mut sum, mut count) = (0.0, 0usize);
+    for (a, b) in a.iter().zip(b) {
+        for (p, q) in a.control_points().iter().zip(b.control_points()) {
+            sum += (q - p).dot(normal);
+            count += 1;
+        }
+    }
+    sum / count.max(1) as f64
+}
+
+/// A loft through `sections`, one solid.
+///
+/// The sections are placed profiles taken where they stand; loop `k` of
+/// every section goes with loop `k` of the others (the outer with the
+/// outer, hole `i` with hole `i`), from each loop's start point, a section
+/// with fewer segments cut by arc length ([`arris_geom::match_sections`]).
+/// Each span between consecutive sections has a face per matched segment
+/// per loop, ruled; the ends are planar caps, the first section's profile
+/// face and the last's. With `closed` the last section joins the first
+/// through one more span and there are no caps: a hole in the profile
+/// closes into a void of the one lump.
+///
+/// Entities are appended in one fixed order — vertices per section ring
+/// per loop in walking order, edges (the rings' matched segments, then
+/// each span's rails), faces (start cap, end cap, sides per span per loop
+/// per segment) — so the ids are a function of the inputs alone; every
+/// tolerance is `default_tolerance`. Provenance is one `Generated` per
+/// entity from a [`Role::Loft`] naming the span (from section `k` to
+/// `k + 1`) and the part of the sketch it came from: a side face is
+/// `Side { loop_index, segment }` with `segment` the matched segment in
+/// the loop's walk, a joint between spans `k − 1` and `k` is span `k`'s
+/// `StartEdge`, and a `Rise` is the rail one vertex runs along.
+///
+/// Errors, the model untouched: [`OpError::Loft`] when the sections
+/// cannot be matched (too few, unequal loop counts, an invalid profile, a
+/// section equal to the one before it), naming the section;
+/// [`OpError::Interrupted`] when `control` stops it.
+///
+/// ```
+/// use arris_geom::{Profile, ProfileLoop, ProfileSegment};
+/// use arris_math::{Frame, Point2, Point3, Vec3};
+/// use arris_ops::{Control, LoftKind, loft};
+/// use arris_topo::Model;
+///
+/// let square = |z: f64, h: f64| Profile {
+///     plane: Frame::new(Point3::new(0.0, 0.0, z), Vec3::z(), Vec3::x()).unwrap(),
+///     outer: ProfileLoop::Path {
+///         start: Point2::new(h, h),
+///         segments: vec![
+///             ProfileSegment::LineTo(Point2::new(-h, h)),
+///             ProfileSegment::LineTo(Point2::new(-h, -h)),
+///             ProfileSegment::LineTo(Point2::new(h, -h)),
+///             ProfileSegment::LineTo(Point2::new(h, h)),
+///         ],
+///     },
+///     holes: vec![],
+/// };
+/// let mut m = Model::default();
+/// let sections = [square(0.0, 2.0), square(3.0, 1.0)];
+/// let (body, _) = loft(&mut m, &sections, LoftKind::Ruled, false, &Control::NONE).unwrap();
+/// assert_eq!(m.faces(body).unwrap().len(), 6, "four sides and two caps");
+/// ```
+pub fn loft(
+    m: &mut Model,
+    sections: &[Profile],
+    kind: LoftKind,
+    closed: bool,
+    control: &Control<'_>,
+) -> Result<(Body, Provenance), OpError> {
+    let LoftKind::Ruled = kind;
+    let mut meter = Meter::new(control);
+    let meter = &mut meter;
+    let precision = m.precision();
+    let tol = precision.tolerance();
+    let tolerance = precision.default_tolerance;
+    let matched = match_sections(sections, closed, tol)?;
+    let rings = sections.len();
+    let spans = if closed { rings } else { rings - 1 };
+    let end_ring = |k: usize| (k + 1) % rings;
+    let loop_count = matched[0].loops.len();
+    let counts: Vec<usize> = matched[0]
+        .loops
+        .iter()
+        .map(|l| l.nurbs.segments.len())
+        .collect();
+    let segment = |r: usize, li: usize, j: usize| &matched[r].loops[li].nurbs.segments[j];
+    let normal_of = |r: usize| sections[r].plane.z().into_inner();
+
+    // Which way the loft leaves each end section: the start cap faces
+    // against the flow and the end cap with it.
+    let loop_zero = |r: usize| -> &[NurbsCurve] { &matched[r].loops[0].nurbs.segments };
+    let leaves_start = flow(loop_zero(0), loop_zero(1), &normal_of(0)) > 0.0;
+    let leaves_end = flow(
+        loop_zero(rings - 2),
+        loop_zero(rings - 1),
+        &normal_of(rings - 1),
+    ) > 0.0;
+
+    let part = |span: usize, part: SweepPart| Role::Loft(PathPart { span, part });
+    let last = spans - 1;
+
+    m.transaction(|m| {
+        let mut vertices: Vec<VertexSpec> = Vec::new();
+        let mut vertex_roles: Vec<Role> = Vec::new();
+        let mut edges: Vec<EdgeSpec> = Vec::new();
+        let mut edge_roles: Vec<Role> = Vec::new();
+        let mut faces: Vec<FaceSpec> = Vec::new();
+        let mut face_roles: Vec<Role> = Vec::new();
+
+        // The rings' vertices, per section per loop in walking order.
+        let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
+        for r in 0..rings {
+            let mut per_loop = Vec::with_capacity(loop_count);
+            for (li, &n) in counts.iter().enumerate() {
+                let mut ring = Vec::with_capacity(n);
+                for j in 0..n {
+                    meter.tick()?;
+                    let seg = segment(r, li, j);
+                    ring.push(vertices.len());
+                    vertices.push(VertexSpec::New {
+                        point: seg.eval(seg.domain().lo()).point,
+                        tolerance,
+                    });
+                    vertex_roles.push(if closed || r < spans {
+                        part(
+                            r,
+                            SweepPart::StartVertex {
+                                loop_index: li,
+                                vertex: j,
+                            },
+                        )
+                    } else {
+                        part(
+                            last,
+                            SweepPart::EndVertex {
+                                loop_index: li,
+                                vertex: j,
+                            },
+                        )
+                    });
+                }
+                per_loop.push(ring);
+            }
+            ring_vertex.push(per_loop);
+        }
+
+        // The rings' edges: each section's matched segments as they are.
+        let mut ring_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
+        for (r, ring_of) in ring_vertex.iter().enumerate() {
+            let mut slots = Vec::with_capacity(loop_count);
+            for (li, &n) in counts.iter().enumerate() {
+                let mut row = Vec::with_capacity(n);
+                for j in 0..n {
+                    meter.tick()?;
+                    let seg = segment(r, li, j);
+                    row.push(edges.len());
+                    edges.push(EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(Curve::Nurbs(seg.clone())),
+                            range: seg.domain(),
+                        },
+                        start: VertexKey::New(ring_of[li][j]),
+                        end: VertexKey::New(ring_of[li][(j + 1) % n]),
+                        tolerance,
+                    });
+                    edge_roles.push(if closed || r < spans {
+                        part(
+                            r,
+                            SweepPart::StartEdge {
+                                loop_index: li,
+                                segment: j,
+                            },
+                        )
+                    } else {
+                        part(
+                            last,
+                            SweepPart::EndEdge {
+                                loop_index: li,
+                                segment: j,
+                            },
+                        )
+                    });
+                }
+                slots.push(row);
+            }
+            ring_edge.push(slots);
+        }
+
+        // Each span's rails: the straight column at a vertex.
+        let mut rail_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
+        for k in 0..spans {
+            let mut per_loop = Vec::with_capacity(loop_count);
+            for (li, &n) in counts.iter().enumerate() {
+                let mut row = Vec::with_capacity(n);
+                for (j, &start) in ring_vertex[k][li].iter().enumerate() {
+                    meter.tick()?;
+                    let column = rail(segment(k, li, j), segment(end_ring(k), li, j), 0)
+                        .map_err(fault_of)?;
+                    row.push(edges.len());
+                    edges.push(EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(Curve::Nurbs(column)),
+                            range: Interval::UNIT,
+                        },
+                        start: VertexKey::New(start),
+                        end: VertexKey::New(ring_vertex[end_ring(k)][li][j]),
+                        tolerance,
+                    });
+                    edge_roles.push(part(
+                        k,
+                        SweepPart::Rise {
+                            loop_index: li,
+                            vertex: j,
+                        },
+                    ));
+                }
+                per_loop.push(row);
+            }
+            rail_edge.push(per_loop);
+        }
+
+        // The caps of an open loft: each end section's profile face, its
+        // matched segments' pcurves on the section's plane.
+        if !closed {
+            let mut cap = |m: &mut Model,
+                           r: usize,
+                           orientation: Orientation|
+             -> Result<FaceSpec, OpError> {
+                let plane = Surface::Plane {
+                    frame: sections[r].plane,
+                };
+                let mut pcurves = Vec::with_capacity(loop_count);
+                for (li, &n) in counts.iter().enumerate() {
+                    let mut row = Vec::with_capacity(n);
+                    for j in 0..n {
+                        let seg = segment(r, li, j);
+                        row.push(
+                            pcurve_on(&Curve::Nurbs(seg.clone()), seg.domain(), &plane, tol, meter)
+                                .map_err(fault_of)?,
+                        );
+                    }
+                    pcurves.push(row);
+                }
+                let slots: Vec<Vec<Option<usize>>> = ring_edge[r]
+                    .iter()
+                    .map(|row| row.iter().copied().map(Some).collect())
+                    .collect();
+                Ok(cap_face(
+                    m,
+                    &pcurves,
+                    sections[r].plane,
+                    orientation,
+                    &slots,
+                    tolerance,
+                ))
+            };
+            let (start_use, end_use) = (
+                if leaves_start {
+                    Orientation::Reversed
+                } else {
+                    Orientation::Forward
+                },
+                if leaves_end {
+                    Orientation::Forward
+                } else {
+                    Orientation::Reversed
+                },
+            );
+            faces.push(cap(m, 0, start_use)?);
+            face_roles.push(part(0, SweepPart::StartCap));
+            faces.push(cap(m, rings - 1, end_use)?);
+            face_roles.push(part(last, SweepPart::EndCap));
+        }
+
+        // The sides: the ring's edge, the rail up at the next vertex, the
+        // next ring's edge back, the rail down — reversed when the face is,
+        // so the material is on the walk's left seen from outside.
+        let mut side_loop: Vec<usize> = Vec::new();
+        for k in 0..spans {
+            let carried_normal = normal_of(k);
+            for (li, &n) in counts.iter().enumerate() {
+                for j in 0..n {
+                    meter.tick()?;
+                    let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
+                    let sub = ruled(a, b).map_err(fault_of)?;
+                    let [du, dv] = sub.domain();
+                    // Outward is the section's tangent across its normal,
+                    // as on the profile's own plane.
+                    let at = sub.eval(du.midpoint(), dv.lo());
+                    let outward = at.du.cross(&carried_normal);
+                    let surface_normal = sub.normal(du.midpoint(), dv.lo()).ok_or(
+                        OpError::Internal(Fault::Invariant {
+                            what: "the ruled surface's normal at the segment's midpoint",
+                        }),
+                    )?;
+                    let orientation = if surface_normal.dot(&outward) > 0.0 {
+                        Orientation::Forward
+                    } else {
+                        Orientation::Reversed
+                    };
+                    let mut cycle = vec![
+                        SideUse {
+                            edge: ring_edge[k][li][j],
+                            orientation: Orientation::Forward,
+                            pcurve: across(dv.lo()),
+                            range: du,
+                        },
+                        SideUse {
+                            edge: rail_edge[k][li][(j + 1) % n],
+                            orientation: Orientation::Forward,
+                            pcurve: along(du.hi()),
+                            range: dv,
+                        },
+                        SideUse {
+                            edge: ring_edge[end_ring(k)][li][j],
+                            orientation: Orientation::Reversed,
+                            pcurve: across(dv.hi()),
+                            range: du,
+                        },
+                        SideUse {
+                            edge: rail_edge[k][li][j],
+                            orientation: Orientation::Reversed,
+                            pcurve: along(du.lo()),
+                            range: dv,
+                        },
+                    ];
+                    if orientation.is_reversed() {
+                        cycle.reverse();
+                        for u in &mut cycle {
+                            u.orientation = u.orientation.flipped();
+                        }
+                    }
+                    faces.push(side_face(
+                        m,
+                        &Surface::Nurbs(sub),
+                        orientation,
+                        cycle,
+                        false,
+                        tolerance,
+                    ));
+                    face_roles.push(part(
+                        k,
+                        SweepPart::Side {
+                            loop_index: li,
+                            segment: j,
+                        },
+                    ));
+                    side_loop.push(li);
+                }
+            }
+        }
+
+        // An open loft's caps join everything into one shell; a closed
+        // one's sides close a shell per loop, the outer loop's the lump's
+        // outer shell and each hole's a void of it.
+        let (shells, shell_roles, face_roles) = if closed {
+            let mut buckets: Vec<Vec<(FaceSpec, Role)>> =
+                (0..loop_count).map(|_| Vec::new()).collect();
+            for ((face, role), li) in faces.into_iter().zip(face_roles).zip(side_loop) {
+                buckets[li].push((face, role));
+            }
+            let mut shells = Vec::with_capacity(loop_count);
+            let mut shell_roles = Vec::with_capacity(loop_count);
+            let mut face_roles = Vec::new();
+            for (li, bucket) in buckets.into_iter().enumerate() {
+                let (specs, roles): (Vec<FaceSpec>, Vec<Role>) = bucket.into_iter().unzip();
+                shells.push(specs);
+                face_roles.extend(roles);
+                shell_roles.push(if li == 0 {
+                    part(0, SweepPart::Shell)
+                } else {
+                    part(
+                        0,
+                        SweepPart::Cavity {
+                            loop_index: li,
+                            segment: 0,
+                        },
+                    )
+                });
+            }
+            (shells, shell_roles, face_roles)
+        } else {
+            (vec![faces], vec![part(0, SweepPart::Shell)], face_roles)
+        };
+        let assembly = Assembly {
+            vertices,
+            edges,
+            shells,
+        };
+        let (b, slots) = Builder::assemble(m, tolerance, assembly)?;
+        let built = b.finish(m, BodyKind::Solid)?;
+        verify(m, built.body)?;
+        let provenance = record(
+            &built,
+            &slots,
+            &vertex_roles,
+            &edge_roles,
+            &face_roles,
+            &shell_roles,
+            |p| part(0, p),
+        );
+        Ok((built.body, provenance))
+    })
+}

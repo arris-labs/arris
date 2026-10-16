@@ -176,6 +176,7 @@ pub fn op_error(error: &OpError) -> Mapped {
             Mapped::new(Class::OpProfileError, message).text("detail", detail)
         }
         OpError::Path(detail) => Mapped::new(Class::OpPathError, message).text("detail", detail),
+        OpError::Loft(detail) => Mapped::new(Class::OpLoftError, message).text("detail", detail),
         OpError::Tolerance { entity, wanted } => Mapped::new(Class::OpToleranceError, message)
             .with("entity", Attr::Shape(*entity))
             .with("wanted", Attr::Float(*wanted)),
@@ -448,7 +449,7 @@ mod tests {
 
     use arris::check::Report;
     use arris::geom::{
-        AmbiguousLocus, GeomKind, PathError, ProfileError, SectionFault, SurfaceKind,
+        AmbiguousLocus, GeomKind, LoftError, PathError, ProfileError, SectionFault, SurfaceKind,
     };
     use arris::io::step::part21::{Part21Error, Part21ErrorKind};
     use arris::io::step::{TreeError, Unsupported};
@@ -550,6 +551,10 @@ mod tests {
                 loop_index: 0,
             })),
             op_error(&OpError::Path(PathError::Empty)),
+            op_error(&OpError::Loft(LoftError::TooFewSections {
+                given: 1,
+                needed: 2,
+            })),
             op_error(&OpError::Tolerance {
                 entity: shape(),
                 wanted: 1.0,

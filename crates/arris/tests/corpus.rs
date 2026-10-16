@@ -871,6 +871,12 @@ corpus_tests! {
     sweep_sweep_oblique_circle => run "sweep/sweep-oblique-circle";
     /// A circle along a closed path of four arcs: a torus with no caps.
     sweep_sweep_ring => run "sweep/sweep-ring";
+    /// A circle against a square lofted ruled: the circle split, degree-1 NURBS spans.
+    loft_loft_circle_to_square => run "loft/loft-circle-to-square";
+    /// A square lofted ruled to one turned 30 degrees: four twisted quads.
+    loft_loft_twisted_square => run "loft/loft-twisted-square";
+    /// A hole in every section lofted ruled: planes outside, a cone in the bore.
+    loft_loft_ring_to_ring => run "loft/loft-ring-to-ring";
     /// A circle along a line then a line at a right angle: the path is not
     /// G1, so `OpError::Path` names the corner where Open CASCADE's pipe
     /// carries the profile through it (ADR-0063).
@@ -1825,25 +1831,16 @@ corpus_tests! {
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
     /// A square lofted ruled to a smaller one: four planes.
-    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    #[ignore = "builds as degree-1 NURBS and matches the measures; the exact planes and cone are docs/plans/loft.md step 4, which blesses the dump"]
     regression_loft_square_frustum => run "regression/loft-square-frustum";
     /// Coaxial circles lofted ruled: a cone.
-    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    #[ignore = "builds as degree-1 NURBS and matches the measures; the exact planes and cone are docs/plans/loft.md step 4, which blesses the dump"]
     regression_loft_cone_frustum => run "regression/loft-cone-frustum";
-    /// A circle against a square lofted ruled: the circle split, degree-1 NURBS spans.
-    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
-    regression_loft_circle_to_square => run "regression/loft-circle-to-square";
-    /// A square lofted ruled to one turned 30 degrees: four twisted quads.
-    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
-    regression_loft_twisted_square => run "regression/loft-twisted-square";
-    /// A hole in every section lofted ruled: planes outside, a cone in the bore.
-    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
-    regression_loft_ring_to_ring => run "regression/loft-ring-to-ring";
     /// A circle, a rounded rectangle and a circle lofted smooth: one surface through three sections.
-    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    #[ignore = "OpError::Unsupported, the smooth loft is not built yet (docs/plans/loft.md step 5)"]
     regression_loft_duct => run "regression/loft-duct";
     /// Four circles round an axis lofted smooth and closed: a ring with no caps.
-    #[ignore = "Unsupported, the loft op is not built yet (docs/plans/loft.md step 3 to 5)"]
+    #[ignore = "OpError::Unsupported, the smooth loft is not built yet (docs/plans/loft.md step 5)"]
     regression_loft_closed_torus_like => run "regression/loft-closed-torus-like";
 }
 

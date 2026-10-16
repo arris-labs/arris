@@ -108,7 +108,7 @@ while IFS= read -r p; do
     tests/fixtures/*/*)
       a=${p#tests/fixtures/}; a=${a%%/*}
       case "$a" in
-        blend|boolean|build|offset|primitive|provenance|query|shell|split|sweep|transform|real)
+        blend|boolean|build|loft|offset|primitive|provenance|query|shell|split|sweep|transform|real)
           add_term "package(arris)"; need_corpus part; add_area "$a" ;;
         *) whole=yes ;;
       esac ;;

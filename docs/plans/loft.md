@@ -95,11 +95,16 @@ bound has to be established here.
   split points at the measured arc-length ratios, every matched section
   reproduces its profile exactly, compatibility across sections, each
   refusal by name. Rustdoc examples.
-- [ ] Step 3 **[2]** — **The ruled loft, every span a degree-1 NURBS.**
+- [x] Step 3 **[2]** — **The ruled loft, every span a degree-1 NURBS.**
   `ops::loft` for `Ruled`, open and closed; `Role::Loft` (the break, with
   the binding); planar caps from the end sections. Adjacent faces share
   their column, as the sweep's do. `loft-circle-to-square`,
-  `loft-twisted-square` and `loft-ring-to-ring` pass against the oracle.
+  `loft-twisted-square` and `loft-ring-to-ring` pass against the oracle
+  (twisted and ring to 1e-9; the circle to the square only to the
+  pairing's 1.2e-3 volume, ADR-0065 §2, which its `tolerances` record) and
+  move to a new `tests/fixtures/loft/` area. `OpError::Loft` and
+  `OpLoftError` land with the op (the binding cannot compile without them);
+  `LoftKind` has `Ruled` only until step 5.
 - [ ] Step 4 **[2]** — **Exact ruled spans.** Classify by check, not by
   segment kind: two line segments coplanar within the tolerance give a
   `Plane`; two circles coaxial in parallel planes a `Cylinder` or `Cone`;

@@ -55,11 +55,19 @@ its start, of every other loop's vertices (their union, two fractions
 within the linear tolerance over the shortest perimeter one), so a circle
 against a square is cut where the square's corners fall, and a triangle
 against a square into six segments each. This differs from Open CASCADE's
-projection exactly where the sections are not similar and centred; the
-fixtures where the two agree (`loft-circle-to-square`) hold Arris to the
-oracle, and any other mismatch of counts is Arris's rule, held to closed
-forms. Inside a matched pair, points correspond by the segments'
-parameters normalised to `[0, 1]`.
+projection exactly where the sections are not similar and centred, and
+the fixtures hold Arris to the oracle only where the two pair the same
+points. Inside a matched pair, points correspond by the segments'
+parameters normalised to `[0, 1]`: the same `u` of two compatible NURBS,
+so a ruling is the straight line between `C₀(u)` and `C₁(u)`. A pair of
+lines or of arcs of one angle pairs as arc length does; a circle's arc
+against a square's side does not — the arc's rational parameter is not
+its angle — and Open CASCADE pairs them by arc length, which no NURBS
+holds (its volume equals the arc-length pairing's integral to 6e-11, which
+Arris' own differs from by 1.2e-3, the area by under 2.5e-3 and the
+tensor's `zz` entry by 2.5e-3; `loft-circle-to-square` carries those as
+its tolerances, measured, not an error budget). Every other fixture,
+twisted and ring-to-ring included, agrees to 1e-9.
 
 **3. Matched sections are one knot vector.** Every segment is the rational
 quadratic of ADR-0063 (`LoopNurbs`, lifted from `sweep::along` unchanged),

@@ -97,6 +97,18 @@ into its version (ADR-0027).
   closed path whose frame does not close are refused by name; two NURBS
   faces of a sweep against each other (a blend on a rail of a thread, say)
   are still refused as unsupported.
+- `loft` builds a solid through two or more placed profiles, ruled between
+  consecutive sections (`LoftKind::Ruled`), open with two caps or closed
+  with none (`closed`). Loop `k` of every section goes with loop `k` of the
+  others from each loop's start point, and a section with fewer segments
+  is cut by arc length where the others have vertices, so a circle lofts to
+  a square. Every face is a degree-one NURBS between the matched segments,
+  and a hole in every section bores through. Fewer than two sections
+  (three when closed), unequal loop counts, an invalid section and a
+  section equal to the one before it are refused by name. Against Open
+  CASCADE's `ThruSections` a circle against a square differs by the
+  pairing: it pairs by arc length, the loft by the segments' parameters,
+  and the volume differs by about a thousandth.
 - `extrude` builds in any direction off the profile's plane: an arc sweeps an
   `EllipticCylinder`, its section perpendicular to the direction an ellipse
   (ADR-0014, ADR-0063). A direction whose normal component times the length is
@@ -117,6 +129,13 @@ into its version (ADR-0027).
   for the entities of a sweep along a path: the span of the path each
   came from and its `SweepPart`. A `match` on it adds an arm (Python: the
   role's `kind` is `"sweep"`, its first field the span).
+- `arris_topo::provenance::Role` has a new variant, `Loft(PathPart)`, for
+  the entities of a loft: the span between sections `k` and `k + 1` each
+  came from and its `SweepPart`. A `match` on it adds an arm (Python: the
+  role's `kind` is `"loft"`, its first field the span).
+- `arris_ops::OpError` gains `Loft(LoftError)`, sections that cannot be
+  matched into a loft (in Python, `OpLoftError` with `detail`): add the
+  arm to an exhaustive `match`.
 - `arris_ops::OpError` gains `Path(PathError)`, a sweep's path that is
   not a G1 chain of usable segments (in Python, `OpPathError` with
   `detail`): add the arm to an exhaustive `match`.

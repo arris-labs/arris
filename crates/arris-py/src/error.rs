@@ -132,6 +132,7 @@ classes! {
     OpDegenerateError(OpError) = "The requested result has no valid representation.";
     OpProfileError(OpError) = "The profile of a sweep is not a valid sketch.";
     OpPathError(OpError) = "The path of a sweep is not a G1 chain of usable segments.";
+    OpLoftError(OpError) = "The sections of a loft cannot be matched.";
     OpToleranceError(OpError) = "The result would need an entity tolerance above the model's maximum.";
     OpInternalError(OpError) = "A kernel bug, caught by the operation's own checks.";
     OpUnkeyedError(OpError) = "A consumer-built slot has no key.";

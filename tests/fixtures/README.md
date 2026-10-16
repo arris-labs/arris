@@ -22,7 +22,7 @@ directory: both files present and parseable, `expected.json` not stale, the
 Euler line zero, every `analytic` value matching the oracle to 1e-6
 relative, counts and probe expectations exactly — and every solid under
 `primitive/`, `build/`, `transform/`, `boolean/`, `sweep/`,
-`provenance/`, `blend/`, `offset/`, `shell/`, `split/` or `sheet/` that the
+`loft/`, `provenance/`, `blend/`, `offset/`, `shell/`, `split/` or `sheet/` that the
 runner compares (the oracle built a solid, the recipe expects no refusal)
 carrying its committed dump per variant, which a fixture only has once it
 passed and was blessed. An `#[ignore]`d fixture in those areas therefore
@@ -140,7 +140,7 @@ of the step that made the fixture pass, and a later change to it is a
 | `extrude` | `profile`, `direction`, `length` |
 | `revolve` | `profile`, `axis` `{origin, direction}`, `angle_deg` |
 | `sweep` | `profile`, `path` `{start, segments}` (each segment `{line_to}`, `{arc_to, via}`, `{helix: {axis, pitch, angle_deg}}` from the current point, or `{nurbs: {degree, knots, control_points, weights}}`), `law`: `"rotation_minimizing"` or `{"binormal": [x, y, z]}`. The oracle is `BRepOffsetAPI_MakePipeShell` (corrected Frenet, or the fixed binormal), the profile added where it stands; it takes wires, so a face's outer wire and its holes' are swept apart and sewn with the two caps, and a helix is a 2D line on a cylinder built to 3D. Arris builds it with `ops::sweep` (ADR-0063) |
-| `loft` | `sections` (profile step names, two or more, the same number of loops), `kind`: `"ruled"` or `"smooth"`, optional `closed` (the last section joins the first, no caps). The oracle is `BRepOffsetAPI_ThruSections` per loop (outer wire, then each hole's), compatibility checking on (off, it lofts only the first edge of a section with fewer edges), sewn with the first and last profile's faces as caps; a closed loft repeats the first section. Open CASCADE re-starts each wire at the vertex nearest the previous section's start, so a fixture's sections start where it keeps them. Arris has no `ops::loft` yet (plans/loft): the interpreter refuses the step as unsupported |
+| `loft` | `sections` (profile step names, two or more, the same number of loops), `kind`: `"ruled"` or `"smooth"`, optional `closed` (the last section joins the first, no caps). The oracle is `BRepOffsetAPI_ThruSections` per loop (outer wire, then each hole's), compatibility checking on (off, it lofts only the first edge of a section with fewer edges), sewn with the first and last profile's faces as caps; a closed loft repeats the first section. Open CASCADE re-starts each wire at the vertex nearest the previous section's start, so a fixture's sections start where it keeps them. Arris builds the ruled kind with `ops::loft` (ADR-0065) and refuses `smooth` as unsupported until the smooth loft lands (plans/loft) |
 | `transform` | `of`, optional `translate`, optional `rotate` `{axis, origin, angle_deg}`; rotation first |
 | `mirror` | `of`, `plane` `{origin, normal}`: the reflection in it (`ops::mirror`; `gp_Trsf::SetMirror` in the oracle) |
 | `fuse`, `common` | `a`, `b`; a `fuse` may instead take `bodies`, a list of two or more step names (one General Fuse, `arris_ops::fuse_many`; ADR-0050) |

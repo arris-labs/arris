@@ -443,6 +443,7 @@ pub fn refusal(e: &OpError) -> String {
         OpError::InvalidInput { .. } => "InvalidInput".into(),
         OpError::Profile(_) => "Profile".into(),
         OpError::Path(_) => "Path".into(),
+        OpError::Loft(_) => "Loft".into(),
         OpError::Tolerance { .. } => "Tolerance".into(),
         OpError::NotFound(_) => "NotFound".into(),
         OpError::Unkeyed { .. } => "Unkeyed".into(),

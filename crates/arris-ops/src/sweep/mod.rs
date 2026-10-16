@@ -13,11 +13,13 @@
 mod along;
 mod exact;
 mod extrude;
+mod loft;
 mod refuse;
 mod revolve;
 
 pub use along::sweep;
 pub use extrude::{extrude, planar_face};
+pub use loft::{LoftKind, loft};
 pub use revolve::revolve;
 
 use arris_geom::{Curve, Curve2, GeomError, GeomKind, ProfileEdge, Surface};

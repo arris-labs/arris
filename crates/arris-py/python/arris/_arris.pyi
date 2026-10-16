@@ -754,6 +754,9 @@ class OpProfileError(OpError):
 class OpPathError(OpError):
     detail: str
 
+class OpLoftError(OpError):
+    detail: str
+
 class OpToleranceError(OpError):
     entity: _Entity
     wanted: float

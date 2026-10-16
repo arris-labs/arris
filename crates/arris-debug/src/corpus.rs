@@ -2426,11 +2426,33 @@ fn build_step(
                 Vec::new(),
             )
         }
-        Step::Loft { .. } => Err(CorpusError::Unsupported {
-            fixture: name.clone(),
-            step: step.name().to_string(),
-            what: "loft is not built yet".to_string(),
-        })?,
+        Step::Loft {
+            sections,
+            kind,
+            closed,
+            ..
+        } => {
+            let profile_of =
+                |section: &String| profile_reference(fixture, step, section, profiles).cloned();
+            let sections = sections
+                .iter()
+                .map(profile_of)
+                .collect::<Result<Vec<_>, _>>()?;
+            let kind = match kind {
+                crate::fixtures::LoftKind::Ruled => arris_ops::LoftKind::Ruled,
+                crate::fixtures::LoftKind::Smooth => {
+                    return Err(CorpusError::Unsupported {
+                        fixture: name.clone(),
+                        step: step.name().to_string(),
+                        what: "a smooth loft is not built yet".to_string(),
+                    });
+                }
+            };
+            body(
+                arris_ops::loft(m, &sections, kind, *closed, control).map_err(op)?,
+                Vec::new(),
+            )
+        }
         Step::Transform {
             of,
             translate,
