@@ -136,6 +136,7 @@ boolean/tripod-fuse-many: 16109
 sweep/extrude-downward: 20
 sweep/extrude-ellipse: 4
 sweep/extrude-elliptic-slot: 16
+sweep/extrude-oblique-slot: 8268
 sweep/extrude-plate-elliptic-hole: 20
 sweep/extrude-plate-with-hole: 20
 sweep/extrude-slot: 20
@@ -153,11 +154,14 @@ sweep/sweep-arc-tilted-profile: 23324
 sweep/sweep-fold-near-limit: 7
 sweep/sweep-oblique-circle: 4343
 sweep/sweep-pipe-l-bend: 17
+sweep/sweep-pipe-l-bend-cross-fuse: 8142
 sweep/sweep-rect-s-bend: 94
+sweep/sweep-rect-s-bend-fillet: 60
 sweep/sweep-ring: 20
 sweep/sweep-spline-3d: 112136
 sweep/sweep-spline-handle: 100954
 sweep/sweep-spring: 420898
+sweep/sweep-spring-cut-split: 270316
 sweep/sweep-thread: 160466
 blend/barrel-ridge-fan-chamfer: 154
 blend/barrel-ridge-fan-fillet: 596
