@@ -57,7 +57,11 @@ into its version (ADR-0027).
 - `mass_properties`, `surface_properties` and the checker's volume row
   integrate a NURBS face at every one of its knots up to 4096 a direction
   (256 before): a face with more spans, such as a blend along a long curved
-  edge, was off by about one part in 10⁵.
+  edge, was off by about one part in 10⁵. A NURBS face with fewer spans
+  than its degree is integrated over at least its degree's count of
+  panels, and a boundary that crosses a knot line exactly where the
+  integration samples it is split there: a face of one span round a whole
+  turn was off by about one part in 10⁷.
 - `cut`, `fuse`, `common`, their multi-tool forms, `split` and `section`
   now take a body with NURBS faces against analytic ones, which covers most
   imported B-spline parts: the box cuts and drills of the real parts that
@@ -111,7 +115,15 @@ into its version (ADR-0027).
   section equal to the one before it are refused by name. Against Open
   CASCADE's `ThruSections` a circle against a square differs by the
   pairing: it pairs by arc length, the loft by the segments' parameters,
-  and the volume differs by about a thousandth.
+  and the volume differs by about a thousandth. `LoftKind::Smooth` lofts
+  three or more sections through one surface: per matched segment the
+  polynomial through every section (degree one less than their count),
+  spaced by the chord between them, a closed loft returning to its first
+  section without caps; two sections loft as they do ruled. It takes at
+  most nine sections (the first counted twice when closed) and refuses
+  more by name. Open CASCADE's smooth `ThruSections` builds the same
+  surface: a ring of equal circles agrees to a few parts in 10⁹, and a
+  circle to a rounded rectangle differs by the pairing, about 10⁻⁴.
 - `extrude` builds in any direction off the profile's plane: an arc sweeps an
   `EllipticCylinder`, its section perpendicular to the direction an ellipse
   (ADR-0014, ADR-0063). A direction whose normal component times the length is

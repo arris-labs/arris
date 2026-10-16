@@ -2440,13 +2440,7 @@ fn build_step(
                 .collect::<Result<Vec<_>, _>>()?;
             let kind = match kind {
                 crate::fixtures::LoftKind::Ruled => arris_ops::LoftKind::Ruled,
-                crate::fixtures::LoftKind::Smooth => {
-                    return Err(CorpusError::Unsupported {
-                        fixture: name.clone(),
-                        step: step.name().to_string(),
-                        what: "a smooth loft is not built yet".to_string(),
-                    });
-                }
+                crate::fixtures::LoftKind::Smooth => arris_ops::LoftKind::Smooth,
             };
             body(
                 arris_ops::loft(m, &sections, kind, *closed, control).map_err(op)?,

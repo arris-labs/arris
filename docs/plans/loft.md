@@ -111,11 +111,15 @@ bound has to be established here.
   joints between exact spans are the analytic curves. `loft-square-frustum`
   and `loft-cone-frustum` pass, also held to the frustum's closed-form
   volume `h/3·(A₁ + A₂ + √(A₁A₂))`.
-- [ ] Step 5 **[3]** — **The smooth loft.** `interpolate_skin` in `geom`
+- [x] Step 5 **[3]** — **The smooth loft.** `interpolate_skin` in `geom`
   at the degree and parameters ADR-0065 records (two sections: the ruled
   surface; Open CASCADE's are degree n − 1 at chord length, a closed loft
   repeating its first section, open question 2); one span per loft. `loft-duct`
   and `loft-closed-torus-like` pass within the tolerances step 1 measured.
+  *Done as:* the sections' points interpolated, not their nets (one
+  weight function per column first), the chord of the control nets; the
+  duct differs by §2's pairing (8.5e-5) and carries it, the ring holds
+  1e-8 (ADR-0065 §7).
 - [ ] Step 6 **[2]** — **Refusals.** Too few sections (two, three closed),
   unequal loop counts, two consecutive sections coincident, a loop that
   collapses; each a `regression/` refusal fixture moved to `loft/` passing.
@@ -190,7 +194,10 @@ differential at 1000 draws with `loft` drawn and no new failure; pytest and
   holds the smooth fixtures to 1e-4 through ADR-0065 rather than closed
   forms. **The plan's cubic and periodic closed loft are wrong for this
   oracle:** ADR-0065 §7 takes degree n − 1 as Open CASCADE does and refuses more
-  than nine sections; step 5 settles the chord and the tolerance.
+  than nine sections. Settled in step 5: the chord of the control nets;
+  points interpolated over one weight function, since the nets'
+  homogeneous interpolation was 4.1e-3 off; the duct's residual is §2's
+  pairing, the ring's Open CASCADE's approximation (ADR-0065 §7).
 - ~~OPEN 3~~ (decided, step 2, ADR-0065 §4): a loft's `Side { segment }`
   numbers the matched segments in the loop's walk; `MatchedLoop::sources`
   gives the consumer's segment each came from.

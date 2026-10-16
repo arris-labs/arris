@@ -89,7 +89,8 @@ section's segment count renumbers.
 closed), `LoopCount { section }`, `Profile { section }` (the profile
 validator's own error), `Loop { section, loop_index }` (a curve no
 rational quadratic holds), `Coincident { section, previous }` (two
-consecutive sections equal control net for control net). Unequal loop
+consecutive sections equal control net for control net),
+`TooManySections { given, max }` (a smooth loft past §7's bound). Unequal loop
 counts, a point as an end section and a NURBS profile segment are
 refusals, not extensions.
 
@@ -109,20 +110,54 @@ segment's NURBS; a rail is a straight line wherever a face on it is exact,
 and a NURBS face meets it by a degree-one pcurve at arc length. Joints between exact spans are the analytic
 curves, beside a NURBS span the segment's exact NURBS (ADR-0063).
 
-**7. A smooth loft interpolates the control nets as Open CASCADE does**
-(step 5): the surface is the polynomial of degree n − 1 through the n
-compatible section nets, at chord-length parameters, two sections the
-ruled surface; a closed loft repeats the first section and is not
-periodic. More than nine sections is `Unsupported` (the polynomial
-oscillates; Open CASCADE caps the degree at 8 and approximates).
-⚠ OPEN: the chord taken between control points of the nets or between
-sampled points agrees with Open CASCADE to 2e-5 only; step 5 settles which,
-and if neither reaches 1e-5 holds the smooth fixtures to 1e-4 here.
+**7. A smooth loft interpolates the sections' points as Open CASCADE
+does** (step 5): per matched segment, the polynomial of degree n − 1
+through the n sections, `S(u, v) = Σₖ Lₖ(v) Cₖ(u)`, at chord-length
+parameters, two sections the ruled loft (exact spans included); a closed
+loft repeats the first section and is not periodic. One loft is one span:
+its rings are the end sections' (only the first's when closed), each rail
+the surface's control column at the vertex.
+
+- *Points, not nets.* Interpolating the homogeneous control nets is not
+  interpolating the points where the sections' weights differ (a line
+  against an arc, arcs of different angles): on `loft-duct` it gave a
+  volume 4.1e-3 off. `interpolate_skin` first writes the sections of a
+  column over one weight function, the product of their distinct ones
+  (each weight function divided by its first weight; constant ones
+  dropped), segment by segment in Bernstein form, so every section keeps
+  its points at every `u` and the homogeneous interpolation is the point
+  interpolation, exactly. The degree along `u` grows by two per distinct
+  weight function (the duct: four); sections that share their weights,
+  scale included, keep their nets. The interpolated weight is that
+  common function at every row, so it is positive and the system is
+  never singular for increasing parameters.
+- *The chord is the control nets'*: the sum over every control point of
+  every loop of its distance to the same point of the next section,
+  normalised. On the duct it gives 0.35196 against the sampled points'
+  0.3518; interpolating sampled points paired by arc length at 0.35196
+  lands on Open CASCADE's volume to the sampling's 1e-5, at 0.3518 3.4e-5
+  off.
+- *What the fixtures hold.* `loft-closed-torus-like` (equal circles, so
+  the pairings agree) matches an independent quadrature of the exact
+  surface to 1e-14 in volume and area; Open CASCADE, approximating it,
+  is 2.9e-9 off, and the fixture holds 1e-8. `loft-duct` differs from
+  Open CASCADE by §2's pairing alone (volume 8.5e-5, inertia 1.7e-4) and
+  carries that as its tolerances, as `loft-circle-to-square` does.
+- More than nine sections, the first counted twice when closed, is
+  `LoftError::TooManySections` (the polynomial oscillates; Open CASCADE
+  caps the degree at 8 and approximates instead).
+- The measure took one Gauss–Legendre interval along the ring's one span
+  round a whole turn (1.3e-7 of its area): a NURBS direction with fewer
+  spans than its degree is now split into at least its degree's count of
+  panels, and a boundary crossing such a line exactly at one of its
+  crossing samples, which both open windows beside it missed, is split
+  there (`arris_geom::integrate`).
 
 ## Consequences
 
 - `arris-geom` gains `LoopNurbs`, `LoopPiece`, `match_sections`,
-  `MatchedSection`, `MatchedLoop`, `LoftError` and `LOOP_DEGREE`; `sweep`
+  `MatchedSection`, `MatchedLoop`, `LoftError`, `LOOP_DEGREE`,
+  `interpolate_skin` and `MAX_SMOOTH_SECTIONS`; `sweep`
   uses `LoopNurbs` and its fixtures are unchanged bit for bit.
 - A loft's NURBS faces meet only on the columns it builds (the plan's
   non-goal); NURBS against NURBS stays `Unsupported` until the marcher.

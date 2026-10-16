@@ -1,5 +1,11 @@
 {
-  "description": "a duct: a circle of radius 3, a rounded rectangle 8 by 5 (corner radius 1) 7 above it and the circle again 20 above it, the rectangle 7 above the first, each circle in eight arcs to match the rectangle's eight segments, lofted smooth through all three with one surface (plans/loft)",
+  "description": "a duct: a circle of radius 3, a rounded rectangle 8 by 5 (corner radius 1) 7 above it and the circle again 20 above it, the rectangle 7 above the first, each circle in eight arcs to match the rectangle's eight segments, lofted smooth through all three with one surface (plans/loft). Arris pairs a circle's arc with the rectangle's side and corner at equal parameter of their rational quadratics (ADR-0065 §2); Open CASCADE pairs them by arc length, which no NURBS holds, so the measures differ by the pairing: volume 8.5e-5, area 5.9e-5, centroid 8.4e-5, inertia 1.7e-4 of the tensor's z-z entry, below the tolerances here, which are that difference and not an error budget; interpolating the sampled points paired by arc length at Arris' chord parameters lands on Open CASCADE's volume to the sampling's 1e-5",
+  "tolerances": {
+    "volume_rel": 0.0002,
+    "area_rel": 0.0002,
+    "centroid_abs": 0.001,
+    "inertia_rel": 0.0003
+  },
   "steps": [
     {
       "name": "a",

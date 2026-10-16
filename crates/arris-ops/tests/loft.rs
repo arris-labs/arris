@@ -1,9 +1,12 @@
-//! `ops::loft`, ruled (ADR-0065): a square frustum and a cone frustum have
+//! `ops::loft`, ruled and smooth (ADR-0065): a square frustum and a cone frustum have
 //! the frustum's closed-form volume, every entity of a loft is `Generated`
 //! once from a `Role::Loft` naming its span and the part of the sketch,
 //! sections of unequal segment counts loft through the arc-length cut, a
 //! closed loft builds no caps, a bad set of sections is refused with the
-//! model untouched, and the dump is the same on two runs. The checker runs
+//! model untouched, and the dump is the same on two runs; a smooth loft is
+//! one span through every section, three sections on one frustum loft to
+//! that frustum, two sections are the ruled loft, and more than one
+//! polynomial takes are refused. The checker runs
 //! after every build (debug builds), so each `Ok` here is checker-green.
 
 use std::collections::BTreeSet;
@@ -52,6 +55,14 @@ fn circle(z: f64, radius: f64) -> Profile {
 
 fn ruled(m: &mut Model, sections: &[Profile], closed: bool) -> Result<(Body, Provenance), OpError> {
     loft(m, sections, LoftKind::Ruled, closed, &Control::NONE)
+}
+
+fn smooth(
+    m: &mut Model,
+    sections: &[Profile],
+    closed: bool,
+) -> Result<(Body, Provenance), OpError> {
+    loft(m, sections, LoftKind::Smooth, closed, &Control::NONE)
 }
 
 /// The loft's parts: every entity of the body `Generated` once from a
@@ -287,4 +298,96 @@ fn a_circle_against_a_square_and_a_twisted_square_stay_nurbs() {
             SurfaceKind::Nurbs
         ]
     );
+}
+
+#[test]
+fn three_sections_on_one_frustum_loft_smooth_to_that_frustum() {
+    // Equal steps of side and height: the chord parameters are 0, 1/2, 1
+    // and the quadratic through collinear rows is the straight line.
+    let mut m = Model::default();
+    let sections = [square(0.0, 2.0), square(2.0, 1.5), square(4.0, 1.0)];
+    let (body, provenance) = smooth(&mut m, &sections, false).unwrap();
+    let want = 4.0 / 3.0 * (16.0 + 4.0 + 8.0);
+    let mp = mass_properties(&m, body).unwrap();
+    assert!((mp.volume - want).abs() <= 1e-12 * want, "{}", mp.volume);
+    // One span: four sides through all three sections, rings only at the
+    // ends, every part named once from span 0.
+    let found = parts(&m, body, &provenance);
+    assert!(found.iter().all(|p| p.span == 0), "{found:?}");
+    assert_eq!(m.faces(body).unwrap().len(), 6);
+    assert_eq!(m.edges(body).unwrap().len(), 12);
+    assert_eq!(m.vertices(body).unwrap().len(), 8);
+    assert_eq!(
+        kinds(&m, body),
+        [vec![SurfaceKind::Plane; 2], vec![SurfaceKind::Nurbs; 4]].concat()
+    );
+}
+
+#[test]
+fn a_smooth_loft_passes_through_its_middle_section() {
+    // A circle between two squares: the side faces meet z = 3 on the
+    // circle, wherever the surfaces' own parameters put it.
+    let mut m = Model::default();
+    let sections = [square(0.0, 2.0), circle(3.0, 1.5), square(7.0, 2.0)];
+    let (body, _) = smooth(&mut m, &sections, false).unwrap();
+    for f in m.faces(body).unwrap() {
+        let surface = m.surface(m.face(f.id).unwrap().surface()).unwrap();
+        if surface.kind() != SurfaceKind::Nurbs {
+            continue;
+        }
+        let [du, dv] = surface.domain();
+        // The row of the middle section: where z crosses 3 along v.
+        for i in 0..=8 {
+            let u = du.lerp(i as f64 / 8.0);
+            let (mut lo, mut hi) = (dv.lo(), dv.hi());
+            for _ in 0..80 {
+                let mid = 0.5 * (lo + hi);
+                if surface.eval(u, mid).point.z < 3.0 {
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            }
+            let q = surface.eval(u, lo).point;
+            assert!(
+                (q.coords.xy().norm() - 1.5).abs() <= 1e-9,
+                "{:?} at u = {u}",
+                q
+            );
+        }
+    }
+}
+
+#[test]
+fn two_sections_loft_smooth_as_they_loft_ruled() {
+    let sections = [circle(0.0, 3.0), circle(4.0, 1.0)];
+    let mut a = Model::default();
+    let (ruled_body, _) = ruled(&mut a, &sections, false).unwrap();
+    let mut b = Model::default();
+    let (smooth_body, _) = smooth(&mut b, &sections, false).unwrap();
+    assert_eq!(
+        dump_text(&a, ruled_body).unwrap(),
+        dump_text(&b, smooth_body).unwrap()
+    );
+}
+
+#[test]
+fn a_smooth_loft_through_more_sections_than_one_polynomial_takes_is_refused() {
+    let tower: Vec<Profile> = (0..10)
+        .map(|k| square(k as f64, 2.0 - 0.1 * k as f64))
+        .collect();
+    let mut m = Model::default();
+    let err = smooth(&mut m, &tower, false).unwrap_err();
+    assert!(matches!(
+        err,
+        OpError::Loft(LoftError::TooManySections { given: 10, max: 9 })
+    ));
+    // Closed, the first counts twice: nine sections are ten rows.
+    let err = smooth(&mut m, &tower[..9], true).unwrap_err();
+    assert!(matches!(
+        err,
+        OpError::Loft(LoftError::TooManySections { given: 10, max: 9 })
+    ));
+    // Ruled takes any number.
+    assert!(ruled(&mut m, &tower, false).is_ok());
 }

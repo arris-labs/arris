@@ -1,5 +1,11 @@
 {
-  "description": "four circles of radius 1.5 in the planes through the z axis at 0, 90, 180 and 270 degrees, centred 8 from it, lofted smooth and closed: a torus-like ring, no caps (plans/loft)",
+  "description": "four circles of radius 1.5 in the planes through the z axis at 0, 90, 180 and 270 degrees, centred 8 from it, lofted smooth and closed: a torus-like ring, no caps (plans/loft). Every section is the same circle, so the pairing agrees and the surface is the degree-4 polynomial through the five rows exactly: an independent quadrature of it gives volume 382.97510443761 and area 504.31819201651, which Arris matches to 1e-14 and 1e-14; Open CASCADE approximates the same surface and is 2.9e-9 off in volume, 1.7e-9 in area and 3.9e-9 in inertia, which the tolerances here hold",
+  "tolerances": {
+    "volume_rel": 1e-08,
+    "area_rel": 1e-08,
+    "centroid_abs": 1e-07,
+    "inertia_rel": 1e-08
+  },
   "steps": [
     {
       "name": "c0",

@@ -881,6 +881,10 @@ corpus_tests! {
     loft_loft_square_frustum => run "loft/loft-square-frustum";
     /// Coaxial circles lofted ruled: a cone.
     loft_loft_cone_frustum => run "loft/loft-cone-frustum";
+    /// A circle, a rounded rectangle and a circle lofted smooth: one quadratic through three sections.
+    loft_loft_duct => run "loft/loft-duct";
+    /// Four circles round an axis lofted smooth and closed: a ring with no caps.
+    loft_loft_closed_torus_like => run "loft/loft-closed-torus-like";
     /// A circle along a line then a line at a right angle: the path is not
     /// G1, so `OpError::Path` names the corner where Open CASCADE's pipe
     /// carries the profile through it (ADR-0063).
@@ -1834,12 +1838,6 @@ corpus_tests! {
     /// is `Unsupported`. The desired answer is Open CASCADE's distance.
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
-    /// A circle, a rounded rectangle and a circle lofted smooth: one surface through three sections.
-    #[ignore = "OpError::Unsupported, the smooth loft is not built yet (docs/plans/loft.md step 5)"]
-    regression_loft_duct => run "regression/loft-duct";
-    /// Four circles round an axis lofted smooth and closed: a ring with no caps.
-    #[ignore = "OpError::Unsupported, the smooth loft is not built yet (docs/plans/loft.md step 5)"]
-    regression_loft_closed_torus_like => run "regression/loft-closed-torus-like";
 }
 
 /// A variant the recipe does not have fails naming it.

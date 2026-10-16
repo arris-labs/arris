@@ -2,7 +2,9 @@
 //! (ADR-0065). The sections are matched into one compatible NURBS per loop
 //! (`match_sections`); a **ruled** loft joins consecutive sections by a
 //! degree-one surface in the direction between them, one face per matched
-//! segment per span.
+//! segment per span; a **smooth** one by one surface per matched segment
+//! through every section (`interpolate_skin`), so its only rings are the
+//! end sections'.
 //!
 //! Two neighbouring faces of a span end on the same *rail*, the straight
 //! column of control points at their shared vertex, and two spans meet on
@@ -12,8 +14,8 @@
 //! the span's, `[0, 1]`.
 
 use arris_geom::{
-    Curve, Curve2, GeomError, NurbsCurve, NurbsCurve2, NurbsSurface, Profile, Surface,
-    match_sections, pcurve_on,
+    Curve, Curve2, GeomError, LoftError, MAX_SMOOTH_SECTIONS, MatchedSection, NurbsCurve,
+    NurbsCurve2, NurbsSurface, Profile, Surface, interpolate_skin, match_sections, pcurve_on,
 };
 use arris_math::{Control, Interval, Meter, Point2, UnitVec2, UnitVec3, Vec2};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
@@ -33,6 +35,62 @@ pub enum LoftKind {
     /// Each span between consecutive sections is straight: a face of the
     /// span is ruled between the two sections' matched segments.
     Ruled,
+    /// One surface through every section: per matched segment the
+    /// polynomial of degree `n − 1` through the `n` sections' points at
+    /// chord-length parameters ([`arris_geom::interpolate_skin`]), a
+    /// closed loft counting its first section twice (ADR-0065 §7). Two
+    /// sections are the ruled loft.
+    Smooth,
+}
+
+/// The parameters of the sections along a smooth loft, `0` to `1`: each
+/// span's share of the summed chord between consecutive sections' control
+/// nets, every control point of every loop counted once, and the last
+/// section back to the first when closed.
+fn chord_parameters(matched: &[MatchedSection], closed: bool) -> Vec<f64> {
+    let chord = |a: &MatchedSection, b: &MatchedSection| -> f64 {
+        a.loops
+            .iter()
+            .zip(&b.loops)
+            .flat_map(|(a, b)| {
+                a.nurbs
+                    .curve
+                    .control_points()
+                    .iter()
+                    .zip(b.nurbs.curve.control_points())
+            })
+            .map(|(p, q)| (q - p).norm())
+            .sum()
+    };
+    let mut chords: Vec<f64> = matched.windows(2).map(|w| chord(&w[0], &w[1])).collect();
+    if let (true, Some(last), Some(first)) = (closed, matched.last(), matched.first()) {
+        chords.push(chord(last, first));
+    }
+    let total: f64 = chords.iter().sum();
+    let mut params = vec![0.0];
+    let mut run = 0.0;
+    for c in &chords {
+        run += c;
+        params.push(run / total);
+    }
+    if let Some(end) = params.last_mut() {
+        *end = 1.0;
+    }
+    params
+}
+
+/// The control column `i` of `s` along `v`: the isoline at a `u` whose
+/// knot has full multiplicity, as the clamped ends of a matched segment's
+/// domain do.
+fn column(s: &NurbsSurface, i: usize) -> Result<NurbsCurve, GeomError> {
+    let [_, m] = s.counts();
+    let rows = i * m..(i + 1) * m;
+    NurbsCurve::new(
+        s.degree()[1],
+        s.knots()[1].to_vec(),
+        s.control_points()[rows.clone()].to_vec(),
+        s.weights()[rows].to_vec(),
+    )
 }
 
 /// The ruled surface between two compatible segments, `u` the segments'
@@ -108,10 +166,13 @@ fn flow(a: &[NurbsCurve], b: &[NurbsCurve], normal: &arris_math::Vec3) -> f64 {
 /// outer, hole `i` with hole `i`), from each loop's start point, a section
 /// with fewer segments cut by arc length ([`arris_geom::match_sections`]).
 /// Each span between consecutive sections has a face per matched segment
-/// per loop, ruled; the ends are planar caps, the first section's profile
-/// face and the last's. With `closed` the last section joins the first
-/// through one more span and there are no caps: a hole in the profile
-/// closes into a void of the one lump.
+/// per loop, ruled; a [`LoftKind::Smooth`] loft of three sections or
+/// more is one span, a face per matched segment per loop through every
+/// section, and has rings only at its ends. The ends are planar caps, the
+/// first section's profile face and the last's. With `closed` the last
+/// section joins the first through one more span (smooth: the one span
+/// returns to the first section) and there are no caps: a hole in the
+/// profile closes into a void of the one lump.
 ///
 /// Entities are appended in one fixed order — vertices per section ring
 /// per loop in walking order, edges (the rings' matched segments, then
@@ -126,8 +187,9 @@ fn flow(a: &[NurbsCurve], b: &[NurbsCurve], normal: &arris_math::Vec3) -> f64 {
 ///
 /// Errors, the model untouched: [`OpError::Loft`] when the sections
 /// cannot be matched (too few, unequal loop counts, an invalid profile, a
-/// section equal to the one before it), naming the section;
-/// [`OpError::Interrupted`] when `control` stops it.
+/// section equal to the one before it), naming the section, or a smooth
+/// loft has more than [`MAX_SMOOTH_SECTIONS`] (the first counted twice
+/// when closed); [`OpError::Interrupted`] when `control` stops it.
 ///
 /// ```
 /// use arris_geom::{Profile, ProfileLoop, ProfileSegment};
@@ -160,14 +222,33 @@ pub fn loft(
     closed: bool,
     control: &Control<'_>,
 ) -> Result<(Body, Provenance), OpError> {
-    let LoftKind::Ruled = kind;
+    let count = sections.len();
+    let smooth = match kind {
+        LoftKind::Ruled => false,
+        LoftKind::Smooth => count > 2,
+    };
+    let rows = count + usize::from(closed);
+    if smooth && rows > MAX_SMOOTH_SECTIONS {
+        return Err(LoftError::TooManySections {
+            given: rows,
+            max: MAX_SMOOTH_SECTIONS,
+        }
+        .into());
+    }
     let mut meter = Meter::new(control);
     let meter = &mut meter;
     let precision = m.precision();
     let tol = precision.tolerance();
     let tolerance = precision.default_tolerance;
     let matched = match_sections(sections, closed, tol)?;
-    let rings = sections.len();
+    // The sections that carry a ring of edges: every one of a ruled loft,
+    // the ends of a smooth one (only the first when it closes).
+    let stations: Vec<usize> = match (smooth, closed) {
+        (false, _) => (0..count).collect(),
+        (true, false) => vec![0, count - 1],
+        (true, true) => vec![0],
+    };
+    let rings = stations.len();
     let spans = if closed { rings } else { rings - 1 };
     let end_ring = |k: usize| (k + 1) % rings;
     let loop_count = matched[0].loops.len();
@@ -176,25 +257,26 @@ pub fn loft(
         .iter()
         .map(|l| l.nurbs.segments.len())
         .collect();
-    let segment = |r: usize, li: usize, j: usize| &matched[r].loops[li].nurbs.segments[j];
-    let normal_of = |r: usize| sections[r].plane.z().into_inner();
+    let segment = |r: usize, li: usize, j: usize| &matched[stations[r]].loops[li].nurbs.segments[j];
+    let normal_of = |r: usize| sections[stations[r]].plane.z().into_inner();
 
     // Which way the loft leaves each end section: the start cap faces
     // against the flow and the end cap with it.
     let loop_zero = |r: usize| -> &[NurbsCurve] { &matched[r].loops[0].nurbs.segments };
     let leaves_start = flow(loop_zero(0), loop_zero(1), &normal_of(0)) > 0.0;
     let leaves_end = flow(
-        loop_zero(rings - 2),
-        loop_zero(rings - 1),
-        &normal_of(rings - 1),
+        loop_zero(count - 2),
+        loop_zero(count - 1),
+        &sections[count - 1].plane.z().into_inner(),
     ) > 0.0;
 
     // What each matched segment is, and so which faces are known outright
     // (ADR-0065 §6): `exact[k][li][j]` is span `k`'s face on segment `j`.
-    let kinds: Vec<Vec<Vec<Kind>>> = matched
+    let kinds: Vec<Vec<Vec<Kind>>> = stations
         .iter()
-        .map(|s| {
-            s.loops
+        .map(|&r| {
+            matched[r]
+                .loops
                 .iter()
                 .map(|l| l.nurbs.segments.iter().map(|c| kind_of(c, tol)).collect())
                 .collect()
@@ -208,6 +290,9 @@ pub fn loft(
                 .map(|(li, &n)| {
                     (0..n)
                         .map(|j| {
+                            if smooth {
+                                return None;
+                            }
                             exact_face(
                                 (segment(k, li, j), &kinds[k][li][j]),
                                 (segment(end_ring(k), li, j), &kinds[end_ring(k)][li][j]),
@@ -240,6 +325,30 @@ pub fn loft(
     };
     let part = |span: usize, part: SweepPart| Role::Loft(PathPart { span, part });
     let last = spans - 1;
+
+    // A smooth loft's one surface per matched segment, through every
+    // section at chord-length parameters.
+    let skins: Vec<Vec<NurbsSurface>> = if smooth {
+        let params = chord_parameters(&matched, closed);
+        counts
+            .iter()
+            .enumerate()
+            .map(|(li, &n)| {
+                (0..n)
+                    .map(|j| {
+                        meter.tick()?;
+                        let column: Vec<NurbsCurve> = matched
+                            .iter()
+                            .map(|s| s.loops[li].nurbs.segments[j].clone())
+                            .collect();
+                        interpolate_skin(&column, &params, rows - 1, closed).map_err(fault_of)
+                    })
+                    .collect::<Result<Vec<_>, OpError>>()
+            })
+            .collect::<Result<_, _>>()?
+    } else {
+        Vec::new()
+    };
 
     m.transaction(|m| {
         let mut vertices: Vec<VertexSpec> = Vec::new();
@@ -362,6 +471,10 @@ pub fn loft(
                             },
                             range,
                         ),
+                        _ if smooth => (
+                            Curve::Nurbs(column(&skins[li][j], 0).map_err(fault_of)?),
+                            Interval::UNIT,
+                        ),
                         _ => (
                             Curve::Nurbs(rail(a, b, 0).map_err(fault_of)?),
                             Interval::UNIT,
@@ -401,7 +514,7 @@ pub fn loft(
                            orientation: Orientation|
              -> Result<FaceSpec, OpError> {
                 let plane = Surface::Plane {
-                    frame: sections[r].plane,
+                    frame: sections[stations[r]].plane,
                 };
                 let mut pcurves = Vec::with_capacity(loop_count);
                 for curves in &ring_curve[r] {
@@ -418,7 +531,7 @@ pub fn loft(
                 Ok(cap_face(
                     m,
                     &pcurves,
-                    sections[r].plane,
+                    sections[stations[r]].plane,
                     orientation,
                     &slots,
                     tolerance,
@@ -513,7 +626,11 @@ pub fn loft(
                         surface = exact_surface.clone();
                     } else {
                         let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
-                        let sub = ruled(a, b).map_err(fault_of)?;
+                        let sub = if smooth {
+                            skins[li][j].clone()
+                        } else {
+                            ruled(a, b).map_err(fault_of)?
+                        };
                         let [du, dv] = sub.domain();
                         // Outward is the section's tangent across its
                         // normal, as on the profile's own plane.

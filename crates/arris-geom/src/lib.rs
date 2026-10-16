@@ -62,12 +62,13 @@ pub use intersect_curves::{
     CurveCurveHit, CurveIntersection, conic_crossings, curves_coincide, intersect_curves,
 };
 pub use loft::{
-    LOOP_DEGREE, LoftError, LoopNurbs, LoopPiece, MatchedLoop, MatchedSection, match_sections,
+    LOOP_DEGREE, LoftError, LoopNurbs, LoopPiece, MAX_SMOOTH_SECTIONS, MatchedLoop, MatchedSection,
+    match_sections,
 };
 pub use nurbs::{
     FitError, MAX_DEGREE, MAX_FIT_SPANS, MAX_OFFSET_PATCHES, MAX_OFFSET_SPANS, NurbsCurve,
     NurbsCurve2, NurbsSurface, OFFSET_FIT_DEGREE, fit_curve, fit_curve_periodic, fit_curve2,
-    fit_skin,
+    fit_skin, interpolate_skin,
 };
 pub use path::{FrameField, FrameLaw, Path, PathDegeneracy, PathError, PathFrame, PathSegment};
 pub use pcurve::{

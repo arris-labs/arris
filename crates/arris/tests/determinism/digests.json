@@ -30,9 +30,9 @@
     "volume": "129.90346111230653"
   },
   "sweep-nurbs": {
-    "area": "324.9758267550425",
+    "area": "324.9758267675403",
     "body_sha256": "5edad540447534a7d17616f6b0caff58f8dceac9a17d598449b257ae96d5caff",
-    "volume": "233.1289947994254"
+    "volume": "233.12899487041327"
   },
   "tessellation": {
     "mesh_sha256": "90f06b283549e39bf2cbcf4808182a21f03fdf91e3b26a0f3f558e53cfa81918",

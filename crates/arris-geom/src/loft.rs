@@ -20,6 +20,12 @@ use crate::{
 /// tolerance.
 pub const LOOP_DEGREE: usize = 2;
 
+/// The most sections a smooth loft interpolates, its first counted twice
+/// when closed: one polynomial through more oscillates, and Open CASCADE
+/// caps the degree at 8 and approximates instead (ADR-0065 §7). A bound
+/// on the construction, not a tolerance.
+pub const MAX_SMOOTH_SECTIONS: usize = 9;
+
 /// Sub-intervals an arc length is integrated over per edge; the integrand
 /// of a line or a circle is constant, an ellipse's is smooth, and sixteen
 /// Gauss points on each eighth hold it to rounding.
@@ -215,6 +221,17 @@ pub enum LoftError {
         given: usize,
         /// How many the loft needs.
         needed: usize,
+    },
+    /// A smooth loft through more sections than one polynomial takes,
+    /// [`MAX_SMOOTH_SECTIONS`], the first counted twice when closed.
+    #[error(
+        "a smooth loft takes at most {max} sections, the first twice when closed; found {given}"
+    )]
+    TooManySections {
+        /// How many were given, the first twice when closed.
+        given: usize,
+        /// The most it takes.
+        max: usize,
     },
     /// A section has a different number of loops from the first.
     #[error("section {section} has {found} loops, the first has {expected}")]

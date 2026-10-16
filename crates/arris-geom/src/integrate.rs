@@ -117,6 +117,21 @@ impl Breaks {
     pub fn breaks_in(&self, lo: f64, hi: f64) -> Vec<f64> {
         self.inside(lo, hi).unwrap_or_default()
     }
+
+    /// Whether `x` is one of the breaks, exactly: a value the open
+    /// intervals of [`Breaks::breaks_in`] on either side of it both leave
+    /// out.
+    fn hits(&self, x: f64) -> bool {
+        match self.period {
+            None => self.breaks.contains(&x),
+            Some(p) => {
+                let k = (x / p).floor();
+                [k - 1.0, k, k + 1.0]
+                    .iter()
+                    .any(|k| self.breaks.iter().any(|&b| b + k * p == x))
+            }
+        }
+    }
 }
 
 /// Where [`region_integral`] splits its integrals over a region of a
@@ -160,7 +175,8 @@ impl Grid {
 /// a conic boundary piece at. A plane is affine in (u, v) and every
 /// integrand this module is used with is a low-degree polynomial along
 /// it, which the quadrature is exact for, so it asks for no split at all;
-/// a NURBS surface asks for its own knots in `u`, where its polynomial
+/// a NURBS surface asks for its own knots in `u` (and at least its
+/// degree's count of panels), where its polynomial
 /// pieces change and, at a knot of multiplicity its degree, its
 /// derivatives jump — repeated by its closure where it closes — and for
 /// its boundary pieces to be split where they cross its knots in `u` or
@@ -203,7 +219,7 @@ pub fn surface_grid(surface: &Surface) -> Grid {
         Surface::Nurbs(s) => {
             let closure = s.closure();
             let knots = [0, 1].map(|k| {
-                let knots = s.knots()[k].to_vec();
+                let knots = panels(s.knots()[k], s.degree()[k]);
                 match closure[k] {
                     Some(c) => Breaks::periodic(knots, c),
                     None => Breaks::at(knots),
@@ -215,6 +231,29 @@ pub fn surface_grid(surface: &Surface) -> Grid {
             }
         }
     }
+}
+
+/// A NURBS direction's knots, and where it has fewer spans than its
+/// degree, each span cut evenly so the direction has at least `degree`
+/// panels: one polynomial piece of degree `p` turns up to `p − 1` times,
+/// and a smooth loft's one span round a ring is a whole turn, whose area
+/// element one Gauss–Legendre interval leaves `1e-7` of (four leave
+/// rounding), as the quarter turn of a torus does.
+fn panels(knots: &[f64], degree: usize) -> Vec<f64> {
+    let mut ends: Vec<f64> = knots.to_vec();
+    ends.dedup();
+    let spans = ends.len().saturating_sub(1);
+    if spans == 0 || spans >= degree {
+        return knots.to_vec();
+    }
+    let cuts = degree.div_ceil(spans);
+    let mut out = knots.to_vec();
+    for w in ends.windows(2) {
+        for i in 1..cuts {
+            out.push(w[0] + (w[1] - w[0]) * i as f64 / cuts as f64);
+        }
+    }
+    out
 }
 
 /// The nodes and weights of Gauss–Legendre quadrature of [`GAUSS_ORDER`]
@@ -308,6 +347,13 @@ fn crossings(piece: &Piece<'_>, breaks: Vec<f64>, outer: &[Breaks; 2]) -> Vec<f6
     samples.push(hi);
     let at = |t: f64| piece.curve.point(t);
     let mut out = breaks;
+    // A sample exactly on a grid line: the windows on either side of it
+    // are open there and both miss it.
+    for &t in &samples {
+        if lo < t && t < hi && (0..2).any(|k| outer[k].hits(at(t)[k])) {
+            out.push(t);
+        }
+    }
     for w in samples.windows(2) {
         let (a, b) = (at(w[0]), at(w[1]));
         for (k, grid) in outer.iter().enumerate() {
@@ -461,6 +507,38 @@ mod tests {
     /// wrapping past the end of the knots, encloses what the whole loop
     /// does: the wrapped block is split at the knots a period on, not
     /// taken in one interval across them.
+    /// A grid line a boundary piece's crossing samples land on exactly
+    /// still splits it: `|v − 1/4|` over the unit square, whose kink at
+    /// `v = 1/4` is a sample of a side from 0 to 1.
+    #[test]
+    fn a_grid_line_on_a_crossing_sample_splits_the_piece() {
+        let side = |origin: Point2, direction: Vec2| Curve2::Line {
+            origin,
+            direction: UnitVec2::new_unchecked(direction),
+        };
+        let (bottom, right) = (
+            side(Point2::new(0.0, 0.0), Vec2::x()),
+            side(Point2::new(1.0, 0.0), Vec2::y()),
+        );
+        let (top, left) = (
+            side(Point2::new(0.0, 1.0), Vec2::x()),
+            side(Point2::new(0.0, 0.0), Vec2::y()),
+        );
+        let unit = Interval::new(0.0, 1.0).unwrap();
+        let square = [
+            Piece::along(&bottom, unit),
+            Piece::along(&right, unit),
+            Piece::against(&top, unit),
+            Piece::against(&left, unit),
+        ];
+        let grid = Grid {
+            inner: Breaks::NONE,
+            outer: [Breaks::NONE, Breaks::at(vec![0.25])],
+        };
+        let got = region_integral(&square, &grid, |_, v| (v - 0.25).abs());
+        assert!((got - 0.3125).abs() <= 1e-15, "{got}");
+    }
+
     #[test]
     fn a_block_wrapping_a_periodic_pcurve_is_split_at_its_knots() {
         use crate::NurbsCurve2;
