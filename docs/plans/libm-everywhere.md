@@ -121,7 +121,7 @@ dump digest to a committed golden. It runs natively in the gate and on
 - [x] Step 7 **[1]** — `arris-debug` (75), `arris-py` (2), and the ~550
   calls in tests, benches and fuzz targets; delete the workspace allow table. Clippy
   is now the guard.
-- [ ] Step 8 **[2]** — Grow the determinism corpus to the full recipe list
+- [x] Step 8 **[2]** — Grow the determinism corpus to the full recipe list
   and bless it natively. Un-ignore the wasm case: it passes on wasip1
   locally. Add the `wasm` job's test step to CI.
 - [ ] Step 9 **[1]** — Time the fast nextest profile and the `real_*`

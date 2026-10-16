@@ -1,7 +1,41 @@
 {
+  "boolean-cut": {
+    "area": "114.18251024831952",
+    "body_sha256": "498f3e0fd83a081559c1848a369f18dd325d4ce0598dbe0de511dca525cb4ca6",
+    "volume": "69.40971946360715"
+  },
+  "fillet": {
+    "area": "45.6382285092516",
+    "body_sha256": "be6cbb76ed3d2de56ca4d994fe59b66510355ff8c159c69a982adef2255d1b00",
+    "volume": "22.849604415297158"
+  },
   "gear-extrude": {
     "area": "1666.182316465549",
     "body_sha256": "3f51aafd30797b169b4962de8a6a6d0af80c77786248cd8accc6f8dbe1e5d252",
     "volume": "2452.232294324484"
+  },
+  "revolve": {
+    "area": "168.17136823131554",
+    "body_sha256": "c2bf669771cb445e77e0393fe66ec601c78099169c3634c93b53e7add7f51908",
+    "volume": "100.48348167191281"
+  },
+  "step-read": {
+    "area": "235.61944901923454",
+    "body_sha256": "0ab3a381e5799bcf4a6f51e396334e4c8a6eecf841120a56780201e49897a685",
+    "volume": "261.79938779914943"
+  },
+  "sweep-analytic": {
+    "area": "187.34178175756279",
+    "body_sha256": "1c5532ef84912afaf5e005aea4bafe95454cb4e237daa44bbb5cc01530e623fa",
+    "volume": "129.90346111230653"
+  },
+  "sweep-nurbs": {
+    "area": "324.9758267550425",
+    "body_sha256": "5edad540447534a7d17616f6b0caff58f8dceac9a17d598449b257ae96d5caff",
+    "volume": "233.1289947994254"
+  },
+  "tessellation": {
+    "mesh_sha256": "90f06b283549e39bf2cbcf4808182a21f03fdf91e3b26a0f3f558e53cfa81918",
+    "triangles": 464
   }
 }

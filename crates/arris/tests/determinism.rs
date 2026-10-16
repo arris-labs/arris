@@ -13,24 +13,33 @@
 
 use std::collections::BTreeMap;
 
-use arris::geom::{Profile, ProfileLoop, ProfileSegment};
-use arris::math::{Frame, Point2, Vec3};
+use arris::geom::{FrameLaw, NurbsCurve, Path, PathSegment, Profile, ProfileLoop, ProfileSegment};
+use arris::io::step::ReadOptions;
+use arris::math::{Axis, Control, Frame, Point2, Point3, Vec3};
 use arris::topo::Model;
-use arris_debug::unmetered::{extrude, mass_properties};
+use arris_debug::unmetered::{
+    cut, extrude, fillet, mass_properties, primitive_box, primitive_cylinder, revolve, step_read,
+    tessellate,
+};
 use sha2::{Digest, Sha256};
 
 /// The committed digests, embedded so a wasm run needs no filesystem.
 const DIGESTS: &str = include_str!("determinism/digests.json");
 
+/// The hex SHA-256 of `bytes`.
+fn sha256(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
 /// One recipe's result: the body's native bytes digested, and its volume
 /// and area printed shortest-round-trip, so a last-ulp move shows.
 fn record(m: &Model, body: arris::topo::Body, prov: &arris::topo::Provenance) -> serde_json::Value {
     let bytes = arris::io::body::write(m, body, prov).expect("a built body writes");
-    let hex: String = Sha256::digest(&bytes)
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    let mp = mass_properties(m, body).expect("a built body measures");
+    let hex = sha256(&bytes);
+    let mp = mass_properties(m, body).unwrap_or_else(|e| panic!("{e:?}"));
     serde_json::json!({
         "body_sha256": hex,
         "volume": format!("{:?}", mp.volume),
@@ -117,6 +126,143 @@ fn gear_profile() -> Profile {
     }
 }
 
+fn circle(radius: f64) -> Profile {
+    Profile {
+        plane: Frame::world(),
+        outer: ProfileLoop::Circle {
+            center: Point2::new(0.0, 0.0),
+            radius,
+        },
+        holes: Vec::new(),
+    }
+}
+
+/// A quarter-turn-ish revolve: a rectangle off the y axis, turned 5 rad.
+fn revolve_recipe(m: &mut Model) -> (arris::topo::Body, arris::topo::Provenance) {
+    let p = |x, y| Point2::new(x, y);
+    let profile = Profile {
+        plane: Frame::world(),
+        outer: ProfileLoop::Path {
+            start: p(2.0, 0.0),
+            segments: vec![
+                ProfileSegment::LineTo(p(4.0, 0.0)),
+                ProfileSegment::LineTo(p(4.0, 3.0)),
+                ProfileSegment::ArcTo {
+                    to: p(2.0, 3.0),
+                    via: p(3.0, 3.5),
+                },
+                ProfileSegment::LineTo(p(2.0, 0.0)),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let axis = Axis::new(Point3::origin(), Vec3::y()).expect("the y axis is an axis");
+    revolve(m, &profile, axis, 5.0).expect("the profile revolves")
+}
+
+/// A cylinder cut across by a thinner one along x.
+fn boolean_recipe(m: &mut Model) -> (arris::topo::Body, arris::topo::Provenance) {
+    let (a, _) =
+        primitive_cylinder(m, Axis::z_at(Point3::origin()), 2.0, 6.0).expect("the cylinder builds");
+    let along_x = Axis::new(Point3::new(-4.0, 0.3, 3.0), Vec3::x()).expect("an axis");
+    let (b, _) = primitive_cylinder(m, along_x, 0.7, 8.0).expect("the cylinder builds");
+    cut(m, a, b).expect("the cylinders cut")
+}
+
+/// A box with all twelve edges rounded.
+fn fillet_recipe(m: &mut Model) -> (arris::topo::Body, arris::topo::Provenance) {
+    let (b, _) =
+        primitive_box(m, Point3::origin(), Point3::new(4.0, 3.0, 2.0)).expect("the box builds");
+    let edges = m.edges(b).expect("the box has edges");
+    fillet(m, b, &edges, 0.4).expect("the box fillets")
+}
+
+/// A round pipe along a line and a 60° arc, every span analytic.
+fn sweep_recipe(m: &mut Model) -> (arris::topo::Body, arris::topo::Provenance) {
+    let (r, a) = (8.0, core::f64::consts::FRAC_PI_3);
+    let at = |t: f64| Point3::new(r * (1.0 - libm::cos(t)), 0.0, 10.0 + r * libm::sin(t));
+    let path = Path {
+        start: Point3::origin(),
+        segments: vec![
+            PathSegment::LineTo(Point3::new(0.0, 0.0, 10.0)),
+            PathSegment::ArcTo {
+                via: at(a / 2.0),
+                to: at(a),
+            },
+        ],
+    };
+    arris::ops::sweep(
+        m,
+        &circle(1.5),
+        &path,
+        FrameLaw::RotationMinimizing,
+        &Control::NONE,
+    )
+    .expect("the pipe sweeps")
+}
+
+/// A round wire along a cubic NURBS in space.
+fn nurbs_sweep_recipe(m: &mut Model) -> (arris::topo::Body, arris::topo::Provenance) {
+    let curve = NurbsCurve::new(
+        3,
+        vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0],
+        vec![
+            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(0.0, 0.0, 10.0),
+            Point3::new(10.0, 8.0, 18.0),
+            Point3::new(20.0, 12.0, 20.0),
+        ],
+        vec![1.0; 4],
+    )
+    .expect("the curve is valid");
+    let path = Path {
+        start: Point3::origin(),
+        segments: vec![PathSegment::Nurbs(curve)],
+    };
+    arris::ops::sweep(
+        m,
+        &circle(1.5),
+        &path,
+        FrameLaw::RotationMinimizing,
+        &Control::NONE,
+    )
+    .expect("the wire sweeps")
+}
+
+/// The committed half ball, a sphere face through its poles, read.
+fn step_recipe(m: &mut Model) -> (arris::topo::Body, arris::topo::Provenance) {
+    const HALF_BALL: &str =
+        include_str!("../../../tests/fixtures/real/edge-through-sphere-pole/half-ball.stp");
+    let read = step_read(m, HALF_BALL, &ReadOptions::default()).expect("the half ball reads");
+    let solid = read
+        .solids
+        .into_iter()
+        .next()
+        .expect("the half ball has a solid");
+    let body = solid.result.expect("the half ball builds");
+    (body.body, body.provenance)
+}
+
+/// The tessellation of the boolean recipe: positions and triangles.
+fn tessellation_record(m: &mut Model) -> serde_json::Value {
+    let (body, _) = boolean_recipe(m);
+    let mesh = tessellate(m, body, 0.01).expect("the body tessellates");
+    let mut bytes = Vec::new();
+    for p in mesh.positions().iter().flatten() {
+        bytes.extend_from_slice(&p.to_bits().to_le_bytes());
+    }
+    for i in mesh.triangles().iter().flatten() {
+        bytes.extend_from_slice(&i.to_le_bytes());
+    }
+    serde_json::json!({
+        "mesh_sha256": sha256(&bytes),
+        "triangles": mesh.triangles().len(),
+    })
+}
+
+/// A recipe: builds a body into the model.
+type Recipe = fn(&mut Model) -> (arris::topo::Body, arris::topo::Provenance);
+
 /// The recipes, by name, in the order the digests file lists them.
 fn recipes() -> BTreeMap<&'static str, serde_json::Value> {
     let mut out = BTreeMap::new();
@@ -124,6 +270,20 @@ fn recipes() -> BTreeMap<&'static str, serde_json::Value> {
     let (body, prov) =
         extrude(&mut m, &gear_profile(), Vec3::new(0.0, 0.0, 1.0), 8.0).expect("the gear extrudes");
     out.insert("gear-extrude", record(&m, body, &prov));
+    let builds: [(&'static str, Recipe); 6] = [
+        ("revolve", revolve_recipe),
+        ("boolean-cut", boolean_recipe),
+        ("fillet", fillet_recipe),
+        ("sweep-analytic", sweep_recipe),
+        ("sweep-nurbs", nurbs_sweep_recipe),
+        ("step-read", step_recipe),
+    ];
+    for (name, build) in builds {
+        let mut m = Model::default();
+        let (body, prov) = build(&mut m);
+        out.insert(name, record(&m, body, &prov));
+    }
+    out.insert("tessellation", tessellation_record(&mut Model::default()));
     out
 }
 
@@ -140,11 +300,6 @@ fn the_gear_has_40_lines_and_200_arcs() {
 }
 
 #[test]
-#[cfg_attr(
-    target_arch = "wasm32",
-    ignore = "arc-sweep-differs-on-wasm32: std's atan2 is glibc's natively and wasi-libc's on \
-              wasm32-wasip1, so the gear's arcs differ by an ulp (docs/BACKLOG.md)"
-)]
 fn every_recipe_matches_its_digest() {
     let got = serde_json::to_value(recipes()).expect("records serialise");
     #[cfg(not(target_arch = "wasm32"))]
