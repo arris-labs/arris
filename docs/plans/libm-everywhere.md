@@ -124,7 +124,7 @@ dump digest to a committed golden. It runs natively in the gate and on
 - [x] Step 8 **[2]** — Grow the determinism corpus to the full recipe list
   and bless it natively. Un-ignore the wasm case: it passes on wasip1
   locally. Add the `wasm` job's test step to CI.
-- [ ] Step 9 **[1]** — Time the fast nextest profile and the `real_*`
+- [x] Step 9 **[1]** — Time the fast nextest profile and the `real_*`
   corpus before step 3 and after step 8; record both in ADR-0064. A
   slowdown above 10% gets a backlog line.
 

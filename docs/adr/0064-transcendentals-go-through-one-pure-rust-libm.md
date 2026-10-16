@@ -58,8 +58,14 @@ determinant in `arris-ops`' offset code.
 - Last-ulp moves in blessed dumps, re-blessed with `fixtures:` in each
   migration step; oracle values do not change.
 - `libm` is within 1 ulp, not correctly rounded: same everywhere, not best
-  possible, far below any model tolerance. A performance gap against the
-  platform's libm is measured in step 9.
+  possible, far below any model tolerance.
+- **Cost, measured** (2026-10-16, 16 threads, 256 proptest cases, the
+  workspace's `dev` profile): the `fast` nextest profile ran in 1817 s
+  before the migration (the commit before `nalgebra` moved to `libm-force`)
+  and 1794 s after the corpus landed, the 38 `real_*` tests in 1179 s and
+  1159 s. Both are within run-to-run noise (a first pair of runs differed
+  by 7% on the same code), so `libm` against glibc costs nothing a gate
+  can see.
 
 ## Alternatives considered
 
