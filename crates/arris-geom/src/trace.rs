@@ -33,6 +33,7 @@
 //! leaves it ends its branch there. The clip's ends are again the roots
 //! of a quartic.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_4, PI, TAU};
 use core::fmt;
 use std::sync::Arc;
@@ -190,7 +191,7 @@ impl Trig2 {
     }
 
     fn eval(&self, s: f64) -> f64 {
-        let (sin, cos) = s.sin_cos();
+        let (sin, cos) = real::sin_cos(s);
         let (sin2, cos2) = (2.0 * sin * cos, (cos - sin) * (cos + sin));
         self.k + self.c1 * cos + self.s1 * sin + self.c2 * cos2 + self.s2 * sin2
     }
@@ -213,8 +214,8 @@ impl Trig2 {
 
     /// `σ ↦ self(s0 + σ)`.
     fn rotated(&self, s0: f64) -> Trig2 {
-        let (sin, cos) = s0.sin_cos();
-        let (sin2, cos2) = (2.0 * s0).sin_cos();
+        let (sin, cos) = real::sin_cos(s0);
+        let (sin2, cos2) = real::sin_cos(2.0 * s0);
         Trig2 {
             k: self.k,
             c1: self.c1 * cos + self.s1 * sin,
@@ -229,8 +230,8 @@ impl Trig2 {
     /// `2 sin h` times a bounded factor, so it keeps its relative accuracy
     /// as `h → 0` — which is where a turning point's square root needs it.
     fn difference(&self, anchor: f64, h: f64) -> f64 {
-        let (sin_h, cos_h) = h.sin_cos();
-        let (sin_m, cos_m) = (anchor + h).sin_cos();
+        let (sin_h, cos_h) = real::sin_cos(h);
+        let (sin_m, cos_m) = real::sin_cos(anchor + h);
         let (sin_2m, cos_2m) = (2.0 * sin_m * cos_m, (cos_m - sin_m) * (cos_m + sin_m));
         2.0 * sin_h
             * (self.s1 * cos_m - self.c1 * sin_m
@@ -272,7 +273,7 @@ impl Trig2 {
         let slope = self.derivative();
         let mut out: Vec<f64> = found
             .iter()
-            .map(|r| self.polished(&slope, s0 + 2.0 * r.value.atan()))
+            .map(|r| self.polished(&slope, s0 + 2.0 * real::atan(r.value)))
             .map(wrap_angle)
             .collect();
         out.sort_by(f64::total_cmp);
@@ -321,13 +322,13 @@ struct TrigVec {
 
 impl TrigVec {
     fn eval(&self, s: f64) -> Vec3 {
-        let (sin, cos) = s.sin_cos();
+        let (sin, cos) = real::sin_cos(s);
         self.k + self.c * cos + self.s * sin
     }
 
     /// The derivative in `s`.
     fn slope(&self, s: f64) -> Vec3 {
-        let (sin, cos) = s.sin_cos();
+        let (sin, cos) = real::sin_cos(s);
         self.s * cos - self.c * sin
     }
 
@@ -573,8 +574,8 @@ impl Stretch {
                 let e1 = radial / radius;
                 let e2 = normal.cross(&e1);
                 let r = q - centre;
-                let angle = r.dot(&e2).atan2(r.dot(&e1)).clamp(-half, half);
-                let (sin, cos) = angle.sin_cos();
+                let angle = real::atan2(r.dot(&e2), r.dot(&e1)).clamp(-half, half);
+                let (sin, cos) = real::sin_cos(angle);
                 (q - (centre + (e1 * cos + e2 * sin) * radius)).norm()
             }
         }
@@ -654,7 +655,7 @@ impl Arc1 {
         match (self.turn_start, self.turn_finish) {
             (true, true) => {
                 let half = 0.5 * l;
-                let (sin, cos) = (0.5 * x / half.sqrt()).sin_cos();
+                let (sin, cos) = real::sin_cos(0.5 * x / half.sqrt());
                 if sin <= cos {
                     from_start(2.0 * half * sin * sin)
                 } else {
@@ -662,11 +663,11 @@ impl Arc1 {
                 }
             }
             (true, false) => {
-                let sin = (0.5 * x / l.sqrt()).sin();
+                let sin = real::sin(0.5 * x / l.sqrt());
                 from_start(2.0 * l * sin * sin)
             }
             (false, true) => {
-                let sin = (0.5 * (self.len - x) / l.sqrt()).sin();
+                let sin = real::sin(0.5 * (self.len - x) / l.sqrt());
                 from_finish(2.0 * l * sin * sin)
             }
             (false, false) => (self.start + sign * x, None),
@@ -1587,7 +1588,7 @@ fn rulings(surface: &Surface) -> Option<(TrigVec, TrigVec)> {
             radius,
             half_angle,
         } => {
-            let (sin, cos) = half_angle.sin_cos();
+            let (sin, cos) = real::sin_cos(half_angle);
             let apex = frame.origin() - frame.z().into_inner() * (radius * cos / sin);
             Some((
                 TrigVec {
@@ -1644,7 +1645,7 @@ fn quadric_of(surface: &Surface) -> Option<(Quadric, Frame)> {
             radius,
             half_angle,
         } => {
-            let (sin, cos) = half_angle.sin_cos();
+            let (sin, cos) = real::sin_cos(half_angle);
             Some((
                 Quadric {
                     m: Vec3::new(cos * cos, cos * cos, -sin * sin),

@@ -6,6 +6,7 @@
 //! operands. Where the surfaces meet the answer says nothing at distance
 //! zero, and the sampled minima are held only away from it.
 
+use arris_math::real;
 use core::f64::consts::FRAC_PI_2;
 
 use arris_debug::prop::geom::{cone, cylinder, elliptic_cylinder, plane, sphere, surface, torus};
@@ -280,7 +281,7 @@ fn a_plane_against_a_cone_is_a_family_along_a_ruling_where_it_is_tangent() {
         radius: 1.0,
         half_angle: alpha,
     };
-    let n = [alpha.cos(), 0.0, -alpha.sin()];
+    let n = [real::cos(alpha), 0.0, -real::sin(alpha)];
     let tangent_plane = Surface::Plane {
         frame: frame([6.0, 0.0, 0.0], n, [0.0, 1.0, 0.0]),
     };
@@ -289,7 +290,7 @@ fn a_plane_against_a_cone_is_a_family_along_a_ruling_where_it_is_tangent() {
     assert_eq!(e.continua.len(), 1, "{e:?}");
     // The ruling through (1, 0, 0) is at the distance of that point from
     // the plane through (6, 0, 0).
-    let want = ((6.0 - 1.0) * alpha.cos()).abs();
+    let want = ((6.0 - 1.0) * real::cos(alpha)).abs();
     assert!(
         (e.continua[0].distance - want).abs() < 1e-12,
         "{e:?} want {want}"
@@ -342,7 +343,10 @@ fn coaxial_cones_of_one_angle_are_a_family_and_of_two_meet() {
     let e = extrema(&a, &b);
     assert!(e.isolated.is_empty(), "{e:?}");
     // Two parallel lines 2 apart along the axis: 2 sin α between them.
-    assert!((continua(&e)[0] - 2.0 * alpha.sin()).abs() < 1e-12, "{e:?}");
+    assert!(
+        (continua(&e)[0] - 2.0 * real::sin(alpha)).abs() < 1e-12,
+        "{e:?}"
+    );
     well_formed(&a, &b, &e).unwrap();
     let c = Surface::Cone {
         frame: world([0.0, 0.0, 2.0]),
@@ -635,8 +639,8 @@ fn minima_held(a: &Surface, b: &Surface, e: &SurfaceExtrema) -> Result<(), Strin
             let ring = (0..16).all(|k| {
                 let angle = core::f64::consts::TAU * k as f64 / 16.0;
                 let cand = [
-                    uv[0] + 2.0 * (ur[1] - ur[0]) / N as f64 * angle.cos(),
-                    uv[1] + 2.0 * (vr[1] - vr[0]) / N as f64 * angle.sin(),
+                    uv[0] + 2.0 * (ur[1] - ur[0]) / N as f64 * real::cos(angle),
+                    uv[1] + 2.0 * (vr[1] - vr[0]) / N as f64 * real::sin(angle),
                 ];
                 f(cand) >= best - 1e-9
             });

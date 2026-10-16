@@ -3,6 +3,7 @@
 //! closed-form distance, recovers a displaced point's parameters, and the
 //! ambiguous loci are reported rather than guessed.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::{
@@ -44,7 +45,7 @@ fn param_error(s: &Surface, got: (f64, f64), expected: (f64, f64)) -> f64 {
 /// independently of `Surface::project`: both nappes of the cone count.
 fn implicit_distance(s: &Surface, p: Point3) -> f64 {
     let q = s.frame().unwrap().to_local(p);
-    let rho = q.x.hypot(q.y);
+    let rho = real::hypot(q.x, q.y);
     match s {
         Surface::Plane { .. } => q.z.abs(),
         &Surface::Cylinder { radius, .. } => (rho - radius).abs(),
@@ -56,7 +57,7 @@ fn implicit_distance(s: &Surface, p: Point3) -> f64 {
         &Surface::Cone {
             radius, half_angle, ..
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let main = (ca * (rho - radius) - sa * q.z).abs();
             let other = (ca * (rho + radius) + sa * q.z).abs();
             main.min(other)
@@ -66,7 +67,7 @@ fn implicit_distance(s: &Surface, p: Point3) -> f64 {
             major_radius,
             minor_radius,
             ..
-        } => ((rho - major_radius).hypot(q.z) - minor_radius).abs(),
+        } => (real::hypot(rho - major_radius, q.z) - minor_radius).abs(),
         Surface::Nurbs(_) => unreachable!("the analytic strategies yield no NURBS"),
     }
 }
@@ -77,16 +78,16 @@ fn implicit_distance(s: &Surface, p: Point3) -> f64 {
 /// `(E − p) · E′ = 0` from it, which converges to rounding from a sample
 /// within half a degree.
 fn sampled_ellipse_distance(a: f64, b: f64, x: f64, y: f64) -> f64 {
-    let d = |t: f64| (a * t.cos() - x).hypot(b * t.sin() - y);
+    let d = |t: f64| real::hypot(a * real::cos(t) - x, b * real::sin(t) - y);
     let mut best = (0..DISTANCE_SAMPLES)
         .map(|i| TAU * i as f64 / DISTANCE_SAMPLES as f64)
         .min_by(|&s, &t| d(s).total_cmp(&d(t)))
         .unwrap_or(0.0);
     let e = b * b - a * a;
     for _ in 0..NEWTON_STEPS {
-        let (st, ct) = best.sin_cos();
+        let (st, ct) = real::sin_cos(best);
         let g = e * st * ct + a * x * st - b * y * ct;
-        let dg = e * (2.0 * best).cos() + a * x * ct + b * y * st;
+        let dg = e * real::cos(2.0 * best) + a * x * ct + b * y * st;
         if dg == 0.0 {
             break;
         }
@@ -194,7 +195,7 @@ fn safe_offset(s: &Surface, v: f64, raw: f64) -> f64 {
         } => {
             // Height above the plane through the apex, in units of the
             // normal's vertical component sin α.
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let above = (v * ca + radius * ca / sa) / sa;
             raw * (radius / 2.0).min(above / 2.0)
         }
@@ -315,9 +316,9 @@ fn the_cone_axis_and_apex_plane_are_ambiguous() {
             else {
                 unreachable!()
             };
-            let apex = on_axis(&s, -radius * half_angle.cos() / half_angle.sin());
-            let radial =
-                angle.cos() * frame.x().into_inner() + angle.sin() * frame.y().into_inner();
+            let apex = on_axis(&s, -radius * real::cos(half_angle) / real::sin(half_angle));
+            let radial = real::cos(angle) * frame.x().into_inner()
+                + real::sin(angle) * frame.y().into_inner();
             assert_ambiguous(s.project(apex + rho * radial), AmbiguousLocus::ApexPlane)
         },
     );
@@ -361,8 +362,8 @@ fn the_torus_axis_and_centre_circle_are_ambiguous() {
             else {
                 unreachable!()
             };
-            let radial =
-                angle.cos() * frame.x().into_inner() + angle.sin() * frame.y().into_inner();
+            let radial = real::cos(angle) * frame.x().into_inner()
+                + real::sin(angle) * frame.y().into_inner();
             assert_ambiguous(
                 s.project(frame.origin() + major_radius * radial),
                 AmbiguousLocus::CentreCircle,
@@ -412,7 +413,7 @@ fn circle_projection_properties() {
         prop_assert!((0.0..TAU).contains(&proj.t));
         prop_assert!((c.point(proj.t) - proj.point).norm() <= EXACT);
         let q = frame.to_local(p);
-        let closed = (q.x.hypot(q.y) - radius).hypot(q.z);
+        let closed = real::hypot(real::hypot(q.x, q.y) - radius, q.z);
         prop_assert!((proj.distance - closed).abs() <= EXACT);
         prop_assert!((proj.distance - (p - proj.point).norm()).abs() <= EXACT);
         let again = unwrap_projection(c.project(proj.point))?;
@@ -447,7 +448,7 @@ fn circle_recovers_a_displaced_point() {
             let proj = unwrap_projection(c.project(p))?;
             prop_assert!(param_diff(Some(TAU), proj.t, t) * radius <= EXACT);
             prop_assert!((proj.point - base).norm() <= EXACT);
-            prop_assert!((proj.distance - radial.hypot(axial)).abs() <= EXACT);
+            prop_assert!((proj.distance - real::hypot(radial, axial)).abs() <= EXACT);
             Ok(())
         },
     );
@@ -529,7 +530,7 @@ fn ellipse_recovers_a_displaced_point() {
             // The in-plane normal is the gradient of (x/a)² + (y/b)²;
             // outward it never crosses the evolute, so the nearest point
             // stays at t.
-            let (st, ct) = t.sin_cos();
+            let (st, ct) = real::sin_cos(t);
             let n = (b * ct * frame.x().into_inner() + a * st * frame.y().into_inner()).normalize();
             let base = c.point(t);
             let p = base + outward * n + axial * frame.z().into_inner();
@@ -541,7 +542,7 @@ fn ellipse_recovers_a_displaced_point() {
                 proj.t
             );
             prop_assert!((proj.point - base).norm() <= EXACT);
-            prop_assert!((proj.distance - outward.hypot(axial)).abs() <= EXACT);
+            prop_assert!((proj.distance - real::hypot(outward, axial)).abs() <= EXACT);
             Ok(())
         },
     );

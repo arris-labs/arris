@@ -20,6 +20,7 @@
 //! the two scales together where a tolerance in length has to be stated
 //! on `g`.
 
+use arris_math::real;
 use arris_math::{Frame, Point3, Vec3};
 
 use crate::Surface;
@@ -87,7 +88,7 @@ impl<'a> Implicit<'a> {
                 radius,
                 half_angle,
             } => {
-                let (sin, cos) = half_angle.sin_cos();
+                let (sin, cos) = real::sin_cos(*half_angle);
                 (
                     frame,
                     Form::Cone {
@@ -272,14 +273,14 @@ impl<'a> Implicit<'a> {
     /// is not unique, deep inside.
     pub(crate) fn distance(&self, p: Point3) -> f64 {
         let q = self.frame.to_local(p);
-        let rho = q.x.hypot(q.y);
+        let rho = real::hypot(q.x, q.y);
         match self.form {
             Form::Plane => q.z,
             Form::Cylinder { radius } => rho - radius,
             Form::EllipticCylinder { a, b } => {
                 let (_, foot) = self.section_foot(a, b, p);
-                let away = (q.x - foot.x).hypot(q.y - foot.y);
-                if (q.x / a).powi(2) + (q.y / b).powi(2) < 1.0 {
+                let away = real::hypot(q.x - foot.x, q.y - foot.y);
+                if real::powi(q.x / a, 2) + real::powi(q.y / b, 2) < 1.0 {
                     -away
                 } else {
                     away
@@ -287,7 +288,7 @@ impl<'a> Implicit<'a> {
             }
             Form::Cone { radius, sin, cos } => cos * rho - sin * (q.z + radius * cos / sin).abs(),
             Form::Sphere { radius } => q.coords.norm() - radius,
-            Form::Torus { major, minor } => (rho - major).hypot(q.z) - minor,
+            Form::Torus { major, minor } => real::hypot(rho - major, q.z) - minor,
         }
     }
 
@@ -297,7 +298,7 @@ impl<'a> Implicit<'a> {
     /// Newton step to a bisection.
     pub(crate) fn gradient(&self, p: Point3) -> Vec3 {
         let q = self.frame.to_local(p);
-        let rho = q.x.hypot(q.y);
+        let rho = real::hypot(q.x, q.y);
         let radial = if rho > 0.0 {
             Vec3::new(q.x / rho, q.y / rho, 0.0)
         } else {
@@ -308,7 +309,7 @@ impl<'a> Implicit<'a> {
             Form::Cylinder { .. } => radial,
             Form::EllipticCylinder { a, b } => {
                 let (t, _) = self.section_foot(a, b, p);
-                let (st, ct) = t.sin_cos();
+                let (st, ct) = real::sin_cos(t);
                 Vec3::new(b * ct, a * st, 0.0)
                     .try_normalize(0.0)
                     .unwrap_or_else(Vec3::zeros)
@@ -319,7 +320,7 @@ impl<'a> Implicit<'a> {
             }
             Form::Sphere { .. } => q.coords.try_normalize(0.0).unwrap_or_else(Vec3::zeros),
             Form::Torus { major, .. } => {
-                let tube = (rho - major).hypot(q.z);
+                let tube = real::hypot(rho - major, q.z);
                 if tube > 0.0 {
                     ((rho - major) * radial + q.z * Vec3::z()) / tube
                 } else {
@@ -342,7 +343,7 @@ impl<'a> Implicit<'a> {
             return (self.distance(p), self.gradient(p));
         };
         let q = self.frame.to_local(p);
-        let value = (q.x / a).powi(2) + (q.y / b).powi(2) - 1.0;
+        let value = real::powi(q.x / a, 2) + real::powi(q.y / b, 2) - 1.0;
         let slope = Vec3::new(2.0 * q.x / (a * a), 2.0 * q.y / (b * b), 0.0);
         let steep = slope.norm();
         if steep > 0.0 {
@@ -359,7 +360,9 @@ impl<'a> Implicit<'a> {
         match self.form {
             Form::Plane => q.z,
             Form::Cylinder { radius } => across - radius * radius,
-            Form::EllipticCylinder { a, b } => (q.x / a).powi(2) + (q.y / b).powi(2) - 1.0,
+            Form::EllipticCylinder { a, b } => {
+                real::powi(q.x / a, 2) + real::powi(q.y / b, 2) - 1.0
+            }
             Form::Cone { radius, sin, cos } => {
                 let h = q.z + radius * cos / sin;
                 cos * cos * across - sin * sin * h * h
@@ -431,9 +434,11 @@ impl<'a> Implicit<'a> {
         match self.form {
             Form::Plane => [0.0; 3],
             Form::Cylinder { .. } => [across, 0.0, 0.0],
-            Form::EllipticCylinder { a, b } => {
-                [(tau.x / a).powi(2) + (tau.y / b).powi(2), 0.0, 0.0]
-            }
+            Form::EllipticCylinder { a, b } => [
+                real::powi(tau.x / a, 2) + real::powi(tau.y / b, 2),
+                0.0,
+                0.0,
+            ],
             Form::Cone { sin, cos, .. } => {
                 [cos * cos * across - sin * sin * tau.z * tau.z, 0.0, 0.0]
             }
@@ -460,9 +465,9 @@ impl<'a> Implicit<'a> {
         let noise = p.coords.norm() + self.frame.origin().coords.norm();
         let t = match ellipse_nearest(a, b, q.x, q.y, noise) {
             Ok((t, _)) => t,
-            Err(_) => (q.y / b).atan2(q.x / a),
+            Err(_) => real::atan2(q.y / b, q.x / a),
         };
-        let (st, ct) = t.sin_cos();
+        let (st, ct) = real::sin_cos(t);
         (t, arris_math::Point2::new(a * ct, b * st))
     }
 }
@@ -535,8 +540,8 @@ mod tests {
                 continue;
             };
             for t in [0.0f64, 0.7, 2.4, -1.9] {
-                let (st, ct) = t.sin_cos();
-                let (s2, c2) = (2.0 * t).sin_cos();
+                let (st, ct) = real::sin_cos(t);
+                let (s2, c2) = real::sin_cos(2.0 * t);
                 let direct = implicit.value(implicit.frame.to_local(centre + ct * u + st * v));
                 let series = a1 * ct + b1 * st + a2 * c2 + b2 * s2 + c0;
                 assert!(

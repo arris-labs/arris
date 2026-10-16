@@ -3,6 +3,7 @@
 //! normal from any sampled point lies on the offset, whose own normal
 //! there is the same one, and every collapse is `None`.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::{
@@ -40,7 +41,7 @@ fn onto_the_main_nappe(s: &Surface, v: f64, d: f64) -> Option<f64> {
         Surface::Cone {
             radius, half_angle, ..
         } => {
-            let floor = -radius.min(radius + d * half_angle.cos()) / half_angle.sin();
+            let floor = -radius.min(radius + d * real::cos(half_angle)) / real::sin(half_angle);
             let lo = floor + APEX_MARGIN;
             (lo < FRAC_PI_2)
                 .then(|| lo + (v + FRAC_PI_2) / core::f64::consts::PI * (FRAC_PI_2 - lo))
@@ -150,7 +151,7 @@ fn a_cone_keeps_its_axis_and_half_angle_and_grows_by_d_over_cos() {
                 unreachable!()
             };
             prop_assert_eq!(half_angle, same);
-            prop_assert!((moved - (radius + d / half_angle.cos())).abs() <= EXACT);
+            prop_assert!((moved - (radius + d / real::cos(*half_angle))).abs() <= EXACT);
             moved_points_lie_on(&s, &o, d, uv)
         },
     );

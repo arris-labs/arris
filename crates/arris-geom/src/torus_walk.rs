@@ -113,6 +113,7 @@
 //! on the swapped surface and swaps them back. A patch that lies on the
 //! other surface all over is refused before any of it.
 
+use arris_math::real;
 use core::cell::Cell as Latest;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 use std::sync::Arc;
@@ -479,17 +480,17 @@ impl Walker {
             return f64::NAN;
         };
         let half = 0.5 * (u - factor.u0);
-        let rho = major_radius + minor_radius * v.cos();
+        let rho = major_radius + minor_radius * real::cos(v);
         let (x, y) = (frame.x().into_inner(), frame.y().into_inner());
-        let (sin, cos) = factor.u0.sin_cos();
-        let (sin_mid, cos_mid) = (factor.u0 + half).sin_cos();
+        let (sin, cos) = real::sin_cos(factor.u0);
+        let (sin_mid, cos_mid) = real::sin_cos(factor.u0 + half);
         let outward = implicit.frame.vec_to_local(x * cos + y * sin);
         let tau = implicit.frame.vec_to_local(y * cos_mid - x * sin_mid);
         let a = implicit.frame.to_local(self.walked.point(factor.u0, v));
         let p = implicit.frame.to_local(self.walked.point(u, v));
         let gradient = implicit.slope(a);
         let [c2, c3, c4] = implicit.bend(a, tau);
-        let lambda = 2.0 * rho * half.sin();
+        let lambda = 2.0 * rho * real::sin(half);
         let higher = c2 + lambda * (c3 + lambda * c4);
         let quotient = if factor.order == 1 {
             2.0 * rho * (gradient.dot(&tau) + lambda * higher)
@@ -1877,7 +1878,7 @@ impl Tracer<'_> {
         };
         (self.circles.iter())
             .map(|c| {
-                let (sin, cos) = c.u0.sin_cos();
+                let (sin, cos) = real::sin_cos(c.u0);
                 let outward = frame.x().into_inner() * cos + frame.y().into_inner() * sin;
                 let up = frame.z().into_inner();
                 let origin = frame.origin() + outward * *major_radius;

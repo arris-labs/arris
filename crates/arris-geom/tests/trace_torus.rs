@@ -5,6 +5,7 @@
 //! order not reaching the result, and a dense scan of the torus finding
 //! no point of the other surface away from every branch.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 
 use arris_debug::prop::{self, check};
@@ -149,8 +150,8 @@ fn a_plane_tangent_to_the_ring_outside_touches_it_at_one_point() {
 #[test]
 fn a_bitangent_plane_meets_the_ring_in_the_villarceau_circles() {
     let ring = ring();
-    let tilt = (0.5f64 / 2.0).asin();
-    let normal = [-tilt.sin(), 0.0, tilt.cos()];
+    let tilt = real::asin(0.5f64 / 2.0);
+    let normal = [-real::sin(tilt), 0.0, real::cos(tilt)];
     let plane = Surface::Plane {
         frame: frame([0.0; 3], normal),
     };
@@ -384,11 +385,11 @@ fn the_poses_the_tracer_does_not_resolve_are_refused_by_name() {
     // Two tube circles on the other surface and more of the section
     // besides: an elliptic cylinder along a chord of the centre circle,
     // a circular section of either family on a tube circle.
-    let (lean, minor) = (0.4f64, 0.5 * 0.4f64.cos());
+    let (lean, minor) = (0.4f64, 0.5 * real::cos(0.4f64));
     let chord = Surface::EllipticCylinder {
         frame: Frame::new(
             Point3::new(2.0, 0.0, 0.0),
-            Vec3::new(-lean.sin(), lean.cos(), 0.0),
+            Vec3::new(-real::sin(lean), real::cos(lean), 0.0),
             Vec3::z(),
         )
         .unwrap(),
@@ -427,7 +428,7 @@ fn a_plane_across_the_axis_meets_the_ring_in_two_circles() {
     for (b, radius) in trace.branches().iter().zip(radii) {
         assert!((b.domain().length() - TAU).abs() < 1e-12);
         for p in samples(b, 64) {
-            assert!((p.x.hypot(p.y) - radius).abs() < 1e-12 && (p.z - 0.3).abs() < 1e-12);
+            assert!((real::hypot(p.x, p.y) - radius).abs() < 1e-12 && (p.z - 0.3).abs() < 1e-12);
         }
     }
 }
@@ -440,7 +441,7 @@ fn side(surface: &Surface, p: Point3) -> f64 {
         return f64::NAN;
     };
     let q = frame.to_local(p);
-    let rho = q.x.hypot(q.y);
+    let rho = real::hypot(q.x, q.y);
     match *surface {
         Surface::Plane { .. } => q.z,
         Surface::Cylinder { radius, .. } => rho - radius,
@@ -448,11 +449,11 @@ fn side(surface: &Surface, p: Point3) -> f64 {
             major_radius,
             minor_radius,
             ..
-        } => (q.x / major_radius).hypot(q.y / minor_radius) - 1.0,
+        } => real::hypot(q.x / major_radius, q.y / minor_radius) - 1.0,
         Surface::Cone {
             radius, half_angle, ..
         } => {
-            let (sin, cos) = half_angle.sin_cos();
+            let (sin, cos) = real::sin_cos(half_angle);
             cos * rho - sin * (q.z + radius * cos / sin).abs()
         }
         Surface::Sphere { radius, .. } => q.coords.norm() - radius,
@@ -460,7 +461,7 @@ fn side(surface: &Surface, p: Point3) -> f64 {
             major_radius,
             minor_radius,
             ..
-        } => (rho - major_radius).hypot(q.z) - minor_radius,
+        } => real::hypot(rho - major_radius, q.z) - minor_radius,
         Surface::Nurbs(_) => f64::NAN,
     }
 }
@@ -890,8 +891,8 @@ fn holders(
         frame.y().into_inner(),
         frame.z().into_inner(),
     );
-    let outward = x * u0.cos() + y * u0.sin();
-    let tangent = y * u0.cos() - x * u0.sin();
+    let outward = x * real::cos(u0) + y * real::sin(u0);
+    let tangent = y * real::cos(u0) - x * real::sin(u0);
     let centre = frame.origin() + outward * big + z * shifted;
     let about = Frame::from_z(centre, tangent).unwrap();
     let lean = 0.4f64;
@@ -918,7 +919,7 @@ fn holders(
             "ball",
             Surface::Sphere {
                 frame: Frame::from_z(centre + tangent * (1.2 * r), z).unwrap(),
-                radius: r * 1.2f64.hypot(1.0) + grown,
+                radius: r * real::hypot(1.2f64, 1.0) + grown,
             },
             2,
             false,
@@ -945,9 +946,14 @@ fn holders(
         (
             "leaning elliptic cylinder",
             Surface::EllipticCylinder {
-                frame: Frame::new(centre, tangent * lean.cos() + z * lean.sin(), outward).unwrap(),
+                frame: Frame::new(
+                    centre,
+                    tangent * real::cos(lean) + z * real::sin(lean),
+                    outward,
+                )
+                .unwrap(),
                 major_radius: r + grown,
-                minor_radius: r * lean.cos() + grown,
+                minor_radius: r * real::cos(lean) + grown,
             },
             1,
             false,
@@ -1023,7 +1029,7 @@ fn a_pipe_elbow_meets_its_pipe_in_the_tube_circle_and_a_loop_across_it() {
     for b in trace.branches() {
         for i in 0..=64 {
             let uv = b.uv(b.domain().lerp(i as f64 / 64.0)).unwrap();
-            let left = (2.0 + 0.5 * uv.y.cos()) * (0.5 * uv.x).cos().powi(2);
+            let left = (2.0 + 0.5 * real::cos(uv.y)) * real::powi(real::cos(0.5 * uv.x), 2);
             assert!((left - 2.0).abs() < 1e-12, "{left} at {uv}");
         }
     }

@@ -5,6 +5,7 @@
 //! leads to among the answer, and the nearest foot of a point the
 //! projection's.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI};
 
 use arris_debug::prop::geom::{curve, nurbs_curve, surface};
@@ -316,7 +317,7 @@ fn a_line_against_a_cone_meets_it_and_a_coaxial_circle_is_a_continuum() {
     let e = extrema(&ring, &cone);
     assert!(e.isolated.is_empty(), "{e:?}");
     // At height 2 the cone's radius is 1 + 2 tan 0.5 = 2.0926.
-    let (sa, ca) = half.sin_cos();
+    let (sa, ca) = real::sin_cos(half);
     let apex = -ca / sa;
     let s_plus = 4.0 * ca - (2.0 - apex) * sa;
     let s_minus = -4.0 * ca - (2.0 - apex) * sa;

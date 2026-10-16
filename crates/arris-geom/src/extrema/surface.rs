@@ -53,6 +53,7 @@
 //! a continuum. Every local minimum, and every other stationary pair, is
 //! reported.
 
+use arris_math::real;
 use core::f64::consts::PI;
 
 use arris_math::{Frame, Meter, Point2, Point3, Tolerance, Vec3, wrap_angle};
@@ -233,11 +234,11 @@ impl Surface {
             }
             Surface::Cylinder { frame, .. } => {
                 let q = frame.to_local(p);
-                let rho = q.x.hypot(q.y);
+                let rho = real::hypot(q.x, q.y);
                 if 2.0 * rho <= tol.linear {
                     return Ok(sorted(vec![], vec![foot(0.0, q.z)]));
                 }
-                let u = wrap_angle(q.y.atan2(q.x));
+                let u = wrap_angle(real::atan2(q.y, q.x));
                 Ok(sorted(
                     vec![foot(u, q.z), foot(wrap_angle(u + PI), q.z)],
                     vec![],
@@ -267,14 +268,14 @@ impl Surface {
                 half_angle,
             } => {
                 let q = frame.to_local(p);
-                let rho = q.x.hypot(q.y);
+                let rho = real::hypot(q.x, q.y);
                 if 2.0 * rho <= tol.linear {
                     let continua = [1.0, -1.0]
                         .map(|side| foot(0.0, cone_foot_v(radius, half_angle, rho, q.z, side)))
                         .to_vec();
                     return Ok(sorted(vec![], continua));
                 }
-                let phi = q.y.atan2(q.x);
+                let phi = real::atan2(q.y, q.x);
                 let isolated = [1.0, -1.0]
                     .map(|side| {
                         let u = wrap_angle(if side > 0.0 { phi } else { phi + PI });
@@ -289,8 +290,8 @@ impl Surface {
                 ..
             } => {
                 let q = frame.to_local(p);
-                let rho = q.x.hypot(q.y);
-                let phi = q.y.atan2(q.x);
+                let rho = real::hypot(q.x, q.y);
+                let phi = real::atan2(q.y, q.x);
                 let on_axis = 2.0 * rho <= tol.linear;
                 let angles: Vec<f64> = if on_axis {
                     vec![0.0]
@@ -302,9 +303,9 @@ impl Surface {
                 for psi in angles {
                     // `p` and the circle's point `B` at angle `psi`, in the
                     // meridian plane `(e_σ, Z)` of `B`.
-                    let (sp, cp) = psi.sin_cos();
+                    let (sp, cp) = real::sin_cos(psi);
                     let across = rho_along(q, cp, sp) - major_radius;
-                    let d = across.hypot(q.z);
+                    let d = real::hypot(across, q.z);
                     // On the centre circle every point of the tube's
                     // meridian circle is as far, `r`: one continuum.
                     let (cs, sn) = if 2.0 * d <= tol.linear {
@@ -314,7 +315,7 @@ impl Surface {
                     };
                     for sign in [1.0, -1.0] {
                         // `S = B + sign·r·n̂`, in the tube's angle.
-                        let v = wrap_angle((sign * sn).atan2(sign * cs));
+                        let v = wrap_angle(real::atan2(sign * sn, sign * cs));
                         let f = foot(wrap_angle(psi), v);
                         if on_axis || 2.0 * d <= tol.linear {
                             continua.push(f);
@@ -354,19 +355,19 @@ fn rho_along(q: Point3, cos: f64, sin: f64) -> f64 {
 /// `(u, v)` of a sphere's point in the direction `d`, a unit vector in the
 /// sphere's frame: a pole takes `u = 0`.
 pub(super) fn sphere_uv(d: Vec3) -> (f64, f64) {
-    let rho = d.x.hypot(d.y);
+    let rho = real::hypot(d.x, d.y);
     let u = if rho <= AXIS_NOISE {
         0.0
     } else {
-        wrap_angle(d.y.atan2(d.x))
+        wrap_angle(real::atan2(d.y, d.x))
     };
-    (u, d.z.atan2(rho))
+    (u, real::atan2(d.z, rho))
 }
 
 /// The `v` of the foot on the line `side` (±1) of a cone in the meridian
 /// plane of a point at distance `rho` from the axis and height `z`.
 fn cone_foot_v(radius: f64, half_angle: f64, rho: f64, z: f64, side: f64) -> f64 {
-    let (sa, ca) = half_angle.sin_cos();
+    let (sa, ca) = real::sin_cos(half_angle);
     let apex = -radius * ca / sa;
     let lambda = side * rho * sa + (z - apex) * ca;
     (apex + lambda * ca) / ca
@@ -546,7 +547,7 @@ fn plane(
     };
     if let &Curve::Line { direction, .. } = curve {
         // Parallel within the angle: every point of the line is as far.
-        if direction.dot(&n).abs().asin() <= tol.angular {
+        if real::asin(direction.dot(&n).abs()) <= tol.angular {
             let (u, v) = uv_of(0.0);
             out.continua.push(pair(curve, surface, 0.0, u, v));
         }
@@ -638,7 +639,7 @@ fn cylinder(
             let n = (x.a - x.b) / rho;
             for sign in [1.0, -1.0] {
                 let local = frame.vec_to_local(sign * n);
-                let u = wrap_angle(local.y.atan2(local.x));
+                let u = wrap_angle(real::atan2(local.y, local.x));
                 let p = pair(curve, surface, x.ta, u, x.tb);
                 if continuum {
                     out.continua.push(p);
@@ -671,7 +672,7 @@ fn torus(
         for x in list {
             let d = x.distance;
             let psi = x.tb;
-            let (sp, cp) = psi.sin_cos();
+            let (sp, cp) = real::sin_cos(psi);
             let e_sigma = frame.vec_to_world(Vec3::new(cp, sp, 0.0));
             let z = frame.z().into_inner();
             if 2.0 * d <= tol.linear {
@@ -690,7 +691,7 @@ fn torus(
             let n = (x.a - x.b) / d;
             for sign in [1.0, -1.0] {
                 let m = sign * n;
-                let v = wrap_angle(m.dot(&z).atan2(m.dot(&e_sigma)));
+                let v = wrap_angle(real::atan2(m.dot(&z), m.dot(&e_sigma)));
                 let p = pair(curve, surface, x.ta, psi, v);
                 if continuum {
                     out.continua.push(p);
@@ -721,14 +722,14 @@ impl Radial {
         let e = curve.eval(t);
         let p = frame.to_local(e.point);
         let (d1, d2) = (frame.vec_to_local(e.d1), frame.vec_to_local(e.d2));
-        let rho = p.x.hypot(p.y);
+        let rho = real::hypot(p.x, p.y);
         if rho <= AXIS_NOISE * (1.0 + p.coords.norm()) {
             return None;
         }
         let m = p.x * d1.x + p.y * d1.y;
         let drho = m / rho;
-        let ddrho =
-            (d1.x * d1.x + d1.y * d1.y + p.x * d2.x + p.y * d2.y) / rho - m * m / rho.powi(3);
+        let ddrho = (d1.x * d1.x + d1.y * d1.y + p.x * d2.x + p.y * d2.y) / rho
+            - m * m / real::powi(rho, 3);
         Some(Radial {
             rho: [rho, drho, ddrho],
             z: [p.z - apex, d1.z, d2.z],
@@ -739,7 +740,7 @@ impl Radial {
     /// `(s, s′, s″)` of line `side` (±1): the signed distance to it in the
     /// meridian plane, and its derivatives in `t`.
     fn side(&self, side: f64, half_angle: f64) -> [f64; 3] {
-        let (sa, ca) = half_angle.sin_cos();
+        let (sa, ca) = real::sin_cos(half_angle);
         [0, 1, 2].map(|k| side * self.rho[k] * ca - self.z[k] * sa)
     }
 }
@@ -755,7 +756,7 @@ fn cone(
     meter: &mut Meter,
     out: &mut CurveSurfaceExtrema,
 ) -> Result<(), GeomError> {
-    let (sa, ca) = half_angle.sin_cos();
+    let (sa, ca) = real::sin_cos(half_angle);
     let apex = -radius * ca / sa;
     let state = |side: f64, t: f64| {
         Radial::at(curve, frame, apex, t).map(|r| {
@@ -778,12 +779,12 @@ fn cone(
     };
     let push = |side: f64, t: f64, continuum: bool, out: &mut CurveSurfaceExtrema| {
         let q = frame.to_local(curve.point(t));
-        let rho = q.x.hypot(q.y);
+        let rho = real::hypot(q.x, q.y);
         let v = cone_foot_v(radius, half_angle, rho, q.z, side);
         let u = if rho <= AXIS_NOISE * (1.0 + q.coords.norm()) {
             0.0
         } else {
-            wrap_angle(q.y.atan2(q.x) + if side > 0.0 { 0.0 } else { PI })
+            wrap_angle(real::atan2(q.y, q.x) + if side > 0.0 { 0.0 } else { PI })
         };
         let p = pair(curve, surface, t, u, v);
         if continuum {
@@ -901,7 +902,7 @@ fn cone(
 /// `cos² α·(X N_x + Y N_y)² − sin² α·(X² + Y²)·N_z²` on a piece, in the
 /// cone's frame: `(ρρ′)² cos² α − ρ² z′² sin² α` times `W⁶`.
 fn cone_polynomial(piece: &Piece<'_>, frame: &Frame, half_angle: f64, b: &Binomials) -> T1 {
-    let (sa, ca) = half_angle.sin_cos();
+    let (sa, ca) = real::sin_cos(half_angle);
     let n = piece.tangent(b);
     let c0 = piece.centre - frame.origin();
     let axes = [
@@ -1021,7 +1022,7 @@ fn elliptic(
                     match &original {
                         &Curve::Circle { frame: f, .. } => {
                             let q = f.to_local(p);
-                            wrap_angle(q.y.atan2(q.x))
+                            wrap_angle(real::atan2(q.y, q.x))
                         }
                         &Curve::Ellipse {
                             frame: f,
@@ -1029,7 +1030,7 @@ fn elliptic(
                             minor_radius,
                         } => {
                             let q = f.to_local(p);
-                            wrap_angle((q.y / minor_radius).atan2(q.x / major_radius))
+                            wrap_angle(real::atan2(q.y / minor_radius, q.x / major_radius))
                         }
                         Curve::Line { .. } | Curve::Nurbs(_) => s,
                     }

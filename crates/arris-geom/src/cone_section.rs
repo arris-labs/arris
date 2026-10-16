@@ -15,6 +15,7 @@
 //! `x₀ = h (n·Z) cos φ / k`: an ellipse for `k < 0` (the plane steeper
 //! than the cone), a hyperbola for `k > 0`, a parabola for `k = 0`.
 
+use arris_math::real;
 use arris_math::{Aabb, Frame, Point3, Tolerance, UnitVec3, Vec3};
 
 use crate::{
@@ -56,7 +57,7 @@ pub(crate) fn plane_cone(
         kind: GeomKind::Surface(SurfaceKind::Cone),
         reason: reason.to_owned(),
     };
-    let (sa, ca) = half_angle.sin_cos();
+    let (sa, ca) = real::sin_cos(half_angle);
     let z: Vec3 = cone.z().into_inner();
     let apex = cone.origin() - (radius * ca / sa) * z;
     let n: Vec3 = plane.z().into_inner();
@@ -71,7 +72,7 @@ pub(crate) fn plane_cone(
     };
     let e1: Vec3 = e1.into_inner();
     let e2 = n.cross(&e1);
-    let phi = zn.abs().atan2(cos_phi);
+    let phi = real::atan2(zn.abs(), cos_phi);
     let h = (apex - plane.origin()).dot(&n);
     let foot = apex - h * n;
     let at = |x: f64, y: f64| foot + x * e1 + y * e2;
@@ -102,7 +103,7 @@ pub(crate) fn plane_cone(
                 }],
             });
         }
-        let root_k = (steepness.sin() * (half_angle + phi).sin()).sqrt();
+        let root_k = (real::sin(steepness) * real::sin(half_angle + phi)).sqrt();
         return Ok(SurfaceIntersection::curves_of(
             MeetKind::Crossing,
             vec![ruling(ca * e1 - root_k * e2), ruling(ca * e1 + root_k * e2)],
@@ -135,7 +136,7 @@ pub(crate) fn plane_cone(
         ));
     }
 
-    let k = steepness.sin() * (half_angle + phi).sin();
+    let k = real::sin(steepness) * real::sin(half_angle + phi);
     let x0 = h * zn * cos_phi / k;
     // The semi-axis along `e₁`, and the one along `e₂`.
     let ax = (h * ca * sa / k).abs();
@@ -160,11 +161,11 @@ pub(crate) fn plane_cone(
         if bound < 1.0 {
             continue;
         }
-        let top = bound.acosh();
+        let top = real::acosh(bound);
         let arcs = (top / HYPERBOLA_HALF_SPAN).ceil().max(1.0);
         let half = top / arcs;
         let count = arcs as usize;
-        let point = |u: f64| at(x0 + side * ax * u.cosh(), ay * u.sinh());
+        let point = |u: f64| at(x0 + side * ax * real::cosh(u), ay * real::sinh(u));
         let mut knots = vec![-top; 3];
         let mut control = vec![point(-top)];
         let mut weights = vec![1.0];
@@ -174,8 +175,11 @@ pub(crate) fn plane_cone(
             let mid = 0.5 * (lo + hi);
             // The ends' tangents meet at the centre plus the midpoint's
             // offset over `cosh` of the half-span, the arc's weight.
-            let w = half.cosh();
-            control.push(at(x0 + side * ax * mid.cosh() / w, ay * mid.sinh() / w));
+            let w = real::cosh(half);
+            control.push(at(
+                x0 + side * ax * real::cosh(mid) / w,
+                ay * real::sinh(mid) / w,
+            ));
             control.push(point(hi));
             weights.extend([w, 1.0]);
             knots.extend(if i + 1 == count {

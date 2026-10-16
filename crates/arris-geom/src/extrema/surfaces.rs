@@ -39,6 +39,7 @@
 //! `surface`); they are left out as there. Every other local minimum is
 //! reported.
 
+use arris_math::real;
 use core::f64::consts::PI;
 
 use arris_math::{Frame, Meter, Point2, Point3, Tolerance, Vec3, wrap_angle};
@@ -332,12 +333,12 @@ fn cylinder(
                 // Tangent where the surface's normal is across the axis.
                 b.normal(p.uv.x, p.uv.y)
                     .map(|n| n.into_inner())
-                    .filter(|n| n.dot(&z).abs() <= tol.angular.sin())
+                    .filter(|n| n.dot(&z).abs() <= real::sin(tol.angular))
             };
             let Some(n) = normal else { continue };
             for sign in [1.0, -1.0] {
                 let local = frame.vec_to_local(sign * n);
-                let u = wrap_angle(local.y.atan2(local.x));
+                let u = wrap_angle(real::atan2(local.y, local.x));
                 push(out, continuum, pair_of(a, b, Point2::new(u, p.t), p.uv));
             }
         }
@@ -367,7 +368,7 @@ fn torus(
         for p in list {
             let d = p.distance;
             let psi = p.t;
-            let (sp, cp) = psi.sin_cos();
+            let (sp, cp) = real::sin_cos(psi);
             let e_sigma = frame.vec_to_world(Vec3::new(cp, sp, 0.0));
             let tangent = frame.vec_to_world(Vec3::new(-sp, cp, 0.0));
             let normal = if 2.0 * d > tol.linear {
@@ -377,12 +378,12 @@ fn torus(
                 // meridian plane.
                 b.normal(p.uv.x, p.uv.y)
                     .map(|n| n.into_inner())
-                    .filter(|n| n.dot(&tangent).abs() <= tol.angular.sin())
+                    .filter(|n| n.dot(&tangent).abs() <= real::sin(tol.angular))
             };
             let Some(n) = normal else { continue };
             for sign in [1.0, -1.0] {
                 let m = sign * n;
-                let v = wrap_angle(m.dot(&z).atan2(m.dot(&e_sigma)));
+                let v = wrap_angle(real::atan2(m.dot(&z), m.dot(&e_sigma)));
                 push(
                     out,
                     continuum,
@@ -407,7 +408,7 @@ fn plane_plane(
     let (na, nb) = (fa.z().into_inner(), fb.z().into_inner());
     // Parallel within the angle: every point of one is as far from the
     // other. Otherwise they meet.
-    if na.cross(&nb).norm().atan2(na.dot(&nb).abs()) > tol.angular {
+    if real::atan2(na.cross(&nb).norm(), na.dot(&nb).abs()) > tol.angular {
         return;
     }
     let gap = (fa.origin() - fb.origin()).dot(&nb);
@@ -437,10 +438,10 @@ fn plane_quadric(
             // The plane's normal across the axis: the axis is along the
             // plane. The section's normal, `(cos u / a, sin u / b)`, is the
             // plane's horizontal part at the two points `u` and `u + π`.
-            if local.z.abs() > tol.angular.sin() {
+            if local.z.abs() > real::sin(tol.angular) {
                 return;
             }
-            let u = (minor_radius * local.y).atan2(major_radius * local.x);
+            let u = real::atan2(minor_radius * local.y, major_radius * local.x);
             vec![
                 Point2::new(wrap_angle(u), 0.0),
                 Point2::new(wrap_angle(u + PI), 0.0),
@@ -454,13 +455,13 @@ fn plane_quadric(
             // `(cos α cos u, cos α sin u, −sin α)`: the plane's normal is
             // its negative or itself, which is in the angle of the plane to
             // the axis.
-            if (local.z.abs().asin() - half_angle).abs() > tol.angular {
+            if (real::asin(local.z.abs()) - half_angle).abs() > tol.angular {
                 return;
             }
             let u = if local.z < 0.0 {
-                local.y.atan2(local.x)
+                real::atan2(local.y, local.x)
             } else {
-                (-local.y).atan2(-local.x)
+                real::atan2(-local.y, -local.x)
             };
             vec![Point2::new(wrap_angle(u), 0.0)]
         }
@@ -535,15 +536,15 @@ fn cone_cone(
         return Err(unsupported(a, b));
     };
     let apex = |f: &Frame, r: f64, alpha: f64| {
-        let (sa, ca) = alpha.sin_cos();
+        let (sa, ca) = real::sin_cos(alpha);
         f.origin() - f.z().into_inner() * (r * ca / sa)
     };
     let (za, zb) = (fa.z().into_inner(), fb.z().into_inner());
     let apex_b = apex(&fb, rb, ab);
     let off = apex_b - apex(&fa, ra, aa);
     let lateral = (off - off.dot(&za) * za).norm();
-    let coaxial =
-        za.cross(&zb).norm().atan2(za.dot(&zb).abs()) <= tol.angular && lateral <= tol.linear;
+    let coaxial = real::atan2(za.cross(&zb).norm(), za.dot(&zb).abs()) <= tol.angular
+        && lateral <= tol.linear;
     if !coaxial {
         return Err(unsupported(a, b));
     }
@@ -596,7 +597,7 @@ fn elliptic_elliptic(
         return Err(unsupported(a, b));
     };
     let (za, zb) = (fa.z().into_inner(), fb.z().into_inner());
-    if za.cross(&zb).norm().atan2(za.dot(&zb).abs()) > tol.angular {
+    if real::atan2(za.cross(&zb).norm(), za.dot(&zb).abs()) > tol.angular {
         return Err(unsupported(a, b));
     }
     // The second section in the first's plane: its centre moved along the

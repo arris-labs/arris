@@ -1,5 +1,6 @@
 //! Surfaces and their evaluation.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 use core::fmt;
 
@@ -205,7 +206,7 @@ impl Surface {
             }
             &Surface::Cylinder { ref frame, radius } => {
                 let (o, x, y, z) = axes(frame);
-                let (su, cu) = u.sin_cos();
+                let (su, cu) = real::sin_cos(u);
                 let radial = cu * x + su * y;
                 let tangential = -su * x + cu * y;
                 SurfaceEval {
@@ -223,7 +224,7 @@ impl Surface {
                 minor_radius,
             } => {
                 let (o, x, y, z) = axes(frame);
-                let (su, cu) = u.sin_cos();
+                let (su, cu) = real::sin_cos(u);
                 let radial = (major_radius * cu) * x + (minor_radius * su) * y;
                 SurfaceEval {
                     point: o + radial + v * z,
@@ -240,8 +241,8 @@ impl Surface {
                 half_angle,
             } => {
                 let (o, x, y, z) = axes(frame);
-                let (su, cu) = u.sin_cos();
-                let (sa, ca) = half_angle.sin_cos();
+                let (su, cu) = real::sin_cos(u);
+                let (sa, ca) = real::sin_cos(half_angle);
                 let rho = radius + v * sa;
                 let radial = cu * x + su * y;
                 let tangential = -su * x + cu * y;
@@ -256,8 +257,8 @@ impl Surface {
             }
             &Surface::Sphere { ref frame, radius } => {
                 let (o, x, y, z) = axes(frame);
-                let (su, cu) = u.sin_cos();
-                let (sv, cv) = v.sin_cos();
+                let (su, cu) = real::sin_cos(u);
+                let (sv, cv) = real::sin_cos(v);
                 let radial = cu * x + su * y;
                 let tangential = -su * x + cu * y;
                 SurfaceEval {
@@ -275,8 +276,8 @@ impl Surface {
                 minor_radius,
             } => {
                 let (o, x, y, z) = axes(frame);
-                let (su, cu) = u.sin_cos();
-                let (sv, cv) = v.sin_cos();
+                let (su, cu) = real::sin_cos(u);
+                let (sv, cv) = real::sin_cos(v);
                 let rho = major_radius + minor_radius * cv;
                 let radial = cu * x + su * y;
                 let tangential = -su * x + cu * y;
@@ -370,7 +371,7 @@ impl Surface {
                 radius,
                 half_angle,
             } => {
-                let (sa, ca) = half_angle.sin_cos();
+                let (sa, ca) = real::sin_cos(half_angle);
                 // The radius at `v`, which the sinusoid across the axis
                 // is scaled by; both may change sign past the apex.
                 let rho = {
@@ -511,7 +512,7 @@ impl Surface {
                 half_angle,
             } => {
                 let r = radius("radius", r)?;
-                let (sa, ca) = half_angle.sin_cos();
+                let (sa, ca) = real::sin_cos(half_angle);
                 let ruling = |t: f64| {
                     frame.origin()
                         + (r + t * sa) * frame.x().into_inner()
@@ -586,16 +587,16 @@ impl Surface {
             Surface::Cone {
                 radius, half_angle, ..
             } => {
-                let along = v * half_angle.sin();
+                let along = v * real::sin(half_angle);
                 is_negligible(radius + along, radius.abs().max(along.abs()))
             }
-            Surface::Sphere { radius, .. } => is_negligible(radius * v.cos(), radius),
+            Surface::Sphere { radius, .. } => is_negligible(radius * real::cos(v), radius),
             Surface::Torus {
                 major_radius,
                 minor_radius,
                 ..
             } => {
-                let tube = minor_radius * v.cos();
+                let tube = minor_radius * real::cos(v);
                 minor_radius == 0.0
                     || is_negligible(major_radius + tube, major_radius.abs().max(tube.abs()))
             }
@@ -639,7 +640,7 @@ impl Surface {
         if length <= 0.0 || !length.is_finite() {
             return None;
         }
-        if direction.dot(&n).abs() > tol.angular.sin() * length {
+        if direction.dot(&n).abs() > real::sin(tol.angular) * length {
             return None;
         }
         let e = self.eval(u, v);
@@ -719,7 +720,7 @@ impl Surface {
                 radius,
                 half_angle,
             } => {
-                let (sin, cos) = half_angle.sin_cos();
+                let (sin, cos) = real::sin_cos(half_angle);
                 let v = -radius / sin;
                 vec![Singularity {
                     point: frame.origin() + v * cos * frame.z().into_inner(),
@@ -798,7 +799,7 @@ impl Surface {
             Surface::Cone {
                 radius, half_angle, ..
             } => {
-                let (sa, ca) = half_angle.sin_cos();
+                let (sa, ca) = real::sin_cos(half_angle);
                 let v = bounds[1];
                 let rho = if v.is_bounded() {
                     (radius + v.lo() * sa)
@@ -991,7 +992,7 @@ impl Surface {
                 half_angle,
             } => Some(Surface::Cone {
                 frame,
-                radius: radius + distance / half_angle.cos(),
+                radius: radius + distance / real::cos(half_angle),
                 half_angle,
             }),
             Surface::Sphere { frame, radius } => {

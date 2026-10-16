@@ -53,6 +53,7 @@
 //! column, divided out of the patches whose span holds it, and the walk
 //! evaluates the quotient on those patches ([`Quotient`]).
 
+use arris_math::real;
 use core::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, FRAC_PI_4, TAU};
 
 use arris_math::{Meter, Point3, Tolerance, Vec3};
@@ -329,22 +330,22 @@ impl Quotient {
                 } else if half == 0.0 {
                     2.0
                 } else {
-                    2.0 * half / half.sin()
+                    2.0 * half / real::sin(half)
                 };
-                (ratio.abs() / (hi - lo)).powi(m)
+                real::powi(ratio.abs() / (hi - lo), m)
             }
             None => {
                 let g = if self.closed[0] {
-                    (0.5 * (base - self.u0)).sin()
+                    real::sin(0.5 * (base - self.u0))
                 } else {
                     (base - self.u0) / TAU
                 };
-                g.abs().recip().powi(m)
+                real::powi(g.abs().recip(), m)
             }
         };
         let flips = self.order % 2 == 1 && turns.rem_euclid(2.0) == 1.0;
         let sign = if flips { -1.0 } else { 1.0 };
-        sign * f.eval(s, t) * scale / w.eval(s, t).powi(self.degree)
+        sign * f.eval(s, t) * scale / real::powi(w.eval(s, t), self.degree)
     }
 }
 
@@ -523,8 +524,9 @@ impl<'a> PatchedSection<'a> {
         let magnitude = implicit.magnitude(reach, heaviest);
         let floor = BERNSTEIN_ROUNDING * magnitude
             + (implicit.magnitude(reach + moved, heaviest) - magnitude);
-        let steep =
-            implicit.steepness(farthest + tol.linear) * tol.linear * heaviest.powi(degree as i32);
+        let steep = implicit.steepness(farthest + tol.linear)
+            * tol.linear
+            * real::powi(heaviest, degree as i32);
         for patch in &mut patches {
             patch.floor = floor;
         }
@@ -766,7 +768,7 @@ impl<'a> PatchedSection<'a> {
             let root = if qu == home {
                 s_home
             } else {
-                0.5 * (1.0 + alpha.tan() / QUARTER_TAN)
+                0.5 * (1.0 + real::tan(alpha) / QUARTER_TAN)
             };
             (middle, alpha, root)
         };
@@ -778,14 +780,14 @@ impl<'a> PatchedSection<'a> {
                         continue;
                     };
                     let (left, scale) = if step == 0 {
-                        (at_home.f.across(s_home), 1.0 / w_home.powi(d as i32))
+                        (at_home.f.across(s_home), 1.0 / real::powi(w_home, d as i32))
                     } else {
-                        let scale = w_home / (2.0 * QUARTER_TAN * w_home.powi(d as i32));
+                        let scale = w_home / (2.0 * QUARTER_TAN * real::powi(w_home, d as i32));
                         (at_home.f.du().across(s_home), scale)
                     };
                     for qu in 0..4 {
                         let (_, alpha, _) = chart(qu);
-                        let (sin, cos) = alpha.sin_cos();
+                        let (sin, cos) = real::sin_cos(alpha);
                         let t = QUARTER_TAN;
                         let along = if step == 0 {
                             power(d)
@@ -1320,7 +1322,7 @@ mod tests {
     /// the ring.
     fn partners(major: f64, minor: f64) -> Vec<(&'static str, Surface)> {
         let (r, big) = (minor, major);
-        let on_ring = Point3::new(major * 0.7f64.cos(), major * 0.7f64.sin(), 0.0);
+        let on_ring = Point3::new(major * real::cos(0.7f64), major * real::sin(0.7f64), 0.0);
         let oblique = Vec3::new(0.4, -0.3, 0.85);
         let steep = Vec3::new(0.2, 0.1, 0.97);
         let centre = Point3::new(0.13 * r, -0.07 * r, 0.21 * r);
@@ -1560,7 +1562,7 @@ mod tests {
                         let coords = [p.x, p.y, p.z, 1.0].map(|c| vec![c]);
                         let [x, y, z, one] = &coords;
                         let direct = section.implicit.along([x, y, z, one], &binomials)[0]
-                            * w.powi(section.implicit.degree() as i32);
+                            * real::powi(w, section.implicit.degree() as i32);
                         let value = patch.f.eval(s, t);
                         assert!(
                             (value - direct).abs() <= 4.0 * section.floor,
@@ -1821,20 +1823,20 @@ mod tests {
     fn a_tube_circle_on_the_other_surface_is_a_box_a_turn_long() {
         let (major, minor) = (2.0, 0.5);
         let torus = torus(major, minor);
-        let on_ring = Point3::new(major * 0.7f64.cos(), major * 0.7f64.sin(), 0.0);
-        let tangent = Vec3::new(-(0.7f64.sin()), 0.7f64.cos(), 0.0);
+        let on_ring = Point3::new(major * real::cos(0.7f64), major * real::sin(0.7f64), 0.0);
+        let tangent = Vec3::new(-(real::sin(0.7f64)), real::cos(0.7f64), 0.0);
         let elbow = Surface::Cylinder {
             frame: frame(on_ring, tangent),
             radius: minor,
         };
         let ball = Surface::Sphere {
             frame: frame(on_ring + 1.2 * minor * tangent, Vec3::z()),
-            radius: minor * 1.2f64.hypot(1.0),
+            radius: minor * real::hypot(1.2f64, 1.0),
         };
         // The ball is its own mirror image in the plane through the axis
         // and its centre, and so is what it shares with the torus: the
         // tube circle at 0.7 and the one as far beyond its centre.
-        let mirrored = 0.7 + 2.0 * (1.2 * minor / major).atan();
+        let mirrored = 0.7 + 2.0 * real::atan(1.2 * minor / major);
         for (name, other, circles) in [
             ("elbow", elbow, vec![0.7]),
             ("ball", ball, vec![0.7, mirrored]),
@@ -1880,11 +1882,14 @@ mod tests {
         let (major, minor) = (2.0, 0.5);
         let torus = torus(major, minor);
         let plane = |u0: f64| Surface::Plane {
-            frame: frame(Point3::origin(), Vec3::new(-(u0.sin()), u0.cos(), 0.0)),
+            frame: frame(
+                Point3::origin(),
+                Vec3::new(-(real::sin(u0)), real::cos(u0), 0.0),
+            ),
         };
         for u0 in [0.0, 0.7, FRAC_PI_2, 4.0, TAU - 1e-3] {
-            let on_ring = Point3::new(major * u0.cos(), major * u0.sin(), 0.0);
-            let tangent = Vec3::new(-(u0.sin()), u0.cos(), 0.0);
+            let on_ring = Point3::new(major * real::cos(u0), major * real::sin(u0), 0.0);
+            let tangent = Vec3::new(-(real::sin(u0)), real::cos(u0), 0.0);
             let elbow = Surface::Cylinder {
                 frame: frame(on_ring, tangent),
                 radius: minor,
@@ -1904,7 +1909,7 @@ mod tests {
                 for (f, h) in whole.patches.iter().zip(&rest.patches) {
                     for (s, t) in [(0.03, 0.2), (0.41, 0.9), (0.77, 0.5), (0.98, 0.1)] {
                         let u = quarter_angle(f.cell[0], s);
-                        let factor = (0.5 * (u - u0)).sin().powi(order as i32);
+                        let factor = real::powi(real::sin(0.5 * (u - u0)), order as i32);
                         let (was, is) = (f.f.eval(s, t), h.f.eval(s, t) * factor);
                         if was.abs() > 1e3 * whole.floor {
                             assert_eq!(was > 0.0, is > 0.0, "{u0}, order {order}, {:?}", f.cell);
@@ -1967,7 +1972,7 @@ mod tests {
         // Two ovals round the tube: each turns on the outer equator and
         // on the inner one.
         let (turning, singular) = census(1.0);
-        let (outer, inner) = ((1.0f64 / 2.5).acos(), (1.0f64 / 1.5).acos());
+        let (outer, inner) = (real::acos(1.0f64 / 2.5), real::acos(1.0f64 / 1.5));
         expect(
             &turning,
             &[
@@ -1980,13 +1985,13 @@ mod tests {
         assert!(turning.iter().all(|z| z.certified) && singular.is_empty());
         // One oval: the outer equator only.
         let (turning, singular) = census(2.0);
-        let outer = (2.0f64 / 2.5).acos();
+        let outer = real::acos(2.0f64 / 2.5);
         expect(&turning, &[[outer, 0.0], [TAU - outer, 0.0]]);
         assert!(turning.iter().all(|z| z.certified) && singular.is_empty());
         // The figure eight: its crossing is a singular point, and as a
         // turning point a box that holds it.
         let (turning, singular) = census(1.5);
-        let outer = (1.5f64 / 2.5).acos();
+        let outer = real::acos(1.5f64 / 2.5);
         expect(&turning, &[[outer, 0.0], [TAU - outer, 0.0]]);
         assert_eq!(singular.len(), 1, "{singular:?}");
         assert!(apart(singular[0], [0.0, PI]) < 1e-12, "{singular:?}");
@@ -2138,8 +2143,8 @@ mod tests {
                         let w = patch.weight.eval(s, t);
                         let coords = [p.x, p.y, p.z, 1.0].map(|c| vec![c]);
                         let [x, y, z, one] = &coords;
-                        let direct =
-                            section.implicit.along([x, y, z, one], &binomials)[0] * w.powi(d);
+                        let direct = section.implicit.along([x, y, z, one], &binomials)[0]
+                            * real::powi(w, d);
                         let value = patch.f.eval(s, t);
                         assert!(
                             (value - direct).abs() <= 4.0 * section.floor,
@@ -2179,7 +2184,7 @@ mod tests {
         };
         let at = |u: f64, v: f64| torus.point(u, v);
         let (turning, singular) = census(1.0);
-        let (outer, inner) = ((1.0f64 / 2.5).acos(), (1.0f64 / 1.5).acos());
+        let (outer, inner) = (real::acos(1.0f64 / 2.5), real::acos(1.0f64 / 1.5));
         matches(
             &nurbs,
             &certified(&turning),
@@ -2196,7 +2201,7 @@ mod tests {
         // The figure eight: its crossing, on the seam, is one singular
         // point, and one uncertified turning box.
         let (turning, singular) = census(1.5);
-        let outer = (1.5f64 / 2.5).acos();
+        let outer = real::acos(1.5f64 / 2.5);
         matches(
             &nurbs,
             &certified(&turning),
@@ -2256,14 +2261,14 @@ mod tests {
             let section = PatchedSection::on_nurbs(&nurbs, &cross, TOL).unwrap();
             let turning = section.turning_points(&mut Meter::default()).unwrap();
             let critical = section.critical_points(&mut Meter::default()).unwrap();
-            let theta = ((1.0 + e * e - 1.44) / (2.0 * e)).acos();
+            let theta = real::acos((1.0 + e * e - 1.44) / (2.0 * e));
             let scale = 1e-12 * (1.0 + pose.translation().norm());
             matches(
                 &nurbs,
                 &certified(&turning),
                 &[
-                    moved(Point3::new(theta.cos(), theta.sin(), 0.0)),
-                    moved(Point3::new(theta.cos(), -theta.sin(), 0.0)),
+                    moved(Point3::new(real::cos(theta), real::sin(theta), 0.0)),
+                    moved(Point3::new(real::cos(theta), -real::sin(theta), 0.0)),
                 ],
                 scale,
             );
@@ -2298,14 +2303,14 @@ mod tests {
             radius: 1.5,
         };
         let y = (4.0 - d * d).sqrt();
-        let u = (2.75f64 / 4.0).acos();
+        let u = real::acos(2.75f64 / 4.0);
         for (other, expected) in [
             (plane, [Point3::new(d, y, 0.0), Point3::new(d, -y, 0.0)]),
             (
                 pipe,
                 [
-                    Point3::new(2.0 * u.cos(), 2.0 * u.sin(), 0.0),
-                    Point3::new(2.0 * u.cos(), -2.0 * u.sin(), 0.0),
+                    Point3::new(2.0 * real::cos(u), 2.0 * real::sin(u), 0.0),
+                    Point3::new(2.0 * real::cos(u), -2.0 * real::sin(u), 0.0),
                 ],
             ),
         ] {

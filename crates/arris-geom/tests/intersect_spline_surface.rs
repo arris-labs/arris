@@ -9,6 +9,7 @@
 //! of its surfaces; an open curve's end on the surface is a hit and no
 //! touch; and a periodic curve's hits come back inside its domain.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_1_SQRT_2, TAU};
 
 use arris_debug::prop::geom::{ellipse, line, nurbs_curve, surface};
@@ -48,7 +49,7 @@ fn fail<T>(msg: String) -> Result<T, TestCaseError> {
 /// sphere or a torus's tube.
 fn signed_distance(s: &Surface, p: Point3) -> f64 {
     let q = s.frame().unwrap().to_local(p);
-    let rho = q.x.hypot(q.y);
+    let rho = real::hypot(q.x, q.y);
     match *s {
         Surface::Plane { .. } => q.z,
         Surface::Cylinder { radius, .. } => rho - radius,
@@ -57,13 +58,13 @@ fn signed_distance(s: &Surface, p: Point3) -> f64 {
             minor_radius: b,
             ..
         } => {
-            let sign = ((q.x / a).powi(2) + (q.y / b).powi(2) - 1.0).signum();
+            let sign = (real::powi(q.x / a, 2) + real::powi(q.y / b, 2) - 1.0).signum();
             sign * s.project(p).map_or(f64::INFINITY, |pr| pr.distance)
         }
         Surface::Cone {
             radius, half_angle, ..
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             rho * ca - (q.z + radius * ca / sa).abs() * sa
         }
         Surface::Sphere { radius, .. } => q.coords.norm() - radius,
@@ -71,7 +72,7 @@ fn signed_distance(s: &Surface, p: Point3) -> f64 {
             major_radius,
             minor_radius,
             ..
-        } => (rho - major_radius).hypot(q.z) - minor_radius,
+        } => real::hypot(rho - major_radius, q.z) - minor_radius,
         Surface::Nurbs(_) => unreachable!("the strategies draw analytic surfaces"),
     }
 }
@@ -610,7 +611,7 @@ fn a_curve_on_the_surface_is_coincident() {
                 _ => {
                     let p = s.point(uv[0], uv[1]);
                     let q = Frame::world().to_local(p);
-                    let rho = q.x.hypot(q.y);
+                    let rho = real::hypot(q.x, q.y);
                     (
                         Frame::from_z(Point3::new(0.0, 0.0, q.z), Vec3::z()).unwrap(),
                         [rho, rho],

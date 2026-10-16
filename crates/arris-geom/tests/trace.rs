@@ -5,6 +5,7 @@
 //! the result, and a brute-force sweep of rulings finding no hit the
 //! branches missed.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 
 use arris_debug::prop::{self, check};
@@ -337,11 +338,11 @@ fn vivianis_curve_matches_its_closed_form() {
     assert_eq!(trace.branches().len(), 2);
     // Every traced point satisfies the closed form…
     for p in trace.branches().iter().flat_map(|b| samples(b, 257)) {
-        let phi = p.y.atan2(p.x - 1.0);
+        let phi = real::atan2(p.y, p.x - 1.0);
         let want = Point3::new(
-            1.0 + phi.cos(),
-            phi.sin(),
-            p.z.signum() * 2.0 * (0.5 * phi).sin().abs(),
+            1.0 + real::cos(phi),
+            real::sin(phi),
+            p.z.signum() * 2.0 * real::sin(0.5 * phi).abs(),
         );
         assert!((p - want).norm() < 1e-7, "{p} against {want}");
     }
@@ -349,7 +350,11 @@ fn vivianis_curve_matches_its_closed_form() {
     let polylines: Vec<_> = trace.branches().iter().map(|b| samples(b, 2049)).collect();
     for i in 0..400 {
         let phi = 2.0 * TAU * i as f64 / 400.0;
-        let p = Point3::new(1.0 + phi.cos(), phi.sin(), 2.0 * (0.5 * phi).sin());
+        let p = Point3::new(
+            1.0 + real::cos(phi),
+            real::sin(phi),
+            2.0 * real::sin(0.5 * phi),
+        );
         assert!(distance_to_trace(&polylines, &trace, p) < 1e-5, "φ = {phi}");
     }
 }
@@ -676,7 +681,7 @@ fn touching(
             let across = match ruled {
                 Surface::Cone {
                     radius, half_angle, ..
-                } => (radius + v * half_angle.sin()) / half_angle.cos(),
+                } => (radius + v * real::sin(half_angle)) / real::cos(half_angle),
                 _ => size(&ruled),
             };
             let at = ruled.point(u, v);
@@ -819,7 +824,7 @@ fn rods_a_hair_off_parallel_are_known_along_their_rulings_to_rounding() {
     let (ra, rb, length) = (1.338253251879201, 1.594912540100717, 16.10031287625863);
     let turn = -2.0 * 2.5e-8 / length;
     let pivot = Vec3::new(0.0, ra, 0.5 * length);
-    let (sin, cos) = turn.sin_cos();
+    let (sin, cos) = real::sin_cos(turn);
     let spin = |v: Vec3| Vec3::new(v.x, v.y * cos - v.z * sin, v.y * sin + v.z * cos);
     let origin = pivot + spin(Vec3::new(0.0, ra + rb, -6.49554150205149) - pivot);
     let a = cylinder([0.0; 3], [0.0, 0.0, 1.0], ra);

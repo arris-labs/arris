@@ -1,6 +1,7 @@
 //! Surface–surface intersection: the closed-form table, and the traced
 //! and fitted sections of the quadric pairs that have none.
 
+use arris_math::real;
 use core::f64::consts::FRAC_PI_2;
 
 use arris_math::{Aabb, Frame, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3};
@@ -685,7 +686,7 @@ fn crossing_cylinders(
 /// `atan2` of the cross and dot magnitudes, well conditioned at both ends
 /// where `acos` is not.
 pub(crate) fn line_angle(a: &UnitVec3, b: &UnitVec3) -> f64 {
-    a.cross(b).norm().atan2(a.dot(b).abs())
+    real::atan2(a.cross(b).norm(), a.dot(b).abs())
 }
 
 fn plane_plane(pa: &Frame, pb: &Frame, tol: Tolerance) -> SurfaceIntersection {
@@ -851,8 +852,8 @@ fn plane_elliptic_cylinder(
         };
         let o = cyl.to_local(plane.origin());
         let d = m.dot(&Vec2::new(o.x, o.y));
-        let reach = (a * m.x).hypot(b * m.y);
-        let phase = (b * m.y).atan2(a * m.x);
+        let reach = real::hypot(a * m.x, b * m.y);
+        let phase = real::atan2(b * m.y, a * m.x);
         if (d.abs() - reach).abs() <= tol.linear {
             let u = if d >= 0.0 {
                 phase
@@ -867,7 +868,7 @@ fn plane_elliptic_cylinder(
         if d.abs() >= reach {
             return Ok(SurfaceIntersection::Empty);
         }
-        let half = (d / reach).clamp(-1.0, 1.0).acos();
+        let half = real::acos((d / reach).clamp(-1.0, 1.0));
         let Some(across) = UnitVec3::try_new(n.cross(&axis), 0.0) else {
             return Err(frame_degenerate(kind));
         };
@@ -911,7 +912,7 @@ fn plane_elliptic_cylinder(
         Vec2::new(big.dot(&e1), big.dot(&e2)),
         Vec2::new(small.dot(&e1), small.dot(&e2)),
     );
-    let x = phi.cos() * e1.into_inner() + phi.sin() * e2;
+    let x = real::cos(phi) * e1.into_inner() + real::sin(phi) * e2;
     let frame = Frame::new(centre, n.into_inner(), x).map_err(|_| frame_degenerate(kind))?;
     Ok(SurfaceIntersection::curves_of(
         MeetKind::Crossing,

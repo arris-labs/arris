@@ -68,6 +68,7 @@
 //! floor. Both curves are translated to the middle of their control points
 //! first, so a pair far from the origin has the floors of one at it.
 
+use arris_math::real;
 use arris_math::{Meter, Point3, Tolerance, Vec3, wrap_angle};
 
 use crate::bernstein::{self, Binomials, sign_change_candidates};
@@ -247,17 +248,17 @@ impl Curve {
             }
             &Curve::Circle { frame, radius } => {
                 let q = frame.to_local(p);
-                let (rho, r) = (q.x.hypot(q.y), radius);
+                let (rho, r) = (real::hypot(q.x, q.y), radius);
                 // The distance runs from the near foot's to the far one's
                 // round the circle; within the tolerance of each other the
                 // whole circle is one foot.
-                if (r + rho).hypot(q.z) - (r - rho).hypot(q.z) <= tol.linear {
+                if real::hypot(r + rho, q.z) - real::hypot(r - rho, q.z) <= tol.linear {
                     return Ok(Feet {
                         isolated: vec![],
                         continua: vec![foot(0.0)],
                     });
                 }
-                let t = wrap_angle(q.y.atan2(q.x));
+                let t = wrap_angle(real::atan2(q.y, q.x));
                 let mut isolated = vec![foot(t), foot(wrap_angle(t + core::f64::consts::PI))];
                 isolated.sort_by(|x, y| x.t.total_cmp(&y.t));
                 Ok(Feet {
@@ -436,7 +437,7 @@ fn line_line(
 ) -> Extrema {
     let cross = da.cross(&db);
     let offset = ob - oa;
-    if cross.norm().atan2(da.dot(&db).abs()) <= tol.angular {
+    if real::atan2(cross.norm(), da.dot(&db).abs()) <= tol.angular {
         // Parallel: every point of `a` is as far from `b`.
         let tb = (oa - ob).dot(&db);
         return Extrema {
@@ -498,7 +499,7 @@ fn coaxial(a: &Curve, b: &Curve, tol: Tolerance) -> Option<Extrema> {
     // `a`'s point at 0 and the point of `b` at its own angle, and the one
     // opposite.
     let q = fb.to_local(a.point(0.0));
-    let tb = wrap_angle(q.y.atan2(q.x));
+    let tb = wrap_angle(real::atan2(q.y, q.x));
     let mut continua = vec![
         pair(a, b, 0.0, tb),
         pair(a, b, 0.0, wrap_angle(tb + core::f64::consts::PI)),
@@ -744,7 +745,7 @@ impl Piece<'_> {
             Curve::Line { .. } | Curve::Nurbs(_) => t,
             &Curve::Circle { frame, .. } => {
                 let q = frame.to_local(self.point(s));
-                wrap_angle(q.y.atan2(q.x))
+                wrap_angle(real::atan2(q.y, q.x))
             }
             &Curve::Ellipse {
                 frame,
@@ -752,7 +753,7 @@ impl Piece<'_> {
                 minor_radius,
             } => {
                 let q = frame.to_local(self.point(s));
-                wrap_angle((q.y / minor_radius).atan2(q.x / major_radius))
+                wrap_angle(real::atan2(q.y / minor_radius, q.x / major_radius))
             }
         }
     }
@@ -1162,7 +1163,7 @@ fn across_axis(v: Vec3, n: Vec3) -> Vec3 {
 /// near foot (`side` 1) or its far one (−1).
 fn circle_distance(p: Point3, frame: arris_math::Frame, radius: f64, side: f64) -> f64 {
     let q = frame.to_local(p);
-    (q.x.hypot(q.y) - side * radius).hypot(q.z)
+    real::hypot(real::hypot(q.x, q.y) - side * radius, q.z)
 }
 
 /// How many points of a piece a function is sampled at where its
@@ -1228,7 +1229,7 @@ fn circle_foot(b: &Curve, p: Point3, tol: Tolerance) -> Option<f64> {
         return None;
     };
     let q = frame.to_local(p);
-    (q.x.hypot(q.y) > tol.linear * f64::EPSILON).then(|| wrap_angle(q.y.atan2(q.x)))
+    (real::hypot(q.x, q.y) > tol.linear * f64::EPSILON).then(|| wrap_angle(real::atan2(q.y, q.x)))
 }
 
 /// What `a`'s point at `ta` may be stationary with on the circle `b`.
@@ -1263,12 +1264,12 @@ fn circle_partners(
     let (x, y) = (frame.x().into_inner(), frame.y().into_inner());
     let (alpha, beta) = (radius * x.dot(&e.d1) / n, radius * y.dot(&e.d1) / n);
     let gamma = (e.point - frame.origin()).dot(&e.d1) / n;
-    let amplitude = alpha.hypot(beta);
+    let amplitude = real::hypot(alpha, beta);
     if amplitude <= tol.linear {
         return Ok(Partners::All);
     }
-    let phase = beta.atan2(alpha);
-    let c = (gamma / amplitude).clamp(-1.0, 1.0).acos();
+    let phase = real::atan2(beta, alpha);
+    let c = real::acos((gamma / amplitude).clamp(-1.0, 1.0));
     Ok(Partners::Some(vec![
         wrap_angle(phase + c),
         wrap_angle(phase - c),
@@ -1621,7 +1622,7 @@ fn residual2(a: &Curve, b: &Curve, ta: f64, tb: f64) -> ([f64; 2], [[f64; 2]; 2]
 /// that lowers the residual: near a curve of stationary pairs the system
 /// is nearly singular and Newton's path rises before it converges.
 fn polish2(a: &Curve, b: &Curve, ta: f64, tb: f64) -> (f64, f64) {
-    let size = |f: [f64; 2]| f[0].hypot(f[1]);
+    let size = |f: [f64; 2]| real::hypot(f[0], f[1]);
     let (mut x, mut y) = (ta, tb);
     let mut best = (size(residual2(a, b, x, y).0), x, y);
     for _ in 0..POLISH_STEPS {

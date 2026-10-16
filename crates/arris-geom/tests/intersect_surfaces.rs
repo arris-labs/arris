@@ -13,6 +13,7 @@
 //! was traced from, two fits of it in two regions within half a
 //! tolerance of each other (ADR-0022). Every other surface pair — two NURBS patches — is `Unsupported`.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::{
@@ -59,7 +60,7 @@ fn within() -> Aabb {
 /// tube, and inside a double cone's nappes.
 fn signed_distance(s: &Surface, p: Point3) -> f64 {
     let q = s.frame().unwrap().to_local(p);
-    let rho = q.x.hypot(q.y);
+    let rho = real::hypot(q.x, q.y);
     match *s {
         Surface::Plane { .. } => q.z,
         Surface::Cylinder { radius, .. } => rho - radius,
@@ -70,13 +71,13 @@ fn signed_distance(s: &Surface, p: Point3) -> f64 {
         } => {
             // Exact through the projection, signed by the implicit form;
             // a point the projection finds ambiguous is deep inside.
-            let sign = ((q.x / a).powi(2) + (q.y / b).powi(2) - 1.0).signum();
+            let sign = (real::powi(q.x / a, 2) + real::powi(q.y / b, 2) - 1.0).signum();
             sign * s.project(p).map_or(f64::INFINITY, |pr| pr.distance)
         }
         Surface::Cone {
             radius, half_angle, ..
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let apex = -radius * ca / sa;
             rho * ca - (q.z - apex).abs() * sa
         }
@@ -85,7 +86,7 @@ fn signed_distance(s: &Surface, p: Point3) -> f64 {
             major_radius,
             minor_radius,
             ..
-        } => (rho - major_radius).hypot(q.z) - minor_radius,
+        } => real::hypot(rho - major_radius, q.z) - minor_radius,
         Surface::Nurbs(_) => unreachable!("no NURBS pair has a closed form"),
     }
 }
@@ -552,15 +553,15 @@ fn realise(case: Case, cyl: &Surface, raw: Raw) -> (Surface, Point3, Vec3) {
         frame.y().into_inner(),
         frame.z().into_inner(),
     );
-    let around = raw.phase.cos() * x + raw.phase.sin() * y;
+    let around = real::cos(raw.phase) * x + real::sin(raw.phase) * y;
     let across = z.cross(&around);
     let on_axis = frame.origin() + raw.height * z;
     let sign = if raw.flip { -1.0 } else { 1.0 };
     let (normal, anchor, major) = match case {
         Case::Circle => (z, on_axis + raw.shift * around, around),
         Case::Ellipse => {
-            let n = raw.angle.cos() * z + raw.angle.sin() * around;
-            let major = raw.angle.sin() * z - raw.angle.cos() * around;
+            let n = real::cos(raw.angle) * z + real::sin(raw.angle) * around;
+            let major = real::sin(raw.angle) * z - real::cos(raw.angle) * around;
             (n, on_axis + raw.shift * across, major)
         }
         Case::TwoLines | Case::TangentLine | Case::Empty => {
@@ -623,7 +624,7 @@ fn plane_cylinder_follows_the_case_table() {
                 };
                 prop_assert!((ef.origin() - reference).norm() <= EXACT);
                 prop_assert!((minor_radius - radius).abs() <= EXACT);
-                prop_assert!((major_radius - radius / raw.angle.cos()).abs() <= EXACT);
+                prop_assert!((major_radius - radius / real::cos(raw.angle)).abs() <= EXACT);
                 prop_assert!(
                     (ef.x().into_inner() - major).norm() <= EXACT,
                     "major axis {:?} vs {major}",
@@ -647,7 +648,7 @@ fn plane_cylinder_follows_the_case_table() {
                 };
                 prop_assert_eq!(*d1, frame.z());
                 prop_assert_eq!(*d2, frame.z());
-                let half = (radius * radius - (raw.fraction * radius).powi(2)).sqrt();
+                let half = (radius * radius - real::powi(raw.fraction * radius, 2)).sqrt();
                 prop_assert!(((o1 - reference).norm() - half).abs() <= EXACT);
                 prop_assert!(((o2 - reference).norm() - half).abs() <= EXACT);
                 prop_assert!((o1 - o2).norm() >= 2.0 * half - EXACT);
@@ -739,8 +740,9 @@ fn coaxial(a: &Surface, b: &Surface) -> bool {
             SurfaceKind::Cylinder | SurfaceKind::Cone | SurfaceKind::Torus
         )
     };
-    let parallel =
-        |x: &UnitVec3, y: &UnitVec3| x.cross(y).norm().atan2(x.dot(y).abs()) <= tol().angular;
+    let parallel = |x: &UnitVec3, y: &UnitVec3| {
+        real::atan2(x.cross(y).norm(), x.dot(y).abs()) <= tol().angular
+    };
     let on_axis = |f: &Frame, p: Point3| {
         let d = p - f.origin();
         (d - d.dot(&f.z()) * f.z().into_inner()).norm() <= tol().linear
@@ -754,11 +756,10 @@ fn coaxial(a: &Surface, b: &Surface) -> bool {
                 SurfaceKind::Plane => {
                     let plane = other.frame().unwrap();
                     let across = FRAC_PI_2
-                        - plane
-                            .z()
-                            .cross(&carrier.z())
-                            .norm()
-                            .atan2(plane.z().dot(&carrier.z()).abs())
+                        - real::atan2(
+                            plane.z().cross(&carrier.z()).norm(),
+                            plane.z().dot(&carrier.z()).abs(),
+                        )
                         <= tol().angular;
                     let holds =
                         plane.z().dot(&(carrier.origin() - plane.origin())).abs() <= tol().linear;
@@ -818,7 +819,7 @@ fn a_tilted_plane_is_oblique_never_a_guess() {
     // tolerance is angular and the ellipse it returns is the exact section.
     check((cylinder(), unit_vec3()), |(cyl, n)| {
         let axis = cyl.frame().unwrap().z();
-        let tilt = n.cross(&axis).norm().atan2(n.dot(&axis).abs());
+        let tilt = real::atan2(n.cross(&axis).norm(), n.dot(&axis).abs());
         let plane = Surface::Plane {
             frame: Frame::from_z(cyl.frame().unwrap().origin(), n.into_inner()).unwrap(),
         };
@@ -904,7 +905,8 @@ fn coaxial_pair() -> impl Strategy<Value = (Surface, Surface, bool)> {
                     _ => return None,
                 };
                 let origin = frame.origin() + slide * frame.z().into_inner();
-                let x = phase.cos() * frame.x().into_inner() + phase.sin() * frame.y().into_inner();
+                let x = real::cos(phase) * frame.x().into_inner()
+                    + real::sin(phase) * frame.y().into_inner();
                 let other = Surface::Cylinder {
                     frame: Frame::new(origin, frame.z().into_inner(), x).ok()?,
                     radius: if same { radius } else { factor * radius },
@@ -979,7 +981,7 @@ fn pose(a: &Surface, b: &Surface) -> Pose {
         unreachable!("two cylinders")
     };
     let cross = fa.z().cross(&fb.z());
-    if cross.norm().atan2(fa.z().dot(&fb.z()).abs()) <= tol().angular {
+    if real::atan2(cross.norm(), fa.z().dot(&fb.z()).abs()) <= tol().angular {
         return Pose::Parallel;
     }
     let gap = cross.normalize().dot(&(fb.origin() - fa.origin())).abs();
@@ -993,8 +995,9 @@ fn pose(a: &Surface, b: &Surface) -> Pose {
 
 /// The unit vector at `angle` off `frame`'s `Z`, at `phase` around it.
 fn tilted(frame: &Frame, angle: f64, phase: f64) -> Vec3 {
-    let around = phase.cos() * frame.x().into_inner() + phase.sin() * frame.y().into_inner();
-    angle.cos() * frame.z().into_inner() + angle.sin() * around
+    let around =
+        real::cos(phase) * frame.x().into_inner() + real::sin(phase) * frame.y().into_inner();
+    real::cos(angle) * frame.z().into_inner() + real::sin(angle) * around
 }
 
 /// The case of two parallel cylinders to realise.
@@ -1143,8 +1146,8 @@ fn equal_cylinders_crossing_meet_in_the_two_bisecting_ellipses() {
         let normal = fa.z().cross(&fb.z()).normalize();
         let meets = [crossing + radius * normal, crossing - radius * normal];
         for (ellipse, major) in [
-            (first, radius / (psi / 2.0).sin()),
-            (second, radius / (psi / 2.0).cos()),
+            (first, radius / real::sin(psi / 2.0)),
+            (second, radius / real::cos(psi / 2.0)),
         ] {
             let Curve::Ellipse {
                 frame,
@@ -1471,20 +1474,21 @@ fn meridian_at(s: &Surface, axis: &Frame, t: f64) -> Point3 {
             radius,
             half_angle,
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let apex = height(frame.origin() - (radius * ca / sa) * frame.z().into_inner());
             at((t - apex).abs() * sa / ca, t)
         }
-        Surface::Sphere { ref frame, radius } => {
-            at(radius * t.cos(), height(frame.origin()) + radius * t.sin())
-        }
+        Surface::Sphere { ref frame, radius } => at(
+            radius * real::cos(t),
+            height(frame.origin()) + radius * real::sin(t),
+        ),
         Surface::Torus {
             ref frame,
             major_radius,
             minor_radius,
         } => at(
-            major_radius + minor_radius * t.cos(),
-            height(frame.origin()) + minor_radius * t.sin(),
+            major_radius + minor_radius * real::cos(t),
+            height(frame.origin()) + minor_radius * real::sin(t),
         ),
         Surface::EllipticCylinder { .. } | Surface::Nurbs(_) => {
             unreachable!("not a surface of revolution: `coaxial_kind` never makes one")
@@ -1501,7 +1505,7 @@ fn meridian_kink(s: &Surface, axis: &Frame) -> Option<f64> {
             radius,
             half_angle,
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let apex = frame.origin() - (radius * ca / sa) * frame.z().into_inner();
             Some((apex - axis.origin()).dot(&axis.z().into_inner()))
         }
@@ -1543,12 +1547,12 @@ fn meridian_param(s: &Surface, axis: &Frame, p: Point3) -> f64 {
     match *s {
         Surface::Plane { .. } => rho,
         Surface::Cylinder { .. } | Surface::Cone { .. } => h,
-        Surface::Sphere { ref frame, .. } => (h - height(frame.origin())).atan2(rho),
+        Surface::Sphere { ref frame, .. } => real::atan2(h - height(frame.origin()), rho),
         Surface::Torus {
             ref frame,
             major_radius,
             ..
-        } => (h - height(frame.origin())).atan2(rho - major_radius),
+        } => real::atan2(h - height(frame.origin()), rho - major_radius),
         Surface::EllipticCylinder { .. } | Surface::Nurbs(_) => {
             unreachable!("not a surface of revolution: `coaxial_kind` never makes one")
         }
@@ -1852,7 +1856,7 @@ fn constructed_apexes_are_points_and_equal_cones_coincide() {
         else {
             unreachable!()
         };
-        let apex = cf.origin() - (radius / half_angle.tan()) * cf.z().into_inner();
+        let apex = cf.origin() - (radius / real::tan(half_angle)) * cf.z().into_inner();
         // A plane perpendicular to the axis through the apex.
         let through = Surface::Plane {
             frame: Frame::new(
@@ -1874,7 +1878,7 @@ fn constructed_apexes_are_points_and_equal_cones_coincide() {
         let sign = if pb.flip { -1.0 } else { 1.0 };
         let other = |angle: f64| Surface::Cone {
             frame: Frame::new(
-                apex + sign * (pb.r1 / angle.tan()) * z,
+                apex + sign * (pb.r1 / real::tan(angle)) * z,
                 sign * z,
                 tilted(&axis, FRAC_PI_2, pb.phase),
             )
@@ -1904,7 +1908,7 @@ fn constructed_apexes_are_points_and_equal_cones_coincide() {
             prop_assert!((rc - pb.r1).abs() <= EXACT);
             let along = (frame.origin() - apex).dot(&z).abs();
             prop_assert!(
-                (along - pb.r1 / half_angle.tan()).abs() <= EXACT * 100.0,
+                (along - pb.r1 / real::tan(half_angle)).abs() <= EXACT * 100.0,
                 "{along}"
             );
         }
@@ -1967,9 +1971,9 @@ fn a_plane_through_the_axis_cuts_the_meridian() {
                             },
                             Curve::Line { origin, direction },
                         ) => {
-                            let apex = frame.origin() - (radius / half_angle.tan()) * own_z;
+                            let apex = frame.origin() - (radius / real::tan(*half_angle)) * own_z;
                             prop_assert!((origin - apex).norm() <= EXACT, "{origin} vs {apex}");
-                            let (sa, ca) = half_angle.sin_cos();
+                            let (sa, ca) = real::sin_cos(*half_angle);
                             let expected = sa * sign * w + ca * own_z;
                             prop_assert!((direction.into_inner() - expected).norm() <= EXACT);
                         }
@@ -1988,8 +1992,10 @@ fn a_plane_through_the_axis_cuts_the_meridian() {
                             prop_assert!((cf.origin() - centre).norm() <= EXACT);
                             prop_assert_eq!(cr, minor_radius);
                             for t in [0.0, 1.0, 2.5, 4.0] {
-                                let u =
-                                    (sign * w).dot(&frame.y()).atan2((sign * w).dot(&frame.x()));
+                                let u = real::atan2(
+                                    (sign * w).dot(&frame.y()),
+                                    (sign * w).dot(&frame.x()),
+                                );
                                 let d = (curve.point(t) - carrier.point(u, t)).norm();
                                 prop_assert!(d <= EXACT, "t = {t} is not the torus's v: {d}");
                             }
@@ -2273,9 +2279,9 @@ fn a_pipe_elbow_shares_an_exact_tube_circle_with_its_pipe() {
 fn a_bitangent_plane_meets_the_ring_in_fitted_villarceau_circles() {
     let ring = ring();
     let centre = ring.frame().unwrap().origin();
-    let tilt = (0.5f64 / 2.0).asin();
+    let tilt = real::asin(0.5f64 / 2.0);
     let plane = Surface::Plane {
-        frame: Frame::from_z(centre, ring_dir(-tilt.sin(), 0.0, tilt.cos())).unwrap(),
+        frame: Frame::from_z(centre, ring_dir(-real::sin(tilt), 0.0, real::cos(tilt))).unwrap(),
     };
     let r = intersect_surfaces(
         &ring,
@@ -2589,7 +2595,7 @@ fn a_plane_cuts_a_cone_off_its_axis_in_every_conic() {
     };
     // A plane through `at` whose normal is `tilt` off the axis, towards x.
     let plane = |at: Point3, tilt: f64| Surface::Plane {
-        frame: Frame::from_z(at, Vec3::new(tilt.sin(), 0.0, tilt.cos())).unwrap(),
+        frame: Frame::from_z(at, Vec3::new(real::sin(tilt), 0.0, real::cos(tilt))).unwrap(),
     };
     let meet = |p: &Surface| {
         let r = intersect_surfaces(p, &cone, &within, tol(), &mut arris_math::Meter::default())
@@ -2634,7 +2640,7 @@ fn a_plane_cuts_a_cone_off_its_axis_in_every_conic() {
         assert!(
             h.weights()
                 .iter()
-                .all(|&w| (1.0..=HYPERBOLA_HALF_SPAN.cosh()).contains(&w))
+                .all(|&w| (1.0..=real::cosh(HYPERBOLA_HALF_SPAN)).contains(&w))
         );
         // The branch reaches past the region at both ends.
         let d = h.domain();

@@ -1,6 +1,7 @@
 //! Point projection: the nearest point of a surface or a curve, with its
 //! parameters.
 
+use arris_math::real;
 use core::f64::consts::FRAC_PI_2;
 
 use arris_math::{Frame, Point2, Point3, is_negligible, wrap_angle as wrap_turn};
@@ -101,7 +102,7 @@ impl Surface {
         };
         let q = frame.to_local(p);
         let noise = local_noise_scale(frame, p);
-        let rho = q.x.hypot(q.y);
+        let rho = real::hypot(q.x, q.y);
         let ambiguous = |locus| GeomError::Ambiguous {
             kind: GeomKind::Surface(self.kind()),
             locus,
@@ -115,7 +116,7 @@ impl Surface {
                 if is_negligible(rho, noise) {
                     return Err(ambiguous(AmbiguousLocus::Axis));
                 }
-                (wrap_turn(q.y.atan2(q.x)), q.z, (rho - radius).abs())
+                (wrap_turn(real::atan2(q.y, q.x)), q.z, (rho - radius).abs())
             }
             Surface::EllipticCylinder {
                 major_radius,
@@ -137,7 +138,7 @@ impl Surface {
                 if is_negligible(rho, noise) {
                     return Err(ambiguous(AmbiguousLocus::Axis));
                 }
-                let (sa, ca) = half_angle.sin_cos();
+                let (sa, ca) = real::sin_cos(half_angle);
                 // In the axial half-plane through `p` the surface is two
                 // rulings crossing at the apex, one per nappe; `side` is
                 // the point's height above the plane through the apex,
@@ -148,9 +149,9 @@ impl Surface {
                     return Err(ambiguous(AmbiguousLocus::ApexPlane));
                 }
                 let (u, signed_rho) = if side < 0.0 {
-                    (wrap_turn((-q.y).atan2(-q.x)), -rho)
+                    (wrap_turn(real::atan2(-q.y, -q.x)), -rho)
                 } else {
-                    (wrap_turn(q.y.atan2(q.x)), rho)
+                    (wrap_turn(real::atan2(q.y, q.x)), rho)
                 };
                 let along = signed_rho - radius;
                 (u, sa * along + ca * q.z, (ca * along - sa * q.z).abs())
@@ -165,8 +166,8 @@ impl Surface {
                     (0.0, v, (r - radius).abs())
                 } else {
                     (
-                        wrap_turn(q.y.atan2(q.x)),
-                        q.z.atan2(rho),
+                        wrap_turn(real::atan2(q.y, q.x)),
+                        real::atan2(q.z, rho),
                         (r - radius).abs(),
                     )
                 }
@@ -180,13 +181,13 @@ impl Surface {
                     return Err(ambiguous(AmbiguousLocus::Axis));
                 }
                 let across = rho - major_radius;
-                let tube = across.hypot(q.z);
+                let tube = real::hypot(across, q.z);
                 if is_negligible(tube, noise + major_radius.abs()) {
                     return Err(ambiguous(AmbiguousLocus::CentreCircle));
                 }
                 (
-                    wrap_turn(q.y.atan2(q.x)),
-                    wrap_turn(q.z.atan2(across)),
+                    wrap_turn(real::atan2(q.y, q.x)),
+                    wrap_turn(real::atan2(q.z, across)),
                     (tube - minor_radius).abs(),
                 )
             }
@@ -239,7 +240,7 @@ impl Curve {
             }
             &Curve::Circle { frame, radius } => {
                 let q = frame.to_local(p);
-                let rho = q.x.hypot(q.y);
+                let rho = real::hypot(q.x, q.y);
                 if is_negligible(rho, local_noise_scale(&frame, p)) {
                     return Err(GeomError::Ambiguous {
                         kind: GeomKind::Curve(CurveKind::Circle),
@@ -247,11 +248,11 @@ impl Curve {
                         point: p,
                     });
                 }
-                let t = wrap_turn(q.y.atan2(q.x));
+                let t = wrap_turn(real::atan2(q.y, q.x));
                 Ok(CurveProjection {
                     t,
                     point: self.point(t),
-                    distance: (rho - radius).hypot(q.z),
+                    distance: real::hypot(rho - radius, q.z),
                 })
             }
             &Curve::Ellipse {
@@ -270,7 +271,7 @@ impl Curve {
                 Ok(CurveProjection {
                     t,
                     point: self.point(t),
-                    distance: in_plane.hypot(q.z),
+                    distance: real::hypot(in_plane, q.z),
                 })
             }
             Curve::Nurbs(c) => {
@@ -324,23 +325,23 @@ pub(crate) fn ellipse_nearest(
         Err(_) => return Err(AmbiguousLocus::Centre),
     };
     let g = |t: f64| {
-        let (st, ct) = t.sin_cos();
+        let (st, ct) = real::sin_cos(t);
         e * st * ct + a * px * st - b * py * ct
     };
     let dg = |t: f64| {
-        let (st, ct) = t.sin_cos();
-        e * (2.0 * t).cos() + a * px * ct + b * py * st
+        let (st, ct) = real::sin_cos(t);
+        e * real::cos(2.0 * t) + a * px * ct + b * py * st
     };
     let distance = |t: f64| {
-        let (st, ct) = t.sin_cos();
-        (a * ct - px).hypot(b * st - py)
+        let (st, ct) = real::sin_cos(t);
+        real::hypot(a * ct - px, b * st - py)
     };
     // Up to four roots and the seam candidate.
     let mut best: Option<(f64, f64)> = None;
     let mut runner_up: Option<(f64, f64)> = None;
     let candidates = roots
         .iter()
-        .map(|r| 2.0 * r.value.atan())
+        .map(|r| 2.0 * real::atan(r.value))
         .chain(on_major_axis.then_some(core::f64::consts::PI));
     for t0 in candidates {
         let mut t = t0;
@@ -376,9 +377,9 @@ pub(crate) fn ellipse_nearest(
         return Err(AmbiguousLocus::Centre);
     };
     if let Some((t2, d2)) = runner_up {
-        let (s1, c1) = t.sin_cos();
-        let (s2, c2) = t2.sin_cos();
-        let apart = (a * (c1 - c2)).hypot(b * (s1 - s2));
+        let (s1, c1) = real::sin_cos(t);
+        let (s2, c2) = real::sin_cos(t2);
+        let apart = real::hypot(a * (c1 - c2), b * (s1 - s2));
         if is_negligible(d2 - d, noise + a) && !is_negligible(apart, a) {
             return Err(if is_negligible(px, noise) && is_negligible(py, noise) {
                 AmbiguousLocus::Centre
@@ -402,9 +403,9 @@ pub(crate) fn ellipse_distance(a: f64, b: f64, px: f64, py: f64, noise: f64) -> 
     match ellipse_nearest(a, b, px, py, noise) {
         Ok((_, d)) => d,
         Err(_) => {
-            let t = (py / b).atan2(px / a);
-            let (st, ct) = t.sin_cos();
-            (a * ct - px).hypot(b * st - py)
+            let t = real::atan2(py / b, px / a);
+            let (st, ct) = real::sin_cos(t);
+            real::hypot(a * ct - px, b * st - py)
         }
     }
 }

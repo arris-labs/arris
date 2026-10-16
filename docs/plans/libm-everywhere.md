@@ -114,7 +114,7 @@ dump digest to a committed golden. It runs natively in the gate and on
 - [x] Step 4 **[2]** — `arris-geom`, the curves (`profile.rs` first, where
   the report's `arc_about` is) and the 2-D code: about half of its 402
   calls. Re-bless.
-- [ ] Step 5 **[2]** — `arris-geom`, the surfaces and intersections, the
+- [x] Step 5 **[2]** — `arris-geom`, the surfaces and intersections, the
   rest of the 402; pass its clippy check. Re-bless.
 - [ ] Step 6 **[1]** — `arris-ops` (32) and `arris-io` (25); pass the clippy check;
   re-bless.

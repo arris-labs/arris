@@ -6,6 +6,7 @@
 //! result and a dense scan of the domain finding no point of the other
 //! surface away from every branch.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_debug::prop::{self, check};
@@ -399,7 +400,7 @@ fn a_ruled_twin_whose_boundary_ruling_lies_on_a_cylinder_is_traced_beside_it() {
     for branch in trace.branches() {
         for k in 0..=16 {
             let uv = branch.uv(branch.domain().lerp(k as f64 / 16.0)).unwrap();
-            let expected = 3.0 / (2.25 + (1.5 - 2.0 * uv.y).powi(2));
+            let expected = 3.0 / (2.25 + real::powi(1.5 - 2.0 * uv.y, 2));
             assert!((uv.x - expected).abs() < 1e-12, "{uv:?}");
         }
     }
@@ -574,11 +575,14 @@ fn a_tangent_isoline_on_a_closed_seam_and_two_isolines_alone_are_exact() {
     );
     // A plane through the axis holds two rulings, and nothing else.
     let through = Surface::Plane {
-        frame: frame([0.0, 0.0, 0.0], [-(0.4f64.sin()), 0.4f64.cos(), 0.0]),
+        frame: frame(
+            [0.0, 0.0, 0.0],
+            [-(real::sin(0.4f64)), real::cos(0.4f64), 0.0],
+        ),
     };
     let found = trace(&nurbs, &through).unwrap();
     assert!(found.branches().is_empty() && found.points().is_empty());
-    let (sin, cos) = 0.4f64.sin_cos();
+    let (sin, cos) = real::sin_cos(0.4f64);
     let lines = [
         (0, Point3::new(cos, sin, 0.3)),
         (0, Point3::new(-cos, -sin, 0.3)),
@@ -590,7 +594,7 @@ fn a_tangent_isoline_on_a_closed_seam_and_two_isolines_alone_are_exact() {
     // A sphere about the axis, larger than the wall: two rims of `v`.
     let ball = Surface::Sphere {
         frame: Frame::world(),
-        radius: 0.5f64.hypot(1.0),
+        radius: real::hypot(0.5f64, 1.0),
     };
     let found = trace(&nurbs, &ball).unwrap();
     assert!(found.branches().is_empty() && found.points().is_empty());
@@ -610,8 +614,8 @@ fn a_tangent_isoline_on_a_closed_seam_and_two_isolines_alone_are_exact() {
 /// that a twin of the ring meets in the same tube circles.
 fn holders(u0: f64) -> Vec<(&'static str, Surface, usize, bool)> {
     let (big, r) = (2.0, 0.5);
-    let outward = Vec3::new(u0.cos(), u0.sin(), 0.0);
-    let tangent = Vec3::new(-u0.sin(), u0.cos(), 0.0);
+    let outward = Vec3::new(real::cos(u0), real::sin(u0), 0.0);
+    let tangent = Vec3::new(-real::sin(u0), real::cos(u0), 0.0);
     let centre = Point3::from(outward * big);
     let about = Frame::from_z(centre, tangent).unwrap();
     vec![
@@ -637,7 +641,7 @@ fn holders(u0: f64) -> Vec<(&'static str, Surface, usize, bool)> {
             "ball",
             Surface::Sphere {
                 frame: Frame::from_z(centre + tangent * (1.2 * r), Vec3::z()).unwrap(),
-                radius: r * 1.2f64.hypot(1.0),
+                radius: r * real::hypot(1.2f64, 1.0),
             },
             2,
             false,
@@ -677,7 +681,7 @@ fn a_torus_twin_meets_what_holds_a_tube_circle_as_the_torus_does() {
                         let Curve::Circle { frame, .. } = &c.circle else {
                             panic!("{label}: no circle");
                         };
-                        let u = frame.origin().y.atan2(frame.origin().x);
+                        let u = real::atan2(frame.origin().y, frame.origin().x);
                         let lo = bounds[0].lo();
                         bounds[0].contains(lo + (u - lo).rem_euclid(TAU))
                     })
@@ -748,7 +752,7 @@ fn isolined() -> impl Strategy<Value = (NurbsSurface, Surface, Vec<(usize, Point
                 };
                 let twin = wall.to_nurbs([u, v]).ok()?;
                 let theta = u.lerp(share);
-                let ruling = |t: f64| Point3::new(r * t.cos(), r * t.sin(), v.lerp(0.4));
+                let ruling = |t: f64| Point3::new(r * real::cos(t), r * real::sin(t), v.lerp(0.4));
                 let has = |t: f64| {
                     let t = u.lo() + (t - u.lo()).rem_euclid(TAU);
                     // Clear of either edge of a part of a turn.
@@ -763,11 +767,12 @@ fn isolined() -> impl Strategy<Value = (NurbsSurface, Surface, Vec<(usize, Point
                         let plane = Surface::Plane {
                             frame: Frame::from_z(Point3::new(0.0, 0.0, z), Vec3::z()).ok()?,
                         };
-                        let at = Point3::new(r * u.lerp(0.5).cos(), r * u.lerp(0.5).sin(), z);
+                        let at =
+                            Point3::new(r * real::cos(u.lerp(0.5)), r * real::sin(u.lerp(0.5)), z);
                         (plane, vec![(1, at)], false)
                     }
                     2 => {
-                        let normal = Vec3::new(-theta.sin(), theta.cos(), 0.0);
+                        let normal = Vec3::new(-real::sin(theta), real::cos(theta), 0.0);
                         let plane = Surface::Plane {
                             frame: Frame::from_z(Point3::origin(), normal).ok()?,
                         };
@@ -795,7 +800,7 @@ fn isolined() -> impl Strategy<Value = (NurbsSurface, Surface, Vec<(usize, Point
                         )
                     }
                     3 => {
-                        let normal = Vec3::new(theta.cos(), theta.sin(), 0.0);
+                        let normal = Vec3::new(real::cos(theta), real::sin(theta), 0.0);
                         let plane = Surface::Plane {
                             frame: Frame::from_z(Point3::from(normal * r), normal).ok()?,
                         };
@@ -807,7 +812,7 @@ fn isolined() -> impl Strategy<Value = (NurbsSurface, Surface, Vec<(usize, Point
                         let h = v.lerp(share).abs().max(0.1);
                         let ball = Surface::Sphere {
                             frame: Frame::world(),
-                            radius: h.hypot(r),
+                            radius: real::hypot(h, r),
                         };
                         let lines: Vec<(usize, Point3)> = [-h, h]
                             .into_iter()
@@ -815,7 +820,11 @@ fn isolined() -> impl Strategy<Value = (NurbsSurface, Surface, Vec<(usize, Point
                             .map(|z| {
                                 (
                                     1,
-                                    Point3::new(r * u.lerp(0.5).cos(), r * u.lerp(0.5).sin(), z),
+                                    Point3::new(
+                                        r * real::cos(u.lerp(0.5)),
+                                        r * real::sin(u.lerp(0.5)),
+                                        z,
+                                    ),
                                 )
                             })
                             .collect();
