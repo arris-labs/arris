@@ -129,7 +129,7 @@ bound has to be established here.
   once, so none passed through `regression/`; a collapsed loop is
   `ProfileError` before it reaches matching (`LoftError::Loop` guards the
   rest), so it is an `arris-ops` test, not a fixture.
-- [ ] Step 7 **[2]** — **Operands and properties.** Operand fixtures: a
+- [x] Step 7 **[2]** — **Operands and properties.** Operand fixtures: a
   cone frustum drilled by a cylinder, a duct cut by a plane, a fillet on an
   exact ruled edge, a ruled loft fused with a box. `loft_prop`: translation
   commutes; reversed order keeps volume and area; two equal parallel

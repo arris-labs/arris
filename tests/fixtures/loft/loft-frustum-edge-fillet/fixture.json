@@ -1,0 +1,174 @@
+{
+  "description": "the square frustum of loft-square-frustum (10 to 6, 8 high) with one slanted edge filleted at radius 0.5: the blend between two of the loft's exact planes (plans/loft). Arris's volume is the closed form r^2 (tan(phi/2) - phi/2) * |edge| subtracted from the frustum to 16 digits; Open CASCADE's integration of the blend surface is 1.3e-7 off it, as on blend/oblique-cut-cone-fillet, so the tolerances here are that quadrature's",
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 2e-07,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 5e-07
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          5,
+          -5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              -5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              -5
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          8
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          3,
+          -3
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              -3
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              -3
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "frustum",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "frustum",
+      "edges": [
+        [
+          4,
+          4,
+          4
+        ]
+      ],
+      "radius": 0.5
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside_corner",
+      "point": [
+        4,
+        4,
+        4
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bottom",
+      "point": [
+        1,
+        1,
+        0
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

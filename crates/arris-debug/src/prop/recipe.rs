@@ -6,7 +6,8 @@
 //!
 //! A recipe is two to four **operands** chained by one to three of
 //! `fuse`, `common` and `cut`. Each operand is a box, a cylinder, or a
-//! profile from [`super::profile`] extruded or revolved; a box or a
+//! profile from [`super::profile`] extruded or revolved, a profile swept along
+//! a path, or sections lofted ruled; a box or a
 //! cylinder may have one edge filleted or chamfered first, where the
 //! edge's point is known in closed form (or, of those without a blend, have
 //! one face moved by `offset`, ADR-0048, or the whole hollowed by `shell`,
@@ -111,6 +112,12 @@ enum Shape {
         profile: Profile,
         path: fixtures::SweepPath,
         law: fixtures::SweepLaw,
+        centre: Point3,
+    },
+    /// Profiles on parallel planes lofted ruled, in order; `centre` is a
+    /// point inside the material.
+    Loft {
+        sections: Vec<Profile>,
         centre: Point3,
     },
 }
@@ -261,6 +268,7 @@ fn shape() -> impl Strategy<Value = Shape> {
             })
         }),
         1 => sweep_shape(),
+        1 => loft_shape(),
     ]
 }
 
@@ -338,6 +346,64 @@ fn sweep_shape() -> impl Strategy<Value = Shape> {
             law,
             centre,
         })
+}
+
+/// A rectangle to a rectangle, or a circle to a circle, lofted ruled over
+/// two or three sections up the `z` axis: planes, or a cone and a
+/// cylinder, the spans Arris holds exactly (ADR-0065 §6). Sections of one
+/// kind only: a circle against a rectangle is paired differently by Open
+/// CASCADE (ADR-0065 §2).
+fn loft_shape() -> impl Strategy<Value = Shape> {
+    let section = |z: f64, kind: &LoftSection| Profile {
+        plane: Frame::new(Point3::new(0.0, 0.0, z), Vec3::z(), Vec3::x())
+            .unwrap_or_else(|_| Frame::world()),
+        outer: match *kind {
+            LoftSection::Rectangle(hx, hy) => {
+                let p = |u: f64, v: f64| Point2::new(u * hx, v * hy);
+                ProfileLoop::Path {
+                    start: p(-1.0, -1.0),
+                    segments: vec![
+                        ProfileSegment::LineTo(p(1.0, -1.0)),
+                        ProfileSegment::LineTo(p(1.0, 1.0)),
+                        ProfileSegment::LineTo(p(-1.0, 1.0)),
+                        ProfileSegment::LineTo(p(-1.0, -1.0)),
+                    ],
+                }
+            }
+            LoftSection::Circle(radius) => ProfileLoop::Circle {
+                center: Point2::origin(),
+                radius,
+            },
+        },
+        holes: Vec::new(),
+    };
+    let extent = || finite_f64(0.8..=3.0);
+    let rectangle = (extent(), extent()).prop_map(|(x, y)| LoftSection::Rectangle(x, y));
+    let circle = extent().prop_map(LoftSection::Circle);
+    let heights = || prop::collection::vec(finite_f64(1.0..=4.0), 1..=2);
+    prop_oneof![
+        (prop::collection::vec(rectangle, 3), heights()),
+        (prop::collection::vec(circle, 3), heights()),
+    ]
+    .prop_map(move |(kinds, heights)| {
+        let mut z = 0.0;
+        let mut sections = vec![section(0.0, &kinds[0])];
+        for (kind, height) in kinds[1..].iter().zip(&heights) {
+            z += height;
+            sections.push(section(z, kind));
+        }
+        Shape::Loft {
+            sections,
+            centre: Point3::new(0.0, 0.0, z / 2.0),
+        }
+    })
+}
+
+/// One section of a [`loft_shape`] on the `z` axis.
+#[derive(Debug, Clone, Copy)]
+enum LoftSection {
+    Rectangle(f64, f64),
+    Circle(f64),
 }
 
 /// A stadium of two lines `l` long and two half circles of radius `r`, or a
@@ -971,6 +1037,20 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                     profile: sketch,
                     path: path.clone(),
                     law: law.clone(),
+                });
+                *centre
+            }
+            Shape::Loft { sections, centre } => {
+                let names: Vec<String> =
+                    (0..sections.len()).map(|k| format!("sk{i}_{k}")).collect();
+                for (name, section) in names.iter().zip(sections) {
+                    steps.push(profile_step(name, section));
+                }
+                steps.push(Step::Loft {
+                    name: base.clone(),
+                    sections: names,
+                    kind: fixtures::LoftKind::Ruled,
+                    closed: false,
                 });
                 *centre
             }

@@ -893,6 +893,14 @@ corpus_tests! {
     loft_loft_loop_count => run "loft/loft-loop-count";
     /// Two consecutive sections the same: `LoftError::Coincident`.
     loft_loft_coincident => run "loft/loft-coincident";
+    /// The cone frustum drilled by a cylinder on its axis: the loft's exact cone as a cut's target.
+    loft_loft_cone_frustum_drilled => run "loft/loft-cone-frustum-drilled";
+    /// The smooth duct cut by a box: a NURBS wall against a plane.
+    loft_loft_duct_cut_by_box => run "loft/loft-duct-cut-by-box";
+    /// A slanted edge of the square frustum filleted: a blend between two exact planes.
+    loft_loft_frustum_edge_fillet => run "loft/loft-frustum-edge-fillet";
+    /// The square frustum fused with a box across its slant and top.
+    loft_loft_frustum_fuse_box => run "loft/loft-frustum-fuse-box";
     /// A circle along a line then a line at a right angle: the path is not
     /// G1, so `OpError::Path` names the corner where Open CASCADE's pipe
     /// carries the profile through it (ADR-0063).

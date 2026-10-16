@@ -1,0 +1,184 @@
+{
+  "description": "the square frustum of loft-square-frustum fused with a box lying across its +x slant and top: a ruled loft an operand of a fuse (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          5,
+          -5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              5
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              -5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              -5
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          8
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          3,
+          -3
+        ],
+        "segments": [
+          {
+            "line_to": [
+              3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              3
+            ]
+          },
+          {
+            "line_to": [
+              -3,
+              -3
+            ]
+          },
+          {
+            "line_to": [
+              3,
+              -3
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "frustum",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    },
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        2,
+        -1,
+        5
+      ],
+      "max": [
+        8,
+        1,
+        11
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "frustum",
+      "b": "block"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_frustum",
+      "point": [
+        0,
+        0,
+        2
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_block",
+      "point": [
+        7,
+        0,
+        8
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        7,
+        3,
+        8
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_block_top",
+      "point": [
+        7,
+        0,
+        11
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "description": "the cone frustum of loft-cone-frustum (radius 5 to 3, 8 high) drilled through by a cylinder of radius 1 on its axis: a cone and a cylinder face, the loft's exact cone an operand of a cut (plans/loft)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 5
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          8
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 3
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "frustum",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    },
+    {
+      "name": "bore",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1,
+      "height": 10
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "frustum",
+      "tool": "bore"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_wall",
+      "point": [
+        2.5,
+        0,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_bore",
+      "point": [
+        0,
+        0,
+        4
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_bore",
+      "point": [
+        1,
+        0,
+        4
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_bottom",
+      "point": [
+        3,
+        0,
+        0
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "pi * 8 / 3 * (25 + 15 + 9) - pi * 8",
+    "genus": 1
+  }
+}
