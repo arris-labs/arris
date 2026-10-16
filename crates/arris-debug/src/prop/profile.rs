@@ -16,6 +16,7 @@
 //! centre that the chords leave free. [`general`] needs deeper arcs, so
 //! its polygon is convex (see there).
 
+use arris_math::real;
 use core::f64::consts::TAU;
 use core::ops::RangeInclusive;
 
@@ -96,7 +97,10 @@ fn build((plane, vertices, arcs, holes, flipped): Draw) -> Profile {
             let (jitter, fraction) = vertices[k];
             let angle = (k as f64 + jitter) * share;
             let r = fraction * PROFILE_RADIUS;
-            Point2::new(centre.x + r * angle.cos(), centre.y + r * angle.sin())
+            Point2::new(
+                centre.x + r * real::cos(angle),
+                centre.y + r * real::sin(angle),
+            )
         })
         .collect();
     // The sagitta of each chord, positive outward from the centre.
@@ -139,7 +143,7 @@ fn holes_within(free: f64, count: usize, backwards: bool) -> Vec<ProfileLoop> {
         let r = HOLE_RADIUS_FRACTION * free;
         let corner = |i: usize| {
             let a = TAU * i as f64 / 3.0;
-            Point2::from(c + r * Vec2::new(a.cos(), a.sin()))
+            Point2::from(c + r * Vec2::new(real::cos(a), real::sin(a)))
         };
         let triangle: Vec<Point2> = (0..3).map(corner).collect();
         loops.push(path_loop(&triangle, &[None, None, None], backwards));
@@ -225,7 +229,7 @@ pub fn ellipse() -> impl Strategy<Value = (Profile, f64)> {
                 plane,
                 outer: ProfileLoop::Ellipse {
                     center: Point2::new(cu, cv),
-                    major: along * Vec2::new(angle.cos(), angle.sin()),
+                    major: along * Vec2::new(real::cos(angle), real::sin(angle)),
                     minor_radius: across,
                 },
                 holes: Vec::new(),
@@ -337,7 +341,7 @@ fn build_staircase(
     ): StaircaseDraw,
 ) -> Sweep {
     // The axis in (u, v), and the material side of it.
-    let along = Vec2::new(beta.cos(), beta.sin());
+    let along = Vec2::new(real::cos(beta), real::sin(beta));
     let left_normal = Vec2::new(-along.y, along.x);
     let radial = if left { left_normal } else { -left_normal };
     let origin = Point2::new(au, av);
@@ -546,7 +550,7 @@ fn build_general(
     let points: Vec<Point2> = (0..n)
         .map(|k| {
             let a = (k as f64 + jitter[k]) * share;
-            Point2::new(PROFILE_RADIUS * a.cos(), PROFILE_RADIUS * a.sin())
+            Point2::new(PROFILE_RADIUS * real::cos(a), PROFILE_RADIUS * real::sin(a))
         })
         .collect();
     // The side along the axis, when the draw touches it.
@@ -560,7 +564,7 @@ fn build_general(
             (points[s], along, Vec2::new(-d.y, d.x))
         }
         None => {
-            let along = Vec2::new(beta.cos(), beta.sin());
+            let along = Vec2::new(real::cos(beta), real::sin(beta));
             let left_normal = Vec2::new(-along.y, along.x);
             let radial = if left { left_normal } else { -left_normal };
             // The axis `distance` from the centre, the profile on its

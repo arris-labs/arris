@@ -5,6 +5,7 @@ use arris_check::domain::FaceDomain;
 use arris_check::tree::FaceTree;
 use arris_debug::prop::{self, check as prop_check};
 use arris_debug::unmetered::cut;
+use arris_math::real;
 use arris_math::{Aabb, Point3, Vec3};
 use arris_topo::{Body, FaceId, Model};
 use proptest::prelude::*;
@@ -160,7 +161,9 @@ fn nearest_agrees_with_a_brute_force_box_distance() {
                                 .max(region.min[i] - b.max[i])
                                 .max(0.0)
                         };
-                        let d = (gap(0).powi(2) + gap(1).powi(2) + gap(2).powi(2)).sqrt();
+                        let d =
+                            (real::powi(gap(0), 2) + real::powi(gap(1), 2) + real::powi(gap(2), 2))
+                                .sqrt();
                         (d <= bound).then_some((Some(d), *id))
                     }
                 })

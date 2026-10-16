@@ -6,6 +6,7 @@
 //! point of the rows: before ADR-0019 every one of these pairs was
 //! undecided.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, TAU};
 
 use arris_check::{Level, Lump, Report, ShellNestingFault, Violation, check, lumps};
@@ -62,9 +63,9 @@ fn uv_line(m: &mut Model, u: f64, v: f64, along_u: bool) -> Curve2Id {
 /// ring's axis, so `P(t)` is the torus at `(u, t)`. Its `Z` is the centre
 /// circle's tangent reversed — the axis the elbow's pipe runs along.
 fn tube_frame(u: f64) -> Frame {
-    let radial = Vec3::new(u.cos(), u.sin(), 0.0);
+    let radial = Vec3::new(real::cos(u), real::sin(u), 0.0);
     Frame::from_orthonormal(
-        Point3::new(R * u.cos(), R * u.sin(), 0.0),
+        Point3::new(R * real::cos(u), R * real::sin(u), 0.0),
         radial,
         Vec3::z(),
         radial.cross(&Vec3::z()),
@@ -285,7 +286,7 @@ fn pin_shell(m: &mut Model, base: Frame, radius: f64, height: f64) -> ShellId {
 /// plane, its axis through `through` and its base half of `height` back
 /// along that axis.
 fn pin_frame(through: Point3, tilt: f64, height: f64) -> Frame {
-    let axis = Vec3::new(0.0, tilt.sin(), tilt.cos());
+    let axis = Vec3::new(0.0, real::sin(tilt), real::cos(tilt));
     Frame::new(through - axis * (height / 2.0), axis, Vec3::x()).unwrap()
 }
 
@@ -296,7 +297,7 @@ fn pin_frame(through: Point3, tilt: f64, height: f64) -> Frame {
 fn oblique_plane(tilt: f64) -> Frame {
     Frame::new(
         Point3::origin(),
-        Vec3::new(0.0, -tilt.sin(), tilt.cos()),
+        Vec3::new(0.0, -real::sin(tilt), real::cos(tilt)),
         Vec3::x(),
     )
     .unwrap()

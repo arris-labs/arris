@@ -2,6 +2,7 @@
 //! oracle's `recipe.py` evaluates, so `"50 + R * cos(radians(45))"` means
 //! one thing on both sides.
 
+use arris_math::real;
 use std::collections::BTreeMap;
 
 /// Why an expression did not evaluate.
@@ -137,7 +138,7 @@ impl Parser<'_> {
         if self.peek() == Some('^') {
             self.pos += 1;
             let exp = self.unary()?;
-            return Ok(base.powf(exp));
+            return Ok(real::powf(base, exp));
         }
         Ok(base)
     }
@@ -214,10 +215,10 @@ impl Parser<'_> {
             }
             self.pos += 1;
             let f: fn(f64) -> f64 = match (name, args.len()) {
-                ("sin", 1) => f64::sin,
-                ("cos", 1) => f64::cos,
-                ("tan", 1) => f64::tan,
-                ("atan", 1) => f64::atan,
+                ("sin", 1) => real::sin,
+                ("cos", 1) => real::cos,
+                ("tan", 1) => real::tan,
+                ("atan", 1) => real::atan,
                 ("sqrt", 1) => f64::sqrt,
                 ("radians", 1) => f64::to_radians,
                 ("degrees", 1) => f64::to_degrees,

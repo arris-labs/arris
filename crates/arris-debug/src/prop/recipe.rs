@@ -29,6 +29,7 @@
 //! its cavity, and its probes straddle both skins and its mouth. Tolerances and precision are
 //! the fixture defaults.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 use core::ops::RangeInclusive;
 
@@ -986,7 +987,11 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                 }
                 Shape::Cylinder { radius, height } => match p.face % 3 {
                     0 => (
-                        Point3::new(radius * p.angle.cos(), radius * p.angle.sin(), 0.0),
+                        Point3::new(
+                            radius * real::cos(p.angle),
+                            radius * real::sin(p.angle),
+                            0.0,
+                        ),
                         *radius,
                     ),
                     1 => (Point3::new(0.0, 0.0, height / 2.0), *height),
@@ -1042,7 +1047,8 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
                 Shape::Box { extents } => box_edge(*extents, b.edge),
                 Shape::Cylinder { radius, height } => {
                     let z = if b.edge % 2 == 0 { -height } else { *height } / 2.0;
-                    let p = Point3::new(radius * b.angle.cos(), radius * b.angle.sin(), z);
+                    let p =
+                        Point3::new(radius * real::cos(b.angle), radius * real::sin(b.angle), z);
                     (p, radius.min(*height))
                 }
                 _ => unreachable!("only a box or a cylinder is blended"),

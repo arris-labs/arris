@@ -4,6 +4,7 @@
 //! `Report::unchecked` rather than passing or failing. The rows over a
 //! torus face are in `torus.rs`.
 
+use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
 use arris_check::classify::{Classification, classify_point};
@@ -598,7 +599,7 @@ fn s5_two_coincident_faces_whose_loops_are_a_period_along() {
         frame: Frame::world(),
         radius: r,
     });
-    let at = |angle: f64, z: f64| Point3::new(r * angle.cos(), r * angle.sin(), z);
+    let at = |angle: f64, z: f64| Point3::new(r * real::cos(angle), r * real::sin(angle), z);
     let [v0, v1, v2, v3] = [at(a, 0.0), at(b, 0.0), at(b, h), at(a, h)]
         .map(|p| m.raw().add_vertex(Vertex::new(p, tol)));
     let arc = |m: &mut Model, z: f64, from, to| {

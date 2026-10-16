@@ -14,6 +14,7 @@
 //! (`crates/arris-ops/tests/blend_prop.rs`).
 
 use arris_geom::{Profile, ProfileLoop, ProfileSegment};
+use arris_math::real;
 use arris_math::{Frame, Point2, Point3};
 use proptest::prelude::*;
 
@@ -131,7 +132,7 @@ impl Turned {
 
 /// The signed angle swept from `from` to `to` about `centre` through `via`.
 pub fn sweep(from: Point2, via: Point2, to: Point2, centre: Point2) -> f64 {
-    let angle = |p: Point2| (p.y - centre.y).atan2(p.x - centre.x);
+    let angle = |p: Point2| real::atan2(p.y - centre.y, p.x - centre.x);
     let wrap = |a: f64| a.rem_euclid(core::f64::consts::TAU);
     let (a, b) = (
         wrap(angle(via) - angle(from)),
@@ -155,7 +156,12 @@ fn line(x: f64, y: f64) -> Piece {
 /// An arc of the circle about `centre` of `radius` from angle `from` to
 /// angle `to`, through the angle between.
 fn arc(centre: Point2, radius: f64, from: f64, to: f64) -> Piece {
-    let at = |a: f64| p(centre.x + radius * a.cos(), centre.y + radius * a.sin());
+    let at = |a: f64| {
+        p(
+            centre.x + radius * real::cos(a),
+            centre.y + radius * real::sin(a),
+        )
+    };
     Piece::Arc {
         to: at(to),
         via: at((from + to) / 2.0),
@@ -177,7 +183,7 @@ fn shoulder() -> impl Strategy<Value = (Point2, Vec<Piece>)> {
     )
         .prop_map(|(r1, h1, h3, t, slope)| {
             let r2 = r1 * (1.0 - t);
-            let h2 = (r1 - r2).abs() / slope.tan();
+            let h2 = (r1 - r2).abs() / real::tan(slope);
             let top = h1 + h2 + h3;
             (
                 p(0.0, 0.0),
@@ -208,7 +214,7 @@ fn dome() -> impl Strategy<Value = (Point2, Vec<Piece>)> {
             // The rim is at angle `atan k` above the sphere's equator, the
             // apex at `π/2`.
             let centre = p(0.0, c);
-            let from = k.atan();
+            let from = real::atan(k);
             let to = core::f64::consts::FRAC_PI_2;
             (
                 p(0.0, 0.0),
@@ -236,9 +242,9 @@ fn bead() -> impl Strategy<Value = (Point2, Vec<Piece>)> {
         .prop_map(|(q, g, w, a1, a2)| {
             let (a1, a2) = (a1.to_radians(), a2.to_radians());
             let cx = g * q;
-            let r = cx + q * a1.cos();
-            let cz = w - q * a1.sin();
-            let end = p(cx + q * a2.cos(), cz + q * a2.sin());
+            let r = cx + q * real::cos(a1);
+            let cz = w - q * real::sin(a1);
+            let end = p(cx + q * real::cos(a2), cz + q * real::sin(a2));
             (
                 p(0.0, 0.0),
                 vec![

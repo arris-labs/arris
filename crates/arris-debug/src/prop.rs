@@ -51,6 +51,7 @@ pub mod sweep;
 pub mod turned;
 pub mod twin;
 
+use arris_math::real;
 use core::fmt::Debug;
 use core::ops::RangeInclusive;
 
@@ -356,7 +357,7 @@ pub fn unit_vec3() -> impl Strategy<Value = UnitVec3> {
     )
         .prop_map(|(z, theta)| {
             let r = (1.0 - z * z).max(0.0).sqrt();
-            UnitVec3::new_normalize(Vec3::new(r * theta.cos(), r * theta.sin(), z))
+            UnitVec3::new_normalize(Vec3::new(r * real::cos(theta), r * real::sin(theta), z))
         })
 }
 
@@ -373,10 +374,10 @@ pub fn rotation() -> impl Strategy<Value = UnitQuaternion<f64>> {
             let (a, b) = ((1.0 - u1).sqrt(), u1.sqrt());
             let (t2, t3) = (core::f64::consts::TAU * u2, core::f64::consts::TAU * u3);
             UnitQuaternion::new_normalize(Quaternion::new(
-                b * t3.cos(),
-                a * t2.sin(),
-                a * t2.cos(),
-                b * t3.sin(),
+                b * real::cos(t3),
+                a * real::sin(t2),
+                a * real::cos(t2),
+                b * real::sin(t3),
             ))
         })
 }

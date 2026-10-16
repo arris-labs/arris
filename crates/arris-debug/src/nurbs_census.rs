@@ -24,6 +24,7 @@
 //! whether the ball reaches past the B-spline's domain there, and the
 //! tangent chain a fillet of it propagates along.
 
+use arris_math::real;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
@@ -572,7 +573,7 @@ fn conic_of(c: &Curve, range: Interval, tol: f64) -> String {
         let off = (x - centre).dot(&normal);
         plane_dev = plane_dev.max(off.abs());
         let radial = ((x - centre) - normal * off).norm();
-        circle_dev = circle_dev.max(((radial - radius).powi(2) + off * off).sqrt());
+        circle_dev = circle_dev.max((real::powi(radial - radius, 2) + off * off).sqrt());
     }
     if circle_dev <= tol {
         format!("a circle r {radius:.6} within {circle_dev:.1e}")
@@ -726,8 +727,9 @@ fn chain_through(
                 }
                 let shares = faces_of(x).iter().any(|f| faces_of(at).contains(f));
                 let sharp = dihedral_sine(m, orientation, x).is_some_and(|s| s > SHARP_SINE);
-                let turn = leaving_at(m, x, vertex)
-                    .map_or(f64::INFINITY, |b| (-own.dot(&b)).clamp(-1.0, 1.0).acos());
+                let turn = leaving_at(m, x, vertex).map_or(f64::INFINITY, |b| {
+                    real::acos((-own.dot(&b)).clamp(-1.0, 1.0))
+                });
                 if shares && sharp && turn <= CHAIN_TURN {
                     next = Some(x);
                 }
@@ -871,9 +873,9 @@ fn fillet_edge(
     let reach = |t: f64| -> f64 {
         match (frame(0, t), frame(1, t)) {
             (Some((_, _, w1)), Some((_, _, w2))) => {
-                let alpha = w1.dot(&w2).clamp(-1.0, 1.0).acos();
+                let alpha = real::acos(w1.dot(&w2).clamp(-1.0, 1.0));
                 // A dihedral near flat is no corner the census meets.
-                radius / (alpha / 2.0).tan().max(f64::EPSILON.sqrt())
+                radius / real::tan(alpha / 2.0).max(f64::EPSILON.sqrt())
             }
             _ => radius,
         }
@@ -958,7 +960,7 @@ fn fillet_edge(
                 let Ok(other) = m.edge(x) else { continue };
                 // The turn from the edge into `x`, as a chain would read it.
                 let turn = match (own, leaving(other)) {
-                    (Some(a), Some(b)) => (-a.dot(&b)).clamp(-1.0, 1.0).acos(),
+                    (Some(a), Some(b)) => real::acos((-a.dot(&b)).clamp(-1.0, 1.0)),
                     _ => continue,
                 };
                 if turn <= CHAIN_TURN {

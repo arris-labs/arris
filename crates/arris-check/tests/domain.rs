@@ -2,6 +2,7 @@
 //! checker): the translate of the domain a face's loops are written in
 //! changes nothing about the side a point is on.
 
+use arris_math::real;
 use core::f64::consts::TAU;
 
 use arris_check::domain::{FaceDomain, band, shifts};
@@ -43,7 +44,7 @@ fn patch(m: &mut Model, torus: bool, [u0, du, v0, dv]: [f64; 4], shift: Vec2) ->
     // The iso-curve along `u` at `v`: a circle whose parameter is `u`.
     let along_u = |v: f64| {
         let (rho, z) = if torus {
-            (MAJOR + MINOR * v.cos(), MINOR * v.sin())
+            (MAJOR + MINOR * real::cos(v), MINOR * real::sin(v))
         } else {
             (MINOR, v)
         };
@@ -55,7 +56,7 @@ fn patch(m: &mut Model, torus: bool, [u0, du, v0, dv]: [f64; 4], shift: Vec2) ->
     // The iso-curve along `v` at `u`, whose parameter is `v`: a ruling on
     // the cylinder, the circle of the tube's section on the torus.
     let along_v = |u: f64| {
-        let radial = Vec3::new(u.cos(), u.sin(), 0.0);
+        let radial = Vec3::new(real::cos(u), real::sin(u), 0.0);
         if torus {
             Curve::Circle {
                 frame: Frame::new(

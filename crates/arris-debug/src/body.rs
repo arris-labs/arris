@@ -2,6 +2,7 @@
 //! `.agents/skills/inspect/SKILL.md` reaches for once a shape has topology,
 //! not just geometry (`geom.rs` is for the shape that has none yet).
 
+use arris_math::real;
 use std::path::{Path, PathBuf};
 
 use arris_geom::region2::{Polygon2, discretise};
@@ -200,7 +201,7 @@ fn polygons_diagonal(polygons: &[Polygon2]) -> f64 {
         }
     }
     if lo[0].is_finite() {
-        ((hi[0] - lo[0]).powi(2) + (hi[1] - lo[1]).powi(2)).sqrt()
+        (real::powi(hi[0] - lo[0], 2) + real::powi(hi[1] - lo[1], 2)).sqrt()
     } else {
         0.0
     }

@@ -11,6 +11,7 @@
 //! its own exact iso-curves — what tessellation's property tests mesh,
 //! since a body is the only way into it.
 
+use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_geom::{Curve, Curve2, GeomError, NurbsCurve, NurbsSurface, Surface};
@@ -1050,14 +1051,14 @@ fn iso_u(surface: &Surface, v: f64) -> Result<Curve, SampleError> {
             radius,
             half_angle,
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             Curve::Circle {
                 frame: frame.with_origin(frame.to_world(Point3::new(0.0, 0.0, v * ca))),
                 radius: positive_radius(radius + v * sa, "a cone patch reaches its apex")?,
             }
         }
         Surface::Sphere { frame, radius } => {
-            let (sv, cv) = v.sin_cos();
+            let (sv, cv) = real::sin_cos(v);
             Curve::Circle {
                 frame: frame.with_origin(frame.to_world(Point3::new(0.0, 0.0, radius * sv))),
                 radius: positive_radius(radius * cv, "a sphere patch reaches a pole")?,
@@ -1068,7 +1069,7 @@ fn iso_u(surface: &Surface, v: f64) -> Result<Curve, SampleError> {
             major_radius,
             minor_radius,
         } => {
-            let (sv, cv) = v.sin_cos();
+            let (sv, cv) = real::sin_cos(v);
             Curve::Circle {
                 frame: frame.with_origin(frame.to_world(Point3::new(0.0, 0.0, minor_radius * sv))),
                 radius: positive_radius(
@@ -1084,7 +1085,7 @@ fn iso_u(surface: &Surface, v: f64) -> Result<Curve, SampleError> {
 /// The surface's iso-curve along `v` at the fixed `u`, parametrised by
 /// `v` itself.
 fn iso_v(surface: &Surface, u: f64) -> Result<Curve, SampleError> {
-    let (su, cu) = u.sin_cos();
+    let (su, cu) = real::sin_cos(u);
     Ok(match *surface {
         Surface::Plane { frame } => Curve::Line {
             origin: frame.to_world(Point3::new(u, 0.0, 0.0)),
@@ -1107,7 +1108,7 @@ fn iso_v(surface: &Surface, u: f64) -> Result<Curve, SampleError> {
             radius,
             half_angle,
         } => {
-            let (sa, ca) = half_angle.sin_cos();
+            let (sa, ca) = real::sin_cos(half_angle);
             let radial = frame.vec_to_world(Vec3::new(cu, su, 0.0));
             Curve::Line {
                 origin: frame.to_world(Point3::new(radius * cu, radius * su, 0.0)),

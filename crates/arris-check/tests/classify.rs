@@ -6,6 +6,7 @@ use arris_check::classify::{Classification, Classifier, ClassifyError, classify_
 use arris_debug::prop::{DEFAULT_SCALE, check as prop_check, point_in_box, radius};
 use arris_debug::sample;
 use arris_geom::Surface;
+use arris_math::real;
 use arris_math::{Frame, Point2, Point3};
 use arris_topo::{Body, EntityKind, Model};
 use proptest::prelude::*;
@@ -86,7 +87,7 @@ fn random_points_against_a_cylinders_closed_form() {
             let body = sample::cylinder(&mut m, r, height)
                 .map_err(|e| TestCaseError::fail(e.to_string()))?;
             // The cylinder stands on the world origin along +Z.
-            let radial = probe.x.hypot(probe.y) - r;
+            let radial = real::hypot(probe.x, probe.y) - r;
             let axial = (-probe.z).max(probe.z - height);
             let outside = radial.max(axial);
             if radial.abs() <= BAND || axial.abs() <= BAND {

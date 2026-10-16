@@ -8,6 +8,7 @@
 use crate::unmetered::{extrude, primitive_box, primitive_cylinder, revolve, transform};
 use arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_math::nalgebra::UnitQuaternion;
+use arris_math::real;
 use arris_math::{Axis, Frame, Isometry, Point2, Point3, UnitVec3, Vec3};
 use arris_ops::OpError;
 use arris_topo::{Body, Model};
@@ -271,8 +272,8 @@ pub fn tangent_pair() -> impl Strategy<Value = TangentPair> {
                 let mut normal = Vec3::zeros();
                 normal[i] = if max_side { 1.0 } else { -1.0 };
                 let mut d = Vec3::zeros();
-                d[j] = angle.cos();
-                d[k] = angle.sin();
+                d[j] = real::cos(angle);
+                d[k] = real::sin(angle);
                 let mid = foot + r * normal;
                 let axis = Axis::new(mid - (height / 2.0) * d, d).ok()?;
                 Some(TangentPair {
@@ -355,9 +356,10 @@ pub fn parallel_pair() -> impl Strategy<Value = ParallelPair> {
             // rulings are at `angle ± α` about `a`'s axis, with `cos α` from
             // the triangle of the two radii and the distance.
             let angle = if kind == ParallelKind::SeamOnRuling {
-                ((distance * distance + r1 * r1 - r2 * r2) / (2.0 * distance * r1))
-                    .clamp(-1.0, 1.0)
-                    .acos()
+                real::acos(
+                    ((distance * distance + r1 * r1 - r2 * r2) / (2.0 * distance * r1))
+                        .clamp(-1.0, 1.0),
+                )
             } else {
                 angle
             };
@@ -366,7 +368,11 @@ pub fn parallel_pair() -> impl Strategy<Value = ParallelPair> {
             } else {
                 (reach * height, height * (1.0 + 2.0 * reach))
             };
-            let centre = Point3::new(distance * angle.cos(), distance * angle.sin(), 0.0);
+            let centre = Point3::new(
+                distance * real::cos(angle),
+                distance * real::sin(angle),
+                0.0,
+            );
             ParallelPair {
                 a: Cylindrical {
                     axis: Axis::z_at(Point3::new(0.0, 0.0, -height / 2.0)),
@@ -414,7 +420,7 @@ impl CrossingPair {
     /// The volume of their common, the Steinmetz solid at `psi`:
     /// `16R³ / (3 sin ψ)`.
     pub fn common_volume(&self) -> f64 {
-        16.0 * self.a.radius.powi(3) / (3.0 * self.psi.sin())
+        16.0 * real::powi(self.a.radius, 3) / (3.0 * real::sin(self.psi))
     }
 }
 
@@ -436,8 +442,8 @@ pub fn crossing_pair() -> impl Strategy<Value = CrossingPair> {
             "two crossing cylinders",
             |(r, psi_deg, stretch, turn, kind, pose)| {
                 let psi = psi_deg.to_radians();
-                let length = stretch * 4.0 * r / psi.sin();
-                let d = Vec3::new(psi.sin(), 0.0, psi.cos());
+                let length = stretch * 4.0 * r / real::sin(psi);
+                let d = Vec3::new(real::sin(psi), 0.0, real::cos(psi));
                 let seam_through_crossing = kind == 0;
                 let turn = if seam_through_crossing {
                     // The seam runs along the frame's `x`, perpendicular to
@@ -524,12 +530,12 @@ pub fn quartic_pair() -> impl Strategy<Value = QuarticPair> {
                     _ => r1 - r2 + (0.1 + 0.8 * gap) * 2.0 * r2,
                 };
                 let psi = psi_deg.to_radians();
-                let d = Vec3::new(psi.sin(), 0.0, psi.cos());
+                let d = Vec3::new(real::sin(psi), 0.0, real::cos(psi));
                 // `b`'s cap discs, of radius `r`, stand more than `R + r`
                 // from `a`'s axis; `a`'s caps above every point of `b`
                 // within `R + r` of that axis.
-                let long_b = stretch * 2.0 * (r1 + r2) / psi.sin();
-                let long_a = stretch * 2.0 * ((r1 + r2) / psi.tan() + r1 + r2);
+                let long_b = stretch * 2.0 * (r1 + r2) / real::sin(psi);
+                let long_a = stretch * 2.0 * ((r1 + r2) / real::tan(psi) + r1 + r2);
                 let centre = Point3::new(0.0, offset, 0.0);
                 let spin = UnitQuaternion::from_axis_angle(&UnitVec3::try_new(d, 0.0)?, turn);
                 // The turn about `b`'s own axis, through `centre`.
@@ -707,7 +713,7 @@ pub fn singular_slice() -> impl Strategy<Value = SingularSlice> {
                 let meridian = !cone && kind == 0;
                 let spin = match beside {
                     (0, exponent, below) if !meridian => {
-                        let off = 10f64.powf(exponent);
+                        let off = real::powf(10f64, exponent);
                         if below { -off } else { off }
                     }
                     _ => spin,
@@ -725,7 +731,7 @@ pub fn singular_slice() -> impl Strategy<Value = SingularSlice> {
                 let quarter = core::f64::consts::FRAC_PI_2;
                 let tilt = match solid {
                     SingularSolid::Cone { radius, height } => {
-                        quarter + 0.8 * s * (radius / height).atan()
+                        quarter + 0.8 * s * real::atan(radius / height)
                     }
                     SingularSolid::Ball { .. } if kind == 0 => quarter,
                     SingularSolid::Ball { .. } => {
@@ -803,7 +809,7 @@ impl QuadricSolid {
     /// tube). Strictly interior for every input in `[0, 1]³`.
     pub fn interior(&self, s: f64, t: f64, w: f64) -> Point3 {
         let turn = core::f64::consts::TAU * t;
-        let (sin, cos) = turn.sin_cos();
+        let (sin, cos) = real::sin_cos(turn);
         let s = 0.9 * s;
         let along = 0.1 + 0.8 * w;
         match *self {
@@ -820,12 +826,16 @@ impl QuadricSolid {
                 // `w` as the latitude, `s` the fraction of the radius.
                 let lat = core::f64::consts::PI * (w - 0.5);
                 let r = s * radius;
-                Point3::new(r * lat.cos() * cos, r * lat.cos() * sin, r * lat.sin())
+                Point3::new(
+                    r * real::cos(lat) * cos,
+                    r * real::cos(lat) * sin,
+                    r * real::sin(lat),
+                )
             }
             QuadricSolid::Ring { major, minor } => {
                 let tube = core::f64::consts::TAU * w;
-                let rho = major + s * minor * tube.cos();
-                Point3::new(rho * cos, rho * sin, s * minor * tube.sin())
+                let rho = major + s * minor * real::cos(tube);
+                Point3::new(rho * cos, rho * sin, s * minor * real::sin(tube))
             }
             QuadricSolid::EllipticPrism { a, b, height } => {
                 Point3::new(s * a * cos, s * b * sin, along * height)
@@ -840,10 +850,10 @@ impl QuadricSolid {
                 bottom,
                 top,
                 height,
-            } => bottom.max(top).hypot(height),
+            } => real::hypot(bottom.max(top), height),
             QuadricSolid::Ball { radius } => radius,
             QuadricSolid::Ring { major, minor } => major + minor,
-            QuadricSolid::EllipticPrism { a, b, height } => a.max(b).hypot(height),
+            QuadricSolid::EllipticPrism { a, b, height } => real::hypot(a.max(b), height),
         }
     }
 
@@ -1496,7 +1506,7 @@ fn band_pair_from(
             let bore = outer * within(f[1]);
             let tall = e(f[2]);
             let phi = core::f64::consts::TAU * f[3];
-            let (s, c) = phi.sin_cos();
+            let (s, c) = real::sin_cos(phi);
             (
                 BandContact::CoaxialRod,
                 &all[..],
@@ -1520,7 +1530,7 @@ fn band_pair_from(
             let bore = outer * within(f[1]);
             let tall = e(f[2]);
             let phi = core::f64::consts::TAU * f[3];
-            let (s, c) = phi.sin_cos();
+            let (s, c) = real::sin_cos(phi);
             (
                 BandContact::CoaxialBore,
                 &rigid[..],
@@ -1886,10 +1896,10 @@ mod tests {
             let r = pair.a.radius;
             prop_assert_eq!(pair.b.radius, r);
             let cos = pair.a.axis.direction.dot(&pair.b.axis.direction);
-            prop_assert!((cos - pair.psi.cos()).abs() < 1e-12);
+            prop_assert!((cos - real::cos(pair.psi)).abs() < 1e-12);
             for c in [pair.a, pair.b] {
                 prop_assert!(c.axis.at(c.height / 2.0).coords.norm() < 1e-12 * MAX_EXTENT);
-                prop_assert!(c.height / 2.0 * pair.psi.sin() > 2.0 * r);
+                prop_assert!(c.height / 2.0 * real::sin(pair.psi) > 2.0 * r);
             }
             if pair.seam_through_crossing {
                 let turn = pair.b.pose.then(&pair.a.pose.inverse());

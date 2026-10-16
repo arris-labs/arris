@@ -263,6 +263,7 @@ impl Provenance {
 
 #[cfg(test)]
 mod tests {
+    use arris::math::real;
     use std::collections::BTreeSet;
 
     use arris::Control;
@@ -285,7 +286,11 @@ mod tests {
         let mut tools = Vec::new();
         for i in 0..8 {
             let angle = f64::from(i) * std::f64::consts::FRAC_PI_4;
-            let base = Point3::new(50.0 + 35.0 * angle.cos(), 50.0 + 35.0 * angle.sin(), -1.0);
+            let base = Point3::new(
+                50.0 + 35.0 * real::cos(angle),
+                50.0 + 35.0 * real::sin(angle),
+                -1.0,
+            );
             let (tool, made) =
                 arris::ops::primitive_cylinder(&mut kernel, Axis::z_at(base), 3.0, 12.0, &control)
                     .unwrap();

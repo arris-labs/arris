@@ -5,6 +5,7 @@
 use arris_debug::render::colors;
 use arris_debug::{View, polyline_of, render, render_png, wireframe_of};
 use arris_geom::{Curve, Surface};
+use arris_math::real;
 use arris_math::{Frame, Interval, Point3, Vec3};
 use arris_mesh::TriMesh;
 
@@ -28,11 +29,11 @@ fn cylinder_wireframe_with_a_circle_and_an_ellipse_renders() {
     let ellipse = Curve::Ellipse {
         frame: Frame::new(
             Point3::new(0.0, 0.0, 0.5),
-            Vec3::new(0.0, -tilt.sin(), tilt.cos()),
-            Vec3::new(0.0, tilt.cos(), tilt.sin()),
+            Vec3::new(0.0, -real::sin(tilt), real::cos(tilt)),
+            Vec3::new(0.0, real::cos(tilt), real::sin(tilt)),
         )
         .unwrap(),
-        major_radius: 1.0 / tilt.cos(),
+        major_radius: 1.0 / real::cos(tilt),
         minor_radius: 1.0,
     };
     lines.push(polyline_of(&circle, Interval::TURN, 96));
@@ -78,7 +79,7 @@ fn plane_cylinder_sections_render() {
         Frame::from_z(Point3::new(0.0, 0.0, -1.1), Vec3::z()).unwrap(),
         Frame::from_z(
             Point3::new(0.0, 0.0, 0.5),
-            Vec3::new(0.0, -tilt.sin(), tilt.cos()),
+            Vec3::new(0.0, -real::sin(tilt), real::cos(tilt)),
         )
         .unwrap(),
         Frame::from_z(Point3::new(0.0, 0.0, 0.0), Vec3::x()).unwrap(),
