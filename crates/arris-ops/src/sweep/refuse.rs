@@ -6,6 +6,7 @@
 use core::f64::consts::TAU;
 
 use arris_geom::{Curve, FrameField, FrameLaw, ProfileEdge};
+use arris_math::sweep_steps::{CURVATURE_STEP, FOLD_FLAT, FOLD_NEAR};
 use arris_math::{Point3, Tolerance, Vec3};
 
 use crate::error::{OpError, Reason, SweepReason};
@@ -19,21 +20,6 @@ const FOLD_SAMPLES: usize = 16;
 /// length `L` is then sampled down to `L / (16 · 2^10)`, finer than the
 /// frame field's own table; a structural bound, not a tolerance.
 const FOLD_DEPTH: usize = 10;
-
-/// The offset of a sample from the limit under which the test refines:
-/// an interval whose ends both sit under half the limit is not cut.
-const FOLD_NEAR: f64 = 0.5;
-
-/// Differences of the carried reach under which an interval is not cut
-/// again, as a fraction of the limit. Below it the reach is flat to the
-/// precision the test can read from a finite difference of the tangent.
-const FOLD_FLAT: f64 = 1e-3;
-
-/// The step of the finite difference of the tangent that gives the
-/// curvature, as a fraction of the span's length. The tangent is
-/// smooth along a span, so the difference's error is of the order of
-/// the step squared, far under the sample's own error.
-const CURVATURE_STEP: f64 = 1e-5;
 
 /// [`SweepReason::ProfileAlongPath`] when the path's start tangent lies
 /// in the profile's plane within the angular tolerance: the profile

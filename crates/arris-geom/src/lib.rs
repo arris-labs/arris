@@ -65,10 +65,7 @@ pub use nurbs::{
     NurbsCurve2, NurbsSurface, OFFSET_FIT_DEGREE, fit_curve, fit_curve_periodic, fit_curve2,
     fit_skin,
 };
-pub use path::{
-    FRAME_ERROR_FLOOR, FRAME_MAX_TURN, FRAME_MIN_STEP, FrameField, FrameLaw, Path, PathDegeneracy,
-    PathError, PathFrame, PathSegment,
-};
+pub use path::{FrameField, FrameLaw, Path, PathDegeneracy, PathError, PathFrame, PathSegment};
 pub use pcurve::{
     PCURVE_FIT_DEGREE, PCURVE_SAMPLES, PCURVE_SINGULAR_BAND, pcurve_ending_on, pcurve_on,
     project_to_plane,

@@ -18,29 +18,13 @@
 //!   motion where the path is a helix about that direction.
 
 use arris_math::nalgebra::UnitQuaternion;
+use arris_math::sweep_steps::{FRAME_ERROR_FLOOR, FRAME_MAX_TURN, FRAME_MIN_STEP};
 use arris_math::{
     Axis, Frame, Interrupted, Interval, Isometry, Meter, Point3, Tolerance, UnitVec3, Vec3,
 };
 
 use crate::NurbsCurve;
 use crate::integrate::{GAUSS_ORDER, gauss_legendre};
-
-/// The most the tangent of a NURBS segment may turn between two entries
-/// of its frame table, in radians. It bounds the table's step beside the
-/// error control, so that a frame between two entries is one reflection
-/// pair from the entry before it, and that a fixed binormal is tested
-/// against the tangent often enough that a crossing is not missed.
-pub const FRAME_MAX_TURN: f64 = 0.05;
-
-/// The smallest step of the frame table, as a fraction of the knot
-/// interval it walks. A step that would be smaller is a cusp or a
-/// discontinuity the table cannot cross: [`PathError::FrameStep`].
-pub const FRAME_MIN_STEP: f64 = 1e-9;
-
-/// The floor under the error the frame table is held to, in radians.
-/// Round-off in a few hundred reflections is of this order; a tolerance
-/// under it would never be met.
-pub const FRAME_ERROR_FLOOR: f64 = 1e-13;
 
 /// One segment of a [`Path`], from the end of the one before.
 ///

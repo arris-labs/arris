@@ -27,6 +27,7 @@ mod precision;
 pub mod predicates;
 mod reflection;
 pub mod roots;
+pub mod sweep_steps;
 mod tolerance;
 
 pub use nalgebra;

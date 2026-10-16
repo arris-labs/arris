@@ -79,7 +79,7 @@ with like. The cost is the inversion per evaluation, microseconds.
   *double reflection* (Wang, Jüttler, Zheng, Liu 2008), a method of
   fourth order, in steps chosen by step doubling: a step is accepted when
   the angle between one step and two half steps is under the angular
-  tolerance (floored at `FRAME_ERROR_FLOOR`, 1e-13, the round-off of a few
+  tolerance (floored at `FRAME_ERROR_FLOOR` (in `arris_math::sweep_steps`), 1e-13, the round-off of a few
   hundred reflections) and the tangent has turned by at most
   `FRAME_MAX_TURN` (0.05 rad). A step under `FRAME_MIN_STEP` of its knot
   interval is a cusp: `FrameStep`. An evaluation between entries is one
