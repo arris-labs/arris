@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 use arris_debug::dump_text;
 use arris_debug::testing::entities_of;
 use arris_debug::unmetered::mass_properties;
-use arris_geom::{LoftError, Profile, ProfileLoop, ProfileSegment};
+use arris_geom::{LoftError, Profile, ProfileLoop, ProfileSegment, SurfaceKind};
 use arris_math::{Frame, Point2, Point3, Vec3, real};
 use arris_ops::{Control, LoftKind, OpError, loft};
 use arris_topo::provenance::{Origin, PathPart, Relation, SweepPart};
@@ -229,4 +229,62 @@ fn a_loft_is_the_same_on_two_runs() {
         dump_text(&m, body).unwrap()
     };
     assert_eq!(build(), build());
+}
+
+/// The kinds of the body's faces, sorted.
+fn kinds(m: &Model, body: Body) -> Vec<SurfaceKind> {
+    let mut kinds: Vec<SurfaceKind> = m
+        .faces(body)
+        .unwrap()
+        .iter()
+        .map(|f| m.surface(m.face(f.id).unwrap().surface()).unwrap().kind())
+        .collect();
+    kinds.sort();
+    kinds
+}
+
+#[test]
+fn coplanar_lines_give_planes_and_coaxial_circles_a_cone_or_a_cylinder() {
+    let mut m = Model::default();
+    let (frustum, _) = ruled(&mut m, &[square(0.0, 2.0), square(3.0, 1.0)], false).unwrap();
+    assert_eq!(kinds(&m, frustum), vec![SurfaceKind::Plane; 6]);
+    let (cone, _) = ruled(&mut m, &[circle(0.0, 3.0), circle(4.0, 1.0)], false).unwrap();
+    assert_eq!(
+        kinds(&m, cone),
+        vec![SurfaceKind::Plane, SurfaceKind::Plane, SurfaceKind::Cone]
+    );
+    let (tube, _) = ruled(&mut m, &[circle(0.0, 3.0), circle(4.0, 3.0)], false).unwrap();
+    assert_eq!(
+        kinds(&m, tube),
+        vec![
+            SurfaceKind::Plane,
+            SurfaceKind::Plane,
+            SurfaceKind::Cylinder
+        ]
+    );
+    // The cone and the cylinder keep the closed forms.
+    let want_tube = PI * 9.0 * 4.0;
+    let mp = mass_properties(&m, tube).unwrap();
+    assert!(
+        (mp.volume - want_tube).abs() <= 1e-12 * want_tube,
+        "{}",
+        mp.volume
+    );
+}
+
+#[test]
+fn a_circle_against_a_square_and_a_twisted_square_stay_nurbs() {
+    let mut m = Model::default();
+    let (body, _) = ruled(&mut m, &[circle(0.0, 4.0), square(6.0, 4.0)], false).unwrap();
+    assert_eq!(
+        kinds(&m, body),
+        vec![
+            SurfaceKind::Plane,
+            SurfaceKind::Plane,
+            SurfaceKind::Nurbs,
+            SurfaceKind::Nurbs,
+            SurfaceKind::Nurbs,
+            SurfaceKind::Nurbs
+        ]
+    );
 }

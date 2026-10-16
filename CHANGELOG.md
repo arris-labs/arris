@@ -102,8 +102,11 @@ into its version (ADR-0027).
   with none (`closed`). Loop `k` of every section goes with loop `k` of the
   others from each loop's start point, and a section with fewer segments
   is cut by arc length where the others have vertices, so a circle lofts to
-  a square. Every face is a degree-one NURBS between the matched segments,
-  and a hole in every section bores through. Fewer than two sections
+  a square. A face between two coplanar lines is a plane, and between two
+  coaxial circles at the same angles a cylinder or a cone, so a frustum
+  works in every boolean and blend a primitive does; any other face is a
+  degree-one NURBS between the matched segments, and a hole in every
+  section bores through. Fewer than two sections
   (three when closed), unequal loop counts, an invalid section and a
   section equal to the one before it are refused by name. Against Open
   CASCADE's `ThruSections` a circle against a square differs by the

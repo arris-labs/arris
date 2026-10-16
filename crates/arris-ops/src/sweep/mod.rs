@@ -14,6 +14,7 @@ mod along;
 mod exact;
 mod extrude;
 mod loft;
+mod loft_exact;
 mod refuse;
 mod revolve;
 

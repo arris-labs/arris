@@ -105,7 +105,7 @@ bound has to be established here.
   move to a new `tests/fixtures/loft/` area. `OpError::Loft` and
   `OpLoftError` land with the op (the binding cannot compile without them);
   `LoftKind` has `Ruled` only until step 5.
-- [ ] Step 4 **[2]** — **Exact ruled spans.** Classify by check, not by
+- [x] Step 4 **[2]** — **Exact ruled spans.** Classify by check, not by
   segment kind: two line segments coplanar within the tolerance give a
   `Plane`; two circles coaxial in parallel planes a `Cylinder` or `Cone`;
   joints between exact spans are the analytic curves. `loft-square-frustum`

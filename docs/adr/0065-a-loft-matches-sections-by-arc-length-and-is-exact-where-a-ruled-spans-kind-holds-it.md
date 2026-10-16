@@ -97,7 +97,16 @@ refusals, not extensions.
 by check, not by segment kind. Two line segments coplanar within the
 tolerance give a `Plane`; two circles coaxial in parallel planes a
 `Cylinder` or a `Cone`; anything else a degree-1 NURBS in the span's
-direction with no fit. Joints between exact spans are the analytic
+direction with no fit. The check reads each matched segment's geometry at
+sixteen samples of its parameter: straight within the linear tolerance, or
+a circle (centre, normal and radius from three samples, the rest on it)
+whose angle only grows. Coaxial means both normals along the line of
+centres within the angular tolerance *and* the two arcs at the same
+angle about that axis at every sample, so a ruling is a generator; a cone
+stands on the smaller circle and points at the larger. A ring edge is the
+analytic line or circle only where every face on it is exact, else the
+segment's NURBS; a rail is a straight line wherever a face on it is exact,
+and a NURBS face meets it by a degree-one pcurve at arc length. Joints between exact spans are the analytic
 curves, beside a NURBS span the segment's exact NURBS (ADR-0063).
 
 **7. A smooth loft interpolates the control nets as Open CASCADE does**

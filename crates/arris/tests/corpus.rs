@@ -877,6 +877,10 @@ corpus_tests! {
     loft_loft_twisted_square => run "loft/loft-twisted-square";
     /// A hole in every section lofted ruled: planes outside, a cone in the bore.
     loft_loft_ring_to_ring => run "loft/loft-ring-to-ring";
+    /// A square lofted ruled to a smaller one: four planes.
+    loft_loft_square_frustum => run "loft/loft-square-frustum";
+    /// Coaxial circles lofted ruled: a cone.
+    loft_loft_cone_frustum => run "loft/loft-cone-frustum";
     /// A circle along a line then a line at a right angle: the path is not
     /// G1, so `OpError::Path` names the corner where Open CASCADE's pipe
     /// carries the profile through it (ADR-0063).
@@ -1830,12 +1834,6 @@ corpus_tests! {
     /// is `Unsupported`. The desired answer is Open CASCADE's distance.
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
-    /// A square lofted ruled to a smaller one: four planes.
-    #[ignore = "builds as degree-1 NURBS and matches the measures; the exact planes and cone are docs/plans/loft.md step 4, which blesses the dump"]
-    regression_loft_square_frustum => run "regression/loft-square-frustum";
-    /// Coaxial circles lofted ruled: a cone.
-    #[ignore = "builds as degree-1 NURBS and matches the measures; the exact planes and cone are docs/plans/loft.md step 4, which blesses the dump"]
-    regression_loft_cone_frustum => run "regression/loft-cone-frustum";
     /// A circle, a rounded rectangle and a circle lofted smooth: one surface through three sections.
     #[ignore = "OpError::Unsupported, the smooth loft is not built yet (docs/plans/loft.md step 5)"]
     regression_loft_duct => run "regression/loft-duct";
