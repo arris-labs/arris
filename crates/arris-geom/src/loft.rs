@@ -591,6 +591,14 @@ pub fn match_sections(
             units.push(pieces);
         }
         let count = units[0].len();
+        // A piece shorter than the parameter's resolution is dropped by the
+        // cut, so on a huge profile two sections can disagree: refuse it.
+        if let Some(section) = units.iter().position(|u| u.len() != count) {
+            return Err(at(section)(GeomError::Degenerate {
+                kind: GeomKind::Curve(CurveKind::Nurbs),
+                reason: "a loop cut into as many pieces as the other sections".to_string(),
+            }));
+        }
         let mut refined_units: Vec<Vec<NurbsCurve>> = vec![Vec::with_capacity(count); units.len()];
         for j in 0..count {
             let column: Vec<NurbsCurve> = units.iter().map(|u| u[j].clone()).collect();
