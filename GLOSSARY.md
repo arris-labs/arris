@@ -55,6 +55,17 @@ A G1 chain of lines, arcs, helix arcs and NURBS curves that a profile is
 carried along by `sweep` (ADR-0063); a corner is refused, never rounded.
 _Avoid_: spine, rail (a rail is the edge a sweep builds, below)
 
+**Loft section**:
+A placed profile a loft passes through; the loft joins two or more, loop for
+loop (ADR-0065).
+_Avoid_: bare "section" (the boolean's word for the curve where two faces
+cross)
+
+**Ruled span**:
+The part of a loft between two consecutive loft sections when it is straight
+between them, a plane, cylinder or cone where its kind holds it and a
+degree-1 NURBS otherwise (ADR-0065).
+
 **Frame law**:
 The rule that turns a path into a frame at every arc length:
 rotation-minimising (the default) or fixed binormal. The `FrameField` is

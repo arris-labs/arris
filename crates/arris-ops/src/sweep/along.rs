@@ -17,8 +17,8 @@
 //! fitted span is fitted.
 
 use arris_geom::{
-    Curve, Curve2, FrameField, FrameLaw, GeomError, NurbsCurve, NurbsSurface, Path, Profile,
-    ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
+    Curve, Curve2, FrameField, FrameLaw, GeomError, LoopNurbs, LoopPiece, NurbsCurve, NurbsSurface,
+    Path, Profile, ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
 };
 use arris_math::{Control, Interval, Isometry, Meter, Point2, UnitVec2, Vec2};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
@@ -31,8 +31,7 @@ use crate::verify;
 
 use super::exact::{ExactSpan, exact_span};
 use super::{
-    SideUse, cap_face, profile_curve_fault, profile_pcurves, record, refuse, side_face,
-    side_orientation, vertex_index,
+    SideUse, cap_face, profile_pcurves, record, refuse, side_face, side_orientation, vertex_index,
 };
 
 /// The degree of a fitted span's surface along the path: a quintic, as a
@@ -43,139 +42,19 @@ use super::{
 /// cubic needs some two hundred. A structural choice, not a tolerance.
 const SWEEP_FIT_DEGREE: usize = 5;
 
-/// The degree every segment of a loop is raised to, so the loop is one
-/// NURBS: a conic's rational quadratic. A structural fact, not a
-/// tolerance.
-const SECTION_DEGREE: usize = 2;
-
-/// One segment's share of a loop's [`Composite`]: the first of its control
-/// points in the loop's net, how many it has, and its own knots, which
-/// run over the segment's own parameter range.
-#[derive(Debug, Clone)]
-struct Piece {
-    first: usize,
-    count: usize,
-    knots: Vec<f64>,
-}
-
-/// A loop of the profile as one closed NURBS on the profile's plane: each
-/// segment rational quadratic — a line raised from degree one, a circle
-/// or an ellipse as its exact arcs — and consecutive segments sharing the
-/// control point at their vertex, with a knot of multiplicity two there,
-/// so the net is the segments' nets end to end and splits back into them
-/// exactly. `segments` are those pieces as curves, on the composite's own
-/// control points, each over its segment's parameter range.
-#[derive(Debug, Clone)]
-struct Composite {
-    curve: NurbsCurve,
-    pieces: Vec<Piece>,
-    segments: Vec<NurbsCurve>,
-}
-
-/// The exact rational quadratic of one profile edge over its range: at
-/// the edge's own parameter for a line, and at the arc's angle at its ends
-/// for a circle or an ellipse ([`NurbsCurve::circle`]).
-fn piece_nurbs(edge: &ProfileEdge) -> Result<NurbsCurve, OpError> {
-    let (lo, hi) = (edge.range.lo(), edge.range.hi());
-    let curve = match &edge.curve {
-        Curve::Line { .. } => {
-            let (a, b) = (edge.curve.point(lo), edge.curve.point(hi));
-            NurbsCurve::new(
-                SECTION_DEGREE,
-                vec![lo, lo, lo, hi, hi, hi],
-                vec![a, a + (b - a) * 0.5, b],
-                vec![1.0; 3],
-            )
-        }
-        &Curve::Circle { ref frame, radius } => NurbsCurve::circle(frame, radius, edge.range),
-        &Curve::Ellipse {
-            ref frame,
-            major_radius,
-            minor_radius,
-        } => NurbsCurve::ellipse(frame, major_radius, minor_radius, edge.range),
-        // `Profile::edges` makes lines, circles and ellipses only.
-        Curve::Nurbs(_) => return Err(profile_curve_fault(edge)),
-    }
-    .map_err(fault_of)?;
-    if curve.degree() != SECTION_DEGREE {
-        return Err(profile_curve_fault(edge));
-    }
-    Ok(curve)
-}
-
-/// The loop `edges`, walked as oriented, as one [`Composite`]. Each
-/// segment after the first keeps the one before's last control point as
-/// its first, its weights scaled to agree there — a rational curve's
-/// weights scaled together are the same curve — and the last segment
-/// ends on the first's first control point, so the loop closes exactly
-/// and the two columns a skin fits for that point are one.
-fn composite(edges: &[ProfileEdge]) -> Result<Composite, OpError> {
-    let mut knots: Vec<f64> = Vec::new();
-    let mut points = Vec::new();
-    let mut weights: Vec<f64> = Vec::new();
-    let mut pieces = Vec::with_capacity(edges.len());
-    for edge in edges {
-        let c = piece_nurbs(edge)?;
-        let (k, p, w) = (c.knots(), c.control_points(), c.weights());
-        match (knots.last().copied(), weights.last().copied()) {
-            (Some(end), Some(w_end)) => {
-                let shift = end - k[0];
-                let scale = w_end / w[0];
-                pieces.push(Piece {
-                    first: points.len() - 1,
-                    count: p.len(),
-                    knots: k.to_vec(),
-                });
-                knots.extend(k[SECTION_DEGREE + 1..k.len() - 1].iter().map(|t| t + shift));
-                points.extend_from_slice(&p[1..]);
-                weights.extend(w[1..].iter().map(|x| x * scale));
-            }
-            _ => {
-                pieces.push(Piece {
-                    first: 0,
-                    count: p.len(),
-                    knots: k.to_vec(),
-                });
-                knots.extend_from_slice(&k[..k.len() - 1]);
-                points.extend_from_slice(p);
-                weights.extend_from_slice(w);
-            }
-        }
-    }
-    let (Some(&end), Some(&first)) = (knots.last(), points.first()) else {
-        return Err(OpError::Internal(Fault::Invariant {
-            what: "a profile loop with a segment",
-        }));
-    };
-    knots.push(end);
-    if let Some(last) = points.last_mut() {
-        *last = first;
-    }
-    let segments = pieces
-        .iter()
-        .map(|piece| {
-            let rows = piece.first..piece.first + piece.count;
-            NurbsCurve::new(
-                SECTION_DEGREE,
-                piece.knots.clone(),
-                points[rows.clone()].to_vec(),
-                weights[rows].to_vec(),
-            )
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(fault_of)?;
-    let curve = NurbsCurve::new(SECTION_DEGREE, knots, points, weights).map_err(fault_of)?;
-    Ok(Composite {
-        curve,
-        pieces,
-        segments,
+/// The loop `edges`, walked as oriented, as one [`LoopNurbs`]; a curve
+/// no rational quadratic holds is the profile's fault.
+fn composite(edges: &[ProfileEdge]) -> Result<LoopNurbs, OpError> {
+    LoopNurbs::new(edges).map_err(|e| match e {
+        e @ GeomError::Unsupported { .. } => OpError::Internal(Fault::ProfileCurve(e)),
+        other => fault_of(other),
     })
 }
 
 /// The surface of the skin over one segment's columns `piece`: exact,
 /// since the knot of multiplicity two at each vertex makes the segments'
 /// bases independent; its `u` is the segment's own parameter range.
-fn piece_surface(skin: &NurbsSurface, piece: &Piece) -> Result<NurbsSurface, GeomError> {
+fn piece_surface(skin: &NurbsSurface, piece: &LoopPiece) -> Result<NurbsSurface, GeomError> {
     let [_, m] = skin.counts();
     let rows = piece.first..piece.first + piece.count;
     let at = |i: usize, j: usize| i * m + j;

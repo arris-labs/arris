@@ -34,6 +34,7 @@ mod intersect;
 mod intersect_curve;
 mod intersect_curves;
 mod intersect_spline;
+mod loft;
 mod meridian;
 mod nurbs;
 mod path;
@@ -59,6 +60,9 @@ pub use intersect::{MeetCurve, MeetKind, MeetPoint, SurfaceIntersection, interse
 pub use intersect_curve::{CurveSurfaceHit, CurveSurfaceIntersection, intersect_curve_surface};
 pub use intersect_curves::{
     CurveCurveHit, CurveIntersection, conic_crossings, curves_coincide, intersect_curves,
+};
+pub use loft::{
+    LOOP_DEGREE, LoftError, LoopNurbs, LoopPiece, MatchedLoop, MatchedSection, match_sections,
 };
 pub use nurbs::{
     FitError, MAX_DEGREE, MAX_FIT_SPANS, MAX_OFFSET_PATCHES, MAX_OFFSET_SPANS, NurbsCurve,

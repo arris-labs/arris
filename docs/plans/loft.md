@@ -32,7 +32,7 @@ loft is an operand of every boolean and blend the cycle allows so far.
 
 ## Design deltas
 
-- **ADR-0064 (step 2): a loft matches sections by arc length and is exact
+- **ADR-0065 (step 2): a loft matches sections by arc length and is exact
   where a ruled span's kind holds it.** The matching rule and a split
   section's segment numbering, the ruled span table, the smooth
   interpolation (degree, parameters from step 1), the closed loft, roles,
@@ -43,13 +43,14 @@ loft is an operand of every boolean and blend the cycle allows so far.
     split at its vertices by double knots — lifted from
     `arris-ops::sweep::along`'s private `Composite`, which then uses it.
   - `match_sections(&[Profile], closed, tol) -> Result<Vec<MatchedSection>,
-    LoftError>`: every loop split and made compatible (one degree, one knot
-    vector) across sections.
+    LoftError>`: every loop cut at every vertex's arc-length fraction when
+    counts differ and made compatible (one degree, one knot vector) across
+    sections; `MatchedLoop { nurbs, sources }`.
   - `interpolate_skin(&[NurbsCurve], params, degree, closed) ->
     Result<NurbsSurface, GeomError>`: a surface through compatible
     sections, its isolines at `params` the sections exactly.
   - `LoftError::{TooFewSections, LoopCount { section }, Degenerate { section,
-    loop_index }, ...}`; the final list is ADR-0064's.
+    loop_index }, ...}`; the final list is ADR-0065's.
 - **`arris-topo::provenance`, a break:** `Role::Loft(PathPart)` appended
   after `Sweep`, `PathPart`'s doc widened: span `k` is a path's segment `k`
   or the span from loft section `k` to `k + 1`; a smooth loft has one span.
@@ -88,7 +89,7 @@ bound has to be established here.
   a cubic interpolation of the control nets under chord-length and
   centripetal parameters sits from Open CASCADE's smooth loft on
   `loft-duct` and the closed one (volume, area). Answers open questions 1–2.
-- [ ] Step 2 **[2]** — **ADR-0064, `LoopNurbs` and `match_sections`.**
+- [x] Step 2 **[2]** — **ADR-0065, `LoopNurbs` and `match_sections`.**
   Write the ADR from step 1. Lift the composite loop into `geom` (sweep's
   fixtures unchanged, bit for bit). Add matching and `LoftError`. Tests:
   split points at the measured arc-length ratios, every matched section
@@ -106,7 +107,7 @@ bound has to be established here.
   and `loft-cone-frustum` pass, also held to the frustum's closed-form
   volume `h/3·(A₁ + A₂ + √(A₁A₂))`.
 - [ ] Step 5 **[3]** — **The smooth loft.** `interpolate_skin` in `geom`
-  at the degree and parameters ADR-0064 records (two sections: the ruled
+  at the degree and parameters ADR-0065 records (two sections: the ruled
   surface; Open CASCADE's are degree n − 1 at chord length, a closed loft
   repeating its first section, open question 2); one span per loft. `loft-duct`
   and `loft-closed-torus-like` pass within the tolerances step 1 measured.
@@ -157,7 +158,7 @@ differential at 1000 draws with `loft` drawn and no new failure; pytest and
   arc-length fraction); a start point lying on the other wire's edge adds a
   vertex there. So a section pair of different segment counts matches
   arc-length fractions only where the sections are similar and centred, as
-  the circle and the square fixture are; ADR-0064 chooses its own rule (arc
+  the circle and the square fixture are; ADR-0065 chooses its own rule (arc
   length, the start point fixing the correspondence) and the fixtures place
   start points where Open CASCADE keeps them: `loft-twisted-square` turns
   30°, not 45° (at 45° the nearest vertex is a tie), `loft-circle-to-square`
@@ -181,11 +182,10 @@ differential at 1000 draws with `loft` drawn and no new failure; pytest and
   sampling and the chord taken between sampled points (between vertices it
   is 4e-5 the other way): Open CASCADE takes it on its own nets, so step 5
   tries the chord of the control nets first and, if it cannot reach 1e-5,
-  holds the smooth fixtures to 1e-4 through ADR-0064 rather than closed
+  holds the smooth fixtures to 1e-4 through ADR-0065 rather than closed
   forms. **The plan's cubic and periodic closed loft are wrong for this
-  oracle:** ADR-0064 (step 2) decides between degree n − 1 as Open CASCADE
-  (oscillates for many sections, which is why it caps at 8) and a lower
-  degree held by `measure_differs`; step 5 says which.
-- ⚠ OPEN 3: a split section's `Side { segment }` numbers the matched
-  segments, or the consumer's segment plus a piece index. Agent, step 2,
-  in ADR-0064.
+  oracle:** ADR-0065 §7 takes degree n − 1 as Open CASCADE does and refuses more
+  than nine sections; step 5 settles the chord and the tolerance.
+- ~~OPEN 3~~ (decided, step 2, ADR-0065 §4): a loft's `Side { segment }`
+  numbers the matched segments in the loop's walk; `MatchedLoop::sources`
+  gives the consumer's segment each came from.
