@@ -82,7 +82,7 @@ bound has to be established here.
   `profile-test.sh` take the step 1 list. Check: `tools/profile-test.sh`
   passes; `--profile fast` timed before and after in the commit body. Ran: 534 s →
   428 s wall, 7,631 → 6,008 CPU-s, 2,652 → 2,627 tests (32 cases).
-- [ ] Step 3 **[2]** — `gate.sh`'s `arris-ops` arms as in the deltas,
+- [x] Step 3 **[2]** — `gate.sh`'s `arris-ops` arms as in the deltas,
   the dead arms gone, `gate-test.sh`'s cases for `loft.rs`, `along.rs`,
   `extrude.rs` and `blend/` plus the two drift checks. Check:
   `tools/gate-test.sh` passes, and fails with a dead arm planted.

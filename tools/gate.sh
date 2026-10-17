@@ -23,8 +23,13 @@
 #   crates/arris-{math,geom,topo,check,io}, arris-ops/src/boolean
 #                                     corpus `boolean_*`, `provenance_*` and
 #                                     `split_*` (split is built over the boolean)
-#   arris-ops/src/{sweep,blend,offset,shell,transform,mirror}   that area's corpus tests
+#   arris-ops/src/sweep/{loft,loft_exact}.rs   the `loft` corpus area
+#   arris-ops/src/sweep/along.rs      the `sweep` area (it uses `exact`, which
+#                                     uses `revolve`, but its own change reaches
+#                                     only sweeps along a path)
+#   arris-ops/src/{offset,shell,transform,mirror}   that area's corpus tests
 #                                     (offset/ reaches shell/ too: shell is built over it)
+#   arris-ops/src/{sweep,blend} otherwise   the whole corpus, on purpose
 #   any other crate source (mesh, debug, the rest of ops)   the whole corpus
 #   crates/arris-py/ (anything)       its own tests and its rdeps (none), no
 #                                     corpus: the binding adds no geometry, and
@@ -94,8 +99,12 @@ while IFS= read -r p; do
         arris-ops)
           case "$rest" in
             src/boolean/*) need_corpus part; add_area boolean; add_area provenance; add_area split ;;
-            src/sweep.rs) need_corpus part; add_area sweep ;;
-            src/blend.rs) need_corpus part; add_area blend ;;
+            src/sweep/loft.rs|src/sweep/loft_exact.rs) need_corpus part; add_area loft ;;
+            src/sweep/along.rs) need_corpus part; add_area sweep ;;
+            # The rest of sweep/ (extrude, revolve, exact, refuse, mod) and all
+            # of blend/ feed nearly every recipe: the blend op is in seven
+            # areas' fixtures and extrude in almost all, so the whole corpus.
+            src/sweep/*|src/blend/*) corpus=all ;;
             src/offset/*) need_corpus part; add_area offset; add_area shell ;;
             src/shell/*) need_corpus part; add_area shell ;;
             src/transform.rs|src/mirror.rs) need_corpus part; add_area transform ;;

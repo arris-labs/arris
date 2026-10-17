@@ -46,6 +46,26 @@ has "offset" "$f" "rdeps(arris-ops)"
 has "offset" "$f" "^(offset|"
 lacks "offset" "$f" "boolean"
 
+# A loft change: the loft area alone, plus rdeps (the differential and the
+# recipe properties draw a loft).
+for p in crates/arris-ops/src/sweep/loft.rs crates/arris-ops/src/sweep/loft_exact.rs; do
+  f=$(key filter "$(plan "$p")")
+  has "loft $p" "$f" "rdeps(arris-ops)"
+  has "loft $p" "$f" "^(loft|"
+  lacks "loft $p" "$f" "sweep"
+  lacks "loft $p" "$f" "all()"
+  lacks "loft $p" "$f" "binary_id(arris::corpus)\""
+done
+# A sweep along a path: the sweep area alone.
+f=$(key filter "$(plan crates/arris-ops/src/sweep/along.rs)")
+has "along" "$f" "^(sweep|"
+lacks "along" "$f" "loft"
+# The rest of sweep/ and blend/ is the whole corpus, deliberately.
+for p in crates/arris-ops/src/sweep/extrude.rs crates/arris-ops/src/sweep/exact.rs \
+  crates/arris-ops/src/sweep/mod.rs crates/arris-ops/src/blend/stripe.rs; do
+  has "whole $p" "$(key filter "$(plan "$p")")" "rdeps(arris-ops) | binary_id(arris::corpus)"
+done
+
 # An ops file with no area of its own: the whole corpus.
 f=$(key filter "$(plan crates/arris-ops/src/primitive.rs)")
 has "ops other" "$f" "rdeps(arris-ops) | binary_id(arris::corpus)"
@@ -121,6 +141,29 @@ while IFS= read -r p; do
     *) echo "FAIL coverage $p: $f leaves $c's tests out" >&2; fail=1 ;;
   esac
 done < <(git ls-files crates)
+
+# Drift: every path pattern of an `arris-ops` arm matches a tracked file, so
+# an arm cannot outlive its file; every fixture directory is an area of
+# gate.sh or deliberately whole.
+while IFS= read -r pat; do
+  # shellcheck disable=SC2086
+  found=no
+  for g in ${pat//|/ }; do
+    # shellcheck disable=SC2254
+    while IFS= read -r t; do
+      case "${t#crates/arris-ops/}" in $g) found=yes; break ;; esac
+    done < <(git ls-files crates/arris-ops/src)
+  done
+  [ "$found" = yes ] || { echo "FAIL drift: arm '$pat' matches no tracked file" >&2; fail=1; }
+done < <(sed -n '/^        arris-ops)/,/^        arris-py)/p' "$gate" |
+  sed -n 's/^ *\(src\/[^)]*\)) .*/\1/p')
+whole_dirs="geom regression sheet"
+for d in tests/fixtures/*/; do
+  d=${d%/}; d=${d##*/}
+  grep -qE "^ +[a-z|]*\b$d\b[a-z|]*\)" <(sed -n '/^    tests\/fixtures/,/whole=yes ;;/p' "$gate") ||
+    [[ " $whole_dirs " == *" $d "* ]] ||
+    { echo "FAIL drift: tests/fixtures/$d is neither an area nor deliberately whole" >&2; fail=1; }
+done
 
 # Doc comments: read from the staged diff, in a scratch repo.
 scratch=$(mktemp -d)
