@@ -1969,7 +1969,9 @@ B-Rep).
   stuck hook or test run in this checkout, and only in it.
 - **`tools/test-timings.sh`**: the suite's wall clock, per test binary and
   whole, at whatever `ARRIS_PROPTEST_CASES` is set to; `--profile` times one
-  nextest profile and lists its slowest tests. Sharding the boolean
+  nextest profile and lists its slowest tests; `--slow-set` prints the
+  names the `fast` profile holds out of the hook, at the hook's case
+  counts, with a 5/6 margin for a name already in it. Sharding the boolean
   properties and moving the suite onto `cargo nextest` took
   `cargo nextest run --workspace` from 445.68 s to 70.92 s at 256 cases and
   from 1656.26 s to 254.13 s at 1000, measured with this script on a
