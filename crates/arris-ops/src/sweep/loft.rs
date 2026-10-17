@@ -187,9 +187,10 @@ fn flow(a: &[NurbsCurve], b: &[NurbsCurve], normal: &arris_math::Vec3) -> f64 {
 ///
 /// Errors, the model untouched: [`OpError::Loft`] when the sections
 /// cannot be matched (too few, unequal loop counts, an invalid profile, a
-/// section equal to the one before it), naming the section, or a smooth
+/// section equal to the one before it), naming the section, a smooth
 /// loft has more than [`MAX_SMOOTH_SECTIONS`] (the first counted twice
-/// when closed); [`OpError::Interrupted`] when `control` stops it.
+/// when closed), or its surface through one matched segment cannot be
+/// interpolated ([`LoftError::Smooth`]); [`OpError::Interrupted`] when `control` stops it.
 ///
 /// ```
 /// use arris_geom::{Profile, ProfileLoop, ProfileSegment};
@@ -341,7 +342,13 @@ pub fn loft(
                             .iter()
                             .map(|s| s.loops[li].nurbs.segments[j].clone())
                             .collect();
-                        interpolate_skin(&column, &params, rows - 1, closed).map_err(fault_of)
+                        interpolate_skin(&column, &params, rows - 1, closed).map_err(|source| {
+                            OpError::Loft(LoftError::Smooth {
+                                loop_index: li,
+                                segment: j,
+                                source,
+                            })
+                        })
                     })
                     .collect::<Result<Vec<_>, OpError>>()
             })

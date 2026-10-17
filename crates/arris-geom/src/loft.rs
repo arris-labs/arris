@@ -262,6 +262,22 @@ pub enum LoftError {
         /// Why.
         source: GeomError,
     },
+    /// The surface through the sections of one matched segment could not be
+    /// interpolated: the polynomial would need a degree past the NURBS
+    /// kinds' bound (many distinct arc angles across the sections), or its
+    /// weight would not stay positive, or the parameters leave the system
+    /// singular.
+    #[error(
+        "the smooth loft through loop {loop_index}, segment {segment} cannot be interpolated: {source}"
+    )]
+    Smooth {
+        /// The loop: `0` the outer, the holes from `1`.
+        loop_index: usize,
+        /// The matched segment, as `Role::Loft`'s `Side` numbers it.
+        segment: usize,
+        /// Why.
+        source: GeomError,
+    },
     /// A section is the same as the one before it, loop for loop: the span
     /// between them has no extent.
     #[error("section {section} coincides with section {previous}")]

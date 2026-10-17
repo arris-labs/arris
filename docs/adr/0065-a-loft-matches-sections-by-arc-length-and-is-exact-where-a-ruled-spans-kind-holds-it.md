@@ -90,7 +90,11 @@ closed), `LoopCount { section }`, `Profile { section }` (the profile
 validator's own error), `Loop { section, loop_index }` (a curve no
 rational quadratic holds), `Coincident { section, previous }` (two
 consecutive sections equal control net for control net),
-`TooManySections { given, max }` (a smooth loft past §7's bound). Unequal loop
+`TooManySections { given, max }` (a smooth loft past §7's bound),
+`Smooth { loop_index, segment, source }` (the interpolation of one matched
+segment failed: a degree past the NURBS bound, a weight not staying
+positive, a singular system; with at most nine sections the first is
+unreachable by an honest input, so it is the typed guard, not an `Internal`). Unequal loop
 counts, a point as an end section and a NURBS profile segment are
 refusals, not extensions.
 
