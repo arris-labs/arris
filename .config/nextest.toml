@@ -15,17 +15,43 @@ test-threads = 16
 
 [profile.fast]
 #
-# The slow set, from the 32-case measurement in ADR-0032: a
-# single test that is not a shard of a property and costs ~30 s or more.
+# The slow set: a single test that is not a shard of a property and costs
+# ~30 s or more at the hook's case counts, as `tools/test-timings.sh
+# --slow-set` prints it (ADR-0032's rule, measured 2026-10-17).
 # `tools/profile-test.sh` holds the set to exactly these names.
 default-filter = """
 not (
   test(/^real_/)
-  or test(=guard::coverage)
-  or test(=boolean_fixtures_read_back)
-  or test(=boolean_plate_10x10_holes_cut_many)
-  or test(=part::tests::a_battery_stage_is_held_to_its_class)
   or test(=a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was)
+  or test(=an_oracle_with_no_solid_holds_arris_to_additivity)
+  or test(=arris_and_the_oracle_agree_on_multi_tool_booleans)
+  or test(=blend_drilled_torus_fillet)
+  or test(=blend_fixtures_read_back)
+  or test(=blend_nist_ctc_04_chamfered_wall_fillet)
+  or test(=blend_nist_ftc_10_cylinder_pair_bspline_fillet)
+  or test(=boolean_ball_pole_drill_cut)
+  or test(=boolean_ball_pole_slice_cut)
+  or test(=boolean_fixtures_read_back)
+  or test(=boolean_nist_ctc_04_face_arrangement_turn)
+  or test(=boolean_nist_ctc_05_ap203_box_cut_nurbs_plane)
+  or test(=boolean_nist_ctc_05_ap242_box_cut_nurbs_plane)
+  or test(=boolean_pipe_elbow_fuse)
+  or test(=boolean_pipe_elbow_fuse_band_ends)
+  or test(=boolean_plate_10x10_holes_cut_many)
+  or test(=boolean_revolve_extrude_fuse_cut_rounding_knots)
+  or test(=boolean_ring_corner_common)
+  or test(=boolean_ring_pin_cut)
+  or test(=census::tests::ftc_06_run_is_a_dihedral_jump_of_the_nurbs_cycle)
+  or test(=census::tests::no_split_rims_second_vertex_is_refused)
+  or test(=guard::coverage)
+  or test(=loft_loft_closed_torus_like)
+  or test(=part::tests::a_battery_stage_is_held_to_its_class)
+  or test(=provenance_consumer_rebuild)
+  or test(=split_nurbs_cylinder_oblique)
+  or test(=sweep_fixtures_read_back)
+  or test(=sweep_sweep_spring_cut_split)
+  or test(=the_band_at_the_fixtures_numbers)
+  or test(=transform_mirror_hollow_ring)
 )
 """
 

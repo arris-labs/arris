@@ -78,9 +78,10 @@ bound has to be established here.
   usage line. Check: one run prints the 25 names measured on 10-17 (within
   the noise at the 30 s edge, which the commit lists). Ran: 30 names, the
   25 plus the 5 already in the set, which the mode times too.
-- [ ] Step 2 **[1]** — The slow set moved: `.config/nextest.toml` and
+- [x] Step 2 **[1]** — The slow set moved: `.config/nextest.toml` and
   `profile-test.sh` take the step 1 list. Check: `tools/profile-test.sh`
-  passes; `--profile fast` timed before and after in the commit body.
+  passes; `--profile fast` timed before and after in the commit body. Ran: 534 s →
+  428 s wall, 7,631 → 6,008 CPU-s, 2,652 → 2,627 tests (32 cases).
 - [ ] Step 3 **[2]** — `gate.sh`'s `arris-ops` arms as in the deltas,
   the dead arms gone, `gate-test.sh`'s cases for `loft.rs`, `along.rs`,
   `extrude.rs` and `blend/` plus the two drift checks. Check:
