@@ -199,6 +199,16 @@ but no fixture yet, `fixture` and `excluded` are pinned somewhere that
 fails when the bug moves. Any of these three becomes a fixture and a line
 above when it wants a fix; the block moves or is deleted then.
 
+### provenance-origins-misses-a-body-face-read-back-with-its-orientation
+
+- What: `Provenance.origins(face)` returns `[]` for a face taken from `Model.faces(body)` when the body holds it reversed, though `generated` and `modified` list the face as an output: the lookup compares the shape with its orientation, the record stores outputs forward.
+- Where: seen building `crates/arris-py/examples/bracket.py` (plans/showcase-and-matrix step 1); the example reads `generated` and `modified` instead.
+- Seen: 2026-10-17, local, no seed (deterministic).
+- Reproduce: `model.cut_many(extruded_L, [cylinder])`, then `record.origins(f)` for each `f` in `model.faces(body)` against `record.modified`: the faces with `f.reversed` are empty, the forward one answers.
+- Evidence: output `Face(13)` `reversed=False` answers `[('generated', Face(9))]`; the body's own `Face(13)` has `reversed=True` and answers `[]`.
+- State: measured.
+- The fix is: `Provenance::origins` and `generated_from`/`modified_from` match on the entity, ignoring orientation, with a binding test over a reversed face.
+
 ### curve-surface-hit-off-the-surface-on-a-degenerate-knot-vector
 
 - What: a cubic NURBS curve whose knots collapse into a span about 1e-132 wide, against an analytic surface, reports a hit at `t = 1.61e-132` that lies 4.7e-4 off the surface where the fuzz target allows 1.0e-7.
