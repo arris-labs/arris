@@ -1418,6 +1418,14 @@ section is always a cylinder with every arm a cylinder has. An elliptic
 arc's ends are the ellipse's nearest points to the consumer's, within
 `tol.linear`, and a reversed walk turns its `ccw`.
 
+A **loft section** is a placed `Profile` a loft passes through
+(ADR-0065). `match_sections(&[Profile], closed, tol)` returns a
+`MatchedSection` per profile: its loops as `MatchedLoop { nurbs, sources }`,
+each loop one closed rational quadratic `LoopNurbs` with a double knot at
+every vertex, on the knot vector shared by that loop in every section.
+`sources` gives, per matched segment, the consumer's segment it came from,
+so a split segment's pieces stay traceable.
+
 `Profile::area_and_centroid(tol)` is the region's area and (u, v) centroid
 by `integrate::region_integral` over those oriented edges, so the holes
 subtract themselves.

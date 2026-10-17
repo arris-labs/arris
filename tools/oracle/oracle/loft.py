@@ -14,7 +14,7 @@ on: with it off `ThruSections` does not split a wire with fewer edges and
 lofts the first edge of each (one face, no solid). The compatible-wires
 pass it then runs re-starts a wire at the vertex nearest the previous
 section's start and cuts the wire with fewer edges where the other's
-vertices project onto it (plans/loft step 1, ADR-0064), so fixtures place
+vertices project onto it (ADR-0065), so fixtures place
 their start points where that pass keeps them.
 """
 

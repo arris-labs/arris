@@ -18,7 +18,7 @@ done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
 ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
-then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; loft 10-17, ADR-0065; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -826,7 +826,13 @@ built in this one.*
   (a bent pipe is all-analytic) and fitted elsewhere; nine fixtures
   matched to `MakePipeShell`, five refusal fixtures, five operand
   fixtures, the oblique extrude, `sweep_prop`'s six properties and the
-  Python binding. Loft is next.*
+  Python binding. Loft done 2026-10-17 (ADR-0065): sections matched by
+  arc length from each loop's start, a ruled loft exact as planes,
+  cylinders and cones where the spans hold them, a smooth loft through up
+  to nine sections as Open CASCADE builds it, open or closed; seven
+  fixtures matched to `ThruSections` (the circle to a square and the duct
+  carry the pairing's 1e-3 and 1e-4), three refusal fixtures, four
+  operand fixtures, `loft_prop` and the Python binding.*
 - NURBS against NURBS: a marcher with explicit seam handling,
   `intersect_curves` for two NURBS curves, and the boolean and blends the
   real parts ask of them.
@@ -872,12 +878,12 @@ reads (`target/oracle-cache/`, bypassed by `ARRIS_ORACLE_CACHE=off` in CI
 and nightly): the corpus binary takes 10.3 s cold and 1.3 s warm, and a
 warm run starts no Python. Random recipes over the operations
 `prop::recipe` draws from (every op both interpreters carry but `step`,
-a solid read from a file; `sweep` among them since C10) run through both kernels in the
-differential. At 1000 draws of the fixed seed (measured 2026-10-16, oracle
-cache off), 766 reach a comparison and agree, 188 both refuse, 12 are
-refused by Open CASCADE and 33 by Arris (all `Degenerate(Empty)`). 1 is under a
-named exclusion, waiting on a `regression/` fixture, and none fails. That is
-3.9 s of wall clock per recipe cold. The hook runs 32 cases over what a commit reaches (ADR-0032), a plan's retirement 256 and CI 1000, all on the fixed seed;
+a solid read from a file; `sweep` and `loft` among them since C10) run through both kernels in the
+differential. At 1000 draws of the fixed seed (measured 2026-10-17 with `loft`
+drawn, oracle cache off), 722 reach a comparison and agree, 229 both
+refuse, 3 are refused by Open CASCADE and 46 by Arris (all
+`Degenerate(Empty)`), and none fails or sits under an exclusion. That is
+2.5 s of wall clock per recipe cold. The hook runs 32 cases over what a commit reaches (ADR-0032), a plan's retirement 256 and CI 1000, all on the fixed seed;
 depth comes from `nightly.yml`, which runs every property at 5000 cases
 on a seed drawn from the date, 99,600 CPU-seconds split over six jobs,
 plus the differential at 1000 recipes on the same seed. The corpus
