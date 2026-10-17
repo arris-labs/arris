@@ -28,7 +28,9 @@ directories by now.
   The edge is a margin, not a median: a test enters at 30 s and a name
   already in the set stays from 25 s (5/6), so one run decides. The set is
   30 names (it was 5); they leave the hook only, the default profile runs
-  them.
+  them. The 30 were measured at 32 cases, before the hook
+  dropped to 16; a non-shard test is mostly case-independent, and the
+  next `--slow-set` run re-measures at the hook's count.
 - **The hook runs 16 property cases and 16 differential recipes**
   (`tools/gate.sh`: `cases`, and `diff_cases` follows it). The reasoning of
   ADR-0032 stands: depth is new seeds (nightly) and CI's 1000, 256 at
