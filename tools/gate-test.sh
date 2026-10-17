@@ -26,7 +26,7 @@ has "geom" "$f" "rdeps(arris-geom)"
 has "geom" "$f" "boolean|provenance|split"
 lacks "geom" "$f" "sweep"
 lacks "geom" "$f" "all()"
-equals "geom cases" "$(key cases "$out")" 32
+equals "geom cases" "$(key cases "$out")" 16
 
 # An ops boolean change.
 f=$(key filter "$(plan crates/arris-ops/src/boolean/pave.rs)")

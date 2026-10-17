@@ -7,7 +7,7 @@
 //!
 //! A failure a named exclusion covers is counted under its name
 //! (`differential::EXCLUSIONS`), each citing the regression fixtures that
-//! pin it. CI runs 1000 recipes, and the hook 32.
+//! pin it. CI runs 1000 recipes, and the hook 16.
 
 use arris_debug::{differential, prop};
 

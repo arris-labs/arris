@@ -86,10 +86,17 @@ bound has to be established here.
   the dead arms gone, `gate-test.sh`'s cases for `loft.rs`, `along.rs`,
   `extrude.rs` and `blend/` plus the two drift checks. Check:
   `tools/gate-test.sh` passes, and fails with a dead arm planted.
-- [ ] Step 4 **[2]** — Hook at 16 cases: `gate.sh`, `gate-test.sh`'s
+- [x] Step 4 **[2]** — Hook at 16 cases: `gate.sh`, `gate-test.sh`'s
   expectations, `git.md`, the hook's comment. Measure the whole `fast`
   profile at 16 and the differential at 16 against 32 to settle
-  `diff_cases`. Check: `gate-test.sh`, the timing in the commit body.
+  `diff_cases`. Check: `gate-test.sh`, the timing in the commit body. Ran: 428 → 321 s wall,
+  6,008 → 4,542 CPU-s, 2,627 tests (16 cases); the differential 82 vs 184
+  CPU-s at 16 vs 32 recipes, its wall (42 s) set by the additivity test,
+  so `diff_cases` follows `cases` (16). The profile at 16 had one red:
+  `revolve::the_profile_strategies_touch_the_axis` asserts a coverage a single
+  16-case stream misses (the notch closed into a void); it now draws four
+  seeds, and passes at 16, 32 and 256. No other test of the profile depends
+  on the count.
 - [ ] Step 5 **[1]** — ADR-0066 with the before / after numbers from
   steps 2–4, listed in `docs/adr/README.md`; ARCHITECTURE §The gate's tiers
   says the slow set is the command's output (it says "four" today, the
@@ -116,8 +123,8 @@ the slow set included (the default profile is untouched).
   116 s relink, one line each.
 
 ## Open questions
-- ⚠ OPEN: does the differential keep 32 cases at the hook (`diff_cases`)?
-  Agent decides at step 4 from its measured cost at 16 and 32.
+- Decided at step 4: the differential follows the hook to 16 (nothing in the
+  measurement asks for 32; it saves ~100 CPU-s).
 - Decided at step 1: the threshold's edge is a margin, not a median — a
   test enters at 30 s and a name already in the set stays from 25 s (5/6
   of the threshold), so one run settles it. ADR-0066 records it.

@@ -148,14 +148,14 @@ if [ "${ARRIS_GATE:-}" = full ]; then
   full=yes
 elif [ "$whole" = yes ]; then
   filter='all()'
-  cases=32
+  cases=16
   full=no
 elif [ ${#terms[@]} -eq 0 ] && [ "$prose" = no ]; then
   filter='none()'
-  cases=32
+  cases=16
   full=no
 else
-  cases=32
+  cases=16
   full=no
   parts=()
   if [ ${#terms[@]} -gt 0 ]; then
@@ -182,6 +182,6 @@ fi
 
 echo "filter=$filter"
 echo "cases=$cases"
-echo "diff_cases=32"
+echo "diff_cases=$cases"
 echo "doc=$doc"
 echo "full=$full"

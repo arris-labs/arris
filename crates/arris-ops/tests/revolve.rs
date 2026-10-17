@@ -746,35 +746,43 @@ fn the_general_profile_sweeps_every_surface_kind() {
 #[test]
 fn the_profile_strategies_touch_the_axis() {
     let seen: RefCell<BTreeSet<&'static str>> = RefCell::new(BTreeSet::new());
-    prop::check(prop::profile::rectilinear(), |sweep| {
-        let mut m = Model::default();
-        let (body, p) = revolve(&mut m, &sweep.profile, sweep.axis, sweep.angle).map_err(fail)?;
-        let parts = recorded_parts(&m, body, &p)?;
-        let mut seen = seen.borrow_mut();
-        if parts
-            .iter()
-            .any(|part| matches!(part, SweepPart::Cavity { loop_index: 0, .. }))
-        {
-            seen.insert("a notch closed into a void");
-        }
-        let shared = parts.iter().any(|&part| match part {
-            SweepPart::StartEdge {
-                loop_index,
-                segment,
-            } => {
-                parts.contains(&SweepPart::StartCap)
-                    && !parts.contains(&SweepPart::EndEdge {
-                        loop_index,
-                        segment,
-                    })
+    // A void closed from a notch is rare among rectilinear draws: one stream of
+    // the hook's 16 cases misses it, so the coverage claim draws from several
+    // seeds, each its own `cases()`.
+    for stream in 0..4 {
+        let seed = prop::shard_seed(&prop::seed(), stream);
+        prop::try_check(&seed, prop::profile::rectilinear(), |sweep| {
+            let mut m = Model::default();
+            let (body, p) =
+                revolve(&mut m, &sweep.profile, sweep.axis, sweep.angle).map_err(fail)?;
+            let parts = recorded_parts(&m, body, &p)?;
+            let mut seen = seen.borrow_mut();
+            if parts
+                .iter()
+                .any(|part| matches!(part, SweepPart::Cavity { loop_index: 0, .. }))
+            {
+                seen.insert("a notch closed into a void");
             }
-            _ => false,
-        });
-        if shared {
-            seen.insert("an edge on the axis shared by the flat ends");
-        }
-        Ok(())
-    });
+            let shared = parts.iter().any(|&part| match part {
+                SweepPart::StartEdge {
+                    loop_index,
+                    segment,
+                } => {
+                    parts.contains(&SweepPart::StartCap)
+                        && !parts.contains(&SweepPart::EndEdge {
+                            loop_index,
+                            segment,
+                        })
+                }
+                _ => false,
+            });
+            if shared {
+                seen.insert("an edge on the axis shared by the flat ends");
+            }
+            Ok(())
+        })
+        .unwrap_or_else(|message| panic!("{message}"));
+    }
     prop::check(prop::profile::general(), |sweep| {
         let mut m = Model::default();
         let (body, _) = revolve(&mut m, &sweep.profile, sweep.axis, sweep.angle).map_err(fail)?;

@@ -4,7 +4,7 @@
   hook sizes its gate to what is staged (`tools/gate.sh`, ADR-0032): prose
   runs the docs tests, a version bump `cargo check`, anything else the
   layer rule, fmt, `clippy -D warnings`, the doctests and the `fast`
-  nextest profile at 32 cases over the crates and corpus areas the paths
+  nextest profile at 16 cases over the crates and corpus areas the paths
   reach, and `cargo doc` when a doc comment changed. A commit or gate runs
   with `run_in_background`; wait for its completion notification, never
   `sleep` or a watch on its output for a string. A stuck one is stopped

@@ -13,7 +13,7 @@
 #   fails on a pin the bump missed;
 # - anything else: `tools/gate.sh` sizes it to the staged paths (ADR-0032).
 #   Layers, fmt, clippy and the doctests always; the `fast` nextest profile
-#   (`.config/nextest.toml`: no `real_*`, no slow singles) at 32 cases over
+#   (`.config/nextest.toml`: no `real_*`, no slow singles) at 16 cases over
 #   the crates the paths reach and the corpus areas they can change; `cargo
 #   doc` only when a doc comment changed. A path the classifier cannot place
 #   runs the whole `fast` profile. Depth is the plan's retirement, CI and
