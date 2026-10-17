@@ -1965,7 +1965,8 @@ B-Rep).
   (the default, named). `tools/gate.sh` turns a path set into the filterset,
   case counts and whether `cargo doc` is due, and `tools/gate-test.sh`
   asserts it; the pre-commit hook runs what it says, `/retire-plan` the
-  full profile at 256 cases, CI at 1000.
+  full profile at 256 cases, CI at 1000. `tools/stop-gate.sh` stops a
+  stuck hook or test run in this checkout, and only in it.
 - **`tools/test-timings.sh`**: the suite's wall clock, per test binary and
   whole, at whatever `ARRIS_PROPTEST_CASES` is set to; `--profile` times one
   nextest profile and lists its slowest tests. Sharding the boolean

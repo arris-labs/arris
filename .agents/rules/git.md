@@ -7,7 +7,8 @@
   nextest profile at 32 cases over the crates and corpus areas the paths
   reach, and `cargo doc` when a doc comment changed. A commit or gate runs
   with `run_in_background`; wait for its completion notification, never
-  `sleep` or a watch on its output for a string.
+  `sleep` or a watch on its output for a string. A stuck one is stopped
+  with `tools/stop-gate.sh`, never a bare `pkill -f`.
 - **The full gate** is `ARRIS_GATE=full`'s list: `cargo fmt --check`,
   `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest
   run --workspace` (256 cases, `real_*` included), `cargo test --workspace
