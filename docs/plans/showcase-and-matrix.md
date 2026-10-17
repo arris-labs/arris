@@ -97,7 +97,7 @@ bound has to be established here.
   first because the part may hit a refusal. It hit none: the bracket stands
   as designed. Any refusal becomes a `regression/` fixture and a
   backlog line, and the part changes.
-- [ ] Step 2 **[2]** — The capability matrix: `capability.rs` and its
+- [x] Step 2 **[2]** — The capability matrix: `capability.rs` and its
   blessed `capability.txt`. Each `ok` cell is checker-green, and each
   refusal is named. A cell that faults, rather than refusing, becomes a
   regression fixture.
@@ -107,7 +107,7 @@ bound has to be established here.
   `render_labelled(mesh, labels, palette, view) -> Raster` (a label per
   triangle, the caller saves the raster): the plan's `path` argument and
   per-face labels gave way to what the mesh file carries.
-- [ ] Step 4 **[1]** — `tools/showcase.sh` and `docs/assets/showcase.png`.
+- [x] Step 4 **[1]** — `tools/showcase.sh` and `docs/assets/showcase.png`.
   Read the PNG: every label is visible from the chosen view.
 - [ ] Step 5 **[1]** — ADR-0067. Also: a note on ADR-0034 §1 that ADR-0067
   amends it, and the modelling layer's line under ROADMAP "Beside the
@@ -140,5 +140,6 @@ bound has to be established here.
 
 ## Open questions
 - Settled at step 1: the part is the bracket above; nothing refused.
-- ⚠ OPEN: the image's view and palette. The agent decides at step 4.
-  The human may veto the image before step 7 commits it to the README.
+- Settled at step 4: isometric view (`View::Iso`) and the mid-tone 8-colour palette
+  from `render_labelled.rs`. Every label is visible and distinguishable.
+
