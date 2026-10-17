@@ -1960,11 +1960,15 @@ B-Rep).
   dangling next to one that still resolves, not just by running clean
   against the real tree.
 - **The gate's tiers** (ADR-0032): `.config/nextest.toml` names the `fast`
-  profile (the default minus `real_*` and four single tests over ~30 s;
-  `tools/profile-test.sh` holds the difference to that set) and `full`
+  profile (the default minus `real_*` and the slow set, every single test
+  of ~30 s or more that is not a property shard, as `tools/test-timings.sh
+  --slow-set` prints it; `tools/profile-test.sh` holds the difference to
+  that set) and `full`
   (the default, named). `tools/gate.sh` turns a path set into the filterset,
-  case counts and whether `cargo doc` is due, and `tools/gate-test.sh`
-  asserts it; the pre-commit hook runs what it says, `/retire-plan` the
+  case counts (16 at the hook, ADR-0066) and whether `cargo doc` is due,
+  and `tools/gate-test.sh` asserts it, each `arris-ops` arm against the
+  tree (a `loft` change selects the `loft` area, `along.rs` the `sweep`
+  area, the rest of `sweep/` and `blend/` the whole corpus); the pre-commit hook runs what it says, `/retire-plan` the
   full profile at 256 cases, CI at 1000. `tools/stop-gate.sh` stops a
   stuck hook or test run in this checkout, and only in it.
 - **`tools/test-timings.sh`**: the suite's wall clock, per test binary and

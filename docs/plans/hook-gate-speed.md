@@ -97,7 +97,7 @@ bound has to be established here.
   16-case stream misses (the notch closed into a void); it now draws four
   seeds, and passes at 16, 32 and 256. No other test of the profile depends
   on the count.
-- [ ] Step 5 **[1]** — ADR-0066 with the before / after numbers from
+- [x] Step 5 **[1]** — ADR-0066 with the before / after numbers from
   steps 2–4, listed in `docs/adr/README.md`; ARCHITECTURE §The gate's tiers
   says the slow set is the command's output (it says "four" today, the
   set holds five).

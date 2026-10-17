@@ -17,7 +17,7 @@ test-threads = 16
 #
 # The slow set: a single test that is not a shard of a property and costs
 # ~30 s or more at the hook's case counts, as `tools/test-timings.sh
-# --slow-set` prints it (ADR-0032's rule, measured 2026-10-17).
+# --slow-set` prints it (ADR-0032's rule, ADR-0066's measurement).
 # `tools/profile-test.sh` holds the set to exactly these names.
 default-filter = """
 not (
