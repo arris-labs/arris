@@ -15,15 +15,15 @@ not the latest.
 
 ## Where each one stands
 
-| Area | Open CASCADE | Arris (0.7.0) |
+| Area | Open CASCADE | Arris (0.9.0) |
 |---|---|---|
-| Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS faces read and checked; not yet operands of booleans where they meet the other operand |
-| Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections and extrema) |
-| Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS faces only where no NURBS face meets the other operand |
-| Sections | Full general sections | Exact for conic pairs; traced and fitted to NURBS elsewhere; planar section of a body as a sheet |
-| Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius, on chains of edges between planes and cylinders (coaxial pairs included), plus cone, sphere and torus rims against coaxial faces; no variable radius, no NURBS faces |
-| Shell and offset | Yes, including on NURBS | Offset faces and shell, on analytic faces only |
-| Sweep, loft, pipe | Yes | Not yet |
+| Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS surfaces read, checked, sectioned against analytic surfaces (ADR-0061), and swept/lofted (ADR-0063, ADR-0065) |
+| Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections, extrema, sweep paths, and lofts) |
+| Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS against analytic surfaces (ADR-0061); NURBS against NURBS not yet |
+| Sections | Full general sections | Exact for conic pairs; traced in NURBS parameter plane and fitted elsewhere; planar section of a body as a sheet |
+| Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius, on chains of edges between planes and cylinders (coaxial pairs included), cone, sphere and torus rims, plus walked stripes on NURBS faces (ADR-0062); no variable radius |
+| Shell and offset | Yes, including on NURBS | Offset faces and shell on analytic faces (refuses elliptic cylinder and NURBS for offset and shell) |
+| Sweep, loft, pipe | Yes | Sweep along a path (lines, arcs, helix arcs, B-spline curves, ADR-0063); loft across sections by arc-length matching (ruled and smooth polynomial, ADR-0065); pipe not yet |
 | Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
 | Ray fire | Yes | Yes, on every face kind including NURBS |
 | Healing | `ShapeFix` and sewing, on by default when reading | Two repairs, on by default when reading and each named on the body: a gap up to 5e-4 of the part's size closed by growing that entity's tolerance, and a face the file walks against all its neighbours turned back. Faces that share no edge are not sewn: refused, naming why |
@@ -37,6 +37,31 @@ not the latest.
 | Language and targets | C++; Python through bindings; WebAssembly builds exist but are not its focus | Pure Rust, `#![forbid(unsafe_code)]`, builds for `wasm32`; Python binding on PyPI |
 | Licence | LGPL 2.1 with an exception | MIT or Apache-2.0 |
 | Speed | Mature and tuned | The corpus is timed and a 3× regression against a saved run is flagged; no comparison with OCCT has been run |
+
+## Capability matrix
+
+The matrix of what each operation does and refuses for each face kind, held
+cell for cell to `crates/arris/tests/capability.txt`:
+
+<!-- matrix: capability -->
+| operation | plane | cylinder | elliptic cylinder | cone | sphere | torus | NURBS |
+|---|---|---|---|---|---|---|---|
+| cut | ok | ok | ok | ok | ok | ok | ok |
+| fuse | ok | ok | ok | ok | ok | ok | ok |
+| common | ok | ok | ok | ok | ok | ok | unchecked S5 |
+| split | ok | ok | ok | ok | ok | ok | unchecked S5 |
+| section | ok | ok | ok | ok | ok | ok | ok |
+| fillet | ok | ok | refused Unsupported(plane surface, elliptic cylinder surface) | ok | ok | - | unchecked S5 |
+| chamfer | ok | ok | ok | ok | ok | - | unchecked S5 |
+| offset | ok | ok | refused Degenerate(Offset(NoExactOffset)) | ok | ok | ok | refused Degenerate(Offset(NoExactOffset)) |
+| shell | ok | ok | refused Degenerate(Offset(NoExactOffset)) | ok | ok | refused Degenerate(Shell(NoWalls)) | refused Degenerate(Offset(NoExactOffset)) |
+| sweep operand | ok | ok | ok | ok | ok | ok | ok |
+| loft operand | ok | ok | ok | ok | ok | unchecked S5 | refused Unsupported(NURBS surface, NURBS surface) |
+| ray | ok | ok | ok | ok | ok | ok | ok |
+| distance | ok | ok | ok | ok | ok | ok | ok |
+| STEP round trip | ok | ok | ok | ok | ok | ok | ok |
+<!-- /matrix -->
+
 
 ## Where the approach differs
 
@@ -90,9 +115,9 @@ same band, so no comparison of rates exists. Do not read the cases above
 as "more robust than Open CASCADE".
 
 Cases Open CASCADE builds and Arris does not yet (each is a refusal today):
-NURBS faces meeting the other operand in a boolean, sweeps and lofts,
-variable-radius blends, sewing the free faces of a STEP file, and the cusp blends
-whose walls lie on either side of their shared face. The fixtures that
+NURBS faces meeting another NURBS face in a boolean (NURBS against analytic
+lands in C10), variable-radius blends, sewing the free faces of a STEP file,
+and offset/shell on elliptic cylinder or NURBS surfaces. The fixtures that
 hold these are in `tests/fixtures/` and `docs/ROADMAP.md`.
 
 ## Reproducing the comparison
@@ -116,3 +141,9 @@ cargo nextest run --workspace                      # the corpus runs Arris again
   ships" is the claim; "robust" is not.
 - No production-readiness claim. The API breaks between minor versions
   until 1.0.
+- No claim that Arris "solves topological naming": provenance is what a
+  naming scheme needs, and the scheme is the application's (ADR-0009).
+- No WebAssembly size compared with another kernel: never measured against
+  opencascade.js or others.
+- No claim about the share of mechanical parts covered by analytic kinds:
+  no source exists for such a percentage.

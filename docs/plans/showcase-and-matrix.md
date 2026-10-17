@@ -112,7 +112,7 @@ bound has to be established here.
 - [x] Step 5 **[1]** — ADR-0067. Also: a note on ADR-0034 §1 that ADR-0067
   amends it, and the modelling layer's line under ROADMAP "Beside the
   cycles".
-- [ ] Step 6 **[1]** — COMPARISON.md synced: the matrix embedded with its
+- [x] Step 6 **[1]** — COMPARISON.md synced: the matrix embedded with its
   docs test, the three non-claims, and the version heading.
 - [ ] Step 7 **[1]** — README: the image and script, the audience
   sentence, Features and "Not yet" synced, the matrix linked.

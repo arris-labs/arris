@@ -283,3 +283,22 @@ fn every_published_crate_ships_the_changelog() {
     assert_eq!(published, 8, "the eight published crates");
     assert!(problems.is_empty(), "{}", problems.join("\n"));
 }
+
+/// The capability matrix in `docs/COMPARISON.md` equals `crates/arris/tests/capability.txt`.
+#[test]
+fn the_comparison_holds_the_capability_matrix() {
+    let root = repo_root();
+    let comparison = std::fs::read_to_string(root.join("docs/COMPARISON.md")).unwrap();
+    let matrix = std::fs::read_to_string(root.join("crates/arris/tests/capability.txt")).unwrap();
+    let open = "<!-- matrix: capability -->\n";
+    let start = comparison.find(open).expect("the capability matrix block") + open.len();
+    let end = start
+        + comparison[start..]
+            .find("<!-- /matrix -->")
+            .expect("the block's end");
+    assert_eq!(
+        &comparison[start..end],
+        &matrix,
+        "keep COMPARISON.md equal to crates/arris/tests/capability.txt"
+    );
+}
