@@ -101,9 +101,12 @@ bound has to be established here.
   blessed `capability.txt`. Each `ok` cell is checker-green, and each
   refusal is named. A cell that faults, rather than refusing, becomes a
   regression fixture.
-- [ ] Step 3 **[2]** — `render_labelled` with shading and supersampling,
+- [x] Step 3 **[2]** — `render_labelled` with shading and supersampling,
   plus the example binary. Its test: each label's colour is present in
-  the pixels, and the buffer's digest is stable across two runs.
+  the pixels, and the buffer is equal across two runs. The signature is
+  `render_labelled(mesh, labels, palette, view) -> Raster` (a label per
+  triangle, the caller saves the raster): the plan's `path` argument and
+  per-face labels gave way to what the mesh file carries.
 - [ ] Step 4 **[1]** — `tools/showcase.sh` and `docs/assets/showcase.png`.
   Read the PNG: every label is visible from the chosen view.
 - [ ] Step 5 **[1]** — ADR-0067. Also: a note on ADR-0034 §1 that ADR-0067

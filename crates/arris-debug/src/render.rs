@@ -242,6 +242,97 @@ pub fn render(
     Raster { pixels: fb.color }
 }
 
+/// The supersampling factor of [`render_labelled`]: each pixel is the mean
+/// of this many samples along each axis.
+const SAMPLES: u32 = 2;
+
+/// Why [`render_labelled`] was given labels it cannot draw.
+#[derive(Debug, thiserror::Error)]
+pub enum LabelError {
+    /// `labels` is not one entry per triangle.
+    #[error("{labels} labels for {triangles} triangles")]
+    Count {
+        /// The labels given.
+        labels: usize,
+        /// The mesh's triangles.
+        triangles: usize,
+    },
+    /// A label names no palette entry.
+    #[error("label {label} on triangle {triangle}, but the palette has {palette} colours")]
+    Palette {
+        /// The label.
+        label: usize,
+        /// The first triangle carrying it.
+        triangle: usize,
+        /// The palette's length.
+        palette: usize,
+    },
+}
+
+/// Renders `mesh` with each triangle in the `palette` colour of its label
+/// (`labels[t]` for triangle `t`), Lambert-shaded and supersampled
+/// 2 × 2 times, so a reader sees form and the operation that made a
+/// face at once. The mesh's edges are drawn thin in black. Unlike
+/// [`render`] it colours by what the caller says, not by face id, and does
+/// not quantise the shading. Deterministic: two calls give equal buffers.
+///
+/// ```
+/// use arris_debug::{View, render_labelled};
+/// use arris_mesh::TriMesh;
+///
+/// let raster = render_labelled(&TriMesh::new(), &[], &[], View::Iso).unwrap();
+/// assert_eq!(raster.histogram().len(), 1, "only the background");
+/// ```
+pub fn render_labelled(
+    mesh: &TriMesh,
+    labels: &[usize],
+    palette: &[[u8; 3]],
+    view: View,
+) -> Result<Raster, LabelError> {
+    let triangles = mesh.triangles().len();
+    if labels.len() != triangles {
+        return Err(LabelError::Count {
+            labels: labels.len(),
+            triangles,
+        });
+    }
+    if let Some((triangle, &label)) = labels
+        .iter()
+        .enumerate()
+        .find(|(_, label)| **label >= palette.len())
+    {
+        return Err(LabelError::Palette {
+            label,
+            triangle,
+            palette: palette.len(),
+        });
+    }
+    let mut cam = Camera::fit(view, mesh.aabb());
+    cam.samples = f64::from(SAMPLES);
+    let mut fb = FrameBuffer::sized(WIDTH * SAMPLES, HEIGHT * SAMPLES);
+    let light = cam.light();
+    for (ti, &label) in labels.iter().enumerate() {
+        let Some([a, b, c]) = mesh.triangle_positions(ti) else {
+            continue;
+        };
+        let n = normalize(cross(sub(b, a), sub(c, a)));
+        let shade = 0.3 + 0.7 * dot(n, light).max(0.0);
+        let color =
+            palette[label].map(|ch| (f64::from(ch) * shade).round().clamp(0.0, 255.0) as u8);
+        fb.triangle([cam.project(a), cam.project(b), cam.project(c)], color);
+    }
+    let bias = cam.depth_bias();
+    let positions = mesh.positions();
+    for er in mesh.edges() {
+        let Some(idx) = mesh.edge_polyline(er.edge) else {
+            continue;
+        };
+        let pts: Vec<[f64; 3]> = idx.iter().map(|&i| positions[i as usize]).collect();
+        fb.polyline(&cam, &pts, bias, colors::LINE, i64::from(SAMPLES));
+    }
+    Ok(fb.downsample())
+}
+
 /// A deterministic, well-separated colour for a face id: hue steps by the
 /// golden ratio with the slot index, so neighbouring ids differ clearly.
 pub fn face_color(face: FaceId) -> [u8; 3] {
@@ -307,6 +398,8 @@ struct Camera {
     scale: f64,
     center: [f64; 3],
     diagonal: f64,
+    /// Pixels per output pixel along each axis: 1, or 2 when supersampling.
+    samples: f64,
 }
 
 impl Camera {
@@ -336,6 +429,7 @@ impl Camera {
                 scale: 1.0,
                 center: [0.0; 3],
                 diagonal: 1.0,
+                samples: 1.0,
             };
         };
         // Project the eight corners to find the screen extent.
@@ -367,14 +461,15 @@ impl Camera {
             scale,
             center: b.center(),
             diagonal: b.diagonal().max(1e-300),
+            samples: 1.0,
         }
     }
 
     fn project(&self, p: [f64; 3]) -> Screen {
         let d = sub(p, self.center);
         Screen {
-            x: f64::from(WIDTH) / 2.0 + self.scale * dot(d, self.right),
-            y: f64::from(HEIGHT) / 2.0 - self.scale * dot(d, self.up),
+            x: self.samples * (f64::from(WIDTH) / 2.0 + self.scale * dot(d, self.right)),
+            y: self.samples * (f64::from(HEIGHT) / 2.0 - self.scale * dot(d, self.up)),
             depth: dot(d, self.toward_viewer),
         }
     }
@@ -396,22 +491,51 @@ impl Camera {
 struct FrameBuffer {
     color: Vec<[u8; 3]>,
     depth: Vec<f64>,
+    width: u32,
+    height: u32,
 }
 
 impl FrameBuffer {
     fn new() -> Self {
-        let n = (WIDTH * HEIGHT) as usize;
+        Self::sized(WIDTH, HEIGHT)
+    }
+
+    fn sized(width: u32, height: u32) -> Self {
+        let n = (width * height) as usize;
         FrameBuffer {
             color: vec![colors::BACKGROUND; n],
             depth: vec![f64::NEG_INFINITY; n],
+            width,
+            height,
         }
     }
 
+    /// The mean of each `SAMPLES`² block, as a [`WIDTH`] × [`HEIGHT`] raster.
+    fn downsample(&self) -> Raster {
+        let k = SAMPLES as usize;
+        let mut pixels = Vec::with_capacity((WIDTH * HEIGHT) as usize);
+        for y in 0..HEIGHT as usize {
+            for x in 0..WIDTH as usize {
+                let mut sum = [0usize; 3];
+                for dy in 0..k {
+                    for dx in 0..k {
+                        let c = self.color[(y * k + dy) * self.width as usize + x * k + dx];
+                        for (s, ch) in sum.iter_mut().zip(c) {
+                            *s += usize::from(ch);
+                        }
+                    }
+                }
+                pixels.push(sum.map(|s| ((s + k * k / 2) / (k * k)) as u8));
+            }
+        }
+        Raster { pixels }
+    }
+
     fn plot(&mut self, x: i64, y: i64, depth: f64, color: [u8; 3]) {
-        if x < 0 || y < 0 || x >= i64::from(WIDTH) || y >= i64::from(HEIGHT) {
+        if x < 0 || y < 0 || x >= i64::from(self.width) || y >= i64::from(self.height) {
             return;
         }
-        let i = (y as usize) * WIDTH as usize + x as usize;
+        let i = (y as usize) * self.width as usize + x as usize;
         if depth >= self.depth[i] {
             self.depth[i] = depth;
             self.color[i] = color;
@@ -437,7 +561,7 @@ impl FrameBuffer {
             .map(|p| p.x)
             .fold(f64::NEG_INFINITY, f64::max)
             .ceil()
-            .min(f64::from(WIDTH) - 1.0) as i64;
+            .min(f64::from(self.width) - 1.0) as i64;
         let y0 = s
             .iter()
             .map(|p| p.y)
@@ -449,7 +573,7 @@ impl FrameBuffer {
             .map(|p| p.y)
             .fold(f64::NEG_INFINITY, f64::max)
             .ceil()
-            .min(f64::from(HEIGHT) - 1.0) as i64;
+            .min(f64::from(self.height) - 1.0) as i64;
         for y in y0..=y1 {
             for x in x0..=x1 {
                 let (px, py) = (x as f64 + 0.5, y as f64 + 0.5);

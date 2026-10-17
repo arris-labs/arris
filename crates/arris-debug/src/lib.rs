@@ -52,4 +52,6 @@ pub use body::{
 };
 pub use dump::{dump_text, euler_line};
 pub use geom::{polyline_of, wireframe_of};
-pub use render::{Highlight, Raster, RenderError, View, render, render_png};
+pub use render::{
+    Highlight, LabelError, Raster, RenderError, View, render, render_labelled, render_png,
+};
