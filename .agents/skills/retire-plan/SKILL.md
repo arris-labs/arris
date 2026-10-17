@@ -25,7 +25,9 @@ Deletion is the "done" signal; anything worth keeping moves first.
    plan's commits may sit between them, so it reads each with `git show`,
    not one range diff). Report its findings by axis, unmerged. Fix a hard
    finding in its own commit (`fix(scope): … (plans/<slug> review)`)
-   before going on; a judgement finding the human decides, and one left
+   before going on. A judgement finding the agent decides on the
+   charter's terms (`SEED.md`), stating the decision and its reason in the
+   reply; only a scope or product question waits for the human. One left
    for later is a backlog line.
 3. Execute *Docs to update* line by line, present tense, no "as of this
    plan". A closed `⚠ OPEN:` gets its ADR now, listed in
