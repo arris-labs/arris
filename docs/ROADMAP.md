@@ -924,6 +924,12 @@ and the platforms of the wheel beyond Linux x86_64. Its own backlog lines
 (corner blocks, enumerating a model's bodies, a record naming foreign
 inputs) are in `docs/BACKLOG.md`.
 
+**The modelling layer** (ADR-0067). Ships in the wheel as pure Python
+(`arris.build`, amending ADR-0034 §1): immutable values with chained
+methods, workplanes as frames, selecting by provenance and role first with
+geometric filters in deterministic order, no positional selectors. Breaks
+and versions in lockstep with the kernel and binding.
+
 ---
 
 ## Named cycles, unordered

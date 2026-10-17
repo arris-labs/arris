@@ -2,6 +2,8 @@
 
 - Status: accepted (2026-10-02)
 - Plan: `python-binding` step 1
+- Amended by: ADR-0067 (§1: the modelling layer ships in the wheel as
+  pure Python, `arris.build`)
 - Amends: ADR-0020 §2, the sentence on the first-party binding ("the
   `#![forbid(unsafe_code)]` exception a binding needs, `publish`, the wasm
   job, PyPI beside crates.io — is its own idea and its own ADR"). There is
@@ -50,7 +52,10 @@ rather than assumed, in a scratch crate on 2026-10-02:
    vocabulary; it is not an ergonomic modelling layer (workplanes,
    selectors, fluent chains), which belongs in another repository on top of
    this one, and not a recipe interpreter. Recipes and `arris-debug` stay
-   dev tooling.
+   dev tooling. *(Amended by ADR-0067: the modelling layer ships in the wheel
+   as pure Python (`arris.build`), rather than belonging in another
+   repository; it selects by provenance and role first, and its values are
+   immutable and chained).*
 2. **`#![forbid(unsafe_code)]` stays on the crate**, workspace lints
    inherited like every other. The evidence is the section above. If a
    later pyo3 upgrade makes it fail, the exception is confined to this

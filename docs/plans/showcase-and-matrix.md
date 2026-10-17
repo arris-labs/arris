@@ -109,7 +109,7 @@ bound has to be established here.
   per-face labels gave way to what the mesh file carries.
 - [x] Step 4 **[1]** — `tools/showcase.sh` and `docs/assets/showcase.png`.
   Read the PNG: every label is visible from the chosen view.
-- [ ] Step 5 **[1]** — ADR-0067. Also: a note on ADR-0034 §1 that ADR-0067
+- [x] Step 5 **[1]** — ADR-0067. Also: a note on ADR-0034 §1 that ADR-0067
   amends it, and the modelling layer's line under ROADMAP "Beside the
   cycles".
 - [ ] Step 6 **[1]** — COMPARISON.md synced: the matrix embedded with its
