@@ -114,7 +114,7 @@ bound has to be established here.
   cycles".
 - [x] Step 6 **[1]** — COMPARISON.md synced: the matrix embedded with its
   docs test, the three non-claims, and the version heading.
-- [ ] Step 7 **[1]** — README: the image and script, the audience
+- [x] Step 7 **[1]** — README: the image and script, the audience
   sentence, Features and "Not yet" synced, the matrix linked.
 
 ## Acceptance

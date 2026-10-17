@@ -12,7 +12,47 @@
   <img src="https://img.shields.io/badge/rustc-1.85%2B-orange.svg" alt="rustc 1.85+">
 </p>
 
-A B-Rep geometric kernel written from scratch in Rust.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/arris-labs/arris/main/docs/assets/showcase.png" width="480" alt="Motor-mount bracket modelled in Arris, faces coloured by provenance">
+</p>
+
+```python
+# A motor-mount bracket: extruded L profile, fused boss, bore and bolt pattern cut
+# in one call, fillets on the bend and hole rims, and a chamfer on the boss.
+# Every face is coloured by the operation that made it, followed through provenance.
+# Full script: crates/arris-py/examples/bracket.py
+
+import arris
+
+model = arris.Model()
+
+# 1. Extrude the L plate
+profile = arris.Profile(
+    arris.Loop.polygon([(0, 0), (60, 0), (60, 8), (8, 8), (8, 50), (0, 50)]),
+    origin=(0, 0, 0), normal=(0, -1, 0), x_axis=(1, 0, 0),
+)
+plate, record = model.extrude(profile, (0, 1, 0), 40)
+
+# 2. Fuse a boss on the upright leg
+boss, _ = model.primitive_cylinder((8, 20, 32), (1, 0, 0), 14, 12)
+body, record = model.fuse(plate, boss)
+
+# 3. Cut bore, bolt holes, and counterbores in one multi-tool call
+tools = [model.primitive_cylinder((-1, 20, 32), (1, 0, 0), 8, 23)[0]]
+for y in (8, 32):
+    tools.append(model.primitive_cylinder((40, y, -1), (0, 0, 1), 3.5, 10)[0])
+    tools.append(model.primitive_cylinder((40, y, 5), (0, 0, 1), 6, 4)[0])
+body, record = model.cut_many(body, tools)
+
+# 4. Fillets and chamfer: edges selected by provenance
+[bend] = [e for e in record.generated_from(arris.Role("extrude", "Rise", 0, 3)) if isinstance(e, arris.Edge)]
+body, record = model.fillet(body, [bend], 4)
+body, record = model.fillet(body, rim_edges, 0.8)
+body, record = model.chamfer(body, [boss_lip], 1.5)
+```
+
+A B-Rep geometric kernel written from scratch in Rust, built for code-CAD script
+authors, AI agents, and CAE pipelines.
 
 An *arris* is the sharp edge where two surfaces meet — the thing a B-Rep kernel exists to compute.
 
@@ -35,14 +75,17 @@ and each change, with each break and its fix, is listed in
   profile of lines, arcs and elliptic arcs; prismatic features (offset
   faces, shell to a wall, split by a plane); a profile as a one-face sheet
   body, moved and mirrored like a solid and measured by area.
+- **Sweeps and lofts:** sweep along a path (lines, arcs, helix arcs, B-spline
+  curves) with rotation-minimising or fixed-binormal frames; loft across
+  sections matched by arc length (ruled or smooth polynomial).
 - **Booleans:** cut, fuse and common, single or multi-tool, over every
   analytic face (plane, cylinder, elliptic cylinder, cone, sphere, torus)
-  in any pose, with multi-shell results (cavities, split cuts, disjoint
-  fuses). Sections are exact where they are conics and traced and fitted to
-  NURBS elsewhere.
+  and NURBS against analytic surfaces, in any pose, with multi-shell results
+  (cavities, split cuts, disjoint fuses). Sections are exact where they are
+  conics and traced in the parameter plane and fitted to NURBS elsewhere.
 - **Blends:** constant-radius fillet and chamfer along chains of edges
   between planes and cylinders, coaxial pairs included, with miters,
-  corners, steps, cusps and hole rims.
+  corners, steps, cusps, hole rims, and walked stripes on NURBS faces.
 - **Queries**, which leave the body unchanged: ray hits, minimum distance
   between points, vertices, edges, faces and solids, interference between
   solids with the shared volume, clash screening of an assembly, and the
@@ -57,14 +100,16 @@ and each change, with each break and its fix, is listed in
   in JSON and bytes; and one body, with its provenance, as bytes that any
   later release reads.
 
-Not yet: sweeps and lofts, variable-radius blends, non-manifold bodies,
-sewing faces that a STEP file leaves unconnected, and booleans where a NURBS face
-meets a face of the other operand. Each of those is a typed refusal today,
-never a wrong answer.
+Not yet: booleans where both operands carry NURBS faces meeting each other,
+variable-radius blends, non-manifold bodies, offset/shell on elliptic cylinder
+or NURBS surfaces, and sewing faces that a STEP file leaves unconnected.
+Each of those is a typed refusal today, never a wrong answer.
 
 Arris is narrower than Open CASCADE and is not aiming for feature parity.
 [docs/COMPARISON.md](docs/COMPARISON.md) sets out what each does today, where
-the two differ in approach, and what has been measured against it.
+the two differ in approach, and what has been measured against it. See the
+test-held [capability matrix](docs/COMPARISON.md#capability-matrix) for what each
+operation does and refuses per face kind.
 
 ## From Python
 
