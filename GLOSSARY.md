@@ -170,6 +170,13 @@ STEP files Arris did not write: the **committed tier** under `real/`, run by
 `cargo test`, and the **fetched tier**, NIST's archives surveyed by
 `tools/real-parts.sh` (ADR-0026).
 
+**Script corpus**:
+About 15 hobby parts and 2–3 CAE parts, each a Python script through the
+public binding the way a script author or an agent writes it, each stage's
+refusal recorded; its histogram ranks the next cycle beside the real-part
+corpus's.
+_Avoid_: DIY part corpus
+
 **Determinism corpus**:
 The recipes whose body dump digests are held equal on every target: native
 and `wasm32-wasip1` match `digests.json` byte for byte
@@ -215,6 +222,12 @@ _Avoid_: client, user (a user is the consumer's)
 **Facade**:
 The consumer's own interface over its kernel, behind which Arris is
 swapped in.
+
+**Modelling layer**:
+The Python API over the binding — workplanes, selectors, chained
+operations — for a script author; the binding beneath it stays 1:1 with
+the facade.
+_Avoid_: DSL, wrapper
 
 **Probe corpus**:
 The first consumer's recorded kernel failures, each a fixture Arris must
