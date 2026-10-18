@@ -1,6 +1,6 @@
 # Idea: developer-first-positioning
 
-- Status: Accepted 2026-10-17 (A, L-A); credibility and ADR-0067 landed. Still to be absorbed, in order: the script corpus (C10), the modelling layer's first milestone, the MCP server
+- Status: Accepted 2026-10-17 (A, L-A); credibility and ADR-0067 landed; the script corpus absorbed by plans/script-corpus. Still to be absorbed, in order: the modelling layer's first milestone, the MCP server
 - Raised: 2026-10-17
 - Prompt (verbatim from the human): "I think that positioning arris target audience as DIY enthusiasts was wrong. Read @docs/notes/positioning.md - do you think that direction is bettter for arris?" — then, on the verdict: "I agree with you on all points, so yes, /idea that"
 

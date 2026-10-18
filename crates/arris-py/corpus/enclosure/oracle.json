@@ -1,0 +1,249 @@
+{
+  "description": "script-corpus/enclosure: a project box, rounded, shelled open at the top, four screw posts with blind holes and root fillets",
+  "params": {},
+  "steps": [
+    {
+      "name": "body",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        60,
+        40,
+        20
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "body",
+      "edges": [
+        [
+          0,
+          0,
+          10
+        ],
+        [
+          60,
+          0,
+          10
+        ],
+        [
+          0,
+          40,
+          10
+        ],
+        [
+          60,
+          40,
+          10
+        ]
+      ],
+      "radius": 3
+    },
+    {
+      "name": "shelled",
+      "op": "shell",
+      "of": "rounded",
+      "openings": [
+        [
+          30,
+          20,
+          20
+        ]
+      ],
+      "thickness": 2,
+      "side": "inward"
+    },
+    {
+      "name": "post0",
+      "op": "cylinder",
+      "base": [
+        8,
+        8,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3.5,
+      "height": 15
+    },
+    {
+      "name": "post1",
+      "op": "cylinder",
+      "base": [
+        52,
+        8,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3.5,
+      "height": 15
+    },
+    {
+      "name": "post2",
+      "op": "cylinder",
+      "base": [
+        8,
+        32,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3.5,
+      "height": 15
+    },
+    {
+      "name": "post3",
+      "op": "cylinder",
+      "base": [
+        52,
+        32,
+        1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3.5,
+      "height": 15
+    },
+    {
+      "name": "posts",
+      "op": "fuse",
+      "bodies": [
+        "shelled",
+        "post0",
+        "post1",
+        "post2",
+        "post3"
+      ]
+    },
+    {
+      "name": "hole0",
+      "op": "cylinder",
+      "base": [
+        8,
+        8,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 15
+    },
+    {
+      "name": "hole1",
+      "op": "cylinder",
+      "base": [
+        52,
+        8,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 15
+    },
+    {
+      "name": "hole2",
+      "op": "cylinder",
+      "base": [
+        8,
+        32,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 15
+    },
+    {
+      "name": "hole3",
+      "op": "cylinder",
+      "base": [
+        52,
+        32,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 15
+    },
+    {
+      "name": "drilled",
+      "op": "cut",
+      "target": "posts",
+      "tools": [
+        "hole0",
+        "hole1",
+        "hole2",
+        "hole3"
+      ]
+    },
+    {
+      "name": "post_roots",
+      "op": "fillet",
+      "of": "drilled",
+      "edges": [
+        [
+          10.474873734152917,
+          10.474873734152917,
+          2
+        ],
+        [
+          54.474873734152915,
+          10.474873734152917,
+          2
+        ],
+        [
+          10.474873734152917,
+          34.474873734152915,
+          2
+        ],
+        [
+          54.474873734152915,
+          34.474873734152915,
+          2
+        ]
+      ],
+      "radius": 0.8
+    }
+  ],
+  "result": "post_roots",
+  "checkpoints": [
+    "body",
+    "rounded",
+    "shelled",
+    "posts",
+    "drilled",
+    "post_roots"
+  ]
+}

@@ -369,6 +369,17 @@ of the step that made the fixture pass, and a later change to it is a
   order 1–1000 units. `Model::new` refuses an inconsistent one and the
   runner reports it as `CorpusError::Precision`.
 
+## Script-corpus recipes
+
+The script corpus (`crates/arris-py/corpus/`, `docs/ARCHITECTURE.md`) keeps
+each part's recipe as `<slug>/oracle.json`, outside this directory and
+unread by the Rust corpus. It is a solid recipe plus `"checkpoints"`, a list
+of step names: the oracle measures the recipe cut off after each as it
+measures `result` and records them under `checkpoints` in `expected.json`
+(`{"refused": why}` for a step Open CASCADE cannot build), and the part's
+script, whose stage names are the checkpoints, is held to them at the
+defaults above. Details: `tools/oracle/README.md`.
+
 ## Geometry fixtures (`"kind": "geometry"`)
 
 `"kind"` absent or `"solid"` is the recipe above; anything else that is

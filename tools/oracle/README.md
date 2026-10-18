@@ -145,6 +145,19 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
 - `oracle/fixture.py` — fixture directories, `expected.json` layout,
   the recipe hash.
 
+## Script-corpus recipes
+
+A part of the script corpus (`crates/arris-py/corpus/<slug>/`) keeps its
+recipe as `oracle.json`, in the grammar of `tests/fixtures/README.md`, and
+`expected.py` and `selftest.py` read it where they find no `fixture.json`.
+It adds one key, `checkpoints`: step names, each measured as `result` is and
+recorded under `checkpoints` in the variant's result (`fixture.compute_checkpoints`),
+or `{"refused": why}` where Open CASCADE cannot build that step. The recipe
+is cut off after each checkpoint, so a step after a refused one is still
+answered; a final step Open CASCADE cannot build makes the result itself
+`{"refused": why}`, its checkpoints kept. `checkpoints` is part of the recipe hash
+where it is present and of no other fixture's.
+
 ## `expected.json`
 
 ```json

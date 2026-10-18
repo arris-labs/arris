@@ -328,6 +328,10 @@ def recipe_hash(fixture: dict) -> str:
     (`fixture_kind`); the Rust side hashes the same ones."""
     keys = {"geometry": GEOMETRY_KEYS, "part": PART_KEYS, "query": QUERY_KEYS}.get(fixture_kind(fixture), SOLID_KEYS)
     evaluated = {k: fixture.get(k) for k in keys}
+    if "checkpoints" in fixture:
+        # A script-corpus recipe only; no other fixture carries the key, so
+        # no committed hash moves.
+        evaluated["checkpoints"] = fixture["checkpoints"]
     return hashlib.sha256(canonical_json(evaluated).encode()).hexdigest()
 
 

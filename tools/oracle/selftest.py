@@ -29,7 +29,7 @@ from oracle import OracleError, require_ocp
 require_ocp()
 
 from oracle import step  # noqa: E402
-from oracle.fixture import compute_expected, corpus_root, fixture_dirs, load_expected, load_fixture  # noqa: E402
+from oracle.fixture import FIXTURE, SCRIPT_RECIPE, compute_expected, corpus_root, fixture_dirs, load_expected, load_fixture  # noqa: E402
 from oracle.measure import DEFAULT_TOLERANCES, compare, format_table, measure, within_own_tolerance  # noqa: E402
 from oracle.recipe import build, fixture_kind, number, probes, variant_names  # noqa: E402
 
@@ -679,8 +679,36 @@ def check_section_smoke() -> bool:
     return ok
 
 
+def check_checkpoints_smoke() -> bool:
+    """A script part's recipe: each named step measured as the result is,
+    and a step Open CASCADE cannot build answered `refused` while the
+    steps before it keep their numbers (the result itself refused too)."""
+    print("smoke: checkpoints, one built and one refused")
+    recipe = {
+        "params": {},
+        "steps": [
+            {"name": "block", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+            {"name": "hole", "op": "cylinder", "base": [5, 5, -1], "axis": [0, 0, 1], "radius": 2, "height": 12},
+            {"name": "drilled", "op": "cut", "target": "block", "tool": "hole"},
+            {"name": "result", "op": "fillet", "of": "drilled", "edges": [[0, 0, 5]], "radius": 20},
+        ],
+        "result": "result",
+        "checkpoints": ["block", "drilled", "result"],
+    }
+    results = compute_expected(recipe)["results"]["default"]
+    got = results["checkpoints"]
+    ok = True
+    if "refused" not in results or "refused" not in got["result"]:
+        print("  a fillet of radius 20 on a 10-block should be refused, at the result and its checkpoint")
+        ok = False
+    ok &= check_analytic("block", got["block"], {"volume": 1000.0, "area": 600.0, "counts": (8, 12, 6, 6), "genus": 0})
+    ok &= check_analytic("drilled", got["drilled"], {"volume": 1000.0 - PI * 4 * 10, "counts": (10, 15, 7, 9), "genus": 1})
+    return ok
+
+
 def run_smokes(tmp: Path) -> bool:
     ok = check_geometry_smoke()
+    ok &= check_checkpoints_smoke()
     ok &= check_query_smoke()
     ok &= check_distance_smoke()
     ok &= check_interference_smoke()
@@ -735,6 +763,9 @@ def round_trip(name: str, fixture: dict, expected: dict, tmp: Path) -> bool:
     ok_all = True
     for variant in variant_names(fixture):
         shape, _ = build(fixture, variant)
+        if "refused" in expected["results"][variant]:
+            print(f"  {name}[{variant}]: Open CASCADE builds no result, no STEP round trip")
+            continue
         if expected["results"][variant]["degenerate"]:
             print(f"  {name}[{variant}]: degenerate, no STEP round trip")
             continue
@@ -789,6 +820,8 @@ def check_committed(name: str, fresh: dict, committed: dict | None) -> bool:
 
 def main(argv: list[str]) -> int:
     dirs = [Path(a) for a in argv] if argv else fixture_dirs()
+    # A glob such as `crates/arris-py/corpus/*/` also names `__pycache__`.
+    dirs = [d for d in dirs if (d / FIXTURE).exists() or (d / SCRIPT_RECIPE).exists()]
     ok = True
     with tempfile.TemporaryDirectory(prefix="arris-oracle-") as tmpdir:
         tmp = Path(tmpdir)

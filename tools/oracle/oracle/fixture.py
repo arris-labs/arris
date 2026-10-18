@@ -15,6 +15,9 @@ from .query import compute_query
 from .recipe import DIR_KEY, build, fixture_kind, probes, recipe_hash, variant_names
 
 FIXTURE = "fixture.json"
+# A script-corpus part's recipe (`crates/arris-py/corpus/<slug>/`): the same
+# grammar, named for what it is beside `part.py`.
+SCRIPT_RECIPE = "oracle.json"
 EXPECTED = "expected.json"
 
 
@@ -32,7 +35,9 @@ def load_fixture(directory: Path) -> dict:
     no recipe writes, and outside the hash."""
     path = directory / FIXTURE
     if not path.exists():
-        raise OracleError(f"no {FIXTURE} in {directory}")
+        path = directory / SCRIPT_RECIPE
+    if not path.exists():
+        raise OracleError(f"no {FIXTURE} or {SCRIPT_RECIPE} in {directory}")
     with path.open() as f:
         fixture = json.load(f)
     fixture[DIR_KEY] = str(directory)
@@ -77,7 +82,17 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
     manifold = fixture.get("analytic", {}).get("expect_error") not in ("non-manifold", "tangent-contact", "frame-does-not-close")
     results = {}
     for variant in variant_names(fixture):
-        shape, shapes = build(fixture, variant)
+        if "checkpoints" in fixture:
+            # A script part's recipe: its final step may be one Open
+            # CASCADE cannot build either, and that is its answer.
+            try:
+                shape, shapes = build(fixture, variant)
+            except Exception as e:  # OracleError, or Open CASCADE's own
+                results[variant] = {"refused": " ".join(str(e).split()) or type(e).__name__}
+                results[variant]["checkpoints"] = compute_checkpoints(fixture, variant, tol)
+                continue
+        else:
+            shape, shapes = build(fixture, variant)
         if shape.ShapeType() == TopAbs_FACE:
             # A sheet (`planar_face`): surface properties, no volume and
             # no probes, no Euler line (a face is an open surface).
@@ -102,7 +117,31 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
                 results[variant]["nurbs_fails"] = " ".join(str(e).split()) or type(e).__name__
         if own and (measures := own_measures(shape, results[variant])) is not None:
             results[variant]["own"] = measures
+        if "checkpoints" in fixture:
+            results[variant]["checkpoints"] = compute_checkpoints(fixture, variant, tol)
     return {"occt": occt_version(), "recipe_sha256": recipe_hash(fixture), "results": results}
+
+
+def compute_checkpoints(fixture: dict, variant: str, tol: dict) -> dict[str, dict]:
+    """Open CASCADE's answer at each step the recipe's `checkpoints` names:
+    what `measure` records of that step as it does of `result`, or
+    `{"refused": why}` where Open CASCADE raised or built nothing it can
+    measure there. Each is the recipe cut off after its step, so a step
+    after a refused one is still answered."""
+    steps = fixture.get("steps", [])
+    names = [s.get("name") for s in steps]
+    out: dict[str, dict] = {}
+    for name in fixture["checkpoints"]:
+        if name not in names:
+            raise OracleError(f"checkpoint {name!r} is not a step")
+        cut = {**fixture, "steps": steps[: names.index(name) + 1], "result": name}
+        cut.pop("checkpoints")
+        try:
+            shape, _ = build(cut, variant)
+            out[name] = measure(shape, [], tol["probe"])
+        except Exception as e:  # OracleError, or Open CASCADE's own on a step it cannot build
+            out[name] = {"refused": " ".join(str(e).split()) or type(e).__name__}
+    return out
 
 
 def compute_part(fixture: dict) -> list[dict]:
@@ -241,6 +280,8 @@ def summary_lines(name: str, expected: dict) -> list[str]:
 
 
 def summary_line(name: str, result: dict) -> str:
+    if "refused" in result:
+        return f"{name}: refused: {result['refused']}"
     c = result["counts"]
     if "volume" not in result and not result["degenerate"]:
         return f"{name}: sheet, area {result['area']:.10g}, V/E/F/L={c['vertices']}/{c['edges']}/{c['faces']}/{c['loops']}"
