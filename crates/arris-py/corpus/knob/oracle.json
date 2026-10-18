@@ -1,0 +1,277 @@
+{
+  "description": "script-corpus/knob: a control knob: revolved, bored from below, eight grip flutes, top edge rounded",
+  "params": {},
+  "steps": [
+    {
+      "name": "body_profile",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              14,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              14,
+              11
+            ]
+          },
+          {
+            "arc_to": [
+              12,
+              14.464101615137753
+            ],
+            "via": [
+              13.464101615137753,
+              13
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              14.464101615137753
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "body",
+      "op": "revolve",
+      "profile": "body_profile",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "bore",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 9
+    },
+    {
+      "name": "flute0",
+      "op": "cylinder",
+      "base": [
+        13.396253221413657,
+        5.548909769293802,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "flute1",
+      "op": "cylinder",
+      "base": [
+        5.548909769293803,
+        13.396253221413657,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "flute2",
+      "op": "cylinder",
+      "base": [
+        -5.548909769293801,
+        13.396253221413657,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "flute3",
+      "op": "cylinder",
+      "base": [
+        -13.396253221413657,
+        5.548909769293804,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "flute4",
+      "op": "cylinder",
+      "base": [
+        -13.396253221413659,
+        -5.5489097692938,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "flute5",
+      "op": "cylinder",
+      "base": [
+        -5.548909769293798,
+        -13.396253221413659,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "flute6",
+      "op": "cylinder",
+      "base": [
+        5.548909769293805,
+        -13.396253221413657,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "flute7",
+      "op": "cylinder",
+      "base": [
+        13.396253221413659,
+        -5.5489097692937985,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 10
+    },
+    {
+      "name": "bored",
+      "op": "cut",
+      "target": "body",
+      "tool": "bore"
+    },
+    {
+      "name": "fluted",
+      "op": "cut",
+      "target": "bored",
+      "tools": [
+        "flute0",
+        "flute1",
+        "flute2",
+        "flute3",
+        "flute4",
+        "flute5",
+        "flute6",
+        "flute7"
+      ]
+    },
+    {
+      "name": "top_round",
+      "op": "fillet",
+      "of": "fluted",
+      "edges": [
+        [
+          0,
+          12,
+          14.464101615137753
+        ]
+      ],
+      "radius": 1
+    }
+  ],
+  "result": "top_round",
+  "checkpoints": [
+    "body",
+    "bored",
+    "fluted",
+    "top_round"
+  ],
+  "tolerances": {
+    "volume_rel": 2e-08,
+    "area_rel": 2e-08,
+    "inertia_rel": 2e-08
+  }
+}

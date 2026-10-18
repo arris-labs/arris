@@ -54,6 +54,12 @@ the evidence for the modelling layer's scope.
   cannot build records `{"refused": why}` as a battery case does. Edge and
   face picks in the recipe are by point, as now; the script picks by
   provenance, so the two meeting is itself checked.
+- **Per-part tolerances.** `oracle.json` may carry `tolerances` in the
+  fixtures' grammar, over the `conftest` defaults, where Open CASCADE's own
+  approximation is the limit (a blend's torus or a helical sweep, as
+  `sweep-thread`'s fixture sets): the knob 2e-8, the bottle cap 1e-6. The
+  harness leaves undecided only the face pairs of two NURBS faces, as the
+  corpus runner does (`NURBS_PAIR`), and faults on any other row.
 - **The test.** `crates/arris-py/tests/test_script_corpus.py`, one case per
   part: run it, compare against `outcome.json` (a changed outcome fails;
   `ARRIS_BLESS=1` rewrites it, and a lifted refusal is a `fixtures:` commit),
@@ -94,7 +100,7 @@ robustness or bound has to be established here.
   end: the enclosure, whose `shell` and boss fillets are the likeliest to
   show script and recipe disagreeing on what was picked.
 - [x] Step 2 **[2]** — The four other prismatic parts.
-- [ ] Step 3 **[2]** — The four revolved parts, the threaded cap's helix
+- [x] Step 3 **[2]** — The four revolved parts, the threaded cap's helix
   sweep among them.
 - [ ] Step 4 **[2]** — The four swept and lofted parts.
 - [ ] Step 5 **[2]** — The two patterned parts.

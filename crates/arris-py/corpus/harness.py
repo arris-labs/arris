@@ -9,6 +9,7 @@ Not part of the wheel: the corpus is outside `python/`.
 
 import importlib.util
 import json
+import re
 import struct
 from pathlib import Path
 
@@ -20,6 +21,12 @@ CORPUS = Path(__file__).resolve().parent
 # them: `OpDegenerateError.reason`, the two kinds of an `*UnsupportedError`,
 # the `detail` of the rest. An entity handle is never recorded.
 ATTRIBUTES = ("reason", "a_kind", "b_kind", "detail")
+
+
+# The one undecided row a built body may carry: a face pair of two NURBS
+# faces, which the surface intersector has no form for yet (the corpus
+# runner leaves the same ones, `arris_debug::corpus::check_leaving_nurbs_pairs`).
+NURBS_PAIR = re.compile(r"^(S5|B1)\? .*\(NURBS\) against .*\(NURBS\) is not decided$")
 
 
 class Fault(Exception):
@@ -74,8 +81,9 @@ class Run:
             raise Ended() from error
         body = made[0]
         report = self.model.check(body, "full")
-        if not report or report.unchecked:
-            raise Fault(f"{name}: the checker at full: {report}, unchecked {list(report.unchecked)}")
+        undecided = [row for row in report.unchecked if not NURBS_PAIR.match(str(row))]
+        if not report or undecided:
+            raise Fault(f"{name}: the checker at full: {report}, unchecked {undecided}")
         self.outcome[name] = "ok"
         self.bodies[name] = body
         self.comparable[name] = not self._finished_short

@@ -1,0 +1,207 @@
+{
+  "description": "script-corpus/bottle-cap: a bottle cap: a revolved cup with a 2.5-turn internal thread swept along a helix and fused, the top rim rounded",
+  "params": {},
+  "steps": [
+    {
+      "name": "body_profile",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          13.5,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              16,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              16,
+              14
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              14
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              12
+            ]
+          },
+          {
+            "line_to": [
+              13.5,
+              12
+            ]
+          },
+          {
+            "line_to": [
+              13.5,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "body",
+      "op": "revolve",
+      "profile": "body_profile",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "thread_profile",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          13.5,
+          0,
+          2
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0.5,
+          -1.2
+        ],
+        "segments": [
+          {
+            "line_to": [
+              -1.2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0.5,
+              1.2
+            ]
+          },
+          {
+            "line_to": [
+              0.5,
+              -1.2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "thread",
+      "op": "sweep",
+      "profile": "thread_profile",
+      "path": {
+        "start": [
+          13.5,
+          0,
+          2
+        ],
+        "segments": [
+          {
+            "helix": {
+              "axis": {
+                "origin": [
+                  0,
+                  0,
+                  2
+                ],
+                "direction": [
+                  0,
+                  0,
+                  1
+                ]
+              },
+              "pitch": 3,
+              "angle_deg": 900
+            }
+          }
+        ]
+      },
+      "law": {
+        "binormal": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "threaded",
+      "op": "fuse",
+      "a": "body",
+      "b": "thread"
+    },
+    {
+      "name": "top_round",
+      "op": "fillet",
+      "of": "threaded",
+      "edges": [
+        [
+          0,
+          16,
+          14
+        ]
+      ],
+      "radius": 1
+    }
+  ],
+  "result": "top_round",
+  "checkpoints": [
+    "body",
+    "thread",
+    "threaded",
+    "top_round"
+  ],
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 1e-06,
+    "centroid_abs": 5e-07,
+    "inertia_rel": 3e-06
+  }
+}

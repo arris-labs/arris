@@ -1,0 +1,186 @@
+{
+  "description": "script-corpus/hose-adapter: a barbed hose adapter: a revolved tube with two barbs, a collar chamfered, wrench flats cut",
+  "params": {},
+  "steps": [
+    {
+      "name": "body_profile",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          5,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              7,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              8.5,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              7,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              8.5,
+              8
+            ]
+          },
+          {
+            "line_to": [
+              7,
+              8
+            ]
+          },
+          {
+            "line_to": [
+              7,
+              10
+            ]
+          },
+          {
+            "line_to": [
+              12,
+              10
+            ]
+          },
+          {
+            "line_to": [
+              12,
+              14
+            ]
+          },
+          {
+            "line_to": [
+              7,
+              14
+            ]
+          },
+          {
+            "line_to": [
+              7,
+              24
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              24
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "body",
+      "op": "revolve",
+      "profile": "body_profile",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "chamfered",
+      "op": "chamfer",
+      "of": "body",
+      "edges": [
+        [
+          0,
+          12,
+          10
+        ],
+        [
+          0,
+          12,
+          14
+        ]
+      ],
+      "distance": 1
+    },
+    {
+      "name": "flat0",
+      "op": "box",
+      "min": [
+        10,
+        -13,
+        9
+      ],
+      "max": [
+        13,
+        13,
+        15
+      ]
+    },
+    {
+      "name": "flat1",
+      "op": "box",
+      "min": [
+        -13,
+        -13,
+        9
+      ],
+      "max": [
+        -10,
+        13,
+        15
+      ]
+    },
+    {
+      "name": "flats",
+      "op": "cut",
+      "target": "chamfered",
+      "tools": [
+        "flat0",
+        "flat1"
+      ]
+    }
+  ],
+  "result": "flats",
+  "checkpoints": [
+    "body",
+    "chamfered",
+    "flats"
+  ]
+}

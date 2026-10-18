@@ -1,0 +1,218 @@
+{
+  "description": "script-corpus/spool-holder: a spool holder: flange and hub revolved, a blind bore, four screw holes, a fillet at the hub's root",
+  "params": {},
+  "steps": [
+    {
+      "name": "body_profile",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              25,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              25,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              8,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              8,
+              50
+            ]
+          },
+          {
+            "line_to": [
+              11,
+              53
+            ]
+          },
+          {
+            "line_to": [
+              11,
+              56
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              56
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "body",
+      "op": "revolve",
+      "profile": "body_profile",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "bore",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 31
+    },
+    {
+      "name": "screw0",
+      "op": "cylinder",
+      "base": [
+        12.727922061357857,
+        12.727922061357855,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 2.5,
+      "height": 6
+    },
+    {
+      "name": "screw1",
+      "op": "cylinder",
+      "base": [
+        -12.727922061357855,
+        12.727922061357857,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 2.5,
+      "height": 6
+    },
+    {
+      "name": "screw2",
+      "op": "cylinder",
+      "base": [
+        -12.727922061357859,
+        -12.727922061357855,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 2.5,
+      "height": 6
+    },
+    {
+      "name": "screw3",
+      "op": "cylinder",
+      "base": [
+        12.727922061357852,
+        -12.727922061357859,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 2.5,
+      "height": 6
+    },
+    {
+      "name": "bored",
+      "op": "cut",
+      "target": "body",
+      "tool": "bore"
+    },
+    {
+      "name": "screw_holes",
+      "op": "cut",
+      "target": "bored",
+      "tools": [
+        "screw0",
+        "screw1",
+        "screw2",
+        "screw3"
+      ]
+    },
+    {
+      "name": "hub_root",
+      "op": "fillet",
+      "of": "screw_holes",
+      "edges": [
+        [
+          0,
+          8,
+          4
+        ]
+      ],
+      "radius": 2
+    }
+  ],
+  "result": "hub_root",
+  "checkpoints": [
+    "body",
+    "bored",
+    "screw_holes",
+    "hub_root"
+  ]
+}

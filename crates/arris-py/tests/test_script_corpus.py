@@ -40,14 +40,22 @@ def waits():
 WAITS = waits()
 
 
-def hold_to_oracle(model, body, want):
+def tolerances(directory):
+    """The part's own `tolerances` (the fixtures' grammar, set where Open
+    CASCADE's approximation of a blend or a helical sweep is the limit) over
+    the defaults of `conftest`."""
+    own = json.loads((directory / "oracle.json").read_text()).get("tolerances", {})
+    return {"volume_rel": VOLUME_REL, "area_rel": AREA_REL, "centroid_abs": CENTROID_ABS, "inertia_rel": INERTIA_REL, **own}
+
+
+def hold_to_oracle(model, body, want, tol):
     props = model.mass_properties(body)
-    assert props.volume == pytest.approx(want["volume"], rel=VOLUME_REL, abs=0)
-    assert props.area == pytest.approx(want["area"], rel=AREA_REL, abs=0)
-    assert props.centroid == pytest.approx(tuple(want["centroid"]), abs=CENTROID_ABS, rel=0)
+    assert props.volume == pytest.approx(want["volume"], rel=tol["volume_rel"], abs=0)
+    assert props.area == pytest.approx(want["area"], rel=tol["area_rel"], abs=0)
+    assert props.centroid == pytest.approx(tuple(want["centroid"]), abs=tol["centroid_abs"], rel=0)
     scale = max(abs(x) for row in want["inertia"] for x in row)
     for got, expected in zip(props.inertia, want["inertia"]):
-        assert got == pytest.approx(tuple(expected), abs=INERTIA_REL * scale, rel=0)
+        assert got == pytest.approx(tuple(expected), abs=tol["inertia_rel"] * scale, rel=0)
     line = model.check(body, "full").euler
     counts = want["counts"]
     assert (line.vertices, line.edges, line.faces, line.loops, line.shells) == (
@@ -85,11 +93,12 @@ def test_part(slug):
     # Open CASCADE cannot build that step or a refused `finish` stage means
     # the oracle's later steps carry an operation this run lacks.
     checkpoints = json.loads((directory / "expected.json").read_text())["results"]["default"]["checkpoints"]
+    tol = tolerances(directory)
     for name, body in run.bodies.items():
         want = checkpoints[name]
         if "refused" in want or not run.comparable[name]:
             continue
-        hold_to_oracle(run.model, body, want)
+        hold_to_oracle(run.model, body, want, tol)
 
     # The same script twice writes the same bytes.
     if run.last is not None:
