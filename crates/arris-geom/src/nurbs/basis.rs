@@ -107,6 +107,27 @@ pub(crate) fn span(degree: usize, knots: &[f64], n: usize, t: f64) -> usize {
     (degree + count).saturating_sub(1).clamp(degree, n - 1)
 }
 
+/// The knot spans of `[knots[degree], knots[n]]` whose width is at least
+/// [`arris_math::KNOT_RESOLUTION`]: narrower spans are sub-resolution
+/// and omitted so ill-conditioned Bézier pieces are not extracted before
+/// isolation. If every span is narrower than resolution, the single widest
+/// non-empty span is retained.
+pub(crate) fn resolvable_spans(degree: usize, knots: &[f64], n: usize) -> Vec<usize> {
+    let mut valid: Vec<usize> = (degree..n)
+        .filter(|&i| knots[i + 1] - knots[i] >= arris_math::KNOT_RESOLUTION)
+        .collect();
+    if valid.is_empty() {
+        if let Some(i) = (degree..n)
+            .max_by(|&a, &b| (knots[a + 1] - knots[a]).total_cmp(&(knots[b + 1] - knots[b])))
+        {
+            if knots[i + 1] > knots[i] {
+                valid.push(i);
+            }
+        }
+    }
+    valid
+}
+
 /// The `degree + 1` basis functions active on `span` at `t`, with their
 /// first and second derivatives: `out[k][j]` is the `k`-th derivative of
 /// `N_{span − degree + j}` (A2.3). Derivatives of order above the degree
@@ -278,5 +299,41 @@ mod tests {
         let d = derivatives(1, &linear, 1, 0.25);
         assert_eq!(d[2][..2], [0.0, 0.0]);
         assert_eq!(d[1][..2], [-1.0, 1.0]);
+    }
+
+    #[test]
+    fn sub_resolution_spans_are_merged_into_their_neighbours() {
+        let knots = [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            3.645561009778199e-304,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            5.0,
+            5.0,
+            5.0,
+        ];
+        let n = 8;
+        let spans = resolvable_spans(3, &knots, n);
+        // Span 3 (width 1e-15 < 1e-7) is omitted; spans 4, 5, 6, 7 are kept.
+        assert_eq!(spans, vec![4, 5, 6, 7]);
+
+        let knots_trail = [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            2.0,
+            2.0 + 1e-15,
+            2.0 + 1e-15,
+            2.0 + 1e-15,
+            2.0 + 1e-15,
+        ];
+        let spans_trail = resolvable_spans(3, &knots_trail, 5);
+        assert_eq!(spans_trail, vec![3]);
     }
 }

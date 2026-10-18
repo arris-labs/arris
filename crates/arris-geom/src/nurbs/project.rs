@@ -25,7 +25,7 @@ use std::collections::BinaryHeap;
 use arris_math::nalgebra::Vector4;
 use arris_math::{Point2, Point3, RELATIVE_ROUNDING, Vec3, is_negligible};
 
-use super::NurbsSurface;
+use super::{NurbsSurface, basis};
 use crate::{AmbiguousLocus, GeomError, GeomKind, SurfaceKind, SurfaceProjection};
 
 /// How many times the rounding of the coordinates a minimum is located to:
@@ -332,12 +332,11 @@ impl NurbsSurface {
             let x = self.control_points()[idx];
             Vector4::new(w * x.x, w * x.y, w * x.z, w)
         };
-        let spans = |k: &[f64], deg: usize, count: usize| -> Vec<usize> {
-            (deg..count).filter(|&i| k[i] < k[i + 1]).collect()
-        };
-        let mut out = Vec::new();
-        for iu in spans(ku, p, n) {
-            for iv in spans(kv, q, m) {
+        let u_spans = basis::resolvable_spans(p, ku, n);
+        let v_spans = basis::resolvable_spans(q, kv, m);
+        let mut out = Vec::with_capacity(u_spans.len() * v_spans.len());
+        for &iu in &u_spans {
+            for &iv in &v_spans {
                 // Along `u` in every active column, then along `v`.
                 let columns: Vec<Vec<Vector4<f64>>> = (iv - q..=iv)
                     .map(|j| {

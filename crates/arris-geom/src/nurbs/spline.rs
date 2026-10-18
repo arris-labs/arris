@@ -374,16 +374,13 @@ impl<const D: usize> Spline<D> {
     /// different argument at each level), which reads unclamped knots as
     /// it reads clamped ones, so a periodic spline needs no unwrapping.
     /// The image of each piece is the spline's over the span to rounding.
-    #[allow(clippy::needless_range_loop)] // de Boor's index passes, as written
     pub(crate) fn bezier_spans(&self) -> Vec<BezierSpan<D>> {
         let p = self.degree;
         let n = self.points.len();
-        let mut spans = Vec::with_capacity(n - p);
-        for i in p..n {
+        let spans = basis::resolvable_spans(p, &self.knots, n);
+        let mut out = Vec::with_capacity(spans.len());
+        for i in spans {
             let (lo, hi) = (self.knots[i], self.knots[i + 1]);
-            if lo == hi {
-                continue;
-            }
             let mut control = Vec::with_capacity(p + 1);
             for k in 0..=p {
                 let mut d: Vec<(SVector<f64, D>, f64)> = (i - p..=i)
@@ -404,9 +401,9 @@ impl<const D: usize> Spline<D> {
                 }
                 control.push(d[p]);
             }
-            spans.push(BezierSpan { lo, hi, control });
+            out.push(BezierSpan { lo, hi, control });
         }
-        spans
+        out
     }
 
     /// The spline with every control point mapped through `f`.

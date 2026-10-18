@@ -89,7 +89,7 @@ bound has to be established here.
   sphere, crossing cylinders of unequal radii, spiric torus × plane) and
   on the CTC-02 faces against moved copies of themselves. Certified count
   and time per pair go in the ADR, which picks the winner.
-- [ ] Step 3 **[2]** — **Sub-resolution knot spans merged.** Before every
+- [x] Step 3 **[2]** — **Sub-resolution knot spans merged.** Before every
   isolation, NURBS × analytic included. The
   `curve-surface-hit-off-the-surface-on-a-degenerate-knot-vector` crash
   input joins `fuzz/corpus/` and gets a passing fixture, and the finding

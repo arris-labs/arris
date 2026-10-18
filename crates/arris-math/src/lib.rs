@@ -116,6 +116,12 @@ pub const HEAL_GAP_FRACTION: f64 = 5e-4;
 /// rounding slack.
 pub const SECTION_GROWTH_LIMIT: f64 = 2.0;
 
+/// The parameter resolution below which two knots are coincident and
+/// form no distinct span. Open CASCADE's `Precision::PConfusion` is
+/// `1e-9`; the model's [`Precision::parametric_tolerance`] is `1e-7` by
+/// default. Knot spans narrower than this are merged before isolation.
+pub const KNOT_RESOLUTION: f64 = 1e-7;
+
 /// `|x| ≤ RELATIVE_ROUNDING · |scale|`: `x` is zero to rounding at
 /// `scale`. A zero `scale` makes only an exact zero negligible.
 ///

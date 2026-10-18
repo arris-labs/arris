@@ -952,3 +952,47 @@ fn a_closed_curve_whose_first_span_is_a_hair_wide_meets_a_plane_inside_it() {
     assert!(hits.iter().any(|h| h.t < 1e-300), "{hits:?}");
     assert_eq!(hits.len(), 2, "{hits:?}");
 }
+
+/// A cubic NURBS curve whose knots collapse into sub-resolution interior spans
+/// (BACKLOG §Findings `curve-surface-hit-off-the-surface-on-a-degenerate-knot-vector`):
+/// the sub-resolution spans are merged before isolation so no bogus off-surface hits
+/// are reported from ill-conditioned de Boor blossoms inside them.
+#[test]
+fn a_curve_with_sub_resolution_knot_spans_reports_no_bogus_hits() {
+    let pts = [
+        Point3::new(-1.0, 0.0, 1.0),
+        Point3::new(0.0, 0.5, 1.0),
+        Point3::new(1.0, 0.0, 1.0),
+        Point3::new(2.0, -0.5, 1.0),
+        Point3::new(3.0, 0.0, -1.0),
+        Point3::new(4.0, 0.5, -1.0),
+    ];
+    let knots = vec![
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.6101036930534e-132,
+        1.6101036932584e-132,
+        392.0,
+        392.0,
+        392.0,
+        392.0,
+    ];
+    let curve = Curve::Nurbs(NurbsCurve::new(3, knots, pts.to_vec(), vec![1.0; 6]).unwrap());
+    let frame = Frame::new(Point3::origin(), Vec3::z(), Vec3::x()).unwrap();
+    let surface = Surface::Plane { frame };
+    let r = intersect_curve_surface(&curve, &surface, tol(), &mut arris_math::Meter::default())
+        .unwrap();
+    let hits = hits_of(&r);
+    for h in hits {
+        let off = h.point.z.abs();
+        assert!(off <= tol().linear, "t = {:e}: {off:e} off the plane", h.t);
+        assert!(h.t >= 1.0, "t = {:e} inside collapsed span", h.t);
+    }
+    assert_eq!(
+        hits.len(),
+        1,
+        "expected crossing of z = 0 on the real span: {hits:?}"
+    );
+}
