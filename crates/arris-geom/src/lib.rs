@@ -20,6 +20,14 @@
 mod arc;
 mod bernstein;
 mod bernstein2;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the seeds and the walk call it from plans/nurbs-nurbs-section step 2 on"
+    )
+)]
+mod bernstein_n;
 mod by_distance;
 mod cone_section;
 mod conic2;

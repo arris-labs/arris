@@ -49,14 +49,14 @@ use crate::halt::Halt;
 /// the de Casteljau extrapolation it takes — no longer a convex
 /// combination — amplifies a coefficient's rounding by no more than
 /// `(1 + 2·MARGIN)ⁿ`, under ten at degree ten.
-const MARGIN: f64 = 0.125;
+pub(crate) const MARGIN: f64 = 0.125;
 
 /// How many boxes may be alive at one depth. Isolated zeros keep a
 /// handful of boxes each, whatever the depth; a curve of common zeros
 /// doubles them with every level. A structural bound, not a tolerance:
 /// no torus section measured has more than 110 alive on a patch, a tube
 /// circle lying on the other surface among them (`crate::trace_torus`).
-const MAX_FRONT: usize = 1024;
+pub(crate) const MAX_FRONT: usize = 1024;
 
 /// A polynomial is taken for zero over a box where its coefficients are
 /// all within this many floors, while it takes one floor to exclude a
@@ -65,12 +65,12 @@ const MAX_FRONT: usize = 1024;
 /// small it gets, and the boxes along the curve where the polynomial
 /// *equals* its floor would be halved to the bottom for nothing. A
 /// ratio, not a tolerance.
-const FLAT: f64 = 2.0;
+pub(crate) const FLAT: f64 = 2.0;
 
 /// How many Newton steps polish a certified zero. Newton from inside a
 /// certified box converges quadratically, so the count is never reached
 /// by a step that still improves; it only ends a cycle of rounding.
-const POLISH_STEPS: usize = 12;
+pub(crate) const POLISH_STEPS: usize = 12;
 
 /// A polynomial `Σ c[i][j] Bᵢᵐ(s) Bⱼⁿ(t)` on `[0, 1]²`.
 #[derive(Debug, Clone, PartialEq)]
@@ -379,7 +379,7 @@ impl BernsteinAlgebra<Poly2> for Binomials {
 }
 
 /// The value of a one-variable polynomial at `s` by de Casteljau.
-fn casteljau(c: &[f64], s: f64) -> f64 {
+pub(crate) fn casteljau(c: &[f64], s: f64) -> f64 {
     let mut row = c.to_vec();
     for level in 1..row.len() {
         for i in 0..row.len() - level {
@@ -391,7 +391,7 @@ fn casteljau(c: &[f64], s: f64) -> f64 {
 
 /// The two parts of a one-variable polynomial either side of `at`, the
 /// sides of de Casteljau's triangle.
-fn split(c: &[f64], at: f64) -> (Vec<f64>, Vec<f64>) {
+pub(crate) fn split(c: &[f64], at: f64) -> (Vec<f64>, Vec<f64>) {
     let n = c.len();
     let mut row = c.to_vec();
     let mut lower = Vec::with_capacity(n);
@@ -411,13 +411,13 @@ fn split(c: &[f64], at: f64) -> (Vec<f64>, Vec<f64>) {
 /// already widened by their rounding floors, which are hundreds of `ε`
 /// of larger ones.
 #[derive(Debug, Clone, Copy)]
-struct Range {
-    lo: f64,
-    hi: f64,
+pub(crate) struct Range {
+    pub(crate) lo: f64,
+    pub(crate) hi: f64,
 }
 
 impl Range {
-    fn of(values: impl Iterator<Item = f64>) -> Range {
+    pub(crate) fn of(values: impl Iterator<Item = f64>) -> Range {
         values.fold(
             Range {
                 lo: f64::INFINITY,
@@ -430,40 +430,40 @@ impl Range {
         )
     }
 
-    fn around(value: f64, by: f64) -> Range {
+    pub(crate) fn around(value: f64, by: f64) -> Range {
         Range {
             lo: value - by,
             hi: value + by,
         }
     }
 
-    fn widened(self, by: f64) -> Range {
+    pub(crate) fn widened(self, by: f64) -> Range {
         Range {
             lo: self.lo - by,
             hi: self.hi + by,
         }
     }
 
-    fn middle(self) -> f64 {
+    pub(crate) fn middle(self) -> f64 {
         0.5 * (self.lo + self.hi)
     }
 
-    fn magnitude(self) -> f64 {
+    pub(crate) fn magnitude(self) -> f64 {
         self.lo.abs().max(self.hi.abs())
     }
 
-    fn scaled(self, k: f64) -> Range {
+    pub(crate) fn scaled(self, k: f64) -> Range {
         Range::of([k * self.lo, k * self.hi].into_iter())
     }
 
-    fn plus(self, o: Range) -> Range {
+    pub(crate) fn plus(self, o: Range) -> Range {
         Range {
             lo: self.lo + o.lo,
             hi: self.hi + o.hi,
         }
     }
 
-    fn minus(self, o: Range) -> Range {
+    pub(crate) fn minus(self, o: Range) -> Range {
         Range {
             lo: self.lo - o.hi,
             hi: self.hi - o.lo,

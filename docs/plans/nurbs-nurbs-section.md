@@ -50,7 +50,12 @@ in random poses; fitted pairs agree with Open CASCADE's `GeomAPI_IntSS`.
   parameters, not by projection.
 - **`arris-geom` internals.** A new crate-private `bernstein_n`: tensor
   polynomials in three and four variables, exclusion, Krawczyk, polish
-  and merge, as `bernstein2` does for two (which stays as it is). A new
+  and merge, as `bernstein2` does for two (which stays as it is). Step 1
+  found exclusion one polynomial at a time too weak in four unknowns
+  (the live boxes grow as the condition number to the fourth); a box is
+  also excluded by a row of `Y·F`, `Y` the inverse of its middle
+  Jacobian, which took the posed systems from 10 263 boxes and seven
+  continua of 31 to 989 boxes and none. A new
   `march` module holds the seeds and the walk, and `trace::Walk` gains a
   `Marched` arm. Knot spans narrower than the parameter resolution are
   merged before any isolation, the NURBS × analytic trace included (Q7).
@@ -70,7 +75,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[3]** — **`bernstein_n`: isolation in three and four
+- [x] Step 1 **[3]** — **`bernstein_n`: isolation in three and four
   unknowns.** Exclusion, Krawczyk on the grown box, polish, merge, the
   front and depth bounds of `bernstein2` carried to n variables. Tests:
   square systems with known simple roots certify each alone; a double
