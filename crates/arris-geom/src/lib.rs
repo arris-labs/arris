@@ -24,7 +24,7 @@ mod bernstein2;
     not(test),
     expect(
         dead_code,
-        reason = "the seeds and the walk call it from plans/nurbs-nurbs-section step 2 on"
+        reason = "the marcher calls it from plans/nurbs-nurbs-section step 5 on"
     )
 )]
 mod bernstein_n;
@@ -43,6 +43,14 @@ mod intersect_curve;
 mod intersect_curves;
 mod intersect_spline;
 mod loft;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the marcher calls it from plans/nurbs-nurbs-section step 5 on"
+    )
+)]
+mod march;
 mod meridian;
 mod nurbs;
 mod path;

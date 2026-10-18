@@ -69,7 +69,31 @@ fn indices<const N: usize>(degree: [usize; N]) -> Vec<[usize; N]> {
         .collect()
 }
 
+impl PolyN<4> {
+    /// `a(x₀, x₁)·b(x₂, x₃)`: a polynomial in two variables times one in
+    /// two others, of degree `a`'s then `b`'s.
+    pub(crate) fn tensor(a: &PolyN<2>, b: &PolyN<2>) -> PolyN<4> {
+        let [da, db] = [a.degree, b.degree];
+        let c =
+            a.c.iter()
+                .flat_map(|x| b.c.iter().map(move |y| x * y))
+                .collect();
+        PolyN {
+            degree: [da[0], da[1], db[0], db[1]],
+            c,
+        }
+    }
+}
+
 impl<const N: usize> PolyN<N> {
+    /// The polynomial of `degree` with coefficients `c`, row-major with
+    /// the last variable fastest, as many as the degree has: the
+    /// caller's invariant.
+    pub(crate) fn new(degree: [usize; N], c: Vec<f64>) -> Self {
+        debug_assert_eq!(c.len(), count(degree), "coefficients for {degree:?}");
+        PolyN { degree, c }
+    }
+
     /// `Πₖ fₖ(xₖ)` from one polynomial in each variable.
     pub(crate) fn outer(factors: [&[f64]; N]) -> Self {
         let degree = factors.map(|f| f.len().saturating_sub(1));
@@ -1006,6 +1030,18 @@ mod tests {
         let constant = PolyN::<3>::outer([&[2.0], &[1.0, 1.0], &[1.0]]);
         assert_eq!(constant.partial(0).coefficients(), [0.0, 0.0]);
         assert_eq!(constant.partial(1).coefficients(), [0.0]);
+    }
+
+    #[test]
+    fn bernstein_n_tensor_is_the_product_of_its_factors() {
+        let a = PolyN::new([2, 1], vec![1.0, -2.0, 0.5, 3.0, -1.0, 2.0]);
+        let b = PolyN::new([1, 3], vec![0.25, 1.0, -1.5, 2.0, 0.0, 1.0, -0.5, 0.75]);
+        let ab = PolyN::tensor(&a, &b);
+        assert_eq!(ab.degree(), [2, 1, 1, 3]);
+        for x in [[0.1, 0.7, 0.3, 0.9], [0.5, 0.2, 0.8, 0.4]] {
+            let product = a.eval([x[0], x[1]]) * b.eval([x[2], x[3]]);
+            assert!((ab.eval(x) - product).abs() < 1e-14);
+        }
     }
 
     #[test]

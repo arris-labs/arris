@@ -119,8 +119,9 @@ _Avoid_: SSI curve, marched curve
 **Seed**:
 A certified point of a marched section that decides its topology: a
 boundary seed where it reaches an edge or a seam of either domain, a loop
-seed inside both, a singular point where branches meet. Every seed is
-visited, or the section is refused.
+seed where it turns in the first surface's `v` (every closed loop has
+two), a singular point where branches meet. Every seed is visited, or
+the section is refused.
 
 **Common block**:
 A piece of edge two operands share within tolerance, kept as one edge.

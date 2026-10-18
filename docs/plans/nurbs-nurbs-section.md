@@ -40,9 +40,11 @@ in random poses; fitted pairs agree with Open CASCADE's `GeomAPI_IntSS`.
   `(s₁, t₁, s₂, t₂)` of degree `(p₁, q₁, p₂, q₂)`. *Boundary seeds* are
   each edge line of either domain (an exact isocurve) against the other
   surface, by the new curve × surface arm, seams merged as ADR-0061 §2
-  does. *Loop seeds* solve the condition step 2 measures (normals
-  parallel, or the tangent parallel to a fixed direction, each behind
-  normal-cone pruning), its degenerate boxes the *singular points*. The
+  does. *Loop seeds* are the section's turning points in `v₁`,
+  `N₂·∂P₁/∂s₁ = 0`, measured at step 2 against collinear normals and
+  thirteen to three hundred times cheaper, on the section rather than
+  off it. Pairs are pruned by hulls and normal cones, and the
+  condition's uncertified boxes are the *singular points*. The
   walk predicts along `n₁ × n₂`, corrects onto both surfaces, and accepts
   a step only inside its seeds' box chain; every seed is visited or the
   section is refused. Isolines and poles as ADR-0061 §3–4; the 3D curve
@@ -81,7 +83,7 @@ bound has to be established here.
   square systems with known simple roots certify each alone; a double
   root comes back uncertified, never lost; measured boxes and depth
   recorded as the module's constants.
-- [ ] Step 2 **[3]** — **The loop condition, measured; ADR-0068.** Build
+- [x] Step 2 **[3]** — **The loop condition, measured; ADR-0068.** Build
   the patch-pair systems and both candidate fourth equations with
   normal-cone pruning. Run them on twins with interior loops (sphere ×
   sphere, crossing cylinders of unequal radii, spiric torus × plane) and
@@ -158,6 +160,3 @@ bound has to be established here.
   `twin_prop.rs`'s S5 exemption, the corpus's two-NURBS cases). One whose
   new result is checker-green and matches its oracle passes; any other
   becomes a `regression/` fixture for M2.
-- ⚠ OPEN (agent, in ADR-0068 at step 2): loop seeds past a second a pair
-  on the CTC-02 faces mean pruning by normal cones before the walk is
-  built, or stopping for the human.
