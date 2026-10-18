@@ -46,6 +46,9 @@ genus 1 with two-loop faces).
   draws its (u, v) loops and triangulation — the CDT never sees 3D.
 - `arris_debug::render` returns the pixel buffer for a test that counts
   colours.
+- `arris_debug::render_labelled(&mesh, labels, palette, view)` renders a mesh
+  with Lambert shading, 2× supersampling, and colours per triangle label
+  (ADR-0067).
 
 ## Where does a boolean go wrong? — the pave model
 

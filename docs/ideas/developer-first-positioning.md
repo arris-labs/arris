@@ -1,6 +1,6 @@
 # Idea: developer-first-positioning
 
-- Status: Accepted 2026-10-17 (A, L-A); to be absorbed by its plans, in order: the credibility plan (side slot), the script corpus (C10), the modelling layer's first milestone, the MCP server. Each plan absorbs its part and cuts this file down
+- Status: Accepted 2026-10-17 (A, L-A); credibility and ADR-0067 landed. Still to be absorbed, in order: the script corpus (C10), the modelling layer's first milestone, the MCP server
 - Raised: 2026-10-17
 - Prompt (verbatim from the human): "I think that positioning arris target audience as DIY enthusiasts was wrong. Read @docs/notes/positioning.md - do you think that direction is bettter for arris?" — then, on the verdict: "I agree with you on all points, so yes, /idea that"
 
@@ -107,16 +107,7 @@ the evidence for the layer's scope. They are ported when the layer lands.
 
 ### Credibility, cheap
 
-About 4 steps, one plan:
-- the README synced with what landed;
-- a capability matrix (works / refuses, per operation and face kind) drawn
-  from COMPARISON.md;
-- one showcase part: a short Python script, its render from the `inspect`
-  renderer with faces coloured by provenance, its STEP read back by the
-  oracle, at the top of the README;
-- the three claims above added to "What is not claimed".
-
-Fixtures and the oracle give this its numbers. No one judges a picture.
+Landed: the showcase part, the capability matrix, the README update, and ADR-0067.
 
 ### Later, as their own plans
 

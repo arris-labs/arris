@@ -1,4 +1,4 @@
-//! The capability matrix (plans/showcase-and-matrix): what each operation
+//! The capability matrix (ADR-0067): what each operation
 //! does with each kind of face, one representative case per cell, built
 //! through the public operations on a model of its own.
 //!

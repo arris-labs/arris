@@ -202,7 +202,7 @@ above when it wants a fix; the block moves or is deleted then.
 ### provenance-origins-misses-a-body-face-read-back-with-its-orientation
 
 - What: `Provenance.origins(face)` returns `[]` for a face taken from `Model.faces(body)` when the body holds it reversed, though `generated` and `modified` list the face as an output: the lookup compares the shape with its orientation, the record stores outputs forward.
-- Where: seen building `crates/arris-py/examples/bracket.py` (plans/showcase-and-matrix step 1); the example reads `generated` and `modified` instead.
+- Where: seen building `crates/arris-py/examples/bracket.py`; the example reads `generated` and `modified` instead.
 - Seen: 2026-10-17, local, no seed (deterministic).
 - Reproduce: `model.cut_many(extruded_L, [cylinder])`, then `record.origins(f)` for each `f` in `model.faces(body)` against `record.modified`: the faces with `f.reversed` are empty, the forward one answers.
 - Evidence: output `Face(13)` `reversed=False` answers `[('generated', Face(9))]`; the body's own `Face(13)` has `reversed=True` and answers `[]`.

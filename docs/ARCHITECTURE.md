@@ -2088,7 +2088,7 @@ B-Rep).
   degenerate pole edges, `torus` the genus-1 one with two seams and no
   pole, and `patch` a rectangular sheet of any surface kind, the
   tessellation's property tests' operand) and through the Euler
-  operators (`sample::frame`, the genus-1 twin of `boolean/frame-cut`), the rasteriser (`render_png`) and the samplers
+  operators (`sample::frame`, the genus-1 twin of `boolean/frame-cut`), the rasteriser (`render_png`), the shaded labelled rasteriser (`render_labelled`, colouring triangles by provenance or role; `tools/showcase.sh` drives it for the README), and the samplers
   that feed it a curve or a surface without a body (`polyline_of`,
   `wireframe_of`), the Rerun stream, the fixture loader and corpus lint
   (`fixtures`; a solid fixture the runner compares under `primitive/`,

@@ -1,4 +1,4 @@
-//! `render_labelled` (plans/showcase-and-matrix step 3): a body's faces
+//! `render_labelled` (ADR-0067): a body's faces
 //! coloured by a label the caller chose, shaded and supersampled. Each
 //! label's colour is present in the pixels, the buffer is the same on two
 //! runs, and a badly sized label list is refused by name.

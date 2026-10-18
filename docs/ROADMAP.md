@@ -930,6 +930,12 @@ methods, workplanes as frames, selecting by provenance and role first with
 geometric filters in deterministic order, no positional selectors. Breaks
 and versions in lockstep with the kernel and binding.
 
+**The showcase and the matrix** (ADR-0067). A motor-mount bracket modelled
+in Python with faces coloured by operation provenance stands at the top of
+the README, held to Open CASCADE's reading of its STEP. Beside it, a test-held
+capability matrix (`crates/arris/tests/capability.rs`) records what each
+operation does or refuses for every face kind.
+
 ---
 
 ## Named cycles, unordered
