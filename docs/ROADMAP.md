@@ -836,9 +836,27 @@ built in this one.*
 - NURBS against NURBS: a marcher with explicit seam handling,
   `intersect_curves` for two NURBS curves, and the boolean and blends the
   real parts ask of them.
-- The DIY part corpus: about 15 hobby parts modelled through the API the
-  way a desktop-CAD user builds them, with each refusal recorded (an
-  `/idea` first). Its histogram, beside the real-part one, ranks C11.
+- The script corpus (renamed from the DIY part corpus; ADR-0067): 15 hobby
+  parts and 3 CAE parts as Python scripts on the raw binding, committed
+  under `crates/arris-py/corpus/` with each stage checked against Open
+  CASCADE and its outcome recorded. *Done 2026-10-18: 18 parts, 71 stages
+  reached, 67 built, 4 refused (TooLarge 2, VertexBlend 1 at fillet;
+  SurfaceCollapses 1 at shell; 3 blocked on the blend network, 1 on shell
+  itself); friction list recorded in docs/ideas/developer-first-positioning.md.*
+
+  | Cycle | Parts blocked | fillet | shell |
+  |---|---:|---:|---:|
+  | blend network | 3 | 3 | 0 |
+  | itself: SurfaceCollapses | 1 | 0 | 1 |
+  | healing | 0 | 0 | 0 |
+  | NURBS | 0 | 0 | 0 |
+  | sweep | 0 | 0 | 0 |
+
+  | Refusal | Operation | Count | Blocks |
+  |---|---|---:|---|
+  | TooLarge | fillet | 2 | blend network |
+  | VertexBlend | fillet | 1 | blend network |
+  | SurfaceCollapses | shell | 1 | itself: SurfaceCollapses |
 - Beside the cycle, in the second plan slot: draft (a plane turned about a
   line; a cone on a cylinder) and thicken (a sheet offset into a solid,
   over C7's offset). These are the plugin CAD's A7 asks that need no
@@ -857,7 +875,7 @@ Sweep and loft fixtures match `BRepOffsetAPI_MakePipe` and
 `BRepOffsetAPI_ThruSections`. Properties hold over random free-form
 operands (volume additivity, cut-then-fuse). The histogram's NURBS rows
 are re-run and printed, below C9's 6 of 38, along with the blend
-residue's row. The DIY part corpus is committed, with its histogram
+residue's row. The script corpus is committed, with its histogram
 printed.
 
 ---

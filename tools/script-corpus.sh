@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the script-corpus refusal histogram (ADR-0067, plans/script-corpus step 7).
+# Runs the script-corpus refusal histogram (ADR-0067).
 #
 # Reads every crates/arris-py/corpus/*/outcome.json, writes
 # target/script-corpus/histogram.md, and prints it.

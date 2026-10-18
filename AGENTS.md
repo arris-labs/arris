@@ -40,8 +40,9 @@ kinds (ADR-0061) and the blend on a NURBS face as a walked stripe
 (ADR-0062) landed; sweep along a path landed 2026-10-16 (ADR-0063), and beside it every
 transcendental goes through one `libm`, so wasm32 bodies match native
 (ADR-0064); loft landed 2026-10-17 (ADR-0065). Beside the cycles: audience
-is developers first (ADR-0067). Next: NURBS against NURBS; draft and thicken beside
-it, and the DIY part corpus built in it to rank C11.
+is developers first (ADR-0067); the script corpus landed 2026-10-18 (18 parts,
+67 built, 4 refused: blend network 3, SurfaceCollapses 1). Next: NURBS
+against NURBS; draft and thicken beside it.
 
 ## Rules that are not derivable from the code
 

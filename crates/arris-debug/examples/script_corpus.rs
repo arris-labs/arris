@@ -1,4 +1,4 @@
-//! Prints the script-corpus refusal histogram (ADR-0067, plans/script-corpus step 7).
+//! Prints the script-corpus refusal histogram (ADR-0067).
 //!
 //! Reads every `crates/arris-py/corpus/*/outcome.json` and its `oracle.json`,
 //! maps every recorded refusal to its cycle, and writes `histogram.md` into

@@ -24,7 +24,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 | `arris-ops` | Primitives, extrude and revolve of a `Profile`, `planar_face` (a `Profile` as a one-face sheet), transform, mirror, booleans, the blends, each returning `Provenance`; the queries `measure` (mass and surface properties) and `query` (projection onto a plane, a face's outward frame, `ray_fire`, `distance`, `interference`, `interference_many`), `section` (a solid's planar section as a sheet) | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
 | `arris-mesh` | `TriMesh`, `Polyline`, the constrained Delaunay triangulation in (u, v) (`cdt`, ADR-0003), tessellation of faces and edges with shared edge discretisation; re-exports `arris-math`'s `Aabb` and `Interval`, which its signatures use | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
 | `arris-io` | STEP AP214 Part 21 writer and reader (`step::write`, `step::read`, ADR-0025) over the Part 21 parser (`step::part21`), the native format (`native`), body bytes (`body`, ADR-0029), STL and OBJ mesh writers (`stl`, `obj`, ADR-0013) | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `arris-mesh`, `thiserror`, `serde`, `serde_json`, `postcard` (the last three behind the `serde` feature) | 2 — algorithms |
-| `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
+| `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the script-corpus refusal histogram (`script_corpus`), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
 | `arris` | Facade: re-exports | `math` through `io`; `debug` as a dev-dependency only | 4 |
 | `arris-py` | The Python binding (PyPI `arris`, ADR-0034): a thin 1:1 layer over the facade, `publish = false`, a `cdylib` + `rlib`, empty on `wasm32` | `arris`, `pyo3` (not on `wasm32`) | 5 — binding |
 
@@ -2031,6 +2031,23 @@ B-Rep).
   histogram from its fixtures, which record the cycle of each refusal
   (`arris_debug::histogram`). `--example battery -- --write|--record`
   derives a part's battery operands and records each stage's class.
+- **The script corpus** (`crates/arris-py/corpus/`, ADR-0067). 15 hobby
+  parts and 3 CAE parts written as Python scripts on the raw binding (`part.py`),
+  each calling operations as `run.stage("<name>", ...)`. Layout per part:
+  `<slug>/part.py` (the script), `<slug>/oracle.json` (the same part as an
+  oracle recipe with `checkpoints`), `<slug>/expected.json` (written by
+  `expected.py` from Open CASCADE), and `<slug>/outcome.json` (what each
+  stage did: `"ok"`, typed refusal, or `"not reached"`). A stage Open
+  CASCADE cannot build records `{"refused": why}` in `expected.json`. A
+  fault (`OpInternalError`, `ModelPoisonedError`, non-Arris exception, or
+  checker failure) fails the test until shrunk to a
+  `tests/fixtures/regression/` fixture and listed in
+  `crates/arris-py/corpus/waits`. Run by
+  `pytest crates/arris-py/tests/test_script_corpus.py` (each reached stage
+  held to `Full` check, checkpoints, and byte-deterministic STEP round
+  trip; CAE parts assert face tags survive cuts and reach the mesh).
+  `tools/script-corpus.sh` runs `arris-debug`'s example `script_corpus` and
+  writes `target/script-corpus/histogram.md`.
 - **The fuzz targets** (`fuzz/`, ADR-0024 §5): a crate outside the
   workspace (`exclude = ["fuzz"]`), unpublished, on nightly under
   `cargo fuzz` with `libfuzzer-sys` and `arbitrary`, none of them
