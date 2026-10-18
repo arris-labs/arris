@@ -1,0 +1,50 @@
+{
+  "description": "script-corpus/cantilever: a cantilever beam with fixed and load ends, transverse weight-relief holes, and rounded tip edges",
+  "params": {},
+  "steps": [
+    {
+      "name": "beam",
+      "op": "box",
+      "min": [0, 0, 0],
+      "max": [100, 20, 20]
+    },
+    {
+      "name": "h1",
+      "op": "cylinder",
+      "base": [35, -5, 10],
+      "axis": [0, 1, 0],
+      "radius": 5,
+      "height": 30
+    },
+    {
+      "name": "h2",
+      "op": "cylinder",
+      "base": [70, -5, 10],
+      "axis": [0, 1, 0],
+      "radius": 5,
+      "height": 30
+    },
+    {
+      "name": "lightened",
+      "op": "cut",
+      "target": "beam",
+      "tools": ["h1", "h2"]
+    },
+    {
+      "name": "filleted",
+      "op": "fillet",
+      "of": "lightened",
+      "edges": [
+        [100, 10, 20],
+        [100, 10, 0]
+      ],
+      "radius": 2
+    }
+  ],
+  "result": "filleted",
+  "checkpoints": [
+    "beam",
+    "lightened",
+    "filleted"
+  ]
+}

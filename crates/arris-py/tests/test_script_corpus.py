@@ -103,3 +103,8 @@ def test_part(slug):
     # The same script twice writes the same bytes.
     if run.last is not None:
         assert run.model.write_step([run.last]) == step_bytes(slug)
+
+    # A labelled part's tagged sets survive and reach the mesh.
+    if run.labelled is not None:
+        run.labelled.assert_tagged()
+

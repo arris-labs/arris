@@ -111,7 +111,7 @@ robustness or bound has to be established here.
   sweep among them.
 - [x] Step 4 **[2]** — The four swept and lofted parts.
 - [x] Step 5 **[2]** — The two patterned parts.
-- [ ] Step 6 **[2]** — The three CAE parts, tags lifted into `harness.py`
+- [x] Step 6 **[2]** — The three CAE parts, tags lifted into `harness.py`
   and asserted through every cut and the mesh.
 - [ ] Step 7 **[2]** — `add_script` and its by-name cycle mapping (unit
   tests over every recorded class), the `script_corpus` example and

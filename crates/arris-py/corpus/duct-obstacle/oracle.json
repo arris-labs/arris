@@ -1,0 +1,46 @@
+{
+  "description": "script-corpus/duct-obstacle: a flow duct with inlet and outlet, an obstacle cylinder, and a wall pressure tap",
+  "params": {},
+  "steps": [
+    {
+      "name": "duct",
+      "op": "box",
+      "min": [0, -20, -20],
+      "max": [100, 20, 20]
+    },
+    {
+      "name": "obstacle",
+      "op": "cylinder",
+      "base": [30, 0, -25],
+      "axis": [0, 0, 1],
+      "radius": 8,
+      "height": 50
+    },
+    {
+      "name": "cavity",
+      "op": "cut",
+      "target": "duct",
+      "tool": "obstacle"
+    },
+    {
+      "name": "tap",
+      "op": "cylinder",
+      "base": [60, -25, 0],
+      "axis": [0, 1, 0],
+      "radius": 2,
+      "height": 10
+    },
+    {
+      "name": "tapped",
+      "op": "cut",
+      "target": "cavity",
+      "tool": "tap"
+    }
+  ],
+  "result": "tapped",
+  "checkpoints": [
+    "duct",
+    "cavity",
+    "tapped"
+  ]
+}

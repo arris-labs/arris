@@ -62,6 +62,7 @@ class Run:
         self.comparable = {}
         self._finished_short = False
         self.last = None
+        self.labelled = None
 
     def stage(self, name, op, finish=False):
         """Runs `op()`, which returns a `(body, provenance)` pair, as stage
@@ -135,3 +136,72 @@ def run_part(slug):
 def slugs():
     """Every part, in name order."""
     return sorted(p.parent.name for p in CORPUS.glob("*/part.py"))
+
+
+class Labelled:
+    """A body and the tag/label on each of its faces, tracked through
+    operations by provenance."""
+
+    def __init__(self, model, body, record=None, label=None):
+        self.model, self.body = model, body
+        if isinstance(label, str):
+            self.labels = {f: label for f in model.faces(body)}
+        elif isinstance(label, dict):
+            self.labels = dict(label)
+        elif callable(label):
+            self.labels = {f: label(f) for f in model.faces(body)}
+        else:
+            self.labels = {}
+        self.record = record
+
+    def tag(self, face, label):
+        """Tags a face."""
+        self.labels[face] = label
+        return self
+
+    def tag_many(self, faces, label):
+        """Tags multiple faces."""
+        for f in faces:
+            self.labels[f] = label
+        return self
+
+    def step(self, body, record, label=None, tools=()):
+        """Updates the body and face labels after an operation. A face inherits
+        its label from the face it was modified from, else from the tool face
+        it was generated from, else keeps its existing label, else `label`."""
+        known = dict(self.labels)
+        for tool in tools:
+            if isinstance(tool, Labelled):
+                known.update(tool.labels)
+        inherited = {}
+        for relation in (record.modified, record.generated):
+            for origin, outputs in relation:
+                if origin in known:
+                    for output in outputs:
+                        inherited.setdefault(output, known[origin])
+        self.labels = {
+            face: inherited.get(face, self.labels.get(face, label))
+            for face in self.model.faces(body)
+        }
+        self.body = body
+        self.record = self.record.then(record) if self.record is not None else record
+        return self
+
+    def assert_tagged(self, tags=None, chord=0.05):
+        """Asserts that every face is tagged, that the tag set matches `tags`
+        (if provided), that every face has a non-empty triangle range in
+        tessellation, and that all tags reach the mesh triangles."""
+        faces = set(self.model.faces(self.body))
+        assert set(self.labels) == faces, f"labels mismatch: {set(self.labels)} vs {faces}"
+        if tags is not None:
+            assert set(self.labels.values()) == set(tags), (
+                f"tag set mismatch: {set(self.labels.values())} vs {set(tags)}"
+            )
+        mesh = self.model.tessellate(self.body, chord)
+        mesh_faces = {face for face, start, stop in mesh.faces if stop > start}
+        assert mesh_faces == faces, f"mesh faces mismatch: {mesh_faces} vs {faces}"
+        mesh_tags = {self.labels[face] for face, start, stop in mesh.faces if stop > start}
+        if tags is not None:
+            assert mesh_tags == set(tags), f"mesh tags mismatch: {mesh_tags} vs {set(tags)}"
+        return mesh
+
