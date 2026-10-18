@@ -110,6 +110,18 @@ _Avoid_: intersection graph
 **Section edge**:
 An edge a boolean makes where two faces cross.
 
+**Marched section**:
+The section of two NURBS surfaces, walked in both surfaces' (u, v) at once
+between certified seeds; its edges and both pcurves are fitted from the
+walk.
+_Avoid_: SSI curve, marched curve
+
+**Seed**:
+A certified point of a marched section that decides its topology: a
+boundary seed where it reaches an edge or a seam of either domain, a loop
+seed inside both, a singular point where branches meet. Every seed is
+visited, or the section is refused.
+
 **Common block**:
 A piece of edge two operands share within tolerance, kept as one edge.
 
