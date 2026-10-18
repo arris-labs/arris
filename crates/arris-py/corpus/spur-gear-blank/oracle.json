@@ -1,0 +1,688 @@
+{
+  "description": "script-corpus/spur-gear-blank: a spur gear blank: a disc and hub, 24 teeth turned about the axis, a bore with six lightening holes and a keyway, the hub's rim chamfered",
+  "params": {},
+  "steps": [
+    {
+      "name": "disc",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 30,
+      "height": 8
+    },
+    {
+      "name": "hub",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 10,
+      "height": 14
+    },
+    {
+      "name": "blank",
+      "op": "fuse",
+      "a": "disc",
+      "b": "hub"
+    },
+    {
+      "name": "tooth",
+      "op": "box",
+      "min": [
+        29,
+        -1.5,
+        0
+      ],
+      "max": [
+        34,
+        1.5,
+        8
+      ]
+    },
+    {
+      "name": "tooth0",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 7.5
+      }
+    },
+    {
+      "name": "tooth1",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 22.5
+      }
+    },
+    {
+      "name": "tooth2",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 37.5
+      }
+    },
+    {
+      "name": "tooth3",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 52.5
+      }
+    },
+    {
+      "name": "tooth4",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 67.5
+      }
+    },
+    {
+      "name": "tooth5",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 82.5
+      }
+    },
+    {
+      "name": "tooth6",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 97.5
+      }
+    },
+    {
+      "name": "tooth7",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 112.5
+      }
+    },
+    {
+      "name": "tooth8",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 127.5
+      }
+    },
+    {
+      "name": "tooth9",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 142.5
+      }
+    },
+    {
+      "name": "tooth10",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 157.5
+      }
+    },
+    {
+      "name": "tooth11",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 172.5
+      }
+    },
+    {
+      "name": "tooth12",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 187.5
+      }
+    },
+    {
+      "name": "tooth13",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 202.5
+      }
+    },
+    {
+      "name": "tooth14",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 217.5
+      }
+    },
+    {
+      "name": "tooth15",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 232.5
+      }
+    },
+    {
+      "name": "tooth16",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 247.5
+      }
+    },
+    {
+      "name": "tooth17",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 262.5
+      }
+    },
+    {
+      "name": "tooth18",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 277.5
+      }
+    },
+    {
+      "name": "tooth19",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 292.5
+      }
+    },
+    {
+      "name": "tooth20",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 307.5
+      }
+    },
+    {
+      "name": "tooth21",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 322.5
+      }
+    },
+    {
+      "name": "tooth22",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 337.5
+      }
+    },
+    {
+      "name": "tooth23",
+      "op": "transform",
+      "of": "tooth",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 352.5
+      }
+    },
+    {
+      "name": "toothed",
+      "op": "fuse",
+      "bodies": [
+        "blank",
+        "tooth0",
+        "tooth1",
+        "tooth2",
+        "tooth3",
+        "tooth4",
+        "tooth5",
+        "tooth6",
+        "tooth7",
+        "tooth8",
+        "tooth9",
+        "tooth10",
+        "tooth11",
+        "tooth12",
+        "tooth13",
+        "tooth14",
+        "tooth15",
+        "tooth16",
+        "tooth17",
+        "tooth18",
+        "tooth19",
+        "tooth20",
+        "tooth21",
+        "tooth22",
+        "tooth23"
+      ]
+    },
+    {
+      "name": "bore",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 5,
+      "height": 16
+    },
+    {
+      "name": "light0",
+      "op": "cylinder",
+      "base": [
+        19.0,
+        0.0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 10
+    },
+    {
+      "name": "light1",
+      "op": "cylinder",
+      "base": [
+        9.500000000000002,
+        16.454482671904334,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 10
+    },
+    {
+      "name": "light2",
+      "op": "cylinder",
+      "base": [
+        -9.499999999999996,
+        16.454482671904337,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 10
+    },
+    {
+      "name": "light3",
+      "op": "cylinder",
+      "base": [
+        -19.0,
+        2.326828918379971e-15,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 10
+    },
+    {
+      "name": "light4",
+      "op": "cylinder",
+      "base": [
+        -9.500000000000009,
+        -16.45448267190433,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 10
+    },
+    {
+      "name": "light5",
+      "op": "cylinder",
+      "base": [
+        9.500000000000002,
+        -16.454482671904334,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 4,
+      "height": 10
+    },
+    {
+      "name": "bored",
+      "op": "cut",
+      "target": "toothed",
+      "tools": [
+        "bore",
+        "light0",
+        "light1",
+        "light2",
+        "light3",
+        "light4",
+        "light5"
+      ]
+    },
+    {
+      "name": "key",
+      "op": "box",
+      "min": [
+        -1,
+        4,
+        -1
+      ],
+      "max": [
+        1,
+        6.5,
+        15
+      ]
+    },
+    {
+      "name": "keyway",
+      "op": "cut",
+      "target": "bored",
+      "tool": "key"
+    },
+    {
+      "name": "hub_chamfer",
+      "op": "chamfer",
+      "of": "keyway",
+      "edges": [
+        [
+          0,
+          10,
+          14
+        ]
+      ],
+      "distance": 0.8
+    }
+  ],
+  "result": "hub_chamfer",
+  "checkpoints": [
+    "blank",
+    "toothed",
+    "bored",
+    "keyway",
+    "hub_chamfer"
+  ]
+}

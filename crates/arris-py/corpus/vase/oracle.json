@@ -161,7 +161,7 @@
       "side": "inward"
     }
   ],
-  "result": "hollow",
+  "result": "base_round",
   "checkpoints": [
     "body",
     "base_round",

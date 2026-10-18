@@ -63,6 +63,10 @@ the evidence for the modelling layer's scope.
 - **The vase is a ruled loft**: its smooth loft (four circles of unequal
   radius and spacing) differs from Open CASCADE's by 8e-4 of the volume,
   a finding kept as a backlog line, not a tolerance.
+- **A recipe's `result` is a step Open CASCADE's STEP round trip keeps**
+  (`selftest.py` holds it to that): the vase's `result` is `base_round`,
+  its `hollow` (valid in Open CASCADE, yet written to STEP as two shells)
+  a checkpoint only.
 - **The test.** `crates/arris-py/tests/test_script_corpus.py`, one case per
   part: run it, compare against `outcome.json` (a changed outcome fails;
   `ARRIS_BLESS=1` rewrites it, and a lifted refusal is a `fixtures:` commit),
@@ -106,7 +110,7 @@ robustness or bound has to be established here.
 - [x] Step 3 **[2]** — The four revolved parts, the threaded cap's helix
   sweep among them.
 - [x] Step 4 **[2]** — The four swept and lofted parts.
-- [ ] Step 5 **[2]** — The two patterned parts.
+- [x] Step 5 **[2]** — The two patterned parts.
 - [ ] Step 6 **[2]** — The three CAE parts, tags lifted into `harness.py`
   and asserted through every cut and the mesh.
 - [ ] Step 7 **[2]** — `add_script` and its by-name cycle mapping (unit
