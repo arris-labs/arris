@@ -119,7 +119,7 @@ bound has to be established here.
   through a ruled face's row), a pole on the other surface as a singular
   point (a sphere's twin against a cone's twin through it), a patch flush
   with the other surface `Unsupported`. A test each.
-- [ ] Step 7 **[2]** — **The arm and its fit.** The 3D curve and both
+- [x] Step 7 **[2]** — **The arm and its fit.** The 3D curve and both
   pcurves fitted from the walk. `intersect_surfaces` and `trace_section`
   dispatch NURBS × NURBS to it. `tests/fixtures/geom/` fixtures against
   `GeomAPI_IntSS` on fitted pairs: a sweep face against a loft face, a

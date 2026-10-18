@@ -880,8 +880,8 @@ fn turn_diff(a: f64, b: f64, c: &Curve) -> f64 {
 fn every_geometry_fixture_matches_the_oracle() {
     let fixtures = geometry_fixtures();
     assert!(
-        fixtures.len() >= 18,
-        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c10-nurbs-analytic-pairs, geom/c10-conic-nurbs-hits, geom/c8-curve-extrema, geom/c8-curve-surface-extrema and geom/c8-surface-extrema"
+        fixtures.len() >= 19,
+        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c10-nurbs-analytic-pairs, geom/c10-conic-nurbs-hits, geom/c10-nurbs-nurbs-hits, geom/c10-nurbs-nurbs-pairs, geom/c8-curve-extrema, geom/c8-curve-surface-extrema and geom/c8-surface-extrema"
     );
     let mut errors = Vec::new();
     for f in &fixtures {
@@ -1770,5 +1770,46 @@ fn the_c10_nurbs_nurbs_hits_classify_as_built() {
             hits.iter().filter(|h| h.tangent).count(),
         );
         assert_eq!(got, (*crossings, *touches), "{c} vs {s}: {r:?}");
+    }
+}
+
+/// What Arris says about every pair of `geom/c10-nurbs-nurbs-pairs`, by
+/// name: a sweep against a loft, a CTC-02 face against a bent copy, two
+/// skins crossing at a seam.
+#[test]
+fn the_c10_nurbs_nurbs_pairs_classify_as_built() {
+    let f = geometry_fixtures()
+        .into_iter()
+        .find(|f| f.name == "geom/c10-nurbs-nurbs-pairs")
+        .expect("geom/c10-nurbs-nurbs-pairs");
+    let built = build(&f);
+    let cases: &[(&str, &str, usize, usize)] = &[
+        ("sweep", "loft", 0, 2),
+        ("f544", "f544_crossed", 0, 1),
+        ("skin_a", "skin_b", 0, 2),
+    ];
+    assert_eq!(
+        cases.len(),
+        f.recipe.pairs.len(),
+        "every pair of the fixture is pinned here"
+    );
+    for (a, b, loops, arms) in cases {
+        let r = intersect_surfaces(
+            &built.surfaces[*a],
+            &built.surfaces[*b],
+            &within(),
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{a} vs {b}: {e}"));
+        let mut got = (0, 0);
+        for m in r.curves() {
+            match (&m.curve, m.kind) {
+                (Curve::Nurbs(c), MeetKind::Crossing) if c.period().is_some() => got.0 += 1,
+                (Curve::Nurbs(_), MeetKind::Crossing) => got.1 += 1,
+                _ => panic!("{a} vs {b}: {m:?}"),
+            }
+        }
+        assert_eq!(got, (*loops, *arms), "{a} vs {b}: {r:?}");
     }
 }

@@ -43,8 +43,10 @@ use arris_math::{
     Aabb, Frame, Interval, Meter, Point2, Point3, RELATIVE_ROUNDING, Tolerance, Vec3, wrap_angle,
 };
 
+use arris_math::nalgebra::{Matrix4, Vector4};
+
 use crate::torus_walk::TorusWalk;
-use crate::{Curve, GeomError, GeomKind, Surface};
+use crate::{Curve, GeomError, GeomKind, NurbsSurface, Surface};
 
 /// How many parameters a branch is sampled at to decide that it is no
 /// longer than the tolerance, and is its end point rather than a curve:
@@ -705,6 +707,156 @@ enum Walk {
         labels: Vec<Label>,
     },
     Torus(TorusWalk),
+    Marched(MarchedWalk),
+}
+
+/// A walked section of two NURBS surfaces in their parameter planes.
+#[derive(Debug, Clone)]
+pub(crate) struct MarchedWalk {
+    pub(crate) surfaces: [Arc<NurbsSurface>; 2],
+    pub(crate) points: Vec<[f64; 4]>,
+    pub(crate) cumulative: Vec<f64>,
+    pub(crate) length: f64,
+}
+
+impl MarchedWalk {
+    pub(crate) fn new(
+        surfaces: [Arc<NurbsSurface>; 2],
+        mut points: Vec<[f64; 4]>,
+        closed: bool,
+    ) -> Self {
+        if closed && !points.is_empty() {
+            let closure = [
+                surfaces[0].closure()[0],
+                surfaces[0].closure()[1],
+                surfaces[1].closure()[0],
+                surfaces[1].closure()[1],
+            ];
+            let closing = near_closure(points[0], *points.last().unwrap(), &closure);
+            points.push(closing);
+        }
+        let mut cumulative = Vec::with_capacity(points.len());
+        if !points.is_empty() {
+            cumulative.push(0.0);
+            for k in 1..points.len() {
+                let p0 = surfaces[0].eval(points[k - 1][0], points[k - 1][1]).point;
+                let p1 = surfaces[0].eval(points[k][0], points[k][1]).point;
+                let d = (p1 - p0).norm();
+                cumulative.push(cumulative[k - 1] + d);
+            }
+        } else {
+            cumulative.push(0.0);
+        }
+        let length = *cumulative.last().unwrap_or(&0.0);
+        let length = if length <= 0.0 { 1.0 } else { length };
+        MarchedWalk {
+            surfaces,
+            points,
+            cumulative,
+            length,
+        }
+    }
+
+    fn sample(&self, t: f64) -> [f64; 4] {
+        if self.points.is_empty() {
+            return [0.0; 4];
+        }
+        if self.points.len() == 1 {
+            return self.points[0];
+        }
+        let t = t.clamp(0.0, self.length);
+        let i = self
+            .cumulative
+            .partition_point(|&c| c <= t)
+            .saturating_sub(1);
+        let i = i.min(self.points.len() - 2);
+        let (c0, c1) = (self.cumulative[i], self.cumulative[i + 1]);
+        let s = if c1 > c0 { (t - c0) / (c1 - c0) } else { 0.0 }.clamp(0.0, 1.0);
+        let (p0, p1) = (self.points[i], self.points[i + 1]);
+        if s <= 0.0 {
+            return p0;
+        }
+        if s >= 1.0 {
+            return p1;
+        }
+        let guess = [
+            (1.0 - s) * p0[0] + s * p1[0],
+            (1.0 - s) * p0[1] + s * p1[1],
+            (1.0 - s) * p0[2] + s * p1[2],
+            (1.0 - s) * p0[3] + s * p1[3],
+        ];
+        let p0_pt = self.surfaces[0].eval(p0[0], p0[1]).point;
+        let p1_pt = self.surfaces[0].eval(p1[0], p1[1]).point;
+        let chord = p1_pt - p0_pt;
+        let Some(dir) = chord.try_normalize(0.0) else {
+            return guess;
+        };
+        let p_chord = p0_pt + chord * s;
+        self.correct(guess, p_chord, dir)
+    }
+
+    fn correct(&self, mut x: [f64; 4], base: Point3, normal: Vec3) -> [f64; 4] {
+        for _ in 0..8 {
+            let e0 = self.surfaces[0].eval(x[0], x[1]);
+            let e1 = self.surfaces[1].eval(x[2], x[3]);
+            let gap = e0.point - e1.point;
+            let plane = normal.dot(&(e0.point - base));
+            if gap.norm() <= 1e-10 && plane.abs() <= 1e-10 {
+                return x;
+            }
+            let j = Matrix4::new(
+                e0.du.x,
+                e0.dv.x,
+                -e1.du.x,
+                -e1.dv.x,
+                e0.du.y,
+                e0.dv.y,
+                -e1.du.y,
+                -e1.dv.y,
+                e0.du.z,
+                e0.dv.z,
+                -e1.du.z,
+                -e1.dv.z,
+                normal.dot(&e0.du),
+                normal.dot(&e0.dv),
+                0.0,
+                0.0,
+            );
+            let Some(step) = j.lu().solve(&Vector4::new(gap.x, gap.y, gap.z, plane)) else {
+                return x;
+            };
+            if !step.iter().all(|c| c.is_finite()) {
+                return x;
+            }
+            for k in 0..4 {
+                x[k] -= step[k];
+            }
+        }
+        x
+    }
+
+    pub(crate) fn point(&self, t: f64) -> Point3 {
+        let x = self.sample(t);
+        self.surfaces[0].eval(x[0], x[1]).point
+    }
+
+    pub(crate) fn uv(&self, surface: usize, t: f64) -> Point2 {
+        let x = self.sample(t);
+        if surface == 0 {
+            Point2::new(x[0], x[1])
+        } else {
+            Point2::new(x[2], x[3])
+        }
+    }
+}
+
+fn near_closure(mut at: [f64; 4], to: [f64; 4], closure: &[Option<f64>; 4]) -> [f64; 4] {
+    for k in 0..4 {
+        if let Some(c) = closure[k] {
+            at[k] += c * ((to[k] - at[k]) / c).round();
+        }
+    }
+    at
 }
 
 /// One branch of a section: a smooth curve lying on the walked surface to
@@ -739,6 +891,22 @@ impl SectionBranch {
         SectionBranch {
             walk: Walk::Torus(walk),
             arcs,
+            ends,
+            pins,
+            length,
+        }
+    }
+
+    /// A branch of two NURBS surfaces walked between seeds.
+    pub(crate) fn on_marched(
+        walk: MarchedWalk,
+        ends: Option<[BranchEnd; 2]>,
+        pins: [Option<Point3>; 2],
+    ) -> SectionBranch {
+        let length = walk.length;
+        SectionBranch {
+            walk: Walk::Marched(walk),
+            arcs: Vec::new(),
             ends,
             pins,
             length,
@@ -780,6 +948,7 @@ impl SectionBranch {
                 None => pencil.frame.origin(),
             },
             Walk::Torus(walk) => walk.point(i, s, anchor),
+            Walk::Marched(walk) => walk.point(t),
         }
     }
 
@@ -829,6 +998,7 @@ impl SectionBranch {
                 None => (pencil.frame.origin(), Stretch::Point),
             },
             Walk::Torus(walk) => walk.located(i, s, anchor),
+            Walk::Marched(walk) => (walk.point(t), Stretch::Point),
         };
         stretch.distance(p, q)
     }
@@ -841,12 +1011,40 @@ impl SectionBranch {
     /// may leave the domain there; a closed branch that winds round comes
     /// back a whole number of closures from where it started.
     pub fn uv(&self, t: f64) -> Option<Point2> {
-        let Walk::Torus(walk) = &self.walk else {
-            return None;
-        };
+        self.uv_on(0, t)
+    }
+
+    /// The second surface's own `(u, v)` of `point(t)`, for a branch of
+    /// a marched section between two NURBS surfaces; `None` otherwise.
+    pub fn uv2(&self, t: f64) -> Option<Point2> {
+        self.uv_on(1, t)
+    }
+
+    /// The surface's own `(u, v)` of `point(t)` on operand `surface`
+    /// (0 or 1), exact as the point is, for a branch of
+    /// [`crate::trace_torus`] (surface 0, the torus), of a NURBS section
+    /// with an analytic surface (surface 0, the NURBS surface) or a
+    /// marched section between two NURBS surfaces (surfaces 0 and 1);
+    /// `None` for a branch walked on rulings or outside the operands.
+    pub fn uv_on(&self, surface: usize, t: f64) -> Option<Point2> {
         let t = self.inside(t);
-        let (i, s, anchor) = self.located(t);
-        Some(walk.uv(i, s, anchor, [t <= 0.0, t >= self.length]))
+        match &self.walk {
+            Walk::Torus(walk) if surface == 0 => {
+                let (i, s, anchor) = self.located(t);
+                Some(walk.uv(i, s, anchor, [t <= 0.0, t >= self.length]))
+            }
+            Walk::Marched(walk) if surface < 2 => Some(walk.uv(surface, t)),
+            _ => None,
+        }
+    }
+
+    /// The `NurbsSurface` operand `surface` (0 or 1), if the branch was
+    /// marched.
+    pub(crate) fn surface(&self, surface: usize) -> Option<Arc<NurbsSurface>> {
+        match &self.walk {
+            Walk::Marched(walk) if surface < 2 => Some(walk.surfaces[surface].clone()),
+            _ => None,
+        }
     }
 
     /// `t` wrapped into the domain on a closed branch and clamped to it

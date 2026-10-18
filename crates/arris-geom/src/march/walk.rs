@@ -1079,6 +1079,9 @@ impl<'a> Marcher<'a> {
             let Some(step) = j.lu().solve(&Vector4::new(gap.x, gap.y, gap.z, n.dot(&a))) else {
                 return Ok(None);
             };
+            if step.iter().any(|v| !v.is_finite()) {
+                return Ok(None);
+            }
             for k in 0..4 {
                 x[k] -= step[k];
             }

@@ -431,8 +431,6 @@ def intersect_surfaces(name_a: str, kind_a: str, a, name_b: str, kind_b: str, b)
     if "nurbs" in (kind_a, kind_b):
         # `IntAna` has no form for a NURBS surface: the general intersector
         # walks it, as it walks a quadric pair with no conic.
-        if kind_a == kind_b:
-            raise OracleError(f"{name_a} vs {name_b}: NURBS against NURBS is not asked")
         sections, dropped = _walked_sections(name_a, a, name_b, b)
         out = {"a": name_a, "b": name_b, "type": "unsolved"}
         if sections:

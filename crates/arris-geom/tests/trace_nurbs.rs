@@ -291,10 +291,18 @@ fn a_torus_twin_traces_what_the_torus_does() {
 }
 
 #[test]
-fn two_nurbs_surfaces_are_unsupported() {
+fn two_nurbs_surfaces_are_traced_and_flush_is_unsupported() {
     let (a, _) = twin(&unit_cylinder(), [Interval::TURN, Interval::UNIT]);
-    let (b, _) = twin(&tilted(0.3, 0.1), [Interval::UNIT, Interval::UNIT]);
-    assert!(matches!(trace(&a, &b), Err(GeomError::Unsupported { .. })));
+    let (b, _) = twin(
+        &tilted(0.3, 0.1),
+        [
+            Interval::new(0.5, 1.5).unwrap(),
+            Interval::new(-0.5, 0.5).unwrap(),
+        ],
+    );
+    let tr = trace(&a, &b).unwrap();
+    assert!(!tr.branches().is_empty());
+    assert!(matches!(trace(&a, &a), Err(GeomError::Unsupported { .. })));
 }
 
 /// The isolines of `trace` are `nurbs`'s own lines of constant `k`

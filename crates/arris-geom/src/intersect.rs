@@ -402,10 +402,7 @@ pub fn intersect_surfaces(
             | Surface::Torus { .. },
             Surface::Nurbs(_),
         ) => crate::section::traced(a, b, within, tol, meter),
-        (Surface::Nurbs(_), Surface::Nurbs(_)) => Err(GeomError::Unsupported {
-            a: GeomKind::Surface(a.kind()),
-            b: GeomKind::Surface(b.kind()),
-        }),
+        (Surface::Nurbs(_), Surface::Nurbs(_)) => crate::section::traced(a, b, within, tol, meter),
     }
 }
 

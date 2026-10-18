@@ -132,6 +132,19 @@ pub fn fit_curve2(
     fit(&f, range, degree, &deviation, tol, Ends::Clamped, meter).map(NurbsCurve2::from_spline)
 }
 
+/// A periodic non-rational B-spline of `degree` over `range` approximating
+/// the 2D curve `f` at its own parameter.
+pub fn fit_curve2_periodic(
+    f: impl Fn(f64) -> Point2,
+    range: Interval,
+    degree: usize,
+    deviation: impl Fn(f64, Point2) -> f64,
+    tol: f64,
+    meter: &mut Meter,
+) -> Result<NurbsCurve2, FitError> {
+    fit(&f, range, degree, &deviation, tol, Ends::Periodic, meter).map(NurbsCurve2::from_spline)
+}
+
 /// A non-rational B-spline of `degree` over `range` approximating the 3D
 /// curve `f` at its own parameter, with the contract of [`fit_curve2`]
 /// in three dimensions: same parameter, both ends interpolated, the

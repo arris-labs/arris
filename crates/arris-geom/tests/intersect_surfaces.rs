@@ -790,22 +790,20 @@ fn every_other_pair_is_unsupported() {
         // Every pair of analytic surfaces is decided in every pose — by a
         // closed form, an exact conic, the ruled tracer (ADR-0018) or the
         // torus's (ADR-0019) — and a NURBS patch against an analytic
-        // surface is traced in its own parameters (ADR-0061): a section
-        // the walk resolves, or one it refuses by name as degenerate, or a
-        // patch flush with the other surface, `Unsupported`. Two NURBS
-        // patches are the NURBS cycle's third item: always `Unsupported`.
+        // surface is traced in its own parameters (ADR-0061), and two NURBS
+        // patches are marched between seeds (ADR-0068); a patch flush with
+        // the other surface is `Unsupported`.
         let nurbs = |k| k == SurfaceKind::Nurbs;
-        let both = nurbs(a.kind()) && nurbs(b.kind());
         let either = nurbs(a.kind()) || nurbs(b.kind());
         match intersect_surfaces(&a, &b, &within(), tol(), &mut arris_math::Meter::default()) {
-            Ok(_) => prop_assert!(!both, "{a:?} vs {b:?} should be unsupported"),
+            Ok(_) => {}
             Err(GeomError::Unsupported { a: ka, b: kb }) => {
                 prop_assert!(either, "{a:?} vs {b:?} has a closed form");
                 prop_assert_eq!(ka, GeomKind::Surface(a.kind()));
                 prop_assert_eq!(kb, GeomKind::Surface(b.kind()));
             }
             Err(GeomError::DegenerateSection { .. }) => {
-                prop_assert!(either && !both, "{a:?} vs {b:?} is decided in closed form");
+                prop_assert!(either, "{a:?} vs {b:?} is decided in closed form");
             }
             Err(e) => prop_assert!(false, "{e}"),
         }

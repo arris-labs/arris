@@ -85,7 +85,7 @@ pub use loft::{
 pub use nurbs::{
     FitError, MAX_DEGREE, MAX_FIT_SPANS, MAX_OFFSET_PATCHES, MAX_OFFSET_SPANS, NurbsCurve,
     NurbsCurve2, NurbsSurface, OFFSET_FIT_DEGREE, fit_curve, fit_curve_periodic, fit_curve2,
-    fit_skin, interpolate_skin,
+    fit_curve2_periodic, fit_skin, interpolate_skin,
 };
 pub use path::{FrameField, FrameLaw, Path, PathDegeneracy, PathError, PathFrame, PathSegment};
 pub use pcurve::{
@@ -94,7 +94,9 @@ pub use pcurve::{
 };
 pub use profile::{Profile, ProfileEdge, ProfileError, ProfileLoop, ProfileSegment};
 pub use project::{CurveProjection, SurfaceProjection};
-pub use section::{SECTION_FIT_DEGREE, SECTION_FIT_FRACTION, fit_branch, trace_section};
+pub use section::{
+    SECTION_FIT_DEGREE, SECTION_FIT_FRACTION, fit_branch, fit_branch_pcurve, trace_section,
+};
 pub use surface::{ParamMap, Singularity, Surface, SurfaceEval, SurfaceKind};
 pub use torus_walk::trace_torus;
 pub use trace::{

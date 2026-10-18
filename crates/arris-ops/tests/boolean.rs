@@ -522,12 +522,8 @@ fn an_unsupported_surface_pair_names_the_faces() {
     let mut m = Model::default();
     let patchwork =
         sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
-    let shifted = sample::cuboid_nurbs(
-        &mut m,
-        Point3::new(1.0, 1.0, 0.0),
-        Point3::new(3.0, 3.0, 2.0),
-    )
-    .unwrap();
+    let shifted =
+        sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
     let err = interferences(&m, patchwork, shifted).unwrap_err();
     match err {
         OpError::Unsupported { a, b } => {

@@ -1521,6 +1521,139 @@ def c10_nurbs_nurbs_hits():
     }
 
 
+# --- c10-nurbs-nurbs-pairs ---------------------------------------------------------
+
+
+def c10_nurbs_nurbs_pairs():
+    """NURBS surfaces against NURBS surfaces (plan nurbs-nurbs-section step 7),
+    in the tilt pose: a sweep face against a loft face, a CTC-02 face against a
+    bent copy, two skins crossing at a seam."""
+    f = POSES["tilt"]
+
+    def net(rows):
+        return [[f.to_world(p) for p in row] for row in rows]
+
+    surfaces = {}
+
+    # 1. Sweep face vs Loft face
+    profile = [[-2.0, -1.0], [0.0, 1.0], [2.0, -1.0]]
+    surfaces["sweep"] = {
+        "type": "nurbs",
+        "degree": [2, 1],
+        "knots": [[0.0] * 3 + [1.0] * 3, [0.0, 0.0, 1.0, 1.0]],
+        "control_points": net([[[x, y, z] for y in (-2.0, 2.0)] for x, z in profile]),
+        "weights": [[1.0, 1.0] for _ in profile],
+    }
+
+    grid_u = [-1.5, -0.5, 0.5, 1.5]
+    grid_v = [-1.5, -0.5, 0.5, 1.5]
+    knots_3 = [0.0] * 4 + [1.0] * 4
+    surfaces["loft"] = {
+        "type": "nurbs",
+        "degree": [3, 3],
+        "knots": [knots_3, knots_3],
+        "control_points": net([
+            [[x, y, 0.2 * (x * x - y * y) + 0.3 * x + 0.1 * y] for y in grid_v]
+            for x in grid_u
+        ]),
+        "weights": [[1.0] * 4 for _ in grid_u],
+    }
+
+    # 2. CTC-02 face f544 against bent copy
+    ctc_path = HERE.parent.parent.parent / "crates/arris-geom/testdata/ctc02-bicubic-faces.txt"
+    ctc_lines = [
+        l.strip()
+        for l in ctc_path.read_text().splitlines()
+        if not l.startswith("#") and l.strip()
+    ]
+    assert ctc_lines[0] == "face f544"
+    head = [int(float(x)) for x in ctc_lines[1].split()[1:]]
+    p, q, n, m = head
+    ku = [float(x) for x in ctc_lines[2].split()]
+    kv = [float(x) for x in ctc_lines[3].split()]
+    pts = []
+    wts = []
+    idx = 4
+    for i in range(n):
+        row_pts = []
+        row_wts = []
+        for j in range(m):
+            vals = [float(x) for x in ctc_lines[idx].split()]
+            row_pts.append([v * 0.01 for v in vals[:3]])
+            row_wts.append(vals[3])
+            idx += 1
+        pts.append(row_pts)
+        wts.append(row_wts)
+
+    mid = [6.32893139e-09, 7.74071919e+00, -2.45037821e+00]
+    axis = [0.70710678, -0.49547788, -0.50448158]
+    angle = 0.2
+
+    def rotate_around(pt, centre, ax, th):
+        v = sub(pt, centre)
+        c = math.cos(th)
+        s = math.sin(th)
+        u = unit(ax)
+        v_rot = add(add(mul(c, v), mul(s, cross(u, v))), mul((1.0 - c) * dot(u, v), u))
+        return add(v_rot, centre)
+
+    pts_crossed = [[rotate_around(pt, mid, axis, angle) for pt in row] for row in pts]
+
+    surfaces["f544"] = {
+        "type": "nurbs",
+        "degree": [p, q],
+        "knots": [ku, kv],
+        "control_points": net(pts),
+        "weights": wts,
+    }
+    surfaces["f544_crossed"] = {
+        "type": "nurbs",
+        "degree": [p, q],
+        "knots": [ku, kv],
+        "control_points": net(pts_crossed),
+        "weights": wts,
+    }
+
+    # 3. Two skins crossing at a seam
+    knots_skin = [0.0] * 4 + [1.0] + [2.0] * 4
+    skin_grid_u = [-2.0, -1.0, 0.0, 1.0, 2.0]
+    skin_grid_v = [-2.0, -1.0, 0.0, 1.0, 2.0]
+    surfaces["skin_a"] = {
+        "type": "nurbs",
+        "degree": [3, 3],
+        "knots": [knots_skin, knots_skin],
+        "control_points": net([
+            [[x, y, 0.1 * (x * x - y * y)] for y in skin_grid_v]
+            for x in skin_grid_u
+        ]),
+        "weights": [[1.0] * 5 for _ in skin_grid_u],
+    }
+    surfaces["skin_b"] = {
+        "type": "nurbs",
+        "degree": [3, 3],
+        "knots": [knots_skin, knots_skin],
+        "control_points": net([
+            [[x, y, 0.2 * x + 0.05 * y * y - 0.2] for y in skin_grid_v]
+            for x in skin_grid_u
+        ]),
+        "weights": [[1.0] * 5 for _ in skin_grid_u],
+    }
+
+    pairs = [
+        {"a": "sweep", "b": "loft"},
+        {"a": "f544", "b": "f544_crossed"},
+        {"a": "skin_a", "b": "skin_b"},
+    ]
+    return {
+        "kind": "geometry",
+        "description": "NURBS surfaces against NURBS surfaces in the tilt pose (plan nurbs-nurbs-section step 7): a sweep face against a loft face, a CTC-02 face against a bent copy, two skins crossing at a seam — through Open CASCADE's GeomAPI_IntSS; written by generate.py",
+        "surfaces": surfaces,
+        "curves": {},
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 # --- c8-curve-extrema ----------------------------------------------------------
 
 
@@ -1754,6 +1887,7 @@ if __name__ == "__main__":
     write("c10-nurbs-analytic-pairs", c10_nurbs_analytic_pairs())
     write("c10-conic-nurbs-hits", c10_conic_nurbs_hits())
     write("c10-nurbs-nurbs-hits", c10_nurbs_nurbs_hits())
+    write("c10-nurbs-nurbs-pairs", c10_nurbs_nurbs_pairs())
     write("c8-curve-extrema", c8_curve_extrema())
     write("c8-curve-surface-extrema", c8_curve_surface_extrema())
     write("c8-surface-extrema", c8_surface_extrema())

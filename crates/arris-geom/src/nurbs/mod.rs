@@ -29,7 +29,9 @@ mod surface;
 pub use basis::MAX_DEGREE;
 pub(crate) use critical::Field;
 pub use curve::{NurbsCurve, NurbsCurve2};
-pub use fit::{FitError, MAX_FIT_SPANS, fit_curve, fit_curve_periodic, fit_curve2};
+pub use fit::{
+    FitError, MAX_FIT_SPANS, fit_curve, fit_curve_periodic, fit_curve2, fit_curve2_periodic,
+};
 pub(crate) use line::{conic_nurbs, line_nurbs};
 pub use offset::{MAX_OFFSET_PATCHES, MAX_OFFSET_SPANS, OFFSET_FIT_DEGREE};
 pub(crate) use project::Patch;

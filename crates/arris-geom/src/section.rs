@@ -6,11 +6,14 @@
 //! singular point a point of the result (ADR-0018, ADR-0019,
 //! `docs/DATA-MODEL.md` §Curves).
 
-use arris_math::{Aabb, Interval, Meter, Point3, Tolerance};
+use std::sync::Arc;
+
+use arris_math::{Aabb, Interval, Meter, Point2, Point3, Tolerance};
 
 use crate::{
-    Curve, GeomError, MeetCurve, MeetKind, MeetPoint, SectionBranch, SectionTrace, Surface,
-    SurfaceIntersection, fit_curve, fit_curve_periodic, trace_quadrics, trace_torus,
+    Curve, Curve2, GeomError, MeetCurve, MeetKind, MeetPoint, NurbsSurface, SectionBranch,
+    SectionCircle, SectionPoint, SectionTrace, Surface, SurfaceIntersection, fit_curve,
+    fit_curve_periodic, fit_curve2, fit_curve2_periodic, trace_quadrics, trace_torus,
 };
 
 /// The fraction of the pair's `tol.linear` a fitted section curve is
@@ -194,13 +197,68 @@ pub fn trace_section(
 ) -> Result<SectionTrace, GeomError> {
     let torus = |s: &Surface| matches!(s, Surface::Torus { .. });
     let nurbs = |s: &Surface| matches!(s, Surface::Nurbs(_));
-    if nurbs(a) || nurbs(b) {
+    if let (Surface::Nurbs(one), Surface::Nurbs(two)) = (a, b) {
+        trace_nurbs_nurbs(one, two, tol, meter)
+    } else if nurbs(a) || nurbs(b) {
         crate::torus_walk::trace_nurbs(a, b, tol, meter)
     } else if torus(a) || torus(b) {
         trace_torus(a, b, tol, meter)
     } else {
         trace_quadrics(a, b, within, tol, meter)
     }
+}
+
+/// The marched section of two NURBS surfaces.
+pub(crate) fn trace_nurbs_nurbs(
+    one: &NurbsSurface,
+    two: &NurbsSurface,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<SectionTrace, GeomError> {
+    let marched = crate::march::walk::march(one, two, tol, meter)?;
+    let points: Vec<SectionPoint> = marched
+        .points
+        .into_iter()
+        .map(|p| SectionPoint {
+            point: p.point,
+            isolated: p.isolated,
+        })
+        .collect();
+    let circles: Vec<SectionCircle> = marched
+        .isocurves
+        .into_iter()
+        .map(|circle| SectionCircle {
+            circle,
+            tangent: false,
+        })
+        .collect();
+    let surf0 = Arc::new(one.clone());
+    let surf1 = Arc::new(two.clone());
+    let mut branches = Vec::new();
+    for branch in marched.branches {
+        let pins = match branch.ends {
+            Some(ends) => [
+                match ends[0] {
+                    crate::BranchEnd::Singular(idx) => points.get(idx).map(|p| p.point),
+                    crate::BranchEnd::Clipped => {
+                        branch.at.first().map(|x| one.eval(x[0], x[1]).point)
+                    }
+                },
+                match ends[1] {
+                    crate::BranchEnd::Singular(idx) => points.get(idx).map(|p| p.point),
+                    crate::BranchEnd::Clipped => {
+                        branch.at.last().map(|x| one.eval(x[0], x[1]).point)
+                    }
+                },
+            ],
+            None => [None, None],
+        };
+        let is_closed = branch.ends.is_none();
+        let walk =
+            crate::trace::MarchedWalk::new([surf0.clone(), surf1.clone()], branch.at, is_closed);
+        branches.push(SectionBranch::on_marched(walk, branch.ends, pins));
+    }
+    Ok(SectionTrace::new(branches, points).with_circles(circles))
 }
 
 /// The stretch `range` of `branch` as a `Curve::Nurbs` of degree
@@ -269,4 +327,44 @@ pub fn fit_branch(
         fit_curve(f, range, SECTION_FIT_DEGREE, deviation, target, meter)
     }?;
     Ok(Curve::Nurbs(fit))
+}
+
+/// The stretch `range` of `branch` as a `Curve2::Nurbs` of degree
+/// [`crate::PCURVE_FIT_DEGREE`], fitted in the parameter plane of
+/// `surface` (0 or 1) until it is nowhere farther than `tol.linear`
+/// from the branch's points on that surface.
+pub fn fit_branch_pcurve(
+    branch: &SectionBranch,
+    surface: usize,
+    range: Interval,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<Curve2, GeomError> {
+    let f = |t: f64| branch.uv_on(surface, t).unwrap_or(Point2::origin());
+    let surf = branch.surface(surface);
+    let deviation = |t: f64, q: Point2| match &surf {
+        Some(s) => (s.eval(q.x, q.y).point - branch.point(t)).norm(),
+        None => (f(t) - q).norm(),
+    };
+    let whole = branch.is_closed() && range == branch.domain();
+    let fit = if whole {
+        fit_curve2_periodic(
+            f,
+            range,
+            crate::PCURVE_FIT_DEGREE,
+            deviation,
+            tol.linear,
+            meter,
+        )
+    } else {
+        fit_curve2(
+            f,
+            range,
+            crate::PCURVE_FIT_DEGREE,
+            deviation,
+            tol.linear,
+            meter,
+        )
+    }?;
+    Ok(Curve2::Nurbs(fit))
 }
