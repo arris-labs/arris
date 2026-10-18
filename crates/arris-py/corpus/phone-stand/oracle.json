@@ -1,0 +1,171 @@
+{
+  "description": "script-corpus/phone-stand: a side section extruded, a port through the lip, top edges rounded",
+  "params": {},
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              90,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              90,
+              14
+            ]
+          },
+          {
+            "line_to": [
+              78,
+              14
+            ]
+          },
+          {
+            "line_to": [
+              78,
+              6
+            ]
+          },
+          {
+            "line_to": [
+              60,
+              6
+            ]
+          },
+          {
+            "line_to": [
+              28,
+              80
+            ]
+          },
+          {
+            "line_to": [
+              16,
+              80
+            ]
+          },
+          {
+            "line_to": [
+              46,
+              6
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              6
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "stand",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        1,
+        0
+      ],
+      "length": 70
+    },
+    {
+      "name": "port_tool",
+      "op": "cylinder",
+      "base": [
+        76,
+        35,
+        10
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 3.5,
+      "height": 16
+    },
+    {
+      "name": "port",
+      "op": "cut",
+      "target": "stand",
+      "tool": "port_tool"
+    },
+    {
+      "name": "lip_round",
+      "op": "fillet",
+      "of": "port",
+      "edges": [
+        [
+          90,
+          35,
+          14
+        ],
+        [
+          78,
+          35,
+          14
+        ]
+      ],
+      "radius": 2
+    },
+    {
+      "name": "back_round",
+      "op": "fillet",
+      "of": "lip_round",
+      "edges": [
+        [
+          16,
+          35,
+          80
+        ],
+        [
+          28,
+          35,
+          80
+        ]
+      ],
+      "radius": 3
+    }
+  ],
+  "result": "back_round",
+  "checkpoints": [
+    "stand",
+    "port",
+    "lip_round",
+    "back_round"
+  ]
+}

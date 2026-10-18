@@ -1,0 +1,313 @@
+{
+  "description": "script-corpus/pi-mount-plate: rounded plate, four drilled standoffs, a stadium slot, root fillets",
+  "params": {},
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        85,
+        56,
+        3
+      ]
+    },
+    {
+      "name": "rounded",
+      "op": "fillet",
+      "of": "plate",
+      "edges": [
+        [
+          0,
+          0,
+          1.5
+        ],
+        [
+          85,
+          0,
+          1.5
+        ],
+        [
+          0,
+          56,
+          1.5
+        ],
+        [
+          85,
+          56,
+          1.5
+        ]
+      ],
+      "radius": 3
+    },
+    {
+      "name": "so0",
+      "op": "cylinder",
+      "base": [
+        14,
+        3.5,
+        1.5
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 5
+    },
+    {
+      "name": "so1",
+      "op": "cylinder",
+      "base": [
+        72,
+        3.5,
+        1.5
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 5
+    },
+    {
+      "name": "so2",
+      "op": "cylinder",
+      "base": [
+        14,
+        52.5,
+        1.5
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 5
+    },
+    {
+      "name": "so3",
+      "op": "cylinder",
+      "base": [
+        72,
+        52.5,
+        1.5
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 3,
+      "height": 5
+    },
+    {
+      "name": "standoffs",
+      "op": "fuse",
+      "bodies": [
+        "rounded",
+        "so0",
+        "so1",
+        "so2",
+        "so3"
+      ]
+    },
+    {
+      "name": "h0",
+      "op": "cylinder",
+      "base": [
+        14,
+        3.5,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.375,
+      "height": 10
+    },
+    {
+      "name": "h1",
+      "op": "cylinder",
+      "base": [
+        72,
+        3.5,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.375,
+      "height": 10
+    },
+    {
+      "name": "h2",
+      "op": "cylinder",
+      "base": [
+        14,
+        52.5,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.375,
+      "height": 10
+    },
+    {
+      "name": "h3",
+      "op": "cylinder",
+      "base": [
+        72,
+        52.5,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.375,
+      "height": 10
+    },
+    {
+      "name": "holes",
+      "op": "cut",
+      "target": "standoffs",
+      "tools": [
+        "h0",
+        "h1",
+        "h2",
+        "h3"
+      ]
+    },
+    {
+      "name": "stadium",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          -1
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          31.5,
+          24
+        ],
+        "segments": [
+          {
+            "line_to": [
+              53.5,
+              24
+            ]
+          },
+          {
+            "arc_to": [
+              53.5,
+              32
+            ],
+            "via": [
+              57.5,
+              28
+            ]
+          },
+          {
+            "line_to": [
+              31.5,
+              32
+            ]
+          },
+          {
+            "arc_to": [
+              31.5,
+              24
+            ],
+            "via": [
+              27.5,
+              28
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "slot_tool",
+      "op": "extrude",
+      "profile": "stadium",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 5
+    },
+    {
+      "name": "slot",
+      "op": "cut",
+      "target": "holes",
+      "tool": "slot_tool"
+    },
+    {
+      "name": "standoff_roots",
+      "op": "fillet",
+      "of": "slot",
+      "edges": [
+        [
+          16.121320343559642,
+          5.621320343559643,
+          3
+        ],
+        [
+          74.12132034355965,
+          5.621320343559643,
+          3
+        ],
+        [
+          16.121320343559642,
+          54.621320343559645,
+          3
+        ],
+        [
+          74.12132034355965,
+          54.621320343559645,
+          3
+        ]
+      ],
+      "radius": 0.6
+    }
+  ],
+  "result": "standoff_roots",
+  "checkpoints": [
+    "plate",
+    "rounded",
+    "standoffs",
+    "holes",
+    "slot",
+    "standoff_roots"
+  ]
+}

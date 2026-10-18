@@ -1,0 +1,10 @@
+{
+  "leaf": "ok",
+  "knuckle": "ok",
+  "pin_hole": "ok",
+  "screw_holes": "ok",
+  "knuckle_joins": {
+    "refused": "OpDegenerateError",
+    "reason": "the corner at the edge's end is one the blend's closed forms do not cover"
+  }
+}

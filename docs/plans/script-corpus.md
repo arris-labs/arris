@@ -93,7 +93,7 @@ robustness or bound has to be established here.
   case), `harness.py`, `test_script_corpus.py`, and the first part end to
   end: the enclosure, whose `shell` and boss fillets are the likeliest to
   show script and recipe disagreeing on what was picked.
-- [ ] Step 2 **[2]** — The four other prismatic parts.
+- [x] Step 2 **[2]** — The four other prismatic parts.
 - [ ] Step 3 **[2]** — The four revolved parts, the threaded cap's helix
   sweep among them.
 - [ ] Step 4 **[2]** — The four swept and lofted parts.

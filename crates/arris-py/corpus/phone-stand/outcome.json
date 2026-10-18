@@ -1,0 +1,9 @@
+{
+  "stand": "ok",
+  "port": "ok",
+  "lip_round": {
+    "refused": "OpDegenerateError",
+    "reason": "the blend leaves its face through an edge that is not the corner's own"
+  },
+  "back_round": "ok"
+}

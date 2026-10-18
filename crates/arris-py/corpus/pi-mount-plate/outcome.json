@@ -1,0 +1,11 @@
+{
+  "plate": "ok",
+  "rounded": "ok",
+  "standoffs": "ok",
+  "holes": "ok",
+  "slot": "ok",
+  "standoff_roots": {
+    "refused": "OpDegenerateError",
+    "reason": "the blend leaves its face through an edge that is not the corner's own"
+  }
+}

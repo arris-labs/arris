@@ -1,0 +1,177 @@
+{
+  "description": "script-corpus/wall-hook: a back plate with two screw holes and a J arm, the arm's tip rounded",
+  "params": {},
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        30,
+        5,
+        60
+      ]
+    },
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          8,
+          0,
+          0
+        ],
+        "x": [
+          0,
+          1,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          4,
+          8
+        ],
+        "segments": [
+          {
+            "line_to": [
+              30,
+              8
+            ]
+          },
+          {
+            "arc_to": [
+              30,
+              30
+            ],
+            "via": [
+              41,
+              19
+            ]
+          },
+          {
+            "line_to": [
+              30,
+              26
+            ]
+          },
+          {
+            "arc_to": [
+              30,
+              12
+            ],
+            "via": [
+              37,
+              19
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              12
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              8
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "arm",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        1,
+        0,
+        0
+      ],
+      "length": 14
+    },
+    {
+      "name": "hook",
+      "op": "fuse",
+      "a": "plate",
+      "b": "arm"
+    },
+    {
+      "name": "s0",
+      "op": "cylinder",
+      "base": [
+        15,
+        -1,
+        40
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "radius": 2.5,
+      "height": 7
+    },
+    {
+      "name": "s1",
+      "op": "cylinder",
+      "base": [
+        15,
+        -1,
+        54
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "radius": 2.5,
+      "height": 7
+    },
+    {
+      "name": "screw_holes",
+      "op": "cut",
+      "target": "hook",
+      "tools": [
+        "s0",
+        "s1"
+      ]
+    },
+    {
+      "name": "tip_round",
+      "op": "fillet",
+      "of": "screw_holes",
+      "edges": [
+        [
+          8,
+          41,
+          19
+        ],
+        [
+          22,
+          41,
+          19
+        ]
+      ],
+      "radius": 1.5
+    }
+  ],
+  "result": "tip_round",
+  "checkpoints": [
+    "plate",
+    "arm",
+    "hook",
+    "screw_holes",
+    "tip_round"
+  ]
+}
