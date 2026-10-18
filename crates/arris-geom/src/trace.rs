@@ -102,6 +102,12 @@ pub enum SectionFault {
     /// turning back at a kink of the surface, a knot where it is only
     /// continuous.
     UnresolvedTurning,
+    /// The walk of the section of two NURBS surfaces (ADR-0068) did not
+    /// account for every seed: a seed no walk reached, a walk that came
+    /// back to a seed another walk had passed, or one that stalled or
+    /// left a domain away from every seed. The section has a stretch the
+    /// walk could not follow alone, and nothing of it is returned.
+    UnvisitedSeed,
 }
 
 impl fmt::Display for SectionFault {
@@ -118,6 +124,7 @@ impl fmt::Display for SectionFault {
             SectionFault::UnresolvedTurning => {
                 "turning points of the section that cannot be told apart"
             }
+            SectionFault::UnvisitedSeed => "a seed of the marched section that no walk reached",
         })
     }
 }

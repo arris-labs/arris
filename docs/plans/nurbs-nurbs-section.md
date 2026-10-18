@@ -104,13 +104,16 @@ bound has to be established here.
   system is (`bernstein_n` gained gates). Held to the twins of line, circle and ellipse × each
   analytic kind against the closed forms, plus `tests/fixtures/geom/`
   fixtures against `GeomAPI_IntCS`.
-- [ ] Step 5 **[3]** — **The marcher.** Seeds (step 4 on every edge
+- [x] Step 5 **[3]** — **The marcher.** Seeds (step 4 on every edge
   line, step 2's loop condition, singular points), the walk with its box
   chain, seams wrapped, `SectionFault::UnvisitedSeed` with its Python
   binding. Held to twins of plane × plane, cylinder × cylinder (crossing,
   skew, tangent) and sphere × cylinder: branch count, ends and singular
   points equal the closed form's, every walked point within `near` of
-  both surfaces.
+  both surfaces. Found: a branch through a singular point needs seeds of
+  its own, so each singular point's *departures*, the section at its
+  reach, are certified and the branch ends through one (ADR-0068's
+  amendment). A turning point of higher order is refused crowded.
 - [ ] Step 6 **[2]** — **Isolines, poles and the flush case.** An
   isocurve of one surface on the other returned exact (a plane's twin
   through a ruled face's row), a pole on the other surface as a singular

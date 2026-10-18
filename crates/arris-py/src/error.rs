@@ -146,7 +146,7 @@ classes! {
     GeomAmbiguousUvError(GeomError) = "The (u, v) point has no unique nearest point on the pcurve.";
     GeomNotOnSurfaceError(GeomError) = "The curve does not lie on the surface within the tolerance.";
     GeomThroughSingularityError(GeomError) = "The curve runs through a singular point of the surface.";
-    GeomDegenerateSectionError(GeomError) = "The section of two quadrics is degenerate.";
+    GeomDegenerateSectionError(GeomError) = "The section of two surfaces is degenerate, or its walk did not reach every seed.";
     GeomOffsetFoldsError(GeomError) = "The offset of a surface folds: the distance reaches a principal radius.";
 
     FitError(ArrisError) = "Why a NURBS fit did not produce a curve.";

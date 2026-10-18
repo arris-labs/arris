@@ -1,6 +1,6 @@
-//! The marched section of two NURBS surfaces (ADR-0068), as far as it is
-//! built: the system of a pair of their Bézier patches, and the loop
-//! condition whose zeros seed the section's closed loops.
+//! The marched section of two NURBS surfaces (ADR-0068): the system of a
+//! pair of their Bézier patches, and the loop condition whose zeros seed
+//! the section's closed loops. The walk between the seeds is [`walk`].
 //!
 //! On a patch `P = X/w` over its own `(s, t)` in `[0, 1]²`, `X` and `w`
 //! polynomials of degree `(p, q)` in Bernstein form, the section of two
@@ -44,6 +44,8 @@ use crate::bernstein_n::{PolyN, Wrap, Zero, common_zeros, merge};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::nurbs::Patch;
+
+pub(crate) mod walk;
 
 /// How far past its own patch, as a share of the patch, a certified
 /// zero still counts: a zero on a knot line found from both sides is

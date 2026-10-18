@@ -24,7 +24,7 @@ mod bernstein2;
     not(test),
     expect(
         dead_code,
-        reason = "the marcher calls it from plans/nurbs-nurbs-section step 5 on"
+        reason = "the intersectors dispatch the marcher from plans/nurbs-nurbs-section step 7 on"
     )
 )]
 mod bernstein_n;
@@ -47,7 +47,7 @@ mod loft;
     not(test),
     expect(
         dead_code,
-        reason = "the marcher calls it from plans/nurbs-nurbs-section step 5 on"
+        reason = "the intersectors dispatch the marcher from plans/nurbs-nurbs-section step 7 on"
     )
 )]
 mod march;

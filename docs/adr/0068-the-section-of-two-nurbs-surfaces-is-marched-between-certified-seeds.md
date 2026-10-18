@@ -158,3 +158,62 @@ the table above with both conditions.
   is crate-visible. No public type or signature changes.
 - The comparison stays reproducible. The collinear condition lives in
   `march`'s tests beside the survey, not in the kernel.
+
+## Amendment, step 5: the walk, its singular points and its box chain
+
+- **Boundary seeds** are every edge line and seam of both domains
+  against the other surface, by the curve × surface arm. A seed on an
+  open edge ends a branch; one on a seam is passed, as a turning point
+  is. A row collapsed to a pole is not looked at (step 6 decides poles),
+  and an isoline on the other surface is refused as `TubeCircle` until
+  step 6 returns it. The section touching an open edge is ADR-0061's
+  refusal, `UnresolvedTurning`.
+- **Singular points** come from the loop condition's uncertified boxes.
+  From each, a Gauss–Newton descent on `P₁ − P₂` and `n₂·∂P₁/∂u₁`,
+  `n₂·∂P₁/∂v₁` looks for the surfaces meeting tangent. A point within
+  `tol.linear` of both and `tol.angular` of tangent is a singular point.
+  Otherwise the box is looked at as a turning point the isolation could
+  not certify, and one that is neither is `CrowdedSingularity`. That
+  includes a turning point of higher order: a cylinder of radius 0.6
+  0.6 off the axis of one of radius 1, the narrower walked first, turns
+  in its `v` at (−1, 0, 0) as `(u − π/2)⁴`, and the loop condition's
+  gradient vanishes there.
+- **The reach** of a singular point is one step of the walk at the
+  larger principal curvature of either surface there, `√(8·sag/κ)`. Its
+  **departures**, the section's points at the reach, are the zeros of
+  the section with `|X₁ − w₁·S|² − ρ²w₁²`, isolated over the patch pairs
+  whose hulls meet its ball and certified, or the point is
+  `CrowdedSingularity`. A branch ends at the singular point through a
+  departure, the stretch inside the reach the chord to it. None is an
+  isolated point. Turning points inside a reach are the point's own and
+  are dropped. A boundary seed inside one, or two reaches that meet, are
+  `CrowdedSingularity`.
+- **The step** is the chord whose sag at the section's curvature is
+  `SECTION_FIT_FRACTION · tol.linear`. The curvature is exact at the
+  step's start, the vector in the normals' plane whose components along
+  them are the two second fundamental forms along the tangent. The
+  longest step is 1/64 of the diagonal of both nets' box. The corrector
+  holds both surface points within 1/1024 of `tol.linear` of each other.
+- **The box chain**, as built: a step is accepted only where the
+  corrector converges, its point is within a quarter step of the
+  prediction, the tangent turns by at most four times what the
+  curvature at either end allows, and the chord's middle, corrected onto
+  the section, is within four sags of it. A step failing any of them is
+  halved, forty times at the most. A seed within four sags of a chord,
+  past its start and inside the step's parameter box grown by its
+  largest move, is where the step ends, exactly at the seed. That
+  growth is needed: a turning point lies past the chord's range in the
+  parameter it turns in, by the sag. The walks start from the open
+  edges' seeds, then the departures, then the passed seeds still not
+  reached, each of which must come back to itself. A walk that reaches
+  a passed seed a second time, leaves a domain or enters a reach away
+  from a seed, or stalls, and any seed left unreached, is
+  `SectionFault::UnvisitedSeed`.
+- **Measured** on the twins of plane × plane, cylinders crossing, skew
+  and tangent inside and outside, and Viviani's sphere × cylinder, both
+  orders each. Every case gives the closed form's branches, ends and
+  singular points. Each walked point is on both twins and both analytic
+  surfaces within 1/1024 of `tol.linear`, and a surface pair takes 2 ms
+  to 0.42 s in the test profile, most of it the 11 000 steps a loop of
+  radius 1 takes at the default tolerance
+  (`march_every_twin_section_has_the_closed_forms_branches`).

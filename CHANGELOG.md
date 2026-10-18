@@ -159,6 +159,10 @@ into its version (ADR-0027).
   a path, and loses `DirectionNotNormal`: add or remove the arms in an
   exhaustive `match`. Python reads a refusal's reason as text, so it needs
   no change.
+- `arris_geom::SectionFault` gains `UnvisitedSeed`, the section of two
+  NURBS surfaces refused where its walk does not reach every point that
+  decides its shape: add the arm to an exhaustive `match`. Python reads
+  `GeomDegenerateSectionError.fault` as text, so it needs no change.
 
 ## 0.8.0 — 2026-10-13
 
