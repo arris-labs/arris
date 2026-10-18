@@ -400,6 +400,187 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
     })
 }
 
+/// A refusal recorded in a script's `outcome.json`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub struct ScriptRefusal {
+    /// The exception class name, e.g. `"OpDegenerateError"`.
+    pub refused: String,
+    /// For [`OpDegenerateError`](arris_ops::OpError::Degenerate), the reason string.
+    #[serde(default)]
+    pub reason: Option<String>,
+    /// For [`OpUnsupportedError`](arris_ops::OpError::Unsupported), the first kind.
+    #[serde(default)]
+    pub a_kind: Option<String>,
+    /// For [`OpUnsupportedError`](arris_ops::OpError::Unsupported), the second kind.
+    #[serde(default)]
+    pub b_kind: Option<String>,
+    /// Any detail text recorded on the exception.
+    #[serde(default)]
+    pub detail: Option<String>,
+}
+
+/// The outcome of a script stage: `"ok"`, `"not reached"` or a refusal.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(untagged)]
+pub enum ScriptOutcome {
+    /// A status string: `"ok"` or `"not reached"`.
+    Status(String),
+    /// A refusal recorded by the script harness.
+    Refusal(ScriptRefusal),
+}
+
+/// Maps a recorded refusal's operation, class, and attributes to the cycle it
+/// blocks, by name.
+///
+/// This provides by-name mapping matching the table held by [`blocks_reason`].
+///
+/// ```
+/// use arris_debug::histogram::{Cycle, blocks_reason_named};
+///
+/// let c = blocks_reason_named(
+///     "fillet",
+///     "OpDegenerateError",
+///     Some("the corner at the edge's end is one the blend's closed forms do not cover"),
+///     None,
+///     None,
+/// );
+/// assert_eq!(c, Some(Cycle::BlendNetwork));
+/// ```
+pub fn blocks_reason_named(
+    stage_op: &str,
+    class: &str,
+    reason: Option<&str>,
+    a_kind: Option<&str>,
+    b_kind: Option<&str>,
+) -> Option<Cycle> {
+    let is_nurbs = |k: Option<&str>| k.is_some_and(|s| s.eq_ignore_ascii_case("nurbs"));
+    if is_nurbs(a_kind) || is_nurbs(b_kind) {
+        return Some(Cycle::Nurbs);
+    }
+    Some(match class {
+        "OpUnsupportedError" => {
+            if stage_op == "fillet" || stage_op == "chamfer" {
+                Cycle::BlendNetwork
+            } else {
+                Cycle::Itself("unsupported pair")
+            }
+        }
+        "OpDegenerateError" => {
+            let r = reason.unwrap_or("");
+            if r.contains("closed forms do not cover")
+                || r == "VertexBlend"
+                || r.contains("leaves its face")
+                || r == "TooLarge"
+                || r.contains("tangent dihedral")
+                || r == "TangentChain"
+            {
+                Cycle::BlendNetwork
+            } else if r.contains("surface through zero") || r == "SurfaceCollapses" {
+                Cycle::Itself("SurfaceCollapses")
+            } else if r.contains("elliptic") || r == "EllipticRevolve" {
+                Cycle::Sweep
+            } else if r.contains("not a solid") || r == "NotSolid" {
+                Cycle::Healing
+            } else if r.contains("touch along an edge")
+                || r.contains("touch along a curve")
+                || r == "NonManifold"
+                || r == "TangentContact"
+            {
+                Cycle::Itself("non-manifold")
+            } else if r.contains("apex or pole") || r == "BesideSingularity" {
+                Cycle::Itself("beside a singularity")
+            } else if r.contains("no material")
+                || r.contains("no thickness")
+                || r == "Empty"
+                || r == "ZeroThickness"
+            {
+                Cycle::Itself("no material")
+            } else if r == "NoEdges" || r.contains("no edges were given to blend") {
+                Cycle::Itself("NoEdges")
+            } else if r == "RepeatedEdge" || r.contains("an edge is listed twice") {
+                Cycle::Itself("RepeatedEdge")
+            } else if r == "EdgeNotInBody" || r.contains("the edge is not an edge of the body") {
+                Cycle::Itself("EdgeNotInBody")
+            } else if r == "NoTools" || r.contains("the boolean has no tool") {
+                Cycle::Itself("NoTools")
+            } else if r == "RepeatedOperand"
+                || r.contains("a body is an operand of the boolean twice")
+            {
+                Cycle::Itself("RepeatedOperand")
+            } else if r == "NoFaces" || r.contains("no faces were given to offset") {
+                Cycle::Itself("NoFaces")
+            } else if r == "RepeatedFace" || r.contains("a face is listed twice") {
+                Cycle::Itself("RepeatedFace")
+            } else if r == "FaceNotInBody" || r.contains("the face is not a face of the body") {
+                Cycle::Itself("FaceNotInBody")
+            } else if r == "Vanishes" || r.contains("vanish or reverse") {
+                Cycle::Itself("Vanishes")
+            } else if r == "VertexSplits" || r.contains("split into an edge") {
+                Cycle::Itself("VertexSplits")
+            } else if r == "NoExactOffset" || r.contains("no exact offset") {
+                Cycle::Itself("NoExactOffset")
+            } else if r == "Gap" {
+                Cycle::Itself("Gap")
+            } else if r == "SelfIntersects" {
+                Cycle::Itself("SelfIntersects")
+            } else if r == "NoWalls" {
+                Cycle::Itself("NoWalls")
+            } else if r == "RepeatedOpening" {
+                Cycle::Itself("RepeatedOpening")
+            } else if r == "OpeningNotInBody" {
+                Cycle::Itself("OpeningNotInBody")
+            } else if r == "OpeningDragged" {
+                Cycle::Itself("OpeningDragged")
+            } else if r == "ProfileCrossesAxis" || r.contains("profile crosses the revolve axis") {
+                Cycle::Itself("ProfileCrossesAxis")
+            } else if r == "AxisNotInProfilePlane" || r.contains("revolve axis does not lie") {
+                Cycle::Itself("AxisNotInProfilePlane")
+            } else if r == "AngleAboveTurn" || r.contains("revolve angle is above a full turn") {
+                Cycle::Itself("AngleAboveTurn")
+            } else if r == "SpindleTorus" || r.contains("spindle torus") {
+                Cycle::Itself("SpindleTorus")
+            } else if r == "ProfileAlongPath" || r.contains("plane holds the path's start tangent")
+            {
+                Cycle::Itself("ProfileAlongPath")
+            } else if r == "SweepFolds" || r.contains("profile folds on span") {
+                Cycle::Itself("SweepFolds")
+            } else if r == "FrameDoesNotClose" || r.contains("frame comes back turned") {
+                Cycle::Itself("FrameDoesNotClose")
+            } else if r == "NoCrossing" {
+                Cycle::Itself("NoCrossing")
+            } else if r == "NonFinite" || r.contains("is not finite") {
+                Cycle::Itself("NonFinite")
+            } else if r == "NotPositive" || r.contains("must be positive") {
+                Cycle::Itself("NotPositive")
+            } else {
+                Cycle::Itself("other degenerate")
+            }
+        }
+        "OpInvalidInputError" => Cycle::Itself("InvalidInput"),
+        "OpProfileError" => Cycle::Itself("Profile"),
+        "OpPathError" => Cycle::Itself("Path"),
+        "OpLoftError" => Cycle::Itself("Loft"),
+        "OpToleranceError" => Cycle::Itself("Tolerance"),
+        "StaleHandleError" | "OpNotFoundError" => Cycle::Itself("NotFound"),
+        "OpUnkeyedError" => Cycle::Itself("Unkeyed"),
+        "OpRejectedError" => Cycle::Itself("Rejected"),
+        "Interrupted" => Cycle::Itself("Interrupted"),
+        "OpInternalError" => return None,
+        _ => Cycle::Itself("unknown"),
+    })
+}
+
+/// Helper that maps a [`ScriptRefusal`] to the cycle it blocks.
+pub fn blocks_script_refusal(stage_op: &str, refusal: &ScriptRefusal) -> Option<Cycle> {
+    blocks_reason_named(
+        stage_op,
+        &refusal.refused,
+        refusal.reason.as_deref(),
+        refusal.a_kind.as_deref(),
+        refusal.b_kind.as_deref(),
+    )
+}
+
 /// The refusals over a set of parts, counted (ADR-0026 §5).
 ///
 /// Guarantees: deterministic — the same parts added in any order print
@@ -419,6 +600,14 @@ pub struct Histogram {
     blocked: BTreeMap<String, BTreeMap<String, Stage>>,
     /// Each refusal, by cycle, stage and its name: how many times.
     refusals: BTreeMap<(String, Stage, String), usize>,
+    /// Every script part added.
+    script_parts: BTreeSet<String>,
+    /// Script stages: ok vs refused vs not reached.
+    script_statuses: BTreeMap<String, usize>,
+    /// Per cycle, each script part it blocks and the first operation it does.
+    script_blocked: BTreeMap<String, BTreeMap<String, String>>,
+    /// Each refusal: (cycle, op, refusal_name) -> count.
+    script_refusals: BTreeMap<(String, String, String), usize>,
 }
 
 /// Where a histogram cannot count a part: a refusal with no cycle
@@ -629,6 +818,134 @@ impl Histogram {
         }
         out
     }
+
+    /// Counts a script stage of `part` executing operation `stage_op` with
+    /// outcome `outcome`.
+    pub fn add_script(&mut self, part: &str, stage_op: &str, outcome: &ScriptOutcome) {
+        self.script_parts.insert(part.to_string());
+        match outcome {
+            ScriptOutcome::Status(status) if status == "ok" => {
+                *self.script_statuses.entry("ok".to_string()).or_default() += 1;
+            }
+            ScriptOutcome::Status(status) if status == "not reached" => {
+                *self
+                    .script_statuses
+                    .entry("not reached".to_string())
+                    .or_default() += 1;
+            }
+            ScriptOutcome::Status(other) => {
+                *self.script_statuses.entry(other.clone()).or_default() += 1;
+            }
+            ScriptOutcome::Refusal(refusal) => {
+                *self
+                    .script_statuses
+                    .entry("refused".to_string())
+                    .or_default() += 1;
+                let cycle =
+                    blocks_script_refusal(stage_op, refusal).unwrap_or(Cycle::Itself("internal"));
+                let cycle_str = cycle.to_string();
+                let op = stage_op.to_string();
+                self.script_blocked
+                    .entry(cycle_str.clone())
+                    .or_default()
+                    .entry(part.to_string())
+                    .or_insert_with(|| op.clone());
+                let short_name = match refusal.refused.as_str() {
+                    "OpDegenerateError" => {
+                        let r = refusal.reason.as_deref().unwrap_or("");
+                        if r.contains("closed forms do not cover") {
+                            "VertexBlend"
+                        } else if r.contains("leaves its face") {
+                            "TooLarge"
+                        } else if r.contains("surface through zero") {
+                            "SurfaceCollapses"
+                        } else if r.contains("tangent dihedral") {
+                            "TangentChain"
+                        } else {
+                            r
+                        }
+                    }
+                    "OpUnsupportedError" => "UnsupportedPair",
+                    _ => &refusal.refused,
+                };
+                *self
+                    .script_refusals
+                    .entry((cycle_str, op, short_name.to_string()))
+                    .or_default() += 1;
+            }
+        }
+    }
+
+    /// The script corpus histogram as markdown: a summary line,
+    /// *cycle → parts blocked* by operation, and each refusal by name.
+    pub fn script_markdown(&self) -> String {
+        let mut out = String::new();
+        let ok = self.script_statuses.get("ok").copied().unwrap_or(0);
+        let refused = self.script_statuses.get("refused").copied().unwrap_or(0);
+        let reached = ok + refused;
+        let _ = writeln!(
+            out,
+            "{} parts: {reached} stages reached, {ok} built, {refused} refused.",
+            self.script_parts.len(),
+        );
+        out.push('\n');
+
+        let mut ops: BTreeSet<&str> = BTreeSet::new();
+        for parts in self.script_blocked.values() {
+            for op in parts.values() {
+                ops.insert(op.as_str());
+            }
+        }
+        let ops: Vec<&str> = ops.into_iter().collect();
+
+        let named: Vec<String> = Cycle::NAMED.iter().map(Cycle::to_string).collect();
+        let mut cycles: Vec<&str> = named.iter().map(String::as_str).collect();
+        for c in self.script_blocked.keys() {
+            if !cycles.contains(&c.as_str()) {
+                cycles.push(c);
+            }
+        }
+        let parts_blocked = |c: &str| self.script_blocked.get(c).map_or(0, BTreeMap::len);
+        let rank = |c: &str| named.iter().position(|n| n == c).unwrap_or(named.len());
+        cycles.sort_by(|a, b| {
+            (parts_blocked(b).cmp(&parts_blocked(a)))
+                .then(rank(a).cmp(&rank(b)))
+                .then(a.cmp(b))
+        });
+
+        out.push_str("| Cycle | Parts blocked |");
+        for op in &ops {
+            let _ = write!(out, " {op} |");
+        }
+        out.push_str("\n|---|---:|");
+        out.push_str(&"---:|".repeat(ops.len()));
+        out.push('\n');
+        for c in &cycles {
+            let _ = write!(out, "| {c} | {} |", parts_blocked(c));
+            for op in &ops {
+                let n = self
+                    .script_blocked
+                    .get(*c)
+                    .map_or(0, |parts| parts.values().filter(|&o| o == *op).count());
+                let _ = write!(out, " {n} |");
+            }
+            out.push('\n');
+        }
+        out.push('\n');
+
+        let mut refusals: Vec<(&(String, String, String), &usize)> =
+            self.script_refusals.iter().collect();
+        refusals.sort_by(|a, b| {
+            b.1.cmp(a.1)
+                .then(rank(&a.0.0).cmp(&rank(&b.0.0)))
+                .then(a.0.cmp(b.0))
+        });
+        out.push_str("| Refusal | Operation | Count | Blocks |\n|---|---|---:|---|\n");
+        for ((cycle, op, name), n) in refusals {
+            let _ = writeln!(out, "| {name} | {op} | {n} | {cycle} |");
+        }
+        out
+    }
 }
 
 #[cfg(test)]
@@ -804,5 +1121,239 @@ mod tests {
         let first = count();
         assert_eq!(first, count());
         assert!(first.starts_with("11 parts"), "{first}");
+    }
+
+    #[test]
+    fn every_recorded_class_maps_to_cycle() {
+        // 1. OpInvalidInputError
+        assert_eq!(
+            blocks_reason_named("cut", "OpInvalidInputError", None, None, None),
+            Some(Cycle::Itself("InvalidInput"))
+        );
+
+        // 2. OpUnsupportedError
+        assert_eq!(
+            blocks_reason_named(
+                "cut",
+                "OpUnsupportedError",
+                None,
+                Some("Nurbs"),
+                Some("Plane")
+            ),
+            Some(Cycle::Nurbs)
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "fillet",
+                "OpUnsupportedError",
+                None,
+                Some("Plane"),
+                Some("Cylinder")
+            ),
+            Some(Cycle::BlendNetwork)
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "cut",
+                "OpUnsupportedError",
+                None,
+                Some("Plane"),
+                Some("Cylinder")
+            ),
+            Some(Cycle::Itself("unsupported pair"))
+        );
+
+        // 3. OpDegenerateError
+        assert_eq!(
+            blocks_reason_named(
+                "fillet",
+                "OpDegenerateError",
+                Some("the corner at the edge's end is one the blend's closed forms do not cover"),
+                None,
+                None
+            ),
+            Some(Cycle::BlendNetwork)
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "fillet",
+                "OpDegenerateError",
+                Some("the blend leaves its face through an edge that is not the corner's own"),
+                None,
+                None
+            ),
+            Some(Cycle::BlendNetwork)
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "fillet",
+                "OpDegenerateError",
+                Some("the edge's faces meet at a tangent dihedral, which has no corner to blend"),
+                None,
+                None
+            ),
+            Some(Cycle::BlendNetwork)
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "shell",
+                "OpDegenerateError",
+                Some("the offset drives the face's surface through zero"),
+                None,
+                None
+            ),
+            Some(Cycle::Itself("SurfaceCollapses"))
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "revolve",
+                "OpDegenerateError",
+                Some("loop 0, segment 1 is elliptic, which a revolve does not sweep"),
+                None,
+                None
+            ),
+            Some(Cycle::Sweep)
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "shell",
+                "OpDegenerateError",
+                Some("the body is not a solid"),
+                None,
+                None
+            ),
+            Some(Cycle::Healing)
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "cut",
+                "OpDegenerateError",
+                Some(
+                    "the result's shells would touch along an edge or at a vertex, which a solid does not hold"
+                ),
+                None,
+                None
+            ),
+            Some(Cycle::Itself("non-manifold"))
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "cut",
+                "OpDegenerateError",
+                Some("the result has no material"),
+                None,
+                None
+            ),
+            Some(Cycle::Itself("no material"))
+        );
+        assert_eq!(
+            blocks_reason_named(
+                "cut",
+                "OpDegenerateError",
+                Some(
+                    "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves"
+                ),
+                None,
+                None
+            ),
+            Some(Cycle::Itself("beside a singularity"))
+        );
+
+        // 4. OpProfileError
+        assert_eq!(
+            blocks_reason_named("extrude", "OpProfileError", None, None, None),
+            Some(Cycle::Itself("Profile"))
+        );
+
+        // 5. OpPathError
+        assert_eq!(
+            blocks_reason_named("sweep", "OpPathError", None, None, None),
+            Some(Cycle::Itself("Path"))
+        );
+
+        // 6. OpLoftError
+        assert_eq!(
+            blocks_reason_named("loft", "OpLoftError", None, None, None),
+            Some(Cycle::Itself("Loft"))
+        );
+
+        // 7. OpToleranceError
+        assert_eq!(
+            blocks_reason_named("cut", "OpToleranceError", None, None, None),
+            Some(Cycle::Itself("Tolerance"))
+        );
+
+        // 8. StaleHandleError / OpNotFoundError
+        assert_eq!(
+            blocks_reason_named("fillet", "StaleHandleError", None, None, None),
+            Some(Cycle::Itself("NotFound"))
+        );
+        assert_eq!(
+            blocks_reason_named("fillet", "OpNotFoundError", None, None, None),
+            Some(Cycle::Itself("NotFound"))
+        );
+
+        // 9. OpUnkeyedError
+        assert_eq!(
+            blocks_reason_named("fuse", "OpUnkeyedError", None, None, None),
+            Some(Cycle::Itself("Unkeyed"))
+        );
+
+        // 10. OpRejectedError
+        assert_eq!(
+            blocks_reason_named("cut", "OpRejectedError", None, None, None),
+            Some(Cycle::Itself("Rejected"))
+        );
+
+        // 11. Interrupted
+        assert_eq!(
+            blocks_reason_named("cut", "Interrupted", None, None, None),
+            Some(Cycle::Itself("Interrupted"))
+        );
+
+        // 12. OpInternalError
+        assert_eq!(
+            blocks_reason_named("cut", "OpInternalError", None, None, None),
+            None
+        );
+    }
+
+    #[test]
+    fn script_corpus_histogram_records_and_formats() {
+        let mut h = Histogram::new();
+        h.add_script("part_a", "box", &ScriptOutcome::Status("ok".to_string()));
+        h.add_script(
+            "part_a",
+            "fillet",
+            &ScriptOutcome::Refusal(ScriptRefusal {
+                refused: "OpDegenerateError".to_string(),
+                reason: Some(
+                    "the corner at the edge's end is one the blend's closed forms do not cover"
+                        .to_string(),
+                ),
+                a_kind: None,
+                b_kind: None,
+                detail: None,
+            }),
+        );
+        h.add_script("part_b", "box", &ScriptOutcome::Status("ok".to_string()));
+        h.add_script(
+            "part_b",
+            "shell",
+            &ScriptOutcome::Refusal(ScriptRefusal {
+                refused: "OpDegenerateError".to_string(),
+                reason: Some("the offset drives the face's surface through zero".to_string()),
+                a_kind: None,
+                b_kind: None,
+                detail: None,
+            }),
+        );
+
+        let text = h.script_markdown();
+        assert!(text.starts_with("2 parts: 4 stages reached, 2 built, 2 refused."));
+        assert!(text.contains("| blend network | 1 | 1 | 0 |"));
+        assert!(text.contains("| itself: SurfaceCollapses | 1 | 0 | 1 |"));
+        assert!(text.contains("| VertexBlend | fillet | 1 | blend network |"));
+        assert!(text.contains("| SurfaceCollapses | shell | 1 | itself: SurfaceCollapses |"));
     }
 }

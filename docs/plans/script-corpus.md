@@ -113,7 +113,7 @@ robustness or bound has to be established here.
 - [x] Step 5 **[2]** — The two patterned parts.
 - [x] Step 6 **[2]** — The three CAE parts, tags lifted into `harness.py`
   and asserted through every cut and the mesh.
-- [ ] Step 7 **[2]** — `add_script` and its by-name cycle mapping (unit
+- [x] Step 7 **[2]** — `add_script` and its by-name cycle mapping (unit
   tests over every recorded class), the `script_corpus` example and
   `tools/script-corpus.sh`; the histogram printed.
 - [ ] Step 8 **[1]** — The friction list: per part, each place the raw
