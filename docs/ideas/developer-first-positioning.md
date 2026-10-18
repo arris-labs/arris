@@ -1,6 +1,6 @@
 # Idea: developer-first-positioning
 
-- Status: Accepted 2026-10-17 (A, L-A); credibility and ADR-0067 landed; the script corpus absorbed by plans/script-corpus. Still to be absorbed, in order: the modelling layer's first milestone, the MCP server
+- Status: Accepted 2026-10-17 (A, L-A); credibility and ADR-0067 landed; script corpus done (plans/script-corpus); the friction list kept for the layer plan. Still to be absorbed, in order: the modelling layer's first milestone, the MCP server
 - Raised: 2026-10-17
 - Prompt (verbatim from the human): "I think that positioning arris target audience as DIY enthusiasts was wrong. Read @docs/notes/positioning.md - do you think that direction is bettter for arris?" — then, on the verdict: "I agree with you on all points, so yes, /idea that"
 
@@ -104,6 +104,110 @@ agent would write it, with each stage's refusal recorded. It is written
 against the raw binding now, so it ranks kernel work without waiting for
 the layer. Where the raw API is clumsy, the scripts show it, and that is
 the evidence for the layer's scope. They are ported when the layer lands.
+
+#### Evidence from the script corpus: friction in the raw API
+
+The 18 script-corpus parts (`crates/arris-py/corpus/`) reveal where the raw
+binding makes scripts verbose and clumsy. This per-part record is the direct
+input for the modelling layer (`arris.build`):
+
+1. **`enclosure`**:
+   - Selecting 4 vertical edges for filleting required calling `edge_points(body)`
+     (tessellating the B-rep!) and checking polyline endpoints for $\Delta z > 1$.
+   - Selecting the open top face for `shell` required calling `face_frame()`
+     on all faces to test normal $z > 0.5$ and origin $z = 20$.
+   - Floor posts had to be positioned starting at $z = \text{WALL}/2$ to guarantee
+     volumetric overlap and avoid coplanar face issues in booleans.
+   - Root fillet edges were found by checking radial distance $\sqrt{(x-x_0)^2 + (y-y_0)^2} \approx r$
+     on tessellated polylines.
+2. **`hinge-leaf`**:
+   - Manual coordinate placement and positioning for knuckle cylinder, pin hole,
+     and screw holes.
+   - Join fillet edges identified by inspecting edge polylines near the knuckle root.
+3. **`phone-stand`**:
+   - Profile boilerplate: extruding an angled profile required constructing
+     `Profile(Loop.polygon(...), origin, normal, x_axis)` with explicit 3D vectors.
+   - Edge selection for front lip and back support fillets required coordinate inspection.
+4. **`pi-mount-plate`**:
+   - 4 corner standoffs, 4 holes, and center slot required manual coordinate loops
+     and repeated `fuse_many` / `cut_many`.
+   - Corner edge selection required bounding-box checks on polylines.
+5. **`wall-hook`**:
+   - Profile chaining: hook profile and stiffener rib required separate 2D sketches
+     in different planes, manual extrusions, and boolean fusion.
+   - Inner curve edge selection required checking polyline coordinates.
+6. **`knob`**:
+   - Polar patterning: 6 finger flutes cut around the cylinder required manual
+     angle loops with `math.cos`/`math.sin` and individual cylinder primitives.
+7. **`spool-holder`**:
+   - Hub and flange profile required explicit 2D loop coordinates rather than
+     a sketch builder with step/offset helpers.
+8. **`hose-adapter`**:
+   - Repeated barbs required manual loop coordinate calculations for every sawtooth.
+9. **`bottle-cap`**:
+   - Helical sweep: required explicit `Path` with `helix` segment, aligning
+     the triangular thread profile normal to the path start tangent.
+10. **`drawer-handle`**:
+    - Path construction: required manual 3D segments (`line_to`, `arc_to`, `line_to`),
+      and placing the profile in the path's starting plane.
+11. **`cable-clip`**:
+    - Arc segments in profiles required calculating arc via-points by hand.
+12. **`funnel`**:
+    - Revolved thin-walled profile required computing all inner and outer wall
+      coordinates manually.
+13. **`vase`**:
+    - 4 loft sections at different heights required 4 separate `Profile` objects
+      with identical normal/x_axis vectors.
+14. **`spur-gear-blank`**:
+    - Circular pattern: 24 gear teeth required an explicit Python loop rotating
+      a box primitive around the axis and fusing 25 bodies.
+    - 6 lightening holes required trigonometric coordinate calculations.
+15. **`gopro-mount`**:
+    - Prong pattern: 3 prongs translated and fused manually, then a transverse
+      hole cut through all three.
+16. **`cantilever`**:
+    - CAE boundary condition tagging: finding fixed ($x=0$) and load ($x=L$)
+      faces required calling `face_frame()` across all faces and checking normals.
+    - Tip fillet edges selected by polyline coordinate filtering at $x=L$.
+17. **`duct-obstacle`**:
+    - CFD boundary tagging: inlet ($x=0$), outlet ($x=L$), and wall faces
+      manually classified by inspecting face frames.
+    - Obstacle cylinder had to be manually oversized across duct walls to ensure
+      a clean through-cut.
+18. **`heat-sink`**:
+    - Fin array: 5 fins created in a manual loop with intentional $z$-overlap into
+      the base plate to avoid coplanar boolean issues.
+    - 4 mounting holes placed by coordinate list.
+
+#### Summary of friction themes for `arris.build`
+
+1. **Selectors over provenance and geometry (Q6)**:
+   - Selecting edges for fillets/chamfers currently forces scripts to call
+     `edge_points()` (tessellating the B-rep!) to filter by 3D coordinates.
+   - Selecting faces for shells, cuts, or CAE tags forces scripts to query
+     `face_frame()` on every face.
+   - *Scope for `arris.build`:* Filter chains like `part.faces().filter(normal=Z).highest()`,
+     `part.edges().vertical()`, and provenance selectors like `part.generated(feature)`.
+2. **Workplanes and sketches (Q7)**:
+   - Creating any profile currently requires explicit `Profile(Loop(...), origin, normal, x_axis)`.
+   - *Scope for `arris.build`:* `wp = part.face(...).workplane()`, `wp.circle(r).extrude(h)`.
+3. **Linear and polar patterns**:
+   - Every patterned feature (gear teeth, flutes, fin arrays, bolt circles)
+     currently requires Python loops with trigonometry and manual `fuse_many` / `cut_many`.
+   - *Scope for `arris.build`:* `pattern_linear(n, step)`, `pattern_polar(n, angle, axis)`.
+4. **Holes and pockets (automatic through-sizing)**:
+   - Scripts currently have to manually oversize cutting tools (e.g. $z - 5$ to $z + 5$)
+     and offset starting positions to ensure clean booleans.
+   - *Scope for `arris.build`:* Semantic `hole(depth="through")` and `pocket()`.
+5. **Chained immutable operations (Q7)**:
+   - Every raw operation returns `(body, record)`. Scripts have to unpack
+     tuples on every line.
+   - *Scope for `arris.build`:* `body.cut(...).fillet(...)` returning new values.
+6. **First-class CAE face tags**:
+   - Tracking boundary conditions currently requires manual `Labelled` provenance
+     inheritance loops.
+   - *Scope for `arris.build`:* Tags that stick to faces and survive booleans automatically.
+
 
 ### Credibility, cheap
 

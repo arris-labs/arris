@@ -116,7 +116,7 @@ robustness or bound has to be established here.
 - [x] Step 7 **[2]** — `add_script` and its by-name cycle mapping (unit
   tests over every recorded class), the `script_corpus` example and
   `tools/script-corpus.sh`; the histogram printed.
-- [ ] Step 8 **[1]** — The friction list: per part, each place the raw
+- [x] Step 8 **[1]** — The friction list: per part, each place the raw
   binding made the script longer than a layer would, written into the
   idea's remaining part as the layer plan's input.
 
