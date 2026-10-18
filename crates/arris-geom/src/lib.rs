@@ -59,6 +59,7 @@ pub mod profile;
 mod project;
 pub mod region2;
 mod section;
+mod spline_nurbs;
 mod surface;
 mod torus_walk;
 mod trace;

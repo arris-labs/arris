@@ -865,24 +865,6 @@ fn a_periodic_curves_hits_come_back_inside_its_domain() {
     assert!(hits.iter().any(|h| (h.t - TAU / 2.0).abs() < 1e-9));
 }
 
-#[test]
-fn a_nurbs_curve_against_a_nurbs_surface_stays_unsupported() {
-    check(
-        (nurbs_curve(), arris_debug::prop::geom::nurbs_surface()),
-        |(c, s)| {
-            let r = intersect_curve_surface(
-                &Curve::Nurbs(c),
-                &Surface::Nurbs(s),
-                tol(),
-                &mut arris_math::Meter::default(),
-            );
-            let unsupported = matches!(r, Err(GeomError::Unsupported { .. }));
-            prop_assert!(unsupported);
-            Ok(())
-        },
-    );
-}
-
 /// Found by the `intersect_curve_surface` fuzz target (nightly 2026-09-28,
 /// `fuzz/`, ADR-0024 §5): a closed clamped cubic whose first span is
 /// 3.6e-304 wide — the curve jumps from its first control point to its

@@ -17,8 +17,7 @@ use arris_debug::prop::geom::{
 };
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box};
 use arris_geom::{
-    Curve, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, GeomKind, Surface, SurfaceKind,
-    intersect_curve_surface,
+    Curve, CurveSurfaceHit, CurveSurfaceIntersection, Surface, intersect_curve_surface,
 };
 use arris_math::{Frame, Point3, Precision, Tolerance, Vec3};
 use proptest::prelude::*;
@@ -574,13 +573,12 @@ fn implicit_signed(s: &Surface, p: Point3) -> f64 {
 
 // --- the rest of the table --------------------------------------------------
 
-/// A NURBS surface is the only arm left without a form for every curve
-/// but a line: every analytic pair answers, a conic against a torus among
-/// them, a line answers against a `Surface::Nurbs` (`tests/line_nurbs.rs`
-/// holds what it answers), and every other curve against one is
-/// `Unsupported` naming both operands.
+/// Every arm of the table answers: every analytic pair, a conic against
+/// a torus among them, and every curve against a `Surface::Nurbs`
+/// (`tests/line_nurbs.rs`, `tests/conic_nurbs.rs` and
+/// `tests/nurbs_nurbs_hits.rs` hold what they answer).
 #[test]
-fn only_a_nurbs_curve_against_a_nurbs_surface_is_unsupported() {
+fn every_curve_meets_every_surface() {
     check(
         (curve(), surface(), nurbs_curve(), nurbs_surface()),
         |(c, s, nc, ns)| {
@@ -591,18 +589,10 @@ fn only_a_nurbs_curve_against_a_nurbs_surface_is_unsupported() {
                     Ok(_) => {}
                     other => return fail(format!("{curve:?} vs {s:?}: {other:?}")),
                 }
-                match (
-                    curve,
-                    intersect_curve_surface(curve, &ns, tol(), &mut arris_math::Meter::default()),
-                ) {
-                    // A line, a circle and an ellipse meet a NURBS surface
-                    // (`tests/line_nurbs.rs`, `tests/conic_nurbs.rs`).
-                    (Curve::Line { .. } | Curve::Circle { .. } | Curve::Ellipse { .. }, Ok(_)) => {}
-                    (Curve::Nurbs(_), Err(GeomError::Unsupported { a, b })) => {
-                        prop_assert_eq!(a, GeomKind::Curve(curve.kind()));
-                        prop_assert_eq!(b, GeomKind::Surface(SurfaceKind::Nurbs));
-                    }
-                    (_, other) => return fail(format!("{curve:?} vs a NURBS surface: {other:?}")),
+                match intersect_curve_surface(curve, &ns, tol(), &mut arris_math::Meter::default())
+                {
+                    Ok(_) => {}
+                    other => return fail(format!("{curve:?} vs {ns:?}: {other:?}")),
                 }
             }
             Ok(())

@@ -486,15 +486,11 @@ fn queries_on_a_nurbs_are_answered_or_refused_by_name() {
                 b: GeomKind::Surface(SurfaceKind::Nurbs),
             })
         );
-        // A NURBS curve meets every analytic surface (ADR-0018); it is
-        // the NURBS surface that no curve but a line meets yet.
-        prop_assert_eq!(
-            intersect_curve_surface(&curve, &surface, tol, &mut arris_math::Meter::default()),
-            Err(GeomError::Unsupported {
-                a: GeomKind::Curve(CurveKind::Nurbs),
-                b: GeomKind::Surface(SurfaceKind::Nurbs),
-            })
-        );
+        // A NURBS curve meets every analytic surface (ADR-0018) and a
+        // NURBS one (`tests/nurbs_nurbs_hits.rs`).
+        let curve_on_nurbs =
+            intersect_curve_surface(&curve, &surface, tol, &mut arris_math::Meter::default());
+        prop_assert!(curve_on_nurbs.is_ok(), "{curve_on_nurbs:?}");
         let curve_on_plane =
             intersect_curve_surface(&curve, &p, tol, &mut arris_math::Meter::default());
         prop_assert!(curve_on_plane.is_ok(), "{curve_on_plane:?}");
@@ -503,7 +499,7 @@ fn queries_on_a_nurbs_are_answered_or_refused_by_name() {
             direction: Vec3::z_axis(),
         };
         // A line meets a NURBS surface (plan ray-fire step 1,
-        // `tests/line_nurbs.rs`); no other curve does yet.
+        // `tests/line_nurbs.rs`).
         let line_on_nurbs =
             intersect_curve_surface(&line, &surface, tol, &mut arris_math::Meter::default());
         prop_assert!(line_on_nurbs.is_ok(), "{line_on_nurbs:?}");

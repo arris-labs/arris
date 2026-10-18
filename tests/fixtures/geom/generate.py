@@ -20,7 +20,9 @@ lines, circles and ellipses, in that pose), `c4-nurbs-projections`
 (points projected onto free-form NURBS surfaces with no closed form, in
 that pose), `c4-closed-curve-hits` (a closed B-spline met at its join)
 `c8-line-nurbs-hits` (lines against NURBS surfaces: crossings on and
-off knot lines, a pole, a graze, a ruling and a miss, in that pose) and
+off knot lines, a pole, a graze, a ruling and a miss, in that pose),
+`c10-nurbs-nurbs-hits` (NURBS curves against NURBS surfaces: crossings,
+a touch and a miss, in that pose) and
 `c8-curve-extrema` (curve pairs asked for the stationary pairs of their
 distance: lines, circles about one axis and on one tube, ellipses and
 NURBS curves, in that pose).
@@ -1456,6 +1458,69 @@ def c10_conic_nurbs_hits():
     }
 
 
+# --- c10-nurbs-nurbs-hits ---------------------------------------------------------
+
+
+def c10_nurbs_nurbs_hits():
+    """NURBS curves against the NURBS surfaces of c10-conic-nurbs-hits
+    (plan nurbs-nurbs-section step 4), in the tilt pose: a cubic of two
+    spans weaving through the bicubic and a rational quadratic arch over
+    it; a cubic from inside the rational octant of a sphere out through
+    it, a quadratic in its tangent plane through the tangent point (a
+    touch) and the same two tolerances clear of it (a miss); and a cubic
+    weaving across the extruded quadratic's crest."""
+    f = POSES["tilt"]
+    surfaces = c10_conic_nurbs_hits()["surfaces"]
+    octant = surfaces["octant"]
+
+    def spline(degree, knots, points, weights=None):
+        return {
+            "type": "nurbs",
+            "degree": degree,
+            "knots": knots,
+            "control_points": [f.to_world(p) for p in points],
+            "weights": weights or [1.0] * len(points),
+        }
+
+    cubic = [0.0] * 4 + [1.0] + [2.0] * 4
+    bezier = lambda p: [0.0] * (p + 1) + [1.0] * (p + 1)
+    curves = {}
+    curves["hills_wave"] = spline(3, cubic, [[0.3, 0.5, 1.5], [1.2, 1.5, -2.0], [2.0, 2.2, 2.5], [2.8, 2.5, -2.0], [3.7, 3.4, 1.5]])
+    curves["hills_arch"] = spline(2, bezier(2), [[0.5, 3.5, -1.5], [2.0, 2.0, 5.0], [3.5, 0.5, -1.5]], [1.0, 0.6, 1.0])
+    curves["octant_through"] = spline(3, bezier(3), [[0.2, 0.3, 0.4], [0.8, 1.0, 0.9], [1.2, 1.6, 1.6], [1.6, 1.5, 2.4]])
+    # A parabola in the tangent plane at (u, v) = (0.5, 0.5), through
+    # the tangent point at its middle, and the same lifted off it.
+    at = nurbs_surface_point(octant, 0.5, 0.5)
+    normal = unit(sub(at, f.origin))
+    along = unit(cross(f.z, normal))
+    other = cross(normal, along)
+    def parabola(lift):
+        base = add(at, mul(lift, normal))
+        return {
+            "type": "nurbs",
+            "degree": 2,
+            "knots": bezier(2),
+            "control_points": [
+                add(base, add(mul(-0.5, along), mul(0.2, other))),
+                add(base, mul(-0.2, other)),
+                add(base, add(mul(0.5, along), mul(0.2, other))),
+            ],
+            "weights": [1.0, 1.0, 1.0],
+        }
+    curves["octant_tangent"] = parabola(0.0)
+    curves["octant_clear"] = parabola(2e-7)
+    curves["trough_wave"] = spline(3, bezier(3), [[-2.5, 0.5, 0.5], [-0.5, 0.5, 2.5], [0.5, 0.5, 0.0], [2.5, 0.5, 1.5]])
+    pairs = [{"a": c, "b": c.split("_")[0]} for c in curves]
+    return {
+        "kind": "geometry",
+        "description": "NURBS curves against NURBS surfaces in the tilt pose (plan nurbs-nurbs-section step 4): a cubic of two spans weaving through the bicubic of two spans each way and a rational quadratic arch over it; a cubic from inside the rational octant of a sphere out through it, a parabola in its tangent plane through the tangent point (a touch) and the same two tolerances clear of it (a miss); a cubic weaving across the crest of an extruded quadratic — through Open CASCADE's general curve-surface intersector, GeomAPI_IntCS; written by generate.py",
+        "surfaces": surfaces,
+        "curves": curves,
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 # --- c8-curve-extrema ----------------------------------------------------------
 
 
@@ -1688,6 +1753,7 @@ if __name__ == "__main__":
     write("c8-line-nurbs-hits", c8_line_nurbs_hits())
     write("c10-nurbs-analytic-pairs", c10_nurbs_analytic_pairs())
     write("c10-conic-nurbs-hits", c10_conic_nurbs_hits())
+    write("c10-nurbs-nurbs-hits", c10_nurbs_nurbs_hits())
     write("c8-curve-extrema", c8_curve_extrema())
     write("c8-curve-surface-extrema", c8_curve_surface_extrema())
     write("c8-surface-extrema", c8_surface_extrema())

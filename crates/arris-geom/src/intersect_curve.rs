@@ -18,6 +18,7 @@ use crate::intersect::line_angle;
 use crate::intersect_spline::spline_surface;
 use crate::nurbs::{conic_nurbs, line_nurbs};
 use crate::project::ellipse_distance;
+use crate::spline_nurbs::spline_nurbs;
 use crate::{Curve, CurveKind, GeomError, GeomKind, Surface};
 
 /// One point where a curve meets a surface.
@@ -61,10 +62,9 @@ pub enum CurveSurfaceIntersection {
 /// The intersection of a curve and a surface, by the case table: every
 /// pair with a closed form is computed exactly, a conic against a torus
 /// and a NURBS curve against every analytic surface go through the
-/// surface's implicit polynomial (ADR-0018), a line, a circle or an
-/// ellipse against a NURBS surface goes through the surface's Bézier
-/// patches, and a NURBS curve against a NURBS surface is the one explicit
-/// [`GeomError::Unsupported`] arm — no wildcard, no marcher.
+/// surface's implicit polynomial (ADR-0018), and every curve against a
+/// NURBS surface goes through the surface's Bézier patches — no wildcard,
+/// no arm without a form.
 ///
 /// Guarantees: hits are sorted by `t`, each `t` is in the curve's domain,
 /// each hit's `uv` is the surface's own projection of the point — but at
@@ -184,9 +184,16 @@ pub enum CurveSurfaceIntersection {
 /// (normalised, to first order, by the distance in the plane from the
 /// conic) are two polynomials, isolated and decided as the line's are,
 /// with the curve's own bend in the second-order model of a touch. A
-/// conic that lies on the surface all round is `Coincident`. A NURBS curve
-/// against a NURBS surface is `Unsupported`, the one arm of the table
-/// without a form.
+/// conic that lies on the surface all round is `Coincident`. A **NURBS
+/// curve against a NURBS surface** is three polynomials in the span's `t`
+/// and the patch's `(s, u)`, `W·A − a·X` for the span `A/a` and the patch
+/// `X/W`, whose common zeros are certified as the crossings; the critical
+/// points of the distance in the tube of `tol.linear` are the touches, a
+/// curve passing within it without meeting the surface among them, read
+/// along the curve as a line's are, a pole of the net the curve passes a
+/// hit at the pole's own parameters, and an open curve that ends within
+/// the tube a hit at that end, not `tangent`. A curve within the tube at
+/// sixteen points of every span is `Coincident`.
 ///
 /// ```
 /// use arris_geom::{Curve, CurveSurfaceIntersection, Surface, intersect_curve_surface};
@@ -414,10 +421,9 @@ pub fn intersect_curve_surface(
             tol,
             meter,
         ),
-        (Curve::Nurbs(_), Surface::Nurbs(_)) => Err(GeomError::Unsupported {
-            a: GeomKind::Curve(curve.kind()),
-            b: GeomKind::Surface(surface.kind()),
-        }),
+        (Curve::Nurbs(spline), Surface::Nurbs(nurbs)) => {
+            spline_nurbs(curve, spline, nurbs, tol, meter)
+        }
     }
 }
 

@@ -50,7 +50,7 @@ use crate::nurbs::Patch;
 /// one, and a zero the isolation certifies in the next patch's span
 /// (where the polynomial is not the surface) is not this patch's. As
 /// `trace_torus`'s.
-const PATCH_SLACK: f64 = 1e-9;
+pub(crate) const PATCH_SLACK: f64 = 1e-9;
 
 /// What [`loop_seeds`] found and what it took.
 #[derive(Clone, Debug, Default)]
@@ -72,24 +72,25 @@ pub(crate) struct LoopSeeds {
 }
 
 /// One Bézier patch as polynomials in its own `(s, t)`, its net moved
-/// by `−origin`.
-struct Net {
+/// by `−origin`; a NURBS curve against a NURBS surface reads it too
+/// (`crate::spline_nurbs`).
+pub(crate) struct Net {
     /// The knot spans the patch is over, `[[u₀, u₁], [v₀, v₁]]`.
-    span: [[f64; 2]; 2],
-    x: [PolyN<2>; 3],
-    w: PolyN<2>,
+    pub(crate) span: [[f64; 2]; 2],
+    pub(crate) x: [PolyN<2>; 3],
+    pub(crate) w: PolyN<2>,
     /// Some weight differs from the others.
     rational: bool,
     /// The largest `|Xₖ| + |origin|·w` over the net: the size the moved
     /// coordinates' rounding is a share of.
-    reach: f64,
+    pub(crate) reach: f64,
     /// The heaviest weight.
-    weight: f64,
+    pub(crate) weight: f64,
     /// The higher of the two degrees.
-    degree: f64,
+    pub(crate) degree: f64,
     /// The box of the Cartesian control points, moved: it holds the
     /// patch.
-    hull: [[f64; 3]; 2],
+    pub(crate) hull: [[f64; 3]; 2],
 }
 
 /// The cross product of two vectors of polynomials of one degree.
@@ -102,7 +103,7 @@ fn cross(a: &[PolyN<2>; 3], b: &[PolyN<2>; 3], bin: &Binomials) -> [PolyN<2>; 3]
 
 /// `Σ kᵢ·pᵢ` over polynomials of any degrees, each raised to the
 /// highest along every axis first.
-fn sum<const N: usize>(terms: &[(f64, PolyN<N>)]) -> PolyN<N> {
+pub(crate) fn sum<const N: usize>(terms: &[(f64, PolyN<N>)]) -> PolyN<N> {
     let degree: [usize; N] =
         core::array::from_fn(|k| terms.iter().map(|(_, p)| p.degree()[k]).max().unwrap_or(0));
     let raised: Vec<(f64, PolyN<N>)> = terms
@@ -114,7 +115,7 @@ fn sum<const N: usize>(terms: &[(f64, PolyN<N>)]) -> PolyN<N> {
 }
 
 impl Net {
-    fn of(patch: &Patch, origin: Point3) -> Net {
+    pub(crate) fn of(patch: &Patch, origin: Point3) -> Net {
         let [p, q] = patch.degree;
         let o = origin.coords;
         let coord = |k: usize| {
@@ -153,7 +154,7 @@ impl Net {
     }
 
     /// A positive multiple of `∂P/∂s` (`along` 0) or `∂P/∂t` (1).
-    fn tangent(&self, along: usize, bin: &Binomials) -> Vector {
+    pub(crate) fn tangent(&self, along: usize, bin: &Binomials) -> Vector {
         let d = |c: &PolyN<2>| c.partial(along);
         let xd = self.x.each_ref().map(d);
         // `Xₛ`'s coefficients are differences of the moved net's, each
@@ -202,7 +203,7 @@ impl Net {
 }
 
 /// The largest coefficient of a vector polynomial.
-fn magnitude(v: &[PolyN<2>; 3]) -> f64 {
+pub(crate) fn magnitude<const N: usize>(v: &[PolyN<N>; 3]) -> f64 {
     v.iter()
         .flat_map(|p| p.coefficients())
         .fold(0.0, |m, c| m.max(c.abs()))
@@ -212,10 +213,10 @@ fn magnitude(v: &[PolyN<2>; 3]) -> f64 {
 /// coefficients and what rounding they carry: `error` times
 /// [`BERNSTEIN_ROUNDING`] at the most, charged at the coordinates' size
 /// before the move.
-struct Vector {
-    poly: [PolyN<2>; 3],
-    size: f64,
-    error: f64,
+pub(crate) struct Vector {
+    pub(crate) poly: [PolyN<2>; 3],
+    pub(crate) size: f64,
+    pub(crate) error: f64,
 }
 
 impl Vector {

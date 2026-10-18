@@ -59,7 +59,8 @@ in random poses; fitted pairs agree with Open CASCADE's `GeomAPI_IntSS`.
   Jacobian, which took the posed systems from 10 263 boxes and seven
   continua of 31 to 989 boxes and none. A new
   `march` module holds the seeds and the walk, and `trace::Walk` gains a
-  `Marched` arm. Knot spans narrower than the parameter resolution are
+  `Marched` arm. A `spline_nurbs` module holds the curve × surface arm
+  (step 4), reading `march`'s patch nets. Knot spans narrower than the parameter resolution are
   merged before any isolation, the NURBS × analytic trace included (Q7).
 - **Public API.** `intersect_surfaces`, `trace_section`,
   `intersect_curve_surface` and `intersect_curves` keep their signatures
@@ -94,10 +95,13 @@ bound has to be established here.
   `curve-surface-hit-off-the-surface-on-a-degenerate-knot-vector` crash
   input joins `fuzz/corpus/` and gets a passing fixture, and the finding
   leaves BACKLOG §Findings.
-- [ ] Step 4 **[3]** — **NURBS curve × NURBS surface.** Per span × patch,
+- [x] Step 4 **[3]** — **NURBS curve × NURBS surface.** Per span × patch,
   three equations in `(t, s, u)`: hits certified, a touch from the
   uncertified boxes as the line arm reads one, a curve on the surface
-  `Coincident`. Held to the twins of line, circle and ellipse × each
+  `Coincident`. Found: a curve passing within `tol.linear` without
+  meeting the surface leaves no box, so the touches are also the
+  distance's critical points gated to the tube, as the line arm's fold
+  system is (`bernstein_n` gained gates). Held to the twins of line, circle and ellipse × each
   analytic kind against the closed forms, plus `tests/fixtures/geom/`
   fixtures against `GeomAPI_IntCS`.
 - [ ] Step 5 **[3]** — **The marcher.** Seeds (step 4 on every edge

@@ -69,6 +69,21 @@ fn indices<const N: usize>(degree: [usize; N]) -> Vec<[usize; N]> {
         .collect()
 }
 
+impl PolyN<3> {
+    /// `a(x₀)·b(x₁, x₂)`: a polynomial in one variable times one in two
+    /// others, of degree `a`'s then `b`'s.
+    pub(crate) fn tensor3(a: &PolyN<1>, b: &PolyN<2>) -> PolyN<3> {
+        let c =
+            a.c.iter()
+                .flat_map(|x| b.c.iter().map(move |y| x * y))
+                .collect();
+        PolyN {
+            degree: [a.degree[0], b.degree[0], b.degree[1]],
+            c,
+        }
+    }
+}
+
 impl PolyN<4> {
     /// `a(x₀, x₁)·b(x₂, x₃)`: a polynomial in two variables times one in
     /// two others, of degree `a`'s then `b`'s.
@@ -351,8 +366,22 @@ pub(crate) struct Continuum<const N: usize> {
     pub(crate) front: Vec<Zero<N>>,
 }
 
+/// A polynomial that only excludes, as `crate::bernstein2::Gate` is: a
+/// box where its coefficients are all above `floor` is dropped, and so is
+/// a certified zero where its value is; it takes no other part. It keeps
+/// the zeros of the system where it is at most `floor`, however far
+/// below.
+pub(crate) struct Gate<'a, const N: usize> {
+    /// The polynomial.
+    pub(crate) poly: &'a PolyN<N>,
+    /// What its coefficients have to clear to exclude a box.
+    pub(crate) floor: f64,
+}
+
 struct Cell<const N: usize> {
     system: [PolyN<N>; N],
+    /// The gates' parts over the box, in the gates' order.
+    gates: Vec<PolyN<N>>,
     lo: [f64; N],
     width: [f64; N],
     /// How many times the box was halved along each axis.
@@ -444,15 +473,18 @@ impl<const N: usize> Cell<N> {
         upper[along] += width[along];
         let (lower_system, upper_system) =
             (parts.each_ref().map(|p| p.0.clone()), parts.map(|p| p.1));
+        let (lower_gates, upper_gates) = self.gates.iter().map(|g| g.split(along, 0.5)).unzip();
         [
             Cell {
                 system: lower_system,
+                gates: lower_gates,
                 lo: self.lo,
                 width,
                 halved,
             },
             Cell {
                 system: upper_system,
+                gates: upper_gates,
                 lo: upper,
                 width,
                 halved,
@@ -473,6 +505,17 @@ pub(crate) fn common_zeros<const N: usize>(
     floors: [f64; N],
     meter: &mut Meter,
 ) -> Result<Isolation<N>, Halt<Continuum<N>>> {
+    common_zeros_with(system, floors, &[], meter)
+}
+
+/// [`common_zeros`] of the zeros `gates` keep: a box or a zero a gate
+/// drops is not looked at again ([`Gate`]).
+pub(crate) fn common_zeros_with<const N: usize>(
+    system: [&PolyN<N>; N],
+    floors: [f64; N],
+    gates: &[Gate<'_, N>],
+    meter: &mut Meter,
+) -> Result<Isolation<N>, Halt<Continuum<N>>> {
     let partials: [[PolyN<N>; N]; N] = system.map(|p| core::array::from_fn(|k| p.partial(k)));
     // One degree for all, so that any combination of them is one more
     // polynomial of it (`excluded_together`).
@@ -482,6 +525,7 @@ pub(crate) fn common_zeros<const N: usize>(
     let mut boxes = 0;
     let mut front = vec![Cell {
         system: system.map(|p| p.elevated(degree)),
+        gates: gates.iter().map(|g| g.poly.clone()).collect(),
         lo: [0.0; N],
         width: [1.0; N],
         halved: [0; N],
@@ -492,7 +536,13 @@ pub(crate) fn common_zeros<const N: usize>(
         for cell in &front {
             meter.tick()?;
             boxes += 1;
-            if cell.system.iter().zip(floors).any(|(p, f)| p.keeps_sign(f)) {
+            if cell.system.iter().zip(floors).any(|(p, f)| p.keeps_sign(f))
+                || cell
+                    .gates
+                    .iter()
+                    .zip(gates)
+                    .any(|(p, g)| p.range().lo > g.floor)
+            {
                 continue;
             }
             if cell
@@ -519,12 +569,17 @@ pub(crate) fn common_zeros<const N: usize>(
                         core::array::from_fn(|k| (1.0 + 2.0 * MARGIN) * cell.width[k]);
                     let to_cube =
                         |p: [f64; N]| core::array::from_fn(|k| grown_lo[k] + grown[k] * p[k]);
-                    zeros.push(Zero {
-                        at: polish(system, &partials, to_cube(inside.lo), to_cube(inside.hi)),
-                        lo: grown_lo,
-                        hi: to_cube([1.0; N]),
-                        certified: true,
-                    });
+                    let at = polish(system, &partials, to_cube(inside.lo), to_cube(inside.hi));
+                    // The one zero of the grown box: where a gate drops
+                    // it, the box holds none the gates keep.
+                    if gates.iter().all(|g| g.poly.eval(at) <= g.floor) {
+                        zeros.push(Zero {
+                            at,
+                            lo: grown_lo,
+                            hi: to_cube([1.0; N]),
+                            certified: true,
+                        });
+                    }
                 }
                 Verdict::None => {}
                 Verdict::Unknown { within_reach } => match cell.direction(within_reach) {

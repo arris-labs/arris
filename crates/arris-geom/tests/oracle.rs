@@ -1729,3 +1729,46 @@ fn the_c10_conic_nurbs_hits_classify_as_built() {
         assert_eq!(got, (*crossings, *touches), "{c} vs {s}: {r:?}");
     }
 }
+
+/// What Arris says about every pair of `geom/c10-nurbs-nurbs-hits`, by
+/// name: the crossings and touches each was built with, pinned as the
+/// conic arm's are.
+#[test]
+fn the_c10_nurbs_nurbs_hits_classify_as_built() {
+    let f = geometry_fixtures()
+        .into_iter()
+        .find(|f| f.name == "geom/c10-nurbs-nurbs-hits")
+        .expect("geom/c10-nurbs-nurbs-hits");
+    let built = build(&f);
+    // (curve, surface, crossings, touches)
+    let cases: &[(&str, &str, usize, usize)] = &[
+        ("hills_wave", "hills", 4, 0),
+        ("hills_arch", "hills", 2, 0),
+        ("octant_through", "octant", 1, 0),
+        ("octant_tangent", "octant", 0, 1),
+        ("octant_clear", "octant", 0, 0),
+        ("trough_wave", "trough", 2, 0),
+    ];
+    assert_eq!(
+        cases.len(),
+        f.recipe.pairs.len(),
+        "every pair of the fixture is pinned here"
+    );
+    for (c, s, crossings, touches) in cases {
+        let r = intersect_curve_surface(
+            &built.curves[*c],
+            &built.surfaces[*s],
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap_or_else(|e| panic!("{c} vs {s}: {e}"));
+        let CurveSurfaceIntersection::Points(hits) = &r else {
+            panic!("{c} vs {s}: {r:?}")
+        };
+        let got = (
+            hits.iter().filter(|h| !h.tangent).count(),
+            hits.iter().filter(|h| h.tangent).count(),
+        );
+        assert_eq!(got, (*crossings, *touches), "{c} vs {s}: {r:?}");
+    }
+}

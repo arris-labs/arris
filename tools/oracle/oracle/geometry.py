@@ -575,8 +575,6 @@ def intersect_curve_surface(name_c: str, kind_c: str, curve, name_s: str, kind_s
         or (kind_c != "line" and kind_s == "torus")
     )
     if general:
-        if kind_s == "nurbs" and kind_c == "nurbs":
-            raise OracleError(f"{name_c} vs {name_s}: a nurbs curve against a nurbs surface is not asked")
         r = GeomAPI_IntCS(curve, surface)
         if not r.IsDone():
             raise OracleError(f"{name_c} vs {name_s}: GeomAPI_IntCS not done")

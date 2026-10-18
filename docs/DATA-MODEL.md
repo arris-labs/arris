@@ -613,10 +613,8 @@ conic–cylinder, *conic* being a circle or an ellipse, a line against a
 cone, a sphere or a torus, and a conic in a plane across an elliptic
 cylinder's axis — for a conic against a cone, a sphere or an elliptic
 cylinder in any other plane and against a torus (below), for a `Nurbs` curve against every
-analytic surface (below), for a line, a circle or an ellipse against a
-`Nurbs` surface (below),
-and `GeomError::Unsupported` naming the pair for the one arm left
-without a form: a `Nurbs` curve against a `Nurbs` surface. A
+analytic surface (below), and for every curve against a `Nurbs` surface
+(below): no arm of the table is `Unsupported`. A
 hit is
 `CurveSurfaceHit { t, uv, point, tangent }`: `point` is the curve's point
 at `t`, `uv` the surface's own projection of it — except at a cone's
@@ -788,8 +786,7 @@ one's past its end by no more than rounding held at it: a meeting on a
 knot line or a seam, found by both patches, is one hit. What the arm does
 not look at is a graze of the domain's boundary or of a crease between
 patches that is no critical point of either: the line's nearest approach
-to a face's edge is the topology's to decide. A conic or a `Nurbs` curve
-against a `Nurbs` surface stays `Unsupported`.
+to a face's edge is the topology's to decide.
 
 **A circle or an ellipse against a `Nurbs` surface** is the line's arm
 with a conic for the cut. The conic is the meet of its plane and its
@@ -803,6 +800,30 @@ sag, and each hit's `t` is the conic's angle at the surface point.
 `Coincident` is a conic that meets the surface and stays within the tube
 of it at 64 points round. Against the exact twin of every analytic
 surface it agrees with the analytic arms.
+
+**A `Nurbs` curve against a `Nurbs` surface** is the section of two
+`Nurbs` surfaces (ADR-0068) with one unknown fewer (`geom`'s
+`spline_nurbs`). On a Bézier span `C = A/a` of the curve and a patch
+`S = X/W` of the surface, the three components of `D = W·A − a·X` are
+tensor Bernstein polynomials in the span's `t` and the patch's `(s, u)`,
+`D = aW·(C − S)`, and `bernstein_n` isolates and certifies their common
+zeros, the crossings, over every span and patch whose control hulls come
+within `tol.linear`. The touches are the critical points of `|C − S|²`
+— `D` dotted with `C′`, `S_s` and `S_u`, each times a positive weight
+factor — gated to the tube `|D| ≤ tol.linear·aW`, so a curve passing
+within the tolerance without meeting the surface touches it; a point is
+told a touch from a crossing by the second-order model of the distance
+along the curve, the curve's bend towards the normal against the
+surface's sag. A box neither isolation certifies is searched by a damped
+Gauss–Newton descent on `|C − S|²`. The stops — crossings, touches, an
+open curve's ends within the tolerance, and the poles of the net the
+curve passes — are read along the curve: two consecutive ones are one
+hit where the curve stays within the tube between them, at a pole's own
+parameters, a touch's, an end's (not `tangent`) or, for crossings alone,
+the farthest point between them. `Coincident` is a curve within the
+tube at 16 points of every span. Against the exact twins of every
+analytic pair it agrees with the analytic arms, and against Open
+CASCADE's `GeomAPI_IntCS` on fitted pairs.
 
 `intersect_curves(a, b, tol)` returns `CurveIntersection::{
 Points(Vec<CurveCurveHit>), Coincident}`, a hit being `CurveCurveHit {
