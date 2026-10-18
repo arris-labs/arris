@@ -1,0 +1,162 @@
+{
+  "description": "script-corpus/cable-clip: a cable clip: a 10 x 1.6 mm strap swept along a straight, a half circle and a straight, a screw hole through both legs, the free ends rounded",
+  "params": {},
+  "steps": [
+    {
+      "name": "strap_profile",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          0,
+          1,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          -5,
+          -0.8
+        ],
+        "segments": [
+          {
+            "line_to": [
+              5,
+              -0.8
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              0.8
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              0.8
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              -0.8
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "strap",
+      "op": "sweep",
+      "profile": "strap_profile",
+      "path": {
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              20,
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              20,
+              0,
+              16
+            ],
+            "via": [
+              28,
+              0,
+              8
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0,
+              16
+            ]
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "screw",
+      "op": "cylinder",
+      "base": [
+        4,
+        0,
+        -5
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.6,
+      "height": 26
+    },
+    {
+      "name": "screw_hole",
+      "op": "cut",
+      "target": "strap",
+      "tool": "screw"
+    },
+    {
+      "name": "ends_round",
+      "op": "fillet",
+      "of": "screw_hole",
+      "edges": [
+        [
+          0,
+          0,
+          -0.8
+        ],
+        [
+          0,
+          0,
+          0.8
+        ],
+        [
+          0,
+          0,
+          15.2
+        ],
+        [
+          0,
+          0,
+          16.8
+        ]
+      ],
+      "radius": 0.5
+    }
+  ],
+  "result": "ends_round",
+  "checkpoints": [
+    "strap",
+    "screw_hole",
+    "ends_round"
+  ],
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 1e-06,
+    "centroid_abs": 5e-07,
+    "inertia_rel": 3e-06
+  }
+}

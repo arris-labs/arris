@@ -1,0 +1,8 @@
+{
+  "body": "ok",
+  "base_round": "ok",
+  "hollow": {
+    "refused": "OpDegenerateError",
+    "reason": "the offset drives the face's surface through zero"
+  }
+}

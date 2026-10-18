@@ -1,0 +1,170 @@
+{
+  "description": "script-corpus/vase: a vase: four circles lofted ruled, the base rim rounded, hollowed open at the top",
+  "params": {},
+  "steps": [
+    {
+      "name": "s0",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 18
+        }
+      }
+    },
+    {
+      "name": "s1",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          20
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 26
+        }
+      }
+    },
+    {
+      "name": "s2",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          50
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 14
+        }
+      }
+    },
+    {
+      "name": "s3",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          80
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 20
+        }
+      }
+    },
+    {
+      "name": "body",
+      "op": "loft",
+      "sections": [
+        "s0",
+        "s1",
+        "s2",
+        "s3"
+      ],
+      "kind": "ruled"
+    },
+    {
+      "name": "base_round",
+      "op": "fillet",
+      "of": "body",
+      "edges": [
+        [
+          0,
+          18,
+          0
+        ]
+      ],
+      "radius": 1
+    },
+    {
+      "name": "hollow",
+      "op": "shell",
+      "of": "base_round",
+      "openings": [
+        [
+          0,
+          0,
+          80
+        ]
+      ],
+      "thickness": 2,
+      "side": "inward"
+    }
+  ],
+  "result": "hollow",
+  "checkpoints": [
+    "body",
+    "base_round",
+    "hollow"
+  ]
+}

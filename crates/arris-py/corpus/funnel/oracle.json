@@ -1,0 +1,144 @@
+{
+  "description": "script-corpus/funnel: a funnel: a ruled loft from a stem to a wide mouth, the neck's crease rounded, hollowed open at both ends",
+  "params": {},
+  "steps": [
+    {
+      "name": "s0",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 5
+        }
+      }
+    },
+    {
+      "name": "s1",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          15
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 5
+        }
+      }
+    },
+    {
+      "name": "s2",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          40
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 30
+        }
+      }
+    },
+    {
+      "name": "body",
+      "op": "loft",
+      "sections": [
+        "s0",
+        "s1",
+        "s2"
+      ],
+      "kind": "ruled"
+    },
+    {
+      "name": "neck_round",
+      "op": "fillet",
+      "of": "body",
+      "edges": [
+        [
+          0,
+          5,
+          15
+        ]
+      ],
+      "radius": 3
+    },
+    {
+      "name": "hollow",
+      "op": "shell",
+      "of": "neck_round",
+      "openings": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          40
+        ]
+      ],
+      "thickness": 1.5,
+      "side": "inward"
+    }
+  ],
+  "result": "hollow",
+  "checkpoints": [
+    "body",
+    "neck_round",
+    "hollow"
+  ]
+}

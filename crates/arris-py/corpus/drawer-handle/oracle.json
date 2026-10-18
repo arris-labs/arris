@@ -1,0 +1,167 @@
+{
+  "description": "script-corpus/drawer-handle: a drawer pull: a 8 mm bar swept along a U path, a tapped hole in each foot, the feet chamfered",
+  "params": {},
+  "steps": [
+    {
+      "name": "bar_profile",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 4
+        }
+      }
+    },
+    {
+      "name": "handle",
+      "op": "sweep",
+      "profile": "bar_profile",
+      "path": {
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "line_to": [
+              0,
+              0,
+              15
+            ]
+          },
+          {
+            "arc_to": [
+              10,
+              0,
+              25
+            ],
+            "via": [
+              2.9289321881345245,
+              0,
+              22.071067811865476
+            ]
+          },
+          {
+            "line_to": [
+              50,
+              0,
+              25
+            ]
+          },
+          {
+            "arc_to": [
+              60,
+              0,
+              15
+            ],
+            "via": [
+              57.071067811865476,
+              0,
+              22.071067811865476
+            ]
+          },
+          {
+            "line_to": [
+              60,
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "tap0",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 9
+    },
+    {
+      "name": "tap1",
+      "op": "cylinder",
+      "base": [
+        60,
+        0,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1.5,
+      "height": 9
+    },
+    {
+      "name": "tapped",
+      "op": "cut",
+      "target": "handle",
+      "tools": [
+        "tap0",
+        "tap1"
+      ]
+    },
+    {
+      "name": "foot_chamfer",
+      "op": "chamfer",
+      "of": "tapped",
+      "edges": [
+        [
+          0,
+          4,
+          0
+        ],
+        [
+          60,
+          4,
+          0
+        ]
+      ],
+      "distance": 0.5
+    }
+  ],
+  "result": "foot_chamfer",
+  "checkpoints": [
+    "handle",
+    "tapped",
+    "foot_chamfer"
+  ],
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 1e-06,
+    "centroid_abs": 5e-07,
+    "inertia_rel": 3e-06
+  }
+}

@@ -60,6 +60,9 @@ the evidence for the modelling layer's scope.
   `sweep-thread`'s fixture sets): the knob 2e-8, the bottle cap 1e-6. The
   harness leaves undecided only the face pairs of two NURBS faces, as the
   corpus runner does (`NURBS_PAIR`), and faults on any other row.
+- **The vase is a ruled loft**: its smooth loft (four circles of unequal
+  radius and spacing) differs from Open CASCADE's by 8e-4 of the volume,
+  a finding kept as a backlog line, not a tolerance.
 - **The test.** `crates/arris-py/tests/test_script_corpus.py`, one case per
   part: run it, compare against `outcome.json` (a changed outcome fails;
   `ARRIS_BLESS=1` rewrites it, and a lifted refusal is a `fixtures:` commit),
@@ -102,7 +105,7 @@ robustness or bound has to be established here.
 - [x] Step 2 **[2]** — The four other prismatic parts.
 - [x] Step 3 **[2]** — The four revolved parts, the threaded cap's helix
   sweep among them.
-- [ ] Step 4 **[2]** — The four swept and lofted parts.
+- [x] Step 4 **[2]** — The four swept and lofted parts.
 - [ ] Step 5 **[2]** — The two patterned parts.
 - [ ] Step 6 **[2]** — The three CAE parts, tags lifted into `harness.py`
   and asserted through every cut and the mesh.
