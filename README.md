@@ -20,7 +20,7 @@
 # A motor-mount bracket: extruded L profile, fused boss, bore and bolt pattern cut
 # in one call, fillets on the bend and hole rims, and a chamfer on the boss.
 # Every face is coloured by the operation that made it, followed through provenance.
-# Full script: crates/arris-py/examples/bracket.py
+# Full script with per-operation face coloring: crates/arris-py/examples/bracket.py
 
 import arris
 
@@ -31,24 +31,36 @@ profile = arris.Profile(
     arris.Loop.polygon([(0, 0), (60, 0), (60, 8), (8, 8), (8, 50), (0, 50)]),
     origin=(0, 0, 0), normal=(0, -1, 0), x_axis=(1, 0, 0),
 )
-plate, record = model.extrude(profile, (0, 1, 0), 40)
+plate, plate_rec = model.extrude(profile, (0, 1, 0), 40)
 
 # 2. Fuse a boss on the upright leg
-boss, _ = model.primitive_cylinder((8, 20, 32), (1, 0, 0), 14, 12)
-body, record = model.fuse(plate, boss)
+boss, boss_rec = model.primitive_cylinder((8, 20, 32), (1, 0, 0), 14, 12)
+body, fuse_rec = model.fuse(plate, boss)
 
 # 3. Cut bore, bolt holes, and counterbores in one multi-tool call
-tools = [model.primitive_cylinder((-1, 20, 32), (1, 0, 0), 8, 23)[0]]
-for y in (8, 32):
-    tools.append(model.primitive_cylinder((40, y, -1), (0, 0, 1), 3.5, 10)[0])
-    tools.append(model.primitive_cylinder((40, y, 5), (0, 0, 1), 6, 4)[0])
-body, record = model.cut_many(body, tools)
+wells = [model.primitive_cylinder((40, y, 5), (0, 0, 1), 6, 4) for y in (8, 32)]
+tools = [
+    model.primitive_cylinder((-1, 20, 32), (1, 0, 0), 8, 23)[0],
+    *(model.primitive_cylinder((40, y, -1), (0, 0, 1), 3.5, 10)[0] for y in (8, 32)),
+    *(w for w, _ in wells),
+]
+body, cut_rec = model.cut_many(body, tools)
+history = plate_rec.then(fuse_rec).then(cut_rec)
 
 # 4. Fillets and chamfer: edges selected by provenance
-[bend] = [e for e in record.generated_from(arris.Role("extrude", "Rise", 0, 3)) if isinstance(e, arris.Edge)]
-body, record = model.fillet(body, [bend], 4)
-body, record = model.fillet(body, rim_edges, 0.8)
-body, record = model.chamfer(body, [boss_lip], 1.5)
+[bend] = [e for e in history.generated_from(arris.Role("extrude", "Rise", 0, 3)) if isinstance(e, arris.Edge)]
+body, _ = model.fillet(body, [bend], 4)
+
+rims = [
+    e for _, w_rec in wells
+    for f in w_rec.generated_from(arris.Role("cylinder", "Wall"))
+    for e in cut_rec.generated_from(f)
+    if isinstance(e, arris.Edge)
+]
+body, _ = model.fillet(body, rims, 0.8)
+
+[lip] = [e for e in boss_rec.generated_from(arris.Role("cylinder", "TopRim")) if isinstance(e, arris.Edge)]
+body, _ = model.chamfer(body, [lip], 1.5)
 ```
 
 A B-Rep geometric kernel written from scratch in Rust, built for code-CAD script
