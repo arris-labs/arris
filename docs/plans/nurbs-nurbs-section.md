@@ -114,7 +114,7 @@ bound has to be established here.
   its own, so each singular point's *departures*, the section at its
   reach, are certified and the branch ends through one (ADR-0068's
   amendment). A turning point of higher order is refused crowded.
-- [ ] Step 6 **[2]** — **Isolines, poles and the flush case.** An
+- [x] Step 6 **[2]** — **Isolines, poles and the flush case.** An
   isocurve of one surface on the other returned exact (a plane's twin
   through a ruled face's row), a pole on the other surface as a singular
   point (a sphere's twin against a cone's twin through it), a patch flush

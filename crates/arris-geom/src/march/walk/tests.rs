@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use arris_math::{Frame, Interval, Precision};
-use core::f64::consts::{FRAC_PI_2, PI};
+use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 use super::*;
 use crate::Surface;
@@ -226,5 +226,99 @@ fn march_every_twin_section_has_the_closed_forms_branches() {
             section.branches.len(),
             section.points.len()
         );
+    }
+}
+
+/// An isocurve of one surface on the other is returned exact (ADR-0068 step 6).
+#[test]
+fn march_an_isocurve_on_the_other_surface_is_returned_exact() {
+    let tol = Precision::DEFAULT.tolerance();
+    // A ruled patch: from (1, 0, 0) to (1, 0, 1) along u = 0.
+    let ruled = NurbsSurface::new(
+        [1, 1],
+        [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
+        vec![
+            Point3::new(1.0, 0.0, 0.0),
+            Point3::new(1.0, 0.0, 1.0),
+            Point3::new(-0.5, 1.5, 0.0),
+            Point3::new(-0.5, -0.5, 1.0),
+        ],
+        vec![1.0; 4],
+    )
+    .unwrap();
+    // A plane through the ruling x = 1, y = 0.
+    let floor = Surface::Plane {
+        frame: Frame::new(Point3::new(1.0, 0.0, 0.0), Vec3::x(), Vec3::y()).unwrap(),
+    };
+    let floor_twin = twin(&floor, [-2.0, 2.0], [-2.0, 2.0]);
+    for (a, b) in [(&ruled, &floor_twin), (&floor_twin, &ruled)] {
+        let section = march(a, b, tol, &mut Meter::default()).unwrap();
+        assert_eq!(section.isocurves.len(), 1);
+        let Curve::Nurbs(ref line) = section.isocurves[0] else {
+            panic!("expected Nurbs curve");
+        };
+        let expected = ruled.isocurve(0, 0.0).unwrap();
+        assert_eq!(line.control_points().len(), expected.control_points().len());
+        for (p, q) in line.control_points().iter().zip(expected.control_points()) {
+            assert!((p - q).norm() <= tol.linear);
+        }
+        assert!(section.branches.is_empty());
+        assert!(section.points.is_empty());
+    }
+}
+
+/// A pole on the other surface as a singular point (ADR-0068 step 6).
+#[test]
+fn march_a_pole_on_the_other_surface_is_a_singular_point() {
+    let tol = Precision::DEFAULT.tolerance();
+    let ball = Surface::Sphere {
+        frame: Frame::world(),
+        radius: 1.0,
+    };
+    let sphere = twin(&ball, [0.0, 2.0 * PI], [-FRAC_PI_2, FRAC_PI_2]);
+    // A cone whose apex is at (0, 0, 1), the north pole of the sphere,
+    // opening towards +z so it meets the sphere only at that pole.
+    // v_apex = -R / sin(π/4) = -sqrt(2).
+    let v_apex = -core::f64::consts::SQRT_2;
+    let cone = Surface::Cone {
+        frame: Frame::new(Point3::new(0.0, 0.0, 2.0), Vec3::z(), Vec3::x()).unwrap(),
+        radius: 1.0,
+        half_angle: FRAC_PI_4,
+    };
+    let cone_twin = twin(&cone, [0.0, 2.0 * PI], [v_apex, v_apex + 1.0]);
+    let touch = Point3::new(0.0, 0.0, 1.0);
+    for (a, b) in [(&sphere, &cone_twin), (&cone_twin, &sphere)] {
+        let section = march(a, b, tol, &mut Meter::default()).unwrap();
+        assert_eq!(section.points.len(), 1);
+        assert!((section.points[0].point - touch).norm() <= tol.linear);
+        assert!(section.points[0].isolated);
+        assert!(section.branches.is_empty());
+        assert!(section.isocurves.is_empty());
+    }
+}
+
+/// A patch flush with the other surface is Unsupported (ADR-0068 step 6).
+#[test]
+fn march_a_patch_flush_with_the_other_surface_is_unsupported() {
+    let tol = Precision::DEFAULT.tolerance();
+    let square = NurbsSurface::new(
+        [1, 1],
+        [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
+        vec![
+            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(0.0, 1.0, 0.0),
+            Point3::new(1.0, 0.0, 0.0),
+            Point3::new(1.0, 1.0, 0.0),
+        ],
+        vec![1.0; 4],
+    )
+    .unwrap();
+    let floor = Surface::Plane {
+        frame: Frame::world(),
+    };
+    let floor_twin = twin(&floor, [-2.0, 2.0], [-2.0, 2.0]);
+    for (a, b) in [(&square, &floor_twin), (&floor_twin, &square)] {
+        let err = march(a, b, tol, &mut Meter::default()).unwrap_err();
+        assert!(matches!(err, GeomError::Unsupported { .. }));
     }
 }

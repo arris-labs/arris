@@ -112,11 +112,13 @@ const DAMPING_GROWTH: f64 = 16.0;
 const DAMPINGS: usize = 12;
 
 /// A walked section of two NURBS surfaces: its branches and its singular
+/// A walked section of two NURBS surfaces: its branches and its singular
 /// points, every point in both surfaces' parameters.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct MarchedSection {
     pub(crate) branches: Vec<MarchedBranch>,
     pub(crate) points: Vec<MarchedPoint>,
+    pub(crate) isocurves: Vec<Curve>,
 }
 
 /// One branch: the walked points in `(u₁, v₁, u₂, v₂)`, continuous across
@@ -186,22 +188,131 @@ fn stopped(halt: Halt<impl Sized>) -> GeomError {
     }
 }
 
+const FLUSH_SAMPLES: usize = 8;
+
+/// Whether `surface` has a Bézier patch flush with `other` over an area:
+/// every point of a 9×9 grid over the patch within `tol.linear` of `other`
+/// (ADR-0061 §4).
+fn is_flush(surface: &NurbsSurface, other: &NurbsSurface, tol: Tolerance) -> bool {
+    let mut other_hull = [[f64::INFINITY; 3], [f64::NEG_INFINITY; 3]];
+    for p in other.control_points() {
+        for k in 0..3 {
+            other_hull[0][k] = other_hull[0][k].min(p[k]);
+            other_hull[1][k] = other_hull[1][k].max(p[k]);
+        }
+    }
+    for patch in surface.patches() {
+        let mut patch_hull = [[f64::INFINITY; 3], [f64::NEG_INFINITY; 3]];
+        for h in &patch.net {
+            let pt = [h.x / h.w, h.y / h.w, h.z / h.w];
+            for k in 0..3 {
+                patch_hull[0][k] = patch_hull[0][k].min(pt[k]);
+                patch_hull[1][k] = patch_hull[1][k].max(pt[k]);
+            }
+        }
+        let meets = (0..3).all(|k| {
+            patch_hull[0][k] <= other_hull[1][k] + tol.linear
+                && other_hull[0][k] <= patch_hull[1][k] + tol.linear
+        });
+        if !meets {
+            continue;
+        }
+        let [u_span, v_span] = [patch.u, patch.v];
+        let flush = (0..=FLUSH_SAMPLES).all(|i| {
+            let u = u_span[0] + (u_span[1] - u_span[0]) * (i as f64 / FLUSH_SAMPLES as f64);
+            (0..=FLUSH_SAMPLES).all(|j| {
+                let v = v_span[0] + (v_span[1] - v_span[0]) * (j as f64 / FLUSH_SAMPLES as f64);
+                let p = surface.eval(u, v).point;
+                other
+                    .project(p)
+                    .is_ok_and(|proj| proj.distance <= tol.linear)
+            })
+        });
+        if flush {
+            return true;
+        }
+    }
+    false
+}
+
+fn contains_curve(isocurves: &[Curve], curve: &Curve, tol: f64) -> bool {
+    isocurves.iter().any(|c| {
+        let (d1, d2) = (c.domain(), curve.domain());
+        let (p0, p1, p2) = (c.point(d1.lo()), c.point(d1.midpoint()), c.point(d1.hi()));
+        let (q0, q1, q2) = (
+            curve.point(d2.lo()),
+            curve.point(d2.midpoint()),
+            curve.point(d2.hi()),
+        );
+        ((p0 - q0).norm() <= tol && (p1 - q1).norm() <= tol && (p2 - q2).norm() <= tol)
+            || ((p0 - q2).norm() <= tol && (p1 - q1).norm() <= tol && (p2 - q0).norm() <= tol)
+    })
+}
+
 /// The section of `one` with `two`, walked between its seeds (module
-/// docs). An isoline of either on the other is refused here as a tube
-/// circle until step 6 of `plans/nurbs-nurbs-section` decides it.
+/// docs). Exact isocurves, poles on the other surface as singular
+/// points, and patch-flush surfaces are handled here (ADR-0068 step 6).
 pub(crate) fn march(
     one: &NurbsSurface,
     two: &NurbsSurface,
     tol: Tolerance,
     meter: &mut Meter,
 ) -> Result<MarchedSection, GeomError> {
+    if is_flush(one, two, tol) || is_flush(two, one, tol) {
+        return Err(GeomError::Unsupported {
+            a: GeomKind::Surface(SurfaceKind::Nurbs),
+            b: GeomKind::Surface(SurfaceKind::Nurbs),
+        });
+    }
     let marcher = Marcher::new(one, two, tol);
-    let mut seeds = marcher.boundary_seeds(meter)?;
+    let mut isocurves = Vec::new();
+    let mut seeds = marcher.boundary_seeds(&mut isocurves, meter)?;
+    let mut singular: Vec<Singular> = Vec::new();
+
+    // Check poles of both surfaces that lie on the other surface
+    for s in 0..2 {
+        let (surface, other) = (marcher.surfaces[s], marcher.surfaces[1 - s]);
+        for &(dir, value, point) in &surface.collapsed_rows() {
+            if let Ok(proj) = other.project(point) {
+                if (proj.point - point).norm() <= tol.linear
+                    && singular
+                        .iter()
+                        .all(|sing| (sing.point - point).norm() > tol.linear)
+                {
+                    let at = if s == 0 {
+                        let (u, v) = if dir == 0 {
+                            (value, surface.domain()[1].midpoint())
+                        } else {
+                            (surface.domain()[0].midpoint(), value)
+                        };
+                        [u, v, proj.uv.x, proj.uv.y]
+                    } else {
+                        let (u, v) = if dir == 0 {
+                            (value, surface.domain()[1].midpoint())
+                        } else {
+                            (surface.domain()[0].midpoint(), value)
+                        };
+                        [proj.uv.x, proj.uv.y, u, v]
+                    };
+                    let reach = marcher.reach(at);
+                    singular.push(Singular { at, point, reach });
+                }
+            }
+        }
+    }
+
     let found = loop_seeds(one, two, meter)?;
-    if !found.continua.is_empty() {
+    let unaccounted_continua = found.continua.iter().any(|z| {
+        let p = marcher.surfaces[0].eval(z.at[0], z.at[1]).point;
+        !isocurves
+            .iter()
+            .any(|c| c.project(p).is_ok_and(|proj| proj.distance <= tol.linear))
+            && !singular.iter().any(|s| (s.point - p).norm() <= s.reach)
+    });
+    if unaccounted_continua {
         return Err(refused(SectionFault::TubeCircle));
     }
-    let mut singular: Vec<Singular> = Vec::new();
+
     let mut passed: Vec<[f64; 4]> = Vec::new();
     for z in found.seeds {
         if z.certified {
@@ -209,6 +320,17 @@ pub(crate) fn march(
             continue;
         }
         meter.tick()?;
+        let p = marcher.surfaces[0].eval(z.at[0], z.at[1]).point;
+        let absorbed = singular.iter().any(|s| {
+            (s.point - p).norm() <= s.reach
+                || (0..4).all(|k| {
+                    let slack = 1e-4 * marcher.domain[k].length().max(1.0);
+                    z.lo[k] - slack <= s.at[k] && s.at[k] <= z.hi[k] + slack
+                })
+        });
+        if absorbed {
+            continue;
+        }
         if let Some(at) = marcher.singular(z.at, meter)? {
             let point = marcher.surfaces[0].eval(at[0], at[1]).point;
             if singular
@@ -239,7 +361,11 @@ pub(crate) fn march(
     }
     for at in passed {
         let point = marcher.surfaces[0].eval(at[0], at[1]).point;
-        if !inside(point) {
+        let on_isocurve = isocurves.iter().any(|c| {
+            c.project(point)
+                .is_ok_and(|proj| proj.distance <= tol.linear)
+        });
+        if !inside(point) && !on_isocurve {
             add(
                 &mut seeds,
                 Seed {
@@ -319,7 +445,11 @@ pub(crate) fn march(
             isolated,
         })
         .collect();
-    Ok(MarchedSection { branches, points })
+    Ok(MarchedSection {
+        branches,
+        points,
+        isocurves,
+    })
 }
 
 /// Lexicographic order of two parameter points.
@@ -410,11 +540,16 @@ impl<'a> Marcher<'a> {
 
     /// Every edge line and seam of both domains against the other
     /// surface.
-    fn boundary_seeds(&self, meter: &mut Meter) -> Result<Vec<Seed>, GeomError> {
+    fn boundary_seeds(
+        &self,
+        isocurves: &mut Vec<Curve>,
+        meter: &mut Meter,
+    ) -> Result<Vec<Seed>, GeomError> {
         let mut seeds: Vec<Seed> = Vec::new();
         for s in 0..2 {
             let (surface, other) = (self.surfaces[s], self.surfaces[1 - s]);
             let poles = surface.collapsed_rows();
+            let other_poles = other.collapsed_rows();
             for dir in 0..2 {
                 let axis = 2 * s + dir;
                 let d = self.domain[axis];
@@ -433,10 +568,26 @@ impl<'a> Marcher<'a> {
                     let hits = match spline_nurbs(&curve, &line, other, self.tol, meter)? {
                         CurveSurfaceIntersection::Points(hits) => hits,
                         CurveSurfaceIntersection::Coincident => {
-                            return Err(refused(SectionFault::TubeCircle));
+                            if !contains_curve(isocurves, &curve, self.tol.linear) {
+                                isocurves.push(curve);
+                            }
+                            continue;
                         }
                     };
                     for hit in hits {
+                        // A hit at a pole of either surface belongs to the pole.
+                        if poles
+                            .iter()
+                            .any(|&(_, _, p)| (hit.point - p).norm() <= self.tol.linear)
+                        {
+                            continue;
+                        }
+                        if other_poles
+                            .iter()
+                            .any(|&(_, _, p)| (hit.point - p).norm() <= self.tol.linear)
+                        {
+                            continue;
+                        }
                         // The section touching an edge, entering the
                         // domain there or not, is ADR-0061's refusal.
                         if hit.tangent && !closed {
@@ -469,6 +620,43 @@ impl<'a> Marcher<'a> {
                 }
             }
         }
+        // Check internal knot lines for exact isocurves
+        for s in 0..2 {
+            let (surface, other) = (self.surfaces[s], self.surfaces[1 - s]);
+            for dir in 0..2 {
+                let d = self.domain[2 * s + dir];
+                let mut unique_knots: Vec<f64> = surface.knots()[dir].to_vec();
+                unique_knots.sort_by(f64::total_cmp);
+                unique_knots.dedup_by(|a, b| (*a - *b).abs() <= 1e-12);
+                for &val in &unique_knots {
+                    if val <= d.lo() + 1e-9 || val >= d.hi() - 1e-9 {
+                        continue;
+                    }
+                    if let Ok(line) = surface.isocurve(dir, val) {
+                        let curve = Curve::Nurbs(line.clone());
+                        let sample_on = [0.0, 0.5, 1.0].iter().all(|&t| {
+                            let pt = curve.point(curve.domain().lerp(t));
+                            other
+                                .project(pt)
+                                .is_ok_and(|p| p.distance <= self.tol.linear)
+                        });
+                        if sample_on
+                            && let Ok(CurveSurfaceIntersection::Coincident) =
+                                spline_nurbs(&curve, &line, other, self.tol, meter)
+                            && !contains_curve(isocurves, &curve, self.tol.linear)
+                        {
+                            isocurves.push(curve);
+                        }
+                    }
+                }
+            }
+        }
+        seeds.retain(|seed| {
+            !isocurves.iter().any(|c| {
+                c.project(seed.point)
+                    .is_ok_and(|p| p.distance <= self.tol.linear)
+            })
+        });
         Ok(seeds)
     }
 
@@ -976,15 +1164,19 @@ impl<'a> Marcher<'a> {
 /// The larger principal curvature's size at `e`, zero where the surface
 /// has no normal.
 fn principal(e: &SurfaceEval) -> f64 {
-    let Some(n) = e.du.cross(&e.dv).try_normalize(0.0) else {
+    let normal = e.du.cross(&e.dv);
+    if normal.norm() <= 1e-6 {
+        return 0.0;
+    }
+    let Some(n) = normal.try_normalize(0.0) else {
         return 0.0;
     };
     let (ee, f, g) = (e.du.dot(&e.du), e.du.dot(&e.dv), e.dv.dot(&e.dv));
-    let (l, m, nn) = (e.duu.dot(&n), e.duv.dot(&n), e.dvv.dot(&n));
     let det = ee * g - f * f;
-    if det <= 0.0 {
+    if det <= 1e-9 {
         return 0.0;
     }
+    let (l, m, nn) = (e.duu.dot(&n), e.duv.dot(&n), e.dvv.dot(&n));
     let mean = (ee * nn - 2.0 * f * m + g * l) / (2.0 * det);
     let gauss = (l * nn - m * m) / det;
     mean.abs() + (mean * mean - gauss).max(0.0).sqrt()
