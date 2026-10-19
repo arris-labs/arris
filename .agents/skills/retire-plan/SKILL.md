@@ -16,8 +16,12 @@ Deletion is the "done" signal; anything worth keeping moves first.
    plan's **full gate** runs (`.agents/rules/git.md`), plus
    `ARRIS_ORACLE_CACHE=off` for the oracle comparisons the plan touched,
    and `cargo nextest run -p <crate> --features parallel` for each of
-   `arris-mesh`, `arris-ops`, `arris` whose source changed. Anything red:
-   stop and report.
+   `arris-mesh`, `arris-ops`, `arris` whose source changed. The nextest
+   run takes about half an hour: give it `--no-fail-fast`, send the whole
+   output to a scratchpad file, with no pipe filter and no timeout, run it
+   in the background, then grep the file for `FAIL`, `SIGSEGV` and
+   `TIMEOUT`. A single run then names every red test. Anything red: stop
+   and report.
 2. **Review the commits against the plan**, in a subagent so it reads with
    fresh eyes. Give it the plan file, `.agents/review.md` (its brief and
    standards), `.agents/rules/kernel.md`, `GLOSSARY.md`, and the plan's
