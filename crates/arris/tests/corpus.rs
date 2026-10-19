@@ -877,6 +877,9 @@ corpus_tests! {
     loft_loft_twisted_square => run "loft/loft-twisted-square";
     /// A hole in every section lofted ruled: planes outside, a cone in the bore.
     loft_loft_ring_to_ring => run "loft/loft-ring-to-ring";
+    /// A rectangle, a circle started at its corners' angle and a wider rectangle
+    /// lofted ruled: every side face NURBS, neighbours meeting along their shared edge only.
+    loft_loft_rect_circle_rect_ruled => run "loft/loft-rect-circle-rect-ruled";
     /// A square lofted ruled to a smaller one: four planes.
     loft_loft_square_frustum => run "loft/loft-square-frustum";
     /// Coaxial circles lofted ruled: a cone.
@@ -1237,10 +1240,6 @@ corpus_tests! {
     /// lumps, every face NURBS.
     #[ignore = "OpError::Internal(Lumps): the two shells' nesting is undecided, NURBS against NURBS (B1), so the cut is refused where the desired body is two disks (nurbs-analytic-section step 8, docs/BACKLOG.md)"]
     regression_nurbs_cylinder_slab_cut_two_lumps => run "regression/nurbs-cylinder-slab-cut-two-lumps";
-    /// A ruled loft of a rectangle, a circle and a rectangle: every side
-    /// face NURBS, neighbours meeting along their shared edge only.
-    #[ignore = "S5 f16 and f18 intersect away from their shared edges, and NURBS pairs undecided: the marched section of two ruled faces returns a curve beyond their shared edge, where the desired body is clean at Full (nurbs-nurbs-section step 9, M2 nurbs-nurbs-operands)"]
-    regression_loft_rect_circle_rect_ruled_s5_false_positive => run "regression/loft-rect-circle-rect-ruled-s5-false-positive";
     /// The same solid drilled along its first principal axis: a cylinder
     /// across a bicubic B-spline face.
     #[ignore = "the oracle is wrong: Open CASCADE removes 69 676 of the drill's volume where its own solid classifier finds 145 600 ± 2 900 of the part inside the cylinder (40 000 samples) and Arris removes 143 792, so counts (643 faces to 649) and the measures differ; no closed form holds the real part (nurbs-analytic-section step 7, docs/BACKLOG.md)"]

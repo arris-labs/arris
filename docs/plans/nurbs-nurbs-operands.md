@@ -51,12 +51,13 @@ profiled and its hot spot fixed, for C10's accept on the fetched tier.
   exclusion had hidden the one-twin cases; `twin_prop` names the arm.
   Of 192 both-twin booleans: box × cylinder 64 agree, quadric pairs 56
   (3 `CrowdedSingularity`, 5 `Lumps`), crossing pairs 0. Step 5 is new.
-- **`arris-check`** (steps 3–4): S5 and B1 read the marched section as
-  they read a traced one. A section that runs along an edge two faces
-  share is that edge, not a crossing: the false positive of
-  `regression/loft-rect-circle-rect-ruled-s5-false-positive` is fixed
-  where it is (the marcher returning a curve off the edge, or
-  `curve_is_interior_to_both` not excusing it), found at step 3. B1's
+- **`arris-check`** (steps 3–4): S5 reads a NURBS pair's section from
+  `trace_section`, the traced branches' own points, never the fitted
+  curves. Step 3's finding: the loft "false positive" was a real fold (the
+  circle's start unmatched to the rectangle's twists the rulings, mesh
+  slices cross themselves), so S5 was right; the pairs a shared edge's
+  neighbours leave to the intersector's refusals stay `Unchecked::FacePair`
+  and the properties' exemptions stay. B1's
   shell nesting with NURBS faces on both shells classifies by the ray
   fire over NURBS faces (C8's query cycle). `Unchecked::FacePair` and
   `ShellFacePair` remain only for an intersector refusal; no type
@@ -90,12 +91,12 @@ robustness or bound has to be established here.
   Half the cases twin both. No pave finding; the Steinmetz refusal
   (deltas) is an ignored `nurbs_nurbs_prop` test, since Open CASCADE's
   own NURBS booleans of the pair fail (no oracle for a fixture).
-- [ ] Step 3 **[2]** — **S5 on two NURBS faces.** The loft false
-  positive fixed; the fixture moves to `loft/` with its dump. S5 samples
-  a traced branch's own points instead of fitting it first (~74 s of
-  the CTC-02 box cut's run).
-  `loft_prop` and `twin_prop` drop their `FacePair` exemptions, and a
-  `full.rs` test holds an all-twin body clean with nothing unchecked.
+- [x] Step 3 **[2]** — **S5 on two NURBS faces.** The loft "false
+  positive" was a true fold (deltas); its fixture is replaced by a
+  matched-start `loft/loft-rect-circle-rect-ruled` and a `loft.rs` test
+  holding the folded one to `FacesIntersect`. S5 samples a traced
+  branch's own points instead of fitting it (`trace_section`): CTC-02's
+  box cut 256 s to 176 s. The `FacePair` exemptions stay (deltas).
 - [ ] Step 4 **[2]** — **B1 with NURBS faces on both shells.** Nesting by
   the ray fire over NURBS faces; `regression/nurbs-cylinder-slab-cut-two-lumps`
   moves to `boolean/` with its dump, and `twin_prop`'s `Lumps` arm is
@@ -124,14 +125,13 @@ robustness or bound has to be established here.
 ## Acceptance
 
 - `cargo nextest run -p arris-ops -E 'test(twin_prop) | test(loft_prop) | test(sweep_prop)'`
-  at 256 cases: both operands twinned, no `FacePair` or `Lumps`
-  exemption; `CrowdedSingularity` the only refusal tolerated (3 in 192
+  at 256 cases: both operands twinned, no `Lumps` exemption (the
+  `FacePair` one stays, step 3); `CrowdedSingularity` the only refusal tolerated (3 in 192
   at step 2).
 - The step 6 and 7 fixtures and the two moved `regression/` fixtures pass
   the corpus runner against Open CASCADE (measures within the fixture's
   tolerance, counts, probes, dump).
-- CTC-02 AP242's `box_cut` corpus run at most step 1's 256 s, less
-  step 3's S5 saving.
+- CTC-02 AP242's `box_cut` corpus run at most step 3's 176 s.
 - The full gate is green; the fetched tier's histogram is printed with
   NURBS 0 of 38 at every column.
 
@@ -159,6 +159,18 @@ robustness or bound has to be established here.
 - Settled (agent, step 2): `CrowdedSingularity` (§76) refused 3 of 192,
   under the one-in-ten bar, and stays a backlog line; the Steinmetz
   refusals (42 of 192) are their own cause, step 5.
-- ⚠ OPEN (agent, by step 3): whether the loft false positive is the
-  marcher's (a section off the shared edge, an `arris-geom` fix with a
-  `geom/` fixture) or the checker's; the fixing commit says which.
+- Settled (agent, step 3 inquiry): the loft "false positive" is neither
+  the marcher's nor the checker's. The fixture's ruled loft genuinely
+  folds: mesh slices of the body at z 0.6–0.7 and 1.24–1.33 cross
+  themselves (the circle's start does not match the rectangle's, so the
+  rulings twist), and Open CASCADE's measures say nothing of validity.
+  S5's five findings are true positives; the fixture's "desired clean" is
+  wrong and `loft_prop`'s `FacesIntersect` exemption hides real folds of
+  random lofts.
+- Settled (human, step 3, agent's recommendation): S5 cannot decide every
+  NURBS pair while the intersector refuses the neighbours of a shared edge
+  (`Unsupported` for a flush split, `DegenerateSection` `TubeCircle`,
+  `UnresolvedTurning`, `CrowdedSingularity`; `twin_prop`, 32 cases). The
+  `FacePair` exemptions of `twin_prop` and `loft_prop` stay, and step 3
+  took the sampling saving and the true-positive fixtures only. What would
+  lift them is the intersector deciding shared-edge neighbours: BACKLOG.

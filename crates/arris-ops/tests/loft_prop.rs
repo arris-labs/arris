@@ -135,11 +135,10 @@ fn stack() -> impl Strategy<Value = (LoftKind, Vec<Profile>)> {
 }
 
 /// A loft's body, clean at `Full` but for what two NURBS faces leave
-/// undecided and the S5 findings the marched section of two of them
-/// makes between neighbours that meet along their shared edge only:
-/// held by the ignored
-/// `regression/loft-rect-circle-rect-ruled-s5-false-positive`, whose fix
-/// (`nurbs-nurbs-operands`) lifts the second arm.
+/// undecided and the S5 findings between two NURBS faces: a drawn stack
+/// whose sections start apart twists its rulings across the axis, and
+/// the solid folds (`s5_holds_a_twisted_ruled_loft_to_its_fold_and_a_matched_one_clean`
+/// in `loft.rs`), which S5 reports truly.
 fn check_green(m: &Model, body: Body) -> Result<(), TestCaseError> {
     let report = check(m, body, Level::Full);
     let nurbs = |f| {

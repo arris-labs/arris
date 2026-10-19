@@ -11,6 +11,7 @@
 
 use std::collections::BTreeSet;
 
+use arris_check::{Level, Unchecked, Violation, check};
 use arris_debug::dump_text;
 use arris_debug::testing::entities_of;
 use arris_debug::unmetered::mass_properties;
@@ -470,4 +471,75 @@ fn a_smooth_loft_through_more_sections_than_one_polynomial_takes_is_refused() {
     ));
     // Ruled takes any number.
     assert!(ruled(&mut m, &tower, false).is_ok());
+}
+
+/// A rectangle, a circle of radius 0.8 turned `turn` about the axis and a
+/// wider rectangle, a unit apart.
+fn rect_circle_rect(half: [f64; 2], turn: f64) -> Vec<Profile> {
+    let rectangle = |z: f64, w: f64, h: f64| Profile {
+        plane: at(z),
+        outer: ProfileLoop::Path {
+            start: Point2::new(-w, -h),
+            segments: vec![
+                ProfileSegment::LineTo(Point2::new(w, -h)),
+                ProfileSegment::LineTo(Point2::new(w, h)),
+                ProfileSegment::LineTo(Point2::new(-w, h)),
+                ProfileSegment::LineTo(Point2::new(-w, -h)),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let ring = Profile {
+        plane: Frame::new(
+            Point3::new(0.0, 0.0, 1.0),
+            Vec3::z(),
+            Vec3::new(real::cos(turn), real::sin(turn), 0.0),
+        )
+        .unwrap(),
+        outer: ProfileLoop::Circle {
+            center: Point2::origin(),
+            radius: 0.8,
+        },
+        holes: Vec::new(),
+    };
+    vec![
+        rectangle(0.0, half[0], 0.8),
+        ring,
+        rectangle(2.0, half[1], 0.8),
+    ]
+}
+
+/// S5 on a ruled loft's NURBS side faces: sections whose starts agree
+/// give neighbours that meet along their shared edge only, clean at
+/// `Full` with at most face pairs the intersector leaves undecided; the
+/// same sections with the circle started at angle zero twist the
+/// rulings across the axis, and two side faces cross away from every
+/// edge they share — the finding is true, the solid folds (mesh slices of
+/// it cross themselves at z 0.6 to 0.7).
+#[test]
+fn s5_holds_a_twisted_ruled_loft_to_its_fold_and_a_matched_one_clean() {
+    let mut m = Model::default();
+    let sections = rect_circle_rect([1.5, 2.25], real::atan2(-0.8, -1.5));
+    let (body, _) = ruled(&mut m, &sections, false).unwrap();
+    let report = check(&m, body, Level::Full);
+    assert!(report.violations().is_empty(), "{report}");
+    assert!(
+        report
+            .unchecked()
+            .iter()
+            .all(|u| matches!(u, Unchecked::FacePair { .. })),
+        "{report}"
+    );
+
+    let mut m = Model::default();
+    let sections = rect_circle_rect([1.934535465760151, 2.702202017311052], 0.0);
+    let (body, _) = ruled(&mut m, &sections, false).unwrap();
+    let report = check(&m, body, Level::Full);
+    assert!(
+        report
+            .violations()
+            .iter()
+            .any(|v| matches!(v, Violation::FacesIntersect { .. })),
+        "{report}"
+    );
 }

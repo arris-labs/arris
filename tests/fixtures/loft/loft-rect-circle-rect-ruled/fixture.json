@@ -1,5 +1,5 @@
 {
-  "description": "a 3.87 x 1.6 rectangle at z 0, a circle of radius 0.8 at z 1 and a rectangle 5.4 x 1.6 at z 2, lofted ruled: the ruled faces are NURBS, and Full reports S5 on pairs that meet only along their shared edges, where the desired result is clean (plans/nurbs-nurbs-section step 9, found by loft_prop; the marched section of two NURBS faces returns a curve away from the edge, for M2 plans/nurbs-nurbs-operands)",
+  "description": "a 3 x 1.6 rectangle at z 0, a circle of radius 0.8 at z 1 started at the rectangles' corner angle and a 4.5 x 2.4 rectangle at z 2, lofted ruled: every side face is a NURBS face and neighbours meet along their shared edge only, so the body is clean at Full. The same sections with the circle started at angle zero fold, and `Violation::FacesIntersect` names them in `ops/tests/loft.rs` (plans/nurbs-nurbs-operands step 3). The circle's arcs pair with the sides at equal parameter of their rational quadratics (ADR-0065 \u00a72) and Open CASCADE's by arc length, so the measures differ by the pairing (volume 2e-3) and the tolerances here are that difference",
   "steps": [
     {
       "name": "a",
@@ -23,31 +23,31 @@
       },
       "outer": {
         "start": [
-          -1.934535465760151,
+          -1.5,
           -0.8
         ],
         "segments": [
           {
             "line_to": [
-              1.934535465760151,
+              1.5,
               -0.8
             ]
           },
           {
             "line_to": [
-              1.934535465760151,
+              1.5,
               0.8
             ]
           },
           {
             "line_to": [
-              -1.934535465760151,
+              -1.5,
               0.8
             ]
           },
           {
             "line_to": [
-              -1.934535465760151,
+              -1.5,
               -0.8
             ]
           }
@@ -65,13 +65,13 @@
           1
         ],
         "x": [
-          1,
-          0,
+          -0.8823529411764707,
+          -0.4705882352941175,
           0
         ],
         "y": [
-          0,
-          1,
+          0.4705882352941175,
+          -0.8823529411764707,
           0
         ]
       },
@@ -108,32 +108,32 @@
       },
       "outer": {
         "start": [
-          -2.702202017311052,
-          -0.8
+          -2.25,
+          -1.2
         ],
         "segments": [
           {
             "line_to": [
-              2.702202017311052,
-              -0.8
+              2.25,
+              -1.2
             ]
           },
           {
             "line_to": [
-              2.702202017311052,
-              0.8
+              2.25,
+              1.2
             ]
           },
           {
             "line_to": [
-              -2.702202017311052,
-              0.8
+              -2.25,
+              1.2
             ]
           },
           {
             "line_to": [
-              -2.702202017311052,
-              -0.8
+              -2.25,
+              -1.2
             ]
           }
         ]
@@ -165,7 +165,7 @@
     {
       "label": "beside",
       "point": [
-        2.5,
+        2.4,
         0,
         1
       ],
@@ -174,7 +174,7 @@
     {
       "label": "low_corner",
       "point": [
-        1.8,
+        1.4,
         0.7,
         0.05
       ],
@@ -183,5 +183,11 @@
   ],
   "analytic": {
     "genus": 0
+  },
+  "tolerances": {
+    "volume_rel": 0.003,
+    "area_rel": 0.003,
+    "centroid_abs": 0.01,
+    "inertia_rel": 0.005
   }
 }

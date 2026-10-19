@@ -16,7 +16,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::Side;
-use arris_geom::{Curve, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces};
+use arris_geom::{
+    Curve, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces, trace_section,
+};
 use arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
 use arris_topo::entity::BodyKind;
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
@@ -272,6 +274,10 @@ impl<'m> Checker<'m> {
         let Some(within) = overlap.map(|b| b.inflated(tolerance)) else {
             return Ok(false);
         };
+        let nurbs = |s: &Surface| matches!(s, Surface::Nurbs(_));
+        if nurbs(sa) || nurbs(sb) {
+            return self.nurbs_pair_meets(a, sa, b, sb, &within, query);
+        }
         Ok(
             match intersect_surfaces(sa, sb, &within, query, &mut arris_math::Meter::default()) {
                 Err(_) => return Err((sa.kind(), sb.kind())),
@@ -291,6 +297,43 @@ impl<'m> Checker<'m> {
                 }
             },
         )
+    }
+
+    /// [`Checker::faces_meet`] for a pair with a NURBS surface in it,
+    /// which the intersector traces and then fits ([`trace_section`]): S5
+    /// only samples the section, so it reads the traced branches'
+    /// own points and never pays for the fit (a fit held to a quarter of
+    /// the tolerance was the larger share of a NURBS part's `Full`
+    /// check). Every branch, exact isoline and singular point is held to
+    /// the rule the fitted curves were.
+    fn nurbs_pair_meets(
+        &self,
+        a: FaceId,
+        sa: &Surface,
+        b: FaceId,
+        sb: &Surface,
+        within: &Aabb,
+        query: Tolerance,
+    ) -> Result<bool, (SurfaceKind, SurfaceKind)> {
+        let tolerance = query.linear;
+        let kinds = (sa.kind(), sb.kind());
+        let trace = trace_section(sa, sb, within, query, &mut arris_math::Meter::default())
+            .map_err(|_| kinds)?;
+        let interior = |range: Interval, at: &dyn Fn(f64) -> Point3| {
+            self.section_is_interior_to_both(a, sa, b, sb, range, at, tolerance)
+        };
+        Ok(trace
+            .circles()
+            .iter()
+            .any(|c| self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, tolerance))
+            || trace
+                .branches()
+                .iter()
+                .any(|branch| interior(branch.domain(), &|t| branch.point(t)))
+            || trace
+                .points()
+                .iter()
+                .any(|p| self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)))
     }
 
     /// `true` when an isolated meeting point of the two surfaces — a
@@ -472,6 +515,22 @@ impl<'m> Checker<'m> {
         let Some(range) = self.curve_range(a, sa, b, sb, curve) else {
             return false;
         };
+        self.section_is_interior_to_both(a, sa, b, sb, range, &|t| curve.point(t), tolerance)
+    }
+
+    /// [`Checker::curve_is_interior_to_both`] for a section known only by
+    /// its points: `at` over `range`, sampled the same way.
+    #[allow(clippy::too_many_arguments)]
+    fn section_is_interior_to_both(
+        &self,
+        a: FaceId,
+        sa: &Surface,
+        b: FaceId,
+        sb: &Surface,
+        range: Interval,
+        at: &dyn Fn(f64) -> Point3,
+        tolerance: f64,
+    ) -> bool {
         let shared = self.shared_edges(a, b);
         let inside = |face: FaceId, uv: Point2| {
             self.domains
@@ -479,7 +538,7 @@ impl<'m> Checker<'m> {
                 .is_some_and(|d| d.side(uv).0 == Side::Inside)
         };
         for t in samples(range, self.precision.check_samples.max(2)) {
-            let point = curve.point(t);
+            let point = at(t);
             // On an edge or vertex the two faces share, where the
             // surfaces are allowed to meet.
             if boundary_entity(self.model, shared.iter().copied(), point)
