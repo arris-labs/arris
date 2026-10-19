@@ -88,13 +88,13 @@ const DESCENT_STEPS: usize = 64;
 /// The first damping of a step that does not decrease the distance, as a
 /// fraction of `JᵀJ`'s diagonal; each next one is [`DAMPING_GROWTH`]
 /// times it. Ratios, scale-free: the line arm's.
-const DAMPING: f64 = 1e-6;
+pub(crate) const DAMPING: f64 = 1e-6;
 
 /// How much each damping grows over the last.
-const DAMPING_GROWTH: f64 = 16.0;
+pub(crate) const DAMPING_GROWTH: f64 = 16.0;
 
 /// How many dampings are tried before a descent stops.
-const DAMPINGS: usize = 12;
+pub(crate) const DAMPINGS: usize = 12;
 
 /// How many points strictly between two stops are measured for the
 /// curve staying within the tube between them: the line arm's count.

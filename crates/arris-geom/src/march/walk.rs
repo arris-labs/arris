@@ -63,7 +63,7 @@ use crate::bernstein::Binomials;
 use crate::bernstein_n::{PolyN, Wrap, Zero, common_zeros, merge};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
-use crate::spline_nurbs::spline_nurbs;
+use crate::spline_nurbs::{DAMPING, DAMPING_GROWTH, DAMPINGS, spline_nurbs};
 use crate::{
     BranchEnd, Curve, CurveSurfaceIntersection, GeomError, GeomKind, NurbsSurface,
     SECTION_FIT_FRACTION, SectionFault, SurfaceEval, SurfaceKind,
@@ -103,13 +103,6 @@ const WALK_STEPS: usize = 1 << 20;
 
 /// Gauss–Newton steps of the descent onto a singular point.
 const SINGULAR_STEPS: usize = 64;
-
-/// The first damping of a descent step that does not decrease the
-/// residual, as a fraction of `JᵀJ`'s diagonal, and how much each next
-/// one grows: `crate::spline_nurbs`'s ratios.
-const DAMPING: f64 = 1e-6;
-const DAMPING_GROWTH: f64 = 16.0;
-const DAMPINGS: usize = 12;
 
 /// How far outside an uncertified seed's box a known singular point's
 /// parameters may lie and the seed still be that point's own, as a share
