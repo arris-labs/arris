@@ -56,7 +56,7 @@
 //! direction comes back a whole number of closures from where it started.
 
 use arris_math::nalgebra::{Matrix2, Matrix4, Vector2, Vector4};
-use arris_math::{Interval, Meter, Point3, Tolerance, Vec3, real};
+use arris_math::{Interval, KNOT_RESOLUTION, Meter, Point3, Tolerance, Vec3, real};
 
 use super::{Net, PATCH_SLACK, hulls_meet, loop_seeds, middle, own, section, sum};
 use crate::bernstein::Binomials;
@@ -111,7 +111,18 @@ const DAMPING: f64 = 1e-6;
 const DAMPING_GROWTH: f64 = 16.0;
 const DAMPINGS: usize = 12;
 
-/// A walked section of two NURBS surfaces: its branches and its singular
+/// How far outside an uncertified seed's box a known singular point's
+/// parameters may lie and the seed still be that point's own, as a share
+/// of the domain's length: the boxes isolation leaves about a singular
+/// point are not centred on it.
+const ABSORB_SLACK: f64 = 1e-4;
+
+/// The area element, as a share of the squared diagonal of the box of
+/// both nets, under which a surface has no normal: at a pole the row of
+/// control points collapses and `∂u × ∂v` goes to rounding, not to the
+/// curvature the formula would read from it.
+const NO_NORMAL: f64 = 1e-4;
+
 /// A walked section of two NURBS surfaces: its branches and its singular
 /// points, every point in both surfaces' parameters.
 #[derive(Clone, Debug, Default)]
@@ -302,12 +313,16 @@ pub(crate) fn march(
     }
 
     let found = loop_seeds(one, two, meter)?;
+    // A continuum is accounted for where its middle lies on an exact
+    // isocurve or inside a singular point's reach; its box is wider than
+    // either, so the corners say nothing. A tube circle is neither.
     let unaccounted_continua = found.continua.iter().any(|z| {
         let p = marcher.surfaces[0].eval(z.at[0], z.at[1]).point;
-        !isocurves
+        let on_isocurve = isocurves
             .iter()
-            .any(|c| c.project(p).is_ok_and(|proj| proj.distance <= tol.linear))
-            && !singular.iter().any(|s| (s.point - p).norm() <= s.reach)
+            .any(|c| c.project(p).is_ok_and(|proj| proj.distance <= tol.linear));
+        let at_singular = singular.iter().any(|s| (s.point - p).norm() <= s.reach);
+        !on_isocurve && !at_singular
     });
     if unaccounted_continua {
         return Err(refused(SectionFault::TubeCircle));
@@ -324,7 +339,7 @@ pub(crate) fn march(
         let absorbed = singular.iter().any(|s| {
             (s.point - p).norm() <= s.reach
                 || (0..4).all(|k| {
-                    let slack = 1e-4 * marcher.domain[k].length().max(1.0);
+                    let slack = ABSORB_SLACK * marcher.domain[k].length().max(1.0);
                     z.lo[k] - slack <= s.at[k] && s.at[k] <= z.hi[k] + slack
                 })
         });
@@ -627,9 +642,9 @@ impl<'a> Marcher<'a> {
                 let d = self.domain[2 * s + dir];
                 let mut unique_knots: Vec<f64> = surface.knots()[dir].to_vec();
                 unique_knots.sort_by(f64::total_cmp);
-                unique_knots.dedup_by(|a, b| (*a - *b).abs() <= 1e-12);
+                unique_knots.dedup_by(|a, b| (*a - *b).abs() <= KNOT_RESOLUTION);
                 for &val in &unique_knots {
-                    if val <= d.lo() + 1e-9 || val >= d.hi() - 1e-9 {
+                    if val <= d.lo() + KNOT_RESOLUTION || val >= d.hi() - KNOT_RESOLUTION {
                         continue;
                     }
                     if let Ok(line) = surface.isocurve(dir, val) {
@@ -755,7 +770,8 @@ impl<'a> Marcher<'a> {
     /// principal curvature of either surface there.
     fn reach(&self, at: [f64; 4]) -> f64 {
         let e = self.eval(at);
-        let kappa = e.iter().map(principal).fold(0.0, f64::max);
+        let scale = self.step_max / STEP_SHARE;
+        let kappa = e.iter().map(|e| principal(e, scale)).fold(0.0, f64::max);
         self.step(kappa)
     }
 
@@ -1165,20 +1181,18 @@ impl<'a> Marcher<'a> {
 }
 
 /// The larger principal curvature's size at `e`, zero where the surface
-/// has no normal.
-fn principal(e: &SurfaceEval) -> f64 {
+/// has no normal: `|∂u × ∂v|` under [`NO_NORMAL`] of the squared size of
+/// the nets, a pole's collapsed row, where a curvature read is noise.
+fn principal(e: &SurfaceEval, scale: f64) -> f64 {
     let normal = e.du.cross(&e.dv);
-    if normal.norm() <= 1e-6 {
+    let (ee, f, g) = (e.du.dot(&e.du), e.du.dot(&e.dv), e.dv.dot(&e.dv));
+    let det = ee * g - f * f;
+    if normal.norm() <= NO_NORMAL * scale * scale {
         return 0.0;
     }
     let Some(n) = normal.try_normalize(0.0) else {
         return 0.0;
     };
-    let (ee, f, g) = (e.du.dot(&e.du), e.du.dot(&e.dv), e.dv.dot(&e.dv));
-    let det = ee * g - f * f;
-    if det <= 1e-9 {
-        return 0.0;
-    }
     let (l, m, nn) = (e.duu.dot(&n), e.duv.dot(&n), e.dvv.dot(&n));
     let mean = (ee * nn - 2.0 * f * m + g * l) / (2.0 * det);
     let gauss = (l * nn - m * m) / det;

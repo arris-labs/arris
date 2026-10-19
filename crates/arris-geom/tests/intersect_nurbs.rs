@@ -282,7 +282,7 @@ fn a_saddle_at_a_corner_of_the_domain_keeps_the_one_arm_inside_it() {
 }
 
 #[test]
-fn two_nurbs_surfaces_are_still_unsupported() {
+fn a_nurbs_surface_against_itself_is_flush_and_unsupported() {
     let a = wall();
     assert!(matches!(meet(&a, &a), Err(GeomError::Unsupported { .. })));
 }

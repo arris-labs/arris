@@ -710,6 +710,10 @@ enum Walk {
     Marched(MarchedWalk),
 }
 
+/// How far apart a corrected sample's two surface points may be, as a
+/// share of `tol.linear`: `crate::march`'s `ON_SHARE`.
+const MARCHED_ON_SHARE: f64 = 1.0 / 1024.0;
+
 /// A walked section of two NURBS surfaces in their parameter planes.
 #[derive(Debug, Clone)]
 pub(crate) struct MarchedWalk {
@@ -717,6 +721,8 @@ pub(crate) struct MarchedWalk {
     pub(crate) points: Vec<[f64; 4]>,
     pub(crate) cumulative: Vec<f64>,
     pub(crate) length: f64,
+    /// How far apart the two surface points of a corrected sample may be.
+    on: f64,
 }
 
 impl MarchedWalk {
@@ -724,15 +730,16 @@ impl MarchedWalk {
         surfaces: [Arc<NurbsSurface>; 2],
         mut points: Vec<[f64; 4]>,
         closed: bool,
+        tol: Tolerance,
     ) -> Self {
-        if closed && !points.is_empty() {
+        if let (true, Some(&last)) = (closed, points.last()) {
             let closure = [
                 surfaces[0].closure()[0],
                 surfaces[0].closure()[1],
                 surfaces[1].closure()[0],
                 surfaces[1].closure()[1],
             ];
-            let closing = near_closure(points[0], *points.last().unwrap(), &closure);
+            let closing = near_closure(points[0], last, &closure);
             points.push(closing);
         }
         let mut cumulative = Vec::with_capacity(points.len());
@@ -754,6 +761,7 @@ impl MarchedWalk {
             points,
             cumulative,
             length,
+            on: tol.linear * MARCHED_ON_SHARE,
         }
     }
 
@@ -792,17 +800,20 @@ impl MarchedWalk {
             return guess;
         };
         let p_chord = p0_pt + chord * s;
-        self.correct(guess, p_chord, dir)
+        self.correct(guess, p_chord, dir).unwrap_or(guess)
     }
 
-    fn correct(&self, mut x: [f64; 4], base: Point3, normal: Vec3) -> [f64; 4] {
+    /// The sample Newton-corrected onto both surfaces and the plane
+    /// through `base` normal to `normal`; `None` where it does not
+    /// converge within `self.on`, and the caller keeps the interpolation.
+    fn correct(&self, mut x: [f64; 4], base: Point3, normal: Vec3) -> Option<[f64; 4]> {
         for _ in 0..8 {
             let e0 = self.surfaces[0].eval(x[0], x[1]);
             let e1 = self.surfaces[1].eval(x[2], x[3]);
             let gap = e0.point - e1.point;
             let plane = normal.dot(&(e0.point - base));
-            if gap.norm() <= 1e-10 && plane.abs() <= 1e-10 {
-                return x;
+            if gap.norm() <= self.on && plane.abs() <= self.on {
+                return Some(x);
             }
             let j = Matrix4::new(
                 e0.du.x,
@@ -822,17 +833,15 @@ impl MarchedWalk {
                 0.0,
                 0.0,
             );
-            let Some(step) = j.lu().solve(&Vector4::new(gap.x, gap.y, gap.z, plane)) else {
-                return x;
-            };
+            let step = j.lu().solve(&Vector4::new(gap.x, gap.y, gap.z, plane))?;
             if !step.iter().all(|c| c.is_finite()) {
-                return x;
+                return None;
             }
             for k in 0..4 {
                 x[k] -= step[k];
             }
         }
-        x
+        None
     }
 
     pub(crate) fn point(&self, t: f64) -> Point3 {
@@ -1027,13 +1036,19 @@ impl SectionBranch {
     /// marched section between two NURBS surfaces (surfaces 0 and 1);
     /// `None` for a branch walked on rulings or outside the operands.
     pub fn uv_on(&self, surface: usize, t: f64) -> Option<Point2> {
-        let t = self.inside(t);
+        let wrapped = self.inside(t);
         match &self.walk {
             Walk::Torus(walk) if surface == 0 => {
+                let t = wrapped;
                 let (i, s, anchor) = self.located(t);
                 Some(walk.uv(i, s, anchor, [t <= 0.0, t >= self.length]))
             }
-            Walk::Marched(walk) if surface < 2 => Some(walk.uv(surface, t)),
+            // The end of a loop is its start a closure on: the parameters
+            // continue to it rather than wrap back.
+            Walk::Marched(walk) if surface < 2 => {
+                let end = self.is_closed() && t == self.length;
+                Some(walk.uv(surface, if end { t } else { wrapped }))
+            }
             _ => None,
         }
     }

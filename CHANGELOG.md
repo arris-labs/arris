@@ -72,9 +72,18 @@ into its version (ADR-0027).
   section comes back as fitted curves (closed loops periodic), ending
   where they reach an edge of the surface's domain, with a line of the
   surface that lies on the other one returned exact and a pole the other
-  surface touches returned as a point. Two NURBS surfaces, and a NURBS
-  surface flush with another over an area, are still refused as
-  unsupported.
+  surface touches returned as a point. A NURBS surface flush with another
+  over an area is still refused as unsupported.
+- `intersect_surfaces` and `trace_section` now meet two NURBS surfaces: the
+  section is walked between seeds found by interval isolation, in both
+  surfaces' parameters at once, and comes back as fitted curves (loops
+  periodic) with a line of either surface that lies on the other returned
+  exact and a pole the other surface touches returned as a point. A
+  section the walk cannot account for in full (a tube circle, crowded
+  turning points) is refused by name, never returned partial.
+  `SectionBranch::uv_on` and `uv2` give a branch's parameters on either
+  surface, and `fit_branch_pcurve` fits its pcurve on one. A NURBS surface
+  flush with another over an area is still refused as unsupported.
 - `intersect_curve_surface` now meets a circle or an ellipse with a NURBS
   surface, as it already did a line: crossings, touches within the
   tolerance, a pole, and `Coincident` for a conic lying on the surface.

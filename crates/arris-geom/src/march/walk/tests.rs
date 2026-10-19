@@ -322,3 +322,35 @@ fn march_a_patch_flush_with_the_other_surface_is_unsupported() {
         assert!(matches!(err, GeomError::Unsupported { .. }));
     }
 }
+
+/// A sphere resting in a torus's tube touches it along a circle: not an
+/// isocurve of either twin and not at a pole, so the continuum is a tube
+/// circle and is refused (ADR-0061 §4).
+#[test]
+fn march_a_tube_circle_is_refused() {
+    let tol = Precision::DEFAULT.tolerance();
+    let torus = Surface::Torus {
+        frame: Frame::world(),
+        major_radius: 3.0,
+        minor_radius: 1.0,
+    };
+    let ball = Surface::Sphere {
+        frame: Frame::world(),
+        radius: 4.0,
+    };
+    let torus_twin = twin(&torus, TURN, TURN);
+    let ball_twin = twin(&ball, TURN, [-FRAC_PI_2, FRAC_PI_2]);
+    for (a, b) in [(&torus_twin, &ball_twin), (&ball_twin, &torus_twin)] {
+        let err = march(a, b, tol, &mut Meter::default()).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                GeomError::DegenerateSection {
+                    fault: SectionFault::TubeCircle,
+                    ..
+                }
+            ),
+            "{err}"
+        );
+    }
+}

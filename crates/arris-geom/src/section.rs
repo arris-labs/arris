@@ -8,12 +8,12 @@
 
 use std::sync::Arc;
 
-use arris_math::{Aabb, Interval, Meter, Point2, Point3, Tolerance};
+use arris_math::{Aabb, Interval, KNOT_RESOLUTION, Meter, Point2, Point3, Tolerance};
 
 use crate::{
-    Curve, Curve2, GeomError, MeetCurve, MeetKind, MeetPoint, NurbsSurface, SectionBranch,
-    SectionCircle, SectionPoint, SectionTrace, Surface, SurfaceIntersection, fit_curve,
-    fit_curve_periodic, fit_curve2, fit_curve2_periodic, trace_quadrics, trace_torus,
+    Curve, Curve2, Curve2Kind, GeomError, GeomKind, MeetCurve, MeetKind, MeetPoint, NurbsSurface,
+    SectionBranch, SectionCircle, SectionPoint, SectionTrace, Surface, SurfaceIntersection,
+    fit_curve, fit_curve_periodic, fit_curve2, fit_curve2_periodic, trace_quadrics, trace_torus,
 };
 
 /// The fraction of the pair's `tol.linear` a fitted section curve is
@@ -159,7 +159,8 @@ fn collapsed(line: &Curve, tol: Tolerance) -> bool {
 /// The section of two surfaces as the intersector traces it where it has
 /// no closed form: in a NURBS surface's own parameters when either is one
 /// and the other is analytic, bounded by its domain
-/// (`crate::torus_walk::trace_nurbs`, ADR-0061); in the torus's own
+/// (`crate::torus_walk::trace_nurbs`, ADR-0061); in both surfaces' at
+/// once, walked between certified seeds, when both are (ADR-0068); in the torus's own
 /// parameter plane when either is a torus ([`trace_torus`]); both of
 /// which ignore `within`; along the rulings of one of two quadrics inside
 /// `within` otherwise ([`trace_quadrics`]) — the one dispatch the
@@ -168,7 +169,7 @@ fn collapsed(line: &Curve, tol: Tolerance) -> bool {
 ///
 /// Guarantees: those of the tracer the pair takes, its named refusals
 /// ([`GeomError::DegenerateSection`]) among them; a pair no tracer takes
-/// — a plane against a plane, two `Nurbs` — is the tracer's
+/// — a plane against a plane, a `Nurbs` flush with another — is the tracer's
 /// [`GeomError::Unsupported`]. A branch of a NURBS section that reaches
 /// an edge of the surface's domain ends there,
 /// [`BranchEnd::Clipped`](crate::BranchEnd::Clipped).
@@ -254,8 +255,12 @@ pub(crate) fn trace_nurbs_nurbs(
             None => [None, None],
         };
         let is_closed = branch.ends.is_none();
-        let walk =
-            crate::trace::MarchedWalk::new([surf0.clone(), surf1.clone()], branch.at, is_closed);
+        let walk = crate::trace::MarchedWalk::new(
+            [surf0.clone(), surf1.clone()],
+            branch.at,
+            is_closed,
+            tol,
+        );
         branches.push(SectionBranch::on_marched(walk, branch.ends, pins));
     }
     Ok(SectionTrace::new(branches, points).with_circles(circles))
@@ -320,7 +325,11 @@ pub fn fit_branch(
     let deviation = |t: f64, q: Point3| branch.distance(t, q);
     let f = |t: f64| branch.point(t);
     let target = SECTION_FIT_FRACTION * tol.linear;
-    let whole = branch.is_closed() && range == branch.domain();
+    // A loop that winds round a closure of the surface (a cylinder's
+    // turn) is closed in space but not in the parameter plane: only one
+    // that returns to its own parameters is a periodic curve there.
+    let returns = (f(range.lo()) - f(range.hi())).norm() <= KNOT_RESOLUTION;
+    let whole = branch.is_closed() && range == branch.domain() && returns;
     let fit = if whole {
         fit_curve_periodic(f, range, SECTION_FIT_DEGREE, deviation, target, meter)
     } else {
@@ -340,13 +349,23 @@ pub fn fit_branch_pcurve(
     tol: Tolerance,
     meter: &mut Meter,
 ) -> Result<Curve2, GeomError> {
-    let f = |t: f64| branch.uv_on(surface, t).unwrap_or(Point2::origin());
-    let surf = branch.surface(surface);
-    let deviation = |t: f64, q: Point2| match &surf {
-        Some(s) => (s.eval(q.x, q.y).point - branch.point(t)).norm(),
-        None => (f(t) - q).norm(),
+    let Some(surf) = branch.surface(surface) else {
+        return Err(GeomError::Degenerate {
+            kind: GeomKind::Curve2(Curve2Kind::Nurbs),
+            reason: format!("a branch has no parameters on operand {surface}"),
+        });
     };
-    let whole = branch.is_closed() && range == branch.domain();
+    let f = |t: f64| {
+        branch
+            .uv_on(surface, t)
+            .expect("a marched branch has parameters on both its surfaces")
+    };
+    let deviation = |t: f64, q: Point2| (surf.eval(q.x, q.y).point - branch.point(t)).norm();
+    // A loop that winds round a closure of the surface (a cylinder's
+    // turn) is closed in space but not in the parameter plane: only one
+    // that returns to its own parameters is a periodic curve there.
+    let returns = (f(range.lo()) - f(range.hi())).norm() <= KNOT_RESOLUTION;
+    let whole = branch.is_closed() && range == branch.domain() && returns;
     let fit = if whole {
         fit_curve2_periodic(
             f,

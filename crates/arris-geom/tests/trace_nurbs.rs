@@ -12,8 +12,8 @@ use core::f64::consts::{FRAC_PI_2, PI, TAU};
 use arris_debug::prop::{self, check};
 use arris_geom::{
     BranchEnd, Curve, GeomError, NurbsSurface, SECTION_FIT_FRACTION, SectionBranch, SectionFault,
-    SectionTrace, Surface, SurfaceIntersection, fit_branch, intersect_surfaces, trace_section,
-    trace_torus,
+    SectionTrace, Surface, SurfaceIntersection, fit_branch, fit_branch_pcurve, intersect_surfaces,
+    trace_section, trace_torus,
 };
 use arris_math::{Aabb, Frame, Interval, Meter, Point3, Precision, Tolerance, Vec3};
 use proptest::prelude::*;
@@ -291,7 +291,7 @@ fn a_torus_twin_traces_what_the_torus_does() {
 }
 
 #[test]
-fn two_nurbs_surfaces_are_traced_and_flush_is_unsupported() {
+fn two_nurbs_surfaces_are_traced() {
     let (a, _) = twin(&unit_cylinder(), [Interval::TURN, Interval::UNIT]);
     let (b, _) = twin(
         &tilted(0.3, 0.1),
@@ -300,9 +300,56 @@ fn two_nurbs_surfaces_are_traced_and_flush_is_unsupported() {
             Interval::new(-0.5, 0.5).unwrap(),
         ],
     );
-    let tr = trace(&a, &b).unwrap();
-    assert!(!tr.branches().is_empty());
+    assert!(!trace(&a, &b).unwrap().branches().is_empty());
+}
+
+#[test]
+fn a_nurbs_surface_against_itself_is_flush_and_unsupported() {
+    let (a, _) = twin(&unit_cylinder(), [Interval::TURN, Interval::UNIT]);
     assert!(matches!(trace(&a, &a), Err(GeomError::Unsupported { .. })));
+}
+
+/// A marched branch's pcurve on either surface, fitted from the walk's
+/// own parameters, puts that surface's point within the tolerance of the
+/// branch's: a loop (periodic) and an open branch, both operands.
+#[test]
+fn a_marched_branchs_pcurves_lie_on_both_surfaces() {
+    let (a, a_n) = twin(
+        &unit_cylinder(),
+        [Interval::TURN, Interval::new(-2.0, 2.0).unwrap()],
+    );
+    let (loop_b, loop_n) = twin(
+        &tilted(0.3, 0.1),
+        [
+            Interval::new(-3.0, 3.0).unwrap(),
+            Interval::new(-3.0, 3.0).unwrap(),
+        ],
+    );
+    let (arc_b, arc_n) = twin(
+        &tilted(0.3, 0.1),
+        [
+            Interval::new(0.0, 3.0).unwrap(),
+            Interval::new(-3.0, 3.0).unwrap(),
+        ],
+    );
+    for (b, b_n, closed) in [(&loop_b, &loop_n, true), (&arc_b, &arc_n, false)] {
+        let trace = trace(&a, b).unwrap();
+        assert!(!trace.branches().is_empty());
+        for branch in trace.branches() {
+            assert_eq!(branch.is_closed(), closed);
+            for (k, surface) in [&a_n, b_n].into_iter().enumerate() {
+                let pc =
+                    fit_branch_pcurve(branch, k, branch.domain(), tol(), &mut Meter::default())
+                        .unwrap();
+                for i in 0..=64 {
+                    let t = branch.domain().lerp(i as f64 / 64.0);
+                    let uv = pc.point(t);
+                    let off = (surface.eval(uv.x, uv.y).point - branch.point(t)).norm();
+                    assert!(off <= tol().linear, "operand {k} at {t}: {off}");
+                }
+            }
+        }
+    }
 }
 
 /// The isolines of `trace` are `nurbs`'s own lines of constant `k`

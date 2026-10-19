@@ -513,12 +513,13 @@ fn two_runs_are_identical() {
     assert!(i.to_string().starts_with("interferences "));
 }
 
-/// The one surface pair the intersector has no arm for is two NURBS
-/// patches (the NURBS cycle's third item): the refusal names the pair, the
+/// A NURBS patch flush with another over an area is the one surface pair
+/// the intersector refuses (BACKLOG §76): the refusal names the pair, the
 /// first operand's face first. A plane against a NURBS patch is an
-/// ordinary pair (ADR-0061).
+/// ordinary pair (ADR-0061), and so are two crossing NURBS patches
+/// (ADR-0068).
 #[test]
-fn an_unsupported_surface_pair_names_the_faces() {
+fn a_flush_nurbs_pair_is_unsupported_and_names_the_faces() {
     let mut m = Model::default();
     let patchwork =
         sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
@@ -543,6 +544,28 @@ fn an_unsupported_surface_pair_names_the_faces() {
             );
         }
         other => panic!("{other}"),
+    }
+}
+
+/// Two NURBS cuboids with no plane in common cross: the intersector marches the
+/// section of their patches instead of refusing the pair.
+#[test]
+fn two_offset_nurbs_cuboids_are_intersected() {
+    let mut m = Model::default();
+    let patchwork =
+        sample::cuboid_nurbs(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0)).unwrap();
+    let shifted = sample::cuboid_nurbs(
+        &mut m,
+        Point3::new(1.0, 0.5, 0.5),
+        Point3::new(3.0, 1.5, 3.0),
+    )
+    .unwrap();
+    match interferences(&m, patchwork, shifted) {
+        Ok(_) => {}
+        Err(OpError::Unsupported { .. }) => {
+            panic!("a crossing NURBS pair should not be unsupported")
+        }
+        Err(other) => panic!("{other}"),
     }
 }
 

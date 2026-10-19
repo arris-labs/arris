@@ -753,14 +753,29 @@ impl Reader<'_> {
                 meter.tick()?;
                 let t = span.lo + (span.hi - span.lo) * i as f64 / SPAN_SAMPLES as f64;
                 let p = self.curve.point(t);
-                let mut on = match start {
-                    Some(uv) => self.surface.project_from(p, Point2::new(uv[0], uv[1])),
-                    None => self.surface.project(p)?,
+                // A point with two nearest points on the surface (on its
+                // medial axis) is on it only at a pole; the curve is then
+                // not decided to lie on it, which only costs the
+                // `Coincident` verdict.
+                let global = |p| match self.surface.project(p) {
+                    Ok(on) => Ok(Some(on)),
+                    Err(GeomError::Ambiguous { .. }) => Ok(None),
+                    Err(e) => Err(e),
+                };
+                let on = match start {
+                    Some(uv) => Some(self.surface.project_from(p, Point2::new(uv[0], uv[1]))),
+                    None => global(p)?,
+                };
+                let Some(mut on) = on else {
+                    return Ok(false);
                 };
                 if on.distance > self.tau {
                     // A local projection can stall on the wrong side of
                     // a fold: the global one has the last word.
-                    on = self.surface.project(p)?;
+                    let Some(whole) = global(p)? else {
+                        return Ok(false);
+                    };
+                    on = whole;
                     if on.distance > self.tau {
                         return Ok(false);
                     }
