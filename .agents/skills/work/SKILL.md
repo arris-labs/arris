@@ -20,15 +20,20 @@ argument-hint: <plan slug> [step number or range]
    clippy, doctests and the `fast` slice; `/retire-plan` the full gate — a
    step needing it sooner says why in its commit. For a geometric change,
    look at the result (`inspect` skill) before trusting a green test.
-4. Commit `type(scope): summary (plans/<slug> step N)` with the box ticked
+4. Read your own `git diff --cached` against `.agents/review.md` and
+   `.agents/rules/kernel.md` before committing: an `unwrap` on geometry, a
+   public item nothing calls or tests, a test whose input or assertion got
+   weaker while its name and doc comment keep the old claim. A weakened
+   test is a plan open question, never a quiet edit.
+5. Commit `type(scope): summary (plans/<slug> step N)` with the box ticked
    in the same commit; the body says why, cites docs/ADRs, names any public
    type or signature changed.
-5. A step that shows the plan is wrong edits the plan in that commit and
+6. A step that shows the plan is wrong edits the plan in that commit and
    says so. A failure that resists a first fix gets the `inspect` skill's
    diagnosis loop (a red loop, then ranked hypotheses) before any theory. A geometry failure outside the step's scope becomes an ignored
    `regression/` fixture in the same step (`inspect` skill); its fix is a
    backlog line.
-6. Reply: what landed, the commit, anything surprising. Then list every
+7. Reply: what landed, the commit, anything surprising. Then list every
    remaining unchecked step, one line each — number, `[weight]`, short
    title, what it depends on or may rewrite — mark the next, and end with
    `/work <slug> step N` (or `N-M`). Stop unless a range was requested.
