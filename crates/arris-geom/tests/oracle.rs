@@ -1813,3 +1813,45 @@ fn the_c10_nurbs_nurbs_pairs_classify_as_built() {
         assert_eq!(got, (*loops, *arms), "{a} vs {b}: {r:?}");
     }
 }
+
+/// The most steps (`Meter::steps`) the section of the CTC-02 face `f544`
+/// and its bent copy may take: twice the 12 690 it was measured at, in
+/// milliseconds on the machine that measured it. The marcher ticks once
+/// per walked step and per box of its isolations, so a count that
+/// outgrows this is a walk that has lost its step or an isolation that
+/// no longer prunes.
+const MARCH_BUDGET: u64 = 25_000;
+
+/// The marched section of the CTC-02 faces is metered: it takes fewer
+/// steps than [`MARCH_BUDGET`], the same on every run; a budget of its
+/// count changes nothing and one less stops it where it ran out.
+#[test]
+fn the_marched_section_of_the_ctc_02_faces_holds_its_step_budget() {
+    let f = geometry_fixtures()
+        .into_iter()
+        .find(|f| f.name == "geom/c10-nurbs-nurbs-pairs")
+        .expect("geom/c10-nurbs-nurbs-pairs");
+    let built = build(&f);
+    let (a, b) = (&built.surfaces["f544"], &built.surfaces["f544_crossed"]);
+    let run = |meter: &mut arris_math::Meter| intersect_surfaces(a, b, &within(), tol(), meter);
+    let mut metered = arris_math::Meter::default();
+    let whole = run(&mut metered).unwrap();
+    let n = metered.steps();
+    assert!(n > 100 && n <= MARCH_BUDGET, "{n} steps");
+    let mut again = arris_math::Meter::default();
+    run(&mut again).unwrap();
+    assert_eq!(again.steps(), n, "the count is not deterministic");
+    let at = run(&mut arris_math::Meter::new(&arris_math::Control::budget(n))).unwrap();
+    assert_eq!(at, whole);
+    let short = run(&mut arris_math::Meter::new(&arris_math::Control::budget(
+        n - 1,
+    )))
+    .unwrap_err();
+    assert_eq!(
+        short,
+        GeomError::Interrupted(arris_math::Interrupted {
+            by: arris_math::Stop::Budget,
+            steps: n - 1
+        })
+    );
+}

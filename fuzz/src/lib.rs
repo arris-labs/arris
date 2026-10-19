@@ -22,7 +22,7 @@ use arris_geom::{
     Curve, CurveIntersection, CurveSurfaceIntersection, MAX_DEGREE, NurbsCurve, Surface,
     SurfaceIntersection, intersect_surfaces,
 };
-use arris_math::{Aabb, Frame, Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Aabb, Frame, Interval, Point3, Precision, Tolerance, UnitVec3, Vec3};
 
 /// The largest coordinate a decoded point has: the corpus's parts are
 /// within a few hundred of the origin, and past this the question is
@@ -49,7 +49,7 @@ pub fn tolerance() -> Tolerance {
 }
 
 /// The number of surface kinds a tag byte chooses among: every analytic
-/// kind, no NURBS surface, which every intersector refuses by type.
+/// kind. A NURBS surface is a [`twin`] of one, drawn by its own byte.
 const SURFACE_KINDS: u8 = 6;
 
 /// The number of curve kinds a tag byte chooses among: the three conics
@@ -178,6 +178,14 @@ impl<'a> Decoder<'a> {
                 }
             }
         })
+    }
+
+    /// Which of a surface pair are replaced by their NURBS twins
+    /// ([`twin`]): the low two bits of one byte, none where the input
+    /// has ended, so an input from before this layout decodes as it did.
+    pub fn twins(&mut self) -> [bool; 2] {
+        let b = self.byte().unwrap_or(0);
+        [b & 1 != 0, b & 2 != 0]
     }
 
     /// The region a surface pair's traced section is clipped to: a cube
@@ -435,6 +443,25 @@ fn allowance(p: Point3, size: f64, tol: Tolerance) -> f64 {
     tol.linear + 64.0 * f64::EPSILON * (p.coords.norm() + size + 1.0)
 }
 
+/// The NURBS twin of an analytic surface over the part of it a decoded
+/// region can reach: the exact surface as a rational patch (a plane,
+/// cylinder or cone out to [`REACH`] from its origin in each way, a
+/// sphere or a torus whole). `None` for a NURBS surface, which has no
+/// twin, or where the kernel refuses to build one.
+pub fn twin(s: &Surface) -> Option<Surface> {
+    let long = Interval::new(-4.0 * REACH, 4.0 * REACH).ok()?;
+    let bounds = match s {
+        Surface::Plane { .. } => [long, long],
+        Surface::Cylinder { .. } | Surface::EllipticCylinder { .. } | Surface::Cone { .. } => {
+            [Interval::TURN, long]
+        }
+        Surface::Sphere { .. } => [Interval::TURN, Interval::new(-FRAC_PI_2, FRAC_PI_2).ok()?],
+        Surface::Torus { .. } => [Interval::TURN, Interval::TURN],
+        Surface::Nurbs(_) => return None,
+    };
+    s.to_nurbs(bounds).ok().map(Surface::Nurbs)
+}
+
 /// The largest length an operand is given by: its origin's distance and
 /// its radii, or its farthest control point.
 pub fn surface_size(s: &Surface) -> f64 {
@@ -456,7 +483,11 @@ pub fn surface_size(s: &Surface) -> f64 {
             major_radius,
             ..
         } => frame.origin().coords.norm() + 2.0 * major_radius,
-        Surface::Nurbs(_) => 0.0,
+        Surface::Nurbs(ref n) => n
+            .control_points()
+            .iter()
+            .map(|p| p.coords.norm())
+            .fold(0.0, f64::max),
     }
 }
 
