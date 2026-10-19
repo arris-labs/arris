@@ -22,7 +22,8 @@ reasons are in `SEED.md` §9.
   where a consumer or a format demands it, cast at that boundary.
 - **Tolerances are the model's, never a literal.** A `1e-6` in an algorithm
   is a bug; use the entity's tolerance or a named, commented constant in
-  `arris-math`.
+  `arris-math`. The hook refuses a new one (`tools/check-tolerance-literals.sh`);
+  a deliberate literal says why: `// tol-literal: <reason>`.
 
 ## Testing
 
