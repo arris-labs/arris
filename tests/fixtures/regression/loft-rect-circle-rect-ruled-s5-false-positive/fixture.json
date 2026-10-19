@@ -1,0 +1,187 @@
+{
+  "description": "a 3.87 x 1.6 rectangle at z 0, a circle of radius 0.8 at z 1 and a rectangle 5.4 x 1.6 at z 2, lofted ruled: the ruled faces are NURBS, and Full reports S5 on pairs that meet only along their shared edges, where the desired result is clean (plans/nurbs-nurbs-section step 9, found by loft_prop; the marched section of two NURBS faces returns a curve away from the edge, for M2 plans/nurbs-nurbs-operands)",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -1.934535465760151,
+          -0.8
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.934535465760151,
+              -0.8
+            ]
+          },
+          {
+            "line_to": [
+              1.934535465760151,
+              0.8
+            ]
+          },
+          {
+            "line_to": [
+              -1.934535465760151,
+              0.8
+            ]
+          },
+          {
+            "line_to": [
+              -1.934535465760151,
+              -0.8
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          1
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 0.8
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "c",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          2
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2.702202017311052,
+          -0.8
+        ],
+        "segments": [
+          {
+            "line_to": [
+              2.702202017311052,
+              -0.8
+            ]
+          },
+          {
+            "line_to": [
+              2.702202017311052,
+              0.8
+            ]
+          },
+          {
+            "line_to": [
+              -2.702202017311052,
+              0.8
+            ]
+          },
+          {
+            "line_to": [
+              -2.702202017311052,
+              -0.8
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b",
+        "c"
+      ],
+      "kind": "ruled"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "centre",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "beside",
+      "point": [
+        2.5,
+        0,
+        1
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "low_corner",
+      "point": [
+        1.8,
+        0.7,
+        0.05
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}
