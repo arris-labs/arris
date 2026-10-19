@@ -18,9 +18,8 @@ CASCADE's, or a typed refusal naming the pair. The checker decides S5
 and B1 on two NURBS faces, with no false positive along an edge they
 share, and the twin property holds with **both** operands twinned. An
 edge between two NURBS faces fillets and chamfers as a walked stripe, so
-`sweep/sweep-thread-chamfer-unsupported` builds. The NURBS × plane walk
-under it is profiled and its hot spot fixed, so C10's accept can be
-re-run on the fetched tier in reasonable time.
+`sweep/sweep-thread-chamfer-unsupported` builds. CTC-02's box cut is
+profiled and its hot spot fixed, for C10's accept on the fetched tier.
 
 ## Non-goals
 
@@ -28,11 +27,9 @@ re-run on the fetched tier in reasonable time.
   BACKLOG §79). The boolean's coincident arm stays same-kind.
 - **`CrowdedSingularity`** on a cone twin against a plane square to its
   axis, and some sphere × cylinder twins (BACKLOG §76): a typed refusal
-  the properties tolerate, unless step 2 measures it past the bar in the
-  open questions.
-- **A touch of two NURBS curves** missed by `extrema_curve_curve`'s
-  settle (M1's open question, ignored test), and the fuzz target's slow
-  units (BACKLOG §78).
+  the properties tolerate, 3 in 192 at step 2.
+- **A touch of two NURBS curves** missed by `extrema_curve_curve` and
+  the fuzz target's slow units (BACKLOG §77–78).
 - **Draft and thicken**: the side slot, after `modelling-layer`.
 - **Speed beyond step 1's hot spot**: the reader's B-spline read-backs
   (BACKLOG §96–97) and the walked blend's span count (§84).
@@ -47,6 +44,13 @@ re-run on the fetched tier in reasonable time.
   beyond their deviation (`docs/DATA-MODEL.md` §Invariants, L4): 0.04 s
   a check, the run 256 s. No ADR: a checker-internal cost, with the
   answers unchanged.
+- **Step 2's finding**: two equal cylinders on crossing axes (the
+  Steinmetz pair) are refused `DegenerateSection` both twinned, always,
+  and with one twinned mostly: neither the marcher nor ADR-0061's tracer
+  accounts for the points where the walls touch. The `geometry-fault`
+  exclusion had hidden the one-twin cases; `twin_prop` names the arm.
+  Of 192 both-twin booleans: box × cylinder 64 agree, quadric pairs 56
+  (3 `CrowdedSingularity`, 5 `Lumps`), crossing pairs 0. Step 5 is new.
 - **`arris-check`** (steps 3–4): S5 and B1 read the marched section as
   they read a traced one. A section that runs along an edge two faces
   share is that edge, not a crossing: the false positive of
@@ -57,12 +61,11 @@ re-run on the fetched tier in reasonable time.
   fire over NURBS faces (C8's query cycle). `Unchecked::FacePair` and
   `ShellFacePair` remain only for an intersector refusal; no type
   changes.
-- **`arris-ops::boolean`** (step 2, 5): the pave on two NURBS faces: the
+- **`arris-ops::boolean`** (step 6): the pave on two NURBS faces: the
   marched section's ends against each face's edges (the curve × surface
   arm, ADR-0068 step 4), its crossings of either face's seam paved, its
-  pcurves the walk's own. What breaks is found by step 2's property, each
-  finding a `regression/` fixture moved by its fix.
-- **ADR-0062 amendment** (step 6): the two-B-spline row. A walked
+  pcurves the walk's own. Step 2's property found no pave fault.
+- **ADR-0062 amendment** (step 7): the two-B-spline row. A walked
   stripe between two NURBS faces takes its spine as the marched section
   of the two faces' offset fits, the contacts by projection as today; the
   row becomes built and `Unsupported` stays only for the stripe's end
@@ -83,12 +86,10 @@ robustness or bound has to be established here.
   held by two near-rim tests in `fast_part2.rs`. The run is 256 s, short
   of the 60 s bar: BACKLOG §82 narrowed to what is left, S5's fit moved
   to step 3.
-- [ ] Step 2 **[3]** — **The twin property with both operands twinned.**
-  `twin_prop`'s booleans draw every analytic pair with both bodies'
-  faces replaced by their `to_nurbs` twins, held to the analytic
-  result's measures and counts. Every failure is shrunk into a
-  `regression/` fixture; the pave fixes it brings land here when small,
-  as their own step 5 otherwise. The refusal rate is measured.
+- [x] Step 2 **[3]** — **The twin property with both operands twinned.**
+  Half the cases twin both. No pave finding; the Steinmetz refusal
+  (deltas) is an ignored `nurbs_nurbs_prop` test, since Open CASCADE's
+  own NURBS booleans of the pair fail (no oracle for a fixture).
 - [ ] Step 3 **[2]** — **S5 on two NURBS faces.** The loft false
   positive fixed; the fixture moves to `loft/` with its dump. S5 samples
   a traced branch's own points instead of fitting it first (~74 s of
@@ -99,17 +100,23 @@ robustness or bound has to be established here.
   the ray fire over NURBS faces; `regression/nurbs-cylinder-slab-cut-two-lumps`
   moves to `boolean/` with its dump, and `twin_prop`'s `Lumps` arm is
   lifted.
-- [ ] Step 5 **[3]** — **The pave on fitted pairs, against Open CASCADE.**
+- [ ] Step 5 **[3]** — **The section at the tangent points of a
+  Steinmetz pair.** The marcher and ADR-0061's tracer account for the
+  singular points where two walls touch, found before a continuum or a
+  crowded box there is refused; the ignored
+  `the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`
+  passes and `twin_prop`'s section arm keeps `CrowdedSingularity` alone.
+- [ ] Step 6 **[3]** — **The pave on fitted pairs, against Open CASCADE.**
   Fixtures with oracle values: a spline sweep cut by a spline sweep
   crossing it, a smooth loft fused with a sweep, a loft through a loft
   across both seams, a walked blend face cut by a sweep (fuse, common and
-  cut each). The pave findings step 2 left are fixed here.
-- [ ] Step 6 **[3]** — **The walked stripe between two NURBS faces;
+  cut each).
+- [ ] Step 7 **[3]** — **The walked stripe between two NURBS faces;
   ADR-0062 amendment.** The spine as the marched section of the offset
   fits. `sweep-thread-chamfer-unsupported` builds as Open CASCADE builds
   it (renamed `sweep-thread-chamfer`), plus a fillet on a ruled loft's
   edge between two NURBS faces. `twin_prop`'s blends twin both faces.
-- [ ] Step 7 **[1]** — **Python and the corpus.** The binding's tests
+- [ ] Step 8 **[1]** — **Python and the corpus.** The binding's tests
   cut a sweep by a loft and chamfer the thread; `CHANGELOG.md`
   `Unreleased` bullets; the fetched tier's histogram re-run and printed
   for C10's accept, the NURBS rows 0 and the blend residue's row beside.
@@ -118,9 +125,9 @@ robustness or bound has to be established here.
 
 - `cargo nextest run -p arris-ops -E 'test(twin_prop) | test(loft_prop) | test(sweep_prop)'`
   at 256 cases: both operands twinned, no `FacePair` or `Lumps`
-  exemption; `CrowdedSingularity` the only refusal tolerated, below the
-  bar of the open question.
-- The step 5 and 6 fixtures and the two moved `regression/` fixtures pass
+  exemption; `CrowdedSingularity` the only refusal tolerated (3 in 192
+  at step 2).
+- The step 6 and 7 fixtures and the two moved `regression/` fixtures pass
   the corpus runner against Open CASCADE (measures within the fixture's
   tolerance, counts, probes, dump).
 - CTC-02 AP242's `box_cut` corpus run at most step 1's 256 s, less
@@ -140,7 +147,7 @@ robustness or bound has to be established here.
   `/close-cycle`.
 - `docs/BACKLOG.md`: §75 and §87 dropped, §82 narrowed again by step 3,
   §76 updated with step 2's rate.
-- `CHANGELOG.md` `Unreleased` (step 7). `GLOSSARY.md`: no new term
+- `CHANGELOG.md` `Unreleased` (step 8). `GLOSSARY.md`: no new term
   expected; *Walked stripe* sharpened if ADR-0062's amendment changes it.
 
 ## Open questions
@@ -149,10 +156,9 @@ robustness or bound has to be established here.
   `box_cut` under 60 s in the test profile (from 680 s); short of it, the
   hot spot found and fixed, the rest a narrowed backlog line. Step 1
   reached 256 s; the rest is five stages of 16 to 74 s (BACKLOG §82).
-- ⚠ OPEN (agent, by step 2): the refusal bar. If `CrowdedSingularity`
-  refuses more than one twin×twin boolean in ten, its cause (BACKLOG
-  §76) joins this plan as a step before step 5; otherwise it stays a
-  backlog line.
+- Settled (agent, step 2): `CrowdedSingularity` (§76) refused 3 of 192,
+  under the one-in-ten bar, and stays a backlog line; the Steinmetz
+  refusals (42 of 192) are their own cause, step 5.
 - ⚠ OPEN (agent, by step 3): whether the loft false positive is the
   marcher's (a section off the shared edge, an `arris-geom` fix with a
   `geom/` fixture) or the checker's; the fixing commit says which.

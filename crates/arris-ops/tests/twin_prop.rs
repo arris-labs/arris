@@ -7,7 +7,9 @@
 //! cylinder, two cylinders on crossing axes — so a plane, a cylinder, a
 //! cone, a sphere and a torus each meet each other kind as a NURBS
 //! surface against an analytic one, with the NURBS operand first or
-//! second, in a random pose.
+//! second, in a random pose — and, since nurbs-nurbs-operands step 2,
+//! with both operands twinned, so every face pair across them is two
+//! NURBS faces and their section the marched one (ADR-0068).
 //!
 //! The blends follow (nurbs-face-blend step 8, ADR-0062): a part's edge
 //! filleted or chamfered by the closed forms, and the same edge with one of
@@ -31,7 +33,9 @@ use arris_debug::unmetered::{
     chamfer, common, cut, extrude, fillet, fuse, mass_properties, primitive_box, revolve, transform,
 };
 use arris_debug::{prop, prop_shards};
-use arris_geom::{Curve, GeomKind, Profile, ProfileLoop, ProfileSegment, SurfaceKind};
+use arris_geom::{
+    Curve, GeomError, GeomKind, Profile, ProfileLoop, ProfileSegment, SectionFault, SurfaceKind,
+};
 use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec3};
 use arris_ops::measure::MassProperties;
 use arris_ops::{BooleanReason, Fault, OpError, Reason};
@@ -90,6 +94,27 @@ fn outcome(
         Err(OpError::Internal(Fault::Lumps(_))) if twin => {
             Err(TestCaseError::reject("nurbs-cylinder-slab-cut-two-lumps"))
         }
+        // The section of a twin refused where the walls touch: crowded
+        // turning points of two twins (BACKLOG; 3 of 64 quadric pairs both
+        // twinned), and two equal cylinders on crossing axes, whose
+        // tangent points neither the marcher (ADR-0068) nor the tracer of
+        // a NURBS surface against a cylinder (ADR-0061) accounts for:
+        // every such pair both twinned, 47 of 84 with one. Held by
+        // `nurbs_nurbs_prop`'s ignored
+        // `the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`
+        // and `the_twins_of_a_cone_and_a_plane_and_of_a_sphere_and_a_cylinder_are_met`;
+        // plans/nurbs-nurbs-operands step 5 narrows this arm. Named before
+        // the differential's exclusions, which take any `Geometry` fault.
+        Err(OpError::Internal(Fault::Geometry(GeomError::DegenerateSection {
+            a,
+            b,
+            fault:
+                fault @ (SectionFault::CrowdedSingularity
+                | SectionFault::TubeCircle
+                | SectionFault::UnresolvedTurning),
+        }))) if twin && [a, b].contains(&GeomKind::Surface(SurfaceKind::Nurbs)) => {
+            Err(TestCaseError::reject(format!("twin section: {fault}")))
+        }
         Err(e) => {
             if let Some(x) = arris_debug::differential::exclusion_of_error(&e) {
                 return Err(TestCaseError::reject(x.name));
@@ -99,31 +124,51 @@ fn outcome(
     }
 }
 
-/// Which boolean of a pair is run and which operand is the twin.
-type Pick = (usize, bool);
+/// Which operands of a boolean are NURBS twins.
+#[derive(Debug, Clone, Copy)]
+enum Twinned {
+    /// The first: a NURBS face against an analytic one (ADR-0061).
+    A,
+    /// The second.
+    B,
+    /// Both: every face pair across the operands is two NURBS faces, the
+    /// marched section (ADR-0068).
+    Both,
+}
+
+/// Which boolean of a pair is run and which operands are twins.
+type Pick = (usize, Twinned);
 
 /// The strategy of a [`Pick`]: a twin boolean costs 5 to 50 times an
 /// analytic one and its `Full` check as much again, so a case runs one
-/// boolean over one twin, and the cases cover the rest.
+/// boolean over one twinning, and the cases cover the rest. Both operands
+/// twinned is half the cases.
 fn pick() -> impl Strategy<Value = Pick> {
-    (0usize..3, any::<bool>())
+    (
+        0usize..3,
+        prop_oneof![1 => Just(Twinned::A), 1 => Just(Twinned::B), 2 => Just(Twinned::Both)],
+    )
 }
 
 /// The boolean `pick` names over the pair `(a, b)` in `m` and over the
-/// pair with `a` or `b` replaced by its twin: the same volume, area and
-/// counts, or both refused.
+/// pair with `a`, `b` or both replaced by their twins: the same volume,
+/// area and counts, or both refused.
 fn same_as_twin(m: &mut Model, a: Body, b: Body, pick: Pick) -> Result<(), TestCaseError> {
     let (op_name, op) = [
         ("fuse", fuse as Boolean),
         ("common", common as Boolean),
         ("cut", cut as Boolean),
     ][pick.0];
-    let which = if pick.1 { "a" } else { "b" };
-    let twin = nurbs_twin(m, if pick.1 { a } else { b })
-        .map_err(|e| fail(format!("twin of {which}: {e}")))?;
-    let (x, y) = if pick.1 { (twin, b) } else { (a, twin) };
+    let mut twin_of = |which: &str, body: Body| {
+        nurbs_twin(m, body).map_err(|e| fail(format!("twin of {which}: {e}")))
+    };
+    let (x, y, which) = match pick.1 {
+        Twinned::A => (twin_of("a", a)?, b, "a a twin"),
+        Twinned::B => (a, twin_of("b", b)?, "b a twin"),
+        Twinned::Both => (twin_of("a", a)?, twin_of("b", b)?, "both twins"),
+    };
     let analytic = outcome(m, &format!("{op_name}(a, b)"), op, a, b, false)?;
-    let name = format!("{op_name}(a, b) with {which} a twin");
+    let name = format!("{op_name}(a, b) with {which}");
     match (&analytic, outcome(m, &name, op, x, y, true)?) {
         (Outcome::Refused(_), Outcome::Refused(_)) => {}
         (Outcome::Made(p, counts), Outcome::Made(q, twin_counts)) => {

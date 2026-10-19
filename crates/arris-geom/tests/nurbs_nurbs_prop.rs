@@ -241,3 +241,53 @@ fn the_twins_of_a_cone_and_a_plane_and_of_a_sphere_and_a_cylinder_are_met() {
         .collect();
     assert!(refused.is_empty(), "{refused:#?}");
 }
+
+/// Two cylinders of one radius on crossing axes, the Steinmetz pair, at
+/// 60°, 45° and 75°, at rest and in a tilted pose: their section is two
+/// ellipses crossing at the two points where the walls touch, and with
+/// either or both twinned it is the same. The marcher (ADR-0068) refuses
+/// both twinned (`CrowdedSingularity` at rest, `TubeCircle` tilted), and
+/// the tracer of a NURBS surface against the cylinder (ADR-0061) refuses
+/// most poses as `CrowdedSingularity`: the tangent points are singular
+/// points neither accounts for. Found by `twin_prop` with both operands
+/// twinned (plans/nurbs-nurbs-operands step 2); with one twinned the
+/// property had rejected them as a geometry fault.
+#[test]
+#[ignore = "the marcher and the tracer refuse the twins of two equal cylinders on crossing axes at their tangent points (plans/nurbs-nurbs-operands step 5)"]
+fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
+    let cylinder = |frame: Frame| Surface::Cylinder { frame, radius: 1.0 };
+    let tilt = Isometry::new(
+        UnitQuaternion::from_euler_angles(0.4, -0.7, 1.1),
+        Vec3::new(0.3, -0.2, 0.5),
+    );
+    let pairs: Vec<(Surface, Surface)> = [60.0f64, 45.0, 75.0]
+        .iter()
+        .flat_map(|&psi| {
+            let psi = psi.to_radians();
+            let axis = [arris_math::real::sin(psi), 0.0, arris_math::real::cos(psi)];
+            let a = cylinder(posed([0.0; 3], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]));
+            let b = cylinder(posed([0.0; 3], axis, [0.0, 1.0, 0.0]));
+            [
+                (a.clone(), b.clone()),
+                (a.transformed(&tilt), b.transformed(&tilt)),
+            ]
+        })
+        .collect();
+    let mut faults = Vec::new();
+    for (a, b) in &pairs {
+        let (ta, tb) = (twin(a).unwrap(), twin(b).unwrap());
+        for (x, y, which) in [
+            (&ta, &tb, "both"),
+            (&ta, b, "the first"),
+            (a, &tb, "the second"),
+        ] {
+            if let Err(e) = intersect_surfaces(x, y, &cube(), tol(), &mut Meter::default()) {
+                faults.push(format!("{a:?} and {b:?}, {which} twinned: {e}"));
+            }
+        }
+        if let Err(e) = twin_property((a.clone(), b.clone())) {
+            faults.push(format!("{a:?} and {b:?}: {e}"));
+        }
+    }
+    assert!(faults.is_empty(), "{faults:#?}");
+}
