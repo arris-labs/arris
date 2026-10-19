@@ -3,9 +3,9 @@
 //! the closed form or not at all, a line and a coplanar conic meet where
 //! the 2D closed form says, two coplanar circles meet on the radical
 //! line, a coplanar pair with an ellipse among them meets where the
-//! conics' quartic says, a curve against itself is `Coincident`, and the
-//! one pair without a form — two NURBS curves — is `Unsupported` naming
-//! both operands (ADR-0004).
+//! conics' quartic says, a curve against itself is `Coincident`, and two
+//! NURBS curves meet where the distance between them is stationary and
+//! within the tolerance, the same either way round (ADR-0004).
 
 use arris_math::real;
 use core::f64::consts::{PI, TAU};
@@ -13,7 +13,7 @@ use core::f64::consts::{PI, TAU};
 use arris_debug::prop::geom::{circle, curve, ellipse, line, nurbs_curve};
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box, unit_vec3};
 use arris_geom::{
-    Curve, CurveCurveHit, CurveIntersection, GeomError, GeomKind, curves_coincide, intersect_curves,
+    Curve, CurveCurveHit, CurveIntersection, GeomError, curves_coincide, intersect_curves,
 };
 use arris_math::{Frame, Point3, Precision, Tolerance, Vec3};
 use proptest::prelude::*;
@@ -595,13 +595,13 @@ fn the_same_coplanar_ellipse_is_coincident_and_its_major_circle_touches() {
     });
 }
 
-// --- what has no closed form ----------------------------------------------
+// --- two NURBS curves -----------------------------------------------------
 
-/// Two NURBS curves are the only arm left without a form: every pair
-/// with an analytic curve in it answers, and a NURBS pair is
-/// `Unsupported` naming both operands.
+/// Every pair with a NURBS curve in it answers, and two NURBS curves
+/// answer symmetrically: the same hits the other way round with the
+/// parameters swapped, and a curve against itself is `Coincident`.
 #[test]
-fn only_two_nurbs_curves_are_unsupported() {
+fn every_curve_pair_answers_and_two_nurbs_curves_swap() {
     check((curve(), nurbs_curve(), nurbs_curve()), |(c, m, n)| {
         let (m, n) = (Curve::Nurbs(m), Curve::Nurbs(n));
         for (a, b) in [(&c, &m), (&m, &c), (&c, &c)] {
@@ -610,14 +610,29 @@ fn only_two_nurbs_curves_are_unsupported() {
                 other => return fail(format!("{a:?} vs {b:?}: {other:?}")),
             }
         }
-        for (a, b) in [(&m, &n), (&n, &m), (&n, &n)] {
-            match intersect_curves(a, b, tol(), &mut arris_math::Meter::default()) {
-                Err(GeomError::Unsupported { a: ka, b: kb }) => {
-                    prop_assert_eq!(ka, GeomKind::Curve(a.kind()));
-                    prop_assert_eq!(kb, GeomKind::Curve(b.kind()));
+        let meter = &mut arris_math::Meter::default();
+        prop_assert_eq!(
+            intersect_curves(&m, &m, tol(), meter),
+            Ok(CurveIntersection::Coincident)
+        );
+        let (ab, ba) = (
+            intersect_curves(&m, &n, tol(), meter),
+            intersect_curves(&n, &m, tol(), meter),
+        );
+        match (ab, ba) {
+            (Ok(CurveIntersection::Points(x)), Ok(CurveIntersection::Points(y))) => {
+                prop_assert_eq!(x.len(), y.len());
+                for h in &x {
+                    prop_assert!(
+                        y.iter().any(|k| (k.point - h.point).norm() <= tol().linear
+                            && (k.ta - h.tb).abs() <= 1e-6
+                            && (k.tb - h.ta).abs() <= 1e-6),
+                        "{h:?} not among {y:?}"
+                    );
                 }
-                other => return fail(format!("{a:?} vs {b:?}: {other:?}")),
             }
+            (Ok(CurveIntersection::Coincident), Ok(CurveIntersection::Coincident)) => {}
+            other => return fail(format!("{m:?} vs {n:?}: {other:?}")),
         }
         Ok(())
     });

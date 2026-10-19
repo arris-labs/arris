@@ -880,8 +880,8 @@ fn turn_diff(a: f64, b: f64, c: &Curve) -> f64 {
 fn every_geometry_fixture_matches_the_oracle() {
     let fixtures = geometry_fixtures();
     assert!(
-        fixtures.len() >= 19,
-        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c10-nurbs-analytic-pairs, geom/c10-conic-nurbs-hits, geom/c10-nurbs-nurbs-hits, geom/c10-nurbs-nurbs-pairs, geom/c8-curve-extrema, geom/c8-curve-surface-extrema and geom/c8-surface-extrema"
+        fixtures.len() >= 20,
+        "expected geom/analytic-eval, geom/c1-intersections, geom/c2-cylinder-pairs, geom/c2-quadric-pairs, geom/c3-cylinder-pairs, geom/c3-quadric-pairs, geom/c3-torus-pairs, geom/c3-conic-hits, geom/c3-nurbs-hits, geom/c3-nurbs-crossings, geom/c4-nurbs-projections, geom/c4-closed-curve-hits, geom/c8-line-nurbs-hits, geom/c10-nurbs-analytic-pairs, geom/c10-conic-nurbs-hits, geom/c10-nurbs-nurbs-hits, geom/c10-nurbs-nurbs-pairs, geom/c10-nurbs-curve-pairs, geom/c8-curve-extrema, geom/c8-curve-surface-extrema and geom/c8-surface-extrema"
     );
     let mut errors = Vec::new();
     for f in &fixtures {

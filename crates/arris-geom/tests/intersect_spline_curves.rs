@@ -13,9 +13,8 @@ use core::f64::consts::{FRAC_1_SQRT_2, TAU};
 use arris_debug::prop::geom::{circle, ellipse, nurbs_curve};
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, frame, radius, unit_vec3};
 use arris_geom::{
-    Curve, CurveCurveHit, CurveIntersection, CurveSurfaceIntersection, GeomError, GeomKind,
-    NurbsCurve, Surface, curves_coincide, fit_curve_periodic, intersect_curve_surface,
-    intersect_curves,
+    Curve, CurveCurveHit, CurveIntersection, CurveSurfaceIntersection, NurbsCurve, Surface,
+    curves_coincide, fit_curve_periodic, intersect_curve_surface, intersect_curves,
 };
 use arris_math::{Frame, Interval, Isometry, Point3, Precision, Tolerance, Vec3};
 use proptest::prelude::*;
@@ -434,21 +433,15 @@ fn a_nurbs_on_a_line_or_a_conic_is_coincident_and_one_beside_it_is_not() {
 }
 
 #[test]
-fn two_nurbs_curves_are_the_same_spline_apart_or_unsupported() {
+fn two_nurbs_curves_are_the_same_spline_apart_or_over_other_knots() {
     check(nurbs_curve(), |n| {
         let c = Curve::Nurbs(n.clone());
-        let unsupported = |r: Result<_, GeomError>| {
-            matches!(
-                r,
-                Err(GeomError::Unsupported { a, b })
-                    if a == GeomKind::Curve(c.kind()) && b == GeomKind::Curve(c.kind())
-            )
-        };
-        prop_assert!(unsupported(
-            intersect_curves(&c, &c, tol(), &mut arris_math::Meter::default()).map(|_| ())
-        ));
-        let same =
-            |x: &Curve, y: &Curve| curves_coincide(x, y, tol(), &mut arris_math::Meter::default());
+        let meter = || arris_math::Meter::default();
+        prop_assert_eq!(
+            intersect_curves(&c, &c, tol(), &mut meter()),
+            Ok(CurveIntersection::Coincident)
+        );
+        let same = |x: &Curve, y: &Curve| curves_coincide(x, y, tol(), &mut meter());
         prop_assert_eq!(same(&c, &c), Ok(true));
         // Within the tolerance of itself: every control point moved less.
         let nudged = c.transformed(&Isometry::from_translation(Vec3::new(
@@ -460,12 +453,17 @@ fn two_nurbs_curves_are_the_same_spline_apart_or_unsupported() {
         let apart = c.transformed(&Isometry::from_translation(Vec3::new(1e-3, 0.0, 0.0)));
         prop_assert_eq!(same(&c, &apart), Ok(false));
         prop_assert_eq!(same(&apart, &c), Ok(false));
-        // The same curve over one more knot: only a marcher could say.
+        // The same curve over one more knot is the same curve: the
+        // distance between the two is stationary along all of it.
         let refined = Curve::Nurbs(
             n.insert_knot(n.domain().lerp(0.37), 1)
                 .map_err(|e| TestCaseError::fail(e.to_string()))?,
         );
-        prop_assert!(unsupported(same(&c, &refined).map(|_| ())));
+        prop_assert_eq!(same(&c, &refined), Ok(true));
+        prop_assert_eq!(
+            intersect_curves(&c, &refined, tol(), &mut meter()),
+            Ok(CurveIntersection::Coincident)
+        );
         Ok(())
     });
 }

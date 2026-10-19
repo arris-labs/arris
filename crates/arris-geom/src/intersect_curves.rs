@@ -13,7 +13,7 @@ use arris_math::{Frame, Meter, Point2, Point3, Tolerance, Vec2, Vec3, roots, wra
 use crate::conic2::{Conic2, ConicMeet, conic_pair};
 use crate::{
     Curve, CurveKind, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, GeomKind, NurbsCurve,
-    Surface, intersect_curve_surface,
+    Surface, extrema_curve_curve, intersect_curve_surface,
 };
 
 /// One point two curves have in common.
@@ -85,7 +85,11 @@ pub enum CurveIntersection {
 /// plane before a touch of the other, since the curve is tangent to the
 /// line only where it touches every plane through it; a curve in one of
 /// the planes is the coplanar case, and one in both lies along the line,
-/// `Coincident`. Two NURBS curves are `Unsupported`: that is a marcher's.
+/// `Coincident`. Two NURBS curves meet where the distance between them is stationary
+/// and within `tol.linear` ([`crate::extrema_curve_curve`]'s pairs, found
+/// by isolation over every pair of spans): a hit is `tangent` where the two
+/// tangents are parallel within `tol.angular`, and a stretch along which
+/// the distance stays within `tol.linear` is `Coincident`.
 ///
 /// ```
 /// use arris_geom::{Curve, CurveIntersection, intersect_curves};
@@ -147,14 +151,7 @@ pub fn intersect_curves(
         (Curve::Circle { .. } | Curve::Ellipse { .. }, Curve::Nurbs(_)) => {
             Ok(swapped(through_plane(b, a, tol, meter)?))
         }
-        // Two fitted curves meet where a marcher finds them, the NURBS
-        // cycle's; the
-        // pave model reads the crossings of one pair's traced curves from
-        // the tracer's points instead (ADR-0018).
-        (Curve::Nurbs(_), Curve::Nurbs(_)) => Err(GeomError::Unsupported {
-            a: GeomKind::Curve(a.kind()),
-            b: GeomKind::Curve(b.kind()),
-        }),
+        (Curve::Nurbs(na), Curve::Nurbs(nb)) => nurbs_nurbs(a, b, na, nb, tol, meter),
     }
 }
 
@@ -162,7 +159,7 @@ pub fn intersect_curves(
 /// [`CurveIntersection::Coincident`] verdict of [`intersect_curves`],
 /// without the common points of a pair that is not. A question such as
 /// "does this edge lie along that section curve" needs only this, and it
-/// has an answer for every pair of lines and conics.
+/// has an answer for every pair of curves.
 ///
 /// Guarantees: wherever [`intersect_curves`] answers, this is `true`
 /// exactly when that answer is `Coincident`, by the same arms. Two lines
@@ -179,10 +176,9 @@ pub fn intersect_curves(
 /// degree, knots and weights: the same section made twice. Two NURBS
 /// curves are not the same when a point of either at an end, a knot or
 /// halfway between two has no hit of the other within `tol.linear` on
-/// the plane square to it there; any
-/// other pair of them — one curve over two sets of knots, say — is
-/// [`GeomError::Unsupported`] naming the pair, which only a marcher
-/// could decide.
+/// the plane square to it there; any other pair of them — one curve over
+/// two sets of knots, say — coincide when a stretch of them stays within
+/// `tol.linear` of each other, as [`intersect_curves`] reads it.
 ///
 /// ```
 /// use arris_geom::{Curve, CurveIntersection, curves_coincide, intersect_curves};
@@ -282,7 +278,13 @@ pub fn curves_coincide(
             ))
         }
         (Curve::Nurbs(na), Curve::Nurbs(nb)) => {
-            nurbs_nurbs_coincide(na, nb, tol, meter)?.ok_or_else(unsupported)
+            Ok(match nurbs_nurbs_coincide(na, nb, tol, meter)? {
+                Some(same) => same,
+                None => matches!(
+                    nurbs_nurbs(a, b, na, nb, tol, meter)?,
+                    CurveIntersection::Coincident
+                ),
+            })
         }
     }
 }
@@ -795,25 +797,36 @@ fn nurbs_nurbs_coincide(
     for (x, y) in [(a, b), (b, a)] {
         let other = Curve::Nurbs(y.clone());
         for t in probes(x) {
-            let at = x.eval(t);
-            // A stationary point has no plane square to the curve; the
-            // other probes decide.
-            let Ok(frame) = Frame::from_z(at.point, at.d1) else {
-                continue;
-            };
-            let near = match intersect_curve_surface(&other, &Surface::Plane { frame }, tol, meter)?
-            {
-                CurveSurfaceIntersection::Coincident => false,
-                CurveSurfaceIntersection::Points(hits) => hits
-                    .iter()
-                    .any(|h| (h.point - at.point).norm() <= tol.linear),
-            };
-            if !near {
+            if !near_at(x, &other, t, tol, meter)?.unwrap_or(true) {
                 return Ok(Some(false));
             }
         }
     }
     Ok(None)
+}
+
+/// Whether `other` passes within `tol.linear` of the point of `x` at `t`,
+/// by the NURBS arm of [`intersect_curve_surface`] on the plane square to
+/// `x` there: `None` where `x` is stationary and has no such plane.
+fn near_at(
+    x: &NurbsCurve,
+    other: &Curve,
+    t: f64,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<Option<bool>, GeomError> {
+    let at = x.eval(t);
+    let Ok(frame) = Frame::from_z(at.point, at.d1) else {
+        return Ok(None);
+    };
+    Ok(Some(
+        match intersect_curve_surface(other, &Surface::Plane { frame }, tol, meter)? {
+            CurveSurfaceIntersection::Coincident => false,
+            CurveSurfaceIntersection::Points(hits) => hits
+                .iter()
+                .any(|h| (h.point - at.point).norm() <= tol.linear),
+        },
+    ))
 }
 
 /// The parameters a curve is probed at: its distinct knots in the domain
@@ -940,4 +953,119 @@ fn hit(a: &Curve, b: &Curve, point: Point3, tangent: bool) -> Result<CurveCurveH
         point,
         tangent,
     })
+}
+
+/// Two NURBS curves: the pairs of parameters at which the distance
+/// between them is stationary ([`extrema_curve_curve`], isolated over every
+/// pair of spans) and not more than `tol.linear`. A pair is a hit with
+/// `a`'s point; it is `tangent` where the sine of the angle between
+/// the two tangents is within the cube root of `tol.angular`: a touch is
+/// a triple zero of the distance's gradient, which isolation places only
+/// to the cube root of rounding, and the tangents there differ by that
+/// much (a stationary end has no direction, and is a touch). The same spline is
+/// `Coincident` outright, and so is any pair with a stretch of stationary
+/// pairs within `tol.linear` of each other: an overlap.
+fn nurbs_nurbs(
+    a: &Curve,
+    b: &Curve,
+    na: &NurbsCurve,
+    nb: &NurbsCurve,
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<CurveIntersection, GeomError> {
+    if nurbs_nurbs_coincide(na, nb, tol, meter)? == Some(true) {
+        return Ok(CurveIntersection::Coincident);
+    }
+    let found = extrema_curve_curve(a, b, tol, meter)?;
+    let mut hits: Vec<CurveCurveHit> = Vec::new();
+    // A stretch of stationary pairs within `tol.linear` is an overlap
+    // where the first curve stays within it of the second a way along
+    // either side of the pair, and a touch otherwise: two curves tangent
+    // at a point are within `tol.linear` of each other over a few
+    // `√tol.linear`, which the extrema reports as one such stretch.
+    for pair in found.continua.iter().filter(|c| c.distance <= tol.linear) {
+        let mut overlap = true;
+        for t in overlap_probes(na, pair.ta) {
+            overlap &= near_at(na, b, t, tol, meter)?.unwrap_or(true);
+        }
+        if overlap {
+            return Ok(CurveIntersection::Coincident);
+        }
+        keep(
+            &mut hits,
+            CurveCurveHit {
+                ta: pair.ta,
+                tb: pair.tb,
+                point: pair.a,
+                tangent: true,
+            },
+            tol,
+        );
+    }
+    for pair in found.isolated.iter().filter(|p| p.distance <= tol.linear) {
+        let (da, db) = (a.eval(pair.ta).d1, b.eval(pair.tb).d1);
+        let sine = da.cross(&db).norm() / (da.norm() * db.norm());
+        // A stationary end of a curve has no direction to be parallel in;
+        // a hit there is a touch the curve makes with a point.
+        let tangent = !sine.is_finite() || sine <= real::powf(tol.angular, 1.0 / 3.0);
+        keep(
+            &mut hits,
+            CurveCurveHit {
+                ta: pair.ta,
+                tb: pair.tb,
+                point: pair.a,
+                tangent,
+            },
+            tol,
+        );
+    }
+    Ok(points(hits))
+}
+
+/// `hit` among `hits` unless it is one already there: within `tol.linear`
+/// of one, or a touch within `√tol.linear` of another touch — two
+/// curves tangent at a point are within `tol.linear` of each other over
+/// that reach, and the hit is placed only to a fraction of it (a closed
+/// curve's touch at its seam comes once at each end of the domain).
+fn keep(hits: &mut Vec<CurveCurveHit>, hit: CurveCurveHit, tol: Tolerance) {
+    let same = |h: &CurveCurveHit| {
+        let apart = (h.point - hit.point).norm();
+        apart <= tol.linear || (h.tangent && hit.tangent && apart <= tol.linear.sqrt())
+    };
+    if !hits.iter().any(same) {
+        hits.push(hit);
+    }
+}
+
+/// How far along its span, as a share of the span, an overlap is probed
+/// on each side of a stationary pair, and how many probes each side.
+const OVERLAP_REACH: f64 = 0.25;
+const OVERLAP_PROBES: usize = 2;
+
+/// The parameters of `c` a stretch of stationary pairs at `t` is probed
+/// at: [`OVERLAP_PROBES`] on each side, out to [`OVERLAP_REACH`] of the
+/// span `t` is in, those inside the domain.
+fn overlap_probes(c: &NurbsCurve, t: f64) -> Vec<f64> {
+    let domain = c.domain();
+    let mut knots: Vec<f64> = c
+        .knots()
+        .iter()
+        .copied()
+        .filter(|&k| domain.contains(k))
+        .collect();
+    knots.dedup();
+    let span = knots
+        .windows(2)
+        .find(|w| w[0] <= t && t <= w[1])
+        .map_or(domain.length(), |w| w[1] - w[0]);
+    let mut out = Vec::with_capacity(2 * OVERLAP_PROBES);
+    for k in 1..=OVERLAP_PROBES {
+        let step = OVERLAP_REACH * span * k as f64 / OVERLAP_PROBES as f64;
+        for at in [t - step, t + step] {
+            if domain.contains(at) {
+                out.push(at);
+            }
+        }
+    }
+    out
 }

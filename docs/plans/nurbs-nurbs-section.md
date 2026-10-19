@@ -125,7 +125,7 @@ bound has to be established here.
   `GeomAPI_IntSS` on fitted pairs: a sweep face against a loft face, a
   CTC-02 face against a bent copy, two skins crossing at a seam. Tests
   that asserted the refusal are re-pointed.
-- [ ] Step 8 **[2]** — **Two NURBS curves.** `intersect_curves`: the
+- [x] Step 8 **[2]** — **Two NURBS curves.** `intersect_curves`: the
   distance's critical pairs per span pair (two equations in `bernstein2`
   as it is), a hit where the distance is within `tol.linear`, an overlap
   `Coincident`. Held to twins of line, circle and ellipse pairs, plus a
@@ -167,3 +167,13 @@ bound has to be established here.
   `twin_prop.rs`'s S5 exemption, the corpus's two-NURBS cases). One whose
   new result is checker-green and matches its oracle passes; any other
   becomes a `regression/` fixture for M2.
+- ⚠ OPEN (agent, by step 8): `intersect_curves` of two NURBS curves reads
+  `extrema_curve_curve`'s pairs, and that misses a touch it is not given
+  an isolated pair for: the twins of two circles tangent outside, in a
+  general pose, come back with the three far pairs and none at distance
+  zero (the analytic circles find it), while a planar parabola touch is
+  found as a continuum. `two_circles_touching_outside_are_one_touch_as_
+  their_twins_are` holds the desired answer, `#[ignore]`d. The fix is in
+  the extrema's non-simple zeros (`System::settle`), not the intersector;
+  a touch is a false negative until then. The human decides whether step 9
+  waits for it.

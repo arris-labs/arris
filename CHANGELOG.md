@@ -87,7 +87,15 @@ into its version (ADR-0027).
 - `intersect_curve_surface` now meets a circle or an ellipse with a NURBS
   surface, as it already did a line: crossings, touches within the
   tolerance, a pole, and `Coincident` for a conic lying on the surface.
-  A NURBS curve against a NURBS surface is still refused as unsupported.
+  A NURBS curve against a NURBS surface meets in the same way: crossings,
+  touches within the tolerance, and `Coincident` for a curve on the
+  surface.
+- `intersect_curves` now meets two NURBS curves where the distance between
+  them is stationary and within the tolerance: crossings, touches (a
+  hit marked `tangent`), and `Coincident` for curves that overlap, in
+  either order. `curves_coincide` answers for every pair of NURBS curves,
+  one curve over two sets of knots included. A touch of two curves in a
+  general pose can be missed.
 - `NurbsSurface::offset_fitted` gives the offset of a NURBS surface over a
   parameter box you name, as a B-spline within your tolerance of the true
   offset, reaching past the surface's edge where the box does. A distance

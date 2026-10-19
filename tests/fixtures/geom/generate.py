@@ -1654,6 +1654,73 @@ def c10_nurbs_nurbs_pairs():
     }
 
 
+# --- c10-nurbs-curve-pairs --------------------------------------------------------
+
+
+def c10_nurbs_curve_pairs():
+    """NURBS curves against NURBS curves (plan nurbs-nurbs-section step 8), in
+    the tilt pose: crossings built through a point of a c3-nurbs-hits curve,
+    a tangent touch of two parabolas, and a pair that misses."""
+    f = POSES["tilt"]
+    hits = c3_nurbs_hits()
+    ring, wave, skein = (hits["curves"][n] for n in ("ring", "wave", "skein"))
+
+    def through(point, d0, d2):
+        """A quadratic Bezier passing through `point` at its middle, ends
+        `d0` and `d2` away from it."""
+        q0, q2 = add(point, d0), add(point, d2)
+        q1 = sub(mul(2.0, point), mul(0.5, add(q0, q2)))
+        return {
+            "type": "nurbs",
+            "degree": 2,
+            "knots": [0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+            "control_points": [q0, q1, q2],
+            "weights": [1.0, 1.0, 1.0],
+        }
+
+    def segment(a, b):
+        return {
+            "type": "nurbs",
+            "degree": 1,
+            "knots": [0.0, 0.0, 1.0, 1.0],
+            "control_points": [a, b],
+            "weights": [1.0, 1.0],
+        }
+
+    curves = {"wave": wave, "skein": skein, "ring": ring}
+    curves["wave_cut"] = through(nurbs_point(wave, 1.0), f.vec([2.0, 1.0, -1.5]), f.vec([-1.0, 2.5, 1.0]))
+    curves["skein_cut"] = through(nurbs_point(skein, 1.5), f.vec([1.5, -2.0, 0.5]), f.vec([0.5, 1.0, 2.0]))
+    spot = nurbs_point(ring, 1.7)
+    curves["ring_chord"] = segment(sub(spot, f.vec([1.0, 0.5, 2.0])), add(spot, f.vec([1.0, 0.5, 2.0])))
+    curves["wave_far"] = segment(f.to_world([-8.0, 8.0, 8.0]), f.to_world([8.0, 8.0, 9.0]))
+    # Two parabolas in one plane touching at their apexes, not crossing.
+    arch = lambda ys: {
+        "type": "nurbs",
+        "degree": 2,
+        "knots": [0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        "control_points": [f.to_world(p) for p in [[-1.0, ys[0], 0.0], [0.0, ys[1], 0.0], [1.0, ys[2], 0.0]]],
+        "weights": [1.0, 1.0, 1.0],
+    }
+    curves["arch_up"] = arch([0.0, 2.0, 0.0])
+    curves["arch_down"] = arch([2.0, 0.0, 2.0])
+    pairs = [
+        {"a": "wave", "b": "wave_cut"},
+        {"a": "skein_cut", "b": "skein"},
+        {"a": "ring", "b": "ring_chord"},
+        {"a": "wave", "b": "wave_far"},
+        {"a": "arch_up", "b": "arch_down"},
+        {"a": "wave", "b": "skein"},
+    ]
+    return {
+        "kind": "geometry",
+        "description": "NURBS curves against NURBS curves in the tilt pose (plan nurbs-nurbs-section step 8): the quintic, the rational cubic and the ellipse of c3-nurbs-hits each cut by a quadratic or a segment built through one of their points, one that misses, two parabolas touching at their apexes, and the quintic against the cubic — through Open CASCADE's GeomAPI_ExtremaCurveCurve; written by generate.py",
+        "surfaces": {},
+        "curves": curves,
+        "samples": [],
+        "pairs": pairs,
+    }
+
+
 # --- c8-curve-extrema ----------------------------------------------------------
 
 
@@ -1888,6 +1955,7 @@ if __name__ == "__main__":
     write("c10-conic-nurbs-hits", c10_conic_nurbs_hits())
     write("c10-nurbs-nurbs-hits", c10_nurbs_nurbs_hits())
     write("c10-nurbs-nurbs-pairs", c10_nurbs_nurbs_pairs())
+    write("c10-nurbs-curve-pairs", c10_nurbs_curve_pairs())
     write("c8-curve-extrema", c8_curve_extrema())
     write("c8-curve-surface-extrema", c8_curve_surface_extrema())
     write("c8-surface-extrema", c8_surface_extrema())
