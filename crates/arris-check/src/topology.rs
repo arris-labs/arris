@@ -6,7 +6,8 @@
 //! uses, never the arena's adjacency indices (M2 is the only row that
 //! speaks for those), and the (u, v) rows go through
 //! `arris_geom::region2`: a loop is discretised at the minimum segment
-//! counts, which is all a sign and a containment question need.
+//! counts, and finer only where a sign or a containment question is
+//! within the coarse polygon's deviation (L4).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -206,6 +207,13 @@ impl<'m> Checker<'m> {
     /// L4: every loop turns, and the loops nest — one positively wound
     /// outer loop per connected component of the domain, every negatively
     /// wound hole inside one of them.
+    ///
+    /// Decided first on the loops at the minimum segment counts, and
+    /// again at a finer chord ([`L4_COARSENING`], then the fine one) only
+    /// where an answer is within the polygons' deviation: the fine
+    /// polygons of a real part's
+    /// face run to millions of segments, and every operation's debug
+    /// check and every `tessellate_faces` call pays for them.
     fn l4_nesting(&mut self, face_id: FaceId, face: &'m Face) {
         let model = self.model;
         let Ok(surface) = model.surface(face.surface()) else {
@@ -215,8 +223,37 @@ impl<'m> Checker<'m> {
         // lies inside its polygon: the loops are discretised as a face's
         // domain is, within the parametric tolerance. A coarser outer
         // polygon, a circle's inscribed octagon, leaves out a hole that
-        // runs close to the rim.
+        // runs close to the rim, so each coarser pass only answers with a
+        // margin and hands that case on to the next.
         let chord = chord(model, face, surface, self.precision.parametric_tolerance);
+        let faults = L4_COARSENING
+            .iter()
+            .find_map(|&k| self.nesting_faults(face, surface, chord * k, true))
+            .or_else(|| self.nesting_faults(face, surface, chord, false))
+            .unwrap_or_default();
+        for fault in faults {
+            self.push(Violation::LoopNesting {
+                face: face_id,
+                fault,
+            });
+        }
+    }
+
+    /// L4's faults for `face`'s loops discretised at `chord`. With
+    /// `certain`, `None` when an answer is not sure to be the loops' own:
+    /// a loop's area, of which a polygon's shoelace area is within its
+    /// deviation times its perimeter, not clear of zero, or a hole's
+    /// first point (on its curve) within twice the deviation of the
+    /// polygon it is asked to be inside — so the answer is also the one
+    /// a finer polygon gives. A loop of zero area is never decided
+    /// coarse.
+    fn nesting_faults(
+        &self,
+        face: &'m Face,
+        surface: &Surface,
+        chord: f64,
+        certain: bool,
+    ) -> Option<Vec<NestingFault>> {
         let mut faults: Vec<NestingFault> = Vec::new();
         let mut areas: Vec<(usize, Polygon2, f64)> = Vec::new();
         for (loop_index, l) in face.loops().iter().enumerate() {
@@ -233,14 +270,28 @@ impl<'m> Checker<'m> {
                     let bound = bands(surface, p, self.precision.parametric_tolerance);
                     bound[0].min(bound[1])
                 }
-                None => return,
+                None => return Some(Vec::new()),
             };
+            if certain {
+                // The fine polygon's perimeter is at most the loop's
+                // length; twice the coarse one stands for it.
+                let margin = polygon.chord_deviation() * perimeter;
+                if !(margin.is_finite() && area.abs() - margin > width * perimeter) {
+                    return None;
+                }
+            }
             if !area.is_finite() || area.abs() <= width * perimeter / 2.0 {
                 faults.push(NestingFault::ZeroArea { loop_index });
                 continue;
             }
             areas.push((loop_index, polygon, area));
         }
+        let holds = |inner: &Polygon2, outer: &Polygon2| -> Option<bool> {
+            if certain && !clear_of(inner, outer) {
+                return None;
+            }
+            Some(inside(inner, outer))
+        };
         let outer: Vec<&(usize, Polygon2, f64)> =
             areas.iter().filter(|(_, _, a)| *a > 0.0).collect();
         let holes: Vec<&(usize, Polygon2, f64)> =
@@ -254,7 +305,7 @@ impl<'m> Checker<'m> {
         let mut nested: BTreeSet<usize> = BTreeSet::new();
         for (i, a) in outer.iter().enumerate() {
             for b in outer.iter().skip(i + 1) {
-                if inside(&a.1, &b.1) || inside(&b.1, &a.1) {
+                if holds(&a.1, &b.1)? || holds(&b.1, &a.1)? {
                     nested.insert(a.0);
                     nested.insert(b.0);
                 }
@@ -268,16 +319,18 @@ impl<'m> Checker<'m> {
         // A hole is only outside something: with no outer loop at all,
         // `NoOuter` has said it already.
         for hole in outer.is_empty().then(Vec::new).unwrap_or(holes) {
-            if !outer.iter().any(|o| inside(&hole.1, &o.1)) {
+            let mut held = false;
+            for o in &outer {
+                if holds(&hole.1, &o.1)? {
+                    held = true;
+                    break;
+                }
+            }
+            if !held {
                 faults.push(NestingFault::HoleOutside { loop_index: hole.0 });
             }
         }
-        for fault in faults {
-            self.push(Violation::LoopNesting {
-                face: face_id,
-                fault,
-            });
-        }
+        Some(faults)
     }
 
     /// F1: the face has a loop, and no pcurve leaves the surface's
@@ -562,6 +615,15 @@ impl<'m> Checker<'m> {
     }
 }
 
+/// The chords L4 tries before the fine one, as multiples of it: the
+/// minimum segment counts, then a million and a thousand times the fine
+/// chord. Not tolerances: a pass answers only beyond its polygons'
+/// deviation, so these set the cost and never the answer. A polygon's
+/// segments go as the inverse square root of its chord, each pass about
+/// thirty times the one before, and a face is read only as finely as its
+/// answer needs.
+const L4_COARSENING: [f64; 3] = [f64::INFINITY, 1e6, 1e3];
+
 /// `true` when `inner`'s ring lies inside `outer`'s: its first vertex
 /// has a non-zero winding number about `outer`. Two rings that cross are
 /// L5's, not this test's.
@@ -570,4 +632,21 @@ fn inside(inner: &Polygon2, outer: &Polygon2) -> bool {
         .points()
         .first()
         .is_some_and(|&p| outer.winding_number(p) != 0)
+}
+
+/// `true` when `inner`'s first vertex, a point of its loop, is farther
+/// than twice `outer`'s deviation from every segment of `outer`: then
+/// `outer`'s loop and every polygon of it at least as fine wind about it
+/// as `outer` does.
+fn clear_of(inner: &Polygon2, outer: &Polygon2) -> bool {
+    let Some(&p) = inner.points().first() else {
+        return false;
+    };
+    let reach = 2.0 * outer.chord_deviation();
+    reach.is_finite()
+        && outer.segments().all(|(a, b)| {
+            let ab = b - a;
+            let t = ((p - a).dot(&ab) / ab.norm_squared()).clamp(0.0, 1.0);
+            (p - (a + ab * t)).norm() > reach
+        })
 }

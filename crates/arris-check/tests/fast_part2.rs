@@ -404,6 +404,75 @@ fn l4_a_hole_outside_its_outer_loop() {
     );
 }
 
+/// A plate whose outer loop is the circle of radius 10 about the origin,
+/// one closed edge, and whose hole is the clockwise square of side 0.1
+/// centred `r` from the origin at 22.5°: midway between two vertices of
+/// the circle's octagon, the polygon L4 decides on first.
+fn disc_with_a_square_hole(m: &mut Model, r: f64) -> (Body, FaceId) {
+    let tol = m.precision().default_tolerance;
+    let surface = ground(m);
+    let circle = m.add_curve(Curve::Circle {
+        frame: Frame::world(),
+        radius: 10.0,
+    });
+    let pcurve = m.add_curve2(Curve2::Circle {
+        frame: arris_math::Frame2::identity(),
+        radius: 10.0,
+    });
+    let v = m
+        .raw()
+        .add_vertex(Vertex::new(Point3::new(10.0, 0.0, 0.0), tol));
+    let edge = m.raw().add_edge(Edge::new(
+        EdgeGeometry::Curve {
+            curve: circle,
+            range: Interval::TURN,
+        },
+        v,
+        v,
+        tol,
+    ));
+    let angle = core::f64::consts::PI / 8.0;
+    let (x, y) = (
+        r * arris_math::real::cos(angle),
+        r * arris_math::real::sin(angle),
+    );
+    let hole = ring(m, &rect(x - 0.05, y - 0.05, x + 0.05, y + 0.05, false));
+    let loops = vec![
+        Loop::new(vec![Coedge::new(edge, Orientation::Forward, pcurve)]),
+        Loop::new(hole.coedges),
+    ];
+    let (body, face, _) = one_face(m, surface, loops, tol);
+    (body, face)
+}
+
+/// L4 decides on coarse polygons first. A hole between the circle and
+/// its octagon, 0.36 inside the rim and 0.3 outside the octagon, is
+/// inside the face: the coarse answer is within the octagon's deviation,
+/// so the loops are read again at the fine chord.
+#[test]
+fn l4_a_hole_between_a_circle_and_its_octagon_is_inside() {
+    let mut m = Model::default();
+    let (body, _) = disc_with_a_square_hole(&mut m, 9.6);
+    let report = check(&m, body, Level::Fast);
+    assert!(report.is_ok(), "{report}");
+}
+
+/// The same hole just past the rim is outside, whichever polygon says so.
+#[test]
+fn l4_a_hole_just_past_a_circles_rim_is_outside() {
+    let mut m = Model::default();
+    let (body, face) = disc_with_a_square_hole(&mut m, 10.1);
+    let report = check(&m, body, Level::Fast);
+    assert_lines(&report, &[("L4", face.to_string())]);
+    assert_eq!(
+        report.violations()[0],
+        Violation::LoopNesting {
+            face,
+            fault: NestingFault::HoleOutside { loop_index: 1 },
+        }
+    );
+}
+
 #[test]
 fn l4_a_face_whose_only_loop_turns_the_wrong_way() {
     let mut m = Model::default();
