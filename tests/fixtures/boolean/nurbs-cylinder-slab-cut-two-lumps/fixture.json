@@ -1,5 +1,5 @@
 {
-  "description": "the exact B-spline twin of a cylinder r 4, h 12 (Open CASCADE's STEP of primitive/cylinder converted by occt_step.py --nurbs) cut across its middle by a slab z in [5, 7]: two lumps, each with NURBS faces only. The result's two shells are not decided apart (B1: NURBS against NURBS), so the cut returns OpError::Internal(Lumps) where the desired body is two disks (plans/nurbs-analytic-section step 8, found by the twin property)",
+  "description": "the exact B-spline twin of a cylinder r 4, h 12 (Open CASCADE's STEP of primitive/cylinder converted by occt_step.py --nurbs) cut across its middle by a slab z in [5, 7]: two lumps, each with NURBS faces only. The two shells' faces share one B-spline wall, so their nesting (B1) is decided apart only by boxes clipped to each face's own patch; the box of the whole span once refused the cut as OpError::Internal(Lumps) (found by the twin property, fixed in plans/nurbs-nurbs-operands step 4)",
   "steps": [
     {
       "name": "tool0",

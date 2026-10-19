@@ -308,8 +308,7 @@ impl Surface {
     /// bound for the surfaces whose two parameters multiply — a cone, a
     /// sphere, a torus — where the box is the product of the two
     /// intervals rather than of the pairs that actually occur, and for a
-    /// NURBS, whose control hull over the spans the rectangle touches
-    /// contains it.
+    /// NURBS, whose control hull over the rectangle, clipped to it, contains it.
     ///
     /// ```
     /// use arris_geom::Surface;
@@ -334,6 +333,10 @@ impl Surface {
         }
         match self {
             Surface::Nurbs(s) => {
+                if let Some(clipped) = s.clipped_points(uv) {
+                    let hull: Vec<[f64; 3]> = clipped.into_iter().map(coords).collect();
+                    return Aabb::of_points(&hull);
+                }
                 let [du, dv] = [s.degree()[0], s.degree()[1]];
                 let [ku, kv] = s.knots();
                 let rows: Vec<usize> = active_points(ku, du, u).collect();

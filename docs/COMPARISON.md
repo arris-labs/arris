@@ -56,7 +56,7 @@ cell for cell to `crates/arris/tests/capability.txt`:
 | offset | ok | ok | refused Degenerate(Offset(NoExactOffset)) | ok | ok | ok | refused Degenerate(Offset(NoExactOffset)) |
 | shell | ok | ok | refused Degenerate(Offset(NoExactOffset)) | ok | ok | refused Degenerate(Shell(NoWalls)) | refused Degenerate(Offset(NoExactOffset)) |
 | sweep operand | ok | ok | ok | ok | ok | ok | ok |
-| loft operand | ok | ok | ok | ok | ok | unchecked S5 | ok |
+| loft operand | ok | ok | ok | ok | ok | ok | ok |
 | ray | ok | ok | ok | ok | ok | ok | ok |
 | distance | ok | ok | ok | ok | ok | ok | ok |
 | STEP round trip | ok | ok | ok | ok | ok | ok | ok |

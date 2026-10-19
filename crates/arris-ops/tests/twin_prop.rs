@@ -86,13 +86,15 @@ fn outcome(
             reason: Reason::Boolean(BooleanReason::BesideSingularity),
             ..
         }) => Err(TestCaseError::reject("BesideSingularity")),
-        // A twin result of several lumps: the shells' nesting is undecided,
-        // NURBS against NURBS (B1), so the cut is refused where the
-        // analytic one is not. Held by the ignored
-        // `regression/nurbs-cylinder-slab-cut-two-lumps`; the fix lifts
-        // this arm.
+        // A twin result of several lumps whose shells B1 cannot prove
+        // apart: after step 4 the boxes of the faces' patches separate
+        // every pair but those whose (u, v) regions coincide on one twin
+        // surface to the depth the checker cuts (quadric pairs, 2 shards
+        // in 8 at 16 cases): shells that touch along a curve, or
+        // overlap. A backlog line; plans/nurbs-nurbs-operands open
+        // question.
         Err(OpError::Internal(Fault::Lumps(_))) if twin => {
-            Err(TestCaseError::reject("nurbs-cylinder-slab-cut-two-lumps"))
+            Err(TestCaseError::reject("twin lumps touching"))
         }
         // The section of a twin refused where the walls touch: crowded
         // turning points of two twins (BACKLOG; 3 of 64 quadric pairs both

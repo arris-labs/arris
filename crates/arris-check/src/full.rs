@@ -30,6 +30,14 @@ use crate::flux::face_flux;
 use crate::unchecked::Unchecked;
 use crate::violation::{ShellNestingFault, Violation};
 
+/// How many boxes [`Checker::patches_apart`] may bound before it gives
+/// a pair up as not proved apart.
+const PATCH_BUDGET: usize = 20_000;
+
+/// How many times [`Checker::patches_apart`] quarters a pair before it
+/// gives it up: a (u, v) box a 256th of the face's across.
+const PATCH_DEPTH: u32 = 8;
+
 /// Every face's box, or `None` for one no box bounds: what S5 and B1
 /// reject face pairs by before any intersector is asked.
 pub(crate) type FaceBoxes = BTreeMap<FaceId, Option<Aabb>>;
@@ -276,7 +284,16 @@ impl<'m> Checker<'m> {
         };
         let nurbs = |s: &Surface| matches!(s, Surface::Nurbs(_));
         if nurbs(sa) || nurbs(sb) {
-            return self.nurbs_pair_meets(a, sa, b, sb, &within, query);
+            return match self.nurbs_pair_meets(a, sa, b, sb, &within, query) {
+                // A pair the intersector refuses is still apart when
+                // every piece of one face's patch is clear of every piece
+                // of the other's (the nesting of two lumps on one wall).
+                Err(kinds) if self.patches_apart(a, sa, b, sb, tolerance) => {
+                    let _ = kinds;
+                    Ok(false)
+                }
+                found => found,
+            };
         }
         Ok(
             match intersect_surfaces(sa, sb, &within, query, &mut arris_math::Meter::default()) {
@@ -296,6 +313,41 @@ impl<'m> Checker<'m> {
                         })
                 }
             },
+        )
+    }
+
+    /// Whether the faces' patches share no point within `tolerance`,
+    /// proved from boxes alone: the (u, v) boxes of the two faces are
+    /// quartered together wherever their clipped boxes still overlap,
+    /// until none does. A pair still overlapping when [`PATCH_BUDGET`]
+    /// boxes are spent (surfaces that touch, or lie flush) is not proved
+    /// apart.
+    fn patches_apart(
+        &self,
+        a: FaceId,
+        sa: &Surface,
+        b: FaceId,
+        sb: &Surface,
+        tolerance: f64,
+    ) -> bool {
+        let (Some(da), Some(db)) = (self.domains.get(&a), self.domains.get(&b)) else {
+            return false;
+        };
+        let (Some(ua), Some(ub)) = (da.uv_box(), db.uv_box()) else {
+            return false;
+        };
+        let mut budget = PATCH_BUDGET;
+        let patch = |surface, domain, uv| Patch {
+            surface,
+            domain,
+            uv,
+        };
+        patches_clear(
+            &patch(sa, da, ua),
+            &patch(sb, db, ub),
+            tolerance,
+            PATCH_DEPTH,
+            &mut budget,
         )
     }
 
@@ -728,6 +780,74 @@ impl<'m> Checker<'m> {
             .collect();
         Some(Classifier::over(self.model, self.body, faces))
     }
+}
+
+/// A face's surface over a rectangle of its (u, v) domain, with the face
+/// whose loops cut it.
+#[derive(Clone, Copy)]
+struct Patch<'a> {
+    surface: &'a Surface,
+    domain: &'a FaceDomain<'a>,
+    uv: [Interval; 2],
+}
+
+impl Patch<'_> {
+    /// The box of the surface over the rectangle, `None` for one no box
+    /// bounds.
+    fn bounds(&self) -> Option<Aabb> {
+        self.surface.bounds(self.uv)
+    }
+
+    /// The four quarters of the rectangle that the face reaches, `None`
+    /// when the rectangle cannot be halved.
+    fn quarters(&self) -> Option<Vec<Self>> {
+        let halves = |r: Interval| {
+            let mid = 0.5 * (r.lo() + r.hi());
+            Some([
+                Interval::new(r.lo(), mid).ok()?,
+                Interval::new(mid, r.hi()).ok()?,
+            ])
+        };
+        let (us, vs) = (halves(self.uv[0])?, halves(self.uv[1])?);
+        Some(
+            us.into_iter()
+                .flat_map(|u| vs.into_iter().map(move |v| [u, v]))
+                .filter(|&uv| !self.domain.misses(uv))
+                .map(|uv| Patch { uv, ..*self })
+                .collect(),
+        )
+    }
+}
+
+/// The two patches have no point within `tolerance` of each other: their
+/// boxes are clear, or each quarter of one the face reaches is clear of
+/// each such quarter of the other. `budget` counts the boxes still to be
+/// bounded; spent, the answer is `false`.
+fn patches_clear(a: &Patch, b: &Patch, tolerance: f64, depth: u32, budget: &mut usize) -> bool {
+    let (Some(ba), Some(bb)) = (a.bounds(), b.bounds()) else {
+        return false;
+    };
+    if !ba.inflated(tolerance).intersects(&bb) {
+        return true;
+    }
+    if depth == 0 {
+        return false;
+    }
+    let (Some(qa), Some(qb)) = (a.quarters(), b.quarters()) else {
+        return false;
+    };
+    for x in &qa {
+        for y in &qb {
+            if *budget < 2 {
+                return false;
+            }
+            *budget -= 2;
+            if !patches_clear(x, y, tolerance, depth - 1, budget) {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 fn lerp(a: f64, b: f64, s: f64) -> f64 {

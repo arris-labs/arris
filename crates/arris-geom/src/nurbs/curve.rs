@@ -160,6 +160,23 @@ impl NurbsCurve {
             .map_err(degenerate(GeomKind::Curve(CurveKind::Nurbs)))
     }
 
+    /// The control points of the curve over `range` clamped to the
+    /// domain, as the clipped spline has them: their hull holds the curve
+    /// over the range, tighter than the hull of the spans it touches.
+    /// `None` when the range does not overlap the domain in a range of
+    /// its own.
+    pub(crate) fn clipped_points(&self, range: Interval) -> Option<Vec<Point3>> {
+        let domain = self.domain();
+        let (lo, hi) = (range.lo().max(domain.lo()), range.hi().min(domain.hi()));
+        if lo <= domain.lo() && hi >= domain.hi() {
+            return Some(self.spline.points().to_vec());
+        }
+        self.spline
+            .segment(lo, hi)
+            .ok()
+            .map(|s| s.points().to_vec())
+    }
+
     /// `p`.
     pub fn degree(&self) -> usize {
         self.spline.degree()

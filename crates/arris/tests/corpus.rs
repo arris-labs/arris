@@ -1236,10 +1236,6 @@ corpus_tests! {
     /// across a bicubic B-spline face (nurbs-analytic-section).
     #[ignore = "read-back: Open CASCADE's own STEP of the result is refused by the reader, #17219: the edge's end is at 0.3598 on its curve, not past its start at 0.4185; Arris's result is checker green and matches the oracle (docs/BACKLOG.md, a reversed-parameter edge in Open CASCADE's STEP of a NURBS part; nurbs-analytic-section step 7)"]
     regression_nist_ctc_02_ap242_box_cut_nurbs_plane => run "regression/nist-ctc-02-ap242-box-cut-nurbs-plane";
-    /// The exact B-spline twin of a cylinder cut across by a slab: two
-    /// lumps, every face NURBS.
-    #[ignore = "OpError::Internal(Lumps): the two shells' nesting is undecided, NURBS against NURBS (B1), so the cut is refused where the desired body is two disks (nurbs-analytic-section step 8, docs/BACKLOG.md)"]
-    regression_nurbs_cylinder_slab_cut_two_lumps => run "regression/nurbs-cylinder-slab-cut-two-lumps";
     /// The same solid drilled along its first principal axis: a cylinder
     /// across a bicubic B-spline face.
     #[ignore = "the oracle is wrong: Open CASCADE removes 69 676 of the drill's volume where its own solid classifier finds 145 600 ± 2 900 of the part inside the cylinder (40 000 samples) and Arris removes 143 792, so counts (643 faces to 649) and the measures differ; no closed form holds the real part (nurbs-analytic-section step 7, docs/BACKLOG.md)"]
@@ -1846,6 +1842,10 @@ corpus_tests! {
     /// the bounds of a periodic NURBS; the
     /// corpus waits on the reader only.
     boolean_cylinder_prism_common_chamfer_cut_loops_intersect => run "boolean/cylinder-prism-common-chamfer-cut-loops-intersect";
+    /// The exact B-spline twin of a cylinder cut across by a slab: two
+    /// lumps, every face NURBS, their nesting decided by boxes clipped to
+    /// each face's own patch (nurbs-nurbs-operands step 4).
+    boolean_nurbs_cylinder_slab_cut_two_lumps => run "boolean/nurbs-cylinder-slab-cut-two-lumps";
     /// An elliptic prism, mirrored, fused with a posed revolve (nightly
     /// 2026-10-04, case 328, seed `3549c46a…`): a planar cap bounded by the
     /// ellipse and two section edges, whose polygon at chord 0.001 crosses

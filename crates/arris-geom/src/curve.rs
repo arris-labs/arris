@@ -208,6 +208,10 @@ impl Curve {
             } => Some(conic_bounds(&frame, [major_radius, minor_radius], range)),
             Curve::Nurbs(c) => {
                 let hull = |range: Interval| {
+                    if let Some(clipped) = c.clipped_points(range) {
+                        let points: Vec<[f64; 3]> = clipped.into_iter().map(coords).collect();
+                        return Aabb::of_points(&points);
+                    }
                     let points: Vec<[f64; 3]> = active_points(c.knots(), c.degree(), range)
                         .filter_map(|i| c.control_points().get(i).map(|p| coords(*p)))
                         .collect();

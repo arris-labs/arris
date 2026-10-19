@@ -268,3 +268,55 @@ fn a_periodic_nurbs_over_a_range_past_its_domain_is_bounded_by_the_whole_curve()
         }
     }
 }
+
+/// The box of a NURBS over part of its domain is the clipped patch's
+/// control hull, not the hull of every span the range touches: a quarter
+/// of a one-span quadratic holds the quarter's own points only.
+#[test]
+fn a_nurbs_over_a_part_of_one_span_is_clipped_to_it() {
+    use arris_geom::{NurbsCurve, NurbsSurface};
+    let arch = NurbsCurve::new(
+        2,
+        vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        vec![
+            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(1.0, 2.0, 0.0),
+            Point3::new(2.0, 0.0, 0.0),
+        ],
+        vec![1.0; 3],
+    )
+    .unwrap();
+    let c = Curve::Nurbs(arch);
+    let quarter = c.bounds(Interval::new(0.0, 0.25).unwrap()).unwrap();
+    // The curve at 0.25 is (0.5, 0.75): the control point (1, 2) is out.
+    assert!(quarter.max[1] < 1.0, "{quarter:?}");
+    assert!(quarter.max[0] < 1.0, "{quarter:?}");
+    let whole = c.bounds(Interval::new(0.0, 1.0).unwrap()).unwrap();
+    assert_eq!(whole.max, [2.0, 2.0, 0.0]);
+
+    // A bilinear patch over a sub-rectangle: its four corners.
+    let patch = NurbsSurface::new(
+        [1, 1],
+        [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
+        vec![
+            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(0.0, 4.0, 0.0),
+            Point3::new(4.0, 0.0, 0.0),
+            Point3::new(4.0, 4.0, 2.0),
+        ],
+        vec![1.0; 4],
+    )
+    .unwrap();
+    let s = Surface::Nurbs(patch);
+    let part = s
+        .bounds([
+            Interval::new(0.0, 0.5).unwrap(),
+            Interval::new(0.25, 0.5).unwrap(),
+        ])
+        .unwrap();
+    assert!(
+        part.max[0] <= 2.0 + EXACT && part.max[1] <= 2.0 + EXACT,
+        "{part:?}"
+    );
+    assert!(part.max[2] <= 0.5 + EXACT, "{part:?}");
+}

@@ -279,6 +279,30 @@ impl<'m> FaceDomain<'m> {
         self.bounds
     }
 
+    /// `true` when the (u, v) rectangle `uv`, in the translate the loops
+    /// are written in, holds no point of the face: no loop passes within
+    /// the polygons' chord deviation of it and its centre lies outside.
+    /// `false` otherwise, so a rectangle the loops graze is kept.
+    pub fn misses(&self, uv: [Interval; 2]) -> bool {
+        let [u, v] = uv;
+        for polygon in &self.polygons {
+            let d = polygon.chord_deviation();
+            let points = polygon.points();
+            for (i, p) in points.iter().enumerate() {
+                let q = points[(i + 1) % points.len()];
+                let (lo, hi) = (
+                    Point2::new(p.x.min(q.x) - d, p.y.min(q.y) - d),
+                    Point2::new(p.x.max(q.x) + d, p.y.max(q.y) + d),
+                );
+                if lo.x <= u.hi() && hi.x >= u.lo() && lo.y <= v.hi() && hi.y >= v.lo() {
+                    return false;
+                }
+            }
+        }
+        let centre = Point2::new(0.5 * (u.lo() + u.hi()), 0.5 * (v.lo() + v.hi()));
+        self.side(centre).0 == Side::Outside
+    }
+
     /// The edges of the loops, each once, in loop order.
     pub fn edges(&self) -> &[EdgeId] {
         &self.edges

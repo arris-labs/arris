@@ -226,6 +226,69 @@ impl NurbsSurface {
         (i < self.counts[0] && j < self.counts[1]).then(|| self.points[i * self.counts[1] + j])
     }
 
+    /// The control points of the patch over `uv`, clamped there in each
+    /// direction `uv` cuts short of the whole domain (a periodic direction
+    /// takes any range of at most its period): their hull holds the
+    /// surface over the rectangle, and holds it tighter than the hull of
+    /// the spans the rectangle touches. `None` when a direction cannot be
+    /// clipped (a range that is no range, or longer than the period), and
+    /// the caller keeps the spans' hull.
+    pub(crate) fn clipped_points(&self, uv: [Interval; 2]) -> Option<Vec<Point3>> {
+        let mut points = self.points.clone();
+        let mut weights = self.weights.clone();
+        let mut counts = self.counts;
+        for dir in 0..2 {
+            let domain = self.domain_of(dir);
+            let range = uv[dir];
+            if self.period[dir].is_none() && range.lo() <= domain.lo() && range.hi() >= domain.hi()
+            {
+                continue;
+            }
+            let (lo, hi) = match self.period[dir] {
+                Some(_) => (range.lo(), range.hi()),
+                None => (range.lo().max(domain.lo()), range.hi().min(domain.hi())),
+            };
+            let [n, m] = counts;
+            let (lines, length, at): (usize, usize, &dyn Fn(usize, usize) -> usize) = if dir == 0 {
+                (m, n, &|line, k| k * m + line)
+            } else {
+                (n, m, &|line, k| line * m + k)
+            };
+            let mut clipped = Vec::with_capacity(lines);
+            for line in 0..lines {
+                let spline = super::spline::Spline::<3>::new(
+                    self.degree[dir],
+                    self.knots[dir].clone(),
+                    (0..length).map(|k| points[at(line, k)]).collect(),
+                    (0..length).map(|k| weights[at(line, k)]).collect(),
+                )
+                .ok()?;
+                clipped.push(spline.segment(lo, hi).ok()?);
+            }
+            let kept = clipped.first()?.points().len();
+            let mut next_points = vec![Point3::origin(); kept * lines];
+            let mut next_weights = vec![1.0; kept * lines];
+            for (line, spline) in clipped.iter().enumerate() {
+                if spline.points().len() != kept {
+                    return None;
+                }
+                for k in 0..kept {
+                    let slot = if dir == 0 {
+                        k * m + line
+                    } else {
+                        line * kept + k
+                    };
+                    next_points[slot] = spline.points()[k];
+                    next_weights[slot] = spline.weights()[k];
+                }
+            }
+            points = next_points;
+            weights = next_weights;
+            counts[dir] = kept;
+        }
+        Some(points)
+    }
+
     /// `[u, v]` domains.
     pub fn domain(&self) -> [Interval; 2] {
         [self.domain_of(0), self.domain_of(1)]

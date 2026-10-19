@@ -97,10 +97,15 @@ robustness or bound has to be established here.
   holding the folded one to `FacesIntersect`. S5 samples a traced
   branch's own points instead of fitting it (`trace_section`): CTC-02's
   box cut 256 s to 176 s. The `FacePair` exemptions stay (deltas).
-- [ ] Step 4 **[2]** — **B1 with NURBS faces on both shells.** Nesting by
-  the ray fire over NURBS faces; `regression/nurbs-cylinder-slab-cut-two-lumps`
-  moves to `boolean/` with its dump, and `twin_prop`'s `Lumps` arm is
-  lifted.
+- [x] Step 4 **[2]** — **B1 with NURBS faces on both shells.** The
+  nesting was never the ray fire: the meeting test refused pairs whose
+  face boxes were the control hull of every span touched, so two lumps on
+  one B-spline wall overlapped. `Surface::bounds` and `Curve::bounds` clip
+  a NURBS to the range (the clipped control points), and a pair the tracer
+  refuses is apart when 256 clipped boxes a face (`bounds_pieces`) are
+  clear of each other. `regression/nurbs-cylinder-slab-cut-two-lumps` is
+  `boolean/` with its dump. `twin_prop`'s `Lumps` arm is narrowed, not
+  lifted (open question).
 - [ ] Step 5 **[3]** — **The section at the tangent points of a
   Steinmetz pair.** The marcher and ADR-0061's tracer account for the
   singular points where two walls touch, found before a continuum or a
@@ -174,3 +179,13 @@ robustness or bound has to be established here.
   `FacePair` exemptions of `twin_prop` and `loft_prop` stay, and step 3
   took the sampling saving and the true-positive fixtures only. What would
   lift them is the intersector deciding shared-edge neighbours: BACKLOG.
+- Open (human, step 4): `twin_prop`'s `Lumps` arm (acceptance: "no
+  `Lumps` exemption") stays, narrowed. With the boxes clipped and the
+  refused pairs quartered where they overlap, the box × cylinder cases
+  and most quadric ones decide; 2 of 8 quadric shards at 16 cases still
+  leave a pair whose (u, v) regions coincide on one twin surface to
+  1e-5 — two lumps that touch along a curve or overlap, which B1 may
+  rightly refuse. Whether those are the twin's fault (a boolean that
+  returns touching shells) or B1's is undiagnosed; it wants a shrunk
+  `regression/` fixture, BACKLOG. Lifting the arm, or accepting it as the
+  tolerated refusal, is the human's.
