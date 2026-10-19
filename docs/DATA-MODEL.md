@@ -308,7 +308,7 @@ a torus before the rest) and swapped back:
 | plane–NURBS | the critical heights of the patches (above) |
 | cone–cone | coaxial: in each meridian plane the rulings are lines, parallel only when the angles are equal, then a family at `|Δζ| sin α`; off a common axis `Unsupported` |
 | elliptic cylinder–elliptic cylinder | parallel axes: the section ellipses' pairs, each a family along the axis; otherwise `Unsupported` |
-| cone–elliptic cylinder, NURBS–NURBS, NURBS–any but a plane or a sphere | `Unsupported` |
+| cone–elliptic cylinder, NURBS–NURBS, NURBS–any but a plane or a sphere | `Unsupported` (the extrema; the intersector's NURBS–NURBS arm marches, below) |
 
 Where the base meets the other surface (`d = 0`) the offset has no
 direction `n̂`: if the base lies along the surface (a line in a plane, a
@@ -429,8 +429,8 @@ table (ADR-0014), and a torus against any of them in a section traced in
 the torus's own parameter plane (below the torus tracer, ADR-0019), and a
 `Nurbs` surface against any of the six analytic kinds in a section traced
 in the `Nurbs` surface's own parameters (below the NURBS tracer,
-ADR-0061); `Nurbs`–`Nurbs` is an explicit `Unsupported` arm, and no
-other pair of kinds is (a partial coincidence on a shared axis, below, is
+ADR-0061), and a `Nurbs` surface against a `Nurbs` surface in the marched section
+(ADR-0068); no pair of kinds is `Unsupported` (a partial coincidence on a shared axis, below, is
 refused by pose, not by kind; a `Nurbs` face flush with the other surface
 over an area is refused as `Unsupported`). Every curve and every point
 of a `Meets` carries its `MeetKind` (ADR-0018): a curve is a `Crossing`
@@ -482,7 +482,7 @@ section's parameter — up to four.
 | A cylinder or an elliptic cylinder with other axes; a cone, a sphere, in any pose | the fitted branches of the traced section |
 | A torus, in any pose | the fitted branches of the section traced in the torus's parameter plane (ADR-0019); the two share no axis, an elliptic cylinder being no surface of revolution |
 | A NURBS surface against a plane, a cylinder, an elliptic cylinder, a cone, a sphere or a torus | the fitted branches of the section traced in the NURBS surface's parameters (ADR-0061); isolines of the NURBS surface on the other surface and a collapsed row's point come back exact |
-| A NURBS surface against a NURBS surface | `Unsupported` |
+| A NURBS surface against a NURBS surface | the marched section (ADR-0068): seeds certified by Bernstein isolation, the walk between them in both surfaces' (u, v), the curve and both pcurves fitted under `SECTION_FIT_FRACTION`; isolines and poles come back exact, a walk that does not visit every seed is `SectionFault::UnvisitedSeed`, a patch flush with the other surface `Unsupported` |
 
 **The meridian arm.** Two surfaces of revolution about one axis meet
 where their meridians meet in a plane through the axis. In that plane,
@@ -871,9 +871,9 @@ where it touches every plane through it, then the one nearest the line —
 a curve in one plane is the coplanar case, the other plane's hits the
 answer, and a curve in both is `Coincident`. A crossing of the line is
 transversal to one of the two planes unless the curve runs along the
-line there, so it is found to rounding. `Nurbs`–`Nurbs` is `Unsupported`:
-where two fitted curves of one pair meet is the tracer's `points`
-(§Curves, below), and anything else a marcher's (the NURBS cycle's).
+line there, so it is found to rounding. `Nurbs`–`Nurbs` is the distance's critical pairs per span pair, as the
+conic–NURBS arm above; where two fitted curves of one pair meet is also
+the tracer's `points` (§Curves, below).
 `curves_coincide(a, b, tol) -> Result<bool, GeomError>` is that
 `Coincident` verdict alone, by the same arms, so it answers every pair
 the intersector answers. Two `Nurbs` curves coincide when they are

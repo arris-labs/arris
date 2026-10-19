@@ -65,8 +65,9 @@ into its version (ADR-0027).
 - `cut`, `fuse`, `common`, their multi-tool forms, `split` and `section`
   now take a body with NURBS faces against analytic ones, which covers most
   imported B-spline parts: the box cuts and drills of the real parts that
-  were refused as unsupported now run. Two NURBS faces against each other,
-  and a NURBS face flush with another face are still refused by name.
+  were refused as unsupported now run. A NURBS face flush with another
+  face is still refused by name, and two NURBS faces against each other
+  now reach the intersector but are not yet vetted in a boolean.
 - `intersect_surfaces` now meets a NURBS surface with a plane, a cylinder,
   an elliptic cylinder, a cone, a sphere or a torus, in either order: the
   section comes back as fitted curves (closed loops periodic), ending
@@ -83,7 +84,9 @@ into its version (ADR-0027).
   turning points) is refused by name, never returned partial.
   `SectionBranch::uv_on` and `uv2` give a branch's parameters on either
   surface, and `fit_branch_pcurve` fits its pcurve on one. A NURBS surface
-  flush with another over an area is still refused as unsupported.
+  flush with another over an area is still refused as unsupported, and
+  about one pair in twenty of cones and spheres in general poses is
+  refused as crowded.
 - `intersect_curve_surface` now meets a circle or an ellipse with a NURBS
   surface, as it already did a line: crossings, touches within the
   tolerance, a pole, and `Coincident` for a conic lying on the surface.

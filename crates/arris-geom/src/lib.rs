@@ -24,7 +24,7 @@ mod bernstein2;
     not(test),
     expect(
         dead_code,
-        reason = "the intersectors dispatch the marcher from plans/nurbs-nurbs-section step 7 on"
+        reason = "some items are read by the module's tests only, the intersectors do not reach them"
     )
 )]
 mod bernstein_n;
@@ -47,7 +47,7 @@ mod loft;
     not(test),
     expect(
         dead_code,
-        reason = "the intersectors dispatch the marcher from plans/nurbs-nurbs-section step 7 on"
+        reason = "some items are read by the module's tests only, the intersectors do not reach them"
     )
 )]
 mod march;

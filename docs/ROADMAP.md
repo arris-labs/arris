@@ -18,7 +18,7 @@ done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
 ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
-then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; loft 10-17, ADR-0065; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; loft 10-17, ADR-0065; the NURBS × NURBS intersectors 10-19, ADR-0068; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -835,7 +835,15 @@ built in this one.*
   operand fixtures, `loft_prop` and the Python binding.*
 - NURBS against NURBS: a marcher with explicit seam handling,
   `intersect_curves` for two NURBS curves, and the boolean and blends the
-  real parts ask of them.
+  real parts ask of them. *The intersectors done 2026-10-19 (ADR-0068),
+  `nurbs-nurbs-section`: the section of two NURBS surfaces marched
+  between seeds certified by Bernstein isolation, a NURBS curve against a
+  NURBS surface and two NURBS curves, held to the twins of every analytic
+  pair and to `GeomAPI_IntSS`, `IntCS` and `ExtremaCurveCurve`; a cone
+  twin against a square plane and some sphere × cylinder poses are
+  refused `CrowdedSingularity`. The pave and booleans on two NURBS faces,
+  S5 on them and the walked stripe between them are the next plan,
+  `nurbs-nurbs-operands`.*
 - The script corpus (renamed from the DIY part corpus; ADR-0067): 15 hobby
   parts and 3 CAE parts as Python scripts on the raw binding, committed
   under `crates/arris-py/corpus/` with each stage checked against Open

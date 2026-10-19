@@ -199,7 +199,7 @@ fn posed(origin: [f64; 3], z: [f64; 3], x: [f64; 3]) -> Frame {
 /// sphere and cylinder in general pose are refused too, its cause not
 /// found.
 #[test]
-#[ignore = "plans/nurbs-nurbs-section: the marcher refuses these as crowded"]
+#[ignore = "the marcher refuses these as crowded (docs/BACKLOG.md, CrowdedSingularity on the twins of a cone and a plane)"]
 fn the_twins_of_a_cone_and_a_plane_and_of_a_sphere_and_a_cylinder_are_met() {
     let pairs = [
         (
