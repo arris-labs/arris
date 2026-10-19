@@ -34,6 +34,22 @@ command -v cargo-nextest >/dev/null || {
 staged=$(git diff --cached --name-only --diff-filter=ACMRD)
 [ -n "$staged" ] || exit 0
 
+# One gate at a time per checkout. A second one, often left by a session
+# that ran out of context, shares `target/` and the machine's memory and
+# finishes neither sooner; it fails at once naming the first. The lock is
+# held by every process the gate starts, so it frees when the last exits.
+if command -v flock >/dev/null; then
+  lock=$(git rev-parse --git-path arris-gate.lock)
+  exec 9>>"$lock"
+  if ! flock -n 9; then
+    holder=$(cat "$lock" 2>/dev/null || true)
+    echo "pre-commit: a gate is already running here (pid ${holder:-?})." >&2
+    echo "Wait for it with \`flock $lock true\`, or stop it with tools/stop-gate.sh." >&2
+    exit 1
+  fi
+  echo $$ >"$lock"
+fi
+
 # Every staged path is prose.
 prose_only() {
   ! grep -qvE '(\.md$|^\.agents/)' <<<"$staged"
