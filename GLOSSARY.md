@@ -213,6 +213,11 @@ fixture (`differential::run`).
 Random operands in random poses held to an identity (volume additivity,
 round trip, commutativity); a hand-picked case is a fixture instead.
 
+**Cost** (of a property):
+The divisor `c` of a property whose single case costs minutes: it runs the
+tier's case count over `c` (`prop_shards!`'s `/ c`), so one count holds
+every tier to its wall clock.
+
 **Twin property**:
 The property that geometry given as its exact NURBS twin gives a result
 agreeing with the analytic one.

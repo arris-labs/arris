@@ -218,9 +218,10 @@ prop_shards! {
     /// A frustum, a ball, a ring or an elliptic prism and a box or a
     /// cylinder through its interior: the cone, the sphere, the torus,
     /// the elliptic cylinder, the cylinder and the plane each against the
-    /// others, one operand a NURBS twin.
+    /// others, one operand a NURBS twin. A quarter of the cases: 3,000
+    /// CPU-s at 256 cases on 2026-10-21 (ADR-0024's 2026-10-21 amendment).
     quadric_twins_agree_with_the_analytic_boolean
-        [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7]
+        [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7] / 4
         ((pair, pick)) = (prop::body::quadric_pair(), pick()) => {
             let mut m = Model::default();
             let (a, b) = pair.build(&mut m).map_err(fail)?;
@@ -230,9 +231,10 @@ prop_shards! {
 }
 
 prop_shards! {
-    /// A box and a cylinder through it: planes against a cylinder.
+    /// A box and a cylinder through it: planes against a cylinder. Half
+    /// the cases: 1,500 CPU-s at 256 cases on 2026-10-21.
     overlapping_twins_agree_with_the_analytic_boolean
-        [shard_0 shard_1 shard_2 shard_3]
+        [shard_0 shard_1 shard_2 shard_3] / 2
         ((pair, pick)) = (prop::body::overlapping_pair(), pick()) => {
             let mut m = Model::default();
             let (a, b) = pair.build(&mut m).map_err(fail)?;
@@ -242,9 +244,10 @@ prop_shards! {
 }
 
 prop_shards! {
-    /// Two cylinders on crossing axes: a cylinder against a cylinder.
+    /// Two cylinders on crossing axes: a cylinder against a cylinder. A
+    /// quarter of the cases: 2,300 CPU-s at 256 cases on 2026-10-21.
     crossing_twins_agree_with_the_analytic_boolean
-        [shard_0 shard_1 shard_2 shard_3]
+        [shard_0 shard_1 shard_2 shard_3] / 4
         ((pair, pick)) = (prop::body::crossing_pair(), pick()) => {
             let mut m = Model::default();
             let (a, b) = pair.build(&mut m).map_err(fail)?;
@@ -533,9 +536,12 @@ prop_shards! {
     /// case of 8: S5 on two long NURBS neighbours costs minutes a case
     /// (BACKLOG), and at one in two the eight shards took 56 to 102 min at
     /// 256 cases, past CI's job limit at 1000. Both twinned is held by the
-    /// box and ruling rows at one in two and by the walked fixtures.
+    /// box and ruling rows at one in two and by the walked fixtures. At one
+    /// in eight the shards still took 41 to 64 min at 256 cases (2026-10-21,
+    /// 25,900 CPU-s), so the property runs a 32nd of the cases until S5 on
+    /// long NURBS neighbours is fast.
     meridian_rows_blend_as_their_twins
-        [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7]
+        [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7] / 32
         (case) = blend_twin((turned(), 0usize..4).prop_map(|(t, pick)| {
             let k = t.blended[pick % t.blended.len()];
             Part::Turned(t, k)

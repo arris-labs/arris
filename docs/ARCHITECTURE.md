@@ -2075,8 +2075,10 @@ B-Rep).
   `workflow_dispatch`, with `ARRIS_ORACLE_CACHE=off` throughout. Its
   `seed` job draws one seed per run, `sha256` of the UTC date, printed as
   `ARRIS_PROPTEST_SEED=…`; a dispatch may replay a given one. On that
-  seed it runs every property at 5000 cases, five times CI's, in six
-  jobs split by nextest filterset along the suite's per-test timings. It also runs the differential at 1000 recipes with the
+  seed it runs every property at 5000 cases, five times CI's (a costly
+  property over its cost), in seventeen jobs split by nextest filterset
+  along the suite's per-test timings, two `-rest` jobs taking what the
+  others do not name. It also runs the differential at 1000 recipes with the
   corpus's ignored tests, the corpus benchmark against the last night's
   report, each fuzz target for 30 minutes from a corpus kept in the
   Actions cache, and `tools/real-parts.sh` with the NIST archives cached
@@ -2223,7 +2225,10 @@ B-Rep).
   which does not take `k`: raising a property's shard count shortens every
   existing shard's stream to a prefix of what it was rather than re-rolling
   the corpus, and `cases_per_shard` rounds up, so `k` shards run at least
-  the configured cases and never fewer. A failure names its shard and
+  the configured cases and never fewer. A property whose case costs
+  minutes carries a cost `c` (`/ c` after its shard list) and runs the
+  configured cases over `c`, at least one a shard (ADR-0024's 2026-10-21
+  amendment). A failure names its shard and
   prints the base seed and total that reproduce the whole run. It is a
   dev-dependency of the workspace's crates and never of a consumer. For
   the crates below it (`math`, `geom`, `topo`) that dev-dependency is a

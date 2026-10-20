@@ -246,3 +246,27 @@ The hook row of §3's table (256) and the paragraph "The hook keeps 256" are
 superseded by ADR-0032: the hook runs a path-scoped `fast` profile at 32
 cases, and 256 is run once per plan, at `/retire-plan`. The reasoning about
 fixed seeds and nightly depth stands.
+
+## Amendment (2026-10-21, C10's close)
+
+§3 gives every property one count per tier. C10's twin and sweep
+properties broke that: at 256 cases on the development machine
+`meridian_rows_blend_as_their_twins` took 25,900 CPU-seconds over eight
+shards of 41 to 64 minutes, the two sweep properties that build and check
+or round-trip a body 10,400 and 9,600, the twin booleans 1,500 to 3,000,
+against 473 for `blend_prop`, the costliest before them. Scaled by the
+runner's measured 1.6 CPU-seconds per local one, one `meridian_rows` shard
+would take about 5.7 hours at CI's 1000 cases and 17 at the nightly's
+5000: no split of the matrix fits a test longer than a job may run, and
+CI's `test` partitions, at up to 5 h 28 min before C10, would pass the six
+hours.
+
+**A property carries a cost.** `prop_shards!` takes `/ c` after the shard
+list and the property runs the tier's count over `c`, rounded up, at least
+one case a shard. The count stays one number per tier; the cost is
+written at the property with its measurement, and is chosen so the
+property costs about what the costliest uncosted one does. The cost is
+the case's expense, not a judgement of the property's worth: the fix that
+makes a case cheap (here S5 on two long NURBS neighbours) lowers it. Depth
+still comes from seeds adding up, at a smaller step a night.
+

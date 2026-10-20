@@ -15,7 +15,9 @@
 //! never fewer, each from its own [`shard_seed`]; the derivation ignores
 //! `k`, so raising a property's shard count shortens every existing
 //! shard's stream to a prefix of what it was rather than re-rolling the
-//! corpus.
+//! corpus. A property whose single case costs minutes also carries a
+//! *cost* `c`: it runs [`cases`] over `c`, so one count can hold the whole
+//! suite to a tier's wall clock (ADR-0024's 2026-10-21 amendment).
 //!
 //! Regressions are not persisted by proptest: a failure becomes a fixture
 //! under `tests/fixtures/` with the seed in its commit body
@@ -216,8 +218,27 @@ pub fn shard_seed(base: &[u8; 32], shard: u32) -> [u8; 32] {
 /// assert_eq!(cases_per_shard(1), cases());
 /// ```
 pub fn cases_per_shard(shards: u32) -> u32 {
+    cases_per_shard_at(shards, 1)
+}
+
+/// The cases one of `shards` shards of a property of cost `cost` runs:
+/// [`cases`] over `cost`, then over `shards`, each rounded up.
+///
+/// Guarantees: `shards * cases_per_shard_at(shards, cost) >=
+/// cases().div_ceil(cost)`, and every shard runs at least one case.
+/// `cost` 1 is [`cases_per_shard`]. Panics when `shards` or `cost` is
+/// zero.
+///
+/// ```
+/// use arris_debug::prop::{cases, cases_per_shard_at};
+///
+/// assert!(8 * cases_per_shard_at(8, 32) >= cases().div_ceil(32));
+/// assert!(cases_per_shard_at(8, 1_000_000) >= 1);
+/// ```
+pub fn cases_per_shard_at(shards: u32, cost: u32) -> u32 {
     assert!(shards > 0, "a property has at least one shard");
-    cases().div_ceil(shards)
+    assert!(cost > 0, "a property's cost is at least one");
+    cases().div_ceil(cost).div_ceil(shards)
 }
 
 /// Runs `test` over shard `shard` of `shards`: [`cases_per_shard`]
@@ -234,8 +255,19 @@ where
     S::Value: Debug,
     F: Fn(S::Value) -> Result<(), TestCaseError>,
 {
+    check_shard_at(shard, shards, 1, strategy, test);
+}
+
+/// [`check_shard`] for a property of cost `cost`: [`cases_per_shard_at`]
+/// values instead of [`cases_per_shard`].
+pub fn check_shard_at<S, F>(shard: u32, shards: u32, cost: u32, strategy: S, test: F)
+where
+    S: Strategy,
+    S::Value: Debug,
+    F: Fn(S::Value) -> Result<(), TestCaseError>,
+{
     let base = seed();
-    if let Err(message) = try_check_shard(&base, shard, shards, strategy, test) {
+    if let Err(message) = try_check_shard_at(&base, shard, shards, cost, strategy, test) {
         panic!("{message}");
     }
 }
@@ -254,11 +286,28 @@ where
     S::Value: Debug,
     F: Fn(S::Value) -> Result<(), TestCaseError>,
 {
+    try_check_shard_at(base, shard, shards, 1, strategy, test)
+}
+
+/// [`try_check_shard`] for a property of cost `cost`.
+pub fn try_check_shard_at<S, F>(
+    base: &[u8; 32],
+    shard: u32,
+    shards: u32,
+    cost: u32,
+    strategy: S,
+    test: F,
+) -> Result<(), String>
+where
+    S: Strategy,
+    S::Value: Debug,
+    F: Fn(S::Value) -> Result<(), TestCaseError>,
+{
     assert!(
         shard < shards,
         "shard {shard} is not one of {shards} shards"
     );
-    let mut runner = runner_of(&shard_seed(base, shard), cases_per_shard(shards));
+    let mut runner = runner_of(&shard_seed(base, shard), cases_per_shard_at(shards, cost));
     match runner.run(&strategy, test) {
         Ok(()) => Ok(()),
         Err(TestError::Fail(reason, value)) => Err(format!(
@@ -275,7 +324,9 @@ where
 /// Writes one `#[test]` per shard of a property, over a body given once.
 ///
 /// Guarantees: the `k` tests together run at least
-/// [`prop::cases`](crate::prop::cases) cases of the strategy, each shard from
+/// [`prop::cases`](crate::prop::cases) cases of the strategy — over `c`,
+/// rounded up, when the shard list is followed by `/ c`, the property's
+/// cost ([`cases_per_shard_at`](crate::prop::cases_per_shard_at)) — each shard from
 /// its own [`shard_seed`](crate::prop::shard_seed) of
 /// [`seed`](crate::prop::seed), and `k` is
 /// the length of the list of shard names. The tests go in a module named
@@ -301,6 +352,16 @@ where
 ///             Ok(())
 ///         }
 /// }
+///
+/// arris_debug::prop_shards! {
+///     /// A property whose cases cost minutes: two shards of a quarter
+///     /// of the cases.
+///     a_costly_property [shard_0 shard_1] / 4
+///         (v) = prop::finite_f64(0.0..=1.0) => {
+///             prop_assert!(v <= 1.0);
+///             Ok(())
+///         }
+/// }
 /// ```
 #[macro_export]
 macro_rules! prop_shards {
@@ -308,30 +369,39 @@ macro_rules! prop_shards {
         $(#[$meta:meta])*
         $name:ident [$($shard:ident)+] ($arg:pat_param) = $strategy:expr => $body:block
     ) => {
+        $crate::prop_shards! {
+            $(#[$meta])*
+            $name [$($shard)+] / 1 ($arg) = $strategy => $body
+        }
+    };
+    (
+        $(#[$meta:meta])*
+        $name:ident [$($shard:ident)+] / $cost:literal ($arg:pat_param) = $strategy:expr => $body:block
+    ) => {
         $(#[$meta])*
         mod $name {
             #[allow(unused_imports)]
             use super::*;
 
             $crate::prop_shards!(
-                @shards (0u32 $(+ $crate::prop_shards!(@one $shard))+), 0u32,
+                @shards (0u32 $(+ $crate::prop_shards!(@one $shard))+), 0u32, $cost,
                 [$($shard)+], ($arg) = $strategy => $body
             );
         }
     };
     (@one $shard:ident) => { 1u32 };
-    (@shards $shards:expr, $index:expr, [], ($arg:pat_param) = $strategy:expr => $body:block) => {};
+    (@shards $shards:expr, $index:expr, $cost:literal, [], ($arg:pat_param) = $strategy:expr => $body:block) => {};
     (
-        @shards $shards:expr, $index:expr, [$first:ident $($rest:ident)*],
+        @shards $shards:expr, $index:expr, $cost:literal, [$first:ident $($rest:ident)*],
         ($arg:pat_param) = $strategy:expr => $body:block
     ) => {
         #[test]
         fn $first() {
-            $crate::prop::check_shard($index, $shards, $strategy, |$arg| $body);
+            $crate::prop::check_shard_at($index, $shards, $cost, $strategy, |$arg| $body);
         }
 
         $crate::prop_shards!(
-            @shards $shards, $index + 1u32, [$($rest)*], ($arg) = $strategy => $body
+            @shards $shards, $index + 1u32, $cost, [$($rest)*], ($arg) = $strategy => $body
         );
     };
 }
@@ -538,6 +608,18 @@ mod tests {
         assert_eq!(cases_per_shard(1), cases());
         for shards in 1..=64u32 {
             assert!(shards * cases_per_shard(shards) >= cases());
+        }
+    }
+
+    #[test]
+    fn a_cost_divides_the_cases_and_leaves_every_shard_one() {
+        for cost in [1u32, 2, 3, 16, 32, 1_000_000] {
+            assert_eq!(cases_per_shard_at(1, cost), cases().div_ceil(cost));
+            for shards in 1..=64u32 {
+                let per = cases_per_shard_at(shards, cost);
+                assert!(per >= 1);
+                assert!(shards * per >= cases().div_ceil(cost));
+            }
         }
     }
 

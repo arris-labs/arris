@@ -212,9 +212,10 @@ prop_shards! {
 
 prop_shards! {
     /// Every sweep over a random G1 path is checker-green or ends on a
-    /// named refusal.
+    /// named refusal. A 16th of the cases: 9,600 CPU-s at 256 cases on
+    /// 2026-10-21 (ADR-0024's 2026-10-21 amendment).
     the_checker_is_green_or_the_sweep_is_a_named_refusal
-        [shard_0 shard_1 shard_2 shard_3]
+        [shard_0 shard_1 shard_2 shard_3] / 16
         ((pieces, section)) = (
             proptest::collection::vec(g1_piece(), 1..=3),
             safe_section(),
@@ -399,9 +400,10 @@ prop_shards! {
 
 prop_shards! {
     /// A swept body round-trips through STEP: passes the checker and
-    /// keeps its volume and counts.
+    /// keeps its volume and counts. A 16th of the cases: 10,400 CPU-s at
+    /// 256 cases on 2026-10-21 (ADR-0024's 2026-10-21 amendment).
     a_swept_body_round_trips_through_step
-        [shard_0 shard_1 shard_2 shard_3]
+        [shard_0 shard_1 shard_2 shard_3] / 16
         ((pieces, section)) = (
             proptest::collection::vec(g1_piece(), 1..=3),
             safe_section(),

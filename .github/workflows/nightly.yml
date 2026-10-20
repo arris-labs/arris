@@ -40,15 +40,17 @@ jobs:
           echo "ARRIS_PROPTEST_SEED=\`$seed\`" >>"$GITHUB_STEP_SUMMARY"
           echo "seed=$seed" >>"$GITHUB_OUTPUT"
 
-  # The property tier at 5000 cases, five times CI's (ADR-0024 §3). At
-  # 5000 the suite is 99,600 CPU-seconds on the reference machine, and a
-  # 4-core runner takes about 0.385 s per such CPU-second (CI's `test`
-  # job: 2 h 21 min for the 22,300 of 1000 cases), so one job would take
-  # about ten and a half hours. The matrix splits it by nextest filterset
-  # into six jobs of at most about 2 h 20 min each, which leaves more than
-  # twice the margin under the runner's six hours for a slower host.
-  # `boolean_prop` is 72% of the suite, so its three costliest properties
-  # get a job each (plans/measuring-harness step 6's timings).
+  # The property tier at 5000 cases, five times CI's (ADR-0024 §3). The
+  # matrix splits it by nextest filterset into jobs of at most about
+  # 38,000 runner CPU-seconds, about 2 h 40 min on a 4-core runner, which
+  # leaves twice the margin under the job's 350 minutes for a slower host.
+  # The figures are runner CPU-seconds at 5000 cases (2026-10-21): the
+  # night of 10-20 where it ran a test, else this machine's 256-case run
+  # scaled by the night's ratio for that binary (29 for a property), the
+  # costs of ADR-0024's 2026-10-21 amendment applied. The two `-rest` jobs
+  # take whatever the others do not name, so a new test always runs.
+  # `boolean_prop` is the split's first measurement (plans/measuring-harness
+  # step 6's timings).
   properties:
     name: properties (${{ matrix.name }})
     needs: seed
@@ -58,7 +60,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 19,000 CPU-seconds at 5000 cases.
+          # 19,000.
           - name: boolean-quartic
             filter: "binary(boolean_prop) and test(/^quartic_cylinders/)"
           # 16,200.
@@ -70,12 +72,45 @@ jobs:
           # 21,200.
           - name: boolean-rest
             filter: "binary(boolean_prop) and not test(/^(quartic_cylinders|quadric_operands|crossing_cylinders)/)"
-          # 13,200.
+          # 37,700.
+          - name: twin-boolean
+            filter: "binary_id(arris-ops::twin_prop) and test(/^(quadric|crossing)_twins/)"
+          # 35,900.
+          - name: twin-rest
+            filter: "binary_id(arris-ops::twin_prop) and not test(/^((quadric|crossing)_twins|meridian_rows)/)"
+          # 33,700.
+          - name: blend
+            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or binary_id(arris-ops::blend_prop)"
+          # 36,600.
+          - name: multi-tool-operands
+            filter: "binary_id(arris-ops::multi_tool_prop) and test(/^(a_multi_tool_result|the_geometry_is_independent)/)"
+          # 31,300.
+          - name: multi-tool-rest
+            filter: "binary_id(arris-ops::multi_tool_prop) and not test(/^(a_multi_tool_result|the_geometry_is_independent)/)"
+          # 34,000.
+          - name: sweep-bodies
+            filter: "binary_id(arris-ops::sweep_prop) and test(/^(a_swept_body|the_checker_is_green|an_exact_path)/)"
+          # 32,300.
+          - name: sweep-rest
+            filter: "(binary_id(arris-ops::sweep_prop) and not test(/^(a_swept_body|the_checker_is_green|an_exact_path)/)) or binary_id(arris-ops::cancel_prop)"
+          # 34,500.
+          - name: loft
+            filter: "binary_id(arris-ops::loft_prop) or binary_id(arris-ops::interference_prop)"
+          # 32,500.
+          - name: split
+            filter: "binary_id(arris-ops::split_prop) or binary_id(arris-ops::inertia)"
+          # 36,700.
           - name: ops-rest
-            filter: "package(arris-ops) and not binary(boolean_prop)"
-          # 14,600.
+            filter: "package(arris-ops) and not binary_id(/^arris-ops::(boolean_prop|twin_prop|blend_prop|multi_tool_prop|sweep_prop|cancel_prop|loft_prop|interference_prop|split_prop|inertia)$/)"
+          # 29,100.
+          - name: corpus
+            filter: "binary_id(arris::corpus) or binary_id(arris-geom::nurbs_nurbs_prop)"
+          # 34,900.
+          - name: io
+            filter: "package(arris-io) or binary_id(arris-debug::recipe)"
+          # 30,200.
           - name: workspace-rest
-            filter: "not package(arris-ops)"
+            filter: "not package(arris-ops) and not package(arris-io) and not binary_id(/^(arris::corpus|arris-geom::nurbs_nurbs_prop|arris-debug::recipe)$/)"
     env:
       ARRIS_PROPTEST_SEED: ${{ needs.seed.outputs.seed }}
       ARRIS_PROPTEST_CASES: "5000"

@@ -251,9 +251,11 @@ prop_shards! {
 prop_shards! {
     /// A multi-tool result is an operand of every other operation: a
     /// boolean, a blend, an offset and a shell each return a body clean at
-    /// `Full` or refuse by name.
+    /// `Full` or refuse by name. Half the cases: 1,300 CPU-s at 256 cases
+    /// on 2026-10-21, its nightly shards past 94 min (ADR-0024's
+    /// 2026-10-21 amendment).
     a_multi_tool_result_is_an_operand_of_every_operation
-        [shard_0 shard_1 shard_2 shard_3]
+        [shard_0 shard_1 shard_2 shard_3] / 2
         (case) = prop::body::multi_cut() => {
             let mut m = Model::default();
             let (target, tools) = case.build(&mut m).map_err(fail)?;
