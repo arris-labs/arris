@@ -9,7 +9,7 @@ boolean/ball-pole-drill-cut: 9748
 boolean/ball-pole-slice-cut: 4207
 boolean/ball-tilted-cylinder-common: 18536
 boolean/blind-hole: 22
-boolean/body-bytes-revolved-hole-loops-intersect: 79673
+boolean/body-bytes-revolved-hole-loops-intersect: 54044
 boolean/bolt-pattern-8: 40
 boolean/boss: 22
 boolean/boss-flush: 23
@@ -52,7 +52,7 @@ boolean/frame-cut: 50
 boolean/frustum-cross-drill-cut: 50178
 boolean/frustum-oblique-cut: 3180
 boolean/frustum-slot-cut: 1113
-boolean/frustum-stub-cut-then-fuse: 3572
+boolean/frustum-stub-cut-then-fuse: 3390
 boolean/grazing-ball-bar-cut: 17441
 boolean/lump-in-cavity: 36
 boolean/mirror-ball-corner-cut-fuse: 6085
@@ -70,6 +70,7 @@ boolean/nist-ctc-05-ap242-box-cut-nurbs-plane: 75257
 boolean/nist-ftc-06-face-arrangement-turn: 300
 boolean/nurbs-bicubic-dome-fuse: 191173
 boolean/nurbs-box-cavity-cut: 24
+boolean/nurbs-cylinder-slab-cut-two-lumps: 406
 boolean/nurbs-cylinder-tool-through-hole-cut: 406
 boolean/nurbs-plate-drilled-cut: 9416
 boolean/nurbs-plate-three-bores-cut-many: 28104
@@ -81,7 +82,7 @@ boolean/parallel-cylinders-common: 24
 boolean/parallel-cylinders-cut: 24
 boolean/parallel-cylinders-fuse: 24
 boolean/parallel-cylinders-seam: 23
-boolean/pin-at-disc-rim-common-fuse: 8072
+boolean/pin-at-disc-rim-common-fuse: 8039
 boolean/pin-in-bore-four-out: 24
 boolean/pin-in-bore-fuse: 20
 boolean/pin-in-bore-fuse-band-ends: 20
@@ -98,8 +99,8 @@ boolean/probe-through-hole-m: 26
 boolean/radial-pockets-cut-many: 78
 boolean/repeated-hole-cut-many: 66
 boolean/revolve-cylinder-cut-box-fuse-builder-fault: 29969
-boolean/revolve-extrude-fuse-cut-rounding-knots: 758682
-boolean/ring-corner-common: 94526
+boolean/revolve-extrude-fuse-cut-rounding-knots: 725147
+boolean/ring-corner-common: 94528
 boolean/ring-pin-cut: 25673
 boolean/ring-slab-common: 30538
 boolean/seam-a-tolerance-from-crossing-fuse: 6991
@@ -128,7 +129,7 @@ boolean/tee-unequal-common: 18822
 boolean/tee-unequal-cut: 18822
 boolean/tee-unequal-drill-cut: 13700
 boolean/tee-unequal-fuse: 18822
-boolean/tee-unequal-slot-cut: 4267
+boolean/tee-unequal-slot-cut: 4096
 boolean/three-bores-one-point-cut-many: 16145
 boolean/through-hole: 26
 boolean/tilted-cylinder-slot-cut: 1547
@@ -159,16 +160,21 @@ sweep/sweep-rect-s-bend: 94
 sweep/sweep-rect-s-bend-fillet: 60
 sweep/sweep-ring: 20
 sweep/sweep-spline-3d: 112136
+sweep/sweep-spline-cut-by-spline-sweep: 300732
 sweep/sweep-spline-handle: 100954
 sweep/sweep-spring: 420898
 sweep/sweep-spring-cut-split: 270128
 sweep/sweep-thread: 160466
+sweep/sweep-thread-chamfer: 275140
 blend/barrel-ridge-fan-chamfer: 154
 blend/barrel-ridge-fan-fillet: 596
 blend/bead-root-chamfer: 4
 blend/bead-root-fillet: 4
 blend/bicubic-top-box-edge-chamfer: 20578
 blend/bicubic-top-box-edge-fillet: 6399583
+blend/bicubic-top-fillet-common-spline-sweep: 240719
+blend/bicubic-top-fillet-cut-by-spline-sweep: 240719
+blend/bicubic-top-fillet-fuse-spline-sweep: 240719
 blend/boss-base-fillet: 2
 blend/boss-corner-fillet: 5
 blend/box-all-edges-fillet: 44
@@ -204,7 +210,7 @@ blend/d-notch-rim-chamfer: 2
 blend/d-notch-rim-fillet: 2
 blend/dome-rim-chamfer: 2
 blend/dome-rim-fillet: 2
-blend/drilled-torus-fillet: 206018
+blend/drilled-torus-fillet: 206002
 blend/fillet-into-a-leaning-step: 151
 blend/fillet-into-a-step: 5
 blend/fillet-into-a-turned-step: 2339
