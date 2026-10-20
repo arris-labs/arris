@@ -51,6 +51,17 @@ profiled and its hot spot fixed, for C10's accept on the fetched tier.
   exclusion had hidden the one-twin cases; `twin_prop` names the arm.
   Of 192 both-twin booleans: box × cylinder 64 agree, quadric pairs 56
   (3 `CrowdedSingularity`, 5 `Lumps`), crossing pairs 0. Step 5 is new.
+- **Step 5's finding**: the marcher's reach at a singular point was
+  12.4 at rest, not 5e-4: `NO_NORMAL` was a share of the nets' diagonal
+  squared, and a twin 600 long has none of its normals above it. It is
+  now a share of the surface's own speeds. Beyond that, ADR-0068's
+  marcher finds every singular point before it accounts for continua,
+  drops a seam's seed inside a reach (an arm crossing the seam), and
+  isolates the departures over the patches near the ball, halved to a
+  few reaches. ADR-0061's critical points halve by look-ahead: on such
+  a twin the scored halving left the touch uncertified. Timing is the
+  same (`meridian_rows` shards ±1 s). No ADR: within both designs, no
+  type changes.
 - **`arris-check`** (steps 3–4): S5 reads a NURBS pair's section from
   `trace_section`, the traced branches' own points, never the fitted
   curves. Step 3's finding: the loft "false positive" was a real fold (the
@@ -106,12 +117,12 @@ robustness or bound has to be established here.
   clear of each other. `regression/nurbs-cylinder-slab-cut-two-lumps` is
   `boolean/` with its dump. `twin_prop`'s `Lumps` arm is narrowed, not
   lifted (open question).
-- [ ] Step 5 **[3]** — **The section at the tangent points of a
-  Steinmetz pair.** The marcher and ADR-0061's tracer account for the
-  singular points where two walls touch, found before a continuum or a
-  crowded box there is refused; the ignored
-  `the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`
-  passes and `twin_prop`'s section arm keeps `CrowdedSingularity` alone.
+- [x] Step 5 **[3]** — **The section at the tangent points of a
+  Steinmetz pair.** Found first, before continua and crowded boxes are
+  refused (deltas). `the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`
+  passes with either twinned and with both at rest; the tilted pair both
+  twinned is its own ignored test (open question). `twin_prop`'s section
+  arm keeps `CrowdedSingularity` alone (28 shards at 64 cases).
 - [ ] Step 6 **[3]** — **The pave on fitted pairs, against Open CASCADE.**
   Fixtures with oracle values: a spline sweep cut by a spline sweep
   crossing it, a smooth loft fused with a sweep, a loft through a loft
@@ -189,3 +200,15 @@ robustness or bound has to be established here.
   returns touching shells) or B1's is undiagnosed; it wants a shrunk
   `regression/` fixture, BACKLOG. Lifting the arm, or accepting it as the
   tolerated refusal, is the human's.
+- Settled (agent, step 5): the tilted Steinmetz pairs both twinned stay
+  refused (`TubeCircle` or `CrowdedSingularity`), held by the ignored
+  `the_tilted_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`,
+  with a backlog line. The loop condition vanishes on the product of the
+  two rulings through each tangent point, and on twins 600 long in a pose
+  that mixes the axes `bernstein_n` halves the short parameters to the
+  bottom and never the long ones. Each of four halving rules tried (a
+  value-weighted score, polynomials clear of their floor only, the
+  variable nearest exclusion, halving past a flat polynomial) broke a
+  `march_` test or tripled the survey's time. That is a change to the
+  isolation's design, not this step's. `twin_prop` drew none at 64
+  cases; if 256 does, its `TubeCircle` arm comes back for that pair alone.

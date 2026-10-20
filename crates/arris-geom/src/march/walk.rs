@@ -14,20 +14,25 @@
 //! **Singular points.** From each uncertified box a Gauss–Newton descent
 //! looks for the point where the surfaces meet and their normals are
 //! parallel. One within `tol.linear` of both and `tol.angular` of
-//! tangent is a singular point; one the descent does not find is looked
-//! for as a turning point the isolation could not certify, and a box
-//! that is neither is refused, [`SectionFault::CrowdedSingularity`].
-//! Around a singular point the section is not followed: its **reach** is
-//! one step of the walk at the surfaces' curvature there, and the points
-//! of the section at that distance from it, the zeros of the section
-//! with `|P₁ − S|² = ρ²` over the patch pairs near it, are its
-//! **departures**, certified by `crate::bernstein_n`. A branch ends at a
+//! tangent is a singular point. They are all found before any box is
+//! judged: a continuum is accounted for inside one's reach, a descent
+//! from it finding the point if none had, and a box no descent found one
+//! from is looked for as a turning point the isolation could not
+//! certify, or refused, [`SectionFault::CrowdedSingularity`]. Around a
+//! singular point the section is not followed: its **reach** is one step
+//! of the walk at the surfaces' curvature there, and the points of the
+//! section at that distance from it, the zeros of the section with
+//! `|P₁ − S|² = ρ²`, are its **departures**, certified by
+//! `crate::bernstein_n` over the pieces of the patches whose hulls meet
+//! its ball, halved to a few reaches across, so that a twin hundreds of
+//! reaches long is isolated on the ball's scale. A branch ends at a
 //! singular point through one of them, the stretch inside the reach the
 //! chord to the point, which is within the walk's sag of the section. A
 //! singular point with no departures is isolated: the surfaces touch
-//! there, or meet in a loop smaller than its reach. Turning points inside
-//! a reach are the singular point's and are dropped; a boundary seed
-//! inside one, or two reaches that meet, are refused as crowded.
+//! there, or meet in a loop smaller than its reach. Turning points and
+//! seam seeds inside a reach are the singular point's and are dropped;
+//! an edge's seed inside one, or two reaches that meet, are refused as
+//! crowded.
 //!
 //! **The walk.** A step predicts along the section's tangent `n₁ × n₂`,
 //! carried into each surface's `(u, v)` by its first fundamental form,
@@ -63,6 +68,7 @@ use crate::bernstein::Binomials;
 use crate::bernstein_n::{PolyN, Wrap, Zero, common_zeros, merge};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
+use crate::nurbs::Patch;
 use crate::spline_nurbs::{DAMPING, DAMPING_GROWTH, DAMPINGS, spline_nurbs};
 use crate::{
     BranchEnd, Curve, CurveSurfaceIntersection, GeomError, GeomKind, NurbsSurface,
@@ -101,6 +107,16 @@ const STEP_HALVINGS: usize = 40;
 /// never comes back to a seed reaches.
 const WALK_STEPS: usize = 1 << 20;
 
+/// How many reaches across a patch is halved to before a singular point's
+/// departures are isolated on it ([`near_ball`]): a ratio, small enough
+/// that the isolation's boxes are on the ball's scale, large enough that
+/// the ball meets a handful of pieces.
+const BALL_PIECES: f64 = 16.0;
+
+/// The most halvings [`near_ball`] takes a patch through: a structural
+/// count, past the `2⁻⁶⁴` of a patch any reach is.
+const BALL_HALVINGS: usize = 128;
+
 /// Gauss–Newton steps of the descent onto a singular point.
 const SINGULAR_STEPS: usize = 64;
 
@@ -110,10 +126,12 @@ const SINGULAR_STEPS: usize = 64;
 /// point are not centred on it.
 const ABSORB_SLACK: f64 = 1e-4;
 
-/// The area element, as a share of the squared diagonal of the box of
-/// both nets, under which a surface has no normal: at a pole the row of
-/// control points collapses and `∂u × ∂v` goes to rounding, not to the
-/// curvature the formula would read from it.
+/// The area element, as a share of the product of the surface's own
+/// speeds along `u` and `v` ([`speeds`]), under which it has no normal:
+/// at a pole the row of control points collapses and `∂u × ∂v` goes to
+/// rounding, not to the curvature the formula would read from it. Of the
+/// surface's own speeds and not of the nets' size, which a long cylinder
+/// a thousand radii tall would put above every normal it has.
 const NO_NORMAL: f64 = 1e-4;
 
 /// A walked section of two NURBS surfaces: its branches and its singular
@@ -306,49 +324,63 @@ pub(crate) fn march(
     }
 
     let found = loop_seeds(one, two, meter)?;
-    // A continuum is accounted for where its middle lies on an exact
-    // isocurve or inside a singular point's reach; its box is wider than
-    // either, so the corners say nothing. A tube circle is neither.
-    let unaccounted_continua = found.continua.iter().any(|z| {
+    let absorbed = |singular: &[Singular], z: &Zero<4>| {
         let p = marcher.surfaces[0].eval(z.at[0], z.at[1]).point;
-        let on_isocurve = isocurves
-            .iter()
-            .any(|c| c.project(p).is_ok_and(|proj| proj.distance <= tol.linear));
-        let at_singular = singular.iter().any(|s| (s.point - p).norm() <= s.reach);
-        !on_isocurve && !at_singular
-    });
-    if unaccounted_continua {
-        return Err(refused(SectionFault::TubeCircle));
-    }
-
-    let mut passed: Vec<[f64; 4]> = Vec::new();
-    for z in found.seeds {
-        if z.certified {
-            passed.push(z.at);
-            continue;
-        }
-        meter.tick()?;
-        let p = marcher.surfaces[0].eval(z.at[0], z.at[1]).point;
-        let absorbed = singular.iter().any(|s| {
+        singular.iter().any(|s| {
             (s.point - p).norm() <= s.reach
                 || (0..4).all(|k| {
                     let slack = ABSORB_SLACK * marcher.domain[k].length().max(1.0);
                     z.lo[k] - slack <= s.at[k] && s.at[k] <= z.hi[k] + slack
                 })
-        });
-        if absorbed {
+        })
+    };
+    // The singular points first, from every uncertified box, so that a
+    // continuum or a box about one is the point's before it is judged.
+    let mut descended = vec![false; found.seeds.len()];
+    for (z, done) in found.seeds.iter().zip(&mut descended) {
+        if z.certified || absorbed(&singular, z) {
             continue;
         }
+        meter.tick()?;
         if let Some(at) = marcher.singular(z.at, meter)? {
-            let point = marcher.surfaces[0].eval(at[0], at[1]).point;
-            if singular
-                .iter()
-                .all(|s| (s.point - point).norm() > tol.linear)
-            {
-                let reach = marcher.reach(at);
-                singular.push(Singular { at, point, reach });
-            }
-        } else if let Some(at) = marcher.turning(z.at, meter)? {
+            *done = true;
+            marcher.add_singular(&mut singular, at);
+        }
+    }
+    // A continuum is accounted for where its middle lies on an exact
+    // isocurve or inside a singular point's reach, the descent from it
+    // found the point when no other box had; its box is wider than
+    // either, so the corners say nothing. A tube circle is neither.
+    for z in &found.continua {
+        let p = marcher.surfaces[0].eval(z.at[0], z.at[1]).point;
+        let on_isocurve = isocurves
+            .iter()
+            .any(|c| c.project(p).is_ok_and(|proj| proj.distance <= tol.linear));
+        let at_singular =
+            |singular: &[Singular]| singular.iter().any(|s| (s.point - p).norm() <= s.reach);
+        if on_isocurve || at_singular(&singular) {
+            continue;
+        }
+        meter.tick()?;
+        if let Some(at) = marcher.singular(z.at, meter)? {
+            marcher.add_singular(&mut singular, at);
+        }
+        if !at_singular(&singular) {
+            return Err(refused(SectionFault::TubeCircle));
+        }
+    }
+
+    let mut passed: Vec<[f64; 4]> = Vec::new();
+    for (z, done) in found.seeds.iter().zip(descended) {
+        if z.certified {
+            passed.push(z.at);
+            continue;
+        }
+        if done || absorbed(&singular, z) {
+            continue;
+        }
+        meter.tick()?;
+        if let Some(at) = marcher.turning(z.at, meter)? {
             passed.push(at);
         } else {
             return Err(refused(SectionFault::CrowdedSingularity));
@@ -364,6 +396,10 @@ pub(crate) fn march(
         }
     }
     let inside = |p: Point3| singular.iter().any(|s| (p - s.point).norm() < s.reach);
+    // A seam's seed inside a reach is where an arm of the singular point
+    // crosses the seam, passed as a turning point is and dropped with
+    // them; an edge's ends a branch the reach would hide.
+    seeds.retain(|s| !s.edges.is_empty() || !inside(s.point));
     if seeds.iter().any(|s| inside(s.point)) {
         return Err(refused(SectionFault::CrowdedSingularity));
     }
@@ -509,6 +545,8 @@ struct Marcher<'a> {
     /// The sag a step's chord is allowed.
     sag: f64,
     step_max: f64,
+    /// Each surface's [`speeds`].
+    speeds: [[f64; 2]; 2],
     domain: [Interval; 4],
     closure: [Option<f64>; 4],
 }
@@ -536,6 +574,7 @@ impl<'a> Marcher<'a> {
             step_max: STEP_SHARE * diagonal,
             domain: [d1[0], d1[1], d2[0], d2[1]],
             closure: [c1[0], c1[1], c2[0], c2[1]],
+            speeds: [speeds(one), speeds(two)],
         }
     }
 
@@ -759,12 +798,26 @@ impl<'a> Marcher<'a> {
         }
     }
 
+    /// The singular point at `at` added to `singular`, unless one is
+    /// already within the tolerance of it.
+    fn add_singular(&self, singular: &mut Vec<Singular>, at: [f64; 4]) {
+        let point = self.surfaces[0].eval(at[0], at[1]).point;
+        if singular
+            .iter()
+            .all(|s| (s.point - point).norm() > self.tol.linear)
+        {
+            let reach = self.reach(at);
+            singular.push(Singular { at, point, reach });
+        }
+    }
+
     /// The reach of a singular point at `at`: a step at the larger
     /// principal curvature of either surface there.
     fn reach(&self, at: [f64; 4]) -> f64 {
         let e = self.eval(at);
-        let scale = self.step_max / STEP_SHARE;
-        let kappa = e.iter().map(|e| principal(e, scale)).fold(0.0, f64::max);
+        let kappa = (e.iter().zip(&self.speeds))
+            .map(|(e, speeds)| principal(e, *speeds))
+            .fold(0.0, f64::max);
         self.step(kappa)
     }
 
@@ -1109,7 +1162,10 @@ impl<'a> Marcher<'a> {
         let origin = middle(one, two);
         let centre = s.point - origin;
         let nets = |x: &NurbsSurface| -> Vec<Net> {
-            x.patches().iter().map(|p| Net::of(p, origin)).collect()
+            near_ball(x.patches(), s.point, s.reach)
+                .iter()
+                .map(|p| Net::of(p, origin))
+                .collect()
         };
         let (first, second) = (nets(one), nets(two));
         let top = first
@@ -1173,14 +1229,77 @@ impl<'a> Marcher<'a> {
     }
 }
 
+/// The pieces of `patches` whose hulls meet the ball of radius `rho`
+/// about `centre`, each halved along its longer side until its hull is
+/// [`BALL_PIECES`] radii across: every point of the surfaces in the ball
+/// is on one, and the departures are isolated on patches the size of
+/// the ball rather than of a twin a thousand radii long, whose long
+/// direction the isolation never pins.
+fn near_ball(patches: Vec<Patch>, centre: Point3, rho: f64) -> Vec<Patch> {
+    let meets = |p: &Patch| {
+        let mut hull = [[f64::INFINITY; 3], [f64::NEG_INFINITY; 3]];
+        for h in &p.net {
+            let at = [h.x / h.w, h.y / h.w, h.z / h.w];
+            for k in 0..3 {
+                hull[0][k] = hull[0][k].min(at[k]);
+                hull[1][k] = hull[1][k].max(at[k]);
+            }
+        }
+        (0..3).all(|k| hull[0][k] <= centre[k] + rho && centre[k] - rho <= hull[1][k])
+    };
+    let mut done = Vec::new();
+    let mut front: Vec<Patch> = patches.into_iter().filter(meets).collect();
+    for _ in 0..BALL_HALVINGS {
+        let (small, large): (Vec<Patch>, Vec<Patch>) = front
+            .into_iter()
+            .partition(|p| p.diagonal() <= BALL_PIECES * rho);
+        done.extend(small);
+        if large.is_empty() {
+            return done;
+        }
+        front = large
+            .iter()
+            .flat_map(|p| p.halves(p.longer()))
+            .filter(meets)
+            .collect();
+    }
+    done.extend(front);
+    done
+}
+
+/// A surface's speed along `u` and along `v`: the longest row of its
+/// control net in that direction over the domain's length there, what
+/// `|∂u|` and `|∂v|` are on the order of away from a pole.
+fn speeds(surface: &NurbsSurface) -> [f64; 2] {
+    let [n, m] = surface.counts();
+    let domain = surface.domain();
+    [0, 1].map(|k| {
+        let (rows, along) = if k == 0 { (m, n) } else { (n, m) };
+        let at = |row: usize, i: usize| {
+            if k == 0 {
+                surface.control_point(i, row)
+            } else {
+                surface.control_point(row, i)
+            }
+        };
+        let length = |row: usize| -> f64 {
+            (1..along)
+                .filter_map(|i| Some((at(row, i)? - at(row, i - 1)?).norm()))
+                .sum()
+        };
+        let longest = (0..rows).map(length).fold(0.0, f64::max);
+        longest / domain[k].length()
+    })
+}
+
 /// The larger principal curvature's size at `e`, zero where the surface
-/// has no normal: `|∂u × ∂v|` under [`NO_NORMAL`] of the squared size of
-/// the nets, a pole's collapsed row, where a curvature read is noise.
-fn principal(e: &SurfaceEval, scale: f64) -> f64 {
+/// has no normal: `|∂u × ∂v|` under [`NO_NORMAL`] of the product of its
+/// `speeds`, a pole's collapsed row, where a curvature read is noise.
+fn principal(e: &SurfaceEval, speeds: [f64; 2]) -> f64 {
     let normal = e.du.cross(&e.dv);
     let (ee, f, g) = (e.du.dot(&e.du), e.du.dot(&e.dv), e.dv.dot(&e.dv));
     let det = ee * g - f * f;
-    if normal.norm() <= NO_NORMAL * scale * scale {
+    if normal.norm() <= NO_NORMAL * speeds[0] * speeds[1] {
         return 0.0;
     }
     let Some(n) = normal.try_normalize(0.0) else {

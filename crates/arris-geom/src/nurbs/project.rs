@@ -151,7 +151,7 @@ impl Patch {
         bound
     }
 
-    fn diagonal(&self) -> f64 {
+    pub(crate) fn diagonal(&self) -> f64 {
         let [lo, hi] = self.hull_box();
         (0..3)
             .map(|k| real::powi(hi[k] - lo[k], 2))
@@ -164,7 +164,7 @@ impl Patch {
     }
 
     /// The direction in which the control net is longer: the one to halve.
-    fn longer(&self) -> usize {
+    pub(crate) fn longer(&self) -> usize {
         let [p, q] = self.degree;
         let at = |a: usize, b: usize| Vec3::from(Self::cartesian(&self.net[a * (q + 1) + b]));
         let along_u = (0..=q)
@@ -186,7 +186,7 @@ impl Patch {
 
     /// The two halves along `direction`, by de Casteljau's subdivision at
     /// the middle of the patch's parameter range.
-    fn halves(&self, direction: usize) -> [Patch; 2] {
+    pub(crate) fn halves(&self, direction: usize) -> [Patch; 2] {
         let [p, q] = self.degree;
         let (rows, cols) = (p + 1, q + 1);
         let split = |line: &[Vector4<f64>]| -> (Vec<Vector4<f64>>, Vec<Vector4<f64>>) {

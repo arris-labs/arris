@@ -2,8 +2,9 @@
 //! surfaces in random poses meet where the analytic pair meets. Inside a
 //! cube about the origin that both twins reach past, every point of the
 //! analytic section is within `SECTION_FIT_FRACTION · tol.linear` of a
-//! curve of the twins' section and the other way round, the closed
-//! curves are as many, and every isolated point of the analytic pair is
+//! curve of the twins' section and the other way round, the curves are as
+//! many pieces once cut at either section's crossing points and the
+//! closed ones as many, and every isolated point of the analytic pair is
 //! one of the twins' (a point, or the end of a branch). A pair whose
 //! section touches is left to the tolerance, which the twins' rounding
 //! tips either way; a pair the marcher refuses as crowded
@@ -134,17 +135,38 @@ fn twin_property((a, b): (Surface, Surface)) -> Result<(), TestCaseError> {
             prop_assert!(off <= bound, "{p} of the twins is {off} from the pair's");
         }
     }
+    // A crossing point of either section cuts the curves through it: a
+    // closed form runs its curves through the point where two walls
+    // touch, a traced section ends its branches there, and the two are
+    // counted as the pieces they make.
+    let cuts: Vec<Point3> = (points.iter().chain(&twin_points))
+        .filter(|q| q.kind == MeetKind::Crossing)
+        .map(|q| q.point)
+        .collect();
+    let cut = |c: &Curve| {
+        let d = c.domain();
+        let ends = [c.point(d.lo()), c.point(d.hi())];
+        (cuts.iter())
+            .filter(|&&q| from_all(q, &[c]) <= tol().linear)
+            .filter(|&&q| closed(c) || ends.iter().all(|e| (e - q).norm() > tol().linear))
+            .count()
+    };
+    let pieces = |c: &Curve| {
+        let k = cut(c);
+        if closed(c) { k.max(1) } else { k + 1 }
+    };
     // A section is clipped to the cube by the pair and not by the twins,
     // so the loops are counted where they lie wholly inside it.
-    let whole = |c: &Curve| closed(c) && samples(c).into_iter().all(inside);
+    let whole = |c: &Curve| closed(c) && cut(c) == 0 && samples(c).into_iter().all(inside);
     let (ours_closed, theirs_closed) = (
         ours.iter().filter(|c| whole(c)).count(),
         theirs.iter().filter(|c| whole(c)).count(),
     );
-    let reaching = |cs: &[&Curve]| {
-        cs.iter()
+    let reaching = |cs: &[&Curve]| -> usize {
+        (cs.iter())
             .filter(|c| samples(c).into_iter().any(inside))
-            .count()
+            .map(|c| pieces(c))
+            .sum()
     };
     prop_assert_eq!(
         reaching(&ours),
@@ -243,24 +265,15 @@ fn the_twins_of_a_cone_and_a_plane_and_of_a_sphere_and_a_cylinder_are_met() {
 }
 
 /// Two cylinders of one radius on crossing axes, the Steinmetz pair, at
-/// 60°, 45° and 75°, at rest and in a tilted pose: their section is two
-/// ellipses crossing at the two points where the walls touch, and with
-/// either or both twinned it is the same. The marcher (ADR-0068) refuses
-/// both twinned (`CrowdedSingularity` at rest, `TubeCircle` tilted), and
-/// the tracer of a NURBS surface against the cylinder (ADR-0061) refuses
-/// most poses as `CrowdedSingularity`: the tangent points are singular
-/// points neither accounts for. Found by `twin_prop` with both operands
-/// twinned (plans/nurbs-nurbs-operands step 2); with one twinned the
-/// property had rejected them as a geometry fault.
-#[test]
-#[ignore = "the marcher and the tracer refuse the twins of two equal cylinders on crossing axes at their tangent points (plans/nurbs-nurbs-operands step 5)"]
-fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
+/// 60°, 45° and 75°, each at rest and in a tilted pose, `true` for the
+/// tilted one.
+fn steinmetz_pairs() -> Vec<(Surface, Surface, bool)> {
     let cylinder = |frame: Frame| Surface::Cylinder { frame, radius: 1.0 };
     let tilt = Isometry::new(
         UnitQuaternion::from_euler_angles(0.4, -0.7, 1.1),
         Vec3::new(0.3, -0.2, 0.5),
     );
-    let pairs: Vec<(Surface, Surface)> = [60.0f64, 45.0, 75.0]
+    [60.0f64, 45.0, 75.0]
         .iter()
         .flat_map(|&psi| {
             let psi = psi.to_radians();
@@ -268,26 +281,68 @@ fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
             let a = cylinder(posed([0.0; 3], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]));
             let b = cylinder(posed([0.0; 3], axis, [0.0, 1.0, 0.0]));
             [
-                (a.clone(), b.clone()),
-                (a.transformed(&tilt), b.transformed(&tilt)),
+                (a.clone(), b.clone(), false),
+                (a.transformed(&tilt), b.transformed(&tilt), true),
             ]
         })
-        .collect();
+        .collect()
+}
+
+/// The faults of the Steinmetz pairs `pick` takes: the section refused
+/// with one operand twinned, if `one`, and with both, which then has to
+/// meet where the pair does ([`twin_property`]).
+fn steinmetz_faults(pick: impl Fn(bool) -> bool, one: bool, both: bool) -> Vec<String> {
     let mut faults = Vec::new();
-    for (a, b) in &pairs {
-        let (ta, tb) = (twin(a).unwrap(), twin(b).unwrap());
-        for (x, y, which) in [
-            (&ta, &tb, "both"),
-            (&ta, b, "the first"),
-            (a, &tb, "the second"),
-        ] {
+    for (a, b, tilted) in steinmetz_pairs() {
+        if !pick(tilted) {
+            continue;
+        }
+        let (ta, tb) = (twin(&a).unwrap(), twin(&b).unwrap());
+        let mut runs = Vec::new();
+        if one {
+            runs.extend([(&ta, &b, "the first"), (&a, &tb, "the second")]);
+        }
+        if both {
+            runs.push((&ta, &tb, "both"));
+        }
+        for (x, y, which) in runs {
             if let Err(e) = intersect_surfaces(x, y, &cube(), tol(), &mut Meter::default()) {
                 faults.push(format!("{a:?} and {b:?}, {which} twinned: {e}"));
             }
         }
-        if let Err(e) = twin_property((a.clone(), b.clone())) {
+        if both && let Err(e) = twin_property((a.clone(), b.clone())) {
             faults.push(format!("{a:?} and {b:?}: {e}"));
         }
     }
+    faults
+}
+
+/// The Steinmetz pairs: their section is two ellipses crossing at the
+/// two points where the walls touch, and with either twinned, or both at
+/// rest, it is the same — two ellipses, or the four arcs between the
+/// points that the marcher (ADR-0068) and the tracer of a NURBS surface
+/// against a cylinder (ADR-0061) end at them. Both refused them as
+/// crowded before the tangent points were found first and their
+/// departures isolated on the ball's scale (plans/nurbs-nurbs-operands
+/// step 5), found by `twin_prop` with both operands twinned (step 2).
+#[test]
+fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
+    let faults = steinmetz_faults(|_| true, true, false);
+    let faults = [faults, steinmetz_faults(|tilted| !tilted, false, true)].concat();
+    assert!(faults.is_empty(), "{faults:#?}");
+}
+
+/// The tilted Steinmetz pairs both twinned: the same two ellipses. The
+/// marcher refuses them, `TubeCircle` or `CrowdedSingularity`: the loop
+/// condition vanishes on the product of the two rulings through each
+/// tangent point, and on twins 600 long in a pose that mixes the axes the
+/// isolation (`crate::bernstein_n`) halves the short parameters to the
+/// bottom and never the long ones, so boxes far from any zero outgrow
+/// the front or come back uncertified (plans/nurbs-nurbs-operands, open
+/// question at step 5).
+#[test]
+#[ignore = "the marcher refuses the tilted twins of two equal cylinders on crossing axes (plans/nurbs-nurbs-operands step 5 open question)"]
+fn the_tilted_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
+    let faults = steinmetz_faults(|tilted| tilted, false, true);
     assert!(faults.is_empty(), "{faults:#?}");
 }

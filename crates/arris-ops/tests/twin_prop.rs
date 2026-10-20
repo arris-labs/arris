@@ -96,24 +96,20 @@ fn outcome(
         Err(OpError::Internal(Fault::Lumps(_))) if twin => {
             Err(TestCaseError::reject("twin lumps touching"))
         }
-        // The section of a twin refused where the walls touch: crowded
-        // turning points of two twins (BACKLOG; 3 of 64 quadric pairs both
-        // twinned), and two equal cylinders on crossing axes, whose
-        // tangent points neither the marcher (ADR-0068) nor the tracer of
-        // a NURBS surface against a cylinder (ADR-0061) accounts for:
-        // every such pair both twinned, 47 of 84 with one. Held by
+        // The section of two twins refused as crowded where the walls
+        // touch (BACKLOG; 3 of 64 quadric pairs both twinned), held by
         // `nurbs_nurbs_prop`'s ignored
-        // `the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`
-        // and `the_twins_of_a_cone_and_a_plane_and_of_a_sphere_and_a_cylinder_are_met`;
-        // plans/nurbs-nurbs-operands step 5 narrows this arm. Named before
-        // the differential's exclusions, which take any `Geometry` fault.
+        // `the_twins_of_a_cone_and_a_plane_and_of_a_sphere_and_a_cylinder_are_met`
+        // and, for two equal cylinders on crossing axes tilted,
+        // `the_tilted_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`.
+        // The tangent points of the crossing pairs are accounted for since
+        // plans/nurbs-nurbs-operands step 5, which took `TubeCircle` and
+        // `UnresolvedTurning` off this arm. Named before the differential's
+        // exclusions, which take any `Geometry` fault.
         Err(OpError::Internal(Fault::Geometry(GeomError::DegenerateSection {
             a,
             b,
-            fault:
-                fault @ (SectionFault::CrowdedSingularity
-                | SectionFault::TubeCircle
-                | SectionFault::UnresolvedTurning),
+            fault: fault @ SectionFault::CrowdedSingularity,
         }))) if twin && [a, b].contains(&GeomKind::Surface(SurfaceKind::Nurbs)) => {
             Err(TestCaseError::reject(format!("twin section: {fault}")))
         }

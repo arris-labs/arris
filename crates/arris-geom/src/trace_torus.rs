@@ -61,7 +61,8 @@ use arris_math::{Meter, Point3, Tolerance, Vec3};
 use crate::arc::{QUARTER_TAN, quarter_angle, quarter_arc, quarter_param, quarter_weight};
 use crate::bernstein::{self, Binomials, sign_change_candidates};
 use crate::bernstein2::{
-    Continuum, Gate, Isolation, Poly2, Wrap, Zero2, common_zeros, merge_wrapped,
+    Continuum, Gate, Halving, Isolation, Poly2, Wrap, Zero2, common_zeros, common_zeros_with,
+    merge_wrapped,
 };
 use crate::halt::Halt;
 use crate::implicit::{BERNSTEIN_ROUNDING, Implicit};
@@ -1003,7 +1004,13 @@ impl<'a> PatchedSection<'a> {
             floor: self.near,
             one_sided: false,
         };
-        common_zeros([&g_s, &g_t], floors, &[gate], meter)
+        // Halved by look-ahead: a NURBS twin a few radii round and
+        // hundreds long has a gradient whose two parts vary on scales
+        // that far apart, and the scored halving cuts the long way to the
+        // bottom with the short one never pinned: the crossing where two
+        // equal cylinders on crossing axes touch was left uncertified
+        // (plans/nurbs-nurbs-operands step 5).
+        common_zeros_with([&g_s, &g_t], floors, &[gate], Halving::LookAhead, meter)
     }
 
     /// The critical points of a NURBS surface's section in the slab past
