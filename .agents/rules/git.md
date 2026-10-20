@@ -9,7 +9,11 @@
   with `run_in_background`; wait for its completion notification, never
   `sleep` or a watch on its output for a string. One gate runs at a time:
   the hook refuses a second. A gate an earlier session left running is
-  waited on with `flock .git/arris-gate.lock true` in the background. Never
+  waited on with `flock .git/arris-gate.lock true` in the background; any
+  other run it left is rerun, never waited on (no notification comes).
+  Monitor is deferred (`ToolSearch select:Monitor` first), and its loop
+  carries a deadline (`timeout 1800 sh -c 'until …'`) so it cannot
+  outlive its session. Never
   use a `pgrep -f` loop, which matches its own shell and never ends. A
   stuck one is stopped with `tools/stop-gate.sh`, never a bare `pkill -f`.
 - **The full gate** is `ARRIS_GATE=full`'s list: `cargo fmt --check`,
