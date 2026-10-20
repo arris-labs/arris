@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a044e62fed02f616322533d8bc4ee9eee8af02de37417983545643edc4f3cd72",
+  "results": {
+    "default": {
+      "area": 225.92926697111318,
+      "centroid": [
+        4.997447660441004,
+        3.021573530996026,
+        1.7084849036432144
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          784.4011908201132,
+          -0.9363644282875612,
+          0.5927110205559529
+        ],
+        [
+          -0.9363644282875612,
+          1854.8624139591038,
+          -5.293924222416081
+        ],
+        [
+          0.5927110205559529,
+          -5.293924222416081,
+          2232.9566395183756
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 16
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            3.0,
+            1.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "blend_kept",
+          "point": [
+            1.0,
+            0.15,
+            2.9
+          ]
+        },
+        {
+          "class": "out",
+          "label": "tool_end",
+          "point": [
+            5.3,
+            1.9,
+            2.6
+          ]
+        }
+      ],
+      "volume": 203.50252507385173
+    }
+  }
+}

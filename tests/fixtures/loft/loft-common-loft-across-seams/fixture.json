@@ -1,0 +1,256 @@
+{
+  "description": "three circles along z (r 2, r 2.6 centred y 0.5, r 2) lofted smooth, common with three circles along x (r 1.2, r 1.6 centred z 0.4, r 1.2 at x -5, 0, 5) lofted smooth: two NURBS walls, each seam (z's at +x, x's at the profiles' start) crossed by the marched section, which the pave splits there (ADR-0068, plans/nurbs-nurbs-operands step 6)",
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-05,
+    "inertia_rel": 2e-06
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          -4
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 2
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0.5,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 2.6
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "c",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          4
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 2
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "upright",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b",
+        "c"
+      ],
+      "kind": "smooth"
+    },
+    {
+      "name": "d",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          -5,
+          0,
+          0
+        ],
+        "x": [
+          0,
+          0,
+          1
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1.2
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "e",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0.4
+        ],
+        "x": [
+          0,
+          0,
+          1
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1.6
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "f",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          5,
+          0,
+          0
+        ],
+        "x": [
+          0,
+          0,
+          1
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1.2
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "across",
+      "op": "loft",
+      "sections": [
+        "d",
+        "e",
+        "f"
+      ],
+      "kind": "smooth"
+    },
+    {
+      "name": "result",
+      "op": "common",
+      "a": "upright",
+      "b": "across"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "centre",
+      "point": [
+        0,
+        0,
+        0.3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_upright_only",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "in_across_only",
+      "point": [
+        4,
+        0,
+        0
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

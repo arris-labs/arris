@@ -1,0 +1,162 @@
+{
+  "description": "the bicubic-top box of bicubic-top-box-edge-fillet, its top edge on the wall y = 0 filleted at r 0.5 (a walked stripe, ADR-0062), common with a circle of radius 0.6 swept along a cubic diving across that edge in y, square to its start so the measures do not depend on the frame's twist: the sweep's fitted wall against the walked blend face and the bicubic top, two NURBS pairs, and against the wall plane (ADR-0068, plans/nurbs-nurbs-operands step 6). Open CASCADE's blend misses the ball by 2.1e-5 at the median where Arris' holds it to 8e-9 (bicubic-top-box-edge-fillet), and in this small body that miss is 1.7e-6 of the volume: the same common on the unfilleted box agrees to 1.0e-9 with Open CASCADE's pipe at SetTolerance 1e-8 (2.7e-7 of its default's miss here is the pipe's). The measure tolerances cover the blend's miss, under ADR-0062's 1e-5 for a walked fixture",
+  "params": {
+    "r": 0.5
+  },
+  "tolerances": {
+    "volume_rel": 3e-06,
+    "area_rel": 3e-06,
+    "centroid_abs": 1e-05,
+    "inertia_rel": 1e-05
+  },
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "bicubic-top-box.step",
+      "sha256": "97083dfec12174c19c005e12f4ea16fdb9a056b054d057f0310e95d5972ac380",
+      "id": 15
+    },
+    {
+      "name": "blended",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          5,
+          0,
+          3.15
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "small",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          5,
+          -2,
+          4.6
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          "0.7 / sqrt(0.7^2 + 1.2^2)",
+          "1.2 / sqrt(0.7^2 + 1.2^2)"
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 0.6
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "tool",
+      "op": "sweep",
+      "profile": "small",
+      "path": {
+        "start": [
+          5,
+          -2,
+          4.6
+        ],
+        "segments": [
+          {
+            "nurbs": {
+              "degree": 3,
+              "knots": [
+                0,
+                0,
+                0,
+                0,
+                1,
+                1,
+                1,
+                1
+              ],
+              "control_points": [
+                [
+                  5,
+                  -2,
+                  4.6
+                ],
+                [
+                  5,
+                  -0.8,
+                  3.9
+                ],
+                [
+                  5.3,
+                  0.4,
+                  3.1
+                ],
+                [
+                  5.3,
+                  2,
+                  2.6
+                ]
+              ],
+              "weights": [
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "result",
+      "op": "common",
+      "a": "blended",
+      "b": "tool"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "tool_in_box",
+      "point": [
+        5.3,
+        1.2,
+        2.8
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "tool_out",
+      "point": [
+        5,
+        -1.8,
+        4.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "box_away",
+      "point": [
+        2,
+        3,
+        1.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

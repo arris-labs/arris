@@ -76,7 +76,14 @@ profiled and its hot spot fixed, for C10's accept on the fetched tier.
 - **`arris-ops::boolean`** (step 6): the pave on two NURBS faces: the
   marched section's ends against each face's edges (the curve × surface
   arm, ADR-0068 step 4), its crossings of either face's seam paved, its
-  pcurves the walk's own. Step 2's property found no pave fault.
+  pcurves the walk's own. Step 2's property found no pave fault, and
+  step 6's fixtures none: no code changed. One fixture trap, now in
+  `tests/fixtures/README.md`: a sweep's profile tilted to a non-planar
+  path moved a small common's centroid 2.6e-4, Open CASCADE's corrected
+  Frenet not being Arris' rotation-minimising frame. Squared, the common
+  on the unfilleted box agrees to 1e-9 with Open CASCADE's pipe at
+  `SetTolerance` 1e-8; on the filleted one the walked blend's oracle
+  miss is 1.7e-6 of its volume, under ADR-0062's 1e-5.
 - **ADR-0062 amendment** (step 7): the two-B-spline row. A walked
   stripe between two NURBS faces takes its spine as the marched section
   of the two faces' offset fits, the contacts by projection as today; the
@@ -123,11 +130,11 @@ robustness or bound has to be established here.
   passes with either twinned and with both at rest; the tilted pair both
   twinned is its own ignored test (open question). `twin_prop`'s section
   arm keeps `CrowdedSingularity` alone (28 shards at 64 cases).
-- [ ] Step 6 **[3]** — **The pave on fitted pairs, against Open CASCADE.**
-  Fixtures with oracle values: a spline sweep cut by a spline sweep
-  crossing it, a smooth loft fused with a sweep, a loft through a loft
-  across both seams, a walked blend face cut by a sweep (fuse, common and
-  cut each).
+- [x] Step 6 **[3]** — **The pave on fitted pairs, against Open CASCADE.**
+  Six fixtures, passing with no code changed (deltas): a spline sweep cut
+  by a spline sweep crossing it, a smooth loft fused with a sweep, the
+  common of two lofts across both seams, and the bicubic top's walked
+  fillet cut by, fused with and common with a spline sweep.
 - [ ] Step 7 **[3]** — **The walked stripe between two NURBS faces;
   ADR-0062 amendment.** The spine as the marched section of the offset
   fits. `sweep-thread-chamfer-unsupported` builds as Open CASCADE builds

@@ -855,6 +855,9 @@ corpus_tests! {
     /// A circle centred on a non-planar cubic under the rotation-minimising
     /// law: the volume and area to the closed forms whatever the twist.
     sweep_sweep_spline_3d => run "sweep/sweep-spline-3d";
+    /// A spline sweep bored through by a thinner spline sweep crossing it:
+    /// two NURBS walls, the marched section paved on both.
+    sweep_sweep_spline_cut_by_spline_sweep => run "sweep/sweep-spline-cut-by-spline-sweep";
     /// A circle along line, quarter arc, line in one plane: cylinder, torus, cylinder.
     sweep_sweep_pipe_l_bend => run "sweep/sweep-pipe-l-bend";
     /// Two perpendicular crossing L-bend pipes fused: cylinder × cylinder quartic.
@@ -900,6 +903,12 @@ corpus_tests! {
     loft_loft_cone_frustum_drilled => run "loft/loft-cone-frustum-drilled";
     /// The smooth duct cut by a box: a NURBS wall against a plane.
     loft_loft_duct_cut_by_box => run "loft/loft-duct-cut-by-box";
+    /// A smooth loft of circles fused with a spline sweep across it: two
+    /// NURBS walls, the marched section paved on both.
+    loft_loft_smooth_fuse_spline_sweep => run "loft/loft-smooth-fuse-spline-sweep";
+    /// The common of two smooth lofts crossing at right angles: the marched
+    /// section crosses both walls' seams.
+    loft_loft_common_loft_across_seams => run "loft/loft-common-loft-across-seams";
     /// A slanted edge of the square frustum filleted: a blend between two exact planes.
     loft_loft_frustum_edge_fillet => run "loft/loft-frustum-edge-fillet";
     /// The square frustum fused with a box across its slant and top.
@@ -1046,6 +1055,13 @@ corpus_tests! {
     /// A box whose top is a bicubic B-spline, one top edge filleted: a
     /// walked stripe on a NURBS face, a plane across each end.
     blend_bicubic_top_box_edge_fillet => run "blend/bicubic-top-box-edge-fillet";
+    /// That fillet cut by a spline sweep diving across it: the sweep's wall
+    /// against the walked blend face and the bicubic top.
+    blend_bicubic_top_fillet_cut_by_spline_sweep => run "blend/bicubic-top-fillet-cut-by-spline-sweep";
+    /// The same fillet fused with that sweep.
+    blend_bicubic_top_fillet_fuse_spline_sweep => run "blend/bicubic-top-fillet-fuse-spline-sweep";
+    /// The same fillet's common with that sweep: the sweep's piece inside the box.
+    blend_bicubic_top_fillet_common_spline_sweep => run "blend/bicubic-top-fillet-common-spline-sweep";
     /// A cylinder capped by a NURBS sphere, its rim filleted: a walked ring.
     blend_nurbs_cap_cylinder_rim_fillet => run "blend/nurbs-cap-cylinder-rim-fillet";
     /// A plate's U slot whose round end is NURBS, its rim filleted: a table

@@ -1,0 +1,260 @@
+{
+  "description": "three circles (r 2 at z 0, r 3 centred x 1 at z 5, r 2 at z 10) lofted smooth, one NURBS wall, fused with a circle of radius 1 swept along a cubic across it in x and rising in z: two NURBS walls, the marched section two closed loops, each paved on both walls (ADR-0068, plans/nurbs-nurbs-operands step 6)",
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-05,
+    "inertia_rel": 2e-06
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 2
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          1,
+          0,
+          5
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 3
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "c",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          10
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 2
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "loft",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b",
+        "c"
+      ],
+      "kind": "smooth"
+    },
+    {
+      "name": "small",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          -7,
+          0,
+          4
+        ],
+        "x": [
+          0,
+          1,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "circle": {
+          "center": [
+            0,
+            0
+          ],
+          "radius": 1
+        }
+      },
+      "holes": []
+    },
+    {
+      "name": "bar",
+      "op": "sweep",
+      "profile": "small",
+      "path": {
+        "start": [
+          -7,
+          0,
+          4
+        ],
+        "segments": [
+          {
+            "nurbs": {
+              "degree": 3,
+              "knots": [
+                0,
+                0,
+                0,
+                0,
+                1,
+                1,
+                1,
+                1
+              ],
+              "control_points": [
+                [
+                  -7,
+                  0,
+                  4
+                ],
+                [
+                  -2,
+                  0,
+                  4
+                ],
+                [
+                  2,
+                  0,
+                  6
+                ],
+                [
+                  7,
+                  0,
+                  6
+                ]
+              ],
+              "weights": [
+                1,
+                1,
+                1,
+                1
+              ]
+            }
+          }
+        ]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "loft",
+      "b": "bar"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "loft_low",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "loft_high",
+      "point": [
+        0,
+        0,
+        9
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "bar_left",
+      "point": [
+        -6,
+        0,
+        4
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "bar_right",
+      "point": [
+        6,
+        0,
+        6
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "beside_bar",
+      "point": [
+        -6,
+        0,
+        6
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

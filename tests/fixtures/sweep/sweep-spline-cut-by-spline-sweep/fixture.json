@@ -1,0 +1,66 @@
+{
+  "description": "a circle of radius 2 along a planar cubic bowing in x, cut by a circle of radius 1 along a cubic crossing it in y and rising in z: both walls fitted NURBS faces, the marched section of two NURBS faces two closed loops paved on both walls (ADR-0068, plans/nurbs-nurbs-operands step 6)",
+  "tolerances": {"volume_rel": 1e-6, "area_rel": 1e-6, "centroid_abs": 1e-5, "inertia_rel": 2e-6},
+  "steps": [
+    {
+      "name": "big",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"circle": {"center": [0, 0], "radius": 2}},
+      "holes": []
+    },
+    {
+      "name": "target",
+      "op": "sweep",
+      "profile": "big",
+      "path": {
+        "start": [0, 0, 0],
+        "segments": [{"nurbs": {
+          "degree": 3,
+          "knots": [0, 0, 0, 0, 1, 1, 1, 1],
+          "control_points": [[0, 0, 0], [0, 0, 7], [4, 0, 13], [4, 0, 20]],
+          "weights": [1, 1, 1, 1]
+        }}]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "small",
+      "op": "profile",
+      "plane": {"origin": [2, -6, 10], "x": [0, 0, 1], "y": [1, 0, 0]},
+      "outer": {"circle": {"center": [0, 0], "radius": 1}},
+      "holes": []
+    },
+    {
+      "name": "tool",
+      "op": "sweep",
+      "profile": "small",
+      "path": {
+        "start": [2, -6, 10],
+        "segments": [{"nurbs": {
+          "degree": 3,
+          "knots": [0, 0, 0, 0, 1, 1, 1, 1],
+          "control_points": [[2, -6, 10], [2, -2, 10], [2, 2, 11], [2, 6, 11]],
+          "weights": [1, 1, 1, 1]
+        }}]
+      },
+      "law": "rotation_minimizing"
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "target",
+      "tool": "tool"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "near_the_start", "point": [0, 0, 2], "expect": "in"},
+    {"label": "near_the_end", "point": [4, 0, 18], "expect": "in"},
+    {"label": "in_the_bore", "point": [2, 0, 10.5], "expect": "out"},
+    {"label": "beside_the_bore", "point": [2, 1.5, 7.5], "expect": "in"}
+  ],
+  "analytic": {
+    "genus": 1
+  }
+}

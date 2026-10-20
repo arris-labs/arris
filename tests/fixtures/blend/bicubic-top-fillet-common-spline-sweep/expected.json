@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "513042522edf2c526eb39109a8fac9c0ba142b14215adcc85e89c48ec611c0a6",
+  "results": {
+    "default": {
+      "area": 8.799538948872652,
+      "centroid": [
+        5.2671392977596065,
+        1.1638100937073839,
+        2.865152716170998
+      ],
+      "counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          0.6914852868441521,
+          -0.028570382940197092,
+          0.00807351892893493
+        ],
+        [
+          -0.028570382940197092,
+          0.35663029425711557,
+          0.08999953785012416
+        ],
+        [
+          0.00807351892893493,
+          0.08999953785012416,
+          0.6939851951864213
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "tool_in_box",
+          "point": [
+            5.3,
+            1.2,
+            2.8
+          ]
+        },
+        {
+          "class": "out",
+          "label": "tool_out",
+          "point": [
+            5.0,
+            -1.8,
+            4.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "box_away",
+          "point": [
+            2.0,
+            3.0,
+            1.5
+          ]
+        }
+      ],
+      "volume": 1.9443415226070182
+    }
+  }
+}
