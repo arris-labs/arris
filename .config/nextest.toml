@@ -14,6 +14,11 @@
 test-threads = 16
 
 [profile.fast]
+# A test past 8 min at the hook's 16 cases is stopped and fails: the slowest
+# left in this profile was a property shard at ~270 s (2026-10-20, all of
+# `fast` at 16 threads), and a shard that doubles is a cost the full gate
+# pays sixteenfold at 256 cases.
+slow-timeout = { period = "60s", terminate-after = 8 }
 #
 # The slow set: a single test that is not a shard of a property and costs
 # ~30 s or more at the hook's case counts, as `tools/test-timings.sh
@@ -23,12 +28,18 @@ default-filter = """
 not (
   test(/^real_/)
   or test(=a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was)
+  or test(=a_cylinders_twinned_rim_chamfers_as_the_closed_forms_cone)
+  or test(=a_cylinders_twinned_rim_fillets_as_the_closed_forms_torus)
   or test(=an_oracle_with_no_solid_holds_arris_to_additivity)
   or test(=arris_and_the_oracle_agree_on_multi_tool_booleans)
+  or test(=blend_bicubic_top_fillet_cut_by_spline_sweep)
+  or test(=blend_bicubic_top_fillet_fuse_spline_sweep)
   or test(=blend_drilled_torus_fillet)
   or test(=blend_fixtures_read_back)
   or test(=blend_nist_ctc_04_chamfered_wall_fillet)
   or test(=blend_nist_ftc_10_cylinder_pair_bspline_fillet)
+  or test(=blend_nurbs_cap_cylinder_rim_chamfer)
+  or test(=blend_nurbs_cap_cylinder_rim_fillet)
   or test(=boolean_ball_pole_drill_cut)
   or test(=boolean_ball_pole_slice_cut)
   or test(=boolean_fixtures_read_back)
@@ -41,14 +52,24 @@ not (
   or test(=boolean_revolve_extrude_fuse_cut_rounding_knots)
   or test(=boolean_ring_corner_common)
   or test(=boolean_ring_pin_cut)
+  or test(=boolean_seam_beside_crossing_fuse)
+  or test(=capability_nurbs)
+  or test(=capability_nurbs_heavy)
   or test(=census::tests::ftc_06_run_is_a_dihedral_jump_of_the_nurbs_cycle)
   or test(=census::tests::no_split_rims_second_vertex_is_refused)
   or test(=guard::coverage)
+  or test(=loft_fixtures_read_back)
   or test(=loft_loft_closed_torus_like)
+  or test(=loft_loft_common_loft_across_seams)
+  or test(=loft_loft_smooth_fuse_spline_sweep)
   or test(=part::tests::a_battery_stage_is_held_to_its_class)
   or test(=provenance_consumer_rebuild)
+  or test(=query_section_sweep_spline_handle)
   or test(=split_nurbs_cylinder_oblique)
   or test(=sweep_fixtures_read_back)
+  or test(=sweep_sweep_arc_tilted_profile)
+  or test(=sweep_sweep_spline_cut_by_spline_sweep)
+  or test(=sweep_sweep_spline_handle)
   or test(=sweep_sweep_spring_cut_split)
   or test(=sweep_sweep_thread)
   or test(=sweep_sweep_thread_chamfer)

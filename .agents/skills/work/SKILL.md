@@ -18,7 +18,10 @@ argument-hint: <plan slug> [step number or range]
 3. Run only the step's own tests (`cargo nextest run -p <crate> --test
    <file>` or `-E 'test(/^<area>_/)'`) and `cargo fmt --all`. The hook runs
    clippy, doctests and the `fast` slice; `/retire-plan` the full gate — a
-   step needing it sooner says why in its commit. For a geometric change,
+   step needing it sooner says why in its commit. A step that makes a
+   property's cases dearer names its slowest shard's time at 16 cases in
+   the commit body; the full gate pays sixteen times that, and `fast`
+   stops a test at 8 min. For a geometric change,
    look at the result (`inspect` skill) before trusting a green test.
 4. Read your own `git diff --cached` against `.agents/review.md` and
    `.agents/rules/kernel.md` before committing: an `unwrap` on geometry, a

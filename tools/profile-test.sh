@@ -10,12 +10,18 @@ cd "$(git rev-parse --show-toplevel)"
 # The slow set, by test name, as `tools/test-timings.sh --slow-set` printed
 # it. Keep in step with `.config/nextest.toml`.
 slow='a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was
+a_cylinders_twinned_rim_chamfers_as_the_closed_forms_cone
+a_cylinders_twinned_rim_fillets_as_the_closed_forms_torus
 an_oracle_with_no_solid_holds_arris_to_additivity
 arris_and_the_oracle_agree_on_multi_tool_booleans
+blend_bicubic_top_fillet_cut_by_spline_sweep
+blend_bicubic_top_fillet_fuse_spline_sweep
 blend_drilled_torus_fillet
 blend_fixtures_read_back
 blend_nist_ctc_04_chamfered_wall_fillet
 blend_nist_ftc_10_cylinder_pair_bspline_fillet
+blend_nurbs_cap_cylinder_rim_chamfer
+blend_nurbs_cap_cylinder_rim_fillet
 boolean_ball_pole_drill_cut
 boolean_ball_pole_slice_cut
 boolean_fixtures_read_back
@@ -28,14 +34,24 @@ boolean_plate_10x10_holes_cut_many
 boolean_revolve_extrude_fuse_cut_rounding_knots
 boolean_ring_corner_common
 boolean_ring_pin_cut
+boolean_seam_beside_crossing_fuse
+capability_nurbs
+capability_nurbs_heavy
 census::tests::ftc_06_run_is_a_dihedral_jump_of_the_nurbs_cycle
 census::tests::no_split_rims_second_vertex_is_refused
 guard::coverage
+loft_fixtures_read_back
 loft_loft_closed_torus_like
+loft_loft_common_loft_across_seams
+loft_loft_smooth_fuse_spline_sweep
 part::tests::a_battery_stage_is_held_to_its_class
 provenance_consumer_rebuild
+query_section_sweep_spline_handle
 split_nurbs_cylinder_oblique
 sweep_fixtures_read_back
+sweep_sweep_arc_tilted_profile
+sweep_sweep_spline_cut_by_spline_sweep
+sweep_sweep_spline_handle
 sweep_sweep_spring_cut_split
 sweep_sweep_thread
 sweep_sweep_thread_chamfer
