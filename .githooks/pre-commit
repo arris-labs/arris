@@ -31,6 +31,13 @@ command -v cargo-nextest >/dev/null || {
   exit 1
 }
 
+# Half the machine's cores, unless the caller set its own: the other half
+# is another project's (the profile's `test-threads` says the same for
+# nextest; these reach cargo's build and rayon inside the tests).
+export CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-16}
+export NEXTEST_TEST_THREADS=${NEXTEST_TEST_THREADS:-16}
+export RAYON_NUM_THREADS=${RAYON_NUM_THREADS:-16}
+
 staged=$(git diff --cached --name-only --diff-filter=ACMRD)
 [ -n "$staged" ] || exit 0
 
