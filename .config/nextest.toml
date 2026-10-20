@@ -50,6 +50,8 @@ not (
   or test(=split_nurbs_cylinder_oblique)
   or test(=sweep_fixtures_read_back)
   or test(=sweep_sweep_spring_cut_split)
+  or test(=sweep_sweep_thread)
+  or test(=sweep_sweep_thread_chamfer)
   or test(=the_band_at_the_fixtures_numbers)
   or test(=transform_mirror_hollow_ring)
 )

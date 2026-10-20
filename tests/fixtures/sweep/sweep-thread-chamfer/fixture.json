@@ -1,0 +1,142 @@
+{
+  "description": "the triangular thread of sweep/sweep-thread (fitted NURBS faces) with its outer crest rail chamfered at distance 0.1: an edge between two NURBS faces, a walked chamfer whose contacts lie in the edge's normal plane at chord d (ADR-0062 step 7, plans/nurbs-nurbs-operands step 7). The body is screw-symmetric, so the volume the chamfer removes is 6 pi times the first moment about the axis of its cross-section in (r, z - c theta): 1.0538990, which Arris removes to 2.4e-8. Open CASCADE removes 1.4e-3 of it less, as a chord 7e-4 of d short would, on top of its pipe's own 6.2e-7 (sweep/sweep-thread), so its volume lies 3.4e-6, its area 8.8e-6, its centroid 7e-6 and its inertia 3.5e-6 relative from Arris'. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a walked fixture",
+  "tolerances": {
+    "probe": 0.001,
+    "volume_rel": 5e-06,
+    "area_rel": 1e-05,
+    "centroid_abs": 1.5e-05,
+    "inertia_rel": 5e-06
+  },
+  "params": {
+    "R": 10,
+    "p": 4,
+    "turns": 3,
+    "d": 0.1
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          "R",
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1.2
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.5,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1.2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1.2
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "thread",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": [
+          "R",
+          0,
+          0
+        ],
+        "segments": [
+          {
+            "helix": {
+              "axis": {
+                "origin": [
+                  0,
+                  0,
+                  0
+                ],
+                "direction": [
+                  0,
+                  0,
+                  1
+                ]
+              },
+              "pitch": "p",
+              "angle_deg": "360 * turns"
+            }
+          }
+        ]
+      },
+      "law": {
+        "binormal": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "thread",
+      "edges": [
+        [
+          0,
+          11.5,
+          1.0
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "tooth_root",
+      "point": [
+        0,
+        "R + 0.5",
+        "p / 4"
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside_apex",
+      "point": [
+        0,
+        "R + 2",
+        "p / 4"
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

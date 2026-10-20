@@ -846,9 +846,8 @@ corpus_tests! {
     /// A triangle along three helix turns under the axis as binormal.
     sweep_sweep_thread => run "sweep/sweep-thread";
     /// The triangular thread of `sweep-thread` with its crest rail chamfered:
-    /// an edge between two NURBS faces, refused `Unsupported` naming both
-    /// faces.
-    sweep_sweep_thread_chamfer_unsupported => run "sweep/sweep-thread-chamfer-unsupported";
+    /// an edge between two NURBS faces, a walked chamfer (ADR-0062).
+    sweep_sweep_thread_chamfer => run "sweep/sweep-thread-chamfer";
     /// A rounded slot along a planar cubic under the rotation-minimising
     /// law: a NURBS span's frames by arc length.
     sweep_sweep_spline_handle => run "sweep/sweep-spline-handle";
@@ -878,6 +877,10 @@ corpus_tests! {
     loft_loft_circle_to_square => run "loft/loft-circle-to-square";
     /// A square lofted ruled to one turned 30 degrees: four twisted quads.
     loft_loft_twisted_square => run "loft/loft-twisted-square";
+    /// The twisted loft with a slanted edge filleted: a walked stripe between
+    /// two bilinear NURBS faces, its spine the marched section of their
+    /// offsets (ADR-0062, ADR-0068).
+    loft_loft_twisted_square_edge_fillet => run "loft/loft-twisted-square-edge-fillet";
     /// A hole in every section lofted ruled: planes outside, a cone in the bore.
     loft_loft_ring_to_ring => run "loft/loft-ring-to-ring";
     /// A rectangle, a circle started at its corners' angle and a wider rectangle
@@ -1078,7 +1081,8 @@ corpus_tests! {
     /// A half disc's chord edge chamfered: a plane against a cylinder along a
     /// ruling, which the table holds for a fillet only: a walked chamfer.
     blend_d_chord_edge_chamfer => run "blend/d-chord-edge-chamfer";
-    /// An edge between two NURBS faces: `Unsupported`, NURBS against NURBS.
+    /// An edge between two NURBS faces of an all-B-spline box: walked, but
+    /// each end meets a NURBS face across, `Unsupported` naming it.
     blend_nurbs_box_edge_fillet_unsupported => run "blend/nurbs-box-edge-fillet-unsupported";
     /// The D-notch with its circle's centre off the side face's plane: the open
     /// arc ends on a plane parallel to the cylinder's axis and off it, which

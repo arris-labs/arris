@@ -112,8 +112,9 @@ fn named(walked: Walked, edge: EdgeId, faces: [FaceId; 2], surfaces: [&Surface; 
 ///
 /// Errors: `BlendReason::VertexBlend` for an edge with no curve,
 /// `BlendReason::TangentChain` where the faces are tangent along it,
-/// `Unsupported` naming the faces where both are NURBS (that edge's spine
-/// is NURBS against NURBS) or the spine is not decided, and
+/// `Unsupported` naming the faces where the spine or a chamfer's contacts
+/// are not decided — two NURBS faces' spine is the marched section of
+/// their offset fits (ADR-0068) — and
 /// `BlendReason::TooLarge` where the radius reaches a face's principal
 /// radius on the ball's side.
 fn roll<'a>(env: &Env<'a>, meter: &mut Meter<'_>, edge: EdgeId) -> Result<Rolled<'a>, OpError> {
@@ -147,9 +148,6 @@ fn roll<'a>(env: &Env<'a>, meter: &mut Meter<'_>, edge: EdgeId) -> Result<Rolled
         m.surface(m.face(f1)?.surface())?,
         m.surface(m.face(f2)?.surface())?,
     ];
-    if surfaces.iter().all(|s| matches!(s, Surface::Nurbs(_))) {
-        return Err(unsupported(surfaces, faces));
-    }
     let convex = view
         .convex(m, edge)?
         .ok_or(invariant("a blended edge with a dihedral"))?;

@@ -200,14 +200,14 @@ struct Blend {
 /// (`docs/DATA-MODEL.md` §Provenance).
 ///
 /// A [`fillet`]'s edge that no closed form holds is walked (ADR-0062): an
-/// edge with a NURBS face and an analytic one, or between two analytic faces
-/// meeting in a curve the table does not have — cylinders on skew axes, a
-/// B-spline edge — blends to a NURBS surface fitted through the ball's arcs
-/// along the path it rolls, within the faces' tolerance. A closed edge or an
-/// open one whose ends meet a plane, a cylinder or a cone across blends;
-/// a radius past the NURBS face's curvature on the ball's side is
-/// [`BlendReason::TooLarge`]; two NURBS faces, a NURBS face across, or a
-/// pair the offsets' section does not decide is [`OpError::Unsupported`]; a
+/// edge with a NURBS face and an analytic one or two NURBS faces, or between
+/// two analytic faces meeting in a curve the table does not have — cylinders
+/// on skew axes, a B-spline edge — blends to a NURBS surface fitted through
+/// the ball's arcs along the path it rolls, within the faces' tolerance. A
+/// closed edge or an open one whose ends meet a plane, a cylinder or a cone
+/// across blends; a radius past a NURBS face's curvature on the ball's side
+/// is [`BlendReason::TooLarge`]; a NURBS face across, or a pair the offsets'
+/// section does not decide is [`OpError::Unsupported`]; a
 /// walked edge that meets another blended edge at a vertex, or ends where its
 /// faces turn tangent, is [`BlendReason::VertexBlend`] or
 /// [`BlendReason::TangentChain`].

@@ -397,6 +397,34 @@ with its Python class, `GeomOffsetFoldsError`.
     uncertainty, still three orders under what a wrong radius, junction or
     end moves.
 
+- **Two B-spline faces (plans/nurbs-nurbs-operands step 7).** §6's first
+  row is built. Two NURBS faces' offsets are two fits, and `trace_section`
+  takes the pair to ADR-0068's marched section, so the spine is found as
+  any other's: the branch holding the ends' balls, every sample snapped
+  onto the two exact distances. Nothing else changed: the contacts are the
+  snapped feet, the surface the skin of the exact arcs, the budget §1's.
+  A chamfer has no offset and was refused only by that row. `Unsupported`
+  stays for a B-spline face across a stripe's end (the next row), for a
+  pair the marcher refuses, and for a flush pair (ADR-0068). The cases:
+  - `loft/loft-twisted-square-edge-fillet`, a slanted edge between two
+    bilinear faces of a twisted ruled loft at `r` 0.25. Arris' blend holds
+    the ball to `4.5e-10` at the median (`1.4e-9` at most) at 441
+    samples; Open CASCADE's misses it by `1.3e-4` at the median. Its miss
+    grows as `r²` times the twist: `1.0e-3` at `r` 0.5 and `2.1e-3` at 0.5
+    and 45°, where its area lies `1.6e-5` from Arris', past the step-5b
+    cap. The fixture takes the radius whose miss the cap covers.
+  - `sweep/sweep-thread-chamfer`, the crest of a three-turn thread
+    chamfered at 0.1. The body is screw-symmetric, so the volume removed
+    is `6π` times the first moment about the axis of its cross-section in
+    `(r, z − cθ)`: `1.0538990`, which Arris removes to `2.4e-8` and Open
+    CASCADE `1.4e-3` short of, as a chord `7e-4` of `d` short would.
+  The checker leaves a walked face against its neighbours' NURBS faces
+  `Unchecked::FacePair` where the marcher refuses the pair
+  (`UnresolvedTurning` along the contact edge), as for any shared-edge
+  neighbour (plans/nurbs-nurbs-operands step 3). On the thread that refusal
+  costs 390 s a pair, and the thread's own flank pairs 155 s each. That is
+  a cost, not an answer: BACKLOG.
+
 ## Alternatives considered
 
 - **Marching the ball's centre by Newton on the two distance constraints**

@@ -1,0 +1,174 @@
+{
+  "description": "the twisted ruled loft of loft/loft-twisted-square, its slanted edge from (4, -4, 0) to the turned square's start corner filleted at radius 0.25: an edge between two bilinear NURBS faces, a walked stripe whose spine is the marched section of the two faces' offset fits (ADR-0062, ADR-0068), each end cut by a plane cap (plans/nurbs-nurbs-operands step 7). At 441 samples of each blend face, Arris' holds the ball at r from both side faces to 4.5e-10 at the median (1.4e-9 at most); Open CASCADE's misses it by 1.3e-4 at the median (1.8e-4 at most), so its volume lies 3.7e-7, its area 2.0e-6 and its inertia 1.1e-6 relative from Arris'. Its miss grows as r squared times the twist (1.0e-3 at r 0.5, 2.1e-3 at r 0.5 and 45 degrees), which is why the radius is 0.25. The measure tolerances cover that miss, under ADR-0062's 1e-5 for a walked fixture",
+  "steps": [
+    {
+      "name": "a",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          4,
+          -4
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              4
+            ]
+          },
+          {
+            "line_to": [
+              -4,
+              -4
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              -4
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "b",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          6
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          5.464101615137755,
+          -1.4641016151377546
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.4641016151377546,
+              5.464101615137755
+            ]
+          },
+          {
+            "line_to": [
+              -5.464101615137754,
+              1.4641016151377562
+            ]
+          },
+          {
+            "line_to": [
+              -1.464101615137754,
+              -5.464101615137755
+            ]
+          },
+          {
+            "line_to": [
+              5.464101615137755,
+              -1.4641016151377546
+            ]
+          }
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "loft",
+      "op": "loft",
+      "sections": [
+        "a",
+        "b"
+      ],
+      "kind": "ruled"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "loft",
+      "edges": [
+        [
+          4.732050807568877,
+          -2.732050807568877,
+          3
+        ]
+      ],
+      "radius": 0.25
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        3
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        4.689,
+        -2.707,
+        3
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "above",
+      "point": [
+        0,
+        0,
+        7
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  },
+  "tolerances": {
+    "volume_rel": 1e-06,
+    "area_rel": 4e-06,
+    "centroid_abs": 5e-06,
+    "inertia_rel": 3e-06
+  }
+}

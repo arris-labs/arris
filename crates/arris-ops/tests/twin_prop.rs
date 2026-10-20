@@ -13,7 +13,9 @@
 //!
 //! The blends follow (nurbs-face-blend step 8, ADR-0062): a part's edge
 //! filleted or chamfered by the closed forms, and the same edge with one of
-//! its two faces replaced by its exact NURBS twin, which walks the blend.
+//! its two faces replaced by its exact NURBS twin, which walks the blend —
+//! and, since nurbs-nurbs-operands step 7, with both, the spine the marched
+//! section of two offset fits (ADR-0068).
 //! The rows are the table's: two planes (a box's edge), a plane and a
 //! cylinder along a ruling (a half disc's chord) and the meridian row
 //! (a plane, a cylinder, a cone, a sphere or a torus coaxial with the edge's
@@ -122,7 +124,8 @@ fn outcome(
     }
 }
 
-/// Which operands of a boolean are NURBS twins.
+/// Which operands of a boolean, or faces of a blended edge, are NURBS
+/// twins.
 #[derive(Debug, Clone, Copy)]
 enum Twinned {
     /// The first: a NURBS face against an analytic one (ADR-0061).
@@ -130,7 +133,8 @@ enum Twinned {
     /// The second.
     B,
     /// Both: every face pair across the operands is two NURBS faces, the
-    /// marched section (ADR-0068).
+    /// marched section (ADR-0068); a blend's spine is the marched section
+    /// of the two offset fits.
     Both,
 }
 
@@ -250,15 +254,16 @@ enum Part {
     Turned(Turned, usize),
 }
 
-/// A part, a blend of one of its edges and the face of that edge twinned.
+/// A part, a blend of one of its edges and the faces of that edge twinned.
 #[derive(Debug, Clone)]
 struct BlendTwin {
     part: Part,
     chamfer: bool,
     /// The blend's size as a fraction of the part's room.
     fraction: f64,
-    /// Which of the edge's two faces is the twin.
-    second: bool,
+    /// Which of the edge's two faces are twins: the first, the second or
+    /// both.
+    twinned: Twinned,
     pose: Isometry,
 }
 
@@ -423,12 +428,16 @@ fn blend_twin_agrees(case: &BlendTwin) -> Result<(), TestCaseError> {
     let &[first, second] = &faces[..] else {
         return Err(fail(format!("{} faces on the edge", faces.len())));
     };
-    let face = if case.second { second } else { first };
+    let twins = match case.twinned {
+        Twinned::A => vec![first],
+        Twinned::B => vec![second],
+        Twinned::Both => vec![first, second],
+    };
     let kind = if case.chamfer { "chamfer" } else { "fillet" };
     let name = format!("{kind} of {:?} at {size}", case.part);
-    let twin = nurbs_twin_faces(&mut m, body, &[face]).map_err(fail)?;
+    let twin = nurbs_twin_faces(&mut m, body, &twins).map_err(fail)?;
     let analytic = blended(&mut m, &name, body, &place, case, size, false)?;
-    let name = format!("{name} with {face} a twin");
+    let name = format!("{name} with {twins:?} twins");
     let walked = blended(&mut m, &name, twin, &place, case, size, true)?;
     match (&analytic, walked) {
         (Outcome::Refused(_), Outcome::Refused(_)) => {}
@@ -465,14 +474,14 @@ fn blend_twin(part: impl Strategy<Value = Part>) -> impl Strategy<Value = BlendT
         part,
         any::<bool>(),
         prop::finite_f64(0.05..=0.4),
-        any::<bool>(),
+        prop_oneof![1 => Just(Twinned::A), 1 => Just(Twinned::B), 2 => Just(Twinned::Both)],
         prop::pose(),
     )
-        .prop_map(|(part, chamfer, fraction, second, pose)| BlendTwin {
+        .prop_map(|(part, chamfer, fraction, twinned, pose)| BlendTwin {
             part,
             chamfer,
             fraction,
-            second,
+            twinned,
             pose,
         })
 }
@@ -516,7 +525,7 @@ prop_shards! {
 }
 
 /// A turned part drawn by hand, its corner `k` blended at `size`.
-fn turned_case(pieces: Vec<Piece>, k: usize, size: f64, second: bool) -> BlendTwin {
+fn turned_case(pieces: Vec<Piece>, k: usize, size: f64, twinned: Twinned) -> BlendTwin {
     BlendTwin {
         part: Part::Turned(
             Turned {
@@ -530,7 +539,7 @@ fn turned_case(pieces: Vec<Piece>, k: usize, size: f64, second: bool) -> BlendTw
         ),
         chamfer: false,
         fraction: 0.05,
-        second,
+        twinned,
         pose: Isometry::identity(),
     }
 }
@@ -544,7 +553,7 @@ fn a_twinned_cylinder_fillets_against_a_cone() {
     let line = |x: f64, y: f64| Piece::Line {
         to: Point2::new(x, y),
     };
-    for second in [false, true] {
+    for twinned in [Twinned::A, Twinned::B] {
         let pieces = vec![
             line(1.0, 0.0),
             line(1.0, 0.8),
@@ -553,8 +562,8 @@ fn a_twinned_cylinder_fillets_against_a_cone() {
             line(0.0, 2.3832634729291877),
             line(0.0, 0.0),
         ];
-        blend_twin_agrees(&turned_case(pieces, 2, 0.04, second))
-            .unwrap_or_else(|e| panic!("second {second}: {e}"));
+        blend_twin_agrees(&turned_case(pieces, 2, 0.04, twinned))
+            .unwrap_or_else(|e| panic!("{twinned:?}: {e}"));
     }
 }
 
@@ -580,8 +589,8 @@ fn a_twinned_cylinder_fillets_against_a_sphere() {
             to: Point2::new(0.0, 0.0),
         },
     ];
-    for second in [false, true] {
-        blend_twin_agrees(&turned_case(pieces.clone(), 2, 0.05, second))
-            .unwrap_or_else(|e| panic!("second {second}: {e}"));
+    for twinned in [Twinned::A, Twinned::B] {
+        blend_twin_agrees(&turned_case(pieces.clone(), 2, 0.05, twinned))
+            .unwrap_or_else(|e| panic!("{twinned:?}: {e}"));
     }
 }

@@ -1,5 +1,5 @@
 {
-  "description": "the box [0, 3] × [0, 2] × [0, 2] with every face converted to its B-spline, written by tools/oracle/occt_nurbs_blend.py: one top edge filleted at r 0.2. Its two faces are both NURBS, so the ball's spine is the section of two fitted offsets, NURBS against NURBS, which the cycle's third item takes: Arris refuses it as Unsupported naming both faces, where Open CASCADE builds it (plans/nurbs-face-blend step 5b)",
+  "description": "the box [0, 3] × [0, 2] × [0, 2] with every face converted to its B-spline, written by tools/oracle/occt_nurbs_blend.py: one top edge filleted at r 0.2. Its two faces are both NURBS, so the ball's spine is the marched section of two fitted offsets (plans/nurbs-nurbs-operands step 7), but each end of the stripe meets a NURBS face across, which ADR-0062 refuses: Arris refuses it as Unsupported naming the edge and the face across, where Open CASCADE builds it (plans/nurbs-face-blend step 5b)",
   "params": {
     "r": 0.2
   },

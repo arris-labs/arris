@@ -37,6 +37,8 @@ provenance_consumer_rebuild
 split_nurbs_cylinder_oblique
 sweep_fixtures_read_back
 sweep_sweep_spring_cut_split
+sweep_sweep_thread
+sweep_sweep_thread_chamfer
 the_band_at_the_fixtures_numbers
 transform_mirror_hollow_ring'
 

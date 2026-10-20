@@ -62,6 +62,17 @@ profiled and its hot spot fixed, for C10's accept on the fetched tier.
   a twin the scored halving left the touch uncertified. Timing is the
   same (`meridian_rows` shards ±1 s). No ADR: within both designs, no
   type changes.
+- **Step 7's finding**: no spine code changed. `trace_section` already
+  marches two NURBS offsets (ADR-0068), so lifting `roll`'s refusal of two
+  NURBS faces walks the fillet and the chamfer; ADR-0062's amendment holds
+  the evidence. Open CASCADE's walked blend on the twisted loft misses the
+  ball by `1.0e-3` at `r` 0.5 (its area `1.6e-5` off, past the walked
+  cap), so the fixture is at `r` 0.25 (`1.3e-4`). Its thread chamfer is
+  `1.4e-3` short of the removed volume's closed form, which Arris meets
+  to `2.4e-8`. The thread's `Full` check is 1207 s, `sweep-thread`'s
+  own already 463 s since the marcher: S5 on long NURBS neighbours
+  (BACKLOG), both fixtures in the slow set. `twin_prop`'s meridian
+  shards at 16 cases take 455 s wall against 272 s with one face twinned.
 - **`arris-check`** (steps 3–4): S5 reads a NURBS pair's section from
   `trace_section`, the traced branches' own points, never the fitted
   curves. Step 3's finding: the loft "false positive" was a real fold (the
@@ -135,11 +146,13 @@ robustness or bound has to be established here.
   by a spline sweep crossing it, a smooth loft fused with a sweep, the
   common of two lofts across both seams, and the bicubic top's walked
   fillet cut by, fused with and common with a spline sweep.
-- [ ] Step 7 **[3]** — **The walked stripe between two NURBS faces;
+- [x] Step 7 **[3]** — **The walked stripe between two NURBS faces;
   ADR-0062 amendment.** The spine as the marched section of the offset
   fits. `sweep-thread-chamfer-unsupported` builds as Open CASCADE builds
   it (renamed `sweep-thread-chamfer`), plus a fillet on a ruled loft's
   edge between two NURBS faces. `twin_prop`'s blends twin both faces.
+  Lifting `roll`'s refusal was all (deltas); both fixtures pass at the
+  walked allowance, the oracle's miss measured.
 - [ ] Step 8 **[1]** — **Python and the corpus.** The binding's tests
   cut a sweep by a loft and chamfer the thread; `CHANGELOG.md`
   `Unreleased` bullets; the fetched tier's histogram re-run and printed
