@@ -254,6 +254,25 @@ fn counts_of(outcome: &Outcome, field: &str) -> Option<(usize, usize)> {
     Some((values.next()?, values.next()?))
 }
 
+/// Whether Arris's counts are the oracle's with `k > 0` closed edges more,
+/// each of one vertex and an inner loop on both of its faces: `k` more
+/// vertices and edges, `2k` more loops, the same faces and shells. Arris's
+/// genus is then `k` more than the oracle's, a ring the oracle does not
+/// cut.
+fn extra_ring_edges(outcome: &Outcome) -> bool {
+    let (Some(v), Some(e), Some(f), Some(l), Some((sa, so))) = (
+        counts_of(outcome, "vertices"),
+        counts_of(outcome, "edges"),
+        counts_of(outcome, "faces"),
+        counts_of(outcome, "loops"),
+        counts_of(outcome, "shells"),
+    ) else {
+        return false;
+    };
+    let k = v.0.saturating_sub(v.1);
+    k > 0 && v.0 > v.1 && e.0 == e.1 + k && l.0 == l.1 + 2 * k && f.0 == f.1 && sa == so
+}
+
 /// Whether the oracle's counts are Arris's with `k > 0` faces each cut in
 /// two and nothing else: `k` more faces and loops and vertices, `2k` more
 /// edges, the same shells. The Euler line is unchanged, so the oracle's
@@ -342,6 +361,12 @@ pub const EXCLUSIONS: &[Exclusion] = &[
         fixtures: &["turned-dome-three-rim-fillet"],
         symptom: "Open CASCADE's faces are Arris's cut in pieces: k more faces, loops and vertices, 2k more edges",
         covers: oracle_subdivides_faces,
+    },
+    Exclusion {
+        name: "extra-ring-edges",
+        fixtures: &["revolve-cut-many-box-extrusion-counts-differ"],
+        symptom: "Arris has k closed edges Open CASCADE does not: k more vertices and edges, 2k more loops, the faces and shells agreeing",
+        covers: extra_ring_edges,
     },
     Exclusion {
         name: "s5-undecided",
@@ -1276,6 +1301,17 @@ mod tests {
             excluded(more, EXCLUSIONS).fails(),
             "a vertex more is no exclusion's"
         );
+        let ring = Outcome::Disagree {
+            stage: Stage::Counts,
+            what: "multi-tool/0230: counts Counts { vertices: 45, edges: 73, faces: 26, loops: 32, shells: 1, solids: 1 } but the oracle says Counts { vertices: 44, edges: 72, faces: 26, loops: 30, shells: 1, solids: 1 }".into(),
+        };
+        assert!(matches!(
+            excluded(ring, EXCLUSIONS),
+            Outcome::Excluded {
+                name: "extra-ring-edges",
+                ..
+            }
+        ));
         let strips = Outcome::Disagree {
             stage: Stage::Counts,
             what: "counts Counts { vertices: 6, edges: 11, faces: 7, loops: 7, shells: 1, solids: 1 } but the oracle says Counts { vertices: 12, edges: 23, faces: 13, loops: 13, shells: 1, solids: 1 }".into(),

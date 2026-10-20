@@ -572,6 +572,12 @@ corpus_tests! {
     /// CASCADE's has 84.
     #[ignore = "counts differ from Open CASCADE's multi-tool fuse: 54 faces against 84, the shells agreeing (docs/BACKLOG.md, a multi-tool fuse with fewer faces than Open CASCADE's)"]
     regression_multi_tool_fuse_fewer_faces => run "regression/multi-tool-fuse-fewer-faces";
+    /// A full revolve cut in one call by a box and an extrusion (the
+    /// multi-tool differential's case 230 of the fixed seed at 256 recipes,
+    /// shrunk): the faces agree at 26 and Arris's result has one vertex,
+    /// one edge and two loops more than Open CASCADE's.
+    #[ignore = "counts differ from Open CASCADE's multi-tool cut: 45/73/26/32 against 44/72/26/30 (docs/BACKLOG.md, a revolve cut by a box and an extrusion)"]
+    regression_revolve_cut_many_box_extrusion_counts_differ => run "regression/revolve-cut-many-box-extrusion-counts-differ";
     /// A pentagonal prism cut in one call by a cylinder through it that
     /// crosses a side face and a box overlapping the cylinder (the multi-tool
     /// differential's case 428 of the fixed seed at 1000 recipes, shrunk): the
