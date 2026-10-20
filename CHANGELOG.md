@@ -10,14 +10,16 @@ into its version (ADR-0027).
 
 - `fillet` now rolls on a free-form face, and on two analytic faces whose
   edge no closed form holds (cylinders on skew axes, a cylinder off a
-  sphere's centre, a B-spline edge between a plane and a cylinder): the blend is a NURBS surface within your
+  sphere's centre, a B-spline edge between a plane and a cylinder), and on
+  an edge between two free-form faces (a twisted ruled loft's slanted edge,
+  a swept thread's crest): the blend is a NURBS surface within your
   tolerance of the ball's exact path, its contacts on both faces. A closed
   edge, or an open one whose ends meet a plane, cylinder or cone, blends;
   a tangent chain runs on through such an edge into its neighbours (a
   slot whose round end is free-form, cylinders crossing in a loop of two
   edges). A radius past the free-form face's curvature is refused as too
-  large; two free-form faces, a blend that meets another blend at a sharp
-  vertex, a chain that turns tangent along a curve across the vertex (a
+  large; a free-form face across an end of the blend, a blend that meets
+  another blend at a sharp vertex, a chain that turns tangent along a curve across the vertex (a
   flat running into a torus), and an edge whose faces are tangent at an
   end only within the edge's tolerance are still refused by name. Where
   the faces are tangent at an end exactly (two cylinders of one radius
@@ -54,6 +56,13 @@ into its version (ADR-0027).
   lines both lie on the other surface, returning the line and the pole as
   a point, and a crossing a hair past the NURBS surface's edge, within your
   tolerance, as the point on the edge it stands for.
+- A boolean that leaves two separate pieces on one B-spline wall (a slab
+  cut through a free-form cylinder) now returns them; it failed with an
+  internal error, the checker reading the pieces as overlapping. `check`
+  also decides a loop's validity on coarse polygons first: a check of an
+  imported part's box cut took 0.68 s and now 0.04 s, its answers
+  unchanged. Two NURBS faces that share an edge and whose section the
+  intersector refuses are still listed unchecked.
 - `mass_properties`, `surface_properties` and the checker's volume row
   integrate a NURBS face at every one of its knots up to 4096 a direction
   (256 before): a face with more spans, such as a blend along a long curved
@@ -65,9 +74,11 @@ into its version (ADR-0027).
 - `cut`, `fuse`, `common`, their multi-tool forms, `split` and `section`
   now take a body with NURBS faces against analytic ones, which covers most
   imported B-spline parts: the box cuts and drills of the real parts that
-  were refused as unsupported now run. A NURBS face flush with another
-  face is still refused by name, and two NURBS faces against each other
-  now reach the intersector but are not yet vetted in a boolean.
+  were refused as unsupported now run. Two NURBS faces against each other
+  — a spline sweep cut by another, a smooth loft fused with a sweep, the
+  common of two lofts, a free-form fillet cut by a sweep — give a body that
+  passes the checker and matches Open CASCADE's measures. A NURBS face
+  flush with another face is still refused by name.
 - `intersect_surfaces` now meets a NURBS surface with a plane, a cylinder,
   an elliptic cylinder, a cone, a sphere or a torus, in either order: the
   section comes back as fitted curves (closed loops periodic), ending
@@ -79,9 +90,12 @@ into its version (ADR-0027).
   section is walked between seeds found by interval isolation, in both
   surfaces' parameters at once, and comes back as fitted curves (loops
   periodic) with a line of either surface that lies on the other returned
-  exact and a pole the other surface touches returned as a point. A
-  section the walk cannot account for in full (a tube circle, crowded
-  turning points) is refused by name, never returned partial.
+  exact and a pole the other surface touches returned as a point. Where
+  the surfaces touch at isolated points the section runs through them: two
+  equal cylinders on crossing axes, written as B-splines, meet in their two
+  ellipses. A section the walk cannot account for in full (a tube circle,
+  crowded turning points, the same cylinders tilted off their axes' plane)
+  is refused by name, never returned partial.
   `SectionBranch::uv_on` and `uv2` give a branch's parameters on either
   surface, and `fit_branch_pcurve` fits its pcurve on one. A NURBS surface
   flush with another over an area is still refused as unsupported, and

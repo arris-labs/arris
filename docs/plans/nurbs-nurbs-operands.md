@@ -73,6 +73,14 @@ profiled and its hot spot fixed, for C10's accept on the fetched tier.
   own already 463 s since the marcher: S5 on long NURBS neighbours
   (BACKLOG), both fixtures in the slow set. `twin_prop`'s meridian
   shards at 16 cases take 455 s wall against 272 s with one face twinned.
+- **Step 8's histogram** (C10's accept, 2026-10-20): the fetched tier,
+  27 parts and 54 solids, unchanged from 2026-10-15; the committed tier,
+  11 parts and 16 solids. NURBS blocks 0 of 38 at every column, healing
+  and sweep 0; the blend network's residue is 12 of 38 at `fillet` (7
+  fetched: `TangentChain` 5, `BlendTooLarge` 1, `VertexBlend` 1; 5
+  committed, all `TangentChain`); the reader's own three (faceted,
+  outside the subset, unparsed). The one failure no wait excludes is
+  CTC-02 AP242 e2's `drill_x` counts, Open CASCADE's own drill (BACKLOG).
 - **`arris-check`** (steps 3–4): S5 reads a NURBS pair's section from
   `trace_section`, the traced branches' own points, never the fitted
   curves. Step 3's finding: the loft "false positive" was a real fold (the
@@ -153,7 +161,7 @@ robustness or bound has to be established here.
   edge between two NURBS faces. `twin_prop`'s blends twin both faces.
   Lifting `roll`'s refusal was all (deltas); both fixtures pass at the
   walked allowance, the oracle's miss measured.
-- [ ] Step 8 **[1]** — **Python and the corpus.** The binding's tests
+- [x] Step 8 **[1]** — **Python and the corpus.** The binding's tests
   cut a sweep by a loft and chamfer the thread; `CHANGELOG.md`
   `Unreleased` bullets; the fetched tier's histogram re-run and printed
   for C10's accept, the NURBS rows 0 and the blend residue's row beside.
