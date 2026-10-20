@@ -101,6 +101,8 @@ f=$(key filter "$(plan tests/fixtures/transform/box-mirror/fixture.json)")
 has "fixture" "$f" "package(arris)"
 has "fixture" "$f" "^(transform|"
 lacks "fixture" "$f" "boolean"
+has "fixture" "$f" "binary_id(arris-ops::cancel)"
+lacks "loft fixture" "$(key filter "$(plan tests/fixtures/loft/x/fixture.json)")" "arris-ops::cancel"
 # A fixture directory with no area rule: everything.
 equals "fixture geom" "$(key filter "$(plan tests/fixtures/geom/x.json)")" "all()"
 f=$(key filter "$(plan tests/fixtures/split/box-mid/fixture.json)")

@@ -35,7 +35,9 @@
 #                                     corpus: the binding adds no geometry, and
 #                                     the Python suite is CI's (ADR-0034 §4)
 #   crates/arris/                     the whole `arris` package, corpus included
-#   tests/fixtures/<area>/            that area's corpus tests
+#   tests/fixtures/<area>/            that area's corpus tests, and the
+#                                     cancel record's name check for the
+#                                     areas `arris-ops/tests/cancel.rs` runs
 #   prose (`*.md`, docs/, .agents/)   the docs tests, nothing else
 #   anything else                     every test of the `fast` profile
 #
@@ -118,7 +120,13 @@ while IFS= read -r p; do
       a=${p#tests/fixtures/}; a=${a%%/*}
       case "$a" in
         blend|boolean|build|loft|offset|primitive|provenance|query|shell|split|sweep|transform|real)
-          add_term "package(arris)"; need_corpus part; add_area "$a" ;;
+          add_term "package(arris)"; need_corpus part; add_area "$a"
+          # The step-count record names every fixture of these areas; its
+          # name check is cheap, its counts the full gate's.
+          case "$a" in
+            boolean|sweep|blend|build|provenance|transform|primitive|split)
+              add_term "binary_id(arris-ops::cancel)" ;;
+          esac ;;
         *) whole=yes ;;
       esac ;;
     *.md|.agents/*|docs/*) prose=yes ;;

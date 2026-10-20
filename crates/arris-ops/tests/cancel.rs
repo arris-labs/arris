@@ -5,6 +5,11 @@
 //! that count stops with `Interrupted` at exactly the budget and leaves
 //! the model's bytes as they were, and a budget at the count gives the
 //! unbudgeted body.
+//!
+//! The record names every fixture of those areas, a refusal as
+//! `refused`, so a fixture added, moved or removed without a bless fails
+//! the cheap name check in the pre-commit hook, not the slow count check
+//! at a plan's retirement.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -61,6 +66,55 @@ const AREAS: [&str; 8] = [
     "split",
 ];
 
+/// The record's word for a fixture with no default run or one that
+/// refuses by design: it has no count, only its name.
+const REFUSED: &str = "refused";
+
+/// The fixtures of [`AREAS`], `area/name`, sorted as the record is.
+fn fixture_names() -> Vec<String> {
+    let mut names = Vec::new();
+    for area in AREAS {
+        let root = fixtures::corpus_root().join(area);
+        let mut dirs: Vec<_> = std::fs::read_dir(&root)
+            .expect("the fixture area")
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.join("fixture.json").is_file())
+            .collect();
+        dirs.sort();
+        names.extend(
+            dirs.iter()
+                .map(|d| format!("{area}/{}", d.file_name().unwrap().to_string_lossy())),
+        );
+    }
+    names
+}
+
+#[test]
+fn the_record_names_every_fixture_of_the_areas() {
+    let record = std::fs::read_to_string(record_path()).expect("the record is committed");
+    let recorded: Vec<&str> = record
+        .lines()
+        .map(|l| l.split_once(": ").map_or(l, |(name, _)| name))
+        .collect();
+    let names = fixture_names();
+    let missing: Vec<&String> = names
+        .iter()
+        .filter(|n| !recorded.contains(&n.as_str()))
+        .collect();
+    let stale: Vec<&&str> = recorded
+        .iter()
+        .filter(|r| !names.iter().any(|n| n == **r))
+        .collect();
+    assert!(
+        missing.is_empty() && stale.is_empty(),
+        "the step-count record is out of date (fixtures without a line: {missing:?}; \
+         lines without a fixture: {stale:?}); bless it with {}=1 cargo nextest run \
+         -p arris-ops --test cancel -E 'test(a_budget_stops_every_operation)'",
+        corpus::BLESS_VAR
+    );
+}
+
 #[test]
 fn a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was() {
     let mut counts = String::new();
@@ -78,12 +132,16 @@ fn a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_wa
         for dir in dirs {
             let name = format!("{area}/{}", dir.file_name().unwrap().to_string_lossy());
             let Ok(inputs) = corpus::inputs(&dir, "default") else {
+                counts.push_str(&format!("{name}: {REFUSED}\n"));
                 continue;
             };
             let mut m = inputs.model.clone();
             let (whole, n) = steps_of(|c| inputs.run_result(&mut m, c));
             // A refusal by design is a fixture of its own.
-            let Ok(whole) = whole else { continue };
+            let Ok(whole) = whole else {
+                counts.push_str(&format!("{name}: {REFUSED}\n"));
+                continue;
+            };
             let dumped = |m: &arris_topo::Model, made: &corpus::Made| -> Vec<String> {
                 made.outputs
                     .iter()
