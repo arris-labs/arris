@@ -1866,6 +1866,11 @@ corpus_tests! {
     /// lumps, every face NURBS, their nesting decided by boxes clipped to
     /// each face's own patch (nurbs-nurbs-operands step 4).
     boolean_nurbs_cylinder_slab_cut_two_lumps => run "boolean/nurbs-cylinder-slab-cut-two-lumps";
+    /// A B-spline frustum cut by a thin tilted slab: two lumps whose cone
+    /// wall's pieces lie 0.04 apart on one B-spline surface
+    /// (twin_prop's draw, shrunk).
+    #[ignore = "kernel bug: B1 leaves the two lumps' nesting undecided, its box proof spending its budget along the tilted strip before the boxes are thinner than the gap (docs/BACKLOG.md, a twin boolean whose lumps B1 cannot prove apart)"]
+    regression_nurbs_frustum_thin_slab_cut_lumps_undecided => run "regression/nurbs-frustum-thin-slab-cut-lumps-undecided";
     /// An elliptic prism, mirrored, fused with a posed revolve (nightly
     /// 2026-10-04, case 328, seed `3549c46a…`): a planar cap bounded by the
     /// ellipse and two section edges, whose polygon at chord 0.001 crosses

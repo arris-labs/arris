@@ -1,0 +1,56 @@
+{
+  "description": "the exact B-spline frustum (bottom radius 0.1, top 0.5, height 1.4077, turned half a turn about y; Open CASCADE's STEP of the revolved profile converted by occt_step.py --nurbs) cut by a slab 0.04 thick tilted across its cone wall: two lumps, their cone wall's two pieces on one B-spline surface 0.04 apart across the slab. Arris returns OpError::Internal(Lumps(Undecided)): B1's box proof of the pieces apart (the patches quartered where their clipped boxes overlap) spends its budget along the tilted strip before the boxes are thinner than the gap, and the tracer refuses the pair, so the nesting is undecided where Open CASCADE builds two solids. Found by twin_prop's quadric_twins_agree_with_the_analytic_boolean shard 1 (ARRIS_PROPTEST_SEED=61727269732d70726f70657274792d74657374732d736565642d763100000000, ARRIS_PROPTEST_CASES=16), the frustum alone twinned; shard 4 draws a flatter frustum with both operands twinned and the same fault (plans/nurbs-nurbs-operands review)",
+  "steps": [
+    {
+      "name": "frustum",
+      "op": "step",
+      "file": "frustum.step",
+      "sha256": "b0e3c65a822dd1d3248deb238c6d3f5b01b9722f43cd8ef660a08ee5e129bae0",
+      "id": 15
+    },
+    {
+      "name": "slab0",
+      "op": "box",
+      "min": [
+        -0.020000000000000004,
+        -1.8673813686982492,
+        -0.9389754123802826
+      ],
+      "max": [
+        0.020000000000000004,
+        1.8673813686982492,
+        0.9389754123802826
+      ]
+    },
+    {
+      "name": "slab",
+      "op": "transform",
+      "of": "slab0",
+      "translate": [
+        0,
+        0,
+        -1.2546436121845161
+      ],
+      "rotate": {
+        "axis": [
+          -0.9323357064913688,
+          -0.36159387494983974,
+          0
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 134.91062984311264
+      }
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "frustum",
+      "tool": "slab"
+    }
+  ],
+  "result": "result"
+}

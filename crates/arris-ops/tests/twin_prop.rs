@@ -26,7 +26,7 @@
 //! fixture under `tests/fixtures/regression/` (`tests/fixtures/README.md`
 //! §Property-test failures).
 
-use arris_check::{Level, Unchecked, check};
+use arris_check::{Level, LumpError, Unchecked, check};
 use arris_debug::dump::euler_line;
 use arris_debug::prop::turned::{Piece, Turned, turned};
 use arris_debug::prop::twin::{nurbs_twin, nurbs_twin_faces};
@@ -88,15 +88,28 @@ fn outcome(
             reason: Reason::Boolean(BooleanReason::BesideSingularity),
             ..
         }) => Err(TestCaseError::reject("BesideSingularity")),
-        // A twin result of several lumps whose shells B1 cannot prove
-        // apart: after step 4 the boxes of the faces' patches separate
-        // every pair but those whose (u, v) regions coincide on one twin
-        // surface to the depth the checker cuts (quadric pairs, 2 shards
-        // in 8 at 16 cases): shells that touch along a curve, or
-        // overlap. A backlog line; plans/nurbs-nurbs-operands open
-        // question.
-        Err(OpError::Internal(Fault::Lumps(_))) if twin => {
-            Err(TestCaseError::reject("twin lumps touching"))
+        // A twin result of several lumps whose nesting B1 leaves
+        // undecided, every row a pair of two NURBS faces on two shells:
+        // a thin slab across a frustum's twin leaves the cone wall's two
+        // pieces a gap apart on one surface, and the box proof spends its
+        // budget along a tilted strip before the boxes are thinner than
+        // the gap (quadric pairs, 2 shards in 8 at 16 cases). Held by
+        // `regression/nurbs-frustum-thin-slab-cut-lumps-undecided`
+        // (BACKLOG). Shells that do not nest (`LumpError::Nesting`) are
+        // not tolerated.
+        Err(OpError::Internal(Fault::Lumps(LumpError::Undecided { rows, .. })))
+            if twin
+                && rows.iter().all(|row| {
+                    matches!(
+                        row,
+                        Unchecked::ShellFacePair {
+                            kinds: (SurfaceKind::Nurbs, SurfaceKind::Nurbs),
+                            ..
+                        }
+                    )
+                }) =>
+        {
+            Err(TestCaseError::reject("twin lumps undecided"))
         }
         // The section of two twins refused as crowded where the walls
         // touch (BACKLOG; 3 of 64 quadric pairs both twinned), held by
@@ -469,12 +482,15 @@ fn blend_twin_agrees(case: &BlendTwin) -> Result<(), TestCaseError> {
     Ok(())
 }
 
-fn blend_twin(part: impl Strategy<Value = Part>) -> impl Strategy<Value = BlendTwin> {
+/// A part's blend with `part`'s edge, its two faces both twinned in
+/// `both` of every 8 cases and one of them in the rest.
+fn blend_twin(part: impl Strategy<Value = Part>, both: u32) -> impl Strategy<Value = BlendTwin> {
+    let one = (8 - both) / 2;
     (
         part,
         any::<bool>(),
         prop::finite_f64(0.05..=0.4),
-        prop_oneof![1 => Just(Twinned::A), 1 => Just(Twinned::B), 2 => Just(Twinned::Both)],
+        prop_oneof![one => Just(Twinned::A), one => Just(Twinned::B), both => Just(Twinned::Both)],
         prop::pose(),
     )
         .prop_map(|(part, chamfer, fraction, twinned, pose)| BlendTwin {
@@ -493,7 +509,7 @@ prop_shards! {
         (case) = blend_twin((
             [prop::finite_f64(1.5..=5.0), prop::finite_f64(1.5..=5.0), prop::finite_f64(1.5..=5.0)],
             0usize..12,
-        ).prop_map(|(dims, edge)| Part::Box { dims, edge })) => {
+        ).prop_map(|(dims, edge)| Part::Box { dims, edge }), 4) => {
             blend_twin_agrees(&case)
         }
 }
@@ -506,20 +522,24 @@ prop_shards! {
             prop::finite_f64(1.0..=3.0),
             prop::finite_f64(1.0..=4.0),
             any::<bool>(),
-        ).prop_map(|(radius, height, far)| Part::HalfDisc { radius, height, far })) => {
+        ).prop_map(|(radius, height, far)| Part::HalfDisc { radius, height, far }), 4) => {
             blend_twin_agrees(&case)
         }
 }
 
 prop_shards! {
     /// A turned part's corner: a plane, a cylinder, a cone, a sphere or a
-    /// torus against its neighbour, one of the two twinned.
+    /// torus against its neighbour, one of the two twinned, or both in one
+    /// case of 8: S5 on two long NURBS neighbours costs minutes a case
+    /// (BACKLOG), and at one in two the eight shards took 56 to 102 min at
+    /// 256 cases, past CI's job limit at 1000. Both twinned is held by the
+    /// box and ruling rows at one in two and by the walked fixtures.
     meridian_rows_blend_as_their_twins
         [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7]
         (case) = blend_twin((turned(), 0usize..4).prop_map(|(t, pick)| {
             let k = t.blended[pick % t.blended.len()];
             Part::Turned(t, k)
-        })) => {
+        }), 1) => {
             blend_twin_agrees(&case)
         }
 }

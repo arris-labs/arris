@@ -341,7 +341,7 @@ fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
 /// the front or come back uncertified (plans/nurbs-nurbs-operands, open
 /// question at step 5).
 #[test]
-#[ignore = "the marcher refuses the tilted twins of two equal cylinders on crossing axes (plans/nurbs-nurbs-operands step 5 open question)"]
+#[ignore = "the marcher refuses the tilted twins of two equal cylinders on crossing axes (docs/BACKLOG.md, the tilted Steinmetz pairs)"]
 fn the_tilted_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
     let faults = steinmetz_faults(|tilted| tilted, false, true);
     assert!(faults.is_empty(), "{faults:#?}");
