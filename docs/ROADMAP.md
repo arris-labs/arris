@@ -18,7 +18,7 @@ done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
 ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
-then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; loft 10-17, ADR-0065; the NURBS × NURBS intersectors 10-19, ADR-0068; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; loft 10-17, ADR-0065; NURBS × NURBS, the intersectors 10-19 (ADR-0068) and the booleans, checker and walked stripe on them 10-20; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -841,9 +841,22 @@ built in this one.*
   NURBS surface and two NURBS curves, held to the twins of every analytic
   pair and to `GeomAPI_IntSS`, `IntCS` and `ExtremaCurveCurve`; a cone
   twin against a square plane and some sphere × cylinder poses are
-  refused `CrowdedSingularity`. The pave and booleans on two NURBS faces,
-  S5 on them and the walked stripe between them are the next plan,
-  `nurbs-nurbs-operands`.*
+  refused `CrowdedSingularity`. The operands done 2026-10-20: the pave
+  and booleans on two NURBS faces with no pave change (a spline sweep cut
+  by a sweep, a loft fused with a sweep, two lofts' common across both
+  seams, a walked-blend face against a sweep: six `boolean/` fixtures
+  against Open CASCADE), S5 over the traced section and B1 over clipped
+  NURBS boxes, the section through the tangent points of a Steinmetz
+  pair, and the walked stripe between two NURBS faces (ADR-0062's
+  amendment: `sweep/sweep-thread-chamfer`,
+  `loft/loft-twisted-square-edge-fillet`). `twin_prop` twins both
+  operands; it tolerates `CrowdedSingularity` (3 in 192), two lumps on
+  one twin surface B1 leaves unchecked, and S5's pairs at a shared edge
+  the intersector refuses. CTC-02's box cut 676 s to 176 s (the debug
+  check's L4 and S5's fit, not the walk). The fetched tier's histogram,
+  re-run for the accept: NURBS 0 of 38 at every column, the blend
+  network 12 at `fillet` (7 fetched, 5 committed), unchanged since
+  2026-10-15. Two NURBS faces flush over an area stay `Unsupported`.*
 - The script corpus (renamed from the DIY part corpus; ADR-0067): 15 hobby
   parts and 3 CAE parts as Python scripts on the raw binding, committed
   under `crates/arris-py/corpus/` with each stage checked against Open

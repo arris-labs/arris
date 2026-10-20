@@ -118,7 +118,7 @@ fn outcome(
         // and, for two equal cylinders on crossing axes tilted,
         // `the_tilted_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`.
         // The tangent points of the crossing pairs are accounted for since
-        // plans/nurbs-nurbs-operands step 5, which took `TubeCircle` and
+        // nurbs-nurbs-operands step 5, which took `TubeCircle` and
         // `UnresolvedTurning` off this arm. Named before the differential's
         // exclusions, which take any `Geometry` fault.
         Err(OpError::Internal(Fault::Geometry(GeomError::DegenerateSection {

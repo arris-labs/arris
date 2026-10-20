@@ -217,3 +217,19 @@ the table above with both conditions.
   to 0.42 s in the test profile, most of it the 11 000 steps a loop of
   radius 1 takes at the default tolerance
   (`march_every_twin_section_has_the_closed_forms_branches`).
+
+## Amendment, 2026-10-20
+
+- **Singular points before continua (plans/nurbs-nurbs-operands step 5).**
+  Two equal cylinders on crossing axes, twinned, were refused where their
+  walls touch. "No normal" was measured against the nets' diagonal
+  squared, so a twin 600 long had none anywhere and the reach was 12.4,
+  not 5e-4; it is now a share of the surface's own speeds. The marcher
+  finds every singular point before it accounts for continua, and a
+  seam's seed inside a reach — an arm of the point crossing the seam — is
+  dropped, not `CrowdedSingularity`; two reaches that meet still are. The
+  departures are isolated over the patches near the ball, halved to a few
+  reaches. Tilted pairs both twinned stay refused (`TubeCircle` or
+  `CrowdedSingularity`; BACKLOG): the loop condition vanishes on the
+  rulings through the tangent points and the isolation halves a long
+  twin's short parameters only.

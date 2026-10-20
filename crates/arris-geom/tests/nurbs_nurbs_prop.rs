@@ -323,7 +323,7 @@ fn steinmetz_faults(pick: impl Fn(bool) -> bool, one: bool, both: bool) -> Vec<S
 /// points that the marcher (ADR-0068) and the tracer of a NURBS surface
 /// against a cylinder (ADR-0061) end at them. Both refused them as
 /// crowded before the tangent points were found first and their
-/// departures isolated on the ball's scale (plans/nurbs-nurbs-operands
+/// departures isolated on the ball's scale (nurbs-nurbs-operands
 /// step 5), found by `twin_prop` with both operands twinned (step 2).
 #[test]
 fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
@@ -338,8 +338,8 @@ fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
 /// tangent point, and on twins 600 long in a pose that mixes the axes the
 /// isolation (`crate::bernstein_n`) halves the short parameters to the
 /// bottom and never the long ones, so boxes far from any zero outgrow
-/// the front or come back uncertified (plans/nurbs-nurbs-operands, open
-/// question at step 5).
+/// the front or come back uncertified (docs/BACKLOG.md, the tilted
+/// Steinmetz pairs).
 #[test]
 #[ignore = "the marcher refuses the tilted twins of two equal cylinders on crossing axes (docs/BACKLOG.md, the tilted Steinmetz pairs)"]
 fn the_tilted_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {

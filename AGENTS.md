@@ -42,8 +42,9 @@ transcendental goes through one `libm`, so wasm32 bodies match native
 (ADR-0064); loft landed 2026-10-17 (ADR-0065). Beside the cycles: audience
 is developers first (ADR-0067); the script corpus landed 2026-10-18 (18 parts,
 67 built, 4 refused: blend network 3, SurfaceCollapses 1); NURBS against
-NURBS landed in the intersectors 2026-10-19 (ADR-0068, the marched section).
-Next: the pave and booleans on two NURBS faces; draft and thicken beside it.
+NURBS landed 2026-10-19 to 10-20: the marched section (ADR-0068), then the
+booleans, S5, B1 and the walked stripe on two NURBS faces; NURBS blocks 0
+of 38. Next: `/close-cycle` for C10; draft and thicken beside it.
 
 ## Rules that are not derivable from the code
 

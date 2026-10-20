@@ -381,7 +381,7 @@ operand (`Interferences::operands`, `FacePair::operands`,
 the intersector**: every face pair, and every edge against a face, whose
 boxes overlap is asked about, whatever analytic surface either lies on,
 and `OpError::Unsupported` names a pair only where the intersector
-itself has no arm — a NURBS face flush with another face over an area. Two NURBS faces reach the marched section (ADR-0068); the pave and booleans on them are not vetted yet (`nurbs-nurbs-operands`), and the checker leaves their S5 undecided. A NURBS face against an analytic one is paved like any other: the section is traced in the NURBS face's own (u, v) and its pcurve there is `pcurve_on`'s projection. A cone, an elliptic cylinder, a
+itself has no arm — a NURBS face flush with another face over an area. Two NURBS faces are paved over their marched section (ADR-0068): its ends against each face's edges by the curve × surface arm, its crossings of either face's seam paved, its pcurves the walk's own; S5 and B1 decide the pair over the same section (`boolean/` sweep × sweep, loft × loft and sweep × walked-blend fixtures against Open CASCADE). A NURBS face against an analytic one is paved like any other: the section is traced in the NURBS face's own (u, v) and its pcurve there is `pcurve_on`'s projection. A cone, an elliptic cylinder, a
 sphere and a torus face are paved like any other, each with its corpus
 (`boolean/frustum-*`, `boolean/chamfered-boss-slot-cut`,
 `boolean/elliptic-*`, `boolean/ball-*`, `boolean/ring-*`,
@@ -1275,7 +1275,7 @@ holds:
 
 A bent pipe of lines and arcs is therefore all-analytic and an operand of
 every quadric boolean and blend; a spring, a thread or a spline path
-carries NURBS faces and is refused only against another NURBS face. Each
+carries NURBS faces, operands of a boolean and a blend against any face but one flush with them over an area. Each
 profile vertex's rail is built once and shared by its two faces; on a
 fitted span every pcurve is an isoline. A closed path whose frame closes
 sweeps a body with no caps. A path corner (`OpError::Path`), a profile
@@ -1306,7 +1306,7 @@ polynomial of degree n − 1 at chord-length parameters, as Open CASCADE's
 `ThruSections` does (at most nine sections). An open loft has two planar
 caps from the end sections; a closed one returns to its first section and
 has none. A frustum is therefore an operand of every quadric boolean and
-blend; a NURBS span is refused only against another NURBS face. Fewer
+blend, and a NURBS span is one against any face but one flush with it. Fewer
 than two sections (three when closed), unequal loop counts, an invalid
 section, a loop no rational quadratic holds, two consecutive sections
 equal and more than nine smooth sections are `OpError::Loft(LoftError)`,

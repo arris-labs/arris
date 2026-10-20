@@ -1009,7 +1009,7 @@ impl<'a> PatchedSection<'a> {
         // that far apart, and the scored halving cuts the long way to the
         // bottom with the short one never pinned: the crossing where two
         // equal cylinders on crossing axes touch was left uncertified
-        // (plans/nurbs-nurbs-operands step 5).
+        // (nurbs-nurbs-operands step 5, ADR-0068's amendment).
         common_zeros_with([&g_s, &g_t], floors, &[gate], Halving::LookAhead, meter)
     }
 
