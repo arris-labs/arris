@@ -50,7 +50,10 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      what `/retire-plan` executes; `GLOSSARY.md` is on it when a term is
      new. Rustdoc on new public items is part of the steps.
    - *Open questions* carry `⚠ OPEN:` items, each with who decides and by
-     which step.
+     which step. The agent decides by default — a speed bar, a tolerance,
+     a rescope inside the plan — and records its pick and the reason. The
+     human decides only a change to a cycle's scope on the roadmap, to the
+     project's positioning, or what publishes or costs money.
 6. Count the lines (`wc -l`); past ~150, move step detail into the deltas
    or split as in 3.
 7. Reply with the step list and the open questions, then **stop**. The

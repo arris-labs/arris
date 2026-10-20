@@ -29,7 +29,8 @@ argument-hint: <plan slug> [step number or range]
    in the same commit; the body says why, cites docs/ADRs, names any public
    type or signature changed.
 6. A step that shows the plan is wrong edits the plan in that commit and
-   says so. A failure that resists a first fix gets the `inspect` skill's
+   says so; a rescope inside the plan is the agent's to decide, written as
+   *Settled* with its reason, and the work goes on. A failure that resists a first fix gets the `inspect` skill's
    diagnosis loop (a red loop, then ranked hypotheses) before any theory. A geometry failure outside the step's scope becomes an ignored
    `regression/` fixture in the same step (`inspect` skill); its fix is a
    backlog line.

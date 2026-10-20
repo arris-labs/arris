@@ -37,4 +37,6 @@ The executable check (test, corpus run, oracle comparison) that closes the plan.
 Written at planning time; executed before the plan is deleted.
 
 ## Open questions
-`⚠ OPEN:` items, each with who decides (human / agent) and by which step.
+`⚠ OPEN:` items, each with who decides and by which step: the agent by
+default; the human only for a cycle's scope, positioning, or what publishes
+or costs money.
