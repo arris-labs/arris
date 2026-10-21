@@ -76,6 +76,31 @@ fn from_all(p: Point3, curves: &[&Curve]) -> f64 {
         .fold(f64::INFINITY, f64::min)
 }
 
+/// Samples per curve for counting its stretches inside the cube.
+const STRETCH_SAMPLES: usize = 4097;
+
+/// How many separate stretches of `curve` lie inside the cube, a closed
+/// curve's counted round its loop; `None` where all of it does.
+fn stretches(curve: &Curve) -> Option<usize> {
+    let d = curve.domain();
+    let ins: Vec<bool> = (0..STRETCH_SAMPLES)
+        .map(|k| inside(curve.point(d.lerp(k as f64 / (STRETCH_SAMPLES - 1) as f64))))
+        .collect();
+    if ins.iter().all(|&i| i) {
+        return None;
+    }
+    let before = |k: usize| match k {
+        0 if closed(curve) => ins[STRETCH_SAMPLES - 2],
+        0 => false,
+        _ => ins[k - 1],
+    };
+    Some(
+        (0..STRETCH_SAMPLES)
+            .filter(|&k| ins[k] && !before(k))
+            .count(),
+    )
+}
+
 fn closed(curve: &Curve) -> bool {
     let d = curve.domain();
     (curve.point(d.lo()) - curve.point(d.hi())).norm() <= tol().linear
@@ -151,9 +176,17 @@ fn twin_property((a, b): (Surface, Surface)) -> Result<(), TestCaseError> {
             .filter(|&&q| closed(c) || ends.iter().all(|e| (e - q).norm() > tol().linear))
             .count()
     };
+    // A curve the cube holds whole is as many pieces as its cuts make; one
+    // that leaves it, as many as its stretches inside it and the cuts on
+    // them: the pair's curves are clipped to the cube, the twins' loops
+    // may run out of it and back.
     let pieces = |c: &Curve| {
         let k = cut(c);
-        if closed(c) { k.max(1) } else { k + 1 }
+        match stretches(c) {
+            None if closed(c) => k.max(1),
+            None => k + 1,
+            Some(runs) => runs + k,
+        }
     };
     // A section is clipped to the cube by the pair and not by the twins,
     // so the loops are counted where they lie wholly inside it.
