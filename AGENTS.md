@@ -29,22 +29,19 @@ cargo install cargo-fuzz --locked
 
 ## Current state
 
-**C1–C9 done (2026-09-12 to 10-12)**, each compressed to its status line in
-`docs/ROADMAP.md`: the vertical slice, the application gate, every quadric
-pair, the STEP reader and real-part corpus, the consumer's API, the blend
-network, prismatic features, the query cycle, the healing cycle (healing
-blocks 0 of 38 parts at `read`). ADR-0001 to ADR-0068; PyPI `arris` beside
-them (ADR-0034).
-**C10, the NURBS cycle** (opened 2026-10-12): NURBS against the analytic
-kinds (ADR-0061) and the blend on a NURBS face as a walked stripe
-(ADR-0062) landed; sweep along a path landed 2026-10-16 (ADR-0063), and beside it every
-transcendental goes through one `libm`, so wasm32 bodies match native
-(ADR-0064); loft landed 2026-10-17 (ADR-0065). Beside the cycles: audience
-is developers first (ADR-0067); the script corpus landed 2026-10-18 (18 parts,
-67 built, 4 refused: blend network 3, SurfaceCollapses 1); NURBS against
-NURBS landed 2026-10-19 to 10-20: the marched section (ADR-0068), then the
-booleans, S5, B1 and the walked stripe on two NURBS faces; NURBS blocks 0
-of 38. Next: `/close-cycle` for C10; draft and thicken beside it.
+**C1–C10 done (2026-09-12 to 10-22)**, each compressed to its status line
+in `docs/ROADMAP.md`: the vertical slice, the application gate, every
+quadric pair, the STEP reader and real-part corpus, the consumer's API, the
+blend network, prismatic features, the query cycle, the healing cycle, and
+the NURBS cycle (NURBS faces against every kind and each other, walked
+blends, sweep, loft; NURBS blocks 0 of 38 parts). ADR-0001 to ADR-0068;
+PyPI `arris` beside them (ADR-0034); audience developers first, with the
+script corpus (ADR-0067).
+**C11, the blend residue** (opened 2026-10-22): the blend network blocks
+12 of 38 real parts at `fillet` and 3 of the script corpus's 4 refusals.
+**Next:** `/release` for C10, then `/idea` or `/plan` for C11's first
+item; the modelling layer (`arris.build`, its parked plan) and then draft
+and thicken in the side slot.
 
 ## Rules that are not derivable from the code
 

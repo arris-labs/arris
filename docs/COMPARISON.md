@@ -15,15 +15,15 @@ not the latest.
 
 ## Where each one stands
 
-| Area | Open CASCADE | Arris (0.9.0) |
+| Area | Open CASCADE | Arris (0.10.0) |
 |---|---|---|
-| Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS surfaces read, checked, sectioned against analytic surfaces (ADR-0061), and swept/lofted (ADR-0063, ADR-0065) |
+| Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS surfaces read, checked, sectioned against analytic surfaces and against each other (ADR-0061, ADR-0068), and swept/lofted (ADR-0063, ADR-0065) |
 | Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections, extrema, sweep paths, and lofts) |
-| Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS against analytic surfaces (ADR-0061); NURBS against NURBS not yet |
-| Sections | Full general sections | Exact for conic pairs; traced in NURBS parameter plane and fitted elsewhere; planar section of a body as a sheet |
-| Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius, on chains of edges between planes and cylinders (coaxial pairs included), cone, sphere and torus rims, plus walked stripes on NURBS faces (ADR-0062); no variable radius |
+| Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS against analytic surfaces (ADR-0061) and against NURBS (ADR-0068); a NURBS face flush with another over an area is refused |
+| Sections | Full general sections | Exact for conic pairs; traced in a NURBS surface's parameter plane against an analytic one and marched between two NURBS surfaces, fitted elsewhere; planar section of a body as a sheet |
+| Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius (a chamfer: one distance), on chains of edges: in closed form between planes and cylinders (coaxial pairs included) and on cone, sphere and torus rims; elsewhere a walked NURBS stripe, on NURBS faces, between two of them and on analytic pairs no closed form holds (ADR-0062); no variable radius |
 | Shell and offset | Yes, including on NURBS | Offset faces and shell on analytic faces (refuses elliptic cylinder and NURBS for offset and shell) |
-| Sweep, loft, pipe | Yes | Sweep along a path (lines, arcs, helix arcs, B-spline curves, ADR-0063); loft across sections by arc-length matching (ruled and smooth polynomial, ADR-0065); pipe not yet |
+| Sweep, loft, pipe | Yes | Sweep along a path (lines, arcs, helix arcs, B-spline curves, ADR-0063); loft across sections by arc-length matching (ruled and smooth polynomial, ADR-0065) |
 | Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
 | Ray fire | Yes | Yes, on every face kind including NURBS |
 | Healing | `ShapeFix` and sewing, on by default when reading | Two repairs, on by default when reading and each named on the body: a gap up to 5e-4 of the part's size closed by growing that entity's tolerance, and a face the file walks against all its neighbours turned back. Faces that share no edge are not sewn: refused, naming why |
@@ -115,9 +115,9 @@ same band, so no comparison of rates exists. Do not read the cases above
 as "more robust than Open CASCADE".
 
 Cases Open CASCADE builds and Arris does not yet (each is a refusal today):
-NURBS faces meeting another NURBS face in a boolean (NURBS against analytic
-lands in C10), variable-radius blends, sewing the free faces of a STEP file,
-and offset/shell on elliptic cylinder or NURBS surfaces. The fixtures that
+two NURBS faces flush over an area in a boolean, variable-radius blends,
+sewing the free faces of a STEP file, and offset/shell on elliptic
+cylinder or NURBS surfaces. The fixtures that
 hold these are in `tests/fixtures/` and `docs/ROADMAP.md`.
 
 ## Reproducing the comparison

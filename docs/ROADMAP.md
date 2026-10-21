@@ -18,7 +18,10 @@ done 2026-10-07, ADR-0047), then **C8** (the query cycle: distance,
 ray fire, interference, planar section; done 2026-10-11, ADR-0053 to
 ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
-then **C10** (the NURBS cycle: NURBS operands, sweep and loft; its first item, a NURBS surface against the analytic kinds, section and blend, done 2026-10-13 to 10-15, ADR-0061 and ADR-0062; sweep 10-16, ADR-0063; loft 10-17, ADR-0065; NURBS × NURBS, the intersectors 10-19 (ADR-0068) and the booleans, checker and walked stripe on them 10-20; beside it, one `libm` on every target, 10-16, ADR-0064). An unopened cycle carries
+then **C10** (the NURBS cycle: NURBS operands, sweep and loft; done
+2026-10-22, ADR-0061 to ADR-0065, ADR-0067, ADR-0068), then **C11** (the
+blend residue: the fillets the real parts and scripts are still refused).
+An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
 
@@ -800,88 +803,41 @@ need a fitted NURBS face (docs/BACKLOG.md). The DIY part corpus, still
 unbuilt after three cycles that each said it would rank the next, is
 built in this one.*
 
-**In**, cheapest first, so that each part ships on its own:
+**Status: done 2026-10-22, tag `c10`.** Retired the free-form face as an
+operand: a NURBS surface traced against every analytic kind (ADR-0061), a
+blend with no closed form walked as a NURBS stripe, on free-form faces,
+on analytic pairs no closed form holds and between two free-form faces
+(ADR-0062), sweep along a path (ADR-0063) and loft between sections
+(ADR-0065), each an operand of the boolean and the blend, and the section
+of two NURBS surfaces marched between certified seeds, with the booleans,
+S5, B1 and the walked stripe over it (ADR-0068). Beside it, one `libm` on
+every target, so wasm32 bodies match native (ADR-0064), and the
+developer-first audience with the script corpus (ADR-0067). The fetched
+tier's histogram: NURBS blocks 0 of 38 parts at every column, from 6 at
+C9's close (3 at `box_cut` and 1 at `drill_x` by 2026-10-13, the last
+`fillet` 2026-10-15); the blend network 12 at `fillet` (7 fetched, 5
+committed). The script corpus: 18 parts, 71 stages, 67 built, 4 refused
+(the blend network 3 at `fillet`, `SurfaceCollapses` 1 at `shell`). Two
+NURBS faces flush over an area stay `Unsupported`; draft and thicken,
+the side slot, did not start and are backlog lines. ADR-0061 to ADR-0065,
+ADR-0067, ADR-0068.
+
+**In:**
 
 - A NURBS surface against each analytic kind: the section, and the
-  boolean and blend over it. This covers a sweep or loft cut by a plane or
-  a cylinder, an embossed outline, and the B-spline faces of an imported
-  part. *Done 2026-10-13 for the section, the
-  boolean, `split` and `section` (ADR-0061): the fetched tier's NURBS row
-  fell from 3 at `box_cut` and 1 at `drill_x` to 0 at every boolean column,
-  leaving 5 parts at `fillet` (2 NURBS curve × plane, 2 NURBS surface ×
-  torus, 1 cylinder × cylinder); the committed tier's one is FTC-10's
-  fillet. The blend on a NURBS face, a walked stripe over the faces' offsets
-  (fillet and chamfer; ADR-0062), was done 2026-10-15: the fetched tier's
-  NURBS row at `fillet` is 0 of 38 parts, from 1 (CTC-05, now refused
-  `TangentChain` at a vanishing end), and the fillets that remain block on
-  the blend network (`TangentChain` 5, `BlendTooLarge` 1, `VertexBlend` 1).
-  CTC-01's crossing-cylinder crease and FTC-10's skew cylinders build
-  against Open CASCADE. The next items are sweep and loft.*
+  boolean, `split`, `section` and blend over it.
 - Sweep along a path and loft between sections, each with provenance and
-  each an operand of every boolean and blend that the first item allows.
-  The oblique extrude of an arc goes here too, as the exact
-  `EllipticCylinder` where that kind holds it. *Sweep done 2026-10-16
-  (ADR-0063): a profile along a G1 path of lines, arcs, helix arcs and
-  NURBS curves under two frame laws, exact per span where a kind holds it
-  (a bent pipe is all-analytic) and fitted elsewhere; nine fixtures
-  matched to `MakePipeShell`, five refusal fixtures, five operand
-  fixtures, the oblique extrude, `sweep_prop`'s six properties and the
-  Python binding. Loft done 2026-10-17 (ADR-0065): sections matched by
-  arc length from each loop's start, a ruled loft exact as planes,
-  cylinders and cones where the spans hold them, a smooth loft through up
-  to nine sections as Open CASCADE builds it, open or closed; seven
-  fixtures matched to `ThruSections` (the circle to a square and the duct
-  carry the pairing's 1e-3 and 1e-4), three refusal fixtures, four
-  operand fixtures, `loft_prop` and the Python binding.*
+  each an operand of every boolean and blend the first item allows; the
+  oblique extrude of an arc as the exact `EllipticCylinder`.
 - NURBS against NURBS: a marcher with explicit seam handling,
   `intersect_curves` for two NURBS curves, and the boolean and blends the
-  real parts ask of them. *The intersectors done 2026-10-19 (ADR-0068),
-  `nurbs-nurbs-section`: the section of two NURBS surfaces marched
-  between seeds certified by Bernstein isolation, a NURBS curve against a
-  NURBS surface and two NURBS curves, held to the twins of every analytic
-  pair and to `GeomAPI_IntSS`, `IntCS` and `ExtremaCurveCurve`; a cone
-  twin against a square plane and some sphere × cylinder poses are
-  refused `CrowdedSingularity`. The operands done 2026-10-20: the pave
-  and booleans on two NURBS faces with no pave change (a spline sweep cut
-  by a sweep, a loft fused with a sweep, two lofts' common across both
-  seams, a walked-blend face against a sweep: six `boolean/` fixtures
-  against Open CASCADE), S5 over the traced section and B1 over clipped
-  NURBS boxes, the section through the tangent points of a Steinmetz
-  pair, and the walked stripe between two NURBS faces (ADR-0062's
-  amendment: `sweep/sweep-thread-chamfer`,
-  `loft/loft-twisted-square-edge-fillet`). `twin_prop` twins both
-  operands; it tolerates `CrowdedSingularity` (3 in 192), two lumps on
-  one twin surface B1 leaves unchecked, and S5's pairs at a shared edge
-  the intersector refuses. CTC-02's box cut 676 s to 176 s (the debug
-  check's L4 and S5's fit, not the walk). The fetched tier's histogram,
-  re-run for the accept: NURBS 0 of 38 at every column, the blend
-  network 12 at `fillet` (7 fetched, 5 committed), unchanged since
-  2026-10-15. Two NURBS faces flush over an area stay `Unsupported`.*
-- The script corpus (renamed from the DIY part corpus; ADR-0067): 15 hobby
-  parts and 3 CAE parts as Python scripts on the raw binding, committed
-  under `crates/arris-py/corpus/` with each stage checked against Open
-  CASCADE and its outcome recorded. *Done 2026-10-18: 18 parts, 71 stages
-  reached, 67 built, 4 refused (TooLarge 2, VertexBlend 1 at fillet;
-  SurfaceCollapses 1 at shell; 3 blocked on the blend network, 1 on shell
-  itself); friction list recorded in docs/ideas/developer-first-positioning.md.*
-
-  | Cycle | Parts blocked | fillet | shell |
-  |---|---:|---:|---:|
-  | blend network | 3 | 3 | 0 |
-  | itself: SurfaceCollapses | 1 | 0 | 1 |
-  | healing | 0 | 0 | 0 |
-  | NURBS | 0 | 0 | 0 |
-  | sweep | 0 | 0 | 0 |
-
-  | Refusal | Operation | Count | Blocks |
-  |---|---|---:|---|
-  | TooLarge | fillet | 2 | blend network |
-  | VertexBlend | fillet | 1 | blend network |
-  | SurfaceCollapses | shell | 1 | itself: SurfaceCollapses |
-- Beside the cycle, in the second plan slot: draft (a plane turned about a
-  line; a cone on a cylinder) and thicken (a sheet offset into a solid,
-  over C7's offset). These are the plugin CAD's A7 asks that need no
-  NURBS.
+  real parts ask of them.
+- The script corpus (renamed from the DIY part corpus; ADR-0067): hobby
+  and CAE parts as Python scripts on the raw binding under
+  `crates/arris-py/corpus/`, each stage checked against Open CASCADE.
+- Beside the cycle, in the second plan slot: draft and thicken (the
+  plugin CAD's A7 asks that need no NURBS). *Not started; moved to
+  docs/BACKLOG.md at the cycle's close.*
 
 **Out:** the attribute cycle; IGES and same-domain face merging; the
 blend residue that needs no NURBS face (tangent chains of analytic faces,
@@ -898,6 +854,54 @@ operands (volume additivity, cut-then-fuse). The histogram's NURBS rows
 are re-run and printed, below C9's 6 of 38, along with the blend
 residue's row. The script corpus is committed, with its histogram
 printed.
+
+---
+
+## C11 — the blend residue
+
+*Goal: a fillet or chamfer that a real part or a script asks for, and
+Open CASCADE builds, builds, or is refused by a name that says why the
+geometry has no blend. Chosen at C10's close by ADR-0020's rule: no
+consumer has reported a regression, and the blend network is the one row
+of both histograms that is not 0. It blocks 12 of the 38 real parts at
+`fillet` (7 fetched, 5 committed; the fetched tier refuses `TangentChain`
+5, `BlendTooLarge` 1, `VertexBlend` 1, unchanged since 2026-10-15) and 3
+of the script corpus's 4 refusals: a blend that leaves its face through
+an edge not the corner's own, at the pi mount plate's standoff roots and
+the phone stand's lip (2), and a corner the closed forms do not cover at
+the hinge leaf's knuckle joins (1). Shell's `SurfaceCollapses` at the vase
+is the other. With NURBS faces an operand since C10, the caps and corner
+patches Open CASCADE fits for these cases are no longer out of reach.*
+
+**In**, by the parts each unblocks:
+
+- Tangent chains whose faces are tangent only within a tolerance: an end
+  whose faces run tangent within the edge's tolerance (CTC-05), and a
+  corner edge tangent within the vertex's tolerance (FTC-11's slot)
+  (docs/BACKLOG.md).
+- A blend that runs past its face into a neighbour that is not the
+  corner's (the script corpus's two), and `BlendTooLarge` where Open
+  CASCADE builds: the horn torus on an arc, the overhang tip's cap.
+- Corners the closed forms do not cover: a walked chain junction on a
+  seam (`VertexBlend`), the hinge leaf's knuckle joins, a cusp whose two
+  edges are both blended, as a fitted corner patch.
+- The parallel-cylinder row of the blend table (ADR-0036 §5: 29 edges in
+  5 parts).
+- Beside the cycle, in the second plan slot: the modelling layer's first
+  milestone, `arris.build` (ADR-0067; its plan was drafted 2026-10-18 and
+  parked), then draft and thicken (the plugin CAD's A7).
+
+**Out:** variable-radius blends and the chamfer's other modes (two
+distances, a distance and an angle); the attribute cycle; IGES and
+same-domain face merging; sheet operands of the boolean; free-edge
+sewing; two NURBS faces flush over an area; faceted solids.
+
+**Accept:** the histogram's blend network row re-run and printed, below
+12 of 38, every stage left a typed refusal naming the edge; each stage
+newly built gives a checker-green body whose mass properties match Open
+CASCADE's within the fixture's tolerance, with a fixture per refusal it
+retires; the script corpus re-run, its `fillet` refusals below 3; the
+blend properties extended over the new cases; no panic.
 
 ---
 
@@ -924,8 +928,9 @@ refuse, 3 are refused by Open CASCADE and 46 by Arris (all
 `Degenerate(Empty)`), and none fails or sits under an exclusion. That is
 2.5 s of wall clock per recipe cold. The hook runs 32 cases over what a commit reaches (ADR-0032), a plan's retirement 256 and CI 1000, all on the fixed seed;
 depth comes from `nightly.yml`, which runs every property at 5000 cases
-on a seed drawn from the date, 99,600 CPU-seconds split over six jobs,
-plus the differential at 1000 recipes on the same seed. The corpus
+on a seed drawn from the date, split over seventeen jobs of at most
+about 38,000 runner CPU-seconds each, a costly property running its
+cases over its cost (ADR-0024's amendment of 2026-10-21), plus the differential at 1000 recipes on the same seed. The corpus
 benchmark times 514 cases on the reference machine: build 8.40 s, mesh
 6.90 s and read 25.68 s, measured 2026-10-07 (docs/ARCHITECTURE.md §Formats and tools). Each night compares against the
 last, flagging a case past 3×. Three fuzz targets over the intersectors
@@ -935,10 +940,7 @@ found were fixed, reached 25, 42 and 28 executions per second with no
 crash, slowed by sections against very thin elliptic cylinders. Each night runs 30
 minutes per target from the corpus the nights before grew; the first
 night found a fourth, two planes a hair from parallel meeting in a line
-with a NaN origin. A night takes about 5 hours and has outgrown its
-limit: `ops-rest` and `workspace-rest` hit the workflow's 350-minute timeout
-on 2026-10-08, 10-09 and 10-10 (`workspace-rest` took 4 h 46 min on
-2026-10-01), and the backlog holds the line. A red night is a finding to triage, not a gate; CI's
+with a NaN origin. A red night is a finding to triage, not a gate; CI's
 fixed seed is the gate (ADR-0024, amendment of 2026-09-25).
 A fourth, `step_read`, runs the STEP reader on Arris's and Open
 CASCADE's STEP of every solid fixture: over the parser alone its first
