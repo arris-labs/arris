@@ -75,15 +75,18 @@ jobs:
   # blessed dump — so that run finds nothing to skip there.
   # The workspace at 1000 cases is more than one runner's 6 h job limit
   # (the multi-tool properties alone are about two CPU-hours), so nextest
-  # splits it by a hash of each test's name into three jobs: stable when
+  # splits it by a hash of each test's name into four jobs: stable when
   # tests are added, and every property shard is its own test. The corpus's
-  # ignored fixtures and the doctests run once, in the first.
+  # ignored fixtures and the doctests run once, in the first. A failure
+  # does not cancel the rest of its job, so one run reports every failing
+  # test: at C10's close the first failure stopped two jobs with a third
+  # of their tests unrun, a second failing shard among them.
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        partition: [1, 2, 3]
+        partition: [1, 2, 3, 4]
     env:
       ARRIS_PROPTEST_CASES: "1000"
       # The differential at CI's count too (ADR-0024 §2); the hook runs
@@ -100,7 +103,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --project tools/oracle
-      - run: cargo nextest run --workspace --partition hash:${{ matrix.partition }}/3
+      - run: cargo nextest run --workspace --no-fail-fast --partition hash:${{ matrix.partition }}/4
       - if: matrix.partition == 1
         run: cargo nextest run -p arris --test corpus --run-ignored only --no-tests pass -E 'not test(/^regression_/)'
       - if: matrix.partition == 1
