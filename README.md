@@ -12,19 +12,33 @@
   <img src="https://img.shields.io/badge/rustc-1.85%2B-orange.svg" alt="rustc 1.85+">
 </p>
 
-A B-Rep geometric kernel written from scratch in Rust, built for code-CAD script
-authors, AI agents, and CAE pipelines.
+<p align="center">
+  <b>A B-Rep geometric kernel in pure Rust, for code-CAD scripts, AI agents and CAE pipelines.</b>
+</p>
 
-An *arris* is the sharp edge where two surfaces meet — the thing a B-Rep kernel exists to compute.
+An *arris* is the sharp edge where two surfaces meet — the thing a B-Rep
+kernel exists to compute.
 
-Arris is a library, not an application: it builds solids, cuts and fuses
-them, blends their edges, measures, tessellates and exports them. It carries
-a tolerance on every entity rather than one global epsilon, returns a typed
-error naming the entities involved rather than panicking on geometry it
-cannot do, and returns a provenance record from every operation so that a
-parametric application can name the faces an operation made. Same input,
-same output, same entity ids, on every platform. Pure Rust, no `unsafe`,
-builds for `wasm32`.
+Arris is a library, not an application. It builds solids, cuts and fuses
+them, blends their edges, measures, tessellates and exports them, from Rust
+or from Python. Four things set it apart:
+
+- **Every operation says what it did.** It returns the new body and a
+  provenance record — the faces, edges and vertices it generated, modified
+  and deleted — so a script can pick "the edge the extrude made" instead of
+  an index that shifts when the model changes.
+- **It refuses rather than guesses.** Geometry it cannot do is a typed error
+  naming the entities involved, never a panic and never an invalid shape;
+  every result passes the invariant checker. Every vertex, edge and face
+  carries its own tolerance instead of one global epsilon.
+- **It is deterministic.** Same input, same output, same entity ids, on
+  every platform: a body built for `wasm32` is byte-identical to the native
+  one.
+- **It is pure Rust.** No `unsafe`, no C++ underneath, one crate to depend
+  on, and a Python wheel built from the same code.
+
+> Pre-1.0: the API breaks between minor versions. [CHANGELOG.md](CHANGELOG.md)
+> lists every change, and every break with its fix.
 
 ## Example: a bracket in Python
 
@@ -79,59 +93,13 @@ body, _ = model.fillet(body, rims, 0.8)
 body, _ = model.chamfer(body, [lip], 1.5)
 ```
 
-## Features
+## Install
 
-Pre-1.0 and under development. The public API breaks between minor versions,
-and each change, with each break and its fix, is listed in
-[CHANGELOG.md](CHANGELOG.md).
+**Python** — a wheel over the same kernel, no Rust toolchain needed:
 
-- **Modelling:** primitives, rigid transforms, and extrude and revolve of a
-  profile of lines, arcs and elliptic arcs; prismatic features (offset
-  faces, shell to a wall, split by a plane); a profile as a one-face sheet
-  body, moved and mirrored like a solid and measured by area.
-- **Sweeps and lofts:** sweep along a path (lines, arcs, helix arcs, B-spline
-  curves) with rotation-minimising or fixed-binormal frames; loft across
-  sections matched by arc length (ruled or smooth polynomial).
-- **Booleans:** cut, fuse and common, single or multi-tool, over every
-  analytic face (plane, cylinder, elliptic cylinder, cone, sphere, torus)
-  and NURBS against analytic surfaces, in any pose, with multi-shell results
-  (cavities, split cuts, disjoint fuses). Sections are exact where they are
-  conics and traced in the parameter plane and fitted to NURBS elsewhere.
-- **Blends:** constant-radius fillet and chamfer along chains of edges
-  between planes and cylinders, coaxial pairs included, with miters,
-  corners, steps, cusps, hole rims, and walked stripes on NURBS faces.
-- **Queries**, which leave the body unchanged: ray hits, minimum distance
-  between points, vertices, edges, faces and solids, interference between
-  solids with the shared volume, clash screening of an assembly, and the
-  planar section of a body.
-- **Output:** tessellation to a chord tolerance, per face or whole, with
-  faces meshed at different times welded together; mass properties (volume,
-  centroid, inertia); plane projection and face frames.
-- **Formats:** a STEP reader that returns a checked body, or a typed refusal
-  naming why, for every solid or surface model in a file, closing small gaps
-  and turning back reversed faces and naming each repair; STEP AP214 export
-  in the unit you choose, STL and OBJ export; a deterministic native format
-  in JSON and bytes; and one body, with its provenance, as bytes that any
-  later release reads.
-
-Not yet: booleans where both operands carry NURBS faces meeting each other,
-variable-radius blends, non-manifold bodies, offset/shell on elliptic cylinder
-or NURBS surfaces, and sewing faces that a STEP file leaves unconnected.
-Each of those is a typed refusal today, never a wrong answer.
-
-Arris is narrower than Open CASCADE and is not aiming for feature parity.
-[docs/COMPARISON.md](docs/COMPARISON.md) sets out what each does today, where
-the two differ in approach, and what has been measured against it. See the
-test-held [capability matrix](docs/COMPARISON.md#capability-matrix) for what each
-operation does and refuses per face kind.
-
-## From Python
-
-`pip install arris` gives a binding over the same kernel: build a body from
-primitives and profiles, fillet and cut it, ask what it measures and what the
-checker says, tessellate it, and write and read STEP, STL, OBJ and body
-bytes, without compiling a crate. Every operation returns the body and its
-provenance, and every error is a typed exception.
+```sh
+pip install arris
+```
 
 ```python
 import arris
@@ -143,30 +111,91 @@ part, record = model.cut(plate, hole)
 print(model.mass_properties(part).volume, bool(model.check(part, "full")))
 ```
 
-## Correctness
+**Rust** — one crate, `arris`, re-exports the whole kernel:
 
-Every operation returns a shape that passes the invariant checker, and the
-checker runs after every operation in debug builds. Every fixture in the
-test corpus carries an oracle value — volume, area, centroid, counts, point
-classifications — computed by Open CASCADE, which Arris must match within
-the fixture's stated tolerance. Open CASCADE is run as the oracle through
-Python; it is never a build or runtime dependency, and `PROVENANCE.md` says
-how it is used and read. Properties (volume additivity, cut-then-fuse,
-commutativity, STEP round-trip) are tested over random operands in random
-poses from a fixed seed.
+```sh
+cargo add arris
+```
+
+```rust
+use arris::check::{Level, check};
+use arris::math::{Axis, Control, Point3};
+use arris::topo::Model;
+
+let mut m = Model::default();
+let (cylinder, provenance) =
+    arris::ops::primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &Control::NONE)
+        .unwrap();
+assert!(check(&m, cylinder, Level::Full).is_ok());
+assert_eq!(provenance.outputs().len(), 10);
+let step = arris::io::step::write(&m, &[cylinder]).unwrap();
+```
+
+## What it does
+
+| Area | What you get |
+|---|---|
+| **Modelling** | Primitives, rigid transforms and mirroring; extrude (in any direction) and revolve of profiles of lines, arcs and elliptic arcs; offset faces, shell to a wall, split by a plane; a profile as a one-face sheet body |
+| **Sweep and loft** | Sweep a profile along lines, arcs, helix arcs and B-spline curves, with rotation-minimising or fixed-binormal frames; loft through two or more profiles, ruled or smooth |
+| **Booleans** | Cut, fuse and common, one tool or many in one call, in any pose, over planes, cylinders, elliptic cylinders, cones, spheres, tori and NURBS faces — free-form against analytic and free-form against free-form; results with cavities, split pieces and disjoint shells |
+| **Fillet and chamfer** | Constant radius along chains of edges, with mitres, corners, steps and hole rims; on free-form faces and between two of them, the blend a NURBS surface within your tolerance of the exact one |
+| **Queries** | Ray hits, minimum distance, interference with the shared volume, clash screening of an assembly, the planar section of a body; volume, area, centroid and inertia; face frames and plane projection. None of them changes the body |
+| **Meshing** | Tessellation to a chord tolerance, per face or whole, faces meshed at different times welded together; NumPy arrays from Python |
+| **STEP** | Every solid or surface model in a file read as a checked body or a typed refusal naming why; small gaps closed and reversed faces turned back, each repair named on the body; assemblies; AP214 export in the unit you choose |
+| **Other formats** | STL and OBJ export; a deterministic native format in JSON and bytes, which every later release reads |
+
+## Not yet
+
+Each of these is a typed refusal today, never a wrong answer:
+
+- variable-radius fillets and chamfers;
+- offset and shell of elliptic-cylinder and NURBS faces;
+- a NURBS face lying flush against another face over an area;
+- sewing the faces of a STEP file that share no edge;
+- non-manifold bodies.
+
+Arris is narrower than Open CASCADE and is not aiming for feature parity.
+[docs/COMPARISON.md](docs/COMPARISON.md) sets out what each does today and
+where they differ, and its [capability matrix](docs/COMPARISON.md#capability-matrix),
+held cell for cell by a test, gives what each operation does and refuses
+for each face kind.
+
+## How it is tested
+
+- **An oracle for every fixture.** Each fixture in the test corpus carries
+  values computed by Open CASCADE — volume, area, centroid, counts, point
+  classifications — that Arris must match within the fixture's tolerance.
+  Open CASCADE runs as the oracle through Python and is never a build or
+  runtime dependency ([PROVENANCE.md](PROVENANCE.md)).
+- **A checker after every operation.** Every result passes the invariant
+  checker, which runs after every operation in debug builds.
+- **Properties over random operands.** Volume additivity, cut-then-fuse,
+  commutativity, STEP round trips and more, over random operands in random
+  poses from a fixed seed; nightly at five times CI's case count.
+- **Real parts.** A corpus of real STEP parts is read, checked, cut and
+  blended, and a differential runs random recipes through Arris and Open
+  CASCADE side by side.
 
 ## Workspace
 
-Arris is a Cargo workspace. `crates/arris` is the facade a consumer depends
-on; it re-exports the layered crates beneath it — `arris-math`, `arris-geom`,
-`arris-topo` (the representation), `arris-check` (the invariant checker),
-`arris-ops`, `arris-mesh`, `arris-io` (the algorithms) and `arris-debug`
-(dev-facing: rasteriser, fixtures, property-test strategies; it is not
-published). `crates/arris-py` is the Python binding, above the facade and
-published to PyPI rather than crates.io. A crate never depends on one above it; `tools/check-layers.sh`
-enforces that in CI and in the pre-commit hook. The layout and the reasons
-are in `docs/ARCHITECTURE.md`; `tools/oracle/` is the Open CASCADE test
-oracle, run through Python and never linked.
+`crates/arris` is the facade a consumer depends on. It re-exports the
+layered crates beneath it, and a crate never depends on one above it
+(`tools/check-layers.sh` holds that in CI and in the pre-commit hook):
+
+| Crate | Holds |
+|---|---|
+| `arris-math` | Points, frames, intervals, tolerances, the deterministic transcendentals |
+| `arris-geom` | Curves and surfaces, NURBS, intersections, sections and fits |
+| `arris-topo` | The B-Rep in an arena: bodies, shells, faces, edges, vertices, provenance |
+| `arris-check` | The invariant checker |
+| `arris-ops` | Primitives, booleans, blends, sweeps, lofts, queries |
+| `arris-mesh` | Tessellation |
+| `arris-io` | STEP, STL, OBJ and the native format |
+| `arris-py` | The Python binding, published to PyPI |
+
+`arris-debug` holds the developer tools — the rasteriser, the fixtures, the
+property-test strategies — and is not published. The layout and its reasons
+are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Prior work
 
