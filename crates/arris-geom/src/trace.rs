@@ -806,14 +806,28 @@ impl MarchedWalk {
     /// The sample Newton-corrected onto both surfaces and the plane
     /// through `base` normal to `normal`; `None` where it does not
     /// converge within `self.on`, and the caller keeps the interpolation.
+    ///
+    /// Once within `self.on` it takes one step more: where the surfaces
+    /// meet at a small angle `θ` a point `on` off both may sit `on / θ`
+    /// along the plane from the section, and neighbouring samples that
+    /// stop at different iterations would jump by that — `2.4·10⁻⁸` at a
+    /// glancing tip of a plane's and a cylinder's twins, more than a
+    /// section fit can follow. The step lands at rounding, as Newton
+    /// does from that close; where it does not hold, the point before it
+    /// is kept.
     fn correct(&self, mut x: [f64; 4], base: Point3, normal: Vec3) -> Option<[f64; 4]> {
-        for _ in 0..8 {
+        let mut held = None;
+        for _ in 0..9 {
             let e0 = self.surfaces[0].eval(x[0], x[1]);
             let e1 = self.surfaces[1].eval(x[2], x[3]);
             let gap = e0.point - e1.point;
             let plane = normal.dot(&(e0.point - base));
-            if gap.norm() <= self.on && plane.abs() <= self.on {
-                return Some(x);
+            let close = gap.norm() <= self.on && plane.abs() <= self.on;
+            if let Some(before) = held {
+                return Some(if close { x } else { before });
+            }
+            if close {
+                held = Some(x);
             }
             let j = Matrix4::new(
                 e0.du.x,
@@ -833,15 +847,15 @@ impl MarchedWalk {
                 0.0,
                 0.0,
             );
-            let step = j.lu().solve(&Vector4::new(gap.x, gap.y, gap.z, plane))?;
-            if !step.iter().all(|c| c.is_finite()) {
-                return None;
-            }
+            let step = j.lu().solve(&Vector4::new(gap.x, gap.y, gap.z, plane));
+            let Some(step) = step.filter(|s| s.iter().all(|c| c.is_finite())) else {
+                return held;
+            };
             for k in 0..4 {
                 x[k] -= step[k];
             }
         }
-        None
+        held
     }
 
     pub(crate) fn point(&self, t: f64) -> Point3 {
