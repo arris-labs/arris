@@ -169,6 +169,10 @@ into its version (ADR-0027).
   browser. `arris_math::real` holds the functions, for a consumer that
   wants its own inputs computed the same way.
 
+- A fillet or chamfer whose contact would run through a small hole near
+  the edge (a drill that comes out within the radius of a rim) is now
+  refused as too large instead of returning a body whose face loops cross.
+
 ### Breaking
 
 - `arris_geom::GeomError` gains `OffsetFolds { kind, at, distance,

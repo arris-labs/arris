@@ -1020,7 +1020,9 @@ nothing but the faces across their ends, where a corner edge between two
 of them is cut at both its ends in one edge. A contact line or an end arc that
 would leave its face through an edge that is not the corner's own, or a
 corner edge shorter than the trim — decided in the face's own (u, v)
-through `FaceDomain::side` at `check_samples` interior parameters, a
+through `FaceDomain::side` at `check_samples` interior parameters, and
+by the curve's polyline crossing no loop of the face that neither of its
+ends lies on (a hole smaller than the samples' spacing), a
 contact inside its face and an end arc inside the face across where the
 blend and both corner edges share a convexity — a convex blend between two
 convex corner edges — and outside it where they differ, a convex blend at

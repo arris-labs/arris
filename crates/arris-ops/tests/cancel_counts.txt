@@ -286,6 +286,7 @@ blend/split-boss-base-chamfer: 6
 blend/split-boss-base-fillet: 6
 blend/split-cone-hole-rim-chamfer: 6
 blend/split-cone-hole-rim-fillet: 6
+blend/split-cylinder-rim-chamfer-past-a-hole: refused
 blend/split-dimple-rim-fillet: 6
 blend/split-pin-foot-fillet: 6
 blend/split-pin-shoulder-fillet: 6

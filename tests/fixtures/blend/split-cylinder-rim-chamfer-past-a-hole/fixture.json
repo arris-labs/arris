@@ -1,0 +1,12 @@
+{
+  "description": "a cylinder of radius 1.31 and height 10.48 on z, drilled by a cylinder of radius 0.167 on a skew axis, split by a plane that runs almost along the axis, the positive side's rim on the outer wall (an ellipse arc the whole height) chamfered at 0.05: the drill comes out on the wall within 0.05 of the rim, so the chamfer's contact on the wall runs through the hole's loop between the fit test's samples. The walked chamfer built a body whose wall face's loops cross; the rim is refused as too large (property split_prop, a_side_is_an_operand_of_every_operation)",
+  "steps": [
+    {"name": "target", "op": "cylinder", "base": [0, 0, 5.238028347651254], "axis": [0, 0, -1], "radius": 1.3099646573321908, "height": 10.476056695302507},
+    {"name": "drill", "op": "cylinder", "base": [2.760010219902, 10.865617131465, -11.109879667371], "axis": [-0.177526245038, -0.663803501023, 0.726532411081], "radius": 0.166731280617, "height": 33.33590268760993},
+    {"name": "drilled", "op": "cut", "target": "target", "tool": "drill"},
+    {"name": "side", "op": "split", "of": "drilled", "plane": {"origin": [-0.16633633075722062, 0.4861024113043534, 1.1920800982517565], "normal": [-0.9401892150668679, 0.29134094940906574, -0.17653524030450948], "x": [-0.27517248035125874, -0.3440423664098894, 0.8977276625861651]}},
+    {"name": "result", "op": "chamfer", "of": "side", "edges": [[0.2633089353314413, 1.2832286655285048, 0.21939993829985294]], "distance": 0.05}
+  ],
+  "result": "result",
+  "analytic": {"expect_error": "blend-too-large"}
+}

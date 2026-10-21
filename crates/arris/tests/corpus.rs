@@ -1155,6 +1155,10 @@ corpus_tests! {
     blend_split_cone_hole_rim_fillet => run "blend/split-cone-hole-rim-fillet";
     /// The same rim chamfered: two half cones meeting on the chord.
     blend_split_cone_hole_rim_chamfer => run "blend/split-cone-hole-rim-chamfer";
+    /// A split drilled cylinder's rim chamfered where the drill comes out
+    /// within the distance of it: the contact would run through the hole,
+    /// between the fit test's samples, and is refused as too large.
+    blend_split_cylinder_rim_chamfer_past_a_hole => run "blend/split-cylinder-rim-chamfer-past-a-hole";
     /// A spherical dimple's rim split in two, one half filleted: a plane
     /// against a sphere, convex; Open CASCADE builds the ring as one face.
     blend_split_dimple_rim_fillet => run "blend/split-dimple-rim-fillet";

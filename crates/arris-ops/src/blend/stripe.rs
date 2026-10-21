@@ -3,8 +3,8 @@
 use arris_math::real;
 use core::f64::consts::TAU;
 
-use arris_check::domain::FaceDomain;
-use arris_geom::region2::Side;
+use arris_check::domain::{FaceDomain, band, shifts};
+use arris_geom::region2::{Piece, Side, segments_intersect};
 use arris_geom::{
     Curve, Curve2, GeomKind, MeetKind, Surface, SurfaceIntersection, SurfaceKind,
     intersect_surfaces, pcurve_on,
@@ -187,6 +187,9 @@ pub(super) fn chord(a: Point3, b: Point3, tol: Tolerance) -> Result<(Curve, Inte
 /// edge's own tolerance of that edge's curve, in 3D, is on that edge: a
 /// read edge's pcurve may stand off its curve by as much (ADR-0062, step
 /// 10b), and an arc ending on the edge at a grazing angle runs inside it.
+/// A curve that stays on `side` at every sample is still off it where it
+/// crosses a loop neither of its ends lies on: a hole that fits between
+/// two samples (`blend/split-cylinder-rim-chamfer-past-a-hole`).
 pub(super) fn on_side_of_face(
     m: &Model,
     face: FaceId,
@@ -205,7 +208,116 @@ pub(super) fn on_side_of_face(
             return Ok(false);
         }
     }
-    Ok(true)
+    Ok(!crosses_a_loop(m, &domain, pcurve, range)?)
+}
+
+/// `true` when `pcurve` over `range` crosses a loop of the domain that
+/// neither of its ends lies on: a hole, or an island of the outer loop,
+/// small enough to pass between [`on_side_of_face`]'s samples. The curve is
+/// a polyline within the band at its midpoint, tried in the translates the
+/// domain's loops may be written in, and only its segments in a loop's box
+/// are tried against that loop. An end lies on a loop within the band of
+/// the widest of the face's edges: a read edge's pcurve may stand off its
+/// curve by its own tolerance, as [`near_wide_edge`] allows a sample.
+fn crosses_a_loop(
+    m: &Model,
+    domain: &FaceDomain<'_>,
+    pcurve: &Curve2,
+    range: Interval,
+) -> Result<bool, OpError> {
+    let piece = Piece::along(pcurve, range);
+    let surface = domain.surface();
+    let ends = [piece.first(), piece.last()];
+    let mid = pcurve.point(range.midpoint());
+    let near = band(surface, mid, domain.tolerance());
+    let mut widest = domain.tolerance();
+    for &x in domain.edges() {
+        widest = widest.max(m.edge(x)?.tolerance());
+    }
+    let wide = band(surface, mid, widest).max(near);
+    let points = piece.sample(piece.segment_count(near));
+    let periods = surface.period();
+    for polygon in domain.polygons() {
+        // A loop an end lies on is the corner's own: the curve meets it
+        // there by construction, within the band and the polygon's chord.
+        let reach = 2.0 * (wide + polygon.chord_deviation());
+        let holds_an_end = ends.iter().any(|&end| {
+            polygon
+                .segments()
+                .any(|(a, b)| distance_to_segment(end, a, b) <= reach)
+        });
+        if holds_an_end {
+            continue;
+        }
+        let mut ring: Vec<Point2> = polygon.points().to_vec();
+        if let Some(&first) = ring.first() {
+            ring.push(first);
+        }
+        let loop_runs = runs(&ring);
+        for du in shifts(periods[0]) {
+            for dv in shifts(periods[1]) {
+                let shift = Vec2::new(du, dv);
+                let moved: Vec<Point2> = points.iter().map(|&p| p + shift).collect();
+                for (curve_run, curve_box) in runs(&moved) {
+                    for (loop_run, loop_box) in &loop_runs {
+                        if !boxes_meet(curve_box, *loop_box) {
+                            continue;
+                        }
+                        let crossed = curve_run.windows(2).any(|a| {
+                            loop_run
+                                .windows(2)
+                                .any(|b| segments_intersect(a[0], a[1], b[0], b[1]))
+                        });
+                        if crossed {
+                            return Ok(true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(false)
+}
+
+/// The segments of [`crosses_a_loop`]'s polylines in a run, tried pair by
+/// pair only where two runs' boxes meet.
+const RUN: usize = 64;
+
+/// `points` as runs of [`RUN`] segments, consecutive runs sharing an end
+/// point, each with its box.
+fn runs(points: &[Point2]) -> Vec<(&[Point2], [Point2; 2])> {
+    let mut out = Vec::new();
+    let mut at = 0;
+    while at + 1 < points.len() {
+        let run = &points[at..(at + RUN + 1).min(points.len())];
+        let first = run[0];
+        let corners = run.iter().fold([first, first], |[lo, hi], p| {
+            [
+                Point2::new(lo.x.min(p.x), lo.y.min(p.y)),
+                Point2::new(hi.x.max(p.x), hi.y.max(p.y)),
+            ]
+        });
+        out.push((run, corners));
+        at += RUN;
+    }
+    out
+}
+
+/// `true` when two boxes, as their corners, overlap or touch.
+fn boxes_meet([a_lo, a_hi]: [Point2; 2], [b_lo, b_hi]: [Point2; 2]) -> bool {
+    a_lo.x <= b_hi.x && b_lo.x <= a_hi.x && a_lo.y <= b_hi.y && b_lo.y <= a_hi.y
+}
+
+/// The distance from `p` to the segment from `a` to `b`.
+fn distance_to_segment(p: Point2, a: Point2, b: Point2) -> f64 {
+    let ab = b - a;
+    let length2 = ab.norm_squared();
+    let s = if length2 > 0.0 {
+        ((p - a).dot(&ab) / length2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    (p - (a + s * ab)).norm()
 }
 
 /// `true` when the point of the domain's surface at `uv` lies within one
