@@ -62,10 +62,14 @@ pub enum RenderError {
 }
 
 /// An RGB pixel buffer of [`WIDTH`] × [`HEIGHT`], row-major from the top
-/// left: what [`render`] returns and [`render_png`] writes.
+/// left, with each pixel's coverage: what [`render`] returns and
+/// [`render_png`] writes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Raster {
     pixels: Vec<[u8; 3]>,
+    /// 255 where the scene covers the pixel, 0 where it is background, in
+    /// between on an edge. [`render`] covers every pixel.
+    alpha: Vec<u8>,
 }
 
 impl Raster {
@@ -82,6 +86,12 @@ impl Raster {
         &self.pixels
     }
 
+    /// Each pixel's coverage, in the order of [`Raster::pixels`]: 0 where
+    /// only the background shows, 255 where the scene covers it.
+    pub fn alpha(&self) -> &[u8] {
+        &self.alpha
+    }
+
     /// The distinct colours present, sorted, with their pixel counts.
     pub fn histogram(&self) -> Vec<([u8; 3], usize)> {
         let mut sorted = self.pixels.clone();
@@ -96,13 +106,24 @@ impl Raster {
         out
     }
 
-    /// Encodes the buffer as a PNG at `path`.
+    /// Encodes the buffer as a PNG at `path`: RGB when every pixel is
+    /// covered, RGBA with the background transparent otherwise.
     pub fn save(&self, path: &Path) -> Result<(), RenderError> {
-        let mut img = image::RgbImage::new(WIDTH, HEIGHT);
-        for (i, p) in img.pixels_mut().enumerate() {
-            *p = image::Rgb(self.pixels[i]);
-        }
-        img.save(path).map_err(|source| RenderError::Write {
+        let written = if self.alpha.iter().all(|&a| a == u8::MAX) {
+            let mut img = image::RgbImage::new(WIDTH, HEIGHT);
+            for (i, p) in img.pixels_mut().enumerate() {
+                *p = image::Rgb(self.pixels[i]);
+            }
+            img.save(path)
+        } else {
+            let mut img = image::RgbaImage::new(WIDTH, HEIGHT);
+            for (i, p) in img.pixels_mut().enumerate() {
+                let [r, g, b] = self.pixels[i];
+                *p = image::Rgba([r, g, b, self.alpha[i]]);
+            }
+            img.save(path)
+        };
+        written.map_err(|source| RenderError::Write {
             path: path.to_path_buf(),
             source,
         })
@@ -239,7 +260,11 @@ pub fn render(
         fb.dot(s, f64::INFINITY, colors::HIGHLIGHT, 5);
     }
 
-    Raster { pixels: fb.color }
+    let alpha = vec![u8::MAX; fb.color.len()];
+    Raster {
+        pixels: fb.color,
+        alpha,
+    }
 }
 
 /// The supersampling factor of [`render_labelled`]: each pixel is the mean
@@ -274,7 +299,9 @@ pub enum LabelError {
 /// 2 × 2 times, so a reader sees form and the operation that made a
 /// face at once. The mesh's edges are drawn thin in black. Unlike
 /// [`render`] it colours by what the caller says, not by face id, and does
-/// not quantise the shading. Deterministic: two calls give equal buffers.
+/// not quantise the shading. The background is transparent
+/// ([`Raster::alpha`] 0), so the picture reads on a light page and a dark
+/// one. Deterministic: two calls give equal buffers.
 ///
 /// ```
 /// use arris_debug::{View, render_labelled};
@@ -282,6 +309,7 @@ pub enum LabelError {
 ///
 /// let raster = render_labelled(&TriMesh::new(), &[], &[], View::Iso).unwrap();
 /// assert_eq!(raster.histogram().len(), 1, "only the background");
+/// assert!(raster.alpha().iter().all(|&a| a == 0));
 /// ```
 pub fn render_labelled(
     mesh: &TriMesh,
@@ -510,25 +538,38 @@ impl FrameBuffer {
         }
     }
 
-    /// The mean of each `SAMPLES`² block, as a [`WIDTH`] × [`HEIGHT`] raster.
+    /// Each `SAMPLES`² block as one pixel of a [`WIDTH`] × [`HEIGHT`]
+    /// raster: the mean of its drawn samples, its coverage the share of them
+    /// drawn, so an edge pixel carries no background in its colour.
     fn downsample(&self) -> Raster {
         let k = SAMPLES as usize;
-        let mut pixels = Vec::with_capacity((WIDTH * HEIGHT) as usize);
+        let n = (WIDTH * HEIGHT) as usize;
+        let (mut pixels, mut alpha) = (Vec::with_capacity(n), Vec::with_capacity(n));
         for y in 0..HEIGHT as usize {
             for x in 0..WIDTH as usize {
                 let mut sum = [0usize; 3];
+                let mut drawn = 0usize;
                 for dy in 0..k {
                     for dx in 0..k {
-                        let c = self.color[(y * k + dy) * self.width as usize + x * k + dx];
-                        for (s, ch) in sum.iter_mut().zip(c) {
+                        let i = (y * k + dy) * self.width as usize + x * k + dx;
+                        if self.depth[i] == f64::NEG_INFINITY {
+                            continue;
+                        }
+                        drawn += 1;
+                        for (s, ch) in sum.iter_mut().zip(self.color[i]) {
                             *s += usize::from(ch);
                         }
                     }
                 }
-                pixels.push(sum.map(|s| ((s + k * k / 2) / (k * k)) as u8));
+                pixels.push(if drawn == 0 {
+                    colors::BACKGROUND
+                } else {
+                    sum.map(|s| ((s + drawn / 2) / drawn) as u8)
+                });
+                alpha.push(((drawn * usize::from(u8::MAX) + k * k / 2) / (k * k)) as u8);
             }
         }
-        Raster { pixels }
+        Raster { pixels, alpha }
     }
 
     fn plot(&mut self, x: i64, y: i64, depth: f64, color: [u8; 3]) {
