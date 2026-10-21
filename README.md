@@ -12,6 +12,22 @@
   <img src="https://img.shields.io/badge/rustc-1.85%2B-orange.svg" alt="rustc 1.85+">
 </p>
 
+A B-Rep geometric kernel written from scratch in Rust, built for code-CAD script
+authors, AI agents, and CAE pipelines.
+
+An *arris* is the sharp edge where two surfaces meet — the thing a B-Rep kernel exists to compute.
+
+Arris is a library, not an application: it builds solids, cuts and fuses
+them, blends their edges, measures, tessellates and exports them. It carries
+a tolerance on every entity rather than one global epsilon, returns a typed
+error naming the entities involved rather than panicking on geometry it
+cannot do, and returns a provenance record from every operation so that a
+parametric application can name the faces an operation made. Same input,
+same output, same entity ids, on every platform. Pure Rust, no `unsafe`,
+builds for `wasm32`.
+
+## Example: a bracket in Python
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/arris-labs/arris/main/docs/assets/showcase.png" width="480" alt="Motor-mount bracket modelled in Arris, faces coloured by provenance">
 </p>
@@ -62,20 +78,6 @@ body, _ = model.fillet(body, rims, 0.8)
 [lip] = [e for e in boss_rec.generated_from(arris.Role("cylinder", "TopRim")) if isinstance(e, arris.Edge)]
 body, _ = model.chamfer(body, [lip], 1.5)
 ```
-
-A B-Rep geometric kernel written from scratch in Rust, built for code-CAD script
-authors, AI agents, and CAE pipelines.
-
-An *arris* is the sharp edge where two surfaces meet — the thing a B-Rep kernel exists to compute.
-
-Arris is a library, not an application: it builds solids, cuts and fuses
-them, blends their edges, measures, tessellates and exports them. It carries
-a tolerance on every entity rather than one global epsilon, returns a typed
-error naming the entities involved rather than panicking on geometry it
-cannot do, and returns a provenance record from every operation so that a
-parametric application can name the faces an operation made. Same input,
-same output, same entity ids, on every platform. Pure Rust, no `unsafe`,
-builds for `wasm32`.
 
 ## Features
 
