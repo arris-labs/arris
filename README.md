@@ -40,6 +40,21 @@ or from Python. Four things set it apart:
 > Pre-1.0: the API breaks between minor versions. [CHANGELOG.md](CHANGELOG.md)
 > lists every change, and every break with its fix.
 
+## Install
+
+**Python** — a prebuilt wheel, no Rust toolchain needed:
+
+```sh
+pip install arris
+```
+
+**Rust** — one crate, `arris`, re-exports the whole kernel; the API is on
+[docs.rs](https://docs.rs/arris):
+
+```sh
+cargo add arris
+```
+
 ## Example: a bracket in Python
 
 <p align="center">
@@ -91,44 +106,6 @@ body, _ = model.fillet(body, rims, 0.8)
 
 [lip] = [e for e in boss_rec.generated_from(arris.Role("cylinder", "TopRim")) if isinstance(e, arris.Edge)]
 body, _ = model.chamfer(body, [lip], 1.5)
-```
-
-## Install
-
-**Python** — a wheel over the same kernel, no Rust toolchain needed:
-
-```sh
-pip install arris
-```
-
-```python
-import arris
-
-model = arris.Model()
-plate, _ = model.primitive_box((0, 0, 0), (100, 100, 10))
-hole, _ = model.primitive_cylinder((50, 50, -1), (0, 0, 1), 5, 12)
-part, record = model.cut(plate, hole)
-print(model.mass_properties(part).volume, bool(model.check(part, "full")))
-```
-
-**Rust** — one crate, `arris`, re-exports the whole kernel:
-
-```sh
-cargo add arris
-```
-
-```rust
-use arris::check::{Level, check};
-use arris::math::{Axis, Control, Point3};
-use arris::topo::Model;
-
-let mut m = Model::default();
-let (cylinder, provenance) =
-    arris::ops::primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 4.0, 12.0, &Control::NONE)
-        .unwrap();
-assert!(check(&m, cylinder, Level::Full).is_ok());
-assert_eq!(provenance.outputs().len(), 10);
-let step = arris::io::step::write(&m, &[cylinder]).unwrap();
 ```
 
 ## What it does
