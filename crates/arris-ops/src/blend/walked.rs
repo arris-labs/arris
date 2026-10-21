@@ -871,30 +871,51 @@ pub(super) fn spine(
             (vanishing[1], vanishing[0])
         };
         // How far each end may run on: to an open piece's ends, or round a
-        // loop no farther than half the rest of its period each way.
+        // loop half the rest of its period each way, and below what room
+        // the other end leaves.
         let (room_lo, room_hi) = match p.period() {
             Some(period) => {
                 let rest = 0.5 * (period - (hi - lo)).max(0.0);
                 (lo - rest, hi + rest)
             }
             None => {
-                // A line or an unbounded curve runs on without end: as far
-                // as the reach needs.
+                // An open piece runs on to its own ends, whatever its
+                // parameter's speed: a traced branch's is no arc length. A
+                // line, unbounded, as far as the reach needs, its
+                // parameter its length.
                 let d = p.domain();
-                (d.lo().max(lo - 4.0 * reach), d.hi().min(hi + 4.0 * reach))
+                let room = |end: f64, bound: f64, way: f64| {
+                    if bound.is_finite() {
+                        bound
+                    } else {
+                        end + way * 4.0 * reach
+                    }
+                };
+                (room(lo, d.lo(), -1.0), room(hi, d.hi(), 1.0))
             }
         };
-        let lo = if stop_lo {
+        let mut on_lo = if stop_lo {
             lo
         } else {
             reach_past(&p, lo, room_lo, reach)
         };
-        let hi = if stop_hi {
+        let mut on_hi = if stop_hi {
             hi
         } else {
             reach_past(&p, hi, room_hi, reach)
         };
-        Interval::new(lo, hi)
+        // Round a loop, the room one end leaves is the other's: a
+        // parameter that runs unevenly round it gives one end's half of
+        // the rest less arc than the other's, and the stripe still never
+        // overlaps itself.
+        if let Some(period) = p.period() {
+            if !stop_lo && on_lo == room_lo && on_hi < room_hi {
+                on_lo = reach_past(&p, lo, on_hi - period, reach);
+            } else if !stop_hi && on_hi == room_hi && on_lo > room_lo {
+                on_hi = reach_past(&p, hi, on_lo + period, reach);
+            }
+        }
+        Interval::new(on_lo, on_hi)
     }
     .map_err(|_| {
         Walked::Refused(Refusal::NoSpine {
