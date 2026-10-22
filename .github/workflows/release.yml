@@ -36,12 +36,17 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # A dry run on a branch: `gh workflow run release.yml --ref <branch>`
+  # builds and checks every Python file, then the version guard refuses
+  # the branch, so nothing publishes and `crates-io` never starts.
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   crates-io:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment: crates-io
     permissions:
@@ -99,20 +104,16 @@ jobs:
         with:
           body_path: ${{ runner.temp }}/notes.md
 
-  # The wheel and the sdist are built outside the `pypi` environment, so the
-  # reviewer approves files that already exist and `twine check` has
-  # accepted. The Linux x86_64 wheel is the one the plan builds; the
-  # platform matrix PyPI carries is a release-time decision (the plan's
-  # open question), added here as another `target`.
-  pypi-build:
+  # PyPI never lets a file be replaced, so the tag must name the version the
+  # package carries and a pre-release (`0.5.0-dev` is `0.5.0.dev0` to
+  # Python) never goes up under a release tag. A job of its own beside the
+  # matrix, so a run that is refused here has still built and checked
+  # every file.
+  pypi-guard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-
-      # PyPI never lets a file be replaced, so the tag must name the version
-      # the package carries and a pre-release (`0.5.0-dev` is `0.5.0.dev0` to
-      # Python) never goes up under a release tag.
       - shell: bash
         run: |
           version=$(cargo metadata --no-deps --format-version 1 --locked \
@@ -125,23 +126,16 @@ jobs:
             echo "::error::tag $GITHUB_REF_NAME does not name version $version"; exit 1
           fi
 
-      - uses: PyO3/maturin-action@v1
-        with:
-          command: build
-          args: --release --out dist --manifest-path crates/arris-py/Cargo.toml
-          manylinux: auto
-      - uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist --manifest-path crates/arris-py/Cargo.toml
-      - run: pipx run twine check --strict dist/*
-      - uses: actions/upload-artifact@v7
-        with:
-          name: python-dist
-          path: dist/*
+  # The wheels and the sdist are built outside the `pypi` environment, so
+  # the reviewer approves files that already exist, each installed and
+  # tested on its own platform, which `twine check` has accepted: Linux
+  # x86_64 and aarch64, macOS arm64 and x86_64, Windows x86_64, and the
+  # sdist, merged into `python-dist` (`wheels.yml`).
+  pypi-build:
+    uses: ./.github/workflows/wheels.yml
 
   pypi:
-    needs: pypi-build
+    needs: [pypi-guard, pypi-build]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
