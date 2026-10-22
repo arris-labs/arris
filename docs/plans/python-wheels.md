@@ -72,13 +72,13 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — The riskiest unknown first: a CI job,
+- [x] Step 1 **[2]** — The riskiest unknown first: a CI job,
   `determinism-platforms`, runs the determinism corpus natively on
   `macos-14` and `windows-latest` (and `ubuntu-24.04-arm`). A digest that
   differs is shrunk to a regression fixture and fixed in this step, or split
   into its own step if the fix is large. Record whether Rosetta is available
   on `macos-14`.
-- [ ] Step 2 **[2]** — `wheels.yml`: the build-and-test matrix above, called
+- [x] Step 2 **[2]** — `wheels.yml`: the build-and-test matrix above, called
   from `ci.yml`. Each target's wheel is installed from the built file and
   passes `pytest crates/arris-py` (3.13). Path and line-ending faults it
   finds are fixed here.
@@ -126,8 +126,9 @@ wheels and one sdist, and `twine check` accepts them all.
 - ⚠ OPEN: **CI minutes.** The repository is public, so the macOS and Windows
   runners are free. If that changes, the matrix moves to release-only. The
   agent decides, and only if it changes.
-- ⚠ OPEN: **x86_64 macOS testing.** Rosetta on the arm runner, or an Intel
-  image. The agent decides at step 1 and records it in `wheels.yml`.
+- *Settled* (step 1, 2026-10-22): **x86_64 macOS testing** runs under
+  Rosetta on `macos-14`. The x86_64 wheel job's interpreter reported
+  `x86_64` and passed the suite there; no Intel image is needed.
 - ⚠ OPEN: **When the first multi-platform upload happens** is decided by
   the human: the next `v*` tag after this plan retires. Publishing stays
   theirs.
