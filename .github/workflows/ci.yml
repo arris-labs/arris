@@ -230,6 +230,34 @@ jobs:
         env:
           CARGO_TARGET_WASM32_WASIP1_RUNNER: node ${{ github.workspace }}/tools/wasi-run.mjs
 
+  # The determinism corpus natively off Linux x86_64 (ADR-0064): every
+  # platform a wheel ships for builds the same bodies, held to the same
+  # committed digests. A digest that differs is a kernel fault, never a
+  # per-platform digest (plans/python-wheels). Windows checks out with
+  # Linux's line endings, so the STEP text the corpus embeds is the same
+  # bytes. The macOS leg also records whether Rosetta runs x86_64 code
+  # there, which is where `wheels.yml` tests its x86_64 macOS wheel.
+  determinism-platforms:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - if: runner.os == 'macOS'
+        name: whether Rosetta runs x86_64 code
+        run: |
+          if arch -x86_64 /usr/bin/true; then
+            echo "Rosetta: available on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Rosetta: not available on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - run: cargo test -p arris --test determinism
+
   # The Python binding (ADR-0034): a `maturin develop` build, the pytest
   # over it (the oracle's numbers for corpus fixtures, every docstring
   # example, `mypy.stubtest` against the stubs), at the oldest and the
@@ -270,6 +298,14 @@ jobs:
         with:
           name: python-dist
           path: dist/*
+
+  # The wheel matrix (`wheels.yml`): every platform's wheel installed from
+  # its file and held to the binding's pytest, on each push to `main`. A
+  # pull request runs it on its own path-filtered trigger, and a tag's
+  # wheels are `release.yml`'s.
+  wheels:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/wheels.yml
 
   # arris-debug's `rerun` feature pulls in the large `rerun` SDK crate:
   # kept out of the hook and the `test` job so that feature's build time

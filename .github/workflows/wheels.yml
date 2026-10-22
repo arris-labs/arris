@@ -1,0 +1,96 @@
+# The Python wheels (ADR-0034, plans/python-wheels): one abi3 wheel per
+# target, each installed from its file into a clean virtual environment on
+# its own platform — never `maturin develop` — and held to the binding's
+# pytest. One definition, two callers: `ci.yml` on every push to `main`,
+# and `release.yml`'s `pypi-build`, which merges the `wheel-*` artifacts
+# with the sdist. A pull request that touches the Rust or the binding runs
+# it on its own trigger below.
+#
+# Targets (runner → target):
+#   ubuntu-latest    → x86_64 manylinux2014
+#   ubuntu-24.04-arm → aarch64 manylinux2014
+#   macos-14         → aarch64-apple-darwin
+#   macos-14         → x86_64-apple-darwin, cross-built and tested under
+#                      Rosetta with an x86_64 Python (the `determinism-
+#                      platforms` job of `ci.yml` records that Rosetta runs
+#                      there; an Intel image is the fallback if it stops)
+#   windows-latest   → x86_64-pc-windows-msvc
+# musllinux, Windows arm64 and 32-bit targets are one `include` line each
+# later, if someone asks (docs/BACKLOG.md).
+name: Wheels
+
+on:
+  workflow_call:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/wheels.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+  # The oldest macOS the wheel claims, in its platform tag.
+  MACOSX_DEPLOYMENT_TARGET: "11.0"
+
+jobs:
+  wheel:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            manylinux: "2014"
+            python: "3.13"
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            manylinux: "2014"
+            python: "3.13"
+          - runner: macos-14
+            target: aarch64-apple-darwin
+            python: "3.13"
+          - runner: macos-14
+            target: x86_64-apple-darwin
+            # An x86_64 interpreter, which macOS runs under Rosetta, so
+            # the x86_64 extension module is the one that loads.
+            python: cpython-3.13-macos-x86_64-none
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            python: "3.13"
+    runs-on: ${{ matrix.runner }}
+    steps:
+      # The tests compare committed text (STEP, OBJ, JSON) byte for byte:
+      # Windows checks it out with Linux's line endings.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux || 'auto' }}
+          command: build
+          args: --release --out dist --manifest-path crates/arris-py/Cargo.toml
+      - uses: astral-sh/setup-uv@v10.1.0
+      # The wheel from its file, with the test extras, into a venv that
+      # has seen no build: what `pip install arris` gives a user.
+      - name: a clean virtual environment with the built wheel
+        shell: bash
+        run: |
+          venv="$RUNNER_TEMP/venv"
+          uv venv --python "${{ matrix.python }}" "$venv"
+          if [ "$RUNNER_OS" = Windows ]; then bin="$venv/Scripts"; else bin="$venv/bin"; fi
+          echo "VIRTUAL_ENV=$venv" >> "$GITHUB_ENV"
+          echo "$bin" >> "$GITHUB_PATH"
+          wheel=$(ls dist/*.whl)
+          uv pip install --python "$venv" "${wheel}[test]"
+      # The suite must import the installed module, not the source tree.
+      - name: the installed extension module is the one that loads
+        shell: bash
+        run: |
+          python -c 'import os, sys, sysconfig, arris._arris as m; site = os.path.normcase(sysconfig.get_paths()["platlib"]); print(sys.version, m.__file__); assert os.path.normcase(m.__file__).startswith(site), (m.__file__, site)'
+          python -c 'import platform; print(platform.machine())'
+      - run: pytest crates/arris-py
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheel-${{ matrix.target }}
+          path: dist/*.whl
