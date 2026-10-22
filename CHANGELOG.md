@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Python: `arris.build`, a modelling layer over the binding for scripts.
+  Solids are immutable values with chained operations (`cut`, `fuse`,
+  `common`, `fillet`, `chamfer`, `shell`, `moved`, `mirrored`, `hole`,
+  `pocket`, `boss`), each carrying its provenance. Faces and edges are
+  picked as a `Selection`, by what made them, their tag, kind, direction or
+  place, never by position, and `one()` insists on a single member. Draw on
+  a `Workplane` (the standard planes, a planar face, placements in a ring or
+  grid) and extrude, revolve, sweep or loft the sketch. A tag put on faces
+  follows them through every later operation, for boundary conditions in
+  simulation.
+
 - Python: `Model.point(vertex)`, `Model.curve(edge)` and
   `Model.surface(face)` say where an entity is and what its geometry is: a
   vertex's coordinates; an edge's kind, its two ends in the direction it was

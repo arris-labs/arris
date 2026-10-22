@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal
 
-from .._arris import Body, Edge, Face, Model, Provenance
+from .._arris import Body, Edge, Face, MassProperties, Mesh, Model, Provenance, Report
 from ._selection import Selection
 from ._vec import dot, sub
 
@@ -259,6 +260,148 @@ class Solid:
         ```
         """
         return self.apply(self.model.common(self.body, other.body), (other,))
+    def fillet(self, edges: Iterable[Edge], radius: float) -> Solid:
+        """The solid with `edges` rounded to `radius` (`Model.fillet`).
+
+        ```python
+        from arris.build import Solid
+
+        block = Solid.box((0, 0, 0), (10, 10, 4))
+        rounded = block.fillet(block.edges().parallel((0, 0, 1)), 1)
+        assert len(rounded.faces().kind("cylinder")) == 4
+        ```
+        """
+        return self.apply(self.model.fillet(self.body, list(edges), radius))
+
+    def chamfer(self, edges: Iterable[Edge], distance: float) -> Solid:
+        """The solid with `edges` cut back `distance` on both faces
+        (`Model.chamfer`).
+
+        ```python
+        from arris.build import Solid
+
+        block = Solid.box((0, 0, 0), (10, 10, 4))
+        cut = block.chamfer(block.faces().extreme((0, 0, 1)).edges(), 1)
+        assert len(cut.faces()) == 6 + 4
+        ```
+        """
+        return self.apply(self.model.chamfer(self.body, list(edges), distance))
+
+    def shell(
+        self,
+        openings: Iterable[Face],
+        thickness: float,
+        side: Literal["inward", "outward"] = "inward",
+    ) -> Solid:
+        """The solid hollowed to walls of `thickness`, open at the faces
+        `openings` (`Model.shell`).
+
+        ```python
+        from arris.build import Solid
+
+        box = Solid.box((0, 0, 0), (10, 10, 10))
+        cup = box.shell(box.faces().extreme((0, 0, 1)), 1)
+        assert abs(cup.measure().volume - (1000 - 8 * 8 * 9)) < 1e-9
+        ```
+        """
+        return self.apply(self.model.shell(self.body, list(openings), thickness, side))
+
+    def moved(
+        self,
+        translation: Sequence[float] = (0.0, 0.0, 0.0),
+        *,
+        axis: Sequence[float] = (0.0, 0.0, 1.0),
+        angle: float = 0.0,
+    ) -> Solid:
+        """The solid turned `angle` radians about `axis` through the origin,
+        then moved by `translation` (`Model.transform`).
+
+        ```python
+        from arris.build import Solid
+
+        moved = Solid.box((0, 0, 0), (1, 1, 1)).moved((5, 0, 0))
+        assert moved.model.bounds(moved.body)[0][0] > 4.99
+        ```
+        """
+        return self.apply(self.model.transform(self.body, translation, axis=axis, angle=angle))
+
+    def mirrored(self, origin: Sequence[float], normal: Sequence[float]) -> Solid:
+        """The mirror image of the solid in the plane through `origin` with
+        `normal` (`Model.mirror`).
+
+        ```python
+        from arris.build import Solid
+
+        image = Solid.box((1, 0, 0), (2, 1, 1)).mirrored((0, 0, 0), (1, 0, 0))
+        assert image.model.bounds(image.body)[1][0] < -0.99
+        ```
+        """
+        return self.apply(self.model.mirror(self.body, origin, normal))
+
+    def measure(self) -> MassProperties:
+        """The solid's volume, area, centroid and inertia
+        (`Model.mass_properties`).
+
+        ```python
+        from arris.build import Solid
+
+        assert abs(Solid.box((0, 0, 0), (2, 3, 4)).measure().volume - 24) < 1e-9
+        ```
+        """
+        return self.model.mass_properties(self.body)
+
+    def check(self, level: str = "fast") -> Report:
+        """The checker's report on the solid (`Model.check`); a report is
+        true when it found nothing.
+
+        ```python
+        from arris.build import Solid
+
+        assert Solid.box((0, 0, 0), (1, 1, 1)).check("full")
+        ```
+        """
+        return self.model.check(self.body, level)
+
+    def mesh(self, chord: float) -> Mesh:
+        """The solid tessellated to within `chord` of its surfaces
+        (`Model.tessellate`).
+
+        ```python
+        from arris.build import Solid
+
+        assert Solid.box((0, 0, 0), (1, 1, 1)).mesh(0.1).n_triangles == 12
+        ```
+        """
+        return self.model.tessellate(self.body, chord)
+
+    def to_step(self, length_unit: str = "mm") -> str:
+        """The solid as STEP text (`Model.write_step`).
+
+        ```python
+        from arris.build import Solid
+
+        assert Solid.box((0, 0, 0), (1, 1, 1)).to_step().startswith("ISO-10303-21")
+        ```
+        """
+        return self.model.write_step([self.body], length_unit=length_unit)
+
+    def export_step(self, path: str | os.PathLike[str], length_unit: str = "mm") -> None:
+        """Write the solid to the file `path` as STEP.
+
+        ```python
+        import tempfile
+        from pathlib import Path
+        from arris.build import Solid
+
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "box.step"
+            Solid.box((0, 0, 0), (1, 1, 1)).export_step(target)
+            assert target.read_text().startswith("ISO-10303-21")
+        ```
+        """
+        with open(path, "w", encoding="utf-8") as out:
+            out.write(self.to_step(length_unit))
+
     def hole(
         self,
         at: Iterable[Workplane],

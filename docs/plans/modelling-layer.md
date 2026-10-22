@@ -112,7 +112,7 @@ bound has to be established here.
 - [x] Step 5 **[2]** — Placements, `hole`, `pocket`, `boss` and patterns.
   Tests: a through-hole in a plate tilted 30° has the oracle's volume, and
   a 24-tooth polar pattern equals the raw corpus gear's stage body.
-- [ ] Step 6 **[1]** — `fillet`, `chamfer`, `shell`, `moved`, `mirrored`,
+- [x] Step 6 **[1]** — `fillet`, `chamfer`, `shell`, `moved`, `mirrored`,
   `measure`, `check`, `to_step` and `export_step` on `Solid`, each with a
   docstring example. `mypy --strict` and the docstring collection are added
   to CI's `python` job.
@@ -162,9 +162,11 @@ byte-identical from the layer's bracket.
   This reproduces the bracket's single labels exactly, so the layer keeps
   tag sets (a face may carry several). `faces()` returns a list until
   step 3 makes it a `Selection`.
-- ⚠ OPEN: **The default model's growth**: `arris.build.collect()` over
-  `Model.retain`, or nothing in M1. The agent decides at step 6 by
-  measuring the four ported parts.
+- *Settled (step 6)*: **the default model's growth**: nothing in M1, no
+  `collect()`. A script's model grows with its operations and ends with the
+  process; the four ported parts (step 8) record their `Model` sizes in the
+  corpus README, and a `collect()` over `Model.retain` is a backlog line if
+  one shows a cost.
 - *Settled (step 3)*: **`extreme`'s tie tolerance** is the model's own,
   read from the new `Model.tolerance` (with `Model.angular_tolerance` for
   `normal`, `parallel` and `perpendicular`): two read-only getters added to
