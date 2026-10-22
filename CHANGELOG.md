@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Python: `Model.point(vertex)`, `Model.curve(edge)` and
+  `Model.surface(face)` say where an entity is and what its geometry is: a
+  vertex's coordinates; an edge's kind, its two ends in the direction it was
+  reached, and a line's direction or a circle's or an ellipse's centre,
+  normal and radii (`CurveInfo`); a face's kind and frame, a plane's normal
+  out of the face, and the axis and radii of a cylinder, cone, sphere or
+  torus (`SurfaceInfo`). `Model.bounds(entity)` is the box a body, shell,
+  face, edge or vertex lies in, tight on analytic geometry and a containing
+  box on NURBS. A script can now pick a face or an edge by its geometry
+  without tessellating the body.
+
 ## 0.9.0 — 2026-10-22
 
 - `fillet` now rolls on a free-form face, and on two analytic faces whose

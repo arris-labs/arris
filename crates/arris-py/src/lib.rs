@@ -10,6 +10,7 @@
 
 mod control;
 pub mod error;
+mod geometry;
 mod handle;
 mod io;
 pub mod kernel_error;
@@ -23,6 +24,7 @@ mod role;
 
 pub use control::Cancel;
 pub use error::{ArrisError, BindError, Class};
+pub use geometry::{CurveInfo, SurfaceInfo};
 pub use handle::{Body, Edge, Face, Shell, Vertex};
 pub use io::{Healing, Imported, Occurrence, Refusal, StepRead, StepSolid};
 pub use mesh::Mesh;
@@ -70,6 +72,8 @@ fn arris_py(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Provenance>()?;
     module.add_class::<Mesh>()?;
     module.add_class::<Frame>()?;
+    module.add_class::<CurveInfo>()?;
+    module.add_class::<SurfaceInfo>()?;
     module.add_class::<RayHit>()?;
     module.add_class::<Distance>()?;
     module.add_class::<Section>()?;

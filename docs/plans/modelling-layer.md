@@ -88,7 +88,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[2]** — The binding queries `point`, `curve`, `surface` and
+- [x] Step 1 **[2]** — The binding queries `point`, `curve`, `surface` and
   `bounds`, with stubs, docstrings and the changelog. Tests: on the
   primitives and on a swept NURBS face, each query is checked against the
   construction's parameters, and `bounds` contains `tessellate`'s

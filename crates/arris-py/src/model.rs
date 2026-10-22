@@ -13,6 +13,7 @@ use pyo3::prelude::*;
 
 use crate::control::{Cancel, Limits};
 use crate::error::BindError;
+use crate::geometry::{Corners, CurveInfo, SurfaceInfo};
 use crate::handle::{AnyHandle, Body, DistanceOperand, Edge, Face, Shell, Vertex};
 use crate::io::{Imported, StepRead, length_unit as length_unit_of};
 use crate::kernel_error::{
@@ -1200,6 +1201,91 @@ impl Model {
             arris::ops::measure::surface_properties(m, body, control)
         })?;
         Ok(SurfaceProperties::new(kernel))
+    }
+
+    /// The point of `vertex`, as stored (the true point lies within the
+    /// vertex's tolerance of it).
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// points = sorted(model.point(v) for v in model.vertices(body))
+    /// assert points[0] == (0.0, 0.0, 0.0) and points[-1] == (1.0, 2.0, 3.0)
+    /// ```
+    fn point(&self, vertex: &Vertex) -> PyResult<(f64, f64, f64)> {
+        let vertex = vertex.resolve(&self.shared)?;
+        let p = self
+            .shared
+            .lock()?
+            .vertex(vertex.id)
+            .map_err(BindError::from)?
+            .point();
+        Ok((p.x, p.y, p.z))
+    }
+
+    /// The curve under `edge`: its kind, its ends in the direction the edge
+    /// was reached, and a line's or a conic's parameters; see `CurveInfo`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [edge, *_] = model.edges(body)
+    /// line = model.curve(edge)
+    /// assert line.kind == "line" and line.radius is None
+    /// start, end = model.vertices_of(edge)
+    /// assert (line.start, line.end) == (model.point(start), model.point(end))
+    /// ```
+    fn curve(&self, edge: &Edge) -> PyResult<CurveInfo> {
+        let edge = edge.resolve(&self.shared)?;
+        Ok(CurveInfo::of(&*self.shared.lock()?, edge).map_err(BindError::from)?)
+    }
+
+    /// The surface under `face`: its kind, its frame, a plane's outward
+    /// normal and a quadric's or a torus's axis and radii; see
+    /// `SurfaceInfo`.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, record = model.primitive_box((0, 0, 0), (1, 2, 3))
+    /// [top] = [f for f in record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+    ///          if isinstance(f, arris.Face)]
+    /// plane = model.surface(top)
+    /// assert plane.kind == "plane" and plane.normal == (0.0, 0.0, 1.0)
+    /// assert plane.origin[2] == 3.0 and plane.axis is None
+    /// ```
+    fn surface(&self, face: &Face) -> PyResult<SurfaceInfo> {
+        let face = face.resolve(&self.shared)?;
+        Ok(SurfaceInfo::of(&*self.shared.lock()?, face).map_err(BindError::from)?)
+    }
+
+    /// The axis-aligned box `entity` lies in, as `(min, max)`, grown by the
+    /// tolerances it carries: tight for a vertex, a line, a conic and an
+    /// analytic face, a control hull's box for a NURBS curve or face, so
+    /// loose there; a shell's or a body's is the union of its entities'.
+    /// `None` for an entity with an unbounded face (never one of a solid).
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 5)
+    /// lo, hi = model.bounds(body)
+    /// assert all(abs(a - b) < 1e-6 for a, b in zip(lo, (-2, -2, 0)))
+    /// assert all(abs(a - b) < 1e-6 for a, b in zip(hi, (2, 2, 5)))
+    /// ```
+    fn bounds(&self, entity: AnyHandle<'_>) -> PyResult<Option<Corners>> {
+        let entity = entity.resolve(&self.shared)?;
+        let b = crate::geometry::bounds(&*self.shared.lock()?, entity).map_err(BindError::from)?;
+        Ok(b.map(|b| {
+            let ([x0, y0, z0], [x1, y1, z1]) = (b.min, b.max);
+            ((x0, y0, z0), (x1, y1, z1))
+        }))
     }
 
     /// The frame of a planar `face`: `z` is its outward normal, reversed
