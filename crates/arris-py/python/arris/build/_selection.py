@@ -9,13 +9,21 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 from .._arris import ArrisError, Body, Edge, Face, Model, Provenance, Role, Shell, Vertex
+from ._vec import Point
+from ._vec import add as _add
+from ._vec import dot as _dot
+from ._vec import fmt as _fmt
+from ._vec import scale as _scale
+from ._vec import sub as _sub
+from ._vec import unit as _unit
 
 if TYPE_CHECKING:
     from ._solid import Solid
+    from ._workplane import Workplane
 
 M = TypeVar("M", Face, Edge)
 
-_Point = tuple[float, float, float]
+_Point = Point
 _Handle = Body | Shell | Face | Edge | Vertex
 
 # Picks a step record's outputs, given the tool's own entities.
@@ -119,6 +127,29 @@ class Selection(Generic[M]):
         if len(self.members) != 1:
             raise SelectionError(self.chain, len(self.members))
         return self.members[0]
+
+    def workplane(self) -> Workplane:
+        """The plane of the one planar face selected, outward: its origin
+        on the face, `z` its normal. Raises `SelectionError` unless the
+        selection is one face, and `SketchError` for a face that is not
+        planar.
+
+        ```python
+        from arris.build import Solid
+
+        block = Solid.box((0, 0, 0), (4, 4, 4))
+        top = block.faces().extreme((0, 0, 1)).workplane()
+        assert top.z == (0.0, 0.0, 1.0) and top.origin[2] == 4.0
+        ```
+        """
+        from ._workplane import SketchError, Workplane
+
+        face = self._faces_only("workplane").one()
+        model = self.solid.model
+        kind = model.surface(face).kind
+        if kind != "plane":
+            raise SketchError(f"{self.chain}.workplane(): {face!r} is a {kind}, not a plane")
+        return Workplane.from_frame(model.face_frame(face))
 
     # Provenance.
 
@@ -532,14 +563,6 @@ def _onto_plane(p: _Point, origin: _Point, normal: _Point) -> _Point:
     return _sub(p, _scale(normal, _dot(_sub(p, origin), normal)))
 
 
-def _unit(v: Sequence[float]) -> _Point:
-    x, y, z = (float(c) for c in v)
-    n = math.sqrt(x * x + y * y + z * z)
-    if not n > 0 or not math.isfinite(n):
-        raise ValueError(f"direction {_fmt(v)} has no length")
-    return (x / n, y / n, z / n)
-
-
 def _along(a: _Point, d: _Point, model: Model) -> bool:
     """`a` and `d` (units) parallel, in either sense."""
     c = (a[1] * d[2] - a[2] * d[1], a[2] * d[0] - a[0] * d[2], a[0] * d[1] - a[1] * d[0])
@@ -549,23 +572,3 @@ def _along(a: _Point, d: _Point, model: Model) -> bool:
 def _across(a: _Point, d: _Point, model: Model) -> bool:
     """`a` and `d` (units) square to each other."""
     return abs(_dot(a, d)) <= model.angular_tolerance
-
-
-def _dot(a: Sequence[float], b: Sequence[float]) -> float:
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-
-
-def _add(a: _Point, b: _Point) -> _Point:
-    return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
-
-
-def _sub(a: _Point, b: _Point) -> _Point:
-    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
-
-
-def _scale(a: _Point, s: float) -> _Point:
-    return (a[0] * s, a[1] * s, a[2] * s)
-
-
-def _fmt(v: Sequence[float]) -> str:
-    return "(" + ", ".join(f"{float(c):g}" for c in v) + ")"

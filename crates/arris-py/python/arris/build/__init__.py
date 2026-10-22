@@ -19,5 +19,15 @@ assert part.model.surface(part.faces().created_by(hole).one()).kind == "cylinder
 
 from ._selection import Selection, SelectionError
 from ._solid import Solid, default_model
+from ._workplane import PathSketch, Sketch, SketchError, Workplane
 
-__all__ = ["Selection", "SelectionError", "Solid", "default_model"]
+__all__ = [
+    "PathSketch",
+    "Selection",
+    "SelectionError",
+    "Sketch",
+    "SketchError",
+    "Solid",
+    "Workplane",
+    "default_model",
+]

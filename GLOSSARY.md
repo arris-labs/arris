@@ -253,6 +253,11 @@ A name a modelling-layer script puts on a set of a solid's faces, carried
 onto each later operation's faces through its provenance; the layer's, in
 Python only, and not a kernel attribute (ADR-0009).
 
+**Workplane**:
+A frame that a modelling-layer script draws on: sketches are drawn in its
+`x` and `y`, and what they make grows along its `z`. A planar face's is
+outward; the standard ones are `XY`, `YZ` and `XZ`, right-handed.
+
 **Selection**:
 Some of a solid's faces or edges in the modelling layer, as a set in
 ascending handle order, picked by provenance, role or tag first and by

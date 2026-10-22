@@ -105,7 +105,7 @@ bound has to be established here.
   the glossary's *Selection*. Tests: each filter on the primitives, order
   stable across two runs, `created_by` after a `cut_many` returning exactly
   the tool walls, and `extreme` with coplanar ties returning the whole set.
-- [ ] Step 4 **[1]** — `Workplane` and `Sketch`, with `extrude`, `revolve`,
+- [x] Step 4 **[1]** — `Workplane` and `Sketch`, with `extrude`, `revolve`,
   `sweep` and `loft`, plus the glossary's *Workplane*. Tests: each
   construction matches the raw call's body (mass properties equal) on a
   workplane rotated off the axes.
@@ -180,4 +180,13 @@ byte-identical from the layer's bracket.
   per output, so `modified_by` with several tools in one `cut_many` is what
   any of them modified; `created_by` is exact per tool. `faces()` and
   `edges()` now return a `Selection`.
+- *Settled (step 4)*: **workplane conventions.** `XZ`'s normal is the
+  world `-y` (`x` × `y` with `y` = `z`), so every plane is right-handed and
+  `offset` moves along the normal. `extrude(d, both=True)` goes `d` to each
+  side (total `2d`) and a negative `d` goes against the normal. `revolve`'s
+  axis is `"x"`, `"y"` or two points in the plane's coordinates.
+  `Sketch.cut(*inner)` makes holes; `Sketch.loft` is a static method over
+  sketches. A sketch's `arc_to(to, tangent=None)` leaves by the previous
+  segment's end tangent, the first one needing `tangent=`. New shared
+  `SketchError`, `PathSketch` and `Selection.workplane()`.
 - ⚠ OPEN: **Launch timing and venue**: the human's (ADR-0067 §5).
