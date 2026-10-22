@@ -47,7 +47,8 @@ prepares the commit the tag points at. The scheme is
    sdist`, `twine check --strict` on both; the wheel's version is `X.Y.Z`,
    no `.dev0`.
 6. **Commit** the bump and changelog as `chore(arris): release X.Y.Z`, the
-   body giving step 2's derivation and the breaking list. After
+   body giving step 2's derivation and the breaking list; `AGENTS.md`'s
+   *Current state* moves past the release in the same commit. After
    `/close-cycle`, its `docs: close <cycle>` commit comes first.
 7. **Open the next `-dev`** in its own commit: `chore(arris): open
    X.(Y+1).0-dev`, same eight places. (Tagging this one by mistake is safe:

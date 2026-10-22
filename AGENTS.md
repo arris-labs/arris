@@ -29,7 +29,7 @@ cargo install cargo-fuzz --locked
 
 ## Current state
 
-**C1–C10 done (2026-09-12 to 10-22)**, each compressed to its status line
+**C1–C10 done and released (2026-09-12 to 10-22)**, each compressed to its status line
 in `docs/ROADMAP.md`: the vertical slice, the application gate, every
 quadric pair, the STEP reader and real-part corpus, the consumer's API, the
 blend network, prismatic features, the query cycle, the healing cycle, and
@@ -41,8 +41,9 @@ script corpus (ADR-0067).
 12 of 38 real parts at `fillet` and 3 of the script corpus's 4 refusals.
 The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22; the
 launch gate of ADR-0067 §5 is met once `python-wheels` retires too.
-**Next:** `/release` for C10, then `/idea` or `/plan` for C11's first
-item; draft and thicken in the side slot.
+**Next:** `/work python-wheels` on `plan/python-wheels` (steps 1–2
+written, their test a CI run that needs a push), then `/idea` or `/plan`
+for C11's first item; draft and thicken in the side slot.
 
 ## Rules that are not derivable from the code
 

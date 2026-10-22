@@ -43,7 +43,9 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      routine, the design says exactly what to write and the tests are
      mechanical; **[2]** careful, a geometric or numeric case to get right
      within a given design; **[3]** unproven, an algorithm whose robustness
-     or bound has to be established here.
+     or bound has to be established here. A step whose only test is a CI
+     run (another runner, a workflow) carries **[CI]** after its grade: it
+     needs a push, so the plan's header says it runs on `plan/<slug>`.
    - *Acceptance* is an executable corpus run, ideally the milestone's own:
      which fixtures, which oracle values, which property tests.
    - *Docs to update* is written now, while the deltas are fresh — it is

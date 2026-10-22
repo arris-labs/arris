@@ -12,7 +12,9 @@ argument-hint: <plan slug> [step number or range]
 1. Open `docs/plans/<slug>.md`; target the first unchecked step or the given
    range. No slug: one active plan is it; two means ask which, naming each
    one's next step. Re-read its *Design deltas* and any `⚠ OPEN:` naming it — an
-   unanswered question that is the human's means stop and ask.
+   unanswered question that is the human's means stop and ask. A **[CI]**
+   step is worked on `plan/<slug>`, and the push its test needs is asked
+   for before writing it, not after.
 2. Implement the step with its test, fixture or oracle comparison, the docs
    it changes and rustdoc on every new public item.
 3. Run only the step's own tests (`cargo nextest run -p <crate> --test
