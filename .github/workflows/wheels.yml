@@ -1,10 +1,12 @@
-# The Python wheels (ADR-0034, plans/python-wheels): one abi3 wheel per
+# The platforms beyond Linux x86_64 (ADR-0034, ADR-0064, plans/python-wheels):
+# the determinism corpus run natively on each, and one abi3 wheel per
 # target, each installed from its file into a clean virtual environment on
 # its own platform — never `maturin develop` — and held to the binding's
 # pytest. One definition, two callers: `ci.yml` on every push to `main`,
 # and `release.yml`'s `pypi-build`, which merges the `wheel-*` artifacts
 # with the sdist. A pull request that touches the Rust or the binding runs
-# it on its own trigger below.
+# it on its own trigger below; `gh workflow run wheels.yml --ref <branch>`
+# runs it alone on a branch, without the rest of CI.
 #
 # Targets (runner → target):
 #   ubuntu-latest    → x86_64 manylinux2014
@@ -12,7 +14,7 @@
 #   macos-14         → aarch64-apple-darwin
 #   macos-14         → x86_64-apple-darwin, cross-built and tested under
 #                      Rosetta with an x86_64 Python (the `determinism-
-#                      platforms` job of `ci.yml` records that Rosetta runs
+#                      platforms` job below records that Rosetta runs
 #                      there; an Intel image is the fallback if it stops)
 #   windows-latest   → x86_64-pc-windows-msvc
 # musllinux, Windows arm64 and 32-bit targets are one `include` line each
@@ -21,6 +23,7 @@ name: Wheels
 
 on:
   workflow_call:
+  workflow_dispatch:
   pull_request:
     paths:
       - "crates/**"
@@ -34,6 +37,34 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "11.0"
 
 jobs:
+  # The determinism corpus natively off Linux x86_64 (ADR-0064): every
+  # platform a wheel ships for builds the same bodies, held to the same
+  # committed digests. A digest that differs is a kernel fault, never a
+  # per-platform digest. Windows checks out with Linux's line endings, so
+  # the STEP text the corpus embeds is the same bytes. The macOS leg also
+  # records whether Rosetta runs x86_64 code there, which is where the
+  # `wheel` job tests its x86_64 macOS wheel.
+  determinism-platforms:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - if: runner.os == 'macOS'
+        name: whether Rosetta runs x86_64 code
+        run: |
+          if arch -x86_64 /usr/bin/true; then
+            echo "Rosetta: available on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Rosetta: not available on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - run: cargo test -p arris --test determinism
+
   wheel:
     strategy:
       fail-fast: false

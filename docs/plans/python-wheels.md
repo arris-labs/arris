@@ -58,6 +58,10 @@ written rule that re-runs ADR-0034's `forbid(unsafe_code)` check.
   amendment dated at this plan. A pyo3 bump re-runs the expansion check
   that ADR-0034 recorded for `forbid(unsafe_code)`, and the commit body
   names its result. `docs/ARCHITECTURE.md` §the binding points to it.
+- *Settled:* `determinism-platforms` lives in `wheels.yml`, not `ci.yml`,
+  and the workflow takes `workflow_dispatch`: everything that runs off
+  Linux x86_64 is one workflow a branch can run alone, without the hours
+  of `ci.yml`'s `test` job. The release therefore runs it too.
 - No public Rust or Python type changes.
 
 ## Steps
