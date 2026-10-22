@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.9.0 — 2026-10-22
+
 - `fillet` now rolls on a free-form face, and on two analytic faces whose
   edge no closed form holds (cylinders on skew axes, a cylinder off a
   sphere's centre, a B-spline edge between a plane and a cylinder), and on
@@ -41,6 +43,9 @@ into its version (ADR-0027).
   blended edge's face within the vertex's tolerance, curving away from the
   ball (a slot wall drawn a hair off tangent to its round end), is refused
   as a tangent chain. It was refused as unsupported.
+- A fillet or chamfer whose contact would run through a small hole near
+  the edge (a drill that comes out within the radius of a rim) is now
+  refused as too large instead of returning a body whose face loops cross.
 - `intersect_surfaces` of a NURBS surface with an analytic one, and so
   booleans and the checker, now also take the poses where the other
   surface crosses itself on an edge of the NURBS surface, or touches an
@@ -159,8 +164,8 @@ into its version (ADR-0027).
   surface: a ring of equal circles agrees to a few parts in 10⁹, and a
   circle to a rounded rectangle differs by the pairing, about 10⁻⁴.
 - `extrude` builds in any direction off the profile's plane: an arc sweeps an
-  `EllipticCylinder`, its section perpendicular to the direction an ellipse
-  (ADR-0014, ADR-0063). A direction whose normal component times the length is
+  `EllipticCylinder`, its section perpendicular to the direction an ellipse.
+  A direction whose normal component times the length is
   under the linear tolerance is refused as `InputReason::ZeroThickness`.
 - A body built on `wasm32` is now byte-identical to the same body built
   natively: sines, arctangents and the other transcendentals run one pure
@@ -168,10 +173,6 @@ into its version (ADR-0027).
   gets a last-bit different sweep (and different ids and measures) in the
   browser. `arris_math::real` holds the functions, for a consumer that
   wants its own inputs computed the same way.
-
-- A fillet or chamfer whose contact would run through a small hole near
-  the edge (a drill that comes out within the radius of a rim) is now
-  refused as too large instead of returning a body whose face loops cross.
 
 ### Breaking
 

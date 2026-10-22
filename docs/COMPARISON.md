@@ -15,7 +15,7 @@ not the latest.
 
 ## Where each one stands
 
-| Area | Open CASCADE | Arris (0.10.0) |
+| Area | Open CASCADE | Arris (0.9.0) |
 |---|---|---|
 | Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS surfaces read, checked, sectioned against analytic surfaces and against each other (ADR-0061, ADR-0068), and swept/lofted (ADR-0063, ADR-0065) |
 | Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections, extrema, sweep paths, and lofts) |
