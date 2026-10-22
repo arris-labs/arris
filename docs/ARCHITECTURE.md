@@ -2260,8 +2260,9 @@ B-Rep).
   builds it with `maturin develop`, runs the pytest — the oracle's numbers
   for corpus fixtures scripted in Python, every docstring example, and
   `mypy.stubtest` against the stubs, so a stub that drifts fails — at the
-  oldest and newest supported Python, and builds the release wheel and sdist
-  for `twine check`. The hook only compiles the crate; the Python suite
+  oldest supported Python. `wheels.yml` runs the same suite at the newest
+  over each installed wheel, and merges the wheels and the sdist into the
+  artifact `twine check` accepts. The hook only compiles the crate; the Python suite
   never runs there. The wheel carries no rasteriser and no numpy
   dependency: a `Mesh` crosses as little-endian `f64` and `u32` bytes, with
   `to_numpy()` importing numpy only when called. `release.yml` publishes it

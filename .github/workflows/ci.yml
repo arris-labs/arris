@@ -232,17 +232,16 @@ jobs:
 
   # The Python binding (ADR-0034): a `maturin develop` build, the pytest
   # over it (the oracle's numbers for corpus fixtures, every docstring
-  # example, `mypy.stubtest` against the stubs), at the oldest and the
-  # newest Python the abi3 wheel supports. Never in the pre-commit hook; the
-  # hook's Rust checks still compile the crate. The last step is the build
-  # half of the release's `pypi` job: a release-profile wheel and the sdist,
-  # which `twine check` accepts, uploaded as an artifact; nothing publishes.
+  # example, `mypy.stubtest` against the stubs) and `mypy --strict`, at the
+  # oldest Python the abi3 wheel supports. Never in the pre-commit hook; the
+  # hook's Rust checks still compile the crate. The newest Python, the
+  # release wheels, the sdist and `twine check` are `wheels.yml`'s, below.
   python:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.13"]
+        python: ["3.10"]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -254,26 +253,17 @@ jobs:
           uv venv --python ${{ matrix.python }} "$RUNNER_TEMP/venv"
           echo "VIRTUAL_ENV=$RUNNER_TEMP/venv" >> "$GITHUB_ENV"
           echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
-          uv pip install --python "$RUNNER_TEMP/venv/bin/python" maturin twine
+          uv pip install --python "$RUNNER_TEMP/venv/bin/python" maturin
       # What an agent runs locally, so the two cannot drift apart.
       - run: tools/py-test.sh
         env:
           ARRIS_PYENV: ${{ runner.temp }}/venv
           PYTEST_WORKERS: auto
-      - if: matrix.python == '3.13'
-        run: |
-          maturin build --release --manifest-path crates/arris-py/Cargo.toml --out dist
-          maturin sdist --manifest-path crates/arris-py/Cargo.toml --out dist
-          twine check --strict dist/*
-      - if: matrix.python == '3.13'
-        uses: actions/upload-artifact@v7
-        with:
-          name: python-dist
-          path: dist/*
 
   # The platforms beyond Linux x86_64 (`wheels.yml`): the determinism corpus
-  # run natively on each, and every platform's wheel installed from its file
-  # and held to the binding's pytest, on each push to `main`. A pull request
+  # run natively on each, every platform's wheel installed from its file
+  # and held to the binding's pytest, and the merged `python-dist` artifact
+  # `twine check` accepts, on each push to `main`. A pull request
   # runs it on its own path-filtered trigger, and a tag's wheels are
   # `release.yml`'s.
   wheels:

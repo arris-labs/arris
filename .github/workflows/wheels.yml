@@ -2,9 +2,9 @@
 # the determinism corpus run natively on each, and one abi3 wheel per
 # target, each installed from its file into a clean virtual environment on
 # its own platform — never `maturin develop` — and held to the binding's
-# pytest. One definition, two callers: `ci.yml` on every push to `main`,
-# and `release.yml`'s `pypi-build`, which merges the `wheel-*` artifacts
-# with the sdist. A pull request that touches the Rust or the binding runs
+# pytest. The `dist` job merges the wheels with the sdist into
+# `python-dist`. One definition, two callers: `ci.yml` on every push to
+# `main`, and `release.yml`, whose `pypi` job publishes `python-dist`. A pull request that touches the Rust or the binding runs
 # it on its own trigger below; `gh workflow run wheels.yml --ref <branch>`
 # runs it alone on a branch, without the rest of CI.
 #
@@ -125,3 +125,33 @@ jobs:
         with:
           name: wheel-${{ matrix.target }}
           path: dist/*.whl
+
+  # What PyPI receives: every target's wheel and the one sdist, merged into
+  # `python-dist` and accepted by `twine check`. It waits on the determinism
+  # jobs too, so a platform that builds different bodies has no artifact
+  # `release.yml` could publish.
+  dist:
+    needs: [determinism-platforms, wheel]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist --manifest-path crates/arris-py/Cargo.toml
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: wheel-*
+          path: dist
+          merge-multiple: true
+      - uses: astral-sh/setup-uv@v10.1.0
+      - run: uvx twine check --strict dist/*
+      - name: five wheels and one sdist
+        shell: bash
+        run: |
+          ls -l dist
+          [ "$(ls dist/*.whl | wc -l)" -eq 5 ] && [ "$(ls dist/*.tar.gz | wc -l)" -eq 1 ]
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*

@@ -62,6 +62,16 @@ written rule that re-runs ADR-0034's `forbid(unsafe_code)` check.
   and the workflow takes `workflow_dispatch`: everything that runs off
   Linux x86_64 is one workflow a branch can run alone, without the hours
   of `ci.yml`'s `test` job. The release therefore runs it too.
+- *Settled* (step 3): **the merge lives in `wheels.yml` too.** Its `dist`
+  job builds the sdist, merges it with every `wheel-*` artifact into
+  `python-dist`, runs `twine check --strict` and counts five wheels and one
+  sdist. It needs the determinism jobs as well as the wheels. Both callers
+  get the same files. `release.yml` keeps no build of its own: its
+  version guard is a job, `pypi-guard`, beside `pypi-build` (the call),
+  and `pypi` needs both. A dry run therefore builds everything before the
+  guard refuses it. `release.yml` takes `workflow_dispatch` for that dry
+  run, and `crates-io` runs only on a tag, so a dry run never waits on
+  its reviewer.
 - No public Rust or Python type changes.
 
 ## Steps
