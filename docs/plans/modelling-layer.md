@@ -37,10 +37,14 @@ gates the launch on.
   (`kind`, plane origin and normal, quadric and torus axis, centre and
   radii); `Model.bounds(entity)`, a containing box, loose for NURBS. Each
   has its stub line, docstring example and `CHANGELOG.md` bullet.
-- **Values.** `arris.build.Solid` is frozen: its `Model`, `Body` handle,
-  history (`Provenance.then`), last record and tags. With no `model=` it
-  uses the module's default model; mixing models raises
-  `ForeignHandleError`. `cut`, `fuse`, `common`, `fillet`, `chamfer`,
+- **Values.** `arris.build.Solid` is frozen: its `model`, `body` handle,
+  `provenance` (the chain by `Provenance.then`, from the constructor's own
+  record), `last` record and `tags`. Constructors: `Solid.of((body,
+  record))` over any binding result, `box` and `cylinder`, which with no
+  `model=` use `default_model()`; mixing models raises the binding's
+  `ForeignHandleError`. `apply((body, record), tools)` follows an operation
+  the layer does not wrap, and every wrapped one goes through it.
+  `cut(*tools)` (`cut_many` past one), `fuse(*others)`, `common`, `fillet`, `chamfer`,
   `shell`, `moved` and `mirrored` each return a new `Solid`. A kernel
   refusal reaches the caller as the binding's typed exception, unchanged.
   Queries: `measure`, `check`, `to_step`/`export_step`, `mesh`.
@@ -93,7 +97,7 @@ bound has to be established here.
   primitives and on a swept NURBS face, each query is checked against the
   construction's parameters, and `bounds` contains `tessellate`'s
   positions.
-- [ ] Step 2 **[2]** — `Solid`, the history and tags. Test: the bracket's
+- [x] Step 2 **[2]** — `Solid`, the history and tags. Test: the bracket's
   labels, rebuilt through `Solid.tag`, equal `examples/bracket.py`'s
   per-triangle labels exactly. Tags survive the property-test cut/fuse
   sequence on random boxes, and a deleted face drops its tag.
@@ -149,9 +153,15 @@ byte-identical from the layer's bracket.
 
 ## Open questions
 
-- ⚠ OPEN: **The value's name**: `Solid` (M1 makes only solids) or `Body`
-  (the glossary's word, but it shadows the handle `arris.Body`). The agent
-  picks `Solid` unless step 2 finds a reason against it.
+- *Settled (step 2)*: **the value's name** is `Solid`: `Body` would shadow
+  the handle `arris.Body`, which a `Solid` holds as `.body`. Its chain is
+  `provenance`, not "history" (the glossary's _Avoid_).
+- *Settled (step 2)*: **tags follow `modified`, then `generated`**: a face
+  with a face origin in `modified` takes the tags of those origins only,
+  else of its `generated` face origins; a face neither names keeps its own.
+  This reproduces the bracket's single labels exactly, so the layer keeps
+  tag sets (a face may carry several). `faces()` returns a list until
+  step 3 makes it a `Selection`.
 - ⚠ OPEN: **The default model's growth**: `arris.build.collect()` over
   `Model.retain`, or nothing in M1. The agent decides at step 6 by
   measuring the four ported parts.

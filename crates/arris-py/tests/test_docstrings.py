@@ -3,7 +3,8 @@
 The examples are the fenced ```python blocks the Rust doc comments carry
 (`pyo3` makes them the objects' `__doc__`). A class, a module function and
 every method of `Model` must hold one: an operation without an example is
-unfinished (`.agents/rules/kernel.md` §API).
+unfinished (`.agents/rules/kernel.md` §API). The modelling layer
+`arris.build` is held to it too, every member of its classes included.
 """
 
 import inspect
@@ -11,6 +12,7 @@ import re
 import textwrap
 
 import arris
+import arris.build
 import pytest
 
 FENCE = re.compile(r"```python\n(.*?)```", re.DOTALL)
@@ -54,6 +56,14 @@ def items():
                     yield f"{name}.{member_name}", member, needs
         else:
             yield name, obj, True
+    yield "arris.build", arris.build, True
+    for name in arris.build.__all__:
+        obj = getattr(arris.build, name)
+        yield f"build.{name}", obj, True
+        if inspect.isclass(obj):
+            for member_name, member in public_members(obj):
+                if inspect.isroutine(member) or isinstance(member, property):
+                    yield f"build.{name}.{member_name}", member, True
 
 
 ITEMS = list(items())

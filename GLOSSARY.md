@@ -248,6 +248,11 @@ operations — for a script author; the binding beneath it stays 1:1 with
 the facade.
 _Avoid_: DSL, wrapper
 
+**Tag**:
+A name a modelling-layer script puts on a set of a solid's faces, carried
+onto each later operation's faces through its provenance; the layer's, in
+Python only, and not a kernel attribute (ADR-0009).
+
 **Probe corpus**:
 The first consumer's recorded kernel failures, each a fixture Arris must
 pass before the swap (the application gate, ADR-0017).
