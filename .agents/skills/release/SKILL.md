@@ -42,9 +42,8 @@ prepares the commit the tag points at. The scheme is
 5. **Prove it publishes.** `cargo package --workspace --exclude arris-py`
    — every crate packages and verifies (a failure in the workflow comes
    after some crates are already up, and a version can't be replaced).
-   Then the wheel, in a venv with `maturin` and `twine`:
-   `maturin develop --manifest-path crates/arris-py/Cargo.toml --extras
-   test`, `pytest crates/arris-py`, `maturin build --release`, `maturin
+   Then the wheel: `tools/py-test.sh`, then in its environment
+   (`target/py-venv`, `twine` added) `maturin build --release`, `maturin
    sdist`, `twine check --strict` on both; the wheel's version is `X.Y.Z`,
    no `.dev0`.
 6. **Commit** the bump and changelog as `chore(arris): release X.Y.Z`, the

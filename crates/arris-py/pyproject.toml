@@ -13,8 +13,9 @@ license = { text = "MIT OR Apache-2.0" }
 
 [project.optional-dependencies]
 # mypy for `mypy.stubtest` (tests/test_stubs.py); numpy only so
-# `Mesh.to_numpy` is exercised, the package never needs it.
-test = ["pytest>=8", "mypy>=1.18", "numpy"]
+# `Mesh.to_numpy` is exercised, the package never needs it; xdist for
+# `tools/py-test.sh`'s workers, pytest-timeout for the budget below.
+test = ["pytest>=8", "pytest-xdist>=3", "pytest-timeout>=2", "mypy>=1.18", "numpy"]
 
 [tool.maturin]
 python-source = "python"
@@ -23,3 +24,7 @@ features = ["extension-module"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# A test past 120 s fails, so a slowdown fails CI on the commit that makes
+# it: the slowest test but one is 16 s (2026-10-22). A test over budget on
+# purpose carries `pytest.mark.timeout` naming its backlog finding.
+timeout = 120

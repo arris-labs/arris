@@ -256,6 +256,15 @@ above when it wants a fix; the block moves or is deleted then.
 - State: measured.
 - The fix is: refine the torus's grid in `v` (`surface_grid` splits `u` only) where `minor/major` is near 1, then `sweep-fold-near-limit` returns to the default tolerance.
 
+### check-full-of-a-swept-thread-takes-minutes
+- What: `check(thread, "full")` on the script corpus's `bottle-cap` takes 464 s where it took 0.6 s, and the fused and filleted bodies about 156 s each; `test_part[bottle-cap]` is 40 min locally and CI's `python` job went from about 2 to about 71 min. The verdict is right: the three NURBS × NURBS face pairs it left unchecked are now decided, green.
+- Where: `crates/arris-py/tests/test_script_corpus.py::test_part[bottle-cap]`.
+- Seen: the 0.9.0 release's local run, commit 52b039f5; bisected over 751524ca..52b039f5 to ef6371e6 (`feat(geom): dispatch and fit the marched section`, which routed NURBS × NURBS pairs to the marcher), 8621d107 before it fast. Deterministic, no seed.
+- Reproduce: `tools/py-test.sh tests/test_script_corpus.py -k bottle-cap --durations=1`.
+- Evidence: the time is the checker's S5 on the 2.5-turn helical sweep's faces against each other; sweep, fuse and fillet each take a second or less.
+- State: measured.
+- The fix is: find why the march takes hundreds of seconds on long helical spans (the seed search or the step count), then a regression fixture holding the thread's Full check to a time budget, and `SLOW` in `test_script_corpus.py` loses `bottle-cap`.
+
 - S5 of a cone against a cylinder in a fuse result: the differential's case
   found a twice-fused elliptic cylinder, revolved cone and extrusion whose
   result leaves two cone × cylinder pairs undecided at `Full`

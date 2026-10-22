@@ -16,11 +16,11 @@
   outlive its session. Never
   use a `pgrep -f` loop, which matches its own shell and never ends. A
   stuck one is stopped with `tools/stop-gate.sh`, never a bare `pkill -f`.
-- **The full gate** is `ARRIS_GATE=full`'s list: `cargo fmt --check`,
-  `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest
-  run --workspace` (256 cases, `real_*` included), `cargo test --workspace
-  --doc`, `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`,
-  `tools/check-layers.sh`. It runs once per plan (`/retire-plan`), at
+- **The full gate** is `tools/full-gate.sh <log>`, run with
+  `run_in_background`: the layer rule, fmt, clippy `-D warnings`, nextest
+  over the workspace (256 cases, `real_*` included), the doctests, `cargo
+  doc` with warnings denied. Every stage runs; its last lines name each red
+  stage and test. It runs once per plan (`/retire-plan`), at
   `/close-cycle` and `/release`. CI runs it at 1000 cases plus the
   `oracle`, `wasm` (which runs the determinism corpus on `wasm32-wasip1`),
   `parallel` and `python` jobs no local gate runs; the

@@ -73,7 +73,19 @@ def step_bytes(slug):
     return run.model.write_step([run.last]) if run.last is not None else ""
 
 
-@pytest.mark.parametrize("slug", harness.slugs())
+# `bottle-cap`'s Full checks take 40 min here and about 70 on CI's runner
+# (docs/BACKLOG.md, check-full-of-a-swept-thread-takes-minutes); its budget
+# returns to the default with that fix.
+SLOW = {"bottle-cap": 5400}
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        pytest.param(slug, marks=pytest.mark.timeout(SLOW[slug])) if slug in SLOW else slug
+        for slug in harness.slugs()
+    ],
+)
 def test_part(slug):
     directory = CORPUS / slug
     if slug in WAITS:

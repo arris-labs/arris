@@ -255,9 +255,11 @@ jobs:
           echo "VIRTUAL_ENV=$RUNNER_TEMP/venv" >> "$GITHUB_ENV"
           echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
           uv pip install --python "$RUNNER_TEMP/venv/bin/python" maturin twine
-      - run: maturin develop --uv --manifest-path crates/arris-py/Cargo.toml --extras test
-      - run: pytest crates/arris-py
-      - run: mypy --strict -p arris.build
+      # What an agent runs locally, so the two cannot drift apart.
+      - run: tools/py-test.sh
+        env:
+          ARRIS_PYENV: ${{ runner.temp }}/venv
+          PYTEST_WORKERS: auto
       - if: matrix.python == '3.13'
         run: |
           maturin build --release --manifest-path crates/arris-py/Cargo.toml --out dist

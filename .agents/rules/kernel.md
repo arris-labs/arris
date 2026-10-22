@@ -55,8 +55,9 @@ reasons are in `SEED.md` §9.
   maps every error enum exhaustively, so a new variant needs its Python
   class, attributes and `python/arris/_arris.pyi` line; a changed bound
   signature changes its method, stub and docstring example. The hook
-  compiles the crate; CI's `python` job runs pytest, the docstrings and
-  `mypy.stubtest`.
+  compiles the crate; `tools/py-test.sh` runs pytest, the docstrings,
+  `mypy.stubtest` and `mypy --strict` as CI's `python` job does (a slice:
+  `tools/py-test.sh tests/test_mesh.py`), in one shared environment.
 - **A public type or signature change is a design delta** in the plan and is
   named in the commit body. Allowed pre-1.0, never silent.
 
