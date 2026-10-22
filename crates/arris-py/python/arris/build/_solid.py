@@ -5,9 +5,19 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
+from typing import TYPE_CHECKING, Literal
 
 from .._arris import Body, Edge, Face, Model, Provenance
 from ._selection import Selection
+from ._vec import dot, sub
+
+if TYPE_CHECKING:
+    from ._workplane import Sketch, Workplane
+
+# How many model tolerances a through tool reaches past the solid on each
+# side: far enough that no tolerance band of a face reaches it, near enough
+# to leave the tool's size to the solid.
+_THROUGH_MARGIN = 1000
 
 _default: Model | None = None
 
@@ -249,6 +259,98 @@ class Solid:
         ```
         """
         return self.apply(self.model.common(self.body, other.body), (other,))
+    def hole(
+        self,
+        at: Iterable[Workplane],
+        diameter: float,
+        depth: float | Literal["through"] = "through",
+    ) -> Solid:
+        """A round hole of `diameter` at each plane of `at`, from the plane
+        into the solid (against its normal) `depth` deep, or all the way
+        through. The holes are cut in one operation.
+
+        ```python
+        from arris.build import Solid, Workplane
+
+        plate = Solid.box((0, 0, 0), (20, 10, 4))
+        drilled = plate.hole(Workplane.XY(4).at([(5, 5), (15, 5)]), 3)
+        assert len(drilled.faces()) == 6 + 2
+        ```
+        """
+        return self.pocket([plane.circle(diameter / 2) for plane in at], depth)
+
+    def pocket(
+        self,
+        sketches: Sketch | Iterable[Sketch],
+        depth: float | Literal["through"] = "through",
+    ) -> Solid:
+        """Each sketch cut from its plane into the solid (against the
+        plane's normal) `depth` deep, or all the way through; one operation
+        for all. A through tool is sized from the solid's `Model.bounds`
+        along each plane's normal, past it by a margin of the model's
+        tolerance, so the sketch can sit on a face, inside the solid or
+        clear of it. A depth tool starts the same margin above its plane.
+
+        ```python
+        from arris.build import Solid, Workplane
+
+        block = Solid.box((0, 0, 0), (10, 10, 6))
+        slotted = block.pocket(Workplane.XY(6).slot(8, 2, center=(5, 5)), depth=2)
+        assert abs(slotted.model.mass_properties(slotted.body).volume - (600 - 2 * (6 * 2 + 3.141592653589793))) < 1e-9
+        ```
+        """
+        tools = [self._tool(sketch, depth) for sketch in _each(sketches)]
+        return self.cut(*tools) if tools else self
+
+    def boss(self, sketches: Sketch | Iterable[Sketch], height: float) -> Solid:
+        """Each sketch raised `height` along its plane's normal and fused
+        to the solid, in one operation.
+
+        ```python
+        from arris.build import Solid, Workplane
+
+        base = Solid.box((0, 0, 0), (10, 10, 2))
+        posts = base.boss(Workplane.XY(2).grid(2, 1, 4, 0)[0].circle(1), 3)
+        assert abs(posts.model.bounds(posts.body)[1][2] - 5.0) < 1e-6
+        ```
+        """
+        raised = [sketch.extrude(height, model=self.model) for sketch in _each(sketches)]
+        return self.fuse(*raised) if raised else self
+
+    def _tool(self, sketch: Sketch, depth: float | Literal["through"]) -> Solid:
+        margin = self.model.tolerance * _THROUGH_MARGIN
+        plane = sketch.plane
+        if depth == "through":
+            lo, hi = self._span(plane)
+            top = sketch.moved_to(plane.offset(hi + margin))
+            return top.extrude(-(hi - lo + 2 * margin), model=self.model)
+        raised = sketch.moved_to(plane.offset(margin))
+        return raised.extrude(-(depth + margin), model=self.model)
+
+    def _span(self, plane: Workplane) -> tuple[float, float]:
+        """How far this solid reaches along `plane`'s normal from the plane:
+        the lowest and the highest signed distance of its box's corners."""
+        box = self.model.bounds(self.body)
+        if box is None:
+            raise ValueError(f"{self.body!r} has no bounds to size a through tool from")
+        lo, hi = box
+        along = [
+            dot(
+                sub((x, y, z), plane.origin),
+                plane.z,
+            )
+            for x in (lo[0], hi[0])
+            for y in (lo[1], hi[1])
+            for z in (lo[2], hi[2])
+        ]
+        return min(along), max(along)
+
+
+def _each(sketches: Sketch | Iterable[Sketch]) -> list[Sketch]:
+    """One sketch or several, as a list."""
+    from ._workplane import Sketch
+
+    return [sketches] if isinstance(sketches, Sketch) else list(sketches)
 
 
 def _follow(

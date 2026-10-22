@@ -203,6 +203,67 @@ class Workplane:
         """
         return add(scale(self.x, u), scale(self.y, v))
 
+    def at(self, points: Sequence[Sequence[float]]) -> list[Workplane]:
+        """One plane per point of `points` (in this plane's coordinates), each
+        with this plane's axes and its origin at the point.
+
+        ```python
+        from arris.build import Workplane
+
+        spots = Workplane.XY(2).at([(1, 0), (0, 3)])
+        assert [spot.origin for spot in spots] == [(1.0, 0.0, 2.0), (0.0, 3.0, 2.0)]
+        ```
+        """
+        return [replace(self, origin=self.point(p[0], p[1])) for p in points]
+
+    def polar(self, count: int, radius: float, start: float = 0.0) -> list[Workplane]:
+        """`count` planes evenly round the origin on a circle of `radius`,
+        the first `start` radians from `x`, each turned so its own `x` points
+        away from the centre: a shape drawn on one is the same shape at every
+        place.
+
+        ```python
+        import math
+        from arris.build import Workplane
+
+        planes = Workplane.XY().polar(4, 2.0)
+        assert planes[1].origin == (planes[1].origin[0], 2.0, 0.0)
+        assert abs(planes[1].origin[0]) < 1e-12 and planes[1].x[1] > 1 - 1e-12
+        ```
+        """
+        planes = []
+        for i in range(count):
+            a = start + 2 * math.pi * i / count
+            c, s = math.cos(a), math.sin(a)
+            planes.append(
+                Workplane(
+                    self.point(radius * c, radius * s),
+                    self.direction(c, s),
+                    self.direction(-s, c),
+                    self.z,
+                )
+            )
+        return planes
+
+    def grid(self, nx: int, ny: int, dx: float, dy: float) -> list[Workplane]:
+        """`nx` by `ny` planes a step of `dx` and `dy` apart, centred on the
+        origin, `x` the slow direction.
+
+        ```python
+        from arris.build import Workplane
+
+        corners = Workplane.XY().grid(2, 2, 10, 4)
+        assert [c.origin[:2] for c in corners] == [(-5.0, -2.0), (-5.0, 2.0), (5.0, -2.0), (5.0, 2.0)]
+        ```
+        """
+        return self.at(
+            [
+                ((i - (nx - 1) / 2) * dx, (j - (ny - 1) / 2) * dy)
+                for i in range(nx)
+                for j in range(ny)
+            ]
+        )
+
     def rect(self, width: float, height: float, *, center: Sequence[float] = (0, 0)) -> Sketch:
         """A `width` by `height` rectangle centred on `center`.
 
@@ -454,6 +515,19 @@ class Sketch:
             if sketch.plane != self.plane:
                 raise SketchError(f"cut(): a sketch on {sketch.plane} is not on {self.plane}")
         return replace(self, holes=(*self.holes, *(sketch.outer for sketch in inner)))
+
+    def moved_to(self, plane: Workplane) -> Sketch:
+        """This outline and its holes drawn on `plane` instead, same
+        coordinates.
+
+        ```python
+        from arris.build import Workplane
+
+        up = Workplane.XY().rect(2, 2).moved_to(Workplane.XY(5))
+        assert up.plane.origin == (0.0, 0.0, 5.0)
+        ```
+        """
+        return replace(self, plane=plane)
 
     def profile(self) -> Profile:
         """The binding's `Profile`: this outline and its holes, placed on

@@ -109,7 +109,7 @@ bound has to be established here.
   `sweep` and `loft`, plus the glossary's *Workplane*. Tests: each
   construction matches the raw call's body (mass properties equal) on a
   workplane rotated off the axes.
-- [ ] Step 5 **[2]** — Placements, `hole`, `pocket`, `boss` and patterns.
+- [x] Step 5 **[2]** — Placements, `hole`, `pocket`, `boss` and patterns.
   Tests: a through-hole in a plate tilted 30° has the oracle's volume, and
   a 24-tooth polar pattern equals the raw corpus gear's stage body.
 - [ ] Step 6 **[1]** — `fillet`, `chamfer`, `shell`, `moved`, `mirrored`,
@@ -189,4 +189,15 @@ byte-identical from the layer's bracket.
   sketches. A sketch's `arc_to(to, tangent=None)` leaves by the previous
   segment's end tangent, the first one needing `tangent=`. New shared
   `SketchError`, `PathSketch` and `Selection.workplane()`.
+- *Settled (step 5)*: **placements and features.** `Workplane.at`, `polar`
+  (each plane's `x` points out along its radius) and `grid` (centred, `x`
+  slow) return lists of planes; `hole(at, diameter, depth)` takes those
+  planes, `pocket` and `boss` a sketch or several, each cut or fused in one
+  operation, and an empty pattern returns the solid itself. A hole and a
+  pocket go against the plane's normal, from a face's outward workplane
+  into the material; a boss grows along it. A through tool spans the
+  solid's `Model.bounds` along the normal plus 1000 model tolerances each
+  side (`_THROUGH_MARGIN`). The tilted-plate hole is held to the closed
+  form (a cylinder through a slab is exact) rather than an Open CASCADE
+  run, which would only repeat it. `Sketch.moved_to(plane)` is new.
 - ⚠ OPEN: **Launch timing and venue**: the human's (ADR-0067 §5).
