@@ -64,8 +64,45 @@ cargo add arris
 ```python
 # A motor-mount bracket: extruded L profile, fused boss, bore and bolt pattern cut
 # in one call, fillets on the bend and hole rims, and a chamfer on the boss.
+# Full script with per-operation face colouring: crates/arris-py/examples/bracket.py
+
+import arris
+from arris.build import Solid, Workplane
+
+# 1. Extrude the L plate, then fuse a boss on the upright leg
+plate = Workplane.XZ().polygon([(0, 0), (60, 0), (60, 8), (8, 8), (8, 50), (0, 50)]).extrude(-40)
+boss = Solid.cylinder((8, 20, 32), (1, 0, 0), 14, 12)
+boss = boss.tag("boss", boss.faces())  # a tag follows its faces through every later operation
+part = plate.fuse(boss)
+
+# 2. Cut bore, bolt holes and counterbores in one multi-tool call
+bore = Solid.cylinder((-1, 20, 32), (1, 0, 0), 8, 23)
+holes = [Solid.cylinder((40, y, -1), (0, 0, 1), 3.5, 10) for y in (8, 32)]
+wells = [Solid.cylinder((40, y, 5), (0, 0, 1), 6, 4) for y in (8, 32)]
+part = part.cut(bore, *holes, *wells)
+
+# 3. Fillets and chamfer: edges selected by provenance, never by index
+bend = part.edges().from_role(arris.Role("extrude", "Rise", 0, 3)).one()
+part = part.fillet([bend], 4)
+skin = part.faces().kind("plane").normal((0, 0, 1)) - part.faces().created_by(wells[0]) - part.faces().created_by(wells[1])
+walls = (part.faces().created_by(wells[0]) | part.faces().created_by(wells[1])).kind("cylinder")
+rims = walls.edges() & skin.edges()
+part = part.fillet(rims, 0.8)
+crown = part.faces().tagged("boss")
+lip = (crown.kind("plane").edges() & crown.kind("cylinder").edges()).one()
+part = part.chamfer([lip], 1.5)
+```
+
+### The binding beneath
+
+`arris.build` is pure Python over the binding, `arris.Model`, which stays
+available for anything the layer does not wrap:
+
+```python
+# A motor-mount bracket: extruded L profile, fused boss, bore and bolt pattern cut
+# in one call, fillets on the bend and hole rims, and a chamfer on the boss.
 # Every face is coloured by the operation that made it, followed through provenance.
-# Full script with per-operation face coloring: crates/arris-py/examples/bracket.py
+# The same part on the raw binding; the layer above it is the first snippet.
 
 import arris
 

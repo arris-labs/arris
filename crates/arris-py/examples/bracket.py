@@ -14,110 +14,60 @@ import sys
 from pathlib import Path
 
 import arris
+from arris.build import Solid, Workplane
 
 LABELS = ["plate", "boss", "bore", "bolt holes", "counterbores", "bend fillet", "rim fillets", "chamfer"]
 
 
-class Labelled:
-    """A body and the operation that made each of its faces, followed through
-    every operation's provenance."""
-
-    def __init__(self, model, body, record, label):
-        self.model, self.body = model, body
-        self.labels = {f: label for f in model.faces(body)}
-        self.record = record
-
-    def step(self, body, record, label, tools=()):
-        """The result of one operation: a face is labelled from the face it
-        was modified from, else from the tool face it was generated from,
-        else `label`; a face the record leaves alone keeps its own."""
-        known = dict(self.labels)
-        for tool in tools:
-            known.update(tool.labels)
-        inherited = {}
-        for relation in (record.modified, record.generated):
-            for origin, outputs in relation:
-                if origin in known:
-                    for output in outputs:
-                        inherited.setdefault(output, known[origin])
-        self.labels = {
-            face: inherited.get(face, self.labels.get(face, label))
-            for face in self.model.faces(body)
-        }
-        self.body, self.record = body, self.record.then(record)
-        return self
+def labelled(solid, name):
+    """`solid` with every face no tag names yet tagged `name`: the faces the
+    last operation made, since tags follow the rest through provenance."""
+    seen = set().union(*solid.tags.values()) if solid.tags else set()
+    return solid.tag(name, [face for face in solid.faces() if face not in seen])
 
 
-def build(model):
-    """The bracket as a `Labelled`: its body, its labels and its provenance."""
+def build():
+    """The bracket as a `Solid`: its faces tagged by the operation that made
+    them, each tag one of `LABELS`."""
     # The plate: an L profile in the xz plane, extruded along y.
-    profile = arris.Profile(
-        arris.Loop.polygon([(0, 0), (60, 0), (60, 8), (8, 8), (8, 50), (0, 50)]),
-        origin=(0, 0, 0),
-        normal=(0, -1, 0),
-        x_axis=(1, 0, 0),
-    )
-    plate, record = model.extrude(profile, (0, 1, 0), 40)
-    part = Labelled(model, plate, record, "plate")
+    plate = Workplane.XZ().polygon([(0, 0), (60, 0), (60, 8), (8, 8), (8, 50), (0, 50)]).extrude(-40)
+    part = labelled(plate, "plate")
 
     # A boss on the upright leg, and the pattern cut in one call.
-    boss, boss_record = model.primitive_cylinder((8, 20, 32), (1, 0, 0), 14, 12)
-    body, record = model.fuse(part.body, boss)
-    part.step(body, record, "boss", [Labelled(model, boss, boss_record, "boss")])
+    boss = labelled(Solid.cylinder((8, 20, 32), (1, 0, 0), 14, 12), "boss")
+    part = labelled(part.fuse(boss), "boss")
 
-    tools = []
-    bore, bore_record = model.primitive_cylinder((-1, 20, 32), (1, 0, 0), 8, 23)
-    tools.append(Labelled(model, bore, bore_record, "bore"))
-    for y in (8, 32):
-        hole, hole_record = model.primitive_cylinder((40, y, -1), (0, 0, 1), 3.5, 10)
-        tools.append(Labelled(model, hole, hole_record, "bolt holes"))
-        well, well_record = model.primitive_cylinder((40, y, 5), (0, 0, 1), 6, 4)
-        tools.append(Labelled(model, well, well_record, "counterbores"))
-    body, record = model.cut_many(part.body, [t.body for t in tools])
-    part.step(body, record, "bolt holes", tools)
+    bore = labelled(Solid.cylinder((-1, 20, 32), (1, 0, 0), 8, 23), "bore")
+    holes = [labelled(Solid.cylinder((40, y, -1), (0, 0, 1), 3.5, 10), "bolt holes") for y in (8, 32)]
+    wells = [labelled(Solid.cylinder((40, y, 5), (0, 0, 1), 6, 4), "counterbores") for y in (8, 32)]
+    part = labelled(part.cut(bore, holes[0], wells[0], holes[1], wells[1]), "bolt holes")
 
     # Fillets and the chamfer, each edge chosen by what made its faces.
-    model.check(part.body, "full")
-    [bend] = [
-        e
-        for e in part.record.generated_from(arris.Role("extrude", "Rise", 0, 3))
-        if isinstance(e, arris.Edge)
-    ]
-    body, record = model.fillet(part.body, [bend], 4)
-    part.step(body, record, "bend fillet")
+    part.check("full")
+    bend = part.edges().from_role(arris.Role("extrude", "Rise", 0, 3)).one()
+    part = labelled(part.fillet([bend], 4), "bend fillet")
 
-    rims = edges_between(part, "plate", "counterbores")
-    body, record = model.fillet(part.body, rims, 0.8)
-    part.step(body, record, "rim fillets")
+    faces = part.faces()
+    rims = faces.tagged("plate").edges() & faces.tagged("counterbores").edges()
+    part = labelled(part.fillet(rims, 0.8), "rim fillets")
 
-    [lip] = edges_between(part, "boss", "boss")
-    body, record = model.chamfer(part.body, [lip], 1.5)
-    part.step(body, record, "chamfer")
-    return part
-
-
-def edges_between(part, a, b):
-    """The edges of `part` whose two faces are labelled `a` and `b`."""
-    found = []
-    for edge in part.model.edges(part.body):
-        faces = part.model.faces_of(part.body, edge)
-        if len(faces) == 2 and sorted(part.labels[f] for f in faces) == sorted([a, b]):
-            if faces[0] != faces[1]:
-                found.append(edge)
-    return found
+    faces = part.faces().tagged("boss")
+    lip = faces.kind("plane").edges() & faces.kind("cylinder").edges()
+    return labelled(part.chamfer([lip.one()], 1.5), "chamfer")
 
 
 def write(part, out_dir, chord=0.02):
     """Writes the STEP, the mesh and the labels of `part` into `out_dir`."""
-    model, out = part.model, Path(out_dir)
+    out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "bracket.step").write_text(model.write_step([part.body]))
-    mesh = model.tessellate(part.body, chord)
+    part.export_step(out / "bracket.step")
+    mesh = part.mesh(chord)
     header = struct.pack("<II", mesh.n_positions, mesh.n_triangles)
     (out / "bracket.mesh").write_bytes(header + mesh.positions + mesh.triangles)
+    label_of = {face: LABELS.index(name) for name, faces in part.tags.items() for face in faces}
     triangle_label = [0] * mesh.n_triangles
     for face, start, stop in mesh.faces:
-        triangle_label[start:stop] = [LABELS.index(part.labels[face])] * (stop - start)
+        triangle_label[start:stop] = [label_of[face]] * (stop - start)
     document = {"names": LABELS, "triangles": triangle_label}
     (out / "bracket.labels.json").write_text(json.dumps(document))
 
@@ -125,4 +75,4 @@ def write(part, out_dir, chord=0.02):
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(__doc__)
-    write(build(arris.Model()), sys.argv[1])
+    write(build(), sys.argv[1])

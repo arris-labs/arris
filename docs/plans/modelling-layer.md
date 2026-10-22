@@ -116,7 +116,7 @@ bound has to be established here.
   `measure`, `check`, `to_step` and `export_step` on `Solid`, each with a
   docstring example. `mypy --strict` and the docstring collection are added
   to CI's `python` job.
-- [ ] Step 7 **[1]** — The showcase on the layer: `examples/bracket.py`
+- [x] Step 7 **[1]** — The showcase on the layer: `examples/bracket.py`
   rewritten, held to `bracket.oracle.json`, with `tools/showcase.sh`'s PNG
   byte-identical. The README's snippet is swapped for the layer's, and the
   raw-binding snippet moves under "The binding beneath".
@@ -202,4 +202,12 @@ byte-identical from the layer's bracket.
   side (`_THROUGH_MARGIN`). The tilted-plate hole is held to the closed
   form (a cylinder through a slab is exact) rather than an Open CASCADE
   run, which would only repeat it. `Sketch.moved_to(plane)` is new.
+- *Settled (step 7)*: **the showcase's reference.** Step 2's test compared
+  the layer's tags with the raw script's `Labelled`; the rewrite replaces
+  that script, so the test now compares `bracket.py`'s per-triangle labels
+  with the test's own hand-built tag walk. The raw script's STEP, mesh and
+  labels were compared byte for byte before it went, and `showcase.png` is
+  unchanged. The README snippet selects the boss lip by a tag, since a
+  fuse's record does not name the tool's own faces; `test_showcase.py` runs
+  the snippet against the oracle.
 - ⚠ OPEN: **Launch timing and venue**: the human's (ADR-0067 §5).

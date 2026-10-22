@@ -62,7 +62,8 @@ def tool(model, name, origin, axis, radius, height):
 
 
 def bracket_on_the_layer(model):
-    """`examples/bracket.py`'s `build`, written with `Solid` and tags."""
+    """`examples/bracket.py`'s `build`, written with `Solid` and tags, its edges
+    chosen by the labels of their faces rather than by selection."""
     profile = arris.Profile(
         arris.Loop.polygon([(0, 0), (60, 0), (60, 8), (8, 8), (8, 50), (0, 50)]),
         origin=(0, 0, 0),
@@ -99,13 +100,13 @@ def triangle_labels(model, body, label_of, chord=0.02):
     return mesh.positions, labels
 
 
-def test_the_bracket_rebuilt_with_tags_labels_every_triangle_as_labelled_does():
-    raw = load_bracket().build(arris.Model())
+def test_the_showcase_labels_every_triangle_as_this_tag_walk_does():
+    shown = load_bracket().build()
     layered = bracket_on_the_layer(arris.Model())
     assert untagged(layered) == []
     for face in layered.faces():
         one_tag(layered, face)  # exactly one tag per face, as one label
-    positions, want = triangle_labels(raw.model, raw.body, raw.labels.__getitem__)
+    positions, want = triangle_labels(shown.model, shown.body, lambda face: one_tag(shown, face))
     got_positions, got = triangle_labels(
         layered.model, layered.body, lambda face: one_tag(layered, face)
     )
