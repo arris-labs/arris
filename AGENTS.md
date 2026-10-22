@@ -39,9 +39,10 @@ PyPI `arris` beside them (ADR-0034); audience developers first, with the
 script corpus (ADR-0067).
 **C11, the blend residue** (opened 2026-10-22): the blend network blocks
 12 of 38 real parts at `fillet` and 3 of the script corpus's 4 refusals.
+The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22; the
+launch gate of ADR-0067 §5 is met once `python-wheels` retires too.
 **Next:** `/release` for C10, then `/idea` or `/plan` for C11's first
-item; the modelling layer (`arris.build`, its parked plan) and then draft
-and thicken in the side slot.
+item; draft and thicken in the side slot.
 
 ## Rules that are not derivable from the code
 

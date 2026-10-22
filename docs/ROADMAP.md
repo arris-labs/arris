@@ -887,9 +887,9 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   edges are both blended, as a fitted corner patch.
 - The parallel-cylinder row of the blend table (ADR-0036 §5: 29 edges in
   5 parts).
-- Beside the cycle, in the second plan slot: the modelling layer's first
-  milestone, `arris.build` (ADR-0067; its plan was drafted 2026-10-18 and
-  parked), then draft and thicken (the plugin CAD's A7).
+- Beside the cycle, in the second plan slot: draft and thicken (the plugin
+  CAD's A7), the modelling layer's first milestone having landed (§Beside
+  the cycles).
 
 **Out:** variable-radius blends and the chamfer's other modes (two
 distances, a distance and an angle); the attribute cycle; IGES and
@@ -965,11 +965,15 @@ and the platforms of the wheel beyond Linux x86_64. Its own backlog lines
 (corner blocks, enumerating a model's bodies, a record naming foreign
 inputs) are in `docs/BACKLOG.md`.
 
-**The modelling layer** (ADR-0067). Ships in the wheel as pure Python
-(`arris.build`, amending ADR-0034 §1): immutable values with chained
-methods, workplanes as frames, selecting by provenance and role first with
-geometric filters in deterministic order, no positional selectors. Breaks
-and versions in lockstep with the kernel and binding.
+**The modelling layer** (ADR-0067). Landed 2026-10-22: ships in the wheel
+as pure Python (`arris.build`, amending ADR-0034 §1): immutable values with
+chained methods, workplanes as frames, selecting by provenance and role
+first with geometric filters in deterministic order, no positional
+selectors, tags that survive every operation. The showcase bracket and four
+script-corpus parts are written on it and held to the same Open CASCADE
+checkpoints as their raw versions. Breaks and versions in lockstep with the
+kernel and binding. Its other 14 corpus parts and sheet values are in
+`docs/BACKLOG.md`.
 
 **The showcase and the matrix** (ADR-0067). A motor-mount bracket modelled
 in Python with faces coloured by operation provenance stands at the top of

@@ -8,6 +8,8 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 [Findings](#findings) below, in the fixed shape, with the number that
 reproduces it.
 
+- The other 14 script-corpus parts on `arris.build` (`build.py` beside each `part.py`), after the first four showed the layer's line counts and models' sizes (`corpus/README.md`).
+- Sheet values in `arris.build` (a face or a shell as an operand, thicken's input): the layer holds solids only, with sheet bodies waiting on the boolean's sheet operands.
 - `Selection.untagged()` (the faces no tag names yet): the showcase and three corpus ports each write the same helper to tag what an operation made (modelling-layer step 8); and `created_by` finds nothing after a `fuse`, whose record does not name its tool's own faces
 - `opt-level = 3` for the test profile: measured 1.35× (139 s → 99 s on four corpus tests, 148 s → 109 s on a `twin_prop` shard) against slower builds (plans/hook-gate-speed, ADR-0066)
 - The 116 s relink of the test binaries after a lower-crate change is now the larger half of a small hook; an idea if it stays so (plans/hook-gate-speed, ADR-0066)

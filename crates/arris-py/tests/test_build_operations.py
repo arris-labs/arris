@@ -1,5 +1,5 @@
-"""The rest of `arris.build.Solid`'s operations (plans/modelling-layer
-step 6): each one is the raw binding call plus provenance and tags."""
+"""The rest of `arris.build.Solid`'s operations: each one is the raw binding
+call plus provenance and tags."""
 
 import math
 

@@ -1,4 +1,4 @@
-"""Placements and features of `arris.build` (plans/modelling-layer step 5).
+"""Placements and features of `arris.build`.
 
 A through-hole in a plate tilted 30° has the closed form's volume (a
 cylinder wall through a slab: exact, so no oracle run is needed), and a

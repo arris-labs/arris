@@ -1,5 +1,4 @@
-"""`arris.build.Solid`: values, provenance and tags (plans/modelling-layer
-step 2).
+"""`arris.build.Solid`: values, provenance and tags.
 
 The bracket rebuilt through `Solid.tag` carries the labels
 `examples/bracket.py`'s `Labelled` gives each triangle; tags survive a

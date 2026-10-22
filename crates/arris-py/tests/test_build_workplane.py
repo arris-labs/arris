@@ -1,4 +1,4 @@
-"""`arris.build.Workplane` and `Sketch` (plans/modelling-layer step 4).
+"""`arris.build.Workplane` and `Sketch`.
 
 Every construction is held to the raw binding call on the same plane,
 turned off the axes: the two bodies have equal mass properties. The path

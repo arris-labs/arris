@@ -26,7 +26,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 | `arris-io` | STEP AP214 Part 21 writer and reader (`step::write`, `step::read`, ADR-0025) over the Part 21 parser (`step::part21`), the native format (`native`), body bytes (`body`, ADR-0029), STL and OBJ mesh writers (`stl`, `obj`, ADR-0013) | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `arris-mesh`, `thiserror`, `serde`, `serde_json`, `postcard` (the last three behind the `serde` feature) | 2 — algorithms |
 | `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the script-corpus refusal histogram (`script_corpus`), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
 | `arris` | Facade: re-exports | `math` through `io`; `debug` as a dev-dependency only | 4 |
-| `arris-py` | The Python binding (PyPI `arris`, ADR-0034): a thin 1:1 layer over the facade, `publish = false`, a `cdylib` + `rlib`, empty on `wasm32` | `arris`, `pyo3` (not on `wasm32`) | 5 — binding |
+| `arris-py` | The Python binding (PyPI `arris`, ADR-0034): a thin 1:1 layer over the facade with the pure-Python modelling layer `arris.build` above it (ADR-0067), `publish = false`, a `cdylib` + `rlib`, empty on `wasm32` | `arris`, `pyo3` (not on `wasm32`) | 5 — binding |
 
 `math`, `geom` and `topo` are the representation: they change rarely and a
 change there is a design delta named in a plan. Everything from `check` up
@@ -2266,6 +2266,22 @@ B-Rep).
   dependency: a `Mesh` crosses as little-endian `f64` and `u32` bytes, with
   `to_numpy()` importing numpy only when called. `release.yml` publishes it
   from the same `v*` tag, behind its own `pypi` environment.
+
+- **The modelling layer** (`crates/arris-py/python/arris/build`, ADR-0067):
+  pure Python over `arris._arris`, shipped in the same wheel and typed
+  inline (`mypy --strict` and the docstring examples run in CI's `python`
+  job). A `Solid` is a frozen value holding its model, body, provenance
+  chain, per-operation records and tags; every operation returns a new one,
+  and a kernel refusal reaches the caller as the binding's typed exception.
+  Without `model=` a constructor uses `default_model()`, which grows with
+  the script and ends with the process. A `Selection` is a frozen set in
+  ascending handle-index order, so it is deterministic by the kernel's
+  ids; it is picked by provenance, role and tag first, then by geometry
+  from the binding's `point`, `curve`, `surface` and `bounds` queries, with
+  tolerances read from `Model.tolerance` and `Model.angular_tolerance`;
+  there is no index, and `one()` raises `SelectionError`. A tag follows
+  each operation's `modified`, then `generated`, records. A through tool
+  spans the solid's bounds along the plane's normal plus a named margin.
 
 ## How a consumer's kernel facade maps on
 

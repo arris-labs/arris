@@ -1,5 +1,4 @@
-"""`arris.build.Selection`: provenance and geometric filters (plans/modelling-layer
-step 3).
+"""`arris.build.Selection`: provenance and geometric filters.
 
 Each filter on the primitives; the same chains pick the same handles in two
 fresh models; `created_by` after a `cut_many` is exactly each tool's wall;
