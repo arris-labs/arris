@@ -85,7 +85,7 @@ bound has to be established here.
   calls `wheels.yml`, builds the sdist, merges every wheel and the sdist
   into `python-dist`, and runs `twine check`. The comment about the
   platform matrix being a release-time decision is replaced with the list.
-- [ ] Step 5 **[1]** — A smoke test for an installed wheel only
+- [x] Step 5 **[1]** — A smoke test for an installed wheel only
   (`tests/test_wheel.py`, skipped under `maturin develop`). It imports
   `arris` with no compiler on `PATH`, builds the showcase bracket
   (`examples/bracket.py`), and holds it to `bracket.oracle.json`.
