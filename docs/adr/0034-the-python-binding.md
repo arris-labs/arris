@@ -126,6 +126,18 @@ rather than assumed, in a scratch crate on 2026-10-02:
 - A pyo3 upgrade is a deliberate step, never a drive-by `cargo update`.
 - The Linux wheel is built and tested in CI; which platform wheels PyPI
   carries at a release is a release-time decision, not this one's.
+- *Amendment (2026-10-23, plans/python-wheels):* the platform wheels are
+  decided: Linux x86_64 and aarch64, macOS arm64 and x86_64, and Windows
+  x86_64, built and tested by `.github/workflows/wheels.yml`. **A pyo3
+  upgrade re-runs the check recorded under Context.** Decision §2 rests on
+  the expansion of pyo3's macros compiling under `forbid(unsafe_code)`,
+  observed for `0.26.0`, and a newer pyo3 may expand differently. The
+  commit that changes `pyo3`'s requirement in `Cargo.toml` or its locked
+  version in `Cargo.lock` therefore builds `arris-py` with
+  `--features extension-module` on that version, with the forbid in place,
+  and imports the built module. Its body names the version and the result.
+  A build that fails stops for the human, as §2 says: the forbid is never
+  lifted to get past an upgrade.
 
 ## Alternatives considered
 

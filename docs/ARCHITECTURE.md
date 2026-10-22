@@ -2265,7 +2265,15 @@ B-Rep).
   never runs there. The wheel carries no rasteriser and no numpy
   dependency: a `Mesh` crosses as little-endian `f64` and `u32` bytes, with
   `to_numpy()` importing numpy only when called. `release.yml` publishes it
-  from the same `v*` tag, behind its own `pypi` environment.
+  from the same `v*` tag, behind its own `pypi` environment. Prebuilt wheels
+  cover Linux x86_64 and aarch64 (manylinux2014), macOS arm64 and x86_64
+  (11.0 and up), and Windows x86_64. `.github/workflows/wheels.yml` builds
+  each one and installs it from its file into a clean environment on its
+  own platform, where it passes the pytest. The same workflow runs the
+  determinism corpus natively on macOS, Windows and Linux aarch64, against
+  the same digests as Linux x86_64. A pyo3 upgrade re-runs ADR-0034's
+  `forbid(unsafe_code)` check, and the commit names its result (ADR-0034,
+  Consequences).
 
 - **The modelling layer** (`crates/arris-py/python/arris/build`, ADR-0067):
   pure Python over `arris._arris`, shipped in the same wheel and typed

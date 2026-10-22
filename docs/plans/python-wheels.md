@@ -93,7 +93,7 @@ bound has to be established here.
   (`tests/test_wheel.py`, skipped under `maturin develop`). It imports
   `arris` with no compiler on `PATH`, builds the showcase bracket
   (`examples/bracket.py`), and holds it to `bracket.oracle.json`.
-- [ ] Step 6 **[1]** — The pyo3 upgrade rule: the ADR-0034 amendment and
+- [x] Step 6 **[1]** — The pyo3 upgrade rule: the ADR-0034 amendment and
   the `docs/ARCHITECTURE.md` pointer, plus a `CHANGELOG.md` bullet under
   `Unreleased` saying `pip install arris` now has prebuilt wheels for
   macOS, Windows and Linux on ARM.

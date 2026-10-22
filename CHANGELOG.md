@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Python: `pip install arris` now finds prebuilt wheels for macOS (Apple
+  silicon and Intel, 11.0 and up), Windows x86_64 and Linux on ARM
+  (aarch64), beside Linux x86_64, so no Rust toolchain is needed on any of
+  them. Every platform builds the same bodies, with the same ids, as Linux
+  x86_64.
+
 - Python: `arris.build`, a modelling layer over the binding for scripts.
   Solids are immutable values with chained operations (`cut`, `fuse`,
   `common`, `fillet`, `chamfer`, `shell`, `moved`, `mirrored`, `hole`,
