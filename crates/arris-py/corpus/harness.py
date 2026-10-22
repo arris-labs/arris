@@ -1,5 +1,9 @@
 """Runs a script-corpus part: `part.py` defines `build(run)` and calls each
-operation as `run.stage("<name>", lambda: run.model.<op>(...))`. The harness
+operation as `run.stage("<name>", lambda: run.model.<op>(...))`. A ported
+part also has a `build.py`, the same part on `arris.build`: its stages
+return a `Solid` (made with `model=run.model`), and `run_part(slug,
+"build")` runs it against the same `oracle.json`, `expected.json` and
+`outcome.json`. The harness
 holds every stage to the checker at `full`, records what it did (`ok`, or
 the typed refusal as the binding raised it) and keeps the body of each
 stage that was built, for the test to hold to the oracle's checkpoints.
@@ -14,6 +18,7 @@ import struct
 from pathlib import Path
 
 import arris
+from arris.build import Solid
 
 CORPUS = Path(__file__).resolve().parent
 
@@ -63,11 +68,13 @@ class Run:
         self._finished_short = False
         self.last = None
         self.labelled = None
+        self.tagged = None
 
     def stage(self, name, op, finish=False):
         """Runs `op()`, which returns a `(body, provenance)` pair, as stage
-        `name`. Returns that pair, or `None` for a refused `finish` stage;
-        any other refusal ends the part."""
+        `name`. Returns that pair (the `Solid` itself when `op` made one), or
+        `None` for a refused `finish` stage; any other refusal ends the
+        part."""
         if name not in self.outcome:
             raise KeyError(f"{name!r} is not a stage of the part's oracle.json checkpoints")
         try:
@@ -80,7 +87,8 @@ class Run:
                 self._finished_short = True
                 return None
             raise Ended() from error
-        body = made[0]
+        solid = made if isinstance(made, Solid) else None
+        body = solid.body if solid is not None else made[0]
         report = self.model.check(body, "full")
         undecided = [row for row in report.unchecked if not NURBS_PAIR.match(str(row))]
         if not report or undecided:
@@ -89,7 +97,7 @@ class Run:
         self.bodies[name] = body
         self.comparable[name] = not self._finished_short
         self.last = body
-        return made
+        return solid if solid is not None else made
 
     def edge_points(self, body, chord=0.05):
         """Every edge of `body` with the polyline of points it is drawn as
@@ -112,19 +120,22 @@ class Run:
         return frame.origin, frame.z
 
 
-def load(slug):
-    """The module of `corpus/<slug>/part.py`, and its checkpoint names."""
+def load(slug, script="part"):
+    """The module of `corpus/<slug>/<script>.py`, and its checkpoint names."""
     directory = CORPUS / slug
-    spec = importlib.util.spec_from_file_location(f"corpus_{slug.replace('-', '_')}", directory / "part.py")
+    spec = importlib.util.spec_from_file_location(
+        f"corpus_{slug.replace('-', '_')}_{script}", directory / f"{script}.py"
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     stages = json.loads((directory / "oracle.json").read_text())["checkpoints"]
     return module, stages
 
 
-def run_part(slug):
-    """Runs the part and returns its `Run`."""
-    module, stages = load(slug)
+def run_part(slug, script="part"):
+    """Runs the part's `script` (`"part"` on the raw binding, `"build"` on
+    `arris.build`) and returns its `Run`."""
+    module, stages = load(slug, script)
     run = Run(stages)
     try:
         module.build(run)
@@ -136,6 +147,29 @@ def run_part(slug):
 def slugs():
     """Every part, in name order."""
     return sorted(p.parent.name for p in CORPUS.glob("*/part.py"))
+
+
+def ported():
+    """The parts that also have a `build.py` on `arris.build`."""
+    return sorted(p.parent.name for p in CORPUS.glob("*/build.py"))
+
+
+def tag_rest(solid, name):
+    """`solid` with every face no tag names yet tagged `name`: the faces the
+    last operation made, since tags follow the rest through provenance."""
+    seen = set().union(*solid.tags.values()) if solid.tags else set()
+    return solid.tag(name, [face for face in solid.faces() if face not in seen])
+
+
+def assert_tagged_solid(solid, tags, chord=0.05):
+    """`Labelled.assert_tagged` for a `Solid`: every face carries exactly
+    one tag, the tags are `tags`, and each face's tag reaches the mesh."""
+    faces = set(solid.faces())
+    carried = [face for named in solid.tags.values() for face in named]
+    assert len(carried) == len(set(carried)) and set(carried) == faces
+    assert set(solid.tags) == set(tags), f"tag set mismatch: {set(solid.tags)} vs {set(tags)}"
+    mesh = solid.mesh(chord)
+    assert {face for face, start, stop in mesh.faces if stop > start} == faces
 
 
 class Labelled:

@@ -120,7 +120,7 @@ bound has to be established here.
   rewritten, held to `bracket.oracle.json`, with `tools/showcase.sh`'s PNG
   byte-identical. The README's snippet is swapped for the layer's, and the
   raw-binding snippet moves under "The binding beneath".
-- [ ] Step 8 **[2]** — Four corpus parts ported as `corpus/<slug>/build.py`
+- [x] Step 8 **[2]** — Four corpus parts ported as `corpus/<slug>/build.py`
   (enclosure: selection and shell; spur-gear-blank: polar pattern;
   cantilever: CAE tags; duct-obstacle: through-cut and tags). The harness
   runs both scripts against the same `expected.json` checkpoints and the
@@ -210,4 +210,15 @@ byte-identical from the layer's bracket.
   unchanged. The README snippet selects the boss lip by a tag, since a
   fuse's record does not name the tool's own faces; `test_showcase.py` runs
   the snippet against the oracle.
+- *Settled (step 8)*: **the ports.** A `build.py` stage returns a `Solid`
+  (`Run.stage` accepts it) and the harness runs it on the same `Run`, so
+  the two scripts share outcomes and checkpoints; the test also holds each
+  tagged part's tags to the raw script's labels face by face. A fuse's
+  record does not name its tool's own faces, so `created_by` finds none
+  after a `fuse`; the ports select by geometry or tag there. The layer has
+  no "faces no tag names" selection, so `harness.tag_rest` (and
+  `bracket.py`'s `labelled`) tag what the last operation left untagged: a
+  backlog line if more scripts want it. The corpus README records the line
+  counts and the models' sizes (the gear's grows from 2894 to 3400
+  entities: one extruded tool per tooth, not one turned copy).
 - ⚠ OPEN: **Launch timing and venue**: the human's (ADR-0067 §5).

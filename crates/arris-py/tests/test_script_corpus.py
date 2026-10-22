@@ -1,6 +1,6 @@
 """The script corpus (`crates/arris-py/corpus/`): each part is a script on the
-raw binding. Every stage it reaches is checker-green (the harness holds that),
-matches Open CASCADE's build of the same part at that stage
+raw binding (four also on `arris.build`, held to the same outcomes). Every
+stage it reaches is checker-green (the harness holds that), matches Open CASCADE's build of the same part at that stage
 (`expected.json`'s checkpoints, at the fixture defaults of `conftest`), and
 every stage's outcome, built or refused, is the committed one. `ARRIS_BLESS=1`
 rewrites `outcome.json`; a lifted refusal is a `fixtures:` commit."""
@@ -108,3 +108,28 @@ def test_part(slug):
     if run.labelled is not None:
         run.labelled.assert_tagged()
 
+
+
+@pytest.mark.parametrize("slug", harness.ported())
+def test_the_port_on_the_layer_is_the_raw_script(slug):
+    """`build.py` (on `arris.build`) reaches the same outcomes as `part.py`
+    and holds the same oracle checkpoints; the tags it carries are the
+    labels the raw script follows, face for face."""
+    directory = CORPUS / slug
+    raw, ported = harness.run_part(slug), harness.run_part(slug, "build")
+    assert ported.outcome == raw.outcome == json.loads((directory / "outcome.json").read_text())
+
+    checkpoints = json.loads((directory / "expected.json").read_text())["results"]["default"]["checkpoints"]
+    tol = tolerances(directory)
+    assert ported.bodies.keys() == raw.bodies.keys()
+    for name, body in ported.bodies.items():
+        want = checkpoints[name]
+        if "refused" in want or not ported.comparable[name]:
+            continue
+        hold_to_oracle(ported.model, body, want, tol)
+
+    if raw.labelled is not None:
+        solid = ported.tagged
+        harness.assert_tagged_solid(solid, set(raw.labelled.labels.values()))
+        by_index = {face.index: name for name, faces in solid.tags.items() for face in faces}
+        assert by_index == {face.index: label for face, label in raw.labelled.labels.items()}

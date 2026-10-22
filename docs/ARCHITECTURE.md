@@ -2049,7 +2049,11 @@ B-Rep).
   held to `Full` check, checkpoints, and byte-deterministic STEP round
   trip; CAE parts assert face tags survive cuts and reach the mesh).
   `tools/script-corpus.sh` runs `arris-debug`'s example `script_corpus` and
-  writes `target/script-corpus/histogram.md`.
+  writes `target/script-corpus/histogram.md`. Four parts (enclosure,
+  spur-gear-blank, cantilever, duct-obstacle) also have `<slug>/build.py`,
+  the same part on `arris.build`; the harness runs it against the same
+  `oracle.json`, `expected.json` and `outcome.json`, and
+  `corpus/README.md` records the line counts of both.
 - **The fuzz targets** (`fuzz/`, ADR-0024 §5): a crate outside the
   workspace (`exclude = ["fuzz"]`), unpublished, on nightly under
   `cargo fuzz` with `libfuzzer-sys` and `arbitrary`, none of them
