@@ -17,7 +17,9 @@ into its version (ADR-0027).
   torus (`SurfaceInfo`). `Model.bounds(entity)` is the box a body, shell,
   face, edge or vertex lies in, tight on analytic geometry and a containing
   box on NURBS. A script can now pick a face or an edge by its geometry
-  without tessellating the body.
+  without tessellating the body. `Model.tolerance` and
+  `Model.angular_tolerance` say when the model holds two points the same
+  and two directions parallel.
 
 ## 0.9.0 — 2026-10-22
 

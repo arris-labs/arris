@@ -13,9 +13,11 @@ plate = Solid.box((0, 0, 0), (40, 30, 5))
 hole = Solid.cylinder((20, 15, -1), (0, 0, 1), 4, 7)
 part = plate.tag("plate", plate.faces()).cut(hole)
 assert len(part.tagged("plate")) == 6
+assert part.model.surface(part.faces().created_by(hole).one()).kind == "cylinder"
 ```
 """
 
+from ._selection import Selection, SelectionError
 from ._solid import Solid, default_model
 
-__all__ = ["Solid", "default_model"]
+__all__ = ["Selection", "SelectionError", "Solid", "default_model"]

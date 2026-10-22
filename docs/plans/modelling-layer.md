@@ -101,7 +101,7 @@ bound has to be established here.
   labels, rebuilt through `Solid.tag`, equal `examples/bracket.py`'s
   per-triangle labels exactly. Tags survive the property-test cut/fuse
   sequence on random boxes, and a deleted face drops its tag.
-- [ ] Step 3 **[2]** — `Selection`, its filters and `SelectionError`, plus
+- [x] Step 3 **[2]** — `Selection`, its filters and `SelectionError`, plus
   the glossary's *Selection*. Tests: each filter on the primitives, order
   stable across two runs, `created_by` after a `cut_many` returning exactly
   the tool walls, and `extreme` with coplanar ties returning the whole set.
@@ -165,6 +165,19 @@ byte-identical from the layer's bracket.
 - ⚠ OPEN: **The default model's growth**: `arris.build.collect()` over
   `Model.retain`, or nothing in M1. The agent decides at step 6 by
   measuring the four ported parts.
-- ⚠ OPEN: **`extreme`'s tie tolerance**: the model's own tolerance or a
-  named multiple of it. The agent decides at step 3.
+- *Settled (step 3)*: **`extreme`'s tie tolerance** is the model's own,
+  read from the new `Model.tolerance` (with `Model.angular_tolerance` for
+  `normal`, `parallel` and `perpendicular`): two read-only getters added to
+  step 1's queries, since Python could not see the model's precision and a
+  literal is the rule's bug. A member's centre is its box's centre moved
+  onto its plane, line or circle's plane, so coplanar faces tie exactly
+  even turned off the axes. `within` grows its box by four model
+  tolerances (`_BOX_SLACK`): `Model.bounds` grows a face's box by its own
+  and its edges' tolerances, two at the default precision.
+- *Settled (step 3)*: **`created_by` and `modified_by` read each
+  operation's record**, kept on `Solid.steps` with its tools' bodies, and
+  carry the outputs forward through later records. A record names no tool
+  per output, so `modified_by` with several tools in one `cut_many` is what
+  any of them modified; `created_by` is exact per tool. `faces()` and
+  `edges()` now return a `Selection`.
 - ⚠ OPEN: **Launch timing and venue**: the human's (ADR-0067 §5).

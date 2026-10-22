@@ -148,7 +148,7 @@ def test_tagging_a_face_of_another_body_names_it():
     a = Solid.box((0, 0, 0), (1, 1, 1), model=model)
     b = Solid.box((2, 0, 0), (3, 1, 1), model=model)
     with pytest.raises(ValueError, match="is not a face of"):
-        a.tag("x", b.faces()[:1])
+        a.tag("x", b.faces().extreme((1, 0, 0)))
     with pytest.raises(KeyError, match="no tag 'x'"):
         a.tagged("x")
 

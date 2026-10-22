@@ -253,6 +253,12 @@ A name a modelling-layer script puts on a set of a solid's faces, carried
 onto each later operation's faces through its provenance; the layer's, in
 Python only, and not a kernel attribute (ADR-0009).
 
+**Selection**:
+Some of a solid's faces or edges in the modelling layer, as a set in
+ascending handle order, picked by provenance, role or tag first and by
+geometry after; never by position, so one is narrowed to a single member,
+not indexed.
+
 **Probe corpus**:
 The first consumer's recorded kernel failures, each a fixture Arris must
 pass before the swap (the application gate, ADR-0017).

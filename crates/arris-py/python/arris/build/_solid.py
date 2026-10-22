@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 
-from .._arris import Body, Face, Model, Provenance
+from .._arris import Body, Edge, Face, Model, Provenance
+from ._selection import Selection
 
 _default: Model | None = None
 
@@ -31,7 +32,9 @@ def default_model() -> Model:
 class Solid:
     """A solid body as a value: its `model`, its `body` handle, the
     `provenance` of every operation since it was made (`Provenance.then`),
-    the `last` operation's record, and its `tags`.
+    the `last` operation's record, and its `tags`. `steps` keeps each
+    operation's record with its tools' bodies, which `Selection.created_by`
+    and `modified_by` read.
 
     Operations return a new `Solid` and leave this one as it was. A kernel
     refusal reaches the caller as the binding's typed exception, unchanged;
@@ -53,6 +56,7 @@ class Solid:
     provenance: Provenance
     last: Provenance
     tags: Mapping[str, frozenset[Face]]
+    steps: tuple[tuple[Provenance, frozenset[Body]], ...] = field(default=(), repr=False)
 
     @classmethod
     def of(cls, made: tuple[Body, Provenance]) -> Solid:
@@ -69,7 +73,7 @@ class Solid:
         ```
         """
         body, record = made
-        return cls(body.model, body, record, record, MappingProxyType({}))
+        return cls(body.model, body, record, record, MappingProxyType({}), ((record, frozenset()),))
 
     @classmethod
     def box(
@@ -108,17 +112,28 @@ class Solid:
         model = model if model is not None else default_model()
         return cls.of(model.primitive_cylinder(origin, axis, radius, height))
 
-    def faces(self) -> list[Face]:
-        """The body's faces in the model's order.
+    def faces(self) -> Selection[Face]:
+        """Every face of the body, as a `Selection` to narrow.
 
         ```python
         from arris.build import Solid
 
         box = Solid.box((0, 0, 0), (1, 1, 1))
-        assert box.faces() == box.model.faces(box.body)
+        assert list(box.faces()) == box.model.faces(box.body)
         ```
         """
-        return self.model.faces(self.body)
+        return Selection.of(self, self.model.faces(self.body), "faces()")
+
+    def edges(self) -> Selection[Edge]:
+        """Every edge of the body, as a `Selection` to narrow.
+
+        ```python
+        from arris.build import Solid
+
+        assert len(Solid.box((0, 0, 0), (1, 1, 1)).edges()) == 12
+        ```
+        """
+        return Selection.of(self, self.model.edges(self.body), "edges()")
 
     def tag(self, name: str, faces: Iterable[Face]) -> Solid:
         """This solid with `faces` added to the tag `name`. A tag follows
@@ -139,7 +154,9 @@ class Solid:
             raise ValueError(f"tag {name!r}: {stray[0]!r} is not a face of {self.body!r}")
         tags = dict(self.tags)
         tags[name] = tags.get(name, frozenset()) | added
-        return Solid(self.model, self.body, self.provenance, self.last, MappingProxyType(tags))
+        return Solid(
+            self.model, self.body, self.provenance, self.last, MappingProxyType(tags), self.steps
+        )
 
     def tagged(self, name: str) -> frozenset[Face]:
         """The faces carrying the tag `name`, empty once an operation deleted
@@ -172,7 +189,8 @@ class Solid:
 
         box = Solid.box((0, 0, 0), (4, 4, 4))
         box = box.tag("skin", box.faces())
-        grown = box.apply(box.model.offset_faces(box.body, box.faces()[:1], 1.0))
+        top = list(box.faces().extreme((0, 0, 1)))
+        grown = box.apply(box.model.offset_faces(box.body, top, 1.0))
         assert grown.tagged("skin") == frozenset(grown.faces())
         ```
         """
@@ -183,6 +201,7 @@ class Solid:
             self.provenance.then(record),
             record,
             MappingProxyType(_follow([self, *tools], record, self.model.faces(body))),
+            (*self.steps, (record, frozenset(tool.body for tool in tools))),
         )
 
     def cut(self, *tools: Solid) -> Solid:

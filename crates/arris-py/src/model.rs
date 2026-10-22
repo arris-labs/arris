@@ -315,6 +315,32 @@ impl Model {
         Ok(self.holds(handle.resolve(&self.shared)?)?)
     }
 
+    /// The tolerance this model creates entities with: two points closer
+    /// than it are the same point (Open CASCADE's `Precision::Confusion`).
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// assert arris.Model().tolerance == 1e-7
+    /// ```
+    #[getter]
+    fn tolerance(&self) -> PyResult<f64> {
+        Ok(self.shared.lock()?.precision().default_tolerance)
+    }
+
+    /// The angle in radians below which this model holds two directions
+    /// parallel and two surfaces tangent.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// assert arris.Model().angular_tolerance == 1e-12
+    /// ```
+    #[getter]
+    fn angular_tolerance(&self) -> PyResult<f64> {
+        Ok(self.shared.lock()?.precision().angular_tolerance)
+    }
+
     /// Frees every entity not reachable from the bodies in `keep`, and
     /// returns how many it freed. A kept entity's handle stays valid; the
     /// others go stale (ids are never renumbered).
