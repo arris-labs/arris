@@ -92,10 +92,10 @@ bound has to be established here.
   from `ci.yml`. Each target's wheel is installed from the built file and
   passes `pytest crates/arris-py` (3.13). Path and line-ending faults it
   finds are fixed here.
-- [ ] Step 3 **[1]** — The `python` job's 3.10 run is kept on Linux. Its
+- [x] Step 3 **[1]** — The `python` job's 3.10 run is kept on Linux. Its
   wheel and sdist step and artifact are removed, because `wheels.yml` now
   builds them. `twine check --strict` runs over the merged artifacts.
-- [ ] Step 4 **[1]** — `release.yml`: `pypi-build` keeps its version guard,
+- [x] Step 4 **[1]** — `release.yml`: `pypi-build` keeps its version guard,
   calls `wheels.yml`, builds the sdist, merges every wheel and the sdist
   into `python-dist`, and runs `twine check`. The comment about the
   platform matrix being a release-time decision is replaced with the list.
