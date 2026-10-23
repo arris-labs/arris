@@ -331,3 +331,19 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo build -p arris-debug --features rerun
+
+  # What a reused run still checks (the header comment): the version bump
+  # packages and verifies for every crate (the release's own step 5, which
+  # the wheel half of is `release.yml`'s), the changelog's headings read as
+  # `/release` expects, and the commit the run rests on is named.
+  reused:
+    needs: reuse
+    if: needs.reuse.outputs.skip == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: echo "Rests on the green run of ${{ needs.reuse.outputs.base }}" >> "$GITHUB_STEP_SUMMARY"
+      - run: cargo package --workspace --exclude arris-py --locked
+      - run: cargo test -p arris --test docs_refs
