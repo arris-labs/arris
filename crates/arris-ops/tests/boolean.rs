@@ -51,6 +51,8 @@ fn line_edges(m: &Model, body: Body) -> Vec<EdgeId> {
         .collect()
 }
 
+/// `n` points over `range`, both ends included (`Interval::samples`, for
+/// `n >= 2`; a test with a count of one would divide by zero here).
 fn samples(range: Interval, n: usize) -> impl Iterator<Item = f64> {
     (0..n).map(move |i| range.lerp(i as f64 / (n - 1) as f64))
 }

@@ -1045,7 +1045,8 @@ fn against_the_branch(torus: &Surface, cutter: &Surface) -> Result<f64, TestCase
     Ok(excess)
 }
 
-/// The least of `f` over `window`, by golden section.
+/// The least of `f` over `window`, by golden section. Its end differs from
+/// `roots::golden_section`'s (the middle is also tried), so it stays local.
 fn nearest(f: &dyn Fn(f64) -> f64, middle: f64, (mut a, mut b): (f64, f64)) -> f64 {
     let ratio = 0.5 * (5f64.sqrt() - 1.0);
     for _ in 0..40 {

@@ -550,7 +550,8 @@ fn minima_held(c: &Curve, s: &Surface, e: &CurveSurfaceExtrema) -> Result<(), St
         if !(here <= a && here <= b) {
             continue;
         }
-        // Golden section around the sample.
+        // Golden section around the sample; `f` is evaluated twice per step,
+        // so not `roots::golden_section`'s cached probes bit for bit.
         let step = (t1 - t0) / SAMPLES as f64;
         let (mut lo, mut hi) = (ts[i] - step, ts[i] + step);
         let phi = (5f64.sqrt() - 1.0) / 2.0;

@@ -1,8 +1,8 @@
 //! The docs-reference lint: a plan is deleted on retirement
 //! (`.agents/rules/docs-lifecycle.md`), so a citation of
 //! `docs/plans/<slug>` or `plans/<slug>` left behind in source, tooling or
-//! `Cargo.toml` after that (also the bare `<slug> step N`) outlives the file it points at. This proves the
-//! lint catches that the way `corpus_lint.rs` proves its own rules: against
+//! `Cargo.toml` after that (also the bare `<slug> step N`) outlives the file
+//! it points at. This proves the lint catches that the way `corpus_lint.rs` proves its own rules: against
 //! a scratch tree with a citation deliberately left dangling, not just by
 //! running clean against the real one. Beside it, the refusal histogram
 //! `docs/ROADMAP.md` records for the committed tier is held to the one

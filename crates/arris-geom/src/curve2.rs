@@ -122,7 +122,7 @@ fn local_noise_scale(frame: &Frame2, p: Point2) -> f64 {
 
 impl Curve2 {
     /// The line `u = at`, `v` its own parameter: a surface's isoline
-    /// across `u`, as a pcurve.
+    /// running in `v`, as a pcurve.
     ///
     /// ```
     /// use arris_geom::Curve2;

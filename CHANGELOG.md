@@ -41,7 +41,8 @@ into its version (ADR-0027).
 - Rust: `Violation` and `Unchecked` are no longer `#[non_exhaustive]`, so a
   `match` over the checker's findings can name every variant and the
   compiler says when a new one appears. A match that had a `_` arm for
-  them keeps compiling.
+  them keeps compiling; one without it will stop compiling when a
+  variant is added.
 
 ## 0.9.0 — 2026-10-22
 
