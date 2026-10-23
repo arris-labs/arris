@@ -8,6 +8,15 @@ name: CI
 # suite on it, and the `test` job costs hours at CI's case count. The docs a
 # test reads stay in (`doc_drift` reads DATA-MODEL, `docs_refs` the plans,
 # the histogram test the roadmap). GitHub evaluates no path filter on a tag.
+#
+# A push that differs from the nearest green commit of `main` only in
+# version strings, the changelog and prose no test reads (the release
+# commit, the `-dev` commit after it, the tag on a green commit) does not
+# rerun the hours-long jobs: `reuse` decides (tools/ci-reuse.sh, which
+# fails closed), the seven jobs that take `needs: reuse` are skipped, and
+# `reused` runs what such a difference can still break. A pull request
+# always runs everything. `gh workflow run ci.yml --ref <branch>` runs
+# the workflow alone on a branch.
 on:
   push:
     branches: [main]
@@ -24,6 +33,7 @@ on:
       - "docs/DATA-MODEL.md"
       - "docs/plans/**"
   pull_request:
+  workflow_dispatch:
 
 # A newer push to main supersedes a running check of an older one: main's
 # tip holds every commit before it. A tag's run is the release gate and is
@@ -36,6 +46,33 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Whether this push rests on a green commit (the header comment). The
+  # whole history is fetched: the base is up to 20 first-parent commits
+  # back. The script's self-test runs here, the one place that runs it.
+  reuse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      skip: ${{ steps.reuse.outputs.skip }}
+      base: ${{ steps.reuse.outputs.base }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: tools/ci-reuse.sh --self-test
+      - id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            echo "skip=false" | tee -a "$GITHUB_OUTPUT"
+            echo "reason=a pull request runs everything"
+          else
+            tools/ci-reuse.sh "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
+          fi
+
   fmt:
     runs-on: ubuntu-latest
     steps:
@@ -82,6 +119,8 @@ jobs:
   # test: at C10's close the first failure stopped two jobs with a third
   # of their tests unrun, a second failing shard among them.
   test:
+    needs: reuse
+    if: needs.reuse.outputs.skip != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -115,6 +154,8 @@ jobs:
   # `test`'s 1000 cases, run after it, they repeated its property coverage
   # on an oversubscribed runner, about an hour per step.
   parallel:
+    needs: reuse
+    if: needs.reuse.outputs.skip != 'true'
     runs-on: ubuntu-latest
     env:
       ARRIS_ORACLE_CACHE: "off"
@@ -200,6 +241,8 @@ jobs:
   # forms, committed expected.json values reproduced, OCCT's own STEP read
   # back clean (tools/oracle/README.md).
   oracle:
+    needs: reuse
+    if: needs.reuse.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -213,6 +256,8 @@ jobs:
   # its default features. A crate that grows a native-only dependency
   # breaks here first.
   wasm:
+    needs: reuse
+    if: needs.reuse.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -237,6 +282,8 @@ jobs:
   # hook's Rust checks still compile the crate. The newest Python, the
   # release wheels, the sdist and `twine check` are `wheels.yml`'s, below.
   python:
+    needs: reuse
+    if: needs.reuse.outputs.skip != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -267,7 +314,8 @@ jobs:
   # runs it on its own path-filtered trigger, and a tag's wheels are
   # `release.yml`'s.
   wheels:
-    if: github.ref == 'refs/heads/main'
+    needs: reuse
+    if: github.ref == 'refs/heads/main' && needs.reuse.outputs.skip != 'true'
     uses: ./.github/workflows/wheels.yml
 
   # arris-debug's `rerun` feature pulls in the large `rerun` SDK crate:
@@ -275,6 +323,8 @@ jobs:
   # never slows either, but still blocking here since a broken feature is
   # a broken crate.
   rerun:
+    needs: reuse
+    if: needs.reuse.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

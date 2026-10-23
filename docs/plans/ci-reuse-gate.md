@@ -68,7 +68,7 @@ and the tests are mechanical; **[2]** careful; **[3]** unproven.
   green lookup is one function, stubbed by an environment variable in the
   self-test. `<head>` itself counts as a base candidate (a tag on a commit
   already green on `main` has an empty diff).
-- [ ] Step 2 **[1]** — `ci.yml`: `workflow_dispatch`, the `reuse` job, the
+- [x] Step 2 **[1]** — `ci.yml`: `workflow_dispatch`, the `reuse` job, the
   `if:` on the seven jobs, the header comment. Dispatch first as its own
   commit if GitHub refuses a trigger absent from `main` (see Open).
 - [ ] Step 3 **[1]** — the `reused` job: `cargo package`, `docs_refs`, the
@@ -108,8 +108,9 @@ it runs in the `reuse` job, step 2); step 5's dispatch green with four
 
 ## Open questions
 - ⚠ OPEN: does GitHub dispatch `ci.yml` on a branch while `main`'s copy has
-  no `workflow_dispatch`? Agent decides at step 2; if refused, that one
-  line lands on `main` first as its own commit.
+  no `workflow_dispatch`? Settled at step 2 (agent): the trigger lands in
+  step 2's commit with the rest, and step 5's dispatch is the test; if
+  GitHub refuses, that one line lands on `main` first as its own commit.
 - ⚠ OPEN: is any `ci.yml` job a required status check in the branch rules?
   A skipped job satisfies one, so nothing changes; the human confirms
   before step 7.
