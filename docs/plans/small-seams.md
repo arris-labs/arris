@@ -82,10 +82,14 @@ robustness or bound has to be established here.
   joined with the higher root winning, but only count roots or number
   groups by first member, so the partition and every output are the same;
   `topo/builder.rs` stays (sparse slots), with a comment.
-- [ ] Step 3 **[2]** — read the ~32 `unwrap_or(0)`/`unwrap_or(0.0)` in
+- [x] Step 3 **[2]** — read the ~32 `unwrap_or(0)`/`unwrap_or(0.0)` in
   library code: a justified one gets a typed default or a comment; a
   silent fallback becomes a regression fixture under
-  `tests/fixtures/regression/` and a backlog line. No fix.
+  `tests/fixtures/regression/` and a backlog line. No fix. *Settled:* 35
+  read; the map counts, empty-`max` degrees and coefficient padding are
+  plain, seven non-obvious ones got a comment; two (`trace_torus` order,
+  `check` seam period) are not shown unreachable and no input reproduces
+  them, so a backlog line each, no fixture.
 - [ ] Step 4 **[1]** — math/geom helpers: `real::next_down`,
   `Interval::samples`, `Curve2::iso_u`/`iso_v`,
   `NurbsSurface::control_column`, `casteljau` for `extrema`'s `eval`, each

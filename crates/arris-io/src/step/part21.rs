@@ -640,6 +640,7 @@ impl<'a> Parser<'a> {
             })?;
         let mut bits = Vec::with_capacity(4 * (digits.len() - 1));
         for c in chars {
+            // Every char is hex: `take_while` above kept only those.
             let nibble = c.to_digit(16).unwrap_or(0);
             bits.extend((0..4).rev().map(|k| nibble >> k & 1 == 1));
         }

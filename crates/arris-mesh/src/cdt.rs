@@ -350,6 +350,7 @@ pub fn triangulate_metered(
             // Rotated so the smallest index leads: one spelling per
             // triangle, whatever slot it was made in.
             let v = tri.v;
+            // Three candidates, so a minimum exists.
             let k = (0..3).min_by_key(|&i| v[i]).unwrap_or(0);
             [v[k], v[(k + 1) % 3], v[(k + 2) % 3]]
         })
@@ -1001,6 +1002,7 @@ impl Mesh {
         winding[start] = Some(0);
         let mut queue = VecDeque::from([start]);
         while let Some(t) = queue.pop_front() {
+            // Only triangles with a winding are queued.
             let w = winding[t].unwrap_or(0);
             let Tri { v, n, .. } = self.tris[t];
             for i in 0..3 {

@@ -1064,6 +1064,7 @@ fn against_circle(
             let mut starts = Vec::new();
             for side in [1.0, -1.0] {
                 let across = |ta: f64| {
+                    // On the axis every foot is as near as another: any one will do.
                     let tb = circle_foot(b, a.point(ta), tol).unwrap_or(0.0);
                     if side < 0.0 {
                         wrap_angle(tb + core::f64::consts::PI)

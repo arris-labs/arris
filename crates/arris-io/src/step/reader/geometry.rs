@@ -551,6 +551,7 @@ impl Geometry<'_> {
                 points.push(self.units.point(&self.entities, id, *p)?);
             }
         }
+        // No rows is no columns; `knots` refuses a net of no points.
         let (n, m) = (rows.len(), columns.unwrap_or(0));
         let knots = [spline.knots(0, p, n)?, spline.knots(1, q, m)?];
         let weights = match spline.weights()? {

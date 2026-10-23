@@ -1206,6 +1206,7 @@ impl<'a> PatchedSection<'a> {
     /// On a NURBS surface each direction that does not close is bounded
     /// by two such lines, the edges of its domain (ADR-0061).
     pub(crate) fn edge_candidates(&self, k: usize, high: bool) -> Vec<f64> {
+        // No patches, no cells: the edge is cell 0 of nothing.
         let last = (self.patches.iter()).map(|p| p.cell[k]).max().unwrap_or(0);
         let edge = if high { last } else { 0 };
         let mut found: Vec<f64> = Vec::new();

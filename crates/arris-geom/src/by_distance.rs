@@ -126,6 +126,7 @@ pub(crate) fn hits_by_distance(
     if cyclic {
         // Started at a stop clear of the surface, no run of touches goes
         // round the end of the list.
+        // Some stop is clear: all touching returned `Coincident` above.
         let first = stops.iter().position(|s| !s.touch).unwrap_or(0);
         stops.rotate_left(first);
     }
