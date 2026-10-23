@@ -1888,7 +1888,7 @@ prop_shards! {
 /// against a torus undecided at `Full` in exactly this pose — a translation
 /// moved by `1e-14`, or by `1e-2`, decides it — which a fixture's axis and
 /// angle cannot carry, found by `fillets_through_a_vertex_of_four_edges_
-/// match_their_closed_forms` (blend-corners step 7).
+/// match_their_closed_forms`.
 #[test]
 #[ignore = "S5: a plane against a torus is not decided in this far pose of a walked chain, so Full has an unchecked pair (docs/BACKLOG.md, a plane against a torus in S5)"]
 fn a_walked_chain_in_a_far_pose_is_decided() {

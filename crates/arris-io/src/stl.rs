@@ -4,8 +4,7 @@
 //! several bodies of one `Model` — STL has no shared vertex index, so
 //! several meshes become one file by writing every mesh's facets in
 //! argument order under a single `solid`/`endsolid` (ASCII) or a single
-//! header and triangle count (binary), with no renumbering needed
-//! (facade-swap step 5).
+//! header and triangle count (binary), with no renumbering needed.
 //!
 //! A facet's normal is the triangle's own winding — `(b − a) × (c − a)`,
 //! normalised, never the render buffer's corner normals, which are the

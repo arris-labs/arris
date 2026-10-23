@@ -1,7 +1,7 @@
 """A cut through NURBS faces, read from a STEP file: the plate of
 `boolean/nurbs-plate-drilled-cut` (every face a rational Bézier patch, the
 exact twin of a box) drilled by an analytic cylinder, held to Open
-CASCADE's volume and area (nurbs-analytic-section step 8).
+CASCADE's volume and area (ADR-0061).
 """
 
 import arris

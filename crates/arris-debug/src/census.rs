@@ -426,7 +426,7 @@ fn smooth_edge(m: &Model, edge: EdgeId) -> bool {
 /// The cause [`vertex_blend_cause`] names where `edge`'s run goes on
 /// straight through `vertex` on another edge that shares exactly one of its
 /// faces: the run's second face jumps there, a patch no closed form holds
-/// and Open CASCADE does not build either (`blend-miters`, ftc-06).
+/// and Open CASCADE does not build either (ftc-06).
 const DIHEDRAL_JUMP: &str = "a dihedral jump on a collinear run";
 
 /// Whether `edge` and another edge at `vertex` are one straight line
@@ -1423,7 +1423,7 @@ mod tests {
         let mut scratch = m.clone();
         // The crease ends on a pole at the vertex where the cylinders turn
         // tangent, and on the corner its chain runs on into at the other
-        // (nurbs-face-blend step 9b).
+        // (ADR-0062).
         match blend(&mut scratch, body, &chosen, fillet_radius(&sample)) {
             Ok(_) => {}
             Err(Refused::Op(e)) => panic!("the sample is refused: {e}"),
@@ -1883,8 +1883,7 @@ mod tests {
     /// The committed `nist-ftc-06`'s three `VertexBlend` edges are one
     /// straight run on one face whose second face jumps at a vertex of four
     /// edges: the census names "a dihedral jump on a collinear run" and
-    /// attributes it to the NURBS cycle, the patch having no closed form
-    /// (`blend-miters` step 7).
+    /// attributes it to the NURBS cycle, the patch having no closed form.
     #[test]
     fn ftc_06_run_is_a_dihedral_jump_of_the_nurbs_cycle() {
         let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");

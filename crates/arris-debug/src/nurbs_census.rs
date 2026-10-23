@@ -1,4 +1,4 @@
-//! The NURBS census (`nurbs-analytic-section` step 1): every battery
+//! The NURBS census (ADR-0061): every battery
 //! stage Arris refuses as the NURBS cycle's, taken apart by the pair the
 //! refusal names and by the NURBS faces the stage's tool reaches.
 //!
@@ -16,7 +16,7 @@
 //! surface the tool brings is analytic. Nothing here is a kernel
 //! operation.
 //!
-//! The fillet census (`nurbs-face-blend` step 1, [`fillet_census_dir`])
+//! The fillet census (ADR-0062, [`fillet_census_dir`])
 //! takes a fillet stage the NURBS cycle blocks apart edge by edge: each
 //! sampled edge filleted alone in both kernels, its faces and curve (what
 //! conic a B-spline hides, against the faces' own section), a NURBS face's

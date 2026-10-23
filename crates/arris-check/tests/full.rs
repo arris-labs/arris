@@ -1199,7 +1199,7 @@ fn the_report_is_the_same_on_two_builds_at_full() {
 }
 
 /// The plane `z = 0` and a cubic NURBS face standing in for a walked
-/// blend (`nurbs-face-blend` step 6): `z = y²(1 − y)` over `[0, 2] ×
+/// blend (ADR-0062): `z = y²(1 − y)` over `[0, 2] ×
 /// [0, 3/2]`, tangent to the plane along their shared edge `y = 0` as a
 /// blend is to its neighbour along a contact, and back through the plane
 /// along `y = 1`, as a blend whose radius is past a concave neighbour's

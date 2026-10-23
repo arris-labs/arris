@@ -4,8 +4,7 @@ CASCADE's STEP: a bicubic B-spline dome over the square [0, 10]², two
 spans each way, its boundary poles on z = 0 so that its four edges are
 straight lines in that plane, closed by the plane's square. Two faces and
 four edges; the dome rises to 4.78 at its centre. The operand of the
-boolean fixtures `nurbs-bicubic-dome-fuse` and `section-nurbs-bicubic-dome` (nurbs-analytic-section
-step 7), which commit the file. Run as `uv run --project tools/oracle
+boolean fixtures `nurbs-bicubic-dome-fuse` and `section-nurbs-bicubic-dome` (ADR-0061), which commit the file. Run as `uv run --project tools/oracle
 tools/oracle/occt_bicubic_dome.py`.
 """
 

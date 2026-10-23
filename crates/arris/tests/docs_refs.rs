@@ -1,7 +1,7 @@
 //! The docs-reference lint: a plan is deleted on retirement
 //! (`.agents/rules/docs-lifecycle.md`), so a citation of
 //! `docs/plans/<slug>` or `plans/<slug>` left behind in source, tooling or
-//! `Cargo.toml` after that outlives the file it points at. This proves the
+//! `Cargo.toml` after that (also the bare `<slug> step N`) outlives the file it points at. This proves the
 //! lint catches that the way `corpus_lint.rs` proves its own rules: against
 //! a scratch tree with a citation deliberately left dangling, not just by
 //! running clean against the real one. Beside it, the refusal histogram
@@ -34,6 +34,42 @@ fn plan_refs(text: &str) -> Vec<String> {
     refs
 }
 
+/// Every `<slug> step N` / `<slug> steps N` citation in `text`: a
+/// hyphenated name, then `step` or `steps` and a number, the filler of a
+/// wrapped comment or a backtick allowed between (`nurbs-face-blend` step
+/// 5, or a name at a line's end and `step 5` on the next). A prose word
+/// before "step" has no hyphen, so is not a slug.
+fn bare_plan_refs(text: &str) -> Vec<String> {
+    const FILLER: &[char] = &[' ', '\n', '\t', '`', '*', '/', '!', '#'];
+    let mut refs = Vec::new();
+    let mut from = 0;
+    while let Some(pos) = text[from..].find("step") {
+        let at = from + pos;
+        from = at + "step".len();
+        let after = text[from..].strip_prefix('s').unwrap_or(&text[from..]);
+        let Some(digits) = after.strip_prefix(' ') else {
+            continue;
+        };
+        if !digits.starts_with(|c: char| c.is_ascii_digit()) {
+            continue;
+        }
+        let before = text[..at].trim_end_matches(FILLER);
+        let slug_start = before
+            .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '-'))
+            .map_or(0, |i| i + 1);
+        let slug = before[slug_start..].trim_start_matches('-');
+        if slug.contains('-')
+            && slug.starts_with(|c: char| c.is_ascii_lowercase())
+            && !slug.ends_with('-')
+        {
+            refs.push(slug.to_string());
+        }
+    }
+    refs.sort();
+    refs.dedup();
+    refs
+}
+
 fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -59,7 +95,11 @@ fn check_file(root: &Path, path: &Path, problems: &mut Vec<String>) {
     let Ok(text) = std::fs::read_to_string(path) else {
         return;
     };
-    for slug in plan_refs(&text) {
+    let mut slugs = plan_refs(&text);
+    slugs.extend(bare_plan_refs(&text));
+    slugs.sort();
+    slugs.dedup();
+    for slug in slugs {
         let plan = root.join("docs/plans").join(format!("{slug}.md"));
         if !plan.exists() {
             problems.push(format!(
@@ -125,6 +165,29 @@ fn a_citation_of_a_retired_plan_is_caught() {
     assert!(problems[0].contains("retired-plan"), "{problems:?}");
     assert!(!problems[0].contains("still-open"), "{problems:?}");
 
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+/// The bare forms of a citation (`<slug> step N`, `<slug> steps N`, the
+/// name wrapped from its step number, a live plan's own) are caught or
+/// passed alike, and a hyphen-less word before "step" is prose.
+#[test]
+fn a_bare_citation_of_a_retired_plan_is_caught() {
+    let text = "//! the twin (gone-plan step 8) and `other-gone` steps 2-3,\n\
+                //! wrapped as wrapped-gone\n//! step 5; still-open step 1; the next step 4.\n";
+    assert_eq!(
+        bare_plan_refs(text),
+        ["gone-plan", "other-gone", "still-open", "wrapped-gone"]
+    );
+    let dir = std::env::temp_dir().join(format!("arris-docs-bare-lint-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("docs/plans")).unwrap();
+    std::fs::write(dir.join("docs/plans/still-open.md"), "# Plan: still-open\n").unwrap();
+    std::fs::create_dir_all(dir.join("crates/fake/src")).unwrap();
+    std::fs::write(dir.join("crates/fake/src/lib.rs"), text).unwrap();
+    let problems = stale_plan_refs(&dir);
+    assert_eq!(problems.len(), 3, "{problems:?}");
+    assert!(problems.iter().all(|p| !p.contains("'still-open'")));
     std::fs::remove_dir_all(&dir).unwrap();
 }
 

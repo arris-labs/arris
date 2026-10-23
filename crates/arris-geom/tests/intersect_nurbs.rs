@@ -139,7 +139,7 @@ fn a_hemisphere_twin_meets_the_plane_tangent_at_its_pole_in_the_pole() {
 /// meridian: the section is the meridian, an isoline of `u`, and the pole,
 /// a collapsed row of `v` the plane crosses, so isolines run both ways.
 /// The pole is divided out beside the meridian and comes back as a point
-/// (ADR-0061 §3, amended at nurbs-face-blend step 9b; it was
+/// (ADR-0061 §3, amended at ADR-0062; it was
 /// refused as tube circles both ways), as a walked blend's pole meets the
 /// faces it narrows between.
 #[test]
@@ -183,8 +183,7 @@ fn a_half_dome_twin_meets_the_plane_through_its_pole_in_a_meridian_and_the_pole(
 /// miss turns inside the domain beside it, and leaves it across `u = 1`
 /// clear of the corners. Within the tolerance the edge does not
 /// tell the saddle from one on it, and the section is traced with the
-/// saddle put on the edge (ADR-0061 §3, amended at nurbs-face-blend
-/// step 9b, where a walked blend's contact edge met the face across a
+/// saddle put on the edge (ADR-0061 §3, amended at ADR-0062, where a walked blend's contact edge met the face across a
 /// junction so: its turning points were refused as not told apart).
 #[test]
 fn a_saddle_a_hair_past_the_domains_edge_is_the_sections_singular_point_on_it() {
@@ -236,8 +235,7 @@ fn a_saddle_a_hair_past_the_domains_edge_is_the_sections_singular_point_on_it() 
 /// plane `z = 0`: the section's saddle is the patch's corner at the origin,
 /// on an edge of `u` and of `v` at once, and of its four arms the one
 /// inside the quadrant, `v = u/2`, runs out across `u = 1`. The saddle's
-/// cell is cut at both edges, in either order of the surfaces (plans/
-/// nurbs-face-blend step 10c, where a walked blend's patch met cylinders
+/// cell is cut at both edges, in either order of the surfaces (ADR-0062, where a walked blend's patch met cylinders
 /// at its corners).
 #[test]
 fn a_saddle_at_a_corner_of_the_domain_keeps_the_one_arm_inside_it() {

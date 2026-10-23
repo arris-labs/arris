@@ -1,4 +1,4 @@
-"""Two NURBS faces as operands of each other (nurbs-nurbs-operands step 8):
+"""Two NURBS faces as operands of each other (ADR-0068):
 a spline sweep cut by a smooth loft, both fitted walls, and the crest of a
 swept thread chamfered between its two fitted flanks, each held to Open
 CASCADE through the corpus fixture it repeats.

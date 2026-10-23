@@ -498,8 +498,7 @@ fn queries_on_a_nurbs_are_answered_or_refused_by_name() {
             origin: Point3::origin(),
             direction: Vec3::z_axis(),
         };
-        // A line meets a NURBS surface (plan ray-fire step 1,
-        // `tests/line_nurbs.rs`).
+        // A line meets a NURBS surface (`tests/line_nurbs.rs`).
         let line_on_nurbs =
             intersect_curve_surface(&line, &surface, tol, &mut arris_math::Meter::default());
         prop_assert!(line_on_nurbs.is_ok(), "{line_on_nurbs:?}");

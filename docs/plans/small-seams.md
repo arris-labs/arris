@@ -118,9 +118,16 @@ robustness or bound has to be established here.
   check's `fast_part1`). Different shapes keep their names: `interference`
   (corners), mesh's unit-box `cube`, `Aabb`/`Surface` builders in geom,
   the hand-built `cylinder` of debug's `builder.rs`.
-- [ ] Step 9 **[1]** — `docs_refs.rs` widened (with its own planted-file
+- [x] Step 9 **[1]** — `docs_refs.rs` widened (with its own planted-file
   test); the ~30 bare citations rewritten to the ADR or design-doc section
-  they mean, or deleted where the code says it.
+  they mean, or deleted where the code says it. *Settled:* a retired plan's
+  slug is any hyphenated name before `step N`/`steps N` (filler of a
+  wrapped comment allowed) that is not a live plan; no list of retired
+  slugs to keep. 31 files rewritten: the NURBS cycle's three to ADR-0061,
+  -0062, -0068, the rest (`blend-corners`, `blend-miters`, `ray-fire`,
+  `facade-swap`, `m4-booleans`, `multi-tool-boolean`,
+  `seam-parametrisation-faults`) deleted, the code or `docs/BACKLOG.md`
+  saying it.
 
 ## Acceptance
 `tools/full-gate.sh` green; `git diff <plan start>.. -- 'tests/fixtures/**'`

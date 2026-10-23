@@ -823,8 +823,7 @@ fn turned(pair: &CrossingPair, theta: f64) -> Result<CrossingPair, TestCaseError
 }
 
 prop_shards! {
-    /// Where the tool's seam sits decides nothing (plans/
-    /// seam-parametrisation-faults): two crossing cylinders fused, or
+    /// Where the tool's seam sits decides nothing: two crossing cylinders fused, or
     /// intersected, with the tool turned about its own axis to a generic
     /// turn, with its seam through a crossing vertex, and twice beside
     /// one — once with the seam's touch of the other wall `R sin δ / sin ψ`

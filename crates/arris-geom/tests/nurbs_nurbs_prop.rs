@@ -353,8 +353,7 @@ fn steinmetz_faults(pick: impl Fn(bool) -> bool, one: bool, both: bool) -> Vec<S
 /// points that the marcher (ADR-0068) and the tracer of a NURBS surface
 /// against a cylinder (ADR-0061) end at them. Both refused them as
 /// crowded before the tangent points were found first and their
-/// departures isolated on the ball's scale (nurbs-nurbs-operands
-/// step 5), found by `twin_prop` with both operands twinned (step 2).
+/// departures isolated on the ball's scale (ADR-0068), found by `twin_prop` with both operands twinned.
 #[test]
 fn the_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses() {
     let faults = steinmetz_faults(|_| true, true, false);

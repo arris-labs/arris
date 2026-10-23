@@ -1,5 +1,5 @@
 //! Several bodies' meshes in one STL or OBJ file (`docs/ARCHITECTURE.md`
-//! §Formats and tools, facade-swap step 5): the triangle count is the sum
+//! §Formats and tools): the triangle count is the sum
 //! of the meshes', and each mesh's own positions are unchanged, read back
 //! independently of `arris_io` — STL through Open CASCADE's `RWStl`
 //! (`tools/oracle/mesh.py`), OBJ through this test's own minimal parser.

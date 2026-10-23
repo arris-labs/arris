@@ -143,7 +143,7 @@ corpus_tests! {
     /// NURBS face against a plane (ADR-0061).
     query_section_nurbs_cylinder => query "query/section-nurbs-cylinder";
     /// The same through a free-form bicubic dome: a plane across a patch of
-    /// 2 × 2 spans (nurbs-analytic-section).
+    /// 2 × 2 spans (ADR-0061).
     query_section_nurbs_bicubic_dome => query "query/section-nurbs-bicubic-dome";
     /// The rounded slot of `sweep-spline-handle` (fitted NURBS faces)
     /// sectioned by a plane across the handle.
@@ -313,8 +313,7 @@ corpus_tests! {
     boolean_tangent_seam_on_face_cut => run "boolean/tangent-seam-on-face-cut";
     /// A blind hole whose wall touches a side face from inside along a
     /// ruling interior to both: the slit no manifold `Solid` can carry,
-    /// `BooleanReason::TangentContact` through the runner's expected-error path
-    /// (plan m4-booleans `⚠ OPEN` 1).
+    /// `BooleanReason::TangentContact` through the runner's expected-error path.
     boolean_tangent_hole => run "boolean/tangent-hole";
     /// The same solid as `through-hole` in another pose: both operands moved
     /// by one rigid motion before the cut.
@@ -564,7 +563,7 @@ corpus_tests! {
     /// Three revolves and extrusions fused in one call (the multi-tool
     /// differential's case 46, shrunk): Arris's result has three shells
     /// and 46 faces where Open CASCADE's has two and 55.
-    #[ignore = "counts differ from Open CASCADE's multi-tool fuse: 3 shells and 46 faces against 2 and 55 (docs/BACKLOG.md, multi-tool-boolean step 8)"]
+    #[ignore = "counts differ from Open CASCADE's multi-tool fuse: 3 shells and 46 faces against 2 and 55 (docs/BACKLOG.md)"]
     regression_multi_tool_fuse_counts_differ => run "regression/multi-tool-fuse-counts-differ";
     /// A cylinder, a box and three revolves fused in one call (the multi-tool
     /// differential's case 46 of the fixed seed at 1000 recipes, shrunk):
@@ -620,12 +619,12 @@ corpus_tests! {
     boolean_nurbs_box_cavity_cut => run "boolean/nurbs-box-cavity-cut";
     /// NIST's CTC-05 AP203 solid cut by its battery's box: a plane across
     /// a rational B-spline face of degree (3, 2), traced in the face's own
-    /// (u, v) (nurbs-analytic-section).
+    /// (u, v) (ADR-0061).
     boolean_nist_ctc_05_ap203_box_cut_nurbs_plane => run "boolean/nist-ctc-05-ap203-box-cut-nurbs-plane";
     /// Its AP242 e1 edition: the same face as one rational Bézier patch.
     boolean_nist_ctc_05_ap242_box_cut_nurbs_plane => run "boolean/nist-ctc-05-ap242-box-cut-nurbs-plane";
     /// A box less the B-spline twin of a cylinder: the top and bottom
-    /// planes meet a NURBS wall (nurbs-analytic-section).
+    /// planes meet a NURBS wall (ADR-0061).
     boolean_nurbs_cylinder_tool_through_hole_cut => run "boolean/nurbs-cylinder-tool-through-hole-cut";
     /// The B-spline twin of a box drilled by an analytic cylinder: NURBS
     /// planes meet a cylinder.
@@ -1077,7 +1076,7 @@ corpus_tests! {
     /// stripe, a walked stripe and a table stripe meeting at two junctions.
     blend_nurbs_slot_plate_rim_fillet => run "blend/nurbs-slot-plate-rim-fillet";
     /// The same box, the same edge, chamfered: a walked chamfer's ruled
-    /// surface between its contact curves (nurbs-face-blend step 7).
+    /// surface between its contact curves (ADR-0062).
     blend_bicubic_top_box_edge_chamfer => run "blend/bicubic-top-box-edge-chamfer";
     /// The same cylinder and cap, the rim chamfered: a walked ring.
     blend_nurbs_cap_cylinder_rim_chamfer => run "blend/nurbs-cap-cylinder-rim-chamfer";
@@ -1263,12 +1262,12 @@ corpus_tests! {
     #[ignore = "box_cut: OpError::Internal(Fault::Split) where Open CASCADE builds it (docs/BACKLOG.md, a split fault on the healed parts' battery)"]
     regression_nist_ftc_11_ap242_box_cut_split_fault => part "regression/nist-ftc-11-ap242-box-cut-split-fault";
     /// NIST's CTC-02 AP242 e2 solid cut by its battery's box: a plane
-    /// across a bicubic B-spline face (nurbs-analytic-section).
-    #[ignore = "read-back: Open CASCADE's own STEP of the result is refused by the reader, #17219: the edge's end is at 0.3598 on its curve, not past its start at 0.4185; Arris's result is checker green and matches the oracle (docs/BACKLOG.md, a reversed-parameter edge in Open CASCADE's STEP of a NURBS part; nurbs-analytic-section step 7)"]
+    /// across a bicubic B-spline face (ADR-0061).
+    #[ignore = "read-back: Open CASCADE's own STEP of the result is refused by the reader, #17219: the edge's end is at 0.3598 on its curve, not past its start at 0.4185; Arris's result is checker green and matches the oracle (docs/BACKLOG.md, a reversed-parameter edge in Open CASCADE's STEP of a NURBS part; ADR-0061)"]
     regression_nist_ctc_02_ap242_box_cut_nurbs_plane => run "regression/nist-ctc-02-ap242-box-cut-nurbs-plane";
     /// The same solid drilled along its first principal axis: a cylinder
     /// across a bicubic B-spline face.
-    #[ignore = "the oracle is wrong: Open CASCADE removes 69 676 of the drill's volume where its own solid classifier finds 145 600 ± 2 900 of the part inside the cylinder (40 000 samples) and Arris removes 143 792, so counts (643 faces to 649) and the measures differ; no closed form holds the real part (nurbs-analytic-section step 7, docs/BACKLOG.md)"]
+    #[ignore = "the oracle is wrong: Open CASCADE removes 69 676 of the drill's volume where its own solid classifier finds 145 600 ± 2 900 of the part inside the cylinder (40 000 samples) and Arris removes 143 792, so counts (643 faces to 649) and the measures differ; no closed form holds the real part (ADR-0061, docs/BACKLOG.md)"]
     regression_nist_ctc_02_ap242_drill_x_nurbs_cylinder => run "regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder";
     /// NIST FTC-10's solid #6434, the closed edge where two cylinders whose
     /// axes cross off each other meet in a quartic, written as a B-spline,
@@ -1281,7 +1280,7 @@ corpus_tests! {
     /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
     /// cylinder's axis off the plane of the ball's seam, so the loop crosses
     /// the seam at a slant.
-    #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md; nurbs-face-blend step 9 finding)"]
+    #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md)"]
     regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
     /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
     /// B-spline edge that hides a circle, and a line, around a slot's end.
@@ -1675,7 +1674,7 @@ corpus_tests! {
     /// A cylinder split across its axis.
     split_cylinder_across => run "split/cylinder-across";
     /// The B-spline twin of a cylinder split by an oblique plane across its
-    /// wall (nurbs-analytic-section).
+    /// wall (ADR-0061).
     split_nurbs_cylinder_oblique => run "split/nurbs-cylinder-oblique";
     /// A tube split across its axis: annulus caps.
     split_tube_across => run "split/tube-across";
@@ -1874,7 +1873,7 @@ corpus_tests! {
     boolean_cylinder_prism_common_chamfer_cut_loops_intersect => run "boolean/cylinder-prism-common-chamfer-cut-loops-intersect";
     /// The exact B-spline twin of a cylinder cut across by a slab: two
     /// lumps, every face NURBS, their nesting decided by boxes clipped to
-    /// each face's own patch (nurbs-nurbs-operands step 4).
+    /// each face's own patch (ADR-0068).
     boolean_nurbs_cylinder_slab_cut_two_lumps => run "boolean/nurbs-cylinder-slab-cut-two-lumps";
     /// A B-spline frustum cut by a thin tilted slab: two lumps whose cone
     /// wall's pieces lie 0.04 apart on one B-spline surface

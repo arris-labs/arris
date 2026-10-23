@@ -198,8 +198,7 @@ impl BarCut {
 
 /// A box and a cylinder whose wall touches one face of the box from
 /// outside along a ruling through the face's interior, both under one
-/// motion: the tangent case with nothing else in contact (plan
-/// m4-booleans step 11). Every boolean's outcome is known: `box −
+/// motion: the tangent case with nothing else in contact. Every boolean's outcome is known: `box −
 /// cylinder` is the box, `common` selects nothing, and `fuse` would
 /// hold the face and the wall touching along a slit, the designed
 /// `TangentContact` refusal.

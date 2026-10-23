@@ -1,4 +1,4 @@
-//! The twin property (nurbs-analytic-section step 8, ADR-0061): a
+//! The twin property (ADR-0061): a
 //! boolean over a body whose faces are replaced by their exact
 //! `to_nurbs` twins ([`arris_debug::prop::twin::nurbs_twin`]) gives the
 //! analytic boolean's volume, area and counts, or both refuse. The
@@ -7,14 +7,14 @@
 //! cylinder, two cylinders on crossing axes — so a plane, a cylinder, a
 //! cone, a sphere and a torus each meet each other kind as a NURBS
 //! surface against an analytic one, with the NURBS operand first or
-//! second, in a random pose — and, since nurbs-nurbs-operands step 2,
+//! second, in a random pose — and, since ADR-0068,
 //! with both operands twinned, so every face pair across them is two
 //! NURBS faces and their section the marched one (ADR-0068).
 //!
-//! The blends follow (nurbs-face-blend step 8, ADR-0062): a part's edge
+//! The blends follow (ADR-0062): a part's edge
 //! filleted or chamfered by the closed forms, and the same edge with one of
 //! its two faces replaced by its exact NURBS twin, which walks the blend —
-//! and, since nurbs-nurbs-operands step 7, with both, the spine the marched
+//! and, since ADR-0068, with both, the spine the marched
 //! section of two offset fits (ADR-0068).
 //! The rows are the table's: two planes (a box's edge), a plane and a
 //! cylinder along a ruling (a half disc's chord) and the meridian row
@@ -118,7 +118,7 @@ fn outcome(
         // and, for two equal cylinders on crossing axes tilted,
         // `the_tilted_twins_of_two_equal_cylinders_on_crossing_axes_meet_in_two_ellipses`.
         // The tangent points of the crossing pairs are accounted for since
-        // nurbs-nurbs-operands step 5, which took `TubeCircle` and
+        // ADR-0068, which took `TubeCircle` and
         // `UnresolvedTurning` off this arm. Named before the differential's
         // exclusions, which take any `Geometry` fault.
         Err(OpError::Internal(Fault::Geometry(GeomError::DegenerateSection {
@@ -574,7 +574,7 @@ fn turned_case(pieces: Vec<Piece>, k: usize, size: f64, twinned: Twinned) -> Ble
 /// corner filleted, either face a twin: the offsets' section is a circle
 /// about the shared axis.
 #[test]
-#[ignore = "a fillet on a twinned cylinder against a coaxial cone is refused: the cylinder offset's section turns where the tracer cannot tell the turning points apart, and no piece holds the ends' balls (nurbs-face-blend step 8 finding, backlog)"]
+#[ignore = "a fillet on a twinned cylinder against a coaxial cone is refused: the cylinder offset's section turns where the tracer cannot tell the turning points apart, and no piece holds the ends' balls (backlog)"]
 fn a_twinned_cylinder_fillets_against_a_cone() {
     let line = |x: f64, y: f64| Piece::Line {
         to: Point2::new(x, y),
@@ -596,7 +596,7 @@ fn a_twinned_cylinder_fillets_against_a_cone() {
 /// A cylinder of radius 1 under a spherical dome, the corner filleted,
 /// either face a twin.
 #[test]
-#[ignore = "a fillet on a twinned cylinder against a coaxial sphere is refused: the section of the offsets has turning points the tracer cannot tell apart (nurbs-face-blend step 8 finding, backlog)"]
+#[ignore = "a fillet on a twinned cylinder against a coaxial sphere is refused: the section of the offsets has turning points the tracer cannot tell apart (backlog)"]
 fn a_twinned_cylinder_fillets_against_a_sphere() {
     let pieces = vec![
         Piece::Line {

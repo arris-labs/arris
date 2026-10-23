@@ -1,7 +1,6 @@
 //! OBJ (`docs/ARCHITECTURE.md` §Formats and tools, ADR-0013): `write` of
 //! one or several [`arris_mesh::TriMesh`]es (one per body, as
-//! `step::write` takes several bodies of one `Model` — facade-swap step
-//! 5), `v`/`f` always and `vt`/`vn` when a mesh carries a
+//! `step::write` takes several bodies of one `Model`), `v`/`f` always and `vt`/`vn` when a mesh carries a
 //! [`arris_mesh::Corners`] block.
 //!
 //! `v` is [`TriMesh::positions`](arris_mesh::TriMesh::positions), shared

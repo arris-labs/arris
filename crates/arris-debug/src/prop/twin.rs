@@ -1,4 +1,4 @@
-//! The exact NURBS twin of a body (nurbs-analytic-section step 8): the
+//! The exact NURBS twin of a body (ADR-0061): the
 //! same topology on the same curves, every analytic surface replaced by
 //! [`Surface::to_nurbs`] of it over the parameter box the body needs.
 //!

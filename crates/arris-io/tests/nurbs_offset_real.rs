@@ -1,5 +1,4 @@
-//! A real part's B-spline face offset (ADR-0062, `nurbs-face-blend` step
-//! 2): NIST CTC-05's rational degree-(3, 2) face f109, the one the census
+//! A real part's B-spline face offset (ADR-0062): NIST CTC-05's rational degree-(3, 2) face f109, the one the census
 //! of the fillet column found under a fillet against a torus, offset by
 //! the battery's radius both ways over its domain carried a sixth of its
 //! width past each side — the ball's reach past the edge's ends is a tenth
