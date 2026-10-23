@@ -64,7 +64,9 @@ second roadmap file, never an `ARCHIVE.md` — git holds the history.
 9. Commit `docs: close <cycle>`, the body listing the docs updated and the
    drift fixed.
 10. **Hand over to `/release`**: tell the human to run it next — a closed
-   cycle bumps the minor. Tags and pushes stay the human's.
+   cycle bumps the minor. Tags and pushes stay the human's. Then suggest
+   `/refactor-review`, unless a `docs/ideas/refactor-*.md` is still open:
+   its milestone plans run in the new cycle's side slot.
 
 ## Keep to
 

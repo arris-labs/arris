@@ -43,7 +43,9 @@ before a cycle closes. The pipeline is walked by the shared skills `/idea`,
 `/plan`, `/work`, `/retire-plan` and, at a cycle boundary, `/close-cycle`
 (`.agents/skills/`, symlinked into `.claude/skills/`), under the rules in
 `.agents/rules/`. `inspect`, beside them, is how the agent sees a shape it is
-changing without a GUI. For the human: `/next` says where things stand and
+changing without a GUI. `/refactor-review`, suggested after each
+`/close-cycle`, measures and reads the workspace for structural debt and
+writes it as one idea whose milestone plans run in the side slot. For the human: `/next` says where things stand and
 what to run, `/handoff` writes a note a fresh session continues from,
 `/retro` mines a plan's sessions for improvements to this environment, and
 `/wait-what` asks for the last reply again in plain words.

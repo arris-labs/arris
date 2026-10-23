@@ -13,7 +13,8 @@ taken at kickoff), `docs/ARCHITECTURE.md`, `docs/DATA-MODEL.md`,
 `.claude/rules`; any other agent reads them here. `GLOSSARY.md` holds the
 project's words, one meaning each: use them as written. Skills live in
 `.agents/skills/` (same symlink arrangement): the idea → plan → work →
-retire → close-cycle → release pipeline, `inspect` for seeing geometry,
+retire → close-cycle → release pipeline, `refactor-review` (structural
+debt, measured and read, as one idea), `inspect` for seeing geometry,
 and for the human `/next`, `/handoff`, `/retro` and `/wait-what`.
 
 ## Setup (once per clone)
@@ -43,8 +44,9 @@ The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22, and
 the prebuilt wheels for Linux, macOS and Windows with it, so the launch
 gate of ADR-0067 §5 is met; the first multi-platform upload waits for the
 human's next `v*` tag.
-**Next:** `/idea` or `/plan` for C11's first item; draft and thicken in
-the side slot.
+**Next:** the decision round of `docs/ideas/refactor-after-c10.md`, then
+`/idea` or `/plan` for C11's first item; the refactor plans, draft and
+thicken in the side slot.
 
 ## Rules that are not derivable from the code
 
