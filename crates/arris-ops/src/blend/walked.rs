@@ -627,19 +627,8 @@ fn point_arc(p: Point3) -> Result<NurbsCurve, Walked> {
 /// its first and last rows of control points along `v`, exact, since its
 /// `u` knots are clamped.
 pub(super) fn contacts(surface: &NurbsSurface) -> Result<[NurbsCurve; 2], Walked> {
-    let [n, m] = surface.counts();
-    let [_, q] = surface.degree();
-    let row = |i: usize| -> Result<NurbsCurve, Walked> {
-        let points = surface.control_points()[i * m..(i + 1) * m].to_vec();
-        let weights = surface.weights()[i * m..(i + 1) * m].to_vec();
-        Ok(NurbsCurve::new(
-            q,
-            surface.knots()[1].to_vec(),
-            points,
-            weights,
-        )?)
-    };
-    Ok([row(0)?, row(n - 1)?])
+    let [n, _] = surface.counts();
+    Ok([surface.control_column(0)?, surface.control_column(n - 1)?])
 }
 
 /// The spine of the stripe `rolling` asks for, its tolerance `tol.linear`.

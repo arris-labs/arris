@@ -6,7 +6,7 @@
 use std::collections::BTreeMap;
 
 use arris_geom::{Curve, GeomKind, MeetKind, Surface, SurfaceIntersection, intersect_surfaces};
-use arris_math::{Aabb, Interval, Meter, Point3, Tolerance, shift_into_range};
+use arris_math::{Aabb, Interval, Meter, Point3, Tolerance, real, shift_into_range};
 use arris_topo::{CurveId, EdgeId, Model, VertexId};
 
 use super::Moves;
@@ -325,10 +325,7 @@ fn along(
 fn whole_turn(lo: f64, period: f64) -> f64 {
     let mut hi = lo + period;
     while hi - lo > period {
-        // `f64::next_down` is stable from Rust 1.86 and the workspace
-        // supports 1.85.
-        let bits = hi.to_bits();
-        hi = f64::from_bits(if hi > 0.0 { bits - 1 } else { bits + 1 });
+        hi = real::next_down(hi);
     }
     hi
 }

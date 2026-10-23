@@ -482,7 +482,9 @@ fn geometry(e: GeomError, a: Shape, b: Shape) -> OpError {
     }
 }
 
-/// `n` parameters over `range`, both ends included.
+/// `n` parameters over `range`, both ends included. Not
+/// [`Interval::samples`]: a count of one gives both ends here, the midpoint
+/// there.
 fn samples(range: Interval, n: usize) -> Vec<f64> {
     let n = n.max(2);
     (0..n)

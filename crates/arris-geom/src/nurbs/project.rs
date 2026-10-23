@@ -267,16 +267,6 @@ fn extract(p: usize, knots: &[f64], i: usize, active: &[Vector4<f64>]) -> Vec<Ve
         .collect()
 }
 
-/// The largest `f64` below `x`, for a finite `x`: `f64::next_down`, which
-/// is stable from Rust 1.86 and the workspace supports 1.85.
-fn below(x: f64) -> f64 {
-    if x == 0.0 {
-        return -f64::from_bits(1);
-    }
-    let bits = x.to_bits();
-    f64::from_bits(if x > 0.0 { bits - 1 } else { bits + 1 })
-}
-
 /// A local minimum of the distance.
 struct Candidate {
     uv: [f64; 2],
@@ -626,7 +616,7 @@ impl NurbsSurface {
             // piece being minimised over.
             let inside = |k: usize| {
                 if x[k] >= span[k][1] {
-                    below(span[k][1])
+                    real::next_down(span[k][1])
                 } else {
                     x[k]
                 }

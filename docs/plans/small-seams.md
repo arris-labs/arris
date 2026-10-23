@@ -44,7 +44,7 @@ start, ids and refusal strings unchanged.
   ending;
   `real::next_down` (MSRV 1.85 stand-in for `f64::next_down`);
   `Interval::samples(n)`. All additive.
-- **`arris-geom`**: `Curve2::iso_u(u, range)` / `iso_v(v, range)`,
+- **`arris-geom`**: `Curve2::along_v(u)` / `along_u(v)`,
   `NurbsSurface::control_column(i)`; `extrema`'s `eval` calls
   `bernstein2::casteljau`. Additive.
 - **`arris-io`**: one crate-private `format::real` for STL and OBJ (STEP's
@@ -90,10 +90,14 @@ robustness or bound has to be established here.
   plain, seven non-obvious ones got a comment; two (`trace_torus` order,
   `check` seam period) are not shown unreachable and no input reproduces
   them, so a backlog line each, no fixture.
-- [ ] Step 4 **[1]** — math/geom helpers: `real::next_down`,
-  `Interval::samples`, `Curve2::iso_u`/`iso_v`,
+- [x] Step 4 **[1]** — math/geom helpers: `real::next_down`,
+  `Interval::samples`, `Curve2::along_v`/`along_u`,
   `NurbsSurface::control_column`, `casteljau` for `extrema`'s `eval`, each
-  with a doc example; callers moved.
+  with a doc example; callers moved. *Settled:* the pcurves are named by
+  the parameter that runs (as walked blend's copies were) and take no
+  range, since a line is unbounded; `iso_u`/`iso_v` would read opposite to
+  `arris-debug`'s private ones. `control_column` returns an error past the
+  net. `pave`'s `samples` stays (a count of one gives both ends there).
 - [ ] Step 5 **[1]** — io's `format::real` and debug's single `read_json`.
 - [ ] Step 6 **[1]** — `Violation`/`Unchecked` exhaustive; the
   workspace's `_ =>` over them replaced by named arms; `CHANGELOG.md`

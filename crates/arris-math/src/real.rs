@@ -116,6 +116,28 @@ pub fn log(x: f64, base: f64) -> f64 {
     libm::log(x) / libm::log(base)
 }
 
+/// The largest `f64` below the finite `x`: `f64::next_down`, which is
+/// stable from Rust 1.86 where the workspace supports 1.85. Below `0.0` is
+/// the smallest negative subnormal.
+///
+/// ```
+/// use arris_math::real;
+///
+/// assert!(real::next_down(1.0) < 1.0);
+/// assert_eq!(real::next_down(1.0), 1.0 - f64::EPSILON / 2.0);
+/// assert_eq!(real::next_down(0.0), -f64::from_bits(1));
+/// assert!(real::next_down(-1.0) < -1.0);
+/// ```
+#[inline]
+#[must_use]
+pub fn next_down(x: f64) -> f64 {
+    if x == 0.0 {
+        return -f64::from_bits(1);
+    }
+    let bits = x.to_bits();
+    f64::from_bits(if x > 0.0 { bits - 1 } else { bits + 1 })
+}
+
 /// `x` to the integer power `n` by repeated squaring in a fixed order, so
 /// the rounding is the same on every target and `powi(x, 2)` is `x * x`
 /// bit for bit. A negative `n` is the reciprocal of the positive power.

@@ -146,6 +146,25 @@ impl Interval {
         (1.0 - s) * self.lo + s * self.hi
     }
 
+    /// `n` parameters evenly over the interval, both ends included; the
+    /// midpoint alone when `n` is one or zero. Bounded intervals only.
+    ///
+    /// ```
+    /// use arris_math::Interval;
+    ///
+    /// let i = Interval::new(0.0, 1.0).unwrap();
+    /// assert_eq!(i.samples(3), vec![0.0, 0.5, 1.0]);
+    /// assert_eq!(i.samples(1), vec![0.5]);
+    /// ```
+    pub fn samples(&self, n: usize) -> Vec<f64> {
+        if n <= 1 {
+            return vec![self.midpoint()];
+        }
+        (0..n)
+            .map(|i| self.lerp(i as f64 / (n - 1) as f64))
+            .collect()
+    }
+
     /// `true` when the two closed intervals share at least one point:
     /// touching at an end counts.
     pub fn overlaps(&self, other: &Interval) -> bool {

@@ -221,6 +221,51 @@ impl NurbsSurface {
         &self.weights
     }
 
+    /// The control row `i` of the net as a curve along `v`: its points and
+    /// weights over the `v` knots and degree. It is the surface's isocurve
+    /// at the `u` of that row exactly where the `u` knot has full
+    /// multiplicity, as at a clamped end.
+    ///
+    /// # Errors
+    ///
+    /// [`GeomError::Degenerate`] when `i` is not below the net's `u` count.
+    ///
+    /// ```
+    /// use arris_geom::NurbsSurface;
+    /// use arris_math::Point3;
+    ///
+    /// let s = NurbsSurface::new(
+    ///     [1, 1],
+    ///     [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
+    ///     vec![
+    ///         Point3::new(0.0, 0.0, 0.0),
+    ///         Point3::new(0.0, 1.0, 0.0),
+    ///         Point3::new(1.0, 0.0, 0.0),
+    ///         Point3::new(1.0, 1.0, 0.0),
+    ///     ],
+    ///     vec![1.0; 4],
+    /// )
+    /// .unwrap();
+    /// let edge = s.control_column(1).unwrap();
+    /// assert_eq!(edge.control_points()[1], Point3::new(1.0, 1.0, 0.0));
+    /// assert!(s.control_column(2).is_err());
+    /// ```
+    pub fn control_column(&self, i: usize) -> Result<crate::NurbsCurve, GeomError> {
+        let m = self.counts[1];
+        if i >= self.counts[0] {
+            return Err(GeomError::Degenerate {
+                kind: GeomKind::Surface(SurfaceKind::Nurbs),
+                reason: format!("control row {i} of {}", self.counts[0]),
+            });
+        }
+        crate::NurbsCurve::new(
+            self.degree[1],
+            self.knots[1].clone(),
+            self.points[i * m..(i + 1) * m].to_vec(),
+            self.weights[i * m..(i + 1) * m].to_vec(),
+        )
+    }
+
     /// The control point at `(i, j)`, `None` outside the net.
     pub fn control_point(&self, i: usize, j: usize) -> Option<Point3> {
         (i < self.counts[0] && j < self.counts[1]).then(|| self.points[i * self.counts[1] + j])

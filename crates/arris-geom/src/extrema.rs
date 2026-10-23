@@ -72,7 +72,7 @@ use arris_math::real;
 use arris_math::{DisjointSets, Meter, Point3, Tolerance, Vec3, wrap_angle};
 
 use crate::bernstein::{self, Binomials, sign_change_candidates};
-use crate::bernstein2::{Halving, Poly2, Zero2, common_zeros_with};
+use crate::bernstein2::{self, Halving, Poly2, Zero2, common_zeros_with};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveProjection, GeomError, NurbsCurve};
@@ -760,8 +760,8 @@ impl Piece<'_> {
 
     /// The piece's point at its own `s`, by de Casteljau.
     fn point(&self, s: f64) -> Point3 {
-        let w = eval(&self.w.v, s);
-        let c = [0, 1, 2].map(|k| eval(&self.x[k].v, s) / w);
+        let w = bernstein2::casteljau(&self.w.v, s);
+        let c = [0, 1, 2].map(|k| bernstein2::casteljau(&self.x[k].v, s) / w);
         Point3::new(c[0], c[1], c[2]) + self.centre.coords
     }
 
@@ -871,16 +871,6 @@ impl Piece<'_> {
             }
         }
     }
-}
-
-fn eval(c: &[f64], s: f64) -> f64 {
-    let mut row = c.to_vec();
-    for level in 1..row.len() {
-        for i in 0..row.len() - level {
-            row[i] = (1.0 - s) * row[i] + s * row[i + 1];
-        }
-    }
-    row.first().copied().unwrap_or(0.0)
 }
 
 /// Newton on the curve's own parameter from `t`, each step kept if it

@@ -1378,7 +1378,7 @@ fn edge_range(
         // the units in the last place it went over.
         if let Some(p) = curve.period() {
             while hi - lo > p {
-                hi = below(hi);
+                hi = real::next_down(hi);
             }
         }
         Interval::new(lo, hi).map_err(|e| degenerate(e.to_string()))
@@ -1425,16 +1425,6 @@ fn edge_range(
             range(t0, t1)
         }
     }
-}
-
-/// The largest `f64` below the finite `x`: `f64::next_down`, stable from
-/// Rust 1.86, where the workspace supports 1.85.
-fn below(x: f64) -> f64 {
-    if x == 0.0 {
-        return -f64::from_bits(1);
-    }
-    let bits = x.to_bits();
-    f64::from_bits(if x > 0.0 { bits - 1 } else { bits + 1 })
 }
 
 /// What a loop's junctions are judged against: the face's surface, its
@@ -1859,7 +1849,7 @@ fn fitted(
 /// to its top ([`worst_gap`]). A parameter whose point does not project
 /// counts as on the surface, and the fit that follows says otherwise.
 fn off_surface(curve: &Curve, range: Interval, surface: &Surface, floor: f64) -> f64 {
-    let ts = samples(range, PCURVE_SAMPLES + 1);
+    let ts = range.samples(PCURVE_SAMPLES + 1);
     worst_gap(&ts, floor, |t| {
         surface.project(curve.point(t)).map_or(0.0, |p| p.distance)
     })
@@ -1879,17 +1869,6 @@ struct Gaps {
     vertex: Vec<f64>,
     /// By edge index: the file's edges, then the rebuilt ones.
     edge: Vec<f64>,
-}
-
-/// `n` parameters over `range`, both ends included — the checker's own
-/// samples, so a gap is measured where the checker will look.
-fn samples(range: Interval, n: usize) -> Vec<f64> {
-    if n <= 1 {
-        return vec![range.midpoint()];
-    }
-    (0..n)
-        .map(|i| range.lerp(i as f64 / (n - 1) as f64))
-        .collect()
 }
 
 /// The largest of `gap` over the span of the sorted parameters `ts`: its
@@ -1987,7 +1966,7 @@ impl Gaps {
                     self.raise_vertex(v, distance(image(t), p));
                 }
             }
-            let ts = samples(u.range, precision.check_samples);
+            let ts = u.range.samples(precision.check_samples);
             match curve {
                 Some(c) => {
                     // The checker's samples, and the ones a fit is held
@@ -1995,7 +1974,7 @@ impl Gaps {
                     // fitted pcurve strays as far as the fit allows it,
                     // and a finer look — the mesh's — finds it there.
                     let mut ts = ts;
-                    ts.extend(samples(u.range, PCURVE_SAMPLES + 1));
+                    ts.extend(u.range.samples(PCURVE_SAMPLES + 1));
                     ts.sort_by(f64::total_cmp);
                     ts.dedup();
                     let worst = worst_gap(&ts, precision.default_tolerance, |t| {
@@ -2069,8 +2048,8 @@ impl Gaps {
                 let (l, m) = ((da - cos * db) / sin2, (db - cos * da) / sin2);
                 distance(at, at + na * l + nb * m)
             };
-            let mut ts = samples(*range, precision.check_samples);
-            ts.extend(samples(*range, PCURVE_SAMPLES + 1));
+            let mut ts = range.samples(precision.check_samples);
+            ts.extend(range.samples(PCURVE_SAMPLES + 1));
             ts.sort_by(f64::total_cmp);
             ts.dedup();
             let worst = worst_gap(&ts, precision.default_tolerance, section);
@@ -2308,16 +2287,14 @@ fn hold_in_domain(pcurve: &mut Curve2, range: Interval, surface: &Surface, preci
         return;
     };
     let (domain, period) = (surface.domain(), surface.period());
-    let leaves = samples(range, precision.check_samples)
-        .into_iter()
-        .any(|t| {
-            let uv = c.eval(t).point;
-            let band = bands(surface, uv, precision.parametric_tolerance);
-            (0..2).any(|k| {
-                period[k].is_none()
-                    && !(domain[k].lo() - band[k] <= uv[k] && uv[k] <= domain[k].hi() + band[k])
-            })
-        });
+    let leaves = range.samples(precision.check_samples).into_iter().any(|t| {
+        let uv = c.eval(t).point;
+        let band = bands(surface, uv, precision.parametric_tolerance);
+        (0..2).any(|k| {
+            period[k].is_none()
+                && !(domain[k].lo() - band[k] <= uv[k] && uv[k] <= domain[k].hi() + band[k])
+        })
+    });
     if !leaves {
         return;
     }
@@ -2469,7 +2446,7 @@ fn band(
         let EdgeRef::File(edge) = u.edge else {
             continue;
         };
-        let ts = samples(u.range, PCURVE_SAMPLES + 1);
+        let ts = u.range.samples(PCURVE_SAMPLES + 1);
         for w in ts.windows(2) {
             let (mut a, mut b) = (w[0], w[1]);
             let (fa, fb) = (off(u, a), off(u, b));
@@ -2835,7 +2812,7 @@ fn place_loops(
 fn dense_box(uses: &[Use], n: usize) -> [[f64; 2]; 2] {
     let mut b = [[f64::INFINITY; 2], [f64::NEG_INFINITY; 2]];
     for u in uses {
-        for t in samples(u.range, n) {
+        for t in u.range.samples(n) {
             let p = u.pcurve.point(t);
             for k in 0..2 {
                 b[0][k] = b[0][k].min(p[k]);
@@ -2912,7 +2889,7 @@ mod tests {
         // A bump of height 3 centred between the samples at 0.5 and 0.75,
         // which see it at a fraction of its top.
         let bump = |t: f64| 3.0 * real::exp(-real::powi((t - 0.6) / 0.08, 2));
-        let ts = samples(Interval::new(0.0, 1.0).unwrap(), 5);
+        let ts = Interval::new(0.0, 1.0).unwrap().samples(5);
         assert!(ts.iter().all(|&t| bump(t) < 1.0));
         assert!((worst_gap(&ts, 1e-7, bump) - 3.0).abs() < 1e-12);
         // At or below the floor, the samples stand.

@@ -149,17 +149,6 @@ pub(crate) fn coedges(face: &Face) -> impl Iterator<Item = (usize, usize, Coedge
     })
 }
 
-/// `n` parameters over `range`, both ends included; the midpoint alone
-/// when `n` is one.
-pub(crate) fn samples(range: Interval, n: usize) -> Vec<f64> {
-    if n <= 1 {
-        return vec![range.midpoint()];
-    }
-    (0..n)
-        .map(|i| range.lerp(i as f64 / (n - 1) as f64))
-        .collect()
-}
-
 fn all_finite(xs: impl IntoIterator<Item = f64>) -> bool {
     xs.into_iter().all(f64::is_finite)
 }
@@ -629,7 +618,7 @@ impl Checker<'_> {
                 ) {
                     if let (Ok(curve), true) = (self.model.curve(curve_id), range_finite) {
                         let mut worst: Option<(f64, f64)> = None;
-                        for t in samples(range, precision.check_samples) {
+                        for t in range.samples(precision.check_samples) {
                             let uv = pcurve.point(t);
                             let (on_surface, on_curve) =
                                 (surface.point(uv.x, uv.y), curve.point(t));
@@ -773,7 +762,8 @@ impl Checker<'_> {
             let Ok(surface) = self.model.surface(face.surface()) else {
                 continue;
             };
-            let images: Vec<Point3> = samples(range, self.precision.check_samples)
+            let images: Vec<Point3> = range
+                .samples(self.precision.check_samples)
                 .into_iter()
                 .map(|t| {
                     let uv = pcurve.point(t);

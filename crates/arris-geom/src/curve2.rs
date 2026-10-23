@@ -121,6 +121,37 @@ fn local_noise_scale(frame: &Frame2, p: Point2) -> f64 {
 }
 
 impl Curve2 {
+    /// The line `u = at`, `v` its own parameter: a surface's isoline
+    /// across `u`, as a pcurve.
+    ///
+    /// ```
+    /// use arris_geom::Curve2;
+    /// use arris_math::Point2;
+    ///
+    /// assert_eq!(Curve2::along_v(2.0).point(3.0), Point2::new(2.0, 3.0));
+    /// ```
+    pub fn along_v(at: f64) -> Curve2 {
+        Curve2::Line {
+            origin: Point2::new(at, 0.0),
+            direction: UnitVec2::new_unchecked(Vec2::y()),
+        }
+    }
+
+    /// The line `v = at`, `u` its own parameter.
+    ///
+    /// ```
+    /// use arris_geom::Curve2;
+    /// use arris_math::Point2;
+    ///
+    /// assert_eq!(Curve2::along_u(2.0).point(3.0), Point2::new(3.0, 2.0));
+    /// ```
+    pub fn along_u(at: f64) -> Curve2 {
+        Curve2::Line {
+            origin: Point2::new(0.0, at),
+            direction: UnitVec2::new_unchecked(Vec2::x()),
+        }
+    }
+
     /// Which variant this is.
     pub fn kind(&self) -> Curve2Kind {
         match self {

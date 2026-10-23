@@ -17,7 +17,7 @@ use arris_math::{DisjointSets, Point2, Vec2};
 use arris_topo::entity::{BodyKind, Face, Loop};
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
-use crate::check::{Checker, coedges, samples};
+use crate::check::{Checker, coedges};
 use crate::domain::{bands, bounded_pieces, chord};
 use crate::violation::{
     EdgeUseFault, FaceFault, LoopBreak, NestingFault, ToleranceBound, Violation, WireFault,
@@ -360,7 +360,7 @@ impl<'m> Checker<'m> {
             if !(range.lo().is_finite() && range.hi().is_finite()) {
                 continue;
             }
-            for t in samples(range, self.precision.check_samples) {
+            for t in range.samples(self.precision.check_samples) {
                 let uv = pcurve.point(t);
                 let bound = bands(surface, uv, self.precision.parametric_tolerance);
                 for dir in 0..2 {

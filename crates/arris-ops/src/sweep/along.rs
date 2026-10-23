@@ -20,7 +20,7 @@ use arris_geom::{
     Curve, Curve2, FrameField, FrameLaw, GeomError, LoopNurbs, LoopPiece, NurbsCurve, NurbsSurface,
     Path, Profile, ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
 };
-use arris_math::{Control, Interval, Isometry, Meter, Point2, UnitVec2, Vec2};
+use arris_math::{Control, Interval, Isometry, Meter};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::{PathPart, SweepPart};
@@ -78,38 +78,6 @@ fn unskinned() -> OpError {
     OpError::Internal(Fault::Invariant {
         what: "a skin for every fitted span",
     })
-}
-
-/// The skin's isoline at the `u` of control row `i`, along the path: the
-/// row's control points and weights over the knots along `v`, the rail a
-/// profile vertex at that row runs along.
-fn column(skin: &NurbsSurface, i: usize) -> Result<NurbsCurve, GeomError> {
-    let [_, m] = skin.counts();
-    let [_, q] = skin.degree();
-    NurbsCurve::new(
-        q,
-        skin.knots()[1].to_vec(),
-        skin.control_points()[i * m..(i + 1) * m].to_vec(),
-        skin.weights()[i * m..(i + 1) * m].to_vec(),
-    )
-}
-
-/// The pcurve of a rail on a side face: the isoline at `u`, its parameter
-/// the path's arc length `v`.
-fn along_path(u: f64) -> Curve2 {
-    Curve2::Line {
-        origin: Point2::new(u, 0.0),
-        direction: UnitVec2::new_unchecked(Vec2::y()),
-    }
-}
-
-/// The pcurve of a joint's edge on a side face: the isoline at the
-/// joint's arc length `v`, its parameter the segment's own `u`.
-fn across_path(v: f64) -> Curve2 {
-    Curve2::Line {
-        origin: Point2::new(0.0, v),
-        direction: UnitVec2::new_unchecked(Vec2::x()),
-    }
 }
 
 /// The fitted skin of one loop over one span: the loop carried by the
@@ -419,7 +387,7 @@ pub fn sweep(
                         (Some(exact), _) => (exact.rails[li][j].clone(), exact.rail_range),
                         (None, Some(skins_of)) => {
                             let first = composites[li].pieces[j].first;
-                            let column = column(&skins_of[li], first).map_err(fault_of)?;
+                            let column = skins_of[li].control_column(first).map_err(fault_of)?;
                             (Curve::Nurbs(column), span_range(k)?)
                         }
                         (None, None) => return Err(unskinned()),
@@ -615,25 +583,25 @@ pub fn sweep(
                         SideUse {
                             edge: ring_edge[k][li][j],
                             orientation: Orientation::Forward,
-                            pcurve: across_path(range.lo()),
+                            pcurve: Curve2::along_u(range.lo()),
                             range: ring_range[k][li][j],
                         },
                         SideUse {
                             edge: rail[k][li][(j + 1) % n],
                             orientation: Orientation::Forward,
-                            pcurve: along_path(du.hi()),
+                            pcurve: Curve2::along_v(du.hi()),
                             range,
                         },
                         SideUse {
                             edge: ring_edge[end_ring(k)][li][j],
                             orientation: Orientation::Reversed,
-                            pcurve: across_path(range.hi()),
+                            pcurve: Curve2::along_u(range.hi()),
                             range: ring_range[end_ring(k)][li][j],
                         },
                         SideUse {
                             edge: rail[k][li][j],
                             orientation: Orientation::Reversed,
-                            pcurve: along_path(du.lo()),
+                            pcurve: Curve2::along_v(du.lo()),
                             range,
                         },
                     ];

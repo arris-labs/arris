@@ -17,7 +17,7 @@ use arris_geom::{
     Curve, Curve2, GeomError, LoftError, MAX_SMOOTH_SECTIONS, MatchedSection, NurbsCurve,
     NurbsCurve2, NurbsSurface, Profile, Surface, interpolate_skin, match_sections, pcurve_on,
 };
-use arris_math::{Control, Interval, Meter, Point2, UnitVec2, UnitVec3, Vec2};
+use arris_math::{Control, Interval, Meter, Point2, UnitVec3};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::{PathPart, SweepPart};
@@ -79,20 +79,6 @@ fn chord_parameters(matched: &[MatchedSection], closed: bool) -> Vec<f64> {
     params
 }
 
-/// The control column `i` of `s` along `v`: the isoline at a `u` whose
-/// knot has full multiplicity, as the clamped ends of a matched segment's
-/// domain do.
-fn column(s: &NurbsSurface, i: usize) -> Result<NurbsCurve, GeomError> {
-    let [_, m] = s.counts();
-    let rows = i * m..(i + 1) * m;
-    NurbsCurve::new(
-        s.degree()[1],
-        s.knots()[1].to_vec(),
-        s.control_points()[rows.clone()].to_vec(),
-        s.weights()[rows].to_vec(),
-    )
-}
-
 /// The ruled surface between two compatible segments, `u` the segments'
 /// own parameter and `v` from `a` (`0`) to `b` (`1`).
 fn ruled(a: &NurbsCurve, b: &NurbsCurve) -> Result<NurbsSurface, GeomError> {
@@ -125,24 +111,6 @@ fn rail(a: &NurbsCurve, b: &NurbsCurve, i: usize) -> Result<NurbsCurve, GeomErro
         vec![a.control_points()[i], b.control_points()[i]],
         vec![a.weights()[i], b.weights()[i]],
     )
-}
-
-/// The pcurve of a ring edge on a side face: the isoline at `v`, its
-/// parameter the segment's own `u`.
-fn across(v: f64) -> Curve2 {
-    Curve2::Line {
-        origin: Point2::new(0.0, v),
-        direction: UnitVec2::new_unchecked(Vec2::x()),
-    }
-}
-
-/// The pcurve of a rail on a side face: the isoline at `u`, its parameter
-/// the span's `v`.
-fn along(u: f64) -> Curve2 {
-    Curve2::Line {
-        origin: Point2::new(u, 0.0),
-        direction: UnitVec2::new_unchecked(Vec2::y()),
-    }
 }
 
 /// How far the loft moves the points of loop 0 between sections `from`
@@ -479,7 +447,7 @@ pub fn loft(
                             range,
                         ),
                         _ if smooth => (
-                            Curve::Nurbs(column(&skins[li][j], 0).map_err(fault_of)?),
+                            Curve::Nurbs(skins[li][j].control_column(0).map_err(fault_of)?),
                             Interval::UNIT,
                         ),
                         _ => (
@@ -657,7 +625,7 @@ pub fn loft(
                         // where the surface runs `v` from 0 to 1.
                         let rail_pcurve = |u: f64, range: Interval| -> Result<Curve2, OpError> {
                             if range == Interval::UNIT {
-                                return Ok(along(u));
+                                return Ok(Curve2::along_v(u));
                             }
                             NurbsCurve2::new(
                                 1,
@@ -674,7 +642,7 @@ pub fn loft(
                             SideUse {
                                 edge: ring_edge[k][li][j],
                                 orientation: Orientation::Forward,
-                                pcurve: across(dv.lo()),
+                                pcurve: Curve2::along_u(dv.lo()),
                                 range: du,
                             },
                             SideUse {
@@ -686,7 +654,7 @@ pub fn loft(
                             SideUse {
                                 edge: ring_edge[end_ring(k)][li][j],
                                 orientation: Orientation::Reversed,
-                                pcurve: across(dv.hi()),
+                                pcurve: Curve2::along_u(dv.hi()),
                                 range: du,
                             },
                             SideUse {

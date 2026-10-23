@@ -23,7 +23,7 @@ use arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
 use arris_topo::entity::BodyKind;
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
-use crate::check::{Checker, coedges, samples};
+use crate::check::{Checker, coedges};
 use crate::classify::Classifier;
 use crate::domain::{FaceDomain, boundary_entity};
 use crate::flux::face_flux;
@@ -105,7 +105,7 @@ impl<'m> Checker<'m> {
                 let Ok(span) = Interval::new(lo, hi) else {
                     continue;
                 };
-                for t in samples(span, self.precision.check_samples.max(2)) {
+                for t in span.samples(self.precision.check_samples.max(2)) {
                     if parameters.last() != Some(&t) {
                         parameters.push(t);
                     }
@@ -589,7 +589,7 @@ impl<'m> Checker<'m> {
                 .get(&face)
                 .is_some_and(|d| d.side(uv).0 == Side::Inside)
         };
-        for t in samples(range, self.precision.check_samples.max(2)) {
+        for t in range.samples(self.precision.check_samples.max(2)) {
             let point = at(t);
             // On an edge or vertex the two faces share, where the
             // surfaces are allowed to meet.

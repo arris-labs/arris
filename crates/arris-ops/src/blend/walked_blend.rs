@@ -21,7 +21,7 @@ use arris_geom::{
     Curve, Curve2, CurveSurfaceIntersection, GeomError, GeomKind, NurbsCurve, NurbsSurface,
     Surface, SurfaceKind, intersect_curve_surface, pcurve_on,
 };
-use arris_math::{Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec2, Vec2};
+use arris_math::{Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance};
 use arris_topo::entity::Edge;
 use arris_topo::{EdgeId, FaceId, Orientation};
 
@@ -479,26 +479,8 @@ pub(super) fn walked_pole(s: &Stripe, at_lo: bool) -> Result<Pole, OpError> {
     Ok(Pole {
         vertex: if at_lo { s.start } else { s.end },
         t: ends[end],
-        on_blend: along_u(ends[end]),
+        on_blend: Curve2::along_u(ends[end]),
     })
-}
-
-/// The pcurve of an isocurve of a walked stripe's surface: `u` constant
-/// at `u`, `v` its own parameter.
-fn along_v(u: f64) -> Curve2 {
-    Curve2::Line {
-        origin: Point2::new(u, 0.0),
-        direction: UnitVec2::new_unchecked(Vec2::y()),
-    }
-}
-
-/// The pcurve of the surface's isocurve at constant `v`, `u` its
-/// own parameter.
-fn along_u(v: f64) -> Curve2 {
-    Curve2::Line {
-        origin: Point2::new(0.0, v),
-        direction: UnitVec2::new_unchecked(Vec2::x()),
-    }
 }
 
 /// The contact curves of the walked stripe `s` between their parameters at
@@ -552,7 +534,7 @@ pub(super) fn walked_contacts(
             line: line.clone(),
             range,
             on_face,
-            on_blend: along_v(k as f64),
+            on_blend: Curve2::along_v(k as f64),
             tolerance: s.tolerance,
         });
     }
@@ -670,7 +652,7 @@ pub(super) fn walked_ring(
             points: [curve.point(range.lo()), curve.point(range.hi())],
             curve,
             on_face,
-            on_blend: along_v(k as f64),
+            on_blend: Curve2::along_v(k as f64),
             along_u: true,
         });
     }
@@ -713,7 +695,7 @@ pub(super) fn walked_ring(
         ends: RingEnds::Seam(Box::new(RingSeam {
             curve: Curve::Nurbs(seam_curve),
             range: seam_range,
-            on_blend: [along_u(range.lo()), along_u(range.hi())],
+            on_blend: [Curve2::along_u(range.lo()), Curve2::along_u(range.hi())],
             cuts,
             vertex_tolerance,
         })),
