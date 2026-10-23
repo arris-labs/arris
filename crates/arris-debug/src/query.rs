@@ -35,7 +35,8 @@ mod section;
 
 use crate::corpus::{self, CorpusError};
 use crate::fixtures::{
-    self, Expected, Fixture, FixtureError, Num, Recipe, expand_patterns, name_of, recipe_hash,
+    self, Expected, Fixture, FixtureError, Num, Recipe, expand_patterns, name_of, read_json,
+    recipe_hash,
 };
 
 /// How many of a ray's hits the query asks for.
@@ -496,17 +497,6 @@ pub fn load(dir: &Path) -> Result<QueryFixture, FixtureError> {
         queries,
         recipe_sha256,
         expected,
-    })
-}
-
-fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, FixtureError> {
-    let text = std::fs::read_to_string(path).map_err(|source| FixtureError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    serde_json::from_str(&text).map_err(|source| FixtureError::Json {
-        path: path.to_path_buf(),
-        source,
     })
 }
 

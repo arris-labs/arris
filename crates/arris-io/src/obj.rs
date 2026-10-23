@@ -30,6 +30,7 @@
 //! Every real is Rust's shortest round-trip decimal, `f64` throughout
 //! (ADR-0011), so two writes of the same meshes are byte-identical.
 
+use crate::format::real;
 use core::fmt::Write as _;
 
 use arris_mesh::TriMesh;
@@ -111,15 +112,6 @@ pub fn write(meshes: &[TriMesh]) -> Result<String, MeshWriteError> {
     Ok(out)
 }
 
-/// A finite real in OBJ's spelling: Rust's shortest round-trip decimal
-/// with a decimal point always present, mirroring `step::real` and
-/// `stl::real`.
-fn real(x: f64) -> String {
-    let x = if x == 0.0 { 0.0 } else { x };
-    let s = format!("{x}");
-    if s.contains('.') { s } else { format!("{s}.") }
-}
-
 #[cfg(test)]
 mod tests {
     use arris_topo::FaceId;
@@ -154,12 +146,5 @@ mod tests {
             text.contains("f 4 5 6"),
             "the second mesh's indices offset by the first's 3 positions: {text}"
         );
-    }
-
-    #[test]
-    fn reals_are_shortest_round_trip_with_a_point() {
-        assert_eq!(real(40.0), "40.");
-        assert_eq!(real(0.5), "0.5");
-        assert_eq!(real(-0.0), "0.");
     }
 }

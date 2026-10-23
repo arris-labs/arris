@@ -338,16 +338,13 @@ fn flag(b: bool) -> &'static str {
     if b { ".T." } else { ".F." }
 }
 
-/// A finite real in Part 21 spelling: Rust's shortest round-trip decimal
-/// with a decimal point always present and no negative zero, so the
-/// reader parses back the same `f64`. Errors: `x` is not finite.
+/// A finite real in Part 21 spelling ([`crate::format::real`]). Errors:
+/// `x` is not finite.
 fn real(x: f64, owner: AnyId) -> Result<String, StepError> {
     if !x.is_finite() {
         return Err(StepError::NonFinite { id: owner });
     }
-    let x = if x == 0.0 { 0.0 } else { x };
-    let s = format!("{x}");
-    Ok(if s.contains('.') { s } else { format!("{s}.") })
+    Ok(crate::format::real(x))
 }
 
 /// `(x,y,z)` or `(x,y)` of finite reals.

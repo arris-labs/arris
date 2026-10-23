@@ -45,7 +45,7 @@ use crate::corpus::{
 use crate::dump::dump_text;
 use crate::fixtures::{
     Counts, FixtureError, Measured, PrecisionSpec, REGRESSION_AREA, ReadRefused, Tolerances,
-    name_of, recipe_hash,
+    name_of, read_json, recipe_hash,
 };
 
 /// What a part fixture expects of one solid instance of its file.
@@ -241,17 +241,6 @@ pub struct PartFixture {
     pub recipe_sha256: String,
     /// `expected.json`.
     pub expected: PartExpected,
-}
-
-fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, FixtureError> {
-    let text = std::fs::read_to_string(path).map_err(|source| FixtureError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    serde_json::from_str(&text).map_err(|source| FixtureError::Json {
-        path: path.to_path_buf(),
-        source,
-    })
 }
 
 /// Loads a part fixture: both files, and the hash of `fixture.json`.

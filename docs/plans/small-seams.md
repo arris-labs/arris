@@ -98,7 +98,7 @@ robustness or bound has to be established here.
   range, since a line is unbounded; `iso_u`/`iso_v` would read opposite to
   `arris-debug`'s private ones. `control_column` returns an error past the
   net. `pave`'s `samples` stays (a count of one gives both ends there).
-- [ ] Step 5 **[1]** — io's `format::real` and debug's single `read_json`.
+- [x] Step 5 **[1]** — io's `format::real` and debug's single `read_json`. *Settled:* STEP's `real` keeps its owner and error and calls `format::real` after its finite check, so no third spelling remains.
 - [ ] Step 6 **[1]** — `Violation`/`Unchecked` exhaustive; the
   workspace's `_ =>` over them replaced by named arms; `CHANGELOG.md`
   bullet.

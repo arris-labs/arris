@@ -24,6 +24,7 @@
 //! line in ASCII, the first bytes of the 80-byte header in binary,
 //! truncated to fit — so the two forms of one write name the same shape.
 
+use crate::format::real;
 use core::fmt::Write as _;
 
 use arris_mesh::TriMesh;
@@ -172,14 +173,6 @@ fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     ]
 }
 
-/// A finite real in ASCII STL's spelling: Rust's shortest round-trip
-/// decimal with a decimal point always present, mirroring `step::real`.
-fn real(x: f64) -> String {
-    let x = if x == 0.0 { 0.0 } else { x };
-    let s = format!("{x}");
-    if s.contains('.') { s } else { format!("{s}.") }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,12 +232,5 @@ mod tests {
         let bytes = write_binary(&meshes, "pair").unwrap();
         assert_eq!(bytes.len(), 80 + 4 + 2 * 50);
         assert_eq!(u32::from_le_bytes(bytes[80..84].try_into().unwrap()), 2);
-    }
-
-    #[test]
-    fn reals_are_shortest_round_trip_with_a_point() {
-        assert_eq!(real(40.0), "40.");
-        assert_eq!(real(0.5), "0.5");
-        assert_eq!(real(-0.0), "0.");
     }
 }

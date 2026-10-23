@@ -16,6 +16,7 @@
 
 #[cfg(feature = "serde")]
 pub mod body;
+mod format;
 #[cfg(feature = "serde")]
 pub mod native;
 pub mod obj;

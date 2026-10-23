@@ -1344,7 +1344,8 @@ pub fn corpus() -> Vec<PathBuf> {
     out
 }
 
-fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, FixtureError> {
+/// A JSON file read and parsed; the error names the path.
+pub(crate) fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, FixtureError> {
     let text = std::fs::read_to_string(path).map_err(|source| FixtureError::Io {
         path: path.to_path_buf(),
         source,
