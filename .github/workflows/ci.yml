@@ -152,11 +152,17 @@ jobs:
   # give byte-identical results with the work split across threads. So they
   # run at the default case count, in a job of their own beside `test`. At
   # `test`'s 1000 cases, run after it, they repeated its property coverage
-  # on an oversubscribed runner, about an hour per step.
+  # on an oversubscribed runner, about an hour per step. Split four ways by
+  # a hash of each test's name, as `test` is: the three steps in one job
+  # were the longest wall time of a run.
   parallel:
     needs: reuse
     if: needs.reuse.outputs.skip != 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3, 4]
     env:
       ARRIS_ORACLE_CACHE: "off"
     steps:
@@ -172,13 +178,13 @@ jobs:
       # arris-mesh's `parallel` feature: the same tests, so every sample
       # body's and primitive's mesh is byte-identical with faces
       # triangulated in parallel.
-      - run: cargo nextest run -p arris-mesh --features parallel
+      - run: cargo nextest run -p arris-mesh --features parallel --partition hash:${{ matrix.partition }}/4
       # arris-ops's, and the corpus through the facade with both on: every
       # boolean fixture's dump and every property test's result
       # byte-identical with the face pairs intersected and the faces split
       # in parallel.
-      - run: cargo nextest run -p arris-ops --features parallel
-      - run: cargo nextest run -p arris --features parallel
+      - run: cargo nextest run -p arris-ops --features parallel --partition hash:${{ matrix.partition }}/4
+      - run: cargo nextest run -p arris --features parallel --partition hash:${{ matrix.partition }}/4
 
   # A consumer that wants no serde support gets none of its cost: every
   # internal workspace dependency disables default features

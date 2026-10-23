@@ -73,7 +73,7 @@ and the tests are mechanical; **[2]** careful; **[3]** unproven.
   commit if GitHub refuses a trigger absent from `main` (see Open).
 - [x] Step 3 **[1]** — the `reused` job: `cargo package`, `docs_refs`, the
   summary line naming the base commit.
-- [ ] Step 4 **[1]** — `parallel` sharded 4 ways, same commands.
+- [x] Step 4 **[1]** — `parallel` sharded 4 ways, same commands.
 - [ ] Step 5 **[CI]** **[1]** — push the branch, dispatch `ci.yml`: `reuse`
   prints `false` (the branch changes `tools/` and `.github/`), every job
   runs, the four `parallel` shards are green; record each shard's time
