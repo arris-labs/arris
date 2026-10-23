@@ -256,7 +256,6 @@ pub enum WireFault {
 /// only. Every variant names the entity that violates it and, where the row
 /// says so, the parameter or the second entity.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-#[non_exhaustive]
 pub enum Violation {
     /// **M1** — an id referenced by an entity of the body does not resolve
     /// in this model with the stored generation.

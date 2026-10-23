@@ -38,6 +38,11 @@ into its version (ADR-0027).
   `Model.angular_tolerance` say when the model holds two points the same
   and two directions parallel.
 
+- Rust: `Violation` and `Unchecked` are no longer `#[non_exhaustive]`, so a
+  `match` over the checker's findings can name every variant and the
+  compiler says when a new one appears. A match that had a `_` arm for
+  them keeps compiling.
+
 ## 0.9.0 — 2026-10-22
 
 - `fillet` now rolls on a free-form face, and on two analytic faces whose

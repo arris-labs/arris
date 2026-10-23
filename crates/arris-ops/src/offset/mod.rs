@@ -259,7 +259,29 @@ fn self_intersection(report: &arris_check::Report) -> Option<OpError> {
             Violation::ShellNesting { body, .. } | Violation::NonPositiveVolume { body, .. } => {
                 entities.push(forward(*body));
             }
-            _ => return None,
+            Violation::Unresolved { .. }
+            | Violation::NotIndexed { .. }
+            | Violation::NonFinite { .. }
+            | Violation::VertexTolerance { .. }
+            | Violation::VertexOffEdge { .. }
+            | Violation::VertexOffFace { .. }
+            | Violation::EdgeRange { .. }
+            | Violation::EdgeEnds { .. }
+            | Violation::EdgeUnused { .. }
+            | Violation::PcurveOffCurve { .. }
+            | Violation::EdgeTolerance { .. }
+            | Violation::DegenerateEdge { .. }
+            | Violation::Seam { .. }
+            | Violation::LoopOpen { .. }
+            | Violation::PcurveGap { .. }
+            | Violation::EdgeReusedInFace { .. }
+            | Violation::FaceMalformed { .. }
+            | Violation::FaceTolerance { .. }
+            | Violation::FaceUsedTwice { .. }
+            | Violation::EdgeUses { .. }
+            | Violation::ShellDisconnected { .. }
+            | Violation::ShellOpen { .. }
+            | Violation::WireMalformed { .. } => return None,
         }
     }
     entities.dedup();

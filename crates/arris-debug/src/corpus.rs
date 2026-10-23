@@ -1400,8 +1400,6 @@ fn check_leaving(name: &str, m: &Model, body: Body, pairs: bool) -> Result<Repor
             }
         }
         Unchecked::ShellNesting { .. } => any_nurbs,
-        // A row added later is not known to be a NURBS limit.
-        _ => false,
     };
     if !report.is_ok() || !report.unchecked().iter().all(undecidable) {
         return Err(CorpusError::Check {

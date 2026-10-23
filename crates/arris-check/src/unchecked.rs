@@ -14,7 +14,6 @@ use arris_topo::{BodyId, EntityId, FaceId, ShellId};
 /// about; [`Unchecked::code`] gives the row's number in
 /// `docs/DATA-MODEL.md` §Invariants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[non_exhaustive]
 pub enum Unchecked {
     /// **S5** — the intersector does not decide this pair of surfaces —
     /// two [`SurfaceKind::Nurbs`], or a pose one of the tracers refuses

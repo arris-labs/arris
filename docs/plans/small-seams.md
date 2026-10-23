@@ -99,9 +99,11 @@ robustness or bound has to be established here.
   `arris-debug`'s private ones. `control_column` returns an error past the
   net. `pave`'s `samples` stays (a count of one gives both ends there).
 - [x] Step 5 **[1]** — io's `format::real` and debug's single `read_json`. *Settled:* STEP's `real` keeps its owner and error and calls `format::real` after its finite check, so no third spelling remains.
-- [ ] Step 6 **[1]** — `Violation`/`Unchecked` exhaustive; the
+- [x] Step 6 **[1]** — `Violation`/`Unchecked` exhaustive; the
   workspace's `_ =>` over them replaced by named arms; `CHANGELOG.md`
-  bullet.
+  bullet. *Settled:* two `_ =>` arms held them (`offset`'s self-intersection
+  filter, now every other `Violation` named; `debug`'s corpus NURBS filter,
+  whose arm was unreachable and went).
 - [ ] Step 7 **[1]** — test helpers: `close`, `tol`, `EXACT` from
   `arris_debug::testing` in every test file that defines its own equal
   copy.
