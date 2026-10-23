@@ -21,6 +21,9 @@
 # later, if someone asks (docs/BACKLOG.md).
 name: Wheels
 
+permissions:
+  contents: read
+
 on:
   workflow_call:
   workflow_dispatch:
@@ -150,6 +153,7 @@ jobs:
         shell: bash
         run: |
           ls -l dist
+          # 5 = the wheel matrix's include lines; change both together
           [ "$(ls dist/*.whl | wc -l)" -eq 5 ] && [ "$(ls dist/*.tar.gz | wc -l)" -eq 1 ]
       - uses: actions/upload-artifact@v7
         with:

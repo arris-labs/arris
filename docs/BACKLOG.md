@@ -40,6 +40,8 @@ reproduces it.
 - `topo::Model` has no public iteration of its bodies, so Python cannot list the bodies of a model read by `Model.from_native`; add the kernel API and `Model.bodies()` (python-binding step 10)
 - `Imported.translated()` raises when the written record names entities outside the body (a boolean's inputs): import those entities too, or take an `IdMap` for them, so a cut's whole record crosses models (python-binding step 10)
 - The STEP product tree as Python values is read-only: `step.write_products` has no binding, so an assembly cannot be written from Python (python-binding step 10)
+- Python wheels for musllinux, Windows arm64, 32-bit targets and Python builds without abi3: each is one line in the `wheels.yml` matrix, if someone asks (ADR-0034)
+- CI pins: `PyO3/maturin-action` has no `maturin-version` and `uvx twine` is unpinned, so release builds follow whatever is current; pin both and bump deliberately (plans/python-wheels review)
 - A typed lineage value (`Provenance::lineage(output)`, a tree down to `Role`s), if a second consumer asks for one rather than walking the record itself (ADR-0009 alternative)
 - Two tolerance fractions are named constants in `arris-geom` (`SECTION_FIT_FRACTION`, `PCURVE_SINGULAR_BAND`), where `.agents/rules/kernel.md` and DATA-MODEL §Tolerances ask for `arris-math`: move them, or let the rule name the crate whose algorithm owns the constant (C4 close drift review)
 - `region2` as public API over `Curve2`, with exact predicates, so a consumer's sketcher shades exactly the regions `extrude` accepts; weigh against the backlog's narrowing of `pub` internals (plugin-cad-consumer-asks A5)

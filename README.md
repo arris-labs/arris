@@ -42,7 +42,8 @@ or from Python. Four things set it apart:
 
 ## Install
 
-**Python** — a prebuilt wheel, no Rust toolchain needed:
+**Python** — a prebuilt wheel for Linux, macOS and Windows, no Rust
+toolchain needed:
 
 ```sh
 pip install arris

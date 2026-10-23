@@ -960,8 +960,11 @@ facade (ADR-0034), published to PyPI as `arris` in lockstep from the same
 measures, the checker's report, adjacency walks, tessellation as mesh
 bytes, and STEP, body bytes, native, STL and OBJ; every error is a typed
 exception and a handle carries its model. What it waits on: the human's
-`pypi` environment and pending-publisher registration, the first upload,
-and the platforms of the wheel beyond Linux x86_64. Its own backlog lines
+`pypi` environment and pending-publisher registration and the first
+upload. The wheel is prebuilt for Linux x86_64 and aarch64, macOS arm64
+and x86_64 (11.0 and up) and Windows x86_64; each is installed from its
+file and tested on its own platform, and the determinism corpus runs
+natively on macOS, Windows and Linux aarch64. Its own backlog lines
 (corner blocks, enumerating a model's bodies, a record naming foreign
 inputs) are in `docs/BACKLOG.md`.
 
