@@ -74,7 +74,7 @@ and the tests are mechanical; **[2]** careful; **[3]** unproven.
 - [x] Step 3 **[1]** — the `reused` job: `cargo package`, `docs_refs`, the
   summary line naming the base commit.
 - [x] Step 4 **[1]** — `parallel` sharded 4 ways, same commands.
-- [ ] Step 5 **[CI]** **[1]** — push the branch, dispatch `ci.yml`: `reuse`
+- [x] Step 5 **[CI]** **[1]** — push the branch, dispatch `ci.yml`: `reuse`
   prints `false` (the branch changes `tools/` and `.github/`), every job
   runs, the four `parallel` shards are green; record each shard's time
   and set the count so none is more than ~1.5× the median.
@@ -87,6 +87,20 @@ and the tests are mechanical; **[2]** careful; **[3]** unproven.
   the seven jobs are skipped, `reused` and the cheap jobs pass in minutes;
   then a branch with one source-comment commit prints `false`. Both
   branches deleted. Runs in this plan's retirement, not in its commits.
+
+## Settled
+- Step 5 (run 40013549366, dispatched on the branch, 2026-10-23): GitHub
+  dispatches `ci.yml` on a branch although `main` has no `workflow_dispatch`,
+  so the trigger needed no commit of its own. Every job ran (`reused` and
+  `wheels` skipped, as designed); `fmt`, `clippy`, `layers`, `doc`,
+  `no-default-features`, `semver`, `python`, `oracle`, `wasm`, `rerun` and
+  the four `parallel` shards green. `parallel` shards took 70, 63, 113 and 65
+  minutes against 5 hours as one job; shard 3 is 1.7× the median, a few long
+  tests under a hash partition. Kept at 4 (agent): the `test` shards are the
+  longer pole of the run, so a fifth or sixth `parallel` shard would not
+  shorten its wall time, and a new count reshuffles the hash unpredictably.
+  The `test` shards had not finished when this was written; they ran
+  unchanged from `main`'s previous run.
 
 ## Acceptance
 `tools/ci-reuse.sh --self-test` green (`gate.sh` classifies `tools/` as
