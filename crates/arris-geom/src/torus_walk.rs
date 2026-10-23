@@ -1792,6 +1792,7 @@ impl Tracer<'_> {
             // `u` at every `v`, and the largest of its magnitudes convex.
             let mut best = measure(refined);
             if !accepted(&best) {
+                // Not `roots::golden_section`: this search re-evaluates both probes each step, whose bits differ from the shared form's reused probe.
                 let ratio = 0.5 * (5f64.sqrt() - 1.0);
                 let (mut a, mut b) = (lo, hi);
                 for _ in 0..GOLDEN_STEPS {
@@ -2445,6 +2446,7 @@ impl Tracer<'_> {
         if !walker.closed[j] {
             (a, b) = (a.max(0.0), b.min(TAU));
         }
+        // Not `roots::golden_section`: this search re-evaluates both probes each step, whose bits differ from the shared form's reused probe.
         let ratio = 0.5 * (5f64.sqrt() - 1.0);
         for _ in 0..GOLDEN_STEPS {
             let (c, d) = (b - ratio * (b - a), a + ratio * (b - a));

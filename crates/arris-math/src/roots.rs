@@ -361,9 +361,75 @@ fn real_roots(c: &[f64]) -> Result<Roots, RootError> {
     Ok(out)
 }
 
+/// Where a [`golden_section`] search ended: the bracket it narrowed to and
+/// its two interior probes, each with the value of the function there.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Bracket {
+    /// The bracket's low end.
+    pub lo: f64,
+    /// The bracket's high end.
+    pub hi: f64,
+    /// The lower interior probe and the function's value at it.
+    pub low_probe: (f64, f64),
+    /// The upper interior probe and the function's value at it.
+    pub high_probe: (f64, f64),
+}
+
+/// The bracket `[a, b]` narrowed by `steps` golden-section steps toward the
+/// minimum of `f`, which the caller guarantees is unimodal there. One
+/// evaluation per step: the surviving interior probe is reused. A tie
+/// keeps the lower side. Each step shrinks the bracket by `0.618`, so
+/// `steps` is an iteration count, never a tolerance; the caller picks its
+/// ending (the midpoint, the better probe, the better of those and the
+/// ends). A maximum is a minimum of `-f`.
+///
+/// ```
+/// use arris_math::roots::golden_section;
+///
+/// let end = golden_section(|x| (x - 0.3) * (x - 0.3), -1.0, 2.0, 60);
+/// assert!((0.5 * (end.lo + end.hi) - 0.3).abs() < 1e-7);
+/// assert!(end.lo <= end.low_probe.0 && end.high_probe.0 <= end.hi);
+/// ```
+pub fn golden_section(f: impl Fn(f64) -> f64, mut a: f64, mut b: f64, steps: usize) -> Bracket {
+    let ratio = 0.5 * (5f64.sqrt() - 1.0);
+    let (mut x1, mut x2) = (b - ratio * (b - a), a + ratio * (b - a));
+    let (mut f1, mut f2) = (f(x1), f(x2));
+    for _ in 0..steps {
+        if f1 <= f2 {
+            (b, x2, f2) = (x2, x1, f1);
+            x1 = b - ratio * (b - a);
+            f1 = f(x1);
+        } else {
+            (a, x1, f1) = (x1, x2, f2);
+            x2 = a + ratio * (b - a);
+            f2 = f(x2);
+        }
+    }
+    Bracket {
+        lo: a,
+        hi: b,
+        low_probe: (x1, f1),
+        high_probe: (x2, f2),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn golden_section_finds_a_minimum_and_keeps_the_lower_side_on_a_tie() {
+        let end = golden_section(|x| (x - 0.3).abs(), -1.0, 2.0, 80);
+        assert!((0.5 * (end.lo + end.hi) - 0.3).abs() < 1e-12);
+        assert_eq!(end.low_probe.1, (end.low_probe.0 - 0.3).abs());
+        // A flat function ties every comparison: the high end is dropped.
+        let flat = golden_section(|_| 1.0, 0.0, 1.0, 5);
+        assert_eq!(flat.lo, 0.0);
+        assert!(flat.hi < 0.2);
+        // Zero steps are the two first probes.
+        let none = golden_section(|x| x, 0.0, 1.0, 0);
+        assert_eq!((none.lo, none.hi), (0.0, 1.0));
+    }
 
     #[test]
     fn leading_zeros_lower_the_degree() {

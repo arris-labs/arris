@@ -9,6 +9,7 @@
 use core::f64::consts::PI;
 
 use arris_geom::{Curve, FitError, GeomError, SectionBranch, Surface, fit_branch, trace_section};
+use arris_math::roots::golden_section;
 use arris_math::{Aabb, Interval, Meter, Point3, Tolerance, is_negligible};
 
 use crate::error::{OpError, fault_of};
@@ -145,21 +146,10 @@ impl Piece<'_> {
 
 /// The minimum of `f` over `[a, b]` by golden-section search, `f`
 /// unimodal there.
-fn golden(f: impl Fn(f64) -> f64, mut a: f64, mut b: f64) -> f64 {
-    let g = (5.0_f64.sqrt() - 1.0) / 2.0;
-    let (mut c, mut d) = (b - g * (b - a), a + g * (b - a));
-    let (mut fc, mut fd) = (f(c), f(d));
-    for _ in 0..LOCATE_ITERATIONS {
-        if fc <= fd {
-            (b, d, fd) = (d, c, fc);
-            c = b - g * (b - a);
-            fc = f(c);
-        } else {
-            (a, c, fc) = (c, d, fd);
-            d = a + g * (b - a);
-            fd = f(d);
-        }
-    }
+fn golden(f: impl Fn(f64) -> f64, a: f64, b: f64) -> f64 {
+    let end = golden_section(&f, a, b, LOCATE_ITERATIONS);
+    let (a, b) = (end.lo, end.hi);
+    let (c, d) = (end.low_probe.0, end.high_probe.0);
     let t = (a + b) / 2.0;
     // The search keeps the better of its two probes; the midpoint is no
     // worse than either unless the bracket held no minimum at all.

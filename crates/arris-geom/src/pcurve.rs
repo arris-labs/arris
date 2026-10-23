@@ -5,6 +5,7 @@
 //! plane for a consumer's sketch.
 
 use arris_math::real;
+use arris_math::roots::golden_section;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_math::{
@@ -788,22 +789,11 @@ struct SingularEnd {
 /// The parameter in `[a, b]` at which `curve` is nearest `point`, and the
 /// distance there, by golden section: the bracket is one the sampling
 /// found a single dip in.
-fn nearest_approach(curve: &Curve, point: Point3, mut a: f64, mut b: f64) -> (f64, f64) {
-    let ratio = 0.5 * (5f64.sqrt() - 1.0);
+fn nearest_approach(curve: &Curve, point: Point3, a: f64, b: f64) -> (f64, f64) {
     let d = |t: f64| (curve.point(t) - point).norm();
-    let (mut x1, mut x2) = (b - ratio * (b - a), a + ratio * (b - a));
-    let (mut d1, mut d2) = (d(x1), d(x2));
-    for _ in 0..GOLDEN_STEPS {
-        if d1 <= d2 {
-            (b, x2, d2) = (x2, x1, d1);
-            x1 = b - ratio * (b - a);
-            d1 = d(x1);
-        } else {
-            (a, x1, d1) = (x1, x2, d2);
-            x2 = a + ratio * (b - a);
-            d2 = d(x2);
-        }
-    }
+    let end = golden_section(d, a, b, GOLDEN_STEPS);
+    let (a, b) = (end.lo, end.hi);
+    let ((x1, d1), (x2, d2)) = (end.low_probe, end.high_probe);
     // An end of the bracket may be nearer than anything inside it.
     [(a, d(a)), (b, d(b)), (x1, d1), (x2, d2)]
         .into_iter()

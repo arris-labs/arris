@@ -95,6 +95,7 @@
 //! a violation is the file's: [`Refusal::Invalid`].
 
 use arris_math::real;
+use arris_math::roots::golden_section;
 use std::collections::{BTreeMap, BTreeSet};
 use std::f64::consts::TAU;
 
@@ -1905,21 +1906,9 @@ fn worst_gap(ts: &[f64], floor: f64, gap: impl Fn(f64) -> f64) -> f64 {
         if g <= floor || g < gaps[before] || g < gaps[after] || before == after {
             continue;
         }
-        let ratio = 0.5 * (5f64.sqrt() - 1.0);
-        let (mut a, mut b) = (ts[before], ts[after]);
-        let (mut x1, mut x2) = (b - ratio * (b - a), a + ratio * (b - a));
-        let (mut g1, mut g2) = (gap(x1), gap(x2));
-        for _ in 0..PEAK_STEPS {
-            if g1 >= g2 {
-                (b, x2, g2) = (x2, x1, g1);
-                x1 = b - ratio * (b - a);
-                g1 = gap(x1);
-            } else {
-                (a, x1, g1) = (x1, x2, g2);
-                x2 = a + ratio * (b - a);
-                g2 = gap(x2);
-            }
-        }
+        // A peak is the minimum of the gap's negation.
+        let end = golden_section(|t| -gap(t), ts[before], ts[after], PEAK_STEPS);
+        let (g1, g2) = (-end.low_probe.1, -end.high_probe.1);
         worst = worst.max(g1).max(g2);
     }
     worst

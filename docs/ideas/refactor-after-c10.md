@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Open
+- Status: Accepted (B); `small-seams` absorbed by plans/small-seams
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -31,43 +31,8 @@ Each finding below is **read** (the copies compared in the source) or
 ## Findings
 
 ### For a `small-seams` plan
-- **Union-find with path halving, seven copies** (read):
-  - `ops/boolean/result.rs` twice;
-  - `boolean/pave/mod.rs`;
-  - `geom/extrema.rs`;
-  - `geom/nurbs/line.rs`;
-  - `check/topology.rs`;
-  - `mesh/trimesh.rs`;
-  - a `BTreeMap` variant in `topo/builder.rs`.
-
-  → `arris_math::DisjointSets`.
-- **Byte-identical helpers** (read):
-  - `below` (`f64::next_down` for MSRV 1.85) in `io/step/reader/topology.rs` and `geom/nurbs/project.rs` → `real::next_down`;
-  - `samples` in `check/check.rs` and the STEP reader → `Interval::samples`;
-  - the isoline `Curve2::Line` pcurves in `ops/sweep/along.rs`, `sweep/loft.rs` and `blend/walked_blend.rs` → `Curve2::iso_u`/`iso_v`;
-  - `column` (a skin's control row as a curve) in `along.rs` and `loft.rs` → `NurbsSurface::control_column`;
-  - `real` in `io/stl.rs` and `io/obj.rs`;
-  - `read_json` three times in `arris-debug`;
-  - `bernstein2::casteljau` and `extrema`'s `eval`.
-- **One solver, two copies** (measured; the `descend` bodies are not yet
-  compared):
-  - `geom/nurbs/line.rs` and `spline_nurbs.rs` define `JOIN_SAMPLES`, `FRONT_STARTS`, `DESCENT_STEPS`, `DAMPING`, `DAMPING_GROWTH` and `DAMPINGS` with equal values, and each has its own damped-Newton `descend`;
-  - golden-section search appears in `pcurve.rs`, `spline_nurbs.rs`, `torus_walk.rs` (twice) and `ops/blend/traced.rs`;
-  - `NEWTON_POLISH_STEPS = 3` in three files;
-  - `PATCH_SLACK`, `FLUSH_SAMPLES` and `STEP_HALVINGS` in two each.
-
-  → `arris_math::roots` gains the damped descent and the golden-section
-  minimiser; each caller passes its own budget.
-- **Test helpers** (measured):
-  - `arris_debug::testing::close` exists, yet `fn close` is defined in 15 files;
-  - `fn tol()` in 34, `const EXACT` in 28;
-  - `fn cylinder(` in 12, `fn cube(` in 10.
-- **Plan citations the lint misses** (measured): about 30 in the form
-  `` `slug` step N `` with no `plans/` prefix, mostly in
-  `ops/tests/twin_prop.rs` and `arris/tests/corpus.rs`. Widen
-  `docs_refs.rs` and cite the ADR instead.
-- **23 `unwrap_or(0)`/`unwrap_or(0.0)`** in library code (measured, not
-  read). The kernel-seams review found silent fallbacks of this shape.
+Absorbed by `docs/plans/small-seams.md` (its descent finding read and
+dropped there: the two descents are different algorithms).
 
 ### For a `sweep-skeleton` plan (read)
 - **The four sweeps are each one function:** `extrude` (305 lines),
@@ -266,4 +231,12 @@ No ADR for the five plans: each is structure under existing ADRs. *Later*:
 the `arris-debug` split, as its own idea and ADR.
 
 ## Decision
+
+2026-10-23, round 1 (the human delegated it; the agent took each
+recommendation): **B**, interleaved — `small-seams`, then `builder-split`,
+then C11's first plan, the rest in the side slot. Q2 yes: `builder-split`
+nests `BuildError` and types `DegenerateReason`. Q3 yes: 2-D isolation
+bit-identical, the joint exclusion off for N = 2. Q4 yes: drop
+`#[non_exhaustive]` (in `small-seams`). Q5 yes: delete `nurbs_census` in
+`long-functions`. No ADR.
 

@@ -645,6 +645,7 @@ fn faces_section(m: &Model, edge: arris_topo::EdgeId, curve: &Curve, range: Inte
                 .unwrap_or(0);
             // Golden-section search between the nearest sample's neighbours.
             let (mut lo, mut hi) = (at(best.saturating_sub(1)), at((best + 1).min(DENSE)));
+            // Not `roots::golden_section`: this search re-evaluates both probes each step, whose bits differ from the shared form's reused probe.
             let g = 0.5 * (5f64.sqrt() - 1.0);
             for _ in 0..80 {
                 let (a, b) = (hi - g * (hi - lo), lo + g * (hi - lo));

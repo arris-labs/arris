@@ -730,6 +730,7 @@ impl Reader<'_> {
     /// The farthest point of the curve from the surface between two
     /// crossings of one run, by golden section.
     fn farthest(&self, a: &Stop, b_t: f64) -> f64 {
+        // Not `roots::golden_section`: this search re-evaluates both probes each step, whose bits differ from the shared form's reused probe.
         let phi = 0.5 * (5.0f64.sqrt() - 1.0);
         let gap = |t: f64| self.gap(self.on_curve(t), a.uv);
         let (mut lo, mut hi) = (a.t, b_t);
