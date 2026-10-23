@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.9.1 — 2026-10-23
+
 - Python: `pip install arris` now finds prebuilt wheels for macOS (Apple
   silicon and Intel, 11.0 and up), Windows x86_64 and Linux on ARM
   (aarch64), beside Linux x86_64, so no Rust toolchain is needed on any of

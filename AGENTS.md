@@ -42,8 +42,8 @@ script corpus (ADR-0067).
 12 of 38 real parts at `fillet` and 3 of the script corpus's 4 refusals.
 The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22, and
 the prebuilt wheels for Linux, macOS and Windows with it, so the launch
-gate of ADR-0067 §5 is met; the first multi-platform upload waits for the
-human's next `v*` tag.
+gate of ADR-0067 §5 is met; 0.9.1 (the modelling layer and the platform
+wheels) is the release prepared for the first multi-platform upload.
 **Refactor sequence** (`docs/ideas/refactor-after-c10.md`, option B):
 `small-seams` done 2026-10-23 (each shared helper once, in the lowest crate).
 **Next:** `/plan builder-split`, then `/idea` or `/plan` for C11's first
