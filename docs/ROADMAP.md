@@ -911,6 +911,14 @@ Two lines of work that are not cycles. Neither changes a public type or a
 signature, so neither earns a minor version (`.agents/rules/git.md`
 §Tags); each stands beside whatever cycle is open (ADR-0020).
 
+**The refactor sequence** (`docs/ideas/refactor-after-c10.md`, option B).
+`small-seams` landed 2026-10-23: the union-find, golden-section minimiser,
+`next_down`, interval samples, isoline pcurves, io's number formatter and
+`read_json` each exist once; `Violation` and `Unchecked` are exhaustive;
+the docs lint catches a bare plan citation. Behaviour did not move: every
+fixture and blessed dump is byte-identical. `builder-split` is next, then
+C11's first plan.
+
 **The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`
 slice, about 110 s at worst against 312 s; the full suite runs once per plan
 at retirement, in CI, nightly, at cycle close and at release.

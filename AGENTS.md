@@ -44,9 +44,10 @@ The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22, and
 the prebuilt wheels for Linux, macOS and Windows with it, so the launch
 gate of ADR-0067 §5 is met; the first multi-platform upload waits for the
 human's next `v*` tag.
-**Next:** the decision round of `docs/ideas/refactor-after-c10.md`, then
-`/idea` or `/plan` for C11's first item; the refactor plans, draft and
-thicken in the side slot.
+**Refactor sequence** (`docs/ideas/refactor-after-c10.md`, option B):
+`small-seams` done 2026-10-23 (each shared helper once, in the lowest crate).
+**Next:** `/plan builder-split`, then `/idea` or `/plan` for C11's first
+item; `sweep-skeleton`, `one-bernstein`, `long-functions` in the side slot.
 
 ## Rules that are not derivable from the code
 

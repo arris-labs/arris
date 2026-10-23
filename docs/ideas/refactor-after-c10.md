@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Accepted (B); `small-seams` absorbed by plans/small-seams
+- Status: Accepted (B); `small-seams` done and retired 2026-10-23
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -31,8 +31,8 @@ Each finding below is **read** (the copies compared in the source) or
 ## Findings
 
 ### For a `small-seams` plan
-Absorbed by `docs/plans/small-seams.md` (its descent finding read and
-dropped there: the two descents are different algorithms).
+Done (its descent finding read and dropped: the two descents are different
+algorithms).
 
 ### For a `sweep-skeleton` plan (read)
 - **The four sweeps are each one function:** `extrude` (305 lines),
