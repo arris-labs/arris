@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::{Polygon2, discretise};
 use arris_geom::{Curve2, Surface};
-use arris_math::{Point2, Vec2};
+use arris_math::{DisjointSets, Point2, Vec2};
 use arris_topo::entity::{BodyKind, Face, Loop};
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
@@ -545,14 +545,7 @@ impl<'m> Checker<'m> {
             return;
         }
         // Union–find over the face uses, joined by every shared edge.
-        let mut parent: Vec<usize> = (0..faces.len()).collect();
-        fn find(parent: &mut [usize], mut i: usize) -> usize {
-            while parent[i] != i {
-                parent[i] = parent[parent[i]];
-                i = parent[i];
-            }
-            i
-        }
+        let mut sets = DisjointSets::new(faces.len());
         let mut owner: BTreeMap<EdgeId, usize> = BTreeMap::new();
         for (i, &face_id) in faces.iter().enumerate() {
             let Ok(face) = self.model.face(face_id) else {
@@ -561,8 +554,7 @@ impl<'m> Checker<'m> {
             for (_, _, coedge) in coedges(face) {
                 match owner.get(&coedge.edge()) {
                     Some(&j) => {
-                        let (a, b) = (find(&mut parent, i), find(&mut parent, j));
-                        parent[a] = b;
+                        sets.union(i, j);
                     }
                     None => {
                         owner.insert(coedge.edge(), i);
@@ -570,7 +562,7 @@ impl<'m> Checker<'m> {
                 }
             }
         }
-        let components: BTreeSet<usize> = (0..faces.len()).map(|i| find(&mut parent, i)).collect();
+        let components: BTreeSet<usize> = (0..faces.len()).map(|i| sets.find(i)).collect();
         if components.len() > 1 {
             self.push(Violation::ShellDisconnected {
                 shell: shell_id,

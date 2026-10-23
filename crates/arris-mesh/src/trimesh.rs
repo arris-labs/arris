@@ -4,7 +4,7 @@ use core::ops::Range;
 use std::collections::BTreeMap;
 
 use arris_check::Report;
-use arris_math::Interrupted;
+use arris_math::{DisjointSets, Interrupted};
 use arris_topo::{Body, EdgeId, FaceId, NotFound};
 
 use crate::Aabb;
@@ -447,7 +447,7 @@ impl TriMesh {
             base.push(total);
             total += part.positions.len();
         }
-        let mut sets = Classes::new(total);
+        let mut sets = DisjointSets::new(total);
         // The first occurrence of each edge: (part, its run).
         let mut first: BTreeMap<EdgeId, (usize, Range<usize>)> = BTreeMap::new();
         for (p, part) in parts.iter().enumerate() {
@@ -471,7 +471,7 @@ impl TriMesh {
                     if !same {
                         return Err(MeshError::WeldMismatch { edge: range.edge });
                     }
-                    sets.join(base[q] + i as usize, base[p] + j as usize);
+                    sets.union(base[q] + i as usize, base[p] + j as usize);
                 }
             }
         }
@@ -637,31 +637,6 @@ impl TriMesh {
     /// The bounding box of the positions, or `None` for no positions.
     pub fn aabb(&self) -> Option<Aabb> {
         Aabb::of_points(&self.positions)
-    }
-}
-
-/// Disjoint sets over `0..n` with the lowest member as the root, so the
-/// numbering a weld derives from them is deterministic.
-struct Classes(Vec<usize>);
-
-impl Classes {
-    fn new(n: usize) -> Self {
-        Classes((0..n).collect())
-    }
-
-    fn find(&mut self, mut i: usize) -> usize {
-        while self.0[i] != i {
-            self.0[i] = self.0[self.0[i]];
-            i = self.0[i];
-        }
-        i
-    }
-
-    fn join(&mut self, a: usize, b: usize) {
-        let (a, b) = (self.find(a), self.find(b));
-        if a != b {
-            self.0[a.max(b)] = a.min(b);
-        }
     }
 }
 

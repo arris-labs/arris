@@ -2882,6 +2882,7 @@ impl Builder {
         edge_shell: &BTreeMap<EdgeRef, usize>,
         shell: usize,
     ) -> usize {
+        // Not `arris_math::DisjointSets`: the slots are sparse (a killed vertex leaves a hole) and the sets span only the boundary's own vertices.
         let mut parent: BTreeMap<VertexRef, VertexRef> = BTreeMap::new();
         fn root(parent: &mut BTreeMap<VertexRef, VertexRef>, v: VertexRef) -> VertexRef {
             let mut r = v;

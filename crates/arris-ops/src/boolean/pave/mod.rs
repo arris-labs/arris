@@ -15,7 +15,7 @@ use std::sync::{Mutex, PoisonError};
 
 use arris_geom::region2::Side;
 use arris_geom::{Curve, GeomError, Surface};
-use arris_math::{Aabb, Interval, Meter, Point2, Point3, Precision, Tolerance};
+use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance};
 use arris_topo::{Body, EdgeId, FaceId, Model, Shape, VertexId};
 
 use super::faces::{EdgeInfo, FaceInfo};
@@ -132,14 +132,7 @@ struct Candidate {
 /// index in its component: the partition does not depend on the nodes'
 /// order, only the labels do.
 fn components(nodes: &[Candidate]) -> Vec<usize> {
-    fn root(parent: &mut [usize], mut i: usize) -> usize {
-        while parent[i] != i {
-            parent[i] = parent[parent[i]];
-            i = parent[i];
-        }
-        i
-    }
-    let mut parent: Vec<usize> = (0..nodes.len()).collect();
+    let mut sets = DisjointSets::new(nodes.len());
     for (i, p) in nodes.iter().enumerate() {
         for (j, q) in nodes.iter().enumerate().skip(i + 1) {
             let same = (p.point - q.point).norm() <= p.tolerance + q.tolerance
@@ -147,11 +140,10 @@ fn components(nodes: &[Candidate]) -> Vec<usize> {
             if !same {
                 continue;
             }
-            let (ri, rj) = (root(&mut parent, i), root(&mut parent, j));
-            parent[ri.max(rj)] = ri.min(rj);
+            sets.union(i, j);
         }
     }
-    (0..nodes.len()).map(|i| root(&mut parent, i)).collect()
+    (0..nodes.len()).map(|i| sets.find(i)).collect()
 }
 
 /// An end of an edge piece: the edge's own vertex, or the section vertex

@@ -69,7 +69,7 @@
 //! first, so a pair far from the origin has the floors of one at it.
 
 use arris_math::real;
-use arris_math::{Meter, Point3, Tolerance, Vec3, wrap_angle};
+use arris_math::{DisjointSets, Meter, Point3, Tolerance, Vec3, wrap_angle};
 
 use crate::bernstein::{self, Binomials, sign_change_candidates};
 use crate::bernstein2::{Halving, Poly2, Zero2, common_zeros_with};
@@ -1577,29 +1577,19 @@ impl<'p, 'c> System<'p, 'c> {
 /// Boxes grouped into connected regions, touching ones together, each
 /// region in the order of its first box.
 fn regions(boxes: &[Zero2]) -> Vec<Vec<Zero2>> {
-    fn root(parent: &mut [usize], mut i: usize) -> usize {
-        while parent[i] != i {
-            parent[i] = parent[parent[i]];
-            i = parent[i];
-        }
-        i
-    }
-    let mut parent: Vec<usize> = (0..boxes.len()).collect();
+    let mut sets = DisjointSets::new(boxes.len());
     for i in 0..boxes.len() {
         for j in i + 1..boxes.len() {
             let touch = (0..2)
                 .all(|k| boxes[i].lo[k] <= boxes[j].hi[k] && boxes[j].lo[k] <= boxes[i].hi[k]);
             if touch {
-                let (ri, rj) = (root(&mut parent, i), root(&mut parent, j));
-                if ri != rj {
-                    parent[ri.max(rj)] = ri.min(rj);
-                }
+                sets.union(i, j);
             }
         }
     }
     let mut out: std::collections::BTreeMap<usize, Vec<Zero2>> = Default::default();
     for (i, z) in boxes.iter().enumerate() {
-        let r = root(&mut parent, i);
+        let r = sets.find(i);
         out.entry(r).or_default().push(*z);
     }
     out.into_values().collect()

@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::{Classification, Classifier, ClassifyError, lumps};
 use arris_geom::{GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
-use arris_math::{Aabb, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
 use arris_topo::builder::Builder;
 use arris_topo::entity::BodyKind;
 use arris_topo::{
@@ -1193,21 +1193,13 @@ impl<'m> Build<'m> {
                 },
             });
         }
-        let mut parent: Vec<usize> = (0..self.kept.len()).collect();
-        fn root(parent: &mut [usize], mut i: usize) -> usize {
-            while parent[i] != i {
-                parent[i] = parent[parent[i]];
-                i = parent[i];
-            }
-            i
-        }
+        let mut sets = DisjointSets::new(self.kept.len());
         let mut owner: BTreeMap<ERef, usize> = BTreeMap::new();
         for (k, piece) in self.kept.iter().enumerate() {
             for u in piece.loops.iter().flatten() {
                 match owner.get(&u.edge) {
                     Some(&j) => {
-                        let (a, b) = (root(&mut parent, k), root(&mut parent, j));
-                        parent[a] = b;
+                        sets.union(k, j);
                     }
                     None => {
                         owner.insert(u.edge, k);
@@ -1218,7 +1210,7 @@ impl<'m> Build<'m> {
         let mut shell_of_root: BTreeMap<usize, usize> = BTreeMap::new();
         let mut shells: Vec<Vec<usize>> = Vec::new();
         for k in 0..self.kept.len() {
-            let r = root(&mut parent, k);
+            let r = sets.find(k);
             let shell = *shell_of_root.entry(r).or_insert(shells.len());
             if shell == shells.len() {
                 shells.push(Vec::new());
@@ -1316,21 +1308,13 @@ impl<'m> Build<'m> {
             }
         }
         corners.into_iter().find_map(|(v, cs)| {
-            let mut parent: Vec<usize> = (0..cs.len()).collect();
-            fn root(parent: &mut [usize], mut i: usize) -> usize {
-                while parent[i] != i {
-                    parent[i] = parent[parent[i]];
-                    i = parent[i];
-                }
-                i
-            }
+            let mut sets = DisjointSets::new(cs.len());
             let mut owner: BTreeMap<ERef, usize> = BTreeMap::new();
             for (k, c) in cs.iter().enumerate() {
                 for e in c {
                     match owner.get(e) {
                         Some(&j) => {
-                            let (a, b) = (root(&mut parent, k), root(&mut parent, j));
-                            parent[a] = b;
+                            sets.union(k, j);
                         }
                         None => {
                             owner.insert(*e, k);
@@ -1338,7 +1322,7 @@ impl<'m> Build<'m> {
                     }
                 }
             }
-            let fans = (0..cs.len()).filter(|&k| root(&mut parent, k) == k).count();
+            let fans = (0..cs.len()).filter(|&k| sets.find(k) == k).count();
             (fans > 1).then_some(v)
         })
     }

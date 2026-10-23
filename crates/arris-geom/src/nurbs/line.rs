@@ -82,7 +82,7 @@
 //! round is `Coincident`, decided on [`CONIC_SAMPLES`] points.
 
 use arris_math::real;
-use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, Vec3};
+use arris_math::{DisjointSets, Frame, Interval, Meter, Point2, Point3, Tolerance, Vec3};
 
 use super::NurbsSurface;
 use super::project::{LOCATION, Patch};
@@ -850,28 +850,20 @@ impl Query<'_> {
         let mut boxes: Vec<Found> = front.iter().map(|z| piece.found(z)).collect();
         boxes.sort_by(order);
         // Union-find over boxes that touch, in a fixed order.
-        let mut parent: Vec<usize> = (0..boxes.len()).collect();
-        fn root(parent: &mut [usize], mut i: usize) -> usize {
-            while parent[i] != i {
-                parent[i] = parent[parent[i]];
-                i = parent[i];
-            }
-            i
-        }
+        let mut sets = DisjointSets::new(boxes.len());
         for i in 0..boxes.len() {
             for j in i + 1..boxes.len() {
                 let touch = (0..2)
                     .all(|k| boxes[i].lo[k] <= boxes[j].hi[k] && boxes[j].lo[k] <= boxes[i].hi[k]);
                 if touch {
-                    let (a, b) = (root(&mut parent, i), root(&mut parent, j));
-                    parent[a.max(b)] = a.min(b);
+                    sets.union(i, j);
                 }
             }
         }
         let mut regions: Vec<Vec<usize>> = Vec::new();
         let mut index = vec![usize::MAX; boxes.len()];
         for i in 0..boxes.len() {
-            let r = root(&mut parent, i);
+            let r = sets.find(i);
             if index[r] == usize::MAX {
                 index[r] = regions.len();
                 regions.push(Vec::new());

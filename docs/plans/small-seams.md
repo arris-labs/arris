@@ -75,10 +75,13 @@ robustness or bound has to be established here.
   one (pcurve, traced, io's `worst_gap` by negating the gap) moved, the
   re-evaluating one (`torus_walk` ×2, `spline_nurbs`, debug's census) is
   not bit-identical and stays with a comment.
-- [ ] Step 2 **[2]** — `DisjointSets` with a property test against a naive
+- [x] Step 2 **[2]** — `DisjointSets` with a property test against a naive
   partition; the seven copies moved (ops ×3, geom ×2, check, mesh; the
   `BTreeMap` one in `topo/builder.rs` over `VertexRef` indices if its root
-  order matches). Byte-identical.
+  order matches). Byte-identical. *Settled:* result.rs ×2 and check
+  joined with the higher root winning, but only count roots or number
+  groups by first member, so the partition and every output are the same;
+  `topo/builder.rs` stays (sparse slots), with a comment.
 - [ ] Step 3 **[2]** — read the ~32 `unwrap_or(0)`/`unwrap_or(0.0)` in
   library code: a justified one gets a typed default or a comment; a
   silent fallback becomes a regression fixture under
