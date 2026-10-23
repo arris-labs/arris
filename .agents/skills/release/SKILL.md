@@ -62,14 +62,15 @@ prepares the commit the tag points at. The scheme is
    ```
 
    Remind them to approve `crates-io` and `pypi` with the tag's CI run in
-   front of them — each is the last checkpoint before a version exists
+   front of them (short when it rests on a green base; its summary says which) — each is the last checkpoint before a version exists
    forever. The first PyPI upload also needs the pending publisher
    registered (`release.yml`'s header).
-9. **After they push, cancel `main`'s duplicate CI run** (`gh run list
-   --workflow CI --limit 4`; ~3 h each) **only if** `git diff --name-only
-   vX.Y.Z main` lists nothing but `Cargo.toml`, `Cargo.lock`, `*.md`,
-   `.agents/`, `.githooks/`. Never cancel the tag's run. Say which run was
-   cancelled and why.
+9. **After they push, read the runs.** The version-only commits (the
+   release commit, the tag, the `-dev` commit) rest on the nearest green
+   commit of `main` (`tools/ci-reuse.sh`, ADR-0069): their runs are minutes,
+   and the `reused` job's summary names the base. Nothing is cancelled. If a
+   run shows `reuse` printing `false`, the diff left the allow-list: say
+   what, and expect the full run.
 
 ## When a publish fails partway
 

@@ -1973,6 +1973,10 @@ B-Rep).
   area, the rest of `sweep/` and `blend/` the whole corpus); the pre-commit hook runs what it says, `/retire-plan` the
   full profile at 256 cases, CI at 1000. `tools/stop-gate.sh` stops a
   stuck hook or test run in this checkout, and only in it.
+- **`tools/ci-reuse.sh`**: whether a push needs the suite again (ADR-0069).
+  Finds the nearest green `main` commit, holds the diff to an allow-list of
+  version-only and prose changes and prints `skip=true|false`; fails
+  closed. `--self-test` runs it over scratch repositories.
 - **`tools/test-timings.sh`**: the suite's wall clock, per test binary and
   whole, at whatever `ARRIS_PROPTEST_CASES` is set to; `--profile` times one
   nextest profile and lists its slowest tests; `--slow-set` prints the

@@ -78,7 +78,7 @@ and the tests are mechanical; **[2]** careful; **[3]** unproven.
   prints `false` (the branch changes `tools/` and `.github/`), every job
   runs, the four `parallel` shards are green; record each shard's time
   and set the count so none is more than ~1.5× the median.
-- [ ] Step 6 **[1]** — ADR-0069 and its README line; `.agents/rules/git.md`
+- [x] Step 6 **[1]** — ADR-0069 and its README line; `.agents/rules/git.md`
   (what CI runs on a release); `/release` skill steps 1 and 9 (the tag's
   run is short and names its base; the duplicate-run check goes if the
   `main` pushes no longer run); `docs/ROADMAP.md` lean-gate paragraph.

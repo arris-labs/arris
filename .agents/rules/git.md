@@ -24,7 +24,11 @@
   `/close-cycle` and `/release`. CI runs it at 1000 cases plus the
   `oracle`, `wasm` (which runs the determinism corpus on `wasm32-wasip1`),
   `parallel` and `python` jobs no local gate runs; the
-  human reads CI before a push that matters.
+  human reads CI before a push that matters. A push whose diff from the
+  nearest green commit of `main` is version strings, the changelog and
+  prose no test reads (`tools/ci-reuse.sh`, ADR-0069) skips the
+  hours-long jobs: a release's CI run rests on the commit it was cut from
+  and is short.
 - Commit **directly to `main`**, one plan step per commit. Branch
   (`plan/<slug>`, rebased, `merge --ff-only`, deleted after) only when a
   plan may be thrown away or the human asked to review first.

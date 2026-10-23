@@ -923,6 +923,12 @@ C11's first plan.
 slice, about 110 s at worst against 312 s; the full suite runs once per plan
 at retirement, in CI, nightly, at cycle close and at release.
 
+**The reuse gate** (ADR-0069). A push whose diff from the nearest green
+commit of `main` is version-only (strings, changelog, prose no test reads)
+skips CI's hours-long jobs, which `tools/ci-reuse.sh` decides and fails
+closed on; a release costs one full run, not three. The `parallel` job is
+sharded four ways like `test`.
+
 **The measuring harness.** It measures what decides the cycle after C4
 (ADR-0024). The oracle answers from a cache keyed on every input it
 reads (`target/oracle-cache/`, bypassed by `ARRIS_ORACLE_CACHE=off` in CI
