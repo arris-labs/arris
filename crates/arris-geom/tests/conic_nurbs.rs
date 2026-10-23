@@ -6,6 +6,7 @@
 //! tolerances off a miss. `tests/oracle.rs` holds the same hits to Open
 //! CASCADE's.
 
+use arris_debug::testing::tol;
 use core::f64::consts::TAU;
 
 use arris_debug::prop::geom::{RADIUS_RANGE, surface};
@@ -14,12 +15,8 @@ use arris_geom::{
     Curve, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, NurbsSurface, Surface,
     intersect_curve_surface,
 };
-use arris_math::{Frame, Interval, Meter, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Interval, Meter, Point3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn frame(origin: [f64; 3], z: [f64; 3]) -> Frame {
     Frame::from_z(Point3::from(origin), Vec3::from(z)).unwrap()

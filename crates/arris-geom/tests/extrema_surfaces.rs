@@ -6,6 +6,7 @@
 //! operands. Where the surfaces meet the answer says nothing at distance
 //! zero, and the sampled minima are held only away from it.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::FRAC_PI_2;
 
@@ -14,12 +15,8 @@ use arris_debug::prop::{DEFAULT_SCALE, finite_f64};
 use arris_geom::{
     GeomError, NurbsSurface, Surface, SurfaceExtrema, SurfaceKind, extrema_surface_surface,
 };
-use arris_math::{Frame, Meter, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Meter, Point3, Tolerance, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn p(x: [f64; 3]) -> Point3 {
     Point3::new(x[0], x[1], x[2])

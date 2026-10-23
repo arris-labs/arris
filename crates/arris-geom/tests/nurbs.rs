@@ -2,6 +2,7 @@
 //! NURBS Book* says they do (`docs/DATA-MODEL.md` §NURBS), and the
 //! analytic dispatches treat the `Nurbs` variants exhaustively.
 
+use arris_debug::testing::EXACT;
 use core::f64::consts::FRAC_1_SQRT_2;
 
 use arris_debug::prop::geom::{nurbs_curve, nurbs_surface, plane};
@@ -15,7 +16,6 @@ use arris_math::{Frame, Interval, Point3, Precision, Vec3};
 use proptest::prelude::*;
 
 /// Closed form against evaluation.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// Central differences against the analytic derivatives. The shared
 /// stencils (`arris_debug::testing`) are fourth order, because a
 /// rational piece whose weights differ by a factor of four has higher

@@ -5,6 +5,7 @@
 //! leads to among the answer, and the nearest foot of a point the
 //! projection's.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI};
 
@@ -14,12 +15,8 @@ use arris_geom::{
     Curve, CurveSurfaceExtrema, GeomError, NurbsSurface, Surface, SurfaceKind,
     extrema_curve_surface,
 };
-use arris_math::{Frame, Meter, Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Frame, Meter, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn p(x: [f64; 3]) -> Point3 {
     Point3::new(x[0], x[1], x[2])

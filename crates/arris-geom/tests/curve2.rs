@@ -2,6 +2,7 @@
 //! and `fit_curve2` approximates the ellipse-on-cylinder sinusoid at the
 //! caller's parameter within the tolerance, or says it cannot.
 
+use arris_debug::testing::EXACT;
 use arris_math::real;
 use core::f64::consts::TAU;
 
@@ -11,7 +12,6 @@ use arris_math::{Frame2, Handedness, Interval, Point2, Vec2};
 use proptest::prelude::*;
 
 /// Closed form against evaluation.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// The tolerance the sinusoid is fitted to: the order of a model's edge
 /// tolerance on features at the default scale.
 const FIT_TOL: f64 = 1e-7;

@@ -5,6 +5,7 @@
 //! the result, and a brute-force sweep of rulings finding no hit the
 //! branches missed.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::TAU;
 
@@ -13,12 +14,8 @@ use arris_geom::{
     BranchEnd, Curve, CurveSurfaceIntersection, GeomError, SectionBranch, SectionFault,
     SectionTrace, Surface, intersect_curve_surface, trace_quadrics,
 };
-use arris_math::{Aabb, Frame, Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Aabb, Frame, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn cube(half: f64) -> Aabb {
     Aabb {

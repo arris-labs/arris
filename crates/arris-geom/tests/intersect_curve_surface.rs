@@ -9,6 +9,7 @@
 //! section edge needs (ADR-0004), and the quadric arms what an operand
 //! face's circle needs of the face it is cut by (ADR-0020).
 
+use arris_debug::testing::{EXACT, tol};
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
@@ -19,19 +20,14 @@ use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box};
 use arris_geom::{
     Curve, CurveSurfaceHit, CurveSurfaceIntersection, Surface, intersect_curve_surface,
 };
-use arris_math::{Frame, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Point3, Vec3};
 use proptest::prelude::*;
 
 /// Hit points against both operands, expected parameters in length
 /// units, and expected points.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// Parameters sampled around a circle to count the sign changes of its
 /// distance to a cylinder.
 const SAMPLES: usize = 3600;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// A region every traced section of these tests lies in; the closed
 /// forms ignore it.

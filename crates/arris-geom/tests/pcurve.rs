@@ -11,6 +11,7 @@
 //! band outwards. No surface is `Unsupported`; a NURBS one's arm is
 //! `tests/nurbs_pcurve.rs`'s.
 
+use arris_debug::testing::{EXACT, tol};
 use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
@@ -20,17 +21,12 @@ use arris_geom::{
     Curve, Curve2, Curve2Kind, GeomError, MAX_FIT_SPANS, MeetKind, NurbsCurve,
     PCURVE_SINGULAR_BAND, Surface, intersect_surfaces, pcurve_on, project_to_plane, trace_torus,
 };
-use arris_math::{Frame, Interval, Point2, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Interval, Point2, Point3, Vec3};
 use proptest::prelude::*;
 
 /// Exact arms: the image matches the curve to rounding at the scale.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// Parameters the image is checked at per case, both ends included.
 const CHECKS: usize = 64;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// A region every traced section of these tests lies in; the closed
 /// forms ignore it.

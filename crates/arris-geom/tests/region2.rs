@@ -4,6 +4,7 @@
 //! `point_side` and `interior_point` answer for a region what a
 //! boolean's piece classification asks (ADR-0004).
 
+use arris_debug::testing::EXACT;
 use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
@@ -18,9 +19,6 @@ use arris_math::predicates::{Sign, orient2d};
 use arris_math::{Frame2, Handedness, Interval, Point2, Point3, UnitVec2, Vec2};
 use arris_topo::{Model, Orientation};
 use proptest::prelude::*;
-
-/// Rounding at the scale.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 
 fn line_between(a: Point2, b: Point2) -> (Curve2, Interval) {
     let d = b - a;

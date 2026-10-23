@@ -9,18 +9,15 @@
 
 mod common;
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use arris_debug::prop::finite_f64;
 use arris_debug::prop::geom::{cylinder, sphere, torus};
 use arris_geom::{Curve, Curve2, GeomError, Surface, pcurve_on};
-use arris_math::{Frame, Interval, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Interval, Point3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// Where along a pcurve its image is compared with the curve: far denser
 /// than the fit's own check parameters, so what is held is the curve and

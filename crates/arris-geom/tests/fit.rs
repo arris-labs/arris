@@ -2,16 +2,16 @@
 //! parameter within the tolerance, `fit_curve_periodic` a closed one with
 //! a wrapping knot vector, and both say why when they cannot.
 
+use arris_debug::testing::EXACT;
 use arris_math::real;
 use core::f64::consts::TAU;
 
-use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, pose, radius};
+use arris_debug::prop::{check, finite_f64, pose, radius};
 use arris_geom::{FitError, GeomError, MAX_FIT_SPANS, NurbsCurve, fit_curve, fit_curve_periodic};
 use arris_math::{Interval, Point3};
 use proptest::prelude::*;
 
 /// Closed form against evaluation.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// The tolerance the curves are fitted to: the order of a model's edge
 /// tolerance on features at the default scale.
 const FIT_TOL: f64 = 1e-7;

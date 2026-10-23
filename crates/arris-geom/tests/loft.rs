@@ -3,16 +3,13 @@
 //! from their start points, one knot vector across sections, and each
 //! refusal by name.
 
+use arris_debug::testing::tol;
 use arris_geom::{
     LoftError, LoopNurbs, MatchedLoop, Profile, ProfileLoop, ProfileSegment, match_sections,
 };
-use arris_math::{Frame, Point2, Point3, Precision, Tolerance, Vec3, real};
+use arris_math::{Frame, Point2, Point3, Vec3, real};
 
 const EXACT: f64 = 1e-12;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn p(u: f64, v: f64) -> Point2 {
     Point2::new(u, v)

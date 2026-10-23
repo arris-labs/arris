@@ -8,6 +8,7 @@
 //! touching it; a segment ending on the surface a hit at its end, not a
 //! touch. `tests/oracle.rs` holds fitted pairs to Open CASCADE's.
 
+use arris_debug::testing::tol;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::{RADIUS_RANGE, surface};
@@ -16,12 +17,8 @@ use arris_geom::{
     Curve, CurveSurfaceHit, CurveSurfaceIntersection, NurbsCurve, NurbsSurface, Surface,
     intersect_curve_surface,
 };
-use arris_math::{Frame, Interval, Meter, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Interval, Meter, Point3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn meet(c: &Curve, s: &Surface) -> CurveSurfaceIntersection {
     intersect_curve_surface(c, s, tol(), &mut Meter::default())

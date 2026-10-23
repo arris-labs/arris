@@ -5,6 +5,7 @@
 //! curves to 1e-9. The oracle is the parametrisation's ground truth
 //! (`docs/DATA-MODEL.md` §Conventions); a mismatch here is fixed in Arris.
 
+use arris_debug::testing::tol;
 use std::collections::BTreeMap;
 
 use arris_debug::fixtures::geom::{
@@ -17,7 +18,7 @@ use arris_geom::{
     Surface, SurfaceIntersection, SurfaceKind, extrema_curve_curve, extrema_curve_surface,
     extrema_surface_surface, intersect_curve_surface, intersect_curves, intersect_surfaces,
 };
-use arris_math::{Point3, Precision, Tolerance, Vec3};
+use arris_math::{Point3, Vec3};
 
 /// Where a curve touches a surface the crossing's location is
 /// conditioned as the square root of the rounding — a touch perturbed
@@ -26,10 +27,6 @@ use arris_math::{Point3, Precision, Tolerance, Vec3};
 /// there) are held to this against Arris's tangent hit, and so are its
 /// one or two rulings where two parallel cylinders touch.
 const TOUCH: f64 = 1e-6;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// A region every traced section of these tests lies in; the closed
 /// forms ignore it.

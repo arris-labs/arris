@@ -10,7 +10,7 @@
 use std::collections::BTreeSet;
 
 use arris_geom::{CurveEval, SurfaceEval};
-use arris_math::{Point3, Vec3};
+use arris_math::{Point3, Precision, Tolerance, Vec3};
 use arris_ops::measure::MassProperties;
 use arris_topo::provenance::{Origin, Provenance, Relation, Role, SweepPart};
 use arris_topo::{Body, EntityId, Model, Orientation, Shape};
@@ -18,6 +18,15 @@ use proptest::test_runner::TestCaseError;
 
 /// The relative tolerance [`close`] and [`close_param`] hold to.
 pub const REL: f64 = 1e-9;
+
+/// The bound a closed form holds to against evaluation on the property
+/// tests' default scale: `1e-12 · DEFAULT_SCALE`.
+pub const EXACT: f64 = 1e-12 * crate::prop::DEFAULT_SCALE;
+
+/// The tolerance of the default precision, as most tests state it.
+pub fn tol() -> Tolerance {
+    Precision::DEFAULT.tolerance()
+}
 
 /// The step [`d1_stencil`] and [`d2_stencil`] sample at.
 pub const FD_STEP: f64 = 1e-4;

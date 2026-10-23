@@ -13,6 +13,7 @@
 //! was traced from, two fits of it in two regions within half a
 //! tolerance of each other (ADR-0022). Every other surface pair — two NURBS patches — is `Unsupported`.
 
+use arris_debug::testing::{EXACT, tol};
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
@@ -32,7 +33,6 @@ use proptest::prelude::*;
 
 /// Points on the result curves against both surfaces, and the closed
 /// forms of the ellipse's axes and the tangent ruling.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// The relative rounding of a closed-form point and of its implicit
 /// distance, both taken as differences of coordinates of the point's
 /// magnitude: a grazing plane's ellipse is centred up to 1e6 out, where
@@ -40,10 +40,6 @@ const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 const ROUNDING: f64 = 8.0 * f64::EPSILON;
 /// Parameters sampled along every result curve.
 const SAMPLES: usize = 17;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// A region every traced section of these tests lies in — two cylinders
 /// in a quartic pose meet within their radii of both axes, at most a few

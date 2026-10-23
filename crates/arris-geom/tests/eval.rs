@@ -3,6 +3,7 @@
 //! its periods are periods and its singular loci are reported
 //! (`docs/DATA-MODEL.md` §Geometry).
 
+use arris_debug::testing::EXACT;
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
@@ -15,7 +16,6 @@ use proptest::prelude::*;
 
 /// Closed form against evaluation, and evaluation against itself one
 /// period later.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// Central differences against the analytic derivatives.
 const DIFFERENCE: f64 = 1e-6 * DEFAULT_SCALE;
 /// A unit vector's length and two orthogonal unit vectors' dot product.

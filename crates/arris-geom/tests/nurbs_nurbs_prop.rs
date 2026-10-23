@@ -12,6 +12,7 @@
 //! answer and not a wrong one, and the ignored test below holds two of
 //! them to the answer they should give.
 
+use arris_debug::testing::tol;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::finite_f64;
@@ -21,12 +22,8 @@ use arris_geom::{
     intersect_surfaces,
 };
 use arris_math::nalgebra::UnitQuaternion;
-use arris_math::{Aabb, Frame, Interval, Isometry, Meter, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Aabb, Frame, Interval, Isometry, Meter, Point3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// Half the side of the cube the sections are compared in.
 const CUBE: f64 = 30.0;

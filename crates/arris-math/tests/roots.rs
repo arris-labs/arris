@@ -4,6 +4,7 @@
 //! bracket.
 
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64};
+use arris_debug::testing::EXACT;
 use arris_math::Interval;
 use arris_math::roots::{
     POLYNOMIAL_ROUNDING, Roots, cubic, newton_in_interval, quadratic, quartic,
@@ -12,7 +13,6 @@ use proptest::collection::vec;
 use proptest::prelude::*;
 
 /// The floor on a recovered root's error.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// Roots (and real parts, and imaginary parts) are built at least this
 /// far apart, so the polynomial can tell them apart.
 const SEPARATION: f64 = 1e-3 * DEFAULT_SCALE;

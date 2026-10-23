@@ -7,6 +7,7 @@
 //! `Coincident`, and `curves_coincide` says so; two NURBS curves are the
 //! same spline, apart, or `Unsupported`.
 
+use arris_debug::testing::{EXACT, tol};
 use arris_math::real;
 use core::f64::consts::{FRAC_1_SQRT_2, TAU};
 
@@ -16,11 +17,10 @@ use arris_geom::{
     Curve, CurveCurveHit, CurveIntersection, CurveSurfaceIntersection, NurbsCurve, Surface,
     curves_coincide, fit_curve_periodic, intersect_curve_surface, intersect_curves,
 };
-use arris_math::{Frame, Interval, Isometry, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Interval, Isometry, Point3, Vec3};
 use proptest::prelude::*;
 
 /// Hit points against both operands and against the exact arms.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// What a fitted ellipse is held to against the ellipse.
 const FIT: f64 = 1e-10;
 /// How far a crossing of the fitted ellipse may be from the ellipse's
@@ -37,10 +37,6 @@ const TOUCH: f64 = 1e-6;
 
 /// The angle of the circle the rational ellipse's seam is at.
 const SEAM: f64 = 0.3;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn fail<T>(msg: String) -> Result<T, TestCaseError> {
     Err(TestCaseError::fail(msg))

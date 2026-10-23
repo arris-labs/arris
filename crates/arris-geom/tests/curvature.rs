@@ -4,18 +4,15 @@
 //! tangent pair never has equal curvatures across its ruling
 //! (docs/ARCHITECTURE.md §Operations, the curvature rule).
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 use arris_geom::{Curve, MeetKind, NurbsSurface, Surface, SurfaceIntersection, intersect_surfaces};
-use arris_math::{Frame, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Point3, Vec3};
 
 /// Closed form against the second fundamental form, at unit scale.
 const EXACT: f64 = 1e-12;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// A region every traced section of these tests lies in; the closed
 /// forms ignore it.

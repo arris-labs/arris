@@ -3,6 +3,7 @@
 //! lands within a bounded time on the section the backlog calls six
 //! minutes long, and a budget at the query's own count changes nothing.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -11,13 +12,7 @@ use arris_geom::{
     Curve, FitError, GeomError, Surface, fit_curve, intersect_curve_surface, intersect_surfaces,
     trace_torus,
 };
-use arris_math::{
-    Aabb, Control, Frame, Interrupted, Interval, Meter, Point3, Precision, Stop, Tolerance, Vec3,
-};
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
+use arris_math::{Aabb, Control, Frame, Interrupted, Interval, Meter, Point3, Stop, Vec3};
 
 /// The thin section of the backlog: a torus of major radius 1000 whose
 /// tube is nearly as wide (900), against an elliptic cylinder of

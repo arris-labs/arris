@@ -3,6 +3,7 @@
 //! closed-form distance, recovers a displaced point's parameters, and the
 //! ambiguous loci are reported rather than guessed.
 
+use arris_debug::testing::EXACT;
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 
@@ -14,9 +15,6 @@ use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box};
 use arris_geom::{AmbiguousLocus, Curve, GeomError, GeomKind, Surface, SurfaceProjection};
 use arris_math::Point3;
 use proptest::prelude::*;
-
-/// Distances, and parameter errors measured in length units.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 
 /// `|a − b|` on a circle of period `period`, or plainly when there is
 /// none.

@@ -7,6 +7,7 @@
 //! NURBS curves meet where the distance between them is stationary and
 //! within the tolerance, the same either way round (ADR-0004).
 
+use arris_debug::testing::{EXACT, tol};
 use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
@@ -15,15 +16,8 @@ use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box, unit_vec
 use arris_geom::{
     Curve, CurveCurveHit, CurveIntersection, GeomError, curves_coincide, intersect_curves,
 };
-use arris_math::{Frame, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Point3, Tolerance, Vec3};
 use proptest::prelude::*;
-
-/// Hit points against both operands and against the closed forms.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn fail<T>(msg: String) -> Result<T, TestCaseError> {
     Err(TestCaseError::fail(msg))

@@ -104,9 +104,13 @@ robustness or bound has to be established here.
   bullet. *Settled:* two `_ =>` arms held them (`offset`'s self-intersection
   filter, now every other `Violation` named; `debug`'s corpus NURBS filter,
   whose arm was unreachable and went).
-- [ ] Step 7 **[1]** — test helpers: `close`, `tol`, `EXACT` from
+- [x] Step 7 **[1]** — test helpers: `close`, `tol`, `EXACT` from
   `arris_debug::testing` in every test file that defines its own equal
-  copy.
+  copy. *Settled:* `close` was already shared; the local ones take a `rel`
+  or `floor` argument or a `found`/`wanted` pair, so they are different
+  functions and stay. `tol()` (24 geom files) and `EXACT = 1e-12 ·
+  DEFAULT_SCALE` (identical copies) moved; the `1e-12`, `1e-9` and
+  `SCALE` ones are different bounds and stay.
 - [ ] Step 8 **[1]** — `cylinder`/`cube` test builders into
   `arris_debug::testing`, the copies that match moved.
 - [ ] Step 9 **[1]** — `docs_refs.rs` widened (with its own planted-file

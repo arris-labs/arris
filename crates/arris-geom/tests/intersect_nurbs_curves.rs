@@ -4,6 +4,7 @@
 //! closed form, point for point and touch for touch; a curve beside its
 //! twin is `Coincident`, and the argument order does not reach the answer.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::TAU;
 
@@ -11,7 +12,7 @@ use arris_debug::prop::{check, frame, radius};
 use arris_geom::{
     Curve, CurveCurveHit, CurveIntersection, NurbsCurve, curves_coincide, intersect_curves,
 };
-use arris_math::{Frame, Interval, Meter, Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Frame, Interval, Meter, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
 
 /// How far a twin's hit may be from the closed form's: to rounding where
@@ -21,10 +22,6 @@ use proptest::prelude::*;
 /// the curves are within the tolerance of each other anyway.
 const CROSSING: f64 = 1e-9;
 const TOUCH: f64 = 1e-4;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 /// The exact NURBS twin of a line, circle or ellipse: a line over
 /// `[-reach, reach]`, a conic over its turn.

@@ -11,7 +11,8 @@ use arris_math::{Interval, Point3};
 use proptest::prelude::*;
 
 /// Closed form against evaluation, as in `tests/nurbs.rs`.
-pub const EXACT: f64 = 1e-12 * arris_debug::prop::DEFAULT_SCALE;
+#[allow(unused_imports)] // each test crate uses some of it
+pub use arris_debug::testing::EXACT;
 
 /// A range of angle: any start, a sweep from a few hundredths of a radian
 /// to a full turn, one time in five exactly a turn.

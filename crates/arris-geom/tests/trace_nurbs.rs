@@ -6,6 +6,7 @@
 //! result and a dense scan of the domain finding no point of the other
 //! surface away from every branch.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
 
@@ -15,12 +16,8 @@ use arris_geom::{
     SectionTrace, Surface, SurfaceIntersection, fit_branch, fit_branch_pcurve, intersect_surfaces,
     trace_section, trace_torus,
 };
-use arris_math::{Aabb, Frame, Interval, Meter, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Aabb, Frame, Interval, Meter, Point3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn frame(origin: [f64; 3], z: [f64; 3]) -> Frame {
     Frame::from_z(Point3::from(origin), Vec3::from(z)).unwrap()

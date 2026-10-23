@@ -6,16 +6,13 @@
 //! past the domain's edge, and two NURBS surfaces still `Unsupported`.
 //! `tests/oracle.rs` holds the same section to Open CASCADE's.
 
+use arris_debug::testing::tol;
 use core::f64::consts::{FRAC_PI_2, PI};
 
 use arris_geom::{
     Curve, GeomError, MeetKind, NurbsSurface, Surface, SurfaceIntersection, intersect_surfaces,
 };
-use arris_math::{Aabb, Frame, Interval, Meter, Point3, Precision, Tolerance, Vec3};
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
+use arris_math::{Aabb, Frame, Interval, Meter, Point3, Vec3};
 
 fn frame(origin: [f64; 3], z: [f64; 3]) -> Frame {
     Frame::from_z(Point3::from(origin), Vec3::from(z)).unwrap()

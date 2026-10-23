@@ -9,6 +9,7 @@
 //! of its surfaces; an open curve's end on the surface is a hit and no
 //! touch; and a periodic curve's hits come back inside its domain.
 
+use arris_debug::testing::{EXACT, tol};
 use arris_math::real;
 use core::f64::consts::{FRAC_1_SQRT_2, TAU};
 
@@ -18,11 +19,10 @@ use arris_geom::{
     Curve, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, MAX_DEGREE, NurbsCurve, Surface,
     SurfaceIntersection, fit_curve_periodic, intersect_curve_surface, intersect_surfaces,
 };
-use arris_math::{Aabb, Frame, Interval, Isometry, Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Aabb, Frame, Interval, Isometry, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
 
 /// Hit points against both operands, in length units.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// What a fitted ellipse is held to against the ellipse.
 const FIT: f64 = 1e-10;
 /// How far a crossing of the fitted ellipse may be from the ellipse's
@@ -35,10 +35,6 @@ const SAMPLES: usize = 7200;
 /// sampled distance is at least this far from the surface: nearer, the
 /// fitted curve and the ellipse may honestly differ in what they meet.
 const MARGIN: f64 = 1e-2;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn fail<T>(msg: String) -> Result<T, TestCaseError> {
     Err(TestCaseError::fail(msg))

@@ -5,6 +5,7 @@
 //! order not reaching the result, and a dense scan of the torus finding
 //! no point of the other surface away from every branch.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::TAU;
 
@@ -12,12 +13,8 @@ use arris_debug::prop::{self, check};
 use arris_geom::{
     BranchEnd, Curve, GeomError, SectionBranch, SectionFault, SectionTrace, Surface, trace_torus,
 };
-use arris_math::{Frame, Isometry, Point3, Precision, Tolerance, Vec3};
+use arris_math::{Frame, Isometry, Point3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn frame(origin: [f64; 3], z: [f64; 3]) -> Frame {
     Frame::from_z(Point3::from(origin), Vec3::from(z)).unwrap()

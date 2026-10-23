@@ -6,13 +6,14 @@
 //! `sweep/*` recipe loads into a profile the validator accepts
 //! (`docs/DATA-MODEL.md` §Profiles).
 
+use arris_debug::testing::tol;
 use std::collections::BTreeMap;
 
 use arris_debug::fixtures::{self, Step, geom::build_profile};
 use arris_debug::prop::{DEFAULT_SCALE, check};
 use arris_geom::profile::{Profile, ProfileEdge, ProfileLoop, ProfileSegment};
 use arris_geom::region2::{Piece, Polygon2};
-use arris_math::{Frame, Point2, Point3, Precision, Tolerance};
+use arris_math::{Frame, Point2, Point3};
 use core::f64::consts::PI;
 use proptest::prelude::*;
 
@@ -22,10 +23,6 @@ const SCALE: f64 = DEFAULT_SCALE;
 const EXACT: f64 = 1e-12 * SCALE;
 /// Parameters the image is checked at per edge, both ends included.
 const CHECKS: usize = 32;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn p(u: f64, v: f64) -> Point2 {
     Point2::new(u, v)

@@ -6,6 +6,7 @@
 //! nothing past it; a line along a ruling is `Coincident`; a crossing on
 //! a knot line or a seam is one hit; and every hit lies on both.
 
+use arris_debug::testing::{EXACT, tol};
 use arris_math::real;
 use core::f64::consts::PI;
 
@@ -17,18 +18,13 @@ use arris_geom::{
     Curve, CurveSurfaceHit, CurveSurfaceIntersection, NurbsSurface, Surface,
     intersect_curve_surface,
 };
-use arris_math::{Frame, Interval, Meter, Point2, Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Frame, Interval, Meter, Point2, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
 
 /// A transversal hit against both operands, in length units.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// How far from the edge of a twin's bounds, in its parameters, a hit is
 /// compared: nearer, the twin's domain decides alone.
 const EDGE: f64 = 1e-6;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn line(o: [f64; 3], d: [f64; 3]) -> Curve {
     Curve::Line {

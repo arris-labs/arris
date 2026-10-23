@@ -5,13 +5,13 @@
 
 use arris_debug::prop::geom::{curve, nurbs_curve, nurbs_surface, surface};
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64};
+use arris_debug::testing::EXACT;
 use arris_geom::{Curve, Surface};
 use arris_math::real;
 use arris_math::{Aabb, Frame, Interval, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
 
 /// Rounding at the scale: a box holds its own geometry to this.
-const EXACT: f64 = 1e-12 * DEFAULT_SCALE;
 /// Parameters sampled along a curve and per direction on a surface.
 const SAMPLES: usize = 33;
 

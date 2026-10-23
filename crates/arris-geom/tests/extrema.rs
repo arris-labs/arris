@@ -4,6 +4,7 @@
 //! Newton to is among the answer, every pair of the answer is stationary
 //! and on both curves, and swapping the operands swaps the answer.
 
+use arris_debug::testing::tol;
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, PI};
 
@@ -11,12 +12,8 @@ use arris_debug::prop::DEFAULT_SCALE;
 use arris_debug::prop::geom::{curve, nurbs_curve};
 use arris_debug::prop::point_in_box;
 use arris_geom::{Curve, Extrema, ExtremumPair, extrema_curve_curve};
-use arris_math::{Frame, Meter, Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Frame, Meter, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
-
-fn tol() -> Tolerance {
-    Precision::DEFAULT.tolerance()
-}
 
 fn p(x: [f64; 3]) -> Point3 {
     Point3::new(x[0], x[1], x[2])
