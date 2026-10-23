@@ -111,8 +111,13 @@ robustness or bound has to be established here.
   functions and stay. `tol()` (24 geom files) and `EXACT = 1e-12 ·
   DEFAULT_SCALE` (identical copies) moved; the `1e-12`, `1e-9` and
   `SCALE` ones are different bounds and stay.
-- [ ] Step 8 **[1]** — `cylinder`/`cube` test builders into
-  `arris_debug::testing`, the copies that match moved.
+- [x] Step 8 **[1]** — `cylinder`/`cube` test builders into
+  `arris_debug::testing`, the copies that match moved. *Settled:*
+  `cube(m, side)` (fillet's signature; shell, offset and chamfer pass
+  their edge) and `cylinder(m)` (the 4 × 12 sample, mesh's `cancel` and
+  check's `fast_part1`). Different shapes keep their names: `interference`
+  (corners), mesh's unit-box `cube`, `Aabb`/`Surface` builders in geom,
+  the hand-built `cylinder` of debug's `builder.rs`.
 - [ ] Step 9 **[1]** — `docs_refs.rs` widened (with its own planted-file
   test); the ~30 bare citations rewritten to the ADR or design-doc section
   they mean, or deleted where the code says it.

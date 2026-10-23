@@ -8,7 +8,8 @@
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, check};
 use arris_debug::dump_text;
-use arris_debug::unmetered::{mass_properties, primitive_box, primitive_cylinder, shell};
+use arris_debug::testing::cube;
+use arris_debug::unmetered::{mass_properties, primitive_cylinder, shell};
 use arris_math::{Axis, Point3};
 use arris_ops::{InputReason, OffsetReason, OpError, Reason, ShellReason, ShellSide};
 use arris_topo::provenance::audit;
@@ -23,12 +24,6 @@ fn face_at(m: &Model, body: Body, at: Point3) -> Face {
         },
         other => panic!("{at} is {other:?}, on no face"),
     }
-}
-
-fn cube(m: &mut Model) -> Body {
-    primitive_box(m, Point3::origin(), Point3::new(10.0, 10.0, 10.0))
-        .unwrap()
-        .0
 }
 
 /// The result is clean at `Full` with nothing unchecked and its record
@@ -50,7 +45,7 @@ fn a_box_open_on_top_hollows_to_both_sides() {
         (ShellSide::Outward, 14.0 * 14.0 * 12.0 - 1000.0),
     ] {
         let mut m = Model::default();
-        let b = cube(&mut m);
+        let b = cube(&mut m, 10.0);
         let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
         let walls: Vec<Face> = m
             .faces(b)
@@ -93,7 +88,7 @@ fn a_closed_box_hollows_to_a_void() {
         (ShellSide::Outward, 2744.0 - 1000.0),
     ] {
         let mut m = Model::default();
-        let b = cube(&mut m);
+        let b = cube(&mut m, 10.0);
         let (out, p) = shell(&mut m, b, &[], 2.0, side).unwrap();
         assert_clean(&m, b, out, &p);
         let mp = mass_properties(&m, out).unwrap();
@@ -135,7 +130,7 @@ fn assert_refused(
 #[test]
 fn the_inputs_are_refused_by_name() {
     let mut m = Model::default();
-    let b = cube(&mut m);
+    let b = cube(&mut m, 10.0);
     let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
     let nan = Reason::Input(InputReason::NonFinite { what: "thickness" });
     assert_refused(&mut m, b, &[top], f64::NAN, nan, b.id);
@@ -148,7 +143,7 @@ fn the_inputs_are_refused_by_name() {
     }
     let twice = Reason::Shell(ShellReason::RepeatedOpening);
     assert_refused(&mut m, b, &[top, top], 1.0, twice, top.id);
-    let other = cube(&mut m);
+    let other = cube(&mut m, 10.0);
     let foreign = face_at(&m, other, Point3::new(5.0, 5.0, 10.0));
     let not_in = Reason::Shell(ShellReason::OpeningNotInBody);
     assert_refused(&mut m, b, &[foreign], 1.0, not_in, foreign.id);
@@ -162,7 +157,7 @@ fn the_inputs_are_refused_by_name() {
 #[test]
 fn a_wall_past_half_the_box_is_the_offsets_refusal() {
     let mut m = Model::default();
-    let b = cube(&mut m);
+    let b = cube(&mut m, 10.0);
     let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
     let before = dump_text(&m, b).unwrap();
     let err = shell(&mut m, b, &[top], 6.0, ShellSide::Inward).unwrap_err();
@@ -198,7 +193,7 @@ fn two_openings_sharing_an_edge_merge_their_rims() {
         (ShellSide::Outward, 14.0 * 12.0 * 12.0 - 1000.0),
     ] {
         let mut m = Model::default();
-        let b = cube(&mut m);
+        let b = cube(&mut m, 10.0);
         let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
         let front = face_at(&m, b, Point3::new(5.0, 0.0, 5.0));
         let shared = on(&m, b, Point3::new(5.0, 0.0, 10.0));
@@ -240,7 +235,7 @@ fn three_openings_at_a_corner_drop_it() {
         (ShellSide::Outward, 1728.0 - 1000.0),
     ] {
         let mut m = Model::default();
-        let b = cube(&mut m);
+        let b = cube(&mut m, 10.0);
         let openings = [
             face_at(&m, b, Point3::new(5.0, 5.0, 10.0)),
             face_at(&m, b, Point3::new(5.0, 0.0, 5.0)),

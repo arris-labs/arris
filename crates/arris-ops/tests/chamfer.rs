@@ -4,13 +4,14 @@
 //! a line, fully checked; a concave edge; and the refusals a chamfer
 //! words differently from a fillet.
 
+use arris_debug::testing::cube;
 use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_check::{Level, check};
 use arris_debug::dump_text;
 use arris_debug::unmetered::cut;
-use arris_debug::unmetered::{chamfer, extrude, mass_properties, primitive_box, revolve};
+use arris_debug::unmetered::{chamfer, extrude, mass_properties, revolve};
 use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
 use arris_math::{Axis, Frame, Point2, Point3, Vec3};
 use arris_ops::{InputReason, OpError, Reason};
@@ -28,12 +29,6 @@ fn edge_at(m: &Model, body: Body, at: Point3) -> Edge {
             })
         })
         .unwrap_or_else(|| panic!("no edge through {at}"))
-}
-
-fn cube(m: &mut Model) -> Body {
-    primitive_box(m, Point3::origin(), Point3::new(2.0, 2.0, 2.0))
-        .unwrap()
-        .0
 }
 
 /// The closed edge of `body` that is a circle about `centre` of `radius`.
@@ -236,7 +231,7 @@ const D: f64 = 0.2;
 #[test]
 fn one_box_edge_end_to_end() {
     let mut m = Model::default();
-    let body = cube(&mut m);
+    let body = cube(&mut m, 2.0);
     let edge = edge_at(&m, body, Point3::new(2.0, 2.0, 1.0));
     let (chamfered, provenance) = chamfer(&mut m, body, &[edge], D).unwrap();
     assert_clean(&m, chamfered, (10, 15, 7, 7), 7.96);
@@ -254,7 +249,7 @@ fn one_box_edge_end_to_end() {
     assert!(provenance.is_deleted(edge.shape()));
 
     let mut again = Model::default();
-    let body2 = cube(&mut again);
+    let body2 = cube(&mut again, 2.0);
     let edge2 = edge_at(&again, body2, Point3::new(2.0, 2.0, 1.0));
     let (chamfered2, provenance2) = chamfer(&mut again, body2, &[edge2], D).unwrap();
     assert_eq!(
@@ -274,7 +269,7 @@ fn one_box_edge_end_to_end() {
 fn two_chamfers_at_a_corner_meet_in_a_line() {
     let build = |reversed: bool| {
         let mut m = Model::default();
-        let body = cube(&mut m);
+        let body = cube(&mut m, 2.0);
         let vertical = edge_at(&m, body, Point3::new(2.0, 2.0, 1.0));
         let cap = edge_at(&m, body, Point3::new(1.0, 2.0, 2.0));
         let edges = if reversed {
@@ -362,7 +357,7 @@ fn a_concave_edge_adds_a_prism() {
 #[test]
 fn a_bad_distance_is_refused_by_name() {
     let mut m = Model::default();
-    let body = cube(&mut m);
+    let body = cube(&mut m, 2.0);
     let edge = edge_at(&m, body, Point3::new(2.0, 2.0, 1.0));
     let before = dump_text(&m, body).unwrap();
     assert!(matches!(
@@ -466,7 +461,7 @@ fn a_miter_of_unequal_angles_is_two_pieces_and_a_trim_chord() {
 #[test]
 fn three_chamfers_at_a_box_corner_meet_in_a_triangle() {
     let mut m = Model::default();
-    let body = cube(&mut m);
+    let body = cube(&mut m, 2.0);
     let edges = [
         edge_at(&m, body, Point3::new(2.0, 2.0, 1.0)),
         edge_at(&m, body, Point3::new(1.0, 2.0, 2.0)),
@@ -522,7 +517,7 @@ fn three_chamfers_at_a_box_corner_meet_in_a_triangle() {
 #[test]
 fn three_chamfers_at_an_oblique_corner_meet_in_a_triangle() {
     let mut m = Model::default();
-    let body = cube(&mut m);
+    let body = cube(&mut m, 2.0);
     let n = Vec3::new(1.0, 1.0, 1.0).normalize();
     let p = |u, v| Point2::new(u, v);
     let profile = Profile {

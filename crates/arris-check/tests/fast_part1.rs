@@ -10,6 +10,7 @@
 //! moved range end or a shifted pcurve is reported under two of them; each
 //! test names its full set.
 
+use arris_debug::testing::cylinder;
 use core::f64::consts::{PI, TAU};
 use std::collections::BTreeMap;
 
@@ -187,10 +188,6 @@ fn faces_of(m: &Model, edge: EdgeId, r: &Rebuilt) -> (String, String) {
         .collect();
     faces.sort();
     (faces[0].to_string(), faces[1].to_string())
-}
-
-fn cylinder(m: &mut Model) -> Body {
-    sample::cylinder(m, 4.0, 12.0).unwrap()
 }
 
 fn box40(m: &mut Model) -> Body {

@@ -28,6 +28,19 @@ pub fn tol() -> Tolerance {
     Precision::DEFAULT.tolerance()
 }
 
+/// A cube of edge `side` with a corner at the origin, from the unmetered
+/// box primitive.
+pub fn cube(m: &mut Model, side: f64) -> Body {
+    crate::unmetered::primitive_box(m, Point3::origin(), Point3::new(side, side, side))
+        .unwrap()
+        .0
+}
+
+/// The sample cylinder tests build on: radius `4.0`, height `12.0`.
+pub fn cylinder(m: &mut Model) -> Body {
+    crate::sample::cylinder(m, 4.0, 12.0).unwrap()
+}
+
 /// The step [`d1_stencil`] and [`d2_stencil`] sample at.
 pub const FD_STEP: f64 = 1e-4;
 

@@ -6,6 +6,7 @@
 //! on a filleted body, its records composed back to the extrude; and
 //! every typed refusal.
 
+use arris_debug::testing::cube;
 use arris_math::real;
 use std::collections::BTreeSet;
 
@@ -34,12 +35,6 @@ fn edge_at(m: &Model, body: Body, at: Point3) -> Edge {
             })
         })
         .unwrap_or_else(|| panic!("no edge through {at}"))
-}
-
-fn cube(m: &mut Model, side: f64) -> Body {
-    primitive_box(m, Point3::origin(), Point3::new(side, side, side))
-        .unwrap()
-        .0
 }
 
 fn reason(err: &OpError) -> Option<Reason> {

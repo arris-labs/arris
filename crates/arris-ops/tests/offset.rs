@@ -7,6 +7,7 @@
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, check};
 use arris_debug::dump_text;
+use arris_debug::testing::cube;
 use arris_debug::unmetered::{extrude, mass_properties, offset_faces, primitive_box};
 use arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_math::{Frame, Point2, Point3, Vec3};
@@ -23,12 +24,6 @@ fn face_at(m: &Model, body: Body, at: Point3) -> Face {
         },
         other => panic!("{at} is {other:?}, on no face"),
     }
-}
-
-fn cube(m: &mut Model) -> Body {
-    primitive_box(m, Point3::origin(), Point3::new(10.0, 10.0, 10.0))
-        .unwrap()
-        .0
 }
 
 /// The result is clean at `Full` with nothing unchecked, its record
@@ -60,7 +55,7 @@ fn counts(m: &Model, body: Body) -> [usize; 3] {
 fn a_box_top_moves_by_the_distance() {
     for d in [2.0, -2.0, 9.5] {
         let mut m = Model::default();
-        let b = cube(&mut m);
+        let b = cube(&mut m, 10.0);
         let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
         let bottom = face_at(&m, b, Point3::new(5.0, 5.0, 0.0));
         let (out, p) = offset_faces(&mut m, b, &[top], d).unwrap();
@@ -88,7 +83,7 @@ fn a_box_top_moves_by_the_distance() {
 fn the_whole_box_offsets_with_sharp_joins() {
     for (d, side) in [(1.0, 12.0), (-1.0, 8.0)] {
         let mut m = Model::default();
-        let b = cube(&mut m);
+        let b = cube(&mut m, 10.0);
         let faces = m.faces(b).unwrap();
         let (out, p) = offset_faces(&mut m, b, &faces, d).unwrap();
         assert_clean(&m, b, out, &p);
@@ -170,7 +165,7 @@ fn assert_refused(
 #[test]
 fn the_inputs_are_refused_by_name() {
     let mut m = Model::default();
-    let b = cube(&mut m);
+    let b = cube(&mut m, 10.0);
     let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
     let nan = Reason::Input(InputReason::NonFinite { what: "distance" });
     assert_refused(&mut m, b, &[top], f64::NAN, nan, b.id);
@@ -183,7 +178,7 @@ fn the_inputs_are_refused_by_name() {
     assert_refused(&mut m, b, &[], 1.0, none, b.id);
     let twice = Reason::Offset(OffsetReason::RepeatedFace);
     assert_refused(&mut m, b, &[top, top], 1.0, twice, top.id);
-    let other = cube(&mut m);
+    let other = cube(&mut m, 10.0);
     let foreign = face_at(&m, other, Point3::new(5.0, 5.0, 10.0));
     let not_in = Reason::Offset(OffsetReason::FaceNotInBody);
     assert_refused(&mut m, b, &[foreign], 1.0, not_in, foreign.id);
@@ -194,7 +189,7 @@ fn the_inputs_are_refused_by_name() {
 #[test]
 fn a_face_pulled_through_its_opposite_vanishes() {
     let mut m = Model::default();
-    let b = cube(&mut m);
+    let b = cube(&mut m, 10.0);
     let top = face_at(&m, b, Point3::new(5.0, 5.0, 10.0));
     let vanishes = Reason::Offset(OffsetReason::Vanishes);
     let OpError::Degenerate { reason, entities } =

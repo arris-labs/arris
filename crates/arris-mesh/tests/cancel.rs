@@ -5,6 +5,7 @@
 //! and a budget at the count gives the unbudgeted mesh. The model is only
 //! read, so "left as it was" is that its dump is the same after.
 
+use arris_debug::testing::cylinder;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arris_debug::{corpus, dump, sample};
@@ -46,9 +47,6 @@ fn record_path() -> std::path::PathBuf {
 
 type Case = (&'static str, fn(&mut Model) -> Body, f64, bool);
 
-fn cylinder(m: &mut Model) -> Body {
-    sample::cylinder(m, 4.0, 12.0).unwrap()
-}
 fn ball(m: &mut Model) -> Body {
     sample::sphere(m, Point3::origin(), 3.0).unwrap()
 }
