@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` absorbed by plans/builder-split
+- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -62,9 +62,6 @@ algorithms).
   Each sweep keeps only its own part: revolve's axis and on-axis edges,
   sweep's frames and exact spans, loft's matching. `sweep/exact.rs` and
   `loft_exact.rs` stay apart, since their inputs differ.
-
-### For a `builder-split` plan
-Absorbed by `plans/builder-split`.
 
 ### For a `one-bernstein` plan (read)
 - **`geom/bernstein_n.rs` (`PolyN<N>`) carries `bernstein2.rs`'s `Poly2`
@@ -148,8 +145,8 @@ testkit exports, and after a measured relink time.
   needs it (`DisjointSets` and the minimisers to math, the isoline
   pcurves to geom). None creates an upward edge.
 - **Breaking changes** (`.agents/rules/kernel.md` §API, ADR-0027): nested
-  `BuildError` and `DegenerateReason` each change their Python classes
-  and `_arris.pyi`, and take a `### Breaking` bullet. `Curve2::iso_u`/
+  `BuildError` and `DegenerateReason` each take a `### Breaking` bullet
+  (both reach Python as text, so no class or `_arris.pyi` line changed). `Curve2::iso_u`/
   `iso_v` and `NurbsSurface::control_column` are additive.
 - **At most two active plans**, and closure before breadth (ADR-0020).
   C11 is open and its first plan is not written, so refactor plans share

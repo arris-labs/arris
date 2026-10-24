@@ -1485,7 +1485,9 @@ are the unit the intersector works on: each patch's homogeneous net,
 moved into the other surface's frame and put into its implicit form, is a
 tensor Bernstein polynomial (`Implicit::along`), and a surface's
 isocurve at a parameter is the net summed there. The constructors validate and return
-`GeomError::Degenerate` naming the fault: a knot value's multiplicity is
+`GeomError::Degenerate` naming the fault as a typed `DegenerateReason`
+(one variant per reason, grouped by family; `GeomError::degenerate_reason`
+reads it through the box): a knot value's multiplicity is
 at most `p + 1`, and at most `p` strictly inside the domain
 `[knots[p], knots[n]]`, which is non-empty and whose last span is not,
 and a span that is not empty is at least `f64::MIN_POSITIVE`, since every
@@ -1746,7 +1748,9 @@ edge not used exactly twice in a `Solid` or once or twice in a `Sheet`
 (a degenerate edge: exactly once, since no
 surface closes on one singular point twice) or twice the same way, a geometry id that
 does not resolve, and a `Wire` or `General` kind — each a typed `BuildError`
-(`Slot`, `Euler` or `Closure`), and the model exactly as it was — and never evaluates geometry: the
+(`Slot` for a key that names nothing, `Euler` for an operator's refusal,
+`Closure` for what `finish` and `assemble` refuse, beside `NotFound` and
+`Invariant`), and the model exactly as it was — and never evaluates geometry: the
 checker, above this crate, is where the finished body is proven.
 
 **Assembly, and kept ids.** An operation that computes its result's faces

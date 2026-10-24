@@ -916,8 +916,11 @@ signature, so neither earns a minor version (`.agents/rules/git.md`
 `next_down`, interval samples, isoline pcurves, io's number formatter and
 `read_json` each exist once; `Violation` and `Unchecked` are exhaustive;
 the docs lint catches a bare plan citation. Behaviour did not move: every
-fixture and blessed dump is byte-identical. `builder-split` is next, then
-C11's first plan.
+fixture and blessed dump is byte-identical. `builder-split` landed
+2026-10-24: `builder.rs` is a `builder/` module of one concern per file, edge
+uses are checked once for `finish` and `assemble`, `BuildError` is nested
+by kind and `GeomError::Degenerate` carries a typed `DegenerateReason`
+(both breaking in Rust, unchanged text in Python). C11's first plan is next.
 
 **The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`
 slice, about 110 s at worst against 312 s; the full suite runs once per plan

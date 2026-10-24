@@ -45,9 +45,10 @@ the prebuilt wheels for Linux, macOS and Windows with it, so the launch
 gate of ADR-0067 §5 is met; 0.9.1 (the modelling layer and the platform
 wheels) is the release prepared for the first multi-platform upload.
 **Refactor sequence** (`docs/ideas/refactor-after-c10.md`, option B):
-`small-seams` done 2026-10-23 (each shared helper once, in the lowest crate).
-**Next:** `/plan builder-split`, then `/idea` or `/plan` for C11's first
-item; `sweep-skeleton`, `one-bernstein`, `long-functions` in the side slot.
+`small-seams` done 2026-10-23 (each shared helper once, in the lowest crate);
+`builder-split` done 2026-10-24 (`builder/` by concern, `BuildError` nested,
+`DegenerateReason` typed).
+**Next:** `/idea` or `/plan` for C11's first item; `sweep-skeleton`, `one-bernstein`, `long-functions` in the side slot.
 
 ## Rules that are not derivable from the code
 
