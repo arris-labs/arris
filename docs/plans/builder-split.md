@@ -128,7 +128,7 @@ robustness or bound has to be established here.
   *Settled:* the clone stays. `Build` holds `&'m Model` and returns `&'m`
   borrows (`surface_of`), so `&mut` would thread through every method; the
   single-assembly variant became a backlog line.
-- [ ] Step 8 **[1]** — `tools/py-test.sh` green with no stub change;
+- [x] Step 8 **[1]** — `tools/py-test.sh` green with no stub change;
   `tools/semver-gate.sh` sees both breaks listed.
 
 ## Acceptance
