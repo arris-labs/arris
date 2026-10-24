@@ -13,11 +13,10 @@ use crate::error::{InputReason, OpError, Reason, fault_of};
 use crate::verify;
 
 use super::skeleton::{
-    Specs, all, counts, finish_solid, present, rails, ring_edges, ring_vertices,
+    Leg, Specs, all, counts, finish_solid, present, rails, ring_edges, ring_vertices, side_cycle,
 };
 use super::{
-    SideUse, cap_face, degenerate, profile_pcurves, record, side_face, side_orientation,
-    vertex_index,
+    cap_face, degenerate, profile_pcurves, record, side_face, side_orientation, vertex_index,
 };
 
 /// Extrudes `profile` along `direction` by `length` into a solid:
@@ -308,38 +307,31 @@ pub fn extrude(
                 let start_pcurve = on(&edge.curve, edge.range)?;
                 let orientation =
                     side_orientation(&edge.curve, edge.range, normal, surface, &start_pcurve)?;
-                let mut cycle = vec![
-                    SideUse {
-                        edge: start_edge[li][j],
-                        orientation: Orientation::Forward,
-                        pcurve: start_pcurve,
-                        range: edge.range,
-                    },
-                    SideUse {
-                        edge: rise_edge[li][next],
-                        orientation: Orientation::Forward,
-                        pcurve: on(&rises[li][next], rise_range)?,
-                        range: rise_range,
-                    },
-                    SideUse {
-                        edge: end_edge[li][j],
-                        orientation: Orientation::Reversed,
-                        pcurve: on(&end_curves[li][j], edge.range)?,
-                        range: edge.range,
-                    },
-                    SideUse {
-                        edge: rise_edge[li][j],
-                        orientation: Orientation::Reversed,
-                        pcurve: on(&rises[li][j], rise_range)?,
-                        range: rise_range,
-                    },
-                ];
-                if !along_normal {
-                    cycle.reverse();
-                    for u in &mut cycle {
-                        u.orientation = u.orientation.flipped();
-                    }
-                }
+                let cycle = side_cycle(
+                    [
+                        Some(Leg {
+                            edge: start_edge[li][j],
+                            pcurve: start_pcurve,
+                            range: edge.range,
+                        }),
+                        Some(Leg {
+                            edge: rise_edge[li][next],
+                            pcurve: on(&rises[li][next], rise_range)?,
+                            range: rise_range,
+                        }),
+                        Some(Leg {
+                            edge: end_edge[li][j],
+                            pcurve: on(&end_curves[li][j], edge.range)?,
+                            range: edge.range,
+                        }),
+                        Some(Leg {
+                            edge: rise_edge[li][j],
+                            pcurve: on(&rises[li][j], rise_range)?,
+                            range: rise_range,
+                        }),
+                    ],
+                    !along_normal,
+                );
                 let side = side_face(m, surface, orientation, cycle, false, tolerance);
                 specs.face(
                     side,

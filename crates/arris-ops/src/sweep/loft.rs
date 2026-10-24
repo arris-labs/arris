@@ -26,8 +26,10 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 
 use super::loft_exact::{Kind, analytic_curve, exact_face, kind_of};
-use super::skeleton::{Specs, all, finish_solid, present, rails, ring_edges, ring_vertices};
-use super::{SideUse, cap_face, side_face, side_orientation};
+use super::skeleton::{
+    Leg, Specs, all, finish_solid, present, rails, ring_edges, ring_vertices, side_cycle,
+};
+use super::{cap_face, side_face, side_orientation};
 
 /// How a loft joins consecutive sections.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -513,10 +515,9 @@ pub fn loft(
             for (li, &n) in counts.iter().enumerate() {
                 for j in 0..n {
                     meter.tick()?;
-                    let mut cycle;
+                    let cycle;
                     let surface;
                     let orientation;
-                    let reversed;
                     if let Some(exact_surface) = &exact[k][li][j] {
                         let mut on = |curve: &Curve, range: Interval| {
                             pcurve_on(curve, range, exact_surface, tol, meter).map_err(fault_of)
@@ -532,32 +533,6 @@ pub fn loft(
                             exact_surface,
                             &start_pcurve,
                         )?;
-                        cycle = vec![
-                            SideUse {
-                                edge: ring_edge[k][li][j],
-                                orientation: Orientation::Forward,
-                                pcurve: start_pcurve,
-                                range: start.1,
-                            },
-                            SideUse {
-                                edge: rail_edge[k][li][next],
-                                orientation: Orientation::Forward,
-                                pcurve: on(&up.0, up.1)?,
-                                range: up.1,
-                            },
-                            SideUse {
-                                edge: ring_edge[end_ring(k)][li][j],
-                                orientation: Orientation::Reversed,
-                                pcurve: on(&end.0, end.1)?,
-                                range: end.1,
-                            },
-                            SideUse {
-                                edge: rail_edge[k][li][j],
-                                orientation: Orientation::Reversed,
-                                pcurve: on(&down.0, down.1)?,
-                                range: down.1,
-                            },
-                        ];
                         // The walk is counter-clockwise seen from outside
                         // when it goes round the flow's side of the
                         // tangent: whatever the plane's own normal says.
@@ -565,13 +540,32 @@ pub fn loft(
                         let t = at.domain().midpoint();
                         let (here, there) = (at.eval(t), to.eval(t));
                         let walk = here.d1.cross(&(there.point - here.point));
-                        if walk.dot(&here.d1.cross(&carried_normal)) < 0.0 {
-                            cycle.reverse();
-                            for u in &mut cycle {
-                                u.orientation = u.orientation.flipped();
-                            }
-                        }
-                        reversed = false;
+                        let walk_reversed = walk.dot(&here.d1.cross(&carried_normal)) < 0.0;
+                        cycle = side_cycle(
+                            [
+                                Some(Leg {
+                                    edge: ring_edge[k][li][j],
+                                    pcurve: start_pcurve,
+                                    range: start.1,
+                                }),
+                                Some(Leg {
+                                    edge: rail_edge[k][li][next],
+                                    pcurve: on(&up.0, up.1)?,
+                                    range: up.1,
+                                }),
+                                Some(Leg {
+                                    edge: ring_edge[end_ring(k)][li][j],
+                                    pcurve: on(&end.0, end.1)?,
+                                    range: end.1,
+                                }),
+                                Some(Leg {
+                                    edge: rail_edge[k][li][j],
+                                    pcurve: on(&down.0, down.1)?,
+                                    range: down.1,
+                                }),
+                            ],
+                            walk_reversed,
+                        );
                         surface = exact_surface.clone();
                     } else {
                         let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
@@ -612,40 +606,32 @@ pub fn loft(
                         };
                         let next = (j + 1) % n;
                         let (up, down) = (&rail_curve[k][li][next], &rail_curve[k][li][j]);
-                        cycle = vec![
-                            SideUse {
-                                edge: ring_edge[k][li][j],
-                                orientation: Orientation::Forward,
-                                pcurve: Curve2::along_u(dv.lo()),
-                                range: du,
-                            },
-                            SideUse {
-                                edge: rail_edge[k][li][next],
-                                orientation: Orientation::Forward,
-                                pcurve: rail_pcurve(du.hi(), up.1)?,
-                                range: up.1,
-                            },
-                            SideUse {
-                                edge: ring_edge[end_ring(k)][li][j],
-                                orientation: Orientation::Reversed,
-                                pcurve: Curve2::along_u(dv.hi()),
-                                range: du,
-                            },
-                            SideUse {
-                                edge: rail_edge[k][li][j],
-                                orientation: Orientation::Reversed,
-                                pcurve: rail_pcurve(du.lo(), down.1)?,
-                                range: down.1,
-                            },
-                        ];
-                        reversed = orientation.is_reversed();
+                        cycle = side_cycle(
+                            [
+                                Some(Leg {
+                                    edge: ring_edge[k][li][j],
+                                    pcurve: Curve2::along_u(dv.lo()),
+                                    range: du,
+                                }),
+                                Some(Leg {
+                                    edge: rail_edge[k][li][next],
+                                    pcurve: rail_pcurve(du.hi(), up.1)?,
+                                    range: up.1,
+                                }),
+                                Some(Leg {
+                                    edge: ring_edge[end_ring(k)][li][j],
+                                    pcurve: Curve2::along_u(dv.hi()),
+                                    range: du,
+                                }),
+                                Some(Leg {
+                                    edge: rail_edge[k][li][j],
+                                    pcurve: rail_pcurve(du.lo(), down.1)?,
+                                    range: down.1,
+                                }),
+                            ],
+                            orientation.is_reversed(),
+                        );
                         surface = Surface::Nurbs(sub);
-                    }
-                    if reversed {
-                        cycle.reverse();
-                        for u in &mut cycle {
-                            u.orientation = u.orientation.flipped();
-                        }
                     }
                     let side = side_face(m, &surface, orientation, cycle, false, tolerance);
                     specs.face(

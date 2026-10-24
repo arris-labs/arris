@@ -17,10 +17,12 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, InputReason, OpError, Reason, SweepReason, fault_of};
 
-use super::skeleton::{Specs, counts, finish_solid, rails, ring_edges, ring_vertices};
+use super::skeleton::{
+    Leg, Specs, counts, finish_solid, rails, ring_edges, ring_vertices, side_cycle,
+};
 use super::{
-    SideUse, cap_face, degenerate, profile_curve_fault, profile_pcurves, side_face,
-    side_orientation, unmade, vertex_index,
+    cap_face, degenerate, profile_curve_fault, profile_pcurves, side_face, side_orientation,
+    unmade, vertex_index,
 };
 
 /// The revolve axis seen in the profile plane's own (u, v), once it has
@@ -825,71 +827,56 @@ pub fn revolve(
                     start_pcurve.point(edge.range.lo()).y,
                     start_pcurve.point(edge.range.hi()).y,
                 );
-                let mut cycle: Vec<SideUse> = Vec::with_capacity(4);
-                if let Some(slot) = start_edge[li][j] {
-                    cycle.push(SideUse {
+                let start = start_edge[li][j].map(|edge_slot| Leg {
+                    edge: edge_slot,
+                    pcurve: start_pcurve.clone(),
+                    range: edge.range,
+                });
+                let up = if let (Some(slot), Some(rise)) = (rise_edge[li][next], &rises[li][next]) {
+                    Some(Leg {
                         edge: slot,
-                        orientation: Orientation::Forward,
-                        pcurve: start_pcurve.clone(),
-                        range: edge.range,
-                    });
-                }
-                if let (Some(slot), Some(rise)) = (rise_edge[li][next], &rises[li][next]) {
-                    cycle.push(SideUse {
-                        edge: slot,
-                        orientation: Orientation::Forward,
                         pcurve: on(rise, rise_range)?,
                         range: rise_range,
-                    });
-                } else if let Some(&slot) = apex.get(&(li, j, false)) {
-                    cycle.push(SideUse {
+                    })
+                } else {
+                    apex.get(&(li, j, false)).map(|&slot| Leg {
                         edge: slot,
-                        orientation: Orientation::Forward,
                         pcurve: apex_pcurve(surface, &axis, v_end),
                         range: rise_range,
-                    });
-                }
-                match (end_edge[li][j], &end_curves[li][j], start_edge[li][j]) {
-                    (Some(slot), Some(curve), _) => cycle.push(SideUse {
+                    })
+                };
+                let end = match (end_edge[li][j], &end_curves[li][j], start_edge[li][j]) {
+                    (Some(slot), Some(curve), _) => Some(Leg {
                         edge: slot,
-                        orientation: Orientation::Reversed,
                         pcurve: on(curve, edge.range)?,
                         range: edge.range,
                     }),
-                    (None, _, Some(seam)) => cycle.push(SideUse {
+                    (None, _, Some(seam)) => Some(Leg {
                         edge: seam,
-                        orientation: Orientation::Reversed,
                         pcurve: start_pcurve,
                         range: edge.range,
                     }),
-                    (None, _, None) => {}
+                    (None, _, None) => None,
                     (Some(_), None, _) => {
                         return Err(OpError::Internal(Fault::Invariant {
                             what: "an end edge's curve",
                         }));
                     }
-                }
-                if let (Some(slot), Some(rise)) = (rise_edge[li][j], &rises[li][j]) {
-                    cycle.push(SideUse {
+                };
+                let down = if let (Some(slot), Some(rise)) = (rise_edge[li][j], &rises[li][j]) {
+                    Some(Leg {
                         edge: slot,
-                        orientation: Orientation::Reversed,
                         pcurve: on(rise, rise_range)?,
                         range: rise_range,
-                    });
-                } else if let Some(&slot) = apex.get(&(li, j, true)) {
-                    cycle.push(SideUse {
+                    })
+                } else {
+                    apex.get(&(li, j, true)).map(|&slot| Leg {
                         edge: slot,
-                        orientation: Orientation::Reversed,
                         pcurve: apex_pcurve(surface, &axis, v_start),
                         range: rise_range,
-                    });
-                }
-                if !turn_along_normal {
-                    cycle.reverse();
-                    for u in &mut cycle {
-                        u.orientation = u.orientation.flipped();
-                    }
-                }
+                    })
+                };
+                let cycle = side_cycle([start, up, end, down], !turn_along_normal);
                 let side = side_face(m, surface, orientation, cycle, full && *annulus, tolerance);
                 specs.face(
                     side,

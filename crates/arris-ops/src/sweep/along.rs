@@ -29,11 +29,9 @@ use crate::error::{Fault, OpError, fault_of};
 
 use super::exact::{ExactSpan, exact_span};
 use super::skeleton::{
-    Specs, all, counts, finish_solid, present, rails, ring_edges, ring_vertices,
+    Leg, Specs, all, counts, finish_solid, present, rails, ring_edges, ring_vertices, side_cycle,
 };
-use super::{
-    SideUse, cap_face, profile_pcurves, refuse, side_face, side_orientation, vertex_index,
-};
+use super::{cap_face, profile_pcurves, refuse, side_face, side_orientation, vertex_index};
 
 /// The degree of a fitted span's surface along the path: a quintic, as a
 /// fitted section is (`SECTION_FIT_DEGREE`). Every column of the skin
@@ -494,38 +492,31 @@ pub fn sweep(
                             &start_pcurve,
                         )?;
                         let next = (j + 1) % n;
-                        let mut cycle = vec![
-                            SideUse {
-                                edge: ring_edge[k][li][j],
-                                orientation: Orientation::Forward,
-                                pcurve: start_pcurve,
-                                range: start.1,
-                            },
-                            SideUse {
-                                edge: rail[k][li][next],
-                                orientation: Orientation::Forward,
-                                pcurve: on(&rail_curve[k][li][next], exact.rail_range)?,
-                                range: exact.rail_range,
-                            },
-                            SideUse {
-                                edge: ring_edge[end_ring(k)][li][j],
-                                orientation: Orientation::Reversed,
-                                pcurve: on(end.0, end.1)?,
-                                range: end.1,
-                            },
-                            SideUse {
-                                edge: rail[k][li][j],
-                                orientation: Orientation::Reversed,
-                                pcurve: on(&rail_curve[k][li][j], exact.rail_range)?,
-                                range: exact.rail_range,
-                            },
-                        ];
-                        if !along_normal {
-                            cycle.reverse();
-                            for u in &mut cycle {
-                                u.orientation = u.orientation.flipped();
-                            }
-                        }
+                        let cycle = side_cycle(
+                            [
+                                Some(Leg {
+                                    edge: ring_edge[k][li][j],
+                                    pcurve: start_pcurve,
+                                    range: start.1,
+                                }),
+                                Some(Leg {
+                                    edge: rail[k][li][next],
+                                    pcurve: on(&rail_curve[k][li][next], exact.rail_range)?,
+                                    range: exact.rail_range,
+                                }),
+                                Some(Leg {
+                                    edge: ring_edge[end_ring(k)][li][j],
+                                    pcurve: on(end.0, end.1)?,
+                                    range: end.1,
+                                }),
+                                Some(Leg {
+                                    edge: rail[k][li][j],
+                                    pcurve: on(&rail_curve[k][li][j], exact.rail_range)?,
+                                    range: exact.rail_range,
+                                }),
+                            ],
+                            !along_normal,
+                        );
                         let side = side_face(m, surface, orientation, cycle, false, tolerance);
                         specs.face(
                             side,
@@ -561,38 +552,31 @@ pub fn sweep(
                     } else {
                         Orientation::Reversed
                     };
-                    let mut cycle = vec![
-                        SideUse {
-                            edge: ring_edge[k][li][j],
-                            orientation: Orientation::Forward,
-                            pcurve: Curve2::along_u(range.lo()),
-                            range: ring_range[k][li][j],
-                        },
-                        SideUse {
-                            edge: rail[k][li][(j + 1) % n],
-                            orientation: Orientation::Forward,
-                            pcurve: Curve2::along_v(du.hi()),
-                            range,
-                        },
-                        SideUse {
-                            edge: ring_edge[end_ring(k)][li][j],
-                            orientation: Orientation::Reversed,
-                            pcurve: Curve2::along_u(range.hi()),
-                            range: ring_range[end_ring(k)][li][j],
-                        },
-                        SideUse {
-                            edge: rail[k][li][j],
-                            orientation: Orientation::Reversed,
-                            pcurve: Curve2::along_v(du.lo()),
-                            range,
-                        },
-                    ];
-                    if !along_normal {
-                        cycle.reverse();
-                        for u in &mut cycle {
-                            u.orientation = u.orientation.flipped();
-                        }
-                    }
+                    let cycle = side_cycle(
+                        [
+                            Some(Leg {
+                                edge: ring_edge[k][li][j],
+                                pcurve: Curve2::along_u(range.lo()),
+                                range: ring_range[k][li][j],
+                            }),
+                            Some(Leg {
+                                edge: rail[k][li][(j + 1) % n],
+                                pcurve: Curve2::along_v(du.hi()),
+                                range,
+                            }),
+                            Some(Leg {
+                                edge: ring_edge[end_ring(k)][li][j],
+                                pcurve: Curve2::along_u(range.hi()),
+                                range: ring_range[end_ring(k)][li][j],
+                            }),
+                            Some(Leg {
+                                edge: rail[k][li][j],
+                                pcurve: Curve2::along_v(du.lo()),
+                                range,
+                            }),
+                        ],
+                        !along_normal,
+                    );
                     let side = side_face(m, &surface, orientation, cycle, false, tolerance);
                     specs.face(
                         side,

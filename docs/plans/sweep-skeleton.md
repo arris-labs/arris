@@ -84,7 +84,7 @@ robustness or bound has to be established here.
   sweep and loft. `revolve-onto-axis` and `probe-revolve-onto-axis-m` ids
   unchanged. `GLOSSARY.md` gains *Ring* and *Rise*.
 - [x] Step 5 **[1]** — `rails` in all four.
-- [ ] Step 6 **[2]** — `side_cycle` in all four; revolve's annulus `split`
+- [x] Step 6 **[2]** — `side_cycle` in all four; revolve's annulus `split`
   and its rise left out at the axis pass through unchanged.
 - [ ] Step 7 **[1]** — `fn_lengths.py` holds the Goal's bounds; whatever
   of a sweep's own part still runs over moves into a named helper in its

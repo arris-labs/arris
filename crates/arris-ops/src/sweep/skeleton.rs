@@ -4,17 +4,17 @@
 //! its own — which vertices exist, what curves its rails are, how its
 //! sides close.
 
-use arris_geom::ProfileEdge;
-use arris_math::Point3;
+use arris_geom::{Curve2, ProfileEdge};
+use arris_math::{Interval, Point3};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::SweepPart;
-use arris_topo::{Body, Model, Provenance, Role};
+use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, OpError};
 use crate::verify;
 
-use super::record;
+use super::{SideUse, record};
 
 /// The vertex, edge and face specs of a sweep in the order they are
 /// appended, each with the [`Role`] it is `Generated` from. A spec and its
@@ -261,6 +261,49 @@ pub(super) fn rails(
         ring.push(row);
     }
     Ok(ring)
+}
+
+/// One side of a side face's cycle before it is oriented: the edge's
+/// slot, its pcurve on the face's surface and the edge's range.
+pub(super) struct Leg {
+    pub(super) edge: usize,
+    pub(super) pcurve: Curve2,
+    pub(super) range: Interval,
+}
+
+/// The cycle of a side face from its four sides — the start ring's edge
+/// walked forward, the rail up at the next vertex forward, the end ring's
+/// edge back, the rail down back — each present side as a [`SideUse`],
+/// the whole cycle walked the other way, every use flipped, when
+/// `reversed`: the material stays on the walk's left seen from outside. A
+/// side that is `None` is left out (`revolve`'s rise at a vertex on the
+/// axis).
+pub(super) fn side_cycle(legs: [Option<Leg>; 4], reversed: bool) -> Vec<SideUse> {
+    let orientations = [
+        Orientation::Forward,
+        Orientation::Forward,
+        Orientation::Reversed,
+        Orientation::Reversed,
+    ];
+    let mut cycle: Vec<SideUse> = legs
+        .into_iter()
+        .zip(orientations)
+        .filter_map(|(leg, orientation)| {
+            leg.map(|leg| SideUse {
+                edge: leg.edge,
+                orientation,
+                pcurve: leg.pcurve,
+                range: leg.range,
+            })
+        })
+        .collect();
+    if reversed {
+        cycle.reverse();
+        for u in &mut cycle {
+            u.orientation = u.orientation.flipped();
+        }
+    }
+    cycle
 }
 
 /// Assembles `specs` and `shells` into a solid in `m`, finishes and
