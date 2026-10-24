@@ -76,7 +76,7 @@ robustness or bound has to be established here.
   `{ 2 }`, matched against `Profile::edges`' loop order.
 - [x] Step 2 **[1]** — `skeleton.rs` with `Specs` and `finish_solid`; all
   four sweeps build through them. Blessed dumps unchanged.
-- [ ] Step 3 **[2]** — `shells`: `along` and `loft` by loop, `revolve` by
+- [x] Step 3 **[2]** — `shells`: `along` and `loft` by loop, `revolve` by
   chain in its spanning-first order. The step-1 test and every
   `revolve-notch-to-axis`/`revolve-hollow-ring`/`sweep-ring` dump unchanged.
 - [ ] Step 4 **[2]** — `ring_vertices` and `ring_edges`, designed against

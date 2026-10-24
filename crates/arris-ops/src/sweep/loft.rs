@@ -26,7 +26,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 
 use super::loft_exact::{Kind, analytic_curve, exact_face, kind_of};
-use super::skeleton::{Shells, Specs, finish_solid};
+use super::skeleton::{Specs, finish_solid};
 use super::{SideUse, cap_face, side_face, side_orientation};
 
 /// How a loft joins consecutive sections.
@@ -691,20 +691,10 @@ pub fn loft(
         // one's sides close a shell per loop, the outer loop's the lump's
         // outer shell and each hole's a void of it.
         let shells = if closed {
-            let mut buckets: Vec<Vec<(FaceSpec, Role)>> =
-                (0..loop_count).map(|_| Vec::new()).collect();
-            let (faces, face_roles) = specs.take_faces();
-            for ((face, role), li) in faces.into_iter().zip(face_roles).zip(side_loop) {
-                buckets[li].push((face, role));
-            }
-            let mut shells = Vec::with_capacity(loop_count);
-            let mut shell_roles = Vec::with_capacity(loop_count);
-            let mut face_roles = Vec::new();
-            for (li, bucket) in buckets.into_iter().enumerate() {
-                let (specs, roles): (Vec<FaceSpec>, Vec<Role>) = bucket.into_iter().unzip();
-                shells.push(specs);
-                face_roles.extend(roles);
-                shell_roles.push(if li == 0 {
+            let key: Vec<Option<usize>> = side_loop.iter().copied().map(Some).collect();
+            let order: Vec<usize> = (0..loop_count).collect();
+            specs.shells(&key, &order, |li| {
+                if li == 0 {
                     part(0, SweepPart::Shell)
                 } else {
                     part(
@@ -714,13 +704,8 @@ pub fn loft(
                             segment: 0,
                         },
                     )
-                });
-            }
-            Shells {
-                shells,
-                shell_roles,
-                face_roles,
-            }
+                }
+            })?
         } else {
             specs.one_shell(part(0, SweepPart::Shell))
         };

@@ -21,7 +21,7 @@ use arris_geom::{
     Path, Profile, ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
 };
 use arris_math::{Control, Interval, Isometry, Meter};
-use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::builder::{EdgeSpec, VertexKey, VertexSpec};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -29,7 +29,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 
 use super::exact::{ExactSpan, exact_span};
-use super::skeleton::{Shells, Specs, finish_solid};
+use super::skeleton::{Specs, finish_solid};
 use super::{
     SideUse, cap_face, profile_pcurves, refuse, side_face, side_orientation, vertex_index,
 };
@@ -625,36 +625,21 @@ pub fn sweep(
         // one's sides close a shell per loop, the outer loop's the lump's
         // outer shell and each hole's a void of it.
         let shells = if closed {
-            let mut buckets: Vec<Vec<(FaceSpec, Role)>> =
-                loops.iter().map(|_| Vec::new()).collect();
-            let (faces, face_roles) = specs.take_faces();
-            for ((face, role), li) in faces.into_iter().zip(face_roles).zip(side_loop) {
-                buckets[li].push((face, role));
-            }
-            let mut shells = Vec::with_capacity(loops.len());
-            let mut shell_roles = Vec::with_capacity(loops.len());
-            let mut face_roles = Vec::new();
-            for (li, bucket) in buckets.into_iter().enumerate() {
-                let (specs, roles): (Vec<FaceSpec>, Vec<Role>) = bucket.into_iter().unzip();
-                shells.push(specs);
-                face_roles.extend(roles);
-                shell_roles.push(if li == 0 {
+            let key: Vec<Option<usize>> = side_loop.iter().copied().map(Some).collect();
+            let order: Vec<usize> = (0..loops.len()).collect();
+            specs.shells(&key, &order, |li| {
+                if li == 0 {
                     part(0, SweepPart::Shell)
                 } else {
                     part(
                         0,
                         SweepPart::Cavity {
-                            loop_index: loops[li].first().map_or(li, |e| e.loop_index),
+                            loop_index: li,
                             segment: 0,
                         },
                     )
-                });
-            }
-            Shells {
-                shells,
-                shell_roles,
-                face_roles,
-            }
+                }
+            })?
         } else {
             specs.one_shell(part(0, SweepPart::Shell))
         };

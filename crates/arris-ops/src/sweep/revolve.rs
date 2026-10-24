@@ -10,14 +10,14 @@ use arris_math::{
     Axis, Control, Frame, Interval, Isometry, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3,
     Vec2, Vec3, wrap_angle,
 };
-use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::builder::{EdgeSpec, VertexKey, VertexSpec};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, InputReason, OpError, Reason, SweepReason, fault_of};
 
-use super::skeleton::{Shells, Specs, finish_solid};
+use super::skeleton::{Specs, finish_solid};
 use super::{
     SideUse, cap_face, degenerate, profile_curve_fault, profile_pcurves, side_face,
     side_orientation, unmade, vertex_index,
@@ -825,7 +825,7 @@ pub fn revolve(
 
         // The chain of every side, in `faces` order after the caps: a full
         // turn's shells.
-        let mut side_chain: Vec<(Option<usize>, &ProfileEdge)> = Vec::new();
+        let mut side_chain: Vec<Option<usize>> = Vec::new();
         // The sides: start edge, rise up, end edge back, rise down — the
         // end edge the start edge's second use across the seam in a full
         // turn — walked that way when the material sweeps along the
@@ -927,7 +927,7 @@ pub fn revolve(
                         segment: edge.segment,
                     }),
                 );
-                side_chain.push((chain[li][j], edge));
+                side_chain.push(chain[li][j]);
             }
         }
 
@@ -937,37 +937,16 @@ pub fn revolve(
         // lowest segment, each shell's faces in the order they were made. A
         // partial turn's caps join everything into one shell.
         let shells = if full {
-            let mut buckets: Vec<Vec<(FaceSpec, Role)>> =
-                chains.iter().map(|_| Vec::new()).collect();
-            let (faces, face_roles) = specs.take_faces();
-            for ((face, role), (c, edge)) in faces.into_iter().zip(face_roles).zip(side_chain) {
-                let Some(bucket) = c.and_then(|c| buckets.get_mut(c)) else {
-                    return Err(unmade(edge));
-                };
-                bucket.push((face, role));
-            }
-            let mut shells = Vec::with_capacity(shell_order.len());
-            let mut shell_roles = Vec::with_capacity(shell_order.len());
-            let mut face_roles = Vec::new();
-            for &c in &shell_order {
-                let (specs, roles): (Vec<FaceSpec>, Vec<Role>) =
-                    core::mem::take(&mut buckets[c]).into_iter().unzip();
-                shells.push(specs);
-                face_roles.extend(roles);
-                shell_roles.push(if c == outer {
+            specs.shells(&side_chain, &shell_order, |c| {
+                if c == outer {
                     part(SweepPart::Shell)
                 } else {
                     part(SweepPart::Cavity {
                         loop_index: chains[c].loop_index,
                         segment: chains[c].segment,
                     })
-                });
-            }
-            Shells {
-                shells,
-                shell_roles,
-                face_roles,
-            }
+                }
+            })?
         } else {
             specs.one_shell(part(SweepPart::Shell))
         };

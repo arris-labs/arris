@@ -9,7 +9,7 @@ use arris_topo::entity::BodyKind;
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, Model, Provenance, Role};
 
-use crate::error::OpError;
+use crate::error::{Fault, OpError};
 use crate::verify;
 
 use super::record;
@@ -69,13 +69,55 @@ impl Specs {
         }
     }
 
-    /// Takes the faces and their roles, for a grouping of the operation's
-    /// own.
-    pub(super) fn take_faces(&mut self) -> (Vec<FaceSpec>, Vec<Role>) {
-        (
-            core::mem::take(&mut self.faces),
-            core::mem::take(&mut self.face_roles),
-        )
+    /// The faces bucketed into shells by `key`, one entry per face in the
+    /// order they were pushed (a closed sweep has no caps, so every face
+    /// is a side): the loop for a closed sweep and loft, the chain for a
+    /// full revolve. The shells are stored in `order` — a bucket number
+    /// each — with the role `role` gives the bucket, and the face roles
+    /// follow them, each face keeping the order it was made in. A key of
+    /// `None`, one past the buckets, or a missing one is a kernel bug.
+    pub(super) fn shells(
+        &mut self,
+        key: &[Option<usize>],
+        order: &[usize],
+        role: impl Fn(usize) -> Role,
+    ) -> Result<Shells, OpError> {
+        let invariant = || {
+            OpError::Internal(Fault::Invariant {
+                what: "a shell for every side face",
+            })
+        };
+        let faces = core::mem::take(&mut self.faces);
+        let roles = core::mem::take(&mut self.face_roles);
+        if key.len() != faces.len() {
+            return Err(invariant());
+        }
+        let mut buckets: Vec<Vec<(FaceSpec, Role)>> = order.iter().map(|_| Vec::new()).collect();
+        for ((face, face_role), bucket) in faces.into_iter().zip(roles).zip(key) {
+            let Some(bucket) = bucket.and_then(|b| buckets.get_mut(b)) else {
+                return Err(invariant());
+            };
+            bucket.push((face, face_role));
+        }
+        let mut shells = Vec::with_capacity(order.len());
+        let mut shell_roles = Vec::with_capacity(order.len());
+        let mut face_roles = Vec::new();
+        for &b in order {
+            let (specs, roles): (Vec<FaceSpec>, Vec<Role>) = buckets
+                .get_mut(b)
+                .map(core::mem::take)
+                .ok_or_else(invariant)?
+                .into_iter()
+                .unzip();
+            shells.push(specs);
+            face_roles.extend(roles);
+            shell_roles.push(role(b));
+        }
+        Ok(Shells {
+            shells,
+            shell_roles,
+            face_roles,
+        })
     }
 }
 
