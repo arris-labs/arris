@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Accepted (B); `small-seams` done and retired 2026-10-23
+- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` absorbed by plans/builder-split
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -63,20 +63,8 @@ algorithms).
   sweep's frames and exact spans, loft's matching. `sweep/exact.rs` and
   `loft_exact.rs` stay apart, since their inputs differ.
 
-### For a `builder-split` plan (read)
-- **`topo/builder.rs`** is 2977 lines. The split was deferred by both
-  earlier plans: refs, staged, error, euler, finish, assemble, validate.
-  Edge-use validation is written in both `finish` and `assembled_genus`.
-- **`BuildError`** has 40 variants for three APIs (operators, `finish`,
-  `assemble`). `primitive::line` reports a bad interval as `Empty`.
-- **`GeomError::Degenerate { reason: String }`** is free text. Its main
-  users are `nurbs/skin.rs`, `nurbs/exact.rs`, `intersect_curve.rs` and
-  `pcurve.rs`. Tests match on substrings, and the binding maps it.
-- **A multi-shell boolean assembles twice:** `lump_order` finishes a
-  scratch clone of the model to read `arris_check::lumps`.
-- **C11's blends assemble through here** (`rebuild::rewrite` →
-  `Builder::assemble`). The two error enums are breaking changes. They
-  are one plan so that the binding and `CHANGELOG.md` change once.
+### For a `builder-split` plan
+Absorbed by `plans/builder-split`.
 
 ### For a `one-bernstein` plan (read)
 - **`geom/bernstein_n.rs` (`PolyN<N>`) carries `bernstein2.rs`'s `Poly2`
