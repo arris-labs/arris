@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::validate::{is_degenerate, uses_allowed};
+use super::validate::{edge_uses, is_degenerate};
 use super::{
     Assembly, AssemblySlots, BuildError, Builder, Counts, EdgeKey, EdgeRef, EdgeSpec, FaceRef,
     FaceSpec, StagedEdge, StagedFace, StagedLoop, StagedVertex, Use, VertexKey, VertexRef,
@@ -419,15 +419,7 @@ impl Builder {
         for (ei, e) in self.edges.iter() {
             let edge = EdgeRef(ei);
             let list = uses.get(&edge).map_or(&[][..], Vec::as_slice);
-            if !uses_allowed(e, list.len(), open) {
-                return Err(BuildError::EdgeUses {
-                    edge,
-                    uses: list.len(),
-                });
-            }
-            if matches!(list, [a, b] if a.0 == b.0) {
-                return Err(BuildError::SameDirection { edge });
-            }
+            edge_uses(edge, e, list, open, |u| u.0)?;
         }
         if self.faces.len() == 0 {
             return Err(BuildError::Empty);

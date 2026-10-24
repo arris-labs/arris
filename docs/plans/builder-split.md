@@ -105,9 +105,11 @@ robustness or bound has to be established here.
   say (eight files; `spec.rs` split off `assemble.rs`, which held 1015
   lines against the ~900 acceptance bound), moves only, `pub use` keeping every path. `topo` tests and doctests
   pass unchanged; baseline identical.
-- [ ] Step 3 **[2]** — `validate::edge_uses` replaces the two copies; a
-  test in `topo/tests/assemble.rs` and `builder.rs` asserts the same first
-  `EdgeUses`/`SameDirection` from `finish` and `assemble` on one bad body.
+- [x] Step 3 **[2]** — `validate::edge_uses` replaces the two copies
+  (edge by edge inside each caller's loop, so the first fault is the same
+  one); a unit test in `validate.rs` pins the rule for both callers' list
+  types, the existing `tests/assemble.rs` and `tests/builder.rs` cases
+  holding each caller.
 - [ ] Step 4 **[2]** — Nest `BuildError`; update matches in topo tests,
   `debug::sample`, `ops::primitive` (the `Empty` misuse → `Fault::Invariant`),
   `kernel_error.rs` tests; a test asserting every group's `Display` equals

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::validate::uses_allowed;
+use super::validate::edge_uses;
 use super::{BuildError, Builder, Built, EdgeRef, FaceRef, Position, VertexRef, effective_uses};
 use crate::entity::{self, BodyKind, Coedge, EdgeGeometry, Loop};
 use crate::handle::{self, Body};
@@ -71,15 +71,7 @@ impl Builder {
         for (ei, e) in self.edges.iter() {
             let edge = EdgeRef(ei);
             let list = uses.get(&edge).map_or(&[][..], Vec::as_slice);
-            if !uses_allowed(e, list.len(), open) {
-                return Err(BuildError::EdgeUses {
-                    edge,
-                    uses: list.len(),
-                });
-            }
-            if list.len() == 2 && list[0] == list[1] {
-                return Err(BuildError::SameDirection { edge });
-            }
+            edge_uses(edge, e, list, open, |&o| o)?;
             if let EdgeGeometry::Curve { curve, .. } = e.geometry {
                 model.curve(curve)?;
             }
