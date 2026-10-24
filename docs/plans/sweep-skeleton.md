@@ -74,7 +74,7 @@ robustness or bound has to be established here.
   `arris-ops/tests/sweep.rs`: a closed-path sweep and a closed loft of a
   plate with two holes name their voids `Cavity { loop_index: 1 }` and
   `{ 2 }`, matched against `Profile::edges`' loop order.
-- [ ] Step 2 **[1]** — `skeleton.rs` with `Specs` and `finish_solid`; all
+- [x] Step 2 **[1]** — `skeleton.rs` with `Specs` and `finish_solid`; all
   four sweeps build through them. Blessed dumps unchanged.
 - [ ] Step 3 **[2]** — `shells`: `along` and `loft` by loop, `revolve` by
   chain in its spanning-first order. The step-1 test and every

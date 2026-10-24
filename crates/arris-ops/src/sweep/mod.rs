@@ -17,6 +17,7 @@ mod loft;
 mod loft_exact;
 mod refuse;
 mod revolve;
+mod skeleton;
 
 pub use along::sweep;
 pub use extrude::{extrude, planar_face};

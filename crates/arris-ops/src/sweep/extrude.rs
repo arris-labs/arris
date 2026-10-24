@@ -4,7 +4,7 @@
 use arris_geom::{Curve, Curve2, Profile, pcurve_on};
 use arris_math::real;
 use arris_math::{Control, Interval, Isometry, Meter, UnitVec3, Vec3};
-use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::builder::{Assembly, Builder, EdgeSpec, VertexKey, VertexSpec};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -12,6 +12,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{InputReason, OpError, Reason, fault_of};
 use crate::verify;
 
+use super::skeleton::{Specs, finish_solid};
 use super::{
     SideUse, cap_face, degenerate, profile_pcurves, record, side_face, side_orientation,
     vertex_index,
@@ -140,12 +141,7 @@ pub fn extrude(
     let part = |p: SweepPart| Role::Extrude(p);
 
     m.transaction(|m| {
-        let mut vertices: Vec<VertexSpec> = Vec::new();
-        let mut vertex_roles: Vec<Role> = Vec::new();
-        let mut edges: Vec<EdgeSpec> = Vec::new();
-        let mut edge_roles: Vec<Role> = Vec::new();
-        let mut faces: Vec<FaceSpec> = Vec::new();
-        let mut face_roles: Vec<Role> = Vec::new();
+        let mut specs = Specs::default();
 
         // The start ring, then the end ring; slot (loop, walk index).
         let mut start_vertex: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
@@ -154,15 +150,16 @@ pub fn extrude(
             let n = edges_of.len();
             let mut ring = Vec::with_capacity(n);
             for edge in edges_of {
-                ring.push(vertices.len());
-                vertices.push(VertexSpec::New {
-                    point: edge.curve.point(edge.range.lo()),
-                    tolerance,
-                });
-                vertex_roles.push(part(SweepPart::StartVertex {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, n),
-                }));
+                ring.push(specs.vertex(
+                    VertexSpec::New {
+                        point: edge.curve.point(edge.range.lo()),
+                        tolerance,
+                    },
+                    part(SweepPart::StartVertex {
+                        loop_index: edge.loop_index,
+                        vertex: vertex_index(edge, n),
+                    }),
+                ));
             }
             start_vertex.push(ring);
         }
@@ -170,15 +167,16 @@ pub fn extrude(
             let n = edges_of.len();
             let mut ring = Vec::with_capacity(n);
             for edge in edges_of {
-                ring.push(vertices.len());
-                vertices.push(VertexSpec::New {
-                    point: shift.apply(edge.curve.point(edge.range.lo())),
-                    tolerance,
-                });
-                vertex_roles.push(part(SweepPart::EndVertex {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, n),
-                }));
+                ring.push(specs.vertex(
+                    VertexSpec::New {
+                        point: shift.apply(edge.curve.point(edge.range.lo())),
+                        tolerance,
+                    },
+                    part(SweepPart::EndVertex {
+                        loop_index: edge.loop_index,
+                        vertex: vertex_index(edge, n),
+                    }),
+                ));
             }
             end_vertex.push(ring);
         }
@@ -192,20 +190,21 @@ pub fn extrude(
             let mut row = Vec::with_capacity(n);
             for (j, edge) in edges_of.iter().enumerate() {
                 meter.tick()?;
-                row.push(edges.len());
-                edges.push(EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(edge.curve.clone()),
-                        range: edge.range,
+                row.push(specs.edge(
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(edge.curve.clone()),
+                            range: edge.range,
+                        },
+                        start: VertexKey::New(start_vertex[li][j]),
+                        end: VertexKey::New(start_vertex[li][(j + 1) % n]),
+                        tolerance,
                     },
-                    start: VertexKey::New(start_vertex[li][j]),
-                    end: VertexKey::New(start_vertex[li][(j + 1) % n]),
-                    tolerance,
-                });
-                edge_roles.push(part(SweepPart::StartEdge {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }));
+                    part(SweepPart::StartEdge {
+                        loop_index: edge.loop_index,
+                        segment: edge.segment,
+                    }),
+                ));
             }
             start_edge.push(row);
         }
@@ -216,20 +215,21 @@ pub fn extrude(
             for (j, edge) in edges_of.iter().enumerate() {
                 meter.tick()?;
                 let curve = edge.curve.transformed(&shift);
-                row.push(edges.len());
-                edges.push(EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(curve.clone()),
-                        range: edge.range,
+                row.push(specs.edge(
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(curve.clone()),
+                            range: edge.range,
+                        },
+                        start: VertexKey::New(end_vertex[li][j]),
+                        end: VertexKey::New(end_vertex[li][(j + 1) % n]),
+                        tolerance,
                     },
-                    start: VertexKey::New(end_vertex[li][j]),
-                    end: VertexKey::New(end_vertex[li][(j + 1) % n]),
-                    tolerance,
-                });
-                edge_roles.push(part(SweepPart::EndEdge {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }));
+                    part(SweepPart::EndEdge {
+                        loop_index: edge.loop_index,
+                        segment: edge.segment,
+                    }),
+                ));
                 curves.push(curve);
             }
             end_edge.push(row);
@@ -247,20 +247,21 @@ pub fn extrude(
                     origin: edge.curve.point(edge.range.lo()),
                     direction: sweep,
                 };
-                row.push(edges.len());
-                edges.push(EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(rise.clone()),
-                        range: rise_range,
+                row.push(specs.edge(
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(rise.clone()),
+                            range: rise_range,
+                        },
+                        start: VertexKey::New(start_vertex[li][j]),
+                        end: VertexKey::New(end_vertex[li][j]),
+                        tolerance,
                     },
-                    start: VertexKey::New(start_vertex[li][j]),
-                    end: VertexKey::New(end_vertex[li][j]),
-                    tolerance,
-                });
-                edge_roles.push(part(SweepPart::Rise {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, n),
-                }));
+                    part(SweepPart::Rise {
+                        loop_index: edge.loop_index,
+                        vertex: vertex_index(edge, n),
+                    }),
+                ));
                 curves.push(rise);
             }
             rise_edge.push(row);
@@ -280,24 +281,24 @@ pub fn extrude(
         } else {
             (Orientation::Forward, Orientation::Reversed)
         };
-        faces.push(cap_face(
+        let start_cap = cap_face(
             m,
             &profile_pcurves(&loops),
             *plane,
             start_use,
             &slots(&start_edge),
             tolerance,
-        ));
-        face_roles.push(part(SweepPart::StartCap));
-        faces.push(cap_face(
+        );
+        specs.face(start_cap, part(SweepPart::StartCap));
+        let end_cap = cap_face(
             m,
             &profile_pcurves(&loops),
             plane.transformed(&shift),
             end_use,
             &slots(&end_edge),
             tolerance,
-        ));
-        face_roles.push(part(SweepPart::EndCap));
+        );
+        specs.face(end_cap, part(SweepPart::EndCap));
 
         // The sides: start edge, rise up, end edge back, rise down —
         // walked that way when the sweep runs along the profile's normal
@@ -348,32 +349,19 @@ pub fn extrude(
                         u.orientation = u.orientation.flipped();
                     }
                 }
-                faces.push(side_face(m, surface, orientation, cycle, false, tolerance));
-                face_roles.push(part(SweepPart::Side {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }));
+                let side = side_face(m, surface, orientation, cycle, false, tolerance);
+                specs.face(
+                    side,
+                    part(SweepPart::Side {
+                        loop_index: edge.loop_index,
+                        segment: edge.segment,
+                    }),
+                );
             }
         }
 
-        let assembly = Assembly {
-            vertices,
-            edges,
-            shells: vec![faces],
-        };
-        let (b, slots) = Builder::assemble(m, tolerance, assembly)?;
-        let built = b.finish(m, BodyKind::Solid)?;
-        verify(m, built.body)?;
-        let provenance = record(
-            &built,
-            &slots,
-            &vertex_roles,
-            &edge_roles,
-            &face_roles,
-            &[part(SweepPart::Shell)],
-            part,
-        );
-        Ok((built.body, provenance))
+        let shells = specs.one_shell(part(SweepPart::Shell));
+        finish_solid(m, tolerance, specs, shells, part)
     })
 }
 

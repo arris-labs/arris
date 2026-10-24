@@ -10,16 +10,16 @@ use arris_math::{
     Axis, Control, Frame, Interval, Isometry, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3,
     Vec2, Vec3, wrap_angle,
 };
-use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
-use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, InputReason, OpError, Reason, SweepReason, fault_of};
-use crate::verify;
 
+use super::skeleton::{Shells, Specs, finish_solid};
 use super::{
-    SideUse, cap_face, degenerate, profile_curve_fault, profile_pcurves, record, side_face,
+    SideUse, cap_face, degenerate, profile_curve_fault, profile_pcurves, side_face,
     side_orientation, unmade, vertex_index,
 };
 
@@ -584,12 +584,7 @@ pub fn revolve(
     let part = |p: SweepPart| Role::Revolve(p);
 
     m.transaction(|m| {
-        let mut vertices: Vec<VertexSpec> = Vec::new();
-        let mut vertex_roles: Vec<Role> = Vec::new();
-        let mut edges: Vec<EdgeSpec> = Vec::new();
-        let mut edge_roles: Vec<Role> = Vec::new();
-        let mut faces: Vec<FaceSpec> = Vec::new();
-        let mut face_roles: Vec<Role> = Vec::new();
+        let mut specs = Specs::default();
 
         // The start ring, then the end ring; slot (loop, walk index). A
         // vertex on the axis is one vertex, with no end copy, and a full
@@ -606,15 +601,16 @@ pub fn revolve(
                     ring.push(None);
                     continue;
                 }
-                ring.push(Some(vertices.len()));
-                vertices.push(VertexSpec::New {
-                    point: edge.curve.point(edge.range.lo()),
-                    tolerance,
-                });
-                vertex_roles.push(part(SweepPart::StartVertex {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, n),
-                }));
+                ring.push(Some(specs.vertex(
+                    VertexSpec::New {
+                        point: edge.curve.point(edge.range.lo()),
+                        tolerance,
+                    },
+                    part(SweepPart::StartVertex {
+                        loop_index: edge.loop_index,
+                        vertex: vertex_index(edge, n),
+                    }),
+                )));
             }
             start_vertex.push(ring);
         }
@@ -630,15 +626,16 @@ pub fn revolve(
                         ring.push(start_vertex[li][j]);
                         continue;
                     }
-                    ring.push(Some(vertices.len()));
-                    vertices.push(VertexSpec::New {
-                        point: about_axis.apply(edge.curve.point(edge.range.lo())),
-                        tolerance,
-                    });
-                    vertex_roles.push(part(SweepPart::EndVertex {
-                        loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, n),
-                    }));
+                    ring.push(Some(specs.vertex(
+                        VertexSpec::New {
+                            point: about_axis.apply(edge.curve.point(edge.range.lo())),
+                            tolerance,
+                        },
+                        part(SweepPart::EndVertex {
+                            loop_index: edge.loop_index,
+                            vertex: vertex_index(edge, n),
+                        }),
+                    )));
                 }
                 end_vertex.push(ring);
             }
@@ -666,20 +663,21 @@ pub fn revolve(
                 }
                 let start = key(start_vertex[li][j], edge)?;
                 let end = key(start_vertex[li][(j + 1) % n], edge)?;
-                row.push(Some(edges.len()));
-                edges.push(EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(edge.curve.clone()),
-                        range: edge.range,
+                row.push(Some(specs.edge(
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(edge.curve.clone()),
+                            range: edge.range,
+                        },
+                        start,
+                        end,
+                        tolerance,
                     },
-                    start,
-                    end,
-                    tolerance,
-                });
-                edge_roles.push(part(SweepPart::StartEdge {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }));
+                    part(SweepPart::StartEdge {
+                        loop_index: edge.loop_index,
+                        segment: edge.segment,
+                    }),
+                )));
             }
             start_edge.push(row);
         }
@@ -698,20 +696,21 @@ pub fn revolve(
                 let start = key(end_vertex[li][j], edge)?;
                 let end = key(end_vertex[li][(j + 1) % n], edge)?;
                 let curve = edge.curve.transformed(&about_axis);
-                row.push(Some(edges.len()));
-                edges.push(EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(curve.clone()),
-                        range: edge.range,
+                row.push(Some(specs.edge(
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(curve.clone()),
+                            range: edge.range,
+                        },
+                        start,
+                        end,
+                        tolerance,
                     },
-                    start,
-                    end,
-                    tolerance,
-                });
-                edge_roles.push(part(SweepPart::EndEdge {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }));
+                    part(SweepPart::EndEdge {
+                        loop_index: edge.loop_index,
+                        segment: edge.segment,
+                    }),
+                )));
                 curves.push(Some(curve));
             }
             end_edge.push(row);
@@ -735,17 +734,19 @@ pub fn revolve(
                             continue;
                         }
                         let at = key(start_vertex[li][j], edge)?;
-                        apex.insert((li, side, side == j), edges.len());
-                        edges.push(EdgeSpec::New {
-                            geometry: EdgeGeometry::Degenerate { range: rise_range },
-                            start: at,
-                            end: at,
-                            tolerance,
-                        });
-                        edge_roles.push(part(SweepPart::Rise {
-                            loop_index: edge.loop_index,
-                            vertex: vertex_index(edge, n),
-                        }));
+                        let slot = specs.edge(
+                            EdgeSpec::New {
+                                geometry: EdgeGeometry::Degenerate { range: rise_range },
+                                start: at,
+                                end: at,
+                                tolerance,
+                            },
+                            part(SweepPart::Rise {
+                                loop_index: edge.loop_index,
+                                vertex: vertex_index(edge, n),
+                            }),
+                        );
+                        apex.insert((li, side, side == j), slot);
                     }
                     row.push(None);
                     curves.push(None);
@@ -757,20 +758,21 @@ pub fn revolve(
                     frame: base.with_origin(axis_point(in_plane.t(edge.start))),
                     radius: in_plane.rho(edge.start),
                 };
-                row.push(Some(edges.len()));
-                edges.push(EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(rise.clone()),
-                        range: rise_range,
+                row.push(Some(specs.edge(
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Curve {
+                            curve: m.add_curve(rise.clone()),
+                            range: rise_range,
+                        },
+                        start,
+                        end,
+                        tolerance,
                     },
-                    start,
-                    end,
-                    tolerance,
-                });
-                edge_roles.push(part(SweepPart::Rise {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, n),
-                }));
+                    part(SweepPart::Rise {
+                        loop_index: edge.loop_index,
+                        vertex: vertex_index(edge, n),
+                    }),
+                )));
                 curves.push(Some(rise));
             }
             rise_edge.push(row);
@@ -787,15 +789,15 @@ pub fn revolve(
             } else {
                 (Orientation::Forward, Orientation::Reversed)
             };
-            faces.push(cap_face(
+            let start_cap = cap_face(
                 m,
                 &profile_pcurves(&loops),
                 *plane,
                 start_use,
                 &start_edge,
                 tolerance,
-            ));
-            face_roles.push(part(SweepPart::StartCap));
+            );
+            specs.face(start_cap, part(SweepPart::StartCap));
             // A segment along the axis is the start cap's edge in the end
             // cap too.
             let end_slots: Vec<Vec<Option<usize>>> = end_edge
@@ -810,15 +812,15 @@ pub fn revolve(
                         .collect()
                 })
                 .collect();
-            faces.push(cap_face(
+            let end_cap = cap_face(
                 m,
                 &profile_pcurves(&loops),
                 plane.transformed(&about_axis),
                 end_use,
                 &end_slots,
                 tolerance,
-            ));
-            face_roles.push(part(SweepPart::EndCap));
+            );
+            specs.face(end_cap, part(SweepPart::EndCap));
         }
 
         // The chain of every side, in `faces` order after the caps: a full
@@ -917,18 +919,14 @@ pub fn revolve(
                         u.orientation = u.orientation.flipped();
                     }
                 }
-                faces.push(side_face(
-                    m,
-                    surface,
-                    orientation,
-                    cycle,
-                    full && *annulus,
-                    tolerance,
-                ));
-                face_roles.push(part(SweepPart::Side {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }));
+                let side = side_face(m, surface, orientation, cycle, full && *annulus, tolerance);
+                specs.face(
+                    side,
+                    part(SweepPart::Side {
+                        loop_index: edge.loop_index,
+                        segment: edge.segment,
+                    }),
+                );
                 side_chain.push((chain[li][j], edge));
             }
         }
@@ -938,9 +936,10 @@ pub fn revolve(
         // outer shell, stored first, every other a void of it by loop and
         // lowest segment, each shell's faces in the order they were made. A
         // partial turn's caps join everything into one shell.
-        let (shells, shell_roles, face_roles) = if full {
+        let shells = if full {
             let mut buckets: Vec<Vec<(FaceSpec, Role)>> =
                 chains.iter().map(|_| Vec::new()).collect();
+            let (faces, face_roles) = specs.take_faces();
             for ((face, role), (c, edge)) in faces.into_iter().zip(face_roles).zip(side_chain) {
                 let Some(bucket) = c.and_then(|c| buckets.get_mut(c)) else {
                     return Err(unmade(edge));
@@ -964,27 +963,14 @@ pub fn revolve(
                     })
                 });
             }
-            (shells, shell_roles, face_roles)
+            Shells {
+                shells,
+                shell_roles,
+                face_roles,
+            }
         } else {
-            (vec![faces], vec![part(SweepPart::Shell)], face_roles)
+            specs.one_shell(part(SweepPart::Shell))
         };
-        let assembly = Assembly {
-            vertices,
-            edges,
-            shells,
-        };
-        let (b, slots) = Builder::assemble(m, tolerance, assembly)?;
-        let built = b.finish(m, BodyKind::Solid)?;
-        verify(m, built.body)?;
-        let provenance = record(
-            &built,
-            &slots,
-            &vertex_roles,
-            &edge_roles,
-            &face_roles,
-            &shell_roles,
-            part,
-        );
-        Ok((built.body, provenance))
+        finish_solid(m, tolerance, specs, shells, part)
     })
 }

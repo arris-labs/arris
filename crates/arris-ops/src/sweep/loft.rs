@@ -18,16 +18,16 @@ use arris_geom::{
     NurbsCurve2, NurbsSurface, Profile, Surface, interpolate_skin, match_sections, pcurve_on,
 };
 use arris_math::{Control, Interval, Meter, Point2, UnitVec3};
-use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
-use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, OpError, fault_of};
-use crate::verify;
 
 use super::loft_exact::{Kind, analytic_curve, exact_face, kind_of};
-use super::{SideUse, cap_face, record, side_face, side_orientation};
+use super::skeleton::{Shells, Specs, finish_solid};
+use super::{SideUse, cap_face, side_face, side_orientation};
 
 /// How a loft joins consecutive sections.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -326,12 +326,7 @@ pub fn loft(
     };
 
     m.transaction(|m| {
-        let mut vertices: Vec<VertexSpec> = Vec::new();
-        let mut vertex_roles: Vec<Role> = Vec::new();
-        let mut edges: Vec<EdgeSpec> = Vec::new();
-        let mut edge_roles: Vec<Role> = Vec::new();
-        let mut faces: Vec<FaceSpec> = Vec::new();
-        let mut face_roles: Vec<Role> = Vec::new();
+        let mut specs = Specs::default();
 
         // The rings' vertices, per section per loop in walking order.
         let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
@@ -342,28 +337,29 @@ pub fn loft(
                 for j in 0..n {
                     meter.tick()?;
                     let seg = segment(r, li, j);
-                    ring.push(vertices.len());
-                    vertices.push(VertexSpec::New {
-                        point: seg.eval(seg.domain().lo()).point,
-                        tolerance,
-                    });
-                    vertex_roles.push(if closed || r < spans {
-                        part(
-                            r,
-                            SweepPart::StartVertex {
-                                loop_index: li,
-                                vertex: j,
-                            },
-                        )
-                    } else {
-                        part(
-                            last,
-                            SweepPart::EndVertex {
-                                loop_index: li,
-                                vertex: j,
-                            },
-                        )
-                    });
+                    ring.push(specs.vertex(
+                        VertexSpec::New {
+                            point: seg.eval(seg.domain().lo()).point,
+                            tolerance,
+                        },
+                        if closed || r < spans {
+                            part(
+                                r,
+                                SweepPart::StartVertex {
+                                    loop_index: li,
+                                    vertex: j,
+                                },
+                            )
+                        } else {
+                            part(
+                                last,
+                                SweepPart::EndVertex {
+                                    loop_index: li,
+                                    vertex: j,
+                                },
+                            )
+                        },
+                    ));
                 }
                 per_loop.push(ring);
             }
@@ -387,34 +383,35 @@ pub fn loft(
                         .then(|| analytic_curve(&kinds[r][li][j]))
                         .flatten()
                         .unwrap_or_else(|| (Curve::Nurbs(seg.clone()), seg.domain()));
-                    row.push(edges.len());
                     row_curves.push((curve.clone(), range));
-                    edges.push(EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(curve),
-                            range,
+                    row.push(specs.edge(
+                        EdgeSpec::New {
+                            geometry: EdgeGeometry::Curve {
+                                curve: m.add_curve(curve),
+                                range,
+                            },
+                            start: VertexKey::New(ring_of[li][j]),
+                            end: VertexKey::New(ring_of[li][(j + 1) % n]),
+                            tolerance,
                         },
-                        start: VertexKey::New(ring_of[li][j]),
-                        end: VertexKey::New(ring_of[li][(j + 1) % n]),
-                        tolerance,
-                    });
-                    edge_roles.push(if closed || r < spans {
-                        part(
-                            r,
-                            SweepPart::StartEdge {
-                                loop_index: li,
-                                segment: j,
-                            },
-                        )
-                    } else {
-                        part(
-                            last,
-                            SweepPart::EndEdge {
-                                loop_index: li,
-                                segment: j,
-                            },
-                        )
-                    });
+                        if closed || r < spans {
+                            part(
+                                r,
+                                SweepPart::StartEdge {
+                                    loop_index: li,
+                                    segment: j,
+                                },
+                            )
+                        } else {
+                            part(
+                                last,
+                                SweepPart::EndEdge {
+                                    loop_index: li,
+                                    segment: j,
+                                },
+                            )
+                        },
+                    ));
                 }
                 slots.push(row);
                 curves.push(row_curves);
@@ -455,23 +452,24 @@ pub fn loft(
                             Interval::UNIT,
                         ),
                     };
-                    row.push(edges.len());
                     row_curves.push((curve.clone(), range));
-                    edges.push(EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(curve),
-                            range,
+                    row.push(specs.edge(
+                        EdgeSpec::New {
+                            geometry: EdgeGeometry::Curve {
+                                curve: m.add_curve(curve),
+                                range,
+                            },
+                            start: VertexKey::New(start),
+                            end: VertexKey::New(ring_vertex[end_ring(k)][li][j]),
+                            tolerance,
                         },
-                        start: VertexKey::New(start),
-                        end: VertexKey::New(ring_vertex[end_ring(k)][li][j]),
-                        tolerance,
-                    });
-                    edge_roles.push(part(
-                        k,
-                        SweepPart::Rise {
-                            loop_index: li,
-                            vertex: j,
-                        },
+                        part(
+                            k,
+                            SweepPart::Rise {
+                                loop_index: li,
+                                vertex: j,
+                            },
+                        ),
                     ));
                 }
                 per_loop.push(row);
@@ -524,10 +522,10 @@ pub fn loft(
                     Orientation::Reversed
                 },
             );
-            faces.push(cap(m, 0, start_use)?);
-            face_roles.push(part(0, SweepPart::StartCap));
-            faces.push(cap(m, rings - 1, end_use)?);
-            face_roles.push(part(last, SweepPart::EndCap));
+            let start_cap = cap(m, 0, start_use)?;
+            specs.face(start_cap, part(0, SweepPart::StartCap));
+            let end_cap = cap(m, rings - 1, end_use)?;
+            specs.face(end_cap, part(last, SweepPart::EndCap));
         }
 
         // The sides: the ring's edge, the rail up at the next vertex, the
@@ -673,14 +671,17 @@ pub fn loft(
                             u.orientation = u.orientation.flipped();
                         }
                     }
-                    faces.push(side_face(m, &surface, orientation, cycle, false, tolerance));
-                    face_roles.push(part(
-                        k,
-                        SweepPart::Side {
-                            loop_index: li,
-                            segment: j,
-                        },
-                    ));
+                    let side = side_face(m, &surface, orientation, cycle, false, tolerance);
+                    specs.face(
+                        side,
+                        part(
+                            k,
+                            SweepPart::Side {
+                                loop_index: li,
+                                segment: j,
+                            },
+                        ),
+                    );
                     side_loop.push(li);
                 }
             }
@@ -689,9 +690,10 @@ pub fn loft(
         // An open loft's caps join everything into one shell; a closed
         // one's sides close a shell per loop, the outer loop's the lump's
         // outer shell and each hole's a void of it.
-        let (shells, shell_roles, face_roles) = if closed {
+        let shells = if closed {
             let mut buckets: Vec<Vec<(FaceSpec, Role)>> =
                 (0..loop_count).map(|_| Vec::new()).collect();
+            let (faces, face_roles) = specs.take_faces();
             for ((face, role), li) in faces.into_iter().zip(face_roles).zip(side_loop) {
                 buckets[li].push((face, role));
             }
@@ -714,27 +716,14 @@ pub fn loft(
                     )
                 });
             }
-            (shells, shell_roles, face_roles)
+            Shells {
+                shells,
+                shell_roles,
+                face_roles,
+            }
         } else {
-            (vec![faces], vec![part(0, SweepPart::Shell)], face_roles)
+            specs.one_shell(part(0, SweepPart::Shell))
         };
-        let assembly = Assembly {
-            vertices,
-            edges,
-            shells,
-        };
-        let (b, slots) = Builder::assemble(m, tolerance, assembly)?;
-        let built = b.finish(m, BodyKind::Solid)?;
-        verify(m, built.body)?;
-        let provenance = record(
-            &built,
-            &slots,
-            &vertex_roles,
-            &edge_roles,
-            &face_roles,
-            &shell_roles,
-            |p| part(0, p),
-        );
-        Ok((built.body, provenance))
+        finish_solid(m, tolerance, specs, shells, |p| part(0, p))
     })
 }

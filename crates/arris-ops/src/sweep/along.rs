@@ -21,17 +21,17 @@ use arris_geom::{
     Path, Profile, ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
 };
 use arris_math::{Control, Interval, Isometry, Meter};
-use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
-use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, OpError, fault_of};
-use crate::verify;
 
 use super::exact::{ExactSpan, exact_span};
+use super::skeleton::{Shells, Specs, finish_solid};
 use super::{
-    SideUse, cap_face, profile_pcurves, record, refuse, side_face, side_orientation, vertex_index,
+    SideUse, cap_face, profile_pcurves, refuse, side_face, side_orientation, vertex_index,
 };
 
 /// The degree of a fitted span's surface along the path: a quintic, as a
@@ -269,12 +269,7 @@ pub fn sweep(
     let last = spans - 1;
 
     m.transaction(|m| {
-        let mut vertices: Vec<VertexSpec> = Vec::new();
-        let mut vertex_roles: Vec<Role> = Vec::new();
-        let mut edges: Vec<EdgeSpec> = Vec::new();
-        let mut edge_roles: Vec<Role> = Vec::new();
-        let mut faces: Vec<FaceSpec> = Vec::new();
-        let mut face_roles: Vec<Role> = Vec::new();
+        let mut specs = Specs::default();
 
         // The rings' vertices, per ring per loop in walking order: span
         // `r`'s start, or the last span's end on an open path's last ring.
@@ -286,17 +281,18 @@ pub fn sweep(
                 let mut ring = Vec::with_capacity(n);
                 for edge in edges_of {
                     meter.tick()?;
-                    ring.push(vertices.len());
-                    vertices.push(VertexSpec::New {
-                        point: motion.apply(edge.curve.point(edge.range.lo())),
-                        tolerance,
-                    });
                     let (loop_index, vertex) = (edge.loop_index, vertex_index(edge, n));
-                    vertex_roles.push(if r == spans {
-                        part(last, SweepPart::EndVertex { loop_index, vertex })
-                    } else {
-                        part(r, SweepPart::StartVertex { loop_index, vertex })
-                    });
+                    ring.push(specs.vertex(
+                        VertexSpec::New {
+                            point: motion.apply(edge.curve.point(edge.range.lo())),
+                            tolerance,
+                        },
+                        if r == spans {
+                            part(last, SweepPart::EndVertex { loop_index, vertex })
+                        } else {
+                            part(r, SweepPart::StartVertex { loop_index, vertex })
+                        },
+                    ));
                 }
                 per_loop.push(ring);
             }
@@ -330,34 +326,35 @@ pub fn sweep(
                         let range = segment.domain();
                         (Curve::Nurbs(segment), range)
                     };
-                    row.push(edges.len());
-                    edges.push(EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(curve.clone()),
-                            range,
-                        },
-                        start: VertexKey::New(ring_vertex[r][li][j]),
-                        end: VertexKey::New(ring_vertex[r][li][(j + 1) % n]),
-                        tolerance,
-                    });
                     let (loop_index, segment) = (edge.loop_index, edge.segment);
-                    edge_roles.push(if r == spans {
-                        part(
-                            last,
-                            SweepPart::EndEdge {
-                                loop_index,
-                                segment,
+                    row.push(specs.edge(
+                        EdgeSpec::New {
+                            geometry: EdgeGeometry::Curve {
+                                curve: m.add_curve(curve.clone()),
+                                range,
                             },
-                        )
-                    } else {
-                        part(
-                            r,
-                            SweepPart::StartEdge {
-                                loop_index,
-                                segment,
-                            },
-                        )
-                    });
+                            start: VertexKey::New(ring_vertex[r][li][j]),
+                            end: VertexKey::New(ring_vertex[r][li][(j + 1) % n]),
+                            tolerance,
+                        },
+                        if r == spans {
+                            part(
+                                last,
+                                SweepPart::EndEdge {
+                                    loop_index,
+                                    segment,
+                                },
+                            )
+                        } else {
+                            part(
+                                r,
+                                SweepPart::StartEdge {
+                                    loop_index,
+                                    segment,
+                                },
+                            )
+                        },
+                    ));
                     row_ranges.push(range);
                     row_curves.push(curve);
                 }
@@ -392,22 +389,23 @@ pub fn sweep(
                         }
                         (None, None) => return Err(unskinned()),
                     };
-                    row.push(edges.len());
-                    edges.push(EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(curve.clone()),
-                            range,
+                    row.push(specs.edge(
+                        EdgeSpec::New {
+                            geometry: EdgeGeometry::Curve {
+                                curve: m.add_curve(curve.clone()),
+                                range,
+                            },
+                            start: VertexKey::New(ring_vertex[k][li][j]),
+                            end: VertexKey::New(ring_vertex[end_ring(k)][li][j]),
+                            tolerance,
                         },
-                        start: VertexKey::New(ring_vertex[k][li][j]),
-                        end: VertexKey::New(ring_vertex[end_ring(k)][li][j]),
-                        tolerance,
-                    });
-                    edge_roles.push(part(
-                        k,
-                        SweepPart::Rise {
-                            loop_index: edge.loop_index,
-                            vertex: vertex_index(edge, n),
-                        },
+                        part(
+                            k,
+                            SweepPart::Rise {
+                                loop_index: edge.loop_index,
+                                vertex: vertex_index(edge, n),
+                            },
+                        ),
                     ));
                     row_curves.push(curve);
                 }
@@ -461,24 +459,17 @@ pub fn sweep(
             };
             let (start_pcurves, end_pcurves) =
                 (pcurves_of(exact_ring(0))?, pcurves_of(exact_ring(spans))?);
-            faces.push(cap_face(
-                m,
-                &start_pcurves,
-                *plane,
-                start_use,
-                &slots(0),
-                tolerance,
-            ));
-            face_roles.push(part(0, SweepPart::StartCap));
-            faces.push(cap_face(
+            let start_cap = cap_face(m, &start_pcurves, *plane, start_use, &slots(0), tolerance);
+            specs.face(start_cap, part(0, SweepPart::StartCap));
+            let end_cap = cap_face(
                 m,
                 &end_pcurves,
                 plane.transformed(&motions[spans]),
                 end_use,
                 &slots(spans),
                 tolerance,
-            ));
-            face_roles.push(part(last, SweepPart::EndCap));
+            );
+            specs.face(end_cap, part(last, SweepPart::EndCap));
         }
 
         // The sides: the ring's edge, the rail up at the next vertex, the
@@ -547,14 +538,17 @@ pub fn sweep(
                                 u.orientation = u.orientation.flipped();
                             }
                         }
-                        faces.push(side_face(m, surface, orientation, cycle, false, tolerance));
-                        face_roles.push(part(
-                            k,
-                            SweepPart::Side {
-                                loop_index: edge.loop_index,
-                                segment: edge.segment,
-                            },
-                        ));
+                        let side = side_face(m, surface, orientation, cycle, false, tolerance);
+                        specs.face(
+                            side,
+                            part(
+                                k,
+                                SweepPart::Side {
+                                    loop_index: edge.loop_index,
+                                    segment: edge.segment,
+                                },
+                            ),
+                        );
                         side_loop.push(li);
                         continue;
                     }
@@ -611,14 +605,17 @@ pub fn sweep(
                             u.orientation = u.orientation.flipped();
                         }
                     }
-                    faces.push(side_face(m, &surface, orientation, cycle, false, tolerance));
-                    face_roles.push(part(
-                        k,
-                        SweepPart::Side {
-                            loop_index: edge.loop_index,
-                            segment: edge.segment,
-                        },
-                    ));
+                    let side = side_face(m, &surface, orientation, cycle, false, tolerance);
+                    specs.face(
+                        side,
+                        part(
+                            k,
+                            SweepPart::Side {
+                                loop_index: edge.loop_index,
+                                segment: edge.segment,
+                            },
+                        ),
+                    );
                     side_loop.push(li);
                 }
             }
@@ -627,9 +624,10 @@ pub fn sweep(
         // An open path's caps join everything into one shell; a closed
         // one's sides close a shell per loop, the outer loop's the lump's
         // outer shell and each hole's a void of it.
-        let (shells, shell_roles, face_roles) = if closed {
+        let shells = if closed {
             let mut buckets: Vec<Vec<(FaceSpec, Role)>> =
                 loops.iter().map(|_| Vec::new()).collect();
+            let (faces, face_roles) = specs.take_faces();
             for ((face, role), li) in faces.into_iter().zip(face_roles).zip(side_loop) {
                 buckets[li].push((face, role));
             }
@@ -652,27 +650,14 @@ pub fn sweep(
                     )
                 });
             }
-            (shells, shell_roles, face_roles)
+            Shells {
+                shells,
+                shell_roles,
+                face_roles,
+            }
         } else {
-            (vec![faces], vec![part(0, SweepPart::Shell)], face_roles)
+            specs.one_shell(part(0, SweepPart::Shell))
         };
-        let assembly = Assembly {
-            vertices,
-            edges,
-            shells,
-        };
-        let (b, slots) = Builder::assemble(m, tolerance, assembly)?;
-        let built = b.finish(m, BodyKind::Solid)?;
-        verify(m, built.body)?;
-        let provenance = record(
-            &built,
-            &slots,
-            &vertex_roles,
-            &edge_roles,
-            &face_roles,
-            &shell_roles,
-            |p| part(0, p),
-        );
-        Ok((built.body, provenance))
+        finish_solid(m, tolerance, specs, shells, |p| part(0, p))
     })
 }
