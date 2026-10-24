@@ -1,8 +1,8 @@
 # ADR-0069 — A version-only push rests on the nearest green commit
 
 - Status: accepted (2026-10-23)
-- Plan: `ci-reuse-gate` steps 1–4 (the script, the `reuse` and `reused`
-  jobs, the sharded `parallel` job); the first measured run is step 5
+- Plan: `ci-reuse-gate` steps 1–5 (the script, the `reuse` and `reused`
+  jobs, the sharded `parallel` job, the first measured run)
 - Follows: ADR-0032 (the lean gate), ADR-0034 (the release publishes the
   workspace and the wheel in lockstep)
 
@@ -21,11 +21,14 @@ the runs buy nothing.
    `<head>` itself or the nearest of its first 20 first-parent ancestors
    that has a successful `ci.yml` push run on `main`. It prints `skip=true`
    only when `git diff base head` lies inside an allow-list: `CHANGELOG.md`,
-   `AGENTS.md`, `SEED.md`, `.agents/**`, `docs/**` except `ROADMAP.md`,
+   `crates/*/CHANGELOG.md`, `AGENTS.md`, `SEED.md`, `.agents/**`, `docs/**` except `ROADMAP.md`,
    `DATA-MODEL.md` and `plans/**` (the set `ci.yml`'s path filter already
-   ignores, because tests read the three it keeps), `Cargo.lock` lines that
+   ignores; tests read the three it keeps, and `docs_refs`, which `reused`
+   runs, reads the rest), `Cargo.lock` lines that
    are all `version = "…"`, and a root `Cargo.toml` equal to the base's once
-   the workspace version and the internal crates' exact pins are normalised.
+   the workspace package's version and the internal crates' exact pins are
+   normalised, each in its own table only. The diff is read with options
+   that no user diff config changes.
 2. **It fails closed.** Anything else, `.github/**` and `tools/**` included,
    no green ancestor, a lookup that errors, and every pull request are
    `skip=false`: the full run, as before. A mistaken `false` costs hours; a
@@ -43,7 +46,8 @@ the runs buy nothing.
    names the green commit it rests on.
 5. **`parallel` is sharded** `hash:N/4` like `test`, so the longest job no
    longer sets the run's wall time. The count is settled by the first
-   measured run (step 5): no shard above about 1.5× the median.
+   measured run: 70, 63, 113 and 65 minutes against 5 hours as one job. The
+   count stays 4, since the `test` shards set the run's wall time.
 
 ## Consequences
 

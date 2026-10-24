@@ -15,7 +15,7 @@
 #     the same set `ci.yml`'s path filter already ignores
 #   - Cargo.lock, when every changed line is a `version = "…"` line
 #   - the root Cargo.toml, when it equals the base's once the workspace
-#     version and the internal crates' exact pins are normalised
+#     package's version and the internal crates' exact pins are normalised
 # Anything else, no green ancestor and any failed lookup are `skip=false`:
 # the default is the full run, so a mistake costs hours and never a missed
 # test. A pull request is never asked (`ci.yml`).
@@ -43,12 +43,15 @@ green_run() {
 }
 
 # The root manifest with its version strings made equal: the workspace
-# package's own and the internal crates' exact pins. A dependency's
-# requirement is not touched, so changing one stays a difference.
+# package's own and the internal crates' exact pins, each only in its own
+# table. A dependency's requirement, in any other table or form, is not
+# touched, so changing one stays a difference.
 norm_manifest() {
-  sed -E \
-    -e 's/^version = "[^"]*"/version = "V"/' \
-    -e '/^arris[a-z-]* *= *\{/ s/version = "=[^"]*"/version = "V"/'
+  awk '
+    /^\[/ { sec = $0 }
+    sec == "[workspace.package]" && /^version = "/ { $0 = "version = \"V\"" }
+    sec == "[workspace.dependencies]" && /^arris[a-z-]* *= *\{/ { gsub(/version = "=[^"]*"/, "version = \"V\"") }
+    { print }'
 }
 
 manifest_ok() {
@@ -63,9 +66,12 @@ manifest_ok() {
 # dependency would move its checksum too, which is not.
 lock_ok() {
   local diff
-  diff="$(git diff -U0 --no-renames "$1" "$2" -- Cargo.lock)" || return 1
+  # Options, so a user's diff config (diff.interHunkContext merges hunks and
+  # prints context) cannot change the answer. The headers before the first
+  # `@@` are dropped by position, never by what a changed line starts with.
+  diff="$(git diff -U0 --inter-hunk-context=0 --no-color --no-ext-diff --no-renames "$1" "$2" -- Cargo.lock)" || return 1
   ! printf '%s\n' "$diff" |
-    grep -Ev '^(diff |index |--- |\+\+\+ |@@ |old mode |new mode )' |
+    awk '/^@@ /{ body = 1; next } body' |
     grep -Evq '^[-+]version = "[^"]*"$'
 }
 
@@ -79,10 +85,13 @@ prose_ok() {
   return 1
 }
 
+# `skip` last: a consumer that keeps the last value of a key (GITHUB_OUTPUT)
+# cannot have it overridden by a line inside `reason`, which is one line.
 emit() {
-  echo "skip=$1"
+  local reason="${3//[$'\n\r']/ }"
+  echo "reason=$reason"
   echo "base=$2"
-  echo "reason=$3"
+  echo "skip=$1"
 }
 
 verdict() {
@@ -120,6 +129,7 @@ mk_repo() {
   git config user.name t
   git config user.email t@t
   git config commit.gpgsign false
+  git config diff.interHunkContext 10
   # The directory name is built, not written: docs_refs reads `plans/<slug>`
   # in this file as a citation of a plan.
   pd=plans
@@ -132,10 +142,17 @@ edition = "2024"
 [workspace.dependencies]
 serde = { version = "1", default-features = false }
 arris-math = { path = "crates/arris-math", version = "=0.9.1", default-features = false }
+
+[workspace.dependencies.tab]
+version = "1"
 EOF
   cat > Cargo.lock <<'EOF'
 [[package]]
 name = "arris-math"
+version = "0.9.1"
+
+[[package]]
+name = "arris-geom"
 version = "0.9.1"
 
 [[package]]
@@ -196,7 +213,7 @@ self_test() {
     rm -rf "$d"
   }
   run "a version bump" true \
-    'sed -i -E "s/^version = .*/version = \"0.10.0-dev\"/; s/version = \"=0.9.1\"/version = \"=0.10.0-dev\"/" Cargo.toml
+    'sed -i -E "0,/^version = .*/ s//version = \"0.10.0-dev\"/; s/version = \"=0.9.1\"/version = \"=0.10.0-dev\"/" Cargo.toml
      sed -i -E "s/^version = \"0.9.1\"/version = \"0.10.0-dev\"/" Cargo.lock'
   run "a changelog and AGENTS edit" true 'echo more >> CHANGELOG.md; echo more >> AGENTS.md'
   run "a docs note and an .agents edit" true 'echo more >> docs/notes.md; echo more >> .agents/r.md'
@@ -211,13 +228,20 @@ self_test() {
   run "a dependency requirement" false \
     'sed -i "s/serde = { version = \"1\"/serde = { version = \"2\"/" Cargo.toml'
   run "a version bump plus another manifest line" false \
-    'sed -i -E "s/^version = .*/version = \"0.10.0-dev\"/" Cargo.toml; echo "x = 1" >> Cargo.toml'
+    'sed -i -E "0,/^version = .*/ s//version = \"0.10.0-dev\"/" Cargo.toml; echo "x = 1" >> Cargo.toml'
+  run "a table-form dependency requirement" false \
+    'sed -i "/^\[workspace.dependencies.tab\]/,\$ s/version = \"1\"/version = \"2\"/" Cargo.toml'
+  run "a source file moved under docs" false 'git mv crates/x/src/lib.rs docs/lib.rs'
+  run "a docs note deleted" true 'git rm -q docs/notes.md'
+  run "a crate changelog edit" true 'echo more >> crates/x/CHANGELOG.md'
+  run "a changelog nested below a crate" false 'mkdir -p crates/x/y; echo more >> crates/x/y/CHANGELOG.md'
+  run "a SEED edit" true 'echo more >> SEED.md'
   run "a crate manifest change" false 'echo "[package]" > crates/x/Cargo.toml'
   run "a lock checksum change" false \
     'sed -i -E "s/1.0.1/1.0.2/; s/aaaa/bbbb/" Cargo.lock'
   run "a lock package added" false 'printf "\n[[package]]\nname = \"y\"\nversion = \"1.0.0\"\n" >> Cargo.lock'
   run "a version bump riding with a source change" false \
-    'sed -i -E "s/^version = .*/version = \"0.10.0-dev\"/" Cargo.toml; echo more >> crates/x/src/lib.rs'
+    'sed -i -E "0,/^version = .*/ s//version = \"0.10.0-dev\"/" Cargo.toml; echo more >> crates/x/src/lib.rs'
   run "a source change in an earlier commit" false \
     'git checkout -q -b t; echo more >> crates/x/src/lib.rs; git commit -qam mid; echo more >> AGENTS.md'
   run "no green ancestor" false 'echo more >> AGENTS.md' none
