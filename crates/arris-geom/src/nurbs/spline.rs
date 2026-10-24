@@ -3,6 +3,7 @@
 //! imply, knot insertion and projection. Dimension-generic so
 //! `NurbsCurve` and `NurbsCurve2` are the same code.
 
+use crate::SplineFault;
 use arris_math::nalgebra::{Const, OPoint, SVector};
 use arris_math::roots::newton_in_interval;
 use arris_math::{Interval, is_negligible};
@@ -43,26 +44,25 @@ impl<const D: usize> Spline<D> {
         knots: Vec<f64>,
         points: Vec<OPoint<f64, Const<D>>>,
         weights: Vec<f64>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, SplineFault> {
         basis::validate(degree, &knots, points.len())?;
         if weights.len() != points.len() {
-            return Err(format!(
-                "{} weights for {} control points",
-                weights.len(),
-                points.len()
-            ));
+            return Err(SplineFault::WeightCount {
+                weights: weights.len(),
+                points: points.len(),
+            });
         }
         if let Some(i) = points
             .iter()
             .position(|p| !p.coords.iter().all(|c| c.is_finite()))
         {
-            return Err(format!("control point {i} is not finite"));
+            return Err(SplineFault::PointNotFinite { index: i });
         }
         if let Some(i) = weights.iter().position(|w| !(w.is_finite() && *w > 0.0)) {
-            return Err(format!(
-                "weight {i} is {}: weights are finite and positive",
-                weights[i]
-            ));
+            return Err(SplineFault::Weight {
+                index: i,
+                weight: weights[i],
+            });
         }
         let period = detect_period(degree, &knots, points.len(), |a, b| {
             let scale = points.iter().map(|p| p.coords.norm()).fold(0.0, f64::max);
@@ -215,25 +215,28 @@ impl<const D: usize> Spline<D> {
     /// not be a spline — `t` outside `[knots[p], knots[n])`, or a
     /// multiplicity that would exceed the degree.
     #[allow(clippy::needless_range_loop)] // A5.1's four index passes, as written
-    pub(crate) fn insert_knot(&self, t: f64, times: usize) -> Result<Self, String> {
+    pub(crate) fn insert_knot(&self, t: f64, times: usize) -> Result<Self, SplineFault> {
         let p = self.degree;
         let n = self.points.len();
         let t = self.wrap(t);
         if !(t.is_finite() && t >= self.knots[p] && t < self.knots[n]) {
-            return Err(format!(
-                "knot {t} is outside the domain [{}, {})",
-                self.knots[p], self.knots[n]
-            ));
+            return Err(SplineFault::KnotOutsideDomain {
+                knot: t,
+                lo: self.knots[p],
+                hi: self.knots[n],
+            });
         }
         let s = basis::multiplicity(&self.knots, t);
         if times == 0 {
             return Ok(self.clone());
         }
         if s + times > p {
-            return Err(format!(
-                "inserting {t} {times} more times would give it multiplicity {}, above the degree {p}",
-                s + times
-            ));
+            return Err(SplineFault::InsertionMultiplicity {
+                knot: t,
+                times,
+                already: s,
+                degree: p,
+            });
         }
         let k = basis::span(p, &self.knots, n, t);
         let r = times;
@@ -290,17 +293,17 @@ impl<const D: usize> Spline<D> {
     /// two periods, and the piece's knots shifted back by the whole
     /// periods the wrap took; any other spline a range inside its domain.
     /// The error is the reason.
-    pub(crate) fn segment(&self, lo: f64, hi: f64) -> Result<Self, String> {
+    pub(crate) fn segment(&self, lo: f64, hi: f64) -> Result<Self, SplineFault> {
         let p = self.degree;
         if !(lo.is_finite() && hi.is_finite() && lo < hi) {
-            return Err(format!("[{lo}, {hi}] is no range"));
+            return Err(SplineFault::NoRange { lo, hi });
         }
         let (given_lo, given_hi) = (lo, hi);
         let (mut s, lo, hi) = match self.period {
             Some(period) => {
                 let length = hi - lo;
                 if length > period && !is_negligible(length - period, period) {
-                    return Err(format!("[{lo}, {hi}] is longer than the period {period}"));
+                    return Err(SplineFault::LongerThanPeriod { lo, hi, period });
                 }
                 let lo = self.wrap(lo);
                 (self.unrolled(period)?, lo, lo + length.min(period))
@@ -308,11 +311,12 @@ impl<const D: usize> Spline<D> {
             None => {
                 let domain = self.domain();
                 if lo < domain.lo() || hi > domain.hi() {
-                    return Err(format!(
-                        "[{lo}, {hi}] is outside the domain [{}, {}]",
-                        domain.lo(),
-                        domain.hi()
-                    ));
+                    return Err(SplineFault::OutsideDomain {
+                        lo,
+                        hi,
+                        domain_lo: domain.lo(),
+                        domain_hi: domain.hi(),
+                    });
                 }
                 (self.clone(), lo, hi)
             }
@@ -327,7 +331,7 @@ impl<const D: usize> Spline<D> {
             s.knots.iter().rposition(|&k| k == lo),
             s.knots.iter().position(|&k| k == hi),
         ) else {
-            return Err("a knot the insertion put in is missing".to_string());
+            return Err(SplineFault::InsertedKnotMissing);
         };
         // A knot of multiplicity `p` or more is interpolated: the point at
         // `lo` is the control point `p` before its last copy, the one at
@@ -349,7 +353,7 @@ impl<const D: usize> Spline<D> {
     /// and control points run on past the first period's end: the knot
     /// `m = n − p` places on is the knot plus the period, and the control
     /// point `m` places on the same point, as the periodic sequence is.
-    fn unrolled(&self, period: f64) -> Result<Self, String> {
+    fn unrolled(&self, period: f64) -> Result<Self, SplineFault> {
         let p = self.degree;
         let n = self.points.len();
         let m = n - p;

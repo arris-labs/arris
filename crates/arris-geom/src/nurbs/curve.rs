@@ -3,7 +3,7 @@
 use arris_math::{Interval, Isometry, Point2, Point3, Reflection, Vec2};
 
 use super::spline::{BezierSpan, Spline};
-use crate::{Curve2Eval, Curve2Kind, CurveEval, CurveKind, GeomError, GeomKind};
+use crate::{Curve2Eval, Curve2Kind, CurveEval, CurveKind, GeomError, GeomKind, SplineFault};
 
 /// A rational B-spline curve in 3D (`docs/DATA-MODEL.md` §NURBS):
 /// degree `p`, `n + p + 1` non-decreasing knots, `n` control points and
@@ -133,8 +133,11 @@ impl TryFrom<NurbsCurve2Repr> for NurbsCurve2 {
     }
 }
 
-fn degenerate(kind: GeomKind) -> impl Fn(String) -> GeomError {
-    move |reason| GeomError::Degenerate { kind, reason }
+fn degenerate(kind: GeomKind) -> impl Fn(SplineFault) -> GeomError {
+    move |reason| GeomError::Degenerate {
+        kind,
+        reason: reason.into(),
+    }
 }
 
 impl NurbsCurve {
@@ -463,6 +466,7 @@ impl NurbsCurve2 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DegenerateReason;
 
     fn cubic() -> NurbsCurve {
         NurbsCurve::new(
@@ -508,7 +512,16 @@ mod tests {
                 ..
             }
         ));
-        assert!(err.to_string().contains("weight 1"), "{err}");
+        assert!(
+            matches!(
+                err.degenerate_reason(),
+                Some(DegenerateReason::Spline(SplineFault::Weight {
+                    index: 1,
+                    ..
+                }))
+            ),
+            "{err}"
+        );
         let err = NurbsCurve2::new(
             1,
             vec![0.0, 1.0, 1.0],
@@ -516,7 +529,16 @@ mod tests {
             vec![1.0; 2],
         )
         .unwrap_err();
-        assert!(err.to_string().contains("3 knots"), "{err}");
+        assert!(
+            matches!(
+                err.degenerate_reason(),
+                Some(DegenerateReason::Spline(SplineFault::KnotCount {
+                    knots: 3,
+                    ..
+                }))
+            ),
+            "{err}"
+        );
         assert!(matches!(
             err,
             GeomError::Degenerate {
@@ -536,7 +558,15 @@ mod tests {
         assert_eq!(twice.control_points().len(), 7);
         assert_eq!(c.insert_knot(0.5, 0).unwrap(), c);
         let e = c.insert_knot(f64::NAN, 1).unwrap_err();
-        assert!(e.to_string().contains("outside"), "{e}");
+        assert!(
+            matches!(
+                e.degenerate_reason(),
+                Some(DegenerateReason::Spline(
+                    SplineFault::KnotOutsideDomain { .. }
+                ))
+            ),
+            "{e}"
+        );
     }
 
     #[test]

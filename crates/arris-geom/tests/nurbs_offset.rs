@@ -4,7 +4,7 @@
 //! short of its least radius and folds past it, and a pole is refused.
 
 use arris_debug::prop::{finite_f64, pose};
-use arris_geom::{GeomError, NurbsSurface, Surface};
+use arris_geom::{DegenerateReason, GeomError, NurbsSurface, OffsetFault, Surface};
 use arris_math::{Frame, Interval, Isometry, Meter, Point3, Vec3};
 use proptest::prelude::*;
 
@@ -237,7 +237,10 @@ fn a_pole_in_the_box_is_refused() {
         .offset_fitted(0.5, twin.domain(), TOL, &mut Meter::default())
         .unwrap_err();
     assert!(
-        matches!(&e, GeomError::Degenerate { reason, .. } if reason.contains("collapsed row")),
+        matches!(
+            e.degenerate_reason(),
+            Some(DegenerateReason::Offset(OffsetFault::CollapsedRow { .. }))
+        ),
         "{e}"
     );
     // Off the poles it offsets.

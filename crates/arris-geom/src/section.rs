@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use arris_math::{Aabb, Interval, KNOT_RESOLUTION, Meter, Point2, Point3, Tolerance};
 
+use crate::DegenerateReason;
 use crate::{
     Curve, Curve2, Curve2Kind, GeomError, GeomKind, MeetCurve, MeetKind, MeetPoint, NurbsSurface,
     SectionBranch, SectionCircle, SectionPoint, SectionTrace, Surface, SurfaceIntersection,
@@ -352,7 +353,7 @@ pub fn fit_branch_pcurve(
     let Some(surf) = branch.surface(surface) else {
         return Err(GeomError::Degenerate {
             kind: GeomKind::Curve2(Curve2Kind::Nurbs),
-            reason: format!("a branch has no parameters on operand {surface}"),
+            reason: Box::new(DegenerateReason::BranchNoParameters { surface }),
         });
     };
     let f = |t: f64| {

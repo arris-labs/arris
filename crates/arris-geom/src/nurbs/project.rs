@@ -26,6 +26,7 @@ use arris_math::nalgebra::Vector4;
 use arris_math::{Point2, Point3, RELATIVE_ROUNDING, Vec3, is_negligible};
 
 use super::{NurbsSurface, basis};
+use crate::DegenerateReason;
 use crate::{AmbiguousLocus, GeomError, GeomKind, SurfaceKind, SurfaceProjection};
 
 /// How many times the rounding of the coordinates a minimum is located to:
@@ -400,7 +401,7 @@ impl NurbsSurface {
         if !p.coords.iter().all(|c| c.is_finite()) {
             return Err(GeomError::Degenerate {
                 kind: GeomKind::Point,
-                reason: format!("the point {p} to project is not finite"),
+                reason: Box::new(DegenerateReason::PointNotFinite { point: p }),
             });
         }
         let ambiguous = || GeomError::Ambiguous {
@@ -486,7 +487,7 @@ impl NurbsSurface {
         let Some(nearest) = found.iter().map(|c| c.distance).min_by(f64::total_cmp) else {
             return Err(GeomError::Degenerate {
                 kind: GeomKind::Surface(SurfaceKind::Nurbs),
-                reason: "the search found no candidate to project onto".into(),
+                reason: Box::new(DegenerateReason::NoProjectionCandidate),
             });
         };
 

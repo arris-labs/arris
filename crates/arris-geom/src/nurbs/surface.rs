@@ -4,7 +4,7 @@ use arris_math::nalgebra::Vector4;
 use arris_math::{Interval, Isometry, Point3, Reflection, UnitVec3, Vec3, is_negligible};
 
 use super::basis::{self, MAX_DEGREE, ORDERS};
-use crate::{GeomError, GeomKind, SurfaceEval, SurfaceKind};
+use crate::{GeomError, GeomKind, NetDirection, NetFault, SurfaceEval, SurfaceKind};
 
 /// A rational B-spline surface (`docs/DATA-MODEL.md` §NURBS): degrees
 /// `(p, q)`, knot vectors of `n + p + 1` and `m + q + 1` knots, an `n × m`
@@ -100,65 +100,59 @@ impl NurbsSurface {
         control_points: Vec<Point3>,
         weights: Vec<f64>,
     ) -> Result<Self, GeomError> {
-        let degenerate = |reason: String| GeomError::Degenerate {
+        let degenerate = |reason: NetFault| GeomError::Degenerate {
             kind: GeomKind::Surface(SurfaceKind::Nurbs),
-            reason,
+            reason: reason.into(),
         };
         let mut counts = [0; 2];
         for dir in 0..2 {
-            let name = ["u", "v"][dir];
+            let direction = [NetDirection::U, NetDirection::V][dir];
             if degree[dir] == 0 || degree[dir] > MAX_DEGREE {
-                return Err(degenerate(format!(
-                    "{name}: degree {} is not in 1..={MAX_DEGREE}",
-                    degree[dir]
-                )));
+                return Err(degenerate(NetFault::Degree {
+                    direction,
+                    degree: degree[dir],
+                }));
             }
             counts[dir] = knots[dir]
                 .len()
                 .checked_sub(degree[dir] + 1)
                 .filter(|&n| n > degree[dir])
                 .ok_or_else(|| {
-                    degenerate(format!(
-                        "{name}: {} knots for degree {} leave fewer than {} control points",
-                        knots[dir].len(),
-                        degree[dir],
-                        degree[dir] + 1
-                    ))
+                    degenerate(NetFault::KnotCount {
+                        direction,
+                        knots: knots[dir].len(),
+                        degree: degree[dir],
+                    })
                 })?;
             basis::validate(degree[dir], &knots[dir], counts[dir])
-                .map_err(|reason| degenerate(format!("{name}: {reason}")))?;
+                .map_err(|fault| degenerate(NetFault::Knots { direction, fault }))?;
         }
         let [n, m] = counts;
         if control_points.len() != n * m {
-            return Err(degenerate(format!(
-                "{} control points for a {n} × {m} net",
-                control_points.len()
-            )));
+            return Err(degenerate(NetFault::PointCount {
+                points: control_points.len(),
+                n,
+                m,
+            }));
         }
         if weights.len() != control_points.len() {
-            return Err(degenerate(format!(
-                "{} weights for {} control points",
-                weights.len(),
-                control_points.len()
-            )));
+            return Err(degenerate(NetFault::WeightCount {
+                weights: weights.len(),
+                points: control_points.len(),
+            }));
         }
         if let Some(i) = control_points
             .iter()
             .position(|p| !p.coords.iter().all(|c| c.is_finite()))
         {
-            return Err(degenerate(format!(
-                "control point ({}, {}) is not finite",
-                i / m,
-                i % m
-            )));
+            return Err(degenerate(NetFault::PointNotFinite { u: i / m, v: i % m }));
         }
         if let Some(i) = weights.iter().position(|w| !(w.is_finite() && *w > 0.0)) {
-            return Err(degenerate(format!(
-                "weight ({}, {}) is {}: weights are finite and positive",
-                i / m,
-                i % m,
-                weights[i]
-            )));
+            return Err(degenerate(NetFault::Weight {
+                u: i / m,
+                v: i % m,
+                weight: weights[i],
+            }));
         }
         let scale = control_points
             .iter()
@@ -255,7 +249,11 @@ impl NurbsSurface {
         if i >= self.counts[0] {
             return Err(GeomError::Degenerate {
                 kind: GeomKind::Surface(SurfaceKind::Nurbs),
-                reason: format!("control row {i} of {}", self.counts[0]),
+                reason: NetFault::ControlRow {
+                    row: i,
+                    rows: self.counts[0],
+                }
+                .into(),
             });
         }
         crate::NurbsCurve::new(
@@ -599,6 +597,7 @@ impl NurbsSurface {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DegenerateReason;
 
     #[test]
     fn the_constructor_names_the_fault() {
@@ -609,7 +608,17 @@ mod tests {
             vec![1.0; 3],
         )
         .unwrap_err();
-        assert!(e.to_string().contains("2 × 2 net"), "{e}");
+        assert!(
+            matches!(
+                e.degenerate_reason(),
+                Some(DegenerateReason::Net(NetFault::PointCount {
+                    points: 3,
+                    n: 2,
+                    m: 2
+                }))
+            ),
+            "{e}"
+        );
         let e = NurbsSurface::new(
             [1, 2],
             [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
@@ -617,7 +626,17 @@ mod tests {
             vec![1.0; 4],
         )
         .unwrap_err();
-        assert!(e.to_string().contains("v: 4 knots"), "{e}");
+        assert!(
+            matches!(
+                e.degenerate_reason(),
+                Some(DegenerateReason::Net(NetFault::KnotCount {
+                    direction: NetDirection::V,
+                    knots: 4,
+                    degree: 2
+                }))
+            ),
+            "{e}"
+        );
         let e = NurbsSurface::new(
             [1, 1],
             [vec![0.0, 0.0, 1.0, 1.0], vec![0.0, 0.0, 1.0, 1.0]],
@@ -625,7 +644,13 @@ mod tests {
             vec![1.0, 1.0, -1.0, 1.0],
         )
         .unwrap_err();
-        assert!(e.to_string().contains("weight (1, 0)"), "{e}");
+        assert!(
+            matches!(
+                e.degenerate_reason(),
+                Some(DegenerateReason::Net(NetFault::Weight { u: 1, v: 0, .. }))
+            ),
+            "{e}"
+        );
     }
 
     #[test]

@@ -9,6 +9,7 @@ use arris_math::{Aabb, Frame, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, 
 use crate::conic2::{Conic2, ConicMeet, conic_pair};
 use crate::pcurve::principal_axes;
 use crate::{Curve, GeomError, GeomKind, Surface};
+use crate::{FrameFault, RootsFault};
 
 /// What two surfaces have in common.
 ///
@@ -970,7 +971,7 @@ fn elliptic_pair(
     };
     let meet = conic_pair(&first, &second, tol).map_err(|e| GeomError::Degenerate {
         kind: GeomKind::Surface(a.kind()),
-        reason: format!("the sections' meeting: {e}"),
+        reason: RootsFault::SectionsMeeting(e).into(),
     })?;
     let ruling = |t: f64| {
         let p = first.point(t);
@@ -1005,7 +1006,7 @@ fn elliptic_pair(
 fn frame_degenerate(kind: GeomKind) -> GeomError {
     GeomError::Degenerate {
         kind,
-        reason: "non-finite frame".to_owned(),
+        reason: FrameFault::NonFinite.into(),
     }
 }
 

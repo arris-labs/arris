@@ -17,7 +17,7 @@ use super::fit::{
 use super::spline::BezierSpan;
 use super::{NurbsCurve, NurbsSurface};
 use crate::bernstein::{Binomials, mul};
-use crate::{CurveKind, GeomError, GeomKind, SurfaceKind};
+use crate::{CurveKind, GeomError, GeomKind, SkinFault, SurfaceKind};
 
 /// Two weight functions whose weights, each divided by its first, agree
 /// this closely relative to their size are one: the spread of the same
@@ -105,13 +105,14 @@ pub fn fit_skin<E: From<GeomError>>(
         if c.degree() != p || c.knots() != knots_u.as_slice() || c.control_points().len() != n {
             return Err(E::from(GeomError::Degenerate {
                 kind: GeomKind::Curve(CurveKind::Nurbs),
-                reason: format!(
-                    "the section at v = {v} is not compatible with the first: degree {} \
-                     and {} knots, where the first has degree {p} and {} knots",
-                    c.degree(),
-                    c.knots().len(),
-                    knots_u.len()
-                ),
+                reason: SkinFault::SectionAt {
+                    v,
+                    degree: c.degree(),
+                    knots: c.knots().len(),
+                    first_degree: p,
+                    first_knots: knots_u.len(),
+                }
+                .into(),
             }));
         }
         Ok(c)
@@ -289,9 +290,9 @@ pub fn interpolate_skin(
     degree: usize,
     closed: bool,
 ) -> Result<NurbsSurface, GeomError> {
-    let degenerate = |reason: String| GeomError::Degenerate {
+    let degenerate = |reason: SkinFault| GeomError::Degenerate {
         kind: GeomKind::Surface(SurfaceKind::Nurbs),
-        reason,
+        reason: reason.into(),
     };
     let rows: Vec<&NurbsCurve> = sections
         .iter()
@@ -299,44 +300,41 @@ pub fn interpolate_skin(
         .collect();
     let count = rows.len();
     let Some(first) = rows.first() else {
-        return Err(degenerate("a skin through no sections".to_string()));
+        return Err(degenerate(SkinFault::NoSections));
     };
     if sections.len() < 2 {
-        return Err(degenerate(format!(
-            "a skin through {} section, at least two are needed",
-            sections.len()
-        )));
+        return Err(degenerate(SkinFault::TooFewSections {
+            sections: sections.len(),
+        }));
     }
     if params.len() != count {
-        return Err(degenerate(format!(
-            "{} parameters for {count} sections",
-            params.len()
-        )));
+        return Err(degenerate(SkinFault::ParameterCount {
+            params: params.len(),
+            sections: count,
+        }));
     }
     if let Some(k) = params.iter().position(|t| !t.is_finite()) {
-        return Err(degenerate(format!("parameter {k} is not finite")));
+        return Err(degenerate(SkinFault::ParameterNotFinite { index: k }));
     }
     if let Some(k) = params.windows(2).position(|w| w[0] >= w[1]) {
-        return Err(degenerate(format!(
-            "parameters {k} and {} do not increase: {} and {}",
-            k + 1,
-            params[k],
-            params[k + 1]
-        )));
+        return Err(degenerate(SkinFault::ParametersNotIncreasing {
+            index: k,
+            first: params[k],
+            second: params[k + 1],
+        }));
     }
     if degree == 0 || degree >= count {
-        return Err(degenerate(format!(
-            "degree {degree} is not in 1..{count} for {count} sections"
-        )));
+        return Err(degenerate(SkinFault::Degree {
+            degree,
+            sections: count,
+        }));
     }
     let p = first.degree();
     let n = first.control_points().len();
     if let Some(k) = rows.iter().position(|c| {
         c.degree() != p || c.knots() != first.knots() || c.control_points().len() != n
     }) {
-        return Err(degenerate(format!(
-            "section {k} is not compatible with the first"
-        )));
+        return Err(degenerate(SkinFault::SectionIncompatible { index: k }));
     }
     let unified = one_weight(&rows)?;
     let rows: Vec<&NurbsCurve> = unified.iter().collect();
@@ -381,10 +379,9 @@ pub fn interpolate_skin(
             }
         });
         if a[pivot][col] == 0.0 {
-            return Err(degenerate(format!(
-                "the interpolation at parameter {} is singular",
-                params[col]
-            )));
+            return Err(degenerate(SkinFault::Singular {
+                parameter: params[col],
+            }));
         }
         a.swap(col, pivot);
         b.swap(col, pivot);
@@ -422,10 +419,11 @@ pub fn interpolate_skin(
         for (k, row) in b.iter().enumerate() {
             let h = row[i];
             if h.w.is_nan() || h.w <= 0.0 {
-                return Err(degenerate(format!(
-                    "the interpolated weight of control point {i} at row {k} is {}",
-                    h.w
-                )));
+                return Err(degenerate(SkinFault::InterpolatedWeight {
+                    point: i,
+                    row: k,
+                    weight: h.w,
+                }));
             }
             weights.push(h.w);
             points.push(arris_math::Point3::new(h.x / h.w, h.y / h.w, h.z / h.w));
@@ -507,10 +505,11 @@ fn one_weight(rows: &[&NurbsCurve]) -> Result<Vec<NurbsCurve>, GeomError> {
     if top > MAX_DEGREE {
         return Err(GeomError::Degenerate {
             kind: GeomKind::Curve(CurveKind::Nurbs),
-            reason: format!(
-                "{} distinct weight functions need degree {top}, above {MAX_DEGREE}",
-                classes.len()
-            ),
+            reason: SkinFault::WeightClasses {
+                classes: classes.len(),
+                degree: top,
+            }
+            .into(),
         });
     }
     let binomials = Binomials::new(top);

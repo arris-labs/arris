@@ -15,6 +15,7 @@ use crate::{
     Curve, CurveKind, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, GeomKind, NurbsCurve,
     Surface, extrema_curve_curve, intersect_curve_surface,
 };
+use crate::{DegenerateReason, FrameFault, RootsFault};
 
 /// One point two curves have in common.
 ///
@@ -555,15 +556,15 @@ fn conic_conic_coplanar(
             b: GeomKind::Curve(b.kind()),
         });
     };
-    let degenerate = |reason: String| GeomError::Degenerate {
+    let degenerate = |reason: DegenerateReason| GeomError::Degenerate {
         kind: GeomKind::Curve(a.kind()),
-        reason,
+        reason: Box::new(reason),
     };
     let into_plane = |v: Vec3| {
         let w = fb.vec_to_local(v);
         Vec2::new(w.x, w.y)
             .try_normalize(0.0)
-            .ok_or_else(|| degenerate("a conic axis square to the plane it lies in".to_owned()))
+            .ok_or_else(|| degenerate(FrameFault::ConicAxisSquareToPlane.into()))
     };
     let centre = fb.to_local(fa.origin());
     let first = Conic2 {
@@ -581,7 +582,7 @@ fn conic_conic_coplanar(
         b: rb[1],
     };
     match conic_pair(&first, &second, tol)
-        .map_err(|e| degenerate(format!("two conics in one plane: {e}")))?
+        .map_err(|e| degenerate(RootsFault::ConicsInPlane(e).into()))?
     {
         ConicMeet::Coincident => Ok(CurveIntersection::Coincident),
         ConicMeet::Empty => Ok(CurveIntersection::Points(Vec::new())),
@@ -694,7 +695,7 @@ fn nurbs_line(
 ) -> Result<CurveIntersection, GeomError> {
     let degenerate = |_| GeomError::Degenerate {
         kind: GeomKind::Curve(CurveKind::Line),
-        reason: "a line whose direction is not a direction".to_string(),
+        reason: FrameFault::LineNotADirection.into(),
     };
     let across = Frame::from_z(origin, direction).map_err(degenerate)?;
     let mut found = Vec::with_capacity(2);
@@ -864,7 +865,7 @@ fn line_conic_coplanar(
     let normal = conic.z().cross(&direction);
     let cut = Frame::from_z(origin, normal).map_err(|_| GeomError::Degenerate {
         kind: GeomKind::Curve(CurveKind::Line),
-        reason: "a line in the conic's plane whose direction is not a direction".to_string(),
+        reason: FrameFault::CoplanarLineNotADirection.into(),
     })?;
     let plane = Surface::Plane { frame: cut };
     let found = match intersect_curve_surface(b, &plane, tol, meter)? {
@@ -874,7 +875,7 @@ fn line_conic_coplanar(
         CurveSurfaceIntersection::Coincident => {
             return Err(GeomError::Degenerate {
                 kind: GeomKind::Curve(b.kind()),
-                reason: "a conic inside a plane perpendicular to its own".to_string(),
+                reason: FrameFault::ConicInPerpendicularPlane.into(),
             });
         }
     };

@@ -45,6 +45,7 @@ use arris_math::{
 
 use arris_math::nalgebra::{Matrix4, Vector4};
 
+use crate::FrameFault;
 use crate::torus_walk::TorusWalk;
 use crate::{Curve, GeomError, GeomKind, NurbsSurface, Surface};
 
@@ -1287,7 +1288,7 @@ pub fn trace_quadrics(
     if !noise.is_finite() {
         return Err(GeomError::Degenerate {
             kind: kinds.0,
-            reason: "a non-finite frame or radius".into(),
+            reason: FrameFault::NonFiniteOrRadius.into(),
         });
     }
 

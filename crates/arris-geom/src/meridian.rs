@@ -28,6 +28,7 @@ use core::f64::consts::FRAC_PI_2;
 
 use arris_math::{Aabb, Frame, Meter, Point3, Tolerance, UnitVec3, Vec3};
 
+use crate::FrameFault;
 use crate::intersect::line_angle;
 use crate::{
     Curve, GeomError, GeomKind, MeetCurve, MeetKind, MeetPoint, Surface, SurfaceIntersection,
@@ -282,7 +283,7 @@ fn shared_axis(a: &Surface, b: &Surface, tol: Tolerance) -> Result<Shared, GeomE
                 .map(Shared::Axis)
                 .map_err(|_| GeomError::Degenerate {
                     kind: GeomKind::Surface(SurfaceKind::Sphere),
-                    reason: "non-finite frame".to_owned(),
+                    reason: FrameFault::NonFinite.into(),
                 });
         }
         // An elliptic cylinder is no surface of revolution and never

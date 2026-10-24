@@ -10,6 +10,7 @@
 
 use arris_math::{Interval, Tolerance};
 
+use crate::DegenerateReason;
 use crate::integrate::gauss_legendre;
 use crate::{
     Curve, CurveKind, GeomError, GeomKind, NurbsCurve, Profile, ProfileEdge, ProfileError,
@@ -169,7 +170,7 @@ fn assemble(parts: &[NurbsCurve]) -> Result<LoopNurbs, GeomError> {
     let (Some(&end), Some(&first)) = (knots.last(), points.first()) else {
         return Err(GeomError::Degenerate {
             kind: GeomKind::Curve(CurveKind::Nurbs),
-            reason: "a profile loop with a segment".to_string(),
+            reason: Box::new(DegenerateReason::ProfileLoopEmpty),
         });
     };
     knots.push(end);
@@ -612,7 +613,7 @@ pub fn match_sections(
         if let Some(section) = units.iter().position(|u| u.len() != count) {
             return Err(at(section)(GeomError::Degenerate {
                 kind: GeomKind::Curve(CurveKind::Nurbs),
-                reason: "a loop cut into as many pieces as the other sections".to_string(),
+                reason: Box::new(DegenerateReason::LoopPiecesDiffer),
             }));
         }
         let mut refined_units: Vec<Vec<NurbsCurve>> = vec![Vec::with_capacity(count); units.len()];

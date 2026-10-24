@@ -14,7 +14,9 @@ use arris_math::{
 };
 
 use crate::project::{ellipse_distance, ellipse_nearest};
-use crate::{Curve, Curve2, GeomError, GeomKind, NurbsCurve, NurbsCurve2, Surface, fit_curve2};
+use crate::{
+    Curve, Curve2, GeomError, GeomKind, NurbsCurve, NurbsCurve2, PcurveFault, Surface, fit_curve2,
+};
 
 /// How many parameters `pcurve_on` samples over the range to decide that
 /// the curve lies on the surface and where it nears a singular point, and
@@ -59,7 +61,7 @@ fn in_plane_vec(plane: &Frame, v: Vec3) -> Vec2 {
     Vec2::new(q.x, q.y)
 }
 
-fn degenerate(kind: GeomKind, reason: impl Into<String>) -> GeomError {
+fn degenerate(kind: GeomKind, reason: PcurveFault) -> GeomError {
     GeomError::Degenerate {
         kind,
         reason: reason.into(),
@@ -187,11 +189,10 @@ pub fn pcurve_on(
     if !range.is_bounded() || range.length() <= 0.0 {
         return Err(degenerate(
             curve_kind,
-            format!(
-                "a pcurve needs a bounded range of positive length, not [{}, {}]",
-                range.lo(),
-                range.hi()
-            ),
+            PcurveFault::Range {
+                lo: range.lo(),
+                hi: range.hi(),
+            },
         ));
     }
     match surface {
@@ -329,7 +330,7 @@ fn in_plane_curve(curve: &Curve, plane: &Frame) -> Result<Curve2, GeomError> {
         &Curve::Line { origin, direction } => {
             let d = in_plane_vec(plane, direction.into_inner());
             let direction = UnitVec2::try_new(d, 0.0)
-                .ok_or_else(|| degenerate(kind, "the line is perpendicular to the plane"))?;
+                .ok_or_else(|| degenerate(kind, PcurveFault::LinePerpendicular))?;
             Ok(Curve2::Line {
                 origin: in_plane(plane, origin),
                 direction,
@@ -390,7 +391,7 @@ fn conic_frame(plane: &Frame, frame: &Frame, kind: GeomKind) -> Result<Frame2, G
         in_plane_vec(plane, frame.x().into_inner()),
         handedness,
     )
-    .map_err(|e| degenerate(kind, format!("conic axes in the plane: {e:?}")))
+    .map_err(|e| degenerate(kind, PcurveFault::ConicAxes(e)))
 }
 
 /// A NURBS with its control points in plane coordinates: the projection
@@ -485,12 +486,8 @@ fn on_elliptic_cylinder(
             // unless the ellipse is degenerate to the tolerance.
             let q = cyl.to_local(origin);
             let noise = origin.coords.norm() + cyl.origin().coords.norm();
-            let (u, _) = ellipse_nearest(a, b, q.x, q.y, noise).map_err(|locus| {
-                degenerate(
-                    kind,
-                    format!("the ruling's section point is on {locus} of the ellipse"),
-                )
-            })?;
+            let (u, _) = ellipse_nearest(a, b, q.x, q.y, noise)
+                .map_err(|locus| degenerate(kind, PcurveFault::RulingAmbiguous(locus)))?;
             Ok(Curve2::Line {
                 origin: Point2::new(u, q.z),
                 direction: UnitVec2::new_unchecked(Vec2::new(0.0, d.z.signum())),
@@ -640,7 +637,7 @@ fn on_cone(
     if is_negligible(sin, 1.0) || cos <= 0.0 {
         return Err(degenerate(
             GeomKind::Surface(surface.kind()),
-            format!("a cone's half-angle is in (0, π/2), not {half_angle}"),
+            PcurveFault::ConeHalfAngle { half_angle },
         ));
     }
     match curve {
@@ -655,7 +652,7 @@ fn on_cone(
                 return fitted_on(curve, range, surface, tol, meter);
             }
             if is_negligible(equatorial.norm(), 1.0) {
-                return Err(degenerate(kind, "the ruling has no radial direction"));
+                return Err(degenerate(kind, PcurveFault::RulingNoRadial));
             }
             let u = wrap_turn(real::atan2(equatorial.y, equatorial.x));
             let v0 = cone.to_local(origin).z / cos;
@@ -904,7 +901,7 @@ fn singular_ends(
             let tangent = (into * curve.eval(ts[end]).d1)
                 .try_normalize(0.0)
                 .filter(|_| reach > 0.0)
-                .ok_or_else(|| degenerate(kind, "arrives at a singular point with no tangent"))?;
+                .ok_or_else(|| degenerate(kind, PcurveFault::SingularNoTangent))?;
             let free = surface.project(singular.point + reach * tangent)?.uv[1 - singular.fixed];
             // Carried onto the point until the first sample clear of the
             // fade, or the middle of a range too short to have one.
@@ -1048,9 +1045,11 @@ fn fitted_on(
                 } else {
                     return Err(degenerate(
                         kind,
-                        format!(
-                            "winds {swing} of a turn around the axis between two of {n} samples halved {UNWRAP_DEPTH} times: faster than the pcurve sampling resolves"
-                        ),
+                        PcurveFault::WindsTooFast {
+                            swing,
+                            samples: n,
+                            depth: UNWRAP_DEPTH,
+                        },
                     ));
                 }
             }
@@ -1136,10 +1135,7 @@ pub fn project_to_plane(curve: &Curve, plane: &Frame) -> Result<Curve2, GeomErro
         &Curve::Line { origin, direction } => {
             let d = in_plane_vec(plane, direction.into_inner());
             if is_negligible(d.norm(), 1.0) {
-                return Err(degenerate(
-                    kind,
-                    "the line is perpendicular to the plane: its projection is a point",
-                ));
+                return Err(degenerate(kind, PcurveFault::LineProjectsToPoint));
             }
             Ok(Curve2::Line {
                 origin: in_plane(plane, origin),
@@ -1183,10 +1179,7 @@ fn projected_conic(
     let col2 = b * in_plane_vec(plane, frame.y().into_inner());
     let (major, minor_signed, phi) = principal_axes(col1, col2);
     if is_negligible(minor_signed, major) {
-        return Err(degenerate(
-            kind,
-            "the conic's plane is perpendicular to the target: its projection is a segment",
-        ));
+        return Err(degenerate(kind, PcurveFault::ConicProjectsToSegment));
     }
     let handedness = if minor_signed > 0.0 {
         Handedness::Right
@@ -1198,7 +1191,7 @@ fn projected_conic(
         Vec2::new(real::cos(phi), real::sin(phi)),
         handedness,
     )
-    .map_err(|e| degenerate(kind, format!("projected axes: {e:?}")))?;
+    .map_err(|e| degenerate(kind, PcurveFault::ProjectedAxes(e)))?;
     Ok(Curve2::Ellipse {
         frame: frame2,
         major_radius: major,

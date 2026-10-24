@@ -86,6 +86,7 @@ use arris_math::{DisjointSets, Frame, Interval, Meter, Point2, Point3, Tolerance
 
 use super::NurbsSurface;
 use super::project::{LOCATION, Patch};
+use crate::FrameFault;
 use crate::bernstein::Binomials;
 use crate::bernstein2::{Gate, Halving, Poly2, Zero2, common_zeros_with};
 use crate::halt::Halt;
@@ -548,7 +549,7 @@ pub(crate) fn line_nurbs(
 ) -> Result<CurveSurfaceIntersection, GeomError> {
     let frame = Frame::from_z(origin, direction).map_err(|e| GeomError::Degenerate {
         kind: GeomKind::Curve(curve.kind()),
-        reason: format!("the line's direction has no frame: {e}"),
+        reason: FrameFault::LineDirection(e).into(),
     })?;
     let line = Line {
         origin,
@@ -572,7 +573,7 @@ pub(crate) fn conic_nurbs(
     if !(radii.iter().all(|r| r.is_finite() && *r > 0.0)) {
         return Err(GeomError::Degenerate {
             kind: GeomKind::Curve(curve.kind()),
-            reason: "the conic's radii are not positive".to_owned(),
+            reason: FrameFault::ConicRadiiNotPositive.into(),
         });
     }
     let conic = Conic {

@@ -16,7 +16,7 @@ use core::f64::consts::{FRAC_PI_2, TAU};
 
 use arris_debug::prop::geom::nurbs_surface;
 use arris_debug::prop::{check, finite_f64, frame, point_in_box, radius, unit_vec3};
-use arris_geom::{AmbiguousLocus, GeomError, NurbsSurface, Surface};
+use arris_geom::{AmbiguousLocus, DegenerateReason, GeomError, NurbsSurface, Surface};
 use arris_math::{Frame, Interval, Point3, Vec3};
 use common::*;
 use proptest::prelude::*;
@@ -277,7 +277,13 @@ fn a_point_that_is_not_finite_is_refused() {
     .to_nurbs([Interval::UNIT, Interval::UNIT])
     .unwrap();
     let e = patch.project(Point3::new(f64::NAN, 0.0, 0.0)).unwrap_err();
-    assert!(e.to_string().contains("not finite"), "{e}");
+    assert!(
+        matches!(
+            e.degenerate_reason(),
+            Some(DegenerateReason::PointNotFinite { .. })
+        ),
+        "{e}"
+    );
 }
 
 /// The samples of `s` on a `n × n` grid.

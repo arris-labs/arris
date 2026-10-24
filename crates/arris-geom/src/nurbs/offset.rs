@@ -9,7 +9,7 @@ use super::fit::{
     FIT_MARGIN, FitError, least_squares_grid, least_squares_samples, sample_parameters,
 };
 use super::surface::NurbsSurface;
-use crate::{GeomError, GeomKind, SurfaceKind};
+use crate::{GeomError, GeomKind, NetDirection, OffsetFault, SurfaceKind};
 
 /// The least degree of a fitted offset in each direction; a direction of
 /// the surface of higher degree keeps its own. A bicubic net follows the
@@ -168,32 +168,31 @@ impl NurbsSurface {
         meter: &mut Meter,
     ) -> Result<NurbsSurface, GeomError> {
         let kind = GeomKind::Surface(SurfaceKind::Nurbs);
-        let degenerate = |reason: String| GeomError::Degenerate { kind, reason };
+        let degenerate = |reason: OffsetFault| GeomError::Degenerate {
+            kind,
+            reason: reason.into(),
+        };
         if !distance.is_finite() {
-            return Err(degenerate(format!(
-                "the offset distance {distance} is not finite"
-            )));
+            return Err(degenerate(OffsetFault::DistanceNotFinite { distance }));
         }
         if !(tol.is_finite() && tol > 0.0) {
             return Err(FitError::InvalidTolerance(tol).into());
         }
         for (k, range) in over.iter().enumerate() {
             if !range.is_bounded() || range.length() <= 0.0 {
-                return Err(degenerate(format!(
-                    "the offset's {} range [{}, {}] is not a bounded interval of positive length",
-                    ["u", "v"][k],
-                    range.lo(),
-                    range.hi()
-                )));
+                return Err(degenerate(OffsetFault::RangeNotBounded {
+                    direction: [NetDirection::U, NetDirection::V][k],
+                    lo: range.lo(),
+                    hi: range.hi(),
+                }));
             }
         }
         for (k, value, _) in self.collapsed_rows() {
             if over[k].contains(value) {
-                return Err(degenerate(format!(
-                    "a collapsed row at {} = {value} lies in the offset's box: the normal is \
-                     undefined along it",
-                    ["u", "v"][k]
-                )));
+                return Err(degenerate(OffsetFault::CollapsedRow {
+                    direction: [NetDirection::U, NetDirection::V][k],
+                    value,
+                }));
             }
         }
         let [p, q] = self.degree();
@@ -204,10 +203,10 @@ impl NurbsSurface {
             let e = self.eval(u, v);
             let n = self
                 .normal(u, v)
-                .ok_or_else(|| degenerate(format!("no normal at ({u}, {v})")))?
+                .ok_or_else(|| degenerate(OffsetFault::NoNormal { u, v }))?
                 .into_inner();
             let kappa = principal_curvatures(&e, n)
-                .ok_or_else(|| degenerate(format!("no normal at ({u}, {v})")))?;
+                .ok_or_else(|| degenerate(OffsetFault::NoNormal { u, v }))?;
             for k in kappa {
                 let left = 1.0 - distance * k;
                 if left <= 0.0 || is_negligible(left, 1.0) {

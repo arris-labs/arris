@@ -3,6 +3,8 @@
 //! into stack buffers (*The NURBS Book* §2.5, algorithms A2.1–A2.3, written
 //! for our bounded degree and our error reporting).
 
+use crate::SplineFault;
+
 /// The largest degree a NURBS curve or surface may have. It is Open
 /// CASCADE's bound (`Geom_BSplineCurve::MaxDegree`), so anything a STEP
 /// file carries fits, and it sizes the evaluator's stack buffers, so
@@ -31,66 +33,56 @@ pub(crate) type Row = [f64; MAX_DEGREE + 1];
 /// value has multiplicity above `degree + 1`, and none strictly inside
 /// the domain has multiplicity above `degree` (a higher one would break
 /// the curve).
-pub(crate) fn validate(degree: usize, knots: &[f64], n: usize) -> Result<(), String> {
+pub(crate) fn validate(degree: usize, knots: &[f64], n: usize) -> Result<(), SplineFault> {
     if degree == 0 || degree > MAX_DEGREE {
-        return Err(format!("degree {degree} is not in 1..={MAX_DEGREE}"));
+        return Err(SplineFault::Degree { degree });
     }
     if n < degree + 1 {
-        return Err(format!(
-            "{n} control points for degree {degree}: at least {} are needed",
-            degree + 1
-        ));
+        return Err(SplineFault::TooFewPoints { points: n, degree });
     }
     if knots.len() != n + degree + 1 {
-        return Err(format!(
-            "{} knots for degree {degree} and {n} control points: {} are needed",
-            knots.len(),
-            n + degree + 1
-        ));
+        return Err(SplineFault::KnotCount {
+            knots: knots.len(),
+            degree,
+            points: n,
+        });
     }
     if let Some(i) = knots.iter().position(|k| !k.is_finite()) {
-        return Err(format!("knot {i} is not finite"));
+        return Err(SplineFault::KnotNotFinite { index: i });
     }
     if let Some(i) = knots.windows(2).position(|w| w[0] > w[1]) {
-        return Err(format!(
-            "knots {i} and {} decrease: {} > {}",
-            i + 1,
-            knots[i],
-            knots[i + 1]
-        ));
+        return Err(SplineFault::KnotsDecrease {
+            index: i,
+            first: knots[i],
+            second: knots[i + 1],
+        });
     }
     if let Some(i) = knots
         .windows(2)
         .position(|w| w[1] > w[0] && w[1] - w[0] < f64::MIN_POSITIVE)
     {
-        return Err(format!(
-            "knots {i} and {} are a subnormal span apart: {} and {}",
-            i + 1,
-            knots[i],
-            knots[i + 1]
-        ));
+        return Err(SplineFault::SubnormalSpan {
+            index: i,
+            first: knots[i],
+            second: knots[i + 1],
+        });
     }
     let (lo, hi) = (knots[degree], knots[n]);
     if lo >= hi {
-        return Err(format!("the domain [{lo}, {hi}] is empty"));
+        return Err(SplineFault::DomainEmpty { lo, hi });
     }
     if knots[n - 1] == hi {
-        return Err(format!("the span ending at the domain's end {hi} is empty"));
+        return Err(SplineFault::LastSpanEmpty { hi });
     }
     let mut i = 0;
     while i < knots.len() {
         let value = knots[i];
         let run = knots[i..].iter().take_while(|&&k| k == value).count();
         if run > degree + 1 {
-            return Err(format!(
-                "knot {value} has multiplicity {run}, above degree + 1 = {}",
-                degree + 1
-            ));
+            return Err(SplineFault::Multiplicity { value, run, degree });
         }
         if run > degree && value > lo && value < hi {
-            return Err(format!(
-                "interior knot {value} has multiplicity {run}, above the degree {degree}"
-            ));
+            return Err(SplineFault::InteriorMultiplicity { value, run, degree });
         }
         i += run;
     }
@@ -211,36 +203,64 @@ mod tests {
     fn a_clamped_cubic_passes_and_the_broken_ones_name_their_fault() {
         let knots = [0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 2.0, 2.0];
         assert_eq!(validate(3, &knots, 5), Ok(()));
-        assert!(validate(0, &knots, 5).unwrap_err().contains("degree 0"));
-        assert!(validate(3, &knots, 4).unwrap_err().contains("9 knots"));
+        assert_eq!(
+            validate(0, &knots, 5),
+            Err(SplineFault::Degree { degree: 0 })
+        );
+        assert_eq!(
+            validate(3, &knots, 4),
+            Err(SplineFault::KnotCount {
+                knots: 9,
+                degree: 3,
+                points: 4
+            })
+        );
         // Unclamped at the far end is still a knot vector.
         assert_eq!(validate(3, &knots[..8], 4), Ok(()));
         let decreasing = [0.0, 0.0, 0.0, 0.0, 2.0, 1.0, 2.0, 2.0, 2.0];
-        assert!(
-            validate(3, &decreasing, 5)
-                .unwrap_err()
-                .contains("decrease")
+        assert_eq!(
+            validate(3, &decreasing, 5),
+            Err(SplineFault::KnotsDecrease {
+                index: 4,
+                first: 2.0,
+                second: 1.0
+            })
         );
         let heavy = [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0];
-        assert!(
-            validate(3, &heavy, 8)
-                .unwrap_err()
-                .contains("interior knot 1 has multiplicity 4")
+        assert_eq!(
+            validate(3, &heavy, 8),
+            Err(SplineFault::InteriorMultiplicity {
+                value: 1.0,
+                run: 4,
+                degree: 3
+            })
         );
         let empty_end = [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-        assert!(validate(3, &empty_end, 5).unwrap_err().contains("is empty"));
+        assert_eq!(
+            validate(3, &empty_end, 5),
+            Err(SplineFault::LastSpanEmpty { hi: 1.0 })
+        );
         let flat = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert!(validate(3, &flat, 4).unwrap_err().contains("is empty"));
+        assert_eq!(
+            validate(3, &flat, 4),
+            Err(SplineFault::DomainEmpty { lo: 0.0, hi: 0.0 })
+        );
         let nan = [0.0, 0.0, f64::NAN, 1.0, 1.0, 1.0];
-        assert!(validate(2, &nan, 3).unwrap_err().contains("not finite"));
+        assert_eq!(
+            validate(2, &nan, 3),
+            Err(SplineFault::KnotNotFinite { index: 2 })
+        );
         // Found by the `intersect_curves` fuzz target (`fuzz/`, ADR-0024
         // §5): a domain of 5e-315 passed, and every derivative over it
         // was infinite.
         let subnormal = [0.0, 0.0, 0.0, 5e-315, 5e-315, 5e-315];
-        assert!(
-            validate(2, &subnormal, 3)
-                .unwrap_err()
-                .contains("subnormal span")
+        assert_eq!(
+            validate(2, &subnormal, 3),
+            Err(SplineFault::SubnormalSpan {
+                index: 2,
+                first: 0.0,
+                second: 5e-315
+            })
         );
         // A rounding apart at an ordinary scale is a knot vector: the
         // kernel's splits and fits make such (the differential at 1000

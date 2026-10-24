@@ -20,6 +20,7 @@ use crate::nurbs::{conic_nurbs, line_nurbs};
 use crate::project::ellipse_distance;
 use crate::spline_nurbs::spline_nurbs;
 use crate::{Curve, CurveKind, GeomError, GeomKind, Surface};
+use crate::{DegenerateReason, FrameFault, RootsFault};
 
 /// One point where a curve meets a surface.
 ///
@@ -616,15 +617,15 @@ fn conic_elliptic_cylinder(
     if line_angle(&conic.z(), &cyl.z()) > tol.angular {
         return conic_quadric(curve, surface, conic, radii, tol);
     }
-    let degenerate = |reason: String| GeomError::Degenerate {
+    let degenerate = |reason: DegenerateReason| GeomError::Degenerate {
         kind: GeomKind::Curve(curve.kind()),
-        reason,
+        reason: Box::new(reason),
     };
     let into_section = |v: Vec3| {
         let w = cyl.vec_to_local(v);
         Vec2::new(w.x, w.y)
             .try_normalize(0.0)
-            .ok_or_else(|| degenerate("a conic axis has no part in the section".to_owned()))
+            .ok_or_else(|| degenerate(FrameFault::ConicAxisNoPartInSection.into()))
     };
     let centre = cyl.to_local(conic.origin());
     let first = Conic2 {
@@ -642,7 +643,7 @@ fn conic_elliptic_cylinder(
         b,
     };
     match conic_pair(&first, &second, tol)
-        .map_err(|e| degenerate(format!("the conic against the section: {e}")))?
+        .map_err(|e| degenerate(RootsFault::ConicAgainstSection(e).into()))?
     {
         ConicMeet::Coincident => Ok(CurveSurfaceIntersection::Coincident),
         ConicMeet::Empty => Ok(CurveSurfaceIntersection::Points(Vec::new())),
@@ -822,7 +823,7 @@ fn line_torus(
         Err(e) => {
             return Err(GeomError::Degenerate {
                 kind: GeomKind::Curve(CurveKind::Line),
-                reason: format!("extrema of the distance to a torus: {e}"),
+                reason: RootsFault::TorusExtrema(e).into(),
             });
         }
     };
@@ -931,11 +932,11 @@ fn line_by_distance(
     let crossing = |lo: f64, hi: f64| -> Result<f64, GeomError> {
         let bracket = Interval::new(lo, hi).map_err(|_| GeomError::Degenerate {
             kind: GeomKind::Curve(curve.kind()),
-            reason: format!("crossing bracket [{lo}, {hi}]"),
+            reason: RootsFault::CrossingBracket { lo, hi }.into(),
         })?;
         roots::newton_in_interval(g, dg, bracket, 0.0).map_err(|e| GeomError::Degenerate {
             kind: GeomKind::Curve(curve.kind()),
-            reason: format!("crossing in [{lo}, {hi}]: {e}"),
+            reason: RootsFault::Crossing { lo, hi, error: e }.into(),
         })
     };
     let tail = |from: f64, value: f64, sign: f64| -> Option<f64> {
@@ -1072,7 +1073,7 @@ impl Radial {
     fn critical_parameters(&self) -> Result<Option<Vec<f64>>, GeomError> {
         radial_critical(self.p, self.x, self.y).map_err(|e| GeomError::Degenerate {
             kind: GeomKind::Curve(self.kind),
-            reason: format!("radial extrema: {e}"),
+            reason: RootsFault::RadialExtrema(e).into(),
         })
     }
 }
@@ -1165,7 +1166,7 @@ fn conic_cylinder(
             roots::newton_in_interval(|t| radial.distance(t), |t| radial.slope(t), bracket, 0.0)
                 .map_err(|e| GeomError::Degenerate {
                     kind: GeomKind::Curve(radial.kind),
-                    reason: format!("crossing in [{lo}, {hi}]: {e}"),
+                    reason: RootsFault::Crossing { lo, hi, error: e }.into(),
                 })?;
         // The last arc wraps past 2π; the root comes back with it.
         hits.push(hit(curve, surface, wrap_turn(t.rem_euclid(TAU)), false)?);
@@ -1265,9 +1266,9 @@ fn conic_quadric(
         a: GeomKind::Curve(curve.kind()),
         b: GeomKind::Surface(surface.kind()),
     })?;
-    let degenerate = |what: &str, e: RootError| GeomError::Degenerate {
+    let degenerate = |reason: RootsFault| GeomError::Degenerate {
         kind: GeomKind::Curve(curve.kind()),
-        reason: format!("{what}: {e}"),
+        reason: reason.into(),
     };
     let centre = conic.origin();
     let (u, v) = (
@@ -1285,7 +1286,7 @@ fn conic_quadric(
     // The derivative of `a₁ cos t + b₁ sin t + a₂ cos 2t + b₂ sin 2t`;
     // `None` when the polynomial is constant along the conic.
     let extrema = trig2_roots(b1, -a1, 2.0 * b2, -2.0 * a2, 0.0)
-        .map_err(|e| degenerate("the extrema along the conic", e))?;
+        .map_err(|e| degenerate(RootsFault::ConicExtrema(e)))?;
     let constant = extrema.is_none();
     let mut splits: Vec<f64> = extrema.into_iter().flatten().collect();
     // The conic in the surface's frame, where `ρ` is the distance from
@@ -1304,7 +1305,7 @@ fn conic_quadric(
     // away — a conic through a sphere's pole passes the axis there.
     if constant || matches!(surface, Surface::Cone { .. }) {
         if let Some(radial) = radial_critical(flat(q.coords), flat(lu), flat(lv))
-            .map_err(|e| degenerate("the radial extrema along the conic", e))?
+            .map_err(|e| degenerate(RootsFault::ConicRadialExtrema(e)))?
         {
             splits.extend(radial);
         }
@@ -1315,7 +1316,7 @@ fn conic_quadric(
     {
         let above = q.z + radius * real::cos(half_angle) / real::sin(half_angle);
         if let Some(crossings) = trig2_roots(lu.z, lv.z, 0.0, 0.0, above)
-            .map_err(|e| degenerate("the crossings of the apex plane", e))?
+            .map_err(|e| degenerate(RootsFault::ConicApexCrossings(e)))?
         {
             splits.extend(crossings);
         }

@@ -18,6 +18,12 @@ into its version (ADR-0027).
 - `arris_ops::Fault::Builder` and `Rejection::Builder` hold a
   `Box<BuildError>` (the nesting made the error larger): match
   `Fault::Builder(b)` and read `*b`.
+- `arris_geom::GeomError::Degenerate { reason }` holds a
+  `DegenerateReason` instead of a `String`, grouped by family
+  (`Frame`, `Roots`, `Spline`, `Net`, `Skin`, `Offset`, `Pcurve`,
+  `Exact`). Every message is unchanged: call `reason.to_string()` for the
+  old text, or match the variant; Python's `GeomDegenerateError.reason`
+  is the same text.
 
 ## 0.9.1 — 2026-10-23
 

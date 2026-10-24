@@ -530,7 +530,7 @@ fn least_squares<const D: usize>(
             points[i + 1] = OPoint::from(v);
         }
     }
-    Spline::new(p, knots, points, vec![1.0; n]).map_err(FitError::Degenerate)
+    Spline::new(p, knots, points, vec![1.0; n]).map_err(|e| FitError::Degenerate(e.to_string()))
 }
 
 /// The least-squares periodic B-spline nearest every sample, `samples`
@@ -592,7 +592,8 @@ fn least_squares_periodic<const D: usize>(
         FitError::Degenerate("the periodic normal equations are singular".to_owned())
     })?;
     let points = (0..n).map(|i| OPoint::from(free[i % m])).collect();
-    let spline = Spline::new(p, knots, points, vec![1.0; n]).map_err(FitError::Degenerate)?;
+    let spline = Spline::new(p, knots, points, vec![1.0; n])
+        .map_err(|e| FitError::Degenerate(e.to_string()))?;
     // The knots and points wrap by construction; a spline that does not
     // see it would evaluate unwrapped, so it is refused rather than kept.
     match spline.period() {

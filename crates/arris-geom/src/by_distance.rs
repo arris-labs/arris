@@ -17,6 +17,7 @@
 use arris_math::roots;
 use arris_math::{Interval, Tolerance, is_negligible};
 
+use crate::RootsFault;
 use crate::implicit::Implicit;
 use crate::intersect_curve::{hit, points};
 use crate::{Curve, CurveSurfaceIntersection, GeomError, GeomKind, Surface};
@@ -145,14 +146,14 @@ pub(crate) fn hits_by_distance(
     }
 
     let crossing = |lo: f64, hi: f64| -> Result<f64, GeomError> {
-        let degenerate = |reason: String| GeomError::Degenerate {
+        let degenerate = |reason: RootsFault| GeomError::Degenerate {
             kind: GeomKind::Curve(curve.kind()),
-            reason,
+            reason: reason.into(),
         };
         let bracket = Interval::new(lo, hi)
-            .map_err(|_| degenerate(format!("crossing bracket [{lo}, {hi}]")))?;
+            .map_err(|_| degenerate(RootsFault::CrossingBracket { lo, hi }))?;
         roots::newton_in_interval(distance, slope, bracket, 0.0)
-            .map_err(|e| degenerate(format!("crossing in [{lo}, {hi}]: {e}")))
+            .map_err(|e| degenerate(RootsFault::Crossing { lo, hi, error: e }))
     };
     let mut hits = Vec::new();
     for (i, stop) in runs.iter().enumerate() {

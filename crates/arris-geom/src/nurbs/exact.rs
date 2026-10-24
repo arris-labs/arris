@@ -23,16 +23,16 @@ use core::f64::consts::{FRAC_PI_2, TAU};
 use arris_math::{Frame, Interval, Point3, RELATIVE_ROUNDING, UnitVec3, Vec3, is_negligible};
 
 use super::{NurbsCurve, NurbsSurface};
-use crate::{CurveKind, GeomError, GeomKind, SurfaceKind};
+use crate::{CurveKind, ExactFault, GeomError, GeomKind, SurfaceKind};
 
-fn curve_fault(reason: impl Into<String>) -> GeomError {
+fn curve_fault(reason: ExactFault) -> GeomError {
     GeomError::Degenerate {
         kind: GeomKind::Curve(CurveKind::Nurbs),
         reason: reason.into(),
     }
 }
 
-fn surface_fault(reason: impl Into<String>) -> GeomError {
+fn surface_fault(reason: ExactFault) -> GeomError {
     GeomError::Degenerate {
         kind: GeomKind::Surface(SurfaceKind::Nurbs),
         reason: reason.into(),
@@ -72,20 +72,18 @@ struct Ring {
 impl Ring {
     /// The ring over `range`, clamped. Errors name what is wrong with the
     /// range.
-    fn over(range: Interval) -> Result<Ring, String> {
+    fn over(range: Interval) -> Result<Ring, ExactFault> {
         let (lo, hi) = (range.lo(), range.hi());
         if !(lo.is_finite() && hi.is_finite()) {
-            return Err(format!("the angle range [{lo}, {hi}] is not finite"));
+            return Err(ExactFault::AngleRangeNotFinite { lo, hi });
         }
         let mut sweep = range.length();
         if sweep <= 0.0 {
-            return Err(format!("the angle range [{lo}, {hi}] is empty"));
+            return Err(ExactFault::AngleRangeEmpty { lo, hi });
         }
         let full = is_negligible(sweep - TAU, TAU);
         if !full && sweep > TAU {
-            return Err(format!(
-                "the angle range [{lo}, {hi}] is longer than a full turn"
-            ));
+            return Err(ExactFault::AngleRangeTooLong { lo, hi });
         }
         if full {
             sweep = TAU;
@@ -153,13 +151,11 @@ fn conic_arc(origin: Point3, ax: Vec3, ay: Vec3, range: Interval) -> Result<Nurb
     NurbsCurve::new(2, ring.knots, points, ring.weights)
 }
 
-fn positive(what: &str, x: f64) -> Result<f64, GeomError> {
+fn positive(what: &'static str, x: f64) -> Result<f64, GeomError> {
     if x.is_finite() && x > 0.0 {
         Ok(x)
     } else {
-        Err(curve_fault(format!(
-            "{what} {x} is not finite and positive"
-        )))
+        Err(curve_fault(ExactFault::NotPositive { what, value: x }))
     }
 }
 
@@ -298,9 +294,10 @@ impl NurbsCurve {
         let (t0, t1) = open_range(range)?;
         let (q0, q1) = (real::exp(t0), real::exp(t1));
         if !(q0.is_finite() && q1.is_finite() && q0 > 0.0) {
-            return Err(curve_fault(format!(
-                "the range [{t0}, {t1}] is too long for a hyperbola's rational form"
-            )));
+            return Err(curve_fault(ExactFault::HyperbolaRangeTooLong {
+                lo: t0,
+                hi: t1,
+            }));
         }
         let (o, x, y) = (
             frame.origin(),
@@ -335,9 +332,7 @@ fn open_range(range: Interval) -> Result<(f64, f64), GeomError> {
     if lo.is_finite() && hi.is_finite() && lo < hi {
         Ok((lo, hi))
     } else {
-        Err(curve_fault(format!(
-            "the range [{lo}, {hi}] is empty or not finite"
-        )))
+        Err(curve_fault(ExactFault::RangeEmpty { lo, hi }))
     }
 }
 
@@ -370,16 +365,13 @@ impl NurbsSurface {
         range: Interval,
     ) -> Result<Self, GeomError> {
         if !(direction.iter().all(|c| c.is_finite()) && direction.norm() > 0.0) {
-            return Err(surface_fault(format!(
-                "the extrusion direction {direction:?} is zero or not finite"
-            )));
+            return Err(surface_fault(ExactFault::ExtrusionDirection { direction }));
         }
         let (v0, v1) = open_range(range).map_err(|_| {
-            surface_fault(format!(
-                "the extrusion range [{}, {}] is empty or not finite",
-                range.lo(),
-                range.hi()
-            ))
+            surface_fault(ExactFault::ExtrusionRange {
+                lo: range.lo(),
+                hi: range.hi(),
+            })
         })?;
         let mut points = Vec::with_capacity(2 * curve.control_points().len());
         let mut weights = Vec::with_capacity(points.capacity());
@@ -457,9 +449,7 @@ impl NurbsSurface {
             .collect();
         let reach = spokes.iter().map(|(_, r)| r.norm()).fold(0.0, f64::max);
         if reach <= 0.0 {
-            return Err(surface_fault(
-                "the curve lies on the axis: nothing to revolve",
-            ));
+            return Err(surface_fault(ExactFault::CurveOnAxis));
         }
         // A spoke is zero to rounding when it is no longer than the error
         // of forming it: the world coordinates of the point and of the

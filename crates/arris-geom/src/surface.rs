@@ -9,7 +9,7 @@ use arris_math::{
 };
 
 use crate::curve::{active_points, coords, linear_range, product_range, sinusoid_range};
-use crate::{GeomError, GeomKind, NurbsCurve, NurbsSurface};
+use crate::{ExactFault, GeomError, GeomKind, NurbsCurve, NurbsSurface};
 
 /// A surface, placed by its frame, with the parametrisation of
 /// `docs/DATA-MODEL.md` §Surfaces (the one Open CASCADE's `Geom`
@@ -453,15 +453,18 @@ impl Surface {
     pub fn to_nurbs(&self, bounds: [Interval; 2]) -> Result<NurbsSurface, GeomError> {
         let [u, v] = bounds;
         let kind = GeomKind::Surface(self.kind());
-        let fault = |reason: String| GeomError::Degenerate { kind, reason };
+        let fault = |reason: ExactFault| GeomError::Degenerate {
+            kind,
+            reason: reason.into(),
+        };
         if ![u, v].iter().all(|r| r.is_bounded()) {
-            return Err(fault("the parameter bounds are not finite".into()));
+            return Err(fault(ExactFault::BoundsNotFinite));
         }
-        let radius = |what: &str, r: f64| {
+        let radius = |what: &'static str, r: f64| {
             if r.is_finite() && r > 0.0 {
                 Ok(r)
             } else {
-                Err(fault(format!("{what} {r} is not finite and positive")))
+                Err(fault(ExactFault::NotPositive { what, value: r }))
             }
         };
         let line = |from: Point3, to: Point3, range: Interval| {
@@ -536,7 +539,7 @@ impl Surface {
                         frame.z().into_inner(),
                         -frame.y().into_inner(),
                     )
-                    .map_err(|e| fault(e.to_string()))?,
+                    .map_err(|e| fault(ExactFault::Frame(e)))?,
                     r,
                     r,
                     v,
@@ -557,7 +560,7 @@ impl Surface {
                         frame.z().into_inner(),
                         -frame.y().into_inner(),
                     )
-                    .map_err(|e| fault(e.to_string()))?,
+                    .map_err(|e| fault(ExactFault::Frame(e)))?,
                     small,
                     v,
                 )?;

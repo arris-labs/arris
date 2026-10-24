@@ -4,7 +4,7 @@ use core::fmt;
 
 use arris_math::{Interrupted, Point2, Point3, Tolerance};
 
-use crate::{Curve2Kind, CurveKind, FitError, SectionFault, SurfaceKind};
+use crate::{Curve2Kind, CurveKind, DegenerateReason, FitError, SectionFault, SurfaceKind};
 
 /// The kind of a geometric operand, for errors that name a pair.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -110,7 +110,7 @@ pub enum GeomError {
         /// The operand.
         kind: GeomKind,
         /// What is wrong with it.
-        reason: String,
+        reason: Box<DegenerateReason>,
     },
     /// The tolerance handed to the query is not finite and positive in
     /// both parts, so no decision it makes would mean anything.
@@ -211,6 +211,26 @@ pub enum GeomError {
     /// was computed that outlives the call.
     #[error(transparent)]
     Interrupted(Interrupted),
+}
+
+impl GeomError {
+    /// The reason of a [`GeomError::Degenerate`], `None` for any other
+    /// error.
+    pub fn degenerate_reason(&self) -> Option<&DegenerateReason> {
+        match self {
+            GeomError::Degenerate { reason, .. } => Some(reason),
+            GeomError::Unsupported { .. }
+            | GeomError::InvalidTolerance(_)
+            | GeomError::Ambiguous { .. }
+            | GeomError::AmbiguousUv { .. }
+            | GeomError::NotOnSurface { .. }
+            | GeomError::ThroughSingularity { .. }
+            | GeomError::DegenerateSection { .. }
+            | GeomError::OffsetFolds { .. }
+            | GeomError::Fit(_)
+            | GeomError::Interrupted(_) => None,
+        }
+    }
 }
 
 impl From<FitError> for GeomError {

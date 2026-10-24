@@ -569,7 +569,7 @@ mod tests {
             geom_error(&GeomError::Unsupported { a: kind, b: kind }),
             geom_error(&GeomError::Degenerate {
                 kind,
-                reason: String::new(),
+                reason: arris::geom::FrameFault::NonFinite.into(),
             }),
             geom_error(&GeomError::InvalidTolerance(tolerance)),
             geom_error(&GeomError::Ambiguous {

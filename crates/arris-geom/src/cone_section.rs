@@ -18,6 +18,7 @@
 use arris_math::real;
 use arris_math::{Aabb, Frame, Point3, Tolerance, UnitVec3, Vec3};
 
+use crate::FrameFault;
 use crate::{
     Curve, GeomError, GeomKind, MeetCurve, MeetKind, MeetPoint, NurbsCurve, SurfaceIntersection,
     SurfaceKind,
@@ -53,9 +54,9 @@ pub(crate) fn plane_cone(
     within: &Aabb,
     tol: Tolerance,
 ) -> Result<SurfaceIntersection, GeomError> {
-    let degenerate = |reason: &str| GeomError::Degenerate {
+    let degenerate = |reason: FrameFault| GeomError::Degenerate {
         kind: GeomKind::Surface(SurfaceKind::Cone),
-        reason: reason.to_owned(),
+        reason: reason.into(),
     };
     let (sa, ca) = real::sin_cos(half_angle);
     let z: Vec3 = cone.z().into_inner();
@@ -68,7 +69,7 @@ pub(crate) fn plane_cone(
     let along = z - zn * n;
     let cos_phi = along.norm();
     let Some(e1) = UnitVec3::try_new(along, 0.0) else {
-        return Err(degenerate("a plane perpendicular to the axis"));
+        return Err(degenerate(FrameFault::PlanePerpendicularToAxis));
     };
     let e1: Vec3 = e1.into_inner();
     let e2 = n.cross(&e1);
@@ -142,7 +143,8 @@ pub(crate) fn plane_cone(
     let ax = (h * ca * sa / k).abs();
     let ay = (h * sa).abs() / k.abs().sqrt();
     if k < 0.0 {
-        let frame = Frame::new(at(x0, 0.0), n, e1).map_err(|_| degenerate("non-finite frame"))?;
+        let frame =
+            Frame::new(at(x0, 0.0), n, e1).map_err(|_| degenerate(FrameFault::NonFinite))?;
         return Ok(SurfaceIntersection::curves_of(
             MeetKind::Crossing,
             vec![Curve::Ellipse {

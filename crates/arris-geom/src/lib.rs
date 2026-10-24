@@ -33,6 +33,7 @@ mod cone_section;
 mod conic2;
 mod curve;
 mod curve2;
+mod degenerate;
 mod error;
 mod extrema;
 mod halt;
@@ -68,6 +69,10 @@ mod trace_torus;
 pub use cone_section::HYPERBOLA_HALF_SPAN;
 pub use curve::{Curve, CurveEval, CurveKind};
 pub use curve2::{Curve2, Curve2Eval, Curve2Kind, Curve2Projection};
+pub use degenerate::{
+    DegenerateReason, ExactFault, FrameFault, NetDirection, NetFault, OffsetFault, PcurveFault,
+    RootsFault, SkinFault, SplineFault,
+};
 pub use error::{AmbiguousLocus, GeomError, GeomKind};
 pub use extrema::{
     CurveSurfaceExtrema, CurveSurfacePair, Extrema, ExtremumPair, Feet, SurfaceExtrema,

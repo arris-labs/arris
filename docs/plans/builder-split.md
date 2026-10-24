@@ -116,15 +116,18 @@ robustness or bound has to be established here.
   `tests/build_error.rs` pins every message to the flat one;
   `tolerance_band`'s fault key reads through the group so its blessed
   file is unchanged. `### Breaking` bullet.
-- [ ] Step 5 **[2]** — Inventory every `GeomError::Degenerate` reason
+- [x] Step 5 **[2]** — Inventory every `GeomError::Degenerate` reason
   (geom, `ops::query`, `ops::blend::walked`) into `DegenerateReason` with
   byte-identical `Display`; replace the `String` and the closures. A unit
   test per variant pins its message. `### Breaking` bullet.
-- [ ] Step 6 **[1]** — Tests that match on a reason substring
+- [x] Step 6 **[1]** — Tests that match on a reason substring
   (`geom/tests/nurbs_offset.rs` and the others the grep finds) match the
   variant instead.
 - [ ] Step 7 **[2]** — `lump_order` without the model clone, per the
   delta; the multi-shell boolean fixtures and `prop` booleans byte-identical.
+  *Settled:* the clone stays. `Build` holds `&'m Model` and returns `&'m`
+  borrows (`surface_of`), so `&mut` would thread through every method; the
+  single-assembly variant became a backlog line.
 - [ ] Step 8 **[1]** — `tools/py-test.sh` green with no stub change;
   `tools/semver-gate.sh` sees both breaks listed.
 
