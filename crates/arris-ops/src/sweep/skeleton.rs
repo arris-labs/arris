@@ -225,6 +225,44 @@ pub(super) fn ring_edges(
     Ok(ring)
 }
 
+/// The rails between two rings: one edge per vertex, from the vertex of
+/// `from` to the same vertex of `to`. `make` gives the rail's geometry and
+/// role, or `None` for a vertex that has none (on `revolve`'s axis, where
+/// it may push the vertex's degenerate edges itself, in the order they
+/// take among the rails); it is called once per entry in loop then
+/// walking order, so it carries the operation's metering. A missing
+/// vertex under a rail is a kernel bug.
+pub(super) fn rails(
+    specs: &mut Specs,
+    from: &Ring,
+    to: &Ring,
+    tolerance: f64,
+    mut make: impl FnMut(&mut Specs, usize, usize) -> Result<Option<(EdgeGeometry, Role)>, OpError>,
+) -> Result<Ring, OpError> {
+    let mut ring = Vec::with_capacity(from.len());
+    for (li, (start, end)) in from.iter().zip(to).enumerate() {
+        let mut row = Vec::with_capacity(start.len());
+        for (j, (&a, &b)) in start.iter().zip(end).enumerate() {
+            let Some((geometry, role)) = make(specs, li, j)? else {
+                row.push(None);
+                continue;
+            };
+            let key = |slot: Option<usize>| slot.map(VertexKey::New).ok_or_else(unmade_slot);
+            row.push(Some(specs.edge(
+                EdgeSpec::New {
+                    geometry,
+                    start: key(a)?,
+                    end: key(b)?,
+                    tolerance,
+                },
+                role,
+            )));
+        }
+        ring.push(row);
+    }
+    Ok(ring)
+}
+
 /// Assembles `specs` and `shells` into a solid in `m`, finishes and
 /// verifies it, and records every entity `Generated` from its role;
 /// `part` makes the role of the body itself.

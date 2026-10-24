@@ -18,7 +18,7 @@ use arris_geom::{
     NurbsCurve2, NurbsSurface, Profile, Surface, interpolate_skin, match_sections, pcurve_on,
 };
 use arris_math::{Control, Interval, Meter, Point2, UnitVec3};
-use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey};
+use arris_topo::builder::FaceSpec;
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -26,7 +26,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 
 use super::loft_exact::{Kind, analytic_curve, exact_face, kind_of};
-use super::skeleton::{Specs, all, finish_solid, present, ring_edges, ring_vertices};
+use super::skeleton::{Specs, all, finish_solid, present, rails, ring_edges, ring_vertices};
 use super::{SideUse, cap_face, side_face, side_orientation};
 
 /// How a loft joins consecutive sections.
@@ -405,12 +405,14 @@ pub fn loft(
         let mut rail_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
         let mut rail_curve: Vec<Vec<Vec<(Curve, Interval)>>> = Vec::with_capacity(spans);
         for k in 0..spans {
-            let mut per_loop = Vec::with_capacity(loop_count);
-            let mut per_curve = Vec::with_capacity(loop_count);
-            for (li, &n) in counts.iter().enumerate() {
-                let mut row = Vec::with_capacity(n);
-                let mut row_curves = Vec::with_capacity(n);
-                for (j, &start) in ring_vertex[k][li].iter().enumerate() {
+            let mut curves: Vec<Vec<(Curve, Interval)>> =
+                counts.iter().map(|&n| Vec::with_capacity(n)).collect();
+            rail_edge.push(all(rails(
+                &mut specs,
+                &present(&ring_vertex[k]),
+                &present(&ring_vertex[end_ring(k)]),
+                tolerance,
+                |_, li, j| {
                     meter.tick()?;
                     let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
                     let (from, to) = (a.eval(a.domain().lo()).point, b.eval(b.domain().lo()).point);
@@ -433,17 +435,13 @@ pub fn loft(
                             Interval::UNIT,
                         ),
                     };
-                    row_curves.push((curve.clone(), range));
-                    row.push(specs.edge(
-                        EdgeSpec::New {
-                            geometry: EdgeGeometry::Curve {
-                                curve: m.add_curve(curve),
-                                range,
-                            },
-                            start: VertexKey::New(start),
-                            end: VertexKey::New(ring_vertex[end_ring(k)][li][j]),
-                            tolerance,
-                        },
+                    curves[li].push((curve.clone(), range));
+                    let geometry = EdgeGeometry::Curve {
+                        curve: m.add_curve(curve),
+                        range,
+                    };
+                    Ok(Some((
+                        geometry,
                         part(
                             k,
                             SweepPart::Rise {
@@ -451,13 +449,10 @@ pub fn loft(
                                 vertex: j,
                             },
                         ),
-                    ));
-                }
-                per_loop.push(row);
-                per_curve.push(row_curves);
-            }
-            rail_edge.push(per_loop);
-            rail_curve.push(per_curve);
+                    )))
+                },
+            )?)?);
+            rail_curve.push(curves);
         }
 
         // The caps of an open loft: each end section's profile face, its

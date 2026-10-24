@@ -21,7 +21,6 @@ use arris_geom::{
     Path, Profile, ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
 };
 use arris_math::{Control, Interval, Isometry, Meter};
-use arris_topo::builder::{EdgeSpec, VertexKey};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -29,7 +28,9 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 
 use super::exact::{ExactSpan, exact_span};
-use super::skeleton::{Specs, all, counts, finish_solid, present, ring_edges, ring_vertices};
+use super::skeleton::{
+    Specs, all, counts, finish_solid, present, rails, ring_edges, ring_vertices,
+};
 use super::{
     SideUse, cap_face, profile_pcurves, refuse, side_face, side_orientation, vertex_index,
 };
@@ -364,14 +365,16 @@ pub fn sweep(
         let mut rail: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
         let mut rail_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(spans);
         for k in 0..spans {
-            let mut per_loop = Vec::with_capacity(loops.len());
-            let mut per_curve = Vec::with_capacity(loops.len());
-            for (li, edges_of) in loops.iter().enumerate() {
-                let n = edges_of.len();
-                let mut row = Vec::with_capacity(n);
-                let mut row_curves = Vec::with_capacity(n);
-                for (j, edge) in edges_of.iter().enumerate() {
+            let mut curves: Vec<Vec<Curve>> =
+                shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+            rail.push(all(rails(
+                &mut specs,
+                &present(&ring_vertex[k]),
+                &present(&ring_vertex[end_ring(k)]),
+                tolerance,
+                |_, li, j| {
                     meter.tick()?;
+                    let edge = &loops[li][j];
                     let (curve, range) = match (&exacts[k], &skins[k]) {
                         (Some(exact), _) => (exact.rails[li][j].clone(), exact.rail_range),
                         (None, Some(skins_of)) => {
@@ -381,31 +384,24 @@ pub fn sweep(
                         }
                         (None, None) => return Err(unskinned()),
                     };
-                    row.push(specs.edge(
-                        EdgeSpec::New {
-                            geometry: EdgeGeometry::Curve {
-                                curve: m.add_curve(curve.clone()),
-                                range,
-                            },
-                            start: VertexKey::New(ring_vertex[k][li][j]),
-                            end: VertexKey::New(ring_vertex[end_ring(k)][li][j]),
-                            tolerance,
-                        },
+                    let geometry = EdgeGeometry::Curve {
+                        curve: m.add_curve(curve.clone()),
+                        range,
+                    };
+                    curves[li].push(curve);
+                    Ok(Some((
+                        geometry,
                         part(
                             k,
                             SweepPart::Rise {
                                 loop_index: edge.loop_index,
-                                vertex: vertex_index(edge, n),
+                                vertex: vertex_index(edge, shape[li]),
                             },
                         ),
-                    ));
-                    row_curves.push(curve);
-                }
-                per_loop.push(row);
-                per_curve.push(row_curves);
-            }
-            rail.push(per_loop);
-            rail_curve.push(per_curve);
+                    )))
+                },
+            )?)?);
+            rail_curve.push(curves);
         }
 
         // The caps of an open path: the profile face, its outward normal

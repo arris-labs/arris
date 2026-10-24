@@ -83,7 +83,7 @@ robustness or bound has to be established here.
   revolve first (on-axis vertex, segment along the axis), then extrude,
   sweep and loft. `revolve-onto-axis` and `probe-revolve-onto-axis-m` ids
   unchanged. `GLOSSARY.md` gains *Ring* and *Rise*.
-- [ ] Step 5 **[1]** — `rails` in all four.
+- [x] Step 5 **[1]** — `rails` in all four.
 - [ ] Step 6 **[2]** — `side_cycle` in all four; revolve's annulus `split`
   and its rise left out at the axis pass through unchanged.
 - [ ] Step 7 **[1]** — `fn_lengths.py` holds the Goal's bounds; whatever
@@ -115,10 +115,10 @@ robustness or bound has to be established here.
   in the architecture and code, not done here.
 
 ## Open questions
-- ⚠ OPEN: whether `rails` and `ring_edges` share one closure shape or
-  `rails` takes the sweep's rail law directly — the agent decides at
-  step 4, after revolve's rings, by which one keeps revolve's own part
-  shorter.
+- Settled (step 5): `rails` takes the same closure shape as `ring_edges`,
+  `(loop, index) -> geometry and role`, plus the `Specs` so revolve pushes
+  a vertex on the axis's degenerate edges in their place among the rails;
+  the sweep's rail law stays in each operation's closure.
 - ⚠ OPEN: if `revolve` cannot reach 300 lines without moving its chain
   analysis, the agent moves `Chain` and the spanning pick into
   `revolve/chains.rs` at step 7 and records the bound reached.

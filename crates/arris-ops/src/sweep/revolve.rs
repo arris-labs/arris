@@ -17,7 +17,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, InputReason, OpError, Reason, SweepReason, fault_of};
 
-use super::skeleton::{Specs, counts, finish_solid, ring_edges, ring_vertices};
+use super::skeleton::{Specs, counts, finish_solid, rails, ring_edges, ring_vertices};
 use super::{
     SideUse, cap_face, degenerate, profile_curve_fault, profile_pcurves, side_face,
     side_orientation, unmade, vertex_index,
@@ -695,16 +695,25 @@ pub fn revolve(
                 }),
             )))
         })?;
-        let mut rise_edge: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
-        let mut rises: Vec<Vec<Option<Curve>>> = Vec::with_capacity(loops.len());
+        let mut rises: Vec<Vec<Option<Curve>>> = loops
+            .iter()
+            .map(|edges_of| Vec::with_capacity(edges_of.len()))
+            .collect();
         // The degenerate edges, by (loop, side, whether at the side's start).
         let mut apex: BTreeMap<(usize, usize, bool), usize> = BTreeMap::new();
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            let mut row = Vec::with_capacity(n);
-            let mut curves = Vec::with_capacity(n);
-            for (j, edge) in edges_of.iter().enumerate() {
+        let rise_edge = rails(
+            &mut specs,
+            &start_vertex,
+            &end_vertex,
+            tolerance,
+            |specs, li, j| {
                 meter.tick()?;
+                let edge = &loops[li][j];
+                let n = shape[li];
+                let role = part(SweepPart::Rise {
+                    loop_index: edge.loop_index,
+                    vertex: vertex_index(edge, n),
+                });
                 // A vertex on the axis sweeps no rise; each face closing
                 // there holds a degenerate edge at it instead.
                 if on_axis[li][j] {
@@ -721,43 +730,25 @@ pub fn revolve(
                                 end: at,
                                 tolerance,
                             },
-                            part(SweepPart::Rise {
-                                loop_index: edge.loop_index,
-                                vertex: vertex_index(edge, n),
-                            }),
+                            role,
                         );
                         apex.insert((li, side, side == j), slot);
                     }
-                    row.push(None);
-                    curves.push(None);
-                    continue;
+                    rises[li].push(None);
+                    return Ok(None);
                 }
-                let start = key(start_vertex[li][j], edge)?;
-                let end = key(end_vertex[li][j], edge)?;
                 let rise = Curve::Circle {
                     frame: base.with_origin(axis_point(in_plane.t(edge.start))),
                     radius: in_plane.rho(edge.start),
                 };
-                row.push(Some(specs.edge(
-                    EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(rise.clone()),
-                            range: rise_range,
-                        },
-                        start,
-                        end,
-                        tolerance,
-                    },
-                    part(SweepPart::Rise {
-                        loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, n),
-                    }),
-                )));
-                curves.push(Some(rise));
-            }
-            rise_edge.push(row);
-            rises.push(curves);
-        }
+                let geometry = EdgeGeometry::Curve {
+                    curve: m.add_curve(rise.clone()),
+                    range: rise_range,
+                };
+                rises[li].push(Some(rise));
+                Ok(Some((geometry, role)))
+            },
+        )?;
 
         // The two flat ends of a partial turn: the profile face, its
         // outward normal against the turn, and its rotated copy. A rigid

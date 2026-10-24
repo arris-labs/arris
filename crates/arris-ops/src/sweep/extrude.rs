@@ -12,7 +12,9 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{InputReason, OpError, Reason, fault_of};
 use crate::verify;
 
-use super::skeleton::{Specs, all, counts, finish_solid, present, ring_edges, ring_vertices};
+use super::skeleton::{
+    Specs, all, counts, finish_solid, present, rails, ring_edges, ring_vertices,
+};
 use super::{
     SideUse, cap_face, degenerate, profile_pcurves, record, side_face, side_orientation,
     vertex_index,
@@ -226,38 +228,36 @@ pub fn extrude(
                 )))
             },
         )?)?;
-        let mut rise_edge: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
-        let mut rises: Vec<Vec<Curve>> = Vec::with_capacity(loops.len());
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            let mut row = Vec::with_capacity(n);
-            let mut curves = Vec::with_capacity(n);
-            for (j, edge) in edges_of.iter().enumerate() {
+        let mut rises: Vec<Vec<Curve>> = loops
+            .iter()
+            .map(|edges_of| Vec::with_capacity(edges_of.len()))
+            .collect();
+        let rise_edge = all(rails(
+            &mut specs,
+            &present(&start_vertex),
+            &present(&end_vertex),
+            tolerance,
+            |_, li, j| {
                 meter.tick()?;
+                let edge = &loops[li][j];
                 let rise = Curve::Line {
                     origin: edge.curve.point(edge.range.lo()),
                     direction: sweep,
                 };
-                row.push(specs.edge(
-                    EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(rise.clone()),
-                            range: rise_range,
-                        },
-                        start: VertexKey::New(start_vertex[li][j]),
-                        end: VertexKey::New(end_vertex[li][j]),
-                        tolerance,
-                    },
+                let geometry = EdgeGeometry::Curve {
+                    curve: m.add_curve(rise.clone()),
+                    range: rise_range,
+                };
+                rises[li].push(rise);
+                Ok(Some((
+                    geometry,
                     part(SweepPart::Rise {
                         loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, n),
+                        vertex: vertex_index(edge, shape[li]),
                     }),
-                ));
-                curves.push(rise);
-            }
-            rise_edge.push(row);
-            rises.push(curves);
-        }
+                )))
+            },
+        )?)?;
 
         // The caps: the profile face on its own plane, its outward normal
         // against the sweep, and its translated copy.
