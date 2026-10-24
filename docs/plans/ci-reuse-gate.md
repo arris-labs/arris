@@ -121,13 +121,10 @@ it runs in the `reuse` job, step 2); step 5's dispatch green with four
 - `GLOSSARY.md` — no new term. `CHANGELOG.md` — nothing (no consumer sees it).
 
 ## Open questions
-- ⚠ OPEN: does GitHub dispatch `ci.yml` on a branch while `main`'s copy has
-  no `workflow_dispatch`? Settled at step 2 (agent): the trigger lands in
-  step 2's commit with the rest, and step 5's dispatch is the test; if
-  GitHub refuses, that one line lands on `main` first as its own commit.
-- ⚠ OPEN: is any `ci.yml` job a required status check in the branch rules?
-  A skipped job satisfies one, so nothing changes; the human confirms
-  before step 7.
+- Settled at step 5 (agent): GitHub dispatches `ci.yml` on a branch while
+  `main`'s copy has no `workflow_dispatch`; the trigger landed with step 2.
+- Settled before step 7 (agent): `main` has no branch protection (`gh api`
+  answers 404) and no required status check, so a skipped job blocks nothing.
 - Decided at planning by the agent: the gate covers pushes to `main` as well
   as tags, since the release commit and the `-dev` commit are version-only
   pushes that each cost a full run; pull requests always run everything.
