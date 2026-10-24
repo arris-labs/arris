@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The CI reuse gate (plans/ci-reuse-gate): whether a push needs the suite
+# The CI reuse gate (ADR-0069): whether a push needs the suite
 # again. The suite costs hours; a commit that changes only version strings,
 # the changelog and prose no test reads cannot change its verdict, so the
 # nearest commit that already went green on `main` stands in for it.
