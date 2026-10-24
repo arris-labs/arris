@@ -97,10 +97,13 @@ the tests are mechanical; **[2]** careful — a geometric or numeric case to
 get right within a given design; **[3]** unproven — an algorithm whose
 robustness or bound has to be established here.
 
-- [ ] Step 1 **[1]** — Record the baseline: every blessed `dump.txt`,
+- [x] Step 1 **[1]** — Record the baseline: every blessed `dump.txt`,
   `fixture.json`, `cancel_counts.txt`, `tolerance_band.txt` hashed at
   `4a3b0df3` into the scratchpad, plus a script that diffs against it;
   each later step runs it. No commit.
+  *Settled:* no script. The blessed files are tracked, so git is the
+  baseline: `git diff 4a3b0df3 HEAD -- tests/fixtures` is empty after
+  steps 2–8.
 - [x] Step 2 **[1]** — Split `builder.rs` into `builder/` as the deltas
   say (eight files; `spec.rs` split off `assemble.rs`, which held 1015
   lines against the ~900 acceptance bound), moves only, `pub use` keeping every path. `topo` tests and doctests
