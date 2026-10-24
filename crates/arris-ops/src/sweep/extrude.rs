@@ -1,7 +1,7 @@
 //! `extrude` along the profile's normal, and `planar_face`, its cap
 //! taken alone.
 
-use arris_geom::{Curve, Curve2, Profile, pcurve_on};
+use arris_geom::{Curve, Curve2, Profile, ProfileEdge, pcurve_on};
 use arris_math::real;
 use arris_math::{Control, Interval, Isometry, Meter, UnitVec3, Vec3};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, VertexKey, VertexSpec};
@@ -12,7 +12,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{InputReason, OpError, Reason, fault_of};
 use crate::verify;
 
-use super::skeleton::{Specs, finish_solid};
+use super::skeleton::{Specs, all, counts, finish_solid, present, ring_edges, ring_vertices};
 use super::{
     SideUse, cap_face, degenerate, profile_pcurves, record, side_face, side_orientation,
     vertex_index,
@@ -144,97 +144,88 @@ pub fn extrude(
         let mut specs = Specs::default();
 
         // The start ring, then the end ring; slot (loop, walk index).
-        let mut start_vertex: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
-        let mut end_vertex: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
-        for edges_of in &loops {
-            let n = edges_of.len();
-            let mut ring = Vec::with_capacity(n);
-            for edge in edges_of {
-                ring.push(specs.vertex(
-                    VertexSpec::New {
-                        point: edge.curve.point(edge.range.lo()),
-                        tolerance,
-                    },
-                    part(SweepPart::StartVertex {
-                        loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, n),
-                    }),
-                ));
-            }
-            start_vertex.push(ring);
-        }
-        for edges_of in &loops {
-            let n = edges_of.len();
-            let mut ring = Vec::with_capacity(n);
-            for edge in edges_of {
-                ring.push(specs.vertex(
-                    VertexSpec::New {
-                        point: shift.apply(edge.curve.point(edge.range.lo())),
-                        tolerance,
-                    },
-                    part(SweepPart::EndVertex {
-                        loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, n),
-                    }),
-                ));
-            }
-            end_vertex.push(ring);
-        }
+        let shape = counts(&loops);
+        let vertex_at = |li: usize, j: usize| -> &ProfileEdge { &loops[li][j] };
+        let start_vertex = all(ring_vertices(
+            &mut specs,
+            &shape,
+            tolerance,
+            |li, j| {
+                Ok(Some(
+                    vertex_at(li, j).curve.point(vertex_at(li, j).range.lo()),
+                ))
+            },
+            |li, j| {
+                let edge = vertex_at(li, j);
+                part(SweepPart::StartVertex {
+                    loop_index: edge.loop_index,
+                    vertex: vertex_index(edge, shape[li]),
+                })
+            },
+        )?)?;
+        let end_vertex = all(ring_vertices(
+            &mut specs,
+            &shape,
+            tolerance,
+            |li, j| {
+                let edge = vertex_at(li, j);
+                Ok(Some(shift.apply(edge.curve.point(edge.range.lo()))))
+            },
+            |li, j| {
+                let edge = vertex_at(li, j);
+                part(SweepPart::EndVertex {
+                    loop_index: edge.loop_index,
+                    vertex: vertex_index(edge, shape[li]),
+                })
+            },
+        )?)?;
 
         // The start edges, the end edges, then the rises.
-        let mut start_edge: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
-        let mut end_edge: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
-        let mut end_curves: Vec<Vec<Curve>> = Vec::with_capacity(loops.len());
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            let mut row = Vec::with_capacity(n);
-            for (j, edge) in edges_of.iter().enumerate() {
+        let start_edge = all(ring_edges(
+            &mut specs,
+            &present(&start_vertex),
+            tolerance,
+            |li, j| {
                 meter.tick()?;
-                row.push(specs.edge(
-                    EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(edge.curve.clone()),
-                            range: edge.range,
-                        },
-                        start: VertexKey::New(start_vertex[li][j]),
-                        end: VertexKey::New(start_vertex[li][(j + 1) % n]),
-                        tolerance,
+                let edge = &loops[li][j];
+                Ok(Some((
+                    EdgeGeometry::Curve {
+                        curve: m.add_curve(edge.curve.clone()),
+                        range: edge.range,
                     },
                     part(SweepPart::StartEdge {
                         loop_index: edge.loop_index,
                         segment: edge.segment,
                     }),
-                ));
-            }
-            start_edge.push(row);
-        }
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            let mut row = Vec::with_capacity(n);
-            let mut curves = Vec::with_capacity(n);
-            for (j, edge) in edges_of.iter().enumerate() {
+                )))
+            },
+        )?)?;
+        let mut end_curves: Vec<Vec<Curve>> = loops
+            .iter()
+            .map(|edges_of| Vec::with_capacity(edges_of.len()))
+            .collect();
+        let end_edge = all(ring_edges(
+            &mut specs,
+            &present(&end_vertex),
+            tolerance,
+            |li, j| {
                 meter.tick()?;
+                let edge = &loops[li][j];
                 let curve = edge.curve.transformed(&shift);
-                row.push(specs.edge(
-                    EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(curve.clone()),
-                            range: edge.range,
-                        },
-                        start: VertexKey::New(end_vertex[li][j]),
-                        end: VertexKey::New(end_vertex[li][(j + 1) % n]),
-                        tolerance,
-                    },
+                let geometry = EdgeGeometry::Curve {
+                    curve: m.add_curve(curve.clone()),
+                    range: edge.range,
+                };
+                end_curves[li].push(curve);
+                Ok(Some((
+                    geometry,
                     part(SweepPart::EndEdge {
                         loop_index: edge.loop_index,
                         segment: edge.segment,
                     }),
-                ));
-                curves.push(curve);
-            }
-            end_edge.push(row);
-            end_curves.push(curves);
-        }
+                )))
+            },
+        )?)?;
         let mut rise_edge: Vec<Vec<usize>> = Vec::with_capacity(loops.len());
         let mut rises: Vec<Vec<Curve>> = Vec::with_capacity(loops.len());
         for (li, edges_of) in loops.iter().enumerate() {

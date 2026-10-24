@@ -21,7 +21,7 @@ use arris_geom::{
     Path, Profile, ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
 };
 use arris_math::{Control, Interval, Isometry, Meter};
-use arris_topo::builder::{EdgeSpec, VertexKey, VertexSpec};
+use arris_topo::builder::{EdgeSpec, VertexKey};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -29,7 +29,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 
 use super::exact::{ExactSpan, exact_span};
-use super::skeleton::{Specs, finish_solid};
+use super::skeleton::{Specs, all, counts, finish_solid, present, ring_edges, ring_vertices};
 use super::{
     SideUse, cap_face, profile_pcurves, refuse, side_face, side_orientation, vertex_index,
 };
@@ -273,30 +273,28 @@ pub fn sweep(
 
         // The rings' vertices, per ring per loop in walking order: span
         // `r`'s start, or the last span's end on an open path's last ring.
+        let shape = counts(&loops);
         let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
         for (r, motion) in motions.iter().enumerate() {
-            let mut per_loop = Vec::with_capacity(loops.len());
-            for edges_of in &loops {
-                let n = edges_of.len();
-                let mut ring = Vec::with_capacity(n);
-                for edge in edges_of {
+            ring_vertex.push(all(ring_vertices(
+                &mut specs,
+                &shape,
+                tolerance,
+                |li, j| {
                     meter.tick()?;
-                    let (loop_index, vertex) = (edge.loop_index, vertex_index(edge, n));
-                    ring.push(specs.vertex(
-                        VertexSpec::New {
-                            point: motion.apply(edge.curve.point(edge.range.lo())),
-                            tolerance,
-                        },
-                        if r == spans {
-                            part(last, SweepPart::EndVertex { loop_index, vertex })
-                        } else {
-                            part(r, SweepPart::StartVertex { loop_index, vertex })
-                        },
-                    ));
-                }
-                per_loop.push(ring);
-            }
-            ring_vertex.push(per_loop);
+                    let edge = &loops[li][j];
+                    Ok(Some(motion.apply(edge.curve.point(edge.range.lo()))))
+                },
+                |li, j| {
+                    let edge = &loops[li][j];
+                    let (loop_index, vertex) = (edge.loop_index, vertex_index(edge, shape[li]));
+                    if r == spans {
+                        part(last, SweepPart::EndVertex { loop_index, vertex })
+                    } else {
+                        part(r, SweepPart::StartVertex { loop_index, vertex })
+                    }
+                },
+            )?)?);
         }
 
         // The rings' edges: each segment's own NURBS carried exactly to
@@ -306,16 +304,17 @@ pub fn sweep(
         let mut ring_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(rings);
         for (r, motion) in motions.iter().enumerate() {
             let analytic = exact_ring(r);
-            let mut slots = Vec::with_capacity(loops.len());
-            let mut ranges = Vec::with_capacity(loops.len());
-            let mut curves = Vec::with_capacity(loops.len());
-            for (li, edges_of) in loops.iter().enumerate() {
-                let n = edges_of.len();
-                let mut row = Vec::with_capacity(n);
-                let mut row_ranges = Vec::with_capacity(n);
-                let mut row_curves = Vec::with_capacity(n);
-                for (j, edge) in edges_of.iter().enumerate() {
+            let mut ranges: Vec<Vec<Interval>> =
+                shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+            let mut curves: Vec<Vec<Curve>> =
+                shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+            let slots = all(ring_edges(
+                &mut specs,
+                &present(&ring_vertex[r]),
+                tolerance,
+                |li, j| {
                     meter.tick()?;
+                    let edge = &loops[li][j];
                     // Between exact spans the ring is the profile's own
                     // segment carried; beside a fitted span it is that
                     // segment's NURBS, the isoline the fitted faces end on.
@@ -326,17 +325,15 @@ pub fn sweep(
                         let range = segment.domain();
                         (Curve::Nurbs(segment), range)
                     };
+                    let geometry = EdgeGeometry::Curve {
+                        curve: m.add_curve(curve.clone()),
+                        range,
+                    };
+                    ranges[li].push(range);
+                    curves[li].push(curve);
                     let (loop_index, segment) = (edge.loop_index, edge.segment);
-                    row.push(specs.edge(
-                        EdgeSpec::New {
-                            geometry: EdgeGeometry::Curve {
-                                curve: m.add_curve(curve.clone()),
-                                range,
-                            },
-                            start: VertexKey::New(ring_vertex[r][li][j]),
-                            end: VertexKey::New(ring_vertex[r][li][(j + 1) % n]),
-                            tolerance,
-                        },
+                    Ok(Some((
+                        geometry,
                         if r == spans {
                             part(
                                 last,
@@ -354,14 +351,9 @@ pub fn sweep(
                                 },
                             )
                         },
-                    ));
-                    row_ranges.push(range);
-                    row_curves.push(curve);
-                }
-                slots.push(row);
-                ranges.push(row_ranges);
-                curves.push(row_curves);
-            }
+                    )))
+                },
+            )?)?;
             ring_edge.push(slots);
             ring_range.push(ranges);
             ring_curve.push(curves);

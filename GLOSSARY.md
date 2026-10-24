@@ -76,6 +76,16 @@ _Avoid_: orientation mode, Frenet (a different law, not offered)
 The edge a profile vertex sweeps along a span, shared by the two side
 faces that meet there.
 
+**Ring**:
+A profile's vertices and edges carried to one station of a sweep: the
+start ring, the end ring, a joint between spans. A ring has one entry per
+vertex or segment of every loop, in walking order.
+
+**Rise**:
+A vertex's rail in `extrude` (a straight line along the sweep) and
+`revolve` (a circle about the axis); `SweepPart::Rise` names it in
+provenance for every sweep, rails of `sweep` and `loft` included.
+
 **Holonomy**:
 The rotation about the tangent by which a rotation-minimising frame comes
 back after a closed path; a sweep along a closed path has no caps only

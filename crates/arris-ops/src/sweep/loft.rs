@@ -18,7 +18,7 @@ use arris_geom::{
     NurbsCurve2, NurbsSurface, Profile, Surface, interpolate_skin, match_sections, pcurve_on,
 };
 use arris_math::{Control, Interval, Meter, Point2, UnitVec3};
-use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::builder::{EdgeSpec, FaceSpec, VertexKey};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -26,7 +26,7 @@ use arris_topo::{Body, Model, Orientation, Provenance, Role};
 use crate::error::{Fault, OpError, fault_of};
 
 use super::loft_exact::{Kind, analytic_curve, exact_face, kind_of};
-use super::skeleton::{Specs, finish_solid};
+use super::skeleton::{Specs, all, finish_solid, present, ring_edges, ring_vertices};
 use super::{SideUse, cap_face, side_face, side_orientation};
 
 /// How a loft joins consecutive sections.
@@ -331,39 +331,24 @@ pub fn loft(
         // The rings' vertices, per section per loop in walking order.
         let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
         for r in 0..rings {
-            let mut per_loop = Vec::with_capacity(loop_count);
-            for (li, &n) in counts.iter().enumerate() {
-                let mut ring = Vec::with_capacity(n);
-                for j in 0..n {
+            ring_vertex.push(all(ring_vertices(
+                &mut specs,
+                &counts,
+                tolerance,
+                |li, j| {
                     meter.tick()?;
                     let seg = segment(r, li, j);
-                    ring.push(specs.vertex(
-                        VertexSpec::New {
-                            point: seg.eval(seg.domain().lo()).point,
-                            tolerance,
-                        },
-                        if closed || r < spans {
-                            part(
-                                r,
-                                SweepPart::StartVertex {
-                                    loop_index: li,
-                                    vertex: j,
-                                },
-                            )
-                        } else {
-                            part(
-                                last,
-                                SweepPart::EndVertex {
-                                    loop_index: li,
-                                    vertex: j,
-                                },
-                            )
-                        },
-                    ));
-                }
-                per_loop.push(ring);
-            }
-            ring_vertex.push(per_loop);
+                    Ok(Some(seg.eval(seg.domain().lo()).point))
+                },
+                |li, vertex| {
+                    let loop_index = li;
+                    if closed || r < spans {
+                        part(r, SweepPart::StartVertex { loop_index, vertex })
+                    } else {
+                        part(last, SweepPart::EndVertex { loop_index, vertex })
+                    }
+                },
+            )?)?);
         }
 
         // The rings' edges: each section's matched segments, as the line or
@@ -371,51 +356,47 @@ pub fn loft(
         let mut ring_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
         let mut ring_curve: Vec<Vec<Vec<(Curve, Interval)>>> = Vec::with_capacity(rings);
         for (r, ring_of) in ring_vertex.iter().enumerate() {
-            let mut slots = Vec::with_capacity(loop_count);
-            let mut curves = Vec::with_capacity(loop_count);
-            for (li, &n) in counts.iter().enumerate() {
-                let mut row = Vec::with_capacity(n);
-                let mut row_curves = Vec::with_capacity(n);
-                for j in 0..n {
+            let mut curves: Vec<Vec<(Curve, Interval)>> =
+                counts.iter().map(|&n| Vec::with_capacity(n)).collect();
+            let slots = all(ring_edges(
+                &mut specs,
+                &present(ring_of),
+                tolerance,
+                |li, j| {
                     meter.tick()?;
                     let seg = segment(r, li, j);
                     let (curve, range) = ring_exact(r, li, j)
                         .then(|| analytic_curve(&kinds[r][li][j]))
                         .flatten()
                         .unwrap_or_else(|| (Curve::Nurbs(seg.clone()), seg.domain()));
-                    row_curves.push((curve.clone(), range));
-                    row.push(specs.edge(
-                        EdgeSpec::New {
-                            geometry: EdgeGeometry::Curve {
-                                curve: m.add_curve(curve),
-                                range,
-                            },
-                            start: VertexKey::New(ring_of[li][j]),
-                            end: VertexKey::New(ring_of[li][(j + 1) % n]),
-                            tolerance,
-                        },
+                    curves[li].push((curve.clone(), range));
+                    let geometry = EdgeGeometry::Curve {
+                        curve: m.add_curve(curve),
+                        range,
+                    };
+                    let (loop_index, segment) = (li, j);
+                    Ok(Some((
+                        geometry,
                         if closed || r < spans {
                             part(
                                 r,
                                 SweepPart::StartEdge {
-                                    loop_index: li,
-                                    segment: j,
+                                    loop_index,
+                                    segment,
                                 },
                             )
                         } else {
                             part(
                                 last,
                                 SweepPart::EndEdge {
-                                    loop_index: li,
-                                    segment: j,
+                                    loop_index,
+                                    segment,
                                 },
                             )
                         },
-                    ));
-                }
-                slots.push(row);
-                curves.push(row_curves);
-            }
+                    )))
+                },
+            )?)?;
             ring_edge.push(slots);
             ring_curve.push(curves);
         }

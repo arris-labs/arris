@@ -79,7 +79,7 @@ robustness or bound has to be established here.
 - [x] Step 3 **[2]** — `shells`: `along` and `loft` by loop, `revolve` by
   chain in its spanning-first order. The step-1 test and every
   `revolve-notch-to-axis`/`revolve-hollow-ring`/`sweep-ring` dump unchanged.
-- [ ] Step 4 **[2]** — `ring_vertices` and `ring_edges`, designed against
+- [x] Step 4 **[2]** — `ring_vertices` and `ring_edges`, designed against
   revolve first (on-axis vertex, segment along the axis), then extrude,
   sweep and loft. `revolve-onto-axis` and `probe-revolve-onto-axis-m` ids
   unchanged. `GLOSSARY.md` gains *Ring* and *Rise*.

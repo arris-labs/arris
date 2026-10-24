@@ -4,8 +4,10 @@
 //! its own — which vertices exist, what curves its rails are, how its
 //! sides close.
 
-use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexSpec};
-use arris_topo::entity::BodyKind;
+use arris_geom::ProfileEdge;
+use arris_math::Point3;
+use arris_topo::builder::{Assembly, Builder, EdgeSpec, FaceSpec, VertexKey, VertexSpec};
+use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, Model, Provenance, Role};
 
@@ -26,6 +28,44 @@ pub(super) struct Specs {
     edge_roles: Vec<Role>,
     faces: Vec<FaceSpec>,
     face_roles: Vec<Role>,
+}
+
+/// One entry per vertex or edge of a *ring* — the profile's vertices or
+/// segments at one station of a sweep — per loop in walking order: its
+/// slot, or `None` where the operation makes none.
+pub(super) type Ring = Vec<Vec<Option<usize>>>;
+
+/// How many segments each loop of a profile walks, the shape every ring
+/// has.
+pub(super) fn counts(loops: &[Vec<ProfileEdge>]) -> Vec<usize> {
+    loops.iter().map(Vec::len).collect()
+}
+
+/// A kernel bug: a ring entry the operation's own plan made and that is
+/// missing.
+fn unmade_slot() -> OpError {
+    OpError::Internal(Fault::Invariant {
+        what: "a vertex for every edge of a ring",
+    })
+}
+
+/// The slots of a ring every entry of which exists, or the kernel bug of
+/// one that does not.
+pub(super) fn all(ring: Ring) -> Result<Vec<Vec<usize>>, OpError> {
+    ring.into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|slot| slot.ok_or_else(unmade_slot))
+                .collect()
+        })
+        .collect()
+}
+
+/// A ring whose every entry exists, as a [`Ring`].
+pub(super) fn present(rows: &[Vec<usize>]) -> Ring {
+    rows.iter()
+        .map(|row| row.iter().copied().map(Some).collect())
+        .collect()
 }
 
 /// A sweep's faces grouped into shells: the face specs per shell, the
@@ -119,6 +159,70 @@ impl Specs {
             face_roles,
         })
     }
+}
+
+/// The vertices of one ring, in loop order then walking order: `point`
+/// gives the place of vertex `(loop, index)` or `None` where the
+/// operation makes no vertex there (a vertex on `revolve`'s axis), `role`
+/// what it is `Generated` from. `point` is called once per entry in that
+/// order, so it carries the operation's metering.
+pub(super) fn ring_vertices(
+    specs: &mut Specs,
+    shape: &[usize],
+    tolerance: f64,
+    mut point: impl FnMut(usize, usize) -> Result<Option<Point3>, OpError>,
+    role: impl Fn(usize, usize) -> Role,
+) -> Result<Ring, OpError> {
+    let mut ring = Vec::with_capacity(shape.len());
+    for (li, &n) in shape.iter().enumerate() {
+        let mut row = Vec::with_capacity(n);
+        for j in 0..n {
+            row.push(
+                point(li, j)?
+                    .map(|point| specs.vertex(VertexSpec::New { point, tolerance }, role(li, j))),
+            );
+        }
+        ring.push(row);
+    }
+    Ok(ring)
+}
+
+/// The edges of one ring over its `vertices`: edge `(loop, index)` runs
+/// from vertex `index` to the next of its loop. `make` gives the edge's
+/// geometry and role, or `None` for a segment the operation sweeps
+/// nothing from (`revolve`'s along its axis); it is called once per entry
+/// in loop then walking order, so it carries the operation's metering. A
+/// missing vertex under an edge is a kernel bug.
+pub(super) fn ring_edges(
+    specs: &mut Specs,
+    vertices: &Ring,
+    tolerance: f64,
+    mut make: impl FnMut(usize, usize) -> Result<Option<(EdgeGeometry, Role)>, OpError>,
+) -> Result<Ring, OpError> {
+    let mut ring = Vec::with_capacity(vertices.len());
+    for (li, ring_of) in vertices.iter().enumerate() {
+        let n = ring_of.len();
+        let mut row = Vec::with_capacity(n);
+        for j in 0..n {
+            let Some((geometry, role)) = make(li, j)? else {
+                row.push(None);
+                continue;
+            };
+            let key = |slot: Option<usize>| slot.map(VertexKey::New).ok_or_else(unmade_slot);
+            let (start, end) = (key(ring_of[j])?, key(ring_of[(j + 1) % n])?);
+            row.push(Some(specs.edge(
+                EdgeSpec::New {
+                    geometry,
+                    start,
+                    end,
+                    tolerance,
+                },
+                role,
+            )));
+        }
+        ring.push(row);
+    }
+    Ok(ring)
 }
 
 /// Assembles `specs` and `shells` into a solid in `m`, finishes and

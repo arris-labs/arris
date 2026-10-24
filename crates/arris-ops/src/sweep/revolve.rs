@@ -10,14 +10,14 @@ use arris_math::{
     Axis, Control, Frame, Interval, Isometry, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3,
     Vec2, Vec3, wrap_angle,
 };
-use arris_topo::builder::{EdgeSpec, VertexKey, VertexSpec};
+use arris_topo::builder::{EdgeSpec, VertexKey};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::SweepPart;
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
 
 use crate::error::{Fault, InputReason, OpError, Reason, SweepReason, fault_of};
 
-use super::skeleton::{Specs, finish_solid};
+use super::skeleton::{Specs, counts, finish_solid, ring_edges, ring_vertices};
 use super::{
     SideUse, cap_face, degenerate, profile_curve_fault, profile_pcurves, side_face,
     side_orientation, unmade, vertex_index,
@@ -590,132 +590,112 @@ pub fn revolve(
         // vertex on the axis is one vertex, with no end copy, and a full
         // turn makes it only where a face closes there on a degenerate
         // edge, since no other face keeps it.
-        let mut start_vertex: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
-        let mut end_vertex: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            let mut ring = Vec::with_capacity(n);
-            for (j, edge) in edges_of.iter().enumerate() {
+        let shape = counts(&loops);
+        let start_vertex = ring_vertices(
+            &mut specs,
+            &shape,
+            tolerance,
+            |li, j| {
                 meter.tick()?;
                 if full && on_axis[li][j] && closes_at(li, j) == [false, false] {
-                    ring.push(None);
-                    continue;
+                    return Ok(None);
                 }
-                ring.push(Some(specs.vertex(
-                    VertexSpec::New {
-                        point: edge.curve.point(edge.range.lo()),
-                        tolerance,
-                    },
-                    part(SweepPart::StartVertex {
-                        loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, n),
-                    }),
-                )));
-            }
-            start_vertex.push(ring);
-        }
-        if full {
-            end_vertex.clone_from(&start_vertex);
+                let edge = &loops[li][j];
+                Ok(Some(edge.curve.point(edge.range.lo())))
+            },
+            |li, j| {
+                let edge = &loops[li][j];
+                part(SweepPart::StartVertex {
+                    loop_index: edge.loop_index,
+                    vertex: vertex_index(edge, shape[li]),
+                })
+            },
+        )?;
+        let end_vertex = if full {
+            start_vertex.clone()
         } else {
-            for (li, edges_of) in loops.iter().enumerate() {
-                let n = edges_of.len();
-                let mut ring = Vec::with_capacity(n);
-                for (j, edge) in edges_of.iter().enumerate() {
+            let mut ring = ring_vertices(
+                &mut specs,
+                &shape,
+                tolerance,
+                |li, j| {
                     meter.tick()?;
                     if on_axis[li][j] {
-                        ring.push(start_vertex[li][j]);
-                        continue;
+                        return Ok(None);
                     }
-                    ring.push(Some(specs.vertex(
-                        VertexSpec::New {
-                            point: about_axis.apply(edge.curve.point(edge.range.lo())),
-                            tolerance,
-                        },
-                        part(SweepPart::EndVertex {
-                            loop_index: edge.loop_index,
-                            vertex: vertex_index(edge, n),
-                        }),
-                    )));
+                    let edge = &loops[li][j];
+                    Ok(Some(about_axis.apply(edge.curve.point(edge.range.lo()))))
+                },
+                |li, j| {
+                    let edge = &loops[li][j];
+                    part(SweepPart::EndVertex {
+                        loop_index: edge.loop_index,
+                        vertex: vertex_index(edge, shape[li]),
+                    })
+                },
+            )?;
+            // A vertex on the axis is the start ring's, shared.
+            for (li, row) in ring.iter_mut().enumerate() {
+                for (j, slot) in row.iter_mut().enumerate() {
+                    if on_axis[li][j] {
+                        *slot = start_vertex[li][j];
+                    }
                 }
-                end_vertex.push(ring);
             }
-        }
+            ring
+        };
         let key = |slot: Option<usize>, edge: &ProfileEdge| {
             slot.map(VertexKey::New).ok_or_else(|| unmade(edge))
         };
 
         // The start edges, the end edges, then the rises.
-        let mut start_edge: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
-        let mut end_edge: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
+        let start_edge = ring_edges(&mut specs, &start_vertex, tolerance, |li, j| {
+            meter.tick()?;
+            // A full turn's annulus keeps only its rises, and a segment
+            // along the axis is nothing there; in a partial turn that
+            // segment is the one edge both flat ends share.
+            let annulus = surfaces[li][j].as_ref().is_some_and(|s| s.1);
+            if full && (annulus || along[li][j]) {
+                return Ok(None);
+            }
+            let edge = &loops[li][j];
+            Ok(Some((
+                EdgeGeometry::Curve {
+                    curve: m.add_curve(edge.curve.clone()),
+                    range: edge.range,
+                },
+                part(SweepPart::StartEdge {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                }),
+            )))
+        })?;
+        let mut end_curves: Vec<Vec<Option<Curve>>> = loops
+            .iter()
+            .map(|edges_of| Vec::with_capacity(edges_of.len()))
+            .collect();
+        let end_edge = ring_edges(&mut specs, &end_vertex, tolerance, |li, j| {
+            meter.tick()?;
+            if full || along[li][j] {
+                end_curves[li].push(None);
+                return Ok(None);
+            }
+            let edge = &loops[li][j];
+            let curve = edge.curve.transformed(&about_axis);
+            let geometry = EdgeGeometry::Curve {
+                curve: m.add_curve(curve.clone()),
+                range: edge.range,
+            };
+            end_curves[li].push(Some(curve));
+            Ok(Some((
+                geometry,
+                part(SweepPart::EndEdge {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                }),
+            )))
+        })?;
         let mut rise_edge: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            let mut row = Vec::with_capacity(n);
-            for (j, edge) in edges_of.iter().enumerate() {
-                meter.tick()?;
-                // A full turn's annulus keeps only its rises, and a segment
-                // along the axis is nothing there; in a partial turn that
-                // segment is the one edge both flat ends share.
-                let annulus = surfaces[li][j].as_ref().is_some_and(|s| s.1);
-                if full && (annulus || along[li][j]) {
-                    row.push(None);
-                    continue;
-                }
-                let start = key(start_vertex[li][j], edge)?;
-                let end = key(start_vertex[li][(j + 1) % n], edge)?;
-                row.push(Some(specs.edge(
-                    EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(edge.curve.clone()),
-                            range: edge.range,
-                        },
-                        start,
-                        end,
-                        tolerance,
-                    },
-                    part(SweepPart::StartEdge {
-                        loop_index: edge.loop_index,
-                        segment: edge.segment,
-                    }),
-                )));
-            }
-            start_edge.push(row);
-        }
-        let mut end_curves: Vec<Vec<Option<Curve>>> = Vec::with_capacity(loops.len());
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            let mut row = Vec::with_capacity(n);
-            let mut curves = Vec::with_capacity(n);
-            for (j, edge) in edges_of.iter().enumerate() {
-                meter.tick()?;
-                if full || along[li][j] {
-                    row.push(None);
-                    curves.push(None);
-                    continue;
-                }
-                let start = key(end_vertex[li][j], edge)?;
-                let end = key(end_vertex[li][(j + 1) % n], edge)?;
-                let curve = edge.curve.transformed(&about_axis);
-                row.push(Some(specs.edge(
-                    EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(curve.clone()),
-                            range: edge.range,
-                        },
-                        start,
-                        end,
-                        tolerance,
-                    },
-                    part(SweepPart::EndEdge {
-                        loop_index: edge.loop_index,
-                        segment: edge.segment,
-                    }),
-                )));
-                curves.push(Some(curve));
-            }
-            end_edge.push(row);
-            end_curves.push(curves);
-        }
         let mut rises: Vec<Vec<Option<Curve>>> = Vec::with_capacity(loops.len());
         // The degenerate edges, by (loop, side, whether at the side's start).
         let mut apex: BTreeMap<(usize, usize, bool), usize> = BTreeMap::new();
