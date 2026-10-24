@@ -1687,7 +1687,9 @@ impl Build<'_> {
     /// whose innermost container it is (ADR-0006) — by assembling them once
     /// into a copy of the model and reading `arris_check::lumps` of that
     /// body: the order B1 proves, from the code that proves it. The copy
-    /// is dropped; the model is only read. Errors: the builder's refusal,
+    /// is dropped; the model is only read (a rolled-back transaction on the
+    /// real model would need `&mut` where `Build` lends `&'m` borrows of it
+    /// to its other methods). Errors: the builder's refusal,
     /// and [`Fault::Lumps`] when the shells do not nest or the nesting is
     /// undecided.
     fn lump_order(&self, shells: Vec<Vec<usize>>) -> Result<Vec<Vec<usize>>, OpError> {

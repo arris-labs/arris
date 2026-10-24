@@ -123,7 +123,7 @@ robustness or bound has to be established here.
 - [x] Step 6 **[1]** — Tests that match on a reason substring
   (`geom/tests/nurbs_offset.rs` and the others the grep finds) match the
   variant instead.
-- [ ] Step 7 **[2]** — `lump_order` without the model clone, per the
+- [x] Step 7 **[2]** — `lump_order` without the model clone, per the
   delta; the multi-shell boolean fixtures and `prop` booleans byte-identical.
   *Settled:* the clone stays. `Build` holds `&'m Model` and returns `&'m`
   borrows (`surface_of`), so `&mut` would thread through every method; the
