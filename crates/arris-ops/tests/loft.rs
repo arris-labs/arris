@@ -213,6 +213,51 @@ fn a_closed_loft_builds_no_caps() {
 }
 
 #[test]
+fn a_closed_loft_names_each_void_by_the_loop_the_consumer_wrote() {
+    let ring = |angle: f64| -> Profile {
+        let (s, c) = real::sin_cos(angle);
+        let bore = |u: f64| ProfileLoop::Circle {
+            center: Point2::new(u, 0.0),
+            radius: 0.5,
+        };
+        Profile {
+            plane: Frame::new(
+                Point3::new(8.0 * c, 8.0 * s, 0.0),
+                Vec3::new(s, -c, 0.0),
+                Vec3::new(c, s, 0.0),
+            )
+            .unwrap(),
+            outer: ProfileLoop::Circle {
+                center: Point2::origin(),
+                radius: 2.5,
+            },
+            holes: vec![bore(-1.0), bore(1.0)],
+        }
+    };
+    let sections: Vec<Profile> = (0..4).map(|k| ring(k as f64 * PI / 2.0)).collect();
+    let mut m = Model::default();
+    let (body, provenance) = ruled(&mut m, &sections, true).unwrap();
+    assert_eq!(
+        m.shells(body).unwrap().len(),
+        3,
+        "the ring and its two bores"
+    );
+    let found = parts(&m, body, &provenance);
+    for loop_index in [1, 2] {
+        assert!(
+            found.contains(&PathPart {
+                span: 0,
+                part: SweepPart::Cavity {
+                    loop_index,
+                    segment: 0
+                }
+            }),
+            "bore {loop_index}"
+        );
+    }
+}
+
+#[test]
 fn too_few_sections_are_refused_and_the_model_is_untouched() {
     let mut m = Model::default();
     let err = ruled(&mut m, &[square(0.0, 1.0)], false).unwrap_err();

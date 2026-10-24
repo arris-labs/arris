@@ -403,6 +403,51 @@ fn a_closed_path_builds_no_caps_and_a_hole_closes_into_a_void() {
     }));
 }
 
+/// The disc of radius 4 centred at `(R, 0, 0)` in the xz plane with two
+/// bores of radius 1 side by side, `Profile::edges`' loops in the order
+/// outer, first bore, second bore.
+fn disc_with_two_bores(big_r: f64) -> Profile {
+    let bore = |u: f64| ProfileLoop::Circle {
+        center: p(u, 0.0),
+        radius: 1.0,
+    };
+    Profile {
+        holes: vec![bore(-2.0), bore(2.0)],
+        ..disc_at(big_r, 4.0, None)
+    }
+}
+
+#[test]
+fn a_closed_path_names_each_void_by_the_loop_the_consumer_wrote() {
+    let mut m = Model::default();
+    let (body, provenance) = sweep(
+        &mut m,
+        &disc_with_two_bores(10.0),
+        &ring_path(10.0),
+        FrameLaw::RotationMinimizing,
+        &Control::NONE,
+    )
+    .unwrap();
+    assert_eq!(
+        m.shells(body).unwrap().len(),
+        3,
+        "the tube and its two bores"
+    );
+    let found = parts(&m, body, &provenance);
+    for loop_index in [1, 2] {
+        assert!(
+            found.contains(&PathPart {
+                span: 0,
+                part: SweepPart::Cavity {
+                    loop_index,
+                    segment: 0
+                }
+            }),
+            "bore {loop_index}"
+        );
+    }
+}
+
 #[test]
 fn an_invalid_path_is_refused_by_name_with_the_model_untouched() {
     let bent = Path {
