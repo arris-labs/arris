@@ -59,7 +59,9 @@ cargo add arris
 ## Example: a bracket in Python
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/arris-labs/arris/main/docs/assets/showcase.png" width="480" alt="Motor-mount bracket modelled in Arris, faces coloured by provenance">
+  <a href="https://arris-labs.github.io"><img src="https://raw.githubusercontent.com/arris-labs/arris/main/docs/assets/showcase.png" width="480" alt="Motor-mount bracket modelled in Arris, faces coloured by provenance"></a>
+  <br>
+  <a href="https://arris-labs.github.io"><b>Rotate it in 3D in your browser</b></a>, and see which faces each operation made
 </p>
 
 ```python
