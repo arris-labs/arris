@@ -1,0 +1,40 @@
+name: Refusal or wrong result
+description: An operation refused, panicked, or returned a body that looks wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Every report that reproduces becomes a test fixture, checked
+        against Open CASCADE, so the smaller and more self-contained the
+        script, the faster it lands.
+  - type: textarea
+    id: script
+    attributes:
+      label: Script
+      description: The shortest script that shows it, Python or Rust. Attach the STEP file if it reads one.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened
+      description: The full error (its type and the entities it names), the panic message, or what is wrong with the body.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: For example "Open CASCADE / build123d / FreeCAD builds this fillet", or the volume you expected.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version and platform
+      placeholder: arris 0.9.1, Python 3.12, macOS 14 arm64
+    validations:
+      required: true

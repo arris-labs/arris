@@ -1,0 +1,16 @@
+name: Feature request
+description: Something arris does not do yet that your part, script or pipeline needs.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are building
+      description: The part or workflow, and the operation it needs. A script that stops where arris stops is ideal.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today
+      description: The tool you use for it now, or the workaround.
