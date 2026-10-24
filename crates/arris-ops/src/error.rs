@@ -644,7 +644,7 @@ pub enum Fault {
     /// The checker rejected the operation's output.
     Checker(Box<Report>),
     /// The builder refused a step of the operation's fixed sequence.
-    Builder(BuildError),
+    Builder(Box<BuildError>),
     /// A frame the operation placed could not be built from inputs it had
     /// already validated.
     Frame(FrameError),
@@ -941,7 +941,7 @@ impl From<LoftError> for OpError {
 
 impl From<BuildError> for OpError {
     fn from(e: BuildError) -> Self {
-        OpError::Internal(Fault::Builder(e))
+        OpError::Internal(Fault::Builder(Box::new(e)))
     }
 }
 

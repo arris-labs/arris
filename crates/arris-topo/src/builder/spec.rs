@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use arris_math::Point3;
 
 #[cfg(doc)]
-use super::{BuildError, Builder};
+use super::{BuildError, Builder, ClosureError, EulerError, SlotError};
 use super::{EdgeRef, FaceRef, VertexRef};
 use crate::entity::EdgeGeometry;
 use crate::error::NotFound;
@@ -176,7 +176,7 @@ impl FaceSpec {
 /// operands — which is what a boolean has — writes the table it already
 /// holds. A `Keep` spec and a `Kept` key that name one arena entity are
 /// one slot; naming an entity by two `Keep` specs is
-/// [`BuildError::Duplicate`].
+/// [`ClosureError::Duplicate`].
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Assembly {
     /// The vertices, addressed by [`VertexKey::New`].

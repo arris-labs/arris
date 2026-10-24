@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use super::validate::edge_uses;
-use super::{BuildError, Builder, Built, EdgeRef, FaceRef, Position, VertexRef, effective_uses};
+use super::{
+    BuildError, Builder, Built, ClosureError, EdgeRef, FaceRef, Position, SlotError, VertexRef,
+    effective_uses,
+};
 use crate::entity::{self, BodyKind, Coedge, EdgeGeometry, Loop};
 use crate::handle::{self, Body};
 use crate::id::ShellId;
@@ -24,24 +27,24 @@ impl Builder {
     /// boundary) or twice — the open shells [`Builder::assemble_sheet`]
     /// proves (`docs/DATA-MODEL.md` §Invariants, S2).
     ///
-    /// Errors, each leaving the model untouched: [`BuildError::Kind`] for
+    /// Errors, each leaving the model untouched: [`ClosureError::Kind`] for
     /// a `Wire` or `General` body, which no operation returns;
-    /// [`BuildError::Empty`]; an [`BuildError::EmptyLoop`]; a
-    /// [`BuildError::MissingPcurve`]; an edge used a number of times its
+    /// [`ClosureError::Empty`]; an [`ClosureError::EmptyLoop`]; a
+    /// [`ClosureError::MissingPcurve`]; an edge used a number of times its
     /// kind does not allow, or a degenerate one not exactly once
-    /// ([`BuildError::EdgeUses`]), or used twice the same way
-    /// ([`BuildError::SameDirection`]); a curve, surface, pcurve or kept
+    /// ([`ClosureError::EdgeUses`]), or used twice the same way
+    /// ([`ClosureError::SameDirection`]); a curve, surface, pcurve or kept
     /// entity id that does not resolve ([`BuildError::NotFound`]).
     pub fn finish(self, model: &mut Model, kind: BodyKind) -> Result<Built, BuildError> {
         let open = match kind {
             BodyKind::Solid => false,
             BodyKind::Sheet => true,
             BodyKind::Wire | BodyKind::General => {
-                return Err(BuildError::Kind(kind));
+                return Err(BuildError::Closure(ClosureError::Kind(kind)));
             }
         };
         if self.faces.len() == 0 {
-            return Err(BuildError::Empty);
+            return Err(BuildError::Closure(ClosureError::Empty));
         }
         let mut uses: BTreeMap<EdgeRef, Vec<Orientation>> = BTreeMap::new();
         for (fi, face) in self.faces.iter() {
@@ -51,16 +54,16 @@ impl Builder {
             }
             for (li, lp) in face.loops.iter().enumerate() {
                 if lp.uses.is_empty() {
-                    return Err(BuildError::EmptyLoop {
+                    return Err(BuildError::Closure(ClosureError::EmptyLoop {
                         face: FaceRef(fi),
                         loop_index: li,
-                    });
+                    }));
                 }
                 for (ci, u) in lp.uses.iter().enumerate() {
                     let Some(p) = u.pcurve else {
-                        return Err(BuildError::MissingPcurve {
+                        return Err(BuildError::Closure(ClosureError::MissingPcurve {
                             position: Position::new(FaceRef(fi), li, ci),
-                        });
+                        }));
                     };
                     model.curve2(p)?;
                     self.edge(u.edge)?;
@@ -102,8 +105,10 @@ impl Builder {
                     None => {
                         let start = *vertices
                             .get(&e.start)
-                            .ok_or(BuildError::NoVertex(e.start))?;
-                        let end = *vertices.get(&e.end).ok_or(BuildError::NoVertex(e.end))?;
+                            .ok_or(BuildError::Slot(SlotError::NoVertex(e.start)))?;
+                        let end = *vertices
+                            .get(&e.end)
+                            .ok_or(BuildError::Slot(SlotError::NoVertex(e.end)))?;
                         m.push_edge(entity::Edge::new(e.geometry, start, end, e.tolerance))
                     }
                 };
@@ -119,10 +124,14 @@ impl Builder {
                         for (li, lp) in f.loops.iter().enumerate() {
                             let mut effective = Vec::with_capacity(lp.uses.len());
                             for (ci, u) in lp.uses.iter().enumerate() {
-                                let edge = *edges.get(&u.edge).ok_or(BuildError::NoEdge(u.edge))?;
-                                let pcurve = u.pcurve.ok_or(BuildError::MissingPcurve {
-                                    position: Position::new(FaceRef(i), li, ci),
-                                })?;
+                                let edge = *edges
+                                    .get(&u.edge)
+                                    .ok_or(BuildError::Slot(SlotError::NoEdge(u.edge)))?;
+                                let pcurve = u.pcurve.ok_or(BuildError::Closure(
+                                    ClosureError::MissingPcurve {
+                                        position: Position::new(FaceRef(i), li, ci),
+                                    },
+                                ))?;
                                 effective.push((edge, u.orientation, pcurve));
                             }
                             let coedges = effective_uses(f.orientation, effective)

@@ -8,9 +8,7 @@ use arris_geom::{Curve, Curve2, Surface};
 use arris_math::{
     Axis, Control, Frame, Frame2, Interval, Meter, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
 };
-use arris_topo::builder::{
-    BuildError, Builder, EdgeRef, FaceRef, Position, Seed, Split, Strut, VertexRef,
-};
+use arris_topo::builder::{Builder, EdgeRef, FaceRef, Position, Seed, Split, Strut, VertexRef};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::{BoxPart, Coord, CylinderPart, Side};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -46,8 +44,17 @@ fn positive(what: &'static str, value: f64) -> Result<f64, OpError> {
     }
 }
 
+/// The fault of a validated length that is no interval: the endpoints and
+/// the height were checked apart, so this is the kernel's own sequence
+/// breaking.
+fn length_interval() -> OpError {
+    OpError::Internal(Fault::Invariant {
+        what: "the interval of a validated length",
+    })
+}
+
 /// A line edge's geometry from `p` to `q`, its range the length.
-fn line(m: &mut Model, p: Point3, q: Point3) -> Result<EdgeGeometry, BuildError> {
+fn line(m: &mut Model, p: Point3, q: Point3) -> Result<EdgeGeometry, OpError> {
     let d = q - p;
     let length = d.norm();
     let curve = m.add_curve(Curve::Line {
@@ -56,7 +63,7 @@ fn line(m: &mut Model, p: Point3, q: Point3) -> Result<EdgeGeometry, BuildError>
     });
     // The endpoints were validated apart, so the length is finite and
     // positive; a failure here is the builder's `NotFound` class of bug.
-    let range = Interval::new(0.0, length).map_err(|_| BuildError::Empty)?;
+    let range = Interval::new(0.0, length).map_err(|_| length_interval())?;
     Ok(EdgeGeometry::Curve { curve, range })
 }
 
@@ -445,7 +452,7 @@ pub fn primitive_cylinder(
             direction: base.z(),
         });
         let (p_up, p_down) = (uv_line(m, TAU, 0.0, false), uv_line(m, 0.0, 0.0, false));
-        let rise = Interval::new(0.0, height).map_err(|_| BuildError::Empty)?;
+        let rise = Interval::new(0.0, height).map_err(|_| length_interval())?;
         let at = bd.find_position(f_wall, 0, v0)?;
         let (v1, e_seam) = bd.mev(
             at,

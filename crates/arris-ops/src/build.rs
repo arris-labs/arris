@@ -69,7 +69,7 @@ impl fmt::Display for BuildSlot {
 pub enum Rejection {
     /// [`Builder::finish`] refused it: a loop with no uses, a missing
     /// pcurve, an edge not used exactly twice.
-    Builder(BuildError),
+    Builder(Box<BuildError>),
     /// The slot is an entity already in the model, taken whole by a
     /// `Keep` spec of [`Builder::assemble`]: `build` makes a body from
     /// nothing, and a kept entity is another body's.
@@ -213,7 +213,7 @@ pub fn build(
     model.transaction(|m| {
         let built = builder
             .finish(m, BodyKind::Solid)
-            .map_err(|e| OpError::Rejected(Rejection::Builder(e)))?;
+            .map_err(|e| OpError::Rejected(Rejection::Builder(Box::new(e))))?;
         let report = arris_check::check(m, built.body, Level::Full);
         if !report.is_ok() {
             return Err(OpError::Rejected(Rejection::Checker(Box::new(report))));

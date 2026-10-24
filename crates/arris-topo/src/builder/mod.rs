@@ -41,7 +41,7 @@ mod spec;
 mod staged;
 mod validate;
 
-pub use error::BuildError;
+pub use error::{BuildError, ClosureError, EulerError, SlotError};
 pub use refs::{EdgeRef, FaceRef, Position, Use, VertexRef};
 pub use spec::{
     Assembly, AssemblySlots, BodyIndex, EdgeKey, EdgeSpec, FaceRemap, FaceSpec, GeometryRemap,
@@ -190,17 +190,23 @@ impl Builder {
 
     /// The vertex under `v`. Errors: the slot is not live.
     pub fn vertex(&self, v: VertexRef) -> Result<&StagedVertex, BuildError> {
-        self.vertices.get(v.0).ok_or(BuildError::NoVertex(v))
+        self.vertices
+            .get(v.0)
+            .ok_or(BuildError::Slot(SlotError::NoVertex(v)))
     }
 
     /// The edge under `e`. Errors: the slot is not live.
     pub fn edge(&self, e: EdgeRef) -> Result<&StagedEdge, BuildError> {
-        self.edges.get(e.0).ok_or(BuildError::NoEdge(e))
+        self.edges
+            .get(e.0)
+            .ok_or(BuildError::Slot(SlotError::NoEdge(e)))
     }
 
     /// The face under `f`. Errors: the slot is not live.
     pub fn face(&self, f: FaceRef) -> Result<&StagedFace, BuildError> {
-        self.faces.get(f.0).ok_or(BuildError::NoFace(f))
+        self.faces
+            .get(f.0)
+            .ok_or(BuildError::Slot(SlotError::NoFace(f)))
     }
 
     /// Every live vertex, in slot order.
@@ -219,27 +225,29 @@ impl Builder {
     }
 
     fn face_mut(&mut self, f: FaceRef) -> Result<&mut StagedFace, BuildError> {
-        self.faces.get_mut(f.0).ok_or(BuildError::NoFace(f))
+        self.faces
+            .get_mut(f.0)
+            .ok_or(BuildError::Slot(SlotError::NoFace(f)))
     }
 
     fn loop_ref(&self, f: FaceRef, loop_index: usize) -> Result<&StagedLoop, BuildError> {
         self.face(f)?
             .loops
             .get(loop_index)
-            .ok_or(BuildError::NoLoop {
+            .ok_or(BuildError::Slot(SlotError::NoLoop {
                 face: f,
                 loop_index,
-            })
+            }))
     }
 
     fn loop_mut(&mut self, f: FaceRef, loop_index: usize) -> Result<&mut StagedLoop, BuildError> {
         self.face_mut(f)?
             .loops
             .get_mut(loop_index)
-            .ok_or(BuildError::NoLoop {
+            .ok_or(BuildError::Slot(SlotError::NoLoop {
                 face: f,
                 loop_index,
-            })
+            }))
     }
 
     /// The effective start vertex of `u`.

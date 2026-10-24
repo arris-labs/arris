@@ -1,6 +1,6 @@
 #[cfg(doc)]
 use super::Builder;
-use super::{BuildError, EdgeRef, StagedEdge};
+use super::{BuildError, ClosureError, EdgeRef, StagedEdge};
 use crate::entity::EdgeGeometry;
 use crate::orientation::Orientation;
 
@@ -28,8 +28,8 @@ fn uses_allowed(edge: &StagedEdge, n: usize, open: bool) -> bool {
 
 /// The edge-use rule of a finished body, for one edge and the uses `list`
 /// gives it (`direction` reads a use's effective orientation): a number of
-/// uses [`uses_allowed`] permits ([`BuildError::EdgeUses`]), and two uses
-/// in the same direction ([`BuildError::SameDirection`]). What
+/// uses [`uses_allowed`] permits ([`ClosureError::EdgeUses`]), and two uses
+/// in the same direction ([`ClosureError::SameDirection`]). What
 /// [`Builder::finish`] and [`Builder::assemble`] each prove edge by edge,
 /// in slot order, so the first fault reported is the same one.
 pub(super) fn edge_uses<T>(
@@ -40,13 +40,13 @@ pub(super) fn edge_uses<T>(
     direction: impl Fn(&T) -> Orientation,
 ) -> Result<(), BuildError> {
     if !uses_allowed(staged, list.len(), open) {
-        return Err(BuildError::EdgeUses {
+        return Err(BuildError::Closure(ClosureError::EdgeUses {
             edge,
             uses: list.len(),
-        });
+        }));
     }
     if matches!(list, [a, b] if direction(a) == direction(b)) {
-        return Err(BuildError::SameDirection { edge });
+        return Err(BuildError::Closure(ClosureError::SameDirection { edge }));
     }
     Ok(())
 }
@@ -82,18 +82,21 @@ mod tests {
         );
         assert_eq!(
             edge_uses(e, &curve, &[Forward, Forward], false, same),
-            Err(BuildError::SameDirection { edge: e })
+            Err(BuildError::Closure(ClosureError::SameDirection { edge: e }))
         );
         assert_eq!(
             edge_uses(e, &curve, &[Forward], false, same),
-            Err(BuildError::EdgeUses { edge: e, uses: 1 })
+            Err(BuildError::Closure(ClosureError::EdgeUses {
+                edge: e,
+                uses: 1
+            }))
         );
         assert_eq!(edge_uses(e, &curve, &[Forward], true, same), Ok(()));
         // A list of another type reads its direction through the closure,
         // as `assemble`'s (orientation, face) pairs do.
         assert_eq!(
             edge_uses(e, &curve, &[(Reversed, 7), (Reversed, 9)], false, |u| u.0),
-            Err(BuildError::SameDirection { edge: e })
+            Err(BuildError::Closure(ClosureError::SameDirection { edge: e }))
         );
         let apex = edge(EdgeGeometry::Degenerate {
             range: Interval::TURN,
@@ -101,7 +104,10 @@ mod tests {
         assert_eq!(edge_uses(e, &apex, &[Forward], false, same), Ok(()));
         assert_eq!(
             edge_uses(e, &apex, &[Forward, Reversed], false, same),
-            Err(BuildError::EdgeUses { edge: e, uses: 2 })
+            Err(BuildError::Closure(ClosureError::EdgeUses {
+                edge: e,
+                uses: 2
+            }))
         );
     }
 }

@@ -1,6 +1,6 @@
 use super::{
-    BuildError, Builder, EdgeRef, FaceRef, Join, Position, Seed, Split, StagedEdge, StagedFace,
-    StagedLoop, StagedVertex, Strut, Use, VertexRef,
+    BuildError, Builder, EdgeRef, EulerError, FaceRef, Join, Position, Seed, SlotError, Split,
+    StagedEdge, StagedFace, StagedLoop, StagedVertex, Strut, Use, VertexRef,
 };
 use crate::entity::EdgeGeometry;
 use crate::id::Curve2Id;
@@ -31,10 +31,10 @@ impl Builder {
         let lp = self.loop_ref(at.face, at.loop_index)?;
         let n = lp.uses.len();
         if at.coedge_index > n {
-            return Err(BuildError::BadPosition {
+            return Err(BuildError::Slot(SlotError::BadPosition {
                 position: at,
                 len: n,
-            });
+            }));
         }
         if n == 0 {
             return Ok(lp.seed);
@@ -67,17 +67,17 @@ impl Builder {
         }
         match positions.as_slice() {
             [i] => Ok(Position::new(face, loop_index, *i)),
-            [] => Err(BuildError::NotInLoop {
+            [] => Err(BuildError::Euler(EulerError::NotInLoop {
                 vertex,
                 face,
                 loop_index,
-            }),
-            _ => Err(BuildError::Ambiguous {
+            })),
+            _ => Err(BuildError::Euler(EulerError::Ambiguous {
                 vertex,
                 face,
                 loop_index,
                 positions,
-            }),
+            })),
         }
     }
 
@@ -151,7 +151,7 @@ impl Builder {
     /// 0, 0)`. Errors: the builder already holds a body.
     pub fn mvfs(&mut self, seed: Seed) -> Result<(VertexRef, FaceRef), BuildError> {
         if !self.is_empty() {
-            return Err(BuildError::NotEmpty);
+            return Err(BuildError::Euler(EulerError::NotEmpty));
         }
         let v = VertexRef(self.vertices.insert(StagedVertex {
             point: seed.point,
@@ -192,7 +192,7 @@ impl Builder {
                     orientation: f.orientation,
                 }
             }
-            _ => return Err(BuildError::NotASeed),
+            _ => return Err(BuildError::Euler(EulerError::NotASeed)),
         };
         self.vertices.clear();
         self.edges.clear();
@@ -207,7 +207,7 @@ impl Builder {
     /// Errors: `at` does not resolve; the strut is degenerate.
     pub fn mev(&mut self, at: Position, strut: Strut) -> Result<(VertexRef, EdgeRef), BuildError> {
         if matches!(strut.geometry, EdgeGeometry::Degenerate { .. }) {
-            return Err(BuildError::DegenerateStrut);
+            return Err(BuildError::Euler(EulerError::DegenerateStrut));
         }
         let start = self.vertex_at(at)?;
         let v = VertexRef(self.vertices.insert(StagedVertex {
@@ -263,29 +263,29 @@ impl Builder {
             ] if fa == fb && la == lb => {
                 let n = self.loop_ref(*fa, *la)?.uses.len();
                 if (*i + 1) % n != *j || e.start == e.end {
-                    return Err(BuildError::NotAStrut { edge });
+                    return Err(BuildError::Euler(EulerError::NotAStrut { edge }));
                 }
                 (*fa, *la, *i)
             }
-            _ => return Err(BuildError::NotAStrut { edge }),
+            _ => return Err(BuildError::Euler(EulerError::NotAStrut { edge })),
         };
         let tip = e.end;
         for (k, other) in self.edges.iter() {
             if k != edge.0 && (other.start == tip || other.end == tip) {
-                return Err(BuildError::VertexInUse {
+                return Err(BuildError::Euler(EulerError::VertexInUse {
                     vertex: tip,
                     other: EdgeRef(k),
-                });
+                }));
             }
         }
         for (fi, face) in self.faces.iter() {
             for (l, lp) in face.loops.iter().enumerate() {
                 if lp.uses.is_empty() && lp.seed == tip {
-                    return Err(BuildError::VertexSeeds {
+                    return Err(BuildError::Euler(EulerError::VertexSeeds {
                         vertex: tip,
                         face: FaceRef(fi),
                         loop_index: l,
-                    });
+                    }));
                 }
             }
         }
@@ -334,16 +334,16 @@ impl Builder {
         split: Split,
     ) -> Result<(EdgeRef, FaceRef), BuildError> {
         if from.face != to.face || from.loop_index != to.loop_index {
-            return Err(BuildError::NotOneLoop { from, to });
+            return Err(BuildError::Euler(EulerError::NotOneLoop { from, to }));
         }
         let n = self.loop_ref(from.face, from.loop_index)?.uses.len();
         let (a, b) = (from.coedge_index, to.coedge_index);
         let full_turn = n > 0 && a == b + n;
         if a > n && !full_turn {
-            return Err(BuildError::BadPosition {
+            return Err(BuildError::Slot(SlotError::BadPosition {
                 position: from,
                 len: n,
-            });
+            }));
         }
         let end = self.vertex_at(to)?;
         let start = if full_turn {
@@ -352,7 +352,7 @@ impl Builder {
             self.vertex_at(from)?
         };
         if matches!(split.geometry, EdgeGeometry::Degenerate { .. }) && start != end {
-            return Err(BuildError::DegenerateEnds { start, end });
+            return Err(BuildError::Euler(EulerError::DegenerateEnds { start, end }));
         }
         let shell = self.face(from.face)?.shell;
         let e = EdgeRef(self.edges.insert(StagedEdge {
@@ -423,14 +423,14 @@ impl Builder {
                 (fb, lb, j, Orientation::Reversed),
                 (fa, la, i, Orientation::Forward),
             ] if fa != fb => ((*fa, *la, *i), (*fb, *lb, *j)),
-            _ => return Err(BuildError::NotSeparating { edge }),
+            _ => return Err(BuildError::Euler(EulerError::NotSeparating { edge })),
         };
         let loops = self.face(fa)?.loops.len();
         if loops != 1 {
-            return Err(BuildError::Rings { face: fa, loops });
+            return Err(BuildError::Euler(EulerError::Rings { face: fa, loops }));
         }
         let Some(killed) = self.faces.remove(fa.0) else {
-            return Err(BuildError::NoFace(fa));
+            return Err(BuildError::Slot(SlotError::NoFace(fa)));
         };
         let mut spliced = killed.loops[la].uses.clone();
         spliced.rotate_left(i);
@@ -485,12 +485,12 @@ impl Builder {
         join: Join,
     ) -> Result<EdgeRef, BuildError> {
         if from.face != to.face || from.loop_index == to.loop_index {
-            return Err(BuildError::NotTwoLoops { from, to });
+            return Err(BuildError::Euler(EulerError::NotTwoLoops { from, to }));
         }
         let start = self.vertex_at(from)?;
         let end = self.vertex_at(to)?;
         if matches!(join.geometry, EdgeGeometry::Degenerate { .. }) && start != end {
-            return Err(BuildError::DegenerateEnds { start, end });
+            return Err(BuildError::Euler(EulerError::DegenerateEnds { start, end }));
         }
         let e = EdgeRef(self.edges.insert(StagedEdge {
             geometry: join.geometry,
@@ -546,7 +546,7 @@ impl Builder {
                 (fb, lb, j, Orientation::Reversed),
                 (fa, la, i, Orientation::Forward),
             ] if fa == fb && la == lb => (*fa, *la, *i, *j),
-            _ => return Err(BuildError::NotInOneLoop { edge }),
+            _ => return Err(BuildError::Euler(EulerError::NotInOneLoop { edge })),
         };
         let lp = self.loop_mut(f, li)?;
         let n = lp.uses.len();
@@ -587,32 +587,39 @@ impl Builder {
         let k = self.face(kill)?;
         let t = self.face(into)?;
         if kill == into {
-            return Err(BuildError::OneFace { face: kill });
+            return Err(BuildError::Euler(EulerError::OneFace { face: kill }));
         }
         if k.surface != t.surface {
-            return Err(BuildError::SurfaceMismatch {
+            return Err(BuildError::Euler(EulerError::SurfaceMismatch {
                 kill,
                 kill_surface: k.surface,
                 into,
                 into_surface: t.surface,
-            });
+            }));
         }
         if k.orientation == t.orientation {
-            return Err(BuildError::SameOrientation { kill, into });
+            return Err(BuildError::Euler(EulerError::SameOrientation {
+                kill,
+                into,
+            }));
         }
         if k.loops.len() != 1 {
-            return Err(BuildError::Rings {
+            return Err(BuildError::Euler(EulerError::Rings {
                 face: kill,
                 loops: k.loops.len(),
-            });
+            }));
         }
         let Some(killed) = self.faces.remove(kill.0) else {
-            return Err(BuildError::NoFace(kill));
+            return Err(BuildError::Slot(SlotError::NoFace(kill)));
         };
-        let ring = killed.loops.into_iter().next().ok_or(BuildError::Rings {
-            face: kill,
-            loops: 0,
-        })?;
+        let ring = killed
+            .loops
+            .into_iter()
+            .next()
+            .ok_or(BuildError::Euler(EulerError::Rings {
+                face: kill,
+                loops: 0,
+            }))?;
         let key = ring.uses.first().map(Use::key);
         let seed = ring.seed;
         self.face_mut(into)?.loops.push(ring);
@@ -629,10 +636,10 @@ impl Builder {
     pub fn mfkrh(&mut self, face: FaceRef, ring: usize) -> Result<FaceRef, BuildError> {
         let f = self.face(face)?;
         if f.loops.len() < 2 || ring >= f.loops.len() {
-            return Err(BuildError::NoRing { face, ring });
+            return Err(BuildError::Euler(EulerError::NoRing { face, ring }));
         }
         if self.genus == 0 {
-            return Err(BuildError::NoHandle);
+            return Err(BuildError::Euler(EulerError::NoHandle));
         }
         let (surface, orientation, tolerance, shell) =
             (f.surface, f.orientation, f.tolerance, f.shell);
@@ -661,10 +668,10 @@ impl Builder {
         let lp = self.loop_mut(at.face, at.loop_index)?;
         let n = lp.uses.len();
         let Some(u) = lp.uses.get_mut(at.coedge_index) else {
-            return Err(BuildError::BadPosition {
+            return Err(BuildError::Slot(SlotError::BadPosition {
                 position: at,
                 len: n,
-            });
+            }));
         };
         let previous = u.pcurve.replace(pcurve);
         if let Some(face) = self.faces.get_mut(at.face.0) {

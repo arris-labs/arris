@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::validate::{edge_uses, is_degenerate};
 use super::{
-    Assembly, AssemblySlots, BuildError, Builder, Counts, EdgeKey, EdgeRef, EdgeSpec, FaceRef,
-    FaceSpec, StagedEdge, StagedFace, StagedLoop, StagedVertex, Use, VertexKey, VertexRef,
-    VertexSpec, effective_uses,
+    Assembly, AssemblySlots, BuildError, Builder, ClosureError, Counts, EdgeKey, EdgeRef, EdgeSpec,
+    FaceRef, FaceSpec, SlotError, StagedEdge, StagedFace, StagedLoop, StagedVertex, Use, VertexKey,
+    VertexRef, VertexSpec, effective_uses,
 };
 #[cfg(doc)]
 use crate::entity::BodyKind;
@@ -53,14 +53,14 @@ impl Builder {
     /// which a void inside it is geometry, the checker's B1.
     ///
     /// Errors, leaving nothing behind (the model is only read):
-    /// [`BuildError::NoSpec`] for a key past its list;
+    /// [`SlotError::NoSpec`] for a key past its list;
     /// [`BuildError::NotFound`] for an id that does not resolve;
-    /// [`BuildError::Empty`], [`BuildError::EmptyShell`],
-    /// [`BuildError::Duplicate`], [`BuildError::EmptyLoop`],
-    /// [`BuildError::LoopOpen`], [`BuildError::EdgeUses`],
-    /// [`BuildError::SameDirection`], [`BuildError::SharedEdge`],
-    /// [`BuildError::SharedVertex`], [`BuildError::Disconnected`],
-    /// [`BuildError::NotClosed`].
+    /// [`ClosureError::Empty`], [`ClosureError::EmptyShell`],
+    /// [`ClosureError::Duplicate`], [`ClosureError::EmptyLoop`],
+    /// [`ClosureError::LoopOpen`], [`ClosureError::EdgeUses`],
+    /// [`ClosureError::SameDirection`], [`ClosureError::SharedEdge`],
+    /// [`ClosureError::SharedVertex`], [`ClosureError::Disconnected`],
+    /// [`ClosureError::NotClosed`].
     ///
     /// ```
     /// use arris_topo::builder::{Assembly, Builder, FaceSpec};
@@ -99,7 +99,7 @@ impl Builder {
     /// does not close. A planar section's faces, and any face kept whole
     /// on its own, are such shells.
     ///
-    /// Errors: [`Builder::assemble`]'s, [`BuildError::NotClosed`]
+    /// Errors: [`Builder::assemble`]'s, [`ClosureError::NotClosed`]
     /// reporting the capped counts.
     ///
     /// ```
@@ -175,7 +175,7 @@ impl Builder {
         let mut face_slots: Vec<Vec<FaceRef>> = Vec::with_capacity(assembly.shells.len());
         for (shell, specs) in assembly.shells.iter().enumerate() {
             if specs.is_empty() {
-                return Err(BuildError::EmptyShell { shell });
+                return Err(BuildError::Closure(ClosureError::EmptyShell { shell }));
             }
             let mut shell_slots = Vec::with_capacity(specs.len());
             for spec in specs {
@@ -238,7 +238,7 @@ impl Builder {
     ) -> Result<VertexRef, BuildError> {
         if let Some(&slot) = at.kept_vertices.get(&id) {
             if named {
-                return Err(BuildError::Duplicate(id.into()));
+                return Err(BuildError::Closure(ClosureError::Duplicate(id.into())));
             }
             return Ok(slot);
         }
@@ -263,7 +263,7 @@ impl Builder {
     ) -> Result<EdgeRef, BuildError> {
         if let Some(&slot) = at.kept_edges.get(&id) {
             if named {
-                return Err(BuildError::Duplicate(id.into()));
+                return Err(BuildError::Closure(ClosureError::Duplicate(id.into())));
             }
             return Ok(slot);
         }
@@ -293,7 +293,7 @@ impl Builder {
         shell: usize,
     ) -> Result<FaceRef, BuildError> {
         if at.kept_faces.contains_key(&face.id) {
-            return Err(BuildError::Duplicate(face.id.into()));
+            return Err(BuildError::Closure(ClosureError::Duplicate(face.id.into())));
         }
         let entity = model.face(face.id)?.clone();
         model.surface(entity.surface())?;
@@ -334,10 +334,12 @@ impl Builder {
     /// about to be inserted. Errors: the walk is empty — an assembled loop
     /// is a walk, never the bare vertex [`Builder::mvfs`] leaves behind.
     fn staged_loop(&self, walk: Vec<Use>, loop_index: usize) -> Result<StagedLoop, BuildError> {
-        let first = walk.first().ok_or(BuildError::EmptyLoop {
-            face: FaceRef(self.faces.next_slot()),
-            loop_index,
-        })?;
+        let first = walk
+            .first()
+            .ok_or(BuildError::Closure(ClosureError::EmptyLoop {
+                face: FaceRef(self.faces.next_slot()),
+                loop_index,
+            }))?;
         let seed = self.use_start(first)?;
         Ok(StagedLoop { uses: walk, seed })
     }
@@ -350,10 +352,15 @@ impl Builder {
     ) -> Result<VertexRef, BuildError> {
         match key {
             VertexKey::Kept(id) => self.keep_vertex(model, at, id, false),
-            VertexKey::New(index) => at.vertex_of.get(index).copied().ok_or(BuildError::NoSpec {
-                kind: EntityKind::Vertex,
-                index,
-            }),
+            VertexKey::New(index) => {
+                at.vertex_of
+                    .get(index)
+                    .copied()
+                    .ok_or(BuildError::Slot(SlotError::NoSpec {
+                        kind: EntityKind::Vertex,
+                        index,
+                    }))
+            }
         }
     }
 
@@ -365,10 +372,15 @@ impl Builder {
     ) -> Result<EdgeRef, BuildError> {
         match key {
             EdgeKey::Kept(id) => self.keep_edge(model, at, id, false),
-            EdgeKey::New(index) => at.edge_of.get(index).copied().ok_or(BuildError::NoSpec {
-                kind: EntityKind::Edge,
-                index,
-            }),
+            EdgeKey::New(index) => {
+                at.edge_of
+                    .get(index)
+                    .copied()
+                    .ok_or(BuildError::Slot(SlotError::NoSpec {
+                        kind: EntityKind::Edge,
+                        index,
+                    }))
+            }
         }
     }
 
@@ -392,23 +404,23 @@ impl Builder {
             let face_ref = FaceRef(fi);
             for (li, lp) in face.loops.iter().enumerate() {
                 if lp.uses.is_empty() {
-                    return Err(BuildError::EmptyLoop {
+                    return Err(BuildError::Closure(ClosureError::EmptyLoop {
                         face: face_ref,
                         loop_index: li,
-                    });
+                    }));
                 }
                 let n = lp.uses.len();
                 for (ci, u) in lp.uses.iter().enumerate() {
                     let previous = &lp.uses[(ci + n - 1) % n];
                     let (ended, starts) = (self.use_end(previous)?, self.use_start(u)?);
                     if ended != starts {
-                        return Err(BuildError::LoopOpen {
+                        return Err(BuildError::Closure(ClosureError::LoopOpen {
                             face: face_ref,
                             loop_index: li,
                             coedge_index: ci,
                             ended,
                             starts,
-                        });
+                        }));
                     }
                     uses.entry(u.edge)
                         .or_default()
@@ -422,7 +434,7 @@ impl Builder {
             edge_uses(edge, e, list, open, |u| u.0)?;
         }
         if self.faces.len() == 0 {
-            return Err(BuildError::Empty);
+            return Err(BuildError::Closure(ClosureError::Empty));
         }
         let shell_of = |f: FaceRef| self.faces.get(f.0).map(|face| face.shell);
         // Every edge in the shell of its two faces, and every vertex in the
@@ -432,10 +444,10 @@ impl Builder {
             let shells: Vec<usize> = list.iter().filter_map(|&(_, f)| shell_of(f)).collect();
             if let [a, b] = shells[..] {
                 if a != b {
-                    return Err(BuildError::SharedEdge {
+                    return Err(BuildError::Closure(ClosureError::SharedEdge {
                         edge,
                         shells: [a.min(b), a.max(b)],
-                    });
+                    }));
                 }
             }
             if let Some(&s) = shells.first() {
@@ -450,10 +462,10 @@ impl Builder {
             for v in [e.start, e.end] {
                 match vertex_shell.get(&v) {
                     Some(&t) if t != s => {
-                        return Err(BuildError::SharedVertex {
+                        return Err(BuildError::Closure(ClosureError::SharedVertex {
                             vertex: v,
                             shells: [t.min(s), t.max(s)],
-                        });
+                        }));
                     }
                     _ => {
                         vertex_shell.insert(v, s);
@@ -489,7 +501,10 @@ impl Builder {
                 }
             }
             if let Some(&face) = faces.iter().find(|f| !reached.contains(f)) {
-                return Err(BuildError::Disconnected { face, from });
+                return Err(BuildError::Closure(ClosureError::Disconnected {
+                    face,
+                    from,
+                }));
             }
             // An open shell's boundary cycles, each capped below by a face
             // of one loop.
@@ -520,16 +535,16 @@ impl Builder {
             // faces are no closed surface.
             let line = counts.line();
             if !line.closes() || line.genus < 0 {
-                return Err(BuildError::NotClosed { counts });
+                return Err(BuildError::Closure(ClosureError::NotClosed { counts }));
             }
             genus += line.genus as usize;
         }
         // A vertex no edge ends at is on no shell, and the body's counts
         // are then not the sum of its closed shells'.
         if vertex_shell.len() != self.vertices.len() {
-            return Err(BuildError::NotClosed {
+            return Err(BuildError::Closure(ClosureError::NotClosed {
                 counts: self.counts(),
-            });
+            }));
         }
         Ok(genus)
     }

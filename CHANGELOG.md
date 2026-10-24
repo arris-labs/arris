@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+### Breaking
+
+- `arris_topo::builder::BuildError` nests its refusals by kind: `Slot`
+  (`SlotError`), `Euler` (`EulerError`) and `Closure` (`ClosureError`),
+  beside `NotFound` and `Invariant`. Every message is unchanged. Match
+  `BuildError::Closure(ClosureError::EdgeUses { .. })` where you matched
+  `BuildError::EdgeUses { .. }`; Python sees the same text.
+- `arris_ops::Fault::Builder` and `Rejection::Builder` hold a
+  `Box<BuildError>` (the nesting made the error larger): match
+  `Fault::Builder(b)` and read `*b`.
+
 ## 0.9.1 — 2026-10-23
 
 - Python: `pip install arris` now finds prebuilt wheels for macOS (Apple

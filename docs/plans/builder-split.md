@@ -110,10 +110,12 @@ robustness or bound has to be established here.
   one); a unit test in `validate.rs` pins the rule for both callers' list
   types, the existing `tests/assemble.rs` and `tests/builder.rs` cases
   holding each caller.
-- [ ] Step 4 **[2]** — Nest `BuildError`; update matches in topo tests,
-  `debug::sample`, `ops::primitive` (the `Empty` misuse → `Fault::Invariant`),
-  `kernel_error.rs` tests; a test asserting every group's `Display` equals
-  the flat message it replaced. `### Breaking` bullet.
+- [x] Step 4 **[2]** — `BuildError` nested (`Slot`/`Euler`/`Closure`, as the
+  deltas group them); matches updated in topo tests and `debug::sample`;
+  `primitive`'s impossible `Empty` → `Fault::Invariant`;
+  `tests/build_error.rs` pins every message to the flat one;
+  `tolerance_band`'s fault key reads through the group so its blessed
+  file is unchanged. `### Breaking` bullet.
 - [ ] Step 5 **[2]** — Inventory every `GeomError::Degenerate` reason
   (geom, `ops::query`, `ops::blend::walked`) into `DegenerateReason` with
   byte-identical `Display`; replace the `String` and the closures. A unit

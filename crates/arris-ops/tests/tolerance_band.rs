@@ -115,9 +115,13 @@ fn fault_kind(fault: &Fault) -> String {
             "Split({})",
             head(&format!("{s:?}"), 40).split(' ').next().unwrap_or("")
         ),
+        // The band names the refusal, not its group: `Closure(EdgeUses {..})`
+        // is `EdgeUses`, as it was before `BuildError` nested.
         Fault::Builder(b) => format!(
             "Builder({})",
             head(&format!("{b:?}"), 60)
+                .trim_start_matches(|c: char| c != '(')
+                .trim_start_matches('(')
                 .split([' ', '{', '('])
                 .next()
                 .unwrap_or("")

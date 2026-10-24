@@ -5,16 +5,37 @@ use crate::entity::BodyKind;
 use crate::error::NotFound;
 use crate::id::{EntityId, EntityKind, SurfaceId};
 
-/// Why an operator or [`Builder::finish`] refused. Every variant names
-/// the slot, position or edge it is about; none is a panic.
+/// Why an operator, [`Builder::finish`] or [`Builder::assemble`] refused,
+/// by the kind of fault; each variant's message is its group's. Every
+/// variant names the slot, position or edge it is about; none is a panic.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum BuildError {
-    /// `mvfs` on a builder that already holds a body.
-    #[error("the builder already holds a body; mvfs starts one from nothing")]
-    NotEmpty,
-    /// `finish` on a builder holding nothing.
-    #[error("the builder holds no face")]
-    Empty,
+    /// A slot, loop, position or spec the call named is not there.
+    #[error(transparent)]
+    Slot(#[from] SlotError),
+    /// An Euler operator's arguments do not fit the builder's state.
+    #[error(transparent)]
+    Euler(#[from] EulerError),
+    /// The staged body does not close as the kind asked for.
+    #[error(transparent)]
+    Closure(#[from] ClosureError),
+    /// A geometry id a slot references does not resolve in the model.
+    #[error(transparent)]
+    NotFound(#[from] NotFound),
+    /// A kill operator's own bookkeeping broke: neither the use it left a
+    /// position after, nor the empty loop it seeded, was on `face` — one
+    /// of the two always is by construction. Never a property of the
+    /// input.
+    #[error("{face} has neither the use nor the empty loop a kill left a position after")]
+    Invariant {
+        /// The face.
+        face: FaceRef,
+    },
+}
+
+/// A builder slot, loop or position a call named is not there, or an assembly key names a spec it does not have.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum SlotError {
     /// A vertex slot that is not live.
     #[error("{0} is not a vertex of the builder")]
     NoVertex(VertexRef),
@@ -40,6 +61,22 @@ pub enum BuildError {
         /// The loop's length; `len` itself is the last valid junction.
         len: usize,
     },
+    /// [`Builder::assemble`]: a key names a spec the assembly does not have.
+    #[error("the assembly has no {kind} spec at index {index}")]
+    NoSpec {
+        /// The kind of spec the key was for.
+        kind: EntityKind,
+        /// The index it named.
+        index: usize,
+    },
+}
+
+/// An Euler operator refused its arguments: the shape it needs is not what the builder holds.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum EulerError {
+    /// `mvfs` on a builder that already holds a body.
+    #[error("the builder already holds a body; mvfs starts one from nothing")]
+    NotEmpty,
     /// `mef` needs both positions in one loop.
     #[error("{from} and {to} are not in the same loop")]
     NotOneLoop {
@@ -174,6 +211,14 @@ pub enum BuildError {
         /// The vertex at `to`.
         end: VertexRef,
     },
+}
+
+/// The staged body is not one that [`Builder::finish`] or [`Builder::assemble`] can store: it is not closed as the kind asked for, or the assembly describes it inconsistently.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum ClosureError {
+    /// `finish` on a builder holding nothing.
+    #[error("the builder holds no face")]
+    Empty,
     /// `finish` makes solids and sheets: no operation returns a wire or a
     /// general body.
     #[error("the builder makes a solid or a sheet, not a {0} body")]
@@ -209,17 +254,6 @@ pub enum BuildError {
     SameDirection {
         /// The edge.
         edge: EdgeRef,
-    },
-    /// A geometry id a slot references does not resolve in the model.
-    #[error(transparent)]
-    NotFound(#[from] NotFound),
-    /// [`Builder::assemble`]: a key names a spec the assembly does not have.
-    #[error("the assembly has no {kind} spec at index {index}")]
-    NoSpec {
-        /// The kind of spec the key was for.
-        kind: EntityKind,
-        /// The index it named.
-        index: usize,
     },
     /// [`Builder::assemble`]: one arena entity is kept by two specs, which
     /// would put it in the result twice.
@@ -287,14 +321,5 @@ pub enum BuildError {
         vertex: VertexRef,
         /// The two shells, ascending.
         shells: [usize; 2],
-    },
-    /// A kill operator's own bookkeeping broke: neither the use it left a
-    /// position after, nor the empty loop it seeded, was on `face` — one
-    /// of the two always is by construction. Never a property of the
-    /// input.
-    #[error("{face} has neither the use nor the empty loop a kill left a position after")]
-    Invariant {
-        /// The face.
-        face: FaceRef,
     },
 }

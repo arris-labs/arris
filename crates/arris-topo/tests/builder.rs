@@ -10,7 +10,8 @@
 use arris_geom::{Curve, Curve2, Surface};
 use arris_math::{Frame, Interval, Point2, Point3, Vec2, Vec3};
 use arris_topo::builder::{
-    BuildError, Builder, EdgeRef, FaceRef, Join, Position, Seed, Split, Strut, VertexRef,
+    BuildError, Builder, ClosureError, EdgeRef, EulerError, FaceRef, Join, Position, Seed,
+    SlotError, Split, Strut, VertexRef,
 };
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::{Curve2Id, CurveId, Model, Orientation, SurfaceId, VertexId};
@@ -144,11 +145,11 @@ fn the_cylinder_keeps_the_euler_line_at_zero_and_has_the_seam_twice_in_the_wall(
     // The seam vertices occur twice in the wall's loop: a position is needed.
     assert!(matches!(
         b.find_position(f_wall, 0, v0),
-        Err(BuildError::Ambiguous { positions, .. }) if positions == [0, 1]
+        Err(BuildError::Euler(EulerError::Ambiguous { positions, .. })) if positions == [0, 1]
     ));
     assert!(matches!(
         b.find_position(f_wall, 0, v1),
-        Err(BuildError::Ambiguous { positions, .. }) if positions == [2, 3]
+        Err(BuildError::Euler(EulerError::Ambiguous { positions, .. })) if positions == [2, 3]
     ));
     assert_eq!(
         b.vertex_at(Position::new(f_wall, 0, 4)).unwrap(),
@@ -157,7 +158,7 @@ fn the_cylinder_keeps_the_euler_line_at_zero_and_has_the_seam_twice_in_the_wall(
     );
     assert!(matches!(
         b.vertex_at(Position::new(f_wall, 0, 5)),
-        Err(BuildError::BadPosition { len: 4, .. })
+        Err(BuildError::Slot(SlotError::BadPosition { len: 4, .. }))
     ));
 }
 
@@ -229,7 +230,9 @@ fn a_box_and_then_a_frame_keep_the_euler_line_at_zero() {
     assert_euler(&b, "rim struts");
     // The plug: from h3 to the first occurrence of h0 (before h0→h1).
     let from = b.find_position(f1, 0, h3).unwrap();
-    let Err(BuildError::Ambiguous { positions, .. }) = b.find_position(f1, 0, h0) else {
+    let Err(BuildError::Euler(EulerError::Ambiguous { positions, .. })) =
+        b.find_position(f1, 0, h0)
+    else {
         panic!("h0 is on the loop twice");
     };
     let to = Position::new(f1, 0, positions[0]);
@@ -586,11 +589,11 @@ fn mvfs_then_kvfs_is_the_empty_builder_and_kvfs_refuses_anything_more() {
     assert_eq!(b.counts().to_string(), "0/0/0/0/0 g0 = 0");
     let (v, f) = b.mvfs(seed()).unwrap();
     assert_eq!((v, f), (VertexRef::new(0), FaceRef::new(0)));
-    assert_eq!(b.mvfs(seed()), Err(BuildError::NotEmpty));
+    assert_eq!(b.mvfs(seed()), Err(BuildError::Euler(EulerError::NotEmpty)));
     assert_eq!(b.counts().to_string(), "1/0/1/1/1 g0 = 0");
     let made = b.dump();
     b.mev(Position::new(f, 0, 0), strut(1)).unwrap();
-    assert_eq!(b.kvfs(), Err(BuildError::NotASeed));
+    assert_eq!(b.kvfs(), Err(BuildError::Euler(EulerError::NotASeed)));
     b.kev(EdgeRef::new(0)).unwrap();
     assert_eq!(b.dump(), made);
     assert_eq!(b.kvfs(), Ok(seed()));
@@ -624,7 +627,7 @@ fn refusals_are_typed_and_leave_the_builder_untouched() {
                 pcurves: [None, None]
             }
         ),
-        Err(BuildError::DegenerateStrut)
+        Err(BuildError::Euler(EulerError::DegenerateStrut))
     );
     let from = Position::new(f_wall, 0, 0);
     let to = Position::new(f_wall, 0, 2);
@@ -639,7 +642,10 @@ fn refusals_are_typed_and_leave_the_builder_untouched() {
                 pcurves: [None, None]
             }
         ),
-        Err(BuildError::DegenerateEnds { start: v0, end: v1 })
+        Err(BuildError::Euler(EulerError::DegenerateEnds {
+            start: v0,
+            end: v1
+        }))
     );
     assert_eq!(
         b.mef(
@@ -647,63 +653,71 @@ fn refusals_are_typed_and_leave_the_builder_untouched() {
             Position::new(f_top, 0, 0),
             split(9, 4, Orientation::Forward)
         ),
-        Err(BuildError::NotOneLoop {
+        Err(BuildError::Euler(EulerError::NotOneLoop {
             from,
             to: Position::new(f_top, 0, 0)
-        })
+        }))
     );
     assert_eq!(
         b.mekr(from, to, join(9)),
-        Err(BuildError::NotTwoLoops { from, to })
+        Err(BuildError::Euler(EulerError::NotTwoLoops { from, to }))
     );
-    assert_eq!(b.kev(e_seam), Err(BuildError::NotAStrut { edge: e_seam }));
-    assert_eq!(b.kemr(e_top), Err(BuildError::NotInOneLoop { edge: e_top }));
+    assert_eq!(
+        b.kev(e_seam),
+        Err(BuildError::Euler(EulerError::NotAStrut { edge: e_seam }))
+    );
+    assert_eq!(
+        b.kemr(e_top),
+        Err(BuildError::Euler(EulerError::NotInOneLoop { edge: e_top }))
+    );
     assert_eq!(
         b.kef(e_seam),
-        Err(BuildError::NotSeparating { edge: e_seam })
+        Err(BuildError::Euler(EulerError::NotSeparating {
+            edge: e_seam
+        }))
     );
     assert_eq!(
         b.kfmrh(f_bottom, f_top),
-        Err(BuildError::SurfaceMismatch {
+        Err(BuildError::Euler(EulerError::SurfaceMismatch {
             kill: f_bottom,
             kill_surface: surface(0),
             into: f_top,
             into_surface: surface(2)
-        })
+        }))
     );
     assert_eq!(
         b.kfmrh(f_top, f_top),
-        Err(BuildError::OneFace { face: f_top })
+        Err(BuildError::Euler(EulerError::OneFace { face: f_top }))
     );
     assert_eq!(
         b.mfkrh(f_wall, 0),
-        Err(BuildError::NoRing {
+        Err(BuildError::Euler(EulerError::NoRing {
             face: f_wall,
             ring: 0
-        })
+        }))
     );
     assert_eq!(
         b.mfkrh(FaceRef::new(7), 0),
-        Err(BuildError::NoFace(FaceRef::new(7)))
+        Err(BuildError::Slot(SlotError::NoFace(FaceRef::new(7))))
     );
     assert_eq!(
         b.kev(EdgeRef::new(7)),
-        Err(BuildError::NoEdge(EdgeRef::new(7)))
+        Err(BuildError::Slot(SlotError::NoEdge(EdgeRef::new(7))))
     );
     assert_eq!(
         b.vertex_at(Position::new(f_wall, 1, 0)),
-        Err(BuildError::NoLoop {
+        Err(BuildError::Slot(SlotError::NoLoop {
             face: f_wall,
             loop_index: 1
-        })
+        }))
     );
     assert_eq!(
         b.find_position(f_top, 0, v0),
-        Err(BuildError::NotInLoop {
+        Err(BuildError::Euler(EulerError::NotInLoop {
             vertex: v0,
             face: f_top,
             loop_index: 0
-        })
+        }))
     );
     assert_eq!(b.dump(), before);
     // kfmrh with the same orientation is refused; with the opposite one and
@@ -714,9 +728,15 @@ fn refusals_are_typed_and_leave_the_builder_untouched() {
     let (_, g) = c.mef(at, at, split(0, 0, Orientation::Forward)).unwrap();
     assert_eq!(
         c.kfmrh(g, f),
-        Err(BuildError::SameOrientation { kill: g, into: f })
+        Err(BuildError::Euler(EulerError::SameOrientation {
+            kill: g,
+            into: f
+        }))
     );
-    assert_eq!(c.mfkrh(f, 0), Err(BuildError::NoRing { face: f, ring: 0 }));
+    assert_eq!(
+        c.mfkrh(f, 0),
+        Err(BuildError::Euler(EulerError::NoRing { face: f, ring: 0 }))
+    );
 }
 
 /// A valid model for the tests of `finish`: the cylinder of the sample,
@@ -898,7 +918,10 @@ fn finish_refuses_a_degenerate_edge_used_twice() {
         .unwrap();
     assert_eq!(
         b.finish(&mut m, BodyKind::Solid),
-        Err(BuildError::EdgeUses { edge, uses: 2 })
+        Err(BuildError::Closure(ClosureError::EdgeUses {
+            edge,
+            uses: 2
+        }))
     );
 }
 
@@ -909,13 +932,13 @@ fn finish_refuses_what_cannot_be_stored_and_the_transaction_leaves_nothing() {
     for kind in [BodyKind::Solid, BodyKind::Sheet] {
         assert_eq!(
             Builder::new(1e-7).finish(&mut m, kind),
-            Err(BuildError::Empty)
+            Err(BuildError::Closure(ClosureError::Empty))
         );
     }
     for kind in [BodyKind::Wire, BodyKind::General] {
         assert_eq!(
             Builder::new(1e-7).finish(&mut m, kind),
-            Err(BuildError::Kind(kind))
+            Err(BuildError::Closure(ClosureError::Kind(kind)))
         );
     }
     let r: Result<(), BuildError> = m.transaction(|m| {
@@ -933,10 +956,10 @@ fn finish_refuses_what_cannot_be_stored_and_the_transaction_leaves_nothing() {
             .unwrap();
         assert_eq!(
             b.finish(m, BodyKind::Solid),
-            Err(BuildError::EmptyLoop {
+            Err(BuildError::Closure(ClosureError::EmptyLoop {
                 face: f,
                 loop_index: 0
-            })
+            }))
         );
         assert!(m.vertex(probe).is_err(), "a refused finish appends nothing");
         // A pcurve id that does not resolve.
@@ -953,10 +976,10 @@ fn finish_refuses_what_cannot_be_stored_and_the_transaction_leaves_nothing() {
         assert_eq!(
             b2.clone()
                 .set_pcurve(Position::new(FaceRef::new(1), 0, 4), Curve2Id::new(0, 0)),
-            Err(BuildError::BadPosition {
+            Err(BuildError::Slot(SlotError::BadPosition {
                 position: Position::new(FaceRef::new(1), 0, 4),
                 len: 4
-            })
+            }))
         );
         // A pcurve never given.
         let mut fresh = Builder::new(1e-7);
@@ -985,17 +1008,17 @@ fn finish_refuses_what_cannot_be_stored_and_the_transaction_leaves_nothing() {
             .unwrap();
         assert_eq!(
             fresh.finish(m, BodyKind::Solid),
-            Err(BuildError::MissingPcurve {
+            Err(BuildError::Closure(ClosureError::MissingPcurve {
                 position: Position::new(g, 0, 0)
-            })
+            }))
         );
         // The valid one finishes, and the enclosing transaction undoes it.
         let built = b2.finish(m, BodyKind::Solid).unwrap();
         assert!(m.vertex(probe).is_ok());
         assert_eq!(m.body(built.body.id).unwrap().kind(), BodyKind::Solid);
-        Err(BuildError::Empty)
+        Err(BuildError::Closure(ClosureError::Empty))
     });
-    assert_eq!(r, Err(BuildError::Empty));
+    assert_eq!(r, Err(BuildError::Closure(ClosureError::Empty)));
     assert!(
         m.vertex(probe).is_err(),
         "the transaction left nothing behind"

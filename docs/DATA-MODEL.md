@@ -1637,7 +1637,7 @@ test scaffolding that stores a dangling reference as given), the builder
   refuses a non-solid as `OpError::Degenerate` with `InputReason::NotSolid`.
   The builder's `finish` builds a `Solid` or a `Sheet` — the open shells
   `assemble_sheet` proves, for an operation whose result has a boundary —
-  and no other kind (`BuildError::Kind`).
+  and no other kind (`ClosureError::Kind`).
 
 ### Orientation
 
@@ -1745,8 +1745,8 @@ its own, and a strut in a face it will leave has none worth giving.
 edge not used exactly twice in a `Solid` or once or twice in a `Sheet`
 (a degenerate edge: exactly once, since no
 surface closes on one singular point twice) or twice the same way, a geometry id that
-does not resolve, and a `Wire` or `General` kind — each a typed `BuildError`,
-and the model exactly as it was — and never evaluates geometry: the
+does not resolve, and a `Wire` or `General` kind — each a typed `BuildError`
+(`Slot`, `Euler` or `Closure`), and the model exactly as it was — and never evaluates geometry: the
 checker, above this crate, is where the finished body is proven.
 
 **Assembly, and kept ids.** An operation that computes its result's faces

@@ -16,8 +16,8 @@ use arris_debug::{corpus, dump_text, euler_line, fixtures, sample};
 use arris_geom::{Curve2, Profile, ProfileLoop, ProfileSegment, Surface};
 use arris_math::{Axis, Frame, Frame2, Interval, Point2, Point3, Vec3};
 use arris_topo::builder::{
-    Assembly, AssemblySlots, BuildError, Builder, EdgeKey, EdgeSpec, FaceSpec, KeepGeometry,
-    UseSpec, VertexKey, VertexSpec, effective_uses,
+    Assembly, AssemblySlots, BuildError, Builder, ClosureError, EdgeKey, EdgeSpec, FaceSpec,
+    KeepGeometry, SlotError, UseSpec, VertexKey, VertexSpec, effective_uses,
 };
 use arris_topo::entity::BodyKind;
 use arris_topo::euler::EulerLine;
@@ -520,7 +520,7 @@ fn an_edge_used_once_none_or_three_times_is_refused() {
     assembly.shells[0].pop();
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::EdgeUses { uses: 1, .. })
+        Err(BuildError::Closure(ClosureError::EdgeUses { uses: 1, .. }))
     ));
     // A spare edge no face uses.
     let mut assembly = describe(&m, body, true);
@@ -533,7 +533,7 @@ fn an_edge_used_once_none_or_three_times_is_refused() {
     });
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::EdgeUses { uses: 0, .. })
+        Err(BuildError::Closure(ClosureError::EdgeUses { uses: 0, .. }))
     ));
     // A third use of the bottom circle, which is a closed edge, so the
     // extra loop closes and only the use count is wrong.
@@ -558,7 +558,7 @@ fn an_edge_used_once_none_or_three_times_is_refused() {
     });
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::EdgeUses { uses: 3, .. })
+        Err(BuildError::Closure(ClosureError::EdgeUses { uses: 3, .. }))
     ));
 }
 
@@ -598,7 +598,7 @@ fn an_edge_used_twice_the_same_way_is_refused() {
     assert_eq!(flipped, 1, "the bottom cap's one use of the closed circle");
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::SameDirection { .. })
+        Err(BuildError::Closure(ClosureError::SameDirection { .. }))
     ));
 }
 
@@ -620,7 +620,7 @@ fn a_loop_that_does_not_close_is_refused() {
     }
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::LoopOpen { .. })
+        Err(BuildError::Closure(ClosureError::LoopOpen { .. }))
     ));
 }
 
@@ -638,7 +638,7 @@ fn a_loop_given_backwards_is_refused() {
     }
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::LoopOpen { .. })
+        Err(BuildError::Closure(ClosureError::LoopOpen { .. }))
     ));
 }
 
@@ -657,7 +657,7 @@ fn two_components_in_one_shell_are_refused() {
     assembly.shells[0].extend(other.shells.into_iter().flatten());
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::Disconnected { .. })
+        Err(BuildError::Closure(ClosureError::Disconnected { .. }))
     ));
 }
 
@@ -791,7 +791,10 @@ fn an_edge_used_by_two_shells_is_refused() {
     assembly.shells.push(second);
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::SharedEdge { shells: [0, 1], .. })
+        Err(BuildError::Closure(ClosureError::SharedEdge {
+            shells: [0, 1],
+            ..
+        }))
     ));
 }
 
@@ -864,7 +867,10 @@ fn a_vertex_on_two_shells_is_refused() {
     );
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::SharedVertex { shells: [0, 1], .. })
+        Err(BuildError::Closure(ClosureError::SharedVertex {
+            shells: [0, 1],
+            ..
+        }))
     ));
 }
 
@@ -876,7 +882,7 @@ fn an_empty_shell_is_refused() {
     assembly.shells.insert(0, Vec::new());
     assert_eq!(
         assemble(&m, assembly).err(),
-        Some(BuildError::EmptyShell { shell: 0 })
+        Some(BuildError::Closure(ClosureError::EmptyShell { shell: 0 }))
     );
 }
 
@@ -898,7 +904,7 @@ fn an_open_surface_does_not_close_the_euler_line() {
     // `assemble` reports about it.
     assert!(matches!(
         assemble(&m, describe(&m, sheet, true)),
-        Err(BuildError::EdgeUses { uses: 1, .. })
+        Err(BuildError::Closure(ClosureError::EdgeUses { uses: 1, .. }))
     ));
 }
 
@@ -929,13 +935,13 @@ fn keeping_one_entity_twice_is_refused() {
     assembly.shells[0].push(again);
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::Duplicate(_))
+        Err(BuildError::Closure(ClosureError::Duplicate(_)))
     ));
     let mut assembly = describe(&m, body, true);
     assembly.vertices.push(assembly.vertices[0]);
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::Duplicate(_))
+        Err(BuildError::Closure(ClosureError::Duplicate(_)))
     ));
 }
 
@@ -1145,10 +1151,10 @@ fn a_key_past_its_list_is_refused() {
     }
     assert_eq!(
         assemble(&m, assembly).err(),
-        Some(BuildError::NoSpec {
+        Some(BuildError::Slot(SlotError::NoSpec {
             kind: arris_topo::EntityKind::Vertex,
             index: 99
-        })
+        }))
     );
 }
 
@@ -1281,11 +1287,11 @@ fn an_open_shell_is_refused_as_a_solid() {
     };
     assert!(matches!(
         assemble(&m, assembly),
-        Err(BuildError::EdgeUses { uses: 1, .. })
+        Err(BuildError::Closure(ClosureError::EdgeUses { uses: 1, .. }))
     ));
     let b = assemble_sheet(&m, open()).unwrap();
     assert!(matches!(
         b.finish(&mut m, BodyKind::Solid),
-        Err(BuildError::EdgeUses { uses: 1, .. })
+        Err(BuildError::Closure(ClosureError::EdgeUses { uses: 1, .. }))
     ));
 }

@@ -18,7 +18,7 @@ use arris_geom::{Curve, Curve2, GeomError, NurbsCurve, NurbsSurface, Surface};
 use arris_math::{
     Frame, Frame2, FrameError, Interval, Point2, Point3, UnitVec2, UnitVec3, Vec2, Vec3,
 };
-use arris_topo::builder::{BuildError, Builder, FaceRef, Position, Seed, Split, Strut};
+use arris_topo::builder::{BuildError, Builder, EulerError, FaceRef, Position, Seed, Split, Strut};
 use arris_topo::entity::{
     Body as BodyEntity, BodyKind, Coedge, Edge, EdgeGeometry, Face, Loop, Shell, Vertex,
 };
@@ -627,7 +627,9 @@ pub fn frame(
         }
         let from = bd.find_position(f_top, 0, rim[3])?;
         let to = match bd.find_position(f_top, 0, rim[0]) {
-            Err(BuildError::Ambiguous { positions, .. }) => Position::new(f_top, 0, positions[0]),
+            Err(BuildError::Euler(EulerError::Ambiguous { positions, .. })) => {
+                Position::new(f_top, 0, positions[0])
+            }
             Ok(p) => p,
             Err(e) => return Err(e.into()),
         };
