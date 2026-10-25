@@ -439,7 +439,7 @@ impl Piece {
                 }
                 let square = |c: Vec<f64>| {
                     let poly = PolyN::new([p, q], c);
-                    poly.mul(&poly, binomials)
+                    poly.mul_axiswise(&poly, binomials)
                 };
                 let (lx2, ly2) = (square(lx), square(ly));
                 let w2 = square(w.clone());
@@ -1021,7 +1021,7 @@ impl Query<'_> {
         let w = &piece.w;
         let [m, n] = h1.degree().map(|d| d as f64);
         let [mh, mw] = piece.magnitude;
-        let mul = |a: &PolyN<2>, b: &PolyN<2>| a.mul(b, binomials);
+        let mul = |a: &PolyN<2>, b: &PolyN<2>| a.mul_axiswise(b, binomials);
         let fold = PolyN::combine(&[
             (1.0, &mul(w, &mul(&h1.partial(0), &h2.partial(1)))),
             (-1.0, &mul(w, &mul(&h2.partial(0), &h1.partial(1)))),
@@ -1084,7 +1084,7 @@ impl Query<'_> {
     ) -> Option<FoldSystem> {
         let [h1, h2] = &piece.h;
         let w = &piece.w;
-        let mul = |a: &PolyN<2>, b: &PolyN<2>| a.mul(b, binomials);
+        let mul = |a: &PolyN<2>, b: &PolyN<2>| a.mul_axiswise(b, binomials);
         let magnitude = |p: &PolyN<2>| p.coefficients().iter().fold(0.0f64, |m, c| m.max(c.abs()));
         let d = |h: &PolyN<2>, e: f64, partial: &dyn Fn(&PolyN<2>) -> PolyN<2>| {
             PolyN::combine(&[(1.0, &mul(&partial(h), w)), (-e, &mul(h, &partial(w)))])

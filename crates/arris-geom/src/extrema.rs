@@ -632,8 +632,8 @@ impl T2 {
 
     fn mul(&self, o: &T2, b: &Binomials) -> T2 {
         T2 {
-            v: self.v.mul(&o.v, b),
-            m: self.m.mul(&o.m, b),
+            v: self.v.mul_axiswise(&o.v, b),
+            m: self.m.mul_axiswise(&o.m, b),
         }
     }
 

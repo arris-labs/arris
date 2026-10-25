@@ -16,8 +16,8 @@ mod cases {
         let (ds, dt) = (linear(-a, 1.0, 0.0), linear(-b, 0.0, 1.0));
         let one = PolyN::outer([&[1.0; 3], &[1.0; 3]]);
         PolyN::combine(&[
-            (1.0, &ds.mul(&ds, binomials)),
-            (1.0, &dt.mul(&dt, binomials)),
+            (1.0, &ds.mul_axiswise(&ds, binomials)),
+            (1.0, &dt.mul_axiswise(&dt, binomials)),
             (-rho * rho, &one),
         ])
     }
@@ -46,7 +46,7 @@ mod cases {
         let b = Binomials::new(8);
         let p = circle(0.3, 0.6, 0.25, &b);
         let q = linear(0.5, -2.0, 1.5);
-        let pq = p.mul(&q, &b);
+        let pq = p.mul_axiswise(&q, &b);
         assert_eq!(pq.degree(), [3, 3]);
         let (ps, pt) = (p.partial(0), p.partial(1));
         assert_eq!((ps.degree(), pt.degree()), ([1, 2], [2, 1]));
@@ -77,7 +77,7 @@ mod cases {
         // Roots inside the square, on its edges and outside it.
         for root in [0.0, 0.3, 0.5, 0.83, 1.0, -0.4, 1.5, 3.4] {
             let factor = PolyN::outer([&[-root, 1.0 - root], &[1.0]]);
-            let product = factor.mul(&quotient, &binomials);
+            let product = factor.mul_axiswise(&quotient, &binomials);
             let floor = 8.0 * f64::EPSILON * 5.5;
             let (found, rounding) = product.over_linear(root, floor, &binomials);
             assert_eq!(found.degree(), [5, 3]);
@@ -87,7 +87,7 @@ mod cases {
             // The rounding carried is a small multiple of what went in.
             assert!(rounding <= 64.0 * floor, "{root}: {rounding} from {floor}");
             // Twice over, for a factor squared.
-            let (again, _) = (factor.mul(&product, &binomials))
+            let (again, _) = (factor.mul_axiswise(&product, &binomials))
                 .over_linear(root, floor, &binomials)
                 .0
                 .over_linear(root, floor, &binomials);
@@ -105,7 +105,7 @@ mod cases {
     #[test]
     fn bernstein_n_the_parts_of_a_box_are_the_polynomial_on_them() {
         let b = Binomials::new(8);
-        let p = circle(0.3, 0.6, 0.25, &b).mul(&linear(0.5, -2.0, 1.5), &b);
+        let p = circle(0.3, 0.6, 0.25, &b).mul_axiswise(&linear(0.5, -2.0, 1.5), &b);
         let (lo, hi) = p.split(0, 0.5);
         let ((a, b), (c, d)) = (lo.split(1, 0.5), hi.split(1, 0.5));
         let quarters = [a, b, c, d];
@@ -156,7 +156,7 @@ mod cases {
             &[[0.4 - d, 0.55 + d], [0.4 + d, 0.55 - d]],
         );
         // A product of known factors: the zeros of each against the line.
-        let g = f.mul(&circle(0.4, 0.55, 0.1, &b), &b);
+        let g = f.mul_axiswise(&circle(0.4, 0.55, 0.1, &b), &b);
         let e = 0.1 * core::f64::consts::FRAC_1_SQRT_2;
         let crossings = common_zeros(
             [&g, &line],
@@ -244,7 +244,10 @@ mod cases {
         let b = Binomials::new(8);
         // (s − 0.3)² − (t − 0.6)²: two lines crossing.
         let (ds, dt) = (linear(-0.3, 1.0, 0.0), linear(-0.6, 0.0, 1.0));
-        let f = PolyN::combine(&[(1.0, &ds.mul(&ds, &b)), (-1.0, &dt.mul(&dt, &b))]);
+        let f = PolyN::combine(&[
+            (1.0, &ds.mul_axiswise(&ds, &b)),
+            (-1.0, &dt.mul_axiswise(&dt, &b)),
+        ]);
         let critical = common_zeros(
             [&f.partial(0), &f.partial(1)],
             [1e-15; 2],
@@ -299,8 +302,8 @@ mod cases {
         // (s − 0.3)(1 + t²): f and f_t both vanish along s = 0.3.
         let t = linear(0.0, 0.0, 1.0);
         let one = PolyN::outer([&[1.0; 3], &[1.0; 3]]);
-        let bowl = PolyN::combine(&[(1.0, &one), (1.0, &t.mul(&t, &b))]);
-        let f = linear(-0.3, 1.0, 0.0).mul(&bowl, &b);
+        let bowl = PolyN::combine(&[(1.0, &one), (1.0, &t.mul_axiswise(&t, &b))]);
+        let f = linear(-0.3, 1.0, 0.0).mul_axiswise(&bowl, &b);
         let found = common_zeros(
             [&f, &f.partial(1)],
             [1e-15; 2],

@@ -988,12 +988,12 @@ impl<'a> PatchedSection<'a> {
         let d = degree as f64;
         let [m, n] = f.degree();
         let g_s = PolyN::combine(&[
-            (1.0, &w.mul(&f.partial(0), &binomials)),
-            (-d, &w.partial(0).mul(f, &binomials)),
+            (1.0, &w.mul_axiswise(&f.partial(0), &binomials)),
+            (-d, &w.partial(0).mul_axiswise(f, &binomials)),
         ]);
         let g_t = PolyN::combine(&[
-            (1.0, &w.mul(&f.partial(1), &binomials)),
-            (-d, &w.partial(1).mul(f, &binomials)),
+            (1.0, &w.mul_axiswise(&f.partial(1), &binomials)),
+            (-d, &w.partial(1).mul_axiswise(f, &binomials)),
         ]);
         // `w ≤ 1` times a derivative's rounding, and `|w_s| < 1`
         // times `d` of `f`'s own.
@@ -1115,8 +1115,8 @@ impl<'a> PatchedSection<'a> {
                         // quarter's `dv/dt` is a constant over its weight.
                         let weighed = |x: &PolyN<2>| {
                             PolyN::combine(&[
-                                (1.0, &w.mul(&x.partial(1), &binomials)),
-                                (-d, &w.partial(1).mul(x, &binomials)),
+                                (1.0, &w.mul_axiswise(&x.partial(1), &binomials)),
+                                (-d, &w.partial(1).mul_axiswise(x, &binomials)),
                             ])
                         };
                         let g = weighed(f);

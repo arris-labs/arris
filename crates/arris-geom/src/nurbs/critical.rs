@@ -343,7 +343,10 @@ fn patch_system(patch: &Patch, field: &Field) -> System {
     // combination of the coordinates.
     let numerators = |value: &PolyN<2>| -> [PolyN<2>; 2] {
         let across = |f: &PolyN<2>, g: &PolyN<2>, df: &PolyN<2>, dg: &PolyN<2>| {
-            PolyN::combine(&[(1.0, &df.mul(g, &b)), (-1.0, &f.mul(dg, &b))])
+            PolyN::combine(&[
+                (1.0, &df.mul_axiswise(g, &b)),
+                (-1.0, &f.mul_axiswise(dg, &b)),
+            ])
         };
         [
             across(value, &w, &value.partial(0), &w.partial(0)),
@@ -372,7 +375,8 @@ fn patch_system(patch: &Patch, field: &Field) -> System {
                 [0, 1, 2].map(|k| PolyN::combine(&[(1.0, &x[k]), (-point[k], &w)]));
             let n: [[PolyN<2>; 2]; 3] = [0, 1, 2].map(|k| numerators(&x[k]));
             let sum = |dir: usize| {
-                let products: Vec<PolyN<2>> = (0..3).map(|k| r[k].mul(&n[k][dir], &b)).collect();
+                let products: Vec<PolyN<2>> =
+                    (0..3).map(|k| r[k].mul_axiswise(&n[k][dir], &b)).collect();
                 PolyN::combine(&[
                     (1.0, &products[0]),
                     (1.0, &products[1]),

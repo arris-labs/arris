@@ -363,11 +363,36 @@ impl<const N: usize> PolyN<N> {
     }
 
     /// The product, of the degrees' sums: the one-variable formula along
-    /// every variable. The terms are summed along each variable by this
+    /// every variable. Each term is `a·b` times the variables' ratios in
+    /// turn; [`PolyN::mul_axiswise`] sums in the order the 2-D isolations were
+    /// measured with, and the two differ in the last bits.
+    pub(crate) fn mul(&self, other: &PolyN<N>, binomials: &Binomials) -> PolyN<N> {
+        let degree: [usize; N] = core::array::from_fn(|k| self.degree[k] + other.degree[k]);
+        let stride = strides(degree);
+        let mut c = vec![0.0; count(degree)];
+        let theirs = indices(other.degree);
+        for (i, a) in indices(self.degree).iter().zip(&self.c) {
+            for (j, b) in theirs.iter().zip(&other.c) {
+                let mut term = a * b;
+                let mut at = 0;
+                for k in 0..N {
+                    let (m, n) = (self.degree[k], other.degree[k]);
+                    term *= binomials.get(m, i[k]) * binomials.get(n, j[k])
+                        / binomials.get(m + n, i[k] + j[k]);
+                    at += (i[k] + j[k]) * stride[k];
+                }
+                c[at] += term;
+            }
+        }
+        PolyN { degree, c }
+    }
+
+    /// The product by [`PolyN::mul`]'s formula, summed in another order: the
+    /// terms are summed along each variable by this
     /// polynomial's index and then `other`'s, the last variable fastest,
     /// each the product of the variables' ratios times `a` times `b`:
     /// the order the 2-D isolations were measured with, kept bit for bit.
-    pub(crate) fn mul(&self, other: &PolyN<N>, binomials: &Binomials) -> PolyN<N> {
+    pub(crate) fn mul_axiswise(&self, other: &PolyN<N>, binomials: &Binomials) -> PolyN<N> {
         let degree: [usize; N] = core::array::from_fn(|k| self.degree[k] + other.degree[k]);
         let stride = strides(degree);
         let (mine, theirs) = (strides(self.degree), strides(other.degree));
@@ -545,7 +570,12 @@ impl<const N: usize> PolyN<N> {
 
 impl<const N: usize> BernsteinAlgebra<PolyN<N>> for Binomials {
     fn mul(&self, a: &PolyN<N>, b: &PolyN<N>) -> PolyN<N> {
-        a.mul(b, self)
+        // Two variables are the 2-D isolations', summed as they were measured.
+        if N == 2 {
+            a.mul_axiswise(b, self)
+        } else {
+            a.mul(b, self)
+        }
     }
 
     fn combine(&self, terms: &[(f64, &PolyN<N>)]) -> PolyN<N> {

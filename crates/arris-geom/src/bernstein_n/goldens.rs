@@ -47,16 +47,16 @@ const GOLDENS_ARITHMETIC: &[(&str, u64)] = &[
 
 /// The 3- and 4-D isolations and merges.
 const GOLDENS_N: &[(&str, u64)] = &[
-    ("3/posed", 0xc5e8a989141fffad),
-    ("3/gated", 0x41200c3dd391e0ab),
+    ("3/posed", 0x0d64ac63d0383a99),
+    ("3/gated", 0x7c6e08906b53a476),
     ("3/merged", 0x0c3ae12937aec94a),
-    ("3/posed_scored", 0xe4218eadb49b355d),
-    ("3/gated_scored", 0x0795af685bc850e2),
-    ("4/posed", 0x004b0d439b6470db),
-    ("4/gated", 0xa4377bf9b29ebb03),
+    ("3/posed_scored", 0xa4d3609159075206),
+    ("3/gated_scored", 0xf3766599c73f4322),
+    ("4/posed", 0x7da1ed6a538ecbb1),
+    ("4/gated", 0xda74afa5542f0e34),
     ("4/merged", 0xfbb429551d3403de),
-    ("4/posed_scored", 0xa68427e30eff5f1f),
-    ("4/gated_scored", 0x35a45b1d326a9678),
+    ("4/posed_scored", 0x4bac7760e3a48cd3),
+    ("4/gated_scored", 0xe96e3d29efb5b45b),
 ];
 
 /// FNV-1a over 64-bit words.
@@ -157,21 +157,21 @@ fn family2(name: &str, s: &mut Seeded, b: &Binomials) -> Vec<System2> {
     for _ in 0..12 {
         let system = match name {
             "circles" => circles(s).map(plain),
-            "weighted" => circles(s).map(|c| plain(c.map(|f| f.mul(&weight2(s), b)))),
+            "weighted" => circles(s).map(|c| plain(c.map(|f| f.mul_axiswise(&weight2(s), b)))),
             // The torus tracer's turning points: a curve and its `t` partial.
             "turning" => {
-                let f = circle(s).mul(&weight2(s), b);
+                let f = circle(s).mul_axiswise(&weight2(s), b);
                 let f_t = f.partial(1);
                 Some(plain([f, f_t]))
             }
             "products" => {
-                let f = circle(s).mul(&circle(s), b);
+                let f = circle(s).mul_axiswise(&circle(s), b);
                 let [a, c]: [f64; 2] = s.point(-1.0, 1.0);
                 Some(plain([f, linear(-0.5 * (a + c) - 0.25, a, c)]))
             }
             "gated" | "one_sided" => {
                 let g = PolyN::combine(&[
-                    (1.0, &circle(s).mul(&circle(s), b)),
+                    (1.0, &circle(s).mul_axiswise(&circle(s), b)),
                     (0.01 * s.next(), &PolyN::outer([&[1.0; 5], &[1.0; 5]])),
                 ]);
                 let near = 0.02 * s.next();
@@ -183,8 +183,8 @@ fn family2(name: &str, s: &mut Seeded, b: &Binomials) -> Vec<System2> {
             "continuum" => {
                 let t = linear(0.0, 0.0, 1.0);
                 let one = PolyN::outer([&[1.0; 3], &[1.0; 3]]);
-                let bowl = PolyN::combine(&[(1.0, &one), (1.0, &t.mul(&t, b))]);
-                let f = linear(-0.2 - 0.6 * s.next(), 1.0, 0.0).mul(&bowl, b);
+                let bowl = PolyN::combine(&[(1.0, &one), (1.0, &t.mul_axiswise(&t, b))]);
+                let f = linear(-0.2 - 0.6 * s.next(), 1.0, 0.0).mul_axiswise(&bowl, b);
                 let f_t = f.partial(1);
                 // Floors near `f64`'s own, where a curve of zeros keeps
                 // its boxes alive.
@@ -321,7 +321,7 @@ fn goldens_arithmetic() -> Vec<(String, u64)> {
             transposed,
             restricted,
         ] = &mut digests;
-        mul.poly(&p.mul(&q, &b));
+        mul.poly(&p.mul_axiswise(&q, &b));
         partial.poly(&p.partial(0));
         partial.poly(&p.partial(1));
         let at = 2.0 * s.next() - 0.5;
