@@ -1255,12 +1255,12 @@ Open CASCADE's does; every vertex sweeps a straight rise. Each side
 face's loop is start edge, rise, end edge, rise — a circle loop's one
 rise its seam, used twice — walked that way when the sweep runs along the
 profile's normal and the other way otherwise, with the face use and the
-pcurves decided as for a revolve. `extrude`, `revolve`, `sweep` and `loft` build through one crate-private
-skeleton (`sweep::skeleton`): the spec and role lists, the vertex and edge
-rings, the rails, the four-use side cycle, the shells of a closed sweep and
-the assemble, finish, verify and record tail are written once, and each
-operation keeps only what is its own. `planar_face` is that cap taken alone: a
-`Profile` becomes a one-face `Sheet` — the face `Forward` on the profile's
+pcurves decided as for a revolve. `extrude`, `revolve`, `sweep` and `loft`
+build through one crate-private skeleton (`sweep::skeleton`): the spec and
+role lists, the vertex and edge rings, the rails, the four-use side cycle,
+the shells of a closed sweep and the assemble, finish, verify and record
+tail are written once, and each operation keeps only what is its own.
+`planar_face` is that cap taken alone: a `Profile` becomes a one-face `Sheet` — the face `Forward` on the profile's
 plane, so its front is the plane's normal — assembled by
 `Builder::assemble_sheet`, every entity `Generated` from a
 `Role::PlanarFace(SweepPart)` (`StartVertex`, `StartEdge`, `StartCap` for

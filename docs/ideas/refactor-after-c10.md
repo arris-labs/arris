@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24
+- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24; `sweep-skeleton` done and retired 2026-10-25
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -34,34 +34,9 @@ Each finding below is **read** (the copies compared in the source) or
 Done (its descent finding read and dropped: the two descents are different
 algorithms).
 
-### For a `sweep-skeleton` plan (read)
-- **The four sweeps are each one function:** `extrude` (305 lines),
-  `revolve` (583), `sweep` (505) and `loft` (554). All four run the same
-  phases in the same order:
-  1. ring vertices;
-  2. ring edges;
-  3. rails;
-  4. caps (`cap_face`);
-  5. sides (ring edge, rail up, edge back, rail down, through
-     `side_orientation`/`side_face`);
-  6. shells;
-  7. `assemble` → `finish` → `verify` → `record`.
-- **`sweep/mod.rs` shares the leaves**; the loops between them are
-  copied.
-- **The shell-bucket block** (a closed path: one shell per loop, holes as
-  `SweepPart::Cavity`) is in `along.rs`, `loft.rs` and `revolve.rs`. The
-  copies drift: `along` takes `loop_index` from the loop's first edge and
-  `loft` uses the loop's position. If the two can differ, that is a
-  provenance defect, so it becomes a regression fixture before anything
-  moves.
-- → A crate-private `sweep::skeleton`:
-  - `Rings`, `Rails` and `Sides` built from per-operation closures;
-  - `shells`;
-  - one `finish_solid`.
-
-  Each sweep keeps only its own part: revolve's axis and on-axis edges,
-  sweep's frames and exact spans, loft's matching. `sweep/exact.rs` and
-  `loft_exact.rs` stay apart, since their inputs differ.
+### For a `sweep-skeleton` plan
+Done (its `Cavity` drift read: `Profile::edges` keeps the consumer's loop
+order, so the two namings agree).
 
 ### For a `one-bernstein` plan (read)
 - **`geom/bernstein_n.rs` (`PolyN<N>`) carries `bernstein2.rs`'s `Poly2`
