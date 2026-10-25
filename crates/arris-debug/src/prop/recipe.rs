@@ -855,346 +855,174 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
     let mut probes = Vec::new();
     let mut placed = Vec::new();
     for (i, o) in operands.iter().enumerate() {
-        let base = format!("b{i}");
-        // The operand's centre in its own frame, and the probes along its
-        // axes before the motion.
-        let mut local: Vec<(String, Point3)> = Vec::new();
-        let mut rim_body = None;
-        let centre = match &o.shape {
-            Shape::Box { extents } => {
-                let e = *extents;
-                steps.push(Step::Box {
-                    name: base.clone(),
-                    min: vec3(-e / 2.0),
-                    max: vec3(e / 2.0),
-                });
-                for axis in 0..3 {
-                    let moved = |side: usize| push_of(o, axis * 2 + side) * e[axis];
-                    let half = [e[axis] / 2.0 + moved(0), e[axis] / 2.0 + moved(1)];
-                    match o.hollow {
-                        Some(h) => {
-                            let open =
-                                |side: usize| h.opening.map(|f| f % 6) == Some(axis * 2 + side);
-                            let t = h.fraction * e.min() / 2.0;
-                            along_hollow(&mut local, axis, half, t, h.outward, [open(0), open(1)]);
-                        }
-                        None => along_axis(&mut local, axis, half),
-                    }
-                }
-                Point3::origin()
-            }
-            Shape::Cylinder { radius, height } => {
-                steps.push(Step::Cylinder {
-                    name: base.clone(),
-                    base: num3([0.0, 0.0, -height / 2.0]),
-                    axis: num3([0.0, 0.0, 1.0]),
-                    radius: (*radius).into(),
-                    height: (*height).into(),
-                });
-                let side = radius + push_of(o, 0) * radius;
-                // The caps: face 2 is the bottom, 1 the top.
-                let caps = [
-                    height / 2.0 + push_of(o, 2) * height,
-                    height / 2.0 + push_of(o, 1) * height,
-                ];
-                match o.hollow {
-                    Some(h) => {
-                        // A hollow's opening: 0 the bottom, 1 the top.
-                        let open = |side: usize| h.opening.map(|f| f % 2) == Some(side);
-                        let t = h.fraction * radius.min(height / 2.0);
-                        along_hollow(&mut local, 0, [side, side], t, h.outward, [false; 2]);
-                        along_hollow(&mut local, 1, [side, side], t, h.outward, [false; 2]);
-                        along_hollow(&mut local, 2, caps, t, h.outward, [open(0), open(1)]);
-                    }
-                    None => {
-                        along_axis(&mut local, 0, [side, side]);
-                        along_axis(&mut local, 1, [side, side]);
-                        along_axis(&mut local, 2, caps);
-                    }
-                }
-                Point3::origin()
-            }
-            Shape::Extrude {
-                profile,
-                length,
-                centre,
-            } => {
-                let sketch = format!("sk{i}");
-                steps.push(profile_step(&sketch, profile));
-                steps.push(Step::Extrude {
-                    name: base.clone(),
-                    profile: sketch,
-                    direction: num3([0.0, 0.0, 1.0]),
-                    length: (*length).into(),
-                });
-                Point3::new(centre.x, centre.y, length / 2.0)
-            }
-            Shape::Rim {
-                profile,
-                length,
-                centre,
-                edge,
-                size,
-                chamfer,
-            } => {
-                let sketch = format!("sk{i}");
-                steps.push(profile_step(&sketch, profile));
-                steps.push(Step::Extrude {
-                    name: base.clone(),
-                    profile: sketch,
-                    direction: num3([0.0, 0.0, 1.0]),
-                    length: (*length).into(),
-                });
-                let name = format!("f{i}");
-                let (of, edges, size) = (base.clone(), vec![point3(*edge)], (*size).into());
-                steps.push(if *chamfer {
-                    Step::Chamfer {
-                        name: name.clone(),
-                        of,
-                        edges,
-                        distance: size,
-                    }
-                } else {
-                    Step::Fillet {
-                        name: name.clone(),
-                        of,
-                        edges,
-                        radius: size,
-                    }
-                });
-                rim_body = Some(name);
-                Point3::new(centre.x, centre.y, length / 2.0)
-            }
-            Shape::Turned(turned) => {
-                let sketch = format!("sk{i}");
-                steps.push(profile_step(&sketch, &turned.profile()));
-                steps.push(Step::Revolve {
-                    name: base.clone(),
-                    profile: sketch,
-                    axis: fixtures::Axis {
-                        origin: num3([0.0, 0.0, 0.0]),
-                        direction: num3([0.0, 1.0, 0.0]),
-                    },
-                    angle_deg: 360.0.into(),
-                });
-                let name = format!("f{i}");
-                let (of, size) = (base.clone(), turned.size.into());
-                let edges = turned
-                    .blended
-                    .iter()
-                    .map(|&k| point3(turned.edge_point(k)))
-                    .collect();
-                steps.push(if turned.chamfer {
-                    Step::Chamfer {
-                        name: name.clone(),
-                        of,
-                        edges,
-                        distance: size,
-                    }
-                } else {
-                    Step::Fillet {
-                        name: name.clone(),
-                        of,
-                        edges,
-                        radius: size,
-                    }
-                });
-                rim_body = Some(name);
-                turned.centre()
-            }
-            Shape::Revolve {
-                profile,
-                axis,
-                angle,
-                centre,
-            } => {
-                let sketch = format!("sk{i}");
-                steps.push(profile_step(&sketch, profile));
-                steps.push(Step::Revolve {
-                    name: base.clone(),
-                    profile: sketch,
-                    axis: fixtures::Axis {
-                        origin: point3(axis.origin),
-                        direction: vec3(axis.direction.into_inner()),
-                    },
-                    angle_deg: angle.to_degrees().into(),
-                });
-                // Halfway round the sweep, right-handed about the axis.
-                let half = UnitQuaternion::from_axis_angle(&axis.direction, angle / 2.0);
-                let c = Point3::new(centre.x, centre.y, 0.0);
-                axis.origin + half * (c - axis.origin)
-            }
-            Shape::Sweep {
-                profile,
-                path,
-                law,
-                centre,
-            } => {
-                let sketch = format!("sk{i}");
-                steps.push(profile_step(&sketch, profile));
-                steps.push(Step::Sweep {
-                    name: base.clone(),
-                    profile: sketch,
-                    path: path.clone(),
-                    law: law.clone(),
-                });
-                *centre
-            }
-            Shape::Loft { sections, centre } => {
-                let names: Vec<String> =
-                    (0..sections.len()).map(|k| format!("sk{i}_{k}")).collect();
-                for (name, section) in names.iter().zip(sections) {
-                    steps.push(profile_step(name, section));
-                }
-                steps.push(Step::Loft {
-                    name: base.clone(),
-                    sections: names,
-                    kind: fixtures::LoftKind::Ruled,
-                    closed: false,
-                });
-                *centre
-            }
-        };
-        let mut body = rim_body.unwrap_or(base);
-        if let Some(p) = o.push {
-            let (point, extent) = match &o.shape {
-                Shape::Box { extents } => {
-                    let axis = (p.face % 6) / 2;
-                    let side = if p.face % 2 == 0 { -0.5 } else { 0.5 };
-                    let mut at = Vec3::zeros();
-                    at[axis] = side * extents[axis];
-                    (Point3::from(at), extents[axis])
-                }
-                Shape::Cylinder { radius, height } => match p.face % 3 {
-                    0 => (
-                        Point3::new(
-                            radius * real::cos(p.angle),
-                            radius * real::sin(p.angle),
-                            0.0,
-                        ),
-                        *radius,
-                    ),
-                    1 => (Point3::new(0.0, 0.0, height / 2.0), *height),
-                    _ => (Point3::new(0.0, 0.0, -height / 2.0), *height),
-                },
-                _ => unreachable!("only a box or a cylinder is pushed"),
-            };
-            let name = format!("p{i}");
-            steps.push(Step::Offset {
-                name: name.clone(),
-                of: body,
-                faces: vec![point3(point)],
-                distance: (p.fraction * extent).into(),
-            });
-            body = name;
-        }
-        if let Some(h) = o.hollow {
-            let (openings, thickness) = match &o.shape {
-                Shape::Box { extents } => {
-                    let opening = h.opening.map(|f| {
-                        let face = f % 6;
-                        let mut at = Vec3::zeros();
-                        at[face / 2] = if face % 2 == 0 { -0.5 } else { 0.5 } * extents[face / 2];
-                        point3(Point3::from(at))
-                    });
-                    (opening, h.fraction * extents.min() / 2.0)
-                }
-                Shape::Cylinder { radius, height } => {
-                    let opening = h.opening.map(|f| {
-                        let z = if f % 2 == 0 { -height } else { *height } / 2.0;
-                        point3(Point3::new(0.0, 0.0, z))
-                    });
-                    (opening, h.fraction * radius.min(height / 2.0))
-                }
-                _ => unreachable!("only a box or a cylinder is hollowed"),
-            };
-            let name = format!("h{i}");
-            steps.push(Step::Shell {
-                name: name.clone(),
-                of: body,
-                openings: openings.into_iter().collect(),
-                thickness: thickness.into(),
-                side: if h.outward {
-                    ShellSide::Outward
-                } else {
-                    ShellSide::Inward
-                },
-            });
-            body = name;
-        }
-        if let Some(b) = o.blend {
-            let (point, size) = match &o.shape {
-                Shape::Box { extents } => box_edge(*extents, b.edge),
-                Shape::Cylinder { radius, height } => {
-                    let z = if b.edge % 2 == 0 { -height } else { *height } / 2.0;
-                    let p =
-                        Point3::new(radius * real::cos(b.angle), radius * real::sin(b.angle), z);
-                    (p, radius.min(*height))
-                }
-                _ => unreachable!("only a box or a cylinder is blended"),
-            };
-            let name = format!("f{i}");
-            let edges = vec![point3(point)];
-            let size = (b.fraction * size).into();
-            steps.push(if b.chamfer {
-                Step::Chamfer {
-                    name: name.clone(),
-                    of: body,
-                    edges,
-                    distance: size,
-                }
-            } else {
-                Step::Fillet {
-                    name: name.clone(),
-                    of: body,
-                    edges,
-                    radius: size,
-                }
-            });
-            body = name;
-        }
-        // Centre on the origin, the operand's own motion, the shared one.
-        let motion = Isometry::from_translation(-centre.coords)
-            .then(&o.local)
-            .then(shared);
-        let name = format!("o{i}");
-        steps.push(transform_step(name.clone(), body, &motion));
-        // The mirror, if drawn, after the motions: the probes follow it.
-        let reflect = o.mirror.and_then(|(origin, normal)| {
-            let plane = Reflection::new(origin, normal).ok()?;
-            Some((origin, normal, plane))
-        });
-        let (name, place) = match reflect {
-            Some((origin, normal, plane)) => {
-                let image = format!("m{i}");
-                steps.push(Step::Mirror {
-                    name: image.clone(),
-                    of: name,
-                    plane: MirrorPlane {
-                        origin: point3(origin),
-                        normal: vec3(normal),
-                    },
-                });
-                (image, Some(plane))
-            }
-            None => (name, None),
-        };
-        let at = |p: Point3| {
-            let moved = motion.apply(p);
-            place.as_ref().map_or(moved, |plane| plane.apply(moved))
-        };
-        // A hollow's centre is in its cavity.
-        let centre_label = if o.hollow.is_some() {
-            "cavity-out"
-        } else {
-            "centre"
-        };
-        probes.push(probe(format!("{name}-{centre_label}"), at(centre)));
-        for (label, p) in local {
-            probes.push(probe(format!("{name}-{label}"), at(p)));
-        }
+        let name = write_operand(i, o, shared, &mut steps, &mut probes);
         placed.push(name);
     }
+    let result = write_chain(&placed, ops, &mut steps);
+    Recipe {
+        description: "A random recipe drawn by arris_debug::prop::recipe.".into(),
+        params: Default::default(),
+        variants: Default::default(),
+        steps,
+        result,
+        probes,
+        precision: PrecisionSpec::default(),
+        tolerances: Tolerances::default(),
+        analytic: Analytic::default(),
+        mesh_keeps: Vec::new(),
+    }
+}
+
+/// What an operand's shape wrote: the point in its own frame that is its
+/// centre, the probes along its axes before the motion, and the body that
+/// replaces the shape's own when the shape ends in a blend.
+struct Written {
+    centre: Point3,
+    local: Vec<(String, Point3)>,
+    rim_body: Option<String>,
+}
+
+impl Written {
+    fn at(centre: Point3) -> Self {
+        Written {
+            centre,
+            local: Vec::new(),
+            rim_body: None,
+        }
+    }
+}
+
+/// Operand `i`: its shape, then the push, hollow and blend drawn on it,
+/// its motions and mirror, and its probes. Returns the name of the body
+/// the operand ends as.
+fn write_operand(
+    i: usize,
+    o: &Operand,
+    shared: &Isometry,
+    steps: &mut Vec<Step>,
+    probes: &mut Vec<Probe>,
+) -> String {
+    let base = format!("b{i}");
+    let Written {
+        centre,
+        local,
+        rim_body,
+    } = match &o.shape {
+        Shape::Box { extents } => write_box(o, &base, extents, steps),
+        Shape::Cylinder { radius, height } => write_cylinder(o, &base, *radius, *height, steps),
+        Shape::Extrude {
+            profile,
+            length,
+            centre,
+        } => write_extrude(i, &base, profile, *length, *centre, steps),
+        Shape::Rim {
+            profile,
+            length,
+            centre,
+            edge,
+            size,
+            chamfer,
+        } => write_rim(
+            i,
+            &base,
+            profile,
+            (*length, *centre),
+            (*edge, *size, *chamfer),
+            steps,
+        ),
+        Shape::Turned(turned) => write_turned(i, &base, turned, steps),
+        Shape::Revolve {
+            profile,
+            axis,
+            angle,
+            centre,
+        } => write_revolve(i, &base, profile, axis, *angle, *centre, steps),
+        Shape::Sweep {
+            profile,
+            path,
+            law,
+            centre,
+        } => {
+            let sketch = format!("sk{i}");
+            steps.push(profile_step(&sketch, profile));
+            steps.push(Step::Sweep {
+                name: base.clone(),
+                profile: sketch,
+                path: path.clone(),
+                law: law.clone(),
+            });
+            Written::at(*centre)
+        }
+        Shape::Loft { sections, centre } => {
+            let names: Vec<String> = (0..sections.len()).map(|k| format!("sk{i}_{k}")).collect();
+            for (name, section) in names.iter().zip(sections) {
+                steps.push(profile_step(name, section));
+            }
+            steps.push(Step::Loft {
+                name: base.clone(),
+                sections: names,
+                kind: fixtures::LoftKind::Ruled,
+                closed: false,
+            });
+            Written::at(*centre)
+        }
+    };
+    let mut body = rim_body.unwrap_or(base);
+    if let Some(p) = o.push {
+        body = write_push(i, o, p, body, steps);
+    }
+    if let Some(h) = o.hollow {
+        body = write_hollow(i, o, h, body, steps);
+    }
+    if let Some(b) = o.blend {
+        body = write_blend(i, o, b, body, steps);
+    }
+    // Centre on the origin, the operand's own motion, the shared one.
+    let motion = Isometry::from_translation(-centre.coords)
+        .then(&o.local)
+        .then(shared);
+    let name = format!("o{i}");
+    steps.push(transform_step(name.clone(), body, &motion));
+    // The mirror, if drawn, after the motions: the probes follow it.
+    let reflect = o.mirror.and_then(|(origin, normal)| {
+        let plane = Reflection::new(origin, normal).ok()?;
+        Some((origin, normal, plane))
+    });
+    let (name, place) = match reflect {
+        Some((origin, normal, plane)) => {
+            let image = format!("m{i}");
+            steps.push(Step::Mirror {
+                name: image.clone(),
+                of: name,
+                plane: MirrorPlane {
+                    origin: point3(origin),
+                    normal: vec3(normal),
+                },
+            });
+            (image, Some(plane))
+        }
+        None => (name, None),
+    };
+    let at = |p: Point3| {
+        let moved = motion.apply(p);
+        place.as_ref().map_or(moved, |plane| plane.apply(moved))
+    };
+    // A hollow's centre is in its cavity.
+    let centre_label = if o.hollow.is_some() {
+        "cavity-out"
+    } else {
+        "centre"
+    };
+    probes.push(probe(format!("{name}-{centre_label}"), at(centre)));
+    for (label, p) in local {
+        probes.push(probe(format!("{name}-{label}"), at(p)));
+    }
+    name
+}
+
+/// The booleans of `ops` folded over `placed`, left to right; the name of
+/// the last result.
+fn write_chain(placed: &[String], ops: &[Op], steps: &mut Vec<Step>) -> String {
     let mut last = placed[0].clone();
     for (k, op) in ops.iter().enumerate() {
         let name = format!("r{}", k + 1);
@@ -1220,18 +1048,288 @@ fn write(operands: &[Operand], ops: &[Op], shared: &Isometry) -> Recipe {
         });
         last = name;
     }
-    Recipe {
-        description: "A random recipe drawn by arris_debug::prop::recipe.".into(),
-        params: Default::default(),
-        variants: Default::default(),
-        steps,
-        result: last,
-        probes,
-        precision: PrecisionSpec::default(),
-        tolerances: Tolerances::default(),
-        analytic: Analytic::default(),
-        mesh_keeps: Vec::new(),
+    last
+}
+
+fn write_box(o: &Operand, base: &str, extents: &Vec3, steps: &mut Vec<Step>) -> Written {
+    let e = *extents;
+    let mut out = Written::at(Point3::origin());
+    steps.push(Step::Box {
+        name: base.to_string(),
+        min: vec3(-e / 2.0),
+        max: vec3(e / 2.0),
+    });
+    for axis in 0..3 {
+        let moved = |side: usize| push_of(o, axis * 2 + side) * e[axis];
+        let half = [e[axis] / 2.0 + moved(0), e[axis] / 2.0 + moved(1)];
+        match o.hollow {
+            Some(h) => {
+                let open = |side: usize| h.opening.map(|f| f % 6) == Some(axis * 2 + side);
+                let t = h.fraction * e.min() / 2.0;
+                along_hollow(&mut out.local, axis, half, t, h.outward, [open(0), open(1)]);
+            }
+            None => along_axis(&mut out.local, axis, half),
+        }
     }
+    out
+}
+
+fn write_cylinder(
+    o: &Operand,
+    base: &str,
+    radius: f64,
+    height: f64,
+    steps: &mut Vec<Step>,
+) -> Written {
+    let mut out = Written::at(Point3::origin());
+    steps.push(Step::Cylinder {
+        name: base.to_string(),
+        base: num3([0.0, 0.0, -height / 2.0]),
+        axis: num3([0.0, 0.0, 1.0]),
+        radius: radius.into(),
+        height: height.into(),
+    });
+    let side = radius + push_of(o, 0) * radius;
+    // The caps: face 2 is the bottom, 1 the top.
+    let caps = [
+        height / 2.0 + push_of(o, 2) * height,
+        height / 2.0 + push_of(o, 1) * height,
+    ];
+    let local = &mut out.local;
+    match o.hollow {
+        Some(h) => {
+            // A hollow's opening: 0 the bottom, 1 the top.
+            let open = |side: usize| h.opening.map(|f| f % 2) == Some(side);
+            let t = h.fraction * radius.min(height / 2.0);
+            along_hollow(local, 0, [side, side], t, h.outward, [false; 2]);
+            along_hollow(local, 1, [side, side], t, h.outward, [false; 2]);
+            along_hollow(local, 2, caps, t, h.outward, [open(0), open(1)]);
+        }
+        None => {
+            along_axis(local, 0, [side, side]);
+            along_axis(local, 1, [side, side]);
+            along_axis(local, 2, caps);
+        }
+    }
+    out
+}
+
+/// The sketch `sk{i}` of `profile` and its extrusion along `z` as `base`.
+fn extruded(i: usize, base: &str, profile: &Profile, length: f64, steps: &mut Vec<Step>) {
+    let sketch = format!("sk{i}");
+    steps.push(profile_step(&sketch, profile));
+    steps.push(Step::Extrude {
+        name: base.to_string(),
+        profile: sketch,
+        direction: num3([0.0, 0.0, 1.0]),
+        length: length.into(),
+    });
+}
+
+/// A fillet or a chamfer `name` of `of` through the edges at `edges`.
+fn blend_step(name: &str, of: String, edges: Vec<[Num; 3]>, size: Num, chamfer: bool) -> Step {
+    let name = name.to_string();
+    if chamfer {
+        Step::Chamfer {
+            name,
+            of,
+            edges,
+            distance: size,
+        }
+    } else {
+        Step::Fillet {
+            name,
+            of,
+            edges,
+            radius: size,
+        }
+    }
+}
+
+fn write_extrude(
+    i: usize,
+    base: &str,
+    profile: &Profile,
+    length: f64,
+    centre: Point2,
+    steps: &mut Vec<Step>,
+) -> Written {
+    extruded(i, base, profile, length, steps);
+    Written::at(Point3::new(centre.x, centre.y, length / 2.0))
+}
+
+/// An extrusion blended through its one rim edge: `(length, centre)` of
+/// the extrusion, `(edge, size, chamfer)` of the blend.
+fn write_rim(
+    i: usize,
+    base: &str,
+    profile: &Profile,
+    (length, centre): (f64, Point2),
+    (edge, size, chamfer): (Point3, f64, bool),
+    steps: &mut Vec<Step>,
+) -> Written {
+    extruded(i, base, profile, length, steps);
+    let name = format!("f{i}");
+    steps.push(blend_step(
+        &name,
+        base.to_string(),
+        vec![point3(edge)],
+        size.into(),
+        chamfer,
+    ));
+    Written {
+        rim_body: Some(name),
+        ..Written::at(Point3::new(centre.x, centre.y, length / 2.0))
+    }
+}
+
+fn write_turned(i: usize, base: &str, turned: &Turned, steps: &mut Vec<Step>) -> Written {
+    let sketch = format!("sk{i}");
+    steps.push(profile_step(&sketch, &turned.profile()));
+    steps.push(Step::Revolve {
+        name: base.to_string(),
+        profile: sketch,
+        axis: fixtures::Axis {
+            origin: num3([0.0, 0.0, 0.0]),
+            direction: num3([0.0, 1.0, 0.0]),
+        },
+        angle_deg: 360.0.into(),
+    });
+    let name = format!("f{i}");
+    let edges = turned
+        .blended
+        .iter()
+        .map(|&k| point3(turned.edge_point(k)))
+        .collect();
+    steps.push(blend_step(
+        &name,
+        base.to_string(),
+        edges,
+        turned.size.into(),
+        turned.chamfer,
+    ));
+    Written {
+        rim_body: Some(name),
+        ..Written::at(turned.centre())
+    }
+}
+
+fn write_revolve(
+    i: usize,
+    base: &str,
+    profile: &Profile,
+    axis: &Axis,
+    angle: f64,
+    centre: Point2,
+    steps: &mut Vec<Step>,
+) -> Written {
+    let sketch = format!("sk{i}");
+    steps.push(profile_step(&sketch, profile));
+    steps.push(Step::Revolve {
+        name: base.to_string(),
+        profile: sketch,
+        axis: fixtures::Axis {
+            origin: point3(axis.origin),
+            direction: vec3(axis.direction.into_inner()),
+        },
+        angle_deg: angle.to_degrees().into(),
+    });
+    // Halfway round the sweep, right-handed about the axis.
+    let half = UnitQuaternion::from_axis_angle(&axis.direction, angle / 2.0);
+    let c = Point3::new(centre.x, centre.y, 0.0);
+    Written::at(axis.origin + half * (c - axis.origin))
+}
+
+/// The offset `p{i}` of `p`'s face of the box or cylinder `o`.
+fn write_push(i: usize, o: &Operand, p: Push, body: String, steps: &mut Vec<Step>) -> String {
+    let (point, extent) = match &o.shape {
+        Shape::Box { extents } => {
+            let axis = (p.face % 6) / 2;
+            let side = if p.face % 2 == 0 { -0.5 } else { 0.5 };
+            let mut at = Vec3::zeros();
+            at[axis] = side * extents[axis];
+            (Point3::from(at), extents[axis])
+        }
+        Shape::Cylinder { radius, height } => match p.face % 3 {
+            0 => (
+                Point3::new(
+                    radius * real::cos(p.angle),
+                    radius * real::sin(p.angle),
+                    0.0,
+                ),
+                *radius,
+            ),
+            1 => (Point3::new(0.0, 0.0, height / 2.0), *height),
+            _ => (Point3::new(0.0, 0.0, -height / 2.0), *height),
+        },
+        _ => unreachable!("only a box or a cylinder is pushed"),
+    };
+    let name = format!("p{i}");
+    steps.push(Step::Offset {
+        name: name.clone(),
+        of: body,
+        faces: vec![point3(point)],
+        distance: (p.fraction * extent).into(),
+    });
+    name
+}
+
+/// The shell `h{i}` of the box or cylinder `o`.
+fn write_hollow(i: usize, o: &Operand, h: Hollow, body: String, steps: &mut Vec<Step>) -> String {
+    let (openings, thickness) = match &o.shape {
+        Shape::Box { extents } => {
+            let opening = h.opening.map(|f| {
+                let face = f % 6;
+                let mut at = Vec3::zeros();
+                at[face / 2] = if face % 2 == 0 { -0.5 } else { 0.5 } * extents[face / 2];
+                point3(Point3::from(at))
+            });
+            (opening, h.fraction * extents.min() / 2.0)
+        }
+        Shape::Cylinder { radius, height } => {
+            let opening = h.opening.map(|f| {
+                let z = if f % 2 == 0 { -height } else { *height } / 2.0;
+                point3(Point3::new(0.0, 0.0, z))
+            });
+            (opening, h.fraction * radius.min(height / 2.0))
+        }
+        _ => unreachable!("only a box or a cylinder is hollowed"),
+    };
+    let name = format!("h{i}");
+    steps.push(Step::Shell {
+        name: name.clone(),
+        of: body,
+        openings: openings.into_iter().collect(),
+        thickness: thickness.into(),
+        side: if h.outward {
+            ShellSide::Outward
+        } else {
+            ShellSide::Inward
+        },
+    });
+    name
+}
+
+/// The fillet or chamfer `f{i}` of one edge of the box or cylinder `o`.
+fn write_blend(i: usize, o: &Operand, b: Blend, body: String, steps: &mut Vec<Step>) -> String {
+    let (point, size) = match &o.shape {
+        Shape::Box { extents } => box_edge(*extents, b.edge),
+        Shape::Cylinder { radius, height } => {
+            let z = if b.edge % 2 == 0 { -height } else { *height } / 2.0;
+            let p = Point3::new(radius * real::cos(b.angle), radius * real::sin(b.angle), z);
+            (p, radius.min(*height))
+        }
+        _ => unreachable!("only a box or a cylinder is blended"),
+    };
+    let name = format!("f{i}");
+    steps.push(blend_step(
+        &name,
+        body,
+        vec![point3(point)],
+        (b.fraction * size).into(),
+        b.chamfer,
+    ));
+    name
 }
 
 /// The signed fraction of its extent that the operand's face `face` is

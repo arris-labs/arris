@@ -92,7 +92,7 @@ robustness or bound has to be established here.
   `inputs.rs`; moves only.
 - [x] Step 6 **[1]** — `corpus/step/` per family; `build_step` a dispatch;
   no `corpus/` file past 1000 lines.
-- [ ] Step 7 **[1]** — `prop::recipe::write` per shape and op family; the
+- [x] Step 7 **[1]** — `prop::recipe::write` per shape and op family; the
   property tests' recipes (seeded) serialise byte-identically.
 - [ ] Step 8 **[2]** — `tessellate_under` by phase; the mesh corpus and
   `mesh/` dumps unchanged.
