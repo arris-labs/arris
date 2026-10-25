@@ -19,7 +19,6 @@
 
 mod arc;
 mod bernstein;
-mod bernstein2;
 mod bernstein_n;
 mod by_distance;
 mod cone_section;

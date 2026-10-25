@@ -12,7 +12,7 @@
 //! `tan((θ − θ_mid) / 2) = tan(π/8)·(2s − 1)` — so the patch has
 //! homogeneous coordinates of bidegree (2, 2) with a weight `w` between
 //! `cos² π/8` and one. [`Implicit::along`] over them is a tensor
-//! Bernstein polynomial `f = wᵈ·F(P)` (`crate::bernstein2`): bidegree
+//! Bernstein polynomial `f = wᵈ·F(P)` (`crate::bernstein_n`): bidegree
 //! (2, 2) against a plane, (4, 4) against a quadric, (8, 8) against
 //! another torus.
 //!
@@ -122,7 +122,7 @@ const PATCH_SLACK: f64 = 1e-9;
 /// How deep a NURBS patch is looked at past an edge of the domain for a
 /// critical point the tolerance may not tell from one on the edge
 /// ([`PatchedSection::critical_points_past`]), as a fraction of its span:
-/// the margin [`crate::bernstein2`] grows a box by to certify a zero,
+/// the margin [`crate::bernstein_n`] grows a box by to certify a zero,
 /// within which a polynomial's extrapolated rounding grows by no more than
 /// a few times. A ratio, not a tolerance.
 const EDGE_SLAB: f64 = 0.125;

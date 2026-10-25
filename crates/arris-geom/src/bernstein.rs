@@ -214,6 +214,34 @@ pub(crate) fn sign_change_candidates(c: &[f64], floor: f64) -> Vec<f64> {
     found
 }
 
+/// The value of a one-variable polynomial at `s` by de Casteljau.
+pub(crate) fn casteljau(c: &[f64], s: f64) -> f64 {
+    let mut row = c.to_vec();
+    for level in 1..row.len() {
+        for i in 0..row.len() - level {
+            row[i] = (1.0 - s) * row[i] + s * row[i + 1];
+        }
+    }
+    row.first().copied().unwrap_or(0.0)
+}
+
+/// The two parts of a one-variable polynomial either side of `at`, the
+/// sides of de Casteljau's triangle.
+pub(crate) fn split(c: &[f64], at: f64) -> (Vec<f64>, Vec<f64>) {
+    let n = c.len();
+    let mut row = c.to_vec();
+    let mut lower = Vec::with_capacity(n);
+    let mut upper = vec![0.0; n];
+    for level in 0..n {
+        lower.push(row[0]);
+        upper[n - 1 - level] = row[n - 1 - level];
+        for i in 0..n - 1 - level {
+            row[i] = (1.0 - at) * row[i] + at * row[i + 1];
+        }
+    }
+    (lower, upper)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

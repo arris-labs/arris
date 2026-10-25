@@ -1,4 +1,4 @@
-//! `crate::bernstein2`'s unit tests, the isolation at `N = 2`.
+//! The isolation's unit tests at `N = 2`, from before the two modules became one.
 
 #[cfg(test)]
 mod cases {

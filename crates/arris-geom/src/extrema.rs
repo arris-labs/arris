@@ -73,7 +73,6 @@ use arris_math::{DisjointSets, Meter, Point3, Tolerance, Vec3, wrap_angle};
 
 use crate::bernstein::{self, Binomials, sign_change_candidates};
 use crate::bernstein_n::{Halving, PolyN, Zero, common_zeros};
-use crate::bernstein2;
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveProjection, GeomError, NurbsCurve};
@@ -761,8 +760,8 @@ impl Piece<'_> {
 
     /// The piece's point at its own `s`, by de Casteljau.
     fn point(&self, s: f64) -> Point3 {
-        let w = bernstein2::casteljau(&self.w.v, s);
-        let c = [0, 1, 2].map(|k| bernstein2::casteljau(&self.x[k].v, s) / w);
+        let w = bernstein::casteljau(&self.w.v, s);
+        let c = [0, 1, 2].map(|k| bernstein::casteljau(&self.x[k].v, s) / w);
         Point3::new(c[0], c[1], c[2]) + self.centre.coords
     }
 

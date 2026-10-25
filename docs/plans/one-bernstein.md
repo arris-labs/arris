@@ -106,7 +106,7 @@ robustness or bound has to be established here.
   *Settled:* the unit tests live in `bernstein_n/two.rs`; the bit-for-bit test
   of step 3 went with `bernstein2`'s isolation, the 2-D goldens (unchanged)
   now run through `bernstein_n`. The DATA-MODEL rows were renamed here too.
-- [ ] Step 6 **[1]** — `bernstein2.rs` deleted: the leaves and constants
+- [x] Step 6 **[1]** — `bernstein2.rs` deleted: the leaves and constants
   moved, the module doc merged. `rg bernstein2 crates` is empty.
 - [ ] Step 7 **[1]** — `torus_walk/` with `mod.rs`, `walker.rs` and the
   cells-and-seeds and singular-points files; dumps of `torus/`, `nurbs/` unchanged.
