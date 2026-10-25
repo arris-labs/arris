@@ -660,6 +660,59 @@ impl Step {
             | Step::Read { name, .. } => name,
         }
     }
+
+    /// The `op` tag of every variant, in declaration order: what a recipe
+    /// file spells and what the oracle's `recipe.py` dispatches on.
+    pub const TAGS: [&'static str; 20] = [
+        "box",
+        "cylinder",
+        "profile",
+        "planar_face",
+        "extrude",
+        "revolve",
+        "sweep",
+        "loft",
+        "transform",
+        "mirror",
+        "split",
+        "fuse",
+        "common",
+        "cut",
+        "fillet",
+        "chamfer",
+        "offset",
+        "shell",
+        "polyhedron",
+        "step",
+    ];
+
+    /// The step's `op` tag, as serde writes it. Matched without a wildcard:
+    /// a new variant fails to compile here until it is named, and the test
+    /// holds the name to `recipe.py`.
+    pub fn tag(&self) -> &'static str {
+        match self {
+            Step::Box { .. } => "box",
+            Step::Cylinder { .. } => "cylinder",
+            Step::Profile { .. } => "profile",
+            Step::PlanarFace { .. } => "planar_face",
+            Step::Extrude { .. } => "extrude",
+            Step::Revolve { .. } => "revolve",
+            Step::Sweep { .. } => "sweep",
+            Step::Loft { .. } => "loft",
+            Step::Transform { .. } => "transform",
+            Step::Mirror { .. } => "mirror",
+            Step::Split { .. } => "split",
+            Step::Fuse { .. } => "fuse",
+            Step::Common { .. } => "common",
+            Step::Cut { .. } => "cut",
+            Step::Fillet { .. } => "fillet",
+            Step::Chamfer { .. } => "chamfer",
+            Step::Offset { .. } => "offset",
+            Step::Shell { .. } => "shell",
+            Step::Polyhedron { .. } => "polyhedron",
+            Step::Read { .. } => "step",
+        }
+    }
 }
 
 /// The model's tolerance configuration a fixture builds under: every
@@ -1873,6 +1926,53 @@ pub fn lint(dir: &Path) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One real step per variant, copied from the corpus's recipes.
+    const STEP_SAMPLES: [&str; 20] = [
+        r#"{"name": "a", "op": "box", "min": [1, 2, 3], "max": [4, 7, 5]}"#,
+        r#"{"name": "a", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 2, "height": 2}"#,
+        r#"{"name": "ring", "op": "profile", "plane": {"origin": [25, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"circle": {"center": [5, 0], "radius": 2}}}"#,
+        r#"{"name": "r", "op": "planar_face", "profile": "sketch"}"#,
+        r#"{"name": "d", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 2}"#,
+        r#"{"name": "a", "op": "revolve", "profile": "p", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 90}"#,
+        r#"{"name": "r", "op": "sweep", "profile": "sketch", "path": {"start": [0, 0, 0], "segments": [{"line_to": [0, 0, 10]}]}, "law": "rotation_minimizing"}"#,
+        r#"{"name": "r", "op": "loft", "sections": ["a"], "kind": "ruled"}"#,
+        r#"{"name": "o", "op": "transform", "of": "b"}"#,
+        r#"{"name": "b", "op": "mirror", "of": "a", "plane": {"origin": [0, 0, 0], "normal": [1, 0, 0]}}"#,
+        r#"{"name": "h", "op": "split", "of": "p", "plane": {"origin": [0, 0, 100], "normal": [0.3, 0.2, 1]}}"#,
+        r#"{"name": "t", "op": "fuse", "a": "a", "b": "b"}"#,
+        r#"{"name": "r", "op": "common", "a": "o0", "b": "o1"}"#,
+        r#"{"name": "r", "op": "cut", "target": "r1", "tool": "o2"}"#,
+        r#"{"name": "b", "op": "fillet", "of": "c", "edges": [[2, 2, 1]], "radius": 1}"#,
+        r#"{"name": "r", "op": "chamfer", "of": "d", "edges": [[1.5, 0, 1]], "distance": 1}"#,
+        r#"{"name": "r", "op": "offset", "of": "p", "faces": [[0, 5, 1]], "distance": 1}"#,
+        r#"{"name": "r", "op": "shell", "of": "b", "openings": [], "thickness": 1, "side": "inward"}"#,
+        r#"{"name": "p", "op": "polyhedron", "namespace": 1, "points": [[0, 0, 0]], "faces": [[[0]]]}"#,
+        r#"{"name": "p", "op": "step", "file": "dome.step", "sha256": "00", "id": 15}"#,
+    ];
+
+    #[test]
+    fn step_tags_are_the_op_serde_writes() {
+        for (text, tag) in STEP_SAMPLES.iter().zip(Step::TAGS) {
+            let step: Step = serde_json::from_str(text).unwrap();
+            assert_eq!(step.tag(), tag, "{text}");
+            let written = serde_json::to_value(&step).unwrap();
+            assert_eq!(written["op"], tag, "{text}");
+        }
+    }
+
+    #[test]
+    fn the_oracle_recipe_dispatches_on_every_step_tag() {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tools/oracle/oracle/recipe.py");
+        let text = std::fs::read_to_string(&path).unwrap();
+        for tag in Step::TAGS {
+            assert!(
+                text.contains(&format!("op == \"{tag}\"")),
+                "tools/oracle/oracle/recipe.py has no `op == \"{tag}\"` branch"
+            );
+        }
+    }
 
     #[test]
     fn recipe_types_round_trip_the_grammar() {

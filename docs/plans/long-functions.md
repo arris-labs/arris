@@ -82,7 +82,7 @@ robustness or bound has to be established here.
 - [x] Step 1 **[1]** — Record the start commit here. `_rust.py` blanks char
   literals (not lifetimes); `fn_lengths.py` re-run, its numbers in the
   commit body; the idea's table corrected.
-- [ ] Step 2 **[1]** — `Step::TAGS`/`tag()` and the serde and `recipe.py`
+- [x] Step 2 **[1]** — `Step::TAGS`/`tag()` and the serde and `recipe.py`
   test.
 - [ ] Step 3 **[2]** — STEP `build` as `Build` and its phases; the
   `real_*`, `step/` and healing corpora's dumps unchanged.
