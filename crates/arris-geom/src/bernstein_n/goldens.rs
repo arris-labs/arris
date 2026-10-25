@@ -15,7 +15,7 @@ use arris_math::Meter;
 use super::tests::{Seeded, floor, sphere, through, weight};
 use super::{Continuum, Gate, Halving, Isolation, PolyN, Wrap, Zero, common_zeros, merge};
 use crate::bernstein::Binomials;
-use crate::bernstein2::{self, Poly2, Zero2};
+use crate::bernstein2::{self, Zero2};
 use crate::halt::Halt;
 
 /// The 2-D isolations, each family under both halvings.
@@ -92,10 +92,6 @@ impl Digest {
         self.reals(p.coefficients());
     }
 
-    fn poly2(&mut self, p: &Poly2) {
-        self.poly(&from2(p));
-    }
-
     fn zeros<const N: usize>(&mut self, zeros: &[Zero<N>]) {
         self.word(zeros.len() as u64);
         for z in zeros {
@@ -123,14 +119,6 @@ impl Digest {
             Err(Halt::Stopped(_)) => self.word(2),
         }
     }
-}
-
-fn to2(p: &PolyN<2>) -> Poly2 {
-    Poly2::new(p.degree(), p.coefficients().to_vec())
-}
-
-fn from2(p: &Poly2) -> PolyN<2> {
-    PolyN::new(p.degree(), p.coefficients().to_vec())
 }
 
 fn zero2(z: &Zero2) -> Zero<2> {
@@ -162,40 +150,40 @@ fn isolation2(
         })
 }
 
-fn floor2(p: &Poly2) -> f64 {
-    floor(&from2(p))
+fn floor2(p: &PolyN<2>) -> f64 {
+    floor(p)
 }
 
 /// `a₀ + aₛ·s + aₜ·t`.
-fn linear(a0: f64, a_s: f64, a_t: f64) -> Poly2 {
-    Poly2::new([1, 1], vec![a0, a0 + a_t, a0 + a_s, a0 + a_s + a_t])
+fn linear(a0: f64, a_s: f64, a_t: f64) -> PolyN<2> {
+    PolyN::new([1, 1], vec![a0, a0 + a_t, a0 + a_s, a0 + a_s + a_t])
 }
 
 /// A random circle meeting the unit square.
-fn circle(s: &mut Seeded) -> Poly2 {
+fn circle(s: &mut Seeded) -> PolyN<2> {
     let c: [f64; 2] = s.point(0.1, 0.9);
-    to2(&sphere(c, 0.1 + 0.3 * s.next()))
+    sphere(c, 0.1 + 0.3 * s.next())
 }
 
 /// A random weight `(1 + a·s)(1 + b·t)`.
-fn weight2(s: &mut Seeded) -> Poly2 {
-    to2(&weight(s.point(-0.5, 1.0)))
+fn weight2(s: &mut Seeded) -> PolyN<2> {
+    weight(s.point(-0.5, 1.0))
 }
 
 /// Two circles through two random points, their common zeros.
-fn circles(s: &mut Seeded) -> Option<[Poly2; 2]> {
+fn circles(s: &mut Seeded) -> Option<[PolyN<2>; 2]> {
     let (p, q): ([f64; 2], [f64; 2]) = (s.point(0.05, 0.95), s.point(0.05, 0.95));
     let spread: [[f64; 2]; 2] = core::array::from_fn(|_| s.point(-0.4, 0.4));
     let d = [q[0] - p[0], q[1] - p[1]];
-    (d[0] * d[0] + d[1] * d[1] >= 0.04).then(|| through(p, q, &spread).map(|f| to2(&f)))
+    (d[0] * d[0] + d[1] * d[1] >= 0.04).then(|| through(p, q, &spread))
 }
 
 /// The 2-D systems of one family, with their floors and gates' parts:
 /// `(system, floors, gates as (poly, floor, one_sided))`.
-type System2 = ([Poly2; 2], [f64; 2], Vec<(Poly2, f64, bool)>);
+type System2 = ([PolyN<2>; 2], [f64; 2], Vec<(PolyN<2>, f64, bool)>);
 
 fn family2(name: &str, s: &mut Seeded, b: &Binomials) -> Vec<System2> {
-    let plain = |system: [Poly2; 2]| {
+    let plain = |system: [PolyN<2>; 2]| {
         let floors = system.each_ref().map(floor2);
         (system, floors, Vec::new())
     };
@@ -207,7 +195,7 @@ fn family2(name: &str, s: &mut Seeded, b: &Binomials) -> Vec<System2> {
             // The torus tracer's turning points: a curve and its `t` partial.
             "turning" => {
                 let f = circle(s).mul(&weight2(s), b);
-                let f_t = f.dv();
+                let f_t = f.partial(1);
                 Some(plain([f, f_t]))
             }
             "products" => {
@@ -216,22 +204,22 @@ fn family2(name: &str, s: &mut Seeded, b: &Binomials) -> Vec<System2> {
                 Some(plain([f, linear(-0.5 * (a + c) - 0.25, a, c)]))
             }
             "gated" | "one_sided" => {
-                let g = Poly2::combine(&[
+                let g = PolyN::combine(&[
                     (1.0, &circle(s).mul(&circle(s), b)),
-                    (0.01 * s.next(), &Poly2::outer(&[1.0; 5], &[1.0; 5])),
+                    (0.01 * s.next(), &PolyN::outer([&[1.0; 5], &[1.0; 5]])),
                 ]);
                 let near = 0.02 * s.next();
-                let (gs, gt) = (g.du(), g.dv());
+                let (gs, gt) = (g.partial(0), g.partial(1));
                 let floors = [floor2(&gs), floor2(&gt)];
                 Some(([gs, gt], floors, vec![(g, near, name == "one_sided")]))
             }
             // `(s − a)(1 + t²)` and its `t` partial share the line `s = a`.
             "continuum" => {
                 let t = linear(0.0, 0.0, 1.0);
-                let one = Poly2::outer(&[1.0; 3], &[1.0; 3]);
-                let bowl = Poly2::combine(&[(1.0, &one), (1.0, &t.mul(&t, b))]);
+                let one = PolyN::outer([&[1.0; 3], &[1.0; 3]]);
+                let bowl = PolyN::combine(&[(1.0, &one), (1.0, &t.mul(&t, b))]);
                 let f = linear(-0.2 - 0.6 * s.next(), 1.0, 0.0).mul(&bowl, b);
-                let f_t = f.dv();
+                let f_t = f.partial(1);
                 // Floors near `f64`'s own, where a curve of zeros keeps
                 // its boxes alive.
                 let floors = [4.0 * f64::EPSILON; 2];
@@ -342,12 +330,12 @@ fn merged2() -> u64 {
     digest.0
 }
 
-fn random_poly2(s: &mut Seeded) -> Poly2 {
+fn random_poly2(s: &mut Seeded) -> PolyN<2> {
     let degree = [0, 1].map(|_| (5.0 * s.next()) as usize);
     let c = (0..(degree[0] + 1) * (degree[1] + 1))
         .map(|_| 2.0 * s.next() - 1.0)
         .collect();
-    Poly2::new(degree, c)
+    PolyN::new(degree, c)
 }
 
 /// The 2-D arithmetic on random polynomials of degree up to four.
@@ -377,25 +365,25 @@ fn goldens_arithmetic() -> Vec<(String, u64)> {
             transposed,
             restricted,
         ] = &mut digests;
-        mul.poly2(&p.mul(&q, &b));
-        partial.poly2(&p.du());
-        partial.poly2(&p.dv());
+        mul.poly(&p.mul(&q, &b));
+        partial.poly(&p.partial(0));
+        partial.poly(&p.partial(1));
         let at = 2.0 * s.next() - 0.5;
-        for (lo, hi) in [p.split_u(at), p.split_v(at)] {
-            split.poly2(&lo);
-            split.poly2(&hi);
+        for (lo, hi) in [p.split(0, at), p.split(1, at)] {
+            split.poly(&lo);
+            split.poly(&hi);
         }
         let x: [f64; 2] = s.point(-0.2, 1.2);
-        eval.word(p.eval(x[0], x[1]).to_bits());
+        eval.word(p.eval(x).to_bits());
         lines.reals(&p.across(x[0]));
         lines.reals(&p.along(x[1]));
         let root = 3.0 * s.next() - 1.0;
         let (quotient, rounding) = p.over_linear(root, floor2(&p), &b);
-        over.poly2(&quotient);
+        over.poly(&quotient);
         over.word(rounding.to_bits());
-        transposed.poly2(&p.transposed());
+        transposed.poly(&p.transposed());
         let ([s0, s1], [t0, t1]): ([f64; 2], [f64; 2]) = (s.point(0.0, 1.0), s.point(0.0, 1.0));
-        restricted.poly2(&p.restricted([s0.min(s1), s0.max(s1)], [t0.min(t1), t0.max(t1)]));
+        restricted.poly(&p.restricted([s0.min(s1), s0.max(s1)], [t0.min(t1), t0.max(t1)]));
     }
     names
         .into_iter()
@@ -515,7 +503,7 @@ fn bernstein_n_isolation_at_2_is_bernsteins2_bit_for_bit() {
                     halving,
                     &mut Meter::default(),
                 );
-                let polys: Vec<PolyN<2>> = gates.iter().map(|(p, _, _)| from2(p)).collect();
+                let polys: Vec<PolyN<2>> = gates.iter().map(|(p, _, _)| p.clone()).collect();
                 let new_gates: Vec<Gate<'_, 2>> = gates
                     .iter()
                     .zip(&polys)
@@ -525,7 +513,7 @@ fn bernstein_n_isolation_at_2_is_bernsteins2_bit_for_bit() {
                         one_sided: *one_sided,
                     })
                     .collect();
-                let system = system.each_ref().map(from2);
+                let system = system.clone();
                 let new = common_zeros(
                     system.each_ref(),
                     floors,

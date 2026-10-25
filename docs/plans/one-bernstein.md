@@ -97,7 +97,7 @@ robustness or bound has to be established here.
   equals `bernstein2::common_zeros_with` bit for bit on every golden system.
   *Settled:* the mixed partial is `∂max(∂min p)` for every N (the 2-D form
   at N = 2); N ≥ 3's existing goldens did not move, `scored` ones recorded.
-- [ ] Step 4 **[2]** — `Poly2` becomes `PolyN<2>` in every caller and in
+- [x] Step 4 **[2]** — `Poly2` becomes `PolyN<2>` in every caller and in
   `bernstein2`'s isolation; the 2-D extras as `impl PolyN<2>`. Goldens unchanged.
 - [ ] Step 5 **[2]** — The 2-D callers (`trace_torus`, `torus_walk`,
   `nurbs/line`, `nurbs/critical`, `extrema`) isolate through

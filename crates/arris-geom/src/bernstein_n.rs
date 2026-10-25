@@ -69,6 +69,131 @@ fn indices<const N: usize>(degree: [usize; N]) -> Vec<[usize; N]> {
         .collect()
 }
 
+impl PolyN<2> {
+    /// The polynomial in `t` along the line `s = at`, by de Casteljau
+    /// down every column.
+    pub(crate) fn across(&self, at: f64) -> Vec<f64> {
+        let [m, n] = self.degree;
+        (0..=n)
+            .map(|j| {
+                let column: Vec<f64> = (0..=m).map(|i| self.c[i * (n + 1) + j]).collect();
+                casteljau(&column, at)
+            })
+            .collect()
+    }
+
+    /// The polynomial in `s` along the line `t = at`.
+    pub(crate) fn along(&self, at: f64) -> Vec<f64> {
+        let stride = self.degree[1] + 1;
+        self.c
+            .chunks(stride)
+            .map(|row| casteljau(row, at))
+            .collect()
+    }
+
+    /// `self / (s − root)`, of one degree less in `s`, for a polynomial
+    /// that vanishes along the line `s = root` — inside the unit square
+    /// or outside it — and the rounding of the quotient's coefficients
+    /// where `floor` is that of `self`'s. In the scaled basis `aᵢ·C(m, i)`
+    /// the product with `(1 − root)·s − root·(1 − s)` is the two-term
+    /// recurrence `ãᵢ = (1 − root)·c̃ᵢ₋₁ − root·c̃ᵢ`; it is solved forwards
+    /// from `ã₀` and backwards from `ãₘ`, each as far as the basis function
+    /// that peaks at the root, which is as far as either keeps what it
+    /// carries in check — all the way for a root outside the square. One
+    /// equation is left over between the two. For a polynomial
+    /// that does vanish on the line it holds to rounding; otherwise what
+    /// it is off by is dropped, a multiple of the one basis function that
+    /// peaks nearest the root.
+    pub(crate) fn over_linear(
+        &self,
+        root: f64,
+        floor: f64,
+        binomials: &Binomials,
+    ) -> (PolyN<2>, f64) {
+        let [m, n] = self.degree;
+        if m == 0 {
+            return (self.clone(), floor);
+        }
+        let stride = n + 1;
+        // Quotient coefficients below `meet` come from the forward
+        // recurrence, the others from the backward one.
+        let meet = (root * m as f64).round().clamp(0.0, m as f64) as usize;
+        let mut c = vec![0.0; m * stride];
+        let mut rounding = vec![0.0; m];
+        for j in 0..=n {
+            let scaled = |i: usize| binomials.get(m, i) * self.c[i * stride + j];
+            let mut carried = 0.0;
+            for i in 0..meet {
+                carried = ((1.0 - root) * carried - scaled(i)) / root;
+                c[i * stride + j] = carried / binomials.get(m - 1, i);
+            }
+            let mut carried = 0.0;
+            for i in (meet..m).rev() {
+                carried = (scaled(i + 1) + root * carried) / (1.0 - root);
+                c[i * stride + j] = carried / binomials.get(m - 1, i);
+            }
+        }
+        // The same recurrences on the magnitudes of what each step adds.
+        let mut carried = 0.0;
+        for (i, slot) in rounding.iter_mut().enumerate().take(meet) {
+            carried = ((1.0 - root).abs() * carried + binomials.get(m, i) * floor) / root.abs();
+            *slot = carried / binomials.get(m - 1, i);
+        }
+        let mut carried = 0.0;
+        for i in (meet..m).rev() {
+            carried = (binomials.get(m, i + 1) * floor + root.abs() * carried) / (1.0 - root).abs();
+            rounding[i] = carried / binomials.get(m - 1, i);
+        }
+        let worst = rounding.iter().copied().fold(floor, f64::max);
+        (
+            PolyN {
+                degree: [m - 1, n],
+                c,
+            },
+            worst,
+        )
+    }
+
+    /// The same polynomial with `s` and `t` exchanged.
+    pub(crate) fn transposed(&self) -> PolyN<2> {
+        let [m, n] = self.degree;
+        let mut c = Vec::with_capacity(self.c.len());
+        for j in 0..=n {
+            for i in 0..=m {
+                c.push(self.c[i * (n + 1) + j]);
+            }
+        }
+        PolyN { degree: [n, m], c }
+    }
+
+    /// The polynomial over the box `[s₀, s₁] × [t₀, t₁]` of the unit
+    /// square, on its own `[0, 1]²`: convex combinations only. A box with
+    /// no width is a line of the square, and its polynomial is constant
+    /// across it.
+    pub(crate) fn restricted(&self, s: [f64; 2], t: [f64; 2]) -> PolyN<2> {
+        // The part below the upper end, and of that the part above the
+        // lower end, which is at `lo / hi` of it.
+        let inner = |[lo, hi]: [f64; 2]| if hi > 0.0 { (lo / hi).min(1.0) } else { 0.0 };
+        let along_s = self.split(0, s[1]).0.split(0, inner(s)).1;
+        along_s.split(1, t[1]).0.split(1, inner(t)).1
+    }
+
+    /// `Some(true)` where every coefficient is above `floor`,
+    /// `Some(false)` where every one is below `-floor`: the polynomial's
+    /// sign over the closed unit square, `None` where the coefficients do
+    /// not say.
+    pub(crate) fn sign(&self, floor: f64) -> Option<bool> {
+        let range = self.range();
+        if range.lo > floor {
+            Some(true)
+        } else if range.hi < -floor {
+            Some(false)
+        } else {
+            None
+        }
+    }
+}
+
 impl PolyN<3> {
     /// `a(x₀)·b(x₁, x₂)`: a polynomial in one variable times one in two
     /// others, of degree `a`'s then `b`'s.
@@ -285,26 +410,26 @@ impl<const N: usize> PolyN<N> {
 
     /// The polynomial over the unit cube grown by [`MARGIN`] along every
     /// axis, on its own `[0, 1]ᴺ`.
-    fn grown(&self) -> PolyN<N> {
+    pub(crate) fn grown(&self) -> PolyN<N> {
         let (hi, inner) = (1.0 + MARGIN, -MARGIN / (1.0 + MARGIN));
         (0..N).fold(self.clone(), |p, k| p.split(k, hi).0.split(k, inner).1)
     }
 
     /// The least and greatest coefficient: bounds on the polynomial over
     /// the unit cube.
-    fn range(&self) -> Range {
+    pub(crate) fn range(&self) -> Range {
         Range::of(self.c.iter().copied())
     }
 
     /// Every coefficient on one side of zero by more than `floor`.
-    fn keeps_sign(&self, floor: f64) -> bool {
+    pub(crate) fn keeps_sign(&self, floor: f64) -> bool {
         let range = self.range();
         range.lo > floor || range.hi < -floor
     }
 
     /// Every coefficient within `floor` of zero: zero over the box, as
     /// far as `f64` can tell.
-    fn is_flat(&self, floor: f64) -> bool {
+    pub(crate) fn is_flat(&self, floor: f64) -> bool {
         let range = self.range();
         range.lo >= -floor && range.hi <= floor
     }

@@ -40,7 +40,7 @@
 
 use arris_math::Meter;
 
-use crate::bernstein::{BernsteinAlgebra, Binomials, MAX_DEPTH};
+use crate::bernstein::MAX_DEPTH;
 pub(crate) use crate::bernstein_n::Halving;
 use crate::bernstein_n::PolyN;
 use crate::halt::Halt;
@@ -73,297 +73,6 @@ pub(crate) const FLAT: f64 = 2.0;
 /// certified box converges quadratically, so the count is never reached
 /// by a step that still improves; it only ends a cycle of rounding.
 pub(crate) const POLISH_STEPS: usize = 12;
-
-/// A polynomial `Σ c[i][j] Bᵢᵐ(s) Bⱼⁿ(t)` on `[0, 1]²`.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct Poly2 {
-    /// The degrees `[m, n]` in `s` and in `t`.
-    degree: [usize; 2],
-    /// Row-major, `s` the row: `c[i · (n + 1) + j]`.
-    c: Vec<f64>,
-}
-
-impl Poly2 {
-    /// The polynomial of degrees `[m, n]` with the coefficients `c`,
-    /// row-major with `s` the row: `c[i · (n + 1) + j]`, `(m + 1)(n + 1)`
-    /// of them.
-    pub(crate) fn new(degree: [usize; 2], c: Vec<f64>) -> Self {
-        debug_assert_eq!(c.len(), (degree[0] + 1) * (degree[1] + 1));
-        Poly2 { degree, c }
-    }
-
-    /// `a(s) · b(t)` from two polynomials in one variable.
-    pub(crate) fn outer(a: &[f64], b: &[f64]) -> Self {
-        let degree = [a.len().saturating_sub(1), b.len().saturating_sub(1)];
-        let c = a
-            .iter()
-            .flat_map(|ai| b.iter().map(move |bj| ai * bj))
-            .collect();
-        Poly2 { degree, c }
-    }
-
-    /// The degrees in `s` and in `t`.
-    pub(crate) fn degree(&self) -> [usize; 2] {
-        self.degree
-    }
-
-    /// The coefficients, row-major with `s` the row.
-    pub(crate) fn coefficients(&self) -> &[f64] {
-        &self.c
-    }
-
-    fn stride(&self) -> usize {
-        self.degree[1] + 1
-    }
-
-    fn rows(&self) -> impl Iterator<Item = &[f64]> {
-        self.c.chunks(self.stride())
-    }
-
-    /// The product, of the degrees' sums: the one-variable formula in
-    /// each direction, `crate::bernstein_n`'s at two.
-    pub(crate) fn mul(&self, other: &Poly2, binomials: &Binomials) -> Poly2 {
-        let as_n = |p: &Poly2| PolyN::new(p.degree, p.c.clone());
-        let product = as_n(self).mul(&as_n(other), binomials);
-        Poly2::new(product.degree(), product.coefficients().to_vec())
-    }
-
-    /// `Σ kᵢ · pᵢ` over polynomials of one pair of degrees.
-    pub(crate) fn combine(terms: &[(f64, &Poly2)]) -> Poly2 {
-        let degree = terms.first().map_or([0, 0], |(_, p)| p.degree);
-        let c = (0..(degree[0] + 1) * (degree[1] + 1))
-            .map(|i| {
-                terms
-                    .iter()
-                    .map(|(k, p)| k * p.c.get(i).copied().unwrap_or(0.0))
-                    .sum()
-            })
-            .collect();
-        Poly2 { degree, c }
-    }
-
-    /// `∂/∂t`, of degree `n − 1` in `t`; a constant's is the constant
-    /// zero.
-    pub(crate) fn dv(&self) -> Poly2 {
-        let [m, n] = self.degree;
-        if n == 0 {
-            return Poly2 {
-                degree: [m, 0],
-                c: vec![0.0; m + 1],
-            };
-        }
-        let c = self
-            .rows()
-            .flat_map(|row| row.windows(2).map(move |w| n as f64 * (w[1] - w[0])))
-            .collect();
-        Poly2 {
-            degree: [m, n - 1],
-            c,
-        }
-    }
-
-    /// `∂/∂s`, of degree `m − 1` in `s`.
-    pub(crate) fn du(&self) -> Poly2 {
-        let [m, n] = self.degree;
-        if m == 0 {
-            return Poly2 {
-                degree: [0, n],
-                c: vec![0.0; n + 1],
-            };
-        }
-        let stride = self.stride();
-        let c = (self.c.iter().zip(&self.c[stride..]))
-            .map(|(below, above)| m as f64 * (above - below))
-            .collect();
-        Poly2 {
-            degree: [m - 1, n],
-            c,
-        }
-    }
-
-    /// The value at `(s, t)` by de Casteljau's triangle along `t` in
-    /// every row and then along `s`: convex combinations only inside
-    /// the unit square.
-    pub(crate) fn eval(&self, s: f64, t: f64) -> f64 {
-        let column: Vec<f64> = self.rows().map(|row| casteljau(row, t)).collect();
-        casteljau(&column, s)
-    }
-
-    /// The polynomial in `t` along the line `s = at`, by de Casteljau
-    /// down every column.
-    pub(crate) fn across(&self, at: f64) -> Vec<f64> {
-        let [m, n] = self.degree;
-        (0..=n)
-            .map(|j| {
-                let column: Vec<f64> = (0..=m).map(|i| self.c[i * (n + 1) + j]).collect();
-                casteljau(&column, at)
-            })
-            .collect()
-    }
-
-    /// The polynomial in `s` along the line `t = at`.
-    pub(crate) fn along(&self, at: f64) -> Vec<f64> {
-        self.rows().map(|row| casteljau(row, at)).collect()
-    }
-
-    /// `self / (s − root)`, of one degree less in `s`, for a polynomial
-    /// that vanishes along the line `s = root` — inside the unit square
-    /// or outside it — and the rounding of the quotient's coefficients
-    /// where `floor` is that of `self`'s. In the scaled basis `aᵢ·C(m, i)`
-    /// the product with `(1 − root)·s − root·(1 − s)` is the two-term
-    /// recurrence `ãᵢ = (1 − root)·c̃ᵢ₋₁ − root·c̃ᵢ`; it is solved forwards
-    /// from `ã₀` and backwards from `ãₘ`, each as far as the basis function
-    /// that peaks at the root, which is as far as either keeps what it
-    /// carries in check — all the way for a root outside the square. One
-    /// equation is left over between the two. For a polynomial
-    /// that does vanish on the line it holds to rounding; otherwise what
-    /// it is off by is dropped, a multiple of the one basis function that
-    /// peaks nearest the root.
-    pub(crate) fn over_linear(&self, root: f64, floor: f64, binomials: &Binomials) -> (Poly2, f64) {
-        let [m, n] = self.degree;
-        if m == 0 {
-            return (self.clone(), floor);
-        }
-        let stride = n + 1;
-        // Quotient coefficients below `meet` come from the forward
-        // recurrence, the others from the backward one.
-        let meet = (root * m as f64).round().clamp(0.0, m as f64) as usize;
-        let mut c = vec![0.0; m * stride];
-        let mut rounding = vec![0.0; m];
-        for j in 0..=n {
-            let scaled = |i: usize| binomials.get(m, i) * self.c[i * stride + j];
-            let mut carried = 0.0;
-            for i in 0..meet {
-                carried = ((1.0 - root) * carried - scaled(i)) / root;
-                c[i * stride + j] = carried / binomials.get(m - 1, i);
-            }
-            let mut carried = 0.0;
-            for i in (meet..m).rev() {
-                carried = (scaled(i + 1) + root * carried) / (1.0 - root);
-                c[i * stride + j] = carried / binomials.get(m - 1, i);
-            }
-        }
-        // The same recurrences on the magnitudes of what each step adds.
-        let mut carried = 0.0;
-        for (i, slot) in rounding.iter_mut().enumerate().take(meet) {
-            carried = ((1.0 - root).abs() * carried + binomials.get(m, i) * floor) / root.abs();
-            *slot = carried / binomials.get(m - 1, i);
-        }
-        let mut carried = 0.0;
-        for i in (meet..m).rev() {
-            carried = (binomials.get(m, i + 1) * floor + root.abs() * carried) / (1.0 - root).abs();
-            rounding[i] = carried / binomials.get(m - 1, i);
-        }
-        let worst = rounding.iter().copied().fold(floor, f64::max);
-        (
-            Poly2 {
-                degree: [m - 1, n],
-                c,
-            },
-            worst,
-        )
-    }
-
-    /// The same polynomial with `s` and `t` exchanged.
-    pub(crate) fn transposed(&self) -> Poly2 {
-        let [m, n] = self.degree;
-        let mut c = Vec::with_capacity(self.c.len());
-        for j in 0..=n {
-            for i in 0..=m {
-                c.push(self.c[i * (n + 1) + j]);
-            }
-        }
-        Poly2 { degree: [n, m], c }
-    }
-
-    /// The two parts either side of `t = at`, each on its own `[0, 1]`:
-    /// the halves of the unit square for `at = ½`, and for `at` outside
-    /// `[0, 1]` the extrapolation to `[0, at]` and what is left.
-    pub(crate) fn split_v(&self, at: f64) -> (Poly2, Poly2) {
-        let mut lower = Vec::with_capacity(self.c.len());
-        let mut upper = Vec::with_capacity(self.c.len());
-        for row in self.rows() {
-            let (l, u) = split(row, at);
-            lower.extend(l);
-            upper.extend(u);
-        }
-        let part = |c| Poly2 {
-            degree: self.degree,
-            c,
-        };
-        (part(lower), part(upper))
-    }
-
-    /// [`Self::split_v`] along `s`.
-    pub(crate) fn split_u(&self, at: f64) -> (Poly2, Poly2) {
-        let (lower, upper) = self.transposed().split_v(at);
-        (lower.transposed(), upper.transposed())
-    }
-
-    /// The polynomial over the unit square grown by [`MARGIN`] on every
-    /// side, on its own `[0, 1]²`.
-    fn grown(&self) -> Poly2 {
-        let (hi, inner) = (1.0 + MARGIN, -MARGIN / (1.0 + MARGIN));
-        let wide = self.split_u(hi).0.split_u(inner).1;
-        wide.split_v(hi).0.split_v(inner).1
-    }
-
-    /// The polynomial over the box `[s₀, s₁] × [t₀, t₁]` of the unit
-    /// square, on its own `[0, 1]²`: convex combinations only. A box with
-    /// no width is a line of the square, and its polynomial is constant
-    /// across it.
-    pub(crate) fn restricted(&self, s: [f64; 2], t: [f64; 2]) -> Poly2 {
-        // The part below the upper end, and of that the part above the
-        // lower end, which is at `lo / hi` of it.
-        let inner = |[lo, hi]: [f64; 2]| if hi > 0.0 { (lo / hi).min(1.0) } else { 0.0 };
-        let along_s = self.split_u(s[1]).0.split_u(inner(s)).1;
-        along_s.split_v(t[1]).0.split_v(inner(t)).1
-    }
-
-    /// `Some(true)` where every coefficient is above `floor`,
-    /// `Some(false)` where every one is below `-floor`: the polynomial's
-    /// sign over the closed unit square, `None` where the coefficients do
-    /// not say.
-    pub(crate) fn sign(&self, floor: f64) -> Option<bool> {
-        let range = self.range();
-        if range.lo > floor {
-            Some(true)
-        } else if range.hi < -floor {
-            Some(false)
-        } else {
-            None
-        }
-    }
-
-    /// The least and greatest coefficient: bounds on the polynomial over
-    /// the unit square.
-    fn range(&self) -> Range {
-        Range::of(self.c.iter().copied())
-    }
-
-    /// Every coefficient on one side of zero by more than `floor`.
-    fn keeps_sign(&self, floor: f64) -> bool {
-        let range = self.range();
-        range.lo > floor || range.hi < -floor
-    }
-
-    /// Every coefficient within `floor` of zero: zero over the box, as
-    /// far as `f64` can tell.
-    fn is_flat(&self, floor: f64) -> bool {
-        let range = self.range();
-        range.lo >= -floor && range.hi <= floor
-    }
-}
-
-impl BernsteinAlgebra<Poly2> for Binomials {
-    fn mul(&self, a: &Poly2, b: &Poly2) -> Poly2 {
-        a.mul(b, self)
-    }
-
-    fn combine(&self, terms: &[(f64, &Poly2)]) -> Poly2 {
-        Poly2::combine(terms)
-    }
-}
 
 /// The value of a one-variable polynomial at `s` by de Casteljau.
 pub(crate) fn casteljau(c: &[f64], s: f64) -> f64 {
@@ -518,7 +227,7 @@ pub(crate) struct Continuum {
 /// zeros where the polynomial is at most `floor`, however far below.
 pub(crate) struct Gate<'a> {
     /// The polynomial.
-    pub(crate) poly: &'a Poly2,
+    pub(crate) poly: &'a PolyN<2>,
     /// What its coefficients have to clear to exclude a box.
     pub(crate) floor: f64,
     /// Whether only values above `floor` exclude.
@@ -527,7 +236,7 @@ pub(crate) struct Gate<'a> {
 
 impl Gate<'_> {
     /// Whether the gate drops a box whose part of the polynomial is `p`.
-    fn excludes(&self, p: &Poly2) -> bool {
+    fn excludes(&self, p: &PolyN<2>) -> bool {
         if self.one_sided {
             p.range().lo > self.floor
         } else {
@@ -546,8 +255,8 @@ impl Gate<'_> {
 }
 
 struct Cell {
-    system: [Poly2; 2],
-    gates: Vec<Poly2>,
+    system: [PolyN<2>; 2],
+    gates: Vec<PolyN<2>>,
     lo: [f64; 2],
     width: [f64; 2],
     /// How many times the box was halved along `s` and along `t`.
@@ -590,13 +299,7 @@ impl Cell {
     fn direction(&self, within_reach: bool) -> Option<usize> {
         if within_reach && self.look_ahead && self.halved.iter().all(|&h| h < MAX_DEPTH) {
             let worst = |along: usize| {
-                let split = |p: &Poly2| {
-                    if along == 0 {
-                        p.split_u(0.5)
-                    } else {
-                        p.split_v(0.5)
-                    }
-                };
+                let split = |p: &PolyN<2>| p.split(along, 0.5);
                 let (a, b) = (split(&self.system[0]), split(&self.system[1]));
                 [[a.0, b.0], [a.1, b.1]]
                     .iter()
@@ -614,8 +317,8 @@ impl Cell {
                 return Some(1);
             }
         }
-        let size = |p: &Poly2| p.range().magnitude();
-        let first = self.system.each_ref().map(|p| [p.du(), p.dv()]);
+        let size = |p: &PolyN<2>| p.range().magnitude();
+        let first = self.system.each_ref().map(|p| [p.partial(0), p.partial(1)]);
         let mut score = [0.0f64; 2];
         let y = within_reach
             .then(|| preconditioned(&jacobian(&self.system, [0.0; 2])))
@@ -624,9 +327,9 @@ impl Cell {
             Some((y, _)) => {
                 for (j, [p_s, p_t]) in first.iter().enumerate() {
                     let weight = y[0][j].abs() + y[1][j].abs();
-                    let cross = size(&p_s.dv());
-                    score[0] += weight * (size(&p_s.du()) + cross);
-                    score[1] += weight * (size(&p_t.dv()) + cross);
+                    let cross = size(&p_s.partial(1));
+                    score[0] += weight * (size(&p_s.partial(0)) + cross);
+                    score[1] += weight * (size(&p_t.partial(1)) + cross);
                 }
             }
             None => {
@@ -646,13 +349,7 @@ impl Cell {
     }
 
     fn halves(&self, along: usize) -> [Cell; 2] {
-        let split = |p: &Poly2| {
-            if along == 0 {
-                p.split_u(0.5)
-            } else {
-                p.split_v(0.5)
-            }
-        };
+        let split = |p: &PolyN<2>| p.split(along, 0.5);
         let (a, b) = (split(&self.system[0]), split(&self.system[1]));
         let (gates_lo, gates_hi) = self.gates.iter().map(split).unzip();
         let mut width = self.width;
@@ -690,7 +387,7 @@ impl Cell {
 /// a domain with squares finds it from the neighbour whose square it is
 /// in, and merges the two where both did ([`merge`]).
 pub(crate) fn common_zeros(
-    system: [&Poly2; 2],
+    system: [&PolyN<2>; 2],
     floors: [f64; 2],
     gates: &[Gate<'_>],
     meter: &mut Meter,
@@ -701,15 +398,15 @@ pub(crate) fn common_zeros(
 /// [`common_zeros`] with the halving of a box within reach of the
 /// certificate chosen by `halving`.
 pub(crate) fn common_zeros_with(
-    system: [&Poly2; 2],
+    system: [&PolyN<2>; 2],
     floors: [f64; 2],
     gates: &[Gate<'_>],
     halving: Halving,
     meter: &mut Meter,
 ) -> Result<Isolation, Halt<Continuum>> {
     let partials = [
-        [system[0].du(), system[0].dv()],
-        [system[1].du(), system[1].dv()],
+        [system[0].partial(0), system[0].partial(1)],
+        [system[1].partial(0), system[1].partial(1)],
     ];
     let mut zeros = Vec::new();
     let mut boxes = 0;
@@ -760,7 +457,7 @@ pub(crate) fn common_zeros_with(
                     );
                     // The one zero of the grown box: where a gate is
                     // clear of what it keeps there is none to keep.
-                    let gated = gates.iter().any(|g| g.drops(g.poly.eval(at[0], at[1])));
+                    let gated = gates.iter().any(|g| g.drops(g.poly.eval(at)));
                     if !gated {
                         zeros.push(Zero2 {
                             at,
@@ -827,13 +524,13 @@ enum Verdict {
 /// The ranges of the four partial derivatives over a box, from the
 /// differences of its coefficients, widened by what two coefficients
 /// `floor` wrong make of a difference.
-fn jacobian(system: &[Poly2; 2], floors: [f64; 2]) -> [[Range; 2]; 2] {
+fn jacobian(system: &[PolyN<2>; 2], floors: [f64; 2]) -> [[Range; 2]; 2] {
     [0, 1].map(|k| {
         let p = &system[k];
         let [m, n] = p.degree();
         [
-            p.du().range().widened(2.0 * m as f64 * floors[k]),
-            p.dv().range().widened(2.0 * n as f64 * floors[k]),
+            p.partial(0).range().widened(2.0 * m as f64 * floors[k]),
+            p.partial(1).range().widened(2.0 * n as f64 * floors[k]),
         ]
     })
 }
@@ -873,7 +570,7 @@ fn preconditioned(j: &[[Range; 2]; 2]) -> Option<([[f64; 2]; 2], [f64; 2])> {
 /// overlap would never pass a determinant of ranges. The grown box is
 /// only built where the box itself is within reach of the test, which
 /// most boxes that are halved are not.
-fn krawczyk(system: &[Poly2; 2], floors: [f64; 2]) -> Verdict {
+fn krawczyk(system: &[PolyN<2>; 2], floors: [f64; 2]) -> Verdict {
     match preconditioned(&jacobian(system, floors)) {
         Some((_, spread)) if spread.iter().all(|s| *s < 1.0) => {}
         _ => {
@@ -886,7 +583,7 @@ fn krawczyk(system: &[Poly2; 2], floors: [f64; 2]) -> Verdict {
     let Some((y, spread)) = preconditioned(&jacobian(&grown, floors)) else {
         return Verdict::Unknown { within_reach: true };
     };
-    let f = [0, 1].map(|k| Range::around(grown[k].eval(0.5, 0.5), floors[k]));
+    let f = [0, 1].map(|k| Range::around(grown[k].eval([0.5, 0.5]), floors[k]));
     let mut inside = Inside {
         lo: [0.0; 2],
         hi: [0.0; 2],
@@ -911,15 +608,20 @@ fn krawczyk(system: &[Poly2; 2], floors: [f64; 2]) -> Verdict {
 /// the rounding of the subdivisions that made them — from the middle of
 /// the certified box `[lo, hi]`, and never out of it. It stops at the
 /// first step that does not shrink.
-fn polish(system: [&Poly2; 2], partials: &[[Poly2; 2]; 2], lo: [f64; 2], hi: [f64; 2]) -> [f64; 2] {
+fn polish(
+    system: [&PolyN<2>; 2],
+    partials: &[[PolyN<2>; 2]; 2],
+    lo: [f64; 2],
+    hi: [f64; 2],
+) -> [f64; 2] {
     let mut at = [0.5 * (lo[0] + hi[0]), 0.5 * (lo[1] + hi[1])];
     let mut last = f64::INFINITY;
     for _ in 0..POLISH_STEPS {
         let [s, t] = at;
-        let f = [system[0].eval(s, t), system[1].eval(s, t)];
+        let f = [system[0].eval([s, t]), system[1].eval([s, t])];
         let j = partials
             .each_ref()
-            .map(|row| row.each_ref().map(|p| p.eval(s, t)));
+            .map(|row| row.each_ref().map(|p| p.eval([s, t])));
         let det = j[0][0] * j[1][1] - j[0][1] * j[1][0];
         let step = [
             (j[1][1] * f[0] - j[0][1] * f[1]) / det,
@@ -1086,21 +788,19 @@ pub(crate) fn merge_wrapped(zeros: Vec<Zero2>, wrap: &Wrap) -> Vec<Zero2> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bernstein::Binomials;
     use arris_math::real;
 
     /// `a₀ + aₛ·s + aₜ·t`.
-    fn linear(a0: f64, a_s: f64, a_t: f64) -> Poly2 {
-        Poly2 {
-            degree: [1, 1],
-            c: vec![a0, a0 + a_t, a0 + a_s, a0 + a_s + a_t],
-        }
+    fn linear(a0: f64, a_s: f64, a_t: f64) -> PolyN<2> {
+        PolyN::new([1, 1], vec![a0, a0 + a_t, a0 + a_s, a0 + a_s + a_t])
     }
 
     /// `(s − a)² + (t − b)² − ρ²`.
-    fn circle(a: f64, b: f64, rho: f64, binomials: &Binomials) -> Poly2 {
+    fn circle(a: f64, b: f64, rho: f64, binomials: &Binomials) -> PolyN<2> {
         let (ds, dt) = (linear(-a, 1.0, 0.0), linear(-b, 0.0, 1.0));
-        let one = Poly2::outer(&[1.0; 3], &[1.0; 3]);
-        Poly2::combine(&[
+        let one = PolyN::outer([&[1.0; 3], &[1.0; 3]]);
+        PolyN::combine(&[
             (1.0, &ds.mul(&ds, binomials)),
             (1.0, &dt.mul(&dt, binomials)),
             (-rho * rho, &one),
@@ -1133,32 +833,35 @@ mod tests {
         let q = linear(0.5, -2.0, 1.5);
         let pq = p.mul(&q, &b);
         assert_eq!(pq.degree(), [3, 3]);
-        let (ps, pt) = (p.du(), p.dv());
+        let (ps, pt) = (p.partial(0), p.partial(1));
         assert_eq!((ps.degree(), pt.degree()), ([1, 2], [2, 1]));
         for i in 0..=10 {
             for j in 0..=10 {
                 let (s, t) = (i as f64 / 10.0, j as f64 / 10.0);
                 let value = real::powi(s - 0.3, 2) + real::powi(t - 0.6, 2) - 0.0625;
-                assert!((p.eval(s, t) - value).abs() < 1e-15);
-                assert!((pq.eval(s, t) - value * q.eval(s, t)).abs() < 1e-14);
-                assert!((ps.eval(s, t) - 2.0 * (s - 0.3)).abs() < 1e-14);
-                assert!((pt.eval(s, t) - 2.0 * (t - 0.6)).abs() < 1e-14);
+                assert!((p.eval([s, t]) - value).abs() < 1e-15);
+                assert!((pq.eval([s, t]) - value * q.eval([s, t])).abs() < 1e-14);
+                assert!((ps.eval([s, t]) - 2.0 * (s - 0.3)).abs() < 1e-14);
+                assert!((pt.eval([s, t]) - 2.0 * (t - 0.6)).abs() < 1e-14);
             }
         }
-        assert_eq!(linear(1.0, 0.0, 0.0).du().dv().coefficients(), [0.0]);
+        assert_eq!(
+            linear(1.0, 0.0, 0.0).partial(0).partial(1).coefficients(),
+            [0.0]
+        );
     }
 
     #[test]
     fn a_polynomial_over_its_linear_factor_is_the_other_factor() {
         let binomials = Binomials::new(16);
         // A quotient of bidegree (5, 3) with nothing special about it.
-        let quotient = Poly2 {
-            degree: [5, 3],
-            c: (0..24).map(|k| ((k * 7 + 3) % 11) as f64 - 4.5).collect(),
-        };
+        let quotient = PolyN::new(
+            [5, 3],
+            (0..24).map(|k| ((k * 7 + 3) % 11) as f64 - 4.5).collect(),
+        );
         // Roots inside the square, on its edges and outside it.
         for root in [0.0, 0.3, 0.5, 0.83, 1.0, -0.4, 1.5, 3.4] {
-            let factor = Poly2::outer(&[-root, 1.0 - root], &[1.0]);
+            let factor = PolyN::outer([&[-root, 1.0 - root], &[1.0]]);
             let product = factor.mul(&quotient, &binomials);
             let floor = 8.0 * f64::EPSILON * 5.5;
             let (found, rounding) = product.over_linear(root, floor, &binomials);
@@ -1179,7 +882,7 @@ mod tests {
         }
         // The lines of a polynomial are the polynomial along them.
         let (s, t) = (0.37, 0.81);
-        let value = quotient.eval(s, t);
+        let value = quotient.eval([s, t]);
         assert!((casteljau(&quotient.across(s), t) - value).abs() < 1e-14);
         assert!((casteljau(&quotient.along(t), s) - value).abs() < 1e-14);
     }
@@ -1188,8 +891,8 @@ mod tests {
     fn the_parts_of_a_box_are_the_polynomial_on_them() {
         let b = Binomials::new(8);
         let p = circle(0.3, 0.6, 0.25, &b).mul(&linear(0.5, -2.0, 1.5), &b);
-        let (lo, hi) = p.split_u(0.5);
-        let ((a, b), (c, d)) = (lo.split_v(0.5), hi.split_v(0.5));
+        let (lo, hi) = p.split(0, 0.5);
+        let ((a, b), (c, d)) = (lo.split(1, 0.5), hi.split(1, 0.5));
         let quarters = [a, b, c, d];
         let grown = p.grown();
         for i in 0..=4 {
@@ -1197,13 +900,13 @@ mod tests {
                 let (s, t) = (i as f64 / 4.0, j as f64 / 4.0);
                 for (k, part) in quarters.iter().enumerate() {
                     let at = [0.5 * ((k / 2) as f64 + s), 0.5 * ((k % 2) as f64 + t)];
-                    assert!((part.eval(s, t) - p.eval(at[0], at[1])).abs() < 1e-15);
+                    assert!((part.eval([s, t]) - p.eval([at[0], at[1]])).abs() < 1e-15);
                 }
                 let at = [
                     -MARGIN + (1.0 + 2.0 * MARGIN) * s,
                     -MARGIN + (1.0 + 2.0 * MARGIN) * t,
                 ];
-                assert!((grown.eval(s, t) - p.eval(at[0], at[1])).abs() < 1e-14);
+                assert!((grown.eval([s, t]) - p.eval([at[0], at[1]])).abs() < 1e-14);
             }
         }
     }
@@ -1212,7 +915,8 @@ mod tests {
     fn the_turning_points_of_a_circle_and_its_crossings_with_a_line() {
         let b = Binomials::new(8);
         let f = circle(0.4, 0.55, 0.3, &b);
-        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
+        let turning =
+            common_zeros([&f, &f.partial(1)], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(&certified(&turning), &[[0.1, 0.55], [0.7, 0.55]]);
         assert_eq!(turning.zeros.len(), 2);
         // s + t = 0.95 through the centre: (0.4 ∓ 0.3/√2, 0.55 ± 0.3/√2).
@@ -1245,21 +949,23 @@ mod tests {
         // Turning points on s = ¼ and s = ¾, both on t = ½: corners of
         // boxes at every depth from the second.
         let f = circle(0.5, 0.5, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
+        let found =
+            common_zeros([&f, &f.partial(1)], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(&certified(&found), &[[0.25, 0.5], [0.75, 0.5]]);
         assert_eq!(found.zeros.len(), 2);
         assert!(found.depth < 16, "{}", found.depth);
         // On the square's own edge and corner, and one just outside it,
         // which the margin holds.
         let f = circle(0.25, 0.0, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
+        let found =
+            common_zeros([&f, &f.partial(1)], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_near(&certified(&found), &[[0.0, 0.0], [0.5, 0.0]]);
         // A zero outside the square is the neighbouring square's: found
         // from here where a margin happens to certify it, and no fault
         // where none does.
         let f = circle(0.249, 0.3, 0.25, &b);
         let found = certified(
-            &common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap(),
+            &common_zeros([&f, &f.partial(1)], [1e-15; 2], &[], &mut Meter::default()).unwrap(),
         );
         let inside = found.iter().filter(|z| z[0] > 0.0).copied();
         assert_near(&inside.collect::<Vec<_>>(), &[[0.499, 0.3]]);
@@ -1268,7 +974,8 @@ mod tests {
         assert!(outside.is_empty() || outside.len() == 1);
         assert_near(&outside, &vec![[-0.001, 0.3]; outside.len()]);
         let f = circle(-0.26, 0.3, 0.25, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
+        let found =
+            common_zeros([&f, &f.partial(1)], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert!(found.zeros.is_empty());
     }
 
@@ -1277,9 +984,9 @@ mod tests {
         let b = Binomials::new(8);
         // (s − 0.3)² − (t − 0.6)²: two lines crossing.
         let (ds, dt) = (linear(-0.3, 1.0, 0.0), linear(-0.6, 0.0, 1.0));
-        let f = Poly2::combine(&[(1.0, &ds.mul(&ds, &b)), (-1.0, &dt.mul(&dt, &b))]);
+        let f = PolyN::combine(&[(1.0, &ds.mul(&ds, &b)), (-1.0, &dt.mul(&dt, &b))]);
         let critical = common_zeros(
-            [&f.du(), &f.dv()],
+            [&f.partial(0), &f.partial(1)],
             [1e-15; 2],
             &[Gate {
                 poly: &f,
@@ -1292,17 +999,18 @@ mod tests {
         assert_near(&certified(&critical), &[[0.3, 0.6]]);
         // As a zero of (f, f_t) it is not simple: a box, not a zero, and
         // the point is in it.
-        let turning = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default()).unwrap();
+        let turning =
+            common_zeros([&f, &f.partial(1)], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert!(certified(&turning).is_empty());
         assert_eq!(turning.zeros.len(), 1, "{:?}", turning.zeros);
         assert!(turning.zeros[0].holds([0.3, 0.6], [0.0, 0.0]));
         assert!(turning.zeros[0].area() < 1e-12);
         // The gate drops a critical point off the curve, and with a
         // floor above the value there keeps it.
-        let lifted = Poly2::combine(&[(1.0, &f), (1e-3, &Poly2::outer(&[1.0; 3], &[1.0; 3]))]);
+        let lifted = PolyN::combine(&[(1.0, &f), (1e-3, &PolyN::outer([&[1.0; 3], &[1.0; 3]]))]);
         let gated = |floor: f64| {
             common_zeros(
-                [&lifted.du(), &lifted.dv()],
+                [&lifted.partial(0), &lifted.partial(1)],
                 [1e-15; 2],
                 &[Gate {
                     poly: &lifted,
@@ -1322,16 +1030,16 @@ mod tests {
         let b = Binomials::new(8);
         // (s − 0.3)(1 + t²): f and f_t both vanish along s = 0.3.
         let t = linear(0.0, 0.0, 1.0);
-        let one = Poly2::outer(&[1.0; 3], &[1.0; 3]);
-        let bowl = Poly2::combine(&[(1.0, &one), (1.0, &t.mul(&t, &b))]);
+        let one = PolyN::outer([&[1.0; 3], &[1.0; 3]]);
+        let bowl = PolyN::combine(&[(1.0, &one), (1.0, &t.mul(&t, &b))]);
         let f = linear(-0.3, 1.0, 0.0).mul(&bowl, &b);
-        let found = common_zeros([&f, &f.dv()], [1e-15; 2], &[], &mut Meter::default());
+        let found = common_zeros([&f, &f.partial(1)], [1e-15; 2], &[], &mut Meter::default());
         assert!(
             matches!(found, Err(Halt::Fault(Continuum { .. }))),
             "{found:?}"
         );
         // The zero polynomial is flat at once: one box, the square.
-        let zero = Poly2::outer(&[0.0; 3], &[0.0; 3]);
+        let zero = PolyN::outer([&[0.0; 3], &[0.0; 3]]);
         let found = common_zeros([&zero, &f], [1e-15; 2], &[], &mut Meter::default()).unwrap();
         assert_eq!(found.zeros.len(), 1);
         assert!(!found.zeros[0].certified);

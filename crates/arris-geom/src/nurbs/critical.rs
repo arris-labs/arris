@@ -32,7 +32,8 @@ use arris_math::{Meter, Point2, Point3, Tolerance, Vec3};
 use super::NurbsSurface;
 use super::project::Patch;
 use crate::bernstein::Binomials;
-use crate::bernstein2::{Halving, Poly2, Zero2, common_zeros_with};
+use crate::bernstein_n::PolyN;
+use crate::bernstein2::{Halving, Zero2, common_zeros_with};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{GeomError, SurfaceEval};
@@ -315,7 +316,7 @@ fn field_distance(field: &Field, surface: &NurbsSurface, uv: Point2) -> f64 {
 
 /// The gradient numerators of a patch.
 struct System {
-    poly: [Poly2; 2],
+    poly: [PolyN<2>; 2],
     floors: [f64; 2],
 }
 
@@ -323,8 +324,8 @@ struct System {
 fn patch_system(patch: &Patch, field: &Field) -> System {
     let [p, q] = patch.degree;
     let b = Binomials::new(3 * (p + q) + 4);
-    let coord = |k: usize| -> Poly2 {
-        Poly2::new(
+    let coord = |k: usize| -> PolyN<2> {
+        PolyN::new(
             [p, q],
             patch
                 .net
@@ -334,26 +335,26 @@ fn patch_system(patch: &Patch, field: &Field) -> System {
         )
     };
     let x = [coord(0), coord(1), coord(2)];
-    let w = Poly2::new([p, q], patch.net.iter().map(|h| h.w).collect());
+    let w = PolyN::new([p, q], patch.net.iter().map(|h| h.w).collect());
     let (mx, mw) = patch.net.iter().fold((0.0f64, 0.0f64), |(mx, mw), h| {
         (mx.max(h.x.abs()).max(h.y.abs()).max(h.z.abs()), mw.max(h.w))
     });
     let d = p.max(q) as f64;
     // `U_k = X_k,u W − X_k W_u` and its `v` twin; `N = Σ c_k U_k` over a
     // combination of the coordinates.
-    let numerators = |value: &Poly2| -> [Poly2; 2] {
-        let across = |f: &Poly2, g: &Poly2, df: &Poly2, dg: &Poly2| {
-            Poly2::combine(&[(1.0, &df.mul(g, &b)), (-1.0, &f.mul(dg, &b))])
+    let numerators = |value: &PolyN<2>| -> [PolyN<2>; 2] {
+        let across = |f: &PolyN<2>, g: &PolyN<2>, df: &PolyN<2>, dg: &PolyN<2>| {
+            PolyN::combine(&[(1.0, &df.mul(g, &b)), (-1.0, &f.mul(dg, &b))])
         };
         [
-            across(value, &w, &value.du(), &w.du()),
-            across(value, &w, &value.dv(), &w.dv()),
+            across(value, &w, &value.partial(0), &w.partial(0)),
+            across(value, &w, &value.partial(1), &w.partial(1)),
         ]
     };
     match *field {
         Field::Height { origin, normal } => {
             let shift = origin.coords.dot(&normal);
-            let h = Poly2::combine(&[
+            let h = PolyN::combine(&[
                 (normal.x, &x[0]),
                 (normal.y, &x[1]),
                 (normal.z, &x[2]),
@@ -368,11 +369,12 @@ fn patch_system(patch: &Patch, field: &Field) -> System {
             }
         }
         Field::Distance { point } => {
-            let r: [Poly2; 3] = [0, 1, 2].map(|k| Poly2::combine(&[(1.0, &x[k]), (-point[k], &w)]));
-            let n: [[Poly2; 2]; 3] = [0, 1, 2].map(|k| numerators(&x[k]));
+            let r: [PolyN<2>; 3] =
+                [0, 1, 2].map(|k| PolyN::combine(&[(1.0, &x[k]), (-point[k], &w)]));
+            let n: [[PolyN<2>; 2]; 3] = [0, 1, 2].map(|k| numerators(&x[k]));
             let sum = |dir: usize| {
-                let products: Vec<Poly2> = (0..3).map(|k| r[k].mul(&n[k][dir], &b)).collect();
-                Poly2::combine(&[
+                let products: Vec<PolyN<2>> = (0..3).map(|k| r[k].mul(&n[k][dir], &b)).collect();
+                PolyN::combine(&[
                     (1.0, &products[0]),
                     (1.0, &products[1]),
                     (1.0, &products[2]),

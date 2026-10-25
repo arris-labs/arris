@@ -60,8 +60,9 @@ use arris_math::{Meter, Point3, Tolerance, Vec3};
 
 use crate::arc::{QUARTER_TAN, quarter_angle, quarter_arc, quarter_param, quarter_weight};
 use crate::bernstein::{self, Binomials, sign_change_candidates};
+use crate::bernstein_n::PolyN;
 use crate::bernstein2::{
-    Continuum, Gate, Halving, Isolation, Poly2, Wrap, Zero2, common_zeros, common_zeros_with,
+    Continuum, Gate, Halving, Isolation, Wrap, Zero2, common_zeros, common_zeros_with,
     merge_wrapped,
 };
 use crate::halt::Halt;
@@ -235,8 +236,8 @@ struct Patch {
     /// The box of the walk's parameters the patch covers: a torus's
     /// angles, a NURBS surface's through its [`Rescale`].
     span: [[f64; 2]; 2],
-    f: Poly2,
-    weight: Poly2,
+    f: PolyN<2>,
+    weight: PolyN<2>,
     /// The `u₀` an isoline of a NURBS surface was divided out of the
     /// patch at, a closure past the isoline's own where the patch holds
     /// it there ([`PatchedSection::deflate`]).
@@ -292,7 +293,7 @@ pub(crate) struct Quotient {
     degree: i32,
     /// Row-major over `u`: each patch's polynomial, weight, and where the
     /// isoline was divided out of it.
-    patches: Vec<(Poly2, Poly2, Option<f64>)>,
+    patches: Vec<(PolyN<2>, PolyN<2>, Option<f64>)>,
 }
 
 impl Quotient {
@@ -346,7 +347,7 @@ impl Quotient {
         };
         let flips = self.order % 2 == 1 && turns.rem_euclid(2.0) == 1.0;
         let sign = if flips { -1.0 } else { 1.0 };
-        sign * f.eval(s, t) * scale / real::powi(w.eval(s, t), self.degree)
+        sign * f.eval([s, t]) * scale / real::powi(w.eval([s, t]), self.degree)
     }
 }
 
@@ -396,13 +397,13 @@ impl<'a> PatchedSection<'a> {
                 let across: Vec<f64> = (0..3).map(|j| major * w_v[j] + minor * cos_v[j]).collect();
                 let up: Vec<f64> = sin_v.iter().map(|s| minor * s).collect();
                 let in_torus = [
-                    Poly2::outer(&cos_u, &across),
-                    Poly2::outer(&sin_u, &across),
-                    Poly2::outer(&w_u, &up),
+                    PolyN::outer([&cos_u, &across]),
+                    PolyN::outer([&sin_u, &across]),
+                    PolyN::outer([&w_u, &up]),
                 ];
-                let weight = Poly2::outer(&w_u, &w_v);
+                let weight = PolyN::outer([&w_u, &w_v]);
                 let local = [0, 1, 2].map(|k| {
-                    Poly2::combine(&[
+                    PolyN::combine(&[
                         (axes[0][k], &in_torus[0]),
                         (axes[1][k], &in_torus[1]),
                         (axes[2][k], &in_torus[2]),
@@ -493,8 +494,8 @@ impl<'a> PatchedSection<'a> {
                 heaviest = heaviest.max(h.w);
                 farthest = farthest.max(moved.norm() / h.w);
             }
-            let [x, y, z] = coords.map(|c| Poly2::new([pu, pv], c));
-            let weight = Poly2::new([pu, pv], weights);
+            let [x, y, z] = coords.map(|c| PolyN::new([pu, pv], c));
+            let weight = PolyN::new([pu, pv], weights);
             let f = implicit.along([&x, &y, &z, &weight], &binomials);
             let index = |seen: &mut Vec<f64>, lo: f64| match seen.iter().position(|&k| k == lo) {
                 Some(i) => i,
@@ -581,7 +582,7 @@ impl<'a> PatchedSection<'a> {
             })
             .collect();
         let near = self.near;
-        let vanishing = |f: &Poly2, root: f64| {
+        let vanishing = |f: &PolyN<2>, root: f64| {
             let [m, n] = f.degree();
             let row = |i: usize| {
                 let i = if root == 0.0 { i } else { m - i };
@@ -784,7 +785,7 @@ impl<'a> PatchedSection<'a> {
                         (at_home.f.across(s_home), 1.0 / real::powi(w_home, d as i32))
                     } else {
                         let scale = w_home / (2.0 * QUARTER_TAN * real::powi(w_home, d as i32));
-                        (at_home.f.du().across(s_home), scale)
+                        (at_home.f.partial(0).across(s_home), scale)
                     };
                     for qu in 0..4 {
                         let (_, alpha, _) = chart(qu);
@@ -800,8 +801,8 @@ impl<'a> PatchedSection<'a> {
                             bernstein::mul(&power(d - 1), &turn, &binomials)
                         };
                         if let Some(patch) = self.patches.get_mut(4 * qu + qv) {
-                            let less = Poly2::outer(&along, &left);
-                            patch.f = Poly2::combine(&[(1.0, &patch.f), (-scale, &less)]);
+                            let less = PolyN::outer([&along, &left]);
+                            patch.f = PolyN::combine(&[(1.0, &patch.f), (-scale, &less)]);
                         }
                     }
                 }
@@ -829,7 +830,7 @@ impl<'a> PatchedSection<'a> {
                 middle < u0
             };
             if odd && flipped {
-                patch.f = Poly2::combine(&[(-1.0, &patch.f)]);
+                patch.f = PolyN::combine(&[(-1.0, &patch.f)]);
             }
             patch.floor = floor;
             worst = worst.max(floor);
@@ -888,7 +889,7 @@ impl<'a> PatchedSection<'a> {
                 None => 0.5 * (lo + hi) < u0,
             };
             if odd && flipped {
-                patch.f = Poly2::combine(&[(-1.0, &patch.f)]);
+                patch.f = PolyN::combine(&[(-1.0, &patch.f)]);
             }
             patch.floor = floor;
             worst = worst.max(floor);
@@ -954,7 +955,7 @@ impl<'a> PatchedSection<'a> {
     pub(crate) fn turning_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
         self.census(meter, |patch, meter| {
             let [_, n] = patch.f.degree();
-            let f_t = patch.f.dv();
+            let f_t = patch.f.partial(1);
             // A derivative's coefficient is the degree times a difference
             // of two of `f`'s.
             let floors = [patch.floor, 2.0 * n as f64 * patch.floor];
@@ -979,8 +980,8 @@ impl<'a> PatchedSection<'a> {
     /// within `near`; `floor` is the rounding of a coefficient of `f`.
     fn critical_isolation(
         &self,
-        f: &Poly2,
-        w: &Poly2,
+        f: &PolyN<2>,
+        w: &PolyN<2>,
         floor: f64,
         meter: &mut Meter,
     ) -> Result<Isolation, Halt<Continuum>> {
@@ -988,13 +989,13 @@ impl<'a> PatchedSection<'a> {
         let binomials = Binomials::new(self.binomial_degree);
         let d = degree as f64;
         let [m, n] = f.degree();
-        let g_s = Poly2::combine(&[
-            (1.0, &w.mul(&f.du(), &binomials)),
-            (-d, &w.du().mul(f, &binomials)),
+        let g_s = PolyN::combine(&[
+            (1.0, &w.mul(&f.partial(0), &binomials)),
+            (-d, &w.partial(0).mul(f, &binomials)),
         ]);
-        let g_t = Poly2::combine(&[
-            (1.0, &w.mul(&f.dv(), &binomials)),
-            (-d, &w.dv().mul(f, &binomials)),
+        let g_t = PolyN::combine(&[
+            (1.0, &w.mul(&f.partial(1), &binomials)),
+            (-d, &w.partial(1).mul(f, &binomials)),
         ]);
         // `w ≤ 1` times a derivative's rounding, and `|w_s| < 1`
         // times `d` of `f`'s own.
@@ -1044,14 +1045,14 @@ impl<'a> PatchedSection<'a> {
             } else {
                 continue;
             };
-            let cut = |p: &Poly2| {
+            let cut = |p: &PolyN<2>| {
                 if past_start {
-                    p.split_u(-d).0
+                    p.split(0, -d).0
                 } else {
-                    p.split_u(1.0 + d).0.split_u(1.0 / (1.0 + d)).1
+                    p.split(0, 1.0 + d).0.split(0, 1.0 / (1.0 + d)).1
                 }
             };
-            let slab = |p: &Poly2| {
+            let slab = |p: &PolyN<2>| {
                 if k == 0 {
                     cut(p)
                 } else {
@@ -1098,18 +1099,26 @@ impl<'a> PatchedSection<'a> {
                 let (m, n) = (m as f64, n as f64);
                 let part = match probe {
                     Probe::F => patch.f.restricted(s, t).sign(patch.floor),
-                    Probe::Fs => patch.f.du().restricted(s, t).sign(2.0 * m * patch.floor),
-                    Probe::Ft => patch.f.dv().restricted(s, t).sign(2.0 * n * patch.floor),
+                    Probe::Fs => patch
+                        .f
+                        .partial(0)
+                        .restricted(s, t)
+                        .sign(2.0 * m * patch.floor),
+                    Probe::Ft => patch
+                        .f
+                        .partial(1)
+                        .restricted(s, t)
+                        .sign(2.0 * n * patch.floor),
                     Probe::Fvv => {
                         let binomials = Binomials::new(self.binomial_degree);
                         let (f, w) = (&patch.f, &patch.weight);
                         // `w·X_t − d·w_t·X`, twice: `w^(d+1)·F_t` and then
                         // a positive multiple of `∂²F/∂v²`, since a
                         // quarter's `dv/dt` is a constant over its weight.
-                        let weighed = |x: &Poly2| {
-                            Poly2::combine(&[
-                                (1.0, &w.mul(&x.dv(), &binomials)),
-                                (-d, &w.dv().mul(x, &binomials)),
+                        let weighed = |x: &PolyN<2>| {
+                            PolyN::combine(&[
+                                (1.0, &w.mul(&x.partial(1), &binomials)),
+                                (-d, &w.partial(1).mul(x, &binomials)),
                             ])
                         };
                         let g = weighed(f);
@@ -1176,11 +1185,11 @@ impl<'a> PatchedSection<'a> {
             };
             let [_, n] = below.f.degree();
             let [_, n_above] = above.f.degree();
-            let (slope_below, slope_above) = (below.f.dv(), above.f.dv());
+            let (slope_below, slope_above) = (below.f.partial(1), above.f.partial(1));
             let line = below.f.along(1.0);
             for s in sign_change_candidates(&line, below.floor) {
-                let lo = slope_below.eval(s, 1.0);
-                let hi = slope_above.eval(s, 0.0);
+                let lo = slope_below.eval([s, 1.0]);
+                let hi = slope_above.eval([s, 0.0]);
                 let clear = lo.abs() > 2.0 * n as f64 * below.floor
                     && hi.abs() > 2.0 * n_above as f64 * above.floor;
                 if clear && (lo > 0.0) != (hi > 0.0) {
@@ -1566,12 +1575,12 @@ mod tests {
                     for (s, t) in [(0.0, 0.0), (0.3, 0.8), (1.0, 0.45), (0.5, 0.5), (1.0, 1.0)] {
                         let [u, v] = [0, 1].map(|k| quarter_angle(patch.cell[k], [s, t][k]));
                         let p = section.implicit.frame.to_local(torus.point(u, v));
-                        let w = patch.weight.eval(s, t);
+                        let w = patch.weight.eval([s, t]);
                         let coords = [p.x, p.y, p.z, 1.0].map(|c| vec![c]);
                         let [x, y, z, one] = &coords;
                         let direct = section.implicit.along([x, y, z, one], &binomials)[0]
                             * real::powi(w, section.implicit.degree() as i32);
-                        let value = patch.f.eval(s, t);
+                        let value = patch.f.eval([s, t]);
                         assert!(
                             (value - direct).abs() <= 4.0 * section.floor,
                             "{name} R={major} r={minor} {:?}: {value} vs {direct}, floor {}",
@@ -1918,7 +1927,7 @@ mod tests {
                     for (s, t) in [(0.03, 0.2), (0.41, 0.9), (0.77, 0.5), (0.98, 0.1)] {
                         let u = quarter_angle(f.cell[0], s);
                         let factor = real::powi(real::sin(0.5 * (u - u0)), order as i32);
-                        let (was, is) = (f.f.eval(s, t), h.f.eval(s, t) * factor);
+                        let (was, is) = (f.f.eval([s, t]), h.f.eval([s, t]) * factor);
                         if was.abs() > 1e3 * whole.floor {
                             assert_eq!(was > 0.0, is > 0.0, "{u0}, order {order}, {:?}", f.cell);
                         }
@@ -2148,12 +2157,12 @@ mod tests {
                         let at = [0, 1].map(|k| section.param(patch, k, [s, t][k]));
                         let [u, v] = section.surface_uv(at);
                         let p = section.implicit.frame.to_local(nurbs.eval(u, v).point);
-                        let w = patch.weight.eval(s, t);
+                        let w = patch.weight.eval([s, t]);
                         let coords = [p.x, p.y, p.z, 1.0].map(|c| vec![c]);
                         let [x, y, z, one] = &coords;
                         let direct = section.implicit.along([x, y, z, one], &binomials)[0]
                             * real::powi(w, d);
-                        let value = patch.f.eval(s, t);
+                        let value = patch.f.eval([s, t]);
                         assert!(
                             (value - direct).abs() <= 4.0 * section.floor,
                             "{name} {:?}: {value} vs {direct}, floor {}",

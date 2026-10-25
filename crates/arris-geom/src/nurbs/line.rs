@@ -88,7 +88,8 @@ use super::NurbsSurface;
 use super::project::{LOCATION, Patch};
 use crate::FrameFault;
 use crate::bernstein::Binomials;
-use crate::bernstein2::{Gate, Halving, Poly2, Zero2, common_zeros_with};
+use crate::bernstein_n::PolyN;
+use crate::bernstein2::{Gate, Halving, Zero2, common_zeros_with};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, GeomKind, SurfaceEval};
@@ -378,8 +379,8 @@ struct Piece {
     /// The patch's box of the surface's parameters.
     span: [[f64; 2]; 2],
     /// `nₖ·(X − W·o)`.
-    h: [Poly2; 2],
-    w: Poly2,
+    h: [PolyN<2>; 2],
+    w: PolyN<2>,
     /// The rounding of each of `h`'s coefficients.
     floors: [f64; 2],
     /// Bounds on `|h|`'s and `w`'s coefficients.
@@ -438,12 +439,12 @@ impl Piece {
                     mw = mw.max(x.w);
                 }
                 let square = |c: Vec<f64>| {
-                    let poly = Poly2::new([p, q], c);
+                    let poly = PolyN::new([p, q], c);
                     poly.mul(&poly, binomials)
                 };
                 let (lx2, ly2) = (square(lx), square(ly));
                 let w2 = square(w.clone());
-                let e = Poly2::combine(&[(1.0, &lx2), (1.0, &ly2), (-1.0, &w2)]);
+                let e = PolyN::combine(&[(1.0, &lx2), (1.0, &ly2), (-1.0, &w2)]);
                 h[1] = e.coefficients().iter().map(|c| c * conic.scale()).collect();
             }
         }
@@ -487,8 +488,8 @@ impl Piece {
         };
         Piece {
             span: [patch.u, patch.v],
-            h: [Poly2::new(d0, h[0].clone()), Poly2::new(d1, h[1].clone())],
-            w: Poly2::new([p, q], w),
+            h: [PolyN::new(d0, h[0].clone()), PolyN::new(d1, h[1].clone())],
+            w: PolyN::new([p, q], w),
             floors,
             magnitude: [mh, mw],
             poles,
@@ -526,7 +527,7 @@ impl Piece {
 /// passes it within the tube — is dropped by the division, so it is
 /// carried as rounding too: the quotient is the polynomial of the
 /// surface with its pole moved onto the line, and the floors say so.
-fn over_row(p: &Poly2, (k, r): (usize, f64), floor: f64, b: &Binomials) -> (Poly2, f64) {
+fn over_row(p: &PolyN<2>, (k, r): (usize, f64), floor: f64, b: &Binomials) -> (PolyN<2>, f64) {
     let row = if k == 0 { p.across(r) } else { p.along(r) };
     let off = row.iter().fold(floor, |m, c| m.max(c.abs()));
     if k == 0 {
@@ -644,17 +645,17 @@ struct Collected {
 /// polynomials whose common zeros they are, the roundings of their
 /// coefficients, the fold gate and the tube gate with theirs.
 struct FoldSystem {
-    a: [Poly2; 2],
+    a: [PolyN<2>; 2],
     floors: [f64; 2],
-    fold: Poly2,
+    fold: PolyN<2>,
     floor_fold: f64,
-    tube: Poly2,
+    tube: PolyN<2>,
     floor_tube: f64,
 }
 
 /// A polynomial that only excludes, as [`Gate`] takes it.
 struct GateSpec<'a> {
-    poly: &'a Poly2,
+    poly: &'a PolyN<2>,
     floor: f64,
     one_sided: bool,
 }
@@ -703,7 +704,7 @@ impl Query<'_> {
     #[allow(clippy::too_many_arguments)] // the system, its floors and gates, the region and the recursion
     fn isolate(
         &self,
-        system: [&Poly2; 2],
+        system: [&PolyN<2>; 2],
         floors: [f64; 2],
         gates: &[GateSpec<'_>],
         region: [[f64; 2]; 2],
@@ -712,7 +713,7 @@ impl Query<'_> {
         meter: &mut Meter,
     ) -> Result<(), GeomError> {
         let whole = region == [[0.0, 1.0], [0.0, 1.0]];
-        let part = |p: &Poly2| {
+        let part = |p: &PolyN<2>| {
             if whole {
                 p.clone()
             } else {
@@ -720,7 +721,7 @@ impl Query<'_> {
             }
         };
         let parts = system.map(part);
-        let gate_parts: Vec<Poly2> = gates.iter().map(|g| part(g.poly)).collect();
+        let gate_parts: Vec<PolyN<2>> = gates.iter().map(|g| part(g.poly)).collect();
         let gates_here: Vec<Gate<'_>> = gates
             .iter()
             .zip(&gate_parts)
@@ -1021,38 +1022,38 @@ impl Query<'_> {
         let w = &piece.w;
         let [m, n] = h1.degree().map(|d| d as f64);
         let [mh, mw] = piece.magnitude;
-        let mul = |a: &Poly2, b: &Poly2| a.mul(b, binomials);
-        let fold = Poly2::combine(&[
-            (1.0, &mul(w, &mul(&h1.du(), &h2.dv()))),
-            (-1.0, &mul(w, &mul(&h2.du(), &h1.dv()))),
-            (1.0, &mul(&w.dv(), &mul(h1, &h2.du()))),
-            (-1.0, &mul(&w.dv(), &mul(h2, &h1.du()))),
-            (1.0, &mul(&w.du(), &mul(&h1.dv(), h2))),
-            (-1.0, &mul(&w.du(), &mul(&h2.dv(), h1))),
+        let mul = |a: &PolyN<2>, b: &PolyN<2>| a.mul(b, binomials);
+        let fold = PolyN::combine(&[
+            (1.0, &mul(w, &mul(&h1.partial(0), &h2.partial(1)))),
+            (-1.0, &mul(w, &mul(&h2.partial(0), &h1.partial(1)))),
+            (1.0, &mul(&w.partial(1), &mul(h1, &h2.partial(0)))),
+            (-1.0, &mul(&w.partial(1), &mul(h2, &h1.partial(0)))),
+            (1.0, &mul(&w.partial(0), &mul(&h1.partial(1), h2))),
+            (-1.0, &mul(&w.partial(0), &mul(&h2.partial(1), h1))),
         ]);
         let floor_fold = BERNSTEIN_ROUNDING * 24.0 * m * n * mw * mh * mh;
         if fold.sign(floor_fold).is_some() {
             return None;
         }
-        let gradient = |dh: [Poly2; 2], dw: Poly2| {
-            let terms: Vec<Poly2> = (0..2)
+        let gradient = |dh: [PolyN<2>; 2], dw: PolyN<2>| {
+            let terms: Vec<PolyN<2>> = (0..2)
                 .map(|k| {
                     let inner =
-                        Poly2::combine(&[(1.0, &mul(&dh[k], w)), (-1.0, &mul(&piece.h[k], &dw))]);
+                        PolyN::combine(&[(1.0, &mul(&dh[k], w)), (-1.0, &mul(&piece.h[k], &dw))]);
                     mul(&piece.h[k], &inner)
                 })
                 .collect();
-            Poly2::combine(&[(1.0, &terms[0]), (1.0, &terms[1])])
+            PolyN::combine(&[(1.0, &terms[0]), (1.0, &terms[1])])
         };
         let a = [
-            gradient([h1.du(), h2.du()], w.du()),
-            gradient([h1.dv(), h2.dv()], w.dv()),
+            gradient([h1.partial(0), h2.partial(0)], w.partial(0)),
+            gradient([h1.partial(1), h2.partial(1)], w.partial(1)),
         ];
         let floors = [
             BERNSTEIN_ROUNDING * 8.0 * m * mh * mh * mw,
             BERNSTEIN_ROUNDING * 8.0 * n * mh * mh * mw,
         ];
-        let tube = Poly2::combine(&[
+        let tube = PolyN::combine(&[
             (1.0, &mul(h1, h1)),
             (1.0, &mul(h2, h2)),
             (-self.tau * self.tau, &mul(w, w)),
@@ -1084,16 +1085,16 @@ impl Query<'_> {
     ) -> Option<FoldSystem> {
         let [h1, h2] = &piece.h;
         let w = &piece.w;
-        let mul = |a: &Poly2, b: &Poly2| a.mul(b, binomials);
-        let magnitude = |p: &Poly2| p.coefficients().iter().fold(0.0f64, |m, c| m.max(c.abs()));
-        let d = |h: &Poly2, e: f64, partial: &dyn Fn(&Poly2) -> Poly2| {
-            Poly2::combine(&[(1.0, &mul(&partial(h), w)), (-e, &mul(h, &partial(w)))])
+        let mul = |a: &PolyN<2>, b: &PolyN<2>| a.mul(b, binomials);
+        let magnitude = |p: &PolyN<2>| p.coefficients().iter().fold(0.0f64, |m, c| m.max(c.abs()));
+        let d = |h: &PolyN<2>, e: f64, partial: &dyn Fn(&PolyN<2>) -> PolyN<2>| {
+            PolyN::combine(&[(1.0, &mul(&partial(h), w)), (-e, &mul(h, &partial(w)))])
         };
-        let du = |p: &Poly2| p.du();
-        let dv = |p: &Poly2| p.dv();
+        let du = |p: &PolyN<2>| p.partial(0);
+        let dv = |p: &PolyN<2>| p.partial(1);
         let (d1u, d1v) = (d(h1, 1.0, &du), d(h1, 1.0, &dv));
         let (d2u, d2v) = (d(h2, 2.0, &du), d(h2, 2.0, &dv));
-        let fold = Poly2::combine(&[(1.0, &mul(&d1u, &d2v)), (-1.0, &mul(&d1v, &d2u))]);
+        let fold = PolyN::combine(&[(1.0, &mul(&d1u, &d2v)), (-1.0, &mul(&d1v, &d2u))]);
         let [m, n] = fold.degree().map(|x| x as f64);
         let growth = 2.0 * (m + n + 2.0);
         let floor_fold = BERNSTEIN_ROUNDING
@@ -1103,8 +1104,8 @@ impl Query<'_> {
             return None;
         }
         let w2 = mul(w, w);
-        let gradient = |d1: &Poly2, d2: &Poly2| {
-            Poly2::combine(&[(1.0, &mul(&mul(&w2, h1), d1)), (1.0, &mul(h2, d2))])
+        let gradient = |d1: &PolyN<2>, d2: &PolyN<2>| {
+            PolyN::combine(&[(1.0, &mul(&mul(&w2, h1), d1)), (1.0, &mul(h2, d2))])
         };
         let a = [gradient(&d1u, &d2u), gradient(&d1v, &d2v)];
         let floors = [0, 1].map(|k| {
@@ -1118,7 +1119,7 @@ impl Query<'_> {
         let [lo, hi] = [0, 1].map(|k| conic.radii[k]);
         let reach = self.tau * (1.0 + self.tau / lo.min(hi));
         let w4 = mul(&w2, &w2);
-        let tube = Poly2::combine(&[
+        let tube = PolyN::combine(&[
             (1.0, &mul(&w2, &mul(h1, h1))),
             (1.0, &mul(h2, h2)),
             (-reach * reach, &w4),

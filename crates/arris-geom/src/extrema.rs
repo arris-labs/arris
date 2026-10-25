@@ -72,7 +72,8 @@ use arris_math::real;
 use arris_math::{DisjointSets, Meter, Point3, Tolerance, Vec3, wrap_angle};
 
 use crate::bernstein::{self, Binomials, sign_change_candidates};
-use crate::bernstein2::{self, Halving, Poly2, Zero2, common_zeros_with};
+use crate::bernstein_n::PolyN;
+use crate::bernstein2::{self, Halving, Zero2, common_zeros_with};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveProjection, GeomError, NurbsCurve};
@@ -618,15 +619,15 @@ impl T1 {
 
 /// [`T1`] in two variables.
 struct T2 {
-    v: Poly2,
-    m: Poly2,
+    v: PolyN<2>,
+    m: PolyN<2>,
 }
 
 impl T2 {
     fn outer(a: &T1, b: &T1) -> T2 {
         T2 {
-            v: Poly2::outer(&a.v, &b.v),
-            m: Poly2::outer(&a.m, &b.m),
+            v: PolyN::outer([&a.v, &b.v]),
+            m: PolyN::outer([&a.m, &b.m]),
         }
     }
 
@@ -638,11 +639,11 @@ impl T2 {
     }
 
     fn sum(terms: &[(f64, &T2)]) -> T2 {
-        let v: Vec<(f64, &Poly2)> = terms.iter().map(|(k, p)| (*k, &p.v)).collect();
-        let m: Vec<(f64, &Poly2)> = terms.iter().map(|(k, p)| (k.abs(), &p.m)).collect();
+        let v: Vec<(f64, &PolyN<2>)> = terms.iter().map(|(k, p)| (*k, &p.v)).collect();
+        let m: Vec<(f64, &PolyN<2>)> = terms.iter().map(|(k, p)| (k.abs(), &p.m)).collect();
         T2 {
-            v: Poly2::combine(&v),
-            m: Poly2::combine(&m),
+            v: PolyN::combine(&v),
+            m: PolyN::combine(&m),
         }
     }
 
@@ -1318,7 +1319,7 @@ fn bounded_bounded(
 struct System<'p, 'c> {
     a: &'p Piece<'c>,
     b: &'p Piece<'c>,
-    e: [Poly2; 2],
+    e: [PolyN<2>; 2],
     floors: [f64; 2],
 }
 

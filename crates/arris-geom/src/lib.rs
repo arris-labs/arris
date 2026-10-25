@@ -20,13 +20,6 @@
 mod arc;
 mod bernstein;
 mod bernstein2;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "some items are read by the module's tests only, the intersectors do not reach them"
-    )
-)]
 mod bernstein_n;
 mod by_distance;
 mod cone_section;
