@@ -94,7 +94,7 @@ robustness or bound has to be established here.
   no `corpus/` file past 1000 lines.
 - [x] Step 7 **[1]** — `prop::recipe::write` per shape and op family; the
   property tests' recipes (seeded) serialise byte-identically.
-- [ ] Step 8 **[2]** — `tessellate_under` by phase; the mesh corpus and
+- [x] Step 8 **[2]** — `tessellate_under` by phase; the mesh corpus and
   `mesh/` dumps unchanged.
 - [ ] Step 9 **[1]** — `boolean_each_witnessed` by phase, `boolean/dump.rs`;
   `fn_lengths.py` shows none of the six past 150 and no new one.

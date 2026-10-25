@@ -9,8 +9,10 @@ use arris_check::domain::FaceDomain;
 use arris_geom::Surface;
 use arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Polygon2};
 use arris_math::{Control, Interval, Meter, Point2, UnitVec3, Vec3};
-use arris_topo::entity::EdgeGeometry;
-use arris_topo::{Body, EdgeId, FaceId, Model, NotFound, Orientation, VertexId};
+use arris_topo::entity::{Coedge, EdgeGeometry, Loop};
+use arris_topo::{
+    Body, Edge, EdgeId, Face, FaceId, Model, NotFound, Orientation, Vertex, VertexId,
+};
 
 use crate::cdt::{self, CdtError, VertexRef};
 use crate::corners::{CornerFace, Corners};
@@ -274,7 +276,6 @@ fn tessellate_under(
     control: &Control<'_>,
     with_rings: bool,
 ) -> Result<TriMesh, MeshError> {
-    let mut meter = Meter::new(control);
     let chord = request.chord;
     if !(chord.is_finite() && chord > 0.0) {
         return Err(MeshError::Chord(chord));
@@ -292,232 +293,315 @@ fn tessellate_under(
             });
         }
     }
-    let all_faces = m.faces(body)?;
-    let wanted: Option<BTreeSet<FaceId>> = match subset {
-        None => None,
-        Some(ids) => {
-            let known: BTreeSet<FaceId> = all_faces.iter().map(|f| f.id).collect();
-            if let Some(&face) = ids.iter().find(|id| !known.contains(id)) {
-                return Err(MeshError::NotInBody { face, body });
-            }
-            Some(ids.iter().copied().collect())
-        }
-    };
-    let faces: Vec<_> = all_faces
-        .iter()
-        .filter(|f| wanted.as_ref().is_none_or(|w| w.contains(&f.id)))
-        .collect();
-    // The edges the subset's loops use, and so the vertices they end at;
-    // the whole body's for the whole body.
-    let mut used: BTreeSet<EdgeId> = BTreeSet::new();
-    for f in &faces {
-        for coedge in m.face(f.id)?.loops().iter().flat_map(|l| l.coedges()) {
-            used.insert(coedge.edge());
+    let mut t = Tessellation::select(m, body, subset, request, control, with_rings)?;
+    let (required, domains) = t.edge_counts()?;
+    let (mut mesh, samples) = t.edge_samples(&required)?;
+    let (works, mut block) = t.face_works(&mut mesh, &samples, &domains)?;
+
+    // Pass four: each face's CDT and the mapping of its triangle corners
+    // back to the shared indices — the compute-heavy, purely local step,
+    // over `rayon` behind `parallel`, sequential otherwise; either way
+    // the results are collected in face order before they reach `mesh`,
+    // so the mesh is identical with the feature on or off.
+    for (w, triangles) in works.iter().zip(triangulate_faces(&works, &mut t.meter)?) {
+        mesh.push_face(w.face, triangles.shared)?;
+        if let Some(block) = block.as_mut() {
+            block.triangles.extend(triangles.local);
         }
     }
-    let edges: Vec<_> = m
-        .edges(body)?
-        .into_iter()
-        .filter(|e| wanted.is_none() || used.contains(&e.id))
-        .collect();
-    let vertices: Vec<_> = if wanted.is_none() {
-        m.vertices(body)?
-    } else {
-        let mut ends: BTreeSet<VertexId> = BTreeSet::new();
-        for e in &edges {
-            let edge = m.edge(e.id)?;
-            ends.insert(edge.start());
-            ends.insert(edge.end());
-        }
-        m.vertices(body)?
-            .into_iter()
-            .filter(|v| ends.contains(&v.id))
-            .collect()
-    };
+    match block {
+        Some(block) => mesh.with_corners(block.finish()?),
+        None => Ok(mesh),
+    }
+}
 
-    // Pass one: what each face asks of the edges it uses, so a step along
-    // an edge never travels farther in (u, v) than the surface allows,
-    // and the (u, v) box and step each face's interior grid stands on.
-    // Every face of the body is read for the edges the subset uses, the
-    // faces outside it included, so an edge's count is the same whichever
-    // faces are meshed (ADR-0052).
-    let mut required: BTreeMap<EdgeId, usize> = BTreeMap::new();
-    let mut domains: Vec<([Interval; 2], [f64; 2])> = Vec::with_capacity(faces.len());
-    for f in &all_faces {
-        meter.tick()?;
-        let mine = wanted.as_ref().is_none_or(|w| w.contains(&f.id));
-        let face = m.face(f.id)?;
-        let surface = m.surface(face.surface())?;
-        // The face's whole (u, v) box and its steps: the interior grid's,
-        // and the fallback of a coedge whose own box is not an interval.
-        // Read once, and only for a face of the subset or a coedge that
-        // needs it.
-        let mut whole: Option<([Interval; 2], [f64; 2])> = None;
-        let whole_of = |whole: &mut Option<([Interval; 2], [f64; 2])>| {
-            if let Some(w) = *whole {
-                return Ok::<_, MeshError>(w);
-            }
-            // The (u, v) box holding the loops' true boundary, read at
-            // the requested chord; the whole plane for a face with no
-            // loop.
-            let bounds = FaceDomain::of(m, f.id, chord)?
-                .uv_box()
-                .unwrap_or([Interval::REAL; 2]);
-            let w = (bounds, surface.chord_steps(chord, bounds));
-            *whole = Some(w);
-            Ok(w)
-        };
-        if mine {
-            domains.push(whole_of(&mut whole)?);
-        }
-        for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
-            if !used.contains(&coedge.edge()) {
-                continue;
-            }
-            let edge = m.edge(coedge.edge())?;
-            let range = edge.range();
-            let pcurve = m.curve2(coedge.pcurve())?;
-            let speed = pcurve.speed_bounds(range);
-            let steps = match edge.geometry() {
-                EdgeGeometry::Curve { .. } => {
-                    let mut band = [(f64::INFINITY, f64::NEG_INFINITY); 2];
-                    for i in 0..=OWN_BOX_SAMPLES {
-                        let p = pcurve.point(range.lerp(i as f64 / OWN_BOX_SAMPLES as f64));
-                        for (b, c) in band.iter_mut().zip([p.x, p.y]) {
-                            *b = (b.0.min(c), b.1.max(c));
-                        }
-                    }
-                    match (
-                        Interval::new(band[0].0, band[0].1),
-                        Interval::new(band[1].0, band[1].1),
-                    ) {
-                        (Ok(u), Ok(v)) => surface.chord_steps_along(chord, [u, v]),
-                        _ => whole_of(&mut whole)?.1,
-                    }
+/// A (u, v) box and the steps that fit a face's chord bound inside it.
+type UvDomain = ([Interval; 2], [f64; 2]);
+
+/// One tessellation under way: the model and request, the cancellation
+/// meter, and what the body and the face subset select — the faces of
+/// the whole body, the subset among them, the edges and vertices the
+/// subset's loops use. The phases are its methods, called in order by
+/// [`tessellate_under`].
+struct Tessellation<'a> {
+    m: &'a Model,
+    request: &'a MeshRequest,
+    chord: f64,
+    with_rings: bool,
+    meter: Meter<'a>,
+    all_faces: Vec<Face>,
+    wanted: Option<BTreeSet<FaceId>>,
+    used: BTreeSet<EdgeId>,
+    edges: Vec<Edge>,
+    vertices: Vec<Vertex>,
+}
+
+impl<'a> Tessellation<'a> {
+    /// The faces, edges and vertices `subset` of `body` selects (all of
+    /// them for `None`). Errors: [`MeshError::NotInBody`] for a face the
+    /// body does not have.
+    fn select(
+        m: &'a Model,
+        body: Body,
+        subset: Option<&[FaceId]>,
+        request: &'a MeshRequest,
+        control: &Control<'a>,
+        with_rings: bool,
+    ) -> Result<Self, MeshError> {
+        let meter = Meter::new(control);
+        let all_faces = m.faces(body)?;
+        let wanted: Option<BTreeSet<FaceId>> = match subset {
+            None => None,
+            Some(ids) => {
+                let known: BTreeSet<FaceId> = all_faces.iter().map(|f| f.id).collect();
+                if let Some(&face) = ids.iter().find(|id| !known.contains(id)) {
+                    return Err(MeshError::NotInBody { face, body });
                 }
-                // A degenerate edge's range is one index: its count
-                // never reaches a neighbour (ADR-0052 §1).
-                EdgeGeometry::Degenerate { .. } => whole_of(&mut whole)?.1,
-            };
-            let mut n = 0usize;
-            for dir in 0..2 {
-                let travel = range.length() * speed[dir];
-                if travel <= 0.0 {
+                Some(ids.iter().copied().collect())
+            }
+        };
+        // The edges the subset's loops use, and so the vertices they end at;
+        // the whole body's for the whole body.
+        let mut used: BTreeSet<EdgeId> = BTreeSet::new();
+        for f in all_faces
+            .iter()
+            .filter(|f| wanted.as_ref().is_none_or(|w| w.contains(&f.id)))
+        {
+            for coedge in m.face(f.id)?.loops().iter().flat_map(|l| l.coedges()) {
+                used.insert(coedge.edge());
+            }
+        }
+        let edges: Vec<_> = m
+            .edges(body)?
+            .into_iter()
+            .filter(|e| wanted.is_none() || used.contains(&e.id))
+            .collect();
+        let vertices: Vec<_> = if wanted.is_none() {
+            m.vertices(body)?
+        } else {
+            let mut ends: BTreeSet<VertexId> = BTreeSet::new();
+            for e in &edges {
+                let edge = m.edge(e.id)?;
+                ends.insert(edge.start());
+                ends.insert(edge.end());
+            }
+            m.vertices(body)?
+                .into_iter()
+                .filter(|v| ends.contains(&v.id))
+                .collect()
+        };
+        Ok(Tessellation {
+            m,
+            request,
+            chord: request.chord,
+            with_rings,
+            meter,
+            all_faces,
+            wanted,
+            used,
+            edges,
+            vertices,
+        })
+    }
+
+    /// Whether `face` is one of the faces being meshed.
+    fn is_mine(&self, face: FaceId) -> bool {
+        self.wanted.as_ref().is_none_or(|w| w.contains(&face))
+    }
+
+    /// Pass one: what each face asks of the edges it uses, so a step along
+    /// an edge never travels farther in (u, v) than the surface allows,
+    /// and the (u, v) box and step each face's interior grid stands on.
+    /// Every face of the body is read for the edges the subset uses, the
+    /// faces outside it included, so an edge's count is the same whichever
+    /// faces are meshed (ADR-0052). Returns the segment count each edge
+    /// needs and the domains of the faces meshed, in their order.
+    fn edge_counts(&mut self) -> Result<(BTreeMap<EdgeId, usize>, Vec<UvDomain>), MeshError> {
+        let m = self.m;
+        let mut required: BTreeMap<EdgeId, usize> = BTreeMap::new();
+        let mut domains: Vec<UvDomain> = Vec::new();
+        for f in &self.all_faces {
+            self.meter.tick()?;
+            let face = m.face(f.id)?;
+            let surface = m.surface(face.surface())?;
+            // The face's whole (u, v) box and its steps: the interior grid's,
+            // and the fallback of a coedge whose own box is not an interval.
+            // Read once, and only for a face of the subset or a coedge that
+            // needs it.
+            let mut whole: Option<UvDomain> = None;
+            if self.is_mine(f.id) {
+                domains.push(whole_domain(m, f.id, surface, self.chord, &mut whole)?);
+            }
+            for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
+                if !self.used.contains(&coedge.edge()) {
                     continue;
                 }
-                let count = (travel / steps[dir]).ceil();
-                n = n.max(if count.is_finite() {
-                    count as usize
-                } else {
-                    MAX_SEGMENTS_PER_PIECE
-                });
+                let n = self.coedge_count(f.id, surface, coedge, &mut whole)?;
+                let entry = required.entry(coedge.edge()).or_default();
+                *entry = (*entry).max(n);
             }
-            let entry = required.entry(coedge.edge()).or_default();
-            *entry = (*entry).max(n);
         }
+        Ok((required, domains))
     }
 
-    // Pass two: every vertex a position, every edge a run of samples.
-    let mut mesh = TriMesh::new();
-    let mut vertex_index: BTreeMap<VertexId, u32> = BTreeMap::new();
-    for v in &vertices {
-        let p = m.vertex(v.id)?.point();
-        let index = mesh.push_position([p.x, p.y, p.z])?;
-        vertex_index.insert(v.id, index);
-    }
-    let mut samples: BTreeMap<EdgeId, EdgeSamples> = BTreeMap::new();
-    for e in &edges {
-        meter.tick()?;
-        let edge = m.edge(e.id)?;
+    /// The segments `coedge` of `face` asks of its edge: the most any
+    /// direction of its pcurve needs to stay within a step of `surface`.
+    fn coedge_count(
+        &self,
+        face: FaceId,
+        surface: &Surface,
+        coedge: &Coedge,
+        whole: &mut Option<UvDomain>,
+    ) -> Result<usize, MeshError> {
+        let (m, chord) = (self.m, self.chord);
+        let edge = m.edge(coedge.edge())?;
         let range = edge.range();
-        let start = *vertex_index
-            .get(&edge.start())
-            .ok_or(NotFound::new(edge.start()))?;
-        let end = *vertex_index
-            .get(&edge.end())
-            .ok_or(NotFound::new(edge.end()))?;
-        let curve = match edge.geometry() {
-            EdgeGeometry::Curve { curve, .. } => Some(m.curve(curve)?),
-            EdgeGeometry::Degenerate { .. } => None,
-        };
-        let n = curve
-            .map_or(1, |c| c.chord_segments(range, chord))
-            .max(required.get(&e.id).copied().unwrap_or(0))
-            .clamp(1, MAX_SEGMENTS_PER_PIECE);
-        let params: Vec<f64> = (0..=n).map(|i| range.lerp(i as f64 / n as f64)).collect();
-        let indices = match curve {
-            Some(c) => {
-                let mut indices = Vec::with_capacity(n + 1);
-                indices.push(start);
-                for &t in &params[1..n] {
-                    let p = c.point(t);
-                    indices.push(mesh.push_position([p.x, p.y, p.z])?);
+        let pcurve = m.curve2(coedge.pcurve())?;
+        let speed = pcurve.speed_bounds(range);
+        let steps = match edge.geometry() {
+            EdgeGeometry::Curve { .. } => {
+                let mut band = [(f64::INFINITY, f64::NEG_INFINITY); 2];
+                for i in 0..=OWN_BOX_SAMPLES {
+                    let p = pcurve.point(range.lerp(i as f64 / OWN_BOX_SAMPLES as f64));
+                    for (b, c) in band.iter_mut().zip([p.x, p.y]) {
+                        *b = (b.0.min(c), b.1.max(c));
+                    }
                 }
-                indices.push(end);
-                indices
+                match (
+                    Interval::new(band[0].0, band[0].1),
+                    Interval::new(band[1].0, band[1].1),
+                ) {
+                    (Ok(u), Ok(v)) => surface.chord_steps_along(chord, [u, v]),
+                    _ => whole_domain(m, face, surface, chord, whole)?.1,
+                }
             }
-            None => vec![start; n + 1],
+            // A degenerate edge's range is one index: its count
+            // never reaches a neighbour (ADR-0052 §1).
+            EdgeGeometry::Degenerate { .. } => whole_domain(m, face, surface, chord, whole)?.1,
         };
-        if curve.is_some() {
-            mesh.push_edge(e.id, &indices)?;
-        } else {
-            mesh.push_edge(e.id, &[start])?;
+        let mut n = 0usize;
+        for dir in 0..2 {
+            let travel = range.length() * speed[dir];
+            if travel <= 0.0 {
+                continue;
+            }
+            let count = (travel / steps[dir]).ceil();
+            n = n.max(if count.is_finite() {
+                count as usize
+            } else {
+                MAX_SEGMENTS_PER_PIECE
+            });
         }
-        samples.insert(e.id, EdgeSamples { params, indices });
+        Ok(n)
     }
 
-    // Pass three: every face's loops through its pcurves at the edges'
-    // parameters, mapped back to the shared indices, positions pushed —
-    // all sequential, since the shared position buffer's indices depend
-    // on push order. What is left, [`triangulate_face`]'s CDT, touches
-    // only its own face's data and runs in parallel behind `parallel`.
-    let mut works: Vec<FaceWork> = Vec::with_capacity(faces.len());
-    let mut block = request.corners.then(CornerBlock::default);
-    for (k, f) in faces.iter().enumerate() {
-        meter.tick()?;
+    /// Pass two: every vertex a position, every edge a run of samples.
+    /// Returns the mesh so far and each edge's samples.
+    fn edge_samples(
+        &mut self,
+        required: &BTreeMap<EdgeId, usize>,
+    ) -> Result<(TriMesh, BTreeMap<EdgeId, EdgeSamples>), MeshError> {
+        let (m, chord) = (self.m, self.chord);
+        let mut mesh = TriMesh::new();
+        let mut vertex_index: BTreeMap<VertexId, u32> = BTreeMap::new();
+        for v in &self.vertices {
+            let p = m.vertex(v.id)?.point();
+            let index = mesh.push_position([p.x, p.y, p.z])?;
+            vertex_index.insert(v.id, index);
+        }
+        let mut samples: BTreeMap<EdgeId, EdgeSamples> = BTreeMap::new();
+        for e in &self.edges {
+            self.meter.tick()?;
+            let edge = m.edge(e.id)?;
+            let range = edge.range();
+            let start = *vertex_index
+                .get(&edge.start())
+                .ok_or(NotFound::new(edge.start()))?;
+            let end = *vertex_index
+                .get(&edge.end())
+                .ok_or(NotFound::new(edge.end()))?;
+            let curve = match edge.geometry() {
+                EdgeGeometry::Curve { curve, .. } => Some(m.curve(curve)?),
+                EdgeGeometry::Degenerate { .. } => None,
+            };
+            let n = curve
+                .map_or(1, |c| c.chord_segments(range, chord))
+                .max(required.get(&e.id).copied().unwrap_or(0))
+                .clamp(1, MAX_SEGMENTS_PER_PIECE);
+            let params: Vec<f64> = (0..=n).map(|i| range.lerp(i as f64 / n as f64)).collect();
+            let indices = match curve {
+                Some(c) => {
+                    let mut indices = Vec::with_capacity(n + 1);
+                    indices.push(start);
+                    for &t in &params[1..n] {
+                        let p = c.point(t);
+                        indices.push(mesh.push_position([p.x, p.y, p.z])?);
+                    }
+                    indices.push(end);
+                    indices
+                }
+                None => vec![start; n + 1],
+            };
+            if curve.is_some() {
+                mesh.push_edge(e.id, &indices)?;
+            } else {
+                mesh.push_edge(e.id, &[start])?;
+            }
+            samples.insert(e.id, EdgeSamples { params, indices });
+        }
+        Ok((mesh, samples))
+    }
+
+    /// Pass three: every face's loops through its pcurves at the edges'
+    /// parameters, mapped back to the shared indices, positions pushed —
+    /// all sequential, since the shared position buffer's indices depend
+    /// on push order. What is left, [`triangulate_face`]'s CDT, touches
+    /// only its own face's data and runs in parallel behind `parallel`.
+    /// `domains` are [`Self::edge_counts`]'s, in the order of the faces
+    /// meshed.
+    fn face_works(
+        &mut self,
+        mesh: &mut TriMesh,
+        samples: &BTreeMap<EdgeId, EdgeSamples>,
+        domains: &[UvDomain],
+    ) -> Result<(Vec<FaceWork>, Option<CornerBlock>), MeshError> {
+        let faces: Vec<Face> = self
+            .all_faces
+            .iter()
+            .filter(|f| self.is_mine(f.id))
+            .cloned()
+            .collect();
+        let mut works: Vec<FaceWork> = Vec::with_capacity(faces.len());
+        let mut block = self.request.corners.then(CornerBlock::default);
+        for (k, f) in faces.iter().enumerate() {
+            self.meter.tick()?;
+            let domain = domains.get(k).copied().ok_or(NotFound::new(f.id))?;
+            works.push(self.face_work(f, domain, mesh, samples, block.as_mut())?);
+        }
+        Ok((works, block))
+    }
+
+    /// One face's CDT input, pushing its interior positions into `mesh`
+    /// and its face-local vertices into `block`.
+    fn face_work(
+        &mut self,
+        f: &Face,
+        (bounds, steps): UvDomain,
+        mesh: &mut TriMesh,
+        samples: &BTreeMap<EdgeId, EdgeSamples>,
+        block: Option<&mut CornerBlock>,
+    ) -> Result<FaceWork, MeshError> {
+        let m = self.m;
         let face = m.face(f.id)?;
         let mut polygons: Vec<Polygon2> = Vec::with_capacity(face.loops().len());
         let mut rings: Vec<Vec<u32>> = Vec::with_capacity(face.loops().len());
         for l in face.loops() {
-            let mut points: Vec<Point2> = Vec::new();
-            let mut indices: Vec<u32> = Vec::new();
-            for coedge in l.coedges() {
-                let s = samples
-                    .get(&coedge.edge())
-                    .ok_or(NotFound::new(coedge.edge()))?;
-                let pcurve = m.curve2(coedge.pcurve())?;
-                let n = s.params.len() - 1;
-                // All but the last sample in walking order: the next
-                // coedge's first sample is the junction.
-                let order: Vec<usize> = if coedge.orientation() == Orientation::Forward {
-                    (0..n).collect()
-                } else {
-                    (1..=n).rev().collect()
-                };
-                for i in order {
-                    let uv = pcurve.point(s.params[i]);
-                    if points.last() != Some(&uv) {
-                        points.push(uv);
-                        indices.push(s.indices[i]);
-                    }
-                }
-            }
-            if points.len() > 1 && points.first() == points.last() {
-                points.pop();
-                indices.pop();
-            }
-            let polygon = Polygon2::from_points(points.iter().copied());
-            if polygon.points().len() != indices.len() {
-                return Err(MeshError::Internal(
-                    "a loop's ring and its index ring differ in length",
-                ));
-            }
+            let (polygon, indices) = loop_ring(m, l, samples)?;
             polygons.push(polygon);
             rings.push(indices);
         }
         // The interior points the surface's curvature asks for, each a
         // position of its own on the surface.
-        let (bounds, steps) = domains.get(k).copied().ok_or(NotFound::new(f.id))?;
         let surface = m.surface(face.surface())?;
         let mut interior = interior_grid(f.id, &polygons, bounds, steps)?;
         // A face with a degenerate edge — a cone reaching its apex —
@@ -530,13 +614,13 @@ fn tessellate_under(
             .collect::<Result<Vec<bool>, _>>()?
             .into_iter()
             .any(|d| d);
-        if with_rings && !collapsed {
-            let rings = cone_rings(f.id, surface, &polygons, bounds, chord, interior.len())?;
+        if self.with_rings && !collapsed {
+            let rings = cone_rings(f.id, surface, &polygons, bounds, self.chord, interior.len())?;
             interior.extend(rings);
         }
         let mut interior_indices: Vec<u32> = Vec::with_capacity(interior.len());
         for uv in &interior {
-            meter.tick()?;
+            self.meter.tick()?;
             let p = surface.point(uv.x, uv.y);
             interior_indices.push(mesh.push_position([p.x, p.y, p.z])?);
         }
@@ -556,7 +640,7 @@ fn tessellate_under(
         // block: its loop samples in ring order, then its interior
         // points, each with the (u, v) the CDT was given unscaled and
         // the outward normal there (ADR-0012).
-        let corners = match block.as_mut() {
+        let corners = match block {
             Some(block) => Some(block.push_face(
                 f.id,
                 surface,
@@ -569,7 +653,7 @@ fn tessellate_under(
             )?),
             None => None,
         };
-        works.push(FaceWork {
+        Ok(FaceWork {
             face: f.id,
             reversed,
             polygons: scaled,
@@ -577,24 +661,73 @@ fn tessellate_under(
             rings,
             interior_indices,
             corners,
-        });
+        })
     }
+}
 
-    // Pass four: each face's CDT and the mapping of its triangle corners
-    // back to the shared indices — the compute-heavy, purely local step,
-    // over `rayon` behind `parallel`, sequential otherwise; either way
-    // the results are collected in face order before they reach `mesh`,
-    // so the mesh is identical with the feature on or off.
-    for (w, triangles) in works.iter().zip(triangulate_faces(&works, &mut meter)?) {
-        mesh.push_face(w.face, triangles.shared)?;
-        if let Some(block) = block.as_mut() {
-            block.triangles.extend(triangles.local);
+/// `face`'s whole (u, v) box and its steps, read once into `whole`. The
+/// box holds the loops' true boundary, read at the requested chord; the
+/// whole plane for a face with no loop.
+fn whole_domain(
+    m: &Model,
+    face: FaceId,
+    surface: &Surface,
+    chord: f64,
+    whole: &mut Option<UvDomain>,
+) -> Result<UvDomain, MeshError> {
+    if let Some(w) = *whole {
+        return Ok(w);
+    }
+    let bounds = FaceDomain::of(m, face, chord)?
+        .uv_box()
+        .unwrap_or([Interval::REAL; 2]);
+    let w = (bounds, surface.chord_steps(chord, bounds));
+    *whole = Some(w);
+    Ok(w)
+}
+
+/// One loop of a face as a polygon in (u, v) and the shared mesh index of
+/// each of its points: the loop's pcurves at the edges' sample parameters,
+/// the junction of two coedges once.
+fn loop_ring(
+    m: &Model,
+    l: &Loop,
+    samples: &BTreeMap<EdgeId, EdgeSamples>,
+) -> Result<(Polygon2, Vec<u32>), MeshError> {
+    let mut points: Vec<Point2> = Vec::new();
+    let mut indices: Vec<u32> = Vec::new();
+    for coedge in l.coedges() {
+        let s = samples
+            .get(&coedge.edge())
+            .ok_or(NotFound::new(coedge.edge()))?;
+        let pcurve = m.curve2(coedge.pcurve())?;
+        let n = s.params.len() - 1;
+        // All but the last sample in walking order: the next
+        // coedge's first sample is the junction.
+        let order: Vec<usize> = if coedge.orientation() == Orientation::Forward {
+            (0..n).collect()
+        } else {
+            (1..=n).rev().collect()
+        };
+        for i in order {
+            let uv = pcurve.point(s.params[i]);
+            if points.last() != Some(&uv) {
+                points.push(uv);
+                indices.push(s.indices[i]);
+            }
         }
     }
-    match block {
-        Some(block) => mesh.with_corners(block.finish()?),
-        None => Ok(mesh),
+    if points.len() > 1 && points.first() == points.last() {
+        points.pop();
+        indices.pop();
     }
+    let polygon = Polygon2::from_points(points.iter().copied());
+    if polygon.points().len() != indices.len() {
+        return Err(MeshError::Internal(
+            "a loop's ring and its index ring differ in length",
+        ));
+    }
+    Ok((polygon, indices))
 }
 
 /// The corner block under construction: the three vertex arrays, the
