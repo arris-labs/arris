@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24; `sweep-skeleton` done and retired 2026-10-25
+- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24; `sweep-skeleton` done and retired 2026-10-25; `one-bernstein` absorbed by plans/one-bernstein
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -38,24 +38,9 @@ algorithms).
 Done (its `Cavity` drift read: `Profile::edges` keeps the consumer's loop
 order, so the two namings agree).
 
-### For a `one-bernstein` plan (read)
-- **`geom/bernstein_n.rs` (`PolyN<N>`) carries `bernstein2.rs`'s `Poly2`
-  algorithm to N dimensions.**
-  - It has the same box tests, Krawczyk certificate, `Cell`, `Gate`,
-    `Isolation`, `Continuum` and wrap merge.
-  - It imports `bernstein2`'s constants and `Range`.
-  - The one behavioural difference is `excluded_together` (exclusion by a
-    row of `Y·F`), which the 2-D isolation lacks.
-- → `Poly2` becomes `PolyN<2>`, with its 2-D extras (`across`, `along`,
-  `over_linear`, `transposed`) as `impl PolyN<2>`. One `common_zeros::<N>`
-  remains, with the joint exclusion off for N = 2, so that every 2-D
-  isolation stays bit-identical.
-- **The three section tracers stay separate algorithms:** `trace`,
-  `trace_torus` + `torus_walk`, and `march` + `march/walk`. They already
-  share one output (`SectionBranch`).
-  - `torus_walk.rs` is the largest file (3471 lines; `chained` alone is
-    251) and splits by phase in the same plan: cells and seeds, singular
-    points, arcs, assembly.
+### For a `one-bernstein` plan
+Absorbed by `plans/one-bernstein` (its reading found five more differences
+between the two isolations than `excluded_together`; the plan lists them).
 
 ### For a `long-functions` plan (measured sizes, read structure)
 

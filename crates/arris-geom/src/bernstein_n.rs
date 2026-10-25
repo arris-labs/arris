@@ -934,6 +934,9 @@ pub(crate) fn merge<const N: usize>(zeros: Vec<Zero<N>>, wrap: &Wrap<N>) -> Vec<
 }
 
 #[cfg(test)]
+mod goldens;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use arris_math::{Control, Interrupted, Stop, real};
@@ -956,7 +959,7 @@ mod tests {
     }
 
     /// `|x − c|² − ρ²` on `[0, 1]ᴺ`, of degree two along every axis.
-    fn sphere<const N: usize>(c: [f64; N], rho: f64) -> PolyN<N> {
+    pub(super) fn sphere<const N: usize>(c: [f64; N], rho: f64) -> PolyN<N> {
         let ones = [1.0; 3];
         let terms: Vec<PolyN<N>> = (0..N)
             .map(|k| {
@@ -977,12 +980,12 @@ mod tests {
 
     /// `Πₖ (1 + aₖ·xₖ)`, positive on the cube for `aₖ > −1`: what a
     /// rational patch's weight multiplies an equation by.
-    fn weight<const N: usize>(a: [f64; N]) -> PolyN<N> {
+    pub(super) fn weight<const N: usize>(a: [f64; N]) -> PolyN<N> {
         let factors: [[f64; 2]; N] = a.map(|a| [1.0, 1.0 + a]);
         PolyN::outer(factors.each_ref().map(|f| &f[..]))
     }
 
-    fn floor<const N: usize>(p: &PolyN<N>) -> f64 {
+    pub(super) fn floor<const N: usize>(p: &PolyN<N>) -> f64 {
         64.0 * f64::EPSILON * p.range().magnitude()
     }
 
@@ -993,7 +996,11 @@ mod tests {
     /// `N` spheres through both `p` and `q`, their centres in general
     /// position on the plane halfway between: their common zeros are
     /// exactly `p` and `q`, both simple.
-    fn through<const N: usize>(p: [f64; N], q: [f64; N], spread: &[[f64; N]; N]) -> [PolyN<N>; N] {
+    pub(super) fn through<const N: usize>(
+        p: [f64; N],
+        q: [f64; N],
+        spread: &[[f64; N]; N],
+    ) -> [PolyN<N>; N] {
         let mid: [f64; N] = core::array::from_fn(|k| 0.5 * (p[k] + q[k]));
         let d: [f64; N] = core::array::from_fn(|k| q[k] - p[k]);
         core::array::from_fn(|i| {
@@ -1036,10 +1043,10 @@ mod tests {
     }
 
     /// SplitMix64: the seeded sequence the posed systems are drawn from.
-    struct Seeded(u64);
+    pub(super) struct Seeded(pub(super) u64);
 
     impl Seeded {
-        fn next(&mut self) -> f64 {
+        pub(super) fn next(&mut self) -> f64 {
             self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
             let mut z = self.0;
             z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
@@ -1047,7 +1054,7 @@ mod tests {
             ((z ^ (z >> 31)) >> 11) as f64 / (1u64 << 53) as f64
         }
 
-        fn point<const N: usize>(&mut self, lo: f64, hi: f64) -> [f64; N] {
+        pub(super) fn point<const N: usize>(&mut self, lo: f64, hi: f64) -> [f64; N] {
             core::array::from_fn(|_| lo + (hi - lo) * self.next())
         }
     }
