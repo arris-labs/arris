@@ -497,20 +497,6 @@ pub fn revolve(
         }
         surfaces.push(row);
     }
-    // Which faces close at a vertex on the axis — a cone's apex, a
-    // sphere's pole — each holding a degenerate edge there in place of the
-    // rise: the face ending at vertex `v`, then the one starting there.
-    let singular = |li: usize, j: usize| {
-        matches!(
-            surfaces[li][j],
-            Some((Surface::Cone { .. } | Surface::Sphere { .. }, _))
-        )
-    };
-    let closes_at = |li: usize, v: usize| -> [bool; 2] {
-        let n = loops[li].len();
-        let on = on_axis[li][v];
-        [on && singular(li, (v + n - 1) % n), on && singular(li, v)]
-    };
     // A full turn touching the axis at a vertex with no segment along it
     // sweeps a surface touching itself there — two chains, or one and
     // itself, meeting at a point. A partial turn's flat ends close the
@@ -523,9 +509,86 @@ pub fn revolve(
     {
         return Err(degenerate(Reason::Input(InputReason::NonManifold)));
     }
-    // A full turn's shells: each loop's chains, `chain[li][j]` the chain of
-    // segment `j` and `None` along the axis, walked from just past the
-    // loop's first segment along the axis.
+    let chains = plan_chains(&loops, &along, &in_plane)?;
+
+    let tolerance = precision.default_tolerance;
+    let rise_range = if full {
+        Interval::TURN
+    } else {
+        Interval::new(0.0, angle).map_err(|_| {
+            degenerate(Reason::Input(InputReason::NotPositive {
+                what: "angle",
+                value: angle,
+            }))
+        })?
+    };
+    let turn = Turn {
+        loops: &loops,
+        plane,
+        in_plane,
+        axis,
+        base,
+        about_axis,
+        turn_along_normal,
+        full,
+        rise_range,
+        tol,
+        tolerance,
+        on_axis,
+        along,
+        surfaces,
+    };
+
+    m.transaction(|m| {
+        let mut specs = Specs::default();
+
+        let rings = add_rings(m, &mut specs, meter, &turn)?;
+        if !full {
+            add_caps(m, &mut specs, &turn, &rings);
+        }
+        let side_chain = add_sides(m, &mut specs, meter, &turn, &rings, &chains.chain)?;
+
+        // A full turn has no caps, so the sides close across the axis on
+        // their own, a shell per chain: the spanning chain's the lump's
+        // outer shell, stored first, every other a void of it by loop and
+        // lowest segment, each shell's faces in the order they were made. A
+        // partial turn's caps join everything into one shell.
+        let shells = if full {
+            specs.shells(&side_chain, &chains.shell_order, |c| {
+                if c == chains.outer {
+                    part(SweepPart::Shell)
+                } else {
+                    part(SweepPart::Cavity {
+                        loop_index: chains.chains[c].loop_index,
+                        segment: chains.chains[c].segment,
+                    })
+                }
+            })?
+        } else {
+            specs.one_shell(part(SweepPart::Shell))
+        };
+        finish_solid(m, tolerance, specs, shells, part)
+    })
+}
+
+/// A full turn's shells: every chain of every loop, the chain of each
+/// segment, which chain is the lump's outer shell and the order the shells
+/// are stored in.
+struct ChainPlan {
+    /// `chain[li][j]` is the chain of segment `j`, `None` along the axis.
+    chain: Vec<Vec<Option<usize>>>,
+    chains: Vec<Chain>,
+    outer: usize,
+    shell_order: Vec<usize>,
+}
+
+/// The chains of `loops`, each loop walked from just past its first
+/// segment along the axis, and which of them is the outer shell.
+fn plan_chains(
+    loops: &[Vec<ProfileEdge>],
+    along: &[Vec<bool>],
+    in_plane: &AxisInPlane,
+) -> Result<ChainPlan, OpError> {
     let mut chain: Vec<Vec<Option<usize>>> = Vec::with_capacity(loops.len());
     let mut chains: Vec<Chain> = Vec::new();
     for (li, edges) in loops.iter().enumerate() {
@@ -571,343 +634,428 @@ pub fn revolve(
     let mut shell_order: Vec<usize> = (0..chains.len()).filter(|&c| c != outer).collect();
     shell_order.sort_by_key(|&c| (chains[c].loop_index, chains[c].segment));
     shell_order.insert(0, outer);
+    Ok(ChainPlan {
+        chain,
+        chains,
+        outer,
+        shell_order,
+    })
+}
 
-    let tolerance = precision.default_tolerance;
-    let rise_range = if full {
-        Interval::TURN
+/// What the rings, caps and sides of one revolve are built from.
+struct Turn<'a> {
+    loops: &'a [Vec<ProfileEdge>],
+    plane: &'a Frame,
+    in_plane: AxisInPlane,
+    axis: Axis,
+    base: Frame,
+    about_axis: Isometry,
+    /// Whether the material sweeps along the profile's normal at the
+    /// start, which decides the caps' and the sides' walks.
+    turn_along_normal: bool,
+    full: bool,
+    rise_range: Interval,
+    tol: Tolerance,
+    tolerance: f64,
+    /// Which vertices lie on the axis, by (loop, walk index).
+    on_axis: Vec<Vec<bool>>,
+    /// Which line segments lie along it, both ends on it.
+    along: Vec<Vec<bool>>,
+    /// Each segment's surface and whether it is an annulus; none for a
+    /// segment along the axis, which sweeps nothing.
+    surfaces: Vec<Vec<Option<(Surface, bool)>>>,
+}
+
+impl Turn<'_> {
+    /// Which faces close at the vertex `v` of loop `li` on the axis — a
+    /// cone's apex, a sphere's pole — each holding a degenerate edge there
+    /// in place of the rise: the face ending at the vertex, then the one
+    /// starting there.
+    fn closes_at(&self, li: usize, v: usize) -> [bool; 2] {
+        let singular = |j: usize| {
+            matches!(
+                self.surfaces[li][j],
+                Some((Surface::Cone { .. } | Surface::Sphere { .. }, _))
+            )
+        };
+        let n = self.loops[li].len();
+        let on = self.on_axis[li][v];
+        [on && singular((v + n - 1) % n), on && singular(v)]
+    }
+}
+
+fn part(p: SweepPart) -> Role {
+    Role::Revolve(p)
+}
+
+/// The edges of a revolve's rings and rises, by (loop, walk index), with
+/// the curves the sides need pcurves of and the degenerate edges where
+/// faces close on the axis.
+struct Rings {
+    start_edge: Vec<Vec<Option<usize>>>,
+    end_edge: Vec<Vec<Option<usize>>>,
+    rise_edge: Vec<Vec<Option<usize>>>,
+    end_curves: Vec<Vec<Option<Curve>>>,
+    rises: Vec<Vec<Option<Curve>>>,
+    /// The degenerate edges, by (loop, side, whether at the side's start).
+    apex: BTreeMap<(usize, usize, bool), usize>,
+}
+
+/// The start ring's vertices, the end ring's, then the start edges, the
+/// end edges and the rises, appended in that order.
+fn add_rings(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Turn<'_>,
+) -> Result<Rings, OpError> {
+    let loops = b.loops;
+    let in_plane = &b.in_plane;
+    let base = &b.base;
+    let about_axis = &b.about_axis;
+    let (full, rise_range, tolerance) = (b.full, b.rise_range, b.tolerance);
+    let (on_axis, along, surfaces) = (&b.on_axis, &b.along, &b.surfaces);
+    let axis_point = |t: f64| b.axis.at(t);
+    let closes_at = |li: usize, v: usize| b.closes_at(li, v);
+    // The start ring, then the end ring; slot (loop, walk index). A
+    // vertex on the axis is one vertex, with no end copy, and a full
+    // turn makes it only where a face closes there on a degenerate
+    // edge, since no other face keeps it.
+    let shape = counts(loops);
+    let start_vertex = ring_vertices(
+        specs,
+        &shape,
+        tolerance,
+        |li, j| {
+            meter.tick()?;
+            if full && on_axis[li][j] && closes_at(li, j) == [false, false] {
+                return Ok(None);
+            }
+            let edge = &loops[li][j];
+            Ok(Some(edge.curve.point(edge.range.lo())))
+        },
+        |li, j| {
+            let edge = &loops[li][j];
+            part(SweepPart::StartVertex {
+                loop_index: edge.loop_index,
+                vertex: vertex_index(edge, shape[li]),
+            })
+        },
+    )?;
+    let end_vertex = if full {
+        start_vertex.clone()
     } else {
-        Interval::new(0.0, angle).map_err(|_| {
-            degenerate(Reason::Input(InputReason::NotPositive {
-                what: "angle",
-                value: angle,
-            }))
-        })?
-    };
-    let part = |p: SweepPart| Role::Revolve(p);
-
-    m.transaction(|m| {
-        let mut specs = Specs::default();
-
-        // The start ring, then the end ring; slot (loop, walk index). A
-        // vertex on the axis is one vertex, with no end copy, and a full
-        // turn makes it only where a face closes there on a degenerate
-        // edge, since no other face keeps it.
-        let shape = counts(&loops);
-        let start_vertex = ring_vertices(
-            &mut specs,
+        let mut ring = ring_vertices(
+            specs,
             &shape,
             tolerance,
             |li, j| {
                 meter.tick()?;
-                if full && on_axis[li][j] && closes_at(li, j) == [false, false] {
+                if on_axis[li][j] {
                     return Ok(None);
                 }
                 let edge = &loops[li][j];
-                Ok(Some(edge.curve.point(edge.range.lo())))
+                Ok(Some(about_axis.apply(edge.curve.point(edge.range.lo()))))
             },
             |li, j| {
                 let edge = &loops[li][j];
-                part(SweepPart::StartVertex {
+                part(SweepPart::EndVertex {
                     loop_index: edge.loop_index,
                     vertex: vertex_index(edge, shape[li]),
                 })
             },
         )?;
-        let end_vertex = if full {
-            start_vertex.clone()
-        } else {
-            let mut ring = ring_vertices(
-                &mut specs,
-                &shape,
-                tolerance,
-                |li, j| {
-                    meter.tick()?;
-                    if on_axis[li][j] {
-                        return Ok(None);
-                    }
-                    let edge = &loops[li][j];
-                    Ok(Some(about_axis.apply(edge.curve.point(edge.range.lo()))))
-                },
-                |li, j| {
-                    let edge = &loops[li][j];
-                    part(SweepPart::EndVertex {
-                        loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, shape[li]),
-                    })
-                },
-            )?;
-            // A vertex on the axis is the start ring's, shared.
-            for (li, row) in ring.iter_mut().enumerate() {
-                for (j, slot) in row.iter_mut().enumerate() {
-                    if on_axis[li][j] {
-                        *slot = start_vertex[li][j];
-                    }
-                }
-            }
-            ring
-        };
-        let key = |slot: Option<usize>, edge: &ProfileEdge| {
-            slot.map(VertexKey::New).ok_or_else(|| unmade(edge))
-        };
-
-        // The start edges, the end edges, then the rises.
-        let start_edge = ring_edges(&mut specs, &start_vertex, tolerance, |li, j| {
-            meter.tick()?;
-            // A full turn's annulus keeps only its rises, and a segment
-            // along the axis is nothing there; in a partial turn that
-            // segment is the one edge both flat ends share.
-            let annulus = surfaces[li][j].as_ref().is_some_and(|s| s.1);
-            if full && (annulus || along[li][j]) {
-                return Ok(None);
-            }
-            let edge = &loops[li][j];
-            Ok(Some((
-                EdgeGeometry::Curve {
-                    curve: m.add_curve(edge.curve.clone()),
-                    range: edge.range,
-                },
-                part(SweepPart::StartEdge {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }),
-            )))
-        })?;
-        let mut end_curves: Vec<Vec<Option<Curve>>> = loops
-            .iter()
-            .map(|edges_of| Vec::with_capacity(edges_of.len()))
-            .collect();
-        let end_edge = ring_edges(&mut specs, &end_vertex, tolerance, |li, j| {
-            meter.tick()?;
-            if full || along[li][j] {
-                end_curves[li].push(None);
-                return Ok(None);
-            }
-            let edge = &loops[li][j];
-            let curve = edge.curve.transformed(&about_axis);
-            let geometry = EdgeGeometry::Curve {
-                curve: m.add_curve(curve.clone()),
-                range: edge.range,
-            };
-            end_curves[li].push(Some(curve));
-            Ok(Some((
-                geometry,
-                part(SweepPart::EndEdge {
-                    loop_index: edge.loop_index,
-                    segment: edge.segment,
-                }),
-            )))
-        })?;
-        let mut rises: Vec<Vec<Option<Curve>>> = loops
-            .iter()
-            .map(|edges_of| Vec::with_capacity(edges_of.len()))
-            .collect();
-        // The degenerate edges, by (loop, side, whether at the side's start).
-        let mut apex: BTreeMap<(usize, usize, bool), usize> = BTreeMap::new();
-        let rise_edge = rails(
-            &mut specs,
-            &start_vertex,
-            &end_vertex,
-            tolerance,
-            |specs, li, j| {
-                meter.tick()?;
-                let edge = &loops[li][j];
-                let n = shape[li];
-                let role = part(SweepPart::Rise {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, n),
-                });
-                // A vertex on the axis sweeps no rise; each face closing
-                // there holds a degenerate edge at it instead.
+        // A vertex on the axis is the start ring's, shared.
+        for (li, row) in ring.iter_mut().enumerate() {
+            for (j, slot) in row.iter_mut().enumerate() {
                 if on_axis[li][j] {
-                    let before = (j + n - 1) % n;
-                    for (side, closes) in [before, j].into_iter().zip(closes_at(li, j)) {
-                        if !closes {
-                            continue;
-                        }
-                        let at = key(start_vertex[li][j], edge)?;
-                        let slot = specs.edge(
-                            EdgeSpec::New {
-                                geometry: EdgeGeometry::Degenerate { range: rise_range },
-                                start: at,
-                                end: at,
-                                tolerance,
-                            },
-                            role,
-                        );
-                        apex.insert((li, side, side == j), slot);
-                    }
-                    rises[li].push(None);
-                    return Ok(None);
+                    *slot = start_vertex[li][j];
                 }
-                let rise = Curve::Circle {
-                    frame: base.with_origin(axis_point(in_plane.t(edge.start))),
-                    radius: in_plane.rho(edge.start),
-                };
-                let geometry = EdgeGeometry::Curve {
-                    curve: m.add_curve(rise.clone()),
-                    range: rise_range,
-                };
-                rises[li].push(Some(rise));
-                Ok(Some((geometry, role)))
-            },
-        )?;
-
-        // The two flat ends of a partial turn: the profile face, its
-        // outward normal against the turn, and its rotated copy. A rigid
-        // motion carries the parametrisation, so the rotated edges have
-        // the profile's own pcurves on the rotated plane.
-        if !full {
-            let (start_use, end_use) = if turn_along_normal {
-                (Orientation::Reversed, Orientation::Forward)
-            } else {
-                (Orientation::Forward, Orientation::Reversed)
-            };
-            let start_cap = cap_face(
-                m,
-                &profile_pcurves(&loops),
-                *plane,
-                start_use,
-                &start_edge,
-                tolerance,
-            );
-            specs.face(start_cap, part(SweepPart::StartCap));
-            // A segment along the axis is the start cap's edge in the end
-            // cap too.
-            let end_slots: Vec<Vec<Option<usize>>> = end_edge
-                .iter()
-                .zip(&start_edge)
-                .zip(&along)
-                .map(|((ends, starts), on)| {
-                    ends.iter()
-                        .zip(starts)
-                        .zip(on)
-                        .map(|((&e, &s), &a)| if a { s } else { e })
-                        .collect()
-                })
-                .collect();
-            let end_cap = cap_face(
-                m,
-                &profile_pcurves(&loops),
-                plane.transformed(&about_axis),
-                end_use,
-                &end_slots,
-                tolerance,
-            );
-            specs.face(end_cap, part(SweepPart::EndCap));
-        }
-
-        // The chain of every side, in `faces` order after the caps: a full
-        // turn's shells.
-        let mut side_chain: Vec<Option<usize>> = Vec::new();
-        // The sides: start edge, rise up, end edge back, rise down — the
-        // end edge the start edge's second use across the seam in a full
-        // turn — walked that way when the material sweeps along the
-        // profile's normal and the other way otherwise, so the material
-        // is on the walk's left seen from outside; an annulus of a full
-        // turn keeps only its closed rises, one loop each. A segment along
-        // the axis sweeps no side, and a vertex on the axis has no rise to
-        // walk, so a side reaching the axis closes there.
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            for (j, edge) in edges_of.iter().enumerate() {
-                meter.tick()?;
-                let Some((surface, annulus)) = &surfaces[li][j] else {
-                    continue;
-                };
-                let next = (j + 1) % n;
-                let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
-                    pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
-                };
-                let start_pcurve = on(&edge.curve, edge.range)?;
-                let orientation =
-                    side_orientation(&edge.curve, edge.range, normal, surface, &start_pcurve)?;
-                // Where the side's own start edge meets the axis, if it
-                // does: the singular `v` of a degenerate edge there.
-                let (v_start, v_end) = (
-                    start_pcurve.point(edge.range.lo()).y,
-                    start_pcurve.point(edge.range.hi()).y,
-                );
-                let start = start_edge[li][j].map(|edge_slot| Leg {
-                    edge: edge_slot,
-                    pcurve: start_pcurve.clone(),
-                    range: edge.range,
-                });
-                let up = if let (Some(slot), Some(rise)) = (rise_edge[li][next], &rises[li][next]) {
-                    Some(Leg {
-                        edge: slot,
-                        pcurve: on(rise, rise_range)?,
-                        range: rise_range,
-                    })
-                } else {
-                    apex.get(&(li, j, false)).map(|&slot| Leg {
-                        edge: slot,
-                        pcurve: apex_pcurve(surface, &axis, v_end),
-                        range: rise_range,
-                    })
-                };
-                let end = match (end_edge[li][j], &end_curves[li][j], start_edge[li][j]) {
-                    (Some(slot), Some(curve), _) => Some(Leg {
-                        edge: slot,
-                        pcurve: on(curve, edge.range)?,
-                        range: edge.range,
-                    }),
-                    (None, _, Some(seam)) => Some(Leg {
-                        edge: seam,
-                        pcurve: start_pcurve,
-                        range: edge.range,
-                    }),
-                    (None, _, None) => None,
-                    (Some(_), None, _) => {
-                        return Err(OpError::Internal(Fault::Invariant {
-                            what: "an end edge's curve",
-                        }));
-                    }
-                };
-                let down = if let (Some(slot), Some(rise)) = (rise_edge[li][j], &rises[li][j]) {
-                    Some(Leg {
-                        edge: slot,
-                        pcurve: on(rise, rise_range)?,
-                        range: rise_range,
-                    })
-                } else {
-                    apex.get(&(li, j, true)).map(|&slot| Leg {
-                        edge: slot,
-                        pcurve: apex_pcurve(surface, &axis, v_start),
-                        range: rise_range,
-                    })
-                };
-                let cycle = side_cycle([start, up, end, down], !turn_along_normal);
-                let side = side_face(m, surface, orientation, cycle, full && *annulus, tolerance);
-                specs.face(
-                    side,
-                    part(SweepPart::Side {
-                        loop_index: edge.loop_index,
-                        segment: edge.segment,
-                    }),
-                );
-                side_chain.push(chain[li][j]);
             }
         }
+        ring
+    };
+    let key = |slot: Option<usize>, edge: &ProfileEdge| {
+        slot.map(VertexKey::New).ok_or_else(|| unmade(edge))
+    };
 
-        // A full turn has no caps, so the sides close across the axis on
-        // their own, a shell per chain: the spanning chain's the lump's
-        // outer shell, stored first, every other a void of it by loop and
-        // lowest segment, each shell's faces in the order they were made. A
-        // partial turn's caps join everything into one shell.
-        let shells = if full {
-            specs.shells(&side_chain, &shell_order, |c| {
-                if c == outer {
-                    part(SweepPart::Shell)
-                } else {
-                    part(SweepPart::Cavity {
-                        loop_index: chains[c].loop_index,
-                        segment: chains[c].segment,
-                    })
-                }
-            })?
-        } else {
-            specs.one_shell(part(SweepPart::Shell))
+    // The start edges, the end edges, then the rises.
+    let start_edge = ring_edges(specs, &start_vertex, tolerance, |li, j| {
+        meter.tick()?;
+        // A full turn's annulus keeps only its rises, and a segment
+        // along the axis is nothing there; in a partial turn that
+        // segment is the one edge both flat ends share.
+        let annulus = surfaces[li][j].as_ref().is_some_and(|s| s.1);
+        if full && (annulus || along[li][j]) {
+            return Ok(None);
+        }
+        let edge = &loops[li][j];
+        Ok(Some((
+            EdgeGeometry::Curve {
+                curve: m.add_curve(edge.curve.clone()),
+                range: edge.range,
+            },
+            part(SweepPart::StartEdge {
+                loop_index: edge.loop_index,
+                segment: edge.segment,
+            }),
+        )))
+    })?;
+    let mut end_curves: Vec<Vec<Option<Curve>>> = loops
+        .iter()
+        .map(|edges_of| Vec::with_capacity(edges_of.len()))
+        .collect();
+    let end_edge = ring_edges(specs, &end_vertex, tolerance, |li, j| {
+        meter.tick()?;
+        if full || along[li][j] {
+            end_curves[li].push(None);
+            return Ok(None);
+        }
+        let edge = &loops[li][j];
+        let curve = edge.curve.transformed(about_axis);
+        let geometry = EdgeGeometry::Curve {
+            curve: m.add_curve(curve.clone()),
+            range: edge.range,
         };
-        finish_solid(m, tolerance, specs, shells, part)
+        end_curves[li].push(Some(curve));
+        Ok(Some((
+            geometry,
+            part(SweepPart::EndEdge {
+                loop_index: edge.loop_index,
+                segment: edge.segment,
+            }),
+        )))
+    })?;
+    let mut rises: Vec<Vec<Option<Curve>>> = loops
+        .iter()
+        .map(|edges_of| Vec::with_capacity(edges_of.len()))
+        .collect();
+    // The degenerate edges, by (loop, side, whether at the side's start).
+    let mut apex: BTreeMap<(usize, usize, bool), usize> = BTreeMap::new();
+    let rise_edge = rails(
+        specs,
+        &start_vertex,
+        &end_vertex,
+        tolerance,
+        |specs, li, j| {
+            meter.tick()?;
+            let edge = &loops[li][j];
+            let n = shape[li];
+            let role = part(SweepPart::Rise {
+                loop_index: edge.loop_index,
+                vertex: vertex_index(edge, n),
+            });
+            // A vertex on the axis sweeps no rise; each face closing
+            // there holds a degenerate edge at it instead.
+            if on_axis[li][j] {
+                let before = (j + n - 1) % n;
+                for (side, closes) in [before, j].into_iter().zip(closes_at(li, j)) {
+                    if !closes {
+                        continue;
+                    }
+                    let at = key(start_vertex[li][j], edge)?;
+                    let slot = specs.edge(
+                        EdgeSpec::New {
+                            geometry: EdgeGeometry::Degenerate { range: rise_range },
+                            start: at,
+                            end: at,
+                            tolerance,
+                        },
+                        role,
+                    );
+                    apex.insert((li, side, side == j), slot);
+                }
+                rises[li].push(None);
+                return Ok(None);
+            }
+            let rise = Curve::Circle {
+                frame: base.with_origin(axis_point(in_plane.t(edge.start))),
+                radius: in_plane.rho(edge.start),
+            };
+            let geometry = EdgeGeometry::Curve {
+                curve: m.add_curve(rise.clone()),
+                range: rise_range,
+            };
+            rises[li].push(Some(rise));
+            Ok(Some((geometry, role)))
+        },
+    )?;
+    Ok(Rings {
+        start_edge,
+        end_edge,
+        rise_edge,
+        end_curves,
+        rises,
+        apex,
     })
+}
+
+/// The two flat ends of a partial turn: the profile face, its outward
+/// normal against the turn, and its rotated copy.
+fn add_caps(m: &mut Model, specs: &mut Specs, b: &Turn<'_>, rings: &Rings) {
+    let (loops, plane, about_axis) = (b.loops, b.plane, &b.about_axis);
+    let (turn_along_normal, tolerance, along) = (b.turn_along_normal, b.tolerance, &b.along);
+    let (start_edge, end_edge) = (&rings.start_edge, &rings.end_edge);
+    // The two flat ends of a partial turn: the profile face, its
+    // outward normal against the turn, and its rotated copy. A rigid
+    // motion carries the parametrisation, so the rotated edges have
+    // the profile's own pcurves on the rotated plane.
+    let (start_use, end_use) = if turn_along_normal {
+        (Orientation::Reversed, Orientation::Forward)
+    } else {
+        (Orientation::Forward, Orientation::Reversed)
+    };
+    let start_cap = cap_face(
+        m,
+        &profile_pcurves(loops),
+        *plane,
+        start_use,
+        start_edge,
+        tolerance,
+    );
+    specs.face(start_cap, part(SweepPart::StartCap));
+    // A segment along the axis is the start cap's edge in the end
+    // cap too.
+    let end_slots: Vec<Vec<Option<usize>>> = end_edge
+        .iter()
+        .zip(start_edge)
+        .zip(along)
+        .map(|((ends, starts), on)| {
+            ends.iter()
+                .zip(starts)
+                .zip(on)
+                .map(|((&e, &s), &a)| if a { s } else { e })
+                .collect()
+        })
+        .collect();
+    let end_cap = cap_face(
+        m,
+        &profile_pcurves(loops),
+        plane.transformed(about_axis),
+        end_use,
+        &end_slots,
+        tolerance,
+    );
+    specs.face(end_cap, part(SweepPart::EndCap));
+}
+
+/// The sides: start edge, rise up, end edge back, rise down — the end
+/// edge the start edge's second use across the seam in a full turn —
+/// walked that way when the material sweeps along the profile's normal
+/// and the other way otherwise; an annulus of a full turn keeps only its
+/// closed rises, one loop each. A segment along the axis sweeps no side,
+/// and a vertex on the axis has no rise to walk, so a side reaching the
+/// axis closes there. Returns the chain of every side, in `faces` order
+/// after the caps: a full turn's shells.
+fn add_sides(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Turn<'_>,
+    rings: &Rings,
+    chain: &[Vec<Option<usize>>],
+) -> Result<Vec<Option<usize>>, OpError> {
+    let (loops, surfaces, axis) = (b.loops, &b.surfaces, &b.axis);
+    let (tol, tolerance, rise_range) = (b.tol, b.tolerance, b.rise_range);
+    let (full, turn_along_normal) = (b.full, b.turn_along_normal);
+    let normal = b.plane.z().into_inner();
+    let Rings {
+        start_edge,
+        end_edge,
+        rise_edge,
+        end_curves,
+        rises,
+        apex,
+    } = rings;
+    let mut side_chain: Vec<Option<usize>> = Vec::new();
+    // The sides: start edge, rise up, end edge back, rise down — the
+    // end edge the start edge's second use across the seam in a full
+    // turn — walked that way when the material sweeps along the
+    // profile's normal and the other way otherwise, so the material
+    // is on the walk's left seen from outside; an annulus of a full
+    // turn keeps only its closed rises, one loop each. A segment along
+    // the axis sweeps no side, and a vertex on the axis has no rise to
+    // walk, so a side reaching the axis closes there.
+    for (li, edges_of) in loops.iter().enumerate() {
+        let n = edges_of.len();
+        for (j, edge) in edges_of.iter().enumerate() {
+            meter.tick()?;
+            let Some((surface, annulus)) = &surfaces[li][j] else {
+                continue;
+            };
+            let next = (j + 1) % n;
+            let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
+                pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
+            };
+            let start_pcurve = on(&edge.curve, edge.range)?;
+            let orientation =
+                side_orientation(&edge.curve, edge.range, normal, surface, &start_pcurve)?;
+            // Where the side's own start edge meets the axis, if it
+            // does: the singular `v` of a degenerate edge there.
+            let (v_start, v_end) = (
+                start_pcurve.point(edge.range.lo()).y,
+                start_pcurve.point(edge.range.hi()).y,
+            );
+            let start = start_edge[li][j].map(|edge_slot| Leg {
+                edge: edge_slot,
+                pcurve: start_pcurve.clone(),
+                range: edge.range,
+            });
+            let up = if let (Some(slot), Some(rise)) = (rise_edge[li][next], &rises[li][next]) {
+                Some(Leg {
+                    edge: slot,
+                    pcurve: on(rise, rise_range)?,
+                    range: rise_range,
+                })
+            } else {
+                apex.get(&(li, j, false)).map(|&slot| Leg {
+                    edge: slot,
+                    pcurve: apex_pcurve(surface, axis, v_end),
+                    range: rise_range,
+                })
+            };
+            let end = match (end_edge[li][j], &end_curves[li][j], start_edge[li][j]) {
+                (Some(slot), Some(curve), _) => Some(Leg {
+                    edge: slot,
+                    pcurve: on(curve, edge.range)?,
+                    range: edge.range,
+                }),
+                (None, _, Some(seam)) => Some(Leg {
+                    edge: seam,
+                    pcurve: start_pcurve,
+                    range: edge.range,
+                }),
+                (None, _, None) => None,
+                (Some(_), None, _) => {
+                    return Err(OpError::Internal(Fault::Invariant {
+                        what: "an end edge's curve",
+                    }));
+                }
+            };
+            let down = if let (Some(slot), Some(rise)) = (rise_edge[li][j], &rises[li][j]) {
+                Some(Leg {
+                    edge: slot,
+                    pcurve: on(rise, rise_range)?,
+                    range: rise_range,
+                })
+            } else {
+                apex.get(&(li, j, true)).map(|&slot| Leg {
+                    edge: slot,
+                    pcurve: apex_pcurve(surface, axis, v_start),
+                    range: rise_range,
+                })
+            };
+            let cycle = side_cycle([start, up, end, down], !turn_along_normal);
+            let side = side_face(m, surface, orientation, cycle, full && *annulus, tolerance);
+            specs.face(
+                side,
+                part(SweepPart::Side {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                }),
+            );
+            side_chain.push(chain[li][j]);
+        }
+    }
+    Ok(side_chain)
 }

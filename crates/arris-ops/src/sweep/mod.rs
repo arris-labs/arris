@@ -6,9 +6,11 @@
 //! naming the part of the sketch it came from (`docs/ARCHITECTURE.md`
 //! §Operations, `docs/DATA-MODEL.md` §Provenance).
 //!
-//! `extrude`, `revolve` and `sweep` (in `along`) have a file each; this
-//! one holds what they share: the cap and side face specs, the walk of a
-//! loop's uses and the provenance record.
+//! `extrude`, `revolve`, `sweep` (in `along`) and `loft` have a file each;
+//! this one holds what they share: the cap and side face specs, the walk
+//! of a loop's uses and the provenance record, and `skeleton` the spec
+//! lists, rings, rails, side cycles, shells and the assemble → finish →
+//! verify → record tail they build their solids through.
 
 mod along;
 mod exact;

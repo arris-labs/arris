@@ -17,7 +17,7 @@ use arris_geom::{
     Curve, Curve2, GeomError, LoftError, MAX_SMOOTH_SECTIONS, MatchedSection, NurbsCurve,
     NurbsCurve2, NurbsSurface, Profile, Surface, interpolate_skin, match_sections, pcurve_on,
 };
-use arris_math::{Control, Interval, Meter, Point2, UnitVec3};
+use arris_math::{Control, Interval, Meter, Point2, Tolerance, UnitVec3, Vec3};
 use arris_topo::builder::FaceSpec;
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
@@ -221,20 +221,21 @@ pub fn loft(
     };
     let rings = stations.len();
     let spans = if closed { rings } else { rings - 1 };
-    let end_ring = |k: usize| (k + 1) % rings;
     let loop_count = matched[0].loops.len();
     let counts: Vec<usize> = matched[0]
         .loops
         .iter()
         .map(|l| l.nurbs.segments.len())
         .collect();
-    let segment = |r: usize, li: usize, j: usize| &matched[stations[r]].loops[li].nurbs.segments[j];
-    let normal_of = |r: usize| sections[stations[r]].plane.z().into_inner();
 
     // Which way the loft leaves each end section: the start cap faces
     // against the flow and the end cap with it.
     let loop_zero = |r: usize| -> &[NurbsCurve] { &matched[r].loops[0].nurbs.segments };
-    let leaves_start = flow(loop_zero(0), loop_zero(1), &normal_of(0)) > 0.0;
+    let leaves_start = flow(
+        loop_zero(0),
+        loop_zero(1),
+        &sections[0].plane.z().into_inner(),
+    ) > 0.0;
     let leaves_end = flow(
         loop_zero(count - 2),
         loop_zero(count - 1),
@@ -242,7 +243,7 @@ pub fn loft(
     ) > 0.0;
 
     // What each matched segment is, and so which faces are known outright
-    // (ADR-0065 §6): `exact[k][li][j]` is span `k`'s face on segment `j`.
+    // (ADR-0065 §6).
     let kinds: Vec<Vec<Vec<Kind>>> = stations
         .iter()
         .map(|&r| {
@@ -253,401 +254,36 @@ pub fn loft(
                 .collect()
         })
         .collect();
-    let exact: Vec<Vec<Vec<Option<Surface>>>> = (0..spans)
-        .map(|k| {
-            counts
-                .iter()
-                .enumerate()
-                .map(|(li, &n)| {
-                    (0..n)
-                        .map(|j| {
-                            if smooth {
-                                return None;
-                            }
-                            exact_face(
-                                (segment(k, li, j), &kinds[k][li][j]),
-                                (segment(end_ring(k), li, j), &kinds[end_ring(k)][li][j]),
-                                tol,
-                            )
-                        })
-                        .collect()
-                })
-                .collect()
-        })
-        .collect();
-    // A ring edge is the analytic line or circle only where every face it
-    // bounds is exact; beside a NURBS face it is the segment's own NURBS.
-    let ring_exact = |r: usize, li: usize, j: usize| -> bool {
-        let before = if r == 0 {
-            closed.then_some(spans - 1)
-        } else {
-            Some(r - 1)
-        };
-        let after = (r < spans).then_some(r);
-        [before, after]
-            .into_iter()
-            .flatten()
-            .all(|k| exact[k][li][j].is_some())
+    let mut lofting = Lofting {
+        sections,
+        matched: &matched,
+        stations: &stations,
+        counts: &counts,
+        kinds,
+        exact: Vec::new(),
+        skins: Vec::new(),
+        smooth,
+        closed,
+        spans,
+        rings,
+        leaves_start,
+        leaves_end,
+        tol,
+        tolerance,
     };
-    // A rail is the straight line wherever a face it bounds is exact.
-    let rail_exact = |k: usize, li: usize, j: usize| -> bool {
-        let n = counts[li];
-        exact[k][li][j].is_some() || exact[k][li][(j + n - 1) % n].is_some()
-    };
-    let part = |span: usize, part: SweepPart| Role::Loft(PathPart { span, part });
-    let last = spans - 1;
-
-    // A smooth loft's one surface per matched segment, through every
-    // section at chord-length parameters.
-    let skins: Vec<Vec<NurbsSurface>> = if smooth {
-        let params = chord_parameters(&matched, closed);
-        counts
-            .iter()
-            .enumerate()
-            .map(|(li, &n)| {
-                (0..n)
-                    .map(|j| {
-                        meter.tick()?;
-                        let column: Vec<NurbsCurve> = matched
-                            .iter()
-                            .map(|s| s.loops[li].nurbs.segments[j].clone())
-                            .collect();
-                        interpolate_skin(&column, &params, rows - 1, closed).map_err(|source| {
-                            OpError::Loft(LoftError::Smooth {
-                                loop_index: li,
-                                segment: j,
-                                source,
-                            })
-                        })
-                    })
-                    .collect::<Result<Vec<_>, OpError>>()
-            })
-            .collect::<Result<_, _>>()?
-    } else {
-        Vec::new()
-    };
+    lofting.exact = lofting.exact_faces();
+    if smooth {
+        lofting.skins = lofting.smooth_skins(meter, rows)?;
+    }
 
     m.transaction(|m| {
         let mut specs = Specs::default();
 
-        // The rings' vertices, per section per loop in walking order.
-        let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
-        for r in 0..rings {
-            ring_vertex.push(all(ring_vertices(
-                &mut specs,
-                &counts,
-                tolerance,
-                |li, j| {
-                    meter.tick()?;
-                    let seg = segment(r, li, j);
-                    Ok(Some(seg.eval(seg.domain().lo()).point))
-                },
-                |li, vertex| {
-                    let loop_index = li;
-                    if closed || r < spans {
-                        part(r, SweepPart::StartVertex { loop_index, vertex })
-                    } else {
-                        part(last, SweepPart::EndVertex { loop_index, vertex })
-                    }
-                },
-            )?)?);
-        }
-
-        // The rings' edges: each section's matched segments, as the line or
-        // circle they are where every face on them is exact.
-        let mut ring_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
-        let mut ring_curve: Vec<Vec<Vec<(Curve, Interval)>>> = Vec::with_capacity(rings);
-        for (r, ring_of) in ring_vertex.iter().enumerate() {
-            let mut curves: Vec<Vec<(Curve, Interval)>> =
-                counts.iter().map(|&n| Vec::with_capacity(n)).collect();
-            let slots = all(ring_edges(
-                &mut specs,
-                &present(ring_of),
-                tolerance,
-                |li, j| {
-                    meter.tick()?;
-                    let seg = segment(r, li, j);
-                    let (curve, range) = ring_exact(r, li, j)
-                        .then(|| analytic_curve(&kinds[r][li][j]))
-                        .flatten()
-                        .unwrap_or_else(|| (Curve::Nurbs(seg.clone()), seg.domain()));
-                    curves[li].push((curve.clone(), range));
-                    let geometry = EdgeGeometry::Curve {
-                        curve: m.add_curve(curve),
-                        range,
-                    };
-                    let (loop_index, segment) = (li, j);
-                    Ok(Some((
-                        geometry,
-                        if closed || r < spans {
-                            part(
-                                r,
-                                SweepPart::StartEdge {
-                                    loop_index,
-                                    segment,
-                                },
-                            )
-                        } else {
-                            part(
-                                last,
-                                SweepPart::EndEdge {
-                                    loop_index,
-                                    segment,
-                                },
-                            )
-                        },
-                    )))
-                },
-            )?)?;
-            ring_edge.push(slots);
-            ring_curve.push(curves);
-        }
-
-        // Each span's rails: the straight column at a vertex.
-        let mut rail_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
-        let mut rail_curve: Vec<Vec<Vec<(Curve, Interval)>>> = Vec::with_capacity(spans);
-        for k in 0..spans {
-            let mut curves: Vec<Vec<(Curve, Interval)>> =
-                counts.iter().map(|&n| Vec::with_capacity(n)).collect();
-            rail_edge.push(all(rails(
-                &mut specs,
-                &present(&ring_vertex[k]),
-                &present(&ring_vertex[end_ring(k)]),
-                tolerance,
-                |_, li, j| {
-                    meter.tick()?;
-                    let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
-                    let (from, to) = (a.eval(a.domain().lo()).point, b.eval(b.domain().lo()).point);
-                    let straight = UnitVec3::try_new(to - from, 0.0)
-                        .zip(Interval::new(0.0, (to - from).norm()).ok());
-                    let (curve, range) = match straight {
-                        Some((direction, range)) if rail_exact(k, li, j) => (
-                            Curve::Line {
-                                origin: from,
-                                direction,
-                            },
-                            range,
-                        ),
-                        _ if smooth => (
-                            Curve::Nurbs(skins[li][j].control_column(0).map_err(fault_of)?),
-                            Interval::UNIT,
-                        ),
-                        _ => (
-                            Curve::Nurbs(rail(a, b, 0).map_err(fault_of)?),
-                            Interval::UNIT,
-                        ),
-                    };
-                    curves[li].push((curve.clone(), range));
-                    let geometry = EdgeGeometry::Curve {
-                        curve: m.add_curve(curve),
-                        range,
-                    };
-                    Ok(Some((
-                        geometry,
-                        part(
-                            k,
-                            SweepPart::Rise {
-                                loop_index: li,
-                                vertex: j,
-                            },
-                        ),
-                    )))
-                },
-            )?)?);
-            rail_curve.push(curves);
-        }
-
-        // The caps of an open loft: each end section's profile face, its
-        // matched segments' pcurves on the section's plane.
+        let set = add_rings(m, &mut specs, meter, &lofting)?;
         if !closed {
-            let mut cap = |m: &mut Model,
-                           r: usize,
-                           orientation: Orientation|
-             -> Result<FaceSpec, OpError> {
-                let plane = Surface::Plane {
-                    frame: sections[stations[r]].plane,
-                };
-                let mut pcurves = Vec::with_capacity(loop_count);
-                for curves in &ring_curve[r] {
-                    let mut row = Vec::with_capacity(curves.len());
-                    for (curve, range) in curves {
-                        row.push(pcurve_on(curve, *range, &plane, tol, meter).map_err(fault_of)?);
-                    }
-                    pcurves.push(row);
-                }
-                let slots: Vec<Vec<Option<usize>>> = ring_edge[r]
-                    .iter()
-                    .map(|row| row.iter().copied().map(Some).collect())
-                    .collect();
-                Ok(cap_face(
-                    m,
-                    &pcurves,
-                    sections[stations[r]].plane,
-                    orientation,
-                    &slots,
-                    tolerance,
-                ))
-            };
-            let (start_use, end_use) = (
-                if leaves_start {
-                    Orientation::Reversed
-                } else {
-                    Orientation::Forward
-                },
-                if leaves_end {
-                    Orientation::Forward
-                } else {
-                    Orientation::Reversed
-                },
-            );
-            let start_cap = cap(m, 0, start_use)?;
-            specs.face(start_cap, part(0, SweepPart::StartCap));
-            let end_cap = cap(m, rings - 1, end_use)?;
-            specs.face(end_cap, part(last, SweepPart::EndCap));
+            add_caps(m, &mut specs, meter, &lofting, &set)?;
         }
-
-        // The sides: the ring's edge, the rail up at the next vertex, the
-        // next ring's edge back, the rail down — reversed when the face is,
-        // so the material is on the walk's left seen from outside.
-        let mut side_loop: Vec<usize> = Vec::new();
-        for k in 0..spans {
-            let carried_normal = normal_of(k);
-            for (li, &n) in counts.iter().enumerate() {
-                for j in 0..n {
-                    meter.tick()?;
-                    let cycle;
-                    let surface;
-                    let orientation;
-                    if let Some(exact_surface) = &exact[k][li][j] {
-                        let mut on = |curve: &Curve, range: Interval| {
-                            pcurve_on(curve, range, exact_surface, tol, meter).map_err(fault_of)
-                        };
-                        let next = (j + 1) % n;
-                        let (start, end) = (&ring_curve[k][li][j], &ring_curve[end_ring(k)][li][j]);
-                        let (up, down) = (&rail_curve[k][li][next], &rail_curve[k][li][j]);
-                        let start_pcurve = on(&start.0, start.1)?;
-                        orientation = side_orientation(
-                            &start.0,
-                            start.1,
-                            carried_normal,
-                            exact_surface,
-                            &start_pcurve,
-                        )?;
-                        // The walk is counter-clockwise seen from outside
-                        // when it goes round the flow's side of the
-                        // tangent: whatever the plane's own normal says.
-                        let (at, to) = (segment(k, li, j), segment(end_ring(k), li, j));
-                        let t = at.domain().midpoint();
-                        let (here, there) = (at.eval(t), to.eval(t));
-                        let walk = here.d1.cross(&(there.point - here.point));
-                        let walk_reversed = walk.dot(&here.d1.cross(&carried_normal)) < 0.0;
-                        cycle = side_cycle(
-                            [
-                                Some(Leg {
-                                    edge: ring_edge[k][li][j],
-                                    pcurve: start_pcurve,
-                                    range: start.1,
-                                }),
-                                Some(Leg {
-                                    edge: rail_edge[k][li][next],
-                                    pcurve: on(&up.0, up.1)?,
-                                    range: up.1,
-                                }),
-                                Some(Leg {
-                                    edge: ring_edge[end_ring(k)][li][j],
-                                    pcurve: on(&end.0, end.1)?,
-                                    range: end.1,
-                                }),
-                                Some(Leg {
-                                    edge: rail_edge[k][li][j],
-                                    pcurve: on(&down.0, down.1)?,
-                                    range: down.1,
-                                }),
-                            ],
-                            walk_reversed,
-                        );
-                        surface = exact_surface.clone();
-                    } else {
-                        let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
-                        let sub = if smooth {
-                            skins[li][j].clone()
-                        } else {
-                            ruled(a, b).map_err(fault_of)?
-                        };
-                        let [du, dv] = sub.domain();
-                        // Outward is the section's tangent across its
-                        // normal, as on the profile's own plane.
-                        let at = sub.eval(du.midpoint(), dv.lo());
-                        let outward = at.du.cross(&carried_normal);
-                        let surface_normal = sub.normal(du.midpoint(), dv.lo()).ok_or(
-                            OpError::Internal(Fault::Invariant {
-                                what: "the ruled surface's normal at the segment's midpoint",
-                            }),
-                        )?;
-                        orientation = if surface_normal.dot(&outward) > 0.0 {
-                            Orientation::Forward
-                        } else {
-                            Orientation::Reversed
-                        };
-                        // A rail that is a straight line runs by arc length
-                        // where the surface runs `v` from 0 to 1.
-                        let rail_pcurve = |u: f64, range: Interval| -> Result<Curve2, OpError> {
-                            if range == Interval::UNIT {
-                                return Ok(Curve2::along_v(u));
-                            }
-                            NurbsCurve2::new(
-                                1,
-                                vec![range.lo(), range.lo(), range.hi(), range.hi()],
-                                vec![Point2::new(u, 0.0), Point2::new(u, 1.0)],
-                                vec![1.0, 1.0],
-                            )
-                            .map(Curve2::Nurbs)
-                            .map_err(fault_of)
-                        };
-                        let next = (j + 1) % n;
-                        let (up, down) = (&rail_curve[k][li][next], &rail_curve[k][li][j]);
-                        cycle = side_cycle(
-                            [
-                                Some(Leg {
-                                    edge: ring_edge[k][li][j],
-                                    pcurve: Curve2::along_u(dv.lo()),
-                                    range: du,
-                                }),
-                                Some(Leg {
-                                    edge: rail_edge[k][li][next],
-                                    pcurve: rail_pcurve(du.hi(), up.1)?,
-                                    range: up.1,
-                                }),
-                                Some(Leg {
-                                    edge: ring_edge[end_ring(k)][li][j],
-                                    pcurve: Curve2::along_u(dv.hi()),
-                                    range: du,
-                                }),
-                                Some(Leg {
-                                    edge: rail_edge[k][li][j],
-                                    pcurve: rail_pcurve(du.lo(), down.1)?,
-                                    range: down.1,
-                                }),
-                            ],
-                            orientation.is_reversed(),
-                        );
-                        surface = Surface::Nurbs(sub);
-                    }
-                    let side = side_face(m, &surface, orientation, cycle, false, tolerance);
-                    specs.face(
-                        side,
-                        part(
-                            k,
-                            SweepPart::Side {
-                                loop_index: li,
-                                segment: j,
-                            },
-                        ),
-                    );
-                    side_loop.push(li);
-                }
-            }
-        }
+        let side_loop = add_sides(m, &mut specs, meter, &lofting, &set)?;
 
         // An open loft's caps join everything into one shell; a closed
         // one's sides close a shell per loop, the outer loop's the lump's
@@ -673,4 +309,530 @@ pub fn loft(
         };
         finish_solid(m, tolerance, specs, shells, |p| part(0, p))
     })
+}
+
+fn part(span: usize, part: SweepPart) -> Role {
+    Role::Loft(PathPart { span, part })
+}
+
+/// What the rings, caps and sides of one loft are built from.
+struct Lofting<'a> {
+    sections: &'a [Profile],
+    matched: &'a [MatchedSection],
+    /// The sections that carry a ring of edges.
+    stations: &'a [usize],
+    /// How many matched segments each loop has.
+    counts: &'a [usize],
+    /// What each station's matched segments are, by (ring, loop, segment).
+    kinds: Vec<Vec<Vec<Kind>>>,
+    /// Span `k`'s exact face on segment `j`, by (span, loop, segment).
+    exact: Vec<Vec<Vec<Option<Surface>>>>,
+    /// A smooth loft's one surface per matched segment, by (loop, segment).
+    skins: Vec<Vec<NurbsSurface>>,
+    smooth: bool,
+    closed: bool,
+    spans: usize,
+    rings: usize,
+    leaves_start: bool,
+    leaves_end: bool,
+    tol: Tolerance,
+    tolerance: f64,
+}
+
+impl Lofting<'_> {
+    /// The ring a span ends on.
+    fn end_ring(&self, k: usize) -> usize {
+        (k + 1) % self.rings
+    }
+
+    /// Matched segment `j` of loop `li` at ring `r`.
+    fn segment(&self, r: usize, li: usize, j: usize) -> &NurbsCurve {
+        &self.matched[self.stations[r]].loops[li].nurbs.segments[j]
+    }
+
+    /// The normal of the section ring `r` sits on.
+    fn normal_of(&self, r: usize) -> Vec3 {
+        self.sections[self.stations[r]].plane.z().into_inner()
+    }
+
+    /// A ring edge is the analytic line or circle only where every face it
+    /// bounds is exact; beside a NURBS face it is the segment's own NURBS.
+    fn ring_exact(&self, r: usize, li: usize, j: usize) -> bool {
+        let before = if r == 0 {
+            self.closed.then_some(self.spans - 1)
+        } else {
+            Some(r - 1)
+        };
+        let after = (r < self.spans).then_some(r);
+        [before, after]
+            .into_iter()
+            .flatten()
+            .all(|k| self.exact[k][li][j].is_some())
+    }
+
+    /// A rail is the straight line wherever a face it bounds is exact.
+    fn rail_exact(&self, k: usize, li: usize, j: usize) -> bool {
+        let n = self.counts[li];
+        self.exact[k][li][j].is_some() || self.exact[k][li][(j + n - 1) % n].is_some()
+    }
+
+    /// The faces known outright, by (span, loop, segment); none of a
+    /// smooth loft's.
+    fn exact_faces(&self) -> Vec<Vec<Vec<Option<Surface>>>> {
+        (0..self.spans)
+            .map(|k| {
+                self.counts
+                    .iter()
+                    .enumerate()
+                    .map(|(li, &n)| {
+                        (0..n)
+                            .map(|j| {
+                                if self.smooth {
+                                    return None;
+                                }
+                                let end = self.end_ring(k);
+                                exact_face(
+                                    (self.segment(k, li, j), &self.kinds[k][li][j]),
+                                    (self.segment(end, li, j), &self.kinds[end][li][j]),
+                                    self.tol,
+                                )
+                            })
+                            .collect()
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// A smooth loft's one surface per matched segment, through every
+    /// section at chord-length parameters; `rows` sections counting the
+    /// first twice when closed.
+    fn smooth_skins(
+        &self,
+        meter: &mut Meter,
+        rows: usize,
+    ) -> Result<Vec<Vec<NurbsSurface>>, OpError> {
+        let params = chord_parameters(self.matched, self.closed);
+        self.counts
+            .iter()
+            .enumerate()
+            .map(|(li, &n)| {
+                (0..n)
+                    .map(|j| {
+                        meter.tick()?;
+                        let column: Vec<NurbsCurve> = self
+                            .matched
+                            .iter()
+                            .map(|s| s.loops[li].nurbs.segments[j].clone())
+                            .collect();
+                        interpolate_skin(&column, &params, rows - 1, self.closed).map_err(
+                            |source| {
+                                OpError::Loft(LoftError::Smooth {
+                                    loop_index: li,
+                                    segment: j,
+                                    source,
+                                })
+                            },
+                        )
+                    })
+                    .collect::<Result<Vec<_>, OpError>>()
+            })
+            .collect()
+    }
+}
+
+/// The edges of a loft's rings and rails with the curves the caps and
+/// sides need pcurves of, by (ring or span, loop, segment).
+struct RingSet {
+    ring_edge: Vec<Vec<Vec<usize>>>,
+    ring_curve: Vec<Vec<Vec<(Curve, Interval)>>>,
+    rail_edge: Vec<Vec<Vec<usize>>>,
+    rail_curve: Vec<Vec<Vec<(Curve, Interval)>>>,
+}
+
+/// The rings' vertices and edges, then each span's rails.
+fn add_rings(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Lofting<'_>,
+) -> Result<RingSet, OpError> {
+    let counts = b.counts;
+    let kinds = &b.kinds;
+    let skins = &b.skins;
+    let smooth = b.smooth;
+    let closed = b.closed;
+    let spans = b.spans;
+    let rings = b.rings;
+    let tolerance = b.tolerance;
+    let last = b.spans - 1;
+    let segment = |r: usize, li: usize, j: usize| b.segment(r, li, j);
+    let end_ring = |k: usize| b.end_ring(k);
+    let ring_exact = |r: usize, li: usize, j: usize| b.ring_exact(r, li, j);
+    let rail_exact = |k: usize, li: usize, j: usize| b.rail_exact(k, li, j);
+    // The rings' vertices, per section per loop in walking order.
+    let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
+    for r in 0..rings {
+        ring_vertex.push(all(ring_vertices(
+            specs,
+            counts,
+            tolerance,
+            |li, j| {
+                meter.tick()?;
+                let seg = segment(r, li, j);
+                Ok(Some(seg.eval(seg.domain().lo()).point))
+            },
+            |li, vertex| {
+                let loop_index = li;
+                if closed || r < spans {
+                    part(r, SweepPart::StartVertex { loop_index, vertex })
+                } else {
+                    part(last, SweepPart::EndVertex { loop_index, vertex })
+                }
+            },
+        )?)?);
+    }
+
+    // The rings' edges: each section's matched segments, as the line or
+    // circle they are where every face on them is exact.
+    let mut ring_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
+    let mut ring_curve: Vec<Vec<Vec<(Curve, Interval)>>> = Vec::with_capacity(rings);
+    for (r, ring_of) in ring_vertex.iter().enumerate() {
+        let mut curves: Vec<Vec<(Curve, Interval)>> =
+            counts.iter().map(|&n| Vec::with_capacity(n)).collect();
+        let slots = all(ring_edges(specs, &present(ring_of), tolerance, |li, j| {
+            meter.tick()?;
+            let seg = segment(r, li, j);
+            let (curve, range) = ring_exact(r, li, j)
+                .then(|| analytic_curve(&kinds[r][li][j]))
+                .flatten()
+                .unwrap_or_else(|| (Curve::Nurbs(seg.clone()), seg.domain()));
+            curves[li].push((curve.clone(), range));
+            let geometry = EdgeGeometry::Curve {
+                curve: m.add_curve(curve),
+                range,
+            };
+            let (loop_index, segment) = (li, j);
+            Ok(Some((
+                geometry,
+                if closed || r < spans {
+                    part(
+                        r,
+                        SweepPart::StartEdge {
+                            loop_index,
+                            segment,
+                        },
+                    )
+                } else {
+                    part(
+                        last,
+                        SweepPart::EndEdge {
+                            loop_index,
+                            segment,
+                        },
+                    )
+                },
+            )))
+        })?)?;
+        ring_edge.push(slots);
+        ring_curve.push(curves);
+    }
+
+    // Each span's rails: the straight column at a vertex.
+    let mut rail_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
+    let mut rail_curve: Vec<Vec<Vec<(Curve, Interval)>>> = Vec::with_capacity(spans);
+    for k in 0..spans {
+        let mut curves: Vec<Vec<(Curve, Interval)>> =
+            counts.iter().map(|&n| Vec::with_capacity(n)).collect();
+        rail_edge.push(all(rails(
+            specs,
+            &present(&ring_vertex[k]),
+            &present(&ring_vertex[end_ring(k)]),
+            tolerance,
+            |_, li, j| {
+                meter.tick()?;
+                let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
+                let (from, to) = (a.eval(a.domain().lo()).point, b.eval(b.domain().lo()).point);
+                let straight = UnitVec3::try_new(to - from, 0.0)
+                    .zip(Interval::new(0.0, (to - from).norm()).ok());
+                let (curve, range) = match straight {
+                    Some((direction, range)) if rail_exact(k, li, j) => (
+                        Curve::Line {
+                            origin: from,
+                            direction,
+                        },
+                        range,
+                    ),
+                    _ if smooth => (
+                        Curve::Nurbs(skins[li][j].control_column(0).map_err(fault_of)?),
+                        Interval::UNIT,
+                    ),
+                    _ => (
+                        Curve::Nurbs(rail(a, b, 0).map_err(fault_of)?),
+                        Interval::UNIT,
+                    ),
+                };
+                curves[li].push((curve.clone(), range));
+                let geometry = EdgeGeometry::Curve {
+                    curve: m.add_curve(curve),
+                    range,
+                };
+                Ok(Some((
+                    geometry,
+                    part(
+                        k,
+                        SweepPart::Rise {
+                            loop_index: li,
+                            vertex: j,
+                        },
+                    ),
+                )))
+            },
+        )?)?);
+        rail_curve.push(curves);
+    }
+    Ok(RingSet {
+        ring_edge,
+        ring_curve,
+        rail_edge,
+        rail_curve,
+    })
+}
+
+/// The caps of an open loft: each end section's profile face, its matched
+/// segments' pcurves on the section's plane.
+fn add_caps(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Lofting<'_>,
+    set: &RingSet,
+) -> Result<(), OpError> {
+    let sections = b.sections;
+    let closed = b.closed;
+    let rings = b.rings;
+    let tol = b.tol;
+    let tolerance = b.tolerance;
+    let last = b.spans - 1;
+    let leaves_start = b.leaves_start;
+    let leaves_end = b.leaves_end;
+    let stations = b.stations;
+    let loop_count = b.counts.len();
+    let (ring_edge, ring_curve) = (&set.ring_edge, &set.ring_curve);
+    // The caps of an open loft: each end section's profile face, its
+    // matched segments' pcurves on the section's plane.
+    if !closed {
+        let mut cap =
+            |m: &mut Model, r: usize, orientation: Orientation| -> Result<FaceSpec, OpError> {
+                let plane = Surface::Plane {
+                    frame: sections[stations[r]].plane,
+                };
+                let mut pcurves = Vec::with_capacity(loop_count);
+                for curves in &ring_curve[r] {
+                    let mut row = Vec::with_capacity(curves.len());
+                    for (curve, range) in curves {
+                        row.push(pcurve_on(curve, *range, &plane, tol, meter).map_err(fault_of)?);
+                    }
+                    pcurves.push(row);
+                }
+                let slots: Vec<Vec<Option<usize>>> = ring_edge[r]
+                    .iter()
+                    .map(|row| row.iter().copied().map(Some).collect())
+                    .collect();
+                Ok(cap_face(
+                    m,
+                    &pcurves,
+                    sections[stations[r]].plane,
+                    orientation,
+                    &slots,
+                    tolerance,
+                ))
+            };
+        let (start_use, end_use) = (
+            if leaves_start {
+                Orientation::Reversed
+            } else {
+                Orientation::Forward
+            },
+            if leaves_end {
+                Orientation::Forward
+            } else {
+                Orientation::Reversed
+            },
+        );
+        let start_cap = cap(m, 0, start_use)?;
+        specs.face(start_cap, part(0, SweepPart::StartCap));
+        let end_cap = cap(m, rings - 1, end_use)?;
+        specs.face(end_cap, part(last, SweepPart::EndCap));
+    }
+    Ok(())
+}
+
+/// The sides, whose loop each is returned in `faces` order.
+fn add_sides(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Lofting<'_>,
+    set: &RingSet,
+) -> Result<Vec<usize>, OpError> {
+    let counts = b.counts;
+    let exact = &b.exact;
+    let skins = &b.skins;
+    let smooth = b.smooth;
+    let spans = b.spans;
+    let tol = b.tol;
+    let tolerance = b.tolerance;
+    let segment = |r: usize, li: usize, j: usize| b.segment(r, li, j);
+    let normal_of = |r: usize| b.normal_of(r);
+    let end_ring = |k: usize| b.end_ring(k);
+    let RingSet {
+        ring_edge,
+        ring_curve,
+        rail_edge,
+        rail_curve,
+    } = set;
+    // The sides: the ring's edge, the rail up at the next vertex, the
+    // next ring's edge back, the rail down — reversed when the face is,
+    // so the material is on the walk's left seen from outside.
+    let mut side_loop: Vec<usize> = Vec::new();
+    for k in 0..spans {
+        let carried_normal = normal_of(k);
+        for (li, &n) in counts.iter().enumerate() {
+            for j in 0..n {
+                meter.tick()?;
+                let cycle;
+                let surface;
+                let orientation;
+                if let Some(exact_surface) = &exact[k][li][j] {
+                    let mut on = |curve: &Curve, range: Interval| {
+                        pcurve_on(curve, range, exact_surface, tol, meter).map_err(fault_of)
+                    };
+                    let next = (j + 1) % n;
+                    let (start, end) = (&ring_curve[k][li][j], &ring_curve[end_ring(k)][li][j]);
+                    let (up, down) = (&rail_curve[k][li][next], &rail_curve[k][li][j]);
+                    let start_pcurve = on(&start.0, start.1)?;
+                    orientation = side_orientation(
+                        &start.0,
+                        start.1,
+                        carried_normal,
+                        exact_surface,
+                        &start_pcurve,
+                    )?;
+                    // The walk is counter-clockwise seen from outside
+                    // when it goes round the flow's side of the
+                    // tangent: whatever the plane's own normal says.
+                    let (at, to) = (segment(k, li, j), segment(end_ring(k), li, j));
+                    let t = at.domain().midpoint();
+                    let (here, there) = (at.eval(t), to.eval(t));
+                    let walk = here.d1.cross(&(there.point - here.point));
+                    let walk_reversed = walk.dot(&here.d1.cross(&carried_normal)) < 0.0;
+                    cycle = side_cycle(
+                        [
+                            Some(Leg {
+                                edge: ring_edge[k][li][j],
+                                pcurve: start_pcurve,
+                                range: start.1,
+                            }),
+                            Some(Leg {
+                                edge: rail_edge[k][li][next],
+                                pcurve: on(&up.0, up.1)?,
+                                range: up.1,
+                            }),
+                            Some(Leg {
+                                edge: ring_edge[end_ring(k)][li][j],
+                                pcurve: on(&end.0, end.1)?,
+                                range: end.1,
+                            }),
+                            Some(Leg {
+                                edge: rail_edge[k][li][j],
+                                pcurve: on(&down.0, down.1)?,
+                                range: down.1,
+                            }),
+                        ],
+                        walk_reversed,
+                    );
+                    surface = exact_surface.clone();
+                } else {
+                    let (a, b) = (segment(k, li, j), segment(end_ring(k), li, j));
+                    let sub = if smooth {
+                        skins[li][j].clone()
+                    } else {
+                        ruled(a, b).map_err(fault_of)?
+                    };
+                    let [du, dv] = sub.domain();
+                    // Outward is the section's tangent across its
+                    // normal, as on the profile's own plane.
+                    let at = sub.eval(du.midpoint(), dv.lo());
+                    let outward = at.du.cross(&carried_normal);
+                    let surface_normal = sub.normal(du.midpoint(), dv.lo()).ok_or(
+                        OpError::Internal(Fault::Invariant {
+                            what: "the ruled surface's normal at the segment's midpoint",
+                        }),
+                    )?;
+                    orientation = if surface_normal.dot(&outward) > 0.0 {
+                        Orientation::Forward
+                    } else {
+                        Orientation::Reversed
+                    };
+                    // A rail that is a straight line runs by arc length
+                    // where the surface runs `v` from 0 to 1.
+                    let rail_pcurve = |u: f64, range: Interval| -> Result<Curve2, OpError> {
+                        if range == Interval::UNIT {
+                            return Ok(Curve2::along_v(u));
+                        }
+                        NurbsCurve2::new(
+                            1,
+                            vec![range.lo(), range.lo(), range.hi(), range.hi()],
+                            vec![Point2::new(u, 0.0), Point2::new(u, 1.0)],
+                            vec![1.0, 1.0],
+                        )
+                        .map(Curve2::Nurbs)
+                        .map_err(fault_of)
+                    };
+                    let next = (j + 1) % n;
+                    let (up, down) = (&rail_curve[k][li][next], &rail_curve[k][li][j]);
+                    cycle = side_cycle(
+                        [
+                            Some(Leg {
+                                edge: ring_edge[k][li][j],
+                                pcurve: Curve2::along_u(dv.lo()),
+                                range: du,
+                            }),
+                            Some(Leg {
+                                edge: rail_edge[k][li][next],
+                                pcurve: rail_pcurve(du.hi(), up.1)?,
+                                range: up.1,
+                            }),
+                            Some(Leg {
+                                edge: ring_edge[end_ring(k)][li][j],
+                                pcurve: Curve2::along_u(dv.hi()),
+                                range: du,
+                            }),
+                            Some(Leg {
+                                edge: rail_edge[k][li][j],
+                                pcurve: rail_pcurve(du.lo(), down.1)?,
+                                range: down.1,
+                            }),
+                        ],
+                        orientation.is_reversed(),
+                    );
+                    surface = Surface::Nurbs(sub);
+                }
+                let side = side_face(m, &surface, orientation, cycle, false, tolerance);
+                specs.face(
+                    side,
+                    part(
+                        k,
+                        SweepPart::Side {
+                            loop_index: li,
+                            segment: j,
+                        },
+                    ),
+                );
+                side_loop.push(li);
+            }
+        }
+    }
+    Ok(side_loop)
 }

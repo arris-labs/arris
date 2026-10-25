@@ -86,7 +86,7 @@ robustness or bound has to be established here.
 - [x] Step 5 **[1]** — `rails` in all four.
 - [x] Step 6 **[2]** — `side_cycle` in all four; revolve's annulus `split`
   and its rise left out at the axis pass through unchanged.
-- [ ] Step 7 **[1]** — `fn_lengths.py` holds the Goal's bounds; whatever
+- [x] Step 7 **[1]** — `fn_lengths.py` holds the Goal's bounds; whatever
   of a sweep's own part still runs over moves into a named helper in its
   file. `docs/ARCHITECTURE.md` sentence and `sweep/mod.rs` crate doc updated.
 
@@ -119,6 +119,8 @@ robustness or bound has to be established here.
   `(loop, index) -> geometry and role`, plus the `Specs` so revolve pushes
   a vertex on the axis's degenerate edges in their place among the rails;
   the sweep's rail law stays in each operation's closure.
-- ⚠ OPEN: if `revolve` cannot reach 300 lines without moving its chain
-  analysis, the agent moves `Chain` and the spanning pick into
-  `revolve/chains.rs` at step 7 and records the bound reached.
+- Settled (step 7): `revolve` reached 163 lines with its chain analysis in
+  `plan_chains` beside it, so `revolve/chains.rs` is not made. Bounds
+  reached by `fn_lengths.py`: `extrude` 120 (its `Build`, `add_rings`,
+  `add_sides` beside it), `revolve` 163, `sweep` 132, `loft` 124; the longest
+  helper is revolve's `add_rings` at 186.

@@ -1,9 +1,9 @@
 //! `extrude` along the profile's normal, and `planar_face`, its cap
 //! taken alone.
 
-use arris_geom::{Curve, Curve2, Profile, ProfileEdge, pcurve_on};
+use arris_geom::{Curve, Curve2, Profile, ProfileEdge, Surface, pcurve_on};
 use arris_math::real;
-use arris_math::{Control, Interval, Isometry, Meter, UnitVec3, Vec3};
+use arris_math::{Control, Frame, Interval, Isometry, Meter, Tolerance, UnitVec3, Vec3};
 use arris_topo::builder::{Assembly, Builder, EdgeSpec, VertexKey, VertexSpec};
 use arris_topo::entity::{BodyKind, EdgeGeometry};
 use arris_topo::provenance::SweepPart;
@@ -84,6 +84,80 @@ pub fn extrude(
     let meter = &mut meter;
     let precision = m.precision();
     let tol = precision.tolerance();
+    let plane = &profile.plane;
+    let (sweep, along_normal) = checked_sweep(plane, direction, length, tol)?;
+    let loops = profile.edges(tol)?;
+    let rise_range = Interval::new(0.0, length).map_err(|_| {
+        degenerate(Reason::Input(InputReason::NotPositive {
+            what: "length",
+            value: length,
+        }))
+    })?;
+    let exact =
+        super::exact::line_span(&loops, plane, &Isometry::identity(), sweep, rise_range, tol)?
+            .ok_or_else(|| degenerate(Reason::Input(InputReason::ZeroThickness)))?;
+    let build = Build {
+        loops: &loops,
+        surfaces: &exact.surfaces,
+        shift: Isometry::from_translation(sweep.into_inner() * length),
+        sweep,
+        rise_range,
+        normal: plane.z().into_inner(),
+        along_normal,
+        tol,
+        tolerance: precision.default_tolerance,
+    };
+
+    m.transaction(|m| {
+        let mut specs = Specs::default();
+        let rings = add_rings(m, &mut specs, meter, &build)?;
+
+        // The caps: the profile face on its own plane, its outward normal
+        // against the sweep, and its translated copy.
+        let (start_use, end_use) = if along_normal {
+            (Orientation::Reversed, Orientation::Forward)
+        } else {
+            (Orientation::Forward, Orientation::Reversed)
+        };
+        let start_cap = cap_face(
+            m,
+            &profile_pcurves(&loops),
+            *plane,
+            start_use,
+            &present(&rings.start_edge),
+            build.tolerance,
+        );
+        specs.face(start_cap, part(SweepPart::StartCap));
+        let end_cap = cap_face(
+            m,
+            &profile_pcurves(&loops),
+            plane.transformed(&build.shift),
+            end_use,
+            &present(&rings.end_edge),
+            build.tolerance,
+        );
+        specs.face(end_cap, part(SweepPart::EndCap));
+
+        add_sides(m, &mut specs, meter, &build, &rings)?;
+        let shells = specs.one_shell(part(SweepPart::Shell));
+        finish_solid(m, build.tolerance, specs, shells, part)
+    })
+}
+
+fn part(p: SweepPart) -> Role {
+    Role::Extrude(p)
+}
+
+/// The sweep's unit direction — the plane's exact normal when `direction`
+/// is within `angular_tolerance` of it — and whether it runs along that
+/// normal, or the refusal of a `length` or `direction` that sweeps
+/// nothing.
+fn checked_sweep(
+    plane: &Frame,
+    direction: Vec3,
+    length: f64,
+    tol: Tolerance,
+) -> Result<(UnitVec3, bool), OpError> {
     if !length.is_finite() {
         return Err(degenerate(Reason::Input(InputReason::NonFinite {
             what: "length",
@@ -109,14 +183,11 @@ pub fn extrude(
             value: direction.norm(),
         })));
     };
-    let plane = &profile.plane;
     let normal = plane.z().into_inner();
     let dn = d.dot(&normal);
-    let thickness = dn.abs() * length;
-    if thickness <= tol.linear {
+    if dn.abs() * length <= tol.linear {
         return Err(degenerate(Reason::Input(InputReason::ZeroThickness)));
     }
-    let loops = profile.edges(tol)?;
     let along_normal = dn > 0.0;
     let off_normal = real::atan2(d.cross(&normal).norm(), dn.abs());
     let sweep = if off_normal <= tol.angular {
@@ -124,228 +195,216 @@ pub fn extrude(
     } else {
         d
     };
-    let shift = Isometry::from_translation(sweep.into_inner() * length);
+    Ok((sweep, along_normal))
+}
 
-    let rise_range = Interval::new(0.0, length).map_err(|_| {
-        degenerate(Reason::Input(InputReason::NotPositive {
-            what: "length",
-            value: length,
-        }))
-    })?;
+/// What the rings and sides of one extrusion are built from.
+struct Build<'a> {
+    loops: &'a [Vec<ProfileEdge>],
+    /// The exact surface each segment sweeps, per loop.
+    surfaces: &'a [Vec<Surface>],
+    shift: Isometry,
+    sweep: UnitVec3,
+    rise_range: Interval,
+    normal: Vec3,
+    along_normal: bool,
+    tol: Tolerance,
+    tolerance: f64,
+}
 
-    let exact =
-        super::exact::line_span(&loops, plane, &Isometry::identity(), sweep, rise_range, tol)?
-            .ok_or_else(|| degenerate(Reason::Input(InputReason::ZeroThickness)))?;
-    let surfaces = exact.surfaces;
+/// The edges of an extrusion's rings and rises, by (loop, walk index),
+/// with the curves the sides need pcurves of.
+struct Rings {
+    start_edge: Vec<Vec<usize>>,
+    end_edge: Vec<Vec<usize>>,
+    rise_edge: Vec<Vec<usize>>,
+    end_curves: Vec<Vec<Curve>>,
+    rises: Vec<Vec<Curve>>,
+}
 
-    let tolerance = precision.default_tolerance;
-    let part = |p: SweepPart| Role::Extrude(p);
+/// The start ring's vertices, the end ring's, then the start edges, the
+/// end edges and the rises, appended in that order.
+fn add_rings(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Build<'_>,
+) -> Result<Rings, OpError> {
+    let (loops, tolerance) = (b.loops, b.tolerance);
+    let shape = counts(loops);
+    let vertex_at = |li: usize, j: usize| -> &ProfileEdge { &loops[li][j] };
+    let start_vertex = all(ring_vertices(
+        specs,
+        &shape,
+        tolerance,
+        |li, j| {
+            Ok(Some(
+                vertex_at(li, j).curve.point(vertex_at(li, j).range.lo()),
+            ))
+        },
+        |li, j| {
+            let edge = vertex_at(li, j);
+            part(SweepPart::StartVertex {
+                loop_index: edge.loop_index,
+                vertex: vertex_index(edge, shape[li]),
+            })
+        },
+    )?)?;
+    let end_vertex = all(ring_vertices(
+        specs,
+        &shape,
+        tolerance,
+        |li, j| {
+            let edge = vertex_at(li, j);
+            Ok(Some(b.shift.apply(edge.curve.point(edge.range.lo()))))
+        },
+        |li, j| {
+            let edge = vertex_at(li, j);
+            part(SweepPart::EndVertex {
+                loop_index: edge.loop_index,
+                vertex: vertex_index(edge, shape[li]),
+            })
+        },
+    )?)?;
 
-    m.transaction(|m| {
-        let mut specs = Specs::default();
-
-        // The start ring, then the end ring; slot (loop, walk index).
-        let shape = counts(&loops);
-        let vertex_at = |li: usize, j: usize| -> &ProfileEdge { &loops[li][j] };
-        let start_vertex = all(ring_vertices(
-            &mut specs,
-            &shape,
-            tolerance,
-            |li, j| {
-                Ok(Some(
-                    vertex_at(li, j).curve.point(vertex_at(li, j).range.lo()),
-                ))
-            },
-            |li, j| {
-                let edge = vertex_at(li, j);
-                part(SweepPart::StartVertex {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, shape[li]),
-                })
-            },
-        )?)?;
-        let end_vertex = all(ring_vertices(
-            &mut specs,
-            &shape,
-            tolerance,
-            |li, j| {
-                let edge = vertex_at(li, j);
-                Ok(Some(shift.apply(edge.curve.point(edge.range.lo()))))
-            },
-            |li, j| {
-                let edge = vertex_at(li, j);
-                part(SweepPart::EndVertex {
-                    loop_index: edge.loop_index,
-                    vertex: vertex_index(edge, shape[li]),
-                })
-            },
-        )?)?;
-
-        // The start edges, the end edges, then the rises.
-        let start_edge = all(ring_edges(
-            &mut specs,
-            &present(&start_vertex),
-            tolerance,
-            |li, j| {
-                meter.tick()?;
-                let edge = &loops[li][j];
-                Ok(Some((
-                    EdgeGeometry::Curve {
-                        curve: m.add_curve(edge.curve.clone()),
-                        range: edge.range,
-                    },
-                    part(SweepPart::StartEdge {
-                        loop_index: edge.loop_index,
-                        segment: edge.segment,
-                    }),
-                )))
-            },
-        )?)?;
-        let mut end_curves: Vec<Vec<Curve>> = loops
-            .iter()
-            .map(|edges_of| Vec::with_capacity(edges_of.len()))
-            .collect();
-        let end_edge = all(ring_edges(
-            &mut specs,
-            &present(&end_vertex),
-            tolerance,
-            |li, j| {
-                meter.tick()?;
-                let edge = &loops[li][j];
-                let curve = edge.curve.transformed(&shift);
-                let geometry = EdgeGeometry::Curve {
-                    curve: m.add_curve(curve.clone()),
+    let start_edge = all(ring_edges(
+        specs,
+        &present(&start_vertex),
+        tolerance,
+        |li, j| {
+            meter.tick()?;
+            let edge = &loops[li][j];
+            Ok(Some((
+                EdgeGeometry::Curve {
+                    curve: m.add_curve(edge.curve.clone()),
                     range: edge.range,
-                };
-                end_curves[li].push(curve);
-                Ok(Some((
-                    geometry,
-                    part(SweepPart::EndEdge {
-                        loop_index: edge.loop_index,
-                        segment: edge.segment,
-                    }),
-                )))
-            },
-        )?)?;
-        let mut rises: Vec<Vec<Curve>> = loops
-            .iter()
-            .map(|edges_of| Vec::with_capacity(edges_of.len()))
-            .collect();
-        let rise_edge = all(rails(
-            &mut specs,
-            &present(&start_vertex),
-            &present(&end_vertex),
-            tolerance,
-            |_, li, j| {
-                meter.tick()?;
-                let edge = &loops[li][j];
-                let rise = Curve::Line {
-                    origin: edge.curve.point(edge.range.lo()),
-                    direction: sweep,
-                };
-                let geometry = EdgeGeometry::Curve {
-                    curve: m.add_curve(rise.clone()),
-                    range: rise_range,
-                };
-                rises[li].push(rise);
-                Ok(Some((
-                    geometry,
-                    part(SweepPart::Rise {
-                        loop_index: edge.loop_index,
-                        vertex: vertex_index(edge, shape[li]),
-                    }),
-                )))
-            },
-        )?)?;
-
-        // The caps: the profile face on its own plane, its outward normal
-        // against the sweep, and its translated copy.
-        let slots = |edges: &[Vec<usize>]| -> Vec<Vec<Option<usize>>> {
-            edges
-                .iter()
-                .map(|row| row.iter().copied().map(Some).collect())
-                .collect()
-        };
-        let (start_use, end_use) = if along_normal {
-            (Orientation::Reversed, Orientation::Forward)
-        } else {
-            (Orientation::Forward, Orientation::Reversed)
-        };
-        let start_cap = cap_face(
-            m,
-            &profile_pcurves(&loops),
-            *plane,
-            start_use,
-            &slots(&start_edge),
-            tolerance,
-        );
-        specs.face(start_cap, part(SweepPart::StartCap));
-        let end_cap = cap_face(
-            m,
-            &profile_pcurves(&loops),
-            plane.transformed(&shift),
-            end_use,
-            &slots(&end_edge),
-            tolerance,
-        );
-        specs.face(end_cap, part(SweepPart::EndCap));
-
-        // The sides: start edge, rise up, end edge back, rise down —
-        // walked that way when the sweep runs along the profile's normal
-        // and the other way otherwise, so the material is on the walk's
-        // left seen from outside. A circle loop's one rise is its seam,
-        // used twice.
-        for (li, edges_of) in loops.iter().enumerate() {
-            let n = edges_of.len();
-            for (j, edge) in edges_of.iter().enumerate() {
-                meter.tick()?;
-                let surface = &surfaces[li][j];
-                let next = (j + 1) % n;
-                let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
-                    pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
-                };
-                let start_pcurve = on(&edge.curve, edge.range)?;
-                let orientation =
-                    side_orientation(&edge.curve, edge.range, normal, surface, &start_pcurve)?;
-                let cycle = side_cycle(
-                    [
-                        Some(Leg {
-                            edge: start_edge[li][j],
-                            pcurve: start_pcurve,
-                            range: edge.range,
-                        }),
-                        Some(Leg {
-                            edge: rise_edge[li][next],
-                            pcurve: on(&rises[li][next], rise_range)?,
-                            range: rise_range,
-                        }),
-                        Some(Leg {
-                            edge: end_edge[li][j],
-                            pcurve: on(&end_curves[li][j], edge.range)?,
-                            range: edge.range,
-                        }),
-                        Some(Leg {
-                            edge: rise_edge[li][j],
-                            pcurve: on(&rises[li][j], rise_range)?,
-                            range: rise_range,
-                        }),
-                    ],
-                    !along_normal,
-                );
-                let side = side_face(m, surface, orientation, cycle, false, tolerance);
-                specs.face(
-                    side,
-                    part(SweepPart::Side {
-                        loop_index: edge.loop_index,
-                        segment: edge.segment,
-                    }),
-                );
-            }
-        }
-
-        let shells = specs.one_shell(part(SweepPart::Shell));
-        finish_solid(m, tolerance, specs, shells, part)
+                },
+                part(SweepPart::StartEdge {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                }),
+            )))
+        },
+    )?)?;
+    let mut end_curves: Vec<Vec<Curve>> = shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+    let end_edge = all(ring_edges(
+        specs,
+        &present(&end_vertex),
+        tolerance,
+        |li, j| {
+            meter.tick()?;
+            let edge = &loops[li][j];
+            let curve = edge.curve.transformed(&b.shift);
+            let geometry = EdgeGeometry::Curve {
+                curve: m.add_curve(curve.clone()),
+                range: edge.range,
+            };
+            end_curves[li].push(curve);
+            Ok(Some((
+                geometry,
+                part(SweepPart::EndEdge {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                }),
+            )))
+        },
+    )?)?;
+    let mut rises: Vec<Vec<Curve>> = shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+    let rise_edge = all(rails(
+        specs,
+        &present(&start_vertex),
+        &present(&end_vertex),
+        tolerance,
+        |_, li, j| {
+            meter.tick()?;
+            let edge = &loops[li][j];
+            let rise = Curve::Line {
+                origin: edge.curve.point(edge.range.lo()),
+                direction: b.sweep,
+            };
+            let geometry = EdgeGeometry::Curve {
+                curve: m.add_curve(rise.clone()),
+                range: b.rise_range,
+            };
+            rises[li].push(rise);
+            Ok(Some((
+                geometry,
+                part(SweepPart::Rise {
+                    loop_index: edge.loop_index,
+                    vertex: vertex_index(edge, shape[li]),
+                }),
+            )))
+        },
+    )?)?;
+    Ok(Rings {
+        start_edge,
+        end_edge,
+        rise_edge,
+        end_curves,
+        rises,
     })
+}
+
+/// The sides: start edge, rise up, end edge back, rise down — walked that
+/// way when the sweep runs along the profile's normal and the other way
+/// otherwise, so the material is on the walk's left seen from outside. A
+/// circle loop's one rise is its seam, used twice.
+fn add_sides(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Build<'_>,
+    rings: &Rings,
+) -> Result<(), OpError> {
+    let rise_range = b.rise_range;
+    for (li, edges_of) in b.loops.iter().enumerate() {
+        let n = edges_of.len();
+        for (j, edge) in edges_of.iter().enumerate() {
+            meter.tick()?;
+            let surface = &b.surfaces[li][j];
+            let next = (j + 1) % n;
+            let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
+                pcurve_on(curve, range, surface, b.tol, meter).map_err(fault_of)
+            };
+            let start_pcurve = on(&edge.curve, edge.range)?;
+            let orientation =
+                side_orientation(&edge.curve, edge.range, b.normal, surface, &start_pcurve)?;
+            let cycle = side_cycle(
+                [
+                    Some(Leg {
+                        edge: rings.start_edge[li][j],
+                        pcurve: start_pcurve,
+                        range: edge.range,
+                    }),
+                    Some(Leg {
+                        edge: rings.rise_edge[li][next],
+                        pcurve: on(&rings.rises[li][next], rise_range)?,
+                        range: rise_range,
+                    }),
+                    Some(Leg {
+                        edge: rings.end_edge[li][j],
+                        pcurve: on(&rings.end_curves[li][j], edge.range)?,
+                        range: edge.range,
+                    }),
+                    Some(Leg {
+                        edge: rings.rise_edge[li][j],
+                        pcurve: on(&rings.rises[li][j], rise_range)?,
+                        range: rise_range,
+                    }),
+                ],
+                !b.along_normal,
+            );
+            let side = side_face(m, surface, orientation, cycle, false, b.tolerance);
+            specs.face(
+                side,
+                part(SweepPart::Side {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                }),
+            );
+        }
+    }
+    Ok(())
 }
 
 /// The sheet body of one planar face: `profile`'s loops on its plane, the

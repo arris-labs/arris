@@ -20,7 +20,7 @@ use arris_geom::{
     Curve, Curve2, FrameField, FrameLaw, GeomError, LoopNurbs, LoopPiece, NurbsCurve, NurbsSurface,
     Path, Profile, ProfileEdge, SECTION_FIT_FRACTION, Surface, fit_skin, pcurve_on,
 };
-use arris_math::{Control, Interval, Isometry, Meter};
+use arris_math::{Control, Frame, Interval, Isometry, Meter, Tolerance, Vec3};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::provenance::{PathPart, SweepPart};
 use arris_topo::{Body, Model, Orientation, Provenance, Role};
@@ -206,7 +206,6 @@ pub fn sweep(
         }
     };
     let motions: Vec<Isometry> = (0..rings).map(|r| field.motion_at(at_ring(r))).collect();
-    let end_ring = |k: usize| (k + 1) % rings;
     let span_range = |k: usize| -> Result<Interval, OpError> {
         let (lo, hi) = field.span_range(k);
         Interval::new(lo, hi).map_err(|_| {
@@ -238,18 +237,6 @@ pub fn sweep(
             tol,
         )?);
     }
-    let exact_ring = |r: usize| -> bool {
-        let before = if r == 0 {
-            closed.then_some(spans - 1)
-        } else {
-            Some(r - 1)
-        };
-        let after = (r < spans).then_some(r);
-        [before, after]
-            .into_iter()
-            .flatten()
-            .all(|k| exacts[k].is_some())
-    };
     let mut skins: Vec<Option<Vec<NurbsSurface>>> = Vec::with_capacity(spans);
     for (k, exact) in exacts.iter().enumerate() {
         if exact.is_some() {
@@ -264,334 +251,31 @@ pub fn sweep(
         skins.push(Some(row));
     }
 
-    let part = |span: usize, part: SweepPart| Role::Sweep(PathPart { span, part });
-    let last = spans - 1;
+    let along = Along {
+        field: &field,
+        loops: &loops,
+        composites,
+        exacts,
+        skins,
+        motions,
+        plane,
+        normal,
+        along_normal,
+        closed,
+        spans,
+        rings,
+        tol,
+        tolerance,
+    };
 
     m.transaction(|m| {
         let mut specs = Specs::default();
 
-        // The rings' vertices, per ring per loop in walking order: span
-        // `r`'s start, or the last span's end on an open path's last ring.
-        let shape = counts(&loops);
-        let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
-        for (r, motion) in motions.iter().enumerate() {
-            ring_vertex.push(all(ring_vertices(
-                &mut specs,
-                &shape,
-                tolerance,
-                |li, j| {
-                    meter.tick()?;
-                    let edge = &loops[li][j];
-                    Ok(Some(motion.apply(edge.curve.point(edge.range.lo()))))
-                },
-                |li, j| {
-                    let edge = &loops[li][j];
-                    let (loop_index, vertex) = (edge.loop_index, vertex_index(edge, shape[li]));
-                    if r == spans {
-                        part(last, SweepPart::EndVertex { loop_index, vertex })
-                    } else {
-                        part(r, SweepPart::StartVertex { loop_index, vertex })
-                    }
-                },
-            )?)?);
-        }
-
-        // The rings' edges: each segment's own NURBS carried exactly to
-        // the ring.
-        let mut ring_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
-        let mut ring_range: Vec<Vec<Vec<Interval>>> = Vec::with_capacity(rings);
-        let mut ring_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(rings);
-        for (r, motion) in motions.iter().enumerate() {
-            let analytic = exact_ring(r);
-            let mut ranges: Vec<Vec<Interval>> =
-                shape.iter().map(|&n| Vec::with_capacity(n)).collect();
-            let mut curves: Vec<Vec<Curve>> =
-                shape.iter().map(|&n| Vec::with_capacity(n)).collect();
-            let slots = all(ring_edges(
-                &mut specs,
-                &present(&ring_vertex[r]),
-                tolerance,
-                |li, j| {
-                    meter.tick()?;
-                    let edge = &loops[li][j];
-                    // Between exact spans the ring is the profile's own
-                    // segment carried; beside a fitted span it is that
-                    // segment's NURBS, the isoline the fitted faces end on.
-                    let (curve, range) = if analytic {
-                        (edge.curve.transformed(motion), edge.range)
-                    } else {
-                        let segment = composites[li].segments[j].transformed(motion);
-                        let range = segment.domain();
-                        (Curve::Nurbs(segment), range)
-                    };
-                    let geometry = EdgeGeometry::Curve {
-                        curve: m.add_curve(curve.clone()),
-                        range,
-                    };
-                    ranges[li].push(range);
-                    curves[li].push(curve);
-                    let (loop_index, segment) = (edge.loop_index, edge.segment);
-                    Ok(Some((
-                        geometry,
-                        if r == spans {
-                            part(
-                                last,
-                                SweepPart::EndEdge {
-                                    loop_index,
-                                    segment,
-                                },
-                            )
-                        } else {
-                            part(
-                                r,
-                                SweepPart::StartEdge {
-                                    loop_index,
-                                    segment,
-                                },
-                            )
-                        },
-                    )))
-                },
-            )?)?;
-            ring_edge.push(slots);
-            ring_range.push(ranges);
-            ring_curve.push(curves);
-        }
-
-        // Each span's rails: a vertex's straight rise or circle about the
-        // axis on an exact span, the skin's column at it on a fitted one.
-        let mut rail: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
-        let mut rail_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(spans);
-        for k in 0..spans {
-            let mut curves: Vec<Vec<Curve>> =
-                shape.iter().map(|&n| Vec::with_capacity(n)).collect();
-            rail.push(all(rails(
-                &mut specs,
-                &present(&ring_vertex[k]),
-                &present(&ring_vertex[end_ring(k)]),
-                tolerance,
-                |_, li, j| {
-                    meter.tick()?;
-                    let edge = &loops[li][j];
-                    let (curve, range) = match (&exacts[k], &skins[k]) {
-                        (Some(exact), _) => (exact.rails[li][j].clone(), exact.rail_range),
-                        (None, Some(skins_of)) => {
-                            let first = composites[li].pieces[j].first;
-                            let column = skins_of[li].control_column(first).map_err(fault_of)?;
-                            (Curve::Nurbs(column), span_range(k)?)
-                        }
-                        (None, None) => return Err(unskinned()),
-                    };
-                    let geometry = EdgeGeometry::Curve {
-                        curve: m.add_curve(curve.clone()),
-                        range,
-                    };
-                    curves[li].push(curve);
-                    Ok(Some((
-                        geometry,
-                        part(
-                            k,
-                            SweepPart::Rise {
-                                loop_index: edge.loop_index,
-                                vertex: vertex_index(edge, shape[li]),
-                            },
-                        ),
-                    )))
-                },
-            )?)?);
-            rail_curve.push(curves);
-        }
-
-        // The caps of an open path: the profile face, its outward normal
-        // against the path, and its copy carried to the path's end.
+        let ring_set = add_rings(m, &mut specs, meter, &along)?;
         if !closed {
-            let slots = |r: usize| -> Vec<Vec<Option<usize>>> {
-                ring_edge[r]
-                    .iter()
-                    .map(|row| row.iter().copied().map(Some).collect())
-                    .collect()
-            };
-            let (start_use, end_use) = if along_normal {
-                (Orientation::Reversed, Orientation::Forward)
-            } else {
-                (Orientation::Forward, Orientation::Reversed)
-            };
-            // An exact ring's cap has the profile's own pcurves; a fitted
-            // one's has each segment's NURBS in the plane's (u, v), exact,
-            // and carried with the plane to the end.
-            let on_plane = Surface::Plane { frame: *plane };
-            let mut nurbs: Option<Vec<Vec<Curve2>>> = None;
-            let mut pcurves_of = |analytic: bool| -> Result<Vec<Vec<Curve2>>, OpError> {
-                if analytic {
-                    return Ok(profile_pcurves(&loops));
-                }
-                if let Some(done) = &nurbs {
-                    return Ok(done.clone());
-                }
-                let mut all: Vec<Vec<Curve2>> = Vec::with_capacity(loops.len());
-                for c in &composites {
-                    let mut row = Vec::with_capacity(c.segments.len());
-                    for segment in &c.segments {
-                        let curve = Curve::Nurbs(segment.clone());
-                        row.push(
-                            pcurve_on(&curve, segment.domain(), &on_plane, tol, meter)
-                                .map_err(fault_of)?,
-                        );
-                    }
-                    all.push(row);
-                }
-                nurbs = Some(all.clone());
-                Ok(all)
-            };
-            let (start_pcurves, end_pcurves) =
-                (pcurves_of(exact_ring(0))?, pcurves_of(exact_ring(spans))?);
-            let start_cap = cap_face(m, &start_pcurves, *plane, start_use, &slots(0), tolerance);
-            specs.face(start_cap, part(0, SweepPart::StartCap));
-            let end_cap = cap_face(
-                m,
-                &end_pcurves,
-                plane.transformed(&motions[spans]),
-                end_use,
-                &slots(spans),
-                tolerance,
-            );
-            specs.face(end_cap, part(last, SweepPart::EndCap));
+            add_caps(m, &mut specs, meter, &along, &ring_set.ring_edge)?;
         }
-
-        // The sides: the ring's edge, the rail up at the next vertex, the
-        // next ring's edge back, the rail down — walked that way when the
-        // path leaves the profile along its normal and the other way
-        // otherwise, so the material is on the walk's left seen from
-        // outside. Every edge of a side is an isoline of its skin, so every
-        // pcurve is a line in (u, v).
-        let mut side_loop: Vec<usize> = Vec::new();
-        for k in 0..spans {
-            let range = span_range(k)?;
-            let motion = &motions[k];
-            let carried_normal = motion.apply_vec(normal);
-            for (li, edges_of) in loops.iter().enumerate() {
-                let n = edges_of.len();
-                for (j, edge) in edges_of.iter().enumerate() {
-                    meter.tick()?;
-                    if let Some(exact) = &exacts[k] {
-                        let surface = &exact.surfaces[li][j];
-                        let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
-                            pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
-                        };
-                        let start = (&ring_curve[k][li][j], ring_range[k][li][j]);
-                        let end = (
-                            &ring_curve[end_ring(k)][li][j],
-                            ring_range[end_ring(k)][li][j],
-                        );
-                        let start_pcurve = on(start.0, start.1)?;
-                        let orientation = side_orientation(
-                            start.0,
-                            start.1,
-                            carried_normal,
-                            surface,
-                            &start_pcurve,
-                        )?;
-                        let next = (j + 1) % n;
-                        let cycle = side_cycle(
-                            [
-                                Some(Leg {
-                                    edge: ring_edge[k][li][j],
-                                    pcurve: start_pcurve,
-                                    range: start.1,
-                                }),
-                                Some(Leg {
-                                    edge: rail[k][li][next],
-                                    pcurve: on(&rail_curve[k][li][next], exact.rail_range)?,
-                                    range: exact.rail_range,
-                                }),
-                                Some(Leg {
-                                    edge: ring_edge[end_ring(k)][li][j],
-                                    pcurve: on(end.0, end.1)?,
-                                    range: end.1,
-                                }),
-                                Some(Leg {
-                                    edge: rail[k][li][j],
-                                    pcurve: on(&rail_curve[k][li][j], exact.rail_range)?,
-                                    range: exact.rail_range,
-                                }),
-                            ],
-                            !along_normal,
-                        );
-                        let side = side_face(m, surface, orientation, cycle, false, tolerance);
-                        specs.face(
-                            side,
-                            part(
-                                k,
-                                SweepPart::Side {
-                                    loop_index: edge.loop_index,
-                                    segment: edge.segment,
-                                },
-                            ),
-                        );
-                        side_loop.push(li);
-                        continue;
-                    }
-                    let Some(skins_of) = &skins[k] else {
-                        return Err(unskinned());
-                    };
-                    let sub = piece_surface(&skins_of[li], &composites[li].pieces[j])
-                        .map_err(fault_of)?;
-                    let surface = Surface::Nurbs(sub.clone());
-                    let [du, _] = sub.domain();
-                    // Outward is the carried segment's tangent across the
-                    // carried normal, as on the profile's own plane.
-                    let at = sub.eval(du.midpoint(), range.lo());
-                    let outward = at.du.cross(&carried_normal);
-                    let surface_normal =
-                        sub.normal(du.midpoint(), range.lo())
-                            .ok_or(OpError::Internal(Fault::Invariant {
-                                what: "the swept surface's normal at the segment's midpoint",
-                            }))?;
-                    let orientation = if surface_normal.dot(&outward) > 0.0 {
-                        Orientation::Forward
-                    } else {
-                        Orientation::Reversed
-                    };
-                    let cycle = side_cycle(
-                        [
-                            Some(Leg {
-                                edge: ring_edge[k][li][j],
-                                pcurve: Curve2::along_u(range.lo()),
-                                range: ring_range[k][li][j],
-                            }),
-                            Some(Leg {
-                                edge: rail[k][li][(j + 1) % n],
-                                pcurve: Curve2::along_v(du.hi()),
-                                range,
-                            }),
-                            Some(Leg {
-                                edge: ring_edge[end_ring(k)][li][j],
-                                pcurve: Curve2::along_u(range.hi()),
-                                range: ring_range[end_ring(k)][li][j],
-                            }),
-                            Some(Leg {
-                                edge: rail[k][li][j],
-                                pcurve: Curve2::along_v(du.lo()),
-                                range,
-                            }),
-                        ],
-                        !along_normal,
-                    );
-                    let side = side_face(m, &surface, orientation, cycle, false, tolerance);
-                    specs.face(
-                        side,
-                        part(
-                            k,
-                            SweepPart::Side {
-                                loop_index: edge.loop_index,
-                                segment: edge.segment,
-                            },
-                        ),
-                    );
-                    side_loop.push(li);
-                }
-            }
-        }
+        let side_loop = add_sides(m, &mut specs, meter, &along, &ring_set)?;
 
         // An open path's caps join everything into one shell; a closed
         // one's sides close a shell per loop, the outer loop's the lump's
@@ -617,4 +301,464 @@ pub fn sweep(
         };
         finish_solid(m, tolerance, specs, shells, |p| part(0, p))
     })
+}
+
+fn part(span: usize, part: SweepPart) -> Role {
+    Role::Sweep(PathPart { span, part })
+}
+
+/// What the rings, caps and sides of one sweep are built from.
+struct Along<'a> {
+    field: &'a FrameField,
+    loops: &'a [Vec<ProfileEdge>],
+    /// Every loop as one NURBS.
+    composites: Vec<LoopNurbs>,
+    /// The exact faces of each span that has them.
+    exacts: Vec<Option<ExactSpan>>,
+    /// The skin over each fitted span, one surface per loop.
+    skins: Vec<Option<Vec<NurbsSurface>>>,
+    /// The profile's rigid motion at each ring.
+    motions: Vec<Isometry>,
+    plane: &'a Frame,
+    normal: Vec3,
+    along_normal: bool,
+    closed: bool,
+    spans: usize,
+    rings: usize,
+    tol: Tolerance,
+    tolerance: f64,
+}
+
+impl Along<'_> {
+    /// The ring a span ends on.
+    fn end_ring(&self, k: usize) -> usize {
+        (k + 1) % self.rings
+    }
+
+    /// The arc-length range of span `k`.
+    fn span_range(&self, k: usize) -> Result<Interval, OpError> {
+        let (lo, hi) = self.field.span_range(k);
+        Interval::new(lo, hi).map_err(|_| {
+            OpError::Internal(Fault::Invariant {
+                what: "a span of positive length",
+            })
+        })
+    }
+
+    /// Whether every span ring `r` joins is exact.
+    fn exact_ring(&self, r: usize) -> bool {
+        let before = if r == 0 {
+            self.closed.then_some(self.spans - 1)
+        } else {
+            Some(r - 1)
+        };
+        let after = (r < self.spans).then_some(r);
+        [before, after]
+            .into_iter()
+            .flatten()
+            .all(|k| self.exacts[k].is_some())
+    }
+}
+
+/// The edges of a sweep's rings, their carried ranges and curves, and the
+/// rails of every span, each by (ring or span, loop, walk index).
+struct RingSet {
+    ring_edge: Vec<Vec<Vec<usize>>>,
+    ring_range: Vec<Vec<Vec<Interval>>>,
+    ring_curve: Vec<Vec<Vec<Curve>>>,
+    rail: Vec<Vec<Vec<usize>>>,
+    rail_curve: Vec<Vec<Vec<Curve>>>,
+}
+
+/// The rings' vertices and edges, then each span's rails.
+fn add_rings(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Along<'_>,
+) -> Result<RingSet, OpError> {
+    let composites = &b.composites;
+    let exacts = &b.exacts;
+    let skins = &b.skins;
+    let motions = &b.motions;
+    let spans = b.spans;
+    let rings = b.rings;
+    let tolerance = b.tolerance;
+    let last = b.spans - 1;
+    let loops = b.loops;
+    let end_ring = |k: usize| b.end_ring(k);
+    let exact_ring = |r: usize| b.exact_ring(r);
+    let span_range = |k: usize| b.span_range(k);
+    // The rings' vertices, per ring per loop in walking order: span
+    // `r`'s start, or the last span's end on an open path's last ring.
+    let shape = counts(loops);
+    let mut ring_vertex: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
+    for (r, motion) in motions.iter().enumerate() {
+        ring_vertex.push(all(ring_vertices(
+            specs,
+            &shape,
+            tolerance,
+            |li, j| {
+                meter.tick()?;
+                let edge = &loops[li][j];
+                Ok(Some(motion.apply(edge.curve.point(edge.range.lo()))))
+            },
+            |li, j| {
+                let edge = &loops[li][j];
+                let (loop_index, vertex) = (edge.loop_index, vertex_index(edge, shape[li]));
+                if r == spans {
+                    part(last, SweepPart::EndVertex { loop_index, vertex })
+                } else {
+                    part(r, SweepPart::StartVertex { loop_index, vertex })
+                }
+            },
+        )?)?);
+    }
+
+    // The rings' edges: each segment's own NURBS carried exactly to
+    // the ring.
+    let mut ring_edge: Vec<Vec<Vec<usize>>> = Vec::with_capacity(rings);
+    let mut ring_range: Vec<Vec<Vec<Interval>>> = Vec::with_capacity(rings);
+    let mut ring_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(rings);
+    for (r, motion) in motions.iter().enumerate() {
+        let analytic = exact_ring(r);
+        let mut ranges: Vec<Vec<Interval>> = shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+        let mut curves: Vec<Vec<Curve>> = shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+        let slots = all(ring_edges(
+            specs,
+            &present(&ring_vertex[r]),
+            tolerance,
+            |li, j| {
+                meter.tick()?;
+                let edge = &loops[li][j];
+                // Between exact spans the ring is the profile's own
+                // segment carried; beside a fitted span it is that
+                // segment's NURBS, the isoline the fitted faces end on.
+                let (curve, range) = if analytic {
+                    (edge.curve.transformed(motion), edge.range)
+                } else {
+                    let segment = composites[li].segments[j].transformed(motion);
+                    let range = segment.domain();
+                    (Curve::Nurbs(segment), range)
+                };
+                let geometry = EdgeGeometry::Curve {
+                    curve: m.add_curve(curve.clone()),
+                    range,
+                };
+                ranges[li].push(range);
+                curves[li].push(curve);
+                let (loop_index, segment) = (edge.loop_index, edge.segment);
+                Ok(Some((
+                    geometry,
+                    if r == spans {
+                        part(
+                            last,
+                            SweepPart::EndEdge {
+                                loop_index,
+                                segment,
+                            },
+                        )
+                    } else {
+                        part(
+                            r,
+                            SweepPart::StartEdge {
+                                loop_index,
+                                segment,
+                            },
+                        )
+                    },
+                )))
+            },
+        )?)?;
+        ring_edge.push(slots);
+        ring_range.push(ranges);
+        ring_curve.push(curves);
+    }
+
+    // Each span's rails: a vertex's straight rise or circle about the
+    // axis on an exact span, the skin's column at it on a fitted one.
+    let mut rail: Vec<Vec<Vec<usize>>> = Vec::with_capacity(spans);
+    let mut rail_curve: Vec<Vec<Vec<Curve>>> = Vec::with_capacity(spans);
+    for k in 0..spans {
+        let mut curves: Vec<Vec<Curve>> = shape.iter().map(|&n| Vec::with_capacity(n)).collect();
+        rail.push(all(rails(
+            specs,
+            &present(&ring_vertex[k]),
+            &present(&ring_vertex[end_ring(k)]),
+            tolerance,
+            |_, li, j| {
+                meter.tick()?;
+                let edge = &loops[li][j];
+                let (curve, range) = match (&exacts[k], &skins[k]) {
+                    (Some(exact), _) => (exact.rails[li][j].clone(), exact.rail_range),
+                    (None, Some(skins_of)) => {
+                        let first = composites[li].pieces[j].first;
+                        let column = skins_of[li].control_column(first).map_err(fault_of)?;
+                        (Curve::Nurbs(column), span_range(k)?)
+                    }
+                    (None, None) => return Err(unskinned()),
+                };
+                let geometry = EdgeGeometry::Curve {
+                    curve: m.add_curve(curve.clone()),
+                    range,
+                };
+                curves[li].push(curve);
+                Ok(Some((
+                    geometry,
+                    part(
+                        k,
+                        SweepPart::Rise {
+                            loop_index: edge.loop_index,
+                            vertex: vertex_index(edge, shape[li]),
+                        },
+                    ),
+                )))
+            },
+        )?)?);
+        rail_curve.push(curves);
+    }
+    Ok(RingSet {
+        ring_edge,
+        ring_range,
+        ring_curve,
+        rail,
+        rail_curve,
+    })
+}
+
+/// The caps of an open path: the profile face, its outward normal
+/// against the path, and its copy carried to the path's end.
+fn add_caps(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Along<'_>,
+    ring_edge: &[Vec<Vec<usize>>],
+) -> Result<(), OpError> {
+    let composites = &b.composites;
+    let motions = &b.motions;
+    let plane = b.plane;
+    let along_normal = b.along_normal;
+    let closed = b.closed;
+    let spans = b.spans;
+    let tol = b.tol;
+    let tolerance = b.tolerance;
+    let last = b.spans - 1;
+    let loops = b.loops;
+    let exact_ring = |r: usize| b.exact_ring(r);
+    // The caps of an open path: the profile face, its outward normal
+    // against the path, and its copy carried to the path's end.
+    if !closed {
+        let slots = |r: usize| -> Vec<Vec<Option<usize>>> {
+            ring_edge[r]
+                .iter()
+                .map(|row| row.iter().copied().map(Some).collect())
+                .collect()
+        };
+        let (start_use, end_use) = if along_normal {
+            (Orientation::Reversed, Orientation::Forward)
+        } else {
+            (Orientation::Forward, Orientation::Reversed)
+        };
+        // An exact ring's cap has the profile's own pcurves; a fitted
+        // one's has each segment's NURBS in the plane's (u, v), exact,
+        // and carried with the plane to the end.
+        let on_plane = Surface::Plane { frame: *plane };
+        let mut nurbs: Option<Vec<Vec<Curve2>>> = None;
+        let mut pcurves_of = |analytic: bool| -> Result<Vec<Vec<Curve2>>, OpError> {
+            if analytic {
+                return Ok(profile_pcurves(loops));
+            }
+            if let Some(done) = &nurbs {
+                return Ok(done.clone());
+            }
+            let mut all: Vec<Vec<Curve2>> = Vec::with_capacity(loops.len());
+            for c in composites {
+                let mut row = Vec::with_capacity(c.segments.len());
+                for segment in &c.segments {
+                    let curve = Curve::Nurbs(segment.clone());
+                    row.push(
+                        pcurve_on(&curve, segment.domain(), &on_plane, tol, meter)
+                            .map_err(fault_of)?,
+                    );
+                }
+                all.push(row);
+            }
+            nurbs = Some(all.clone());
+            Ok(all)
+        };
+        let (start_pcurves, end_pcurves) =
+            (pcurves_of(exact_ring(0))?, pcurves_of(exact_ring(spans))?);
+        let start_cap = cap_face(m, &start_pcurves, *plane, start_use, &slots(0), tolerance);
+        specs.face(start_cap, part(0, SweepPart::StartCap));
+        let end_cap = cap_face(
+            m,
+            &end_pcurves,
+            plane.transformed(&motions[spans]),
+            end_use,
+            &slots(spans),
+            tolerance,
+        );
+        specs.face(end_cap, part(last, SweepPart::EndCap));
+    }
+    Ok(())
+}
+
+/// The sides, whose loop each is returned in `faces` order.
+fn add_sides(
+    m: &mut Model,
+    specs: &mut Specs,
+    meter: &mut Meter,
+    b: &Along<'_>,
+    set: &RingSet,
+) -> Result<Vec<usize>, OpError> {
+    let composites = &b.composites;
+    let exacts = &b.exacts;
+    let skins = &b.skins;
+    let motions = &b.motions;
+    let normal = b.normal;
+    let along_normal = b.along_normal;
+    let spans = b.spans;
+    let tol = b.tol;
+    let tolerance = b.tolerance;
+    let loops = b.loops;
+    let end_ring = |k: usize| b.end_ring(k);
+    let span_range = |k: usize| b.span_range(k);
+    let RingSet {
+        ring_edge,
+        ring_range,
+        ring_curve,
+        rail,
+        rail_curve,
+    } = set;
+    // The sides: the ring's edge, the rail up at the next vertex, the
+    // next ring's edge back, the rail down — walked that way when the
+    // path leaves the profile along its normal and the other way
+    // otherwise, so the material is on the walk's left seen from
+    // outside. Every edge of a side is an isoline of its skin, so every
+    // pcurve is a line in (u, v).
+    let mut side_loop: Vec<usize> = Vec::new();
+    for k in 0..spans {
+        let range = span_range(k)?;
+        let motion = &motions[k];
+        let carried_normal = motion.apply_vec(normal);
+        for (li, edges_of) in loops.iter().enumerate() {
+            let n = edges_of.len();
+            for (j, edge) in edges_of.iter().enumerate() {
+                meter.tick()?;
+                if let Some(exact) = &exacts[k] {
+                    let surface = &exact.surfaces[li][j];
+                    let mut on = |curve: &Curve, range: Interval| -> Result<Curve2, OpError> {
+                        pcurve_on(curve, range, surface, tol, meter).map_err(fault_of)
+                    };
+                    let start = (&ring_curve[k][li][j], ring_range[k][li][j]);
+                    let end = (
+                        &ring_curve[end_ring(k)][li][j],
+                        ring_range[end_ring(k)][li][j],
+                    );
+                    let start_pcurve = on(start.0, start.1)?;
+                    let orientation =
+                        side_orientation(start.0, start.1, carried_normal, surface, &start_pcurve)?;
+                    let next = (j + 1) % n;
+                    let cycle = side_cycle(
+                        [
+                            Some(Leg {
+                                edge: ring_edge[k][li][j],
+                                pcurve: start_pcurve,
+                                range: start.1,
+                            }),
+                            Some(Leg {
+                                edge: rail[k][li][next],
+                                pcurve: on(&rail_curve[k][li][next], exact.rail_range)?,
+                                range: exact.rail_range,
+                            }),
+                            Some(Leg {
+                                edge: ring_edge[end_ring(k)][li][j],
+                                pcurve: on(end.0, end.1)?,
+                                range: end.1,
+                            }),
+                            Some(Leg {
+                                edge: rail[k][li][j],
+                                pcurve: on(&rail_curve[k][li][j], exact.rail_range)?,
+                                range: exact.rail_range,
+                            }),
+                        ],
+                        !along_normal,
+                    );
+                    let side = side_face(m, surface, orientation, cycle, false, tolerance);
+                    specs.face(
+                        side,
+                        part(
+                            k,
+                            SweepPart::Side {
+                                loop_index: edge.loop_index,
+                                segment: edge.segment,
+                            },
+                        ),
+                    );
+                    side_loop.push(li);
+                    continue;
+                }
+                let Some(skins_of) = &skins[k] else {
+                    return Err(unskinned());
+                };
+                let sub =
+                    piece_surface(&skins_of[li], &composites[li].pieces[j]).map_err(fault_of)?;
+                let surface = Surface::Nurbs(sub.clone());
+                let [du, _] = sub.domain();
+                // Outward is the carried segment's tangent across the
+                // carried normal, as on the profile's own plane.
+                let at = sub.eval(du.midpoint(), range.lo());
+                let outward = at.du.cross(&carried_normal);
+                let surface_normal =
+                    sub.normal(du.midpoint(), range.lo())
+                        .ok_or(OpError::Internal(Fault::Invariant {
+                            what: "the swept surface's normal at the segment's midpoint",
+                        }))?;
+                let orientation = if surface_normal.dot(&outward) > 0.0 {
+                    Orientation::Forward
+                } else {
+                    Orientation::Reversed
+                };
+                let cycle = side_cycle(
+                    [
+                        Some(Leg {
+                            edge: ring_edge[k][li][j],
+                            pcurve: Curve2::along_u(range.lo()),
+                            range: ring_range[k][li][j],
+                        }),
+                        Some(Leg {
+                            edge: rail[k][li][(j + 1) % n],
+                            pcurve: Curve2::along_v(du.hi()),
+                            range,
+                        }),
+                        Some(Leg {
+                            edge: ring_edge[end_ring(k)][li][j],
+                            pcurve: Curve2::along_u(range.hi()),
+                            range: ring_range[end_ring(k)][li][j],
+                        }),
+                        Some(Leg {
+                            edge: rail[k][li][j],
+                            pcurve: Curve2::along_v(du.lo()),
+                            range,
+                        }),
+                    ],
+                    !along_normal,
+                );
+                let side = side_face(m, &surface, orientation, cycle, false, tolerance);
+                specs.face(
+                    side,
+                    part(
+                        k,
+                        SweepPart::Side {
+                            loop_index: edge.loop_index,
+                            segment: edge.segment,
+                        },
+                    ),
+                );
+                side_loop.push(li);
+            }
+        }
+    }
+    Ok(side_loop)
 }
