@@ -108,7 +108,7 @@ robustness or bound has to be established here.
   now run through `bernstein_n`. The DATA-MODEL rows were renamed here too.
 - [x] Step 6 **[1]** — `bernstein2.rs` deleted: the leaves and constants
   moved, the module doc merged. `rg bernstein2 crates` is empty.
-- [ ] Step 7 **[1]** — `torus_walk/` with `mod.rs`, `walker.rs` and the
+- [x] Step 7 **[1]** — `torus_walk/` with `mod.rs`, `walker.rs` and the
   cells-and-seeds and singular-points files; dumps of `torus/`, `nurbs/` unchanged.
 - [ ] Step 8 **[1]** — The arcs and assembly files; `sizes.sh` shows no
   `torus_walk/` file past 1000 lines.
