@@ -88,7 +88,7 @@ robustness or bound has to be established here.
   `real_*`, `step/` and healing corpora's dumps unchanged.
 - [x] Step 4 **[2]** — `walk_shell` split by face and loop; no function in
   `reader/topology/build/` past 150 lines.
-- [ ] Step 5 **[1]** — `corpus/` with `mod.rs`, `stages.rs`, `read_back.rs`,
+- [x] Step 5 **[1]** — `corpus/` with `mod.rs`, `stages.rs`, `read_back.rs`,
   `inputs.rs`; moves only.
 - [ ] Step 6 **[1]** — `corpus/step/` per family; `build_step` a dispatch;
   no `corpus/` file past 1000 lines.
