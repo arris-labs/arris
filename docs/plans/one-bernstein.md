@@ -112,7 +112,7 @@ robustness or bound has to be established here.
   cells-and-seeds and singular-points files; dumps of `torus/`, `nurbs/` unchanged.
 - [x] Step 8 **[1]** — The arcs and assembly files; `sizes.sh` shows no
   `torus_walk/` file past 1000 lines.
-- [ ] Step 9 **[1]** — `docs/DATA-MODEL.md` rows and crate docs naming the
+- [x] Step 9 **[1]** — `docs/DATA-MODEL.md` rows and crate docs naming the
   merged module; `fn_lengths.py` shows no new function past 150.
 
 ## Acceptance
