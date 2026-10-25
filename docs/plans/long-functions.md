@@ -48,7 +48,7 @@ string is byte-identical to the start.
   `tag()` equals the `op` serde writes for one step of each variant, and that
   every tag appears as an `op == "<tag>"` branch of
   `tools/oracle/oracle/recipe.py` (read as text; no Python run).
-- **STEP `build` → `reader/build/`**: a `Build<'a>` context (the reader, the
+- **STEP `build` → `reader/topology/build/`**: a `Build<'a>` context (the reader, the
   model, the file solid, `points`, `curves`, `surfaces`, `edges`, the id
   maps, `splits`, `rebuilt`, the meter) and one method per phase as the body
   reads now — `edges` (points and curves), `singular_splits`, `turned`,
@@ -84,10 +84,10 @@ robustness or bound has to be established here.
   commit body; the idea's table corrected.
 - [x] Step 2 **[1]** — `Step::TAGS`/`tag()` and the serde and `recipe.py`
   test.
-- [ ] Step 3 **[2]** — STEP `build` as `Build` and its phases; the
+- [x] Step 3 **[2]** — STEP `build` as `Build` and its phases; the
   `real_*`, `step/` and healing corpora's dumps unchanged.
 - [ ] Step 4 **[2]** — `walk_shell` split by face and loop; no function in
-  `reader/build/` past 150 lines.
+  `reader/topology/build/` past 150 lines.
 - [ ] Step 5 **[1]** — `corpus/` with `mod.rs`, `stages.rs`, `read_back.rs`,
   `inputs.rs`; moves only.
 - [ ] Step 6 **[1]** — `corpus/step/` per family; `build_step` a dispatch;
@@ -126,5 +126,8 @@ robustness or bound has to be established here.
   to `file-concerns`, because together they run to ~16 steps.
 - Settled (agent): the Python lint is a Rust test reading `recipe.py` as
   text, not a Python script — the hook runs it, and `Step` is the source.
-- ⚠ OPEN (agent, step 3): whether `Build` owns `&mut Model` or takes it per
-  phase; the borrow of `self.entities` beside it decides.
+- Settled (agent, step 3): `Build` owns the `&mut Model` for the whole read; the
+  reader's entities are only used in `new`, so no borrow competes.
+- Settled (agent, step 3): the module is `reader/topology/build/`, a child of
+  `topology`, not `reader/topology/build/`: the helpers and types it uses are private
+  to `topology` and a child sees them with no visibility change.
