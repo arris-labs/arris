@@ -1,14 +1,15 @@
 """Shared reading of the workspace's Rust sources for the review scripts.
 
 Library code is `crates/*/src/**/*.rs` cut at its `#[cfg(test)] mod`, with
-`src/**/tests.rs` (out-of-line unit tests) left out. Comments and string
-literals are blanked before anything is matched, so a pattern in a doc
-comment does not count. Line numbers stay those of the file.
+`src/**/tests.rs` (out-of-line unit tests) left out. Comments, string
+and char literals (lifetimes stay) are blanked before anything is matched, so
+a pattern in a doc comment does not count. Line numbers stay those of the file.
 """
 
 import os
 import re
 
+CHAR = re.compile(r"'(?:\\(?:u\{[0-9a-fA-F_]+\}|x[0-9a-fA-F]{2}|.)|[^\\'\n])'")
 TEST_MOD = re.compile(r"#\[cfg\(test\)\]\s*mod\s+\w+\s*\{")
 FN = re.compile(r"\bfn\s+(\w+)")
 
@@ -29,6 +30,9 @@ def blank(src):
             j = n if j < 0 else j + 2
             out.append(re.sub(r"[^\n]", " ", src[i:j]))
             i = j
+        elif c == "'" and (m := CHAR.match(src, i)):
+            out.append("'" + " " * (m.end() - i - 2) + "'")
+            i = m.end()
         elif c == '"':
             j = i + 1
             while j < n and src[j] != '"':

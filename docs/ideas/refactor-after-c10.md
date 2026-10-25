@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24; `sweep-skeleton` done and retired 2026-10-25; `one-bernstein` done and retired 2026-10-25
+- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24; `sweep-skeleton` done and retired 2026-10-25; `one-bernstein` done and retired 2026-10-25; the long functions and the recipe table of `long-functions` absorbed by plans/long-functions; the rest (below) is `file-concerns`
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -41,23 +41,11 @@ order, so the two namings agree).
 ### For a `one-bernstein` plan
 Done and retired.
 
-### For a `long-functions` plan (measured sizes, read structure)
+### For a `long-functions` plan
+Absorbed by plans/long-functions (the long functions and the recipe table;
+`refusal`'s 711 lines were a char-literal artefact of the measuring script).
 
-| Function | Lines | Along |
-|---|---|---|
-| `debug/differential.rs` `refusal` | 711 | a table per recipe op |
-| `io/step/reader/topology.rs` `build` | 628 | points, edges, faces, loops, healing, assemble — phases over a context, as `blend::build` |
-| `debug/corpus.rs` `build_step` (file 3385) | 399 | one interpreter per op family; `corpus/` module tree |
-| `debug/prop/recipe.rs` `write` | 383 | per op family |
-| `mesh/tessellate.rs` `tessellate_under` | 330 | edge counts, edge samples, face work |
-| `ops/boolean/result.rs` `boolean_each_witnessed` | 245 | select, shells, assembly, provenance |
-| `ops/boolean/mod.rs` `fmt` | 237 | the `Interferences` dump into its own file |
-
-- **The recipe op table is interpreted four times:** `build_step`,
-  `prop::recipe::write`, `differential::refusal`, and the oracle's
-  `recipe.py`. Nothing holds that a new op reaches all of them.
-  - → In Rust, one `Op` enum matched exhaustively by all three.
-  - → In Python, a lint on op names.
+### For a `file-concerns` plan (the rest of `long-functions`)
 - **`py/src/model.rs`** (2326 lines) is one `#[pymethods]` block of ~1870
   lines. → Keep the block as thin methods over free functions in
   `model/{ops, query, io, topology}.rs`. pyo3's `multiple-pymethods` is
