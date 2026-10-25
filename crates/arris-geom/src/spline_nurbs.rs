@@ -60,7 +60,7 @@ use arris_math::{Meter, Point2, Point3, Tolerance, Vec3};
 
 use crate::bernstein::Binomials;
 use crate::bernstein_n::{
-    Continuum, Gate, Isolation, PolyN, Wrap, Zero, common_zeros, common_zeros_with, merge,
+    Continuum, Gate, Halving, Isolation, PolyN, Wrap, Zero, common_zeros, merge,
 };
 use crate::by_distance::closure;
 use crate::halt::Halt;
@@ -264,7 +264,7 @@ fn isolate(
         }
         Ok(())
     };
-    let meeting = common_zeros(d.each_ref(), [floor; 3], meter);
+    let meeting = common_zeros(d.each_ref(), [floor; 3], &[], Halving::LookAhead, meter);
     take(
         meeting,
         &mut found.crossings,
@@ -307,8 +307,9 @@ fn isolate(
     let gate = Gate {
         poly: &tube,
         floor: tube_floor,
+        one_sided: true,
     };
-    let critical = common_zeros_with(g.each_ref(), g_floors, &[gate], meter);
+    let critical = common_zeros(g.each_ref(), g_floors, &[gate], Halving::LookAhead, meter);
     let mut ignored = false;
     take(critical, &mut found.extrema, &mut found.boxes, &mut ignored)?;
     Ok(found)

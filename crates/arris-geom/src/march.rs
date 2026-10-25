@@ -40,7 +40,7 @@ use arris_math::{Interrupted, Meter, Point3, Vec3, real};
 
 use crate::NurbsSurface;
 use crate::bernstein::Binomials;
-use crate::bernstein_n::{PolyN, Wrap, Zero, common_zeros, merge};
+use crate::bernstein_n::{Halving, PolyN, Wrap, Zero, common_zeros, merge};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::nurbs::Patch;
@@ -413,7 +413,7 @@ fn seeds_by(
             };
             out.pairs += 1;
             let spans = [a.span[0], a.span[1], b.span[0], b.span[1]];
-            match common_zeros(system.each_ref(), floors, meter) {
+            match common_zeros(system.each_ref(), floors, &[], Halving::LookAhead, meter) {
                 Ok(isolation) => {
                     out.boxes += isolation.boxes;
                     out.depth = out.depth.max(isolation.depth);

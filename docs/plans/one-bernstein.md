@@ -91,10 +91,12 @@ robustness or bound has to be established here.
   generalised (per axis, own index then the other's; ratios, then `a·b`),
   `Poly2::mul` calling the same arithmetic. Measured: the goldens and the
   `march`/`spline_nurbs`/`nurbs_nurbs_prop` dumps; the Rule decides.
-- [ ] Step 3 **[2]** — `bernstein_n`'s isolation takes `Halving`,
+- [x] Step 3 **[2]** — `bernstein_n`'s isolation takes `Halving`,
   two-sided gates, `solve`, the 2-D mixed partial; joint exclusion and
   elevation for `N > 2`. A golden test asserts `bernstein_n::common_zeros::<2>`
   equals `bernstein2::common_zeros_with` bit for bit on every golden system.
+  *Settled:* the mixed partial is `∂max(∂min p)` for every N (the 2-D form
+  at N = 2); N ≥ 3's existing goldens did not move, `scored` ones recorded.
 - [ ] Step 4 **[2]** — `Poly2` becomes `PolyN<2>` in every caller and in
   `bernstein2`'s isolation; the 2-D extras as `impl PolyN<2>`. Goldens unchanged.
 - [ ] Step 5 **[2]** — The 2-D callers (`trace_torus`, `torus_walk`,
@@ -135,6 +137,7 @@ robustness or bound has to be established here.
 - Settled (step 2): `bernstein2`'s product order survives, one formula for
   every N; the 2-D goldens and every blessed dump held, N ≥ 3's goldens
   re-recorded.
-- ⚠ OPEN: the mixed partial at N ≥ 3 (step 3) — the agent, same Rule.
+- Settled (step 3): the mixed partial at N ≥ 3 is `∂max(∂min p)`, the 2-D
+  form; no N ≥ 3 golden moved.
 - Settled: the merged module keeps the name `bernstein_n`; the ADRs that
   cite `bernstein2` are not edited.

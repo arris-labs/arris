@@ -41,6 +41,7 @@
 use arris_math::Meter;
 
 use crate::bernstein::{BernsteinAlgebra, Binomials, MAX_DEPTH};
+pub(crate) use crate::bernstein_n::Halving;
 use crate::bernstein_n::PolyN;
 use crate::halt::Halt;
 
@@ -554,17 +555,6 @@ struct Cell {
     /// Whether a box within reach of the certificate is halved along the
     /// direction whose halves come nearer it ([`Halving::LookAhead`]).
     look_ahead: bool,
-}
-
-/// How a box the certificate is within reach of is halved.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Halving {
-    /// By the second derivatives along each direction weighted by `|Y|`
-    /// alone: what the torus tracer's isolations were measured with.
-    Scored,
-    /// Along the direction whose worse half has the smaller spread, the
-    /// score breaking a tie ([`Cell::direction`]).
-    LookAhead,
 }
 
 impl Cell {

@@ -13,11 +13,9 @@
 use arris_math::Meter;
 
 use super::tests::{Seeded, floor, sphere, through, weight};
-use super::{
-    Continuum, Gate, Isolation, PolyN, Wrap, Zero, common_zeros, common_zeros_with, merge,
-};
+use super::{Continuum, Gate, Halving, Isolation, PolyN, Wrap, Zero, common_zeros, merge};
 use crate::bernstein::Binomials;
-use crate::bernstein2::{self, Halving, Poly2, Zero2};
+use crate::bernstein2::{self, Poly2, Zero2};
 use crate::halt::Halt;
 
 /// The 2-D isolations, each family under both halvings.
@@ -57,9 +55,13 @@ const GOLDENS_N: &[(&str, u64)] = &[
     ("3/posed", 0xc5e8a989141fffad),
     ("3/gated", 0x41200c3dd391e0ab),
     ("3/merged", 0x0c3ae12937aec94a),
+    ("3/posed_scored", 0xe4218eadb49b355d),
+    ("3/gated_scored", 0x0795af685bc850e2),
     ("4/posed", 0x004b0d439b6470db),
     ("4/gated", 0xa4377bf9b29ebb03),
     ("4/merged", 0xfbb429551d3403de),
+    ("4/posed_scored", 0xa68427e30eff5f1f),
+    ("4/gated_scored", 0x35a45b1d326a9678),
 ];
 
 /// FNV-1a over 64-bit words.
@@ -411,38 +413,48 @@ fn spheres<const N: usize>(s: &mut Seeded, b: &Binomials) -> Option<[PolyN<N>; N
 }
 
 /// This module's isolations at `N`: posed systems, the same gated to the
-/// inside of a random sphere, and the merges.
+/// inside of a random sphere, each under both halvings, and the merges.
 fn goldens_n<const N: usize>(cases: usize) -> Vec<(String, u64)> {
     let b = Binomials::new(16);
     let mut s = Seeded(0x0b00 + N as u64);
-    let (mut posed, mut gated) = (Digest::new(), Digest::new());
+    let mut digests = [(); 4].map(|()| Digest::new());
     for _ in 0..cases {
         let Some(system) = spheres::<N>(&mut s, &b) else {
             continue;
         };
         let floors = system.each_ref().map(floor);
-        posed.isolation(&common_zeros(
-            system.each_ref(),
-            floors,
-            &mut Meter::default(),
-        ));
         let inside = sphere(s.point(0.2, 0.8), 0.3 + 0.3 * s.next());
-        let gate = Gate {
+        let gate = || Gate {
             poly: &inside,
             floor: 0.0,
+            one_sided: true,
         };
-        let found = common_zeros_with(system.each_ref(), floors, &[gate], &mut Meter::default());
-        gated.isolation(&found);
+        for (halving, at) in [(Halving::LookAhead, 0), (Halving::Scored, 2)] {
+            let isolate = |gates: &[Gate<'_, N>]| {
+                common_zeros(
+                    system.each_ref(),
+                    floors,
+                    gates,
+                    halving,
+                    &mut Meter::default(),
+                )
+            };
+            digests[at].isolation(&isolate(&[]));
+            digests[at + 1].isolation(&isolate(&[gate()]));
+        }
     }
     let mut merged = Digest::new();
     for _ in 0..16 {
         let zeros = boxes::<N>(&mut s, 24);
         merged.zeros(&merge(zeros, &random_wrap(&mut s)));
     }
+    let [posed, gated, posed_scored, gated_scored] = digests;
     vec![
         (format!("{N}/posed"), posed.0),
         (format!("{N}/gated"), gated.0),
         (format!("{N}/merged"), merged.0),
+        (format!("{N}/posed_scored"), posed_scored.0),
+        (format!("{N}/gated_scored"), gated_scored.0),
     ]
 }
 
@@ -476,4 +488,56 @@ fn bernstein_n_goldens_of_the_3d_and_4d_isolations_hold() {
     let mut found = goldens_n::<3>(8);
     found.extend(goldens_n::<4>(4));
     check(&found, GOLDENS_N);
+}
+
+/// The same 2-D systems through `crate::bernstein2` and through this
+/// module's isolation at `N = 2`, under both halvings: the digest of
+/// every result is the same, bit for bit.
+#[test]
+fn bernstein_n_isolation_at_2_is_bernsteins2_bit_for_bit() {
+    let b = Binomials::new(16);
+    for (k, name) in FAMILIES_2.into_iter().enumerate() {
+        for halving in [Halving::Scored, Halving::LookAhead] {
+            let mut s = Seeded(0x0b22 + k as u64);
+            for (system, floors, gates) in family2(name, &mut s, &b) {
+                let old_gates: Vec<bernstein2::Gate<'_>> = gates
+                    .iter()
+                    .map(|(poly, floor, one_sided)| bernstein2::Gate {
+                        poly,
+                        floor: *floor,
+                        one_sided: *one_sided,
+                    })
+                    .collect();
+                let old = bernstein2::common_zeros_with(
+                    system.each_ref(),
+                    floors,
+                    &old_gates,
+                    halving,
+                    &mut Meter::default(),
+                );
+                let polys: Vec<PolyN<2>> = gates.iter().map(|(p, _, _)| from2(p)).collect();
+                let new_gates: Vec<Gate<'_, 2>> = gates
+                    .iter()
+                    .zip(&polys)
+                    .map(|((_, floor, one_sided), poly)| Gate {
+                        poly,
+                        floor: *floor,
+                        one_sided: *one_sided,
+                    })
+                    .collect();
+                let system = system.each_ref().map(from2);
+                let new = common_zeros(
+                    system.each_ref(),
+                    floors,
+                    &new_gates,
+                    halving,
+                    &mut Meter::default(),
+                );
+                let (mut a, mut c) = (Digest::new(), Digest::new());
+                a.isolation(&isolation2(old));
+                c.isolation(&new);
+                assert_eq!(a.0, c.0, "{name} under {halving:?}");
+            }
+        }
+    }
 }

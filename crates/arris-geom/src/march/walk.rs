@@ -65,7 +65,7 @@ use arris_math::{Interval, KNOT_RESOLUTION, Meter, Point3, Tolerance, Vec3, real
 
 use super::{Net, PATCH_SLACK, hulls_meet, loop_seeds, middle, own, section, sum};
 use crate::bernstein::Binomials;
-use crate::bernstein_n::{PolyN, Wrap, Zero, common_zeros, merge};
+use crate::bernstein_n::{Halving, PolyN, Wrap, Zero, common_zeros, merge};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::nurbs::Patch;
@@ -1206,8 +1206,14 @@ impl<'a> Marcher<'a> {
                 }
                 let ([f0, f1, f2], f) = section(a, b);
                 let spans = [a.span[0], a.span[1], b.span[0], b.span[1]];
-                let isolation =
-                    common_zeros([&f0, &f1, &f2, &g], [f, f, f, floor], meter).map_err(stopped)?;
+                let isolation = common_zeros(
+                    [&f0, &f1, &f2, &g],
+                    [f, f, f, floor],
+                    &[],
+                    Halving::LookAhead,
+                    meter,
+                )
+                .map_err(stopped)?;
                 for z in isolation.zeros.into_iter().filter_map(|z| own(z, spans)) {
                     if !z.certified {
                         return Err(refused(SectionFault::CrowdedSingularity));

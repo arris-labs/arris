@@ -13,11 +13,11 @@
 //! the coefficients bound the polynomial over the box.
 //!
 //! The isolation is `crate::bernstein2`'s with its three tests on a box
-//! in `N` dimensions. A box is **excluded** where one polynomial's
-//! coefficients keep one sign beyond its floor, or one row of `Y·F`'s
-//! does, `Y` the inverse of the box's middle Jacobian: what
-//! `crate::bernstein2` does without, and four unknowns cannot
-//! (`excluded_together`). It is **certified** by
+//! in `N` dimensions, and at two it is that isolation bit for bit. A box
+//! is **excluded** where one polynomial's coefficients keep one sign
+//! beyond its floor, or, past two unknowns, one row of `Y·F`'s does, `Y`
+//! the inverse of the box's middle Jacobian: what two unknowns do
+//! without and four cannot (`excluded_together`). It is **certified** by
 //! the Krawczyk operator on the box grown by `MARGIN` of its width along
 //! every axis, `K = c − Y·F(c) + (I − Y·[J])(X − c)` with `Y` the inverse
 //! of the middle of `[J]`, an `N × N` matrix now; `K` inside the grown
@@ -381,16 +381,50 @@ pub(crate) struct Continuum<const N: usize> {
     pub(crate) front: Vec<Zero<N>>,
 }
 
-/// A polynomial that only excludes, as `crate::bernstein2::Gate` is: a
-/// box where its coefficients are all above `floor` is dropped, and so is
-/// a certified zero where its value is; it takes no other part. It keeps
-/// the zeros of the system where it is at most `floor`, however far
-/// below.
+/// A polynomial that only excludes: a box where its coefficients keep
+/// one sign beyond `floor` is dropped, and so is a certified zero where
+/// its value is beyond `floor`; it takes no other part. With a `floor`
+/// above the rounding it keeps the zeros of the system where it is
+/// merely small. A `one_sided` gate excludes only above: it keeps the
+/// zeros where the polynomial is at most `floor`, however far below.
 pub(crate) struct Gate<'a, const N: usize> {
     /// The polynomial.
     pub(crate) poly: &'a PolyN<N>,
     /// What its coefficients have to clear to exclude a box.
     pub(crate) floor: f64,
+    /// Whether only values above `floor` exclude.
+    pub(crate) one_sided: bool,
+}
+
+impl<const N: usize> Gate<'_, N> {
+    /// Whether the gate drops a box whose part of the polynomial is `p`.
+    fn excludes(&self, p: &PolyN<N>) -> bool {
+        if self.one_sided {
+            p.range().lo > self.floor
+        } else {
+            p.keeps_sign(self.floor)
+        }
+    }
+
+    /// Whether the gate drops a zero where the polynomial is `value`.
+    fn drops(&self, value: f64) -> bool {
+        if self.one_sided {
+            value > self.floor
+        } else {
+            value.abs() > self.floor
+        }
+    }
+}
+
+/// How a box the certificate is within reach of is halved.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Halving {
+    /// By the second derivatives along each axis weighted by `|Y|`
+    /// alone: what the torus tracer's isolations were measured with.
+    Scored,
+    /// Along the axis whose worse half has the smaller spread, the score
+    /// breaking a tie ([`Cell::direction`]).
+    LookAhead,
 }
 
 struct Cell<const N: usize> {
@@ -401,6 +435,9 @@ struct Cell<const N: usize> {
     width: [f64; N],
     /// How many times the box was halved along each axis.
     halved: [usize; N],
+    /// Whether a box within reach of the certificate is halved along the
+    /// axis whose halves come nearer it ([`Halving::LookAhead`]).
+    look_ahead: bool,
 }
 
 impl<const N: usize> Cell<N> {
@@ -422,7 +459,7 @@ impl<const N: usize> Cell<N> {
     /// scored by the second derivatives along it and across it weighted
     /// by `|Y|`.
     fn direction(&self, within_reach: bool) -> Option<usize> {
-        if within_reach && self.halved.iter().all(|&h| h < MAX_DEPTH) {
+        if within_reach && self.look_ahead && self.halved.iter().all(|&h| h < MAX_DEPTH) {
             let worst = |along: usize| {
                 let halves = self.system.each_ref().map(|p| p.split(along, 0.5));
                 let lower = halves.each_ref().map(|h| h.0.clone());
@@ -455,8 +492,12 @@ impl<const N: usize> Cell<N> {
             Some((y, _)) => {
                 for (j, partials) in first.iter().enumerate() {
                     let weight: f64 = (0..N).map(|i| y[i][j].abs()).sum();
-                    for (k, p_k) in partials.iter().enumerate() {
-                        let along: f64 = (0..N).map(|l| size(&p_k.partial(l))).sum();
+                    for k in 0..N {
+                        // A mixed partial is taken in the one order, the
+                        // lower axis first, whichever axis is scored.
+                        let along: f64 = (0..N)
+                            .map(|l| size(&partials[k.min(l)].partial(k.max(l))))
+                            .sum();
                         score[k] += weight * along;
                     }
                 }
@@ -496,6 +537,7 @@ impl<const N: usize> Cell<N> {
                 lo: self.lo,
                 width,
                 halved,
+                look_ahead: self.look_ahead,
             },
             Cell {
                 system: upper_system,
@@ -503,6 +545,7 @@ impl<const N: usize> Cell<N> {
                 lo: upper,
                 width,
                 halved,
+                look_ahead: self.look_ahead,
             },
         ]
     }
@@ -511,39 +554,42 @@ impl<const N: usize> Cell<N> {
 /// The common zeros of `system` in `[0, 1]ᴺ`: every one is `at` a
 /// certified [`Zero`] or inside an uncertified one's box, against
 /// `floors`, the rounding of each polynomial's coefficients, the
-/// caller's to state. A certified zero may lie outside the cube, within
-/// [`MARGIN`] of it, and not every zero there is found: a caller tiling
-/// a domain with cubes finds it from the neighbour whose cube it is in,
-/// and merges the two where both did ([`merge`]).
+/// caller's to state. The zeros `gates` keep are the ones looked for: a
+/// box or a zero a gate drops is not looked at again ([`Gate`]). A box
+/// within reach of the certificate is halved as `halving` says. A
+/// certified zero may lie outside the cube, within [`MARGIN`] of it, and
+/// not every zero there is found: a caller tiling a domain with cubes
+/// finds it from the neighbour whose cube it is in, and merges the two
+/// where both did ([`merge`]).
 pub(crate) fn common_zeros<const N: usize>(
     system: [&PolyN<N>; N],
     floors: [f64; N],
-    meter: &mut Meter,
-) -> Result<Isolation<N>, Halt<Continuum<N>>> {
-    common_zeros_with(system, floors, &[], meter)
-}
-
-/// [`common_zeros`] of the zeros `gates` keep: a box or a zero a gate
-/// drops is not looked at again ([`Gate`]).
-pub(crate) fn common_zeros_with<const N: usize>(
-    system: [&PolyN<N>; N],
-    floors: [f64; N],
     gates: &[Gate<'_, N>],
+    halving: Halving,
     meter: &mut Meter,
 ) -> Result<Isolation<N>, Halt<Continuum<N>>> {
     let partials: [[PolyN<N>; N]; N] = system.map(|p| core::array::from_fn(|k| p.partial(k)));
-    // One degree for all, so that any combination of them is one more
-    // polynomial of it (`excluded_together`).
+    // Past two unknowns the system is of one degree for all, so that any
+    // combination of them is one more polynomial of it
+    // (`excluded_together`); two have no such test.
     let degree: [usize; N] =
         core::array::from_fn(|k| system.iter().map(|p| p.degree[k]).max().unwrap_or(0));
+    let together = N > 2;
     let mut zeros = Vec::new();
     let mut boxes = 0;
     let mut front = vec![Cell {
-        system: system.map(|p| p.elevated(degree)),
+        system: system.map(|p| {
+            if together {
+                p.elevated(degree)
+            } else {
+                p.clone()
+            }
+        }),
         gates: gates.iter().map(|g| g.poly.clone()).collect(),
         lo: [0.0; N],
         width: [1.0; N],
         halved: [0; N],
+        look_ahead: halving == Halving::LookAhead,
     }];
     let mut depth = 0;
     loop {
@@ -551,13 +597,9 @@ pub(crate) fn common_zeros_with<const N: usize>(
         for cell in &front {
             meter.tick()?;
             boxes += 1;
-            if cell.system.iter().zip(floors).any(|(p, f)| p.keeps_sign(f))
-                || cell
-                    .gates
-                    .iter()
-                    .zip(gates)
-                    .any(|(p, g)| p.range().lo > g.floor)
-            {
+            let excluded = cell.system.iter().zip(floors).any(|(p, f)| p.keeps_sign(f))
+                || cell.gates.iter().zip(gates).any(|(p, g)| g.excludes(p));
+            if excluded {
                 continue;
             }
             if cell
@@ -570,9 +612,10 @@ pub(crate) fn common_zeros_with<const N: usize>(
                 continue;
             }
             let first_look = preconditioned(&jacobian(&cell.system, floors));
-            if first_look
-                .as_ref()
-                .is_some_and(|(y, _)| excluded_together(&cell.system, floors, y))
+            if together
+                && first_look
+                    .as_ref()
+                    .is_some_and(|(y, _)| excluded_together(&cell.system, floors, y))
             {
                 continue;
             }
@@ -585,9 +628,10 @@ pub(crate) fn common_zeros_with<const N: usize>(
                     let to_cube =
                         |p: [f64; N]| core::array::from_fn(|k| grown_lo[k] + grown[k] * p[k]);
                     let at = polish(system, &partials, to_cube(inside.lo), to_cube(inside.hi));
-                    // The one zero of the grown box: where a gate drops
-                    // it, the box holds none the gates keep.
-                    if gates.iter().all(|g| g.poly.eval(at) <= g.floor) {
+                    // The one zero of the grown box: where a gate is
+                    // clear of what it keeps there is none to keep.
+                    let gated = gates.iter().any(|g| g.drops(g.poly.eval(at)));
+                    if !gated {
                         zeros.push(Zero {
                             at,
                             lo: grown_lo,
@@ -660,9 +704,19 @@ fn jacobian<const N: usize>(system: &[PolyN<N>; N], floors: [f64; N]) -> [[Range
 /// An `N × N` matrix, row by row.
 type Matrix<const N: usize> = [[f64; N]; N];
 
-/// The inverse of `m` by Gauss–Jordan elimination with partial pivoting,
+/// The inverse of `m`: the adjugate over the determinant for two
+/// unknowns, Gauss–Jordan elimination with partial pivoting above;
 /// `None` where a pivot is zero or the result is not finite.
 fn inverse<const N: usize>(m: Matrix<N>) -> Option<Matrix<N>> {
+    if N == 2 {
+        let det = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+        let mut inv = m;
+        inv[0][0] = m[1][1] / det;
+        inv[0][1] = -m[0][1] / det;
+        inv[1][0] = -m[1][0] / det;
+        inv[1][1] = m[0][0] / det;
+        return inv.iter().flatten().all(|v| v.is_finite()).then_some(inv);
+    }
     let mut a = m;
     let mut inv: Matrix<N> =
         core::array::from_fn(|i| core::array::from_fn(|k| if i == k { 1.0 } else { 0.0 }));
@@ -690,6 +744,23 @@ fn inverse<const N: usize>(m: Matrix<N>) -> Option<Matrix<N>> {
         }
     }
     inv.iter().flatten().all(|v| v.is_finite()).then_some(inv)
+}
+
+/// `x` with `j·x = f`, Cramer's rule for two unknowns, `Y·f` above;
+/// `None` where `j` has no inverse. The step may be no number, which the
+/// caller tests.
+fn solve<const N: usize>(j: Matrix<N>, f: [f64; N]) -> Option<[f64; N]> {
+    if N == 2 {
+        let det = j[0][0] * j[1][1] - j[0][1] * j[1][0];
+        let mut x = f;
+        x[0] = (j[1][1] * f[0] - j[0][1] * f[1]) / det;
+        x[1] = (j[0][0] * f[1] - j[1][0] * f[0]) / det;
+        return Some(x);
+    }
+    let y = inverse(j)?;
+    Some(core::array::from_fn(|i| {
+        (0..N).map(|l| y[i][l] * f[l]).sum()
+    }))
 }
 
 /// `Y`, the inverse of the middle of `[J]`, and the magnitudes of
@@ -796,10 +867,9 @@ fn polish<const N: usize>(
             .each_ref()
             .map(|row| row.each_ref().map(|p| p.eval(at)));
         // A Jacobian with no inverse at the iterate ends it.
-        let Some(y) = inverse(j) else {
+        let Some(step) = solve(j, f) else {
             break;
         };
-        let step: [f64; N] = core::array::from_fn(|i| (0..N).map(|l| y[i][l] * f[l]).sum());
         let size = step.iter().fold(0.0f64, |m, v| m.max(v.abs()));
         if !step.iter().all(|v| v.is_finite()) || size >= last {
             break;
@@ -1029,7 +1099,14 @@ mod tests {
 
     fn isolate<const N: usize>(system: &[PolyN<N>; N]) -> Isolation<N> {
         let floors = system.each_ref().map(floor);
-        common_zeros(system.each_ref(), floors, &mut Meter::default()).unwrap()
+        common_zeros(
+            system.each_ref(),
+            floors,
+            &[],
+            Halving::LookAhead,
+            &mut Meter::default(),
+        )
+        .unwrap()
     }
 
     fn certified<const N: usize>(found: &Isolation<N>) -> Vec<[f64; N]> {
@@ -1201,14 +1278,27 @@ mod tests {
         let x = PolyN::<3>::outer([&linear(0.3), &one, &one]);
         let y = PolyN::outer([&one, &linear(0.4), &one]);
         let xz = x.mul(&PolyN::outer([&[1.0], &[1.0], &[1.0, 2.0]]), &b);
-        let found = common_zeros([&x, &y, &xz], [1e-15; 3], &mut Meter::default());
+        let found = common_zeros(
+            [&x, &y, &xz],
+            [1e-15; 3],
+            &[],
+            Halving::LookAhead,
+            &mut Meter::default(),
+        );
         assert!(
             matches!(found, Err(Halt::Fault(Continuum { .. }))),
             "{found:?}"
         );
         // The zero polynomial is flat at once: one box, the cube.
         let zero = PolyN::<3>::outer([&[0.0; 2], &[0.0; 2], &[0.0; 2]]);
-        let found = common_zeros([&zero, &x, &y], [1e-15; 3], &mut Meter::default()).unwrap();
+        let found = common_zeros(
+            [&zero, &x, &y],
+            [1e-15; 3],
+            &[],
+            Halving::LookAhead,
+            &mut Meter::default(),
+        )
+        .unwrap();
         assert_eq!(found.zeros.len(), 1);
         assert!(!found.zeros[0].certified);
         assert_eq!(found.boxes, 1);
@@ -1221,7 +1311,13 @@ mod tests {
         let system = through(p, q, &spread);
         let floors = system.each_ref().map(floor);
         let control = Control::budget(5);
-        let found = common_zeros(system.each_ref(), floors, &mut Meter::new(&control));
+        let found = common_zeros(
+            system.each_ref(),
+            floors,
+            &[],
+            Halving::LookAhead,
+            &mut Meter::new(&control),
+        );
         assert!(
             matches!(
                 found,
