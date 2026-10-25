@@ -86,7 +86,7 @@ robustness or bound has to be established here.
   test.
 - [x] Step 3 **[2]** — STEP `build` as `Build` and its phases; the
   `real_*`, `step/` and healing corpora's dumps unchanged.
-- [ ] Step 4 **[2]** — `walk_shell` split by face and loop; no function in
+- [x] Step 4 **[2]** — `walk_shell` split by face and loop; no function in
   `reader/topology/build/` past 150 lines.
 - [ ] Step 5 **[1]** — `corpus/` with `mod.rs`, `stages.rs`, `read_back.rs`,
   `inputs.rs`; moves only.
