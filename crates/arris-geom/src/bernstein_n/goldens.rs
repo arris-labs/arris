@@ -54,11 +54,11 @@ const GOLDENS_ARITHMETIC: &[(&str, u64)] = &[
 
 /// The 3- and 4-D isolations and merges.
 const GOLDENS_N: &[(&str, u64)] = &[
-    ("3/posed", 0x0d64ac63d0383a99),
-    ("3/gated", 0x7c6e08906b53a476),
+    ("3/posed", 0xc5e8a989141fffad),
+    ("3/gated", 0x41200c3dd391e0ab),
     ("3/merged", 0x0c3ae12937aec94a),
-    ("4/posed", 0x7da1ed6a538ecbb1),
-    ("4/gated", 0xda74afa5542f0e34),
+    ("4/posed", 0x004b0d439b6470db),
+    ("4/gated", 0xa4377bf9b29ebb03),
     ("4/merged", 0xfbb429551d3403de),
 ];
 

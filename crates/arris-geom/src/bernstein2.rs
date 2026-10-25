@@ -41,6 +41,7 @@
 use arris_math::Meter;
 
 use crate::bernstein::{BernsteinAlgebra, Binomials, MAX_DEPTH};
+use crate::bernstein_n::PolyN;
 use crate::halt::Halt;
 
 /// How far beyond each side a box is grown before it is certified, as a
@@ -119,26 +120,11 @@ impl Poly2 {
     }
 
     /// The product, of the degrees' sums: the one-variable formula in
-    /// each direction.
+    /// each direction, `crate::bernstein_n`'s at two.
     pub(crate) fn mul(&self, other: &Poly2, binomials: &Binomials) -> Poly2 {
-        let ([m1, n1], [m2, n2]) = (self.degree, other.degree);
-        let degree = [m1 + m2, n1 + n2];
-        let stride = degree[1] + 1;
-        let ratio = |a: usize, i: usize, b: usize, k: usize| {
-            binomials.get(a, i) * binomials.get(b, k) / binomials.get(a + b, i + k)
-        };
-        let mut c = vec![0.0; (degree[0] + 1) * stride];
-        for (i, row_a) in self.rows().enumerate() {
-            for (k, row_b) in other.rows().enumerate() {
-                let across = ratio(m1, i, m2, k);
-                for (j, a) in row_a.iter().enumerate() {
-                    for (l, b) in row_b.iter().enumerate() {
-                        c[(i + k) * stride + j + l] += across * ratio(n1, j, n2, l) * a * b;
-                    }
-                }
-            }
-        }
-        Poly2 { degree, c }
+        let as_n = |p: &Poly2| PolyN::new(p.degree, p.c.clone());
+        let product = as_n(self).mul(&as_n(other), binomials);
+        Poly2::new(product.degree(), product.coefficients().to_vec())
     }
 
     /// `Σ kᵢ · pᵢ` over polynomials of one pair of degrees.

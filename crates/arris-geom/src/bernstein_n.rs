@@ -130,24 +130,39 @@ impl<const N: usize> PolyN<N> {
     }
 
     /// The product, of the degrees' sums: the one-variable formula along
-    /// every variable.
+    /// every variable. The terms are summed along each variable by this
+    /// polynomial's index and then `other`'s, the last variable fastest,
+    /// each the product of the variables' ratios times `a` times `b`:
+    /// the order the 2-D isolations were measured with, kept bit for bit.
     pub(crate) fn mul(&self, other: &PolyN<N>, binomials: &Binomials) -> PolyN<N> {
         let degree: [usize; N] = core::array::from_fn(|k| self.degree[k] + other.degree[k]);
         let stride = strides(degree);
+        let (mine, theirs) = (strides(self.degree), strides(other.degree));
         let mut c = vec![0.0; count(degree)];
-        let theirs = indices(other.degree);
-        for (i, a) in indices(self.degree).iter().zip(&self.c) {
-            for (j, b) in theirs.iter().zip(&other.c) {
-                let mut term = a * b;
-                let mut at = 0;
-                for k in 0..N {
-                    let (m, n) = (self.degree[k], other.degree[k]);
-                    term *= binomials.get(m, i[k]) * binomials.get(n, j[k])
-                        / binomials.get(m + n, i[k] + j[k]);
-                    at += (i[k] + j[k]) * stride[k];
+        // `index[k]`: this polynomial's index along `k`, then `other`'s.
+        let mut index = [[0usize; 2]; N];
+        'terms: loop {
+            let ratios = (0..N).fold(1.0, |r, k| {
+                let ([i, j], m, n) = (index[k], self.degree[k], other.degree[k]);
+                r * (binomials.get(m, i) * binomials.get(n, j) / binomials.get(m + n, i + j))
+            });
+            let at = |strides: [usize; N], side: usize| {
+                (0..N).map(|k| index[k][side] * strides[k]).sum::<usize>()
+            };
+            let sum: usize = (0..N)
+                .map(|k| (index[k][0] + index[k][1]) * stride[k])
+                .sum();
+            c[sum] += ratios * self.c[at(mine, 0)] * other.c[at(theirs, 1)];
+            for digit in (0..2 * N).rev() {
+                let (k, side) = (digit / 2, digit % 2);
+                let top = [self.degree[k], other.degree[k]][side];
+                if index[k][side] < top {
+                    index[k][side] += 1;
+                    continue 'terms;
                 }
-                c[at] += term;
+                index[k][side] = 0;
             }
+            break;
         }
         PolyN { degree, c }
     }

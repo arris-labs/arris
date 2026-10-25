@@ -87,7 +87,7 @@ robustness or bound has to be established here.
   over `bernstein2` at N = 2 and `bernstein_n` at 3 and 4, values committed.
   *Settled:* N ≥ 3 has one halving until step 3 gives it `Halving`; its
   `scored` goldens are recorded there.
-- [ ] Step 2 **[3]** — One product: `PolyN::mul` in `bernstein2`'s order
+- [x] Step 2 **[3]** — One product: `PolyN::mul` in `bernstein2`'s order
   generalised (per axis, own index then the other's; ratios, then `a·b`),
   `Poly2::mul` calling the same arithmetic. Measured: the goldens and the
   `march`/`spline_nurbs`/`nurbs_nurbs_prop` dumps; the Rule decides.
@@ -132,8 +132,9 @@ robustness or bound has to be established here.
 - `GLOSSARY.md` — no new term expected.
 
 ## Open questions
-- ⚠ OPEN: which product order survives (step 2) — the agent, by measurement
-  under the Rule; default `bernstein2`'s, as the torus tracer's is the largest corpus.
+- Settled (step 2): `bernstein2`'s product order survives, one formula for
+  every N; the 2-D goldens and every blessed dump held, N ≥ 3's goldens
+  re-recorded.
 - ⚠ OPEN: the mixed partial at N ≥ 3 (step 3) — the agent, same Rule.
 - Settled: the merged module keeps the name `bernstein_n`; the ADRs that
   cite `bernstein2` are not edited.
