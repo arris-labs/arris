@@ -920,7 +920,12 @@ fixture and blessed dump is byte-identical. `builder-split` landed
 2026-10-24: `builder.rs` is a `builder/` module of one concern per file, edge
 uses are checked once for `finish` and `assemble`, `BuildError` is nested
 by kind and `GeomError::Degenerate` carries a typed `DegenerateReason`
-(both breaking in Rust, unchanged text in Python). C11's first plan is next.
+(both breaking in Rust, unchanged text in Python). `sweep-skeleton` landed
+2026-10-25: the four sweeps run through one `sweep::skeleton`.
+`one-bernstein` landed 2026-10-25: `arris-geom` has one tensor Bernstein
+module, `bernstein_n` (one `PolyN<N>`, one `common_zeros`), the 2-D
+isolations bit-identical and `torus_walk/` a module split by phase.
+C11's first plan is next.
 
 **The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`
 slice, about 110 s at worst against 312 s; the full suite runs once per plan

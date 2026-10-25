@@ -387,11 +387,10 @@ impl<const N: usize> PolyN<N> {
         PolyN { degree, c }
     }
 
-    /// The product by [`PolyN::mul`]'s formula, summed in another order: the
-    /// terms are summed along each variable by this
-    /// polynomial's index and then `other`'s, the last variable fastest,
-    /// each the product of the variables' ratios times `a` times `b`:
-    /// the order the 2-D isolations were measured with, kept bit for bit.
+    /// The product by [`PolyN::mul`]'s formula, summed in another order: along
+    /// each variable by this polynomial's index and then `other`'s, the last
+    /// variable fastest, each term the variables' ratios times `a` times `b`.
+    /// The 2-D isolations were measured with this order and keep it bit for bit.
     pub(crate) fn mul_axiswise(&self, other: &PolyN<N>, binomials: &Binomials) -> PolyN<N> {
         let degree: [usize; N] = core::array::from_fn(|k| self.degree[k] + other.degree[k]);
         let stride = strides(degree);

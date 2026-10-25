@@ -48,8 +48,9 @@ wheels) is the release prepared for the first multi-platform upload.
 `small-seams` done 2026-10-23 (each shared helper once, in the lowest crate);
 `builder-split` done 2026-10-24 (`builder/` by concern, `BuildError` nested,
 `DegenerateReason` typed); `sweep-skeleton` done 2026-10-25 (the four sweeps
-through one `sweep::skeleton`).
-**Next:** `/idea` or `/plan` for C11's first item; `one-bernstein`, `long-functions` in the side slot.
+through one `sweep::skeleton`); `one-bernstein` done 2026-10-25 (one
+`bernstein_n`, `torus_walk/` split by phase).
+**Next:** `/idea` or `/plan` for C11's first item; `long-functions` in the side slot.
 
 ## Rules that are not derivable from the code
 

@@ -1,7 +1,6 @@
 //! The isolation goldens: what the isolations and the arithmetic of this
 //! module return on seeded systems, bit for bit, held to committed
-//! digests (recorded while the two Bernstein modules became one,
-//! `plans/one-bernstein`). A digest is FNV-1a over every word of the
+//! digests (recorded while the two Bernstein modules became one). A digest is FNV-1a over every word of the
 //! result — each zero's `at`, `lo` and `hi` as bits, `certified`, the
 //! depth, the boxes looked at and a [`Continuum`]'s front — so a golden
 //! that moves names the family and the halving, not the zero.
