@@ -9,7 +9,7 @@
 //! `S = X / W` of the surface, `Hₖ = nₖ·(X − W·o)` are polynomials of the
 //! patch's own degrees in Bernstein form, `W > 0`, and `Φ = H / W`: the
 //! points where the line meets the patch are the common zeros of two
-//! polynomials in `(u, v)`, which [`common_zeros_with`] isolates and
+//! polynomials in `(u, v)`, which [`common_zeros`] isolates and
 //! certifies — the Krawczyk test proves one simple zero in a box, and
 //! Newton's step converges in it. A zero it cannot certify — one that is
 //! not simple, the line tangent to the surface there — comes back as a
@@ -88,8 +88,7 @@ use super::NurbsSurface;
 use super::project::{LOCATION, Patch};
 use crate::FrameFault;
 use crate::bernstein::Binomials;
-use crate::bernstein_n::PolyN;
-use crate::bernstein2::{Gate, Halving, Zero2, common_zeros_with};
+use crate::bernstein_n::{Gate, Halving, PolyN, Zero, common_zeros};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveSurfaceHit, CurveSurfaceIntersection, GeomError, GeomKind, SurfaceEval};
@@ -503,7 +502,7 @@ impl Piece {
         [0, 1].map(|k| self.span[k][0] + local[k] * (self.span[k][1] - self.span[k][0]))
     }
 
-    fn found(&self, z: &Zero2) -> Found {
+    fn found(&self, z: &Zero<2>) -> Found {
         Found {
             uv: self.global(z.at),
             lo: self.global(z.lo),
@@ -666,8 +665,8 @@ struct GateSpec<'a> {
 /// had not found.
 #[derive(Default)]
 struct Isolated {
-    zeros: Vec<Zero2>,
-    continua: Vec<Zero2>,
+    zeros: Vec<Zero<2>>,
+    continua: Vec<Zero<2>>,
 }
 
 impl Query<'_> {
@@ -722,7 +721,7 @@ impl Query<'_> {
         };
         let parts = system.map(part);
         let gate_parts: Vec<PolyN<2>> = gates.iter().map(|g| part(g.poly)).collect();
-        let gates_here: Vec<Gate<'_>> = gates
+        let gates_here: Vec<Gate<'_, 2>> = gates
             .iter()
             .zip(&gate_parts)
             .map(|(g, poly)| Gate {
@@ -733,13 +732,13 @@ impl Query<'_> {
             .collect();
         let to_patch =
             |s: [f64; 2]| [0, 1].map(|k| region[k][0] + s[k] * (region[k][1] - region[k][0]));
-        let in_patch = |z: &Zero2| Zero2 {
+        let in_patch = |z: &Zero<2>| Zero {
             at: to_patch(z.at),
             lo: to_patch(z.lo),
             hi: to_patch(z.hi),
             certified: z.certified,
         };
-        match common_zeros_with(
+        match common_zeros(
             [&parts[0], &parts[1]],
             floors,
             &gates_here,
@@ -848,7 +847,7 @@ impl Query<'_> {
     /// of near-zeros along a tangency — and each region is searched from
     /// up to [`FRONT_STARTS`] of its boxes spread along it, the descent
     /// held in the region.
-    fn search_front(&self, piece: &Piece, front: &[Zero2], all: &mut Collected) {
+    fn search_front(&self, piece: &Piece, front: &[Zero<2>], all: &mut Collected) {
         let mut boxes: Vec<Found> = front.iter().map(|z| piece.found(z)).collect();
         boxes.sort_by(order);
         // Union-find over boxes that touch, in a fixed order.

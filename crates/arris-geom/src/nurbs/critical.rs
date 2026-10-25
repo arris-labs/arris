@@ -6,7 +6,7 @@
 //! On one Bézier patch `S = X / W`, `W > 0`, the gradient of the field is
 //! `W²` or `W³` times a pair of polynomials in the patch's own `(u, v)` in
 //! Bernstein form, and the critical points are their common zeros — the
-//! system [`common_zeros_with`] isolates and certifies (Krawczyk), as the
+//! system [`common_zeros`] isolates and certifies (Krawczyk), as the
 //! line against a NURBS surface does (`line.rs`):
 //!
 //! - the height `h = (S − o)·n`: with `H = n·X − (o·n)·W`, the numerators
@@ -32,8 +32,7 @@ use arris_math::{Meter, Point2, Point3, Tolerance, Vec3};
 use super::NurbsSurface;
 use super::project::Patch;
 use crate::bernstein::Binomials;
-use crate::bernstein_n::PolyN;
-use crate::bernstein2::{Halving, Zero2, common_zeros_with};
+use crate::bernstein_n::{Halving, PolyN, Zero, common_zeros};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{GeomError, SurfaceEval};
@@ -176,7 +175,7 @@ impl NurbsSurface {
                 patch.v[0] + s[1] * (patch.v[1] - patch.v[0]),
             ]
         };
-        let (zeros, gave_up) = match common_zeros_with(
+        let (zeros, gave_up) = match common_zeros(
             [&system.poly[0], &system.poly[1]],
             system.floors,
             &[],
@@ -255,7 +254,7 @@ impl NurbsSurface {
     /// in the surface's own parameters, or `None`.
     fn settle_zero(
         &self,
-        z: &Zero2,
+        z: &Zero<2>,
         patch: &Patch,
         field: &Field,
         tol: Tolerance,

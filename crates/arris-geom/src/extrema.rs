@@ -34,7 +34,7 @@
 //! - Two other bounded curves are two unknowns. With
 //!   `R = W_B·X_A − W_A·X_B = W_A W_B (A − B)`, the critical points are the
 //!   common zeros of `R · N_A` and `R · N_B`, which
-//!   [`crate::bernstein2::common_zeros_with`] isolates and certifies
+//!   [`crate::bernstein_n::common_zeros`] isolates and certifies
 //!   (Krawczyk), as the line against a NURBS surface does (ADR-0053 §7).
 //! - Two lines are the closed form.
 //!
@@ -72,8 +72,8 @@ use arris_math::real;
 use arris_math::{DisjointSets, Meter, Point3, Tolerance, Vec3, wrap_angle};
 
 use crate::bernstein::{self, Binomials, sign_change_candidates};
-use crate::bernstein_n::PolyN;
-use crate::bernstein2::{self, Halving, Zero2, common_zeros_with};
+use crate::bernstein_n::{Halving, PolyN, Zero, common_zeros};
+use crate::bernstein2;
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
 use crate::{Curve, CurveProjection, GeomError, NurbsCurve};
@@ -1409,11 +1409,11 @@ impl<'p, 'c> System<'p, 'c> {
     /// where the isolation gave up on a curve of them.
     fn isolate(
         &self,
-        zeros: &mut Vec<Zero2>,
-        fronts: &mut Vec<Vec<Zero2>>,
+        zeros: &mut Vec<Zero<2>>,
+        fronts: &mut Vec<Vec<Zero<2>>>,
         meter: &mut Meter,
     ) -> Result<(), GeomError> {
-        match common_zeros_with(
+        match common_zeros(
             [&self.e[0], &self.e[1]],
             self.floors,
             &[],
@@ -1447,7 +1447,7 @@ impl<'p, 'c> System<'p, 'c> {
     /// The distance staying within `tol.linear` along the region is a
     /// continuum; otherwise the sign changes of that derivative are the
     /// region's stationary pairs, bisected and polished on both curves.
-    fn settle(&self, region: &[Zero2], tol: Tolerance, found: &mut Found) {
+    fn settle(&self, region: &[Zero<2>], tol: Tolerance, found: &mut Found) {
         let (ca, cb) = (self.a.curve, self.b.curve);
         let lo = [0, 1].map(|k| {
             region
@@ -1475,7 +1475,7 @@ impl<'p, 'c> System<'p, 'c> {
         // Sampled along `k`; the other parameter starts from the middle of
         // the box nearest each sample along `k`.
         let k = usize::from(extent[1] > extent[0]);
-        let middle = |z: &Zero2, j: usize| 0.5 * (z.lo[j] + z.hi[j]);
+        let middle = |z: &Zero<2>, j: usize| 0.5 * (z.lo[j] + z.hi[j]);
         let at = |u: f64, start: Option<f64>| -> (f64, f64) {
             let other = start.unwrap_or_else(|| {
                 region
@@ -1568,7 +1568,7 @@ impl<'p, 'c> System<'p, 'c> {
 
 /// Boxes grouped into connected regions, touching ones together, each
 /// region in the order of its first box.
-fn regions(boxes: &[Zero2]) -> Vec<Vec<Zero2>> {
+fn regions(boxes: &[Zero<2>]) -> Vec<Vec<Zero<2>>> {
     let mut sets = DisjointSets::new(boxes.len());
     for i in 0..boxes.len() {
         for j in i + 1..boxes.len() {
@@ -1579,7 +1579,7 @@ fn regions(boxes: &[Zero2]) -> Vec<Vec<Zero2>> {
             }
         }
     }
-    let mut out: std::collections::BTreeMap<usize, Vec<Zero2>> = Default::default();
+    let mut out: std::collections::BTreeMap<usize, Vec<Zero<2>>> = Default::default();
     for (i, z) in boxes.iter().enumerate() {
         let r = sets.find(i);
         out.entry(r).or_default().push(*z);

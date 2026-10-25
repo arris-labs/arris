@@ -1032,7 +1032,7 @@ impl<const N: usize> Wrap<N> {
 }
 
 /// One entry for every zero found more than once, ascending by `at`:
-/// `crate::bernstein2::merge_wrapped` in `N` dimensions. Two certified
+/// Two certified
 /// zeros are one where either lies in the other's box, the smaller box
 /// standing for both; uncertified boxes that touch, within `touch`, are
 /// their hull, and one inside a certified box is dropped. Along a closed
@@ -1145,6 +1145,9 @@ pub(crate) fn merge<const N: usize>(zeros: Vec<Zero<N>>, wrap: &Wrap<N>) -> Vec<
 
 #[cfg(test)]
 mod goldens;
+
+#[cfg(test)]
+mod two;
 
 #[cfg(test)]
 mod tests {

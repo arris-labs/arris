@@ -274,7 +274,7 @@ patch `S = X / W` the gradient of the field is `W²` or `W³` times a pair of
 polynomials in Bernstein form (`A_u = H_u W − H W_u` for the height
 `H = n·X − (o·n) W`; `A_u = Σ R_k (X_k,u W − X_k W_u)` for the distance,
 `R = X − p·W`, and their `v` twins), whose common zeros
-`bernstein2::common_zeros_with` isolates and certifies as the line against a
+`bernstein_n::common_zeros` isolates and certifies as the line against a
 NURBS surface does. A box it cannot certify (a zero that is not simple, one
 on a pole's collapsed row) is descended by Newton on the surface itself and
 kept where the offset has no component along either tangent beyond
@@ -394,7 +394,7 @@ the answer swaps exactly with its operands. The table:
 | line–line | closed form; parallel within `tol.angular` is a continuum at `ta = 0` |
 | line–bounded curve | the line's parameter eliminated, `s = d·(C − o)`; `h = Q⊥ · N` with `Q⊥` the part of `Q = X − W·o` across `d`, as for a point. A line within the tolerance of a circle's axis (`2(δ + R sin θ) ≤ tol.linear`) is a continuum |
 | any bounded curve–circle | the circle's own projection eliminates its parameter. With `P′ = A − c`, `Q` its part across the axis and `ρ = |Q|`, the distance to the circle at the near and far foot is stationary where `ρ (P′·A′) = ± R (Q·Q′)`. The square, multiplied out on a piece by `W⁸`, is a polynomial of degree `8n − 2`. Its sign changes, and its derivative's (a zero of both feet's factors at once is of even order), are the candidates, each paired with the foot it is stationary at and polished on both curves. A point of `a` on the circle's axis is paired with the points where `(A − B)·A′ = 0`, or with the whole circle, a continuum, where its tangent runs along the axis. Where `a` crosses or touches the axis, the zeros of its two components across the axis (and of their derivatives, for a touch), bracketed on samples and bisected, are candidates too, since the squared condition has only a double zero there that the subdivision places no closer than its depth. Two circles about one axis within the tolerance are a continuum near and one far |
-| ellipse–ellipse, ellipse–NURBS, NURBS–NURBS | the common zeros of `R·N_A` and `R·N_B`, `R = W_B X_A − W_A X_B`, per pair of pieces, by `bernstein2::common_zeros_with` (Krawczyk). A zero in the isolation's margin outside the piece's square is the neighbouring piece's. Where the isolation gives up on a curve of zeros, or leaves a box uncertified, the region is searched in one variable along its longer side, the other curve's parameter moved to its foot at each sample. A continuum is a region along which the distance stays within `tol.linear` and the tangential offset within `tol.linear` of zero at every sample; otherwise the derivative's sign changes are bisected into isolated pairs |
+| ellipse–ellipse, ellipse–NURBS, NURBS–NURBS | the common zeros of `R·N_A` and `R·N_B`, `R = W_B X_A − W_A X_B`, per pair of pieces, by `bernstein_n::common_zeros` (Krawczyk). A zero in the isolation's margin outside the piece's square is the neighbouring piece's. Where the isolation gives up on a curve of zeros, or leaves a box uncertified, the region is searched in one variable along its longer side, the other curve's parameter moved to its foot at each sample. A continuum is a region along which the distance stays within `tol.linear` and the tangential offset within `tol.linear` of zero at every sample; otherwise the derivative's sign changes are bisected into isolated pairs |
 
 Where a piece's polynomial is below its own rounding everywhere (a
 near-continuum), it is a continuum by the same test on the exact distance,
@@ -792,7 +792,7 @@ to a face's edge is the topology's to decide.
 with a conic for the cut. The conic is the meet of its plane and its
 cylinder (an elliptic cylinder for the ellipse); on each patch the
 plane's offset and the cylinder's implicit form are two Bernstein
-polynomials whose common zeros `common_zeros_with` isolates and
+polynomials whose common zeros `common_zeros` isolates and
 certifies, and the line's descents, poles and touch search are shared
 (`nurbs::line`'s `Cut`). A touch is decided in length on the distance,
 the second-order model adding the conic's bend `κ N·n` to the surface's

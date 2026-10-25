@@ -60,10 +60,8 @@ use arris_math::{Meter, Point3, Tolerance, Vec3};
 
 use crate::arc::{QUARTER_TAN, quarter_angle, quarter_arc, quarter_param, quarter_weight};
 use crate::bernstein::{self, Binomials, sign_change_candidates};
-use crate::bernstein_n::PolyN;
-use crate::bernstein2::{
-    Continuum, Gate, Halving, Isolation, Wrap, Zero2, common_zeros, common_zeros_with,
-    merge_wrapped,
+use crate::bernstein_n::{
+    Continuum, Gate, Halving, Isolation, PolyN, Wrap, Zero, common_zeros, merge,
 };
 use crate::halt::Halt;
 use crate::implicit::{BERNSTEIN_ROUNDING, Implicit};
@@ -359,7 +357,7 @@ pub(crate) struct Census {
     /// [`Rescale`], in `[0, 2π]` and a closed direction's in `[0, 2π)`. A
     /// box is in the same parameters, around its `at`, and may reach past
     /// a seam.
-    pub(crate) zeros: Vec<Zero2>,
+    pub(crate) zeros: Vec<Zero<2>>,
     /// The deepest level any patch was subdivided to.
     pub(crate) depth: usize,
     /// How many boxes were looked at, all patches together.
@@ -952,14 +950,14 @@ impl<'a> PatchedSection<'a> {
     /// is an inflection as well, or turning points `f64` does not tell
     /// apart. [`Continuum`] is a whole arc of them: a tube circle of the
     /// torus on the other surface, or the two surfaces the same.
-    pub(crate) fn turning_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
+    pub(crate) fn turning_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum<2>>> {
         self.census(meter, |patch, meter| {
             let [_, n] = patch.f.degree();
             let f_t = patch.f.partial(1);
             // A derivative's coefficient is the degree times a difference
             // of two of `f`'s.
             let floors = [patch.floor, 2.0 * n as f64 * patch.floor];
-            common_zeros([&patch.f, &f_t], floors, &[], meter)
+            common_zeros([&patch.f, &f_t], floors, &[], Halving::Scored, meter)
         })
     }
 
@@ -969,7 +967,7 @@ impl<'a> PatchedSection<'a> {
     /// [`Implicit::distance`] at each says which. A certified zero is a
     /// critical point with a regular Hessian — a crossing of two
     /// branches or an isolated point, at the tolerance.
-    pub(crate) fn critical_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum>> {
+    pub(crate) fn critical_points(&self, meter: &mut Meter) -> Result<Census, Halt<Continuum<2>>> {
         self.census(meter, |patch, meter| {
             self.critical_isolation(&patch.f, &patch.weight, patch.floor, meter)
         })
@@ -984,7 +982,7 @@ impl<'a> PatchedSection<'a> {
         w: &PolyN<2>,
         floor: f64,
         meter: &mut Meter,
-    ) -> Result<Isolation, Halt<Continuum>> {
+    ) -> Result<Isolation<2>, Halt<Continuum<2>>> {
         let degree = self.implicit.degree();
         let binomials = Binomials::new(self.binomial_degree);
         let d = degree as f64;
@@ -1011,7 +1009,7 @@ impl<'a> PatchedSection<'a> {
         // bottom with the short one never pinned: the crossing where two
         // equal cylinders on crossing axes touch was left uncertified
         // (ADR-0068's amendment).
-        common_zeros_with([&g_s, &g_t], floors, &[gate], Halving::LookAhead, meter)
+        common_zeros([&g_s, &g_t], floors, &[gate], Halving::LookAhead, meter)
     }
 
     /// The critical points of a NURBS surface's section in the slab past
@@ -1027,7 +1025,7 @@ impl<'a> PatchedSection<'a> {
         k: usize,
         edge: f64,
         meter: &mut Meter,
-    ) -> Result<Vec<Zero2>, Halt<Continuum>> {
+    ) -> Result<Vec<Zero<2>>, Halt<Continuum<2>>> {
         if self.chart == Chart::Quarters {
             return Ok(Vec::new());
         }
@@ -1070,7 +1068,7 @@ impl<'a> PatchedSection<'a> {
             };
             for z in found.zeros {
                 let (a, b) = (angles(z.lo), angles(z.hi));
-                zeros.push(Zero2 {
+                zeros.push(Zero {
                     at: angles(z.at),
                     lo: [0, 1].map(|j| a[j].min(b[j])),
                     hi: [0, 1].map(|j| a[j].max(b[j])),
@@ -1248,7 +1246,7 @@ impl<'a> PatchedSection<'a> {
     /// each box cut to the patch and that slack; the next patch finds its
     /// own. A
     /// torus's quarter turns are one surface, and every zero counts.
-    fn own(&self, z: &Zero2) -> Option<Zero2> {
+    fn own(&self, z: &Zero<2>) -> Option<Zero<2>> {
         if self.chart == Chart::Quarters {
             return Some(*z);
         }
@@ -1262,7 +1260,7 @@ impl<'a> PatchedSection<'a> {
         // knot line found from either side is one, its two boxes each
         // holding the other's point, and a box a span past the patch
         // would hold the next patch's own zeros.
-        kept.then(|| Zero2 {
+        kept.then(|| Zero {
             at: z.at.map(|x| x.clamp(0.0, 1.0)),
             lo: z.lo.map(|x| x.max(-PATCH_SLACK)),
             hi: z.hi.map(|x| x.min(1.0 + PATCH_SLACK)),
@@ -1275,8 +1273,8 @@ impl<'a> PatchedSection<'a> {
     fn census(
         &self,
         meter: &mut Meter,
-        isolate: impl Fn(&Patch, &mut Meter) -> Result<Isolation, Halt<Continuum>>,
-    ) -> Result<Census, Halt<Continuum>> {
+        isolate: impl Fn(&Patch, &mut Meter) -> Result<Isolation<2>, Halt<Continuum<2>>>,
+    ) -> Result<Census, Halt<Continuum<2>>> {
         let mut zeros = Vec::new();
         let (mut depth, mut boxes) = (0, 0);
         for patch in &self.patches {
@@ -1287,7 +1285,7 @@ impl<'a> PatchedSection<'a> {
             zeros.extend(
                 (found.zeros.iter())
                     .filter_map(|z| self.own(z))
-                    .map(|z| Zero2 {
+                    .map(|z| Zero {
                         at: angles(z.at),
                         lo: angles(z.lo),
                         hi: angles(z.hi),
@@ -1303,7 +1301,7 @@ impl<'a> PatchedSection<'a> {
             touch: ANGLE_ROUNDING,
         };
         Ok(Census {
-            zeros: merge_wrapped(zeros, &wrap),
+            zeros: merge(zeros, &wrap),
             depth,
             boxes,
         })
@@ -1763,7 +1761,7 @@ mod tests {
         torus: &Surface,
         section: &PatchedSection<'_>,
         critical: &'z Census,
-    ) -> Vec<&'z Zero2> {
+    ) -> Vec<&'z Zero<2>> {
         critical
             .zeros
             .iter()
@@ -1862,7 +1860,7 @@ mod tests {
             let Ok(found) = section.turning_points(&mut Meter::default()) else {
                 continue;
             };
-            let open: Vec<&Zero2> = found.zeros.iter().filter(|z| !z.certified).collect();
+            let open: Vec<&Zero<2>> = found.zeros.iter().filter(|z| !z.certified).collect();
             assert_eq!(open.len(), circles.len(), "{name}: {:?}", found.zeros);
             for (z, u) in open.iter().zip(circles) {
                 // A sliver beside a patch, which is a quarter turn wide:
@@ -1975,7 +1973,7 @@ mod tests {
                 singular,
             )
         };
-        let expect = |found: &[Zero2], expected: &[[f64; 2]]| {
+        let expect = |found: &[Zero<2>], expected: &[[f64; 2]]| {
             let certified: Vec<[f64; 2]> =
                 found.iter().filter(|z| z.certified).map(|z| z.at).collect();
             assert_eq!(certified.len(), expected.len(), "{found:?}");
@@ -2012,7 +2010,7 @@ mod tests {
         expect(&turning, &[[outer, 0.0], [TAU - outer, 0.0]]);
         assert_eq!(singular.len(), 1, "{singular:?}");
         assert!(apart(singular[0], [0.0, PI]) < 1e-12, "{singular:?}");
-        let open: Vec<&Zero2> = turning.iter().filter(|z| !z.certified).collect();
+        let open: Vec<&Zero<2>> = turning.iter().filter(|z| !z.certified).collect();
         assert_eq!(open.len(), 1, "{turning:?}");
         assert!(apart(open[0].at, [0.0, PI]) < 1e-6, "{turning:?}");
         // A touch on the outer equator, and clear of the ring.
@@ -2058,14 +2056,14 @@ mod tests {
     }
 
     /// The point of `nurbs` at a census zero.
-    fn on(nurbs: &NurbsSurface, z: &Zero2) -> Point3 {
+    fn on(nurbs: &NurbsSurface, z: &Zero<2>) -> Point3 {
         let [u, v] = [0, 1].map(|k| Rescale::of(nurbs).to_surface(k, z.at[k]));
         nurbs.eval(u, v).point
     }
 
     /// The certified zeros of `census` match `expected` as points, one to
     /// one, within `within`.
-    fn matches(nurbs: &NurbsSurface, census: &[&Zero2], expected: &[Point3], within: f64) {
+    fn matches(nurbs: &NurbsSurface, census: &[&Zero<2>], expected: &[Point3], within: f64) {
         assert_eq!(census.len(), expected.len(), "{census:?} vs {expected:?}");
         for e in expected {
             assert!(
@@ -2076,7 +2074,7 @@ mod tests {
         }
     }
 
-    fn certified(census: &Census) -> Vec<&Zero2> {
+    fn certified(census: &Census) -> Vec<&Zero<2>> {
         census.zeros.iter().filter(|z| z.certified).collect()
     }
 
@@ -2085,7 +2083,7 @@ mod tests {
         nurbs: &NurbsSurface,
         section: &PatchedSection<'_>,
         critical: &'z Census,
-    ) -> Vec<&'z Zero2> {
+    ) -> Vec<&'z Zero<2>> {
         (critical.zeros.iter())
             .filter(|z| z.certified && section.implicit.distance(on(nurbs, z)).abs() <= TOL.linear)
             .collect()
@@ -2193,7 +2191,7 @@ mod tests {
             let section = PatchedSection::on_nurbs(&nurbs, &plane, TOL).unwrap();
             let turning = section.turning_points(&mut Meter::default()).unwrap();
             let critical = section.critical_points(&mut Meter::default()).unwrap();
-            let singular: Vec<Zero2> = singular(&nurbs, &section, &critical)
+            let singular: Vec<Zero<2>> = singular(&nurbs, &section, &critical)
                 .into_iter()
                 .copied()
                 .collect();
@@ -2231,7 +2229,7 @@ mod tests {
             &[at(0.0, PI)],
             1e-12,
         );
-        let open: Vec<&Zero2> = turning.zeros.iter().filter(|z| !z.certified).collect();
+        let open: Vec<&Zero<2>> = turning.zeros.iter().filter(|z| !z.certified).collect();
         assert_eq!(open.len(), 1, "{:?}", turning.zeros);
         assert!(
             (on(&nurbs, open[0]) - at(0.0, PI)).norm() < 1e-5,

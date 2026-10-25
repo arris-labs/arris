@@ -123,7 +123,7 @@ use arris_math::{
     Frame, Interval, Meter, Point2, Point3, Tolerance, is_negligible, wrap_angle, wrap_offset,
 };
 
-use crate::bernstein2::Zero2;
+use crate::bernstein_n::Zero;
 use crate::halt::Halt;
 use crate::implicit::Implicit;
 use crate::trace::{
@@ -1391,7 +1391,7 @@ impl Tracer<'_> {
             .collect();
         // The turning points of a near miss, of a loop smaller than the
         // tolerance and of the crossing itself are the singular point's.
-        let absorbed = |z: &Zero2| {
+        let absorbed = |z: &Zero<2>| {
             singular.iter().any(|s| {
                 let held = !z.certified
                     && (0..2).all(|k| {
@@ -1404,7 +1404,7 @@ impl Tracer<'_> {
                 held || s.holds(z.at, 1.0)
             })
         };
-        let turning: Vec<Zero2> = turning.into_iter().filter(|z| !absorbed(z)).collect();
+        let turning: Vec<Zero<2>> = turning.into_iter().filter(|z| !absorbed(z)).collect();
         // A turning point on an edge of `u`, or an uncertified box of them
         // that reaches it, is the section touching the edge: where it does not enter
         // the domain there it is a touch, and otherwise it is refused.
@@ -1536,9 +1536,9 @@ impl Tracer<'_> {
     /// on the edge, is not found twice.
     fn critical_past_edges(
         &self,
-        inside: &[Zero2],
+        inside: &[Zero<2>],
         meter: &mut Meter,
-    ) -> Result<Vec<Zero2>, Halt<SectionFault>> {
+    ) -> Result<Vec<Zero<2>>, Halt<SectionFault>> {
         let mut out = Vec::new();
         for k in (0..2).filter(|&k| !self.walker.closed[k]) {
             for edge in [0.0, TAU] {
@@ -1597,7 +1597,7 @@ impl Tracer<'_> {
     /// is inside the domain, or within [`EDGE_TOUCH`] of it and is put on
     /// the edge; one that is not certified where its box reaches into the
     /// domain, its box cut at the edge. On a torus every zero counts.
-    fn on_domain(&self, zeros: Vec<Zero2>) -> Vec<Zero2> {
+    fn on_domain(&self, zeros: Vec<Zero<2>>) -> Vec<Zero<2>> {
         let closed = self.walker.closed;
         let range = -EDGE_TOUCH..=TAU + EDGE_TOUCH;
         (zeros.into_iter())
@@ -1931,7 +1931,7 @@ impl Tracer<'_> {
 
     /// The critical points within the tolerance of the other surface,
     /// each with its reach.
-    fn singular_points(&self, critical: &[Zero2]) -> Result<Vec<Singular>, SectionFault> {
+    fn singular_points(&self, critical: &[Zero<2>]) -> Result<Vec<Singular>, SectionFault> {
         let raw = |u: f64, v: f64| self.walker.value(u, v);
         let mut out: Vec<Singular> = Vec::new();
         // Whether a critical point is singular is decided in length, on

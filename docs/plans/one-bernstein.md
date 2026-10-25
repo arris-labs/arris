@@ -99,10 +99,13 @@ robustness or bound has to be established here.
   at N = 2); N ≥ 3's existing goldens did not move, `scored` ones recorded.
 - [x] Step 4 **[2]** — `Poly2` becomes `PolyN<2>` in every caller and in
   `bernstein2`'s isolation; the 2-D extras as `impl PolyN<2>`. Goldens unchanged.
-- [ ] Step 5 **[2]** — The 2-D callers (`trace_torus`, `torus_walk`,
+- [x] Step 5 **[2]** — The 2-D callers (`trace_torus`, `torus_walk`,
   `nurbs/line`, `nurbs/critical`, `extrema`) isolate through
   `bernstein_n::common_zeros`; `Zero2`, `merge_wrapped` and `bernstein2`'s
   `Cell`/`Gate`/`krawczyk`/`merge` deleted, its unit tests moved to N = 2.
+  *Settled:* the unit tests live in `bernstein_n/two.rs`; the bit-for-bit test
+  of step 3 went with `bernstein2`'s isolation, the 2-D goldens (unchanged)
+  now run through `bernstein_n`. The DATA-MODEL rows were renamed here too.
 - [ ] Step 6 **[1]** — `bernstein2.rs` deleted: the leaves and constants
   moved, the module doc merged. `rg bernstein2 crates` is empty.
 - [ ] Step 7 **[1]** — `torus_walk/` with `mod.rs`, `walker.rs` and the
