@@ -90,7 +90,7 @@ robustness or bound has to be established here.
   `reader/topology/build/` past 150 lines.
 - [x] Step 5 **[1]** — `corpus/` with `mod.rs`, `stages.rs`, `read_back.rs`,
   `inputs.rs`; moves only.
-- [ ] Step 6 **[1]** — `corpus/step/` per family; `build_step` a dispatch;
+- [x] Step 6 **[1]** — `corpus/step/` per family; `build_step` a dispatch;
   no `corpus/` file past 1000 lines.
 - [ ] Step 7 **[1]** — `prop::recipe::write` per shape and op family; the
   property tests' recipes (seeded) serialise byte-identically.
