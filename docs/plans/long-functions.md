@@ -96,7 +96,7 @@ robustness or bound has to be established here.
   property tests' recipes (seeded) serialise byte-identically.
 - [x] Step 8 **[2]** — `tessellate_under` by phase; the mesh corpus and
   `mesh/` dumps unchanged.
-- [ ] Step 9 **[1]** — `boolean_each_witnessed` by phase, `boolean/dump.rs`;
+- [x] Step 9 **[1]** — `boolean_each_witnessed` by phase, `boolean/dump.rs`;
   `fn_lengths.py` shows none of the six past 150 and no new one.
 
 ## Acceptance

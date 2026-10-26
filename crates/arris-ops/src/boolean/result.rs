@@ -1433,6 +1433,178 @@ pub(super) fn boolean_each(
         .collect())
 }
 
+/// What the operands are before any result is built: read once and
+/// shared by every selection of [`boolean_each_witnessed`].
+struct Operands {
+    bodies: Vec<Body>,
+    /// Each operand's shells.
+    shells: Vec<Vec<ShellId>>,
+    /// Each operand's vertices, ascending.
+    vertices: Vec<Vec<VertexId>>,
+    /// Each operand's edges, in iteration order.
+    edges: Vec<Vec<EdgeId>>,
+    /// Each operand's faces with their uses, in iteration order.
+    faces: Vec<Vec<FaceHandle>>,
+    /// The shell of each operand face: what a result shell's provenance is
+    /// written against.
+    shell_of: Vec<BTreeMap<FaceId, ShellId>>,
+}
+
+impl Operands {
+    fn read(m: &Model, bodies: Vec<Body>) -> Result<Self, OpError> {
+        let closures = bodies
+            .iter()
+            .map(|&b| m.closure(b))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut edges: Vec<Vec<EdgeId>> = Vec::new();
+        let mut faces: Vec<Vec<FaceHandle>> = Vec::new();
+        for &body in &bodies {
+            edges.push(m.edges(body)?.into_iter().map(|e| e.id).collect());
+            faces.push(m.faces(body)?);
+        }
+        let mut shell_of: Vec<BTreeMap<FaceId, ShellId>> = vec![BTreeMap::new(); bodies.len()];
+        for side in 0..bodies.len() {
+            for shell in m.shells(bodies[side])? {
+                let entity = m.shell(shell.id)?;
+                for face in entity.faces() {
+                    shell_of[side].entry(face.id).or_insert(shell.id);
+                }
+            }
+        }
+        Ok(Operands {
+            vertices: closures.iter().map(|c| c.vertices.clone()).collect(),
+            shells: closures.iter().map(|c| c.shells.clone()).collect(),
+            bodies,
+            edges,
+            faces,
+            shell_of,
+        })
+    }
+}
+
+/// The section geometry one result owns: the ids of the curves and
+/// pcurves its copy of the pave model's sections, images and common
+/// blocks stand on.
+struct SectionGeometry {
+    curve_ids: Vec<CurveId>,
+    section_pcurves: Vec<[Curve2Id; 2]>,
+    shared_pcurves: Vec<Vec<Curve2Id>>,
+    image_pcurves: Vec<Curve2Id>,
+    block_pcurves: Vec<Vec<(Curve2Id, Curve2Id)>>,
+}
+
+impl SectionGeometry {
+    /// Adds the section geometry of `i` to `m`, once per selection.
+    fn add(m: &mut Model, i: &Interferences) -> Self {
+        let curve_ids = i
+            .curves
+            .iter()
+            .map(|c| m.add_curve(c.curve.clone()))
+            .collect();
+        let section_pcurves = i
+            .sections
+            .iter()
+            .map(|s| {
+                [
+                    m.add_curve2(s.pcurves[0].clone()),
+                    m.add_curve2(s.pcurves[1].clone()),
+                ]
+            })
+            .collect();
+        let shared_pcurves = i
+            .sections
+            .iter()
+            .map(|s| {
+                s.shared
+                    .iter()
+                    .map(|u| m.add_curve2(u.pcurve.clone()))
+                    .collect()
+            })
+            .collect();
+        let image_pcurves = i
+            .images
+            .iter()
+            .map(|im| m.add_curve2(im.pcurve.clone()))
+            .collect();
+        let block_pcurves = i
+            .blocks
+            .iter()
+            .map(|b| {
+                b.pcurves
+                    .iter()
+                    .map(|(own, pc)| (*own, m.add_curve2(pc.clone())))
+                    .collect()
+            })
+            .collect();
+        SectionGeometry {
+            curve_ids,
+            section_pcurves,
+            shared_pcurves,
+            image_pcurves,
+            block_pcurves,
+        }
+    }
+}
+
+impl<'m> Build<'m> {
+    /// The build of `op` over `i` and `operands`, nothing realised yet.
+    fn new(
+        m: &'m Model,
+        i: &'m Interferences,
+        op: Op,
+        operands: &Operands,
+        geometry: SectionGeometry,
+    ) -> Self {
+        Build {
+            m,
+            precision: m.precision(),
+            i,
+            op,
+            bodies: operands.bodies.clone(),
+            vertices: operands.vertices.clone(),
+            edges: operands.edges.clone(),
+            faces: operands.faces.clone(),
+            curve_ids: geometry.curve_ids,
+            section_pcurves: geometry.section_pcurves,
+            shared_pcurves: geometry.shared_pcurves,
+            image_pcurves: geometry.image_pcurves,
+            block_pcurves: geometry.block_pcurves,
+            vref_of: Vec::new(),
+            retolerated: BTreeMap::new(),
+            merged_into: BTreeMap::new(),
+            sub_edges: BTreeMap::new(),
+            touched: BTreeSet::new(),
+            alias_uses: BTreeMap::new(),
+            alias_of: BTreeMap::new(),
+            edge_tolerance: BTreeMap::new(),
+            kept: Vec::new(),
+            face_pieces: BTreeMap::new(),
+            dropped_on: false,
+            outside: vec![false; operands.bodies.len()],
+        }
+    }
+
+    /// Realises the section vertices and edges, selects the pieces to keep
+    /// and orders their shells; `plan` is the assembly of them.
+    fn select_and_plan(
+        &mut self,
+        meter: &mut Meter<'_>,
+    ) -> Result<(Vec<Vec<usize>>, Plan), OpError> {
+        self.realise_vertices()?;
+        self.sub_edges()?;
+        self.aliases();
+        self.raise_tolerances()?;
+        self.contacts()?;
+        self.select(meter)?;
+        let mut shells = self.shells()?;
+        if shells.len() > 1 {
+            shells = self.lump_order(shells)?;
+        }
+        let plan = self.assembly(&shells)?;
+        Ok((shells, plan))
+    }
+}
+
 /// [`boolean_each`] with, per result, which operands have a piece of
 /// their boundary outside the others (`outside[side]`): an operand with
 /// none lies wholly inside the rest.
@@ -1442,244 +1614,172 @@ pub(super) fn boolean_each_witnessed(
     ops: &[Op],
     meter: &mut Meter<'_>,
 ) -> Result<Vec<(Body, Provenance, Vec<bool>)>, OpError> {
-    let bodies = i.operands.clone();
-    let closures = bodies
-        .iter()
-        .map(|&b| m.closure(b))
-        .collect::<Result<Vec<_>, _>>()?;
-    let vertices: Vec<Vec<VertexId>> = closures.iter().map(|c| c.vertices.clone()).collect();
-    let mut edges: Vec<Vec<EdgeId>> = Vec::new();
-    let mut faces: Vec<Vec<FaceHandle>> = Vec::new();
-    for &body in &bodies {
-        edges.push(m.edges(body)?.into_iter().map(|e| e.id).collect());
-        faces.push(m.faces(body)?);
-    }
-    // The shell of each operand face: what a result shell's provenance is
-    // written against.
-    let mut shell_of: Vec<BTreeMap<FaceId, ShellId>> = vec![BTreeMap::new(); bodies.len()];
-    for side in 0..bodies.len() {
-        for shell in m.shells(bodies[side])? {
-            let entity = m.shell(shell.id)?;
-            for face in entity.faces() {
-                shell_of[side].entry(face.id).or_insert(shell.id);
-            }
-        }
-    }
-    let precision = m.precision();
-
+    let operands = Operands::read(m, i.operands.clone())?;
     m.transaction(|m| {
         let mut results = Vec::with_capacity(ops.len());
         for &op in ops {
-            // The section geometry, once per selection.
-            let curve_ids: Vec<CurveId> = i
-                .curves
-                .iter()
-                .map(|c| m.add_curve(c.curve.clone()))
-                .collect();
-            let section_pcurves: Vec<[Curve2Id; 2]> = i
-                .sections
-                .iter()
-                .map(|s| {
-                    [
-                        m.add_curve2(s.pcurves[0].clone()),
-                        m.add_curve2(s.pcurves[1].clone()),
-                    ]
-                })
-                .collect();
-            let shared_pcurves: Vec<Vec<Curve2Id>> = i
-                .sections
-                .iter()
-                .map(|s| {
-                    s.shared
-                        .iter()
-                        .map(|u| m.add_curve2(u.pcurve.clone()))
-                        .collect()
-                })
-                .collect();
-            let image_pcurves: Vec<Curve2Id> = i
-                .images
-                .iter()
-                .map(|im| m.add_curve2(im.pcurve.clone()))
-                .collect();
-            let block_pcurves: Vec<Vec<(Curve2Id, Curve2Id)>> = i
-                .blocks
-                .iter()
-                .map(|b| {
-                    b.pcurves
-                        .iter()
-                        .map(|(own, pc)| (*own, m.add_curve2(pc.clone())))
-                        .collect()
-                })
-                .collect();
-
-            let mut b = Build {
-                m: &*m,
-                precision,
-                i,
-                op,
-                bodies: bodies.clone(),
-                vertices: vertices.clone(),
-                edges: edges.clone(),
-                faces: faces.clone(),
-                curve_ids,
-                section_pcurves,
-                shared_pcurves,
-                image_pcurves,
-                block_pcurves,
-                vref_of: Vec::new(),
-                retolerated: BTreeMap::new(),
-                merged_into: BTreeMap::new(),
-                sub_edges: BTreeMap::new(),
-                touched: BTreeSet::new(),
-                alias_uses: BTreeMap::new(),
-                alias_of: BTreeMap::new(),
-                edge_tolerance: BTreeMap::new(),
-                kept: Vec::new(),
-                face_pieces: BTreeMap::new(),
-                dropped_on: false,
-                outside: vec![false; bodies.len()],
-            };
-            b.realise_vertices()?;
-            b.sub_edges()?;
-            b.aliases();
-            b.raise_tolerances()?;
-            b.contacts()?;
-            b.select(meter)?;
-            let mut shells = b.shells()?;
-            if shells.len() > 1 {
-                shells = b.lump_order(shells)?;
-            }
-            let plan = b.assembly(&shells)?;
-            let Build {
-                outside,
-                face_pieces,
-                vref_of,
-                merged_into,
-                sub_edges,
-                alias_of,
-                kept,
-                ..
-            } = b;
-
-            let (builder, slots) =
-                Builder::assemble(m, precision.default_tolerance, plan.assembly)?;
-            let built = builder.finish(m, BodyKind::Solid)?;
-
-            // The output ids behind every reference.
-            let mut out_vertex: BTreeMap<VRef, VertexId> = BTreeMap::new();
-            for (v, &slot) in plan.new_vertices.iter().zip(&slots.vertices) {
-                out_vertex.insert(*v, built.vertices[&slot]);
-            }
-            let mut out_edge: BTreeMap<ERef, EdgeId> = BTreeMap::new();
-            for (e, &slot) in plan.new_edges.iter().zip(&slots.edges) {
-                out_edge.insert(*e, built.edges[&slot]);
-            }
-            // Face slots follow the assembly's shells; `plan.faces` is the kept
-            // piece behind each.
-            let out_faces: BTreeMap<usize, FaceId> = plan
-                .faces
-                .iter()
-                .copied()
-                .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
-                .collect();
-            let vertex_id = |v: VRef| -> Option<VertexId> {
-                match v {
-                    VRef::Existing(id) if plan.kept_vertices.contains(&id) => Some(id),
-                    other => out_vertex.get(&other).copied(),
-                }
-            };
-            let edge_id = |e: ERef| -> Option<EdgeId> {
-                let e = alias_of.get(&e).copied().unwrap_or(e);
-                match e {
-                    ERef::Sub { edge, index: 0 } if plan.kept_edges.contains(&edge) => Some(edge),
-                    other => out_edge.get(&other).copied(),
-                }
-            };
-
-            let operand = |side: usize| rebuild::OperandWrite {
-                body: bodies[side],
-                policy: op.policy(side),
-                vertices: &vertices[side],
-                edges: &edges[side],
-                faces: &faces[side],
-                shells: &closures[side].shells,
-                shell_of: &shell_of[side],
-            };
-            let operand_writes: Vec<rebuild::OperandWrite<'_>> =
-                (0..bodies.len()).map(operand).collect();
-            let mut p = rebuild::write_provenance(
-                &operand_writes,
-                built.body,
-                &sub_edges,
-                &merged_into,
-                &vref_of,
-                vertex_id,
-                edge_id,
-                &face_pieces,
-                &out_faces,
-                &kept,
-                &shells,
-                &built.shells,
-            );
-            for (k, v) in i.vertices.iter().enumerate() {
-                let VRef::Section(_) = vref_of[k] else {
-                    continue;
-                };
-                let Some(id) = out_vertex.get(&vref_of[k]) else {
-                    continue;
-                };
-                match v.source {
-                    VertexSource::Hits
-                    | VertexSource::SectionCrossing
-                    | VertexSource::TriplePoint => {
-                        for &h in &v.hits {
-                            p.add_generated(forward(i.hits[h].edge), forward(*id));
-                            p.add_generated(forward(i.hits[h].face), forward(*id));
-                        }
-                        for &x in &v.crossings {
-                            p.add_generated(forward(i.crossings[x].a), forward(*id));
-                            p.add_generated(forward(i.crossings[x].b), forward(*id));
-                        }
-                        for &x in &v.section_crossings {
-                            let pair = &i.pairs[i.section_crossings[x].pair];
-                            p.add_generated(forward(pair.a), forward(*id));
-                            p.add_generated(forward(pair.b), forward(*id));
-                        }
-                        for &x in &v.triple_points {
-                            let q = &i.triple_points[x];
-                            let pair = &i.pairs[q.pair];
-                            p.add_generated(forward(pair.a), forward(*id));
-                            p.add_generated(forward(pair.b), forward(*id));
-                            p.add_generated(forward(q.face), forward(*id));
-                        }
-                    }
-                    VertexSource::CurveStart { pair, .. } => {
-                        p.add_generated(forward(i.pairs[pair].a), forward(*id));
-                        p.add_generated(forward(i.pairs[pair].b), forward(*id));
-                    }
-                    // Always an operand's vertex, never a new one.
-                    VertexSource::Singular => {}
-                }
-            }
-            // `i.sections` is curve order and then along each curve, so the
-            // section edges one pair generates reach the record in split
-            // order: along their own curve (ADR-0009).
-            for (k, s) in i.sections.iter().enumerate() {
-                let Some(&id) = out_edge.get(&ERef::Section(k)) else {
-                    continue;
-                };
-                let pair = &i.pairs[i.curves[s.curve].pair];
-                p.add_generated(forward(pair.a), forward(id));
-                p.add_generated(forward(pair.b), forward(id));
-                for u in &s.shared {
-                    p.add_generated(forward(u.face), forward(id));
-                }
-            }
-            crate::verify(m, built.body)?;
-            results.push((built.body, p, outside));
+            results.push(one_result(m, i, op, &operands, meter)?);
         }
         Ok(results)
     })
+}
+
+/// The result of `op` over `i`: its section geometry added to `m`, the
+/// pieces selected and assembled, and the provenance written against the
+/// operands.
+fn one_result(
+    m: &mut Model,
+    i: &Interferences,
+    op: Op,
+    operands: &Operands,
+    meter: &mut Meter<'_>,
+) -> Result<(Body, Provenance, Vec<bool>), OpError> {
+    let precision = m.precision();
+    let geometry = SectionGeometry::add(m, i);
+    let mut b = Build::new(m, i, op, operands, geometry);
+    let (shells, plan) = b.select_and_plan(meter)?;
+    let Build {
+        outside,
+        face_pieces,
+        vref_of,
+        merged_into,
+        sub_edges,
+        alias_of,
+        kept,
+        ..
+    } = b;
+
+    let (builder, slots) = Builder::assemble(m, precision.default_tolerance, plan.assembly)?;
+    let built = builder.finish(m, BodyKind::Solid)?;
+
+    // The output ids behind every reference.
+    let mut out_vertex: BTreeMap<VRef, VertexId> = BTreeMap::new();
+    for (v, &slot) in plan.new_vertices.iter().zip(&slots.vertices) {
+        out_vertex.insert(*v, built.vertices[&slot]);
+    }
+    let mut out_edge: BTreeMap<ERef, EdgeId> = BTreeMap::new();
+    for (e, &slot) in plan.new_edges.iter().zip(&slots.edges) {
+        out_edge.insert(*e, built.edges[&slot]);
+    }
+    // Face slots follow the assembly's shells; `plan.faces` is the kept
+    // piece behind each.
+    let out_faces: BTreeMap<usize, FaceId> = plan
+        .faces
+        .iter()
+        .copied()
+        .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
+        .collect();
+    let vertex_id = |v: VRef| -> Option<VertexId> {
+        match v {
+            VRef::Existing(id) if plan.kept_vertices.contains(&id) => Some(id),
+            other => out_vertex.get(&other).copied(),
+        }
+    };
+    let edge_id = |e: ERef| -> Option<EdgeId> {
+        let e = alias_of.get(&e).copied().unwrap_or(e);
+        match e {
+            ERef::Sub { edge, index: 0 } if plan.kept_edges.contains(&edge) => Some(edge),
+            other => out_edge.get(&other).copied(),
+        }
+    };
+
+    let operand = |side: usize| rebuild::OperandWrite {
+        body: operands.bodies[side],
+        policy: op.policy(side),
+        vertices: &operands.vertices[side],
+        edges: &operands.edges[side],
+        faces: &operands.faces[side],
+        shells: &operands.shells[side],
+        shell_of: &operands.shell_of[side],
+    };
+    let operand_writes: Vec<rebuild::OperandWrite<'_>> =
+        (0..operands.bodies.len()).map(operand).collect();
+    let mut p = rebuild::write_provenance(
+        &operand_writes,
+        built.body,
+        &sub_edges,
+        &merged_into,
+        &vref_of,
+        vertex_id,
+        edge_id,
+        &face_pieces,
+        &out_faces,
+        &kept,
+        &shells,
+        &built.shells,
+    );
+    generated_vertices(&mut p, i, &vref_of, &out_vertex);
+    generated_sections(&mut p, i, &out_edge);
+    crate::verify(m, built.body)?;
+    Ok((built.body, p, outside))
+}
+
+/// Records what generated each section vertex the result made: the
+/// edges and faces its hits, crossings, section crossings, triple
+/// points or curve starts lie on.
+fn generated_vertices(
+    p: &mut Provenance,
+    i: &Interferences,
+    vref_of: &[VRef],
+    out_vertex: &BTreeMap<VRef, VertexId>,
+) {
+    for (k, v) in i.vertices.iter().enumerate() {
+        let VRef::Section(_) = vref_of[k] else {
+            continue;
+        };
+        let Some(id) = out_vertex.get(&vref_of[k]) else {
+            continue;
+        };
+        match v.source {
+            VertexSource::Hits | VertexSource::SectionCrossing | VertexSource::TriplePoint => {
+                for &h in &v.hits {
+                    p.add_generated(forward(i.hits[h].edge), forward(*id));
+                    p.add_generated(forward(i.hits[h].face), forward(*id));
+                }
+                for &x in &v.crossings {
+                    p.add_generated(forward(i.crossings[x].a), forward(*id));
+                    p.add_generated(forward(i.crossings[x].b), forward(*id));
+                }
+                for &x in &v.section_crossings {
+                    let pair = &i.pairs[i.section_crossings[x].pair];
+                    p.add_generated(forward(pair.a), forward(*id));
+                    p.add_generated(forward(pair.b), forward(*id));
+                }
+                for &x in &v.triple_points {
+                    let q = &i.triple_points[x];
+                    let pair = &i.pairs[q.pair];
+                    p.add_generated(forward(pair.a), forward(*id));
+                    p.add_generated(forward(pair.b), forward(*id));
+                    p.add_generated(forward(q.face), forward(*id));
+                }
+            }
+            VertexSource::CurveStart { pair, .. } => {
+                p.add_generated(forward(i.pairs[pair].a), forward(*id));
+                p.add_generated(forward(i.pairs[pair].b), forward(*id));
+            }
+            // Always an operand's vertex, never a new one.
+            VertexSource::Singular => {}
+        }
+    }
+}
+
+/// Records what generated each section edge the result made: the faces
+/// of its pair and the faces of its shared uses. `i.sections` is curve
+/// order and then along each curve, so the section edges one pair
+/// generates reach the record in split order: along their own curve
+/// (ADR-0009).
+fn generated_sections(p: &mut Provenance, i: &Interferences, out_edge: &BTreeMap<ERef, EdgeId>) {
+    for (k, s) in i.sections.iter().enumerate() {
+        let Some(&id) = out_edge.get(&ERef::Section(k)) else {
+            continue;
+        };
+        let pair = &i.pairs[i.curves[s.curve].pair];
+        p.add_generated(forward(pair.a), forward(id));
+        p.add_generated(forward(pair.b), forward(id));
+        for u in &s.shared {
+            p.add_generated(forward(u.face), forward(id));
+        }
+    }
 }
 
 impl Build<'_> {
