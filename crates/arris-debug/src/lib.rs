@@ -28,7 +28,6 @@ pub mod gaps;
 pub mod geom;
 pub mod histogram;
 #[cfg(not(target_arch = "wasm32"))]
-pub mod nurbs_census;
 pub mod oracle;
 pub mod part;
 pub mod polyhedron;

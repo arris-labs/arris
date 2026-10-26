@@ -99,7 +99,7 @@ robustness or bound has to be established here.
   not link under `abi3`, stop and take the fallback (Open questions).
 - [x] Step 2 **[1]** — `model/query.rs`, `model/topology.rs`, `model/io.rs` (and `model/features.rs`, see Settled);
   no `model/` file past 800 lines; `tools/py-test.sh` green.
-- [ ] Step 3 **[1]** — Record the committed reports: `real_parts`
+- [x] Step 3 **[1]** — Record the committed reports: `real_parts`
   `--gaps-committed`, `--run-over-committed`, `--vertex-blend-committed`,
   the census over the committed tier and the script-corpus histogram,
   written to `target/file-concerns/before/` (the commands in the body).
