@@ -93,7 +93,7 @@ bound has to be established here.
   refusing, and `is_tangent_dihedral` reads ADR-0045's tolerance. Unit
   tests: CTC-04's e961 leaves the sample, and a scratch stage with a drop
   is `BothRefuse`.
-- [ ] Step 5 **[1]**: `fixtures:` re-derive the committed tier
+- [x] Step 5 **[1]**: `fixtures:` re-derive the committed tier
   (`battery --write`, `tools/oracle/expected.py`, `battery --record`) on
   its 9 battery parts. The body names each part's `fillet` stage, before
   and after, and every oracle value that moved, and why: operands changed,

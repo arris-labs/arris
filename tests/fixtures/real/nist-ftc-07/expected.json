@@ -178,13 +178,54 @@
         "volume": 1724846.1688714733
       },
       "fillet": {
-        "refused": "There are no suitable edges for chamfer or fillet"
+        "area": 391270.1873100582,
+        "centroid": [
+          0.7674959527668945,
+          -64.55680835573632,
+          0.03507924551133149
+        ],
+        "counts": {
+          "edges": 664,
+          "faces": 288,
+          "loops": 337,
+          "shells": 1,
+          "solids": 1,
+          "vertices": 397
+        },
+        "degenerate": false,
+        "euler_characteristic": -28,
+        "genus": 15,
+        "inertia": [
+          [
+            15158336346.930984,
+            11390597.375459358,
+            12653404.341328222
+          ],
+          [
+            11390597.375459358,
+            33533670327.128483,
+            -2204651.2105826726
+          ],
+          [
+            12653404.341328222,
+            -2204651.2105826726,
+            24740366717.532333
+          ]
+        ],
+        "own": {
+          "edge_length": 43413.18455747376,
+          "reach": 207.31963348598765,
+          "removable_vertices": 6,
+          "tolerance": 0.005878867285610049
+        },
+        "probes": [],
+        "volume": 1726235.3823340593
       }
     }
   },
   "kind": "part",
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "bcfb959764f567916b8391c743f111e33701e190eaf53d11280a58b5e3a2e6af",
+  "recipe_sha256": "ba43f57dd24f3ee0f3d5d678d1254d62a2d34701e5d0438179ddc5f2bcbd2ce6",
   "solids": [
     {
       "area": 391371.3474052189,
