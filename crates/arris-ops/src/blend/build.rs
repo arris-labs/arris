@@ -534,9 +534,6 @@ fn make_blends(
     joins: &Joins,
 ) -> Result<Vec<Blend>, OpError> {
     let (env, meter) = ctx.split();
-    let Env {
-        m, tol, samples, ..
-    } = env;
     let Joins {
         miters,
         miter_at,
@@ -585,7 +582,7 @@ fn make_blends(
         let t = [0, 1].map(|end| [0, 1].map(|k| ends[end].t(miters, corners, k)));
         let contacts = match s.section {
             Section::Walked { .. } => walked_contacts(&env, meter, &s, t)?,
-            Section::Round { .. } | Section::Flat => contacts(m, &s, t, tol, samples, meter)?,
+            Section::Round { .. } | Section::Flat => contacts(&env, &s, t, meter)?,
         };
         blends.push(Blend {
             stripe: s,

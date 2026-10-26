@@ -15,7 +15,9 @@ use arris_math::{
 };
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
+use super::build::Env;
 use super::ends::stretch_between;
+use super::run_over::{self, Leaving};
 use super::traced;
 use super::{Kind, degenerate, invariant};
 use crate::body_view::tangent_normals;
@@ -760,16 +762,17 @@ pub(super) fn section_between(
 }
 
 /// The contact lines of `s` between their parameters at its two ends,
-/// `t[end][contact]`, each checked to lie inside its face.
+/// `t[end][contact]`, each checked to lie inside its face; one that
+/// leaves it is refused naming the edge it crosses where it crosses one
+/// (`run_over::refusal`, ADR-0071).
 pub(super) fn contacts(
-    m: &Model,
+    env: &Env<'_>,
     s: &Stripe,
     t: [[f64; 2]; 2],
-    tol: Tolerance,
-    samples: usize,
     meter: &mut Meter<'_>,
 ) -> Result<[Contact; 2], OpError> {
     meter.tick()?;
+    let (m, tol, samples) = (env.m, env.tol, env.samples);
     let e = forward(s.edge);
     let mut contacts: Vec<Contact> = Vec::with_capacity(2);
     let spans = [0, 1].map(|k| (t[0][k], t[1][k]));
@@ -797,7 +800,23 @@ pub(super) fn contacts(
             | Surface::Nurbs(_) => on_face,
         };
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
-            return Err(too_large());
+            let axis = match s.section {
+                Section::Round { axis_origin, .. } => Some(Curve::Line {
+                    origin: axis_origin,
+                    direction: UnitVec3::new_normalize(s.d),
+                }),
+                Section::Flat | Section::Walked { .. } => None,
+            };
+            let leaving = axis.as_ref().map(|centres| Leaving {
+                blended: s.edge,
+                face,
+                other: s.faces[1 - k],
+                contact: line,
+                range,
+                centres,
+                tolerance: s.tolerance,
+            });
+            return Err(run_over::refusal(env, leaving.as_ref(), too_large(), meter));
         }
         let u = if k == 0 { 0.0 } else { s.u1 };
         let on_blend = pcurve_on(line, range, &s.surface, line_tol, meter).map_err(fault_of)?;

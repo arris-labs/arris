@@ -99,14 +99,18 @@ given design; **[3]** unproven, robustness or bound established here.
 - [x] Step 2 **[3]**: ADR-0071, decided on step 1's reading and a probe
   of every contact refusal on both fixtures and the four blocking parts'
   36 `BlendTooLarge` edges: none of the parts' is a two-crossing run-over.
-- [ ] Step 3 **[3]**: the rolled spine. `run_over.rs` finds and pairs
+- [x] Step 3 **[3]**: the rolled spine. `run_over.rs` finds and pairs
   the crossings and traces offset(`H`) ∩ pipe(`E`) between them. Unit
   tests hold it to closed forms. The crossings are at `x = 5 ± √(2.6² − 2.3²)`
   (pi) and `y = 10 ± √(3.5² − 2²)` (phone). The ball's centre at the
   midpoints is `(5, −0.3, 2 + √0.27)` and `(12 − √1.75, 10, 6)`. The
   refusal still names `E` where pairing or the trace fails.
+  *Settled*: a traced run-over is refused naming `E` too until step 4
+  builds it; ADR-0071 §3's feet on `H` are checked by the rolled face's
+  walk there, which has them.
 - [ ] Step 4 **[3]**: the convex blend over a hole's rim (phone). The
-  rolled face is walked, the cylinder is cut in two, and the rim's loop
+  rolled face is walked, its feet on `H` checked inside `H`, the
+  cylinder is cut in two, and the rim's loop
   joins `F`'s outer loop. The fixture moves to `blend/` with its dump;
   volume, area and inertia match the oracle. CHANGELOG bullet.
 - [ ] Step 5 **[3]**: the concave ring over an outer edge (pi). The

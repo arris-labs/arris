@@ -34,6 +34,14 @@ mod junction;
 mod miter;
 mod mixed;
 mod ring;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "a run-over's crossings and spine are read by the module's tests until its rolled face is built (ADR-0071, plans/blend-runs-onto steps 4 and 5)"
+    )
+)]
+mod run_over;
 mod stripe;
 mod traced;
 mod walked;

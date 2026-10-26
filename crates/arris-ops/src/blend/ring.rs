@@ -14,6 +14,7 @@ use arris_topo::{EdgeId, FaceId, Orientation, Shape, VertexId};
 
 use super::build::Env;
 use super::ends::{EndKind, LoneCorner, Trim, arc_end, at_cut_corner, corner_of, cusp_trims};
+use super::run_over::{self, Leaving};
 use super::stripe::{chord, on_side_of_face, placed};
 use super::{Kind, degenerate, invariant};
 use super::{mixed, traced};
@@ -1166,7 +1167,21 @@ fn place_contacts(
             (None, _) => on_face,
         };
         if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
-            return Err(too_large(face));
+            let leaving = bl.centres.as_ref().map(|centres| Leaving {
+                blended: edge,
+                face,
+                other: faces[1 - i],
+                contact: &contact,
+                range,
+                centres,
+                tolerance,
+            });
+            return Err(run_over::refusal(
+                env,
+                leaving.as_ref(),
+                too_large(face),
+                meter,
+            ));
         }
         let on_blend = pcurve_on(&contact, range, surface, line_tol, meter).map_err(geometry)?;
         let along_u = on_blend.point(mid).x > on_blend.point(range.lo()).x;
