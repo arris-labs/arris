@@ -112,7 +112,7 @@ robustness or bound has to be established here.
   `fast_part1` + `fast_part2` (`cargo nextest list`, in the body).
 - [x] Step 7 **[2]** — `cdt/`; the mesh corpus and `mesh/` dumps unchanged
   (the `Fail` paths keep their variant and naming order).
-- [ ] Step 8 **[2]** — `pcurve/`; the geom tests, the boolean and blend
+- [x] Step 8 **[2]** — `pcurve/`; the geom tests, the boolean and blend
   corpora's dumps unchanged; `refactor-review`'s `file_sizes` shows none of
   the five files past its bound.
 
