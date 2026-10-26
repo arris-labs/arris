@@ -110,7 +110,7 @@ robustness or bound has to be established here.
   and every corpus area's checker output unchanged.
 - [x] Step 6 **[1]** — `tests/fast/` by entity row; the test count equals
   `fast_part1` + `fast_part2` (`cargo nextest list`, in the body).
-- [ ] Step 7 **[2]** — `cdt/`; the mesh corpus and `mesh/` dumps unchanged
+- [x] Step 7 **[2]** — `cdt/`; the mesh corpus and `mesh/` dumps unchanged
   (the `Fail` paths keep their variant and naming order).
 - [ ] Step 8 **[2]** — `pcurve/`; the geom tests, the boolean and blend
   corpora's dumps unchanged; `refactor-review`'s `file_sizes` shows none of
