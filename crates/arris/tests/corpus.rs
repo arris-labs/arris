@@ -1517,6 +1517,16 @@ corpus_tests! {
     /// edge as built.
     #[ignore = "kernel bug: the blend's output fails the checker at L2, pcurves 4.6e-7 apart where the file's faces are 1e-7 tolerant (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
     regression_nist_ctc_03_two_plane_edges_fillet_checker_fault => run "regression/nist-ctc-03-two-plane-edges-fillet-checker-fault";
+    /// A boss 0.3 inside a plate's edge, its root filleted at 0.6: the ring's
+    /// contact on the plate's top runs over the plate's front edge, and Open
+    /// CASCADE rolls the ball on that edge between the two crossings.
+    #[ignore = "BlendTooLarge: the ring's contact leaves the plate's top through its front edge, not the corner's own (plans/blend-runs-onto)"]
+    regression_standoff_root_fillet_runs_off_the_plate => run "regression/standoff-root-fillet-runs-off-the-plate";
+    /// A slab's top edge filleted at 2 over a cross hole whose top is 0.5
+    /// below it: the contact on the end face runs through the hole's rim, and
+    /// Open CASCADE rolls the ball on the rim between the two crossings.
+    #[ignore = "BlendTooLarge: the contact leaves the end face through the hole's rim, not the corner's own (plans/blend-runs-onto)"]
+    regression_lip_fillet_runs_into_a_hole => run "regression/lip-fillet-runs-into-a-hole";
     /// A box cut to a barrel and a plane beside the corner, the vertical edge
     /// at the origin blended: its end reaches a vertex of four edges whose faces
     /// across are a plane and a cylinder, a fan of two with a curved piece,

@@ -1,0 +1,134 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a42fef2a327c1f76df3e50647204619490eafbf468ff3703e72bdb0312f7afd7",
+  "results": {
+    "default": {
+      "area": 302.12775392597956,
+      "centroid": [
+        5.000000000000004,
+        4.688401981206946,
+        1.2272651998179922
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2027.2238513995762,
+          -3.0468072509393096e-10,
+          -9.094947017729282e-13
+        ],
+        [
+          -3.0468072509393096e-10,
+          1859.3509834387214,
+          122.64444506932614
+        ],
+        [
+          -9.094947017729282e-13,
+          122.64444506932614,
+          3556.2145299240638
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_boss",
+          "point": [
+            5.0,
+            2.3,
+            3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front",
+          "point": [
+            5.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_rolled_patch",
+          "point": [
+            5.0,
+            0.219615242271,
+            2.219615242271
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_rolled_patch",
+          "point": [
+            5.0,
+            0.202294734195,
+            2.229615242271
+          ]
+        },
+        {
+          "class": "in",
+          "label": "behind_rolled_patch",
+          "point": [
+            5.0,
+            0.236935750346,
+            2.209615242271
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_front_edge",
+          "point": [
+            5.0,
+            0.0,
+            2.04
+          ]
+        },
+        {
+          "class": "in",
+          "label": "back_spandrel",
+          "point": [
+            5.0,
+            4.3999999999999995,
+            2.02
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_back_contact",
+          "point": [
+            5.0,
+            4.8999999999999995,
+            2.0
+          ]
+        }
+      ],
+      "volume": 226.12891723621777
+    }
+  }
+}

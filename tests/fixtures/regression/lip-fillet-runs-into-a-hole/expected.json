@@ -1,0 +1,152 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "536452287065a39816c8741f81bab0e1a2785d6b59aa7a10035cefd8f65f4aa2",
+  "results": {
+    "default": {
+      "area": 1161.7559573410965,
+      "centroid": [
+        5.942861704259093,
+        10.000000000000002,
+        3.963231646285495
+      ],
+      "counts": {
+        "edges": 27,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 17
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          70648.68840661008,
+          1.4551915228366852e-11,
+          297.01270956949884
+        ],
+        [
+          1.4551915228366852e-11,
+          25664.804350156293,
+          2.1827872842550278e-11
+        ],
+        [
+          297.01270956949884,
+          2.1827872842550278e-11,
+          79049.72697453556
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 27,
+        "faces": 11,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 17
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            6.0,
+            2.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_hole",
+          "point": [
+            6.0,
+            10.0,
+            4.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            11.414213562373096,
+            1.0,
+            7.414213562373095
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_blend",
+          "point": [
+            11.9,
+            1.0,
+            7.9
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_hole_top_under_blend",
+          "point": [
+            11.0,
+            10.0,
+            7.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "hole_top_under_patch",
+          "point": [
+            11.5,
+            10.0,
+            7.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_rolled_patch",
+          "point": [
+            11.384231125654,
+            10.0,
+            7.870828693387
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_rolled_patch",
+          "point": [
+            11.377160057842,
+            10.0,
+            7.852120406453
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_rolled_patch",
+          "point": [
+            11.391302193466,
+            10.0,
+            7.889536980321
+          ]
+        },
+        {
+          "class": "on",
+          "label": "hole_bottom_at_face",
+          "point": [
+            11.9,
+            10.0,
+            0.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "face_beside_hole",
+          "point": [
+            12.0,
+            3.0,
+            3.0
+          ]
+        }
+      ],
+      "volume": 1443.3544591705604
+    }
+  }
+}

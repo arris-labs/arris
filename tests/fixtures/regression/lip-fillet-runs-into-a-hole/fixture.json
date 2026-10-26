@@ -1,0 +1,24 @@
+{
+  "description": "a slab 12 x 20 x 8 with a hole of radius 3.5 across it along x, its axis at z 4, its top 0.5 below the slab's top; the slab's top edge at x = 12 filleted at r 2. The convex blend's contact on the face x = 12 runs at z 6, 2 above the hole's axis, through the hole's rim, an edge that is not the blend's own; its contact on the top face stays clear of the hole. Open CASCADE builds it with the ball rolling on the rim between the crossings at y = 10 ± √(3.5² − 2²): a rational patch (two faces, split at the rim's top) from the top face's contact down to the rim's upper arc, section arcs of radius r centred at r from the top's offset and the rim's circle; the hole's wall is untouched, the blend's cylinder left in two faces either side, and the face x = 12's hole loop joins its outer loop (V/E/F 17/27/11). Arris refuses it as BlendTooLarge (the script corpus's phone stand's lip, shrunk)",
+  "params": {"a": 3.5, "c": 4, "r": 2},
+  "steps": [
+    {"name": "slab", "op": "box", "min": [0, 0, 0], "max": [12, 20, 8]},
+    {"name": "drill", "op": "cylinder", "base": [-1, 10, "c"], "axis": [1, 0, 0], "radius": "a", "height": 14},
+    {"name": "part", "op": "cut", "target": "slab", "tool": "drill"},
+    {"name": "result", "op": "fillet", "of": "part", "edges": [[12, 1, 8]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [6, 2, 2], "expect": "in"},
+    {"label": "in_hole", "point": [6, 10, "c"], "expect": "out"},
+    {"label": "on_blend", "point": ["12 - r + r / sqrt(2)", 1, "8 - r + r / sqrt(2)"], "expect": "on"},
+    {"label": "past_blend", "point": [11.9, 1, 7.9], "expect": "out"},
+    {"label": "on_hole_top_under_blend", "point": [11, 10, "c + a"], "expect": "on"},
+    {"label": "hole_top_under_patch", "point": [11.5, 10, "c + a"], "expect": "on"},
+    {"label": "on_rolled_patch", "point": [11.384231125654, 10, 7.870828693387], "expect": "on"},
+    {"label": "under_rolled_patch", "point": [11.377160057842, 10, 7.852120406453], "expect": "in"},
+    {"label": "past_rolled_patch", "point": [11.391302193466, 10, 7.889536980321], "expect": "out"},
+    {"label": "hole_bottom_at_face", "point": [11.9, 10, "c - a"], "expect": "on"},
+    {"label": "face_beside_hole", "point": [12, 3, 3], "expect": "on"}
+  ]
+}
