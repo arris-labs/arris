@@ -98,7 +98,7 @@ bound has to be established here.
   its 9 battery parts. The body names each part's `fillet` stage, before
   and after, and every oracle value that moved, and why: operands changed,
   the oracle did not.
-- [ ] Step 6 **[1]**: Clear the oracle cache and run `tools/real-parts.sh`.
+- [x] Step 6 **[1]**: Clear the oracle cache and run `tools/real-parts.sh`.
   Update `tools/real-parts.waits` if a wait clears. Re-run the
   `--tangent-chain`, `--vertex-blend` and `--run-over` census over the
   blocked parts. Update `docs/ROADMAP.md` §C11 with the printed count, the
@@ -141,3 +141,9 @@ bound has to be established here.
 - ⚠ OPEN: a part that the re-derived sample newly blocks is recorded, not
   avoided. The agent decides whether it joins an existing residue
   milestone or is a backlog line. Decided at step 6.
+  *Settled at step 6:* the count printed is 4 of 38, not 6: FTC-06 (both
+  tiers) and CTC-05 AP203 no longer block (the sample or a dropped edge),
+  so M2 and M5 lose their parts. STC-07 AP242 is newly a kernel bug, not a
+  refusal: its fillet builds and the checker leaves four cylinder pairs
+  undecided; it is an ignored `regression/` fixture, a wait and a backlog
+  line, not an idea milestone.

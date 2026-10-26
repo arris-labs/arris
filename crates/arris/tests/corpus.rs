@@ -1265,6 +1265,11 @@ corpus_tests! {
     /// its box cut is a kernel fault.
     #[ignore = "box_cut: OpError::Internal(Fault::Split) where Open CASCADE builds it (docs/BACKLOG.md, a split fault on the healed parts' battery)"]
     regression_nist_ftc_11_ap242_box_cut_split_fault => part "regression/nist-ftc-11-ap242-box-cut-split-fault";
+    /// NIST's STC-07 AP242 e3 solid #210 alone, from the fetched tier: the
+    /// battery's fillet, over a sample that leaves out the tangent edges
+    /// (ADR-0070), builds and fails the checker.
+    #[ignore = "fillet: the result fails the checker at Full on cylinder against cylinder pairs (f344/f352, f346/f354, f348/f356, f350/f358) the S5 cannot decide (docs/BACKLOG.md, an undecided S5 pair on a fillet of STC-07)"]
+    regression_nist_stc_07_ap242_fillet_checker_undecided => part "regression/nist-stc-07-ap242-fillet-checker-undecided";
     /// NIST's CTC-02 AP242 e2 solid cut by its battery's box: a plane
     /// across a bicubic B-spline face (ADR-0061).
     #[ignore = "read-back: Open CASCADE's own STEP of the result is refused by the reader, #17219: the edge's end is at 0.3598 on its curve, not past its start at 0.4185; Arris's result is checker green and matches the oracle (docs/BACKLOG.md, a reversed-parameter edge in Open CASCADE's STEP of a NURBS part; ADR-0061)"]

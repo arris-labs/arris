@@ -862,9 +862,16 @@ printed.
 Open CASCADE builds, builds, or is refused by a name that says why the
 geometry has no blend. Chosen at C10's close by ADR-0020's rule: no
 consumer has reported a regression, and the blend network is the one row
-of both histograms that is not 0. It blocks 12 of the 38 real parts at
-`fillet` (7 fetched, 5 committed; the fetched tier refuses `TangentChain`
-5, `BlendTooLarge` 1, `VertexBlend` 1, unchanged since 2026-10-15) and 3
+of both histograms that is not 0. It counted 12 of the 38 real parts at
+`fillet`; 8 of those were the battery's own sample asking edges the blend
+reads as tangent and Open CASCADE leaves out (ADR-0070), and re-derived
+and re-run (plans/battery-honesty, 2026-10-26) it blocks 4 of 38, all
+fetched: CTC-02 AP242 and FTC-07 AP242 at `VertexBlend`, CTC-05 AP242 and
+FTC-11 at `TangentChain` (an end or a corner tangent within a tolerance,
+no sampled edge the edge itself); the committed tier's row is 0. STC-07
+AP242, whose fillet now builds, fails the checker at `Full` on four
+cylinder pairs S5 leaves undecided (`regression/nist-stc-07-ap242-fillet-checker-undecided`,
+waiting in `tools/real-parts.waits`). The residue also holds 3
 of the script corpus's 4 refusals: a blend that leaves its face through
 an edge not the corner's own, at the pi mount plate's standoff roots and
 the phone stand's lip (2), and a corner the closed forms do not cover at
@@ -896,7 +903,7 @@ same-domain face merging; sheet operands of the boolean; free-edge
 sewing; two NURBS faces flush over an area; faceted solids.
 
 **Accept:** the histogram's blend network row re-run and printed, below
-12 of 38, every stage left a typed refusal naming the edge; each stage
+4 of 38 (the corrected count), every stage left a typed refusal naming the edge; each stage
 newly built gives a checker-green body whose mass properties match Open
 CASCADE's within the fixture's tolerance, with a fixture per refusal it
 retires; the script corpus re-run, its `fillet` refusals below 3; the

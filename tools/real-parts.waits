@@ -16,3 +16,5 @@ nist_ctc_04_asme1_ap242-e1 regression/nist-ctc-04-ap242-mesh-off-face
 # A battery box cut or drill that returns Internal(Split).
 nist_ftc_07_asme1_ap242-e2 regression/nist-ftc-07-ap242-box-cut-split-fault
 nist_ftc_11_asme1_ap242-e2 regression/nist-ftc-11-ap242-box-cut-split-fault
+# A battery fillet whose result the checker cannot decide on cylinder pairs.
+nist_stc_07_asme1_ap242-e3 regression/nist-stc-07-ap242-fillet-checker-undecided
