@@ -911,7 +911,7 @@ Two lines of work that are not cycles. Neither changes a public type or a
 signature, so neither earns a minor version (`.agents/rules/git.md`
 §Tags); each stands beside whatever cycle is open (ADR-0020).
 
-**The refactor sequence** (the `refactor-after-c10` review, option B, its idea absorbed by `plans/file-concerns`).
+**The refactor sequence** (the `refactor-after-c10` review, option B).
 `small-seams` landed 2026-10-23: the union-find, golden-section minimiser,
 `next_down`, interval samples, isoline pcurves, io's number formatter and
 `read_json` each exist once; `Violation` and `Unchecked` are exhaustive;
@@ -928,8 +928,13 @@ isolations bit-identical and `torus_walk/` a module split by phase.
 `long-functions` landed 2026-10-26: the STEP reader's `build`, the corpus's
 `build_step` (now `corpus/`), `prop::recipe::write`, `tessellate_under` and
 `boolean_each_witnessed` are phases or per-family functions, none past 150
-lines, and a test ties the recipe's op tags to the oracle's `recipe.py`;
-`file-concerns` is next in the side slot.
+lines, and a test ties the recipe's op tags to the oracle's `recipe.py`.
+`file-concerns` landed 2026-10-26: `arris-py`'s `Model` is a `model/`
+module (ops, features, query, topology, io; `multiple-pymethods`),
+`check/`, `cdt/` and `pcurve/` are modules by concern, the checker's `Fast`
+tests are one binary filed by entity row, the corpus tables write through
+one `report::Table`, and `nurbs_census` is deleted; fixtures, dumps and
+the Python API are byte-identical. The sequence is closed.
 C11's first plan is next.
 
 **The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`
