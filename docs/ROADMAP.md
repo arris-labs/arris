@@ -911,7 +911,7 @@ Two lines of work that are not cycles. Neither changes a public type or a
 signature, so neither earns a minor version (`.agents/rules/git.md`
 §Tags); each stands beside whatever cycle is open (ADR-0020).
 
-**The refactor sequence** (`docs/ideas/refactor-after-c10.md`, option B).
+**The refactor sequence** (the `refactor-after-c10` review, option B, its idea absorbed by `plans/file-concerns`).
 `small-seams` landed 2026-10-23: the union-find, golden-section minimiser,
 `next_down`, interval samples, isoline pcurves, io's number formatter and
 `read_json` each exist once; `Violation` and `Unchecked` are exhaustive;

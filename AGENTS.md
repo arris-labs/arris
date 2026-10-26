@@ -44,7 +44,7 @@ The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22, and
 the prebuilt wheels for Linux, macOS and Windows with it, so the launch
 gate of ADR-0067 §5 is met; 0.9.1 (the modelling layer and the platform
 wheels) is the release prepared for the first multi-platform upload.
-**Refactor sequence** (`docs/ideas/refactor-after-c10.md`, option B):
+**Refactor sequence** (the `refactor-after-c10` review, option B; `plans/file-concerns` absorbed the rest):
 `small-seams` done 2026-10-23 (each shared helper once, in the lowest crate);
 `builder-split` done 2026-10-24 (`builder/` by concern, `BuildError` nested,
 `DegenerateReason` typed); `sweep-skeleton` done 2026-10-25 (the four sweeps
