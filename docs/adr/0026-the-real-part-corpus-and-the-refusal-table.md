@@ -625,3 +625,7 @@ is a reader bug under §4, not a timing to accommodate.
   Each is a backlog line. Open CASCADE's `STEPControl_Reader` holds all
   of them, so none is a refusal to count, and the histogram counts their
   other stages as they are.
+
+## Amendment (2026-10-26, plan `battery-honesty` step 1)
+
+- A stage in which Open CASCADE left out an asked edge counts as Open CASCADE refusing it, and the sample reads ADR-0045's tangency tolerance: ADR-0070.

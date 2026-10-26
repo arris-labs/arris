@@ -211,9 +211,21 @@ Every typed refusal over the real-part corpus, counted by kind; with the
 first consumer's regressions it picks the next cycle (ADR-0020).
 _Avoid_: refusal table (the code that counts it is `histogram`)
 
+**Battery**:
+The fixed stages each real-part solid is put through after its read
+(`measure`, `write_read`, `box_cut`, the three drills, `fillet`), each
+held to Open CASCADE's; a stage Open CASCADE builds and Arris refuses
+blocks the part (ADR-0026).
+_Avoid_: test suite (for this)
+
 **Census**:
 A breakdown of one operation's refusals over the real parts, edge by edge
 (`arris_debug::census`, the fillet column).
+
+**Blend residue**:
+The blends Open CASCADE builds and Arris refuses once the blend network
+was built: what C11 works through. A refusal the battery's own sample
+causes is not residue.
 
 **Differential**:
 Random recipes run through Arris and the oracle, disagreements shrunk to a
