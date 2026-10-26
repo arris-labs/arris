@@ -35,6 +35,7 @@ pub mod polyhedron;
 pub mod prop;
 pub mod query;
 pub mod render;
+mod report;
 #[cfg(feature = "rerun")]
 pub mod rerun;
 pub mod sample;

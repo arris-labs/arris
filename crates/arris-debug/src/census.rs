@@ -40,6 +40,7 @@ use crate::differential::panicked;
 use crate::fixtures::{PrecisionSpec, corpus_root};
 use crate::histogram::{COMMITTED_TIER, Stage, blocks_reason_in, cylinder_pair};
 use crate::part;
+use crate::report::{Align, Table};
 use crate::unmetered::{fillet, step_read};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -969,9 +970,18 @@ pub fn vertex_blend_committed() -> Result<Vec<(String, Vec<SolidCensus>)>, Strin
 /// each part's sampled set where that is refused: how many edges, how many
 /// were put to Open CASCADE and what it said.
 pub fn vertex_blend_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
-    let mut out = String::from(
-        "| part | solid | cause | cycle | edges | asked | builds | invalid | refuses | no edge |\n|---|---|---|---|---:|---:|---:|---:|---:|---:|\n",
-    );
+    let mut table = Table::new([
+        ("part", Align::Left),
+        ("solid", Align::Left),
+        ("cause", Align::Left),
+        ("cycle", Align::Left),
+        ("edges", Align::Right),
+        ("asked", Align::Right),
+        ("builds", Align::Right),
+        ("invalid", Align::Right),
+        ("refuses", Align::Right),
+        ("no edge", Align::Right),
+    ]);
     let mut totals = [0usize; 6];
     for (part, solids) in parts {
         for s in solids {
@@ -998,21 +1008,22 @@ pub fn vertex_blend_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
                 for (t, r) in totals.iter_mut().zip(row) {
                     *t += r;
                 }
-                let _ = writeln!(
-                    out,
-                    "| {part} | {} | {cause} | {} | {} | {} | {} | {} | {} | {} |",
-                    s.solid,
-                    vertex_blend_cycle(cause),
-                    row[0],
-                    row[1],
-                    row[2],
-                    row[3],
-                    row[4],
-                    row[5]
-                );
+                table.row([
+                    part.clone(),
+                    s.solid.to_string(),
+                    cause.to_string(),
+                    vertex_blend_cycle(cause).to_string(),
+                    row[0].to_string(),
+                    row[1].to_string(),
+                    row[2].to_string(),
+                    row[3].to_string(),
+                    row[4].to_string(),
+                    row[5].to_string(),
+                ]);
             }
         }
     }
+    let mut out = table.to_string();
     out.push_str("\nThe battery's sampled edges refused `VertexBlend`, each alone:\n\n");
     for (part, solids) in parts {
         for s in solids {
@@ -1146,9 +1157,17 @@ pub fn tangent_chain_file(file: &Path) -> Result<String, String> {
 /// The `BlendTooLarge` edges of the solids, counted by `part → cause`:
 /// how many edges, how many were put to Open CASCADE and what it said.
 pub fn run_over_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
-    let mut out = String::from(
-        "| part | solid | cause | edges | asked | builds | invalid | refuses | no edge |\n|---|---|---|---:|---:|---:|---:|---:|---:|\n",
-    );
+    let mut table = Table::new([
+        ("part", Align::Left),
+        ("solid", Align::Left),
+        ("cause", Align::Left),
+        ("edges", Align::Right),
+        ("asked", Align::Right),
+        ("builds", Align::Right),
+        ("invalid", Align::Right),
+        ("refuses", Align::Right),
+        ("no edge", Align::Right),
+    ]);
     let mut totals = [0usize; 6];
     for (part, solids) in parts {
         for s in solids {
@@ -1175,14 +1194,21 @@ pub fn run_over_markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
                 for (t, r) in totals.iter_mut().zip(row) {
                     *t += r;
                 }
-                let _ = writeln!(
-                    out,
-                    "| {part} | {} | {cause} | {} | {} | {} | {} | {} | {} |",
-                    s.solid, row[0], row[1], row[2], row[3], row[4], row[5]
-                );
+                table.row([
+                    part.clone(),
+                    s.solid.to_string(),
+                    cause.to_string(),
+                    row[0].to_string(),
+                    row[1].to_string(),
+                    row[2].to_string(),
+                    row[3].to_string(),
+                    row[4].to_string(),
+                    row[5].to_string(),
+                ]);
             }
         }
     }
+    let mut out = table.to_string();
     out.push_str("\nThe battery's sampled edges refused `BlendTooLarge`, each alone:\n\n");
     for (part, solids) in parts {
         for s in solids {
@@ -1304,9 +1330,15 @@ pub fn run_over_committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
 /// edges beside the count of edges each holds, and a last line counting
 /// the parts by first refusal.
 pub fn markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
-    let mut out = String::from(
-        "| part | solid | radius | first refusal (the sample together) | cycle | the sampled edges, each alone | each blendable edge alone |\n|---|---|---:|---|---|---|---|\n",
-    );
+    let mut table = Table::new([
+        ("part", Align::Left),
+        ("solid", Align::Left),
+        ("radius", Align::Right),
+        ("first refusal (the sample together)", Align::Left),
+        ("cycle", Align::Left),
+        ("the sampled edges, each alone", Align::Left),
+        ("each blendable edge alone", Align::Left),
+    ]);
     let mut by_first: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (part, solids) in parts {
         for s in solids {
@@ -1322,19 +1354,22 @@ pub fn markdown(parts: &[(String, Vec<SolidCensus>)]) -> String {
                 .collect::<Vec<_>>()
                 .join("; ");
             let cycle = s.blocks.clone().unwrap_or_default();
-            let _ = writeln!(
-                out,
-                "| {part} | {} | {:.4} | {first} | {cycle} | {} | {alone} |",
-                s.solid,
-                s.radius,
-                s.sampled.join("; ")
-            );
+            table.row([
+                part.clone(),
+                s.solid.to_string(),
+                format!("{:.4}", s.radius),
+                first.clone(),
+                cycle,
+                s.sampled.join("; "),
+                alone,
+            ]);
             let list = by_first.entry(first.clone()).or_default();
             if !list.contains(part) {
                 list.push(part.clone());
             }
         }
     }
+    let mut out = table.to_string();
     out.push_str("\nParts by first refusal:\n\n");
     let mut rows: Vec<_> = by_first.iter().collect();
     rows.sort_by(|a, b| b.1.len().cmp(&a.1.len()).then(a.0.cmp(b.0)));

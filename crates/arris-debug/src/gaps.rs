@@ -25,6 +25,7 @@ use crate::battery::key;
 use crate::census::{edge_midpoint, pair_of};
 use crate::fixtures::{PrecisionSpec, corpus_root};
 use crate::oracle::{self, CarriedTolerance};
+use crate::report::{Align, Table};
 
 /// The `max_tolerance` the census reads under: far past any gap of the
 /// corpus, so that only the part-relative cap bounds a read. A survey
@@ -222,7 +223,15 @@ pub fn markdown(parts: &[(String, Vec<SolidGaps>)]) -> String {
                 }
                 Ok(gaps) if gaps.is_empty() => {}
                 Ok(gaps) => {
-                    out.push_str("| gap | of size | vertices | edges | surfaces | file entities | Open CASCADE |\n|---:|---:|---:|---:|---|---|---:|\n");
+                    let mut table = Table::new([
+                        ("gap", Align::Right),
+                        ("of size", Align::Right),
+                        ("vertices", Align::Right),
+                        ("edges", Align::Right),
+                        ("surfaces", Align::Left),
+                        ("file entities", Align::Left),
+                        ("Open CASCADE", Align::Right),
+                    ]);
                     // One row per gap measured to the same four places:
                     // a seam of vertices and edges is one gap.
                     let mut rows: Vec<(f64, Vec<&Gap>)> = Vec::new();
@@ -260,13 +269,17 @@ pub fn markdown(parts: &[(String, Vec<SolidGaps>)]) -> String {
                             _ => "–".to_string(),
                         };
                         let fraction = if s.size > 0.0 { gap / s.size } else { 0.0 };
-                        let _ = writeln!(
-                            out,
-                            "| {gap:.4} | {fraction:.2e} | {vertices} | {edges} | {} | {}{more} | {theirs} |",
+                        table.row([
+                            format!("{gap:.4}"),
+                            format!("{fraction:.2e}"),
+                            vertices.to_string(),
+                            edges.to_string(),
                             surfaces.join(", "),
-                            shown.join(", "),
-                        );
+                            format!("{}{more}", shown.join(", ")),
+                            theirs,
+                        ]);
                     }
+                    let _ = write!(out, "{table}");
                     out.push('\n');
                 }
             }

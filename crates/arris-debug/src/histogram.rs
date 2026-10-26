@@ -28,6 +28,7 @@ use arris_topo::{EntityId, Model};
 
 use crate::battery::Class;
 use crate::part::{Outcome as ReadOutcome, PartFixture};
+use crate::report::{Align, Table};
 
 /// The committed tier (ADR-0026 §1): NIST's eleven AP203 geometry-only
 /// files, one `real/` fixture each. The other `real/` fixtures are shrunk
@@ -788,22 +789,28 @@ impl Histogram {
                 .then(rank(a).cmp(&rank(b)))
                 .then(a.cmp(b))
         });
-        out.push_str("| Cycle | Parts blocked |");
-        for s in Stage::ALL {
-            let _ = write!(out, " {} |", s.name());
-        }
-        out.push_str("\n|---|---:|");
-        out.push_str(&"---:|".repeat(Stage::ALL.len()));
-        out.push('\n');
+        let mut table = Table::new(
+            [
+                ("Cycle".to_string(), Align::Left),
+                ("Parts blocked".to_string(), Align::Right),
+            ]
+            .into_iter()
+            .chain(
+                Stage::ALL
+                    .iter()
+                    .map(|s| (s.name().to_string(), Align::Right)),
+            ),
+        );
         for c in &cycles {
-            let _ = write!(out, "| {c} | {} |", self.parts_blocked(c));
+            let mut row = vec![c.to_string(), self.parts_blocked(c).to_string()];
             for s in Stage::ALL {
                 let n = (self.blocked.get(*c))
                     .map_or(0, |parts| parts.values().filter(|&&f| f == s).count());
-                let _ = write!(out, " {n} |");
+                row.push(n.to_string());
             }
-            out.push('\n');
+            table.row(row);
         }
+        let _ = write!(out, "{table}");
         out.push('\n');
 
         let mut refusals: Vec<(&(String, Stage, String), &usize)> = self.refusals.iter().collect();
@@ -812,10 +819,21 @@ impl Histogram {
                 .then(rank(&a.0.0).cmp(&rank(&b.0.0)))
                 .then(a.0.cmp(b.0))
         });
-        out.push_str("| Refusal | Stage | Count | Blocks |\n|---|---|---:|---|\n");
+        let mut table = Table::new([
+            ("Refusal", Align::Left),
+            ("Stage", Align::Left),
+            ("Count", Align::Right),
+            ("Blocks", Align::Left),
+        ]);
         for ((cycle, stage, name), n) in refusals {
-            let _ = writeln!(out, "| {name} | {} | {n} | {cycle} |", stage.name());
+            table.row([
+                name.clone(),
+                stage.name().to_string(),
+                n.to_string(),
+                cycle.clone(),
+            ]);
         }
+        let _ = write!(out, "{table}");
         out
     }
 
@@ -913,24 +931,26 @@ impl Histogram {
                 .then(a.cmp(b))
         });
 
-        out.push_str("| Cycle | Parts blocked |");
-        for op in &ops {
-            let _ = write!(out, " {op} |");
-        }
-        out.push_str("\n|---|---:|");
-        out.push_str(&"---:|".repeat(ops.len()));
-        out.push('\n');
+        let mut table = Table::new(
+            [
+                ("Cycle".to_string(), Align::Left),
+                ("Parts blocked".to_string(), Align::Right),
+            ]
+            .into_iter()
+            .chain(ops.iter().map(|op| (op.to_string(), Align::Right))),
+        );
         for c in &cycles {
-            let _ = write!(out, "| {c} | {} |", parts_blocked(c));
+            let mut row = vec![c.to_string(), parts_blocked(c).to_string()];
             for op in &ops {
                 let n = self
                     .script_blocked
                     .get(*c)
                     .map_or(0, |parts| parts.values().filter(|&o| o == *op).count());
-                let _ = write!(out, " {n} |");
+                row.push(n.to_string());
             }
-            out.push('\n');
+            table.row(row);
         }
+        let _ = write!(out, "{table}");
         out.push('\n');
 
         let mut refusals: Vec<(&(String, String, String), &usize)> =
@@ -940,10 +960,16 @@ impl Histogram {
                 .then(rank(&a.0.0).cmp(&rank(&b.0.0)))
                 .then(a.0.cmp(b.0))
         });
-        out.push_str("| Refusal | Operation | Count | Blocks |\n|---|---|---:|---|\n");
+        let mut table = Table::new([
+            ("Refusal", Align::Left),
+            ("Operation", Align::Left),
+            ("Count", Align::Right),
+            ("Blocks", Align::Left),
+        ]);
         for ((cycle, op, name), n) in refusals {
-            let _ = writeln!(out, "| {name} | {op} | {n} | {cycle} |");
+            table.row([name.clone(), op.clone(), n.to_string(), cycle.clone()]);
         }
+        let _ = write!(out, "{table}");
         out
     }
 }
