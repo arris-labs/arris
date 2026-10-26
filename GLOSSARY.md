@@ -214,8 +214,10 @@ _Avoid_: refusal table (the code that counts it is `histogram`)
 **Battery**:
 The fixed stages each real-part solid is put through after its read
 (`measure`, `write_read`, `box_cut`, the three drills, `fillet`), each
-held to Open CASCADE's; a stage Open CASCADE builds and Arris refuses
-blocks the part (ADR-0026).
+held to Open CASCADE's; a stage Open CASCADE builds what was asked of and
+Arris refuses blocks the part (ADR-0026). A **dropped edge**, an asked
+edge of a `fillet` or `chamfer` that no Open CASCADE contour took, makes
+the stage Open CASCADE refusing (ADR-0070).
 _Avoid_: test suite (for this)
 
 **Census**:

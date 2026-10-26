@@ -862,11 +862,10 @@ printed.
 Open CASCADE builds, builds, or is refused by a name that says why the
 geometry has no blend. Chosen at C10's close by ADR-0020's rule: no
 consumer has reported a regression, and the blend network is the one row
-of both histograms that is not 0. It counted 12 of the 38 real parts at
-`fillet`; 8 of those were the battery's own sample asking edges the blend
-reads as tangent and Open CASCADE leaves out (ADR-0070), and re-derived
-and re-run (plans/battery-honesty, 2026-10-26) it blocks 4 of 38, all
-fetched: CTC-02 AP242 and FTC-07 AP242 at `VertexBlend`, CTC-05 AP242 and
+of both histograms that is not 0. The blend network row stood at 12 of the 38 real parts
+at `fillet`; 8 of those were the battery's own sample asking edges the
+blend reads as tangent and Open CASCADE leaves out (ADR-0070). With the
+sample re-derived it blocks 4 of 38, all fetched: CTC-02 AP242 and FTC-07 AP242 at `VertexBlend`, CTC-05 AP242 and
 FTC-11 at `TangentChain` (an end or a corner tangent within a tolerance,
 no sampled edge the edge itself); the committed tier's row is 0. STC-07
 AP242, whose fillet now builds, fails the checker at `Full` on four
@@ -941,7 +940,7 @@ module (ops, features, query, topology, io; `multiple-pymethods`),
 tests are one binary filed by entity row, the corpus tables write through
 one `report::Table`, and `nurbs_census` is deleted; fixtures, dumps and
 the Python API are byte-identical. The sequence is closed.
-C11's first plan is next.
+C11's first plan, `battery-honesty`, is retired (2026-10-26).
 
 **The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`
 slice, about 110 s at worst against 312 s; the full suite runs once per plan

@@ -1,6 +1,6 @@
 # Idea: blend-residue-real-parts
 
-- Status: Accepted (A); milestone 1 absorbed by plans/battery-honesty
+- Status: Accepted (A); milestone 1 done (plans/battery-honesty, retired 2026-10-26); M2–M5 unplanned
 - Raised: 2026-10-26
 - Prompt (verbatim from the human): "blend residue: the 12 parts blocked at fillet"
 
@@ -52,6 +52,27 @@ row, a cusp with both edges blended, and the hinge leaf's knuckle. None of
 them is the refusing sampled edge of any of the 12. They count only in the
 census's each-edge-alone columns and in the script corpus, so they belong
 to a later idea, not to this one.
+
+## Milestone 1's result (2026-10-26)
+
+The battery's half held, and a little more: re-derived and re-run, the
+row is **4 of 38**, not the expected 6, all fetched: CTC-02 AP242 and
+FTC-07 AP242 at `VertexBlend`, CTC-05 AP242 and FTC-11 at `TangentChain`.
+Open CASCADE's volume with and without each tangent edge was identical, so
+the drop is real (ADR-0070). FTC-06 (both tiers) and CTC-05 AP203 no
+longer block (the sample, or a dropped edge). So:
+
+- **M2 `blend-run-over`** loses FTC-06 AP242: it is the script corpus's 2
+  (standoff roots, phone lip) alone.
+- **M3** (CTC-02 AP242) now also holds FTC-07 AP242's `VertexBlend`.
+- **M4** holds FTC-11 and CTC-05 AP242 (CTC-05 AP203 cleared).
+- **M5 `overhang-tip-cap`** has no real part left (FTC-06 committed is
+  both-refuse); it stays only for the script corpus or a later consumer.
+- STC-07 AP242's fillet builds and the checker leaves four cylinder pairs
+  undecided: a kernel bug, not residue, held as an ignored `regression/`
+  fixture and a backlog line.
+
+The table above is the census before the re-derivation.
 
 ## Constraints it runs into
 
