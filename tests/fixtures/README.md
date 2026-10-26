@@ -238,6 +238,12 @@ of the step that made the fixture pass, and a later change to it is a
   says the result has no volume (`boolean/flush-common`,
   `boolean/swallow-cut`, `boolean/disjoint-common`), and then nothing
   else is compared.
+  `dropped_edges` (in a result of `expected.json`, only where there is one)
+  lists the points of the edges a `fillet` or `chamfer` asked that Open
+  CASCADE left out without a word, because it reads their faces as tangent
+  (ADR-0070); its result is the rest. The lint refuses a comparison against
+  such a body: the recipe names the edge Open CASCADE took, or expects
+  Arris's refusal with `expect_error`.
   `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
   "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
   "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" | "self-intersects" |

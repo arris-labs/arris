@@ -846,6 +846,7 @@ impl Tolerances {
     ///     probes: Vec::new(),
     ///     nurbs_counts: None,
     ///     nurbs_fails: None,
+    ///     dropped_edges: Vec::new(),
     ///     half_space: None,
     ///     own: Some(Own { tolerance: 1e-7, edge_length: 12.0, reach: 0.87, removable_vertices: 0 }),
     /// };
@@ -1254,6 +1255,14 @@ pub struct Measured {
     /// reads no converted file back.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nurbs_fails: Option<String>,
+    /// The points of the edges a `fillet` or `chamfer` step asked that Open
+    /// CASCADE left out without a word, because it reads their faces as
+    /// tangent (ADR-0070); the result is the rest. Empty for nearly every
+    /// fixture, and then not written. A fixture whose oracle dropped an edge
+    /// must expect Arris's refusal (`analytic.expect_error`): the lint
+    /// refuses a comparison against a body missing a blend.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dropped_edges: Vec<[f64; 3]>,
     /// For the result of a `split` step: the same side as Open CASCADE
     /// builds it by a half-space box (the common of the body with it for the
     /// positive side, the cut for the negative), what its splitter is held
@@ -1682,6 +1691,12 @@ pub fn lint(dir: &Path) -> Vec<String> {
             continue;
         };
         let a = &r.analytic;
+        if !m.dropped_edges.is_empty() && a.expect_error.is_none() {
+            problem(format!(
+                "[{variant}] the oracle dropped {} asked edge(s) (dropped_edges), so it blended less than the recipe asks: the recipe names the edge Open CASCADE took, or expects Arris's refusal with analytic.expect_error (ADR-0070)",
+                m.dropped_edges.len()
+            ));
+        }
         let dump = crate::corpus::dump_path(dir, &variant);
         if area == REGRESSION_AREA && dump.is_file() {
             problem(format!(

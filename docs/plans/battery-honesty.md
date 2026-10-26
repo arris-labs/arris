@@ -80,7 +80,7 @@ bound has to be established here.
   and a tangent edge of one body (a stadium's flat side against its round
   end), so Open CASCADE drops one and Arris refuses `TangentChain`. Its
   oracle records the drop.
-- [ ] Step 3 **[2]**: The corpus reads `dropped_edges`, and the lint
+- [x] Step 3 **[2]**: The corpus reads `dropped_edges`, and the lint
   refuses a dropped edge outside an `expect_error` fixture. Re-run the
   oracle over every `fillet` and `chamfer` fixture (about 174). Every
   `expected.json` should be byte-identical except the new fixture's; any

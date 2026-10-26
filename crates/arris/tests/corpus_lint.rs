@@ -217,6 +217,31 @@ fn step_differs_needs_a_result_arris_builds() {
     );
 }
 
+/// A fillet or chamfer Open CASCADE left an asked edge out of builds a body
+/// missing a blend (ADR-0070): the oracle records the point as
+/// `dropped_edges`, and a recipe that compares Arris against it is a lint
+/// problem. One that expects Arris's refusal is not.
+#[test]
+fn a_dropped_edge_needs_a_recipe_that_expects_a_refusal() {
+    let scratch = tempdir("dropped-edge");
+    copy_fixture("blend/box-edge-fillet", &scratch);
+    let path = scratch.join("expected.json");
+    let mut expected: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    expected["results"]["default"]["dropped_edges"] = serde_json::json!([[2.0, 2.0, 1.0]]);
+    std::fs::write(&path, serde_json::to_string_pretty(&expected).unwrap()).unwrap();
+    let problems = lint(&scratch);
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(problems[0].contains("dropped 1 asked edge"), "{problems:?}");
+    assert!(
+        lint(
+            &arris_debug::fixtures::corpus_root().join("blend/tangent-edge-beside-a-crease-fillet")
+        )
+        .is_empty()
+    );
+    let _ = std::fs::remove_dir_all(&scratch);
+}
+
 /// A comparable solid fixture in one of the corpus's areas without its
 /// committed dump fails the lint, one problem per variant missing one;
 /// a result the oracle built no solid for, a recipe expecting a refusal,

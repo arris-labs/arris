@@ -773,6 +773,7 @@ pub fn write_read(name: &str, m: &Model, body: Body, tolerances: &Tolerances) ->
             probes: Vec::new(),
             nurbs_counts: None,
             nurbs_fails: None,
+            dropped_edges: Vec::new(),
             half_space: None,
             own: None,
         };

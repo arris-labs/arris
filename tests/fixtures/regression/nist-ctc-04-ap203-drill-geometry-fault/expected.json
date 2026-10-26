@@ -193,6 +193,18 @@
           "vertices": 637
         },
         "degenerate": false,
+        "dropped_edges": [
+          [
+            35.9999999999999,
+            455.0,
+            -67.0
+          ],
+          [
+            -149.0,
+            270.5,
+            -37.5
+          ]
+        ],
         "euler_characteristic": -66,
         "genus": 34,
         "inertia": [
