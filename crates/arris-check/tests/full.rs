@@ -51,7 +51,7 @@ fn ground(m: &mut Model) -> SurfaceId {
 
 /// A ring of the ground plane: a vertex per corner, a line edge per side
 /// and a forward coedge whose pcurve is that side at the edge's own
-/// parameter. The same helper `fast_part2.rs` builds its plates from.
+/// parameter. The same helper `tests/fast/support.rs` builds its plates from.
 struct Ring {
     edges: Vec<EdgeId>,
     coedges: Vec<Coedge>,
