@@ -97,7 +97,7 @@ robustness or bound has to be established here.
   first, alone. `tools/py-test.sh` green (stubtest, docstrings, pytest);
   the wheel builds locally with `maturin`. Riskiest: if the feature does
   not link under `abi3`, stop and take the fallback (Open questions).
-- [ ] Step 2 **[1]** — `model/query.rs`, `model/topology.rs`, `model/io.rs`;
+- [x] Step 2 **[1]** — `model/query.rs`, `model/topology.rs`, `model/io.rs` (and `model/features.rs`, see Settled);
   no `model/` file past 800 lines; `tools/py-test.sh` green.
 - [ ] Step 3 **[1]** — Record the committed reports: `real_parts`
   `--gaps-committed`, `--run-over-committed`, `--vertex-blend-committed`,
@@ -154,3 +154,6 @@ robustness or bound has to be established here.
 - Settled (agent): `nurbs_census` goes whole, `--nurbs-fillet` with it —
   the fillet stages it took apart are the ones the NURBS cycle blocks,
   which are none.
+- Settled (agent, step 2): **`model/features.rs`.** `ops.rs` with the
+  features came to 815 lines, past the Goal's 800; fillet, chamfer,
+  offset_faces and shell are their own file (176 lines), `ops.rs` keeps 645.
