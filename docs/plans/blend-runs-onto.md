@@ -96,11 +96,9 @@ given design; **[3]** unproven, robustness or bound established here.
 - [x] Step 1 **[2]**: both refusals shrunk to `regression/` fixtures with
   Open CASCADE's oracle and its topology read (`inspect`):
   `standoff-root-fillet-runs-off-the-plate`, `lip-fillet-runs-into-a-hole`.
-- [ ] Step 2 **[3]**: ADR-0071, decided on a probe. Run the candidate
-  crossing rule over both fixtures and over every fetched part's "leaves
-  its face" `BlendTooLarge` edge in the census. Print each site's crossed
-  edge, its crossing points and the face run onto. The ADR records how
-  many are run-overs of this kind.
+- [x] Step 2 **[3]**: ADR-0071, decided on step 1's reading and a probe
+  of every contact refusal on both fixtures and the four blocking parts'
+  36 `BlendTooLarge` edges: none of the parts' is a two-crossing run-over.
 - [ ] Step 3 **[3]**: the rolled spine. `run_over.rs` finds and pairs
   the crossings and traces offset(`H`) ∩ pipe(`E`) between them. Unit
   tests hold it to closed forms. The crossings are at `x = 5 ± √(2.6² − 2.3²)`
@@ -144,8 +142,6 @@ given design; **[3]** unproven, robustness or bound established here.
 - `docs/ARCHITECTURE.md` blend section: the run-over beside the mixed
   corner (ADR-0038).
 - `docs/DATA-MODEL.md` §Provenance: a crossed edge's pieces, the rolled face.
-- `docs/adr/0071-…`: written in step 2.
-- `GLOSSARY.md`: *Run-over*, *rolled face*.
 - `docs/BACKLOG.md`: the "third face" line keeps only its own case; a
   walked stripe's run-over gets a line if a refusal names it.
 - `docs/ideas/blend-residue-real-parts.md`: M2 marked done; the file

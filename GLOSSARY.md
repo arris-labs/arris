@@ -150,6 +150,16 @@ _Avoid_: marched fillet, numeric fillet
 The curve a stripe's ball centre runs along. Not the roadmap's `Spine:`
 line.
 
+**Run-over**:
+A stripe whose contact leaves its face through a convex edge that is not
+the corner's own, an outer edge or a hole's rim. Between the two
+crossings the ball rolls on that edge (ADR-0071).
+_Avoid_: cliff edge, overflow
+
+**Rolled face**:
+The face a run-over's ball sweeps while it rolls on the crossed edge: a
+walked stripe between the other face and the edge (ADR-0071).
+
 **Chain**:
 Edges a blend continues across because both faces turn where they meet
 (ADR-0035, ADR-0039).
