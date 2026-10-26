@@ -93,7 +93,7 @@ and the tests are mechanical; **[2]** careful — a geometric or numeric case
 to get right within a given design; **[3]** unproven — an algorithm whose
 robustness or bound has to be established here.
 
-- [ ] Step 1 **[2]** — `multiple-pymethods` on; `model/ops.rs` split out
+- [x] Step 1 **[2]** — `multiple-pymethods` on; `model/ops.rs` split out
   first, alone. `tools/py-test.sh` green (stubtest, docstrings, pytest);
   the wheel builds locally with `maturin`. Riskiest: if the feature does
   not link under `abi3`, stop and take the fallback (Open questions).
