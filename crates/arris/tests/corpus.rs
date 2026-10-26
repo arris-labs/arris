@@ -1126,6 +1126,10 @@ corpus_tests! {
     /// torus into the next cap edge, an open chain of three Open CASCADE
     /// builds as one spine.
     blend_tangent_chain_cap_edge => run "blend/tangent-chain-cap-edge";
+    /// A crease and a tangent edge asked of one fillet: Open CASCADE leaves
+    /// the tangent edge out without a word (ADR-0070) and rounds the crease
+    /// alone; Arris refuses the tangent edge as `TangentChain`.
+    blend_tangent_edge_beside_a_crease_fillet => run "blend/tangent-edge-beside-a-crease-fillet";
     /// A hole's top rim: a plane against a cylinder along a circle, convex,
     /// the blend a quarter of a torus coaxial with the hole with no ends
     /// (ADR-0007), S5 deciding it against the top face and the wall by the

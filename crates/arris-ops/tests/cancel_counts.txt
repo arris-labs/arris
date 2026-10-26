@@ -300,6 +300,7 @@ blend/stadium-outline-chamfer: 14
 blend/stadium-outline-fillet: 14
 blend/stadium-pocket-chamfer-root-fillet: 14
 blend/tangent-chain-cap-edge: 12
+blend/tangent-edge-beside-a-crease-fillet: refused
 blend/tee-cylinders-fillet: 192196
 blend/three-arc-hole-rim-fillet: 9
 blend/turned-shoulder-chamfer: 2

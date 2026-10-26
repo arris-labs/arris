@@ -74,7 +74,7 @@ bound has to be established here.
   `Contour(edge) == 0`. Write ADR-0070 with the numbers. If the volumes
   differ, stop: that part is the blend's, and the plan is rescoped
   (Open questions).
-- [ ] Step 2 **[1]**: The oracle records `dropped_edges` for `fillet` and
+- [x] Step 2 **[1]**: The oracle records `dropped_edges` for `fillet` and
   `chamfer`, and `tools/oracle/selftest.py` covers both kinds of answer.
   A fixture, `blend/tangent-edge-beside-a-crease-fillet`, asks for a crease
   and a tangent edge of one body (a stadium's flat side against its round
@@ -85,6 +85,10 @@ bound has to be established here.
   oracle over every `fillet` and `chamfer` fixture (about 174). Every
   `expected.json` should be byte-identical except the new fixture's; any
   that is not is named in the commit and settled there (Open questions).
+  *Settled at step 2:* a part fixture's battery answers carry `dropped_edges`
+  too, so the two `regression/` part fixtures whose fillet stage dropped an
+  edge (nist-ctc-04-ap203-drill-geometry-fault, nist-ftc-07-ap242-box-cut-split-fault)
+  are re-run here, additions only; the committed tier's are step 5's.
 - [ ] Step 4 **[1]**: The battery counts a dropped edge as Open CASCADE
   refusing, and `is_tangent_dihedral` reads ADR-0045's tolerance. Unit
   tests: CTC-04's e961 leaves the sample, and a scratch stage with a drop

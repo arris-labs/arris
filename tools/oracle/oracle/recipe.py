@@ -95,7 +95,10 @@ Operations, by `op`:
                `arris_debug::fixtures::expand_patterns` does)
     fillet     of <name>, edges [[x,y,z], ...], radius
                (each point names the edge nearest to it, which must be the
-               only edge within the fixture's `probe` tolerance)
+               only edge within the fixture's `probe` tolerance; an edge
+               Open CASCADE leaves out without a word, because it reads
+               its faces as tangent, is recorded as `dropped_edges` in
+               `expected.json`, ADR-0070)
     chamfer    of <name>, edges [[x,y,z], ...], distance
                (edges named as a fillet's; one distance, measured on both
                faces from the edge)
@@ -611,8 +614,12 @@ def expand_patterns(steps: list[dict]) -> list[dict]:
     return out
 
 
-def build(fixture: dict, variant: str = "default") -> tuple[TopoDS_Shape, dict[str, TopoDS_Shape]]:
-    """The result shape of `fixture` for `variant`, and every named step."""
+def build(
+    fixture: dict, variant: str = "default", dropped: list[list[float]] | None = None
+) -> tuple[TopoDS_Shape, dict[str, TopoDS_Shape]]:
+    """The result shape of `fixture` for `variant`, and every named step.
+    Where `dropped` is a list, the asked edge points of every `fillet` and
+    `chamfer` step that Open CASCADE left out are appended to it."""
     params = resolve_params(fixture, variant)
     probe = float(fixture.get("tolerances", {}).get("probe", 1e-7))
     base = fixture.get(DIR_KEY)
@@ -639,7 +646,7 @@ def build(fixture: dict, variant: str = "default") -> tuple[TopoDS_Shape, dict[s
                 shapes[f"{name}.negative"] = sides["negative"]
                 shapes[f"{name}.half_space"] = sides[f"{side}_box"]
             else:
-                shapes[name] = _build_step(step, op, params, ref, probe, base)
+                shapes[name] = _build_step(step, op, params, ref, probe, base, dropped)
         except KeyError as e:
             raise OracleError(f"step {name!r} ({op}): missing field {e}") from e
     result = fixture.get("result")
@@ -699,6 +706,18 @@ def _split(shape: TopoDS_Shape, spec: dict, params: dict[str, float]) -> dict[st
         "positive_box": _checked(BRepAlgoAPI_Common(shape, half), "half-space common"),
         "negative_box": _checked(BRepAlgoAPI_Cut(shape, half), "half-space cut"),
     }
+
+
+def _note_dropped(builder, edges, points, params: dict[str, float], dropped: list[list[float]] | None) -> None:
+    """Appends to `dropped` the point of each asked edge that no contour of
+    the built fillet or chamfer took. `Add` leaves out, without a word, an
+    edge whose faces it reads as tangent (ADR-0070); the result is the
+    rest, so it stands and the drop is recorded beside it."""
+    if dropped is None:
+        return
+    for edge, point in zip(edges, points):
+        if builder.Contour(edge) == 0:
+            dropped.append(vector(point, params))
 
 
 def _edge_at(shape: TopoDS_Shape, point: list[float], probe: float):
@@ -913,7 +932,13 @@ def _read_solid(step: dict, params: dict[str, float], probe: float, base: str | 
 
 
 def _build_step(
-    step: dict, op: str, params: dict[str, float], ref, probe: float = 1e-7, base: str | None = None
+    step: dict,
+    op: str,
+    params: dict[str, float],
+    ref,
+    probe: float = 1e-7,
+    base: str | None = None,
+    dropped: list[list[float]] | None = None,
 ) -> TopoDS_Shape:
     if op == "box":
         lo, hi = vector(step["min"], params), vector(step["max"], params)
@@ -1009,9 +1034,12 @@ def _build_step(
         if not isinstance(points, list) or not points:
             raise OracleError("fillet needs a list of edge points")
         mf = BRepFilletAPI_MakeFillet(shape)
-        for p in points:
-            mf.Add(radius, _edge_at(shape, vector(p, params), probe))
-        return _checked(mf, "fillet")
+        edges = [_edge_at(shape, vector(p, params), probe) for p in points]
+        for edge in edges:
+            mf.Add(radius, edge)
+        result = _checked(mf, "fillet")
+        _note_dropped(mf, edges, points, params, dropped)
+        return result
     if op == "chamfer":
         shape = ref(step["of"])
         distance = number(step["distance"], params)
@@ -1021,9 +1049,12 @@ def _build_step(
         if not isinstance(points, list) or not points:
             raise OracleError("chamfer needs a list of edge points")
         mc = BRepFilletAPI_MakeChamfer(shape)
-        for p in points:
-            mc.Add(distance, _edge_at(shape, vector(p, params), probe))
-        return _checked(mc, "chamfer")
+        edges = [_edge_at(shape, vector(p, params), probe) for p in points]
+        for edge in edges:
+            mc.Add(distance, edge)
+        result = _checked(mc, "chamfer")
+        _note_dropped(mc, edges, points, params, dropped)
+        return result
     if op == "offset":
         shape = ref(step["of"])
         distance = number(step["distance"], params)

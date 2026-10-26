@@ -1,0 +1,21 @@
+{
+  "description": "an extruded D, a 2 × 2 square with a half circle of radius 1 on its x = 2 side, 1 high, and two edges asked of one fillet at r 0.25: the crease along the top of its flat x = 0 side, and the vertical edge where the flat side y = −1 meets the round end, a tangent dihedral. Open CASCADE's MakeFillet leaves the tangent edge out without a word (ChFi3d_FilBuilder::Add, ADR-0070; Contour of it is 0) and rounds the crease alone, whose volume is the closed form below: the removed corner (1 − π/4) r² along its length 2. Arris refuses the tangent edge as TangentChain, since no rolling ball blends it",
+  "params": {"r": 0.25},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, -1], "segments": [{"line_to": [2, -1]}, {"arc_to": [2, 1], "via": [3, 0]}, {"line_to": [0, 1]}, {"line_to": [0, -1]}]}},
+    {"name": "body", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 1},
+    {"name": "result", "op": "fillet", "of": "body", "edges": [[0, 0, 1], [2, -1, 0.5]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [1, 0, 0.5], "expect": "in"},
+    {"label": "corner_gone", "point": ["r - (r + 0.05) * cos(radians(45))", 0, "1 - r + (r + 0.05) * sin(radians(45))"], "expect": "out"},
+    {"label": "on_blend", "point": ["r - r * cos(radians(45))", 0, "1 - r + r * sin(radians(45))"], "expect": "on"},
+    {"label": "on_top", "point": [1, 0, 1], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "4 + pi / 2 - 2 * (1 - pi / 4) * r^2",
+    "expect_error": "tangent-chain"
+  }
+}

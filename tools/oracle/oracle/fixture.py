@@ -82,17 +82,19 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
     manifold = fixture.get("analytic", {}).get("expect_error") not in ("non-manifold", "tangent-contact", "frame-does-not-close")
     results = {}
     for variant in variant_names(fixture):
+        # The edges of a fillet or chamfer that Open CASCADE left out (ADR-0070).
+        dropped: list[list[float]] = []
         if "checkpoints" in fixture:
             # A script part's recipe: its final step may be one Open
             # CASCADE cannot build either, and that is its answer.
             try:
-                shape, shapes = build(fixture, variant)
+                shape, shapes = build(fixture, variant, dropped)
             except Exception as e:  # OracleError, or Open CASCADE's own
                 results[variant] = {"refused": " ".join(str(e).split()) or type(e).__name__}
                 results[variant]["checkpoints"] = compute_checkpoints(fixture, variant, tol)
                 continue
         else:
-            shape, shapes = build(fixture, variant)
+            shape, shapes = build(fixture, variant, dropped)
         if shape.ShapeType() == TopAbs_FACE:
             # A sheet (`planar_face`): surface properties, no volume and
             # no probes, no Euler line (a face is an open surface).
@@ -117,6 +119,8 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
                 results[variant]["nurbs_fails"] = " ".join(str(e).split()) or type(e).__name__
         if own and (measures := own_measures(shape, results[variant])) is not None:
             results[variant]["own"] = measures
+        if dropped:
+            results[variant]["dropped_edges"] = dropped
         if "checkpoints" in fixture:
             results[variant]["checkpoints"] = compute_checkpoints(fixture, variant, tol)
     return {"occt": occt_version(), "recipe_sha256": recipe_hash(fixture), "results": results}
@@ -211,14 +215,17 @@ def compute_battery(fixture: dict) -> dict:
         out[key] = {}
         for stage, case in sorted(cases.items()):
             recipe = {"steps": case["steps"], "result": case["result"], "tolerances": fixture.get("tolerances", {}), DIR_KEY: fixture[DIR_KEY]}
+            dropped: list[list[float]] = []
             try:
-                shape, _ = build(recipe)
+                shape, _ = build(recipe, dropped=dropped)
                 result = measure(shape, [], tol["probe"])
             except Exception as e:  # OracleError, or Open CASCADE's own on a case it cannot build
                 out[key][stage] = {"refused": " ".join(str(e).split()) or type(e).__name__}
                 continue
             if (own := own_measures(shape, result)) is not None:
                 result["own"] = own
+            if dropped:
+                result["dropped_edges"] = dropped
             out[key][stage] = result
     return out
 

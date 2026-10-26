@@ -29,9 +29,9 @@ from oracle import OracleError, require_ocp
 require_ocp()
 
 from oracle import step  # noqa: E402
-from oracle.fixture import FIXTURE, SCRIPT_RECIPE, compute_expected, corpus_root, fixture_dirs, load_expected, load_fixture  # noqa: E402
+from oracle.fixture import FIXTURE, SCRIPT_RECIPE, compute_battery, compute_expected, corpus_root, fixture_dirs, load_expected, load_fixture  # noqa: E402
 from oracle.measure import DEFAULT_TOLERANCES, compare, format_table, measure, within_own_tolerance  # noqa: E402
-from oracle.recipe import build, fixture_kind, number, probes, variant_names  # noqa: E402
+from oracle.recipe import DIR_KEY, build, fixture_kind, number, probes, variant_names  # noqa: E402
 
 PI = 3.141592653589793
 MEASUREMENTS = ("volume", "area", "centroid", "inertia")
@@ -706,8 +706,51 @@ def check_checkpoints_smoke() -> bool:
     return ok
 
 
+def check_dropped_edges_smoke() -> bool:
+    """A fillet or chamfer that asks for a crease and a tangent edge of one
+    body: Open CASCADE leaves the tangent edge out without a word, and the
+    answer records its point as `dropped_edges` beside the crease's result
+    (ADR-0070). An answer with no dropped edge carries no such key, so no
+    other fixture's bytes change."""
+    print("smoke: a tangent edge Open CASCADE leaves out is recorded")
+    tangent = [2, -1, 0.5]
+    steps = [
+        {
+            "name": "sketch",
+            "op": "profile",
+            "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+            "outer": {"start": [0, -1], "segments": [{"line_to": [2, -1]}, {"arc_to": [2, 1], "via": [3, 0]}, {"line_to": [0, 1]}, {"line_to": [0, -1]}]},
+        },
+        {"name": "body", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 1},
+    ]
+    ok = True
+    for op, size in (("fillet", "radius"), ("chamfer", "distance")):
+        both = {"steps": [*steps, {"name": "result", "op": op, "of": "body", "edges": [[0, 0, 1], tangent], size: 0.25}], "result": "result"}
+        crease = {"steps": [*steps, {"name": "result", "op": op, "of": "body", "edges": [[0, 0, 1]], size: 0.25}], "result": "result"}
+        got = compute_expected(both)["results"]["default"]
+        if got.get("dropped_edges") != [tangent]:
+            print(f"  {op}: dropped_edges {got.get('dropped_edges')!r}, expected {[tangent]!r}")
+            ok = False
+        alone = compute_expected(crease)["results"]["default"]
+        if "dropped_edges" in alone:
+            print(f"  {op}: a crease alone records dropped_edges {alone['dropped_edges']!r}")
+            ok = False
+        if not _close([got["volume"]], [alone["volume"]]):
+            print(f"  {op}: the volume {got['volume']} differs from the crease alone's {alone['volume']}")
+            ok = False
+    # The battery's answer carries it the same way, beside the measures.
+    case = {"steps": [*steps, {"name": "result", "op": "fillet", "of": "body", "edges": [[0, 0, 1], tangent], "radius": 0.25}], "result": "result"}
+    fixture = {"battery": {"#1[0]": {"fillet": case}}, DIR_KEY: str(Path.cwd())}
+    answer = compute_battery(fixture)["#1[0]"]["fillet"]
+    if answer.get("dropped_edges") != [tangent]:
+        print(f"  battery: dropped_edges {answer.get('dropped_edges')!r}, expected {[tangent]!r}")
+        ok = False
+    return ok
+
+
 def run_smokes(tmp: Path) -> bool:
     ok = check_geometry_smoke()
+    ok &= check_dropped_edges_smoke()
     ok &= check_checkpoints_smoke()
     ok &= check_query_smoke()
     ok &= check_distance_smoke()
