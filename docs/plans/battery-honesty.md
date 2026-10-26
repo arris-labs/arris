@@ -89,7 +89,7 @@ bound has to be established here.
   too, so the two `regression/` part fixtures whose fillet stage dropped an
   edge (nist-ctc-04-ap203-drill-geometry-fault, nist-ftc-07-ap242-box-cut-split-fault)
   are re-run here, additions only; the committed tier's are step 5's.
-- [ ] Step 4 **[1]**: The battery counts a dropped edge as Open CASCADE
+- [x] Step 4 **[1]**: The battery counts a dropped edge as Open CASCADE
   refusing, and `is_tangent_dihedral` reads ADR-0045's tolerance. Unit
   tests: CTC-04's e961 leaves the sample, and a scratch stage with a drop
   is `BothRefuse`.

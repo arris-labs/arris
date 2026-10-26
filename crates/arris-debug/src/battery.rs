@@ -290,7 +290,8 @@ fn reach(m: &Model, body: Body, centre: Point3) -> Result<f64, String> {
 /// as the kernel reads it (ADR-0040): the outward normals are parallel
 /// within the model's angular tolerance, or, given the `size` of a blend,
 /// `size` times the sine between them is within the faces' tolerance — the
-/// model's default or a face's own, the larger — so there is no corner for
+/// model's default, a face's or the edge's own, the largest (ADR-0045 §1) —
+/// so there is no corner for
 /// a rolling ball to fill. Open CASCADE refuses
 /// such an edge (`There are no suitable edges for chamfer or fillet`), as
 /// it did every one of the fetched tier's 2479, and Arris refuses it as
@@ -307,7 +308,7 @@ fn is_tangent_dihedral(
         return Ok(false);
     };
     let mut normals = Vec::new();
-    let mut tolerance = m.precision().default_tolerance;
+    let mut tolerance = m.precision().default_tolerance.max(edge.tolerance());
     for u in m.edge_uses(e).map_err(|e| e.to_string())? {
         let face = m.face(u.face).map_err(|e| e.to_string())?;
         tolerance = tolerance.max(face.tolerance());
@@ -622,7 +623,9 @@ pub fn judge(
         Ok(built) => built,
         Err(payload) => return panicked(&*payload).into(),
     };
-    let oracle_solid = expected.is_some_and(|m| !m.degenerate);
+    // An oracle that dropped an asked edge built less than was asked
+    // (ADR-0070): it is a refusal of the stage, not a solid to match.
+    let oracle_solid = expected.is_some_and(|m| !m.degenerate && m.dropped_edges.is_empty());
     let chain = match built {
         Ok(chain) => chain,
         Err(CorpusError::Op { source, .. }) => {
@@ -651,6 +654,13 @@ pub fn judge(
         OracleCase::Refused { refused } => return Outcome::OracleRefuses(refused.clone()).into(),
         OracleCase::Built(m) => m,
     };
+    if !expected.dropped_edges.is_empty() {
+        return Outcome::OracleRefuses(format!(
+            "Open CASCADE left out {} asked edge(s) it reads as tangent (ADR-0070)",
+            expected.dropped_edges.len()
+        ))
+        .into();
+    }
     if expected.degenerate {
         return Outcome::Disagree {
             stage: Stage::Build,
@@ -983,5 +993,57 @@ mod tests {
         assert_eq!(e3, -Vec3::z());
         assert!(moments[0] <= moments[1] && moments[1] <= moments[2]);
         assert!((e1.cross(&e2) - e3).norm() < 1e-15);
+    }
+
+    /// CTC-04's e961, a cylinder against a sphere tangent along the edge
+    /// itself, is no edge the fillet stage may ask: the blend reads it as
+    /// tangent within the edge's own tolerance (ADR-0045 §1, ADR-0070).
+    #[test]
+    fn a_tangent_edge_of_ctc_04_leaves_the_sample() {
+        let name = "regression/nist-ctc-04-ap203-drill-geometry-fault";
+        let fixture =
+            crate::part::load(&crate::fixtures::corpus_root().join(name)).expect("the fixture");
+        let mut m = Model::new(fixture.part.precision.precision()).expect("a model");
+        let read = read_file(&fixture, &mut m).expect("a read");
+        let body = read.solids[0].result.as_ref().expect("a solid").body;
+        let sample = fillet_sampled(&m, body).expect("a sample");
+        assert!(!sample.is_empty());
+        assert!(
+            sample.iter().all(|(e, ..)| e.index() != 961),
+            "{:?}",
+            sample.iter().map(|s| s.0.to_string()).collect::<Vec<_>>()
+        );
+    }
+
+    /// CTC-04's committed fillet stage asks a tangent edge Open CASCADE
+    /// drops (ADR-0070): Arris refuses it as `TangentChain`, so the stage
+    /// is `BothRefuse`, not Arris refusing what Open CASCADE builds; and
+    /// where Arris builds what the oracle did not, `OracleRefuses`.
+    #[test]
+    fn a_dropped_edge_is_the_oracle_refusing() {
+        let name = "regression/nist-ctc-04-ap203-drill-geometry-fault";
+        let fixture =
+            crate::part::load(&crate::fixtures::corpus_root().join(name)).expect("the fixture");
+        let key = "#649[0]";
+        let case = &fixture.part.battery[key]["fillet"];
+        let oracle = oracle_case(&fixture, key, "fillet").expect("an answer");
+        let OracleCase::Built(measured) = oracle else {
+            panic!("the oracle built the fillet stage");
+        };
+        assert!(!measured.dropped_edges.is_empty());
+        let judged = judge(&fixture, name, case, oracle, false, None);
+        assert_eq!(judged.outcome, Outcome::BothRefuse, "{:?}", judged.outcome);
+
+        // A stage Arris builds: the same oracle answer, a case with no fillet.
+        let plain = Case {
+            steps: case.steps[..1].to_vec(),
+            result: "part".into(),
+        };
+        let judged = judge(&fixture, name, &plain, oracle, false, None);
+        assert!(
+            matches!(judged.outcome, Outcome::OracleRefuses(_)),
+            "{:?}",
+            judged.outcome
+        );
     }
 }
