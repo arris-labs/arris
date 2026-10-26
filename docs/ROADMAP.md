@@ -925,6 +925,11 @@ by kind and `GeomError::Degenerate` carries a typed `DegenerateReason`
 `one-bernstein` landed 2026-10-25: `arris-geom` has one tensor Bernstein
 module, `bernstein_n` (one `PolyN<N>`, one `common_zeros`), the 2-D
 isolations bit-identical and `torus_walk/` a module split by phase.
+`long-functions` landed 2026-10-26: the STEP reader's `build`, the corpus's
+`build_step` (now `corpus/`), `prop::recipe::write`, `tessellate_under` and
+`boolean_each_witnessed` are phases or per-family functions, none past 150
+lines, and a test ties the recipe's op tags to the oracle's `recipe.py`;
+`file-concerns` is next in the side slot.
 C11's first plan is next.
 
 **The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`

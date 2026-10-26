@@ -2127,7 +2127,10 @@ B-Rep).
   `transform/`, `boolean/`, `sweep/`, `provenance/`, `blend/`, `offset/` or `shell/` without its
   committed dump per variant fails the lint, so an ignored fixture there does; a
   failure waiting for its fix sits under `regression/`, and fails the lint
-  once it has a dump), the corpus runner (`corpus::run`, the fixture test of
+  once it has a dump), the corpus runner (`corpus::run`, a module tree of `mod`, `stages`,
+  `read_back`, `inputs` and `step/` by op family, where `build_step` is one
+  dispatch over `fixtures::Step` — whose `Step::TAGS` a test holds against
+  every `op ==` branch of the oracle's `recipe.py` — the fixture test of
   roadmap §Fixtures, one function per `corpus::Stage`, the six that read
   no file — checker, counts, measure, mesh, probes, provenance — run
   together by `corpus::stages` before the STEP round trip and the dump — a `profile` step built into a `geom::Profile` kept

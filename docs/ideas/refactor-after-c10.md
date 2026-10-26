@@ -1,6 +1,6 @@
 # Idea: refactor-after-c10
 
-- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24; `sweep-skeleton` done and retired 2026-10-25; `one-bernstein` done and retired 2026-10-25; the long functions and the recipe table of `long-functions` absorbed by plans/long-functions; the rest (below) is `file-concerns`
+- Status: Accepted (B); `small-seams` done and retired 2026-10-23; `builder-split` done and retired 2026-10-24; `sweep-skeleton` done and retired 2026-10-25; `one-bernstein` done and retired 2026-10-25; `long-functions` done and retired 2026-10-26; the rest (below) is `file-concerns`
 - Raised: 2026-10-22
 - Prompt (verbatim from the human): "We were developing features without any refactoring for too long. Your task is to review whole codebase and write refactoring plan, but put it to gitignored notes folder for now" — then, 2026-10-23: "go ahead" (as an idea through `/refactor-review`)
 
@@ -42,8 +42,8 @@ order, so the two namings agree).
 Done and retired.
 
 ### For a `long-functions` plan
-Absorbed by plans/long-functions (the long functions and the recipe table;
-`refusal`'s 711 lines were a char-literal artefact of the measuring script).
+Done and retired (`refusal`'s 711 lines were a char-literal artefact of the
+measuring script).
 
 ### For a `file-concerns` plan (the rest of `long-functions`)
 - **`py/src/model.rs`** (2326 lines) is one `#[pymethods]` block of ~1870

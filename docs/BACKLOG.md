@@ -285,6 +285,7 @@ above when it wants a fix; the block moves or is deleted then.
 - A verdict-only screen for `interference_many` that builds no common: telling touching from overlapping needs a transversality test on the section; taken when the measured screen asks for it (plans/interference step 7)
 - A smooth loft of unevenly spaced sections of very different size differs from Open CASCADE's by 8e-4 of the volume, where ADR-0065 §7's chord-length parameters are within 2e-5 on the duct: four circles of radius 18, 26, 14 and 20 at heights 0, 20, 50 and 80 give 95840.618 against 95917.973, and no parametrisation of the (z, r) generatrix tried (chord, uniform, centripetal, by height) lands on either. Which parameters Open CASCADE interpolates at is unread; the script-corpus vase is a ruled loft until it is settled (plans/script-corpus step 4 finding)
 - A multi-shell boolean reads its lump order from a scratch copy of the model (`Build::lump_order` clones `self.m`): `Build` holds `&'m Model` and hands out `&'m` borrows (`surface_of`), so a rolled-back `Model::transaction` needs `&mut` threaded through every `Build` method; the alternative is one assembly whose staged shells are reordered after `lumps`, taken if its dump is byte-identical (plans/builder-split step 7 finding)
+- `corpus/step/features.rs`: the doc comment of `edge_at` sits stacked above `face_at`'s and `edge_at` has none; `corpus/read_back.rs`'s `read_back` is still 160 lines (plans/long-functions review)
 
 ## Rejected
 

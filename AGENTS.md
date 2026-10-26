@@ -50,7 +50,8 @@ wheels) is the release prepared for the first multi-platform upload.
 `DegenerateReason` typed); `sweep-skeleton` done 2026-10-25 (the four sweeps
 through one `sweep::skeleton`); `one-bernstein` done 2026-10-25 (one
 `bernstein_n`, `torus_walk/` split by phase).
-**Next:** `/idea` or `/plan` for C11's first item; `long-functions` in the side slot.
+`long-functions` done 2026-10-26 (the six long functions as phases; `corpus/` a module tree).
+**Next:** `/idea` or `/plan` for C11's first item; `file-concerns` in the side slot.
 
 ## Rules that are not derivable from the code
 
