@@ -118,9 +118,14 @@ given design; **[3]** unproven, robustness or bound established here.
   volume, area and inertia match the oracle. CHANGELOG bullet.
   *Settled*: step 3's traced spine is gone (ADR-0071, amended); the
   lip's 16/25/10 against 17/27/11 is `counts_differ`.
-- [ ] Step 5 **[3]**: the concave ring over an outer edge (pi). The
+- [x] Step 5 **[3]**: the concave ring over an outer edge (pi). The
   torus is opened at the rolled face, and the plate's front edge is
   split. The fixture moves to `blend/`.
+  *Settled*: a closed edge's torus only, and a stretch off `F` inside the
+  contacts' range (not through the seam); the torus keeps no seam edge,
+  the seam lying inside its face. 15/23/10 against 15/24/11 is
+  `counts_differ`; volume, area and inertia hold to 1e-8 (1.1e-9 in
+  volume, the patch's residue, as the lip's).
 - [ ] Step 6 **[2]**: the neighbours of these two cases: a convex blend
   over an outer edge, a concave one over a hole's rim, and an `E` that is
   an ellipse. Each becomes a fixture with its oracle, or an

@@ -35,6 +35,7 @@ mod junction;
 mod miter;
 mod mixed;
 mod ring;
+mod ring_rolled;
 mod rolled;
 mod run_over;
 mod stripe;

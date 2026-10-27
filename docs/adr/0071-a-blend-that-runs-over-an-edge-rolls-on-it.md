@@ -95,7 +95,10 @@ is cut at those two arcs:
 
 - An open edge's stripe becomes two faces.
 - A ring's torus becomes one face open at the rolled face. Open CASCADE
-  splits it in two, and the fixture states that as `counts_differ`.
+  splits it in two, and the fixture states that as `counts_differ`. The
+  torus's seam lies inside that face and no edge of it is made; a stretch
+  off `F` that runs through the contacts' seam, or a ring on a cone or
+  an open arc, is refused naming `E`.
 
 `E` is split at the crossings. Its stretch between them bounds the rolled
 face and `G`, and `G` is unchanged. `F`'s loop runs the contact to each

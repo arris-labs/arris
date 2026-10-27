@@ -18,7 +18,7 @@ use arris_topo::entity::EdgeGeometry;
 use arris_topo::{CurveId, EdgeId, FaceId, Model, Orientation};
 
 use super::build::{Env, FaceEdit};
-use super::run_over::{RunOver, crossed};
+use super::run_over::{Crossing, RunOver, crossed};
 use super::stripe::{Contact, Section, Stripe, on_side_of_face, placed};
 use super::walked::{Ball, Refusal, SURFACE_DEGREE, Walked, arc, contacts as contact_rows};
 use super::{Blend, invariant};
@@ -93,6 +93,13 @@ pub(super) struct EdgePiece {
 /// `G` and `E` are cut into around it.
 pub(super) struct Rolled {
     pub(super) run: RunOver,
+    /// The blended edge, the blend's faces and its contacts' curves, ranges
+    /// and pcurves on them, by contact, as the blend placed them.
+    pub(super) blended: EdgeId,
+    pub(super) faces: [FaceId; 2],
+    pub(super) contacts: [Curve; 2],
+    pub(super) ranges: [Interval; 2],
+    pub(super) on_face: [Curve2; 2],
     /// The stripe's contact on `F`, the one that leaves it.
     pub(super) on_f: usize,
     /// The rolled face's surface: `u` from its foot on `H` (`0`) to its
@@ -114,14 +121,28 @@ pub(super) struct Rolled {
     pub(super) tolerance: f64,
 }
 
+/// What a run-over reads of the blend it belongs to, a stripe's or a
+/// ring's: the blended edge, its faces and contacts by contact (the stripe's
+/// `u = 0` then `u = β`, the ring's lower `v` then upper), and the loop of
+/// each face the contact lies on.
+pub(super) struct Host<'a> {
+    pub(super) edge: EdgeId,
+    pub(super) tolerance: f64,
+    pub(super) convex: bool,
+    pub(super) faces: [FaceId; 2],
+    pub(super) curves: [&'a Curve; 2],
+    pub(super) ranges: [Interval; 2],
+    pub(super) on_face: [&'a Curve2; 2],
+    pub(super) loops: [usize; 2],
+}
+
+/// The section arc at a crossing, as the blend that is cut there has it.
+pub(super) type ArcAt<'a> = &'a dyn Fn(&Crossing, &mut Meter<'_>) -> Result<SectionArc, OpError>;
+
 /// The rolled face of the run-over `run` of the stripe `s`, its contact
 /// `on_f` on `F` (ADR-0071 §1, §2).
 ///
-/// Errors: `BlendTooLarge` naming the blended edge and `E` where `E` is
-/// not between `F` and another face, lies on the loop of `F` that holds the
-/// blended edge, would be cut into a piece no longer than the tolerance,
-/// or where the rolled face's foot on `H` leaves `H` or a ball's arc is not
-/// decided (ADR-0071 §3); a fault of a fit or a pcurve as itself.
+/// Errors: as [`rolled_of`].
 pub(super) fn rolled(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -130,14 +151,57 @@ pub(super) fn rolled(
     on_f: usize,
     run: RunOver,
 ) -> Result<Rolled, OpError> {
-    let m = env.m;
-    let refuse = || crossed(s.edge, run.edge);
     let Section::Round { radius, .. } = s.section else {
         return Err(invariant("a fillet's closed-form stripe in a run-over"));
     };
     let tol = Tolerance::new(s.tolerance, env.tol.angular);
+    let host = Host {
+        edge: s.edge,
+        tolerance: s.tolerance,
+        convex: s.convex,
+        faces: [contacts[0].face, contacts[1].face],
+        curves: [&contacts[0].line, &contacts[1].line],
+        ranges: [contacts[0].range, contacts[1].range],
+        on_face: [&contacts[0].on_face, &contacts[1].on_face],
+        loops: [s.uses[0].loop_index, s.uses[1].loop_index],
+    };
+    let arc_at = |c: &Crossing, meter: &mut Meter<'_>| -> Result<SectionArc, OpError> {
+        let start = contacts[0].line.point(c.t);
+        let frame = Frame::new(c.centre, s.d, start - c.centre)?;
+        let curve = Curve::Circle { frame, radius };
+        let range = Interval::new(0.0, s.beta).map_err(|_| invariant("a section arc"))?;
+        let on_stripe = pcurve_on(&curve, range, &s.surface, tol, meter).map_err(fault_of)?;
+        Ok(SectionArc {
+            on_stripe: s.place(on_stripe, range.lo(), 0.0),
+            on_rolled: Curve2::along_u(0.0),
+            curve,
+            range,
+        })
+    };
+    rolled_of(env, meter, &host, &arc_at, on_f, run)
+}
+
+/// The rolled face of the run-over `run` of the blend `host`, its contact
+/// `on_f` on `F` (ADR-0071 §1, §2).
+///
+/// Errors: `BlendTooLarge` naming the blended edge and `E` where `E` is
+/// not between `F` and another face, lies on the loop of `F` that holds the
+/// blended edge, would be cut into a piece no longer than the tolerance,
+/// or where the rolled face's foot on `H` leaves `H` or a ball's arc is not
+/// decided (ADR-0071 §3); a fault of a fit or a pcurve as itself.
+pub(super) fn rolled_of(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    s: &Host<'_>,
+    arc_at: ArcAt<'_>,
+    on_f: usize,
+    run: RunOver,
+) -> Result<Rolled, OpError> {
+    let m = env.m;
+    let refuse = || crossed(s.edge, run.edge);
+    let tol = Tolerance::new(s.tolerance, env.tol.angular);
     let on_h = 1 - on_f;
-    let (face, h_face) = (contacts[on_f].face, contacts[on_h].face);
+    let (face, h_face) = (s.faces[on_f], s.faces[on_h]);
     let edge = *m.edge(run.edge)?;
     let (curve_id, e_range) = edge.curve().ok_or_else(refuse)?;
     let e_curve = m.curve(curve_id)?;
@@ -149,23 +213,13 @@ pub(super) fn rolled(
         [a, b] if b.face == face && a.face != face => b,
         _ => return Err(refuse()),
     };
-    if on_face.loop_index == s.uses[on_f].loop_index {
+    if on_face.loop_index == s.loops[on_f] {
         return Err(refuse());
     }
     let h_surface = m.surface(m.face(h_face)?.surface())?;
     let mut arcs: Vec<SectionArc> = Vec::with_capacity(2);
     for c in &run.crossings {
-        let start = contacts[0].line.point(c.t);
-        let frame = Frame::new(c.centre, s.d, start - c.centre)?;
-        let curve = Curve::Circle { frame, radius };
-        let range = Interval::new(0.0, s.beta).map_err(|_| invariant("a section arc"))?;
-        let on_stripe = pcurve_on(&curve, range, &s.surface, tol, meter).map_err(fault_of)?;
-        arcs.push(SectionArc {
-            on_stripe: s.place(on_stripe, range.lo(), 0.0),
-            on_rolled: Curve2::along_u(0.0),
-            curve,
-            range,
-        });
+        arcs.push(arc_at(c, meter)?);
     }
     // The skin's `v` is the contact's parameter, each row the section there
     // (ADR-0071, amended), from the first crossing to the second and on past each as
@@ -216,7 +270,7 @@ pub(super) fn rolled(
     let surface = Surface::Nurbs(skin);
     // The foot on `H`, in the translate of `H`'s loop, inside `H` (§3).
     let foot_on_face = pcurve_on(&foot, range, h_surface, tol, meter).map_err(fault_of)?;
-    let target = contacts[on_h].on_face.point(run.crossings[0].t).x;
+    let target = s.on_face[on_h].point(run.crossings[0].t).x;
     let foot_on_face = placed(foot_on_face, range.lo(), target, h_surface.period()[0]);
     if !on_side_of_face(m, h_face, &foot_on_face, range, Side::Inside, env.samples)? {
         return Err(refuse());
@@ -271,6 +325,11 @@ pub(super) fn rolled(
         .map_err(|_| invariant("a section arc at each crossing"))?;
     Ok(Rolled {
         run,
+        blended: s.edge,
+        faces: s.faces,
+        contacts: s.curves.map(Curve::clone),
+        ranges: s.ranges,
+        on_face: s.on_face.map(Curve2::clone),
         on_f,
         surface,
         orientation,
@@ -316,11 +375,9 @@ pub(super) fn add_run_over(
     view: &BodyView,
     rw: &mut Rewrite,
     edits: &mut BTreeMap<FaceId, FaceEdit>,
-    blend: &Blend,
     rolled: &Rolled,
     ends: [[usize; 2]; 2],
 ) -> Result<RolledMade, OpError> {
-    let s = &blend.stripe;
     let run = &rolled.run;
     let (on_f, on_h) = (rolled.on_f, 1 - rolled.on_f);
     let edge = *m.edge(run.edge)?;
@@ -334,35 +391,36 @@ pub(super) fn add_run_over(
         });
         vertices[i][on_h] = rw.vertices.len();
         rw.vertices.push(VertexSpec::New {
-            point: blend.contacts[on_h].line.point(c.t),
+            point: rolled.contacts[on_h].point(c.t),
             tolerance: rolled.tolerance,
         });
     }
     let [t0, t1] = run.crossings.map(|c| c.t);
     let mut contacts = [[0usize; 2]; 2];
-    for (j, contact) in blend.contacts.iter().enumerate() {
-        let before = Interval::new(contact.range.lo(), t0)
+    for j in 0..2 {
+        let (line, range) = (&rolled.contacts[j], rolled.ranges[j]);
+        let before = Interval::new(range.lo(), t0)
             .map_err(|_| invariant("a contact before its run-over"))?;
-        let after = Interval::new(t1, contact.range.hi())
-            .map_err(|_| invariant("a contact after its run-over"))?;
+        let after =
+            Interval::new(t1, range.hi()).map_err(|_| invariant("a contact after its run-over"))?;
         let new = |k: usize| VertexKey::New(k);
         contacts[j] = [
             push_edge(
                 rw,
-                m.add_curve(contact.line.clone()),
+                m.add_curve(line.clone()),
                 before,
                 new(ends[0][j]),
                 new(vertices[0][j]),
-                contact.tolerance,
+                rolled.tolerance,
                 None,
             ),
             push_edge(
                 rw,
-                m.add_curve(contact.line.clone()),
+                m.add_curve(line.clone()),
                 after,
                 new(vertices[1][j]),
                 new(ends[1][j]),
-                contact.tolerance,
+                rolled.tolerance,
                 None,
             ),
         ];
@@ -407,17 +465,17 @@ pub(super) fn add_run_over(
     // `F`: the contact up to the first crossing, a gap where `E`'s outer
     // pieces join it, the contact on from the second; `H`: the contact
     // with the rolled face's foot between.
-    let f = blend.contacts[on_f].face;
-    let h = blend.contacts[on_h].face;
+    let f = rolled.faces[on_f];
+    let h = rolled.faces[on_h];
     let mut piece_of =
         |edge: usize, pcurve: &Curve2| Some((EdgeKey::New(edge), m.add_curve2(pcurve.clone())));
-    let on_face = &blend.contacts[on_f].on_face;
+    let on_face = &rolled.on_face[on_f];
     let f_contact = vec![
         piece_of(contacts[on_f][0], on_face),
         None,
         piece_of(contacts[on_f][1], on_face),
     ];
-    let on_face = &blend.contacts[on_h].on_face;
+    let on_face = &rolled.on_face[on_h];
     let h_contact = vec![
         piece_of(contacts[on_h][0], on_face),
         piece_of(foot, &rolled.foot_on_face),
@@ -434,8 +492,16 @@ pub(super) fn add_run_over(
         }
         e_on.insert(u.face, list);
     }
-    edits.entry(f).or_default().split.insert(s.edge, f_contact);
-    edits.entry(h).or_default().split.insert(s.edge, h_contact);
+    edits
+        .entry(f)
+        .or_default()
+        .split
+        .insert(rolled.blended, f_contact);
+    edits
+        .entry(h)
+        .or_default()
+        .split
+        .insert(rolled.blended, h_contact);
     for (face, list) in e_on {
         edits.entry(face).or_default().split.insert(run.edge, list);
     }
@@ -525,6 +591,38 @@ pub(super) fn add_rolled_faces(
     after.push(add(m, made.contacts[1][1], true, &hi.on_blend));
     after.extend(end);
     after.push(add(m, made.contacts[0][1], false, &lo.on_blend));
+    *first = rw.added.len();
+    rw.added.push(face(before, stripe_surface));
+    made.added[0] = rw.added.len();
+    let surface = m.add_surface(blend.stripe.surface.clone());
+    rw.added.push(face(after, surface));
+    push_rolled_face(m, rw, shell, rolled, made)?;
+    Ok(())
+}
+
+/// The rolled face, appended to `rw.added`, its index `made.added[1]`:
+/// counter-clockwise in its `(u, v)`, across its first crossing's arc from
+/// `H` to `E`, up `E`'s pieces, back across the second's and down its foot
+/// on `H`.
+pub(super) fn push_rolled_face(
+    m: &mut Model,
+    rw: &mut Rewrite,
+    shell: usize,
+    rolled: &Rolled,
+    made: &mut RolledMade,
+) -> Result<(), OpError> {
+    let along = |yes: bool| {
+        if yes {
+            Orientation::Forward
+        } else {
+            Orientation::Reversed
+        }
+    };
+    let add = |m: &mut Model, edge: usize, forward: bool, pcurve: &Curve2| StoredUse {
+        edge: EdgeKey::New(edge),
+        orientation: along(forward),
+        pcurve: m.add_curve2(pcurve.clone()),
+    };
     // The arcs run from the contact at `u = 0` to the one at `β`: from `H`
     // to `E` where the contact on `H` is the first.
     let h_first = rolled.on_f == 1;
@@ -537,11 +635,6 @@ pub(super) fn add_rolled_faces(
     }
     around.push(add(m, made.arcs[1], !h_first, &rolled.arcs[1].on_rolled));
     around.push(add(m, made.foot, false, &Curve2::along_v(0.0)));
-    *first = rw.added.len();
-    rw.added.push(face(before, stripe_surface));
-    made.added[0] = rw.added.len();
-    let surface = m.add_surface(blend.stripe.surface.clone());
-    rw.added.push(face(after, surface));
     made.added[1] = rw.added.len();
     let surface = m.add_surface(rolled.surface.clone());
     rw.added.push(AddedFace {

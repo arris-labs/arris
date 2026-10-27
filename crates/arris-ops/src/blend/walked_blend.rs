@@ -701,5 +701,6 @@ pub(super) fn walked_ring(
         })),
         tolerance,
         across: true,
+        rolled: None,
     })
 }

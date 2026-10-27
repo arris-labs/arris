@@ -1,0 +1,28 @@
+{
+  "description": "a plate 10 x 10 x 2 with a boss of radius 2 and height 2 on its top, its axis 2.3 from the front face y = 0, so the boss stands 0.3 inside the plate's edge; the boss's root circle filleted at r 0.6. The concave ring's contact on the plate's top has radius 2.6 and leaves the top face through its front edge, which is not the blend's own, between x = 5 ± √(2.6² − 2.3²). Open CASCADE builds it with the ball rolling on that edge there: a rational patch (degree 2 across) from the boss's contact down to the edge's stretch between the two crossings, section arcs of radius r centred at r from both the boss's offset and the edge's line; the front face is untouched and the torus left either side of the patch, in two faces (V/E/F 15/24/11). Its patch is a fit 1.5e-6 off the rolled section at x = 5, so the probe tolerance is 1e-5 and the volume, area and inertia hold to 1e-8, the patch's residue (1.1e-9 in volume, 1.3e-9 in inertia). Arris builds the same run-over (ADR-0071, amended): the rolled face one skinned face from the boss's contact to the edge, the torus one face open at it, its seam inside (the script corpus's pi mount plate's standoff roots, shrunk)",
+  "params": {"R": 2, "d": 2.3, "r": 0.6},
+  "steps": [
+    {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [10, 10, 2]},
+    {"name": "boss", "op": "cylinder", "base": [5, "d", 1], "axis": [0, 0, 1], "radius": "R", "height": 3},
+    {"name": "part", "op": "fuse", "a": "plate", "b": "boss"},
+    {"name": "result", "op": "fillet", "of": "part", "edges": [[5, "d + R", 2]], "radius": "r"}
+  ],
+  "result": "result",
+  "tolerances": {"probe": 1e-5, "volume_rel": 1e-8, "area_rel": 1e-8, "inertia_rel": 1e-8},
+  "probes": [
+    {"label": "inside", "point": [5, 5, 1], "expect": "in"},
+    {"label": "in_boss", "point": [5, "d", 3], "expect": "in"},
+    {"label": "on_front", "point": [5, 0, 1], "expect": "on"},
+    {"label": "on_rolled_patch", "point": [5, 0.219615242271, 2.219615242271], "expect": "on"},
+    {"label": "past_rolled_patch", "point": [5, 0.202294734195, 2.229615242271], "expect": "out"},
+    {"label": "behind_rolled_patch", "point": [5, 0.236935750346, 2.209615242271], "expect": "in"},
+    {"label": "above_front_edge", "point": [5, 0, 2.04], "expect": "out"},
+    {"label": "back_spandrel", "point": [5, "d + R + 0.1", 2.02], "expect": "in"},
+    {"label": "on_back_contact", "point": [5, "d + R + r", 2], "expect": "on"}
+  ],
+  "analytic": {
+    "counts": {"vertices": 15, "edges": 23, "faces": 10, "loops": 10, "shells": 1},
+    "genus": 0,
+    "counts_differ": "Open CASCADE splits the ring's torus in two, either side of the rolled patch, joined by an edge at the seam; Arris keeps the torus one face open at the rolled face, its seam inside it (ADR-0071 §2)"
+  }
+}

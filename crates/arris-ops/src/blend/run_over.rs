@@ -103,9 +103,7 @@ pub(super) struct Leaving<'a> {
 /// The refusal of a contact that leaves its face: `too_large` where the
 /// contact crosses no edge of `F` or the blend is a chamfer, and
 /// otherwise `BlendTooLarge` naming the blended edge and `E`, the first
-/// edge of `F` it crosses. A ring's run-over [`run_over`] pairs and traces
-/// is refused the same way until its rolled face is built (ADR-0071, plan
-/// step 5). A fault is returned as itself.
+/// edge of `F` it crosses. A fault is returned as itself.
 pub(super) fn refusal(
     env: &Env<'_>,
     leaving: Option<&Leaving<'_>>,
@@ -422,7 +420,7 @@ fn stretch_along(curve: &Curve, range: Interval, s: [f64; 2], toward: Point3) ->
 mod tests {
     use arris_math::Frame;
     use arris_math::{Axis, Control, Vec3, real};
-    use arris_topo::{Body, Model, Shape};
+    use arris_topo::{Body, Model};
 
     use super::*;
     use crate::body_view::BodyView;
@@ -698,13 +696,11 @@ mod tests {
         stretches(&m, &run, &contact, [off_mid, along_mid], tolerance);
     }
 
-    /// Until a ring's rolled face is built, the ring's fillet is refused
-    /// naming the blended edge and the edge its contact crosses, the
-    /// plate's front edge (plan step 5); the stripe's over the hole's rim
-    /// builds, its run-over's two stripe faces and rolled face in place of
-    /// the one blend face.
+    /// Both run-overs build: the lip's, its stripe cut into two faces
+    /// either side of the rolled face (10 faces in all), and the standoff
+    /// root's, its torus left in one face open at the rolled face (10).
     #[test]
-    fn a_ring_run_over_is_refused_naming_the_crossed_edge() {
+    fn both_run_overs_build_with_a_rolled_face() {
         let mut m = Model::default();
         let body = slab(&mut m);
         let lip = edge_through(&m, body, Point3::new(12.0, 1.0, 8.0));
@@ -713,30 +709,13 @@ mod tests {
             .unwrap();
         let (built, _) = fillet(&mut m, body, &[edge], 2.0, &Control::NONE).unwrap();
         assert_eq!(m.faces(built).unwrap().len(), 10);
-        type Part = fn(&mut Model) -> Body;
-        let cases: [(Part, Point3, Point3, f64); 1] = [(
-            plate,
-            Point3::new(5.0, 4.3, 2.0),
-            Point3::new(5.0, 0.0, 2.0),
-            0.6,
-        )];
-        for (part, blended, crossed, r) in cases {
-            let mut m = Model::default();
-            let body = part(&mut m);
-            let (blended, crossed) = (
-                edge_through(&m, body, blended),
-                edge_through(&m, body, crossed),
-            );
-            let edge = (m.edges(body).unwrap().into_iter())
-                .find(|e| e.id == blended)
-                .unwrap();
-            let err = fillet(&mut m, body, &[edge], r, &Control::NONE).unwrap_err();
-            let OpError::Degenerate { entities, reason } = &err else {
-                panic!("{err}");
-            };
-            assert_eq!(*reason, Reason::Blend(BlendReason::TooLarge), "{err}");
-            let want: [Shape; 2] = [forward(blended), forward(crossed)];
-            assert_eq!(entities[..], want, "{err}");
-        }
+        let mut m = Model::default();
+        let body = plate(&mut m);
+        let root = edge_through(&m, body, Point3::new(5.0, 4.3, 2.0));
+        let edge = (m.edges(body).unwrap().into_iter())
+            .find(|e| e.id == root)
+            .unwrap();
+        let (built, _) = fillet(&mut m, body, &[edge], 0.6, &Control::NONE).unwrap();
+        assert_eq!(m.faces(built).unwrap().len(), 10);
     }
 }

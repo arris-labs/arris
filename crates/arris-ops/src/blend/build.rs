@@ -17,6 +17,7 @@ use super::ends::{EndKind, Trim, face_end};
 use super::junction::{Run, junction};
 use super::miter::{Miter, miter};
 use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
+use super::ring_rolled::add_ring_rolled_faces;
 use super::rolled::{RolledMade, add_rolled_faces, add_run_over, rolled};
 use super::stripe::Section;
 use super::stripe::{Stripe, contacts, stripe};
@@ -75,6 +76,10 @@ pub(super) struct Made {
     pub(super) contacts: [usize; 2],
     pub(super) arcs: [usize; 2],
     pub(super) added: usize,
+    /// A closed edge's run-over entities, its contacts' pieces among them:
+    /// `contacts` is then the pieces before the first crossing and `arcs`
+    /// is unused, the torus having no seam edge (ADR-0071).
+    pub(super) rolled: Option<RolledMade>,
 }
 
 /// The rewrite's indices of one stripe's entities: its four trim vertices
@@ -809,7 +814,7 @@ fn add_stripes(
         // A run-over cuts the contacts at its crossings, and its own edits
         // of the faces take the contacts' place (ADR-0071 §2).
         let rolled = match &blend.rolled {
-            Some(rolled) => Some(add_run_over(m, view, rw, edits, blend, rolled, vertices)?),
+            Some(rolled) => Some(add_run_over(m, view, rw, edits, rolled, vertices)?),
             None => None,
         };
         let mut contact_edges = [0usize; 2];
@@ -954,6 +959,7 @@ fn add_rings(
     drafted: &Drafted,
 ) -> Result<Vec<Made>, OpError> {
     let m = &mut *ctx.m;
+    let view = &ctx.view;
     let Draft { rw, cuts, edits } = draft;
     let Joins {
         miters, miter_at, ..
@@ -998,44 +1004,56 @@ fn add_rings(
                 }
             }
         }
+        // A run-over cuts the contacts into pieces and leaves the torus
+        // without a seam edge (ADR-0071 §2).
+        let rolled_made = match &r.rolled {
+            Some(rolled) => Some(add_run_over(m, view, rw, edits, rolled, vertices)?),
+            None => None,
+        };
         let mut contact_edges = [0usize; 2];
-        for (c, contact) in r.contacts.iter().enumerate() {
-            contact_edges[c] = rw.edges.len();
-            rw.edges.push((
-                EdgeSpec::New {
-                    geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(contact.curve.clone()),
-                        range: contact.range,
-                    },
-                    start: VertexKey::New(vertices[0][c]),
-                    end: VertexKey::New(vertices[1][c]),
-                    tolerance: r.tolerance,
-                },
-                None,
-            ));
-            let pcurve = m.add_curve2(contact.on_face.clone());
-            edits
-                .entry(contact.face)
-                .or_default()
-                .replace
-                .insert(r.edge, (EdgeKey::New(contact_edges[c]), pcurve));
-        }
-        let mut arcs = [0usize; 2];
-        match &r.ends {
-            RingEnds::Seam(seam) => {
-                arcs = [rw.edges.len(); 2];
+        if let Some(rolled) = &rolled_made {
+            contact_edges = [rolled.contacts[0][0], rolled.contacts[1][0]];
+        } else {
+            for (c, contact) in r.contacts.iter().enumerate() {
+                contact_edges[c] = rw.edges.len();
                 rw.edges.push((
                     EdgeSpec::New {
                         geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(seam.curve.clone()),
-                            range: seam.range,
+                            curve: m.add_curve(contact.curve.clone()),
+                            range: contact.range,
                         },
-                        start: VertexKey::New(vertices[0][0]),
-                        end: VertexKey::New(vertices[0][1]),
+                        start: VertexKey::New(vertices[0][c]),
+                        end: VertexKey::New(vertices[1][c]),
                         tolerance: r.tolerance,
                     },
                     None,
                 ));
+                let pcurve = m.add_curve2(contact.on_face.clone());
+                edits
+                    .entry(contact.face)
+                    .or_default()
+                    .replace
+                    .insert(r.edge, (EdgeKey::New(contact_edges[c]), pcurve));
+            }
+        }
+        let mut arcs = [0usize; 2];
+        match &r.ends {
+            RingEnds::Seam(seam) => {
+                if rolled_made.is_none() {
+                    arcs = [rw.edges.len(); 2];
+                    rw.edges.push((
+                        EdgeSpec::New {
+                            geometry: EdgeGeometry::Curve {
+                                curve: m.add_curve(seam.curve.clone()),
+                                range: seam.range,
+                            },
+                            start: VertexKey::New(vertices[0][0]),
+                            end: VertexKey::New(vertices[0][1]),
+                            tolerance: r.tolerance,
+                        },
+                        None,
+                    ));
+                }
                 for (trim, by) in &seam.cuts {
                     cut_once(cuts, trim, vertices[0][*by])?;
                 }
@@ -1085,6 +1103,7 @@ fn add_rings(
             contacts: contact_edges,
             arcs,
             added: 0,
+            rolled: rolled_made,
         });
     }
     Ok(ring_made)
@@ -1623,6 +1642,10 @@ fn add_ring_faces(
     let ring_made = &mut made.rings;
     for (r, made) in rings.iter().zip(ring_made.iter_mut()) {
         let [lower, upper] = &r.contacts;
+        if let Some(rolled) = &r.rolled {
+            add_ring_rolled_faces(m, rw, view.shell_of[&lower.face], r, rolled, made)?;
+            continue;
+        }
         let surface = m.add_surface(r.surface.clone());
         let along = |yes: bool| {
             if yes {
@@ -1811,11 +1834,30 @@ fn record(
             RingEnds::Open(_) => 2,
         };
         p.add_generated(origin, forward(out.added[made.added]));
-        for &k in made.contacts.iter().chain(&made.arcs[..ends]) {
+        let arcs = if made.rolled.is_some() {
+            &[][..]
+        } else {
+            &made.arcs[..ends]
+        };
+        for &k in made.contacts.iter().chain(arcs) {
             p.add_generated(origin, forward(out.edges[k]));
         }
         for &v in made.vertices[..ends].iter().flatten() {
             p.add_generated(origin, forward(out.vertices[v]));
+        }
+        // A run-over's rolled face, its contacts' other pieces, the rolled
+        // face's foot, the section arcs and the crossings (ADR-0071 §4).
+        if let Some(rolled) = &made.rolled {
+            p.add_generated(origin, forward(out.added[rolled.added[1]]));
+            let edges = (rolled.contacts.iter().map(|c| &c[1]))
+                .chain([&rolled.foot])
+                .chain(&rolled.arcs);
+            for &k in edges {
+                p.add_generated(origin, forward(out.edges[k]));
+            }
+            for &v in rolled.vertices.iter().flatten() {
+                p.add_generated(origin, forward(out.vertices[v]));
+            }
         }
     }
     (out.body, p)

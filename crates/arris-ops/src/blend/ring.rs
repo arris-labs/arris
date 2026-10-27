@@ -14,7 +14,9 @@ use arris_topo::{EdgeId, FaceId, Orientation, Shape, VertexId};
 
 use super::build::Env;
 use super::ends::{EndKind, LoneCorner, Trim, arc_end, at_cut_corner, corner_of, cusp_trims};
-use super::run_over::{self, Leaving};
+use super::ring_rolled::{RingHost, ring_rolled};
+use super::rolled::Rolled;
+use super::run_over::{self, Leaving, RunOver};
 use super::stripe::{chord, on_side_of_face, placed};
 use super::{Kind, degenerate, invariant};
 use super::{mixed, traced};
@@ -143,6 +145,9 @@ pub(super) struct Ring {
     /// has two spans and not hundreds. The seam is then the isocurve at
     /// `v`'s two ends, and each contact is a line at constant `u`.
     pub(super) across: bool,
+    /// Where a contact runs over an edge of its face, the ball rolling on
+    /// it between the crossings (ADR-0071).
+    pub(super) rolled: Option<Box<Rolled>>,
 }
 
 /// A face of revolution's meridian in the half-plane bounded by the axis,
@@ -444,6 +449,23 @@ pub(super) fn ring(
     } else {
         seam_end(env, meter, &rd, &bl, &placed)?
     };
+    let rolled = match placed.run {
+        Some((k, run)) => Some(Box::new(ring_rolled(
+            env,
+            meter,
+            &RingHost {
+                edge,
+                uses: rd.uses,
+                tolerance: rd.tolerance,
+                convex: rd.convex,
+                surface: &bl.surface,
+                contacts: &placed.contacts,
+            },
+            k,
+            run,
+        )?)),
+        None => None,
+    };
     // The blend faces out of the material: the corner's outward direction
     // at the start's half-plane against the surface's normal there.
     let (v0, v1, x, z) = (bl.v0, bl.v1, bl.x, rd.z);
@@ -469,6 +491,7 @@ pub(super) fn ring(
         ends,
         tolerance: rd.tolerance,
         across: false,
+        rolled,
     })
 }
 
@@ -603,6 +626,9 @@ struct Placed {
     across: [Option<Across>; 2],
     /// Whether the second face's contact is at the lower `v`.
     swapped: bool,
+    /// The contact that leaves its face, by `v` (the lower is `0`), and
+    /// its run-over.
+    run: Option<(usize, RunOver)>,
 }
 
 /// One open end of the ring: its slot, its vertex and the corner it meets.
@@ -1077,6 +1103,7 @@ fn place_contacts(
         }
     }
     let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
+    let mut run: Option<(usize, RunOver)> = None;
     let mut by_v = [(0, faces[0], on_a, v_a), (1, faces[1], on_b, v_b)];
     let swapped = v_b < v_a;
     if swapped {
@@ -1176,11 +1203,20 @@ fn place_contacts(
                 centres,
                 tolerance,
             });
-            return Err(run_over::refusal(
-                env,
-                leaving.as_ref(),
-                too_large(face),
-                meter,
+            // A closed edge's torus is rolled on the edge the contact runs
+            // over; any other ring is refused naming it.
+            let rolls = !open && matches!(surface, Surface::Torus { .. });
+            if run.is_some() || !rolls {
+                return Err(run_over::refusal(
+                    env,
+                    leaving.as_ref(),
+                    too_large(face),
+                    meter,
+                ));
+            }
+            run = Some((
+                slot,
+                run_over::run(env, leaving.as_ref(), too_large(face), meter)?,
             ));
         }
         let on_blend = pcurve_on(&contact, range, surface, line_tol, meter).map_err(geometry)?;
@@ -1204,6 +1240,7 @@ fn place_contacts(
         corners,
         across,
         swapped,
+        run,
     })
 }
 

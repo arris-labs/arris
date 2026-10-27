@@ -300,6 +300,7 @@ blend/split-torus-ring-fillet: 6
 blend/stadium-outline-chamfer: 14
 blend/stadium-outline-fillet: 14
 blend/stadium-pocket-chamfer-root-fillet: 14
+blend/standoff-root-fillet-runs-off-the-plate: 366576
 blend/tangent-chain-cap-edge: 12
 blend/tangent-edge-beside-a-crease-fillet: refused
 blend/tee-cylinders-fillet: 192196
