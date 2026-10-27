@@ -135,10 +135,20 @@ given design; **[3]** unproven, robustness or bound established here.
   cross hole at random height. Each builds checker-green or is refused by
   name. The rolled face's samples lie on a ball of radius `r` that
   touches `H` and `E`, within the walk's fit.
-- [ ] Step 8 **[1]**: re-run the script corpus. The two `outcome.json`
+- [ ] Step 8 **[1]** (partial: the phone stand is `ok`, the pi mount plate waits): re-run the script corpus. The two `outcome.json`
   files go to `ok`, and `tools/py-test.sh tests/test_script_corpus.py`
   compares every checkpoint. Re-run the real parts' `fillet` row and
   print it (it must not rise above 4 of 38).
+  *Done so far*: `phone-stand` is `ok` at every stage, `lip_round`'s counts
+  held by `corpus/phone-stand/counts_differ.json`. `pi-mount-plate` met
+  two things: four standoffs cross one face and two cross one edge, so
+  `join_at_gaps` pairs each run-over's gaps by identity and a crowded
+  edge is cut once among its run-overs (`rolled::add_crowded_edge`); and
+  the front standoffs' contact meets the edge 14 degrees off its tangent,
+  where S5 cannot decide the torus against the rolled face
+  (`regression/standoff-root-fillet-runs-off-at-a-shallow-angle`, ignored;
+  `corpus/waits`). Left: that tracer fix, then bless the plate and re-run
+  the real parts' `fillet` row.
 
 ## Acceptance
 - `blend/standoff-root-fillet-runs-off-the-plate`,
@@ -168,5 +178,10 @@ given design; **[3]** unproven, robustness or bound established here.
 - *Settled* (step 1): a run-over is neither clipped nor left
   overhanging; Open CASCADE rolls the ball on the crossed edge, and so
   does Arris (ADR-0071, step 2).
+- ⚠ OPEN: the pi mount plate's front standoffs (acceptance's second
+  script). The tracer's refusal at a shallow crossing is a fix of its own
+  (`torus_walk`'s edge touch where a tangent row ends): a step here, or
+  a backlog line with the plate waiting until it lands. The agent leaves
+  it for the human.
 - ⚠ OPEN: the order of M3–M5 after this plan. The agent sets it at
   retirement from the re-run (idea, *Later*).

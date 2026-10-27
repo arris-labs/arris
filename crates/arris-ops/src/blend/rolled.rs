@@ -17,7 +17,7 @@ use arris_topo::builder::{EdgeKey, EdgeSpec, VertexKey, VertexSpec};
 use arris_topo::entity::EdgeGeometry;
 use arris_topo::{CurveId, EdgeId, FaceId, Model, Orientation};
 
-use super::build::{Env, FaceEdit};
+use super::build::{Env, FaceEdit, SplitPiece};
 use super::run_over::{Crossing, RunOver, crossed};
 use super::stripe::{Contact, Section, Stripe, on_side_of_face, placed};
 use super::walked::{Ball, Refusal, SURFACE_DEGREE, Walked, arc, contacts as contact_rows};
@@ -377,6 +377,7 @@ pub(super) fn add_run_over(
     edits: &mut BTreeMap<FaceId, FaceEdit>,
     rolled: &Rolled,
     ends: [[usize; 2]; 2],
+    crowded: bool,
 ) -> Result<RolledMade, OpError> {
     let run = &rolled.run;
     let (on_f, on_h) = (rolled.on_f, 1 - rolled.on_f);
@@ -447,32 +448,35 @@ pub(super) fn add_run_over(
         );
     }
     let mut pieces = [0usize; 3];
-    for (i, piece) in rolled.pieces.iter().enumerate() {
-        let at = |end: Option<usize>, kept| match end {
-            Some(c) => VertexKey::New(vertices[c][on_f]),
-            None => VertexKey::Kept(kept),
-        };
-        pieces[i] = push_edge(
-            rw,
-            e_curve,
-            piece.range,
-            at(piece.ends[0], edge.start()),
-            at(piece.ends[1], edge.end()),
-            edge.tolerance(),
-            Some(run.edge),
-        );
+    if !crowded {
+        for (i, piece) in rolled.pieces.iter().enumerate() {
+            let at = |end: Option<usize>, kept| match end {
+                Some(c) => VertexKey::New(vertices[c][on_f]),
+                None => VertexKey::Kept(kept),
+            };
+            pieces[i] = push_edge(
+                rw,
+                e_curve,
+                piece.range,
+                at(piece.ends[0], edge.start()),
+                at(piece.ends[1], edge.end()),
+                edge.tolerance(),
+                Some(run.edge),
+            );
+        }
     }
     // `F`: the contact up to the first crossing, a gap where `E`'s outer
     // pieces join it, the contact on from the second; `H`: the contact
     // with the rolled face's foot between.
     let f = rolled.faces[on_f];
     let h = rolled.faces[on_h];
-    let mut piece_of =
-        |edge: usize, pcurve: &Curve2| Some((EdgeKey::New(edge), m.add_curve2(pcurve.clone())));
+    let mut piece_of = |edge: usize, pcurve: &Curve2| {
+        SplitPiece::Use(EdgeKey::New(edge), m.add_curve2(pcurve.clone()))
+    };
     let on_face = &rolled.on_face[on_f];
     let f_contact = vec![
         piece_of(contacts[on_f][0], on_face),
-        None,
+        SplitPiece::Gap(rolled.blended),
         piece_of(contacts[on_f][1], on_face),
     ];
     let on_face = &rolled.on_face[on_h];
@@ -483,12 +487,17 @@ pub(super) fn add_run_over(
     ];
     let mut e_on = BTreeMap::new();
     for u in view.uses.get(&run.edge).into_iter().flatten() {
+        if crowded {
+            break;
+        }
         let keep_middle = u.face != f;
         let mut list = Vec::with_capacity(3);
         for (piece, &id) in rolled.pieces.iter().zip(&pieces) {
-            list.push(
-                (keep_middle || piece.on_rolled.is_none()).then_some((EdgeKey::New(id), u.pcurve)),
-            );
+            list.push(if keep_middle || piece.on_rolled.is_none() {
+                SplitPiece::Use(EdgeKey::New(id), u.pcurve)
+            } else {
+                SplitPiece::Gap(rolled.blended)
+            });
         }
         e_on.insert(u.face, list);
     }
@@ -513,6 +522,92 @@ pub(super) fn add_run_over(
         pieces,
         added: [0; 2],
     })
+}
+
+/// A crowded edge `E`, which each of `runs` crosses twice, cut once at all
+/// the crossings (ADR-0071 §2): its pieces in its own order, the ones
+/// between a run-over's crossings the ones its ball rolls on, which `F`
+/// leaves a gap at and `G` keeps. Each run-over's `pieces` are the one
+/// before its stretch, the stretch and the one after.
+///
+/// Errors: `BlendTooLarge` naming a blended edge and `E` where the
+/// run-overs do not all leave the same face, one rolls through `E`'s own
+/// vertex, the stretches overlap, or a piece would be no longer than the
+/// tolerance.
+pub(super) fn add_crowded_edge(
+    m: &mut Model,
+    view: &BodyView,
+    rw: &mut Rewrite,
+    edits: &mut BTreeMap<FaceId, FaceEdit>,
+    runs: &mut [(&Rolled, &mut RolledMade)],
+) -> Result<(), OpError> {
+    let Some((first, _)) = runs.first() else {
+        return Ok(());
+    };
+    let (e, f) = (first.run.edge, first.faces[first.on_f]);
+    let refuse = |rolled: &Rolled| crossed(rolled.blended, e);
+    let edge = *m.edge(e)?;
+    let (curve, e_range) = edge.curve().ok_or(invariant("the crossed edge's curve"))?;
+    let e_curve = m.curve(curve)?.clone();
+    let mut order: Vec<usize> = (0..runs.len()).collect();
+    for (rolled, _) in runs.iter() {
+        if rolled.faces[rolled.on_f] != f
+            || rolled.rolled_on.len() != 1
+            || rolled.rolled_on[0].0 != 1
+        {
+            return Err(refuse(rolled));
+        }
+    }
+    order.sort_by(|&a, &b| {
+        let lo = |j: usize| runs[j].0.pieces[1].range.lo();
+        lo(a).total_cmp(&lo(b))
+    });
+    // The cuts from `E`'s start to its end: the parameter and the vertex.
+    let mut cuts: Vec<(f64, VertexKey)> = vec![(e_range.lo(), VertexKey::Kept(edge.start()))];
+    for &j in &order {
+        let (rolled, made) = &runs[j];
+        let stretch = &rolled.pieces[1];
+        let (Some(c0), Some(c1)) = (stretch.ends[0], stretch.ends[1]) else {
+            return Err(refuse(rolled));
+        };
+        let at = |c: usize| VertexKey::New(made.vertices[c][rolled.on_f]);
+        cuts.push((stretch.range.lo(), at(c0)));
+        cuts.push((stretch.range.hi(), at(c1)));
+    }
+    cuts.push((e_range.hi(), VertexKey::Kept(edge.end())));
+    let mut ids: Vec<usize> = Vec::with_capacity(cuts.len() - 1);
+    for w in cuts.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let range = Interval::new(a.0, b.0).map_err(|_| refuse(runs[order[0]].0))?;
+        let tol = runs[order[0]].0.tolerance.max(edge.tolerance());
+        if (e_curve.point(a.0) - e_curve.point(b.0)).norm() <= tol {
+            return Err(refuse(runs[order[0]].0));
+        }
+        ids.push(push_edge(
+            rw,
+            m.add_curve(e_curve.clone()),
+            range,
+            a.1,
+            b.1,
+            edge.tolerance(),
+            Some(e),
+        ));
+    }
+    for (p, &j) in order.iter().enumerate() {
+        runs[j].1.pieces = [ids[2 * p], ids[2 * p + 1], ids[2 * p + 2]];
+    }
+    for u in view.uses.get(&e).into_iter().flatten() {
+        let mut list = Vec::with_capacity(ids.len());
+        for (k, &id) in ids.iter().enumerate() {
+            list.push(if k % 2 == 1 && u.face == f {
+                SplitPiece::Gap(runs[order[k / 2]].0.blended)
+            } else {
+                SplitPiece::Use(EdgeKey::New(id), u.pcurve)
+            });
+        }
+        edits.entry(u.face).or_default().split.insert(e, list);
+    }
+    Ok(())
 }
 
 /// A new edge over `curve` and `range` from `start` to `end` in `rw`, a

@@ -48,7 +48,16 @@ def tolerances(directory):
     return {"volume_rel": VOLUME_REL, "area_rel": AREA_REL, "centroid_abs": CENTROID_ABS, "inertia_rel": INERTIA_REL, **own}
 
 
-def hold_to_oracle(model, body, want, tol):
+def counts_differ(slug):
+    """`corpus/<part>/counts_differ.json`: the stages whose topology counts
+    differ from Open CASCADE's on purpose, each `{"counts": [V, E, F, L, S],
+    "why": ...}`: Arris's own counts are held to those instead (the
+    fixtures' `analytic.counts_differ`)."""
+    path = CORPUS / slug / "counts_differ.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def hold_to_oracle(model, body, want, tol, differ=None):
     props = model.mass_properties(body)
     assert props.volume == pytest.approx(want["volume"], rel=tol["volume_rel"], abs=0)
     assert props.area == pytest.approx(want["area"], rel=tol["area_rel"], abs=0)
@@ -58,6 +67,8 @@ def hold_to_oracle(model, body, want, tol):
         assert got == pytest.approx(tuple(expected), abs=tol["inertia_rel"] * scale, rel=0)
     line = model.check(body, "full").euler
     counts = want["counts"]
+    if differ is not None:
+        counts = dict(zip(["vertices", "edges", "faces", "loops", "shells"], differ["counts"]))
     assert (line.vertices, line.edges, line.faces, line.loops, line.shells) == (
         counts["vertices"],
         counts["edges"],
@@ -110,7 +121,7 @@ def test_part(slug):
         want = checkpoints[name]
         if "refused" in want or not run.comparable[name]:
             continue
-        hold_to_oracle(run.model, body, want, tol)
+        hold_to_oracle(run.model, body, want, tol, counts_differ(slug).get(name))
 
     # The same script twice writes the same bytes.
     if run.last is not None:
@@ -138,7 +149,7 @@ def test_the_port_on_the_layer_is_the_raw_script(slug):
         want = checkpoints[name]
         if "refused" in want or not ported.comparable[name]:
             continue
-        hold_to_oracle(ported.model, body, want, tol)
+        hold_to_oracle(ported.model, body, want, tol, counts_differ(slug).get(name))
 
     if raw.labelled is not None:
         solid = ported.tagged

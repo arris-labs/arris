@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "588d5af3e489711d943667082cafaf77ae33ab8304177ac33199c4a72453bd2f",
+  "results": {
+    "default": {
+      "area": 2221.28546500345,
+      "centroid": [
+        14.964121226783872,
+        14.587398509253182,
+        1.6157290492204353
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          218679.10033709707,
+          -1114.0240250282222,
+          312.4684328951698
+        ],
+        [
+          -1114.0240250282222,
+          205964.87340911,
+          3593.368348276934
+        ],
+        [
+          312.4684328951698,
+          3593.368348276934,
+          418368.29329930735
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            20.0,
+            20.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_boss",
+          "point": [
+            14.0,
+            3.5,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front",
+          "point": [
+            14.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_back_contact",
+          "point": [
+            14.0,
+            7.1,
+            3.0
+          ]
+        }
+      ],
+      "volume": 2800.4777044549637
+    }
+  }
+}

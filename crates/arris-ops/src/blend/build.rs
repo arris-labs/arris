@@ -18,7 +18,7 @@ use super::junction::{Run, junction};
 use super::miter::{Miter, miter};
 use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
 use super::ring_rolled::add_ring_rolled_faces;
-use super::rolled::{RolledMade, add_rolled_faces, add_run_over, rolled};
+use super::rolled::{Rolled, RolledMade, add_crowded_edge, add_rolled_faces, add_run_over, rolled};
 use super::stripe::Section;
 use super::stripe::{Stripe, contacts, stripe};
 use super::walked_blend::{walked_contacts, walked_end, walked_pole, walked_ring, walked_stripe};
@@ -51,11 +51,21 @@ pub(super) struct FaceEdit {
     pub(super) replace: BTreeMap<EdgeId, (EdgeKey, Curve2Id)>,
     pub(super) insert: BTreeMap<VertexId, Insertion>,
     /// The edges a run-over cuts into pieces on this face (ADR-0071 §2),
-    /// each piece in the edge's own direction and `None` where the face
+    /// each piece in the edge's own direction and a gap where the face
     /// no longer runs along it: a contact's stretch off `F`, `E`'s stretch
     /// the ball rolls on. On `F` the loop with `E`'s gap is joined into the
     /// contact's at its gap.
-    pub(super) split: BTreeMap<EdgeId, Vec<Option<(EdgeKey, Curve2Id)>>>,
+    pub(super) split: BTreeMap<EdgeId, Vec<SplitPiece>>,
+}
+
+/// A piece of an edge a run-over cuts, on one face.
+#[derive(Clone, Copy)]
+pub(super) enum SplitPiece {
+    /// The face runs along this edge.
+    Use(EdgeKey, Curve2Id),
+    /// The face no longer runs along it here: the gap of the run-over of
+    /// this blended edge, which joins the face's loops.
+    Gap(EdgeId),
 }
 
 /// Where a corner edge is cut at each of its ends: the new vertex and the
@@ -275,6 +285,9 @@ struct Draft {
     rw: Rewrite,
     cuts: BTreeMap<EdgeId, Cuts>,
     edits: BTreeMap<FaceId, FaceEdit>,
+    /// The edges two or more run-overs cross, cut once among them
+    /// (`rolled::add_crowded_edge`).
+    crowded: BTreeSet<EdgeId>,
 }
 
 /// Every blend entity's indices in the rewrite.
@@ -308,6 +321,7 @@ pub(super) fn build(
         rw: Rewrite::default(),
         cuts: BTreeMap::new(),
         edits: BTreeMap::new(),
+        crowded: crowded_edges(&blends, &rings),
     };
     let miter_made = add_miters(&mut ctx, &mut draft, &joins.miters)?;
     let corner_made = add_corners(&mut ctx, &mut draft, &joins.corners);
@@ -319,6 +333,7 @@ pub(super) fn build(
     };
     made.stripes = add_stripes(&mut ctx, &mut draft, &blends, &joins, &made)?;
     made.rings = add_rings(&mut ctx, &mut draft, &rings, &joins, &made)?;
+    add_crowded_edges(&mut ctx, &mut draft, &blends, &rings, &mut made)?;
     let (shortened, rederived) = shorten_edges(&mut ctx, &mut draft)?;
     rewrite_faces(&mut ctx, &mut draft, &shortened, &rederived)?;
     add_blend_faces(&mut ctx, &mut draft, &blends, &joins, &mut made)?;
@@ -624,7 +639,9 @@ fn add_miters(
     miters: &[Miter],
 ) -> Result<Vec<MiterMade>, OpError> {
     let m = &mut *ctx.m;
-    let Draft { rw, cuts, edits } = draft;
+    let Draft {
+        rw, cuts, edits, ..
+    } = draft;
     let mut miter_made: Vec<MiterMade> = Vec::with_capacity(miters.len());
     for mt in miters {
         let q = rw.vertices.len();
@@ -771,7 +788,12 @@ fn add_stripes(
     drafted: &Drafted,
 ) -> Result<Vec<StripeMade>, OpError> {
     let (m, view, ..) = ctx.parts();
-    let Draft { rw, cuts, edits } = draft;
+    let Draft {
+        rw,
+        cuts,
+        edits,
+        crowded,
+    } = draft;
     let Joins {
         miters,
         miter_at: _,
@@ -814,7 +836,15 @@ fn add_stripes(
         // A run-over cuts the contacts at its crossings, and its own edits
         // of the faces take the contacts' place (ADR-0071 §2).
         let rolled = match &blend.rolled {
-            Some(rolled) => Some(add_run_over(m, view, rw, edits, rolled, vertices)?),
+            Some(rolled) => Some(add_run_over(
+                m,
+                view,
+                rw,
+                edits,
+                rolled,
+                vertices,
+                crowded.contains(&rolled.run.edge),
+            )?),
             None => None,
         };
         let mut contact_edges = [0usize; 2];
@@ -960,7 +990,12 @@ fn add_rings(
 ) -> Result<Vec<Made>, OpError> {
     let m = &mut *ctx.m;
     let view = &ctx.view;
-    let Draft { rw, cuts, edits } = draft;
+    let Draft {
+        rw,
+        cuts,
+        edits,
+        crowded,
+    } = draft;
     let Joins {
         miters, miter_at, ..
     } = joins;
@@ -1007,7 +1042,15 @@ fn add_rings(
         // A run-over cuts the contacts into pieces and leaves the torus
         // without a seam edge (ADR-0071 §2).
         let rolled_made = match &r.rolled {
-            Some(rolled) => Some(add_run_over(m, view, rw, edits, rolled, vertices)?),
+            Some(rolled) => Some(add_run_over(
+                m,
+                view,
+                rw,
+                edits,
+                rolled,
+                vertices,
+                crowded.contains(&rolled.run.edge),
+            )?),
             None => None,
         };
         let mut contact_edges = [0usize; 2];
@@ -1109,6 +1152,56 @@ fn add_rings(
     Ok(ring_made)
 }
 
+/// The edges that two or more run-overs cross.
+fn crowded_edges(blends: &[Blend], rings: &[Ring]) -> BTreeSet<EdgeId> {
+    let mut seen: BTreeSet<EdgeId> = BTreeSet::new();
+    let mut crowded: BTreeSet<EdgeId> = BTreeSet::new();
+    let runs = (blends.iter().filter_map(|b| b.rolled.as_deref()))
+        .chain(rings.iter().filter_map(|r| r.rolled.as_deref()));
+    for rolled in runs {
+        if !seen.insert(rolled.run.edge) {
+            crowded.insert(rolled.run.edge);
+        }
+    }
+    crowded
+}
+
+/// Each crowded edge cut at the crossings of all the run-overs over it
+/// (ADR-0071 §2), once, in the edge's own order.
+fn add_crowded_edges(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    blends: &[Blend],
+    rings: &[Ring],
+    made: &mut Drafted,
+) -> Result<(), OpError> {
+    if draft.crowded.is_empty() {
+        return Ok(());
+    }
+    let m = &mut *ctx.m;
+    let view = &ctx.view;
+    let Draft {
+        rw, edits, crowded, ..
+    } = draft;
+    let mut by_edge: BTreeMap<EdgeId, Vec<(&Rolled, &mut RolledMade)>> = BTreeMap::new();
+    let stripes = (blends.iter().zip(made.stripes.iter_mut()))
+        .filter_map(|(b, mk)| Some((b.rolled.as_deref()?, mk.rolled.as_mut()?)));
+    let rings = (rings.iter().zip(made.rings.iter_mut()))
+        .filter_map(|(r, mk)| Some((r.rolled.as_deref()?, mk.rolled.as_mut()?)));
+    for (rolled, rolled_made) in stripes.chain(rings) {
+        if crowded.contains(&rolled.run.edge) {
+            by_edge
+                .entry(rolled.run.edge)
+                .or_default()
+                .push((rolled, rolled_made));
+        }
+    }
+    for runs in by_edge.values_mut() {
+        add_crowded_edge(m, view, rw, edits, runs)?;
+    }
+    Ok(())
+}
+
 /// The corner edges shortened or lengthened, in id order; a lengthened edge's pcurves derived again over its new range (ADR-0038 §4), by the edge and the pcurve each replaces.
 fn shorten_edges(
     ctx: &mut BlendCtx<'_, '_>,
@@ -1187,12 +1280,12 @@ fn rewrite_faces(
         }
         let mut loops: Vec<Vec<StoredUse>> = Vec::with_capacity(entity.loops().len());
         // A run-over's gaps, by loop and the place in it (ADR-0071 §2).
-        let mut gaps: BTreeSet<(usize, usize)> = BTreeSet::new();
+        let mut gaps: Vec<(EdgeId, usize, usize)> = Vec::new();
         for l in entity.loops() {
             let mut uses: Vec<StoredUse> = Vec::with_capacity(l.coedges().len() + 1);
             // Where each coedge's use sits in `uses`.
             let mut at: Vec<usize> = Vec::with_capacity(l.coedges().len());
-            let mut gapped: Vec<usize> = Vec::new();
+            let mut gapped: Vec<(usize, EdgeId)> = Vec::new();
             for c in l.coedges() {
                 let id = c.edge();
                 if let Some(pieces) = edit.and_then(|e| e.split.get(&id)) {
@@ -1206,12 +1299,12 @@ fn rewrite_faces(
                     };
                     for piece in ordered {
                         match *piece {
-                            Some((edge, pcurve)) => uses.push(StoredUse {
+                            SplitPiece::Use(edge, pcurve) => uses.push(StoredUse {
                                 edge,
                                 orientation: c.orientation(),
                                 pcurve,
                             }),
-                            None => gapped.push(uses.len()),
+                            SplitPiece::Gap(by) => gapped.push((uses.len(), by)),
                         }
                     }
                     continue;
@@ -1313,8 +1406,11 @@ fn rewrite_faces(
                     return Err(invariant("a run-over's gap in a loop of its own"));
                 }
                 // Gaps with no use between them, round the loop too, are one.
-                for g in gapped {
-                    gaps.insert((loops.len(), g % uses.len()));
+                for (g, by) in gapped {
+                    let gap = (by, loops.len(), g % uses.len());
+                    if !gaps.contains(&gap) {
+                        gaps.push(gap);
+                    }
                 }
             }
             loops.push(uses);
@@ -1327,29 +1423,89 @@ fn rewrite_faces(
     Ok(())
 }
 
-/// `F`'s two loops with a run-over's gap joined into one (ADR-0071 §2):
+/// A loop being joined: a use, or the gap of a run-over.
+enum Item {
+    Use(StoredUse),
+    Gap(EdgeId),
+}
+
+/// `F`'s loops with each run-over's gap joined into one (ADR-0071 §2):
 /// the contact's loop runs to one crossing and stops, the loop that held
 /// `E` runs on from it along `E`'s outer pieces to the other crossing, so
 /// each loop from its gap round to it, one after the other, is the
-/// joined loop. It takes the first one's place. No gap leaves the loops
-/// as they are.
+/// joined loop. It takes the place of the lower loop. A loop with the gaps
+/// of several run-overs, the plate's outer loop with its edges crossed by
+/// several, is joined to one contact's loop after another. `gaps` are
+/// `(run-over, loop, place in it)`; none leaves the loops as they are.
 fn join_at_gaps(
     loops: &mut Vec<Vec<StoredUse>>,
-    gaps: &BTreeSet<(usize, usize)>,
+    gaps: &[(EdgeId, usize, usize)],
 ) -> Result<(), OpError> {
     if gaps.is_empty() {
         return Ok(());
     }
-    let [(a, at_a), (b, at_b)] = gaps.iter().copied().collect::<Vec<_>>()[..] else {
-        return Err(invariant("a run-over's two gaps on its face"));
-    };
-    if a == b {
-        return Err(invariant("a run-over's gaps on two loops of its face"));
+    let mut items: Vec<Vec<Item>> = (loops.drain(..))
+        .map(|l| l.into_iter().map(Item::Use).collect())
+        .collect();
+    for &(by, l, at) in gaps.iter().rev() {
+        items
+            .get_mut(l)
+            .ok_or(invariant("a run-over's gap in a loop of its face"))?
+            .insert(at, Item::Gap(by));
     }
-    let from_gap = |uses: &[StoredUse], at: usize| [&uses[at..], &uses[..at]].concat();
-    let joined = [from_gap(&loops[a], at_a), from_gap(&loops[b], at_b)].concat();
-    loops[a] = joined;
-    loops.remove(b);
+    let mut ids: Vec<EdgeId> = Vec::new();
+    for g in gaps {
+        if !ids.contains(&g.0) {
+            ids.push(g.0);
+        }
+    }
+    for id in ids {
+        let find = |items: &[Vec<Item>]| -> Vec<(usize, usize)> {
+            let mut at = Vec::new();
+            for (l, list) in items.iter().enumerate() {
+                for (i, item) in list.iter().enumerate() {
+                    if matches!(item, Item::Gap(g) if *g == id) {
+                        at.push((l, i));
+                    }
+                }
+            }
+            at
+        };
+        let [(a, at_a), (b, at_b)] = find(&items)[..] else {
+            return Err(invariant("a run-over's two gaps on its face"));
+        };
+        if a == b {
+            return Err(invariant("a run-over's gaps on two loops of its face"));
+        }
+        let (a, at_a, b, at_b) = if a < b {
+            (a, at_a, b, at_b)
+        } else {
+            (b, at_b, a, at_a)
+        };
+        let mut joined: Vec<Item> = Vec::new();
+        let (second, first): (Vec<Item>, Vec<Item>) =
+            (std::mem::take(&mut items[b]), std::mem::take(&mut items[a]));
+        for (list, at) in [(first, at_a), (second, at_b)] {
+            let (before, after) = list.split_at(at);
+            let after = after.iter().skip(1);
+            joined.extend(after.chain(before.iter()).map(|i| match i {
+                Item::Use(u) => Item::Use(*u),
+                Item::Gap(g) => Item::Gap(*g),
+            }));
+        }
+        items[a] = joined;
+        items.remove(b);
+    }
+    for list in items {
+        let mut uses = Vec::with_capacity(list.len());
+        for item in list {
+            match item {
+                Item::Use(u) => uses.push(u),
+                Item::Gap(_) => return Err(invariant("a run-over's gap left in a loop")),
+            }
+        }
+        loops.push(uses);
+    }
     Ok(())
 }
 
