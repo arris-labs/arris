@@ -22,6 +22,7 @@ use arris_topo::{Body, Edge, EdgeId, Model, Provenance, Shape};
 
 use self::build::build;
 use self::ends::EndKind;
+use self::rolled::Rolled;
 use self::stripe::{Contact, Stripe};
 use crate::error::{BlendReason, Fault, InputReason, OpError, Reason};
 use crate::rebuild::forward;
@@ -34,13 +35,7 @@ mod junction;
 mod miter;
 mod mixed;
 mod ring;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "a run-over's crossings and spine are read by the module's tests until its rolled face is built (ADR-0071, plans/blend-runs-onto steps 4 and 5)"
-    )
-)]
+mod rolled;
 mod run_over;
 mod stripe;
 mod traced;
@@ -81,6 +76,9 @@ struct Blend {
     contacts: [Contact; 2],
     /// At the edge's `range.lo()` end, then its `range.hi()` end.
     ends: [EndKind; 2],
+    /// Where a contact runs over an edge of its face, the ball rolling on
+    /// it between the crossings (ADR-0071).
+    rolled: Option<Box<Rolled>>,
 }
 
 /// Blends `edges` of `body` with a rolling ball of `radius`: each edge's

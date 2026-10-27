@@ -250,6 +250,7 @@ blend/hole-rim-chamfer: 2
 blend/hole-rim-fillet: 2
 blend/l-inner-edge: 5
 blend/line-into-arc-fillet: 7
+blend/lip-fillet-runs-into-a-hole: 405415
 blend/miter-unequal-dihedrals-chamfer: 9
 blend/miter-unequal-dihedrals-fillet: 447
 blend/nist-ctc-01-crossing-cylinders-crease-fillet: 95722

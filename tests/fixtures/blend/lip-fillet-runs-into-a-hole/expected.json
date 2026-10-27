@@ -1,6 +1,6 @@
 {
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "536452287065a39816c8741f81bab0e1a2785d6b59aa7a10035cefd8f65f4aa2",
+  "recipe_sha256": "5deb315bcd5bfd9690a4a2cee80804930c99595627f534240d020af0694720d3",
   "results": {
     "default": {
       "area": 1161.7559573410965,
@@ -143,6 +143,42 @@
             12.0,
             3.0,
             3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_rolled_section_at_8_0",
+          "point": [
+            11.261653014988,
+            8.0,
+            7.693933221829
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_rolled_section_at_8_0",
+          "point": [
+            11.262714955983,
+            8.0,
+            7.695628002441
+          ]
+        },
+        {
+          "class": "in",
+          "label": "under_rolled_section_at_11_6",
+          "point": [
+            11.279623466784,
+            11.6,
+            7.763452405082
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_rolled_section_at_11_6",
+          "point": [
+            11.28056533913,
+            11.6,
+            7.765216739655
           ]
         }
       ],

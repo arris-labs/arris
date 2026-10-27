@@ -742,6 +742,21 @@ pub(crate) fn trace_nurbs(
     let flipped = nurbs.transposed();
     let across = tracer(&flipped, true).ok_or_else(unsupported)?;
     let (rows, columns) = (along.tube_circles(), across.tube_circles());
+    // Two isolines or more of one direction and none of the other: where
+    // the section has more besides there is no one quotient to walk it
+    // on, and the surface is traced a piece at a time, cut midway between
+    // each two (`in_pieces`).
+    let map = Rescale::of(nurbs);
+    let midway = |dir: usize, circles: &[TubeFactor]| {
+        (circles.windows(2))
+            .map(|w| map.to_surface(dir, 0.5 * (w[0].u0 + w[1].u0)))
+            .collect::<Vec<f64>>()
+    };
+    let cuts = match (rows.len(), columns.len()) {
+        (2.., 0) => Some((0, midway(0, &rows))),
+        (0, 2..) => Some((1, midway(1, &columns))),
+        _ => None,
+    };
     let traced = match (rows.is_empty(), columns.is_empty()) {
         // A saddle whose cell does not fit on the one parameterisation
         // is tried on the other.
@@ -766,14 +781,60 @@ pub(crate) fn trace_nurbs(
             }
         }
     };
-    traced.map_err(|halt| match halt {
-        Halt::Fault(fault) => GeomError::DegenerateSection {
-            a: GeomKind::Surface(SurfaceKind::Nurbs),
-            b: GeomKind::Surface(other.kind()),
-            fault,
-        },
-        Halt::Stopped(stop) => GeomError::Interrupted(stop),
-    })
+    match (traced, cuts) {
+        (Err(Halt::Fault(SectionFault::TubeCircle)), Some((dir, cuts))) => {
+            in_pieces(nurbs, other, dir, &cuts, tol, meter)
+        }
+        (traced, _) => traced.map_err(|halt| match halt {
+            Halt::Fault(fault) => GeomError::DegenerateSection {
+                a: GeomKind::Surface(SurfaceKind::Nurbs),
+                b: GeomKind::Surface(other.kind()),
+                fault,
+            },
+            Halt::Stopped(stop) => GeomError::Interrupted(stop),
+        }),
+    }
+}
+
+/// [`trace_nurbs`] of `nurbs` against `other` a piece at a time: the
+/// surface cut at `cuts` of direction `dir`, each piece traced on its own
+/// with the one isoline it holds, and the pieces' traces joined. Two
+/// isolines of one direction with more of the section besides — a
+/// run-over's rolled face, both of whose end rows lie on the stripe's one
+/// cylinder (ADR-0071) — have no quotient in closed form to walk the
+/// section on, while each piece has one. The pieces keep the surface's
+/// parameters, so every branch's `uv` is the surface's own; a branch
+/// that crosses a cut ends there on each side,
+/// [`BranchEnd::Clipped`](crate::BranchEnd::Clipped). A piece's refusal
+/// is the pair's.
+fn in_pieces(
+    nurbs: &NurbsSurface,
+    other: &Surface,
+    dir: usize,
+    cuts: &[f64],
+    tol: Tolerance,
+    meter: &mut Meter,
+) -> Result<SectionTrace, GeomError> {
+    let domain = nurbs.domain()[dir];
+    let ends: Vec<f64> = (core::iter::once(domain.lo()))
+        .chain(cuts.iter().copied())
+        .chain(core::iter::once(domain.hi()))
+        .collect();
+    let (mut branches, mut points, mut circles) = (Vec::new(), Vec::new(), Vec::new());
+    for w in ends.windows(2) {
+        let piece = (Interval::new(w[0], w[1]).ok())
+            .and_then(|range| nurbs.segment(dir, range))
+            .ok_or(GeomError::DegenerateSection {
+                a: GeomKind::Surface(SurfaceKind::Nurbs),
+                b: GeomKind::Surface(other.kind()),
+                fault: SectionFault::TubeCircle,
+            })?;
+        let trace = trace_nurbs(&Surface::Nurbs(piece), other, tol, meter)?;
+        branches.extend_from_slice(trace.branches());
+        points.extend_from_slice(trace.points());
+        circles.extend_from_slice(trace.circles());
+    }
+    Ok(SectionTrace::new(branches, points).with_circles(circles))
 }
 
 /// The torus to walk and the surface to put it into: of two tori the

@@ -1,30 +1,31 @@
-//! A run-over (ADR-0071): a fillet's contact on face `F` that leaves it
-//! through `E`, an edge of `F` that is not the corner's own. Between the
-//! two crossings the ball rolls on `E`, touching the blend's other face
-//! `H` and `E`'s curve, and its centre runs on the section of `H`'s
-//! offset by the radius, toward the ball, with the pipe of that radius
-//! about `E`: a cylinder about a line, a torus about a circle. That
-//! section is traced and fitted as a blend's end is (ADR-0037). This
-//! module finds the crossings, pairs them and traces the spine between
-//! them; where it cannot, the refusal names `E`.
+//! A run-over (ADR-0071, amended): a fillet's contact on face `F` that
+//! leaves it through `E`, an edge of `F` that is not the corner's own.
+//! Between the two crossings each section of the blend, in the stripe's
+//! own plane square to its centres there, is the circle of the radius
+//! tangent to the blend's other face `H` through the point where `E`
+//! crosses that plane: its centre on `H`'s offset there, at the radius
+//! from `E`'s point. This module finds the crossings, pairs them and
+//! finds `E`'s point in every section between; where it cannot, the
+//! refusal names `E`.
 
 use arris_check::domain::FaceDomain;
 use arris_geom::region2::Side;
-use arris_geom::{Curve, CurveIntersection, GeomError, Surface, intersect_curves};
-use arris_math::{Aabb, Frame, Interval, Meter, Point3, Tolerance, shift_into_range};
+use arris_geom::{
+    Curve, CurveIntersection, GeomError, SECTION_FIT_FRACTION, Surface, intersect_curves,
+};
+use arris_math::{Interval, Meter, Point3, Tolerance, Vec3, is_negligible, shift_into_range};
 use arris_topo::{EdgeId, FaceId};
 
 use super::build::Env;
-use super::traced::{self, TracedEnd};
+use super::walked::{NEWTON_STEPS, STEP_ROUNDING};
 use super::{Kind, degenerate};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
-/// The points of `E`'s stretch between the crossings, ends included,
-/// whose box bounds the trace of a ruled pair (`trace_section`): the
-/// spine lies within the ball's radius of that stretch. A sampling
-/// density, not a tolerance.
-const BOX_SAMPLES: usize = 16;
+/// The sections between the crossings at which `E`'s point is found in
+/// order, each from the one before: the table a section anywhere between
+/// starts from. A sampling density, not a tolerance.
+const SECTION_SAMPLES: usize = 32;
 
 /// Where a contact meets `E`.
 #[derive(Debug, Clone, Copy)]
@@ -35,14 +36,30 @@ pub(super) struct Crossing {
     pub(super) s: f64,
     /// The point, on the contact and on `E`.
     pub(super) point: Point3,
-    /// The ball's centre there, touching `F`, `E` and `H` at once.
+    /// The section's centre there, the ball touching `F`, `E` and `H` at
+    /// once.
     pub(super) centre: Point3,
 }
 
+/// A section of the blend between the crossings (ADR-0071, amended): its circle's
+/// centre, its foot on `H` and `E`'s point, all in the stripe's plane at
+/// the contact's parameter.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct RolledSection {
+    pub(super) centre: Point3,
+    pub(super) foot: Point3,
+    pub(super) point: Point3,
+    /// `E`'s parameter at `point`.
+    pub(super) s: f64,
+}
+
 /// A contact's run over `E`: the two crossings, the stretches of the
-/// contact and of `E` between them, and the ball's centre there.
+/// contact and of `E` between them, and what a section between them is
+/// found from.
 #[derive(Debug, Clone)]
 pub(super) struct RunOver {
+    /// The blended edge.
+    pub(super) blended: EdgeId,
     /// `E`.
     pub(super) edge: EdgeId,
     /// Where the contact leaves `F`, then where it comes back, by its
@@ -55,10 +72,15 @@ pub(super) struct RunOver {
     /// crossings' `s` to the higher, which may lie a period past it on a
     /// closed circle.
     pub(super) along: Interval,
-    /// The ball's centre from one crossing's centre to the other's: on
-    /// `H`'s offset and on the pipe about `E`, its `lo_first` at
-    /// `crossings[0]`.
-    pub(super) spine: TracedEnd,
+    /// `E`'s parameter in [`SECTION_SAMPLES`] sections evenly over `off`,
+    /// ends included, each found from the one before.
+    table: Vec<f64>,
+    /// The centres' curve, `H`'s surface, `E`'s curve and the radius.
+    centres: Curve,
+    other: Surface,
+    edge_curve: Curve,
+    radius: f64,
+    tolerance: f64,
 }
 
 /// A contact that leaves its face, as the stripe or the ring that placed
@@ -81,28 +103,40 @@ pub(super) struct Leaving<'a> {
 /// The refusal of a contact that leaves its face: `too_large` where the
 /// contact crosses no edge of `F` or the blend is a chamfer, and
 /// otherwise `BlendTooLarge` naming the blended edge and `E`, the first
-/// edge of `F` it crosses. A run-over [`run_over`] pairs and traces is
-/// refused the same way until its rolled face is built (ADR-0071, plan
-/// steps 4 and 5). A fault is returned as itself.
+/// edge of `F` it crosses. A ring's run-over [`run_over`] pairs and traces
+/// is refused the same way until its rolled face is built (ADR-0071, plan
+/// step 5). A fault is returned as itself.
 pub(super) fn refusal(
     env: &Env<'_>,
     leaving: Option<&Leaving<'_>>,
     too_large: OpError,
     meter: &mut Meter<'_>,
 ) -> OpError {
-    let (Some(leaving), Kind::Fillet { .. }) = (leaving, env.kind) else {
-        return too_large;
-    };
-    match run_over(env, leaving, meter) {
-        Ok(None) => too_large,
-        Ok(Some(run)) => crossed(leaving.blended, run.edge),
+    match run(env, leaving, too_large, meter) {
+        Ok(run) => crossed(run.blended, run.edge),
         Err(e) => e,
     }
 }
 
+/// The run-over of a contact that leaves its face, or its [`refusal`]:
+/// `too_large` where the contact crosses no edge of `F` or the blend is a
+/// chamfer, `BlendTooLarge` naming the blended edge and `E` where
+/// [`run_over`] refuses it.
+pub(super) fn run(
+    env: &Env<'_>,
+    leaving: Option<&Leaving<'_>>,
+    too_large: OpError,
+    meter: &mut Meter<'_>,
+) -> Result<RunOver, OpError> {
+    let (Some(leaving), Kind::Fillet { .. }) = (leaving, env.kind) else {
+        return Err(too_large);
+    };
+    run_over(env, leaving, meter)?.ok_or(too_large)
+}
+
 /// `BlendTooLarge` naming the blended edge and the edge its contact
 /// crosses.
-fn crossed(blended: EdgeId, edge: EdgeId) -> OpError {
+pub(super) fn crossed(blended: EdgeId, edge: EdgeId) -> OpError {
     degenerate(
         vec![forward(blended), forward(edge)],
         Reason::Blend(BlendReason::TooLarge),
@@ -110,15 +144,17 @@ fn crossed(blended: EdgeId, edge: EdgeId) -> OpError {
 }
 
 /// The run-over of a fillet's contact that leaves its face (ADR-0071
-/// §1, §3): `None` where it crosses no edge of `F` away from its ends.
+/// §3 and its amendment): `None` where it crosses no edge of `F` away
+/// from its ends.
 ///
 /// Guarantees: on `Some`, the contact crosses one edge `E` of `F` exactly
 /// twice, neither a touch, and no other edge; `E` is convex and a line
-/// or a circle shorter in radius than the ball is not; one stretch of the
-/// contact between the crossings lies outside `F`, and its crossings are
-/// in that order; the spine runs between the two crossings' centres
-/// within the trace's fit (`traced::traced_end`). Each refusal is
-/// `BlendTooLarge` naming the blended edge and `E`.
+/// or a circle; one stretch of the contact between the crossings lies
+/// outside `F`, and its crossings are in that order; every one of
+/// [`SECTION_SAMPLES`] sections between them has its circle
+/// ([`RunOver::section`]), `E`'s point running from the first crossing to
+/// the second. Each refusal is `BlendTooLarge` naming the blended edge
+/// and `E`.
 pub(super) fn run_over(
     env: &Env<'_>,
     leaving: &Leaving<'_>,
@@ -166,7 +202,10 @@ pub(super) fn run_over(
     }
     let (curve, range) = m.edge(e)?.curve().ok_or_else(refuse)?;
     let edge_curve = m.curve(curve)?;
-    let pipe = pipe(edge_curve, radius).ok_or_else(refuse)?;
+    match edge_curve {
+        Curve::Line { .. } | Curve::Circle { .. } => {}
+        Curve::Ellipse { .. } | Curve::Nurbs(_) => return Err(refuse()),
+    }
     if env.view.convex(m, e)? != Some(true) {
         return Err(refuse());
     }
@@ -213,26 +252,106 @@ pub(super) fn run_over(
     });
     let [c0, c1] = crossings;
     let crossings = [c0?, c1?];
-    let other = m.surface(m.face(leaving.other)?.surface())?;
-    let offset =
-        offset_through(other, radius, crossings[0].centre, leaving.tolerance).ok_or_else(refuse)?;
-    let spine = rolled_spine(
-        [&offset, &pipe],
-        &crossings,
-        edge_curve,
-        along,
-        radius,
-        &refuse,
-        tol,
-        meter,
-    )?;
-    Ok(Some(RunOver {
+    let mut run = RunOver {
+        blended: leaving.blended,
         edge: e,
         crossings,
         off,
         along,
-        spine,
-    }))
+        table: Vec::with_capacity(SECTION_SAMPLES + 1),
+        centres: leaving.centres.clone(),
+        other: m.surface(m.face(leaving.other)?.surface())?.clone(),
+        edge_curve: edge_curve.clone(),
+        radius,
+        tolerance: leaving.tolerance,
+    };
+    // `E`'s point from the first crossing's on, each section's from the
+    // one before, to the second crossing's.
+    let mut s = crossings[0].s;
+    for i in 0..=SECTION_SAMPLES {
+        meter.tick()?;
+        let t = off.lerp(i as f64 / SECTION_SAMPLES as f64);
+        s = run.section_from(t, s).ok_or_else(refuse)?.s;
+        run.table.push(s);
+    }
+    let last = run.edge_curve.point(s);
+    if (last - crossings[1].point).norm() > leaving.tolerance {
+        return Err(refuse());
+    }
+    Ok(Some(run))
+}
+
+impl RunOver {
+    /// The section at the contact's parameter `t` in `off` (ADR-0071, amended),
+    /// `E`'s point found from the table's nearest sample before it.
+    /// `None` where it is not found, or no circle of the radius tangent to
+    /// `H` passes through it.
+    pub(super) fn section(&self, t: f64) -> Option<RolledSection> {
+        let at = ((t - self.off.lo()) / self.off.length() * SECTION_SAMPLES as f64).floor();
+        let i = (at.max(0.0) as usize).min(SECTION_SAMPLES);
+        self.section_from(t, *self.table.get(i)?)
+    }
+
+    /// The section at `t`, `E`'s point found by Newton's iteration from
+    /// its parameter `seed`: where `E` crosses the plane through the
+    /// centres' point at `t` square to them. The centre is on `H`'s offset
+    /// in that plane, the line through the centres' point square to `H`'s
+    /// normal, at the radius from `E`'s point: of the two such points the
+    /// nearer the centres' point, which the crossings are at. The circle
+    /// is tangent to `H` where its centre is at the radius from it within
+    /// the section fit's share of the tolerance.
+    fn section_from(&self, t: f64, seed: f64) -> Option<RolledSection> {
+        let at = self.centres.eval(t);
+        let (a, d) = (at.point, at.d1.try_normalize(0.0)?);
+        let mut s = seed;
+        let mut residual = f64::INFINITY;
+        for _ in 0..NEWTON_STEPS {
+            let e = self.edge_curve.eval(s);
+            residual = (e.point - a).dot(&d);
+            let slope = e.d1.dot(&d);
+            if slope == 0.0 {
+                return None;
+            }
+            let step = residual / slope;
+            s -= step;
+            if is_negligible(
+                (step * e.d1).norm(),
+                STEP_ROUNDING * (a.coords.norm() + self.radius),
+            ) {
+                break;
+            }
+        }
+        if !residual.is_finite() {
+            return None;
+        }
+        let point = self.edge_curve.point(s);
+        if (point - a).dot(&d).abs() > SECTION_FIT_FRACTION * self.tolerance {
+            return None;
+        }
+        let uv = self.other.project(a).ok()?.uv;
+        let normal = self.other.normal(uv.x, uv.y)?.into_inner();
+        let w: Vec3 = d.cross(&normal).try_normalize(0.0)?;
+        // `|a + λw − point| = r`: `λ² + 2bλ + c = 0`, its smaller root.
+        let g = a - point;
+        let (b, c) = (w.dot(&g), g.norm_squared() - self.radius * self.radius);
+        let disc = b * b - c;
+        if disc < 0.0 {
+            return None;
+        }
+        let large = -b - if b < 0.0 { -1.0 } else { 1.0 } * disc.sqrt();
+        let lambda = if large == 0.0 { 0.0 } else { c / large };
+        let centre = a + lambda * w;
+        let foot = self.other.project(centre).ok()?;
+        if (foot.distance - self.radius).abs() > SECTION_FIT_FRACTION * self.tolerance {
+            return None;
+        }
+        Some(RolledSection {
+            centre,
+            foot: foot.point,
+            point,
+            s,
+        })
+    }
 }
 
 /// A crossing as [`crossings`] finds it, before its centre is placed.
@@ -281,38 +400,6 @@ fn crossings(
     Ok(Some(hits))
 }
 
-/// The pipe of `radius` about an edge's curve: the cylinder about a line,
-/// the torus about a circle whose radius is the larger. `None` for any
-/// other curve, or a circle no wider than the ball (ADR-0071 §3).
-pub(super) fn pipe(curve: &Curve, radius: f64) -> Option<Surface> {
-    match *curve {
-        Curve::Line { origin, direction } => Some(Surface::Cylinder {
-            frame: Frame::from_z(origin, direction.into_inner()).ok()?,
-            radius,
-        }),
-        Curve::Circle {
-            frame,
-            radius: major,
-        } => (radius < major).then_some(Surface::Torus {
-            frame,
-            major_radius: major,
-            minor_radius: radius,
-        }),
-        Curve::Ellipse { .. } | Curve::Nurbs(_) => None,
-    }
-}
-
-/// The offset of `face` by `radius` that holds `centre` within
-/// `tolerance`, toward it: the ball's side. `None` where neither does, or
-/// the face has no exact offset.
-fn offset_through(face: &Surface, radius: f64, centre: Point3, tolerance: f64) -> Option<Surface> {
-    [radius, -radius].into_iter().find_map(|d| {
-        let offset = face.offset(d)?;
-        let distance = offset.project(centre).ok()?.distance;
-        (distance <= tolerance).then_some(offset)
-    })
-}
-
 /// The stretch of an edge's `curve` from one crossing's parameter to the
 /// other's, `s` in the edge's `range`: between them on a line or an arc, and on a
 /// closed circle the arc of the two whose midpoint is nearer `toward`, the
@@ -331,46 +418,9 @@ fn stretch_along(curve: &Curve, range: Interval, s: [f64; 2], toward: Point3) ->
     Interval::new(lo, hi).ok()
 }
 
-/// The ball's centre between the two crossings: the stretch of the
-/// section of `surfaces`, `H`'s offset and the pipe about `E`, from one
-/// crossing's centre to the other's, on the ball's side of `F` — the
-/// side the first crossing's centre stands from its point. The trace is
-/// bounded by `E`'s stretch `along` and the two centres, widened by the
-/// ball's diameter. Refused by `refuse` where `traced::traced_end` is.
-#[allow(clippy::too_many_arguments)]
-fn rolled_spine(
-    surfaces: [&Surface; 2],
-    crossings: &[Crossing; 2],
-    edge: &Curve,
-    along: Interval,
-    radius: f64,
-    refuse: &dyn Fn() -> OpError,
-    tol: Tolerance,
-    meter: &mut Meter<'_>,
-) -> Result<TracedEnd, OpError> {
-    let mut within = Aabb::of_point(crossings[0].centre).union(Aabb::of_point(crossings[1].centre));
-    for i in 0..=BOX_SAMPLES {
-        let s = along.lerp(i as f64 / BOX_SAMPLES as f64);
-        within = within.union(Aabb::of_point(edge.point(s)));
-    }
-    let within = within.inflated(2.0 * radius);
-    let [p, c] = [crossings[0].point, crossings[0].centre];
-    let ball_side = c - p;
-    let inside = |q: Point3| Ok((q - p).dot(&ball_side) > 0.0);
-    traced::traced_end(
-        surfaces,
-        [crossings[0].centre, crossings[1].centre],
-        &within,
-        &inside,
-        refuse,
-        tol,
-        meter,
-    )
-}
-
 #[cfg(test)]
 mod tests {
-    use arris_geom::SECTION_FIT_FRACTION;
+    use arris_math::Frame;
     use arris_math::{Axis, Control, Vec3, real};
     use arris_topo::{Body, Model, Shape};
 
@@ -444,36 +494,54 @@ mod tests {
         run_over(&env, leaving, &mut meter).unwrap().unwrap()
     }
 
-    /// What a test asks of a spine: every one of its samples within the
-    /// fit's fraction of the tolerance of both `on` distances (and their
-    /// rounding), its ends at the crossings' centres, and `through` on it.
-    fn holds(run: &RunOver, on: [&dyn Fn(Point3) -> f64; 2], through: Point3, tolerance: f64) {
-        let spine = &run.spine;
+    /// What a test asks of the sections between the crossings (ADR-0071,
+    /// amended): at every one of 256 sections over `off`, the centre at
+    /// `closed`'s place for the centres' point there, at the radius from
+    /// `H` by `to_h` and from `E`'s point, which is on `E` by `to_e` and in
+    /// the plane square to the centres; at the crossings, their centres;
+    /// and `through` the centre midway.
+    fn holds(
+        run: &RunOver,
+        closed: &dyn Fn(Point3) -> Point3,
+        [to_h, to_e]: [&dyn Fn(Point3) -> f64; 2],
+        through: Point3,
+    ) {
+        let near = 1e-9;
         let samples = 256;
         for i in 0..=samples {
-            let p = spine
-                .curve
-                .point(spine.range.lerp(i as f64 / samples as f64));
-            for (k, off) in on.iter().enumerate() {
-                let d = off(p).abs();
-                assert!(
-                    d <= SECTION_FIT_FRACTION * tolerance + 1e-12,
-                    "{d:e} off {k} at {i}"
-                );
-            }
+            let t = run.off.lerp(i as f64 / samples as f64);
+            let at = run
+                .section(t)
+                .unwrap_or_else(|| panic!("no section at {t}"));
+            let a = run.centres.eval(t);
+            let want = closed(a.point);
+            assert!(
+                (at.centre - want).norm() <= near,
+                "{i}: {:?} not {want:?}",
+                at.centre
+            );
+            assert!((to_h(at.centre) - run.radius).abs() <= near, "{i}: off H");
+            assert!(
+                ((at.centre - at.point).norm() - run.radius).abs() <= near,
+                "{i}"
+            );
+            assert!(to_e(at.point).abs() <= near, "{i}: {:?} off E", at.point);
+            assert!(
+                (at.point - a.point).dot(&a.d1.normalize()).abs() <= near,
+                "{i}"
+            );
+            assert!(
+                (at.foot - at.centre).norm() - run.radius <= near,
+                "{i}: the foot"
+            );
         }
-        let (lo, hi) = (spine.range.lo(), spine.range.hi());
-        let first = spine.curve.point(if spine.lo_first { lo } else { hi });
-        let last = spine.curve.point(if spine.lo_first { hi } else { lo });
-        assert!((first - run.crossings[0].centre).norm() <= tolerance);
-        assert!((last - run.crossings[1].centre).norm() <= tolerance);
-        let near = spine.curve.project(through).unwrap();
-        assert!(
-            near.distance <= tolerance,
-            "{:e} from {through:?}",
-            near.distance
-        );
-        assert!(spine.range.contains(near.t));
+        for (c, t) in run.crossings.iter().zip([run.off.lo(), run.off.hi()]) {
+            let at = run.section(t).unwrap();
+            assert!((at.centre - c.centre).norm() <= near, "{:?}", at.centre);
+            assert!((at.point - c.point).norm() <= near, "{:?}", at.point);
+        }
+        let mid = run.section(run.off.midpoint()).unwrap().centre;
+        assert!((mid - through).norm() <= near, "{mid:?} not {through:?}");
     }
 
     /// What a test asks of the stretches between the crossings: each
@@ -509,9 +577,11 @@ mod tests {
 
     /// The concave ring's contact on the plate's top, a circle of radius
     /// 2.6 about the boss's axis, leaves the top through its front edge
-    /// at `x = 5 ± √(2.6² − 2.3²)`. Between, the ball's centre is on the
-    /// boss's offset, a cylinder of 2.6, and on the pipe of 0.6 about the
-    /// edge's line, through `(5, −0.3, 2 + √0.27)` midway.
+    /// at `x = 5 ± √(2.6² − 2.3²)`. Between, each section in its meridian
+    /// plane is the circle of 0.6 centred on the boss's offset, a cylinder
+    /// of 2.6, through the front edge's point there: through
+    /// `(5, −0.3, 2 + √0.27)` midway, where it is the ball touching the
+    /// edge.
     #[test]
     fn a_ring_over_an_outer_edge_rolls_on_it() {
         let mut m = Model::default();
@@ -551,10 +621,19 @@ mod tests {
             let want = Point3::new(c.point.x, 0.0, 2.0 + r);
             assert!((c.centre - want).norm() <= tolerance, "{:?}", c.centre);
         }
-        let to_boss = |p: Point3| real::hypot(p.x - 5.0, p.y - 2.3) - 2.6;
-        let to_edge = |p: Point3| real::hypot(p.y, p.z - 2.0) - r;
+        // In the meridian plane through the centres' point, the front edge's
+        // point at `ρ` from the axis, the centre at 2.6 from it and 0.6 from
+        // that point.
+        let closed = |a: Point3| {
+            let (ux, uy) = ((a.x - 5.0) / 2.6, (a.y - 2.3) / 2.6);
+            let rho = -2.3 / uy;
+            let z = 2.0 + (r * r - (rho - 2.6) * (rho - 2.6)).sqrt();
+            Point3::new(5.0 + 2.6 * ux, 2.3 + 2.6 * uy, z)
+        };
+        let to_boss = |p: Point3| real::hypot(p.x - 5.0, p.y - 2.3) - 2.0;
+        let to_edge = |p: Point3| real::hypot(p.y, p.z - 2.0);
         let mid = Point3::new(5.0, -0.3, 2.0 + 0.27f64.sqrt());
-        holds(&run, [&to_boss, &to_edge], mid, tolerance);
+        holds(&run, &closed, [&to_boss, &to_edge], mid);
         let off_mid = Point3::new(5.0, -0.3, 2.0);
         let along_mid = Point3::new(5.0, 0.0, 2.0);
         stretches(&m, &run, &contact, [off_mid, along_mid], tolerance);
@@ -562,9 +641,10 @@ mod tests {
 
     /// The convex blend's contact on the slab's end `x = 12`, the line at
     /// `z = 6`, runs into the hole through its rim at
-    /// `y = 10 ± √(3.5² − 2²)`. Between, the ball's centre is on the
-    /// top's offset `z = 6` and on the torus of 2 about the rim, through
-    /// `(12 − √1.75, 10, 6)` midway.
+    /// `y = 10 ± √(3.5² − 2²)`. Between, each section in its plane
+    /// `y = t` is the circle of 2 centred on the top's offset `z = 6`
+    /// through the rim's point there: through `(12 − √1.75, 10, 6)` midway,
+    /// where it is the ball touching the rim.
     #[test]
     fn a_stripe_into_a_hole_rolls_on_its_rim() {
         let mut m = Model::default();
@@ -603,36 +683,43 @@ mod tests {
             let want = Point3::new(12.0 - r, c.point.y, 6.0);
             assert!((c.centre - want).norm() <= tolerance, "{:?}", c.centre);
         }
-        let to_top = |p: Point3| p.z - 6.0;
-        let to_rim =
-            |p: Point3| real::hypot(real::hypot(p.y - 10.0, p.z - 4.0) - 3.5, p.x - 12.0) - r;
+        // In the plane `y = t`, the rim's point at `z = 4 + h`, the centre
+        // on `z = 6` at 2 from it.
+        let closed = |a: Point3| {
+            let h = (3.5 * 3.5 - (a.y - 10.0) * (a.y - 10.0)).sqrt();
+            Point3::new(12.0 - (r * r - (h - 2.0) * (h - 2.0)).sqrt(), a.y, 6.0)
+        };
+        let to_top = |p: Point3| 8.0 - p.z;
+        let to_rim = |p: Point3| real::hypot(real::hypot(p.y - 10.0, p.z - 4.0) - 3.5, p.x - 12.0);
         let mid = Point3::new(12.0 - 1.75f64.sqrt(), 10.0, 6.0);
-        holds(&run, [&to_top, &to_rim], mid, tolerance);
+        holds(&run, &closed, [&to_top, &to_rim], mid);
         let off_mid = Point3::new(12.0, 10.0, 6.0);
         let along_mid = Point3::new(12.0, 10.0, 7.5);
         stretches(&m, &run, &contact, [off_mid, along_mid], tolerance);
     }
 
-    /// Until the rolled face is built, both fillets are refused naming the
-    /// blended edge and the edge their contact crosses: the ring's on the
-    /// plate's front edge, the stripe's on the hole's rim.
+    /// Until a ring's rolled face is built, the ring's fillet is refused
+    /// naming the blended edge and the edge its contact crosses, the
+    /// plate's front edge (plan step 5); the stripe's over the hole's rim
+    /// builds, its run-over's two stripe faces and rolled face in place of
+    /// the one blend face.
     #[test]
-    fn a_run_over_is_refused_naming_the_crossed_edge() {
+    fn a_ring_run_over_is_refused_naming_the_crossed_edge() {
+        let mut m = Model::default();
+        let body = slab(&mut m);
+        let lip = edge_through(&m, body, Point3::new(12.0, 1.0, 8.0));
+        let edge = (m.edges(body).unwrap().into_iter())
+            .find(|e| e.id == lip)
+            .unwrap();
+        let (built, _) = fillet(&mut m, body, &[edge], 2.0, &Control::NONE).unwrap();
+        assert_eq!(m.faces(built).unwrap().len(), 10);
         type Part = fn(&mut Model) -> Body;
-        let cases: [(Part, Point3, Point3, f64); 2] = [
-            (
-                plate,
-                Point3::new(5.0, 4.3, 2.0),
-                Point3::new(5.0, 0.0, 2.0),
-                0.6,
-            ),
-            (
-                slab,
-                Point3::new(12.0, 1.0, 8.0),
-                Point3::new(12.0, 10.0, 0.5),
-                2.0,
-            ),
-        ];
+        let cases: [(Part, Point3, Point3, f64); 1] = [(
+            plate,
+            Point3::new(5.0, 4.3, 2.0),
+            Point3::new(5.0, 0.0, 2.0),
+            0.6,
+        )];
         for (part, blended, crossed, r) in cases {
             let mut m = Model::default();
             let body = part(&mut m);

@@ -1522,11 +1522,7 @@ corpus_tests! {
     /// CASCADE rolls the ball on that edge between the two crossings.
     #[ignore = "BlendTooLarge: the ring's contact leaves the plate's top through its front edge, not the corner's own (plans/blend-runs-onto)"]
     regression_standoff_root_fillet_runs_off_the_plate => run "regression/standoff-root-fillet-runs-off-the-plate";
-    /// A slab's top edge filleted at 2 over a cross hole whose top is 0.5
-    /// below it: the contact on the end face runs through the hole's rim, and
-    /// Open CASCADE rolls the ball on the rim between the two crossings.
-    #[ignore = "BlendTooLarge: the contact leaves the end face through the hole's rim, not the corner's own (plans/blend-runs-onto)"]
-    regression_lip_fillet_runs_into_a_hole => run "regression/lip-fillet-runs-into-a-hole";
+
     /// A box cut to a barrel and a plane beside the corner, the vertical edge
     /// at the origin blended: its end reaches a vertex of four edges whose faces
     /// across are a plane and a cylinder, a fan of two with a curved piece,
@@ -1535,6 +1531,11 @@ corpus_tests! {
     blend_barrel_ridge_fan_fillet => run "blend/barrel-ridge-fan-fillet";
     /// The chamfer twin of `blend_barrel_ridge_fan_fillet`.
     blend_barrel_ridge_fan_chamfer => run "blend/barrel-ridge-fan-chamfer";
+    /// A slab's top edge filleted at 2 over a cross hole whose top is 0.5
+    /// below it: the contact on the end face runs through the hole's rim,
+    /// and the ball rolls on the rim between the two crossings, the rolled
+    /// face walked from the top's contact to the rim (ADR-0071).
+    blend_lip_fillet_runs_into_a_hole => run "blend/lip-fillet-runs-into-a-hole";
     /// A block under a convex roof of three planes, the rise at the origin
     /// blended: its end reaches a vertex of five edges whose faces across are a
     /// fan of three, one arc on each and a vertex on each of the two ridges, as

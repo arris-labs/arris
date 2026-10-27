@@ -499,6 +499,30 @@ The checker then decides both pairs at `Full`; FTC-11's body holds to
 Open CASCADE's measures as before, and its fixture test fails with any
 of the four taken out.
 
+### Two isolines of one direction with more besides (amendment, 2026-10-27)
+
+`plans/blend-runs-onto` step 4. A run-over's rolled face shares an arc
+with the stripe's cylinder at each crossing (ADR-0071, amended). Both are
+rows of its `v` on that one cylinder, and the section has more besides
+them, near each row's foot on the face both roll on. Either row divided
+out alone leaves the other in the quotient, so the walk has no one
+factor to divide by and the pair was refused (`TubeCircle`).
+
+- **Such a surface is traced a piece at a time.** Where the walk refuses
+  `TubeCircle` and the isolines found are two or more of one direction
+  and none of the other, the surface is cut midway between each two
+  (`NurbsSurface::segment`, the control net cut at those parameters as
+  `clipped_points` cuts it). Each piece is traced on its own with the
+  one isoline it holds, and the traces are joined. The pieces keep the
+  surface's parameters, so every branch's `uv` is the surface's own. A
+  branch that crosses a cut ends there on both sides, `Clipped`. Every
+  pose the walk decided before is decided as before.
+
+`z = (y − 0.2)(y − 0.8)((x − ½)² + (y − ½)² − 0.04)` over `[0, 1]²`
+against `z = 0` is the rows `y = 0.2` and `y = 0.8` with a circle of
+`0.2` between them. It now returns the two rows and the circle in two
+halves cut at `y = ½`. Before, it was refused.
+
 
 ## Consequences
 

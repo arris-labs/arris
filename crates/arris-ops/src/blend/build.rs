@@ -17,6 +17,7 @@ use super::ends::{EndKind, Trim, face_end};
 use super::junction::{Run, junction};
 use super::miter::{Miter, miter};
 use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
+use super::rolled::{RolledMade, add_rolled_faces, add_run_over, rolled};
 use super::stripe::Section;
 use super::stripe::{Stripe, contacts, stripe};
 use super::walked_blend::{walked_contacts, walked_end, walked_pole, walked_ring, walked_stripe};
@@ -48,6 +49,12 @@ pub(super) struct Insertion {
 pub(super) struct FaceEdit {
     pub(super) replace: BTreeMap<EdgeId, (EdgeKey, Curve2Id)>,
     pub(super) insert: BTreeMap<VertexId, Insertion>,
+    /// The edges a run-over cuts into pieces on this face (ADR-0071 §2),
+    /// each piece in the edge's own direction and `None` where the face
+    /// no longer runs along it: a contact's stretch off `F`, `E`'s stretch
+    /// the ball rolls on. On `F` the loop with `E`'s gap is joined into the
+    /// contact's at its gap.
+    pub(super) split: BTreeMap<EdgeId, Vec<Option<(EdgeKey, Curve2Id)>>>,
 }
 
 /// Where a corner edge is cut at each of its ends: the new vertex and the
@@ -82,6 +89,9 @@ pub(super) struct StripeMade {
     pub(super) contacts: [usize; 2],
     pub(super) arcs: [Vec<usize>; 2],
     pub(super) added: usize,
+    /// A run-over's entities, its contacts' pieces among them: `contacts`
+    /// is then the pieces before the first crossing.
+    pub(super) rolled: Option<RolledMade>,
 }
 
 /// The rewrite's indices of one miter's entities: its two vertices, `q`
@@ -580,14 +590,22 @@ fn make_blends(
             .try_into()
             .map_err(|_| invariant("two ends of the blend"))?;
         let t = [0, 1].map(|end| [0, 1].map(|k| ends[end].t(miters, corners, k)));
-        let contacts = match s.section {
-            Section::Walked { .. } => walked_contacts(&env, meter, &s, t)?,
-            Section::Round { .. } | Section::Flat => contacts(&env, &s, t, meter)?,
+        let (contacts, rolled) = match s.section {
+            Section::Walked { .. } => (walked_contacts(&env, meter, &s, t)?, None),
+            Section::Round { .. } | Section::Flat => {
+                let (contacts, run) = contacts(&env, &s, t, meter)?;
+                let rolled = match run {
+                    Some((k, run)) => Some(Box::new(rolled(&env, meter, &s, &contacts, k, run)?)),
+                    None => None,
+                };
+                (contacts, rolled)
+            }
         };
         blends.push(Blend {
             stripe: s,
             contacts,
             ends,
+            rolled,
         });
     }
 
@@ -747,7 +765,7 @@ fn add_stripes(
     joins: &Joins,
     drafted: &Drafted,
 ) -> Result<Vec<StripeMade>, OpError> {
-    let m = &mut *ctx.m;
+    let (m, view, ..) = ctx.parts();
     let Draft { rw, cuts, edits } = draft;
     let Joins {
         miters,
@@ -788,8 +806,18 @@ fn add_stripes(
                 }
             }
         }
+        // A run-over cuts the contacts at its crossings, and its own edits
+        // of the faces take the contacts' place (ADR-0071 §2).
+        let rolled = match &blend.rolled {
+            Some(rolled) => Some(add_run_over(m, view, rw, edits, blend, rolled, vertices)?),
+            None => None,
+        };
         let mut contact_edges = [0usize; 2];
         for (k, contact) in blend.contacts.iter().enumerate() {
+            if let Some(rolled) = &rolled {
+                contact_edges[k] = rolled.contacts[k][0];
+                continue;
+            }
             contact_edges[k] = rw.edges.len();
             rw.edges.push((
                 EdgeSpec::New {
@@ -895,6 +923,9 @@ fn add_stripes(
             }
         }
         for (k, contact) in blend.contacts.iter().enumerate() {
+            if rolled.is_some() {
+                continue;
+            }
             let pcurve = m.add_curve2(contact.on_face.clone());
             edits
                 .entry(contact.face)
@@ -908,6 +939,7 @@ fn add_stripes(
             contacts: contact_edges,
             arcs,
             added: 0,
+            rolled,
         });
     }
     Ok(made)
@@ -1135,12 +1167,36 @@ fn rewrite_faces(
             continue;
         }
         let mut loops: Vec<Vec<StoredUse>> = Vec::with_capacity(entity.loops().len());
+        // A run-over's gaps, by loop and the place in it (ADR-0071 §2).
+        let mut gaps: BTreeSet<(usize, usize)> = BTreeSet::new();
         for l in entity.loops() {
             let mut uses: Vec<StoredUse> = Vec::with_capacity(l.coedges().len() + 1);
             // Where each coedge's use sits in `uses`.
             let mut at: Vec<usize> = Vec::with_capacity(l.coedges().len());
+            let mut gapped: Vec<usize> = Vec::new();
             for c in l.coedges() {
                 let id = c.edge();
+                if let Some(pieces) = edit.and_then(|e| e.split.get(&id)) {
+                    // The pieces walked the way the coedge walks the edge.
+                    at.push(uses.len());
+                    let forward = c.orientation() == Orientation::Forward;
+                    let ordered: Vec<_> = if forward {
+                        pieces.iter().collect()
+                    } else {
+                        pieces.iter().rev().collect()
+                    };
+                    for piece in ordered {
+                        match *piece {
+                            Some((edge, pcurve)) => uses.push(StoredUse {
+                                edge,
+                                orientation: c.orientation(),
+                                pcurve,
+                            }),
+                            None => gapped.push(uses.len()),
+                        }
+                    }
+                    continue;
+                }
                 let (edge, pcurve) = match edit.and_then(|e| e.replace.get(&id)) {
                     Some(&(key, pcurve)) => (key, pcurve),
                     None => (
@@ -1233,12 +1289,48 @@ fn rewrite_faces(
                 uses = rest;
                 inner = Some(stretch);
             }
+            if !gapped.is_empty() {
+                if inner.is_some() || uses.is_empty() {
+                    return Err(invariant("a run-over's gap in a loop of its own"));
+                }
+                // Gaps with no use between them, round the loop too, are one.
+                for g in gapped {
+                    gaps.insert((loops.len(), g % uses.len()));
+                }
+            }
             loops.push(uses);
             loops.extend(inner);
         }
+        join_at_gaps(&mut loops, &gaps)?;
         end_on_kept_pcurves(m, rw, face, &mut loops, tol, samples, meter)?;
         rw.faces.insert(face, loops);
     }
+    Ok(())
+}
+
+/// `F`'s two loops with a run-over's gap joined into one (ADR-0071 §2):
+/// the contact's loop runs to one crossing and stops, the loop that held
+/// `E` runs on from it along `E`'s outer pieces to the other crossing, so
+/// each loop from its gap round to it, one after the other, is the
+/// joined loop. It takes the first one's place. No gap leaves the loops
+/// as they are.
+fn join_at_gaps(
+    loops: &mut Vec<Vec<StoredUse>>,
+    gaps: &BTreeSet<(usize, usize)>,
+) -> Result<(), OpError> {
+    if gaps.is_empty() {
+        return Ok(());
+    }
+    let [(a, at_a), (b, at_b)] = gaps.iter().copied().collect::<Vec<_>>()[..] else {
+        return Err(invariant("a run-over's two gaps on its face"));
+    };
+    if a == b {
+        return Err(invariant("a run-over's gaps on two loops of its face"));
+    }
+    let from_gap = |uses: &[StoredUse], at: usize| [&uses[at..], &uses[..at]].concat();
+    let joined = [from_gap(&loops[a], at_a), from_gap(&loops[b], at_b)].concat();
+    loops[a] = joined;
+    loops.remove(b);
     Ok(())
 }
 
@@ -1385,7 +1477,6 @@ fn add_blend_faces(
     for (blend, made) in blends.iter().zip(made.iter_mut()) {
         let contact_edges = made.contacts;
         let [lo, hi] = &blend.contacts;
-        let surface = m.add_surface(blend.stripe.surface.clone());
         let mut end_uses: [Vec<StoredUse>; 2] = Default::default();
         for (end_index, end) in blend.ends.iter().enumerate() {
             let arcs: Vec<(bool, &Curve2)> = match end {
@@ -1424,6 +1515,22 @@ fn add_blend_faces(
             }
         }
         let [start_arcs, end_arcs] = end_uses;
+        let shell = view.shell_of[&lo.face];
+        if let (Some(rolled), Some(rolled_made)) = (&blend.rolled, &mut made.rolled) {
+            add_rolled_faces(
+                m,
+                rw,
+                shell,
+                blend,
+                rolled,
+                rolled_made,
+                &mut made.added,
+                start_arcs,
+                end_arcs,
+            )?;
+            continue;
+        }
+        let surface = m.add_surface(blend.stripe.surface.clone());
         let mut loop_uses = start_arcs;
         loop_uses.push(StoredUse {
             edge: EdgeKey::New(contact_edges[1]),
@@ -1438,7 +1545,7 @@ fn add_blend_faces(
         });
         made.added = rw.added.len();
         rw.added.push(AddedFace {
-            shell: view.shell_of[&lo.face],
+            shell,
             surface,
             orientation: if blend.stripe.convex
                 != matches!(blend.stripe.section, Section::Walked { flipped: true, .. })
@@ -1655,6 +1762,23 @@ fn record(
             .flat_map(|(vertices, _)| vertices);
         for &v in made_here.chain(&made.crossings) {
             p.add_generated(origin, forward(out.vertices[v]));
+        }
+        // A run-over's second stripe face and rolled face, its contacts'
+        // other pieces, the rolled face's foot, the section arcs and the
+        // crossings; `E`'s pieces are its own, `Modified` (ADR-0071 §4).
+        if let Some(rolled) = &made.rolled {
+            for &k in &rolled.added {
+                p.add_generated(origin, forward(out.added[k]));
+            }
+            let edges = (rolled.contacts.iter().map(|c| &c[1]))
+                .chain([&rolled.foot])
+                .chain(&rolled.arcs);
+            for &k in edges {
+                p.add_generated(origin, forward(out.edges[k]));
+            }
+            for &v in rolled.vertices.iter().flatten() {
+                p.add_generated(origin, forward(out.vertices[v]));
+            }
         }
     }
     // A trim arc's `m`, the narrower blend's vertex, from the wider

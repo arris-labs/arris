@@ -17,7 +17,7 @@ use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
 use super::build::Env;
 use super::ends::stretch_between;
-use super::run_over::{self, Leaving};
+use super::run_over::{self, Leaving, RunOver};
 use super::traced;
 use super::{Kind, degenerate, invariant};
 use crate::body_view::tangent_normals;
@@ -761,20 +761,26 @@ pub(super) fn section_between(
     }
 }
 
+/// A contact that leaves its face, by its index, and its run-over.
+pub(super) type Leaves = (usize, RunOver);
+
 /// The contact lines of `s` between their parameters at its two ends,
-/// `t[end][contact]`, each checked to lie inside its face; one that
-/// leaves it is refused naming the edge it crosses where it crosses one
-/// (`run_over::refusal`, ADR-0071).
+/// `t[end][contact]`, each checked to lie inside its face, and the
+/// run-over of the one that leaves it with its index (ADR-0071). A
+/// contact that leaves its face and is no run-over, or a second one that
+/// leaves, is refused naming the edge it crosses where it crosses one
+/// (`run_over::run`).
 pub(super) fn contacts(
     env: &Env<'_>,
     s: &Stripe,
     t: [[f64; 2]; 2],
     meter: &mut Meter<'_>,
-) -> Result<[Contact; 2], OpError> {
+) -> Result<([Contact; 2], Option<Leaves>), OpError> {
     meter.tick()?;
     let (m, tol, samples) = (env.m, env.tol, env.samples);
     let e = forward(s.edge);
     let mut contacts: Vec<Contact> = Vec::with_capacity(2);
+    let mut run: Option<Leaves> = None;
     let spans = [0, 1].map(|k| (t[0][k], t[1][k]));
     for (k, ((&face, line), &(lo, hi))) in s.faces.iter().zip(&s.lines).zip(&spans).enumerate() {
         let too_large = || degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
@@ -816,7 +822,10 @@ pub(super) fn contacts(
                 centres,
                 tolerance: s.tolerance,
             });
-            return Err(run_over::refusal(env, leaving.as_ref(), too_large(), meter));
+            if run.is_some() {
+                return Err(run_over::refusal(env, leaving.as_ref(), too_large(), meter));
+            }
+            run = Some((k, run_over::run(env, leaving.as_ref(), too_large(), meter)?));
         }
         let u = if k == 0 { 0.0 } else { s.u1 };
         let on_blend = pcurve_on(line, range, &s.surface, line_tol, meter).map_err(fault_of)?;
@@ -830,7 +839,8 @@ pub(super) fn contacts(
             tolerance: s.tolerance,
         });
     }
-    contacts
+    let contacts = contacts
         .try_into()
-        .map_err(|_| invariant("two contacts of the blend"))
+        .map_err(|_| invariant("two contacts of the blend"))?;
+    Ok((contacts, run))
 }

@@ -332,6 +332,53 @@ impl NurbsSurface {
         Some(points)
     }
 
+    /// The surface over `range` of direction `dir`, the other direction
+    /// whole: the same surface point for point and parameter for parameter
+    /// there, its knots clamped at `range`'s ends. `None` where `dir` is
+    /// periodic or `range` is not inside its domain.
+    pub(crate) fn segment(&self, dir: usize, range: Interval) -> Option<NurbsSurface> {
+        let domain = self.domain_of(dir);
+        if self.period[dir].is_some() || range.lo() < domain.lo() || range.hi() > domain.hi() {
+            return None;
+        }
+        let [n, m] = self.counts;
+        let (lines, length) = if dir == 0 { (m, n) } else { (n, m) };
+        let at = |line: usize, k: usize| if dir == 0 { k * m + line } else { line * m + k };
+        let mut pieces = Vec::with_capacity(lines);
+        for line in 0..lines {
+            let spline = super::spline::Spline::<3>::new(
+                self.degree[dir],
+                self.knots[dir].clone(),
+                (0..length).map(|k| self.points[at(line, k)]).collect(),
+                (0..length).map(|k| self.weights[at(line, k)]).collect(),
+            )
+            .ok()?;
+            pieces.push(spline.segment(range.lo(), range.hi()).ok()?);
+        }
+        let first = pieces.first()?;
+        let (kept, knots) = (first.points().len(), first.knots().to_vec());
+        if pieces.iter().any(|p| p.points().len() != kept) {
+            return None;
+        }
+        let counts = if dir == 0 { [kept, m] } else { [n, kept] };
+        let mut points = vec![Point3::origin(); counts[0] * counts[1]];
+        let mut weights = vec![1.0; counts[0] * counts[1]];
+        for (line, piece) in pieces.iter().enumerate() {
+            for k in 0..kept {
+                let slot = if dir == 0 {
+                    k * counts[1] + line
+                } else {
+                    line * counts[1] + k
+                };
+                points[slot] = piece.points()[k];
+                weights[slot] = piece.weights()[k];
+            }
+        }
+        let mut all = self.knots.clone();
+        all[dir] = knots;
+        NurbsSurface::new(self.degree, all, points, weights).ok()
+    }
+
     /// `[u, v]` domains.
     pub fn domain(&self) -> [Interval; 2] {
         [self.domain_of(0), self.domain_of(1)]
@@ -678,5 +725,43 @@ mod tests {
         assert_eq!(s.control_point(4, 1), Some(rows[1][1]));
         assert_eq!(s.control_point(5, 0), None);
         assert_eq!(s.domain()[0], Interval::new(2.0, 5.0).unwrap());
+    }
+
+    #[test]
+    fn a_segment_is_the_surface_over_its_range() {
+        // A rational bi-quadratic over two spans in `u`, cut in each
+        // direction inside a span and at the knot between.
+        let net: Vec<Point3> = (0..4)
+            .flat_map(|i| {
+                (0..3).map(move |j| Point3::new(i as f64, j as f64, ((i * j) % 3) as f64))
+            })
+            .collect();
+        let weights = (0..12).map(|k| 1.0 + 0.1 * (k % 4) as f64).collect();
+        let s = NurbsSurface::new(
+            [2, 2],
+            [
+                vec![0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0],
+                vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+            ],
+            net,
+            weights,
+        )
+        .unwrap();
+        for (dir, lo, hi) in [(0, 0.2, 0.5), (0, 0.3, 0.9), (1, 0.25, 0.6)] {
+            let range = Interval::new(lo, hi).unwrap();
+            let piece = s.segment(dir, range).unwrap();
+            assert_eq!(piece.domain()[dir], range);
+            assert_eq!(piece.domain()[1 - dir], s.domain()[1 - dir]);
+            for i in 0..=8 {
+                for j in 0..=8 {
+                    let a = range.lerp(i as f64 / 8.0);
+                    let b = s.domain()[1 - dir].lerp(j as f64 / 8.0);
+                    let (u, v) = if dir == 0 { (a, b) } else { (b, a) };
+                    let (p, q) = (s.eval(u, v).point, piece.eval(u, v).point);
+                    assert!((p - q).norm() < 1e-13, "{dir} at ({u}, {v}): {p} vs {q}");
+                }
+            }
+        }
+        assert!(s.segment(0, Interval::new(-0.1, 0.5).unwrap()).is_none());
     }
 }

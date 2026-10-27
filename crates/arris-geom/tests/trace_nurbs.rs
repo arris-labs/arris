@@ -660,6 +660,84 @@ fn a_tangent_isoline_on_a_closed_seam_and_two_isolines_alone_are_exact() {
     );
 }
 
+/// The Bézier patch of the graph `z = Σ aᵢⱼ xⁱ yʲ` over `[0, 1]²`, `x` its
+/// `u` and `y` its `v`, from the power coefficients `a[i][j]`: each control
+/// point's height the blossom's, `Σ C(k, i)/C(m, i)·C(l, j)/C(n, j)·aᵢⱼ`.
+fn graph_patch(a: &[Vec<f64>]) -> NurbsSurface {
+    let (m, n) = (a.len() - 1, a[0].len() - 1);
+    let choose = |n: usize, k: usize| (0..k).fold(1.0, |c, i| c * (n - i) as f64 / (i + 1) as f64);
+    let height = |k: usize, l: usize| {
+        let mut z = 0.0;
+        for (i, row) in a.iter().enumerate().take(k + 1) {
+            for (j, &aij) in row.iter().enumerate().take(l + 1) {
+                z += choose(k, i) / choose(m, i) * choose(l, j) / choose(n, j) * aij;
+            }
+        }
+        z
+    };
+    let net: Vec<Point3> = (0..=m)
+        .flat_map(|k| (0..=n).map(move |l| (k, l)))
+        .map(|(k, l)| Point3::new(k as f64 / m as f64, l as f64 / n as f64, height(k, l)))
+        .collect();
+    let clamped = |d: usize| [vec![0.0; d + 1], vec![1.0; d + 1]].concat();
+    let count = net.len();
+    NurbsSurface::new([m, n], [clamped(m), clamped(n)], net, vec![1.0; count]).unwrap()
+}
+
+#[test]
+fn two_isolines_with_more_of_the_section_between_are_traced_a_piece_at_a_time() {
+    // `z = (y − 0.2)(y − 0.8)((x − ½)² + (y − ½)² − 0.04)` against `z = 0`:
+    // the rows `y = 0.2` and `y = 0.8` and the circle of `0.2` about the
+    // patch's middle between them. Neither row divided out alone leaves
+    // the section empty, so the patch is cut at `y = ½` and each piece
+    // traced with its one row (a run-over's rolled face, ADR-0071).
+    // `(x² − x)·q(y) + q(y)·r(y)`, `q = y² − y + 0.16` and `r = y² − y +
+    // 0.46`, by powers of `x` then of `y`.
+    let (q, r) = ([0.16, -1.0, 1.0], [0.46, -1.0, 1.0]);
+    let mut a = vec![vec![0.0; 5]; 3];
+    for (j, &c) in q.iter().enumerate() {
+        a[1][j] = -c;
+        a[2][j] = c;
+        for (k, &d) in r.iter().enumerate() {
+            a[0][j + k] += c * d;
+        }
+    }
+    let nurbs = graph_patch(&a);
+    let at = |x: f64, y: f64| {
+        (y - 0.2) * (y - 0.8) * ((x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5) - 0.04)
+    };
+    for (x, y) in [(0.1, 0.3), (0.7, 0.9), (0.5, 0.5)] {
+        let z = nurbs.eval(x, y).point.z;
+        assert!((z - at(x, y)).abs() < 1e-14, "the patch at ({x}, {y}): {z}");
+    }
+    let plane = Surface::Plane {
+        frame: Frame::world(),
+    };
+    let surface = Surface::Nurbs(nurbs.clone());
+    let found = trace(&surface, &plane).unwrap();
+    let lines = [
+        (1, Point3::new(0.3, 0.2, 0.0)),
+        (1, Point3::new(0.3, 0.8, 0.0)),
+    ];
+    assert_eq!(
+        isolines_are_exact(&found, &nurbs, &plane, &lines),
+        [false, false]
+    );
+    // The circle, in two halves cut at the piece's edge `y = ½`.
+    assert_eq!(found.branches().len(), 2, "{found:?}");
+    for branch in found.branches() {
+        for p in samples(branch, 33) {
+            let off = real::hypot(p.x - 0.5, p.y - 0.5) - 0.2;
+            assert!(
+                off.abs() <= tol().linear && p.z.abs() <= tol().linear,
+                "{p}"
+            );
+        }
+        let ends = [branch.domain().lo(), branch.domain().hi()].map(|t| branch.point(t));
+        assert!(ends.iter().all(|e| (e.y - 0.5).abs() <= 1e-12), "{ends:?}");
+    }
+}
+
 /// The surfaces that hold the tube circle at `u0` of the ring `R = 2, r =
 /// ½` about the world's `z`, with how many tube circles each holds and
 /// whether it is tangent along them: those of `tests/trace_torus.rs`

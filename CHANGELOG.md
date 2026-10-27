@@ -8,6 +8,14 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A fillet whose contact runs into a hole now builds where it was refused
+  as `BlendTooLarge`: the lip of a slab filleted over a cross hole just
+  below it rounds over the hole's rim, as Open CASCADE builds it. The
+  blend between the two places its contact meets the rim is one fitted
+  face from the top down to the rim. A ring round a boss whose contact
+  runs off the plate's edge is still refused, naming the boss's root and
+  the plate's edge.
+
 ### Breaking
 
 - `arris_topo::builder::BuildError` nests its refusals by kind: `Slot`

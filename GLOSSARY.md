@@ -153,12 +153,15 @@ line.
 **Run-over**:
 A stripe whose contact leaves its face through a convex edge that is not
 the corner's own, an outer edge or a hole's rim. Between the two
-crossings the ball rolls on that edge (ADR-0071).
+crossings each section, in the stripe's own plane, is the circle of the
+radius tangent to the other face through the point where that edge
+crosses the plane (ADR-0071, amended).
 _Avoid_: cliff edge, overflow
 
 **Rolled face**:
-The face a run-over's ball sweeps while it rolls on the crossed edge: a
-walked stripe between the other face and the edge (ADR-0071).
+The face a run-over's sections sweep between the crossings, from the
+other face to the crossed edge: skinned through them as a walked stripe
+is (ADR-0071, amended).
 
 **Chain**:
 Edges a blend continues across because both faces turn where they meet

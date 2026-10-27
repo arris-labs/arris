@@ -44,15 +44,14 @@ against their Open CASCADE checkpoints. Each case is a fixture under
   - The contact on face `F` crosses `E`, a convex edge of `F` that is not
     the corner's own. `E` is an outer edge (pi) or a hole's rim (phone).
     Write `H` for the blend's other face and `G` for `E`'s other face.
-  - Between the two crossings the ball touches `H` and `E`'s curve. Its
-    centre runs on the section of `H`'s offset by `r` with the pipe of
-    radius `r` about `E`. That pipe is a cylinder about a line (pi: a
-    cylinder against a cylinder) or a torus about a circle (phone: a plane
-    against a torus). Both are traced (ADR-0037).
-  - The **rolled face** is a walked stripe (ADR-0062) of circular
-    sections, from the contact on `H` to `E`'s point. Open CASCADE fits
-    the same face as a rational patch of degree 2 across; its section at
-    the fixtures' midpoints agrees with the rolled ball to 1.5e-6.
+  - Between the two crossings each section, in the stripe's own plane
+    (square to its axis, a ring's meridian plane), is the circle of
+    radius `r` centred on `H`'s offset through the point where `E`
+    crosses that plane. *Settled* (step 4, ADR-0071 amended): not the
+    ball touching `E`, which Open CASCADE matches at the middle only.
+  - The **rolled face** is skinned through those sections, from the
+    contact on `H` to `E`'s point, carried past each crossing (ADR-0071,
+    amended). Open CASCADE fits it as a rational patch.
   - The closed-form blend ends at the section circle through each
     crossing, which it shares with the rolled face, tangent across it.
     The ring's torus becomes one face open at the rolled face; the open
@@ -68,10 +67,12 @@ against their Open CASCADE checkpoints. Each case is a fixture under
     variant, so `arris-py` is unchanged.
 - **`crates/arris-ops/src/blend/run_over.rs`** (new, `pub(super)`). It
   finds the crossings where `on_side_of_face` says false today and pairs
-  them into run-overs. It traces the spine, walks the rolled face, and
-re-cuts `F` and `E` and the closed-form blend. `stripe.rs` and
-  `ring.rs` call it before they refuse. No public type or signature
-  changes.
+  them into run-overs, and finds each section between them.
+  **`rolled.rs`** (new, step 4) skins the rolled face and re-cuts `F`,
+  `E` and the closed-form blend; `build.rs`'s `FaceEdit::split` cuts an
+  edge into pieces on a face, a gap where `F`'s two loops join.
+  `stripe.rs` and `ring.rs` call it before they refuse. No public type or
+  signature changes.
 - **Provenance** (DATA-MODEL §Provenance): the blend faces and the
   rolled face are `Generated`; `F`, `G` and `E`'s pieces are `Modified`;
   the crossing vertices are `Generated`. No new kind.
@@ -79,7 +80,9 @@ re-cuts `F` and `E` and the closed-form blend. `stripe.rs` and
   closed-form blend by the walked stripe's arms (ADR-0062). Arris's
   checker leaves Open CASCADE's own patch undecided against the torus and
   the hole's wall. If Arris's rolled face hits the same gap, the step
-  that meets it adds the arm and says so.
+  that meets it adds the arm and says so. *Settled* (step 4): the
+  rolled face's two rows on the stripe's one cylinder are traced a piece
+  at a time (ADR-0061, amendment of 2026-10-27).
 - **Glossary**: *Run-over*: a blend whose contact leaves its face through
   an edge that is not the corner's own; between the crossings the ball
   rolls on that edge. *Rolled face*: the face it sweeps there. _Avoid_:
@@ -108,11 +111,13 @@ given design; **[3]** unproven, robustness or bound established here.
   *Settled*: a traced run-over is refused naming `E` too until step 4
   builds it; ADR-0071 §3's feet on `H` are checked by the rolled face's
   walk there, which has them.
-- [ ] Step 4 **[3]**: the convex blend over a hole's rim (phone). The
+- [x] Step 4 **[3]**: the convex blend over a hole's rim (phone). The
   rolled face is walked, its feet on `H` checked inside `H`, the
   cylinder is cut in two, and the rim's loop
   joins `F`'s outer loop. The fixture moves to `blend/` with its dump;
   volume, area and inertia match the oracle. CHANGELOG bullet.
+  *Settled*: step 3's traced spine is gone (ADR-0071, amended); the
+  lip's 16/25/10 against 17/27/11 is `counts_differ`.
 - [ ] Step 5 **[3]**: the concave ring over an outer edge (pi). The
   torus is opened at the rolled face, and the plate's front edge is
   split. The fixture moves to `blend/`.

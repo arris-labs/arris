@@ -1,6 +1,7 @@
 # ADR-0071 — A blend that runs over an edge rolls on it: between the two crossings the ball touches the other face and the edge, a walked rolled face
 
-- Status: accepted (2026-10-27)
+- Status: accepted (2026-10-27); §1's construction amended the same day
+  (below, plan step 4)
 - Plan: `blend-runs-onto` step 2 (the decision, on step 1's fixtures and a
   probe of the census). The spine lands in step 3, the hole's rim in step
   4, the outer edge in step 5.
@@ -123,6 +124,60 @@ Anything else stays `BlendTooLarge`, naming the blended edge and `E`.
 - `E`'s middle stretch keeps `E`'s id as one more `Modified` piece, since
   it is the same curve between the same two faces, `G` and now the
   rolled face.
+
+### The sections are the stripe's own (amendment, 2026-10-27)
+
+`plans/blend-runs-onto` step 4. Built as §1 says, the lip over the hole
+held the checker but came out `0.091` below Open CASCADE's volume
+(`6.3e-5` relative) and `0.043` below its area. Step 2 had read Open
+CASCADE's patch only at the middle section, `y = 10` and `x = 5`, where
+the two constructions agree. Probes off the middle settle it. On the
+slab at `y = 8` and `y = 11.6`, a point on the ball rolled on the rim
+classifies `in` against Open CASCADE's body, and so does one on the
+section below. At `y = 8`, a point `2e-6` past the circle described
+below is `out`. On the plate, for edge points at `x = 4.0`, `4.3` and
+`4.6`, the patch lies between `±6e-5` of that circle in each meridian
+plane, and a point on the rolled ball is `out`.
+
+So **§1's construction is replaced.** It was the ball's centre on the
+section of `H`'s offset with the pipe about `E`, traced. The rolled face's
+sections are now the stripe's own, in the planes its section arcs lie in:
+square to the stripe's axis, or the ring's meridian planes. In the plane
+at the contact's parameter `t`:
+
+- `E` crosses the plane at one point `e(t)`, found by Newton's iteration
+  from the section before.
+- The section is the circle of radius `r` with its centre on `H`'s
+  offset. That offset meets the plane in a line through the stripe's
+  centre there, at `r` from `e(t)`: of the two such points, the nearer
+  that centre, which the crossings are at.
+- The arc runs from its foot on `H` to `e(t)`.
+
+This is the ball touching `E` only where the stripe's plane holds `E`'s
+nearest point, the middle section of both fixtures. Elsewhere the circle
+passes through `e(t)` and does not touch `E`. The face is still tangent
+to `H` along its foot and to the stripe across each crossing's arc. At a
+crossing the centre's offset from the stripe's centre vanishes to second
+order. It meets `G` along `E` at a crease. Nothing is traced: each
+section is the closed form above.
+
+- **§3's last clause** ("the spine is traced between the two crossings")
+  now reads: every section between the crossings has its circle, `E`'s
+  point running from the first crossing to the second. A line or a circle
+  stays the only `E` taken, though the construction no longer needs it
+  to; step 6 decides the ellipse.
+- **The rolled face's surface** is skinned through the sections along `t`,
+  carried a quarter of the stretch past each crossing where `E` still
+  crosses the planes, so that the arcs it shares with the stripe are rows
+  inside its domain. It is fitted to a quarter of the section fit's
+  budget. At the whole budget its slope across those arcs, `1.0e-6`, was
+  above the `4e-7` the tracer reads as tangent.
+- **S5.** Both rows lie on the stripe's one cylinder, so the rolled face
+  meets that surface in two isolines with more of the section besides.
+  The tracer now traces such a surface a piece at a time (ADR-0061,
+  amendment of this date). The lip then decides every pair at `Full`
+  and holds to Open CASCADE's volume within `1.2e-9`, the residue of
+  its rational fit.
 
 ## Consequences
 
