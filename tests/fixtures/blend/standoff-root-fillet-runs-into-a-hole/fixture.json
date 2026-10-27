@@ -1,0 +1,27 @@
+{
+  "description": "a plate 10 x 10 x 2 with a hole of radius 1 through it at (5, 8.2), and a boss of radius 2 and height 2 on its top at (5, 5), the boss's root circle filleted at r 0.6. The concave ring's contact on the plate's top, a circle of radius 2.6 about the boss's axis, runs into the hole's rim, a circle of radius 1 whose edge is not the blend's own: the two circles meet in two points, the ball rolling on the rim between them: a rational patch from the boss's contact down to the rim, as for a plate's outer edge (blend/standoff-root-fillet-runs-off-the-plate), the torus left either side of it. Arris keeps the torus one face open at the rolled face, and the hole's loop joins the top's contact loop",
+  "params": {"R": 2, "r": 0.6, "a": 1, "h": 8.2},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [10, 0]}, {"line_to": [10, 10]}, {"line_to": [0, 10]}, {"line_to": [0, 0]}]},
+     "holes": [{"circle": {"center": [5, "h"], "radius": "a"}}]},
+    {"name": "plate", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 2},
+    {"name": "boss", "op": "cylinder", "base": [5, 5, 1], "axis": [0, 0, 1], "radius": "R", "height": 3},
+    {"name": "part", "op": "fuse", "a": "plate", "b": "boss"},
+    {"name": "result", "op": "fillet", "of": "part", "edges": [[5, "5 + R", 2]], "radius": "r"}
+  ],
+  "result": "result",
+  "tolerances": {"probe": 1e-5},
+  "probes": [
+    {"label": "inside", "point": [1, 1, 1], "expect": "in"},
+    {"label": "in_boss", "point": [5, 5, 3], "expect": "in"},
+    {"label": "in_the_hole", "point": [5, "h", 1], "expect": "out"},
+    {"label": "on_top", "point": [1, 1, 2], "expect": "on"},
+    {"label": "on_back_contact", "point": [5, "5 - R - r", 2], "expect": "on"}
+  ],
+  "analytic": {
+    "counts": {"vertices": 17, "edges": 26, "faces": 11, "loops": 13, "shells": 1},
+    "genus": 1,
+    "counts_differ": "Open CASCADE splits the ring's torus in two, either side of the rolled patch, joined by an edge at the seam; Arris keeps the torus one face open at the rolled face, its seam inside it (ADR-0071 §2)"
+  }
+}

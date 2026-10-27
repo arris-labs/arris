@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "9dfd6955153de4bd547f6fcf80d398e9e6885e49d8ef53498e2799a02bf06ee1",
+  "results": {
+    "default": {
+      "area": 284.4438171255491,
+      "centroid": [
+        4.999999999999998,
+        5.1317990235958275,
+        0.9957396640323117
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          1636.1600825057767,
+          7.366907084360719e-11,
+          1.1368683772161603e-13
+        ],
+        [
+          7.366907084360719e-11,
+          1728.2207847734671,
+          -2.94757229972231
+        ],
+        [
+          1.1368683772161603e-13,
+          -2.94757229972231,
+          3236.6524700984646
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 10,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            5.0,
+            5.0,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            5.0,
+            1.5,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front",
+          "point": [
+            5.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            5.0,
+            5.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_back_contact",
+          "point": [
+            5.0,
+            3.3,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_contact",
+          "point": [
+            5.0,
+            2.5,
+            1.2
+          ]
+        }
+      ],
+      "volume": 192.7307523592348
+    }
+  }
+}

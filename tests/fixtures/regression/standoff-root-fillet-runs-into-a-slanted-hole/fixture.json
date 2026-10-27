@@ -1,0 +1,21 @@
+{
+  "description": "a plate 10 x 10 x 2 with a hole of radius 1 drilled 15 degrees off the plate's normal, its rim on the top an ellipse centred at (5, 8.2), and a boss of radius 2 and height 2 on the top at (5, 5), the boss's root circle filleted at r 0.6. The concave ring's contact on the top, a circle of radius 2.6 about the boss's axis, runs into the ellipse and out of it again, 2.165 from the boss's axis at the nearest. Open CASCADE rolls the ball on the ellipse between the two crossings as it does on a circular rim (blend/standoff-root-fillet-runs-into-a-hole). Arris refuses it as BlendTooLarge: a run-over's E is a line or a circle (ADR-0071 §3)",
+  "params": {"R": 2, "r": 0.6},
+  "steps": [
+    {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [10, 10, 2]},
+    {"name": "drill", "op": "cylinder", "base": [5, 7.4, -1], "axis": [0, 0.2588190451, 0.9659258263], "radius": 1, "height": 6},
+    {"name": "drilled", "op": "cut", "target": "plate", "tool": "drill"},
+    {"name": "boss", "op": "cylinder", "base": [5, 5, 1], "axis": [0, 0, 1], "radius": "R", "height": 3},
+    {"name": "part", "op": "fuse", "a": "drilled", "b": "boss"},
+    {"name": "result", "op": "fillet", "of": "part", "edges": [[5, "5 + R", 2]], "radius": "r"}
+  ],
+  "result": "result",
+  "tolerances": {"probe": 1e-5},
+  "probes": [
+    {"label": "inside", "point": [1, 1, 1], "expect": "in"},
+    {"label": "in_boss", "point": [5, 5, 3], "expect": "in"},
+    {"label": "in_the_hole", "point": [5, 8.2, 2], "expect": "out"},
+    {"label": "on_top", "point": [1, 1, 2], "expect": "on"},
+    {"label": "on_back_contact", "point": [5, "5 - R - r", 2], "expect": "on"}
+  ]
+}

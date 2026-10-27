@@ -248,6 +248,7 @@ blend/hex-chamfer-foot-fan-chamfer: 11
 blend/hex-chamfer-foot-fan-fillet: 595
 blend/hole-rim-chamfer: 2
 blend/hole-rim-fillet: 2
+blend/hole-rim-fillet-runs-off-the-plate: 363296
 blend/l-inner-edge: 5
 blend/line-into-arc-fillet: 7
 blend/lip-fillet-runs-into-a-hole: 405415
@@ -300,6 +301,7 @@ blend/split-torus-ring-fillet: 6
 blend/stadium-outline-chamfer: 14
 blend/stadium-outline-fillet: 14
 blend/stadium-pocket-chamfer-root-fillet: 14
+blend/standoff-root-fillet-runs-into-a-hole: 560732
 blend/standoff-root-fillet-runs-off-the-plate: 366576
 blend/tangent-chain-cap-edge: 12
 blend/tangent-edge-beside-a-crease-fillet: refused

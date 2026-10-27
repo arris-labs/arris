@@ -126,7 +126,7 @@ given design; **[3]** unproven, robustness or bound established here.
   the seam lying inside its face. 15/23/10 against 15/24/11 is
   `counts_differ`; volume, area and inertia hold to 1e-8 (1.1e-9 in
   volume, the patch's residue, as the lip's).
-- [ ] Step 6 **[2]**: the neighbours of these two cases: a convex blend
+- [x] Step 6 **[2]**: the neighbours of these two cases: a convex blend
   over an outer edge, a concave one over a hole's rim, and an `E` that is
   an ellipse. Each becomes a fixture with its oracle, or an
   `expect_error` fixture where Open CASCADE refuses too.

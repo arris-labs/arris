@@ -1517,6 +1517,11 @@ corpus_tests! {
     /// edge as built.
     #[ignore = "kernel bug: the blend's output fails the checker at L2, pcurves 4.6e-7 apart where the file's faces are 1e-7 tolerant (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
     regression_nist_ctc_03_two_plane_edges_fillet_checker_fault => run "regression/nist-ctc-03-two-plane-edges-fillet-checker-fault";
+    /// A boss's root filleted where its contact on the plate's top runs into
+    /// a slanted hole's elliptical rim: Open CASCADE rolls the ball on the
+    /// ellipse between the two crossings.
+    #[ignore = "BlendTooLarge: the contact runs over an elliptical rim, and a run-over's E is a line or a circle (ADR-0071 §3)"]
+    regression_standoff_root_fillet_runs_into_a_slanted_hole => run "regression/standoff-root-fillet-runs-into-a-slanted-hole";
     /// A box cut to a barrel and a plane beside the corner, the vertical edge
     /// at the origin blended: its end reaches a vertex of four edges whose faces
     /// across are a plane and a cylinder, a fan of two with a curved piece,
@@ -1535,6 +1540,12 @@ corpus_tests! {
     /// ball rolls on that edge between the two crossings, the torus left in
     /// one face open at the rolled face (ADR-0071).
     blend_standoff_root_fillet_runs_off_the_plate => run "blend/standoff-root-fillet-runs-off-the-plate";
+    /// A boss's root filleted where its contact on the plate's top runs into
+    /// a hole's rim: the ball rolls on the rim between the two crossings.
+    blend_standoff_root_fillet_runs_into_a_hole => run "blend/standoff-root-fillet-runs-into-a-hole";
+    /// A hole's rim filleted where its contact on the top runs off the
+    /// plate's front edge: the convex ring rolls on that edge.
+    blend_hole_rim_fillet_runs_off_the_plate => run "blend/hole-rim-fillet-runs-off-the-plate";
     /// A block under a convex roof of three planes, the rise at the origin
     /// blended: its end reaches a vertex of five edges whose faces across are a
     /// fan of three, one arc on each and a vertex on each of the two ridges, as

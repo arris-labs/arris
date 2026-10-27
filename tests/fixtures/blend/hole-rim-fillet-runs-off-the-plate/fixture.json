@@ -1,0 +1,26 @@
+{
+  "description": "a 10 x 10 plate 2 thick with a hole of radius 1 through it, its axis 1.5 from the front edge y = 0; the hole's top rim filleted at r 0.8. The convex ring's contact on the top is a circle of radius 1.8 about the hole's axis, which leaves the top through the plate's front edge, not the blend's own, between x = 5 ± √(1.8² − 1.5²). The ball rolls on that edge there, as Open CASCADE rolls it for a boss's root (blend/standoff-root-fillet-runs-off-the-plate); the torus is one face open at the rolled face",
+  "params": {"a": 1, "d": 1.5, "r": 0.8},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [10, 0]}, {"line_to": [10, 10]}, {"line_to": [0, 10]}, {"line_to": [0, 0]}]},
+     "holes": [{"circle": {"center": [5, "d"], "radius": "a"}}]},
+    {"name": "plate", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 2},
+    {"name": "result", "op": "fillet", "of": "plate", "edges": [[5, "d + a", 2]], "radius": "r"}
+  ],
+  "result": "result",
+  "tolerances": {"probe": 1e-5, "volume_rel": 1e-8, "area_rel": 1e-8, "inertia_rel": 1e-8},
+  "probes": [
+    {"label": "inside", "point": [5, 5, 1], "expect": "in"},
+    {"label": "in_the_hole", "point": [5, "d", 1], "expect": "out"},
+    {"label": "on_front", "point": [5, 0, 1], "expect": "on"},
+    {"label": "on_top", "point": [5, 5, 2], "expect": "on"},
+    {"label": "on_back_contact", "point": [5, "d + a + r", 2], "expect": "on"},
+    {"label": "on_wall_contact", "point": [5, "d + a", "2 - r"], "expect": "on"}
+  ],
+  "analytic": {
+    "counts": {"vertices": 15, "edges": 23, "faces": 9, "loops": 10, "shells": 1},
+    "genus": 1,
+    "counts_differ": "Open CASCADE splits the ring's torus in two, either side of the rolled patch, joined by an edge at the seam; Arris keeps the torus one face open at the rolled face, its seam inside it (ADR-0071 §2)"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "43216cd5aa5a18eddb81129c16159c17109bcaa54567945be6402deb6b65d2d3",
+  "results": {
+    "default": {
+      "area": 308.7012860466301,
+      "centroid": [
+        4.999999999900718,
+        4.912665459123254,
+        1.2339714366096992
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 14,
+        "loops": 17,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          1797.0129660810098,
+          3.1418494472745806e-08,
+          1.9565277398214675e-08
+        ],
+        [
+          3.1418494472745806e-08,
+          1855.2107107513948,
+          -3.7977170375399965
+        ],
+        [
+          1.9565277398214675e-08,
+          -3.7977170375399965,
+          3326.8998459210125
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 14,
+        "loops": 17,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_boss",
+          "point": [
+            5.0,
+            5.0,
+            3.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_hole",
+          "point": [
+            5.0,
+            8.2,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top",
+          "point": [
+            1.0,
+            1.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_back_contact",
+          "point": [
+            5.0,
+            2.4,
+            2.0
+          ]
+        }
+      ],
+      "volume": 219.6261134902307
+    }
+  }
+}
