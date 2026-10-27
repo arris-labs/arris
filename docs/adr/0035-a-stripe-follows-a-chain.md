@@ -95,6 +95,9 @@ contacts meet at `q`; `w` is shortened to `p` on its own curve; `v`
 goes. The two balls being one is checked, not assumed: centres apart by
 more than the tolerance, or one convex and one concave, is an internal
 fault, which the tangent-vertex test above makes unreachable.
+*(Amended by ADR-0072: where `w` is a line leaning out of that plane and
+the shared face a plane, the one ball is centred where `w`'s offset meets
+the shared face's, off the vertex; the arc runs between its feet there.)*
 
 **4. An open arc between a plane and a cylinder blends to a section of
 the ring's surface.** A circular edge where a plane meets a cylinder

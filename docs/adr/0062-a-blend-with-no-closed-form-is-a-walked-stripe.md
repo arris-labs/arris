@@ -373,6 +373,9 @@ with its Python class, `GeomOffsetFoldsError`.
   `9.1e-3`. The shared ball is where the ruling's offset meets the top
   face's offset. The refusal stays `VertexBlend`, joined to the backlog
   line of the chain through a torus, which is the same kind of vertex.
+  *(Amended by ADR-0072: where the ruling is a line and the top a plane,
+  the junction is built on that ball, off the vertex; the torus stays
+  refused.)*
 
 - **Step 10e (what holds FTC-10 and FTC-11).** Both leave `regression/` for
   `blend/` with tolerances widened under the step-5b allowance, each

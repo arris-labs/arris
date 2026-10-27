@@ -4,7 +4,7 @@ use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_geom::{Curve, Curve2, Surface, pcurve_on};
-use arris_math::{Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3};
+use arris_math::{Axis, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
 use super::chain::parameter_at;
@@ -373,4 +373,156 @@ pub(super) fn junction(
             None => tolerance,
         },
     })
+}
+
+/// The shared ball of a junction whose tangent edge leans (ADR-0072 §1):
+/// its centre `c*` and its feet on the shared plane and on the edge.
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "read by the module's tests until the runs end at it (plans/three-edge-run-vertex step 3)"
+    )
+)]
+pub(super) struct Leaning {
+    /// `c*`, at the radius from the shared plane `P` and from both faces
+    /// tangent along the edge `w`.
+    pub(super) centre: Point3,
+    /// `c*`'s foot on `P`, where the runs' contacts on it meet.
+    pub(super) q: Point3,
+    /// `c*`'s foot on `w`, a point of its line, where `w` is cut.
+    pub(super) p: Point3,
+}
+
+/// `c* = w_r ∩ offset(P, σ r)` (ADR-0072 §1). `plane` is `P`, a point of
+/// it and its outward normal; `w` the vertex's third edge, a line; `n` the
+/// outward normal its two faces share all along it; `σ` −1 for a convex
+/// blend, +1 for a concave one. The arc of the junction is the great circle
+/// from `q` to `p` (§2). `None` where `w` is parallel to `P` within
+/// `angular`: no ball touches the three there.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the leaning junction's ball is read by the module's tests until the runs end at it (ADR-0072, plans/three-edge-run-vertex step 3)"
+    )
+)]
+pub(super) fn leaning_ball(
+    plane: Axis,
+    w: Axis,
+    n: UnitVec3,
+    radius: f64,
+    convex: bool,
+    angular: f64,
+) -> Option<Leaning> {
+    let sigma = if convex { -1.0 } else { 1.0 };
+    let (n_p, d) = (plane.direction.into_inner(), w.direction.into_inner());
+    let across = d.dot(&n_p);
+    if across.abs() <= angular {
+        return None;
+    }
+    // `w_r`'s point at `s` lies at `σ r` from `P` along its normal.
+    let o = w.origin + sigma * radius * n.into_inner();
+    let s = (sigma * radius - (o - plane.origin).dot(&n_p)) / across;
+    let centre = o + s * d;
+    Some(Leaning {
+        centre,
+        q: centre - sigma * radius * n_p,
+        p: centre - sigma * radius * n.into_inner(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use arris_math::{Vec3, real};
+
+    use super::*;
+
+    const A: f64 = 20.0;
+    const R: f64 = 0.2;
+
+    /// `regression/rounded-block-oblique-top-fillet`'s top `P`, through
+    /// `(0, 1, 1.5)` tilted `A` about `x`, and its ruling at `(x, 0.5)`
+    /// between the x wall and the corner cylinder, outward normal `±x`.
+    fn block(x: f64, out: f64) -> (Axis, Axis, UnitVec3) {
+        let a = A.to_radians();
+        let plane = Axis::new(
+            Point3::new(0.0, 1.0, 1.5),
+            Vec3::new(0.0, -real::sin(a), real::cos(a)),
+        )
+        .unwrap();
+        let w = Axis::z_at(Point3::new(x, 0.5, 0.0));
+        let n = UnitVec3::new_normalize(Vec3::new(out, 0.0, 0.0));
+        (plane, w, n)
+    }
+
+    /// The hand formula: `c*` at `R` inside the wall, under the top at
+    /// `y = 0.5` by `R / cos A`.
+    fn hand(x: f64, sigma: f64, out: f64) -> Point3 {
+        let a = A.to_radians();
+        let z = 1.5 - 0.5 * real::tan(a) + sigma * R / real::cos(a);
+        Point3::new(x + sigma * R * out, 0.5, z)
+    }
+
+    #[test]
+    fn leaning_ball_is_the_oracles_on_the_convex_block() {
+        let (plane, w, n) = block(0.0, -1.0);
+        let ball = leaning_ball(plane, w, n, R, true, 1e-12).unwrap();
+        let want = hand(0.0, -1.0, -1.0);
+        assert!((ball.centre - want).norm() < 1e-12, "{ball:?}");
+        // Open CASCADE's junction circle there (plan step 1).
+        assert!((ball.centre - Point3::new(0.2, 0.5, 1.105179328372)).norm() < 1e-11);
+        let a = A.to_radians();
+        let n_p = Vec3::new(0.0, -real::sin(a), real::cos(a));
+        assert!((ball.q - (want + R * n_p)).norm() < 1e-12);
+        assert!((ball.p - Point3::new(0.0, 0.5, want.z)).norm() < 1e-12);
+    }
+
+    #[test]
+    fn leaning_ball_touches_the_three_faces() {
+        for (x, out, centre_x) in [(0.0, -1.0, 0.5), (4.0, 1.0, 3.5)] {
+            for convex in [true, false] {
+                let (plane, w, n) = block(x, out);
+                let c = leaning_ball(plane, w, n, R, convex, 1e-12).unwrap();
+                // `p` on `w`'s line.
+                let off = c.p - w.origin;
+                let along = off.dot(&w.direction);
+                assert!((off - along * w.direction.into_inner()).norm() < 1e-12);
+                // At `R` from `P`, on its inner side for a convex blend.
+                let sigma = if convex { -1.0 } else { 1.0 };
+                let to_p = (c.centre - plane.origin).dot(&plane.direction);
+                assert!((to_p - sigma * R).abs() < 1e-12, "{to_p}");
+                // At `R` from the wall `W`, the plane `x = x`.
+                assert!(((c.centre.x - x) * out - sigma * R).abs() < 1e-12);
+                // At `R` from the corner cylinder `C`, of radius 0.5 about
+                // `(centre_x, 0.5)`.
+                let radial = Vec3::new(c.centre.x - centre_x, c.centre.y - 0.5, 0.0).norm();
+                assert!((radial - (0.5 + sigma * R)).abs() < 1e-12, "{radial}");
+                assert!(((c.centre - c.q).norm() - R).abs() < 1e-12);
+                assert!((c.centre - hand(x, sigma, out)).norm() < 1e-12);
+            }
+        }
+    }
+
+    #[test]
+    fn leaning_ball_is_none_for_an_edge_along_the_plane() {
+        let plane = Axis::z_at(Point3::new(0.0, 0.0, 1.0));
+        let w = Axis::new(Point3::new(0.0, 0.0, 1.0), Vec3::x()).unwrap();
+        let n = UnitVec3::new_normalize(-Vec3::y());
+        assert!(leaning_ball(plane, w, n, R, true, 1e-12).is_none());
+    }
+
+    #[test]
+    fn leaning_ball_of_a_square_ruling_is_the_normal_planes() {
+        // A horizontal top over a vertical ruling: `c*` straight under the
+        // vertex `(0, 0, 1)` at `R` in from both faces.
+        let plane = Axis::z_at(Point3::new(0.0, 0.0, 1.0));
+        let w = Axis::z_at(Point3::origin());
+        let n = UnitVec3::new_normalize(-Vec3::y());
+        let c = leaning_ball(plane, w, n, R, true, 1e-12).unwrap();
+        assert!((c.centre - Point3::new(0.0, R, 1.0 - R)).norm() < 1e-12);
+        assert!((c.p - Point3::new(0.0, 0.0, 1.0 - R)).norm() < 1e-12);
+        assert!((c.q - Point3::new(0.0, R, 1.0)).norm() < 1e-12);
+    }
 }

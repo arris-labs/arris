@@ -77,7 +77,7 @@ given design; **[3]** unproven, robustness or bound established here.
   as a pocket under a tilted floor (concave). Confirm that
   `regression/nist-ctc-02-ap242-ellipse-chain-fillet` refuses at this
   site.
-- [ ] Step 2 **[3]**: write ADR-0072 from step 1's reading of Open
+- [x] Step 2 **[3]**: write ADR-0072 from step 1's reading of Open
   CASCADE's faces at the junction (one face across it, or two). Add the
   `c*` closed form with unit tests on the convex fixture: `c*`, `q` and
   `p` against the hand formula, `p` on `w` within its tolerance, and

@@ -171,6 +171,11 @@ Edges a blend continues across because both faces turn where they meet
 A vertex of two edges that continue one another, where two stripes meet
 on one ball (ADR-0041).
 
+**Junction**:
+Where two stripes of a chain meet on one ball's arc, at a tangent vertex
+or, where the tangent edge leans, on that edge's offset away from it
+(ADR-0035, ADR-0072).
+
 **Healing**:
 What the STEP reader repairs in a file it reads (grown tolerances, turned
 faces), recorded on the body (ADR-0058).
