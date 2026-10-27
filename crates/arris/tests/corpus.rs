@@ -1300,6 +1300,14 @@ corpus_tests! {
     /// plane meets oblique cylinders.
     #[ignore = "VertexBlend(e184, e274, v167): a skew junction, the side faces f15 and f40 tangent along the ruling e183, which leaves the ball's normal plane at the vertex, so the runs' side contacts miss it and each other by 9.1e-3 (docs/BACKLOG.md, a skew tangent junction)"]
     regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
+    /// A rounded block under an oblique top, one top line filleted: the
+    /// chain's walls turn into the corner cylinders along rulings that lean
+    /// out of the ball's normal plane at four vertices.
+    #[ignore = "VertexBlend(e57, e58, v34): the x wall's line runs into the corner cylinder's ellipse along a ruling that leans out of the ball's normal plane at the vertex; Open CASCADE's balls meet off it, on the ruling's offset (plans/three-edge-run-vertex)"]
+    regression_rounded_block_oblique_top_fillet => run "regression/rounded-block-oblique-top-fillet";
+    /// The same as a pocket under an oblique floor, filleted concave.
+    #[ignore = "VertexBlend(e79, e81, v58): the concave chain's leaning ruling, as regression/rounded-block-oblique-top-fillet's (plans/three-edge-run-vertex)"]
+    regression_rounded_pocket_oblique_floor_fillet => run "regression/rounded-pocket-oblique-floor-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring refuses. The desired body is Open CASCADE's.

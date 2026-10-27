@@ -1,0 +1,30 @@
+{
+  "description": "regression/rounded-block-oblique-top-fillet as a pocket: a 6 × 4 × 3 block less the 4 × 2 rectangle with corners rounded at R 0.5, extruded from z = 0.5 past the top, below its floor z = 1.5 + (y − 1) tan a through (0, 1, 1.5), a box rotated a = 20° about x, cut away; the floor's edge on the pocket's y = 0 wall filleted at r 0.2. The fillet is concave and runs on round the floor's eight edges; at the ends of the x walls' lines the ruling between wall and corner cylinder leans out of the ball's normal plane at the vertex, so the stripes meet on one ball off the vertex, on the ruling's offset (plans/three-edge-run-vertex)",
+  "params": {"R": 0.5, "a": 20, "r": 0.2},
+  "steps": [
+    {"name": "stock", "op": "box", "min": [-1, -1, 0], "max": [5, 3, 3]},
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0.5], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": ["R", 0], "segments": [
+       {"line_to": ["4 - R", 0]}, {"arc_to": [4, "R"], "via": ["4 - R + R * sin(radians(45))", "R - R * cos(radians(45))"]},
+       {"line_to": [4, "2 - R"]}, {"arc_to": ["4 - R", 2], "via": ["4 - R + R * sin(radians(45))", "2 - R + R * cos(radians(45))"]},
+       {"line_to": ["R", 2]}, {"arc_to": [0, "2 - R"], "via": ["R - R * sin(radians(45))", "2 - R + R * cos(radians(45))"]},
+       {"line_to": [0, "R"]}, {"arc_to": ["R", 0], "via": ["R - R * sin(radians(45))", "R - R * cos(radians(45))"]}]}},
+    {"name": "prism", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 3},
+    {"name": "slab", "op": "box", "min": [-1, -2, -1], "max": [5, 4, 1.5]},
+    {"name": "tilted", "op": "transform", "of": "slab", "rotate": {"axis": [1, 0, 0], "origin": [0, 1, 1.5], "angle_deg": "a"}},
+    {"name": "pocket", "op": "cut", "target": "prism", "tool": "tilted"},
+    {"name": "cut_pocket", "op": "cut", "target": "stock", "tool": "pocket"},
+    {"name": "result", "op": "fillet", "of": "cut_pocket", "edges": [[2, 0, "1.5 - tan(radians(a))"]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [2, -0.5, 0.5], "expect": "in"},
+    {"label": "in_pocket", "point": [2, 1, 2], "expect": "out"},
+    {"label": "corner_filled", "point": [2, 0.01, "1.5 - tan(radians(a)) + 0.01"], "expect": "in"},
+    {"label": "above_blend", "point": [2, 0, "1.5 - tan(radians(a)) + r / tan(radians(45 - a / 2)) + 0.05"], "expect": "on"},
+    {"label": "x_wall_corner_filled", "point": [0.01, 1, 1.51], "expect": "in"},
+    {"label": "x_wall_above_blend", "point": [0, 1, "1.5 + r / cos(radians(a)) + 0.3"], "expect": "on"},
+    {"label": "far_x_wall_corner_filled", "point": [3.99, 1, 1.51], "expect": "in"}
+  ],
+  "analytic": {"genus": 0}
+}

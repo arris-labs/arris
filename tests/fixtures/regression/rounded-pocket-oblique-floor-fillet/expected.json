@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "de0034303a3ee153cb779fcccefc055c10b224a16747b71d4d346e346f5c361c",
+  "results": {
+    "default": {
+      "area": 124.0218656547357,
+      "centroid": [
+        2.0000000000000098,
+        1.0141479172902628,
+        1.3576005977552905
+      ],
+      "counts": {
+        "edges": 52,
+        "faces": 23,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          136.3486760492054,
+          -2.1316282072803006e-13,
+          -2.8421709430404007e-13
+        ],
+        [
+          -2.1316282072803006e-13,
+          245.38722190742885,
+          -0.1465663218992006
+        ],
+        [
+          -2.8421709430404007e-13,
+          -0.1465663218992006,
+          293.6877087161901
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 52,
+        "faces": 23,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            2.0,
+            -0.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_pocket",
+          "point": [
+            2.0,
+            1.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "corner_filled",
+          "point": [
+            2.0,
+            0.01,
+            1.1460297657337977
+          ]
+        },
+        {
+          "class": "on",
+          "label": "above_blend",
+          "point": [
+            2.0,
+            0.0,
+            1.4716593670822207
+          ]
+        },
+        {
+          "class": "in",
+          "label": "x_wall_corner_filled",
+          "point": [
+            0.01,
+            1.0,
+            1.51
+          ]
+        },
+        {
+          "class": "on",
+          "label": "x_wall_above_blend",
+          "point": [
+            0.0,
+            1.0,
+            2.012835554495182
+          ]
+        },
+        {
+          "class": "in",
+          "label": "far_x_wall_corner_filled",
+          "point": [
+            3.99,
+            1.0,
+            1.51
+          ]
+        }
+      ],
+      "volume": 60.43580533872429
+    }
+  }
+}
