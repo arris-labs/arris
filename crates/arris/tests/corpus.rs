@@ -1517,12 +1517,6 @@ corpus_tests! {
     /// edge as built.
     #[ignore = "kernel bug: the blend's output fails the checker at L2, pcurves 4.6e-7 apart where the file's faces are 1e-7 tolerant (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
     regression_nist_ctc_03_two_plane_edges_fillet_checker_fault => run "regression/nist-ctc-03-two-plane-edges-fillet-checker-fault";
-    /// The pi mount plate's front standoffs, shrunk: a boss's root filleted
-    /// where its contact runs off the plate's edge at 14 degrees off the
-    /// edge's tangent. The body builds; the checker cannot decide the torus
-    /// against the rolled face.
-    #[ignore = "kernel bug: S5 leaves the torus against the rolled face undecided, the tracer refusing the pair as UnresolvedTurning at the touch of the rolled face's edge where a tangent row ends (docs/BACKLOG.md, a run-over's near-tangent crossing)"]
-    regression_standoff_root_fillet_runs_off_at_a_shallow_angle => run "regression/standoff-root-fillet-runs-off-at-a-shallow-angle";
     /// A boss's root filleted where its contact on the plate's top runs into
     /// a slanted hole's elliptical rim: Open CASCADE rolls the ball on the
     /// ellipse between the two crossings.
@@ -1546,6 +1540,12 @@ corpus_tests! {
     /// ball rolls on that edge between the two crossings, the torus left in
     /// one face open at the rolled face (ADR-0071).
     blend_standoff_root_fillet_runs_off_the_plate => run "blend/standoff-root-fillet-runs-off-the-plate";
+    /// The pi mount plate's front standoffs, shrunk: the ring's contact runs
+    /// off the plate's edge 14 degrees off the edge's tangent, where the
+    /// rolled face's foot on the boss stays within the tolerance of the
+    /// torus far from the crossing, and the tracer holds that stretch as one
+    /// touch (ADR-0061).
+    blend_standoff_root_fillet_runs_off_at_a_shallow_angle => run "blend/standoff-root-fillet-runs-off-at-a-shallow-angle";
     /// A boss's root filleted where its contact on the plate's top runs into
     /// a hole's rim: the ball rolls on the rim between the two crossings.
     blend_standoff_root_fillet_runs_into_a_hole => run "blend/standoff-root-fillet-runs-into-a-hole";

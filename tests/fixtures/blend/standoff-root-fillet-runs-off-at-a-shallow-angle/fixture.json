@@ -1,0 +1,23 @@
+{
+  "description": "a plate 30 x 30 x 3 with a boss of radius 3 and height 5 on its top, its axis 3.5 from the front edge y = 0, the boss's root circle filleted at r 0.6: the pi mount plate's front standoffs, shrunk. The ring's contact on the top, of radius 3.6, leaves the plate through its front edge between x = 14 ± √(3.6² − 3.5²), where the edge meets it 14 degrees off its tangent. Arris builds it (ADR-0071) as it builds blend/standoff-root-fillet-runs-off-the-plate. The rolled face's foot on the boss leaves the torus's contact tangent at each crossing, and at this angle stays within the tolerance of the torus for a long stretch beside it: the tracer holds that stretch as one touch of the rolled face's domain edge, as deep as rounding cannot sign the section there (ADR-0061)",
+  "params": {"R": 3, "d": 3.5, "r": 0.6},
+  "steps": [
+    {"name": "plate", "op": "box", "min": [0, 0, 0], "max": [30, 30, 3]},
+    {"name": "boss", "op": "cylinder", "base": [14, "d", 1.5], "axis": [0, 0, 1], "radius": "R", "height": 5},
+    {"name": "part", "op": "fuse", "a": "plate", "b": "boss"},
+    {"name": "result", "op": "fillet", "of": "part", "edges": [["14 - R", "d", 3]], "radius": "r"}
+  ],
+  "result": "result",
+  "tolerances": {"probe": 1e-5, "volume_rel": 1e-8, "area_rel": 1e-8, "inertia_rel": 1e-8},
+  "probes": [
+    {"label": "inside", "point": [20, 20, 1], "expect": "in"},
+    {"label": "in_boss", "point": [14, "d", 6], "expect": "in"},
+    {"label": "on_front", "point": [14, 0, 1], "expect": "on"},
+    {"label": "on_back_contact", "point": [14, "d + R + r", 3], "expect": "on"}
+  ],
+  "analytic": {
+    "counts": {"vertices": 15, "edges": 23, "faces": 10, "loops": 10, "shells": 1},
+    "genus": 0,
+    "counts_differ": "Open CASCADE splits the ring's torus in two, either side of the rolled patch, joined by an edge at the seam; Arris keeps the torus one face open at the rolled face, its seam inside it (ADR-0071 §2)"
+  }
+}

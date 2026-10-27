@@ -580,9 +580,13 @@ impl Tracer<'_> {
     /// where direction `k`'s parameter is `edge`, if it is one: about the
     /// least distance along the line near the candidate, the largest cell
     /// whose certificate holds on the section's polynomial, reaching as
-    /// far into the domain as along the line. Its stretch is grown from
-    /// a tolerance's length until `f` is signed along the edge beyond it,
-    /// and every point of it is within the tolerance of the other surface.
+    /// far into the domain as along the line. `f` is signed along a line
+    /// half a tolerance in, or failing that along the first line deeper,
+    /// doubling, where rounding signs it; a zone that deep is then held
+    /// to the tolerance of the other surface at every point of it. Its
+    /// stretch is grown from a tolerance's length until `f` is signed
+    /// along the edge beyond it, and every point of it is within the
+    /// tolerance of the other surface.
     pub(super) fn edge_touch(&self, k: usize, edge: f64, candidate: f64) -> Option<EdgeTouch> {
         let walker = &self.walker;
         let j = 1 - k;
@@ -617,7 +621,6 @@ impl Tracer<'_> {
         let middle = 0.5 * self.tol.linear / speed[j];
         let depth = 0.5 * self.tol.linear / speed[k];
         let inward = if edge == 0.0 { 1.0 } else { -1.0 };
-        let inner = edge + inward * depth;
         let sign = |probe: Probe, x: [f64; 2], y: [f64; 2]| {
             let y = [y[0].min(y[1]), y[0].max(y[1])];
             let (u, v) = if k == 0 { (y, x) } else { (x, y) };
@@ -659,7 +662,17 @@ impl Tracer<'_> {
             // `f` rises into the domain where its slope across the edge
             // is positive inward, and is then positive along the edge.
             let rising = slope == (inward > 0.0);
-            if sign_along(line, inner) != Some(rising) {
+            // A tolerance in, or deeper where rounding cannot sign `f`
+            // that near the edge: where an isoline divided out ends on
+            // the edge, the quotient's floor carries the division, and a
+            // shallow touch there is unsigned as far in as the floor
+            // reaches. The zone between the edge and that line is held
+            // to the tolerance below, every point of it.
+            let mut inner = depth;
+            while inner < a && sign_along(line, edge + inward * inner) != Some(rising) {
+                inner *= 2.0;
+            }
+            if inner >= a {
                 continue;
             }
             // How far the stretch reaches from `x0` that way.
@@ -679,10 +692,16 @@ impl Tracer<'_> {
                 continue;
             };
             let run = [x0 - below, x0 + above];
-            let held = (0..=CIRCLE_SAMPLES).all(|n| {
-                let x = run[0] + (run[1] - run[0]) * n as f64 / CIRCLE_SAMPLES as f64;
-                let [u, v] = on_line(x);
-                walker.distance(u, v).0.abs() <= self.tol.linear
+            // The edge line over the stretch, and with a deeper zone
+            // every line of it out to its inner one.
+            let rows = if inner > depth { CIRCLE_SAMPLES } else { 0 };
+            let held = (0..=rows).all(|r| {
+                let line = edge + inward * inner * r as f64 / CIRCLE_SAMPLES as f64;
+                (0..=CIRCLE_SAMPLES).all(|n| {
+                    let x = run[0] + (run[1] - run[0]) * n as f64 / CIRCLE_SAMPLES as f64;
+                    let [u, v] = if k == 0 { [line, x] } else { [x, line] };
+                    walker.distance(u, v).0.abs() <= self.tol.linear
+                })
             });
             return held.then_some(EdgeTouch {
                 at,

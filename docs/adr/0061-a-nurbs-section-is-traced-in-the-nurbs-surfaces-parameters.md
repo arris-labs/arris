@@ -523,6 +523,39 @@ against `z = 0` is the rows `y = 0.2` and `y = 0.8` with a circle of
 `0.2` between them. It now returns the two rows and the circle in two
 halves cut at `y = ½`. Before, it was refused.
 
+### A touch as deep as rounding reaches (amendment, 2026-10-27)
+
+`plans/blend-runs-onto` step 8. A ring's contact runs off a plate's edge
+14 degrees off the edge's tangent (the pi mount plate's front
+standoffs). At every crossing the rolled face's foot on the boss leaves
+the torus's contact tangent: the pipe about the crossed edge is tangent
+to the plane of the ring's centres. So the foot agrees with the torus to
+fourth order at the corner where the row the two share meets the rolled
+face's domain edge. At this angle the foot stays within `1e-7` of the
+torus from `−0.2` to `+0.46` of the walk's `u` about that row. Along the
+edge, the quotient with the row divided out stays within its floor
+(`9.2e-9`, which the division by `(s − s₀)²` carries) for as far. Its
+sign there is the fit's: it dips below zero, by `3.5e-11` in distance,
+between two sign changes `0.06` apart, a sliver `4.5e-5` deep. The slope
+could not prove the candidate at the first change to be a lone crossing,
+and it was no touch either, since `f` half a tolerance in has the
+sliver's sign.
+
+- **A touch's inner line goes as deep as rounding leaves `f` unsigned.**
+  Where `f` along the line half a tolerance in does not have the sign it
+  rises to, the tracer tries lines twice as deep, and twice again, within
+  the cell. The first signed line bounds the touch's zone. Every point of
+  a grid over the zone, the stretch's samples across as many lines out
+  to the inner one, must be within the tolerance of the other surface,
+  or there is no touch. Every zero in the cell is then within the
+  tolerance of the other surface, as the stretch is. A touch found half
+  a tolerance in comes out as before, its zone the edge line alone.
+
+The shrunk plate (`blend/standoff-root-fillet-runs-off-at-a-shallow-angle`)
+is decided at `Full`. In each piece, the touch's inner line is found at
+`1.75e-4`, nine doublings in and past the sliver, and its zone is within
+`5.8e-10` of the torus.
+
 
 ## Consequences
 

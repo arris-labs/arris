@@ -1,0 +1,12 @@
+{
+  "standoff_roots": {
+    "counts": [
+      60,
+      92,
+      34,
+      44,
+      1
+    ],
+    "why": "at each of the four standoffs whose ring runs off the plate's edge, Open CASCADE splits the ring's torus in two, either side of the rolled patch, joined by an edge at the seam; Arris keeps each torus one face open at the rolled face, its seam inside it (ADR-0071 §2)"
+  }
+}
