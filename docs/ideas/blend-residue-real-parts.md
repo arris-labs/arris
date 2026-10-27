@@ -1,6 +1,6 @@
 # Idea: blend-residue-real-parts
 
-- Status: Accepted (A); milestone 1 done (plans/battery-honesty, retired 2026-10-26); M2 absorbed by plans/blend-runs-onto; M3–M5 unplanned
+- Status: Accepted (A); milestone 1 done (plans/battery-honesty, retired 2026-10-26); M2 done (plans/blend-runs-onto, retired 2026-10-27; the order of M3–M5 below); M3–M5 unplanned
 - Raised: 2026-10-26
 - Prompt (verbatim from the human): "blend residue: the 12 parts blocked at fillet"
 
@@ -201,6 +201,9 @@ Round 1, 2026-10-26: "yes to all".
   `docs/ROADMAP.md` §C11 with the corrected count.
 - **Q4: yes.** *Battery* and *blend residue* are in `GLOSSARY.md`.
 
-The *Later* questions are left to the plans: M3–M5's order is set when
-M2 is retired, from milestone 1's re-run, and CTC-05's oracle is chosen
-by M4's plan.
+The *Later* questions are left to the plans: CTC-05's oracle is chosen by
+M4's plan. M3–M5's order, set at M2's retirement (2026-10-27) from the
+re-run (the real parts' `fillet` row still 4 of 38, the script corpus's
+refusals 1): **M3, then M4, then M5**. M3 unblocks two parts (CTC-02 and
+FTC-07 AP242, one construction), M4 two (FTC-11, CTC-05 AP242, with an
+oracle question), and M5 has no real part left.

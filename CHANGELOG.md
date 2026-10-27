@@ -8,13 +8,15 @@ into its version (ADR-0027).
 
 ## Unreleased
 
-- A fillet whose contact runs off its face's edge or into a hole now
-  builds where it was refused as `BlendTooLarge`, as Open CASCADE builds
-  it: the lip of a slab filleted over a cross hole just below it rounds
-  over the hole's rim, and the root of a boss standing near a plate's
-  edge rounds over that edge. The blend between the two places its
-  contact meets the edge is one fitted face from the boss or the top down
-  to the edge, and the rest of the blend is cut back to it.
+- A fillet that is too wide for its face and would run off the face's
+  edge, or into a hole, now builds where it was refused as
+  `BlendTooLarge`, as Open CASCADE builds it: the lip of a slab filleted
+  above a cross hole rounds over the hole's rim, and the root of a boss
+  standing near a plate's edge (a concave fillet) rounds over that edge.
+  Between the two places the fillet meets the edge it becomes one fitted
+  face rolling on the edge, and the rest of the fillet is cut back to it.
+  An edge that is an ellipse, or a fillet on a walked stripe, is still
+  refused `BlendTooLarge`, naming both edges.
 
 ### Breaking
 

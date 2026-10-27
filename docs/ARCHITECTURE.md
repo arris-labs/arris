@@ -922,7 +922,19 @@ blend's own convexity lies past the vertex, and that edge is lengthened
 along its own analytic curve to it instead (`blend/mixed.rs`,
 ADR-0038): one edge, `Modified`, its pcurves derived again over the new
 range, the stretch checked inside the face it runs down; the face across
-grows by the region the arc bounds. The face across an end may be several
+grows by the region the arc bounds. A contact that instead leaves its face
+through a convex edge that is not the corner's own, an outer edge or a
+hole's rim, is a *run-over* (`blend/run_over.rs`, `blend/rolled.rs`,
+ADR-0071): between the two crossings the ball rolls on that edge, and the
+**rolled face** is skinned through the sections in the stripe's planes
+from the contact on the blend's other face to the edge, a fitted
+`Nurbs`; the closed-form blend ends at the section through each crossing,
+tangent across, the ring's torus open at the rolled face and the open
+edge's cylinder two faces. The edge is split at the crossings, and where
+it is a hole's rim the hole's loop joins the face's outer loop. Only a
+convex line or circle crossed exactly twice away from a corner end is
+accepted; any other is `BlendTooLarge` naming the blended edge and the
+edge it crosses. The face across an end may be several
 pieces (ADR-0043): at a vertex of more than three edges whose extra edges
 are all sharp and of the blend's sense, and the faces between the two corner
 edges a fan walked through the vertex's star, the end is one arc per piece,

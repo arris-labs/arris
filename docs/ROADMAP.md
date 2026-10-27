@@ -871,9 +871,8 @@ no sampled edge the edge itself); the committed tier's row is 0. STC-07
 AP242, whose fillet now builds, fails the checker at `Full` on four
 cylinder pairs S5 leaves undecided (`regression/nist-stc-07-ap242-fillet-checker-undecided`,
 waiting in `tools/real-parts.waits`). The residue also holds 3
-of the script corpus's 4 refusals: a blend that leaves its face through
-an edge not the corner's own, at the pi mount plate's standoff roots and
-the phone stand's lip (2), and a corner the closed forms do not cover at
+of the script corpus's 4 refusals (2 of them, a blend that leaves its
+face through an edge not the corner's own, now build): a corner the closed forms do not cover at
 the hinge leaf's knuckle joins (1). Shell's `SurfaceCollapses` at the vase
 is the other. With NURBS faces an operand since C10, the caps and corner
 patches Open CASCADE fits for these cases are no longer out of reach.*
@@ -884,9 +883,15 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   whose faces run tangent within the edge's tolerance (CTC-05), and a
   corner edge tangent within the vertex's tolerance (FTC-11's slot)
   (docs/BACKLOG.md).
-- A blend that runs past its face into a neighbour that is not the
-  corner's (the script corpus's two), and `BlendTooLarge` where Open
-  CASCADE builds: the horn torus on an arc, the overhang tip's cap.
+- [x] A blend that runs over an edge that is not the corner's (the script
+  corpus's two): **done 2026-10-27** (`blend-runs-onto`, ADR-0071). The
+  ball rolls on the crossed edge between the two crossings and the
+  rolled face is fitted there; the pi mount plate and the phone stand run
+  to `ok` at every stage, so the script corpus's `fillet` refusals are 1
+  (the hinge leaf) and the real parts' `fillet` row stays at 4 of 38. An
+  ellipse for the crossed edge stays `BlendTooLarge`.
+- `BlendTooLarge` where Open CASCADE builds: the horn torus on an arc,
+  the overhang tip's cap.
 - Corners the closed forms do not cover: a walked chain junction on a
   seam (`VertexBlend`), the hinge leaf's knuckle joins, a cusp whose two
   edges are both blended, as a fitted corner patch.

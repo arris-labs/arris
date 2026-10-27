@@ -2118,7 +2118,13 @@ pub struct Provenance {
 - **Modified**: the output is a trimmed, split or re-tolerated piece of the
   input, same kind — the box's top face with a circle cut out of it, each
   half of a face split by an intersection curve (one input, several
-  outputs), a transformed face.
+  outputs), a transformed face. A fillet that runs over an edge (a
+  run-over, ADR-0071) `Modified`-splits that edge at the two crossings:
+  its outer pieces stay on the face the contact left, its stretch between
+  the crossings bounds the rolled face and the face across; the face the
+  contact left and the closed-form blend are `Modified` into their cut
+  pieces, the face across is untouched, and the rolled face and the two
+  crossing vertices are `Generated` from the blended edge.
 - **Deleted**: the input has no image of its own kind in the output — the
   part of the tool inside the target, a face swallowed by a fuse.
 - **Kept** is not recorded: an entity untouched by the operation keeps its

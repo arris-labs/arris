@@ -41,7 +41,9 @@ script corpus (ADR-0067).
 **C11, the blend residue** (opened 2026-10-22): `battery-honesty` done
 2026-10-26 (a dropped edge is Open CASCADE refusing, ADR-0070): the blend
 network blocks 4 of 38 real parts at `fillet` (the first count, 12, was
-mostly the battery's own sample) and 3 of the script corpus's 4 refusals.
+mostly the battery's own sample); `blend-runs-onto` (M2) done 2026-10-27
+(a fillet rolls on the edge it runs over, ADR-0071): 1 of the script
+corpus's 4 refusals left.
 The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22, and
 the prebuilt wheels for Linux, macOS and Windows with it, so the launch
 gate of ADR-0067 §5 is met; 0.9.1 (the modelling layer and the platform
@@ -54,7 +56,7 @@ through one `sweep::skeleton`); `one-bernstein` done 2026-10-25 (one
 `bernstein_n`, `torus_walk/` split by phase).
 `long-functions` done 2026-10-26 (the six long functions as phases; `corpus/` a module tree);
 `file-concerns` done 2026-10-26 (`model/`, `check/`, `cdt/`, `pcurve/` by concern); the sequence is closed.
-**Next:** `/plan blend-run-over` (the idea's M2).
+**Next:** `/plan three-edge-run-vertex` (the idea's M3, then M4, then M5).
 
 ## Rules that are not derivable from the code
 
