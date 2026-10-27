@@ -130,7 +130,7 @@ given design; **[3]** unproven, robustness or bound established here.
   over an outer edge, a concave one over a hole's rim, and an `E` that is
   an ellipse. Each becomes a fixture with its oracle, or an
   `expect_error` fixture where Open CASCADE refuses too.
-- [ ] Step 7 **[2]**: property tests in `blend_prop.rs`: a boss at random
+- [x] Step 7 **[2]**: property tests in `blend_prop.rs`: a boss at random
   distance from the edge, at random radius and pose, and a slab with a
   cross hole at random height. Each builds checker-green or is refused by
   name. The rolled face's samples lie on a ball of radius `r` that

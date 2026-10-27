@@ -3295,3 +3295,146 @@ fn the_slanted_closed_form_is_the_fixtures() {
     let got = case.volume(Blend::Fillet);
     assert!((got - fixture).abs() < 1e-12, "{got} against {fixture}");
 }
+
+// A fillet whose contact runs over an edge of its face (ADR-0071): a
+// boss's root near a plate's edge, and a slab's lip over a cross hole. The
+// ball rolls on the edge between the crossings, so the body is clean at
+// `Full` and audits where it builds, its volume between the unblended
+// body's and the whole ring's or lip's section swept (the run-over adds
+// less than the ring and takes less than the lip), and two runs dump
+// identically; a case it does not cover is refused by name.
+
+/// The result of `fillet` at `at`: built, or refused as a degenerate
+/// blend naming its entities; any other error fails the case.
+fn built_or_refused(
+    m: &mut Model,
+    body: Body,
+    at: Point3,
+    r: f64,
+) -> Result<Option<(Body, Provenance)>, TestCaseError> {
+    let edge = edge_near(m, body, at)?;
+    match fillet(m, body, &[edge], r) {
+        Ok(built) => Ok(Some(built)),
+        Err(OpError::Degenerate { .. }) => Ok(None),
+        Err(e) => Err(fail(format!("fillet at {at}: {e}"))),
+    }
+}
+
+/// `body` blended is clean at `Full`, audits against `input`, and dumps
+/// as it does in a second run of `again`.
+fn run_over_holds(
+    m: &Model,
+    input: Body,
+    blended: Body,
+    p: &Provenance,
+    again: &(Model, Body),
+) -> Result<(), TestCaseError> {
+    let report = check(m, blended, Level::Full);
+    prop_assert!(report.is_ok(), "{}", report);
+    audit(m, &[input], blended, p).map_err(|e| fail(format!("provenance: {e}")))?;
+    prop_assert_eq!(
+        dump_text(m, blended).map_err(fail)?,
+        dump_text(&again.0, again.1).map_err(fail)?,
+        "a second run"
+    );
+    Ok(())
+}
+
+/// A 10 × 10 × 2 plate with a boss of `radius` 2 high on its top whose
+/// axis is `distance` from the front edge `y = 0`, the root circle
+/// filleted at `r`: the contact on the top, of radius `radius + r`, runs
+/// off that edge where `distance < radius + r`.
+fn standoff(
+    radius: f64,
+    distance: f64,
+    r: f64,
+) -> Result<Option<(Model, Body, Body, Provenance)>, TestCaseError> {
+    let mut m = Model::default();
+    let (plate, _) = primitive_box(
+        &mut m,
+        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(10.0, 10.0, 2.0),
+    )
+    .map_err(fail)?;
+    let axis = Axis::new(Point3::new(5.0, distance, 1.0), Vec3::z()).map_err(fail)?;
+    let (boss, _) = primitive_cylinder(&mut m, axis, radius, 3.0).map_err(fail)?;
+    let (part, _) = fuse(&mut m, plate, boss).map_err(fail)?;
+    let at = Point3::new(5.0 - radius, distance, 2.0);
+    Ok(built_or_refused(&mut m, part, at, r)?.map(|(b, p)| (m, part, b, p)))
+}
+
+fn standoff_holds(radius: f64, share: f64, r: f64) -> Result<(), TestCaseError> {
+    let distance = radius + share * r;
+    let Some((m, part, blended, p)) = standoff(radius, distance, r)? else {
+        return Ok(());
+    };
+    let again = standoff(radius, distance, r)?
+        .map(|(m, _, b, _)| (m, b))
+        .ok_or_else(|| fail("built once and refused the next time"))?;
+    run_over_holds(&m, part, blended, &p, &again)?;
+    let before = mass_properties(&m, part).map_err(fail)?.volume;
+    let added = mass_properties(&m, blended).map_err(fail)?.volume - before;
+    let ring = (1.0 - PI / 4.0) * r * r * 2.0 * PI * (radius + r);
+    prop_assert!(
+        added > 0.0 && added <= ring * (1.0 + REL),
+        "the fillet adds {added}, at most the whole ring's {ring}"
+    );
+    Ok(())
+}
+
+prop_shards! {
+    /// A boss's root at random radius, fillet radius and distance from the
+    /// plate's edge, its contact running off the edge by a random share of
+    /// the fillet radius.
+    standoff_roots_roll_on_the_plates_edge
+        [shard_0 shard_1 shard_2 shard_3]
+        (case) = (prop::finite_f64(1.0..=2.0), prop::finite_f64(0.05..=0.95), prop::finite_f64(0.3..=0.8)) => {
+            standoff_holds(case.0, case.1, case.2)
+        }
+}
+
+/// A 12 × 20 × 8 slab with a hole of `a` across it along `x`, its axis at
+/// height `c`, the top edge at `x = 12` filleted at `r`.
+fn lip(a: f64, c: f64, r: f64) -> Result<Option<(Model, Body, Body, Provenance)>, TestCaseError> {
+    let mut m = Model::default();
+    let (slab, _) = primitive_box(
+        &mut m,
+        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(12.0, 20.0, 8.0),
+    )
+    .map_err(fail)?;
+    let axis = Axis::new(Point3::new(-1.0, 10.0, c), Vec3::x()).map_err(fail)?;
+    let (drill, _) = primitive_cylinder(&mut m, axis, a, 14.0).map_err(fail)?;
+    let (part, _) = cut(&mut m, slab, drill).map_err(fail)?;
+    let at = Point3::new(12.0, 10.0, 8.0);
+    Ok(built_or_refused(&mut m, part, at, r)?.map(|(b, p)| (m, part, b, p)))
+}
+
+fn lip_holds(a: f64, c: f64, r: f64) -> Result<(), TestCaseError> {
+    let Some((m, part, blended, p)) = lip(a, c, r)? else {
+        return Ok(());
+    };
+    let again = lip(a, c, r)?
+        .map(|(m, _, b, _)| (m, b))
+        .ok_or_else(|| fail("built once and refused the next time"))?;
+    run_over_holds(&m, part, blended, &p, &again)?;
+    let before = mass_properties(&m, part).map_err(fail)?.volume;
+    let taken = before - mass_properties(&m, blended).map_err(fail)?.volume;
+    let lip = (1.0 - PI / 4.0) * r * r * 20.0;
+    prop_assert!(
+        taken > 0.0 && taken <= lip * (1.0 + REL),
+        "the fillet takes {taken}, at most the whole lip's {lip}"
+    );
+    Ok(())
+}
+
+prop_shards! {
+    /// A slab's lip over a cross hole at random radius and height, the
+    /// contact on the end face running through the hole's rim wherever the
+    /// hole reaches it.
+    slab_lips_roll_on_a_cross_holes_rim
+        [shard_0 shard_1 shard_2 shard_3]
+        (case) = (prop::finite_f64(2.0..=3.0), prop::finite_f64(4.0..=4.5), prop::finite_f64(1.0..=2.0)) => {
+            lip_holds(case.0, case.1, case.2)
+        }
+}
