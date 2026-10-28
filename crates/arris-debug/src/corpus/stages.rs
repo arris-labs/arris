@@ -371,7 +371,7 @@ pub fn measure_stage(
     expected: &Measured,
 ) -> Result<Target, CorpusError> {
     let body = result_of(fixture, chain)?;
-    let (measured, by) = measure_target(fixture, &chain.params, expected)?;
+    let (measured, by) = measure_target(fixture, chain, expected)?;
     let fail = |what| CorpusError::Measure {
         fixture: fixture.name.clone(),
         what,
@@ -842,16 +842,35 @@ pub(super) const CORNER_NORMAL_SLACK: f64 = 1e-12;
 /// What the measure stage holds a result to, and whose it is: the
 /// oracle's measurements, or under `analytic.measure_differs` the
 /// recipe's closed forms of the volume, area, centroid and inertia, each
-/// required (ADR-0015).
+/// required (ADR-0015), or a second oracle's record of them for the
+/// chain's variant where the fixture carries one (ADR-0073).
 pub(super) fn measure_target(
     fixture: &Fixture,
-    params: &BTreeMap<String, f64>,
+    chain: &Chain,
     expected: &Measured,
 ) -> Result<(Measured, &'static str), CorpusError> {
     let analytic = &fixture.recipe.analytic;
     if analytic.measure_differs.is_none() {
         return Ok((expected.clone(), "the oracle's"));
     }
+    if let Some(second) = &fixture.second_oracle {
+        let Some(held) = second.results.get(&chain.variant) else {
+            return Err(CorpusError::Measure {
+                fixture: fixture.name.clone(),
+                what: format!(
+                    "{SECOND_ORACLE} has no result for variant {:?}",
+                    chain.variant
+                ),
+            });
+        };
+        let mut target = expected.clone();
+        target.volume = Some(held.volume);
+        target.area = Some(held.area);
+        target.centroid = Some(held.centroid);
+        target.inertia = Some(held.inertia);
+        return Ok((target, "the second oracle's"));
+    }
+    let params = &chain.params;
     let missing = |field: &str| CorpusError::Measure {
         fixture: fixture.name.clone(),
         what: format!("analytic.measure_differs needs analytic.{field}"),

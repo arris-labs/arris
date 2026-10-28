@@ -311,6 +311,20 @@ of the step that made the fixture pass, and a later change to it is a
   why the oracle is wrong rather than following a convention — an
   invariance it breaks, such as a motion that is the identity on the
   solid changing its volume — and the size of its error.
+  Where the result has no closed form (a walked blend), the four
+  measurements may come instead from **`second_oracle.json`** beside
+  `expected.json` (ADR-0073): a second kernel's measurements of the same
+  recipe, run as a black box, written only by
+  `tools/oracle/second_oracle.py` from the run's neutral record (its
+  `source`, `run`, `accuracy` and `scale`, the values divided by the
+  scale's powers, the recipe hash stamped). Then no closed form of the
+  four is stated, every variant has a result, the record's hash is the
+  recipe's, and at least one of its numbers differs from the oracle's;
+  the key's text names a local measure on which the second kernel is
+  right and Open CASCADE wrong. The runner, its mesh check and
+  `compare.py` hold Arris to the record, and the read-back stages hold
+  Arris's reading of Open CASCADE's file to Open CASCADE's own reading
+  of it (`occt_step.py --measured`), not to its shape in memory.
   `step_differs: "why"` says Open CASCADE's *own* STEP of the result does
   not read back as the result — other counts, or another solid — while
   Arris's does (ADR-0023); the text gives both sides in numbers. Only the

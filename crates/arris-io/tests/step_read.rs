@@ -119,6 +119,7 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
         profiles: BTreeMap::new(),
         result: "read".into(),
         params: chain.params.clone(),
+        variant: chain.variant.clone(),
     };
     let fast = check(&read_chain.model, body, Level::Fast);
     if !fast.is_ok() {

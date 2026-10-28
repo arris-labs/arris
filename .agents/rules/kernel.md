@@ -38,7 +38,9 @@ reasons are in `SEED.md` §9.
   fixture's tolerance. Where the oracle is demonstrably wrong and a closed
   form is exact, `analytic.measure_differs` holds the fixture to the closed
   form instead, with ADR-0015's evidence; the oracle's values stay as the
-  record.
+  record. Where no closed form exists (a walked blend), a second oracle's
+  record, imported by a tool, takes its place, with evidence that it is
+  right where Open CASCADE is not (ADR-0073).
 - **Property tests over hand-picked cases**: random operands in random
   poses held to algebraic identities; a hand-picked case is a regression
   fixture, not coverage.

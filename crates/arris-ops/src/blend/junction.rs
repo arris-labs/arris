@@ -551,7 +551,7 @@ mod tests {
     const A: f64 = 20.0;
     const R: f64 = 0.2;
 
-    /// `regression/rounded-block-oblique-top-fillet`'s top `P`, through
+    /// `blend/rounded-block-oblique-top-fillet`'s top `P`, through
     /// `(0, 1, 1.5)` tilted `A` about `x`, and its ruling at `(x, 0.5)`
     /// between the x wall and the corner cylinder, outward normal `±x`.
     fn block(x: f64, out: f64) -> (Axis, Axis, UnitVec3) {

@@ -399,6 +399,7 @@ impl QueryFixture {
                 recipe_sha256: self.expected.recipe_sha256.clone(),
                 results: BTreeMap::new(),
             },
+            second_oracle: None,
         }
     }
 }

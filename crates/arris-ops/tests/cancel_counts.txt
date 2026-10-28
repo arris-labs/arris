@@ -282,6 +282,7 @@ blend/rim-fillet-into-a-step: 2
 blend/rim-fillet-into-an-off-axis-step: 935
 blend/roof-fan-three-chamfer: 10
 blend/roof-fan-three-fillet: 448
+blend/rounded-block-oblique-top-fillet: 717436
 blend/second-fillet: 5
 blend/sphere-cylinder-fillet: 2924840
 blend/split-boss-base-chamfer: 6

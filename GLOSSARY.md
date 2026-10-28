@@ -204,6 +204,12 @@ expected values. Never a build or runtime dependency.
 _Avoid_: reference implementation, ground truth (the closed form is, when
 there is one: `measure_differs`, ADR-0015)
 
+**Second oracle**:
+A second commercial kernel run as a black box on an Arris-authored
+recipe, its measurements imported into a fixture's `second_oracle.json`
+by a tool (ADR-0073). It stands in for closed forms under
+`measure_differs` where the result has none.
+
 **Corpus**:
 All fixtures, run by the corpus runner one test each.
 

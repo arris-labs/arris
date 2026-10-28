@@ -197,6 +197,90 @@ fn measure_differs_needs_every_closed_form_and_a_difference() {
     assert!(problems.is_empty(), "{problems:?}");
 }
 
+/// A second oracle's record (ADR-0073) stands in for the closed forms
+/// under `measure_differs`, and is held to the same claim: a scratch copy
+/// of the crossing-cylinder fuse, its closed forms of the measurements
+/// dropped, carries a record that is stale, unclaimed, beside closed
+/// forms, or the oracle's own numbers, each a problem, and one whose
+/// volume differs, which is clean.
+#[test]
+fn a_second_oracle_record_stands_in_for_the_closed_forms() {
+    let edit = |tag: &str, f: &dyn Fn(&mut serde_json::Value, &mut serde_json::Value)| {
+        let scratch = tempdir(tag);
+        copy_fixture("boolean/cross-cylinders-fuse", &scratch);
+        let path = scratch.join("fixture.json");
+        let mut recipe: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        let analytic = recipe["analytic"].as_object_mut().unwrap();
+        for key in ["volume", "area", "centroid", "inertia"] {
+            analytic.remove(key);
+        }
+        let expected: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(scratch.join("expected.json")).unwrap())
+                .unwrap();
+        let m = &expected["results"]["default"];
+        let mut record = serde_json::json!({
+            "recipe_sha256": expected["recipe_sha256"],
+            "results": {"default": {
+                "source": "1.0", "run": "abc1234", "accuracy": 1.0, "scale": 1.0,
+                "volume": m["volume"], "area": m["area"],
+                "centroid": m["centroid"], "inertia": m["inertia"],
+            }},
+        });
+        f(&mut recipe["analytic"], &mut record);
+        std::fs::write(&path, recipe.to_string()).unwrap();
+        std::fs::write(scratch.join("second_oracle.json"), record.to_string()).unwrap();
+        lint(&scratch)
+    };
+    let claim = |a: &mut serde_json::Value| a["measure_differs"] = "a claim".into();
+    let off = |r: &mut serde_json::Value| {
+        let v = r["results"]["default"]["volume"].as_f64().unwrap();
+        r["results"]["default"]["volume"] = (v * 1.001).into();
+    };
+    let only = |problems: Vec<String>, text: &str| {
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].contains(text), "{problems:?}");
+    };
+
+    // Claimed and borne out: clean.
+    let problems = edit("second-differs", &|a, r| {
+        claim(a);
+        off(r);
+    });
+    assert!(problems.is_empty(), "{problems:?}");
+    only(
+        edit("second-agrees", &|a, _| claim(a)),
+        "[default] analytic.measure_differs is set but the second oracle's record is the oracle's measurement",
+    );
+    only(
+        edit("second-unclaimed", &|_, r| off(r)),
+        "second_oracle.json holds nothing without analytic.measure_differs",
+    );
+    only(
+        edit("second-stale", &|a, r| {
+            claim(a);
+            off(r);
+            r["recipe_sha256"] = "0".into();
+        }),
+        "second_oracle.json is stale",
+    );
+    only(
+        edit("second-beside-closed-forms", &|a, r| {
+            claim(a);
+            off(r);
+            a["volume"] = "2 * pi * R^2 * L".into();
+        }),
+        "so analytic.volume would be a second source",
+    );
+    only(
+        edit("second-no-variant", &|a, r| {
+            claim(a);
+            r["results"] = serde_json::json!({});
+        }),
+        "[default] second_oracle.json has no result",
+    );
+}
+
 /// `step_differs` (ADR-0023) excuses only a result Arris builds, whose
 /// STEP the corpus reads back: on a recipe that expects a refusal, there
 /// is no such STEP, so the claim is a lint problem.

@@ -1,5 +1,5 @@
 {
-  "description": "a 4 × 2 rectangle with corners rounded at R 0.5, extruded 2 along z, its top cut away above the plane z = 1.5 + (y − 1) tan a through (0, 1, 1.5), a box rotated a = 20° about x, and the top edge of its y = 0 wall filleted at r 0.2. The fillet runs on round the chain of the top's eight edges, four lines and four ellipse arcs. At the ends of the y walls' lines the walls turn into the corner cylinders along a vertical ruling square to the chain; at the ends of the x walls' lines the chain climbs at a, and the ruling leans out of the ball's normal plane at the vertex, so the table stripe and the walked stripe meet on one ball off the vertex, on the ruling's offset (plans/three-edge-run-vertex)",
+  "description": "a 4 × 2 rectangle with corners rounded at R 0.5, extruded 2 along z, its top cut away above the plane z = 1.5 + (y − 1) tan a through (0, 1, 1.5), a box rotated a = 20° about x, and the top edge of its y = 0 wall filleted at r 0.2. The fillet runs on round the chain of the top's eight edges, four lines and four ellipse arcs. At the ends of the y walls' lines the walls turn into the corner cylinders along a vertical ruling square to the chain; at the ends of the x walls' lines the chain climbs at a, and the ruling leans out of the ball's normal plane at the vertex, so the table stripe and the walked stripe meet on one ball off the vertex, on the ruling's offset (plans/three-edge-run-vertex). The four corners, the top against a corner cylinder, are walked blends with no closed form; Open CASCADE's miss the rolling ball (a centre along its normal up to 7e-4 off the top's offset and 1.5e-3 off the cylinder's, its volume 3.8e-5 above Arris's), a second kernel's lie on it, and the fixture is held to that kernel's measurements (ADR-0073)",
   "params": {"R": 0.5, "a": 20, "r": 0.2},
   "steps": [
     {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
@@ -24,5 +24,8 @@
     {"label": "x_wall_below_blend", "point": [0, 1, "1.5 - r / cos(radians(a)) - 0.3"], "expect": "on"},
     {"label": "far_x_wall_corner_gone", "point": [3.99, 1, 1.49], "expect": "out"}
   ],
-  "analytic": {"genus": 0}
+  "analytic": {
+    "genus": 0,
+    "measure_differs": "Open CASCADE's corner blends of the tilted top against the corner cylinders miss the rolling ball: a ball centre taken along its blend face's normal sits up to 7e-4 off the top's offset and 1.5e-3 off the cylinder's at r 0.2, its contact edges 3.4e-4 and 2.0e-3 off the exact contacts, and its volume is 3.8e-5 relative above Arris's, every other face's area agreeing to 1e-6. A second kernel's blend faces lie on the ball to 9e-14 at scale 100, and its volume, area, centroid and inertia, in second_oracle.json, agree with Arris's within the default tolerances (ADR-0073)"
+  }
 }

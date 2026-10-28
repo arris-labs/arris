@@ -36,9 +36,13 @@ and the vertex.
 ## Design deltas
 - **ADR-0073, a fixture's `measure_differs` may rest on a second
   oracle's record** (step 3). It amends ADR-0015 (Open questions, the
-  oracle). `tools/oracle/` gains the import of a `second_oracle.json`;
-  the corpus runner and lint read it beside `analytic`. Test-side only;
-  no public type changes.
+  oracle). `tools/oracle/second_oracle.py` imports a `second_oracle.json`;
+  the corpus runner, its lint and `compare.py` read it beside `analytic`,
+  and the read-back holds Open CASCADE's file to Open CASCADE's reading
+  of it (`occt_step.py --measured`). Test-side only: `arris-debug`
+  (`publish = false`) gains `Fixture::second_oracle`, `SecondOracle`,
+  `SecondMeasured`, `Chain::variant`, `oracle::occt_step_measured` and
+  `FileMeasure`; no published type changes.
 - **ADR-0072, a junction whose tangent edge leans meets on that edge's
   offset** (step 2). It amends ADR-0035 §3 and ADR-0062's junction.
   - Name the faces at the vertex: `P` the shared face (a plane), `W` and
@@ -89,15 +93,17 @@ given design; **[3]** unproven, robustness or bound established here.
   `c*` closed form with unit tests on the convex fixture: `c*`, `q` and
   `p` against the hand formula, `p` on `w` within its tolerance, and
   `c*` at distance `r` from `P`, `W` and `C`.
-- [ ] Step 3 **[3]**: re-end both runs at `c*` (the table's `t`, the
+- [x] Step 3 **[3]**: re-end both runs at `c*` (the table's `t`, the
   walked spine's `v`). The convex fixture builds checker-green, its
   measures within tolerance of the oracle. It moves to `blend/` with
-  its dump. CHANGELOG bullet. *Partial*: the runs end at `c*`, the
-  walked skin refitted to end there (ADR-0072, amended), and both
-  fixtures and the split rims build checker-green (ADR-0061, amended).
-  Open CASCADE's volume holds the step open until ADR-0073 lands (Open
-  questions).
-- [ ] Step 4 **[2]**: the concave pocket moves to `blend/`. Add two
+  its dump. CHANGELOG bullet. Done in two commits: the runs end at
+  `c*`, the walked skin refitted there (ADR-0072, amended), both
+  fixtures and the split rims checker-green (ADR-0061, amended); then
+  ADR-0073, and the block held to the second oracle within the default
+  tolerances (its volume 5.3e-10 off, every inertia component 9e-10).
+- [ ] Step 4 **[2]**: the concave pocket, and the four split rims
+  (steep, tilted, slab, column), each get a second oracle's run and
+  record (ADR-0073) and move to `blend/`. Add two
   neighbours: two walked runs at a leaning ruling (an S-bend of two
   tangent arcs under an oblique top, the census's cylinder × cylinder),
   and a lean that puts `c*` past the walked spine's reach. Each becomes a
@@ -193,10 +199,24 @@ given design; **[3]** unproven, robustness or bound established here.
   the fixtures are held to it, not to closed forms: ADR-0073 (step 3)
   lets `measure_differs` rest on a `second_oracle.json` record, imported
   by a tool, never typed by hand, naming the source's version, its run's
-  commit and the scale. It holds volume, area, centroid, inertia and
-  per-face areas by centroid; Open CASCADE's numbers stay in
+  commit and the scale. It holds volume, area, centroid and inertia
+  (per-face areas stay in the run's own record: the runner compares no
+  per-face measure for any oracle); Open CASCADE's numbers stay in
   `expected.json` as the record. Arris-authored fixtures only; CTC-05
   AP242 and the fetched tier are M4's to decide on the same record.
+- *Settled* (step 3, the read-back, 2026-10-28): Open CASCADE's file of
+  the block reads back, in Open CASCADE itself, as 11.5639516, 2.7e-5
+  off its in-memory 11.5642604: its corner faces' tolerances reach
+  4.7e-4, and its pcurves lie that far from the edges the file keeps.
+  Arris's reading of the file is 1.1e-9 from Open CASCADE's reading. So
+  under a second oracle's record the read-back holds Arris's reading to
+  Open CASCADE's reading of the same file (ADR-0073 §2a), not to its
+  shape in memory. Rejected: widening the read-back to Open CASCADE's
+  4.7e-4, which would pass nearly any reading.
+- *Settled* (step 3, the inertia): the second oracle's mass properties
+  carry no moments, so its run asks a lower API for the centroidal
+  tensor at its accuracy mode. The relative-tolerance mode measured
+  worse, 2.2e-7 off in volume.
 - ⚠ OPEN: what step 7 leaves of the census's 140 + 36 `VertexBlend`
   sites (a plane × plane or cylinder × cylinder edge of the same runs, or
   a vertex of four). The agent writes the lines; a new milestone is the

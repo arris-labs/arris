@@ -177,6 +177,19 @@ fn the_measure_stage_holds_the_box_to_the_oracle_and_names_what_differs() {
     );
 }
 
+/// A chain of no steps at `variant`'s params: all [`measure_target`]
+/// reads of one.
+fn bare_chain(fixture: &Fixture, variant: &str) -> Chain {
+    Chain {
+        model: Model::default(),
+        steps: BTreeMap::new(),
+        profiles: BTreeMap::new(),
+        result: fixture.recipe.result.clone(),
+        params: fixture.recipe.params_of(variant).unwrap(),
+        variant: variant.into(),
+    }
+}
+
 /// Under `measure_differs` the stage is held to the recipe's closed
 /// forms, every one of which it needs (ADR-0015); without it, to the
 /// oracle's measurements.
@@ -184,14 +197,13 @@ fn the_measure_stage_holds_the_box_to_the_oracle_and_names_what_differs() {
 fn measure_differs_holds_the_stage_to_the_closed_forms() {
     let dir = fixtures::corpus_root().join("boolean/cross-cylinders-fuse");
     let mut fixture = fixtures::load(&dir).unwrap();
-    let params = fixture.recipe.params_of("default").unwrap();
+    let chain = bare_chain(&fixture, "default");
     let expected = fixture.expected.results["default"].clone();
-    let (target, by) = measure_target(&fixture, &params, &expected).unwrap();
+    let (target, by) = measure_target(&fixture, &chain, &expected).unwrap();
     assert_eq!((target, by), (expected.clone(), "the oracle's"));
 
     fixture.recipe.analytic.measure_differs = Some("a test".into());
-    let Err(CorpusError::Measure { what, .. }) = measure_target(&fixture, &params, &expected)
-    else {
+    let Err(CorpusError::Measure { what, .. }) = measure_target(&fixture, &chain, &expected) else {
         panic!("a closed form missing is an error");
     };
     assert_eq!(what, "analytic.measure_differs needs analytic.inertia");
@@ -202,7 +214,7 @@ fn measure_differs_holds_the_stage_to_the_closed_forms() {
         row(["0", "3", "0"]),
         row(["0", "0", "R + 3"]),
     ]);
-    let (target, by) = measure_target(&fixture, &params, &expected).unwrap();
+    let (target, by) = measure_target(&fixture, &chain, &expected).unwrap();
     assert_eq!(by, "the closed form's");
     let volume = 2.0 * std::f64::consts::PI * 6.0 - 16.0 / 3.0;
     assert!((target.volume.unwrap() - volume).abs() < 1e-12);
@@ -211,6 +223,54 @@ fn measure_differs_holds_the_stage_to_the_closed_forms() {
     // What the oracle says of everything else is kept.
     assert_eq!(target.counts, expected.counts);
     assert_eq!(target.probes, expected.probes);
+}
+
+/// Under `measure_differs` a second oracle's record, where the fixture
+/// carries one, is what the stage is held to, for the chain's variant
+/// (ADR-0073): its four numbers, the oracle's everything else.
+#[test]
+fn measure_differs_holds_the_stage_to_a_second_oracle() {
+    let dir = fixtures::corpus_root().join("boolean/cross-cylinders-fuse");
+    let mut fixture = fixtures::load(&dir).unwrap();
+    let chain = bare_chain(&fixture, "default");
+    let expected = fixture.expected.results["default"].clone();
+    let held = fixtures::SecondMeasured {
+        source: "1.0".into(),
+        run: "abc1234".into(),
+        accuracy: 1.0,
+        scale: 1.0,
+        volume: 2.0,
+        area: 3.0,
+        centroid: [0.5, 0.0, 0.0],
+        inertia: [[1.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 3.0]],
+    };
+    fixture.second_oracle = Some(fixtures::SecondOracle {
+        recipe_sha256: fixture.recipe_sha256.clone(),
+        results: BTreeMap::from([("default".to_string(), held.clone())]),
+    });
+    // Without the claim the record holds nothing.
+    let (target, by) = measure_target(&fixture, &chain, &expected).unwrap();
+    assert_eq!((target, by), (expected.clone(), "the oracle's"));
+
+    fixture.recipe.analytic.measure_differs = Some("a test".into());
+    let (target, by) = measure_target(&fixture, &chain, &expected).unwrap();
+    assert_eq!(by, "the second oracle's");
+    assert_eq!(target.volume, Some(held.volume));
+    assert_eq!(target.area, Some(held.area));
+    assert_eq!(target.centroid, Some(held.centroid));
+    assert_eq!(target.inertia, Some(held.inertia));
+    assert_eq!(target.counts, expected.counts);
+    assert_eq!(target.probes, expected.probes);
+
+    let mut other = chain;
+    other.variant = "turned".into();
+    let Err(CorpusError::Measure { what, .. }) = measure_target(&fixture, &other, &expected) else {
+        panic!("a variant the record lacks is an error");
+    };
+    assert_eq!(
+        what,
+        "second_oracle.json has no result for variant \"turned\""
+    );
 }
 
 #[test]

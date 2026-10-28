@@ -1323,6 +1323,46 @@ pub struct Expected {
     pub results: BTreeMap<String, Measured>,
 }
 
+/// The file a second oracle's record is in, beside `expected.json`
+/// (ADR-0073).
+pub const SECOND_ORACLE: &str = "second_oracle.json";
+
+/// A `second_oracle.json`: a second kernel's measurements of the
+/// recipe's result, run as a black box and imported by
+/// `tools/oracle/second_oracle.py`, never typed by hand. Under
+/// `analytic.measure_differs` a fixture is held to it in place of closed
+/// forms (ADR-0073).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SecondOracle {
+    /// The recipe hash the run's operand was built from; see
+    /// [`recipe_hash`].
+    pub recipe_sha256: String,
+    /// One result per variant it ran.
+    pub results: BTreeMap<String, SecondMeasured>,
+}
+
+/// One variant's result in a [`SecondOracle`], in the fixture's units.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SecondMeasured {
+    /// The second kernel's version and build.
+    pub source: String,
+    /// The commit of the script that ran it.
+    pub run: String,
+    /// The mass-property accuracy it was asked for.
+    pub accuracy: f64,
+    /// The run's length over the fixture's, which the import divided out.
+    pub scale: f64,
+    /// Volume.
+    pub volume: f64,
+    /// Area.
+    pub area: f64,
+    /// Centroid.
+    pub centroid: [f64; 3],
+    /// The inertia tensor about the centroid at unit density, products
+    /// negated as `expected.json` writes them.
+    pub inertia: [[f64; 3]; 3],
+}
+
 /// A loaded fixture directory.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Fixture {
@@ -1336,6 +1376,9 @@ pub struct Fixture {
     pub recipe_sha256: String,
     /// The oracle's answer.
     pub expected: Expected,
+    /// A second oracle's record ([`SECOND_ORACLE`]), where the directory
+    /// has one.
+    pub second_oracle: Option<SecondOracle>,
 }
 
 /// Why a fixture could not be loaded.
@@ -1470,6 +1513,12 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
         source,
     })?;
     let expected: Expected = read_json(&dir.join("expected.json"))?;
+    let second = dir.join(SECOND_ORACLE);
+    let second_oracle = if second.is_file() {
+        Some(read_json(&second)?)
+    } else {
+        None
+    };
     let recipe_sha256 = recipe_hash(&raw).map_err(|kind| FixtureError::UnknownKind {
         path: dir.join("fixture.json"),
         kind,
@@ -1480,6 +1529,7 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
         recipe_sha256,
         recipe,
         expected,
+        second_oracle,
     })
 }
 
@@ -1670,6 +1720,19 @@ pub fn lint(dir: &Path) -> Vec<String> {
             x.recipe_sha256, fixture.recipe_sha256
         ));
     }
+    if let Some(second) = &fixture.second_oracle {
+        if second.recipe_sha256 != fixture.recipe_sha256 {
+            problem(format!(
+                "{SECOND_ORACLE} is stale: recipe hash {} but the recipe hashes to {} — rerun the second oracle and tools/oracle/second_oracle.py",
+                second.recipe_sha256, fixture.recipe_sha256
+            ));
+        }
+        if r.analytic.measure_differs.is_none() {
+            problem(format!(
+                "{SECOND_ORACLE} holds nothing without analytic.measure_differs (ADR-0073)"
+            ));
+        }
+    }
     let names: std::collections::BTreeSet<&str> = r.steps.iter().map(Step::name).collect();
     if names.len() != r.steps.len() {
         problem("duplicate step names".into());
@@ -1715,7 +1778,30 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 problem("analytic.counts_differ needs a result Arris builds".into());
             }
         }
-        if a.measure_differs.is_some() {
+        let second = (fixture.second_oracle.as_ref()).and_then(|s| s.results.get(&variant));
+        if a.measure_differs.is_some() && fixture.second_oracle.is_some() {
+            let stated: Vec<&str> = [
+                ("volume", a.volume.is_some()),
+                ("area", a.area.is_some()),
+                ("centroid", a.centroid.is_some()),
+                ("inertia", a.inertia.is_some()),
+            ]
+            .into_iter()
+            .filter_map(|(field, stated)| stated.then_some(field))
+            .collect();
+            if !stated.is_empty() {
+                problem(format!(
+                    "analytic.measure_differs is held to {SECOND_ORACLE}, so analytic.{} would be a second source (ADR-0073)",
+                    stated.join(", analytic.")
+                ));
+            }
+            if second.is_none() {
+                problem(format!("[{variant}] {SECOND_ORACLE} has no result"));
+            }
+            if a.degenerate || a.expect_error.is_some() {
+                problem("analytic.measure_differs needs a result Arris builds".into());
+            }
+        } else if a.measure_differs.is_some() {
             let missing: Vec<&str> = [
                 ("volume", a.volume.is_none()),
                 ("area", a.area.is_none()),
@@ -1893,13 +1979,47 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 }
             }
         }
+        // A record no claim holds is a problem already, its numbers none.
+        if let Some(s) = second.filter(|_| a.measure_differs.is_some()) {
+            if let Some(ov) = m.volume.filter(|&ov| !rel(s.volume, ov)) {
+                differs.push(format!("second oracle volume {} vs oracle {ov}", s.volume));
+            }
+            if let Some(ov) = m.area.filter(|&ov| !rel(s.area, ov)) {
+                differs.push(format!("second oracle area {} vs oracle {ov}", s.area));
+            }
+            if let Some(oc) = m.centroid {
+                let far = |i: usize| {
+                    (s.centroid[i] - oc[i]).abs() > r.tolerances.centroid_abs.max(ANALYTIC_REL)
+                };
+                if (0..3).any(far) {
+                    differs.push(format!(
+                        "second oracle centroid {:?} vs oracle {oc:?}",
+                        s.centroid
+                    ));
+                }
+            }
+            if let Some(oi) = m.inertia {
+                let scale = (oi.iter().flatten()).fold(0.0f64, |s, x| s.max(x.abs()));
+                let far = (s.inertia.iter().flatten().zip(oi.iter().flatten()))
+                    .any(|(x, y)| (x - y).abs() > ANALYTIC_REL * scale.max(f64::MIN_POSITIVE));
+                if far {
+                    differs.push("second oracle inertia vs oracle".into());
+                }
+            }
+        }
         if a.measure_differs.is_none() {
             for d in differs {
                 problem(format!("[{variant}] {d}"));
             }
-        } else if differs.is_empty() {
+        } else if differs.is_empty() && (second.is_some() || fixture.second_oracle.is_none()) {
+            // A variant the record lacks is a problem already.
+            let held = if second.is_some() {
+                "the second oracle's record is"
+            } else {
+                "every closed form is"
+            };
             problem(format!(
-                "[{variant}] analytic.measure_differs is set but every closed form is the oracle's measurement"
+                "[{variant}] analytic.measure_differs is set but {held} the oracle's measurement"
             ));
         }
         if let Some(ac) = a.counts {

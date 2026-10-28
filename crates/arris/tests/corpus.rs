@@ -1300,23 +1300,18 @@ corpus_tests! {
     /// plane meets oblique cylinders.
     #[ignore = "builds with its skew junctions at c* (ADR-0072), but S5 leaves 25 pairs of planes and cylinders against walked faces undecided (plans/three-edge-run-vertex step 5)"]
     regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
-    /// A rounded block under an oblique top, one top line filleted: the
-    /// chain's walls turn into the corner cylinders along rulings that lean
-    /// out of the ball's normal plane at four vertices.
-    #[ignore = "builds checker-green with its junctions at c* (ADR-0072), but Open CASCADE's corner blends miss the rolling ball by up to 1.5e-3 and its volume is 3.8e-5 above Arris's: held to a second oracle once ADR-0073 lands (plans/three-edge-run-vertex step 3)"]
-    regression_rounded_block_oblique_top_fillet => run "regression/rounded-block-oblique-top-fillet";
     /// The same as a pocket under an oblique floor, filleted concave.
-    #[ignore = "builds checker-green, as regression/rounded-block-oblique-top-fillet does, its volume 6.1e-6 off Open CASCADE's for the same reason (plans/three-edge-run-vertex step 3)"]
+    #[ignore = "builds checker-green, as blend/rounded-block-oblique-top-fillet does, its volume 6.1e-6 off Open CASCADE's for the same reason: held to a second oracle's record once it is run (ADR-0073, plans/three-edge-run-vertex step 4)"]
     regression_rounded_pocket_oblique_floor_fillet => run "regression/rounded-pocket-oblique-floor-fillet";
     /// A rounded box split by a steep plane, the cap's rim filleted: the
     /// rim's walls turn into the corner cylinders along rulings that lean
     /// out of the ball's normal plane at all four corners.
-    #[ignore = "builds checker-green, its volume 1.9e-8 below Open CASCADE's, whose corner blends miss the rolling ball as on regression/rounded-block-oblique-top-fillet: held to a second oracle once ADR-0073 lands (plans/three-edge-run-vertex step 3)"]
+    #[ignore = "builds checker-green, its volume 1.9e-8 below Open CASCADE's, whose corner blends miss the rolling ball as on blend/rounded-block-oblique-top-fillet: held to a second oracle's record once it is run (ADR-0073, plans/three-edge-run-vertex step 4)"]
     regression_rounded_box_steep_split_cap_rim_fillet => run "regression/rounded-box-steep-split-cap-rim-fillet";
     /// The same box split by a plane tilted the other way, the cap's rim
     /// filleted: each walked stripe's surface ends at the shared ball, its
     /// corner touching the wall on the leaning ruling.
-    #[ignore = "builds checker-green, its volume 5.3e-8 below Open CASCADE's, whose corner blends miss the rolling ball as on regression/rounded-block-oblique-top-fillet: held to a second oracle once ADR-0073 lands (plans/three-edge-run-vertex step 3)"]
+    #[ignore = "builds checker-green, its volume 5.3e-8 below Open CASCADE's, whose corner blends miss the rolling ball as on blend/rounded-block-oblique-top-fillet: held to a second oracle's record once it is run (ADR-0073, plans/three-edge-run-vertex step 4)"]
     regression_rounded_box_tilted_split_cap_rim_fillet => run "regression/rounded-box-tilted-split-cap-rim-fillet";
     /// A narrower slab under the same plane: the skin's edges out of its
     /// corner touch the wall to below rounding.
@@ -1584,6 +1579,13 @@ corpus_tests! {
     blend_roof_fan_three_fillet => run "blend/roof-fan-three-fillet";
     /// The chamfer twin of `blend_roof_fan_three_fillet`.
     blend_roof_fan_three_chamfer => run "blend/roof-fan-three-chamfer";
+    /// A rounded block under an oblique top, one top line filleted: the
+    /// chain's walls turn into the corner cylinders along rulings that lean
+    /// out of the ball's normal plane at four vertices, where the stripes
+    /// meet on one ball off the vertex (ADR-0072). Held to a second
+    /// oracle's measurements, Open CASCADE's corner blends missing the
+    /// rolling ball (ADR-0073).
+    blend_rounded_block_oblique_top_fillet => run "blend/rounded-block-oblique-top-fillet";
     /// A 10-cube's top face pushed out by 2: a 10 × 10 × 12 block.
     offset_box_top_pushed => run "offset/box-top-pushed";
     /// A 10-cube's top face pulled in by 2: a 10 × 10 × 8 block.

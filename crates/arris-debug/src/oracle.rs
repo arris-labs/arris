@@ -287,7 +287,8 @@ pub fn compare(
 /// a test, a fixture outside the corpus.
 ///
 /// A `MATCH` is kept in [`cache`] under the STEP text, the directory's
-/// `fixture.json` and `expected.json` and the variant; a later call with
+/// `fixture.json`, `expected.json` and `second_oracle.json` (where it has
+/// one) and the variant; a later call with
 /// all of them unchanged returns the same table without running the
 /// oracle. A mismatch is never kept.
 pub fn compare_dir(
@@ -307,15 +308,19 @@ pub fn compare_dir(
         })?;
     let read = |name: &str| std::fs::read(dir.join(name)).ok();
     let (spec, expected) = (read("fixture.json"), read("expected.json"));
-    let slot = cache::slot(
-        "compare.py",
-        &[
-            Some(step_text.as_bytes()),
-            spec.as_deref(),
-            expected.as_deref(),
-        ],
-        Some(variant.unwrap_or("default")),
-    );
+    let mut inputs = vec![
+        Some(step_text.as_bytes()),
+        spec.as_deref(),
+        expected.as_deref(),
+    ];
+    // A second oracle's record is what `compare.py` holds the measurements
+    // to where it is claimed (ADR-0073). It is keyed only where present, so
+    // no other fixture's entry moves.
+    let second = read(crate::fixtures::SECOND_ORACLE);
+    if second.is_some() {
+        inputs.push(second.as_deref());
+    }
+    let slot = cache::slot("compare.py", &inputs, Some(variant.unwrap_or("default")));
     if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
         return Ok(String::from_utf8_lossy(&bytes).into_owned());
     }
@@ -410,6 +415,84 @@ pub fn occt_step(
     })?;
     keep(slot, text.as_bytes());
     Ok(text)
+}
+
+/// Open CASCADE's measurement of its own STEP of a recipe's result, read
+/// back (`occt_step.py --measured`): the volume, area, centroid and
+/// inertia of the shape the file carries, which need not be the shape it
+/// wrote from where its in-memory boundary is looser than the file's.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Deserialize)]
+pub struct FileMeasure {
+    /// Volume.
+    pub volume: f64,
+    /// Area.
+    pub area: f64,
+    /// Centroid.
+    pub centroid: [f64; 3],
+    /// The inertia tensor about the centroid at unit density, products
+    /// negated as `expected.json` writes them.
+    pub inertia: [[f64; 3]; 3],
+}
+
+/// [`occt_step`]'s file read back by Open CASCADE and measured: what
+/// Arris's reading of it is held to where a second oracle's record says
+/// Open CASCADE's shape in memory is wrong (ADR-0073). Cached under the
+/// directory's `fixture.json`, the variant and the flag; the file is left
+/// at `target/inspect/<tag>.step`. Errors: as [`occt_step`]'s, and
+/// [`OracleError::Environment`] where the output does not parse.
+///
+/// ```no_run
+/// use arris_debug::{fixtures, oracle};
+///
+/// let dir = fixtures::corpus_root().join("primitive/box");
+/// let read = oracle::occt_step_measured(&dir, None, false, "occt-box").unwrap();
+/// assert!((read.volume - 12000.0).abs() < 1e-6);
+/// ```
+pub fn occt_step_measured(
+    dir: &Path,
+    variant: Option<&str>,
+    nurbs: bool,
+    tag: &str,
+) -> Result<FileMeasure, OracleError> {
+    let scratch = scratch_dir();
+    let file = scratch.join(format!("{tag}.step"));
+    let spec = std::fs::read(dir.join("fixture.json")).ok();
+    let variant = variant.unwrap_or("default");
+    let script = if nurbs {
+        "occt_step.py --nurbs --measured"
+    } else {
+        "occt_step.py --measured"
+    };
+    let slot = cache::slot(script, &[spec.as_deref()], Some(variant));
+    let parse = |bytes: &[u8]| {
+        serde_json::from_slice::<FileMeasure>(bytes).map_err(|e| OracleError::Environment {
+            message: format!("occt_step.py --measured's output did not parse as JSON: {e}"),
+        })
+    };
+    if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
+        if let Ok(read) = parse(&bytes) {
+            return Ok(read);
+        }
+    }
+    std::fs::create_dir_all(&scratch).map_err(|e| OracleError::Write {
+        path: scratch.clone(),
+        message: e.to_string(),
+    })?;
+    let mut command = uv("occt_step.py");
+    command
+        .arg(dir)
+        .arg(&file)
+        .args(["--variant", variant, "--measured"]);
+    if nurbs {
+        command.arg("--nurbs");
+    }
+    let output = spawn(&mut command)?;
+    if !output.status.success() {
+        return Err(environment(&output));
+    }
+    let read = parse(&output.stdout)?;
+    keep(slot, &output.stdout);
+    Ok(read)
 }
 
 /// One placed instance of [`occt_assembly`]'s assembly, as Open CASCADE

@@ -2,6 +2,8 @@
 
 - Status: accepted (2026-09-18)
 - Plan: `seam-parametrisation-faults` step 1
+- Amended by: ADR-0073 (the measurements may come from a second
+  oracle's record where no closed form exists)
 - Follows: `SEED.md` §9 (the test oracle), ADR-0004 (`counts_differ`'s
   first use)
 

@@ -176,6 +176,7 @@ pub fn inputs_for_step(name: &str, recipe: &Recipe, step: &str) -> Result<Inputs
                 recipe_sha256: String::new(),
                 results: BTreeMap::new(),
             },
+            second_oracle: None,
         },
         "default",
     )

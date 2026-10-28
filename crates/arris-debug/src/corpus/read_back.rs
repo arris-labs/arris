@@ -228,6 +228,7 @@ pub(super) fn read_back(
         profiles: BTreeMap::new(),
         result: "read".into(),
         params,
+        variant: variant.to_string(),
     };
     let mut held = fixture.clone();
     held.name = format!("{} [{which} OCCT STEP]", fixture.name);
@@ -275,7 +276,7 @@ pub(super) fn read_back(
     // The closed forms hold Open CASCADE's file where the fixture blames
     // its measurement of its own shape, not the shape.
     if fixture.recipe.analytic.occt_file_measure_differs.is_some() {
-        let (target, _) = measure_target(fixture, &chain.params, expected)?;
+        let (target, _) = measure_target(fixture, &chain, expected)?;
         measure_stage(&held, &chain, &target)?;
     } else {
         measure_stage(&held, &chain, expected)?;

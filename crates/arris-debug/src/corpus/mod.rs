@@ -35,7 +35,8 @@ use crate::dump::dump_text;
 use crate::fixtures::geom::{self as geom_spec, build_profile};
 use crate::fixtures::{
     self, Class, Counts, ExpectError, Expected, ExprError, Fixture, FixtureError, Measured, Num,
-    PathSegment as RecipeSegment, Recipe, Rotate, ShellSide, Step, SweepLaw, SweepPath, Tolerances,
+    PathSegment as RecipeSegment, Recipe, Rotate, SECOND_ORACLE, ShellSide, Step, SweepLaw,
+    SweepPath, Tolerances,
 };
 use crate::oracle::{self, OracleError};
 use crate::polyhedron::PolyhedronError;
@@ -465,6 +466,9 @@ pub struct Chain {
     pub result: String,
     /// The recipe's parameters under the variant it was built at.
     pub params: BTreeMap<String, f64>,
+    /// That variant's name, which a second oracle's record is read under
+    /// (ADR-0073).
+    pub variant: String,
 }
 
 impl Chain {
@@ -527,6 +531,7 @@ pub fn build(name: &str, recipe: &Recipe) -> Result<Chain, CorpusError> {
             recipe_sha256: String::new(),
             results: BTreeMap::new(),
         },
+        second_oracle: None,
     };
     chain_of(&fixture, "default")
 }
@@ -566,6 +571,7 @@ pub(crate) fn chain_from(
         profiles,
         result: fixture.recipe.result.clone(),
         params,
+        variant: variant.to_string(),
     })
 }
 
@@ -764,6 +770,7 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
         profiles,
         result: fixture.recipe.result.clone(),
         params,
+        variant: variant.to_string(),
     };
     let body = stages(&fixture, &chain, expected)?;
     let m = &chain.model;
@@ -799,8 +806,29 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
     if expected.sheet {
         sheet_round_trip(&fixture, &chain, body, &text, expected)?;
     } else if analytic.step_differs.is_none() && analytic.occt_step_unread.is_none() {
+        // Where a second oracle's record holds the result, Open CASCADE's
+        // shape in memory is the wrong one, and its file is held to its own
+        // reading of that file (ADR-0073).
+        let held = |nurbs: bool, tag: &str| -> Result<Measured, CorpusError> {
+            if analytic.measure_differs.is_none() || fixture.second_oracle.is_none() {
+                return Ok(expected.clone());
+            }
+            let read = oracle::occt_step_measured(dir, Some(variant), nurbs, tag)?;
+            Ok(Measured {
+                volume: Some(read.volume),
+                area: Some(read.area),
+                centroid: Some(read.centroid),
+                inertia: Some(read.inertia),
+                ..expected.clone()
+            })
+        };
         let occt = oracle::occt_step(dir, Some(variant), false, &format!("occt-{tag}"))?;
-        read_back_stage(&fixture, variant, &occt, expected)?;
+        read_back_stage(
+            &fixture,
+            variant,
+            &occt,
+            &held(false, &format!("occt-{tag}"))?,
+        )?;
         // And converted to B-splines first: free-form faces with seams
         // and poles, held to the converted shape's own counts — but not
         // for a result on a file's solid, which the reader has already
@@ -809,7 +837,8 @@ pub fn run(dir: &Path, variant: &str) -> Result<(), CorpusError> {
         // size, not the operation (ADR-0026, amendment of step 7).
         if expected.nurbs_fails.is_none() && !reads_a_file(&fixture) {
             let occt = oracle::occt_step(dir, Some(variant), true, &format!("occt-nurbs-{tag}"))?;
-            read_back_nurbs_stage(&fixture, variant, &occt, expected)?;
+            let held = held(true, &format!("occt-nurbs-{tag}"))?;
+            read_back_nurbs_stage(&fixture, variant, &occt, &held)?;
         }
     }
 

@@ -598,6 +598,7 @@ pub fn judge(
                 .map(|m| BTreeMap::from([("default".to_string(), m.clone())]))
                 .unwrap_or_default(),
         },
+        second_oracle: None,
     };
     // The operand as the part runner read it, where it did: the same
     // model a fresh read of the file gives, without reading it again.
