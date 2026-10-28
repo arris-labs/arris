@@ -162,6 +162,20 @@ careful, a geometric or numeric case to get right within a given design;
   the knot; the committed 20° pocket does not.
 - ⚠ OPEN: the oracle for each fixture, Open CASCADE or a second oracle's
   record. The agent decides at steps 4 and 5 by ADR-0073's 1e-6 lint.
+- ⚠ OPEN (step 6, 2026-10-29): with the S5 allowance removed,
+  `oblique_chains_meet_on_the_rulings_offset` shard 0 fails at 1000 cases
+  (the 64-case census of step 1 missed it) on a third place:
+  `blend_prop.rs`'s ignored
+  `an_oblique_fillet_whose_section_runs_along_the_skins_edge_is_checked`
+  (tilt 31°, convex, `length` 3, `width` 1.5, `corner` 0.459, `r` 0.2247,
+  posed 180° about y at z = -89). A walked skin against its table
+  cylinder (f51/f52, f56/f57): the root is on the skin's edge `u = 0` with
+  `∂f/∂u` -0.26 and `∂f/∂v` -1.8e-7, `f` 6e-23, i.e. the section runs
+  along the edge, and `edge_cell` (`torus_walk/cells.rs`) finds no
+  certified cell (its `b` exceeds π/4 at every size) and gives
+  `UnresolvedTurning`. A new tracer rule, a [3] step; the agent decides
+  whether it joins this plan as a step 6 before the allowances go, or
+  becomes its own. Step 6 is not started: the allowance stays.
 - ⚠ OPEN: the floor of built cases per shard in step 6. The agent picks
   it from a 1000-case run's count (below half the measured count fails),
   and records the count here.

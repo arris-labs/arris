@@ -3650,3 +3650,35 @@ prop_shards! {
             oblique_holds(Oblique { length, width, corner, tilt: tilt.to_radians(), r, concave, pose })
         }
 }
+
+/// A rounded block under a tilted top at 31°, found by
+/// `oblique_chains_meet_on_the_rulings_offset` once its S5 allowance is
+/// removed (1000 cases, plans/walked-saddle-cell step 6): a walked skin
+/// against its table cylinder, whose section runs along the skin's domain
+/// edge `u = 0` (`∂f/∂u` -0.26, `∂f/∂v` -1.8e-7, `f` 6e-23), so no cell on
+/// the edge is certified (`edge_cell` in `torus_walk/cells.rs`) and the
+/// tracer refuses it as `UnresolvedTurning`.
+#[test]
+#[ignore = "S5 leaves a walked skin against its table cylinder undecided: the section runs along the skin's edge, `edge_cell` certifies no cell (plans/walked-saddle-cell step 6)"]
+fn an_oblique_fillet_whose_section_runs_along_the_skins_edge_is_checked() {
+    let pose = Isometry::new(
+        arris_math::nalgebra::Unit::new_unchecked(arris_math::nalgebra::Quaternion::new(
+            0.0, 1.0, 0.0, 0.0,
+        )),
+        Vec3::new(0.0, 0.0, -89.16487392943412),
+    );
+    let case = Oblique {
+        length: 3.0,
+        width: 1.5,
+        corner: 0.4591144096367237,
+        tilt: 31.015754421798317f64.to_radians(),
+        r: 0.22468281425389497,
+        concave: false,
+        pose,
+    };
+    let mut m = Model::default();
+    let (part, at) = case.build(&mut m).unwrap();
+    let edge = edge_near(&m, part, at).unwrap();
+    let (blended, _) = fillet(&mut m, part, &[edge], case.r).unwrap();
+    assert_checked(&check(&m, blended, Level::Full)).unwrap();
+}
