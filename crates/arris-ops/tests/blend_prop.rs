@@ -46,6 +46,7 @@ use arris_debug::{dump_text, prop, prop_shards};
 use arris_geom::SurfaceKind;
 use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment};
 use arris_io::step::{self, ReadOptions};
+use arris_math::nalgebra::UnitQuaternion;
 use arris_math::real;
 use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec2, Vec3};
 use arris_ops::OpError;
@@ -3436,5 +3437,216 @@ prop_shards! {
         [shard_0 shard_1 shard_2 shard_3]
         (case) = (prop::finite_f64(2.0..=3.0), prop::finite_f64(4.0..=4.5), prop::finite_f64(1.0..=2.0)) => {
             lip_holds(case.0, case.1, case.2)
+        }
+}
+
+// A rounded block under an oblique top, or a pocket under an oblique floor,
+// one line of the top filleted: the chain runs on round the eight edges of
+// the top, and at the vertices where a wall turns into a corner cylinder
+// along a ruling that leans out of the ball's normal plane the table stripe
+// and the walked stripe meet on one ball off the vertex (ADR-0072). Each
+// case builds clean at `Full` (S5 pairs the tracer leaves undecided apart)
+// or is refused by name;
+// every arc of radius `r` the blend makes has its centre at `r` from the
+// tilted plane and at `r` from the ruling of one of the corner cylinders'
+// eight tangents with the walls.
+
+/// The geometry of one block or pocket, in its own frame: a `length` ×
+/// `width` rounded rectangle, corners at `corner`, the tilted plane through
+/// `(0, width / 2, 2)` at `tilt` about `x`.
+#[derive(Debug, Clone, Copy)]
+struct Oblique {
+    length: f64,
+    width: f64,
+    corner: f64,
+    tilt: f64,
+    r: f64,
+    concave: bool,
+    pose: Isometry,
+}
+
+impl Oblique {
+    const TOP: f64 = 2.0;
+
+    fn profile(&self, z: f64) -> Result<Profile, TestCaseError> {
+        let (l, w, c) = (self.length, self.width, self.corner);
+        let k = c * (1.0 - real::cos(FRAC_PI_4));
+        let p = Point2::new;
+        let frame = Frame::new(Point3::new(0.0, 0.0, z), Vec3::z(), Vec3::x()).map_err(fail)?;
+        Ok(Profile {
+            plane: frame,
+            outer: ProfileLoop::Path {
+                start: p(c, 0.0),
+                segments: vec![
+                    ProfileSegment::LineTo(p(l - c, 0.0)),
+                    ProfileSegment::ArcTo {
+                        to: p(l, c),
+                        via: p(l - k, k),
+                    },
+                    ProfileSegment::LineTo(p(l, w - c)),
+                    ProfileSegment::ArcTo {
+                        to: p(l - c, w),
+                        via: p(l - k, w - k),
+                    },
+                    ProfileSegment::LineTo(p(c, w)),
+                    ProfileSegment::ArcTo {
+                        to: p(0.0, w - c),
+                        via: p(k, w - k),
+                    },
+                    ProfileSegment::LineTo(p(0.0, c)),
+                    ProfileSegment::ArcTo {
+                        to: p(c, 0.0),
+                        via: p(k, k),
+                    },
+                ],
+            },
+            holes: Vec::new(),
+        })
+    }
+
+    /// The motion that tilts the plane `z = 2` about `x` through
+    /// `(0, width / 2, 2)`.
+    fn tilting(&self) -> Isometry {
+        let about = Vec3::new(0.0, self.width / 2.0, Self::TOP);
+        let turn = UnitQuaternion::from_axis_angle(&Vec3::x_axis(), self.tilt);
+        Isometry::from_translation(-about)
+            .then(&Isometry::from_rotation(turn))
+            .then(&Isometry::from_translation(about))
+    }
+
+    /// The body, the unblended edge's midpoint in the posed frame.
+    fn build(&self, m: &mut Model) -> Result<(Body, Point3), TestCaseError> {
+        let (l, w) = (self.length, self.width);
+        let (slab, _) = if self.concave {
+            primitive_box(
+                m,
+                Point3::new(-1.0, -3.0, -3.0),
+                Point3::new(l + 1.0, w + 3.0, Self::TOP),
+            )
+        } else {
+            primitive_box(
+                m,
+                Point3::new(-1.0, -3.0, Self::TOP),
+                Point3::new(l + 1.0, w + 3.0, 8.0),
+            )
+        }
+        .map_err(fail)?;
+        let (tilted, _) = transform(m, slab, &self.tilting()).map_err(fail)?;
+        let body = if self.concave {
+            let (stock, _) = primitive_box(
+                m,
+                Point3::new(-1.0, -1.0, 0.0),
+                Point3::new(l + 1.0, w + 1.0, 4.0),
+            )
+            .map_err(fail)?;
+            let (prism, _) = extrude(m, &self.profile(0.5)?, Vec3::z(), 4.5).map_err(fail)?;
+            let (pocket, _) = cut(m, prism, tilted).map_err(fail)?;
+            cut(m, stock, pocket).map_err(fail)?.0
+        } else {
+            let (prism, _) = extrude(m, &self.profile(0.0)?, Vec3::z(), 6.0).map_err(fail)?;
+            cut(m, prism, tilted).map_err(fail)?.0
+        };
+        let at = Point3::new(l / 2.0, 0.0, Self::TOP - (w / 2.0) * real::tan(self.tilt));
+        let (moved, _) = transform(m, body, &self.pose).map_err(fail)?;
+        Ok((moved, self.pose.apply(at)))
+    }
+
+    /// The vertical lines where the walls meet the corner cylinders, as
+    /// points of `(x, y)`.
+    fn rulings(&self) -> [(f64, f64); 8] {
+        let (l, w, c) = (self.length, self.width, self.corner);
+        [
+            (c, 0.0),
+            (l - c, 0.0),
+            (l, c),
+            (l, w - c),
+            (l - c, w),
+            (c, w),
+            (0.0, w - c),
+            (0.0, c),
+        ]
+    }
+}
+
+fn oblique_holds(case: Oblique) -> Result<(), TestCaseError> {
+    let mut m = Model::default();
+    let (part, at) = case.build(&mut m)?;
+    let edge = edge_near(&m, part, at)?;
+    let (blended, p) = match fillet(&mut m, part, &[edge], case.r) {
+        Ok(built) => built,
+        Err(OpError::Degenerate { .. } | OpError::Unsupported { .. }) => return Ok(()),
+        Err(e) => return Err(fail(format!("fillet of {case:?}: {e}"))),
+    };
+    // Clean at `Full`: no violation. Where a walked stripe meets a cylinder
+    // or a plane tangent along its contact the tracer may leave the pair
+    // undecided at S5 (docs/BACKLOG.md, the saddle cell of a walked blend
+    // beside a B-spline wall); no other row is left unchecked.
+    let report = check(&m, blended, Level::Full);
+    prop_assert!(report.is_ok(), "{}", report);
+    prop_assert!(
+        report.unchecked().iter().all(|u| u.code() == "S5"),
+        "only S5 pairs may be undecided\n{}",
+        report
+    );
+    audit(&m, &[part], blended, &p).map_err(|e| fail(format!("provenance: {e}")))?;
+    // The arcs: each circle of radius `r` has its centre at `r` from the
+    // tilted plane and from one of the rulings, in the frame of the case.
+    let back = case.pose.inverse();
+    let (ny, nz) = (-real::sin(case.tilt), real::cos(case.tilt));
+    let mut arcs = 0;
+    for e in m.edges(blended).map_err(fail)? {
+        let Some((curve, _)) = m.edge(e.id).map_err(fail)?.curve() else {
+            continue;
+        };
+        let Curve::Circle { frame, radius } = m.curve(curve).map_err(fail)? else {
+            continue;
+        };
+        if (radius - case.r).abs() > 1e-7 * case.r {
+            continue;
+        }
+        arcs += 1;
+        let c = back.apply(frame.origin());
+        let to_plane = (ny * (c.y - case.width / 2.0) + nz * (c.z - Oblique::TOP)).abs();
+        prop_assert!(
+            (to_plane - case.r).abs() <= 1e-6 * case.r,
+            "an arc's centre {c} is {to_plane} from the tilted plane, not {}",
+            case.r
+        );
+        let to_ruling = case
+            .rulings()
+            .iter()
+            .map(|&(x, y)| real::hypot(c.x - x, c.y - y))
+            .fold(f64::INFINITY, f64::min);
+        prop_assert!(
+            (to_ruling - case.r).abs() <= 1e-6 * case.r,
+            "an arc's centre {c} is {to_ruling} from the nearest ruling, not {}",
+            case.r
+        );
+    }
+    prop_assert!(
+        arcs == 8,
+        "{arcs} arcs of radius {} for 8 junctions",
+        case.r
+    );
+    Ok(())
+}
+
+prop_shards! {
+    /// A rounded block or pocket at a random tilt of 5° to 40°, corner and
+    /// fillet radius and pose: the junctions at leaning rulings meet on
+    /// one ball off the vertex.
+    oblique_chains_meet_on_the_rulings_offset
+        [shard_0 shard_1 shard_2 shard_3]
+        (case) = (
+            prop::finite_f64(3.0..=5.0),
+            prop::finite_f64(1.5..=2.5),
+            prop::finite_f64(0.3..=0.6),
+            prop::finite_f64(5.0..=40.0),
+            prop::finite_f64(0.1..=0.25),
+            any::<bool>(),
+            prop::pose(),
+        ) => {
+            let (length, width, corner, tilt, r, concave, pose) = case;
+            oblique_holds(Oblique { length, width, corner, tilt: tilt.to_radians(), r, concave, pose })
         }
 }

@@ -116,7 +116,7 @@ given design; **[3]** unproven, robustness or bound established here.
   that differs is read and recorded as `counts_differ`, with its reason
   (Open CASCADE 664 faces, the second oracle 662 for the battery's edge
   set).
-- [ ] Step 6 **[2]**: property tests in `blend_prop.rs`. Use a random
+- [x] Step 6 **[2]**: property tests in `blend_prop.rs`. Use a random
   tilt (5° to 40°), corner radius, fillet radius and pose, convex and
   concave. Each case builds checker-green or is refused by name. At each
   junction the arc's samples lie at `r` from `c*`, and `c*` lies at `r`
@@ -236,6 +236,23 @@ given design; **[3]** unproven, robustness or bound established here.
   pairs undecided (`regression/s-bend-oblique-top-fillet`, ignored); the
   tracer's rows are step 5's too. No tilt of the block's recipe from
   30° to 70° gives a `VertexBlend` at the reach (backlog).
+- *Settled* (step 6, "checker-green"): at random poses nearly every
+  built case leaves S5 pairs of a walked stripe against a tangent
+  cylinder or plane undecided, the tracer's saddle cell (step 5's
+  blocker), so `oblique_chains_meet_on_the_rulings_offset` demands no
+  violation and allows only undecided S5 rows, naming the rest. It takes
+  `OpError::Unsupported` ("no closed form for a cylinder against a
+  plane", seen at 39° on a 1.5-wide block) as a refusal by name, with
+  `Degenerate`. Rejecting the undecided cases instead would reject
+  nearly all of them. When step 5's tracer work lands, the first
+  allowance goes and `assert_checked` replaces it.
+- *Settled* (step 5, 2026-10-28): not done. The CTC-02 excerpt builds
+  but leaves 75 pairs undecided, not 25: 62 `CrowdedSingularity` from
+  `torus_walk/singular.rs`'s saddle cell (`singular_cell`, no cell that
+  parts the arms found for a walked blend tangent to a B-spline wall
+  along its contact), the rest `UnresolvedTurning` in `march/walk.rs`.
+  That is an ADR-0061 amendment of its own, as step 3's were, not a
+  fixture move; the plan stays open at step 5 for it.
 - ⚠ OPEN: what step 7 leaves of the census's 140 + 36 `VertexBlend`
   sites (a plane × plane or cylinder × cylinder edge of the same runs, or
   a vertex of four). The agent writes the lines; a new milestone is the

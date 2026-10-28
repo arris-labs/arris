@@ -1298,7 +1298,7 @@ corpus_tests! {
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
     /// plane meets oblique cylinders.
-    #[ignore = "builds with its skew junctions at c* (ADR-0072), but S5 leaves 25 pairs of planes and cylinders against walked faces undecided (plans/three-edge-run-vertex step 5)"]
+    #[ignore = "builds with its skew junctions at c* (ADR-0072), but S5 leaves 75 pairs of planes, cylinders and cones against walked faces undecided, 62 of them the saddle cell of torus_walk/singular.rs (plans/three-edge-run-vertex step 5)"]
     regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
     /// The same as a pocket under an oblique floor, filleted concave.
         blend_rounded_pocket_oblique_floor_fillet => run "blend/rounded-pocket-oblique-floor-fillet";
