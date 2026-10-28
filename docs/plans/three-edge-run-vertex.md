@@ -111,11 +111,12 @@ given design; **[3]** unproven, robustness or bound established here.
   Done: the pocket, the slab and the column run on the second oracle's
   record, the two boxes on Open CASCADE at 1e-7, all moved to `blend/`; the S-bend is an ignored `regression/` fixture (S5); the
   reach case is two backlog lines (see *Settled*).
-- [ ] Step 5 **[2]**: `regression/nist-ctc-02-ap242-ellipse-chain-fillet`
-  passes (13 edges on f43, six junctions) and moves to `blend/`. Any count
-  that differs is read and recorded as `counts_differ`, with its reason
-  (Open CASCADE 664 faces, the second oracle 662 for the battery's edge
-  set).
+- [x] Step 5 **[1]**: rescoped (see *Settled*, step 5's move). The
+  CTC-02 excerpt and the S-bend stay ignored under `regression/`; their
+  reasons and the step 6 property's allowance name one backlog line, the
+  saddle cell of a walked blend beside a B-spline wall, which the plan
+  `walked-saddle-cell` absorbs. Was: the excerpt passes and moves to
+  `blend/`.
 - [x] Step 6 **[2]**: property tests in `blend_prop.rs`. Use a random
   tilt (5° to 40°), corner radius, fillet radius and pose, convex and
   concave. Each case builds checker-green or is refused by name. At each
@@ -128,10 +129,10 @@ given design; **[3]** unproven, robustness or bound established here.
   refusals stay at 1).
 
 ## Acceptance
-- Step 1's two fixtures, step 4's and the CTC-02 excerpt pass under
-  `blend/` in `crates/arris/tests/corpus.rs` at `Level::Full`, each
-  within its tolerance of Open CASCADE's volume, area, centroid and
-  inertia.
+- Step 1's two fixtures and step 4's pass under `blend/` in
+  `crates/arris/tests/corpus.rs` at `Level::Full`, each within its
+  tolerance of its oracle's volume, area, centroid and inertia. The
+  CTC-02 excerpt moved with step 5 to `walked-saddle-cell`.
 - The real parts' blend network row is 2 of 38 (C11's Accept: below 4),
   and the script corpus's `fillet` refusals are at most 1.
 - The property tests pass at 1000 cases in the full gate, with no panic.
@@ -143,13 +144,15 @@ given design; **[3]** unproven, robustness or bound established here.
 - `docs/ARCHITECTURE.md` blend section (the walked stripe's junction,
   around line 1109): the ball off the vertex on the ruling's offset.
 - `docs/BACKLOG.md` line 181: only the torus half is kept. Add the
-  four-edge lean and any site step 7 leaves.
+  four-edge lean and any site step 7 leaves. The saddle-cell line
+  (step 5) stays until `walked-saddle-cell` absorbs it.
 - `docs/ideas/blend-residue-real-parts.md`: M3 done; the file keeps M4
   and M5.
 - `GLOSSARY.md`: *Junction*.
 - `CHANGELOG.md` `Unreleased`: a fillet along a top edge whose wall
   turns into a slanted cylinder builds.
-- `AGENTS.md` current state: M3 done; next `/plan tolerant-tangency`.
+- `AGENTS.md` current state: M3 done; next `/plan walked-saddle-cell`,
+  then `tolerant-tangency`.
 
 ## Open questions
 - *Settled* (step 1): Open CASCADE does not split a face at the
@@ -252,7 +255,17 @@ given design; **[3]** unproven, robustness or bound established here.
   parts the arms found for a walked blend tangent to a B-spline wall
   along its contact), the rest `UnresolvedTurning` in `march/walk.rs`.
   That is an ADR-0061 amendment of its own, as step 3's were, not a
-  fixture move; the plan stays open at step 5 for it.
+  fixture move.
+- *Settled* (step 5's move, 2026-10-28): the excerpt's undecided rows go
+  to a plan of their own, `walked-saddle-cell`, planned after this one
+  retires and before M4. The rows are the tracer's (ADR-0061's saddle
+  cell, the march's turning points), not the junction's: the excerpt
+  builds with all six junctions at `c*`, and the real part's `fillet`
+  stage agrees with Open CASCADE (step 7). The same rows hold the S-bend
+  (step 4) and the step 6 property's allowance, so one plan settles all
+  three; its first step is the diagnosis on a shrunk pair. Not done
+  here: an ADR amendment of unknown size in a plan whose acceptance is
+  otherwise met. Closure before breadth puts it before M4.
 - *Settled* (step 7, 2026-10-28): the fetched tier's blend network row is
   2 of 38 (CTC-05 AP242 and FTC-11, both `TangentChain`, M4's): CTC-02
   AP242 and FTC-07 AP242 build their `fillet` stage. The `VertexBlend`

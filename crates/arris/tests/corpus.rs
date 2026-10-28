@@ -1298,7 +1298,7 @@ corpus_tests! {
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
     /// plane meets oblique cylinders.
-    #[ignore = "builds with its skew junctions at c* (ADR-0072), but S5 leaves 75 pairs of planes, cylinders and cones against walked faces undecided, 62 of them the saddle cell of torus_walk/singular.rs (plans/three-edge-run-vertex step 5)"]
+    #[ignore = "builds with its skew junctions at c* (ADR-0072), but S5 leaves 75 pairs of planes, cylinders and cones against walked faces undecided, 62 of them the saddle cell of torus_walk/singular.rs (docs/BACKLOG.md, the saddle cell of a walked blend beside a B-spline wall)"]
     regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
     /// The same as a pocket under an oblique floor, filleted concave.
         blend_rounded_pocket_oblique_floor_fillet => run "blend/rounded-pocket-oblique-floor-fillet";
@@ -1316,7 +1316,7 @@ corpus_tests! {
     /// A square column split through its middle, the cap's rim filleted.
         blend_rounded_column_split_cap_rim_fillet => run "blend/rounded-column-split-cap-rim-fillet";
     /// An S-shaped wall of two tangent arcs under an oblique top, one top arc filleted: the two walked stripes meet at a leaning ruling.
-    #[ignore = "builds with its two walked stripes met at the leaning ruling, but the checker leaves f30 (cylinder) against f38 and f37 against f38 undecided at S5: the tracer reports CrowdedSingularity and UnresolvedTurning (plans/three-edge-run-vertex step 5)"]
+    #[ignore = "builds with its two walked stripes met at the leaning ruling, but the checker leaves f30 (cylinder) against f38 and f37 against f38 undecided at S5: the tracer reports CrowdedSingularity and UnresolvedTurning (docs/BACKLOG.md, the saddle cell of a walked blend beside a B-spline wall)"]
     regression_s_bend_oblique_top_fillet => run "regression/s-bend-oblique-top-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
