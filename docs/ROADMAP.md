@@ -865,7 +865,9 @@ consumer has reported a regression, and the blend network is the one row
 of both histograms that is not 0. The blend network row stood at 12 of the 38 real parts
 at `fillet`; 8 of those were the battery's own sample asking edges the
 blend reads as tangent and Open CASCADE leaves out (ADR-0070). With the
-sample re-derived it blocks 4 of 38, all fetched: CTC-02 AP242 and FTC-07 AP242 at `VertexBlend`, CTC-05 AP242 and
+sample re-derived it blocked 4 of 38, all fetched; with the leaning ruling built
+(`three-edge-run-vertex`, ADR-0072) CTC-02 AP242 and FTC-07 AP242 build and
+**2 of 38** remain, CTC-05 AP242 and
 FTC-11 at `TangentChain` (an end or a corner tangent within a tolerance,
 no sampled edge the edge itself); the committed tier's row is 0. STC-07
 AP242, whose fillet now builds, fails the checker at `Full` on four
@@ -892,6 +894,12 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   ellipse for the crossed edge stays `BlendTooLarge`.
 - `BlendTooLarge` where Open CASCADE builds: the horn torus on an arc,
   the overhang tip's cap.
+- [x] A junction whose tangent edge is a line that leans out of the
+  ball's normal plane: **done 2026-10-28** (`three-edge-run-vertex`,
+  ADR-0072, ADR-0073). The two stripes meet on one ball off the vertex, on
+  the ruling's offset; CTC-02 AP242 and FTC-07 AP242 build their `fillet`
+  stage. The torus half, a vertex of four edges and the seam stay
+  `VertexBlend`.
 - Corners the closed forms do not cover: a walked chain junction on a
   seam (`VertexBlend`), the hinge leaf's knuckle joins, a cusp whose two
   edges are both blended, as a fitted corner patch.

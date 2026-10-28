@@ -1107,9 +1107,14 @@ two ends one seam, the ball's arc at the edge's vertex, and the faces' own
 seams cut to the contacts as the table's ring does. At a tangent vertex
 of its chain a walked stripe meets the next stripe, table or walked, as the
 table's do (`junction`): on the ball's arc in the vertex's normal plane,
-its surface's isocurve at the end `v`. Where the two runs' balls there are
-not one within the tolerance, a face turning tangent along a curve that
-plane crosses, the vertex is `VertexBlend`. A walked stripe at a miter or a
+its surface's isocurve at the end `v`. Where the tangent edge `w` is a
+line that leans out of that plane, the two runs' balls there differ, and
+the junction is one ball off the vertex on `w`'s offset (ADR-0072): the
+centre `c* = w_r ∩ offset(P, r)` lies on both spines, both runs end at
+`c*`, the walked skin refitted along its spine to end there, and `w` is cut
+at `p = c* − r·n`. Where `w` is not a line (a face turning tangent along a
+curve that plane crosses, an annulus into a torus), or `c*` lies past the
+spine's reach, the vertex is `VertexBlend`. A walked stripe at a miter or a
 corner, a face across that is NURBS, a cusp or a fan, and an end where the
 faces turn tangent are refused by name
 (`VertexBlend`, `Unsupported`, `TangentChain`). A radius past a principal radius is `BlendTooLarge`.

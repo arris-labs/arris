@@ -1924,11 +1924,8 @@ mod tests {
         let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
         let solids = census_file(&file, &|_| true).unwrap();
         let edges: Vec<&RunOverEdge> = solids.iter().flat_map(|s| &s.vertex_blend).collect();
-        // Three edges are refused at the jump. Four more edges, chained to
-        // a walked stripe's neighbour, meet it at a sharp vertex of three,
-        // a miter, which a walked stripe does not take (ADR-0062, step 5b
-        // amendment): they were `Unsupported` before the walked stripe
-        // stood where the table's refusal did.
+        // Three edges are refused at the jump. Four more, chained to a
+        // walked stripe's neighbour, are named by the refusal they reach.
         const JUMP: &str = "a dihedral jump on a collinear run; edge plane × plane";
         let (jumps, meets): (Vec<_>, Vec<_>) = edges.into_iter().partition(|e| e.cause == JUMP);
         assert_eq!(jumps.len(), 3, "{jumps:?}");
@@ -1936,10 +1933,25 @@ mod tests {
         for e in jumps {
             assert_eq!(vertex_blend_cycle(&e.cause), crate::histogram::Cycle::Nurbs);
         }
-        for e in meets {
+        // Since ADR-0072 the four are two jumps of a cylinder against a
+        // plane and two vertices of four edges with a smooth extra; before,
+        // all four were a miter at a vertex of three.
+        let (cylinder_jumps, fours): (Vec<_>, Vec<_>) = meets
+            .into_iter()
+            .partition(|e| e.cause.ends_with("; edge cylinder × plane"));
+        assert_eq!(cylinder_jumps.len(), 2, "{cylinder_jumps:?}");
+        assert_eq!(fours.len(), 2, "{fours:?}");
+        for e in cylinder_jumps {
+            assert!(
+                e.cause.starts_with("a dihedral jump on a collinear run"),
+                "{}",
+                e.cause
+            );
+        }
+        for e in fours {
             assert!(
                 e.cause
-                    .starts_with("2 edges of the run meet at a vertex of 3 edges;"),
+                    .starts_with("a vertex of 4 edges, the extra: a smooth edge"),
                 "{}",
                 e.cause
             );
