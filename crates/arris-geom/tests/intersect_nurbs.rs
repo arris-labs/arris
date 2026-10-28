@@ -348,7 +348,7 @@ fn traces(pairs: &[(Surface, Surface, Tolerance)]) {
     }
 }
 
-/// `regression/s-bend-oblique-top-fillet`: the walked stripe of the first
+/// `blend/s-bend-oblique-top-fillet`: the walked stripe of the first
 /// arc ends at the leaning junction on the ball off the vertex (ADR-0072),
 /// its corner on the ruling where the second arc's cylinder is tangent to
 /// the first. Against that cylinder the section has a saddle at the
@@ -359,19 +359,19 @@ fn traces(pairs: &[(Surface, Surface, Tolerance)]) {
 /// put on it (ADR-0061, amended 2026-10-28).
 #[test]
 fn a_saddle_at_a_walked_skins_corner_within_its_reach_of_both_edges_is_on_the_corner() {
-    let dir = fixtures::corpus_root().join("regression/s-bend-oblique-top-fillet");
+    let dir = fixtures::corpus_root().join("blend/s-bend-oblique-top-fillet");
     let chain = corpus::chain(&dir, "default").unwrap();
     traces(&walked_against(&chain, SurfaceKind::Cylinder));
 }
 
-/// `regression/nist-ctc-02-ap242-ellipse-chain-fillet`: the same corner
+/// `blend/nist-ctc-02-ap242-ellipse-chain-fillet`: the same corner
 /// against the planes across the excerpt's rulings, where the saddle is
 /// off both edges, `1.6e-8` of the walk's `u` and `4.2e-7` of its `v`
 /// inside, each within its reach (`9e-6` and `4e-6`). The S-bend's is on
 /// one edge to rounding; this one needs the rule on both.
 #[test]
 fn a_saddle_within_its_reach_of_both_edges_of_a_walked_skin_is_on_the_corner() {
-    let dir = fixtures::corpus_root().join("regression/nist-ctc-02-ap242-ellipse-chain-fillet");
+    let dir = fixtures::corpus_root().join("blend/nist-ctc-02-ap242-ellipse-chain-fillet");
     let chain = corpus::chain(&dir, "default").unwrap();
     traces(&walked_against(&chain, SurfaceKind::Plane));
 }

@@ -95,13 +95,17 @@ careful, a geometric or numeric case to get right within a given design;
   `Full` within its tolerance of its oracle and moves to `blend/`
   (`fixtures:`, its oracle named); its f37/f38 is the corpus's NURBS ×
   NURBS row, left.
-- [ ] Step 5 **[2]**: `regression/nist-ctc-02-ap242-ellipse-chain-fillet`
+- [x] Step 5 **[2]**: `regression/nist-ctc-02-ap242-ellipse-chain-fillet`
   passes (13 edges on f43, six junctions) and moves to `blend/`. The
   corpus's `check_stage` holds a blend whose operand has NURBS faces the
   blend did not make to `check_leaving_nurbs` on pairs with one of
-  those faces, and to `check_leaving_nurbs_pairs` on every other pair.
+  those faces, and to `check_leaving_nurbs_blended` on every other pair.
   The excerpt's 67 inherited pairs are the read part's own (*Settled*,
   step 1).
+  Done: `check_leaving_nurbs_blended` takes the blend's provenance; a NURBS
+  face with no `Generated` origin is the operand's. The fixture passes at
+  `Full`; Open CASCADE's volume is 5.4e-7 off, under the lint's 1e-6, so
+  it is held to Open CASCADE at 1e-6 (centroid 1e-4 absolute).
 - [ ] Step 6 **[1]**: the allowances go. `oblique_holds` uses
   `assert_checked` and counts its builds, asserting a floor per shard
   (backlog line 311); `split_prop`'s `saddle_cell` predicate is deleted

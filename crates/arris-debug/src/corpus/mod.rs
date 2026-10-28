@@ -60,7 +60,9 @@ use arris_ops::{
 use arris_topo::FaceId;
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
 use arris_topo::entity::BodyKind;
-use arris_topo::{Body, Edge, EntityId, Face, Model, Orientation, Provenance, Shape, TopoError};
+use arris_topo::{
+    Body, Edge, EntityId, Face, Model, Orientation, Provenance, Relation, Shape, TopoError,
+};
 use sha2::{Digest, Sha256};
 
 mod inputs;
@@ -71,7 +73,7 @@ mod step;
 use {inputs::*, read_back::*, stages::*, step::*};
 
 pub use inputs::{Inputs, inputs, inputs_for_step};
-pub(crate) use read_back::{check_leaving_nurbs, check_leaving_nurbs_pairs};
+pub(crate) use read_back::{check_leaving_nurbs, check_leaving_nurbs_blended};
 pub use read_back::{read_back_nurbs_stage, read_back_stage};
 pub use stages::{
     Target, check_stage, counts_stage, measure_stage, mesh_stage, probe_stage, provenance_stage,

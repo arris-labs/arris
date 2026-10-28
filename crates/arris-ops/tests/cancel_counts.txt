@@ -255,6 +255,7 @@ blend/lip-fillet-runs-into-a-hole: 405415
 blend/miter-unequal-dihedrals-chamfer: 9
 blend/miter-unequal-dihedrals-fillet: 447
 blend/nist-ctc-01-crossing-cylinders-crease-fillet: 95722
+blend/nist-ctc-02-ap242-ellipse-chain-fillet: 825467
 blend/nist-ctc-04-chamfered-wall-fillet: 1210
 blend/nist-ctc-05-ap203-nurbs-torus-fillet: refused
 blend/nist-ctc-05-ap242-nurbs-torus-fillet: refused

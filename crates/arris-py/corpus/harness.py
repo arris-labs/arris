@@ -30,7 +30,7 @@ ATTRIBUTES = ("reason", "a_kind", "b_kind", "detail")
 
 # The one undecided row a built body may carry: a face pair of two NURBS
 # faces, which the surface intersector has no form for yet (the corpus
-# runner leaves the same ones, `arris_debug::corpus::check_leaving_nurbs_pairs`).
+# runner leaves the same ones, `arris_debug::corpus::check_leaving_nurbs_blended`).
 NURBS_PAIR = re.compile(r"^(S5|B1)\? .*\(NURBS\) against .*\(NURBS\) is not decided$")
 
 

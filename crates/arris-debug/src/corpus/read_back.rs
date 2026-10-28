@@ -298,28 +298,48 @@ pub(crate) fn check_leaving_nurbs(
     m: &Model,
     body: Body,
 ) -> Result<Report, CorpusError> {
-    check_leaving(name, m, body, false)
+    check_leaving(name, m, body, |_, _, nurbs| nurbs[0] || nurbs[1])
 }
 
-/// [`check_leaving_nurbs`] on a body Arris built: a pair of a NURBS face
-/// and an analytic one is decided (ADR-0061), a walked blend against its
+/// [`check_leaving_nurbs`] on a body Arris built by a blend, whose
+/// `provenance` names the faces it generated: a pair of a NURBS face and an
+/// analytic one is decided (ADR-0061), a walked blend against its
 /// neighbours among them, so only pairs of two NURBS faces are left
-/// undecided. Errors: [`CorpusError::Check`].
-pub(crate) fn check_leaving_nurbs_pairs(
+/// undecided. A NURBS face the blend did not make is the operand's, read
+/// from a file perhaps, and keeps the read operand's rule: a pair with one
+/// of them is left undecided where a tracer refuses. Errors:
+/// [`CorpusError::Check`].
+pub(crate) fn check_leaving_nurbs_blended(
     name: &str,
     m: &Model,
     body: Body,
+    provenance: &Provenance,
 ) -> Result<Report, CorpusError> {
-    check_leaving(name, m, body, true)
+    let operands = |f: FaceId| {
+        (m.face(f))
+            .and_then(|face| m.surface(face.surface()))
+            .is_ok_and(|s| matches!(s, Surface::Nurbs(_)))
+            && ![Face::forward(f), Face::forward(f).reversed()]
+                .into_iter()
+                .any(|h| (provenance.origins(h).iter()).any(|(r, _)| *r == Relation::Generated))
+    };
+    check_leaving(name, m, body, |a, b, nurbs| {
+        if operands(a) || operands(b) {
+            nurbs[0] || nurbs[1]
+        } else {
+            nurbs[0] && nurbs[1]
+        }
+    })
 }
 
 /// The checker at `Full` with S5's and B1's face pairs left undecided
-/// where both faces are NURBS, or with `pairs` false either is.
+/// where `leaves` says so, given the pair's faces and which of them are
+/// NURBS.
 pub(super) fn check_leaving(
     name: &str,
     m: &Model,
     body: Body,
-    pairs: bool,
+    leaves: impl Fn(FaceId, FaceId, [bool; 2]) -> bool,
 ) -> Result<Report, CorpusError> {
     let report = check(m, body, Level::Full);
     let has_nurbs = |f: FaceId| {
@@ -331,13 +351,20 @@ pub(super) fn check_leaving(
         .closure(body)
         .is_ok_and(|closure| closure.faces.into_iter().any(has_nurbs));
     let undecidable = |u: &Unchecked| match u {
-        Unchecked::FacePair { kinds, .. } | Unchecked::ShellFacePair { kinds, .. } => {
+        Unchecked::FacePair {
+            kinds,
+            face_a,
+            face_b,
+            ..
+        }
+        | Unchecked::ShellFacePair {
+            kinds,
+            face_a,
+            face_b,
+            ..
+        } => {
             let nurbs = [kinds.0, kinds.1].map(|k| k == SurfaceKind::Nurbs);
-            if pairs {
-                nurbs[0] && nurbs[1]
-            } else {
-                nurbs[0] || nurbs[1]
-            }
+            leaves(*face_a, *face_b, nurbs)
         }
         Unchecked::ShellNesting { .. } => any_nurbs,
     };
