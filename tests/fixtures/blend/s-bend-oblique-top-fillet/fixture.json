@@ -1,5 +1,5 @@
 {
-  "description": "an S-shaped wall of two tangent arcs of radius 2, one convex and one concave, with straight walls round them, extruded 4 along z, its top cut away above the plane z = 3 + (y − 2) tan a through (0, 2, 3), a box rotated a = 20° about x, and the top edge of the first arc filleted at r 0.3. The fillet runs on round the chain, the two ellipse arcs and the lines beyond them. At the arcs' tangent vertex (4, 2) the two walls are tangent along a vertical ruling, and the chain climbs at a, so the ruling leans out of the ball's normal plane: the two walked stripes meet on one ball off the vertex, on the ruling's offset (plans/three-edge-run-vertex)",
+  "description": "an S-shaped wall of two tangent arcs of radius 2, one convex and one concave, with straight walls round them, extruded 4 along z, its top cut away above the plane z = 3 + (y − 2) tan a through (0, 2, 3), a box rotated a = 20° about x, and the top edge of the first arc filleted at r 0.3. The fillet runs on round the chain, the two ellipse arcs and the lines beyond them. At the arcs' tangent vertex (4, 2) the two walls are tangent along a vertical ruling, and the chain climbs at a, so the ruling leans out of the ball's normal plane: the two walked stripes meet on one ball off the vertex, on the ruling's offset (plans/three-edge-run-vertex). Open CASCADE's corner blends miss the rolling ball here as on blend/rounded-block-oblique-top-fillet: its volume is 3.1e-7 and its area 9.1e-7 off Arris's, below the 1e-6 a second oracle's record needs to differ, so the fixture is held to Open CASCADE at 1e-6 (centroid 1e-6 absolute), not the default (plans/walked-saddle-cell step 4)",
   "params": {"a": 20, "r": 0.3},
   "steps": [
     {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
@@ -18,5 +18,6 @@
     {"label": "inside", "point": [5, 5, 1], "expect": "in"},
     {"label": "on_bottom", "point": [5, 5, 0], "expect": "on"}
   ],
+  "tolerances": {"volume_rel": 1e-6, "area_rel": 1e-6, "inertia_rel": 1e-6, "centroid_abs": 1e-6},
   "analytic": {"genus": 0}
 }

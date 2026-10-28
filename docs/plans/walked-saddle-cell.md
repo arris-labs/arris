@@ -91,7 +91,7 @@ careful, a geometric or numeric case to get right within a given design;
   `a_section_across_a_walked_skins_arc_knot_is_no_turn_at_a_kink`
   un-ignored. Done: the crease measured against `tol.linear` over the
   patch's `∂P/∂t`; the oblique property at 64 cases leaves no S5 row.
-- [ ] Step 4 **[2]**: `regression/s-bend-oblique-top-fillet` passes at
+- [x] Step 4 **[2]**: `regression/s-bend-oblique-top-fillet` passes at
   `Full` within its tolerance of its oracle and moves to `blend/`
   (`fixtures:`, its oracle named); its f37/f38 is the corpus's NURBS ×
   NURBS row, left.

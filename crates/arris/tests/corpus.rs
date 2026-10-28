@@ -1316,8 +1316,7 @@ corpus_tests! {
     /// A square column split through its middle, the cap's rim filleted.
         blend_rounded_column_split_cap_rim_fillet => run "blend/rounded-column-split-cap-rim-fillet";
     /// An S-shaped wall of two tangent arcs under an oblique top, one top arc filleted: the two walked stripes meet at a leaning ruling.
-    #[ignore = "builds with its two walked stripes met at the leaning ruling, but the checker leaves f30 (cylinder) against f38 and f37 against f38 undecided at S5: the tracer reports CrowdedSingularity and UnresolvedTurning (docs/BACKLOG.md, the saddle cell of a walked blend beside a B-spline wall)"]
-    regression_s_bend_oblique_top_fillet => run "regression/s-bend-oblique-top-fillet";
+    blend_s_bend_oblique_top_fillet => run "blend/s-bend-oblique-top-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring refuses. The desired body is Open CASCADE's.
