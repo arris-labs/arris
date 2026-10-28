@@ -702,6 +702,43 @@ divided out. The oblique property at 64 cases leaves no S5 row
 undecided; the random B-spline properties pass unchanged.
 
 
+### A tangency's slope over the patches it is divided from (amendment, 2026-10-29)
+
+`plans/walked-saddle-cell` step 6. With its S5 allowance removed, the
+oblique blend property at 1000 cases built a rounded block under a top
+tilted 31° (posed 89 below the origin) whose walked corner skins the
+tracer refused against the table stripes' cylinders as
+`UnresolvedTurning`. ADR-0072's skin continues the stripe's cylinder
+across the junction's arc: along the arc's row the two are tangent, `F`
+`≈ −0.2·(v − v₀)²` across the whole stripe, `v₀` `3.7e-6` inside the
+domain's edge. The isoline finder found the line (`F` along it `3e-13`)
+and refused it order two: the tangency's own curve, where the slope
+across vanishes, wanders `6e-7` of the walk's `u` either side of the
+isoline, and the slope across reached `5.6e-8` against what `tol.linear`
+makes of `F`, `4.5e-8`. Divided out once, the line left its other half
+in the quotient, a line of zeros beside the edge that no edge cell
+certifies.
+
+- **The slope a tangency drops is bounded over its reach.** The gate
+  took `F` plus its slope across, as if what the division drops reached
+  `|g| ≤ 1` over the whole domain. On a NURBS surface an isoline is
+  divided out of the patches whose span holds it alone, and the others
+  keep their own polynomial (§3), so the dropped `F + s·(u − u₀)` is
+  within `|F| + |s|·reach`, the reach the largest `|u − u₀|` over those
+  patches (`PatchedSection::divided_reach`). The gate is that sum against
+  the same bound: tighter than before for a surface of one wide patch,
+  looser for a fine one. A torus's walk divides the closed form round the
+  whole tube and keeps `|g| ≤ 1`.
+
+Measured against the rule taken out: the posed block's recipe
+(`tests/intersect_nurbs.rs`, the committed block reshaped to the
+property's 3 × 1.5 and posed) refuses 4 of its 32 walked × cylinder
+traces; with it all trace in both orders within the pair's tolerance of
+both surfaces, the property's case one branch within `4e-14` of each.
+The skins' patches holding the line are `0.1` of the walk's `u` wide.
+Unposed, the same block passes either way, its slope inside the old
+bound. The geom tests and the corpus pass unchanged.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its

@@ -274,6 +274,14 @@ pub(crate) struct PatchedSection<'a> {
     odd_turn: bool,
 }
 
+/// The place of an isoline among `homes` (its `u₀`, and past a closure
+/// `u₀ + 2π`) that a patch's span of `u` holds, within [`PATCH_SLACK`] of
+/// its width: the patches [`PatchedSection::deflate`] divides it out of.
+fn isoline_home(homes: &[f64], [lo, hi]: [f64; 2]) -> Option<f64> {
+    let slack = PATCH_SLACK * (hi - lo);
+    (homes.iter().copied()).find(|&r| r >= lo - slack && r <= hi + slack)
+}
+
 /// The section's polynomial over a NURBS surface with one isoline `u = u₀`
 /// divided out of it ([`PatchedSection::deflate`]), owned by the walk: at a
 /// point of the walk's parameters, `F / gᵐ` in the sign the patches give
@@ -915,8 +923,7 @@ impl<'a> PatchedSection<'a> {
         for patch in &mut self.patches {
             let [lo, hi] = patch.span[0];
             let width = hi - lo;
-            let slack = PATCH_SLACK * width;
-            let home = (homes.iter().copied()).find(|&r| r >= lo - slack && r <= hi + slack);
+            let home = isoline_home(homes, patch.span[0]);
             let mut floor = patch.floor;
             if let Some(r) = home {
                 let root = ((r - lo) / width).clamp(0.0, 1.0);
@@ -942,6 +949,26 @@ impl<'a> PatchedSection<'a> {
         self.floor = worst;
         self.near = worst + self.steep;
         self.odd_turn ^= odd;
+    }
+
+    /// How far from the isoline `u = u₀` the patches it is divided out of
+    /// reach in `u`, the largest `|u − u₀|` over their spans
+    /// ([`Self::deflate`]): what the division drops — `F` along the line
+    /// and, for a tangency, its slope across it times the way to the line —
+    /// is dropped there and nowhere else. `None` on a torus, whose walk
+    /// divides the closed form everywhere.
+    pub(crate) fn divided_reach(&self, u0: f64) -> Option<f64> {
+        let Chart::Knots { closed, .. } = self.chart else {
+            return None;
+        };
+        let homes: &[f64] = if closed[0] { &[u0, u0 + TAU] } else { &[u0] };
+        let reach = (self.patches.iter())
+            .filter_map(|patch| {
+                let [lo, hi] = patch.span[0];
+                isoline_home(homes, patch.span[0]).map(|r| (r - lo).max(hi - r))
+            })
+            .fold(0.0, f64::max);
+        Some(reach)
     }
 
     /// The patches' polynomials as they are now, with the isoline `u =

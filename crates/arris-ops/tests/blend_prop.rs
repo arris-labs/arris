@@ -3654,13 +3654,14 @@ prop_shards! {
 /// A rounded block under a tilted top at 31°, found by
 /// `oblique_chains_meet_on_the_rulings_offset` once its S5 allowance is
 /// removed (1000 cases, plans/walked-saddle-cell step 6): a walked skin
-/// against its table cylinder, whose section runs along the skin's domain
-/// edge `u = 0` (`∂f/∂u` -0.26, `∂f/∂v` -1.8e-7, `f` 6e-23), so no cell on
-/// the edge is certified (`edge_cell` in `torus_walk/cells.rs`) and the
-/// tracer refuses it as `UnresolvedTurning`.
+/// tangent to its table cylinder along the junction's arc, whose slope
+/// across the isoline, measured as if dropped over the whole domain, was
+/// past the tangency's bound, so the line was divided out as a crossing
+/// and the tracer refused the pair as `UnresolvedTurning`. The slope is
+/// dropped over the patches holding the line alone (ADR-0061, amended
+/// 2026-10-29).
 #[test]
-#[ignore = "S5 leaves a walked skin against its table cylinder undecided: the section runs along the skin's edge, `edge_cell` certifies no cell (plans/walked-saddle-cell step 6)"]
-fn an_oblique_fillet_whose_section_runs_along_the_skins_edge_is_checked() {
+fn an_oblique_fillet_whose_skin_is_tangent_to_its_table_cylinder_is_checked() {
     let pose = Isometry::new(
         arris_math::nalgebra::Unit::new_unchecked(arris_math::nalgebra::Quaternion::new(
             0.0, 1.0, 0.0, 0.0,

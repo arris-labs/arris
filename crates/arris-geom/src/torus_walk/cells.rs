@@ -19,8 +19,10 @@ impl Tracer<'_> {
     /// of it anywhere on the torus ([`Implicit::firmness`]) — that
     /// polynomial is what the rest of the section is traced without, so
     /// the rest stays within `tol.linear` of the other surface too. It is
-    /// a tangency when the polynomial and its slope in `u` are within
-    /// that bound together: there both are dropped.
+    /// a tangency when the polynomial and its slope in `u`, times the way
+    /// from the circle it is dropped over, are within that bound together:
+    /// there both are dropped. On a NURBS surface that way is the reach of
+    /// the patches the isoline is divided out of, and no farther.
     ///
     /// On a NURBS surface the same finds its isolines `u = u₀` on the other
     /// surface (ADR-0061 §3), held to the tolerance from one edge of `v`
@@ -133,8 +135,9 @@ impl Tracer<'_> {
             roots.sort_by(f64::total_cmp);
             let refined = (roots.get(roots.len() / 2).copied()).unwrap_or(0.5 * (lo + hi));
             // The other surface's polynomial along the circle at `u` at
-            // its largest, the same with its slope in `u` added, and how
-            // far the circle is from the other surface.
+            // its largest, the same with its slope in `u` over the reach it
+            // is dropped across added, and how far the circle is from the
+            // other surface.
             let measure = |u: f64| {
                 let u0 = if torus {
                     let edge = (u / FRAC_PI_2).round() * FRAC_PI_2;
@@ -152,6 +155,10 @@ impl Tracer<'_> {
                         u.clamp(0.0, TAU)
                     }
                 };
+                // How far the slope across is dropped: on a NURBS surface
+                // over the patches the isoline is divided out of, on a torus
+                // over the whole tube, where `|g| ≤ 1`.
+                let reach = self.section.divided_reach(u0).unwrap_or(1.0);
                 let mut worst = [0.0f64; 2];
                 let mut away = 0.0f64;
                 for k in 0..CIRCLE_SAMPLES {
@@ -159,7 +166,7 @@ impl Tracer<'_> {
                     let a = other.frame.to_local(e.point);
                     let off = other.value(a).abs();
                     let slope = other.slope(a).dot(&other.frame.vec_to_local(e.du)).abs();
-                    worst = [worst[0].max(off), worst[1].max(off + slope)];
+                    worst = [worst[0].max(off), worst[1].max(off + slope * reach)];
                     away = away.max(other.distance(e.point).abs());
                 }
                 (u0, worst, away)

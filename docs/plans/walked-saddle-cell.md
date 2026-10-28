@@ -46,6 +46,10 @@ geom-level test that fails without it.
   line counts as a kink only where the surface's normals either side
   part by more than the tolerance resolves. Otherwise the root there is
   a turning point on the knot line.
+- **`arris-geom` `torus_walk/cells.rs`** (`tube_circles`, step 6): an
+  isoline's tangency gate bounds the slope it drops by the reach of the
+  patches it is divided out of (`PatchedSection::divided_reach`), not by
+  `|g| ≤ 1` over the domain; a torus keeps the whole tube.
 - **ADR-0061**: one amendment per rule (dated, as the 2026-10-14 to
   10-28 ones are), each with its measured stretch and a test that fails
   without it.
@@ -106,11 +110,19 @@ careful, a geometric or numeric case to get right within a given design;
   face with no `Generated` origin is the operand's. The fixture passes at
   `Full`; Open CASCADE's volume is 5.4e-7 off, under the lint's 1e-6, so
   it is held to Open CASCADE at 1e-6 (centroid 1e-4 absolute).
-- [ ] Step 6 **[1]**: the allowances go. `oblique_holds` uses
+- [x] Step 6 **[3]**: the tangent arc's reach. A walked skin tangent to
+  its table cylinder along the junction's arc, where the slope across the
+  isoline exceeds the gate's bound over the whole domain but not over the
+  patches it is divided out of, is divided out at order two
+  (*Settled*, step 6). The ADR-0061 amendment;
+  `an_oblique_fillet_whose_skin_is_tangent_to_its_table_cylinder_is_checked`
+  un-ignored and a geom-level test in `intersect_nurbs.rs` that fails
+  without the rule.
+- [ ] Step 7 **[1]**: the allowances go. `oblique_holds` uses
   `assert_checked` and counts its builds, asserting a floor per shard
   (backlog line 311); `split_prop`'s `saddle_cell` predicate is deleted
   and its blend case takes `nothing`. Both pass at 256 cases.
-- [ ] Step 7 **[1]**: re-run the fetched tier (`tools/real-parts.sh`)
+- [ ] Step 8 **[1]**: re-run the fetched tier (`tools/real-parts.sh`)
   and the script corpus; the `fillet` row stays 2 of 38 and the scripts'
   refusals at 1, with no checker failure the tracer's rules added. Every
   walked fixture's blessed dump unchanged (a changed one says why).
@@ -127,10 +139,10 @@ careful, a geometric or numeric case to get right within a given design;
   refusals at most 1.
 
 ## Docs to update on completion
-- `docs/adr/0061-…`: the amendments (written in steps 2 and 3).
+- `docs/adr/0061-…`: the amendments (written in steps 2, 3 and 6).
 - `docs/ARCHITECTURE.md` NURBS-section paragraph (around line 1595): one
-  clause: a walked skin's corner saddle and its arc knot are decided at
-  `Full`.
+  clause: a walked skin's corner saddle, its arc knot and its tangent
+  arc are decided at `Full`.
 - `docs/ROADMAP.md` §C11: the excerpt and the S-bend built and checked;
   STC-07 still waiting.
 - `docs/BACKLOG.md`: delete the saddle-cell line and line 311 (the build
@@ -162,20 +174,16 @@ careful, a geometric or numeric case to get right within a given design;
   the knot; the committed 20° pocket does not.
 - ⚠ OPEN: the oracle for each fixture, Open CASCADE or a second oracle's
   record. The agent decides at steps 4 and 5 by ADR-0073's 1e-6 lint.
-- ⚠ OPEN (step 6, 2026-10-29): with the S5 allowance removed,
-  `oblique_chains_meet_on_the_rulings_offset` shard 0 fails at 1000 cases
-  (the 64-case census of step 1 missed it) on a third place:
-  `blend_prop.rs`'s ignored
-  `an_oblique_fillet_whose_section_runs_along_the_skins_edge_is_checked`
-  (tilt 31°, convex, `length` 3, `width` 1.5, `corner` 0.459, `r` 0.2247,
-  posed 180° about y at z = -89). A walked skin against its table
-  cylinder (f51/f52, f56/f57): the root is on the skin's edge `u = 0` with
-  `∂f/∂u` -0.26 and `∂f/∂v` -1.8e-7, `f` 6e-23, i.e. the section runs
-  along the edge, and `edge_cell` (`torus_walk/cells.rs`) finds no
-  certified cell (its `b` exceeds π/4 at every size) and gives
-  `UnresolvedTurning`. A new tracer rule, a [3] step; the agent decides
-  whether it joins this plan as a step 6 before the allowances go, or
-  becomes its own. Step 6 is not started: the allowance stays.
-- ⚠ OPEN: the floor of built cases per shard in step 6. The agent picks
+- *Settled* (step 6, 2026-10-29): the third place joins this plan as
+  step 6, before the allowances go: the goal is the oblique property
+  with no S5 allowance, and closure before breadth. Found at 1000 cases
+  (shard 0; the 64-case census missed it): a rounded block at 31°, posed
+  89 below the origin, `UnresolvedTurning` on f51/f52 and f56/f57. Not a
+  section along the skin's edge, as first read: the skin is tangent to
+  its table cylinder along the junction's arc, and the isoline's slope
+  across failed the order-two gate by a fifth because the gate bounded it
+  over the whole domain, not the patches it is divided from (ADR-0061,
+  amended 2026-10-29, has the measurements).
+- ⚠ OPEN: the floor of built cases per shard in step 7. The agent picks
   it from a 1000-case run's count (below half the measured count fails),
   and records the count here.

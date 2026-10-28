@@ -392,3 +392,105 @@ fn a_section_across_a_walked_skins_arc_knot_is_no_turn_at_a_kink() {
     let chain = corpus::build("blend/rounded-pocket-oblique-floor-fillet at 30°", &recipe).unwrap();
     traces(&walked_against(&chain, SurfaceKind::Cylinder));
 }
+
+/// `blend/rounded-block-oblique-top-fillet` reshaped to the block
+/// `blend_prop.rs`'s oblique property found at 1000 cases: `length` 3 and
+/// `width` 1.5 for the recipe's 4 and 2, the tilt's axis across the middle,
+/// and the cut part turned 180° about `y` and dropped 89.66 before its
+/// fillet, as the property posed it.
+fn posed_block(corner: f64, tilt: f64, r: f64, drop: f64) -> corpus::Chain {
+    use arris_debug::fixtures::{Loop, Num, Rotate, Segment, Step};
+    let dir = fixtures::corpus_root().join("blend/rounded-block-oblique-top-fillet");
+    let mut recipe = fixtures::load(&dir).unwrap().recipe;
+    for (k, x) in [
+        ("R", corner),
+        ("a", tilt),
+        ("r", r),
+        ("L", 3.0),
+        ("W", 1.5),
+        ("Z", drop),
+    ] {
+        recipe.params.insert(k.into(), x);
+    }
+    let sized = |n: &mut Num| match n {
+        Num::Literal(x) if *x == 4.0 => *n = Num::Expr("L".into()),
+        Num::Literal(x) if *x == 2.0 => *n = Num::Expr("W".into()),
+        Num::Expr(t) if t.starts_with("4 ") => *t = format!("L{}", &t[1..]),
+        Num::Expr(t) if t.starts_with("2 ") => *t = format!("W{}", &t[1..]),
+        _ => {}
+    };
+    for step in &mut recipe.steps {
+        match step {
+            Step::Profile {
+                outer: Loop::Path { start, segments },
+                ..
+            } => {
+                start.iter_mut().for_each(sized);
+                for segment in segments {
+                    match segment {
+                        Segment::Line { line_to } => line_to.iter_mut().for_each(sized),
+                        Segment::Arc { arc_to, via } => {
+                            arc_to.iter_mut().chain(via.iter_mut()).for_each(sized);
+                        }
+                        Segment::Ellipse { .. } => panic!("the block's profile has no ellipse"),
+                    }
+                }
+            }
+            Step::Transform {
+                rotate:
+                    Some(Rotate {
+                        origin: Some(origin),
+                        ..
+                    }),
+                ..
+            } => origin[1] = Num::Expr("W / 2".into()),
+            _ => {}
+        }
+    }
+    let Some(Step::Fillet { name, radius, .. }) = recipe.steps.pop() else {
+        panic!("the recipe ends in its fillet");
+    };
+    let l = Num::Literal;
+    recipe.steps.push(Step::Transform {
+        name: "posed".into(),
+        of: "cut_top".into(),
+        translate: Some([l(0.0), l(0.0), Num::Expr("Z".into())]),
+        rotate: Some(Rotate {
+            axis: [l(0.0), l(1.0), l(0.0)],
+            origin: None,
+            angle_deg: l(180.0),
+        }),
+    });
+    recipe.steps.push(Step::Fillet {
+        name,
+        of: "posed".into(),
+        edges: vec![[
+            Num::Expr("-L / 2".into()),
+            l(0.0),
+            Num::Expr("(W / 2) * tan(radians(a)) - 1.5 + Z".into()),
+        ]],
+        radius,
+    });
+    corpus::build("blend/rounded-block-oblique-top-fillet, posed", &recipe).unwrap()
+}
+
+/// A rounded block under a top tilted 31°, posed as the oblique property
+/// found it: its walked corner skins are tangent to the table stripes'
+/// cylinders along the junctions' arcs, `F` along the isoline `3e-13`,
+/// but the tangency's own curve wanders `6e-7` of the walk's `u` either
+/// side of it, so its slope across reaches `5.6e-8` against a bound of
+/// `4.5e-8`. Measured as if dropped over the whole domain the line was a
+/// crossing, the quotient kept the tangency's other half beside the edge,
+/// and the tracer refused the pair as `UnresolvedTurning`; the slope is
+/// dropped over the patches the isoline is divided out of alone, a tenth
+/// of that, and the line is a tangency (ADR-0061, amended 2026-10-29).
+#[test]
+fn a_walked_skin_tangent_to_its_table_cylinder_along_the_arc_is_divided_at_order_two() {
+    let chain = posed_block(
+        0.4591144096367237,
+        31.015754421798317,
+        0.22468281425389497,
+        -89.66487392943412,
+    );
+    traces(&walked_against(&chain, SurfaceKind::Cylinder));
+}
