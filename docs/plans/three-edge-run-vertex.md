@@ -260,8 +260,8 @@ given design; **[3]** unproven, robustness or bound established here.
   FTC-07 AP242 none. The script corpus's `fillet` refusals stay at 1.
   The survey's one unexcluded failure, CTC-02 AP242 e2's `drill_x` counts,
   predates this plan (backlog). Acceptance's second line (the real
-  parts' row) is met without step 5: the stages ran on the fillet's own
-  checker at the survey's level.
+  parts' row) is met; its first (the CTC-02 excerpt under `blend/`) waits
+  on step 5.
 - ⚠ OPEN: what step 7 leaves of the census's 140 + 36 `VertexBlend`
   sites (a plane × plane or cylinder × cylinder edge of the same runs, or
   a vertex of four). The agent writes the lines; a new milestone is the
