@@ -639,6 +639,35 @@ and two branches, and every pair of the walls with the skin ended at the
 arc as its corner's touch; the checker decides them at `Full`, as it
 decides both split boxes'.
 
+### A saddle within its reach of an edge (amendment, 2026-10-28)
+
+`plans/walked-saddle-cell` step 2. Where a walked skin ends at a leaning
+junction's arc (ADR-0072), its corner lies on the ruling, and the face
+across the ruling — the S-bend's second arc's cylinder, CTC-02's planes
+— meets it there in a saddle, not a touch. The census finds the saddle a
+hair inside the domain: on the S-bend's skin on its edge of `u` and
+`3.5e-7` of the walk's `v` inside the other edge, its value `2e-14` and
+its reach `4.2e-7` that way; on CTC-02's excerpt `1.6e-8` of `u` and
+`4.2e-7` of `v` inside, the reach `9e-6` and `4e-6`. Both distances
+exceed `EDGE_TOUCH`, so the saddle cell was whole that way, and a whole
+cell, at least twice the reach across, does not fit inside the domain at
+any halving: the five pairs were refused `CrowdedSingularity`.
+
+- **A saddle within its reach of an open edge is on it.** Where the
+  saddle's distance to an edge of `u` or `v` that does not close is
+  within its reach in that direction, and the edge's point beside it (the
+  corner's, where the other direction is cut too) is within `tol.linear`
+  of the other surface, the saddle cell is cut at that edge as at one
+  within `EDGE_TOUCH`. No saddle decided before moves: a whole cell
+  never fitted for one that near an edge.
+
+Measured against the rule taken out: the S-bend's walked skin against
+its cylinders refused, and with the rule on `v` only CTC-02's four walked
+× plane pairs still refused (each in both orders). With it, every walked
+face of both against every cylinder, and of the excerpt against every
+plane, traces in both orders, its samples within the pair's tolerance of
+both surfaces (`tests/intersect_nurbs.rs`).
+
 
 ## Consequences
 

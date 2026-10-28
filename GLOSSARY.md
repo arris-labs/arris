@@ -134,6 +134,12 @@ two), a singular point where branches meet, each branch reaching it
 through a *departure*, the section's point at the singular point's reach.
 Every seed is visited, or the section is refused.
 
+**Saddle cell**:
+The certified cell of a crossing, a saddle of the section where its two
+arms meet: inside it the arms are graphs either side of a separator, and
+out of it each leaves as a branch (ADR-0061). At an edge or a corner of an
+open domain it is cut there and holds only the arms inside.
+
 **Common block**:
 A piece of edge two operands share within tolerance, kept as one edge.
 

@@ -288,21 +288,34 @@ fn a_nurbs_surface_against_itself_is_flush_and_unsupported() {
     assert!(matches!(meet(&a, &a), Err(GeomError::Unsupported { .. })));
 }
 
-/// Every pair of a walked face of `chain`'s result (a NURBS face) and an
+/// Every pair of a walked face of `chain`'s result (a NURBS face no
+/// earlier step's body has, so not one a read operand brought) and an
 /// analytic face of `kind`, with the pair's tolerance: the larger of the
 /// two faces' own, as S5 decides it.
 fn walked_against(chain: &corpus::Chain, kind: SurfaceKind) -> Vec<(Surface, Surface, Tolerance)> {
     let m = &chain.model;
     let body = chain.result().unwrap();
+    let surfaces = |body| {
+        (m.faces(body).unwrap().into_iter())
+            .map(|f| m.face(f.id).unwrap().surface())
+            .collect::<Vec<_>>()
+    };
+    let earlier: Vec<_> = (chain.steps.iter())
+        .filter(|(name, _)| **name != chain.result)
+        .flat_map(|(_, made)| surfaces(made.body))
+        .collect();
     let faces: Vec<_> = (m.faces(body).unwrap().into_iter())
         .map(|f| {
             let face = m.face(f.id).unwrap();
-            (m.surface(face.surface()).unwrap().clone(), face.tolerance())
+            let id = face.surface();
+            (id, m.surface(id).unwrap().clone(), face.tolerance())
         })
         .collect();
     let mut pairs = Vec::new();
-    for (walked, tw) in faces.iter().filter(|(s, _)| s.kind() == SurfaceKind::Nurbs) {
-        for (other, to) in faces.iter().filter(|(s, _)| s.kind() == kind) {
+    let walked =
+        |(id, s, _): &&(_, Surface, _)| s.kind() == SurfaceKind::Nurbs && !earlier.contains(id);
+    for (_, walked, tw) in faces.iter().filter(walked) {
+        for (_, other, to) in faces.iter().filter(|(_, s, _)| s.kind() == kind) {
             let at = Tolerance::new(tw.max(*to), tol().angular);
             pairs.push((walked.clone(), other.clone(), at));
         }
@@ -341,15 +354,26 @@ fn traces(pairs: &[(Surface, Surface, Tolerance)]) {
 /// the first. Against that cylinder the section has a saddle at the
 /// corner: on the skin's edge of `u`, `3.5e-7` of the walk's `v` inside
 /// the other edge, its value `2e-14` and its reach `4.2e-7`. No cell cut
-/// at one edge fits it, so the tracer refused the pair as
-/// `CrowdedSingularity` (CTC-02's excerpt has four of the same against
-/// planes across its rulings).
+/// at one edge fits it; the tracer refused the pair as
+/// `CrowdedSingularity` until a saddle within its reach of an edge was
+/// put on it (ADR-0061, amended 2026-10-28).
 #[test]
-#[ignore = "CrowdedSingularity: a saddle at a walked skin's corner, inside its reach of the second edge (plans/walked-saddle-cell step 2)"]
 fn a_saddle_at_a_walked_skins_corner_within_its_reach_of_both_edges_is_on_the_corner() {
     let dir = fixtures::corpus_root().join("regression/s-bend-oblique-top-fillet");
     let chain = corpus::chain(&dir, "default").unwrap();
     traces(&walked_against(&chain, SurfaceKind::Cylinder));
+}
+
+/// `regression/nist-ctc-02-ap242-ellipse-chain-fillet`: the same corner
+/// against the planes across the excerpt's rulings, where the saddle is
+/// off both edges, `1.6e-8` of the walk's `u` and `4.2e-7` of its `v`
+/// inside, each within its reach (`9e-6` and `4e-6`). The S-bend's is on
+/// one edge to rounding; this one needs the rule on both.
+#[test]
+fn a_saddle_within_its_reach_of_both_edges_of_a_walked_skin_is_on_the_corner() {
+    let dir = fixtures::corpus_root().join("regression/nist-ctc-02-ap242-ellipse-chain-fillet");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    traces(&walked_against(&chain, SurfaceKind::Plane));
 }
 
 /// `blend/rounded-pocket-oblique-floor-fillet` with its floor at 30°: the

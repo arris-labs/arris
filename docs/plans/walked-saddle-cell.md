@@ -38,9 +38,10 @@ geom-level test that fails without it.
 
 ## Design deltas
 - **`arris-geom` `torus_walk/singular.rs`** (`singular_cell`, step 2):
-  the cell is cut at an edge of `v` also where the saddle is within its
-  reach of it, not only within `EDGE_TOUCH`, when the edge's point is
-  within `tol.linear` of the other surface.
+  the cell is cut at an open edge of `u` or `v` also where the saddle is
+  within its reach of it, not only within `EDGE_TOUCH`, when the edge's
+  point is within `tol.linear` of the other surface (both: the excerpt's
+  saddle is `1.6e-8` off its edge of `u`, step 2).
 - **`arris-geom` `trace_torus.rs`** (`turns_at_a_kink`, step 3): a knot
   line counts as a kink only where the surface's normals either side
   part by more than the tolerance resolves. Otherwise the root there is
@@ -74,13 +75,14 @@ careful, a geometric or numeric case to get right within a given design;
   desired trace; the walked faces come from the corpus's recipes through
   `arris_debug::corpus` (a dev-dependency), not as copied control nets.
   Done: two places, one rule each (*Settled*, step 1).
-- [ ] Step 2 **[3]**: the saddle cell. A saddle at a corner of a walked
+- [x] Step 2 **[3]**: the saddle cell. A saddle at a corner of a walked
   skin, on one edge and inside its reach of the other, is on the corner
   and its cell cut both ways; the S-bend's f30/f38 and the excerpt's four
   walked × plane pairs decide. The ADR-0061 amendment, the glossary's
   *Saddle cell*, and
   `a_saddle_at_a_walked_skins_corner_within_its_reach_of_both_edges_is_on_the_corner`
-  un-ignored.
+  un-ignored. Done: the rule on both directions; the excerpt's pairs a
+  second test.
 - [ ] Step 3 **[3]**: the arc knot. `turns_at_a_kink` takes a sign
   change of `∂f/∂v` across a knot line as a kink only where the surface
   is creased beyond what the tolerance resolves; across a tangent

@@ -208,24 +208,32 @@ impl Tracer<'_> {
         // to a walked blend at the end of its contact, on the extended
         // surface's edge — has its cell cut there: below the edge the
         // certificate holds as in a whole cell, line by line of constant
-        // `u`, and beyond it there is no surface and no arm.
-        let edge = (!closed[0])
-            .then(|| {
-                [0.0, TAU]
-                    .into_iter()
-                    .find(|e| (s.at[0] - e).abs() <= EDGE_TOUCH)
-            })
-            .flatten();
+        // `u`, and beyond it there is no surface and no arm. A saddle
+        // within its reach of the edge, where the edge's point beside it is
+        // within the tolerance of the other surface, is on it too: the
+        // corner a walked skin ends at against the face across a leaning
+        // junction's ruling (ADR-0072), which the census finds a hair
+        // inside. Its cell, at least twice its reach wide, never fitted
+        // inside the domain, so no saddle decided before moves.
+        let on_edge = |k: usize, at: [f64; 2]| {
+            (!closed[k])
+                .then(|| {
+                    [0.0, TAU].into_iter().find(|&e| {
+                        let d = (s.at[k] - e).abs();
+                        let mut on = at;
+                        on[k] = e;
+                        d <= EDGE_TOUCH
+                            || (d <= [wide, tall][k]
+                                && walker.apart(on[0], on[1]).abs() <= self.tol.linear)
+                    })
+                })
+                .flatten()
+        };
+        let edge = on_edge(0, s.at);
         // The same on an edge of `v`: at a corner of the domain the cell
         // is cut both ways, and of the four arms the one inside the
         // quadrant is left.
-        let ridge = (!closed[1])
-            .then(|| {
-                [0.0, TAU]
-                    .into_iter()
-                    .find(|e| (s.at[1] - e).abs() <= EDGE_TOUCH)
-            })
-            .flatten();
+        let ridge = on_edge(1, [edge.unwrap_or(s.at[0]), s.at[1]]);
         let at = [edge.unwrap_or(s.at[0]), ridge.unwrap_or(s.at[1])];
         let sides = match edge {
             Some(0.0) => [false, true],
