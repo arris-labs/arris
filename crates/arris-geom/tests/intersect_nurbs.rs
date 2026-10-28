@@ -4,15 +4,21 @@
 //! argument order not reaching the result, a NURBS twin of a pole met at
 //! the pole as a point, a meridian met beside its pole, a saddle a hair
 //! past the domain's edge, and two NURBS surfaces still `Unsupported`.
+//! Walked blends from the corpus's recipes against the faces beside them
+//! (plans/walked-saddle-cell): a saddle at a corner of the walked skin, and
+//! a section across the skin's arc knot.
 //! `tests/oracle.rs` holds the same section to Open CASCADE's.
 
 use arris_debug::testing::tol;
+use arris_debug::{corpus, fixtures};
 use core::f64::consts::{FRAC_PI_2, PI};
 
+use arris_geom::trace_section;
 use arris_geom::{
-    Curve, GeomError, MeetKind, NurbsSurface, Surface, SurfaceIntersection, intersect_surfaces,
+    Curve, GeomError, MeetKind, NurbsSurface, Surface, SurfaceIntersection, SurfaceKind,
+    intersect_surfaces,
 };
-use arris_math::{Aabb, Frame, Interval, Meter, Point3, Vec3};
+use arris_math::{Aabb, Frame, Interval, Meter, Point3, Tolerance, Vec3};
 
 fn frame(origin: [f64; 3], z: [f64; 3]) -> Frame {
     Frame::from_z(Point3::from(origin), Vec3::from(z)).unwrap()
@@ -280,4 +286,86 @@ fn a_saddle_at_a_corner_of_the_domain_keeps_the_one_arm_inside_it() {
 fn a_nurbs_surface_against_itself_is_flush_and_unsupported() {
     let a = wall();
     assert!(matches!(meet(&a, &a), Err(GeomError::Unsupported { .. })));
+}
+
+/// Every pair of a walked face of `chain`'s result (a NURBS face) and an
+/// analytic face of `kind`, with the pair's tolerance: the larger of the
+/// two faces' own, as S5 decides it.
+fn walked_against(chain: &corpus::Chain, kind: SurfaceKind) -> Vec<(Surface, Surface, Tolerance)> {
+    let m = &chain.model;
+    let body = chain.result().unwrap();
+    let faces: Vec<_> = (m.faces(body).unwrap().into_iter())
+        .map(|f| {
+            let face = m.face(f.id).unwrap();
+            (m.surface(face.surface()).unwrap().clone(), face.tolerance())
+        })
+        .collect();
+    let mut pairs = Vec::new();
+    for (walked, tw) in faces.iter().filter(|(s, _)| s.kind() == SurfaceKind::Nurbs) {
+        for (other, to) in faces.iter().filter(|(s, _)| s.kind() == kind) {
+            let at = Tolerance::new(tw.max(*to), tol().angular);
+            pairs.push((walked.clone(), other.clone(), at));
+        }
+    }
+    pairs
+}
+
+/// Each pair traces in both orders, every branch's samples within the
+/// pair's tolerance of both surfaces.
+fn traces(pairs: &[(Surface, Surface, Tolerance)]) {
+    assert!(!pairs.is_empty());
+    for (walked, other, at) in pairs {
+        for (a, b) in [(walked, other), (other, walked)] {
+            let trace = trace_section(a, b, &within(), *at, &mut Meter::default())
+                .unwrap_or_else(|e| panic!("{:?} against {:?}: {e}", a.kind(), b.kind()));
+            for branch in trace.branches() {
+                let d = branch.domain();
+                for k in 0..=64 {
+                    let p = branch.point(d.lerp(k as f64 / 64.0));
+                    for s in [a, b] {
+                        assert!(
+                            distance(s, p) <= 2.0 * at.linear,
+                            "{p:?} off {:?}",
+                            s.kind()
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `regression/s-bend-oblique-top-fillet`: the walked stripe of the first
+/// arc ends at the leaning junction on the ball off the vertex (ADR-0072),
+/// its corner on the ruling where the second arc's cylinder is tangent to
+/// the first. Against that cylinder the section has a saddle at the
+/// corner: on the skin's edge of `u`, `3.5e-7` of the walk's `v` inside
+/// the other edge, its value `2e-14` and its reach `4.2e-7`. No cell cut
+/// at one edge fits it, so the tracer refused the pair as
+/// `CrowdedSingularity` (CTC-02's excerpt has four of the same against
+/// planes across its rulings).
+#[test]
+#[ignore = "CrowdedSingularity: a saddle at a walked skin's corner, inside its reach of the second edge (plans/walked-saddle-cell step 2)"]
+fn a_saddle_at_a_walked_skins_corner_within_its_reach_of_both_edges_is_on_the_corner() {
+    let dir = fixtures::corpus_root().join("regression/s-bend-oblique-top-fillet");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    traces(&walked_against(&chain, SurfaceKind::Cylinder));
+}
+
+/// `blend/rounded-pocket-oblique-floor-fillet` with its floor at 30°: the
+/// walked corner skins are a rational quadratic arc of two spans across
+/// the stripe, joined at a double knot, where the surface is tangent
+/// continuous but not parametrically (its normals agree to `3e-8`). Against
+/// the table stripe's cylinder, which it meets on the junction's arc, the
+/// section has roots on that knot line with `∂f/∂v` of opposite signs
+/// either side (`±5e-9`, the floors `1e-11`), which the tracer took for a
+/// turn back at a kink and refused as `UnresolvedTurning`.
+#[test]
+#[ignore = "UnresolvedTurning: a section across a walked skin's tangent-continuous arc knot read as a kink (plans/walked-saddle-cell step 3)"]
+fn a_section_across_a_walked_skins_arc_knot_is_no_turn_at_a_kink() {
+    let dir = fixtures::corpus_root().join("blend/rounded-pocket-oblique-floor-fillet");
+    let mut recipe = fixtures::load(&dir).unwrap().recipe;
+    recipe.params.insert("a".into(), 30.0);
+    let chain = corpus::build("blend/rounded-pocket-oblique-floor-fillet at 30°", &recipe).unwrap();
+    traces(&walked_against(&chain, SurfaceKind::Cylinder));
 }
