@@ -83,13 +83,14 @@ careful, a geometric or numeric case to get right within a given design;
   `a_saddle_at_a_walked_skins_corner_within_its_reach_of_both_edges_is_on_the_corner`
   un-ignored. Done: the rule on both directions; the excerpt's pairs a
   second test.
-- [ ] Step 3 **[3]**: the arc knot. `turns_at_a_kink` takes a sign
+- [x] Step 3 **[3]**: the arc knot. `turns_at_a_kink` takes a sign
   change of `∂f/∂v` across a knot line as a kink only where the surface
   is creased beyond what the tolerance resolves; across a tangent
   continuous knot it is a turning point on the knot line. The oblique
   property's pocket and block pairs decide. Its ADR-0061 amendment;
   `a_section_across_a_walked_skins_arc_knot_is_no_turn_at_a_kink`
-  un-ignored.
+  un-ignored. Done: the crease measured against `tol.linear` over the
+  patch's `∂P/∂t`; the oblique property at 64 cases leaves no S5 row.
 - [ ] Step 4 **[2]**: `regression/s-bend-oblique-top-fillet` passes at
   `Full` within its tolerance of its oracle and moves to `blend/`
   (`fixtures:`, its oracle named); its f37/f38 is the corpus's NURBS ×

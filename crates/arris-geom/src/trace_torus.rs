@@ -236,6 +236,10 @@ struct Patch {
     span: [[f64; 2]; 2],
     f: PolyN<2>,
     weight: PolyN<2>,
+    /// The walked surface's homogeneous coordinates `w·P` in the other
+    /// surface's frame, whose normals tell a knot line's crease
+    /// ([`PatchedSection::turns_at_a_kink`]).
+    point: [PolyN<2>; 3],
     /// The `u₀` an isoline of a NURBS surface was divided out of the
     /// patch at, a closure past the isoline's own where the patch holds
     /// it there ([`PatchedSection::deflate`]).
@@ -364,6 +368,47 @@ pub(crate) struct Census {
     pub(crate) boxes: usize,
 }
 
+/// Whether the walked surface is creased across the knot line between
+/// `below`'s `t = 1` and `above`'s `t = 0` at `s` beyond what `tol`
+/// resolves: its normals either side part by an angle that, over the
+/// longer of the two patches' `∂P/∂t`, takes the surface past
+/// `tol.linear` of the other side's tangent continuation. A smaller
+/// crease is a surface tangent continuous to its tolerance, a fitted
+/// arc's double knot, on which the section has a turning point and no
+/// kink (ADR-0061, amended 2026-10-28).
+fn creased(below: &Patch, above: &Patch, s: f64, tol: Tolerance) -> bool {
+    let (b, a) = ([s, 1.0], [s, 0.0]);
+    let (nb, na) = (below.normal(b), above.normal(a));
+    // No normal on one side: a pole, which nothing says is smooth.
+    if nb == Vec3::zeros() || na == Vec3::zeros() {
+        return true;
+    }
+    let angle = real::atan2(nb.cross(&na).norm(), nb.dot(&na));
+    let across = below.tangent(1, b).norm().max(above.tangent(1, a).norm());
+    angle * across > tol.linear
+}
+
+impl Patch {
+    /// The walked surface's `∂P/∂s` (`k` 0) or `∂P/∂t` (1) at `at` of
+    /// the patch, in the other surface's frame.
+    fn tangent(&self, k: usize, at: [f64; 2]) -> Vec3 {
+        let w = self.weight.eval(at);
+        let wk = self.weight.partial(k).eval(at);
+        let [x, y, z] = self
+            .point
+            .each_ref()
+            .map(|c| (c.partial(k).eval(at) * w - c.eval(at) * wk) / (w * w));
+        Vec3::new(x, y, z)
+    }
+
+    /// The walked surface's unit normal at `at` of the patch, zero where
+    /// it has none.
+    fn normal(&self, at: [f64; 2]) -> Vec3 {
+        let n = self.tangent(0, at).cross(&self.tangent(1, at));
+        n.try_normalize(0.0).unwrap_or_else(Vec3::zeros)
+    }
+}
+
 impl<'a> PatchedSection<'a> {
     /// `None` unless `torus` is a torus and `other` has an implicit
     /// form, which a NURBS surface has not.
@@ -415,6 +460,7 @@ impl<'a> PatchedSection<'a> {
                     span: [quarter(qu), quarter(qv)],
                     f,
                     weight,
+                    point: local,
                     divided: None,
                     floor: 0.0,
                 });
@@ -513,6 +559,7 @@ impl<'a> PatchedSection<'a> {
                 }),
                 f,
                 weight,
+                point: [x, y, z],
                 divided: None,
                 floor: 0.0,
             });
@@ -1157,12 +1204,16 @@ impl<'a> PatchedSection<'a> {
     /// Whether the section turns back in `u` at a kink of a NURBS
     /// surface: at a root of `f` on a knot line of `v` shared by two
     /// patches — the seam too, where `v` closes — `∂f/∂t` beyond its
-    /// rounding of one sign on the patch below and of the other above.
-    /// Across a knot line where the surface is only continuous the
-    /// section's tangent jumps, and it may come back the way it came with
-    /// no turning point to find (ADR-0061). Never on a torus, whose
-    /// quarter turns join smoothly.
-    pub(crate) fn turns_at_a_kink(&self) -> bool {
+    /// rounding of one sign on the patch below and of the other above,
+    /// where the surface is creased beyond what `tol` resolves there
+    /// ([`creased`]). Across a knot line where the surface is only
+    /// continuous the section's tangent jumps, and it may come back the
+    /// way it came with no turning point to find (ADR-0061). Across one
+    /// that is tangent continuous to the tolerance — a fitted arc's
+    /// double knot, whose speed alone jumps — the sign change is a
+    /// turning point on the knot line, which the isolation finds.
+    /// Never on a torus, whose quarter turns join smoothly.
+    pub(crate) fn turns_at_a_kink(&self, tol: Tolerance) -> bool {
         let Chart::Knots {
             columns, closed, ..
         } = self.chart
@@ -1190,7 +1241,7 @@ impl<'a> PatchedSection<'a> {
                 let hi = slope_above.eval([s, 0.0]);
                 let clear = lo.abs() > 2.0 * n as f64 * below.floor
                     && hi.abs() > 2.0 * n_above as f64 * above.floor;
-                if clear && (lo > 0.0) != (hi > 0.0) {
+                if clear && (lo > 0.0) != (hi > 0.0) && creased(below, above, s, tol) {
                     return true;
                 }
             }

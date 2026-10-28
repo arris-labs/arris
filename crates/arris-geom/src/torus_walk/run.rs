@@ -44,7 +44,7 @@ impl Tracer<'_> {
         }
         // A turn at a kink of a NURBS surface has no turning point to
         // seed a march from.
-        if self.section.turns_at_a_kink() {
+        if self.section.turns_at_a_kink(self.tol) {
             return Err(SectionFault::UnresolvedTurning.into());
         }
         let turning = (self.section.turning_points(meter))

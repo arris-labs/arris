@@ -668,6 +668,39 @@ face of both against every cylinder, and of the excerpt against every
 plane, traces in both orders, its samples within the pair's tolerance of
 both surfaces (`tests/intersect_nurbs.rs`).
 
+### A knot line the tolerance does not crease (amendment, 2026-10-28)
+
+`plans/walked-saddle-cell` step 3. A walked corner skin's section across
+the stripe is a rational quadratic arc of two spans joined at a double
+knot: tangent continuous, its speed alone jumping. Against the table
+stripe's cylinder, which the skin meets on the junction's arc, the
+section has a root on that knot line where `∂f/∂t` is `+5.1e-9` below
+and `−3.9e-9` above, against floors of `1e-11`, and the tracer took it
+for a turn at a kink: `UnresolvedTurning`, in 7 of 56 built cases of
+the oblique blend property at 64 cases and on the committed pocket's
+recipe at 30°. The skin's normals either side part by `1.6e-8` rad over
+a patch whose `∂P/∂t` is `0.2` long, so the surface leaves the other
+side's tangent continuation by `3e-9`, far inside `tol.linear`.
+
+- **A turn at a kink needs a crease the tolerance resolves.** The sign
+  change of `∂f/∂t` across a knot line is refused only where the
+  normals either side part by an angle that, times the longer of the two
+  patches' `∂P/∂t`, exceeds `tol.linear` (`creased` in
+  `trace_torus.rs`); where one side has no normal it is still refused.
+  Elsewhere the root is a turning point on the knot line, which the
+  isolation finds from either patch within `PATCH_SLACK`. A C0 knot of
+  the random B-splines above parts its normals by far more, and is
+  refused as before.
+
+Measured against the rule taken out: the 30° pocket's walked skins
+against their cylinders refused. With it, every walked face of that
+pocket against every cylinder traces in both orders, its samples within
+the pair's tolerance of both surfaces (`tests/intersect_nurbs.rs`), and
+a 400 × 401 scan of each walked face's domain finds every sign change
+of the section within one step of a branch or the isoline the tracer
+divided out. The oblique property at 64 cases leaves no S5 row
+undecided; the random B-spline properties pass unchanged.
+
 
 ## Consequences
 

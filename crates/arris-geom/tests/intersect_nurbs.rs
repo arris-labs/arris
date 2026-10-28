@@ -385,7 +385,6 @@ fn a_saddle_within_its_reach_of_both_edges_of_a_walked_skin_is_on_the_corner() {
 /// either side (`±5e-9`, the floors `1e-11`), which the tracer took for a
 /// turn back at a kink and refused as `UnresolvedTurning`.
 #[test]
-#[ignore = "UnresolvedTurning: a section across a walked skin's tangent-continuous arc knot read as a kink (plans/walked-saddle-cell step 3)"]
 fn a_section_across_a_walked_skins_arc_knot_is_no_turn_at_a_kink() {
     let dir = fixtures::corpus_root().join("blend/rounded-pocket-oblique-floor-fillet");
     let mut recipe = fixtures::load(&dir).unwrap().recipe;
