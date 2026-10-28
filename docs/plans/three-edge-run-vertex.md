@@ -121,7 +121,7 @@ given design; **[3]** unproven, robustness or bound established here.
   concave. Each case builds checker-green or is refused by name. At each
   junction the arc's samples lie at `r` from `c*`, and `c*` lies at `r`
   from `P` and from `w`.
-- [ ] Step 7 **[1]**: re-run the fetched tier (`tools/real-parts.sh`) and
+- [x] Step 7 **[1]**: re-run the fetched tier (`tools/real-parts.sh`) and
   print the `fillet` row; CTC-02 AP242 and FTC-07 AP242 must agree.
   Re-run `--vertex-blend` on both parts, and give each site left over a
   backlog line with its count. Re-run the script corpus (its `fillet`
@@ -253,6 +253,15 @@ given design; **[3]** unproven, robustness or bound established here.
   along its contact), the rest `UnresolvedTurning` in `march/walk.rs`.
   That is an ADR-0061 amendment of its own, as step 3's were, not a
   fixture move; the plan stays open at step 5 for it.
+- *Settled* (step 7, 2026-10-28): the fetched tier's blend network row is
+  2 of 38 (CTC-05 AP242 and FTC-11, both `TangentChain`, M4's): CTC-02
+  AP242 and FTC-07 AP242 build their `fillet` stage. The `VertexBlend`
+  census over CTC-02 AP242 e2 is 36 edges in four sites (backlog) and
+  FTC-07 AP242 none. The script corpus's `fillet` refusals stay at 1.
+  The survey's one unexcluded failure, CTC-02 AP242 e2's `drill_x` counts,
+  predates this plan (backlog). Acceptance's second line (the real
+  parts' row) is met without step 5: the stages ran on the fillet's own
+  checker at the survey's level.
 - ⚠ OPEN: what step 7 leaves of the census's 140 + 36 `VertexBlend`
   sites (a plane × plane or cylinder × cylinder edge of the same runs, or
   a vertex of four). The agent writes the lines; a new milestone is the
