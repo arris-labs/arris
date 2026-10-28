@@ -101,13 +101,16 @@ given design; **[3]** unproven, robustness or bound established here.
   fixtures and the split rims checker-green (ADR-0061, amended); then
   ADR-0073, and the block held to the second oracle within the default
   tolerances (its volume 5.3e-10 off, every inertia component 9e-10).
-- [ ] Step 4 **[2]**: the concave pocket, and the four split rims
+- [x] Step 4 **[2]**: the concave pocket, and the four split rims
   (steep, tilted, slab, column), each get a second oracle's run and
   record (ADR-0073) and move to `blend/`. Add two
   neighbours: two walked runs at a leaning ruling (an S-bend of two
   tangent arcs under an oblique top, the census's cylinder × cylinder),
   and a lean that puts `c*` past the walked spine's reach. Each becomes a
   fixture with its oracle, or a `vertex-blend` `expect_error` fixture.
+  Done: the pocket, the slab and the column run on the second oracle's
+  record, the two boxes on Open CASCADE at 1e-7, all moved to `blend/`; the S-bend is an ignored `regression/` fixture (S5); the
+  reach case is two backlog lines (see *Settled*).
 - [ ] Step 5 **[2]**: `regression/nist-ctc-02-ap242-ellipse-chain-fillet`
   passes (13 edges on f43, six junctions) and moves to `blend/`. Any count
   that differs is read and recorded as `counts_differ`, with its reason
@@ -217,6 +220,22 @@ given design; **[3]** unproven, robustness or bound established here.
   carry no moments, so its run asks a lower API for the centroidal
   tensor at its accuracy mode. The relative-tolerance mode measured
   worse, 2.2e-7 off in volume.
+- *Settled* (step 4, the records): ADR-0073's lint takes a record as a
+  real difference only above 1e-6. The steep and tilted split boxes sit
+  1.9e-8 and 5.1e-8 from Open CASCADE (its corner blends miss the ball,
+  the second kernel's read agrees with Arris), so they carry no record
+  and are held to Open CASCADE at 1e-7 (the tilted box's centroid at
+  1e-6), the reason in their descriptions, as the sweep-thread fixtures
+  are. The pocket, the slab and the column run on the second oracle's
+  record. Its read of the unblended operand is itself 1.2e-9 to 6.6e-9
+  off Open CASCADE's on the pocket, the tilted box, the slab and the
+  column, exactly the gaps of their results, so the pocket, the slab and
+  the column widen `volume_rel` to 1e-8 (the slab and column `area_rel`
+  and `inertia_rel` too), each saying why in `measure_differs`.
+- *Settled* (step 4, the neighbours): the S-bend builds but S5 leaves two
+  pairs undecided (`regression/s-bend-oblique-top-fillet`, ignored); the
+  tracer's rows are step 5's too. No tilt of the block's recipe from
+  30° to 70° gives a `VertexBlend` at the reach (backlog).
 - ⚠ OPEN: what step 7 leaves of the census's 140 + 36 `VertexBlend`
   sites (a plane × plane or cylinder × cylinder edge of the same runs, or
   a vertex of four). The agent writes the lines; a new milestone is the

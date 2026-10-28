@@ -1,5 +1,5 @@
 {
- "description": "a 4.118 \u00d7 2.812 rectangle centred at the origin with its corners rounded at R 0.680, extruded 15.394 along z from z = \u22127.697, split by a plane tilted 64\u00b0 from z through (\u22120.936, 0, \u22123.862), and the cap's rim filleted at r 0.05. At the corners the walls run into the corner cylinders along rulings that lean out of the ball's normal plane, so the walked stripe ends at the shared ball off the vertex (ADR-0072) and its surface's corner touches the wall there. Found by split_prop's a_side_is_an_operand_of_every_operation (plans/three-edge-run-vertex step 3)",
+ "description": "a 4.118 \u00d7 2.812 rectangle centred at the origin with its corners rounded at R 0.680, extruded 15.394 along z from z = \u22127.697, split by a plane tilted 64\u00b0 from z through (\u22120.936, 0, \u22123.862), and the cap's rim filleted at r 0.05. At the corners the walls run into the corner cylinders along rulings that lean out of the ball's normal plane, so the walked stripe ends at the shared ball off the vertex (ADR-0072) and its surface's corner touches the wall there. Found by split_prop's a_side_is_an_operand_of_every_operation (plans/three-edge-run-vertex step 3) Open CASCADE's corner blends of the tilted plane against the corner cylinders miss the rolling ball, as on blend/rounded-block-oblique-top-fillet, and its volume is 5.1e-8 off Arris's and a second kernel's, whose blend faces lie on the ball; the fixture is held to Open CASCADE at 1e-7 (its centroid at 1e-6), not 1e-9 and 1e-7, for that reason (plans/three-edge-run-vertex step 4)",
  "params": {
   "R": 0.6801333121856207,
   "r": 0.05
@@ -161,5 +161,6 @@
    ],
    "expect": "out"
   }
- ]
+ ],
+  "tolerances": {"volume_rel": 1e-7, "area_rel": 1e-7, "inertia_rel": 1e-7, "centroid_abs": 1e-6}
 }

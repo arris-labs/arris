@@ -283,6 +283,11 @@ blend/rim-fillet-into-an-off-axis-step: 935
 blend/roof-fan-three-chamfer: 10
 blend/roof-fan-three-fillet: 448
 blend/rounded-block-oblique-top-fillet: 717436
+blend/rounded-box-steep-split-cap-rim-fillet: 358307
+blend/rounded-box-tilted-split-cap-rim-fillet: 296397
+blend/rounded-column-split-cap-rim-fillet: 286836
+blend/rounded-pocket-oblique-floor-fillet: 717436
+blend/rounded-slab-tilted-split-cap-rim-fillet: 127335
 blend/second-fillet: 5
 blend/sphere-cylinder-fillet: 2924840
 blend/split-boss-base-chamfer: 6

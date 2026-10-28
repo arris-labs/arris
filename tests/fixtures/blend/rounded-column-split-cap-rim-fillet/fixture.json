@@ -153,7 +153,8 @@
    "expect": "out"
   }
  ],
- "analytic": {
+ "tolerances": {"volume_rel": 1e-8, "area_rel": 1e-8, "inertia_rel": 1e-8},
+  "analytic": {
   "counts": {
    "vertices": 24,
    "edges": 40,
@@ -162,6 +163,7 @@
    "shells": 1
   },
   "genus": 0,
-  "counts_differ": "Open CASCADE splits the corner blend at two of the leaning junctions, by the corners (0.35, \u22120.5) and (\u22120.5, 0.35), into two faces each, a sliver of 0.0038 beside the corner's blend: one more face, three more edges and two more vertices each (28/46/20/20); Arris keeps one blend face per chain edge, as Open CASCADE does at the other two corners"
- }
+  "counts_differ": "Open CASCADE splits the corner blend at two of the leaning junctions, by the corners (0.35, \u22120.5) and (\u22120.5, 0.35), into two faces each, a sliver of 0.0038 beside the corner's blend: one more face, three more edges and two more vertices each (28/46/20/20); Arris keeps one blend face per chain edge, as Open CASCADE does at the other two corners",
+    "measure_differs": "Open CASCADE's corner blends of the tilted plane against the corner cylinders miss the rolling ball, as on blend/rounded-block-oblique-top-fillet (a walked blend with no closed form), and its volume sits off Arris's. A second kernel's blend faces lie on the ball, and its volume, area, centroid and inertia, in second_oracle.json, are the fixture's measures; the volume, area and inertia are held to 1e-8, not 1e-9, because that kernel's read of the unblended operand is itself 6.6e-9 off Open CASCADE's (ADR-0073)"
+  }
 }
