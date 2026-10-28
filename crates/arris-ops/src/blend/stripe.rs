@@ -19,6 +19,7 @@ use super::build::Env;
 use super::ends::stretch_between;
 use super::run_over::{self, Leaving, RunOver};
 use super::traced;
+use super::walked::Spine;
 use super::{Kind, degenerate, invariant};
 use crate::body_view::tangent_normals;
 use crate::body_view::{BodyView, UseAt, faces_tolerance};
@@ -102,6 +103,11 @@ pub(super) struct Stripe {
     /// The edge's use by each of those faces, in the same order.
     pub(super) uses: [UseAt; 2],
     pub(super) tolerance: f64,
+    /// A walked fillet's spine and the tolerance its surface is fitted to,
+    /// which a junction off the vertex refits the surface along so that it
+    /// ends at the shared ball's arc (ADR-0072); `None` for the table's
+    /// stripes and a walked chamfer.
+    pub(super) spine: Option<(Box<Spine>, Tolerance)>,
 }
 
 /// The parameters of the closest points of two lines with unit
@@ -634,6 +640,7 @@ pub(super) fn stripe(
         faces: by_u.map(|i| faces[i]),
         uses: by_u.map(|i| uses[i]),
         tolerance,
+        spine: None,
     })
 }
 

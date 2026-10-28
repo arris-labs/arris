@@ -1,0 +1,156 @@
+{
+ "description": "a 4.118 \u00d7 1.0 rectangle centred at the origin with its corners rounded at R 0.242, extruded 15.394 along z from z = \u22127.697, split by the plane of rounded-box-tilted-split-cap-rim-fillet, and the cap's rim filleted at r 0.05: the walked stripe's surface, ended at the shared ball, touches the wall at its corner with the distance along its edges there below rounding. Found by split_prop's a_side_is_an_operand_of_every_operation (plans/three-edge-run-vertex step 3)",
+ "params": {
+  "R": 0.24188903890686897,
+  "r": 0.05
+ },
+ "steps": [
+  {
+   "name": "sketch",
+   "op": "profile",
+   "plane": {
+    "origin": [
+     0,
+     0,
+     -7.697007007194339
+    ],
+    "x": [
+     1,
+     0,
+     0
+    ],
+    "y": [
+     0,
+     1,
+     0
+    ]
+   },
+   "outer": {
+    "start": [
+     "-2.059048545333974 + R",
+     -0.5
+    ],
+    "segments": [
+     {
+      "line_to": [
+       "2.059048545333974 - R",
+       -0.5
+      ]
+     },
+     {
+      "arc_to": [
+       2.059048545333974,
+       "-0.5 + R"
+      ],
+      "via": [
+       "2.059048545333974 - R + R * sin(radians(45))",
+       "-0.5 + R - R * cos(radians(45))"
+      ]
+     },
+     {
+      "line_to": [
+       2.059048545333974,
+       "0.5 - R"
+      ]
+     },
+     {
+      "arc_to": [
+       "2.059048545333974 - R",
+       0.5
+      ],
+      "via": [
+       "2.059048545333974 - R + R * sin(radians(45))",
+       "0.5 - R + R * cos(radians(45))"
+      ]
+     },
+     {
+      "line_to": [
+       "-2.059048545333974 + R",
+       0.5
+      ]
+     },
+     {
+      "arc_to": [
+       -2.059048545333974,
+       "0.5 - R"
+      ],
+      "via": [
+       "-2.059048545333974 + R - R * sin(radians(45))",
+       "0.5 - R + R * cos(radians(45))"
+      ]
+     },
+     {
+      "line_to": [
+       -2.059048545333974,
+       "-0.5 + R"
+      ]
+     },
+     {
+      "arc_to": [
+       "-2.059048545333974 + R",
+       -0.5
+      ],
+      "via": [
+       "-2.059048545333974 + R - R * sin(radians(45))",
+       "-0.5 + R - R * cos(radians(45))"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "block",
+   "op": "extrude",
+   "profile": "sketch",
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "length": 15.394014014388677
+  },
+  {
+   "name": "lower",
+   "op": "split",
+   "of": "block",
+   "plane": {
+    "origin": [
+     -0.9357785570338906,
+     0.0,
+     -3.861544531902755
+    ],
+    "normal": [
+     0.897693299993022,
+     0.042326904318447045,
+     0.43858314185391967
+    ]
+   },
+   "side": 1
+  },
+  {
+   "name": "result",
+   "op": "fillet",
+   "of": "lower",
+   "edges": [
+    [
+     0,
+     -0.5,
+     -5.728644770424884
+    ]
+   ],
+   "radius": "r"
+  }
+ ],
+ "result": "result",
+ "probes": [
+  {
+   "label": "rim_gone",
+   "point": [
+    0,
+    -0.5,
+    -5.728644770424884
+   ],
+   "expect": "out"
+  }
+ ]
+}

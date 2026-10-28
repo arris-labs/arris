@@ -511,19 +511,55 @@ impl Skin {
 }
 
 impl Spine {
+    /// The spine's parameter that the skin's `v` stands for: its mirror in
+    /// the spine's range where the spine runs against the edge
+    /// ([`Skin::spine_t`]).
+    fn skin_spine_t(&self, v: f64) -> f64 {
+        if self.from > self.to {
+            self.range.lo() + self.range.hi() - v
+        } else {
+            v
+        }
+    }
+
     /// The stripe's surface as [`Spine::surface`] fits it, with `v` running
     /// along the edge: its contact isocurves then have the edge's direction,
     /// the way a contact edge's curve must.
     pub(super) fn skin(&self, tol: Tolerance, meter: &mut Meter<'_>) -> Result<Skin, Walked> {
         let range = self.range;
         let reflected = self.from > self.to;
-        let at = |v: f64| {
-            if reflected {
-                range.lo() + range.hi() - v
-            } else {
-                v
-            }
-        };
+        let surface = self.skin_within(range, tol, meter)?;
+        // A vanishing end is where the spine stops, the range's own end:
+        // named exactly, so that its isocurve is the surface's end row.
+        let [stop_lo, stop_hi] = self.vanishing();
+        let at = |v: f64| self.skin_spine_t(v);
+        let ends = [
+            if stop_lo { range.lo() } else { at(self.from) },
+            if stop_hi { range.hi() } else { at(self.to) },
+        ];
+        Ok(Skin {
+            surface,
+            ends,
+            reflected,
+            range,
+        })
+    }
+
+    /// The surface [`Spine::skin`] fits, over `within`, a stretch of its
+    /// `v` — the skin's own parameter, so that a curve on the whole skin is
+    /// on this one where it lies within the stretch — fitted afresh there:
+    /// its end rows are the ball's exact arcs at `within`'s ends, where a
+    /// junction off the vertex ends the stripe (ADR-0072).
+    ///
+    /// Errors: as [`Spine::skin`].
+    pub(super) fn skin_within(
+        &self,
+        within: Interval,
+        tol: Tolerance,
+        meter: &mut Meter<'_>,
+    ) -> Result<NurbsSurface, Walked> {
+        let range = self.range;
+        let at = |v: f64| self.skin_spine_t(v);
         let budget = SECTION_FIT_FRACTION * tol.linear;
         // The surface's `v` runs along the edge, so its lower end is the
         // edge's start and its upper end the edge's end.
@@ -548,19 +584,7 @@ impl Spine {
                 arc(&ball)
             }
         };
-        let surface = fit_skin(section, range, SURFACE_DEGREE, budget, meter)?;
-        // A vanishing end is where the spine stops, the range's own end:
-        // named exactly, so that its isocurve is the surface's end row.
-        let ends = [
-            if stop_lo { range.lo() } else { at(self.from) },
-            if stop_hi { range.hi() } else { at(self.to) },
-        ];
-        Ok(Skin {
-            surface,
-            ends,
-            reflected,
-            range,
-        })
+        fit_skin(section, within, SURFACE_DEGREE, budget, meter)
     }
 }
 

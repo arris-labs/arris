@@ -17,6 +17,13 @@ into its version (ADR-0027).
   face rolling on the edge, and the rest of the fillet is cut back to it.
   An edge that is an ellipse, or a fillet on a walked stripe, is still
   refused `BlendTooLarge`, naming both edges.
+- A fillet along a top edge whose wall turns into a slanted cylinder now
+  builds where it was refused as `VertexBlend`: a rounded block under a
+  tilted top, or a pocket under a tilted floor, filleted round the
+  whole top edge. Where the corner's line leans out of square, the
+  straight run and the round run meet on one ball just off the vertex.
+  A leaning line that is not straight, or a vertex where four edges
+  meet, is still refused `VertexBlend`.
 
 ### Breaking
 

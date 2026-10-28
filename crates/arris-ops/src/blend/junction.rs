@@ -13,7 +13,7 @@ use super::miter::Miter;
 use super::ring::{Ring, placed_uv};
 use super::stripe::{Section, Stripe, chord, line_origin};
 use super::{degenerate, invariant};
-use crate::body_view::BodyView;
+use crate::body_view::{BodyView, tangent_normals};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -156,11 +156,11 @@ pub(super) fn junction(
     meter: &mut Meter<'_>,
 ) -> Result<Miter, OpError> {
     meter.tick()?;
-    let (ra, rb) = (a.at(m, vertex)?, b.at(m, vertex)?);
-    let v = forward(vertex);
+    let (mut ra, mut rb) = (a.at(m, vertex)?, b.at(m, vertex)?);
+    let (v, edges) = (forward(vertex), [forward(ra.edge), forward(rb.edge)]);
     let vertex_blend = || {
         degenerate(
-            vec![forward(ra.edge), forward(rb.edge), v],
+            vec![edges[0], edges[1], v],
             Reason::Blend(BlendReason::VertexBlend),
         )
     };
@@ -273,8 +273,24 @@ pub(super) fn junction(
     }
     // The closed forms' runs meet within their tolerance wherever the
     // tangent-vertex test holds; a walked run's ball may not (the field's
-    // doc), which is a junction no shared arc makes: refused by name.
+    // doc). Where the third edge leans, both runs are read again at the one
+    // ball off the vertex (ADR-0072); any other is a junction no shared arc
+    // makes: refused by name.
     let walked = ra.walked || rb.walked;
+    let apart = |pa: Point3, pb: Point3| (pa - pb).norm() > tolerance;
+    let leans = walked
+        && (apart(ra.points[ka], rb.points[kb])
+            || apart(ra.points[1 - ka], rb.points[1 - kb])
+            || matches!((ra.centre, rb.centre), (Some(ca), Some(cb)) if apart(ca, cb)));
+    if leans {
+        let w = match (wq, w) {
+            (None, Some(w)) => w,
+            _ => return Err(vertex_blend()),
+        };
+        if !leaning(m, view, [a, b], [&mut ra, &mut rb], [ka, kb], w, tol)? {
+            return Err(vertex_blend());
+        }
+    }
     let meet = |pa: Point3, pb: Point3, what: &'static str| {
         if (pa - pb).norm() > tolerance {
             return Err(if walked {
@@ -363,6 +379,7 @@ pub(super) fn junction(
         trim,
         q_trim,
         trim_arc: None,
+        leaning: leans,
         tolerance,
         q_tolerance: match wq {
             Some(wq) => tolerance.max(m.edge(wq)?.tolerance()),
@@ -378,13 +395,6 @@ pub(super) fn junction(
 /// The shared ball of a junction whose tangent edge leans (ADR-0072 §1):
 /// its centre `c*` and its feet on the shared plane and on the edge.
 #[derive(Clone, Copy, Debug)]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "read by the module's tests until the runs end at it (plans/three-edge-run-vertex step 3)"
-    )
-)]
 pub(super) struct Leaning {
     /// `c*`, at the radius from the shared plane `P` and from both faces
     /// tangent along the edge `w`.
@@ -401,13 +411,6 @@ pub(super) struct Leaning {
 /// blend, +1 for a concave one. The arc of the junction is the great circle
 /// from `q` to `p` (§2). `None` where `w` is parallel to `P` within
 /// `angular`: no ball touches the three there.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the leaning junction's ball is read by the module's tests until the runs end at it (ADR-0072, plans/three-edge-run-vertex step 3)"
-    )
-)]
 pub(super) fn leaning_ball(
     plane: Axis,
     w: Axis,
@@ -431,6 +434,112 @@ pub(super) fn leaning_ball(
         q: centre - sigma * radius * n_p,
         p: centre - sigma * radius * n.into_inner(),
     })
+}
+
+/// Reads both runs of a junction again at the shared ball of a leaning
+/// third edge `w` (ADR-0072): each run's contacts, its ball's centre and its
+/// parameter where the ball is `c*`, `false` where the construction does
+/// not hold. It holds for two stripes of a fillet whose shared face is a
+/// plane and whose `w` is a line along which the far faces share one
+/// normal, with `c*` on each stripe's spine within its tolerance: a table
+/// stripe's axis, or a walked stripe's surface, which runs `REACH_RADII`
+/// past its edge's ends.
+fn leaning(
+    m: &Model,
+    view: &BodyView,
+    runs: [Run<'_>; 2],
+    at: [&mut RunAt<'_>; 2],
+    shared: [usize; 2],
+    w: EdgeId,
+    tol: Tolerance,
+) -> Result<bool, OpError> {
+    let [Run::Line(sa), Run::Line(sb)] = runs else {
+        return Ok(false);
+    };
+    let (ka, face) = (shared[0], at[0].faces[shared[0]]);
+    let (Some(centre), Surface::Plane { frame }) =
+        (at[0].centre, m.surface(m.face(face)?.surface())?)
+    else {
+        return Ok(false);
+    };
+    let radius = (at[0].points[ka] - centre).norm();
+    let n_p = UnitVec3::try_new(view.outward(m, face, Point2::origin())?, 0.0)
+        .ok_or(invariant("a plane's normal"))?;
+    let plane = Axis {
+        origin: frame.origin(),
+        direction: n_p,
+    };
+    let edge = m.edge(w)?;
+    let Some((curve, range)) = edge.curve() else {
+        return Ok(false);
+    };
+    let &Curve::Line { origin, direction } = m.curve(curve)? else {
+        return Ok(false);
+    };
+    // The far faces' outward normal at both ends of `w`, one direction
+    // within the tangency the blend allows (ADR-0040).
+    let tangency = at[0].tolerance.max(at[1].tolerance).max(edge.tolerance());
+    let mut normal: Option<UnitVec3> = None;
+    for u in view
+        .uses
+        .get(&w)
+        .ok_or(invariant("the junction's corner edge's uses"))?
+    {
+        let pcurve = m.curve2(u.pcurve)?;
+        for t in [range.lo(), range.hi()] {
+            let n = UnitVec3::try_new(view.outward(m, u.face, pcurve.point(t))?, 0.0)
+                .ok_or(invariant("a face's normal"))?;
+            match normal {
+                None => normal = Some(n),
+                Some(first)
+                    if first.dot(&n) > 0.0
+                        && tangent_normals(
+                            first.into_inner(),
+                            n.into_inner(),
+                            radius,
+                            tangency,
+                            tol,
+                        ) => {}
+                Some(_) => return Ok(false),
+            }
+        }
+    }
+    let Some(n) = normal else {
+        return Ok(false);
+    };
+    let w_axis = Axis { origin, direction };
+    let Some(ball) = leaning_ball(plane, w_axis, n, radius, at[0].convex, tol.angular) else {
+        return Ok(false);
+    };
+    for ((s, at), k) in [sa, sb].into_iter().zip(at).zip(shared) {
+        let (t, centre) = match s.section {
+            Section::Round { axis_origin, .. } => {
+                let t = (ball.centre - axis_origin).dot(&s.d);
+                (t, axis_origin + t * s.d)
+            }
+            Section::Walked { .. } => {
+                (s.lines[k].project(ball.q).map_err(fault_of)?.t, ball.centre)
+            }
+            Section::Flat => return Ok(false),
+        };
+        let mut points = [Point3::origin(); 2];
+        for (point, line) in points.iter_mut().zip(&s.lines) {
+            *point = match s.section {
+                Section::Walked { .. } => line.point(t),
+                Section::Round { .. } | Section::Flat => line_origin(line)? + t * s.d,
+            };
+        }
+        if (centre - ball.centre).norm() > s.tolerance
+            || (points[k] - ball.q).norm() > s.tolerance
+            || (points[1 - k] - ball.p).norm() > s.tolerance
+        {
+            return Ok(false);
+        }
+        at.t = t;
+        at.points = points;
+        at.centre = Some(centre);
+    }
+    Ok(true)
 }
 
 #[cfg(test)]

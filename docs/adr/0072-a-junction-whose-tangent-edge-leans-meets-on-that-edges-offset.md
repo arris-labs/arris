@@ -119,3 +119,34 @@ faces turn (ADR-0039) with the same lean.
 - **Meet at the vertex and widen the tolerance.** The balls agree to
   `2.1e-4` on CTC-02, but the contacts lie `0.06` off the ruling: a
   tolerance that covered it would be a lie about the edge.
+
+## Amendment (2026-10-28): a walked stripe's surface ends at the arc
+
+`plans/three-edge-run-vertex` step 3. §3 ended the walked run at `c*`
+but left its surface reaching `REACH_RADII` past the edge's end, as at a
+face across. Past `c*` that reach rolls on along the far face's
+extension, tangent to the wall along `w`, and a wall across it was not
+decided at `Full` (a rounded box split by a tilted plane, its cap's rim
+filleted, at every tilt the split property shrank to).
+
+So a walked stripe met at a leaning junction has its surface refitted
+along its spine over the stretch it keeps, ending at `c*`'s `v`
+(`walked_blend::walked_cut`, `Spine::skin_within`). The fit's end row is
+the ball's exact arc there, the junction's arc; the surface keeps its
+`v`, so the arc's pcurve stays where the junction placed it. The stripe
+keeps its spine for this (`Stripe::spine`), and only a leaning junction
+refits: a square junction keeps its reach and its result. A walked
+chamfer has no spine and stays `VertexBlend`, as §5 says.
+
+The surface's corner then lies on `w` at `p`, where the wall, the far
+face and the skin are tangent, and its end row on the table stripe's
+cylinder along the arc. ADR-0061's amendment of the same date gives the
+tracer the rules that decide those pairs: a corner's touch found once,
+and the section beside a touch or the arc within the tolerance taken as
+theirs.
+
+Rejected: a reach past `c*` that leaves the far face's extension (a
+skin that turns off it) has no ball to roll along there; resolving the
+two crowded singular points of the reach in the tracer decides a part
+of the surface no face keeps.
+

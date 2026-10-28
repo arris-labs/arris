@@ -500,7 +500,10 @@ impl Tracer<'_> {
                             || cells.iter().any(|c| in_box(closed, at, c.at, c.half))
                             || touches.iter().any(|t| in_box(closed, at, t.at, t.half))
                     };
-                    if held(on_line(candidate), &cells, &touches) {
+                    if held(on_line(candidate), &cells, &touches)
+                        || self.at_foot(k, edge, candidate)
+                        || self.at_touch(k, edge, candidate)
+                    {
                         continue;
                     }
                     match self.edge_root(k, edge, candidate)? {
@@ -521,6 +524,128 @@ impl Tracer<'_> {
             }
         }
         Ok((cells, touches))
+    }
+
+    /// Whether `candidate`, on the edge line of `v` at `edge`, is the foot
+    /// of the isoline divided out, where it ends on the edge: the edge
+    /// line from the candidate to the foot within `tol.linear` of the
+    /// other surface all the way. Two faces tangent to one face across —
+    /// a walked blend and a table stripe's cylinder beside the isoline
+    /// they share — leave the quotient unsigned along the edge there, and
+    /// a branch that comes to it runs aground at the foot
+    /// ([`Tracer::aground`]); the foot is a point of the isoline already.
+    fn at_foot(&self, k: usize, edge: f64, candidate: f64) -> bool {
+        let walker = &self.walker;
+        let (Some(factor), Some(other)) = (walker.factor, Implicit::of(&walker.other)) else {
+            return false;
+        };
+        k == 1
+            && (0..=CIRCLE_SAMPLES).all(|n| {
+                let x = candidate + (factor.u0 - candidate) * n as f64 / CIRCLE_SAMPLES as f64;
+                other.distance(walker.point(x, edge)).abs() <= self.tol.linear
+            })
+    }
+
+    /// Whether `candidate`, on the edge line where direction `k`'s
+    /// parameter is `edge`, is a touch's on that line: the edge line from
+    /// the candidate to an isolated singular point on it within
+    /// `tol.linear` of the other surface all the way. A walked blend ended
+    /// at a junction's arc touches the face across at its corner exactly
+    /// (ADR-0072), and along its edges there the distance is below its
+    /// rounding; the touch is a point of the section already.
+    fn at_touch(&self, k: usize, edge: f64, candidate: f64) -> bool {
+        let walker = &self.walker;
+        let Some(other) = Implicit::of(&walker.other) else {
+            return false;
+        };
+        (walker.singular.iter())
+            .filter(|s| !s.crossing && s.at[k] == edge)
+            .any(|s| {
+                let to = s.at[1 - k];
+                (0..=CIRCLE_SAMPLES).all(|n| {
+                    let x = candidate + (to - candidate) * n as f64 / CIRCLE_SAMPLES as f64;
+                    let [u, v] = if k == 0 { [edge, x] } else { [x, edge] };
+                    other.distance(walker.point(u, v)).abs() <= self.tol.linear
+                })
+            })
+    }
+
+    /// Whether every point of a grid over the walk's rectangle `u × v` is
+    /// within `tol.linear` of the other surface: the section there is not
+    /// resolved within the tolerance from the isoline or the touch the
+    /// rectangle reaches, which stands for it.
+    fn held_over(&self, u: [f64; 2], v: [f64; 2]) -> bool {
+        let walker = &self.walker;
+        let Some(other) = Implicit::of(&walker.other) else {
+            return false;
+        };
+        let n = CIRCLE_SAMPLES as f64;
+        (0..=CIRCLE_SAMPLES).all(|i| {
+            let x = u[0] + (u[1] - u[0]) * i as f64 / n;
+            (0..=CIRCLE_SAMPLES).all(|j| {
+                let y = v[0] + (v[1] - v[0]) * j as f64 / n;
+                other.distance(walker.point(x, y)).abs() <= self.tol.linear
+            })
+        })
+    }
+
+    /// Whether `z`, a box of turning points, lies beside the isoline
+    /// divided out with the strip from the box to it, as long as the box,
+    /// within `tol.linear` of the other surface at every point of a grid:
+    /// the tangency is held to the tolerance there, a hair off the
+    /// surface's own line, and the isoline is it. A fitted surface's row
+    /// within the tolerance of an exact arc leaves its quotient a double
+    /// zero beside the row, which no cell certifies — the whole domain
+    /// long where the arc is inside a span, along a stretch of it where a
+    /// fitted end row meets the face it is tangent to along the arc.
+    pub(super) fn beside_isoline(&self, z: &Zero<2>) -> bool {
+        let Some(factor) = self.walker.factor else {
+            return false;
+        };
+        self.held_over(
+            [z.lo[0].min(factor.u0), z.hi[0].max(factor.u0)],
+            [z.lo[1], z.hi[1]],
+        )
+    }
+
+    /// Whether the singular point `s` lies beside the isoline divided out,
+    /// the rectangle from its cell's reach to the isoline within
+    /// `tol.linear` of the other surface at every point of a grid: a
+    /// crossing of the quotient a hair off the isoline, where a fitted
+    /// surface's end row meets a face it is tangent to along an exact arc
+    /// (ADR-0072) only to the fit's accuracy, is the isoline's, as a box
+    /// of turning points beside it is ([`Tracer::beside_isoline`]).
+    pub(super) fn singular_beside_isoline(&self, s: &Singular) -> bool {
+        let Some(factor) = self.walker.factor else {
+            return false;
+        };
+        let [wide, tall] = s.extent();
+        let u = [
+            (s.at[0] - wide).min(factor.u0),
+            (s.at[0] + wide).max(factor.u0),
+        ];
+        let v = [s.at[1] - tall, s.at[1] + tall];
+        let inside = |[lo, hi]: [f64; 2], k: usize| {
+            if self.walker.closed[k] {
+                [lo, hi]
+            } else {
+                [lo.max(0.0), hi.min(TAU)]
+            }
+        };
+        self.held_over(inside(u, 0), inside(v, 1))
+    }
+
+    /// Whether `z`, a box of turning points not certified, lies beside the
+    /// touch at `at` with the rectangle from the box to it within
+    /// `tol.linear` of the other surface at every point of a grid: the
+    /// section there is not resolved from the touch within the tolerance,
+    /// and the touch stands for it, as for its zone. A walked blend ended
+    /// at a junction's arc touches the face across at its corner exactly
+    /// (ADR-0072), its value zero and its reach none, and the census leaves
+    /// boxes beside it where the distance is below its rounding.
+    pub(super) fn beside_touch(&self, z: &Zero<2>, at: [f64; 2]) -> bool {
+        let span = |k: usize| [z.lo[k].min(at[k]), z.hi[k].max(at[k])];
+        !z.certified && self.held_over(span(0), span(1))
     }
 
     /// The root of `f` along the edge line where direction `k`'s parameter

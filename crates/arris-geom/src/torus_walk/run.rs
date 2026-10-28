@@ -76,8 +76,20 @@ impl Tracer<'_> {
                 _ => {}
             }
         }
+        // Such a box beside the isoline divided out, or a shorter one, the
+        // strip between the two within the tolerance of the other surface
+        // all over, is the isoline's: a tangency held to the tolerance a
+        // hair off a line of the surface's own, where a fitted row stands
+        // for an exact arc.
+        let turning: Vec<Zero<2>> = (turning.into_iter())
+            .filter(|z| torus || z.certified || !self.beside_isoline(z))
+            .collect();
 
-        let singular = self.singular_points(&critical)?;
+        // A singular point beside the isoline divided out, held to the
+        // tolerance out to it, is the isoline's.
+        let singular: Vec<Singular> = (self.singular_points(&critical)?.into_iter())
+            .filter(|s| torus || !self.singular_beside_isoline(s))
+            .collect();
         self.walker.bumps = singular
             .iter()
             .filter(|s| s.bump.reach > 0.0)
@@ -95,7 +107,7 @@ impl Tracer<'_> {
                         // on the box's own edge, when the box reaches it.
                         self.walker.off(k, off).abs() <= half + EDGE_TOUCH
                     });
-                held || s.holds(z.at, 1.0)
+                held || s.holds(z.at, 1.0) || (!s.crossing && self.beside_touch(z, s.at))
             })
         };
         let turning: Vec<Zero<2>> = turning.into_iter().filter(|z| !absorbed(z)).collect();
@@ -250,11 +262,28 @@ impl Tracer<'_> {
                         continue;
                     }
                     (z.at[k], z.lo[k], z.hi[k]) = (edge, edge, edge);
+                    // Near the other direction's edge too, it is the
+                    // corner's: put there where its point is within the
+                    // tolerance of the corner's, and no point of the
+                    // surface where it lies past that edge and is not.
+                    let j = 1 - k;
+                    if !self.walker.closed[j] {
+                        let corner = if z.at[j] < PI { 0.0 } else { TAU };
+                        let mut at = z.at;
+                        at[j] = corner;
+                        let off =
+                            (self.walker.point(at[0], at[1])) - self.walker.point(z.at[0], z.at[1]);
+                        if off.norm() <= self.tol.linear {
+                            (z.at[j], z.lo[j], z.hi[j]) = (corner, corner, corner);
+                        } else if !(0.0..=TAU).contains(&z.at[j]) {
+                            continue;
+                        }
+                    }
                     let known = inside.iter().any(|c| {
                         (0..2).all(|j| {
                             (c.lo[j] - EDGE_TOUCH..=c.hi[j] + EDGE_TOUCH).contains(&z.at[j])
                         })
-                    });
+                    }) || out.iter().any(|c: &Zero<2>| c.at == z.at);
                     if !known {
                         out.push(z);
                     }

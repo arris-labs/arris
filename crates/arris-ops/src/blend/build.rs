@@ -21,7 +21,9 @@ use super::ring_rolled::add_ring_rolled_faces;
 use super::rolled::{Rolled, RolledMade, add_crowded_edge, add_rolled_faces, add_run_over, rolled};
 use super::stripe::Section;
 use super::stripe::{Stripe, contacts, stripe};
-use super::walked_blend::{walked_contacts, walked_end, walked_pole, walked_ring, walked_stripe};
+use super::walked_blend::{
+    walked_contacts, walked_cut, walked_end, walked_pole, walked_ring, walked_stripe,
+};
 use super::{Blend, Kind, degenerate, invariant};
 use crate::body_view::BodyView;
 use crate::error::{BlendReason, OpError, Reason, fault_of};
@@ -572,7 +574,7 @@ fn make_blends(
     } = joins;
     // Each stripe's ends, then its contacts between them.
     let mut blends: Vec<Blend> = Vec::with_capacity(stripes.len());
-    for s in stripes {
+    for mut s in stripes {
         let mut ends: Vec<EndKind> = Vec::with_capacity(2);
         for (at_lo, vertex) in [(true, s.start), (false, s.end)] {
             // A walked stripe narrowed to its vertex meets no other blend
@@ -610,6 +612,13 @@ fn make_blends(
             .try_into()
             .map_err(|_| invariant("two ends of the blend"))?;
         let t = [0, 1].map(|end| [0, 1].map(|k| ends[end].t(miters, corners, k)));
+        if matches!(s.section, Section::Walked { .. }) {
+            let cut = [0, 1].map(|end| match ends[end] {
+                EndKind::Miter { at, .. } if miters[at].leaning => Some(t[end][0]),
+                _ => None,
+            });
+            walked_cut(&env, meter, &mut s, cut)?;
+        }
         let (contacts, rolled) = match s.section {
             Section::Walked { .. } => (walked_contacts(&env, meter, &s, t)?, None),
             Section::Round { .. } | Section::Flat => {

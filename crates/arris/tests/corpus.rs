@@ -1298,16 +1298,33 @@ corpus_tests! {
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
     /// plane meets oblique cylinders.
-    #[ignore = "VertexBlend(e184, e274, v167): a skew junction, the side faces f15 and f40 tangent along the ruling e183, which leaves the ball's normal plane at the vertex, so the runs' side contacts miss it and each other by 9.1e-3 (docs/BACKLOG.md, a skew tangent junction)"]
+    #[ignore = "builds with its skew junctions at c* (ADR-0072), but S5 leaves 25 pairs of planes and cylinders against walked faces undecided (plans/three-edge-run-vertex step 5)"]
     regression_nist_ctc_02_ap242_ellipse_chain_fillet => run "regression/nist-ctc-02-ap242-ellipse-chain-fillet";
     /// A rounded block under an oblique top, one top line filleted: the
     /// chain's walls turn into the corner cylinders along rulings that lean
     /// out of the ball's normal plane at four vertices.
-    #[ignore = "VertexBlend(e57, e58, v34): the x wall's line runs into the corner cylinder's ellipse along a ruling that leans out of the ball's normal plane at the vertex; Open CASCADE's balls meet off it, on the ruling's offset (plans/three-edge-run-vertex)"]
+    #[ignore = "builds checker-green with its junctions at c* (ADR-0072), but Open CASCADE's corner blends miss the rolling ball by up to 1.5e-3 and its volume is 3.8e-5 above Arris's: held to a second oracle once ADR-0073 lands (plans/three-edge-run-vertex step 3)"]
     regression_rounded_block_oblique_top_fillet => run "regression/rounded-block-oblique-top-fillet";
     /// The same as a pocket under an oblique floor, filleted concave.
-    #[ignore = "VertexBlend(e79, e81, v58): the concave chain's leaning ruling, as regression/rounded-block-oblique-top-fillet's (plans/three-edge-run-vertex)"]
+    #[ignore = "builds checker-green, as regression/rounded-block-oblique-top-fillet does, its volume 6.1e-6 off Open CASCADE's for the same reason (plans/three-edge-run-vertex step 3)"]
     regression_rounded_pocket_oblique_floor_fillet => run "regression/rounded-pocket-oblique-floor-fillet";
+    /// A rounded box split by a steep plane, the cap's rim filleted: the
+    /// rim's walls turn into the corner cylinders along rulings that lean
+    /// out of the ball's normal plane at all four corners.
+    #[ignore = "builds checker-green, its volume 1.9e-8 below Open CASCADE's, whose corner blends miss the rolling ball as on regression/rounded-block-oblique-top-fillet: held to a second oracle once ADR-0073 lands (plans/three-edge-run-vertex step 3)"]
+    regression_rounded_box_steep_split_cap_rim_fillet => run "regression/rounded-box-steep-split-cap-rim-fillet";
+    /// The same box split by a plane tilted the other way, the cap's rim
+    /// filleted: each walked stripe's surface ends at the shared ball, its
+    /// corner touching the wall on the leaning ruling.
+    #[ignore = "builds checker-green, its volume 5.3e-8 below Open CASCADE's, whose corner blends miss the rolling ball as on regression/rounded-block-oblique-top-fillet: held to a second oracle once ADR-0073 lands (plans/three-edge-run-vertex step 3)"]
+    regression_rounded_box_tilted_split_cap_rim_fillet => run "regression/rounded-box-tilted-split-cap-rim-fillet";
+    /// A narrower slab under the same plane: the skin's edges out of its
+    /// corner touch the wall to below rounding.
+    #[ignore = "builds checker-green, its volume 3.3e-7 below Open CASCADE's for the same reason (plans/three-edge-run-vertex step 3)"]
+    regression_rounded_slab_tilted_split_cap_rim_fillet => run "regression/rounded-slab-tilted-split-cap-rim-fillet";
+    /// A square column split through its middle, the cap's rim filleted.
+    #[ignore = "builds checker-green, its counts the record's, its volume 6.1e-6 below Open CASCADE's for the same reason (plans/three-edge-run-vertex step 3)"]
+    regression_rounded_column_split_cap_rim_fillet => run "regression/rounded-column-split-cap-rim-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring refuses. The desired body is Open CASCADE's.

@@ -262,7 +262,7 @@ pub(super) fn walked_stripe(
         convex,
         tolerance,
         fit,
-        ref path,
+        path,
         ..
     } = rolled;
     if entity.start() == entity.end() {
@@ -305,7 +305,7 @@ pub(super) fn walked_stripe(
     let rows = contact_rows(&skin.surface).map_err(|w| named(w, edge, faces, surfaces))?;
     let [v0, v1] = skin.ends;
     let v_mid = 0.5 * (v0 + v1);
-    let (flipped, centres) = match path {
+    let (flipped, centres) = match &path {
         Path::Ball(spine) => {
             let ball_at = |v: f64| {
                 spine
@@ -356,6 +356,10 @@ pub(super) fn walked_stripe(
         faces,
         uses,
         tolerance,
+        spine: match path {
+            Path::Ball(spine) => Some((spine, fit)),
+            Path::Chord(_) => None,
+        },
     })
 }
 
@@ -541,6 +545,59 @@ pub(super) fn walked_contacts(
     contacts
         .try_into()
         .map_err(|_| invariant("two contacts of the blend"))
+}
+
+/// The walked stripe `s` with its surface ended at `cut`, the `v` of a
+/// junction's arc at its start and at its end where the junction's tangent
+/// edge leans (ADR-0072): refitted along its spine over the stretch kept,
+/// so that each such end row is the shared ball's exact arc. The skin past
+/// the shared ball, rolling on along the far face's extension, is no part
+/// of the blend, and a face across that runs tangent to it there is not
+/// asked to tell that reach from the arc. The surface keeps its `v`, so
+/// the curves already placed on it — the junction's arc — keep theirs.
+///
+/// Errors: `BlendReason::VertexBlend` naming the edge and the junction's
+/// vertex for a walked chamfer, which has no ball to share; the errors of [`Spine::skin_within`], named
+/// for the edge as the stripe's own were.
+pub(super) fn walked_cut(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    s: &mut Stripe,
+    cut: [Option<f64>; 2],
+) -> Result<(), OpError> {
+    if cut == [None, None] {
+        return Ok(());
+    }
+    let m = env.m;
+    let Some((spine, fit)) = &s.spine else {
+        let vertices = [s.start, s.end].into_iter().zip(cut);
+        let at = vertices
+            .filter(|(_, t)| t.is_some())
+            .map(|(v, _)| forward(v));
+        return Err(degenerate(
+            [forward(s.edge)].into_iter().chain(at).collect(),
+            Reason::Blend(BlendReason::VertexBlend),
+        ));
+    };
+    let Surface::Nurbs(surface) = &s.surface else {
+        return Err(invariant("a walked stripe's NURBS surface"));
+    };
+    let domain = surface.domain()[1];
+    let within = Interval::new(
+        cut[0].unwrap_or(domain.lo()).max(domain.lo()),
+        cut[1].unwrap_or(domain.hi()).min(domain.hi()),
+    )
+    .map_err(|_| invariant("a walked stripe ended inside its surface"))?;
+    let surfaces = [0, 1].map(|k| m.face(s.faces[k]).and_then(|f| m.surface(f.surface())));
+    let [Ok(sa), Ok(sb)] = surfaces else {
+        return Err(invariant("a walked stripe's faces' surfaces"));
+    };
+    let named = |w| named(w, s.edge, s.faces, [sa, sb]);
+    let ended = spine.skin_within(within, *fit, meter).map_err(named)?;
+    let rows = contact_rows(&ended).map_err(named)?;
+    s.surface = Surface::Nurbs(ended);
+    s.lines = rows.map(Curve::Nurbs);
+    Ok(())
 }
 
 /// The surface's isocurve at its lowest `v`, across: the first column of

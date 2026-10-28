@@ -1,0 +1,24 @@
+{
+  "description": "a 4.118 × 2.812 rectangle centred at the origin with its corners rounded at R 0.680, extruded 15.394 along z from z = −7.697, split by a plane tilted 64° from z through (0.936, 0, 3.862), and the cap's rim filleted at r 0.05. The rim is a tangent chain of four lines and four ellipse arcs; at each corner the wall turns into the corner cylinder along a vertical ruling that leans out of the ball's normal plane, so the table stripe and the walked stripe meet on one ball off the vertex (ADR-0072). Found by split_prop's a_side_is_an_operand_of_every_operation (plans/three-edge-run-vertex)",
+  "params": {"R": 0.6801333121856207, "r": 0.05},
+  "steps": [
+    {"name": "sketch", "op": "profile", "plane": {"origin": [0, 0, -7.697007007194344], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": ["-2.059048545333974 + R", -1.405878735264814], "segments": [
+       {"line_to": ["2.059048545333974 - R", -1.405878735264814]}, {"arc_to": [2.059048545333974, "-1.405878735264814 + R"], "via": ["2.059048545333974 - R + R * sin(radians(45))", "-1.405878735264814 + R - R * cos(radians(45))"]},
+       {"line_to": [2.059048545333974, "1.405878735264814 - R"]}, {"arc_to": ["2.059048545333974 - R", 1.405878735264814], "via": ["2.059048545333974 - R + R * sin(radians(45))", "1.405878735264814 - R + R * cos(radians(45))"]},
+       {"line_to": ["-2.059048545333974 + R", 1.405878735264814]}, {"arc_to": [-2.059048545333974, "1.405878735264814 - R"], "via": ["-2.059048545333974 + R - R * sin(radians(45))", "1.405878735264814 - R + R * cos(radians(45))"]},
+       {"line_to": [-2.059048545333974, "-1.405878735264814 + R"]}, {"arc_to": ["-2.059048545333974 + R", -1.405878735264814], "via": ["-2.059048545333974 + R - R * sin(radians(45))", "-1.405878735264814 + R - R * cos(radians(45))"]}]}},
+    {"name": "block", "op": "extrude", "profile": "sketch", "direction": [0, 0, 1], "length": 15.394014014388677},
+    {"name": "lower", "op": "split", "of": "block",
+     "plane": {"origin": [0.9357785570338906, 0, 3.861544531902755], "normal": [-0.48716788815314904, -0.7551902253299795, -0.43858314185391967]},
+     "side": 1},
+    {"name": "result", "op": "fillet", "of": "lower", "edges": [[0, -1.405878735264814, 7.321748533054105]], "radius": "r"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [0, 0, 0], "expect": "in"},
+    {"label": "on_bottom", "point": [0, 0, -7.697007007194344], "expect": "on"},
+    {"label": "rim_gone", "point": [0, -1.4, 7.3217], "expect": "out"}
+  ],
+  "analytic": {"counts": {"vertices": 26, "edges": 42, "faces": 18, "loops": 18, "shells": 1}, "genus": 0, "counts_differ": "Open CASCADE splits the blend at the leaning junction by the corner (2.059, −1.406) into two faces, a sliver of 0.018 beside the corner's blend, one more face, two edges and two vertices (28/45/19/19); Arris keeps one blend face per chain edge, as Open CASCADE does at the other three corners"}
+}

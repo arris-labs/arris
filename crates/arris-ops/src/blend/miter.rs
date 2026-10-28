@@ -63,6 +63,10 @@ pub(super) struct Miter {
     pub(super) q_trim: Option<Trim>,
     /// Where the dihedrals differ, the wider blend's trim arc (ADR-0044).
     pub(super) trim_arc: Option<TrimArc>,
+    /// `true` at a junction whose tangent edge leans (ADR-0072): the
+    /// shared ball is off the vertex, and a walked stripe's surface ends
+    /// at its arc rather than reaching past it.
+    pub(super) leaning: bool,
     pub(super) tolerance: f64,
     pub(super) q_tolerance: f64,
     pub(super) p3_tolerance: f64,
@@ -219,6 +223,7 @@ pub(super) fn miter(
         trim: Some(trim),
         q_trim: None,
         trim_arc,
+        leaning: false,
         tolerance,
         q_tolerance: tolerance,
         p3_tolerance: if wide.is_some() {

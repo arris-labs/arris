@@ -34,6 +34,11 @@ and the vertex.
 - M4 `tolerant-tangency` (FTC-11, CTC-05 AP242), M5 `overhang-tip-cap`.
 
 ## Design deltas
+- **ADR-0073, a fixture's `measure_differs` may rest on a second
+  oracle's record** (step 3). It amends ADR-0015 (Open questions, the
+  oracle). `tools/oracle/` gains the import of a `second_oracle.json`;
+  the corpus runner and lint read it beside `analytic`. Test-side only;
+  no public type changes.
 - **ADR-0072, a junction whose tangent edge leans meets on that edge's
   offset** (step 2). It amends ADR-0035 §3 and ADR-0062's junction.
   - Name the faces at the vertex: `P` the shared face (a plane), `W` and
@@ -55,7 +60,9 @@ and the vertex.
 - **`crates/arris-ops/src/blend/junction.rs`**: `junction` computes `c*`
   before it refuses. `RunAt` carries the end it was read at, so that
   `Miter::t` holds `c*`'s parameters. `walked_blend.rs` gains the spine's
-  parameter at a point. No public type or signature changes, and
+  parameter at a point. `Miter` gains `leaning`, `Stripe` keeps a walked
+  fillet's spine, and `walked_cut` refits a skin met there to end at
+  `c*` (`Spine::skin_within`). No public type or signature changes, and
   `Reason` gains no variant, so `arris-py` is unchanged.
 - **Provenance**: no new kind. The blend faces are `Generated`; `P`, `W`,
   `C` and `w` are `Modified`; the vertex is `Deleted`; `q` and `p` are
@@ -85,7 +92,11 @@ given design; **[3]** unproven, robustness or bound established here.
 - [ ] Step 3 **[3]**: re-end both runs at `c*` (the table's `t`, the
   walked spine's `v`). The convex fixture builds checker-green, its
   measures within tolerance of the oracle. It moves to `blend/` with
-  its dump. CHANGELOG bullet.
+  its dump. CHANGELOG bullet. *Partial*: the runs end at `c*`, the
+  walked skin refitted to end there (ADR-0072, amended), and both
+  fixtures and the split rims build checker-green (ADR-0061, amended).
+  Open CASCADE's volume holds the step open until ADR-0073 lands (Open
+  questions).
 - [ ] Step 4 **[2]**: the concave pocket moves to `blend/`. Add two
   neighbours: two walked runs at a leaning ruling (an S-bend of two
   tangent arcs under an oblique top, the census's cylinder × cylinder),
@@ -93,7 +104,9 @@ given design; **[3]** unproven, robustness or bound established here.
   fixture with its oracle, or a `vertex-blend` `expect_error` fixture.
 - [ ] Step 5 **[2]**: `regression/nist-ctc-02-ap242-ellipse-chain-fillet`
   passes (13 edges on f43, six junctions) and moves to `blend/`. Any count
-  that differs is read and recorded as `counts_differ`, with its reason.
+  that differs is read and recorded as `counts_differ`, with its reason
+  (Open CASCADE 664 faces, the second oracle 662 for the battery's edge
+  set).
 - [ ] Step 6 **[2]**: property tests in `blend_prop.rs`. Use a random
   tilt (5° to 40°), corner radius, fillet radius and pose, convex and
   concave. Each case builds checker-green or is refused by name. At each
@@ -137,10 +150,53 @@ given design; **[3]** unproven, robustness or bound established here.
   cut at `p`. At (0, 0.5) that is (0.2, 0.5, 1.105179), the closed form's
   `w_r ∩ offset(P, r)`. CTC-02's excerpt refuses at v167, whose ruling
   e183 leans 2.5° from square to e184 on the plane z = 40.
-- ⚠ OPEN: whether a table stripe whose `t` lies past its edge's end
-  needs `ends.rs` to stretch its contact lines, or only to read `Miter::t`.
-  The agent finds out at step 3. If it is more than a step, it gets a
-  step of its own.
+- *Settled* (step 3): a table stripe whose `t` lies past its edge's end
+  needs only `Miter::t`. `stripe::contacts` reads each end's `t` off the
+  stripe's lines, which are unbounded, so `ends.rs` is unchanged.
+- *Settled* (step 3, the checker): neither option the question named.
+  The tracer found the shared arc and divided it out. What it could not
+  resolve was the arc's foot on the walked face's contact edge. There
+  both blends touch the top along contacts that meet tangent, so the
+  quotient along that edge is its rounding over a stretch (`4e-14`
+  across `8.8e-4` of `u`). A march there shrank its steps without end,
+  and a candidate beside the foot was neither crossing nor touch.
+  ADR-0061's amendment of 2026-10-28 runs the march aground and takes the
+  candidate as the foot. The split property's rounded box then left one
+  pair, its arc a fitted row `1.6e-4` of `u` off the exact one; the amendment's
+  third rule gives the isoline the turning box beside it. All eight pairs of the block, and the pocket's,
+  are decided at `Full`, square junctions included.
+- *Settled* (step 3, the reach past `c*`, 2026-10-28): the skin ends at
+  `c*`, its corner traced. `split_prop`'s
+  `a_side_is_an_operand_of_every_operation` fillets a split rounded box's
+  cap rim, every one `VertexBlend` before this step. Built, the walked
+  skin's reach past `c*` rolled on along the corner cylinder's extension,
+  tangent to the wall along the ruling, and the tracer found two singular
+  points crowded at every tilt the property shrank to. A walked stripe
+  met at a leaning junction is now refitted along its spine to end at
+  `c*` (ADR-0072's amendment), its end row the exact arc. Its corner
+  touches the wall at `p` and its end row lies on the table stripe's
+  cylinder; ADR-0061's amendment decides both (the corner's touch found
+  once, the section beside a touch or the arc within the tolerance
+  theirs, an edge root the edge line joins to a touch the touch's).
+  Rejected: a reach that leaves the extension has no ball to roll along,
+  and resolving the crowded reach decides a surface no face keeps. The
+  property passes at 16 cases. Its shrunk poses are
+  `rounded-box-tilted-`, `rounded-slab-tilted-` and
+  `rounded-column-split-cap-rim-fillet`, checker-green beside the steep
+  box, all held to Open CASCADE's volume until ADR-0073 lands.
+- *Settled* (step 3, the oracle, 2026-10-28): a second commercial
+  kernel, run as a black box, is the evidence ADR-0015 asks for. It
+  builds both cases. Its corner blend faces lie on the rolling ball to
+  9e-14; Open CASCADE's miss it by up to 0.29 at ×100. Its block volume,
+  11.5638251 at scale 1, is within the rounding of Arris's 3.8e-5 below
+  Open CASCADE's, and its junction at (0, 0.5) is ADR-0072's circle. So
+  the fixtures are held to it, not to closed forms: ADR-0073 (step 3)
+  lets `measure_differs` rest on a `second_oracle.json` record, imported
+  by a tool, never typed by hand, naming the source's version, its run's
+  commit and the scale. It holds volume, area, centroid, inertia and
+  per-face areas by centroid; Open CASCADE's numbers stay in
+  `expected.json` as the record. Arris-authored fixtures only; CTC-05
+  AP242 and the fetched tier are M4's to decide on the same record.
 - ⚠ OPEN: what step 7 leaves of the census's 140 + 36 `VertexBlend`
   sites (a plane × plane or cylinder × cylinder edge of the same runs, or
   a vertex of four). The agent writes the lines; a new milestone is the

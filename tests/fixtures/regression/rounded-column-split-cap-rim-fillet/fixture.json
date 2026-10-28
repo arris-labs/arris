@@ -1,0 +1,167 @@
+{
+ "description": "a unit square centred at the origin with its corners rounded at R 0.15, extruded 8.462 along z from z = \u22124.231, split by a plane through the origin tilted 36\u00b0 from z, and the cap's rim filleted at r 0.05: four leaning junctions, each walked stripe's surface ended at the shared ball. Found by split_prop's a_side_is_an_operand_of_every_operation (plans/three-edge-run-vertex step 3)",
+ "params": {
+  "R": 0.15,
+  "r": 0.05
+ },
+ "steps": [
+  {
+   "name": "sketch",
+   "op": "profile",
+   "plane": {
+    "origin": [
+     0,
+     0,
+     -4.2310237780199085
+    ],
+    "x": [
+     1,
+     0,
+     0
+    ],
+    "y": [
+     0,
+     1,
+     0
+    ]
+   },
+   "outer": {
+    "start": [
+     "-0.5 + R",
+     -0.5
+    ],
+    "segments": [
+     {
+      "line_to": [
+       "0.5 - R",
+       -0.5
+      ]
+     },
+     {
+      "arc_to": [
+       0.5,
+       "-0.5 + R"
+      ],
+      "via": [
+       "0.5 - R + R * sin(radians(45))",
+       "-0.5 + R - R * cos(radians(45))"
+      ]
+     },
+     {
+      "line_to": [
+       0.5,
+       "0.5 - R"
+      ]
+     },
+     {
+      "arc_to": [
+       "0.5 - R",
+       0.5
+      ],
+      "via": [
+       "0.5 - R + R * sin(radians(45))",
+       "0.5 - R + R * cos(radians(45))"
+      ]
+     },
+     {
+      "line_to": [
+       "-0.5 + R",
+       0.5
+      ]
+     },
+     {
+      "arc_to": [
+       -0.5,
+       "0.5 - R"
+      ],
+      "via": [
+       "-0.5 + R - R * sin(radians(45))",
+       "0.5 - R + R * cos(radians(45))"
+      ]
+     },
+     {
+      "line_to": [
+       -0.5,
+       "-0.5 + R"
+      ]
+     },
+     {
+      "arc_to": [
+       "-0.5 + R",
+       -0.5
+      ],
+      "via": [
+       "-0.5 + R - R * sin(radians(45))",
+       "-0.5 + R - R * cos(radians(45))"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "block",
+   "op": "extrude",
+   "profile": "sketch",
+   "direction": [
+    0,
+    0,
+    1
+   ],
+   "length": 8.462047556039817
+  },
+  {
+   "name": "lower",
+   "op": "split",
+   "of": "block",
+   "plane": {
+    "origin": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "normal": [
+     -0.44512278072273936,
+     -0.3862299283705404,
+     0.8078936517342759
+    ]
+   },
+   "side": 1
+  },
+  {
+   "name": "result",
+   "op": "fillet",
+   "of": "lower",
+   "edges": [
+    [
+     0,
+     -0.5,
+     -0.23903513014456462
+    ]
+   ],
+   "radius": "r"
+  }
+ ],
+ "result": "result",
+ "probes": [
+  {
+   "label": "rim_gone",
+   "point": [
+    0,
+    -0.5,
+    -0.23903513014456462
+   ],
+   "expect": "out"
+  }
+ ],
+ "analytic": {
+  "counts": {
+   "vertices": 24,
+   "edges": 40,
+   "faces": 18,
+   "loops": 18,
+   "shells": 1
+  },
+  "genus": 0,
+  "counts_differ": "Open CASCADE splits the corner blend at two of the leaning junctions, by the corners (0.35, \u22120.5) and (\u22120.5, 0.35), into two faces each, a sliver of 0.0038 beside the corner's blend: one more face, three more edges and two more vertices each (28/46/20/20); Arris keeps one blend face per chain edge, as Open CASCADE does at the other two corners"
+ }
+}

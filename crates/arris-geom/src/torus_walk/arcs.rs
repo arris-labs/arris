@@ -234,6 +234,21 @@ impl Tracer<'_> {
             if edge <= ANGLE_SLACK {
                 return Err(SectionFault::UnresolvedTurning.into());
             }
+            // Steps shrunk below the least cell, with no cell reached: the
+            // march is pressed against an edge of `v` along which `f` is
+            // its rounding, each step proven and none getting anywhere —
+            // where a walked blend and a table stripe's cylinder both touch
+            // the face across, beside the isoline they share. Aground, as
+            // when no step is proven.
+            if step < HALF_MIN {
+                if let Some((end, at)) = self.aground([u, v], dir, edge) {
+                    cells.push(Cell {
+                        u: [u.min(at[0]), u.max(at[0])],
+                        bracket: Bracket::Fixed([v.min(at[1]), v.max(at[1])]),
+                    });
+                    break 'march (end, at);
+                }
+            }
             let slope = walker.value(u, v).1;
             let steep = (slope[0] / slope[1]).abs();
             let mut du = step.min(edge);

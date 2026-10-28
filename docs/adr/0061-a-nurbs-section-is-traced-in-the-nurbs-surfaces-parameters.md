@@ -556,6 +556,89 @@ is decided at `Full`. In each piece, the touch's inner line is found at
 `1.75e-4`, nine doublings in and past the sliver, and its zone is within
 `5.8e-10` of the torus.
 
+### The foot of an isoline two tangent faces leave unsigned (amendment, 2026-10-28)
+
+`plans/three-edge-run-vertex` step 3. A walked corner blend meets the
+table stripe's cylinder beside it on one arc of the ball, a column of the
+walked face tangent to the cylinder, divided out at order two. Both
+faces are tangent to the top they roll on, along contacts that meet
+tangent at the arc's end. So along the walked face's contact edge the
+two agree to fourth order about the column's foot: on the rounded block
+under an oblique top, within `4e-14` of each other `8.8e-4` of the walk's
+`u` before the foot. The quotient along that edge is its rounding over
+the stretch, and the pair was refused two ways:
+
+- a march came to the edge a stretch short of the foot and went on
+  proving steps there, each smaller than the last, none getting anywhere,
+  until it ran out of cells;
+- a candidate root on the edge `3.4e-5` from the foot was neither a lone
+  crossing nor a touch the edge's stretch could bound.
+
+- **A march whose steps shrink below the least cell runs aground.**
+  Where the step a march takes from a point falls below `HALF_MIN`, no
+  cell having captured it, it tries the aground rule above as if no step
+  had been proven. It ends at the isoline's foot when the edge line to it
+  is held to the tolerance, as at FTC-11's end arc. Where the rule does
+  not apply, the march goes on as before.
+- **An edge candidate the edge line joins to the foot is the foot.** A
+  candidate on an edge of `v` from which the edge line to the divided
+  isoline's foot is within `tol.linear` of the other surface all the way
+  is dropped before its root is sought. The foot is a point of the
+  isoline already, and a branch that comes to it runs aground there.
+- **A box of turning points beside the isoline, held to the tolerance
+  out to it, is the isoline.** On a rounded box split by a tilted plane
+  and its cap's rim filleted, the walked skin's fitted row sat `1.6e-4`
+  of the walk's `u` off the exact arc, the distance `3e-10` there. The
+  quotient kept a near-double zero along the whole column, an
+  uncertified box of turning points the whole domain long in `v`, which
+  was refused. Where every point of a grid over the strip from such a box
+  to the isoline, as long as the box, is within `tol.linear` of the other
+  surface, the box is dropped: the isoline stands for the tangency within
+  the tolerance, as a touch stands for its zone. A singular point the
+  same strip joins to the isoline, its cell's reach out to it, is the
+  isoline's too.
+
+A walked skin that reaches past a leaning junction's ball rolls on along
+the far face's extension, tangent to the wall along the ruling, and the
+tracer met two singular points there crowded (`split_prop`'s rounded box
+at every tilt it shrank to). ADR-0072's amendment ends the skin at the
+arc instead, refitted so that the arc is its end row. The surface's
+corner then lies on the ruling at `p`, where the wall, the far face and
+the skin are tangent, and beside the table stripe's cylinder along the
+arc:
+
+- **A critical point past both edges at a corner is the corner's.** A
+  critical point found past one open edge and put on it is put on the
+  other direction's edge too where the corner's point is within
+  `tol.linear` of its own, and is no point of the surface where it lies
+  past that edge and is not. It is not found twice.
+- **Two extrema of one kind within each other's reach are one touch.**
+  The census finds the corner's touch a hair inside the domain, and the
+  edges' slab finds it on the corner; both maxima, or both minima, each
+  within twice the other's reach, with values whose signs are rounding.
+  The one on more open edges is kept, the corner's on the corner. Two
+  crossings, or a crossing and an extremum, stay crowded.
+- **A box of critical points at a corner is the corner's touch where it
+  is an extremum.** An uncertified box near the other surface that
+  reaches both open edges of one corner, short both ways, is read at the
+  corner. Its Hessian there definite, it is that touch; otherwise it is
+  crowded, as before.
+- **A box of turning points beside a touch, held to the tolerance out
+  to it, is the touch's.** The corner touches the wall exactly, its value
+  zero and its reach none, and the census leaves uncertified boxes of
+  turning points beside it where the distance is below its rounding.
+- **An edge candidate the edge line joins to a touch on it is the
+  touch.** Along the skin's edges out of that corner the distance is
+  below its rounding too; a candidate root there, the edge line from it
+  to an isolated singular point on the same line within `tol.linear` of
+  the other surface, is dropped as the isoline's foot is.
+
+Every pair of the block's and the pocket's table cylinders and walked
+corners, square junctions and leaning ones, now traces as the isoline
+and two branches, and every pair of the walls with the skin ended at the
+arc as its corner's touch; the checker decides them at `Full`, as it
+decides both split boxes'.
+
 
 ## Consequences
 
