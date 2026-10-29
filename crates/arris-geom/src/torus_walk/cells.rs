@@ -560,7 +560,7 @@ impl Tracer<'_> {
     /// at a junction's arc touches the face across at its corner exactly
     /// (ADR-0072), and along its edges there the distance is below its
     /// rounding; the touch is a point of the section already.
-    fn at_touch(&self, k: usize, edge: f64, candidate: f64) -> bool {
+    pub(super) fn at_touch(&self, k: usize, edge: f64, candidate: f64) -> bool {
         let walker = &self.walker;
         let Some(other) = Implicit::of(&walker.other) else {
             return false;

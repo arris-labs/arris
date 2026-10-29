@@ -494,3 +494,36 @@ fn a_walked_skin_tangent_to_its_table_cylinder_along_the_arc_is_divided_at_order
     );
     traces(&walked_against(&chain, SurfaceKind::Cylinder));
 }
+
+/// A rounded block under a top tilted 5.1°: the walked corner skin ends
+/// at the junction's arc on the ball off the vertex, and the plane across
+/// the ruling touches it at its corner `(0, 0)` exactly (ADR-0072). The
+/// section is a sliver round that touch, `3e-5` of the walk's `u` and `v`
+/// long and `2e-11` off the plane all along, with its turning point inside
+/// the domain and its other end on the edge `u = 0` at `v = 2.8e-5`, a
+/// root `edge_cells` leaves to the touch, whose stretch of the edge line is
+/// within the tolerance. The march from the turning point came to that edge
+/// and found no cell, so the tracer refused the pair as `UnresolvedTurning`;
+/// it ends there, aground on the touch (ADR-0061, amended 2026-10-29).
+#[test]
+fn a_branch_that_comes_to_a_touch_on_the_edge_of_a_walked_skin_ends_there() {
+    let chain = posed_block(
+        0.5147874278629065,
+        5.104592103941619,
+        0.10587863935816388,
+        0.0,
+    );
+    let pairs = walked_against(&chain, SurfaceKind::Plane);
+    traces(&pairs);
+    // The sliver is a branch: the touch is its end, not a point alone.
+    let branches: usize = pairs
+        .iter()
+        .map(|(a, b, at)| {
+            trace_section(a, b, &within(), *at, &mut Meter::default())
+                .unwrap()
+                .branches()
+                .len()
+        })
+        .sum();
+    assert!(branches >= 2, "{branches}");
+}

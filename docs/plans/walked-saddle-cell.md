@@ -50,6 +50,9 @@ geom-level test that fails without it.
   isoline's tangency gate bounds the slope it drops by the reach of the
   patches it is divided out of (`PatchedSection::divided_reach`), not by
   `|g| ≤ 1` over the domain; a torus keeps the whole tube.
+- **`arris-geom` `torus_walk/arcs.rs`** (`Tracer::march`, step 7): a march
+  at an edge of `u` with no cell ends aground there where `at_touch`
+  holds of its point, not `UnresolvedTurning`.
 - **ADR-0061**: one amendment per rule (dated, as the 2026-10-14 to
   10-28 ones are), each with its measured stretch and a test that fails
   without it.
@@ -118,11 +121,21 @@ careful, a geometric or numeric case to get right within a given design;
   `an_oblique_fillet_whose_skin_is_tangent_to_its_table_cylinder_is_checked`
   un-ignored and a geom-level test in `intersect_nurbs.rs` that fails
   without the rule.
-- [ ] Step 7 **[1]**: the allowances go. `oblique_holds` uses
+- [x] Step 7 **[3]**: a branch that comes to a touch on an edge ends there
+  (*Settled*, step 7). The ADR-0061 amendment;
+  `a_branch_that_comes_to_a_touch_on_the_edge_of_a_walked_skin_ends_there`
+  in `intersect_nurbs.rs` fails without the rule, and the ops case
+  `an_oblique_fillet_at_a_shallow_tilt_is_checked` is un-ignored.
+- [ ] Step 8 **[3]**: uncertified critical boxes past a skin's edge at a far
+  pose (*Open*, step 8): the two ignored ops cases
+  `an_oblique_fillet_at_a_shallow_tilt_far_from_the_origin_is_checked` and
+  `an_oblique_fillet_at_a_tilt_of_25_degrees_far_from_the_origin_is_checked`
+  pass; its ADR-0061 amendment and a geom-level test that fails without it.
+- [ ] Step 9 **[1]**: the allowances go. `oblique_holds` uses
   `assert_checked` and counts its builds, asserting a floor per shard
   (backlog line 311); `split_prop`'s `saddle_cell` predicate is deleted
   and its blend case takes `nothing`. Both pass at 256 cases.
-- [ ] Step 8 **[1]**: re-run the fetched tier (`tools/real-parts.sh`)
+- [ ] Step 10 **[1]**: re-run the fetched tier (`tools/real-parts.sh`)
   and the script corpus; the `fillet` row stays 2 of 38 and the scripts'
   refusals at 1, with no checker failure the tracer's rules added. Every
   walked fixture's blessed dump unchanged (a changed one says why).
@@ -139,7 +152,7 @@ careful, a geometric or numeric case to get right within a given design;
   refusals at most 1.
 
 ## Docs to update on completion
-- `docs/adr/0061-…`: the amendments (written in steps 2, 3 and 6).
+- `docs/adr/0061-…`: the amendments (written in steps 2, 3, 6, 7 and 8).
 - `docs/ARCHITECTURE.md` NURBS-section paragraph (around line 1595): one
   clause: a walked skin's corner saddle, its arc knot and its tangent
   arc are decided at `Full`.
@@ -184,6 +197,28 @@ careful, a geometric or numeric case to get right within a given design;
   across failed the order-two gate by a fifth because the gate bounded it
   over the whole domain, not the patches it is divided from (ADR-0061,
   amended 2026-10-29, has the measurements).
-- ⚠ OPEN: the floor of built cases per shard in step 7. The agent picks
+- *Settled* (step 7, 2026-10-29): a fourth place joins as step 7, before
+  the allowances go, as step 6 did. Found at 1000 cases (shard 1) with
+  step 6's allowance gone: a rounded block at 5.1° (`R` 0.5148, `r`
+  0.1059), two planes against walked skins, `UnresolvedTurning` from
+  `march` at an edge of `u`. The skin touches the plane at its corner
+  (a non-crossing singular point on the edge) and the section is a
+  sliver round it; `edge_cells` leaves the root at the edge to the touch
+  (`at_touch`) and the march that came to it had no cell (ADR-0061,
+  amended 2026-10-29, has the measurements).
+- *Open* (step 8, 2026-10-29): with step 7's rule the 1000-case run still
+  fails, in shards 1, 2 and 3, on three more cases (shard 0 passed all 250
+  cases, 225 built; shard 3's: length 3.40, 6.7°, posed 77 along `-x`, the
+  same fault, not yet an ignored case). All are cylinder × walked skin, `CrowdedSingularity` at
+  `singular.rs` `singular_points`: `critical_past_edges` puts uncertified
+  boxes of critical points past the skin's edge `v = 2π` on the edge
+  (`5e-5` wide in `u`, `0.2` deep, `∂f/∂u` 100 or more over them, so no
+  critical point), and with a corner of the box within the tolerance and
+  no corner of the domain in it `singular_points` refuses it as too flat to
+  decide. The poses are far from the origin (90 above; `(0, 77, -69)`),
+  the rounding floor leaves the boxes uncertified. The agent's
+  hypothesis, unproven: a box over which `∂f/∂u` or `∂f/∂v` is signed has
+  no critical point and is dropped. Step 8 diagnoses it with a red loop.
+- ⚠ OPEN: the floor of built cases per shard in step 9. The agent picks
   it from a 1000-case run's count (below half the measured count fails),
   and records the count here.

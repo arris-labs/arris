@@ -737,7 +737,37 @@ traces; with it all trace in both orders within the pair's tolerance of
 both surfaces, the property's case one branch within `4e-14` of each.
 The skins' patches holding the line are `0.1` of the walk's `u` wide.
 Unposed, the same block passes either way, its slope inside the old
-bound. The geom tests and the corpus pass unchanged.
+bound. The geom tests pass unchanged.
+
+### A branch that comes to a touch on an edge (amendment, 2026-10-29)
+
+`plans/walked-saddle-cell` step 7. At 1000 cases the oblique blend
+property left, in shard 1, a rounded block under a top tilted 5.1° whose
+walked corner skins the tracer refused against two planes as
+`UnresolvedTurning`. ADR-0072's skin touches the plane across the ruling
+at its corner `(0, 0)` exactly: a singular point on the edge `u = 0`, not
+a crossing (cell `4.6e-7` by `1.5e-7`). The section is a sliver round it:
+a turning point `4e-5` in `u`, one arm leaving the cell's side at
+`(1.7e-5, 2.6e-5)` and coming to the edge at `v = 2.79e-5`, `f` along the
+way no more than `2e-11` with the slope across `8e-7`, all of it within
+`tol.linear` of the plane.
+
+`edge_cells` already leaves that root to the touch: the edge line from the
+candidate to the singular point on it is within the tolerance
+(`at_touch`), so it is "a point of the section already" and gets no cell.
+The march that came to the edge found no cell to be captured by and
+`march` refused it.
+
+- **A branch that comes to such a stretch ends there.** At an edge of `u`
+  with no cell of its own, the march ends aground (`ArcEnd::Aground`, an
+  open end at the edge as at the foot of an isoline) where `at_touch`
+  holds of its point, the same test that left the root cellless. Anywhere
+  else the edge stays a refusal.
+
+Measured against the rule taken out: the posed block's recipe at 5.1°
+(`tests/intersect_nurbs.rs`) refuses the pair in both orders, twice
+(4 traces); with it each is one branch within the pair's tolerance of
+both surfaces. The geom tests pass unchanged.
 
 ## Consequences
 

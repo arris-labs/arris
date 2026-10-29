@@ -3683,3 +3683,90 @@ fn an_oblique_fillet_whose_skin_is_tangent_to_its_table_cylinder_is_checked() {
     let (blended, _) = fillet(&mut m, part, &[edge], case.r).unwrap();
     assert_checked(&check(&m, blended, Level::Full)).unwrap();
 }
+
+/// A rounded block under a tilted top at 5.1°, found by
+/// `oblique_chains_meet_on_the_rulings_offset` once its S5 allowance is
+/// removed (1000 cases, plans/walked-saddle-cell step 7): two planes of the
+/// block against two walked faces of the fillet, whose sections are
+/// slivers round the skin's corner touch, one end on its edge `u = 0`,
+/// which the tracer refused as `UnresolvedTurning` (ADR-0061, amended
+/// 2026-10-29).
+#[test]
+fn an_oblique_fillet_at_a_shallow_tilt_is_checked() {
+    let pose = Isometry::new(
+        arris_math::nalgebra::Unit::new_unchecked(arris_math::nalgebra::Quaternion::new(
+            0.0, 0.0, 1.0, 0.0,
+        )),
+        Vec3::zeros(),
+    );
+    oblique_is_checked(
+        0.5147874278629065,
+        5.104592103941619,
+        0.10587863935816388,
+        pose,
+    );
+}
+
+/// The same block as `an_oblique_fillet_at_a_shallow_tilt_is_checked`
+/// posed 90 above the origin (shard 1 of the same 1000-case run): the
+/// table stripes' cylinders against two walked skins, `CrowdedSingularity`
+/// from `singular_points`: uncertified boxes of critical points past the
+/// skin's edge `v = 2π`, `5e-5` wide in `u` and `0.2` deep, over which
+/// `∂f/∂u` is 100 or more, so no critical point; the rounding floor at the
+/// pose leaves them uncertified and the box, within the tolerance of the
+/// edge, is refused as too flat to decide.
+#[test]
+#[ignore = "S5 leaves a walked skin against its table cylinder undecided at a far pose: uncertified critical boxes past the skin's edge (plans/walked-saddle-cell step 8)"]
+fn an_oblique_fillet_at_a_shallow_tilt_far_from_the_origin_is_checked() {
+    let pose = Isometry::new(
+        arris_math::nalgebra::Unit::new_unchecked(arris_math::nalgebra::Quaternion::new(
+            0.0, 0.0, 1.0, 0.0,
+        )),
+        Vec3::new(0.0, 0.0, 90.31915304296272),
+    );
+    oblique_is_checked(
+        0.5147874278629065,
+        5.104592103941619,
+        0.10587863935816388,
+        pose,
+    );
+}
+
+/// A rounded block under a top at 24.9° posed `(0, 77, -69)`, shard 2 of
+/// the same run: the same refusal as
+/// `an_oblique_fillet_at_a_shallow_tilt_far_from_the_origin_is_checked`.
+#[test]
+#[ignore = "S5 leaves a walked skin against its table cylinder undecided at a far pose: uncertified critical boxes past the skin's edge (plans/walked-saddle-cell step 8)"]
+fn an_oblique_fillet_at_a_tilt_of_25_degrees_far_from_the_origin_is_checked() {
+    let pose = Isometry::new(
+        arris_math::nalgebra::Unit::new_unchecked(arris_math::nalgebra::Quaternion::new(
+            0.0, 0.0, 1.0, 0.0,
+        )),
+        Vec3::new(0.0, 76.99460580419323, -68.83766176376402),
+    );
+    oblique_is_checked(
+        0.3335513775210022,
+        24.928118781146715,
+        0.19908739964489544,
+        pose,
+    );
+}
+
+/// The fillet of the block's tilted edge, built and checked at `Full`
+/// with nothing undecided.
+fn oblique_is_checked(corner: f64, tilt: f64, r: f64, pose: Isometry) {
+    let case = Oblique {
+        length: 3.0,
+        width: 1.5,
+        corner,
+        tilt: tilt.to_radians(),
+        r,
+        concave: false,
+        pose,
+    };
+    let mut m = Model::default();
+    let (part, at) = case.build(&mut m).unwrap();
+    let edge = edge_near(&m, part, at).unwrap();
+    let (blended, _) = fillet(&mut m, part, &[edge], case.r).unwrap();
+    assert_checked(&check(&m, blended, Level::Full)).unwrap();
+}

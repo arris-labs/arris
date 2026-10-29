@@ -230,8 +230,21 @@ impl Tracer<'_> {
             }
             let edge = self.next_edge(u, dir, seeded);
             // At the edge of the domain and no cell's: a root on the edge
-            // line no edge cell holds.
+            // line no edge cell holds, unless the edge line from here to a
+            // touch on it is within the tolerance of the other surface, as
+            // `edge_cells` takes it ([`Tracer::at_touch`]): the branch ends
+            // on the edge at the touch's stretch, aground.
             if edge <= ANGLE_SLACK {
+                let side = [0.0, TAU]
+                    .into_iter()
+                    .find(|e| (u - e).abs() <= ANGLE_SLACK);
+                if side.is_some_and(|e| self.at_touch(0, e, v)) {
+                    cells.push(Cell {
+                        u: [u, u],
+                        bracket: Bracket::Fixed([v, v]),
+                    });
+                    break (ArcEnd::Aground, [u, v]);
+                }
                 return Err(SectionFault::UnresolvedTurning.into());
             }
             // Steps shrunk below the least cell, with no cell reached: the
