@@ -16,7 +16,7 @@ use arris_math::{
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
 use super::build::Env;
-use super::ends::stretch_between;
+use super::ends::{Remnant, stretch_between};
 use super::run_over::{self, Leaving, RunOver};
 use super::traced;
 use super::walked::Spine;
@@ -70,8 +70,13 @@ pub(super) enum Section {
         /// `true` at an end where the stripe narrows to its vertex, a
         /// vanishing end whose ball touches both faces there (ADR-0062
         /// §5): the surface's row at that end is collapsed to the vertex,
-        /// a pole, and the end is no arc.
+        /// a pole, and the end is no arc. Also `true` where it stops short
+        /// of the vertex there, its row exact (`remnants`).
         poles: [bool; 2],
+        /// At a vanishing end whose ball does not close on the vertex,
+        /// where the stripe stops short of it and the edge's remnant runs
+        /// on (ADR-0074).
+        remnants: [Option<Remnant>; 2],
     },
 }
 

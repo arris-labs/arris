@@ -19,7 +19,7 @@
 use arris_geom::region2::Side;
 use arris_geom::{
     Curve, Curve2, CurveSurfaceIntersection, GeomError, GeomKind, NurbsCurve, NurbsSurface,
-    Surface, SurfaceKind, intersect_curve_surface, pcurve_on,
+    SECTION_FIT_FRACTION, Surface, SurfaceKind, intersect_curve_surface, pcurve_on,
 };
 use arris_math::{Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance};
 use arris_topo::entity::Edge;
@@ -27,7 +27,7 @@ use arris_topo::{EdgeId, FaceId, Orientation};
 
 use super::Kind;
 use super::build::Env;
-use super::ends::{Arced, End, Pole, corner_of, finish_end};
+use super::ends::{Arced, End, Pole, Remnant, corner_of, finish_end, near_tangent_corner};
 use super::ring::{Ring, RingContact, RingEnds, RingSeam, SeamCut, cut_seams, placed_uv};
 use super::stripe::{Contact, Section, Stripe, in_band, on_side_of_face, placed};
 use super::traced::traced_end;
@@ -243,9 +243,8 @@ fn faces_toward(surface: &NurbsSurface, uv: Point2, p: Point3) -> Result<bool, O
 ///
 /// Errors: as [`roll`]; `BlendReason::TangentChain` naming the vertex
 /// where the faces turn tangent within the edge's tolerance, a vanishing
-/// end, and the ball there does not close on that vertex: its arc is
-/// wider than the surface's share of the tolerance, or its point is
-/// farther from the vertex than the vertex's tolerance.
+/// end, the ball there does not close on that vertex, and the stripe
+/// cannot stop short of it either ([`remnant`]).
 pub(super) fn walked_stripe(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -277,9 +276,11 @@ pub(super) fn walked_stripe(
     // is collapsed to it, and the stripe narrows to the vertex, which it
     // keeps (ADR-0062 §5). Where the faces only run within the edge's
     // tolerance of tangent, the ball's arc there stays apart from the
-    // vertex, which the stripe does not join to it.
+    // vertex: the stripe stops short of it on that arc, and the edge's
+    // remnant runs on to the vertex (ADR-0074).
     let singular = Surface::Nurbs(skin.surface.clone()).singularities();
     let mut poles = [false; 2];
+    let mut remnants = [None; 2];
     for (end, (vertex, vanishes)) in [entity.start(), entity.end()]
         .into_iter()
         .zip(path.vanishing())
@@ -295,10 +296,15 @@ pub(super) fn walked_stripe(
                 && (row.point - at.point()).norm() <= at.tolerance()
         });
         if !closes {
-            return Err(degenerate(
-                vec![e, forward(vertex)],
-                Reason::Blend(BlendReason::TangentChain),
-            ));
+            let share = SECTION_FIT_FRACTION * fit.linear;
+            let Some(r) = remnant(env, &entity, &skin.surface, skin.ends[end], end == 0, share)?
+            else {
+                return Err(degenerate(
+                    vec![e, forward(vertex)],
+                    Reason::Blend(BlendReason::TangentChain),
+                ));
+            };
+            remnants[end] = Some(r);
         }
         poles[end] = true;
     }
@@ -346,6 +352,7 @@ pub(super) fn walked_stripe(
             flipped,
             centres,
             poles,
+            remnants,
         },
         frame,
         surface: Surface::Nurbs(skin.surface),
@@ -373,8 +380,10 @@ pub(super) fn walked_stripe(
 /// Errors: `BlendReason::VertexBlend` for a fan across, or the vertex's
 /// other edges not the corner's; `BlendReason::TangentChain` at a cusp;
 /// `Unsupported` naming the stripe and the face across where that is a
-/// NURBS face, a contact misses it or the section is not decided; the
-/// errors of [`finish_end`].
+/// NURBS face, a contact misses it or the section is not decided, and
+/// `BlendReason::TangentChain` where a contact misses it beside a corner
+/// edge tangent within the vertex's tolerance ([`near_tangent_corner`]);
+/// the errors of [`finish_end`].
 pub(super) fn walked_end(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -427,10 +436,15 @@ pub(super) fn walked_end(
             }
             Err(other) => return Err(fault_of(other)),
         };
-        let hit = hits
-            .iter()
-            .min_by(|a, b| (a.t - v_end).abs().total_cmp(&(b.t - v_end).abs()))
-            .ok_or_else(refuse)?;
+        // A contact that misses the face across, where that face runs on
+        // from the stripe's within the vertex's tolerance of tangent, is a
+        // chain the walk does not take, named as one (ADR-0062 step 10b).
+        let Some(hit) =
+            (hits.iter()).min_by(|a, b| (a.t - v_end).abs().total_cmp(&(b.t - v_end).abs()))
+        else {
+            near_tangent_corner(env, s, e, corner_edges, vertex)?;
+            return Err(refuse());
+        };
         t[k] = hit.t;
         points[k] = hit.point;
     }
@@ -470,10 +484,62 @@ pub(super) fn walked_end(
     )
 }
 
+/// Where the walked stripe whose surface ends on the row `v` of `surface`
+/// at a vanishing end of `edge`, its start (`at_lo`) or its end, stops
+/// short of that end's vertex (ADR-0074): the edge's point nearest the
+/// row's middle, strictly inside the edge, and a tolerance there that is
+/// the edge's own or the row's farthest point from it with the surface's
+/// `share` of the tolerance, whichever is larger. `None` where that point
+/// is not inside the edge, or the tolerance is past `max_tolerance`.
+fn remnant(
+    env: &Env<'_>,
+    edge: &Edge,
+    surface: &NurbsSurface,
+    v: f64,
+    at_lo: bool,
+    share: f64,
+) -> Result<Option<Remnant>, OpError> {
+    let m = env.m;
+    let (curve, range) = edge.curve().ok_or(invariant("the blended edge's curve"))?;
+    let curve = m.curve(curve)?;
+    let middle = surface.eval(0.5, v).point;
+    let t = curve.project(middle).map_err(fault_of)?.t;
+    let inside = range.lo() < t && t < range.hi();
+    let toward_end = if at_lo {
+        t < range.midpoint()
+    } else {
+        t > range.midpoint()
+    };
+    if !(inside && toward_end) {
+        return Ok(None);
+    }
+    let point = curve.point(t);
+    let n = env.samples.max(2);
+    let reach = (0..n)
+        .map(|i| (surface.eval(i as f64 / (n - 1) as f64, v).point - point).norm())
+        .fold(0.0, f64::max);
+    let tolerance = edge.tolerance().max(reach + share);
+    if tolerance > m.precision().max_tolerance {
+        return Ok(None);
+    }
+    Ok(Some(Remnant {
+        t,
+        point,
+        tolerance,
+    }))
+}
+
 /// The pole the walked stripe `s` narrows to at its start (`at_lo`) or its
-/// end vertex, where [`walked_stripe`] found one (ADR-0062 §5).
+/// end vertex, where [`walked_stripe`] found one (ADR-0062 §5), or where it
+/// stops short of that vertex (ADR-0074).
 pub(super) fn walked_pole(s: &Stripe, at_lo: bool) -> Result<Pole, OpError> {
-    let Section::Walked { ends, poles, .. } = s.section else {
+    let Section::Walked {
+        ends,
+        poles,
+        remnants,
+        ..
+    } = s.section
+    else {
         return Err(invariant("a walked stripe's pole"));
     };
     let end = usize::from(!at_lo);
@@ -484,6 +550,7 @@ pub(super) fn walked_pole(s: &Stripe, at_lo: bool) -> Result<Pole, OpError> {
         vertex: if at_lo { s.start } else { s.end },
         t: ends[end],
         on_blend: Curve2::along_u(ends[end]),
+        remnant: remnants[end],
     })
 }
 

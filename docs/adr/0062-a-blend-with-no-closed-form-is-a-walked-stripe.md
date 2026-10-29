@@ -427,6 +427,11 @@ with its Python class, `GeomOffsetFoldsError`.
   neighbour (plans/nurbs-nurbs-operands step 3). On the thread that refusal
   costs 390 s a pair, and the thread's own flank pairs 155 s each. That is
   a cost, not an answer: BACKLOG.
+- **ADR-0074 (2026-10-29).** Step 9b's vanishing end whose ball does not
+  close on the vertex now stops short on its narrowest exact arc, at a new
+  vertex on the edge, and the edge's remnant runs on to the vertex. It
+  stays `TangentChain` only where that vertex's tolerance would pass
+  `max_tolerance`.
 
 ## Alternatives considered
 

@@ -94,14 +94,33 @@ pub(super) struct End {
 /// at the vertex and the ball there touches both at it, so the stripe
 /// narrows to the vertex, which it keeps. Its two contacts end there, and
 /// the blend's loop crosses the surface's collapsed row on a degenerate
-/// edge; no corner edge is cut and no face across is met.
+/// edge; no corner edge is cut and no face across is met. Where the faces
+/// only run within the edge's tolerance of tangent, the stripe stops short
+/// of the vertex on its narrowest exact arc instead, at a new vertex on
+/// the edge, and the edge's remnant runs on to the vertex (`remnant`,
+/// ADR-0074).
 pub(super) struct Pole {
     pub(super) vertex: VertexId,
     /// The contacts' parameter there: the surface's `v` at that end.
     pub(super) t: f64,
-    /// The degenerate edge's pcurve on the blend: the collapsed row, `u`
-    /// from the contact at `0` to the one at `1` over `[0, 1]`.
+    /// The degenerate edge's pcurve on the blend: the row there, `u` from
+    /// the contact at `0` to the one at `1` over `[0, 1]`, collapsed to
+    /// the vertex or, short of it, the narrowest exact arc.
     pub(super) on_blend: Curve2,
+    pub(super) remnant: Option<Remnant>,
+}
+
+/// Where a walked stripe stops short of its vertex at a vanishing end
+/// (ADR-0074): the edge is cut at its parameter `t`, the point nearest the
+/// middle of the stripe's narrowest exact arc, by a new vertex at `point`
+/// whose `tolerance` holds that whole arc, and the edge's remnant from
+/// there to the vertex stays on both its faces, the tangent dihedral it is
+/// within its tolerance (ADR-0045).
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Remnant {
+    pub(super) t: f64,
+    pub(super) point: Point3,
+    pub(super) tolerance: f64,
 }
 
 /// One end of a blend: trimmed by the face across the corner, met by the
@@ -960,16 +979,17 @@ pub(super) fn face_end(
 }
 
 /// Why a contact of `s` misses the curved face across its end at
-/// `vertex`, where a corner edge of the blend's own sense has its faces
-/// tangent there within the vertex's tolerance by ADR-0040's measure,
-/// though not within their own: the face across runs on from the
+/// `vertex`, where a corner edge of the blend's own sense, or one whose
+/// crease is within its own tolerance, has its faces tangent there
+/// within the vertex's tolerance by ADR-0040's measure, though not within
+/// their own: the face across runs on from the
 /// stripe's face, curving away from the ball, and the blend would run on
 /// round it, a chain the walk does not take — `BlendReason::TangentChain`
 /// naming `e`, the corner edge and the vertex (ADR-0062, step 10b). `Ok`
 /// where no corner edge is such, for the caller's `Unsupported`. A face
 /// across that curves back into the contact's path is pierced, and its end
 /// built, however near tangent its corner edge.
-fn near_tangent_corner(
+pub(super) fn near_tangent_corner(
     env: &Env<'_>,
     s: &Stripe,
     e: Shape,
@@ -988,12 +1008,17 @@ fn near_tangent_corner(
         } else {
             range.hi()
         };
-        if env.view.convex(m, w)? == Some(s.convex)
-            && env
-                .view
-                .tangent_within(m, w, t, env.kind.size(), vertex_tolerance, env.tol)?
-                == Some(true)
-        {
+        let within = |tolerance: f64| {
+            env.view
+                .tangent_within(m, w, t, env.kind.size(), tolerance, env.tol)
+                .map(|tangent| tangent == Some(true))
+        };
+        // A crease that moves the ball less than its own edge's tolerance
+        // has no sense the file states, as ADR-0045 reads a blended edge's
+        // dihedral (CTC-05's v115, 7e-6 rad, read concave beside a convex
+        // blend).
+        let sense = env.view.convex(m, w)? == Some(s.convex) || within(entity.tolerance())?;
+        if sense && within(vertex_tolerance)? {
             return Err(degenerate(
                 vec![e, forward(w), forward(vertex)],
                 Reason::Blend(BlendReason::TangentChain),

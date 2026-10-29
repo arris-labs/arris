@@ -13,7 +13,7 @@ use arris_topo::{
 
 use super::chain::{chain, cusp_at, tangent_vertex};
 use super::corner::{Corner, corner};
-use super::ends::{EndKind, Trim, face_end};
+use super::ends::{EndKind, Pole, Trim, face_end};
 use super::junction::{Run, junction};
 use super::miter::{Miter, miter};
 use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
@@ -827,7 +827,13 @@ fn add_stripes(
                 }
                 EndKind::Pole(pole) => {
                     let at = rw.vertices.len();
-                    rw.vertices.push(VertexSpec::Keep(pole.vertex));
+                    rw.vertices.push(match pole.remnant {
+                        None => VertexSpec::Keep(pole.vertex),
+                        Some(r) => VertexSpec::New {
+                            point: r.point,
+                            tolerance: r.tolerance,
+                        },
+                    });
                     vertices[end_index] = [at; 2];
                 }
                 EndKind::Miter { at, side } => {
@@ -966,16 +972,37 @@ fn add_stripes(
                 );
             }
         }
+        // Where the stripe stops short of a vertex, the edge's remnant runs
+        // on to it, and on each face the edge is the remnants and the
+        // contact between them, in the edge's direction (ADR-0074).
+        let remnants = remnant_edges(m, rw, blend, vertices)?;
+        if rolled.is_some() && remnants.iter().any(Option::is_some) {
+            return Err(degenerate(
+                vec![forward(blend.stripe.edge)],
+                Reason::Blend(BlendReason::TangentChain),
+            ));
+        }
         for (k, contact) in blend.contacts.iter().enumerate() {
             if rolled.is_some() {
                 continue;
             }
             let pcurve = m.add_curve2(contact.on_face.clone());
-            edits
-                .entry(contact.face)
-                .or_default()
-                .replace
-                .insert(blend.stripe.edge, (EdgeKey::New(contact_edges[k]), pcurve));
+            let edit = edits.entry(contact.face).or_default();
+            let contact_use = (EdgeKey::New(contact_edges[k]), pcurve);
+            if remnants.iter().all(Option::is_none) {
+                edit.replace.insert(blend.stripe.edge, contact_use);
+                continue;
+            }
+            let own = (view.uses.get(&blend.stripe.edge).into_iter().flatten())
+                .find(|u| u.face == contact.face)
+                .ok_or(invariant("the blended edge's use by its face"))?
+                .pcurve;
+            let [lo, hi] = remnants.map(|r| r.map(|r| SplitPiece::Use(EdgeKey::New(r), own)));
+            let pieces = lo
+                .into_iter()
+                .chain([SplitPiece::Use(contact_use.0, contact_use.1)]);
+            edit.split
+                .insert(blend.stripe.edge, pieces.chain(hi).collect());
         }
         made.push(StripeMade {
             vertices,
@@ -987,6 +1014,60 @@ fn add_stripes(
         });
     }
     Ok(made)
+}
+
+/// The blended edge's remnant at each end where its stripe stops short of
+/// the vertex (ADR-0074), added to `rw`: the edge's curve from the vertex
+/// to the cut, kept with the edge's tolerance and recorded against it, the
+/// cut being the stripe's end vertex `vertices[end][0]`. Each is `None`
+/// where the end is not such a pole.
+fn remnant_edges(
+    m: &Model,
+    rw: &mut Rewrite,
+    blend: &Blend,
+    vertices: [[usize; 2]; 2],
+) -> Result<[Option<usize>; 2], OpError> {
+    let edge = blend.stripe.edge;
+    let entity = *m.edge(edge)?;
+    let mut out = [None; 2];
+    for (end_index, end) in blend.ends.iter().enumerate() {
+        let EndKind::Pole(Pole {
+            remnant: Some(r), ..
+        }) = end
+        else {
+            continue;
+        };
+        let (curve, old) = entity
+            .curve()
+            .ok_or(invariant("the blended edge's curve"))?;
+        let (lo, hi, start, end) = if end_index == 0 {
+            (
+                old.lo(),
+                r.t,
+                VertexKey::Kept(entity.start()),
+                VertexKey::New(vertices[0][0]),
+            )
+        } else {
+            (
+                r.t,
+                old.hi(),
+                VertexKey::New(vertices[1][0]),
+                VertexKey::Kept(entity.end()),
+            )
+        };
+        let range = Interval::new(lo, hi).map_err(|_| invariant("a remnant inside its edge"))?;
+        out[end_index] = Some(rw.edges.len());
+        rw.edges.push((
+            EdgeSpec::New {
+                geometry: EdgeGeometry::Curve { curve, range },
+                start,
+                end,
+                tolerance: entity.tolerance(),
+            },
+            Some(edge),
+        ));
+    }
+    Ok(out)
 }
 
 /// The rings: a closed edge's two vertices, two contact circles, the blend's seam and the cylinder's seam cut; an open arc's four vertices, two contact arcs and two ends, each inserted into its face across with the corner edges cut.
@@ -1944,9 +2025,10 @@ fn record(
         for &k in made.contacts.iter().chain(made.arcs.iter().flatten()) {
             p.add_generated(origin, forward(out.edges[k]));
         }
-        // A pole's vertex is the operand's, kept.
+        // A pole's vertex is the operand's, kept, unless the stripe stops
+        // short of it.
         let made_here = (made.vertices.iter().zip(&blend.ends))
-            .filter(|(_, end)| !matches!(end, EndKind::Pole(_)))
+            .filter(|(_, end)| !matches!(end, EndKind::Pole(p) if p.remnant.is_none()))
             .flat_map(|(vertices, _)| vertices);
         for &v in made_here.chain(&made.crossings) {
             p.add_generated(origin, forward(out.vertices[v]));

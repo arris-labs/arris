@@ -1778,3 +1778,26 @@ fn a_contact_missing_a_near_tangent_face_across_is_a_tangent_chain() {
     assert_eq!(*reason, Reason::Blend(BlendReason::TangentChain), "{err}");
     assert_eq!(entities.len(), 3, "{err}");
 }
+
+/// CTC-05's e256, filleted alone: at `v84` its faces run within the edge's
+/// tolerance of tangent and the ball's narrowest exact arc stands off the
+/// vertex, so the stripe stops short of it there and the edge's remnant
+/// runs on (ADR-0074). The refusal is now the chain's other end, `v115`,
+/// where the B-spline face runs on into the cylinder f19 tangent within
+/// the vertex's tolerance and the contact misses it: `TangentChain` naming
+/// the edge, that corner edge and the vertex, where before it named only
+/// the edge and `v84`.
+#[test]
+fn a_vanishing_end_off_its_vertex_stops_short_and_the_far_end_names_its_chain() {
+    let dir = fixtures::corpus_root().join("blend/nist-ctc-05-ap203-nurbs-torus-fillet");
+    let err = match corpus::chain(&dir, "default") {
+        Err(corpus::CorpusError::Op { source, .. }) => source,
+        Err(e) => panic!("{e}"),
+        Ok(_) => panic!("e256 filleted alone builds"),
+    };
+    let OpError::Degenerate { entities, reason } = &err else {
+        panic!("{err}");
+    };
+    assert_eq!(*reason, Reason::Blend(BlendReason::TangentChain), "{err}");
+    assert_eq!(entities.len(), 3, "{err}");
+}

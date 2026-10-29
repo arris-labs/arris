@@ -1509,8 +1509,10 @@ mod tests {
     /// skinned within its share of the tolerance of every ball, its contact
     /// curves on their faces. At v84, where the faces are tangent within
     /// the edge's tolerance, the surface ends on the exact ball's arc,
-    /// narrower than that tolerance and within `√(2r·τₑ)` of the edge's
-    /// point. The times, the spans and that arc are printed for the plan.
+    /// narrower than that tolerance, within `√(2r·τₑ)` of the edge's point
+    /// and within the edge's tolerance of its curve, where the stripe stops
+    /// short (ADR-0074). The times, the spans and that arc are printed for
+    /// the plan.
     #[test]
     fn real_ctc_05s_nurbs_torus_edge_has_a_spine_and_a_surface() {
         use arris_debug::unmetered::step_read;
@@ -1613,6 +1615,16 @@ mod tests {
         assert!(
             away.iter().all(|&d| d <= reach),
             "end arc {away:?} from the edge's point"
+        );
+        // Where the stripe stops short of v84, its arc lies within the
+        // edge's tolerance of the edge's curve, which runs on to the
+        // vertex as the remnant (ADR-0074).
+        let edge_curve = m.curve(curve).unwrap();
+        let off = ends.map(|q| edge_curve.project(q).unwrap().distance);
+        assert!(
+            off.iter().all(|&d| d <= entity.tolerance()),
+            "end arc {off:?} off the edge, its tolerance {:e}",
+            entity.tolerance()
         );
         let spans = surface.knots()[1]
             .windows(2)

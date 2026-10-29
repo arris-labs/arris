@@ -1421,12 +1421,15 @@ corpus_tests! {
     blend_nist_ctc_01_crossing_cylinders_crease_fillet => run "blend/nist-ctc-01-crossing-cylinders-crease-fillet";
     /// NIST CTC-05's AP203 solid #249, the convex edge between its rational
     /// B-spline face and a torus filleted alone: a vanishing end at v84
-    /// whose ball misses the vertex, refused as `TangentChain`; Open
-    /// CASCADE builds an invalid body (ADR-0062, steps 9b and 10a).
+    /// whose ball misses the vertex, where the stripe stops short and the
+    /// edge's remnant runs on (ADR-0074), and a chain at v115 tangent within
+    /// the vertex's tolerance, refused as `TangentChain`; Open CASCADE
+    /// builds an invalid body (ADR-0062, steps 9b and 10a).
     blend_nist_ctc_05_ap203_nurbs_torus_fillet => run "blend/nist-ctc-05-ap203-nurbs-torus-fillet";
     /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
     /// face one rational Bézier patch and its vertices' tolerance wider
-    /// than the edge's: refused at the same end as the AP203 edition.
+    /// than the edge's: refused at v80, where the stripe would stop short
+    /// past `max_tolerance` (ADR-0074 §4).
     blend_nist_ctc_05_ap242_nurbs_torus_fillet => run "blend/nist-ctc-05-ap242-nurbs-torus-fillet";
     /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
     /// a closed chain through four tangent vertices.

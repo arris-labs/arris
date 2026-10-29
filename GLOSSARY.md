@@ -182,6 +182,12 @@ Where two stripes of a chain meet on one ball's arc, at a tangent vertex
 or, where the tangent edge leans, on that edge's offset away from it
 (ADR-0035, ADR-0072).
 
+**Vanishing end**:
+An end of a walked stripe where the edge's two faces turn tangent within
+the edge's tolerance: the stripe narrows to a pole at the vertex, or stops
+short on its narrowest exact arc with the edge's remnant running on
+(ADR-0062, ADR-0074).
+
 **Healing**:
 What the STEP reader repairs in a file it reads (grown tolerances, turned
 faces), recorded on the body (ADR-0058).

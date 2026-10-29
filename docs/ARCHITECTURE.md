@@ -1114,10 +1114,17 @@ centre `c* = w_r ∩ offset(P, r)` lies on both spines, both runs end at
 `c*`, the walked skin refitted along its spine to end there, and `w` is cut
 at `p = c* − r·n`. Where `w` is not a line (a face turning tangent along a
 curve that plane crosses, an annulus into a torus), or `c*` lies past the
-spine's reach, the vertex is `VertexBlend`. A walked stripe at a miter or a
-corner, a face across that is NURBS, a cusp or a fan, and an end where the
-faces turn tangent are refused by name
-(`VertexBlend`, `Unsupported`, `TangentChain`). A radius past a principal radius is `BlendTooLarge`.
+spine's reach, the vertex is `VertexBlend`. At a *vanishing end*, where
+the edge's faces turn tangent within its tolerance, the stripe narrows to a
+pole at the vertex where the ball there touches both faces at it (ADR-0062
+§5). Where they only run within that tolerance of tangent, it stops short
+on its narrowest exact arc, at a new vertex on the edge whose tolerance
+holds the arc, and the edge's remnant runs on from there to the vertex
+(ADR-0074). A walked stripe at a miter or a corner, a face across that is
+NURBS, a cusp or a fan, and a vanishing end whose new vertex would pass
+`max_tolerance` are refused by name (`VertexBlend`, `Unsupported`,
+`TangentChain`), as is a contact that misses its face across beside a
+corner edge tangent within the vertex's tolerance. A radius past a principal radius is `BlendTooLarge`.
 
 A **walked chamfer** (`blend/walked_chamfer.rs`) is the same assembly with no
 ball: the stripe's `Path` is a `Chord`, whose contact on each face is the root
