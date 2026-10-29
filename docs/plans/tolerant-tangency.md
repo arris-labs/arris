@@ -115,12 +115,23 @@ robustness or bound has to be established here.
   question, one code path). Until step 5 a chain through a kink is refused
   `TangentChain` naming its edges, `w` and the vertex: the slot's
   e22–e26 (the battery's edge too), CTC-05's e32, e133, e256.
-- [ ] Step 5 **[3]** — The junction across the kink: the mean ball's arc,
+- [x] Step 5 **[3]** — The junction across the kink: the mean ball's arc,
   tolerances bounded by the vertex's. The FTC-11 slot fixture moves to
   `blend/`, held to Open CASCADE's measures, checker green at `Full`.
+  *Settled:* the balls' gap lies along the edges. The contacts on the
+  shared face end where they cross, the far ones on the corner edge, and
+  the arc's pcurves are pinned to each blend's own contacts. At `v24`
+  that is 3.6e-4 against the vertex's 3.6e-3 (ADR-0075 §2 amended). The
+  slot's counts are ADR-0038's convention (two corner vertices Open
+  CASCADE keeps), and its tolerances are the bspline-circle fixture's,
+  which share the part. CTC-05 AP203 now stops at `v31` instead
+  (`VertexBlend`).
 - [ ] Step 6 **[2]** — CTC-05 AP203 built through v115, checker green at
   `Full`, held to the second oracle's tangent-chain changes under
-  `measure_differs` (`fixtures:` commit).
+  `measure_differs` (`fixtures:` commit). First its tangent vertex `v31`:
+  the walked `e32` and `e133` meet there with balls 8.9e-5 apart and far
+  contacts 1.7e-3 apart. No shared arc closes that, and `leaning` (ADR-0072)
+  does not take it; why is not yet read. This may make the step **[3]**.
 - [ ] Step 7 **[2]** — CTC-05 AP242's e258 past the ceiling (⚠ OPEN 1,
   ADR-0060 amended), a new fixture `blend/nist-ctc-05-ap242-battery-edge-
   fillet`, held likewise. AP242's e256 stays `TangentChain`, its

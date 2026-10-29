@@ -68,6 +68,23 @@ distance to either face as their tolerance, bounded by the vertex's
 tolerance. That bound meets §3's reason: the vertex's tolerance is what
 the file says the faces meet within there, and the junction asks no more.
 
+*Settled at step 5:* the gap lies along the edges, not across them. At
+FTC-11's `v24` the two far contacts meet the corner edge at one point,
+and the two contacts on the shared face cross `r·tan(θ/2)` short of the
+vertex. So each contact on the shared face ends where they cross, by
+Gauss–Newton from its end, and the far ones end on the corner edge
+(`shared_crossing`): every face but the blends closes its loop exactly.
+The arc runs from that crossing to the far point about the mean of the
+two end balls. Its pcurve on each blend is the arc's projection, pinned
+at both ends to that blend's own contacts there (`pin_kinks`): the
+parameter is made a knot of full multiplicity and its control point
+moved, which is exact whatever the weights. An isocurve of each blend
+would not do, since one blend's end is not the other's. The arc and its
+two vertices take the pin's shift on top of the half gap the mean
+closes. At `v24` that is `3.6e-4`, against the vertex's `3.6e-3`. A
+crossing that does not settle, a ring as one run, or a pin past the
+vertex's tolerance is `TangentChain` naming both edges and the vertex.
+
 **3. What stays.** A kink of four edges, a cusp, and a kink whose end
 across is pierced (FTC-11's `v2`) are read as before.
 `BlendReason::TangentChain` stays the refusal past the vertex's tolerance
@@ -80,9 +97,12 @@ no public type or signature changes.
   edge included: five edges, as Open CASCADE's five blend faces.
   CTC-05 AP203's e256 chains `e32`, `e133` and `e256` through `v115`:
   the second oracle's three edges.
-- Until the junction lands (step 5), a chain through a kink is refused
-  `TangentChain` naming its edges in the body's order, then `w` and the
-  vertex of its first kink. Every fixture's expectation is unchanged.
+- From step 5 the slot builds, valid at `Full`, held to Open CASCADE's
+  measures. Its counts are two vertices and two edges fewer, for the
+  corner vertex Open CASCADE keeps at each end of the chain (ADR-0038).
+  CTC-05 AP203's chain gets past `v115`. It is then refused
+  `VertexBlend` at `v31`, the tangent vertex between the walked `e32` and
+  `e133`, whose balls stand `8.9e-5` apart (step 6).
 - The kink's end is made once more than before, to probe it, with its
   stripe: one more trace per kink on a walked stripe. CTC-05's refusal
   takes 4.2 s where it took 4.0 s; the slot's stays 0.05 s.

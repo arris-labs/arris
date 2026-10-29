@@ -1763,26 +1763,76 @@ fn a_read_rims_pcurves_standing_off_hold_an_end_arc() {
 /// vertex's tolerance though not their own. The hole curves away from the
 /// ball, so the contact on the top never meets it, and the chain runs on
 /// through the kink round the hole (ADR-0075) to where it next ends: the
-/// five edges `e22`–`e26`, as Open CASCADE's five blend faces. The
-/// junction across the kink is not built yet, so the chain is refused
-/// `TangentChain` naming its edges, the corner edge `e60` and `v24`.
+/// five edges `e22`–`e26`, as Open CASCADE's five blend faces. Across the
+/// kink the two runs' end balls stand `2r·sin(θ/2)` apart; the junction is
+/// their mean ball's arc, and it and its two vertices stand off each run
+/// by half that, within the vertex's tolerance, the body valid at `Full`.
 #[test]
 fn a_contact_missing_a_near_tangent_face_across_chains_through_the_kink() {
-    let dir = fixtures::corpus_root().join("regression/nist-ftc-11-ap242-slot-chain-fillet");
-    let err = match corpus::chain(&dir, "default") {
-        Err(corpus::CorpusError::Op { source, .. }) => source,
-        Err(e) => panic!("{e}"),
-        Ok(_) => panic!("the slot's line filleted alone builds"),
+    let dir = fixtures::corpus_root().join("blend/nist-ftc-11-ap242-slot-chain-fillet");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let (m, blended) = (&chain.model, chain.result().unwrap());
+    let report = check(m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    let forward = |id: EntityId| Shape::new(id, Orientation::Forward);
+    let kink = m
+        .vertices(chain.steps["part"].body)
+        .unwrap()
+        .into_iter()
+        .find(|v| forward(v.id.into()).to_string() == "+v24")
+        .unwrap();
+    let blend_faces = m
+        .faces(blended)
+        .unwrap()
+        .into_iter()
+        .filter(|f| {
+            chain.steps["result"]
+                .provenance
+                .origins(forward(f.id.into()))
+                .iter()
+                .any(|(relation, _)| *relation == Relation::Generated)
+        })
+        .count();
+    assert_eq!(blend_faces, 5);
+    // The kink's angle from the two faces' normals across `e60` is 3.9°.
+    let (r, theta) = (0.0105, 3.9_f64.to_radians());
+    let half_gap = r * real::sin(theta / 2.0);
+    let edge = |name: &str| {
+        m.edges(chain.steps["part"].body)
+            .unwrap()
+            .into_iter()
+            .find(|e| forward(e.id.into()).to_string() == name)
+            .unwrap()
+            .id
     };
-    let OpError::Degenerate { reason, .. } = &err else {
-        panic!("{err}");
+    let made = chain.steps["result"]
+        .provenance
+        .generated_pair(forward(edge("+e23").into()), forward(edge("+e24").into()));
+    let arcs: Vec<_> = made
+        .iter()
+        .filter_map(|s| match s.id {
+            EntityId::Edge(e) => Some(m.edge(e).unwrap()),
+            _ => None,
+        })
+        .collect();
+    // The junction's one arc, it and its two vertices off each run by half
+    // the gap.
+    let [arc] = arcs[..] else {
+        panic!("{made:?}");
     };
-    assert_eq!(*reason, Reason::Blend(BlendReason::TangentChain), "{err}");
-    assert!(
-        err.to_string()
-            .ends_with("(+e22, +e23, +e24, +e25, +e26, +e60, +v24)"),
-        "{err}"
-    );
+    let within = m.vertex(kink.id).unwrap().tolerance();
+    for t in [
+        arc.tolerance(),
+        m.vertex(arc.start()).unwrap().tolerance(),
+        m.vertex(arc.end()).unwrap().tolerance(),
+    ] {
+        assert!(t <= within, "{t} past {within}");
+        assert!(
+            (t - half_gap).abs() <= 0.05 * half_gap,
+            "{t} against {half_gap}"
+        );
+    }
 }
 
 /// CTC-05's e256, filleted alone: at `v84` its faces run within the edge's
@@ -1792,10 +1842,11 @@ fn a_contact_missing_a_near_tangent_face_across_chains_through_the_kink() {
 /// face runs on into the cylinder f19 tangent within the vertex's
 /// tolerance and the contact misses it, so the chain runs on through it
 /// (ADR-0075) to `e133` and `e32`, the second oracle's three edges. The
-/// junction across is not built yet: `TangentChain` naming the chain, the
-/// corner edge `e132` and `v115`.
+/// chain's tangent vertex `v31` between those two walked runs is refused
+/// `VertexBlend`: their balls there stand apart, which no shared arc
+/// closes (plans/tolerant-tangency step 6).
 #[test]
-fn a_vanishing_end_off_its_vertex_stops_short_and_the_far_end_names_its_chain() {
+fn a_vanishing_end_off_its_vertex_stops_short_and_the_chain_runs_on_to_v31() {
     let dir = fixtures::corpus_root().join("blend/nist-ctc-05-ap203-nurbs-torus-fillet");
     let err = match corpus::chain(&dir, "default") {
         Err(corpus::CorpusError::Op { source, .. }) => source,
@@ -1805,10 +1856,6 @@ fn a_vanishing_end_off_its_vertex_stops_short_and_the_far_end_names_its_chain() 
     let OpError::Degenerate { reason, .. } = &err else {
         panic!("{err}");
     };
-    assert_eq!(*reason, Reason::Blend(BlendReason::TangentChain), "{err}");
-    assert!(
-        err.to_string()
-            .ends_with("(+e32, +e133, +e256, +e132, +v115)"),
-        "{err}"
-    );
+    assert_eq!(*reason, Reason::Blend(BlendReason::VertexBlend), "{err}");
+    assert!(err.to_string().ends_with("(+e32, +e133, +v31)"), "{err}");
 }

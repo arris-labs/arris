@@ -1,0 +1,43 @@
+{
+  "description": "NIST's FTC-11, its AP242 edition 2's solid #1299 alone (the excerpt beside blend/nist-ftc-11-ap242-bspline-circle-fillet): the convex plane-against-plane edge e24 filleted alone at the battery's radius. It is the first of a tangent chain of three on the plane f0: the line e24, the edge e25 between f0 and the cylinder f19 written as a cubic B-spline that hides a circle (r 0.1063, within 4.4e-4 of the faces' own section, its tolerance 2.5e-3), and the line e26. At v24 the hole f17 runs on from f18 at a convex kink of 3.9\u00b0, tangent within the vertex's tolerance (3.6e-3) and not the faces', and the contact on the top misses the hole: the chain runs on through the kink (ADR-0075) to e22 and e23, five edges, as Open CASCADE's five blend faces. Across the kink the two runs' end balls stand 7.2e-4 apart along the edges: the contacts on the top end where they cross, the far ones meet on the hole's corner edge, and the junction is the arc of the two balls' mean, its pcurve on each blend pinned to that blend's own contacts, it and its two vertices at 3.6e-4, half the gap, within the vertex's (ADR-0075 \u00a72). The tolerances are blend/nist-ftc-11-ap242-bspline-circle-fillet's, the same part's: Open CASCADE's reading of Arris's STEP, volume 1.7e-7 off, where the kink's own share is under 1e-7 of the blend's few 1e-4 of volume. Open CASCADE builds it valid; the second oracle refuses it (plans/nurbs-face-blend step 1, plans/tolerant-tangency steps 1 and 5)",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../blend/nist-ftc-11-ap242-bspline-circle-fillet/nist_ftc_11_asme1_ap242-e2-1299.stp",
+      "sha256": "e4ed6568a8c397811140527681031c947c5c5a1f2491e6de58b78f085a5f5443",
+      "id": 1299
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          -23.35841244624011,
+          -4.182968297495704,
+          0.43
+        ]
+      ],
+      "radius": 0.010499999999999999
+    }
+  ],
+  "result": "result",
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 5e-06,
+    "centroid_abs": 5e-06,
+    "inertia_rel": 3e-07
+  },
+  "analytic": {
+    "counts": {
+      "vertices": 80,
+      "edges": 123,
+      "faces": 47,
+      "loops": 51,
+      "shells": 1
+    },
+    "genus": 1,
+    "counts_differ": "Open CASCADE keeps each consumed corner vertex on its lengthened corner edge, two edges of one line between the same two faces at each end of the chain; Arris lengthens the one edge to the trim (ADR-0038)"
+  }
+}

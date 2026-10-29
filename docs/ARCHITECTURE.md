@@ -1008,8 +1008,13 @@ sharp edge. At a *kink* — a chain end's vertex of three edges whose corner
 edge is tangent within the vertex's tolerance though not its faces' — the
 walk makes the end as the build would, and runs on through the vertex
 only where that end's contacts miss the face across (ADR-0075); an end
-across that is pierced stays an end. The junction across a kink is not
-built yet, so such a chain is refused `TangentChain` naming its edges.
+across that is pierced stays an end. Across the kink the two runs' end
+balls stand `2r·sin(θ/2)` apart along the edges: the contacts on the
+shared face end where they cross, the far ones meet on the corner edge,
+and the junction is the arc of the balls' mean from the one point to the
+other, its pcurve on each blend pinned to that blend's own contacts. The
+arc and its two vertices take half the gap as tolerance, which the
+vertex's bounds; past it, the chain is `TangentChain`.
 Each edge keeps its own stripe and its own blend face. At a tangent vertex
 the two stripes are one ball's, and they meet in a *junction*, recorded as
 a miter is: the ball's great circle square to the edges' common direction

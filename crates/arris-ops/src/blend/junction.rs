@@ -1,14 +1,15 @@
 //! Blends meeting at a vertex along a run of edges: the junction.
 
 use arris_math::real;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use arris_geom::{Curve, Curve2, Surface, pcurve_on};
-use arris_math::{Axis, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3};
+use arris_geom::{Curve, Curve2, NurbsCurve2, Surface, pcurve_on};
+use arris_math::{Axis, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec3};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
+use super::Blend;
 use super::chain::parameter_at;
-use super::ends::{cut_corner, on_corner_edge};
+use super::ends::{EndKind, cut_corner, on_corner_edge};
 use super::miter::Miter;
 use super::ring::{Ring, placed_uv};
 use super::stripe::{Section, Stripe, chord, line_origin};
@@ -146,12 +147,21 @@ impl<'a> Run<'a> {
 /// same way with `q` on a second tangent edge, cut there too: each contact
 /// of `a` meets the contact of `b` across the tangent edge between their
 /// faces, `q` being the one from `a`'s contact at `u = 0`.
+///
+/// At a kink the chain runs through (ADR-0075 §2), `kink` is the vertex's
+/// tolerance. The runs' end balls stand `2r·sin(θ/2)` apart along the
+/// edges, so the contacts on the shared face end where they cross, the far
+/// ones meet on the third edge, and the arc is the mean ball's between the
+/// two points, its edge and vertices taking the half gap as tolerance
+/// (`pin_kinks` adds the pin's). Contacts that do not cross, far ones apart
+/// by more than the runs' tolerance, or balls by more than the vertex's are
+/// `BlendReason::TangentChain`, the kink wider than the file says.
 pub(super) fn junction(
     m: &Model,
     view: &BodyView,
-    a: Run<'_>,
-    b: Run<'_>,
+    [a, b]: [Run<'_>; 2],
     vertex: VertexId,
+    kink: Option<f64>,
     tol: Tolerance,
     meter: &mut Meter<'_>,
 ) -> Result<Miter, OpError> {
@@ -267,7 +277,10 @@ pub(super) fn junction(
         }
         _ => return Err(vertex_blend()),
     };
-    let tolerance = ra.tolerance.max(rb.tolerance);
+    let runs_tolerance = ra.tolerance.max(rb.tolerance);
+    // How far apart the runs may meet: their own tolerance, or across a kink
+    // the vertex's.
+    let tolerance = kink.map_or(runs_tolerance, |within| within.max(runs_tolerance));
     if ra.convex != rb.convex {
         return Err(invariant("both runs of a junction convex or both concave"));
     }
@@ -279,6 +292,7 @@ pub(super) fn junction(
     let walked = ra.walked || rb.walked;
     let apart = |pa: Point3, pb: Point3| (pa - pb).norm() > tolerance;
     let leans = walked
+        && kink.is_none()
         && (apart(ra.points[ka], rb.points[kb])
             || apart(ra.points[1 - ka], rb.points[1 - kb])
             || matches!((ra.centre, rb.centre), (Some(ca), Some(cb)) if apart(ca, cb)));
@@ -291,24 +305,65 @@ pub(super) fn junction(
             return Err(vertex_blend());
         }
     }
-    let meet = |pa: Point3, pb: Point3, what: &'static str| {
-        if (pa - pb).norm() > tolerance {
-            return Err(if walked {
-                vertex_blend()
-            } else {
-                invariant(what)
-            });
+    let refused = |what: &'static str| {
+        if kink.is_some() {
+            degenerate(
+                vec![edges[0], edges[1], v],
+                Reason::Blend(BlendReason::TangentChain),
+            )
+        } else if walked {
+            vertex_blend()
+        } else {
+            invariant(what)
         }
+    };
+    // The half of the widest gap a mean point closes: each run's distance
+    // to the junction.
+    let mut gap = 0.0_f64;
+    // Across a kink the contacts on the shared face cross short of the
+    // vertex, the balls' gap lying along the edges: they end there, on that
+    // face exactly (ADR-0075 §2).
+    let crossed = match kink {
+        Some(_) => Some(
+            shared_crossing(
+                [a, b],
+                [ka, kb],
+                [ra.t, rb.t],
+                [ra.points[ka], rb.points[kb]],
+                tolerance,
+                tol,
+            )
+            .ok_or_else(|| refused("a kink's contacts crossing"))?,
+        ),
+        None => None,
+    };
+    let mut meet = |pa: Point3, pb: Point3, within: f64, what: &'static str| {
+        let d = (pa - pb).norm();
+        if d > within {
+            return Err(refused(what));
+        }
+        gap = gap.max(0.5 * d);
         Ok(pa + (pb - pa) * 0.5)
     };
-    let q = meet(
-        ra.points[ka],
-        rb.points[kb],
-        "the contacts on the shared face or the first tangent edge through one point",
-    )?;
+    let q = match crossed {
+        Some((_, q)) => q,
+        None => meet(
+            ra.points[ka],
+            rb.points[kb],
+            tolerance,
+            "the contacts on the shared face or the first tangent edge through one point",
+        )?,
+    };
+    // The far contacts meet on the third edge as one ball's would, a kink's
+    // too: its faces there close their loops only at one point.
     let p = meet(
         ra.points[1 - ka],
         rb.points[1 - kb],
+        if kink.is_some() {
+            runs_tolerance
+        } else {
+            tolerance
+        },
         "the other contacts through one point of the third edge",
     )?;
     // A walked run's contact is on a seam of the curved face only where the
@@ -331,15 +386,11 @@ pub(super) fn junction(
     let (curve, range) = match (ra.centre, rb.centre) {
         (None, None) => chord(q, p, tol)?,
         (Some(ca), Some(cb)) => {
-            let centre = meet(ca, cb, "the runs' balls one ball")?;
+            let centre = meet(ca, cb, tolerance, "the runs' balls one ball")?;
             let (x, y) = (q - centre, p - centre);
             let radius = x.norm();
             if (y.norm() - radius).abs() > tolerance {
-                return Err(if walked {
-                    vertex_blend()
-                } else {
-                    invariant("the ball touching both faces across")
-                });
+                return Err(refused("the ball touching both faces across"));
             }
             let Some(normal) = UnitVec3::try_new(x.cross(&y), tol.linear) else {
                 return Err(invariant("a junction arc of positive angle"));
@@ -356,6 +407,13 @@ pub(super) fn junction(
             return Err(invariant("one kind of blend in one call"));
         }
     };
+    // Across a kink the edge and its vertices stand off each run by the
+    // gap the mean ball closes, within the vertex's tolerance; elsewhere the
+    // runs' own tolerance covers it.
+    let tolerance = match kink {
+        Some(_) => runs_tolerance.max(gap),
+        None => tolerance,
+    };
     let arc_tol = Tolerance::new(tolerance, tol.angular);
     let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
     for (run, at, k) in [(a, &ra, ka), (b, &rb, kb)] {
@@ -365,10 +423,14 @@ pub(super) fn junction(
     let on_blend: [Curve2; 2] = on_blend
         .try_into()
         .map_err(|_| invariant("the junction's two pcurves"))?;
+    let mut t = [[ra.t; 2], [rb.t; 2]];
+    if let Some(([ta, tb], _)) = crossed {
+        (t[0][ka], t[1][kb]) = (ta, tb);
+    }
     Ok(Miter {
         edges: [ra.edge, rb.edge],
         shared: [ka, kb],
-        t: [[ra.t; 2], [rb.t; 2]],
+        t,
         q,
         p3: p,
         curve,
@@ -380,6 +442,7 @@ pub(super) fn junction(
         q_trim,
         trim_arc: None,
         leaning: leans,
+        kink,
         tolerance,
         q_tolerance: match wq {
             Some(wq) => tolerance.max(m.edge(wq)?.tolerance()),
@@ -390,6 +453,181 @@ pub(super) fn junction(
             None => tolerance,
         },
     })
+}
+
+/// Where the contacts of two stripes on their shared face cross near the
+/// kink: each one's parameter there, from `t`, and the point, both
+/// contacts within `within` of their ends `ends` and the two within the
+/// stripes' tolerance of each other. Gauss–Newton on the distance between
+/// the two contacts, square in its two parameters; `None` for a ring or
+/// where it does not settle.
+fn shared_crossing(
+    runs: [Run<'_>; 2],
+    shared: [usize; 2],
+    t: [f64; 2],
+    ends: [Point3; 2],
+    within: f64,
+    tol: Tolerance,
+) -> Option<([f64; 2], Point3)> {
+    let [Run::Line(sa), Run::Line(sb)] = runs else {
+        return None;
+    };
+    let at = |s: &Stripe, k: usize, t: f64| -> Option<(Point3, Vec3)> {
+        match s.section {
+            Section::Walked { .. } => {
+                let e = s.lines[k].eval(t);
+                Some((e.point, e.d1))
+            }
+            Section::Round { .. } | Section::Flat => {
+                Some((line_origin(&s.lines[k]).ok()? + t * s.d, s.d))
+            }
+        }
+    };
+    let [mut ta, mut tb] = t;
+    for _ in 0..CROSSING_STEPS {
+        let ((pa, da), (pb, db)) = (at(sa, shared[0], ta)?, at(sb, shared[1], tb)?);
+        // The normal equations of `da·Δa − db·Δb = pb − pa`.
+        let r = pb - pa;
+        let (aa, ab, bb) = (da.dot(&da), -da.dot(&db), db.dot(&db));
+        let (ra, rb) = (da.dot(&r), -db.dot(&r));
+        let det = aa * bb - ab * ab;
+        if det.is_nan() || det <= 0.0 {
+            return None;
+        }
+        let (dta, dtb) = ((ra * bb - ab * rb) / det, (aa * rb - ab * ra) / det);
+        ta += dta;
+        tb += dtb;
+        if (dta * da).norm().max((dtb * db).norm()) <= tol.linear {
+            let ((pa, _), (pb, _)) = (at(sa, shared[0], ta)?, at(sb, shared[1], tb)?);
+            let close = (pa - pb).norm() <= sa.tolerance.max(sb.tolerance)
+                && (pa - ends[0]).norm() <= within
+                && (pb - ends[1]).norm() <= within;
+            return close.then(|| ([ta, tb], pa + (pb - pa) * 0.5));
+        }
+    }
+    None
+}
+
+/// The Gauss–Newton steps [`shared_crossing`] takes before giving up: two
+/// contacts crossing at a few degrees settle in a handful.
+const CROSSING_STEPS: usize = 32;
+
+/// Pins the arc of each kink's junction (ADR-0075 §2) on each blend to its
+/// own contacts' ends there, so that the blend's loop closes in (u, v):
+/// the mean ball's arc projects onto each run's surface beside them. The
+/// arc and the junction's vertices take the distance the pin moves it as
+/// tolerance, within the vertex's: past it, or for a pcurve no pin keeps
+/// exact, `BlendReason::TangentChain` naming both edges and the vertex.
+pub(super) fn pin_kinks(m: &Model, miters: &mut [Miter], blends: &[Blend]) -> Result<(), OpError> {
+    // Each kink's two runs, as blends by the miter's side.
+    let mut runs: BTreeMap<usize, [Option<usize>; 2]> = BTreeMap::new();
+    for (i, blend) in blends.iter().enumerate() {
+        for kind in &blend.ends {
+            if let EndKind::Miter { at, side } = *kind
+                && miters[at].kink.is_some()
+            {
+                runs.entry(at).or_default()[side] = Some(i);
+            }
+        }
+    }
+    for (at, sides) in runs {
+        let mt = &mut miters[at];
+        let (Some(within), [Some(a), Some(b)]) = (mt.kink, sides) else {
+            return Err(invariant("a kink's junction of two runs"));
+        };
+        let vertex = shared_vertex(m, mt.edges)?;
+        let refused = || {
+            degenerate(
+                vec![forward(mt.edges[0]), forward(mt.edges[1]), forward(vertex)],
+                Reason::Blend(BlendReason::TangentChain),
+            )
+        };
+        let mut shift = 0.0_f64;
+        for (side, i) in [a, b].into_iter().enumerate() {
+            let (k, blend) = (mt.shared[side], &blends[i]);
+            let on_blend = |c: usize| blend.contacts[c].on_blend.point(mt.t[side][c]);
+            let (lo, hi) = if mt.q_first {
+                (on_blend(k), on_blend(1 - k))
+            } else {
+                (on_blend(1 - k), on_blend(k))
+            };
+            let (arc, surface) = (&mt.on_blend[side], &blend.stripe.surface);
+            shift = shift
+                .max(distance_on(surface, arc.point(mt.range.lo()), lo))
+                .max(distance_on(surface, arc.point(mt.range.hi()), hi));
+            mt.on_blend[side] =
+                pinned(arc, [(mt.range.lo(), lo), (mt.range.hi(), hi)]).ok_or_else(refused)?;
+        }
+        mt.tolerance += shift;
+        mt.q_tolerance = mt.q_tolerance.max(mt.tolerance);
+        mt.p3_tolerance = mt.p3_tolerance.max(mt.tolerance);
+        if mt.q_tolerance.max(mt.p3_tolerance) > within {
+            return Err(refused());
+        }
+    }
+    Ok(())
+}
+
+/// The vertex the two edges of a junction share.
+fn shared_vertex(m: &Model, [a, b]: [EdgeId; 2]) -> Result<VertexId, OpError> {
+    let (ea, eb) = (m.edge(a)?, m.edge(b)?);
+    [ea.start(), ea.end()]
+        .into_iter()
+        .find(|&v| v == eb.start() || v == eb.end())
+        .ok_or(invariant("a junction's two edges at one vertex"))
+}
+
+/// How far apart `surface` puts the (u, v) points `a` and `b`.
+fn distance_on(surface: &Surface, a: Point2, b: Point2) -> f64 {
+    (surface.point(a.x, a.y) - surface.point(b.x, b.y)).norm()
+}
+
+/// `pcurve` with its points at the two given parameters moved to the two
+/// given points: a line becomes the degree-1 B-spline between them, a
+/// B-spline takes each parameter as a knot of full multiplicity, where the
+/// curve passes through a control point whatever the weights, and that
+/// point is moved. Between them the curve moves no further than its ends
+/// do, its rational basis summing to one. `None` for a circle or an
+/// ellipse, or a parameter outside the curve's domain.
+fn pinned(pcurve: &Curve2, pins: [(f64, Point2); 2]) -> Option<Curve2> {
+    match pcurve {
+        Curve2::Line { .. } => {
+            let [(s0, p0), (s1, p1)] = pins;
+            let ((lo, a), (hi, b)) = if s0 < s1 {
+                ((s0, p0), (s1, p1))
+            } else {
+                ((s1, p1), (s0, p0))
+            };
+            NurbsCurve2::new(1, vec![lo, lo, hi, hi], vec![a, b], vec![1.0, 1.0])
+                .ok()
+                .map(Curve2::Nurbs)
+        }
+        Curve2::Nurbs(c) => {
+            let degree = c.degree();
+            let mut c = c.clone();
+            for (s, _) in pins {
+                let times = c.knots().iter().filter(|&&k| k == s).count();
+                if times < degree {
+                    c = c.insert_knot(s, degree - times).ok()?;
+                }
+            }
+            let mut points = c.control_points().to_vec();
+            for (s, target) in pins {
+                let knots = c.knots();
+                let last = knots.iter().rposition(|&k| k == s)?;
+                let j = if last + 1 == knots.len() {
+                    points.len() - 1
+                } else {
+                    last.checked_sub(degree)?
+                };
+                *points.get_mut(j)? = target;
+            }
+            NurbsCurve2::new(degree, c.knots().to_vec(), points, c.weights().to_vec())
+                .ok()
+                .map(Curve2::Nurbs)
+        }
+        Curve2::Circle { .. } | Curve2::Ellipse { .. } => None,
+    }
 }
 
 /// The shared ball of a junction whose tangent edge leans (ADR-0072 §1):

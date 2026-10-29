@@ -14,7 +14,7 @@ use arris_topo::{
 use super::chain::{chain, cusp_at, kinked_vertex, tangent_vertex};
 use super::corner::{Corner, corner};
 use super::ends::{EndKind, Pole, Trim, face_end};
-use super::junction::{Run, junction};
+use super::junction::{Run, junction, pin_kinks};
 use super::miter::{Miter, miter};
 use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
 use super::ring_rolled::add_ring_rolled_faces;
@@ -271,6 +271,8 @@ struct Classified {
     arcs: Vec<EdgeId>,
     /// The closed edges' rings, built already.
     rings: Vec<Ring>,
+    /// The kinks the chains run through (ADR-0075), each a junction.
+    kinks: BTreeSet<VertexId>,
 }
 
 /// The vertex joins of the blended edges, by vertex.
@@ -314,11 +316,15 @@ pub(super) fn build(
         open,
         arcs,
         mut rings,
+        kinks,
     } = classify(&mut ctx, body, edges)?;
-    let (at_vertex, junctions) = vertex_joins(&mut ctx, &open, &arcs, &mut rings)?;
+    let (at_vertex, junctions) = vertex_joins(&mut ctx, &open, &arcs, &mut rings, &kinks)?;
     let stripes = make_stripes(&mut ctx, &open)?;
-    let joins = join_blends(&mut ctx, &open, &stripes, &rings, &at_vertex, &junctions)?;
+    let mut joins = join_blends(
+        &mut ctx, &open, &stripes, &rings, &at_vertex, &junctions, &kinks,
+    )?;
     let blends = make_blends(&mut ctx, stripes, &joins)?;
+    pin_kinks(ctx.m, &mut joins.miters, &blends)?;
     let mut draft = Draft {
         rw: Rewrite::default(),
         cuts: BTreeMap::new(),
@@ -359,22 +365,6 @@ fn classify(
     // body's order.
     let mut reached = chain(m, view, edges, kind.size(), tol, meter)?;
     let kinks = through_kinks(&env, meter, &mut reached)?;
-    // The junction across a kink is not built yet (plans/tolerant-tangency
-    // step 5): the chain through it is refused, naming its edges in the
-    // body's order, the corner edge and the vertex of its first kink.
-    if let Some((&v, &(_, w))) = kinks.iter().next() {
-        let mut entities: Vec<arris_topo::Shape> = m
-            .edges(body)?
-            .into_iter()
-            .filter(|e| reached.contains(&e.id))
-            .map(|e| forward(e.id))
-            .collect();
-        entities.extend([forward(w), forward(v)]);
-        return Err(degenerate(
-            entities,
-            Reason::Blend(BlendReason::TangentChain),
-        ));
-    }
     let chained: Vec<EdgeId> = m
         .edges(body)?
         .into_iter()
@@ -413,26 +403,30 @@ fn classify(
             Some(_) | None => open.push(e),
         }
     }
-    Ok(Classified { open, arcs, rings })
+    Ok(Classified {
+        open,
+        arcs,
+        rings,
+        kinks,
+    })
 }
 
 /// `reached` run on through every kink a chain end's vertex writes as
 /// tangent within its tolerance where the end across it meets nothing
-/// (ADR-0075), each continued to where it next ends; the kinks by vertex,
-/// each with the edge ending there and its corner edge. A kink's end is
-/// made as the build would make it, and the chain runs through only where
-/// that end is the [`near_tangent_corner`](super::ends::near_tangent_corner)
-/// refusal naming the same corner edge: a contact that misses the face
-/// across. Errors: the meter's, and a fault of the model's.
+/// (ADR-0075), each continued to where it next ends; the kinks, each a
+/// junction of the build's. A kink's end is made as the build would make
+/// it, and the chain runs through only where that end is the
+/// [`near_tangent_corner`](super::ends::near_tangent_corner) refusal naming
+/// the same corner edge: a contact that misses the face across. Errors: the meter's, and a fault of the model's.
 fn through_kinks(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
     reached: &mut BTreeSet<EdgeId>,
-) -> Result<BTreeMap<VertexId, (EdgeId, EdgeId)>, OpError> {
+) -> Result<BTreeSet<VertexId>, OpError> {
     let Env {
         m, view, kind, tol, ..
     } = *env;
-    let mut kinks: BTreeMap<VertexId, (EdgeId, EdgeId)> = BTreeMap::new();
+    let mut kinks: BTreeSet<VertexId> = BTreeSet::new();
     let mut todo: Vec<EdgeId> = reached.iter().copied().collect();
     while let Some(edge) = todo.pop() {
         meter.tick()?;
@@ -441,7 +435,7 @@ fn through_kinks(
             continue;
         }
         for vertex in [entity.start(), entity.end()] {
-            if kinks.contains_key(&vertex) {
+            if kinks.contains(&vertex) {
                 continue;
             }
             let Some((next, w)) = kinked_vertex(m, view, edge, vertex, kind.size(), tol)? else {
@@ -450,7 +444,7 @@ fn through_kinks(
             if reached.contains(&next) || !end_meets_nothing(env, meter, edge, vertex, w)? {
                 continue;
             }
-            kinks.insert(vertex, (edge, w));
+            kinks.insert(vertex);
             for e in chain(m, view, &[next], kind.size(), tol, meter)? {
                 if reached.insert(e) {
                     todo.push(e);
@@ -509,6 +503,7 @@ fn vertex_joins(
     open: &[EdgeId],
     arcs: &[EdgeId],
     rings: &mut Vec<Ring>,
+    kinks: &BTreeSet<VertexId>,
 ) -> Result<(AtVertex, BTreeSet<VertexId>), OpError> {
     let (env, meter) = ctx.split();
     let Env {
@@ -528,8 +523,9 @@ fn vertex_joins(
     }
     let mut junctions: BTreeSet<VertexId> = BTreeSet::new();
     for (&v, es) in &at_vertex {
+        // A kink the chain runs through is a junction too (ADR-0075 §2).
         if let [ea, eb] = es[..]
-            && tangent_vertex(m, view, ea, v, kind.size(), tol)? == Some(eb)
+            && (kinks.contains(&v) || tangent_vertex(m, view, ea, v, kind.size(), tol)? == Some(eb))
         {
             junctions.insert(v);
             continue;
@@ -588,6 +584,7 @@ fn join_blends(
     rings: &[Ring],
     at_vertex: &AtVertex,
     junctions: &BTreeSet<VertexId>,
+    kinks: &BTreeSet<VertexId>,
 ) -> Result<Joins, OpError> {
     let (env, meter) = ctx.split();
     let Env { m, view, tol, .. } = env;
@@ -627,7 +624,22 @@ fn join_blends(
         match es[..] {
             [ea, eb] if junctions.contains(&v) => {
                 miter_at.insert(v, miters.len());
-                miters.push(junction(m, view, run(ea)?, run(eb)?, v, tol, meter)?);
+                // Across a kink the runs meet within the vertex's tolerance
+                // (ADR-0075 §2).
+                let kink = if kinks.contains(&v) {
+                    Some(m.vertex(v)?.tolerance())
+                } else {
+                    None
+                };
+                miters.push(junction(
+                    m,
+                    view,
+                    [run(ea)?, run(eb)?],
+                    v,
+                    kink,
+                    tol,
+                    meter,
+                )?);
             }
             [ea, eb] => {
                 miter_at.insert(v, miters.len());

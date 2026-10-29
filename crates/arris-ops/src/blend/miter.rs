@@ -67,6 +67,10 @@ pub(super) struct Miter {
     /// shared ball is off the vertex, and a walked stripe's surface ends
     /// at its arc rather than reaching past it.
     pub(super) leaning: bool,
+    /// At a kink the chain runs through (ADR-0075 §2), the vertex's
+    /// tolerance: the runs meet on their mean ball, and every pcurve
+    /// ending at `q` or `p3` is pinned there (`junction::pin_kinks`).
+    pub(super) kink: Option<f64>,
     pub(super) tolerance: f64,
     pub(super) q_tolerance: f64,
     pub(super) p3_tolerance: f64,
@@ -224,6 +228,7 @@ pub(super) fn miter(
         q_trim: None,
         trim_arc,
         leaning: false,
+        kink: None,
         tolerance,
         q_tolerance: tolerance,
         p3_tolerance: if wide.is_some() {

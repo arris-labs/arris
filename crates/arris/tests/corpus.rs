@@ -1286,15 +1286,16 @@ corpus_tests! {
     /// edge written as a B-spline that hides a circle, filleted alone: its
     /// chain's end arc runs inside the band the file's pcurves stand off by.
     blend_nist_ftc_11_ap242_bspline_circle_fillet => run "blend/nist-ftc-11-ap242-bspline-circle-fillet";
+    /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
+    /// B-spline edge that hides a circle, and a line, around a slot's end,
+    /// run on through a kink of 3.9° the vertex's tolerance writes as
+    /// tangent, its junction the two runs' mean ball's arc (ADR-0075).
+    blend_nist_ftc_11_ap242_slot_chain_fillet => run "blend/nist-ftc-11-ap242-slot-chain-fillet";
     /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
     /// cylinder's axis off the plane of the ball's seam, so the loop crosses
     /// the seam at a slant.
     #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md)"]
     regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
-    /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
-    /// B-spline edge that hides a circle, and a line, around a slot's end.
-    #[ignore = "TangentChain(e22–e26, e60, v24): the chain runs on through v24, where the hole f17 runs on from f18 at a convex kink of 3.9° tangent within the vertex's tolerance (ADR-0075); the junction across the kink is plans/tolerant-tangency step 5"]
-    regression_nist_ftc_11_ap242_slot_chain_fillet => run "regression/nist-ftc-11-ap242-slot-chain-fillet";
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
     /// plane meets oblique cylinders.
@@ -1424,8 +1425,9 @@ corpus_tests! {
     /// whose ball misses the vertex, where the stripe stops short and the
     /// edge's remnant runs on (ADR-0074), and a chain on through v115, a
     /// kink tangent within the vertex's tolerance (ADR-0075), refused as
-    /// `TangentChain` until its junction is built; Open CASCADE builds an
-    /// invalid body (ADR-0062, steps 9b and 10a).
+    /// `VertexBlend` at the chain's tangent vertex v31, whose walked runs'
+    /// balls stand apart; Open CASCADE builds an invalid body (ADR-0062,
+    /// steps 9b and 10a).
     blend_nist_ctc_05_ap203_nurbs_torus_fillet => run "blend/nist-ctc-05-ap203-nurbs-torus-fillet";
     /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
     /// face one rational Bézier patch and its vertices' tolerance wider
