@@ -1,6 +1,6 @@
 # Idea: blend-residue-real-parts
 
-- Status: Accepted (A); milestone 1 done (plans/battery-honesty, retired 2026-10-26); M2 done (plans/blend-runs-onto, retired 2026-10-27; the order of M3–M5 below); M3 done (plans/three-edge-run-vertex, retired 2026-10-28); M4–M5 unplanned
+- Status: Accepted (A); milestone 1 done (plans/battery-honesty, retired 2026-10-26); M2 done (plans/blend-runs-onto, retired 2026-10-27; the order of M3–M5 below); M3 done (plans/three-edge-run-vertex, retired 2026-10-28); M4 absorbed by plans/tolerant-tangency; M5 unplanned
 - Raised: 2026-10-26
 - Prompt (verbatim from the human): "blend residue: the 12 parts blocked at fillet"
 
