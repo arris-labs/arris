@@ -1131,6 +1131,15 @@ pub struct Analytic {
     /// `Full` with nothing unchecked as always.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occt_walked: Option<String>,
+    /// Why the checker cannot decide Arris's own result's pairs of a
+    /// walked blend against the faces beside it: the blend narrows toward
+    /// a vanishing end to a sliver within the tolerance of its tangent
+    /// neighbour over a whole patch, which the intersector has no form for
+    /// (ADR-0074, `blend/nist-ctc-05-ap203-nurbs-torus-fillet`). The
+    /// runner's checker stage then leaves the pairs with a NURBS face in
+    /// them undecided, as for an operand read from a file of B-splines.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checker_undecided: Option<String>,
     /// Genus.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genus: Option<i64>,
@@ -1841,6 +1850,9 @@ pub fn lint(dir: &Path) -> Vec<String> {
             if a.degenerate || a.expect_error.is_some() {
                 problem("analytic.measure_differs needs a result Arris builds".into());
             }
+        }
+        if a.checker_undecided.is_some() && (a.degenerate || a.expect_error.is_some()) {
+            problem("analytic.checker_undecided needs a result Arris builds".into());
         }
         if a.occt_file_measure_differs.is_some() && a.measure_differs.is_none() {
             problem("analytic.occt_file_measure_differs needs analytic.measure_differs".into());

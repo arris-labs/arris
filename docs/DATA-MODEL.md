@@ -1977,7 +1977,7 @@ reference tree) mapped onto this representation.
 | # | Invariant | Level |
 |---|---|---|
 | E1 | A non-degenerate edge has a curve and a non-empty range inside the curve's domain (crossing the period at most once) | Fast |
-| E2 | `start == end` exactly when the curve returns to its start over the range within the edge's tolerance: a closed curve names one vertex, an open one two. The geometric match of each end to its vertex is V2's | Fast |
+| E2 | `start == end` exactly when the curve returns to its start over the range within the edge's tolerance: a closed curve names one vertex, an open one two. An edge whose whole range lies within its tolerance of its start never returns to it: a short edge between two vertices, such as the remnant of a blended edge (ADR-0074), is not closed. The geometric match of each end to its vertex is V2's | Fast |
 | E3 | Every edge in a body is used by at least one coedge, or is a free edge of a wire/general body | Fast |
 | E4 | For every coedge, the surface evaluated along the pcurve is within the edge's tolerance of the 3D curve at the same parameter (and the rounding of their coordinates, since a tolerance raised to a measured gap, or a body moved rigidly, leaves it there), at `Precision::check_samples` parameters including both ends — the pcurve and the curve share the edge's parameter (same-parameter, same-range, always) | Fast |
 | E5 | `edge.tolerance ≥ face.tolerance` for every face it bounds; `≤ vertex.tolerance` of both vertices | Fast |

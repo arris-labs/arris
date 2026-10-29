@@ -323,8 +323,8 @@ pub(super) fn build(
     let mut joins = join_blends(
         &mut ctx, &open, &stripes, &rings, &at_vertex, &junctions, &kinks,
     )?;
-    let blends = make_blends(&mut ctx, stripes, &joins)?;
-    pin_kinks(ctx.m, &mut joins.miters, &blends)?;
+    let mut blends = make_blends(&mut ctx, stripes, &joins)?;
+    pin_kinks(ctx.m, &mut joins.miters, &mut blends)?;
     let mut draft = Draft {
         rw: Rewrite::default(),
         cuts: BTreeMap::new(),
@@ -983,6 +983,13 @@ fn add_stripes(
             if let Some(rolled) = &rolled {
                 contact_edges[k] = rolled.contacts[k][0];
                 continue;
+            }
+            // An edge is no wider than its vertices: a contact pinned to a
+            // kink's junction (ADR-0075) widens the vertices it ends at.
+            for end in vertices {
+                if let VertexSpec::New { tolerance, .. } = &mut rw.vertices[end[k]] {
+                    *tolerance = tolerance.max(contact.tolerance);
+                }
             }
             contact_edges[k] = rw.edges.len();
             rw.edges.push((

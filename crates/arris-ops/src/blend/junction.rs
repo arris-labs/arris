@@ -3,7 +3,7 @@
 use arris_math::real;
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_geom::{Curve, Curve2, NurbsCurve2, Surface, pcurve_on};
+use arris_geom::{Curve, Curve2, NurbsCurve2, SECTION_FIT_FRACTION, Surface, pcurve_on};
 use arris_math::{Axis, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec3};
 use arris_topo::{EdgeId, FaceId, Model, VertexId};
 
@@ -278,6 +278,34 @@ pub(super) fn junction(
         _ => return Err(vertex_blend()),
     };
     let runs_tolerance = ra.tolerance.max(rb.tolerance);
+    // Across a kink a walked contact's far end may lie past its face, which
+    // ends short of the vertex by less than the vertex's tolerance: the
+    // contact ends where it leaves the face, on the corner edge.
+    let mut exits: [Option<f64>; 2] = [None; 2];
+    if let Some(within) = kink {
+        for (side, (run, at, far)) in [(a, &mut ra, 1 - ka), (b, &mut rb, 1 - kb)]
+            .into_iter()
+            .enumerate()
+        {
+            let Run::Line(s) = run else {
+                continue;
+            };
+            let Section::Walked { .. } = s.section else {
+                continue;
+            };
+            let inward = if s.start == vertex { 1.0 } else { -1.0 };
+            let Some(t) = last_on_face(m, s, far, at.faces[far], at.t, inward, within)? else {
+                return Err(degenerate(
+                    vec![edges[0], edges[1], v],
+                    Reason::Blend(BlendReason::TangentChain),
+                ));
+            };
+            if t != at.t {
+                at.points[far] = s.lines[far].point(t);
+                exits[side] = Some(t);
+            }
+        }
+    }
     // How far apart the runs may meet: their own tolerance, or across a kink
     // the vertex's.
     let tolerance = kink.map_or(runs_tolerance, |within| within.max(runs_tolerance));
@@ -323,17 +351,17 @@ pub(super) fn junction(
     // Across a kink the contacts on the shared face cross short of the
     // vertex, the balls' gap lying along the edges: they end there, on that
     // face exactly (ADR-0075 §2).
+    // Contacts that do not cross, because the kink is too slight to tell
+    // them from one line, end where they are, and meet if the vertex's
+    // tolerance holds them.
     let crossed = match kink {
-        Some(_) => Some(
-            shared_crossing(
-                [a, b],
-                [ka, kb],
-                [ra.t, rb.t],
-                [ra.points[ka], rb.points[kb]],
-                tolerance,
-                tol,
-            )
-            .ok_or_else(|| refused("a kink's contacts crossing"))?,
+        Some(_) => shared_crossing(
+            [a, b],
+            [ka, kb],
+            [ra.t, rb.t],
+            [ra.points[ka], rb.points[kb]],
+            tolerance,
+            tol,
         ),
         None => None,
     };
@@ -355,11 +383,12 @@ pub(super) fn junction(
         )?,
     };
     // The far contacts meet on the third edge as one ball's would, a kink's
-    // too: its faces there close their loops only at one point.
+    // too: its faces there close their loops only at one point, unless the
+    // kink is too slight for its contacts to cross.
     let p = meet(
         ra.points[1 - ka],
         rb.points[1 - kb],
-        if kink.is_some() {
+        if kink.is_some() && crossed.is_some() {
             runs_tolerance
         } else {
             tolerance
@@ -427,6 +456,11 @@ pub(super) fn junction(
     if let Some(([ta, tb], _)) = crossed {
         (t[0][ka], t[1][kb]) = (ta, tb);
     }
+    for (side, far) in [(0, 1 - ka), (1, 1 - kb)] {
+        if let Some(exit) = exits[side] {
+            t[side][far] = exit;
+        }
+    }
     Ok(Miter {
         edges: [ra.edge, rb.edge],
         shared: [ka, kb],
@@ -454,6 +488,54 @@ pub(super) fn junction(
         },
     })
 }
+
+/// Where the walked stripe `s`'s contact `k` on `face`, running inward from
+/// `t_end` (`inward` ±1 along `t`), is last on its face when its end lies
+/// past it: `t_end` itself if the contact is on the face there, else the
+/// nearest parameter within `reach` of it, found by bisection, where the
+/// contact is on the face within the pcurve's share of the stripe's
+/// tolerance (`SECTION_FIT_FRACTION`); `None` where there
+/// is none. A NURBS face ends in its domain, and a contact that crosses the
+/// corner edge there runs on its extension, off the face.
+fn last_on_face(
+    m: &Model,
+    s: &Stripe,
+    k: usize,
+    face: FaceId,
+    t_end: f64,
+    inward: f64,
+    reach: f64,
+) -> Result<Option<f64>, OpError> {
+    let surface = m.surface(m.face(face)?.surface())?;
+    let on = |t: f64| {
+        surface
+            .project(s.lines[k].point(t))
+            .is_ok_and(|p| p.distance <= SECTION_FIT_FRACTION * s.tolerance)
+    };
+    if on(t_end) {
+        return Ok(Some(t_end));
+    }
+    let at = |i: usize| t_end + inward * reach * (i as f64 / EXIT_SCAN as f64);
+    let Some(first) = (1..=EXIT_SCAN).find(|&i| on(at(i))) else {
+        return Ok(None);
+    };
+    let (mut off, mut inside) = (at(first - 1), at(first));
+    for _ in 0..EXIT_BISECTIONS {
+        let mid = 0.5 * (off + inside);
+        if on(mid) {
+            inside = mid;
+        } else {
+            off = mid;
+        }
+    }
+    Ok(Some(inside))
+}
+
+/// The samples [`last_on_face`] scans inward for a bracket, and the
+/// bisections it then takes: the interval narrows by `2⁻⁴⁰` of the scan's
+/// step, past any tolerance.
+const EXIT_SCAN: usize = 64;
+const EXIT_BISECTIONS: usize = 40;
 
 /// Where the contacts of two stripes on their shared face cross near the
 /// kink: each one's parameter there, from `t`, and the point, both
@@ -517,8 +599,15 @@ const CROSSING_STEPS: usize = 32;
 /// the mean ball's arc projects onto each run's surface beside them. The
 /// arc and the junction's vertices take the distance the pin moves it as
 /// tolerance, within the vertex's: past it, or for a pcurve no pin keeps
-/// exact, `BlendReason::TangentChain` naming both edges and the vertex.
-pub(super) fn pin_kinks(m: &Model, miters: &mut [Miter], blends: &[Blend]) -> Result<(), OpError> {
+/// exact, `BlendReason::TangentChain` naming both edges and the vertex. A
+/// contact on the shared face that ends short of the junction's `q`, the
+/// kink too slight for the contacts to cross, is pinned to `q` as a pcurve
+/// too, its edge taking the shift as tolerance.
+pub(super) fn pin_kinks(
+    m: &Model,
+    miters: &mut [Miter],
+    blends: &mut [Blend],
+) -> Result<(), OpError> {
     // Each kink's two runs, as blends by the miter's side.
     let mut runs: BTreeMap<usize, [Option<usize>; 2]> = BTreeMap::new();
     for (i, blend) in blends.iter().enumerate() {
@@ -557,6 +646,38 @@ pub(super) fn pin_kinks(m: &Model, miters: &mut [Miter], blends: &[Blend]) -> Re
                 .max(distance_on(surface, arc.point(mt.range.hi()), hi));
             mt.on_blend[side] =
                 pinned(arc, [(mt.range.lo(), lo), (mt.range.hi(), hi)]).ok_or_else(refused)?;
+            // Contacts that end beside each other on the shared face, too
+            // slight a kink to cross, end in the junction's `q` as pcurves:
+            // the edge takes the shift as tolerance.
+            let contact = &mut blends[i].contacts[k];
+            if (contact.line.point(mt.t[side][k]) - mt.q).norm() > contact.tolerance {
+                let surface = m.surface(m.face(contact.face)?.surface())?;
+                let end = if (mt.t[side][k] - contact.range.hi()).abs()
+                    < (mt.t[side][k] - contact.range.lo()).abs()
+                {
+                    contact.range.hi()
+                } else {
+                    contact.range.lo()
+                };
+                let other = if end == contact.range.hi() {
+                    contact.range.lo()
+                } else {
+                    contact.range.hi()
+                };
+                let (old, kept) = (contact.on_face.point(end), contact.on_face.point(other));
+                let target = surface.project(mt.q).map_err(|_| refused())?.uv;
+                // In the translate of the face's loop the contact is in.
+                let target = match surface.period()[0] {
+                    Some(period) => Point2::new(
+                        target.x + period * ((old.x - target.x) / period).round(),
+                        target.y,
+                    ),
+                    None => target,
+                };
+                contact.on_face =
+                    pinned(&contact.on_face, [(end, target), (other, kept)]).ok_or_else(refused)?;
+                contact.tolerance = contact.tolerance.max(distance_on(surface, old, target));
+            }
         }
         mt.tolerance += shift;
         mt.q_tolerance = mt.q_tolerance.max(mt.tolerance);
@@ -674,6 +795,87 @@ pub(super) fn leaning_ball(
     })
 }
 
+/// `c*` where the shared face `P` is no plane or `w` no line: the point of
+/// `w_r(s) = w(s) + σ r n(s)`, `n` the far faces' outward normal at `s`,
+/// that stands at `σ r` from `P` along `P`'s normal at its foot (ADR-0072
+/// §1, read along the curve). Secant steps on `s` from the parameter of
+/// `guess` on `w`, which the runs' own balls bound; `None` where they do
+/// not settle, the far faces turn from tangent along `w`, or the foot is
+/// ambiguous.
+#[allow(clippy::too_many_arguments)]
+fn curved_ball(
+    m: &Model,
+    view: &BodyView,
+    face: FaceId,
+    w: &Curve,
+    range: Interval,
+    guess: Point3,
+    radius: f64,
+    convex: bool,
+    far_normal: &dyn Fn(f64) -> Result<Option<UnitVec3>, OpError>,
+    tol: Tolerance,
+) -> Result<Option<Leaning>, OpError> {
+    let sigma = if convex { -1.0 } else { 1.0 };
+    let surface = m.surface(m.face(face)?.surface())?;
+    // The centre at `s`, its foot on `P` and how far it stands from `σ r`
+    // along `P`'s normal there.
+    let at = |s: f64| -> Result<Option<(Point3, Point3, f64)>, OpError> {
+        let Some(n) = far_normal(s)? else {
+            return Ok(None);
+        };
+        let centre = w.point(s) + sigma * radius * n.into_inner();
+        let Ok(foot) = surface.project(centre) else {
+            return Ok(None);
+        };
+        let n_p = view.outward(m, face, foot.uv)?;
+        Ok(Some((
+            centre,
+            foot.point,
+            (centre - foot.point).dot(&n_p) - sigma * radius,
+        )))
+    };
+    let Ok(start) = w.project(guess) else {
+        return Ok(None);
+    };
+    let (mut s0, mut s1) = (start.t, start.t + BALL_SEED * radius);
+    let (Some((_, _, mut g0)), Some((_, _, mut g1))) = (at(s0)?, at(s1)?) else {
+        return Ok(None);
+    };
+    for _ in 0..BALL_STEPS {
+        if g1.abs() <= tol.linear {
+            let Some((centre, q, _)) = at(s1)? else {
+                return Ok(None);
+            };
+            return Ok(Some(Leaning {
+                centre,
+                q,
+                p: w.point(s1),
+            }));
+        }
+        if g1 == g0 {
+            return Ok(None);
+        }
+        let s2 = s1 - g1 * (s1 - s0) / (g1 - g0);
+        if !(s2.is_finite() && range.lo() - radius <= s2 && s2 <= range.hi() + radius) {
+            return Ok(None);
+        }
+        let Some((_, _, g2)) = at(s2)? else {
+            return Ok(None);
+        };
+        (s0, g0, s1, g1) = (s1, g1, s2, g2);
+    }
+    Ok(None)
+}
+
+/// The second secant sample of [`curved_ball`], a step from the first of
+/// this fraction of the radius: a fraction of the ball's size, not a
+/// tolerance.
+const BALL_SEED: f64 = 1e-3;
+
+/// The secant steps [`curved_ball`] takes before giving up: the ball moves
+/// by a fraction of the radius, and the distance is smooth in `s`.
+const BALL_STEPS: usize = 40;
+
 /// Reads both runs of a junction again at the shared ball of a leaning
 /// third edge `w` (ADR-0072): each run's contacts, its ball's centre and its
 /// parameter where the ball is `c*`, `false` where the construction does
@@ -695,37 +897,27 @@ fn leaning(
         return Ok(false);
     };
     let (ka, face) = (shared[0], at[0].faces[shared[0]]);
-    let (Some(centre), Surface::Plane { frame }) =
-        (at[0].centre, m.surface(m.face(face)?.surface())?)
-    else {
+    let Some(centre) = at[0].centre else {
         return Ok(false);
     };
     let radius = (at[0].points[ka] - centre).norm();
-    let n_p = UnitVec3::try_new(view.outward(m, face, Point2::origin())?, 0.0)
-        .ok_or(invariant("a plane's normal"))?;
-    let plane = Axis {
-        origin: frame.origin(),
-        direction: n_p,
-    };
     let edge = m.edge(w)?;
     let Some((curve, range)) = edge.curve() else {
         return Ok(false);
     };
-    let &Curve::Line { origin, direction } = m.curve(curve)? else {
-        return Ok(false);
-    };
-    // The far faces' outward normal at both ends of `w`, one direction
-    // within the tangency the blend allows (ADR-0040).
+    let (shared_surface, w_curve) = (m.surface(m.face(face)?.surface())?, m.curve(curve)?);
+    // The far faces' outward normal at `s` along `w`, one direction within
+    // the tangency the blend allows (ADR-0040).
     let tangency = at[0].tolerance.max(at[1].tolerance).max(edge.tolerance());
-    let mut normal: Option<UnitVec3> = None;
-    for u in view
-        .uses
-        .get(&w)
-        .ok_or(invariant("the junction's corner edge's uses"))?
-    {
-        let pcurve = m.curve2(u.pcurve)?;
-        for t in [range.lo(), range.hi()] {
-            let n = UnitVec3::try_new(view.outward(m, u.face, pcurve.point(t))?, 0.0)
+    let far_normal = |s: f64| -> Result<Option<UnitVec3>, OpError> {
+        let mut normal: Option<UnitVec3> = None;
+        for u in view
+            .uses
+            .get(&w)
+            .ok_or(invariant("the junction's corner edge's uses"))?
+        {
+            let pcurve = m.curve2(u.pcurve)?;
+            let n = UnitVec3::try_new(view.outward(m, u.face, pcurve.point(s))?, 0.0)
                 .ok_or(invariant("a face's normal"))?;
             match normal {
                 None => normal = Some(n),
@@ -738,15 +930,56 @@ fn leaning(
                             tangency,
                             tol,
                         ) => {}
-                Some(_) => return Ok(false),
+                Some(_) => return Ok(None),
             }
         }
-    }
-    let Some(n) = normal else {
-        return Ok(false);
+        Ok(normal)
     };
-    let w_axis = Axis { origin, direction };
-    let Some(ball) = leaning_ball(plane, w_axis, n, radius, at[0].convex, tol.angular) else {
+    let ball = match (shared_surface, w_curve) {
+        (Surface::Plane { frame }, &Curve::Line { origin, direction }) => {
+            let n_p = UnitVec3::try_new(view.outward(m, face, Point2::origin())?, 0.0)
+                .ok_or(invariant("a plane's normal"))?;
+            let plane = Axis {
+                origin: frame.origin(),
+                direction: n_p,
+            };
+            // A line's two ends hold its one direction.
+            let (Some(n), Some(other)) = (far_normal(range.lo())?, far_normal(range.hi())?) else {
+                return Ok(false);
+            };
+            if n.dot(&other) <= 0.0
+                || !tangent_normals(n.into_inner(), other.into_inner(), radius, tangency, tol)
+            {
+                return Ok(false);
+            }
+            leaning_ball(
+                plane,
+                Axis { origin, direction },
+                n,
+                radius,
+                at[0].convex,
+                tol.angular,
+            )
+        }
+        _ => {
+            let Some(guess) = at[0].centre else {
+                return Ok(false);
+            };
+            curved_ball(
+                m,
+                view,
+                face,
+                w_curve,
+                range,
+                guess,
+                radius,
+                at[0].convex,
+                &far_normal,
+                tol,
+            )?
+        }
+    };
+    let Some(ball) = ball else {
         return Ok(false);
     };
     for ((s, at), k) in [sa, sb].into_iter().zip(at).zip(shared) {

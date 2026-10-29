@@ -85,6 +85,19 @@ closes. At `v24` that is `3.6e-4`, against the vertex's `3.6e-3`. A
 crossing that does not settle, a ring as one run, or a pin past the
 vertex's tolerance is `TangentChain` naming both edges and the vertex.
 
+*Amended at plan step 6:* a kink may be too slight for its contacts to
+cross. CTC-05 AP203's `v115` is `7e-6` rad: the contacts on the torus are
+`2.0e-5` apart at their ends and nearly parallel, and the Gauss–Newton
+step has no crossing to find. They then end where they are, and meet within
+the vertex's tolerance, the far ones included (`6.6e-5`). A walked contact
+on a NURBS face that leaves the face's domain before the vertex, `5.7e-5` of
+`t` early at `e256`, ends where it leaves (`last_on_face`), within the
+vertex's tolerance of the end, since beyond it the contact runs on the
+surface's extension, off the face. The contacts on the shared face are
+pinned as pcurves to the junction's `q` like the arc's (`pin_kinks`), the
+contact edges and the vertices they end at taking the shift as tolerance
+(an edge is no wider than its vertices, E5).
+
 **3. What stays.** A kink of four edges, a cusp, and a kink whose end
 across is pierced (FTC-11's `v2`) are read as before.
 `BlendReason::TangentChain` stays the refusal past the vertex's tolerance

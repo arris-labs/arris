@@ -1036,9 +1036,9 @@ corpus_tests! {
     blend_split_rim_disc_chamfer => run "blend/split-rim-disc-chamfer";
     /// A flat running tangentially into a quarter-round of a revolved bend, the
     /// edge along the flat filleted: the chain runs on into the arc between the
-    /// end plane and the torus, a pair with no stripe, and Arris refuses it as
-    /// `Unsupported` where Open CASCADE builds the chain (ADR-0035 §6).
-    blend_chain_through_torus_unsupported => run "blend/chain-through-torus-unsupported";
+    /// end plane and the torus, a walked stripe whose junction with the flat's
+    /// leans along a circle (ADR-0072 as amended), as Open CASCADE builds it.
+    blend_chain_through_torus_fillet => run "blend/chain-through-torus-fillet";
     /// A cylinder's top rim filleted past its radius: the ball's centre circle
     /// is narrower than its tube, a spindle torus, which Arris refuses as
     /// `BlendTooLarge` where Open CASCADE builds it (ADR-0036 §3).

@@ -334,6 +334,13 @@ of the step that made the fixture pass, and a later change to it is a
   change, `L·t` over the generated faces' boundary and `area_rel` of the
   whole, the volume ten times looser in share; the centroid and inertia
   are held to nothing, and `compare.py` holds no measure.
+  `checker_undecided: "why"` says the checker cannot decide Arris's own
+  result's pairs of a walked blend against its neighbours: toward a
+  vanishing end the blend narrows to a sliver within the tolerance of
+  its tangent neighbour over a whole patch, which the intersector has no
+  form for (ADR-0074). The runner's checker stage then leaves every pair
+  with a NURBS face in it undecided, as for an operand read from a file
+  of B-splines; nothing else.
   `step_differs: "why"` says Open CASCADE's *own* STEP of the result does
   not read back as the result — other counts, or another solid — while
   Arris's does (ADR-0023); the text gives both sides in numbers. Only the

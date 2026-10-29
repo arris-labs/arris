@@ -258,7 +258,8 @@ pub(super) fn result_of(fixture: &Fixture, chain: &Chain) -> Result<Body, Corpus
 /// face is held to every row. A blend's leaves only its pairs of two NURBS
 /// faces (`check_leaving_nurbs_blended`): a walked blend against the
 /// analytic faces beside it is decided, but a NURBS face the blend did not
-/// make, its operand's, keeps the read operand's rule. Any other result with them — an
+/// make, its operand's, keeps the read operand's rule; under
+/// `analytic.checker_undecided` it leaves them all. Any other result with them — an
 /// operand read from a file of B-splines — leaves its pairs with one in
 /// them that a tracer refuses (`check_leaving_nurbs`), as the read-back
 /// and the battery do. Returns the result body and the report. Errors:
@@ -272,7 +273,10 @@ pub fn check_stage(fixture: &Fixture, chain: &Chain) -> Result<(Body, Report), C
             step.name() == fixture.recipe.result
                 && matches!(step, Step::Fillet { .. } | Step::Chamfer { .. })
         });
-    let made = chain.steps.get(&chain.result).filter(|_| blended);
+    let made = chain
+        .steps
+        .get(&chain.result)
+        .filter(|_| blended && fixture.recipe.analytic.checker_undecided.is_none());
     let report = if let Some(made) = made {
         check_leaving_nurbs_blended(&fixture.name, &chain.model, body, &made.provenance)?
     } else {

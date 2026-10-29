@@ -1841,21 +1841,17 @@ fn a_contact_missing_a_near_tangent_face_across_chains_through_the_kink() {
 /// runs on (ADR-0074). At the chain's other end, `v115`, the B-spline
 /// face runs on into the cylinder f19 tangent within the vertex's
 /// tolerance and the contact misses it, so the chain runs on through it
-/// (ADR-0075) to `e133` and `e32`, the second oracle's three edges. The
-/// chain's tangent vertex `v31` between those two walked runs is refused
-/// `VertexBlend`: their balls there stand apart, which no shared arc
-/// closes (plans/tolerant-tangency step 6).
+/// (ADR-0075) to `e133` and `e32`, the second oracle's three edges, whose
+/// tangent vertex `v31` is a leaning junction on a cylinder (ADR-0072 as
+/// amended). The body has one blend face per edge: 156 faces become 159.
 #[test]
-fn a_vanishing_end_off_its_vertex_stops_short_and_the_chain_runs_on_to_v31() {
+fn a_vanishing_end_off_its_vertex_stops_short_and_the_chain_runs_through_v31() {
     let dir = fixtures::corpus_root().join("blend/nist-ctc-05-ap203-nurbs-torus-fillet");
-    let err = match corpus::chain(&dir, "default") {
-        Err(corpus::CorpusError::Op { source, .. }) => source,
-        Err(e) => panic!("{e}"),
-        Ok(_) => panic!("e256 filleted alone builds"),
+    let chain = corpus::chain(&dir, "default").expect("e256 filleted alone builds");
+    let faces = |step: &str| {
+        let body = chain.steps[step].body;
+        chain.model.faces(body).unwrap().len()
     };
-    let OpError::Degenerate { reason, .. } = &err else {
-        panic!("{err}");
-    };
-    assert_eq!(*reason, Reason::Blend(BlendReason::VertexBlend), "{err}");
-    assert!(err.to_string().ends_with("(+e32, +e133, +v31)"), "{err}");
+    assert_eq!(faces("part"), 156);
+    assert_eq!(faces("result"), 159);
 }

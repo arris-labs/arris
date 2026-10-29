@@ -11,6 +11,10 @@ use super::Checker;
 use crate::domain::bands;
 use crate::violation::{DegenerateFault, EndMismatch, SeamFault, ToleranceBound, Violation};
 
+/// The interior points of an edge's range that E2 looks at for a stray from
+/// its start: a curve that returns to it leaves its tolerance on the way.
+const E2_SAMPLES: usize = 8;
+
 impl Checker<'_> {
     /// E1–E7.
     pub(crate) fn edge_rows(&mut self) {
@@ -167,12 +171,22 @@ impl Checker<'_> {
     }
 
     /// E2: `start == end` exactly when the curve returns to its start over
-    /// the range, to the edge's tolerance.
+    /// the range, to the edge's tolerance. An edge whose whole range lies
+    /// within that tolerance of its start does not return to it: it is a
+    /// short edge between two vertices, such as the remnant a blend leaves
+    /// of an edge where its faces turn tangent (ADR-0074).
     fn e2_ends(&mut self, edge_id: EdgeId, edge: &Edge, curve: &Curve, range: Interval) {
-        let gap = (curve.point(range.hi()) - curve.point(range.lo())).norm();
+        let start = curve.point(range.lo());
+        let gap = (curve.point(range.hi()) - start).norm();
         let closed = gap <= edge.tolerance();
+        let returns = || {
+            (1..E2_SAMPLES).any(|i| {
+                let t = range.lerp(i as f64 / E2_SAMPLES as f64);
+                (curve.point(t) - start).norm() > edge.tolerance()
+            })
+        };
         let fault = match (closed, edge.start() == edge.end()) {
-            (true, false) => Some(EndMismatch::ClosedWithTwoVertices {
+            (true, false) if returns() => Some(EndMismatch::ClosedWithTwoVertices {
                 start: edge.start(),
                 end: edge.end(),
             }),
@@ -180,7 +194,7 @@ impl Checker<'_> {
                 vertex: edge.start(),
                 gap,
             }),
-            _ => None,
+            (true, false) | (true, true) | (false, false) => None,
         };
         if let Some(fault) = fault {
             self.push(Violation::EdgeEnds {

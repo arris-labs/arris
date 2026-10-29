@@ -126,12 +126,18 @@ robustness or bound has to be established here.
   CASCADE keeps), and its tolerances are the bspline-circle fixture's,
   which share the part. CTC-05 AP203 now stops at `v31` instead
   (`VertexBlend`).
-- [ ] Step 6 **[2]** — CTC-05 AP203 built through v115, checker green at
+- [x] Step 6 **[3]** — CTC-05 AP203 built through v115, checker green at
   `Full`, held to the second oracle's tangent-chain changes under
-  `measure_differs` (`fixtures:` commit). First its tangent vertex `v31`:
-  the walked `e32` and `e133` meet there with balls 8.9e-5 apart and far
-  contacts 1.7e-3 apart. No shared arc closes that, and `leaning` (ADR-0072)
-  does not take it; why is not yet read. This may make the step **[3]**.
+  `measure_differs` (`fixtures:` commit). *Settled:* `v31` is a leaning
+  junction on a cylinder with a circle `w` (ADR-0072 amended,
+  `curved_ball`); `v115` is a kink too slight to cross (ADR-0075 amended:
+  contacts end where they are or where they leave their face, the shared
+  face's pinned); the remnant needed E2 relaxed for a short edge between
+  two vertices (ADR-0074 amended, `DATA-MODEL.md` §E2); the checker leaves
+  the blend's S5 pairs undecided (the flush sliver at the vanishing end),
+  `analytic.checker_undecided`; Open CASCADE's invalid STEP is
+  `occt_step_unread`. Faces 156 → 159 as the second oracle's; the record is
+  imported with the operand (the run's own measures).
 - [ ] Step 7 **[2]** — CTC-05 AP242's e258 past the ceiling (⚠ OPEN 1,
   ADR-0060 amended), a new fixture `blend/nist-ctc-05-ap242-battery-edge-
   fillet`, held likewise. AP242's e256 stays `TangentChain`, its

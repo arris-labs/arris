@@ -87,9 +87,10 @@ replaces the refusal: a junction whose balls already agree in the normal
 plane keeps its result and ids. A square `w` puts `c*` at the normal
 plane's ball, so the two readings agree where both apply.
 
-**5. What stays `VertexBlend`.** A `w` that is not a line (an annulus
-running into a torus, `blend/chain-through-torus-unsupported`); a shared
-face that is not a plane; a `w` parallel to `P` (no `c*`); a walked
+**5. What stays `VertexBlend`.** A `w` parallel to `P` along its whole
+length (no `c*`), or a `c*` the secant steps do not settle (the plan-6
+amendment below takes a `w` that is a curve and a shared face that is no
+plane: the annulus running into a torus, `blend/chain-through-torus-fillet`); a walked
 chamfer's junction at a leaning ruling; the vertex of four where both
 faces turn (ADR-0039) with the same lean.
 
@@ -97,6 +98,15 @@ faces turn (ADR-0039) with the same lean.
 `C` and `w` are `Modified`; the vertex is `Deleted`; the arc and its ends
 `q` and `p` are `Generated` from both edges, as at ADR-0035's junction.
 `Reason` gains no variant.
+
+*Amended at `tolerant-tangency` step 6:* the shared face need not be a plane
+nor `w` a line. CTC-05 AP203's `v31` shares a cylinder, its far faces (a
+plane and a torus) tangent along a circle. `w_r(s) = w(s) + σ r n(s)` is
+then a curve, and `c*` is its point at `σ r` along the shared face's
+normal at its foot (`junction::curved_ball`): secant steps on `s` from the
+parameter of the runs' own ball, the far faces' normal read at `s`. The
+plane and line keep the closed form.
+
 
 ## Consequences
 

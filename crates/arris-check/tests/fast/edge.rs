@@ -157,6 +157,37 @@ fn e2_a_closed_curve_with_two_vertices_and_an_open_one_with_one() {
 }
 
 #[test]
+fn e2_a_short_edge_between_two_vertices_is_not_a_closed_one() {
+    // A box edge of 30 whose tolerance is wider than it is long: its ends
+    // are within the tolerance, but its range never leaves it either, so
+    // it does not return to its start and two vertices are right. The
+    // blend's remnant at a vanishing end is one (ADR-0074).
+    let mut m = Model::default();
+    let b = box40(&mut m);
+    let r = rebuild(
+        &mut m,
+        b,
+        &keep_vertex,
+        &|i, e| {
+            if i == 0 {
+                Edge::new(e.geometry(), e.start(), e.end(), 31.0)
+            } else {
+                e
+            }
+        },
+        &keep_face,
+    );
+    let report = check(&m, r.body, Level::Fast);
+    assert!(
+        !report
+            .violations()
+            .iter()
+            .any(|v| matches!(v, Violation::EdgeEnds { .. })),
+        "{report}"
+    );
+}
+
+#[test]
 fn e3_an_edge_of_a_solid_used_by_no_coedge() {
     let mut m = Model::default();
     let b = box40(&mut m);

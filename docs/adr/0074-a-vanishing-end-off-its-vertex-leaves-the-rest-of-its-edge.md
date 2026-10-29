@@ -54,9 +54,12 @@ Its tolerance is the larger of the edge's own and the arc's farthest point
 from `w`, plus the surface's share of the tolerance (`SECTION_FIT_FRACTION`
 of it, ADR-0062 §1). The share covers the contacts' pcurves, which are
 fitted from the surface's isocurves. E6 holds the degenerate edge's row,
-`1.98e-4` across on AP203, within that tolerance. No checker row bounds an
-edge's length, so a remnant shorter than its vertices' tolerance is
-valid.
+`1.98e-4` across on AP203, within that tolerance. *Amended at plan step 6:*
+E2 did bound an edge's length: an edge whose ends are within its tolerance
+was called closed, and the remnant (`6.6e-3` against `7.74e-3`) with two
+vertices was `ClosedWithTwoVertices`. E2 now calls an edge closed only if
+its range also leaves its tolerance of the start (`DATA-MODEL.md` §E2), so
+a short edge between two vertices is valid.
 
 **3. The remnant.** The edge is cut at `w`. Its stretch from `w` to the
 old vertex is a new edge on the same curve and pcurves, with the edge's

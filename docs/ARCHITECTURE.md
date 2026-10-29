@@ -1014,7 +1014,14 @@ shared face end where they cross, the far ones meet on the corner edge,
 and the junction is the arc of the balls' mean from the one point to the
 other, its pcurve on each blend pinned to that blend's own contacts. The
 arc and its two vertices take half the gap as tolerance, which the
-vertex's bounds; past it, the chain is `TangentChain`.
+vertex's bounds; past it, the chain is `TangentChain`. A kink too slight
+for its contacts to cross (CTC-05's `v115`, `7e-6` rad) ends them where
+they are, a walked contact that leaves a NURBS face's domain before the
+vertex ending where it leaves, and pins the contacts on the shared face to
+the junction's point, their edges and the vertices they end at taking the
+shift as tolerance. Where a tangent vertex's third edge leans and the
+shared face is no plane or the edge no line, the shared ball is found along
+the edge by secant steps (ADR-0072 as amended).
 Each edge keeps its own stripe and its own blend face. At a tangent vertex
 the two stripes are one ball's, and they meet in a *junction*, recorded as
 a miter is: the ball's great circle square to the edges' common direction
