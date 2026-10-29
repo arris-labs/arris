@@ -265,10 +265,13 @@ pub(super) fn result_of(fixture: &Fixture, chain: &Chain) -> Result<Body, Corpus
 /// [`CorpusError::Check`].
 pub fn check_stage(fixture: &Fixture, chain: &Chain) -> Result<(Body, Report), CorpusError> {
     let body = result_of(fixture, chain)?;
-    let blended = (fixture.recipe.steps.iter()).any(|step| {
-        step.name() == fixture.recipe.result
-            && matches!(step, Step::Fillet { .. } | Step::Chamfer { .. })
-    });
+    // A chain the read-back made of the fixture's file names another
+    // result: its provenance is the reader's, whose faces are all `Generated`.
+    let blended = chain.result == fixture.recipe.result
+        && (fixture.recipe.steps.iter()).any(|step| {
+            step.name() == fixture.recipe.result
+                && matches!(step, Step::Fillet { .. } | Step::Chamfer { .. })
+        });
     let made = chain.steps.get(&chain.result).filter(|_| blended);
     let report = if let Some(made) = made {
         check_leaving_nurbs_blended(&fixture.name, &chain.model, body, &made.provenance)?
