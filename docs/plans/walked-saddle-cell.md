@@ -137,10 +137,12 @@ careful, a geometric or numeric case to get right within a given design;
   pass; its ADR-0061 amendment and a geom-level test that fails without it.
   Done: a box of critical points beside the isoline is the isoline's; the
   oblique property at 1000 cases, its allowance off, passes all four shards.
-- [ ] Step 9 **[1]**: the allowances go. `oblique_holds` uses
+- [x] Step 9 **[1]**: the allowances go. `oblique_holds` uses
   `assert_checked` and counts its builds, asserting a floor per shard
   (backlog line 311); `split_prop`'s `saddle_cell` predicate is deleted
   and its blend case takes `nothing`. Both pass at 256 cases.
+  Done: the oblique property at 1000 cases, nothing unchecked, all four
+  shards; the split property at 256.
 - [ ] Step 10 **[1]**: re-run the fetched tier (`tools/real-parts.sh`)
   and the script corpus; the `fillet` row stays 2 of 38 and the scripts'
   refusals at 1, with no checker failure the tracer's rules added. Every
@@ -225,6 +227,8 @@ careful, a geometric or numeric case to get right within a given design;
   held to the tolerance out to the isoline, is the isoline's, as a box of
   turning points is (ADR-0061, amended 2026-10-29). At 1000 cases with no
   S5 allowance all four shards pass, 520 to 530 s each at 16 threads.
-- ⚠ OPEN: the floor of built cases per shard in step 9. The agent picks
-  it from a 1000-case run's count (below half the measured count fails),
-  and records the count here.
+- *Settled* (step 9, 2026-10-29): the floor of built cases per shard is
+  0.45 of the shard's cases. At 1000 cases with no S5 allowance the four
+  shards built 225, 228, 234 and 226 of 250 (507 to 518 s each at 16
+  threads); half the least, 0.90, is the floor, rounded down per shard
+  (1 of 4 at the hook's 16 cases).

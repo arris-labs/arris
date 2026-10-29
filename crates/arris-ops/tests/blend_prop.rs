@@ -3445,8 +3445,8 @@ prop_shards! {
 // the top, and at the vertices where a wall turns into a corner cylinder
 // along a ruling that leans out of the ball's normal plane the table stripe
 // and the walked stripe meet on one ball off the vertex (ADR-0072). Each
-// case builds clean at `Full` (S5 pairs the tracer leaves undecided apart)
-// or is refused by name;
+// case builds clean at `Full`, nothing unchecked, or is refused by name,
+// and each shard builds at least its floor of cases;
 // every arc of radius `r` the blend makes has its centre at `r` from the
 // tilted plane and at `r` from the ruling of one of the corner cylinders'
 // eight tangents with the walls.
@@ -3568,26 +3568,21 @@ impl Oblique {
     }
 }
 
-fn oblique_holds(case: Oblique) -> Result<(), TestCaseError> {
+/// Whether `case` built: `false` for a refusal by name, an error for
+/// anything else that is not as the property says.
+fn oblique_holds(case: Oblique) -> Result<bool, TestCaseError> {
     let mut m = Model::default();
     let (part, at) = case.build(&mut m)?;
     let edge = edge_near(&m, part, at)?;
     let (blended, p) = match fillet(&mut m, part, &[edge], case.r) {
         Ok(built) => built,
-        Err(OpError::Degenerate { .. } | OpError::Unsupported { .. }) => return Ok(()),
+        Err(OpError::Degenerate { .. } | OpError::Unsupported { .. }) => return Ok(false),
         Err(e) => return Err(fail(format!("fillet of {case:?}: {e}"))),
     };
-    // Clean at `Full`: no violation. Where a walked stripe meets a cylinder
-    // or a plane tangent along its contact the tracer may leave the pair
-    // undecided at S5 (docs/BACKLOG.md, the saddle cell of a walked blend
-    // beside a B-spline wall); no other row is left unchecked.
-    let report = check(&m, blended, Level::Full);
-    prop_assert!(report.is_ok(), "{}", report);
-    prop_assert!(
-        report.unchecked().iter().all(|u| u.code() == "S5"),
-        "only S5 pairs may be undecided\n{}",
-        report
-    );
+    // Clean at `Full`: every pair the walked stripes make, against the
+    // walls, the corner cylinders and the tilted plane, decided
+    // (ADR-0061).
+    assert_checked(&check(&m, blended, Level::Full))?;
     audit(&m, &[part], blended, &p).map_err(|e| fail(format!("provenance: {e}")))?;
     // The arcs: each circle of radius `r` has its centre at `r` from the
     // tilted plane and from one of the rulings, in the frame of the case.
@@ -3628,27 +3623,89 @@ fn oblique_holds(case: Oblique) -> Result<(), TestCaseError> {
         "{arcs} arcs of radius {} for 8 junctions",
         case.r
     );
-    Ok(())
+    Ok(true)
 }
 
-prop_shards! {
-    /// A rounded block or pocket at a random tilt of 5° to 40°, corner and
-    /// fillet radius and pose: the junctions at leaning rulings meet on
-    /// one ball off the vertex.
-    oblique_chains_meet_on_the_rulings_offset
-        [shard_0 shard_1 shard_2 shard_3]
-        (case) = (
-            prop::finite_f64(3.0..=5.0),
-            prop::finite_f64(1.5..=2.5),
-            prop::finite_f64(0.3..=0.6),
-            prop::finite_f64(5.0..=40.0),
-            prop::finite_f64(0.1..=0.25),
-            any::<bool>(),
-            prop::pose(),
-        ) => {
-            let (length, width, corner, tilt, r, concave, pose) = case;
-            oblique_holds(Oblique { length, width, corner, tilt: tilt.to_radians(), r, concave, pose })
-        }
+/// A rounded block or pocket at a random tilt of 5° to 40°, corner and
+/// fillet radius and pose: the junctions at leaning rulings meet on one
+/// ball off the vertex. A refusal by name passes a case, so each shard
+/// also builds at least `BUILT_FLOOR` of its cases: a regression that
+/// refused every pose would otherwise pass with nothing built.
+mod oblique_chains_meet_on_the_rulings_offset {
+    use super::*;
+    use std::cell::Cell;
+
+    const SHARDS: u32 = 4;
+
+    /// The share of a shard's cases that must build: half the least a
+    /// shard of a 1000-case run built, 225 of 250 (225 to 234,
+    /// plans/walked-saddle-cell step 9).
+    const BUILT_FLOOR: f64 = 0.45;
+
+    thread_local! {
+        /// The cases this thread's shard built; the runner calls the
+        /// property on the shard's own thread (no fork, no timeout).
+        static BUILT: Cell<u32> = const { Cell::new(0) };
+    }
+
+    fn shard(index: u32) {
+        BUILT.set(0);
+        prop::check_shard(
+            index,
+            SHARDS,
+            (
+                prop::finite_f64(3.0..=5.0),
+                prop::finite_f64(1.5..=2.5),
+                prop::finite_f64(0.3..=0.6),
+                prop::finite_f64(5.0..=40.0),
+                prop::finite_f64(0.1..=0.25),
+                any::<bool>(),
+                prop::pose(),
+            ),
+            |(length, width, corner, tilt, r, concave, pose)| {
+                let built = oblique_holds(Oblique {
+                    length,
+                    width,
+                    corner,
+                    tilt: tilt.to_radians(),
+                    r,
+                    concave,
+                    pose,
+                })?;
+                if built {
+                    BUILT.set(BUILT.get() + 1);
+                }
+                Ok(())
+            },
+        );
+        let cases = prop::cases_per_shard(SHARDS);
+        let built = BUILT.get();
+        let floor = (BUILT_FLOOR * f64::from(cases)).floor();
+        assert!(
+            f64::from(built) >= floor,
+            "shard {index} built {built} of {cases} cases, under its floor of {floor}"
+        );
+    }
+
+    #[test]
+    fn shard_0() {
+        shard(0);
+    }
+
+    #[test]
+    fn shard_1() {
+        shard(1);
+    }
+
+    #[test]
+    fn shard_2() {
+        shard(2);
+    }
+
+    #[test]
+    fn shard_3() {
+        shard(3);
+    }
 }
 
 /// A rounded block under a tilted top at 31°, found by
