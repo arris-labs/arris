@@ -24,6 +24,9 @@ into its version (ADR-0027).
   straight run and the round run meet on one ball just off the vertex.
   A leaning line that is not straight, or a vertex where four edges
   meet, is still refused `VertexBlend`.
+- A fillet round a pocket or a block under a slanted face, and a fillet
+  chain of skew junctions on a part read from a file, now pass the
+  checker at `Full`; before, it left face pairs undecided or refused them.
 
 ### Breaking
 

@@ -3639,7 +3639,7 @@ mod oblique_chains_meet_on_the_rulings_offset {
 
     /// The share of a shard's cases that must build: half the least a
     /// shard of a 1000-case run built, 225 of 250 (225 to 234,
-    /// plans/walked-saddle-cell step 9).
+    /// walked-saddle-cell, step 9).
     const BUILT_FLOOR: f64 = 0.45;
 
     thread_local! {
@@ -3710,7 +3710,7 @@ mod oblique_chains_meet_on_the_rulings_offset {
 
 /// A rounded block under a tilted top at 31°, found by
 /// `oblique_chains_meet_on_the_rulings_offset` once its S5 allowance is
-/// removed (1000 cases, plans/walked-saddle-cell step 6): a walked skin
+/// removed (1000 cases, walked-saddle-cell, step 6): a walked skin
 /// tangent to its table cylinder along the junction's arc, whose slope
 /// across the isoline, measured as if dropped over the whole domain, was
 /// past the tangency's bound, so the line was divided out as a crossing
@@ -3743,7 +3743,7 @@ fn an_oblique_fillet_whose_skin_is_tangent_to_its_table_cylinder_is_checked() {
 
 /// A rounded block under a tilted top at 5.1°, found by
 /// `oblique_chains_meet_on_the_rulings_offset` once its S5 allowance is
-/// removed (1000 cases, plans/walked-saddle-cell step 7): two planes of the
+/// removed (1000 cases, walked-saddle-cell, step 7): two planes of the
 /// block against two walked faces of the fillet, whose sections are
 /// slivers round the skin's corner touch, one end on its edge `u = 0`,
 /// which the tracer refused as `UnresolvedTurning` (ADR-0061, amended

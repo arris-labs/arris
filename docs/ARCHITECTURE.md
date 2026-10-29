@@ -1596,7 +1596,8 @@ NURBS surface against an analytic one is traced in the NURBS surface's own
 (u, v), as a torus is; two NURBS surfaces take the marcher (`march`: seeds
 certified by `bernstein_n`, the walk in both surfaces' (u, v), ADR-0068),
 with the NURBS curve arms in `spline_nurbs`; analytic pairs never route
-through it.
+through it. A walked skin's corner saddle, its arc knot and its tangent
+arc are decided at `Full` (ADR-0061).
 
 ## Tessellation
 

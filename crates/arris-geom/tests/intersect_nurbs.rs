@@ -5,7 +5,7 @@
 //! the pole as a point, a meridian met beside its pole, a saddle a hair
 //! past the domain's edge, and two NURBS surfaces still `Unsupported`.
 //! Walked blends from the corpus's recipes against the faces beside them
-//! (plans/walked-saddle-cell): a saddle at a corner of the walked skin, and
+//! (walked-saddle-cell): a saddle at a corner of the walked skin, and
 //! a section across the skin's arc knot.
 //! `tests/oracle.rs` holds the same section to Open CASCADE's.
 

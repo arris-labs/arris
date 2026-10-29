@@ -900,6 +900,13 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   the ruling's offset; CTC-02 AP242 and FTC-07 AP242 build their `fillet`
   stage. The torus half, a vertex of four edges and the seam stay
   `VertexBlend`.
+- [x] The saddle cell of a walked blend beside a B-spline wall: **done
+  2026-10-29** (`walked-saddle-cell`, ADR-0061 amended five times). A
+  walked skin's corner saddle, its arc knot, its tangent arc, a touch on
+  its edge and a box of critical points beside its isoline are decided at
+  `Full`; CTC-02 AP242's ellipse chain and the S-bend under an oblique top
+  are built and checked (`blend/`), the S-bend's f37/f38 and STC-07
+  AP242's four cylinder pairs waiting.
 - Corners the closed forms do not cover: a walked chain junction on a
   seam (`VertexBlend`), the hinge leaf's knuckle joins, a cusp whose two
   edges are both blended, as a fitted corner patch.
