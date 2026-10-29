@@ -143,10 +143,15 @@ careful, a geometric or numeric case to get right within a given design;
   and its blend case takes `nothing`. Both pass at 256 cases.
   Done: the oblique property at 1000 cases, nothing unchecked, all four
   shards; the split property at 256.
-- [ ] Step 10 **[1]**: re-run the fetched tier (`tools/real-parts.sh`)
+- [x] Step 10 **[1]**: re-run the fetched tier (`tools/real-parts.sh`)
   and the script corpus; the `fillet` row stays 2 of 38 and the scripts'
   refusals at 1, with no checker failure the tracer's rules added. Every
   walked fixture's blessed dump unchanged (a changed one says why).
+  Done: the tier's histogram and fillet-by-part identical to step 8's
+  (`fillet` 2 of 38); its one failure not excluded is CTC-02 AP242 e2's
+  `drill_x` counts, as before the plan (backlog). The scripts: 22 pass
+  against their outcomes, 1 `fillet` refusal (`VertexBlend`). The corpus:
+  528 pass, no dump changed.
 
 ## Acceptance
 - Both fixtures pass under `blend/` in `crates/arris/tests/corpus.rs` at
