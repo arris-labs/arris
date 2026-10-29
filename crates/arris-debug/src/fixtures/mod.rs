@@ -1361,6 +1361,27 @@ pub struct SecondMeasured {
     /// The inertia tensor about the centroid at unit density, products
     /// negated as `expected.json` writes them.
     pub inertia: [[f64; 3]; 3],
+    /// The second kernel's measures of the operand it was given, where
+    /// the run recorded them. With them the record is a record of
+    /// changes: Arris's `result − operand` is held to the record's, each
+    /// kernel measuring its own exact bodies (ADR-0073 as amended).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operand: Option<SecondOperand>,
+}
+
+/// A second kernel's measures of the operand of a [`SecondMeasured`]'s
+/// run, in the fixture's units.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SecondOperand {
+    /// Volume.
+    pub volume: f64,
+    /// Area.
+    pub area: f64,
+    /// Centroid.
+    pub centroid: [f64; 3],
+    /// The inertia tensor about the centroid at unit density, products
+    /// negated as `expected.json` writes them.
+    pub inertia: [[f64; 3]; 3],
 }
 
 /// A loaded fixture directory.

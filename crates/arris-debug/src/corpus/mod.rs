@@ -35,8 +35,8 @@ use crate::dump::dump_text;
 use crate::fixtures::geom::{self as geom_spec, build_profile};
 use crate::fixtures::{
     self, Class, Counts, ExpectError, Expected, ExprError, Fixture, FixtureError, Measured, Num,
-    PathSegment as RecipeSegment, Recipe, Rotate, SECOND_ORACLE, ShellSide, Step, SweepLaw,
-    SweepPath, Tolerances,
+    PathSegment as RecipeSegment, Recipe, Rotate, SECOND_ORACLE, SecondMeasured, SecondOperand,
+    ShellSide, Step, SweepLaw, SweepPath, Tolerances,
 };
 use crate::oracle::{self, OracleError};
 use crate::polyhedron::PolyhedronError;

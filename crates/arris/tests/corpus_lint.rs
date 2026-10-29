@@ -202,7 +202,8 @@ fn measure_differs_needs_every_closed_form_and_a_difference() {
 /// of the crossing-cylinder fuse, its closed forms of the measurements
 /// dropped, carries a record that is stale, unclaimed, beside closed
 /// forms, or the oracle's own numbers, each a problem, and one whose
-/// volume differs, which is clean.
+/// volume differs, which is clean, with or without the operand's
+/// measures beside it (a record of changes).
 #[test]
 fn a_second_oracle_record_stands_in_for_the_closed_forms() {
     let edit = |tag: &str, f: &dyn Fn(&mut serde_json::Value, &mut serde_json::Value)| {
@@ -246,6 +247,18 @@ fn a_second_oracle_record_stands_in_for_the_closed_forms() {
     let problems = edit("second-differs", &|a, r| {
         claim(a);
         off(r);
+    });
+    assert!(problems.is_empty(), "{problems:?}");
+    // A record of changes, the operand's measures beside the result's,
+    // is read and held to the same claim.
+    let problems = edit("second-change", &|a, r| {
+        claim(a);
+        off(r);
+        let m = r["results"]["default"].clone();
+        r["results"]["default"]["operand"] = serde_json::json!({
+            "volume": m["volume"], "area": m["area"],
+            "centroid": m["centroid"], "inertia": m["inertia"],
+        });
     });
     assert!(problems.is_empty(), "{problems:?}");
     only(

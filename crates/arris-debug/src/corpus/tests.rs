@@ -243,6 +243,7 @@ fn measure_differs_holds_the_stage_to_a_second_oracle() {
         area: 3.0,
         centroid: [0.5, 0.0, 0.0],
         inertia: [[1.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 3.0]],
+        operand: None,
     };
     fixture.second_oracle = Some(fixtures::SecondOracle {
         recipe_sha256: fixture.recipe_sha256.clone(),
@@ -270,6 +271,104 @@ fn measure_differs_holds_the_stage_to_a_second_oracle() {
     assert_eq!(
         what,
         "second_oracle.json has no result for variant \"turned\""
+    );
+}
+
+/// A record of changes holds Arris's `result − operand` to the second
+/// kernel's, each measured on its own bodies (ADR-0073 as amended): a
+/// second kernel that reads the part 1e-3 larger in area still holds the
+/// fillet's change, which an absolute record of the same run cannot, and
+/// the change is held to a hundredth in area and a tenth in volume.
+#[test]
+fn a_record_of_changes_holds_the_result_minus_the_operand() {
+    use std::f64::consts::PI;
+    let dir = fixtures::corpus_root().join("blend/box-edge-fillet");
+    let mut fixture = fixtures::load(&dir).unwrap();
+    let chain = chain_of(&fixture, "default").unwrap();
+    let expected = fixture.expected.results["default"].clone();
+    fixture.recipe.analytic.measure_differs = Some("a test".into());
+    // The fillet's closed-form change at r 0.2, on a part the second
+    // kernel measures 1e-3 off in area and 2e-3 in volume.
+    let r: f64 = 0.2;
+    let (da, dv) = (
+        -4.0 * r - 2.0 * (1.0 - PI / 4.0) * r * r + PI * r,
+        -2.0 * (1.0 - PI / 4.0) * r * r,
+    );
+    let operand = fixtures::SecondOperand {
+        volume: 8.002,
+        area: 24.001,
+        centroid: [1.0; 3],
+        inertia: [
+            [16.0 / 3.0, 0.0, 0.0],
+            [0.0, 16.0 / 3.0, 0.0],
+            [0.0, 0.0, 16.0 / 3.0],
+        ],
+    };
+    let record =
+        |area: f64, volume: f64, operand: Option<fixtures::SecondOperand>| fixtures::SecondOracle {
+            recipe_sha256: fixture.recipe_sha256.clone(),
+            results: BTreeMap::from([(
+                "default".to_string(),
+                fixtures::SecondMeasured {
+                    source: "1.0".into(),
+                    run: "abc1234".into(),
+                    accuracy: 1.0,
+                    scale: 1.0,
+                    volume,
+                    area,
+                    centroid: [1.0; 3],
+                    inertia: operand.as_ref().map_or([[0.0; 3]; 3], |o| o.inertia),
+                    operand,
+                },
+            )]),
+        };
+    let held = |area: f64, volume: f64, operand: Option<fixtures::SecondOperand>| {
+        let mut f = fixture.clone();
+        f.second_oracle = Some(record(area, volume, operand));
+        measure_stage(&f, &chain, &expected)
+    };
+    let (a, v) = (operand.area + da, operand.volume + dv);
+    let target = held(a, v, Some(operand.clone())).expect("the change is the fillet's");
+    assert_eq!(target.by, "the operand's plus the second oracle's change");
+    assert!((target.measured.area.unwrap() - (24.0 + da)).abs() < 1e-12);
+    assert_eq!(
+        (target.measured.centroid, target.measured.inertia),
+        (None, None)
+    );
+    // The same run's result alone carries its reading of the part.
+    let Err(CorpusError::Measure { what, .. }) = held(a, v, None) else {
+        panic!("an absolute record of a part read off holds the result off");
+    };
+    assert!(what.starts_with("volume "), "{what}");
+    // A hundredth of the area's change, and a tenth of the volume's.
+    assert!(held(a + 0.005 * da, v, Some(operand.clone())).is_ok());
+    let Err(CorpusError::Measure { what, .. }) = held(a + 0.02 * da, v, Some(operand.clone()))
+    else {
+        panic!("a change 2% off in area is held");
+    };
+    assert!(what.starts_with("area "), "{what}");
+    assert!(held(a, v + 0.05 * dv, Some(operand.clone())).is_ok());
+    let Err(CorpusError::Measure { what, .. }) = held(a, v + 0.2 * dv, Some(operand.clone()))
+    else {
+        panic!("a change 20% off in volume is held");
+    };
+    assert!(what.starts_with("volume "), "{what}");
+    // A result step of two operands has no one operand to change.
+    let mut fuse =
+        fixtures::load(&fixtures::corpus_root().join("boolean/cross-cylinders-fuse")).unwrap();
+    let two = chain_of(&fuse, "default").unwrap();
+    fuse.recipe.analytic.measure_differs = Some("a test".into());
+    fuse.second_oracle = Some(fixtures::SecondOracle {
+        recipe_sha256: fuse.recipe_sha256.clone(),
+        ..record(a, v, Some(operand))
+    });
+    let expected = fuse.expected.results["default"].clone();
+    let Err(CorpusError::Measure { what, .. }) = measure_target(&fuse, &two, &expected) else {
+        panic!("a boolean's change has no one operand");
+    };
+    assert!(
+        what.starts_with("a record of changes needs a result step of one operand"),
+        "{what}"
     );
 }
 

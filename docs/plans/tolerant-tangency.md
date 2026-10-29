@@ -61,7 +61,7 @@ it is today.
 - **ADR-0073 amendment, a record of changes.** `second_oracle.json` may
   hold the operand's measures beside the result's. With them, the fixture
   holds Arris's `result − part` to the record's `result − part`. Area is
-  held first, at a tolerance from the stripe (⚠ OPEN 2), and volume looser.
+  held first, at a tolerance from the stripe (OPEN 2, settled), and volume looser.
   Each kernel measures its own exact bodies, never a read through STEP
   (the report's 1–2 mm² drift on CTC-05). `tools/oracle/second_oracle.py`
   writes the operand's values, and `arris-debug`'s measure stage reads
@@ -99,10 +99,13 @@ robustness or bound has to be established here.
   3 edges, faces 156 → 159, dA −0.11878, dV −0.23780 (AP242's e258:
   dA −0.03770, dV −0.02452). The remnant's assembly (`remnant_edges`, the
   faces' split pieces) builds no body until then: step 6 is its test.
-- [ ] Step 3 **[2]** — The ADR-0073 amendment: a record of changes, the
+- [x] Step 3 **[2]** — The ADR-0073 amendment: a record of changes, the
   tool and the measure stage, and `compare.py`. Test: the four existing
   records unchanged, and a change-record fixture held and failing when its
-  delta is perturbed.
+  delta is perturbed. *Settled:* the change holds volume and area only;
+  `compare.py` holds counts, genus and probes, no measure. The runs'
+  record writer (outside this repo) gains `operand` from the run's own
+  measures of its operand before steps 6–7 import.
 - [ ] Step 4 **[3]** — The chain walk through a vertex tangent within its
   tolerance (ADR-0075's selection; write ADR-0075): FTC-11's v24 and
   CTC-05's v115. Test: each chain names the edges up to where it next ends.
@@ -166,10 +169,10 @@ refusing, and no panic. `tools/full-gate.sh` is green.
   operand vertex's tolerance may take up to that vertex's tolerance: the
   read already recorded that the faces meet only that well there, and the
   operation adds no uncertainty of its own.
-- ⚠ OPEN 2 (agent, step 3): the tolerance on a change. I'd use area within
-  the larger of 1e-2 of the change and `τ × the stripe's length`, and
-  volume within 10× that, the report's area-first finding. The pick is
-  recorded in the amendment.
+- ⚠ OPEN 2 — *Settled at step 3:* area within the largest of 1e-2 of the
+  change, `L·t` over the generated faces' boundary (its largest edge or
+  vertex tolerance `t`), and the fixture's `area_rel` of the whole; volume
+  at 10× the area's share. Recorded in ADR-0073's amendment.
 - ⚠ OPEN 3 — *Settled at step 1:* the second oracle refuses FTC-11 at
   5.73° as well, but Open CASCADE's slot results pass `BRepCheck`, so it
   still blocks (ADR-0026) and steps 4–5 stay. Step 4 starts from the

@@ -40,7 +40,9 @@ reasons are in `SEED.md` §9.
   form instead, with ADR-0015's evidence; the oracle's values stay as the
   record. Where no closed form exists (a walked blend), a second oracle's
   record, imported by a tool, takes its place, with evidence that it is
-  right where Open CASCADE is not (ADR-0073).
+  right where Open CASCADE is not (ADR-0073). On a real part the record
+  holds the change, `result − operand`, each kernel measuring its own
+  bodies.
 - **Property tests over hand-picked cases**: random operands in random
   poses held to algebraic identities; a hand-picked case is a regression
   fixture, not coverage.

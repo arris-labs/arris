@@ -325,6 +325,15 @@ of the step that made the fixture pass, and a later change to it is a
   `compare.py` hold Arris to the record, and the read-back stages hold
   Arris's reading of Open CASCADE's file to Open CASCADE's own reading
   of it (`occt_step.py --measured`), not to its shape in memory.
+  A result in the record that carries `operand`, the second kernel's
+  measures of the operand it was given, is a **record of changes**
+  (ADR-0073 as amended), for a real part whose two readings differ by
+  more than the operation changes: the runner holds Arris's volume and
+  area to its own measures of the result step's one operand plus the
+  record's `result − operand`, the area within the largest of 1e-2 of the
+  change, `L·t` over the generated faces' boundary and `area_rel` of the
+  whole, the volume ten times looser in share; the centroid and inertia
+  are held to nothing, and `compare.py` holds no measure.
   `step_differs: "why"` says Open CASCADE's *own* STEP of the result does
   not read back as the result — other counts, or another solid — while
   Arris's does (ADR-0023); the text gives both sides in numbers. Only the

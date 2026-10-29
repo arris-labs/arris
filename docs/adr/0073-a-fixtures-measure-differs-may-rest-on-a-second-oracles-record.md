@@ -129,6 +129,40 @@ which kernel is right.
 - Should a future Open CASCADE build the corners on the ball, the lint
   fails the claim, as ADR-0015's does, and the record is removed.
 
+## Amendments
+
+- **A record of changes (2026-10-29, plans/tolerant-tangency step 3).**
+  §5 left a committed real part to M4. On a real part both kernels read a
+  file whose faces meet only to its tolerances, and each measures the part
+  itself its own way: a fillet's change on CTC-05 is 1e-7 to 3e-9 of the
+  part's area, below what the two readings of the part agree to, and a
+  read through STEP drifts 1–2 mm² more. So a result in the record may
+  carry `operand`: the second kernel's volume, area, centroid and inertia
+  of the operand it was given, imported by the tool beside the result's,
+  divided by the same scale. With it:
+  - The measure stage holds Arris's result's volume and area to Arris's
+    own measures of the result step's one operand plus the record's
+    `result − operand`. A result step of other than one operand is an
+    error. The mesh's volume check takes that volume. The centroid and
+    inertia are held to nothing: the change moves them by less than the
+    two readings of the part differ.
+  - The tolerance: the area's change within the largest of 1e-2 of it,
+    `L·t` over the boundary of the faces the result step generated (total
+    length `L`, the largest edge or vertex tolerance on it `t`: ADR-0023's
+    first-order bound, taken over the change alone), and the fixture's
+    `area_rel` of the whole. The volume's change is held at ten times the
+    share of its change the area's tolerance allows, and never closer
+    than the fixture's `volume_rel` of the whole: at accuracy 1.0 the
+    second kernel's area is the closer of its two measures.
+  - `compare.py` holds counts, genus and probes, and no measure. A change
+    is measured by each kernel on its own exact bodies, and the file it
+    reads is neither.
+  - §2's single source, §3's lint and §4's evidence hold as written: the
+    lint's claim compares the record's result with Open CASCADE's.
+  - Rejected: the result's absolute measures within the part's own
+    tolerance (`within_own_tolerance`). `L·t` over CTC-05's whole
+    boundary is far above the change, so any stripe, or none, would pass.
+
 ## Alternatives considered
 
 - **Closed forms for the corner.** There are none: the blend of a

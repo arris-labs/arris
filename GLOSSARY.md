@@ -220,7 +220,9 @@ there is one: `measure_differs`, ADR-0015)
 A second commercial kernel run as a black box on an Arris-authored
 recipe, its measurements imported into a fixture's `second_oracle.json`
 by a tool (ADR-0073). It stands in for closed forms under
-`measure_differs` where the result has none.
+`measure_differs` where the result has none. A **record of changes**
+holds the operand's measures beside the result's, and Arris's
+`result − operand` is held to its own (a real part, ADR-0073 as amended).
 
 **Corpus**:
 All fixtures, run by the corpus runner one test each.

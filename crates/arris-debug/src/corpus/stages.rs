@@ -368,7 +368,8 @@ pub(super) fn reads_a_file(fixture: &Fixture) -> bool {
 /// forms (ADR-0015): volume, area, centroid and the inertia tensor, each
 /// within the fixture's tolerance for it — widened to the result's own
 /// ([`within_own_tolerance`]) where the recipe reads a file's solid, a
-/// `step` operand. Returns the [`Target`] held to.
+/// `step` operand, or held at [`change_tolerances`] under a second
+/// oracle's record of changes. Returns the [`Target`] held to.
 /// Errors: [`CorpusError::Measure`] naming the quantity.
 pub fn measure_stage(
     fixture: &Fixture,
@@ -381,17 +382,167 @@ pub fn measure_stage(
         fixture: fixture.name.clone(),
         what,
     };
-    // A recipe on a file's solid holds its result as the part's own
-    // reading and battery hold it: within the tolerances the file gave
-    // the body, which a kernel-built primitive's defaults do not size
-    // (ADR-0023, ADR-0026 §6).
-    let tolerances = if reads_a_file(fixture) {
+    // A record of changes is held at the change's own tolerances: the
+    // part's tolerance cancels in a change each kernel measures on its
+    // own bodies (ADR-0073 as amended). Otherwise a recipe on a file's
+    // solid holds its result as the part's own reading and battery hold
+    // it: within the tolerances the file gave the body, which a
+    // kernel-built primitive's defaults do not size (ADR-0023, ADR-0026
+    // §6).
+    let tolerances = if let Some((held, operand)) = change_record(fixture, chain) {
+        change_tolerances(fixture, chain, &measured, held, operand).map_err(fail)?
+    } else if reads_a_file(fixture) {
         within_own_tolerance(&fixture.recipe.tolerances, &chain.model, body).map_err(fail)?
     } else {
         fixture.recipe.tolerances
     };
     compare_mass(&chain.model, body, &measured, by, &tolerances).map_err(fail)?;
     Ok(Target { measured, by })
+}
+
+/// How closely a record of changes holds the area's change: this share
+/// of it. The second kernel measures at accuracy 1.0 to about this, and
+/// the change is all a fixture on a real part can compare (ADR-0073 as
+/// amended).
+pub(super) const CHANGE_AREA_SHARE: f64 = 1e-2;
+
+/// How much looser a record of changes holds the volume's change than
+/// its area's, share for share: the second kernel's volume at accuracy
+/// 1.0 is the less accurate of the two (ADR-0073 as amended).
+pub(super) const CHANGE_VOLUME_FACTOR: f64 = 10.0;
+
+/// The variant's result in a second oracle's record of changes, and the
+/// operand's measures beside it, where the fixture is held to one: under
+/// `analytic.measure_differs`, a record whose result for the chain's
+/// variant carries `operand`.
+pub(super) fn change_record<'a>(
+    fixture: &'a Fixture,
+    chain: &Chain,
+) -> Option<(&'a SecondMeasured, &'a SecondOperand)> {
+    fixture.recipe.analytic.measure_differs.as_ref()?;
+    let held = fixture
+        .second_oracle
+        .as_ref()?
+        .results
+        .get(&chain.variant)?;
+    Some((held, held.operand.as_ref()?))
+}
+
+/// The volume and area of the result step's one operand, as Arris built
+/// it: what a record of changes adds the second oracle's change to.
+/// Errors: [`CorpusError::Measure`] for a result step of other than one
+/// operand, or an operand `mass_properties` refuses.
+pub(super) fn operand_measures(
+    fixture: &Fixture,
+    chain: &Chain,
+) -> Result<(f64, f64), CorpusError> {
+    let fail = |what| CorpusError::Measure {
+        fixture: fixture.name.clone(),
+        what,
+    };
+    let made = chain
+        .steps
+        .get(&chain.result)
+        .ok_or_else(|| fail(format!("the result step {:?} was not built", chain.result)))?;
+    let [operand] = made.inputs[..] else {
+        return Err(fail(format!(
+            "a record of changes needs a result step of one operand; {:?} took {}",
+            chain.result,
+            made.inputs.len()
+        )));
+    };
+    let found = mass_properties(&chain.model, operand).map_err(|e| fail(e.to_string()))?;
+    Ok((found.volume, found.area))
+}
+
+/// The tolerances a record of changes holds the result's volume and area
+/// at, as shares of `target`, Arris's operand plus the record's change.
+/// The area's change is held within the largest of
+/// [`CHANGE_AREA_SHARE`] of it, `L·t` over the boundary of the faces the
+/// result step generated (edges of total length `L`, the largest
+/// tolerance on them `t`: where those faces stand is known to `t`), and
+/// the fixture's own `area_rel` of the whole. The volume's change is held
+/// within [`CHANGE_VOLUME_FACTOR`] times the share of the area's change
+/// that tolerance allows, and never closer than the fixture's
+/// `volume_rel` of the whole. The rest are the fixture's. Errors: what the model refuses,
+/// said in words.
+pub(super) fn change_tolerances(
+    fixture: &Fixture,
+    chain: &Chain,
+    target: &Measured,
+    held: &SecondMeasured,
+    operand: &SecondOperand,
+) -> Result<Tolerances, String> {
+    let base = fixture.recipe.tolerances;
+    let made = (chain.steps.get(&chain.result))
+        .ok_or_else(|| format!("the result step {:?} was not built", chain.result))?;
+    let (length, t) = generated_boundary(&chain.model, &made.provenance)?;
+    let (area, volume) = (
+        target.area.unwrap_or_default().abs(),
+        target.volume.unwrap_or_default().abs(),
+    );
+    let (da, dv) = (
+        (held.area - operand.area).abs(),
+        (held.volume - operand.volume).abs(),
+    );
+    let area_abs = (CHANGE_AREA_SHARE * da)
+        .max(length * t)
+        .max(base.area_rel * area);
+    let share = if da > 0.0 {
+        area_abs / da
+    } else {
+        CHANGE_AREA_SHARE
+    };
+    let volume_abs = (CHANGE_VOLUME_FACTOR * share * dv).max(base.volume_rel * volume);
+    Ok(Tolerances {
+        area_rel: area_abs / area.max(f64::MIN_POSITIVE),
+        volume_rel: volume_abs / volume.max(f64::MIN_POSITIVE),
+        ..base
+    })
+}
+
+/// The total length of the edges bounding the faces `provenance` records
+/// as generated, and the largest tolerance on those edges and their
+/// vertices. Errors: what the model refuses, said in words.
+fn generated_boundary(m: &Model, provenance: &Provenance) -> Result<(f64, f64), String> {
+    let mut edges = std::collections::BTreeSet::new();
+    for origin in provenance.origins_recorded() {
+        for shape in provenance.generated_from(origin) {
+            let EntityId::Face(f) = shape.id else {
+                continue;
+            };
+            let face = m.face(f).map_err(|e| e.to_string())?;
+            edges.extend(
+                face.loops()
+                    .iter()
+                    .flat_map(|l| l.coedges())
+                    .map(|c| c.edge()),
+            );
+        }
+    }
+    let (mut length, mut t) = (0.0, 0.0f64);
+    for e in edges {
+        let edge = m.edge(e).map_err(|e| e.to_string())?;
+        t = t.max(edge.tolerance());
+        for v in [edge.start(), edge.end()] {
+            t = t.max(m.vertex(v).map_err(|e| e.to_string())?.tolerance());
+        }
+        length += edge_length(m, edge)?;
+    }
+    Ok((length, t))
+}
+
+/// An edge's length over [`OWN_TOLERANCE_CHORDS`] chords; nothing for an
+/// edge with no curve. Errors: what the model refuses, said in words.
+fn edge_length(m: &Model, edge: &arris_topo::entity::Edge) -> Result<f64, String> {
+    let Some((curve, range)) = edge.curve() else {
+        return Ok(0.0);
+    };
+    let curve = m.curve(curve).map_err(|e| e.to_string())?;
+    let points: Vec<Point3> = (0..=OWN_TOLERANCE_CHORDS)
+        .map(|i| curve.point(range.lerp(i as f64 / OWN_TOLERANCE_CHORDS as f64)))
+        .collect();
+    Ok(points.windows(2).map(|w| (w[1] - w[0]).norm()).sum())
 }
 
 /// How many chords [`within_own_tolerance`] measures an edge's length
@@ -438,14 +589,11 @@ pub fn within_own_tolerance(
     let mut length = 0.0;
     for &e in &closure.edges {
         let e = m.edge(e).map_err(|e| e.to_string())?;
+        length += edge_length(m, e)?;
         let Some((curve, range)) = e.curve() else {
             continue;
         };
         let curve = m.curve(curve).map_err(|e| e.to_string())?;
-        let points: Vec<Point3> = (0..=OWN_TOLERANCE_CHORDS)
-            .map(|i| curve.point(range.lerp(i as f64 / OWN_TOLERANCE_CHORDS as f64)))
-            .collect();
-        length += points.windows(2).map(|w| (w[1] - w[0]).norm()).sum::<f64>();
         if let Some(b) = curve.bounds(range) {
             corners.push(Point3::new(b.min[0], b.min[1], b.min[2]));
             corners.push(Point3::new(b.max[0], b.max[1], b.max[2]));
@@ -848,7 +996,11 @@ pub(super) const CORNER_NORMAL_SLACK: f64 = 1e-12;
 /// oracle's measurements, or under `analytic.measure_differs` the
 /// recipe's closed forms of the volume, area, centroid and inertia, each
 /// required (ADR-0015), or a second oracle's record of them for the
-/// chain's variant where the fixture carries one (ADR-0073).
+/// chain's variant where the fixture carries one (ADR-0073) — or, where
+/// that record is one of changes, Arris's own operand plus the record's
+/// change in volume and area, the centroid and inertia held to nothing
+/// (ADR-0073 as amended). Errors: [`CorpusError::Measure`] for a missing
+/// form or variant, or an operand [`operand_measures`] cannot measure.
 pub(super) fn measure_target(
     fixture: &Fixture,
     chain: &Chain,
@@ -869,6 +1021,18 @@ pub(super) fn measure_target(
             });
         };
         let mut target = expected.clone();
+        if let Some(operand) = &held.operand {
+            // A record of changes: Arris's own operand plus the second
+            // kernel's change, volume and area alone. Its centroid and
+            // inertia move by less than either kernel's reading of the
+            // part differs (ADR-0073 as amended).
+            let (volume, area) = operand_measures(fixture, chain)?;
+            target.volume = Some(volume + (held.volume - operand.volume));
+            target.area = Some(area + (held.area - operand.area));
+            target.centroid = None;
+            target.inertia = None;
+            return Ok((target, "the operand's plus the second oracle's change"));
+        }
         target.volume = Some(held.volume);
         target.area = Some(held.area);
         target.centroid = Some(held.centroid);

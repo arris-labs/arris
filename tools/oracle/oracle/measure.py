@@ -505,7 +505,8 @@ def measure(
 
 def compare(expected: dict, actual: dict, tolerances: dict) -> list[tuple[str, str, str, bool]]:
     """Rows of (quantity, expected, actual, ok). Counts and classes exact,
-    volume, area and each inertia component relative, centroid absolute."""
+    volume, area and each inertia component relative, centroid absolute;
+    a measure `expected` does not hold has no row."""
     tol = {**DEFAULT_TOLERANCES, **tolerances}
     rows: list[tuple[str, str, str, bool]] = []
 
@@ -525,11 +526,14 @@ def compare(expected: dict, actual: dict, tolerances: dict) -> list[tuple[str, s
     else:
         keys = (("volume", tol["volume_rel"]), ("area", tol["area_rel"]))
     for k, t in keys:
+        if k not in expected:
+            continue
         e, a = expected[k], actual[k]
         row(k, repr(e), repr(a), abs(a - e) <= t * max(abs(e), abs(a), 1e-300))
-    e, a = expected["centroid"], actual["centroid"]
-    dist = math.dist(e, a)
-    row("centroid", [f"{x:.9g}" for x in e], [f"{x:.9g}" for x in a], dist <= tol["centroid_abs"])
+    if "centroid" in expected:
+        e, a = expected["centroid"], actual["centroid"]
+        dist = math.dist(e, a)
+        row("centroid", [f"{x:.9g}" for x in e], [f"{x:.9g}" for x in a], dist <= tol["centroid_abs"])
     ei, ai = expected.get("inertia"), actual.get("inertia")
     if ei is not None and ai is not None:
         # Relative to the largest component of the tensor: a product of

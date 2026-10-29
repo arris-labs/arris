@@ -5,7 +5,9 @@ a second oracle's run of a fixture into its `second_oracle.json`
 fixture's units, its source, run and accuracy kept, the recipe's hash
 stamped. The run's record is neutral JSON: `source`, `run`, `accuracy`,
 `scale`, `volume`, `area`, `centroid` and `inertia` (about the centroid,
-unit density, products negated) at the run's scale. Other variants
+unit density, products negated) at the run's scale, and optionally
+`operand`, the same four of the operand the run was given, which makes
+the entry a record of changes (ADR-0073 as amended). Other variants
 already in the file are kept. Exit 1 on a malformed record, 2 on usage.
 Run as `uv run --project tools/oracle tools/oracle/second_oracle.py`.
 """
@@ -35,8 +37,14 @@ def imported(run: dict) -> dict:
     scale = float(run["scale"])
     if not scale > 0:
         raise OracleError(f"scale {scale} is not positive")
-    return {"source": str(run["source"]), "run": str(run["run"]), "accuracy": float(run["accuracy"]),
-            "scale": scale, **unscaled(run, scale)}
+    entry = {"source": str(run["source"]), "run": str(run["run"]), "accuracy": float(run["accuracy"]),
+             "scale": scale, **unscaled(run, scale)}
+    if "operand" in run:
+        missing = [k for k in MEASURES if k not in run["operand"]]
+        if missing:
+            raise OracleError(f"the run's operand lacks {', '.join(missing)}")
+        entry["operand"] = unscaled(run["operand"], scale)
+    return entry
 
 
 def main(argv: list[str]) -> int:

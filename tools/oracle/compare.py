@@ -18,7 +18,7 @@ from oracle.fixture import load_expected, load_fixture  # noqa: E402
 from oracle.measure import DEFAULT_TOLERANCES, compare, format_table, measure  # noqa: E402
 from oracle.measure import sheet as measure_sheet  # noqa: E402
 from oracle.recipe import fixture_kind, number, probes, recipe_hash, resolve_params  # noqa: E402
-from oracle.second import held_measures  # noqa: E402
+from oracle.second import MEASURES, held_result  # noqa: E402
 
 
 def compare_step(directory: Path, step_file: Path, variant: str = "default") -> tuple[bool, str]:
@@ -49,12 +49,17 @@ def compare_step(directory: Path, step_file: Path, variant: str = "default") -> 
         result = {**result, "counts": {"shells": 1, "solids": 1, **analytic["counts"]}}
         if "genus" in analytic:
             result["genus"] = analytic["genus"]
-    second = held_measures(directory, recipe_hash(fixture), variant) if analytic.get("measure_differs") else None
-    if second is not None:
+    second = held_result(directory, recipe_hash(fixture), variant) if analytic.get("measure_differs") else None
+    if second is not None and "operand" in second:
+        # A record of changes (ADR-0073 as amended): a change is held by
+        # each kernel on its own exact bodies, and a file is neither, so
+        # the table holds no measure of it, only counts, genus and probes.
+        result = {k: v for k, v in result.items() if k not in MEASURES}
+    elif second is not None:
         # The recipe states the oracle's measurements are wrong, and a
         # second oracle's record holds them (ADR-0073); the oracle's stay
         # in expected.json as the record.
-        result = {**result, **second}
+        result = {**result, **{k: second[k] for k in MEASURES}}
     elif analytic.get("measure_differs"):
         # The recipe states the oracle's measurements are wrong and gives
         # closed forms for them (ADR-0015); the oracle's stay in
