@@ -596,10 +596,10 @@ impl Tracer<'_> {
         })
     }
 
-    /// Whether `z`, a box of turning points, lies beside the isoline
-    /// divided out with the strip from the box to it, as long as the box,
-    /// within `tol.linear` of the other surface at every point of a grid:
-    /// the tangency is held to the tolerance there, a hair off the
+    /// Whether `z`, a box of turning or critical points, lies beside the
+    /// isoline divided out with the strip from the box to it, as long as
+    /// the box, within `tol.linear` of the other surface at every point of
+    /// a grid: the tangency is held to the tolerance there, a hair off the
     /// surface's own line, and the isoline is it. A fitted surface's row
     /// within the tolerance of an exact arc leaves its quotient a double
     /// zero beside the row, which no cell certifies — the whole domain

@@ -769,6 +769,41 @@ Measured against the rule taken out: the posed block's recipe at 5.1°
 (4 traces); with it each is one branch within the pair's tolerance of
 both surfaces. The geom tests pass unchanged.
 
+### A box of critical points beside the isoline (amendment, 2026-10-29)
+
+`plans/walked-saddle-cell` step 8. The same 1000 cases left the block of
+the amendment above posed 90 above the origin, and a block at 24.9°
+posed `(0, 77, −69)`, refused against the table stripes' cylinders as
+`CrowdedSingularity`. The skin is tangent to the cylinder along the
+junction's arc and the isoline is divided out at order two (the
+amendment before last). The census past the edge `v = 2π`
+(`critical_past_edges`) leaves an uncertified box of the quotient's
+critical points `2e-4` to `3e-4` of the walk's `u` beside the isoline,
+`1e-4` wide or less and up to the slab's depth. Over the first block's
+box `∂f/∂t` is positive, but its least coefficient, `4e-12`, is under
+the rounding floor the pose gives it, `1.8e-11`, and `∂f/∂s` runs from
+`−3e-14` to `2.5e-8`. Put on the edge, within the tolerance at a corner
+of it, the box was refused as too flat to decide. Unposed, the same
+block passes the checker at `Full`.
+
+- **A box of critical points beside the isoline is the isoline's.** On a
+  NURBS surface an uncertified box of critical points, found inside the
+  domain or past its edges, whose strip to the isoline divided out is
+  within `tol.linear` of the other surface at every point of a grid
+  (`beside_isoline`), is dropped before the singular points are decided.
+  It is the quotient's double zero a hair off a fitted row tangent to an
+  exact arc, as a box of turning points beside the isoline is (above),
+  and the section there is the isoline.
+
+Dropping a box over which one partial keeps its sign, the hypothesis the
+plan began from, is not this case: neither partial keeps its sign beyond
+its floor, which is why the box is uncertified.
+
+Measured against the rule taken out: the two posed blocks' recipes
+(`tests/intersect_nurbs.rs`) refuse 4 and 2 of their 64 walked ×
+cylinder traces; with it all trace in both orders within the pair's
+tolerance of both surfaces. The geom tests pass unchanged.
+
 ## Consequences
 
 - `PatchedSection::on_nurbs` builds the section of a NURBS surface. Its

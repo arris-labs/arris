@@ -326,10 +326,15 @@ fn walked_against(chain: &corpus::Chain, kind: SurfaceKind) -> Vec<(Surface, Sur
 /// Each pair traces in both orders, every branch's samples within the
 /// pair's tolerance of both surfaces.
 fn traces(pairs: &[(Surface, Surface, Tolerance)]) {
+    traces_within(pairs, &within());
+}
+
+/// [`traces`] with the section bounded by `bound`.
+fn traces_within(pairs: &[(Surface, Surface, Tolerance)], bound: &Aabb) {
     assert!(!pairs.is_empty());
     for (walked, other, at) in pairs {
         for (a, b) in [(walked, other), (other, walked)] {
-            let trace = trace_section(a, b, &within(), *at, &mut Meter::default())
+            let trace = trace_section(a, b, bound, *at, &mut Meter::default())
                 .unwrap_or_else(|e| panic!("{:?} against {:?}: {e}", a.kind(), b.kind()));
             for branch in trace.branches() {
                 let d = branch.domain();
@@ -397,8 +402,8 @@ fn a_section_across_a_walked_skins_arc_knot_is_no_turn_at_a_kink() {
 /// `blend_prop.rs`'s oblique property found at 1000 cases: `length` 3 and
 /// `width` 1.5 for the recipe's 4 and 2, the tilt's axis across the middle,
 /// and the cut part turned 180° about `y` and dropped 89.66 before its
-/// fillet, as the property posed it.
-fn posed_block(corner: f64, tilt: f64, r: f64, drop: f64) -> corpus::Chain {
+/// fillet, as the property posed it, then moved by `at`.
+fn posed_block(corner: f64, tilt: f64, r: f64, at: [f64; 3]) -> corpus::Chain {
     use arris_debug::fixtures::{Loop, Num, Rotate, Segment, Step};
     let dir = fixtures::corpus_root().join("blend/rounded-block-oblique-top-fillet");
     let mut recipe = fixtures::load(&dir).unwrap().recipe;
@@ -408,7 +413,9 @@ fn posed_block(corner: f64, tilt: f64, r: f64, drop: f64) -> corpus::Chain {
         ("r", r),
         ("L", 3.0),
         ("W", 1.5),
-        ("Z", drop),
+        ("X", at[0]),
+        ("Y", at[1]),
+        ("Z", at[2]),
     ] {
         recipe.params.insert(k.into(), x);
     }
@@ -454,7 +461,7 @@ fn posed_block(corner: f64, tilt: f64, r: f64, drop: f64) -> corpus::Chain {
     recipe.steps.push(Step::Transform {
         name: "posed".into(),
         of: "cut_top".into(),
-        translate: Some([l(0.0), l(0.0), Num::Expr("Z".into())]),
+        translate: Some(["X", "Y", "Z"].map(|k| Num::Expr(k.into()))),
         rotate: Some(Rotate {
             axis: [l(0.0), l(1.0), l(0.0)],
             origin: None,
@@ -465,8 +472,8 @@ fn posed_block(corner: f64, tilt: f64, r: f64, drop: f64) -> corpus::Chain {
         name,
         of: "posed".into(),
         edges: vec![[
-            Num::Expr("-L / 2".into()),
-            l(0.0),
+            Num::Expr("X - L / 2".into()),
+            Num::Expr("Y".into()),
             Num::Expr("(W / 2) * tan(radians(a)) - 1.5 + Z".into()),
         ]],
         radius,
@@ -490,7 +497,7 @@ fn a_walked_skin_tangent_to_its_table_cylinder_along_the_arc_is_divided_at_order
         0.4591144096367237,
         31.015754421798317,
         0.22468281425389497,
-        -89.66487392943412,
+        [0.0, 0.0, -89.66487392943412],
     );
     traces(&walked_against(&chain, SurfaceKind::Cylinder));
 }
@@ -511,7 +518,7 @@ fn a_branch_that_comes_to_a_touch_on_the_edge_of_a_walked_skin_ends_there() {
         0.5147874278629065,
         5.104592103941619,
         0.10587863935816388,
-        0.0,
+        [0.0; 3],
     );
     let pairs = walked_against(&chain, SurfaceKind::Plane);
     traces(&pairs);
@@ -526,4 +533,41 @@ fn a_branch_that_comes_to_a_touch_on_the_edge_of_a_walked_skin_ends_there() {
         })
         .sum();
     assert!(branches >= 2, "{branches}");
+}
+
+/// The block of
+/// `a_branch_that_comes_to_a_touch_on_the_edge_of_a_walked_skin_ends_there`
+/// posed 90 above the origin, and one at 24.9° posed `(0, 77, -69)`, as
+/// the oblique property found them: the walked corner skin is tangent to
+/// the table stripe's cylinder along the junction's arc, the isoline
+/// divided out at order two, and the census past the skin's edge `v = 2π`
+/// leaves a box of the quotient's critical points `1.9e-4` of the walk's
+/// `u` beside it, `∂f/∂t` positive across it by less than its rounding
+/// floor at the pose (`4e-12` against `1.8e-11`). Put on the edge, the box
+/// was refused as `CrowdedSingularity`; the strip from it to the isoline
+/// is within the tolerance, and it is the isoline's, as a box of turning
+/// points beside it is (ADR-0061, amended 2026-10-29).
+#[test]
+fn a_box_of_critical_points_beside_the_isoline_divided_out_is_the_isolines() {
+    let far = Aabb {
+        min: [-200.0; 3],
+        max: [200.0; 3],
+    };
+    for (corner, tilt, r, at) in [
+        (
+            0.5147874278629065,
+            5.104592103941619,
+            0.10587863935816388,
+            [0.0, 0.0, 90.31915304296272],
+        ),
+        (
+            0.3335513775210022,
+            24.928118781146715,
+            0.19908739964489544,
+            [0.0, 76.99460580419323, -68.83766176376402],
+        ),
+    ] {
+        let chain = posed_block(corner, tilt, r, at);
+        traces_within(&walked_against(&chain, SurfaceKind::Cylinder), &far);
+    }
 }

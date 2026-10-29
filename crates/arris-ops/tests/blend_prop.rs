@@ -3710,13 +3710,12 @@ fn an_oblique_fillet_at_a_shallow_tilt_is_checked() {
 /// The same block as `an_oblique_fillet_at_a_shallow_tilt_is_checked`
 /// posed 90 above the origin (shard 1 of the same 1000-case run): the
 /// table stripes' cylinders against two walked skins, `CrowdedSingularity`
-/// from `singular_points`: uncertified boxes of critical points past the
-/// skin's edge `v = 2π`, `5e-5` wide in `u` and `0.2` deep, over which
-/// `∂f/∂u` is 100 or more, so no critical point; the rounding floor at the
-/// pose leaves them uncertified and the box, within the tolerance of the
-/// edge, is refused as too flat to decide.
+/// from `singular_points`: an uncertified box of the quotient's critical
+/// points past the skin's edge `v = 2π`, beside the isoline of its
+/// tangency to the cylinder, which the rounding floor at the pose leaves
+/// uncertified and which was refused, on the edge, as too flat to decide.
+/// The box is the isoline's (ADR-0061, amended 2026-10-29).
 #[test]
-#[ignore = "S5 leaves a walked skin against its table cylinder undecided at a far pose: uncertified critical boxes past the skin's edge (plans/walked-saddle-cell step 8)"]
 fn an_oblique_fillet_at_a_shallow_tilt_far_from_the_origin_is_checked() {
     let pose = Isometry::new(
         arris_math::nalgebra::Unit::new_unchecked(arris_math::nalgebra::Quaternion::new(
@@ -3736,7 +3735,6 @@ fn an_oblique_fillet_at_a_shallow_tilt_far_from_the_origin_is_checked() {
 /// the same run: the same refusal as
 /// `an_oblique_fillet_at_a_shallow_tilt_far_from_the_origin_is_checked`.
 #[test]
-#[ignore = "S5 leaves a walked skin against its table cylinder undecided at a far pose: uncertified critical boxes past the skin's edge (plans/walked-saddle-cell step 8)"]
 fn an_oblique_fillet_at_a_tilt_of_25_degrees_far_from_the_origin_is_checked() {
     let pose = Isometry::new(
         arris_math::nalgebra::Unit::new_unchecked(arris_math::nalgebra::Quaternion::new(

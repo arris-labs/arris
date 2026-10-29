@@ -57,6 +57,13 @@ impl Tracer<'_> {
         if !torus {
             let past = self.critical_past_edges(&critical, meter)?;
             critical.extend(past);
+            // A box of critical points beside the isoline divided out, the
+            // strip from it to the isoline held to the tolerance, is the
+            // isoline's, as a box of turning points is: the quotient's
+            // double zero a hair off a fitted row tangent to an exact arc,
+            // which far from the origin the rounding floor leaves
+            // uncertified (ADR-0061, amended 2026-10-29).
+            critical.retain(|z| z.certified || !self.beside_isoline(z));
         }
         // A box of turning points a whole turn long in `v` is a tube
         // circle the other surface runs along, and not one held to the

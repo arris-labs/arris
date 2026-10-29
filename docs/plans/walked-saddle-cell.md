@@ -53,6 +53,10 @@ geom-level test that fails without it.
 - **`arris-geom` `torus_walk/arcs.rs`** (`Tracer::march`, step 7): a march
   at an edge of `u` with no cell ends aground there where `at_touch`
   holds of its point, not `UnresolvedTurning`.
+- **`arris-geom` `torus_walk/run.rs`** (`run_with`, step 8): an
+  uncertified box of critical points beside the isoline divided out
+  (`beside_isoline`) is dropped before `singular_points`, as a box of
+  turning points is.
 - **ADR-0061**: one amendment per rule (dated, as the 2026-10-14 to
   10-28 ones are), each with its measured stretch and a test that fails
   without it.
@@ -126,11 +130,13 @@ careful, a geometric or numeric case to get right within a given design;
   `a_branch_that_comes_to_a_touch_on_the_edge_of_a_walked_skin_ends_there`
   in `intersect_nurbs.rs` fails without the rule, and the ops case
   `an_oblique_fillet_at_a_shallow_tilt_is_checked` is un-ignored.
-- [ ] Step 8 **[3]**: uncertified critical boxes past a skin's edge at a far
-  pose (*Open*, step 8): the two ignored ops cases
+- [x] Step 8 **[3]**: uncertified critical boxes past a skin's edge at a far
+  pose (*Settled*, step 8): the two ignored ops cases
   `an_oblique_fillet_at_a_shallow_tilt_far_from_the_origin_is_checked` and
   `an_oblique_fillet_at_a_tilt_of_25_degrees_far_from_the_origin_is_checked`
   pass; its ADR-0061 amendment and a geom-level test that fails without it.
+  Done: a box of critical points beside the isoline is the isoline's; the
+  oblique property at 1000 cases, its allowance off, passes all four shards.
 - [ ] Step 9 **[1]**: the allowances go. `oblique_holds` uses
   `assert_checked` and counts its builds, asserting a floor per shard
   (backlog line 311); `split_prop`'s `saddle_cell` predicate is deleted
@@ -206,19 +212,19 @@ careful, a geometric or numeric case to get right within a given design;
   sliver round it; `edge_cells` leaves the root at the edge to the touch
   (`at_touch`) and the march that came to it had no cell (ADR-0061,
   amended 2026-10-29, has the measurements).
-- *Open* (step 8, 2026-10-29): with step 7's rule the 1000-case run still
-  fails, in shards 1, 2 and 3, on three more cases (shard 0 passed all 250
-  cases, 225 built; shard 3's: length 3.40, 6.7°, posed 77 along `-x`, the
-  same fault, not yet an ignored case). All are cylinder × walked skin, `CrowdedSingularity` at
-  `singular.rs` `singular_points`: `critical_past_edges` puts uncertified
-  boxes of critical points past the skin's edge `v = 2π` on the edge
-  (`5e-5` wide in `u`, `0.2` deep, `∂f/∂u` 100 or more over them, so no
-  critical point), and with a corner of the box within the tolerance and
-  no corner of the domain in it `singular_points` refuses it as too flat to
-  decide. The poses are far from the origin (90 above; `(0, 77, -69)`),
-  the rounding floor leaves the boxes uncertified. The agent's
-  hypothesis, unproven: a box over which `∂f/∂u` or `∂f/∂v` is signed has
-  no critical point and is dropped. Step 8 diagnoses it with a red loop.
+- *Settled* (step 8, 2026-10-29): with step 7's rule the 1000-case run
+  failed in shards 1 to 3 on three far-pose cases (posed 90 above;
+  `(0, 77, -69)`; length 3.40, 6.7°, 77 along `-x`), cylinder × walked
+  skin, `CrowdedSingularity` from `singular_points`. The skin is tangent
+  to its table cylinder along the junction's arc, divided out at order
+  two (step 6), and `critical_past_edges` leaves an uncertified box of the
+  quotient's critical points `2e-4` to `3e-4` beside the isoline: `∂f/∂t`
+  positive by less than the pose's rounding floor (`4e-12` against
+  `1.8e-11`), `∂f/∂s` not signed. The hypothesis (a signed partial drops
+  the box) was wrong: no partial is signed beyond its floor. The box,
+  held to the tolerance out to the isoline, is the isoline's, as a box of
+  turning points is (ADR-0061, amended 2026-10-29). At 1000 cases with no
+  S5 allowance all four shards pass, 520 to 530 s each at 16 threads.
 - ⚠ OPEN: the floor of built cases per shard in step 9. The agent picks
   it from a 1000-case run's count (below half the measured count fails),
   and records the count here.
