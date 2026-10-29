@@ -97,6 +97,14 @@ test must keep unreachable.
   one of 300. That is the intent. A chain's extent changes with the
   radius only across a dihedral the radius cannot resolve.
 
+## Amendments
+
+- **ADR-0075 (2026-10-29).** §2–3's faces' tolerance holds wherever an
+  end across is met. At a kink of three edges whose end across meets
+  nothing, the corner edge is read tangent within the vertex's tolerance,
+  and the chain runs on through it; the junction there is bounded by the
+  vertex's tolerance, which meets §3's reason.
+
 ## Alternatives considered
 
 - **Keep the angular precision.** The kernel then refuses every

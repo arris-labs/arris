@@ -11,7 +11,7 @@ use arris_topo::{
     Body, Curve2Id, CurveId, EdgeId, FaceId, Model, Orientation, Provenance, VertexId,
 };
 
-use super::chain::{chain, cusp_at, tangent_vertex};
+use super::chain::{chain, cusp_at, kinked_vertex, tangent_vertex};
 use super::corner::{Corner, corner};
 use super::ends::{EndKind, Pole, Trim, face_end};
 use super::junction::{Run, junction};
@@ -357,7 +357,24 @@ fn classify(
     } = env;
     // The named edges and every edge their chains run on into, in the
     // body's order.
-    let reached = chain(m, view, edges, kind.size(), tol, meter)?;
+    let mut reached = chain(m, view, edges, kind.size(), tol, meter)?;
+    let kinks = through_kinks(&env, meter, &mut reached)?;
+    // The junction across a kink is not built yet (plans/tolerant-tangency
+    // step 5): the chain through it is refused, naming its edges in the
+    // body's order, the corner edge and the vertex of its first kink.
+    if let Some((&v, &(_, w))) = kinks.iter().next() {
+        let mut entities: Vec<arris_topo::Shape> = m
+            .edges(body)?
+            .into_iter()
+            .filter(|e| reached.contains(&e.id))
+            .map(|e| forward(e.id))
+            .collect();
+        entities.extend([forward(w), forward(v)]);
+        return Err(degenerate(
+            entities,
+            Reason::Blend(BlendReason::TangentChain),
+        ));
+    }
     let chained: Vec<EdgeId> = m
         .edges(body)?
         .into_iter()
@@ -397,6 +414,93 @@ fn classify(
         }
     }
     Ok(Classified { open, arcs, rings })
+}
+
+/// `reached` run on through every kink a chain end's vertex writes as
+/// tangent within its tolerance where the end across it meets nothing
+/// (ADR-0075), each continued to where it next ends; the kinks by vertex,
+/// each with the edge ending there and its corner edge. A kink's end is
+/// made as the build would make it, and the chain runs through only where
+/// that end is the [`near_tangent_corner`](super::ends::near_tangent_corner)
+/// refusal naming the same corner edge: a contact that misses the face
+/// across. Errors: the meter's, and a fault of the model's.
+fn through_kinks(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    reached: &mut BTreeSet<EdgeId>,
+) -> Result<BTreeMap<VertexId, (EdgeId, EdgeId)>, OpError> {
+    let Env {
+        m, view, kind, tol, ..
+    } = *env;
+    let mut kinks: BTreeMap<VertexId, (EdgeId, EdgeId)> = BTreeMap::new();
+    let mut todo: Vec<EdgeId> = reached.iter().copied().collect();
+    while let Some(edge) = todo.pop() {
+        meter.tick()?;
+        let entity = *m.edge(edge)?;
+        if entity.start() == entity.end() {
+            continue;
+        }
+        for vertex in [entity.start(), entity.end()] {
+            if kinks.contains_key(&vertex) {
+                continue;
+            }
+            let Some((next, w)) = kinked_vertex(m, view, edge, vertex, kind.size(), tol)? else {
+                continue;
+            };
+            if reached.contains(&next) || !end_meets_nothing(env, meter, edge, vertex, w)? {
+                continue;
+            }
+            kinks.insert(vertex, (edge, w));
+            for e in chain(m, view, &[next], kind.size(), tol, meter)? {
+                if reached.insert(e) {
+                    todo.push(e);
+                }
+            }
+        }
+    }
+    Ok(kinks)
+}
+
+/// Whether the end of `edge`'s blend at `vertex` meets nothing across
+/// it, beside the corner edge `w`: its end, made as the build makes it,
+/// is `TangentChain` naming the edge, `w` and the vertex. Any other end,
+/// built or refused, is the build's to make. Errors: the meter's, and a
+/// fault of the model's.
+fn end_meets_nothing(
+    env: &Env<'_>,
+    meter: &mut Meter<'_>,
+    edge: EdgeId,
+    vertex: VertexId,
+    w: EdgeId,
+) -> Result<bool, OpError> {
+    let Env {
+        m, view, kind, tol, ..
+    } = *env;
+    let made = match stripe(m, view, edge, kind, tol) {
+        Err(OpError::Unsupported { .. }) => walked_stripe(env, meter, edge),
+        other => other,
+    };
+    let s = match made {
+        Ok(s) => s,
+        Err(e @ (OpError::Interrupted(_) | OpError::Internal(_))) => return Err(e),
+        Err(_) => return Ok(false),
+    };
+    let at_lo = s.start == vertex;
+    if matches!(s.section, Section::Walked { poles, .. } if poles[usize::from(!at_lo)]) {
+        return Ok(false);
+    }
+    let end = match s.section {
+        Section::Walked { .. } => walked_end(env, meter, &s, at_lo),
+        Section::Round { .. } | Section::Flat => face_end(env, meter, &s, at_lo),
+    };
+    match end {
+        Err(OpError::Degenerate {
+            entities,
+            reason: Reason::Blend(BlendReason::TangentChain),
+        }) => Ok(entities == [forward(edge), forward(w), forward(vertex)]),
+        Err(e @ (OpError::Interrupted(_) | OpError::Internal(_))) => Err(e),
+        Ok(_) | Err(_) => Ok(false),
+    }
 }
 
 /// The blended edges at each vertex, and the vertices that are junctions; the arcs' rings are built here.

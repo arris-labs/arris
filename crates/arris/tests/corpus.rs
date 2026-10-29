@@ -1293,7 +1293,7 @@ corpus_tests! {
     regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
     /// FTC-11's line edge e24 filleted alone: a tangent chain of a line, a
     /// B-spline edge that hides a circle, and a line, around a slot's end.
-    #[ignore = "TangentChain(e24, e60, v24): at v24 the hole f17 runs on from f18 at a convex kink of 3.9°, tangent within the vertex's tolerance, not the faces'; Open CASCADE chains through it (docs/BACKLOG.md, a chain through a vertex tangent within its tolerance)"]
+    #[ignore = "TangentChain(e22–e26, e60, v24): the chain runs on through v24, where the hole f17 runs on from f18 at a convex kink of 3.9° tangent within the vertex's tolerance (ADR-0075); the junction across the kink is plans/tolerant-tangency step 5"]
     regression_nist_ftc_11_ap242_slot_chain_fillet => run "regression/nist-ftc-11-ap242-slot-chain-fillet";
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
@@ -1422,9 +1422,10 @@ corpus_tests! {
     /// NIST CTC-05's AP203 solid #249, the convex edge between its rational
     /// B-spline face and a torus filleted alone: a vanishing end at v84
     /// whose ball misses the vertex, where the stripe stops short and the
-    /// edge's remnant runs on (ADR-0074), and a chain at v115 tangent within
-    /// the vertex's tolerance, refused as `TangentChain`; Open CASCADE
-    /// builds an invalid body (ADR-0062, steps 9b and 10a).
+    /// edge's remnant runs on (ADR-0074), and a chain on through v115, a
+    /// kink tangent within the vertex's tolerance (ADR-0075), refused as
+    /// `TangentChain` until its junction is built; Open CASCADE builds an
+    /// invalid body (ADR-0062, steps 9b and 10a).
     blend_nist_ctc_05_ap203_nurbs_torus_fillet => run "blend/nist-ctc-05-ap203-nurbs-torus-fillet";
     /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
     /// face one rational Bézier patch and its vertices' tolerance wider

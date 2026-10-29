@@ -106,11 +106,15 @@ robustness or bound has to be established here.
   `compare.py` holds counts, genus and probes, no measure. The runs'
   record writer (outside this repo) gains `operand` from the run's own
   measures of its operand before steps 6–7 import.
-- [ ] Step 4 **[3]** — The chain walk through a vertex tangent within its
+- [x] Step 4 **[3]** — The chain walk through a vertex tangent within its
   tolerance (ADR-0075's selection; write ADR-0075): FTC-11's v24 and
   CTC-05's v115. Test: each chain names the edges up to where it next ends.
   `blend/nist-ftc-11-ap242-bspline-circle-fillet` is unchanged, its v2
-  still the end across.
+  still the end across. *Settled:* the walk makes the kink's end as the
+  build would and chains only on `near_tangent_corner`'s refusal (one
+  question, one code path). Until step 5 a chain through a kink is refused
+  `TangentChain` naming its edges, `w` and the vertex: the slot's
+  e22–e26 (the battery's edge too), CTC-05's e32, e133, e256.
 - [ ] Step 5 **[3]** — The junction across the kink: the mean ball's arc,
   tolerances bounded by the vertex's. The FTC-11 slot fixture moves to
   `blend/`, held to Open CASCADE's measures, checker green at `Full`.

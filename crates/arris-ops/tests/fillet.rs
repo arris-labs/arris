@@ -1761,32 +1761,39 @@ fn a_read_rims_pcurves_standing_off_hold_an_end_arc() {
 /// FTC-11's slot: the line `e24` meets the hole f17 at `v24`, a convex
 /// kink of 3.9° between f18 and f17 whose faces are tangent within the
 /// vertex's tolerance though not their own. The hole curves away from the
-/// ball, so the contact on the top never meets it: the blend would run on
-/// round the hole, a chain the walk does not take, and is refused by that
-/// name rather than as a pair with no closed form (ADR-0062, step 10b).
+/// ball, so the contact on the top never meets it, and the chain runs on
+/// through the kink round the hole (ADR-0075) to where it next ends: the
+/// five edges `e22`–`e26`, as Open CASCADE's five blend faces. The
+/// junction across the kink is not built yet, so the chain is refused
+/// `TangentChain` naming its edges, the corner edge `e60` and `v24`.
 #[test]
-fn a_contact_missing_a_near_tangent_face_across_is_a_tangent_chain() {
+fn a_contact_missing_a_near_tangent_face_across_chains_through_the_kink() {
     let dir = fixtures::corpus_root().join("regression/nist-ftc-11-ap242-slot-chain-fillet");
     let err = match corpus::chain(&dir, "default") {
         Err(corpus::CorpusError::Op { source, .. }) => source,
         Err(e) => panic!("{e}"),
         Ok(_) => panic!("the slot's line filleted alone builds"),
     };
-    let OpError::Degenerate { entities, reason } = &err else {
+    let OpError::Degenerate { reason, .. } = &err else {
         panic!("{err}");
     };
     assert_eq!(*reason, Reason::Blend(BlendReason::TangentChain), "{err}");
-    assert_eq!(entities.len(), 3, "{err}");
+    assert!(
+        err.to_string()
+            .ends_with("(+e22, +e23, +e24, +e25, +e26, +e60, +v24)"),
+        "{err}"
+    );
 }
 
 /// CTC-05's e256, filleted alone: at `v84` its faces run within the edge's
 /// tolerance of tangent and the ball's narrowest exact arc stands off the
 /// vertex, so the stripe stops short of it there and the edge's remnant
-/// runs on (ADR-0074). The refusal is now the chain's other end, `v115`,
-/// where the B-spline face runs on into the cylinder f19 tangent within
-/// the vertex's tolerance and the contact misses it: `TangentChain` naming
-/// the edge, that corner edge and the vertex, where before it named only
-/// the edge and `v84`.
+/// runs on (ADR-0074). At the chain's other end, `v115`, the B-spline
+/// face runs on into the cylinder f19 tangent within the vertex's
+/// tolerance and the contact misses it, so the chain runs on through it
+/// (ADR-0075) to `e133` and `e32`, the second oracle's three edges. The
+/// junction across is not built yet: `TangentChain` naming the chain, the
+/// corner edge `e132` and `v115`.
 #[test]
 fn a_vanishing_end_off_its_vertex_stops_short_and_the_far_end_names_its_chain() {
     let dir = fixtures::corpus_root().join("blend/nist-ctc-05-ap203-nurbs-torus-fillet");
@@ -1795,9 +1802,13 @@ fn a_vanishing_end_off_its_vertex_stops_short_and_the_far_end_names_its_chain() 
         Err(e) => panic!("{e}"),
         Ok(_) => panic!("e256 filleted alone builds"),
     };
-    let OpError::Degenerate { entities, reason } = &err else {
+    let OpError::Degenerate { reason, .. } = &err else {
         panic!("{err}");
     };
     assert_eq!(*reason, Reason::Blend(BlendReason::TangentChain), "{err}");
-    assert_eq!(entities.len(), 3, "{err}");
+    assert!(
+        err.to_string()
+            .ends_with("(+e32, +e133, +e256, +e132, +v115)"),
+        "{err}"
+    );
 }

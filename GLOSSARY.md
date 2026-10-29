@@ -177,6 +177,11 @@ Edges a blend continues across because both faces turn where they meet
 A vertex of two edges that continue one another, where two stripes meet
 on one ball (ADR-0041).
 
+**Kink**:
+A chain end's vertex of three edges whose corner edge is tangent within
+the vertex's tolerance though not within its faces'. A chain runs on
+through it only where the end across meets nothing (ADR-0075).
+
 **Junction**:
 Where two stripes of a chain meet on one ball's arc, at a tangent vertex
 or, where the tangent edge leans, on that edge's offset away from it

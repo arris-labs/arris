@@ -1004,7 +1004,12 @@ distance times the sine between them is within the faces' tolerance
 touches the other within the tolerance the blend is built to, so the two
 stripes' contacts meet as one ball's would (ADR-0040). A file writes a
 tangency to a few `1e-10`, which the angular precision alone reads as a
-sharp edge.
+sharp edge. At a *kink* — a chain end's vertex of three edges whose corner
+edge is tangent within the vertex's tolerance though not its faces' — the
+walk makes the end as the build would, and runs on through the vertex
+only where that end's contacts miss the face across (ADR-0075); an end
+across that is pierced stays an end. The junction across a kink is not
+built yet, so such a chain is refused `TangentChain` naming its edges.
 Each edge keeps its own stripe and its own blend face. At a tangent vertex
 the two stripes are one ball's, and they meet in a *junction*, recorded as
 a miter is: the ball's great circle square to the edges' common direction

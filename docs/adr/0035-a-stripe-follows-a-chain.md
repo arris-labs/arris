@@ -251,3 +251,9 @@ with one face: 14, 21, 9, Open CASCADE's counts.
   `BlendTooLarge`. The fixture that builds is held at a first radius of
   0.3. The horn torus is `regression/tangent-chain-horn-torus` and a
   backlog line.
+
+## Amendment (2026-10-29, ADR-0075)
+
+§1's walk also runs on through a kink: a vertex of three edges whose
+corner edge is tangent within the vertex's tolerance though not its
+faces', where the end across meets nothing.

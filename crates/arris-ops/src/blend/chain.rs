@@ -140,6 +140,51 @@ pub(super) fn tangent_vertex(
     size: f64,
     tol: Tolerance,
 ) -> Result<Option<EdgeId>, OpError> {
+    tangent_vertex_within(m, view, edge, vertex, size, tol, None)
+}
+
+/// The edge a blend of `edge` runs on into at `vertex` through a kink the
+/// file writes as tangent (ADR-0075): a vertex of exactly three edges
+/// that [`tangent_vertex`] does not continue, but would were its corner
+/// edge `w` read tangent within the vertex's tolerance rather than its
+/// faces'. `(next, w)`; `None` at any other vertex. Whether the chain runs
+/// through it is the end's to say: only where the end across meets
+/// nothing.
+pub(super) fn kinked_vertex(
+    m: &Model,
+    view: &BodyView,
+    edge: EdgeId,
+    vertex: VertexId,
+    size: f64,
+    tol: Tolerance,
+) -> Result<Option<(EdgeId, EdgeId)>, OpError> {
+    let Some(at) = view.vertex_edges.get(&vertex) else {
+        return Ok(None);
+    };
+    if at.len() != 3 || tangent_vertex(m, view, edge, vertex, size, tol)?.is_some() {
+        return Ok(None);
+    }
+    let within = m.vertex(vertex)?.tolerance();
+    let Some(next) = tangent_vertex_within(m, view, edge, vertex, size, tol, Some(within))? else {
+        return Ok(None);
+    };
+    let Some(&w) = at.iter().find(|&&x| x != edge && x != next) else {
+        return Ok(None);
+    };
+    Ok(Some((next, w)))
+}
+
+/// [`tangent_vertex`], the vertex's other edges read tangent within
+/// `corner_tolerance` as well as their faces' own where it is given.
+fn tangent_vertex_within(
+    m: &Model,
+    view: &BodyView,
+    edge: EdgeId,
+    vertex: VertexId,
+    size: f64,
+    tol: Tolerance,
+    corner_tolerance: Option<f64>,
+) -> Result<Option<EdgeId>, OpError> {
     let Some(at) = view.vertex_edges.get(&vertex) else {
         return Ok(None);
     };
@@ -202,8 +247,14 @@ pub(super) fn tangent_vertex(
             let Some(t_w) = parameter_at(m, w, vertex)? else {
                 continue 'next;
             };
-            if view.tangent_at(m, w, t_w, size, tol)? != Some(true) || (shared == 2 && !is_seam(w))
-            {
+            let tangent = view.tangent_at(m, w, t_w, size, tol)? == Some(true)
+                || match corner_tolerance {
+                    Some(within) => {
+                        view.tangent_within(m, w, t_w, size, within, tol)? == Some(true)
+                    }
+                    None => false,
+                };
+            if !tangent || (shared == 2 && !is_seam(w)) {
                 continue 'next;
             }
             if shared == 0 {
