@@ -38,8 +38,10 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      them so the riskiest unknown retires first — for kernel work that is
      almost always the geometric case nobody has proven yet, not the API
      around it. A step that adds a geometric case brings its fixture with
-     an oracle value. Every step carries a complexity grade the human uses
-     to pick the agent; state the scale once, above the list: **[1]**
+     an oracle value. Every step carries a complexity grade, which is also
+     its tier, the model that executes it (`.agents/tiers.md`); a step
+     that needs another tier names it, `**[1, tier 3]**`, never a model.
+     State the scale once, above the list: **[1]**
      routine, the design says exactly what to write and the tests are
      mechanical; **[2]** careful, a geometric or numeric case to get right
      within a given design; **[3]** unproven, an algorithm whose robustness

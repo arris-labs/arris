@@ -88,7 +88,7 @@ bound has to be established here. **[CI]** after the grade: the step's
 only test is a CI run, which needs a push, so the plan runs on
 `plan/<slug>` (say so in the header).
 
-- [ ] Step 1 **[1]** — `.agents/tiers.md` with the Claude Code table and
+- [x] Step 1 **[1]** — `.agents/tiers.md` with the Claude Code table and
   the override syntax; the plan template and `/plan` point at it. Test: the
   docs tests (`docs_refs`) read the new paths.
 - [ ] Step 2 **[2]** — The conductor in `/work` and the self-run

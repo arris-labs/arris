@@ -17,7 +17,8 @@ Which design docs / types / crate boundaries change, and how. If a decision
 here is non-obvious, it becomes an ADR (list it).
 
 ## Steps
-Complexity grades the human uses to pick the agent for a step: **[1]**
+Complexity grades; a step's grade is its tier, the model that executes it
+(`.agents/tiers.md`), and `**[1, tier 3]**` overrides the tier: **[1]**
 routine — the design says exactly what to write and the tests are
 mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
