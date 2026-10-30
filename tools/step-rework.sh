@@ -19,7 +19,10 @@ cd "$(git rev-parse --show-toplevel)"
 since=()
 if [ "${1:-}" = "--since" ]; then
   [ -n "${2:-}" ] || { echo "usage: $0 [--since <date>]" >&2; exit 2; }
-  since=(--since "$2")
+  # A bare date is that day from midnight: git alone reads it as that day at
+  # the current time of day, dropping the day's earlier commits.
+  if [[ "$2" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then since=(--since "$2 00:00:00")
+  else since=(--since "$2"); fi
 elif [ $# -gt 0 ]; then
   echo "usage: $0 [--since <date>]" >&2; exit 2
 fi

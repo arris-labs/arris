@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests `tools/step-rework.sh` on a scratch repository: a reworked step, an
-# override, a review fix, a step with no grade, a partial and a range.
+# override, a review fix, a step with no grade, a partial, a range and a
+# bare --since date.
 #
 #   tools/step-rework-test.sh
 set -euo pipefail
@@ -44,8 +45,13 @@ expect '^3 +2 +0 +0% +0$'
 expect '^none +2 +0 +0% +0$'
 expect '^  p +2$'
 # 7 has no plan line: none; 4 has no grade: none.
-"$script" --since 2021-01-01 | grep -Eq '^1 +0 +0 +- +0$' \
+out=$("$script" --since 2021-01-01)
+grep -Eq '^1 +0 +0 +- +0$' <<<"$out" \
   || { echo "FAIL: empty range" >&2; fail=1; }
+# A bare date counts that whole day, not from the current time of day.
+out=$("$script" --since 2020-01-01)
+grep -Eq '^2 +2 +1 +50% +2$' <<<"$out" \
+  || { echo "FAIL: a bare --since date drops that day" >&2; fail=1; }
 
 [ $fail = 0 ] && echo "step-rework-test: ok"
 exit $fail
