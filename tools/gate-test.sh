@@ -195,6 +195,42 @@ trap 'rm -rf "$scratch"' EXIT
   git commit -q -m undoc
   printf '# Notes\n' >crates/arris-geom/README.md
   git add -A; [ "$(doc)" = yes ] || { echo "FAIL doc: a .md under crates/ is" >&2; exit 1; }
+  git commit -q -m readme
+
+  # Inside this subshell a failed assertion must end it, or `fail` is lost.
+  has() { [[ "$2" == *"$3"* ]] || { echo "FAIL $1: expected '$3' in: $2" >&2; exit 1; }; }
+  lacks() { [[ "$2" != *"$3"* ]] || { echo "FAIL $1: did not expect '$3' in: $2" >&2; exit 1; }; }
+  equals() { [ "$2" = "$3" ] || { echo "FAIL $1: expected '$3', got '$2'" >&2; exit 1; }; }
+
+  # `since`: a range of two commits, a doc comment only in the first, the
+  # index form.
+  since() { tools/gate.sh since "$@"; }
+  b=$(git rev-parse HEAD)
+  printf '/// Documented.\npub fn f() {}\n' >crates/arris-geom/src/lib.rs
+  git add -A; git commit -q -m c1
+  mkdir -p crates/arris-math/src
+  printf 'pub fn g() {}\n' >crates/arris-math/src/lib.rs
+  git add -A; git commit -q -m c2
+  out=$(since "$b" HEAD)
+  has "since range" "$(key filter "$out")" "rdeps(arris-geom)"
+  has "since range" "$(key filter "$out")" "rdeps(arris-math)"
+  equals "since range doc" "$(key doc "$out")" yes
+  out=$(since HEAD~1 HEAD)
+  lacks "since last" "$(key filter "$out")" "rdeps(arris-geom)"
+  has "since last" "$(key filter "$out")" "rdeps(arris-math)"
+  equals "since last doc" "$(key doc "$out")" no
+  out=$(since HEAD~2 HEAD~1)
+  lacks "since first" "$(key filter "$out")" "rdeps(arris-math)"
+  equals "since first doc" "$(key doc "$out")" yes
+  equals "since empty" "$(key filter "$(since HEAD HEAD)")" "none()"
+  # The index form: base against the index.
+  printf '// plain\n' >>crates/arris-math/src/lib.rs
+  git add -A
+  out=$(since HEAD)
+  has "since index" "$(key filter "$out")" "rdeps(arris-math)"
+  equals "since index doc" "$(key doc "$out")" no
+  out=$(since "$b")
+  equals "since index over range doc" "$(key doc "$out")" yes
 ) || fail=1
 
 [ "$fail" = 0 ] && echo "gate-test: ok" || exit 1

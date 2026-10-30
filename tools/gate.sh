@@ -6,6 +6,13 @@
 #
 #   tools/gate.sh                  the staged paths
 #   tools/gate.sh plan <path>…     these paths (`doc` still reads the staged diff)
+#   tools/gate.sh since <base> [<sha>]
+#                                  the paths changed from <base> to <sha> (the
+#                                  index when no <sha>), and `doc` read from
+#                                  that same diff: the gate of a range, which
+#                                  the verification of a commit (`<sha>^ <sha>`)
+#                                  and a red's wider re-run (`<verified> HEAD`)
+#                                  use (ADR-0078)
 #
 # Keys:
 #   filter      a nextest filterset for `--profile fast -E`
@@ -53,9 +60,15 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
+# The diff `doc` reads: the index, or the range given to `since`.
+diffargs=(--cached)
 if [ "${1:-}" = plan ]; then
   shift
   paths=$(printf '%s\n' "$@")
+elif [ "${1:-}" = since ]; then
+  [ $# -ge 2 ] && [ $# -le 3 ] || { echo "usage: gate.sh since <base> [<sha>]" >&2; exit 2; }
+  if [ $# -eq 3 ]; then diffargs=("$2" "$3"); else diffargs=(--cached "$2"); fi
+  paths=$(git diff "${diffargs[@]}" --name-only --diff-filter=ACMRD)
 else
   paths=$(git diff --cached --name-only --diff-filter=ACMRD)
 fi
@@ -152,8 +165,8 @@ while IFS= read -r p; do
   esac
 done <<<"$paths"
 
-# A doc comment added or removed in a staged Rust file.
-if [ "$doc" = no ] && git diff --cached -U0 -- 'crates/*.rs' 2>/dev/null |
+# A doc comment added or removed in a changed Rust file (staged, or the range).
+if [ "$doc" = no ] && git diff "${diffargs[@]}" -U0 -- 'crates/*.rs' 2>/dev/null |
   grep -qE '^[+-][[:space:]]*//[/!]'; then
   doc=yes
 fi
