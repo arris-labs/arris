@@ -74,6 +74,10 @@ sequence (`refactor-after-c10`, option B) is closed (2026-10-26).
   diff reviewed against the plan, docs updated, plan deleted);
   `/close-cycle` at a roadmap boundary, then `/release`. Not every idea becomes a plan. Details:
   `.agents/rules/docs-lifecycle.md`.
+- `/work <slug>` with no step **conducts** the plan: each step a fresh
+  subagent on its tier (`.agents/tiers.md` maps tiers to models), then the
+  conducting session runs `/retire-plan`. Waits (gate, CI) run in the
+  background, never in a foreground loop.
 - Trunk-based git, `main` always green, commit per plan step, never push
   or publish unasked: `.agents/rules/git.md`. `main` carries the next
   version with `-dev`; a `v*` tag the human pushes is what publishes the

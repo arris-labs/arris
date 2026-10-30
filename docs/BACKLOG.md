@@ -8,6 +8,9 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 [Findings](#findings) below, in the fixed shape, with the number that
 reproduces it.
 
+- A time breakdown per plan (agent, gate, CI, human) in `/retro`'s session digest, from the transcripts
+- `tools/step-rework.sh` counts every later commit naming a step as rework, so a `wip` or a `docs(plan)` settle commit overstates it and a `steps 5, 6` commit names only step 5; read the baseline as an upper bound until it tells those apart (development-throughput review)
+- `/retire-plan` runs the full gate while the docs are edited, and a review's hard fix lands after it with only the fast hook; the gate's scope has no unit name, so its `MemoryPeak` cannot be read to check the 48G bound (development-throughput review)
 - Two `unwrap_or` fallbacks the `unwrap_or` read could not justify by reading, no input reproduces either: `trace_torus.rs` takes vanishing order `0` when no patch ends at the edge's `v0` (`along` empty), and `check.rs`'s seam `PeriodMismatch` reports `period: 0.0` when neither direction is periodic. Find a case or prove each unreachable
 - `crates/arris/tests/docs_refs.rs` reads any hyphenated word before `step N` as a retired plan's slug, so prose like "two-step 3" would trip it; clean today, an allow-list when it first does
 - The other 14 script-corpus parts on `arris.build` (`build.py` beside each `part.py`), after the first four showed the layer's line counts and models' sizes (`corpus/README.md`).
