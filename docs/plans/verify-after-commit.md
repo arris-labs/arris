@@ -74,7 +74,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[1]** — The hook prints one line of stage times (static,
+- [x] Step 1 **[1]** — The hook prints one line of stage times (static,
   nextest, doctest, doc, in seconds). Replay the hook on five recent code
   commits in a scratch worktree and write the split, and D's items in
   their measured order, into the backlog's D lines. Test: the line appears

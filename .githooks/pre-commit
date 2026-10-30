@@ -94,6 +94,17 @@ if version_bump_only; then
   exit 0
 fi
 
+# Stage times, printed as one line at the end of a code commit: `stage NAME`
+# records the seconds since the previous mark (the measurement behind the
+# verify-after-commit plan's step 1).
+t_last=$EPOCHREALTIME
+times=""
+stage() {
+  local now=$EPOCHREALTIME
+  times+="$1=$(awk -v a="$t_last" -v b="$now" 'BEGIN { printf "%.1f", b - a }') "
+  t_last=$now
+}
+
 echo "pre-commit: layer rule" && tools/check-layers.sh
 echo "pre-commit: tolerance literals" && tools/check-tolerance-literals.sh
 echo "pre-commit: cargo fmt --check" && cargo fmt --all -- --check
@@ -114,11 +125,16 @@ if grep -qE '^(tools/gate|\.config/)' <<<"$staged"; then
   echo "pre-commit: the gate's classifier" && tools/gate-test.sh && tools/profile-test.sh
   grep -q '^tools/gate-scope' <<<"$staged" && tools/gate-scope-test.sh
 fi
+stage static
 echo "pre-commit: cargo nextest --profile fast ($(gate_value cases) cases)"
 ARRIS_PROPTEST_CASES=$(gate_value cases) ARRIS_DIFF_CASES=$(gate_value diff_cases) \
   ARRIS_READ_BACK=$(gate_value read_back) cargo nextest run --workspace --profile fast -E "$(gate_value filter)" \
   --cargo-quiet --status-level fail --no-tests pass
+stage nextest
 echo "pre-commit: cargo test --doc" && cargo test --workspace --doc --quiet
+stage doctest
 if [ "$(gate_value doc)" = yes ]; then
   echo "pre-commit: cargo doc" && RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
 fi
+stage doc
+echo "pre-commit: stage seconds: $times"
