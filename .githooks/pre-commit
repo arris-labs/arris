@@ -134,7 +134,7 @@ static_half() {
     echo "pre-commit: the gate's classifier" && tools/gate-test.sh && tools/profile-test.sh
     grep -q '^tools/gate-scope' <<<"$staged" && tools/gate-scope-test.sh
   fi
-  if grep -qE '^(\.githooks/|tools/(verify|hook-flow))' <<<"$staged"; then
+  if grep -qE '^(\.githooks/|tools/(verify|hook-flow|test-half|gate-scope))' <<<"$staged"; then
     echo "pre-commit: the hooks' flow" && tools/verify-test.sh && tools/hook-flow-test.sh
   fi
   return 0

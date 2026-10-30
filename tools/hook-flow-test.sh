@@ -29,6 +29,7 @@ calls=$tmp/calls
 cat >"$tmp/stub" <<'STUB'
 #!/usr/bin/env bash
 echo "$# $(cat code.rs)" >>"$CALLS"
+echo "${1:-}" >>"$CALLS.base"
 ! grep -q slow code.rs || sleep 2
 ! grep -q red code.rs
 STUB
@@ -62,12 +63,14 @@ commit note notes.md
 equals "prose inherits pass" "$(settle HEAD)" pass
 
 # 4. a red verification, then the next commit runs inline over both
+good=$(sha HEAD)
 commit red code.rs
 equals "red verification" "$(settle HEAD)" fail
 red=$(sha HEAD)
-: >"$calls"
+: >"$calls"; : >"$calls.base"
 commit fixed code.rs
 equals "inline over the red" "$(cat "$calls")" "1 fixed"
+equals "inline base is the last verified commit" "$(cat "$calls.base")" "$good"
 equals "inline commit is verified" "$(settle HEAD)" pass
 
 # 5. a red verification, then a red inline commit is refused by the hook
