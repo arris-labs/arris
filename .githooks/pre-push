@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# A push waits for a verified tip (ADR-0078): every commit it pushes a ref to
+# must read `pass` in `tools/verify.sh --status`, which waits on a run in
+# flight. A deleted ref is not checked.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 0
+[ -f Cargo.toml ] || exit 0
+zero=0000000000000000000000000000000000000000
+rc=0
+while read -r _ local_sha _ _; do
+  [ "$local_sha" != "$zero" ] || continue
+  commit=$(git rev-parse --verify -q "$local_sha^{commit}") || continue
+  state=$(tools/verify.sh --status "$commit")
+  if [ "$state" != pass ]; then
+    echo "pre-push: ${commit:0:8} is not verified ($state)." >&2
+    echo "Read its log in the common git dir's arris-verify/, or run tools/verify.sh ${commit:0:8}." >&2
+    rc=1
+  fi
+done
+exit $rc

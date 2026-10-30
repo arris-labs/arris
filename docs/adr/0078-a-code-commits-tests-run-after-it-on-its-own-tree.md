@@ -98,9 +98,19 @@ stage times, not a peak (the gate's scope has no unit name to read a
 `MemoryPeak` from, a backlog line), so 24G is a bound chosen with room, not
 a measured fit: a verification that dies at it is the evidence to raise it.
 
-⚠ OPEN: a verification still running when the next commit comes: the hook
-waits for it (the default, one verification at a time) or defers again and
-leaves two queued (plan open question 2, step 5).
+**7. Settled: the hook waits for a running verification.** When the next
+code commit comes while `HEAD` is still queued or running, its hook waits for
+the verdict (`verify.sh --status`) rather than deferring again and leaving two
+verifications queued. One verification at a time bounds the memory the
+scope of section 6 assumes, and a second queued behind a red would only add a
+verification of a commit whose parent is already known bad. The wait is the
+rest of a run the agent did not wait for at the previous commit, and it is
+short when the agent's own work between commits overlapped the run. On `pass`
+the test half is deferred; on `fail` or none it runs inline over everything
+since the last verified commit (a first-parent walk of at most 200 commits,
+else the whole `fast` profile). `ARRIS_VERIFY=inline` runs the test half at
+every commit and records it `pass`. A prose or version commit records its
+parent's verdict, waiting in the background while the parent still runs.
 
 ## Consequences
 

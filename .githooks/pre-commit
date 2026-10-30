@@ -11,8 +11,14 @@
 # - a version bump only (`Cargo.toml`, `Cargo.lock`, every changed line a
 #   `version` set to the workspace's new version): `cargo check`, which
 #   fails on a pin the bump missed;
-# - anything else: `tools/gate.sh` sizes it to the staged paths (ADR-0032).
-#   Layers, new tolerance literals, fmt, clippy and the doctests always; the
+# - anything else (ADR-0078): the static half here (layers, new tolerance
+#   literals, fmt, clippy), then HEAD's verification state. `pass`: the test
+#   half is deferred to the post-commit hook, which runs it in the background
+#   on the commit's own tree (`tools/verify.sh`). Otherwise (a red, or none)
+#   the test half runs here over everything since the last verified commit.
+#   A verification still running is waited for. `ARRIS_VERIFY=inline` never
+#   defers. The test half, `tools/test-half.sh`, is sized by `tools/gate.sh`
+#   (ADR-0032): the doctests always; the
 #   `fast` nextest profile (`.config/nextest.toml`: no `real_*`, no slow
 #   singles) at 16 cases over
 #   the crates the paths reach and the corpus areas they can change; `cargo
@@ -28,7 +34,9 @@ cd "$(git rev-parse --show-toplevel)"
 # through it; unchanged where `systemd-run --user` is absent or
 # `ARRIS_GATE_SCOPE=off`.
 [ -n "${ARRIS_GATE_SCOPED:-}" ] || ARRIS_GATE_SCOPED=1 exec tools/gate-scope.sh "$0" "$@"
-command -v cargo-nextest >/dev/null || {
+# ARRIS_STATIC_CMD, ARRIS_DOCS_CMD and ARRIS_TEST_HALF_CMD replace the halves
+# in `tools/hook-flow-test.sh`; unset in real use.
+[ -n "${ARRIS_STATIC_CMD:-}" ] || command -v cargo-nextest >/dev/null || {
   echo "pre-commit: cargo-nextest is missing. Run:" >&2
   echo "    cargo install cargo-nextest --locked" >&2
   echo "(AGENTS.md, \"Setup\"). The suite runs under nextest so that the 53" >&2
@@ -45,6 +53,12 @@ export RAYON_NUM_THREADS=${RAYON_NUM_THREADS:-16}
 
 staged=$(git diff --cached --name-only --diff-filter=ACMRD)
 [ -n "$staged" ] || exit 0
+
+# What the post-commit hook does with this commit (`pass`, `deferred` or
+# `inherit`, ADR-0078); an early exit leaves it unset and the commit verified.
+state_dir=$(realpath "$(git rev-parse --git-common-dir)")/arris-verify
+mkdir -p "$state_dir"
+rm -f "$state_dir/next"
 
 # One gate at a time per checkout. A second one, often left by a session
 # that ran out of context, shares `target/` and the machine's memory and
@@ -83,20 +97,25 @@ version_bump_only() {
 
 if prose_only; then
   echo "pre-commit: prose only — the docs tests"
-  cargo nextest run -p arris --test docs_refs -p arris-check --test doc_drift \
-    --cargo-quiet --status-level fail
+  if [ -n "${ARRIS_DOCS_CMD:-}" ]; then
+    $ARRIS_DOCS_CMD
+  else
+    cargo nextest run -p arris --test docs_refs -p arris-check --test doc_drift \
+      --cargo-quiet --status-level fail
+  fi
+  echo inherit >"$state_dir/next"
   exit 0
 fi
 
 if version_bump_only; then
   echo "pre-commit: a version bump only — cargo check"
   cargo check --workspace --all-targets --quiet
+  echo inherit >"$state_dir/next"
   exit 0
 fi
 
 # Stage times, printed as one line at the end of a code commit: `stage NAME`
-# records the seconds since the previous mark (the measurement behind the
-# verify-after-commit plan's step 1).
+# records the seconds since the previous mark.
 t_last=$EPOCHREALTIME
 times=""
 stage() {
@@ -105,36 +124,57 @@ stage() {
   t_last=$now
 }
 
-echo "pre-commit: layer rule" && tools/check-layers.sh
-echo "pre-commit: tolerance literals" && tools/check-tolerance-literals.sh
-echo "pre-commit: cargo fmt --check" && cargo fmt --all -- --check
-echo "pre-commit: cargo clippy" && cargo clippy --workspace --all-targets -- -D warnings
+static_half() {
+  echo "pre-commit: layer rule" && tools/check-layers.sh
+  echo "pre-commit: tolerance literals" && tools/check-tolerance-literals.sh
+  echo "pre-commit: cargo fmt --check" && cargo fmt --all -- --check
+  echo "pre-commit: cargo clippy" && cargo clippy --workspace --all-targets -- -D warnings
+  # The classifier's own test, whenever the classifier or the profiles change.
+  if grep -qE '^(tools/gate|\.config/)' <<<"$staged"; then
+    echo "pre-commit: the gate's classifier" && tools/gate-test.sh && tools/profile-test.sh
+    grep -q '^tools/gate-scope' <<<"$staged" && tools/gate-scope-test.sh
+  fi
+  if grep -qE '^(\.githooks/|tools/(verify|hook-flow))' <<<"$staged"; then
+    echo "pre-commit: the hooks' flow" && tools/verify-test.sh && tools/hook-flow-test.sh
+  fi
+  return 0
+}
+if [ -n "${ARRIS_STATIC_CMD:-}" ]; then $ARRIS_STATIC_CMD; else static_half; fi
+stage static
 
 if [ "${ARRIS_GATE:-}" = full ]; then
   echo "pre-commit: ARRIS_GATE=full — every test"
   echo "pre-commit: cargo nextest" && cargo nextest run --workspace --cargo-quiet --status-level fail
   echo "pre-commit: cargo test --doc" && cargo test --workspace --doc --quiet
   echo "pre-commit: cargo doc" && RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+  echo pass >"$state_dir/next"
   exit 0
 fi
 
-gate=$(tools/gate.sh)
-gate_value() { sed -n "s/^$1=//p" <<<"$gate"; }
-# The classifier's own test, whenever the classifier or the profiles change.
-if grep -qE '^(tools/gate|\.config/)' <<<"$staged"; then
-  echo "pre-commit: the gate's classifier" && tools/gate-test.sh && tools/profile-test.sh
-  grep -q '^tools/gate-scope' <<<"$staged" && tools/gate-scope-test.sh
+empty=$(git hash-object -t tree /dev/null)
+head=$(git rev-parse --verify -q HEAD || true)
+head_state=none
+[ -z "$head" ] || head_state=$(tools/verify.sh --status "$head") # waits on a running one
+if [ "$head_state" = pass ]; then
+  base=$head
+else
+  # The last verified commit on this line; the whole profile when none is
+  # within reach.
+  base=$empty
+  if [ -n "$head" ]; then
+    for c in $(git rev-list --first-parent --max-count=200 "$head"); do
+      if [ "$(cat "$state_dir/$c" 2>/dev/null)" = pass ]; then base=$c; break; fi
+    done
+  fi
 fi
-stage static
-echo "pre-commit: cargo nextest --profile fast ($(gate_value cases) cases)"
-ARRIS_PROPTEST_CASES=$(gate_value cases) ARRIS_DIFF_CASES=$(gate_value diff_cases) \
-  ARRIS_READ_BACK=$(gate_value read_back) cargo nextest run --workspace --profile fast -E "$(gate_value filter)" \
-  --cargo-quiet --status-level fail --no-tests pass
-stage nextest
-echo "pre-commit: cargo test --doc" && cargo test --workspace --doc --quiet
-stage doctest
-if [ "$(gate_value doc)" = yes ]; then
-  echo "pre-commit: cargo doc" && RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+
+if [ "$head_state" = pass ] && [ "${ARRIS_VERIFY:-}" != inline ]; then
+  echo "pre-commit: test half deferred to the verification of this commit"
+  echo deferred >"$state_dir/next"
+else
+  [ "$head_state" = pass ] || echo "pre-commit: ${head:-no commit} is not verified ($head_state): test half over everything since ${base:0:8}"
+  if [ -n "${ARRIS_TEST_HALF_CMD:-}" ]; then $ARRIS_TEST_HALF_CMD "$base"; else tools/test-half.sh "$base"; fi
+  echo pass >"$state_dir/next"
 fi
-stage doc
+stage test
 echo "pre-commit: stage seconds: $times"

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# After a commit (ADR-0078): record or start its verification. The pre-commit
+# hook left `arris-verify/next`:
+# - `pass`: the test half ran inline over this commit, so it is verified;
+# - `inherit`: a prose or version commit, which takes its parent's state
+#   (waited on in the background while the parent is still verifying);
+# - `deferred` or absent: `tools/verify.sh HEAD` runs detached (`setsid`), so
+#   a background `git commit` returns at once.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 0
+[ -f Cargo.toml ] || exit 0
+unset GIT_INDEX_FILE
+dir=$(realpath "$(git rev-parse --git-common-dir)")/arris-verify
+mkdir -p "$dir"
+sha=$(git rev-parse HEAD)
+next=$(cat "$dir/next" 2>/dev/null || echo deferred)
+rm -f "$dir/next"
+case "$next" in
+  pass) echo pass >"$dir/$sha" ;;
+  inherit)
+    parent=$(git rev-parse --verify -q HEAD^ || true)
+    if [ -z "$parent" ]; then
+      echo none >"$dir/$sha"
+    else
+      # The hook's own pid stands in until the waiter's is known, so a
+      # status read in between waits on the hook and not on a dead pid.
+      echo $$ >"$dir/$sha.pid"
+      echo running >"$dir/$sha"
+      setsid bash -c '
+        until [ "$(cat "$1/$2.pid" 2>/dev/null)" != "$4" ]; do sleep 0.05; done
+        state=$(tools/verify.sh --status "$3")
+        echo "$state" >"$1/$2"
+        rm -f "$1/$2.pid"' _ "$dir" "$sha" "$parent" "$$" >/dev/null 2>&1 </dev/null &
+      echo $! >"$dir/$sha.pid"
+    fi
+    ;;
+  *)
+    # Queued before the hook returns, so the next hook (or push) that reads
+    # the state waits on it instead of finding none. The runner is the pid
+    # `$!` names: a background job of a shell without job control is not a
+    # process group leader, so `setsid` execs instead of forking.
+    echo queued >"$dir/$sha"
+    echo $$ >"$dir/$sha.pid"
+    setsid tools/verify.sh "$sha" >/dev/null 2>&1 </dev/null &
+    echo $! >"$dir/$sha.pid"
+    ;;
+esac
+exit 0

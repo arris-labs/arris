@@ -90,7 +90,7 @@ bound has to be established here.
   status read while one runs, a second run waiting on the first. The test
   half itself is `tools/test-half.sh <base> <sha>`, which step 5's inline
   run shares.
-- [ ] Step 5 **[2]** — `pre-commit` split, `post-commit`, `pre-push`, and
+- [x] Step 5 **[2]** — `pre-commit` split, `post-commit`, `pre-push`, and
   `ARRIS_VERIFY=inline`. Test: `tools/hook-flow-test.sh` on a scratch
   repository with stub halves: a deferred commit returns before its test
   half ends; a red parent makes the next commit run inline over both;
@@ -127,7 +127,7 @@ bound has to be established here.
   `MemoryHigh` 20G / `MemoryMax` 24G (ADR-0078 §6). Step 1 measured times,
   not a peak, so the bound is chosen with room; a verification killed by it
   is the evidence to raise it.
-- ⚠ OPEN 2: a verification that is still running when the next commit
-  comes: the hook waits for it (the design), or defers again and leaves
-  two queued. The agent decides at step 5; the wait is the default, as it
-  keeps one verification at a time.
+- Settled 2 (step 5): a verification still running when the next commit
+  comes: the hook waits for it (ADR-0078 §7). One verification at a time
+  keeps the memory bound of Settled 1 true, and a second queued behind a red
+  would verify a commit whose parent is already known bad.

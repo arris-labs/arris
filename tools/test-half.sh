@@ -4,11 +4,12 @@
 # a doc comment changed. Run in the tree to test; `tools/verify.sh` runs it on
 # the verification's tree and the pre-commit hook inline over a red's range.
 #
-#   tools/test-half.sh <base> <sha>
+#   tools/test-half.sh <base> [<sha>]   (no <sha>: the staged index, the hook's
+#                                        inline run)
 set -euo pipefail
-[ $# -eq 2 ] || { echo "usage: tools/test-half.sh <base> <sha>" >&2; exit 2; }
+{ [ $# -eq 1 ] || [ $# -eq 2 ]; } || { echo "usage: tools/test-half.sh <base> [<sha>]" >&2; exit 2; }
 cd "$(git rev-parse --show-toplevel)"
-gate=$(tools/gate.sh since "$1" "$2")
+gate=$(tools/gate.sh since "$@")
 gate_value() { sed -n "s/^$1=//p" <<<"$gate"; }
 echo "test-half: cargo nextest --profile fast ($(gate_value cases) cases)"
 ARRIS_PROPTEST_CASES=$(gate_value cases) ARRIS_DIFF_CASES=$(gate_value diff_cases) \
