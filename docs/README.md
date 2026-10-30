@@ -42,7 +42,10 @@ the seed and the commit that replay it, and `/close-cycle` reconciles them
 before a cycle closes. The pipeline is walked by the shared skills `/idea`,
 `/plan`, `/work`, `/retire-plan` and, at a cycle boundary, `/close-cycle`
 (`.agents/skills/`, symlinked into `.claude/skills/`), under the rules in
-`.agents/rules/`. `inspect`, beside them, is how the agent sees a shape it is
+`.agents/rules/`. `/work <slug>` with no step **conducts** the plan: each
+remaining step runs in a fresh subagent on its tier (`.agents/tiers.md`), and
+the conducting session retires the plan itself; `/work <slug> step N` does one
+step in the current session. `inspect`, beside them, is how the agent sees a shape it is
 changing without a GUI. `/refactor-review`, suggested after each
 `/close-cycle`, measures and reads the workspace for structural debt and
 writes it as one idea whose milestone plans run in the side slot. For the human: `/next` says where things stand and

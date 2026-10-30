@@ -110,7 +110,7 @@ only test is a CI run, which needs a push, so the plan runs on
   `full-gate.sh`. Test: a command over the bound in a scope fails naming
   it, the terminal survives, and the hook passes inside a scope; without
   `systemd-run` (`ARRIS_GATE_SCOPE=off`) it runs as before.
-- [ ] Step 7 **[1]** — `GLOSSARY.md`: *Conductor* and *Tier*; `docs/README.md`
+- [x] Step 7 **[1]** — `GLOSSARY.md`: *Conductor* and *Tier*; `docs/README.md`
   "Document lifecycle" names the conductor.
 
 ## Acceptance

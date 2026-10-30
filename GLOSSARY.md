@@ -349,3 +349,14 @@ _Avoid_: sprint, milestone (a milestone is a cycle's part, `m1`)
 **Closure**:
 The rule that what Arris builds, Arris takes as an operand, before the
 kernel takes new input (closure before breadth, ADR-0020).
+
+**Conductor**:
+The session that runs a plan's steps, each as a fresh subagent on its tier,
+and retires the plan itself (`/work <slug>` with no range;
+`.agents/skills/work/SKILL.md`).
+_Avoid_: orchestrator, driver, runner
+
+**Tier**:
+A step's grade read as the model class that executes it: 1 routine, 2
+careful, 3 unproven (`.agents/tiers.md`). A plan names tiers, never models.
+_Avoid_: level, model (a tier is mapped to a model by a harness's table)
