@@ -16,9 +16,11 @@ second roadmap file, never an `ARCHIVE.md` — git holds the history.
 1. **Check it is finished.** Every line of the section done or moved to
    `docs/BACKLOG.md`; `docs/plans/` holds only `TEMPLATE.md`; the full gate
    (`.agents/rules/git.md`) green — run it now, don't wait for CI; and the
-   last CI run on `main` green in every job (`gh run list --branch main`,
-   `gh run view <id>`), since `oracle`, `wasm`, `parallel` and `python` run
-   only there. Anything open: stop and report it; never close around it.
+   last *finished* CI run on `main` green in every job (`gh run list
+   --branch main`, `gh run view <id>`), since `oracle`, `wasm`, `parallel`
+   and `python` run only there. A run still going is never watched: it is
+   read again at the end of the close, and a red one stops it then. Anything
+   open: stop and report it; never close around it.
 2. **Reconcile the findings** (`docs/BACKLOG.md` §Findings). Every failing
    job of the scheduled nightlies since the cycle opened (`gh run list
    --workflow=nightly.yml`) is accounted for by a block, a regression
@@ -64,7 +66,10 @@ second roadmap file, never an `ARCHIVE.md` — git holds the history.
 9. Commit `docs: close <cycle>`, the body listing the docs updated and the
    drift fixed.
 10. **Hand over to `/release`**: tell the human to run it next — a closed
-   cycle bumps the minor. Tags and pushes stay the human's. Then suggest
+   cycle bumps the minor. Tags and pushes stay the human's. Before that,
+   the reply prints `tools/step-rework.sh --since <the cycle's opening
+   date>`, the per-tier rework table the grades are re-weighted on
+   (`.agents/tiers.md`). Then suggest
    `/refactor-review`, unless a `docs/ideas/refactor-*.md` is still open:
    its milestone plans run in the new cycle's side slot.
 

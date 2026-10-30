@@ -19,7 +19,10 @@ later session.
    `--project-dir` with the old path's transcript directory. Open a
    transcript only where the digest points at something
    (`~/.claude*/projects/<this repo>/<id>.jsonl`). Read the plan's commits
-   too (`git log --grep='plans/<slug>'`).
+   too (`git log --grep='plans/<slug>'`). Print `tools/step-rework.sh
+   --since <the plan's start date>` (its `Started` line; the whole history
+   when no plan is named): a tier whose steps were often reworked is a
+   grade candidate for step 2.
 2. **Find the candidates**, each with its evidence (session id and a quote
    or command):
    - **The human stepping in**: a correction, a repeated instruction, a

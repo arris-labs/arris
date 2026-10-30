@@ -103,7 +103,7 @@ only test is a CI run, which needs a push, so the plan runs on
 - [x] Step 4 **[1]** — No foreground waits: `git.md` and `/work`. Test:
   the gate rules still read as `.agents/rules/git.md` cites them
   (`docs_refs`).
-- [ ] Step 5 **[1]** — `/retire-plan` overlaps its full gate with the
+- [x] Step 5 **[1]** — `/retire-plan` overlaps its full gate with the
   review, the docs and the drift check; `/close-cycle` stops watching CI;
   `/retro` and `/close-cycle` print `step-rework.sh`.
 - [ ] Step 6 **[2]** — `tools/gate-scope.sh`, wired into the hook and

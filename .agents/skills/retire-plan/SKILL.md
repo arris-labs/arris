@@ -13,24 +13,26 @@ Deletion is the "done" signal; anything worth keeping moves first.
 
 ## Do
 
-1. **Verify.** Every step of `docs/plans/<slug>.md` ticked (never tick one
-   here), and the acceptance run green — run it now. This is where the
-   plan's **full gate** runs (`.agents/rules/git.md`), plus
-   `ARRIS_ORACLE_CACHE=off` for the oracle comparisons the plan touched,
-   and `cargo nextest run -p <crate> --features parallel` for each of
-   `arris-mesh`, `arris-ops`, `arris` whose source changed, and
-   `tools/py-test.sh` when the plan touched `crates/arris-py`. The full gate
-   is `tools/full-gate.sh <scratchpad>/gate.log` in the background (about
-   an hour); its last lines name every red test. Anything red: stop
-   and report.
+1. **Verify, starting the gate.** Every step of `docs/plans/<slug>.md`
+   ticked (never tick one here). Start the acceptance's runs first, in the
+   background (`run_in_background`; no wait loop, `.agents/rules/git.md`):
+   the plan's **full gate**, `tools/full-gate.sh <scratchpad>/gate.log`
+   (about an hour; its last lines name every red test), then, in one
+   background shell after it, `ARRIS_ORACLE_CACHE=off` for the oracle
+   comparisons the plan touched, `cargo nextest run -p <crate> --features
+   parallel` for each of `arris-mesh`, `arris-ops`, `arris` whose source
+   changed, and `tools/py-test.sh` when the plan touched `crates/arris-py`.
+   Steps 2–4 run while they do. Nothing commits until the gate is green;
+   anything red: stop and report.
 2. **Review the commits against the plan**, in a subagent on tier 3
-   (`.agents/tiers.md`) so it reads with fresh eyes. Give it the plan file, `.agents/review.md` (its brief and
+   (`.agents/tiers.md`) so it reads with fresh eyes, started while the gate
+   runs. Give it the plan file, `.agents/review.md` (its brief and
    standards), `.agents/rules/kernel.md`, `GLOSSARY.md`, and the plan's
    commits: `git log --format='%h %s' --grep='plans/<slug>'` (another
    plan's commits may sit between them, so it reads each with `git show`,
    not one range diff). Report its findings by axis, unmerged. Fix a hard
-   finding in its own commit (`fix(scope): … (plans/<slug> review)`)
-   before going on. A judgement finding the agent decides on the
+   finding in its own commit (`fix(scope): … (plans/<slug> review)`),
+   made once the gate is green. A judgement finding the agent decides on the
    charter's terms (`SEED.md`), stating the decision and its reason in the
    reply — a choice between fixes included; only a product question (what
    the kernel offers its callers) waits for the human. One left
