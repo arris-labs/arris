@@ -30,7 +30,8 @@ Deletion is the "done" signal; anything worth keeping moves first.
    finding in its own commit (`fix(scope): … (plans/<slug> review)`)
    before going on. A judgement finding the agent decides on the
    charter's terms (`SEED.md`), stating the decision and its reason in the
-   reply; only a scope or product question waits for the human. One left
+   reply — a choice between fixes included; only a product question (what
+   the kernel offers its callers) waits for the human. One left
    for later is a backlog line.
 3. Execute *Docs to update* line by line, present tense, no "as of this
    plan". A closed `⚠ OPEN:` gets its ADR now, listed in
