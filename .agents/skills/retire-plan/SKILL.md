@@ -23,7 +23,11 @@ Deletion is the "done" signal; anything worth keeping moves first.
    parallel` for each of `arris-mesh`, `arris-ops`, `arris` whose source
    changed, and `tools/py-test.sh` when the plan touched `crates/arris-py`.
    Steps 2–4 run while they do. Nothing commits until the gate is green;
-   anything red: stop and report.
+   anything red: stop and report. A plan whose diff (`git diff --name-only`
+   over its commits) reaches none of `crates/`, `tests/`, `fuzz/`,
+   `Cargo.*`, `clippy.toml`, `rust-toolchain.toml`, `.config/`,
+   `.githooks/` or `tools/*gate*` runs no full gate: its commits' hooks
+   were its gate, and the reply says so.
 2. **Review the commits against the plan**, in a subagent on tier 3
    (`.agents/tiers.md`) so it reads with fresh eyes, started while the gate
    runs. Give it the plan file, `.agents/review.md` (its brief and
