@@ -36,6 +36,8 @@ argument-hint: <plan slug> [step number or range]
 5. Commit `type(scope): summary (plans/<slug> step N)` with the box ticked
    in the same commit; the body says why, cites docs/ADRs, names any public
    type or signature changed.
+   A commit that repairs an earlier step's work names that step, never the
+   step in hand (`.agents/rules/git.md`, attribution).
 6. A step that shows the plan is wrong edits the plan in that commit and
    says so; a rescope inside the plan is the agent's to decide, written as
    *Settled* with its reason, and the work goes on. A failure that resists a first fix gets the `inspect` skill's

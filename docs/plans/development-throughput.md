@@ -96,7 +96,7 @@ only test is a CI run, which needs a push, so the plan runs on
   through the table reports its model (`claude-haiku-5-5`); the conductor's
   run of steps 3–7 is the acceptance's (its first hand-back is checked by
   hand before the second starts).
-- [ ] Step 3 **[2]** — `tools/step-rework.sh` and its test on a scratch
+- [x] Step 3 **[2]** — `tools/step-rework.sh` and its test on a scratch
   repository: a reworked step, an override, a review fix, a step with no
   grade. The attribution rule in `git.md` and `/work`. Baseline: its table
   over `main` since 2026-09-13, in the commit body.

@@ -54,6 +54,10 @@ Name any public type or signature it changes.
   several as `geom,ops`) or `docs`, `plan`, `adr`, `tools`.
 - The `(plans/<slug> step N)` suffix marks every plan-step commit;
   retirement is `docs: retire plan <slug>`.
+- **Attribution**: a commit that repairs an earlier step's work, of any
+  type, carries that step's suffix, never a later one's; a fix found by the
+  retirement review carries `(plans/<slug> review)`. `tools/step-rework.sh`
+  reads these to count, per tier, the steps that needed a later commit.
 - Docs change in the **same commit** as the behaviour; a docs-only catch-up
   is `docs(sync): …`.
 
