@@ -3,8 +3,9 @@
 //! writer leaves out — rebuilt, and a volume, area and centroid within
 //! its tolerances, its provenance naming the file entity of every entity.
 
-use arris_debug::unmetered::step_read;
+use arris_debug::unmetered::{mass_properties, step_read};
 use arris_math::real;
+
 use std::collections::BTreeMap;
 
 use arris_check::{Level, check};
@@ -144,9 +145,35 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
         held.recipe.tolerances =
             corpus::within_own_tolerance(&fixture.recipe.tolerances, &chain.model, original)?;
     }
-    corpus::measure_stage(&held, &read_chain, expected).map_err(|e| e.to_string())?;
+    let is_change = (fixture.second_oracle.as_ref())
+        .and_then(|s| s.results.get(variant))
+        .is_some_and(|r| r.operand.is_some());
+    if is_change {
+        // A record of changes adds the second oracle's change to the
+        // build's own operand, which a file has no step for (ADR-0073 as
+        // amended): the round trip holds the read body's volume and area
+        // to the body that was written, within the fixture's tolerances.
+        let was = mass_properties(&chain.model, original).map_err(|e| e.to_string())?;
+        let now = mass_properties(&read_chain.model, body).map_err(|e| e.to_string())?;
+        let (dv, da) = ((now.volume - was.volume).abs(), (now.area - was.area).abs());
+        if dv > held.recipe.tolerances.volume_rel * was.volume.abs()
+            || da > held.recipe.tolerances.area_rel * was.area.abs()
+        {
+            return Err(format!(
+                "read back volume {} area {} against {} and {}",
+                now.volume, now.area, was.volume, was.area
+            ));
+        }
+    } else {
+        corpus::measure_stage(&held, &read_chain, expected).map_err(|e| e.to_string())?;
+    }
     let rebuilt = degenerate_edges(&read_chain.model, body)?;
-    if rebuilt != degenerate {
+    // The reader rebuilds a degenerate edge where a surface is singular.
+    // A vanishing end's (ADR-0074) lies on a row the skin keeps exact, a
+    // gap inside its vertex's tolerance the file carries as that
+    // tolerance, so a record of changes' fixture reads back one short.
+    let off_pole = usize::from(is_change);
+    if rebuilt > degenerate || degenerate - rebuilt > off_pole {
         return Err(format!(
             "{rebuilt} degenerate edges read back of {degenerate}"
         ));
