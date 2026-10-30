@@ -3826,7 +3826,7 @@ fn oblique_is_checked(corner: f64, tilt: f64, r: f64, pose: Isometry) {
     assert_checked(&check(&m, blended, Level::Full)).unwrap();
 }
 
-// A kink and a vanishing end in a real part (plans/tolerant-tangency): the
+// A kink and a vanishing end in a real part (ADR-0074, ADR-0075): the
 // vertex's tolerance that covers them is a file's healed one, which no
 // operation makes, so the parts are the corpus's own, read, moved to a
 // random pose and filleted at a random radius. FTC-11's slot chains through

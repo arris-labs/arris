@@ -926,7 +926,7 @@ same-domain face merging; sheet operands of the boolean; free-edge
 sewing; two NURBS faces flush over an area; faceted solids.
 
 **Accept:** the histogram's blend network row re-run and printed, below
-4 of 38 (the corrected count), every stage left a typed refusal naming the edge; each stage
+4 of 38 (the corrected count; 0 of 38 after `tolerant-tangency`), every stage left a typed refusal naming the edge; each stage
 newly built gives a checker-green body whose mass properties match Open
 CASCADE's within the fixture's tolerance, with a fixture per refusal it
 retires; the script corpus re-run, its `fillet` refusals below 3; the

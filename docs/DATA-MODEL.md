@@ -1929,7 +1929,8 @@ may carry different tolerances.
 - **`Precision`** is the model-wide configuration set at `Model::new`:
   `default_tolerance` (what primitives get), `min_tolerance` (the floor no
   entity goes below), `max_tolerance` (an operation that would exceed it
-  returns `OpError::Tolerance`; a body may hold more, which a healed read
+  returns `OpError::Tolerance`, except a new vertex inside an operand
+  vertex's tolerance, which may take up to that vertex's: ADR-0076; a body may hold more, which a healed read
   does, ADR-0060), `angular_tolerance` (radians, for
   parallel/tangent decisions), `parametric_tolerance` (how far a pcurve
   may deviate in (u, v) at unit parametric speed; the checker scales it by

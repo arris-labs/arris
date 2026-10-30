@@ -8,6 +8,18 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A fillet that ends where two faces run tangent only within a file's
+  tolerance now builds where it was refused as `TangentChain`: a stripe
+  that narrows to nothing short of its vertex stops there and the edge
+  runs on to the vertex, and two stripes meet across a corner edge that
+  leans a few degrees but that the file writes as tangent. The battery
+  edges of a NURBS torus and a slot chain on parts read from STEP are
+  built. A fillet may now give a new vertex up to the tolerance of the
+  operand vertex it lies inside, past `max_tolerance`.
+- The mesh of a face leaves out edge samples that lie inside an end
+  vertex's tolerance, so a healed part with loose vertices closes where
+  two faces' samples over the same contact disagreed; a vertex at the
+  default tolerance skips nothing.
 - A fillet that is too wide for its face and would run off the face's
   edge, or into a hole, now builds where it was refused as
   `BlendTooLarge`, as Open CASCADE builds it: the lip of a slab filleted

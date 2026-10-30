@@ -38,29 +38,16 @@ the NURBS cycle (NURBS faces against every kind and each other, walked
 blends, sweep, loft; NURBS blocks 0 of 38 parts). ADR-0001 to ADR-0068;
 PyPI `arris` beside them (ADR-0034); audience developers first, with the
 script corpus (ADR-0067).
-**C11, the blend residue** (opened 2026-10-22): `battery-honesty` done
-2026-10-26 (a dropped edge is Open CASCADE refusing, ADR-0070): the blend
-network blocks 4 of 38 real parts at `fillet` (the first count, 12, was
-mostly the battery's own sample); `blend-runs-onto` (M2) done 2026-10-27
-(a fillet rolls on the edge it runs over, ADR-0071): 1 of the script
-corpus's 4 refusals left; `three-edge-run-vertex` (M3) done 2026-10-28 (a junction
-whose tangent edge leans meets on its offset, ADR-0072; a second oracle's
-record, ADR-0073): the real parts' blend row is 2 of 38; `walked-saddle-cell` done
-2026-10-29 (a walked skin's corner saddle, arc knot and tangent arc decided
-at `Full`, ADR-0061).
-The modelling layer (`arris.build`, ADR-0067) landed 2026-10-22, and
-the prebuilt wheels for Linux, macOS and Windows with it, so the launch
-gate of ADR-0067 §5 is met; 0.9.1 (the modelling layer and the platform
-wheels) is the release prepared for the first multi-platform upload.
-**Refactor sequence** (the `refactor-after-c10` review, option B):
-`small-seams` done 2026-10-23 (each shared helper once, in the lowest crate);
-`builder-split` done 2026-10-24 (`builder/` by concern, `BuildError` nested,
-`DegenerateReason` typed); `sweep-skeleton` done 2026-10-25 (the four sweeps
-through one `sweep::skeleton`); `one-bernstein` done 2026-10-25 (one
-`bernstein_n`, `torus_walk/` split by phase).
-`long-functions` done 2026-10-26 (the six long functions as phases; `corpus/` a module tree);
-`file-concerns` done 2026-10-26 (`model/`, `check/`, `cdt/`, `pcurve/` by concern); the sequence is closed.
-**Next:** `/plan tolerant-tangency` (M4), then M5.
+**C11, the blend residue** (opened 2026-10-22): M1–M4 done 2026-10-26 to
+10-30 (`battery-honesty`, `blend-runs-onto`, `three-edge-run-vertex`,
+`walked-saddle-cell`, `tolerant-tangency`; ADR-0070 to ADR-0077): the real
+parts' blend row is **0 of 38**, a vanishing end and a chain through a kink
+within a vertex's tolerance build, and a second oracle's records (ADR-0073)
+hold what Open CASCADE cannot. The modelling layer (`arris.build`,
+ADR-0067) and the multi-platform wheels landed 2026-10-22; 0.9.1 is the
+release prepared for the first multi-platform upload. The refactor
+sequence (`refactor-after-c10`, option B) is closed (2026-10-26).
+**Next:** M5 `overhang-tip-cap`.
 
 ## Rules that are not derivable from the code
 
