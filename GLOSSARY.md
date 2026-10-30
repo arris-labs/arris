@@ -299,6 +299,11 @@ _Avoid_: bug report, issue
 The checks a change passes: the pre-commit hook's slice sized to what is
 staged, and the full gate once per plan and at a release.
 
+**Verified**:
+A commit whose gate tests passed on its own tree after it was committed;
+the next commit and any push wait on it.
+_Avoid_: checked (the checker's word), green (a CI run's)
+
 ## Consumers and process
 
 **Consumer**:
