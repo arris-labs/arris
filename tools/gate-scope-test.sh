@@ -16,8 +16,14 @@ import subprocess, sys
 r = subprocess.run(["tools/gate-scope.sh", "python3", "-c", "x = bytearray(400 * 1024 * 1024)"], capture_output=True, text=True)
 sys.stdout.write(str(r.returncode) + " " + r.stderr)')
   case $err in
-    "137 "*MemoryMax=64M*) ;;
+    "137 "*MemoryMax=64M*|"143 "*MemoryMax=64M*) ;;
     *) echo "FAIL bound: $err" >&2; fail=1 ;;
+  esac
+  # the biggest process dies, the command itself exits 1: the bound is still named
+  err=$(ARRIS_GATE_MEMORY_MAX=64M tools/gate-scope.sh bash -c 'python3 -c "x = bytearray(400 << 20)"; exit 1' 2>&1)
+  case $err in
+    *MemoryMax=64M*) ;;
+    *) echo "FAIL child kill: $err" >&2; fail=1 ;;
   esac
 else
   echo "gate-scope-test: no systemd-run --user, scope cases skipped"

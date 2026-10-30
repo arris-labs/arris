@@ -64,8 +64,8 @@ argument-hint: <plan slug> [step number or range]
 - An open question, a fork between designs or a rescope is the agent's,
   whoever the plan names: take the recommended option, write it as
   *Settled* with its reason, and go on through the requested range. Only a
-  push, publish, branch or a change to the plan's acceptance waits for the
-  human.
+  push, publish, branch, a change to the plan's acceptance or a product
+  question (what the kernel offers its callers) waits for the human.
 - The last ticked box of a step or range leaves the plan open for
   `/retire-plan`; a conductor runs it itself.
 
@@ -83,7 +83,8 @@ argument-hint: <plan slug> [step number or range]
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
    step N)`, the plan has step N ticked, `git status` is clean.
    - A question only the human may answer (*Keep to*: a push, publish,
-     branch or change to the plan's acceptance): stop and relay it.
+     branch, change to the plan's acceptance or product question): stop and
+     relay it.
    - Not landed for any other reason: one fresh subagent one tier up (3
      stays 3) gets the step and the first one's report; a second miss
      stops the conductor with both reports.
