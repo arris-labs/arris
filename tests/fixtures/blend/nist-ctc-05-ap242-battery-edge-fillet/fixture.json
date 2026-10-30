@@ -1,0 +1,40 @@
+{
+  "description": "NIST's CTC-05, its AP242 edition 1's solid #1205: the battery's edge e258 (AP203's e256 mirrored across y = 0, so its mirror image of the nurbs-torus fixture's edge) between the B-spline face and the torus, filleted alone at the battery's radius 0.978. Its tolerances are the AP242 edition's: edge 2.4e-4, vertices 2.1e-2. At v80 the faces turn tangent, a vanishing end whose exact ball's arc, 1.97e-2 from the edge's curve, lies past `max_tolerance` and inside the vertex's own tolerance 2.05e-2: the stripe stops on it, the new vertex takes the arc's distance and the edge's remnant runs on to v80 (ADR-0074, ADR-0060 as amended). The chain runs through the kink at v115 and the junction at v31 (ADR-0075, ADR-0072): three edges, 156 to 159 faces. The second oracle builds it valid, 156 to 159 faces as Arris's, and Open CASCADE builds a body BRepCheck_Analyzer finds invalid; the second oracle's record is held as a change against each kernel's own operand (plans/tolerant-tangency steps 1 and 7)",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../boolean/nist-ctc-05-ap242-box-cut-nurbs-plane/nist_ctc_05_asme1_ap242-e1-1205.stp",
+      "sha256": "e47c85bd667405aa4918f6dd17f9d70db4ecdd6509dd1e856c228ed793d7fa70",
+      "id": 1205
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          150.9839623188243,
+          -31.260680012470758,
+          56.544763865202725
+        ]
+      ],
+      "radius": 0.9783576800575479
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "checker_undecided": "the blend narrows toward v80, its vanishing end, to a sliver under 1e-3 wide, which lies within the fixture's 1e-7 of the torus f111, its tangent neighbour, over a whole patch, where the intersector has no form for the pair (ADR-0074); its pairs with the torus and the NURBS faces beside it stay undecided",
+    "counts": {
+      "vertices": 255,
+      "edges": 387,
+      "faces": 159,
+      "loops": 204,
+      "shells": 1
+    },
+    "genus": 10,
+    "measure_differs": "Open CASCADE builds a body BRepCheck_Analyzer finds invalid, so its measures hold nothing. The second oracle's solid is valid and removes 0.0245 of volume and 0.0377 of area from the part: its change (result minus operand) is held to Arris's own measures of the operand (ADR-0073)",
+    "counts_differ": "Open CASCADE's body is invalid and counts 264 vertices, 397 edges, 160 faces; Arris's 159 faces are the second oracle's, the original 156 and one blend face per edge of the three-edge chain",
+    "occt_step_unread": "Open CASCADE's result is the invalid body BRepCheck_Analyzer refuses, and its STEP carries the fault: the checker finds a loop of its that intersects itself. Reading it measures the reader on a body that is no solid, not the operation; Arris's own STEP is still read back by Open CASCADE and compared"
+  }
+}

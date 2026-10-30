@@ -1,5 +1,5 @@
 {
-  "description": "NIST's CTC-05, its AP242 edition 1's solid #1205: the same edge as blend/nist-ctc-05-ap203-nurbs-torus-fillet, the B-spline face f109 written as one rational B\u00e9zier patch (1 \u00d7 1 spans) and the edge's curve as a cubic B-spline of 11 spans (no circle, off the best by 1.6e-3), against the torus f111, filleted alone at the battery's radius 0.889. The edge's tolerance is 2.4e-4 and its vertices' 2.1e-2. At v80 (AP203's v84) the faces turn tangent, a vanishing end; the offsets' section passes 2.6e-2 from the ball pinned there, which the vertex's tolerance admits and the edge's alone did not (ADR-0062, step 10a). The exact ball's arc there is 5.5e-4 wide and 2.5e-2 from the vertex, past its tolerance: no pole, so Arris refuses it TangentChain naming e256 and v80, as it does the AP203 edition. Open CASCADE builds a body BRepCheck_Analyzer finds invalid, 29 mm\u00b3 larger than the unfilleted part where a convex fillet removes about 2; its measures stay as the record and hold nothing (plans/nurbs-face-blend steps 1, 10a)",
+  "description": "NIST's CTC-05, its AP242 edition 1's solid #1205: the same edge as blend/nist-ctc-05-ap203-nurbs-torus-fillet, the B-spline face f109 written as one rational Bézier patch (1 × 1 spans) and the edge's curve as a cubic B-spline of 11 spans (no circle, off the best by 1.6e-3), against the torus f111, filleted alone at the battery's radius 0.889. The edge's tolerance is 2.4e-4 and its vertices' 2.1e-2, where AP203's are 7.7e-3. At v80 (AP203's v84) the faces turn tangent, a vanishing end whose exact ball's arc is 5.5e-4 wide and 1.6e-2 from the edge's curve, inside the vertex's tolerance: the stripe stops on that arc and the edge's remnant runs on to v80 (ADR-0074, ADR-0060 as amended). The chain then runs through the same kink at v115 and the junction at v31 as the AP203 edition: three edges, 156 to 159 faces. The second oracle refuses this encoding (\"Create Blend error\" at its tolerances) and Open CASCADE builds a body BRepCheck_Analyzer finds invalid, 29 mm³ larger than the unfilleted part; so the change held is the second oracle's record of the AP203 edition, the same part and edge, imported here unchanged (plans/nurbs-face-blend steps 1, 10a, plans/tolerant-tangency steps 1 and 7)",
   "steps": [
     {
       "op": "step",
@@ -24,6 +24,17 @@
   ],
   "result": "result",
   "analytic": {
-    "expect_error": "tangent-chain"
+    "checker_undecided": "the blend narrows toward v80, its vanishing end, to a sliver under 1e-3 wide, which lies within the fixture's 1e-7 of the torus f111, its tangent neighbour, over a whole patch, where the intersector has no form for the pair (ADR-0074); its pairs with the torus and the NURBS faces beside it stay undecided",
+    "counts": {
+      "vertices": 255,
+      "edges": 387,
+      "faces": 159,
+      "loops": 204,
+      "shells": 1
+    },
+    "genus": 10,
+    "counts_differ": "Open CASCADE's body is invalid and counts 267 vertices, 400 edges, 160 faces; Arris's 159 faces are the AP203 edition's second-oracle count, the original 156 and one blend face per edge of the three-edge chain",
+    "measure_differs": "Open CASCADE builds a body BRepCheck_Analyzer finds invalid (volume 29 mm³ above the part's where a convex fillet removes about 2). The second oracle refuses this encoding, so second_oracle.json is its record of the AP203 edition of the same part and edge, whose change (result minus operand) is held to Arris's own measures of this operand (ADR-0073)",
+    "occt_step_unread": "Open CASCADE's result is the invalid body BRepCheck_Analyzer refuses, and its STEP carries the fault: the checker finds a loop of its that intersects itself. Reading it measures the reader on a body that is no solid, not the operation; Arris's own STEP is still read back by Open CASCADE and compared"
   }
 }

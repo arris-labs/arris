@@ -22,7 +22,7 @@ use arris_geom::{
     SECTION_FIT_FRACTION, Surface, SurfaceKind, intersect_curve_surface, pcurve_on,
 };
 use arris_math::{Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance};
-use arris_topo::entity::Edge;
+use arris_topo::entity::{Edge, Vertex};
 use arris_topo::{EdgeId, FaceId, Orientation};
 
 use super::Kind;
@@ -297,7 +297,15 @@ pub(super) fn walked_stripe(
         });
         if !closes {
             let share = SECTION_FIT_FRACTION * fit.linear;
-            let Some(r) = remnant(env, &entity, &skin.surface, skin.ends[end], end == 0, share)?
+            let Some(r) = remnant(
+                env,
+                &entity,
+                at,
+                &skin.surface,
+                skin.ends[end],
+                share,
+                end == 0,
+            )?
             else {
                 return Err(degenerate(
                     vec![e, forward(vertex)],
@@ -416,9 +424,16 @@ pub(super) fn walked_end(
     let surface3 = m.surface(m.face(face3)?.surface())?;
     let arc_tolerance = s.tolerance.max(m.face(face3)?.tolerance());
     let arc_tol = Tolerance::new(arc_tolerance, tol.angular);
-    let refuse = || OpError::Unsupported {
-        a: (GeomKind::Surface(SurfaceKind::Nurbs), e),
-        b: (GeomKind::Surface(surface3.kind()), forward(face3)),
+    // An end the section does not decide, or a contact that misses the face
+    // across, beside a corner edge tangent within the vertex's tolerance is
+    // a chain the walk takes (ADR-0075), not an unsupported pair.
+    let refuse = || {
+        near_tangent_corner(env, s, e, corner_edges, vertex)
+            .err()
+            .unwrap_or_else(|| OpError::Unsupported {
+                a: (GeomKind::Surface(SurfaceKind::Nurbs), e),
+                b: (GeomKind::Surface(surface3.kind()), forward(face3)),
+            })
     };
     if matches!(surface3, Surface::Nurbs(_)) {
         return Err(refuse());
@@ -442,7 +457,6 @@ pub(super) fn walked_end(
         let Some(hit) =
             (hits.iter()).min_by(|a, b| (a.t - v_end).abs().total_cmp(&(b.t - v_end).abs()))
         else {
-            near_tangent_corner(env, s, e, corner_edges, vertex)?;
             return Err(refuse());
         };
         t[k] = hit.t;
@@ -490,14 +504,18 @@ pub(super) fn walked_end(
 /// row's middle, strictly inside the edge, and a tolerance there that is
 /// the edge's own or the row's farthest point from it with the surface's
 /// `share` of the tolerance, whichever is larger. `None` where that point
-/// is not inside the edge, or the tolerance is past `max_tolerance`.
+/// is not inside the edge, or the tolerance is past `max_tolerance`, unless
+/// the point lies within the end `vertex`'s own tolerance: there that
+/// tolerance is the ceiling, since the read recorded that the faces meet no
+/// better than that and the cut adds no uncertainty of its own (ADR-0060 §4).
 fn remnant(
     env: &Env<'_>,
     edge: &Edge,
+    vertex: &Vertex,
     surface: &NurbsSurface,
     v: f64,
-    at_lo: bool,
     share: f64,
+    at_lo: bool,
 ) -> Result<Option<Remnant>, OpError> {
     let m = env.m;
     let (curve, range) = edge.curve().ok_or(invariant("the blended edge's curve"))?;
@@ -518,8 +536,23 @@ fn remnant(
     let reach = (0..n)
         .map(|i| (surface.eval(i as f64 / (n - 1) as f64, v).point - point).norm())
         .fold(0.0, f64::max);
-    let tolerance = edge.tolerance().max(reach + share);
-    if tolerance > m.precision().max_tolerance {
+    let ceiling = if (point - vertex.point()).norm() <= vertex.tolerance() {
+        m.precision().max_tolerance.max(vertex.tolerance())
+    } else {
+        m.precision().max_tolerance
+    };
+    // The faces' pcurves of the edge stand off its curve by up to its
+    // tolerance, and the remnant's end is moved onto the contact (`end_on_
+    // kept_pcurves`): where the arc is off the edge by more than that
+    // tolerance, the vertex holds the arc and the edge's own on top of it,
+    // as far as the ceiling allows.
+    let arc = reach + share;
+    let tolerance = if arc > edge.tolerance() {
+        arc + edge.tolerance().min((ceiling - arc).max(0.0))
+    } else {
+        edge.tolerance()
+    };
+    if tolerance > ceiling {
         return Ok(None);
     }
     Ok(Some(Remnant {

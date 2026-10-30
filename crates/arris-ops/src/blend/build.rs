@@ -1185,7 +1185,7 @@ fn remnant_edges(
                 geometry: EdgeGeometry::Curve { curve, range },
                 start,
                 end,
-                tolerance: entity.tolerance(),
+                tolerance: entity.tolerance().max(r.tolerance),
             },
             Some(edge),
         ));

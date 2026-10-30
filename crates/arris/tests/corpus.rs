@@ -1431,9 +1431,15 @@ corpus_tests! {
     blend_nist_ctc_05_ap203_nurbs_torus_fillet => run "blend/nist-ctc-05-ap203-nurbs-torus-fillet";
     /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
     /// face one rational Bézier patch and its vertices' tolerance wider
-    /// than the edge's: refused at v80, where the stripe would stop short
-    /// past `max_tolerance` (ADR-0074 §4).
+    /// than the edge's: the stripe stops short at v80 inside the vertex's
+    /// own tolerance, past `max_tolerance`, and the chain through the kink
+    /// builds as the AP203 edition's, held to that edition's second-oracle
+    /// change (ADR-0074, ADR-0060 as amended).
     blend_nist_ctc_05_ap242_nurbs_torus_fillet => run "blend/nist-ctc-05-ap242-nurbs-torus-fillet";
+    /// CTC-05 AP242's battery edge e258 at r 0.978 (the e256 fixture's edge
+    /// mirrored): the same vanishing end and chain, built and held to the
+    /// second oracle's change (ADR-0074, ADR-0075).
+    blend_nist_ctc_05_ap242_battery_edge_fillet => run "blend/nist-ctc-05-ap242-battery-edge-fillet";
     /// A stadium's whole top outline filleted in one call: line, arc, line, arc,
     /// a closed chain through four tangent vertices.
     blend_stadium_outline_fillet => run "blend/stadium-outline-fillet";

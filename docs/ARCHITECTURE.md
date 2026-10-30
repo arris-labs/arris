@@ -1647,7 +1647,8 @@ depends on `check`. The mesh guarantees (ADR-0003):
   function of the edge and the chord and never of how far a
   neighbouring face's region reaches (ADR-0052) — and its `EdgeRange` is
   the polyline from its start vertex to its end vertex along its curve's
-  parameter.
+  parameter. A sample inside an end vertex's own tolerance of that
+  vertex is skipped: the vertex stands for it (ADR-0077).
 - A face's loops are the *same* parameters through each coedge's
   pcurve, triangulated in (u, v) by the constrained Delaunay
   triangulation of `arris_mesh::cdt` and mapped back to the shared

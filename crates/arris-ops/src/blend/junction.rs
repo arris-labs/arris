@@ -443,7 +443,17 @@ pub(super) fn junction(
         Some(_) => runs_tolerance.max(gap),
         None => tolerance,
     };
-    let arc_tol = Tolerance::new(tolerance, tol.angular);
+    // Across a kink the arc's ends stand off each blend by up to the gap,
+    // where the blend's domain ends and the projection clamps; the fit is
+    // held to a quarter of its tolerance (`SECTION_FIT_FRACTION`), so the
+    // tolerance is widened to leave the pcurve that gap and no more.
+    let arc_tol = Tolerance::new(
+        match kink {
+            Some(_) => tolerance / SECTION_FIT_FRACTION,
+            None => tolerance,
+        },
+        tol.angular,
+    );
     let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
     for (run, at, k) in [(a, &ra, ka), (b, &rb, kb)] {
         let pcurve = pcurve_on(&curve, range, at.surface, arc_tol, meter).map_err(fault_of)?;
@@ -837,7 +847,11 @@ fn curved_ball(
     let Ok(start) = w.project(guess) else {
         return Ok(None);
     };
-    let (mut s0, mut s1) = (start.t, start.t + BALL_SEED * radius);
+    // On a closed `w`, in the turn that holds its range.
+    let turn = w.period().map_or(0.0, |period| {
+        period * ((range.midpoint() - start.t) / period).round()
+    });
+    let (mut s0, mut s1) = (start.t + turn, start.t + turn + BALL_SEED * radius);
     let (Some((_, _, mut g0)), Some((_, _, mut g1))) = (at(s0)?, at(s1)?) else {
         return Ok(None);
     };

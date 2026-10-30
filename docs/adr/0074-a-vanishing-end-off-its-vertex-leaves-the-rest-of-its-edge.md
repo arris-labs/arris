@@ -97,8 +97,9 @@ same end was `Unsupported` for a NURBS face against a cylinder.
 - The second oracle's edge-mode verdict for e256 asks a question Arris
   will not answer: Arris's blend chains through v115. Its record for
   this fixture is the tangent chain's (the plan's step 1 amended).
-- A vanishing end whose arc lies off the edge by more than the ceiling,
-  AP242's, is unchanged.
+- A vanishing end whose arc lies off the edge by more than the ceiling is
+  unchanged, but the ceiling is the vertex's own tolerance where the point
+  lies inside it (ADR-0076): AP242's builds.
 
 ## Alternatives considered
 

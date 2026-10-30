@@ -372,7 +372,7 @@ pub(super) fn reads_a_file(fixture: &Fixture) -> bool {
 /// forms (ADR-0015): volume, area, centroid and the inertia tensor, each
 /// within the fixture's tolerance for it — widened to the result's own
 /// ([`within_own_tolerance`]) where the recipe reads a file's solid, a
-/// `step` operand, or held at [`change_tolerances`] under a second
+/// `step` operand, or held at `change_tolerances` under a second
 /// oracle's record of changes. Returns the [`Target`] held to.
 /// Errors: [`CorpusError::Measure`] naming the quantity.
 pub fn measure_stage(

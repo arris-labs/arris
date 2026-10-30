@@ -13,7 +13,7 @@ the surface stays on the exact balls. The cases are AP203's e256 and
 AP242's battery edge e258 (r 0.978). Their oracle is the second oracle's
 valid solid (ADR-0073), held as a change against each kernel's own
 operand, since the change is 1e-7 to 3e-9 of the part's area. AP242's
-e256 at r 0.889, which the second oracle refuses too, stays `TangentChain`.
+e256 at r 0.889, which the second oracle refuses too, builds as AP203's does (step 7).
 FTC-11's e24 chains through v24, a 3.9° kink tangent within the vertex's
 tolerance, where the end across never meets the hole. The two stripes meet
 in a junction across the kink, within the vertex's tolerance, and the
@@ -138,10 +138,16 @@ robustness or bound has to be established here.
   `analytic.checker_undecided`; Open CASCADE's invalid STEP is
   `occt_step_unread`. Faces 156 → 159 as the second oracle's; the record is
   imported with the operand (the run's own measures).
-- [ ] Step 7 **[2]** — CTC-05 AP242's e258 past the ceiling (⚠ OPEN 1,
-  ADR-0060 amended), a new fixture `blend/nist-ctc-05-ap242-battery-edge-
-  fillet`, held likewise. AP242's e256 stays `TangentChain`, its
-  description naming both oracles' refusals.
+- [x] Step 7 **[2]** — CTC-05 AP242's e258 past the ceiling (⚠ OPEN 1,
+  ADR-0076), a new fixture `blend/nist-ctc-05-ap242-battery-edge-fillet`,
+  held to the second oracle's change. *Settled:* the ceiling that lets e258
+  build lets AP242's e256 (r 0.889) build too, the same edge in another
+  encoding: counts, checker (S5 undecided as AP203's) and mesh as AP203's,
+  so `nurbs-torus-fillet` is now built, held to the second oracle's record
+  of the AP203 edition's change (the second oracle refuses the AP242
+  encoding), not `TangentChain`. The mesh of e258 was not closed: the skin's
+  pole and the torus fan from the wide vertex over the same contact samples
+  (ADR-0077: a vertex stands for the samples inside its tolerance).
 - [ ] Step 8 **[2]** — The census: `real_parts --tangent-chain --census`
   over both tiers with `paranoid`. Every edge that built still builds with
   the same counts. Each edge that newly chains or joins is checker-green or
@@ -161,7 +167,7 @@ robustness or bound has to be established here.
 other row unchanged. In the corpus, `blend/nist-ctc-05-ap203-nurbs-torus-
 fillet` and `-ap242-battery-edge-fillet` are built and checker-green at
 `Full`, held to the second oracle's changes; `-ap242-nurbs-torus-fillet`
-is `TangentChain`. `blend/nist-ftc-11-ap242-slot-chain-fillet`
+is built likewise. `blend/nist-ftc-11-ap242-slot-chain-fillet`
 is built, held to Open CASCADE's volume, area and centroid, and
 `blend/nist-ftc-11-ap242-bspline-circle-fillet` is unchanged. The step-8
 properties pass at 256 cases. The census shows no edge that built now
@@ -184,7 +190,7 @@ refusing, and no panic. `tools/full-gate.sh` is green.
 - `AGENTS.md` current state.
 
 ## Open questions
-- ⚠ OPEN 1 (agent, step 7): a new vertex past `max_tolerance`. AP242's `w`
+- ⚠ OPEN 1 — *Settled at step 7 (ADR-0076):* a new vertex past `max_tolerance`. AP242's `w`
   needs 1.97e-2, stands 1.55e-2 along e258 from v80, and v80 holds 2.05e-2
   from the read's healing. I'd amend ADR-0060 §1 so a new vertex inside an
   operand vertex's tolerance may take up to that vertex's tolerance: the

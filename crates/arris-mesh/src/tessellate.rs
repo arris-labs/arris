@@ -528,15 +528,28 @@ impl<'a> Tessellation<'a> {
                 .map_or(1, |c| c.chord_segments(range, chord))
                 .max(required.get(&e.id).copied().unwrap_or(0))
                 .clamp(1, MAX_SEGMENTS_PER_PIECE);
-            let params: Vec<f64> = (0..=n).map(|i| range.lerp(i as f64 / n as f64)).collect();
+            let mut params: Vec<f64> = (0..=n).map(|i| range.lerp(i as f64 / n as f64)).collect();
             let indices = match curve {
                 Some(c) => {
+                    // A sample inside an end vertex's own tolerance is that
+                    // vertex: the model says the two are one point, and a
+                    // face meshed against it would fan its sliver from the
+                    // vertex over samples a neighbour fans over too.
+                    let (v0, v1) = (m.vertex(edge.start())?, m.vertex(edge.end())?);
+                    let ends = [(v0.point(), v0.tolerance()), (v1.point(), v1.tolerance())];
+                    let mut kept = vec![params[0]];
                     let mut indices = Vec::with_capacity(n + 1);
                     indices.push(start);
                     for &t in &params[1..n] {
                         let p = c.point(t);
+                        if ends.iter().any(|(q, tol)| (p - *q).norm() <= *tol) {
+                            continue;
+                        }
+                        kept.push(t);
                         indices.push(mesh.push_position([p.x, p.y, p.z])?);
                     }
+                    kept.push(params[n]);
+                    params = kept;
                     indices.push(end);
                     indices
                 }
