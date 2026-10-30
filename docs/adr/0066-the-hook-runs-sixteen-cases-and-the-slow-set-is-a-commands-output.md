@@ -4,6 +4,7 @@
 - Plan: `hook-gate-speed` steps 1–4
 - Amends: ADR-0032 (§Decision "Profiles", "The hook's 32 cases", and
   §Measured)
+- Amended by: ADR-0078 (the 16 cases run at verification, after the commit)
 - Follows: `.agents/rules/git.md` (the hook's gate, `main` always green)
 
 ## Context

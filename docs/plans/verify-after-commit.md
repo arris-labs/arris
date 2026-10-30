@@ -79,7 +79,7 @@ bound has to be established here.
   commits in a scratch worktree and write the split, and D's items in
   their measured order, into the backlog's D lines. Test: the line appears
   on a commit; the numbers are in the commit body.
-- [ ] Step 2 **[2]** — ADR-0078 from the deltas and step 1's numbers;
+- [x] Step 2 **[2]** — ADR-0078 from the deltas and step 1's numbers;
   ADR-0032 and ADR-0066 name it as amending them. Test: the docs tests.
 - [ ] Step 3 **[2]** — `tools/gate.sh since <base> [<sha>]`. Test:
   `tools/gate-test.sh` cases for a range of two commits, a range whose only
