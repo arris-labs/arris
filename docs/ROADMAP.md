@@ -867,9 +867,10 @@ at `fillet`; 8 of those were the battery's own sample asking edges the
 blend reads as tangent and Open CASCADE leaves out (ADR-0070). With the
 sample re-derived it blocked 4 of 38, all fetched; with the leaning ruling built
 (`three-edge-run-vertex`, ADR-0072) CTC-02 AP242 and FTC-07 AP242 build and
-**2 of 38** remain, CTC-05 AP242 and
+2 of 38 remained, CTC-05 AP242 and
 FTC-11 at `TangentChain` (an end or a corner tangent within a tolerance,
-no sampled edge the edge itself); the committed tier's row is 0. STC-07
+no sampled edge the edge itself), which `tolerant-tangency` built: the
+row is **0 of 38**, and the committed tier's is 0. STC-07
 AP242, whose fillet now builds, fails the checker at `Full` on four
 cylinder pairs S5 leaves undecided (`regression/nist-stc-07-ap242-fillet-checker-undecided`,
 waiting in `tools/real-parts.waits`). The residue also holds 3
@@ -881,10 +882,13 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
 
 **In**, by the parts each unblocks:
 
-- Tangent chains whose faces are tangent only within a tolerance: an end
-  whose faces run tangent within the edge's tolerance (CTC-05), and a
-  corner edge tangent within the vertex's tolerance (FTC-11's slot)
-  (docs/BACKLOG.md).
+- [x] Tangent chains whose faces are tangent only within a tolerance:
+  **done 2026-10-30** (`tolerant-tangency`, ADR-0074 to ADR-0077). A
+  vanishing end (CTC-05) leaves the rest of its edge, and a corner edge
+  tangent within the vertex's tolerance (FTC-11's slot) chains through
+  a junction across the kink. The battery's `fillet` row is **0 of 38**
+  real parts (from 2), every battery stage agreeing with Open CASCADE or
+  refused by both (142 agree, 7 both refuse, 0 Arris refuses).
 - [x] A blend that runs over an edge that is not the corner's (the script
   corpus's two): **done 2026-10-27** (`blend-runs-onto`, ADR-0071). The
   ball rolls on the crossed edge between the two crossings and the

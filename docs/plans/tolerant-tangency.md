@@ -165,7 +165,7 @@ robustness or bound has to be established here.
   twin are not built (θ is the file's 3.9°, no twin exists); volume is not
   held, a fitted NURBS part's moving 1e-6 between poses (backlog). At 16
   cases the slowest shard takes 33 s (the elbow's).
-- [ ] Step 10 **[1]** — The battery re-run: `tools/real-parts.sh` with the
+- [x] Step 10 **[1]** — The battery re-run: `tools/real-parts.sh` with the
   `fillet` row at 0 of 38, the waits file current, and the roadmap's C11
   counts written. The backlog lines 67 and 68 are removed.
 
