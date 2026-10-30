@@ -20,8 +20,8 @@ and for the human `/next`, `/handoff`, `/retro` and `/wait-what`.
 ## Setup (once per clone)
 
 ```sh
-git config core.hooksPath .githooks   # fmt, clippy -D warnings, a path-scoped fast test gate before every commit
-cargo install cargo-nextest --locked  # the hook runs a fast profile under nextest
+git config core.hooksPath .githooks   # fmt, clippy -D warnings before every commit; the path-scoped fast tests after it (verified before a push, ADR-0078)
+cargo install cargo-nextest --locked  # the verification runs the fast profile under nextest
 cargo install cargo-sweep --locked    # /retire-plan sweeps stale build output
 # Optional, only for the fuzz targets in fuzz/ (outside the workspace):
 rustup toolchain install nightly --profile minimal
@@ -78,8 +78,8 @@ sequence (`refactor-after-c10`, option B) is closed (2026-10-26).
   subagent on its tier (`.agents/tiers.md` maps tiers to models), then the
   conducting session runs `/retire-plan`. Waits (gate, CI) run in the
   background, never in a foreground loop.
-- Trunk-based git, `main` always green, commit per plan step, never push
-  or publish unasked: `.agents/rules/git.md`. `main` carries the next
+- Trunk-based git, `main` always green (a pushed tip is a verified commit,
+  ADR-0078), commit per plan step, never push or publish unasked: `.agents/rules/git.md`. `main` carries the next
   version with `-dev`; a `v*` tag the human pushes is what publishes the
   workspace to crates.io. A change a consumer would notice writes its
   `CHANGELOG.md` bullet under `Unreleased` in the same commit, a break

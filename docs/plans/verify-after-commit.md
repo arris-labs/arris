@@ -96,7 +96,7 @@ bound has to be established here.
   half ends; a red parent makes the next commit run inline over both;
   a prose commit takes its parent's state; a push of an unverified tip is
   refused. The step's own commit is the first to verify after itself.
-- [ ] Step 6 **[1]** — Rules and skills: `git.md` (the first rule, the
+- [x] Step 6 **[1]** — Rules and skills: `git.md` (the first rule, the
   waits), `/work` *Do* and *Conduct*, `/retire-plan` (the sweep covers
   `target/verify`), `AGENTS.md`'s setup and rules lines, `CONTRIBUTING.md`'s
   hook sentence, the hook's header. Test: the docs tests.

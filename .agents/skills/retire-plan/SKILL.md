@@ -65,7 +65,12 @@ Deletion is the "done" signal; anything worth keeping moves first.
    cargo nextest run --workspace --no-run && cargo clippy --workspace --all-targets
    cargo sweep --file
    rm -rf target/debug/incremental
+   CARGO_TARGET_DIR=target/verify cargo sweep --time 7
    ```
+
+   `target/verify` is the verification's build output (ADR-0078); its last
+   line drops what no verification has used in a week, and the next one
+   rebuilds the rest.
 
    Report how much it freed.
 11. End with **one recommended next step** from the roadmap's open lines,

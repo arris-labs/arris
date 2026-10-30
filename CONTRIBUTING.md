@@ -27,8 +27,9 @@ them before a pull request:
 - [PROVENANCE.md](PROVENANCE.md): code from other kernels is read, never
   copied.
 
-Set up the pre-commit hook once per clone (`git config core.hooksPath
-.githooks`); it runs fmt, clippy and the tests the change reaches. A change
+Set up the hooks once per clone (`git config core.hooksPath .githooks`); the
+pre-commit hook runs fmt and clippy, and the tests the change reaches run
+after the commit, to be verified before a push (ADR-0078). A change
 that adds behaviour comes with a fixture and its Open CASCADE oracle value
 (`tools/oracle/`). For anything larger than a fix, open a discussion first:
 the design may already be settled in `docs/adr/`.

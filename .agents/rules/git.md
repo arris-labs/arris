@@ -1,14 +1,26 @@
 # Git: trunk-based, always green
 
 - **Every commit** passes `.githooks/pre-commit`; never `--no-verify`. The
-  hook sizes its gate to what is staged (`tools/gate.sh`, ADR-0032): prose
-  runs the docs tests, a version bump `cargo check`, anything else the
-  layer rule, new tolerance literals, fmt, `clippy -D warnings`, the doctests and the `fast`
-  nextest profile at 16 cases over the crates and corpus areas the paths
-  reach, and `cargo doc` when a doc comment changed. A commit or gate runs
+  hook sizes its gate to what is staged (`tools/gate.sh`, ADR-0032, split by
+  ADR-0078). Prose runs the docs tests; a version bump runs `cargo check`;
+  anything else runs the layer rule, new tolerance literals, fmt and
+  `clippy -D warnings` at the commit, and returns. Its **test half** (the
+  doctests and the `fast` nextest profile at 16 cases over the crates and
+  corpus areas the paths reach, plus `cargo doc` when a doc comment changed)
+  runs after the commit, in the background, on the commit's own tree
+  (`tools/verify.sh`). A commit whose test half passed is **verified**
+  (`GLOSSARY.md`). A red one is met at the next code commit, whose hook runs
+  the test half inline over everything since the last verified commit; the
+  fix of it carries the red step's suffix. A prose or version commit takes
+  its parent's state. `pre-push` refuses a tip that is not verified, so
+  `main` at every pushed tip is as green as before. The state is read with
+  `tools/verify.sh --status [<sha>]`, which waits on a run in flight; a
+  waiter is a background job or the hook's own wait, never a poll loop. A
+  commit or gate runs
   with `run_in_background`; wait for its completion notification, never
   `sleep` or a watch on its output for a string. One gate runs at a time:
-  the hook refuses a second. A gate an earlier session left running is
+  the hook refuses a second, and a verification waits behind the full gate
+  (`tools/full-gate.sh` holds the verify lock). A gate an earlier session left running is
   waited on with `flock .git/arris-gate.lock true` in the background; any
   other run it left is rerun, never waited on (no notification comes).
   Monitor is deferred (`ToolSearch select:Monitor` first), and its loop
@@ -16,10 +28,14 @@
   outlive its session. Never
   use a `pgrep -f` loop, which matches its own shell and never ends. A
   stuck one is stopped with `tools/stop-gate.sh`, never a bare `pkill -f`.
+  `ARRIS_VERIFY=inline` keeps the blocking hook.
 - **The gate's scope.** The hook and `tools/full-gate.sh` run themselves
   through `tools/gate-scope.sh`: where `systemd-run --user` works, in a
   transient scope with `MemoryHigh` 40G, `MemoryMax` 48G and no swap, so
-  memory pressure ends the gate and not the terminal's scope. A gate killed
+  memory pressure ends the gate and not the terminal's scope. A verification
+  runs in a lower bound, `MemoryHigh` 20G and `MemoryMax` 24G
+  (`ARRIS_VERIFY_MEMORY_HIGH` / `_MAX`), since it is the one that can wait
+  (ADR-0078 §6); a verification killed by it reads `fail`. A gate killed
   this way prints the bound; raise it with `ARRIS_GATE_MEMORY_MAX`. Without
   `systemd-run`, or with `ARRIS_GATE_SCOPE=off`, the gate runs unchanged.
 - **No foreground waits.** A test run expected to take over a minute, and

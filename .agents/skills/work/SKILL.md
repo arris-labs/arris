@@ -22,8 +22,10 @@ argument-hint: <plan slug> [step number or range]
    it changes and rustdoc on every new public item.
 3. Run only the step's own tests (`cargo nextest run -p <crate> --test
    <file>` or `-E 'test(/^<area>_/)'`) and `cargo fmt --all`. The hook runs
-   clippy, doctests and the `fast` slice; `/retire-plan` the full gate — a
-   step needing it sooner says why in its commit. A step that makes a
+   fmt and clippy at the commit; the doctests and the `fast` slice run after
+   it, verified on the commit's own tree (ADR-0078, `tools/verify.sh
+   --status`). `/retire-plan` the full gate — a step needing it sooner says
+   why in its commit. A step that makes a
    property's cases dearer names its slowest shard's time at 16 cases in
    the commit body; the full gate pays sixteen times that, and `fast`
    stops a test at 8 min. A run expected past a minute goes with
@@ -39,7 +41,10 @@ argument-hint: <plan slug> [step number or range]
    in the same commit; the body says why, cites docs/ADRs, names any public
    type or signature changed.
    A commit that repairs an earlier step's work names that step, never the
-   step in hand (`.agents/rules/git.md`, attribution).
+   step in hand (`.agents/rules/git.md`, attribution). A commit whose hook
+   runs the test half inline is meeting an earlier commit's red (the
+   previous verification failed); the fix of that red carries the earlier
+   step's suffix, and the step in hand commits after it.
 6. A step that shows the plan is wrong edits the plan in that commit and
    says so; a rescope inside the plan is the agent's to decide, written as
    *Settled* with its reason, and the work goes on. A failure that resists a first fix gets the `inspect` skill's
@@ -81,14 +86,20 @@ argument-hint: <plan slug> [step number or range]
    and commit it. Hand back the commit id and anything surprising, or the
    question that stopped you." The conductor writes no code itself.
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
-   step N)`, the plan has step N ticked, `git status` is clean.
+   step N)`, the plan has step N ticked, `git status` is clean. Its test
+   half may still be running: that is not a failure, and the next hook or
+   the push waits on it.
    - A question only the human may answer (*Keep to*: a push, publish,
      branch, change to the plan's acceptance or product question): stop and
      relay it.
    - Not landed for any other reason: one fresh subagent one tier up (3
      stays 3) gets the step and the first one's report; a second miss
      stops the conductor with both reports.
-4. After the last box, retire the plan in this session by
+4. After the last box, read `tools/verify.sh --status` for HEAD, waiting on
+   a run in flight. `pass` is the plan's tip verified. `fail` is an earlier
+   step's red: a fresh subagent on that step's tier fixes it in a commit
+   carrying that step's suffix, before retirement. Then retire the plan in
+   this session by
    `.agents/skills/retire-plan/SKILL.md`; its review subagent runs on
    tier 3. A hard finding goes to a fresh subagent on the tier of the step
    it repairs, the finding as its brief; the conductor commits only the
