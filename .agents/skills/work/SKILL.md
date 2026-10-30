@@ -90,7 +90,9 @@ argument-hint: <plan slug> [step number or range]
      stops the conductor with both reports.
 4. After the last box, retire the plan in this session by
    `.agents/skills/retire-plan/SKILL.md`; its review subagent runs on
-   tier 3.
+   tier 3. A hard finding goes to a fresh subagent on the tier of the step
+   it repairs, the finding as its brief; the conductor commits only the
+   retirement.
 5. Reply as *Do*'s step 7 does, one line per step conducted (its commit,
    its tier, anything surprising), then the retirement's reply.
 
