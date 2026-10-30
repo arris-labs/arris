@@ -1,11 +1,15 @@
 ---
 name: work
-description: Execute the next unchecked step(s) of an active plan, a commit per step, then list what is left.
+description: Execute an active plan, a commit per step — one step or a range in this session, or with no range the whole plan, each step a fresh subagent on its tier, then its retirement.
 disable-model-invocation: true
 argument-hint: <plan slug> [step number or range]
 ---
 
 # /work — one step, one commit
+
+`/work <slug> step N` (or `N-M`) works those steps in this session, by
+*Do*. `/work <slug>` with no step **conducts** the rest of the plan, by
+*Conduct*: each step a fresh subagent that follows *Do* for that one step.
 
 ## Do
 
@@ -56,6 +60,31 @@ argument-hint: <plan slug> [step number or range]
   *Settled* with its reason, and go on through the requested range. Only a
   push, publish, branch or a change to the plan's acceptance waits for the
   human.
-- The last ticked box leaves the plan open: the human runs `/retire-plan`.
+- The last ticked box of a step or range leaves the plan open for
+  `/retire-plan`; a conductor runs it itself.
+
+## Conduct
+
+1. Read the plan; for each unchecked step note its tier: its grade, or
+   the tier it names (`**[1, tier 3]**`). A **[CI]** step stops the
+   conductor before it starts: its push is the human's.
+2. For each step in order, start one fresh subagent on the step's tier
+   (`.agents/tiers.md` says how in this harness), and wait for its
+   hand-back: the harness delivers it, never a poll of its output. Its prompt: "Work step N of `docs/plans/<slug>.md` in this
+   checkout by *Do* in `.agents/skills/work/SKILL.md`, that one step only,
+   and commit it. Hand back the commit id and anything surprising, or the
+   question that stopped you." The conductor writes no code itself.
+3. On each hand-back, check what landed: the last commit names `(plans/<slug>
+   step N)`, the plan has step N ticked, `git status` is clean.
+   - A question only the human may answer (*Keep to*: a push, publish,
+     branch or change to the plan's acceptance): stop and relay it.
+   - Not landed for any other reason: one fresh subagent one tier up (3
+     stays 3) gets the step and the first one's report; a second miss
+     stops the conductor with both reports.
+4. After the last box, retire the plan in this session by
+   `.agents/skills/retire-plan/SKILL.md`; its review subagent runs on
+   tier 3.
+5. Reply as *Do*'s step 7 does, one line per step conducted (its commit,
+   its tier, anything surprising), then the retirement's reply.
 
 `$ARGUMENTS`

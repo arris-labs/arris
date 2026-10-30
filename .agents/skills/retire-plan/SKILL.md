@@ -7,6 +7,8 @@ argument-hint: <plan slug>
 
 # /retire-plan — move the durable parts, delete the rest
 
+Run by the human, or by `/work`'s conductor after a plan's last step.
+
 Deletion is the "done" signal; anything worth keeping moves first.
 
 ## Do
@@ -21,8 +23,8 @@ Deletion is the "done" signal; anything worth keeping moves first.
    is `tools/full-gate.sh <scratchpad>/gate.log` in the background (about
    an hour); its last lines name every red test. Anything red: stop
    and report.
-2. **Review the commits against the plan**, in a subagent so it reads with
-   fresh eyes. Give it the plan file, `.agents/review.md` (its brief and
+2. **Review the commits against the plan**, in a subagent on tier 3
+   (`.agents/tiers.md`) so it reads with fresh eyes. Give it the plan file, `.agents/review.md` (its brief and
    standards), `.agents/rules/kernel.md`, `GLOSSARY.md`, and the plan's
    commits: `git log --format='%h %s' --grep='plans/<slug>'` (another
    plan's commits may sit between them, so it reads each with `git show`,

@@ -91,10 +91,11 @@ only test is a CI run, which needs a push, so the plan runs on
 - [x] Step 1 **[1]** — `.agents/tiers.md` with the Claude Code table and
   the override syntax; the plan template and `/plan` point at it. Test: the
   docs tests (`docs_refs`) read the new paths.
-- [ ] Step 2 **[2]** — The conductor in `/work` and the self-run
-  `/retire-plan`, as in the deltas. Test: steps 3–7 of this plan run under
-  it in one invocation, each step on its tier's model (its first hand-back
-  is checked by hand before the second starts).
+- [x] Step 2 **[2]** — The conductor in `/work` and the self-run
+  `/retire-plan`, as in the deltas. Test: a tier-1 subagent started
+  through the table reports its model (`claude-haiku-5-5`); the conductor's
+  run of steps 3–7 is the acceptance's (its first hand-back is checked by
+  hand before the second starts).
 - [ ] Step 3 **[2]** — `tools/step-rework.sh` and its test on a scratch
   repository: a reworked step, an override, a review fix, a step with no
   grade. The attribution rule in `git.md` and `/work`. Baseline: its table
@@ -142,6 +143,11 @@ only test is a CI run, which needs a push, so the plan runs on
   a share of RAM or a figure, and whether the swap is bounded. The agent
   decides by step 6, from one full gate's peak (`systemd-cgtop` or the
   scope's `MemoryPeak`), and records it in the step's commit.
-- ⚠ OPEN 2: whether the conductor gives the retirement review subagent
-  the tier of the plan's heaviest step or always tier 3. The agent decides
-  by step 2: tier 3 unless the rework table later shows it was not needed.
+- *Settled* (step 2), was OPEN 2: the retirement review subagent runs on
+  tier 3 always, not the plan's heaviest step's tier: it reads every
+  step's commits, the heaviest included, against the plan. Revisit if the
+  rework table shows review fixes are rare.
+- *Settled* (step 2): a step that does not land is retried once by a fresh
+  subagent one tier up, given the first one's report; a second miss stops
+  the conductor. A [CI] step stops it before starting (its push is the
+  human's).
