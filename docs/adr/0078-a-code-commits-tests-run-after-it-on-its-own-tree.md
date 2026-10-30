@@ -82,14 +82,21 @@ under the blocking hook; only an unpushed tip may be red. `ARRIS_VERIFY=inline`
 keeps the blocking hook.
 
 **5. One heavy build at a time.** `tools/full-gate.sh` holds the verify lock
-for its run, so a verification and the full gate never overlap. The memory
-rule between a verification and the agent's own builds or the next hook's
-clippy is decided at step 4 from the peak measured in step 1, and recorded
-here.
+for its run (a verification in flight finishes first; a new one queues
+behind the full gate), so the two never overlap. The lock is
+`arris-verify/lock`.
 
-⚠ OPEN: memory while a verification overlaps the agent's own builds: scopes
-bounded each (48G on 61G) or the verification's scope lowered (plan open
-question 1, step 4).
+**6. Memory: the verification's scope is lowered.** A verification runs in
+its own `tools/gate-scope.sh` scope at `MemoryHigh` 20G and `MemoryMax` 24G
+(`ARRIS_VERIFY_MEMORY_HIGH` / `_MAX` override), against the hook's 40G and
+48G. Two scopes each bounded at 48G on the 61 GiB machine could together
+exceed it, and the kernel's pick under pressure is the biggest process, which
+may be the agent's clippy or the terminal's scope; a verification is the
+one that can wait, so it is the one bounded low, and a verification killed by
+its bound reads `fail` with the bound printed in its log. Step 1 recorded
+stage times, not a peak (the gate's scope has no unit name to read a
+`MemoryPeak` from, a backlog line), so 24G is a bound chosen with room, not
+a measured fit: a verification that dies at it is the evidence to raise it.
 
 ⚠ OPEN: a verification still running when the next commit comes: the hook
 waits for it (the default, one verification at a time) or defers again and

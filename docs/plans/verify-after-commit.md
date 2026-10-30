@@ -84,10 +84,12 @@ bound has to be established here.
 - [x] Step 3 **[2]** — `tools/gate.sh since <base> [<sha>]`. Test:
   `tools/gate-test.sh` cases for a range of two commits, a range whose only
   doc-comment change is in its first commit, and the index form.
-- [ ] Step 4 **[2]** — `tools/verify.sh` and its `--status`, and
+- [x] Step 4 **[2]** — `tools/verify.sh` and its `--status`, and
   `tools/full-gate.sh` taking the verify lock. Test: `tools/verify-test.sh`
   on a scratch repository with `ARRIS_VERIFY_CMD` stubs: a pass, a fail, a
-  status read while one runs, a second run waiting on the first.
+  status read while one runs, a second run waiting on the first. The test
+  half itself is `tools/test-half.sh <base> <sha>`, which step 5's inline
+  run shares.
 - [ ] Step 5 **[2]** — `pre-commit` split, `post-commit`, `pre-push`, and
   `ARRIS_VERIFY=inline`. Test: `tools/hook-flow-test.sh` on a scratch
   repository with stub halves: a deferred commit returns before its test
@@ -120,10 +122,11 @@ bound has to be established here.
 
 ## Open questions
 
-- ⚠ OPEN 1: memory while a verification overlaps the agent's own builds or
-  the next hook's clippy: per-scope bounds (each 48G on a 61G machine), or
-  the verification's scope lowered. The agent decides at step 4 from step
-  1's peak, and records it in ADR-0078.
+- Settled 1 (step 4): memory while a verification overlaps the agent's own
+  builds or the next hook's clippy: the verification's scope is lowered to
+  `MemoryHigh` 20G / `MemoryMax` 24G (ADR-0078 §6). Step 1 measured times,
+  not a peak, so the bound is chosen with room; a verification killed by it
+  is the evidence to raise it.
 - ⚠ OPEN 2: a verification that is still running when the next commit
   comes: the hook waits for it (the design), or defers again and leaves
   two queued. The agent decides at step 5; the wait is the default, as it

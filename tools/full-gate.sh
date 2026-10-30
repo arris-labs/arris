@@ -30,6 +30,14 @@ if ! flock -n 9; then
 fi
 echo $$ >"$lock"
 
+# The verification's lock (`tools/verify.sh`, ADR-0078): one heavy build at a
+# time, so a verification in flight finishes first, and none starts during
+# this run (a new one queues behind it).
+vdir=$(realpath "$(git rev-parse --git-common-dir)")/arris-verify
+mkdir -p "$vdir"
+exec 8>>"$vdir/lock"
+flock -n 8 || { echo "full-gate: a verification is running; waiting for it" >&2; flock 8; }
+
 # Half the cores, as the hook; the case counts are the tests' own defaults.
 export CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-16}
 export NEXTEST_TEST_THREADS=${NEXTEST_TEST_THREADS:-16}
