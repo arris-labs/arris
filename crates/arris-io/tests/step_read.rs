@@ -211,18 +211,14 @@ fn provenance_names_the_file(
     Ok(())
 }
 
-/// Every variant of every fixture in `area` read back; failures listed
-/// together.
-fn area(area: &str) {
+/// Every variant of every fixture in `dirs` read back, failures listed
+/// together; the number read.
+fn read_all(label: &str, dirs: &[std::path::PathBuf]) -> usize {
     let mut failures = Vec::new();
     let mut degenerate = 0;
     let mut read = 0;
-    let root = fixtures::corpus_root().join(area);
-    for dir in fixtures::corpus() {
-        if !dir.starts_with(&root) {
-            continue;
-        }
-        let fixture = fixtures::load(&dir).unwrap();
+    for dir in dirs {
+        let fixture = fixtures::load(dir).unwrap();
         for variant in fixture.recipe.variant_names() {
             match read_back(&fixture, &variant) {
                 Ok(None) => {}
@@ -234,8 +230,7 @@ fn area(area: &str) {
             }
         }
     }
-    assert!(read > 0, "nothing read in {area}");
-    eprintln!("{area}: {read} read back, {degenerate} of them with a degenerate edge");
+    eprintln!("{label}: {read} read back, {degenerate} of them with a degenerate edge");
     assert!(
         failures.is_empty(),
         "{} of {} read back wrong:\n{}",
@@ -243,6 +238,43 @@ fn area(area: &str) {
         failures.len() + read,
         failures.join("\n")
     );
+    read
+}
+
+/// Every fixture in `area` read back.
+fn area(area: &str) {
+    let root = fixtures::corpus_root().join(area);
+    let dirs: Vec<_> = fixtures::corpus()
+        .into_iter()
+        .filter(|d| d.starts_with(&root))
+        .collect();
+    assert!(read_all(area, &dirs) > 0, "nothing read in {area}");
+}
+
+/// The fixtures `ARRIS_READ_BACK` names (comma-separated directory names)
+/// read back, in whichever solid area holds them; nothing when it is unset.
+/// The pre-commit gate names the staged fixtures (`tools/gate.sh`): an
+/// area's own test is in the slow set, and blend's outlasts the `fast`
+/// profile's timeout.
+#[test]
+fn the_staged_fixtures_read_back() {
+    let Ok(v) = std::env::var("ARRIS_READ_BACK") else {
+        return;
+    };
+    let names: Vec<&str> = v.split(',').filter(|n| !n.is_empty()).collect();
+    let root = fixtures::corpus_root();
+    let dirs: Vec<_> = fixtures::corpus()
+        .into_iter()
+        .filter(|d| {
+            let area = d.strip_prefix(&root).ok().and_then(|r| r.iter().next());
+            let solid = area.is_some_and(|a| a != "sheet" && DUMPED_AREAS.iter().any(|x| a == *x));
+            let name = d.file_name().and_then(|n| n.to_str());
+            solid && name.is_some_and(|n| names.contains(&n))
+        })
+        .collect();
+    // A named fixture may be a refusal, or staged as deleted: nothing read
+    // is no failure.
+    read_all("staged", &dirs);
 }
 
 #[test]

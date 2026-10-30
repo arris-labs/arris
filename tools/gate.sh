@@ -35,9 +35,13 @@
 #                                     corpus: the binding adds no geometry, and
 #                                     the Python suite is CI's (ADR-0034 §4)
 #   crates/arris/                     the whole `arris` package, corpus included
-#   tests/fixtures/<area>/            that area's corpus tests, and the
+#   tests/fixtures/<area>/            that area's corpus tests, the
 #                                     cancel record's name check for the
-#                                     areas `arris-ops/tests/cancel.rs` runs
+#                                     areas `arris-ops/tests/cancel.rs` runs,
+#                                     and the STEP round trip of the staged
+#                                     fixtures alone (`read_back=`, the
+#                                     hook's `ARRIS_READ_BACK`, read by
+#                                     `arris-io/tests/step_read.rs`)
 #   prose (`*.md`, docs/, .agents/)   the docs tests, nothing else
 #   anything else                     every test of the `fast` profile
 #
@@ -66,6 +70,7 @@ corpus=none     # none | part | all
 whole=no
 prose=no
 doc=no
+read_back=()    # staged fixtures whose area has a STEP round trip
 
 add_term() {
   local t
@@ -126,6 +131,19 @@ while IFS= read -r p; do
           case "$a" in
             boolean|sweep|blend|build|provenance|transform|primitive|split)
               add_term "binary_id(arris-ops::cancel)" ;;
+          esac
+          # A fixture's STEP must read back to its measures. The areas' own
+          # read-backs are in the slow set (blend's takes 14 min), so the
+          # staged fixtures alone, by name.
+          case "$a" in
+            primitive|build|transform|boolean|loft|sweep|provenance|blend|offset|shell|split)
+              add_term "(binary_id(arris-io::step_read) & test(=the_staged_fixtures_read_back))"
+              n=${p#tests/fixtures/$a/}
+              case "$n" in
+                */*) n=${n%%/*}
+                  for x in ${read_back[@]+"${read_back[@]}"} ""; do [ "$x" = "$n" ] && break; done
+                  [ "$x" = "$n" ] || read_back+=("$n") ;;
+              esac ;;
           esac ;;
         *) whole=yes ;;
       esac ;;
@@ -193,3 +211,4 @@ echo "cases=$cases"
 echo "diff_cases=$cases"
 echo "doc=$doc"
 echo "full=$full"
+echo "read_back=$(join , ${read_back[@]+"${read_back[@]}"})"

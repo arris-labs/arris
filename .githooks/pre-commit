@@ -110,7 +110,7 @@ if grep -qE '^(tools/gate|\.config/)' <<<"$staged"; then
 fi
 echo "pre-commit: cargo nextest --profile fast ($(gate_value cases) cases)"
 ARRIS_PROPTEST_CASES=$(gate_value cases) ARRIS_DIFF_CASES=$(gate_value diff_cases) \
-  cargo nextest run --workspace --profile fast -E "$(gate_value filter)" \
+  ARRIS_READ_BACK=$(gate_value read_back) cargo nextest run --workspace --profile fast -E "$(gate_value filter)" \
   --cargo-quiet --status-level fail --no-tests pass
 echo "pre-commit: cargo test --doc" && cargo test --workspace --doc --quiet
 if [ "$(gate_value doc)" = yes ]; then

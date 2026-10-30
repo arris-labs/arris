@@ -107,6 +107,13 @@ lacks "loft fixture" "$(key filter "$(plan tests/fixtures/loft/x/fixture.json)")
 equals "fixture geom" "$(key filter "$(plan tests/fixtures/geom/x.json)")" "all()"
 f=$(key filter "$(plan tests/fixtures/split/box-mid/fixture.json)")
 has "split fixture" "$f" "^(split|"
+# A fixture's STEP round trip: the staged fixtures by name, once each.
+out=$(plan tests/fixtures/blend/a/fixture.json tests/fixtures/blend/a/expected.json \
+  tests/fixtures/loft/b/fixture.json)
+has "read-back" "$(key filter "$out")" "test(=the_staged_fixtures_read_back)"
+equals "read-back names" "$(key read_back "$out")" "a,b"
+lacks "read-back real" "$(key filter "$(plan tests/fixtures/real/c/fixture.json)")" "step_read"
+equals "read-back none" "$(key read_back "$(plan crates/arris-io/src/lib.rs)")" ""
 
 # Anything the table cannot place: the whole profile.
 for p in .config/nextest.toml Cargo.toml Cargo.lock tools/gate.sh fuzz/a.rs \
