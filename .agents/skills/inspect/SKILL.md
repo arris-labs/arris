@@ -90,7 +90,11 @@ against Open CASCADE's `expected.json`; exit 1 / `OracleError::Mismatch`
 with the table. `expected.py <dir>` regenerates the answer, `selftest.py`
 proves the oracle. The whole chain for one fixture — checker at `Full`,
 counts, oracle, provenance, dump diff — is `cargo test -p arris --test
-corpus <name>`; `ARRIS_BLESS=1` writes `dump.txt` instead of diffing. Needs
+corpus <name>`; `ARRIS_BLESS=1` writes `dump.txt` instead of diffing. A
+fixture added, moved or renamed in an area that ends in an operation also
+blesses `crates/arris-ops/tests/cancel_counts.txt` in the same commit
+(`ARRIS_BLESS=1 cargo nextest run -p arris-ops --test cancel -E
+'test(a_budget_stops_every_operation)'`), or the hook's name check refuses it. Needs
 `tools/oracle/.venv` (`uv sync --project tools/oracle`); outside it every
 script fails on its first line, never skips.
 
