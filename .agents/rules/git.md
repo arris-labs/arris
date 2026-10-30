@@ -16,6 +16,11 @@
   outlive its session. Never
   use a `pgrep -f` loop, which matches its own shell and never ends. A
   stuck one is stopped with `tools/stop-gate.sh`, never a bare `pkill -f`.
+- **No foreground waits.** A test run expected to take over a minute, and
+  a CI watch, runs with `run_in_background`, and the agent goes on with
+  what does not depend on its result. A foreground `until`, `while` or
+  `sleep` loop waiting on one is never written: the completion notification
+  is the wait.
 - **The full gate** is `tools/full-gate.sh <log>`, run with
   `run_in_background`: the layer rule, fmt, clippy `-D warnings`, nextest
   over the workspace (256 cases, `real_*` included), the doctests, `cargo

@@ -26,7 +26,9 @@ argument-hint: <plan slug> [step number or range]
    step needing it sooner says why in its commit. A step that makes a
    property's cases dearer names its slowest shard's time at 16 cases in
    the commit body; the full gate pays sixteen times that, and `fast`
-   stops a test at 8 min. For a geometric change,
+   stops a test at 8 min. A run expected past a minute goes with
+   `run_in_background`, and the step goes on with what does not depend on
+   it (`.agents/rules/git.md`, no foreground waits). For a geometric change,
    look at the result (`inspect` skill) before trusting a green test.
 4. Read your own `git diff --cached` against `.agents/review.md` and
    `.agents/rules/kernel.md` before committing: an `unwrap` on geometry, a
@@ -52,6 +54,8 @@ argument-hint: <plan slug> [step number or range]
 ## Keep to
 
 - One step per commit, its box ticked only when its test ran.
+- No foreground wait: no `until`, `while` or `sleep` loop on a gate, a test
+  run or CI. The completion notification is the wait.
 - A failing hook is fixed, or the step stops and says why; `--no-verify`
   is never the way past it.
 - A case that will not pass with the design as written is an open question

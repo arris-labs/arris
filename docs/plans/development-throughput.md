@@ -100,7 +100,7 @@ only test is a CI run, which needs a push, so the plan runs on
   repository: a reworked step, an override, a review fix, a step with no
   grade. The attribution rule in `git.md` and `/work`. Baseline: its table
   over `main` since 2026-09-13, in the commit body.
-- [ ] Step 4 **[1]** — No foreground waits: `git.md` and `/work`. Test:
+- [x] Step 4 **[1]** — No foreground waits: `git.md` and `/work`. Test:
   the gate rules still read as `.agents/rules/git.md` cites them
   (`docs_refs`).
 - [ ] Step 5 **[1]** — `/retire-plan` overlaps its full gate with the
