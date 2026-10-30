@@ -9,6 +9,8 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 reproduces it.
 
 - A time breakdown per plan (agent, gate, CI, human) in `/retro`'s session digest, from the transcripts
+- Another harness's tier table in `.agents/tiers.md` and its conductor, a driver script that starts the harness's command line once per step on the tier's model, when one first runs a plan here (development-throughput idea)
+- Two plans at once in two worktrees, once verify-after-commit has run a cycle and its memory numbers are in: the hook's lock is per worktree, so they would compete for memory, not queue (development-throughput idea)
 - `tools/step-rework.sh` counts every later commit naming a step as rework, so a `wip` or a `docs(plan)` settle commit overstates it and a `steps 5, 6` commit names only step 5; read the baseline as an upper bound until it tells those apart (development-throughput review)
 - `/retire-plan` runs the full gate while the docs are edited, and a review's hard fix lands after it with only the fast hook; the gate's scope has no unit name, so its `MemoryPeak` cannot be read to check the 48G bound (development-throughput review)
 - Two `unwrap_or` fallbacks the `unwrap_or` read could not justify by reading, no input reproduces either: `trace_torus.rs` takes vanishing order `0` when no patch ends at the edge's `v0` (`along` empty), and `check.rs`'s seam `PeriodMismatch` reports `period: 0.0` when neither direction is periodic. Find a case or prove each unreachable
