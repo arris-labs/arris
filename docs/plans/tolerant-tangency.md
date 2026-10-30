@@ -155,11 +155,16 @@ robustness or bound has to be established here.
   and a kink's junction not found (STC-08, 1): two `regression/` fixtures
   with Open CASCADE's valid solids as the desired assertion, two backlog
   lines. Counts are in ADR-0074's consequences.
-- [ ] Step 9 **[2]** — Blend properties. A plane-and-cylinder chain kinked
-  by θ under the vertex's tolerance, in random poses, held to the unkinked
-  chain's area within `r·θ·length`. A near-tangent end (two cylinders
-  turned tangent within a widened edge tolerance) is held to the same
-  vanishing end built exactly tangent.
+- [x] Step 9 **[2]** — Blend properties. *Settled:* the vertex tolerance that
+  covers a kink is a file's healed one, which no operation makes, so the
+  properties run on the corpus's own parts (the human's choice): FTC-11's
+  slot chain at a random radius 0.004–0.0105 and CTC-05 AP203's vanishing
+  end at the file's radius, each read, moved to a random pose, filleted:
+  clean at `Full`, audited, counts equal the unposed run's, two runs dump
+  identically. The `r·θ·length` area comparison and the exactly-tangent
+  twin are not built (θ is the file's 3.9°, no twin exists); volume is not
+  held, a fitted NURBS part's moving 1e-6 between poses (backlog). At 16
+  cases the slowest shard takes 33 s (the elbow's).
 - [ ] Step 10 **[1]** — The battery re-run: `tools/real-parts.sh` with the
   `fillet` row at 0 of 38, the waits file current, and the roadmap's C11
   counts written. The backlog lines 67 and 68 are removed.
