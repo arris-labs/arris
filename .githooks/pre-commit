@@ -23,6 +23,11 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 [ -f Cargo.toml ] || exit 0
+# The gate runs in its own memory-bounded scope (`tools/gate-scope.sh`), so
+# memory pressure ends the gate and not the terminal's scope. Re-run once
+# through it; unchanged where `systemd-run --user` is absent or
+# `ARRIS_GATE_SCOPE=off`.
+[ -n "${ARRIS_GATE_SCOPED:-}" ] || ARRIS_GATE_SCOPED=1 exec tools/gate-scope.sh "$0" "$@"
 command -v cargo-nextest >/dev/null || {
   echo "pre-commit: cargo-nextest is missing. Run:" >&2
   echo "    cargo install cargo-nextest --locked" >&2
@@ -107,6 +112,7 @@ gate_value() { sed -n "s/^$1=//p" <<<"$gate"; }
 # The classifier's own test, whenever the classifier or the profiles change.
 if grep -qE '^(tools/gate|\.config/)' <<<"$staged"; then
   echo "pre-commit: the gate's classifier" && tools/gate-test.sh && tools/profile-test.sh
+  grep -q '^tools/gate-scope' <<<"$staged" && tools/gate-scope-test.sh
 fi
 echo "pre-commit: cargo nextest --profile fast ($(gate_value cases) cases)"
 ARRIS_PROPTEST_CASES=$(gate_value cases) ARRIS_DIFF_CASES=$(gate_value diff_cases) \

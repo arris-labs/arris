@@ -16,6 +16,8 @@ set -uo pipefail
 [ $# -eq 1 ] || { echo "usage: tools/full-gate.sh <log>" >&2; exit 2; }
 log=$(realpath -m "$1")
 cd "$(git rev-parse --show-toplevel)"
+# In its own memory-bounded scope, as the hook (`tools/gate-scope.sh`).
+[ -n "${ARRIS_GATE_SCOPED:-}" ] || ARRIS_GATE_SCOPED=1 exec tools/gate-scope.sh "$0" "$@"
 mkdir -p "$(dirname "$log")"
 : >"$log"
 

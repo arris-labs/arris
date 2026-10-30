@@ -16,6 +16,12 @@
   outlive its session. Never
   use a `pgrep -f` loop, which matches its own shell and never ends. A
   stuck one is stopped with `tools/stop-gate.sh`, never a bare `pkill -f`.
+- **The gate's scope.** The hook and `tools/full-gate.sh` run themselves
+  through `tools/gate-scope.sh`: where `systemd-run --user` works, in a
+  transient scope with `MemoryHigh` 40G, `MemoryMax` 48G and no swap, so
+  memory pressure ends the gate and not the terminal's scope. A gate killed
+  this way prints the bound; raise it with `ARRIS_GATE_MEMORY_MAX`. Without
+  `systemd-run`, or with `ARRIS_GATE_SCOPE=off`, the gate runs unchanged.
 - **No foreground waits.** A test run expected to take over a minute, and
   a CI watch, runs with `run_in_background`, and the agent goes on with
   what does not depend on its result. A foreground `until`, `while` or

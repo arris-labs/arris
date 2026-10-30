@@ -74,7 +74,7 @@ commit to repair them, so the grades can be re-weighted on evidence.
   its own transient scope with a memory bound, so the bound or oomd ends
   the gate and not the terminal's scope. A gate ended this way fails,
   naming the bound. Elsewhere the gate runs unchanged. The bound is the
-  agent's to set (⚠ OPEN 1).
+  agent's to set (OPEN 1, settled in step 6).
 - `GLOSSARY.md`: **Conductor** (the session that runs a plan's steps as
   subagents and retires it) and **Tier** (a step's grade read as the model
   class that executes it). *Verified* is already in, for the next plan.
@@ -106,7 +106,7 @@ only test is a CI run, which needs a push, so the plan runs on
 - [x] Step 5 **[1]** — `/retire-plan` overlaps its full gate with the
   review, the docs and the drift check; `/close-cycle` stops watching CI;
   `/retro` and `/close-cycle` print `step-rework.sh`.
-- [ ] Step 6 **[2]** — `tools/gate-scope.sh`, wired into the hook and
+- [x] Step 6 **[2]** — `tools/gate-scope.sh`, wired into the hook and
   `full-gate.sh`. Test: a command over the bound in a scope fails naming
   it, the terminal survives, and the hook passes inside a scope; without
   `systemd-run` (`ARRIS_GATE_SCOPE=off`) it runs as before.
@@ -139,7 +139,7 @@ only test is a CI run, which needs a push, so the plan runs on
   CI, human) in `/retro`'s session digest, from the transcripts.
 
 ## Open questions
-- ⚠ OPEN 1: the gate scope's bound: `MemoryMax`, `MemoryHigh` or both, as
+- *Settled* (step 6), was OPEN 1: `MemoryHigh` 40G, `MemoryMax` 48G, swap 0 (61 GiB machine; no full-gate peak was measured, an hour's run: the bound leaves 13 GiB for the terminal and a second project; overridable by env). Original question: the gate scope's bound: `MemoryMax`, `MemoryHigh` or both, as
   a share of RAM or a figure, and whether the swap is bounded. The agent
   decides by step 6, from one full gate's peak (`systemd-cgtop` or the
   scope's `MemoryPeak`), and records it in the step's commit.
