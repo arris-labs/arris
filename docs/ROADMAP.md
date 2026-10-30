@@ -967,7 +967,9 @@ the Python API are byte-identical. The sequence is closed.
 C11's first plan, `battery-honesty`, is retired (2026-10-26).
 
 **The lean gate** (ADR-0032). The pre-commit hook is a path-scoped `fast`
-slice, about 110 s at worst against 312 s; the full suite runs once per plan
+slice, about 110 s at worst against 312 s, and since ADR-0078 its test half
+runs after the commit on its own tree (`tools/verify.sh`), so a code commit
+returns after the static half and a push waits for a verified tip; the full suite runs once per plan
 at retirement, in CI, nightly, at cycle close and at release.
 
 **The reuse gate** (ADR-0069). A push whose diff from the nearest green

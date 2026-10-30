@@ -8,6 +8,9 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 [Findings](#findings) below, in the fixed shape, with the number that
 reproduces it.
 
+- Verification robustness (verify-after-commit review): the runner's pid in `post-commit` assumes `setsid` execs rather than forks (absent on macOS), and a crashed `running` file can hang `--status` on a reused pid, so a per-sha `flock` held by the runner is the fix; a stale `arris-verify/next` after an aborted commit can let `post-commit` record a stale `pass`; an inline `pass` tests the working tree, unstaged edits included
+- Verification resources (verify-after-commit review): the 20G/24G bound is unmeasured and the hook's 48G plus 24G exceeds the 61 GiB machine; `target/verify` is about 53G with /home at 85%; `hook-flow-test` and `verify-test` assert on wall-clock sleeps and are flaky under load, and CI runs neither
+- `pre-push` checks tips only, so commits behind a pushed tip can be red; "`main` always green" means every pushed tip (verify-after-commit review)
 - A time breakdown per plan (agent, gate, CI, human) in `/retro`'s session digest, from the transcripts
 - Another harness's tier table in `.agents/tiers.md` and its conductor, a driver script that starts the harness's command line once per step on the tier's model, when one first runs a plan here (development-throughput idea)
 - Two plans at once in two worktrees, once verify-after-commit has run a cycle and its memory numbers are in: the hook's lock is per worktree, so they would compete for memory, not queue (development-throughput idea)

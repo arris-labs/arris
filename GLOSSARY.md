@@ -296,12 +296,18 @@ A defect a nightly, fuzz target or the differential measured, written in
 _Avoid_: bug report, issue
 
 **Gate**:
-The checks a change passes: the pre-commit hook's slice sized to what is
-staged, and the full gate once per plan and at a release.
+The checks a change passes, in three halves: the **static half** (layer
+rule, tolerance literals, fmt, clippy) the pre-commit hook runs at a code
+commit; the **test half** (the `fast` slice, doctests, `cargo doc` when due)
+that runs after the commit on its own tree, or inline at the next hook when
+the last commit is not verified; and the full gate once per plan and at a
+release.
 
 **Verified**:
-A commit whose gate tests passed on its own tree after it was committed;
-the next commit and any push wait on it.
+A commit whose test half passed: on its own tree after it was committed, or
+inline at a later commit's hook over the range that holds it; a prose or
+version commit takes its parent's state. The next code commit and any push
+wait on it.
 _Avoid_: checked (the checker's word), green (a CI run's)
 
 ## Consumers and process
