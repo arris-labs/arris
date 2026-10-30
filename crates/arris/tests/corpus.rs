@@ -1270,6 +1270,15 @@ corpus_tests! {
     /// (ADR-0070), builds and fails the checker.
     #[ignore = "fillet: the result fails the checker at Full on cylinder against cylinder pairs (f344/f352, f346/f354, f348/f356, f350/f358) the S5 cannot decide (docs/BACKLOG.md, an undecided S5 pair on a fillet of STC-07)"]
     regression_nist_stc_07_ap242_fillet_checker_undecided => part "regression/nist-stc-07-ap242-fillet-checker-undecided";
+    /// NIST CTC-05 AP242's plane-and-torus edge at (-140.35, 69.85, 44.85),
+    /// filleted alone at the battery's radius: a chain through a kink whose
+    /// walked blend's fit stops at the span cap.
+    #[ignore = "OpError::Internal, a geometry query failed: the walked blend's fit still deviates by 6.6e-8 with 3363 spans, the most it may use; Open CASCADE builds the edge valid (docs/BACKLOG.md, a chain's walked blend past the fit's span cap)"]
+    regression_nist_ctc_05_ap242_chain_fit_span_cap => run "regression/nist-ctc-05-ap242-chain-fit-span-cap";
+    /// NIST STC-08 AP242's solid #9306, a plane-and-torus edge filleted
+    /// alone: a chain through a vertex tangent within its tolerance.
+    #[ignore = "OpError::Internal, a kink's junction of two runs was not found; Open CASCADE builds the edge valid (docs/BACKLOG.md, a kink's junction that is not found)"]
+    regression_nist_stc_08_ap242_kink_junction_not_found => run "regression/nist-stc-08-ap242-kink-junction-not-found";
     /// NIST's CTC-02 AP242 e2 solid cut by its battery's box: a plane
     /// across a bicubic B-spline face (ADR-0061).
     #[ignore = "read-back: Open CASCADE's own STEP of the result is refused by the reader, #17219: the edge's end is at 0.3598 on its curve, not past its start at 0.4185; Arris's result is checker green and matches the oracle (docs/BACKLOG.md, a reversed-parameter edge in Open CASCADE's STEP of a NURBS part; ADR-0061)"]

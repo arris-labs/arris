@@ -148,11 +148,13 @@ robustness or bound has to be established here.
   encoding), not `TangentChain`. The mesh of e258 was not closed: the skin's
   pole and the torus fan from the wide vertex over the same contact samples
   (ADR-0077: a vertex stands for the samples inside its tolerance).
-- [ ] Step 8 **[2]** — The census: `real_parts --tangent-chain --census`
-  over both tiers with `paranoid`. Every edge that built still builds with
-  the same counts. Each edge that newly chains or joins is checker-green or
-  becomes a `regression/` fixture. The count goes in ADR-0074/0075's
-  consequences.
+- [x] Step 8 **[2]** — The census, per edge, before step 2 and after step 7
+  (a worktree at `c3250172`, both with `paranoid`): 141 edges changed
+  class, none built to refused; 96 newly build. *Settled:* 13 edges the
+  chain now takes stop `Internal`, a walked fit at the span cap (CTC-05, 12)
+  and a kink's junction not found (STC-08, 1): two `regression/` fixtures
+  with Open CASCADE's valid solids as the desired assertion, two backlog
+  lines. Counts are in ADR-0074's consequences.
 - [ ] Step 9 **[2]** — Blend properties. A plane-and-cylinder chain kinked
   by θ under the vertex's tolerance, in random poses, held to the unkinked
   chain's area within `r·θ·length`. A near-tangent end (two cylinders

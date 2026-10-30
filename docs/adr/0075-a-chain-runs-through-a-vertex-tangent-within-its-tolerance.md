@@ -122,6 +122,10 @@ no public type or signature changes.
 - `blend/nist-ftc-11-ap242-bspline-circle-fillet` is unchanged: its `v2`
   end is pierced.
 
+- The census of ADR-0074 holds for this chain too: through a kink, 96
+  edges newly build and none that built refuses; the 13 that now stop
+  `Internal` are two regression fixtures (ADR-0074's census).
+
 ## Alternatives considered
 
 - **Every tangency at the larger of the faces' and the vertex's

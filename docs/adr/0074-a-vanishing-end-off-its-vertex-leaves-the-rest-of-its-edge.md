@@ -101,6 +101,22 @@ same end was `Unsupported` for a NURBS face against a cylinder.
   unchanged, but the ceiling is the vertex's own tolerance where the point
   lies inside it (ADR-0076): AP242's builds.
 
+- **The census** (plans/tolerant-tangency step 8, `real_parts --census` over
+  the 26 readable files of the fetched tier, each blendable edge alone at
+  the battery's radius, `paranoid`, before step 2 and after step 7):
+  141 edges changed class, none from built to refused. 96 are newly built
+  (FTC-10 AP242 64, CTC-05 AP242 18, FTC-11 AP242 8, CTC-05 AP203 6), 32
+  moved to another refusal (CTC-02 AP242's `VertexBlend` edges to
+  `BlendTooLarge` and `Unsupported end`, CTC-05 AP203's to `Unsupported
+  pair`), and 13 are `Internal` now where they were refused by name: CTC-05's
+  plane-and-torus edges, which chain through a kink and stop at the fit's
+  span cap (12), and one STC-08 edge whose kink's junction is not found.
+  Each is a `regression/` fixture, desired assertion Open CASCADE's valid
+  solid (`nist-ctc-05-ap242-chain-fit-span-cap`,
+  `nist-stc-08-ap242-kink-junction-not-found`). The committed tier lists no
+  solid that refuses, before or after. Both CTC-05 AP242 and FTC-11 AP242
+  build their battery sample whole.
+
 ## Alternatives considered
 
 - **Grow the kept vertex to hold the arc** (`9.94e-3` on AP203). The

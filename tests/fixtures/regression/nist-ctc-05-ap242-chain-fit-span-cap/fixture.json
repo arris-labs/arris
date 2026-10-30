@@ -1,0 +1,27 @@
+{
+  "description": "NIST's CTC-05, its AP242 edition 1's solid #1205: the edge at (-140.35, 69.85, 44.85), between the plane and the torus, filleted alone at the battery's radius 0.978. Open CASCADE builds it valid (volume 13011478.9, 160 faces). Arris chains through a kink at the edge's end (ADR-0075), and the walked blend's fit stays 6.6e-8 off at the 3363-span cap: `OpError::Internal` (\"a geometry query failed: fit\"), where before the chain was `TangentChain`. Eleven mirror and AP203 copies of the edge fail the same way (tolerant-tangency step 8's census); the second site, (-135.91, 70.81, 46.89), the same",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../boolean/nist-ctc-05-ap242-box-cut-nurbs-plane/nist_ctc_05_asme1_ap242-e1-1205.stp",
+      "sha256": "e47c85bd667405aa4918f6dd17f9d70db4ecdd6509dd1e856c228ed793d7fa70",
+      "id": 1205
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          -140.35178519848623,
+          69.85,
+          44.85356986470326
+        ]
+      ],
+      "radius": 0.9784
+    }
+  ],
+  "result": "result",
+  "analytic": {}
+}

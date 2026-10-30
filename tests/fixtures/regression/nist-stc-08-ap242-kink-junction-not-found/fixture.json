@@ -1,0 +1,27 @@
+{
+  "description": "NIST's STC-08, its AP242 edition 3's solid #9306 alone (excerpt): the plane-and-torus edge at (67.31, 39.69, 48.26) filleted alone at r 0.5. Arris chains through a vertex tangent within its tolerance (ADR-0075) and refuses `OpError::Internal` (\"a kink's junction of two runs was not found\"), where before the edge was `Unsupported end` (cylinder against cylinder). Open CASCADE builds it valid (tolerant-tangency step 8's census)",
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "nist_stc_08_asme1_ap242-e3-9306.stp",
+      "sha256": "e4f3169c033fe283a62dbcc92d5269690490b98513a52003f9f6ed3b87e66807",
+      "id": 9306
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          67.3100000002692,
+          39.68747746858795,
+          48.260000000193
+        ]
+      ],
+      "radius": 0.5
+    }
+  ],
+  "result": "result",
+  "analytic": {}
+}
