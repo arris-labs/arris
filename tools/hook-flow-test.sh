@@ -18,7 +18,7 @@ git init -q -b main repo && cd repo
 git config user.email t@t && git config user.name t
 mkdir tools
 cp -r "$src/.githooks" .githooks
-cp "$src/tools/verify.sh" "$src/tools/gate-scope.sh" tools/
+cp "$src/tools/verify.sh" "$src/tools/verify-tree.sh" "$src/tools/gate-scope.sh" tools/
 git config core.hooksPath .githooks
 echo '[workspace]' >Cargo.toml
 dir=$(realpath .git)/arris-verify
