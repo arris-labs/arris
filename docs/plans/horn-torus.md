@@ -80,7 +80,7 @@ bound has to be established here.
   `blend/cylinder-rim-spindle-fillet` flips from refusal to build
   (`fixtures:` commit, the oracle values unchanged); a stripe past the band
   stays `BlendTooLarge` naming the face (a fillet test).
-- [ ] Step 5 **[2]** — The output is an operand: a box cut through the horn
+- [x] Step 5 **[2]** — The output is an operand: a box cut through the horn
   blend's face and a cylinder fused across the spindle blend's, each a
   fixture with its Open CASCADE oracle; the mesh corpus tessellates both
   blends watertight with normals off the axis.
@@ -128,6 +128,12 @@ corpus's `fillet` refusals not above 1; no panic.
 - `AGENTS.md` current state — M6 done.
 
 ## Open questions
+- *Settled* (step 5): the cut is `blend/horn-blend-box-cut` (box
+  `[1.9, -1, 1.95]-[3, 0.1, 3]`, planes `x = 1.9`, `y = 0.1`, `z = 1.95` off
+  the axis) and the fuse `blend/spindle-blend-cylinder-fuse` (a radius 0.3
+  cylinder along `y` through `x = 1.5`, `z = 2.6`); both build at once, as
+  Open CASCADE does. The mesh half is `arris-mesh/tests/band.rs`: the four
+  blends closed, torus-face vertices off the axis, triangles facing outward.
 - *Settled* (step 4): the reader's narrowing (step 6's `torus()` change,
   `SelfIntersectingTorus` at `major <= 0`) was pulled into step 4, since the
   built spindle and horn fixtures are written and read back by the corpus;

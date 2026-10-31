@@ -1131,6 +1131,12 @@ corpus_tests! {
     /// arc's torus is a horn torus, its major radius equal to its minor,
     /// built on its regular band (ADR-0080) as Open CASCADE builds it.
     blend_tangent_chain_horn_torus => run "blend/tangent-chain-horn-torus";
+    /// The horn blend cut by a box whose planes are off its axis: a boolean
+    /// operand on the regular band (ADR-0080).
+    blend_horn_blend_box_cut => run "blend/horn-blend-box-cut";
+    /// The spindle blend with a cylinder fused across it: a boolean operand
+    /// on the regular band (ADR-0080).
+    blend_spindle_blend_cylinder_fuse => run "blend/spindle-blend-cylinder-fuse";
     /// A crease and a tangent edge asked of one fillet: Open CASCADE leaves
     /// the tangent edge out without a word (ADR-0070) and rounds the crease
     /// alone; Arris refuses the tangent edge as `TangentChain`.
