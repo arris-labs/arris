@@ -24,6 +24,10 @@
 # ARRIS_VERIFY_MEMORY_HIGH / ARRIS_VERIFY_MEMORY_MAX override.
 # ARRIS_VERIFY_CMD replaces the test half (`<cmd>` runs in the tree with the
 # base and sha as arguments): the seam `tools/verify-test.sh` uses.
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -uo pipefail
 checkout=$(git rev-parse --show-toplevel) || exit 2
 common=$(realpath "$(git rev-parse --git-common-dir)")
@@ -79,3 +83,5 @@ verdict=fail
 echo "$verdict" >"$dir/$sha"
 rm -f "$dir/$sha.pid"
 [ "$verdict" = pass ]
+exit
+}

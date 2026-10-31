@@ -6,6 +6,10 @@
 #   (waited on in the background while the parent is still verifying);
 # - `deferred` or absent: `tools/verify.sh HEAD` runs detached (`setsid`), so
 #   a background `git commit` returns at once.
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 0
 [ -f Cargo.toml ] || exit 0
@@ -46,3 +50,5 @@ case "$next" in
     ;;
 esac
 exit 0
+exit
+}

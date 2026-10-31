@@ -2,6 +2,10 @@
 # A push waits for a verified tip (ADR-0078): every commit it pushes a ref to
 # must read `pass` in `tools/verify.sh --status`, which waits on a run in
 # flight. A deleted ref is not checked.
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 0
 [ -f Cargo.toml ] || exit 0
@@ -18,3 +22,5 @@ while read -r _ local_sha _ _; do
   fi
 done
 exit $rc
+exit
+}

@@ -16,6 +16,10 @@
 # completion notification. Never `nohup … &`, which sends none. The
 # pre-commit hook's `ARRIS_GATE=full` runs the same list, but stops at the
 # first red stage.
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -uo pipefail
 [ $# -eq 1 ] || { echo "usage: tools/full-gate.sh <log>" >&2; exit 2; }
 log=$(realpath -m "$1")
@@ -73,3 +77,5 @@ stage doc env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
 printf '%s\n' "${verdicts[@]}" | tee -a "$log"
 grep -E '^\s+(FAIL|SIGSEGV|SIGABRT|TIMEOUT) ' "$log" | sort -u
 ! printf '%s\n' "${verdicts[@]}" | grep -q '^FAIL'
+exit
+}

@@ -26,6 +26,10 @@
 #   runs the whole `fast` profile. Depth is the plan's retirement, CI and
 #   nightly: 256 cases, every test, `real_*`, the docs build.
 # - `ARRIS_GATE=full`: the old gate, every test at 256 cases and `cargo doc`.
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 [ -f Cargo.toml ] || exit 0
@@ -178,3 +182,5 @@ else
 fi
 stage test
 echo "pre-commit: stage seconds: $times"
+exit
+}

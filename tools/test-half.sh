@@ -6,6 +6,10 @@
 #
 #   tools/test-half.sh <base> [<sha>]   (no <sha>: the staged index, the hook's
 #                                        inline run)
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -euo pipefail
 { [ $# -eq 1 ] || [ $# -eq 2 ]; } || { echo "usage: tools/test-half.sh <base> [<sha>]" >&2; exit 2; }
 cd "$(git rev-parse --show-toplevel)"
@@ -27,3 +31,5 @@ if [ "$(gate_value doc)" = yes ]; then
   echo "test-half: cargo doc"
   RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
 fi
+exit
+}
