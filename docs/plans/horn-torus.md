@@ -91,7 +91,7 @@ bound has to be established here.
   on the band offsets; one that drives it past the band is
   `SurfaceCollapses` naming the face; `offset_prop` draws horn and spindle
   faces.
-- [ ] Step 8 **[2]** — Blend properties: a cylinder rim filleted at random
+- [x] Step 8 **[2]** — Blend properties: a cylinder rim filleted at random
   `r` from a ring torus through horn to spindle, short of the contact at
   the axis, its volume held to the Pappus closed form; the cap-edge chain
   at random `r2/r` in `(0.3, 0.7)`, checker-green or refused by name.
