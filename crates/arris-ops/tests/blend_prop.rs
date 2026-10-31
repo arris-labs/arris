@@ -2285,7 +2285,10 @@ prop_shards! {
 // spandrel, one edge running to the vertex where two walls leave tangent
 // and on one side of the shared face. The stripe is cut by the next wall,
 // so the volume is the corner section integrated over the part of its band
-// that lies inside the gap, held at random poses.
+// that lies inside the gap, held at random poses
+// A lip over a pillar (ADR-0079) is the same cut at an overhang tip, the
+// walls on either side of the shared face: the part of the band outside the
+// pillar's disc.
 
 /// A scene whose blended edge ends at a cusp.
 #[derive(Debug, Clone, PartialEq)]
@@ -2317,6 +2320,19 @@ enum Cusped {
     /// the origin. The bottom wall's top or floor edge, a line between two
     /// planes, is blended.
     Spandrel { a: f64, h: f64, floor: bool },
+    /// A lip over a pillar (ADR-0079): the pillar of radius `pillar` about
+    /// the z axis, and a lip `thick` thick on the pillar from `z = 1`, the
+    /// rectangle below the `x` axis less the pillar's disc and less the
+    /// bite's disc of radius `bite` about `(−pillar − bite, 0)`, tangent to
+    /// the pillar's at `(−pillar, 0)`. The bite's underside arc, convex, is
+    /// blended: the walls leave the cusp one on each side of the underside,
+    /// an overhang tip. `mirrored` reflects the lip's profile frame.
+    Overhang {
+        pillar: f64,
+        bite: f64,
+        thick: f64,
+        mirrored: bool,
+    },
 }
 
 /// A cusped scene, a blend size and a pose.
@@ -2356,6 +2372,43 @@ impl Cusped {
     fn build(&self, m: &mut Model) -> Result<Body, OpError> {
         match *self {
             Cusped::Crescent { big, small, h, .. } => crescent(m, big, small, 0.0, h),
+            Cusped::Overhang {
+                pillar,
+                bite,
+                thick,
+                mirrored,
+            } => {
+                // The profile frame's normal flips with the hand, so its y
+                // axis does; the extrusion still runs up the z axis.
+                let hand = if mirrored { -1.0 } else { 1.0 };
+                let (x, y) = (pillar + 2.0 * bite + 1.0, pillar + 1.0);
+                let profile = Profile {
+                    plane: Frame::new(Point3::new(0.0, 0.0, 1.0), hand * Vec3::z(), Vec3::x())?,
+                    outer: ProfileLoop::Path {
+                        start: Point2::new(-pillar, 0.0),
+                        segments: vec![
+                            ProfileSegment::ArcTo {
+                                to: Point2::new(-pillar - 2.0 * bite, 0.0),
+                                via: Point2::new(-pillar - bite, -bite),
+                            },
+                            ProfileSegment::LineTo(Point2::new(-x, 0.0)),
+                            ProfileSegment::LineTo(Point2::new(-x, -y)),
+                            ProfileSegment::LineTo(Point2::new(x, -y)),
+                            ProfileSegment::LineTo(Point2::new(x, 0.0)),
+                            ProfileSegment::LineTo(Point2::new(pillar, 0.0)),
+                            ProfileSegment::ArcTo {
+                                to: Point2::new(-pillar, 0.0),
+                                via: Point2::new(0.0, -pillar),
+                            },
+                        ],
+                    },
+                    holes: Vec::new(),
+                };
+                let axis = Axis::new(Point3::origin(), Vec3::z())?;
+                let (post, _) = primitive_cylinder(m, axis, pillar, 1.0 + thick + 1.0)?;
+                let (lip, _) = extrude(m, &profile, Vec3::z(), thick)?;
+                Ok(fuse(m, post, lip)?.0)
+            }
             Cusped::Pocket { big, small, h, .. } => {
                 let (block, _) = primitive_box(
                     m,
@@ -2419,6 +2472,15 @@ impl Cusped {
             Cusped::Spandrel { a, h, floor } => {
                 Point3::new(a / 2.0, 0.0, if floor { 0.0 } else { h })
             }
+            Cusped::Overhang {
+                pillar,
+                bite,
+                mirrored,
+                ..
+            } => {
+                let hand = if mirrored { -1.0 } else { 1.0 };
+                Point3::new(-pillar - bite, -hand * bite, 1.0)
+            }
         }
     }
 
@@ -2469,6 +2531,16 @@ impl Cusped {
                 }
             }
             Cusped::Spandrel { a, .. } => a - (2.0 * a * u - u * u).max(0.0).sqrt(),
+            Cusped::Overhang { pillar, bite, .. } => {
+                // A circle of radius `bite + u` about the bite's centre, on
+                // the lip's side of the axis and outside the pillar's disc,
+                // which is where the stripe is cut (ADR-0079): the half
+                // circle less the arc inside the disc.
+                let rho = bite + u;
+                let c = pillar + bite;
+                let k = (c * c + rho * rho - pillar * pillar) / (2.0 * c * rho);
+                rho * (PI - real::acos(k.clamp(-1.0, 1.0)))
+            }
         };
         let swept = simpson(0.0, r.sqrt(), N, &|w| {
             let u = w * w;
@@ -2476,7 +2548,7 @@ impl Cusped {
         });
         match self {
             Cusped::Pocket { .. } => swept,
-            Cusped::Crescent { .. } | Cusped::Spandrel { .. } => -swept,
+            Cusped::Crescent { .. } | Cusped::Spandrel { .. } | Cusped::Overhang { .. } => -swept,
         }
     }
 }
@@ -2558,11 +2630,27 @@ fn cusp_case() -> impl Strategy<Value = CuspCase> {
             };
             (scene, fraction * bound)
         });
-    (prop_oneof![crescent, other], prop::pose()).prop_map(|((scene, size), pose)| CuspCase {
-        scene,
-        size,
-        pose,
-    })
+    // A lip over a pillar, either hand: the size is below the bite's radius,
+    // the lip's thickness and the pillar's height under the lip (1), the
+    // stripe's reach on each face it meets.
+    let overhang = (
+        prop::finite_f64(1.5..=3.0),
+        prop::finite_f64(0.5..=1.5),
+        prop::finite_f64(0.8..=2.0),
+        any::<bool>(),
+        prop::finite_f64(0.05..=0.8),
+    )
+        .prop_map(|(pillar, bite, thick, mirrored, fraction)| {
+            let scene = Cusped::Overhang {
+                pillar,
+                bite,
+                thick,
+                mirrored,
+            };
+            (scene, fraction * bite.min(thick).min(1.0))
+        });
+    (prop_oneof![crescent, other, overhang], prop::pose())
+        .prop_map(|((scene, size), pose)| CuspCase { scene, size, pose })
 }
 
 /// The blend of `case` in a fresh model, the scene moved to its pose
@@ -2659,8 +2747,8 @@ fn cusps_blend_as_their_sections(case: CuspCase, kind: Blend) -> Result<(), Test
 }
 
 prop_shards! {
-    /// A crescent's arc, its pocket's floor arc or a spandrel's line
-    /// filleted where it runs to the cusp: the stripe cut by the next wall,
+    /// A crescent's arc, its pocket's floor arc, a spandrel's line or a lip
+    /// over a pillar (either hand) filleted where it runs to the cusp: the stripe cut by the next wall,
     /// clean at `Full` with nothing unchecked, audited, at the section's
     /// volume integrated over the gap, pose-independent, through STEP and
     /// deterministic.

@@ -115,7 +115,7 @@ geometric case within a given design; **[3]** unproven.
   in this step if it is the design's; otherwise it becomes an ignored
   `regression/` fixture and a backlog line. The tallies go in the commit
   body.
-- [ ] Step 4 **[2]** — The property. Add `Cusped::Overhang { … }` to
+- [x] Step 4 **[2]** — The property. Add `Cusped::Overhang { … }` to
   `blend_prop.rs`, with a lip over a pillar, either hand, and fillet and
   chamfer at random poses. Its `change` is the clipped section's integral
   (Design deltas). It runs the existing body: checker, provenance, volume,
