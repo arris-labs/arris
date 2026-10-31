@@ -29,5 +29,11 @@ run 0 false 'cargo nextest run -p arris-geom --profile fast'
 run 0 false 'tools/verify.sh --status'
 run 0 false 'git log --format=%s | grep -c "while"'
 run 0 false 'grep -n "sleep" tools/verify.sh'
+# git stash, foreground or not
+run 2 false 'git stash; cargo test; git stash pop'
+run 2 true 'cd x && git stash push -m wip'
+run 2 false 'git -C repo stash list'
+run 0 false 'git log --grep=stash'
+run 0 false 'git status --short'
 
 [ "$fail" = 0 ] && echo "bash-guard-test: ok" || exit 1

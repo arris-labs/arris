@@ -63,7 +63,8 @@
 - Never rewrite `main` (no amend of a pushed commit, no force-push, no
   rebase). Never push unless asked.
 - Stage deliberately: read `git status` and `git diff`, no blind `git add
-  -A`. A changed `tests/fixtures/**/*.json` expectation is staged only
+  -A`. No `git stash`: a pop can bring back another session's work
+  (`tools/bash-guard.sh` refuses it). A changed `tests/fixtures/**/*.json` expectation is staged only
   with an intentional geometry change, and the message says `fixtures:`
   and why. Oracle values do not drift; if they changed, the body says
   whether the fixture or the oracle script did.
