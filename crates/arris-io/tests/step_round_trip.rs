@@ -19,7 +19,7 @@ use arris_debug::testing::{REL, fail};
 use arris_debug::unmetered::step_read;
 use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::unmetered::{mass_properties, transform};
-use arris_debug::{prop, prop_shards};
+use arris_debug::{corpus, fixtures, prop, prop_shards};
 use arris_io::step::{self, ReadOptions};
 use arris_math::{Isometry, Point3, Vec3};
 use arris_ops::measure::MassProperties;
@@ -168,9 +168,17 @@ fn under_exclusions<T>(f: impl FnOnce() -> Result<T, TestCaseError>) -> Result<T
 fn round_trip(shape: &Shape, probes: &[[f64; 3]]) -> Result<(), TestCaseError> {
     let mut m = Model::default();
     let body = under_exclusions(|| shape.build(&mut m))?;
-    let original = check(&m, body, Level::Full);
+    reads_back_as_itself(&m, body, probes)
+}
+
+/// `body` in `m`, written to STEP and read back, is the body: a checker
+/// pass at `Full` (a body that fails it is not written — the caller
+/// rejects it), the same counts and mass properties, the same probe
+/// classifications.
+fn reads_back_as_itself(m: &Model, body: Body, probes: &[[f64; 3]]) -> Result<(), TestCaseError> {
+    let original = check(m, body, Level::Full);
     prop_assume!(original.is_ok() && original.unchecked().is_empty());
-    let text = step::write(&m, &[body]).map_err(fail)?;
+    let text = step::write(m, &[body]).map_err(fail)?;
 
     let mut back = Model::new(m.precision()).map_err(fail)?;
     let read = step_read(&mut back, &text, &ReadOptions::default()).map_err(fail)?;
@@ -187,7 +195,7 @@ fn round_trip(shape: &Shape, probes: &[[f64; 3]]) -> Result<(), TestCaseError> {
         );
         bodies.push(read.body);
     }
-    prop_assert_eq!(counts(&back, &bodies)?, counts(&m, &[body])?, "counts");
+    prop_assert_eq!(counts(&back, &bodies)?, counts(m, &[body])?, "counts");
 
     let zero = Tolerances {
         volume_rel: 0.0,
@@ -196,8 +204,8 @@ fn round_trip(shape: &Shape, probes: &[[f64; 3]]) -> Result<(), TestCaseError> {
         inertia_rel: 0.0,
         ..Tolerances::default()
     };
-    let own = within_own_tolerance(&zero, &m, body).map_err(fail)?;
-    let (a, b) = (mass(&m, &[body])?, mass(&back, &bodies)?);
+    let own = within_own_tolerance(&zero, m, body).map_err(fail)?;
+    let (a, b) = (mass(m, &[body])?, mass(&back, &bodies)?);
     within("volume", b.volume, a.volume, own.volume_rel)?;
     within("area", b.area, a.area, own.area_rel)?;
     let apart = (b.centroid - a.centroid).norm();
@@ -238,7 +246,7 @@ fn round_trip(shape: &Shape, probes: &[[f64; 3]]) -> Result<(), TestCaseError> {
     }
     for f in probes {
         let p = Point3::from(lo + (hi - lo).component_mul(&Vec3::new(f[0], f[1], f[2])));
-        let (was, is) = (classify(&m, &[body], p)?, classify(&back, &bodies, p)?);
+        let (was, is) = (classify(m, &[body], p)?, classify(&back, &bodies, p)?);
         let on = |c: &Classification| matches!(c, Classification::On(_));
         prop_assert!(
             was == is || on(&was) || on(&is),
@@ -337,4 +345,34 @@ fn a_ball_in_a_tilted_cylinder_reads_back_as_itself() {
         pose: half_turn,
     };
     round_trip(&Shape::Boolean(1, pair), &[[0.5, 0.5, 0.5]]).unwrap();
+}
+
+/// The horn blend and the spindle blend of the corpus, and the boolean
+/// operands that take them, written and read back as themselves: the horn
+/// is a fillet whose tube touches the axis, the spindle one whose tube
+/// crosses it, both faces of the regular band (ADR-0080) and both written
+/// as the torus they are. A failure names its fixture.
+#[test]
+fn the_horn_and_spindle_blends_read_back_as_themselves() {
+    // Off the centre of the box, where the blend's axis runs: a point on
+    // a torus's axis has no unique projection onto it (`classify_point`).
+    let probes = [[0.37, 0.61, 0.43], [0.2, 0.8, 0.4], [0.9, 0.1, 0.6]];
+    for name in [
+        "blend/tangent-chain-horn-torus",
+        "blend/cylinder-rim-spindle-fillet",
+        "blend/horn-blend-box-cut",
+        "blend/spindle-blend-cylinder-fuse",
+    ] {
+        let chain = corpus::chain(&fixtures::corpus_root().join(name), "default")
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        let body = chain
+            .result()
+            .unwrap_or_else(|| panic!("{name}: no result"));
+        let original = check(&chain.model, body, Level::Full);
+        assert!(
+            original.is_ok() && original.unchecked().is_empty(),
+            "{name}: not clean at Full before writing:\n{original}"
+        );
+        reads_back_as_itself(&chain.model, body, &probes).unwrap_or_else(|e| panic!("{name}: {e}"));
+    }
 }

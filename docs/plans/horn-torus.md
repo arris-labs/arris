@@ -84,7 +84,7 @@ bound has to be established here.
   blend's face and a cylinder fused across the spindle blend's, each a
   fixture with its Open CASCADE oracle; the mesh corpus tessellates both
   blends watertight with normals off the axis.
-- [ ] Step 6 **[1]** — STEP: the reader takes a non-ring torus, the
+- [x] Step 6 **[1]** — STEP: the reader takes a non-ring torus, the
   refusal narrowed to `major <= 0`; the horn and spindle blends written and
   read back with equal measures (an `io` round-trip test).
 - [ ] Step 7 **[2]** — Offset of a band face: `r ± d` that keeps the face
