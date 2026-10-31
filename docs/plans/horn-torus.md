@@ -128,6 +128,18 @@ corpus's `fillet` refusals not above 1; no panic.
 - `AGENTS.md` current state — M6 done.
 
 ## Open questions
+- ⚠ OPEN: step 4 stopped (2026-10-31). The ring's band test landed (`ring.rs`),
+  `blend/cylinder-rim-spindle-fillet` builds and matches Open CASCADE, the
+  boss-rim test builds a horn and refuses the axis; but
+  `regression/tangent-chain-horn-torus` builds and then fails S5: its two
+  cylinder stripes meet the horn torus tangent along a tube circle through the
+  horn's axis point, which is step 3's refusal (a surface through the axis
+  point tangent to the axis, `TangentAlongCurve`, the critical box long in
+  `u` along the collapsed row in `torus_walk/singular.rs`). Every blend
+  junction of a horn is this pair, so it is not a backlog case: a fix is a
+  step 3 repair (tier 3), the pair decided as the circle divided out plus the
+  axis point, then the fixture moves to `blend/`. The fixture stays in
+  `regression/`, its `#[ignore]` reason updated; step 4's box stays open.
 - *Settled* (step 3): spindle in scope. The section is traced on the
   torus's polynomial whole — the walk's distance to a torus covers the
   lemon too (`Implicit::sectioned`), so its roots are the patches' — and

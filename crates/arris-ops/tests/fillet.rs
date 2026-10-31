@@ -806,21 +806,27 @@ fn a_plane_against_a_cylinder_along_a_circle_blends_to_a_torus() {
     }
 }
 
-/// A closed rim's refusals: a ball whose torus would not be a ring — its
-/// centre circle no wider than its tube, at the boss's top rim — and a
-/// ball wider than the plate the hole goes through.
+/// A closed rim's refusals: a ball whose centre is on the axis, at the
+/// boss's top rim, its contact on the top the axis point itself — one short
+/// of it, a horn torus (ADR-0080), builds clean at `Full` — and a ball wider
+/// than the plate the hole goes through.
 #[test]
 fn a_rim_blend_too_large_is_refused() {
     let mut m = Model::default();
     let disc = bossed_disc(&mut m);
     let top = rim_at(&m, disc, Point3::new(0.0, 0.0, 2.0), 1.0);
-    let err = fillet(&mut m, disc, &[top], 0.5).unwrap_err();
+    let err = fillet(&mut m, disc, &[top], 1.0).unwrap_err();
     assert_eq!(
         reason(&err),
         Some(Reason::Blend(BlendReason::TooLarge)),
         "{err}"
     );
-    fillet(&mut m, disc, &[top], 0.45).unwrap();
+    for radius in [0.5, 0.45] {
+        let (blended, _) = fillet(&mut m, disc, &[top], radius).unwrap();
+        let report = check(&m, blended, Level::Full);
+        assert!(report.is_ok(), "{report}");
+        assert!(report.unchecked().is_empty(), "{report}");
+    }
     let plate = holed_plate(&mut m);
     let rim = rim_at(&m, plate, Point3::new(2.0, 2.0, 1.0), 1.0);
     let err = fillet(&mut m, plate, &[rim], 1.2).unwrap_err();
@@ -1854,4 +1860,51 @@ fn a_vanishing_end_off_its_vertex_stops_short_and_the_chain_runs_through_v31() {
     };
     assert_eq!(faces("part"), 156);
     assert_eq!(faces("result"), 159);
+}
+
+/// A torus holds its regular band (ADR-0080): a cylinder of radius 2
+/// revolved whole, its top rim filleted at 1.5 and at 1.9, builds a spindle
+/// torus clean at `Full` with nothing unchecked, its face off the axis; at 2
+/// the ball's centre is on the axis and the contact on the top is the axis
+/// point itself, which has no circle: `BlendTooLarge`, naming the edge and
+/// the top.
+#[test]
+fn a_fillet_on_the_band_builds_and_one_at_the_axis_is_too_large() {
+    let mut m = Model::default();
+    let p = |u, v| Point2::new(u, v);
+    let plane = Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap();
+    let profile = Profile {
+        plane,
+        outer: ProfileLoop::Path {
+            start: p(0.0, 0.0),
+            segments: vec![
+                line_to(2.0, 0.0),
+                line_to(2.0, 3.0),
+                line_to(0.0, 3.0),
+                line_to(0.0, 0.0),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let part = revolve(
+        &mut m,
+        &profile,
+        Axis::z_at(Point3::origin()),
+        core::f64::consts::TAU,
+    )
+    .unwrap()
+    .0;
+    let rim = rim_at(&m, part, Point3::new(0.0, 0.0, 3.0), 2.0);
+    for radius in [1.5, 1.9] {
+        let (blended, _) = fillet(&mut m, part, &[rim], radius).unwrap();
+        let report = check(&m, blended, Level::Full);
+        assert!(report.is_ok(), "{report}");
+        assert!(report.unchecked().is_empty(), "{report}");
+    }
+    let err = fillet(&mut m, part, &[rim], 2.0).unwrap_err();
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
 }

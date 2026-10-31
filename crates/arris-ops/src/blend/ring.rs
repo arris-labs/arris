@@ -960,9 +960,6 @@ fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blen
             };
             let foot = |i: usize, mer: &Meridian| mer.foot(c).ok_or_else(|| too_large(faces[i]));
             let (on_a, on_b) = contacts_on(foot(0, &mer_a)?, foot(1, &mer_b)?)?;
-            if c.x <= radius + tolerance {
-                return Err(too_large(faces[k]));
-            }
             // Each contact's angle about the tube's centre, the two taken
             // the short way round.
             let angle = |p: Vec2| {
@@ -976,6 +973,16 @@ fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blen
                 } else {
                     v_b += TAU;
                 }
+            }
+            // The stripe stays on the torus's regular band (ADR-0080): its
+            // distance from the axis, `R + r cos v`, is least at `v = π`
+            // when the arc crosses it, else at a contact, which
+            // `contacts_on` has held above the tolerance.
+            let (lo, hi) = (v_a.min(v_b), v_a.max(v_b));
+            // The first `π + 2πk` at or above the arc's start.
+            let crosses = PI + TAU * ((lo - PI) / TAU).ceil() <= hi;
+            if crosses && c.x - radius <= tolerance {
+                return Err(too_large(faces[k]));
             }
             (
                 Surface::Torus {

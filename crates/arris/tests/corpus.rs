@@ -1040,8 +1040,9 @@ corpus_tests! {
     /// leans along a circle (ADR-0072 as amended), as Open CASCADE builds it.
     blend_chain_through_torus_fillet => run "blend/chain-through-torus-fillet";
     /// A cylinder's top rim filleted past its radius: the ball's centre circle
-    /// is narrower than its tube, a spindle torus, which Arris refuses as
-    /// `BlendTooLarge` where Open CASCADE builds it (ADR-0036 §3).
+    /// is narrower than its tube, a spindle torus,
+    /// held to its regular band and built as Open CASCADE builds it
+    /// (ADR-0080).
     blend_cylinder_rim_spindle_fillet => run "blend/cylinder-rim-spindle-fillet";
     /// A cone cut by an oblique plane, the ellipse between them filleted: a
     /// centre locus that is no circle, `Unsupported` where Open CASCADE builds
@@ -1328,8 +1329,9 @@ corpus_tests! {
     blend_s_bend_oblique_top_fillet => run "blend/s-bend-oblique-top-fillet";
     /// The cap-edge chain with the first radius at twice the second: the
     /// arc's torus is a horn torus, its major radius equal to its minor, which
-    /// the ring refuses. The desired body is Open CASCADE's.
-    #[ignore = "Reason::BlendTooLarge: the arc's fillet is a horn torus, major radius equal to minor, and the ring holds a torus to a ring torus (docs/BACKLOG.md, a horn torus on a blend's arc)"]
+    /// the ring now builds on its regular band. The desired body is Open
+    /// CASCADE's.
+    #[ignore = "S5: the cylinder stripes against the horn torus are not decided, the section tangent along a tube circle through the horn's axis point (SectionFault::TangentAlongCurve, plans/horn-torus step 3's refusal), so Full has two unchecked pairs"]
     regression_tangent_chain_horn_torus => run "regression/tangent-chain-horn-torus";
     /// A plate with a crescent hole tessellated at a coarse chord: the hole's
     /// two tangent arcs' polygons cross at the cusp, and the mesher refuses a

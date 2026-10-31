@@ -1,5 +1,5 @@
 {
-  "description": "blend/tangent-chain-cap-edge with the first radius at twice the second, r 0.2 and r2 0.1: the chain of cap edge, the first blend's end arc and the next cap edge, where the arc's fillet is the torus of major radius r − r2 = 0.1 and minor r2 = 0.1, a horn torus whose tube touches the axis. Open CASCADE builds it; Arris's ring holds a torus to major radius above minor and refuses it as Reason::BlendTooLarge naming the arc and the first blend's face. The desired body is Open CASCADE's",
+  "description": "blend/tangent-chain-cap-edge with the first radius at twice the second, r 0.2 and r2 0.1: the chain of cap edge, the first blend's end arc and the next cap edge, where the arc's fillet is the torus of major radius r − r2 = 0.1 and minor r2 = 0.1, a horn torus whose tube touches the axis. Open CASCADE builds it; Arris's ring builds it on the torus's regular band (ADR-0080), but S5 cannot decide the two cylinder stripes against the horn torus: the section is tangent along a tube circle through the horn's axis point, SectionFault::TangentAlongCurve. The desired body is Open CASCADE's",
   "params": {"r": 0.2, "r2": 0.1},
   "steps": [
     {
