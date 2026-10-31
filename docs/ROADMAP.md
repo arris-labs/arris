@@ -897,12 +897,12 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   (the hinge leaf) and the real parts' `fillet` row stays at 4 of 38. An
   ellipse for the crossed edge stays `BlendTooLarge`.
 - `BlendTooLarge` where Open CASCADE builds: the horn torus on an arc.
-- [ ] Overhang tips (`TangentChain`): a convex lip edge's fillet is cut by
+- [x] Overhang tips (`TangentChain`): **done 2026-10-31** (`overhang-tip-cap`,
+  ADR-0079). A convex lip edge's fillet is cut by
   the next wall on its exact stripe (ADR-0079); the concave pillar edge
   stays refused on the pillar; FTC-06's 8 concave requests, which Open
   CASCADE builds with fitted caps, are a regression fixture and a backlog
-  line. Variants, chamfers and the FTC-06 census are done; the property is
-  in progress (`overhang-tip-cap`).
+  line. Variants, chamfers, the FTC-06 census and the cusp property are done.
 - [x] A junction whose tangent edge is a line that leans out of the
   ball's normal plane: **done 2026-10-28** (`three-edge-run-vertex`,
   ADR-0072, ADR-0073). The two stripes meet on one ball off the vertex, on

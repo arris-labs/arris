@@ -194,6 +194,12 @@ the edge's tolerance: the stripe narrows to a pole at the vertex, or stops
 short on its narrowest exact arc with the edge's remnant running on
 (ADR-0062, ADR-0074).
 
+**Cusp**:
+A vertex of three edges where the blended edge and the next edge leave the
+same way, the two walls tangent along the third edge (ADR-0042). That third
+edge is the cusp's own "spine", not the stripe's **Spine** above. An edge's
+_sense_ is whether it is convex or concave.
+
 **Overhang tip**:
 A cusp whose two edges have opposite senses, its walls on either side of
 the face they share (ADR-0079).

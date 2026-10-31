@@ -47,7 +47,9 @@ hold what Open CASCADE cannot. The modelling layer (`arris.build`,
 ADR-0067) and the multi-platform wheels landed 2026-10-22; 0.9.1 is the
 release prepared for the first multi-platform upload. The refactor
 sequence (`refactor-after-c10`, option B) is closed (2026-10-26).
-**Next:** M5 `overhang-tip-cap`.
+M5 `overhang-tip-cap` done 2026-10-31 (ADR-0079): a convex edge at an
+overhang tip builds, cut by the next wall; FTC-06's concave ones stay refused.
+**Next:** the cycle's next plan (`docs/ROADMAP.md` §C11).
 
 ## Rules that are not derivable from the code
 

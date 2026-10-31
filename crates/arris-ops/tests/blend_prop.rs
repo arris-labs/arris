@@ -2285,7 +2285,7 @@ prop_shards! {
 // spandrel, one edge running to the vertex where two walls leave tangent
 // and on one side of the shared face. The stripe is cut by the next wall,
 // so the volume is the corner section integrated over the part of its band
-// that lies inside the gap, held at random poses
+// that lies inside the gap, held at random poses.
 // A lip over a pillar (ADR-0079) is the same cut at an overhang tip, the
 // walls on either side of the shared face: the part of the band outside the
 // pillar's disc.
