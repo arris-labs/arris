@@ -1,0 +1,504 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "f76ba0935b22843a86a454e05e361d2aaf049ef34094f017aa2cfc8d0d53b1b7",
+  "results": {
+    "default": {
+      "area": 167.81416609866503,
+      "centroid": [
+        0.0596159492189246,
+        -1.4905373431320519,
+        1.5000890859404932
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          302.1062170224095,
+          -5.06184442045356,
+          0.022242428084063626
+        ],
+        [
+          -5.06184442045356,
+          464.9012506520052,
+          -0.005663689699986207
+        ],
+        [
+          0.022242428084063626,
+          -0.005663689699986207,
+          703.441118930764
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_pillar",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_lip",
+          "point": [
+            3.0,
+            -3.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_bite",
+          "point": [
+            -3.0,
+            -0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under_the_lip",
+          "point": [
+            -3.0,
+            -3.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 79.82988981098609
+    },
+    "larger": {
+      "area": 167.52015962088726,
+      "centroid": [
+        0.06459590447637152,
+        -1.4916644954129556,
+        1.5007017867518713
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          302.00907989214033,
+          -5.358302376900954,
+          0.17875177645385243
+        ],
+        [
+          -5.358302376900954,
+          463.54613798115656,
+          -0.04060860064521421
+        ],
+        [
+          0.17875177645385243,
+          -0.04060860064521421,
+          702.02852139103
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_pillar",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_lip",
+          "point": [
+            3.0,
+            -3.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_bite",
+          "point": [
+            -3.0,
+            -0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under_the_lip",
+          "point": [
+            -3.0,
+            -3.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 79.70556892929976
+    },
+    "larger-mirrored": {
+      "area": 167.52015962088726,
+      "centroid": [
+        0.06459590447637044,
+        1.4916644954129532,
+        1.5007017867518717
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          302.0090798920985,
+          5.358302376822527,
+          0.1787517764538613
+        ],
+        [
+          5.358302376822527,
+          463.5461379811985,
+          0.040608600645271054
+        ],
+        [
+          0.1787517764538613,
+          0.040608600645271054,
+          702.0285213910305
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_pillar",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_lip",
+          "point": [
+            3.0,
+            3.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_bite",
+          "point": [
+            -3.0,
+            0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under_the_lip",
+          "point": [
+            -3.0,
+            3.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 79.70556892929977
+    },
+    "mirrored": {
+      "area": 167.81416609866503,
+      "centroid": [
+        0.059615949218923325,
+        1.49053734313205,
+        1.5000890859404932
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          302.10621702236875,
+          5.061844420377213,
+          0.022242428084044086
+        ],
+        [
+          5.061844420377213,
+          464.90125065204666,
+          0.005663689700043051
+        ],
+        [
+          0.022242428084044086,
+          0.005663689700043051,
+          703.4411189307647
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_pillar",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_lip",
+          "point": [
+            3.0,
+            3.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_bite",
+          "point": [
+            -3.0,
+            0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under_the_lip",
+          "point": [
+            -3.0,
+            3.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 79.82988981098607
+    },
+    "smaller": {
+      "area": 167.8957230829799,
+      "centroid": [
+        0.05916763802018839,
+        -1.4904242877233773,
+        1.5000231156066757
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          302.1167816935595,
+          -5.033071780492109,
+          0.005731733172453346
+        ],
+        [
+          -5.033071780492109,
+          465.021514622243,
+          -0.001508126203248139
+        ],
+        [
+          0.005731733172453346,
+          -0.001508126203248139,
+          703.5670772263202
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_pillar",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_lip",
+          "point": [
+            3.0,
+            -3.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_bite",
+          "point": [
+            -3.0,
+            -0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under_the_lip",
+          "point": [
+            -3.0,
+            -3.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 79.84131146541526
+    },
+    "smaller-mirrored": {
+      "area": 167.8957230829799,
+      "centroid": [
+        0.05916763802018732,
+        1.4904242877233755,
+        1.5000231156066757
+      ],
+      "counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          302.11678169351865,
+          5.033071780416656,
+          0.005731733172432918
+        ],
+        [
+          5.033071780416656,
+          465.0215146222842,
+          0.001508126203248139
+        ],
+        [
+          0.005731733172432918,
+          0.001508126203248139,
+          703.5670772263205
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 30,
+        "faces": 13,
+        "loops": 13,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 19
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_pillar",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_lip",
+          "point": [
+            3.0,
+            3.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_the_bite",
+          "point": [
+            -3.0,
+            0.5,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under_the_lip",
+          "point": [
+            -3.0,
+            3.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 79.84131146541526
+    }
+  }
+}

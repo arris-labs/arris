@@ -220,6 +220,7 @@ blend/cusp-crescent-both-arcs-fillet: refused
 blend/cusp-crescent-chamfer: 445
 blend/cusp-crescent-fillet: 1456
 blend/cusp-crescent-small-arc-fillet: 1384
+blend/cusp-overhang-tip-chamfer: 445
 blend/cusp-overhang-tip-fillet: 1368
 blend/cusp-overhang-tip-pillar-fillet: refused
 blend/cusp-pocket-fillet: 1448

@@ -8,9 +8,9 @@ into its version (ADR-0027).
 
 ## Unreleased
 
-- A convex edge ending at an overhang tip can now be filleted: the
-  lip over a pillar rounds up to the pillar wall. The concave edge at
-  the same tip is still refused as `TangentChain`.
+- A convex edge ending at an overhang tip can now be filleted or chamfered:
+  the lip over a pillar rounds or bevels up to the pillar wall. The concave
+  edge at the same tip is still refused as `TangentChain`.
 - A fillet that ends where two faces run tangent only within a file's
   tolerance now builds where it was refused as `TangentChain`: a stripe
   that narrows to nothing short of its vertex stops there and the edge

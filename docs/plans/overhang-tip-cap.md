@@ -81,7 +81,9 @@ refuses at every radius.
 **Tolerances.** Each variant is kept where Open CASCADE's fit error, times
 the cap's area, falls within the default `volume_rel` and `area_rel`
 (1e-9): `r ≤ 0.3`. Wider radii are held by the property against the
-section's integral, not against Open CASCADE.
+section's integral, not against Open CASCADE. **Settled (step 2):** both
+hands at each fixture radius; reflect the lip's profile frame before
+fusing and blending, and reflect the edge selection and probes with it.
 
 **The property's change.** For an overhang scene, the corner section is
 integrated over its band, taking at each angle the part of the section that
@@ -98,7 +100,7 @@ geometric case within a given design; **[3]** unproven.
   `blend/cusp-overhang-tip-pillar-fillet`, `expect_error: tangent-chain`.
   The census test `an_overhang_tip_is_a_cusp_with_walls_on_either_side`
   moves to that fixture. Look at the result (`inspect`) before the dump.
-- [ ] Step 2 **[2]** — Variants and the chamfer. Add fillet variants at
+- [x] Step 2 **[2]** — Variants and the chamfer. Add fillet variants at
   `r` 0.05 and 0.3, and a mirrored pose (Open CASCADE's invalid caps on
   FTC-06 differ by hand). Add `blend/cusp-overhang-tip-chamfer`, whose cut is
   transverse at `Q`, with variants at 0.05 and 0.3. Each is held at Open

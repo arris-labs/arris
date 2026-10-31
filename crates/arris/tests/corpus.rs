@@ -1381,8 +1381,13 @@ corpus_tests! {
     blend_cusp_crescent_both_arcs_fillet => run "blend/cusp-crescent-both-arcs-fillet";
     /// A lip's underside arc filleted to an overhang tip, the cusp of FTC-06,
     /// its edges of opposite senses: the pillar wall cuts the exact stripe,
-    /// kept as one face rather than Open CASCADE's two patches (ADR-0079).
+    /// kept as one face rather than Open CASCADE's two patches. Both hands at
+    /// radii 0.05, 0.1 and 0.3 match Open CASCADE's measures (ADR-0079).
     blend_cusp_overhang_tip_fillet => run "blend/cusp-overhang-tip-fillet";
+    /// The lip's underside arc chamfered to the overhang tip: the exact cone
+    /// cut by the pillar, transverse at the spine. Both hands at distances
+    /// 0.05, 0.1 and 0.3 match Open CASCADE's measures (ADR-0079).
+    blend_cusp_overhang_tip_chamfer => run "blend/cusp-overhang-tip-chamfer";
     /// The pillar's concave underside arc at the same overhang tip: both
     /// kernels refuse it, Arris as `TangentChain` (ADR-0079).
     blend_cusp_overhang_tip_pillar_fillet => run "blend/cusp-overhang-tip-pillar-fillet";

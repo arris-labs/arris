@@ -72,3 +72,10 @@ corner patch is a different surface. No public type or signature changes.
   patches of one surface, with no change in geometry or provenance role.
 - **Permit the concave edge too.** Open CASCADE refuses it, and no accepted
   construction or consumer requirement justifies that extension.
+
+## Amendment (2026-10-31, step 2)
+
+The cut also builds a convex chamfer at the lip-over-pillar overhang,
+transverse at `Q`. Both hands at fillet radii or chamfer distances 0.05,
+0.1 and 0.3 match Open CASCADE's volume, area, centroid and inertia at
+the default fixture tolerances, with the same count convention above.

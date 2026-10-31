@@ -1,7 +1,27 @@
 {
-  "description": "an overhang tip, the cusp of NIST FTC-06's battery shrunk: a pillar of radius 2 about the z axis three high, fused with a lip one thick at height 1, the square [-5,5]x[-5,0] less the pillar's disc and less the disc of radius 1 about (-3, 0), tangent to the pillar's at (-2, 0), so that the lip's outline doubles back there and its arc on the pillar's circle lies on the pillar's wall. The lip's underside is a horn whose two edges leave (-2, 0, 1) the same way: the bite's arc, convex, and the pillar's, concave, the walls tangent up the spine from there, one on each side of the underside. The bite's convex underside arc filleted at r 0.1 is cut by the pillar wall, using the exact torus and one fitted edge (ADR-0079). Open CASCADE splits this surface into a torus stripe and a B-spline cap fitted to the same torus; Arris keeps the single torus face, one vertex, two edges and one face fewer, at the same measures.",
+  "description": "an overhang tip, the cusp of NIST FTC-06's battery shrunk: a pillar of radius 2 about the z axis three high, fused with a lip one thick at height 1, the square [-5,5]x[-5,0] less the pillar's disc and less the disc of radius 1 about (-3, 0), tangent to the pillar's at (-2, 0), so that the lip's outline doubles back there and its arc on the pillar's circle lies on the pillar's wall. The lip's underside is a horn whose two edges leave (-2, 0, 1) the same way: the bite's arc, convex, and the pillar's, concave, the walls tangent up the spine from there, one on each side of the underside. The bite's convex underside arc filleted at r 0.05, 0.1 and 0.3 in either hand is cut by the pillar wall, using the exact torus and one fitted edge (ADR-0079). Open CASCADE splits this surface into a torus stripe and a B-spline cap fitted to the same torus; Arris keeps the single torus face, one vertex, two edges and one face fewer, at the same measures. The hand parameter reflects the lip profile frame in the xz plane before the fuse and blend; the edge selection and probes follow that reflection.",
   "params": {
-    "r": 0.1
+    "r": 0.1,
+    "hand": 1
+  },
+  "variants": {
+    "smaller": {
+      "r": 0.05
+    },
+    "larger": {
+      "r": 0.3
+    },
+    "mirrored": {
+      "hand": -1
+    },
+    "smaller-mirrored": {
+      "r": 0.05,
+      "hand": -1
+    },
+    "larger-mirrored": {
+      "r": 0.3,
+      "hand": -1
+    }
   },
   "steps": [
     {
@@ -36,7 +56,7 @@
         ],
         "y": [
           0,
-          1,
+          "hand",
           0
         ]
       },
@@ -123,7 +143,7 @@
       "edges": [
         [
           -3,
-          -1,
+          "-hand",
           1
         ]
       ],
@@ -145,7 +165,7 @@
       "label": "in_lip",
       "point": [
         3,
-        -3,
+        "-3 * hand",
         1.5
       ],
       "expect": "in"
@@ -154,7 +174,7 @@
       "label": "in_the_bite",
       "point": [
         -3,
-        -0.5,
+        "-0.5 * hand",
         1.5
       ],
       "expect": "out"
@@ -163,7 +183,7 @@
       "label": "under_the_lip",
       "point": [
         -3,
-        -3,
+        "-3 * hand",
         0.5
       ],
       "expect": "out"
