@@ -12,8 +12,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::{Polygon2, discretise};
-use arris_geom::{Curve2, Surface};
-use arris_math::{DisjointSets, Point2, Vec2, real};
+use arris_geom::{Curve2, Surface, torus_v_reaches_axis};
+use arris_math::{DisjointSets, Interval, Point2, Vec2};
 use arris_topo::entity::{BodyKind, Face, Loop};
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
@@ -352,6 +352,7 @@ impl<'m> Checker<'m> {
         let domain = surface.domain();
         let periods = surface.period();
         let mut outside = None;
+        let mut v_span: Option<Interval> = None;
         'face: for (loop_index, coedge_index, coedge) in coedges(face) {
             let (Ok(edge), Ok(pcurve)) = (model.edge(coedge.edge()), model.curve2(coedge.pcurve()))
             else {
@@ -361,24 +362,29 @@ impl<'m> Checker<'m> {
             if !(range.lo().is_finite() && range.hi().is_finite()) {
                 continue;
             }
-            for t in range.samples(self.precision.check_samples) {
-                let uv = pcurve.point(t);
-                if let Surface::Torus {
-                    major_radius,
-                    minor_radius,
-                    ..
-                } = surface
-                {
-                    // ADR-0080: the face lies on the regular band, more
-                    // than its tolerance from the axis.
-                    if major_radius + minor_radius * real::cos(uv[1]) <= face.tolerance() {
+            if let Surface::Torus {
+                major_radius,
+                minor_radius,
+                ..
+            } = surface
+            {
+                // ADR-0080: the face lies on the regular band, more than
+                // its tolerance from the axis — decided over the
+                // pcurve's whole `v` extent, not at samples of it.
+                if let Some(extent) = pcurve.v_extent(range) {
+                    if torus_v_reaches_axis(*major_radius, *minor_radius, face.tolerance(), extent)
+                    {
                         outside = Some(FaceFault::OffTorusBand {
                             loop_index,
                             coedge: coedge_index,
                         });
                         break 'face;
                     }
+                    v_span = Some(v_span.map_or(extent, |s: Interval| s.hull(&extent)));
                 }
+            }
+            for t in range.samples(self.precision.check_samples) {
+                let uv = pcurve.point(t);
                 let bound = bands(surface, uv, self.precision.parametric_tolerance);
                 for dir in 0..2 {
                     if periods[dir].is_some() {
@@ -394,6 +400,26 @@ impl<'m> Checker<'m> {
                         break 'face;
                     }
                 }
+            }
+        }
+        // The loops bound the face in the (u, v) plane the pcurves are
+        // given in, so the face covers the hull of their `v` extents: two
+        // loops each clear of the axis can still enclose it between them.
+        if let (
+            None,
+            Surface::Torus {
+                major_radius,
+                minor_radius,
+                ..
+            },
+            Some(span),
+        ) = (&outside, surface, v_span)
+        {
+            if torus_v_reaches_axis(*major_radius, *minor_radius, face.tolerance(), span) {
+                outside = Some(FaceFault::OffTorusBand {
+                    loop_index: 0,
+                    coedge: 0,
+                });
             }
         }
         if let Some(fault) = outside {

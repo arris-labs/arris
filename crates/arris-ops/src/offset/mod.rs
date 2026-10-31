@@ -14,7 +14,7 @@ use arris_math::real;
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::{Level, Violation};
-use arris_geom::Surface;
+use arris_geom::{Surface, torus_v_reaches_axis};
 use arris_math::{Control, Meter, Tolerance};
 use arris_topo::{Body, Face, FaceId, Model, Provenance};
 
@@ -291,10 +291,6 @@ fn self_intersection(report: &arris_check::Report) -> Option<OpError> {
     })
 }
 
-/// The samples along each pcurve of a moved torus face that the band test
-/// reads (the checker's own `check_samples`, so the two agree).
-const BAND_SAMPLES: usize = 23;
-
 /// Each moved face's offset surface: its own surface's offset by the
 /// distance along the outward normal, the surface's normal composed with
 /// the body's use of the face. An elliptic cylinder or a free-form surface
@@ -366,11 +362,11 @@ fn moves(
                         continue;
                     }
                     let pcurve = m.curve2(c.pcurve())?;
-                    for t in range.samples(BAND_SAMPLES) {
-                        let v = pcurve.point(t)[1];
-                        if major_radius + minor_radius * real::cos(v) <= face.tolerance() {
-                            return Err(refuse(f, OffsetReason::SurfaceCollapses));
-                        }
+                    let reaches = pcurve.v_extent(range).is_some_and(|v| {
+                        torus_v_reaches_axis(major_radius, minor_radius, face.tolerance(), v)
+                    });
+                    if reaches {
+                        return Err(refuse(f, OffsetReason::SurfaceCollapses));
                     }
                 }
             }

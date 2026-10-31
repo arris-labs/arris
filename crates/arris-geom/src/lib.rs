@@ -94,7 +94,7 @@ pub use project::{CurveProjection, SurfaceProjection};
 pub use section::{
     SECTION_FIT_DEGREE, SECTION_FIT_FRACTION, fit_branch, fit_branch_pcurve, trace_section,
 };
-pub use surface::{ParamMap, Singularity, Surface, SurfaceEval, SurfaceKind};
+pub use surface::{ParamMap, Singularity, Surface, SurfaceEval, SurfaceKind, torus_v_reaches_axis};
 pub use torus_walk::trace_torus;
 pub use trace::{
     BranchEnd, SectionBranch, SectionCircle, SectionFault, SectionPoint, SectionTrace,

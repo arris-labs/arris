@@ -1175,6 +1175,45 @@ fn axis_bounds(span: impl Fn(usize) -> [f64; 2]) -> Aabb {
     Aabb { min, max }
 }
 
+/// Whether a stretch `v` of a torus's tube angle reaches the axis, where
+/// `major_radius + minor_radius cos v` is at most `tolerance` (ADR-0080):
+/// the part of the torus a face may not cover, the regular band's edge.
+/// `v` is read on the unwrapped line, so `[π − 0.3, π + 0.5]` and its
+/// shifts by whole turns all reach the axis of a horn.
+///
+/// ```
+/// use arris_geom::torus_v_reaches_axis;
+/// use arris_math::Interval;
+/// use core::f64::consts::PI;
+///
+/// let v = Interval::new(PI - 0.3, PI + 0.5).unwrap();
+/// assert!(torus_v_reaches_axis(1.0, 1.0, 1e-7, v));
+/// assert!(!torus_v_reaches_axis(2.0, 1.0, 1e-7, v));
+/// ```
+pub fn torus_v_reaches_axis(
+    major_radius: f64,
+    minor_radius: f64,
+    tolerance: f64,
+    v: arris_math::Interval,
+) -> bool {
+    use arris_math::real;
+    let c = (tolerance - major_radius) / minor_radius;
+    if c >= 1.0 {
+        return true;
+    }
+    if c < -1.0 {
+        return false;
+    }
+    if v.length() >= core::f64::consts::TAU {
+        return true;
+    }
+    // The excluded stretch of each turn is [a, 2π − a], a = acos c.
+    let a = real::acos(c);
+    let turn = core::f64::consts::TAU;
+    let k = ((v.lo() - (turn - a)) / turn).ceil();
+    a + k * turn <= v.hi()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

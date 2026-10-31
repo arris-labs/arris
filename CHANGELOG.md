@@ -8,6 +8,9 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- The checker refuses a torus face whose boundary crosses the torus's axis
+  between samples, or whose loops enclose it, where it tested sample points
+  only. `Curve2::v_extent` and `torus_v_reaches_axis` give the same tests.
 - `Surface::offset` of a torus no longer refuses a tube grown to or past the
   major radius, and `offset_faces` moves a fillet's horn or spindle torus
   face while it stays off the torus's axis; a face the move would carry onto

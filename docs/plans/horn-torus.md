@@ -39,8 +39,10 @@ or a stripe whose arc of the tube runs past the band, each naming the face.
 - `docs/DATA-MODEL.md` torus row (`R > r` → the band) and the meridian
   table row at line ~498; `Surface::Torus` rustdoc (`r < R in cycle 1`).
 - **Public type change (break):** `arris_check::FaceFault::OffTorusBand {
-  loop_index, coedge }` (F1), mapped in `crates/arris-py` with its class,
-  attributes and `_arris.pyi` line; `CHANGELOG.md` `### Breaking`.
+  loop_index, coedge }` (F1), tested over the pcurves' whole `v` extent and the loops' hull
+  (`Curve2::v_extent`, `torus_v_reaches_axis`), not at samples;
+  `crates/arris-py` wraps `check::Violation` generically, so no binding
+  line; `CHANGELOG.md` `### Breaking`.
 - `arris-ops` `blend/ring.rs`: the `c.x <= radius + tolerance` refusal
   becomes the band test over the stripe's `[v_a, v_b]` (its minimum is at
   `v = π` when the arc crosses it, else at a contact); `ARCHITECTURE.md`

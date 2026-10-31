@@ -224,6 +224,59 @@ impl Curve2 {
         }
     }
 
+    /// The interval `v` covers over `range`, the parameter range of a
+    /// bounded piece. Exact for a line and a conic (its end points and
+    /// its extrema inside `range`); for a NURBS the hull of `v` sampled as
+    /// densely as [`Curve2::speed_bounds`] does. `None` when `range` is
+    /// not bounded.
+    ///
+    /// ```
+    /// use arris_geom::Curve2;
+    /// use arris_math::{Frame2, Interval};
+    ///
+    /// let c = Curve2::Circle { frame: Frame2::identity(), radius: 2.0 };
+    /// let v = c.v_extent(Interval::new(0.0, 3.0).unwrap()).unwrap();
+    /// assert_eq!((v.lo(), v.hi()), (0.0, 2.0));
+    /// ```
+    pub fn v_extent(&self, range: Interval) -> Option<Interval> {
+        if !range.is_bounded() {
+            return None;
+        }
+        let (lo, hi) = (range.lo(), range.hi());
+        let mut v = [self.point(lo).y, self.point(hi).y];
+        let mut take = |t: f64| {
+            let y = self.point(t).y;
+            v = [v[0].min(y), v[1].max(y)];
+        };
+        // v(t) = c + A cos t + B sin t is extreme at tan t = B / A and a
+        // half turn on, every turn.
+        let mut conic = |a: f64, b: f64, frame: &Frame2| {
+            let top = real::atan2(b * frame.y().y, a * frame.x().y);
+            for t in [top, top + core::f64::consts::PI] {
+                if ((lo - t) / TAU).ceil() <= ((hi - t) / TAU).floor() {
+                    take(t);
+                }
+            }
+        };
+        match self {
+            Curve2::Line { .. } => {}
+            Curve2::Circle { frame, radius } => conic(*radius, *radius, frame),
+            Curve2::Ellipse {
+                frame,
+                major_radius,
+                minor_radius,
+            } => conic(*major_radius, *minor_radius, frame),
+            Curve2::Nurbs(n) => {
+                let samples =
+                    (n.breaks_within(range).len() + 1) * crate::region2::CURVATURE_SAMPLES_PER_SPAN;
+                for i in 1..samples {
+                    take(range.lerp(i as f64 / samples as f64));
+                }
+            }
+        }
+        Interval::new(v[0].min(v[1]), v[0].max(v[1])).ok()
+    }
+
     /// Upper bounds on `|du/dt|` and `|dv/dt|` over `range`: how far the
     /// pcurve travels in each (u, v) direction per unit of parameter, at
     /// most. Exact for a line (its direction's components) and a bound
