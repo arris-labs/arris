@@ -19,6 +19,7 @@
     {"label": "in the pin", "point": [1.5, 2.5, 2.6], "expect": "in"}
   ],
   "analytic": {
-    "genus": 0
+    "genus": 0,
+    "step_differs": "Open CASCADE's own STEP of its result reads back with the right counts, volume, area and centroid, but its inertia moves by more than the shape's own tolerance allows: Ixx 57.9124 where it built 57.9086, Iyy 56.1730 where it built 56.1768 and Ixy -1.3e-4 where it built -2.8e-12, a relative 6.5e-5 against the 1.5e-6 the shape's 1e-7 vertex tolerance admits; Arris's STEP of the same result is still read back by Open CASCADE and held to the fixture's tolerances (the corpus's compare stage)"
   }
 }
