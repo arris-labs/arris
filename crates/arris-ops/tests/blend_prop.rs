@@ -4104,10 +4104,13 @@ prop_shards! {
     /// The cap-edge chain at `r2 / r` in `(0.3, 0.7)` (the horn torus at
     /// `1/2`, drawn on purpose): a cube's vertical edge filleted at `r`, then
     /// the cap edge on top of it at `r2`, the fillet of the first blend's end
-    /// arc a torus of major radius `r − r2` and minor `r2`. Built clean at
-    /// `Full` with its record audited, or refused by name as a degenerate or
-    /// too large blend; never another error.
-    the_cap_edge_chain_is_green_or_refused_by_name
+    /// arc a torus of major radius `r − r2` and minor `r2`. Every draw is
+    /// built clean at `Full` with its record audited: a probe over the whole
+    /// range (`r` 0.1 to 0.6 by 0.1, `r2 / r` 0.3 to 0.7 by 0.1) built every
+    /// one, so no refusal is accepted, and a draw that stops building (a
+    /// refusal, a horn or spindle torus the band declines) fails the
+    /// property and is not counted as a pass.
+    the_cap_edge_chain_builds_green
         [shard_0 shard_1]
         ((r, share)) = (
             prop::finite_f64(0.1..=0.6),
@@ -4124,17 +4127,11 @@ prop_shards! {
             let edge = edge_near(&m, cube, Point3::new(2.0, 0.0, 1.0))?;
             let (first, _) = fillet(&mut m, cube, &[edge], r).map_err(fail)?;
             let cap = edge_near(&m, first, Point3::new(1.0 - 0.5 * r, 0.0, 2.0))?;
-            match fillet(&mut m, first, &[cap], r2) {
-                Ok((out, p)) => {
-                    let report = check(&m, out, Level::Full);
-                    prop_assert!(report.is_ok(), "r {r}, r2 {r2}: {}", report);
-                    audit(&m, &[first], out, &p)
-                        .map_err(|e| fail(format!("provenance: {e}")))?;
-                }
-                Err(OpError::Degenerate { .. }) => {}
-                Err(OpError::Unsupported { .. }) => {}
-                Err(e) => return Err(fail(format!("r {r}, r2 {r2}: {e}"))),
-            }
+            let (out, p) = fillet(&mut m, first, &[cap], r2)
+                .map_err(|e| fail(format!("r {r}, r2 {r2} is refused: {e}")))?;
+            let report = check(&m, out, Level::Full);
+            prop_assert!(report.is_ok(), "r {r}, r2 {r2}: {}", report);
+            audit(&m, &[first], out, &p).map_err(|e| fail(format!("provenance: {e}")))?;
             Ok(())
         }
 }
