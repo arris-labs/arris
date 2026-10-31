@@ -17,7 +17,8 @@ use crate::{ExactFault, GeomError, GeomKind, NurbsCurve, NurbsSurface};
 ///
 /// The fields are plain data: a `Surface` is a value the arena stores once
 /// and never modifies, and its validity (positive radii, a torus with
-/// `major_radius > minor_radius`) is the checker's to enforce; the NURBS
+/// `major_radius > 0` and `minor_radius > 0`, and a torus face on its
+/// regular band) is the checker's to enforce; the NURBS
 /// variant is valid by its constructor. Evaluation of any finite value
 /// never panics.
 ///
@@ -84,7 +85,9 @@ pub enum Surface {
         frame: Frame,
         /// `R`, from the axis to the tube's centre circle.
         major_radius: f64,
-        /// `r`, the tube's radius; `r < R` in cycle 1.
+        /// `r`, the tube's radius. Any `r > 0`: `r = R` is a horn torus and
+        /// `r > R` a spindle torus, and a face of either lies on the
+        /// regular band, where `R + r cos v` is off the axis.
         minor_radius: f64,
     },
     /// A rational B-spline; parametrised by its knots, no frame.

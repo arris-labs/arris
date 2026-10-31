@@ -90,7 +90,7 @@ With `O, X, Y, Z` the frame and `c = cos`, `s = sin`:
 | EllipticCylinder | `O + a c u·X + b s u·Y + v·Z`, `a ≥ b > 0` | u ∈ [0, 2π), v ∈ ℝ | u, period 2π | seam at u = 0, the ruling through `O + a·X`; `X` is the section's major axis. What an extruded elliptic profile segment sweeps (ADR-0014) |
 | Cone | `O + (R + v·s α)(c u·X + s u·Y) + v·c α·Z` | u ∈ [0, 2π), v ∈ ℝ | u | seam at u = 0; apex at v = −R / s α, a degenerate edge. `α` ∈ (0, π/2) is the half-angle; `R` the radius at v = 0 |
 | Sphere | `O + R c v (c u·X + s u·Y) + R s v·Z` | u ∈ [0, 2π), v ∈ [−π/2, π/2] | u | seam at u = 0; poles at v = ±π/2, degenerate edges |
-| Torus | `O + (R + r c v)(c u·X + s u·Y) + r s v·Z` | u, v ∈ [0, 2π) | u and v | seams at u = 0 and v = 0; `R > r` (no self-intersecting tori until an operation needs them: a revolve refuses one as `SweepReason::SpindleTorus`) |
+| Torus | `O + (R + r c v)(c u·X + s u·Y) + r s v·Z` | u, v ∈ [0, 2π) | u and v | seams at u = 0 and v = 0; `R, r > 0` (ADR-0080): a face lies on the regular band, where `R + r c v` exceeds the face's tolerance, so a horn torus (`R = r`) or a spindle torus (`R < r`) is a face's surface but never a face reaching its axis; a revolve of an arc across the axis is still `SweepReason::SpindleTorus` |
 | Nurbs | Piegl & Tiller, rational; clamped or not (§NURBS) | knot range | either, where the knots and net wrap or a clamped direction's end rows are one row (its closure) | as the knots say; a clamped end row that is one point is a collapsed row, a singularity |
 
 `Surface::singularities()` lists a surface's singular points as
@@ -495,7 +495,7 @@ of lines and circles symmetric under `ρ ↦ −ρ`, its *meridian sections*:
 | Cylinder, radius `R` | the lines `ρ = ±R` |
 | Cone, apex at `z_a`, half-angle `α` | the two lines through `(0, z_a)` at `±α` from the axis, both nappes |
 | Sphere, centre at `z_c`, radius `R` | the circle about `(0, z_c)` of radius `R` |
-| Torus, centre at `z_c`, radii `R > r` | the circles about `(±R, z_c)` of radius `r` |
+| Torus, centre at `z_c`, radii `R, r > 0` | the circles about `(±R, z_c)` of radius `r`; a face holds the part off the axis (the regular band, ADR-0080) |
 
 A sphere is a surface of revolution about any line through its centre,
 so the arm covers every plane–sphere and sphere–sphere pair too.

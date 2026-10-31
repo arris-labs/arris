@@ -46,6 +46,17 @@ _Avoid_: history, lineage
 A name for an output piece that no input entity generated (a sweep's cap,
 a blend face), so a consumer can name it.
 
+**Regular band** (of a torus):
+The part of a torus off its axis, where `R + r cos v` exceeds the face's
+tolerance; the only part a face may lie on (ADR-0080).
+
+**Horn torus**:
+A torus with `R = r`: it touches its axis at one point, which no face reaches.
+
+**Spindle torus**:
+A torus with `R < r`: it crosses itself on its axis, and a face lies on the
+outer sheet of its regular band, never on the lemon (inner) sheet.
+
 **Split order**:
 The guarantee that the `k` of `Split(k)` means the same piece after an edit
 that keeps which entities bound which piece (ADR-0009).

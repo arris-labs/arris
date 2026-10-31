@@ -13,7 +13,7 @@ use arris_debug::prop::geom::{
 };
 use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box};
 use arris_geom::{AmbiguousLocus, Curve, GeomError, GeomKind, Surface, SurfaceProjection};
-use arris_math::Point3;
+use arris_math::{Point3, Precision};
 use proptest::prelude::*;
 
 /// `|a − b|` on a circle of period `period`, or plainly when there is
@@ -167,6 +167,68 @@ fn sphere_projection_properties() {
 #[test]
 fn torus_projection_properties() {
     projection_properties(torus());
+}
+
+/// A torus on any `R, r > 0`, `R = r` (the horn) drawn on purpose, with a
+/// `(u, v)` on the regular band: `R + r cos v` above the default face
+/// tolerance (ADR-0080).
+fn band_torus() -> impl Strategy<Value = (Surface, f64, f64)> {
+    let ratio = prop_oneof![1 => Just(1.0), 3 => finite_f64(0.3..=3.0)];
+    (
+        arris_debug::prop::frame(),
+        finite_f64(RADIUS_RANGE),
+        ratio,
+        finite_f64(0.0..=TAU),
+        finite_f64(0.0..=TAU),
+    )
+        .prop_filter_map(
+            "on the regular band",
+            |(frame, minor_radius, ratio, u, v)| {
+                let major_radius = minor_radius * ratio;
+                let rho = major_radius + minor_radius * real::cos(v);
+                (u < TAU && v < TAU && rho > Precision::DEFAULT.default_tolerance).then_some((
+                    Surface::Torus {
+                        frame,
+                        major_radius,
+                        minor_radius,
+                    },
+                    u,
+                    v,
+                ))
+            },
+        )
+}
+
+#[test]
+fn a_band_torus_inverts_and_has_a_unit_normal_from_ring_through_horn_to_spindle() {
+    check(band_torus(), |(s, u, v)| {
+        let p = s.point(u, v);
+        let proj = unwrap_projection(s.project(p))?;
+        let err = param_error(&s, (proj.uv.x, proj.uv.y), (u, v));
+        prop_assert!(err <= EXACT, "{s:?}: ({u}, {v}) came back {:?}", proj.uv);
+        prop_assert!(proj.distance <= EXACT);
+        let n = s.normal(u, v);
+        prop_assert!(n.is_some(), "{s:?}: no normal at ({u}, {v})");
+        let n = n.unwrap();
+        prop_assert!((n.norm() - 1.0).abs() <= EXACT);
+        // Outward from the tube: along the tube's radial direction.
+        let Surface::Torus {
+            frame,
+            major_radius,
+            ..
+        } = s
+        else {
+            unreachable!()
+        };
+        let centre = frame.to_world(Point3::new(
+            major_radius * real::cos(u),
+            major_radius * real::sin(u),
+            0.0,
+        ));
+        let outward = (p - centre).normalize();
+        prop_assert!((n.into_inner() - outward).norm() <= EXACT);
+        Ok(())
+    });
 }
 
 #[test]

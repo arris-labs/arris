@@ -958,9 +958,9 @@ pub fn patch(
     let tol = m.precision().default_tolerance;
     // Every curve first, so a singular region leaves the model untouched.
     let curves = [
-        iso_u(&surface, v.lo())?,
+        iso_u(&surface, v.lo(), tol)?,
         iso_v(&surface, u.hi())?,
-        iso_u(&surface, v.hi())?,
+        iso_u(&surface, v.hi(), tol)?,
         iso_v(&surface, u.lo())?,
     ];
     // The corners in walking order: (u₀, v₀), (u₁, v₀), (u₁, v₁), (u₀, v₁).
@@ -1029,7 +1029,7 @@ pub fn patch(
 
 /// The surface's iso-curve along `u` at the fixed `v`, parametrised by
 /// `u` itself.
-fn iso_u(surface: &Surface, v: f64) -> Result<Curve, SampleError> {
+fn iso_u(surface: &Surface, v: f64, tol: f64) -> Result<Curve, SampleError> {
     Ok(match *surface {
         Surface::Plane { frame } => Curve::Line {
             origin: frame.to_world(Point3::new(0.0, v, 0.0)),
@@ -1074,8 +1074,9 @@ fn iso_u(surface: &Surface, v: f64) -> Result<Curve, SampleError> {
             let (sv, cv) = real::sin_cos(v);
             Curve::Circle {
                 frame: frame.with_origin(frame.to_world(Point3::new(0.0, 0.0, minor_radius * sv))),
-                radius: positive_radius(
+                radius: band_radius(
                     major_radius + minor_radius * cv,
+                    tol,
                     "a torus patch reaches its axis",
                 )?,
             }
@@ -1148,6 +1149,16 @@ fn meridian_frame(frame: &Frame, cu: f64, su: f64) -> Result<Frame, SampleError>
         axis,
         radial.cross(&axis),
     )?)
+}
+
+/// A torus parallel's radius on the regular band: more than the face's
+/// tolerance `tol` from the axis (ADR-0080).
+fn band_radius(value: f64, tol: f64, reason: &'static str) -> Result<f64, SampleError> {
+    if value.is_finite() && value > tol {
+        Ok(value)
+    } else {
+        Err(SampleError::Region(reason))
+    }
 }
 
 fn positive_radius(value: f64, reason: &'static str) -> Result<f64, SampleError> {
