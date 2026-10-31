@@ -74,7 +74,7 @@ bound has to be established here.
   (its `ring_of`) and the walk's run over horn and spindle; property:
   every section point within tolerance of both surfaces and on the band,
   each branch through the singular point ending at a vertex there.
-- [ ] Step 4 **[2]** — The ring builds the band: the band test replaces
+- [x] Step 4 **[2]** — The ring builds the band: the band test replaces
   the ring test in `ring.rs`; `regression/tangent-chain-horn-torus` moves to
   `blend/` with its blessed dump against its Open CASCADE values;
   `blend/cylinder-rim-spindle-fillet` flips from refusal to build
@@ -128,16 +128,17 @@ corpus's `fillet` refusals not above 1; no panic.
 - `AGENTS.md` current state — M6 done.
 
 ## Open questions
-- ⚠ OPEN: step 4 stopped (2026-10-31). The ring's band test landed (`ring.rs`),
-  `blend/cylinder-rim-spindle-fillet` builds and matches Open CASCADE, the
-  boss-rim test builds a horn and refuses the axis. Its S5 failure on
-  `regression/tangent-chain-horn-torus` (the cylinder stripes tangent along a
-  tube circle through the horn's axis point) is repaired in step 3 (see its
-  *Settled* note): the fixture now passes the checker at `Full` and Open
-  CASCADE's measures, and fails next at the STEP read-back, Open CASCADE's
-  file refused by the reader (`SelfIntersectingTorus`, step 6's narrowing).
-  Left to step 4's redo: pull step 6's reader change forward or keep the
-  fixture ignored until step 6, then move it to `blend/`; the box stays open.
+- *Settled* (step 4): the reader's narrowing (step 6's `torus()` change,
+  `SelfIntersectingTorus` at `major <= 0`) was pulled into step 4, since the
+  built spindle and horn fixtures are written and read back by the corpus;
+  step 6 keeps its box and the horn/spindle blend round-trip test.
+  `blend/tangent-chain-horn-torus` moved to `blend/` with Open CASCADE's
+  values. No fillet test for a stripe past the band exists to build: an
+  arc crossing `v = pi` reaches `R - r`, which for a rim, a boss root or a
+  hole's rim is the wall's own radius, never at the tolerance but for a
+  wall of no radius; the contact at the axis (`R = r + 0`) is the
+  too-large case and is held by
+  `a_fillet_on_the_band_builds_and_one_at_the_axis_is_too_large`.
 - *Settled* (step 3): spindle in scope. The section is traced on the
   torus's polynomial whole — the walk's distance to a torus covers the
   lemon too (`Implicit::sectioned`), so its roots are the patches' — and

@@ -1127,6 +1127,10 @@ corpus_tests! {
     /// torus into the next cap edge, an open chain of three Open CASCADE
     /// builds as one spine.
     blend_tangent_chain_cap_edge => run "blend/tangent-chain-cap-edge";
+    /// The cap-edge chain with the first radius at twice the second: the
+    /// arc's torus is a horn torus, its major radius equal to its minor,
+    /// built on its regular band (ADR-0080) as Open CASCADE builds it.
+    blend_tangent_chain_horn_torus => run "blend/tangent-chain-horn-torus";
     /// A crease and a tangent edge asked of one fillet: Open CASCADE leaves
     /// the tangent edge out without a word (ADR-0070) and rounds the crease
     /// alone; Arris refuses the tangent edge as `TangentChain`.
@@ -1327,12 +1331,6 @@ corpus_tests! {
         blend_rounded_column_split_cap_rim_fillet => run "blend/rounded-column-split-cap-rim-fillet";
     /// An S-shaped wall of two tangent arcs under an oblique top, one top arc filleted: the two walked stripes meet at a leaning ruling.
     blend_s_bend_oblique_top_fillet => run "blend/s-bend-oblique-top-fillet";
-    /// The cap-edge chain with the first radius at twice the second: the
-    /// arc's torus is a horn torus, its major radius equal to its minor, which
-    /// the ring now builds on its regular band. The desired body is Open
-    /// CASCADE's.
-    #[ignore = "STEP read-back: Open CASCADE's file of the horn blend is refused by the reader, a torus whose minor radius is not below its major (Refusal::SelfIntersectingTorus, plans/horn-torus step 6)"]
-    regression_tangent_chain_horn_torus => run "regression/tangent-chain-horn-torus";
     /// A plate with a crescent hole tessellated at a coarse chord: the hole's
     /// two tangent arcs' polygons cross at the cusp, and the mesher refuses a
     /// valid face. The desired mesh is closed and within the inscribed bound.

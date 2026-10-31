@@ -317,6 +317,7 @@ blend/standoff-root-fillet-runs-into-a-hole: 560733
 blend/standoff-root-fillet-runs-off-at-a-shallow-angle: 114727
 blend/standoff-root-fillet-runs-off-the-plate: 366577
 blend/tangent-chain-cap-edge: 15
+blend/tangent-chain-horn-torus: 15
 blend/tangent-edge-beside-a-crease-fillet: refused
 blend/tee-cylinders-fillet: 192198
 blend/three-arc-hole-rim-fillet: 12
