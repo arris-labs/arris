@@ -78,11 +78,13 @@ given design); **[3]** unproven (robustness or a bound to establish here).
   centre lies `r` from both walls and that each contact is the foot of
   the centre on its wall. Plane–cylinder results must be bit-identical
   (the existing `blend/` dumps).
-- [ ] Step 3 **[2]** — The fillet arm in `stripe()`. `ogive-bar-ruling-fillet`
+- [x] Step 3 **[2]** — The fillet arm in `stripe()`. `ogive-bar-ruling-fillet`
   and `figure-eight-waist-fillet` move to `blend/` with blessed dumps and
-  their `#[ignore]` lifted. Each gets `analytic.measure_differs`: the
-  closed-form volume (section area × 1) and area, with the oracle's
-  B-spline distance as ADR-0015's evidence.
+  their `#[ignore]` lifted. Each gets the closed-form volume (section area
+  × 1) and area as `analytic`. *Settled* (step 3): no `measure_differs`:
+  Open CASCADE's volume and area agree with the closed form to 1e-10 on
+  both, so the oracle is right here and holds the fixtures beside it; the
+  B-spline distance is a step 4 (chamfer) question.
 - [ ] Step 4 **[2]** — The chamfer arm. New fixtures `blend/ogive-bar-ruling-chamfer`
   and `blend/figure-eight-waist-chamfer` with oracle values
   (`tools/oracle/`). Their contacts are at chord `d` (ADR-0036 §2), held

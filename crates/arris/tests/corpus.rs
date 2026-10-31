@@ -1554,12 +1554,10 @@ corpus_tests! {
     regression_twin_boss_foot_turned_chamfer_cone_cylinder => run "regression/twin-boss-foot-turned-chamfer-cone-cylinder";
     /// An ogive bar end, two arcs meeting at a corner, its ruling filleted: two
     /// cylinders with parallel axes, convex, the blend a cylinder.
-    #[ignore = "Unsupported, a cylinder against a cylinder: the parallel-cylinder row is decided and not built (ADR-0036 §5; docs/BACKLOG.md, the parallel-cylinder row of the blend table)"]
-    regression_ogive_bar_ruling_fillet => run "regression/ogive-bar-ruling-fillet";
+    blend_ogive_bar_ruling_fillet => run "blend/ogive-bar-ruling-fillet";
     /// A figure eight's waist filleted: two cylinders with parallel axes,
     /// concave, the blend a cylinder adding material.
-    #[ignore = "Unsupported, a cylinder against a cylinder: the parallel-cylinder row is decided and not built (ADR-0036 §5; docs/BACKLOG.md, the parallel-cylinder row of the blend table)"]
-    regression_figure_eight_waist_fillet => run "regression/figure-eight-waist-fillet";
+    blend_figure_eight_waist_fillet => run "blend/figure-eight-waist-fillet";
     /// A cube whose filleted edge lies 1.3e-7 off one of its faces in the file,
     /// as two of NIST FTC-06's edges do: within the edge's tolerance, outside
     /// the face's.

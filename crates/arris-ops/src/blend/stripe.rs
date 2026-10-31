@@ -537,8 +537,8 @@ fn plane_cylinder(
 
 /// The stripe of one edge: the blend surface — a fillet's cylinder or a
 /// chamfer's plane — and its two contact lines decided from the edge's two
-/// faces, two planes or a plane and a cylinder along a ruling, its ends
-/// not yet.
+/// faces, two planes, a plane and a cylinder along a ruling, or (a fillet)
+/// two cylinders with parallel axes along a ruling, its ends not yet.
 pub(super) fn stripe(
     m: &Model,
     view: &BodyView,
@@ -594,6 +594,9 @@ pub(super) fn stripe(
         (Surface::Plane { .. }, Surface::Plane { .. }) => None,
         (Surface::Plane { .. }, &Surface::Cylinder { frame, radius }) => Some((1, frame, radius)),
         (&Surface::Cylinder { frame, radius }, Surface::Plane { .. }) => Some((0, frame, radius)),
+        // Two cylinders: held to parallel axes below, once the edge's
+        // direction is known.
+        (Surface::Cylinder { .. }, Surface::Cylinder { .. }) => None,
         (
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
@@ -619,6 +622,28 @@ pub(super) fn stripe(
         });
     };
     let d: Vec3 = direction.into_inner();
+    // Two cylinders whose axes run along the edge: it is a ruling of both
+    // and the blend is found in the cross-section (ADR-0036 §5). Any other
+    // pair of them is a quartic, named.
+    let circles = match (surfaces[0], surfaces[1]) {
+        (
+            &Surface::Cylinder {
+                frame: a,
+                radius: ra,
+            },
+            &Surface::Cylinder {
+                frame: b,
+                radius: rb,
+            },
+        ) => {
+            let along = |f: &Frame| f.z().cross(&d).norm() <= tol.angular;
+            if !(along(&a) && along(&b)) {
+                return Err(unsupported());
+            }
+            Some([(a, ra), (b, rb)])
+        }
+        _ => None,
+    };
     // Convex or concave is read from the dihedral: the direction into
     // face 1 from the edge against face 2's outward normal.
     let t1 = d * view.orientation[&f1].compose(ua.orientation).sign();
@@ -643,9 +668,39 @@ pub(super) fn stripe(
     };
     let (lo, beta, contact_offset, section, frame, surface, u1) = match (kind, cylinder) {
         (Kind::Fillet { radius }, _) => {
-            let (axis_origin, x) = match cylinder {
-                None => (origin + unit_offset * radius, [-s * n1, -s * n2]),
-                Some((k, axis, big)) => {
+            let (axis_origin, x) = match (cylinder, &circles) {
+                (None, None) => (origin + unit_offset * radius, [-s * n1, -s * n2]),
+                (None, Some([(a, big_a), (b, big_b)])) => {
+                    let traces = [
+                        Trace::Circle {
+                            normal: n1,
+                            axis: a,
+                            big: *big_a,
+                        },
+                        Trace::Circle {
+                            normal: n2,
+                            axis: b,
+                            big: *big_b,
+                        },
+                    ];
+                    ruling_ball(
+                        &RulingBall {
+                            origin,
+                            d,
+                            traces,
+                            radius,
+                            s,
+                        },
+                        tol,
+                    )
+                    .ok_or_else(|| {
+                        degenerate(
+                            vec![e, forward(f1), forward(f2)],
+                            Reason::Blend(BlendReason::TooLarge),
+                        )
+                    })?
+                }
+                (Some((k, axis, big)), _) => {
                     let mut traces = [Trace::Line {
                         normal: normals[1 - k],
                     }; 2];
@@ -691,6 +746,7 @@ pub(super) fn stripe(
             )
         }
         (Kind::Chamfer { .. }, Some(_)) => return Err(unsupported()),
+        (Kind::Chamfer { .. }, None) if circles.is_some() => return Err(unsupported()),
         (Kind::Chamfer { distance }, None) => {
             let (lo, beta) = order([-s * n1, -s * n2]);
             let hi = 1 - lo;
@@ -725,7 +781,7 @@ pub(super) fn stripe(
         start: entity.start(),
         end: entity.end(),
         d,
-        ruling: cylinder.is_some(),
+        ruling: cylinder.is_some() || circles.is_some(),
         section,
         frame,
         surface,

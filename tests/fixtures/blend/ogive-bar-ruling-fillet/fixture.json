@@ -1,5 +1,5 @@
 {
-  "description": "a bar 1 thick whose end is an ogive: two arcs of radius 2, centred at (4, 1) and (4, −1), each running tangentially out of a side of the bar and meeting at (4 + √3, 0), extruded along z; the vertical edge where they meet filleted at r 0.2: two cylinders with parallel axes 2 apart along a ruling, convex at an interior angle of 120°, the blend a cylinder of radius r whose axis is on both offset cylinders (radius 2 − r) at (4 + √((2 − r)² − 1), 0), tangent to each wall along a ruling and trimmed by the two caps. Arris refuses it today as Unsupported, a cylinder against a cylinder (ADR-0036)",
+  "description": "a bar 1 thick whose end is an ogive: two arcs of radius 2, centred at (4, 1) and (4, −1), each running tangentially out of a side of the bar and meeting at (4 + √3, 0), extruded along z; the vertical edge where they meet filleted at r 0.2: two cylinders with parallel axes 2 apart along a ruling, convex at an interior angle of 120°, the blend a cylinder of radius r whose axis is on both offset cylinders (radius 2 − r) at (4 + √((2 − r)² − 1), 0), tangent to each wall along a ruling and trimmed by the two caps.. The analytic volume and area are the section's closed form: the bar's 8 − √3 + 4π/3, less the corner between the walls' arcs and the ball's, whose tangent turn is π/3 + 2θ, θ the angle each wall's arc is cut short at",
   "params": {
     "r": 0.2
   },
@@ -145,6 +145,8 @@
     }
   ],
   "analytic": {
+    "volume": "8 - sqrt(3) + 4 * pi / 3 - (r / (2 - r) * (sqrt(3) - 2 * sqrt((2 - r)^2 - 1) / (2 - r)) + 4 * (atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1)) - (sqrt(3) - sqrt((2 - r)^2 - 1)) / (2 * (2 - r))) - 0.5 * r^2 * ((pi / 3 + 2 * atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1))) - sin((pi / 3 + 2 * atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1))))))",
+    "area": "2 * (8 - sqrt(3) + 4 * pi / 3 - (r / (2 - r) * (sqrt(3) - 2 * sqrt((2 - r)^2 - 1) / (2 - r)) + 4 * (atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1)) - (sqrt(3) - sqrt((2 - r)^2 - 1)) / (2 * (2 - r))) - 0.5 * r^2 * ((pi / 3 + 2 * atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1))) - sin((pi / 3 + 2 * atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1))))))) + 10 + 4 * (pi / 3 - atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1))) + r * (pi / 3 + 2 * atan((sqrt(3) - sqrt((2 - r)^2 - 1)) / (sqrt((2 - r)^2 - 1) * sqrt(3) + 1)))",
     "genus": 0
   }
 }
