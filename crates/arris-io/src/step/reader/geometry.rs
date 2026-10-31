@@ -602,9 +602,11 @@ fn turned(frame: &Frame, angle: f64) -> Frame {
     Frame::from_orthonormal(frame.origin(), x, y, frame.z().into_inner()).unwrap_or(*frame)
 }
 
-/// A torus Arris holds: `R > r` (data-model §Surfaces), else refused.
+/// A torus Arris holds: `R > 0` and `r > 0` (data-model §Surfaces); a
+/// horn or a spindle torus is read, its faces held to the regular band
+/// (ADR-0080). Else refused.
 fn torus(id: u64, frame: Frame, major: f64, minor: f64) -> Result<Surface, Refusal> {
-    if major <= minor {
+    if major <= 0.0 {
         return Err(Refusal::SelfIntersectingTorus {
             entity: id,
             major,
@@ -2013,10 +2015,12 @@ mod tests {
             "the circle runs clockwise in the half-plane"
         );
         surface_holds(&torus, turn, turn, revolved(torus_circle, o, axis));
-        assert_eq!(
-            x.surface(88).unwrap_err().kind(),
-            super::super::RefusalKind::SelfIntersectingTorus
-        );
+        // A circle reaching past the axis revolves to a spindle torus,
+        // which is read: its faces are held to the regular band.
+        assert!(matches!(
+            x.surface(88).unwrap().resolve(&PART).unwrap(),
+            Surface::Torus { .. }
+        ));
         // Out of the axis's plane, an ellipse, a spline, a hyperbola: NURBS.
         for id in [89, 96, 97, 98] {
             let read = x.surface(id).unwrap();
@@ -2119,7 +2123,15 @@ mod tests {
             let e = x.curve(id).unwrap_err();
             assert_eq!((e.kind(), e.entity()), (kind, id), "{e}");
         }
-        assert_eq!(x.surface(72).unwrap_err().kind(), K::SelfIntersectingTorus);
+        // A horn torus (R = r) is read; its band is the face's to hold.
+        assert!(matches!(
+            x.surface(72).unwrap().resolve(&PART).unwrap(),
+            Surface::Torus {
+                major_radius: 2.0,
+                minor_radius: 2.0,
+                ..
+            }
+        ));
         assert_eq!(x.surface(73).unwrap_err().kind(), K::Degenerate);
         assert_eq!(x.surface(74).unwrap_err().kind(), K::Degenerate);
         assert_eq!(x.curve(94).unwrap_err().kind(), K::Degenerate);

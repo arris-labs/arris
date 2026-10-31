@@ -216,10 +216,13 @@ pub enum Refusal {
         /// The entity.
         entity: u64,
     },
-    /// A torus whose major radius is not above its minor one, written as
-    /// a `TOROIDAL_SURFACE` or turned from a circle: it passes through its
-    /// own axis, and Arris holds `R > r` only.
-    #[error("#{entity}: a torus of major radius {major} and minor radius {minor} crosses its axis")]
+    /// A torus whose major radius is not above zero, written as a
+    /// `TOROIDAL_SURFACE` or turned from a circle. A horn or a spindle
+    /// torus (`R <= r`, `R > 0`) is read: Arris holds the regular band of
+    /// a torus, `R > 0` and `r > 0` (ADR-0080).
+    #[error(
+        "#{entity}: a torus of major radius {major} and minor radius {minor} has no regular band"
+    )]
     SelfIntersectingTorus {
         /// The entity.
         entity: u64,

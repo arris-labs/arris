@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- The STEP reader takes a horn or a spindle torus (major radius above zero,
+  at most the minor radius) where it refused it as
+  `SelfIntersectingTorus`; that refusal now names a torus of major radius
+  zero or less only.
 - A convex edge ending at an overhang tip can now be filleted or chamfered:
   the lip over a pillar rounds or bevels up to the pillar wall. The concave
   edge at the same tip is still refused as `TangentChain`.
