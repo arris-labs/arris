@@ -49,6 +49,8 @@ release prepared for the first multi-platform upload. The refactor
 sequence (`refactor-after-c10`, option B) is closed (2026-10-26).
 M5 `overhang-tip-cap` done 2026-10-31 (ADR-0079): a convex edge at an
 overhang tip builds, cut by the next wall; FTC-06's concave ones stay refused.
+M6 `horn-torus` done 2026-10-31 (ADR-0080): a torus face holds the regular
+band, so a fillet whose torus is horn or spindle builds and stays operable.
 **Next:** the cycle's next plan (`docs/ROADMAP.md` §C11).
 
 ## Rules that are not derivable from the code

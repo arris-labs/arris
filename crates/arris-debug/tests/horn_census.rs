@@ -1,5 +1,5 @@
-//! The run-over census after the horn and spindle band (ADR-0080,
-//! `docs/plans/horn-torus`): the four fetched parts whose `BlendTooLarge`
+//! The run-over census after the horn and spindle band (ADR-0080): the
+//! four fetched parts whose `BlendTooLarge`
 //! edges ADR-0038 counted (277 edges, 98 of them the ring's contact at the
 //! axis) are blended edge by edge at the battery's radius again, and what
 //! still refuses is held by count and by cause. No oracle is asked, so the

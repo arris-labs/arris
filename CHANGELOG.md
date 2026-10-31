@@ -8,6 +8,11 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A fillet whose rolling ball makes a horn or spindle torus (a ball as large
+  as the rounded wall, or larger) now builds where it was refused as
+  `BlendTooLarge`; the result is an operand of every operation, written to
+  and read from STEP. A ball whose centre circle reaches the axis is still
+  refused as `BlendTooLarge`, naming the face.
 - The checker refuses a torus face whose boundary crosses the torus's axis
   between samples, or whose loops enclose it, where it tested sample points
   only. `Curve2::v_extent` and `torus_v_reaches_axis` give the same tests.

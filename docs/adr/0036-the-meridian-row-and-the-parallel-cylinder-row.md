@@ -225,3 +225,6 @@ second.
   first ordered them. That costs a second construction (the ruling ball
   in the cross-section, the stripe's ends and miters) for 29 edges, where
   the circle meridians reuse the first one for 218.
+
+
+_Amendment (2026-10-31, ADR-0080):_ §3's horn and spindle refusal narrows to a contact at the axis and a stripe running past the regular band.
