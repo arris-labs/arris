@@ -130,16 +130,14 @@ corpus's `fillet` refusals not above 1; no panic.
 ## Open questions
 - ⚠ OPEN: step 4 stopped (2026-10-31). The ring's band test landed (`ring.rs`),
   `blend/cylinder-rim-spindle-fillet` builds and matches Open CASCADE, the
-  boss-rim test builds a horn and refuses the axis; but
-  `regression/tangent-chain-horn-torus` builds and then fails S5: its two
-  cylinder stripes meet the horn torus tangent along a tube circle through the
-  horn's axis point, which is step 3's refusal (a surface through the axis
-  point tangent to the axis, `TangentAlongCurve`, the critical box long in
-  `u` along the collapsed row in `torus_walk/singular.rs`). Every blend
-  junction of a horn is this pair, so it is not a backlog case: a fix is a
-  step 3 repair (tier 3), the pair decided as the circle divided out plus the
-  axis point, then the fixture moves to `blend/`. The fixture stays in
-  `regression/`, its `#[ignore]` reason updated; step 4's box stays open.
+  boss-rim test builds a horn and refuses the axis. Its S5 failure on
+  `regression/tangent-chain-horn-torus` (the cylinder stripes tangent along a
+  tube circle through the horn's axis point) is repaired in step 3 (see its
+  *Settled* note): the fixture now passes the checker at `Full` and Open
+  CASCADE's measures, and fails next at the STEP read-back, Open CASCADE's
+  file refused by the reader (`SelfIntersectingTorus`, step 6's narrowing).
+  Left to step 4's redo: pull step 6's reader change forward or keep the
+  fixture ignored until step 6, then move it to `blend/`; the box stays open.
 - *Settled* (step 3): spindle in scope. The section is traced on the
   torus's polynomial whole — the walk's distance to a torus covers the
   lemon too (`Implicit::sectioned`), so its roots are the patches' — and
@@ -147,11 +145,20 @@ corpus's `fillet` refusals not above 1; no panic.
   singular point of the trace, so every branch is on the band or off it
   whole and is kept or dropped whole, the points on an axis merged to one.
   The shared-axis arm drops its lemon and axis meetings the same way.
-  Refused by name, a backlog line: a plane holding a horn's or a
-  spindle's axis (`TubeCircle` in the tracer; the shared-axis arm answers
-  a horn's two tube circles whole and refuses a spindle's, which cross
-  into the lemon, `Unsupported`), and a surface through a horn's axis
-  point tangent to its axis (`TangentAlongCurve`).
+  A surface tangent along a horn's tube circle — every blend junction of
+  a horn (step 4's finding) — is tangent to the axis at the axis point the
+  circle passes through, so the quotient by the circle vanishes twice
+  along the collapsed row `v = π`: the row is divided out too, on the
+  patches by `(1 − t)²` and `t²` of the quarter turns meeting there and in
+  the walk by dropping the closed form's leading `ρ`; the rest keeps one
+  sign along the row and stays off the axis point, refused
+  (`CrowdedSingularity`) where it does not. Refused by name, a backlog
+  line: a plane holding a horn's or a spindle's axis (`TubeCircle` in the
+  tracer; the shared-axis arm answers a horn's two tube circles whole and
+  refuses a spindle's, which cross into the lemon, `Unsupported`), a
+  surface crossing a horn along a tube circle (`TubeCircle`: the quotient
+  by it double along the row), and one touching a horn's axis point alone,
+  tangent to its axis (`TangentAlongCurve`).
 - ⚠ OPEN: the band's margin — agent, by step 1. Pick: the face's tolerance
   as a distance from the axis, the same measure `contacts_on` uses, so the
   ring and the checker refuse at one bound.

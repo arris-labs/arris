@@ -619,10 +619,15 @@ impl<'a> PatchedSection<'a> {
     /// polynomial, which the factor, positive inside the domain, does not
     /// change the sign of.
     pub(crate) fn deflate_pole(&mut self, v0: f64) -> usize {
-        let binomials = Binomials::new(self.binomial_degree);
-        // The patches along the edge, each transposed so that `v` runs
-        // first, with the end of its `[0, 1]` the edge is at.
-        let along: Vec<(usize, f64)> = (self.patches.iter().enumerate())
+        let order = self.row_order(v0);
+        self.divide_row(v0, order);
+        order
+    }
+
+    /// The patches along the line `v = v0` of a patch edge, each with the
+    /// end of its `[0, 1]` in `t` the line is at.
+    fn along_row(&self, v0: f64) -> Vec<(usize, f64)> {
+        (self.patches.iter().enumerate())
             .filter_map(|(i, patch)| {
                 let [lo, hi] = patch.span[1];
                 if lo == v0 {
@@ -633,7 +638,13 @@ impl<'a> PatchedSection<'a> {
                     None
                 }
             })
-            .collect();
+            .collect()
+    }
+
+    /// How many of the leading rows of coefficients at the line `v = v0`
+    /// of a patch edge are within what `tol.linear` makes of `f` on every
+    /// patch along it, at most two ([`Self::deflate_pole`]).
+    fn row_order(&self, v0: f64) -> usize {
         let near = self.near;
         let vanishing = |f: &PolyN<2>, root: f64| {
             let [m, n] = f.degree();
@@ -643,12 +654,18 @@ impl<'a> PatchedSection<'a> {
             };
             (0..m.min(2)).take_while(|&i| row(i)).count()
         };
-        let order = (along.iter())
+        (self.along_row(v0).iter())
             .map(|&(i, root)| vanishing(&self.patches[i].f.transposed(), root))
             .min()
-            .unwrap_or(0);
+            .unwrap_or(0)
+    }
+
+    /// The patches along the line `v = v0` divided by their own linear
+    /// factor at it, `order` times.
+    fn divide_row(&mut self, v0: f64, order: usize) {
+        let binomials = Binomials::new(self.binomial_degree);
         let mut worst = self.floor;
-        for (i, root) in along {
+        for (i, root) in self.along_row(v0) {
             let patch = &mut self.patches[i];
             let mut f = patch.f.transposed();
             let mut floor = patch.floor;
@@ -663,7 +680,56 @@ impl<'a> PatchedSection<'a> {
         }
         self.floor = worst;
         self.near = worst + self.steep;
-        order
+    }
+
+    /// The axis point of a horn torus, the walked one, divided out of the
+    /// polynomial with a tube circle already divided out of it at order
+    /// two (ADR-0080): `true` where it was, `false` where the quotient
+    /// along the row is not of one sign — the rest of the section reaching
+    /// the axis point — and `None` where the polynomial does not vanish
+    /// twice along the row, which is then left as it is.
+    ///
+    /// On a horn the axis point is the row `v = π`, collapsed, which every
+    /// tube circle passes through tangent to the axis; a surface holding
+    /// the circle is tangent to the axis there, and its polynomial over
+    /// the torus has the factor `1 + cos v`, a double zero along the whole
+    /// row, a line of critical points nothing isolates. `v = π` is the
+    /// edge between the second and third quarter turns of `v`, so the
+    /// patches along it are divided by `(1 − t)²` and `t²` as a pole is
+    /// ([`Self::deflate_pole`]); the others keep their polynomial, which
+    /// the factor, positive off the row, does not change the sign of.
+    pub(crate) fn deflate_axis_row(&mut self) -> Option<bool> {
+        if self.chart != Chart::Quarters {
+            return None;
+        }
+        // The edge of the quarter turns `[π/2, π]` and `[π, 3π/2]`, as
+        // `Self::new` spans them.
+        let v0 = 2.0 * FRAC_PI_2;
+        if self.row_order(v0) < 2 {
+            return None;
+        }
+        self.divide_row(v0, 2);
+        let near = self.near;
+        let signs: Vec<Option<bool>> = (self.along_row(v0).iter())
+            .map(|&(i, root)| {
+                let f = self.patches[i].f.transposed();
+                let [m, n] = f.degree();
+                let row = if root == 0.0 { 0 } else { m };
+                let line = f.coefficients().get(row * (n + 1)..(row + 1) * (n + 1))?;
+                if line.iter().all(|c| *c > near) {
+                    Some(true)
+                } else if line.iter().all(|c| *c < -near) {
+                    Some(false)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        Some(
+            signs
+                .first()
+                .is_some_and(|first| first.is_some() && signs.iter().all(|s| s == first)),
+        )
     }
 
     /// The parameter of direction `k` at `s` of `patch`.

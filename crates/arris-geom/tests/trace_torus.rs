@@ -1609,7 +1609,9 @@ fn a_section_through_a_spindles_axis_point_ends_there() {
 /// The poses at the axis the tracer does not part: a plane holding a
 /// horn's or a spindle's axis, whose tube circles meet there with the
 /// collapsed row of the axis point besides, and a sphere through a horn's
-/// axis point tangent to its axis, along which row the section is double.
+/// axis point tangent to its axis, along which row the section is double:
+/// touching it there alone, or crossing the horn along a tube circle, its
+/// row then a whole turn of turning points.
 /// The shared-axis arm answers a horn's tube circles whole, and refuses a
 /// spindle's, which cross the axis into the lemon.
 #[test]
@@ -1657,6 +1659,14 @@ fn the_axis_poses_a_band_does_not_resolve_are_refused_by_name() {
         radius: real::hypot(0.5, 0.1),
     };
     assert_eq!(refused(&horn, &tangent), SectionFault::TangentAlongCurve);
+    // A sphere holding the tube circle at `u = 0` and crossing the horn
+    // along it: tangent to the axis at the axis point, the quotient by the
+    // circle still double along the row, a whole turn of turning points.
+    let crossing = Surface::Sphere {
+        frame: frame([1.0, 0.4, 0.0], [0.0, 0.0, 1.0]),
+        radius: real::hypot(1.0, 0.4),
+    };
+    assert_eq!(refused(&horn, &crossing), SectionFault::TubeCircle);
 }
 
 /// A NURBS twin of a plane and of a cylinder against a spindle, which is
@@ -1754,5 +1764,113 @@ fn random_horn_and_spindle_sections_keep_their_band() {
         let trace = trace_torus(&torus, &other, tol(), &mut arris_math::Meter::default())
             .map_err(|e| TestCaseError::fail(e.to_string()))?;
         holds_on_band(&trace, &torus, &other)
+    });
+}
+
+/// A cylinder or a sphere holding a horn's tube circle, tangent along it:
+/// the junction of a horn blend with the stripe it meets. The circle
+/// passes through the axis point, and a surface holding it is tangent to
+/// the axis there, so the section's polynomial vanishes twice along the
+/// collapsed row; both are divided out, and the section is the circle,
+/// tangent, with what else of the pair meets on the band beside it.
+#[test]
+fn a_surface_tangent_along_a_horns_tube_circle_is_the_circle() {
+    for (major, u0) in [(1.0, 0.0), (0.1, 0.7), (2.0, 4.1)] {
+        let horn = band_torus(major, major);
+        let outward = Vec3::new(real::cos(u0), real::sin(u0), 0.0);
+        let centre = Point3::origin() + major * outward;
+        let along = Vec3::new(-real::sin(u0), real::cos(u0), 0.0);
+        for other in [
+            Surface::Cylinder {
+                frame: Frame::from_z(centre, along).unwrap(),
+                radius: major,
+            },
+            Surface::Sphere {
+                frame: Frame::from_z(centre, Vec3::z()).unwrap(),
+                radius: major,
+            },
+        ] {
+            let label = format!("R=r={major} u0={u0} against {other:?}");
+            let trace = trace_torus(&horn, &other, tol(), &mut arris_math::Meter::default())
+                .unwrap_or_else(|e| panic!("{label}: {e}"));
+            assert_eq!(trace.circles().len(), 1, "{label}");
+            assert!(trace.circles()[0].tangent, "{label}");
+            let domain = trace.circles()[0].circle.domain();
+            for k in 0..16 {
+                let p = (trace.circles()[0].circle).point(domain.lerp(k as f64 / 16.0));
+                assert!((p - centre).norm() - major <= 1e-12, "{label}: {p}");
+                assert!(along.dot(&(p - centre)).abs() <= 1e-12, "{label}: {p}");
+            }
+            holds_on_band(&trace, &horn, &other).unwrap_or_else(|e| panic!("{label}: {e}"));
+            holds((horn.clone(), other.clone())).unwrap_or_else(|e| panic!("{label}: {e}"));
+        }
+    }
+}
+
+/// A horn in any pose and a surface tangent along one of its tube
+/// circles at random: a cylinder about the circle's axis, the sphere on
+/// it, and a pipe elbow whose tube is the circle's, at a random bend.
+/// Each is the circle with the rest of the section on the band beside it.
+#[test]
+fn random_surfaces_tangent_along_a_horns_tube_circle_trace() {
+    let horn = prop::geom::torus().prop_map(|t| match t {
+        Surface::Torus {
+            frame,
+            minor_radius,
+            ..
+        } => Surface::Torus {
+            frame,
+            major_radius: minor_radius,
+            minor_radius,
+        },
+        other => other,
+    });
+    let strategy = (
+        horn,
+        prop::finite_f64(0.0..=TAU),
+        0..3usize,
+        prop::finite_f64(1.5..=4.0),
+    )
+        .prop_map(|(torus, u0, kind, bend)| {
+            let Surface::Torus {
+                frame,
+                minor_radius: r,
+                ..
+            } = &torus
+            else {
+                return (torus.clone(), torus);
+            };
+            let outward = frame.vec_to_world(Vec3::new(real::cos(u0), real::sin(u0), 0.0));
+            let along = frame.vec_to_world(Vec3::new(-real::sin(u0), real::cos(u0), 0.0));
+            let centre = frame.origin() + *r * outward;
+            let other = match kind {
+                0 => Surface::Cylinder {
+                    frame: Frame::from_z(centre, along).unwrap(),
+                    radius: *r,
+                },
+                1 => Surface::Sphere {
+                    frame: Frame::from_z(centre, along).unwrap(),
+                    radius: *r,
+                },
+                _ => {
+                    // The elbow's centre circle through the tube circle's
+                    // centre, square to its plane, bending away from the
+                    // axis.
+                    let normal = along.cross(&outward).normalize();
+                    Surface::Torus {
+                        frame: Frame::from_z(centre + bend * *r * outward, normal).unwrap(),
+                        major_radius: bend * *r,
+                        minor_radius: *r,
+                    }
+                }
+            };
+            (torus.clone(), other)
+        });
+    check(strategy, |(horn, other)| {
+        let trace = trace_torus(&horn, &other, tol(), &mut arris_math::Meter::default())
+            .map_err(|e| TestCaseError::fail(e.to_string()))?;
+        prop_assert!(trace.circles().iter().any(|c| c.tangent));
+        holds_on_band(&trace, &horn, &other)?;
+        holds((horn, other))
     });
 }

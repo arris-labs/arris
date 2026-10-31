@@ -31,6 +31,18 @@ impl Tracer<'_> {
             [only] => {
                 self.walker.factor = Some(only);
                 self.walker.divided = self.section.quotient(only.u0, only.order);
+                // A horn's tube circle passes through its axis point, and a
+                // surface tangent along it is tangent to the axis there:
+                // the quotient vanishes twice along the collapsed row, which
+                // is divided out too (ADR-0080). The rest of the section
+                // reaching the axis point is not parted from the circle.
+                if only.order == 2 && self.is_horn() {
+                    match self.section.deflate_axis_row() {
+                        Some(true) => self.walker.axis_row = true,
+                        Some(false) => return Err(SectionFault::CrowdedSingularity.into()),
+                        None => {}
+                    }
+                }
             }
             // Two circles and nothing else is a plane through the axis,
             // or a sphere centred on the tangent to the centre circle.
@@ -186,6 +198,16 @@ impl Tracer<'_> {
             }
         }
         self.assemble(meter)
+    }
+
+    /// Whether the walked surface is a torus whose axis point is a row of
+    /// its own: a horn, its radii within the tolerance of each other.
+    fn is_horn(&self) -> bool {
+        matches!(
+            self.walker.walked,
+            Surface::Torus { major_radius, minor_radius, .. }
+                if (major_radius - minor_radius).abs() <= self.tol.linear
+        )
     }
 
     /// Whether the walked NURBS surface's isoline at `u0` is a pole: one

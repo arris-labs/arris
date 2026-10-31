@@ -82,6 +82,18 @@
 //! `F` anywhere on the torus, or the circle is not accepted, so the rest
 //! is within `tol.linear` of the other surface as the circle is.
 //!
+//! On a horn every tube circle passes through the axis point, the row
+//! `v = π` collapsed, tangent to the axis there; a surface tangent along
+//! one — a horn blend against the stripe it meets — is tangent to the axis
+//! too, and the quotient vanishes twice along the whole row. The row is
+//! divided out as well: on the patches by the linear factor of the two
+//! quarter turns of `v` that meet there (`PatchedSection::deflate_axis_row`),
+//! and in the walk's closed form by dropping its leading `ρ = R + r cos v`,
+//! which carries the row's double zero. What is left keeps one sign along
+//! the row — the gradient at the axis point is across the axis — so the
+//! rest of the section stays off the axis point, and where it does not
+//! it is refused.
+//!
 //! A NURBS surface's direction that does not close ends at the edges of
 //! its domain, and every point, cell and march stays inside it. A branch
 //! that reaches an edge ends there, at the root of the section along the
@@ -353,6 +365,10 @@ pub(crate) struct Walker {
     /// radii, a NURBS surface's farthest control point.
     size: f64,
     factor: Option<TubeFactor>,
+    /// A horn's axis point divided out of the quotient by `factor` as
+    /// well, the row `v = π` it collapses to ([`Walker::quotient`],
+    /// `PatchedSection::deflate_axis_row`).
+    axis_row: bool,
     /// A NURBS surface's section with its isoline `factor` divided out,
     /// which the quotient is evaluated on; `None` on a torus, whose
     /// quotient is a closed form.
@@ -595,13 +611,18 @@ struct Tracer<'a> {
 /// (ADR-0080): what of the section lies on its axis or on a spindle's
 /// lemon is dropped, and every branch, circle and isolated point returned
 /// is on the band. A branch through an axis point ends there, at a
-/// [`SectionPoint`] that is not isolated, one per axis point. Refused by
-/// name besides: a plane holding the axis
-/// ([`SectionFault::TubeCircle`]: the tube circles meet the axis row),
-/// a surface through a horn's axis point tangent to its axis
+/// [`SectionPoint`] that is not isolated, one per axis point. A surface
+/// tangent along a horn's tube circle, which is tangent to the axis at
+/// the axis point the circle passes through, is the circle and the rest
+/// of the section beside it, off the axis point. Refused by name besides:
+/// a plane holding the axis, or another surface crossing a horn along a
+/// tube circle ([`SectionFault::TubeCircle`]: the tube circles meet the
+/// axis row, or the quotient by the one is double along it), a surface
+/// touching a horn's axis point alone, tangent to its axis
 /// ([`SectionFault::TangentAlongCurve`]: the section is double along the
-/// row), and a branch passing from the band to the lemon without ending
-/// at the axis ([`SectionFault::CrowdedSingularity`]).
+/// row), and the rest of the section beside a tangent tube circle
+/// reaching the axis point or a branch passing from the band to the lemon
+/// without ending at the axis ([`SectionFault::CrowdedSingularity`]).
 ///
 /// ```
 /// use arris_geom::{Surface, trace_torus};
@@ -643,6 +664,7 @@ pub fn trace_torus(
             closed: [true; 2],
             size: 0.0,
             factor: None,
+            axis_row: false,
             divided: None,
             transposed: false,
             bumps: Vec::new(),
@@ -736,6 +758,7 @@ pub(crate) fn trace_nurbs(
                 closed: nurbs.closure().map(|c| c.is_some()),
                 size,
                 factor: None,
+                axis_row: false,
                 divided: None,
                 transposed,
                 bumps: Vec::new(),

@@ -96,6 +96,11 @@ impl Walker {
     /// the same way — the gradient is across the circle's tangent `τ₀` —
     /// and the second carries the other `sin`.
     ///
+    /// On a horn whose axis row is divided out as well (`axis_row`) the
+    /// leading `2ρ` of either form, on a horn `2r·(1 + cos v)`, which
+    /// vanishes along the row to second order, is `2(R + r)`: the bracket
+    /// is the quotient by both factors in closed form, the row's included.
+    ///
     /// On a NURBS surface the isoline's quotient is the polynomial the
     /// isolation certified with the isoline divided out
     /// ([`Quotient::at`]), over `|∇F|`.
@@ -138,10 +143,19 @@ impl Walker {
         let [c2, c3, c4] = implicit.bend(a, tau);
         let lambda = 2.0 * rho * real::sin(half);
         let higher = c2 + lambda * (c3 + lambda * c4);
-        let quotient = if factor.order == 1 {
-            2.0 * rho * (gradient.dot(&tau) + lambda * higher)
+        // With a horn's axis row divided out as well, the leading `ρ`,
+        // which vanishes there twice, is the one factor the patches
+        // divided out; `R + r` in its place keeps the quotient never less
+        // than the distance.
+        let lead = if self.axis_row {
+            2.0 * (major_radius + minor_radius)
         } else {
-            2.0 * rho * (2.0 * rho * higher - gradient.dot(&outward))
+            2.0 * rho
+        };
+        let quotient = if factor.order == 1 {
+            lead * (gradient.dot(&tau) + lambda * higher)
+        } else {
+            lead * (2.0 * rho * higher - gradient.dot(&outward))
         };
         let steep = implicit.slope(p).norm();
         if steep > 0.0 {

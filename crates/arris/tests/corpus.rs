@@ -1331,7 +1331,7 @@ corpus_tests! {
     /// arc's torus is a horn torus, its major radius equal to its minor, which
     /// the ring now builds on its regular band. The desired body is Open
     /// CASCADE's.
-    #[ignore = "S5: the cylinder stripes against the horn torus are not decided, the section tangent along a tube circle through the horn's axis point (SectionFault::TangentAlongCurve, plans/horn-torus step 3's refusal), so Full has two unchecked pairs"]
+    #[ignore = "STEP read-back: Open CASCADE's file of the horn blend is refused by the reader, a torus whose minor radius is not below its major (Refusal::SelfIntersectingTorus, plans/horn-torus step 6)"]
     regression_tangent_chain_horn_torus => run "regression/tangent-chain-horn-torus";
     /// A plate with a crescent hole tessellated at a coarse chord: the hole's
     /// two tangent arcs' polygons cross at the cusp, and the mesher refuses a
