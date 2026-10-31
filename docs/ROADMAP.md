@@ -896,7 +896,14 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   to `ok` at every stage, so the script corpus's `fillet` refusals are 1
   (the hinge leaf) and the real parts' `fillet` row stays at 4 of 38. An
   ellipse for the crossed edge stays `BlendTooLarge`.
-- `BlendTooLarge` where Open CASCADE builds: the horn torus on an arc.
+- [x] The horn torus on an arc (`BlendTooLarge`): **done 2026-10-31**
+  (`horn-torus`, ADR-0080). A fillet whose torus is horn or spindle builds
+  as a face on the torus's regular band; the contact at the axis stays
+  refused. The run-over census over CTC-01, CTC-03, FTC-08 and STC-06
+  (`tests/horn_census.rs`) now counts 54 `BlendTooLarge` edges where there
+  were 277 (the "contact leaves a face" rows 41, from 98), 953 edges
+  building alone; Open CASCADE builds 43 of the 54, finds 3 invalid and
+  refuses 8. STC-06's two sampled edges build.
 - [x] Overhang tips (`TangentChain`): **done 2026-10-31** (`overhang-tip-cap`,
   ADR-0079). A convex lip edge's fillet is cut by
   the next wall on its exact stripe (ADR-0079); the concave pillar edge

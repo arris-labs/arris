@@ -95,7 +95,7 @@ bound has to be established here.
   `r` from a ring torus through horn to spindle, short of the contact at
   the axis, its volume held to the Pappus closed form; the cap-edge chain
   at random `r2/r` in `(0.3, 0.7)`, checker-green or refused by name.
-- [ ] Step 9 **[2]** — The census: the run-over census re-run over the
+- [x] Step 9 **[2]** — The census: the run-over census re-run over the
   four fetched parts; the horn/spindle cause's edges (98 of 277 at the
   finding) and STC-06's two sampled edges each built and matching Open
   CASCADE's measures, or refused by a name; a `debug` test holding the
