@@ -291,12 +291,17 @@ fn self_intersection(report: &arris_check::Report) -> Option<OpError> {
     })
 }
 
+/// The samples along each pcurve of a moved torus face that the band test
+/// reads (the checker's own `check_samples`, so the two agree).
+const BAND_SAMPLES: usize = 23;
+
 /// Each moved face's offset surface: its own surface's offset by the
 /// distance along the outward normal, the surface's normal composed with
 /// the body's use of the face. An elliptic cylinder or a free-form surface
 /// has none of its own kind ([`OffsetReason::NoExactOffset`]); a surface
-/// whose radius the move drives through zero, or a cone one of whose
-/// vertices it carries to the axis, collapses
+/// whose radius the move drives through zero, a cone one of whose
+/// vertices it carries to the axis, or a torus face the move drives off the
+/// regular band (ADR-0080), collapses
 /// ([`OffsetReason::SurfaceCollapses`]).
 fn moves(
     m: &Model,
@@ -338,6 +343,32 @@ fn moves(
                     for v in [e.start(), e.end()] {
                         let q = frame.to_local(m.vertex(v)?.point());
                         if real::hypot(q.x, q.y) + by * real::cos(*half_angle) <= tol.linear {
+                            return Err(refuse(f, OffsetReason::SurfaceCollapses));
+                        }
+                    }
+                }
+            }
+        }
+        if let Surface::Torus {
+            major_radius,
+            minor_radius,
+            ..
+        } = offset
+        {
+            // ADR-0080: the face stays on the regular band of the moved
+            // torus; a tube grown (or shrunk) so that the face's `v` reaches
+            // the axis has collapsed there.
+            let face = m.face(f)?;
+            for l in face.loops() {
+                for c in l.coedges() {
+                    let range = m.edge(c.edge())?.range();
+                    if !(range.lo().is_finite() && range.hi().is_finite()) {
+                        continue;
+                    }
+                    let pcurve = m.curve2(c.pcurve())?;
+                    for t in range.samples(BAND_SAMPLES) {
+                        let v = pcurve.point(t)[1];
+                        if major_radius + minor_radius * real::cos(v) <= face.tolerance() {
                             return Err(refuse(f, OffsetReason::SurfaceCollapses));
                         }
                     }

@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `Surface::offset` of a torus no longer refuses a tube grown to or past the
+  major radius, and `offset_faces` moves a fillet's horn or spindle torus
+  face while it stays off the torus's axis; a face the move would carry onto
+  the axis is refused as `SurfaceCollapses`, naming it.
 - The STEP reader takes a horn or a spindle torus (major radius above zero,
   at most the minor radius) where it refused it as
   `SelfIntersectingTorus`; that refusal now names a torus of major radius

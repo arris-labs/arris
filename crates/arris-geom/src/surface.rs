@@ -955,7 +955,9 @@ impl Surface {
     /// and a radius driven to or through zero — a cylinder or a sphere
     /// whose new radius is not positive beyond rounding
     /// ([`arris_math::is_negligible`]), a torus whose new minor radius is
-    /// not, or reaches its major radius.
+    /// not. A torus keeps its major radius whatever its new minor radius
+    /// (ADR-0080: a horn or a spindle torus is a surface too); whether a
+    /// face of it stays on the regular band is the face's to decide.
     ///
     /// ```
     /// use arris_geom::Surface;
@@ -1017,9 +1019,7 @@ impl Surface {
                 minor_radius,
             } => {
                 let moved = minor_radius + distance;
-                let reaches = moved >= major_radius
-                    || is_negligible(major_radius - moved, major_radius.abs().max(moved.abs()));
-                (!collapsed(moved, minor_radius) && !reaches).then_some(Surface::Torus {
+                (!collapsed(moved, minor_radius)).then_some(Surface::Torus {
                     frame,
                     major_radius,
                     minor_radius: moved,

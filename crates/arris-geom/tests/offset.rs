@@ -193,10 +193,11 @@ fn a_torus_keeps_its_major_radius_and_its_tube_grows_by_d() {
                 unreachable!()
             };
             let moved = minor_radius + d;
-            prop_assume!(moved.abs() > EXACT && (major_radius - moved).abs() > EXACT);
+            prop_assume!(moved.abs() > EXACT);
             match s.offset(d) {
                 Some(o) => {
-                    prop_assert!(0.0 < moved && moved < major_radius);
+                    // Any positive tube: the horn and the spindle included.
+                    prop_assert!(0.0 < moved);
                     let Surface::Torus {
                         major_radius: big,
                         minor_radius: small,
@@ -209,7 +210,7 @@ fn a_torus_keeps_its_major_radius_and_its_tube_grows_by_d() {
                     prop_assert!((small - moved).abs() <= EXACT);
                     moved_points_lie_on(&s, &o, d, uv)?;
                 }
-                None => prop_assert!(moved <= 0.0 || moved >= major_radius),
+                None => prop_assert!(moved <= 0.0),
             }
             Ok(())
         },
@@ -259,15 +260,18 @@ fn a_radius_driven_exactly_to_zero_is_a_collapse() {
         .offset(-2.0)
         .is_none()
     );
-    assert!(
-        Surface::Torus {
-            frame: f,
-            major_radius: 3.0,
-            minor_radius: 2.0
-        }
-        .offset(1.0)
-        .is_none()
-    );
+    // A tube grown to the major radius is a horn torus, past it a spindle.
+    for d in [1.0, 2.0] {
+        assert!(
+            Surface::Torus {
+                frame: f,
+                major_radius: 3.0,
+                minor_radius: 2.0
+            }
+            .offset(d)
+            .is_some()
+        );
+    }
     assert!(
         Surface::Torus {
             frame: f,

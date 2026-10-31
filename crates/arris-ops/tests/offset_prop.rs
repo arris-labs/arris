@@ -870,3 +870,69 @@ fn a_posed_cylinder_keeps_its_rim_ranges_within_a_period() {
     let props = mass_properties(&m, out).unwrap();
     assert!(close_to(props.volume, solid.volume(0.03), 1.0, REL));
 }
+
+prop_shards! {
+    /// A cylinder's top rim filleted at `f` of its radius, from a ring
+    /// torus to a horn (`f = 1/2`, drawn on purpose), its torus face offset
+    /// by `d` while the tube stays at most the major radius (ADR-0080): the
+    /// wall and the top are dragged, the result is the cylinder of radius
+    /// `R + d`, height `h + d` and blend `ρ + d`, by Pappus's closed form,
+    /// clean at `Full`.
+    a_rounded_rim_offset_on_the_band_is_the_closed_form
+        [shard_0 shard_1 shard_2 shard_3]
+        ((radius, height, f, t, pose)) = (
+            prop::finite_f64(1.0..=3.0),
+            prop::finite_f64(1.5..=4.0),
+            prop_oneof![Just(0.5), prop::finite_f64(0.3..=0.5)],
+            prop::finite_f64(0.0..=1.0),
+            prop::pose(),
+        ) => {
+            let rho = f * radius;
+            // The tube `ρ + d` from 0.2ρ up to the major radius `R − ρ`.
+            let (lo, hi) = (-0.8 * rho, radius - 2.0 * rho);
+            let d = lo + t * (hi - lo);
+            prop_assume!(d.abs() >= 0.03 * radius);
+            let mut m = Model::default();
+            let (rest, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), radius, height)
+                .map_err(fail)?;
+            let rim = rim_at(&m, rest, height)?;
+            let (rounded, _) = fillet(&mut m, rest, &[rim], rho).map_err(fail)?;
+            let body = posed(&mut m, rounded, &pose)?;
+            let torus = m
+                .faces(body)
+                .map_err(fail)?
+                .into_iter()
+                .find(|f| {
+                    m.face(f.id)
+                        .and_then(|face| m.surface(face.surface()))
+                        .is_ok_and(|s| matches!(s, arris_geom::Surface::Torus { .. }))
+                })
+                .ok_or_else(|| fail("no torus face"))?;
+            let before = counts(&m, body)?;
+            let (out, p) = offset_faces(&mut m, body, &[torus], d)
+                .map_err(|e| fail(format!("rim blend {rho} of {radius} by {d}: {e}")))?;
+            assert_checked(&check(&m, out, Level::Full))?;
+            audit(&m, &[body], out, &p).map_err(|e| fail(format!("provenance: {e}")))?;
+            prop_assert_eq!(counts(&m, out)?, before, "topology is kept");
+            let (r, h, q) = (radius + d, height + d, rho + d);
+            let corner = (1.0 - PI / 4.0) * q * q;
+            let want = PI * r * r * h - 2.0 * PI * ((r - q) * corner + q * q * q / 6.0);
+            let got = mass_properties(&m, out).map_err(fail)?.volume;
+            same_measure("volume", got, want, REL)?;
+            Ok(())
+        }
+}
+
+/// The circle edge of `body` at height `z` on the `z` axis.
+fn rim_at(m: &Model, body: Body, z: f64) -> Result<Edge, TestCaseError> {
+    for e in m.edges(body).map_err(fail)? {
+        let entity = m.edge(e.id).map_err(fail)?;
+        if let Some((curve, _)) = entity.curve()
+            && let arris_geom::Curve::Circle { frame, .. } = m.curve(curve).map_err(fail)?
+            && (frame.origin().z - z).abs() < 1e-9
+        {
+            return Ok(e);
+        }
+    }
+    Err(fail(format!("no rim at z = {z}")))
+}

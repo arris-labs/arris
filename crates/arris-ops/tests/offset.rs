@@ -279,3 +279,90 @@ fn a_push_through_the_far_side_self_intersects() {
     let (out, p) = offset_faces(&mut m, cut, &[floor], -4.0).unwrap();
     assert_clean(&m, cut, out, &p);
 }
+
+/// A cylinder of radius 2 and height 3, its top rim filleted at `radius`:
+/// the body and its torus face.
+fn rounded_cylinder(m: &mut Model, radius: f64) -> (Body, Face) {
+    use arris_debug::unmetered::{fillet, primitive_cylinder};
+    use arris_geom::Surface;
+    use arris_math::Axis;
+    let (body, _) = primitive_cylinder(m, Axis::z_at(Point3::origin()), 2.0, 3.0).unwrap();
+    let rim = m
+        .edges(body)
+        .unwrap()
+        .into_iter()
+        .find(|e| {
+            m.edge(e.id).unwrap().curve().is_some_and(|(c, _)| {
+                matches!(m.curve(c).unwrap(), arris_geom::Curve::Circle { frame, .. }
+                    if (frame.origin().z - 3.0).abs() < 1e-9)
+            })
+        })
+        .unwrap();
+    let (blended, _) = fillet(m, body, &[rim], radius).unwrap();
+    let torus = m
+        .faces(blended)
+        .unwrap()
+        .into_iter()
+        .find(|f| {
+            let face = m.face(f.id).unwrap();
+            matches!(m.surface(face.surface()).unwrap(), Surface::Torus { .. })
+        })
+        .unwrap();
+    (blended, torus)
+}
+
+/// The tube of the torus face `f`.
+fn tube(m: &Model, f: Face) -> (f64, f64) {
+    use arris_geom::Surface;
+    let face = m.face(f.id).unwrap();
+    match *m.surface(face.surface()).unwrap() {
+        Surface::Torus {
+            major_radius,
+            minor_radius,
+            ..
+        } => (major_radius, minor_radius),
+        ref other => panic!("{other:?}"),
+    }
+}
+
+/// A torus face on its regular band (ADR-0080) offsets while it stays on
+/// it, the tube reaching the major radius included: a ring fillet pushed
+/// by 0.2, a horn (`R = r = 1`) pulled by 0.2 and a spindle (`R = 0.8`,
+/// `r = 1.2`) pulled to the horn by 0.4 are tori of `r + d`, clean at
+/// `Full`; a tube driven to nothing collapses, naming the face. (A result
+/// that is a spindle needs its seam on a plane through the axis, which the
+/// section does not answer: a backlog line.)
+#[test]
+fn a_torus_face_offsets_on_the_band_and_collapses_off_it() {
+    for (radius, d) in [(0.5, 0.2), (1.0, -0.2), (1.2, -0.4)] {
+        let mut m = Model::default();
+        let (body, face) = rounded_cylinder(&mut m, radius);
+        let (big, small) = tube(&m, face);
+        let (out, p) = offset_faces(&mut m, body, &[face], d)
+            .unwrap_or_else(|e| panic!("r {radius} by {d}: {e}"));
+        assert_clean(&m, body, out, &p);
+        let moved = m
+            .faces(out)
+            .unwrap()
+            .into_iter()
+            .find(|f| {
+                matches!(
+                    m.surface(m.face(f.id).unwrap().surface()),
+                    Ok(arris_geom::Surface::Torus { .. })
+                )
+            })
+            .unwrap();
+        let (got_big, got_small) = tube(&m, moved);
+        assert!((got_big - big).abs() < 1e-12 && (got_small - (small + d)).abs() < 1e-12);
+    }
+    let mut m = Model::default();
+    let (body, face) = rounded_cylinder(&mut m, 1.5);
+    assert_refused(
+        &mut m,
+        body,
+        &[face],
+        -1.5,
+        Reason::Offset(OffsetReason::SurfaceCollapses),
+        face.id,
+    );
+}

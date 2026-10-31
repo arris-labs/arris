@@ -87,7 +87,7 @@ bound has to be established here.
 - [x] Step 6 **[1]** — STEP: the reader takes a non-ring torus, the
   refusal narrowed to `major <= 0`; the horn and spindle blends written and
   read back with equal measures (an `io` round-trip test).
-- [ ] Step 7 **[2]** — Offset of a band face: `r ± d` that keeps the face
+- [x] Step 7 **[2]** — Offset of a band face: `r ± d` that keeps the face
   on the band offsets; one that drives it past the band is
   `SurfaceCollapses` naming the face; `offset_prop` draws horn and spindle
   faces.
