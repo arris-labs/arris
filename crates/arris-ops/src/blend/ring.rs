@@ -1517,7 +1517,7 @@ fn face_end_of(
                     Reason::Blend(BlendReason::TangentChain),
                 ));
             }
-            cusp_trims(m, edge, corner_edges, vertex, points)?
+            cusp_trims(m, view, edge, corner_edges, k, vertex, points)?
         }
         None => mixed::corner_trims(
             env,

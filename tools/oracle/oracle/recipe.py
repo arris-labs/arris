@@ -649,6 +649,17 @@ def build(
                 shapes[name] = _build_step(step, op, params, ref, probe, base, dropped)
         except KeyError as e:
             raise OracleError(f"step {name!r} ({op}): missing field {e}") from e
+        except OracleError as e:
+            # A refusal fixture may ask for a blend neither kernel builds.
+            # Record no solid only when the final builder reports not done;
+            # operand errors and script checkpoints keep their own refusals.
+            if (name == fixture.get("result")
+                    and fixture.get("analytic", {}).get("expect_error")
+                    and op in ("fillet", "chamfer")
+                    and str(e) == f"{op}: Open CASCADE reports not done"):
+                shapes[name] = _empty()
+            else:
+                raise
     result = fixture.get("result")
     if result not in shapes:
         raise OracleError(f"result {result!r} is not a step")

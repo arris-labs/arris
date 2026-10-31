@@ -2024,11 +2024,11 @@ mod tests {
         tangent_chain_cause(&m, edge.id, &e).unwrap()
     }
 
-    /// An overhang tip, the lip's underside arc against the pillar's, is a
-    /// cusp with its walls on either side (ADR-0042 §6).
+    /// An overhang tip, the pillar's concave arc against the lip's, is a
+    /// cusp with its walls on either side, still refused (ADR-0079).
     #[test]
     fn an_overhang_tip_is_a_cusp_with_walls_on_either_side() {
-        let dir = corpus_root().join("blend/cusp-overhang-tip-fillet");
+        let dir = corpus_root().join("blend/cusp-overhang-tip-pillar-fillet");
         let mut fixture: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(dir.join("fixture.json")).unwrap())
                 .unwrap();
@@ -2036,7 +2036,7 @@ mod tests {
         fixture["steps"].as_array_mut().unwrap().pop();
         fixture["result"] = "part".into();
         assert_eq!(
-            cusp_cause(&fixture.to_string(), P3::new(-3.0, -1.0, 1.0), 0.1),
+            cusp_cause(&fixture.to_string(), P3::new(0.0, -2.0, 1.0), 0.1),
             "an end at a cusp, walls on either side; edge cylinder × plane"
         );
     }

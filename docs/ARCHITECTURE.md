@@ -1067,7 +1067,8 @@ runs out of. An end at a cusp — a vertex of three edges where the
 next edge leaves the way the blended one does, the two walls tangent
 along the third edge, the spine, both edges of one sense so that both
 walls lie on one side of the face they share (a crescent's sliver of
-material, or its pocket) — is cut by the next wall (ADR-0042): the
+material, or its pocket), or a convex blended edge at an overhang tip —
+is cut by the next wall (ADR-0042, ADR-0079): the
 contact on the shared face is trimmed where it crosses the next edge,
 in closed form, and the contact on the blended edge's wall where it
 meets the spine, at the vertex's own angle on a ring and where the two
@@ -1075,12 +1076,14 @@ lines cross on a stripe, the next edge and the spine shortened to those
 points, and the cut between them is the stripe's section with the next
 wall, traced and fitted as an end on a curved face across is, its
 stretch ending at the node where a fillet touches that wall on the spine
-— a branch that starts and ends at the node reaches it at either end. A
+— a branch that starts and ends at the node reaches it at either end.
+At an overhang tip the cut extends the next wall outside its old face
+domain; at a same-sense cusp it lies inside. The stripe stays one exact
+face, including the portion Open CASCADE splits off as a fitted cap. A
 tangent dihedral, or an end at a vertex where a corner edge's two faces
-are tangent but which is neither a tangent vertex nor such a cusp — an
-overhang tip, a cusp whose edges are of opposite senses, its walls on
-either side of the shared face, which Open CASCADE caps with fitted
-surfaces; a cusp whose next edge is blended too, which takes a corner
+are tangent but which is neither a tangent vertex nor such a cusp — a
+concave blended edge at an overhang tip; a cusp whose next edge is
+blended too, which takes a corner
 patch; the next edge turning back with no cusp, or itself a tangent
 dihedral — is `BlendReason::TangentChain`; a
 vertex of

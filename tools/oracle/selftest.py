@@ -703,6 +703,23 @@ def check_checkpoints_smoke() -> bool:
         ok = False
     ok &= check_analytic("block", got["block"], {"volume": 1000.0, "area": 600.0, "counts": (8, 12, 6, 6), "genus": 0})
     ok &= check_analytic("drilled", got["drilled"], {"volume": 1000.0 - PI * 4 * 10, "counts": (10, 15, 7, 9), "genus": 1})
+    # The same final builder refusal in an explicit refusal fixture is no
+    # solid. An operand that cannot be built must still raise: otherwise a
+    # broken recipe could silently satisfy the intended final refusal.
+    refusal = {k: v for k, v in recipe.items() if k != "checkpoints"}
+    refusal["analytic"] = {"expect_error": "blend-too-large"}
+    if not compute_expected(refusal)["results"]["default"]["degenerate"]:
+        print("  an explicit final blend refusal should record no solid")
+        ok = False
+    operand = {**refusal, "steps": [dict(s) for s in refusal["steps"]]}
+    operand["steps"][0]["max"] = [0, 0, 0]
+    try:
+        compute_expected(operand)
+    except OracleError:
+        pass
+    else:
+        print("  an operand error must not become the final blend refusal")
+        ok = False
     return ok
 
 

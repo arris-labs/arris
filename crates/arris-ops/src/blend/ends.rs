@@ -373,10 +373,11 @@ pub(super) fn twice_at(
 /// other vertex of other than these three edges, or
 /// corner edges that share no such face, is `BlendReason::VertexBlend`. A corner
 /// edge whose two faces meet tangentially at the vertex is the spine of a
-/// cusp whose two edges are of one sense (`cusp_at`, ADR-0042 §1), and its
+/// cusp whose two edges are of one sense, or whose blended edge is convex
+/// at an overhang tip (`cusp_at`, ADR-0042 §1, ADR-0079), and its
 /// index is returned with the corner: the face across is then the next
 /// wall, which cuts the stripe. At any other vertex the chain did not run
-/// on through — an overhang tip, the next edge turning back with no cusp,
+/// on through — a concave overhang edge, the next edge turning back with no cusp,
 /// itself a tangent dihedral — it is `BlendReason::TangentChain` naming the
 /// edge, that corner edge and the vertex (ADR-0035 §6).
 pub(super) fn corner_of(
@@ -451,13 +452,16 @@ pub(super) fn corner_of(
         {
             continue;
         }
-        // A cusp whose edges are of one sense is cut by the next wall
-        // (ADR-0042 §1); an overhang tip, of opposite senses, is not.
+        // The next wall cuts a cusp of one sense (ADR-0042 §1), and
+        // an overhang tip where the blended edge is convex (ADR-0079).
         let next = corner_edges[1 - k];
-        let one_sense =
-            view.convex(m, next)?.is_some() && view.convex(m, next)? == view.convex(m, edge)?;
+        let next_convex = view.convex(m, next)?;
+        let edge_convex = view.convex(m, edge)?;
+        let cut_cusp = next_convex.is_some()
+            && (next_convex == edge_convex
+                || (edge_convex == Some(true) && next_convex == Some(false)));
         if spine.is_some()
-            || !one_sense
+            || !cut_cusp
             || cusp_at(m, view, edge, vertex, size, tol)? != Some((next, corner))
         {
             return Err(degenerate(
@@ -561,11 +565,14 @@ pub(super) fn cut_corner(
 /// A blend's end at a cusp (ADR-0042 §2, §5): the next edge cut at `P`
 /// and the spine at `Q`, by contact as `corner_edges` are, each within its
 /// edge (`cut_corner`, `BlendReason::TooLarge` otherwise), and the cut
-/// inside the next wall, whose corner the stripe takes whatever its sense.
+/// inside the next wall when the cusp edges have one sense, and outside
+/// it at an overhang tip where the cut extends the wall (ADR-0079).
 pub(super) fn cusp_trims(
     m: &Model,
+    view: &BodyView,
     edge: EdgeId,
     corner_edges: [EdgeId; 2],
+    spine: usize,
     vertex: VertexId,
     points: [Point3; 2],
 ) -> Result<mixed::CornerTrims, OpError> {
@@ -580,7 +587,11 @@ pub(super) fn cusp_trims(
     Ok(mixed::CornerTrims {
         trims,
         lengthened: None,
-        side: Side::Inside,
+        side: if view.convex(m, edge)? == view.convex(m, corner_edges[1 - spine])? {
+            Side::Inside
+        } else {
+            Side::Outside
+        },
     })
 }
 
@@ -1086,7 +1097,7 @@ pub(super) fn finish_end(
     // The corner edges cut or lengthened to the trim points, and the side
     // of the face across the arc lies on (ADR-0038).
     let corner = match spine {
-        Some(_) => cusp_trims(m, edge, corner_edges, vertex, points)?,
+        Some(k) => cusp_trims(m, view, edge, corner_edges, k, vertex, points)?,
         None => mixed::corner_trims(
             env,
             meter,

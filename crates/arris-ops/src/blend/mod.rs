@@ -168,10 +168,12 @@ struct Blend {
 /// other, the seam shortened to its point and nothing cut at a vertex of
 /// two edges. An end at a cusp — a vertex of three edges where the next
 /// edge leaves the way this one does, the walls tangent along the third,
-/// both edges convex or both concave — is cut by the next wall, from where
+/// both edges convex or both concave, or a convex edge at an overhang tip —
+/// is cut by the next wall, from where
 /// the contact on the shared face crosses the next edge to where the other
 /// contact meets the third edge, both shortened there, on the section
-/// traced and fitted as an end on a curved face across is (ADR-0042). Two
+/// traced and fitted as an end on a curved face across is (ADR-0042,
+/// ADR-0079). Two
 /// faces are tangent for the blend where their normals agree to the
 /// angular precision, or where the radius times the sine between them is
 /// within the faces' tolerance: a ball touching one then touches the
@@ -226,8 +228,8 @@ struct Blend {
 /// the body's, [`BlendReason::TangentChain`] where the edge's faces meet at a
 /// tangent dihedral or an end's corner edge has tangent faces at a vertex
 /// the chain does not run on through and that is no cusp it is cut at —
-/// the next edge turning back, itself a tangent dihedral, of the other
-/// sense, or blended too at a cusp —
+/// the next edge turning back without a cusp or itself a tangent dihedral,
+/// a concave blended edge at an overhang tip, or both cusp edges blended —
 /// [`BlendReason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges that the chain
 /// does not run on through and that is no fan — the faces across not one

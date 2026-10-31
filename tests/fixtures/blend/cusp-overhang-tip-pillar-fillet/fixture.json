@@ -1,0 +1,189 @@
+{
+  "description": "the lip-over-pillar overhang tip of cusp-overhang-tip-fillet, with the pillar's concave underside arc filleted at r 0.1: both kernels refuse; Arris returns TangentChain naming the arc, spine and tip (ADR-0079). The pillar seam is turned onto the exposed half so the far end is an ordinary corner, isolating the cusp refusal.",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "pillar_seed",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 2,
+      "height": 3
+    },
+    {
+      "name": "pillar",
+      "op": "transform",
+      "of": "pillar_seed",
+      "rotate": {
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "angle_deg": 90
+      }
+    },
+    {
+      "name": "outline",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          1
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              -4,
+              0
+            ],
+            "via": [
+              -3,
+              -1
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              -5,
+              -5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              -5
+            ]
+          },
+          {
+            "line_to": [
+              5,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              2,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "lip",
+      "op": "extrude",
+      "profile": "outline",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "part",
+      "op": "fuse",
+      "a": "pillar",
+      "b": "lip"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          -2,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_pillar",
+      "point": [
+        0,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_lip",
+      "point": [
+        3,
+        -3,
+        1.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_the_bite",
+      "point": [
+        -3,
+        -0.5,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_the_lip",
+      "point": [
+        -3,
+        -3,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "expect_error": "tangent-chain",
+    "genus": 0
+  }
+}

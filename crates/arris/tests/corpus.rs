@@ -1380,9 +1380,12 @@ corpus_tests! {
     /// a corner patch, refused as `TangentChain` (ADR-0042 §6).
     blend_cusp_crescent_both_arcs_fillet => run "blend/cusp-crescent-both-arcs-fillet";
     /// A lip's underside arc filleted to an overhang tip, the cusp of FTC-06,
-    /// its edges of opposite senses: Open CASCADE caps it with B-spline faces,
-    /// and Arris refuses it as `TangentChain` (ADR-0042 §6).
+    /// its edges of opposite senses: the pillar wall cuts the exact stripe,
+    /// kept as one face rather than Open CASCADE's two patches (ADR-0079).
     blend_cusp_overhang_tip_fillet => run "blend/cusp-overhang-tip-fillet";
+    /// The pillar's concave underside arc at the same overhang tip: both
+    /// kernels refuse it, Arris as `TangentChain` (ADR-0079).
+    blend_cusp_overhang_tip_pillar_fillet => run "blend/cusp-overhang-tip-pillar-fillet";
     /// A pocket's vertical corner filleted: a concave blend adding material, at
     /// a concave corner with the floor and a convex one with the block's top.
     blend_pocket_corner_fillet => run "blend/pocket-corner-fillet";

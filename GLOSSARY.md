@@ -194,6 +194,10 @@ the edge's tolerance: the stripe narrows to a pole at the vertex, or stops
 short on its narrowest exact arc with the edge's remnant running on
 (ADR-0062, ADR-0074).
 
+**Overhang tip**:
+A cusp whose two edges have opposite senses, its walls on either side of
+the face they share (ADR-0079).
+
 **Healing**:
 What the STEP reader repairs in a file it reads (grown tolerances, turned
 faces), recorded on the body (ADR-0058).

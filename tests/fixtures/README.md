@@ -276,7 +276,9 @@ of the step that made the fixture pass, and a later change to it is a
   pulls clear of a fixed neighbour, `Gap`, where Open CASCADE makes nothing
   and the oracle records the empty result — ADR-0048 §6; an `expect_error`
   recipe's oracle may be degenerate without the recipe saying
-  `degenerate`, which the two together never do, and the runner still
+  `degenerate`, which the two together never do. A final fillet or chamfer
+  reporting not done is recorded as no solid when `expect_error` is set;
+  operand errors and script checkpoints retain their refusals. The runner still
   asserts the named error, not any `Degenerate`; a push whose
   built result has faces running into each other away from their shared
   edges, `SelfIntersects`, from the checker's global level — ADR-0048 §7; a
