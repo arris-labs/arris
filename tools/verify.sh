@@ -10,13 +10,13 @@
 # `<sha>` holds `queued`, `running`, `pass` or `fail`, `<sha>.log` the output,
 # `<sha>.pid` the runner while it lives. `--status` prints `none` for a sha
 # never verified. One verification runs at a time (`arris-verify/lock`, which
-# `tools/full-gate.sh` holds for its run too); a second waits its turn.
+# `tools/full-gate.sh` and `tools/at-commit.sh` hold for their runs too); a
+# second waits its turn.
 #
 # The tree is one linked worktree, `arris-verify/tree`, detached at each sha
-# in turn so cargo rebuilds only what changed. Its build output is
-# `<checkout>/target/verify`, never the checkout's `target/`: the tree's path
-# is baked into test binaries (`env!("CARGO_MANIFEST_DIR")`) and cargo reuses
-# a binary whose inputs it thinks unchanged.
+# in turn (`tools/verify-tree.sh`, which says why its build output is
+# `<checkout>/target/verify`). `tools/at-commit.sh` runs other commands on it
+# under the same lock.
 #
 # Memory (ADR-0078): the run is in its own scope bounded lower than the
 # hook's, MemoryHigh 20G and MemoryMax 24G, so a verification beside the
@@ -60,13 +60,7 @@ echo running >"$dir/$sha"
 
 verdict=fail
 {
-  tree=$dir/tree
-  if [ ! -e "$tree/.git" ]; then
-    git worktree prune
-    git worktree add --detach --force "$tree" "$sha" >/dev/null
-  else
-    git -C "$tree" checkout --quiet --force --detach "$sha"
-  fi
+  tree=$("$(dirname "$(realpath "$0")")/verify-tree.sh" "$sha") || exit 1
   cd "$tree" || exit 1
   export CARGO_TARGET_DIR=$checkout/target/verify
   export CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-16}

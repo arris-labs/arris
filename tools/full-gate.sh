@@ -7,6 +7,10 @@
 # exit code is non-zero when anything failed.
 #
 #   tools/full-gate.sh <log>
+#   tools/at-commit.sh <sha> tools/full-gate.sh <log>
+#                     the gate of <sha> on the verification's tree, while
+#                     the checkout moves on (ADR-0081): what `/retire-plan`
+#                     runs; <log> absolute
 #
 # About an hour here: run it with `run_in_background` and wait for its
 # completion notification. Never `nohup … &`, which sends none. The
@@ -32,11 +36,14 @@ echo $$ >"$lock"
 
 # The verification's lock (`tools/verify.sh`, ADR-0078): one heavy build at a
 # time, so a verification in flight finishes first, and none starts during
-# this run (a new one queues behind it).
-vdir=$(realpath "$(git rev-parse --git-common-dir)")/arris-verify
-mkdir -p "$vdir"
-exec 8>>"$vdir/lock"
-flock -n 8 || { echo "full-gate: a verification is running; waiting for it" >&2; flock 8; }
+# this run (a new one queues behind it). Under `tools/at-commit.sh` it is
+# held already (ARRIS_VERIFY_LOCKED).
+if [ -z "${ARRIS_VERIFY_LOCKED:-}" ]; then
+  vdir=$(realpath "$(git rev-parse --git-common-dir)")/arris-verify
+  mkdir -p "$vdir"
+  exec 8>>"$vdir/lock"
+  flock -n 8 || { echo "full-gate: a verification is running; waiting for it" >&2; flock 8; }
+fi
 
 # Half the cores, as the hook; the case counts are the tests' own defaults.
 export CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-16}

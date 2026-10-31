@@ -15,15 +15,19 @@ Deletion is the "done" signal; anything worth keeping moves first.
 
 1. **Verify, starting the gate.** Every step of `docs/plans/<slug>.md`
    ticked (never tick one here). Start the acceptance's runs first, in the
-   background (`run_in_background`; no wait loop, `.agents/rules/git.md`):
-   the plan's **full gate**, `tools/full-gate.sh <scratchpad>/gate.log`
-   (about an hour; its last lines name every red test), then, in one
-   background shell after it, `ARRIS_ORACLE_CACHE=off` for the oracle
-   comparisons the plan touched, `cargo nextest run -p <crate> --features
-   parallel` for each of `arris-mesh`, `arris-ops`, `arris` whose source
-   changed, and `tools/py-test.sh` when the plan touched `crates/arris-py`.
-   Steps 2–4 run while they do. Nothing commits until the gate is green;
-   anything red: stop and report. A plan whose diff (`git diff --name-only`
+   background (`run_in_background`; no wait loop, `.agents/rules/git.md`),
+   on the plan's tip's own tree so the checkout moves on (ADR-0081):
+   `tools/at-commit.sh HEAD sh -c '<runs>'`, the runs being the plan's
+   **full gate**, `tools/full-gate.sh <scratchpad>/gate.log` (absolute;
+   about an hour; its last lines name every red test), then
+   `ARRIS_ORACLE_CACHE=off` for the oracle comparisons the plan touched,
+   `cargo nextest run -p <crate> --features parallel` for each of
+   `arris-mesh`, `arris-ops`, `arris` whose source changed, and
+   `tools/py-test.sh` when the plan touched `crates/arris-py`. Steps 2–4
+   run while they do, the review's fixes committed as they come. The
+   retirement commit waits for the gate green and HEAD verified `pass`;
+   anything red: stop and report (a conductor fixes it by `/work`'s
+   *Conduct* step 4). A plan whose diff (`git diff --name-only`
    over its commits) reaches none of `crates/`, `tests/`, `fuzz/`,
    `Cargo.*`, `clippy.toml`, `rust-toolchain.toml`, `.config/`,
    `.githooks/` or `tools/*gate*` runs no full gate: its commits' hooks
@@ -36,7 +40,7 @@ Deletion is the "done" signal; anything worth keeping moves first.
    plan's commits may sit between them, so it reads each with `git show`,
    not one range diff). Report its findings by axis, unmerged. Fix a hard
    finding in its own commit (`fix(scope): … (plans/<slug> review)`),
-   made once the gate is green. A judgement finding the agent decides on the
+   made at once: the gate reads the tip's tree, not the checkout. A judgement finding the agent decides on the
    charter's terms (`SEED.md`), stating the decision and its reason in the
    reply — a choice between fixes included; only a product question (what
    the kernel offers its callers) waits for the human. One left
