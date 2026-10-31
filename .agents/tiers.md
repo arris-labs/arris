@@ -31,8 +31,21 @@ The conductor needs no tier of its own: it starts steps, checks what
 landed and runs `/retire-plan`, whose review and hard fixes are
 subagents. Tier 2 is enough; it conducted development-throughput.
 
+## ChatGPT (OpenAI models)
+
+| Tier | Model | Reasoning effort |
+|---|---|---|
+| 1 | GPT-6.1-Sol | medium |
+| 2 | GPT-6.1-Sol | high |
+| 3 | GPT-6-Astra | xhigh |
+
+Effort is pinned here rather than inherited: a tier-3 step is the one that
+needs the deepest reasoning, and the session's setting may be lower. The
+conductor for this harness is not built yet (`docs/BACKLOG.md`); until it
+is, a step runs in a fresh session on its tier's model and effort.
+
 ## Other harnesses
 
-None yet. A harness gets its table here when it first runs a plan. One
-whose subagents cannot be given a model runs a plan's steps one at a time,
-each in a fresh session started on the tier's model.
+A harness gets its table here when it first runs a plan. One whose
+subagents cannot be given a model runs a plan's steps one at a time, each
+in a fresh session started on the tier's model.
