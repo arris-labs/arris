@@ -128,8 +128,9 @@ geometric case within a given design; **[3]** unproven.
 - `blend/cusp-overhang-tip-pillar-fillet` is refused as `TangentChain`.
 - `cusps_{fillet,chamfer}_as_their_sections` pass over the overhang scene at
   256 cases in the full gate.
-- On FTC-06, no overhang-tip end that Open CASCADE builds is refused by
-  Arris.
+- On FTC-06, no convex overhang-tip end that Open CASCADE builds is
+  refused by Arris; the 8 concave ones are
+  `regression/nist-ftc-06-concave-overhang-fillet` (fitted caps).
 - The real parts' `fillet` row stays 0 of 38, and the script corpus's
   `fillet` refusals stay at 1.
 - `tools/full-gate.sh` is green, with no panic.
@@ -150,13 +151,11 @@ geometric case within a given design; **[3]** unproven.
   the concave one is still refused.
 - `AGENTS.md` current state: M5 done; next is the cycle's next plan.
 ## Open questions
-- **Acceptance, for the human (step 3 finding).** "On FTC-06, no
-  overhang-tip end that Open CASCADE builds is refused by Arris" cannot
-  hold: Open CASCADE builds all 8 concave requests (fitted caps) and Arris
-  refuses them as `TangentChain`. Proposed wording: "...no *convex*
-  overhang-tip end that Open CASCADE builds is refused by Arris; the 8
-  concave ones are `regression/nist-ftc-06-concave-overhang-fillet`".
-  The overall acceptance and step 4 are unchanged until decided.
+- **Acceptance (step 3 finding), settled 2026-10-31 (human: option 1).**
+  Open CASCADE builds all 8 concave FTC-06 requests with fitted caps and
+  Arris refuses them as `TangentChain`, so the acceptance names the convex
+  ends only; the concave ones are the ignored regression fixture and a
+  backlog line.
 
 Otherwise none left for the human. Settled by the agent: the face count (one face,
 `counts_differ`, above) and the variants' radii (Tolerances). A variant
