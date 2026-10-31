@@ -18,6 +18,10 @@
 # fails fast rather than thrashing; on this machine's 61 GiB that leaves
 # the terminal and the other project's builds about 13 GiB. Override with
 # ARRIS_GATE_MEMORY_HIGH / ARRIS_GATE_MEMORY_MAX / ARRIS_GATE_MEMORY_SWAP.
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -uo pipefail
 [ $# -gt 0 ] || { echo "usage: tools/gate-scope.sh <command> [args…]" >&2; exit 2; }
 
@@ -49,3 +53,5 @@ if [ "$rc" = 137 ] || [ "$rc" = 143 ]; then
   echo "gate-scope: $ARRIS_GATE_BOUND; raise ARRIS_GATE_MEMORY_MAX or set ARRIS_GATE_SCOPE=off" >&2
 fi
 exit "$rc"
+exit
+}

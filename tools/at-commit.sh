@@ -16,6 +16,10 @@
 # Memory: it runs beside the agent's builds, as a verification does, so in a
 # scope bounded as one (ADR-0078 §6): MemoryHigh 20G, MemoryMax 24G,
 # ARRIS_VERIFY_MEMORY_HIGH / ARRIS_VERIFY_MEMORY_MAX override.
+# The body is one brace group, which bash reads whole before running it:
+# an edit to this file while it runs (a verification, a gate) cannot
+# reach the run.
+{
 set -uo pipefail
 [ $# -ge 2 ] || { echo "usage: tools/at-commit.sh <sha> <command> [args…]" >&2; exit 2; }
 checkout=$(git rev-parse --show-toplevel) || exit 2
@@ -42,3 +46,5 @@ export NEXTEST_TEST_THREADS=${NEXTEST_TEST_THREADS:-16}
 export RAYON_NUM_THREADS=${RAYON_NUM_THREADS:-16}
 echo "at-commit: $(git log -1 --format='%h %s') in $tree" >&2
 "$@"
+exit
+}
