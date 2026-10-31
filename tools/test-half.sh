@@ -11,6 +11,12 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 gate=$(tools/gate.sh since "$@")
 gate_value() { sed -n "s/^$1=//p" <<<"$gate"; }
+for t in $(gate_value tool_tests); do
+  echo "test-half: $t"
+  "$t"
+done
+# A range that reaches no crate and no prose (tools alone) builds nothing.
+[ "$(gate_value filter)" != 'none()' ] || exit 0
 echo "test-half: cargo nextest --profile fast ($(gate_value cases) cases)"
 ARRIS_PROPTEST_CASES=$(gate_value cases) ARRIS_DIFF_CASES=$(gate_value diff_cases) \
   ARRIS_READ_BACK=$(gate_value read_back) cargo nextest run --workspace --profile fast \

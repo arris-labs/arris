@@ -116,10 +116,24 @@ lacks "read-back real" "$(key filter "$(plan tests/fixtures/real/c/fixture.json)
 equals "read-back none" "$(key read_back "$(plan crates/arris-io/src/lib.rs)")" ""
 
 # Anything the table cannot place: the whole profile.
-for p in .config/nextest.toml Cargo.toml Cargo.lock tools/gate.sh fuzz/a.rs \
-  .githooks/pre-commit .github/workflows/ci.yml no/such/place.txt crates/stray.txt; do
+for p in .config/nextest.toml Cargo.toml Cargo.lock fuzz/a.rs tools/real-parts.waits \
+  tools/oracle/expected.py .githooks/pre-commit .github/workflows/ci.yml \
+  no/such/place.txt crates/stray.txt; do
   equals "unplaced $p" "$(key filter "$(plan "$p")")" "all()"
 done
+
+# A top-level tool script: no Rust test runs it, so no nextest; its own
+# shell test when it has one, named by the script or by the test.
+out=$(plan tools/gate.sh)
+equals "tool filter" "$(key filter "$out")" "none()"
+equals "tool test" "$(key tool_tests "$out")" "tools/gate-test.sh"
+equals "tool test by test" "$(key tool_tests "$(plan tools/gate-test.sh tools/gate.sh)")" "tools/gate-test.sh"
+equals "tool without test" "$(key tool_tests "$(plan tools/stop-gate.sh)")" ""
+equals "harness config is prose" "$(key filter "$(plan .claude/settings.json)")" \
+  "binary_id(arris::docs_refs) | binary_id(arris-check::doc_drift)"
+out=$(plan tools/bash-guard.sh crates/arris-geom/src/curve.rs)
+has "tool beside code" "$(key filter "$out")" "rdeps(arris-geom)"
+equals "tool beside code" "$(key tool_tests "$out")" "tools/bash-guard-test.sh"
 
 # Prose plus code: the code's gate and the docs tests.
 f=$(key filter "$(plan docs/ROADMAP.md crates/arris-geom/src/curve.rs)")

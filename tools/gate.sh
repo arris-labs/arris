@@ -22,6 +22,8 @@
 #               or removes a `///` or `//!` line, or a `.md` under `crates/`
 #               (they are `include_str!`-ed) changed
 #   full        yes under `ARRIS_GATE=full`: the old gate, every test at 256
+#   tool_tests  the `tools/*-test.sh` scripts the changed tools have, space
+#               separated; `none()` with no prose means nothing else runs
 #
 # Classification, from the path:
 #   crates/<c>/src (and Cargo.toml)   <c> and everything that depends on it
@@ -49,7 +51,13 @@
 #                                     fixtures alone (`read_back=`, the
 #                                     hook's `ARRIS_READ_BACK`, read by
 #                                     `arris-io/tests/step_read.rs`)
-#   prose (`*.md`, docs/, .agents/)   the docs tests, nothing else
+#   prose (`*.md`, docs/, .agents/, .claude/)   the docs tests, nothing else
+#   tools/<name>.sh (top level)       no nextest and no doctests: no Rust test
+#                                     runs a top-level script; its own
+#                                     `tools/<name>-test.sh` when there is one
+#                                     (`tool_tests=`). tools/oracle/ and the
+#                                     other files under tools/ are read by
+#                                     tests and stay `anything else`
 #   anything else                     every test of the `fast` profile
 #
 # A path the table cannot place costs the whole profile, never less; nothing
@@ -84,6 +92,7 @@ whole=no
 prose=no
 doc=no
 read_back=()    # staged fixtures whose area has a STEP round trip
+tool_tests=()   # tools/<name>-test.sh of the changed tools/<name>.sh
 
 add_term() {
   local t
@@ -160,7 +169,14 @@ while IFS= read -r p; do
           esac ;;
         *) whole=yes ;;
       esac ;;
-    *.md|.agents/*|docs/*) prose=yes ;;
+    *.md|.agents/*|docs/*|.claude/*) prose=yes ;;
+    tools/*/*) whole=yes ;;
+    tools/*.sh)
+      t=${p#tools/}; t=${t%.sh}; t=${t%-test}
+      if [ -f "tools/$t-test.sh" ]; then
+        for x in ${tool_tests[@]+"${tool_tests[@]}"} ""; do [ "$x" = "tools/$t-test.sh" ] && break; done
+        [ "$x" = "tools/$t-test.sh" ] || tool_tests+=("tools/$t-test.sh")
+      fi ;;
     *) whole=yes ;;
   esac
 done <<<"$paths"
@@ -225,3 +241,4 @@ echo "diff_cases=$cases"
 echo "doc=$doc"
 echo "full=$full"
 echo "read_back=$(join , ${read_back[@]+"${read_back[@]}"})"
+echo "tool_tests=${tool_tests[*]+"${tool_tests[*]}"}"
