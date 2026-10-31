@@ -32,8 +32,18 @@ run 0 false 'grep -n "sleep" tools/verify.sh'
 # git stash, foreground or not
 run 2 false 'git stash; cargo test; git stash pop'
 run 2 true 'cd x && git stash push -m wip'
-run 2 false 'git -C repo stash list'
+run 0 false 'git -C repo stash list'
+run 0 false 'git stash show -p stash@{0} | head'
+run 2 false 'git stash list; git stash drop'
+run 2 false 'git stash'
 run 0 false 'git log --grep=stash'
 run 0 false 'git status --short'
+# heredoc bodies and quoted text are data
+run 0 false "$(printf 'git commit -F - <<%s\nrefuse git stash; while x; do sleep 1; done\n%s\ngit log -1' "'EOF'" EOF)"
+run 0 false "$(printf 'cat >f <<-END\n\tgit stash pop\n\tEND\nls')"
+run 2 false "$(printf 'cat >f <<EOF\nx\nEOF\ngit stash')"
+run 0 false 'git commit -m "drop the git stash rule"'
+run 2 false 'cat <<<word; git stash'
+run 0 false "grep -n 'git stash' tools/bash-guard.sh"
 
 [ "$fail" = 0 ] && echo "bash-guard-test: ok" || exit 1
