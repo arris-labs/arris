@@ -383,46 +383,137 @@ pub(super) fn arc_between(t_a: f64, t_b: f64, t_mid: f64) -> Result<(Interval, b
         .map_err(|_| invariant("an end arc of positive length"))
 }
 
-/// The edge, the two faces and the ball [`ruling_ball`] fits: the edge
-/// through `origin` along `d`, the plane's and the cylinder's outward
-/// normals at it, the cylinder's `axis` and `big` radius, the ball's
-/// `radius` and the side `s` it is on.
+/// A face's trace in the plane square to a ruling edge: the curve the face
+/// cuts there, which the blending ball rolls along.
+#[derive(Clone, Copy)]
+pub(super) enum Trace<'a> {
+    /// A plane, of outward normal `normal`.
+    Line { normal: Vec3 },
+    /// A cylinder about `axis` (parallel to the edge) of radius `big`, whose
+    /// outward normal at the edge is `normal`.
+    Circle {
+        normal: Vec3,
+        axis: &'a Frame,
+        big: f64,
+    },
+}
+
+/// The edge and the two traces [`ruling_ball`] fits a ball to: the edge
+/// through `origin` along `d`, the ball's `radius` and the side `s` it is on.
 #[derive(Clone, Copy)]
 pub(super) struct RulingBall<'a> {
     pub(super) origin: Point3,
     pub(super) d: Vec3,
-    pub(super) n_plane: Vec3,
-    pub(super) n_cylinder: Vec3,
-    pub(super) axis: &'a Frame,
-    pub(super) big: f64,
+    pub(super) traces: [Trace<'a>; 2],
     pub(super) radius: f64,
     pub(super) s: f64,
 }
 
 /// The ball of `radius` rolling along a line edge, through `origin` along
-/// `d`, between a plane of outward normal `n_plane` and a cylinder
-/// (`axis`, radius `big`) whose ruling the edge is, `n_cylinder` its
-/// outward normal at the edge and `s` `−1` on a convex edge, `1` on a
-/// concave one: the ball's centre level with `origin`, and the directions
-/// from it to its contact with the plane and with the cylinder. The
-/// centre is on the plane offset by `r` into the ball's side and on the
-/// cylinder coaxial with the face at `R ∓ r` — `R − r` when the ball is
-/// inside the cylinder, `R + r` when outside — the one of
-/// the two lines where they meet on the edge's side of the axis, the side
-/// the edge itself is on and the root follows from `r = 0`. `None` when
-/// no ball of `radius` touches both, the plane offset clear of the
-/// cylinder or the cylinder's offset at no radius.
-pub(super) fn ruling_ball(ball: &RulingBall<'_>, tol: Tolerance) -> Option<(Point3, Vec3, Vec3)> {
+/// `d`, between two faces whose traces are planes or cylinders about axes
+/// parallel to `d`, the edge a ruling of each cylinder; `s` is `−1` on a
+/// convex edge, `1` on a concave one. Returns the ball's centre, level with
+/// `origin`, and the directions from it to its contact with each trace, in
+/// the traces' order.
+///
+/// The centre is where the two traces offset by `r` toward the ball cross:
+/// a line moves `r` along its normal, a circle becomes the coaxial one at
+/// `R ∓ r` (`R − r` when the ball is inside the cylinder, `R + r` when
+/// outside). Of the two crossings it is the one on the edge's own side of
+/// the line (a plane and a cylinder) or of the line through the two axes
+/// (two cylinders), the side the edge is on, whose limit as `r → 0` is the
+/// edge. `None` when no ball of `radius` touches both: the offsets clear of
+/// one another, a circle offset to no radius, coaxial cylinders, or two
+/// planes, which are the stripe's own construction.
+pub(super) fn ruling_ball(ball: &RulingBall<'_>, tol: Tolerance) -> Option<(Point3, [Vec3; 2])> {
     let RulingBall {
         origin,
         d,
-        n_plane,
-        n_cylinder,
-        axis,
-        big,
+        traces,
         radius,
         s,
     } = *ball;
+    match traces {
+        [
+            Trace::Line { normal },
+            Trace::Circle {
+                normal: n_cylinder,
+                axis,
+                big,
+            },
+        ] => {
+            let (centre, on_plane, on_cylinder) =
+                plane_cylinder(origin, d, normal, n_cylinder, axis, big, radius, s, tol)?;
+            Some((centre, [on_plane, on_cylinder]))
+        }
+        [
+            Trace::Circle {
+                normal: n_cylinder,
+                axis,
+                big,
+            },
+            Trace::Line { normal },
+        ] => {
+            let (centre, on_plane, on_cylinder) =
+                plane_cylinder(origin, d, normal, n_cylinder, axis, big, radius, s, tol)?;
+            Some((centre, [on_cylinder, on_plane]))
+        }
+        [
+            Trace::Circle {
+                normal: n_a,
+                axis: axis_a,
+                big: big_a,
+            },
+            Trace::Circle {
+                normal: n_b,
+                axis: axis_b,
+                big: big_b,
+            },
+        ] => {
+            // Each axis's point level with the edge, and the face's normal
+            // against the axis's outward direction there.
+            let level = |axis: &Frame| axis.origin() + (origin - axis.origin()).dot(&d) * d;
+            let (pa, pb) = (level(axis_a), level(axis_b));
+            let sigma = |n: Vec3, p: Point3| n.dot(&(origin - p)).signum();
+            let rho_a = big_a + s * sigma(n_a, pa) * radius;
+            let rho_b = big_b + s * sigma(n_b, pb) * radius;
+            let between = pb - pa;
+            let gap = between.norm();
+            if rho_a <= tol.linear || rho_b <= tol.linear || gap <= tol.linear {
+                return None;
+            }
+            let along = between / gap;
+            let w = d.cross(&along);
+            // The crossing at `x` along the axes' line and `y` off it.
+            let x = (gap * gap + rho_a * rho_a - rho_b * rho_b) / (2.0 * gap);
+            let across = rho_a * rho_a - x * x;
+            if across <= 0.0 || across.sqrt() <= tol.linear {
+                return None;
+            }
+            let side = (origin - pa).dot(&w).signum();
+            let centre = pa + x * along + side * across.sqrt() * w;
+            let contact = |n: Vec3, p: Point3, rho: f64| -s * sigma(n, p) * ((centre - p) / rho);
+            Some((centre, [contact(n_a, pa, rho_a), contact(n_b, pb, rho_b)]))
+        }
+        [Trace::Line { .. }, Trace::Line { .. }] => None,
+    }
+}
+
+/// [`ruling_ball`] between a plane of outward normal `n_plane` and a
+/// cylinder (`axis`, radius `big`) of outward normal `n_cylinder` at the
+/// edge: the centre and the directions to the plane and to the cylinder.
+#[allow(clippy::too_many_arguments)]
+fn plane_cylinder(
+    origin: Point3,
+    d: Vec3,
+    n_plane: Vec3,
+    n_cylinder: Vec3,
+    axis: &Frame,
+    big: f64,
+    radius: f64,
+    s: f64,
+    tol: Tolerance,
+) -> Option<(Point3, Vec3, Vec3)> {
     // The axis's point level with the edge's origin, and the face's
     // normal against the axis's outward direction there.
     let axis_point = axis.origin() + (origin - axis.origin()).dot(&d) * d;
@@ -555,14 +646,19 @@ pub(super) fn stripe(
             let (axis_origin, x) = match cylinder {
                 None => (origin + unit_offset * radius, [-s * n1, -s * n2]),
                 Some((k, axis, big)) => {
-                    let (centre, on_plane, on_cylinder) = ruling_ball(
+                    let mut traces = [Trace::Line {
+                        normal: normals[1 - k],
+                    }; 2];
+                    traces[k] = Trace::Circle {
+                        normal: normals[k],
+                        axis: &axis,
+                        big,
+                    };
+                    let (centre, x) = ruling_ball(
                         &RulingBall {
                             origin,
                             d,
-                            n_plane: normals[1 - k],
-                            n_cylinder: normals[k],
-                            axis: &axis,
-                            big,
+                            traces,
                             radius,
                             s,
                         },
@@ -574,8 +670,6 @@ pub(super) fn stripe(
                             Reason::Blend(BlendReason::TooLarge),
                         )
                     })?;
-                    let mut x = [on_plane; 2];
-                    x[k] = on_cylinder;
                     (centre, x)
                 }
             };
@@ -855,4 +949,167 @@ pub(super) fn contacts(
         .try_into()
         .map_err(|_| invariant("two contacts of the blend"))?;
     Ok((contacts, run))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arris_math::Precision;
+    use proptest::prelude::*;
+
+    fn tol() -> Tolerance {
+        Precision::DEFAULT.tolerance()
+    }
+
+    fn circle<'a>(axis: &'a Frame, big: f64, normal: Vec3) -> Trace<'a> {
+        Trace::Circle { normal, axis, big }
+    }
+
+    /// Two cylinders about the lines through `pa` and `pb` along `d`, meeting
+    /// on the ruling through `edge`, which must sit level with both.
+    #[allow(clippy::too_many_arguments)]
+    fn two_circles(
+        pa: Point3,
+        pb: Point3,
+        d: Vec3,
+        edge: Point3,
+        ra: f64,
+        rb: f64,
+        r: f64,
+        s: f64,
+    ) -> Option<(Point3, [Vec3; 2])> {
+        let fa = Frame::new(pa, d, (pb - pa).cross(&d)).unwrap();
+        let fb = Frame::new(pb, d, (pb - pa).cross(&d)).unwrap();
+        let (na, nb) = ((edge - pa) / ra, (edge - pb) / rb);
+        ruling_ball(
+            &RulingBall {
+                origin: edge,
+                d,
+                traces: [circle(&fa, ra, na), circle(&fb, rb, nb)],
+                radius: r,
+                s,
+            },
+            tol(),
+        )
+    }
+
+    /// The ogive bar's fillet: arcs of radius 2 about (4, ±1), meeting at
+    /// (4 + √3, 0), convex; centre at (4 + √((2 − r)² − 1), 0).
+    #[test]
+    fn ogive_centre_is_the_closed_form() {
+        let r = 0.2;
+        let (centre, x) = two_circles(
+            Point3::new(4.0, 1.0, 0.0),
+            Point3::new(4.0, -1.0, 0.0),
+            Vec3::z(),
+            Point3::new(4.0 + 3f64.sqrt(), 0.0, 0.5),
+            2.0,
+            2.0,
+            r,
+            -1.0,
+        )
+        .unwrap();
+        let want = Point3::new(4.0 + ((2.0 - r) * (2.0 - r) - 1.0).sqrt(), 0.0, 0.5);
+        assert!((centre - want).norm() < 1e-12, "{centre:?}");
+        // Each contact is the foot of the centre on its wall.
+        for (dir, p) in x
+            .iter()
+            .zip([Point3::new(4.0, 1.0, 0.5), Point3::new(4.0, -1.0, 0.5)])
+        {
+            let foot = centre + dir * r;
+            assert!(((foot - p).norm() - 2.0).abs() < 1e-12);
+        }
+    }
+
+    /// The figure eight's waist: discs of radius 1 about (0, 0) and
+    /// (1.5, 0), concave; centre at (0.75, √((1 + r)² − 0.75²)).
+    #[test]
+    fn waist_centre_is_the_closed_form() {
+        let r = 0.2;
+        let (centre, _) = two_circles(
+            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(1.5, 0.0, 0.0),
+            Vec3::z(),
+            Point3::new(0.75, (1.0f64 - 0.75 * 0.75).sqrt(), 0.5),
+            1.0,
+            1.0,
+            r,
+            1.0,
+        )
+        .unwrap();
+        let want = Point3::new(0.75, ((1.0 + r) * (1.0 + r) - 0.75 * 0.75).sqrt(), 0.5);
+        assert!((centre - want).norm() < 1e-12, "{centre:?}");
+    }
+
+    /// A ball too large for the ogive's corner (`R − r` below the distance
+    /// the offsets need to cross) is refused, not clamped.
+    #[test]
+    fn offsets_that_do_not_cross_give_none() {
+        let ball = two_circles(
+            Point3::new(4.0, 1.0, 0.0),
+            Point3::new(4.0, -1.0, 0.0),
+            Vec3::z(),
+            Point3::new(4.0 + 3f64.sqrt(), 0.0, 0.5),
+            2.0,
+            2.0,
+            1.2, // offsets of radius 0.8 about axes 2 apart
+            -1.0,
+        );
+        assert!(ball.is_none());
+        let eaten = two_circles(
+            Point3::new(4.0, 1.0, 0.0),
+            Point3::new(4.0, -1.0, 0.0),
+            Vec3::z(),
+            Point3::new(4.0 + 3f64.sqrt(), 0.0, 0.5),
+            2.0,
+            2.0,
+            2.5, // a circle offset to no radius
+            -1.0,
+        );
+        assert!(eaten.is_none());
+    }
+
+    proptest! {
+        /// Random parallel pairs in random poses: the centre is `r` from
+        /// both walls, each contact is the foot of the centre on its wall,
+        /// and the centre is on the edge's side of the axes' line.
+        #[test]
+        fn centre_is_r_from_both_walls(
+            (az, el) in (0.0..TAU, -1.4f64..1.4),
+            ra in 0.5f64..4.0,
+            rb in 0.5f64..4.0,
+            gap_frac in 0.2f64..0.9,
+            side in prop::bool::ANY,
+            concave in prop::bool::ANY,
+            r_frac in 0.01f64..0.3,
+            at in (-5.0f64..5.0, -5.0f64..5.0, -5.0f64..5.0),
+        ) {
+            let d = Vec3::new(real::cos(el) * real::cos(az), real::cos(el) * real::sin(az), real::sin(el));
+            let e = d.cross(&Vec3::new(0.3, -0.5, 0.8)).normalize();
+            let w = d.cross(&e);
+            let pa = Point3::new(at.0, at.1, at.2);
+            // The axes closer than the radii sum, farther than their difference.
+            let (lo, hi) = ((ra - rb).abs(), ra + rb);
+            let gap = lo + (hi - lo) * gap_frac;
+            let pb = pa + e * gap;
+            let x = (gap * gap + ra * ra - rb * rb) / (2.0 * gap);
+            let y = (ra * ra - x * x).max(0.0).sqrt();
+            let sign = if side { 1.0 } else { -1.0 };
+            let edge = pa + e * x + w * (sign * y) + d * 0.7;
+            let s = if concave { 1.0 } else { -1.0 };
+            let r = r_frac * ra.min(rb);
+            if let Some((centre, dirs)) = two_circles(pa, pb, d, edge, ra, rb, r, s) {
+                for (dir, (p, big)) in dirs.iter().zip([(pa, ra), (pb, rb)]) {
+                    let p = p + d * 0.7;
+                    // The ball's surface touches the wall at the foot.
+                    let foot = centre + dir * r;
+                    prop_assert!(((foot - p).norm() - big).abs() < 1e-9);
+                    let radial = (foot - p) / big;
+                    prop_assert!((centre - foot).dot(&radial).abs() > r - 1e-9);
+                }
+                prop_assert!((centre - edge).dot(&d).abs() < 1e-9);
+                prop_assert!((centre - pa).dot(&w) * sign >= -1e-9 || y < 1e-6);
+            }
+        }
+    }
 }

@@ -71,7 +71,7 @@ given design); **[3]** unproven (robustness or a bound to establish here).
   cylinders along a ruling, at the battery's radius. It holds today's
   count by part, convex/concave and end kind. A clone without the files
   skips it.
-- [ ] Step 2 **[2]** — The section over two traces (deltas §1), with unit
+- [x] Step 2 **[2]** — The section over two traces (deltas §1), with unit
   tests. The two fixtures' centres must match the closed form
   `(4 + √((2 − r)² − 1), 0)` and `(0.75, √((1 + r)² − 0.75²))`. A
   property puts random parallel pairs in random poses and checks that the
