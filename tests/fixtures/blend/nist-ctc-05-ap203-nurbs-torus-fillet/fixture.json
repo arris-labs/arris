@@ -33,9 +33,8 @@
       "shells": 1
     },
     "genus": 10,
-    "occt_step_unread": "Open CASCADE's result is the invalid body BRepCheck_Analyzer refuses, and its STEP carries the gap: Arris's reader refuses it at a gap of 62 against a cap of 0.45 (#3667). Reading it measures the reader on a body that is no solid, not the operation; Arris's own STEP is still read back by Open CASCADE and compared",
     "counts_differ": "Open CASCADE's body is invalid and carries a 160th face; Arris's 159 are the second oracle's, the original 156 and one blend face per edge of the three-edge chain",
     "measure_differs": "Open CASCADE builds a body BRepCheck_Analyzer finds invalid, of negative volume and area (−1.2e8 and −2.4e8 on a part of 1.3e7 and 8.6e5), where the second oracle's solid is valid and removes 0.238 of volume and 0.119 of area from the part. The change in second_oracle.json, the second oracle's result minus the operand it was given, is held to Arris's own measures of the operand (ADR-0073)",
-    "step_differs": "Open CASCADE's own STEP of its invalid result reads back as a different invalid body, with 265 vertices and genus 10 where it built 267 and 9 (edges, faces, loops, shells and solids agree); Arris's STEP of the same result is still read back by Open CASCADE and held to the counts above (the corpus's compare stage)"
+    "step_differs": "Open CASCADE's own STEP of its invalid result reads back as a different invalid body, with 265 vertices and genus 10 where it built 267 and 9 (edges, faces, loops, shells and solids agree). Arris's reader does not read that file either: Open CASCADE's result is the invalid body BRepCheck_Analyzer refuses, and its STEP carries the gap: Arris's reader refuses it at a gap of 62 against a cap of 0.45 (#3667). Reading it measures the reader on a body that is no solid, not the operation; Arris's STEP of the same result is still read back by Open CASCADE and held to the counts above (the corpus's compare stage)"
   }
 }
