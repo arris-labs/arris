@@ -1,0 +1,143 @@
+{
+  "description": "a figure eight 1 thick: two discs of radius 1 centred at (0, 0) and (1.5, 0) united in one outline, whose arcs meet at (0.75, ±√(1 − 0.75²)), extruded along z; the waist's upper vertical edge chamfered at d 0.2: two cylinders with parallel axes 1.5 apart along a ruling, concave, the blend a plane through the two rulings a chord d from the edge on each wall (the oracle's own plane is a B-spline) adding material, trimmed by the two caps. The analytic volume and area are the section's closed form: the two discs' union, plus the triangle between the edge and the two contacts less the two segments of the walls' arcs inside it",
+  "params": {
+    "d": 0.2
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0.75,
+          0.6614378277661477
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              0.75,
+              -0.6614378277661477
+            ],
+            "via": [
+              -1,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              0.75,
+              0.6614378277661477
+            ],
+            "via": [
+              2.5,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "eight",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "eight",
+      "edges": [
+        [
+          0.75,
+          0.6614378277661477,
+          0.5
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0.75,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "waist_filled",
+      "point": [
+        0.75,
+        "sqrt(0.4375) + 0.01",
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above_chamfer",
+      "point": [
+        0.75,
+        "(sqrt(0.4375) + d * (0.75 * cos(atan((d / 2) / sqrt(1 - d^2 / 4))) - sqrt(0.4375) * d / 2)) + 0.01",
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "lower_waist_empty",
+      "point": [
+        0.75,
+        "-sqrt(0.4375) - 0.01",
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_chamfer",
+      "point": [
+        0.75,
+        "(sqrt(0.4375) + d * (0.75 * cos(atan((d / 2) / sqrt(1 - d^2 / 4))) - sqrt(0.4375) * d / 2))",
+        0.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_cap",
+      "point": [
+        0,
+        0,
+        1
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "(2 * pi - (2 * atan(sqrt(0.4375) / 0.75) - 0.75 * sqrt(1.75))) + (d^2 / 2 * (1.5 * sqrt(0.4375) * cos(2 * atan((d / 2) / sqrt(1 - d^2 / 4))) + 0.125 * sin(2 * atan((d / 2) / sqrt(1 - d^2 / 4)))) - 2 * (0.5 * (2 * atan((d / 2) / sqrt(1 - d^2 / 4)) - sin(2 * atan((d / 2) / sqrt(1 - d^2 / 4))))))",
+    "area": "2 * ((2 * pi - (2 * atan(sqrt(0.4375) / 0.75) - 0.75 * sqrt(1.75))) + (d^2 / 2 * (1.5 * sqrt(0.4375) * cos(2 * atan((d / 2) / sqrt(1 - d^2 / 4))) + 0.125 * sin(2 * atan((d / 2) / sqrt(1 - d^2 / 4)))) - 2 * (0.5 * (2 * atan((d / 2) / sqrt(1 - d^2 / 4)) - sin(2 * atan((d / 2) / sqrt(1 - d^2 / 4))))))) + (4 * pi - 4 * atan(sqrt(0.4375) / 0.75) - 4 * atan((d / 2) / sqrt(1 - d^2 / 4)) + 2 * d * (sqrt(0.4375) * cos(atan((d / 2) / sqrt(1 - d^2 / 4))) + 0.75 * d / 2))",
+    "genus": 0
+  }
+}

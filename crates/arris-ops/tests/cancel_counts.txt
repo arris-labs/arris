@@ -236,6 +236,8 @@ blend/d-notch-rim-fillet: 3
 blend/dome-rim-chamfer: 3
 blend/dome-rim-fillet: 3
 blend/drilled-torus-fillet: 206004
+blend/figure-eight-waist-chamfer: 6
+blend/figure-eight-waist-fillet: 6
 blend/fillet-into-a-leaning-step: 152
 blend/fillet-into-a-step: 6
 blend/fillet-into-a-turned-step: 2340
@@ -272,6 +274,8 @@ blend/nurbs-cap-cylinder-rim-fillet: 20090732
 blend/nurbs-slot-plate-rim-chamfer: 61383
 blend/nurbs-slot-plate-rim-fillet: 2514622
 blend/oblique-cut-cone-fillet: 152697
+blend/ogive-bar-ruling-chamfer: 6
+blend/ogive-bar-ruling-fillet: 6
 blend/pocket-corner-fillet: 6
 blend/probe-cap-and-vertical-fillet-m: 12
 blend/probe-second-fillet-m: 6

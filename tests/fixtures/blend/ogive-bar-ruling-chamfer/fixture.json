@@ -1,0 +1,161 @@
+{
+  "description": "a bar 1 thick whose end is an ogive: two arcs of radius 2, centred at (4, 1) and (4, −1), each running tangentially out of a side of the bar and meeting at (4 + √3, 0), extruded along z; the vertical edge where they meet chamfered at d 0.2: two cylinders with parallel axes 2 apart along a ruling, convex at an interior angle of 120°, the blend a plane through the two rulings that lie a chord d from the edge on each wall (the oracle's own plane is a B-spline), trimmed by the two caps. The analytic volume and area are the section's closed form: the bar's 8 − √3 + 4π/3, less the triangle between the edge and the two contacts and the two segments of the walls' arcs on its sides",
+  "params": {
+    "d": 0.2
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -1
+            ]
+          },
+          {
+            "arc_to": [
+              5.732050807568877,
+              0
+            ],
+            "via": [
+              5,
+              -0.7320508075688772
+            ]
+          },
+          {
+            "arc_to": [
+              4,
+              1
+            ],
+            "via": [
+              5,
+              0.7320508075688772
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bar",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "bar",
+      "edges": [
+        [
+          5.732050807568877,
+          0,
+          0.5
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "corner_gone",
+      "point": [
+        "4 + sqrt(3) - 0.01",
+        0,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "under_chamfer",
+      "point": [
+        "4 + sqrt(3) - d * cos(pi / 3 - atan((d / 4) / sqrt(1 - d^2 / 16))) - 0.01",
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "on_chamfer",
+      "point": [
+        "4 + sqrt(3) - d * cos(pi / 3 - atan((d / 4) / sqrt(1 - d^2 / 16)))",
+        0,
+        0.5
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_cap",
+      "point": [
+        2,
+        0,
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "outside",
+      "point": [
+        6,
+        0,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "volume": "8 - sqrt(3) + 4 * pi / 3 - (d^2 / 2 * (sqrt(3) / 2 * cos(2 * atan((d / 4) / sqrt(1 - d^2 / 16))) + 0.5 * sin(2 * atan((d / 4) / sqrt(1 - d^2 / 16)))) + 2 * (2^2 / 2 * (2 * atan((d / 4) / sqrt(1 - d^2 / 16)) - sin(2 * atan((d / 4) / sqrt(1 - d^2 / 16))))))",
+    "area": "2 * (8 - sqrt(3) + 4 * pi / 3 - (d^2 / 2 * (sqrt(3) / 2 * cos(2 * atan((d / 4) / sqrt(1 - d^2 / 16))) + 0.5 * sin(2 * atan((d / 4) / sqrt(1 - d^2 / 16)))) + 2 * (2^2 / 2 * (2 * atan((d / 4) / sqrt(1 - d^2 / 16)) - sin(2 * atan((d / 4) / sqrt(1 - d^2 / 16))))))) + (10 + 4 * pi / 3 - 8 * atan((d / 4) / sqrt(1 - d^2 / 16)) + 2 * d * sin(pi / 3 - atan((d / 4) / sqrt(1 - d^2 / 16))))",
+    "genus": 0
+  }
+}

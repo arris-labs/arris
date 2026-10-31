@@ -537,8 +537,8 @@ fn plane_cylinder(
 
 /// The stripe of one edge: the blend surface — a fillet's cylinder or a
 /// chamfer's plane — and its two contact lines decided from the edge's two
-/// faces, two planes, a plane and a cylinder along a ruling, or (a fillet)
-/// two cylinders with parallel axes along a ruling, its ends not yet.
+/// faces, two planes, a plane and a cylinder along a ruling, or two
+/// cylinders with parallel axes along a ruling, its ends not yet.
 pub(super) fn stripe(
     m: &Model,
     view: &BodyView,
@@ -746,7 +746,6 @@ pub(super) fn stripe(
             )
         }
         (Kind::Chamfer { .. }, Some(_)) => return Err(unsupported()),
-        (Kind::Chamfer { .. }, None) if circles.is_some() => return Err(unsupported()),
         (Kind::Chamfer { distance }, None) => {
             let (lo, beta) = order([-s * n1, -s * n2]);
             let hi = 1 - lo;
@@ -757,6 +756,27 @@ pub(super) fn stripe(
                 let into = UnitVec3::try_new(w, tol.angular)
                     .ok_or(invariant("a contact off the blended edge"))?;
                 *offset = into.into_inner() * distance;
+            }
+            // On a cylinder's section the contact is where the circle of
+            // radius `distance` about the edge meets the wall's circle: the
+            // chord, at the angle `asin(distance / 2R)` from the tangent
+            // toward the axis (ADR-0036 §2).
+            if let Some(walls) = &circles {
+                for (offset, (axis, big)) in contact_offset.iter_mut().zip(walls) {
+                    let tangent = *offset / distance;
+                    let mut radial = origin - axis.origin();
+                    radial -= d * radial.dot(&d);
+                    let sin = distance / (2.0 * big);
+                    if radial.norm() <= tol.linear || sin >= 1.0 - tol.angular {
+                        return Err(degenerate(
+                            vec![e, forward(f1), forward(f2)],
+                            Reason::Blend(BlendReason::TooLarge),
+                        ));
+                    }
+                    let toward_axis = -radial / radial.norm();
+                    let cos = (1.0 - sin * sin).sqrt();
+                    *offset = (tangent * cos + toward_axis * sin) * distance;
+                }
             }
             let chord = contact_offset[hi] - contact_offset[lo];
             let width = chord.norm();

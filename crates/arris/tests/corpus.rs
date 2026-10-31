@@ -1558,6 +1558,12 @@ corpus_tests! {
     /// A figure eight's waist filleted: two cylinders with parallel axes,
     /// concave, the blend a cylinder adding material.
     blend_figure_eight_waist_fillet => run "blend/figure-eight-waist-fillet";
+    /// The ogive bar's corner chamfered at a chord `d` on each arc: a plane
+    /// through the two contact rulings, where Open CASCADE writes a B-spline.
+    blend_ogive_bar_ruling_chamfer => run "blend/ogive-bar-ruling-chamfer";
+    /// A figure eight's waist chamfered at a chord `d` on each disc: a plane
+    /// adding material.
+    blend_figure_eight_waist_chamfer => run "blend/figure-eight-waist-chamfer";
     /// A cube whose filleted edge lies 1.3e-7 off one of its faces in the file,
     /// as two of NIST FTC-06's edges do: within the edge's tolerance, outside
     /// the face's.

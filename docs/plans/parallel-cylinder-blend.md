@@ -85,10 +85,15 @@ given design); **[3]** unproven (robustness or a bound to establish here).
   Open CASCADE's volume and area agree with the closed form to 1e-10 on
   both, so the oracle is right here and holds the fixtures beside it; the
   B-spline distance is a step 4 (chamfer) question.
-- [ ] Step 4 **[2]** — The chamfer arm. New fixtures `blend/ogive-bar-ruling-chamfer`
+- [x] Step 4 **[2]** — The chamfer arm. New fixtures `blend/ogive-bar-ruling-chamfer`
   and `blend/figure-eight-waist-chamfer` with oracle values
   (`tools/oracle/`). Their contacts are at chord `d` (ADR-0036 §2), held
   to the closed form where Open CASCADE's plane is a B-spline.
+  *Settled* (step 4): Open CASCADE's chamfer face is a B-spline on both,
+  but its volume and area agree with the closed form, so no
+  `measure_differs`; the oracle and the closed form hold the fixtures
+  together. The plane-cylinder ruling chamfer stays walked and out of
+  scope: the arm here is the two-cylinder pair only.
 - [ ] Step 5 **[2]** — Ends and chains. A `blend/` fixture each for an end on
   an oblique plane, an end on a face across that is a cylinder (traced,
   ADR-0037), and a chain through a tangent vertex into a plane–cylinder
