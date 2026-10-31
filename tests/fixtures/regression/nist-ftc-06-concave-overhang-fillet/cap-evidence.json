@@ -1,0 +1,23 @@
+{
+  "operand_volume": 3323546.0707782377,
+  "result_volume": 3323547.0661164415,
+  "volume_change": 0.9953382038511336,
+  "caps": [
+    {
+      "degrees": [
+        8,
+        8
+      ],
+      "trimmed_samples": 619,
+      "max_distance_to_any_torus": 1.1435545996164684
+    },
+    {
+      "degrees": [
+        8,
+        8
+      ],
+      "trimmed_samples": 833,
+      "max_distance_to_any_torus": 0.7171307392942351
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "description": "FTC-06's eight concave overhang requests (four tangent chains, selected from either side of their seams) at the census radius. Open CASCADE builds valid solids with two degree 8 x 8 fitted caps at each chain's ends; the caps are not pieces of the stripe's torus. Arris returns TangentChain. Extending the spine and cutting the exact torus passes Full but changes the volume by 1.0325316 mm^3 against Open CASCADE's 0.9953382 on the default case; that experiment is not an accepted fix (ADR-0079 step 3 amendment). Shrinking to a lip and pillar with two cusps changes Open CASCADE's verdict to invalid, so the original operand is retained. census.json records all 21 pre-admission cusp requests, including the 13 convex requests and 11 invalid oracle results, for the census test.",
+  "params": {
+    "x": -86.4036219134654,
+    "y": 52.19179423127194,
+    "z": -234.95
+  },
+  "variants": {
+    "edge-2": {
+      "x": -14.013621913465386,
+      "y": 52.19179423127194,
+      "z": -234.95
+    },
+    "edge-3": {
+      "x": 58.376378086534615,
+      "y": 52.19179423127194,
+      "z": -234.95
+    },
+    "edge-4": {
+      "x": 130.76637808653462,
+      "y": 52.19179423127194,
+      "z": -234.95
+    },
+    "edge-5": {
+      "x": 107.19320576872813,
+      "y": 28.618621913465375,
+      "z": -234.95
+    },
+    "edge-6": {
+      "x": 34.80320576872813,
+      "y": 28.618621913465375,
+      "z": -234.95
+    },
+    "edge-7": {
+      "x": -37.586794231271874,
+      "y": 28.618621913465375,
+      "z": -234.95
+    },
+    "edge-8": {
+      "x": -109.97679423127188,
+      "y": 28.618621913465375,
+      "z": -234.95
+    }
+  },
+  "steps": [
+    {
+      "op": "step",
+      "name": "part",
+      "file": "../../real/nist-ftc-06/nist_ftc_06_asme1_rd.stp",
+      "sha256": "5e30f0903f9470c14a98e70395ca005fe90bcd3fb704c381a80a69958838f169",
+      "id": 101
+    },
+    {
+      "op": "fillet",
+      "name": "result",
+      "of": "part",
+      "edges": [
+        [
+          "x",
+          "y",
+          "z"
+        ]
+      ],
+      "radius": 0.254
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "genus": 10
+  }
+}

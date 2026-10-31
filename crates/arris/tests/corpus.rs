@@ -1391,6 +1391,10 @@ corpus_tests! {
     /// The pillar's concave underside arc at the same overhang tip: both
     /// kernels refuse it, Arris as `TangentChain` (ADR-0079).
     blend_cusp_overhang_tip_pillar_fillet => run "blend/cusp-overhang-tip-pillar-fillet";
+    /// FTC-06's eight concave requests need fitted caps distinct from the
+    /// torus; the convex exact cut cannot build them (ADR-0079).
+    #[ignore = "concave overhang ends need fitted caps; the exact torus cut has the wrong volume"]
+    regression_nist_ftc_06_concave_overhang_fillet => run "regression/nist-ftc-06-concave-overhang-fillet";
     /// A pocket's vertical corner filleted: a concave blend adding material, at
     /// a concave corner with the floor and a convex one with the block's top.
     blend_pocket_corner_fillet => run "blend/pocket-corner-fillet";

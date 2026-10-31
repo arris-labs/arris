@@ -21,7 +21,8 @@ next wall within 1.5e-9; their crease falls from 81° at `P` to zero at
 4.1e-7 of the fillet's torus and 4.2e-7 of the chamfer's cone. These are
 fits to the stripe's own surface. They do not fill a missing surface.
 
-Filleting the pillar's concave edge instead is refused by Open CASCADE.
+Filleting the pillar's concave edge instead is refused by Open CASCADE
+(but see the step 3 amendment: on FTC-06 it builds concave requests).
 Its refusal is recorded in `blend/cusp-overhang-tip-pillar-fillet`; the
 pillar seam lies on its exposed half so the far end is an ordinary corner.
 
@@ -70,8 +71,9 @@ corner patch is a different surface. No public type or signature changes.
   stripe already has the required surface.
 - **Match Open CASCADE's surface split.** It adds a seam between two
   patches of one surface, with no change in geometry or provenance role.
-- **Permit the concave edge too.** Open CASCADE refuses it, and no accepted
-  construction or consumer requirement justifies that extension.
+- **Permit the concave edge too.** Open CASCADE refuses the pillar's, and
+  no accepted construction justifies the extension from it; FTC-06's
+  concave requests are another matter (step 3 amendment).
 
 ## Amendment (2026-10-31, step 2)
 
@@ -79,3 +81,23 @@ The cut also builds a convex chamfer at the lip-over-pillar overhang,
 transverse at `Q`. Both hands at fillet radii or chamfer distances 0.05,
 0.1 and 0.3 match Open CASCADE's volume, area, centroid and inertia at
 the default fixture tolerances, with the same count convention above.
+
+## Amendment (2026-10-31, step 3)
+
+The census of FTC-06's 21 requests that were refused at overhang cusps
+(`regression/nist-ftc-06-concave-overhang-fillet/census.json`) corrects
+the claim that Open CASCADE refuses a concave edge at an overhang tip at
+every radius. That holds for the pillar fixture only. On FTC-06, 13
+requests are convex and 8 concave. Open CASCADE builds the 8 concave ones
+as valid solids, with two fitted caps per tangent chain (degree 8 x 8, up
+to 1.14 from any torus, so not pieces of the stripe). Of the 13 convex
+ones, it builds 2 and returns an invalid solid for 11.
+
+The decision stands: the concave edge stays `TangentChain`. The fitted cap
+is a different surface and has no construction here yet. An experiment
+that extended the spine and cut the exact torus passes the checker but
+changes the volume by 1.0325 mm^3 against Open CASCADE's 0.9953, so it is
+not accepted. The eight requests are the ignored regression fixture, and
+the fitted cap a backlog line. The 11 invalid convex cases build
+checker-green in Arris with no accepted oracle (backlog: a second oracle's
+record).

@@ -1915,6 +1915,101 @@ mod tests {
         );
     }
 
+    /// All 21 requests refused at overhang cusps before ADR-0079, retained
+    /// by point so admission cannot silently shrink the census. The 13
+    /// convex requests build checker-green (Open CASCADE: 2 build, 11 are
+    /// invalid; the verdict carries no measures, so only validity is held,
+    /// not volume). The 8 concave requests, which Open CASCADE builds with
+    /// fitted caps, stay `TangentChain` and have an ignored corpus
+    /// regression with the wanted result (ADR-0079, step 3 amendment).
+    #[test]
+    fn ftc_06_overhang_census_builds_convex_tips_and_records_concave_caps() {
+        #[derive(Deserialize)]
+        struct Tip {
+            at: [f64; 3],
+            convex: bool,
+            occt: String,
+        }
+        let records =
+            corpus_root().join("regression/nist-ftc-06-concave-overhang-fillet/census.json");
+        let tips: Vec<Tip> = serde_json::from_slice(&std::fs::read(records).unwrap()).unwrap();
+        assert_eq!(tips.len(), 21);
+        assert_eq!(tips.iter().filter(|t| t.convex).count(), 13);
+        let file = corpus_root().join("real/nist-ftc-06/nist_ftc_06_asme1_rd.stp");
+        let mut m = Model::default();
+        let read = step_read(
+            &mut m,
+            &std::fs::read_to_string(&file).unwrap(),
+            &ReadOptions::default(),
+        )
+        .unwrap();
+        let body = read
+            .solids
+            .iter()
+            .find_map(|s| s.result.as_ref().ok())
+            .unwrap()
+            .body;
+        let handles = m.edges(body).unwrap();
+        let points: Vec<_> = tips.iter().map(|t| t.at).collect();
+        let verdicts =
+            crate::oracle::fillet_edges(&file, 101, 0.254, ORACLE_PROBE, &points).unwrap();
+        assert_eq!(verdicts.len(), tips.len());
+        let mut counts = BTreeMap::new();
+        for (tip, verdict) in tips.iter().zip(verdicts) {
+            assert_eq!(verdict.verdict, tip.occt, "{:?}", tip.at);
+            let matches: Vec<_> = handles
+                .iter()
+                .filter(|h| {
+                    edge_midpoint(&m, h.id)
+                        .is_some_and(|p| (p - P3::from(tip.at)).norm() < ORACLE_PROBE)
+                })
+                .collect();
+            let [edge] = matches[..] else {
+                panic!("one edge at {:?}", tip.at)
+            };
+            let mut scratch = m.clone();
+            let result = fillet(&mut scratch, body, &[*edge], 0.254);
+            let class = match &result {
+                Ok((built, _)) => {
+                    let report = arris_check::check(&scratch, *built, arris_check::Level::Full);
+                    assert!(report.is_ok(), "{:?}: {report}", tip.at);
+                    BUILT.to_string()
+                }
+                Err(e) => class_of(e),
+            };
+            if tip.convex {
+                assert!(result.is_ok(), "convex tip {:?}: {result:?}", tip.at);
+            } else {
+                assert!(
+                    matches!(
+                        result,
+                        Err(OpError::Degenerate {
+                            reason: Reason::Blend(BlendReason::TangentChain),
+                            ..
+                        })
+                    ),
+                    "concave tip {:?}: {result:?}",
+                    tip.at
+                );
+            }
+            eprintln!(
+                "{:?}: convex {}, Arris {class}, OCCT {}",
+                tip.at, tip.convex, verdict.verdict
+            );
+            *counts.entry((class, verdict.verdict)).or_insert(0) += 1;
+        }
+        eprintln!("21 overhang requests: {counts:?}");
+        let tally = |class: &str, occt: &str| {
+            counts
+                .get(&(class.to_string(), occt.to_string()))
+                .copied()
+                .unwrap_or(0)
+        };
+        assert_eq!(tally(BUILT, "builds"), 2);
+        assert_eq!(tally(BUILT, "invalid"), 11);
+        assert_eq!(counts.values().sum::<usize>(), 21);
+    }
+
     /// The committed `nist-ftc-06`'s three `VertexBlend` edges are one
     /// straight run on one face whose second face jumps at a vertex of four
     /// edges: the census names "a dihedral jump on a collinear run" and

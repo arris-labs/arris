@@ -1082,7 +1082,8 @@ domain; at a same-sense cusp it lies inside. The stripe stays one exact
 face, including the portion Open CASCADE splits off as a fitted cap. A
 tangent dihedral, or an end at a vertex where a corner edge's two faces
 are tangent but which is neither a tangent vertex nor such a cusp — a
-concave blended edge at an overhang tip; a cusp whose next edge is
+concave blended edge at an overhang tip (Open CASCADE refuses the pillar's but
+builds FTC-06's with fitted caps, ADR-0079); a cusp whose next edge is
 blended too, which takes a corner
 patch; the next edge turning back with no cusp, or itself a tangent
 dihedral — is `BlendReason::TangentChain`; a

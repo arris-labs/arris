@@ -11,13 +11,16 @@ where Open CASCADE builds it. An overhang tip is a cusp whose two edges are
 of opposite senses, so its walls lie on either side of the face they share.
 The stripe is cut by the next wall exactly as ADR-0042 cuts a cusp whose
 walls are on one side: the surfaces are exact and the cut is the one fitted
-edge. A concave edge at an overhang tip stays `TangentChain`; Open CASCADE
-refuses it at every radius. The lip-over-pillar fixtures pass at Open
+edge. A concave edge at an overhang tip stays `TangentChain`: Open CASCADE
+refuses it on the pillar fixture at every radius, but builds it on FTC-06
+with fitted caps (ADR-0079, step 3 amendment). The lip-over-pillar fixtures pass at Open
 CASCADE's measures, a cusp property holds the case at random poses, and
 FTC-06's overhang tips are re-counted.
 ## Non-goals
-- A fitted cap surface. The evidence (Design deltas) shows that Open
-  CASCADE builds none.
+- A fitted cap surface for the convex edge: the evidence (Design deltas)
+  shows that Open CASCADE builds none there. The concave edge's fitted
+  caps (FTC-06's 8 requests; degree 8 x 8, up to 1.14 from any torus) are
+  a backlog line and an ignored regression fixture.
 - A cusp whose next edge is blended too (the corner patch,
   `cusp-crescent-both-arcs-fillet`), and the horn torus on an arc: later
   C11 plans.
@@ -49,14 +52,15 @@ result is ADR-0042's cut, with the stripe split at the cross-section through
 differs"; the measurement says otherwise.
 
 Filleting or chamfering the pillar's concave arc (`e` concave): Open CASCADE
-refuses at every radius.
+refuses at every radius. FTC-06's concave requests differ: it builds them.
 
 **ADR-0079** (step 1) amends ADR-0042 §6 and corrects its *Alternatives*.
 - §1's site no longer requires one sense when `e` is convex and `n`
   concave. §2–§5 apply unchanged: `P`, `Q`, the traced cut, the node at `Q`
   for a fillet, and the topology and provenance.
 - `e` concave at an overhang tip stays `TangentChain`, naming `e`, `w` and
-  `v` (both kernels refuse).
+  `v` (Open CASCADE refuses the pillar; on FTC-06 it builds the concave
+  requests with fitted caps, step 3).
 - **Settled: one face, not Open CASCADE's two.** Arris does not split a face
   along a cross-section across which nothing changes. The fixtures say
   `analytic.counts_differ` (one vertex, two edges and one face fewer: 18 /
@@ -105,7 +109,7 @@ geometric case within a given design; **[3]** unproven.
   FTC-06 differ by hand). Add `blend/cusp-overhang-tip-chamfer`, whose cut is
   transverse at `Q`, with variants at 0.05 and 0.3. Each is held at Open
   CASCADE's measures and `counts_differ`.
-- [ ] Step 3 **[2]** — FTC-06 re-counted. `real_parts --tangent-chain` on
+- [x] Step 3 **[2]** — FTC-06 re-counted. `real_parts --tangent-chain` on
   FTC-06, each overhang-tip end tested against `occt_fillet_edges.py`.
   Wherever Open CASCADE builds, Arris builds, checker-green. A miss is fixed
   in this step if it is the design's; otherwise it becomes an ignored
@@ -146,7 +150,15 @@ geometric case within a given design; **[3]** unproven.
   the concave one is still refused.
 - `AGENTS.md` current state: M5 done; next is the cycle's next plan.
 ## Open questions
-None left for the human. Settled by the agent: the face count (one face,
+- **Acceptance, for the human (step 3 finding).** "On FTC-06, no
+  overhang-tip end that Open CASCADE builds is refused by Arris" cannot
+  hold: Open CASCADE builds all 8 concave requests (fitted caps) and Arris
+  refuses them as `TangentChain`. Proposed wording: "...no *convex*
+  overhang-tip end that Open CASCADE builds is refused by Arris; the 8
+  concave ones are `regression/nist-ftc-06-concave-overhang-fillet`".
+  The overall acceptance and step 4 are unchanged until decided.
+
+Otherwise none left for the human. Settled by the agent: the face count (one face,
 `counts_differ`, above) and the variants' radii (Tolerances). A variant
 that misses Open CASCADE beyond its fit error is a design question for
 step 2. Its tolerance is never widened.
