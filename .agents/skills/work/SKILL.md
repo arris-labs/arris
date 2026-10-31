@@ -83,8 +83,11 @@ argument-hint: <plan slug> [step number or range]
    (`.agents/tiers.md` says how in this harness), and wait for its
    hand-back: the harness delivers it, never a poll of its output. Its prompt: "Work step N of `docs/plans/<slug>.md` in this
    checkout by *Do* in `.agents/skills/work/SKILL.md`, that one step only,
-   and commit it. Hand back the commit id and anything surprising, or the
-   question that stopped you." The conductor writes no code itself.
+   and commit it. A run whose result you need goes in the foreground
+   under `timeout`, never backgrounded and polled; the commit's test half
+   is not yours to wait for. Hand back the commit id and anything
+   surprising, or the question that stopped you." The conductor writes no
+   code itself.
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
    step N)`, the plan has step N ticked, `git status` is clean. Its test
    half may still be running: that is not a failure, and the next hook or

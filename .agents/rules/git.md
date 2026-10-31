@@ -41,8 +41,9 @@
 - **No foreground waits.** A test run expected to take over a minute, and
   a CI watch, runs with `run_in_background`, and the agent goes on with
   what does not depend on its result. A foreground `until`, `while` or
-  `sleep` loop waiting on one is never written: the completion notification
-  is the wait.
+  `sleep` loop, or a `tail --pid`/`tail -f`, waiting on one is never
+  written: the completion notification is the wait. In Claude Code
+  `tools/bash-guard.sh` refuses it (a PreToolUse hook).
 - **The full gate** is `tools/full-gate.sh <log>`, run with
   `run_in_background`: the layer rule, fmt, clippy `-D warnings`, nextest
   over the workspace (256 cases, `real_*` included), the doctests, `cargo
