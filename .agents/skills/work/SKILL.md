@@ -71,6 +71,8 @@ argument-hint: <plan slug> [step number or range]
   *Settled* with its reason, and go on through the requested range. Only a
   push, publish, branch, a change to the plan's acceptance or a product
   question (what the kernel offers its callers) waits for the human.
+- A step run by a conductor answers to the conductor alone: a question for
+  the human goes in the hand-back, and the conductor relays it.
 - The last ticked box of a step or range leaves the plan open for
   `/retire-plan`; a conductor runs it itself.
 
@@ -85,9 +87,10 @@ argument-hint: <plan slug> [step number or range]
    checkout by *Do* in `.agents/skills/work/SKILL.md`, that one step only,
    and commit it. A run whose result you need goes in the foreground
    under `timeout`, never backgrounded and polled; the commit's test half
-   is not yours to wait for. Hand back the commit id and anything
-   surprising, or the question that stopped you." The conductor writes no
-   code itself.
+   is not yours to wait for. You answer to the conductor, never the human:
+   hand back the commit id and anything surprising, or the question that
+   stopped you." The conductor writes no code itself; it alone talks to
+   the human.
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
    step N)`, the plan has step N ticked, `git status` is clean. Its test
    half may still be running: that is not a failure, and the next hook or
