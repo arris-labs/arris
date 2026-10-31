@@ -366,3 +366,43 @@ fn a_torus_face_offsets_on_the_band_and_collapses_off_it() {
         face.id,
     );
 }
+
+/// A torus face the move drives to a spindle is refused naming the face
+/// (`SurfaceCollapses`), not as a fault of the edge cut: a horn pushed
+/// out, a ring pushed past the major radius, and a spindle that stays one.
+/// What builds on the band is the test above; a spindle result is a
+/// backlog line (its seam lies on a plane through the axis).
+#[test]
+fn a_torus_face_offset_to_a_spindle_is_refused_by_name() {
+    for (radius, d) in [(1.0, 0.2), (0.5, 1.2), (1.2, -0.1)] {
+        let mut m = Model::default();
+        let (body, face) = rounded_cylinder(&mut m, radius);
+        assert_refused(
+            &mut m,
+            body,
+            &[face],
+            d,
+            Reason::Offset(OffsetReason::SurfaceCollapses),
+            face.id,
+        );
+    }
+}
+
+/// A whole torus face (its pcurves run a full turn of `v`) pushed until
+/// its tube is the major radius is a horn: the band's own rule refuses it,
+/// naming the face, the stretch of `v` that would reach the axis being
+/// the face's.
+#[test]
+fn a_full_torus_pushed_to_a_horn_collapses_on_the_band() {
+    let mut m = Model::default();
+    let body = arris_debug::sample::torus(&mut m, Point3::origin(), 5.0, 2.0).unwrap();
+    let face = m.faces(body).unwrap()[0];
+    assert_refused(
+        &mut m,
+        body,
+        &[face],
+        3.0,
+        Reason::Offset(OffsetReason::SurfaceCollapses),
+        face.id,
+    );
+}

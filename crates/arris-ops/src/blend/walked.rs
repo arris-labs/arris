@@ -771,6 +771,26 @@ pub(super) fn spine(
                 },
             ))?,
         };
+        // A tube grown past the major radius is a spindle (ADR-0080): the
+        // ball's centres cross the axis, which no blend of the face has
+        // room for. The radius is too large, as before the band's rule.
+        if let (
+            Surface::Torus {
+                major_radius,
+                minor_radius,
+                ..
+            },
+            Surface::Torus {
+                minor_radius: moved,
+                ..
+            },
+        ) = (rolling.surfaces[k], &offset)
+            && d > 0.0
+            && *moved - major_radius > tol.linear
+            && minor_radius - major_radius <= tol.linear
+        {
+            return Err(Walked::Refused(Refusal::TooLarge));
+        }
         offsets.push(offset);
     }
     let within = edge_balls

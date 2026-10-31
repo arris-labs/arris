@@ -26,8 +26,8 @@ use arris_debug::unmetered::{
 use arris_debug::{prop, prop_shards};
 use arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_math::{Axis, Frame, Isometry, Point2, Point3, Vec3};
-use arris_ops::OpError;
 use arris_ops::measure::MassProperties;
+use arris_ops::{OffsetReason, OpError, Reason};
 use arris_topo::provenance::audit;
 use arris_topo::{Body, Edge, EntityId, Face, Model};
 use proptest::prelude::*;
@@ -919,6 +919,50 @@ prop_shards! {
             let want = PI * r * r * h - 2.0 * PI * ((r - q) * corner + q * q * q / 6.0);
             let got = mass_properties(&m, out).map_err(fail)?.volume;
             same_measure("volume", got, want, REL)?;
+            Ok(())
+        }
+}
+
+prop_shards! {
+    /// The same rounded rim with its torus face pushed past the major
+    /// radius `R - rho` (`rho + d > R - rho`, a spindle: its
+    /// seam lies on a plane through the axis, which the section does not
+    /// answer): refused as `SurfaceCollapses` naming the torus face, the
+    /// model untouched. What builds is the property above; a spindle
+    /// result stays refused.
+    a_rim_offset_past_the_major_radius_is_refused_by_name
+        [shard_0]
+        ((radius, f, t, pose)) = (
+            prop::finite_f64(1.0..=3.0),
+            prop::finite_f64(0.3..=0.5),
+            prop::finite_f64(0.05..=1.0),
+            prop::pose(),
+        ) => {
+            let rho = f * radius;
+            let d = (radius - 2.0 * rho) + 0.05 * radius + t * radius;
+            let mut m = Model::default();
+            let (rest, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), radius, 2.0)
+                .map_err(fail)?;
+            let rim = rim_at(&m, rest, 2.0)?;
+            let (rounded, _) = fillet(&mut m, rest, &[rim], rho).map_err(fail)?;
+            let body = posed(&mut m, rounded, &pose)?;
+            let torus = m
+                .faces(body)
+                .map_err(fail)?
+                .into_iter()
+                .find(|f| {
+                    m.face(f.id)
+                        .and_then(|face| m.surface(face.surface()))
+                        .is_ok_and(|s| matches!(s, arris_geom::Surface::Torus { .. }))
+                })
+                .ok_or_else(|| fail("no torus face"))?;
+            match offset_faces(&mut m, body, &[torus], d) {
+                Err(OpError::Degenerate { entities, reason }) => {
+                    prop_assert_eq!(reason, Reason::Offset(OffsetReason::SurfaceCollapses));
+                    prop_assert_eq!(entities[0].id, EntityId::from(torus.id));
+                }
+                other => return Err(fail(format!("rim {rho} of {radius} by {d}: {other:?}"))),
+            }
             Ok(())
         }
 }

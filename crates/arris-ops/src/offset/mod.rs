@@ -354,6 +354,19 @@ fn moves(
             // ADR-0080: the face stays on the regular band of the moved
             // torus; a tube grown (or shrunk) so that the face's `v` reaches
             // the axis has collapsed there.
+            // A moved tube past the major radius is a spindle, whose seam
+            // lies on a plane through the axis that the section does not
+            // answer: refused here, naming the face, not left to the edge
+            // cut.
+            if let Surface::Torus {
+                major_radius,
+                minor_radius,
+                ..
+            } = offset
+                && minor_radius - major_radius > tol.linear
+            {
+                return Err(refuse(f, OffsetReason::SurfaceCollapses));
+            }
             let face = m.face(f)?;
             for l in face.loops() {
                 for c in l.coedges() {

@@ -296,3 +296,39 @@ fn the_convex_junction_is_decided() {
         agrees(&m, exact, walked, &[]);
     }
 }
+
+/// A rod across a rounded rim meets the torus in a concave edge; a ball
+/// outside the torus's tube whose tube-plus-radius reaches the major radius
+/// (`0.5 + 1.2 > 1.5`) offsets it to a spindle, its centres crossing the
+/// axis: `TooLarge` naming the torus face, never `Unsupported` from a
+/// spine that was dropped across the axis (ADR-0080).
+#[test]
+fn a_ball_outside_a_tube_that_reaches_the_axis_is_too_large() {
+    use arris_debug::unmetered::{fuse, primitive_cylinder};
+    use arris_math::{Axis, Vec3};
+    let mut m = Model::default();
+    let (cyl, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 2.0, 3.0).unwrap();
+    let rim = circle_at(&m, cyl, 3.0);
+    let (round, _) = fillet(&mut m, cyl, &[rim], 0.5).unwrap();
+    let rod_axis = Axis::new(Point3::new(1.0, 0.0, 2.7), Vec3::new(1.0, 0.0, 0.0)).unwrap();
+    let (rod, _) = primitive_cylinder(&mut m, rod_axis, 0.4, 3.0).unwrap();
+    let (body, _) = fuse(&mut m, round, rod).unwrap();
+    let torus = face_where(&m, body, |s| matches!(s, Surface::Torus { .. }));
+    let (mut too_large, mut dropped) = (0, 0);
+    for e in m.edges(body).unwrap() {
+        let mut trial = m.clone();
+        match fillet(&mut trial, body, &[e], 1.2) {
+            Err(OpError::Degenerate { entities, reason })
+                if entities.iter().any(|s| s.id == torus.id.into()) =>
+            {
+                too_large += usize::from(reason == Reason::Blend(BlendReason::TooLarge));
+            }
+            Err(OpError::Unsupported { a, b }) if [a.1.id, b.1.id].contains(&torus.id.into()) => {
+                dropped += 1;
+            }
+            _ => {}
+        }
+    }
+    assert!(too_large > 0, "no edge of the torus is too large");
+    assert_eq!(dropped, 0, "a spine dropped across the axis");
+}
