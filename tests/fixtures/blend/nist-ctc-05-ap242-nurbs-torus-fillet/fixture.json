@@ -35,6 +35,7 @@
     "genus": 10,
     "counts_differ": "Open CASCADE's body is invalid and counts 267 vertices, 400 edges, 160 faces; Arris's 159 faces are the AP203 edition's second-oracle count, the original 156 and one blend face per edge of the three-edge chain",
     "measure_differs": "Open CASCADE builds a body BRepCheck_Analyzer finds invalid (volume 29 mm³ above the part's where a convex fillet removes about 2). The second oracle refuses this encoding, so second_oracle.json is its record of the AP203 edition of the same part and edge, whose change (result minus operand) is held to Arris's own measures of this operand (ADR-0073)",
-    "occt_step_unread": "Open CASCADE's result is the invalid body BRepCheck_Analyzer refuses, and its STEP carries the fault: the checker finds a loop of its that intersects itself. Reading it measures the reader on a body that is no solid, not the operation; Arris's own STEP is still read back by Open CASCADE and compared"
+    "occt_step_unread": "Open CASCADE's result is the invalid body BRepCheck_Analyzer refuses, and its STEP carries the fault: the checker finds a loop of its that intersects itself. Reading it measures the reader on a body that is no solid, not the operation; Arris's own STEP is still read back by Open CASCADE and compared",
+    "step_differs": "Open CASCADE's own STEP of its invalid result reads back as no solid (0 solids, degenerate, 266 vertices where it built 267 and 1 solid); Arris's STEP of the same result is still read back by Open CASCADE and held to the counts above (the corpus's compare stage)"
   }
 }
