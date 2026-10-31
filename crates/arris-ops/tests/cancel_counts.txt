@@ -251,6 +251,7 @@ blend/hex-chamfer-foot-fan-fillet: 596
 blend/hole-rim-chamfer: 3
 blend/hole-rim-fillet: 3
 blend/hole-rim-fillet-runs-off-the-plate: 363297
+blend/horn-blend-box-cut: 11134
 blend/l-inner-edge: 6
 blend/line-into-arc-fillet: 9
 blend/lip-fillet-runs-into-a-hole: 405416
@@ -296,6 +297,7 @@ blend/rounded-slab-tilted-split-cap-rim-fillet: 127340
 blend/s-bend-oblique-top-fillet: 190333
 blend/second-fillet: 6
 blend/sphere-cylinder-fillet: 2924842
+blend/spindle-blend-cylinder-fuse: 14079
 blend/split-boss-base-chamfer: 8
 blend/split-boss-base-fillet: 8
 blend/split-cone-hole-rim-chamfer: 8
