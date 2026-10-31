@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::{Polygon2, discretise};
 use arris_geom::{Curve2, Surface};
-use arris_math::{DisjointSets, Point2, Vec2};
+use arris_math::{DisjointSets, Point2, Vec2, real};
 use arris_topo::entity::{BodyKind, Face, Loop};
 use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
 
@@ -333,8 +333,9 @@ impl<'m> Checker<'m> {
         Some(faults)
     }
 
-    /// F1: the face has a loop, and no pcurve leaves the surface's
-    /// bounded domain. One line per face — the first coedge that leaves
+    /// F1: the face has a loop, no pcurve leaves the surface's
+    /// bounded domain and no pcurve of a torus face reaches the axis
+    /// (`R + r cos v` at most the face's tolerance). One line per face — the first coedge that leaves
     /// it, since a face whose parametrisation is wrong is wrong once.
     fn f1_malformed(&mut self, face_id: FaceId, face: &'m Face) {
         if face.loops().is_empty() || face.loops().iter().all(|l| l.coedges().is_empty()) {
@@ -362,6 +363,22 @@ impl<'m> Checker<'m> {
             }
             for t in range.samples(self.precision.check_samples) {
                 let uv = pcurve.point(t);
+                if let Surface::Torus {
+                    major_radius,
+                    minor_radius,
+                    ..
+                } = surface
+                {
+                    // ADR-0080: the face lies on the regular band, more
+                    // than its tolerance from the axis.
+                    if major_radius + minor_radius * real::cos(uv[1]) <= face.tolerance() {
+                        outside = Some(FaceFault::OffTorusBand {
+                            loop_index,
+                            coedge: coedge_index,
+                        });
+                        break 'face;
+                    }
+                }
                 let bound = bands(surface, uv, self.precision.parametric_tolerance);
                 for dir in 0..2 {
                     if periods[dir].is_some() {

@@ -157,6 +157,15 @@ pub enum FaceFault {
         /// Index of the coedge in the loop.
         coedge: usize,
     },
+    /// A torus face's pcurve reaches the axis: `R + r cos v` is at most
+    /// the face's tolerance there, past the regular band a face may hold
+    /// (ADR-0080).
+    OffTorusBand {
+        /// Index of the loop.
+        loop_index: usize,
+        /// Index of the coedge in the loop.
+        coedge: usize,
+    },
 }
 
 /// Which bound a tolerance broke.
@@ -798,6 +807,10 @@ impl fmt::Display for Violation {
                 FaceFault::PcurveOutsideDomain { loop_index, coedge } => write!(
                     f,
                     "loop {loop_index} coedge {coedge}: pcurve leaves the surface's domain"
+                ),
+                FaceFault::OffTorusBand { loop_index, coedge } => write!(
+                    f,
+                    "loop {loop_index} coedge {coedge}: pcurve reaches the torus's axis, off the regular band"
                 ),
             },
             Violation::FaceUsedTwice { face, .. } => write!(f, "uses {face} twice"),

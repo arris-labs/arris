@@ -63,7 +63,7 @@ bound has to be established here.
   invariant and rustdoc, the data model's rows, `sample.rs`; a property
   test over random `R/r` in `(0.3, 3)` with `R = r` drawn on purpose:
   `inverse(eval(u, v)) = (u, v)` and a unit normal for every `v` on the band.
-- [ ] Step 2 **[2]** — The checker's F1 `OffTorusBand`: a torus face whose
+- [x] Step 2 **[2]** — The checker's F1 `OffTorusBand`: a torus face whose
   pcurves or `v` span reach `R + r cos v ≤ tol` is refused by name; a
   hand-built horn face over its axis point names it, every existing
   corpus fixture unchanged. Py binding, stub and `Breaking` bullet in the

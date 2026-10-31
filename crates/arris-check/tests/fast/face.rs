@@ -1,8 +1,10 @@
 //! F1–F2.
 
 use arris_check::{FaceFault, Level, ToleranceBound, Violation, check};
-use arris_topo::Model;
-use arris_topo::entity::Loop;
+use arris_geom::{Curve, Curve2, Surface};
+use arris_math::{Frame, Interval, Point2, Point3, UnitVec2, Vec3, real};
+use arris_topo::entity::{Coedge, Edge, EdgeGeometry, Loop, Vertex};
+use arris_topo::{Model, Orientation};
 
 use crate::support::*;
 
@@ -107,4 +109,70 @@ fn f2_a_face_tolerance_above_its_edges() {
             }
         ));
     }
+}
+
+/// F1: a horn torus (`R = r`) face whose one pcurve runs along `v` from
+/// 0 to `v_end`. At `v_end = π` the surface point is on the axis, past the
+/// regular band (ADR-0080); short of it the face is on the band.
+fn horn_meridian_face(v_end: f64) -> (Model, arris_check::Report, arris_topo::FaceId) {
+    let mut m = Model::default();
+    let tol = m.precision().default_tolerance;
+    let surface = m.add_surface(Surface::Torus {
+        frame: Frame::world(),
+        major_radius: 1.0,
+        minor_radius: 1.0,
+    });
+    let at = |v: f64| Point3::new(1.0 + real::cos(v), 0.0, real::sin(v));
+    let a = m.raw().add_vertex(Vertex::new(at(0.0), tol));
+    let b = m.raw().add_vertex(Vertex::new(at(v_end), tol));
+    let curve = m.add_curve(Curve::Circle {
+        frame: Frame::new(
+            Point3::new(1.0, 0.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec3::new(1.0, 0.0, 0.0),
+        )
+        .unwrap(),
+        radius: 1.0,
+    });
+    let edge = m.raw().add_edge(Edge::new(
+        EdgeGeometry::Curve {
+            curve,
+            range: Interval::new(0.0, v_end).unwrap(),
+        },
+        a,
+        b,
+        tol,
+    ));
+    let pcurve = m.add_curve2(Curve2::Line {
+        origin: Point2::new(0.0, 0.0),
+        direction: UnitVec2::new_normalize(arris_math::Vec2::new(0.0, 1.0)),
+    });
+    let coedge = Coedge::new(edge, Orientation::Forward, pcurve);
+    let (body, face, _) = one_face(&mut m, surface, vec![Loop::new(vec![coedge])], tol);
+    let report = check(&m, body, Level::Fast);
+    (m, report, face)
+}
+
+#[test]
+fn f1_a_torus_face_over_its_axis_point() {
+    let (_m, report, face) = horn_meridian_face(std::f64::consts::PI);
+    assert!(
+        report.violations().contains(&Violation::FaceMalformed {
+            face,
+            fault: FaceFault::OffTorusBand {
+                loop_index: 0,
+                coedge: 0,
+            },
+        }),
+        "report:\n{report}"
+    );
+}
+
+#[test]
+fn f1_a_torus_face_short_of_its_axis_point_is_on_the_band() {
+    let (_m, report, _face) = horn_meridian_face(std::f64::consts::FRAC_PI_2);
+    assert!(
+        !report.violations().iter().any(|v| v.code() == "F1"),
+        "report:\n{report}"
+    );
 }

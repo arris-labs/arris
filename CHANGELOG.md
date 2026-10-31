@@ -45,6 +45,10 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- `arris_check::FaceFault` has a new variant, `OffTorusBand { loop_index,
+  coedge }`: a torus face is held to the part of the torus off its axis, and
+  a pcurve that reaches the axis is reported by name. Add an arm to a
+  `match` on `FaceFault`; Python sees the same text.
 - `arris_topo::builder::BuildError` nests its refusals by kind: `Slot`
   (`SlotError`), `Euler` (`EulerError`) and `Closure` (`ClosureError`),
   beside `NotFound` and `Invariant`. Every message is unchanged. Match

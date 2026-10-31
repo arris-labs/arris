@@ -1995,7 +1995,7 @@ reference tree) mapped onto this representation.
 | L3 | No edge is used twice in one loop except as a seam (E7); no edge is used by two loops of the same face except as a seam | Fast |
 | L4 | Each loop's signed area in (u, v) is non-zero — its mean width, the area over half its perimeter, is above `parametric_tolerance` — and the loops of a face have exactly one outer loop (positive winding) per connected component of the domain, holes with negative winding inside one of them. Two outer loops are one component exactly when one contains the other; disjoint ones are two. Decided on the coarsest polygons of the loops that answer beyond their deviation — the minimum segment counts, then 10⁶ and 10³ times the chord `parametric_tolerance` makes on the surface — and at that chord otherwise | Fast |
 | L5 | The loops of a face do not intersect each other or themselves in (u, v), as polygons within `parametric_tolerance` of the pcurves; a loop crossing itself at a point within the tolerance of a vertex of the face meets there, its pieces joining at the vertex only to that tolerance | Full |
-| F1 | The face has a surface and at least one loop; every pcurve lies within the surface's non-periodic domain bounds, to `parametric_tolerance`. Reported once per face, at the first coedge that leaves them | Fast |
+| F1 | The face has a surface and at least one loop; every pcurve lies within the surface's non-periodic domain bounds, to `parametric_tolerance`; on a torus, `R + r cos v` along every pcurve exceeds the face's tolerance (the regular band, ADR-0080). Reported once per face, at the first coedge that leaves them | Fast |
 | F2 | `face.tolerance ≥ Precision::min_tolerance` and ≤ every incident edge's | Fast |
 
 **Shell and body**
