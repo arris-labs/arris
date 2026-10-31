@@ -793,7 +793,7 @@ fn line_cone(
 /// mirror circle among its roots, which only split a monotone stretch in
 /// two, and the kink where the line crosses the axis a double root. The
 /// crossings between them are [`line_by_distance`]'s, and a line along the
-/// axis, whose quartic vanishes, is clear of a torus with `R > r`.
+/// axis, whose quartic vanishes, is clear of a torus (`R > 0`).
 fn line_torus(
     curve: &Curve,
     surface: &Surface,

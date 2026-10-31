@@ -885,6 +885,50 @@ fn a_contact_past_a_cones_apex_is_too_large() {
     );
 }
 
+/// A convex ridge of two steep cones at `ρ = 1`, normals `(0.9, ±0.436)`,
+/// filleted at 1.2: the ball's centre circle falls on the far side of the
+/// axis (`R ≈ −0.33`) while both contacts stay at `ρ ≈ 0.75`, so the
+/// stripe never crosses `v = π`. ADR-0080 needs `R > 0`:
+/// `BlendTooLarge`, never a torus of negative major radius.
+#[test]
+fn a_centre_circle_past_the_axis_is_too_large() {
+    let mut m = Model::default();
+    let p = |u, v| Point2::new(u, v);
+    let plane = Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap();
+    let profile = Profile {
+        plane,
+        outer: ProfileLoop::Path {
+            start: p(0.0, -1.0),
+            segments: vec![
+                line_to(0.5155, -1.0),
+                line_to(1.0, 0.0),
+                line_to(0.5155, 1.0),
+                line_to(0.0, 1.0),
+                line_to(0.0, -1.0),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let part = revolve(
+        &mut m,
+        &profile,
+        Axis::z_at(Point3::origin()),
+        core::f64::consts::TAU,
+    )
+    .unwrap()
+    .0;
+    let ridge = rim_at(&m, part, Point3::origin(), 1.0);
+    let err = fillet(&mut m, part, &[ridge], 1.2).unwrap_err();
+    assert_eq!(
+        reason(&err),
+        Some(Reason::Blend(BlendReason::TooLarge)),
+        "{err}"
+    );
+    let (blended, _) = fillet(&mut m, part, &[ridge], 0.3).unwrap();
+    let report = check(&m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+}
+
 /// The ruling arm's refusals: a ruling blend meeting a plane–plane blend
 /// at a corner, whose contact on the cylinder misses the other's on the
 /// third edge — two arcs, a vertex blend — and a ball larger than the

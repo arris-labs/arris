@@ -243,8 +243,8 @@ struct Blend {
 /// [`BlendReason::TooLarge`] where a contact line or an end arc leaves
 /// its face through an edge that is not the corner's own or a corner
 /// edge is shorter than the trim, a fan's crossing lies past its edge, a trim past the corner's vertex that is
-/// no such lengthening or whose stretch leaves its face, or a closed edge's torus would not be a
-/// ring torus, a contact reaches the axis or a cone's apex, or its seam is
+/// no such lengthening or whose stretch leaves its face, or a closed edge's torus stripe leaves the torus's
+/// regular band (ADR-0080) or its centre circle is on the axis, a contact reaches the axis or a cone's apex, or its seam is
 /// shorter than the trim, or the third edge or a tangent edge at
 /// a chain's junction is shorter than the cut; a closed edge whose vertex
 /// carries more than the curved faces' seams, or an open arc that meets

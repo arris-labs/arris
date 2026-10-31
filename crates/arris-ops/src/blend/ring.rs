@@ -428,8 +428,10 @@ impl Across {
 /// a corner edge lengthened past the vertex at a mixed corner (ADR-0038),
 /// and at a cusp the contact on the wall tangent to that face trimmed on
 /// the spine at the vertex's angle and the other on the edge's side of it
-/// (ADR-0042) — or one of the `junctions`, which the junction builds. A torus that is not a ring
-/// torus and a contact that reaches the axis or a cone's apex are
+/// (ADR-0042) — or one of the `junctions`, which the junction builds. A
+/// torus whose stripe leaves the regular band (ADR-0080: it crosses
+/// `v = π` with `R − r` not above the tolerance), a centre circle on or past
+/// the axis, and a contact that reaches the axis or a cone's apex are
 /// `BlendReason::TooLarge`,
 /// as is a contact or an end that leaves its face or a seam or a corner
 /// edge shorter than the trim.
@@ -977,11 +979,13 @@ fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blen
             // The stripe stays on the torus's regular band (ADR-0080): its
             // distance from the axis, `R + r cos v`, is least at `v = π`
             // when the arc crosses it, else at a contact, which
-            // `contacts_on` has held above the tolerance.
+            // `contacts_on` has held above the tolerance. A centre circle
+            // whose own radius `R` is not above the tolerance is no torus
+            // at all (`R > 0`), whichever way the arc runs.
             let (lo, hi) = (v_a.min(v_b), v_a.max(v_b));
             // The first `π + 2πk` at or above the arc's start.
             let crosses = PI + TAU * ((lo - PI) / TAU).ceil() <= hi;
-            if crosses && c.x - radius <= tolerance {
+            if c.x <= tolerance || (crosses && c.x - radius <= tolerance) {
                 return Err(too_large(faces[k]));
             }
             (

@@ -81,7 +81,9 @@ pub enum SectionFault {
     /// A singular point whose discriminant is flat to rounding, or with a
     /// turning point or another singular point inside its reach: three
     /// or more roots of the discriminant within the tolerance of one
-    /// another, a cusp of the section.
+    /// another, a cusp of the section. Also a branch that crosses from the
+    /// torus's band into its lemon, and a plane through a horn's or
+    /// spindle's axis.
     CrowdedSingularity,
     /// Tube circles of the walked torus lie along the other surface and
     /// the tracer does not part the rest of the section from them. One
@@ -94,7 +96,9 @@ pub enum SectionFault {
     /// traced: a cone a fraction of the tolerance off the pose, its apex
     /// by the torus. Of a NURBS surface the same for its isolines on the
     /// other surface: two or more with more of the section besides, or
-    /// isolines of both its directions.
+    /// isolines of both its directions. Also a branch that crosses from the
+    /// torus's band into its lemon, and a plane through a horn's or
+    /// spindle's axis.
     TubeCircle,
     /// Turning points of a torus section that `f64` does not tell apart,
     /// away from any singular point: a turning point that is an
